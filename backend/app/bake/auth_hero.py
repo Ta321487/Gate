@@ -34,6 +34,8 @@ _DOMAIN_QUERY: dict[str, str] = {
     "DOM-HOTEL": "hotel lobby interior",
     "DOM-MEDIA": "cinema movie theater screen audience",
     "DOM-MUSIC": "headphones music vinyl record studio",
+    "DOM-FORUM": "online forum discussion community bulletin board",
+    "DOM-BLOG": "writing desk laptop coffee blog journal",
     "DOM-GENERIC": "modern office workspace",
 }
 
@@ -71,6 +73,8 @@ _THEME_MOOD: dict[str, str] = {
     "ocean": "ocean blue",
     "vinyl": "vinyl record warm",
     "cinema": "cinema theater",
+    "forum": "community discussion",
+    "blog": "writing reading",
 }
 
 # 无 API Key 时的兜底：Unsplash 公开 photo id（可商用，按领域轮换）
@@ -152,6 +156,16 @@ _FALLBACK_PHOTOS: dict[str, list[str]] = {
         "1511379938547-c1f69419868d",
         "1514525253161-7a46d19cd819",
         "1470225620780-dbe8f1019dba",
+    ],
+    "DOM-FORUM": [
+        "1529156069898-49953e39b1ac",
+        "1516321318423-f06f85e504b3",
+        "1517245386807-bb43f82c33c4",
+    ],
+    "DOM-BLOG": [
+        "1486312338219-ce68d2c6f44d",
+        "1455390582262-044cdead135a",
+        "1499750310102-2b4b9a5b1d8a",
     ],
     "DOM-GENERIC": [
         "1497366216548-37526070297c",
