@@ -29,6 +29,9 @@ export const naiveThemeOverrides = computed(() => {
   const dark = isDark.value
   return {
     common: {
+      fontFamily:
+        '"IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+      fontFamilyMono: '"IBM Plex Mono", "Noto Sans SC", ui-monospace, monospace',
       primaryColor: dark ? '#2dd4bf' : '#0b6e75',
       primaryColorHover: dark ? '#5eead4' : '#08545a',
       primaryColorPressed: dark ? '#14b8a6' : '#064448',

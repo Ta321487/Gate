@@ -2,6 +2,7 @@
 
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { getSchema } from './domainSchema.js'
+import { clerkPosts, hasWorkerPosts, workerPosts } from './staffPosts.js'
 
 export const AUTH_ENTRY_MODES = [
   { id: 'unified', label: '统一登录' },
@@ -42,9 +43,14 @@ export function adminLoginPath() {
   return isSplitEntry() ? '/admin/login' : '/login'
 }
 
+/** 员工端退出后的登录路径 */
+export function staffLoginPath() {
+  return isSplitEntry() ? '/staff/login' : '/login'
+}
+
 /**
- * 当前页可选的登录身份（user / admin / subadmin）。
- * @param {'portal'|'admin'} side
+ * 当前页可选的登录身份。
+ * @param {'portal'|'admin'|'staff'|'all'} side
  */
 export function loginRoleOptions(side = 'portal') {
   const roles = getSchema()?.roles || {}
@@ -56,11 +62,23 @@ export function loginRoleOptions(side = 'portal') {
     id: 'admin',
     label: roles.admin?.label || '总管',
   }
-  const sub = {
-    id: 'subadmin',
-    label: roles.subadmin?.label || '子管',
-  }
-  if (side === 'admin') return [admin, sub]
+  const clerks = clerkPosts().map((p) => ({ id: p.id, label: p.label, kind: 'clerk' }))
+  const workers = workerPosts().map((p) => ({ id: p.id, label: p.label, kind: 'worker' }))
+  // 仅当 schema 声明了 subadmin 且未配置 staff_posts 时回退（旧交付）
+  const postsDeclared = Array.isArray(roles.staff_posts)
+  const subFallback =
+    !postsDeclared && roles.subadmin
+      ? [{ id: 'subadmin', label: roles.subadmin.label || '子管', kind: 'clerk' }]
+      : []
+  const clerkOpts = clerks.length ? clerks : subFallback
+
+  if (side === 'admin') return [admin, ...clerkOpts]
+  if (side === 'staff') return workers
   if (side === 'portal') return [user]
-  return [user, sub, admin]
+  // role_pick / all
+  return [user, admin, ...clerkOpts, ...workers]
+}
+
+export function showStaffLoginLink() {
+  return hasWorkerPosts()
 }

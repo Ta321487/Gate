@@ -71,6 +71,8 @@ public class AuthController {
         session.setAttribute("uid", profile.username);
         session.setAttribute("role", profile.role);
         session.setAttribute("superAdmin", profile.superAdmin);
+        session.setAttribute("staffPost", profile.staffPost == null ? "" : profile.staffPost);
+        session.setAttribute("staffKind", profile.staffKind == null ? "" : profile.staffKind);
         session.removeAttribute("captcha");
         Map<String, Object> m = new HashMap<>(profile.toMap());
         m.put("token", session.getId());
@@ -78,19 +80,34 @@ public class AuthController {
     }
 
     /**
-     * 登录身份校验（门户 / 总管 / 子管）。空 loginAs 表示不校验（统一登录模式）。
+     * 登录身份校验：门户 / 总管 / 子管理(clerk) / 业务员工(worker) / 具体岗位 id。
+     * 空 loginAs 表示不校验（统一登录模式）。
      */
     private static void assertLoginAs(String loginAs, UserStore.Profile profile) {
         if (loginAs == null || loginAs.isBlank()) return;
         String as = loginAs.trim().toLowerCase(Locale.ROOT);
-        boolean ok;
         boolean isAdmin = "admin".equalsIgnoreCase(profile.role);
+        String kind = profile.staffKind == null ? "" : profile.staffKind.trim().toLowerCase(Locale.ROOT);
+        String post = profile.staffPost == null ? "" : profile.staffPost.trim().toLowerCase(Locale.ROOT);
+        boolean isClerk = isAdmin && !profile.superAdmin && (kind.isBlank() || "clerk".equals(kind));
+        boolean isWorker = isAdmin && !profile.superAdmin && "worker".equals(kind);
+        boolean ok;
         switch (as) {
-            case "user", "portal", "reader", "student" -> ok = !isAdmin;
+            case "user", "portal", "reader", "student", "patient" -> ok = !isAdmin;
             case "admin", "super" -> ok = isAdmin && profile.superAdmin;
-            case "subadmin", "sub" -> ok = isAdmin && !profile.superAdmin;
-            case "staff" -> ok = isAdmin;
-            default -> throw new BizException(ErrorCode.BAD_REQUEST, "无效的登录身份");
+            case "subadmin", "sub", "clerk" -> ok = isClerk;
+            case "staff", "worker" -> ok = isWorker;
+            default -> {
+                // 具体岗位 id：须与账号 staff_post 一致
+                if (!isAdmin || profile.superAdmin) {
+                    ok = false;
+                } else if (!post.isBlank()) {
+                    ok = post.equals(as);
+                } else {
+                    // 旧种子无 staff_post：仅允许 loginAs=subadmin 类别，具体 id 拒登
+                    ok = false;
+                }
+            }
         }
         if (!ok) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "所选身份与账号不符");

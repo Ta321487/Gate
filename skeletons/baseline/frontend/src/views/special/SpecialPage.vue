@@ -101,7 +101,7 @@ function reload() {
   text-align: center;
 }
 .sp-brand {
-  font-family: var(--portal-font-display, "Noto Serif SC", serif);
+  font-family: var(--portal-font-display, "Noto Serif SC", "Songti SC", serif);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -116,7 +116,7 @@ function reload() {
 }
 .sp-code {
   margin: 18px 0 6px;
-  font-family: var(--portal-font-ui, "DM Sans", sans-serif);
+  font-family: var(--portal-font-ui, "Plus Jakarta Sans", "Noto Sans SC", sans-serif);
   font-size: 40px;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -147,7 +147,7 @@ function reload() {
 }
 .sp-title {
   margin: 0 0 10px;
-  font-family: var(--portal-font-display, "Noto Serif SC", serif);
+  font-family: var(--portal-font-display, "Noto Serif SC", "Songti SC", serif);
   font-size: 24px;
   line-height: 1.3;
   color: var(--portal-ink, #15202b);

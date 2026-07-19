@@ -473,6 +473,8 @@ def _augment_menus_for_paths(schema: dict[str, Any], *, need_flow: bool, need_tr
     if need_trade:
         _ensure_menu(user, "cart", {"key": "cart", "label": "购物车"}, before_key="content")
         _ensure_menu(user, "my_orders", {"key": "my_orders", "label": "我的订单"}, before_key="content")
+        # 收货地址：仅交易路径（点餐/商城同类），预约壳不挂
+        _ensure_menu(user, "addresses", {"key": "addresses", "label": "收货地址"}, before_key="content")
         _ensure_menu(admin, "orders", {"key": "orders", "label": "订单管理"}, before_key="users")
     if need_reserve:
         _ensure_menu(user, "slots", {"key": "slots", "label": "时段预约"}, before_key="content")

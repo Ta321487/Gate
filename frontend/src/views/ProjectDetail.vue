@@ -554,6 +554,8 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+/** 离开详情页 / 切换项目时递增，作废进行中的启动轮询，避免用空 id 请求 */
+let viewEpoch = 0
 const p = ref(null)
 const loadError = ref('')
 const loadErrorCode = ref(500)
@@ -835,14 +837,21 @@ const genState = computed(() => {
 
 const specText = computed(() => JSON.stringify(p.value?.spec || {}, null, 2))
 const proposal = computed(() => p.value?.spec?.proposal || {})
-/** Spec 角色文案：走领域 schema.roles[].label，不写死中文 */
+/** Spec 角色文案：schema.roles / staff_posts[].label，不写死中文 */
 const roleSpecText = computed(() => {
   const roles = p.value?.spec?.roles || []
   if (!roles.length) return '—'
   const byId = p.value?.spec?.schema?.roles || {}
+  const posts = Array.isArray(byId.staff_posts) ? byId.staff_posts : []
+  const postLabel = Object.fromEntries(
+    posts.filter((x) => x?.id).map((x) => [x.id, x.label || x.id]),
+  )
   return roles
     .map((id) => {
-      const label = byId[id]?.label
+      const label = postLabel[id] || byId[id]?.label
+      const kind = posts.find((x) => x?.id === id)?.kind
+      const kindZh = kind === 'worker' ? '员工' : kind === 'clerk' ? '子管理' : ''
+      if (label && kindZh) return `${id}（${label}·${kindZh}）`
       return label ? `${id}（${label}）` : id
     })
     .join('、')
@@ -974,8 +983,12 @@ function formatSize(n) {
   return (n / 1024 / 1024).toFixed(1) + ' MB'
 }
 
-async function load({ syncTab = false, lite = false } = {}) {
-  const id = route.params.id
+function viewActive(projectId, epoch) {
+  return epoch === viewEpoch && route.params.id === projectId
+}
+
+async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
+  const id = idOpt || route.params.id
   loadError.value = ''
   if (!id || id === 'undefined' || id === 'null') {
     p.value = null
@@ -1004,7 +1017,7 @@ async function load({ syncTab = false, lite = false } = {}) {
     }
     // 仅进入/切项目时同步主 tab；轮询禁止强切，否则无法停在日志页
     if (syncTab) tab.value = defaultTabForStatus(p.value.status)
-    if (!lite && p.value.workspace_path && tab.value === 'runtime') await refreshRuntime()
+    if (!lite && p.value.workspace_path && tab.value === 'runtime') await refreshRuntime(id)
     await refreshJob({ silent: lite })
     // schema 只在产物 Tab 拉，避免生成轮询疯狂刷 /schema
     if (!lite && tab.value === 'artifacts') await loadSchema()
@@ -1073,12 +1086,20 @@ async function refreshJob({ silent = false } = {}) {
   }
 }
 
-async function refreshRuntime() {
-  const data = await api.runtime(route.params.id)
+async function refreshRuntime(projectId) {
+  const id = projectId || route.params.id
+  if (!id || id === 'undefined' || id === 'null') return
+  let data
+  try {
+    data = await api.runtime(id)
+  } catch {
+    return
+  }
+  if (route.params.id !== id) return
   rt.preview_url = data.preview_url || null
   rt.backend_url = data.backend_url || null
   rt.public_host = data.public_host || '127.0.0.1'
-  if (p.value) {
+  if (p.value && p.value.id === id) {
     p.value.backend_port = data.backend_port || 0
     p.value.frontend_port = data.frontend_port || 0
     if (data.project_status) {
@@ -1254,6 +1275,9 @@ async function confirmDelete() {
 }
 
 async function rtAction(side, action) {
+  const projectId = p.value?.id
+  if (!projectId) return
+  const epoch = viewEpoch
   const touchBe = side === 'all' || side === 'backend'
   const touchFe = side === 'all' || side === 'frontend'
   if ((touchBe && rtBusyBe.value) || (touchFe && rtBusyFe.value)) return
@@ -1269,11 +1293,13 @@ async function rtAction(side, action) {
     if (touchFe) rt.frontend_status = 'stopping'
   }
   try {
-    await api.runtimeAction(p.value.id, side, action)
-    await load()
+    await api.runtimeAction(projectId, side, action)
+    if (!viewActive(projectId, epoch)) return
+    await load({ id: projectId })
+    if (!viewActive(projectId, epoch)) return
     const deadline = Date.now() + (action === 'stop' ? 8000 : 20000)
-    while (Date.now() < deadline && tab.value === 'runtime') {
-      await refreshRuntime()
+    while (Date.now() < deadline && viewActive(projectId, epoch) && tab.value === 'runtime') {
+      await refreshRuntime(projectId)
       if (_runtimeSettled(side, action)) break
       await new Promise((r) => setTimeout(r, 700))
     }
@@ -1281,7 +1307,9 @@ async function rtAction(side, action) {
     if (touchBe) rtBusyBe.value = false
     if (touchFe) rtBusyFe.value = false
     if (side === 'all') rtPendingAll.value = ''
-    if (tab.value === 'runtime') await refreshRuntime()
+    if (viewActive(projectId, epoch) && tab.value === 'runtime') {
+      await refreshRuntime(projectId)
+    }
   }
 }
 
@@ -1373,6 +1401,7 @@ watch(
   () => route.params.id,
   async (id, prev) => {
     if (!id || id === prev) return
+    viewEpoch += 1
     stopPoll()
     p.value = null
     loadError.value = ''
@@ -1382,6 +1411,7 @@ watch(
 
 onMounted(reload)
 onUnmounted(() => {
+  viewEpoch += 1
   stopPoll()
   detailCrumb.value = ''
 })

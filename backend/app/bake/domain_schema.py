@@ -62,17 +62,21 @@ def build_domain_schema(
     archetype: str | None = None,
     archetypes: list[str] | None = None,
 ) -> dict[str, Any]:
+    from app.bake.staff_posts import attach_staff_posts
+
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import build_generic_shell_schema
 
         schema = build_generic_shell_schema(title, archetype, archetypes=archetypes)
-        return attach_profile_fields(schema, domain)
+        schema = attach_profile_fields(schema, domain)
+        return attach_staff_posts(schema, domain, archetype)
     builder = SCHEMA_BUILDERS.get(domain, lambda t: _generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
         schema = builder(title)
     else:
         schema = _generic_schema(title, domain)
-    return attach_profile_fields(schema, domain)
+    schema = attach_profile_fields(schema, domain)
+    return attach_staff_posts(schema, domain, archetype)
 
 
 def required_capabilities(
@@ -148,8 +152,14 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
         spec["schema"] = build_domain_schema(
             title, domain, archetype=archetype, archetypes=arches
         )
-    elif not (spec["schema"].get("profileFields")):
-        spec["schema"] = attach_profile_fields(spec["schema"], domain)
+    else:
+        if not (spec["schema"].get("profileFields")):
+            spec["schema"] = attach_profile_fields(spec["schema"], domain)
+        roles = spec["schema"].get("roles") or {}
+        if not isinstance(roles.get("staff_posts"), list) or not roles.get("staff_posts"):
+            from app.bake.staff_posts import attach_staff_posts
+
+            spec["schema"] = attach_staff_posts(dict(spec["schema"]), domain, archetype)
     if not spec.get("accept"):
         proposal_text = ""
         prop = spec.get("proposal")
@@ -285,6 +295,15 @@ def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:
                 seen.add(k)
                 if f.get("type") == "select" and not isinstance(f.get("options"), list):
                     errors.append(f"profileFields.{k} select 需 options 列表")
+
+    roles = schema.get("roles") or {}
+    if isinstance(roles, dict):
+        posts = roles.get("staff_posts")
+        if posts is not None:
+            from app.bake.staff_posts import validate_staff_posts
+
+            for e in validate_staff_posts(posts if isinstance(posts, list) else []):
+                errors.append(e)
 
     return len(errors) == 0, errors
 

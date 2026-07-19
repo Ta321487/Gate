@@ -16,7 +16,8 @@ export const PROJECT_STATUS = {
   generating: { label: '生成中', pill: 'pill-teal', tag: 'info' },
   generated: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
   failed: { label: '门禁未过 · 禁止交付', pill: 'pill-red', tag: 'error' },
-  running: { label: '运行中', pill: 'pill-green', tag: 'success' },
+  // running = 预览已拉起；文案与 generated 同族，「运行中」只出现在「运行」列
+  running: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
   archived: { label: '已归档', pill: 'pill-neutral', tag: 'default' },
 }
 

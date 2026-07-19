@@ -6,6 +6,7 @@ import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
+import com.thesis.service.UserStore;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -169,5 +170,6 @@ public class DomainRuntimeBinder {
                 lookupSiteLabel,
                 lookupUnitLabel,
                 lookupTypeLabel);
+        UserStore.ensureStaffColumns();
     }
 }

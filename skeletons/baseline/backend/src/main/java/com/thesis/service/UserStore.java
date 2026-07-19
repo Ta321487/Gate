@@ -12,11 +12,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 基线用户档案（MySQL sys_user）：phone 列 + profile_json 扩展。
+ * 基线用户档案（MySQL sys_user）：phone 列 + profile_json 扩展 + staff_post/staff_kind。
  */
 public class UserStore {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static Boolean staffColsReady;
 
     public static class Profile {
         public String username;
@@ -29,6 +30,10 @@ public class UserStore {
         public boolean superAdmin;
         public boolean profileEditable;
         public boolean enabled = true;
+        /** 岗位 id，如 claim_clerk / rider */
+        public String staffPost = "";
+        /** clerk | worker；总管为空 */
+        public String staffKind = "";
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -41,7 +46,8 @@ public class UserStore {
             m.put("superAdmin", superAdmin);
             m.put("profileEditable", profileEditable);
             m.put("enabled", enabled);
-            // 扁平常用字段，方便管理端表格
+            m.put("staffPost", staffPost == null ? "" : staffPost);
+            m.put("staffKind", staffKind == null ? "" : staffKind);
             if (extras != null) {
                 for (Map.Entry<String, String> e : extras.entrySet()) {
                     m.putIfAbsent(e.getKey(), e.getValue());
@@ -69,6 +75,20 @@ public class UserStore {
             p.enabled = true;
         }
         p.extras = readExtras(rs);
+        if (hasStaffColumns()) {
+            try {
+                String sp = rs.getString("staff_post");
+                p.staffPost = sp == null ? "" : sp.trim();
+            } catch (Exception e) {
+                p.staffPost = "";
+            }
+            try {
+                String sk = rs.getString("staff_kind");
+                p.staffKind = sk == null ? "" : sk.trim();
+            } catch (Exception e) {
+                p.staffKind = "";
+            }
+        }
         return p;
     }
 
@@ -105,6 +125,38 @@ public class UserStore {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private static boolean columnExists(String column) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                            + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sys_user' AND COLUMN_NAME=?",
+                    Integer.class, column);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static synchronized void ensureStaffColumns() {
+        if (Boolean.TRUE.equals(staffColsReady)) return;
+        try {
+            if (!columnExists("staff_post")) {
+                db().execute("ALTER TABLE sys_user ADD COLUMN staff_post VARCHAR(64) DEFAULT ''");
+            }
+            if (!columnExists("staff_kind")) {
+                db().execute("ALTER TABLE sys_user ADD COLUMN staff_kind VARCHAR(16) DEFAULT ''");
+            }
+            staffColsReady = true;
+        } catch (Exception e) {
+            staffColsReady = columnExists("staff_post") && columnExists("staff_kind");
+        }
+    }
+
+    private static boolean hasStaffColumns() {
+        if (staffColsReady == null) ensureStaffColumns();
+        return Boolean.TRUE.equals(staffColsReady);
     }
 
     private static JdbcTemplate db() {
@@ -154,6 +206,7 @@ public class UserStore {
         Map<String, String> ex = ProfileFields.filterExtras(extras);
         ProfileFields.requireFilled(ph, ex, true);
         String encoded = PasswordHashes.encode(password);
+        ensureStaffColumns();
         if (hasProfileJson()) {
             db().update(
                     "INSERT INTO sys_user (username,password,role,nickname,phone,avatar_url,profile_json,super_admin,profile_editable,enabled) "
@@ -197,7 +250,8 @@ public class UserStore {
                     if (kw.isBlank()) return true;
                     if (p.username.contains(kw)
                             || (p.nickname != null && p.nickname.contains(kw))
-                            || (p.phone != null && p.phone.contains(kw))) {
+                            || (p.phone != null && p.phone.contains(kw))
+                            || (p.staffPost != null && p.staffPost.contains(kw))) {
                         return true;
                     }
                     if (p.extras == null) return false;
@@ -256,26 +310,48 @@ public class UserStore {
                 PasswordHashes.encode(newPassword), username);
     }
 
-    public static Profile appointSubAdmin(String username) {
+    /**
+     * 任命子管或业务员工。staffPost / staffKind 必填（clerk|worker）。
+     */
+    public static Profile appointSubAdmin(String username, String staffPost, String staffKind) {
+        ensureStaffColumns();
         Profile p = get(username);
         if (p == null) throw new IllegalArgumentException("用户不存在");
         if (p.superAdmin) throw new IllegalArgumentException("不可操作总管账号");
-        if ("admin".equals(p.role)) throw new IllegalArgumentException("已是子管，无需重复任命");
+        if ("admin".equals(p.role)) throw new IllegalArgumentException("已是岗位账号，请先撤销再任命");
+        String post = staffPost == null ? "" : staffPost.trim();
+        String kind = staffKind == null ? "" : staffKind.trim().toLowerCase(Locale.ROOT);
+        if (post.isBlank()) throw new IllegalArgumentException("请选择岗位");
+        if (!"clerk".equals(kind) && !"worker".equals(kind)) {
+            throw new IllegalArgumentException("岗位类型须为 clerk 或 worker");
+        }
         db().update(
-                "UPDATE sys_user SET role=?, super_admin=0 WHERE username=?",
-                "admin", username);
+                "UPDATE sys_user SET role=?, super_admin=0, staff_post=?, staff_kind=? WHERE username=?",
+                "admin", post, kind, username);
         return get(username);
     }
 
+    /** 兼容旧调用：无岗位时记为 clerk / subadmin */
+    public static Profile appointSubAdmin(String username) {
+        return appointSubAdmin(username, "subadmin", "clerk");
+    }
+
     public static Profile revokeSubAdmin(String username, String userRole) {
+        ensureStaffColumns();
         Profile p = get(username);
         if (p == null) throw new IllegalArgumentException("用户不存在");
         if (p.superAdmin) throw new IllegalArgumentException("不可撤销总管");
-        if (!"admin".equals(p.role)) throw new IllegalArgumentException("该账号不是子管");
+        if (!"admin".equals(p.role)) throw new IllegalArgumentException("该账号不是岗位员工");
         String ur = (userRole == null || userRole.isBlank()) ? "user" : userRole.trim();
-        db().update(
-                "UPDATE sys_user SET role=?, super_admin=0 WHERE username=?",
-                ur, username);
+        if (hasStaffColumns()) {
+            db().update(
+                    "UPDATE sys_user SET role=?, super_admin=0, staff_post='', staff_kind='' WHERE username=?",
+                    ur, username);
+        } else {
+            db().update(
+                    "UPDATE sys_user SET role=?, super_admin=0 WHERE username=?",
+                    ur, username);
+        }
         return get(username);
     }
 

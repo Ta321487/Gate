@@ -143,6 +143,11 @@ class SystemInfo(BaseModel):
     frontend_ports: str
     used_backend: list[int]
     used_frontend: list[int]
+    # 工厂进程表在跑 / 僵尸占用（「释放」只动 idle_*）
+    managed_backend: list[int] = []
+    managed_frontend: list[int] = []
+    idle_backend: list[int] = []
+    idle_frontend: list[int] = []
     workspace: str
     uploads: str
     skeletons: str

@@ -121,7 +121,8 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status)
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王同学', '13800000002', '示例小区 3 栋 1201', '家', 1),
-(2, 'user', '王同学', '13800000002', '科技园 A 座前台', '公司', 0);
+(2, 'user', '王同学', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王同学', '13800000002', '教学楼旁快递点', '学校', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '系统管理员'

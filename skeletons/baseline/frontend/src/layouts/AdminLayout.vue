@@ -30,6 +30,11 @@ import MessageBell from '../components/MessageBell.vue'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { getSchema, isSuperOnlyMenu, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 import { adminLoginPath } from '../utils/authEntry.js'
+import {
+  clerkAllowedMenuKeys,
+  currentStaffPost,
+  staffPostLabel,
+} from '../utils/staffPosts.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,13 +44,14 @@ const username = localStorage.getItem('username') || ''
 const nickname = localStorage.getItem('nickname') || ''
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
+const staffPost = currentStaffPost()
 const displayName = computed(() => nickname || username)
 const active = computed(() => route.path)
 
 const adminRoleLabel = computed(() => {
   const roles = getSchema()?.roles || {}
   if (superAdmin) return roles.admin?.label || '总管理员'
-  return roles.subadmin?.label || '经办员'
+  return staffPostLabel(staffPost, roles.subadmin?.label || '经办员')
 })
 
 const MENU_TO = {
@@ -81,7 +87,12 @@ const menuItems = computed(() => {
         { key: 'users', index: '/admin/users', label: '用户管理', superOnly: true },
         { key: 'content', index: '/admin/notices', label: '公告管理', superOnly: true },
       ]
-  return raw.filter((m) => superAdmin || !m.superOnly)
+  let items = raw.filter((m) => superAdmin || !m.superOnly)
+  if (!superAdmin) {
+    const allowed = clerkAllowedMenuKeys(staffPost)
+    if (allowed) items = items.filter((m) => allowed.has(m.key))
+  }
+  return items
 })
 
 function logout() {

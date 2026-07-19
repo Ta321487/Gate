@@ -237,12 +237,14 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 - [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门
 - [x] L1 **软删除 / 标签 AND / 周历 / 签到码**：按域 schema 开关；FORUM 复用 tag 表；COURSE/ACTIVITY 周历；ACTIVITY 口令签到
 - [x] **登录入口随机**：`authEntryMode` = unified / role_pick / split_entry；身份控件 `authRoleWidget` = radio / select；后端按 `loginAs` 校验（选错身份拒登）
+- [x] **四类角色 + 分域岗位**：门户用户 / 总管 / 子管理(clerk) / 业务员工(worker)；`schema.roles.staff_posts` + `staff_post`/`staff_kind`；分端 `/staff/login` + WorkLayout；任命仅总管
 - [x] **生成不堵 API**：bake / 灌库 / pack / mvn 等同步重活 `asyncio.to_thread`；前端轮询静默短超时，reload 时不假死在 generating
 
 ### 宿舍验证账号（bake 后）
 
 - 宿管（总管）`admin` / `admin123`：楼栋房间 + 报修类型 + 学生管理 + 公告 + 报修
-- 楼管（子管）`subadmin` / `sub123`：仅报修受理/记录/工作台
+- 楼管（子管理 clerk）`subadmin` / `sub123`：`staff_post=dorm_mgr`，仅报修受理/记录/工作台
+- 维修员（业务员工 worker）`repairer` / `repairer123`：员工端 `/staff` 工单作业
 - 学生 `student` / `student123`
 
 样板：已收进 `skeletons/baseline`（LIBRARY 与 EQUIP 等同走薄壳）  
@@ -254,18 +256,21 @@ Schema：`domain_schema.py`（组装/accept）；模板：`schema_templates.py`
 
 ---
 
-## 全厂不变式：管理页 + 总管/子管
+## 全厂不变式：管理页 + 总管 / 子管理 / 业务员工
 
 **任意领域**（含未来商城 / ERP / 预约）必须满足；缺一不可标 `full` / 出 ZIP。
 
 | 槽位 | 谁可见 | 要求 | 示例 |
 |------|--------|------|------|
-| **领域主数据** | 仅总管 | ≥1 个 admin 菜单 + 真实主表 + CRUD Admin | 宿舍：楼栋/房间/类型；图书：图书/分类；商城：商品/分类；ERP：物料/仓库 |
-| **用户管理** | 仅总管 | `users` + UsersAdmin + `requireSuperAdmin` | 学生 / 读者 / 会员 / 员工 |
+| **领域主数据** | 仅总管 | ≥1 个 admin 菜单 + 真实主表 + CRUD Admin | 宿舍：楼栋/房间/类型；图书：图书/分类；商城：商品/分类 |
+| **用户管理 / 任命** | 仅总管 | `users` + `requireSuperAdmin`；任命写入 `staff_post`+`staff_kind` | 学生 + 岗位（clerk/worker） |
 | **公告管理** | 仅总管 | `content` + NoticesAdmin + `requireSuperAdmin` | 全域壳，文案随 schema |
-| **业务流** | 总管+子管 | 仅 `requireAdmin` | 报修受理、借阅审核、订单发货、出入库 |
+| **业务流（办理）** | 总管+子管理(clerk) | AdminLayout，菜单按 clerk packs 裁剪 | 报修受理、订单办理、预约办理 |
+| **现场作业** | 业务员工(worker) | WorkLayout `/staff/*`，页面按 worker packs | 维修、骑手配送、客房服务 |
 
-**禁止**：用「用户+公告」顶替领域主数据；挂无表无路由的假菜单；bake 丢掉 `superAdmin` 门禁。
+岗位表：`backend/app/bake/staff_posts.py`（clerk / worker 均按域可选；无岗位 = 仅门户+总管；无 worker 则隐藏员工端入口）。
+
+**禁止**：用「用户+公告」顶替领域主数据；挂无表无路由的假菜单；bake 丢掉 `superAdmin` 门禁；子管理/员工互相任命。
 
 | 角色 | 能做 | 不能做 |
 |------|------|--------|

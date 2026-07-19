@@ -58,9 +58,17 @@
       </el-button>
     </form>
     <template #footer>
-      <template v-if="entrySide === 'admin'">
+      <template v-if="entrySide === 'admin' || entrySide === 'staff'">
         <span>业务用户？</span>
         <router-link to="/login">返回门户登录</router-link>
+        <template v-if="entrySide === 'admin' && showStaffLink">
+          <span class="sep">·</span>
+          <router-link to="/staff/login">员工端入口</router-link>
+        </template>
+        <template v-if="entrySide === 'staff'">
+          <span class="sep">·</span>
+          <router-link to="/admin/login">管理端入口</router-link>
+        </template>
       </template>
       <template v-else>
         <span>还没有账号？</span>
@@ -68,6 +76,10 @@
         <template v-if="entryMode === 'split_entry'">
           <span class="sep">·</span>
           <router-link to="/admin/login">管理端入口</router-link>
+          <template v-if="showStaffLink">
+            <span class="sep">·</span>
+            <router-link to="/staff/login">员工端入口</router-link>
+          </template>
         </template>
       </template>
     </template>
@@ -86,12 +98,14 @@ import {
   loginRoleOptions,
   pickAuthEntryMode,
   pickAuthRoleWidget,
+  showStaffLoginLink,
 } from '../utils/authEntry'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
+import { homePathAfterLogin } from '../utils/staffPosts.js'
 
 const props = defineProps({
-  /** portal | admin；路由 /admin/login 时为 admin */
+  /** portal | admin | staff */
   entrySide: { type: String, default: '' },
 })
 
@@ -101,19 +115,24 @@ const template = ref(pickAuthTemplate())
 const entryMode = pickAuthEntryMode()
 const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
+const showStaffLink = computed(() => showStaffLoginLink())
 const title = ref(
   labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
 
 const entrySide = computed(() => {
-  if (props.entrySide === 'admin' || props.entrySide === 'portal') return props.entrySide
+  if (props.entrySide === 'admin' || props.entrySide === 'portal' || props.entrySide === 'staff') {
+    return props.entrySide
+  }
   if (route.path.startsWith('/admin/login')) return 'admin'
+  if (route.path.startsWith('/staff/login')) return 'staff'
   return 'portal'
 })
 
 const roleOptions = computed(() => {
   if (entryMode === 'role_pick') return loginRoleOptions('all')
   if (entryMode === 'split_entry' && entrySide.value === 'admin') return loginRoleOptions('admin')
+  if (entryMode === 'split_entry' && entrySide.value === 'staff') return loginRoleOptions('staff')
   return loginRoleOptions('portal')
 })
 
@@ -125,24 +144,35 @@ const showRolePicker = computed(() => {
 
 const needLoginAs = computed(() => entryMode !== 'unified')
 
-const heading = computed(() => (entrySide.value === 'admin' ? '管理端登录' : '登录'))
-const sub = computed(() =>
-  entrySide.value === 'admin' ? '使用管理账号进入后台' : '使用已有账号进入系统',
-)
+const heading = computed(() => {
+  if (entrySide.value === 'admin') return '管理端登录'
+  if (entrySide.value === 'staff') return '员工端登录'
+  return '登录'
+})
+const sub = computed(() => {
+  if (entrySide.value === 'admin') return '使用总管或子管理账号进入后台'
+  if (entrySide.value === 'staff') return '使用业务员工账号进入作业台'
+  return '使用已有账号进入系统'
+})
 const note = computed(() => {
   if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份。'
   if (entryMode === 'split_entry' && entrySide.value === 'admin') {
-    return '管理端仅接受总管/子管账号；业务用户请走门户登录。'
+    return '管理端仅接受总管/子管理账号；业务员工请走员工端，用户请走门户。'
   }
-  if (entryMode === 'split_entry') return '门户仅接受业务用户；管理员请走管理端入口。'
+  if (entryMode === 'split_entry' && entrySide.value === 'staff') {
+    return '员工端仅接受业务员工账号；管理岗请走管理端入口。'
+  }
+  if (entryMode === 'split_entry') return '门户仅接受业务用户；管理/员工请走对应入口。'
   return '新用户可先注册再登录。'
 })
 const authLead = computed(() => {
-  if (entrySide.value === 'admin') return '管理端独立入口，按岗位身份登录后台。'
+  if (entrySide.value === 'admin') return '管理端独立入口，按总管/子管理身份登录。'
+  if (entrySide.value === 'staff') return '员工端独立入口，办理派送、维修等现场作业。'
   return labels.authLead || '验证码登录，开放注册；登录后可使用系统基础能力。'
 })
 const authPoints = computed(() => {
-  if (entrySide.value === 'admin') return ['身份校验', '总管/子管分权', '验证码登录']
+  if (entrySide.value === 'admin') return ['身份校验', '总管/子管理分权', '验证码登录']
+  if (entrySide.value === 'staff') return ['岗位校验', '作业台', '验证码登录']
   if (Array.isArray(labels.authPoints) && labels.authPoints.length) return labels.authPoints
   return ['验证码登录', '开放注册', '个人资料与头像']
 })
@@ -175,7 +205,15 @@ function persist(user) {
   localStorage.setItem('avatarUrl', user.avatarUrl || '')
   localStorage.setItem('profileEditable', String(!!user.profileEditable))
   localStorage.setItem('superAdmin', String(!!user.superAdmin))
+  localStorage.setItem('staffPost', user.staffPost || '')
+  localStorage.setItem('staffKind', user.staffKind || '')
   import('../utils/session.js').then((m) => m.markSessionOk?.())
+}
+
+function defaultLoginAs() {
+  if (entrySide.value === 'admin') return 'admin'
+  if (entrySide.value === 'staff') return 'worker'
+  return 'user'
 }
 
 async function loadCaptcha() {
@@ -205,19 +243,24 @@ async function onLogin() {
       captcha: form.captcha,
     }
     if (needLoginAs.value) {
-      // split 门户无选择器时仍带 loginAs=user，防止管理号误登
-      payload.loginAs =
-        form.loginAs || (entrySide.value === 'admin' ? 'staff' : 'user')
+      // split 门户无选择器时仍带 loginAs，防止跨端误登
+      payload.loginAs = form.loginAs || defaultLoginAs()
     }
     const res = await http.post('/api/auth/login', payload)
     persist(res.data)
     ElMessage.success('登录成功')
     const redir = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    if (redir.startsWith('/') && !redir.startsWith('//') && !redir.startsWith('/login')) {
+    if (
+      redir.startsWith('/')
+      && !redir.startsWith('//')
+      && !redir.startsWith('/login')
+      && !redir.startsWith('/admin/login')
+      && !redir.startsWith('/staff/login')
+    ) {
       router.replace(redir)
       return
     }
-    router.push(res.data.role === 'admin' ? '/admin' : '/')
+    router.push(homePathAfterLogin(res.data))
   } catch {
     form.captcha = ''
     loadCaptcha()
@@ -227,9 +270,13 @@ async function onLogin() {
 }
 
 onMounted(async () => {
-  // 非分端模式不提供独立管理登录页
-  if (entryMode !== 'split_entry' && entrySide.value === 'admin') {
+  // 非分端模式不提供独立管理/员工登录页
+  if (entryMode !== 'split_entry' && (entrySide.value === 'admin' || entrySide.value === 'staff')) {
     router.replace('/login')
+    return
+  }
+  if (entryMode === 'split_entry' && entrySide.value === 'staff' && !showStaffLink.value) {
+    router.replace('/admin/login')
     return
   }
   if (typeof route.query.u === 'string' && route.query.u) form.username = route.query.u
@@ -243,15 +290,19 @@ onMounted(async () => {
   }
   // 分端时已登录用户打开对方登录页 → 按角色回跳（须服务端会话仍有效）
   const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
   if (token) {
     try {
-      await http.get('/api/auth/me')
-      if (role === 'admin' && entrySide.value === 'admin') {
-        router.replace('/admin')
+      const me = await http.get('/api/auth/me')
+      const home = homePathAfterLogin(me.data || {})
+      if (entrySide.value === 'admin' && home.startsWith('/admin')) {
+        router.replace(home)
         return
       }
-      if (role !== 'admin' && entrySide.value === 'portal') {
+      if (entrySide.value === 'staff' && home.startsWith('/staff')) {
+        router.replace(home)
+        return
+      }
+      if (entrySide.value === 'portal' && home === '/') {
         router.replace('/')
         return
       }

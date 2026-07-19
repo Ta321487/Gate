@@ -42,12 +42,16 @@
         </div>
         <div class="panel-bd" style="padding-top:12px">
           <div class="row mb-12" style="justify-content:space-between">
-            <n-button-group size="small">
-              <n-button :type="filter==='all'?'primary':'default'" @click="setFilter('all')">全部</n-button>
-              <n-button :type="filter==='active'?'primary':'default'" @click="setFilter('active')">进行中</n-button>
-              <n-button :type="filter==='done'?'primary':'default'" @click="setFilter('done')">可交付</n-button>
-              <n-button :type="filter==='fail'?'primary':'default'" @click="setFilter('fail')">失败</n-button>
-            </n-button-group>
+            <div class="filter-pills" role="group" aria-label="项目筛选">
+              <button
+                v-for="f in filters"
+                :key="f.id"
+                type="button"
+                class="pill filter-pill"
+                :class="[f.pill, { on: filter === f.id }]"
+                @click="setFilter(f.id)"
+              >{{ f.label }}</button>
+            </div>
             <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
           </div>
           <n-data-table :columns="columns" :data="list" :row-key="r => r.id" :bordered="false" size="small">
@@ -85,6 +89,13 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
+/** 与状态/运行列语义对齐：运行中 · 可交付 · 失败 */
+const filters = [
+  { id: 'all', label: '全部', pill: 'pill-neutral' },
+  { id: 'active', label: '运行中', pill: 'pill-green' },
+  { id: 'done', label: '可交付', pill: 'pill-teal' },
+  { id: 'fail', label: '失败', pill: 'pill-red' },
+]
 const q = ref('')
 const dragover = ref(false)
 const uploading = ref(false)

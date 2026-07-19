@@ -6,8 +6,110 @@ import Profile from '../views/Profile.vue'
 import Notices from '../views/Notices.vue'
 import NoticeDetail from '../views/NoticeDetail.vue'
 import NoticesAdmin from '../views/admin/NoticesAdmin.vue'
-import { getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
-import { adminLoginPath, isSplitEntry } from '../utils/authEntry.js'
+import { getDomain, getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
+
+/** 收货地址簿：仅交易域（点餐/商城/GENERIC 交易），勿挂到酒店预约等壳 */
+function domainNeedsAddressBook() {
+  const d = getDomain()
+  return d === 'DOM-FOOD' || d === 'DOM-SHOP' || d === 'DOM-GENERIC'
+}
+import { adminLoginPath, isSplitEntry, staffLoginPath } from '../utils/authEntry.js'
+import {
+  clerkAllowedMenuKeys,
+  currentStaffPost,
+  homePathAfterLogin,
+  isWorkerSession,
+  workerAllowedPages,
+} from '../utils/staffPosts.js'
+
+function portalGuard(_to, _from, next) {
+  if (localStorage.getItem('role') !== 'admin') {
+    next()
+    return
+  }
+  next(homePathAfterLogin({
+    role: 'admin',
+    superAdmin: localStorage.getItem('superAdmin') === 'true',
+    staffKind: localStorage.getItem('staffKind') || '',
+  }))
+}
+
+const ADMIN_KEY_BY_PATH = {
+  '/admin/dashboard': 'dashboard',
+  '/admin/tickets': 'ticket_pending',
+  '/admin/ticket-records': 'ticket_records',
+  '/admin/overdue': 'deadline',
+  '/admin/orders': 'orders',
+  '/admin/reservations': 'reservations',
+  '/admin/users': 'users',
+  '/admin/notices': 'content',
+  '/admin/sites': 'lookup_site',
+  '/admin/types': 'lookup_type',
+  '/admin/archive': 'archive',
+  '/admin/categories': 'category',
+  '/admin/profile': 'profile',
+}
+
+function adminGuard(to, _from, next) {
+  if (localStorage.getItem('role') !== 'admin') {
+    next('/')
+    return
+  }
+  if (isWorkerSession()) {
+    next('/staff')
+    return
+  }
+  if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
+    next('/admin/dashboard')
+    return
+  }
+  const allowed = clerkAllowedMenuKeys(currentStaffPost())
+  if (allowed && localStorage.getItem('superAdmin') !== 'true') {
+    const key = ADMIN_KEY_BY_PATH[to.path]
+    if (key && key !== 'profile' && !allowed.has(key)) {
+      next('/admin/dashboard')
+      return
+    }
+  }
+  next()
+}
+
+function staffGuard(to, _from, next) {
+  if (localStorage.getItem('role') !== 'admin') {
+    next(staffLoginPath())
+    return
+  }
+  if (!isWorkerSession()) {
+    next(homePathAfterLogin({
+      role: 'admin',
+      superAdmin: localStorage.getItem('superAdmin') === 'true',
+      staffKind: localStorage.getItem('staffKind') || '',
+    }))
+    return
+  }
+  const pages = workerAllowedPages(currentStaffPost())
+  const leaf = to.path.replace(/^\/staff\/?/, '') || pages[0] || 'tickets'
+  if (pages.length && leaf && !pages.includes(leaf) && to.path !== '/staff') {
+    next(`/staff/${pages[0]}`)
+    return
+  }
+  next()
+}
+
+const staffRoutes = {
+  path: '/staff',
+  component: () => import('../layouts/WorkLayout.vue'),
+  children: [
+    { path: '', redirect: () => {
+      const pages = workerAllowedPages(currentStaffPost())
+      return `/staff/${pages[0] || 'tickets'}`
+    } },
+    { path: 'tickets', component: () => import('../views/staff/StaffTickets.vue') },
+    { path: 'orders', component: () => import('../views/staff/StaffOrders.vue') },
+    { path: 'slots', component: () => import('../views/staff/StaffSlots.vue') },
+  ],
+  beforeEnter: staffGuard,
+}
 
 function hasCap(id) {
   return (getSchema().capabilities || []).includes(id)
@@ -106,6 +208,12 @@ function withExtraBizRoutes(baseRoutes, { order = false, slot = false } = {}) {
         component: () => import('../views/user/MyOrders.vue'),
       })
     }
+    if (domainNeedsAddressBook() && !has(userKids, 'addresses')) {
+      userKids.splice(4, 0, {
+        path: 'addresses',
+        component: () => import('../views/user/Addresses.vue'),
+      })
+    }
     if (!has(adminKids, 'orders')) {
       adminKids.splice(4, 0, {
         path: 'orders',
@@ -129,10 +237,7 @@ const ticketRoutes = [
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (_to, _from, next) => {
-      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
-      else next()
-    },
+    beforeEnter: portalGuard,
   },
   {
     path: '/admin',
@@ -148,18 +253,9 @@ const ticketRoutes = [
       { path: 'types', component: () => import('../views/admin/LookupTypesAdmin.vue') },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (to, _from, next) => {
-      if (localStorage.getItem('role') !== 'admin') {
-        next('/tickets')
-        return
-      }
-      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-        next('/admin/dashboard')
-        return
-      }
-      next()
-    },
+    beforeEnter: adminGuard,
   },
+  staffRoutes,
 ]
 
 const archiveTicketRoutes = [
@@ -177,10 +273,7 @@ const archiveTicketRoutes = [
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (_to, _from, next) => {
-      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
-      else next()
-    },
+    beforeEnter: portalGuard,
   },
   {
     path: '/admin',
@@ -197,18 +290,9 @@ const archiveTicketRoutes = [
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (to, _from, next) => {
-      if (localStorage.getItem('role') !== 'admin') {
-        next('/archive')
-        return
-      }
-      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-        next('/admin/dashboard')
-        return
-      }
-      next()
-    },
+    beforeEnter: adminGuard,
   },
+  staffRoutes,
 ]
 
 const orderRoutes = [
@@ -222,14 +306,12 @@ const orderRoutes = [
       { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
       { path: 'cart', component: () => import('../views/user/Cart.vue') },
       { path: 'orders', component: () => import('../views/user/MyOrders.vue') },
+      { path: 'addresses', component: () => import('../views/user/Addresses.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (_to, _from, next) => {
-      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
-      else next()
-    },
+    beforeEnter: portalGuard,
   },
   {
     path: '/admin',
@@ -244,18 +326,9 @@ const orderRoutes = [
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (to, _from, next) => {
-      if (localStorage.getItem('role') !== 'admin') {
-        next('/archive')
-        return
-      }
-      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-        next('/admin/dashboard')
-        return
-      }
-      next()
-    },
+    beforeEnter: adminGuard,
   },
+  staffRoutes,
 ]
 
 const slotRoutes = [
@@ -274,10 +347,7 @@ const slotRoutes = [
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (_to, _from, next) => {
-      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
-      else next()
-    },
+    beforeEnter: portalGuard,
   },
   {
     path: '/admin',
@@ -293,18 +363,9 @@ const slotRoutes = [
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (to, _from, next) => {
-      if (localStorage.getItem('role') !== 'admin') {
-        next('/archive')
-        return
-      }
-      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-        next('/admin/dashboard')
-        return
-      }
-      next()
-    },
+    beforeEnter: adminGuard,
   },
+  staffRoutes,
 ]
 
 const archiveOnlyRoutes = [
@@ -320,10 +381,7 @@ const archiveOnlyRoutes = [
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (_to, _from, next) => {
-      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
-      else next()
-    },
+    beforeEnter: portalGuard,
   },
   {
     path: '/admin',
@@ -337,18 +395,9 @@ const archiveOnlyRoutes = [
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
-    beforeEnter: (to, _from, next) => {
-      if (localStorage.getItem('role') !== 'admin') {
-        next('/archive')
-        return
-      }
-      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-        next('/admin/dashboard')
-        return
-      }
-      next()
-    },
+    beforeEnter: adminGuard,
   },
+  staffRoutes,
 ]
 
 const baselineRoutes = [
@@ -400,17 +449,27 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/admin/login', component: Login, props: { entrySide: 'admin' } },
+    { path: '/staff/login', component: Login, props: { entrySide: 'staff' } },
     ...pickRoutes(),
     ...specialRoutes,
   ],
 })
 
-const publicPaths = new Set(['/login', '/admin/login', '/register', '/error', '/loading'])
+const publicPaths = new Set([
+  '/login',
+  '/admin/login',
+  '/staff/login',
+  '/register',
+  '/error',
+  '/loading',
+])
 
 function safeRedirect(path) {
   if (!path || typeof path !== 'string') return ''
   if (!path.startsWith('/') || path.startsWith('//')) return ''
-  if (path.startsWith('/login') || path.startsWith('/admin/login')) return ''
+  if (path.startsWith('/login') || path.startsWith('/admin/login') || path.startsWith('/staff/login')) {
+    return ''
+  }
   return path
 }
 
@@ -428,12 +487,21 @@ router.beforeEach(async (to, _from, next) => {
   } = await import('../utils/session.js')
 
   if (!token) {
-    if (isGuestBrowseEnabled() && isPortalPublicPath(to.path) && !to.path.startsWith('/admin')) {
+    if (
+      isGuestBrowseEnabled()
+      && isPortalPublicPath(to.path)
+      && !to.path.startsWith('/admin')
+      && !to.path.startsWith('/staff')
+    ) {
       next()
       return
     }
     if (to.path.startsWith('/admin') && isSplitEntry()) {
       next(adminLoginPath())
+      return
+    }
+    if (to.path.startsWith('/staff') && isSplitEntry()) {
+      next(staffLoginPath())
       return
     }
     next({
@@ -444,13 +512,19 @@ router.beforeEach(async (to, _from, next) => {
   }
   // 服务重启后 localStorage 仍有 token，须向服务端确认会话
   const role = localStorage.getItem('role')
+  const staffKind = localStorage.getItem('staffKind') || ''
   const ok = await probeSession()
   if (!ok) {
-    if (isGuestBrowseEnabled() && isPortalPublicPath(to.path) && !to.path.startsWith('/admin')) {
+    if (
+      isGuestBrowseEnabled()
+      && isPortalPublicPath(to.path)
+      && !to.path.startsWith('/admin')
+      && !to.path.startsWith('/staff')
+    ) {
       next()
       return
     }
-    next(loginPathForRole(role))
+    next(loginPathForRole(role, staffKind))
     return
   }
   next()

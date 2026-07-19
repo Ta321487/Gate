@@ -18,9 +18,20 @@
           </div>
           <div class="panel-bd">
             <div class="small mb-12"><span class="muted">对外地址</span> {{ info.public_host || '127.0.0.1' }} · 监听 {{ info.bind_host || '127.0.0.1' }}</div>
-            <div class="small mb-12"><span class="muted">后端</span> {{ info.backend_ports }} · 占用中 {{ info.used_backend.join(', ') || '无' }}</div>
-            <div class="small mb-12"><span class="muted">前端</span> {{ info.frontend_ports }} · 占用中 {{ info.used_frontend.join(', ') || '无' }}</div>
-            <n-button size="small" :loading="freeing" @click="free">释放空闲占用</n-button>
+            <div class="small mb-12">
+              <span class="muted">后端</span> {{ info.backend_ports }}
+              · 占用 {{ formatPorts(info.used_backend) }}
+              <span class="muted">（运行中 {{ formatPorts(info.managed_backend) }} · 可释放 {{ formatPorts(info.idle_backend) }}）</span>
+            </div>
+            <div class="small mb-12">
+              <span class="muted">前端</span> {{ info.frontend_ports }}
+              · 占用 {{ formatPorts(info.used_frontend) }}
+              <span class="muted">（运行中 {{ formatPorts(info.managed_frontend) }} · 可释放 {{ formatPorts(info.idle_frontend) }}）</span>
+            </div>
+            <p class="small muted mb-12">「释放」只杀工厂未托管的僵尸进程，不会停止正在预览的项目。</p>
+            <n-button size="small" :loading="freeing" :disabled="!hasIdle" @click="free">
+              释放僵尸占用{{ hasIdle ? `（${idleCount}）` : '' }}
+            </n-button>
           </div>
         </div>
         <div class="panel">
@@ -58,7 +69,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { api, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import ErrorPage from './ErrorPage.vue'
@@ -68,6 +79,15 @@ const info = ref(null)
 const freeing = ref(false)
 const loading = ref(false)
 const booted = ref(false)
+
+function formatPorts(ports) {
+  return (ports && ports.length) ? ports.join(', ') : '无'
+}
+
+const idleCount = computed(
+  () => (info.value?.idle_backend?.length || 0) + (info.value?.idle_frontend?.length || 0),
+)
+const hasIdle = computed(() => idleCount.value > 0)
 
 async function load() {
   loading.value = true
@@ -85,7 +105,9 @@ async function free() {
   freeing.value = true
   try {
     const res = await api.freePorts()
-    message.success(res.message)
+    const cleaned = res?.data?.cleaned || 0
+    if (cleaned) message.success(res.message)
+    else message.info(res.message)
     await load()
   } finally {
     freeing.value = false

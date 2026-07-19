@@ -55,8 +55,19 @@ async def list_projects(
     items = list(result.scalars().all())
     if q:
         items = [p for p in items if q in p.title or q in p.id]
+    # 先纠正运行态，再按筛选过滤（避免 generated 实已在跑却被漏掉）
+    dirty = False
+    for p in items:
+        _, _, changed = project_svc.sync_project_runtime(p)
+        if changed:
+            dirty = True
     if filter == "active":
-        items = [p for p in items if p.status in ("needs_confirm", "generating", "running", "ready")]
+        # 「运行中」= 预览进程在跑（与列表「运行」列一致）
+        items = [
+            p
+            for p in items
+            if p.status == "running" or p.backend_running or p.frontend_running
+        ]
     elif filter == "done":
         # 可交付 = 已生成/运行中且 ZIP 仍解锁（门禁回退后 zip_ready=False）
         items = [
@@ -66,12 +77,6 @@ async def list_projects(
         ]
     elif filter == "fail":
         items = [p for p in items if p.status == "failed"]
-    # 运行态以可服务为准，纠正库内陈旧「运行中」
-    dirty = False
-    for p in items:
-        _, _, changed = project_svc.sync_project_runtime(p)
-        if changed:
-            dirty = True
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
     summaries = [ProjectSummary.model_validate(p) for p in items]
     if dirty:

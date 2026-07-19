@@ -25,10 +25,10 @@
       >
         <template #default="{ row }">{{ extraOf(row, col.key) || '—' }}</template>
       </el-table-column>
-      <el-table-column label="身份" width="110">
+      <el-table-column label="身份" width="140">
         <template #default="{ row }">
           <el-tag size="small" :type="isSub(row) ? 'warning' : 'info'" effect="plain">
-            {{ isSub(row) ? subLabel : userLabel }}
+            {{ identityLabel(row) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -46,13 +46,34 @@
           <el-button link :type="row.enabled ? 'danger' : 'success'" @click="toggle(row)">
             {{ row.enabled ? '停用' : '启用' }}
           </el-button>
-          <el-button v-if="!isSub(row)" link type="primary" @click="appoint(row)">任命{{ subLabel }}</el-button>
+          <el-button
+            v-if="canAppoint && !isSub(row)"
+            link
+            type="primary"
+            @click="openAppoint(row)"
+          >任命岗位</el-button>
           <el-button v-else link type="danger" @click="revoke(row)">撤销任命</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="visible" :title="'编辑' + (isSub(form) ? subLabel : userLabel)" width="640px" destroy-on-close>
+    <el-dialog v-model="appointVisible" title="任命岗位" width="420px" destroy-on-close>
+      <p class="appoint-tip">将「{{ appointTarget?.nickname || appointTarget?.username }}」任命为：</p>
+      <el-select v-model="appointPostId" placeholder="选择岗位" style="width: 100%">
+        <el-option
+          v-for="p in postOptions"
+          :key="p.id"
+          :label="`${p.label}（${p.kind === 'worker' ? '业务员工' : '子管理'}）`"
+          :value="p.id"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="appointVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!appointPostId" @click="confirmAppoint">确认任命</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="visible" :title="'编辑' + (isSub(form) ? identityLabel(form) : userLabel)" width="640px" destroy-on-close>
       <el-form :model="form" label-position="top" require-asterisk-position="right" class="edit-form">
         <div class="grid">
           <el-form-item label="用户名"><el-input :model-value="form.username" disabled /></el-form-item>
@@ -104,15 +125,21 @@ import {
   profileFields,
 } from '../../utils/domainSchema.js'
 import { isProfileFieldRequired, isProfileFieldVisible } from '../../utils/profileValidate.js'
+import { findStaffPost, staffPostLabel, staffPosts } from '../../utils/staffPosts.js'
 
 const roles = computed(() => getSchema()?.roles || {})
 const userLabel = computed(() => roles.value.user?.label || '用户')
 const subLabel = computed(() => roles.value.subadmin?.label || '子管')
+const postOptions = computed(() => staffPosts())
+const canAppoint = computed(() => postOptions.value.length > 0)
 const adminCols = computed(() => profileAdminColumns(2))
 const allFields = computed(() => profileFields())
 const visibleFields = computed(() =>
   allFields.value.filter((f) => isProfileFieldVisible(f, form.extras)),
 )
+const appointVisible = ref(false)
+const appointTarget = ref(null)
+const appointPostId = ref('')
 
 function onIdentityMaybe(f) {
   const drivers = new Set(['identityType', 'readerType', 'ownerType', 'deliveryType', 'pickupType'])
@@ -137,6 +164,11 @@ const form = reactive({
 
 function isSub(row) {
   return row && row.role === 'admin' && !row.superAdmin
+}
+
+function identityLabel(row) {
+  if (!isSub(row)) return userLabel.value
+  return staffPostLabel(row.staffPost, subLabel.value)
 }
 
 function extraOf(row, key) {
@@ -192,16 +224,29 @@ async function resetPwd(row) {
   ElMessage.success('已重置')
 }
 
-async function appoint(row) {
-  await ElMessageBox.confirm(`任命「${row.nickname || row.username}」为${subLabel.value}？`, '任命')
-  await http.post(`/api/admin/users/${row.username}/appoint`)
-  ElMessage.success(`已任命为${subLabel.value}`)
+function openAppoint(row) {
+  appointTarget.value = row
+  appointPostId.value = postOptions.value[0]?.id || ''
+  appointVisible.value = true
+}
+
+async function confirmAppoint() {
+  const row = appointTarget.value
+  const post = findStaffPost(appointPostId.value) || postOptions.value.find((p) => p.id === appointPostId.value)
+  if (!row || !post) return
+  await http.post(`/api/admin/users/${row.username}/appoint`, {
+    staffPost: post.id,
+    staffKind: post.kind || 'clerk',
+  })
+  ElMessage.success(`已任命为${post.label}`)
+  appointVisible.value = false
   scope.value = 'subadmins'
   load()
 }
 
 async function revoke(row) {
-  await ElMessageBox.confirm(`撤销「${row.nickname || row.username}」的${subLabel.value}？`, '撤销', {
+  const label = identityLabel(row)
+  await ElMessageBox.confirm(`撤销「${row.nickname || row.username}」的${label}？`, '撤销', {
     type: 'warning',
   })
   await http.post(`/api/admin/users/${row.username}/revoke`)
@@ -222,6 +267,7 @@ onMounted(load)
 }
 .edit-form :deep(.el-form-item) { margin-bottom: 12px; }
 .edit-form :deep(.el-form-item__label) { margin-bottom: 4px !important; }
+.appoint-tip { margin: 0 0 12px; color: #606266; font-size: 14px; }
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
 }
