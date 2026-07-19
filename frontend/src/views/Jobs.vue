@@ -29,7 +29,7 @@
 import { h, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NTag } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, confirm } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const router = useRouter()
@@ -117,7 +117,12 @@ async function load() {
 }
 
 async function purgeOrphans() {
-  if (!confirm('确认删除所有「项目已不存在」的任务？此操作不可恢复。')) return
+  const ok = await confirm('确认删除所有「项目已不存在」的任务？此操作不可恢复。', {
+    title: '清空孤儿任务',
+    type: 'error',
+    positiveText: '确认删除',
+  })
+  if (!ok) return
   purging.value = true
   try {
     const res = await api.purgeOrphanJobs()

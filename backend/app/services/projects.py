@@ -46,13 +46,19 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     gates = evaluate_domain_gates(ws, project.spec or {})
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
-    if project.checklist == new_checklist and project.gates == new_gates:
+    deliverable = bool(new_gates.get("zip_allowed") and new_gates.get("overall"))
+    # 门禁回退时也要关掉 zip_ready，避免「状态可交付但按钮灰」
+    zip_changed = False
+    if deliverable and not project.zip_ready:
+        project.zip_ready = True
+        zip_changed = True
+    elif not deliverable and project.zip_ready:
+        project.zip_ready = False
+        zip_changed = True
+    if project.checklist == new_checklist and project.gates == new_gates and not zip_changed:
         return False
     project.checklist = new_checklist
     project.gates = new_gates
-    # 门禁全过后允许打包（与 bake 结束写回一致）
-    if new_gates.get("zip_allowed") and new_gates.get("overall"):
-        project.zip_ready = True
     return True
 
 

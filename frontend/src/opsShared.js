@@ -16,15 +16,36 @@ export const PROJECT_STATUS = {
   archived: { label: '已归档', pill: 'pill-neutral', tag: 'default' },
 }
 
-export function projectStatusLabel(status) {
+export function projectStatusLabel(status, opts = {}) {
+  const zipReady = opts.zipReady
+  if (
+    (status === 'generated' || status === 'running')
+    && zipReady === false
+  ) {
+    return '已生成 · 门禁未过'
+  }
   return PROJECT_STATUS[status]?.label || status || '—'
 }
 
-export function projectStatusPill(status) {
+export function projectStatusPill(status, opts = {}) {
+  const zipReady = opts.zipReady
+  if (
+    (status === 'generated' || status === 'running')
+    && zipReady === false
+  ) {
+    return 'pill-amber'
+  }
   return PROJECT_STATUS[status]?.pill || 'pill-neutral'
 }
 
-export function projectStatusTag(status) {
+export function projectStatusTag(status, opts = {}) {
+  const zipReady = opts.zipReady
+  if (
+    (status === 'generated' || status === 'running')
+    && zipReady === false
+  ) {
+    return 'warning'
+  }
   return PROJECT_STATUS[status]?.tag || 'default'
 }
 

@@ -1,9 +1,5 @@
 import axios from 'axios'
-import { createDiscreteApi, zhCN, dateZhCN } from 'naive-ui'
-
-const { message } = createDiscreteApi(['message'], {
-  configProviderProps: { locale: zhCN, dateLocale: dateZhCN },
-})
+import { message } from './ui'
 
 const http = axios.create({ baseURL: '/api', timeout: 60000 })
 
@@ -17,6 +13,7 @@ http.interceptors.response.use(
 )
 
 export { message }
+export { confirm, alert, prompt, dialog } from './ui'
 
 export const api = {
   health: () => http.get('/health'),

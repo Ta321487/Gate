@@ -58,7 +58,12 @@ async def list_projects(
     if filter == "active":
         items = [p for p in items if p.status in ("needs_confirm", "generating", "running", "ready")]
     elif filter == "done":
-        items = [p for p in items if p.status in ("generated", "running")]
+        # 可交付 = 已生成/运行中且 ZIP 仍解锁（门禁回退后 zip_ready=False）
+        items = [
+            p
+            for p in items
+            if p.status in ("generated", "running") and p.zip_ready
+        ]
     elif filter == "fail":
         items = [p for p in items if p.status == "failed"]
     # 运行态以进程为准，纠正库内陈旧标记（列表「运行」列）

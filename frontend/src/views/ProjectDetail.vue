@@ -186,14 +186,23 @@
             </div>
           </div>
         </div>
-        <div v-else-if="genState === 'success' || genState === 'live'" class="banner success">
+        <div v-else-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success">
           <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 门禁全过 · 可交付' }}</h4>
           <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载 ZIP。' : 'ZIP 已解锁。请到「运行」预览后再交付。' }}</p>
           <div class="row mt-12">
             <n-button type="primary" @click="tab = 'runtime'">前往运行</n-button>
             <n-button @click="tab = 'artifacts'">查看门禁</n-button>
-            <n-button :disabled="!canDownload" @click="downloadZip">下载 ZIP</n-button>
+            <n-button @click="downloadZip">下载 ZIP</n-button>
             <n-button @click="startGenerate">重新生成</n-button>
+          </div>
+        </div>
+        <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail">
+          <h4>已生成 · 门禁回退 · 禁止下载</h4>
+          <p class="small muted">工作区与当前门禁不一致（常见于骨架升级后）。请重新生成，或到「产物」查看未过项。</p>
+          <div class="row mt-12">
+            <n-button type="primary" @click="startGenerate">重新生成</n-button>
+            <n-button @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button @click="tab = 'runtime'">前往运行</n-button>
           </div>
         </div>
         <div v-else class="banner fail">
@@ -419,7 +428,7 @@
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NTag } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, confirm } from '../api'
 import ErrorPage from './ErrorPage.vue'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import {
@@ -642,8 +651,12 @@ function _tailLines(tail, keep) {
   return lines.slice(-keep).join('\n') || '—'
 }
 
-const statusLabel = computed(() => projectStatusLabel(p.value?.status))
-const statusPill = computed(() => projectStatusPill(p.value?.status))
+const statusLabel = computed(() =>
+  projectStatusLabel(p.value?.status, { zipReady: canDownload.value }),
+)
+const statusPill = computed(() =>
+  projectStatusPill(p.value?.status, { zipReady: canDownload.value }),
+)
 
 const genState = computed(() => {
   if (!p.value) return 'idle'
@@ -820,7 +833,10 @@ async function refreshRuntime() {
 
 async function toggleUnlock() {
   if (!unlocked.value) {
-    if (!confirm('解锁后可改骨架/领域。确认解锁？')) return
+    const ok = await confirm('解锁后可改骨架/领域。确认解锁？', {
+      title: '解锁匹配',
+    })
+    if (!ok) return
     await api.patchMatch(p.value.id, { unlock: true })
     unlocked.value = true
     message.success('已解锁')
@@ -872,7 +888,13 @@ async function saveSoft() {
 }
 
 async function confirmMatch() {
-  if (deviant.value && !confirm('当前已偏离系统推荐。确认仍要用这套骨架/领域生成？')) return
+  if (deviant.value) {
+    const ok = await confirm('当前已偏离系统推荐。确认仍要用这套骨架/领域生成？', {
+      title: '偏离推荐确认',
+      type: 'warning',
+    })
+    if (!ok) return
+  }
   p.value = await api.patchMatch(p.value.id, { confirm: true, ack: true })
   unlocked.value = false
   message.success(deviant.value ? '已按覆盖确认' : '已确认匹配')

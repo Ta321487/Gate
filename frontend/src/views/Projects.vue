@@ -109,11 +109,12 @@ const columns = [
     title: '状态',
     key: 'status',
     render(row) {
+      const opts = { zipReady: row.zip_ready }
       return h(NTag, {
         size: 'small',
-        type: projectStatusTag(row.status),
+        type: projectStatusTag(row.status, opts),
         bordered: false,
-      }, { default: () => projectStatusLabel(row.status) })
+      }, { default: () => projectStatusLabel(row.status, opts) })
     },
   },
   {
