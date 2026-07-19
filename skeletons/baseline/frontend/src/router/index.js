@@ -28,6 +28,10 @@ function useSlotShell() {
   return hasCap('slot_reserve') && hasCap('archive') && !hasCap('ticket_flow')
 }
 
+function useArchiveOnlyShell() {
+  return hasCap('archive') && !hasCap('ticket_flow') && !hasCap('order_lines') && !hasCap('slot_reserve')
+}
+
 const ticketRoutes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
@@ -218,6 +222,50 @@ const slotRoutes = [
   },
 ]
 
+const archiveOnlyRoutes = [
+  { path: '/login', component: Login },
+  { path: '/register', component: Register },
+  {
+    path: '/',
+    component: () => import('../layouts/PortalLayout.vue'),
+    children: [
+      { path: '', redirect: '/archive' },
+      { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
+      { path: 'notices', component: Notices },
+      { path: 'notices/:id', component: NoticeDetail },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (_to, _from, next) => {
+      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
+      else next()
+    },
+  },
+  {
+    path: '/admin',
+    component: () => import('../layouts/AdminLayout.vue'),
+    children: [
+      { path: '', redirect: '/admin/dashboard' },
+      { path: 'dashboard', component: () => import('../views/admin/TicketDashboard.vue') },
+      { path: 'archive', component: () => import('../views/admin/ArchiveAdmin.vue') },
+      { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
+      { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'notices', component: NoticesAdmin },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (to, _from, next) => {
+      if (localStorage.getItem('role') !== 'admin') {
+        next('/archive')
+        return
+      }
+      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
+        next('/admin/dashboard')
+        return
+      }
+      next()
+    },
+  },
+]
+
 const baselineRoutes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
@@ -233,6 +281,7 @@ function pickRoutes() {
   if (useTicketShell()) return ticketRoutes
   if (useOrderShell()) return orderRoutes
   if (useSlotShell()) return slotRoutes
+  if (useArchiveOnlyShell()) return archiveOnlyRoutes
   return baselineRoutes
 }
 

@@ -82,7 +82,17 @@
 
 | 领域 ID | 覆盖 | 能力 |
 |---------|------|------|
-| **DOM-GENERIC** | 对不上上面的「信息管理 / CRUD」题 | archive + content + org_users |
+| **DOM-GENERIC** | 对不上具体行业关键词时的兜底域 | 按 **ARCH-*** 绑壳：CRUD / FLOW / TRADE / RESERVE（见下） |
+
+未命中具体 `DOM-*` 时 **禁止**误落 LIBRARY：`score_catalog(..., fallback="DOM-GENERIC")`。  
+GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
+
+| ARCH | 能力 | bake SQL |
+|------|------|----------|
+| ARCH-CRUD | archive + content + org_users | `DOM-GENERIC.sql` |
+| ARCH-FLOW / STOCK / CONTENT | + ticket_flow（±quota） | `DOM-GENERIC-FLOW.sql` |
+| ARCH-TRADE | + order_lines | `DOM-GENERIC-TRADE.sql` |
+| ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
 
 ### G. 内容 / 媒资 / 社区（能力齐，可薄落地）
 
@@ -186,9 +196,9 @@
 ## 硬约束：库表数量 6~13
 
 - 常量：`backend/app/bake/engine.py` → `TABLE_COUNT_MIN/MAX`（含 L0 平台表 `sys_message`）
-- DDL/种子模板：`backend/app/bake/sql/<DOMAIN>.sql`（`domain_sql` 加载；缺省 `DOM-GENERIC.sql`）
+- DDL/种子模板：`backend/app/bake/sql/<DOMAIN>.sql`（`domain_sql` 加载；GENERIC 按 ARCH 选 `DOM-GENERIC*.sql`）
 - bake 写 `schema.sql` 前 `assert_table_budget`；门禁 `p3t` 不过则禁 ZIP
-- **现状样板**：GENERIC 7 · 多数薄域 8~9 · 图书/报修壳 9 · **论坛 13（顶格参考）**
+- **现状样板**：GENERIC CRUD 6 / FLOW·RESERVE 7 / TRADE 8 · 多数薄域 8~9 · 图书/报修壳 9 · **论坛 13（顶格参考）**
 - 论坛含：`sys_message` + 原 12 业务/平台表
 - 报修薄壳：楼栋/房间/类型/单据/进度/附件 + 用户/公告/消息
 
@@ -213,6 +223,7 @@
 - [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（`gate_archive_ticket(with_deadline=False)`；活动/失物/选课 SQL；报名/认领/选课单据；ACTIVITY/COURSE 门户轮播）
 - [x] L0 **站内消息**（`MessageStore` / `sys_message` / 顶栏铃铛；审核结果通知）+ **薄域工作台**（`TicketDashboardController` 对非 LIBRARY 全开）
 - [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL（SQL + schema + 订单/预约壳）
+- [x] **匹配兜底**：域零命中 → `DOM-GENERIC`（不再误落 LIBRARY）；GENERIC 按 ARCH-* 绑 FLOW/TRADE/RESERVE 壳（`archetype_shells.py`）
 
 ### 宿舍验证账号（bake 后）
 

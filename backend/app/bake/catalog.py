@@ -49,11 +49,37 @@ def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
     return fallback
 
 
-def score_catalog(text: str, catalog: dict) -> tuple[str, float, list[str]]:
+# 同分时优先更具体的行为原型（避免 CRUD 因字典顺序压过预约/交易）
+_ARCHETYPE_TIE_PRIORITY = (
+    "ARCH-RESERVE",
+    "ARCH-TRADE",
+    "ARCH-FLOW",
+    "ARCH-STOCK",
+    "ARCH-CONTENT",
+    "ARCH-CRUD",
+)
+
+
+def score_catalog(
+    text: str,
+    catalog: dict,
+    *,
+    fallback: str | None = None,
+) -> tuple[str, float, list[str]]:
+    """关键词打分；全员 0 分时回落 fallback（域目录务必传 DOM-GENERIC，禁止误落第一项 LIBRARY）。"""
     lower = text.lower()
     best_key = next(iter(catalog))
     best_score = 0
     hits: list[str] = []
+    tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
+
+    def _better(score: int, key: str) -> bool:
+        if score > best_score:
+            return True
+        if score == best_score and score > 0 and key in tie_rank and best_key in tie_rank:
+            return tie_rank[key] < tie_rank[best_key]
+        return False
+
     for key, meta in catalog.items():
         score = 0
         local_hits = []
@@ -61,21 +87,21 @@ def score_catalog(text: str, catalog: dict) -> tuple[str, float, list[str]]:
             if kw.lower() in lower or kw in text:
                 score += 1
                 local_hits.append(kw)
-        if score > best_score:
+        if _better(score, key):
             best_score = score
             best_key = key
             hits = local_hits
+    if best_score == 0 and fallback and fallback in catalog:
+        return fallback, 0.35, []
     conf = min(0.95, 0.45 + best_score * 0.12) if best_score else 0.42
     return best_key, conf, hits
 
 
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
-    arch, arch_conf, arch_hits = score_catalog(text, ARCHETYPES)
-    dom, dom_conf, dom_hits = score_catalog(text, DOMAINS)
-    if dom == "DOM-GENERIC" and "图书" not in text:
-        # 无关键词时给 CRUD + GENERIC
-        arch = "ARCH-CRUD"
+    arch, arch_conf, arch_hits = score_catalog(text, ARCHETYPES, fallback="ARCH-CRUD")
+    dom, dom_conf, dom_hits = score_catalog(text, DOMAINS, fallback="DOM-GENERIC")
+    # 未命中具体行业域时，保留 ARCH-* 命中（预约/订单/审核），供 GENERIC 绑壳
     confidence = round((arch_conf + dom_conf) / 2, 2)
     hits = list(dict.fromkeys(arch_hits + dom_hits))
     return MatchResult(
@@ -117,7 +143,7 @@ def build_spec(
     theme = normalize_theme(theme, domain)
     # 按题目+领域稳定抽一套登录版式，交付后写入 .env，不再随浏览器变化
     auth_template = pick_auth_template(f"{title}|{domain}")
-    schema = build_domain_schema(title, domain)
+    schema = build_domain_schema(title, domain, archetype=archetype)
     spec = {
         "title": title,
         "archetype": archetype,
@@ -146,7 +172,12 @@ def build_spec(
         "gate": dom.get("gate") or {},
         "available_themes": themes_for_domain(domain),
         "schema": schema,
+        "runtime": copy.deepcopy(dom.get("runtime") or {}),
     }
+    if domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import apply_generic_shell
+
+        spec = apply_generic_shell(spec)
     if proposal:
         spec["proposal"] = proposal
     proposal_text = ""
