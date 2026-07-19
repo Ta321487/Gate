@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     gf_skeletons_dir: Path = Field(default=ROOT / "skeletons", alias="GF_SKELETONS_DIR")
     gf_host: str = Field(default="127.0.0.1", alias="GF_HOST")
     gf_port: int = Field(default=8000, alias="GF_PORT")
+    # 浏览器里打开学生预览 / 复制地址用的主机名（服务器填公网 IP 或域名）
+    gf_public_host: str = Field(default="127.0.0.1", alias="GF_PUBLIC_HOST")
+    # 学生前后端监听地址；空=本机用 127.0.0.1，公网 host 时自动 0.0.0.0
+    gf_bind_host: str = Field(default="", alias="GF_BIND_HOST")
 
     deepseek_api_key: str = Field(default="", alias="DEEPSEEK_API_KEY")
     deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
@@ -70,6 +74,25 @@ class Settings(BaseSettings):
     @property
     def port(self) -> int:
         return self.gf_port
+
+    @property
+    def public_host(self) -> str:
+        h = (self.gf_public_host or "").strip()
+        return h or "127.0.0.1"
+
+    @property
+    def bind_host(self) -> str:
+        """学生进程 bind：显式 GF_BIND_HOST 优先；否则按 public_host 推断。"""
+        explicit = (self.gf_bind_host or "").strip()
+        if explicit:
+            return explicit
+        h = self.public_host.lower()
+        if h in ("127.0.0.1", "localhost", "::1"):
+            return "127.0.0.1"
+        return "0.0.0.0"
+
+    def public_url(self, port: int) -> str:
+        return f"http://{self.public_host}:{int(port)}"
 
     @property
     def backend_port_start(self) -> int:

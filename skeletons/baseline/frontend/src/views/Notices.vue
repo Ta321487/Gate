@@ -27,7 +27,7 @@
     </div>
 
     <div v-if="!list.length" class="empty">暂无公告。</div>
-    <div class="pager">
+    <div v-if="!isGuest" class="pager">
       <el-pagination
         v-model:current-page="page"
         v-model:page-size="size"
@@ -37,6 +37,7 @@
         @current-change="load"
       />
     </div>
+    <GuestLoginHint />
   </div>
 </template>
 
@@ -44,11 +45,14 @@
 /** 基线公告：标题/导语来自 Domain Schema（bake/LLM 岛），禁止写死图书馆文案 */
 import { computed, onMounted, ref } from 'vue'
 import http from '../api/http'
+import GuestLoginHint from '../components/GuestLoginHint.vue'
 import { schemaLabels } from '../utils/domainSchema.js'
+import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.noticePageTitle || '公告')
 const pageLead = computed(() => labels.value.noticePageLead || '通知与须知，点击条目阅读全文。')
+const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 
 const list = ref([])
 const total = ref(0)
@@ -62,7 +66,10 @@ function excerpt(text, n = 88) {
 }
 
 async function load() {
-  const res = await http.get('/api/notices', { params: { page: page.value, size: size.value } })
+  const pageSize = isGuest.value ? guestTeaserLimit() : size.value
+  const res = await http.get('/api/notices', {
+    params: { page: isGuest.value ? 1 : page.value, size: pageSize },
+  })
   list.value = res.data.list
   total.value = res.data.total
 }

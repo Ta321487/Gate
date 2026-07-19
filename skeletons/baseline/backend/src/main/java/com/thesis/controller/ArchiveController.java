@@ -4,6 +4,7 @@ import com.thesis.capability.ArchiveStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
+import com.thesis.common.GuestTeaser;
 import com.thesis.common.R;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,9 @@ public class ArchiveController {
             HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         boolean showDeleted = includeDeleted && admin && AdminAuth.isSuperAdmin(session);
-        return R.ok(ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, page, size));
+        int p = GuestTeaser.clampPage(session, page);
+        int s = GuestTeaser.clampSize(session, size);
+        return R.ok(ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s));
     }
 
     @GetMapping("/{id:\\d+}")

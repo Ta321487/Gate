@@ -36,7 +36,7 @@
     </section>
 
     <RecommendStrip
-      v-if="hasRecommend"
+      v-if="hasRecommend && !isGuest"
       ref="recRef"
       :apply-label="primaryActionLabel"
       @apply="onPrimary"
@@ -83,7 +83,7 @@
     </div>
 
     <div v-if="!list.length" class="empty">暂无记录，换个关键词试试。</div>
-    <div class="pager">
+    <div v-if="!isGuest" class="pager">
       <el-pagination
         v-model:current-page="page"
         v-model:page-size="size"
@@ -93,6 +93,7 @@
         @current-change="load"
       />
     </div>
+    <GuestLoginHint />
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
@@ -208,13 +209,21 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
 import { archiveCopy, getDomain, getSchema, ticketCopy } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
+import {
+  guestTeaserLimit,
+  isGuestBrowseEnabled,
+  isLoggedIn,
+  requireLogin,
+} from '../../utils/session.js'
 
 const router = useRouter()
+const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const archive = archiveCopy()
 const ticket = ticketCopy()
 const isCrm = computed(() => getDomain() === 'DOM-CRM')
@@ -383,10 +392,11 @@ async function loadTags() {
 }
 
 async function load() {
+  const pageSize = isGuest.value ? guestTeaserLimit() : size.value
   const res = await http.get('/api/archive', {
     params: {
-      page: page.value,
-      size: size.value,
+      page: isGuest.value ? 1 : page.value,
+      size: pageSize,
       keyword: keyword.value || undefined,
       categoryId: categoryId.value || undefined,
       tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
@@ -397,6 +407,7 @@ async function load() {
 }
 
 async function onPrimary(row) {
+  if (!requireLogin(router)) return
   if (isOrderMode.value) {
     await http.post('/api/cart', { itemId: row.id, qty: 1 })
     ElMessage.success('已加入购物车')

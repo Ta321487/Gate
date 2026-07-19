@@ -130,12 +130,12 @@ const sub = computed(() =>
   entrySide.value === 'admin' ? '使用管理账号进入后台' : '使用已有账号进入系统',
 )
 const note = computed(() => {
-  if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份；演示账号见部署说明。'
+  if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份。'
   if (entryMode === 'split_entry' && entrySide.value === 'admin') {
     return '管理端仅接受总管/子管账号；业务用户请走门户登录。'
   }
   if (entryMode === 'split_entry') return '门户仅接受业务用户；管理员请走管理端入口。'
-  return '演示账号见部署说明；新用户可先注册再登录。'
+  return '新用户可先注册再登录。'
 })
 const authLead = computed(() => {
   if (entrySide.value === 'admin') return '管理端独立入口，按岗位身份登录后台。'
@@ -175,6 +175,7 @@ function persist(user) {
   localStorage.setItem('avatarUrl', user.avatarUrl || '')
   localStorage.setItem('profileEditable', String(!!user.profileEditable))
   localStorage.setItem('superAdmin', String(!!user.superAdmin))
+  import('../utils/session.js').then((m) => m.markSessionOk?.())
 }
 
 async function loadCaptcha() {
@@ -211,6 +212,11 @@ async function onLogin() {
     const res = await http.post('/api/auth/login', payload)
     persist(res.data)
     ElMessage.success('登录成功')
+    const redir = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+    if (redir.startsWith('/') && !redir.startsWith('//') && !redir.startsWith('/login')) {
+      router.replace(redir)
+      return
+    }
     router.push(res.data.role === 'admin' ? '/admin' : '/')
   } catch {
     form.captcha = ''
@@ -235,16 +241,23 @@ onMounted(async () => {
       if (meta.data?.title) title.value = meta.data.title
     } catch { /* ignore */ }
   }
-  // 分端时已登录用户打开对方登录页 → 按角色回跳
+  // 分端时已登录用户打开对方登录页 → 按角色回跳（须服务端会话仍有效）
   const token = localStorage.getItem('token')
   const role = localStorage.getItem('role')
-  if (token && role === 'admin' && entrySide.value === 'admin') {
-    router.replace('/admin')
-    return
-  }
-  if (token && role !== 'admin' && entrySide.value === 'portal') {
-    router.replace('/')
-    return
+  if (token) {
+    try {
+      await http.get('/api/auth/me')
+      if (role === 'admin' && entrySide.value === 'admin') {
+        router.replace('/admin')
+        return
+      }
+      if (role !== 'admin' && entrySide.value === 'portal') {
+        router.replace('/')
+        return
+      }
+    } catch {
+      // 会话失效：http 拦截器已踢登录；此处只保证停在登录页并出验证码
+    }
   }
   loadCaptcha()
 })

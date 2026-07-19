@@ -73,9 +73,12 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
 
+    from app.core.config import get_settings
+
+    s = get_settings()
     uvicorn.run(
         "app.main:app",
-        host="127.0.0.1",
-        port=8000,
+        host=s.host,
+        port=s.port,
         reload=False,
     )

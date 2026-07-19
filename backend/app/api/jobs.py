@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models import Job, Project
 from app.schemas import ApiOk, JobOut
-from app.services.jobs import cancel_job, start_job
+from app.services.jobs import cancel_job, resume_step_index, start_job
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -65,5 +67,15 @@ async def retry(job_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "项目不存在")
     if not p.match_confirmed:
         raise HTTPException(400, "请先确认匹配")
-    job = await start_job(db, p)
-    return ApiOk(message=f"已重试 · Job #{job.id}", data={"job_id": job.id})
+    from_step = resume_step_index(old.steps if isinstance(old.steps, list) else None)
+    # 工作区没了则无法跳过 bake
+    if from_step > 1 and (not p.workspace_path or not Path(p.workspace_path).exists()):
+        from_step = 1
+    job = await start_job(db, p, from_step=from_step)
+    step_name = (old.steps or [{}])[from_step].get("title") if from_step else "开头"
+    if from_step and isinstance(old.steps, list) and from_step < len(old.steps):
+        step_name = old.steps[from_step].get("title") or step_name
+    return ApiOk(
+        message=f"已从「{step_name}」续跑 · Job #{job.id}",
+        data={"job_id": job.id, "from_step": from_step},
+    )

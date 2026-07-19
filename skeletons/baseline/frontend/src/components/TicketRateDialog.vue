@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="服务评分"
+    title="评分"
     width="420px"
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"

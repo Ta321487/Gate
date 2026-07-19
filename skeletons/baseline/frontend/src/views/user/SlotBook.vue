@@ -24,6 +24,7 @@
       </button>
     </div>
     <div v-if="!list.length" class="empty">该日暂无时段，换一天试试或联系管理员生成。</div>
+    <GuestLoginHint />
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
@@ -85,10 +86,18 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import { getDomain, reservationCopy } from '../../utils/domainSchema.js'
+import {
+  guestTeaserLimit,
+  isGuestBrowseEnabled,
+  isLoggedIn,
+  requireLogin,
+} from '../../utils/session.js'
 
 const route = useRoute()
 const router = useRouter()
+const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const domain = computed(() => getDomain())
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
@@ -122,10 +131,12 @@ async function load() {
   const res = await http.get('/api/slots', {
     params: { itemId: itemId.value, day: day.value || undefined },
   })
-  list.value = res.data || []
+  const rows = res.data || []
+  list.value = isGuest.value ? rows.slice(0, guestTeaserLimit()) : rows
 }
 
 async function openReserve(s) {
+  if (!requireLogin(router)) return
   if (!structured.value) {
     await ElMessageBox.confirm(`确认${resvVerb.value} ${s.startAt} ~ ${s.endAt}？`, resvNoun.value)
     await http.post('/api/slots/reserve', { slotId: s.id })

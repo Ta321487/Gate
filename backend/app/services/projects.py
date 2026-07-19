@@ -32,6 +32,83 @@ def _db_name(domain: str, project_id: str) -> str:
     return f"gf_thesis_{short}_{suffix}"[:64]
 
 
+async def reclaim_idle_ports(db: AsyncSession, *, keep_id: str | None = None) -> int:
+    """未在跑的项目释放端口占用，让库存可大于并发预览数。"""
+    listening = rt.listening_tcp_ports()
+    result = await db.execute(select(Project))
+    n = 0
+    for proj in result.scalars().all():
+        if keep_id and proj.id == keep_id:
+            continue
+        if not proj.backend_port and not proj.frontend_port:
+            continue
+        be_on = rt.side_active(proj.id, proj.backend_port, "backend", listening)
+        fe_on = rt.side_active(proj.id, proj.frontend_port, "frontend", listening)
+        if be_on or fe_on:
+            continue
+        proj.backend_port = 0
+        proj.frontend_port = 0
+        n += 1
+        if proj.status == ProjectStatus.running.value:
+            proj.status = ProjectStatus.generated.value
+    return n
+
+
+async def ensure_project_ports(db: AsyncSession, project: Project) -> tuple[int, int]:
+    """启动预览前租用一对端口；已占用则复用。"""
+    await reclaim_idle_ports(db, keep_id=project.id)
+    if project.backend_port and project.frontend_port:
+        return project.backend_port, project.frontend_port
+
+    q = await db.execute(select(Project.backend_port, Project.frontend_port))
+    used_be = {r[0] for r in q.all() if r[0]}
+    used_fe = {r[1] for r in q.all() if r[1]}
+    s = get_settings()
+    listening = rt.listening_tcp_ports()
+    used_be |= {p for p in listening if s.backend_port_start <= p <= s.backend_port_end}
+    used_fe |= {p for p in listening if s.frontend_port_start <= p <= s.frontend_port_end}
+    be, fe = await rt.allocate_ports(used_be, used_fe)
+    project.backend_port = be
+    project.frontend_port = fe
+    await db.flush()
+    return be, fe
+
+
+def sync_project_runtime(project: Project) -> tuple[str, str, bool]:
+    """按真实可服务态纠正 running 标记与项目 status；两侧皆停时还端口。
+
+    返回 (backend_status, frontend_status, dirty)。
+    """
+    be_st = rt.backend_status(project.id, project.backend_port)
+    fe_st = rt.frontend_status(project.id, project.frontend_port)
+    be = be_st in ("starting", "healthy")
+    fe = fe_st in ("starting", "healthy")
+    dirty = False
+    if project.backend_running != be or project.frontend_running != fe:
+        project.backend_running = be
+        project.frontend_running = fe
+        dirty = True
+    if be or fe:
+        if project.status not in (
+            ProjectStatus.running.value,
+            ProjectStatus.generating.value,
+        ):
+            project.status = ProjectStatus.running.value
+            dirty = True
+    elif project.status == ProjectStatus.running.value:
+        project.status = ProjectStatus.generated.value
+        dirty = True
+    if not be and not fe and (project.backend_port or project.frontend_port):
+        listening = rt.listening_tcp_ports()
+        be_listen = bool(project.backend_port and project.backend_port in listening)
+        fe_listen = bool(project.frontend_port and project.frontend_port in listening)
+        if not be_listen and not fe_listen:
+            project.backend_port = 0
+            project.frontend_port = 0
+            dirty = True
+    return be_st, fe_st, dirty
+
+
 def _feature_names(features: list | None) -> list[str]:
     return [f.get("name", "") for f in (features or []) if isinstance(f, dict)]
 
@@ -47,12 +124,18 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
     deliverable = bool(new_gates.get("zip_allowed") and new_gates.get("overall"))
-    # 门禁回退时也要关掉 zip_ready，避免「状态可交付但按钮灰」
+    generating = project.status == ProjectStatus.generating.value
+    zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
+    # 门禁回退时关掉 zip_ready；生成中禁止因门禁重算把旧包重新解锁
     zip_changed = False
-    if deliverable and not project.zip_ready:
+    if generating:
+        if project.zip_ready:
+            project.zip_ready = False
+            zip_changed = True
+    elif deliverable and zip_exists and not project.zip_ready:
         project.zip_ready = True
         zip_changed = True
-    elif not deliverable and project.zip_ready:
+    elif (not deliverable or not zip_exists) and project.zip_ready:
         project.zip_ready = False
         zip_changed = True
     if project.checklist == new_checklist and project.gates == new_gates and not zip_changed:
@@ -70,13 +153,6 @@ async def create_from_upload(
 ) -> Project:
     text = read_proposal(file_path)
     matched = match_text(text, filename)
-    settings = get_settings()
-
-    # 分配端口
-    q = await db.execute(select(Project.backend_port, Project.frontend_port))
-    used_be = {r[0] for r in q.all() if r[0]}
-    used_fe = {r[1] for r in q.all() if r[1]}
-    be_port, fe_port = await rt.allocate_ports(used_be, used_fe)
 
     pid = _next_id()
     # 避免同秒冲突
@@ -113,6 +189,7 @@ async def create_from_upload(
         pass
 
     project_title = str(spec.get("title") or matched.title)
+    # 端口启动预览时再租用；创建不占池，库存可多于并发预览数
     project = Project(
         id=pid,
         title=project_title,
@@ -132,8 +209,8 @@ async def create_from_upload(
         match_confirmed=False,
         match_mode="recommended",
         db_name=db_name,
-        backend_port=be_port,
-        frontend_port=fe_port,
+        backend_port=0,
+        frontend_port=0,
         spec=spec,
         gates={},
         checklist=spec.get("features", []),

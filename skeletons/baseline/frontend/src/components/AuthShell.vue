@@ -16,7 +16,6 @@
         <ul v-if="points?.length" class="points">
           <li v-for="(p, i) in points" :key="i">{{ p }}</li>
         </ul>
-        <p class="tpl-tag" :title="meta.hint">版式 · {{ meta.label }}</p>
       </aside>
 
       <section class="panel">
@@ -39,7 +38,6 @@
  * 基线鉴权壳：版式由 bake 的 VITE_AUTH_TEMPLATE 固定；氛围图来自 factoryDelivered.authHero。
  */
 import { computed, onMounted, ref } from 'vue'
-import { authTemplateMeta } from '../utils/authTemplates'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 
 const props = defineProps({
@@ -56,7 +54,6 @@ const props = defineProps({
   wide: { type: Boolean, default: false },
 })
 
-const meta = computed(() => authTemplateMeta(props.template))
 const heroSrc = computed(() => (FACTORY_DELIVERED?.authHero || '').trim())
 const heroOk = ref(!!heroSrc.value)
 const heroOn = computed(() => heroOk.value && !!heroSrc.value)

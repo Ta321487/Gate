@@ -87,28 +87,62 @@ def required_capabilities(
     return list(DOMAIN_CAPABILITIES.get(domain, DOMAIN_CAPABILITIES["DOM-GENERIC"]))
 
 
+def _merge_baseline_tags(spec: dict[str, Any]) -> None:
+    from app.bake.catalog import BASELINE_TAGS
+
+    baseline = list(spec.get("baseline") or [])
+    for tag in BASELINE_TAGS:
+        if tag not in baseline:
+            baseline.append(tag)
+    spec["baseline"] = baseline
+
+
+def _sync_named_domain_from_catalog(spec: dict[str, Any], dom: dict[str, Any]) -> None:
+    """结构性字段以 catalog 为准；保留题面 out_of_mvp 附加项。"""
+    catalog_gate = dom.get("gate")
+    if catalog_gate:
+        spec["gate"] = copy.deepcopy(catalog_gate)
+    if "runtime" in dom:
+        spec["runtime"] = copy.deepcopy(dom.get("runtime") or {})
+    if dom.get("flows"):
+        spec["flows"] = list(dom["flows"])
+    if dom.get("roles"):
+        spec["roles"] = list(dom["roles"])
+    if dom.get("entities"):
+        spec["entities"] = list(dom["entities"])
+
+    cat_feats = copy.deepcopy(dom.get("features") or [])
+    if not cat_feats:
+        return
+    cat_names = {f.get("name") for f in cat_feats if isinstance(f, dict)}
+    extras = [
+        f
+        for f in (spec.get("features") or [])
+        if isinstance(f, dict)
+        and f.get("status") == "out_of_mvp"
+        and f.get("name") not in cat_names
+    ]
+    spec["features"] = cat_feats + extras
+
+
 def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
-    """旧项目无 accept/schema 时补齐；gate 始终以 catalog 为准，避免契约过期导致门禁误杀。"""
+    """旧项目补齐；gate/features/runtime 等结构性字段以 catalog 为准，避免契约漂移误杀。"""
     from app.bake.catalog import DOMAINS
 
     spec = dict(spec or {})
     domain = spec.get("domain") or "DOM-GENERIC"
     archetype = spec.get("archetype") or "ARCH-CRUD"
     title = spec.get("title") or "毕设系统"
+    _merge_baseline_tags(spec)
     # GENERIC：按 ARCH-* 重绑壳（runtime/gate/features/capabilities/schema）
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
         spec = apply_generic_shell(spec)
+        _merge_baseline_tags(spec)
     else:
         dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
-        catalog_gate = dom.get("gate")
-        if catalog_gate:
-            spec["gate"] = copy.deepcopy(catalog_gate)
-        cat_feats = dom.get("features") or []
-        cur_feats = spec.get("features") or []
-        if cat_feats and len(cur_feats) < len(cat_feats):
-            spec["features"] = copy.deepcopy(cat_feats)
+        _sync_named_domain_from_catalog(spec, dom)
     arches = list(spec.get("archetypes") or [archetype])
     if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
         spec["schema"] = build_domain_schema(

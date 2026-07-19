@@ -20,7 +20,7 @@
       <div class="panel-bd">
         <div class="row" style="justify-content:space-between;margin-bottom:8px">
           <span>{{ uploadName }}</span>
-          <span>{{ uploadPct }}%</span>
+          <span class="muted">{{ uploadPhase }}</span>
         </div>
         <div class="progress"><i :style="{ width: uploadPct + '%' }" /></div>
       </div>
@@ -64,6 +64,7 @@ import { useRouter } from 'vue-router'
 import { NButton, NTag } from 'naive-ui'
 import { api, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   debounce,
   formatArchDom,
@@ -81,6 +82,7 @@ const dragover = ref(false)
 const uploading = ref(false)
 const uploadName = ref('')
 const uploadPct = ref(0)
+const uploadPhase = ref('')
 const booted = ref(false)
 const stats = reactive({ total: 0, generating: 0, previewable: 0, monthly_tokens: 0, monthly_budget: 1000000 })
 
@@ -94,7 +96,14 @@ const columns = [
         onClick: () => router.push(`/projects/${row.id}`),
       }, [
         h('div', { style: 'font-weight:600' }, row.title),
-        h('div', { class: 'small muted mono' }, row.id),
+        h('div', {
+          class: 'small muted mono',
+          style: 'display:inline-flex;align-items:center;gap:4px',
+          onClick: (e) => e.stopPropagation(),
+        }, [
+          row.id,
+          h(CopyIconButton, { text: row.id, tip: '复制项目 ID' }),
+        ]),
       ])
     },
   },
@@ -125,7 +134,7 @@ const columns = [
       if (row.backend_running || row.frontend_running) {
         return h('div', { class: 'small' }, [
           h(NTag, { size: 'tiny', type: 'success', bordered: false }, { default: () => '运行中' }),
-          h('div', { class: 'mono muted', style: 'margin-top:4px' }, `${row.backend_port} / ${row.frontend_port}`),
+          h('div', { class: 'mono muted', style: 'margin-top:4px' }, `${row.backend_port || '—'} / ${row.frontend_port || '—'}`),
         ])
       }
       return h('span', { class: 'muted' }, '—')
@@ -172,11 +181,28 @@ async function doUpload(file) {
   uploading.value = true
   uploadName.value = file.name
   uploadPct.value = 0
+  uploadPhase.value = '上传文件…'
+  let tick = null
   try {
     const project = await api.upload(file, (e) => {
-      if (e.total) uploadPct.value = Math.round((e.loaded / e.total) * 100)
+      if (!e.total) return
+      // 传输进度最多到 90%：字节传完后服务端还要解析开题 / 匹配领域
+      const pct = Math.round((e.loaded / e.total) * 90)
+      uploadPct.value = Math.min(90, pct)
+      if (e.loaded >= e.total) {
+        uploadPhase.value = '解析开题 · 匹配领域…'
+        if (!tick) {
+          tick = setInterval(() => {
+            if (uploadPct.value < 98) uploadPct.value += 1
+          }, 400)
+        }
+      } else {
+        uploadPhase.value = `上传中 ${Math.round((e.loaded / e.total) * 100)}%`
+      }
     })
+    if (tick) clearInterval(tick)
     uploadPct.value = 100
+    uploadPhase.value = '完成'
     message.success('已建项')
     if (!project?.id) {
       message.error('建项成功但未返回项目 ID，请从列表进入')
@@ -185,7 +211,9 @@ async function doUpload(file) {
     }
     router.push(`/projects/${project.id}`)
   } finally {
+    if (tick) clearInterval(tick)
     uploading.value = false
+    uploadPhase.value = ''
   }
 }
 

@@ -211,6 +211,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         domain=domain,
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
+        seed=dest.name,
     )
 
     # 保留 Home.vue：Vite 会静态分析同文件内所有 import()，删掉会导致报修壳也编译失败
@@ -372,6 +373,11 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if not runtime.get("archive_tag_table"):
         text = _set_key(text, "archive-tag-table", '""')
         text = _set_key(text, "archive-item-tag-table", '""')
+    from app.bake.guest_cta import GUEST_TEASER_LIMIT, portal_guest_browse_enabled
+
+    guest_on = portal_guest_browse_enabled(domain, DOMAINS.get(domain) or {})
+    text = _set_key(text, "portal-guest-browse", "true" if guest_on else "false")
+    text = _set_key(text, "guest-teaser-limit", str(GUEST_TEASER_LIMIT))
     return text
 
 
@@ -394,6 +400,7 @@ def _write_factory_delivered(
     domain: str = "DOM-GENERIC",
     auth_entry_mode: str = "role_pick",
     auth_role_widget: str = "radio",
+    seed: str = "",
 ) -> None:
     delivered = dest / "frontend" / "src" / "factoryDelivered.js"
     if not auth_hero:
@@ -405,8 +412,21 @@ def _write_factory_delivered(
 
         portal_banners = portal_banners_from_workspace(dest, schema)
     from app.bake.catalog import DOMAINS
+    from app.bake.guest_cta import (
+        GUEST_TEASER_LIMIT,
+        pick_guest_login_cta,
+        portal_guest_browse_enabled,
+    )
 
     domain_label = (DOMAINS.get(domain) or {}).get("label") or "通用"
+    dom_meta = DOMAINS.get(domain) or {}
+    guest_on = portal_guest_browse_enabled(domain, dom_meta)
+    guest_cta = pick_guest_login_cta(domain, seed or dest.name or title)
+    # 便于页面用 schemaLabels 读取
+    labels = dict((schema.get("labels") or {}))
+    if guest_on and guest_cta:
+        labels["guestLoginCta"] = guest_cta
+        schema = {**schema, "labels": labels}
     payload = {
         "title": title,
         "theme": theme,
@@ -417,6 +437,9 @@ def _write_factory_delivered(
         "authRoleWidget": normalize_auth_role_widget(auth_role_widget),
         "authHero": auth_hero or "",
         "portalBanners": portal_banners or [],
+        "portalGuestBrowse": guest_on,
+        "guestTeaserLimit": GUEST_TEASER_LIMIT,
+        "guestLoginCta": guest_cta if guest_on else "",
         "accept": accept or schema.get("accept") or "reject",
         "schema": schema,
     }
@@ -452,6 +475,7 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         domain=spec.get("domain", "DOM-GENERIC"),
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
+        seed=workspace.name,
     )
     return written
 

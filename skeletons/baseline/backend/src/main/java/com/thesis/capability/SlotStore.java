@@ -442,6 +442,6 @@ public final class SlotStore {
     }
 
     private static void requireEnabled() {
-        if (!enabled) throw new IllegalStateException("预约能力未启用");
+        if (!enabled) throw new IllegalStateException("预约功能暂不可用");
     }
 }

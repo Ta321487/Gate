@@ -14,15 +14,15 @@
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}</p>
-      <p v-if="row.deliveryType || row.addressLine || row.tasteNote || row.trackingNo || row.pickupCode" class="ship">
+      <p v-if="hasShipInfo(row)" class="ship">
         <template v-if="row.deliveryType">{{ row.deliveryType }} · </template>
         <template v-if="row.receiverName || row.receiverPhone">
           {{ row.receiverName }} {{ row.receiverPhone }}
         </template>
         <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
-        <template v-if="row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
-        <template v-if="row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
-        <template v-if="row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
+        <template v-if="isFood && row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
+        <template v-if="!isFood && row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
+        <template v-if="isFood && row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
         <template v-if="row.remark"><br />备注：{{ row.remark }}</template>
       </p>
       <ul class="lines">
@@ -54,16 +54,24 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { getDomain, getSchema, menuLabel } from '../../utils/domainSchema.js'
 
 const label = menuLabel('user', 'my_orders', '我的订单')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const states = computed(() => getSchema()?.entities?.order?.states || {})
+const isFood = computed(() => getDomain() === 'DOM-FOOD')
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 const status = ref(null)
+
+function hasShipInfo(row) {
+  if (!row) return false
+  if (row.deliveryType || row.addressLine || row.receiverName || row.receiverPhone || row.remark) return true
+  if (isFood.value) return !!(row.tasteNote || row.pickupCode)
+  return !!row.trackingNo
+}
 
 async function load() {
   const res = await http.get('/api/orders', {

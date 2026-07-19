@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ cartLabel }}</h1>
-      <p>确认数量后提交{{ orderNoun }}（演示无真支付）。</p>
+      <p>确认数量后提交{{ orderNoun }}。</p>
       <div class="tools">
         <el-button @click="load">刷新</el-button>
         <el-button type="primary" :disabled="!list.length" :loading="placing" @click="openCheckout">

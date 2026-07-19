@@ -136,6 +136,8 @@ class SystemInfo(BaseModel):
     node: str
     mysql: str  # 学生项目库探测
     factory_db: str = ""  # 工厂元数据（多为 SQLite）
+    public_host: str = "127.0.0.1"  # 预览/复制用对外主机
+    bind_host: str = "127.0.0.1"  # 学生进程监听
     backend_ports: str
     frontend_ports: str
     used_backend: list[int]
@@ -150,6 +152,8 @@ class RuntimeState(BaseModel):
     frontend_status: str = "stopped"
     backend_port: int
     frontend_port: int
+    public_host: str = "127.0.0.1"
+    project_status: str = ""  # 与项目顶栏对齐（如 generated / running）
     preview_url: Optional[str] = None
     backend_url: Optional[str] = None
     backend_log_tail: str = ""

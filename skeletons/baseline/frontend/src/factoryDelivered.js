@@ -12,6 +12,9 @@ export const FACTORY_DELIVERED = {
   authRoleWidget: 'radio',
   authHero: '',
   portalBanners: [],
+  portalGuestBrowse: false,
+  guestTeaserLimit: 3,
+  guestLoginCta: '',
   accept: 'reject',
   schema: {
     version: 1,

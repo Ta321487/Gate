@@ -391,17 +391,19 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
 
     try:
         if (be / "pom.xml").exists() and mvn:
-            args = [f"--server.port={port}"]
+            bind = settings.bind_host
+            args = [f"--server.port={port}", f"--server.address={bind}"]
             cmd = [
                 mvn,
                 "-q",
                 "spring-boot:run",
                 f"-Dspring-boot.run.arguments={' '.join(args)}",
             ]
-            log_f.write(f"cmd: {cmd[0]} spring-boot:run port={port}\n")
+            log_f.write(f"cmd: {cmd[0]} spring-boot:run port={port} address={bind}\n")
             log_f.flush()
             p = _popen(cmd, cwd=be, log_f=log_f, env=env)
         else:
+            bind = settings.bind_host
             stub = log_dir / "_be_stub.py"
             stub.write_text(
                 f"""
@@ -410,8 +412,8 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200); self.end_headers(); self.wfile.write(b'OK')
     def log_message(self, *a): pass
-print('stub backend on {port} (no mvn)')
-HTTPServer(('127.0.0.1', {port}), H).serve_forever()
+print('stub backend on {bind}:{port} (no mvn)')
+HTTPServer(('{bind}', {port}), H).serve_forever()
 """,
                 encoding="utf-8",
             )
@@ -465,6 +467,7 @@ def start_frontend(project_id: str, workspace: Path, port: int, backend_port: in
             env["NO_COLOR"] = "1"
             env["FORCE_COLOR"] = "0"
             env["npm_config_color"] = "false"
+            bind = settings.bind_host
             # 共享缓存联接 node_modules，避免每题全量 npm install
             prepare_frontend_deps(fe, npm, log_f)
             _clear_vite_cache(fe, log_f)
@@ -473,12 +476,12 @@ def start_frontend(project_id: str, workspace: Path, port: int, backend_port: in
                     "@echo off",
                     f'cd /d "{fe}"',
                     "echo deps ready · starting vite",
-                    f'call "{npm}" run dev -- --host 127.0.0.1 --port {port}',
+                    f'call "{npm}" run dev -- --host {bind} --port {port}',
                     "exit /b %ERRORLEVEL%",
                 ]
                 script = log_dir / "_start_fe.cmd"
                 script.write_text("\r\n".join(lines), encoding="utf-8")
-                log_f.write(f"cmd: {script.name}\n")
+                log_f.write(f"cmd: {script.name} host={bind}\n")
                 log_f.flush()
                 p = subprocess.Popen(
                     ["cmd.exe", "/c", str(script)],
@@ -494,12 +497,12 @@ def start_frontend(project_id: str, workspace: Path, port: int, backend_port: in
                     f"""#!/bin/sh
 cd "{fe}" || exit 1
 echo "deps ready · starting vite"
-exec "{npm}" run dev -- --host 127.0.0.1 --port {port}
+exec "{npm}" run dev -- --host {bind} --port {port}
 """,
                     encoding="utf-8",
                 )
                 script.chmod(0o755)
-                log_f.write(f"cmd: {script.name}\n")
+                log_f.write(f"cmd: {script.name} host={bind}\n")
                 log_f.flush()
                 p = subprocess.Popen(
                     ["/bin/sh", str(script)],
@@ -509,6 +512,7 @@ exec "{npm}" run dev -- --host 127.0.0.1 --port {port}
                     env=env,
                 )
         else:
+            bind = settings.bind_host
             stub = log_dir / "_fe_stub.py"
             stub.write_text(
                 f"""
@@ -518,8 +522,8 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200); self.send_header('Content-Type','text/html'); self.end_headers(); self.wfile.write(html)
     def log_message(self, *a): pass
-print('stub frontend on {port}')
-HTTPServer(('127.0.0.1', {port}), H).serve_forever()
+print('stub frontend on {bind}:{port}')
+HTTPServer(('{bind}', {port}), H).serve_forever()
 """,
                 encoding="utf-8",
             )
@@ -587,6 +591,8 @@ def frontend_running(project_id: str) -> bool:
 
 def backend_status(project_id: str, port: int) -> str:
     """stopped | starting | healthy | error —— 以端口可服务为准（不依赖进程表是否丢过）。"""
+    if not port:
+        return "starting" if backend_running(project_id) else "stopped"
     if (
         _http_ok(f"http://127.0.0.1:{port}/actuator/health")
         or _http_ok(f"http://127.0.0.1:{port}/api/meta")
@@ -603,6 +609,8 @@ def backend_status(project_id: str, port: int) -> str:
 
 def frontend_status(project_id: str, port: int) -> str:
     """stopped | starting | healthy | error"""
+    if not port:
+        return "starting" if frontend_running(project_id) else "stopped"
     if _http_ok(f"http://127.0.0.1:{port}/"):
         return "healthy"
     if frontend_running(project_id):
@@ -636,8 +644,19 @@ def job_log(project_id: str) -> str:
 
 async def allocate_ports(used_be: set[int], used_fe: set[int]) -> tuple[int, int]:
     s = get_settings()
-    be = next(p for p in range(s.backend_port_start, s.backend_port_end + 1) if p not in used_be)
-    fe = next(p for p in range(s.frontend_port_start, s.frontend_port_end + 1) if p not in used_fe)
+    be_slots = s.backend_port_end - s.backend_port_start + 1
+    try:
+        be = next(p for p in range(s.backend_port_start, s.backend_port_end + 1) if p not in used_be)
+    except StopIteration as e:
+        raise RuntimeError(
+            f"预览端口池已满（最多同时运行约 {be_slots} 个），请先关闭其他项目的运行"
+        ) from e
+    try:
+        fe = next(p for p in range(s.frontend_port_start, s.frontend_port_end + 1) if p not in used_fe)
+    except StopIteration as e:
+        raise RuntimeError(
+            f"预览端口池已满（最多同时运行约 {be_slots} 个），请先关闭其他项目的运行"
+        ) from e
     return be, fe
 
 

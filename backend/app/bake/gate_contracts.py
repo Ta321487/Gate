@@ -112,7 +112,6 @@ _GATE_ARCHIVE_TICKET_FILES = [
     "frontend/src/views/admin/TicketsAdmin.vue",
     "frontend/src/views/admin/TicketRecordsAdmin.vue",
     "frontend/src/views/admin/TicketDashboard.vue",
-    "frontend/src/views/admin/OverdueAdmin.vue",
     "frontend/src/views/admin/UsersAdmin.vue",
     "frontend/src/views/Notices.vue",
     "frontend/src/views/NoticeDetail.vue",
@@ -127,6 +126,8 @@ _GATE_ARCHIVE_TICKET_FILES = [
     "frontend/src/router/index.js",
     "sql/schema.sql",
 ]
+
+_GATE_OVERDUE_FILE = "frontend/src/views/admin/OverdueAdmin.vue"
 
 
 def gate_archive_ticket(
@@ -157,11 +158,13 @@ def gate_archive_ticket(
         {"seg": "profile", "from_baseline": "profile"},
         {"seg": "register", "from_baseline": "register"},
     ]
+    files = list(_GATE_ARCHIVE_TICKET_FILES)
     if with_deadline:
         routes.insert(
             7,
             {"seg": "admin/overdue", "from_feature": overdue_feature},
         )
+        files.append(_GATE_OVERDUE_FILE)
     flow_api = {
         "apply": {"file": "TicketController.java", "need": ["/apply", "TicketStore.apply"]},
         "approve": {"file": "TicketController.java", "need": ["approve"]},
@@ -172,7 +175,7 @@ def gate_archive_ticket(
         flow_api["remind"] = {"file": "TicketController.java", "need": ["/remind", "remind"]}
     return {
         "routes": routes,
-        "files": list(_GATE_ARCHIVE_TICKET_FILES),
+        "files": files,
         "flow_api": flow_api,
         "admin_invariants": {
             "require_super_auth": True,

@@ -6,13 +6,15 @@
         <div class="proj-title">{{ p.title }}</div>
         <div class="proj-meta">
           <span class="pill" :class="statusPill">{{ statusLabel }}</span>
-          <span>ID <span class="mono">{{ p.id }}</span></span>
+          <span>ID <span class="mono">{{ p.id }}</span><CopyIconButton :text="p.id" tip="复制项目 ID" /></span>
           <span>{{ p.archetype }} · {{ p.domain }}</span>
-          <span class="mono">{{ p.db_name }}</span>
+          <span class="mono">{{ p.db_name }}</span><CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
         </div>
       </div>
       <div class="proj-actions">
-        <n-button :disabled="!canDownload" @click="downloadZip">下载 ZIP</n-button>
+        <n-button :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+          {{ downloadZipLabel }}
+        </n-button>
         <n-button type="error" secondary size="small" :disabled="deleteBlocked" :title="deleteBlockedReason" @click="onDelete">删除</n-button>
       </div>
     </div>
@@ -227,18 +229,37 @@
       <!-- Runtime -->
       <n-tab-pane name="runtime" tab="运行">
         <div class="row mb-16" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <span class="small muted">库 <span class="mono">{{ p.db_name || '—' }}</span></span>
+          <span class="small muted">库 <span class="mono">{{ p.db_name || '—' }}</span><CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" /></span>
           <div class="row" style="margin:0">
-            <n-button type="primary" :disabled="!p.workspace_path || rtAnyBusy" :loading="rtAllBusy && rtPendingAll==='start'" @click="rtAction('all','start')">全部启动</n-button>
-            <n-button :disabled="!p.workspace_path || rtAnyBusy" :loading="rtAllBusy && rtPendingAll==='stop'" @click="rtAction('all','stop')">全部关闭</n-button>
-            <n-button :disabled="!p.workspace_path || rtAnyBusy" :loading="rtAllBusy && rtPendingAll==='restart'" @click="rtAction('all','restart')">全部重启</n-button>
+            <n-button
+              :type="rtCanStartAll && !rtAnyLive ? 'primary' : 'default'"
+              :disabled="!rtCanStartAll"
+              :loading="rtAllBusy && rtPendingAll==='start'"
+              @click="rtAction('all','start')"
+            >全部启动</n-button>
+            <n-button
+              :type="rtBothLive ? 'primary' : 'default'"
+              :disabled="!rtCanStopAll"
+              :loading="rtAllBusy && rtPendingAll==='stop'"
+              @click="rtAction('all','stop')"
+            >全部关闭</n-button>
+            <n-button
+              :disabled="!rtCanRestartAll"
+              :loading="rtAllBusy && rtPendingAll==='restart'"
+              @click="rtAction('all','restart')"
+            >全部重启</n-button>
             <n-button :disabled="rt.frontend_status !== 'healthy' || rtBusyFe" @click="openPreview">打开预览</n-button>
+            <CopyIconButton
+              v-if="rt.preview_url && rt.frontend_status === 'healthy'"
+              :text="rt.preview_url"
+              tip="复制预览地址"
+            />
           </div>
         </div>
         <div class="grid-2">
           <div class="panel">
             <div class="panel-hd">
-              <h3>后端 · :{{ p.backend_port }}</h3>
+              <h3>后端 · :{{ p.backend_port || '—' }}<CopyIconButton v-if="backendAddr" :text="backendAddr" tip="复制后端地址" /></h3>
               <span class="pill" :class="runtimeStatusPill(rt.backend_status)">{{ runtimeStatusLabel(rt.backend_status) }}</span>
             </div>
             <div class="panel-bd">
@@ -255,7 +276,7 @@
           </div>
           <div class="panel">
             <div class="panel-hd">
-              <h3>前端 · :{{ p.frontend_port }}</h3>
+              <h3>前端 · :{{ p.frontend_port || '—' }}<CopyIconButton v-if="frontendAddr" :text="frontendAddr" tip="复制前端地址" /></h3>
               <span class="pill" :class="runtimeStatusPill(rt.frontend_status)">{{ runtimeStatusLabel(rt.frontend_status) }}</span>
             </div>
             <div class="panel-bd">
@@ -294,11 +315,14 @@
             <div class="panel-hd"><h3>产物</h3></div>
             <div class="panel-bd stack">
               <div class="file-row" style="margin:0">
-                <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ canDownload ? '门禁已过' : '门禁未过 · 锁定' }}</span></span>
-                <n-button size="small" :disabled="!canDownload" @click="downloadZip">下载</n-button>
+                <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
+                <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+                  {{ canDownload ? '下载' : '锁定' }}
+                </n-button>
               </div>
               <div class="file-row" style="margin:0">
                 <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
+                <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
               </div>
               <div class="file-row" style="margin:0">
                 <span><strong>spec.json</strong></span>
@@ -312,7 +336,10 @@
               <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'">{{ schema ? '已解析' : (p.workspace_path ? '无 SQL' : '未生成') }}</span>
             </div>
             <div class="panel-bd stack">
-              <div class="small"><span class="muted">库名</span> · <span class="mono">{{ p.db_name }}</span></div>
+              <div class="small">
+                <span class="muted">库名</span> · <span class="mono">{{ p.db_name }}</span>
+                <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
+              </div>
               <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
               <template v-if="schema?.tables?.length">
                 <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
@@ -391,6 +418,9 @@
       <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留数据库（不执行 DROP）</n-checkbox>
     </n-modal>
     <n-modal v-model:show="showSpec" preset="card" title="spec.json" style="width:640px">
+      <div class="row" style="justify-content:flex-end;margin:0 0 8px">
+        <CopyIconButton :text="specText" tip="复制 JSON" />
+      </div>
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
     <n-modal v-model:show="showEr" preset="card" title="E-R 图（线框）" style="width:min(1280px,96vw)">
@@ -439,6 +469,7 @@ import { NTag } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import ErrorPage from './ErrorPage.vue'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   CHECKLIST_RESULT,
   LOG_SIDES,
@@ -465,6 +496,7 @@ const rt = reactive({
   frontend_status: 'stopped',
   preview_url: null,
   backend_url: null,
+  public_host: '127.0.0.1',
   backend_log_tail: '',
   frontend_log_tail: '',
 })
@@ -473,6 +505,30 @@ const rtBusyFe = ref(false)
 const rtPendingAll = ref('')
 const rtAnyBusy = computed(() => rtBusyBe.value || rtBusyFe.value)
 const rtAllBusy = computed(() => rtBusyBe.value && rtBusyFe.value)
+/** IDE 式：已在跑就不能再启动；全停就不能关/重启 */
+const rtBeLive = computed(() => runtimeCanStop(rt.backend_status))
+const rtFeLive = computed(() => runtimeCanStop(rt.frontend_status))
+const rtAnyLive = computed(() => rtBeLive.value || rtFeLive.value)
+const rtBothLive = computed(() => rtBeLive.value && rtFeLive.value)
+const rtCanStartAll = computed(
+  () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && !rtBothLive.value,
+)
+const rtCanStopAll = computed(
+  () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && rtAnyLive.value,
+)
+const rtCanRestartAll = computed(() => rtCanStopAll.value)
+const backendAddr = computed(() => {
+  if (rt.backend_url) return rt.backend_url
+  const host = rt.public_host || '127.0.0.1'
+  const port = p.value?.backend_port
+  return port ? `http://${host}:${port}` : ''
+})
+const frontendAddr = computed(() => {
+  if (rt.preview_url) return rt.preview_url
+  const host = rt.public_host || '127.0.0.1'
+  const port = p.value?.frontend_port
+  return port ? `http://${host}:${port}` : ''
+})
 const logSide = ref('job')
 const logText = ref('')
 const logFilter = ref('')
@@ -618,7 +674,21 @@ const confirmHint = computed(() => {
   if (deviant.value) return '确认按当前骨架 / 领域生成。'
   return '已核对骨架、领域与砍项，确认后开始生成。'
 })
-const canDownload = computed(() => !!(p.value?.zip_ready && p.value?.gates?.zip_allowed && p.value?.gates?.overall))
+const canDownload = computed(() => {
+  if (!p.value) return false
+  if (p.value.status === 'generating') return false
+  return !!(p.value.zip_ready && p.value?.gates?.zip_allowed && p.value?.gates?.overall)
+})
+const downloadZipLabel = computed(() => (p.value?.status === 'generating' ? '生成中…' : '下载 ZIP'))
+const downloadBlockedReason = computed(() => {
+  if (p.value?.status === 'generating') return '生成中 · 打包完成前不可下载'
+  if (!canDownload.value) return '门禁未过 · 禁止下载 ZIP'
+  return ''
+})
+const zipLockHint = computed(() => {
+  if (p.value?.status === 'generating') return '生成中 · 打包完成后解锁'
+  return canDownload.value ? '门禁已过' : '门禁未过 · 锁定'
+})
 
 const deleteBlocked = computed(() => {
   if (!p.value) return true
@@ -702,15 +772,21 @@ const gateCols = [
 ]
 const gateRows = computed(() => {
   const g = p.value?.gates || {}
-  const keys = ['p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t']
-  const levels = { p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2', p3a: 'P3', p3b: 'P3', p3t: 'P3' }
-  return keys.map((k) => ({
-    key: k,
-    level: levels[k],
-    label: g[k]?.label || k,
-    ok: !!g[k]?.ok,
-    desc: g[k]?.desc || '',
-  }))
+  // 含 p3c/p3d/accept：否则 overall 被这些项卡住时 UI 看不见原因
+  const keys = ['p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3c', 'p3d', 'accept']
+  const levels = {
+    p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2',
+    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
+  }
+  return keys
+    .filter((k) => g[k] != null)
+    .map((k) => ({
+      key: k,
+      level: levels[k] || 'P3',
+      label: g[k]?.label || k,
+      ok: !!g[k]?.ok,
+      desc: g[k]?.desc || '',
+    }))
 })
 const checkCols = [
   { title: '开题功能', key: 'name' },
@@ -840,6 +916,16 @@ async function refreshRuntime() {
   const data = await api.runtime(route.params.id)
   rt.preview_url = data.preview_url || null
   rt.backend_url = data.backend_url || null
+  rt.public_host = data.public_host || '127.0.0.1'
+  if (p.value) {
+    p.value.backend_port = data.backend_port || 0
+    p.value.frontend_port = data.frontend_port || 0
+    if (data.project_status) {
+      p.value.status = data.project_status
+      p.value.backend_running = ['starting', 'healthy'].includes(data.backend_status)
+      p.value.frontend_running = ['starting', 'healthy'].includes(data.frontend_status)
+    }
+  }
   rt.backend_log_tail = data.backend_log_tail || ''
   rt.frontend_log_tail = data.frontend_log_tail || ''
   const be = data.backend_status || 'stopped'
@@ -959,16 +1045,16 @@ async function retryCurrent() {
     await startGenerate()
     return
   }
-  await api.retryJob(currentJob.value.id)
-  message.success('已重试')
+  const res = await api.retryJob(currentJob.value.id)
+  message.success(res?.message || '已从失败步骤续跑')
   await load()
   startPoll()
 }
 
 function downloadZip() {
   if (!canDownload.value) {
-    message.error('门禁未过 · 禁止下载 ZIP')
-    tab.value = 'artifacts'
+    message.error(downloadBlockedReason.value || '门禁未过 · 禁止下载 ZIP')
+    if (p.value?.status !== 'generating') tab.value = 'gates'
     return
   }
   window.open(api.downloadUrl(p.value.id), '_blank')
@@ -1044,8 +1130,13 @@ function _runtimeSettled(side, action) {
 }
 
 function openPreview() {
-  if (rt.preview_url) {
-    window.open(rt.preview_url, '_blank')
+  if (rt.frontend_status !== 'healthy') {
+    message.warning('前端未就绪，请先启动并等待健康')
+    return
+  }
+  const url = rt.preview_url || frontendAddr.value
+  if (url) {
+    window.open(url, '_blank')
     return
   }
   message.warning('前端未就绪，请先启动并等待健康')
