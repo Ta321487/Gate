@@ -12,6 +12,7 @@
           <router-link to="/notices">公告</router-link>
         </nav>
         <div class="user">
+          <MessageBell />
           <el-avatar v-if="avatarUrl" :size="28" :src="avatarUrl" />
           <span class="name">{{ displayName }}</span>
           <el-button v-if="profileEditable" link @click="$router.push('/profile')">资料</el-button>
@@ -37,6 +38,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { schemaLabels } from '../utils/domainSchema.js'
 

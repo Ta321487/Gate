@@ -5,7 +5,7 @@
       <p>{{ adminLabel }}概览与待办入口。</p>
     </header>
 
-    <div class="stats">
+    <div class="stats" :style="{ gridTemplateColumns: `repeat(${cards.length}, 1fr)` }">
       <div class="stat" v-for="s in cards" :key="s.key">
         <div class="num">{{ s.value }}</div>
         <div class="label">{{ s.label }}</div>
@@ -22,6 +22,10 @@
         <span>处理中 {{ data.activeTickets || 0 }} 单</span>
         <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
       </div>
+      <div v-if="showOverdue" class="todo-row">
+        <span>逾期 {{ data.overdueBorrow || 0 }} 单</span>
+        <el-button link @click="$router.push('/admin/overdue')">去催还</el-button>
+      </div>
     </section>
   </div>
 </template>
@@ -34,14 +38,25 @@ import { getSchema, menuLabel } from '../../utils/domainSchema.js'
 const data = ref({})
 const adminLabel = computed(() => getSchema()?.roles?.admin?.label || '管理')
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
-const ticketLabel = computed(() => menuLabel('admin', 'ticket_pending', '单据'))
+const caps = computed(() => getSchema()?.capabilities || [])
+const showOverdue = computed(() => caps.value.includes('deadline'))
+const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
 
-const cards = computed(() => [
-  { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
-  { key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' },
-  { key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' },
-  { key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' },
-])
+const cards = computed(() => {
+  const list = [
+    { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
+    { key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' },
+    { key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' },
+    { key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' },
+  ]
+  if (showOverdue.value && Number(data.value.overdueBorrow) > 0) {
+    list.splice(2, 0, { key: 'overdue', label: '逾期', value: data.value.overdueBorrow })
+  }
+  if (showArchive.value) {
+    list.push({ key: 'items', label: menuLabel('admin', 'archive', '档案') + '数', value: data.value.bookTotal ?? '—' })
+  }
+  return list
+})
 
 async function load() {
   const res = await http.get('/api/admin/dashboard')
@@ -81,7 +96,7 @@ onMounted(load)
   padding: 8px 0; border-top: 1px solid #f0f3f6; font-size: 14px;
 }
 .todo-row:first-of-type { border-top: none; }
-@media (max-width: 800px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, 1fr) !important; }
 }
 </style>

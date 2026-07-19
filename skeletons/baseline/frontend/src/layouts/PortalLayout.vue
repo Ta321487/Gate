@@ -10,6 +10,7 @@
           <router-link v-for="item in nav" :key="item.to" :to="item.to">{{ item.label }}</router-link>
         </nav>
         <div class="user">
+          <MessageBell />
           <el-avatar v-if="avatarUrl" :size="28" :src="avatarUrl" />
           <span class="name">{{ displayName }}</span>
           <el-button v-if="profileEditable" link @click="$router.push('/profile')">资料</el-button>
@@ -35,6 +36,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 
