@@ -67,6 +67,7 @@ const route = useRoute()
 const workNav = [
   { to: '/', label: '项目', match: ['projects', 'project'] },
   { to: '/jobs', label: '任务队列', match: ['jobs'] },
+  { to: '/help', label: '帮助文档', match: ['help'] },
 ]
 const sysNav = [
   { to: '/deepseek', label: 'DeepSeek', match: ['deepseek'] },
