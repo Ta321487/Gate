@@ -39,6 +39,7 @@ class MatchResult:
     hits: list[str]
     text_excerpt: str
     archetypes: list[str] | None = None
+    match_warnings: list[str] | None = None
 
 
 def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
@@ -168,34 +169,61 @@ def reconcile_match(
     domain: str,
     archetypes: list[str] | None = None,
 ) -> tuple[str, str, list[str], list[str]]:
-    """行为优先：多 ARCH 并集；域盖不住时尽量保留皮肤并丢掉多余路径，否则降 GENERIC。"""
+    """行为优先：多 ARCH 并集。
+
+    - 域完全盖不住 → 降 GENERIC，保留全部行为路径。
+    - 域只能盖住一部分：若丢掉的是预约/交易等「重」路径 → 仍降 GENERIC 保行为；
+      否则保留行业皮并丢掉多余轻路径。
+    """
     notes: list[str] = []
     arches = [a for a in (archetypes or [archetype]) if a in ARCHETYPES]
     if not arches:
         arches = ["ARCH-CRUD"]
     dom = domain if domain in DOMAINS else "DOM-GENERIC"
+    dom_label = (DOMAINS.get(dom) or {}).get("label") or dom
 
     if arches == ["ARCH-CRUD"]:
         promoted = _DOMAIN_DEFAULT_ARCH.get(dom)
         if promoted:
             arches = [promoted]
-            notes.append(f"arch↑{promoted}")
+            notes.append(f"提示：按「{dom_label}」默认补齐行为 → {ARCHETYPES.get(promoted, {}).get('label', promoted)}")
+
+    # 预约/交易比「纯审核流」更重：丢掉它们会答辩像套错模板
+    _HEAVY = frozenset({"ARCH-RESERVE", "ARCH-TRADE"})
 
     if dom != "DOM-GENERIC":
         covered = [a for a in arches if domain_covers_archetype(dom, a)]
-        if covered:
-            if set(covered) != set(arches):
-                dropped = [a for a in arches if a not in covered]
-                notes.append(f"arch↓drop({','.join(dropped)})")
-            arches = covered
-        else:
-            notes.append(f"dom↓GENERIC({dom}↛{','.join(arches)})")
+        if not covered:
+            notes.append(
+                f"提示：行业皮「{dom_label}」撑不起当前行为，已改用通用壳，保留预约/下单/审核等能力。"
+            )
             dom = "DOM-GENERIC"
+        else:
+            dropped = [a for a in arches if a not in covered]
+            if dropped:
+                drop_labels = "、".join(
+                    ARCHETYPES.get(a, {}).get("label", a) for a in dropped
+                )
+                if any(a in _HEAVY for a in dropped):
+                    notes.append(
+                        f"提示：若保留「{dom_label}」将丢掉{drop_labels}；已改用通用壳以保住这些能力（行为优先于行业皮）。"
+                    )
+                    dom = "DOM-GENERIC"
+                else:
+                    notes.append(
+                        f"提示：已保留「{dom_label}」皮肤，并去掉不兼容路径：{drop_labels}。"
+                    )
+                    arches = covered
 
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     arches = sorted(dict.fromkeys(arches), key=lambda a: tie_rank.get(a, 99))
     primary = arches[0]
     return primary, dom, arches, notes
+
+
+def match_warnings_from_hits(hits: list[str] | None) -> list[str]:
+    """从命中列表抽出给人看的匹配提示。"""
+    return [h for h in (hits or []) if isinstance(h, str) and h.startswith("提示：")]
 
 
 # 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
@@ -231,6 +259,7 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     arch, dom, arches, recon_notes = reconcile_match(arches[0], dom, arches)
     confidence = round((arch_conf + dom_conf) / 2, 2)
     hits = list(dict.fromkeys(arch_hits_all + dom_hits + recon_notes))
+    warnings = match_warnings_from_hits(hits)
     return MatchResult(
         title=title,
         archetype=arch,
@@ -239,6 +268,7 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         hits=hits,
         text_excerpt=text[:2000],
         archetypes=arches,
+        match_warnings=warnings,
     )
 
 
@@ -303,6 +333,7 @@ def build_spec(
         "match_mode": match_mode,
         "confidence": confidence,
         "hits": hits or [],
+        "match_warnings": match_warnings_from_hits(hits),
         "roles": dom["roles"],
         "entities": dom["entities"],
         "flows": dom["flows"],

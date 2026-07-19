@@ -28,6 +28,12 @@
           <h4>推荐匹配已给出</h4>
           <p class="small muted">确认后开始生成。骨架 / 领域改动需先解锁。</p>
         </div>
+        <div v-if="matchWarnings.length" class="banner warn">
+          <h4>匹配说明（请看一眼）</h4>
+          <ul class="warn-list">
+            <li v-for="(w, i) in matchWarnings" :key="i">{{ warningText(w) }}</li>
+          </ul>
+        </div>
         <div class="grid-2">
           <div class="panel">
             <div class="panel-hd">
@@ -38,7 +44,7 @@
               <div class="rec-box">
                 <div class="rec-title">系统推荐（置信度 {{ p.confidence.toFixed(2) }}）</div>
                 <div class="rec-main">{{ p.recommended_arch }} × {{ p.recommended_domain }}</div>
-                <div class="rec-sub" v-if="p.spec?.hits?.length">命中：{{ p.spec.hits.join(' / ') }}</div>
+                <div class="rec-sub" v-if="keywordHits.length">命中：{{ keywordHits.join(' / ') }}</div>
                 <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">砍项：{{ p.spec.out_of_mvp.join('、') }}</div>
               </div>
               <div class="lock-row">
@@ -90,8 +96,8 @@
                 <div class="parse-label">开题解析</div>
                 <div class="parse-title">{{ proposal.title || p.title }}</div>
                 <p v-if="proposal.background" class="parse-bg">{{ proposal.background }}</p>
-                <div v-if="proposal.hits?.length" class="parse-hits">
-                  <span v-for="h in proposal.hits" :key="h" class="hit-chip">{{ h }}</span>
+                <div v-if="keywordHits.length" class="parse-hits">
+                  <span v-for="h in keywordHits" :key="h" class="hit-chip">{{ h }}</span>
                 </div>
                 <div v-if="proposal.feature_lines?.length" class="parse-sec">
                   <div class="parse-sec-hd">开题功能点</div>
@@ -597,6 +603,17 @@ const matchPillText = computed(() => {
   if (unlocked.value) return '已解锁'
   return '已锁定推荐'
 })
+const matchWarnings = computed(() => {
+  const spec = p.value?.spec || {}
+  if (Array.isArray(spec.match_warnings) && spec.match_warnings.length) return spec.match_warnings
+  return (spec.hits || []).filter((h) => typeof h === 'string' && h.startsWith('提示：'))
+})
+const keywordHits = computed(() =>
+  (p.value?.spec?.hits || []).filter((h) => typeof h === 'string' && !h.startsWith('提示：')),
+)
+function warningText(w) {
+  return String(w || '').replace(/^提示：/, '')
+}
 const confirmHint = computed(() => {
   if (deviant.value) return '确认按当前骨架 / 领域生成。'
   return '已核对骨架、领域与砍项，确认后开始生成。'

@@ -710,18 +710,24 @@ DOMAINS = {
         },
     },
     "DOM-MEETING": {
-        "label": "会议室",
-        # 不用光杆「场地预约」：体育场/琴房会误落会议室皮肤
-        "keywords": ["会议室", "会议室预约", "会议预约"],
+        "label": "场地预约",
+        # 会议室 + 校园常见场地；皮肤文案按题名在 schema 里再细化
+        "keywords": [
+            "会议室", "会议室预约", "会议预约",
+            "琴房", "琴房预约", "排练厅", "舞蹈室",
+            "体育场", "体育馆", "球馆", "羽毛球场", "篮球场", "足球场",
+            "自习室", "研习室", "研讨室",
+            "场地预约", "订场", "实验室预约", "实训室预约", "游泳馆",
+        ],
         "entities": ["Room", "Reservation"],
         "roles": ["user", "admin"],
-        "flows": ["选会议室 → 预约 → 取消/完成"],
+        "flows": ["选场地 → 预约 → 取消/完成"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
             {"name": "管理端工作台", "status": "module"},
-            {"name": "会议室检索", "status": "domain"},
-            {"name": "会议室预约", "status": "flow"},
+            {"name": "场地检索", "status": "domain"},
+            {"name": "时段预约", "status": "flow"},
             {"name": "用户管理", "status": "module"},
             {"name": "公告管理", "status": "module"},
         ],
@@ -733,8 +739,8 @@ DOMAINS = {
             {"id": "meet-night", "label": "夜间预约"},
         ],
         "gate": gate_slot_shell(
-            archive_feature="会议室检索",
-            reserve_feature="会议室预约",
+            archive_feature="场地检索",
+            reserve_feature="时段预约",
         ),
         "runtime": {
             "enable_ticket": False,

@@ -199,6 +199,9 @@ a { color: var(--teal); text-decoration: none; }
 .banner { padding: 16px 18px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 14px; }
 .banner.success { background: #f0fdf6; border-color: #a7e3c4; }
 .banner.fail { background: #fef2f2; border-color: #fecaca; }
+.banner.warn { background: #fffbeb; border-color: #fcd34d; }
+.banner.warn .warn-list { margin: 8px 0 0; padding-left: 1.2em; }
+.banner.warn .warn-list li { margin: 4px 0; line-height: 1.45; }
 .banner h4 { font-size: 15px; margin: 0 0 4px; }
 
 .gate {
