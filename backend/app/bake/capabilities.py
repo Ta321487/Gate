@@ -28,13 +28,13 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "slot_reserve": {
         "label": "时段预约",
-        "status": "planned",
-        "desc": "时段/资源占用与取消",
+        "status": "implemented",
+        "desc": "资源时段库存占坑与取消（有别于本人已选时段相交）",
     },
     "order_lines": {
         "label": "多明细履约",
-        "status": "planned",
-        "desc": "多明细行 + 汇总状态（可不含真支付）",
+        "status": "implemented",
+        "desc": "购物车 + 多明细订单（无真支付）",
     },
     "content": {
         "label": "内容发布",

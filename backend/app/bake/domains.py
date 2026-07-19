@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from app.bake.gate_contracts import gate_archive_ticket, gate_library, gate_standalone_ticket
+from app.bake.gate_contracts import (
+    gate_archive_ticket,
+    gate_library,
+    gate_order_shell,
+    gate_slot_shell,
+    gate_standalone_ticket,
+)
 
 ARCHETYPES = {
     "ARCH-CRUD": {"label": "纯管理", "keywords": ["管理", "信息维护", "增删改查"]},
@@ -35,15 +41,15 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
     "DOM-LOST": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
-    # D 交易（缺 order_lines → reject）
+    # D 交易（order_lines）
     "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users"],
     "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users"],
-    # E 预约（缺 slot_reserve → reject）
+    # E 预约（slot_reserve；资源走 archive）
     "DOM-HOSPITAL": ["archive", "slot_reserve", "content", "org_users"],
-    "DOM-PARKING": ["slot_reserve", "ticket_flow", "deadline", "content", "org_users"],
-    "DOM-MEETING": ["slot_reserve", "ticket_flow", "content", "org_users"],
-    "DOM-SALON": ["slot_reserve", "archive", "content", "org_users"],
-    "DOM-HOTEL": ["slot_reserve", "order_lines", "archive", "content", "org_users"],
+    "DOM-PARKING": ["archive", "slot_reserve", "content", "org_users"],
+    "DOM-MEETING": ["archive", "slot_reserve", "content", "org_users"],
+    "DOM-SALON": ["archive", "slot_reserve", "content", "org_users"],
+    "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
     # F 兜底
     "DOM-GENERIC": ["archive", "content", "org_users"],
     # G 内容/媒资/社区
@@ -163,9 +169,12 @@ DOMAINS = {
         "features": [
             {"name": "用户登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
             {"name": "商品浏览", "status": "domain"},
             {"name": "购物车下单", "status": "flow"},
             {"name": "订单管理", "status": "flow"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
             {"name": "推荐算法", "status": "out_of_mvp"},
         ],
         "out_of_mvp": ["推荐算法"],
@@ -176,6 +185,21 @@ DOMAINS = {
             {"id": "shop-gold", "label": "会员金"},
             {"id": "shop-night", "label": "夜间闪购"},
         ],
+        "gate": gate_order_shell(
+            archive_feature="商品浏览",
+            cart_feature="购物车下单",
+            orders_feature="订单管理",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "product",
+            "order_cart_table": "cart_line",
+            "order_table": "biz_order",
+            "order_line_table": "order_line",
+            "use_quota": True,
+        },
     },
     "DOM-DORM": {
         "label": "宿舍",
@@ -446,8 +470,12 @@ DOMAINS = {
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
             {"name": "菜品浏览", "status": "domain"},
             {"name": "下单取餐", "status": "flow"},
+            {"name": "订单管理", "status": "flow"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -457,6 +485,21 @@ DOMAINS = {
             {"id": "food-berry", "label": "果饮紫"},
             {"id": "food-night", "label": "夜宵档"},
         ],
+        "gate": gate_order_shell(
+            archive_feature="菜品浏览",
+            cart_feature="下单取餐",
+            orders_feature="订单管理",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "dish",
+            "order_cart_table": "cart_line",
+            "order_table": "biz_order",
+            "order_line_table": "order_line",
+            "use_quota": True,
+        },
     },
     "DOM-HOSPITAL": {
         "label": "医院",
@@ -467,8 +510,11 @@ DOMAINS = {
         "features": [
             {"name": "患者登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
-            {"name": "挂号预约", "status": "flow"},
+            {"name": "管理端工作台", "status": "module"},
             {"name": "科室医生", "status": "domain"},
+            {"name": "挂号预约", "status": "flow"},
+            {"name": "患者管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -478,6 +524,20 @@ DOMAINS = {
             {"id": "hosp-sky", "label": "候诊淡青"},
             {"id": "hosp-night", "label": "值班深色"},
         ],
+        "gate": gate_slot_shell(
+            archive_feature="科室医生",
+            reserve_feature="挂号预约",
+            users_feature="患者管理",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "patient",
+            "archive_category_table": "category",
+            "archive_item_table": "doctor",
+            "slot_table": "resource_slot",
+            "reservation_table": "reservation",
+            "use_quota": False,
+        },
     },
     "DOM-PARKING": {
         "label": "车位",
@@ -488,7 +548,11 @@ DOMAINS = {
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "车位检索", "status": "domain"},
             {"name": "车位预约", "status": "flow"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -498,6 +562,19 @@ DOMAINS = {
             {"id": "park-cyan", "label": "导航青"},
             {"id": "park-night", "label": "地库夜色"},
         ],
+        "gate": gate_slot_shell(
+            archive_feature="车位检索",
+            reserve_feature="车位预约",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "space",
+            "slot_table": "resource_slot",
+            "reservation_table": "reservation",
+            "use_quota": False,
+        },
     },
     "DOM-MEETING": {
         "label": "会议室",
@@ -508,8 +585,11 @@ DOMAINS = {
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "会议室检索", "status": "domain"},
             {"name": "会议室预约", "status": "flow"},
-            {"name": "公告", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -518,6 +598,19 @@ DOMAINS = {
             {"id": "meet-green", "label": "空闲绿"},
             {"id": "meet-night", "label": "夜间预约"},
         ],
+        "gate": gate_slot_shell(
+            archive_feature="会议室检索",
+            reserve_feature="会议室预约",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "room",
+            "slot_table": "resource_slot",
+            "reservation_table": "reservation",
+            "use_quota": False,
+        },
     },
     "DOM-SALON": {
         "label": "服务预约",
@@ -528,8 +621,11 @@ DOMAINS = {
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "服务浏览", "status": "domain"},
             {"name": "服务与预约", "status": "flow"},
-            {"name": "公告", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -538,6 +634,19 @@ DOMAINS = {
             {"id": "salon-ink", "label": "造型墨"},
             {"id": "salon-night", "label": "夜场预约"},
         ],
+        "gate": gate_slot_shell(
+            archive_feature="服务浏览",
+            reserve_feature="服务与预约",
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "service",
+            "slot_table": "resource_slot",
+            "reservation_table": "reservation",
+            "use_quota": False,
+        },
     },
     "DOM-HOTEL": {
         "label": "客房",
@@ -548,9 +657,11 @@ DOMAINS = {
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
             {"name": "房型浏览", "status": "domain"},
             {"name": "预订订单", "status": "flow"},
-            {"name": "公告", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "公告管理", "status": "module"},
             {"name": "真支付对接", "status": "out_of_mvp"},
         ],
         "out_of_mvp": ["真支付对接"],
@@ -560,6 +671,23 @@ DOMAINS = {
             {"id": "hotel-sand", "label": "大堂暖沙"},
             {"id": "hotel-night", "label": "夜宿深色"},
         ],
+        "gate": gate_slot_shell(
+            archive_feature="房型浏览",
+            reserve_feature="预订订单",
+            with_orders=True,
+        ),
+        "runtime": {
+            "enable_ticket": False,
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "room_type",
+            "slot_table": "resource_slot",
+            "reservation_table": "reservation",
+            "order_cart_table": "cart_line",
+            "order_table": "biz_order",
+            "order_line_table": "order_line",
+            "use_quota": False,
+        },
     },
     "DOM-MEDIA": {
         "label": "影视综",

@@ -59,6 +59,9 @@ const MENU_TO = {
   content: '/notices',
   profile: '/profile',
   archive: '/archive',
+  cart: '/cart',
+  my_orders: '/orders',
+  my_reservations: '/reservations',
 }
 
 const nav = computed(() => {

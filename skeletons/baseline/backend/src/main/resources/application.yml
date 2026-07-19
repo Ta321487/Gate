@@ -33,6 +33,14 @@ thesis:
   allow-multi-ticket: false
   # 选课/活动等：申请时做时段相交检测（需主表 start_at/end_at）
   check-time-conflict: false
+  enable-ticket: true
+  # order_lines（空表名=关闭）
+  order-cart-table: ""
+  order-table: ""
+  order-line-table: ""
+  # slot_reserve（空表名=关闭）
+  slot-table: ""
+  reservation-table: ""
   archive-category-table: category
   archive-item-table: book
   # standalone 报修壳：楼栋/房间/类型下拉（空则前端退回手填）
