@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from app.bake.gate_contracts import (
     gate_archive_ticket,
-    gate_library,
     gate_order_shell,
     gate_slot_shell,
     gate_standalone_ticket,
@@ -128,8 +127,22 @@ DOMAINS = {
             {"id": "lib-slate", "label": "石青检索"},
             {"id": "lib-night", "label": "夜读静谧"},
         ],
-        "gate": gate_library(),
+        "gate": gate_archive_ticket(
+            archive_feature="图书检索与详情",
+            flow_feature="借阅申请 → 审核",
+            records_feature="借阅记录",
+            users_feature="读者管理",
+            category_feature="分类管理",
+            overdue_feature="逾期提醒与罚款",
+        ),
         "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "borrow",
+            "register_role": "reader",
+            "archive_category_table": "category",
+            "archive_item_table": "book",
+        },
     },
     "DOM-EQUIP": {
         "label": "设备借用",

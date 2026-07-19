@@ -9,6 +9,16 @@ import pymysql
 
 from app.core.config import get_settings
 
+_CREATE_TABLE_RE = re.compile(
+    r"^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.*)\)\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_COL_LINE_RE = re.compile(r"^`?(\w+)`?\s+(.+)$", re.IGNORECASE)
+_SKIP_TABLE_LINE = re.compile(
+    r"^(PRIMARY\s+KEY|UNIQUE|KEY|INDEX|CONSTRAINT|FOREIGN\s+KEY|CHECK)\b",
+    re.IGNORECASE,
+)
+
 
 def _split_sql(script: str) -> list[str]:
     """去掉注释后按分号切语句。"""
@@ -40,6 +50,45 @@ def _read_sql_text(path: Path) -> str:
             continue
     # 最后兜底：替换非法字节，避免启动整条链路崩溃
     return raw.decode("utf-8", errors="replace")
+
+
+def _parse_create_columns(stmt: str) -> tuple[str, list[tuple[str, str]]] | None:
+    """从 CREATE TABLE 抽出 (表名, [(列名, 列定义)...])。"""
+    m = _CREATE_TABLE_RE.match(stmt.strip())
+    if not m:
+        return None
+    table, body = m.group(1), m.group(2)
+    cols: list[tuple[str, str]] = []
+    for raw in body.split("\n"):
+        line = raw.strip().rstrip(",").strip()
+        if not line or _SKIP_TABLE_LINE.match(line):
+            continue
+        cm = _COL_LINE_RE.match(line)
+        if not cm:
+            continue
+        cols.append((cm.group(1), cm.group(2).strip()))
+    return table, cols
+
+
+def _ensure_table_columns(cur, db_name: str, table: str, columns: list[tuple[str, str]]) -> None:
+    """旧库 CREATE IF NOT EXISTS 会跳过建表；按 schema 定义补齐缺失列。"""
+    cur.execute(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
+        (db_name, table),
+    )
+    existing = {row[0] for row in cur.fetchall()}
+    if not existing:
+        return
+    for cname, cdef in columns:
+        if cname in existing:
+            continue
+        try:
+            cur.execute(f"ALTER TABLE `{db_name}`.`{table}` ADD COLUMN `{cname}` {cdef}")
+            existing.add(cname)
+        except Exception:  # noqa: BLE001
+            # 并发/已存在/不兼容类型：忽略，后续 INSERT 仍会暴露真实问题
+            pass
 
 
 def ensure_student_schema(workspace: Path, db_name: str) -> None:
@@ -82,20 +131,12 @@ def ensure_student_schema(workspace: Path, db_name: str) -> None:
     try:
         with conn.cursor() as cur:
             for stmt in _split_sql(script):
+                parsed = _parse_create_columns(stmt)
                 cur.execute(stmt)
-            # 兼容旧库缺列（忽略已存在错误）
-            for alter in (
-                f"ALTER TABLE `{db_name}`.sys_user ADD COLUMN enabled TINYINT DEFAULT 1",
-                f"ALTER TABLE `{db_name}`.sys_user ADD COLUMN profile_json VARCHAR(2048) DEFAULT '{{}}'",
-                f"ALTER TABLE `{db_name}`.borrow ADD COLUMN remind_msg VARCHAR(255) DEFAULT ''",
-                f"ALTER TABLE `{db_name}`.repair ADD COLUMN assignee_username VARCHAR(64) NULL",
-                f"ALTER TABLE `{db_name}`.ticket ADD COLUMN assignee_username VARCHAR(64) NULL",
-                f"ALTER TABLE `{db_name}`.borrow ADD COLUMN assignee_username VARCHAR(64) NULL",
-            ):
-                try:
-                    cur.execute(alter)
-                except Exception:  # noqa: BLE001
-                    pass
+                # 必须在 INSERT 之前补列，否则旧表缺 start_at 等会 1054
+                if parsed:
+                    table, columns = parsed
+                    _ensure_table_columns(cur, db_name, table, columns)
     except Exception as e:  # noqa: BLE001
         raise RuntimeError(f"执行 schema.sql 失败: {e}") from e
     finally:

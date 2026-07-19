@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bake.engine import bake_project
-from app.bake.gates.library import evaluate_domain_gates
+from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.llm.agents import run_fix_agent, run_island_agent, run_qa_agent, run_spec_agent
