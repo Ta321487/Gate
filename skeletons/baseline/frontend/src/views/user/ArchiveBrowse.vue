@@ -119,6 +119,47 @@
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
       <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
       <el-form label-position="top">
+        <el-form-item v-if="allowQty" label="数量" required>
+          <el-input-number
+            v-model="applyQty"
+            :min="1"
+            :max="qtyMax"
+            controls-position="right"
+          />
+          <span v-if="stockDisplay === 'count'" class="apply-tip muted" style="margin-left:8px">
+            {{ stockCountLabel }} {{ applyRow?.stock ?? 0 }}
+          </span>
+        </el-form-item>
+        <el-form-item v-if="pickLoanPeriod" label="应还日期" required>
+          <el-date-picker
+            v-model="applyDueAt"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择应还日期"
+            :disabled-date="dueDisabledDate"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item v-if="pickDateRange" label="起止日期" required>
+          <el-date-picker
+            v-model="applyPeriod"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            start-placeholder="开始"
+            end-placeholder="结束"
+            :disabled-date="dueDisabledDate"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item v-if="requireRemark && !richRemark" :label="remarkLabel" required>
+          <el-input
+            v-model="applyRemark"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            :placeholder="`请填写${remarkLabel}`"
+          />
+        </el-form-item>
         <el-form-item v-if="richRemark" :label="ticket.label || '内容'" required>
           <RichTextEditor v-model="applyRemark" placeholder="请输入回复内容，可用工具栏排版；可 @昵称 引用" />
         </el-form-item>
@@ -135,7 +176,7 @@
           </div>
         </el-form-item>
       </el-form>
-      <p v-if="!richRemark && !requireAttach" class="apply-tip muted">确认后提交，等待审核。</p>
+      <p v-if="!needApplyDialog" class="apply-tip muted">确认后提交，等待审核。</p>
       <template #footer>
         <el-button @click="applyVisible = false">取消</el-button>
         <el-button type="primary" :loading="applyLoading" @click="submitApply">提交</el-button>
@@ -170,16 +211,44 @@ const bodyRich = computed(() => {
 })
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
-const needApplyDialog = computed(() => richRemark.value || requireAttach.value)
+const requireRemark = computed(() => !!ticket.requireRemark)
+const remarkLabel = computed(() => ticket.remarkLabel || '说明')
+const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
+const pickDateRange = computed(() => !!ticket.pickDateRange)
+const allowQty = computed(() => !!ticket.allowQty)
+const needApplyDialog = computed(
+  () =>
+    richRemark.value
+    || requireAttach.value
+    || requireRemark.value
+    || pickLoanPeriod.value
+    || pickDateRange.value
+    || allowQty.value,
+)
 const checkMutex = computed(() => !!ticket.checkMutex)
 const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
 const tagFilter = computed(() => !!archive.tagFilter)
+const stockCountLabel = computed(() => {
+  if (archive.stockCountLabel) return archive.stockCountLabel
+  const stockField = fields.value.find((x) => x.key === 'stock')
+  if (stockField?.label) return stockField.label
+  return '可借'
+})
 const ruleHint = computed(() => {
   const parts = []
   if (checkMutex.value) parts.push('同互斥码不可同选')
   if (categoryLimit.value > 0) parts.push(`每分类最多 ${categoryLimit.value} 门`)
   if (tagFilter.value) parts.push('可多标签组合筛选')
+  if (pickLoanPeriod.value) parts.push('须选择应还日期')
+  if (pickDateRange.value) parts.push('须选择起止日期')
+  if (allowQty.value) parts.push('可填申请数量')
+  if (requireRemark.value) parts.push(`须填写${remarkLabel.value}`)
   return parts.length ? parts.join('；') + '。' : ''
+})
+const qtyMax = computed(() => {
+  const stock = Number(applyRow.value?.stock)
+  if (Number.isFinite(stock) && stock > 0) return Math.min(99, stock)
+  return 99
 })
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasRecommend = computed(() => caps.value.includes('recommend'))
@@ -217,7 +286,7 @@ function stockText(row) {
     const ok = fieldLabel('stock', '可播放')
     return stockOk(row) ? ok : `暂不${ok.replace(/^可/, '')}`
   }
-  return stockOk(row) ? `可借 ${row.stock}` : '暂无库存'
+  return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : '暂无库存'
 }
 
 function playUrlOf(row) {
@@ -255,6 +324,9 @@ const applyVisible = ref(false)
 const applyRow = ref(null)
 const applyRemark = ref('')
 const applyAttachUrl = ref('')
+const applyQty = ref(1)
+const applyDueAt = ref('')
+const applyPeriod = ref(null)
 const applyLoading = ref(false)
 
 function openDetail(row) {
@@ -316,6 +388,9 @@ async function apply(row) {
   applyRow.value = row
   applyRemark.value = ''
   applyAttachUrl.value = ''
+  applyQty.value = 1
+  applyDueAt.value = ''
+  applyPeriod.value = null
   if (needApplyDialog.value) {
     applyVisible.value = true
     return
@@ -327,6 +402,14 @@ async function apply(row) {
   await submitApply()
 }
 
+function dueDisabledDate(date) {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const max = new Date(start)
+  max.setDate(max.getDate() + 90)
+  return date.getTime() < start.getTime() || date.getTime() > max.getTime()
+}
+
 async function submitApply() {
   if (!applyRow.value) return
   let remark = ''
@@ -336,18 +419,53 @@ async function submitApply() {
       ElMessage.warning('请填写内容')
       return
     }
+  } else if (requireRemark.value) {
+    remark = (applyRemark.value || '').trim()
+    if (!remark) {
+      ElMessage.warning(`请填写${remarkLabel.value}`)
+      return
+    }
   }
   if (requireAttach.value && !applyAttachUrl.value) {
     ElMessage.warning('请上传证明附件')
     return
   }
+  if (pickLoanPeriod.value && !applyDueAt.value) {
+    ElMessage.warning('请选择应还日期')
+    return
+  }
+  if (pickDateRange.value) {
+    const range = applyPeriod.value
+    if (!Array.isArray(range) || range.length < 2 || !range[0] || !range[1]) {
+      ElMessage.warning('请选择起止日期')
+      return
+    }
+  }
+  if (allowQty.value) {
+    const n = Number(applyQty.value) || 0
+    if (n < 1) {
+      ElMessage.warning('数量至少为 1')
+      return
+    }
+    if (n > qtyMax.value) {
+      ElMessage.warning(`数量不能超过 ${qtyMax.value}`)
+      return
+    }
+  }
   applyLoading.value = true
   try {
-    await http.post('/api/tickets/apply', {
+    const body = {
       itemId: applyRow.value.id,
       remark,
       attachUrl: applyAttachUrl.value || undefined,
-    })
+    }
+    if (allowQty.value) body.qty = Number(applyQty.value) || 1
+    if (pickLoanPeriod.value) body.dueAt = applyDueAt.value
+    if (pickDateRange.value && Array.isArray(applyPeriod.value)) {
+      body.periodStart = applyPeriod.value[0]
+      body.periodEnd = applyPeriod.value[1]
+    }
+    await http.post('/api/tickets/apply', body)
     ElMessage.success('已提交，等待审核')
     applyVisible.value = false
     detailVisible.value = false

@@ -24,11 +24,14 @@
           <h3>{{ row.title || ('单号 ' + row.id) }}</h3>
           <p class="sub">
             单号 {{ row.id }} · 申请于 {{ row.applyAt }}
+            <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
+            <template v-if="row.dueAt"> · 应还 {{ row.dueAt }}</template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
           </p>
           <p v-if="row.startAt || row.endAt" class="sub sched">
-            时段 {{ row.startAt || '—' }} ~ {{ row.endAt || '—' }}
+            {{ row.periodStart || row.periodEnd ? '起止' : '时段' }}
+            {{ row.startAt || '—' }} ~ {{ row.endAt || '—' }}
           </p>
           <div v-if="row.remark" class="tip">
             <template v-if="row.status === 'rejected'">驳回原因：</template>

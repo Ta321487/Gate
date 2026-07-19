@@ -79,6 +79,10 @@ export function ticketCopy() {
   return (getSchema().entities || {}).ticket || {}
 }
 
+export function reservationCopy() {
+  return (getSchema().entities || {}).reservation || {}
+}
+
 export function archiveCopy() {
   return (getSchema().entities || {}).archive || {}
 }

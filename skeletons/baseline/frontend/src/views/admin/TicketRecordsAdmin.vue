@@ -19,6 +19,8 @@
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
+      <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
+      <el-table-column v-if="pickLoanPeriod" prop="dueAt" label="应还" width="170" />
       <el-table-column prop="startAt" label="开始" width="160" />
       <el-table-column prop="endAt" label="结束" width="160" />
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
@@ -67,6 +69,8 @@ const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
+const allowQty = computed(() => !!ticket.allowQty)
+const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 
 function remarkText(v) {
   if (!v) return '—'
@@ -105,7 +109,7 @@ async function exportCsv() {
   }
   const headers = [
     '单号', '标题', '类型', '地点', '申请人', '处理人', '状态',
-    '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
+    '数量', '应还', '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
   ]
   if (allowRating.value) headers.push('评分', '短评')
   const data = rows.map((row) => {
@@ -117,6 +121,8 @@ async function exportCsv() {
       row.username,
       row.assigneeUsername,
       states.value[row.status] || row.status,
+      row.qty ?? 1,
+      row.dueAt,
       row.startAt,
       row.endAt,
       remarkText(row.remark),

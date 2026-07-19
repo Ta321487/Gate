@@ -12,6 +12,8 @@
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
       <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
+      <el-table-column v-if="pickLoanPeriod" prop="dueAt" label="应还" width="170" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="row.status === 'pending_final' ? '' : 'warning'" effect="plain">
@@ -103,6 +105,8 @@ const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
 const twoLevel = computed(() => !!ticket.twoLevelApprove)
+const allowQty = computed(() => !!ticket.allowQty)
+const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', '单据记录'))
 const superAdmin = localStorage.getItem('superAdmin') === 'true'

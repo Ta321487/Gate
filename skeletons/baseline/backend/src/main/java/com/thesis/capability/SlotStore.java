@@ -24,6 +24,7 @@ public final class SlotStore {
     private static String SLOT = "";
     private static String RESV = "";
     private static boolean enabled = false;
+    private static boolean requireRemark = false;
 
     private SlotStore() {}
 
@@ -31,10 +32,16 @@ public final class SlotStore {
         SLOT = slotTable == null ? "" : slotTable.trim();
         RESV = reservationTable == null ? "" : reservationTable.trim();
         enabled = !SLOT.isBlank() && !RESV.isBlank();
+        requireRemark = false;
+    }
+
+    public static void configureRemark(boolean required) {
+        requireRemark = required;
     }
 
     public static void unbind() {
         enabled = false;
+        requireRemark = false;
         SLOT = RESV = "";
     }
 
@@ -115,7 +122,11 @@ public final class SlotStore {
                 "UPDATE " + SLOT + " SET booked=booked+1 WHERE id=? AND booked<capacity", slotId);
         if (updated == 0) throw new IllegalStateException("该时段已约满");
         KeyHolder kh = new GeneratedKeyHolder();
-        String note = remark == null ? "" : remark.trim();
+        String rawNote = remark == null ? "" : remark.trim();
+        if (requireRemark && rawNote.isBlank()) {
+            throw new IllegalStateException("请填写备注后再预约");
+        }
+        final String note = rawNote.length() > 255 ? rawNote.substring(0, 255) : rawNote;
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO " + RESV + " (slot_id,username,status,remark,created_at) VALUES (?,?,?,?,?)",

@@ -14,6 +14,7 @@
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.startAt }} ~ {{ row.endAt }}</p>
+      <p v-if="row.remark" class="sub">备注：{{ row.remark }}</p>
       <p class="sub">申请于 {{ row.createdAt }}</p>
       <div class="acts">
         <el-button

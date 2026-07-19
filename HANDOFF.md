@@ -147,6 +147,8 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | 申请→审核通过/驳回→完结 | ticket_flow |
 | 库存或名额占用与归还/取消回补 | quota |
 | 应还日期、逾期提醒、罚款登记 | deadline（借阅/设备等） |
+| **自选应还日 + 申请数量** | `pickLoanPeriod` / `allowQty`：申请弹窗选到期日与数量；审批扣/还库存按 qty；LIBRARY/EQUIP 默认开，ASSET 仅数量 |
+| **必填说明 / 起止日期** | `requireRemark` + `pickDateRange`：用途/跟进/认领说明；请假起止写入 `period_start/end`；PARKING 车牌、HOSPITAL 就诊人、MEETING 会议主题（`reservation.requireRemark`）；DORM/PROPERTY/IT 默认强制附件 |
 | **时间冲突检测** | `time_conflict`：主数据 `start_at`/`end_at`；申请时与本人已占用时段做区间相交 |
 | **报名/选课截止** | 主数据 `apply_deadline_at`；截止后不可再申请 |
 | **我的日程/课表列表** | 我的单据展示 `startAt`/`endAt`（非拖拽排期） |

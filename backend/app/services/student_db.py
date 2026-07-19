@@ -116,3 +116,41 @@ def datasource_env(db_name: str) -> dict[str, str]:
         "SPRING_DATASOURCE_PASSWORD": settings.gf_student_mysql_password,
         "DB_NAME": db_name,
     }
+
+
+_SAFE_DB_NAME = re.compile(r"^[a-zA-Z0-9_]+$")
+_STUDENT_DB_PREFIX = "gf_thesis_"
+
+
+def drop_student_database(db_name: str) -> None:
+    """删除学生项目库。仅允许 gf_thesis_* 库名；失败抛 RuntimeError。"""
+    if not db_name or not _SAFE_DB_NAME.match(db_name):
+        raise RuntimeError(f"非法库名: {db_name!r}")
+    if not db_name.startswith(_STUDENT_DB_PREFIX):
+        raise RuntimeError(f"拒绝删除非学生库: {db_name!r}")
+
+    settings = get_settings()
+    try:
+        conn = pymysql.connect(
+            host=settings.gf_student_mysql_host,
+            port=settings.gf_student_mysql_port,
+            user=settings.gf_student_mysql_user,
+            password=settings.gf_student_mysql_password,
+            charset="utf8mb4",
+            autocommit=True,
+            connect_timeout=5,
+        )
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(
+            f"无法连接学生 MySQL "
+            f"({settings.gf_student_mysql_user}@{settings.gf_student_mysql_host}:"
+            f"{settings.gf_student_mysql_port}): {e}"
+        ) from e
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS `{db_name}`")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"删除库 {db_name} 失败: {e}") from e
+    finally:
+        conn.close()

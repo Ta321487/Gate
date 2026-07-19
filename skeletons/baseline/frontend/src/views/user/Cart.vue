@@ -61,10 +61,16 @@ async function remove(row) {
 }
 
 async function place() {
-  await ElMessageBox.confirm('确认提交当前购物车为订单？', '下单')
+  const { value } = await ElMessageBox.prompt('可填写收货备注 / 口味说明（可留空）', '提交订单', {
+    confirmButtonText: '提交',
+    cancelButtonText: '取消',
+    inputPlaceholder: '选填',
+    inputValue: '',
+  }).catch(() => ({ value: null }))
+  if (value === null) return
   placing.value = true
   try {
-    await http.post('/api/orders', { remark: '' })
+    await http.post('/api/orders', { remark: String(value || '').trim() })
     ElMessage.success('下单成功')
     router.push('/orders')
   } finally {

@@ -136,6 +136,9 @@ def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
             "register_hint": "注册后可在线请假",
             "notice_title": "请假须知",
             "notice_body": "请提前申请并等待审批；紧急情况请先口头报备再补单。",
+            "require_remark": True,
+            "remark_label": "请假事由",
+            "pick_date_range": True,
         }
     if any(k in t for k in ("考勤", "打卡", "出勤")):
         return {
@@ -526,6 +529,9 @@ def build_generic_shell_schema(
             records_label=fc["records_label"],
             with_deadline=False,
             stock_display="count",
+            require_remark=bool(fc.get("require_remark")),
+            remark_label=str(fc.get("remark_label") or "说明"),
+            pick_date_range=bool(fc.get("pick_date_range")),
         )
     elif need_reserve:
         schema = _slot_shell_schema(

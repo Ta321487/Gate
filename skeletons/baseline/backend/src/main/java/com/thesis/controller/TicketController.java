@@ -38,7 +38,22 @@ public class TicketController {
             String remark = str(body.get("remark"));
             if (remark.isBlank()) remark = str(body.get("content"));
             String attachUrl = str(body.get("attachUrl"));
-            return R.ok(TicketStore.apply(uid, itemId, remark, attachUrl));
+            Integer qty = toIntOrNull(body.get("qty"));
+            String dueAt = str(body.get("dueAt"));
+            if (dueAt.isBlank()) dueAt = str(body.get("borrowUntil"));
+            String periodStart = str(body.get("periodStart"));
+            if (periodStart.isBlank()) periodStart = str(body.get("startAt"));
+            String periodEnd = str(body.get("periodEnd"));
+            if (periodEnd.isBlank()) periodEnd = str(body.get("endAt"));
+            return R.ok(TicketStore.apply(
+                    uid,
+                    itemId,
+                    remark,
+                    attachUrl,
+                    qty,
+                    dueAt.isBlank() ? null : dueAt,
+                    periodStart.isBlank() ? null : periodStart,
+                    periodEnd.isBlank() ? null : periodEnd));
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "缺少业务对象 id");
         } catch (IllegalArgumentException e) {
@@ -203,6 +218,16 @@ public class TicketController {
         if (o instanceof Number n) return n.longValue();
         try {
             return Long.parseLong(String.valueOf(o).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Integer toIntOrNull(Object o) {
+        if (o == null || "".equals(o)) return null;
+        if (o instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(o).trim());
         } catch (NumberFormatException e) {
             return null;
         }
