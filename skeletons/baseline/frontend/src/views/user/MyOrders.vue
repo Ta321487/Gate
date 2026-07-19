@@ -14,6 +14,17 @@
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}</p>
+      <p v-if="row.deliveryType || row.addressLine || row.tasteNote || row.trackingNo || row.pickupCode" class="ship">
+        <template v-if="row.deliveryType">{{ row.deliveryType }} · </template>
+        <template v-if="row.receiverName || row.receiverPhone">
+          {{ row.receiverName }} {{ row.receiverPhone }}
+        </template>
+        <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
+        <template v-if="row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
+        <template v-if="row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
+        <template v-if="row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
+        <template v-if="row.remark"><br />备注：{{ row.remark }}</template>
+      </p>
       <ul class="lines">
         <li v-for="ln in row.lines || []" :key="ln.id">{{ ln.title }} × {{ ln.qty }}（¥{{ ln.lineYuan }}）</li>
       </ul>
@@ -82,6 +93,7 @@ onMounted(load)
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .sub { margin: 6px 0; color: #64748b; font-size: 12px; }
+.ship { margin: 0 0 8px; color: #475569; font-size: 12px; line-height: 1.5; }
 .lines { margin: 0; padding-left: 18px; color: #334155; font-size: 13px; }
 .acts { margin-top: 10px; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }

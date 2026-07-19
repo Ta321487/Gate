@@ -162,7 +162,7 @@ import {
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
-  'officeOrDorm', 'campusAddress', 'allergyNote', 'defaultRemark',
+  'officeOrDorm', 'campusAddress', 'receiveAddress', 'deliveryAddress', 'allergyNote', 'defaultRemark',
   'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc', 'workUnit', 'orgName', 'orgOrClub',
 ])
 const router = useRouter()

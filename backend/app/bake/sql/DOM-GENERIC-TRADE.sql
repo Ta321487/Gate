@@ -42,12 +42,33 @@ CREATE TABLE IF NOT EXISTS cart_line (
   UNIQUE KEY uk_cart (username, item_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_address (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  contact_name VARCHAR(64) NOT NULL,
+  phone VARCHAR(32) NOT NULL,
+  address_line VARCHAR(255) NOT NULL,
+  tag VARCHAR(32) DEFAULT '默认',
+  is_default TINYINT DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_addr_user (username)
+);
+
 CREATE TABLE IF NOT EXISTS biz_order (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
+  receiver_name VARCHAR(64) DEFAULT '',
+  receiver_phone VARCHAR(32) DEFAULT '',
+  address_line VARCHAR(255) DEFAULT '',
+  delivery_type VARCHAR(32) DEFAULT '',
+  taste_note VARCHAR(255) DEFAULT '',
+  tracking_no VARCHAR(64) DEFAULT '',
+  pickup_code VARCHAR(32) DEFAULT '',
+  shipped_at DATETIME NULL,
+  reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -97,6 +118,9 @@ INSERT IGNORE INTO biz_item (id, title, author, isbn, category_id, stock, status
 (2, '示例商品乙', '59.00', 'SKU-002', 2, 15, 'available'),
 (3, '示例商品丙', '12.50', 'SKU-003', 3, 40, 'available');
 
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王小明', '13800000002', '示例路 100 号 8 栋 501', '家', 1);
+
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '交易须知', '演示环境支持购物车与多明细订单，无真支付。', 'admin', '系统管理员'
+SELECT '交易须知', '演示环境支持购物车、收货地址与多明细订单，无真支付。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='交易须知');

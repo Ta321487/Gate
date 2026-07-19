@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS activity (
   start_at DATETIME NULL,
   end_at DATETIME NULL,
   apply_deadline_at DATETIME NULL,
+  service_hours DECIMAL(4,1) DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

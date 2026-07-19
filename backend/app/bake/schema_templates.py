@@ -46,6 +46,9 @@ def _library_schema(title: str) -> dict[str, Any]:
                 "fields": [
                     {"key": "title", "label": "书名", "type": "string"},
                     {"key": "author", "label": "作者", "type": "string"},
+                    {"key": "isbn", "label": "ISBN", "type": "string"},
+                    {"key": "publisher", "label": "出版社", "type": "string"},
+                    {"key": "callNo", "label": "索书号", "type": "string"},
                     {"key": "category", "label": "分类", "type": "select"},
                     {"key": "stock", "label": "库存", "type": "number"},
                 ],
@@ -298,6 +301,8 @@ def _equip_schema(title: str) -> dict[str, Any]:
                 {"key": "isbn", "label": "资产编号", "type": "string"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可借数量", "type": "number"},
+                {"key": "requiresTraining", "label": "需培训(1是0否)", "type": "number"},
+                {"key": "ownerName", "label": "责任人", "type": "string"},
             ],
             ticket_key="loan",
             ticket_label="借用单",
@@ -423,6 +428,7 @@ def _crm_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "客户名称", "type": "string"},
                 {"key": "author", "label": "联系人", "type": "string"},
                 {"key": "isbn", "label": "电话/备注", "type": "string"},
+                {"key": "stage", "label": "销售阶段", "type": "string"},
                 {"key": "category", "label": "客户分级", "type": "select"},
                 {"key": "stock", "label": "可跟进", "type": "number"},
             ],
@@ -486,6 +492,7 @@ def _media_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "片名", "type": "string"},
                 {"key": "author", "label": "导演/主演", "type": "string"},
                 {"key": "isbn", "label": "播放链接", "type": "url"},
+                {"key": "durationSec", "label": "时长(秒)", "type": "number"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可点播", "type": "number"},
             ],
@@ -549,6 +556,7 @@ def _music_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "歌名", "type": "string"},
                 {"key": "author", "label": "歌手/专辑", "type": "string"},
                 {"key": "isbn", "label": "播放链接", "type": "url"},
+                {"key": "durationSec", "label": "时长(秒)", "type": "number"},
                 {"key": "category", "label": "曲风", "type": "select"},
                 {"key": "stock", "label": "可播放", "type": "number"},
             ],
@@ -676,6 +684,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "作者", "type": "string"},
+                {"key": "summary", "label": "摘要", "type": "string"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可阅读", "type": "number"},
@@ -746,6 +755,7 @@ def _activity_schema(title: str) -> dict[str, Any]:
                 {"key": "startAt", "label": "开始时间", "type": "datetime"},
                 {"key": "endAt", "label": "结束时间", "type": "datetime"},
                 {"key": "applyDeadlineAt", "label": "报名截止", "type": "datetime"},
+                {"key": "serviceHours", "label": "志愿时长(小时)", "type": "number"},
             ],
             ticket_key="signup",
             ticket_label="报名单",
@@ -807,6 +817,8 @@ def _lost_schema(title: str) -> dict[str, Any]:
             {"key": "title", "label": "物品名称", "type": "string"},
             {"key": "author", "label": "拾获/登记人", "type": "string"},
             {"key": "isbn", "label": "地点/特征", "type": "string"},
+            {"key": "itemKind", "label": "类型(招领/寻物)", "type": "string"},
+            {"key": "foundAt", "label": "拾获时间", "type": "datetime"},
             {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可认领", "type": "number"},
         ],
@@ -872,6 +884,7 @@ def _course_schema(title: str) -> dict[str, Any]:
                 {"key": "startAt", "label": "上课开始", "type": "datetime"},
                 {"key": "endAt", "label": "上课结束", "type": "datetime"},
                 {"key": "applyDeadlineAt", "label": "选课截止", "type": "datetime"},
+                {"key": "credit", "label": "学分", "type": "number"},
             ],
             ticket_key="enrollment",
             ticket_label="选课单",
@@ -1050,6 +1063,7 @@ def _dorm_schema(title: str) -> dict[str, Any]:
         notice_page_lead="报修须知、宿舍安排与临时通知，点击条目阅读全文。",
         two_level_approve=True,
         require_attach=True,
+        allow_rating=True,
     )
 
 
@@ -1089,6 +1103,7 @@ def _property_schema(title: str) -> dict[str, Any]:
         notice_page_lead="报修须知、社区安排与临时通知，点击条目阅读全文。",
         two_level_approve=True,
         require_attach=True,
+        allow_rating=True,
     )
 
 
@@ -1131,6 +1146,7 @@ def _it_schema(title: str) -> dict[str, Any]:
         records_label="报修记录",
         two_level_approve=True,
         require_attach=True,
+        allow_rating=True,
     )
 
 
@@ -1379,6 +1395,14 @@ def _slot_shell_schema(
 
 
 def _shop_schema(title: str) -> dict[str, Any]:
+    t = title or ""
+    campus = any(k in t for k in ("校园", "校内", "二手", "学校"))
+    brow = "校园商城" if campus else "在线商城"
+    lead = (
+        "验证码登录；浏览商品、加入购物车并提交订单（演示无真支付）。"
+        if not campus
+        else "验证码登录；浏览校园商品、加入购物车并提交订单（演示无真支付）。"
+    )
     return _order_shell_schema(
         title,
         domain="DOM-SHOP",
@@ -1389,10 +1413,12 @@ def _shop_schema(title: str) -> dict[str, Any]:
         archive_key="product",
         archive_label="商品",
         archive_plural="商品",
-        archive_fields=[
+            archive_fields=[
             {"key": "title", "label": "商品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number"},
             {"key": "isbn", "label": "货号", "type": "string"},
+            {"key": "conditionGrade", "label": "成色", "type": "string"},
+            {"key": "sellerNote", "label": "卖家备注", "type": "string"},
             {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "库存", "type": "number"},
         ],
@@ -1402,31 +1428,41 @@ def _shop_schema(title: str) -> dict[str, Any]:
         cart_label="购物车",
         my_orders_label="我的订单",
         orders_admin_label="订单管理",
-        auth_eyebrow="校园商城",
-        auth_lead="验证码登录；浏览商品、加入购物车并提交多明细订单（演示无真支付）。",
+        auth_eyebrow=brow,
+        auth_lead=lead,
         auth_points=["验证码登录", "商品浏览", "购物车与订单"],
         register_hint="注册后可购物下单",
         notice_title="商城须知",
-        notice_body="演示环境无真支付；下单后由管理员确认发货。",
+        notice_body="演示环境无真支付；下单后由管理员确认发货/自提。",
         notice_page_title="商城公告",
     )
 
 
 def _food_schema(title: str) -> dict[str, Any]:
+    t = title or ""
+    canteen = any(k in t for k in ("食堂", "校园", "档口", "学子"))
+    if canteen:
+        admin, sub, brow, win, notice = "食堂主管（总管）", "档口管理员", "食堂点餐", "窗口", "食堂公告"
+        body = "下单后到对应窗口取餐或按约定配送；演示无真支付。"
+    else:
+        admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "档口/门店", "门店公告"
+        body = "支持堂食、自取或外卖配送演示；无真支付。"
     return _order_shell_schema(
         title,
         domain="DOM-FOOD",
         user_role_id="user",
         user_label="用餐者",
-        admin_label="食堂主管（总管）",
-        subadmin_label="档口管理员",
+        admin_label=admin,
+        subadmin_label=sub,
         archive_key="dish",
         archive_label="菜品",
         archive_plural="菜品",
         archive_fields=[
             {"key": "title", "label": "菜品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number"},
-            {"key": "isbn", "label": "窗口", "type": "string"},
+            {"key": "isbn", "label": win, "type": "string"},
+            {"key": "spicyLevel", "label": "辣度", "type": "string"},
+            {"key": "isVegetarian", "label": "素食(1是0否)", "type": "number"},
             {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可售份数", "type": "number"},
         ],
@@ -1435,19 +1471,19 @@ def _food_schema(title: str) -> dict[str, Any]:
         users_menu="用户管理",
         cart_label="已选菜品",
         my_orders_label="我的订单",
-        orders_admin_label="取餐订单",
-        auth_eyebrow="食堂点餐",
-        auth_lead="验证码登录；选菜加入清单并下单取餐（演示无真支付）。",
-        auth_points=["验证码登录", "菜品浏览", "下单取餐"],
+        orders_admin_label="订单管理",
+        auth_eyebrow=brow,
+        auth_lead="验证码登录；选菜加入清单并下单（演示无真支付）。",
+        auth_points=["验证码登录", "菜品浏览", "下单"],
         register_hint="注册后可点餐",
         notice_title="点餐须知",
-        notice_body="下单后到对应窗口取餐；演示无真支付。",
-        notice_page_title="食堂公告",
+        notice_body=body,
+        notice_page_title=notice,
         order_states={
             "pending": "待出餐",
             "confirmed": "制作中",
-            "shipped": "待取餐",
-            "completed": "已取餐",
+            "shipped": "配送中/待取",
+            "completed": "已完成",
             "cancelled": "已取消",
         },
     )
@@ -1481,7 +1517,8 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         archive_fields=[
             {"key": "title", "label": noun, "type": "string"},
             {"key": "author", "label": "费用", "type": "number"},
-            {"key": "isbn", "label": "位置/容量", "type": "string"},
+            {"key": "isbn", "label": "位置", "type": "string"},
+            {"key": "seatCapacity", "label": "容纳人数", "type": "number"},
             {"key": "category", "label": "类型", "type": "select"},
         ],
         archive_menu_admin=f"{noun}管理",
@@ -1550,6 +1587,7 @@ def _parking_schema(title: str) -> dict[str, Any]:
             {"key": "title", "label": "车位号", "type": "string"},
             {"key": "author", "label": "费用(元)", "type": "number"},
             {"key": "isbn", "label": "位置", "type": "string"},
+            {"key": "feeRule", "label": "计费规则", "type": "string"},
             {"key": "category", "label": "分区", "type": "select"},
         ],
         archive_menu_admin="车位管理",
@@ -1584,6 +1622,7 @@ def _salon_schema(title: str) -> dict[str, Any]:
             {"key": "title", "label": "服务项目", "type": "string"},
             {"key": "author", "label": "价格(元)", "type": "number"},
             {"key": "isbn", "label": "时长说明", "type": "string"},
+            {"key": "stylistName", "label": "默认技师", "type": "string"},
             {"key": "category", "label": "分类", "type": "select"},
         ],
         archive_menu_admin="服务管理",

@@ -36,7 +36,7 @@ public class SlotController {
         long slotId = Long.parseLong(String.valueOf(body.get("slotId")));
         String remark = String.valueOf(body.getOrDefault("remark", ""));
         try {
-            return R.ok(SlotStore.reserve(uid, slotId, remark));
+            return R.ok(SlotStore.reserve(uid, slotId, remark, body));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

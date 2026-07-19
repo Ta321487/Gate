@@ -10,7 +10,24 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="80" />
       <el-table-column prop="username" :label="userLabel" width="120" />
-      <el-table-column prop="totalYuan" label="金额" width="100" />
+      <el-table-column prop="totalYuan" label="金额" width="90" />
+      <el-table-column label="收货/口味" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row.deliveryType">{{ row.deliveryType }} · </span>
+          <span v-if="row.addressLine || row.receiverName">
+            {{ row.receiverName }} {{ row.receiverPhone }} {{ row.addressLine }}
+          </span>
+          <span v-if="row.tasteNote"> / 口味:{{ row.tasteNote }}</span>
+          <span v-if="!row.addressLine && !row.tasteNote && !row.deliveryType">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="物流/取餐" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row.trackingNo">单号:{{ row.trackingNo }}</span>
+          <span v-if="row.pickupCode">{{ row.trackingNo ? ' / ' : '' }}取餐码:{{ row.pickupCode }}</span>
+          <span v-if="!row.trackingNo && !row.pickupCode">—</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="110">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
@@ -59,7 +76,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { getDomain, getSchema } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
@@ -86,7 +103,18 @@ async function load() {
 }
 
 async function act(row, action) {
-  await http.post(`/api/orders/${row.id}/${action}`)
+  let body = {}
+  if (action === 'ship') {
+    const isFood = getDomain() === 'DOM-FOOD'
+    const { value } = await ElMessageBox.prompt(
+      isFood ? '可填取餐码（留空自动生成）' : '请填写物流单号（可留空）',
+      isFood ? '出餐' : '发货',
+      { inputPlaceholder: isFood ? '取餐码' : '物流单号', inputValue: '' },
+    ).catch(() => ({ value: null }))
+    if (value === null) return
+    body = isFood ? { pickupCode: String(value || '').trim() } : { trackingNo: String(value || '').trim() }
+  }
+  await http.post(`/api/orders/${row.id}/${action}`, body)
   ElMessage.success('已更新')
   load()
 }
@@ -100,11 +128,14 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', userLabel.value, '金额', '状态', '明细', '下单时间']
+  const headers = ['编号', userLabel.value, '金额', '履约', '收货', '口味', '状态', '明细', '下单时间']
   const data = rows.map((row) => [
     row.id,
     row.username,
     row.totalYuan,
+    row.deliveryType || '',
+    [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),
+    row.tasteNote || '',
     states.value[row.status] || row.status,
     (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
     row.createdAt,

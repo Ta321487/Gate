@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS reservation (
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'confirmed',
   remark VARCHAR(255) DEFAULT '',
+  plate_no VARCHAR(16) DEFAULT '',
+  patient_name VARCHAR(32) DEFAULT '',
+  visit_type VARCHAR(16) DEFAULT '',
+  symptom_note VARCHAR(255) DEFAULT '',
+  subject VARCHAR(128) DEFAULT '',
+  party_size INT DEFAULT 0,
+  guest_name VARCHAR(32) DEFAULT '',
+  guest_count INT DEFAULT 0,
+  preferred_stylist VARCHAR(32) DEFAULT '',
+  queue_no INT DEFAULT 0,
+  entry_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -59,12 +70,33 @@ CREATE TABLE IF NOT EXISTS cart_line (
   UNIQUE KEY uk_cart (username, item_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_address (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  contact_name VARCHAR(64) NOT NULL,
+  phone VARCHAR(32) NOT NULL,
+  address_line VARCHAR(255) NOT NULL,
+  tag VARCHAR(32) DEFAULT '默认',
+  is_default TINYINT DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_addr_user (username)
+);
+
 CREATE TABLE IF NOT EXISTS biz_order (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
+  receiver_name VARCHAR(64) DEFAULT '',
+  receiver_phone VARCHAR(32) DEFAULT '',
+  address_line VARCHAR(255) DEFAULT '',
+  delivery_type VARCHAR(32) DEFAULT '',
+  taste_note VARCHAR(255) DEFAULT '',
+  tracking_no VARCHAR(64) DEFAULT '',
+  pickup_code VARCHAR(32) DEFAULT '',
+  shipped_at DATETIME NULL,
+  reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

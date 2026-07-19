@@ -14,7 +14,17 @@
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.startAt }} ~ {{ row.endAt }}</p>
-      <p v-if="row.remark" class="sub">备注：{{ row.remark }}</p>
+      <p v-if="row.plateNo" class="sub">车牌：{{ row.plateNo }}</p>
+      <p v-if="row.patientName" class="sub">
+        就诊人：{{ row.patientName }}
+        <template v-if="row.visitType"> · {{ row.visitType }}</template>
+      </p>
+      <p v-if="row.symptomNote" class="sub">症状：{{ row.symptomNote }}</p>
+      <p v-if="row.subject" class="sub">主题：{{ row.subject }}<template v-if="row.partySize"> · {{ row.partySize }} 人</template></p>
+      <p v-if="row.guestName" class="sub">入住人：{{ row.guestName }}<template v-if="row.guestCount"> · {{ row.guestCount }} 人</template></p>
+      <p v-if="row.preferredStylist" class="sub">偏好技师：{{ row.preferredStylist }}</p>
+      <p v-if="row.queueNo" class="sub">排队号：{{ row.queueNo }}</p>
+      <p v-if="row.remark && !row.plateNo && !row.patientName && !row.subject && !row.guestName" class="sub">备注：{{ row.remark }}</p>
       <p class="sub">申请于 {{ row.createdAt }}</p>
       <div class="acts">
         <el-button

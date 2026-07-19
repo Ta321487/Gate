@@ -18,6 +18,9 @@
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" :label="`${resvNoun}时间`" width="170" />
+      <el-table-column label="详情" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ resvDetail(row) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button
@@ -94,6 +97,18 @@ const gen = reactive({
   slotMinutes: 60,
   capacity: 1,
 })
+
+function resvDetail(row) {
+  const parts = []
+  if (row.plateNo) parts.push(`车牌 ${row.plateNo}`)
+  if (row.patientName) parts.push(`就诊人 ${row.patientName}${row.visitType ? '/' + row.visitType : ''}`)
+  if (row.subject) parts.push(`主题 ${row.subject}${row.partySize ? ' ·' + row.partySize + '人' : ''}`)
+  if (row.guestName) parts.push(`入住人 ${row.guestName}`)
+  if (row.preferredStylist) parts.push(`技师 ${row.preferredStylist}`)
+  if (row.queueNo) parts.push(`排队号 ${row.queueNo}`)
+  if (!parts.length && row.remark) parts.push(row.remark)
+  return parts.join(' · ') || '—'
+}
 
 async function load() {
   const res = await http.get('/api/slots/reservations', {

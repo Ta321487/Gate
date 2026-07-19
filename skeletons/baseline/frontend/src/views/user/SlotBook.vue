@@ -25,19 +25,53 @@
     </div>
     <div v-if="!list.length" class="empty">该日暂无时段，换一天试试或联系管理员生成。</div>
 
-    <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="420px" destroy-on-close>
+    <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
-      <el-form v-if="requireRemark" label-position="top">
-        <el-form-item :label="remarkLabel" required>
-          <el-input
-            v-model="remark"
-            maxlength="64"
-            :placeholder="`请填写${remarkLabel}`"
-            @keyup.enter="submitReserve"
-          />
+      <el-form label-position="top">
+        <el-form-item v-if="domain === 'DOM-PARKING'" label="车牌号" required>
+          <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />
+        </el-form-item>
+        <template v-if="domain === 'DOM-HOSPITAL'">
+          <el-form-item label="就诊人" required>
+            <el-input v-model="extra.patientName" maxlength="32" />
+          </el-form-item>
+          <el-form-item label="初诊/复诊">
+            <el-select v-model="extra.visitType" style="width:100%">
+              <el-option label="初诊" value="初诊" />
+              <el-option label="复诊" value="复诊" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="症状简述">
+            <el-input v-model="extra.symptomNote" maxlength="200" />
+          </el-form-item>
+        </template>
+        <template v-if="domain === 'DOM-MEETING'">
+          <el-form-item :label="remarkLabel" required>
+            <el-input v-model="remark" maxlength="64" :placeholder="`请填写${remarkLabel}`" />
+          </el-form-item>
+          <el-form-item label="人数">
+            <el-input-number v-model="extra.partySize" :min="1" :max="200" />
+          </el-form-item>
+        </template>
+        <template v-if="domain === 'DOM-HOTEL'">
+          <el-form-item label="入住人" required>
+            <el-input v-model="extra.guestName" maxlength="32" />
+          </el-form-item>
+          <el-form-item label="入住人数">
+            <el-input-number v-model="extra.guestCount" :min="1" :max="20" />
+          </el-form-item>
+        </template>
+        <el-form-item v-if="domain === 'DOM-SALON'" label="偏好技师">
+          <el-input v-model="extra.preferredStylist" maxlength="32" placeholder="选填" />
+        </el-form-item>
+        <el-form-item
+          v-if="requireRemark && !['DOM-MEETING', 'DOM-PARKING', 'DOM-HOSPITAL', 'DOM-HOTEL'].includes(domain)"
+          :label="remarkLabel"
+          required
+        >
+          <el-input v-model="remark" maxlength="64" :placeholder="`请填写${remarkLabel}`" />
         </el-form-item>
       </el-form>
-      <p v-else class="tip muted">确认后占坑，可在「{{ myResvLabel }}」取消。</p>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" :loading="loading" @click="submitReserve">确认{{ resvNoun }}</el-button>
@@ -47,28 +81,41 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { menuLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { getDomain, reservationCopy } from '../../utils/domainSchema.js'
 
 const route = useRoute()
 const router = useRouter()
+const domain = computed(() => getDomain())
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
 const resvVerb = computed(() => resv.verbs?.apply || '预约')
-const myResvLabel = computed(() => menuLabel('user', 'my_reservations', `我的${resvNoun.value}`))
 const requireRemark = computed(() => !!resv.requireRemark)
 const remarkLabel = computed(() => resv.remarkLabel || '备注')
+const structured = computed(() =>
+  ['DOM-PARKING', 'DOM-HOSPITAL', 'DOM-MEETING', 'DOM-HOTEL', 'DOM-SALON'].includes(domain.value)
+    || requireRemark.value)
 const day = ref('2026-09-20')
 const list = ref([])
 const visible = ref(false)
 const pending = ref(null)
 const remark = ref('')
 const loading = ref(false)
+const extra = reactive({
+  plateNo: '',
+  patientName: '',
+  visitType: '初诊',
+  symptomNote: '',
+  partySize: 1,
+  guestName: '',
+  guestCount: 1,
+  preferredStylist: '',
+})
 
 async function load() {
   if (!itemId.value) return
@@ -79,22 +126,56 @@ async function load() {
 }
 
 async function openReserve(s) {
-  if (requireRemark.value) {
-    pending.value = s
-    remark.value = ''
-    visible.value = true
+  if (!structured.value) {
+    await ElMessageBox.confirm(`确认${resvVerb.value} ${s.startAt} ~ ${s.endAt}？`, resvNoun.value)
+    await http.post('/api/slots/reserve', { slotId: s.id })
+    ElMessage.success(`${resvNoun.value}成功`)
+    router.push('/reservations')
     return
   }
-  await ElMessageBox.confirm(`确认${resvVerb.value} ${s.startAt} ~ ${s.endAt}？`, resvNoun.value)
-  await http.post('/api/slots/reserve', { slotId: s.id })
-  ElMessage.success(`${resvNoun.value}成功`)
-  router.push('/reservations')
+  pending.value = s
+  remark.value = ''
+  Object.assign(extra, {
+    plateNo: '', patientName: '', visitType: '初诊', symptomNote: '',
+    partySize: 1, guestName: '', guestCount: 1, preferredStylist: '',
+  })
+  try {
+    const me = await http.get('/api/profile')
+    const extras = me.data?.extras || {}
+    if (extras.plateNo) extra.plateNo = extras.plateNo
+    if (extras.guestName) extra.guestName = extras.guestName
+    if (extras.realName) {
+      if (!extra.patientName) extra.patientName = extras.realName
+      if (!extra.guestName) extra.guestName = extras.realName
+    }
+  } catch { /* ignore */ }
+  visible.value = true
 }
 
 async function submitReserve() {
   if (!pending.value) return
   const note = (remark.value || '').trim()
-  if (requireRemark.value && !note) {
+  if (domain.value === 'DOM-PARKING' && !extra.plateNo.trim()) {
+    ElMessage.warning('请填写车牌号')
+    return
+  }
+  if (domain.value === 'DOM-HOSPITAL' && !extra.patientName.trim()) {
+    ElMessage.warning('请填写就诊人')
+    return
+  }
+  if (domain.value === 'DOM-HOTEL' && !extra.guestName.trim()) {
+    ElMessage.warning('请填写入住人')
+    return
+  }
+  if (domain.value === 'DOM-MEETING' && !note) {
+    ElMessage.warning(`请填写${remarkLabel.value}`)
+    return
+  }
+  if (
+    requireRemark.value
+    && !['DOM-MEETING', 'DOM-PARKING', 'DOM-HOSPITAL', 'DOM-HOTEL'].includes(domain.value)
+    && !note
+  ) {
     ElMessage.warning(`请填写${remarkLabel.value}`)
     return
   }
@@ -103,6 +184,15 @@ async function submitReserve() {
     await http.post('/api/slots/reserve', {
       slotId: pending.value.id,
       remark: note || undefined,
+      plateNo: extra.plateNo || undefined,
+      patientName: extra.patientName || undefined,
+      visitType: extra.visitType || undefined,
+      symptomNote: extra.symptomNote || undefined,
+      subject: domain.value === 'DOM-MEETING' ? note : undefined,
+      partySize: extra.partySize || undefined,
+      guestName: extra.guestName || undefined,
+      guestCount: extra.guestCount || undefined,
+      preferredStylist: extra.preferredStylist || undefined,
     })
     ElMessage.success(`${resvNoun.value}成功`)
     visible.value = false
@@ -138,5 +228,4 @@ onMounted(load)
 .e, .r { margin-top: 4px; font-size: 12px; color: #64748b; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }
 .tip { margin: 0 0 8px; font-size: 13px; }
-.tip.muted { color: #94a3b8; }
 </style>

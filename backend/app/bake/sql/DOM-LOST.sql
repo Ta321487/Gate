@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS lost_item (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  item_kind VARCHAR(16) DEFAULT '招领',
+  found_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -47,9 +49,12 @@ CREATE TABLE IF NOT EXISTS claim (
   due_at DATETIME NULL,
   return_at DATETIME NULL,
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  fine_status VARCHAR(16) DEFAULT 'none',
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(255)
+  remark VARCHAR(255),
+  pickup_at DATETIME NULL,
+  pickup_place VARCHAR(128) DEFAULT ''
 );
 
 

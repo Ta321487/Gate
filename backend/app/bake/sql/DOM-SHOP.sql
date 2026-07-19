@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS product (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  condition_grade VARCHAR(16) DEFAULT '全新',
+  seller_note VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,12 +43,34 @@ CREATE TABLE IF NOT EXISTS cart_line (
   UNIQUE KEY uk_cart (username, item_id)
 );
 
+-- 收货地址簿（可多条；下单时快照到订单）
+CREATE TABLE IF NOT EXISTS user_address (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  contact_name VARCHAR(64) NOT NULL,
+  phone VARCHAR(32) NOT NULL,
+  address_line VARCHAR(255) NOT NULL,
+  tag VARCHAR(32) DEFAULT '默认',
+  is_default TINYINT DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_addr_user (username)
+);
+
 CREATE TABLE IF NOT EXISTS biz_order (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
+  receiver_name VARCHAR(64) DEFAULT '',
+  receiver_phone VARCHAR(32) DEFAULT '',
+  address_line VARCHAR(255) DEFAULT '',
+  delivery_type VARCHAR(32) DEFAULT '',
+  taste_note VARCHAR(255) DEFAULT '',
+  tracking_no VARCHAR(64) DEFAULT '',
+  pickup_code VARCHAR(32) DEFAULT '',
+  shipped_at DATETIME NULL,
+  reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -94,6 +118,11 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status)
 (2, '桌面台灯', '59.90', 'LAMP-02', 2, 35, 'available'),
 (3, '校徽帆布袋', '29.00', 'BAG-03', 3, 50, 'available'),
 (4, '无线鼠标', '89.00', 'MS-04', 1, 15, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王同学', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王同学', '13800000002', '科技园 A 座前台', '公司', 0);
+
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购校园好物；演示下单无真支付。', 'admin', '系统管理员'
+SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');

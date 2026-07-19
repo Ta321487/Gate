@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS repair (
   type_id BIGINT NULL,
   room_id BIGINT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  priority VARCHAR(16) DEFAULT '普通',
+  contact_phone VARCHAR(20) DEFAULT '',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,

@@ -244,10 +244,66 @@ public final class ArchiveStore {
             if (code.length() > 16) code = code.substring(0, 16);
             db().update("UPDATE " + ITEM + " SET checkin_code=? WHERE id=?", code, id);
         }
+        patchOptStr(id, patch, "publisher", "publisher", 100);
+        patchOptStr(id, patch, "callNo", "call_no", 64);
+        patchOptStr(id, patch, "conditionGrade", "condition_grade", 16);
+        patchOptStr(id, patch, "sellerNote", "seller_note", 255);
+        patchOptStr(id, patch, "spicyLevel", "spicy_level", 16);
+        patchOptInt(id, patch, "isVegetarian", "is_vegetarian");
+        patchOptInt(id, patch, "requiresTraining", "requires_training");
+        patchOptStr(id, patch, "ownerName", "owner_name", 64);
+        patchOptStr(id, patch, "stage", "stage", 32);
+        patchOptNum(id, patch, "credit", "credit");
+        patchOptNum(id, patch, "serviceHours", "service_hours");
+        patchOptInt(id, patch, "seatCapacity", "seat_capacity");
+        patchOptStr(id, patch, "feeRule", "fee_rule", 64);
+        patchOptStr(id, patch, "stylistName", "stylist_name", 32);
+        patchOptInt(id, patch, "durationSec", "duration_sec");
+        patchOptInt(id, patch, "releaseYear", "release_year");
+        patchOptStr(id, patch, "region", "region", 64);
+        patchOptStr(id, patch, "summary", "summary", 512);
+        patchOptStr(id, patch, "itemKind", "item_kind", 16);
+        if (patch.containsKey("foundAt")) {
+            Timestamp ts = parseTs(patch.get("foundAt"));
+            try {
+                db().update("UPDATE " + ITEM + " SET found_at=? WHERE id=?", ts, id);
+            } catch (Exception ignored) {
+            }
+        }
         if (patch.containsKey("tagIds") && tagsEnabled()) {
             syncItemTags(id, patch.get("tagIds"));
         }
         return getItemAdmin(id);
+    }
+
+    private static void patchOptStr(long id, Map<String, Object> patch, String key, String col, int max) {
+        if (!patch.containsKey(key)) return;
+        String v = str(patch.get(key)).trim();
+        if (max > 0 && v.length() > max) v = v.substring(0, max);
+        try {
+            db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", v, id);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchOptInt(long id, Map<String, Object> patch, String key, String col) {
+        if (!patch.containsKey(key)) return;
+        try {
+            db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", toInt(patch.get(key)), id);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchOptNum(long id, Map<String, Object> patch, String key, String col) {
+        if (!patch.containsKey(key)) return;
+        try {
+            double v = 0;
+            Object raw = patch.get(key);
+            if (raw instanceof Number n) v = n.doubleValue();
+            else if (raw != null && !String.valueOf(raw).isBlank()) v = Double.parseDouble(String.valueOf(raw).trim());
+            db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", v, id);
+        } catch (Exception ignored) {
+        }
     }
 
     public static boolean deleteItem(long id) {
@@ -372,7 +428,58 @@ public final class ArchiveStore {
                 m.put("checkinCode", "");
             }
         }
+        putOptStr(m, rs, "publisher", "publisher");
+        putOptStr(m, rs, "call_no", "callNo");
+        putOptStr(m, rs, "condition_grade", "conditionGrade");
+        putOptStr(m, rs, "seller_note", "sellerNote");
+        putOptStr(m, rs, "spicy_level", "spicyLevel");
+        putOptInt(m, rs, "is_vegetarian", "isVegetarian");
+        putOptInt(m, rs, "requires_training", "requiresTraining");
+        putOptStr(m, rs, "owner_name", "ownerName");
+        putOptStr(m, rs, "stage", "stage");
+        putOptNum(m, rs, "credit", "credit");
+        putOptNum(m, rs, "service_hours", "serviceHours");
+        putOptInt(m, rs, "seat_capacity", "seatCapacity");
+        putOptStr(m, rs, "fee_rule", "feeRule");
+        putOptStr(m, rs, "stylist_name", "stylistName");
+        putOptInt(m, rs, "duration_sec", "durationSec");
+        putOptInt(m, rs, "release_year", "releaseYear");
+        putOptStr(m, rs, "region", "region");
+        putOptStr(m, rs, "summary", "summary");
+        putOptStr(m, rs, "item_kind", "itemKind");
+        try {
+            m.put("foundAt", fmt(rs.getTimestamp("found_at")));
+        } catch (Exception ignored) {
+        }
+        try {
+            m.put("publishedAt", fmt(rs.getTimestamp("published_at")));
+        } catch (Exception ignored) {
+        }
         return m;
+    }
+
+    private static void putOptStr(Map<String, Object> m, java.sql.ResultSet rs, String col, String key) {
+        try {
+            String v = rs.getString(col);
+            if (v != null) m.put(key, v);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void putOptInt(Map<String, Object> m, java.sql.ResultSet rs, String col, String key) {
+        try {
+            int v = rs.getInt(col);
+            if (!rs.wasNull()) m.put(key, v);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void putOptNum(Map<String, Object> m, java.sql.ResultSet rs, String col, String key) {
+        try {
+            double v = rs.getDouble(col);
+            if (!rs.wasNull()) m.put(key, v);
+        } catch (Exception ignored) {
+        }
     }
 
     private static boolean isSoftDeleted(Map<String, Object> m) {

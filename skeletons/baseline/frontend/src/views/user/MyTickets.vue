@@ -42,6 +42,7 @@
           </div>
           <div class="row">
             <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
+            <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
             <el-button
               v-if="row.status === 'approved' || row.status === 'overdue'"
               type="primary"
@@ -65,6 +66,15 @@
             >评分</el-button>
             <span v-else-if="row.rating" class="rated">已评 {{ row.rating }} 分</span>
           </div>
+          <p v-if="row.pickupAt" class="sub">已领取 {{ row.pickupPlace || '' }} · {{ row.pickupAt }}</p>
+          <p v-if="row.fineYuan > 0" class="sub">
+            罚款 ¥{{ row.fineYuan }}
+            <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已缴' : row.fineStatus }}</template>
+          </p>
+          <p v-if="row.contactChannel || row.nextFollowAt" class="sub">
+            <template v-if="row.contactChannel">渠道 {{ row.contactChannel }}</template>
+            <template v-if="row.nextFollowAt"> · 下次 {{ row.nextFollowAt }}</template>
+          </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
           </p>
@@ -148,6 +158,8 @@
         <el-button type="primary" :loading="checkinLoading" @click="submitCheckin">签到</el-button>
       </template>
     </el-dialog>
+
+    <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
   </div>
 </template>
 
@@ -157,6 +169,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
+import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
 import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
@@ -203,6 +216,8 @@ const checkinVisible = ref(false)
 const checkinLoading = ref(false)
 const checkinRow = ref(null)
 const checkinCode = ref('')
+const progressVisible = ref(false)
+const progressId = ref(null)
 
 function statusText(s) { return states.value[s] || s }
 function tagType(s) {
@@ -355,6 +370,11 @@ async function submitCheckin() {
   } finally {
     checkinLoading.value = false
   }
+}
+
+function openProgress(row) {
+  progressId.value = row.id
+  progressVisible.value = true
 }
 
 onMounted(async () => {
