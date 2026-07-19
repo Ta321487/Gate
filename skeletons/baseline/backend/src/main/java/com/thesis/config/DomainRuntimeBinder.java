@@ -59,13 +59,16 @@ public class DomainRuntimeBinder {
     @Value("${thesis.allow-multi-ticket:false}")
     private boolean allowMultiTicket;
 
+    @Value("${thesis.check-time-conflict:false}")
+    private boolean checkTimeConflict;
+
     @PostConstruct
     public void bind() {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
         if ("standalone".equalsIgnoreCase(ticketMode)) {
             TicketStore.bindStandalone(ticketTable);
         } else {
-            TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket);
+            TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
         }
         TicketStore.setUserRole(registerRole);
         PasswordHashes.bind(passwordHash);

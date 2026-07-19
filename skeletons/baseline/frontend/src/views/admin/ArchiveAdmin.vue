@@ -11,6 +11,8 @@
       <el-table-column prop="author" :label="fieldLabel('author', '型号')" width="140" />
       <el-table-column prop="categoryName" label="分类" width="100" />
       <el-table-column prop="stock" :label="fieldLabel('stock', '库存')" width="90" />
+      <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
+      <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
       <el-table-column label="操作" width="160">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
@@ -57,6 +59,32 @@
         <el-form-item :label="fieldLabel('stock', '库存')" required>
           <el-input-number v-model="form.stock" :min="0" />
         </el-form-item>
+        <template v-if="hasSchedule">
+          <el-form-item :label="fieldLabel('startAt', '开始时间')" required>
+            <el-date-picker
+              v-model="form.startAt"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item :label="fieldLabel('endAt', '结束时间')" required>
+            <el-date-picker
+              v-model="form.endAt"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="hasDeadline" :label="fieldLabel('applyDeadlineAt', '报名截止')">
+            <el-date-picker
+              v-model="form.applyDeadlineAt"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              style="width:100%"
+            />
+          </el-form-item>
+        </template>
         <el-form-item label="封面">
           <el-upload :show-file-list="false" accept="image/*" :http-request="onCover">
             <el-button size="small">上传</el-button>
@@ -87,6 +115,8 @@ const isbnRich = computed(() => {
   const f = fields.value.find((x) => x.key === 'isbn')
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
+const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' || x.type === 'datetime'))
+const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
 
 function fieldLabel(key, fallback) {
   const f = fields.value.find((x) => x.key === key)
@@ -101,7 +131,16 @@ const keyword = ref('')
 const categories = ref([])
 const visible = ref(false)
 const form = reactive({
-  id: null, title: '', author: '', isbn: '', categoryId: null, stock: 1, coverUrl: '',
+  id: null,
+  title: '',
+  author: '',
+  isbn: '',
+  categoryId: null,
+  stock: 1,
+  coverUrl: '',
+  startAt: '',
+  endAt: '',
+  applyDeadlineAt: '',
 })
 
 async function load() {
@@ -118,11 +157,31 @@ async function loadCats() {
 }
 
 function openEdit(row) {
-  if (row) Object.assign(form, row)
-  else {
+  if (row) {
     Object.assign(form, {
-      id: null, title: '', author: '', isbn: '',
-      categoryId: categories.value[0]?.id || null, stock: 1, coverUrl: '',
+      id: row.id,
+      title: row.title || '',
+      author: row.author || '',
+      isbn: row.isbn || '',
+      categoryId: row.categoryId,
+      stock: row.stock ?? 1,
+      coverUrl: row.coverUrl || '',
+      startAt: row.startAt || '',
+      endAt: row.endAt || '',
+      applyDeadlineAt: row.applyDeadlineAt || '',
+    })
+  } else {
+    Object.assign(form, {
+      id: null,
+      title: '',
+      author: '',
+      isbn: '',
+      categoryId: categories.value[0]?.id || null,
+      stock: 1,
+      coverUrl: '',
+      startAt: '',
+      endAt: '',
+      applyDeadlineAt: '',
     })
   }
   visible.value = true
@@ -131,6 +190,10 @@ function openEdit(row) {
 async function save() {
   if (!form.title?.trim()) {
     ElMessage.warning('请填写名称')
+    return
+  }
+  if (hasSchedule.value && (!form.startAt || !form.endAt)) {
+    ElMessage.warning('请填写开始与结束时间')
     return
   }
   const payload = { ...form }

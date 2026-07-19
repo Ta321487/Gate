@@ -32,6 +32,7 @@
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ row.author || '—' }} · {{ row.categoryName || '未分类' }}</p>
+          <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <div class="row">
             <el-tag
@@ -78,6 +79,8 @@
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
         <p class="sub">{{ detail.author || '—' }} · {{ detail.categoryName || '未分类' }}</p>
+        <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
+        <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
         <RichTextView :html="detail.isbn || ''" />
         <div class="drawer-acts">
           <el-button
@@ -96,6 +99,7 @@
       destroy-on-close
     >
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
+      <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
       <el-form v-if="richRemark" label-position="top">
         <el-form-item :label="ticket.label || '内容'" required>
           <RichTextEditor v-model="applyRemark" placeholder="请输入回复内容，可用工具栏排版；可 @昵称 引用" />
@@ -132,10 +136,18 @@ const bodyRich = computed(() => {
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
 const richRemark = computed(() => !!ticket.richRemark)
+const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
 
 function fieldLabel(key, fallback) {
   const f = fields.value.find((x) => x.key === key)
   return (f && f.label) || fallback
+}
+
+function scheduleText(row) {
+  if (!row || !hasSchedule.value) return ''
+  if (!row.startAt && !row.endAt) return ''
+  if (row.startAt && row.endAt) return `${row.startAt} ~ ${row.endAt}`
+  return row.startAt || row.endAt || ''
 }
 
 function stockOk(row) {
@@ -272,6 +284,8 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .meta p { margin: 0; color: #64748b; font-size: 12px; }
+.sched { margin-top: 4px !important; color: #0f766e !important; }
+.sched.muted { color: #94a3b8 !important; }
 .excerpt { margin-top: 8px; color: #64748b; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }

@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；stock=剩余名额
+-- ArchiveStore 兼容列；stock=剩余名额；start/end 供时间冲突；apply_deadline_at 报名截止
 CREATE TABLE IF NOT EXISTS activity (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS activity (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  start_at DATETIME NULL,
+  end_at DATETIME NULL,
+  apply_deadline_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -87,12 +90,13 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '社团活动'), (2, '志愿活动'), (3, '讲座');
-INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅 / 周六 9:00', 1, 40, 'available'),
-(2, '校园环保志愿清扫', '青年志愿者协会', '南门集合 / 周日 8:30', 2, 30, 'available'),
-(3, '就业指导讲座', '就业指导中心', '图书馆报告厅 / 周三 19:00', 3, 80, 'available'),
-(4, '摄影社外拍活动', '摄影社', '湿地公园 / 周六 14:00', 1, 20, 'available'),
-(5, '敬老院慰问志愿', '青年志愿者协会', '校门口集合 / 周日 9:00', 2, 15, 'available');
+-- 1 与 4 时段重叠，便于演示冲突；截止日放在开课前
+INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅', 1, 40, 'available', '2026-10-11 09:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
+(2, '校园环保志愿清扫', '青年志愿者协会', '南门集合', 2, 30, 'available', '2026-10-12 08:30:00', '2026-10-12 11:30:00', '2026-10-11 20:00:00'),
+(3, '就业指导讲座', '就业指导中心', '图书馆报告厅', 3, 80, 'available', '2026-10-15 19:00:00', '2026-10-15 21:00:00', '2026-10-15 12:00:00'),
+(4, '摄影社外拍活动', '摄影社', '湿地公园', 1, 20, 'available', '2026-10-11 14:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
+(5, '敬老院慰问志愿', '青年志愿者协会', '校门口集合', 2, 15, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
 ('max_signup', '5', '每人同时进行中报名上限提示'),
 ('signup_hint', '审核通过占名额', '报名说明');

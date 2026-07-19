@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；stock=剩余名额；isbn=课号/教室
+-- ArchiveStore 兼容列；stock=剩余名额；isbn=课号/教室；start/end 供选课冲突
 CREATE TABLE IF NOT EXISTS course (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS course (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  start_at DATETIME NULL,
+  end_at DATETIME NULL,
+  apply_deadline_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -87,12 +90,13 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '人文素养'), (2, '艺术审美'), (3, '创新创业');
-INSERT IGNORE INTO course (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '中国古典诗词鉴赏', '张老师', 'GX2301 / 文楼 301', 1, 60, 'available'),
-(2, '摄影基础与构图', '李老师', 'GX2302 / 艺术楼 102', 2, 40, 'available'),
-(3, '大学生创新创业导论', '王老师', 'GX2303 / 经管楼 205', 3, 80, 'available'),
-(4, '影视作品赏析', '陈老师', 'GX2304 / 文楼 502', 2, 50, 'available'),
-(5, '批判性思维训练', '刘老师', 'GX2305 / 文楼 208', 1, 45, 'available');
+-- 1 与 4 时段重叠，便于演示冲突检测
+INSERT IGNORE INTO course (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '中国古典诗词鉴赏', '张老师', 'GX2301 / 文楼 301', 1, 60, 'available', '2026-09-10 14:00:00', '2026-09-10 15:40:00', '2026-09-08 23:59:59'),
+(2, '摄影基础与构图', '李老师', 'GX2302 / 艺术楼 102', 2, 40, 'available', '2026-09-11 10:00:00', '2026-09-11 11:40:00', '2026-09-08 23:59:59'),
+(3, '大学生创新创业导论', '王老师', 'GX2303 / 经管楼 205', 3, 80, 'available', '2026-09-12 19:00:00', '2026-09-12 20:40:00', '2026-09-08 23:59:59'),
+(4, '影视作品赏析', '陈老师', 'GX2304 / 文楼 502', 2, 50, 'available', '2026-09-10 15:00:00', '2026-09-10 16:40:00', '2026-09-08 23:59:59'),
+(5, '批判性思维训练', '刘老师', 'GX2305 / 文楼 208', 1, 45, 'available', '2026-09-13 08:00:00', '2026-09-13 09:40:00', '2026-09-08 23:59:59');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
 ('max_enrollment', '3', '每人同时选课上限提示'),
 ('enroll_hint', '审核通过占名额', '选课说明');

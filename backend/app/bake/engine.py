@@ -195,6 +195,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if allow_multi is None:
         allow_multi = False
     text = _set_key(text, "allow-multi-ticket", "true" if allow_multi else "false")
+    check_conflict = runtime.get("check_time_conflict")
+    if check_conflict is None:
+        check_conflict = "time_conflict" in caps
+    text = _set_key(text, "check-time-conflict", "true" if check_conflict else "false")
     ph = spec.get("password_hash") or "none"
     text = _set_key(text, "password-hash", str(ph))
     for yml_key, runtime_key in (
