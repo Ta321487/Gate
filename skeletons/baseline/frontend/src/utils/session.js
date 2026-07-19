@@ -57,7 +57,9 @@ export function guestLoginCta() {
 /** 游客可进的门户路径（不含管理端） */
 export function isPortalPublicPath(path) {
   if (!path) return false
-  if (path === '/archive' || path === '/notices' || path === '/slots') return true
+  if (path === '/home' || path === '/' || path === '/archive' || path === '/notices' || path === '/slots') {
+    return true
+  }
   if (path.startsWith('/notices/')) return true
   return false
 }

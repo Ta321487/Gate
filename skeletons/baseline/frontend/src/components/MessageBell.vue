@@ -2,13 +2,18 @@
   <el-popover placement="bottom-end" :width="340" trigger="click" @show="loadList">
     <template #reference>
       <el-badge :value="unread || undefined" :hidden="!unread" :max="99" class="bell-badge">
-        <el-button link class="bell-btn">消息</el-button>
+        <el-button link class="bell-btn" title="消息" aria-label="消息">
+          <span class="bell-ico" aria-hidden="true">✉</span>
+        </el-button>
       </el-badge>
     </template>
     <div class="panel">
       <div class="hd">
         <strong>站内消息</strong>
-        <el-button v-if="unread" link type="primary" size="small" @click="readAll">全部已读</el-button>
+        <div class="hd-actions">
+          <el-button v-if="unread" link type="primary" size="small" @click="readAll">全部已读</el-button>
+          <el-button link type="primary" size="small" @click="goInbox">查看全部</el-button>
+        </div>
       </div>
       <div v-if="loading" class="empty">加载中…</div>
       <div v-else-if="!list.length" class="empty">暂无消息</div>
@@ -30,9 +35,11 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 
+const router = useRouter()
 const loading = ref(false)
 const list = ref([])
 const unread = ref(0)
@@ -80,6 +87,11 @@ async function readAll() {
   ElMessage.success('已全部标为已读')
 }
 
+function goInbox() {
+  document.body.click()
+  router.push('/messages')
+}
+
 onMounted(() => {
   refreshCount()
   timer = setInterval(refreshCount, 60000)
@@ -92,12 +104,14 @@ onUnmounted(() => {
 
 <style scoped>
 .bell-badge { margin-right: 2px; }
-.bell-btn { font-size: 13px; }
+.bell-btn { font-size: 13px; padding: 0 4px; }
+.bell-ico { font-size: 15px; line-height: 1; }
 .panel { margin: -4px 0; }
 .hd {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px; font-size: 13px;
+  margin-bottom: 8px; font-size: 13px; gap: 8px;
 }
+.hd-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .empty { color: #94a3b8; font-size: 13px; padding: 16px 0; text-align: center; }
 .list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
 .list li {
