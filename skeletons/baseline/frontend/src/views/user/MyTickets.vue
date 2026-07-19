@@ -27,11 +27,13 @@
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
           </p>
-          <p v-if="row.remark" class="tip">
+          <div v-if="row.remark" class="tip">
             <template v-if="row.status === 'rejected'">驳回原因：</template>
+            <template v-else-if="richRemark">内容：</template>
             <template v-else-if="row.status === 'approved' || row.status === 'returned' || row.status === 'overdue'">说明：</template>
-            {{ row.remark }}
-          </p>
+            <RichTextView v-if="richRemark" :html="row.remark" compact />
+            <template v-else>{{ row.remark }}</template>
+          </div>
           <div class="row">
             <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
             <el-button
@@ -100,6 +102,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import RichTextView from '../../components/RichTextView.vue'
 import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
@@ -109,6 +112,7 @@ const states = computed(() => ticket.states || {
 })
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的单据')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
+const richRemark = computed(() => !!ticket.richRemark)
 
 const list = ref([])
 const total = ref(0)

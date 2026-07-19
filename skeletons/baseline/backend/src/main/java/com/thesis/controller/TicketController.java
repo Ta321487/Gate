@@ -34,7 +34,9 @@ public class TicketController {
                 return R.ok(TicketStore.applyStandalone(uid, title, location, remark, typeId, roomId));
             }
             long itemId = Long.parseLong(String.valueOf(body.get("itemId") != null ? body.get("itemId") : body.get("bookId")));
-            return R.ok(TicketStore.apply(uid, itemId));
+            String remark = str(body.get("remark"));
+            if (remark.isBlank()) remark = str(body.get("content"));
+            return R.ok(TicketStore.apply(uid, itemId, remark));
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "缺少业务对象 id");
         } catch (IllegalArgumentException e) {

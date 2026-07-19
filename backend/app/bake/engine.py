@@ -191,6 +191,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     text = _set_key(text, "ticket-table", str(ticket_table))
     text = _set_key(text, "use-quota", "true" if use_quota else "false")
     text = _set_key(text, "use-deadline", "true" if use_deadline else "false")
+    allow_multi = runtime.get("allow_multi_ticket")
+    if allow_multi is None:
+        allow_multi = False
+    text = _set_key(text, "allow-multi-ticket", "true" if allow_multi else "false")
     ph = spec.get("password_hash") or "none"
     text = _set_key(text, "password-hash", str(ph))
     for yml_key, runtime_key in (

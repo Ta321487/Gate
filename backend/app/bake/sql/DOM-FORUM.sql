@@ -32,12 +32,12 @@ CREATE TABLE IF NOT EXISTS board_moderator (
   UNIQUE KEY uk_board_mod (category_id, username)
 );
 
--- 主帖（ArchiveStore 兼容列：title/author/isbn/stock）；isbn=正文摘要
+-- 主帖（ArchiveStore 兼容列：title/author/isbn/stock）；isbn=富文本正文 HTML
 CREATE TABLE IF NOT EXISTS post (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
-  isbn VARCHAR(512),
+  isbn TEXT,
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS post_tag (
   PRIMARY KEY (post_id, tag_id)
 );
 
--- 回复楼层（TicketStore archive 模式；book_id=post.id；remark=回复正文，可含 @昵称）
+-- 回复楼层（TicketStore archive 模式；book_id=post.id；remark=富文本回复 HTML）
 CREATE TABLE IF NOT EXISTS reply (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   book_id BIGINT NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS reply (
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(512)
+  remark TEXT
 );
 
 CREATE TABLE IF NOT EXISTS reply_log (
@@ -130,19 +130,19 @@ INSERT IGNORE INTO board_moderator (id, category_id, username) VALUES
 (1, 1, 'subadmin'), (2, 2, 'subadmin');
 INSERT IGNORE INTO tag (id, name) VALUES (1, '期末'), (2, '资料'), (3, '活动'), (4, '闲置');
 INSERT IGNORE INTO post (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '期末复习资料汇总', '学长甲', '高等数学、数据结构复习提纲与答疑时间。', 1, 1, 'available'),
-(2, '实验室开放预约说明', '版主甲', '工作日晚间机房开放，请先跟帖再入场。', 1, 1, 'available'),
-(3, '周末校园徒步召集', '用户甲', '周六上午图书馆集合，路线约 5 公里。', 2, 1, 'available'),
-(4, '食堂新窗口试吃反馈', '美食观察', '三食堂二楼新增轻食窗口，欢迎跟帖补充评价。', 2, 1, 'available'),
-(5, '出闲置显示器一台', '用户甲', '24 寸 IPS，成色良好，面交优先。', 3, 1, 'available');
+(1, '期末复习资料汇总', '学长甲', '<p>本帖汇总<strong>高等数学</strong>与<em>数据结构</em>复习提纲。</p><ul><li>答疑时间见楼下</li><li>附件可下载</li></ul>', 1, 1, 'available'),
+(2, '实验室开放预约说明', '版主甲', '<p>工作日晚间机房开放，请先<strong>跟帖</strong>再入场。</p>', 1, 1, 'available'),
+(3, '周末校园徒步召集', '用户甲', '<p>周六上午图书馆集合，路线约 5 公里。</p><p>欢迎带相机记录路线。</p>', 2, 1, 'available'),
+(4, '食堂新窗口试吃反馈', '美食观察', '<p>三食堂二楼新增轻食窗口，欢迎跟帖补充评价。</p>', 2, 1, 'available'),
+(5, '出闲置显示器一台', '用户甲', '<p>24 寸 IPS，成色良好，面交优先。</p>', 3, 1, 'available');
 INSERT IGNORE INTO post_tag (post_id, tag_id) VALUES (1, 1), (1, 2), (3, 3), (5, 4);
 INSERT IGNORE INTO post_attach (id, post_id, file_url, file_name, uploaded_by) VALUES
 (1, 1, '/uploads/demo/math-outline.pdf', '高数提纲.pdf', 'admin'),
 (2, 5, '/uploads/demo/monitor.jpg', '显示器实拍.jpg', 'user');
 INSERT IGNORE INTO reply (id, book_id, username, status, apply_at, approve_at, remark) VALUES
-(1, 1, 'user', 'approved', NOW(), NOW(), '求一份离散数学提纲，谢谢楼主！'),
-(2, 1, 'subadmin', 'approved', NOW(), NOW(), '@用户甲 离散提纲已上传附件，见主帖。'),
-(3, 3, 'user', 'pending', NOW(), NULL, '我报名，带相机记录路线。');
+(1, 1, 'user', 'approved', NOW(), NOW(), '<p>求一份<strong>离散数学</strong>提纲，谢谢楼主！</p>'),
+(2, 1, 'subadmin', 'approved', NOW(), NOW(), '<p>@用户甲 离散提纲已上传附件，见主帖。</p>'),
+(3, 3, 'user', 'pending', NOW(), NULL, '<p>我报名，带相机记录路线。</p>');
 INSERT IGNORE INTO reply_attach (id, ticket_id, file_url, file_name, uploaded_by) VALUES
 (1, 2, '/uploads/demo/discrete-outline.pdf', '离散提纲.pdf', 'subadmin');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES

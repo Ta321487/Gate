@@ -100,14 +100,16 @@
 |------|------------|------|
 | 板块 / 分类 | `category` | 总管主数据 |
 | 版主任职（FORUM） | `board_moderator` | 子管挂板块；种子/ER 用，非厚 Store |
-| 主帖 / 文章 | archive 主表（`post` / `article`） | 总管 CRUD；`isbn`=摘要或原文外链 |
+| 主帖 / 文章 | archive 主表（`post` / `article`） | 总管 CRUD；`isbn`=`TEXT` 富文本 HTML（`type: richtext`） |
 | 标签 / 附件（FORUM） | `tag` + `post_tag` + `post_attach` / `reply_attach` | 补齐库表与 ER；运行时仍以 archive+reply 为主路径 |
-| **回复 / 楼层（FORUM）** | `ticket_flow`（`reply`） | 挂主帖；`remark`=回复正文；多条=多楼；无 deadline |
+| **回复 / 楼层（FORUM）** | `ticket_flow`（`reply`） | 挂主帖；`remark`=富文本；`allow_multi_ticket` 可多次跟帖 |
 | 收藏 / 订阅（BLOG） | `ticket_flow`（`favorite`） | 读者收藏博文 → 编辑确认 |
 | 站内公告 | `content` | 与帖文分离，勿混用 |
 | 猜你喜欢 | `recommend` | 分类偏好 + 热度 + 上新 |
 
-**楼中楼（FORUM，在范围内）**：同一主帖下多条回复即楼层；「回复某人」用 `remark` 带 `@昵称` 一层引用即可覆盖常见毕设。不接无限深度树形引擎 / 折叠引用链。
+**富文本（在范围内）**：基线 `RichTextEditor` / `RichTextView`（粗斜体、列表、链接；前端消毒）。主帖/文章与论坛回复走富文本；**不是**多人协同编辑。
+
+**楼中楼（FORUM，在范围内）**：同一主帖下多条回复即楼层；「回复某人」用正文 `@昵称` 一层引用。不接无限深度树形引擎。
 
 **刻意不接（reject / out_of_mvp）**：实时私信、富文本协同编辑、用户自由开新主帖无审核（主帖仍总管维护）、人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。
 
