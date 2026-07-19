@@ -24,7 +24,7 @@ const router = createRouter({
         title: '服务异常',
         description: '请求处理失败，或上游服务暂时不可用。可稍后重试，或从侧栏回到工作台。',
       },
-      props: { code: 500, retryable: true },
+      props: { code: 500 },
     },
     {
       path: '/:pathMatch(.*)*',
