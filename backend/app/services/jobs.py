@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import shutil
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -38,12 +37,16 @@ def _default_steps() -> list[dict[str, Any]]:
     return [{"key": k, "title": t, "status": "wait", "meta": ""} for k, t in STEP_DEFS]
 
 
-async def append_log(project_id: str, line: str) -> None:
+def _append_log_sync(project_id: str, line: str) -> None:
     settings = get_settings()
     log_file = settings.logs_dir / project_id / "job.log"
     log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as f:
         f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {line}\n")
+
+
+async def append_log(project_id: str, line: str) -> None:
+    await asyncio.to_thread(_append_log_sync, project_id, line)
 
 
 def evaluate_gates(project: Project, workspace: Path) -> dict[str, Any]:
@@ -114,7 +117,8 @@ async def run_job(job_id: int) -> None:
             await set_step(0, "run", "Spec Agent")
             raw = ""
             if project.source_path and Path(project.source_path).exists():
-                raw = read_proposal(Path(project.source_path))
+                # 读开题可能较慢（PDF），勿堵事件循环
+                raw = await asyncio.to_thread(read_proposal, Path(project.source_path))
             if isinstance(project.spec, dict):
                 project.spec = await run_spec_agent(
                     db, llm_rt, project_id=project.id, raw_text=raw, spec=dict(project.spec)
@@ -129,9 +133,11 @@ async def run_job(job_id: int) -> None:
             )
             await asyncio.sleep(0.2)
 
-            # 2 bake
+            # 2 bake —— copytree / 下图 / 灌库都是同步重活，必须进线程，否则整站 API 假死
             await set_step(1, "run")
-            rt.stop_all(project.id, project.backend_port, project.frontend_port)
+            await asyncio.to_thread(
+                rt.stop_all, project.id, project.backend_port, project.frontend_port
+            )
             project.backend_running = False
             project.frontend_running = False
 
@@ -139,12 +145,14 @@ async def run_job(job_id: int) -> None:
             if isinstance(project.spec, dict):
                 project.spec = ensure_spec_schema({**project.spec, "theme": project.theme})
                 flag_modified(project, "spec")
-            workspace = bake_project(project.id, project.spec, project.db_name)
+            # 快照进线程，避免 ORM 对象跨线程
+            bake_id, bake_spec, bake_db = project.id, dict(project.spec or {}), project.db_name
+            workspace = await asyncio.to_thread(bake_project, bake_id, bake_spec, bake_db)
             project.workspace_path = str(workspace)
             try:
                 from app.services.student_db import ensure_student_schema
 
-                ensure_student_schema(workspace, project.db_name)
+                await asyncio.to_thread(ensure_student_schema, workspace, project.db_name)
                 await set_step(1, "done", "bake ok · db ready")
             except RuntimeError as e:
                 await set_step(1, "done", f"bake ok · db skip: {e}")
@@ -182,9 +190,10 @@ async def run_job(job_id: int) -> None:
             await set_step(3, "done", build_meta)
             await asyncio.sleep(0.2)
 
-            # 5 gates
+            # 5 gates（只传 spec 快照，勿把 ORM 丢进线程）
             await set_step(4, "run")
-            gates = evaluate_gates(project, workspace)
+            gate_spec = dict(project.spec or {})
+            gates = await asyncio.to_thread(evaluate_domain_gates, workspace, gate_spec)
             project.gates = {k: v for k, v in gates.items() if k != "checklist"}
             project.checklist = gates.get("checklist") or []
 
@@ -223,7 +232,7 @@ async def run_job(job_id: int) -> None:
             await set_step(5, "run")
             settings = get_settings()
             zip_path = settings.workspace_dir / f"{project.id}-thesis-app.zip"
-            pack_zip(workspace, zip_path)
+            await asyncio.to_thread(pack_zip, workspace, zip_path)
             project.zip_path = str(zip_path)
             project.zip_ready = True
             project.status = ProjectStatus.generated.value

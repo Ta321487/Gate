@@ -66,6 +66,7 @@ public class AuthController {
         }
         UserStore.Profile profile = UserStore.authenticate(username, password);
         if (profile == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
+        assertLoginAs(body.getOrDefault("loginAs", ""), profile);
 
         session.setAttribute("uid", profile.username);
         session.setAttribute("role", profile.role);
@@ -74,6 +75,26 @@ public class AuthController {
         Map<String, Object> m = new HashMap<>(profile.toMap());
         m.put("token", session.getId());
         return R.ok(m);
+    }
+
+    /**
+     * 登录身份校验（门户 / 总管 / 子管）。空 loginAs 表示不校验（统一登录模式）。
+     */
+    private static void assertLoginAs(String loginAs, UserStore.Profile profile) {
+        if (loginAs == null || loginAs.isBlank()) return;
+        String as = loginAs.trim().toLowerCase(Locale.ROOT);
+        boolean ok;
+        boolean isAdmin = "admin".equalsIgnoreCase(profile.role);
+        switch (as) {
+            case "user", "portal", "reader", "student" -> ok = !isAdmin;
+            case "admin", "super" -> ok = isAdmin && profile.superAdmin;
+            case "subadmin", "sub" -> ok = isAdmin && !profile.superAdmin;
+            case "staff" -> ok = isAdmin;
+            default -> throw new BizException(ErrorCode.BAD_REQUEST, "无效的登录身份");
+        }
+        if (!ok) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "所选身份与账号不符");
+        }
     }
 
     /** 开放注册：账号 + 领域资料字段 */

@@ -35,7 +35,7 @@ const FLAVORS = {
       hint: '可先核对设备编号，稍后再提交申请。',
     },
     loading: {
-      title: '正在核对库存…',
+      title: '正在核对可用数量…',
       lead: '设备状态同步中。',
     },
   },
@@ -53,7 +53,7 @@ const FLAVORS = {
     },
     loading: {
       title: '台账加载中…',
-      lead: '正在汇总库存与申领记录。',
+      lead: '正在汇总台账与申领记录。',
     },
   },
   'DOM-CRM': {
@@ -70,7 +70,7 @@ const FLAVORS = {
     },
     loading: {
       title: '客户加载中…',
-      lead: '正在同步档案与跟进记录。',
+      lead: '正在同步资料与跟进记录。',
     },
   },
   'DOM-SHOP': {

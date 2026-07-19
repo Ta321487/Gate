@@ -4,7 +4,7 @@
       <div class="hero-row">
         <div>
           <h1>{{ title }}</h1>
-          <p>只读周视图；点击格子查看单据详情。不支持拖拽改期。</p>
+          <p>只读周视图；点击格子查看{{ ticketNoun }}详情。不支持拖拽改期。</p>
         </div>
         <div class="tools">
           <el-button @click="shiftWeek(-1)">上一周</el-button>
@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <p v-if="!loading && !events.length" class="empty">本周暂无带时段的单据。</p>
+    <p v-if="!loading && !events.length" class="empty">本周暂无带时段的{{ ticketNoun }}。</p>
 
     <el-dialog v-model="detailVisible" :title="detail?.title || '详情'" width="420px" destroy-on-close>
       <template v-if="detail">
@@ -57,6 +57,7 @@ import { ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const title = computed(() => ticket.weekCalendarLabel || '我的课表')
+const ticketNoun = computed(() => ticket.label || ticket.labelPlural || '记录')
 const states = computed(() => ticket.states || {})
 
 const loading = ref(false)

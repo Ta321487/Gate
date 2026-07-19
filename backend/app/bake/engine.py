@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import get_settings
-from app.bake.catalog import normalize_auth_template
+from app.bake.catalog import (
+    normalize_auth_entry_mode,
+    normalize_auth_role_widget,
+    normalize_auth_template,
+)
 from app.bake.domain_schema import (
     deterministic_llm_patch,
     merge_schema,
@@ -43,6 +47,17 @@ def assert_table_budget(sql: str, domain: str) -> None:
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def _patch_student_readme(dest: Path, *, app_name: str, db_name: str) -> None:
+    """ZIP 根目录 README：写入课题名与库名，方便学生对照。"""
+    path = dest / "README.md"
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    text = text.replace("${APP_NAME}", app_name or "毕设系统")
+    text = text.replace("${DB_NAME}", db_name or "thesis_app")
+    path.write_text(text, encoding="utf-8")
 
 
 def _merge_tree(src: Path, dest: Path) -> None:
@@ -161,13 +176,19 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
 
     env_fe = dest / "frontend" / ".env"
     auth_tpl = normalize_auth_template(spec.get("auth_template"))
+    auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
+    auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
         f"VITE_THEME={theme}\n"
-        f"VITE_AUTH_TEMPLATE={auth_tpl}\n",
+        f"VITE_AUTH_TEMPLATE={auth_tpl}\n"
+        f"VITE_AUTH_ENTRY_MODE={auth_entry}\n"
+        f"VITE_AUTH_ROLE_WIDGET={auth_widget}\n",
         encoding="utf-8",
     )
+
+    _patch_student_readme(dest, app_name=app_name, db_name=db_name)
 
     from app.bake.auth_hero import auth_hero_public_path, fetch_auth_hero
     from app.bake.portal_banners import fetch_portal_banners
@@ -184,6 +205,8 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         auth_hero=auth_hero_public_path(dest),
         portal_banners=portal_banners,
         domain=domain,
+        auth_entry_mode=auth_entry,
+        auth_role_widget=auth_widget,
     )
 
     # 保留 Home.vue：Vite 会静态分析同文件内所有 import()，删掉会导致报修壳也编译失败
@@ -365,6 +388,8 @@ def _write_factory_delivered(
     auth_hero: str = "",
     portal_banners: list | None = None,
     domain: str = "DOM-GENERIC",
+    auth_entry_mode: str = "role_pick",
+    auth_role_widget: str = "radio",
 ) -> None:
     delivered = dest / "frontend" / "src" / "factoryDelivered.js"
     if not auth_hero:
@@ -384,6 +409,8 @@ def _write_factory_delivered(
         "domain": domain,
         "domainLabel": domain_label,
         "authTemplate": auth_tpl,
+        "authEntryMode": normalize_auth_entry_mode(auth_entry_mode),
+        "authRoleWidget": normalize_auth_role_widget(auth_role_widget),
         "authHero": auth_hero or "",
         "portalBanners": portal_banners or [],
         "accept": accept or schema.get("accept") or "reject",
@@ -409,6 +436,8 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     written = write_schema_artifacts(workspace, merged)
     _write(workspace / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
     auth_tpl = normalize_auth_template(spec.get("auth_template"))
+    auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
+    auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
     _write_factory_delivered(
         workspace,
         spec.get("title", "毕设系统"),
@@ -417,6 +446,8 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         merged,
         spec.get("accept"),
         domain=spec.get("domain", "DOM-GENERIC"),
+        auth_entry_mode=auth_entry,
+        auth_role_widget=auth_widget,
     )
     return written
 

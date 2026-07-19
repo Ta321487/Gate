@@ -4,13 +4,30 @@
     :title="title"
     :watermark="watermark"
     :eyebrow="labels.authEyebrow || '欢迎使用'"
-    :lead="labels.authLead || '验证码登录，开放注册；登录后可使用系统基础能力。'"
+    :lead="authLead"
     :points="authPoints"
-    heading="登录"
-    sub="使用已有账号进入系统"
-    note="演示账号见部署说明；新用户可先注册再登录。"
+    :heading="heading"
+    :sub="sub"
+    :note="note"
   >
     <form class="form" @submit.prevent="onLogin">
+      <label v-if="showRolePicker" class="field">
+        <span class="lab">登录身份<i class="req" aria-hidden="true">*</i></span>
+        <el-radio-group v-if="roleWidget === 'radio'" v-model="form.loginAs" class="role-radio">
+          <el-radio v-for="opt in roleOptions" :key="opt.id" :value="opt.id" border>
+            {{ opt.label }}
+          </el-radio>
+        </el-radio-group>
+        <el-select
+          v-else
+          v-model="form.loginAs"
+          size="large"
+          placeholder="请选择登录身份"
+          style="width: 100%"
+        >
+          <el-option v-for="opt in roleOptions" :key="opt.id" :label="opt.label" :value="opt.id" />
+        </el-select>
+      </label>
       <label class="field">
         <span class="lab">用户名<i class="req" aria-hidden="true">*</i></span>
         <el-input v-model="form.username" size="large" autocomplete="username" placeholder="请输入用户名" />
@@ -41,40 +58,108 @@
       </el-button>
     </form>
     <template #footer>
-      <span>还没有账号？</span>
-      <router-link to="/register">立即注册</router-link>
+      <template v-if="entrySide === 'admin'">
+        <span>业务用户？</span>
+        <router-link to="/login">返回门户登录</router-link>
+      </template>
+      <template v-else>
+        <span>还没有账号？</span>
+        <router-link to="/register">立即注册</router-link>
+        <template v-if="entryMode === 'split_entry'">
+          <span class="sep">·</span>
+          <router-link to="/admin/login">管理端入口</router-link>
+        </template>
+      </template>
     </template>
   </AuthShell>
 </template>
 
 <script setup>
-/** 基线登录：随机鉴权模板（同会话固定） */
-import { computed, onMounted, reactive, ref } from 'vue'
+/** 基线登录：入口模式 / 身份控件由工厂交付固定 */
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import AuthShell from '../components/AuthShell.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
+import {
+  loginRoleOptions,
+  pickAuthEntryMode,
+  pickAuthRoleWidget,
+} from '../utils/authEntry'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
+
+const props = defineProps({
+  /** portal | admin；路由 /admin/login 时为 admin */
+  entrySide: { type: String, default: '' },
+})
 
 const router = useRouter()
 const route = useRoute()
 const template = ref(pickAuthTemplate())
+const entryMode = pickAuthEntryMode()
+const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
 const title = ref(
   labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
-const authPoints = computed(() =>
-  Array.isArray(labels.authPoints) && labels.authPoints.length
-    ? labels.authPoints
-    : ['验证码登录', '开放注册', '个人资料与头像'],
+
+const entrySide = computed(() => {
+  if (props.entrySide === 'admin' || props.entrySide === 'portal') return props.entrySide
+  if (route.path.startsWith('/admin/login')) return 'admin'
+  return 'portal'
+})
+
+const roleOptions = computed(() => {
+  if (entryMode === 'role_pick') return loginRoleOptions('all')
+  if (entryMode === 'split_entry' && entrySide.value === 'admin') return loginRoleOptions('admin')
+  return loginRoleOptions('portal')
+})
+
+const showRolePicker = computed(() => {
+  if (entryMode === 'unified') return false
+  if (entryMode === 'split_entry' && entrySide.value === 'portal') return false
+  return roleOptions.value.length > 0
+})
+
+const needLoginAs = computed(() => entryMode !== 'unified')
+
+const heading = computed(() => (entrySide.value === 'admin' ? '管理端登录' : '登录'))
+const sub = computed(() =>
+  entrySide.value === 'admin' ? '使用管理账号进入后台' : '使用已有账号进入系统',
 )
+const note = computed(() => {
+  if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份；演示账号见部署说明。'
+  if (entryMode === 'split_entry' && entrySide.value === 'admin') {
+    return '管理端仅接受总管/子管账号；业务用户请走门户登录。'
+  }
+  if (entryMode === 'split_entry') return '门户仅接受业务用户；管理员请走管理端入口。'
+  return '演示账号见部署说明；新用户可先注册再登录。'
+})
+const authLead = computed(() => {
+  if (entrySide.value === 'admin') return '管理端独立入口，按岗位身份登录后台。'
+  return labels.authLead || '验证码登录，开放注册；登录后可使用系统基础能力。'
+})
+const authPoints = computed(() => {
+  if (entrySide.value === 'admin') return ['身份校验', '总管/子管分权', '验证码登录']
+  if (Array.isArray(labels.authPoints) && labels.authPoints.length) return labels.authPoints
+  return ['验证码登录', '开放注册', '个人资料与头像']
+})
+
 const captchaImg = ref('')
 const loading = ref(false)
-const form = reactive({ username: '', password: '', captcha: '' })
+const form = reactive({ username: '', password: '', captcha: '', loginAs: '' })
 
-// 水印宜短；勿截长产品名成「校园网故障报修管」
+watch(
+  roleOptions,
+  (opts) => {
+    if (!opts.length) return
+    if (!opts.some((o) => o.id === form.loginAs)) form.loginAs = opts[0].id
+  },
+  { immediate: true },
+)
+
 const watermark = computed(() => {
   const brow = (labels.authEyebrow || '').trim()
   if (brow && brow.length <= 8) return brow
@@ -99,6 +184,10 @@ async function loadCaptcha() {
 
 async function onLogin() {
   if (loading.value) return
+  if (showRolePicker.value && !form.loginAs) {
+    ElMessage.warning('请选择登录身份')
+    return
+  }
   if (!form.username || !form.password) {
     ElMessage.warning('请填写用户名和密码')
     return
@@ -109,7 +198,17 @@ async function onLogin() {
   }
   loading.value = true
   try {
-    const res = await http.post('/api/auth/login', form)
+    const payload = {
+      username: form.username,
+      password: form.password,
+      captcha: form.captcha,
+    }
+    if (needLoginAs.value) {
+      // split 门户无选择器时仍带 loginAs=user，防止管理号误登
+      payload.loginAs =
+        form.loginAs || (entrySide.value === 'admin' ? 'staff' : 'user')
+    }
+    const res = await http.post('/api/auth/login', payload)
     persist(res.data)
     ElMessage.success('登录成功')
     router.push(res.data.role === 'admin' ? '/admin' : '/')
@@ -122,6 +221,11 @@ async function onLogin() {
 }
 
 onMounted(async () => {
+  // 非分端模式不提供独立管理登录页
+  if (entryMode !== 'split_entry' && entrySide.value === 'admin') {
+    router.replace('/login')
+    return
+  }
   if (typeof route.query.u === 'string' && route.query.u) form.username = route.query.u
   // 已有 schema.appName / 交付标题时勿被 /api/meta 的「毕设系统」盖掉
   const hasName = !!(labels.appName || FACTORY_DELIVERED.title)
@@ -130,6 +234,17 @@ onMounted(async () => {
       const meta = await http.get('/api/meta')
       if (meta.data?.title) title.value = meta.data.title
     } catch { /* ignore */ }
+  }
+  // 分端时已登录用户打开对方登录页 → 按角色回跳
+  const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
+  if (token && role === 'admin' && entrySide.value === 'admin') {
+    router.replace('/admin')
+    return
+  }
+  if (token && role !== 'admin' && entrySide.value === 'portal') {
+    router.replace('/')
+    return
   }
   loadCaptcha()
 })
@@ -157,6 +272,15 @@ onMounted(async () => {
 .form :deep(.el-input__wrapper:hover),
 .form :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--portal-accent, #0b6e75) inset;
+}
+.role-radio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.role-radio :deep(.el-radio) {
+  margin-right: 0;
+  border-radius: 10px;
 }
 .captcha-row { display: flex; gap: 10px; align-items: stretch; }
 .captcha-btn {
@@ -187,4 +311,5 @@ onMounted(async () => {
   background: var(--portal-accent, #0b6e75) !important;
   border-color: var(--portal-accent, #0b6e75) !important;
 }
+.sep { margin: 0 6px; color: var(--portal-muted, #8a9aa6); }
 </style>

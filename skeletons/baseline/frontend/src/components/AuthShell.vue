@@ -338,19 +338,26 @@ onMounted(() => {
 .auth[data-auth="ledge"] .panel {
   padding: 22px 24px 18px;
 }
-/* 宽面板：注册分步，压矮品牌区，尽量一屏不滚动 */
+/* 宽面板：注册分步 —— 双栏版式要加宽（勿压窄）；单栏版式略加宽即可 */
 .auth[data-wide="1"] {
   align-items: center;
-  padding: 16px 16px 20px;
+  padding: 20px 24px 24px;
 }
+/* split / mirror / folio：默认 920，注册再加宽 */
 .auth[data-wide="1"] .stage {
-  width: min(640px, 100%);
+  width: min(1080px, 96vw);
+}
+.auth[data-wide="1"][data-auth="mirror"] .stage,
+.auth[data-wide="1"][data-auth="split"] .stage,
+.auth[data-wide="1"][data-auth="folio"] .stage {
+  width: min(1080px, 96vw);
+  min-height: min(560px, calc(100% - 32px));
 }
 .auth[data-wide="1"][data-auth="ledge"] {
   padding-bottom: 20px;
 }
 .auth[data-wide="1"][data-auth="ledge"] .stage {
-  width: min(600px, 100%);
+  width: min(560px, 100%);
   margin-right: clamp(0px, 4vw, 40px);
 }
 .auth[data-wide="1"][data-auth="ledge"] .brand {
@@ -363,18 +370,22 @@ onMounted(() => {
 .auth[data-wide="1"][data-auth="ledge"] .lead {
   display: none;
 }
-.auth[data-wide="1"][data-auth="card"] .stage,
-.auth[data-wide="1"][data-auth="center"] .stage {
+/* center / ribbon：单栏默认偏窄，注册略加宽 */
+.auth[data-wide="1"][data-auth="ribbon"] .stage {
   width: min(560px, 100%);
 }
-.auth[data-wide="1"] .panel {
-  padding: 20px 22px 16px;
+.auth[data-wide="1"][data-auth="card"] .stage,
+.auth[data-wide="1"][data-auth="center"] .stage {
+  width: min(520px, 100%);
 }
-.auth[data-wide="1"] .panel-hd h2 { font-size: 20px; margin-bottom: 2px; }
-.auth[data-wide="1"] .panel-hd p { margin-bottom: 10px; font-size: 12px; }
+.auth[data-wide="1"] .panel {
+  padding: 28px 32px 22px;
+}
+.auth[data-wide="1"] .panel-hd h2 { font-size: 22px; margin-bottom: 4px; }
+.auth[data-wide="1"] .panel-hd p { margin-bottom: 12px; font-size: 13px; }
 .auth[data-wide="1"] .panel-ft {
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
 }
 .auth[data-auth="ledge"] .panel-hd h2 { font-size: 20px; }
 .auth[data-auth="ledge"] .panel-hd p { margin-bottom: 14px; }

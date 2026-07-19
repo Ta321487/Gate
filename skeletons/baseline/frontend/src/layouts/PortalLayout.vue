@@ -70,7 +70,7 @@ const nav = computed(() => {
   const menus = schemaMenus('user').filter((m) => m.key !== 'profile')
   if (!menus.length) {
     return [
-      { to: '/tickets', label: menuLabel('user', 'my_tickets', '我的单据') },
+      { to: '/tickets', label: menuLabel('user', 'my_tickets', '我的申请') },
       { to: '/notices', label: menuLabel('user', 'content', '公告') },
     ]
   }

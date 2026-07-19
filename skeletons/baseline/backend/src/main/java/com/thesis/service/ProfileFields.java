@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 /**
  * 从 bake 写入的 domain-profile-fields.json 读取资料字段定义，供注册/资料校验。
- * 格式校验仅手机 / 邮箱；其余业务字段只做必填与白名单。
+ * 支持 requiredWhen / visibleWhen：按身份等条件动态必填。
  */
 public final class ProfileFields {
 
@@ -39,11 +39,12 @@ public final class ProfileFields {
         }
     }
 
-    /** 校验必填 + 手机/邮箱格式。 */
+    /** 校验必填 + 手机/邮箱格式（含条件必填）。 */
     public static void requireFilled(String phone, Map<String, String> extras, boolean registerOnly) {
         Map<String, String> ex = extras == null ? Map.of() : extras;
         for (Map<String, Object> f : all()) {
             if (registerOnly && !truthy(f.get("onRegister"))) continue;
+            if (!isVisible(f, ex)) continue;
             String key = str(f.get("key"));
             if (key.isBlank()) continue;
             String storage = str(f.get("storage"));
@@ -60,20 +61,56 @@ public final class ProfileFields {
                 if (val != null) val = val.trim();
                 else val = "";
             }
-            if (truthy(f.get("required")) && val.isBlank()) {
+            if (isRequired(f, ex) && val.isBlank()) {
                 throw new IllegalArgumentException("请填写" + str(f.get("label")));
             }
             if (!val.isBlank()) {
                 checkFormat(fmt, val, str(f.get("label")));
             }
         }
-        // schema 未加载时仍兜底校验传入的手机/邮箱
         if (all().isEmpty()) {
             String ph = phone == null ? "" : phone.trim();
             if (!ph.isBlank()) checkFormat("phone", ph, "手机");
             String em = ex.getOrDefault("email", "");
             if (em != null && !em.isBlank()) checkFormat("email", em.trim(), "邮箱");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    static boolean isRequired(Map<String, Object> f, Map<String, String> extras) {
+        Object when = f.get("requiredWhen");
+        if (when instanceof Map<?, ?> m) {
+            String field = str(m.get("field"));
+            Object inObj = m.get("in");
+            if (!field.isBlank() && inObj instanceof Collection<?> col) {
+                String cur = extras.getOrDefault(field, "");
+                if (cur != null) cur = cur.trim();
+                else cur = "";
+                for (Object o : col) {
+                    if (cur.equals(String.valueOf(o).trim())) return true;
+                }
+                return false;
+            }
+        }
+        return truthy(f.get("required"));
+    }
+
+    @SuppressWarnings("unchecked")
+    static boolean isVisible(Map<String, Object> f, Map<String, String> extras) {
+        Object when = f.get("visibleWhen");
+        if (!(when instanceof Map<?, ?> m)) return true;
+        String field = str(m.get("field"));
+        Object inObj = m.get("in");
+        if (field.isBlank() || !(inObj instanceof Collection<?> col)) return true;
+        String cur = extras.getOrDefault(field, "");
+        if (cur != null) cur = cur.trim();
+        else cur = "";
+        // 尚未选择驱动字段时隐藏条件字段，先选身份再出对应项
+        if (cur.isBlank()) return false;
+        for (Object o : col) {
+            if (cur.equals(String.valueOf(o).trim())) return true;
+        }
+        return false;
     }
 
     private static void checkFormat(String fmt, String val, String label) {

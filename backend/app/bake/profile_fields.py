@@ -18,6 +18,8 @@ def _pf(
     field_type: str = "string",
     options: list[str] | None = None,
     format: str = "",
+    required_when: dict[str, Any] | None = None,
+    visible_when: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     f: dict[str, Any] = {
         "key": key,
@@ -34,7 +36,28 @@ def _pf(
         f["options"] = options
     if format:
         f["format"] = format
+    if required_when:
+        f["requiredWhen"] = required_when
+    if visible_when:
+        f["visibleWhen"] = visible_when
     return f
+
+
+def _when(field: str, values: list[str]) -> dict[str, Any]:
+    """条件必填/可见：extras[field] 落在 values 内时生效。"""
+    return {"field": field, "in": list(values)}
+
+
+_CAMPUS_ID = _when("identityType", ["学生", "教职工"])
+_LIBRARY_CAMPUS = _when("readerType", ["本科生", "研究生", "教职工"])
+_LIBRARY_STUDENT = _when("readerType", ["本科生", "研究生"])
+_IT_CAMPUS = _when("identityType", ["学生", "教职工"])
+_OFF_CAMPUS = _when("identityType", ["校外"])
+_LIBRARY_GUEST = _when("readerType", ["校外"])
+_IT_OTHER = _when("identityType", ["其他"])
+_EQUIP_LAB = _when("identityType", ["实验室"])
+_PARKING_CAMPUS = _when("ownerType", ["教职工", "学生"])
+_PARKING_GUEST = _when("ownerType", ["访客"])
 
 
 COMMON_PROFILE_FIELDS: list[dict[str, Any]] = [
@@ -48,19 +71,44 @@ COMMON_PROFILE_FIELDS: list[dict[str, Any]] = [
 # 各领域业务档案（不含公共底座；由 attach_profile_fields 合并）
 PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-LIBRARY": [
-        _pf("cardNo", "借书证号", required=True, on_register=True, max_length=32),
         _pf("readerType", "读者类型", required=True, on_register=True, field_type="select",
             options=["本科生", "研究生", "教职工", "校外"]),
-        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
-        _pf("major", "专业", on_register=True, max_length=64),
-        _pf("enrollYear", "入学年份", max_length=16, placeholder="如 2023"),
+        # 校外读者通常无校内借书证，不可与院系一样对全员必填
+        _pf("cardNo", "借书证号", required=True, on_register=True, max_length=32,
+            required_when=_LIBRARY_CAMPUS, visible_when=_LIBRARY_CAMPUS,
+            placeholder="校内读者填写借书证号"),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+            required_when=_LIBRARY_CAMPUS, visible_when=_LIBRARY_CAMPUS,
+            placeholder="所在院系或单位"),
+        _pf("workUnit", "工作单位", on_register=True, max_length=64,
+            required_when=_LIBRARY_GUEST, visible_when=_LIBRARY_GUEST,
+            placeholder="校外读者填写工作或学习单位"),
+        _pf("major", "专业", on_register=True, max_length=64,
+            visible_when=_LIBRARY_STUDENT),
+        _pf("enrollYear", "入学年份", max_length=16, placeholder="如 2023",
+            visible_when=_LIBRARY_STUDENT),
     ],
     "DOM-EQUIP": [
-        _pf("employeeNo", "工号/学号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["学生", "教职工", "实验室"]),
-        _pf("labOrOffice", "实验室/办公室", on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]),
+            visible_when=_when("identityType", ["学生"]),
+            placeholder="请填写学号"),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["教职工"]),
+            visible_when=_when("identityType", ["教职工"]),
+            placeholder="请填写工号"),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+            required_when=_when("identityType", ["学生", "教职工", "实验室"]),
+            visible_when=_when("identityType", ["学生", "教职工", "实验室"]),
+            placeholder="所在院系、单位或实验室归属"),
+        _pf("labOrOffice", "实验室名称", on_register=True, max_length=64,
+            required_when=_EQUIP_LAB, visible_when=_EQUIP_LAB,
+            placeholder="请填写实验室全称"),
+        _pf("officeLoc", "办公室", on_register=True, max_length=64,
+            visible_when=_when("identityType", ["教职工"]),
+            placeholder="选填"),
         _pf("contactAlt", "备用联系人", max_length=32),
     ],
     "DOM-ASSET": [
@@ -99,17 +147,43 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-IT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["学生", "教职工", "其他"]),
-        _pf("campusNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
-        _pf("officeOrDorm", "办公/宿舍地址", on_register=True, max_length=64),
-        _pf("title", "职务/年级", max_length=32),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]),
+            visible_when=_when("identityType", ["学生"]),
+            placeholder="请填写学号"),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["教职工"]),
+            visible_when=_when("identityType", ["教职工"]),
+            placeholder="请填写工号"),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+            required_when=_IT_CAMPUS, visible_when=_IT_CAMPUS,
+            placeholder="所在院系或单位"),
+        _pf("orgName", "单位名称", on_register=True, max_length=64,
+            required_when=_IT_OTHER, visible_when=_IT_OTHER,
+            placeholder="其他人员填写所在单位"),
+        _pf("officeOrDorm", "办公/宿舍地址", on_register=True, max_length=64,
+            visible_when=_IT_CAMPUS, placeholder="选填"),
+        _pf("title", "职务/年级", max_length=32,
+            visible_when=_IT_CAMPUS, placeholder="选填"),
     ],
     "DOM-ACTIVITY": [
-        _pf("studentNoOrEmp", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["学生", "教职工", "校外"]),
-        _pf("orgOrClub", "社团/组织", on_register=True, max_length=64),
+        _pf("studentNoOrEmp", "学号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]), visible_when=_when("identityType", ["学生"]),
+            placeholder="请填写学号"),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["教职工"]), visible_when=_when("identityType", ["教职工"]),
+            placeholder="请填写工号"),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+            required_when=_CAMPUS_ID, visible_when=_CAMPUS_ID,
+            placeholder="所在院系或单位"),
+        _pf("orgOrClub", "单位/组织", on_register=True, max_length=64,
+            required_when=_OFF_CAMPUS, visible_when=_OFF_CAMPUS,
+            placeholder="校外请填写所在单位或组织"),
+        _pf("clubName", "社团/组织", on_register=True, max_length=64,
+            visible_when=_CAMPUS_ID,
+            placeholder="选填，如所属社团"),
         _pf("emergencyPhone", "紧急联系电话", max_length=20),
     ],
     "DOM-LOST": [
@@ -153,8 +227,21 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
             options=["小型车", "新能源", "摩托车"]),
         _pf("ownerType", "车主身份", required=True, on_register=True, field_type="select",
             options=["教职工", "学生", "访客"]),
-        _pf("campusNo", "学号/工号", on_register=True, max_length=32),
-        _pf("dept", "单位", on_register=True, max_length=64),
+        # 访客无学号/工号；校内再按身份区分字段更清晰
+        _pf("employeeNo", "工号", on_register=True, max_length=32,
+            required_when=_when("ownerType", ["教职工"]),
+            visible_when=_when("ownerType", ["教职工"]),
+            placeholder="请填写工号"),
+        _pf("studentNo", "学号", on_register=True, max_length=32,
+            required_when=_when("ownerType", ["学生"]),
+            visible_when=_when("ownerType", ["学生"]),
+            placeholder="请填写学号"),
+        _pf("dept", "单位", on_register=True, max_length=64,
+            required_when=_PARKING_CAMPUS, visible_when=_PARKING_CAMPUS,
+            placeholder="所在院系或单位"),
+        _pf("visitUnit", "来访单位", on_register=True, max_length=64,
+            required_when=_PARKING_GUEST, visible_when=_PARKING_GUEST,
+            placeholder="访客请填写来访单位或事由相关单位"),
     ],
     "DOM-MEETING": [
         _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),

@@ -6,11 +6,17 @@ const http = axios.create({ baseURL: '/api', timeout: 60000 })
 http.interceptors.response.use(
   (res) => res.data,
   (err) => {
-    const msg = err.response?.data?.detail || err.message || '请求失败'
-    message.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    // silent: 后台轮询等场景不弹全局错误（避免 reload 超时刷屏、卡死观感）
+    if (!err.config?.silent) {
+      const msg = err.response?.data?.detail || err.message || '请求失败'
+      message.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    }
     return Promise.reject(err)
   }
 )
+
+/** 生成中轮询：短超时 + 静默失败，后端 reload 时不挡下一轮 */
+const POLL_OPTS = { silent: true, timeout: 8000 }
 
 export { message }
 export { confirm, alert, prompt, dialog } from './ui'
@@ -27,7 +33,8 @@ export const api = {
       onUploadProgress: onProgress,
     })
   },
-  getProject: (id) => http.get(`/projects/${id}`),
+  getProject: (id, opts) => http.get(`/projects/${id}`, opts),
+  getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
   generate: (id) => http.post(`/projects/${id}/generate`),
   deleteProject: (id, { keepDb = false } = {}) =>
@@ -37,8 +44,10 @@ export const api = {
   erSvgUrl: (id) => `/api/projects/${id}/schema/er.svg`,
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),
-  logs: (id, side) => http.get(`/projects/${id}/logs/${side}`),
-  listJobs: () => http.get('/jobs'),
+  logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),
+  logsPoll: (id, side) => http.get(`/projects/${id}/logs/${side}`, POLL_OPTS),
+  listJobs: (opts) => http.get('/jobs', opts),
+  listJobsPoll: () => http.get('/jobs', POLL_OPTS),
   getJob: (id) => http.get(`/jobs/${id}`),
   cancelJob: (id) => http.post(`/jobs/${id}/cancel`),
   retryJob: (id) => http.post(`/jobs/${id}/retry`),

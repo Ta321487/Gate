@@ -7,13 +7,13 @@
       <el-button type="primary" @click="load">刷新待办</el-button>
     </div>
     <el-table :data="list" stripe>
-      <el-table-column prop="id" label="单号" width="70" />
+      <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" />
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
       <el-table-column prop="username" :label="userLabel" width="110" />
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
-      <el-table-column v-if="pickLoanPeriod" prop="dueAt" label="应还" width="170" />
+      <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="row.status === 'pending_final' ? '' : 'warning'" effect="plain">
@@ -54,8 +54,8 @@
       @closed="resetAudit"
     >
       <p class="audit-tip">
-        {{ audit.pass ? `确认${passLabel(audit.row)}该单据？` : `确认${verbs.reject || '驳回'}该单据？` }}
-        <template v-if="audit.row">「{{ audit.row.title || ('单号 ' + audit.row.id) }}」</template>
+        {{ audit.pass ? `确认${passLabel(audit.row)}该${ticketNoun}？` : `确认${verbs.reject || '驳回'}该${ticketNoun}？` }}
+        <template v-if="audit.row">「{{ audit.row.title || ('编号 ' + audit.row.id) }}」</template>
       </p>
       <div v-if="audit.row?.attachUrl" class="audit-body">
         <div class="lab">附件</div>
@@ -103,12 +103,14 @@ import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
+const ticketNoun = computed(() => ticket.label || '申请')
 const richRemark = computed(() => !!ticket.richRemark)
 const twoLevel = computed(() => !!ticket.twoLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
+const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
-const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', '单据记录'))
+const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 
 const todoHint = computed(() => {

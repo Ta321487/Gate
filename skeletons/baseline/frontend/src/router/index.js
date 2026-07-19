@@ -7,6 +7,7 @@ import Notices from '../views/Notices.vue'
 import NoticeDetail from '../views/NoticeDetail.vue'
 import NoticesAdmin from '../views/admin/NoticesAdmin.vue'
 import { getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
+import { adminLoginPath, isSplitEntry } from '../utils/authEntry.js'
 
 function hasCap(id) {
   return (getSchema().capabilities || []).includes(id)
@@ -368,15 +369,27 @@ const specialRoutes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [...pickRoutes(), ...specialRoutes],
+  routes: [
+    { path: '/admin/login', component: Login, props: { entrySide: 'admin' } },
+    ...pickRoutes(),
+    ...specialRoutes,
+  ],
 })
 
-const publicPaths = new Set(['/login', '/register', '/error', '/loading'])
+const publicPaths = new Set(['/login', '/admin/login', '/register', '/error', '/loading'])
 
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
-  if (!publicPaths.has(to.path) && !token) next('/login')
-  else next()
+  if (publicPaths.has(to.path)) {
+    next()
+    return
+  }
+  if (!token) {
+    if (to.path.startsWith('/admin') && isSplitEntry()) next(adminLoginPath())
+    else next('/login')
+    return
+  }
+  next()
 })
 
 export default router

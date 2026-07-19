@@ -236,6 +236,8 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 - [x] L1 **二级审批 / 强制附件 / 完结评分**：`configureL1`；FE 待办 `todo`、上传、`TicketRateDialog`
 - [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门
 - [x] L1 **软删除 / 标签 AND / 周历 / 签到码**：按域 schema 开关；FORUM 复用 tag 表；COURSE/ACTIVITY 周历；ACTIVITY 口令签到
+- [x] **登录入口随机**：`authEntryMode` = unified / role_pick / split_entry；身份控件 `authRoleWidget` = radio / select；后端按 `loginAs` 校验（选错身份拒登）
+- [x] **生成不堵 API**：bake / 灌库 / pack / mvn 等同步重活 `asyncio.to_thread`；前端轮询静默短超时，reload 时不假死在 generating
 
 ### 宿舍验证账号（bake 后）
 

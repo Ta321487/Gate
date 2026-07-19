@@ -16,28 +16,28 @@
       <h3>待办</h3>
       <template v-if="caps.includes('order_lines')">
         <div class="todo-row">
-          <span>待确认订单 {{ data.pendingOrders || 0 }}</span>
+          <span>待确认{{ orderLabel }} {{ data.pendingOrders || 0 }}</span>
           <el-button type="primary" link @click="$router.push('/admin/orders')">去处理</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('slot_reserve') && !caps.includes('ticket_flow')">
         <div class="todo-row">
-          <span>已预约 {{ data.confirmedReservations || 0 }}</span>
-          <el-button type="primary" link @click="$router.push('/admin/reservations')">看预约</el-button>
+          <span>已确认{{ reservationLabel }} {{ data.confirmedReservations || 0 }}</span>
+          <el-button type="primary" link @click="$router.push('/admin/reservations')">看{{ reservationLabel }}</el-button>
         </div>
       </template>
       <template v-else>
         <div class="todo-row">
-          <span>待受理 {{ data.pendingTickets || 0 }} 单</span>
+          <span>待受理 {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
           <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
         </div>
         <div class="todo-row">
-          <span>处理中 {{ data.activeTickets || 0 }} 单</span>
+          <span>处理中 {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
           <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
         </div>
         <div v-if="showOverdue" class="todo-row">
-          <span>逾期 {{ data.overdueBorrow || 0 }} 单</span>
-          <el-button link @click="$router.push('/admin/overdue')">去催还</el-button>
+          <span>逾期 {{ data.overdueBorrow || 0 }} {{ ticketUnit }}</span>
+          <el-button link @click="$router.push('/admin/overdue')">去{{ remindVerb }}</el-button>
         </div>
       </template>
     </section>
@@ -49,7 +49,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
-import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, ticketCopy, reservationCopy } from '../../utils/domainSchema.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const data = ref({})
@@ -58,6 +58,11 @@ const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const caps = computed(() => getSchema()?.capabilities || [])
 const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
+const ticket = computed(() => ticketCopy() || {})
+const ticketUnit = computed(() => ticket.value.label || '单')
+const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
+const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
+const reservationLabel = computed(() => reservationCopy()?.label || '预约')
 
 const chartMode = computed(() => {
   if (caps.value.includes('order_lines') && !caps.value.includes('ticket_flow')) return 'order'
@@ -69,15 +74,15 @@ const cards = computed(() => {
   const list = []
   if (caps.value.includes('order_lines')) {
     list.push(
-      { key: 'op', label: '待确认订单', value: data.value.pendingOrders ?? '—' },
+      { key: 'op', label: `待确认${orderLabel.value}`, value: data.value.pendingOrders ?? '—' },
       { key: 'oc', label: '已确认', value: data.value.confirmedOrders ?? '—' },
       { key: 'os', label: '履约中', value: data.value.shippedOrders ?? '—' },
       { key: 'od', label: '已完成', value: data.value.completedOrders ?? '—' },
     )
   } else if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) {
     list.push(
-      { key: 'rp', label: '待确认预约', value: data.value.pendingReservations ?? '—' },
-      { key: 'rc', label: '已预约', value: data.value.confirmedReservations ?? '—' },
+      { key: 'rp', label: `待确认${reservationLabel.value}`, value: data.value.pendingReservations ?? '—' },
+      { key: 'rc', label: `已确认${reservationLabel.value}`, value: data.value.confirmedReservations ?? '—' },
     )
   } else {
     list.push(
@@ -90,7 +95,7 @@ const cards = computed(() => {
     }
   }
   list.push({ key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' })
-  if (ticketCopy().allowRating && data.value.avgRating != null) {
+  if (ticket.value.allowRating && data.value.avgRating != null) {
     list.push({
       key: 'avg',
       label: `均分${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
@@ -98,7 +103,7 @@ const cards = computed(() => {
     })
   }
   if (showArchive.value) {
-    list.push({ key: 'items', label: menuLabel('admin', 'archive', '档案') + '数', value: data.value.bookTotal ?? '—' })
+    list.push({ key: 'items', label: menuLabel('admin', 'archive', '对象') + '数', value: data.value.bookTotal ?? '—' })
   }
   return list
 })

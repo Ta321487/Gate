@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ label }}</h1>
-      <p>查看订单状态与明细。</p>
+      <p>查看{{ orderNoun }}状态与明细。</p>
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
@@ -10,7 +10,7 @@
 
     <article v-for="row in list" :key="row.id" class="card">
       <div class="hd">
-        <strong>订单 #{{ row.id }}</strong>
+        <strong>{{ orderNoun }} #{{ row.id }}</strong>
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}</p>
@@ -25,7 +25,7 @@
         >取消</el-button>
       </div>
     </article>
-    <div v-if="!list.length" class="empty">暂无订单</div>
+    <div v-if="!list.length" class="empty">暂无{{ orderNoun }}</div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -46,6 +46,7 @@ import http from '../../api/http'
 import { getSchema, menuLabel } from '../../utils/domainSchema.js'
 
 const label = menuLabel('user', 'my_orders', '我的订单')
+const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const states = computed(() => getSchema()?.entities?.order?.states || {})
 const list = ref([])
 const total = ref(0)
@@ -62,7 +63,7 @@ async function load() {
 }
 
 async function cancel(row) {
-  await ElMessageBox.confirm(`取消订单 #${row.id}？`, '取消')
+  await ElMessageBox.confirm(`取消${orderNoun.value} #${row.id}？`, '取消')
   await http.post(`/api/orders/${row.id}/cancel`)
   ElMessage.success('已取消')
   load()

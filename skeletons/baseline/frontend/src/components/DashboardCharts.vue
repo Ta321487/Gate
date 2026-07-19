@@ -11,7 +11,7 @@
         <div ref="trendEl" class="chart" />
       </div>
       <div v-if="stockOpt" class="chart-box wide">
-        <div class="chart-title">分类库存</div>
+        <div class="chart-title">{{ stockTitle }}</div>
         <div ref="stockEl" class="chart" />
       </div>
     </div>
@@ -24,7 +24,7 @@ import * as echarts from 'echarts/core'
 import { PieChart, BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { ticketCopy, getSchema } from '../utils/domainSchema.js'
+import { ticketCopy, getSchema, archiveCopy } from '../utils/domainSchema.js'
 
 echarts.use([PieChart, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -53,9 +53,28 @@ const stateLabels = computed(() => {
 })
 
 const statusTitle = computed(() => {
-  if (props.mode === 'order') return '订单状态'
-  if (props.mode === 'reservation') return '预约状态'
-  return '单据状态'
+  if (props.mode === 'order') {
+    const lab = getSchema()?.entities?.order?.label || '订单'
+    return `${lab}状态`
+  }
+  if (props.mode === 'reservation') {
+    const lab = getSchema()?.entities?.reservation?.label || '预约'
+    return `${lab}状态`
+  }
+  const lab = ticketCopy().label || '申请'
+  return `${lab}状态`
+})
+
+/** 跟领域 archive.stock 文案，避免活动域还写「分类库存」 */
+const stockTitle = computed(() => {
+  const arch = archiveCopy() || {}
+  const fields = arch.fields || []
+  const stock = fields.find((f) => f && f.key === 'stock')
+  const cat = fields.find((f) => f && f.key === 'category')
+  const stockLab = (stock?.label || '').trim() || '余量'
+  const catLab = (cat?.label || '').trim() || '分类'
+  if (stockLab.startsWith(catLab)) return stockLab
+  return `${catLab}${stockLab}`
 })
 
 function labelOf(name) {

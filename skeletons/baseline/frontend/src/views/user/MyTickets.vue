@@ -21,11 +21,11 @@
       <article v-for="row in list" :key="row.id" class="card">
         <div class="mark">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
-          <h3>{{ row.title || ('单号 ' + row.id) }}</h3>
+          <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
-            单号 {{ row.id }} · 申请于 {{ row.applyAt }}
+            编号 {{ row.id }} · 申请于 {{ row.applyAt }}
             <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
-            <template v-if="row.dueAt"> · 应还 {{ row.dueAt }}</template>
+            <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
           </p>
@@ -136,12 +136,12 @@
     <TicketRateDialog
       v-model="rateVisible"
       :ticket-id="rateRow?.id"
-      :title="rateRow ? (rateRow.title || ('单号 ' + rateRow.id)) : ''"
+      :title="rateRow ? (rateRow.title || ('编号 ' + rateRow.id)) : ''"
       @done="load"
     />
 
     <el-dialog v-model="checkinVisible" title="活动签到" width="400px" destroy-on-close>
-      <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('单号 ' + checkinRow.id) }}」输入签到码</p>
+      <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('编号 ' + checkinRow.id) }}」输入签到码</p>
       <el-input v-model="checkinCode" maxlength="16" placeholder="向主办方索取口令" @keyup.enter="submitCheckin" />
       <template #footer>
         <el-button @click="checkinVisible = false">取消</el-button>
@@ -164,7 +164,8 @@ const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {
   pending: '待受理', pending_final: '待终审', approved: '处理中', rejected: '已驳回', returned: '已完成',
 })
-const plural = computed(() => ticket.labelPlural || ticket.label || '我的单据')
+const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
+const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)

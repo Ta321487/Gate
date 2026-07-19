@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ label }}</h1>
-      <p>已占坑的预约记录，可取消释放时段。</p>
+      <p>已占坑的{{ resvNoun }}记录，可取消释放时段。</p>
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
@@ -10,7 +10,7 @@
 
     <article v-for="row in list" :key="row.id" class="card">
       <div class="hd">
-        <strong>{{ row.itemTitle || row.title || ('预约 #' + row.id) }}</strong>
+        <strong>{{ row.itemTitle || row.title || (`${resvNoun} #` + row.id) }}</strong>
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
       <p class="sub">{{ row.startAt }} ~ {{ row.endAt }}</p>
@@ -21,10 +21,10 @@
           v-if="row.status === 'pending' || row.status === 'confirmed'"
           size="small"
           @click="cancel(row)"
-        >取消预约</el-button>
+        >取消{{ resvNoun }}</el-button>
       </div>
     </article>
-    <div v-if="!list.length" class="empty">暂无预约</div>
+    <div v-if="!list.length" class="empty">暂无{{ resvNoun }}</div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -42,9 +42,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, reservationCopy } from '../../utils/domainSchema.js'
 
-const label = menuLabel('user', 'my_reservations', '我的预约')
+const resv = reservationCopy()
+const resvNoun = computed(() => resv.label || '预约')
+const label = menuLabel('user', 'my_reservations', `我的${resvNoun.value}`)
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
 const total = ref(0)
@@ -61,7 +63,7 @@ async function load() {
 }
 
 async function cancel(row) {
-  await ElMessageBox.confirm(`取消「${row.itemTitle}」的预约？`, '取消')
+  await ElMessageBox.confirm(`取消「${row.itemTitle}」的${resvNoun.value}？`, '取消')
   await http.post(`/api/slots/reservations/${row.id}/cancel`)
   ElMessage.success('已取消')
   load()

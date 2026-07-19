@@ -4,7 +4,7 @@
 
     <section class="hero">
       <h1>个人资料</h1>
-      <p>维护基本信息与业务档案；改密时请填写原密码与确认密码。</p>
+      <p>维护基本信息与业务资料；改密时请填写原密码与确认密码。</p>
     </section>
 
     <p v-if="!form.profileEditable" class="locked">顶级管理员不提供个人资料修改。</p>
@@ -76,13 +76,13 @@
       </section>
 
       <section v-if="bizFields.length" class="card block">
-        <h2 class="block-title">业务档案</h2>
+        <h2 class="block-title">业务资料</h2>
         <div class="grid">
           <el-form-item
             v-for="f in bizFields"
             :key="f.key"
             :label="f.label"
-            :required="!!f.required"
+            :required="isProfileFieldRequired(f, form.extras)"
             :class="{ wide: isWideField(f) }"
           >
             <el-select
@@ -91,6 +91,7 @@
               clearable
               :placeholder="f.placeholder || `请选择${f.label}`"
               style="width: 100%"
+              @change="onBizSelectChange(f)"
             >
               <el-option v-for="opt in f.options || []" :key="opt" :label="opt" :value="opt" />
             </el-select>
@@ -153,18 +154,26 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { emptyProfileExtras, profileFields } from '../utils/domainSchema.js'
-import { validateProfileFormats } from '../utils/profileValidate.js'
+import {
+  validateProfileFormats,
+  isProfileFieldRequired,
+  isProfileFieldVisible,
+} from '../utils/profileValidate.js'
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
   'officeOrDorm', 'campusAddress', 'allergyNote', 'defaultRemark',
-  'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc',
+  'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc', 'workUnit', 'orgName', 'orgOrClub',
 ])
 const router = useRouter()
 const saving = ref(false)
 const allFields = computed(() => profileFields())
 const basicFields = computed(() => allFields.value.filter((f) => BASIC_KEYS.has(f.key) || f.storage === 'phone'))
-const bizFields = computed(() => allFields.value.filter((f) => !BASIC_KEYS.has(f.key) && f.storage !== 'phone'))
+const bizFields = computed(() =>
+  allFields.value.filter(
+    (f) => !BASIC_KEYS.has(f.key) && f.storage !== 'phone' && isProfileFieldVisible(f, form.extras),
+  ),
+)
 
 const form = reactive({
   username: '',
@@ -184,6 +193,14 @@ const displayName = computed(() =>
 
 function isWideField(f) {
   return !!(f && (WIDE_KEYS.has(f.key) || (f.maxLength && f.maxLength >= 100)))
+}
+
+function onBizSelectChange(f) {
+  if (f?.key !== 'identityType' && f?.key !== 'readerType' && f?.key !== 'ownerType') return
+  for (const x of allFields.value) {
+    if (x.key === f.key || !x.visibleWhen) continue
+    if (!isProfileFieldVisible(x, form.extras)) form.extras[x.key] = ''
+  }
 }
 
 function clearPasswords() {
@@ -211,7 +228,8 @@ async function load() {
 
 async function save() {
   for (const f of allFields.value) {
-    if (!f.required) continue
+    if (!isProfileFieldVisible(f, form.extras)) continue
+    if (!isProfileFieldRequired(f, form.extras)) continue
     if (f.storage === 'phone') {
       if (!form.phone?.trim()) {
         ElMessage.warning(`请填写${f.label}`)
