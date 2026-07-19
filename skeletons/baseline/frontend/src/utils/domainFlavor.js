@@ -246,17 +246,17 @@ const FLAVORS = {
   'DOM-MEETING': {
     motif: 'door',
     notFound: {
-      title: '会议室未开放',
-      lead: '预约页或房间号不存在。',
-      hint: '从会议室列表重新挑选时段。',
+      title: '场地未开放',
+      lead: '预约页或场地编号不存在。',
+      hint: '从场地列表重新挑选时段。',
     },
     serverError: {
       title: '预约服务中断',
-      lead: '会议室系统暂时不可用。',
+      lead: '场地预约暂时不可用。',
       hint: '请稍后再锁定时段。',
     },
     loading: {
-      title: '会议室准备中…',
+      title: '场地准备中…',
       lead: '正在核对占用与空闲时段。',
     },
   },

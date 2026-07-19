@@ -1454,36 +1454,50 @@ def _food_schema(title: str) -> dict[str, Any]:
 
 
 def _meeting_schema(title: str) -> dict[str, Any]:
+    """会议室 / 琴房 / 体育场 / 自习室等共用时段预约壳，文案跟题名走。"""
+    t = title or ""
+    if any(k in t for k in ("琴房", "排练", "舞蹈")):
+        noun, remark, admin, sub = "琴房", "排练说明", "琴房管理员（总管）", "琴房值班"
+    elif any(k in t for k in ("体育场", "体育馆", "球馆", "羽毛球场", "篮球场", "足球场", "游泳")):
+        noun, remark, admin, sub = "场地", "预约说明", "场馆主管（总管）", "场馆管理员"
+    elif any(k in t for k in ("自习室", "研习室", "研讨室")):
+        noun, remark, admin, sub = "自习室", "用途说明", "教务主管（总管）", "自习室管理员"
+    elif any(k in t for k in ("实验室", "实训室")):
+        noun, remark, admin, sub = "实验室", "使用说明", "实验室主管（总管）", "实验室管理员"
+    elif "会议" in t:
+        noun, remark, admin, sub = "会议室", "会议主题", "会务主管（总管）", "会务管理员"
+    else:
+        noun, remark, admin, sub = "场地", "预约说明", "场地主管（总管）", "场地管理员"
     return _slot_shell_schema(
         title,
         domain="DOM-MEETING",
         user_role_id="user",
         user_label="预约人",
-        admin_label="会务主管（总管）",
-        subadmin_label="会务管理员",
+        admin_label=admin,
+        subadmin_label=sub,
         archive_key="room",
-        archive_label="会议室",
-        archive_plural="会议室",
+        archive_label=noun,
+        archive_plural=noun,
         archive_fields=[
-            {"key": "title", "label": "会议室", "type": "string"},
+            {"key": "title", "label": noun, "type": "string"},
             {"key": "author", "label": "费用", "type": "number"},
             {"key": "isbn", "label": "位置/容量", "type": "string"},
             {"key": "category", "label": "类型", "type": "select"},
         ],
-        archive_menu_admin="会议室管理",
-        archive_menu_user="会议室",
+        archive_menu_admin=f"{noun}管理",
+        archive_menu_user=noun,
         users_menu="用户管理",
         my_resv_label="我的预约",
         resv_admin_label="预约记录",
-        auth_eyebrow="会议室预约",
-        auth_lead="验证码登录；选择会议室与时段，占坑预约（约满不可再约）。",
-        auth_points=["验证码登录", "会议室检索", "时段占坑预约"],
-        register_hint="注册后可预约会议室",
+        auth_eyebrow=f"{noun}预约",
+        auth_lead=f"验证码登录；选择{noun}与时段，占坑预约（约满不可再约）。",
+        auth_points=["验证码登录", f"{noun}检索", "时段占坑预约"],
+        register_hint=f"注册后可预约{noun}",
         notice_title="预约须知",
-        notice_body="请填写会议主题；按时使用并及时取消不用的预约以释放时段。",
-        notice_page_title="会务公告",
+        notice_body=f"请填写{remark}；按时使用并及时取消不用的预约以释放时段。",
+        notice_page_title="预约公告",
         reserve_require_remark=True,
-        reserve_remark_label="会议主题",
+        reserve_remark_label=remark,
     )
 
 

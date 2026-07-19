@@ -115,7 +115,8 @@ const visibleFields = computed(() =>
 )
 
 function onIdentityMaybe(f) {
-  if (f?.key !== 'identityType' && f?.key !== 'readerType' && f?.key !== 'ownerType') return
+  const drivers = new Set(['identityType', 'readerType', 'ownerType', 'deliveryType', 'pickupType'])
+  if (!drivers.has(f?.key)) return
   for (const x of allFields.value) {
     if (x.key === f.key || !x.visibleWhen) continue
     if (!isProfileFieldVisible(x, form.extras)) form.extras[x.key] = ''

@@ -39,6 +39,7 @@ import { isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileV
 const WIDE = new Set([
   'officeOrDorm', 'campusAddress', 'allergyNote', 'defaultRemark',
   'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc', 'workUnit', 'orgName', 'orgOrClub',
+  'campusAddress', 'offCampusAddress',
 ])
 
 const props = defineProps({
@@ -63,7 +64,8 @@ function isReq(f) {
 function patch(key, val) {
   const next = { ...props.extras, [key]: val ?? '' }
   // 切换身份等驱动字段时，清掉当前不可见的条件项，避免脏数据提交
-  if (key === 'identityType' || key === 'readerType' || key === 'ownerType') {
+  if (key === 'identityType' || key === 'readerType' || key === 'ownerType'
+    || key === 'deliveryType' || key === 'pickupType') {
     for (const f of props.fields || []) {
       if (f.key === key || !f.visibleWhen) continue
       if (!isProfileFieldVisible(f, next)) next[f.key] = ''
