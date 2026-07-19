@@ -50,7 +50,14 @@
             </n-button-group>
             <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
           </div>
-          <n-data-table :columns="columns" :data="list" :row-key="r => r.id" :bordered="false" size="small" />
+          <n-data-table :columns="columns" :data="list" :row-key="r => r.id" :bordered="false" size="small">
+            <template #empty>
+              <div class="empty-hint">
+                <div class="empty-title">暂无项目</div>
+                <div class="empty-desc">拖入开题报告即可创建</div>
+              </div>
+            </template>
+          </n-data-table>
           <div class="small muted mt-12">共 {{ list.length }} 条 · 点击行进入详情</div>
         </div>
       </div>
