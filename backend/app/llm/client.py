@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.llm.runtime import LlmRuntime
-from app.models import LlmCall
+from app.models import LlmCall, Project
 
 logger = logging.getLogger("gf.llm")
 
@@ -130,16 +130,88 @@ async def project_usage_rows(
     order_expr = sort_col.asc() if ascending else sort_col.desc()
     rows_q = base.order_by(order_expr).offset(offset).limit(page_size)
     rows = (await db.execute(rows_q)).all()
+    ids = [r.project_id for r in rows if r.project_id]
+    alive: set[str] = set()
+    if ids:
+        alive = set(
+            (await db.execute(select(Project.id).where(Project.id.in_(ids)))).scalars().all()
+        )
     items = [
         {
             "project_id": r.project_id or "",
             "tokens": int(r.tokens or 0),
             "calls": int(r.calls or 0),
             "last_at": r.last_at,
+            "deleted": (r.project_id or "") not in alive,
         }
         for r in rows
     ]
     return items, total
+
+
+async def project_usage_chart(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> dict[str, Any]:
+    """用量透视：按日 Token 合计（折线）。"""
+    start = date_from or datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    end = date_to or datetime.now()
+    if end < start:
+        start, end = end, start
+
+    filters = [
+        LlmCall.created_at >= start,
+        LlmCall.created_at <= end,
+        LlmCall.project_id.is_not(None),
+    ]
+    needle = (q or "").strip()
+    if needle:
+        filters.append(LlmCall.project_id.ilike(f"%{needle}%"))
+
+    day_expr = func.date(LlmCall.created_at)
+    daily_rows = (
+        await db.execute(
+            select(
+                day_expr.label("day"),
+                func.coalesce(func.sum(LlmCall.tokens), 0).label("tokens"),
+                func.count(LlmCall.id).label("calls"),
+            )
+            .where(*filters)
+            .group_by(day_expr)
+            .order_by(day_expr)
+        )
+    ).all()
+    by_day: dict[str, dict[str, int]] = {}
+    for r in daily_rows:
+        key = str(r.day)[:10]
+        by_day[key] = {"tokens": int(r.tokens or 0), "calls": int(r.calls or 0)}
+
+    daily: list[dict[str, Any]] = []
+    cursor = start.date()
+    last = end.date()
+    span_days = (last - cursor).days + 1
+    if span_days > 120:
+        # 过长区间不补零日，避免前端点过密
+        for key in sorted(by_day.keys()):
+            hit = by_day[key]
+            daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
+    else:
+        while cursor <= last:
+            key = cursor.isoformat()
+            hit = by_day.get(key) or {"tokens": 0, "calls": 0}
+            daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
+            cursor = cursor + timedelta(days=1)
+
+    return {
+        "daily": daily,
+        "date_from": start,
+        "date_to": end,
+    }
 
 
 async def budget_ok(db: AsyncSession, project_id: str, rt: LlmRuntime) -> bool:

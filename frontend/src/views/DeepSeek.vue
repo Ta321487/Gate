@@ -2,6 +2,8 @@
   <div>
     <h1 class="page-title">DeepSeek</h1>
     <p class="page-desc">连接、用量与阶段开关。旧模型名将于 7/24 停用，请改用 V4。</p>
+    <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
+    <template v-else>
 
     <div class="grid-2 mb-16">
       <div class="panel">
@@ -25,8 +27,8 @@
             </n-form-item>
           </div>
           <div class="row">
-            <n-button type="primary" size="small" @click="test">测试连接</n-button>
-            <n-button size="small" @click="save">保存</n-button>
+            <n-button type="primary" size="small" :loading="saving" @click="save">保存</n-button>
+            <n-button size="small" :loading="testing" @click="test">测试连接</n-button>
             <span class="small muted">{{ latency }}</span>
           </div>
         </div>
@@ -74,24 +76,24 @@
     <div class="panel mb-16">
       <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可确定性 bake</span></div>
       <div class="panel-bd">
-        <div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft)">
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>Agent A · Spec</strong><div class="small muted">润色开题摘要/功能点；关则仅关键词</div></div>
           <n-switch v-model:value="form.parse_spec" />
         </div>
-        <div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft)">
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>Agent B · 填岛</strong><div class="small muted">labels/seeds 白名单 JSON，不改源码</div></div>
           <n-switch v-model:value="form.island_fill" />
         </div>
-        <div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft)">
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>Agent C · 编译修复</strong><div class="small muted">mvn 失败诊断并重放交付配置</div></div>
           <n-switch v-model:value="form.auto_fix" />
         </div>
-        <div class="row" style="justify-content:space-between;padding:10px 0">
+        <div class="row-between" style="padding:10px 0">
           <div><strong>Agent D · QA</strong><div class="small muted">漂移扫描 + 摘要，写入 islands/qa_report.json</div></div>
           <n-switch v-model:value="form.qa_report" />
         </div>
         <div class="row mt-12">
-          <n-button type="primary" size="small" @click="save">保存开关</n-button>
+          <n-button type="primary" size="small" :loading="saving" @click="save">保存开关</n-button>
         </div>
       </div>
     </div>
@@ -124,6 +126,7 @@
           />
         </div>
         <p class="small muted mb-12">超项目预算或月度预算时 Agent 会跳过 LLM · 点项目可筛调用</p>
+        <UsageCharts class="mb-16" :daily="usageChart.daily" />
         <n-data-table
           v-if="projectUsages.length"
           :columns="usageCols"
@@ -138,7 +141,10 @@
         <div v-else-if="usageLoading" class="skel-stack" style="padding:8px 0">
           <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
         </div>
-        <div v-else class="empty-hint">无匹配项目</div>
+        <div v-else class="empty-hint">
+          <div class="empty-title">无匹配项目</div>
+          <div class="empty-desc">调整时间范围或项目 ID 后再刷新</div>
+        </div>
         <div v-if="usageTotal > 0" class="pager-row">
           <span class="small muted">共 {{ usageTotal }} 个项目</span>
           <n-pagination
@@ -219,7 +225,10 @@
         <div v-else-if="callsLoading" class="skel-stack" style="padding:8px 0">
           <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
         </div>
-        <div v-else class="empty-hint">无匹配调用</div>
+        <div v-else class="empty-hint">
+          <div class="empty-title">无匹配调用</div>
+          <div class="empty-desc">调整筛选条件后再刷新</div>
+        </div>
         <div v-if="callsTotal > 0" class="pager-row">
           <span class="small muted">共 {{ callsTotal }} 条</span>
           <n-pagination
@@ -235,18 +244,22 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NButton, NTag } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import { api, message } from '../api'
+import PageSkeleton from '../components/PageSkeleton.vue'
+import UsageCharts from '../components/UsageCharts.vue'
 import {
   dateRangeShortcuts,
   debounce,
   monthRangeMs,
   rangeToParams,
+  statusPillNode,
 } from '../opsShared'
 
 const cfg = reactive({})
@@ -262,9 +275,13 @@ const form = reactive({
   monthly_token_budget: 1000000,
   fix_rounds_max: 5,
 })
+const booted = ref(false)
 const latency = ref('')
+const saving = ref(false)
+const testing = ref(false)
 const calls = ref([])
 const projectUsages = ref([])
+const usageChart = reactive({ daily: [] })
 const usageLoading = ref(false)
 const callsLoading = ref(false)
 const usageQ = ref('')
@@ -323,19 +340,22 @@ const usageCols = computed(() => [
     key: 'project_id',
     ellipsis: { tooltip: true },
     render: (r) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          size: 'tiny',
-          onClick: (e) => {
-            e.stopPropagation()
-            filterCallsByProject(r.project_id)
+      h('div', { style: 'display:inline-flex;align-items:center;gap:8px;min-width:0' }, [
+        h(
+          NButton,
+          {
+            text: true,
+            type: 'primary',
+            size: 'small',
+            onClick: (e) => {
+              e.stopPropagation()
+              filterCallsByProject(r.project_id)
+            },
           },
-        },
-        { default: () => r.project_id }
-      ),
+          { default: () => r.project_id },
+        ),
+        r.deleted ? statusPillNode('已删除', 'pill-amber') : null,
+      ]),
   },
   {
     title: 'Tokens',
@@ -379,7 +399,12 @@ const cols = [
   { title: '项目', key: 'project_id', ellipsis: { tooltip: true } },
   { title: '阶段', key: 'stage', width: 110 },
   { title: 'Tokens', key: 'tokens', width: 90, render: (r) => h('span', { class: 'mono' }, String(r.tokens)) },
-  { title: '结果', key: 'ok', width: 70, render: (r) => h(NTag, { size: 'small', type: r.ok ? 'success' : 'error', bordered: false }, { default: () => (r.ok ? 'OK' : 'FAIL') }) },
+  {
+    title: '结果',
+    key: 'ok',
+    width: 70,
+    render: (r) => statusPillNode(r.ok ? 'OK' : 'FAIL', r.ok ? 'pill-green' : 'pill-red'),
+  },
   { title: '明细', key: 'detail', ellipsis: { tooltip: true }, render: (r) => r.detail || '—' },
 ]
 
@@ -418,23 +443,39 @@ function migrateModel(m) {
   return m || 'deepseek-v4-flash'
 }
 
+async function loadUsageChart(rangeParams) {
+  try {
+    const chart = await api.deepseekUsageChart({
+      q: usageQ.value || undefined,
+      ...rangeParams,
+    })
+    usageChart.daily = chart?.daily || []
+  } catch {
+    usageChart.daily = []
+  }
+}
+
 async function loadUsage() {
   usageLoading.value = true
   try {
     const s = usageSorter.value
+    const rangeParams = rangeToParams(usageRange.value)
     const params = {
       q: usageQ.value || undefined,
       page: usagePage.value,
       page_size: usagePageSize.value,
-      ...rangeToParams(usageRange.value),
+      ...rangeParams,
     }
     if (s?.columnKey && s.order) {
       params.sort_by = s.columnKey
       params.sort_order = s.order === 'ascend' ? 'asc' : 'desc'
     }
-    const res = await api.deepseekUsage(params)
-    projectUsages.value = res.items || []
-    usageTotal.value = res.total || 0
+    const [res] = await Promise.all([
+      api.deepseekUsage(params),
+      loadUsageChart(rangeParams),
+    ])
+    projectUsages.value = res?.items || []
+    usageTotal.value = res?.total || 0
   } finally {
     usageLoading.value = false
   }
@@ -508,31 +549,47 @@ function onCallsPageSize() {
 }
 
 async function load() {
-  Object.assign(cfg, await api.deepseek())
-  form.base_url = cfg.base_url
-  form.model = migrateModel(cfg.model)
-  form.thinking = cfg.thinking
-  form.parse_spec = cfg.parse_spec
-  form.island_fill = cfg.island_fill
-  form.auto_fix = cfg.auto_fix
-  form.qa_report = cfg.qa_report
-  form.project_token_budget = cfg.project_token_budget
-  form.monthly_token_budget = cfg.monthly_token_budget
-  form.fix_rounds_max = cfg.fix_rounds_max
-  await Promise.all([loadUsage(), loadCalls(), loadBalance()])
+  try {
+    Object.assign(cfg, await api.deepseek())
+    form.base_url = cfg.base_url
+    form.model = migrateModel(cfg.model)
+    form.thinking = cfg.thinking
+    form.parse_spec = cfg.parse_spec
+    form.island_fill = cfg.island_fill
+    form.auto_fix = cfg.auto_fix
+    form.qa_report = cfg.qa_report
+    form.project_token_budget = cfg.project_token_budget
+    form.monthly_token_budget = cfg.monthly_token_budget
+    form.fix_rounds_max = cfg.fix_rounds_max
+    await Promise.all([loadUsage(), loadCalls(), loadBalance()])
+  } finally {
+    booted.value = true
+  }
 }
 
 async function save() {
-  Object.assign(cfg, await api.saveDeepseek({ ...form }))
-  message.success('已保存（Key 仍只读环境变量）')
+  if (saving.value) return
+  saving.value = true
+  try {
+    Object.assign(cfg, await api.saveDeepseek({ ...form }))
+    message.success('已保存（Key 仍只读环境变量）')
+  } finally {
+    saving.value = false
+  }
 }
 
 async function test() {
+  if (testing.value) return
+  testing.value = true
   latency.value = '测试中…'
-  const res = await api.testDeepseek()
-  latency.value = res.message
-  if (res.ok) message.success(res.message)
-  else message.error(res.message)
+  try {
+    const res = await api.testDeepseek()
+    latency.value = res.message
+    if (res.ok) message.success(res.message)
+    else message.error(res.message)
+  } finally {
+    testing.value = false
+  }
 }
 
 onMounted(load)
@@ -542,8 +599,8 @@ onMounted(load)
 .balance-box {
   padding: 12px 14px;
   border-radius: 10px;
-  background: var(--bg-soft, #f5f7fa);
-  border: 1px solid var(--line-soft, #e8eef2);
+  background: var(--bg-soft);
+  border: 1px solid var(--line-soft);
 }
 .balance-row {
   display: flex;
@@ -551,12 +608,6 @@ onMounted(load)
   gap: 2px;
 }
 .balance-row + .balance-row { margin-top: 8px; }
-.warn { color: #c45c26; }
-.empty-hint {
-  padding: 20px 16px;
-  color: var(--muted, #888);
-  font-size: 13px;
-}
 .pager-row {
   display: flex;
   align-items: center;

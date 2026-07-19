@@ -7,7 +7,7 @@
       <div class="panel-hd">
         <h3>任务列表</h3>
         <div class="row" style="gap:8px">
-          <n-button size="small" @click="load">刷新</n-button>
+          <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
           <n-button
             size="small"
             secondary
@@ -34,30 +34,17 @@
 <script setup>
 import { h, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NTag } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import { JOB_STATUS, statusPillNode } from '../opsShared'
 
 const router = useRouter()
 const list = ref([])
+const loading = ref(false)
 const purging = ref(false)
 const booted = ref(false)
 let timer = null
-
-const statusType = {
-  queued: 'default',
-  running: 'info',
-  success: 'success',
-  failed: 'error',
-  cancelled: 'default',
-}
-const statusLabel = {
-  queued: '排队',
-  running: '运行中',
-  success: '成功',
-  failed: '失败',
-  cancelled: '已取消',
-}
 
 async function act(fn, okMsg) {
   const res = await fn()
@@ -72,7 +59,10 @@ const columns = [
   {
     title: '状态',
     key: 'status',
-    render: (r) => h(NTag, { size: 'small', type: statusType[r.status] || 'default', bordered: false }, { default: () => statusLabel[r.status] || r.status }),
+    render: (r) => {
+      const m = JOB_STATUS[r.status] || { label: r.status, pill: 'pill-neutral' }
+      return statusPillNode(m.label, m.pill)
+    },
   },
   {
     title: '进度',
@@ -97,7 +87,15 @@ const columns = [
           size: 'small',
           type: 'error',
           secondary: true,
-          onClick: () => act(() => api.cancelJob(r.id), '已取消'),
+          onClick: async () => {
+            const ok = await confirm('确认取消该生成任务？进行中的步骤将中止。', {
+              title: '取消任务',
+              type: 'warning',
+              positiveText: '确认取消',
+            })
+            if (!ok) return
+            await act(() => api.cancelJob(r.id), '已取消')
+          },
         }, { default: () => '取消' }))
       }
       if (r.status === 'failed') {
@@ -122,6 +120,16 @@ async function load() {
     /* api 拦截器已提示 */
   } finally {
     booted.value = true
+  }
+}
+
+async function refresh() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    await load()
+  } finally {
+    loading.value = false
   }
 }
 

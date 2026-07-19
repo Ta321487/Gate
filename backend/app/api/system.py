@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.llm.client import monthly_tokens_used, project_usage_rows
+from app.llm.client import monthly_tokens_used, project_usage_chart, project_usage_rows
 from app.models import LlmCall, Project, ProjectStatus, SettingRow
 from app.schemas import (
     ApiOk,
@@ -231,6 +231,22 @@ async def list_usage(
         "page": max(1, int(page)),
         "page_size": max(1, min(100, int(page_size))),
     }
+
+
+@router.get("/deepseek/usage/chart")
+async def usage_chart(
+    q: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """用量透视：按日 Token 折线。"""
+    return await project_usage_chart(
+        db,
+        q=q,
+        date_from=_parse_dt(date_from),
+        date_to=_parse_dt(date_to, end=True),
+    )
 
 
 @router.get("/deepseek/calls")

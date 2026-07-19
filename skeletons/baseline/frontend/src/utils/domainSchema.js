@@ -40,7 +40,8 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
 ])
 
 /**
- * 门户用户菜单：在 schema 基础上补「首页 / 消息」真入口（有页面，非灌水）。
+ * 门户用户菜单：在 schema 基础上补「消息」入口。
+ * 不灌「首页」枢纽——默认进业务页（档案/单据），避免落地只有两张卡片。
  * 管理端原样返回。
  */
 export function schemaMenus(side = 'admin') {
@@ -50,10 +51,6 @@ export function schemaMenus(side = 'admin') {
 
   const list = raw.map((m) => ({ ...m }))
   const keys = new Set(list.map((m) => m.key))
-  if (!keys.has('home')) {
-    list.unshift({ key: 'home', label: '首页' })
-    keys.add('home')
-  }
   if (!keys.has('messages')) {
     const item = { key: 'messages', label: '消息' }
     const pi = list.findIndex((m) => m.key === 'profile')

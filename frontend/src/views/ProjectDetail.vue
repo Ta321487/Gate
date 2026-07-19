@@ -12,7 +12,7 @@
         </div>
       </div>
       <div class="proj-actions">
-        <n-button :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+        <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
           {{ downloadZipLabel }}
         </n-button>
         <n-button type="error" secondary size="small" :disabled="deleteBlocked" :title="deleteBlockedReason" @click="onDelete">删除</n-button>
@@ -79,7 +79,7 @@
               </div>
               <div class="confidence">
                 <span class="small muted">置信度</span>
-                <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : '#d97706' }" /></div>
+                <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : 'var(--amber)' }" /></div>
                 <strong>{{ displayConf.toFixed(2) }}</strong>
                 <span v-if="deviant" class="small muted">覆盖后降级 · 推荐 {{ (p.confidence || 0).toFixed(2) }}</span>
               </div>
@@ -91,7 +91,10 @@
           <div class="panel">
             <div class="panel-hd">
               <h3>解析摘要 · Spec 预览</h3>
-              <n-button text size="small" @click="showSpec = true">JSON</n-button>
+              <div class="row" style="margin:0;gap:6px">
+                <CopyIconButton :text="specText" tip="复制 JSON" />
+                <n-button text size="small" @click="showSpec = true">查看</n-button>
+              </div>
             </div>
             <div class="panel-bd parse-panel">
               <div class="parse-block">
@@ -122,7 +125,7 @@
               <div class="parse-block">
                 <div class="parse-label">生成 Spec</div>
                 <dl class="spec-dl">
-                  <div><dt>角色</dt><dd>{{ (p.spec?.roles || []).join('、') || '—' }}</dd></div>
+                  <div><dt>角色</dt><dd>{{ roleSpecText }}</dd></div>
                   <div><dt>实体</dt><dd>{{ (p.spec?.entities || []).join('、') || '—' }}</dd></div>
                   <div><dt>主流程</dt><dd>{{ (p.spec?.flows || []).join('；') || '—' }}</dd></div>
                   <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
@@ -151,7 +154,7 @@
         <div v-if="genState === 'idle'">
           <div class="panel mb-16">
             <div class="panel-bd">
-              <div class="row" style="justify-content:space-between">
+              <div class="row-between">
                 <div>
                   <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
                   <div class="small muted">bake 为主 · LLM 仅填业务岛 · 门禁不过禁止 ZIP</div>
@@ -161,18 +164,29 @@
             </div>
           </div>
           <div class="panel">
-            <div class="panel-hd"><h3>将执行的步骤</h3></div>
+            <div class="panel-hd">
+              <h3>生成流水线</h3>
+              <span class="small muted">{{ planSteps.length }} 步 · 顺序执行</span>
+            </div>
             <div class="panel-bd">
-              <ul class="step-list">
-                <li v-for="(s, i) in planSteps" :key="i"><span class="step-ico">{{ i + 1 }}</span><div><div>{{ s.t }}</div><div class="meta">{{ s.m }}</div></div></li>
-              </ul>
+              <ol class="step-rail">
+                <li v-for="(s, i) in planSteps" :key="i" class="pending">
+                  <div class="step-rail-track" aria-hidden="true">
+                    <span class="step-ico">{{ i + 1 }}</span>
+                  </div>
+                  <div class="step-body">
+                    <div class="step-title">{{ s.t }}</div>
+                    <div class="meta">{{ s.m }}</div>
+                  </div>
+                </li>
+              </ol>
             </div>
           </div>
         </div>
         <div v-else-if="genState === 'running'">
           <div class="panel mb-16">
             <div class="panel-bd">
-              <div class="row" style="justify-content:space-between;margin-bottom:10px">
+              <div class="row-between" style="margin-bottom:10px">
                 <div style="font-weight:600">正在生成…</div>
                 <div class="small muted">Job #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
               </div>
@@ -185,14 +199,31 @@
             </div>
           </div>
           <div class="panel">
-            <div class="panel-hd"><h3>步骤进度</h3></div>
+            <div class="panel-hd">
+              <h3>流水线进度</h3>
+              <span class="small muted">{{ currentJob?.progress || 0 }}%</span>
+            </div>
             <div class="panel-bd">
-              <ul class="step-list">
-                <li v-for="s in (currentJob?.steps || [])" :key="s.key" :class="s.status">
-                  <span class="step-ico">{{ s.status === 'done' ? '✓' : s.status === 'run' ? '…' : s.status === 'fail' ? '!' : '·' }}</span>
-                  <div><div>{{ s.title }}</div><div class="meta">{{ s.meta || s.status }}</div></div>
+              <ol class="step-rail">
+                <li
+                  v-for="s in (currentJob?.steps || [])"
+                  :key="s.key"
+                  :class="s.status || 'pending'"
+                >
+                  <div class="step-rail-track" aria-hidden="true">
+                    <span class="step-ico">{{
+                      s.status === 'done' ? '✓'
+                      : s.status === 'run' ? ''
+                      : s.status === 'fail' ? '!'
+                      : '·'
+                    }}</span>
+                  </div>
+                  <div class="step-body">
+                    <div class="step-title">{{ s.title }}</div>
+                    <div class="meta">{{ s.meta || stepStatusLabel(s.status) }}</div>
+                  </div>
                 </li>
-              </ul>
+              </ol>
             </div>
           </div>
         </div>
@@ -200,55 +231,58 @@
           <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 门禁全过 · 可交付' }}</h4>
           <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载 ZIP。' : 'ZIP 已解锁。请到「运行」预览后再交付。' }}</p>
           <div class="row mt-12">
-            <n-button type="primary" @click="tab = 'runtime'">前往运行</n-button>
-            <n-button @click="tab = 'artifacts'">查看门禁</n-button>
-            <n-button @click="downloadZip">下载 ZIP</n-button>
-            <n-button @click="startGenerate">重新生成</n-button>
+            <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
+            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
+            <n-button size="small" @click="startGenerate">重新生成</n-button>
           </div>
         </div>
         <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail">
           <h4>已生成 · 门禁回退 · 禁止下载</h4>
           <p class="small muted">工作区与当前门禁不一致（常见于骨架升级后）。请重新生成，或到「产物」查看未过项。</p>
           <div class="row mt-12">
-            <n-button type="primary" @click="startGenerate">重新生成</n-button>
-            <n-button @click="tab = 'artifacts'">查看门禁</n-button>
-            <n-button @click="tab = 'runtime'">前往运行</n-button>
+            <n-button type="primary" size="small" @click="startGenerate">重新生成</n-button>
+            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
           </div>
         </div>
         <div v-else class="banner fail">
           <h4>门禁未过 · 禁止交付</h4>
           <p class="small muted">{{ currentJob?.error || '主流程 / 功能清单未通过则禁止下载 ZIP。' }}</p>
           <div class="row mt-12">
-            <n-button type="primary" @click="retryCurrent">从失败步骤重试</n-button>
-            <n-button @click="tab = 'artifacts'">查看门禁</n-button>
-            <n-button @click="tab = 'logs'">查看日志</n-button>
+            <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
+            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
           </div>
         </div>
       </n-tab-pane>
 
       <!-- Runtime -->
       <n-tab-pane name="runtime" tab="运行">
-        <div class="row mb-16" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div class="row-between mb-16">
           <span class="small muted">库 <span class="mono">{{ p.db_name || '—' }}</span><CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" /></span>
           <div class="row" style="margin:0">
             <n-button
+              size="small"
               :type="rtCanStartAll && !rtAnyLive ? 'primary' : 'default'"
               :disabled="!rtCanStartAll"
-              :loading="rtAllBusy && rtPendingAll==='start'"
+              :loading="rtPendingAll==='start'"
               @click="rtAction('all','start')"
             >全部启动</n-button>
             <n-button
+              size="small"
               :type="rtBothLive ? 'primary' : 'default'"
               :disabled="!rtCanStopAll"
-              :loading="rtAllBusy && rtPendingAll==='stop'"
+              :loading="rtPendingAll==='stop'"
               @click="rtAction('all','stop')"
             >全部关闭</n-button>
             <n-button
+              size="small"
               :disabled="!rtCanRestartAll"
-              :loading="rtAllBusy && rtPendingAll==='restart'"
+              :loading="rtPendingAll==='restart'"
               @click="rtAction('all','restart')"
             >全部重启</n-button>
-            <n-button :disabled="rt.frontend_status !== 'healthy' || rtBusyFe" @click="openPreview">打开预览</n-button>
+            <n-button size="small" :disabled="rt.frontend_status !== 'healthy' || rtBusyFe" @click="openPreview">打开预览</n-button>
             <CopyIconButton
               v-if="rt.preview_url && rt.frontend_status === 'healthy'"
               :text="rt.preview_url"
@@ -303,7 +337,7 @@
             </n-button-group>
             <n-input v-model:value="logFilter" clearable placeholder="过滤关键字…" style="width:180px" />
           </div>
-          <n-button size="small" @click="loadLog(logSide)">刷新</n-button>
+          <n-button size="small" :loading="logLoading" @click="loadLog(logSide)">刷新</n-button>
         </div>
         <pre class="log-viewer">{{ filteredLog }}</pre>
       </n-tab-pane>
@@ -326,7 +360,10 @@
               </div>
               <div class="file-row" style="margin:0">
                 <span><strong>spec.json</strong></span>
-                <n-button text size="small" @click="showSpec = true">查看</n-button>
+                <div class="row" style="margin:0;gap:6px">
+                  <CopyIconButton :text="specText" tip="复制 JSON" />
+                  <n-button text size="small" @click="showSpec = true">查看</n-button>
+                </div>
               </div>
             </div>
           </div>
@@ -498,9 +535,8 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NTag } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import ErrorPage from './ErrorPage.vue'
 import PageSkeleton from '../components/PageSkeleton.vue'
@@ -513,6 +549,7 @@ import {
   getCatalog,
   projectStatusLabel,
   projectStatusPill,
+  statusPillNode,
 } from '../opsShared'
 
 const route = useRoute()
@@ -567,6 +604,7 @@ const frontendAddr = computed(() => {
 const logSide = ref('job')
 const logText = ref('')
 const logFilter = ref('')
+const logLoading = ref(false)
 const logSides = LOG_SIDES
 const showSpec = ref(false)
 const showEr = ref(false)
@@ -661,6 +699,10 @@ const planSteps = [
   { t: '门禁：登录 + 主流程 E2E', m: 'P1 / P2' },
   { t: '开题对照 · 打包 ZIP', m: '仅门禁全过' },
 ]
+
+function stepStatusLabel(st) {
+  return ({ done: '已完成', run: '进行中', fail: '失败', pending: '等待中' })[st] || st || '等待中'
+}
 
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
 const domOptions = computed(() => catalog.value.domains.map((x) => ({ label: x.label, value: x.id })))
@@ -793,6 +835,18 @@ const genState = computed(() => {
 
 const specText = computed(() => JSON.stringify(p.value?.spec || {}, null, 2))
 const proposal = computed(() => p.value?.spec?.proposal || {})
+/** Spec 角色文案：走领域 schema.roles[].label，不写死中文 */
+const roleSpecText = computed(() => {
+  const roles = p.value?.spec?.roles || []
+  if (!roles.length) return '—'
+  const byId = p.value?.spec?.schema?.roles || {}
+  return roles
+    .map((id) => {
+      const label = byId[id]?.label
+      return label ? `${id}（${label}）` : id
+    })
+    .join('、')
+})
 const filteredLog = computed(() => {
   const q = logFilter.value.trim().toLowerCase()
   if (!q) return logText.value || '（无日志）'
@@ -800,9 +854,14 @@ const filteredLog = computed(() => {
 })
 
 const gateCols = [
-  { title: '级别', key: 'level', width: 80, render: (r) => h(NTag, { size: 'small', bordered: false }, { default: () => r.level }) },
+  { title: '级别', key: 'level', width: 80, render: (r) => statusPillNode(r.level, 'pill-neutral') },
   { title: '检查项', key: 'label' },
-  { title: '结果', key: 'ok', width: 100, render: (r) => h(NTag, { size: 'small', type: r.ok ? 'success' : 'error', bordered: false }, { default: () => (r.ok ? '通过' : '未通过') }) },
+  {
+    title: '结果',
+    key: 'ok',
+    width: 100,
+    render: (r) => statusPillNode(r.ok ? '通过' : '未通过', r.ok ? 'pill-green' : 'pill-red'),
+  },
   { title: '说明', key: 'desc' },
 ]
 const gateRows = computed(() => {
@@ -830,7 +889,7 @@ const checkCols = [
     key: 'result',
     render: (r) => {
       const m = CHECKLIST_RESULT[r.result] || CHECKLIST_RESULT.pending
-      return h(NTag, { size: 'small', type: m.type, bordered: false }, { default: () => m.label })
+      return statusPillNode(m.label, m.pill)
     },
   },
   { title: '说明', key: 'status' },
@@ -1137,6 +1196,12 @@ async function startGenerate() {
 
 async function cancelCurrent() {
   if (!currentJob.value) return
+  const ok = await confirm('确认取消该生成任务？进行中的步骤将中止。', {
+    title: '取消任务',
+    type: 'warning',
+    positiveText: '确认取消',
+  })
+  if (!ok) return
   await api.cancelJob(currentJob.value.id)
   message.success('已取消')
   await load()
@@ -1248,6 +1313,7 @@ let logReqSeq = 0
 async function loadLog(side, { silent = false } = {}) {
   logSide.value = side
   const seq = ++logReqSeq
+  if (!silent) logLoading.value = true
   try {
     const res = silent
       ? await api.logsPoll(p.value.id, side)
@@ -1256,6 +1322,8 @@ async function loadLog(side, { silent = false } = {}) {
     logText.value = res.content || ''
   } catch {
     /* 轮询静默；手动打开日志页时仍走默认 toast */
+  } finally {
+    if (!silent && seq === logReqSeq) logLoading.value = false
   }
 }
 
@@ -1335,10 +1403,7 @@ onUnmounted(() => {
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-  color: #555;
-}
-.text-danger {
-  color: #d03050;
+  color: var(--muted);
 }
 .er-frame {
   height: 72vh;

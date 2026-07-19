@@ -1,5 +1,10 @@
 <template>
-  <n-config-provider :locale="zhCN" :date-locale="dateZhCN" :theme="naiveTheme">
+  <n-config-provider
+    :locale="zhCN"
+    :date-locale="dateZhCN"
+    :theme="naiveTheme"
+    :theme-overrides="naiveThemeOverrides"
+  >
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -61,7 +66,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { zhCN, dateZhCN } from 'naive-ui'
 import { detailCrumb } from './opsShared'
-import { isDark, naiveTheme, toggleTheme } from './theme'
+import { isDark, naiveTheme, naiveThemeOverrides, toggleTheme } from './theme'
 
 const route = useRoute()
 const workNav = [

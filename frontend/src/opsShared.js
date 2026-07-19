@@ -1,11 +1,15 @@
 /** 运营端共享：状态文案、默认 Tab、catalog 缓存、面包屑、debounce —— 避免各页各写一份 */
 
-import { ref } from 'vue'
+import { h, ref } from 'vue'
 import { api } from './api'
 
 /** 详情页面包屑标题（App.vue 读取） */
 export const detailCrumb = ref('')
 
+/**
+ * 状态徽章统一用 `.pill`（页头 / panel-hd / 表格单元格同一套）。
+ * `tag` 仅作 Naive 兼容映射，新代码请用 pill。
+ */
 export const PROJECT_STATUS = {
   needs_confirm: { label: '待确认匹配', pill: 'pill-amber', tag: 'warning' },
   ready: { label: '待生成', pill: 'pill-teal', tag: 'info' },
@@ -14,6 +18,11 @@ export const PROJECT_STATUS = {
   failed: { label: '门禁未过 · 禁止交付', pill: 'pill-red', tag: 'error' },
   running: { label: '运行中', pill: 'pill-green', tag: 'success' },
   archived: { label: '已归档', pill: 'pill-neutral', tag: 'default' },
+}
+
+/** 表格 render 用：`h('span', { class: ['pill', …] }, label)` */
+export function statusPillNode(label, pillClass = 'pill-neutral') {
+  return h('span', { class: ['pill', pillClass] }, label || '—')
 }
 
 export function projectStatusLabel(status, opts = {}) {
@@ -68,9 +77,17 @@ export function defaultTabForStatus(status) {
 }
 
 export const CHECKLIST_RESULT = {
-  done: { label: '已实现', type: 'success' },
-  out_of_mvp: { label: '砍项', type: 'default' },
-  pending: { label: '未覆盖', type: 'error' },
+  done: { label: '已实现', type: 'success', pill: 'pill-green' },
+  out_of_mvp: { label: '砍项', type: 'default', pill: 'pill-neutral' },
+  pending: { label: '未覆盖', type: 'error', pill: 'pill-red' },
+}
+
+export const JOB_STATUS = {
+  queued: { label: '排队', pill: 'pill-neutral' },
+  running: { label: '运行中', pill: 'pill-teal' },
+  success: { label: '成功', pill: 'pill-green' },
+  failed: { label: '失败', pill: 'pill-red' },
+  cancelled: { label: '已取消', pill: 'pill-neutral' },
 }
 
 export const LOG_SIDES = [
@@ -105,7 +122,13 @@ export function formatArchDom(catalog, archetype, domain) {
   return `${a} · ${d}`
 }
 
-/** 面板标题栏刷新按钮约定：panel-hd 右侧 · size="small"（勿用 tiny/quaternary） */
+/**
+ * 面板约定：
+ * - 状态徽章一律 `.pill`（见 statusPillNode）
+ * - panel-hd 刷新 / 工具栏按钮 size="small"（勿用 tiny/quaternary）
+ * - size="large" 仅用于匹配确认 / 一键生成主 CTA
+ * - confirm() = 是/否；n-modal dialog = 需额外字段的危险操作；n-modal card = 查看器
+ */
 export const PANEL_REFRESH = { size: 'small' }
 
 /** 默认本月 00:00 → 现在，供 datetimerange */

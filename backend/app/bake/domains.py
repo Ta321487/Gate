@@ -99,7 +99,7 @@ DOMAINS = {
         "label": "图书",
         "keywords": ["图书", "借阅", "图书馆", "读者"],
         "entities": ["Book", "Category", "Borrow", "Notice"],
-        "roles": ["reader", "admin"],
+        "roles": ["reader", "admin", "subadmin"],
         "flows": ["申请借阅 → 审核 → 归还", "逾期提醒 → 归还 / 罚款登记"],
         "features": [
             {"name": "读者注册 / 登录", "status": "baseline"},
@@ -148,7 +148,7 @@ DOMAINS = {
         "label": "设备借用",
         "keywords": ["设备借用", "器材", "实验室设备", "物资借用", "实验室管理"],
         "entities": ["Equip", "Category", "Loan", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["申请借用 → 审核 → 归还"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -203,7 +203,7 @@ DOMAINS = {
             "入库出库",
         ],
         "entities": ["Asset", "Category", "Requisition", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["提交申领 → 审核出库 → 可选退库"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -254,7 +254,7 @@ DOMAINS = {
             "客户档案",
         ],
         "entities": ["Customer", "Category", "FollowUp", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["客户建档 → 提交跟进 → 审核完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -296,7 +296,7 @@ DOMAINS = {
         "label": "商城",
         "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手"],
         "entities": ["Product", "Category", "Order", "Cart"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["加购 → 下单 → 发货"],
         "features": [
             {"name": "用户登录", "status": "baseline"},
@@ -338,7 +338,7 @@ DOMAINS = {
         # 不用光杆「报修」：仪器/物业报修会误落宿舍壳；报修行为走 ARCH-FLOW
         "keywords": ["宿舍", "寝室", "公寓", "水电", "宿舍报修"],
         "entities": ["Dorm", "Repair", "Notice"],
-        "roles": ["student", "admin"],
+        "roles": ["student", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
         "features": [
             {"name": "学生登录", "status": "baseline"},
@@ -383,7 +383,7 @@ DOMAINS = {
         "label": "物业报修",
         "keywords": ["物业", "社区报修", "维修工单", "小区报修"],
         "entities": ["Ticket", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -426,7 +426,7 @@ DOMAINS = {
         "label": "IT 报修",
         "keywords": ["校园网", "网络报修", "IT运维", "机房报修"],
         "entities": ["Ticket", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["提交故障 → 受理 → 完成"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -469,7 +469,7 @@ DOMAINS = {
         "label": "活动报名",
         "keywords": ["社团活动", "志愿活动", "志愿者", "志愿服务", "活动报名", "讲座报名", "活动管理", "报名系统"],
         "entities": ["Activity", "Category", "Signup", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览活动 → 报名 → 审核占名额"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -513,7 +513,7 @@ DOMAINS = {
         "label": "失物招领",
         "keywords": ["失物招领", "失物", "招领", "寻物", "失物管理"],
         "entities": ["LostItem", "Category", "Claim", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览启事 → 认领申请 → 审核"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -554,7 +554,7 @@ DOMAINS = {
         "label": "选课",
         "keywords": ["选课", "公选课", "课程报名", "学分", "选课系统", "课程管理"],
         "entities": ["Course", "Category", "Enrollment", "Notice"],
-        "roles": ["student", "admin"],
+        "roles": ["student", "admin", "subadmin"],
         "flows": ["浏览课程 → 选课申请 → 审核占名额"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -598,7 +598,7 @@ DOMAINS = {
         "label": "点餐",
         "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐饮", "餐厅", "奶茶", "快餐"],
         "entities": ["Dish", "Order", "Category"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["选菜 → 下单 → 堂食/自取/配送"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -638,7 +638,7 @@ DOMAINS = {
         "label": "医院",
         "keywords": ["医院", "挂号", "就诊", "门诊", "疫苗", "接种", "就医", "诊疗"],
         "entities": ["Doctor", "Department", "Appointment"],
-        "roles": ["patient", "admin"],
+        "roles": ["patient", "admin", "subadmin"],
         "flows": ["选科室 → 挂号 → 就诊"],
         "features": [
             {"name": "患者登录", "status": "baseline"},
@@ -676,7 +676,7 @@ DOMAINS = {
         "label": "车位",
         "keywords": ["车位", "停车", "预约车位", "泊车", "停车场", "停车管理"],
         "entities": ["ParkingLot", "Space", "Reservation"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["选车位 → 预约 → 入场"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -720,7 +720,7 @@ DOMAINS = {
             "场地预约", "订场", "实验室预约", "实训室预约", "游泳馆",
         ],
         "entities": ["Room", "Reservation"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["选场地 → 预约 → 取消/完成"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -756,7 +756,7 @@ DOMAINS = {
         "label": "服务预约",
         "keywords": ["美发", "美容", "美容院", "理发预约", "服务预约"],
         "entities": ["Service", "Slot", "Booking"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["选服务 → 预约时段"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -792,7 +792,7 @@ DOMAINS = {
         "label": "客房",
         "keywords": ["宾馆", "客房", "酒店", "民宿", "酒店预订", "住宿预订"],
         "entities": ["Room", "Booking", "Order"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["选房 → 预订 → 入住/离店"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -833,7 +833,7 @@ DOMAINS = {
         "label": "影视综",
         "keywords": ["影视", "电影", "电视剧", "综艺", "视频点播", "在线视频", "片库"],
         "entities": ["Media", "Category", "Favorite", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览片单 → 播放 → 收藏"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -877,7 +877,7 @@ DOMAINS = {
         "label": "音乐",
         "keywords": ["音乐", "歌曲", "歌单", "在线音乐", "音乐播放器", "听歌", "曲库"],
         "entities": ["Track", "Category", "Favorite", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览曲库 → 播放 → 收藏"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -921,7 +921,7 @@ DOMAINS = {
         "label": "论坛",
         "keywords": ["论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼"],
         "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览主帖 → 回复 → 版主审核展示"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -972,7 +972,7 @@ DOMAINS = {
         "label": "博客",
         "keywords": ["博客", "个人博客", "文章系统", "资讯发布", "CMS", "博文"],
         "entities": ["Article", "Category", "Favorite", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览文章 → 收藏 → 编辑确认"],
         "features": [
             {"name": "登录", "status": "baseline"},
@@ -1018,7 +1018,7 @@ DOMAINS = {
         "label": "通用",
         "keywords": [],
         "entities": ["Item", "Category", "Notice"],
-        "roles": ["user", "admin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["新增 → 编辑 → 查询"],
         "features": [
             {"name": "登录", "status": "baseline"},
