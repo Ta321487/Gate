@@ -62,6 +62,7 @@ const MENU_TO = {
   cart: '/cart',
   my_orders: '/orders',
   my_reservations: '/reservations',
+  slots: '/slots',
 }
 
 const nav = computed(() => {
