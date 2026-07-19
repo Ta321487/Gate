@@ -18,8 +18,14 @@
         </div>
       </div>
       <div class="panel-bd panel-bd-fill">
-        <n-data-table :columns="columns" :data="list" :bordered="false" size="small" />
-        <div v-if="booted && !list.length" class="empty-hint">暂无任务</div>
+        <n-data-table :columns="columns" :data="list" :bordered="false" size="small">
+          <template #empty>
+            <div class="empty-hint">
+              <div class="empty-title">暂无任务</div>
+              <div class="empty-desc">上传开题并开始生成后，任务会出现在这里</div>
+            </div>
+          </template>
+        </n-data-table>
       </div>
     </div>
   </div>
@@ -161,11 +167,5 @@ onUnmounted(() => clearInterval(timer))
   min-height: 0;
   padding: 0 !important;
   overflow: auto;
-}
-.empty-hint {
-  padding: 48px 16px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
 }
 </style>
