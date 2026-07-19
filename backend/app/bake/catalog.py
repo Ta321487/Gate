@@ -32,6 +32,7 @@ class MatchResult:
     confidence: float
     hits: list[str]
     text_excerpt: str
+    archetypes: list[str] | None = None
 
 
 def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
@@ -60,6 +61,21 @@ _ARCHETYPE_TIE_PRIORITY = (
 )
 
 
+def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]]:
+    lower = text.lower()
+    scored: list[tuple[str, int, list[str]]] = []
+    for key, meta in catalog.items():
+        score = 0
+        local_hits: list[str] = []
+        for kw in meta.get("keywords", []):
+            if kw.lower() in lower or kw in text:
+                score += 1
+                local_hits.append(kw)
+        if score > 0:
+            scored.append((key, score, local_hits))
+    return scored
+
+
 def score_catalog(
     text: str,
     catalog: dict,
@@ -67,34 +83,27 @@ def score_catalog(
     fallback: str | None = None,
 ) -> tuple[str, float, list[str]]:
     """关键词打分；全员 0 分时回落 fallback（域目录务必传 DOM-GENERIC，禁止误落第一项 LIBRARY）。"""
-    lower = text.lower()
-    best_key = next(iter(catalog))
-    best_score = 0
-    hits: list[str] = []
+    scored = _catalog_scores(text, catalog)
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
-
-    def _better(score: int, key: str) -> bool:
-        if score > best_score:
-            return True
-        if score == best_score and score > 0 and key in tie_rank and best_key in tie_rank:
-            return tie_rank[key] < tie_rank[best_key]
-        return False
-
-    for key, meta in catalog.items():
-        score = 0
-        local_hits = []
-        for kw in meta.get("keywords", []):
-            if kw.lower() in lower or kw in text:
-                score += 1
-                local_hits.append(kw)
-        if _better(score, key):
-            best_score = score
-            best_key = key
-            hits = local_hits
-    if best_score == 0 and fallback and fallback in catalog:
-        return fallback, 0.35, []
-    conf = min(0.95, 0.45 + best_score * 0.12) if best_score else 0.42
+    if not scored:
+        if fallback and fallback in catalog:
+            return fallback, 0.35, []
+        best_key = next(iter(catalog))
+        return best_key, 0.42, []
+    scored.sort(key=lambda t: (-t[1], tie_rank.get(t[0], 99)))
+    best_key, best_score, hits = scored[0]
+    conf = min(0.95, 0.45 + best_score * 0.12)
     return best_key, conf, hits
+
+
+def score_all_archetypes(text: str) -> list[str]:
+    """开题命中的全部行为原型（score>0），按优先级排序；无命中则 CRUD。"""
+    scored = _catalog_scores(text, ARCHETYPES)
+    if not scored:
+        return ["ARCH-CRUD"]
+    tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
+    scored.sort(key=lambda t: (-t[1], tie_rank.get(t[0], 99)))
+    return [k for k, _, _ in scored]
 
 
 # 原型要求的能力：具体 DOM 若不覆盖，降为 GENERIC（行为优先于行业皮肤）
@@ -143,23 +152,37 @@ def domain_covers_archetype(domain: str, archetype: str) -> bool:
     return bool(need & caps)
 
 
-def reconcile_match(archetype: str, domain: str) -> tuple[str, str, list[str]]:
-    """行为优先：弱原型可被域抬升；域盖不住行为则降 GENERIC。返回 (arch, domain, notes)。"""
+def domain_covers_archetypes(domain: str, archetypes: list[str]) -> bool:
+    return all(domain_covers_archetype(domain, a) for a in archetypes)
+
+
+def reconcile_match(
+    archetype: str,
+    domain: str,
+    archetypes: list[str] | None = None,
+) -> tuple[str, str, list[str], list[str]]:
+    """行为优先：多 ARCH 并集；域盖不住任一路径则降 GENERIC。返回 (primary, domain, arches, notes)。"""
     notes: list[str] = []
-    arch = archetype if archetype in ARCHETYPES else "ARCH-CRUD"
+    arches = [a for a in (archetypes or [archetype]) if a in ARCHETYPES]
+    if not arches:
+        arches = ["ARCH-CRUD"]
     dom = domain if domain in DOMAINS else "DOM-GENERIC"
 
-    if arch == "ARCH-CRUD":
+    if arches == ["ARCH-CRUD"]:
         promoted = _DOMAIN_DEFAULT_ARCH.get(dom)
         if promoted:
-            arch = promoted
+            arches = [promoted]
             notes.append(f"arch↑{promoted}")
 
-    if dom != "DOM-GENERIC" and not domain_covers_archetype(dom, arch):
-        notes.append(f"dom↓GENERIC({dom}↛{arch})")
+    if dom != "DOM-GENERIC" and not domain_covers_archetypes(dom, arches):
+        miss = [a for a in arches if not domain_covers_archetype(dom, a)]
+        notes.append(f"dom↓GENERIC({dom}↛{','.join(miss)})")
         dom = "DOM-GENERIC"
 
-    return arch, dom, notes
+    tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
+    arches = sorted(dict.fromkeys(arches), key=lambda a: tie_rank.get(a, 99))
+    primary = arches[0]
+    return primary, dom, arches, notes
 
 
 # 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
@@ -185,13 +208,16 @@ def proposal_focus_for_match(text: str) -> str:
 
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
-    # 选型看「要做什么」；text_excerpt 仍留全文供 accept / 展示
     scored = proposal_focus_for_match(text)
-    arch, arch_conf, arch_hits = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
+    arch_hits_all: list[str] = []
+    for _k, _s, local in _catalog_scores(scored, ARCHETYPES):
+        arch_hits_all.extend(local)
+    arches = score_all_archetypes(scored)
+    _, arch_conf, _ = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
     dom, dom_conf, dom_hits = score_catalog(scored, DOMAINS, fallback="DOM-GENERIC")
-    arch, dom, recon_notes = reconcile_match(arch, dom)
+    arch, dom, arches, recon_notes = reconcile_match(arches[0], dom, arches)
     confidence = round((arch_conf + dom_conf) / 2, 2)
-    hits = list(dict.fromkeys(arch_hits + dom_hits + recon_notes))
+    hits = list(dict.fromkeys(arch_hits_all + dom_hits + recon_notes))
     return MatchResult(
         title=title,
         archetype=arch,
@@ -199,6 +225,7 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         confidence=confidence,
         hits=hits,
         text_excerpt=text[:2000],
+        archetypes=arches,
     )
 
 
@@ -223,18 +250,20 @@ def build_spec(
     hits: list[str] | None = None,
     proposal: dict | None = None,
     password_hash: str = "none",
+    archetypes: list[str] | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
 
     dom = DOMAINS.get(domain, DOMAINS["DOM-GENERIC"])
     arch = ARCHETYPES.get(archetype, ARCHETYPES["ARCH-CRUD"])
     theme = normalize_theme(theme, domain)
-    # 按题目+领域稳定抽一套登录版式，交付后写入 .env，不再随浏览器变化
     auth_template = pick_auth_template(f"{title}|{domain}")
-    schema = build_domain_schema(title, domain, archetype=archetype)
+    arches = list(archetypes or [archetype])
+    schema = build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
     spec = {
         "title": title,
         "archetype": archetype,
+        "archetypes": arches,
         "archetype_label": arch["label"],
         "domain": domain,
         "domain_label": dom["label"],
@@ -253,7 +282,6 @@ def build_spec(
         "roles": dom["roles"],
         "entities": dom["entities"],
         "flows": dom["flows"],
-        # profile：业务用户与子管理员可改资料/头像；顶级超管可不提供修改入口
         "baseline": ["captcha", "upload", "page", "errorcode", "profile", "avatar", "register"],
         "out_of_mvp": dom["out_of_mvp"],
         "features": copy_features(dom["features"]),

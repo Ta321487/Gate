@@ -17,7 +17,7 @@ function useTicketShell() {
 }
 
 function useArchiveTicketShell() {
-  return hasCap('ticket_flow') && hasCap('archive')
+  return hasCap('ticket_flow') && hasCap('archive') && !hasCap('order_lines') && !hasCap('slot_reserve')
 }
 
 function useOrderShell() {
@@ -25,11 +25,65 @@ function useOrderShell() {
 }
 
 function useSlotShell() {
+  // TRADE+RESERVE：slotRoutes 已含 orders；允许带 order_lines
   return hasCap('slot_reserve') && hasCap('archive') && !hasCap('ticket_flow')
 }
 
 function useArchiveOnlyShell() {
   return hasCap('archive') && !hasCap('ticket_flow') && !hasCap('order_lines') && !hasCap('slot_reserve')
+}
+
+/** 在档案+单据壳上追加预约/订单子路由（多主路径，避免再抄一整套 routes） */
+function withExtraBizRoutes(baseRoutes, { order = false, slot = false } = {}) {
+  const routes = structuredClone(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const admin = routes.find((r) => r.path === '/admin')
+  const userKids = portal?.children
+  const adminKids = admin?.children
+  if (!userKids || !adminKids) return routes
+
+  const has = (kids, p) => kids.some((c) => c.path === p)
+  if (slot) {
+    if (!has(userKids, 'slots')) {
+      userKids.splice(2, 0, {
+        path: 'slots',
+        component: () => import('../views/user/SlotBook.vue'),
+      })
+    }
+    if (!has(userKids, 'reservations')) {
+      userKids.splice(3, 0, {
+        path: 'reservations',
+        component: () => import('../views/user/MyReservations.vue'),
+      })
+    }
+    if (!has(adminKids, 'reservations')) {
+      adminKids.splice(4, 0, {
+        path: 'reservations',
+        component: () => import('../views/admin/ReservationsAdmin.vue'),
+      })
+    }
+  }
+  if (order) {
+    if (!has(userKids, 'cart')) {
+      userKids.splice(2, 0, {
+        path: 'cart',
+        component: () => import('../views/user/Cart.vue'),
+      })
+    }
+    if (!has(userKids, 'orders')) {
+      userKids.splice(3, 0, {
+        path: 'orders',
+        component: () => import('../views/user/MyOrders.vue'),
+      })
+    }
+    if (!has(adminKids, 'orders')) {
+      adminKids.splice(4, 0, {
+        path: 'orders',
+        component: () => import('../views/admin/OrdersAdmin.vue'),
+      })
+    }
+  }
+  return routes
 }
 
 const ticketRoutes = [
@@ -277,6 +331,13 @@ const baselineRoutes = [
 ]
 
 function pickRoutes() {
+  const ticket = hasCap('ticket_flow') && hasCap('archive')
+  const order = hasCap('order_lines') && hasCap('archive')
+  const slot = hasCap('slot_reserve') && hasCap('archive')
+  // 多主路径：单据壳 + 预约/订单（复用 archiveTicketRoutes，不另写三套）
+  if (ticket && (order || slot)) {
+    return withExtraBizRoutes(archiveTicketRoutes, { order, slot })
+  }
   if (useArchiveTicketShell()) return archiveTicketRoutes
   if (useTicketShell()) return ticketRoutes
   if (useOrderShell()) return orderRoutes

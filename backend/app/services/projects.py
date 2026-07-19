@@ -91,6 +91,7 @@ async def create_from_upload(
         confidence=matched.confidence,
         hits=matched.hits,
         proposal=proposal,
+        archetypes=matched.archetypes,
     )
     # Agent A：开关开启且有 Key 时润色 proposal（不改领域选型）
     try:
@@ -207,6 +208,9 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         confidence=conf,
         hits=project.spec.get("hits", []),
         proposal=project.spec.get("proposal"),
+        archetypes=[project.archetype]
+        if deviant
+        else list((project.spec or {}).get("archetypes") or [project.archetype]),
     )
     # 仅功能集变化时重置清单；勿用裸 features 冲掉门禁 result
     new_features = project.spec.get("features") or []

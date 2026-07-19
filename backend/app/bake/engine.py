@@ -75,9 +75,35 @@ def _sql_template_path(domain: str, archetype: str | None = None) -> Path:
     return fallback
 
 
-def domain_sql(domain: str, db_name: str, archetype: str | None = None) -> str:
-    """按领域（GENERIC 再按 ARCH-*）加载 sql/*.sql。"""
-    text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
+def domain_sql(
+    domain: str,
+    db_name: str,
+    archetype: str | None = None,
+    archetypes: list[str] | None = None,
+) -> str:
+    """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
+    if domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import path_flags, shell_sql_filename
+        from app.bake.sql_compose import compose_generic_sql
+
+        arches = list(archetypes or ([archetype] if archetype else ["ARCH-CRUD"]))
+        need_flow, need_trade, need_reserve = path_flags(arches)
+        if sum([need_flow, need_trade, need_reserve]) >= 2:
+            return compose_generic_sql(
+                need_flow=need_flow,
+                need_trade=need_trade,
+                need_reserve=need_reserve,
+                db_name=db_name,
+                table_min=TABLE_COUNT_MIN,
+                table_max=TABLE_COUNT_MAX,
+            )
+        fname = shell_sql_filename(archetypes=arches)
+        path = _SQL_DIR / fname
+        if not path.is_file():
+            path = _sql_template_path(domain, archetype)
+        text = path.read_text(encoding="utf-8")
+    else:
+        text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
     return (
         text.replace("${DB_NAME}", db_name)
         .replace("${DOMAIN}", domain)
@@ -106,7 +132,12 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         _merge_tree(overlay, dest)
 
     _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
-    sql = domain_sql(domain, db_name, spec.get("archetype"))
+    sql = domain_sql(
+        domain,
+        db_name,
+        spec.get("archetype"),
+        archetypes=spec.get("archetypes"),
+    )
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
 
