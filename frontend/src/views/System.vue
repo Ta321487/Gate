@@ -1,9 +1,6 @@
 <template>
   <div>
-    <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-      <h1 class="page-title" style="margin-bottom:0">运行环境</h1>
-      <n-button size="small" :loading="loading" :disabled="!booted" @click="load">刷新</n-button>
-    </div>
+    <h1 class="page-title">运行环境</h1>
     <p class="page-desc">本机依赖与端口池（限制同时预览数，不限制选题库存）。服务器部署时设置 GF_PUBLIC_HOST 为对外 IP/域名。</p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else-if="info">
@@ -15,7 +12,10 @@
       </div>
       <div class="grid-2">
         <div class="panel">
-          <div class="panel-hd"><h3>端口池</h3></div>
+          <div class="panel-hd">
+            <h3>端口池</h3>
+            <n-button size="small" :loading="loading" @click="load">刷新</n-button>
+          </div>
           <div class="panel-bd">
             <div class="small mb-12"><span class="muted">对外地址</span> {{ info.public_host || '127.0.0.1' }} · 监听 {{ info.bind_host || '127.0.0.1' }}</div>
             <div class="small mb-12"><span class="muted">后端</span> {{ info.backend_ports }} · 占用中 {{ info.used_backend.join(', ') || '无' }}</div>
@@ -102,5 +102,4 @@ onMounted(load)
   justify-content: space-between;
   gap: 8px;
 }
-.path-row .mono { word-break: break-all; }
 </style>

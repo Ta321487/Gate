@@ -57,6 +57,7 @@ export const api = {
   testDeepseek: () => http.post('/deepseek/test'),
   deepseekBalance: () => http.get('/deepseek/balance'),
   deepseekUsage: (params) => http.get('/deepseek/usage', { params }),
+  deepseekUsageChart: (params) => http.get('/deepseek/usage/chart', { params }),
   deepseekCalls: (params) => http.get('/deepseek/calls', { params }),
   system: () => http.get('/system'),
   freePorts: () => http.post('/system/free-ports'),

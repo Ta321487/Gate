@@ -294,6 +294,20 @@ def normalize_password_hash(mode: str | None) -> str:
     return m if m in PASSWORD_HASH_MODES else "none"
 
 
+def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
+    """领域 roles 定序，schema.roles 补全（如 subadmin）。"""
+    schema_roles = schema.get("roles") if isinstance(schema, dict) else None
+    keys = list(schema_roles.keys()) if isinstance(schema_roles, dict) else []
+    out: list[str] = []
+    for r in domain_roles or []:
+        if r and r not in out:
+            out.append(str(r))
+    for r in keys:
+        if r and r not in out:
+            out.append(str(r))
+    return out or ["user", "admin"]
+
+
 def build_spec(
     title: str,
     archetype: str,
@@ -346,7 +360,8 @@ def build_spec(
         "confidence": confidence,
         "hits": hits or [],
         "match_warnings": match_warnings_from_hits(hits),
-        "roles": dom["roles"],
+        # 角色顺序跟领域清单，文案/补全跟 schema.roles（避免 Spec 漏子管）
+        "roles": _roles_for_spec(dom.get("roles") or [], schema),
         "entities": dom["entities"],
         "flows": dom["flows"],
         "baseline": list(BASELINE_TAGS),

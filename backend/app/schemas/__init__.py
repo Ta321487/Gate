@@ -76,6 +76,7 @@ class ProjectTokenUsage(BaseModel):
     tokens: int = 0
     calls: int = 0
     last_at: Optional[datetime] = None
+    deleted: bool = False
 
 
 class DeepSeekSettings(BaseModel):

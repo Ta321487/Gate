@@ -12,7 +12,7 @@
       >
         <div class="panel-hd">
           <h3>{{ card.title }}</h3>
-          <span v-if="card.tag" class="help-card-tag">{{ card.tag }}</span>
+          <span v-if="card.tag" class="pill pill-teal">{{ card.tag }}</span>
         </div>
         <div class="panel-bd help-body">
           <p v-if="card.lead">{{ card.lead }}</p>

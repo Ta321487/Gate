@@ -88,29 +88,27 @@ const MENU_TO = {
   messages: '/messages',
 }
 
-const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'slots'])
+const GUEST_MENU_KEYS = new Set(['archive', 'content', 'slots'])
 
 const nav = computed(() => {
-  // 资料留在右侧按钮，避免与顶栏重复；首页/消息等进导航
-  const menus = schemaMenus('user').filter((m) => m.key !== 'profile')
+  // 资料留在右侧按钮，避免与顶栏重复
+  const menus = schemaMenus('user').filter((m) => m.key !== 'profile' && m.key !== 'home')
   let list = menus
   if (!loggedIn.value && isGuestBrowseEnabled()) {
     list = menus.filter((m) => GUEST_MENU_KEYS.has(m.key))
   } else if (!loggedIn.value) {
-    list = menus.filter((m) => m.key === 'home' || m.key === 'content')
+    list = menus.filter((m) => m.key === 'content' || m.key === 'archive')
   }
   if (!list.length) {
-    return [
-      { to: '/home', label: '首页' },
-      { to: '/notices', label: menuLabel('user', 'content', '公告') },
-    ]
+    return [{ to: '/notices', label: menuLabel('user', 'content', '公告') }]
   }
   return list
     .map((m) => ({ to: MENU_TO[m.key], label: m.label }))
     .filter((m) => m.to)
 })
 
-const homePath = computed(() => '/home')
+/** 品牌点击回门户根，走各壳默认 redirect（业务页） */
+const homePath = computed(() => '/')
 
 function logout() {
   localStorage.clear()
@@ -139,18 +137,21 @@ function logout() {
 .top-inner {
   max-width: 1080px; margin: 0 auto;
   height: 60px; padding: 0 20px;
-  display: flex; align-items: center; gap: 28px;
+  display: flex; align-items: center; gap: 20px;
 }
 .brand {
   display: flex; align-items: center; gap: 10px;
-  cursor: pointer; flex-shrink: 0;
+  cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 42%;
 }
 .brand-mark {
-  width: 22px; height: 22px; border-radius: 6px;
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
   background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff));
 }
-.brand-text { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
-.nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.brand-text {
+  font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; overflow-x: auto; }
 .nav a {
   padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
   color: var(--portal-muted, #5b6b76); text-decoration: none;

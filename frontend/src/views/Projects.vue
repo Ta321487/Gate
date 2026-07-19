@@ -38,7 +38,7 @@
       <div class="panel">
         <div class="panel-hd">
           <h3>项目列表</h3>
-          <n-button size="small" @click="load">刷新</n-button>
+          <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
         </div>
         <div class="panel-bd" style="padding-top:12px">
           <div class="row mb-12" style="justify-content:space-between">
@@ -68,7 +68,7 @@
 <script setup>
 import { h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NTag } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import { api, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
@@ -77,7 +77,8 @@ import {
   formatArchDom,
   getCatalog,
   projectStatusLabel,
-  projectStatusTag,
+  projectStatusPill,
+  statusPillNode,
 } from '../opsShared'
 
 const router = useRouter()
@@ -91,6 +92,7 @@ const uploadName = ref('')
 const uploadPct = ref(0)
 const uploadPhase = ref('')
 const booted = ref(false)
+const loading = ref(false)
 const stats = reactive({ total: 0, generating: 0, previewable: 0, monthly_tokens: 0, monthly_budget: 1000000 })
 
 const columns = [
@@ -126,11 +128,10 @@ const columns = [
     key: 'status',
     render(row) {
       const opts = { zipReady: row.zip_ready }
-      return h(NTag, {
-        size: 'small',
-        type: projectStatusTag(row.status, opts),
-        bordered: false,
-      }, { default: () => projectStatusLabel(row.status, opts) })
+      return statusPillNode(
+        projectStatusLabel(row.status, opts),
+        projectStatusPill(row.status, opts),
+      )
     },
   },
   {
@@ -140,7 +141,7 @@ const columns = [
     render(row) {
       if (row.backend_running || row.frontend_running) {
         return h('div', { class: 'small' }, [
-          h(NTag, { size: 'tiny', type: 'success', bordered: false }, { default: () => '运行中' }),
+          statusPillNode('运行中', 'pill-green'),
           h('div', { class: 'mono muted', style: 'margin-top:4px' }, `${row.backend_port || '—'} / ${row.frontend_port || '—'}`),
         ])
       }
@@ -180,6 +181,16 @@ async function load() {
     catalog.value = cat
   } finally {
     booted.value = true
+  }
+}
+
+async function refresh() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    await load()
+  } finally {
+    loading.value = false
   }
 }
 
