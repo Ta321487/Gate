@@ -8,11 +8,11 @@
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
     <el-table :data="list" stripe>
-      <el-table-column prop="id" label="单号" width="70" />
-      <el-table-column prop="title" label="标题" min-width="140" />
+      <el-table-column prop="id" label="编号" width="70" />
+      <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" />
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
-      <el-table-column prop="username" label="申请人" width="110" />
+      <el-table-column prop="username" :label="userLabel" width="110" />
       <el-table-column prop="assigneeUsername" label="处理人" width="110">
         <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
       </el-table-column>
@@ -20,7 +20,7 @@
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
-      <el-table-column v-if="pickLoanPeriod" prop="dueAt" label="应还" width="170" />
+      <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column prop="startAt" label="开始" width="160" />
       <el-table-column prop="endAt" label="结束" width="160" />
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
@@ -60,7 +60,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -71,6 +71,8 @@ const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
+const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
+const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
 
 function remarkText(v) {
   if (!v) return '—'
@@ -108,8 +110,8 @@ async function exportCsv() {
     return
   }
   const headers = [
-    '单号', '标题', '类型', '地点', '申请人', '处理人', '状态',
-    '数量', '应还', '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
+    '编号', '标题', '类型', '地点', userLabel.value, '处理人', '状态',
+    '数量', dueLabel.value, '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
   ]
   if (allowRating.value) headers.push('评分', '短评')
   const data = rows.map((row) => {

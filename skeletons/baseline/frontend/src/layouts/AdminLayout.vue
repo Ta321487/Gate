@@ -29,6 +29,7 @@ import { useRoute, useRouter } from 'vue-router'
 import MessageBell from '../components/MessageBell.vue'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { getSchema, isSuperOnlyMenu, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
+import { adminLoginPath } from '../utils/authEntry.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -73,10 +74,10 @@ const menuItems = computed(() => {
       })).filter((m) => m.index)
     : [
         { key: 'dashboard', index: '/admin/dashboard', label: '工作台', superOnly: false },
-        { key: 'ticket_pending', index: '/admin/tickets', label: '单据受理', superOnly: false },
-        { key: 'ticket_records', index: '/admin/ticket-records', label: '单据记录', superOnly: false },
+        { key: 'ticket_pending', index: '/admin/tickets', label: '待办受理', superOnly: false },
+        { key: 'ticket_records', index: '/admin/ticket-records', label: '办理记录', superOnly: false },
         { key: 'lookup_site', index: '/admin/sites', label: '楼栋房间', superOnly: true },
-        { key: 'lookup_type', index: '/admin/types', label: '报修类型', superOnly: true },
+        { key: 'lookup_type', index: '/admin/types', label: '类型管理', superOnly: true },
         { key: 'users', index: '/admin/users', label: '用户管理', superOnly: true },
         { key: 'content', index: '/admin/notices', label: '公告管理', superOnly: true },
       ]
@@ -85,7 +86,7 @@ const menuItems = computed(() => {
 
 function logout() {
   localStorage.clear()
-  router.push('/login')
+  router.push(adminLoginPath())
 }
 </script>
 

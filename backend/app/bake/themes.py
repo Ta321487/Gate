@@ -34,17 +34,36 @@ AUTH_TEMPLATES = [
     {"id": "folio", "label": "对开页"},
 ]
 
+# 登录入口：统一 / 身份选择 / 门户与管理分端（交付后固定）
+AUTH_ENTRY_MODES = [
+    {"id": "unified", "label": "统一登录（无身份选择）"},
+    {"id": "role_pick", "label": "登录页身份选择（毕设经典）"},
+    {"id": "split_entry", "label": "门户与管理端分入口"},
+]
 
-def pick_auth_template(seed: str | None = None) -> str:
+# 身份控件：仅 role_pick / split 管理端会用到
+AUTH_ROLE_WIDGETS = [
+    {"id": "radio", "label": "单选分段"},
+    {"id": "select", "label": "下拉选择"},
+]
+
+
+def _pick_by_seed(ids: list[str], seed: str | None, default: str) -> str:
     """按种子稳定挑选，便于同一项目重 bake 可复现；无种子则随机。"""
     import hashlib
     import random
 
-    ids = [t["id"] for t in AUTH_TEMPLATES]
+    if not ids:
+        return default
     if seed:
         h = int(hashlib.md5(seed.encode("utf-8")).hexdigest(), 16)
         return ids[h % len(ids)]
     return random.choice(ids)
+
+
+def pick_auth_template(seed: str | None = None) -> str:
+    ids = [t["id"] for t in AUTH_TEMPLATES]
+    return _pick_by_seed(ids, seed, "split")
 
 
 def normalize_auth_template(template: str | None) -> str:
@@ -52,6 +71,30 @@ def normalize_auth_template(template: str | None) -> str:
     if template and template in ids:
         return template
     return "split"
+
+
+def pick_auth_entry_mode(seed: str | None = None) -> str:
+    ids = [t["id"] for t in AUTH_ENTRY_MODES]
+    return _pick_by_seed(ids, seed, "role_pick")
+
+
+def normalize_auth_entry_mode(mode: str | None) -> str:
+    ids = {t["id"] for t in AUTH_ENTRY_MODES}
+    if mode and mode in ids:
+        return mode
+    return "role_pick"
+
+
+def pick_auth_role_widget(seed: str | None = None) -> str:
+    ids = [t["id"] for t in AUTH_ROLE_WIDGETS]
+    return _pick_by_seed(ids, seed, "radio")
+
+
+def normalize_auth_role_widget(widget: str | None) -> str:
+    ids = {t["id"] for t in AUTH_ROLE_WIDGETS}
+    if widget and widget in ids:
+        return widget
+    return "radio"
 
 
 def all_theme_ids() -> set[str]:

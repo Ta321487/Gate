@@ -10,14 +10,14 @@
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
-      <el-table-column prop="itemTitle" label="资源" min-width="140" />
-      <el-table-column prop="username" label="用户" width="110" />
+      <el-table-column prop="itemTitle" :label="archiveLabel" min-width="140" />
+      <el-table-column prop="username" :label="userLabel" width="110" />
       <el-table-column prop="startAt" label="开始" width="170" />
       <el-table-column prop="endAt" label="结束" width="170" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
-      <el-table-column prop="createdAt" label="预约时间" width="170" />
+      <el-table-column prop="createdAt" :label="`${resvNoun}时间`" width="170" />
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button
@@ -40,9 +40,9 @@
       />
     </div>
 
-    <el-dialog v-model="genVisible" title="为资源生成当日时段" width="440px">
+    <el-dialog v-model="genVisible" :title="`为${archiveLabel}生成当日时段`" width="440px">
       <el-form label-width="96px">
-        <el-form-item label="资源 ID" required>
+        <el-form-item :label="`${archiveLabel} ID`" required>
           <el-input-number v-model="gen.itemId" :min="1" />
         </el-form-item>
         <el-form-item label="日期" required>
@@ -72,9 +72,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, reservationCopy } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
+const resv = reservationCopy()
+const resvNoun = computed(() => resv.label || '预约')
+const archiveLabel = computed(() => archiveCopy().label || '资源')
+const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
 const total = ref(0)
@@ -100,7 +104,7 @@ async function load() {
 }
 
 async function cancel(row) {
-  await ElMessageBox.confirm(`取消预约 #${row.id}？`, '取消')
+  await ElMessageBox.confirm(`取消${resvNoun.value} #${row.id}？`, '取消')
   await http.post(`/api/slots/reservations/${row.id}/cancel`)
   ElMessage.success('已取消')
   load()
@@ -121,7 +125,7 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', '资源', '用户', '开始', '结束', '状态', '预约时间']
+  const headers = ['编号', archiveLabel.value, userLabel.value, '开始', '结束', '状态', `${resvNoun.value}时间`]
   const data = rows.map((row) => [
     row.id,
     row.itemTitle,

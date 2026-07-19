@@ -2,10 +2,10 @@
   <div>
     <section class="hero">
       <h1>{{ cartLabel }}</h1>
-      <p>确认数量后提交订单（演示无真支付）。</p>
+      <p>确认数量后提交{{ orderNoun }}（演示无真支付）。</p>
       <div class="tools">
         <el-button @click="load">刷新</el-button>
-        <el-button type="primary" :disabled="!list.length" :loading="placing" @click="place">提交订单</el-button>
+        <el-button type="primary" :disabled="!list.length" :loading="placing" @click="place">提交{{ orderNoun }}</el-button>
       </div>
     </section>
 
@@ -33,10 +33,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { menuLabel } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel } from '../../utils/domainSchema.js'
 
 const router = useRouter()
 const cartLabel = menuLabel('user', 'cart', '购物车')
+const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const list = ref([])
 const placing = ref(false)
 
@@ -61,7 +62,7 @@ async function remove(row) {
 }
 
 async function place() {
-  const { value } = await ElMessageBox.prompt('可填写收货备注 / 口味说明（可留空）', '提交订单', {
+  const { value } = await ElMessageBox.prompt('可填写收货备注 / 口味说明（可留空）', `提交${orderNoun.value}`, {
     confirmButtonText: '提交',
     cancelButtonText: '取消',
     inputPlaceholder: '选填',

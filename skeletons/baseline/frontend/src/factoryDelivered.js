@@ -8,6 +8,8 @@ export const FACTORY_DELIVERED = {
   domain: 'DOM-GENERIC',
   domainLabel: '通用',
   authTemplate: 'split',
+  authEntryMode: 'role_pick',
+  authRoleWidget: 'radio',
   authHero: '',
   portalBanners: [],
   accept: 'reject',

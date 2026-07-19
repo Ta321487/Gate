@@ -14,7 +14,7 @@
           :placeholder="`搜索${fieldLabel('title', '名称')} / ${fieldLabel('author', '型号')}`"
           @keyup.enter="load"
         />
-        <el-select v-model="categoryId" clearable placeholder="分类" size="large" style="width:140px" @change="load">
+        <el-select v-model="categoryId" clearable :placeholder="fieldLabel('category', '分类')" size="large" style="width:140px" @change="load">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
         <el-select
@@ -130,12 +130,12 @@
             {{ stockCountLabel }} {{ applyRow?.stock ?? 0 }}
           </span>
         </el-form-item>
-        <el-form-item v-if="pickLoanPeriod" label="应还日期" required>
+        <el-form-item v-if="pickLoanPeriod" :label="dueLabel" required>
           <el-date-picker
             v-model="applyDueAt"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="选择应还日期"
+            :placeholder="`选择${dueLabel}`"
             :disabled-date="dueDisabledDate"
             style="width:100%"
           />
@@ -213,6 +213,7 @@ const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
+const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还日期')
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const allowQty = computed(() => !!ticket.allowQty)
@@ -232,14 +233,16 @@ const stockCountLabel = computed(() => {
   if (archive.stockCountLabel) return archive.stockCountLabel
   const stockField = fields.value.find((x) => x.key === 'stock')
   if (stockField?.label) return stockField.label
-  return '可借'
+  return '余量'
 })
 const ruleHint = computed(() => {
   const parts = []
+  const catLab = fieldLabel('category', '分类')
+  const unit = archive.label || '项'
   if (checkMutex.value) parts.push('同互斥码不可同选')
-  if (categoryLimit.value > 0) parts.push(`每分类最多 ${categoryLimit.value} 门`)
+  if (categoryLimit.value > 0) parts.push(`每${catLab}最多 ${categoryLimit.value} ${unit}`)
   if (tagFilter.value) parts.push('可多标签组合筛选')
-  if (pickLoanPeriod.value) parts.push('须选择应还日期')
+  if (pickLoanPeriod.value) parts.push(`须选择${dueLabel.value}`)
   if (pickDateRange.value) parts.push('须选择起止日期')
   if (allowQty.value) parts.push('可填申请数量')
   if (requireRemark.value) parts.push(`须填写${remarkLabel.value}`)
@@ -283,10 +286,10 @@ function stockOk(row) {
 
 function stockText(row) {
   if (stockDisplay.value === 'available') {
-    const ok = fieldLabel('stock', '可播放')
+    const ok = fieldLabel('stock', stockCountLabel.value)
     return stockOk(row) ? ok : `暂不${ok.replace(/^可/, '')}`
   }
-  return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : '暂无库存'
+  return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : `暂无${stockCountLabel.value}`
 }
 
 function playUrlOf(row) {
@@ -431,7 +434,7 @@ async function submitApply() {
     return
   }
   if (pickLoanPeriod.value && !applyDueAt.value) {
-    ElMessage.warning('请选择应还日期')
+    ElMessage.warning(`请选择${dueLabel.value}`)
     return
   }
   if (pickDateRange.value) {

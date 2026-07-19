@@ -6,8 +6,8 @@
         v-if="softDelete"
         v-model="includeDeleted"
         inline-prompt
-        active-text="含下架"
-        inactive-text="在架"
+        :active-text="softCopy.include"
+        :inactive-text="softCopy.on"
         @change="load"
       />
       <el-button type="primary" @click="load">查询</el-button>
@@ -31,20 +31,20 @@
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
         <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column prop="stock" :label="fieldLabel('stock', '库存')" width="90" />
+      <el-table-column prop="stock" :label="fieldLabel('stock', '数量')" width="90" />
       <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
       <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
       <el-table-column v-if="softDelete" label="状态" width="80">
         <template #default="{ row }">
-          <el-tag v-if="row.deleted" size="small" type="info">已下架</el-tag>
-          <el-tag v-else size="small" type="success" effect="plain">在架</el-tag>
+          <el-tag v-if="row.deleted" size="small" type="info">{{ softCopy.off }}</el-tag>
+          <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>
-          <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? '下架' : '删除' }}</el-button>
+          <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? softCopy.verb : '删除' }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -107,13 +107,13 @@
         </el-form-item>
         <el-form-item
           v-if="showStock"
-          :label="fieldLabel('stock', '库存')"
+          :label="fieldLabel('stock', '数量')"
           required
         >
           <el-input-number v-model="form.stock" :min="0" :step="1" controls-position="right" style="width:100%" />
         </el-form-item>
         <el-form-item v-if="hasMutex" :label="fieldLabel('mutexCode', '互斥码')">
-          <el-input v-model="form.mutexCode" maxlength="32" placeholder="相同互斥码的课程不可同选，可留空" />
+          <el-input v-model="form.mutexCode" maxlength="32" :placeholder="`相同互斥码的${label}不可同选，可留空`" />
         </el-form-item>
         <el-form-item v-if="hasCheckin" :label="fieldLabel('checkinCode', '签到码')">
           <div class="attach-row">
@@ -172,11 +172,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextEditor from '../../components/RichTextEditor.vue'
-import { archiveCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, softDeleteCopy } from '../../utils/domainSchema.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 
 const archive = archiveCopy()
+const softCopy = softDeleteCopy()
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
 const isbnRich = computed(() => {
@@ -329,10 +330,10 @@ async function save() {
 }
 
 async function remove(row) {
-  const verb = softDelete.value ? '下架' : '删除'
+  const verb = softDelete.value ? softCopy.verb : '删除'
   await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
   await http.delete(`/api/archive/${row.id}`)
-  ElMessage.success(softDelete.value ? '已下架' : '已删除')
+  ElMessage.success(softDelete.value ? `已${softCopy.verb}` : '已删除')
   load()
 }
 
@@ -373,7 +374,7 @@ async function exportCsv() {
     fieldLabel('author', '型号'),
     fieldLabel('isbn', '编号'),
     '分类',
-    fieldLabel('stock', '库存'),
+    fieldLabel('stock', '数量'),
   ]
   if (hasSchedule.value) {
     headers.push(fieldLabel('startAt', '开始'), fieldLabel('endAt', '结束'))

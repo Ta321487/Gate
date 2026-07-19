@@ -120,6 +120,7 @@
                   <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
                   <div v-if="p.spec?.out_of_mvp?.length"><dt>砍项</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
                   <div><dt>配色</dt><dd>{{ p.spec?.theme_label || p.theme }}</dd></div>
+                  <div><dt>登录入口</dt><dd>{{ p.spec?.auth_entry_mode_label || '—' }}<template v-if="p.spec?.auth_role_widget_label"> · {{ p.spec.auth_role_widget_label }}</template></dd></div>
                 </dl>
               </div>
             </div>
@@ -168,6 +169,7 @@
                 <div class="small muted">Job #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
               </div>
               <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
+              <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
               <div class="row mt-12">
                 <n-button size="small" type="error" secondary @click="cancelCurrent">取消任务</n-button>
                 <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
@@ -721,12 +723,22 @@ function formatSize(n) {
 async function load({ syncTab = false, lite = false } = {}) {
   const id = route.params.id
   loadError.value = ''
+  if (!id || id === 'undefined' || id === 'null') {
+    p.value = null
+    detailCrumb.value = ''
+    loadErrorCode.value = 404
+    loadError.value = '项目 ID 无效'
+    return
+  }
   try {
     if (!lite && !catalog.value.archetypes.length) {
       catalog.value = await getCatalog()
     }
-    p.value = await api.getProject(id)
+    // 轮询用短超时静默接口：后端 reload 时不弹错、不卡 60s
+    p.value = lite ? await api.getProjectPoll(id) : await api.getProject(id)
     detailCrumb.value = p.value.title || ''
+    pollSyncHint.value = ''
+    pollFailStreak.value = 0
     if (!lite) {
       form.archetype = p.value.archetype
       form.domain = p.value.domain
@@ -739,18 +751,23 @@ async function load({ syncTab = false, lite = false } = {}) {
     // 仅进入/切项目时同步主 tab；轮询禁止强切，否则无法停在日志页
     if (syncTab) tab.value = defaultTabForStatus(p.value.status)
     if (!lite && p.value.workspace_path && tab.value === 'runtime') await refreshRuntime()
-    await refreshJob()
+    await refreshJob({ silent: lite })
     // schema 只在产物 Tab 拉，避免生成轮询疯狂刷 /schema
     if (!lite && tab.value === 'artifacts') await loadSchema()
   } catch (e) {
-    if (!lite) {
-      p.value = null
-      detailCrumb.value = ''
-      const status = e?.response?.status
-      loadErrorCode.value = status === 404 ? 404 : 500
-      const detail = e?.response?.data?.detail
-      loadError.value = (typeof detail === 'string' ? detail : '') || e?.message || '加载失败'
+    if (lite) {
+      pollFailStreak.value += 1
+      if (pollFailStreak.value >= 2) {
+        pollSyncHint.value = '状态同步暂时中断（后端可能在重载），后台任务仍在跑，自动重试中…'
+      }
+      return
     }
+    p.value = null
+    detailCrumb.value = ''
+    const status = e?.response?.status
+    loadErrorCode.value = status === 404 ? 404 : 500
+    const detail = e?.response?.data?.detail
+    loadError.value = (typeof detail === 'string' ? detail : '') || e?.message || '加载失败'
   }
 }
 
@@ -793,9 +810,13 @@ function downloadEr() {
   a.click()
 }
 
-async function refreshJob() {
-  const jobs = await api.listJobs()
-  currentJob.value = jobs.find((j) => j.project_id === route.params.id) || null
+async function refreshJob({ silent = false } = {}) {
+  try {
+    const jobs = silent ? await api.listJobsPoll() : await api.listJobs()
+    currentJob.value = jobs.find((j) => j.project_id === route.params.id) || null
+  } catch (e) {
+    if (!silent) throw e
+  }
 }
 
 async function refreshRuntime() {
@@ -1014,27 +1035,38 @@ function openPreview() {
 }
 
 let logReqSeq = 0
-async function loadLog(side) {
+async function loadLog(side, { silent = false } = {}) {
   logSide.value = side
   const seq = ++logReqSeq
-  const res = await api.logs(p.value.id, side)
-  if (seq !== logReqSeq || logSide.value !== side) return
-  logText.value = res.content || ''
+  try {
+    const res = silent
+      ? await api.logsPoll(p.value.id, side)
+      : await api.logs(p.value.id, side)
+    if (seq !== logReqSeq || logSide.value !== side) return
+    logText.value = res.content || ''
+  } catch {
+    /* 轮询静默；手动打开日志页时仍走默认 toast */
+  }
 }
 
 let pollInFlight = false
+const pollSyncHint = ref('')
+const pollFailStreak = ref(0)
 
 function startPoll() {
   stopPoll()
+  pollSyncHint.value = ''
+  pollFailStreak.value = 0
   pollTimer = setInterval(async () => {
     if (pollInFlight) return
     pollInFlight = true
     try {
       // 轻量轮询：只刷项目状态/Job/日志，不拉 catalog/schema
       await load({ syncTab: false, lite: true })
-      if (tab.value === 'logs') await loadLog(logSide.value)
+      if (tab.value === 'logs') await loadLog(logSide.value, { silent: true })
       if (!p.value || p.value.status !== 'generating') {
         stopPoll()
+        pollSyncHint.value = ''
         // 结束后补一次完整刷新；人在日志/产物页则不强切 Tab
         if (p.value) {
           const keepTab = tab.value === 'logs' || tab.value === 'artifacts'

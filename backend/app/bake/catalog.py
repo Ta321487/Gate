@@ -8,13 +8,19 @@ from dataclasses import dataclass
 
 from app.bake.domains import ARCHETYPES, DOMAIN_CAPABILITIES, DOMAINS  # re-export for callers
 from app.bake.themes import (  # re-export for callers
+    AUTH_ENTRY_MODES,
+    AUTH_ROLE_WIDGETS,
     AUTH_TEMPLATES,
     THEME_ALIASES,
     THEMES,
     all_theme_ids,
     default_theme,
+    normalize_auth_entry_mode,
+    normalize_auth_role_widget,
     normalize_auth_template,
     normalize_theme,
+    pick_auth_entry_mode,
+    pick_auth_role_widget,
     pick_auth_template,
     themes_for_domain,
 )
@@ -264,7 +270,10 @@ def build_spec(
     dom = DOMAINS.get(domain, DOMAINS["DOM-GENERIC"])
     arch = ARCHETYPES.get(archetype, ARCHETYPES["ARCH-CRUD"])
     theme = normalize_theme(theme, domain)
-    auth_template = pick_auth_template(f"{title}|{domain}")
+    seed = f"{title}|{domain}"
+    auth_template = pick_auth_template(seed)
+    auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
+    auth_role_widget = pick_auth_role_widget(f"{seed}|widget")
     arches = list(archetypes or [archetype])
     schema = build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
     spec = {
@@ -280,6 +289,14 @@ def build_spec(
         "auth_template": auth_template,
         "auth_template_label": next(
             (t["label"] for t in AUTH_TEMPLATES if t["id"] == auth_template), auth_template
+        ),
+        "auth_entry_mode": auth_entry_mode,
+        "auth_entry_mode_label": next(
+            (t["label"] for t in AUTH_ENTRY_MODES if t["id"] == auth_entry_mode), auth_entry_mode
+        ),
+        "auth_role_widget": auth_role_widget,
+        "auth_role_widget_label": next(
+            (t["label"] for t in AUTH_ROLE_WIDGETS if t["id"] == auth_role_widget), auth_role_widget
         ),
         "llm_enabled": llm_enabled,
         "password_hash": normalize_password_hash(password_hash),

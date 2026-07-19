@@ -6,7 +6,7 @@
         <el-radio-button value="subadmins">{{ subLabel }}</el-radio-button>
         <el-radio-button value="all">全部</el-radio-button>
       </el-radio-group>
-      <el-input v-model="keyword" clearable placeholder="用户名 / 昵称 / 手机 / 档案" style="width:240px" @keyup.enter="load" />
+      <el-input v-model="keyword" clearable placeholder="用户名 / 昵称 / 手机 / 资料" style="width:240px" @keyup.enter="load" />
       <el-button type="primary" @click="load">查询</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
@@ -58,16 +58,17 @@
           <el-form-item label="用户名"><el-input :model-value="form.username" disabled /></el-form-item>
           <el-form-item label="昵称"><el-input v-model="form.nickname" maxlength="32" /></el-form-item>
           <el-form-item
-            v-for="f in allFields"
+            v-for="f in visibleFields"
             :key="f.key"
             :label="f.label"
-            :required="!!f.required"
+            :required="isProfileFieldRequired(f, form.extras)"
           >
             <el-select
               v-if="f.type === 'select' && f.storage !== 'phone'"
               v-model="form.extras[f.key]"
               clearable
               style="width: 100%"
+              @change="onIdentityMaybe(f)"
             >
               <el-option v-for="opt in f.options || []" :key="opt" :label="opt" :value="opt" />
             </el-select>
@@ -102,12 +103,24 @@ import {
   profileAdminColumns,
   profileFields,
 } from '../../utils/domainSchema.js'
+import { isProfileFieldRequired, isProfileFieldVisible } from '../../utils/profileValidate.js'
 
 const roles = computed(() => getSchema()?.roles || {})
 const userLabel = computed(() => roles.value.user?.label || '用户')
 const subLabel = computed(() => roles.value.subadmin?.label || '子管')
 const adminCols = computed(() => profileAdminColumns(2))
 const allFields = computed(() => profileFields())
+const visibleFields = computed(() =>
+  allFields.value.filter((f) => isProfileFieldVisible(f, form.extras)),
+)
+
+function onIdentityMaybe(f) {
+  if (f?.key !== 'identityType' && f?.key !== 'readerType' && f?.key !== 'ownerType') return
+  for (const x of allFields.value) {
+    if (x.key === f.key || !x.visibleWhen) continue
+    if (!isProfileFieldVisible(x, form.extras)) form.extras[x.key] = ''
+  }
+}
 
 const list = ref([])
 const keyword = ref('')

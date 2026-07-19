@@ -178,6 +178,11 @@ async function doUpload(file) {
     })
     uploadPct.value = 100
     message.success('已建项')
+    if (!project?.id) {
+      message.error('建项成功但未返回项目 ID，请从列表进入')
+      await load()
+      return
+    }
     router.push(`/projects/${project.id}`)
   } finally {
     uploading.value = false

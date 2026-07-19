@@ -8,8 +8,8 @@
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
     <el-table :data="list" stripe>
-      <el-table-column prop="id" label="单号" width="80" />
-      <el-table-column prop="username" label="用户" width="120" />
+      <el-table-column prop="id" label="编号" width="80" />
+      <el-table-column prop="username" :label="userLabel" width="120" />
       <el-table-column prop="totalYuan" label="金额" width="100" />
       <el-table-column prop="status" label="状态" width="110">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
@@ -28,7 +28,7 @@
             link
             type="primary"
             @click="act(row, 'ship')"
-          >发货/出餐</el-button>
+          >{{ shipVerb }}</el-button>
           <el-button
             v-if="['pending', 'confirmed', 'shipped'].includes(row.status)"
             link
@@ -61,10 +61,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
-import { getSchema } from '../../utils/domainSchema.js'
+import { getDomain, getSchema } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
-const states = computed(() => getSchema()?.entities?.order?.states || {})
+const order = computed(() => getSchema()?.entities?.order || {})
+const states = computed(() => order.value.states || {})
+const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const shipVerb = computed(() => {
+  if (order.value.verbs?.ship) return order.value.verbs.ship
+  return getDomain() === 'DOM-FOOD' ? '出餐' : '发货'
+})
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -94,7 +100,7 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['单号', '用户', '金额', '状态', '明细', '下单时间']
+  const headers = ['编号', userLabel.value, '金额', '状态', '明细', '下单时间']
   const data = rows.map((row) => [
     row.id,
     row.username,

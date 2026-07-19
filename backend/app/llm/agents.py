@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -356,7 +357,8 @@ async def run_fix_agent(
     if not (rt.stage_on("auto_fix") and rt.configured):
         return True, "结构校验通过 · 未开自动修复"
 
-    compile_ok, log = _mvn_compile(workspace)
+    # mvn compile 可长达数分钟，必须进线程，否则工厂 API 整体假死
+    compile_ok, log = await asyncio.to_thread(_mvn_compile, workspace)
     if compile_ok:
         await record_call(
             db,
@@ -396,10 +398,10 @@ async def run_fix_agent(
         )
         # 仅重放交付配置，不写业务源码
         try:
-            emit_schema_to_workspace(workspace, spec)
+            await asyncio.to_thread(emit_schema_to_workspace, workspace, spec)
         except Exception:  # noqa: BLE001
-            llm_fill_islands(workspace, spec, True)
-        compile_ok, last = _mvn_compile(workspace)
+            await asyncio.to_thread(llm_fill_islands, workspace, spec, True)
+        compile_ok, last = await asyncio.to_thread(_mvn_compile, workspace)
         if compile_ok:
             await record_call(
                 db,

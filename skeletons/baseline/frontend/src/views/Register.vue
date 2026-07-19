@@ -112,7 +112,7 @@ import {
   profileFieldsOnRegister,
   schemaLabels,
 } from '../utils/domainSchema.js'
-import { validateProfileFormats } from '../utils/profileValidate.js'
+import { validateProfileFormats, isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileValidate.js'
 
 const router = useRouter()
 const template = ref(pickAuthTemplate())
@@ -186,7 +186,8 @@ function validateAccount() {
 
 function validateProfile() {
   for (const f of regFields.value) {
-    if (!f.required) continue
+    if (!isProfileFieldVisible(f, form.extras)) continue
+    if (!isProfileFieldRequired(f, form.extras)) continue
     if (f.storage === 'phone') {
       if (!form.phone?.trim()) {
         ElMessage.warning(`请填写${f.label}`)

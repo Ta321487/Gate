@@ -87,6 +87,28 @@ export function archiveCopy() {
   return (getSchema().entities || {}).archive || {}
 }
 
+/**
+ * 软删文案：图书/商城等用「下架」；活动/选课等用「停用」，避免活动域还写「在架」。
+ */
+export function softDeleteCopy() {
+  const arch = archiveCopy()
+  if (arch.softDeleteOnLabel || arch.softDeleteOffLabel || arch.softDeleteVerb) {
+    return {
+      on: arch.softDeleteOnLabel || '启用',
+      off: arch.softDeleteOffLabel || '已停用',
+      verb: arch.softDeleteVerb || '停用',
+      include: arch.softDeleteIncludeLabel || `含${arch.softDeleteVerb || '停用'}`,
+    }
+  }
+  const shelf = new Set([
+    'DOM-LIBRARY', 'DOM-SHOP', 'DOM-FOOD', 'DOM-MEDIA', 'DOM-MUSIC', 'DOM-BLOG', 'DOM-FORUM',
+  ])
+  if (shelf.has(getDomain())) {
+    return { on: '在架', off: '已下架', verb: '下架', include: '含下架' }
+  }
+  return { on: '启用', off: '已停用', verb: '停用', include: '含停用' }
+}
+
 export function acceptLevel() {
   return getDelivered().accept || getSchema().accept || 'reject'
 }
