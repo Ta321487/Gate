@@ -22,12 +22,12 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- 列结构与 ArchiveStore 默认 book 表兼容（title/author/isbn/stock）；isbn=摘要/原文链接
+-- 列结构与 ArchiveStore 默认 book 表兼容（title/author/isbn/stock）；isbn=富文本正文 HTML
 CREATE TABLE IF NOT EXISTS article (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
-  isbn VARCHAR(512),
+  isbn TEXT,
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -88,11 +88,11 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '技术'), (2, '随笔'), (3, '资讯');
 INSERT IGNORE INTO article (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '从零搭建个人博客', '主编', '用 Spring Boot + Vue 搭一套可演示的文章站点。', 1, 1, 'available'),
-(2, 'JdbcTemplate 幂等种子实践', '编辑甲', '重启不 Cle 业务数据：INSERT IGNORE 与 WHERE NOT EXISTS。', 1, 1, 'available'),
-(3, '毕业季的咖啡馆', '读者甲', '期末周的一角安静时光，写给即将离开的校园。', 2, 1, 'available'),
-(4, '读《设计中的设计》札记', '主编', '关于日常与设计的几段摘录与感想。', 2, 1, 'available'),
-(5, '本站上线说明', '编辑甲', '演示站点已开放阅读与收藏，欢迎留言建议。', 3, 1, 'available');
+(1, '从零搭建个人博客', '主编', '<p>用 <strong>Spring Boot</strong> + <em>Vue</em> 搭一套可演示的文章站点。</p><ol><li>建库与种子</li><li>档案与收藏单据</li><li>富文本正文</li></ol>', 1, 1, 'available'),
+(2, 'JdbcTemplate 幂等种子实践', '编辑甲', '<p>重启不 Cle 业务数据：</p><ul><li><code>INSERT IGNORE</code></li><li><code>WHERE NOT EXISTS</code></li></ul>', 1, 1, 'available'),
+(3, '毕业季的咖啡馆', '读者甲', '<p>期末周的一角安静时光，写给即将离开的校园。</p>', 2, 1, 'available'),
+(4, '读《设计中的设计》札记', '主编', '<p>关于日常与设计的几段摘录与感想。</p><blockquote>设计在于发现，而不是创造。</blockquote>', 2, 1, 'available'),
+(5, '本站上线说明', '编辑甲', '<p>演示站点已开放<strong>阅读</strong>与<strong>收藏</strong>，欢迎留言建议。</p>', 3, 1, 'available');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
 ('max_favorite', '30', '每人最大收藏数提示'),
 ('blog_hint', '主编维护文章', '发布方式说明');

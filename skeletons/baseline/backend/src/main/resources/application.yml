@@ -29,6 +29,8 @@ thesis:
   ticket-table: borrow
   use-quota: true
   use-deadline: true
+  # 论坛跟帖等：同一主帖可多次开单
+  allow-multi-ticket: false
   archive-category-table: category
   archive-item-table: book
   # standalone 报修壳：楼栋/房间/类型下拉（空则前端退回手填）

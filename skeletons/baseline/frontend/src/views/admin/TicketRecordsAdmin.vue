@@ -18,8 +18,8 @@
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
-      <el-table-column prop="remark" label="审核说明" min-width="140" show-overflow-tooltip>
-        <template #default="{ row }">{{ row.remark || '—' }}</template>
+      <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ remarkText(row.remark) }}</template>
       </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column prop="approveAt" label="受理时间" width="170" />
@@ -53,10 +53,17 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { ticketCopy } from '../../utils/domainSchema.js'
+import { plainFromHtml } from '../../utils/richHtml.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
+const richRemark = computed(() => !!ticket.richRemark)
+
+function remarkText(v) {
+  if (!v) return '—'
+  return plainFromHtml(String(v)) || '—'
+}
 
 const list = ref([])
 const total = ref(0)

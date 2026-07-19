@@ -28,7 +28,12 @@
         @current-change="load"
       />
     </div>
-    <el-dialog v-model="visible" :title="form.id ? `编辑${label}` : `新增${label}`" width="480px">
+    <el-dialog
+      v-model="visible"
+      :title="form.id ? `编辑${label}` : `新增${label}`"
+      :width="isbnRich ? '720px' : '480px'"
+      destroy-on-close
+    >
       <el-form :model="form" label-width="96px" require-asterisk-position="right">
         <el-form-item :label="fieldLabel('title', '名称')" required>
           <el-input v-model="form.title" />
@@ -37,7 +42,12 @@
           <el-input v-model="form.author" />
         </el-form-item>
         <el-form-item :label="fieldLabel('isbn', '编号')">
-          <el-input v-model="form.isbn" />
+          <RichTextEditor
+            v-if="isbnRich"
+            v-model="form.isbn"
+            :placeholder="`请输入${fieldLabel('isbn', '正文')}`"
+          />
+          <el-input v-else v-model="form.isbn" />
         </el-form-item>
         <el-form-item label="分类" required>
           <el-select v-model="form.categoryId" style="width:100%">
@@ -66,11 +76,17 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import RichTextEditor from '../../components/RichTextEditor.vue'
 import { archiveCopy } from '../../utils/domainSchema.js'
+import { sanitizeHtml } from '../../utils/richHtml.js'
 
 const archive = archiveCopy()
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
+const isbnRich = computed(() => {
+  const f = fields.value.find((x) => x.key === 'isbn')
+  return f?.type === 'richtext' || archive.bodyField === 'isbn'
+})
 
 function fieldLabel(key, fallback) {
   const f = fields.value.find((x) => x.key === key)
@@ -117,8 +133,10 @@ async function save() {
     ElMessage.warning('请填写名称')
     return
   }
-  if (form.id) await http.put(`/api/archive/${form.id}`, { ...form })
-  else await http.post('/api/archive', { ...form })
+  const payload = { ...form }
+  if (isbnRich.value) payload.isbn = sanitizeHtml(form.isbn || '')
+  if (form.id) await http.put(`/api/archive/${form.id}`, payload)
+  else await http.post('/api/archive', payload)
   ElMessage.success('已保存')
   visible.value = false
   load()

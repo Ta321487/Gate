@@ -36,6 +36,8 @@ public final class TicketStore {
     private static Mode MODE = Mode.ARCHIVE;
     private static boolean useQuota = true;
     private static boolean useDeadline = true;
+    /** 允许同一档案多次开单（论坛跟帖等） */
+    private static boolean allowMultiTicket = false;
     private static String userRole = "reader";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -48,10 +50,15 @@ public final class TicketStore {
 
     /** archive 模式；媒资收藏等可关 quota/deadline */
     public static void bind(String ticketTable, boolean quota, boolean deadline) {
+        bind(ticketTable, quota, deadline, false);
+    }
+
+    public static void bind(String ticketTable, boolean quota, boolean deadline, boolean multiTicket) {
         if (ticketTable != null && !ticketTable.isBlank()) TICKET = ticketTable.trim();
         MODE = Mode.ARCHIVE;
         useQuota = quota;
         useDeadline = deadline;
+        allowMultiTicket = multiTicket;
     }
 
     /** 报修等：无档案占用、无到期催办 */
@@ -117,6 +124,10 @@ public final class TicketStore {
 
     /** archive 模式：按档案 id 申请 */
     public static Map<String, Object> apply(String username, long itemId) {
+        return apply(username, itemId, "");
+    }
+
+    public static Map<String, Object> apply(String username, long itemId, String remark) {
         if (MODE != Mode.ARCHIVE) {
             throw new IllegalStateException("当前为独立工单模式，请使用 applyStandalone");
         }
@@ -125,19 +136,23 @@ public final class TicketStore {
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         if (useQuota && stock <= 0) throw new IllegalStateException("库存不足");
         assertUnderActiveLimit(username);
-        Integer dup = db().queryForObject(
-                "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND book_id=? AND status IN ('pending','approved','overdue')",
-                Integer.class, username, itemId);
-        if (dup != null && dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
+        if (!allowMultiTicket) {
+            Integer dup = db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND book_id=? AND status IN ('pending','approved','overdue')",
+                    Integer.class, username, itemId);
+            if (dup != null && dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
+        }
 
+        String note = remark == null ? "" : remark.trim();
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO " + TICKET + " (book_id,username,status,apply_at,fine_yuan,remind_msg,remark) "
-                            + "VALUES (?,?, 'pending', NOW(), 0, '', '')",
+                            + "VALUES (?,?, 'pending', NOW(), 0, '', ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, itemId);
             ps.setString(2, username);
+            ps.setString(3, note);
             return ps;
         }, kh);
         Number key = kh.getKey();
@@ -206,11 +221,18 @@ public final class TicketStore {
     }
 
     private static void assertUnderActiveLimit(String username) {
+        // 多开单（跟帖）：只限制待审数量，已展示的回复不占额度
+        String statuses = allowMultiTicket
+                ? "('pending')"
+                : "('pending','approved','overdue')";
         Integer active = db().queryForObject(
-                "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND status IN ('pending','approved','overdue')",
+                "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND status IN " + statuses,
                 Integer.class, username);
         if (active != null && active >= MAX_ACTIVE) {
-            throw new IllegalStateException("同时进行中的单据不得超过 " + MAX_ACTIVE + " 条");
+            throw new IllegalStateException(
+                    allowMultiTicket
+                            ? "待审核回复不得超过 " + MAX_ACTIVE + " 条，请稍后再发"
+                            : "同时进行中的单据不得超过 " + MAX_ACTIVE + " 条");
         }
     }
 

@@ -2,13 +2,15 @@
   <div>
     <section class="hero">
       <h1>{{ plural }}检索</h1>
-      <p>按名称检索{{ playUrlField ? '、在线播放' : '' }}，提交{{ verbs.apply || '申请' }}。</p>
+      <p>
+        按名称检索{{ playUrlField ? '、在线播放' : '' }}{{ bodyRich ? '、阅读正文' : '' }}，提交{{ verbs.apply || '申请' }}。
+      </p>
       <div class="search">
         <el-input
           v-model="keyword"
           size="large"
           clearable
-          :placeholder="`搜索${fieldLabel('title', '名称')} / ${fieldLabel('author', '型号')} / ${fieldLabel('isbn', '编号')}`"
+          :placeholder="`搜索${fieldLabel('title', '名称')} / ${fieldLabel('author', '型号')}`"
           @keyup.enter="load"
         />
         <el-select v-model="categoryId" clearable placeholder="分类" size="large" style="width:140px" @change="load">
@@ -30,6 +32,7 @@
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ row.author || '—' }} · {{ row.categoryName || '未分类' }}</p>
+          <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <div class="row">
             <el-tag
               v-if="stockDisplay !== 'hidden'"
@@ -44,6 +47,11 @@
               size="small"
               @click="play(row)"
             >播放</el-button>
+            <el-button
+              v-if="bodyRich"
+              size="small"
+              @click="openDetail(row)"
+            >阅读</el-button>
             <el-button
               size="small"
               type="primary"
@@ -66,6 +74,39 @@
         @current-change="load"
       />
     </div>
+
+    <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
+      <template v-if="detail">
+        <p class="sub">{{ detail.author || '—' }} · {{ detail.categoryName || '未分类' }}</p>
+        <RichTextView :html="detail.isbn || ''" />
+        <div class="drawer-acts">
+          <el-button
+            type="primary"
+            :disabled="stockDisplay === 'count' && !stockOk(detail)"
+            @click="apply(detail)"
+          >{{ verbs.apply || '申请' }}</el-button>
+        </div>
+      </template>
+    </el-drawer>
+
+    <el-dialog
+      v-model="applyVisible"
+      :title="verbs.apply || '申请'"
+      :width="richRemark ? '640px' : '440px'"
+      destroy-on-close
+    >
+      <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
+      <el-form v-if="richRemark" label-position="top">
+        <el-form-item :label="ticket.label || '内容'" required>
+          <RichTextEditor v-model="applyRemark" placeholder="请输入回复内容，可用工具栏排版；可 @昵称 引用" />
+        </el-form-item>
+      </el-form>
+      <p v-else class="apply-tip muted">确认后提交，等待审核。</p>
+      <template #footer>
+        <el-button @click="applyVisible = false">取消</el-button>
+        <el-button type="primary" :loading="applyLoading" @click="submitApply">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -74,7 +115,10 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RecommendStrip from '../../components/RecommendStrip.vue'
+import RichTextEditor from '../../components/RichTextEditor.vue'
+import RichTextView from '../../components/RichTextView.vue'
 import { archiveCopy, ticketCopy } from '../../utils/domainSchema.js'
+import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 
 const archive = archiveCopy()
 const ticket = ticketCopy()
@@ -83,6 +127,11 @@ const plural = computed(() => archive.labelPlural || archive.label || '业务对
 const fields = computed(() => archive.fields || [])
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
 const playUrlField = computed(() => archive.playUrlField || '')
+const bodyRich = computed(() => {
+  const f = fields.value.find((x) => x.key === 'isbn')
+  return f?.type === 'richtext' || archive.bodyField === 'isbn'
+})
+const richRemark = computed(() => !!ticket.richRemark)
 
 function fieldLabel(key, fallback) {
   const f = fields.value.find((x) => x.key === key)
@@ -104,7 +153,6 @@ function stockText(row) {
 function playUrlOf(row) {
   const key = playUrlField.value
   if (!key || !row) return ''
-  // ArchiveStore 暴露 isbn；schema 用 playUrlField 指向该列
   const raw = key === 'isbn' ? row.isbn : row[key]
   const s = raw == null ? '' : String(raw).trim()
   if (!s) return ''
@@ -129,6 +177,17 @@ const keyword = ref('')
 const categoryId = ref(null)
 const categories = ref([])
 const recRef = ref(null)
+const detailVisible = ref(false)
+const detail = ref(null)
+const applyVisible = ref(false)
+const applyRow = ref(null)
+const applyRemark = ref('')
+const applyLoading = ref(false)
+
+function openDetail(row) {
+  detail.value = row
+  detailVisible.value = true
+}
 
 async function loadCats() {
   const res = await http.get('/api/categories')
@@ -149,13 +208,42 @@ async function load() {
 }
 
 async function apply(row) {
+  applyRow.value = row
+  applyRemark.value = ''
+  if (richRemark.value) {
+    applyVisible.value = true
+    return
+  }
   await ElMessageBox.confirm(
     `确认${verbs.value.apply || '申请'}「${row.title}」？`,
     verbs.value.apply || '申请',
   )
-  await http.post('/api/tickets/apply', { itemId: row.id })
-  ElMessage.success('已提交申请，等待审核')
-  recRef.value?.reload?.()
+  await submitApply()
+}
+
+async function submitApply() {
+  if (!applyRow.value) return
+  let remark = ''
+  if (richRemark.value) {
+    remark = sanitizeHtml(applyRemark.value || '')
+    if (!plainFromHtml(remark)) {
+      ElMessage.warning('请填写内容')
+      return
+    }
+  }
+  applyLoading.value = true
+  try {
+    await http.post('/api/tickets/apply', {
+      itemId: applyRow.value.id,
+      remark,
+    })
+    ElMessage.success('已提交，等待审核')
+    applyVisible.value = false
+    detailVisible.value = false
+    recRef.value?.reload?.()
+  } finally {
+    applyLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -184,7 +272,12 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .meta p { margin: 0; color: #64748b; font-size: 12px; }
+.excerpt { margin-top: 8px; color: #64748b; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.sub { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+.drawer-acts { margin-top: 24px; }
+.apply-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
+.apply-tip.muted { color: #64748b; }
 </style>

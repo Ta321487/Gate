@@ -144,9 +144,11 @@ def _archive_ticket_schema(
     deadline_label: str = "逾期催还",
     with_deadline: bool = True,
     play_url_field: str = "",
+    body_field: str = "",
     stock_display: str = "count",
+    rich_remark: bool = False,
 ) -> dict[str, Any]:
-    """借用/收藏薄壳：档案主数据 + 单据流（组 A / G）。"""
+    """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
     archive_entity: dict[str, Any] = {
         "key": archive_key,
@@ -157,6 +159,17 @@ def _archive_ticket_schema(
     }
     if play_url_field:
         archive_entity["playUrlField"] = play_url_field
+    if body_field:
+        archive_entity["bodyField"] = body_field
+    ticket_entity: dict[str, Any] = {
+        "key": ticket_key,
+        "label": ticket_label,
+        "labelPlural": ticket_plural,
+        "verbs": verbs,
+        "states": states,
+    }
+    if rich_remark:
+        ticket_entity["richRemark"] = True
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
@@ -179,13 +192,7 @@ def _archive_ticket_schema(
         },
         "entities": {
             "archive": archive_entity,
-            "ticket": {
-                "key": ticket_key,
-                "label": ticket_label,
-                "labelPlural": ticket_plural,
-                "verbs": verbs,
-                "states": states,
-            },
+            "ticket": ticket_entity,
         },
         "menus": {
             "admin": admin_menus,
@@ -418,7 +425,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "楼主", "type": "string"},
-                {"key": "isbn", "label": "正文摘要", "type": "string"},
+                {"key": "isbn", "label": "正文", "type": "richtext"},
                 {"key": "category", "label": "板块", "type": "string"},
                 {"key": "stock", "label": "可见", "type": "number"},
             ],
@@ -443,8 +450,8 @@ def _forum_schema(title: str) -> dict[str, Any]:
             archive_menu_user="帖子检索",
             users_menu="用户管理",
             auth_eyebrow="校园论坛",
-            auth_lead="验证码登录；按板块浏览主帖，回复讨论，支持楼中楼引用。",
-            auth_points=["验证码登录", "板块与主帖检索", "回复与楼中楼"],
+            auth_lead="验证码登录；按板块浏览主帖，富文本回复讨论，支持楼中楼引用。",
+            auth_points=["验证码登录", "板块与主帖检索", "富文本回复与楼中楼"],
             register_hint="注册后可浏览主帖并回复",
             notice_title="社区公约",
             notice_body="请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用。",
@@ -454,11 +461,13 @@ def _forum_schema(title: str) -> dict[str, Any]:
             pending_label="回复审核",
             records_label="回复记录",
             with_deadline=False,
+            body_field="isbn",
+            rich_remark=True,
             stock_display="available",
         ),
         [
             {"title": "热门板块", "lead": "学习、生活、二手信息分区浏览主帖。"},
-            {"title": "回复讨论", "lead": "跟帖回复；可用 @昵称 一层引用，形成楼中楼。"},
+            {"title": "回复讨论", "lead": "富文本跟帖；可用 @昵称 一层引用，形成楼中楼。"},
             {"title": "站内公告", "lead": "版规与活动通知见公告栏。"},
         ],
     )
@@ -479,7 +488,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "作者", "type": "string"},
-                {"key": "isbn", "label": "摘要/原文链接", "type": "string"},
+                {"key": "isbn", "label": "正文", "type": "richtext"},
                 {"key": "category", "label": "分类", "type": "string"},
                 {"key": "stock", "label": "可阅读", "type": "number"},
             ],
@@ -504,7 +513,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             archive_menu_user="文章检索",
             users_menu="用户管理",
             auth_eyebrow="个人博客",
-            auth_lead="验证码登录；按分类阅读文章，收藏喜欢的博文。",
+            auth_lead="验证码登录；按分类阅读富文本文章，收藏喜欢的博文。",
             auth_points=["验证码登录", "文章检索与阅读", "收藏订阅"],
             register_hint="注册后可阅读文章并收藏",
             notice_title="阅读须知",
@@ -515,10 +524,11 @@ def _blog_schema(title: str) -> dict[str, Any]:
             pending_label="收藏确认",
             records_label="收藏记录",
             with_deadline=False,
+            body_field="isbn",
             stock_display="available",
         ),
         [
-            {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览。"},
+            {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览富文本正文。"},
             {"title": "收藏订阅", "lead": "喜欢的文章一键收藏，方便回看。"},
             {"title": "站点公告", "lead": "上新与征稿通知见公告栏。"},
         ],

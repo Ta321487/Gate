@@ -43,6 +43,10 @@
         {{ audit.pass ? `确认${verbs.approve || '受理'}该单据？` : `确认${verbs.reject || '驳回'}该单据？` }}
         <template v-if="audit.row">「{{ audit.row.title || ('单号 ' + audit.row.id) }}」</template>
       </p>
+      <div v-if="richRemark && audit.row?.remark" class="audit-body">
+        <div class="lab">申请内容</div>
+        <RichTextView :html="audit.row.remark" />
+      </div>
       <label class="audit-field">
         <span class="lab">
           {{ audit.pass ? '审核备注' : '驳回原因' }}
@@ -75,10 +79,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import RichTextView from '../../components/RichTextView.vue'
 import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
+const richRemark = computed(() => !!ticket.richRemark)
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', '单据记录'))
 
@@ -157,6 +163,14 @@ onMounted(load)
   color: var(--el-text-color-primary);
 }
 .lab { font-weight: 500; }
+.audit-body {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.audit-body .lab { margin-bottom: 6px; font-size: 13px; color: #64748b; }
 .req {
   color: var(--el-color-danger, #f56c6c);
   margin-left: 2px;
