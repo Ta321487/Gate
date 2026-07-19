@@ -5,6 +5,7 @@
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
       <el-button type="primary" @click="load">查询</el-button>
+      <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="单号" width="70" />
@@ -18,6 +19,8 @@
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
+      <el-table-column prop="startAt" label="开始" width="160" />
+      <el-table-column prop="endAt" label="结束" width="160" />
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ remarkText(row.remark) }}</template>
       </el-table-column>
@@ -84,6 +87,52 @@ async function finish(row) {
   await http.post(`/api/tickets/${row.id}/complete`)
   ElMessage.success('已完成')
   load()
+}
+
+function csvCell(v) {
+  const s = v == null ? '' : String(v)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+async function exportCsv() {
+  const res = await http.get('/api/tickets', {
+    params: { page: 1, size: 5000, status: status.value || undefined },
+  })
+  const rows = res.data?.list || []
+  if (!rows.length) {
+    ElMessage.warning('当前筛选无数据可导出')
+    return
+  }
+  const headers = [
+    '单号', '标题', '类型', '地点', '申请人', '处理人', '状态',
+    '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
+  ]
+  const lines = [headers.join(',')]
+  for (const row of rows) {
+    lines.push([
+      row.id,
+      row.title,
+      row.typeName,
+      row.location,
+      row.username,
+      row.assigneeUsername,
+      states.value[row.status] || row.status,
+      row.startAt,
+      row.endAt,
+      remarkText(row.remark),
+      row.applyAt,
+      row.approveAt,
+      row.returnAt,
+    ].map(csvCell).join(','))
+  }
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `tickets_${status.value || 'all'}_${Date.now()}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+  ElMessage.success(`已导出 ${rows.length} 条`)
 }
 
 onMounted(load)

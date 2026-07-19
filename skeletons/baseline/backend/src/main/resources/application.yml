@@ -31,6 +31,8 @@ thesis:
   use-deadline: true
   # 论坛跟帖等：同一主帖可多次开单
   allow-multi-ticket: false
+  # 选课/活动等：申请时做时段相交检测（需主表 start_at/end_at）
+  check-time-conflict: false
   archive-category-table: category
   archive-item-table: book
   # standalone 报修壳：楼栋/房间/类型下拉（空则前端退回手填）

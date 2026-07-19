@@ -42,7 +42,8 @@ public class ArchiveController {
                 str(body.get("isbn")),
                 body.get("categoryId") == null ? 1L : Long.parseLong(String.valueOf(body.get("categoryId"))),
                 body.get("stock") == null ? 1 : Integer.parseInt(String.valueOf(body.get("stock"))),
-                str(body.get("coverUrl"))
+                str(body.get("coverUrl")),
+                body
         ));
     }
 

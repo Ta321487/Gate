@@ -51,6 +51,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "猜你喜欢：分类偏好 + 热度 + 上新兜底（非协同过滤）",
     },
+    "time_conflict": {
+        "label": "时间冲突检测",
+        "status": "implemented",
+        "desc": "主数据起止时间；申请时与本人已占用时段区间相交检测；报名截止校验",
+    },
 }
 
 # 开题命中这些信号 → 不得进入 complete（最多 degraded）

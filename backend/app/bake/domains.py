@@ -32,9 +32,9 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
     "DOM-IT": ["ticket_flow", "content", "org_users"],
     # C 报名/申请
-    "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users"],
+    "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
     "DOM-LOST": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users"],
+    "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
     # D 交易（缺 order_lines → reject）
     "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users"],
     "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users"],
@@ -323,6 +323,7 @@ DOMAINS = {
             {"name": "用户管理", "status": "module"},
             {"name": "报名申请 → 审核", "status": "flow"},
             {"name": "报名记录", "status": "module"},
+            {"name": "时间冲突检测", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "人脸签到", "status": "out_of_mvp"},
         ],
@@ -348,6 +349,7 @@ DOMAINS = {
             "register_role": "user",
             "archive_category_table": "category",
             "archive_item_table": "activity",
+            "check_time_conflict": True,
         },
     },
     "DOM-LOST": {
@@ -406,6 +408,7 @@ DOMAINS = {
             {"name": "学生管理", "status": "module"},
             {"name": "选课申请 → 审核", "status": "flow"},
             {"name": "选课记录", "status": "module"},
+            {"name": "时间冲突检测", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "智能排课", "status": "out_of_mvp"},
         ],
@@ -431,6 +434,7 @@ DOMAINS = {
             "register_role": "student",
             "archive_category_table": "category",
             "archive_item_table": "course",
+            "check_time_conflict": True,
         },
     },
     "DOM-FOOD": {

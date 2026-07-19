@@ -27,6 +27,9 @@
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
           </p>
+          <p v-if="row.startAt || row.endAt" class="sub sched">
+            时段 {{ row.startAt || '—' }} ~ {{ row.endAt || '—' }}
+          </p>
           <div v-if="row.remark" class="tip">
             <template v-if="row.status === 'rejected'">驳回原因：</template>
             <template v-else-if="richRemark">内容：</template>
@@ -255,6 +258,7 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .sub { margin: 0; color: #64748b; font-size: 12px; }
+.sub.sched { margin-top: 2px; color: #0f766e; }
 .tip { margin: 6px 0 0; color: #475569; font-size: 13px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }

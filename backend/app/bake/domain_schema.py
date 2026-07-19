@@ -29,6 +29,7 @@ BASELINE_RUNTIME_CAPS = frozenset({
     "content",
     "org_users",
     "recommend",
+    "time_conflict",
 })
 
 

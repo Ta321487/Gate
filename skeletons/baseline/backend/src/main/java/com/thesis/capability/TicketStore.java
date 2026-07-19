@@ -38,6 +38,8 @@ public final class TicketStore {
     private static boolean useDeadline = true;
     /** 允许同一档案多次开单（论坛跟帖等） */
     private static boolean allowMultiTicket = false;
+    /** 申请时检测与本人已占用时段是否相交 */
+    private static boolean checkTimeConflict = false;
     private static String userRole = "reader";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -50,15 +52,21 @@ public final class TicketStore {
 
     /** archive 模式；媒资收藏等可关 quota/deadline */
     public static void bind(String ticketTable, boolean quota, boolean deadline) {
-        bind(ticketTable, quota, deadline, false);
+        bind(ticketTable, quota, deadline, false, false);
     }
 
     public static void bind(String ticketTable, boolean quota, boolean deadline, boolean multiTicket) {
+        bind(ticketTable, quota, deadline, multiTicket, false);
+    }
+
+    public static void bind(
+            String ticketTable, boolean quota, boolean deadline, boolean multiTicket, boolean timeConflict) {
         if (ticketTable != null && !ticketTable.isBlank()) TICKET = ticketTable.trim();
         MODE = Mode.ARCHIVE;
         useQuota = quota;
         useDeadline = deadline;
         allowMultiTicket = multiTicket;
+        checkTimeConflict = timeConflict;
     }
 
     /** 报修等：无档案占用、无到期催办 */
@@ -135,6 +143,8 @@ public final class TicketStore {
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         if (useQuota && stock <= 0) throw new IllegalStateException("库存不足");
+        assertApplyDeadline(item);
+        assertNoTimeConflict(username, itemId, item);
         assertUnderActiveLimit(username);
         if (!allowMultiTicket) {
             Integer dup = db().queryForObject(
@@ -233,6 +243,64 @@ public final class TicketStore {
                     allowMultiTicket
                             ? "待审核回复不得超过 " + MAX_ACTIVE + " 条，请稍后再发"
                             : "同时进行中的单据不得超过 " + MAX_ACTIVE + " 条");
+        }
+    }
+
+    private static void assertApplyDeadline(Map<String, Object> item) {
+        if (!ArchiveStore.hasApplyDeadline()) return;
+        Object raw = item.get("applyDeadlineAt");
+        if (raw == null || String.valueOf(raw).isBlank()) return;
+        try {
+            LocalDateTime deadline = LocalDateTime.parse(String.valueOf(raw).substring(0, 19), FMT);
+            if (LocalDateTime.now().isAfter(deadline)) {
+                throw new IllegalStateException("已过报名/选课截止时间");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception ignored) {
+            // 解析失败则不拦截
+        }
+    }
+
+    /** 区间相交：newStart < oldEnd && oldStart < newEnd */
+    private static void assertNoTimeConflict(String username, long itemId, Map<String, Object> item) {
+        if (!checkTimeConflict || !ArchiveStore.hasScheduleColumns()) return;
+        Object ns = item.get("startAt");
+        Object ne = item.get("endAt");
+        if (ns == null || ne == null || String.valueOf(ns).isBlank() || String.valueOf(ne).isBlank()) return;
+        LocalDateTime newStart;
+        LocalDateTime newEnd;
+        try {
+            newStart = LocalDateTime.parse(String.valueOf(ns).substring(0, 19), FMT);
+            newEnd = LocalDateTime.parse(String.valueOf(ne).substring(0, 19), FMT);
+        } catch (Exception e) {
+            return;
+        }
+        if (!newEnd.isAfter(newStart)) {
+            throw new IllegalStateException("时段配置无效：结束时间须晚于开始时间");
+        }
+        String itemTable = ArchiveStore.itemTable();
+        List<Map<String, Object>> occupied = db().query(
+                "SELECT i.title AS title, i.start_at AS start_at, i.end_at AS end_at FROM " + TICKET + " t "
+                        + "JOIN " + itemTable + " i ON t.book_id=i.id "
+                        + "WHERE t.username=? AND t.book_id<>? AND t.status IN ('pending','approved','overdue') "
+                        + "AND i.start_at IS NOT NULL AND i.end_at IS NOT NULL",
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("title", rs.getString("title"));
+                    row.put("start", rs.getTimestamp("start_at").toLocalDateTime());
+                    row.put("end", rs.getTimestamp("end_at").toLocalDateTime());
+                    return row;
+                },
+                username, itemId);
+        for (Map<String, Object> row : occupied) {
+            LocalDateTime oldStart = (LocalDateTime) row.get("start");
+            LocalDateTime oldEnd = (LocalDateTime) row.get("end");
+            if (newStart.isBefore(oldEnd) && oldStart.isBefore(newEnd)) {
+                throw new IllegalStateException(
+                        "时间冲突：与「" + row.get("title") + "」（"
+                                + oldStart.format(FMT) + " ~ " + oldEnd.format(FMT) + "）重叠");
+            }
         }
     }
 
@@ -484,6 +552,11 @@ public final class TicketStore {
             m.put("itemTitle", item == null ? "" : item.get("title"));
             m.put("title", item == null ? "" : str(item.get("title")));
             m.put("location", "");
+            if (item != null) {
+                m.put("startAt", item.get("startAt"));
+                m.put("endAt", item.get("endAt"));
+                m.put("applyDeadlineAt", item.get("applyDeadlineAt"));
+            }
         }
         return m;
     }

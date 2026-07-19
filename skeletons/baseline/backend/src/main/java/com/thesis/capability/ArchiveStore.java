@@ -20,6 +20,9 @@ public final class ArchiveStore {
 
     private static String CAT = "category";
     private static String ITEM = "book";
+    private static Boolean hasStartAt;
+    private static Boolean hasEndAt;
+    private static Boolean hasApplyDeadline;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -29,6 +32,9 @@ public final class ArchiveStore {
     public static void bind(String categoryTable, String itemTable) {
         if (categoryTable != null && !categoryTable.isBlank()) CAT = categoryTable.trim();
         if (itemTable != null && !itemTable.isBlank()) ITEM = itemTable.trim();
+        hasStartAt = null;
+        hasEndAt = null;
+        hasApplyDeadline = null;
     }
 
     public static String categoryTable() {
@@ -130,6 +136,11 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> addItem(String title, String author, String isbn, long categoryId, int stock, String coverUrl) {
+        return addItem(title, author, isbn, categoryId, stock, coverUrl, null);
+    }
+
+    public static Map<String, Object> addItem(
+            String title, String author, String isbn, long categoryId, int stock, String coverUrl, Map<String, Object> extra) {
         String status = stock > 0 ? "available" : "unavailable";
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
@@ -146,7 +157,11 @@ public final class ArchiveStore {
             return ps;
         }, kh);
         Number key = kh.getKey();
-        return getItem(key == null ? 0L : key.longValue());
+        long id = key == null ? 0L : key.longValue();
+        if (extra != null && id > 0) {
+            updateItem(id, extra);
+        }
+        return getItem(id);
     }
 
     public static Map<String, Object> updateItem(long id, Map<String, Object> patch) {
@@ -167,6 +182,18 @@ public final class ArchiveStore {
         db().update(
                 "UPDATE " + ITEM + " SET title=?, author=?, isbn=?, category_id=?, stock=?, status=?, cover_url=? WHERE id=?",
                 title, author, isbn, categoryId, stock, status, cover, id);
+        if (hasStartAt()) {
+            Timestamp ts = parseTs(patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt"));
+            db().update("UPDATE " + ITEM + " SET start_at=? WHERE id=?", ts, id);
+        }
+        if (hasEndAt()) {
+            Timestamp ts = parseTs(patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt"));
+            db().update("UPDATE " + ITEM + " SET end_at=? WHERE id=?", ts, id);
+        }
+        if (hasApplyDeadline()) {
+            Timestamp ts = parseTs(patch.containsKey("applyDeadlineAt") ? patch.get("applyDeadlineAt") : m.get("applyDeadlineAt"));
+            db().update("UPDATE " + ITEM + " SET apply_deadline_at=? WHERE id=?", ts, id);
+        }
         return getItem(id);
     }
 
@@ -177,19 +204,7 @@ public final class ArchiveStore {
     public static Map<String, Object> getItemRaw(long id) {
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + " WHERE id=?",
-                (rs, i) -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id", rs.getLong("id"));
-                    m.put("title", rs.getString("title"));
-                    m.put("author", rs.getString("author"));
-                    m.put("isbn", rs.getString("isbn"));
-                    m.put("categoryId", rs.getLong("category_id"));
-                    m.put("stock", rs.getInt("stock"));
-                    m.put("status", rs.getString("status"));
-                    m.put("coverUrl", rs.getString("cover_url"));
-                    m.put("createdAt", fmt(rs.getTimestamp("created_at")));
-                    return m;
-                }, id);
+                (rs, i) -> mapItemRow(rs), id);
         return list.isEmpty() ? null : list.get(0);
     }
 
@@ -220,25 +235,30 @@ public final class ArchiveStore {
         args.add((page - 1) * size);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + where + " ORDER BY id LIMIT ? OFFSET ?",
-                (rs, i) -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id", rs.getLong("id"));
-                    m.put("title", rs.getString("title"));
-                    m.put("author", rs.getString("author"));
-                    m.put("isbn", rs.getString("isbn"));
-                    m.put("categoryId", rs.getLong("category_id"));
-                    m.put("stock", rs.getInt("stock"));
-                    m.put("status", rs.getString("status"));
-                    m.put("coverUrl", rs.getString("cover_url"));
-                    m.put("createdAt", fmt(rs.getTimestamp("created_at")));
-                    return enrichItem(m);
-                }, args.toArray());
+                (rs, i) -> enrichItem(mapItemRow(rs)), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", t);
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    private static Map<String, Object> mapItemRow(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", rs.getLong("id"));
+        m.put("title", rs.getString("title"));
+        m.put("author", rs.getString("author"));
+        m.put("isbn", rs.getString("isbn"));
+        m.put("categoryId", rs.getLong("category_id"));
+        m.put("stock", rs.getInt("stock"));
+        m.put("status", rs.getString("status"));
+        m.put("coverUrl", rs.getString("cover_url"));
+        m.put("createdAt", fmt(rs.getTimestamp("created_at")));
+        if (hasStartAt()) m.put("startAt", fmt(rs.getTimestamp("start_at")));
+        if (hasEndAt()) m.put("endAt", fmt(rs.getTimestamp("end_at")));
+        if (hasApplyDeadline()) m.put("applyDeadlineAt", fmt(rs.getTimestamp("apply_deadline_at")));
+        return m;
     }
 
     private static Map<String, Object> enrichItem(Map<String, Object> b) {
@@ -248,6 +268,53 @@ public final class ArchiveStore {
                 "SELECT name FROM " + CAT + " WHERE id=?", (rs, i) -> rs.getString(1), cid);
         m.put("categoryName", names.isEmpty() ? "" : names.get(0));
         return m;
+    }
+
+    public static boolean hasScheduleColumns() {
+        return hasStartAt() && hasEndAt();
+    }
+
+    public static boolean hasStartAt() {
+        if (hasStartAt == null) hasStartAt = hasItemColumn("start_at");
+        return hasStartAt;
+    }
+
+    public static boolean hasEndAt() {
+        if (hasEndAt == null) hasEndAt = hasItemColumn("end_at");
+        return hasEndAt;
+    }
+
+    public static boolean hasApplyDeadline() {
+        if (hasApplyDeadline == null) hasApplyDeadline = hasItemColumn("apply_deadline_at");
+        return hasApplyDeadline;
+    }
+
+    private static boolean hasItemColumn(String col) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?",
+                    Integer.class, ITEM, col);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static Timestamp parseTs(Object o) {
+        if (o == null) return null;
+        String s = String.valueOf(o).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
+        try {
+            if (s.contains("T")) s = s.replace('T', ' ');
+            if (s.length() == 16) s = s + ":00";
+            return Timestamp.valueOf(LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), FMT));
+        } catch (Exception e) {
+            try {
+                return Timestamp.valueOf(s.substring(0, Math.min(19, s.length())));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 
     public static void adjustStock(long itemId, int delta) {
