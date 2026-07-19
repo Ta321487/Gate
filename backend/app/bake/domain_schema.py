@@ -35,9 +35,9 @@ BASELINE_RUNTIME_CAPS = frozenset({
 })
 
 
-def baseline_runtime_covers(domain: str) -> bool:
+def baseline_runtime_covers(domain: str, archetype: str | None = None) -> bool:
     """所需能力均落在基线已实现积木内（无需厚 overlay）。"""
-    req = set(DOMAIN_CAPABILITIES.get(domain, DOMAIN_CAPABILITIES["DOM-GENERIC"]))
+    req = set(required_capabilities(domain, archetype))
     if not req:
         return True
     if req - BASELINE_RUNTIME_CAPS:
@@ -52,7 +52,14 @@ MASTER_MENU_KEYS = frozenset({"archive", "category", "lookup_site", "lookup_type
 REQUIRED_SUPER_MENU_KEYS = frozenset({"users", "content"})
 
 
-def build_domain_schema(title: str, domain: str) -> dict[str, Any]:
+def build_domain_schema(
+    title: str, domain: str, archetype: str | None = None
+) -> dict[str, Any]:
+    if domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import build_generic_shell_schema
+
+        schema = build_generic_shell_schema(title, archetype)
+        return attach_profile_fields(schema, domain)
     builder = SCHEMA_BUILDERS.get(domain, lambda t: _generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
         schema = builder(title)
@@ -61,7 +68,11 @@ def build_domain_schema(title: str, domain: str) -> dict[str, Any]:
     return attach_profile_fields(schema, domain)
 
 
-def required_capabilities(domain: str) -> list[str]:
+def required_capabilities(domain: str, archetype: str | None = None) -> list[str]:
+    if domain == "DOM-GENERIC" and archetype:
+        from app.bake.archetype_shells import shell_capabilities
+
+        return shell_capabilities(archetype)
     return list(DOMAIN_CAPABILITIES.get(domain, DOMAIN_CAPABILITIES["DOM-GENERIC"]))
 
 
@@ -71,21 +82,25 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
 
     spec = dict(spec or {})
     domain = spec.get("domain") or "DOM-GENERIC"
+    archetype = spec.get("archetype") or "ARCH-CRUD"
     title = spec.get("title") or "毕设系统"
-    dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
-    # gate 是工厂契约，不以历史 spec 里的半截为准
-    catalog_gate = dom.get("gate")
-    if catalog_gate:
-        spec["gate"] = copy.deepcopy(catalog_gate)
-    # features 若明显短于 catalog，用 catalog 覆盖（保留已有 out_of_mvp 开题信号稍后由 attach_accept 追加）
-    cat_feats = dom.get("features") or []
-    cur_feats = spec.get("features") or []
-    if cat_feats and len(cur_feats) < len(cat_feats):
-        spec["features"] = copy.deepcopy(cat_feats)
+    # GENERIC：按 ARCH-* 重绑壳（runtime/gate/features/capabilities/schema）
+    if domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import apply_generic_shell
+
+        spec = apply_generic_shell(spec)
+    else:
+        dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
+        catalog_gate = dom.get("gate")
+        if catalog_gate:
+            spec["gate"] = copy.deepcopy(catalog_gate)
+        cat_feats = dom.get("features") or []
+        cur_feats = spec.get("features") or []
+        if cat_feats and len(cur_feats) < len(cat_feats):
+            spec["features"] = copy.deepcopy(cat_feats)
     if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
-        spec["schema"] = build_domain_schema(title, domain)
+        spec["schema"] = build_domain_schema(title, domain, archetype=archetype)
     elif not (spec["schema"].get("profileFields")):
-        # 旧项目补挂全领域资料字段
         spec["schema"] = attach_profile_fields(spec["schema"], domain)
     if not spec.get("accept"):
         proposal_text = ""
@@ -108,14 +123,17 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
 
 def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
     domain = spec.get("domain", "DOM-GENERIC")
-    req = required_capabilities(domain)
+    archetype = spec.get("archetype")
+    req = list(spec.get("capabilities") or required_capabilities(domain, archetype))
     decision = resolve_accept(
         req,
         proposal_text,
         has_domain_overlay=domain in DOMAINS_WITH_OVERLAY,
-        has_baseline_runtime=baseline_runtime_covers(domain),
+        has_baseline_runtime=baseline_runtime_covers(domain, archetype),
     )
-    schema = spec.get("schema") or build_domain_schema(spec.get("title") or "毕设系统", domain)
+    schema = spec.get("schema") or build_domain_schema(
+        spec.get("title") or "毕设系统", domain, archetype=archetype
+    )
     schema = copy.deepcopy(schema)
     schema["capabilities"] = req
     schema["accept"] = decision["accept"]

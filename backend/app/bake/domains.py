@@ -11,10 +11,20 @@ from app.bake.gate_contracts import (
 )
 
 ARCHETYPES = {
-    "ARCH-CRUD": {"label": "纯管理", "keywords": ["管理", "信息维护", "增删改查"]},
-    "ARCH-FLOW": {"label": "审核流", "keywords": ["审核", "审批", "借阅", "报修", "申请"]},
-    "ARCH-TRADE": {"label": "交易流", "keywords": ["交易", "二手", "订单", "支付", "购物"]},
-    "ARCH-RESERVE": {"label": "预约流", "keywords": ["预约", "挂号", "车位", "订座"]},
+    # 不用光杆「管理」：开题几乎都带「管理系统」，会压过预约/订单等更具体原型
+    "ARCH-CRUD": {"label": "纯管理", "keywords": ["信息维护", "增删改查", "档案管理", "台账管理"]},
+    "ARCH-FLOW": {
+        "label": "审核流",
+        "keywords": ["审核", "审批", "借阅", "报修", "申请", "派发", "工单", "回访", "申领", "领用", "递交", "巡检"],
+    },
+    "ARCH-TRADE": {
+        "label": "交易流",
+        "keywords": ["交易", "二手", "订单", "支付", "购物", "交换", "配送", "助餐"],
+    },
+    "ARCH-RESERVE": {
+        "label": "预约流",
+        "keywords": ["预约", "挂号", "车位", "订座", "排班", "场次", "占座", "座位确认"],
+    },
     "ARCH-CONTENT": {
         "label": "内容流",
         "keywords": [

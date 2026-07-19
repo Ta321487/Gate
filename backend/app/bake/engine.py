@@ -59,7 +59,13 @@ def _merge_tree(src: Path, dest: Path) -> None:
             shutil.copy2(path, target)
 
 
-def _sql_template_path(domain: str) -> Path:
+def _sql_template_path(domain: str, archetype: str | None = None) -> Path:
+    if domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import shell_sql_filename
+
+        path = _SQL_DIR / shell_sql_filename(archetype)
+        if path.is_file():
+            return path
     path = _SQL_DIR / f"{domain}.sql"
     if path.is_file():
         return path
@@ -69,9 +75,9 @@ def _sql_template_path(domain: str) -> Path:
     return fallback
 
 
-def domain_sql(domain: str, db_name: str) -> str:
-    """按领域加载 sql/*.sql，仅替换库名与表数量注释占位符。"""
-    text = _sql_template_path(domain).read_text(encoding="utf-8")
+def domain_sql(domain: str, db_name: str, archetype: str | None = None) -> str:
+    """按领域（GENERIC 再按 ARCH-*）加载 sql/*.sql。"""
+    text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
     return (
         text.replace("${DB_NAME}", db_name)
         .replace("${DOMAIN}", domain)
@@ -100,7 +106,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         _merge_tree(overlay, dest)
 
     _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
-    sql = domain_sql(domain, db_name)
+    sql = domain_sql(domain, db_name, spec.get("archetype"))
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
 
@@ -158,12 +164,15 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     from app.bake.catalog import DOMAINS
     from app.bake.domain_schema import DOMAIN_CAPABILITIES
 
-    runtime = (DOMAINS.get(domain) or {}).get("runtime") or {}
+    # GENERIC 等域的 runtime 写在 spec 上（按 ARCH-* 绑壳）
+    runtime = dict(spec.get("runtime") or {})
+    if not runtime:
+        runtime = dict((DOMAINS.get(domain) or {}).get("runtime") or {})
     roles = spec.get("roles") or (DOMAINS.get(domain) or {}).get("roles") or ["user", "admin"]
     register_role = runtime.get("register_role") or (roles[0] if roles else "user")
     ticket_mode = runtime.get("ticket_mode") or "archive"
     ticket_table = runtime.get("ticket_table") or "borrow"
-    caps = set(DOMAIN_CAPABILITIES.get(domain) or [])
+    caps = set(spec.get("capabilities") or DOMAIN_CAPABILITIES.get(domain) or [])
     use_quota = runtime.get("use_quota")
     if use_quota is None:
         use_quota = "quota" in caps

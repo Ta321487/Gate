@@ -1,4 +1,4 @@
--- bake domain=DOM-GENERIC · ARCH-CRUD 档案壳 · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+-- bake domain=DOM-GENERIC · ARCH-RESERVE · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列
 CREATE TABLE IF NOT EXISTS biz_item (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -35,14 +34,22 @@ CREATE TABLE IF NOT EXISTS biz_item (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- ER/答辩补表：附件元数据（运行时可不读）
-CREATE TABLE IF NOT EXISTS biz_attach (
+CREATE TABLE IF NOT EXISTS resource_slot (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   item_id BIGINT NOT NULL,
-  file_name VARCHAR(128) NOT NULL,
-  file_url VARCHAR(255) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_attach_item (item_id)
+  start_at DATETIME NOT NULL,
+  end_at DATETIME NOT NULL,
+  capacity INT NOT NULL DEFAULT 1,
+  booked INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS reservation (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  slot_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'confirmed',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -69,7 +76,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '预约管理员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '用户甲', '13800000002',
  '{"realName":"王小明","email":"user@demo.edu","gender":"男","orgName":"信息中心","jobTitle":"职员","employeeNo":"E1001"}',
  0, 1, 1)
@@ -77,10 +84,18 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '一类'), (2, '二类'), (3, '三类');
 INSERT IGNORE INTO biz_item (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '示例对象甲', '说明A', 'NO-001', 1, 10, 'available'),
-(2, '示例对象乙', '说明B', 'NO-002', 2, 5, 'available'),
-(3, '示例对象丙', '说明C', 'NO-003', 1, 8, 'available');
+(1, '示例资源甲', '0', '位置A', 1, 1, 'available'),
+(2, '示例资源乙', '0', '位置B', 2, 1, 'available'),
+(3, '示例资源丙', '10.00', '位置C', 3, 1, 'available');
+
+INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booked) VALUES
+(1, 1, '2026-09-20 09:00:00', '2026-09-20 10:00:00', 2, 0),
+(2, 1, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 2, 0),
+(3, 2, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
+(4, 2, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0),
+(5, 3, '2026-09-20 09:00:00', '2026-09-20 10:00:00', 3, 0),
+(6, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 3, 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '欢迎使用', '系统已就绪，可开始维护业务数据。', 'admin', '系统管理员'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='欢迎使用');
+SELECT '预约须知', '选择资源与时段占坑预约；约满后不可再约。', 'admin', '系统管理员'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='预约须知');
