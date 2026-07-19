@@ -6,17 +6,20 @@ import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/** 薄领域工作台；LIBRARY 等厚叠加用专用 DashboardController */
+/**
+ * 薄领域工作台（archive / standalone）。
+ * LIBRARY 厚叠加用 {@code LibraryDashboardController}，故排除 DOM-LIBRARY。
+ */
 @RestController
 @RequestMapping("/api/admin/dashboard")
-@ConditionalOnProperty(name = "thesis.ticket-mode", havingValue = "standalone")
+@ConditionalOnExpression("!'${thesis.domain:}'.equals('DOM-LIBRARY')")
 public class TicketDashboardController {
 
     @Value("${thesis.register-role:user}")

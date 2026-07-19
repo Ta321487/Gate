@@ -20,7 +20,8 @@ from app.bake.domain_schema import (
 
 # 答辩/开题常见硬约束：交付库表不宜过少或灌水过多
 TABLE_COUNT_MIN = 6
-TABLE_COUNT_MAX = 12
+# 含 L0 平台表 sys_message；论坛等顶格域可达 13
+TABLE_COUNT_MAX = 13
 
 # 领域 DDL / 种子模板：backend/app/bake/sql/<DOMAIN>.sql；缺省回落 DOM-GENERIC.sql
 _SQL_DIR = Path(__file__).resolve().parent / "sql"

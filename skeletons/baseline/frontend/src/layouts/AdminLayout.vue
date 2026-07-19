@@ -11,6 +11,7 @@
       <el-header class="header">
         <span class="muted">{{ title }}</span>
         <div class="right">
+          <MessageBell />
           <span>{{ displayName }} · {{ adminRoleLabel }}</span>
           <el-button link type="primary" @click="logout">退出</el-button>
         </div>
@@ -25,6 +26,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MessageBell from '../components/MessageBell.vue'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { getSchema, isSuperOnlyMenu, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 

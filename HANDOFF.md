@@ -136,9 +136,9 @@
 | **时间冲突检测** | `time_conflict`：主数据 `start_at`/`end_at`；申请时与本人已占用时段做区间相交 |
 | **报名/选课截止** | 主数据 `apply_deadline_at`；截止后不可再申请 |
 | **我的日程/课表列表** | 我的单据展示 `startAt`/`endAt`（非拖拽排期） |
-| **站内消息（审核结果）** | ⏳ `sys_message` + 铃铛列表（不做短信/邮件/微信）— 下一刀 |
+| **站内消息（审核结果）** | `sys_message` + 顶栏铃铛；审核通过/驳回写入申请人收件箱 |
 | **管理端 CSV 导出** | 记录页按当前筛选下载（UTF-8 BOM） |
-| **工作台简易统计** | ⏳ 待审/进行中等聚合数字 — 下一刀 |
+| **工作台简易统计** | `/api/admin/dashboard`：待审/处理中/已完成/用户数（档案域附加库存等） |
 | 公告 | content |
 | 总管主数据+用户+公告；子管审单 | 全厂不变式 |
 | 猜你喜欢（偏好/热度/上新） | recommend，非协同过滤 |
@@ -183,18 +183,18 @@
 
 ---
 
-## 硬约束：库表数量 6~12
+## 硬约束：库表数量 6~13
 
-- 常量：`backend/app/bake/engine.py` → `TABLE_COUNT_MIN/MAX`
+- 常量：`backend/app/bake/engine.py` → `TABLE_COUNT_MIN/MAX`（含 L0 平台表 `sys_message`）
 - DDL/种子模板：`backend/app/bake/sql/<DOMAIN>.sql`（`domain_sql` 加载；缺省 `DOM-GENERIC.sql`）
 - bake 写 `schema.sql` 前 `assert_table_budget`；门禁 `p3t` 不过则禁 ZIP
-- **现状样板**：GENERIC 6 · 媒资/设备/博客/组 C 7 · 图书/报修壳 8 · **论坛 12（顶格参考）**
-- 论坛 12 表：`sys_user` / `category` / `board_moderator` / `post` / `post_attach` / `tag` / `post_tag` / `reply` / `reply_log` / `reply_attach` / `sys_notice` / `sys_config`
-- 报修薄壳 8 张：楼栋/房间/类型/单据/进度/附件 + 用户/公告
+- **现状样板**：GENERIC 7 · 多数薄域 8~9 · 图书/报修壳 9 · **论坛 13（顶格参考）**
+- 论坛含：`sys_message` + 原 12 业务/平台表
+- 报修薄壳：楼栋/房间/类型/单据/进度/附件 + 用户/公告/消息
 
 ## 学生端持久化（已完成）
 
-- `UserStore` / `NoticeStore` / `LibraryStore` → MySQL + JdbcTemplate  
+- `UserStore` / `NoticeStore` / `MessageStore` / `LibraryStore` → MySQL + JdbcTemplate  
 - 工厂 `student_db.ensure_student_schema` + `GF_STUDENT_MYSQL_*`  
 - 种子在 `schema.sql` 幂等；重启不 Cle 业务数据  
 
@@ -211,6 +211,7 @@
 - [x] 组 G：**DOM-FORUM / DOM-BLOG**（同壳；主帖/文章主数据；论坛回复单据 + 博客收藏单据；无播放字段；可选门户轮播）
 - [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启；基线 `PortalCarousel` + 门户壳强化
 - [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（`gate_archive_ticket(with_deadline=False)`；活动/失物/选课 SQL；报名/认领/选课单据；ACTIVITY/COURSE 门户轮播）
+- [x] L0 **站内消息**（`MessageStore` / `sys_message` / 顶栏铃铛；审核结果通知）+ **薄域工作台**（`TicketDashboardController` 对非 LIBRARY 全开）
 - [ ] 实现 `order_lines`、`slot_reserve` 后打开 D/E 组
 
 ### 宿舍验证账号（bake 后）

@@ -1,4 +1,4 @@
--- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}] · 顶格 12 表样板
+-- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}] · 顶格样板（含 sys_message）
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -98,6 +98,19 @@ CREATE TABLE IF NOT EXISTS reply_attach (
   file_name VARCHAR(128) DEFAULT '',
   uploaded_by VARCHAR(64),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE IF NOT EXISTS sys_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(128) NOT NULL,
+  body VARCHAR(512) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_msg_user (username, id)
 );
 
 CREATE TABLE IF NOT EXISTS sys_notice (

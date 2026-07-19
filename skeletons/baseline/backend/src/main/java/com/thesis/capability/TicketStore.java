@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 import com.thesis.config.JdbcSupport;
+import com.thesis.service.MessageStore;
 import com.thesis.service.UserStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -368,7 +369,26 @@ public final class TicketStore {
                     "UPDATE " + TICKET + " SET status='rejected', approve_at=NOW(), remark=? WHERE id=?",
                     note, ticketId);
         }
+        notifyTicketResult(m, pass, note);
         return get(ticketId);
+    }
+
+    /** 审核结果写入申请人站内消息（无表或失败则静默跳过） */
+    private static void notifyTicketResult(Map<String, Object> ticket, boolean pass, String note) {
+        try {
+            String user = str(ticket.get("username"));
+            if (user.isBlank()) return;
+            String subject = str(ticket.get("title"));
+            if (subject.isBlank()) subject = str(ticket.get("bookTitle"));
+            if (subject.isBlank()) subject = "单据#" + ticket.get("id");
+            String title = pass ? "审核已通过" : "审核未通过";
+            String body = pass
+                    ? ("「" + subject + "」已通过" + (note == null || note.isBlank() ? "" : "：" + note))
+                    : ("「" + subject + "」已驳回" + (note == null || note.isBlank() ? "" : "：" + note));
+            MessageStore.send(user, title, body, "ticket", toLong(ticket.get("id")));
+        } catch (Exception ignored) {
+            // 消息失败不影响主流程
+        }
     }
 
     public static Map<String, Object> complete(long ticketId) {

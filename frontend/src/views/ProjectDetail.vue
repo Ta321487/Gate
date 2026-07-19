@@ -296,11 +296,11 @@
             </div>
             <div class="panel-bd stack">
               <div class="small"><span class="muted">库名</span> · <span class="mono">{{ p.db_name }}</span></div>
-              <div class="small muted">SQL · sql/schema.sql · 约束 6~12 张表</div>
+              <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
               <template v-if="schema?.tables?.length">
                 <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
-                  <span :class="(schema.tables.length >= 6 && schema.tables.length <= 12) ? 'muted' : 'text-danger'">
-                    （{{ schema.tables.length >= 6 && schema.tables.length <= 12 ? '符合' : '不符合' }} 6~12）
+                  <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
+                    （{{ schema.tables.length >= 6 && schema.tables.length <= 13 ? '符合' : '不符合' }} 6~13）
                   </span>
                 </div>
                 <div class="table-list">
