@@ -1,0 +1,2484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>毕设港 · 运营端原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #15202b;
+      --ink-2: #3d4f5f;
+      --muted: #6b7c8a;
+      --line: #d5dde3;
+      --line-soft: #e8eef2;
+      --surface: #ffffff;
+      --surface-2: #f4f7f9;
+      --bg: #e9eef2;
+      --teal: #0b6e75;
+      --teal-deep: #08545a;
+      --teal-soft: #d7eef0;
+      --amber: #b45309;
+      --amber-soft: #fef3c7;
+      --green: #047857;
+      --green-soft: #d1fae5;
+      --red: #b91c1c;
+      --red-soft: #fee2e2;
+      --sidebar: #101820;
+      --sidebar-text: #9aadb8;
+      --radius: 6px;
+      --font: "Space Grotesk", "Noto Sans SC", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(11, 110, 117, 0.04), transparent 220px),
+        repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(21, 32, 43, 0.03) 24px),
+        repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(21, 32, 43, 0.03) 24px),
+        var(--bg);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, .mono { font-family: var(--mono); font-size: 12px; }
+
+    .app { display: flex; min-height: 100vh; }
+
+    /* —— Sidebar —— */
+    .sidebar {
+      width: 220px;
+      background: var(--sidebar);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 22px 18px 18px;
+      border-bottom: 1px solid #243140;
+    }
+    .brand-mark {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .brand-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #6d8290;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .nav { padding: 12px 10px; flex: 1; }
+    .nav-label {
+      padding: 8px 10px 6px;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #5a6f7c;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-item:hover { background: #1a2733; color: #d7e2ea; }
+    .nav-item.active {
+      background: #1e3340;
+      color: #fff;
+      box-shadow: inset 3px 0 0 var(--teal);
+    }
+    .nav-item .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; opacity: 0.45;
+    }
+    .nav-item.active .dot { background: #5eead4; opacity: 1; }
+    .sidebar-foot {
+      padding: 14px 16px;
+      border-top: 1px solid #243140;
+      font-size: 11px;
+      color: #5a6f7c;
+    }
+
+    /* —— Main —— */
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      height: 52px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .crumb { color: var(--muted); font-size: 13px; }
+    .crumb strong { color: var(--ink); font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .demo-box {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--muted);
+    }
+    .demo-box select {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .content {
+      padding: 24px;
+      max-width: 1120px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    h1.page-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+    .page-desc { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+
+    /* —— Controls —— */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 34px; padding: 0 14px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled,
+    .btn.is-disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover:not(:disabled):not(.is-disabled) { background: var(--teal-deep); }
+    .btn-secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+    .btn-secondary:hover:not(:disabled):not(.is-disabled) { border-color: var(--teal); color: var(--teal); }
+    .btn-danger { background: var(--surface); border-color: #f0c4c4; color: var(--red); }
+    .btn-danger:hover:not(:disabled) { background: var(--red-soft); }
+    .btn-ghost { background: transparent; color: var(--ink-2); }
+    .btn-ghost:hover { color: var(--teal); }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn-lg { height: 40px; padding: 0 18px; font-size: 14px; }
+
+    .pill {
+      display: inline-flex; align-items: center;
+      height: 22px; padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pill-neutral { background: var(--line-soft); color: var(--ink-2); }
+    .pill-teal { background: var(--teal-soft); color: var(--teal-deep); }
+    .pill-amber { background: var(--amber-soft); color: var(--amber); }
+    .pill-green { background: var(--green-soft); color: var(--green); }
+    .pill-red { background: var(--red-soft); color: var(--red); }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .panel-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line-soft);
+      background: var(--surface-2);
+    }
+    .panel-hd h3 { font-size: 14px; font-weight: 600; }
+    .panel-bd { padding: 18px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .stat .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .stat .value { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .stat .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* —— Dropzone —— */
+    .dropzone {
+      border: 1.5px dashed #b7c5ce;
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 20px;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--teal);
+      background: #f3fbfb;
+    }
+    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .dropzone-icon {
+      width: 44px; height: 44px; margin: 0 auto 12px;
+      border-radius: 10px;
+      background: var(--teal-soft);
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 18px;
+    }
+    .dropzone-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .dropzone-hint { color: var(--muted); font-size: 12px; }
+
+    .upload-bar {
+      display: none;
+      margin-bottom: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+    .upload-bar.show { display: block; }
+    .upload-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+    .progress {
+      height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden;
+    }
+    .progress > i {
+      display: block; height: 100%; width: 0%;
+      background: var(--teal);
+      transition: width 0.2s;
+    }
+
+    /* —— Table —— */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .tabs-mini { display: flex; gap: 4px; }
+    .tabs-mini button {
+      height: 30px; padding: 0 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    .tabs-mini button.active {
+      background: var(--surface);
+      border-color: var(--line);
+      color: var(--ink);
+    }
+    .tools { display: flex; gap: 8px; align-items: center; }
+    .tools input, .tools select {
+      height: 32px; border: 1px solid var(--line); border-radius: 6px;
+      padding: 0 10px; background: var(--surface); font-size: 13px;
+    }
+    .tools input { width: 200px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 14px; text-align: left;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 13px;
+    }
+    th {
+      background: var(--surface-2);
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: #f7fbfb; }
+    .list-footer {
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    /* —— Project header —— */
+    .back {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--muted); font-size: 13px; margin-bottom: 12px; cursor: pointer;
+      background: none; border: none;
+    }
+    .back:hover { color: var(--teal); }
+    .proj-head {
+      display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+      margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .proj-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .proj-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 14px;
+      margin-top: 8px; color: var(--muted); font-size: 12px; align-items: center;
+    }
+    .proj-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line);
+      margin-bottom: 18px; overflow-x: auto;
+    }
+    .tab {
+      padding: 10px 16px;
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 13px;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active { color: var(--teal-deep); border-bottom-color: var(--teal); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .stack { display: flex; flex-direction: column; gap: 14px; }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .gap-sm { gap: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-12 { margin-bottom: 12px; }
+    .mb-16 { margin-bottom: 16px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+
+    .field label {
+      display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500;
+    }
+    .field select, .field input, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: var(--surface);
+      font-size: 13px;
+    }
+    .field textarea { min-height: 80px; resize: vertical; font-family: var(--mono); }
+    .field select:disabled, .field input:disabled { background: var(--surface-2); color: var(--muted); }
+
+    .confidence {
+      display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    }
+    .confidence .bar {
+      flex: 1; height: 8px; background: var(--line-soft); border-radius: 99px; overflow: hidden;
+    }
+    .confidence .bar > i { display: block; height: 100%; background: var(--green); }
+
+    .gate {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid #f0d9a8;
+      background: #fffbeb;
+    }
+    .gate.ok { border-color: #a7e3c4; background: #f0fdf6; }
+    .gate label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+    .gate input { margin-top: 3px; }
+
+    .file-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; background: var(--surface-2);
+      border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px;
+      font-size: 13px;
+    }
+
+    /* —— Generate —— */
+    .step-list { list-style: none; }
+    .step-list li {
+      display: flex; gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 13px;
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-ico {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      background: var(--line-soft); color: var(--muted);
+    }
+    .step-list li.done .step-ico { background: var(--green-soft); color: var(--green); }
+    .step-list li.run .step-ico { background: var(--teal-soft); color: var(--teal-deep); }
+    .step-list li.fail .step-ico { background: var(--red-soft); color: var(--red); }
+    .step-list li .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .banner {
+      padding: 16px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .banner.success { background: #f0fdf6; border-color: #a7e3c4; }
+    .banner.fail { background: #fef2f2; border-color: #fecaca; }
+    .banner h4 { font-size: 15px; margin-bottom: 4px; }
+
+    .spec-preview {
+      background: #0f1720;
+      color: #c8d6e0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.65;
+      overflow: auto;
+      max-height: 220px;
+    }
+
+    /* —— Runtime —— */
+    .runtime-card .status-line {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .log-box {
+      margin-top: 12px;
+      background: #0f1720;
+      color: #9fb0bc;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.55;
+      height: 160px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .log-box .ok { color: #5eead4; }
+    .log-box .err { color: #fca5a5; }
+    .log-box .warn { color: #fcd34d; }
+
+    .health-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
+    }
+    .health {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--surface);
+    }
+    .health .k { font-size: 11px; color: var(--muted); }
+    .health .v { font-size: 14px; font-weight: 600; margin-top: 4px; }
+
+    /* —— Logs page —— */
+    .log-toolbar {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center;
+    }
+    .log-viewer {
+      background: #0f1720;
+      color: #b8c7d1;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.6;
+      height: 420px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    /* —— Settings —— */
+    .switch-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line-soft);
+      gap: 16px;
+    }
+    .switch-row:last-child { border-bottom: none; }
+    .switch {
+      width: 40px; height: 22px; border-radius: 99px;
+      background: #c5d0d8; position: relative; cursor: pointer; flex-shrink: 0;
+      border: none;
+    }
+    .switch.on { background: var(--teal); }
+    .switch::after {
+      content: "";
+      position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; transition: left 0.15s;
+    }
+    .switch.on::after { left: 21px; }
+
+    .usage-bars { display: grid; gap: 10px; }
+    .usage-item .top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+    .usage-item .bar { height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
+    .usage-item .bar > i { display: block; height: 100%; background: var(--teal); }
+
+    .balance-box {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+    }
+    .balance-row { display: flex; flex-direction: column; gap: 2px; }
+    .warn { color: #c45c26; }
+    .pager-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 4px 14px 14px;
+    }
+    .filter-row {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;
+    }
+    .filter-row input, .filter-row select {
+      height: 30px; border: 1px solid var(--line); border-radius: 6px;
+      padding: 0 10px; background: var(--surface); font-size: 12px;
+    }
+    .dt-range {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 30px; padding: 0 10px;
+      border: 1px solid var(--line); border-radius: 6px;
+      background: var(--surface); font-size: 12px; color: var(--ink-2);
+      cursor: default;
+    }
+    .dt-range .sep { color: var(--muted); }
+    .dt-shortcuts { display: inline-flex; gap: 4px; }
+    .dt-shortcuts button {
+      height: 26px; padding: 0 8px; border: 1px solid var(--line);
+      border-radius: 4px; background: var(--surface-2); font-size: 11px;
+      color: var(--ink-2); cursor: pointer;
+    }
+    .dt-shortcuts button:hover { border-color: var(--teal); color: var(--teal); }
+
+    .parse-panel { display: flex; flex-direction: column; gap: 16px; }
+    .parse-block { padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
+    .parse-block:last-child { border-bottom: none; padding-bottom: 0; }
+    .parse-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 6px; }
+    .parse-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .parse-bg { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+    .parse-hits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .hit-chip {
+      font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: var(--teal-soft); color: var(--teal-deep); font-weight: 500;
+    }
+    .parse-sec-hd { font-size: 12px; font-weight: 600; margin: 8px 0 4px; }
+    .parse-list { margin: 0 0 0 18px; font-size: 12px; color: var(--ink-2); }
+    .parse-list.plain { list-style: disc; }
+    .parse-excerpt { font-size: 12px; color: var(--muted); }
+    .parse-excerpt pre {
+      margin-top: 6px; padding: 10px; background: var(--surface-2);
+      border-radius: 6px; font-family: var(--mono); font-size: 11px;
+      white-space: pre-wrap; max-height: 120px; overflow: auto;
+    }
+    .spec-dl { display: grid; gap: 8px; font-size: 12px; }
+    .spec-dl > div { display: grid; grid-template-columns: 56px 1fr; gap: 8px; }
+    .spec-dl dt { color: var(--muted); }
+    .spec-dl dd { margin: 0; color: var(--ink); }
+
+    .table-list { display: grid; gap: 8px; margin: 10px 0; max-height: 280px; overflow: auto; }
+    .table-card {
+      border: 1px solid var(--line-soft); border-radius: 6px; padding: 8px 10px;
+      background: var(--surface-2);
+    }
+    .table-card-hd { font-weight: 600; font-size: 12px; margin-bottom: 4px; font-family: var(--mono); }
+    .table-cols { list-style: none; margin: 0; padding: 0; }
+    .table-cols li {
+      display: flex; gap: 8px; align-items: center;
+      font-size: 11px; padding: 2px 0;
+    }
+    .col-name { font-family: var(--mono); min-width: 90px; }
+    .col-type { flex: 1; }
+    .col-mark { font-size: 10px; font-weight: 700; color: var(--teal-deep); }
+    .rel-list { margin: 8px 0; }
+    .rel-row { font-size: 11px; padding: 4px 0; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+    .th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+    .th-sort:hover { color: var(--teal-deep); }
+    .th-sort .sort-ico { font-size: 10px; color: var(--teal); margin-left: 2px; }
+
+    .toast {
+      position: fixed; right: 20px; bottom: 20px;
+      background: var(--ink); color: #fff;
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; z-index: 100;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      max-width: 360px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .guide-bar {
+      background: #10242a;
+      color: #b7d4da;
+      font-size: 12px;
+      padding: 8px 24px;
+      border-bottom: 1px solid #1e3a42;
+    }
+    .guide-bar strong { color: #5eead4; font-weight: 600; }
+
+    .modal-mask {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 32, 0.45);
+      z-index: 80;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-mask.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      width: min(560px, 100%);
+      max-height: 80vh;
+      overflow: auto;
+    }
+    .modal-hd {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; border-bottom: 1px solid var(--line-soft);
+      font-weight: 600;
+    }
+    .modal-bd { padding: 18px; }
+    .modal-ft {
+      padding: 12px 18px; border-top: 1px solid var(--line-soft);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+
+    .override-banner {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #f0d9a8;
+      background: #fffbeb;
+      font-size: 12px;
+      color: #92400e;
+    }
+    .override-banner.show { display: block; }
+    .override-banner.danger {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .rec-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .rec-box .rec-title {
+      font-size: 12px; color: var(--muted); margin-bottom: 6px;
+    }
+    .rec-box .rec-main {
+      font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+    }
+    .rec-box .rec-sub {
+      font-size: 12px; color: var(--muted); margin-top: 4px;
+    }
+    .field.locked select {
+      background: var(--surface-2);
+      color: var(--ink-2);
+      pointer-events: none;
+    }
+    .lock-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+
+    @media (max-width: 900px) {
+      .stats, .health-grid, .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
+      .sidebar { width: 64px; }
+      .brand-sub, .nav-item span, .sidebar-foot, .nav-label { display: none; }
+      .nav-item { justify-content: center; }
+    }
+    @media (max-width: 640px) {
+      .stats, .health-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">毕设港</div>
+        <div class="brand-sub">Thesis Harbor · Ops</div>
+      </div>
+      <nav class="nav">
+        <div class="nav-label">工作台</div>
+        <div class="nav-item active" data-nav="home"><span class="dot"></span><span>项目</span></div>
+        <div class="nav-item" data-nav="jobs"><span class="dot"></span><span>任务队列</span></div>
+        <div class="nav-label">系统</div>
+        <div class="nav-item" data-nav="settings"><span class="dot"></span><span>DeepSeek</span></div>
+        <div class="nav-item" data-nav="system"><span class="dot"></span><span>运行环境</span></div>
+      </nav>
+      <div class="sidebar-foot">毕设港 · Ops</div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="crumb" id="crumb"><strong>毕设港</strong> / 项目</div>
+        <div class="topbar-right">
+          <div class="demo-box">
+            <span>演示状态</span>
+            <select id="demo-state">
+              <option value="list">列表 · 混合状态</option>
+              <option value="needs_confirm">项目 · 待确认匹配</option>
+              <option value="generating">项目 · 生成中</option>
+              <option value="generated">项目 · 已生成待启动</option>
+              <option value="running">项目 · 运行中</option>
+              <option value="failed">项目 · P2 门禁失败</option>
+            </select>
+          </div>
+        </div>
+      </header>
+      <div class="guide-bar">
+        静态原型 · 演示状态可切换场景
+      </div>
+
+      <div class="content">
+        <!-- ========== HOME ========== -->
+        <section id="view-home" class="view active">
+          <h1 class="page-title">项目</h1>
+          <p class="page-desc">上传开题报告创建项目。</p>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="file-input" accept=".pdf,.doc,.docx,.txt" />
+            <div class="dropzone-icon">↑</div>
+            <div class="dropzone-title">拖入开题报告，或点击选择</div>
+            <div class="dropzone-hint">支持 PDF / Word / TXT · 上传后自动解析题目并创建项目</div>
+          </div>
+
+          <div class="upload-bar" id="upload-bar">
+            <div class="upload-meta">
+              <span id="upload-name">开题报告.docx</span>
+              <span id="upload-pct">0%</span>
+            </div>
+            <div class="progress"><i id="upload-fill"></i></div>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><div class="label">全部项目</div><div class="value">8</div><div class="hint">本机工作区</div></div>
+            <div class="stat"><div class="label">生成中</div><div class="value">1</div><div class="hint">含排队</div></div>
+            <div class="stat"><div class="label">可预览</div><div class="value">3</div><div class="hint">已生成 / 运行中</div></div>
+            <div class="stat"><div class="label">本月 Token</div><div class="value">182k</div><div class="hint">预算 1.0M</div></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">
+              <h3>项目列表</h3>
+              <button class="btn btn-secondary btn-sm" data-action="refresh-list">刷新</button>
+            </div>
+            <div class="panel-bd" style="padding-top:12px">
+              <div class="toolbar">
+                <div class="tabs-mini" id="list-filter">
+                  <button class="active" data-f="all">全部</button>
+                  <button data-f="active">进行中</button>
+                  <button data-f="done">可交付</button>
+                  <button data-f="fail">失败</button>
+                </div>
+                <div class="tools">
+                  <input type="search" id="list-search" placeholder="搜索题目 / ID…" style="width:220px" />
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th>骨架 · 领域</th>
+                    <th>状态</th>
+                    <th>运行</th>
+                    <th>更新</th>
+                  </tr>
+                </thead>
+                <tbody id="project-tbody"></tbody>
+              </table>
+              <div class="list-footer" id="list-footer">共 0 条 · 点击行进入详情</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== PROJECT ========== -->
+        <section id="view-project" class="view">
+          <button class="back" id="back-home">← 返回项目列表</button>
+
+          <div class="proj-head">
+            <div>
+              <div class="proj-title" id="proj-title">基于 Spring Boot 的图书借阅管理系统</div>
+              <div class="proj-meta">
+                <span id="proj-status-pill" class="pill pill-amber">待确认匹配</span>
+                <span>ID <span class="mono" id="proj-id">gf-20260717-001</span></span>
+                <span id="proj-arch">ARCH-FLOW · DOM-LIBRARY</span>
+                <span class="mono" id="proj-db">gf_thesis_library_001</span>
+              </div>
+            </div>
+              <div class="proj-actions">
+              <button type="button" class="btn btn-secondary is-disabled" id="btn-download" data-action="download-zip">下载 ZIP</button>
+              <button type="button" class="btn btn-danger btn-sm" data-action="delete-project">删除</button>
+            </div>
+          </div>
+
+          <div class="tabs" id="proj-tabs">
+            <div class="tab active" data-tab="match">匹配确认</div>
+            <div class="tab" data-tab="generate">一键生成</div>
+            <div class="tab" data-tab="runtime">运行</div>
+            <div class="tab" data-tab="logs">日志</div>
+            <div class="tab" data-tab="artifacts">产物 / 数据库</div>
+          </div>
+
+          <!-- Match -->
+          <div class="tab-panel active" id="tab-match">
+            <div class="file-row">
+              <span>开题报告：<strong id="match-file">图书管理系统开题报告.docx</strong> · 1.4 MB</span>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="reupload">另建项目</button>
+            </div>
+
+            <div class="banner success mb-16" style="margin-bottom:14px">
+              <h4 style="font-size:14px;margin-bottom:4px">推荐匹配已给出</h4>
+              <p class="small muted">确认后开始生成。骨架 / 领域改动需先解锁。</p>
+            </div>
+
+            <div class="grid-2">
+              <div class="panel">
+                <div class="panel-hd">
+                  <h3>推荐匹配</h3>
+                  <span class="pill pill-green" id="match-mode-pill">已锁定推荐</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="rec-box">
+                    <div class="rec-title">系统根据开题报告给出（置信度 0.86）</div>
+                    <div class="rec-main" id="rec-label">ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书</div>
+                    <div class="rec-sub">命中：借阅 / 审核 / 图书 / 管理员 · 砍项：人脸识别、协同过滤推荐</div>
+                  </div>
+
+                  <div class="lock-row">
+                    <span class="small muted">骨架 / 领域已锁定</span>
+                    <div class="row gap-sm">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-unlock-match" data-action="toggle-override">解锁覆盖</button>
+                      <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-match" data-action="reset-match" style="display:none">恢复推荐</button>
+                    </div>
+                  </div>
+
+                  <div class="grid-2">
+                    <div class="field locked" id="field-arch">
+                      <label>骨架 Archetype <span class="muted">· 高风险</span></label>
+                      <select id="sel-arch">
+                        <option>ARCH-CRUD · 纯管理</option>
+                        <option selected>ARCH-FLOW · 审核流</option>
+                        <option>ARCH-TRADE · 交易流</option>
+                        <option>ARCH-RESERVE · 预约流</option>
+                        <option>ARCH-CONTENT · 内容流</option>
+                        <option>ARCH-STOCK · 进销存</option>
+                      </select>
+                    </div>
+                    <div class="field locked" id="field-dom">
+                      <label>领域 Domain <span class="muted">· 高风险</span></label>
+                      <select id="sel-dom">
+                        <option selected>DOM-LIBRARY · 图书</option>
+                        <option>DOM-SHOP · 商城</option>
+                        <option>DOM-DORM · 宿舍</option>
+                        <option>DOM-FOOD · 点餐</option>
+                        <option>DOM-HOSPITAL · 医院</option>
+                        <option>DOM-PARKING · 车位</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>行业配色 <span class="muted">· 可改</span></label>
+                      <select id="sel-theme">
+                        <option selected>theme-ink · 墨蓝学术</option>
+                        <option>theme-grove · 青松校园</option>
+                        <option>theme-clay · 陶土工坊</option>
+                        <option>theme-night · 深色答辩</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>LLM 业务岛 <span class="muted">· 可改</span></label>
+                      <select id="sel-llm">
+                        <option selected>开启 · 白名单插槽填充</option>
+                        <option>关闭 · 仅确定性 bake</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>密码 <span class="muted">· 可改</span></label>
+                      <select id="sel-password">
+                        <option selected>明文</option>
+                        <option>BCrypt</option>
+                        <option>MD5</option>
+                        <option>SHA-256</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="confidence">
+                    <span class="small muted">置信度</span>
+                    <div class="bar"><i id="conf-fill" style="width:86%"></i></div>
+                    <strong id="conf-val">0.86</strong>
+                  </div>
+
+          <div class="override-banner" id="override-banner">
+            当前与推荐不一致，请确认后再生成。
+          </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-hd">
+                  <h3>解析摘要 · Spec 预览</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="view-spec">JSON</button>
+                </div>
+                <div class="panel-bd parse-panel">
+                  <div class="parse-block">
+                    <div class="parse-label">开题解析</div>
+                    <div class="parse-title">图书借阅管理系统</div>
+                    <p class="parse-bg">面向高校图书馆的借阅与审核业务，支持读者检索、申请借阅、管理员审核与归还。</p>
+                    <div class="parse-hits">
+                      <span class="hit-chip">借阅</span>
+                      <span class="hit-chip">审核</span>
+                      <span class="hit-chip">图书</span>
+                      <span class="hit-chip">管理员</span>
+                    </div>
+                    <div class="parse-sec">
+                      <div class="parse-sec-hd">开题功能点</div>
+                      <ol class="parse-list">
+                        <li>读者注册 / 登录与验证码</li>
+                        <li>图书检索与详情</li>
+                        <li>借阅申请 → 审核 → 归还</li>
+                        <li>公告管理</li>
+                      </ol>
+                    </div>
+                    <div class="parse-sec">
+                      <div class="parse-sec-hd">开题写明不在本期</div>
+                      <ul class="parse-list plain">
+                        <li>人脸识别进馆</li>
+                        <li>协同过滤推荐</li>
+                      </ul>
+                    </div>
+                    <details class="parse-excerpt">
+                      <summary>原文摘录 · 1280 字</summary>
+                      <pre>本课题旨在设计并实现一套图书借阅管理系统……（演示摘录）</pre>
+                    </details>
+                  </div>
+                  <div class="parse-block">
+                    <div class="parse-label">生成 Spec</div>
+                    <dl class="spec-dl">
+                      <div><dt>角色</dt><dd>reader、admin</dd></div>
+                      <div><dt>实体</dt><dd>Book、Category、Borrow、Notice</dd></div>
+                      <div><dt>主流程</dt><dd>申请借阅 → 审核 → 归还</dd></div>
+                      <div><dt>基线</dt><dd>captcha、upload、page、errorcode</dd></div>
+                      <div><dt>砍项</dt><dd>人脸识别、协同过滤推荐</dd></div>
+                      <div><dt>配色</dt><dd>theme-ink · 墨蓝学术</dd></div>
+                    </dl>
+                  </div>
+                  <pre class="spec-preview" id="spec-preview" style="display:none">{
+  "title": "图书借阅管理系统",
+  "archetype": "ARCH-FLOW",
+  "domain": "DOM-LIBRARY",
+  "roles": ["reader", "admin"],
+  "entities": ["Book", "Category", "Borrow", "Notice"],
+  "flows": ["申请借阅 → 审核 → 归还"],
+  "baseline": ["captcha", "upload", "page", "errorcode"],
+  "out_of_mvp": ["人脸识别", "协同过滤推荐"]
+}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="gate" id="match-gate">
+              <label>
+                <input type="checkbox" id="match-ack" />
+                <span id="match-ack-text">
+                  已核对骨架、领域与砍项，确认后开始生成。
+                  <span class="muted" style="display:block;margin-top:4px">置信度 0.86</span>
+                </span>
+              </label>
+            </div>
+            <div class="row mt-16">
+              <button type="button" class="btn btn-primary btn-lg is-disabled" id="btn-confirm" data-action="confirm-match">确认并继续</button>
+            </div>
+          </div>
+
+          <!-- Generate -->
+          <div class="tab-panel" id="tab-generate">
+            <div id="gen-idle">
+              <div class="panel mb-16">
+                <div class="panel-bd">
+                  <div class="row" style="justify-content:space-between">
+                    <div>
+                      <div style="font-weight:600;margin-bottom:4px">匹配已确认 · 可以生成</div>
+                      <div class="small muted">bake 为主 · LLM 仅填业务岛 · 门禁不过禁止 ZIP</div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg" id="btn-generate" data-action="generate">一键生成</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-hd"><h3>将执行的步骤</h3></div>
+                <div class="panel-bd">
+                  <ul class="step-list">
+                    <li><span class="step-ico">1</span><div><div>解析开题 → 合并 Spec</div><div class="meta">已完成于匹配阶段</div></div></li>
+                    <li><span class="step-ico">2</span><div><div>复制骨架 · 写入领域 SQL</div><div class="meta">确定性 bake</div></div></li>
+                    <li><span class="step-ico">3</span><div><div>业务岛 emit · LLM 填缺口</div><div class="meta">白名单文件</div></div></li>
+                    <li><span class="step-ico">4</span><div><div>构建验证 · 自动修复 ≤5 轮</div><div class="meta">P0</div></div></li>
+                    <li><span class="step-ico">5</span><div><div>门禁：登录 + <strong>主流程 E2E</strong></div><div class="meta">P1 / P2 · 不过禁止打包</div></div></li>
+                    <li><span class="step-ico">6</span><div><div>开题对照 · 灌种子 · 打包 ZIP</div><div class="meta">P3 · 仅门禁全过才打包</div></div></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div id="gen-running" style="display:none">
+              <div class="panel mb-16">
+                <div class="panel-bd">
+                  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+                    <div style="font-weight:600">正在生成…</div>
+                    <div class="small muted">已用 <span id="elapsed">02:18</span> · 可后台继续</div>
+                  </div>
+                  <div class="progress" style="height:8px"><i id="job-bar" style="width:42%"></i></div>
+                  <div class="row mt-12 gap-sm">
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-cancel-job" data-action="cancel-job">取消任务</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="goto-logs" data-log-side="job">打开日志 Tab</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="finish-job-demo">演示：跳到完成</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-hd"><h3>步骤进度</h3><span class="pill pill-teal">Job #1042</span></div>
+                <div class="panel-bd">
+                  <ul class="step-list" id="live-steps"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div id="gen-success" style="display:none">
+              <div class="banner success">
+                <h4>生成完成 · 门禁全过 · 可交付</h4>
+                <p class="small muted">P0 构建 · P1 登录 · <strong>P2 主流程 E2E</strong> · P3 开题对照 均已通过。ZIP 已解锁。请到「运行」Tab 预览后再交给学生。</p>
+                <div class="row mt-12 gap-sm">
+                  <button type="button" class="btn btn-primary" data-action="goto-tab" data-tab="runtime">前往运行</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-tab" data-tab="artifacts">查看门禁详情</button>
+                  <button type="button" class="btn btn-secondary" data-action="download-zip">下载 ZIP</button>
+                  <button type="button" class="btn btn-secondary" data-action="regenerate">重新生成</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="gen-failed" style="display:none">
+              <div class="banner fail">
+                <h4 id="fail-title">门禁未过 · 禁止交付</h4>
+                <p class="small muted" id="fail-desc">登录能进，但「申请借阅 → 审核 → 归还」未跑通。按交付标准：主流程不对 = 禁止下载 ZIP。</p>
+                <div class="row mt-12 gap-sm">
+                  <button type="button" class="btn btn-primary" data-action="retry-job">从失败步骤重试</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-tab" data-tab="artifacts">查看门禁</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-logs" data-log-side="job">查看日志</button>
+                  <button type="button" class="btn btn-secondary" data-action="rollback-island">回滚业务岛</button>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示：门禁改通过</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Runtime -->
+          <div class="tab-panel" id="tab-runtime">
+            <div class="health-grid">
+              <div class="health"><div class="k">后端</div><div class="v" id="h-be">已停止</div></div>
+              <div class="health"><div class="k">前端</div><div class="v" id="h-fe">已停止</div></div>
+              <div class="health"><div class="k">数据库</div><div class="v">就绪</div></div>
+              <div class="health"><div class="k">预览</div><div class="v mono" id="h-url">—</div></div>
+            </div>
+
+            <div class="row mb-16 gap-sm">
+              <button type="button" class="btn btn-primary" data-action="start-all">全部启动</button>
+              <button type="button" class="btn btn-secondary" data-action="stop-all">全部关闭</button>
+              <button type="button" class="btn btn-secondary" data-action="restart-all">全部重启</button>
+              <button type="button" class="btn btn-secondary is-disabled" id="open-preview" data-action="open-preview">打开预览</button>
+            </div>
+
+            <div class="grid-2">
+              <div class="panel runtime-card">
+                <div class="panel-hd">
+                  <h3>后端 · Spring Boot</h3>
+                  <span class="pill pill-neutral" id="be-pill">已停止</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="status-line">
+                    <span class="small muted">端口 <span class="mono" id="be-port">9103</span> · 健康检查 /actuator/health</span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="toggle-be" data-action="toggle-be">启动</button>
+                  </div>
+                  <div class="log-box" id="be-log">等待启动…</div>
+                  <div class="row mt-12 gap-sm">
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="goto-logs" data-log-side="backend">完整日志</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="restart-be">重启</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel runtime-card">
+                <div class="panel-hd">
+                  <h3>前端 · Vue + Vite</h3>
+                  <span class="pill pill-neutral" id="fe-pill">已停止</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="status-line">
+                    <span class="small muted">端口 <span class="mono" id="fe-port">9203</span> · 代理至后端</span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="toggle-fe" data-action="toggle-fe">启动</button>
+                  </div>
+                  <div class="log-box" id="fe-log">等待启动…</div>
+                  <div class="row mt-12 gap-sm">
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="goto-logs" data-log-side="frontend">完整日志</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="restart-fe">重启</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Logs -->
+          <div class="tab-panel" id="tab-logs">
+            <div class="log-toolbar">
+              <div class="tabs-mini" id="log-side">
+                <button class="active" data-side="job">任务</button>
+                <button data-side="backend">后端</button>
+                <button data-side="frontend">前端</button>
+                <button data-side="deepseek">DeepSeek</button>
+              </div>
+              <input type="search" id="log-filter" placeholder="过滤关键字…" style="height:30px;border:1px solid var(--line);border-radius:6px;padding:0 10px;width:180px" />
+              <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-log" style="margin-left:auto">刷新</button>
+            </div>
+            <div class="log-viewer" id="log-viewer"></div>
+          </div>
+
+          <!-- Artifacts -->
+          <div class="tab-panel" id="tab-artifacts">
+            <div class="grid-2">
+              <div class="panel">
+                <div class="panel-hd"><h3>产物</h3></div>
+                <div class="panel-bd stack">
+                  <div class="file-row" style="margin:0">
+                    <span><strong>thesis-app.zip</strong><br /><span class="small muted" id="zip-hint">门禁未过 · 锁定</span></span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="download-zip">下载</button>
+                  </div>
+                  <div class="file-row" style="margin:0">
+                    <span><strong>workspace/</strong><br /><span class="small muted mono">data/workspace/gf-20260717-001</span></span>
+                  </div>
+                  <div class="file-row" style="margin:0">
+                    <span><strong>spec.json</strong><br /><span class="small muted">匹配与生成规格</span></span>
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="view-spec">查看</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-hd"><h3>数据库</h3><span class="pill pill-green">已解析</span></div>
+                <div class="panel-bd stack">
+                  <div class="small"><span class="muted">库名</span> · <span class="mono">gf_thesis_library_001</span></div>
+                  <div class="small muted">SQL · sql/schema.sql · 约束 6~12 张表</div>
+                  <div class="small">当前 <strong>8</strong> 张 <span class="muted">（符合 6~12）</span></div>
+                  <div class="table-list">
+                    <div class="table-card">
+                      <div class="table-card-hd">book</div>
+                      <ul class="table-cols">
+                        <li><span class="col-name">id</span><span class="col-type muted">BIGINT</span><span class="col-mark">PK</span></li>
+                        <li><span class="col-name">category_id</span><span class="col-type muted">BIGINT</span><span class="col-mark">FK→category</span></li>
+                        <li><span class="col-name">title</span><span class="col-type muted">VARCHAR</span></li>
+                      </ul>
+                    </div>
+                    <div class="table-card">
+                      <div class="table-card-hd">borrow</div>
+                      <ul class="table-cols">
+                        <li><span class="col-name">id</span><span class="col-type muted">BIGINT</span><span class="col-mark">PK</span></li>
+                        <li><span class="col-name">book_id</span><span class="col-type muted">BIGINT</span><span class="col-mark">FK→book</span></li>
+                        <li><span class="col-name">status</span><span class="col-type muted">VARCHAR</span></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="rel-list">
+                    <div class="parse-sec-hd">推断联系</div>
+                    <div class="rel-row">
+                      <span class="mono">book</span><span class="muted">N</span>—〈belong〉—<span class="muted">1</span><span class="mono">category</span>
+                      <span class="small muted">via category_id</span>
+                    </div>
+                    <div class="rel-row">
+                      <span class="mono">borrow</span><span class="muted">N</span>—〈of〉—<span class="muted">1</span><span class="mono">book</span>
+                      <span class="small muted">via book_id</span>
+                    </div>
+                  </div>
+                  <div class="row gap-sm">
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="view-er">查看 E-R 图</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="download-er">下载 SVG</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel mt-16">
+              <div class="panel-hd">
+                <h3>质量门禁 · 交付 DoD</h3>
+                <div class="row gap-sm">
+                  <span class="pill" id="gate-overall-pill">—</span>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-fail">演示 P2 失败</button>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示全过</button>
+                </div>
+              </div>
+              <div class="panel-bd">
+                <p class="small muted mb-12">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
+                <table>
+                  <thead><tr><th>级别</th><th>检查项</th><th>结果</th><th>说明</th></tr></thead>
+                  <tbody id="gate-tbody">
+                    <tr data-gate="p0a"><td><span class="pill pill-neutral">P0</span></td><td>mvn compile</td><td class="gate-res"></td><td class="muted">后端编译</td></tr>
+                    <tr data-gate="p0b"><td><span class="pill pill-neutral">P0</span></td><td>npm build</td><td class="gate-res"></td><td class="muted">前端构建</td></tr>
+                    <tr data-gate="p1"><td><span class="pill pill-neutral">P1</span></td><td>登录 + 双侧进系统</td><td class="gate-res"></td><td class="muted">reader / admin + 验证码</td></tr>
+                    <tr data-gate="p2"><td><span class="pill pill-amber">P2</span></td><td>领域主流程 E2E</td><td class="gate-res"></td><td class="muted" id="gate-p2-desc">申请借阅 → 审核 → 归还</td></tr>
+                    <tr data-gate="p3a"><td><span class="pill pill-neutral">P3</span></td><td>开题对照 · 核心项</td><td class="gate-res"></td><td class="muted">见下方清单</td></tr>
+                    <tr data-gate="p3b"><td><span class="pill pill-neutral">P3</span></td><td>API 漂移 / UI 门禁</td><td class="gate-res"></td><td class="muted">路径一致 · 非默认蓝 · 无 lorem</td></tr>
+                    <tr data-gate="p3t"><td><span class="pill pill-neutral">P3</span></td><td>表数量 6~12</td><td class="gate-res"></td><td class="muted">schema 约束</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel mt-16">
+              <div class="panel-hd"><h3>开题对照清单</h3><span class="small muted">P3 · 来自匹配 Spec</span></div>
+              <div class="panel-bd" style="padding:0">
+                <table>
+                  <thead><tr><th>开题功能</th><th>实现状态</th><th>说明</th></tr></thead>
+                  <tbody id="checklist-tbody">
+                    <tr><td>读者注册 / 登录</td><td><span class="pill pill-green">已实现</span></td><td class="muted">基线包</td></tr>
+                    <tr><td>图书检索与详情</td><td><span class="pill pill-green">已实现</span></td><td class="muted">DOM-LIBRARY</td></tr>
+                    <tr><td>借阅申请 → 审核</td><td><span class="pill pill-green" id="cl-flow">已实现</span></td><td class="muted">ARCH-FLOW 主路径</td></tr>
+                    <tr><td>归还 / 逾期</td><td><span class="pill pill-green" id="cl-return">已实现</span></td><td class="muted">主流程 E2E 覆盖</td></tr>
+                    <tr><td>公告管理</td><td><span class="pill pill-green">已实现</span></td><td class="muted">标准模块</td></tr>
+                    <tr><td>人脸识别进馆</td><td><span class="pill pill-neutral">砍项</span></td><td class="muted">匹配阶段已砍</td></tr>
+                    <tr><td>协同过滤推荐</td><td><span class="pill pill-neutral">砍项</span></td><td class="muted">匹配阶段已砍</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== JOBS ========== -->
+        <section id="view-jobs" class="view">
+          <h1 class="page-title">任务队列</h1>
+          <p class="page-desc">生成任务状态、取消与重试。</p>
+          <div class="panel">
+            <div class="panel-hd">
+              <h3>任务列表</h3>
+              <div class="row gap-sm">
+                <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-jobs">刷新</button>
+                <button type="button" class="btn btn-danger btn-sm" data-action="purge-orphans">清空项目不存在的任务</button>
+              </div>
+            </div>
+            <div class="panel-bd" style="padding:0">
+              <table>
+                <thead>
+                  <tr><th>Job</th><th>项目</th><th>步骤</th><th>状态</th><th>进度</th><th></th></tr>
+                </thead>
+                <tbody id="jobs-tbody">
+                  <tr class="clickable" data-action="open-job" data-job-state="generating" data-project="gf-20260717-001">
+                    <td class="mono">#1042</td>
+                    <td>图书借阅管理系统</td>
+                    <td>bake_frontend</td>
+                    <td><span class="pill pill-teal">运行中</span></td>
+                    <td>42%</td>
+                    <td class="row gap-sm">
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generating">详情</button>
+                      <button type="button" class="btn btn-danger btn-sm" data-action="cancel-from-jobs">取消</button>
+                    </td>
+                  </tr>
+                  <tr class="clickable" data-action="open-job" data-job-state="generated" data-project="gf-20260716-014">
+                    <td class="mono">#1041</td>
+                    <td>宿舍报修管理系统</td>
+                    <td>pack</td>
+                    <td><span class="pill pill-green">成功</span></td>
+                    <td>100%</td>
+                    <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
+                  </tr>
+                  <tr class="clickable" data-action="open-job" data-job-state="failed" data-project="gf-20260716-011">
+                    <td class="mono">#1040</td>
+                    <td>校园二手交易平台</td>
+                    <td>island_fill</td>
+                    <td><span class="pill pill-red">失败</span></td>
+                    <td>58%</td>
+                    <td class="row gap-sm">
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="failed">详情</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="retry-from-jobs">重试</button>
+                    </td>
+                  </tr>
+                  <tr class="clickable" data-action="open-job" data-job-state="generated" data-project="gf-20260715-008">
+                    <td class="mono">#1039</td>
+                    <td>停车场预约系统</td>
+                    <td>—</td>
+                    <td><span class="pill pill-neutral">已取消</span></td>
+                    <td>12%</td>
+                    <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== SETTINGS · DeepSeek ========== -->
+        <section id="view-settings" class="view">
+          <h1 class="page-title">DeepSeek</h1>
+          <p class="page-desc">连接、用量与阶段开关。旧模型名将于 7/24 停用，请改用 V4。</p>
+
+          <div class="grid-2 mb-16">
+            <div class="panel">
+              <div class="panel-hd"><h3>连接</h3><span class="pill pill-green">已配置</span></div>
+              <div class="panel-bd stack">
+                <div class="field">
+                  <label>API Key</label>
+                  <input value="sk-••••••••••••7a2f（来自环境变量）" disabled />
+                </div>
+                <div class="field">
+                  <label>Base URL</label>
+                  <input value="https://api.deepseek.com" />
+                </div>
+                <div class="grid-2">
+                  <div class="field">
+                    <label>模型</label>
+                    <select>
+                      <option selected>deepseek-v4-flash · 日常 / 省钱</option>
+                      <option>deepseek-v4-pro · 难任务 / 质量</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Thinking</label>
+                    <select>
+                      <option selected>开启 · 更准更贵</option>
+                      <option>关闭 · 更快更省</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row gap-sm">
+                  <button type="button" class="btn btn-primary btn-sm" data-action="test-ds">测试连接</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-action="save-ds">保存</button>
+                  <span class="small muted" id="ds-latency">延迟 312 ms · 模型可用</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-hd">
+                <h3>用量与预算</h3>
+                <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-balance">刷新</button>
+              </div>
+              <div class="panel-bd">
+                <div class="balance-box mb-16">
+                  <div class="small muted mb-12">DeepSeek 账户余额（官方 /user/balance）</div>
+                  <div class="balance-row">
+                    <strong class="mono">12.80 CNY</strong>
+                    <span class="small muted">充值 10.00 · 赠送 2.80</span>
+                  </div>
+                  <div class="small muted mt-12">账户可调用</div>
+                </div>
+                <div class="small mb-12">
+                  本月 Token · <span class="mono">182400</span> / <span class="mono">1000000</span>
+                </div>
+                <div class="progress mb-16"><i style="width:18%"></i></div>
+                <div class="field mb-12">
+                  <label>月度 Token 预算</label>
+                  <input type="number" value="1000000" />
+                </div>
+                <div class="field mb-12">
+                  <label>项目级 Token 预算</label>
+                  <input type="number" value="100000" />
+                </div>
+                <div class="field">
+                  <label>修复轮次上限</label>
+                  <input type="number" value="5" min="0" max="10" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel mb-16">
+            <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可确定性 bake</span></div>
+            <div class="panel-bd">
+              <div class="switch-row">
+                <div><strong>Agent A · Spec</strong><div class="small muted">润色开题摘要/功能点；关则仅关键词</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>Agent B · 填岛</strong><div class="small muted">labels/seeds 白名单 JSON，不改源码</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>Agent C · 编译修复</strong><div class="small muted">mvn 失败诊断并重放交付配置</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>Agent D · QA</strong><div class="small muted">漂移扫描 + 摘要，写入 islands/qa_report.json</div></div>
+                <button class="switch" data-switch></button>
+              </div>
+              <div class="row mt-12">
+                <button type="button" class="btn btn-primary btn-sm" data-action="save-ds">保存开关</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel mb-16">
+            <div class="panel-hd">
+              <h3>按项目用量</h3>
+              <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-usage">刷新</button>
+            </div>
+            <div class="panel-bd">
+              <div class="filter-row">
+                <span class="dt-range" title="中文本地化：清除 / 确认 · 本月 / 近7天 / 近30天">
+                  <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-19 09:14:13</span>
+                </span>
+                <span class="dt-shortcuts">
+                  <button type="button" data-action="dt-shortcut">本月</button>
+                  <button type="button" data-action="dt-shortcut">近7天</button>
+                  <button type="button" data-action="dt-shortcut">近30天</button>
+                </span>
+                <input type="search" placeholder="项目 ID…" style="width:200px" />
+              </div>
+              <p class="small muted mb-12">超项目预算或月度预算时 Agent 会跳过 LLM · 点项目可筛调用</p>
+              <table id="usage-table">
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th class="th-sort" data-sort="tokens" data-action="sort-usage">Tokens <span class="sort-ico">↓</span></th>
+                    <th class="th-sort" data-sort="calls" data-action="sort-usage">次数 <span class="sort-ico"></span></th>
+                    <th class="th-sort" data-sort="pct" data-action="sort-usage">占项目预算 <span class="sort-ico"></span></th>
+                    <th class="th-sort" data-sort="last_at" data-action="sort-usage">最近 <span class="sort-ico"></span></th>
+                  </tr>
+                </thead>
+                <tbody id="usage-tbody">
+                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260717-001" data-tokens="45680" data-calls="6" data-pct="46" data-last="2026-07-19T11:04:12">
+                    <td class="mono" style="color:var(--teal)">gf-20260717-001</td>
+                    <td class="mono">45680</td><td>6</td><td class="mono">46%</td>
+                    <td class="muted">2026/7/19 11:04:12</td>
+                  </tr>
+                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260716-014" data-tokens="32100" data-calls="4" data-pct="32" data-last="2026-07-18T21:10:03">
+                    <td class="mono" style="color:var(--teal)">gf-20260716-014</td>
+                    <td class="mono">32100</td><td>4</td><td class="mono">32%</td>
+                    <td class="muted">2026/7/18 21:10:03</td>
+                  </tr>
+                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260716-011" data-tokens="108902" data-calls="9" data-pct="100" data-last="2026-07-18T18:40:22">
+                    <td class="mono" style="color:var(--teal)">gf-20260716-011</td>
+                    <td class="mono warn">108902</td><td>9</td><td class="mono warn">100%</td>
+                    <td class="muted">2026/7/18 18:40:22</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pager-row">
+                <span class="small muted">共 3 个项目</span>
+                <span class="small muted">10 条 / 页</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd">
+              <h3>最近调用</h3>
+              <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-calls">刷新</button>
+            </div>
+            <div class="panel-bd">
+              <div class="filter-row">
+                <span class="dt-range">
+                  <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-19 09:14:13</span>
+                </span>
+                <span class="dt-shortcuts">
+                  <button type="button" data-action="dt-shortcut">本月</button>
+                  <button type="button" data-action="dt-shortcut">近7天</button>
+                  <button type="button" data-action="dt-shortcut">近30天</button>
+                </span>
+                <input type="search" id="call-filter-pid" placeholder="项目 ID（精确）" style="width:180px" />
+                <select style="width:130px">
+                  <option value="">阶段</option>
+                  <option>parse_spec</option>
+                  <option>island_fill</option>
+                  <option>auto_fix</option>
+                  <option>qa_report</option>
+                  <option>emit</option>
+                </select>
+                <select style="width:100px">
+                  <option value="">结果</option>
+                  <option>OK</option>
+                  <option>FAIL</option>
+                </select>
+                <input type="search" placeholder="明细 / 阶段关键字…" style="width:180px" />
+              </div>
+              <table>
+                <thead>
+                  <tr><th>时间</th><th>项目</th><th>阶段</th><th>Tokens</th><th>结果</th><th>明细</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="muted">2026/7/19 11:04:12</td>
+                    <td class="mono">gf-20260717-001</td>
+                    <td>island_fill</td>
+                    <td class="mono">12480</td>
+                    <td><span class="pill pill-green">OK</span></td>
+                    <td class="muted">slots=4</td>
+                  </tr>
+                  <tr>
+                    <td class="muted">2026/7/19 11:01:03</td>
+                    <td class="mono">gf-20260717-001</td>
+                    <td>parse_spec</td>
+                    <td class="mono">3210</td>
+                    <td><span class="pill pill-green">OK</span></td>
+                    <td class="muted">—</td>
+                  </tr>
+                  <tr>
+                    <td class="muted">2026/7/18 10:22:41</td>
+                    <td class="mono">gf-20260716-011</td>
+                    <td>auto_fix</td>
+                    <td class="mono">8902</td>
+                    <td><span class="pill pill-red">FAIL</span></td>
+                    <td class="muted">MODULE_NOT_FOUND</td>
+                  </tr>
+                  <tr>
+                    <td class="muted">2026/7/18 09:55:18</td>
+                    <td class="mono">gf-20260716-014</td>
+                    <td>island_fill</td>
+                    <td class="mono">15100</td>
+                    <td><span class="pill pill-green">OK</span></td>
+                    <td class="muted">slots=3</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pager-row">
+                <span class="small muted">共 8 条</span>
+                <span class="small muted">20 条 / 页</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== SYSTEM ========== -->
+        <section id="view-system" class="view">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+            <h1 class="page-title" style="margin-bottom:0">运行环境</h1>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-system">刷新</button>
+          </div>
+          <p class="page-desc">本机依赖与端口池。</p>
+          <div class="stats">
+            <div class="stat"><div class="label">JDK</div><div class="value" style="font-size:16px">17.0.11</div></div>
+            <div class="stat"><div class="label">Maven</div><div class="value" style="font-size:16px">3.9.6</div></div>
+            <div class="stat"><div class="label">Node</div><div class="value" style="font-size:16px">20.18</div></div>
+            <div class="stat"><div class="label">学生 MySQL</div><div class="value" style="font-size:14px">8.0.36 · localhost:3306</div></div>
+          </div>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-hd"><h3>端口池</h3></div>
+              <div class="panel-bd">
+                <div class="small mb-12"><span class="muted">后端</span> 9100–9120 · 占用中 9101, 9103</div>
+                <div class="small mb-12"><span class="muted">前端</span> 9200–9220 · 占用中 9201, 9203</div>
+                <button class="btn btn-secondary btn-sm" data-action="free-ports">释放空闲占用</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-hd"><h3>路径 / 库</h3></div>
+              <div class="panel-bd stack">
+                <div class="small"><span class="muted">工厂库</span><br /><span class="mono">graduate_factory</span></div>
+                <div class="small"><span class="muted">工作区</span><br /><span class="mono">D:/graduate_factory_v3/data/workspace</span></div>
+                <div class="small"><span class="muted">上传</span><br /><span class="mono">D:/graduate_factory_v3/data/uploads</span></div>
+                <div class="small"><span class="muted">骨架</span><br /><span class="mono">D:/graduate_factory_v3/skeletons</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-mask" id="modal-mask">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-hd">
+        <span id="modal-title">说明</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="close-modal">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <pre class="spec-preview" id="modal-body" style="max-height:none"></pre>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary btn-sm" data-action="close-modal">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const projects = [
+      { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", updated: "刚刚" },
+      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "已停止", updated: "昨天 21:10" },
+      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SECOND", status: "failed", statusLabel: "门禁未过 · 禁止交付", pill: "pill-red", runtime: "—", updated: "昨天 18:40" },
+      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "运行中", pill: "pill-green", runtime: "9101 / 9201", updated: "2 小时前" },
+      { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", updated: "12 分钟前" },
+      { id: "gf-20260712-003", name: "新闻资讯发布平台", arch: "ARCH-CONTENT · DOM-NEWS", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "已停止", updated: "3 天前" },
+      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-STOCK", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "已停止", updated: "5 天前" },
+      { id: "gf-20260708-001", name: "宠物寄养管理系统", arch: "ARCH-CRUD · DOM-PET", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", updated: "上周" },
+    ];
+
+    const logSamples = {
+      job: `[11:02:01] INFO  job#1042 parse_report done (1.2s)
+[11:02:03] INFO  match ARCH-FLOW / DOM-LIBRARY confidence=0.86
+[11:02:04] INFO  confirm gate passed by operator
+[11:02:10] INFO  copy_skeleton ARCH-FLOW → workspace/gf-20260717-001
+[11:02:18] INFO  bake_backend emit entities: Book, Borrow, Category, Notice
+[11:03:40] INFO  llm_fill slots=4 tokens=12480
+[11:04:12] INFO  bake_frontend pages=12
+[11:04:55] INFO  build backend SUCCESS
+[11:05:40] WARN  build frontend retry 1/5 — missing view import
+[11:06:12] INFO  auto_fix applied patch to router/index.js
+[11:06:48] INFO  build frontend SUCCESS
+[11:07:01] INFO  seed_db ok · pack zip ok`,
+      backend: `[boot] Starting ThesisApplication v1.0.0
+[boot] Tomcat started on port 9103
+[boot] HikariPool-1 - Start completed
+[http] GET /api/auth/captcha 200 18ms
+[http] POST /api/auth/login 200 42ms
+[http] GET /api/admin/books?page=1&size=10 200 25ms`,
+      frontend: `VITE v5.4.2  ready in 420 ms
+➜  Local:   http://127.0.0.1:9203/
+➜  Network: use --host to expose
+[proxy] /api -> http://127.0.0.1:9103`,
+      deepseek: `[ds] stage=parse_spec model=deepseek-v4-flash thinking=on
+[ds] prompt_tokens=2100 completion=1110
+[ds] stage=island_fill files=4 ok
+[ds] stage=auto_fix round=1 error=MODULE_NOT_FOUND → patched router`,
+    };
+
+    const liveSteps = [
+      { t: "done", title: "解析开题 · 合并 Spec", meta: "0:08" },
+      { t: "done", title: "复制骨架 · 领域 SQL", meta: "0:22" },
+      { t: "done", title: "bake_backend / frontend", meta: "1:40" },
+      { t: "run", title: "P2 主流程 E2E · 借阅→审核→归还", meta: "进行中" },
+      { t: "wait", title: "P3 开题对照 · 打包 ZIP", meta: "等待门禁" },
+    ];
+
+    let beOn = false;
+    let feOn = false;
+    let currentLogSide = "job";
+    let genTimer = null;
+    let matchConfirmed = false;
+    let matchUnlocked = false;
+    /** 交付门禁：P2 不过则 zip 锁定 */
+    let gatesPass = true;
+
+    const RECOMMENDED = {
+      arch: "ARCH-FLOW · 审核流",
+      dom: "DOM-LIBRARY · 图书",
+      conf: 0.86,
+    };
+
+    function setDisabled(id, off) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("is-disabled", !!off);
+      el.setAttribute("aria-disabled", off ? "true" : "false");
+    }
+
+    function isDisabled(el) {
+      return !!(el && (el.classList.contains("is-disabled") || el.getAttribute("aria-disabled") === "true"));
+    }
+
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function openModal(title, body) {
+      document.getElementById("modal-title").textContent = title;
+      document.getElementById("modal-body").textContent = body;
+      document.getElementById("modal-mask").classList.add("show");
+    }
+
+    function closeModal() {
+      document.getElementById("modal-mask").classList.remove("show");
+    }
+
+    function setCrumb(parts) {
+      document.getElementById("crumb").innerHTML = parts.map((p, i) =>
+        i === parts.length - 1 ? `<strong>${p}</strong>` : p
+      ).join(" / ");
+    }
+
+    function showView(name) {
+      document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+      document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+      const view = document.getElementById("view-" + name);
+      if (view) view.classList.add("active");
+      const navKey = name === "project" ? "home" : name;
+      const nav = document.querySelector(`.nav-item[data-nav="${navKey}"]`);
+      if (nav) nav.classList.add("active");
+      const crumbs = {
+        home: ["毕设港", "项目"],
+        jobs: ["毕设港", "任务队列"],
+        settings: ["毕设港", "DeepSeek"],
+        system: ["毕设港", "运行环境"],
+        project: ["毕设港", "项目", "详情"],
+      };
+      setCrumb(crumbs[name] || ["毕设港"]);
+    }
+
+    function renderList(filter = "all", q = "") {
+      const tb = document.getElementById("project-tbody");
+      const map = {
+        all: () => true,
+        active: (p) => ["needs_confirm", "generating", "running"].includes(p.status),
+        done: (p) => ["generated", "running"].includes(p.status),
+        fail: (p) => p.status === "failed",
+      };
+      const rows = projects
+        .filter(map[filter] || map.all)
+        .filter((p) => !q || p.name.includes(q) || p.id.includes(q));
+      tb.innerHTML = rows.map((p) => `
+        <tr class="clickable" data-action="open-project" data-id="${p.id}">
+          <td>
+            <div style="font-weight:600">${p.name}</div>
+            <div class="small muted mono">${p.id}</div>
+          </td>
+          <td class="small">${p.arch}</td>
+          <td><span class="pill ${p.pill}">${p.statusLabel}</span></td>
+          <td class="small muted">${p.runtime}</td>
+          <td class="small muted">${p.updated}</td>
+        </tr>
+      `).join("");
+      document.getElementById("list-footer").textContent = `共 ${rows.length} 条 · 点击行进入详情`;
+    }
+
+    function setProjectTab(tab) {
+      document.querySelectorAll("#proj-tabs .tab").forEach((t) => {
+        t.classList.toggle("active", t.dataset.tab === tab);
+      });
+      document.querySelectorAll("#view-project .tab-panel").forEach((p) => p.classList.remove("active"));
+      const panel = document.getElementById("tab-" + tab);
+      if (panel) panel.classList.add("active");
+    }
+
+    function renderGates(pass) {
+      gatesPass = !!pass;
+      const results = {
+        p0a: true,
+        p0b: true,
+        p1: true,
+        p2: pass,
+        p3a: pass,
+        p3b: true,
+        p3t: true,
+      };
+      document.querySelectorAll("#gate-tbody tr[data-gate]").forEach((tr) => {
+        const ok = results[tr.dataset.gate];
+        const cell = tr.querySelector(".gate-res");
+        cell.innerHTML = ok
+          ? '<span class="pill pill-green">通过</span>'
+          : '<span class="pill pill-red">未通过</span>';
+      });
+      const overall = document.getElementById("gate-overall-pill");
+      const zipHint = document.getElementById("zip-hint");
+      if (pass) {
+        overall.className = "pill pill-green";
+        overall.textContent = "可交付";
+        setDisabled("btn-download", false);
+        if (zipHint) zipHint.textContent = "门禁已过";
+        document.getElementById("cl-flow").className = "pill pill-green";
+        document.getElementById("cl-flow").textContent = "已实现";
+        document.getElementById("cl-return").className = "pill pill-green";
+        document.getElementById("cl-return").textContent = "已实现";
+      } else {
+        overall.className = "pill pill-red";
+        overall.textContent = "禁止交付";
+        setDisabled("btn-download", true);
+        if (zipHint) zipHint.textContent = "门禁未过 · 锁定";
+        document.getElementById("cl-flow").className = "pill pill-red";
+        document.getElementById("cl-flow").textContent = "未覆盖";
+        document.getElementById("cl-return").className = "pill pill-red";
+        document.getElementById("cl-return").textContent = "未覆盖";
+      }
+    }
+
+    function applyGenState(state) {
+      const idle = document.getElementById("gen-idle");
+      const run = document.getElementById("gen-running");
+      const ok = document.getElementById("gen-success");
+      const fail = document.getElementById("gen-failed");
+      [idle, run, ok, fail].forEach((el) => (el.style.display = "none"));
+      if (state === "generating") {
+        run.style.display = "block";
+        document.getElementById("live-steps").innerHTML = liveSteps.map((s) => `
+          <li class="${s.t === "done" ? "done" : s.t === "run" ? "run" : ""}">
+            <span class="step-ico">${s.t === "done" ? "✓" : s.t === "run" ? "…" : "·"}</span>
+            <div><div>${s.title}</div><div class="meta">${s.meta}</div></div>
+          </li>
+        `).join("");
+      } else if (state === "generated" || state === "running") {
+        ok.style.display = "block";
+        renderGates(true);
+      } else if (state === "failed") {
+        fail.style.display = "block";
+        document.getElementById("fail-title").textContent = "门禁未过 · 禁止交付";
+        document.getElementById("fail-desc").textContent =
+          "登录能进，但「申请借阅 → 审核 → 归还」未跑通。按交付标准：主流程不对 = 禁止下载 ZIP。";
+        renderGates(false);
+      } else {
+        idle.style.display = "block";
+        renderGates(false);
+        setDisabled("btn-download", true);
+      }
+    }
+
+    function setStatus(label, pill) {
+      const el = document.getElementById("proj-status-pill");
+      el.className = "pill " + pill;
+      el.textContent = label;
+    }
+
+    function syncRuntimeUI() {
+      const bePill = document.getElementById("be-pill");
+      const fePill = document.getElementById("fe-pill");
+      bePill.className = "pill " + (beOn ? "pill-green" : "pill-neutral");
+      bePill.textContent = beOn ? "运行中" : "已停止";
+      fePill.className = "pill " + (feOn ? "pill-green" : "pill-neutral");
+      fePill.textContent = feOn ? "运行中" : "已停止";
+      document.getElementById("toggle-be").textContent = beOn ? "停止" : "启动";
+      document.getElementById("toggle-fe").textContent = feOn ? "停止" : "启动";
+      document.getElementById("h-be").textContent = beOn ? "健康" : "已停止";
+      document.getElementById("h-fe").textContent = feOn ? "健康" : "已停止";
+      document.getElementById("h-url").textContent = feOn ? "http://127.0.0.1:9203" : "—";
+      setDisabled("open-preview", !(beOn && feOn));
+      document.getElementById("be-log").innerHTML = beOn
+        ? `<span class="ok">Tomcat started on 9103</span>\nHikariPool ready\nGET /api/auth/captcha 200`
+        : "等待启动…";
+      document.getElementById("fe-log").innerHTML = feOn
+        ? `<span class="ok">VITE ready</span>\nLocal: http://127.0.0.1:9203/\nproxy /api -> 9103`
+        : "等待启动…";
+    }
+
+    function setRuntime(on) {
+      beOn = on;
+      feOn = on;
+      syncRuntimeUI();
+    }
+
+    function showLog(side) {
+      currentLogSide = side || currentLogSide;
+      let text = logSamples[currentLogSide] || logSamples.job;
+      const q = (document.getElementById("log-filter").value || "").trim().toLowerCase();
+      let lines = text.split("\n");
+      if (q) lines = lines.filter((l) => l.toLowerCase().includes(q));
+      document.getElementById("log-viewer").textContent = lines.join("\n") || "（无匹配日志）";
+      document.querySelectorAll("#log-side button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.side === currentLogSide);
+      });
+      const viewer = document.getElementById("log-viewer");
+      viewer.scrollTop = viewer.scrollHeight;
+    }
+
+    function isDeviated() {
+      const arch = document.getElementById("sel-arch").value;
+      const dom = document.getElementById("sel-dom").value;
+      return arch !== RECOMMENDED.arch || dom !== RECOMMENDED.dom;
+    }
+
+    function updateMatchRiskUI(clearAck) {
+      document.getElementById("field-arch").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-dom").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁手动覆盖";
+      document.getElementById("btn-reset-match").style.display = matchUnlocked || isDeviated() ? "inline-flex" : "none";
+
+      const pill = document.getElementById("match-mode-pill");
+      const banner = document.getElementById("override-banner");
+      const ackText = document.getElementById("match-ack-text");
+      const btnConfirm = document.getElementById("btn-confirm");
+      const conf = isDeviated() ? 0.41 : RECOMMENDED.conf;
+      document.getElementById("conf-val").textContent = conf.toFixed(2);
+      document.getElementById("conf-fill").style.width = Math.round(conf * 100) + "%";
+      document.getElementById("conf-fill").style.background = conf >= 0.75 ? "var(--green)" : "#d97706";
+
+      if (!matchUnlocked && !isDeviated()) {
+        pill.className = "pill pill-green";
+        pill.textContent = "已锁定推荐";
+        banner.classList.remove("show", "danger");
+        ackText.innerHTML = `已核对骨架、领域与砍项，确认后开始生成。
+          <span class="muted" style="display:block;margin-top:4px">置信度 0.86</span>`;
+        btnConfirm.textContent = "确认并继续";
+      } else if (matchUnlocked && !isDeviated()) {
+        pill.className = "pill pill-amber";
+        pill.textContent = "已解锁";
+        banner.classList.add("show");
+        banner.classList.remove("danger");
+        banner.textContent = "骨架 / 领域可改。无把握请恢复推荐。";
+        ackText.innerHTML = `确认当前匹配后开始生成。`;
+        btnConfirm.textContent = "确认并继续";
+      } else {
+        pill.className = "pill pill-red";
+        pill.textContent = "已偏离推荐";
+        banner.classList.add("show", "danger");
+        banner.textContent = "当前与推荐不一致，请确认后再生成。";
+        ackText.innerHTML = `确认按当前骨架 / 领域生成。`;
+        btnConfirm.textContent = "确认覆盖并继续";
+      }
+
+      if (clearAck) {
+        document.getElementById("match-ack").checked = false;
+        document.getElementById("match-gate").classList.remove("ok");
+        setDisabled("btn-confirm", true);
+      }
+    }
+
+    function syncMatchFields(clearAck) {
+      const arch = document.getElementById("sel-arch").value;
+      const dom = document.getElementById("sel-dom").value;
+      document.getElementById("proj-arch").textContent =
+        arch.split(" · ")[0] + " · " + dom.split(" · ")[0];
+      document.getElementById("rec-label").textContent =
+        "ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书";
+      document.getElementById("spec-preview").textContent = `{
+  "title": "图书借阅管理系统",
+  "archetype": "${arch.split(" · ")[0]}",
+  "domain": "${dom.split(" · ")[0]}",
+  "match_mode": "${isDeviated() ? "manual_override" : "recommended"}",
+  "roles": ["reader", "admin"],
+  "entities": ["Book", "Category", "Borrow", "Notice"],
+  "flows": ["申请借阅 → 审核 → 归还"],
+  "baseline": ["captcha", "upload", "page", "errorcode"],
+  "out_of_mvp": ["人脸识别", "协同过滤推荐"]
+}`;
+      updateMatchRiskUI(!!clearAck);
+    }
+
+    function openProject(id, demoOverride) {
+      clearTimeout(genTimer);
+      const p = projects.find((x) => x.id === id) || projects[0];
+      document.getElementById("proj-title").textContent = p.name;
+      document.getElementById("proj-id").textContent = p.id;
+      document.getElementById("proj-arch").textContent = p.arch;
+      const statusEl = document.getElementById("proj-status-pill");
+      statusEl.className = "pill " + p.pill;
+      statusEl.textContent = p.statusLabel;
+
+      const state = demoOverride || p.status;
+      matchConfirmed = state !== "needs_confirm";
+      matchUnlocked = false;
+      document.getElementById("sel-arch").value = RECOMMENDED.arch;
+      document.getElementById("sel-dom").value = RECOMMENDED.dom;
+      document.getElementById("match-ack").checked = matchConfirmed;
+      document.getElementById("match-ack").disabled = false;
+      document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
+      setDisabled("btn-confirm", !matchConfirmed);
+      // download 由门禁决定，先锁上
+      setDisabled("btn-download", true);
+
+      if (state === "needs_confirm") setProjectTab("match");
+      else if (state === "generating") setProjectTab("generate");
+      else if (state === "failed") setProjectTab("artifacts");
+      else if (state === "running") setProjectTab("runtime");
+      else if (state === "generated") setProjectTab("artifacts");
+      else setProjectTab("generate");
+
+      applyGenState(state === "needs_confirm" ? "idle" : state);
+      setRuntime(state === "running");
+      showView("project");
+      syncMatchFields(false);
+      if (matchConfirmed) {
+        document.getElementById("match-ack").checked = true;
+        setDisabled("btn-confirm", true);
+      }
+    }
+
+    function startGenerate() {
+      clearTimeout(genTimer);
+      applyGenState("generating");
+      setStatus("生成中", "pill-teal");
+      setDisabled("btn-download", true);
+      toast("Job #1042 已启动（将跑 P0→P2 门禁）");
+      let w = 42;
+      const bar = document.getElementById("job-bar");
+      bar.style.width = w + "%";
+      const tick = setInterval(() => {
+        w = Math.min(w + 18, 100);
+        bar.style.width = w + "%";
+      }, 400);
+      genTimer = setTimeout(() => {
+        clearInterval(tick);
+        applyGenState("generated");
+        setStatus("已生成 · 可交付", "pill-green");
+        toast("门禁全过 · ZIP 已解锁");
+        setProjectTab("artifacts");
+      }, 2000);
+    }
+
+    function handleAction(action, el, e) {
+      if (!action) return;
+
+      if (action === "open-project") {
+        openProject(el.dataset.id || el.closest("[data-id]")?.dataset.id);
+        return;
+      }
+      if (action === "open-job") {
+        const state = el.dataset.jobState || el.closest("[data-job-state]")?.dataset.jobState || "generating";
+        const pid = el.dataset.project || el.closest("[data-project]")?.dataset.project || "gf-20260717-001";
+        openProject(pid, state);
+        toast("已打开对应项目 · " + state);
+        return;
+      }
+      if (action === "retry-from-jobs") {
+        openProject("gf-20260716-011", "failed");
+        toast("已进入失败项目 · 可点「从失败步骤重试」");
+        return;
+      }
+      if (action === "refresh-list") {
+        renderList(
+          document.querySelector("#list-filter button.active")?.dataset.f || "all",
+          document.getElementById("list-search").value.trim()
+        );
+        toast("列表已刷新");
+        return;
+      }
+      if (action === "reupload") {
+        toast("另建项目 · 回到列表上传新开题报告");
+        showView("home");
+        return;
+      }
+      if (action === "toggle-override") {
+        if (!matchUnlocked) {
+          if (!confirm("解锁后可改骨架/领域。改错会生成另一套系统。确认解锁？")) return;
+          matchUnlocked = true;
+          toast("已解锁 · 请谨慎修改");
+        } else {
+          if (isDeviated()) {
+            toast("当前已偏离推荐，请先「恢复推荐」再锁定，或保持解锁状态");
+            return;
+          }
+          matchUnlocked = false;
+          toast("已重新锁定推荐");
+        }
+        syncMatchFields(true);
+        return;
+      }
+      if (action === "reset-match") {
+        document.getElementById("sel-arch").value = RECOMMENDED.arch;
+        document.getElementById("sel-dom").value = RECOMMENDED.dom;
+        matchUnlocked = false;
+        syncMatchFields(true);
+        toast("已恢复系统推荐 · 骨架/领域已锁定");
+        return;
+      }
+      if (action === "confirm-match") {
+        if (isDisabled(el)) {
+          toast("请先勾选确认门禁");
+          return;
+        }
+        if (isDeviated() && !confirm("当前已偏离系统推荐。确认仍要用这套骨架/领域生成？")) {
+          return;
+        }
+        const deviant = isDeviated();
+        matchConfirmed = true;
+        if (!deviant) matchUnlocked = false;
+        else matchUnlocked = false; // lock whatever was chosen
+        setStatus("待生成", "pill-teal");
+        document.getElementById("match-gate").classList.add("ok");
+        setDisabled("btn-confirm", true);
+        updateMatchRiskUI(false);
+        setProjectTab("generate");
+        applyGenState("idle");
+        toast(deviant ? "已按手动覆盖确认（有偏离风险）" : "已确认推荐匹配 · 可一键生成");
+        return;
+      }
+      if (action === "generate") {
+        if (!matchConfirmed && !document.getElementById("match-ack").checked) {
+          toast("请先在「匹配确认」完成确认");
+          setProjectTab("match");
+          return;
+        }
+        matchConfirmed = true;
+        startGenerate();
+        return;
+      }
+      if (action === "cancel-job") {
+        clearTimeout(genTimer);
+        applyGenState("idle");
+        setStatus("待生成", "pill-teal");
+        toast("任务已取消");
+        return;
+      }
+      if (action === "finish-job-demo") {
+        clearTimeout(genTimer);
+        applyGenState("generated");
+        setStatus("已生成 · 可交付", "pill-green");
+        toast("门禁全过 · ZIP 已解锁");
+        setProjectTab("artifacts");
+        return;
+      }
+      if (action === "demo-gate-fail") {
+        applyGenState("failed");
+        setStatus("门禁未过 · 禁止交付", "pill-red");
+        setProjectTab("artifacts");
+        toast("演示：P2 失败 → ZIP 锁定");
+        return;
+      }
+      if (action === "demo-gate-pass") {
+        applyGenState("generated");
+        setStatus("已生成 · 可交付", "pill-green");
+        setProjectTab("artifacts");
+        toast("演示：门禁全过 → ZIP 解锁");
+        return;
+      }
+      if (action === "regenerate") {
+        if (!confirm("重新生成将覆盖当前工作区业务岛文件，确认？")) return;
+        startGenerate();
+        return;
+      }
+      if (action === "retry-job") {
+        toast("从 bake_frontend 重试");
+        startGenerate();
+        return;
+      }
+      if (action === "rollback-island") {
+        toast("已回滚业务岛至 bake 前快照（演示）");
+        applyGenState("idle");
+        setStatus("待生成", "pill-teal");
+        return;
+      }
+      if (action === "goto-tab") {
+        setProjectTab(el.dataset.tab);
+        return;
+      }
+      if (action === "goto-logs") {
+        setProjectTab("logs");
+        showLog(el.dataset.logSide || "job");
+        return;
+      }
+      if (action === "download-zip") {
+        if (!gatesPass || isDisabled(document.getElementById("btn-download"))) {
+          toast("门禁未过（尤其是 P2 主流程）· 禁止下载交付包");
+          setProjectTab("artifacts");
+          return;
+        }
+        toast("开始下载 thesis-app.zip（门禁已通过）");
+        return;
+      }
+      if (action === "delete-project") {
+        if (!confirm("确认删除该项目？工作区与数据库将一并清理。")) return;
+        toast("项目已删除（演示）");
+        showView("home");
+        return;
+      }
+      if (action === "toggle-be") {
+        beOn = !beOn;
+        syncRuntimeUI();
+        toast(beOn ? "后端已启动 · 9103" : "后端已停止");
+        return;
+      }
+      if (action === "toggle-fe") {
+        feOn = !feOn;
+        syncRuntimeUI();
+        toast(feOn ? "前端已启动 · 9203" : "前端已停止");
+        return;
+      }
+      if (action === "restart-be") {
+        beOn = false;
+        syncRuntimeUI();
+        setTimeout(() => {
+          beOn = true;
+          syncRuntimeUI();
+          toast("后端已重启");
+        }, 250);
+        return;
+      }
+      if (action === "restart-fe") {
+        feOn = false;
+        syncRuntimeUI();
+        setTimeout(() => {
+          feOn = true;
+          syncRuntimeUI();
+          toast("前端已重启");
+        }, 250);
+        return;
+      }
+      if (action === "start-all") {
+        setRuntime(true);
+        toast("已全部启动");
+        return;
+      }
+      if (action === "stop-all") {
+        setRuntime(false);
+        toast("已全部关闭");
+        return;
+      }
+      if (action === "restart-all") {
+        setRuntime(false);
+        setTimeout(() => {
+          setRuntime(true);
+          toast("已全部重启");
+        }, 250);
+        return;
+      }
+      if (action === "open-preview") {
+        if (!(beOn && feOn)) {
+          toast("请先启动后端与前端");
+          return;
+        }
+        toast("原型：将打开 http://127.0.0.1:9203");
+        return;
+      }
+      if (action === "refresh-log") {
+        showLog(currentLogSide);
+        toast("日志已刷新");
+        return;
+      }
+      if (action === "view-spec") {
+        openModal("spec.json", document.getElementById("spec-preview").textContent);
+        return;
+      }
+      if (action === "view-er") {
+        openModal("E-R 图（线框）", "演示：实际页面为可缩放平移的 SVG（拖拽平移 · 滚轮缩放）。\n实体：book / category / borrow / notice / sys_user …\n联系：belong / of / issued_by");
+        return;
+      }
+      if (action === "download-er") {
+        toast("下载 E-R SVG（演示）");
+        return;
+      }
+      if (action === "test-ds") {
+        document.getElementById("ds-latency").textContent = "测试中…";
+        setTimeout(() => {
+          document.getElementById("ds-latency").textContent = "延迟 287 ms · 模型可用";
+          toast("DeepSeek 连接正常");
+        }, 500);
+        return;
+      }
+      if (action === "save-ds") {
+        toast("已保存（Key 仍只读环境变量）");
+        return;
+      }
+      if (action === "refresh-balance") {
+        toast("余额已刷新");
+        return;
+      }
+      if (action === "refresh-usage" || action === "refresh-calls") {
+        toast("已刷新");
+        return;
+      }
+      if (action === "dt-shortcut") {
+        toast("时间范围 · " + (el.textContent || "").trim() + "（演示 · 中文快捷项）");
+        return;
+      }
+      if (action === "filter-calls-project") {
+        const pid = el.dataset.pid || "";
+        const input = document.getElementById("call-filter-pid");
+        if (input) input.value = pid;
+        toast("已按项目筛选调用 · " + pid);
+        return;
+      }
+      if (action === "sort-usage") {
+        const key = el.dataset.sort || "tokens";
+        const tbody = document.getElementById("usage-tbody");
+        if (!tbody) return;
+        const prev = el.dataset.order || "";
+        const next = prev === "desc" ? "asc" : "desc";
+        document.querySelectorAll("#usage-table .th-sort").forEach((th) => {
+          th.dataset.order = "";
+          const ico = th.querySelector(".sort-ico");
+          if (ico) ico.textContent = "";
+        });
+        el.dataset.order = next;
+        const ico = el.querySelector(".sort-ico");
+        if (ico) ico.textContent = next === "desc" ? "↓" : "↑";
+        const rows = [...tbody.querySelectorAll("tr")];
+        const num = (r) => Number(r.dataset[key === "last_at" ? "last" : key] || 0);
+        const ts = (r) => Date.parse(r.dataset.last || 0) || 0;
+        rows.sort((a, b) => {
+          const av = key === "last_at" ? ts(a) : num(a);
+          const bv = key === "last_at" ? ts(b) : num(b);
+          return next === "asc" ? av - bv : bv - av;
+        });
+        rows.forEach((r) => tbody.appendChild(r));
+        toast("按「" + el.textContent.replace(/\s*[↑↓]\s*$/, "").trim() + "」" + (next === "asc" ? "升序" : "降序"));
+        return;
+      }
+      if (action === "refresh-jobs") {
+        toast("任务列表已刷新");
+        return;
+      }
+      if (action === "purge-orphans") {
+        if (!confirm("确认删除所有「项目已不存在」的任务？此操作不可恢复。")) return;
+        toast("已清空项目不存在的任务（演示）");
+        return;
+      }
+      if (action === "cancel-from-jobs") {
+        toast("已取消任务（演示）");
+        return;
+      }
+      if (action === "refresh-system") {
+        toast("运行环境已刷新");
+        return;
+      }
+      if (action === "free-ports") {
+        toast("已释放空闲端口占用");
+        return;
+      }
+      if (action === "close-modal") {
+        closeModal();
+        return;
+      }
+
+      toast("已响应：" + action);
+    }
+
+    // —— Global click delegation ——
+    document.addEventListener("click", (e) => {
+      const switchBtn = e.target.closest("[data-switch]");
+      if (switchBtn) {
+        switchBtn.classList.toggle("on");
+        toast(switchBtn.classList.contains("on") ? "阶段已开启" : "阶段已关闭 · 仍可 bake");
+        return;
+      }
+
+      const nav = e.target.closest(".nav-item[data-nav]");
+      if (nav) {
+        showView(nav.dataset.nav);
+        return;
+      }
+
+      const tab = e.target.closest("#proj-tabs .tab");
+      if (tab) {
+        setProjectTab(tab.dataset.tab);
+        return;
+      }
+
+      const logSide = e.target.closest("#log-side button");
+      if (logSide) {
+        showLog(logSide.dataset.side);
+        return;
+      }
+
+      const filterBtn = e.target.closest("#list-filter button");
+      if (filterBtn) {
+        document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
+        filterBtn.classList.add("active");
+        renderList(filterBtn.dataset.f, document.getElementById("list-search").value.trim());
+        return;
+      }
+
+      if (e.target.id === "back-home" || e.target.closest("#back-home")) {
+        showView("home");
+        return;
+      }
+
+      if (e.target.closest("#modal-mask") === e.target) {
+        closeModal();
+        return;
+      }
+
+      const actionable = e.target.closest("[data-action]");
+      if (actionable) {
+        e.preventDefault();
+        handleAction(actionable.dataset.action, actionable, e);
+      }
+    });
+
+    document.getElementById("match-ack").addEventListener("change", (e) => {
+      setDisabled("btn-confirm", !e.target.checked);
+      document.getElementById("match-gate").classList.toggle("ok", e.target.checked);
+      if (e.target.checked) toast("门禁已勾选 · 可确认匹配");
+    });
+
+    document.getElementById("list-search").addEventListener("input", (e) => {
+      const active = document.querySelector("#list-filter button.active");
+      renderList(active?.dataset.f || "all", e.target.value.trim());
+    });
+
+    document.getElementById("sel-arch").addEventListener("change", () => {
+      if (!matchUnlocked) {
+        document.getElementById("sel-arch").value = RECOMMENDED.arch;
+        toast("骨架已锁定 · 请先点「解锁手动覆盖」");
+        return;
+      }
+      syncMatchFields(true);
+      toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "骨架已改回推荐值");
+    });
+    document.getElementById("sel-dom").addEventListener("change", () => {
+      if (!matchUnlocked) {
+        document.getElementById("sel-dom").value = RECOMMENDED.dom;
+        toast("领域已锁定 · 请先点「解锁手动覆盖」");
+        return;
+      }
+      syncMatchFields(true);
+      toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "领域已改回推荐值");
+    });
+    document.getElementById("sel-theme")?.addEventListener("change", () => toast("行业配色已自动保存"));
+    document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
+    document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
+
+    document.getElementById("log-filter").addEventListener("input", () => showLog());
+
+    document.getElementById("demo-state").addEventListener("change", (e) => {
+      const v = e.target.value;
+      if (v === "list") showView("home");
+      else openProject("gf-20260717-001", v);
+    });
+
+    // Upload
+    const dz = document.getElementById("dropzone");
+    const fileInput = document.getElementById("file-input");
+    function simulateUpload(name) {
+      const bar = document.getElementById("upload-bar");
+      bar.classList.add("show");
+      document.getElementById("upload-name").textContent = name || "开题报告.docx";
+      let pct = 0;
+      const fill = document.getElementById("upload-fill");
+      const timer = setInterval(() => {
+        pct += 12;
+        fill.style.width = Math.min(pct, 100) + "%";
+        document.getElementById("upload-pct").textContent = Math.min(pct, 100) + "%";
+        if (pct >= 100) {
+          clearInterval(timer);
+          toast("已建项 · 进入匹配确认");
+          setTimeout(() => openProject("gf-20260717-001", "needs_confirm"), 350);
+        }
+      }, 70);
+    }
+    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("dragover"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+    dz.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dz.classList.remove("dragover");
+      simulateUpload(e.dataTransfer.files[0]?.name);
+    });
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) simulateUpload(fileInput.files[0].name);
+    });
+
+    // Click dropzone label area (file input covers it already)
+
+    renderList();
+    showLog("job");
+    syncRuntimeUI();
+    syncMatchFields(false);
+    renderGates(false);
+  </script>
+</body>
+</html>

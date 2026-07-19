@@ -1,0 +1,87 @@
+<template>
+  <div class="dash">
+    <header class="hd">
+      <h2>工作台</h2>
+      <p>{{ adminLabel }}概览与待办入口。</p>
+    </header>
+
+    <div class="stats">
+      <div class="stat" v-for="s in cards" :key="s.key">
+        <div class="num">{{ s.value }}</div>
+        <div class="label">{{ s.label }}</div>
+      </div>
+    </div>
+
+    <section class="todo card">
+      <h3>待办</h3>
+      <div class="todo-row">
+        <span>待受理 {{ data.pendingTickets || 0 }} 单</span>
+        <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
+      </div>
+      <div class="todo-row">
+        <span>处理中 {{ data.activeTickets || 0 }} 单</span>
+        <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import http from '../../api/http'
+import { getSchema, menuLabel } from '../../utils/domainSchema.js'
+
+const data = ref({})
+const adminLabel = computed(() => getSchema()?.roles?.admin?.label || '管理')
+const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const ticketLabel = computed(() => menuLabel('admin', 'ticket_pending', '单据'))
+
+const cards = computed(() => [
+  { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
+  { key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' },
+  { key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' },
+  { key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' },
+])
+
+async function load() {
+  const res = await http.get('/api/admin/dashboard')
+  data.value = res.data || {}
+}
+
+onMounted(load)
+</script>
+
+<style scoped>
+.hd { margin-bottom: 18px; }
+.hd h2 { margin: 0 0 6px; font-size: 20px; }
+.hd p { margin: 0; color: #8a9aa6; font-size: 13px; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: #fff;
+  border: 1px solid #e4eaf0;
+  border-radius: 10px;
+  padding: 14px 12px;
+}
+.num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.label { margin-top: 4px; font-size: 12px; color: #8a9aa6; }
+.card {
+  background: #fff;
+  border: 1px solid #e4eaf0;
+  border-radius: 10px;
+  padding: 16px;
+}
+.card h3 { margin: 0 0 12px; font-size: 15px; }
+.todo-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-top: 1px solid #f0f3f6; font-size: 14px;
+}
+.todo-row:first-of-type { border-top: none; }
+@media (max-width: 800px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+</style>

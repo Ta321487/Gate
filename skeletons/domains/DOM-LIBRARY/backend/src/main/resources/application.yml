@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: thesis-app
+  servlet:
+    multipart:
+      max-file-size: 10MB
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/${DB_NAME}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+thesis:
+  title: ${PROJECT_TITLE:图书借阅管理系统}
+  domain: DOM-LIBRARY
+  register-role: reader
+  ticket-mode: archive
+  ticket-table: borrow
