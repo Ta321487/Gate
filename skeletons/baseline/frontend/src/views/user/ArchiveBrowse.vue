@@ -4,6 +4,7 @@
       <h1>{{ plural }}检索</h1>
       <p>
         按名称检索{{ playUrlField ? '、在线播放' : '' }}{{ bodyRich ? '、阅读正文' : '' }}，{{ actionHint }}。
+        <template v-if="ruleHint"> {{ ruleHint }}</template>
       </p>
       <div class="search">
         <el-input
@@ -15,6 +16,20 @@
         />
         <el-select v-model="categoryId" clearable placeholder="分类" size="large" style="width:140px" @change="load">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+        </el-select>
+        <el-select
+          v-if="tagFilter"
+          v-model="tagIds"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
+          placeholder="标签（同时满足）"
+          size="large"
+          style="min-width:200px"
+          @change="load"
+        >
+          <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <el-button type="primary" size="large" @click="load">搜索</el-button>
       </div>
@@ -33,6 +48,8 @@
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ row.author || '—' }} · {{ row.categoryName || '未分类' }}</p>
+          <p v-if="row.tagNames?.length" class="sched muted">{{ row.tagNames.join(' · ') }}</p>
+          <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <div class="row">
@@ -101,12 +118,24 @@
     >
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
       <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
-      <el-form v-if="richRemark" label-position="top">
-        <el-form-item :label="ticket.label || '内容'" required>
+      <el-form label-position="top">
+        <el-form-item v-if="richRemark" :label="ticket.label || '内容'" required>
           <RichTextEditor v-model="applyRemark" placeholder="请输入回复内容，可用工具栏排版；可 @昵称 引用" />
         </el-form-item>
+        <el-form-item v-if="requireAttach" label="证明附件" required>
+          <div class="attach-row">
+            <el-upload
+              :show-file-list="false"
+              accept="image/*,.pdf,.doc,.docx"
+              :http-request="onAttach"
+            >
+              <el-button size="small">{{ applyAttachUrl ? '重新上传' : '上传附件' }}</el-button>
+            </el-upload>
+            <a v-if="applyAttachUrl" :href="applyAttachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+          </div>
+        </el-form-item>
       </el-form>
-      <p v-else class="apply-tip muted">确认后提交，等待审核。</p>
+      <p v-if="!richRemark && !requireAttach" class="apply-tip muted">确认后提交，等待审核。</p>
       <template #footer>
         <el-button @click="applyVisible = false">取消</el-button>
         <el-button type="primary" :loading="applyLoading" @click="submitApply">提交</el-button>
@@ -140,6 +169,18 @@ const bodyRich = computed(() => {
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
 const richRemark = computed(() => !!ticket.richRemark)
+const requireAttach = computed(() => !!ticket.requireAttach)
+const needApplyDialog = computed(() => richRemark.value || requireAttach.value)
+const checkMutex = computed(() => !!ticket.checkMutex)
+const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
+const tagFilter = computed(() => !!archive.tagFilter)
+const ruleHint = computed(() => {
+  const parts = []
+  if (checkMutex.value) parts.push('同互斥码不可同选')
+  if (categoryLimit.value > 0) parts.push(`每分类最多 ${categoryLimit.value} 门`)
+  if (tagFilter.value) parts.push('可多标签组合筛选')
+  return parts.length ? parts.join('；') + '。' : ''
+})
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasRecommend = computed(() => caps.value.includes('recommend'))
 const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
@@ -205,12 +246,15 @@ const size = ref(9)
 const keyword = ref('')
 const categoryId = ref(null)
 const categories = ref([])
+const tagIds = ref([])
+const tags = ref([])
 const recRef = ref(null)
 const detailVisible = ref(false)
 const detail = ref(null)
 const applyVisible = ref(false)
 const applyRow = ref(null)
 const applyRemark = ref('')
+const applyAttachUrl = ref('')
 const applyLoading = ref(false)
 
 function openDetail(row) {
@@ -218,9 +262,27 @@ function openDetail(row) {
   detailVisible.value = true
 }
 
+async function onAttach(opt) {
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  applyAttachUrl.value = res.data.url
+  ElMessage.success('附件已上传')
+}
+
 async function loadCats() {
   const res = await http.get('/api/categories')
   categories.value = res.data || res || []
+}
+
+async function loadTags() {
+  if (!tagFilter.value) return
+  try {
+    const res = await http.get('/api/tags')
+    tags.value = res.data || res || []
+  } catch {
+    tags.value = []
+  }
 }
 
 async function load() {
@@ -230,6 +292,7 @@ async function load() {
       size: size.value,
       keyword: keyword.value || undefined,
       categoryId: categoryId.value || undefined,
+      tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
     },
   })
   list.value = res.data.list
@@ -252,7 +315,8 @@ async function onPrimary(row) {
 async function apply(row) {
   applyRow.value = row
   applyRemark.value = ''
-  if (richRemark.value) {
+  applyAttachUrl.value = ''
+  if (needApplyDialog.value) {
     applyVisible.value = true
     return
   }
@@ -273,11 +337,16 @@ async function submitApply() {
       return
     }
   }
+  if (requireAttach.value && !applyAttachUrl.value) {
+    ElMessage.warning('请上传证明附件')
+    return
+  }
   applyLoading.value = true
   try {
     await http.post('/api/tickets/apply', {
       itemId: applyRow.value.id,
       remark,
+      attachUrl: applyAttachUrl.value || undefined,
     })
     ElMessage.success('已提交，等待审核')
     applyVisible.value = false
@@ -290,6 +359,7 @@ async function submitApply() {
 
 onMounted(async () => {
   await loadCats()
+  await loadTags()
   await load()
 })
 </script>
@@ -324,4 +394,6 @@ onMounted(async () => {
 .drawer-acts { margin-top: 24px; }
 .apply-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
 .apply-tip.muted { color: #64748b; }
+.attach-row { display: flex; gap: 12px; align-items: center; }
+.attach-row a { font-size: 13px; color: #0369a1; }
 </style>

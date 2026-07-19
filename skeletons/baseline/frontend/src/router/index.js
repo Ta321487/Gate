@@ -142,6 +142,7 @@ const archiveTicketRoutes = [
       { path: '', redirect: '/archive' },
       { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
       { path: 'tickets', component: () => import('../views/user/MyTickets.vue') },
+      { path: 'week', component: () => import('../views/user/WeekCalendar.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
       { path: 'profile', component: Profile },

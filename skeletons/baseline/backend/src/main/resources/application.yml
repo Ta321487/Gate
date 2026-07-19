@@ -34,6 +34,18 @@ thesis:
   # 选课/活动等：申请时做时段相交检测（需主表 start_at/end_at）
   check-time-conflict: false
   enable-ticket: true
+  # L1 单据亮点（工厂按 schema.entities.ticket 写入）
+  ticket-two-level: false
+  ticket-require-attach: false
+  ticket-allow-rating: false
+  # L1：互斥码检测；分类限额（0=不限）
+  ticket-check-mutex: false
+  ticket-category-limit: 0
+  ticket-week-calendar: false
+  ticket-allow-checkin: false
+  archive-soft-delete: false
+  archive-tag-table: ""
+  archive-item-tag-table: ""
   # order_lines（空表名=关闭）
   order-cart-table: ""
   order-table: ""

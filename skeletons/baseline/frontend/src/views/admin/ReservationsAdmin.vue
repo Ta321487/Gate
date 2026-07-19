@@ -5,6 +5,7 @@
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
       <el-button type="primary" @click="load">查询</el-button>
+      <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
       <el-button @click="genVisible = true">生成时段</el-button>
     </div>
     <el-table :data="list" stripe>
@@ -72,6 +73,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { getSchema } from '../../utils/domainSchema.js'
+import { downloadCsv } from '../../utils/csvDownload.js'
 
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
@@ -108,6 +110,29 @@ async function generate() {
   const res = await http.post('/api/slots/generate', { ...gen })
   ElMessage.success(`已生成 ${res.data?.created ?? 0} 个时段`)
   genVisible.value = false
+}
+
+async function exportCsv() {
+  const res = await http.get('/api/slots/reservations', {
+    params: { page: 1, size: 5000, status: status.value || undefined },
+  })
+  const rows = res.data?.list || []
+  if (!rows.length) {
+    ElMessage.warning('当前筛选无数据可导出')
+    return
+  }
+  const headers = ['编号', '资源', '用户', '开始', '结束', '状态', '预约时间']
+  const data = rows.map((row) => [
+    row.id,
+    row.itemTitle,
+    row.username,
+    row.startAt,
+    row.endAt,
+    states.value[row.status] || row.status,
+    row.createdAt,
+  ])
+  downloadCsv(`reservations_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
+  ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }
 
 onMounted(load)

@@ -27,6 +27,9 @@
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column prop="approveAt" label="受理时间" width="170" />
       <el-table-column prop="returnAt" label="完成时间" width="170" />
+      <el-table-column v-if="allowRating" label="评分" width="90">
+        <template #default="{ row }">{{ row.rating ? `${row.rating} 分` : '—' }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="120" fixed="right">
         <template #default="{ row }">
           <el-button
@@ -57,11 +60,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { ticketCopy } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
+import { downloadCsv } from '../../utils/csvDownload.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
+const allowRating = computed(() => !!ticket.allowRating)
 
 function remarkText(v) {
   if (!v) return '—'
@@ -89,12 +94,6 @@ async function finish(row) {
   load()
 }
 
-function csvCell(v) {
-  const s = v == null ? '' : String(v)
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-  return s
-}
-
 async function exportCsv() {
   const res = await http.get('/api/tickets', {
     params: { page: 1, size: 5000, status: status.value || undefined },
@@ -108,9 +107,9 @@ async function exportCsv() {
     '单号', '标题', '类型', '地点', '申请人', '处理人', '状态',
     '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
   ]
-  const lines = [headers.join(',')]
-  for (const row of rows) {
-    lines.push([
+  if (allowRating.value) headers.push('评分', '短评')
+  const data = rows.map((row) => {
+    const line = [
       row.id,
       row.title,
       row.typeName,
@@ -124,15 +123,14 @@ async function exportCsv() {
       row.applyAt,
       row.approveAt,
       row.returnAt,
-    ].map(csvCell).join(','))
-  }
-  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `tickets_${status.value || 'all'}_${Date.now()}.csv`
-  a.click()
-  URL.revokeObjectURL(a.href)
-  ElMessage.success(`已导出 ${rows.length} 条`)
+    ]
+    if (allowRating.value) {
+      line.push(row.rating || '', row.ratingRemark || '')
+    }
+    return line
+  })
+  downloadCsv(`tickets_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
+  ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }
 
 onMounted(load)

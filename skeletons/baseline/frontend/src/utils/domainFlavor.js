@@ -43,17 +43,34 @@ const FLAVORS = {
     motif: 'box',
     notFound: {
       title: '物资未登记',
-      lead: '找不到对应页面或领用条目。',
-      hint: '回物资台账核对编号后再试。',
+      lead: '找不到对应页面或台账条目。',
+      hint: '回物资目录核对编号后再试。',
     },
     serverError: {
       title: '台账服务异常',
       lead: '物资系统暂时响应失败。',
-      hint: '请稍后重试盘点或领用操作。',
+      hint: '请稍后重试浏览或提交申领。',
     },
     loading: {
       title: '台账加载中…',
-      lead: '正在汇总库存与领用记录。',
+      lead: '正在汇总库存与申领记录。',
+    },
+  },
+  'DOM-CRM': {
+    motif: 'users',
+    notFound: {
+      title: '客户未找到',
+      lead: '页面无效，或客户/跟进单不存在。',
+      hint: '回客户列表重新选择。',
+    },
+    serverError: {
+      title: '跟进服务异常',
+      lead: '客户系统暂时连不上。',
+      hint: '请稍后重试提交或查询跟进。',
+    },
+    loading: {
+      title: '客户加载中…',
+      lead: '正在同步档案与跟进记录。',
     },
   },
   'DOM-SHOP': {

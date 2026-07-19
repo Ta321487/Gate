@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="toolbar">
-      <el-alert type="info" :closable="false" show-icon :title="`待受理 · 历史见「${recordsLabel}」`" />
+      <el-alert type="info" :closable="false" show-icon :title="todoHint" />
     </div>
     <div class="toolbar">
       <el-button type="primary" @click="load">刷新待办</el-button>
@@ -12,10 +12,22 @@
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
       <el-table-column prop="username" :label="userLabel" width="110" />
-      <el-table-column prop="applyAt" label="申请时间" width="170" />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-button link type="success" @click="openAudit(row, true)">{{ verbs.approve || '受理' }}</el-button>
+          <el-tag size="small" :type="row.status === 'pending_final' ? '' : 'warning'" effect="plain">
+            {{ statusText(row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="applyAt" label="申请时间" width="170" />
+      <el-table-column label="操作" width="200" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            link
+            type="success"
+            :disabled="!canPass(row)"
+            @click="openAudit(row, true)"
+          >{{ passLabel(row) }}</el-button>
           <el-button link type="danger" @click="openAudit(row, false)">{{ verbs.reject || '驳回' }}</el-button>
         </template>
       </el-table-column>
@@ -34,15 +46,19 @@
 
     <el-dialog
       v-model="audit.visible"
-      :title="audit.pass ? (verbs.approve || '受理') : (verbs.reject || '驳回')"
+      :title="audit.pass ? passLabel(audit.row) : (verbs.reject || '驳回')"
       width="440px"
       destroy-on-close
       @closed="resetAudit"
     >
       <p class="audit-tip">
-        {{ audit.pass ? `确认${verbs.approve || '受理'}该单据？` : `确认${verbs.reject || '驳回'}该单据？` }}
+        {{ audit.pass ? `确认${passLabel(audit.row)}该单据？` : `确认${verbs.reject || '驳回'}该单据？` }}
         <template v-if="audit.row">「{{ audit.row.title || ('单号 ' + audit.row.id) }}」</template>
       </p>
+      <div v-if="audit.row?.attachUrl" class="audit-body">
+        <div class="lab">附件</div>
+        <a :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">查看附件</a>
+      </div>
       <div v-if="richRemark && audit.row?.remark" class="audit-body">
         <div class="lab">申请内容</div>
         <RichTextView :html="audit.row.remark" />
@@ -84,9 +100,17 @@ import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
+const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
+const twoLevel = computed(() => !!ticket.twoLevelApprove)
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', '单据记录'))
+const superAdmin = localStorage.getItem('superAdmin') === 'true'
+
+const todoHint = computed(() => {
+  const base = `待受理 · 历史见「${recordsLabel.value}」`
+  return twoLevel.value ? `${base} · 二级审批（终审需总管）` : base
+})
 
 const list = ref([])
 const total = ref(0)
@@ -101,15 +125,35 @@ const audit = reactive({
   row: null,
 })
 
+function statusText(s) {
+  return states.value[s] || ({ pending: '待初审', pending_final: '待终审' }[s]) || s
+}
+
+function passLabel(row) {
+  if (!twoLevel.value || !row) return verbs.value.approve || '受理'
+  if (row.status === 'pending_final') return '终审通过'
+  return '初审通过'
+}
+
+function canPass(row) {
+  if (!twoLevel.value) return true
+  if (row?.status === 'pending_final') return superAdmin
+  return true
+}
+
 async function load() {
   const res = await http.get('/api/tickets', {
-    params: { page: page.value, size: size.value, status: 'pending' },
+    params: { page: page.value, size: size.value, status: 'todo' },
   })
   list.value = res.data.list
   total.value = res.data.total
 }
 
 function openAudit(row, pass) {
+  if (pass && !canPass(row)) {
+    ElMessage.warning('终审通过需总管操作')
+    return
+  }
   audit.row = row
   audit.pass = pass
   audit.remark = ''
@@ -171,6 +215,7 @@ onMounted(load)
   border: 1px solid #e2e8f0;
 }
 .audit-body .lab { margin-bottom: 6px; font-size: 13px; color: #64748b; }
+.audit-body a { color: #0369a1; font-size: 13px; }
 .req {
   color: var(--el-color-danger, #f56c6c);
   margin-left: 2px;

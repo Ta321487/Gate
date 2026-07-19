@@ -244,11 +244,56 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if enable_ticket is None:
         enable_ticket = "ticket_flow" in caps
     text = _set_key(text, "enable-ticket", "true" if enable_ticket else "false")
+    ticket_ent = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+    text = _set_key(
+        text,
+        "ticket-two-level",
+        "true" if ticket_ent.get("twoLevelApprove") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-require-attach",
+        "true" if ticket_ent.get("requireAttach") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-allow-rating",
+        "true" if ticket_ent.get("allowRating") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-check-mutex",
+        "true" if ticket_ent.get("checkMutex") else "false",
+    )
+    cat_limit = ticket_ent.get("categoryLimit")
+    try:
+        cat_limit_n = int(cat_limit) if cat_limit is not None else 0
+    except (TypeError, ValueError):
+        cat_limit_n = 0
+    text = _set_key(text, "ticket-category-limit", str(max(0, cat_limit_n)))
+    text = _set_key(
+        text,
+        "ticket-week-calendar",
+        "true" if ticket_ent.get("weekCalendar") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-allow-checkin",
+        "true" if ticket_ent.get("allowCheckin") else "false",
+    )
+    archive_ent = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+    text = _set_key(
+        text,
+        "archive-soft-delete",
+        "true" if archive_ent.get("softDelete") else "false",
+    )
     ph = spec.get("password_hash") or "none"
     text = _set_key(text, "password-hash", str(ph))
     for yml_key, runtime_key in (
         ("archive-category-table", "archive_category_table"),
         ("archive-item-table", "archive_item_table"),
+        ("archive-tag-table", "archive_tag_table"),
+        ("archive-item-tag-table", "archive_item_tag_table"),
         ("lookup-site-table", "lookup_site_table"),
         ("lookup-unit-table", "lookup_unit_table"),
         ("lookup-type-table", "lookup_type_table"),
@@ -271,6 +316,9 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if "slot_reserve" not in caps:
         text = _set_key(text, "slot-table", '""')
         text = _set_key(text, "reservation-table", '""')
+    if not runtime.get("archive_tag_table"):
+        text = _set_key(text, "archive-tag-table", '""')
+        text = _set_key(text, "archive-item-tag-table", '""')
     return text
 
 

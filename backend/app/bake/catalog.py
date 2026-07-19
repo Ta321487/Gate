@@ -131,6 +131,7 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-LIBRARY": "ARCH-FLOW",
     "DOM-EQUIP": "ARCH-FLOW",
     "DOM-ASSET": "ARCH-FLOW",
+    "DOM-CRM": "ARCH-FLOW",
     "DOM-ACTIVITY": "ARCH-FLOW",
     "DOM-LOST": "ARCH-FLOW",
     "DOM-COURSE": "ARCH-FLOW",
@@ -161,7 +162,7 @@ def reconcile_match(
     domain: str,
     archetypes: list[str] | None = None,
 ) -> tuple[str, str, list[str], list[str]]:
-    """行为优先：多 ARCH 并集；域盖不住任一路径则降 GENERIC。返回 (primary, domain, arches, notes)。"""
+    """行为优先：多 ARCH 并集；域盖不住时尽量保留皮肤并丢掉多余路径，否则降 GENERIC。"""
     notes: list[str] = []
     arches = [a for a in (archetypes or [archetype]) if a in ARCHETYPES]
     if not arches:
@@ -174,10 +175,16 @@ def reconcile_match(
             arches = [promoted]
             notes.append(f"arch↑{promoted}")
 
-    if dom != "DOM-GENERIC" and not domain_covers_archetypes(dom, arches):
-        miss = [a for a in arches if not domain_covers_archetype(dom, a)]
-        notes.append(f"dom↓GENERIC({dom}↛{','.join(miss)})")
-        dom = "DOM-GENERIC"
+    if dom != "DOM-GENERIC":
+        covered = [a for a in arches if domain_covers_archetype(dom, a)]
+        if covered:
+            if set(covered) != set(arches):
+                dropped = [a for a in arches if a not in covered]
+                notes.append(f"arch↓drop({','.join(dropped)})")
+            arches = covered
+        else:
+            notes.append(f"dom↓GENERIC({dom}↛{','.join(arches)})")
+            dom = "DOM-GENERIC"
 
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     arches = sorted(dict.fromkeys(arches), key=lambda a: tie_rank.get(a, 99))

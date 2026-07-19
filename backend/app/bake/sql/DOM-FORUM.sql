@@ -1,4 +1,4 @@
--- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}] · 顶格样板（含 sys_message）
+﻿-- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}] · 顶格样板（含 sys_message）
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS post (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

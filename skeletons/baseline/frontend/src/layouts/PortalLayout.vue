@@ -63,6 +63,7 @@ const MENU_TO = {
   my_orders: '/orders',
   my_reservations: '/reservations',
   slots: '/slots',
+  week_calendar: '/week',
 }
 
 const nav = computed(() => {

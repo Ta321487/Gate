@@ -24,6 +24,8 @@
       </div>
     </section>
 
+    <DashboardCharts :charts="data.charts || {}" mode="ticket" />
+
     <section class="card">
       <h3>规则摘要</h3>
       <p class="muted">借期 {{ data.loanDays || 14 }} 天 · 逾期 {{ data.finePerDay || 0.5 }} 元/天</p>
@@ -40,6 +42,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
+import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const data = ref({})
 const cards = computed(() => [
@@ -81,21 +84,18 @@ onMounted(load)
   background: #fff;
   border: 1px solid #e4eaf0;
   border-radius: 10px;
-  padding: 16px 18px;
-  margin-bottom: 12px;
+  padding: 16px;
+  margin-top: 16px;
 }
 .card h3 { margin: 0 0 12px; font-size: 15px; }
 .todo-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 0; border-top: 1px solid #f0f3f6; font-size: 14px;
+  padding: 8px 0; border-top: 1px solid #f0f3f6; font-size: 14px;
 }
-.todo-row:first-of-type { border-top: none; padding-top: 0; }
+.todo-row:first-of-type { border-top: none; }
 .muted { margin: 0 0 12px; color: #8a9aa6; font-size: 13px; }
 .links { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 1100px) {
   .stats { grid-template-columns: repeat(3, 1fr); }
-}
-@media (max-width: 640px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

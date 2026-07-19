@@ -2,10 +2,10 @@
   <div class="dash">
     <header class="hd">
       <h2>工作台</h2>
-      <p>{{ adminLabel }}概览与待办入口。</p>
+      <p>{{ adminLabel }}概览、待办与统计分析。</p>
     </header>
 
-    <div class="stats" :style="{ gridTemplateColumns: `repeat(${cards.length}, 1fr)` }">
+    <div class="stats" :style="{ gridTemplateColumns: `repeat(${Math.min(cards.length, 4)}, 1fr)` }">
       <div class="stat" v-for="s in cards" :key="s.key">
         <div class="num">{{ s.value }}</div>
         <div class="label">{{ s.label }}</div>
@@ -20,7 +20,7 @@
           <el-button type="primary" link @click="$router.push('/admin/orders')">去处理</el-button>
         </div>
       </template>
-      <template v-else-if="caps.includes('slot_reserve')">
+      <template v-else-if="caps.includes('slot_reserve') && !caps.includes('ticket_flow')">
         <div class="todo-row">
           <span>已预约 {{ data.confirmedReservations || 0 }}</span>
           <el-button type="primary" link @click="$router.push('/admin/reservations')">看预约</el-button>
@@ -41,13 +41,16 @@
         </div>
       </template>
     </section>
+
+    <DashboardCharts :charts="data.charts || {}" :mode="chartMode" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
-import { getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
+import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const data = ref({})
 const adminLabel = computed(() => getSchema()?.roles?.admin?.label || '管理')
@@ -55,6 +58,12 @@ const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const caps = computed(() => getSchema()?.capabilities || [])
 const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
+
+const chartMode = computed(() => {
+  if (caps.value.includes('order_lines') && !caps.value.includes('ticket_flow')) return 'order'
+  if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) return 'reservation'
+  return 'ticket'
+})
 
 const cards = computed(() => {
   const list = []
@@ -65,7 +74,7 @@ const cards = computed(() => {
       { key: 'os', label: '履约中', value: data.value.shippedOrders ?? '—' },
       { key: 'od', label: '已完成', value: data.value.completedOrders ?? '—' },
     )
-  } else if (caps.value.includes('slot_reserve')) {
+  } else if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) {
     list.push(
       { key: 'rp', label: '待确认预约', value: data.value.pendingReservations ?? '—' },
       { key: 'rc', label: '已预约', value: data.value.confirmedReservations ?? '—' },
@@ -81,6 +90,13 @@ const cards = computed(() => {
     }
   }
   list.push({ key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' })
+  if (ticketCopy().allowRating && data.value.avgRating != null) {
+    list.push({
+      key: 'avg',
+      label: `均分${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
+      value: data.value.avgRating,
+    })
+  }
   if (showArchive.value) {
     list.push({ key: 'items', label: menuLabel('admin', 'archive', '档案') + '数', value: data.value.bookTotal ?? '—' })
   }
