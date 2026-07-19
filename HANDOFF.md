@@ -124,7 +124,7 @@
 - 常量：`backend/app/bake/engine.py` → `TABLE_COUNT_MIN/MAX`
 - DDL/种子模板：`backend/app/bake/sql/<DOMAIN>.sql`（`domain_sql` 加载；缺省 `DOM-GENERIC.sql`）
 - bake 写 `schema.sql` 前 `assert_table_budget`；门禁 `p3t` 不过则禁 ZIP
-- **现状样板**：GENERIC 6 · 媒资/设备/博客 7 · 图书/报修壳 8 · **论坛 12（顶格参考）**
+- **现状样板**：GENERIC 6 · 媒资/设备/博客/组 C 7 · 图书/报修壳 8 · **论坛 12（顶格参考）**
 - 论坛 12 表：`sys_user` / `category` / `board_moderator` / `post` / `post_attach` / `tag` / `post_tag` / `reply` / `reply_log` / `reply_attach` / `sys_notice` / `sys_config`
 - 报修薄壳 8 张：楼栋/房间/类型/单据/进度/附件 + 用户/公告
 
@@ -145,8 +145,8 @@
 - [x] 组 A 组合壳：**DOM-EQUIP**（`gate_archive_ticket` + Archive API/FE + `DOM-EQUIP.sql`；与 LIBRARY 同能力，无厚包）
 - [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（`gate_archive_ticket(with_deadline=False)` + 片库/曲库 SQL/皮肤；收藏单据、播放外链）
 - [x] 组 G：**DOM-FORUM / DOM-BLOG**（同壳；主帖/文章主数据；论坛回复单据 + 博客收藏单据；无播放字段；可选门户轮播）
-- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG 开启；基线 `PortalCarousel` + 门户壳强化
-- [ ] 组 C（ACTIVITY/LOST/COURSE）复用 archive+ticket 组合壳 + 可选门户轮播
+- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启；基线 `PortalCarousel` + 门户壳强化
+- [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（`gate_archive_ticket(with_deadline=False)`；活动/失物/选课 SQL；报名/认领/选课单据；ACTIVITY/COURSE 门户轮播）
 - [ ] 实现 `order_lines`、`slot_reserve` 后打开 D/E 组
 
 ### 宿舍验证账号（bake 后）
