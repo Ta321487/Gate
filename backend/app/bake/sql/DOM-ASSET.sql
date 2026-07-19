@@ -51,7 +51,10 @@ CREATE TABLE IF NOT EXISTS requisition (
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(255)
+  remark VARCHAR(255),
+  pickup_at DATETIME NULL,
+  pickup_place VARCHAR(128) DEFAULT '',
+  actual_qty INT NULL
 );
 
 

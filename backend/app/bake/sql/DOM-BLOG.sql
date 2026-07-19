@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS article (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  summary VARCHAR(512) DEFAULT '',
+  published_at DATETIME NULL,
   deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

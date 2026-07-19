@@ -142,6 +142,7 @@ npm run dev
 | 登录后标题、主题色 | `frontend/.env`、`factoryDelivered.js`、主题样式 |
 | 注册要填哪些资料 | 后端 `domain-profile-fields.json` + 前端资料组件 |
 | 某张表字段 / 演示数据 | `sql/schema.sql`（改完需重新导入或手工 ALTER） |
+| 收货地址 / 口味备注（商城点餐） | 表 `user_address`；下单写入订单的收货与 `taste_note` |
 | 接口逻辑（审核、库存） | `capability/*Store.java` 对应方法 |
 | 管理端某个列表页 | `views/admin/` 下对应 Vue |
 | 数据库账号密码 | `application.yml` |

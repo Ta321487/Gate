@@ -45,7 +45,7 @@ public class TicketController {
             if (periodStart.isBlank()) periodStart = str(body.get("startAt"));
             String periodEnd = str(body.get("periodEnd"));
             if (periodEnd.isBlank()) periodEnd = str(body.get("endAt"));
-            return R.ok(TicketStore.apply(
+            Map<String, Object> created = TicketStore.apply(
                     uid,
                     itemId,
                     remark,
@@ -53,7 +53,10 @@ public class TicketController {
                     qty,
                     dueAt.isBlank() ? null : dueAt,
                     periodStart.isBlank() ? null : periodStart,
-                    periodEnd.isBlank() ? null : periodEnd));
+                    periodEnd.isBlank() ? null : periodEnd);
+            long tid = created.get("id") instanceof Number n ? n.longValue() : 0L;
+            TicketStore.patchTicketExtras(tid, body);
+            return R.ok(tid > 0 ? TicketStore.get(tid) : created);
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "缺少业务对象 id");
         } catch (IllegalArgumentException e) {
@@ -102,6 +105,40 @@ public class TicketController {
             return R.ok(TicketStore.rate(id, uid, rating, note));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/progress")
+    public R<?> progress(@PathVariable long id, HttpSession session) {
+        requireLogin(session);
+        return R.ok(TicketStore.listProgress(id));
+    }
+
+    @PostMapping("/{id}/pickup")
+    public R<?> pickup(@PathVariable long id, @RequestBody(required = false) Map<String, Object> body, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        Integer qty = toIntOrNull(b.get("actualQty"));
+        try {
+            return R.ok(TicketStore.markPickup(id, str(b.get("pickupPlace")), qty, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/fine-paid")
+    public R<?> finePaid(@PathVariable long id, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(TicketStore.markFinePaid(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

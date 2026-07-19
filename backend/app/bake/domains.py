@@ -294,7 +294,7 @@ DOMAINS = {
     },
     "DOM-SHOP": {
         "label": "商城",
-        "keywords": ["商城", "商品", "购物车", "下单"],
+        "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手"],
         "entities": ["Product", "Category", "Order", "Cart"],
         "roles": ["user", "admin"],
         "flows": ["加购 → 下单 → 发货"],
@@ -596,10 +596,10 @@ DOMAINS = {
     },
     "DOM-FOOD": {
         "label": "点餐",
-        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品"],
+        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐饮", "餐厅", "奶茶", "快餐"],
         "entities": ["Dish", "Order", "Category"],
         "roles": ["user", "admin"],
-        "flows": ["选菜 → 下单 → 取餐"],
+        "flows": ["选菜 → 下单 → 堂食/自取/配送"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

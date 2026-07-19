@@ -58,6 +58,7 @@ def compose_generic_sql(
         "biz_ticket",
         "biz_ticket_log",
         "cart_line",
+        "user_address",
         "biz_order",
         "order_line",
         "resource_slot",
@@ -71,7 +72,7 @@ def compose_generic_sql(
     if need_flow:
         want.update({"biz_ticket", "biz_ticket_log"})
     if need_trade:
-        want.update({"cart_line", "biz_order", "order_line"})
+        want.update({"cart_line", "user_address", "biz_order", "order_line"})
     if need_reserve:
         want.update({"resource_slot", "reservation"})
     if need_flow or need_trade or need_reserve:

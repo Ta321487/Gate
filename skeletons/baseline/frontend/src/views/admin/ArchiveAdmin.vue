@@ -152,6 +152,33 @@
             />
           </el-form-item>
         </template>
+        <el-form-item
+          v-for="f in extraFields"
+          :key="f.key"
+          :label="f.label || f.key"
+        >
+          <el-date-picker
+            v-if="f.type === 'datetime'"
+            v-model="form[f.key]"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width:100%"
+          />
+          <el-input-number
+            v-else-if="f.type === 'number'"
+            v-model="form[f.key]"
+            :min="0"
+            controls-position="right"
+            style="width:100%"
+          />
+          <el-input
+            v-else-if="f.type === 'url'"
+            v-model="form[f.key]"
+            type="url"
+            placeholder="https://"
+          />
+          <el-input v-else v-model="form[f.key]" />
+        </el-form-item>
         <el-form-item label="封面">
           <el-upload :show-file-list="false" accept="image/*" :http-request="onCover">
             <el-button size="small">上传</el-button>
@@ -180,11 +207,16 @@ const archive = archiveCopy()
 const softCopy = softDeleteCopy()
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
+const CORE_FIELD_KEYS = new Set([
+  'title', 'author', 'isbn', 'category', 'stock',
+  'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
+])
+const extraFields = computed(() => fields.value.filter((f) => f?.key && !CORE_FIELD_KEYS.has(f.key)))
 const isbnRich = computed(() => {
   const f = fields.value.find((x) => x.key === 'isbn')
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
-const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' || x.type === 'datetime'))
+const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' || x.key === 'endAt'))
 const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
 const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
 const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCode'))
@@ -275,6 +307,10 @@ function genCheckin() {
 }
 
 function openEdit(row) {
+  const extras = {}
+  for (const f of extraFields.value) {
+    extras[f.key] = row?.[f.key] ?? (f.type === 'number' ? 0 : '')
+  }
   if (row) {
     Object.assign(form, {
       id: row.id,
@@ -290,6 +326,7 @@ function openEdit(row) {
       mutexCode: row.mutexCode || '',
       checkinCode: row.checkinCode || '',
       tagIds: [...(row.tagIds || [])],
+      ...extras,
     })
   } else {
     Object.assign(form, {
@@ -306,6 +343,7 @@ function openEdit(row) {
       mutexCode: '',
       checkinCode: hasCheckin.value ? `ACT${Math.floor(1000 + Math.random() * 9000)}` : '',
       tagIds: [],
+      ...extras,
     })
   }
   visible.value = true

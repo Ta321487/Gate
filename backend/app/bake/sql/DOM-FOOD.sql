@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS dish (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  spicy_level VARCHAR(16) DEFAULT '不辣',
+  is_vegetarian TINYINT DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,12 +43,34 @@ CREATE TABLE IF NOT EXISTS cart_line (
   UNIQUE KEY uk_cart (username, item_id)
 );
 
+-- 收货地址簿（外卖配送用；堂食/自取可空）
+CREATE TABLE IF NOT EXISTS user_address (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  contact_name VARCHAR(64) NOT NULL,
+  phone VARCHAR(32) NOT NULL,
+  address_line VARCHAR(255) NOT NULL,
+  tag VARCHAR(32) DEFAULT '默认',
+  is_default TINYINT DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_addr_user (username)
+);
+
 CREATE TABLE IF NOT EXISTS biz_order (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
+  receiver_name VARCHAR(64) DEFAULT '',
+  receiver_phone VARCHAR(32) DEFAULT '',
+  address_line VARCHAR(255) DEFAULT '',
+  delivery_type VARCHAR(32) DEFAULT '',
+  taste_note VARCHAR(255) DEFAULT '',
+  tracking_no VARCHAR(64) DEFAULT '',
+  pickup_code VARCHAR(32) DEFAULT '',
+  shipped_at DATETIME NULL,
+  reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -94,6 +118,11 @@ INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VA
 (2, '番茄鸡蛋面', '12.00', '窗口B', 2, 60, 'available'),
 (3, '豆浆油条', '8.00', '早餐档', 1, 100, 'available'),
 (4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '李同学', '13800000002', '示例宿舍 5 号楼 302', '宿舍', 1),
+(2, 'user', '李同学', '13800000002', '创业街 88 号写字楼', '公司', 0);
+
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '食堂点餐', '下单后到窗口取餐；演示环境无真支付。', 'admin', '系统管理员'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='食堂点餐');
+SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '系统管理员'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知' OR title='食堂点餐');

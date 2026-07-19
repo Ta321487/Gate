@@ -39,7 +39,7 @@ import { isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileV
 const WIDE = new Set([
   'officeOrDorm', 'campusAddress', 'allergyNote', 'defaultRemark',
   'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc', 'workUnit', 'orgName', 'orgOrClub',
-  'campusAddress', 'offCampusAddress',
+  'campusAddress', 'offCampusAddress', 'receiveAddress', 'deliveryAddress',
 ])
 
 const props = defineProps({

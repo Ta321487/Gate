@@ -104,7 +104,7 @@ def domain_sql(
         arches = list(archetypes or ([archetype] if archetype else ["ARCH-CRUD"]))
         need_flow, need_trade, need_reserve = path_flags(arches)
         if sum([need_flow, need_trade, need_reserve]) >= 2:
-            return compose_generic_sql(
+            text = compose_generic_sql(
                 need_flow=need_flow,
                 need_trade=need_trade,
                 need_reserve=need_reserve,
@@ -112,13 +112,17 @@ def domain_sql(
                 table_min=TABLE_COUNT_MIN,
                 table_max=TABLE_COUNT_MAX,
             )
-        fname = shell_sql_filename(archetypes=arches)
-        path = _SQL_DIR / fname
-        if not path.is_file():
-            path = _sql_template_path(domain, archetype)
-        text = path.read_text(encoding="utf-8")
+        else:
+            fname = shell_sql_filename(archetypes=arches)
+            path = _SQL_DIR / fname
+            if not path.is_file():
+                path = _sql_template_path(domain, archetype)
+            text = path.read_text(encoding="utf-8")
     else:
         text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
+    from app.bake.sql_fragments import ensure_shared_sql_columns
+
+    text = ensure_shared_sql_columns(text)
     return (
         text.replace("${DB_NAME}", db_name)
         .replace("${DOMAIN}", domain)

@@ -34,6 +34,7 @@ public final class TicketStore {
     }
 
     private static String TICKET = "borrow";
+    private static String PROGRESS = "";
     private static Mode MODE = Mode.ARCHIVE;
     private static boolean enabled = false;
     private static boolean useQuota = true;
@@ -100,7 +101,15 @@ public final class TicketStore {
         useQuota = false;
         useDeadline = false;
         enabled = true;
+        // 默认进度表：repair → repair_progress；ticket → ticket_progress
+        if ("repair".equalsIgnoreCase(TICKET)) PROGRESS = "repair_progress";
+        else if ("ticket".equalsIgnoreCase(TICKET)) PROGRESS = "ticket_progress";
+        else PROGRESS = "";
         ensureL1Columns();
+    }
+
+    public static void configureProgress(String progressTable) {
+        PROGRESS = progressTable == null ? "" : progressTable.trim();
     }
 
     public static void configureL1(boolean twoLevel, boolean attachRequired, boolean ratingEnabled) {
@@ -350,7 +359,9 @@ public final class TicketStore {
             return ps;
         }, kh);
         Number key = kh.getKey();
-        return get(key == null ? 0L : key.longValue());
+        long id = key == null ? 0L : key.longValue();
+        appendProgress(id, "pending", username, "用户提交");
+        return get(id);
     }
 
     private static LocalDateTime[] resolvePeriod(String periodStart, String periodEnd) {
@@ -507,12 +518,106 @@ public final class TicketStore {
             }, kh);
         }
         Number key = kh.getKey();
-        return get(key == null ? 0L : key.longValue());
+        long id = key == null ? 0L : key.longValue();
+        if (hasColumn("priority") || hasColumn("contact_phone")) {
+            // 可选：从 remark 前缀解析不强制；预留列已 ensure
+        }
+        appendProgress(id, "pending", username, "用户提交");
+        return get(id);
     }
 
     /** 兼容旧调用：仅标题/地点/说明 */
     public static Map<String, Object> applyStandalone(String username, String title, String location, String remark) {
         return applyStandalone(username, title, location, remark, null, null, null);
+    }
+
+    public static List<Map<String, Object>> listProgress(long ticketId) {
+        if (PROGRESS == null || PROGRESS.isBlank() || !progressTableExists()) return List.of();
+        return db().query(
+                "SELECT * FROM " + PROGRESS + " WHERE ticket_id=? ORDER BY id",
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("ticketId", rs.getLong("ticket_id"));
+                    row.put("status", rs.getString("status"));
+                    row.put("operator", rs.getString("operator"));
+                    row.put("remark", rs.getString("remark"));
+                    row.put("createdAt", fmt(rs.getTimestamp("created_at")));
+                    return row;
+                },
+                ticketId);
+    }
+
+    /** 认领/领用：登记领取 */
+    public static Map<String, Object> markPickup(long ticketId, String place, Integer actualQty, String operator) {
+        Map<String, Object> m = load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st) && !"returned".equals(st)) {
+            throw new IllegalStateException("仅已通过/完结单据可登记领取");
+        }
+        String loc = place == null ? "" : place.trim();
+        if (loc.isBlank()) loc = configValue("pickup_place");
+        if (hasColumn("pickup_at")) {
+            if (hasColumn("actual_qty") && actualQty != null && actualQty > 0) {
+                db().update(
+                        "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=?, actual_qty=? WHERE id=?",
+                        loc, actualQty, ticketId);
+            } else if (hasColumn("pickup_place")) {
+                db().update(
+                        "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=? WHERE id=?",
+                        loc, ticketId);
+            } else {
+                db().update("UPDATE " + TICKET + " SET pickup_at=NOW() WHERE id=?", ticketId);
+            }
+        }
+        appendProgress(ticketId, "pickup", operator, "领取登记：" + loc);
+        return get(ticketId);
+    }
+
+    public static Map<String, Object> markFinePaid(long ticketId, String operator) {
+        if (!hasColumn("fine_status")) throw new IllegalStateException("未启用罚款状态");
+        Map<String, Object> m = load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        db().update("UPDATE " + TICKET + " SET fine_status='paid' WHERE id=?", ticketId);
+        appendProgress(ticketId, "fine_paid", operator, "罚款已缴");
+        return get(ticketId);
+    }
+
+    private static void appendProgress(long ticketId, String status, String operator, String remark) {
+        if (ticketId <= 0 || PROGRESS == null || PROGRESS.isBlank() || !progressTableExists()) return;
+        try {
+            db().update(
+                    "INSERT INTO " + PROGRESS + " (ticket_id,status,operator,remark,created_at) VALUES (?,?,?,?,?)",
+                    ticketId,
+                    status == null ? "" : status,
+                    operator == null ? "" : operator,
+                    remark == null ? "" : remark,
+                    Timestamp.valueOf(LocalDateTime.now()));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean progressTableExists() {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",
+                    Integer.class, PROGRESS);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String configValue(String key) {
+        try {
+            List<String> rows = db().query(
+                    "SELECT cfg_value FROM sys_config WHERE cfg_key=? LIMIT 1",
+                    (rs, i) -> rs.getString(1), key);
+            return rows.isEmpty() || rows.get(0) == null ? "" : rows.get(0);
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private static String normalizeAttach(String attachUrl) {
@@ -693,6 +798,7 @@ public final class TicketStore {
                         note, ticketId);
             }
             notifyTicketResult(m, false, note);
+            appendProgress(ticketId, "rejected", op, note);
             return get(ticketId);
         }
 
@@ -715,6 +821,7 @@ public final class TicketStore {
                 }
             } catch (Exception ignored) {
             }
+            appendProgress(ticketId, "pending_final", op, note.isBlank() ? "初审通过" : note);
             return get(ticketId);
         }
 
@@ -760,6 +867,7 @@ public final class TicketStore {
                     note, ticketId);
         }
         notifyTicketResult(m, true, note);
+        appendProgress(ticketId, "approved", op, note.isBlank() ? "审核通过" : note);
         return get(ticketId);
     }
 
@@ -884,6 +992,7 @@ public final class TicketStore {
                     "UPDATE " + TICKET + " SET status='returned', return_at=NOW() WHERE id=?",
                     ticketId);
         }
+        appendProgress(ticketId, "returned", actorUid, "已完结");
         return get(ticketId);
     }
 
@@ -1018,6 +1127,8 @@ public final class TicketStore {
             m.put("location", safeStr(rs, "location"));
             m.put("typeId", safeLong(rs, "type_id"));
             m.put("roomId", safeLong(rs, "room_id"));
+            m.put("priority", safeStr(rs, "priority"));
+            m.put("contactPhone", safeStr(rs, "contact_phone"));
             long typeId = safeLong(rs, "type_id");
             m.put("typeName", typeId > 0 ? TicketLookupStore.typeName(typeId) : "");
             m.put("itemTitle", safeStr(rs, "title"));
@@ -1034,8 +1145,18 @@ public final class TicketStore {
             m.put("itemId", bookId);
             m.put("dueAt", fmt(safeTs(rs, "due_at")));
             m.put("fineYuan", safeDouble(rs, "fine_yuan"));
+            m.put("fineStatus", safeStr(rs, "fine_status"));
             m.put("remindedAt", fmt(safeTs(rs, "reminded_at")));
             m.put("remindMsg", safeStr(rs, "remind_msg"));
+            m.put("pickupAt", fmt(safeTs(rs, "pickup_at")));
+            m.put("pickupPlace", safeStr(rs, "pickup_place"));
+            m.put("contactChannel", safeStr(rs, "contact_channel"));
+            m.put("nextFollowAt", fmt(safeTs(rs, "next_follow_at")));
+            try {
+                int aq = rs.getInt("actual_qty");
+                if (!rs.wasNull()) m.put("actualQty", aq);
+            } catch (Exception ignored) {
+            }
             int qty = 1;
             try {
                 int q = rs.getInt("qty");
@@ -1114,8 +1235,38 @@ public final class TicketStore {
         ensureColumn("rating", "INT NULL");
         ensureColumn("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''");
         ensureColumn("rated_at", "DATETIME NULL");
+        ensureColumn("priority", "VARCHAR(16) DEFAULT '普通'");
+        ensureColumn("contact_phone", "VARCHAR(20) DEFAULT ''");
+        ensureColumn("fine_status", "VARCHAR(16) DEFAULT 'none'");
+        ensureColumn("pickup_at", "DATETIME NULL");
+        ensureColumn("pickup_place", "VARCHAR(128) DEFAULT ''");
+        ensureColumn("actual_qty", "INT NULL");
+        ensureColumn("contact_channel", "VARCHAR(32) DEFAULT ''");
+        ensureColumn("next_follow_at", "DATETIME NULL");
         if (allowCheckin) {
             ensureColumn("checked_in_at", "DATETIME NULL");
+        }
+    }
+
+    /** CRM 等：申请后补写可选列 */
+    public static void patchTicketExtras(long ticketId, Map<String, Object> body) {
+        if (ticketId <= 0 || body == null || body.isEmpty()) return;
+        if (hasColumn("contact_channel") && body.containsKey("contactChannel")) {
+            String ch = str(body.get("contactChannel")).trim();
+            if (ch.length() > 32) ch = ch.substring(0, 32);
+            db().update("UPDATE " + TICKET + " SET contact_channel=? WHERE id=?", ch, ticketId);
+        }
+        if (hasColumn("next_follow_at") && body.containsKey("nextFollowAt")) {
+            Timestamp ts = null;
+            Object raw = body.get("nextFollowAt");
+            if (raw != null && !String.valueOf(raw).isBlank()) {
+                try {
+                    ts = Timestamp.valueOf(parseDateTimeFlexible(String.valueOf(raw).trim(), false));
+                } catch (Exception ignored) {
+                    ts = null;
+                }
+            }
+            db().update("UPDATE " + TICKET + " SET next_follow_at=? WHERE id=?", ts, ticketId);
         }
     }
 

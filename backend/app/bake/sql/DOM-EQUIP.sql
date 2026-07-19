@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS equip (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  requires_training TINYINT DEFAULT 0,
+  owner_name VARCHAR(64) DEFAULT '',
   deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS loan (
   return_at DATETIME NULL,
   qty INT NOT NULL DEFAULT 1,
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  fine_status VARCHAR(16) DEFAULT 'none',
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(255)

@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS media (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  duration_sec INT DEFAULT 0,
+  release_year INT DEFAULT 0,
+  region VARCHAR(32) DEFAULT '',
   deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

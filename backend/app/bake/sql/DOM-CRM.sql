@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS customer (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  stage VARCHAR(32) DEFAULT '线索',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -49,7 +50,9 @@ CREATE TABLE IF NOT EXISTS follow_up (
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(512)
+  remark VARCHAR(512),
+  contact_channel VARCHAR(32) DEFAULT '',
+  next_follow_at DATETIME NULL
 );
 
 

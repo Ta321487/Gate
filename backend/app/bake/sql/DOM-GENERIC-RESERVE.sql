@@ -49,6 +49,17 @@ CREATE TABLE IF NOT EXISTS reservation (
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'confirmed',
   remark VARCHAR(255) DEFAULT '',
+  plate_no VARCHAR(16) DEFAULT '',
+  patient_name VARCHAR(32) DEFAULT '',
+  visit_type VARCHAR(16) DEFAULT '',
+  symptom_note VARCHAR(255) DEFAULT '',
+  subject VARCHAR(128) DEFAULT '',
+  party_size INT DEFAULT 0,
+  guest_name VARCHAR(32) DEFAULT '',
+  guest_count INT DEFAULT 0,
+  preferred_stylist VARCHAR(32) DEFAULT '',
+  queue_no INT DEFAULT 0,
+  entry_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -21,6 +21,18 @@
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
       <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
+      <el-table-column v-if="showFine" label="罚款" width="100">
+        <template #default="{ row }">
+          <span v-if="row.fineYuan > 0">¥{{ row.fineYuan }} · {{ row.fineStatus || '—' }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="showPickup" label="领取" width="140">
+        <template #default="{ row }">
+          <span v-if="row.pickupAt">{{ row.pickupPlace || '已领' }} · {{ row.pickupAt }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="startAt" label="开始" width="160" />
       <el-table-column prop="endAt" label="结束" width="160" />
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
@@ -32,8 +44,21 @@
       <el-table-column v-if="allowRating" label="评分" width="90">
         <template #default="{ row }">{{ row.rating ? `${row.rating} 分` : '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
+          <el-button link type="info" @click="openProgress(row)">进度</el-button>
+          <el-button
+            v-if="canPickup(row)"
+            link
+            type="success"
+            @click="doPickup(row)"
+          >领取登记</el-button>
+          <el-button
+            v-if="canFinePaid(row)"
+            link
+            type="warning"
+            @click="doFinePaid(row)"
+          >罚款已缴</el-button>
           <el-button
             v-if="row.status === 'approved' || row.status === 'overdue'"
             link
@@ -53,6 +78,8 @@
         @current-change="load"
       />
     </div>
+
+    <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
   </div>
 </template>
 
@@ -60,11 +87,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
+import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
+import { getDomain, getSchema, ticketCopy } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const ticket = ticketCopy()
+const domain = computed(() => getDomain())
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
@@ -73,10 +102,24 @@ const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
+const showPickup = computed(() => ['DOM-LOST', 'DOM-ASSET'].includes(domain.value))
+const showFine = computed(() => ['DOM-LIBRARY', 'DOM-EQUIP'].includes(domain.value))
 
 function remarkText(v) {
   if (!v) return '—'
   return plainFromHtml(String(v)) || '—'
+}
+
+function canPickup(row) {
+  if (!showPickup.value || !row) return false
+  if (row.pickupAt) return false
+  return row.status === 'approved' || row.status === 'returned'
+}
+
+function canFinePaid(row) {
+  if (!showFine.value || !row) return false
+  if (!(Number(row.fineYuan) > 0)) return false
+  return row.fineStatus !== 'paid'
 }
 
 const list = ref([])
@@ -84,6 +127,8 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 const status = ref(null)
+const progressVisible = ref(false)
+const progressId = ref(null)
 
 async function load() {
   const res = await http.get('/api/tickets', {
@@ -97,6 +142,42 @@ async function finish(row) {
   await ElMessageBox.confirm(`确认标记「${row.title}」为已完成？`, '完成')
   await http.post(`/api/tickets/${row.id}/complete`)
   ElMessage.success('已完成')
+  load()
+}
+
+function openProgress(row) {
+  progressId.value = row.id
+  progressVisible.value = true
+}
+
+async function doPickup(row) {
+  const { value } = await ElMessageBox.prompt('领取地点（可留空用系统默认）', '领取登记', {
+    confirmButtonText: '登记',
+    cancelButtonText: '取消',
+    inputPlaceholder: '如 行政楼一楼服务台',
+    inputValue: row.pickupPlace || '',
+  }).catch(() => ({ value: null }))
+  if (value === null) return
+  const body = { pickupPlace: String(value || '').trim() }
+  if (allowQty.value) {
+    const { value: qty } = await ElMessageBox.prompt('实发数量', '领取登记', {
+      confirmButtonText: '确定',
+      inputValue: String(row.qty || 1),
+      inputPattern: /^[1-9]\d*$/,
+      inputErrorMessage: '请输入正整数',
+    }).catch(() => ({ value: null }))
+    if (qty === null) return
+    body.actualQty = Number(qty)
+  }
+  await http.post(`/api/tickets/${row.id}/pickup`, body)
+  ElMessage.success('已登记领取')
+  load()
+}
+
+async function doFinePaid(row) {
+  await ElMessageBox.confirm(`确认「${row.title || row.id}」罚款已缴？`, '罚款已缴')
+  await http.post(`/api/tickets/${row.id}/fine-paid`)
+  ElMessage.success('已标记罚款已缴')
   load()
 }
 

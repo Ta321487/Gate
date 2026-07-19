@@ -22,8 +22,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" @click="openProgress(row)">进度</el-button>
           <el-button
             link
             type="success"
@@ -90,6 +91,12 @@
         >确定</el-button>
       </template>
     </el-dialog>
+
+    <TicketProgressDialog
+      v-model="progressVisible"
+      :ticket-id="progressId"
+      empty-text="暂无进度记录（报修类域会写入进度表）。"
+    />
   </div>
 </template>
 
@@ -98,6 +105,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
+import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
 import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
@@ -130,6 +138,9 @@ const audit = reactive({
   remark: '',
   row: null,
 })
+
+const progressVisible = ref(false)
+const progressId = ref(null)
 
 function statusText(s) {
   return states.value[s] || ({ pending: '待初审', pending_final: '待终审' }[s]) || s
@@ -191,6 +202,11 @@ async function submitAudit() {
   } finally {
     audit.loading = false
   }
+}
+
+function openProgress(row) {
+  progressId.value = row.id
+  progressVisible.value = true
 }
 
 onMounted(load)
