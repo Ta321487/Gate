@@ -86,6 +86,7 @@
 
 未命中具体 `DOM-*` 时 **禁止**误落 LIBRARY：`score_catalog(..., fallback="DOM-GENERIC")`。  
 匹配原则：**行为词桶（ARCH）有上限**，不堆行业百科；具体 DOM 若盖不住原型能力 → 降 `DOM-GENERIC`（`reconcile_match`）。  
+上传开题时对**全文**匹配，并优先加权「主要功能 / 研究内容」段（`proposal_focus_for_match`）：开题写到的行为应对齐可交付壳；小程序/人脸等 L3 信号 → `degraded`（主路径仍可做）。  
 GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 | ARCH | 能力 | bake SQL |

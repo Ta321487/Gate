@@ -162,12 +162,34 @@ def reconcile_match(archetype: str, domain: str) -> tuple[str, str, list[str]]:
     return arch, dom, notes
 
 
+# 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
+_FOCUS_SECTION = re.compile(
+    r"(?:^|\n)\s*[（(]?\d*[)）.、]?\s*"
+    r"(?:主要功能|研究内容|功能模块|功能需求|拟实现(?:功能)?|核心功能|系统功能)"
+    r"[^\n]{0,40}\n([\s\S]{0,3000})",
+    re.IGNORECASE,
+)
+
+
+def proposal_focus_for_match(text: str) -> str:
+    """抽取开题功能/研究内容段并加权；无则退回全文（上传链路本就喂全文）。"""
+    raw = text or ""
+    blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
+    if not blocks:
+        return raw
+    head = "\n".join(ln for ln in raw.splitlines()[:8] if ln.strip())
+    focus = "\n".join(blocks)
+    # 功能段计两遍，压过背景综述里顺带出现的词
+    return f"{head}\n{focus}\n{focus}"
+
+
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
-    arch, arch_conf, arch_hits = score_catalog(text, ARCHETYPES, fallback="ARCH-CRUD")
-    dom, dom_conf, dom_hits = score_catalog(text, DOMAINS, fallback="DOM-GENERIC")
+    # 选型看「要做什么」；text_excerpt 仍留全文供 accept / 展示
+    scored = proposal_focus_for_match(text)
+    arch, arch_conf, arch_hits = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
+    dom, dom_conf, dom_hits = score_catalog(scored, DOMAINS, fallback="DOM-GENERIC")
     arch, dom, recon_notes = reconcile_match(arch, dom)
-    # 未命中具体行业域时，保留 ARCH-* 命中（预约/订单/审核），供 GENERIC 绑壳
     confidence = round((arch_conf + dom_conf) / 2, 2)
     hits = list(dict.fromkeys(arch_hits + dom_hits + recon_notes))
     return MatchResult(
