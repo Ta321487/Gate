@@ -586,7 +586,7 @@ DOMAINS = {
     "DOM-FORUM": {
         "label": "论坛",
         "keywords": ["论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼"],
-        "entities": ["Post", "Category", "Reply", "Notice"],
+        "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
         "roles": ["user", "admin"],
         "flows": ["浏览主帖 → 回复 → 版主审核展示"],
         "features": [
@@ -600,6 +600,7 @@ DOMAINS = {
             {"name": "回复记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "猜你喜欢", "status": "module"},
+            {"name": "标签与附件（库表/ER）", "status": "module"},
             {"name": "实时私信", "status": "out_of_mvp"},
             {"name": "用户自由开新主帖无审核", "status": "out_of_mvp"},
             {"name": "无限深度树形嵌套引擎", "status": "out_of_mvp"},

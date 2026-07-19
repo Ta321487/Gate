@@ -99,7 +99,9 @@
 | 概念 | 运行时映射 | 说明 |
 |------|------------|------|
 | 板块 / 分类 | `category` | 总管主数据 |
+| 版主任职（FORUM） | `board_moderator` | 子管挂板块；种子/ER 用，非厚 Store |
 | 主帖 / 文章 | archive 主表（`post` / `article`） | 总管 CRUD；`isbn`=摘要或原文外链 |
+| 标签 / 附件（FORUM） | `tag` + `post_tag` + `post_attach` / `reply_attach` | 补齐库表与 ER；运行时仍以 archive+reply 为主路径 |
 | **回复 / 楼层（FORUM）** | `ticket_flow`（`reply`） | 挂主帖；`remark`=回复正文；多条=多楼；无 deadline |
 | 收藏 / 订阅（BLOG） | `ticket_flow`（`favorite`） | 读者收藏博文 → 编辑确认 |
 | 站内公告 | `content` | 与帖文分离，勿混用 |
@@ -120,7 +122,9 @@
 - 常量：`backend/app/bake/engine.py` → `TABLE_COUNT_MIN/MAX`
 - DDL/种子模板：`backend/app/bake/sql/<DOMAIN>.sql`（`domain_sql` 加载；缺省 `DOM-GENERIC.sql`）
 - bake 写 `schema.sql` 前 `assert_table_budget`；门禁 `p3t` 不过则禁 ZIP
-- 图书 8 表；报修薄壳（宿舍/物业/IT）8 张（楼栋/房间/类型/单据/进度/附件 + 用户/公告）
+- **现状样板**：GENERIC 6 · 媒资/设备/博客 7 · 图书/报修壳 8 · **论坛 12（顶格参考）**
+- 论坛 12 表：`sys_user` / `category` / `board_moderator` / `post` / `post_attach` / `tag` / `post_tag` / `reply` / `reply_log` / `reply_attach` / `sys_notice` / `sys_config`
+- 报修薄壳 8 张：楼栋/房间/类型/单据/进度/附件 + 用户/公告
 
 ## 学生端持久化（已完成）
 
