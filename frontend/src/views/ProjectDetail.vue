@@ -310,92 +310,112 @@
 
       <!-- Artifacts -->
       <n-tab-pane name="artifacts" tab="产物 / 数据库">
-        <div class="grid-2">
-          <div class="panel">
-            <div class="panel-hd"><h3>产物</h3></div>
-            <div class="panel-bd stack">
-              <div class="file-row" style="margin:0">
-                <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
-                <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
-                  {{ canDownload ? '下载' : '锁定' }}
-                </n-button>
+        <n-collapse
+          class="artifacts-collapse"
+          display-directive="show"
+          :default-expanded-names="['pack', 'db']"
+        >
+          <n-collapse-item title="产物与库名" name="pack">
+            <div class="grid-2 artifacts-pack">
+              <div class="stack">
+                <div class="file-row" style="margin:0">
+                  <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
+                  <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+                    {{ canDownload ? '下载' : '锁定' }}
+                  </n-button>
+                </div>
+                <div class="file-row" style="margin:0">
+                  <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
+                  <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
+                </div>
+                <div class="file-row" style="margin:0">
+                  <span><strong>spec.json</strong></span>
+                  <n-button text size="small" @click="showSpec = true">查看</n-button>
+                </div>
               </div>
-              <div class="file-row" style="margin:0">
-                <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
-                <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
-              </div>
-              <div class="file-row" style="margin:0">
-                <span><strong>spec.json</strong></span>
-                <n-button text size="small" @click="showSpec = true">查看</n-button>
-              </div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-hd">
-              <h3>数据库</h3>
-              <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'">{{ schema ? '已解析' : (p.workspace_path ? '无 SQL' : '未生成') }}</span>
-            </div>
-            <div class="panel-bd stack">
-              <div class="small">
-                <span class="muted">库名</span> · <span class="mono">{{ p.db_name }}</span>
-                <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
-              </div>
-              <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
-              <template v-if="schema?.tables?.length">
-                <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
+              <div class="stack">
+                <div class="small">
+                  <span class="muted">库名</span> · <span class="mono">{{ p.db_name || '—' }}</span>
+                  <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
+                </div>
+                <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
+                <div v-if="schema?.tables?.length" class="small">
+                  当前 <strong>{{ schema.tables.length }}</strong> 张
                   <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
                     （{{ schema.tables.length >= 6 && schema.tables.length <= 13 ? '符合' : '不符合' }} 6~13）
                   </span>
                 </div>
-                <div class="table-list">
-                  <div v-for="t in schema.tables" :key="t.name" class="table-card">
-                    <div class="table-card-hd">{{ t.name }}</div>
-                    <ul class="table-cols">
-                      <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
-                        <span class="col-name">{{ c.name }}</span>
-                        <span class="col-type muted">{{ c.type }}</span>
-                        <span v-if="c.pk" class="col-mark">PK</span>
-                        <span v-else-if="c.fk" class="col-mark">FK→{{ c.fk_table }}</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <div v-if="schema.relations?.length" class="rel-list">
-                  <div class="parse-sec-hd">推断联系</div>
-                  <div v-for="(r, i) in schema.relations" :key="i" class="rel-row">
-                    <span class="mono">{{ r.left }}</span>
-                    <span class="muted">{{ r.card_left }}</span>
-                    —〈{{ r.name }}〉—
-                    <span class="muted">{{ r.card_right }}</span>
-                    <span class="mono">{{ r.right }}</span>
-                    <span class="small muted">via {{ r.via }}</span>
-                  </div>
-                </div>
-                <div class="row">
-                  <n-button size="small" @click="openEr">查看 E-R 图</n-button>
-                  <n-button size="small" secondary @click="downloadEr">下载 SVG</n-button>
-                </div>
-              </template>
-              <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
+                <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div class="panel mt-16">
-          <div class="panel-hd">
-            <h3>质量门禁 · 交付 DoD</h3>
-            <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'">{{ canDownload ? '可交付' : '禁止交付' }}</span>
-          </div>
-          <div class="panel-bd">
+          </n-collapse-item>
+
+          <n-collapse-item v-if="schema?.tables?.length" name="db">
+            <template #header>
+              <span>数据表 · {{ schema.tables.length }} 张</span>
+            </template>
+            <n-collapse accordion display-directive="show" class="table-collapse">
+              <n-collapse-item v-for="t in schema.tables" :key="t.name" :name="t.name">
+                <template #header>
+                  <div class="table-collapse-hd">
+                    <span class="mono">{{ t.name }}</span>
+                    <span class="table-zh">{{ t.label || t.name }}</span>
+                    <span class="small muted">{{ t.columns?.length || 0 }} 列</span>
+                    <CopyIconButton :text="tableCopyText(t)" tip="复制本表（含中文列名）" />
+                  </div>
+                </template>
+                <ul class="table-cols">
+                  <li class="table-cols-hd">
+                    <span>列名</span>
+                    <span>中文</span>
+                    <span>类型</span>
+                    <span>约束</span>
+                  </li>
+                  <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
+                    <span class="col-name mono">{{ c.name }}</span>
+                    <span class="col-zh">{{ c.label || '—' }}</span>
+                    <span class="col-type muted">{{ c.type }}</span>
+                    <span class="col-mark">
+                      <template v-if="c.pk">PK</template>
+                      <template v-else-if="c.fk">FK→{{ c.fk_table }}</template>
+                      <template v-else>—</template>
+                    </span>
+                  </li>
+                </ul>
+              </n-collapse-item>
+            </n-collapse>
+            <div v-if="schema.relations?.length" class="rel-list mt-12">
+              <div class="parse-sec-hd">推断联系</div>
+              <div v-for="(r, i) in schema.relations" :key="i" class="rel-row">
+                <span class="mono">{{ r.left }}</span>
+                <span class="muted">{{ r.card_left }}</span>
+                —〈{{ r.label || r.name }}〉—
+                <span class="muted">{{ r.card_right }}</span>
+                <span class="mono">{{ r.right }}</span>
+                <span class="small muted">via {{ r.via }}</span>
+              </div>
+            </div>
+            <div class="row mt-12">
+              <n-button size="small" @click="openEr">查看 E-R 图</n-button>
+              <n-button size="small" secondary @click="downloadEr">下载 SVG</n-button>
+            </div>
+          </n-collapse-item>
+
+          <n-collapse-item name="gates">
+            <template #header>
+              <span>质量门禁 · 交付 DoD</span>
+              <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
+                {{ canDownload ? '可交付' : '禁止交付' }}
+              </span>
+            </template>
             <p class="small muted mb-12">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
             <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
-          </div>
-        </div>
-        <div class="panel mt-16">
-          <div class="panel-hd"><h3>开题对照清单</h3></div>
-          <div class="panel-bd" style="padding:0">
+          </n-collapse-item>
+
+          <n-collapse-item title="开题对照清单" name="checklist">
             <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
-          </div>
-        </div>
+          </n-collapse-item>
+        </n-collapse>
       </n-tab-pane>
     </n-tabs>
 
@@ -805,6 +825,19 @@ const checkRows = computed(() => (p.value?.checklist || []).map((x) => ({
   result: x.result || (x.status === 'out_of_mvp' ? 'out_of_mvp' : 'pending'),
   status: x.status,
 })))
+
+/** 单表复制：表名·中文 + 各列 英文·中文·类型·约束 */
+function tableCopyText(t) {
+  if (!t) return ''
+  const lines = [`${t.name} · ${t.label || t.name}`]
+  for (const c of t.columns || []) {
+    let mark = ''
+    if (c.pk) mark = ' · PK'
+    else if (c.fk) mark = ` · FK→${c.fk_table || ''}`
+    lines.push(`${c.name} · ${c.label || c.name} · ${c.type || ''}${mark}`)
+  }
+  return lines.join('\n')
+}
 
 function formatSize(n) {
   if (!n) return '—'
