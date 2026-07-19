@@ -187,6 +187,18 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("preferredGenre", "偏好曲风", on_register=True, field_type="select",
             options=["流行", "摇滚", "民谣", "电子", "古典", "不限"]),
     ],
+    "DOM-FORUM": [
+        _pf("memberNo", "用户号", on_register=True, max_length=32),
+        _pf("orgName", "学院/单位", on_register=True, max_length=64),
+        _pf("preferredGenre", "偏好板块", on_register=True, field_type="select",
+            options=["学习交流", "校园生活", "二手信息", "求助问答", "不限"]),
+    ],
+    "DOM-BLOG": [
+        _pf("memberNo", "读者号", on_register=True, max_length=32),
+        _pf("orgName", "学校/单位", on_register=True, max_length=64),
+        _pf("preferredGenre", "偏好栏目", on_register=True, field_type="select",
+            options=["技术", "随笔", "资讯", "教程", "不限"]),
+    ],
 }
 
 

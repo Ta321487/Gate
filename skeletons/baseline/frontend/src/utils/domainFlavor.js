@@ -311,6 +311,40 @@ const FLAVORS = {
       lead: '曲库信息加载中。',
     },
   },
+  'DOM-FORUM': {
+    motif: 'board',
+    notFound: {
+      title: '帖子已撤下',
+      lead: '该帖不存在或已被删除。',
+      hint: '回板块继续浏览其他话题。',
+    },
+    serverError: {
+      title: '论坛暂时拥挤',
+      lead: '社区服务暂时不可用。',
+      hint: '稍后再试，已发回复不会丢。',
+    },
+    loading: {
+      title: '刷新中…',
+      lead: '正在同步板块与楼层。',
+    },
+  },
+  'DOM-BLOG': {
+    motif: 'book',
+    notFound: {
+      title: '文章已下架',
+      lead: '找不到该博文或链接失效。',
+      hint: '回首页继续阅读其他文章。',
+    },
+    serverError: {
+      title: '站点维护中',
+      lead: '博客服务暂时异常。',
+      hint: '稍后再打开，收藏夹仍在。',
+    },
+    loading: {
+      title: '排版中…',
+      lead: '文章与封面加载中。',
+    },
+  },
   'DOM-GENERIC': {
     motif: 'grid',
     notFound: {

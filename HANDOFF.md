@@ -83,18 +83,33 @@
 |---------|------|------|
 | **DOM-GENERIC** | 对不上上面的「信息管理 / CRUD」题 | archive + content + org_users |
 
-### G. 内容 / 媒资（能力齐，可薄落地）
+### G. 内容 / 媒资 / 社区（能力齐，可薄落地）
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-MEDIA** | 影视、电影、电视剧、综艺、视频点播、在线视频、片库 | archive + ticket_flow + content + org_users |
 | **DOM-MUSIC** | 音乐、歌曲、歌单、在线音乐、音乐播放器、听歌 | 同上 |
+| **DOM-FORUM** | 论坛、BBS、贴吧、社区帖子、板块 | 同上 |
+| **DOM-BLOG** | 博客、个人博客、文章系统、资讯发布、CMS | 同上 |
 
-播放为外链 / HTML5（`isbn` 映射播放链接）；收藏走单据流。不接影院选座购票、直播、转码 CDN。
+**媒资（MEDIA/MUSIC）**：播放为外链 / HTML5（`isbn` 映射播放链接）；收藏走单据流。不接影院选座购票、直播、转码 CDN。
 
-轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC；**不是**协同过滤。
+**论坛 / 博客（FORUM/BLOG）** — 薄配置语义（复用 archive+ticket，**不是**厚 UGC 引擎）：
 
-**刻意不接（reject / out_of_mvp）**：人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。
+| 概念 | 运行时映射 | 说明 |
+|------|------------|------|
+| 板块 / 分类 | `category` | 总管主数据 |
+| 主帖 / 文章 | archive 主表（`post` / `article`） | 总管 CRUD；`isbn`=摘要或原文外链 |
+| **回复 / 楼层（FORUM）** | `ticket_flow`（`reply`） | 挂主帖；`remark`=回复正文；多条=多楼；无 deadline |
+| 收藏 / 订阅（BLOG） | `ticket_flow`（`favorite`） | 读者收藏博文 → 编辑确认 |
+| 站内公告 | `content` | 与帖文分离，勿混用 |
+| 猜你喜欢 | `recommend` | 分类偏好 + 热度 + 上新 |
+
+**楼中楼（FORUM，在范围内）**：同一主帖下多条回复即楼层；「回复某人」用 `remark` 带 `@昵称` 一层引用即可覆盖常见毕设。不接无限深度树形引擎 / 折叠引用链。
+
+**刻意不接（reject / out_of_mvp）**：实时私信、富文本协同编辑、用户自由开新主帖无审核（主帖仍总管维护）、人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。
+
+轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / FORUM / BLOG；**不是**协同过滤。
 
 **覆盖率怎么理解**：A+B+C+F+G +（补齐 order_lines / slot_reserve 后的 D+E）≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full。
 
@@ -123,7 +138,8 @@
 - [x] 薄领域可跑：**DOM-DORM / PROPERTY / IT**（共用 `gate_standalone_ticket` 门禁 + runtime + SQL）
 - [x] 组 A 组合壳：**DOM-EQUIP**（`gate_archive_ticket` + Archive API/FE + `DOM-EQUIP.sql`；与 LIBRARY 同能力，无厚包）
 - [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（`gate_archive_ticket(with_deadline=False)` + 片库/曲库 SQL/皮肤；收藏单据、播放外链）
-- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP 开启；基线 `PortalCarousel` + 门户壳强化
+- [x] 组 G：**DOM-FORUM / DOM-BLOG**（同壳；主帖/文章主数据；论坛回复单据 + 博客收藏单据；无播放字段；可选门户轮播）
+- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG 开启；基线 `PortalCarousel` + 门户壳强化
 - [ ] 组 C（ACTIVITY/LOST/COURSE）复用 archive+ticket 组合壳 + 可选门户轮播
 - [ ] 实现 `order_lines`、`slot_reserve` 后打开 D/E 组
 
