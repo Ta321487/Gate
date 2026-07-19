@@ -21,3 +21,4 @@ data/cache/*
 data/title_check.txt
 **/target/
 skeletons/**/node_modules/
+backend/scripts/
