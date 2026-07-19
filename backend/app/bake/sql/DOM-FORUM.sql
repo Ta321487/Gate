@@ -1,4 +1,4 @@
--- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+-- bake domain=DOM-FORUM · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}] · 顶格 12 表样板
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -17,12 +17,22 @@ CREATE TABLE IF NOT EXISTS sys_user (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 板块
 CREATE TABLE IF NOT EXISTS category (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- 列结构与 ArchiveStore 默认 book 表兼容（title/author/isbn/stock）；isbn=正文摘要
+-- 版主任职（子管可挂多板块）
+CREATE TABLE IF NOT EXISTS board_moderator (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  category_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_board_mod (category_id, username)
+);
+
+-- 主帖（ArchiveStore 兼容列：title/author/isbn/stock）；isbn=正文摘要
 CREATE TABLE IF NOT EXISTS post (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -35,7 +45,27 @@ CREATE TABLE IF NOT EXISTS post (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- book_id 列名兼容 TicketStore archive 模式（存 post.id）；remark=回复正文（可含 @昵称 一层引用）
+CREATE TABLE IF NOT EXISTS post_attach (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  post_id BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL,
+  file_name VARCHAR(128) DEFAULT '',
+  uploaded_by VARCHAR(64),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tag (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS post_tag (
+  post_id BIGINT NOT NULL,
+  tag_id BIGINT NOT NULL,
+  PRIMARY KEY (post_id, tag_id)
+);
+
+-- 回复楼层（TicketStore archive 模式；book_id=post.id；remark=回复正文，可含 @昵称）
 CREATE TABLE IF NOT EXISTS reply (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   book_id BIGINT NOT NULL,
@@ -52,6 +82,24 @@ CREATE TABLE IF NOT EXISTS reply (
   remark VARCHAR(512)
 );
 
+CREATE TABLE IF NOT EXISTS reply_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reply_id BIGINT NOT NULL,
+  action VARCHAR(32) NOT NULL,
+  operator VARCHAR(64),
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS reply_attach (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL,
+  file_name VARCHAR(128) DEFAULT '',
+  uploaded_by VARCHAR(64),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS sys_notice (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(128) NOT NULL,
@@ -60,15 +108,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   publisher_name VARCHAR(64),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS reply_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  reply_id BIGINT NOT NULL,
-  action VARCHAR(32) NOT NULL,
-  operator VARCHAR(64),
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS sys_config (
@@ -87,16 +126,25 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '学习交流'), (2, '校园生活'), (3, '二手信息');
+INSERT IGNORE INTO board_moderator (id, category_id, username) VALUES
+(1, 1, 'subadmin'), (2, 2, 'subadmin');
+INSERT IGNORE INTO tag (id, name) VALUES (1, '期末'), (2, '资料'), (3, '活动'), (4, '闲置');
 INSERT IGNORE INTO post (id, title, author, isbn, category_id, stock, status) VALUES
 (1, '期末复习资料汇总', '学长甲', '高等数学、数据结构复习提纲与答疑时间。', 1, 1, 'available'),
 (2, '实验室开放预约说明', '版主甲', '工作日晚间机房开放，请先跟帖再入场。', 1, 1, 'available'),
 (3, '周末校园徒步召集', '用户甲', '周六上午图书馆集合，路线约 5 公里。', 2, 1, 'available'),
 (4, '食堂新窗口试吃反馈', '美食观察', '三食堂二楼新增轻食窗口，欢迎跟帖补充评价。', 2, 1, 'available'),
 (5, '出闲置显示器一台', '用户甲', '24 寸 IPS，成色良好，面交优先。', 3, 1, 'available');
+INSERT IGNORE INTO post_tag (post_id, tag_id) VALUES (1, 1), (1, 2), (3, 3), (5, 4);
+INSERT IGNORE INTO post_attach (id, post_id, file_url, file_name, uploaded_by) VALUES
+(1, 1, '/uploads/demo/math-outline.pdf', '高数提纲.pdf', 'admin'),
+(2, 5, '/uploads/demo/monitor.jpg', '显示器实拍.jpg', 'user');
 INSERT IGNORE INTO reply (id, book_id, username, status, apply_at, approve_at, remark) VALUES
 (1, 1, 'user', 'approved', NOW(), NOW(), '求一份离散数学提纲，谢谢楼主！'),
-(2, 1, 'subadmin', 'approved', NOW(), NOW(), '@用户甲 离散提纲已上传到网盘，见一楼补充。'),
+(2, 1, 'subadmin', 'approved', NOW(), NOW(), '@用户甲 离散提纲已上传附件，见主帖。'),
 (3, 3, 'user', 'pending', NOW(), NULL, '我报名，带相机记录路线。');
+INSERT IGNORE INTO reply_attach (id, ticket_id, file_url, file_name, uploaded_by) VALUES
+(1, 2, '/uploads/demo/discrete-outline.pdf', '离散提纲.pdf', 'subadmin');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
 ('max_reply', '50', '每人每帖回复上限提示'),
 ('forum_hint', '主帖站长维护，回复可审核', '发帖方式说明');
