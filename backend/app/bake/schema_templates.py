@@ -960,6 +960,431 @@ def _generic_schema(title: str, domain: str) -> dict[str, Any]:
     }
 
 
+def _order_shell_schema(
+    title: str,
+    *,
+    domain: str,
+    user_role_id: str,
+    user_label: str,
+    admin_label: str,
+    subadmin_label: str,
+    archive_key: str,
+    archive_label: str,
+    archive_plural: str,
+    archive_fields: list[dict[str, Any]],
+    archive_menu_admin: str,
+    archive_menu_user: str,
+    users_menu: str,
+    cart_label: str,
+    my_orders_label: str,
+    orders_admin_label: str,
+    auth_eyebrow: str,
+    auth_lead: str,
+    auth_points: list[str],
+    register_hint: str,
+    notice_title: str,
+    notice_body: str,
+    notice_page_title: str,
+    order_states: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    app = product_name_from_title(title)
+    states = order_states or {
+        "pending": "待确认",
+        "confirmed": "已确认",
+        "shipped": "配送中",
+        "completed": "已完成",
+        "cancelled": "已取消",
+    }
+    return {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES[domain]),
+        "roles": {
+            "user": {"id": user_role_id, "label": user_label},
+            "admin": {"id": "admin", "label": admin_label},
+            "subadmin": {"id": "subadmin", "label": subadmin_label},
+        },
+        "entities": {
+            "archive": {
+                "key": archive_key,
+                "label": archive_label,
+                "labelPlural": archive_plural,
+                "fields": archive_fields,
+                "stockDisplay": "count",
+            },
+            "order": {
+                "key": "order",
+                "label": "订单",
+                "labelPlural": my_orders_label,
+                "states": states,
+            },
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": archive_menu_admin, "superOnly": True},
+                {"key": "category", "label": "分类管理", "superOnly": True},
+                {"key": "users", "label": users_menu, "superOnly": True},
+                {"key": "orders", "label": orders_admin_label},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": archive_menu_user},
+                {"key": "cart", "label": cart_label},
+                {"key": "my_orders", "label": my_orders_label},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": auth_eyebrow,
+            "authLead": auth_lead,
+            "authPoints": auth_points,
+            "registerRoleHint": register_hint,
+            "noticePageTitle": notice_page_title,
+            "noticePageLead": "通知与须知，点击条目阅读全文。",
+        },
+        "seeds": {"noticeTitle": notice_title, "noticeBody": notice_body},
+    }
+
+
+def _slot_shell_schema(
+    title: str,
+    *,
+    domain: str,
+    user_role_id: str,
+    user_label: str,
+    admin_label: str,
+    subadmin_label: str,
+    archive_key: str,
+    archive_label: str,
+    archive_plural: str,
+    archive_fields: list[dict[str, Any]],
+    archive_menu_admin: str,
+    archive_menu_user: str,
+    users_menu: str,
+    my_resv_label: str,
+    resv_admin_label: str,
+    auth_eyebrow: str,
+    auth_lead: str,
+    auth_points: list[str],
+    register_hint: str,
+    notice_title: str,
+    notice_body: str,
+    notice_page_title: str,
+    with_orders: bool = False,
+) -> dict[str, Any]:
+    app = product_name_from_title(title)
+    admin_menus = [
+        {"key": "dashboard", "label": "工作台"},
+        {"key": "archive", "label": archive_menu_admin, "superOnly": True},
+        {"key": "category", "label": "分类管理", "superOnly": True},
+        {"key": "users", "label": users_menu, "superOnly": True},
+        {"key": "reservations", "label": resv_admin_label},
+    ]
+    user_menus = [
+        {"key": "archive", "label": archive_menu_user},
+        {"key": "my_reservations", "label": my_resv_label},
+        {"key": "content", "label": "公告"},
+        {"key": "profile", "label": "个人资料"},
+    ]
+    entities: dict[str, Any] = {
+        "archive": {
+            "key": archive_key,
+            "label": archive_label,
+            "labelPlural": archive_plural,
+            "fields": archive_fields,
+            "stockDisplay": "available",
+        },
+        "reservation": {
+            "key": "reservation",
+            "label": "预约",
+            "labelPlural": my_resv_label,
+            "states": {
+                "pending": "待确认",
+                "confirmed": "已预约",
+                "cancelled": "已取消",
+            },
+        },
+    }
+    if with_orders:
+        admin_menus.append({"key": "orders", "label": "预订订单"})
+        user_menus.insert(2, {"key": "my_orders", "label": "我的订单"})
+        entities["order"] = {
+            "key": "order",
+            "label": "订单",
+            "labelPlural": "我的订单",
+            "states": {
+                "pending": "待确认",
+                "confirmed": "已确认",
+                "shipped": "履约中",
+                "completed": "已完成",
+                "cancelled": "已取消",
+            },
+        }
+    admin_menus.append({"key": "content", "label": "公告管理", "superOnly": True})
+    return {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES[domain]),
+        "roles": {
+            "user": {"id": user_role_id, "label": user_label},
+            "admin": {"id": "admin", "label": admin_label},
+            "subadmin": {"id": "subadmin", "label": subadmin_label},
+        },
+        "entities": entities,
+        "menus": {"admin": admin_menus, "user": user_menus},
+        "labels": {
+            "appName": app,
+            "authEyebrow": auth_eyebrow,
+            "authLead": auth_lead,
+            "authPoints": auth_points,
+            "registerRoleHint": register_hint,
+            "noticePageTitle": notice_page_title,
+            "noticePageLead": "通知与须知，点击条目阅读全文。",
+        },
+        "seeds": {"noticeTitle": notice_title, "noticeBody": notice_body},
+    }
+
+
+def _shop_schema(title: str) -> dict[str, Any]:
+    return _order_shell_schema(
+        title,
+        domain="DOM-SHOP",
+        user_role_id="user",
+        user_label="买家",
+        admin_label="商城主管（总管）",
+        subadmin_label="订单管理员",
+        archive_key="product",
+        archive_label="商品",
+        archive_plural="商品",
+        archive_fields=[
+            {"key": "title", "label": "商品名", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "string"},
+            {"key": "isbn", "label": "货号", "type": "string"},
+            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "stock", "label": "库存", "type": "number"},
+        ],
+        archive_menu_admin="商品管理",
+        archive_menu_user="商品浏览",
+        users_menu="用户管理",
+        cart_label="购物车",
+        my_orders_label="我的订单",
+        orders_admin_label="订单管理",
+        auth_eyebrow="校园商城",
+        auth_lead="验证码登录；浏览商品、加入购物车并提交多明细订单（演示无真支付）。",
+        auth_points=["验证码登录", "商品浏览", "购物车与订单"],
+        register_hint="注册后可购物下单",
+        notice_title="商城须知",
+        notice_body="演示环境无真支付；下单后由管理员确认发货。",
+        notice_page_title="商城公告",
+    )
+
+
+def _food_schema(title: str) -> dict[str, Any]:
+    return _order_shell_schema(
+        title,
+        domain="DOM-FOOD",
+        user_role_id="user",
+        user_label="用餐者",
+        admin_label="食堂主管（总管）",
+        subadmin_label="档口管理员",
+        archive_key="dish",
+        archive_label="菜品",
+        archive_plural="菜品",
+        archive_fields=[
+            {"key": "title", "label": "菜品名", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "string"},
+            {"key": "isbn", "label": "窗口", "type": "string"},
+            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "stock", "label": "可售份数", "type": "number"},
+        ],
+        archive_menu_admin="菜品管理",
+        archive_menu_user="点餐",
+        users_menu="用户管理",
+        cart_label="已选菜品",
+        my_orders_label="我的订单",
+        orders_admin_label="取餐订单",
+        auth_eyebrow="食堂点餐",
+        auth_lead="验证码登录；选菜加入清单并下单取餐（演示无真支付）。",
+        auth_points=["验证码登录", "菜品浏览", "下单取餐"],
+        register_hint="注册后可点餐",
+        notice_title="点餐须知",
+        notice_body="下单后到对应窗口取餐；演示无真支付。",
+        notice_page_title="食堂公告",
+        order_states={
+            "pending": "待出餐",
+            "confirmed": "制作中",
+            "shipped": "待取餐",
+            "completed": "已取餐",
+            "cancelled": "已取消",
+        },
+    )
+
+
+def _meeting_schema(title: str) -> dict[str, Any]:
+    return _slot_shell_schema(
+        title,
+        domain="DOM-MEETING",
+        user_role_id="user",
+        user_label="预约人",
+        admin_label="会务主管（总管）",
+        subadmin_label="会务管理员",
+        archive_key="room",
+        archive_label="会议室",
+        archive_plural="会议室",
+        archive_fields=[
+            {"key": "title", "label": "会议室", "type": "string"},
+            {"key": "author", "label": "费用", "type": "string"},
+            {"key": "isbn", "label": "位置/容量", "type": "string"},
+            {"key": "category", "label": "类型", "type": "string"},
+        ],
+        archive_menu_admin="会议室管理",
+        archive_menu_user="会议室",
+        users_menu="用户管理",
+        my_resv_label="我的预约",
+        resv_admin_label="预约记录",
+        auth_eyebrow="会议室预约",
+        auth_lead="验证码登录；选择会议室与时段，占坑预约（约满不可再约）。",
+        auth_points=["验证码登录", "会议室检索", "时段占坑预约"],
+        register_hint="注册后可预约会议室",
+        notice_title="预约须知",
+        notice_body="请按时使用并及时取消不用的预约以释放时段。",
+        notice_page_title="会务公告",
+    )
+
+
+def _hospital_schema(title: str) -> dict[str, Any]:
+    return _slot_shell_schema(
+        title,
+        domain="DOM-HOSPITAL",
+        user_role_id="patient",
+        user_label="患者",
+        admin_label="医务主管（总管）",
+        subadmin_label="挂号员",
+        archive_key="doctor",
+        archive_label="医生",
+        archive_plural="医生",
+        archive_fields=[
+            {"key": "title", "label": "医生", "type": "string"},
+            {"key": "author", "label": "挂号费(元)", "type": "string"},
+            {"key": "isbn", "label": "职称/说明", "type": "string"},
+            {"key": "category", "label": "科室", "type": "string"},
+        ],
+        archive_menu_admin="医生管理",
+        archive_menu_user="选医生",
+        users_menu="患者管理",
+        my_resv_label="我的挂号",
+        resv_admin_label="挂号记录",
+        auth_eyebrow="门诊挂号",
+        auth_lead="验证码登录；选择科室医生与号源时段挂号。",
+        auth_points=["验证码登录", "医生检索", "分时挂号"],
+        register_hint="注册后可以患者身份挂号",
+        notice_title="挂号须知",
+        notice_body="号源有限；请按时就诊，取消请提前操作。",
+        notice_page_title="医院公告",
+    )
+
+
+def _parking_schema(title: str) -> dict[str, Any]:
+    return _slot_shell_schema(
+        title,
+        domain="DOM-PARKING",
+        user_role_id="user",
+        user_label="车主",
+        admin_label="车场主管（总管）",
+        subadmin_label="车场管理员",
+        archive_key="space",
+        archive_label="车位",
+        archive_plural="车位",
+        archive_fields=[
+            {"key": "title", "label": "车位号", "type": "string"},
+            {"key": "author", "label": "费用(元)", "type": "string"},
+            {"key": "isbn", "label": "位置", "type": "string"},
+            {"key": "category", "label": "分区", "type": "string"},
+        ],
+        archive_menu_admin="车位管理",
+        archive_menu_user="选车位",
+        users_menu="用户管理",
+        my_resv_label="我的预约",
+        resv_admin_label="预约记录",
+        auth_eyebrow="车位预约",
+        auth_lead="验证码登录；选择车位与时段占坑预约。",
+        auth_points=["验证码登录", "车位检索", "时段预约"],
+        register_hint="注册后可预约车位",
+        notice_title="停车须知",
+        notice_body="请按时入场；取消预约将释放时段。",
+        notice_page_title="车场公告",
+    )
+
+
+def _salon_schema(title: str) -> dict[str, Any]:
+    return _slot_shell_schema(
+        title,
+        domain="DOM-SALON",
+        user_role_id="user",
+        user_label="顾客",
+        admin_label="门店主管（总管）",
+        subadmin_label="预约管理员",
+        archive_key="service",
+        archive_label="服务",
+        archive_plural="服务",
+        archive_fields=[
+            {"key": "title", "label": "服务项目", "type": "string"},
+            {"key": "author", "label": "价格(元)", "type": "string"},
+            {"key": "isbn", "label": "时长说明", "type": "string"},
+            {"key": "category", "label": "分类", "type": "string"},
+        ],
+        archive_menu_admin="服务管理",
+        archive_menu_user="选服务",
+        users_menu="顾客管理",
+        my_resv_label="我的预约",
+        resv_admin_label="预约记录",
+        auth_eyebrow="服务预约",
+        auth_lead="验证码登录；选择服务项目与时段预约到店。",
+        auth_points=["验证码登录", "服务浏览", "时段预约"],
+        register_hint="注册后可预约服务",
+        notice_title="预约须知",
+        notice_body="请准时到店；改约请先取消原时段。",
+        notice_page_title="门店公告",
+    )
+
+
+def _hotel_schema(title: str) -> dict[str, Any]:
+    return _slot_shell_schema(
+        title,
+        domain="DOM-HOTEL",
+        user_role_id="user",
+        user_label="住客",
+        admin_label="酒店主管（总管）",
+        subadmin_label="前台",
+        archive_key="room_type",
+        archive_label="房型",
+        archive_plural="房型",
+        archive_fields=[
+            {"key": "title", "label": "房型", "type": "string"},
+            {"key": "author", "label": "房价(元)", "type": "string"},
+            {"key": "isbn", "label": "说明", "type": "string"},
+            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "stock", "label": "可售间数", "type": "number"},
+        ],
+        archive_menu_admin="房型管理",
+        archive_menu_user="选房型",
+        users_menu="住客管理",
+        my_resv_label="我的预订",
+        resv_admin_label="预订记录",
+        auth_eyebrow="客房预订",
+        auth_lead="验证码登录；选择房型与入住时段预订，同步生成订单（无真支付）。",
+        auth_points=["验证码登录", "房型浏览", "分时预订与订单"],
+        register_hint="注册后可预订客房",
+        notice_title="入住须知",
+        notice_body="演示环境无真支付；预约成功即占坑并生成订单。",
+        notice_page_title="酒店公告",
+        with_orders=True,
+    )
+
+
 SCHEMA_BUILDERS = {
     "DOM-LIBRARY": _library_schema,
     "DOM-EQUIP": _equip_schema,
@@ -973,6 +1398,13 @@ SCHEMA_BUILDERS = {
     "DOM-DORM": _dorm_schema,
     "DOM-PROPERTY": _property_schema,
     "DOM-IT": _it_schema,
+    "DOM-SHOP": _shop_schema,
+    "DOM-FOOD": _food_schema,
+    "DOM-MEETING": _meeting_schema,
+    "DOM-HOSPITAL": _hospital_schema,
+    "DOM-PARKING": _parking_schema,
+    "DOM-SALON": _salon_schema,
+    "DOM-HOTEL": _hotel_schema,
 }
 
 

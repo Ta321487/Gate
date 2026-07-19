@@ -3,7 +3,7 @@
     <section class="hero">
       <h1>{{ plural }}检索</h1>
       <p>
-        按名称检索{{ playUrlField ? '、在线播放' : '' }}{{ bodyRich ? '、阅读正文' : '' }}，提交{{ verbs.apply || '申请' }}。
+        按名称检索{{ playUrlField ? '、在线播放' : '' }}{{ bodyRich ? '、阅读正文' : '' }}，{{ actionHint }}。
       </p>
       <div class="search">
         <el-input
@@ -21,9 +21,10 @@
     </section>
 
     <RecommendStrip
+      v-if="hasRecommend"
       ref="recRef"
-      :apply-label="verbs.apply || '申请'"
-      @apply="apply"
+      :apply-label="primaryActionLabel"
+      @apply="onPrimary"
     />
 
     <div class="grid">
@@ -56,9 +57,9 @@
             <el-button
               size="small"
               type="primary"
-              :disabled="stockDisplay === 'count' && !stockOk(row)"
-              @click="apply(row)"
-            >{{ verbs.apply || '申请' }}</el-button>
+              :disabled="stockDisplay === 'count' && !stockOk(row) && !isSlotMode"
+              @click="onPrimary(row)"
+            >{{ primaryActionLabel }}</el-button>
           </div>
         </div>
       </article>
@@ -85,9 +86,9 @@
         <div class="drawer-acts">
           <el-button
             type="primary"
-            :disabled="stockDisplay === 'count' && !stockOk(detail)"
-            @click="apply(detail)"
-          >{{ verbs.apply || '申请' }}</el-button>
+            :disabled="stockDisplay === 'count' && !stockOk(detail) && !isSlotMode"
+            @click="onPrimary(detail)"
+          >{{ primaryActionLabel }}</el-button>
         </div>
       </template>
     </el-drawer>
@@ -116,16 +117,19 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, ticketCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, ticketCopy } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 
+const router = useRouter()
 const archive = archiveCopy()
 const ticket = ticketCopy()
+const caps = computed(() => getSchema().capabilities || [])
 const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '业务对象')
 const fields = computed(() => archive.fields || [])
@@ -137,6 +141,19 @@ const bodyRich = computed(() => {
 })
 const richRemark = computed(() => !!ticket.richRemark)
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
+const hasRecommend = computed(() => caps.value.includes('recommend'))
+const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
+const isSlotMode = computed(() => caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
+const primaryActionLabel = computed(() => {
+  if (isOrderMode.value) return '加入购物车'
+  if (isSlotMode.value) return '选时段'
+  return verbs.value.apply || '申请'
+})
+const actionHint = computed(() => {
+  if (isOrderMode.value) return '加入购物车并下单'
+  if (isSlotMode.value) return '选择时段预约'
+  return `提交${verbs.value.apply || '申请'}`
+})
 
 function fieldLabel(key, fallback) {
   const f = fields.value.find((x) => x.key === key)
@@ -217,6 +234,19 @@ async function load() {
   })
   list.value = res.data.list
   total.value = res.data.total
+}
+
+async function onPrimary(row) {
+  if (isOrderMode.value) {
+    await http.post('/api/cart', { itemId: row.id, qty: 1 })
+    ElMessage.success('已加入购物车')
+    return
+  }
+  if (isSlotMode.value) {
+    router.push({ path: '/slots', query: { itemId: row.id, title: row.title || '' } })
+    return
+  }
+  await apply(row)
 }
 
 async function apply(row) {

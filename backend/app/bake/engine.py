@@ -200,6 +200,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if check_conflict is None:
         check_conflict = "time_conflict" in caps
     text = _set_key(text, "check-time-conflict", "true" if check_conflict else "false")
+    enable_ticket = runtime.get("enable_ticket")
+    if enable_ticket is None:
+        enable_ticket = "ticket_flow" in caps
+    text = _set_key(text, "enable-ticket", "true" if enable_ticket else "false")
     ph = spec.get("password_hash") or "none"
     text = _set_key(text, "password-hash", str(ph))
     for yml_key, runtime_key in (
@@ -211,10 +215,22 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         ("lookup-site-label", "lookup_site_label"),
         ("lookup-unit-label", "lookup_unit_label"),
         ("lookup-type-label", "lookup_type_label"),
+        ("order-cart-table", "order_cart_table"),
+        ("order-table", "order_table"),
+        ("order-line-table", "order_line_table"),
+        ("slot-table", "slot_table"),
+        ("reservation-table", "reservation_table"),
     ):
         val = runtime.get(runtime_key)
         if val:
             text = _set_key(text, yml_key, str(val))
+    if "order_lines" not in caps:
+        text = _set_key(text, "order-cart-table", '""')
+        text = _set_key(text, "order-table", '""')
+        text = _set_key(text, "order-line-table", '""')
+    if "slot_reserve" not in caps:
+        text = _set_key(text, "slot-table", '""')
+        text = _set_key(text, "reservation-table", '""')
     return text
 
 

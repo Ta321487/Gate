@@ -1,0 +1,92 @@
+<template>
+  <div>
+    <div class="toolbar">
+      <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
+        <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
+      </el-select>
+      <el-button type="primary" @click="load">查询</el-button>
+    </div>
+    <el-table :data="list" stripe>
+      <el-table-column prop="id" label="单号" width="80" />
+      <el-table-column prop="username" label="用户" width="120" />
+      <el-table-column prop="totalYuan" label="金额" width="100" />
+      <el-table-column prop="status" label="状态" width="110">
+        <template #default="{ row }">{{ states[row.status] || row.status }}</template>
+      </el-table-column>
+      <el-table-column label="明细" min-width="200">
+        <template #default="{ row }">
+          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；') }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdAt" label="下单时间" width="170" />
+      <el-table-column label="操作" width="220" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">确认</el-button>
+          <el-button
+            v-if="row.status === 'pending' || row.status === 'confirmed'"
+            link
+            type="primary"
+            @click="act(row, 'ship')"
+          >发货/出餐</el-button>
+          <el-button
+            v-if="['pending', 'confirmed', 'shipped'].includes(row.status)"
+            link
+            type="success"
+            @click="act(row, 'complete')"
+          >完成</el-button>
+          <el-button
+            v-if="row.status === 'pending' || row.status === 'confirmed'"
+            link
+            type="danger"
+            @click="act(row, 'cancel')"
+          >取消</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="pager">
+      <el-pagination
+        v-model:current-page="page"
+        v-model:page-size="size"
+        background
+        layout="total, prev, pager, next"
+        :total="total"
+        @current-change="load"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema.js'
+
+const states = computed(() => getSchema()?.entities?.order?.states || {})
+const list = ref([])
+const total = ref(0)
+const page = ref(1)
+const size = ref(10)
+const status = ref(null)
+
+async function load() {
+  const res = await http.get('/api/orders', {
+    params: { page: page.value, size: size.value, status: status.value || undefined },
+  })
+  list.value = res.data?.list || []
+  total.value = res.data?.total || 0
+}
+
+async function act(row, action) {
+  await http.post(`/api/orders/${row.id}/${action}`)
+  ElMessage.success('已更新')
+  load()
+}
+
+onMounted(load)
+</script>
+
+<style scoped>
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
+.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+</style>

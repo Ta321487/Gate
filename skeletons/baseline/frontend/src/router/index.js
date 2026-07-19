@@ -13,13 +13,19 @@ function hasCap(id) {
 }
 
 function useTicketShell() {
-  // 报修类：有 ticket_flow、无 archive → 基线单据壳（宿舍/物业/IT）
   return hasCap('ticket_flow') && !hasCap('archive')
 }
 
 function useArchiveTicketShell() {
-  // 借用类：archive + ticket_flow → 组合壳（设备等组 A）
   return hasCap('ticket_flow') && hasCap('archive')
+}
+
+function useOrderShell() {
+  return hasCap('order_lines') && hasCap('archive') && !hasCap('ticket_flow') && !hasCap('slot_reserve')
+}
+
+function useSlotShell() {
+  return hasCap('slot_reserve') && hasCap('archive') && !hasCap('ticket_flow')
 }
 
 const ticketRoutes = [
@@ -116,6 +122,102 @@ const archiveTicketRoutes = [
   },
 ]
 
+const orderRoutes = [
+  { path: '/login', component: Login },
+  { path: '/register', component: Register },
+  {
+    path: '/',
+    component: () => import('../layouts/PortalLayout.vue'),
+    children: [
+      { path: '', redirect: '/archive' },
+      { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
+      { path: 'cart', component: () => import('../views/user/Cart.vue') },
+      { path: 'orders', component: () => import('../views/user/MyOrders.vue') },
+      { path: 'notices', component: Notices },
+      { path: 'notices/:id', component: NoticeDetail },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (_to, _from, next) => {
+      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
+      else next()
+    },
+  },
+  {
+    path: '/admin',
+    component: () => import('../layouts/AdminLayout.vue'),
+    children: [
+      { path: '', redirect: '/admin/dashboard' },
+      { path: 'dashboard', component: () => import('../views/admin/TicketDashboard.vue') },
+      { path: 'archive', component: () => import('../views/admin/ArchiveAdmin.vue') },
+      { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
+      { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
+      { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'notices', component: NoticesAdmin },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (to, _from, next) => {
+      if (localStorage.getItem('role') !== 'admin') {
+        next('/archive')
+        return
+      }
+      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
+        next('/admin/dashboard')
+        return
+      }
+      next()
+    },
+  },
+]
+
+const slotRoutes = [
+  { path: '/login', component: Login },
+  { path: '/register', component: Register },
+  {
+    path: '/',
+    component: () => import('../layouts/PortalLayout.vue'),
+    children: [
+      { path: '', redirect: '/archive' },
+      { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
+      { path: 'slots', component: () => import('../views/user/SlotBook.vue') },
+      { path: 'reservations', component: () => import('../views/user/MyReservations.vue') },
+      { path: 'orders', component: () => import('../views/user/MyOrders.vue') },
+      { path: 'notices', component: Notices },
+      { path: 'notices/:id', component: NoticeDetail },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (_to, _from, next) => {
+      if (localStorage.getItem('role') === 'admin') next('/admin/dashboard')
+      else next()
+    },
+  },
+  {
+    path: '/admin',
+    component: () => import('../layouts/AdminLayout.vue'),
+    children: [
+      { path: '', redirect: '/admin/dashboard' },
+      { path: 'dashboard', component: () => import('../views/admin/TicketDashboard.vue') },
+      { path: 'archive', component: () => import('../views/admin/ArchiveAdmin.vue') },
+      { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
+      { path: 'reservations', component: () => import('../views/admin/ReservationsAdmin.vue') },
+      { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
+      { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'notices', component: NoticesAdmin },
+      { path: 'profile', component: Profile },
+    ],
+    beforeEnter: (to, _from, next) => {
+      if (localStorage.getItem('role') !== 'admin') {
+        next('/archive')
+        return
+      }
+      if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
+        next('/admin/dashboard')
+        return
+      }
+      next()
+    },
+  },
+]
+
 const baselineRoutes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
@@ -129,10 +231,11 @@ const baselineRoutes = [
 function pickRoutes() {
   if (useArchiveTicketShell()) return archiveTicketRoutes
   if (useTicketShell()) return ticketRoutes
+  if (useOrderShell()) return orderRoutes
+  if (useSlotShell()) return slotRoutes
   return baselineRoutes
 }
 
-/** 领域特化特殊页：文案随 domainFlavor，配色随 data-theme */
 const specialRoutes = [
   {
     path: '/error',

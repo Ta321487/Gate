@@ -226,6 +226,128 @@ _GATE_LIBRARY_FILES = [
 ]
 
 
+_GATE_ORDER_FILES = [
+    "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+    "backend/src/main/java/com/thesis/capability/OrderStore.java",
+    "backend/src/main/java/com/thesis/controller/ArchiveController.java",
+    "backend/src/main/java/com/thesis/controller/OrderController.java",
+    "backend/src/main/java/com/thesis/controller/TicketDashboardController.java",
+    "backend/src/main/java/com/thesis/controller/MessageController.java",
+    "backend/src/main/java/com/thesis/service/MessageStore.java",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/views/user/Cart.vue",
+    "frontend/src/views/user/MyOrders.vue",
+    "frontend/src/views/admin/ArchiveAdmin.vue",
+    "frontend/src/views/admin/OrdersAdmin.vue",
+    "frontend/src/views/admin/TicketDashboard.vue",
+    "frontend/src/components/MessageBell.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "sql/schema.sql",
+]
+
+_GATE_SLOT_FILES = [
+    "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+    "backend/src/main/java/com/thesis/capability/SlotStore.java",
+    "backend/src/main/java/com/thesis/controller/ArchiveController.java",
+    "backend/src/main/java/com/thesis/controller/SlotController.java",
+    "backend/src/main/java/com/thesis/controller/TicketDashboardController.java",
+    "backend/src/main/java/com/thesis/controller/MessageController.java",
+    "backend/src/main/java/com/thesis/service/MessageStore.java",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/views/user/SlotBook.vue",
+    "frontend/src/views/user/MyReservations.vue",
+    "frontend/src/views/admin/ArchiveAdmin.vue",
+    "frontend/src/views/admin/ReservationsAdmin.vue",
+    "frontend/src/views/admin/TicketDashboard.vue",
+    "frontend/src/components/MessageBell.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "sql/schema.sql",
+]
+
+
+def gate_order_shell(
+    *,
+    archive_feature: str,
+    cart_feature: str,
+    orders_feature: str,
+    users_feature: str = "用户管理",
+    dashboard_feature: str = "管理端工作台",
+) -> dict:
+    return {
+        "routes": [
+            {"seg": "archive", "from_feature": archive_feature},
+            {"seg": "cart", "from_feature": cart_feature},
+            {"seg": "orders", "from_feature": orders_feature},
+            {"seg": "admin/dashboard", "from_feature": dashboard_feature},
+            {"seg": "admin/archive", "from_feature": archive_feature},
+            {"seg": "admin/orders", "from_feature": orders_feature},
+            {"seg": "admin/users", "from_feature": users_feature},
+            {"seg": "profile", "from_baseline": "profile"},
+            {"seg": "register", "from_baseline": "register"},
+        ],
+        "files": list(_GATE_ORDER_FILES),
+        "flow_api": {
+            "place": {"file": "OrderController.java", "need": ["/api/orders", "placeOrder"]},
+            "cart": {"file": "OrderController.java", "need": ["/api/cart"]},
+        },
+        "admin_invariants": {
+            "require_super_auth": True,
+            "master_kind": "archive",
+            "master_menus": ["archive", "category"],
+            "super_menus": ["users", "content", "archive", "category"],
+        },
+    }
+
+
+def gate_slot_shell(
+    *,
+    archive_feature: str,
+    reserve_feature: str,
+    users_feature: str = "用户管理",
+    dashboard_feature: str = "管理端工作台",
+    with_orders: bool = False,
+) -> dict:
+    routes = [
+        {"seg": "archive", "from_feature": archive_feature},
+        {"seg": "slots", "from_feature": reserve_feature},
+        {"seg": "reservations", "from_feature": reserve_feature},
+        {"seg": "admin/dashboard", "from_feature": dashboard_feature},
+        {"seg": "admin/archive", "from_feature": archive_feature},
+        {"seg": "admin/reservations", "from_feature": reserve_feature},
+        {"seg": "admin/users", "from_feature": users_feature},
+        {"seg": "profile", "from_baseline": "profile"},
+        {"seg": "register", "from_baseline": "register"},
+    ]
+    files = list(_GATE_SLOT_FILES)
+    if with_orders:
+        routes.insert(3, {"seg": "orders", "from_feature": reserve_feature})
+        routes.insert(-2, {"seg": "admin/orders", "from_feature": reserve_feature})
+        files.extend([
+            "backend/src/main/java/com/thesis/capability/OrderStore.java",
+            "backend/src/main/java/com/thesis/controller/OrderController.java",
+            "frontend/src/views/user/MyOrders.vue",
+            "frontend/src/views/admin/OrdersAdmin.vue",
+        ])
+    return {
+        "routes": routes,
+        "files": files,
+        "flow_api": {
+            "reserve": {"file": "SlotController.java", "need": ["/reserve", "reserve"]},
+            "cancel": {"file": "SlotController.java", "need": ["/cancel", "cancel"]},
+        },
+        "admin_invariants": {
+            "require_super_auth": True,
+            "master_kind": "archive",
+            "master_menus": ["archive", "category"],
+            "super_menus": ["users", "content", "archive", "category"],
+        },
+    }
+
+
 def gate_library() -> dict:
     """图书领域门禁（bake / gate 共用，禁止在 gate 代码里再写死路径）。"""
     return {

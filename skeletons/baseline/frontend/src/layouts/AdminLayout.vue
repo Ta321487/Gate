@@ -58,6 +58,8 @@ const MENU_TO = {
   archive: '/admin/archive',
   category: '/admin/categories',
   deadline: '/admin/overdue',
+  orders: '/admin/orders',
+  reservations: '/admin/reservations',
 }
 
 const menuItems = computed(() => {

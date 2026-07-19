@@ -1,6 +1,8 @@
 package com.thesis.config;
 
 import com.thesis.capability.ArchiveStore;
+import com.thesis.capability.OrderStore;
+import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
@@ -19,6 +21,9 @@ public class DomainRuntimeBinder {
 
     @Value("${thesis.ticket-table:borrow}")
     private String ticketTable;
+
+    @Value("${thesis.enable-ticket:true}")
+    private boolean enableTicket;
 
     @Value("${thesis.archive-category-table:category}")
     private String archiveCategoryTable;
@@ -62,15 +67,42 @@ public class DomainRuntimeBinder {
     @Value("${thesis.check-time-conflict:false}")
     private boolean checkTimeConflict;
 
+    @Value("${thesis.order-cart-table:}")
+    private String orderCartTable;
+
+    @Value("${thesis.order-table:}")
+    private String orderTable;
+
+    @Value("${thesis.order-line-table:}")
+    private String orderLineTable;
+
+    @Value("${thesis.slot-table:}")
+    private String slotTable;
+
+    @Value("${thesis.reservation-table:}")
+    private String reservationTable;
+
     @PostConstruct
     public void bind() {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
-        if ("standalone".equalsIgnoreCase(ticketMode)) {
-            TicketStore.bindStandalone(ticketTable);
-        } else {
-            TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
+        if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
+            if ("standalone".equalsIgnoreCase(ticketMode)) {
+                TicketStore.bindStandalone(ticketTable);
+            } else {
+                TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
+            }
+            TicketStore.setUserRole(registerRole);
         }
-        TicketStore.setUserRole(registerRole);
+        if (orderCartTable != null && !orderCartTable.isBlank()) {
+            OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
+        } else {
+            OrderStore.unbind();
+        }
+        if (slotTable != null && !slotTable.isBlank()) {
+            SlotStore.bind(slotTable, reservationTable);
+        } else {
+            SlotStore.unbind();
+        }
         PasswordHashes.bind(passwordHash);
         TicketLookupStore.bind(
                 lookupSiteTable,

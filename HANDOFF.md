@@ -26,10 +26,10 @@
 | `quota` | ✅ | 库存/名额占用与归还 | 借阅、选课、设备… |
 | `deadline` | ✅ | 到期、逾期、催办、可选费用 | 借阅、租赁… |
 | `time_conflict` | ✅ | 起止时段相交检测 + 报名截止 | 选课、活动报名… |
-| `slot_reserve` | ❌ planned | 时段/资源预约 | 挂号、车位、会议室、美发 |
-| `order_lines` | ❌ planned | 多明细行订单（可不含真支付） | 商城、点餐、客房 |
+| `slot_reserve` | ✅ | 资源时段库存占坑与取消 | 挂号、车位、会议室、美发、客房 |
+| `order_lines` | ✅ | 购物车 + 多明细订单（无真支付） | 商城、点餐、客房 |
 
-未实现的能力 → 依赖它的领域 `accept=reject`，这是预期。
+依赖未实现能力 → `accept=reject`；上述两项已落地，D/E 可 full。
 
 ---
 
@@ -61,22 +61,22 @@
 | **DOM-LOST** | 失物招领 | archive + ticket_flow + content + org_users |
 | **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users |
 
-### D. 交易 / 点餐（缺 `order_lines` → 先 reject，能力补齐后再开）
+### D. 交易 / 点餐（`order_lines` 已开）
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-SHOP** | 商城、二手、购物车、订单 | archive + order_lines + quota + content + org_users |
 | **DOM-FOOD** | 食堂、点餐、外卖档口 | 同上 |
 
-### E. 预约流（缺 `slot_reserve` → 先 reject）
+### E. 预约流（`slot_reserve` 已开）
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-HOSPITAL** | 挂号、门诊预约 | archive + slot_reserve + content + org_users |
-| **DOM-PARKING** | 车位预约 | slot_reserve + ticket_flow + deadline + org_users |
-| **DOM-MEETING** | 会议室预约 | slot_reserve + ticket_flow + org_users |
-| **DOM-SALON** | 美发/美容/场地预约 | slot_reserve + archive + org_users |
-| **DOM-HOTEL** | 宾馆客房（可加 order_lines） | slot_reserve + order_lines + archive + org_users |
+| **DOM-PARKING** | 车位预约 | archive + slot_reserve + content + org_users |
+| **DOM-MEETING** | 会议室预约 | archive + slot_reserve + content + org_users |
+| **DOM-SALON** | 美发/美容/场地预约 | archive + slot_reserve + content + org_users |
+| **DOM-HOTEL** | 宾馆客房 | archive + slot_reserve + order_lines + content + org_users |
 
 ### F. 兜底
 
@@ -116,7 +116,7 @@
 
 轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / FORUM / BLOG；**不是**协同过滤。
 
-**覆盖率怎么理解**：A+B+C+F+G +（补齐 order_lines / slot_reserve 后的 D+E）≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full。
+**覆盖率怎么理解**：A+B+C+D+E+F+G ≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full（L3 仍 reject/degraded）。
 
 ---
 
@@ -162,12 +162,12 @@
 
 **报价建议**：L0 已含冲突检测与导出等，报价高于「纯 CRUD」；L1 每加 1～2 项作为亮点再上浮。
 
-### L2 · 能力债（域级，补齐积木后再开题承诺）
+### L2 · 交易 / 占坑积木（已落地，D/E 组可接）
 
-| 项 | 说明 |
-|----|------|
-| 购物车 / 多明细行订单 | 等 `order_lines` |
-| 挂号分时、车位/会议室整点预约占坑 | 等 `slot_reserve`（资源槽位库存；不同于 L0 的「已选记录时间相交」） |
+| 项 | 运行时 | 参考域 |
+|----|--------|--------|
+| 购物车 / 多明细行订单 | `order_lines`：`OrderStore` + `/api/cart` + `/api/orders`（无真支付） | SHOP / FOOD |
+| 挂号分时、车位/会议室整点预约占坑 | `slot_reserve`：`SlotStore` 时段容量 `--`（≠ L0 本人已选时段相交） | MEETING / HOSPITAL / PARKING / SALON；HOTEL = 预约 + 订单 |
 
 ### L3 · 仍不接（超毕设纯 Web 舒适区 / OOS）
 
@@ -177,9 +177,9 @@
 
 ### 开题怎么写（推荐）
 
-1. **主要功能** = L0（含时间冲突等）+ 可选 1～2 个 L1 亮点。  
-2. **非本期** = L3；L2 未开能力前不要写进本期。  
-3. 换名词保留域关键词；冲突检测一句话写清即可，如「选课提交时检测与已选课程时间段是否相交」。
+1. **主要功能** = L0（含时间冲突等）+ 可选 1～2 个 L1 亮点；商城/点餐写购物车订单，预约类写时段占坑。  
+2. **非本期** = L3（真支付、人脸等）。  
+3. 换名词保留域关键词；冲突检测 vs 占坑一句分清：选课=本人已选相交；挂号=号源容量占坑。
 
 ---
 
@@ -212,7 +212,7 @@
 - [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启；基线 `PortalCarousel` + 门户壳强化
 - [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（`gate_archive_ticket(with_deadline=False)`；活动/失物/选课 SQL；报名/认领/选课单据；ACTIVITY/COURSE 门户轮播）
 - [x] L0 **站内消息**（`MessageStore` / `sys_message` / 顶栏铃铛；审核结果通知）+ **薄域工作台**（`TicketDashboardController` 对非 LIBRARY 全开）
-- [ ] 实现 `order_lines`、`slot_reserve` 后打开 D/E 组
+- [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL（SQL + schema + 订单/预约壳）
 
 ### 宿舍验证账号（bake 后）
 
