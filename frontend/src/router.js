@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Projects from './views/Projects.vue'
 import ProjectDetail from './views/ProjectDetail.vue'
 import Jobs from './views/Jobs.vue'
+import Help from './views/Help.vue'
 import DeepSeek from './views/DeepSeek.vue'
 import System from './views/System.vue'
 import ErrorPage from './views/ErrorPage.vue'
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: '/', name: 'projects', component: Projects, meta: { crumb: '项目' } },
     { path: '/projects/:id', name: 'project', component: ProjectDetail, meta: { crumb: '详情' } },
     { path: '/jobs', name: 'jobs', component: Jobs, meta: { crumb: '任务队列' } },
+    { path: '/help', name: 'help', component: Help, meta: { crumb: '帮助文档' } },
     { path: '/deepseek', name: 'deepseek', component: DeepSeek, meta: { crumb: 'DeepSeek' } },
     { path: '/system', name: 'system', component: System, meta: { crumb: '运行环境' } },
     {
