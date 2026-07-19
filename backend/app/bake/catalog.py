@@ -6,7 +6,7 @@ import copy
 import re
 from dataclasses import dataclass
 
-from app.bake.domains import ARCHETYPES, DOMAINS  # re-export for callers
+from app.bake.domains import ARCHETYPES, DOMAIN_CAPABILITIES, DOMAINS  # re-export for callers
 from app.bake.themes import (  # re-export for callers
     AUTH_TEMPLATES,
     THEME_ALIASES,
@@ -97,13 +97,79 @@ def score_catalog(
     return best_key, conf, hits
 
 
+# 原型要求的能力：具体 DOM 若不覆盖，降为 GENERIC（行为优先于行业皮肤）
+_ARCH_REQUIRED_CAPS: dict[str, frozenset[str]] = {
+    "ARCH-RESERVE": frozenset({"slot_reserve"}),
+    "ARCH-TRADE": frozenset({"order_lines"}),
+    "ARCH-FLOW": frozenset({"ticket_flow"}),
+    "ARCH-STOCK": frozenset({"ticket_flow"}),
+    "ARCH-CONTENT": frozenset({"ticket_flow"}),
+    "ARCH-CRUD": frozenset(),
+}
+
+# 域皮肤自带的默认行为（仅当 ARCH 仍是 CRUD 时抬升，避免食堂题无订单词却落纯档案）
+_DOMAIN_DEFAULT_ARCH: dict[str, str] = {
+    "DOM-SHOP": "ARCH-TRADE",
+    "DOM-FOOD": "ARCH-TRADE",
+    "DOM-HOSPITAL": "ARCH-RESERVE",
+    "DOM-PARKING": "ARCH-RESERVE",
+    "DOM-MEETING": "ARCH-RESERVE",
+    "DOM-SALON": "ARCH-RESERVE",
+    "DOM-HOTEL": "ARCH-RESERVE",
+    "DOM-DORM": "ARCH-FLOW",
+    "DOM-PROPERTY": "ARCH-FLOW",
+    "DOM-IT": "ARCH-FLOW",
+    "DOM-LIBRARY": "ARCH-FLOW",
+    "DOM-EQUIP": "ARCH-FLOW",
+    "DOM-ASSET": "ARCH-FLOW",
+    "DOM-ACTIVITY": "ARCH-FLOW",
+    "DOM-LOST": "ARCH-FLOW",
+    "DOM-COURSE": "ARCH-FLOW",
+    "DOM-MEDIA": "ARCH-CONTENT",
+    "DOM-MUSIC": "ARCH-CONTENT",
+    "DOM-FORUM": "ARCH-CONTENT",
+    "DOM-BLOG": "ARCH-CONTENT",
+}
+
+
+def domain_covers_archetype(domain: str, archetype: str) -> bool:
+    """具体行业域的能力积木是否撑得起该行为原型。"""
+    if domain == "DOM-GENERIC" or not domain:
+        return True
+    need = _ARCH_REQUIRED_CAPS.get(archetype or "ARCH-CRUD", frozenset())
+    if not need:
+        return True
+    caps = set(DOMAIN_CAPABILITIES.get(domain) or [])
+    return bool(need & caps)
+
+
+def reconcile_match(archetype: str, domain: str) -> tuple[str, str, list[str]]:
+    """行为优先：弱原型可被域抬升；域盖不住行为则降 GENERIC。返回 (arch, domain, notes)。"""
+    notes: list[str] = []
+    arch = archetype if archetype in ARCHETYPES else "ARCH-CRUD"
+    dom = domain if domain in DOMAINS else "DOM-GENERIC"
+
+    if arch == "ARCH-CRUD":
+        promoted = _DOMAIN_DEFAULT_ARCH.get(dom)
+        if promoted:
+            arch = promoted
+            notes.append(f"arch↑{promoted}")
+
+    if dom != "DOM-GENERIC" and not domain_covers_archetype(dom, arch):
+        notes.append(f"dom↓GENERIC({dom}↛{arch})")
+        dom = "DOM-GENERIC"
+
+    return arch, dom, notes
+
+
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
     arch, arch_conf, arch_hits = score_catalog(text, ARCHETYPES, fallback="ARCH-CRUD")
     dom, dom_conf, dom_hits = score_catalog(text, DOMAINS, fallback="DOM-GENERIC")
+    arch, dom, recon_notes = reconcile_match(arch, dom)
     # 未命中具体行业域时，保留 ARCH-* 命中（预约/订单/审核），供 GENERIC 绑壳
     confidence = round((arch_conf + dom_conf) / 2, 2)
-    hits = list(dict.fromkeys(arch_hits + dom_hits))
+    hits = list(dict.fromkeys(arch_hits + dom_hits + recon_notes))
     return MatchResult(
         title=title,
         archetype=arch,
