@@ -530,7 +530,7 @@ public final class OrderStore {
     }
 
     private static void requireEnabled() {
-        if (!enabled) throw new IllegalStateException("订单能力未启用");
+        if (!enabled) throw new IllegalStateException("订单功能暂不可用");
     }
 
     private static double round2(double v) {

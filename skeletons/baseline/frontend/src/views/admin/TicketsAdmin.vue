@@ -92,11 +92,7 @@
       </template>
     </el-dialog>
 
-    <TicketProgressDialog
-      v-model="progressVisible"
-      :ticket-id="progressId"
-      empty-text="暂无进度记录（报修类域会写入进度表）。"
-    />
+    <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
   </div>
 </template>
 

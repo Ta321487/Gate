@@ -23,7 +23,7 @@ from app.schemas import (
     SystemInfo,
 )
 from app.services import runtime as rt
-from app.services.projects import mask_key
+from app.services.projects import mask_key, reclaim_idle_ports
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -417,6 +417,8 @@ async def system_info(db: AsyncSession = Depends(get_db)):
         node=node,
         mysql=mysql,
         factory_db=_factory_db_label(),
+        public_host=s.public_host,
+        bind_host=s.bind_host,
         backend_ports=f"{s.backend_port_start}–{s.backend_port_end}",
         frontend_ports=f"{s.frontend_port_start}–{s.frontend_port_end}",
         used_backend=sorted(set(used_be)),
@@ -450,10 +452,14 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
         return cleaned, flags
 
     cleaned, flags = await asyncio.to_thread(_run)
+    await reclaim_idle_ports(db)
     for p in projects:
         be, fe = flags.get(p.id, (False, False))
         p.backend_running = be
         p.frontend_running = fe
+        if not be and not fe:
+            p.backend_port = 0
+            p.frontend_port = 0
         if not be and not fe and p.status == ProjectStatus.running.value:
             p.status = ProjectStatus.generated.value
     await db.commit()

@@ -117,7 +117,7 @@ public final class AddressStore {
     }
 
     private static void requireTable() {
-        if (!available()) throw new IllegalStateException("收货地址表未启用");
+        if (!available()) throw new IllegalStateException("收货地址功能暂不可用");
     }
 
     private static Map<String, Object> mapRow(java.sql.ResultSet rs) throws java.sql.SQLException {

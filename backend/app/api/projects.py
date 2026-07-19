@@ -66,21 +66,11 @@ async def list_projects(
         ]
     elif filter == "fail":
         items = [p for p in items if p.status == "failed"]
-    # 运行态以进程为准，纠正库内陈旧标记（列表「运行」列）
+    # 运行态以可服务为准，纠正库内陈旧「运行中」
     dirty = False
     for p in items:
-        be = rt.backend_running(p.id)
-        fe = rt.frontend_running(p.id)
-        if p.backend_running != be or p.frontend_running != fe:
-            p.backend_running = be
-            p.frontend_running = fe
-            dirty = True
-        if be or fe:
-            if p.status not in (ProjectStatus.running.value, ProjectStatus.generating.value):
-                p.status = ProjectStatus.running.value
-                dirty = True
-        elif p.status == ProjectStatus.running.value and not be and not fe:
-            p.status = ProjectStatus.generated.value
+        _, _, changed = project_svc.sync_project_runtime(p)
+        if changed:
             dirty = True
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
     summaries = [ProjectSummary.model_validate(p) for p in items]
@@ -119,8 +109,10 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     if project_svc.sync_checklist_from_workspace(p):
         await db.commit()
         await db.refresh(p)
-    p.backend_running = rt.backend_running(project_id)
-    p.frontend_running = rt.frontend_running(project_id)
+    _, _, dirty = project_svc.sync_project_runtime(p)
+    if dirty:
+        await db.commit()
+        await db.refresh(p)
     return _detail(p)
 
 
@@ -156,13 +148,8 @@ async def delete_project(
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    be = rt.backend_running(project_id)
-    fe = rt.frontend_running(project_id)
-    if (
-        p.status in (ProjectStatus.running.value, ProjectStatus.generating.value)
-        or be
-        or fe
-    ):
+    project_svc.sync_project_runtime(p)
+    if p.status == ProjectStatus.generating.value or p.backend_running or p.frontend_running:
         raise HTTPException(400, "项目运行中或正在生成，请先停止后再删除")
     rt.stop_backend(project_id, p.backend_port)
     rt.stop_frontend(project_id, p.frontend_port)
@@ -198,6 +185,8 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
+    if p.status == "generating":
+        raise HTTPException(403, "生成中 · 请等待打包完成后再下载")
     gates = p.gates or {}
     if not (p.zip_ready and gates.get("zip_allowed") and gates.get("overall")):
         raise HTTPException(403, "门禁未过 · 禁止下载 ZIP")
@@ -260,18 +249,22 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    be_st = rt.backend_status(project_id, p.backend_port)
-    fe_st = rt.frontend_status(project_id, p.frontend_port)
-    # 列表用的进程标记：跟 status 对齐，不另搞一套「假健康」
-    p.backend_running = be_st in ("starting", "healthy")
-    p.frontend_running = fe_st in ("starting", "healthy")
+    be_st, fe_st, dirty = project_svc.sync_project_runtime(p)
+    if dirty:
+        await db.commit()
+        await db.refresh(p)
+    s = get_settings()
+    be_url = s.public_url(p.backend_port) if p.backend_port else None
+    fe_url = s.public_url(p.frontend_port) if p.frontend_port else None
     return RuntimeState(
         backend_status=be_st,
         frontend_status=fe_st,
-        backend_port=p.backend_port,
-        frontend_port=p.frontend_port,
-        preview_url=f"http://127.0.0.1:{p.frontend_port}" if fe_st == "healthy" else None,
-        backend_url=f"http://127.0.0.1:{p.backend_port}" if be_st == "healthy" else None,
+        backend_port=p.backend_port or 0,
+        frontend_port=p.frontend_port or 0,
+        public_host=s.public_host,
+        project_status=p.status,
+        preview_url=fe_url,
+        backend_url=be_url,
         backend_log_tail=rt.backend_log(project_id),
         frontend_log_tail=rt.frontend_log(project_id),
     )
@@ -294,6 +287,9 @@ async def runtime_action(
         raise HTTPException(400, "工作区目录不存在")
 
     try:
+        if action in ("start", "restart"):
+            await project_svc.ensure_project_ports(db, p)
+
         if side == "all":
             if action == "start":
                 rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
@@ -338,10 +334,16 @@ async def runtime_action(
     # 停完稍等端口释放，再读 status
     if action == "stop":
         time.sleep(0.6)
-    p.backend_running = rt.backend_status(project_id, p.backend_port) in ("starting", "healthy")
-    p.frontend_running = rt.frontend_status(project_id, p.frontend_port) in ("starting", "healthy")
+    project_svc.sync_project_runtime(p)
     await db.commit()
-    return ApiOk(message=f"{side}/{action} 完成")
+    return ApiOk(
+        message=f"{side}/{action} 完成",
+        data={
+            "backend_port": p.backend_port,
+            "frontend_port": p.frontend_port,
+            "project_status": p.status,
+        },
+    )
 
 
 @router.get("/{project_id}/logs/{side}")

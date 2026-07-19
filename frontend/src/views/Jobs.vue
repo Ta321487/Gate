@@ -54,8 +54,8 @@ const statusLabel = {
 }
 
 async function act(fn, okMsg) {
-  await fn()
-  message.success(okMsg)
+  const res = await fn()
+  message.success(typeof res === 'string' ? res : (okMsg || '完成'))
   await load()
 }
 
@@ -97,7 +97,10 @@ const columns = [
       if (r.status === 'failed') {
         btns.push(h(NButton, {
           size: 'small',
-          onClick: () => act(() => api.retryJob(r.id), '已重试'),
+          onClick: () => act(async () => {
+            const res = await api.retryJob(r.id)
+            return res?.message || '已从失败步骤续跑'
+          }),
         }, { default: () => '重试' }))
       }
       return h('div', { class: 'row' }, btns)

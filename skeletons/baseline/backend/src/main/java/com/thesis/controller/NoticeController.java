@@ -3,6 +3,7 @@ package com.thesis.controller;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
+import com.thesis.common.GuestTeaser;
 import com.thesis.common.R;
 import com.thesis.service.NoticeStore;
 import com.thesis.service.UserStore;
@@ -21,8 +22,11 @@ public class NoticeController {
     @GetMapping
     public R<Map<String, Object>> page(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return R.ok(NoticeStore.page(page, size));
+            @RequestParam(defaultValue = "10") int size,
+            HttpSession session) {
+        int p = GuestTeaser.clampPage(session, page);
+        int s = GuestTeaser.clampSize(session, size);
+        return R.ok(NoticeStore.page(p, s));
     }
 
     @GetMapping("/{id}")

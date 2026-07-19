@@ -119,7 +119,10 @@ npm run dev
 | `GF_DATABASE_URL` | 工厂元库；默认 SQLite，示例见 `.env.example` |
 | `GF_DATA_DIR` / `GF_SKELETONS_DIR` | 数据目录 / 骨架目录 |
 | `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | LLM；Key 不入库 |
-| `GF_*_PORT_START/END` | 学生项目端口池 |
+| `GF_*_PORT_START/END` | 学生预览端口池（限制**同时运行**数，不限制选题库存；停预览后还池） |
+| `GF_HOST` / `GF_PORT` | 工厂 API 监听（服务器用 `0.0.0.0`） |
+| `GF_PUBLIC_HOST` | 预览/复制地址用的对外 IP 或域名；非本机时学生进程自动绑 `0.0.0.0` |
+| `GF_BIND_HOST` | 可选；强制学生前后端监听地址 |
 | `GF_STUDENT_MYSQL_*` | 学生库连接（默认 `root` / `root123` @ `3306`） |
 | `UNSPLASH_ACCESS_KEY` | 可选；登录页氛围图 |
 

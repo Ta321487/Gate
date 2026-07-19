@@ -11,21 +11,26 @@
       <el-table-column prop="id" label="编号" width="80" />
       <el-table-column prop="username" :label="userLabel" width="120" />
       <el-table-column prop="totalYuan" label="金额" width="90" />
-      <el-table-column label="收货/口味" min-width="160" show-overflow-tooltip>
+      <el-table-column :label="fulfillLabel" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.deliveryType">{{ row.deliveryType }} · </span>
           <span v-if="row.addressLine || row.receiverName">
             {{ row.receiverName }} {{ row.receiverPhone }} {{ row.addressLine }}
           </span>
-          <span v-if="row.tasteNote"> / 口味:{{ row.tasteNote }}</span>
-          <span v-if="!row.addressLine && !row.tasteNote && !row.deliveryType">—</span>
+          <span v-if="isFood && row.tasteNote"> / 口味:{{ row.tasteNote }}</span>
+          <span v-if="!row.addressLine && !(isFood && row.tasteNote) && !row.deliveryType">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="物流/取餐" min-width="120" show-overflow-tooltip>
+      <el-table-column :label="shipLabel" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
-          <span v-if="row.trackingNo">单号:{{ row.trackingNo }}</span>
-          <span v-if="row.pickupCode">{{ row.trackingNo ? ' / ' : '' }}取餐码:{{ row.pickupCode }}</span>
-          <span v-if="!row.trackingNo && !row.pickupCode">—</span>
+          <template v-if="isFood">
+            <span v-if="row.pickupCode">取餐码:{{ row.pickupCode }}</span>
+            <span v-else>—</span>
+          </template>
+          <template v-else>
+            <span v-if="row.trackingNo">单号:{{ row.trackingNo }}</span>
+            <span v-else>—</span>
+          </template>
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="110">
@@ -84,9 +89,12 @@ import { downloadCsv } from '../../utils/csvDownload.js'
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const isFood = computed(() => getDomain() === 'DOM-FOOD')
+const fulfillLabel = computed(() => (isFood.value ? '配送 / 口味' : '收货信息'))
+const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
 const shipVerb = computed(() => {
   if (order.value.verbs?.ship) return order.value.verbs.ship
-  return getDomain() === 'DOM-FOOD' ? '出餐' : '发货'
+  return isFood.value ? '出餐' : '发货'
 })
 const list = ref([])
 const total = ref(0)
@@ -105,14 +113,14 @@ async function load() {
 async function act(row, action) {
   let body = {}
   if (action === 'ship') {
-    const isFood = getDomain() === 'DOM-FOOD'
+    const food = isFood.value
     const { value } = await ElMessageBox.prompt(
-      isFood ? '可填取餐码（留空自动生成）' : '请填写物流单号（可留空）',
-      isFood ? '出餐' : '发货',
-      { inputPlaceholder: isFood ? '取餐码' : '物流单号', inputValue: '' },
+      food ? '可填取餐码（留空自动生成）' : '请填写物流单号（可留空）',
+      shipVerb.value,
+      { inputPlaceholder: food ? '取餐码' : '物流单号', inputValue: '' },
     ).catch(() => ({ value: null }))
     if (value === null) return
-    body = isFood ? { pickupCode: String(value || '').trim() } : { trackingNo: String(value || '').trim() }
+    body = food ? { pickupCode: String(value || '').trim() } : { trackingNo: String(value || '').trim() }
   }
   await http.post(`/api/orders/${row.id}/${action}`, body)
   ElMessage.success('已更新')
@@ -128,18 +136,35 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', userLabel.value, '金额', '履约', '收货', '口味', '状态', '明细', '下单时间']
-  const data = rows.map((row) => [
-    row.id,
-    row.username,
-    row.totalYuan,
-    row.deliveryType || '',
-    [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),
-    row.tasteNote || '',
-    states.value[row.status] || row.status,
-    (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
-    row.createdAt,
-  ])
+  const headers = isFood.value
+    ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '明细', '下单时间']
+    : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '明细', '下单时间']
+  const data = rows.map((row) => {
+    const base = [
+      row.id,
+      row.username,
+      row.totalYuan,
+      row.deliveryType || '',
+      [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),
+    ]
+    if (isFood.value) {
+      return [
+        ...base,
+        row.tasteNote || '',
+        row.pickupCode || '',
+        states.value[row.status] || row.status,
+        (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
+        row.createdAt,
+      ]
+    }
+    return [
+      ...base,
+      row.trackingNo || '',
+      states.value[row.status] || row.status,
+      (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
+      row.createdAt,
+    ]
+  })
   downloadCsv(`orders_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
   ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }

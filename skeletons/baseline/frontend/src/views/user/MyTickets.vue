@@ -99,7 +99,7 @@
     <el-dialog v-model="visible" :title="verbs.apply || '提交'" width="520px">
       <el-form :model="form" label-width="88px" require-asterisk-position="right">
         <el-form-item label="标题" required>
-          <el-input v-model="form.title" maxlength="80" placeholder="简要描述问题" />
+          <el-input v-model="form.title" maxlength="80" placeholder="请输入标题" />
         </el-form-item>
         <template v-if="lookup.enabled">
           <el-form-item :label="lookup.typeLabel" required>
@@ -119,7 +119,7 @@
           </el-form-item>
         </template>
         <el-form-item v-else label="地点" required>
-          <el-input v-model="form.location" maxlength="64" placeholder="如 3 栋 201" />
+          <el-input v-model="form.location" maxlength="64" placeholder="请填写地点" />
         </el-form-item>
         <el-form-item label="说明">
           <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />

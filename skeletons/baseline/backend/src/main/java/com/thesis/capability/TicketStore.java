@@ -291,7 +291,7 @@ public final class TicketStore {
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         int nQty = resolveQty(qty, stock);
-        if (useQuota && stock < nQty) throw new IllegalStateException("库存不足（可借 " + stock + "）");
+        if (useQuota && stock < nQty) throw new IllegalStateException("库存不足（剩余 " + stock + "）");
         assertApplyDeadline(item);
         assertNoTimeConflict(username, itemId, item);
         assertNoMutexConflict(username, itemId, item);
@@ -385,7 +385,7 @@ public final class TicketStore {
         int n = qty == null ? 1 : qty;
         if (n < 1) throw new IllegalStateException("数量至少为 1");
         if (n > 99) throw new IllegalStateException("单次数量不能超过 99");
-        if (stock > 0 && n > stock) throw new IllegalStateException("库存不足（可借 " + stock + "）");
+        if (stock > 0 && n > stock) throw new IllegalStateException("库存不足（剩余 " + stock + "）");
         return n;
     }
 
@@ -576,7 +576,7 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> markFinePaid(long ticketId, String operator) {
-        if (!hasColumn("fine_status")) throw new IllegalStateException("未启用罚款状态");
+        if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持罚款登记");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         db().update("UPDATE " + TICKET + " SET fine_status='paid' WHERE id=?", ticketId);
@@ -882,7 +882,7 @@ public final class TicketStore {
     public static Map<String, Object> rate(long ticketId, String username, int rating, String ratingRemark) {
         if (!allowRating) throw new IllegalStateException("当前未开启评分");
         if (rating < 1 || rating > 5) throw new IllegalArgumentException("评分须为 1～5 分");
-        if (!hasColumn("rating")) throw new IllegalStateException("评分字段未就绪");
+        if (!hasColumn("rating")) throw new IllegalStateException("当前不支持评分");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         if (!str(m.get("username")).equals(username)) {
@@ -906,7 +906,7 @@ public final class TicketStore {
     /** 活动口令签到：本人 + approved + 码匹配 */
     public static Map<String, Object> checkin(long ticketId, String username, String code) {
         if (!allowCheckin) throw new IllegalStateException("当前未开启签到");
-        if (!hasColumn("checked_in_at")) throw new IllegalStateException("签到字段未就绪");
+        if (!hasColumn("checked_in_at")) throw new IllegalStateException("当前不支持签到");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         if (!str(m.get("username")).equals(username)) {
@@ -997,7 +997,7 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> markOverdue(long ticketId) {
-        if (!useDeadline) throw new IllegalStateException("当前领域未启用到期催办");
+        if (!useDeadline) throw new IllegalStateException("当前不支持到期催办");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         if (!"approved".equals(m.get("status")) && !"overdue".equals(m.get("status"))) {
@@ -1010,7 +1010,7 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> remind(long ticketId) {
-        if (!useDeadline) throw new IllegalStateException("当前领域未启用到期催办");
+        if (!useDeadline) throw new IllegalStateException("当前不支持到期催办");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         refreshOverdue(m);

@@ -10,11 +10,17 @@
           <router-link v-for="item in nav" :key="item.to" :to="item.to">{{ item.label }}</router-link>
         </nav>
         <div class="user">
-          <MessageBell />
-          <el-avatar v-if="avatarUrl" :size="28" :src="avatarUrl" />
-          <span class="name">{{ displayName }}</span>
-          <el-button v-if="profileEditable" link @click="$router.push('/profile')">资料</el-button>
-          <el-button link @click="logout">退出</el-button>
+          <template v-if="loggedIn">
+            <MessageBell />
+            <el-avatar v-if="avatarUrl" :size="28" :src="avatarUrl" />
+            <span class="name">{{ displayName }}</span>
+            <el-button v-if="profileEditable" link @click="$router.push('/profile')">资料</el-button>
+            <el-button link @click="logout">退出</el-button>
+          </template>
+          <template v-else>
+            <el-button link type="primary" @click="$router.push({ path: '/login', query: { redirect: $route.fullPath } })">登录</el-button>
+            <el-button link @click="$router.push('/register')">注册</el-button>
+          </template>
         </div>
       </div>
     </header>
@@ -33,21 +39,35 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
+import { isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 
 const router = useRouter()
+const route = useRoute()
 const labels = schemaLabels()
 const title = labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
-const username = localStorage.getItem('username') || ''
-const nickname = localStorage.getItem('nickname') || ''
-const avatarUrl = localStorage.getItem('avatarUrl') || ''
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
-const displayName = computed(() => nickname || username)
+const loggedIn = ref(isLoggedIn())
+const username = ref(localStorage.getItem('username') || '')
+const nickname = ref(localStorage.getItem('nickname') || '')
+const avatarUrl = ref(localStorage.getItem('avatarUrl') || '')
+
+watch(
+  () => route.fullPath,
+  () => {
+    loggedIn.value = isLoggedIn()
+    username.value = localStorage.getItem('username') || ''
+    nickname.value = localStorage.getItem('nickname') || ''
+    avatarUrl.value = localStorage.getItem('avatarUrl') || ''
+  },
+)
+
+const displayName = computed(() => nickname.value || username.value)
 const userRoleLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const hasStage = computed(() => {
   const list = FACTORY_DELIVERED?.portalBanners
@@ -66,15 +86,27 @@ const MENU_TO = {
   week_calendar: '/week',
 }
 
+const GUEST_MENU_KEYS = new Set(['archive', 'content', 'slots'])
+
 const nav = computed(() => {
   const menus = schemaMenus('user').filter((m) => m.key !== 'profile')
-  if (!menus.length) {
+  let list = menus
+  if (!loggedIn.value && isGuestBrowseEnabled()) {
+    list = menus.filter((m) => GUEST_MENU_KEYS.has(m.key))
+  }
+  if (!list.length) {
+    if (!loggedIn.value && isGuestBrowseEnabled()) {
+      return [
+        { to: '/archive', label: menuLabel('user', 'archive', '目录') },
+        { to: '/notices', label: menuLabel('user', 'content', '公告') },
+      ]
+    }
     return [
       { to: '/tickets', label: menuLabel('user', 'my_tickets', '我的申请') },
       { to: '/notices', label: menuLabel('user', 'content', '公告') },
     ]
   }
-  return menus
+  return list
     .map((m) => ({ to: MENU_TO[m.key], label: m.label }))
     .filter((m) => m.to)
 })
@@ -112,56 +144,26 @@ function logout() {
 }
 .brand {
   display: flex; align-items: center; gap: 10px;
-  cursor: pointer; white-space: nowrap;
-  min-width: 0;
+  cursor: pointer; flex-shrink: 0;
 }
 .brand-mark {
-  width: 10px; height: 10px; border-radius: 2px;
-  background: var(--portal-accent, #0b6e75);
-  box-shadow: 3px 3px 0 color-mix(in srgb, var(--portal-brand, #08545a) 55%, transparent);
-  flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff));
 }
-.brand-text {
-  font-family: var(--portal-font-display);
-  font-weight: 700; font-size: 17px; letter-spacing: -0.03em;
-  color: var(--portal-brand, #08545a);
-  overflow: hidden; text-overflow: ellipsis;
-}
-.nav { display: flex; gap: 4px; flex: 1; min-width: 0; }
+.brand-text { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
+.nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
 .nav a {
-  color: var(--portal-muted, #6b7c8a);
-  text-decoration: none; font-size: 14px; font-weight: 550;
-  padding: 8px 12px; border-radius: 8px;
-  transition: color 0.2s, background 0.2s;
+  padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  color: var(--portal-muted, #5b6b76); text-decoration: none;
 }
-.nav a:hover { color: var(--portal-ink, #15202b); background: color-mix(in srgb, var(--portal-accent-soft, #d7eef0) 70%, transparent); }
-.nav a.router-link-active {
-  color: var(--portal-accent, #0b6e75);
-  background: var(--portal-accent-soft, #d7eef0);
-}
-.user { display: flex; align-items: center; gap: 8px; color: var(--portal-muted, #6b7c8a); font-size: 13px; flex-shrink: 0; }
-.name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--portal-ink, #15202b); }
-.body {
-  flex: 1; max-width: 1080px; width: 100%; margin: 0 auto;
-  padding: 22px 20px 48px;
-  animation: bodyIn 0.45s ease both;
-}
-.portal[data-has-stage="1"] .body { padding-top: 18px; }
-@keyframes bodyIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.nav a.router-link-active,
+.nav a:hover { color: var(--portal-ink, #15202b); background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent); }
+.user { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.name { font-size: 13px; color: var(--portal-muted, #5b6b76); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.body { flex: 1; max-width: 1080px; width: 100%; margin: 0 auto; padding: 20px 20px 40px; box-sizing: border-box; }
 .foot {
-  display: flex; justify-content: center; align-items: center; gap: 8px;
-  padding: 18px; color: var(--portal-muted, #6b7c8a); font-size: 12px;
-  border-top: 1px solid var(--portal-line, #d5dde3);
-  letter-spacing: 0.02em;
+  padding: 16px 20px; text-align: center; font-size: 12px;
+  color: var(--portal-muted, #5b6b76); border-top: 1px solid var(--portal-line, #d5dde3);
 }
-.sep { opacity: 0.45; }
-@media (max-width: 720px) {
-  .top-inner { gap: 10px; }
-  .nav { gap: 2px; overflow-x: auto; }
-  .nav a { padding: 8px 10px; font-size: 13px; }
-  .brand-text { font-size: 15px; max-width: 132px; }
-}
+.sep { margin: 0 6px; opacity: 0.5; }
 </style>

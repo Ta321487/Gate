@@ -15,7 +15,7 @@ import java.util.Map;
 public class OrderController {
 
     private static void requireOrder() {
-        if (!OrderStore.enabled()) throw new BizException(ErrorCode.BAD_REQUEST, "订单能力未启用");
+        if (!OrderStore.enabled()) throw new BizException(ErrorCode.BAD_REQUEST, "订单功能暂不可用");
     }
 
     @GetMapping("/api/cart")

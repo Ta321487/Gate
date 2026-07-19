@@ -105,6 +105,170 @@ def _required_routes(spec: dict[str, Any]) -> list[str]:
     return segs
 
 
+def _routes_for_feature(spec: dict[str, Any], feature_name: str) -> list[str]:
+    gate = spec.get("gate") or {}
+    return [
+        item["seg"]
+        for item in (gate.get("routes") or [])
+        if isinstance(item, dict)
+        and item.get("from_feature") == feature_name
+        and item.get("seg")
+    ]
+
+
+def _eval_flow_api(be: Path, flow_api: dict[str, Any]) -> dict[str, bool]:
+    """只评测契约声明的 flow_api 键，不臆造 apply/return/complete。"""
+    hits: dict[str, bool] = {}
+    for key, rule in (flow_api or {}).items():
+        if not isinstance(rule, dict):
+            hits[key] = False
+            continue
+        src = _read(be / "controller" / rule.get("file", ""))
+        need = rule.get("need") or []
+        hits[key] = all(n in src for n in need)
+    return hits
+
+
+def _main_path_ok(be: Path, api_hits: dict[str, bool], flow_api: dict[str, Any]) -> bool:
+    """主路径 = 契约声明的全部 API 命中；空 flow_api（CRUD）视为通过。"""
+    if not flow_api:
+        return True
+    if not all(api_hits.get(k, False) for k in flow_api):
+        return False
+    # 借用壳：额外跑库存/状态机自检
+    if "return" in flow_api and (be / "capability" / "TicketStore.java").exists():
+        return _ticket_main_path_logic()
+    return True
+
+
+def _checklist_feature_ok(
+    *,
+    name: str,
+    spec: dict[str, Any],
+    workspace: Path,
+    be: Path,
+    fe: Path,
+    router_src: str,
+    api_hits: dict[str, bool],
+    flow_api: dict[str, Any],
+    files_ok: bool,
+) -> bool:
+    """开题对照：优先按能力/路由实装判断，避免死绑 ticket 动词或残缺 baseline。"""
+    has_apply = api_hits.get("apply", False)
+    has_approve = api_hits.get("approve", False)
+    has_return = api_hits.get("return", False)
+    has_complete = api_hits.get("complete", False)
+    has_finish = has_return or has_complete
+    has_overdue = api_hits.get("overdue", False)
+    has_remind = api_hits.get("remind", False)
+    has_place = api_hits.get("place", False)
+    has_cart = api_hits.get("cart", False)
+    has_reserve = api_hits.get("reserve", False)
+    store_src = _read(be / "capability" / "TicketStore.java")
+    has_fine = "fineYuan" in store_src or "FINE_PER_DAY" in store_src or "dueAt" in store_src
+    profile_src = _read(be / "controller" / "ProfileController.java")
+    has_profile = "profileEditable" in profile_src
+    baseline = set(spec.get("baseline") or [])
+
+    # 1) 契约路由绑定的功能：路由全在即可（订单/预约/档案等壳共用）
+    bound = _routes_for_feature(spec, name)
+    if bound:
+        if all(_route_present(router_src, s) for s in bound):
+            # 绑定主流程名时再要求对应 API（排除「借阅记录」等列表页）
+            if (
+                any(k in name for k in ("借阅", "借用", "报修"))
+                and "记录" not in name
+                and "apply" in flow_api
+            ):
+                return has_apply and has_approve and has_finish
+            if (
+                any(k in name for k in ("下单", "购物车", "订单"))
+                and "记录" not in name
+                and "place" in flow_api
+            ):
+                return has_place and has_cart
+            if (
+                any(k in name for k in ("预约", "号源", "车位", "场地"))
+                and "记录" not in name
+                and "reserve" in flow_api
+            ):
+                return has_reserve and ("cancel" not in flow_api or api_hits.get("cancel", False))
+            return True
+        return False
+
+    # 2) 无路由绑定：按关键词落到具体实装（兼容旧题面文案）
+    if "借阅记录" in name or "借用记录" in name or "申领记录" in name:
+        return (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
+    if "报修记录" in name or ("记录" in name and "报修" in name):
+        return (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
+    if "报修" in name or ("故障" in name and "受理" in name):
+        return has_apply and has_approve and has_finish
+    if "借用" in name or "借阅" in name or ("审核" in name and "报修" not in name):
+        if "apply" in flow_api:
+            return has_apply and has_approve
+        return files_ok
+    if "提醒" in name or "罚款" in name:
+        if "overdue" not in flow_api:
+            return (fe / "views" / "admin" / "OverdueAdmin.vue").exists() or files_ok
+        return has_overdue and has_remind and has_fine and (
+            fe / "views" / "admin" / "OverdueAdmin.vue"
+        ).exists()
+    if "归还" in name or ("逾期" in name and "提醒" not in name):
+        # return-only 壳无需 overdue/complete；有 overdue 契约才强制
+        if not has_finish:
+            return False
+        if "overdue" in flow_api:
+            return has_overdue or has_complete
+        return True
+    if "分类" in name:
+        return (be / "controller" / "CategoryController.java").exists() and (
+            fe / "views" / "admin" / "CategoriesAdmin.vue"
+        ).exists()
+    if any(k in name for k in ("读者", "学生管理", "用户管理", "患者管理", "会员管理")):
+        return (be / "controller" / "UsersAdminController.java").exists() and (
+            fe / "views" / "admin" / "UsersAdmin.vue"
+        ).exists()
+    if "楼栋" in name or "房间管理" in name or "区域终端" in name:
+        return (be / "controller" / "LookupAdminController.java").exists() and (
+            fe / "views" / "admin" / "LookupSitesAdmin.vue"
+        ).exists()
+    if "报修类型" in name or "故障类型" in name:
+        return (be / "controller" / "LookupAdminController.java").exists() and (
+            fe / "views" / "admin" / "LookupTypesAdmin.vue"
+        ).exists()
+    if "工作台" in name:
+        return (be / "controller" / "TicketDashboardController.java").exists() and (
+            fe / "views" / "admin" / "TicketDashboard.vue"
+        ).exists()
+    if any(k in name for k in ("设备", "图书", "物资", "菜品", "商品", "号源", "车位", "场地")) or (
+        "检索" in name and "archive" in ((spec.get("schema") or {}).get("capabilities") or [])
+    ):
+        return (be / "controller" / "ArchiveController.java").exists() and (
+            fe / "views" / "user" / "ArchiveBrowse.vue"
+        ).exists()
+    if "公告" in name:
+        return (be / "controller" / "NoticeController.java").exists()
+    if "登录" in name or "注册" in name:
+        auth_src = _read(be / "controller" / "AuthController.java")
+        ok = "/login" in auth_src
+        if "注册" in name or "register" in baseline:
+            ok = ok and "/register" in auth_src and (fe / "views" / "Register.vue").exists()
+        return ok
+    if "个人资料" in name or "头像" in name:
+        return has_profile and _route_present(router_src, "profile")
+    if "购物车" in name or "下单" in name or ("订单" in name and "place" in flow_api):
+        return has_place and has_cart
+    if "预约" in name and "reserve" in flow_api:
+        return has_reserve and api_hits.get("cancel", False)
+    if "猜你喜欢" in name or "推荐" in name:
+        return (be / "capability" / "RecommendStore.java").exists() or (
+            be / "controller" / "RecommendController.java"
+        ).exists()
+
+    # 3) 未识别：不把整包 files_ok 当通过（避免误绿）；有契约文件则要求文件齐
+    return files_ok
+
+
 def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
     """有 Spec.gate 契约时的评测（archive/ticket/order/slot 等薄壳共用）。"""
     be = workspace / "backend" / "src" / "main" / "java" / "com" / "thesis"
@@ -133,40 +297,18 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     files_ok, missing = _has_files(workspace, required)
 
     flow_api = gate.get("flow_api") or {}
-    api_hits: dict[str, bool] = {}
-    for key, rule in flow_api.items():
-        src = _read(be / "controller" / rule.get("file", ""))
-        need = rule.get("need") or []
-        api_hits[key] = all(n in src for n in need)
-
-    has_apply = api_hits.get("apply", False)
-    has_approve = api_hits.get("approve", False)
-    has_return = api_hits.get("return", False)
-    has_complete = api_hits.get("complete", False)
-    has_finish = has_return or has_complete
-    has_overdue = api_hits.get("overdue", False)
-    has_remind = api_hits.get("remind", False)
-
-    store_src = _read(be / "capability" / "TicketStore.java")
-    has_fine = "fineYuan" in store_src or "FINE_PER_DAY" in store_src or "dueAt" in store_src
-
-    profile_src = _read(be / "controller" / "ProfileController.java")
-    has_profile = "profileEditable" in profile_src
+    api_hits = _eval_flow_api(be, flow_api)
 
     router_src = _read(fe / "router" / "index.js")
     required_routes = _required_routes(spec)
     missing_routes = [s for s in required_routes if not _route_present(router_src, s)]
-    has_routes = len(required_routes) > 0 and not missing_routes
+    # 有 gate.routes 时至少应筛出一条；空列表视为契约/功能不同步
+    has_routes = (not (gate.get("routes") or []) and not required_routes) or (
+        len(required_routes) > 0 and not missing_routes
+    )
 
     flow_desc = " → ".join(spec.get("flows") or []) or "主路径"
-    # ticket_flow：return 或 complete；有 overdue/remind 契约才强制对应 API
-    main_path_ok = has_apply and has_approve and has_finish
-    if "overdue" in flow_api:
-        main_path_ok = main_path_ok and has_overdue
-    if "remind" in flow_api:
-        main_path_ok = main_path_ok and has_remind
-    if has_return and (be / "capability" / "TicketStore.java").exists():
-        main_path_ok = main_path_ok and _ticket_main_path_logic()
+    main_path_ok = _main_path_ok(be, api_hits, flow_api)
 
     features = spec.get("features") or []
     checklist = []
@@ -178,52 +320,17 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         if st == "out_of_mvp":
             checklist.append({**f, "result": "out_of_mvp"})
             continue
-        ok = files_ok
-        if "借阅记录" in name or "借用记录" in name:
-            ok = (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
-        elif "报修记录" in name or ("记录" in name and "报修" in name):
-            ok = (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
-        elif "报修" in name or ("故障" in name and "受理" in name):
-            ok = has_apply and has_approve and has_finish
-        elif "借用" in name or "借阅" in name or ("审核" in name and "报修" not in name):
-            ok = has_apply and has_approve
-        elif "提醒" in name or "罚款" in name:
-            ok = has_overdue and has_remind and has_fine and (
-                fe / "views" / "admin" / "OverdueAdmin.vue"
-            ).exists()
-        elif "归还" in name or ("逾期" in name and "提醒" not in name):
-            ok = has_finish and (has_overdue or has_complete)
-        elif "分类" in name:
-            ok = (be / "controller" / "CategoryController.java").exists() and (
-                fe / "views" / "admin" / "CategoriesAdmin.vue"
-            ).exists()
-        elif "读者" in name or "学生管理" in name or "用户管理" in name:
-            ok = (be / "controller" / "UsersAdminController.java").exists() and (
-                fe / "views" / "admin" / "UsersAdmin.vue"
-            ).exists()
-        elif "楼栋" in name or "房间管理" in name or "区域终端" in name:
-            ok = (be / "controller" / "LookupAdminController.java").exists() and (
-                fe / "views" / "admin" / "LookupSitesAdmin.vue"
-            ).exists()
-        elif "报修类型" in name or "故障类型" in name:
-            ok = (be / "controller" / "LookupAdminController.java").exists() and (
-                fe / "views" / "admin" / "LookupTypesAdmin.vue"
-            ).exists()
-        elif "工作台" in name:
-            ok = (be / "controller" / "TicketDashboardController.java").exists() and (
-                fe / "views" / "admin" / "TicketDashboard.vue"
-            ).exists()
-        elif "设备" in name or "图书" in name or "物资" in name or "检索" in name:
-            ok = (be / "controller" / "ArchiveController.java").exists() and (
-                fe / "views" / "user" / "ArchiveBrowse.vue"
-            ).exists()
-        elif "公告" in name:
-            ok = (be / "controller" / "NoticeController.java").exists()
-        elif "登录" in name or "注册" in name:
-            auth_src = _read(be / "controller" / "AuthController.java")
-            ok = "/login" in auth_src and "/register" in auth_src and (fe / "views" / "Register.vue").exists()
-        elif "个人资料" in name or "头像" in name:
-            ok = has_profile and "profile" in required_routes
+        ok = _checklist_feature_ok(
+            name=name,
+            spec=spec,
+            workspace=workspace,
+            be=be,
+            fe=fe,
+            router_src=router_src,
+            api_hits=api_hits,
+            flow_api=flow_api,
+            files_ok=files_ok,
+        )
         checklist.append({**f, "result": "done" if ok else "pending"})
 
     core_ok = all(c.get("result") in ("done", "out_of_mvp") for c in checklist)
@@ -323,10 +430,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
             "detail": {
                 "files_ok": files_ok,
                 "missing": missing,
-                "apply": has_apply,
-                "approve": has_approve,
-                "return": has_return,
-                "complete": has_complete,
+                "flow_api": api_hits,
                 "routes": has_routes,
                 "required_routes": required_routes,
                 "missing_routes": missing_routes,

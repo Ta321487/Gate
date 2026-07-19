@@ -30,6 +30,18 @@ def copy_features(features: list) -> list:
     return copy.deepcopy(features)
 
 
+# 基线能力标签（build_spec / ensure_spec_schema / 门禁路由 from_baseline 共用）
+BASELINE_TAGS: list[str] = [
+    "captcha",
+    "upload",
+    "page",
+    "errorcode",
+    "profile",
+    "avatar",
+    "register",
+]
+
+
 @dataclass
 class MatchResult:
     title: str
@@ -337,7 +349,7 @@ def build_spec(
         "roles": dom["roles"],
         "entities": dom["entities"],
         "flows": dom["flows"],
-        "baseline": ["captcha", "upload", "page", "errorcode", "profile", "avatar", "register"],
+        "baseline": list(BASELINE_TAGS),
         "out_of_mvp": dom["out_of_mvp"],
         "features": copy_features(dom["features"]),
         "gate": dom.get("gate") or {},

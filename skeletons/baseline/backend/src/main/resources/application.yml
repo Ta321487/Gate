@@ -34,6 +34,9 @@ thesis:
   # 选课/活动等：申请时做时段相交检测（需主表 start_at/end_at）
   check-time-conflict: false
   enable-ticket: true
+  # 门户游客可逛（工厂按域写入）；未登录列表截断条数
+  portal-guest-browse: false
+  guest-teaser-limit: 3
   # L1 单据亮点（工厂按 schema.entities.ticket 写入）
   ticket-two-level: false
   ticket-require-attach: false

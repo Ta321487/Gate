@@ -16,7 +16,7 @@ import java.util.Map;
 public class SlotController {
 
     private static void requireSlot() {
-        if (!SlotStore.enabled()) throw new BizException(ErrorCode.BAD_REQUEST, "预约能力未启用");
+        if (!SlotStore.enabled()) throw new BizException(ErrorCode.BAD_REQUEST, "预约功能暂不可用");
     }
 
     @GetMapping
@@ -25,7 +25,7 @@ public class SlotController {
             @RequestParam(required = false) String day,
             HttpSession session) {
         requireSlot();
-        AdminAuth.requireLogin(session);
+        // 游客可读时段；未登录由前端限量展示
         return R.ok(SlotStore.listSlots(itemId, day));
     }
 

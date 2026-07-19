@@ -378,18 +378,54 @@ const router = createRouter({
 
 const publicPaths = new Set(['/login', '/admin/login', '/register', '/error', '/loading'])
 
-router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('token')
+function safeRedirect(path) {
+  if (!path || typeof path !== 'string') return ''
+  if (!path.startsWith('/') || path.startsWith('//')) return ''
+  if (path.startsWith('/login') || path.startsWith('/admin/login')) return ''
+  return path
+}
+
+router.beforeEach(async (to, _from, next) => {
   if (publicPaths.has(to.path)) {
     next()
     return
   }
+  const token = localStorage.getItem('token')
+  const {
+    probeSession,
+    loginPathForRole,
+    isGuestBrowseEnabled,
+    isPortalPublicPath,
+  } = await import('../utils/session.js')
+
   if (!token) {
-    if (to.path.startsWith('/admin') && isSplitEntry()) next(adminLoginPath())
-    else next('/login')
+    if (isGuestBrowseEnabled() && isPortalPublicPath(to.path) && !to.path.startsWith('/admin')) {
+      next()
+      return
+    }
+    if (to.path.startsWith('/admin') && isSplitEntry()) {
+      next(adminLoginPath())
+      return
+    }
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath },
+    })
+    return
+  }
+  // 服务重启后 localStorage 仍有 token，须向服务端确认会话
+  const role = localStorage.getItem('role')
+  const ok = await probeSession()
+  if (!ok) {
+    if (isGuestBrowseEnabled() && isPortalPublicPath(to.path) && !to.path.startsWith('/admin')) {
+      next()
+      return
+    }
+    next(loginPathForRole(role))
     return
   }
   next()
 })
 
+export { safeRedirect }
 export default router

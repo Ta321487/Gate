@@ -26,7 +26,7 @@ public final class RecommendStore {
         if (!TicketStore.isArchiveMode()) {
             out.put("list", List.of());
             out.put("mode", "disabled");
-            out.put("reason", "当前领域无档案行为信号");
+            out.put("reason", "暂无推荐");
             return out;
         }
 
