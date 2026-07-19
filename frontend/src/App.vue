@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :locale="zhCN" :date-locale="dateZhCN">
+  <n-config-provider :locale="zhCN" :date-locale="dateZhCN" :theme="naiveTheme">
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -39,6 +39,14 @@
               <span v-else>{{ c }}</span>
             </template>
           </div>
+          <button
+            type="button"
+            class="theme-toggle"
+            :title="isDark ? '切换日间模式' : '切换夜间模式'"
+            @click="toggleTheme"
+          >
+            {{ isDark ? '日间' : '夜间' }}
+          </button>
         </header>
         <div class="content">
           <router-view />
@@ -53,6 +61,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { zhCN, dateZhCN } from 'naive-ui'
 import { detailCrumb } from './opsShared'
+import { isDark, naiveTheme, toggleTheme } from './theme'
 
 const route = useRoute()
 const workNav = [

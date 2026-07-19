@@ -1,8 +1,15 @@
-import { h } from 'vue'
+import { h, computed } from 'vue'
 import { createDiscreteApi, NInput, zhCN, dateZhCN } from 'naive-ui'
+import { naiveTheme } from './theme'
+
+const configProviderProps = computed(() => ({
+  locale: zhCN,
+  dateLocale: dateZhCN,
+  theme: naiveTheme.value,
+}))
 
 const { message, dialog } = createDiscreteApi(['message', 'dialog'], {
-  configProviderProps: { locale: zhCN, dateLocale: dateZhCN },
+  configProviderProps,
 })
 
 /** @returns {Promise<boolean>} */
