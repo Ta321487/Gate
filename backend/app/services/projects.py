@@ -15,7 +15,7 @@ from app.bake.catalog import (
     normalize_theme,
     themes_for_domain,
 )
-from app.bake.gates.library import evaluate_domain_gates
+from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.models import Project, ProjectStatus
 from app.services.proposal import read_proposal, summarize_proposal

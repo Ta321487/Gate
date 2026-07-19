@@ -9,7 +9,6 @@ import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,12 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 薄领域工作台（archive / standalone）。
- * LIBRARY 厚叠加用 {@code LibraryDashboardController}，故排除 DOM-LIBRARY。
+ * 薄领域工作台（archive / standalone / LIBRARY）。
  */
 @RestController
 @RequestMapping("/api/admin/dashboard")
-@ConditionalOnExpression("!'${thesis.domain:}'.equals('DOM-LIBRARY')")
 public class TicketDashboardController {
 
     @Value("${thesis.register-role:user}")

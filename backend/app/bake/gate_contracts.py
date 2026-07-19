@@ -183,49 +183,6 @@ def gate_archive_ticket(
     }
 
 
-# 图书厚包（过渡）：专用 Store / 路由，非 baseline 薄壳
-_GATE_LIBRARY_FILES = [
-    "backend/src/main/java/com/thesis/service/LibraryStore.java",
-    "backend/src/main/java/com/thesis/capability/RecommendStore.java",
-    "backend/src/main/java/com/thesis/controller/BookController.java",
-    "backend/src/main/java/com/thesis/controller/CategoryController.java",
-    "backend/src/main/java/com/thesis/controller/LibraryDashboardController.java",
-    "backend/src/main/java/com/thesis/controller/ReaderAdminController.java",
-    "backend/src/main/java/com/thesis/controller/BorrowController.java",
-    "backend/src/main/java/com/thesis/controller/RecommendController.java",
-    "backend/src/main/java/com/thesis/controller/NoticeController.java",
-    "backend/src/main/java/com/thesis/service/NoticeStore.java",
-    "backend/src/main/java/com/thesis/controller/MessageController.java",
-    "backend/src/main/java/com/thesis/service/MessageStore.java",
-    "backend/src/main/java/com/thesis/controller/AuthController.java",
-    "backend/src/main/java/com/thesis/controller/ProfileController.java",
-    "frontend/src/views/reader/Books.vue",
-    "frontend/src/views/reader/BookDetail.vue",
-    "frontend/src/views/reader/MyBorrows.vue",
-    "frontend/src/views/Notices.vue",
-    "frontend/src/views/NoticeDetail.vue",
-    "frontend/src/views/admin/NoticesAdmin.vue",
-    "frontend/src/components/EntityDetailLayout.vue",
-    "frontend/src/components/RecommendStrip.vue",
-    "frontend/src/components/MessageBell.vue",
-    "frontend/src/views/admin/BooksAdmin.vue",
-    "frontend/src/views/admin/CategoriesAdmin.vue",
-    "frontend/src/views/admin/Dashboard.vue",
-    "frontend/src/views/admin/ReadersAdmin.vue",
-    "frontend/src/views/admin/BorrowsAdmin.vue",
-    "frontend/src/views/admin/BorrowRecordsAdmin.vue",
-    "frontend/src/views/admin/OverdueAdmin.vue",
-    "frontend/src/views/Profile.vue",
-    "frontend/src/views/Login.vue",
-    "frontend/src/views/Register.vue",
-    "frontend/src/components/AuthShell.vue",
-    "frontend/src/utils/authTemplates.js",
-    "frontend/src/factoryDelivered.js",
-    "frontend/src/router/index.js",
-    "sql/schema.sql",
-]
-
-
 _GATE_ORDER_FILES = [
     "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
     "backend/src/main/java/com/thesis/capability/OrderStore.java",
@@ -347,30 +304,3 @@ def gate_slot_shell(
         },
     }
 
-
-def gate_library() -> dict:
-    """图书领域门禁（bake / gate 共用，禁止在 gate 代码里再写死路径）。"""
-    return {
-        "routes": [
-            {"seg": "books", "from_feature": "图书检索与详情"},
-            {"seg": "admin/categories", "from_feature": "分类管理"},
-            {"seg": "admin/dashboard", "from_feature": "管理端工作台"},
-            {"seg": "admin/readers", "from_feature": "读者管理"},
-            {"seg": "my-borrows", "from_feature": "借阅申请 → 审核"},
-            {"seg": "admin/borrows", "from_feature": "借阅申请 → 审核"},
-            {"seg": "admin/borrow-records", "from_feature": "借阅记录"},
-            {"seg": "admin/overdue", "from_feature": "逾期提醒与罚款"},
-            {"seg": "notices", "from_feature": "公告管理"},
-            {"seg": "notices/:id", "from_feature": "公告管理"},
-            {"seg": "profile", "from_baseline": "profile"},
-            {"seg": "register", "from_baseline": "register"},
-        ],
-        "files": list(_GATE_LIBRARY_FILES),
-        "flow_api": {
-            "apply": {"file": "BorrowController.java", "need": ["/apply", "applyBorrow"]},
-            "approve": {"file": "BorrowController.java", "need": ["approve"]},
-            "return": {"file": "BorrowController.java", "need": ["/return"]},
-            "overdue": {"file": "BorrowController.java", "need": ["/overdue", "markOverdue"]},
-            "remind": {"file": "BorrowController.java", "need": ["/remind", "remind"]},
-        },
-    }

@@ -1,4 +1,4 @@
-"""领域门禁：只读 Spec.gate / features / baseline，不写死业务路径。"""
+"""按 Spec.gate 契约评测工作区（全领域共用，不绑某一 DOM）。"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _route_present(router_src: str, seg: str) -> bool:
     for q in (f"'{seg}'", f'"{seg}"', f"'/{seg}'", f'"/{seg}"'):
         if q in router_src:
             return True
-    # 嵌套路由：admin/borrows → 父 '/admin' + 子 'borrows'
+    # 嵌套路由：admin/tickets → 父 '/admin' + 子 'tickets'
     if "/" in seg:
         parent, child = seg.split("/", 1)
         parent_ok = any(
@@ -34,43 +34,43 @@ def _route_present(router_src: str, seg: str) -> bool:
     return False
 
 
-def _library_main_path_logic() -> bool:
-    """主路径状态机自检（与 LibraryStore 语义一致）。"""
-    books = [{"id": 1, "title": "T", "stock": 2}]
-    borrows: list[dict] = []
+def _ticket_main_path_logic() -> bool:
+    """主路径状态机自检（archive 库存 + ticket 申请/审核/归还）。"""
+    items = [{"id": 1, "title": "T", "stock": 2}]
+    tickets: list[dict] = []
 
-    def apply(uid: str, book_id: int) -> int:
-        book = next(b for b in books if b["id"] == book_id)
-        if book["stock"] <= 0:
+    def apply(uid: str, item_id: int) -> int:
+        item = next(b for b in items if b["id"] == item_id)
+        if item["stock"] <= 0:
             raise RuntimeError("stock")
-        bid = len(borrows) + 1
-        borrows.append({"id": bid, "bookId": book_id, "username": uid, "status": "pending"})
-        return bid
+        tid = len(tickets) + 1
+        tickets.append({"id": tid, "itemId": item_id, "username": uid, "status": "pending"})
+        return tid
 
-    def approve(bid: int, pass_: bool) -> None:
-        br = next(b for b in borrows if b["id"] == bid)
+    def approve(tid: int, pass_: bool) -> None:
+        br = next(b for b in tickets if b["id"] == tid)
         if br["status"] != "pending":
             raise RuntimeError("status")
         if pass_:
-            book = next(b for b in books if b["id"] == br["bookId"])
-            book["stock"] -= 1
+            item = next(b for b in items if b["id"] == br["itemId"])
+            item["stock"] -= 1
             br["status"] = "approved"
         else:
             br["status"] = "rejected"
 
-    def return_book(bid: int) -> None:
-        br = next(b for b in borrows if b["id"] == bid)
+    def complete(tid: int) -> None:
+        br = next(b for b in tickets if b["id"] == tid)
         if br["status"] not in ("approved", "overdue"):
             raise RuntimeError("status")
-        book = next(b for b in books if b["id"] == br["bookId"])
-        book["stock"] += 1
+        item = next(b for b in items if b["id"] == br["itemId"])
+        item["stock"] += 1
         br["status"] = "returned"
 
     try:
-        bid = apply("reader", 1)
-        approve(bid, True)
-        return_book(bid)
-        return borrows[0]["status"] == "returned" and books[0]["stock"] == 2
+        tid = apply("user", 1)
+        approve(tid, True)
+        complete(tid)
+        return tickets[0]["status"] == "returned" and items[0]["stock"] == 2
     except Exception:
         return False
 
@@ -105,7 +105,8 @@ def _required_routes(spec: dict[str, Any]) -> list[str]:
     return segs
 
 
-def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
+def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    """有 Spec.gate 契约时的评测（archive/ticket/order/slot 等薄壳共用）。"""
     be = workspace / "backend" / "src" / "main" / "java" / "com" / "thesis"
     fe = workspace / "frontend" / "src"
     gate = spec.get("gate") or {}
@@ -146,9 +147,7 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
     has_overdue = api_hits.get("overdue", False)
     has_remind = api_hits.get("remind", False)
 
-    store_src = _read(be / "service" / "LibraryStore.java") + _read(
-        be / "capability" / "TicketStore.java"
-    )
+    store_src = _read(be / "capability" / "TicketStore.java")
     has_fine = "fineYuan" in store_src or "FINE_PER_DAY" in store_src or "dueAt" in store_src
 
     profile_src = _read(be / "controller" / "ProfileController.java")
@@ -160,14 +159,14 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
     has_routes = len(required_routes) > 0 and not missing_routes
 
     flow_desc = " → ".join(spec.get("flows") or []) or "主路径"
-    # 借阅壳用 return；报修薄壳用 complete；有 overdue 契约才强制逾期 API
+    # ticket_flow：return 或 complete；有 overdue/remind 契约才强制对应 API
     main_path_ok = has_apply and has_approve and has_finish
     if "overdue" in flow_api:
         main_path_ok = main_path_ok and has_overdue
     if "remind" in flow_api:
         main_path_ok = main_path_ok and has_remind
-    if has_return and (be / "service" / "LibraryStore.java").exists():
-        main_path_ok = main_path_ok and _library_main_path_logic()
+    if has_return and (be / "capability" / "TicketStore.java").exists():
+        main_path_ok = main_path_ok and _ticket_main_path_logic()
 
     features = spec.get("features") or []
     checklist = []
@@ -180,9 +179,7 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
             checklist.append({**f, "result": "out_of_mvp"})
             continue
         ok = files_ok
-        if "借阅记录" in name:
-            ok = (fe / "views" / "admin" / "BorrowRecordsAdmin.vue").exists()
-        elif "借用记录" in name:
+        if "借阅记录" in name or "借用记录" in name:
             ok = (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
         elif "报修记录" in name or ("记录" in name and "报修" in name):
             ok = (fe / "views" / "admin" / "TicketRecordsAdmin.vue").exists()
@@ -200,11 +197,7 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
             ok = (be / "controller" / "CategoryController.java").exists() and (
                 fe / "views" / "admin" / "CategoriesAdmin.vue"
             ).exists()
-        elif "读者" in name:
-            ok = (be / "controller" / "ReaderAdminController.java").exists() and (
-                fe / "views" / "admin" / "ReadersAdmin.vue"
-            ).exists()
-        elif "学生管理" in name or "用户管理" in name:
+        elif "读者" in name or "学生管理" in name or "用户管理" in name:
             ok = (be / "controller" / "UsersAdminController.java").exists() and (
                 fe / "views" / "admin" / "UsersAdmin.vue"
             ).exists()
@@ -217,19 +210,13 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
                 fe / "views" / "admin" / "LookupTypesAdmin.vue"
             ).exists()
         elif "工作台" in name:
-            ok = (
-                (be / "controller" / "LibraryDashboardController.java").exists()
-                or (be / "controller" / "TicketDashboardController.java").exists()
-            ) and (
-                (fe / "views" / "admin" / "Dashboard.vue").exists()
-                or (fe / "views" / "admin" / "TicketDashboard.vue").exists()
-            )
-        elif "设备" in name:
+            ok = (be / "controller" / "TicketDashboardController.java").exists() and (
+                fe / "views" / "admin" / "TicketDashboard.vue"
+            ).exists()
+        elif "设备" in name or "图书" in name or "物资" in name or "检索" in name:
             ok = (be / "controller" / "ArchiveController.java").exists() and (
                 fe / "views" / "user" / "ArchiveBrowse.vue"
             ).exists()
-        elif "图书" in name:
-            ok = (be / "controller" / "BookController.java").exists()
         elif "公告" in name:
             ok = (be / "controller" / "NoticeController.java").exists()
         elif "登录" in name or "注册" in name:
@@ -380,6 +367,7 @@ def evaluate_library_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
 
 
 def evaluate_generic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    """无 gate 契约：骨架存在即可，主路径未做实，禁止交付。"""
     be = workspace / "backend"
     fe = workspace / "frontend"
     p0a = (be / "pom.xml").exists()
@@ -436,14 +424,14 @@ def _schema_gate(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    """入口：有 Spec.gate → 契约评测；否则 generic 占位。"""
     from app.bake.domain_schema import ensure_spec_schema
 
     spec = ensure_spec_schema(spec)
     accept = spec.get("accept") or "reject"
     gate = spec.get("gate") or {}
-    # 有 gate 契约（图书厚包 / 报修薄壳）→ 按契约验；否则才是「尚未做实」
     if gate.get("files") or gate.get("routes") or gate.get("flow_api"):
-        results = evaluate_library_gates(workspace, spec)
+        results = evaluate_contract_gates(workspace, spec)
     else:
         results = evaluate_generic_gates(workspace, spec)
 
@@ -453,7 +441,6 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         "label": sg["label"],
         "desc": f"{sg['desc']} · accept={sg['accept']}",
     }
-    # 拒接：禁止 ZIP；降级：主路径过则可打包但 overall 反映 degraded
     if accept == "reject":
         results["zip_allowed"] = False
         results["overall"] = False
@@ -470,13 +457,11 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         }
         if accept == "degraded" and results.get("zip_allowed"):
             results["accept"]["desc"] += "（降级交付，未实现卖点见 out_of_mvp）"
-        # schema 不合法则不允许打包（无 schema 文件时用 spec.schema 校验即可）
         if not sg["ok"]:
             results["zip_allowed"] = False
             results["overall"] = False
         elif results.get("overall") and not results.get("zip_allowed"):
             pass
         elif results.get("overall"):
-            # 主路径已过且可接：保持 zip_allowed
             results["zip_allowed"] = bool(results.get("zip_allowed", True))
     return results

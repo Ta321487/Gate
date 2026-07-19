@@ -244,7 +244,7 @@ async def download_er_svg(project_id: str, db: AsyncSession = Depends(get_db)):
     model = load_schema_model(Path(p.workspace_path))
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
-    svg = render_er_svg(model, title=f"E-R · {p.db_name or project_id}")
+    svg = render_er_svg(model, title=f"实体联系图 · {p.db_name or project_id}")
     return Response(
         content=svg.encode("utf-8"),
         media_type="image/svg+xml; charset=utf-8",

@@ -17,8 +17,8 @@ from app.bake.schema_templates import (  # re-export
 )
 from app.bake.profile_fields import attach_profile_fields
 
-# 哪些 domain 当前有 skeletons/domains 叠加（与 bake overlay 一致）
-DOMAINS_WITH_OVERLAY = frozenset({"DOM-LIBRARY"})
+# 哪些 domain 仍有 skeletons/domains 厚叠加（空 = 全部走 baseline 薄壳）
+DOMAINS_WITH_OVERLAY = frozenset()
 
 # 基线通用壳已覆盖的能力（无需厚 overlay 即可跑）
 BASELINE_RUNTIME_CAPS = frozenset({

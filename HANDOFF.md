@@ -214,7 +214,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 ## 学生端持久化（已完成）
 
-- `UserStore` / `NoticeStore` / `MessageStore` / `LibraryStore` → MySQL + JdbcTemplate  
+- `UserStore` / `NoticeStore` / `MessageStore` / `ArchiveStore`+`TicketStore` → MySQL + JdbcTemplate  
 - 工厂 `student_db.ensure_student_schema` + `GF_STUDENT_MYSQL_*`  
 - 种子在 `schema.sql` 幂等；重启不 Cle 业务数据  
 
@@ -226,7 +226,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 - [x] LIBRARY 薄封装；通用 `/api/tickets` + 报修壳前端
 - [x] **accept**：能力齐且落在基线积木内 → `full`（不再强制 DOM overlay）
 - [x] 组 B：**DOM-DORM / PROPERTY / IT**（`gate_standalone_ticket` + runtime + SQL；L1 二级审批默认开）
-- [x] 组 A：**DOM-EQUIP**（同 LIBRARY 能力，无厚包）+ **DOM-ASSET / DOM-CRM**（薄 SQL/schema；ASSET 无 deadline，CRM 轻量跟进单）
+- [x] 组 A：**DOM-LIBRARY / DOM-EQUIP**（均走 baseline 薄壳）+ **DOM-ASSET / DOM-CRM**（薄 SQL/schema；ASSET 无 deadline，CRM 轻量跟进单）
 - [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（收藏单据、播放外链）+ **DOM-FORUM / DOM-BLOG**（主帖/文章 + 回复/收藏单据；可选门户轮播）
 - [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启
 - [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（报名/认领/选课；ACTIVITY/COURSE 含 `time_conflict` + 门户轮播）
@@ -243,10 +243,10 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 - 楼管（子管）`subadmin` / `sub123`：仅报修受理/记录/工作台
 - 学生 `student` / `student123`
 
-样板（过渡厚包）：`skeletons/domains/DOM-LIBRARY/`  
+样板：已收进 `skeletons/baseline`（LIBRARY 与 EQUIP 等同走薄壳）  
 Catalog：`catalog.py`（匹配 / build_spec）  
 目录：`domains.py`（`ARCHETYPES` / `DOMAIN_CAPABILITIES` / `DOMAINS`）  
-门禁契约：`gate_contracts.py`（与 `gates/` 评测包分开）  
+门禁契约：`gate_contracts.py`；评测：`gates/evaluate.py`  
 主题：`themes.py`；档案字段：`profile_fields.py`  
 Schema：`domain_schema.py`（组装/accept）；模板：`schema_templates.py`
 
