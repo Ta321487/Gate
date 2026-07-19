@@ -1,4 +1,4 @@
--- bake domain=DOM-EQUIP · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+﻿-- bake domain=DOM-EQUIP · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS equip (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

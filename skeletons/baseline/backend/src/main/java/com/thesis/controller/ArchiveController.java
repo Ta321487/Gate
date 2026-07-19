@@ -8,6 +8,8 @@ import com.thesis.common.R;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /** 通用档案 API：/api/archive（设备 / 物资等；LIBRARY 另保留 /api/books） */
@@ -20,15 +22,30 @@ public class ArchiveController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long categoryId) {
-        return R.ok(ArchiveStore.pageItems(keyword, categoryId, page, size));
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String tagIds,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
+            HttpSession session) {
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        boolean showDeleted = includeDeleted && admin && AdminAuth.isSuperAdmin(session);
+        return R.ok(ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, page, size));
     }
 
-    @GetMapping("/{id}")
-    public R<Map<String, Object>> detail(@PathVariable long id) {
-        Map<String, Object> item = ArchiveStore.getItem(id);
+    @GetMapping("/{id:\\d+}")
+    public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        Map<String, Object> item = admin ? ArchiveStore.getItemAdmin(id) : ArchiveStore.getItem(id);
         if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         return R.ok(item);
+    }
+
+    /** CSV 批量导入：body.csv 为全文（含表头 title,author,isbn,category,stock） */
+    @PostMapping("/import")
+    public R<Map<String, Object>> importCsv(@RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        String csv = body.get("csv") == null ? "" : String.valueOf(body.get("csv"));
+        if (csv.isBlank()) throw new BizException(ErrorCode.BAD_REQUEST, "CSV 内容为空");
+        return R.ok(ArchiveStore.importRows(parseArchiveCsv(csv)));
     }
 
     @PostMapping
@@ -47,7 +64,7 @@ public class ArchiveController {
         ));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public R<Map<String, Object>> update(
             @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
@@ -56,14 +73,72 @@ public class ArchiveController {
         return R.ok(updated);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public R<Void> delete(@PathVariable long id, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         if (!ArchiveStore.deleteItem(id)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         return R.ok(null);
     }
 
+    @PostMapping("/{id:\\d+}/restore")
+    public R<Map<String, Object>> restore(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        if (!ArchiveStore.restoreItem(id)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在或未下架");
+        Map<String, Object> item = ArchiveStore.getItemAdmin(id);
+        return R.ok(item);
+    }
+
+    private static List<Long> parseTagIds(String raw) {
+        List<Long> out = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return out;
+        for (String part : raw.split("[,\\s]+")) {
+            try {
+                long id = Long.parseLong(part.trim());
+                if (id > 0) out.add(id);
+            } catch (Exception ignored) {
+            }
+        }
+        return out;
+    }
+
+    private static java.util.List<Map<String, String>> parseArchiveCsv(String csv) {
+        String text = csv.replace("\uFEFF", "").replace("\r\n", "\n").replace('\r', '\n');
+        String[] lines = text.split("\n");
+        java.util.List<Map<String, String>> rows = new java.util.ArrayList<>();
+        if (lines.length < 2) return rows;
+        String[] headers = splitCsvLine(lines[0]);
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].isBlank()) continue;
+            String[] cols = splitCsvLine(lines[i]);
+            Map<String, String> row = new java.util.LinkedHashMap<>();
+            for (int c = 0; c < headers.length && c < cols.length; c++) {
+                row.put(headers[c].trim().toLowerCase(), cols[c].trim());
+            }
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private static String[] splitCsvLine(String line) {
+        java.util.List<String> cells = new java.util.ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQuote = false;
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (ch == '"') {
+                inQuote = !inQuote;
+            } else if ((ch == ',' && !inQuote) || ch == '\t') {
+                cells.add(cur.toString());
+                cur.setLength(0);
+            } else {
+                cur.append(ch);
+            }
+        }
+        cells.add(cur.toString());
+        return cells.toArray(new String[0]);
+    }
+
     private static String str(Object o) {
-        return o == null ? "" : String.valueOf(o);
+        return o == null ? "" : String.valueOf(o).trim();
     }
 }

@@ -31,12 +31,14 @@ public class TicketController {
                 if (remark.isBlank()) remark = str(body.get("content"));
                 Long typeId = toLongOrNull(body.get("typeId"));
                 Long roomId = toLongOrNull(body.get("roomId"));
-                return R.ok(TicketStore.applyStandalone(uid, title, location, remark, typeId, roomId));
+                String attachUrl = str(body.get("attachUrl"));
+                return R.ok(TicketStore.applyStandalone(uid, title, location, remark, typeId, roomId, attachUrl));
             }
             long itemId = Long.parseLong(String.valueOf(body.get("itemId") != null ? body.get("itemId") : body.get("bookId")));
             String remark = str(body.get("remark"));
             if (remark.isBlank()) remark = str(body.get("content"));
-            return R.ok(TicketStore.apply(uid, itemId, remark));
+            String attachUrl = str(body.get("attachUrl"));
+            return R.ok(TicketStore.apply(uid, itemId, remark, attachUrl));
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "缺少业务对象 id");
         } catch (IllegalArgumentException e) {
@@ -59,8 +61,46 @@ public class TicketController {
             throw new BizException(ErrorCode.BAD_REQUEST, "请填写驳回原因");
         }
         try {
-            // 受理/驳回即绑定处理人（子管认领工单）
-            return R.ok(TicketStore.approve(id, pass, remark, uid));
+            boolean superAdmin = AdminAuth.isSuperAdmin(session);
+            return R.ok(TicketStore.approve(id, pass, remark, uid, superAdmin));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/rate")
+    public R<Map<String, Object>> rate(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        int rating;
+        try {
+            rating = Integer.parseInt(String.valueOf(body.get("rating")));
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请选择 1～5 分");
+        }
+        String note = body.get("remark") == null ? "" : String.valueOf(body.get("remark")).trim();
+        try {
+            return R.ok(TicketStore.rate(id, uid, rating, note));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/checkin")
+    public R<Map<String, Object>> checkin(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        String code = body.get("code") == null ? "" : String.valueOf(body.get("code")).trim();
+        try {
+            return R.ok(TicketStore.checkin(id, uid, code));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
@@ -142,10 +182,13 @@ public class TicketController {
         if (!admin && !uid.equals(br.get("username"))) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
         }
-        if (admin && !AdminAuth.isSuperAdmin(session) && !"pending".equals(br.get("status"))) {
-            String asg = str(br.get("assigneeUsername"));
-            if (!asg.isBlank() && !asg.equals(uid)) {
-                throw new BizException(ErrorCode.FORBIDDEN, "该单已由其他处理人受理");
+        if (admin && !AdminAuth.isSuperAdmin(session)) {
+            String st = str(br.get("status"));
+            if (!"pending".equals(st) && !"pending_final".equals(st)) {
+                String asg = str(br.get("assigneeUsername"));
+                if (!asg.isBlank() && !asg.equals(uid)) {
+                    throw new BizException(ErrorCode.FORBIDDEN, "该单已由其他处理人受理");
+                }
             }
         }
         return R.ok(br);

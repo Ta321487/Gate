@@ -82,9 +82,46 @@ public class DomainRuntimeBinder {
     @Value("${thesis.reservation-table:}")
     private String reservationTable;
 
+    @Value("${thesis.ticket-two-level:false}")
+    private boolean ticketTwoLevel;
+
+    @Value("${thesis.ticket-require-attach:false}")
+    private boolean ticketRequireAttach;
+
+    @Value("${thesis.ticket-allow-rating:false}")
+    private boolean ticketAllowRating;
+
+    @Value("${thesis.ticket-check-mutex:false}")
+    private boolean ticketCheckMutex;
+
+    @Value("${thesis.ticket-category-limit:0}")
+    private int ticketCategoryLimit;
+
+    @Value("${thesis.archive-soft-delete:false}")
+    private boolean archiveSoftDelete;
+
+    @Value("${thesis.archive-tag-table:}")
+    private String archiveTagTable;
+
+    @Value("${thesis.archive-item-tag-table:}")
+    private String archiveItemTagTable;
+
+    @Value("${thesis.ticket-week-calendar:false}")
+    private boolean ticketWeekCalendar;
+
+    @Value("${thesis.ticket-allow-checkin:false}")
+    private boolean ticketAllowCheckin;
+
     @PostConstruct
     public void bind() {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
+        ArchiveStore.configureSoftDelete(archiveSoftDelete);
+        if (archiveTagTable != null && !archiveTagTable.isBlank()) {
+            ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
+        }
+        if (ticketAllowCheckin) {
+            ArchiveStore.ensureCheckinCodeColumn();
+        }
         if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
             if ("standalone".equalsIgnoreCase(ticketMode)) {
                 TicketStore.bindStandalone(ticketTable);
@@ -92,6 +129,9 @@ public class DomainRuntimeBinder {
                 TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
             }
             TicketStore.setUserRole(registerRole);
+            TicketStore.configureL1(ticketTwoLevel, ticketRequireAttach, ticketAllowRating);
+            TicketStore.configureRules(ticketCheckMutex, ticketCategoryLimit);
+            TicketStore.configureCheckin(ticketAllowCheckin);
         }
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);

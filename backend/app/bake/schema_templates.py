@@ -46,9 +46,10 @@ def _library_schema(title: str) -> dict[str, Any]:
                 "fields": [
                     {"key": "title", "label": "书名", "type": "string"},
                     {"key": "author", "label": "作者", "type": "string"},
-                    {"key": "category", "label": "分类", "type": "string"},
+                    {"key": "category", "label": "分类", "type": "select"},
                     {"key": "stock", "label": "库存", "type": "number"},
                 ],
+                "softDelete": True,
             },
             "ticket": {
                 "key": "borrow",
@@ -147,6 +148,16 @@ def _archive_ticket_schema(
     body_field: str = "",
     stock_display: str = "count",
     rich_remark: bool = False,
+    two_level_approve: bool = False,
+    require_attach: bool = False,
+    allow_rating: bool = False,
+    check_mutex: bool = False,
+    category_limit: int = 0,
+    soft_delete: bool = False,
+    tag_filter: bool = False,
+    week_calendar: bool = False,
+    week_calendar_label: str = "我的课表",
+    allow_checkin: bool = False,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
@@ -156,18 +167,38 @@ def _archive_ticket_schema(
         "labelPlural": archive_plural,
         "fields": archive_fields,
         "stockDisplay": stock_display,
+        "softDelete": soft_delete,
+        "tagFilter": tag_filter,
     }
     if play_url_field:
         archive_entity["playUrlField"] = play_url_field
     if body_field:
         archive_entity["bodyField"] = body_field
+    states_out = dict(states)
+    if two_level_approve and "pending_final" not in states_out:
+        # 插在 pending 后
+        ordered: dict[str, str] = {}
+        for k, v in states_out.items():
+            ordered[k] = v
+            if k == "pending":
+                ordered["pending_final"] = "待终审"
+        states_out = ordered
     ticket_entity: dict[str, Any] = {
         "key": ticket_key,
         "label": ticket_label,
         "labelPlural": ticket_plural,
         "verbs": verbs,
-        "states": states,
+        "states": states_out,
+        "twoLevelApprove": two_level_approve,
+        "requireAttach": require_attach,
+        "allowRating": allow_rating,
+        "checkMutex": check_mutex,
+        "categoryLimit": max(0, int(category_limit or 0)),
+        "weekCalendar": week_calendar,
+        "allowCheckin": allow_checkin,
     }
+    if week_calendar:
+        ticket_entity["weekCalendarLabel"] = week_calendar_label
     if rich_remark:
         ticket_entity["richRemark"] = True
     admin_menus = [
@@ -181,6 +212,18 @@ def _archive_ticket_schema(
     if with_deadline:
         admin_menus.append({"key": "deadline", "label": deadline_label})
     admin_menus.append({"key": "content", "label": "公告管理", "superOnly": True})
+    user_menus = [
+        {"key": "archive", "label": archive_menu_user},
+        {"key": "my_tickets", "label": my_tickets_label},
+    ]
+    if week_calendar:
+        user_menus.append({"key": "week_calendar", "label": week_calendar_label})
+    user_menus.extend(
+        [
+            {"key": "content", "label": "公告"},
+            {"key": "profile", "label": "个人资料"},
+        ]
+    )
     return {
         "version": 1,
         "title": title,
@@ -196,12 +239,7 @@ def _archive_ticket_schema(
         },
         "menus": {
             "admin": admin_menus,
-            "user": [
-                {"key": "archive", "label": archive_menu_user},
-                {"key": "my_tickets", "label": my_tickets_label},
-                {"key": "content", "label": "公告"},
-                {"key": "profile", "label": "个人资料"},
-            ],
+            "user": user_menus,
         },
         "labels": {
             "appName": app,
@@ -242,7 +280,7 @@ def _equip_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "设备名称", "type": "string"},
                 {"key": "author", "label": "品牌/型号", "type": "string"},
                 {"key": "isbn", "label": "资产编号", "type": "string"},
-                {"key": "category", "label": "分类", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可借数量", "type": "number"},
             ],
             ticket_key="loan",
@@ -277,11 +315,136 @@ def _equip_schema(title: str) -> dict[str, Any]:
             pending_label="借用审核",
             records_label="借用记录",
             deadline_label="逾期催还",
+            soft_delete=True,
         ),
         [
             {"title": "实验室器材", "lead": "检索设备、查看库存，在线提交借用申请。"},
             {"title": "借用须知", "lead": "按需申请、按时归还；逾期将登记催还。"},
             {"title": "领用时段", "lead": "工作日办理领用与归还，详见实验室公告。"},
+        ],
+    )
+
+
+def _asset_schema(title: str) -> dict[str, Any]:
+    """固定资产 / 耗材申领：档案+单据+库存，无逾期（与设备借用区分）。"""
+    return _with_portal_banners(
+        _archive_ticket_schema(
+            title,
+            domain="DOM-ASSET",
+            user_role_id="user",
+            user_label="申领人",
+            admin_label="仓管主管（总管）",
+            subadmin_label="库管员",
+            archive_key="asset",
+            archive_label="物资",
+            archive_plural="物资",
+            archive_fields=[
+                {"key": "title", "label": "物资名称", "type": "string"},
+                {"key": "author", "label": "规格/型号", "type": "string"},
+                {"key": "isbn", "label": "资产编号", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "可领数量", "type": "number"},
+            ],
+            ticket_key="requisition",
+            ticket_label="申领单",
+            ticket_plural="申领",
+            verbs={
+                "apply": "提交申领",
+                "approve": "通过出库",
+                "reject": "驳回",
+                "return": "退库",
+                "remind": "催办",
+            },
+            states={
+                "pending": "待审核",
+                "approved": "已出库",
+                "rejected": "已驳回",
+                "returned": "已退库",
+                "overdue": "已失效",
+            },
+            archive_menu_admin="物资台账",
+            archive_menu_user="物资目录",
+            users_menu="用户管理",
+            auth_eyebrow="物资领用",
+            auth_lead="验证码登录；浏览物资台账并提交申领，库管审核后出库。",
+            auth_points=["验证码登录", "物资目录", "申领审核与出库"],
+            register_hint="注册后可按部门申领办公物资与耗材",
+            notice_title="领用须知",
+            notice_body="请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材出库不退。",
+            notice_page_title="仓储公告",
+            notice_page_lead="领用须知、盘点安排与临时通知，点击条目阅读全文。",
+            my_tickets_label="我的申领",
+            pending_label="申领审核",
+            records_label="申领记录",
+            with_deadline=False,
+            soft_delete=True,
+        ),
+        [
+            {"title": "物资台账", "lead": "固定资产与耗材分类浏览，查看可领库存。"},
+            {"title": "在线申领", "lead": "提交申领单，库管审核通过后办理出库。"},
+            {"title": "仓储公告", "lead": "盘点安排与领用须知见公告栏。"},
+        ],
+    )
+
+
+def _crm_schema(title: str) -> dict[str, Any]:
+    """轻量 CRM：客户档案 + 跟进单据（非公海/外呼引擎）。"""
+    return _with_portal_banners(
+        _archive_ticket_schema(
+            title,
+            domain="DOM-CRM",
+            user_role_id="user",
+            user_label="业务员",
+            admin_label="销售主管（总管）",
+            subadmin_label="客户经理",
+            archive_key="customer",
+            archive_label="客户",
+            archive_plural="客户",
+            archive_fields=[
+                {"key": "title", "label": "客户名称", "type": "string"},
+                {"key": "author", "label": "联系人", "type": "string"},
+                {"key": "isbn", "label": "电话/备注", "type": "string"},
+                {"key": "category", "label": "客户分级", "type": "select"},
+                {"key": "stock", "label": "可跟进", "type": "number"},
+            ],
+            ticket_key="follow_up",
+            ticket_label="跟进单",
+            ticket_plural="跟进",
+            verbs={
+                "apply": "提交跟进",
+                "approve": "确认",
+                "reject": "驳回",
+                "return": "完结",
+                "remind": "催办",
+            },
+            states={
+                "pending": "待确认",
+                "approved": "跟进中",
+                "rejected": "已驳回",
+                "returned": "已完结",
+                "overdue": "已失效",
+            },
+            archive_menu_admin="客户档案",
+            archive_menu_user="客户列表",
+            users_menu="用户管理",
+            auth_eyebrow="客户跟进",
+            auth_lead="验证码登录；维护客户档案并提交跟进记录，主管确认后完结。",
+            auth_points=["验证码登录", "客户档案", "跟进审核"],
+            register_hint="注册后可维护名下客户并提交跟进",
+            notice_title="跟进须知",
+            notice_body="请如实登记联系结果；重要商机请及时提交跟进单由主管确认。",
+            notice_page_title="销售公告",
+            notice_page_lead="跟进规范与临时通知，点击条目阅读全文。",
+            my_tickets_label="我的跟进",
+            pending_label="跟进确认",
+            records_label="跟进记录",
+            with_deadline=False,
+            stock_display="available",
+        ),
+        [
+            {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+            {"title": "跟进闭环", "lead": "提交跟进单，主管确认后进入跟进中并可完结。"},
+            {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
         ],
     )
 
@@ -301,8 +464,8 @@ def _media_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "片名", "type": "string"},
                 {"key": "author", "label": "导演/主演", "type": "string"},
-                {"key": "isbn", "label": "播放链接", "type": "string"},
-                {"key": "category", "label": "分类", "type": "string"},
+                {"key": "isbn", "label": "播放链接", "type": "url"},
+                {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可点播", "type": "number"},
             ],
             ticket_key="favorite",
@@ -339,6 +502,7 @@ def _media_schema(title: str) -> dict[str, Any]:
             with_deadline=False,
             play_url_field="isbn",
             stock_display="available",
+            soft_delete=True,
         ),
         [
             {"title": "热播片单", "lead": "电影、电视剧、综艺分类浏览，点击即可播放。"},
@@ -363,8 +527,8 @@ def _music_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "歌名", "type": "string"},
                 {"key": "author", "label": "歌手/专辑", "type": "string"},
-                {"key": "isbn", "label": "播放链接", "type": "string"},
-                {"key": "category", "label": "曲风", "type": "string"},
+                {"key": "isbn", "label": "播放链接", "type": "url"},
+                {"key": "category", "label": "曲风", "type": "select"},
                 {"key": "stock", "label": "可播放", "type": "number"},
             ],
             ticket_key="favorite",
@@ -401,6 +565,7 @@ def _music_schema(title: str) -> dict[str, Any]:
             with_deadline=False,
             play_url_field="isbn",
             stock_display="available",
+            soft_delete=True,
         ),
         [
             {"title": "热门曲库", "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。"},
@@ -426,7 +591,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "楼主", "type": "string"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
-                {"key": "category", "label": "板块", "type": "string"},
+                {"key": "category", "label": "板块", "type": "select"},
                 {"key": "stock", "label": "可见", "type": "number"},
             ],
             ticket_key="reply",
@@ -464,6 +629,8 @@ def _forum_schema(title: str) -> dict[str, Any]:
             body_field="isbn",
             rich_remark=True,
             stock_display="available",
+            soft_delete=True,
+            tag_filter=True,
         ),
         [
             {"title": "热门板块", "lead": "学习、生活、二手信息分区浏览主帖。"},
@@ -489,7 +656,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "作者", "type": "string"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
-                {"key": "category", "label": "分类", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可阅读", "type": "number"},
             ],
             ticket_key="favorite",
@@ -526,6 +693,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             with_deadline=False,
             body_field="isbn",
             stock_display="available",
+            soft_delete=True,
         ),
         [
             {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览富文本正文。"},
@@ -551,8 +719,9 @@ def _activity_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "活动名称", "type": "string"},
                 {"key": "author", "label": "主办方", "type": "string"},
                 {"key": "isbn", "label": "地点", "type": "string"},
-                {"key": "category", "label": "分类", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "剩余名额", "type": "number"},
+                {"key": "checkinCode", "label": "签到码", "type": "string"},
                 {"key": "startAt", "label": "开始时间", "type": "datetime"},
                 {"key": "endAt", "label": "结束时间", "type": "datetime"},
                 {"key": "applyDeadlineAt", "label": "报名截止", "type": "datetime"},
@@ -578,21 +747,25 @@ def _activity_schema(title: str) -> dict[str, Any]:
             archive_menu_user="活动检索",
             users_menu="用户管理",
             auth_eyebrow="活动报名",
-            auth_lead="验证码登录；浏览活动并报名；系统检测时段冲突与报名截止。",
-            auth_points=["验证码登录", "活动检索", "报名审核、名额与冲突检测"],
+            auth_lead="验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到。",
+            auth_points=["验证码登录", "活动检索", "报名、冲突检测与口令签到"],
             register_hint="注册后可报名校园活动",
             notice_title="报名须知",
-            notice_body="请如实填写资料；名额有限；时段冲突或已截止将无法提交。",
+            notice_body="请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码。",
             notice_page_title="活动公告",
             notice_page_lead="报名须知、活动变更与临时通知，点击条目阅读全文。",
             my_tickets_label="我的报名",
             pending_label="报名审核",
             records_label="报名记录",
             with_deadline=False,
+            allow_rating=True,
+            week_calendar=True,
+            week_calendar_label="我的日程",
+            allow_checkin=True,
         ),
         [
             {"title": "热门活动", "lead": "社团、志愿、讲座分类浏览，在线报名。"},
-            {"title": "冲突与截止", "lead": "与已报活动时段重叠或已过截止时间将无法提交。"},
+            {"title": "冲突与签到", "lead": "时段冲突不可报；到场输入签到码完成核验。"},
             {"title": "活动公告", "lead": "变更与须知见公告栏。"},
         ],
     )
@@ -613,7 +786,7 @@ def _lost_schema(title: str) -> dict[str, Any]:
             {"key": "title", "label": "物品名称", "type": "string"},
             {"key": "author", "label": "拾获/登记人", "type": "string"},
             {"key": "isbn", "label": "地点/特征", "type": "string"},
-            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可认领", "type": "number"},
         ],
         ticket_key="claim",
@@ -649,6 +822,8 @@ def _lost_schema(title: str) -> dict[str, Any]:
         records_label="认领记录",
         with_deadline=False,
         stock_display="available",
+        require_attach=True,
+        allow_rating=True,
     )
 
 
@@ -668,8 +843,9 @@ def _course_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "课程名称", "type": "string"},
                 {"key": "author", "label": "授课教师", "type": "string"},
                 {"key": "isbn", "label": "课号/教室", "type": "string"},
-                {"key": "category", "label": "分类", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "剩余名额", "type": "number"},
+                {"key": "mutexCode", "label": "互斥码", "type": "string"},
                 {"key": "startAt", "label": "上课开始", "type": "datetime"},
                 {"key": "endAt", "label": "上课结束", "type": "datetime"},
                 {"key": "applyDeadlineAt", "label": "选课截止", "type": "datetime"},
@@ -695,21 +871,25 @@ def _course_schema(title: str) -> dict[str, Any]:
             archive_menu_user="课程检索",
             users_menu="学生管理",
             auth_eyebrow="公选选课",
-            auth_lead="验证码登录；浏览公选课并申请；系统检测上课时段冲突与选课截止。",
-            auth_points=["验证码登录", "课程检索", "选课、名额与冲突检测"],
+            auth_lead="验证码登录；浏览公选课并申请；系统检测上课时段冲突、互斥组与分类限额。",
+            auth_points=["验证码登录", "课程检索", "选课、冲突/互斥与分类限额"],
             register_hint="注册后可以学生身份选课",
             notice_title="选课须知",
-            notice_body="请在截止前选课；名额有限；上课时段冲突将无法提交。",
+            notice_body="请在截止前选课；名额有限；时段冲突、互斥组或分类超额将无法提交。",
             notice_page_title="教务公告",
             notice_page_lead="选课须知、开放时段与临时通知，点击条目阅读全文。",
             my_tickets_label="我的选课",
             pending_label="选课审核",
             records_label="选课记录",
             with_deadline=False,
+            check_mutex=True,
+            category_limit=1,
+            week_calendar=True,
+            week_calendar_label="我的课表",
         ),
         [
             {"title": "本学期公选", "lead": "按分类浏览课程、课时与剩余名额。"},
-            {"title": "冲突检测", "lead": "与已选课程上课时段重叠时无法提交申请。"},
+            {"title": "冲突与限额", "lead": "时段重叠、同互斥码或同分类超额时无法提交。"},
             {"title": "教务公告", "lead": "开放时段与变更通知见公告栏。"},
         ],
     )
@@ -742,9 +922,22 @@ def _standalone_ticket_schema(
     my_tickets_label: str = "我的报修",
     pending_label: str = "报修受理",
     records_label: str = "报修记录",
+    two_level_approve: bool = False,
+    require_attach: bool = False,
+    allow_rating: bool = False,
 ) -> dict[str, Any]:
     """报修/工单薄壳：主数据 + 用户 + 公告（总管）与单据流（子管）。"""
     app = product_name_from_title(title)
+    states_out = dict(states)
+    if two_level_approve and "pending_final" not in states_out:
+        ordered: dict[str, str] = {}
+        for k, v in states.items():
+            if k == "pending":
+                ordered["pending"] = "待初审" if v in ("待受理", "待审核") else v
+                ordered["pending_final"] = "待终审"
+            else:
+                ordered[k] = v
+        states_out = ordered
     return {
         "version": 1,
         "title": title,
@@ -760,7 +953,10 @@ def _standalone_ticket_schema(
                 "label": ticket_label,
                 "labelPlural": ticket_plural,
                 "verbs": verbs,
-                "states": states,
+                "states": states_out,
+                "twoLevelApprove": two_level_approve,
+                "requireAttach": require_attach,
+                "allowRating": allow_rating,
             },
         },
         "menus": {
@@ -829,6 +1025,7 @@ def _dorm_schema(title: str) -> dict[str, Any]:
         notice_body="请如实填写宿舍与故障描述，宿管将尽快受理。",
         notice_page_title="宿舍公告",
         notice_page_lead="报修须知、宿舍安排与临时通知，点击条目阅读全文。",
+        two_level_approve=True,
     )
 
 
@@ -866,6 +1063,7 @@ def _property_schema(title: str) -> dict[str, Any]:
         notice_body="请如实填写地址与故障描述，物业将尽快受理。",
         notice_page_title="物业公告",
         notice_page_lead="报修须知、社区安排与临时通知，点击条目阅读全文。",
+        two_level_approve=True,
     )
 
 
@@ -906,6 +1104,7 @@ def _it_schema(title: str) -> dict[str, Any]:
         my_tickets_label="我的故障",
         pending_label="故障受理",
         records_label="报修记录",
+        two_level_approve=True,
     )
 
 
@@ -1161,9 +1360,9 @@ def _shop_schema(title: str) -> dict[str, Any]:
         archive_plural="商品",
         archive_fields=[
             {"key": "title", "label": "商品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "number"},
             {"key": "isbn", "label": "货号", "type": "string"},
-            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "库存", "type": "number"},
         ],
         archive_menu_admin="商品管理",
@@ -1195,9 +1394,9 @@ def _food_schema(title: str) -> dict[str, Any]:
         archive_plural="菜品",
         archive_fields=[
             {"key": "title", "label": "菜品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "number"},
             {"key": "isbn", "label": "窗口", "type": "string"},
-            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可售份数", "type": "number"},
         ],
         archive_menu_admin="菜品管理",
@@ -1236,9 +1435,9 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         archive_plural="会议室",
         archive_fields=[
             {"key": "title", "label": "会议室", "type": "string"},
-            {"key": "author", "label": "费用", "type": "string"},
+            {"key": "author", "label": "费用", "type": "number"},
             {"key": "isbn", "label": "位置/容量", "type": "string"},
-            {"key": "category", "label": "类型", "type": "string"},
+            {"key": "category", "label": "类型", "type": "select"},
         ],
         archive_menu_admin="会议室管理",
         archive_menu_user="会议室",
@@ -1268,9 +1467,9 @@ def _hospital_schema(title: str) -> dict[str, Any]:
         archive_plural="医生",
         archive_fields=[
             {"key": "title", "label": "医生", "type": "string"},
-            {"key": "author", "label": "挂号费(元)", "type": "string"},
+            {"key": "author", "label": "挂号费(元)", "type": "number"},
             {"key": "isbn", "label": "职称/说明", "type": "string"},
-            {"key": "category", "label": "科室", "type": "string"},
+            {"key": "category", "label": "科室", "type": "select"},
         ],
         archive_menu_admin="医生管理",
         archive_menu_user="选医生",
@@ -1300,9 +1499,9 @@ def _parking_schema(title: str) -> dict[str, Any]:
         archive_plural="车位",
         archive_fields=[
             {"key": "title", "label": "车位号", "type": "string"},
-            {"key": "author", "label": "费用(元)", "type": "string"},
+            {"key": "author", "label": "费用(元)", "type": "number"},
             {"key": "isbn", "label": "位置", "type": "string"},
-            {"key": "category", "label": "分区", "type": "string"},
+            {"key": "category", "label": "分区", "type": "select"},
         ],
         archive_menu_admin="车位管理",
         archive_menu_user="选车位",
@@ -1332,9 +1531,9 @@ def _salon_schema(title: str) -> dict[str, Any]:
         archive_plural="服务",
         archive_fields=[
             {"key": "title", "label": "服务项目", "type": "string"},
-            {"key": "author", "label": "价格(元)", "type": "string"},
+            {"key": "author", "label": "价格(元)", "type": "number"},
             {"key": "isbn", "label": "时长说明", "type": "string"},
-            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
         ],
         archive_menu_admin="服务管理",
         archive_menu_user="选服务",
@@ -1364,9 +1563,9 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         archive_plural="房型",
         archive_fields=[
             {"key": "title", "label": "房型", "type": "string"},
-            {"key": "author", "label": "房价(元)", "type": "string"},
+            {"key": "author", "label": "房价(元)", "type": "number"},
             {"key": "isbn", "label": "说明", "type": "string"},
-            {"key": "category", "label": "分类", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可售间数", "type": "number"},
         ],
         archive_menu_admin="房型管理",
@@ -1388,6 +1587,8 @@ def _hotel_schema(title: str) -> dict[str, Any]:
 SCHEMA_BUILDERS = {
     "DOM-LIBRARY": _library_schema,
     "DOM-EQUIP": _equip_schema,
+    "DOM-ASSET": _asset_schema,
+    "DOM-CRM": _crm_schema,
     "DOM-MEDIA": _media_schema,
     "DOM-MUSIC": _music_schema,
     "DOM-FORUM": _forum_schema,

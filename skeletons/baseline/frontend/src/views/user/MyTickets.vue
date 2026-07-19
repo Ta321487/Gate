@@ -45,7 +45,26 @@
               size="small"
               @click="finish(row)"
             >{{ verbs.return || '完成' }}</el-button>
+            <el-button
+              v-if="canCheckin(row)"
+              type="success"
+              size="small"
+              plain
+              @click="openCheckin(row)"
+            >签到</el-button>
+            <span v-else-if="row.checkedInAt" class="rated">已签到 {{ row.checkedInAt }}</span>
+            <el-button
+              v-if="canRate(row)"
+              type="warning"
+              size="small"
+              plain
+              @click="openRate(row)"
+            >评分</el-button>
+            <span v-else-if="row.rating" class="rated">已评 {{ row.rating }} 分</span>
           </div>
+          <p v-if="row.attachUrl" class="sub">
+            附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
+          </p>
         </div>
       </article>
     </div>
@@ -92,10 +111,38 @@
         <el-form-item label="说明">
           <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />
         </el-form-item>
+        <el-form-item v-if="requireAttach" label="附件" required>
+          <div class="attach-row">
+            <el-upload
+              :show-file-list="false"
+              accept="image/*,.pdf,.doc,.docx"
+              :http-request="onAttach"
+            >
+              <el-button size="small">{{ form.attachUrl ? '重新上传' : '上传附件' }}</el-button>
+            </el-upload>
+            <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" @click="submit">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <TicketRateDialog
+      v-model="rateVisible"
+      :ticket-id="rateRow?.id"
+      :title="rateRow ? (rateRow.title || ('单号 ' + rateRow.id)) : ''"
+      @done="load"
+    />
+
+    <el-dialog v-model="checkinVisible" title="活动签到" width="400px" destroy-on-close>
+      <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('单号 ' + checkinRow.id) }}」输入签到码</p>
+      <el-input v-model="checkinCode" maxlength="16" placeholder="向主办方索取口令" @keyup.enter="submitCheckin" />
+      <template #footer>
+        <el-button @click="checkinVisible = false">取消</el-button>
+        <el-button type="primary" :loading="checkinLoading" @click="submitCheckin">签到</el-button>
       </template>
     </el-dialog>
   </div>
@@ -106,16 +153,20 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
+import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {
-  pending: '待受理', approved: '处理中', rejected: '已驳回', returned: '已完成',
+  pending: '待受理', pending_final: '待终审', approved: '处理中', rejected: '已驳回', returned: '已完成',
 })
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的单据')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const richRemark = computed(() => !!ticket.richRemark)
+const requireAttach = computed(() => !!ticket.requireAttach)
+const allowRating = computed(() => !!ticket.allowRating)
+const allowCheckin = computed(() => !!ticket.allowCheckin)
 
 const list = ref([])
 const total = ref(0)
@@ -136,14 +187,42 @@ const form = reactive({
   title: '',
   location: '',
   remark: '',
+  attachUrl: '',
   typeId: null,
   siteId: null,
   roomId: null,
 })
 
+const rateVisible = ref(false)
+const rateRow = ref(null)
+const checkinVisible = ref(false)
+const checkinLoading = ref(false)
+const checkinRow = ref(null)
+const checkinCode = ref('')
+
 function statusText(s) { return states.value[s] || s }
 function tagType(s) {
-  return ({ pending: 'warning', approved: 'success', rejected: 'danger', returned: 'info', overdue: 'danger' })[s] || 'info'
+  return ({
+    pending: 'warning',
+    pending_final: '',
+    approved: 'success',
+    rejected: 'danger',
+    returned: 'info',
+    overdue: 'danger',
+  })[s] || 'info'
+}
+
+function canRate(row) {
+  if (!allowRating.value || !row) return false
+  if (row.status !== 'returned') return false
+  const r = row.rating
+  return r == null || r === 0 || r === '0' || r === ''
+}
+
+function canCheckin(row) {
+  if (!allowCheckin.value || !row) return false
+  if (row.status !== 'approved') return false
+  return !row.checkedInAt
 }
 
 async function loadLookup() {
@@ -176,6 +255,14 @@ async function onSiteChange() {
   units.value = res.data || res || []
 }
 
+async function onAttach(opt) {
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  form.attachUrl = res.data.url
+  ElMessage.success('附件已上传')
+}
+
 async function load() {
   const res = await http.get('/api/tickets', {
     params: { page: page.value, size: size.value, status: status.value || undefined },
@@ -186,7 +273,7 @@ async function load() {
 
 function openApply() {
   Object.assign(form, {
-    title: '', location: '', remark: '', typeId: null, siteId: null, roomId: null,
+    title: '', location: '', remark: '', attachUrl: '', typeId: null, siteId: null, roomId: null,
   })
   units.value = []
   visible.value = true
@@ -214,12 +301,17 @@ async function submit() {
     ElMessage.warning('请填写地点')
     return
   }
+  if (requireAttach.value && !form.attachUrl) {
+    ElMessage.warning('请上传附件')
+    return
+  }
   await http.post('/api/tickets/apply', {
     title: form.title,
     remark: form.remark,
     location: form.location,
     typeId: form.typeId,
     roomId: form.roomId,
+    attachUrl: form.attachUrl || undefined,
   })
   ElMessage.success('已提交')
   visible.value = false
@@ -231,6 +323,34 @@ async function finish(row) {
   await http.post(`/api/tickets/${row.id}/complete`)
   ElMessage.success('已更新')
   load()
+}
+
+function openRate(row) {
+  rateRow.value = row
+  rateVisible.value = true
+}
+
+function openCheckin(row) {
+  checkinRow.value = row
+  checkinCode.value = ''
+  checkinVisible.value = true
+}
+
+async function submitCheckin() {
+  if (!checkinRow.value) return
+  if (!checkinCode.value.trim()) {
+    ElMessage.warning('请输入签到码')
+    return
+  }
+  checkinLoading.value = true
+  try {
+    await http.post(`/api/tickets/${checkinRow.value.id}/checkin`, { code: checkinCode.value.trim() })
+    ElMessage.success('签到成功')
+    checkinVisible.value = false
+    load()
+  } finally {
+    checkinLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -259,8 +379,13 @@ onMounted(async () => {
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .sub { margin: 0; color: #64748b; font-size: 12px; }
 .sub.sched { margin-top: 2px; color: #0f766e; }
+.sub a { color: #0369a1; }
 .tip { margin: 6px 0 0; color: #475569; font-size: 13px; }
-.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
+.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rated { font-size: 12px; color: #b45309; }
+.attach-row { display: flex; gap: 12px; align-items: center; }
+.attach-row a { font-size: 13px; color: #0369a1; }
+.rate-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

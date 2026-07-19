@@ -1,4 +1,4 @@
-﻿-- bake domain=DOM-ACTIVITY · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+﻿-- bake domain=DOM-ASSET · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -22,25 +22,22 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；stock=剩余名额；start/end 供时间冲突；apply_deadline_at 报名截止
-CREATE TABLE IF NOT EXISTS activity (
+-- 列结构与 ArchiveStore 默认 book 表兼容（title/author/isbn/stock）
+CREATE TABLE IF NOT EXISTS asset (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
-  isbn VARCHAR(128),
+  isbn VARCHAR(64),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  checkin_code VARCHAR(16) NOT NULL DEFAULT '',
-  start_at DATETIME NULL,
-  end_at DATETIME NULL,
-  apply_deadline_at DATETIME NULL,
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- book_id=activity.id
-CREATE TABLE IF NOT EXISTS signup (
+-- book_id 列名兼容 TicketStore archive 模式（存 asset.id）
+CREATE TABLE IF NOT EXISTS requisition (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   book_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
@@ -79,9 +76,9 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS signup_log (
+CREATE TABLE IF NOT EXISTS requisition_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  signup_id BIGINT NOT NULL,
+  requisition_id BIGINT NOT NULL,
   action VARCHAR(32) NOT NULL,
   operator VARCHAR(64),
   remark VARCHAR(255) DEFAULT '',
@@ -96,29 +93,26 @@ CREATE TABLE IF NOT EXISTS sys_config (
 );
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '活动主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '活动助理', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '报名者甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNoOrEmp":"S20260001","dept":"计算机学院","identityType":"学生","orgOrClub":"青年志愿者协会"}',
+('admin', 'admin123', 'admin', '仓管主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '库管员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '申领人甲', '13800000002',
+ '{"realName":"张工","email":"zhang@demo.edu","gender":"男","employeeNo":"E20230018","dept":"行政办公室","jobTitle":"科员","costCenter":"行政-办公","officeLoc":"行政楼 205"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '社团活动'), (2, '志愿活动'), (3, '讲座');
--- 1 与 4 时段重叠，便于演示冲突；截止日放在开课前
-INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
-(1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅', 1, 40, 'available', '2026-10-11 09:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
-(2, '校园环保志愿清扫', '青年志愿者协会', '南门集合', 2, 30, 'available', '2026-10-12 08:30:00', '2026-10-12 11:30:00', '2026-10-11 20:00:00'),
-(3, '就业指导讲座', '就业指导中心', '图书馆报告厅', 3, 80, 'available', '2026-10-15 19:00:00', '2026-10-15 21:00:00', '2026-10-15 12:00:00'),
-(4, '摄影社外拍活动', '摄影社', '湿地公园', 1, 20, 'available', '2026-10-11 14:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
-(5, '敬老院慰问志愿', '青年志愿者协会', '校门口集合', 2, 15, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
+INSERT IGNORE INTO category (id, name) VALUES (1, '办公耗材'), (2, '固定资产'), (3, '劳保用品');
+INSERT IGNORE INTO asset (id, title, author, isbn, category_id, stock, status) VALUES
+(1, 'A4 复印纸', '70g / 500 张', 'AS-PAPER-001', 1, 40, 'available'),
+(2, '台式办公电脑', '联想启天 / i5', 'AS-PC-002', 2, 3, 'available'),
+(3, '安全帽', 'ABS 黄色', 'AS-PPE-003', 3, 20, 'available'),
+(4, '签字笔盒装', '0.5mm 黑色 / 12 支', 'AS-PEN-004', 1, 25, 'available'),
+(5, '移动硬盘', '1TB USB3.0', 'AS-HDD-005', 2, 2, 'available');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('max_signup', '5', '每人同时进行中报名上限提示'),
-('signup_hint', '审核通过占名额', '报名说明');
+('max_open_req', '5', '每人最大在途申领单数'),
+('pickup_place', '行政楼地下库房', '出库领取地点');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报名须知', '请如实填写资料；名额有限，审核通过后请按时参加。', 'admin', '活动主管'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
+SELECT '领用须知', '请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材出库不退。', 'admin', '仓管主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领用须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周精选', '编程马拉松与环保志愿已开放报名，欢迎参加。', 'admin', '活动主管'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');
-
-UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
+SELECT '本周盘点', '周五下午库房盘点，请提前完成申领。', 'admin', '仓管主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周盘点');

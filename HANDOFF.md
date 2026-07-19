@@ -7,9 +7,9 @@
 
 ## 先做什么（顺序）
 
-1. **能力运行时（基线）** ← 当前主线：共用 JDBC + 通用 API，从 LIBRARY 抽取  
-2. **薄领域**：catalog + schema + SQL 种子 + 皮肤；尽量不写专用 Store  
-3. **LLM**：只填 schema JSON，不生成业务 Java/Vue  
+1. **能力运行时（基线）** ✅ 已齐：`ArchiveStore` / `TicketStore` / `OrderStore` / `SlotStore` + 通用 API  
+2. **薄领域** ✅ 组 A～G + GENERIC 兜底已可 bake；差的是按需冒烟与文案微调  
+3. **当前主线**：薄域冒烟 → **LLM 只填 schema JSON**（不生成业务 Java/Vue）；L1 亮点（审批/附件/评分/互斥/限额/软删/标签/周历/签到）已齐  
 
 接 LLM 后「代码无误」靠的是运行时固定，不是 LLM 写码。
 
@@ -43,7 +43,8 @@
 |---------|----------------|----------|
 | **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users |
 | **DOM-EQUIP** | 设备借用、器材、实验室物资 | 同上 |
-| **DOM-ASSET** | 固定资产领用、耗材申领 | archive + ticket_flow + quota + content + org_users（可无 deadline） |
+| **DOM-ASSET** | 固定资产领用、耗材申领、物资台账 | archive + ticket_flow + quota + content + org_users（无 deadline；与 EQUIP 设备借用区分） |
+| **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
 
 ### B. 报修 / 工单流（能力齐）
 
@@ -57,9 +58,9 @@
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users |
+| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** |
 | **DOM-LOST** | 失物招领 | archive + ticket_flow + content + org_users |
-| **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users |
+| **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict**（+ L1 互斥/分类限额） |
 
 ### D. 交易 / 点餐（`order_lines` 已开）
 
@@ -150,7 +151,9 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | **报名/选课截止** | 主数据 `apply_deadline_at`；截止后不可再申请 |
 | **我的日程/课表列表** | 我的单据展示 `startAt`/`endAt`（非拖拽排期） |
 | **站内消息（审核结果）** | `sys_message` + 顶栏铃铛；审核通过/驳回写入申请人收件箱 |
-| **管理端 CSV 导出** | 记录页按当前筛选下载（UTF-8 BOM） |
+| **管理端 CSV 导出** | 记录/档案/订单/预约按当前筛选下载（**UTF-8 BOM + CRLF**，Excel 中文不乱码） |
+| **工作台 ECharts** | 状态饼图 + 近 7 日趋势 + 分类库存柱图（基线内置，无大屏） |
+| **档案 CSV 导入** | 模板下载 + 校验导入（分类按名匹配/自动新建） |
 | **工作台简易统计** | `/api/admin/dashboard`：待审/处理中/已完成/用户数（档案域附加库存等） |
 | 公告 | content |
 | 总管主数据+用户+公告；子管审单 | 全厂不变式 |
@@ -163,15 +166,17 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 | 增强项 | 开题常见说法 | 难度感 | 控范围 |
 |--------|--------------|--------|--------|
-| **二级审批** | 初审→终审 | ★★ | 多一档状态；不会签/BPMN |
-| **互斥规则** | 两门课不能同选 | ★★ | 小表或互斥码 |
-| **分类限额** | 每类最多选 N 门 | ★★ | 配置 + 计数 |
-| **评分评价** | 满意度 1～5 分 | ★★ | 完结后短评 + 均分 |
-| **强制附件** | 认领须上传证明 | ★ | 表单非空校验 |
-| **周历视图** | 周视图看课表 | ★★ | 只读周格；不拖拽 |
-| **软件签到码** | 活动口令签到 | ★★ | token/口令；不接人脸闸机 |
-| **标签组合筛选** | 多标签过滤 | ★ | 接到列表 API |
-| **软删除** | 下架可恢复 | ★ | `deleted_at` |
+| **二级审批** | 初审→终审 | ★★ | 已落地：`pending→pending_final→approved`；终审需总管；DORM/PROPERTY/IT 默认开 |
+| **互斥规则** | 两门课不能同选 | ★★ | 已落地：档案 `mutex_code`；同码进行中不可并存；COURSE 默认开 |
+| **分类限额** | 每类最多选 N 门 | ★★ | 已落地：`ticket.categoryLimit`；COURSE 默认每类 1 门 |
+| **评分评价** | 满意度 1～5 分 | ★★ | 已落地：`TicketRateDialog` + `POST /rate`；工作台均分；ACTIVITY/LOST 默认开 |
+| **强制附件** | 认领须上传证明 | ★ | 已落地：`requireAttach` + 上传；LOST 默认开 |
+| **周历视图** | 周视图看课表 | ★★ | 已落地：只读 `WeekCalendar`；COURSE/ACTIVITY 默认开 |
+| **软件签到码** | 活动口令签到 | ★★ | 已落地：`checkin_code` + `POST /checkin`；ACTIVITY 默认开 |
+| **标签组合筛选** | 多标签过滤 | ★ | 已落地：复用 FORUM `tag`/`post_tag`；AND 筛选 |
+| **软删除** | 下架可恢复 | ★ | 已落地：`deleted_at`；LIBRARY/EQUIP/MEDIA/MUSIC/BLOG/FORUM/ASSET 默认开 |
+| **ECharts 统计** | 工作台图表 | ★ | ✅ 已在 L0；勿扩成自定义报表 |
+| **CSV 导入** | 批量录入主数据 | ★ | ✅ 已在 L0（仅档案；模板+校验） |
 
 **报价建议**：L0 已含冲突检测与导出等，报价高于「纯 CRUD」；L1 每加 1～2 项作为亮点再上浮。
 
@@ -213,20 +218,22 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 ---
 
-## 能力运行时抽取进度
+## 落地进度（能力运行时 + 薄域）
 
 - [x] 基线 `ArchiveStore` / `TicketStore`（archive + standalone 工单模式）
 - [x] LIBRARY 薄封装；通用 `/api/tickets` + 报修壳前端
 - [x] **accept**：能力齐且落在基线积木内 → `full`（不再强制 DOM overlay）
-- [x] 薄领域可跑：**DOM-DORM / PROPERTY / IT**（共用 `gate_standalone_ticket` 门禁 + runtime + SQL）
-- [x] 组 A 组合壳：**DOM-EQUIP**（`gate_archive_ticket` + Archive API/FE + `DOM-EQUIP.sql`；与 LIBRARY 同能力，无厚包）
-- [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（`gate_archive_ticket(with_deadline=False)` + 片库/曲库 SQL/皮肤；收藏单据、播放外链）
-- [x] 组 G：**DOM-FORUM / DOM-BLOG**（同壳；主帖/文章主数据；论坛回复单据 + 博客收藏单据；无播放字段；可选门户轮播）
-- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启；基线 `PortalCarousel` + 门户壳强化
-- [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（`gate_archive_ticket(with_deadline=False)`；活动/失物/选课 SQL；报名/认领/选课单据；ACTIVITY/COURSE 门户轮播）
-- [x] L0 **站内消息**（`MessageStore` / `sys_message` / 顶栏铃铛；审核结果通知）+ **薄域工作台**（`TicketDashboardController` 对非 LIBRARY 全开）
-- [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL（SQL + schema + 订单/预约壳）
-- [x] **匹配兜底**：域零命中 → `DOM-GENERIC`（不再误落 LIBRARY）；GENERIC 按 ARCH-* 绑 FLOW/TRADE/RESERVE 壳（`archetype_shells.py`）
+- [x] 组 B：**DOM-DORM / PROPERTY / IT**（`gate_standalone_ticket` + runtime + SQL；L1 二级审批默认开）
+- [x] 组 A：**DOM-EQUIP**（同 LIBRARY 能力，无厚包）+ **DOM-ASSET / DOM-CRM**（薄 SQL/schema；ASSET 无 deadline，CRM 轻量跟进单）
+- [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（收藏单据、播放外链）+ **DOM-FORUM / DOM-BLOG**（主帖/文章 + 回复/收藏单据；可选门户轮播）
+- [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启
+- [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（报名/认领/选课；ACTIVITY/COURSE 含 `time_conflict` + 门户轮播）
+- [x] L0 **站内消息** + **薄域工作台** + **ECharts / CSV 导出导入**
+- [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL
+- [x] **匹配兜底**：零命中 → `DOM-GENERIC`；按 ARCH-* 绑 FLOW/TRADE/RESERVE（`archetype_shells.py`）；多 ARCH 并集可拼 SQL
+- [x] L1 **二级审批 / 强制附件 / 完结评分**：`configureL1`；FE 待办 `todo`、上传、`TicketRateDialog`
+- [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门
+- [x] L1 **软删除 / 标签 AND / 周历 / 签到码**：按域 schema 开关；FORUM 复用 tag 表；COURSE/ACTIVITY 周历；ACTIVITY 口令签到
 
 ### 宿舍验证账号（bake 后）
 
@@ -265,11 +272,11 @@ Schema：`domain_schema.py`（组装/accept）；模板：`schema_templates.py`
 
 ---
 
-## 新对话开场（抽运行时）
+## 新对话开场（当前主线）
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md。
-主线：补齐能力运行时（ArchiveStore/TicketStore），LIBRARY 改薄封装。
+主线：薄域冒烟或 LLM 填 schema；能力运行时与 L1 亮点已齐。
 不要新开厚 DOM 包。领域清单以 HANDOFF「90% 覆盖」为准。
 ```
 
@@ -277,7 +284,7 @@ Schema：`domain_schema.py`（组装/accept）；模板：`schema_templates.py`
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md。
-目标：薄领域 DOM-___（关键词：___）。
+目标：薄领域 DOM-___（关键词：___）冒烟或文案/SQL 微调。
 能力组合：___；仅 catalog + schema + SQL 种子 + 皮肤。
 禁止内存 Store、禁止排除 DataSource、LLM 只填 schema。
 ```

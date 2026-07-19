@@ -70,6 +70,13 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("costCenter", "成本中心/科室", max_length=64),
         _pf("officeLoc", "办公地点", on_register=True, max_length=64),
     ],
+    "DOM-CRM": [
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "部门/团队", required=True, on_register=True, max_length=64),
+        _pf("jobTitle", "岗位", on_register=True, max_length=32, placeholder="如 客户经理"),
+        _pf("region", "负责区域", on_register=True, max_length=64),
+        _pf("quotaHint", "业绩目标备注", max_length=64),
+    ],
     "DOM-DORM": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
         _pf("college", "学院", required=True, on_register=True, max_length=64),

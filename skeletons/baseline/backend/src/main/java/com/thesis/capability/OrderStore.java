@@ -304,6 +304,37 @@ public final class OrderStore {
         return m;
     }
 
+    public static Map<String, Object> chartStats() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("statusSeries", List.of());
+        out.put("trendSeries", List.of());
+        if (!enabled) return out;
+        try {
+            List<Map<String, Object>> status = db().query(
+                    "SELECT status AS name, COUNT(*) AS value FROM " + ORDER + " GROUP BY status",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("name", rs.getString("name"));
+                        row.put("value", rs.getLong("value"));
+                        return row;
+                    });
+            out.put("statusSeries", status);
+            List<Map<String, Object>> trend = db().query(
+                    "SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + ORDER
+                            + " WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
+                            + " GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("day", rs.getString("day"));
+                        row.put("value", rs.getLong("value"));
+                        return row;
+                    });
+            out.put("trendSeries", trend);
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
     private static long countStatus(String st) {
         Long n = db().queryForObject("SELECT COUNT(*) FROM " + ORDER + " WHERE status=?", Long.class, st);
         return n == null ? 0 : n;

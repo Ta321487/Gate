@@ -5,6 +5,7 @@
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
       <el-button type="primary" @click="load">查询</el-button>
+      <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="单号" width="80" />
@@ -61,6 +62,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import { getSchema } from '../../utils/domainSchema.js'
+import { downloadCsv } from '../../utils/csvDownload.js'
 
 const states = computed(() => getSchema()?.entities?.order?.states || {})
 const list = ref([])
@@ -81,6 +83,28 @@ async function act(row, action) {
   await http.post(`/api/orders/${row.id}/${action}`)
   ElMessage.success('已更新')
   load()
+}
+
+async function exportCsv() {
+  const res = await http.get('/api/orders', {
+    params: { page: 1, size: 5000, status: status.value || undefined },
+  })
+  const rows = res.data?.list || []
+  if (!rows.length) {
+    ElMessage.warning('当前筛选无数据可导出')
+    return
+  }
+  const headers = ['单号', '用户', '金额', '状态', '明细', '下单时间']
+  const data = rows.map((row) => [
+    row.id,
+    row.username,
+    row.totalYuan,
+    states.value[row.status] || row.status,
+    (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
+    row.createdAt,
+  ])
+  downloadCsv(`orders_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
+  ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }
 
 onMounted(load)
