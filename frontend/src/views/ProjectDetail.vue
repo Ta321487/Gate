@@ -1241,8 +1241,8 @@ onUnmounted(() => {
 .er-frame {
   height: 72vh;
   overflow: hidden;
-  border: 1px solid #e5e5e5;
-  background: #fafafa;
+  border: 1px solid var(--line);
+  background: var(--er-bg);
   cursor: grab;
   touch-action: none;
   user-select: none;

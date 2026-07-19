@@ -85,22 +85,22 @@ onUnmounted(() => window.clearTimeout(timer))
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #94a3b8;
+  color: var(--muted);
   cursor: pointer;
   vertical-align: middle;
   flex-shrink: 0;
   transition: color 0.15s ease, background 0.15s ease;
 }
 .copy-btn:hover:not(:disabled) {
-  color: #334155;
-  background: #f1f5f9;
+  color: var(--ink);
+  background: var(--surface-2);
 }
 .copy-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 .copy-btn.ok {
-  color: #16a34a;
-  background: #f0fdf4;
+  color: var(--green);
+  background: var(--green-soft);
 }
 </style>
