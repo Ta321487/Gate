@@ -1273,6 +1273,7 @@ def _order_shell_schema(
                 {"key": "archive", "label": archive_menu_user},
                 {"key": "cart", "label": cart_label},
                 {"key": "my_orders", "label": my_orders_label},
+                {"key": "addresses", "label": "收货地址"},
                 {"key": "content", "label": "公告"},
                 {"key": "profile", "label": "个人资料"},
             ],
@@ -1357,6 +1358,7 @@ def _slot_shell_schema(
     if with_orders:
         admin_menus.append({"key": "orders", "label": "预订订单"})
         user_menus.insert(2, {"key": "my_orders", "label": "我的订单"})
+        # 收货地址簿仅订餐/商城订单壳；酒店预约订单不挂
         entities["order"] = {
             "key": "order",
             "label": "订单",

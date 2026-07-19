@@ -36,8 +36,9 @@
   --code-bg: #0f1720;
   --code-fg: #c8d6e0;
   --radius: 6px;
-  --font: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* EN: IBM Plex Sans · CN: Noto Sans SC（与 Plex Mono 同族，中英比例更稳） */
+  --font: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono: "IBM Plex Mono", "Noto Sans SC", ui-monospace, monospace;
   color-scheme: light;
 }
 
@@ -90,7 +91,12 @@ body {
   color: var(--ink);
   background: var(--bg);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 a { color: var(--teal); text-decoration: none; }
 .mono { font-family: var(--mono); font-size: 12px; }
@@ -216,6 +222,23 @@ a { color: var(--teal); text-decoration: none; }
 .pill-amber { background: var(--amber-soft); color: var(--amber); }
 .pill-green { background: var(--green-soft); color: var(--green); }
 .pill-red { background: var(--red-soft); color: var(--red); }
+
+.filter-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button.filter-pill {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+button.filter-pill:hover { opacity: 1; }
+button.filter-pill.on {
+  opacity: 1;
+  box-shadow: 0 0 0 1px currentColor inset;
+  font-weight: 700;
+}
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }

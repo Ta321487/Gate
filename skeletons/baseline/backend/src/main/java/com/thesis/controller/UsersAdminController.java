@@ -64,12 +64,23 @@ public class UsersAdminController {
         }
     }
 
-    /** 任命子管（楼管 / 维修员 / 馆员等，由前端文案区分） */
+    /** 任命岗位（子管理 clerk / 业务员工 worker）；仅总管 */
     @PostMapping("/{username}/appoint")
-    public R<Map<String, Object>> appoint(@PathVariable String username, HttpSession session) {
+    public R<Map<String, Object>> appoint(
+            @PathVariable String username,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         try {
-            return R.ok(UserStore.appointSubAdmin(username).toMap());
+            Map<String, Object> b = body == null ? Map.of() : body;
+            String staffPost = String.valueOf(b.getOrDefault("staffPost", b.getOrDefault("staff_post", "")));
+            String staffKind = String.valueOf(b.getOrDefault("staffKind", b.getOrDefault("staff_kind", "")));
+            if ("null".equals(staffPost)) staffPost = "";
+            if ("null".equals(staffKind)) staffKind = "";
+            if (staffPost.isBlank() && staffKind.isBlank()) {
+                return R.ok(UserStore.appointSubAdmin(username).toMap());
+            }
+            return R.ok(UserStore.appointSubAdmin(username, staffPost, staffKind).toMap());
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

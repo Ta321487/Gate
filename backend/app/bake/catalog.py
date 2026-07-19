@@ -295,16 +295,34 @@ def normalize_password_hash(mode: str | None) -> str:
 
 
 def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
-    """领域 roles 定序，schema.roles 补全（如 subadmin）。"""
+    """领域 roles 定序；展开 staff_posts。已声明岗位表时不再列笼统 subadmin（空表=无子管理）。"""
     schema_roles = schema.get("roles") if isinstance(schema, dict) else None
     keys = list(schema_roles.keys()) if isinstance(schema_roles, dict) else []
+    posts = schema_roles.get("staff_posts") if isinstance(schema_roles, dict) else None
+    posts_declared = isinstance(posts, list)
     out: list[str] = []
     for r in domain_roles or []:
-        if r and r not in out:
+        if not r:
+            continue
+        if posts_declared and str(r) == "subadmin":
+            continue
+        if str(r) not in out:
             out.append(str(r))
+    if posts_declared:
+        for p in posts:
+            if isinstance(p, dict) and p.get("id"):
+                pid = str(p["id"])
+                if pid not in out:
+                    out.append(pid)
     for r in keys:
+        if r in ("staff_posts", "subadmin"):
+            continue
         if r and r not in out:
             out.append(str(r))
+    # 未挂 staff_posts 的旧 schema：保留 subadmin 键
+    if not posts_declared and isinstance(schema_roles, dict) and "subadmin" in schema_roles:
+        if "subadmin" not in out:
+            out.append("subadmin")
     return out or ["user", "admin"]
 
 

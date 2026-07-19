@@ -48,10 +48,13 @@
               <el-option
                 v-for="a in addresses"
                 :key="a.id"
-                :label="`${a.tag || '地址'} · ${a.contactName} ${a.phone} · ${a.addressLine}`"
+                :label="`${a.isDefault ? '★ ' : ''}${a.tag || '地址'} · ${a.contactName} ${a.phone} · ${a.addressLine}`"
                 :value="a.id"
               />
             </el-select>
+            <div class="addr-links">
+              <router-link class="link" to="/addresses">管理地址簿</router-link>
+            </div>
           </el-form-item>
           <div class="addr-grid">
             <el-form-item label="收货人" required>
@@ -64,7 +67,22 @@
           <el-form-item label="详细地址" required>
             <el-input v-model="form.addressLine" type="textarea" :rows="2" maxlength="200" />
           </el-form-item>
-          <el-button text type="primary" @click="saveAsAddress">保存到地址簿</el-button>
+          <el-form-item label="地址标签">
+            <el-select
+              v-model="form.tag"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="家 / 学校 / 公司…"
+              style="width: 100%"
+            >
+              <el-option v-for="t in tagOptions" :key="t" :label="t" :value="t" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-checkbox v-model="form.saveAsDefault">保存时设为默认</el-checkbox>
+            <el-button text type="primary" class="save-addr" @click="saveAsAddress">保存到地址簿</el-button>
+          </el-form-item>
         </template>
         <el-form-item v-if="isFood" :label="tasteLabel">
           <el-input
@@ -93,12 +111,14 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import { getDomain, getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
 
 const router = useRouter()
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const domain = computed(() => getDomain())
 const isFood = computed(() => domain.value === 'DOM-FOOD')
+const tagOptions = computed(() => addressTagOptions())
 const deliveryOptions = computed(() =>
   isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],
 )
@@ -119,6 +139,8 @@ const form = reactive({
   receiverName: '',
   receiverPhone: '',
   addressLine: '',
+  tag: '家',
+  saveAsDefault: false,
   tasteNote: '',
   remark: '',
 })
@@ -158,6 +180,8 @@ async function openCheckout() {
   form.receiverName = ''
   form.receiverPhone = ''
   form.addressLine = ''
+  form.tag = tagOptions.value[0] || '家'
+  form.saveAsDefault = false
   form.tasteNote = ''
   form.remark = ''
   await loadAddresses()
@@ -188,6 +212,7 @@ function onPickAddress(id) {
   form.receiverName = a.contactName || ''
   form.receiverPhone = a.phone || ''
   form.addressLine = a.addressLine || ''
+  form.tag = a.tag || tagOptions.value[0] || '家'
 }
 
 async function saveAsAddress() {
@@ -195,17 +220,18 @@ async function saveAsAddress() {
     ElMessage.warning('请先填写收货人、手机与地址')
     return
   }
+  const asDefault = form.saveAsDefault || !addresses.value.length
   const res = await http.post('/api/addresses', {
     contactName: form.receiverName.trim(),
     phone: form.receiverPhone.trim(),
     addressLine: form.addressLine.trim(),
-    tag: '常用',
-    isDefault: !addresses.value.length,
+    tag: normalizeAddressTag(form.tag),
+    isDefault: asDefault,
   })
   await loadAddresses()
   if (res.data?.id) {
     form.addressId = res.data.id
-    ElMessage.success('已保存到地址簿')
+    ElMessage.success(asDefault ? '已保存并设为默认' : '已保存到地址簿')
   }
 }
 
@@ -249,6 +275,9 @@ onMounted(load)
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
 }
+.addr-links { margin-top: 4px; }
+.link { font-size: 13px; color: var(--el-color-primary); text-decoration: none; }
+.save-addr { margin-left: 8px; }
 @media (max-width: 520px) {
   .addr-grid { grid-template-columns: 1fr; }
 }

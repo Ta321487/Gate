@@ -2,7 +2,7 @@
 
 import axios from 'axios'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
-import { adminLoginPath, isSplitEntry } from './authEntry.js'
+import { adminLoginPath, isSplitEntry, staffLoginPath } from './authEntry.js'
 import { schemaLabels } from './domainSchema.js'
 
 let kicking = false
@@ -18,6 +18,8 @@ export function clearAuthStorage() {
   localStorage.removeItem('avatarUrl')
   localStorage.removeItem('profileEditable')
   localStorage.removeItem('superAdmin')
+  localStorage.removeItem('staffPost')
+  localStorage.removeItem('staffKind')
   sessionCache = null
 }
 
@@ -29,8 +31,13 @@ export function isUnauthorizedPayload(body) {
   return code !== 40101 && String(body.message || '') === '未登录'
 }
 
-export function loginPathForRole(role) {
-  if (role === 'admin' && isSplitEntry()) return adminLoginPath()
+export function loginPathForRole(role, staffKind = '') {
+  if (role === 'admin' && isSplitEntry()) {
+    if (staffKind === 'worker' || localStorage.getItem('staffKind') === 'worker') {
+      return staffLoginPath()
+    }
+    return adminLoginPath()
+  }
   return '/login'
 }
 
@@ -90,7 +97,14 @@ export async function probeSession() {
       const body = res.data
       const ok = body && Number(body.code) === 0 && !isUnauthorizedPayload(body)
       sessionCache = ok
-      if (!ok) clearAuthStorage()
+      if (!ok) {
+        clearAuthStorage()
+      } else if (body.data && typeof body.data === 'object') {
+        const u = body.data
+        if (u.staffPost != null) localStorage.setItem('staffPost', u.staffPost || '')
+        if (u.staffKind != null) localStorage.setItem('staffKind', u.staffKind || '')
+        if (u.superAdmin != null) localStorage.setItem('superAdmin', String(!!u.superAdmin))
+      }
       return ok
     })
     .catch(() => {
@@ -117,11 +131,18 @@ export function kickToLogin(router, message) {
   if (kicking) return
   kicking = true
   const role = localStorage.getItem('role')
+  const staffKind = localStorage.getItem('staffKind') || ''
   clearAuthStorage()
-  const path = loginPathForRole(role)
+  const path = loginPathForRole(role, staffKind)
   const go = () => {
     const cur = router.currentRoute?.value?.path
-    if (cur === path || cur === '/login' || cur === '/admin/login' || cur === '/register') {
+    if (
+      cur === path
+      || cur === '/login'
+      || cur === '/admin/login'
+      || cur === '/staff/login'
+      || cur === '/register'
+    ) {
       kicking = false
       return
     }

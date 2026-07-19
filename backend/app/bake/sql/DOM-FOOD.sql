@@ -120,8 +120,9 @@ INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VA
 (4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
-(1, 'user', '李同学', '13800000002', '示例宿舍 5 号楼 302', '宿舍', 1),
-(2, 'user', '李同学', '13800000002', '创业街 88 号写字楼', '公司', 0);
+(1, 'user', '李同学', '13800000002', '示例宿舍 5 号楼 302', '学校', 1),
+(2, 'user', '李同学', '13800000002', '创业街 88 号写字楼', '公司', 0),
+(3, 'user', '李同学', '13800000002', '阳光小区 3 栋 1201', '家', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '系统管理员'

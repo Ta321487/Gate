@@ -121,8 +121,10 @@ def domain_sql(
     else:
         text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
     from app.bake.sql_fragments import ensure_shared_sql_columns
+    from app.bake.staff_posts import append_staff_seed_sql
 
     text = ensure_shared_sql_columns(text)
+    text = append_staff_seed_sql(text, domain, archetype)
     return (
         text.replace("${DB_NAME}", db_name)
         .replace("${DOMAIN}", domain)

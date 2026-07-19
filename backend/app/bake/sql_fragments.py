@@ -31,6 +31,12 @@ ORDER_SHIP_COLUMNS: list[tuple[str, str]] = [
     ("reservation_id", "BIGINT NULL"),
 ]
 
+# 子管/业务员工岗位（任命与登录分流）
+SYS_USER_STAFF_COLUMNS: list[tuple[str, str]] = [
+    ("staff_post", "VARCHAR(64) DEFAULT ''"),
+    ("staff_kind", "VARCHAR(16) DEFAULT ''"),
+]
+
 _CREATE_TABLE_RE = re.compile(
     r"(CREATE TABLE IF NOT EXISTS\s+(\w+)\s*\()((?:.|\n)*?)(\);)",
     re.IGNORECASE,
@@ -54,7 +60,7 @@ def _inject_missing_columns(body: str, columns: list[tuple[str, str]]) -> str:
 
 
 def ensure_shared_sql_columns(sql: str) -> str:
-    """对 reservation / biz_order / 常见订单表补齐共享列。"""
+    """对 reservation / biz_order / sys_user / 常见订单表补齐共享列。"""
 
     def repl(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -63,6 +69,8 @@ def ensure_shared_sql_columns(sql: str) -> str:
             body = _inject_missing_columns(body, RESERVATION_EXTRA_COLUMNS)
         elif t in ("biz_order", "shop_order", "food_order", "hotel_order", "orders"):
             body = _inject_missing_columns(body, ORDER_SHIP_COLUMNS)
+        elif t == "sys_user":
+            body = _inject_missing_columns(body, SYS_USER_STAFF_COLUMNS)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)

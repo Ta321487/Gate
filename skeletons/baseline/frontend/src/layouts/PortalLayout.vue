@@ -82,6 +82,7 @@ const MENU_TO = {
   archive: '/archive',
   cart: '/cart',
   my_orders: '/orders',
+  addresses: '/addresses',
   my_reservations: '/reservations',
   slots: '/slots',
   week_calendar: '/week',

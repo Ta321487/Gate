@@ -361,16 +361,19 @@ def _java_ver() -> str:
     return val
 
 
-def _probe_used_ports(rows: list) -> tuple[list[int], list[int]]:
-    """一次 netstat + 进程表，不打 HTTP。"""
+def _probe_used_ports(
+    rows: list,
+) -> tuple[list[int], list[int], list[int], list[int]]:
+    """一次 netstat + 进程表。返回 managed_*/idle_*（used = 二者并集）。"""
     listening = rt.listening_tcp_ports()
-    used_be, used_fe = [], []
+    managed_be, managed_fe = [], []
+    idle_be, idle_fe = [], []
     for pid, be, fe in rows:
         if rt.side_active(pid, be, "backend", listening):
-            used_be.append(be)
+            (managed_be if rt.backend_running(pid) else idle_be).append(be)
         if rt.side_active(pid, fe, "frontend", listening):
-            used_fe.append(fe)
-    return used_be, used_fe
+            (managed_fe if rt.frontend_running(pid) else idle_fe).append(fe)
+    return managed_be, managed_fe, idle_be, idle_fe
 
 
 def _probe_tool_versions() -> tuple[str, str, str]:
@@ -422,11 +425,13 @@ async def system_info(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Project.id, Project.backend_port, Project.frontend_port))
     rows = list(result.all())
     # 同步探测放到线程，避免堵死事件循环拖慢其它接口
-    (used_be, used_fe), (jdk, maven, node), mysql = await asyncio.gather(
+    (managed_be, managed_fe, idle_be, idle_fe), (jdk, maven, node), mysql = await asyncio.gather(
         asyncio.to_thread(_probe_used_ports, rows),
         asyncio.to_thread(_probe_tool_versions),
         asyncio.to_thread(_probe_student_mysql),
     )
+    managed_be, managed_fe = sorted(set(managed_be)), sorted(set(managed_fe))
+    idle_be, idle_fe = sorted(set(idle_be)), sorted(set(idle_fe))
     return SystemInfo(
         jdk=jdk,
         maven=maven,
@@ -437,8 +442,12 @@ async def system_info(db: AsyncSession = Depends(get_db)):
         bind_host=s.bind_host,
         backend_ports=f"{s.backend_port_start}–{s.backend_port_end}",
         frontend_ports=f"{s.frontend_port_start}–{s.frontend_port_end}",
-        used_backend=sorted(set(used_be)),
-        used_frontend=sorted(set(used_fe)),
+        used_backend=sorted(set(managed_be) | set(idle_be)),
+        used_frontend=sorted(set(managed_fe) | set(idle_fe)),
+        managed_backend=managed_be,
+        managed_frontend=managed_fe,
+        idle_backend=idle_be,
+        idle_frontend=idle_fe,
         workspace=str(s.workspace_dir.resolve()),
         uploads=str(s.uploads_dir.resolve()),
         skeletons=str(s.skeletons_dir.resolve()),
@@ -447,27 +456,29 @@ async def system_info(db: AsyncSession = Depends(get_db)):
 
 @router.post("/system/free-ports", response_model=ApiOk)
 async def free_ports(db: AsyncSession = Depends(get_db)):
-    """清理未托管但仍占端口的进程，并同步 running 标志。"""
+    """清理未托管但仍占端口的僵尸进程；正在预览的项目不会被停止。"""
     result = await db.execute(select(Project))
     projects = list(result.scalars().all())
 
-    def _run() -> tuple[int, dict[str, tuple[bool, bool]]]:
+    def _run() -> tuple[int, int, dict[str, tuple[bool, bool]]]:
         listening = rt.listening_tcp_ports()
         cleaned = 0
+        still_active = 0
         flags: dict[str, tuple[bool, bool]] = {}
         for p in projects:
             if rt.free_idle_ports(p.id, p.backend_port, p.frontend_port, listening):
                 cleaned += 1
                 flags[p.id] = (False, False)
             else:
-                flags[p.id] = (
-                    rt.side_active(p.id, p.backend_port, "backend", listening),
-                    rt.side_active(p.id, p.frontend_port, "frontend", listening),
-                )
+                be = rt.side_active(p.id, p.backend_port, "backend", listening)
+                fe = rt.side_active(p.id, p.frontend_port, "frontend", listening)
+                flags[p.id] = (be, fe)
+                if be or fe:
+                    still_active += 1
             # free 可能改了端口占用，刷新 listening 成本高；批量结束前用旧集合同步即可
-        return cleaned, flags
+        return cleaned, still_active, flags
 
-    cleaned, flags = await asyncio.to_thread(_run)
+    cleaned, still_active, flags = await asyncio.to_thread(_run)
     await reclaim_idle_ports(db)
     for p in projects:
         be, fe = flags.get(p.id, (False, False))
@@ -479,9 +490,26 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
         if not be and not fe and p.status == ProjectStatus.running.value:
             p.status = ProjectStatus.generated.value
     await db.commit()
+    data = {"cleaned": cleaned, "still_active": still_active}
+    if cleaned and still_active:
+        return ApiOk(
+            message=(
+                f"已清理 {cleaned} 个僵尸占用；另有 {still_active} 个预览仍在运行，"
+                "请到项目详情停止"
+            ),
+            data=data,
+        )
     if cleaned:
-        return ApiOk(message=f"已清理 {cleaned} 个项目的空闲端口占用")
-    return ApiOk(message="没有可释放的空闲占用")
+        return ApiOk(message=f"已清理 {cleaned} 个项目的僵尸端口占用", data=data)
+    if still_active:
+        return ApiOk(
+            message=(
+                f"当前 {still_active} 个占用均为正在运行的预览，"
+                "请到对应项目详情停止；本按钮不会停运行中的预览"
+            ),
+            data=data,
+        )
+    return ApiOk(message="没有可释放的空闲占用", data=data)
 
 
 @router.get("/catalog")
