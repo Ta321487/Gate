@@ -69,6 +69,8 @@ def _library_schema(title: str) -> dict[str, Any]:
                     "returned": "已归还",
                     "overdue": "已逾期",
                 },
+                "pickLoanPeriod": True,
+                "allowQty": True,
             },
         },
         "menus": {
@@ -158,9 +160,18 @@ def _archive_ticket_schema(
     week_calendar: bool = False,
     week_calendar_label: str = "我的课表",
     allow_checkin: bool = False,
+    pick_loan_period: bool | None = None,
+    allow_qty: bool | None = None,
+    require_remark: bool = False,
+    remark_label: str = "说明",
+    pick_date_range: bool = False,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
+    if pick_loan_period is None:
+        pick_loan_period = with_deadline
+    if allow_qty is None:
+        allow_qty = with_deadline
     archive_entity: dict[str, Any] = {
         "key": archive_key,
         "label": archive_label,
@@ -196,6 +207,11 @@ def _archive_ticket_schema(
         "categoryLimit": max(0, int(category_limit or 0)),
         "weekCalendar": week_calendar,
         "allowCheckin": allow_checkin,
+        "pickLoanPeriod": bool(pick_loan_period),
+        "allowQty": bool(allow_qty),
+        "requireRemark": bool(require_remark),
+        "remarkLabel": remark_label or "说明",
+        "pickDateRange": bool(pick_date_range),
     }
     if week_calendar:
         ticket_entity["weekCalendarLabel"] = week_calendar_label
@@ -378,6 +394,9 @@ def _asset_schema(title: str) -> dict[str, Any]:
             records_label="申领记录",
             with_deadline=False,
             soft_delete=True,
+            allow_qty=True,
+            require_remark=True,
+            remark_label="用途说明",
         ),
         [
             {"title": "物资台账", "lead": "固定资产与耗材分类浏览，查看可领库存。"},
@@ -440,6 +459,8 @@ def _crm_schema(title: str) -> dict[str, Any]:
             records_label="跟进记录",
             with_deadline=False,
             stock_display="available",
+            require_remark=True,
+            remark_label="跟进内容",
         ),
         [
             {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
@@ -824,6 +845,8 @@ def _lost_schema(title: str) -> dict[str, Any]:
         stock_display="available",
         require_attach=True,
         allow_rating=True,
+        require_remark=True,
+        remark_label="认领说明",
     )
 
 
@@ -1022,10 +1045,11 @@ def _dorm_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "报修申请", "受理进度"],
         register_hint="注册后以学生身份提交报修",
         notice_title="报修须知",
-        notice_body="请如实填写宿舍与故障描述，宿管将尽快受理。",
+        notice_body="请如实填写宿舍与故障描述并上传现场照片，宿管将尽快受理。",
         notice_page_title="宿舍公告",
         notice_page_lead="报修须知、宿舍安排与临时通知，点击条目阅读全文。",
         two_level_approve=True,
+        require_attach=True,
     )
 
 
@@ -1060,10 +1084,11 @@ def _property_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "报修申请", "受理进度"],
         register_hint="注册后以住户身份提交报修",
         notice_title="报修须知",
-        notice_body="请如实填写地址与故障描述，物业将尽快受理。",
+        notice_body="请如实填写地址与故障描述并上传现场照片，物业将尽快受理。",
         notice_page_title="物业公告",
         notice_page_lead="报修须知、社区安排与临时通知，点击条目阅读全文。",
         two_level_approve=True,
+        require_attach=True,
     )
 
 
@@ -1098,13 +1123,14 @@ def _it_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "故障报修", "受理进度"],
         register_hint="注册后可提交故障报修",
         notice_title="报修须知",
-        notice_body="请写明区域、终端与故障现象，运维将尽快受理。",
+        notice_body="请写明区域、终端与故障现象并上传截图/照片，运维将尽快受理。",
         notice_page_title="运维公告",
         notice_page_lead="故障处理须知与临时通知，点击条目阅读全文。",
         my_tickets_label="我的故障",
         pending_label="故障受理",
         records_label="报修记录",
         two_level_approve=True,
+        require_attach=True,
     )
 
 
@@ -1273,6 +1299,8 @@ def _slot_shell_schema(
     notice_body: str,
     notice_page_title: str,
     with_orders: bool = False,
+    reserve_require_remark: bool = False,
+    reserve_remark_label: str = "备注",
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
     admin_menus = [
@@ -1288,6 +1316,18 @@ def _slot_shell_schema(
         {"key": "content", "label": "公告"},
         {"key": "profile", "label": "个人资料"},
     ]
+    reservation_entity: dict[str, Any] = {
+        "key": "reservation",
+        "label": "预约",
+        "labelPlural": my_resv_label,
+        "states": {
+            "pending": "待确认",
+            "confirmed": "已预约",
+            "cancelled": "已取消",
+        },
+        "requireRemark": bool(reserve_require_remark),
+        "remarkLabel": reserve_remark_label or "备注",
+    }
     entities: dict[str, Any] = {
         "archive": {
             "key": archive_key,
@@ -1296,16 +1336,7 @@ def _slot_shell_schema(
             "fields": archive_fields,
             "stockDisplay": "available",
         },
-        "reservation": {
-            "key": "reservation",
-            "label": "预约",
-            "labelPlural": my_resv_label,
-            "states": {
-                "pending": "待确认",
-                "confirmed": "已预约",
-                "cancelled": "已取消",
-            },
-        },
+        "reservation": reservation_entity,
     }
     if with_orders:
         admin_menus.append({"key": "orders", "label": "预订订单"})
@@ -1449,8 +1480,10 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "会议室检索", "时段占坑预约"],
         register_hint="注册后可预约会议室",
         notice_title="预约须知",
-        notice_body="请按时使用并及时取消不用的预约以释放时段。",
+        notice_body="请填写会议主题；按时使用并及时取消不用的预约以释放时段。",
         notice_page_title="会务公告",
+        reserve_require_remark=True,
+        reserve_remark_label="会议主题",
     )
 
 
@@ -1481,8 +1514,10 @@ def _hospital_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "医生检索", "分时挂号"],
         register_hint="注册后可以患者身份挂号",
         notice_title="挂号须知",
-        notice_body="号源有限；请按时就诊，取消请提前操作。",
+        notice_body="号源有限；请填写就诊人姓名，按时就诊，取消请提前操作。",
         notice_page_title="医院公告",
+        reserve_require_remark=True,
+        reserve_remark_label="就诊人",
     )
 
 
@@ -1513,8 +1548,10 @@ def _parking_schema(title: str) -> dict[str, Any]:
         auth_points=["验证码登录", "车位检索", "时段预约"],
         register_hint="注册后可预约车位",
         notice_title="停车须知",
-        notice_body="请按时入场；取消预约将释放时段。",
+        notice_body="请按时入场；取消预约将释放时段。请填写车牌号便于核对。",
         notice_page_title="车场公告",
+        reserve_require_remark=True,
+        reserve_remark_label="车牌号",
     )
 
 

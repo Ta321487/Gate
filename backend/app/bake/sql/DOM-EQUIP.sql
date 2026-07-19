@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS loan (
   approve_at DATETIME NULL,
   due_at DATETIME NULL,
   return_at DATETIME NULL,
+  qty INT NOT NULL DEFAULT 1,
   fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',

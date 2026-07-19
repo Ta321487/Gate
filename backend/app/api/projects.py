@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import time
 from pathlib import Path
@@ -24,7 +25,9 @@ from app.schemas import (
 from app.services import projects as project_svc
 from app.services import runtime as rt
 from app.services.jobs import start_job
+from app.services.student_db import drop_student_database
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
@@ -140,7 +143,11 @@ async def generate(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{project_id}", response_model=ApiOk)
-async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_project(
+    project_id: str,
+    keep_db: bool = Query(False, description="为 true 时保留学生 MySQL 库"),
+    db: AsyncSession = Depends(get_db),
+):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
@@ -162,9 +169,23 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     zip_path = settings.workspace_dir / f"{project_id}-thesis-app.zip"
     if zip_path.exists():
         zip_path.unlink()
+
+    db_note = ""
+    if not keep_db and p.db_name:
+        try:
+            drop_student_database(p.db_name)
+            db_note = f"，已删除库 {p.db_name}"
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "删除项目 %s 时删库失败（仍继续删项目）: %s", project_id, e
+            )
+            db_note = f"，库 {p.db_name} 删除失败（已跳过）"
+    elif keep_db and p.db_name:
+        db_note = f"，已保留库 {p.db_name}"
+
     await db.delete(p)
     await db.commit()
-    return ApiOk(message="已删除")
+    return ApiOk(message=f"已删除{db_note}")
 
 
 @router.get("/{project_id}/download")

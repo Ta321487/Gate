@@ -43,6 +43,12 @@ thesis:
   ticket-category-limit: 0
   ticket-week-calendar: false
   ticket-allow-checkin: false
+  # 自选应还日 / 申请数量（设备·图书等）
+  ticket-pick-loan-period: false
+  ticket-allow-qty: false
+  ticket-require-remark: false
+  ticket-pick-date-range: false
+  slot-require-remark: false
   archive-soft-delete: false
   archive-tag-table: ""
   archive-item-tag-table: ""

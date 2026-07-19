@@ -54,6 +54,14 @@ public final class TicketStore {
     private static int categoryLimit = 0;
     /** L1：活动签到口令 */
     private static boolean allowCheckin = false;
+    /** 申请时可自选应还日（写入 due_at；审批时沿用） */
+    private static boolean pickLoanPeriod = false;
+    /** 申请时可填数量（扣/还库存按 qty） */
+    private static boolean allowQty = false;
+    /** 申请须填写说明（用途/跟进/认领事由等） */
+    private static boolean requireRemark = false;
+    /** 申请须选起止日期（请假等 → period_start/period_end） */
+    private static boolean pickDateRange = false;
     private static String userRole = "reader";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -101,6 +109,25 @@ public final class TicketStore {
         allowRating = ratingEnabled;
     }
 
+    /** 自选借期 + 申请数量（设备/图书等开题常见） */
+    public static void configureLoanOptions(boolean pickPeriod, boolean qtyEnabled) {
+        pickLoanPeriod = pickPeriod && useDeadline;
+        allowQty = qtyEnabled && useQuota && MODE == Mode.ARCHIVE;
+        if (allowQty) {
+            ensureColumn("qty", "INT NOT NULL DEFAULT 1");
+        }
+    }
+
+    /** 必填说明 + 起止日期（申领用途 / 跟进 / 请假等） */
+    public static void configureApplyExtras(boolean remarkRequired, boolean dateRange) {
+        requireRemark = remarkRequired;
+        pickDateRange = dateRange && MODE == Mode.ARCHIVE;
+        if (pickDateRange) {
+            ensureColumn("period_start", "DATETIME NULL");
+            ensureColumn("period_end", "DATETIME NULL");
+        }
+    }
+
     /** L1：互斥码 + 分类限额（选课等） */
     public static void configureRules(boolean mutex, int catLimit) {
         checkMutex = mutex;
@@ -144,6 +171,22 @@ public final class TicketStore {
 
     public static boolean isAllowCheckin() {
         return allowCheckin;
+    }
+
+    public static boolean isPickLoanPeriod() {
+        return pickLoanPeriod;
+    }
+
+    public static boolean isAllowQty() {
+        return allowQty;
+    }
+
+    public static boolean isRequireRemark() {
+        return requireRemark;
+    }
+
+    public static boolean isPickDateRange() {
+        return pickDateRange;
     }
 
     public static void setUserRole(String role) {
@@ -201,27 +244,53 @@ public final class TicketStore {
 
     /** archive 模式：按档案 id 申请 */
     public static Map<String, Object> apply(String username, long itemId) {
-        return apply(username, itemId, "", null);
+        return apply(username, itemId, "", null, null, null, null, null);
     }
 
     public static Map<String, Object> apply(String username, long itemId, String remark) {
-        return apply(username, itemId, remark, null);
+        return apply(username, itemId, remark, null, null, null, null, null);
     }
 
     public static Map<String, Object> apply(String username, long itemId, String remark, String attachUrl) {
+        return apply(username, itemId, remark, attachUrl, null, null, null, null);
+    }
+
+    public static Map<String, Object> apply(
+            String username, long itemId, String remark, String attachUrl, Integer qty, String dueAt) {
+        return apply(username, itemId, remark, attachUrl, qty, dueAt, null, null);
+    }
+
+    /**
+     * @param qty 申请数量；未开 allowQty 时固定为 1
+     * @param dueAt 自选应还日；未开 pickLoanPeriod 时忽略
+     * @param periodStart 起止日期（请假等）；未开 pickDateRange 时忽略
+     * @param periodEnd 结束日期
+     */
+    public static Map<String, Object> apply(
+            String username,
+            long itemId,
+            String remark,
+            String attachUrl,
+            Integer qty,
+            String dueAt,
+            String periodStart,
+            String periodEnd) {
         if (MODE != Mode.ARCHIVE) {
             throw new IllegalStateException("当前为独立工单模式，请使用 applyStandalone");
         }
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
-        if (useQuota && stock <= 0) throw new IllegalStateException("库存不足");
+        int nQty = resolveQty(qty, stock);
+        if (useQuota && stock < nQty) throw new IllegalStateException("库存不足（可借 " + stock + "）");
         assertApplyDeadline(item);
         assertNoTimeConflict(username, itemId, item);
         assertNoMutexConflict(username, itemId, item);
         assertCategoryLimit(username, item);
         assertUnderActiveLimit(username);
         String attach = normalizeAttach(attachUrl);
+        LocalDateTime due = resolveRequestedDue(dueAt);
+        LocalDateTime[] period = resolvePeriod(periodStart, periodEnd);
         if (!allowMultiTicket) {
             Integer dup = db().queryForObject(
                     "SELECT COUNT(*) FROM " + TICKET
@@ -230,35 +299,128 @@ public final class TicketStore {
             if (dup != null && dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
         }
 
-        String note = remark == null ? "" : remark.trim();
-        KeyHolder kh = new GeneratedKeyHolder();
-        if (hasColumn("attach_url")) {
-            final String attachFinal = attach;
-            db().update(con -> {
-                PreparedStatement ps = con.prepareStatement(
-                        "INSERT INTO " + TICKET + " (book_id,username,status,apply_at,fine_yuan,remind_msg,remark,attach_url) "
-                                + "VALUES (?,?, 'pending', NOW(), 0, '', ?, ?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, itemId);
-                ps.setString(2, username);
-                ps.setString(3, note);
-                ps.setString(4, attachFinal);
-                return ps;
-            }, kh);
-        } else {
-            db().update(con -> {
-                PreparedStatement ps = con.prepareStatement(
-                        "INSERT INTO " + TICKET + " (book_id,username,status,apply_at,fine_yuan,remind_msg,remark) "
-                                + "VALUES (?,?, 'pending', NOW(), 0, '', ?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, itemId);
-                ps.setString(2, username);
-                ps.setString(3, note);
-                return ps;
-            }, kh);
+        String rawNote = remark == null ? "" : remark.trim();
+        if (requireRemark && rawNote.isBlank()) {
+            throw new IllegalStateException("请填写说明后再提交");
         }
+        final String note = rawNote.length() > 255 ? rawNote.substring(0, 255) : rawNote;
+        KeyHolder kh = new GeneratedKeyHolder();
+        final boolean withAttach = hasColumn("attach_url");
+        final boolean withQty = hasColumn("qty");
+        final boolean withDue = due != null && hasColumn("due_at");
+        final boolean withPeriod = period != null && hasColumn("period_start") && hasColumn("period_end");
+        final String attachFinal = attach;
+        final int qtyFinal = nQty;
+        final Timestamp dueTs = withDue ? Timestamp.valueOf(due) : null;
+        final Timestamp periodStartTs = withPeriod ? Timestamp.valueOf(period[0]) : null;
+        final Timestamp periodEndTs = withPeriod ? Timestamp.valueOf(period[1]) : null;
+        db().update(con -> {
+            StringBuilder cols = new StringBuilder("book_id,username,status,apply_at,fine_yuan,remind_msg,remark");
+            StringBuilder vals = new StringBuilder("?,?, 'pending', NOW(), 0, '', ?");
+            if (withAttach) {
+                cols.append(",attach_url");
+                vals.append(",?");
+            }
+            if (withQty) {
+                cols.append(",qty");
+                vals.append(",?");
+            }
+            if (withDue) {
+                cols.append(",due_at");
+                vals.append(",?");
+            }
+            if (withPeriod) {
+                cols.append(",period_start,period_end");
+                vals.append(",?,?");
+            }
+            PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO " + TICKET + " (" + cols + ") VALUES (" + vals + ")",
+                    Statement.RETURN_GENERATED_KEYS);
+            int i = 1;
+            ps.setLong(i++, itemId);
+            ps.setString(i++, username);
+            ps.setString(i++, note);
+            if (withAttach) ps.setString(i++, attachFinal);
+            if (withQty) ps.setInt(i++, qtyFinal);
+            if (withDue) ps.setTimestamp(i++, dueTs);
+            if (withPeriod) {
+                ps.setTimestamp(i++, periodStartTs);
+                ps.setTimestamp(i, periodEndTs);
+            }
+            return ps;
+        }, kh);
         Number key = kh.getKey();
         return get(key == null ? 0L : key.longValue());
+    }
+
+    private static LocalDateTime[] resolvePeriod(String periodStart, String periodEnd) {
+        if (!pickDateRange) return null;
+        if (periodStart == null || periodStart.isBlank() || periodEnd == null || periodEnd.isBlank()) {
+            throw new IllegalStateException("请选择起止日期");
+        }
+        LocalDateTime start = parseDateTimeFlexible(periodStart.trim(), false);
+        LocalDateTime end = parseDateTimeFlexible(periodEnd.trim(), true);
+        if (!end.isAfter(start)) {
+            throw new IllegalStateException("结束日期须晚于开始日期");
+        }
+        if (ChronoUnit.DAYS.between(start.toLocalDate(), end.toLocalDate()) > 90) {
+            throw new IllegalStateException("起止跨度不能超过 90 天");
+        }
+        return new LocalDateTime[]{start, end};
+    }
+
+    private static int resolveQty(Integer qty, int stock) {
+        if (!allowQty) return 1;
+        int n = qty == null ? 1 : qty;
+        if (n < 1) throw new IllegalStateException("数量至少为 1");
+        if (n > 99) throw new IllegalStateException("单次数量不能超过 99");
+        if (stock > 0 && n > stock) throw new IllegalStateException("库存不足（可借 " + stock + "）");
+        return n;
+    }
+
+    private static LocalDateTime resolveRequestedDue(String dueAt) {
+        if (!pickLoanPeriod) return null;
+        if (dueAt == null || dueAt.isBlank()) {
+            throw new IllegalStateException("请选择应还日期");
+        }
+        LocalDateTime due = parseDateTimeFlexible(dueAt.trim(), true);
+        LocalDateTime now = LocalDateTime.now();
+        if (!due.isAfter(now)) {
+            throw new IllegalStateException("应还日期须晚于当前时间");
+        }
+        if (due.isAfter(now.plusDays(90))) {
+            throw new IllegalStateException("应还日期不能超过 90 天");
+        }
+        return due;
+    }
+
+    /** @param endOfDay true 时仅日期补 23:59:59，否则补 00:00:00 */
+    private static LocalDateTime parseDateTimeFlexible(String raw, boolean endOfDay) {
+        String s = raw.length() >= 19 ? raw.substring(0, 19) : raw;
+        try {
+            if (s.length() == 10) {
+                return LocalDateTime.parse(s + (endOfDay ? " 23:59:59" : " 00:00:00"), FMT);
+            }
+            return LocalDateTime.parse(s, FMT);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("日期格式无效");
+        }
+    }
+
+    private static LocalDateTime parseDateTimeFlexible(String raw) {
+        return parseDateTimeFlexible(raw, true);
+    }
+
+    private static int rowQty(Map<String, Object> m) {
+        Object q = m.get("qty");
+        if (q instanceof Number n) return Math.max(1, n.intValue());
+        try {
+            return Math.max(1, Integer.parseInt(String.valueOf(q)));
+        } catch (Exception e) {
+            return 1;
+        }
     }
 
     /** standalone 模式：报修等；优先用楼栋/房间/类型 FK，地点由房间拼出 */
@@ -562,12 +724,21 @@ public final class TicketStore {
             Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
             if (item == null) throw new IllegalStateException("对象不存在");
             int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
-            if (stock <= 0) throw new IllegalStateException("库存不足，无法通过");
-            ArchiveStore.adjustStock(itemId, -1);
+            int nQty = rowQty(m);
+            if (stock < nQty) throw new IllegalStateException("库存不足，无法通过（需要 " + nQty + "）");
+            ArchiveStore.adjustStock(itemId, -nQty);
         }
         if (MODE == Mode.ARCHIVE && useDeadline) {
             LocalDateTime approveAt = LocalDateTime.now();
             LocalDateTime dueAt = approveAt.plusDays(LOAN_DAYS);
+            Object requested = m.get("dueAt");
+            if (requested != null && !String.valueOf(requested).isBlank()) {
+                try {
+                    dueAt = parseDateTimeFlexible(String.valueOf(requested).trim());
+                } catch (Exception ignored) {
+                    // 保留默认借期
+                }
+            }
             if (bind) {
                 db().update(
                         "UPDATE " + TICKET + " SET status='approved', approve_at=?, due_at=?, fine_yuan=0, remind_msg='', remark=?, assignee_username=? WHERE id=?",
@@ -695,7 +866,7 @@ public final class TicketStore {
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = toLong(m.get("bookId"));
             if (ArchiveStore.getItemRaw(itemId) != null) {
-                ArchiveStore.adjustStock(itemId, 1);
+                ArchiveStore.adjustStock(itemId, rowQty(m));
             }
         }
         String remind = "";
@@ -865,12 +1036,26 @@ public final class TicketStore {
             m.put("fineYuan", safeDouble(rs, "fine_yuan"));
             m.put("remindedAt", fmt(safeTs(rs, "reminded_at")));
             m.put("remindMsg", safeStr(rs, "remind_msg"));
+            int qty = 1;
+            try {
+                int q = rs.getInt("qty");
+                if (!rs.wasNull() && q > 0) qty = q;
+            } catch (Exception ignored) {
+            }
+            m.put("qty", qty);
             Map<String, Object> item = ArchiveStore.getItemRaw(bookId);
             m.put("bookTitle", item == null ? "" : item.get("title"));
             m.put("itemTitle", item == null ? "" : item.get("title"));
             m.put("title", item == null ? "" : str(item.get("title")));
             m.put("location", "");
-            if (item != null) {
+            String periodStart = fmt(safeTs(rs, "period_start"));
+            String periodEnd = fmt(safeTs(rs, "period_end"));
+            if (periodStart != null || periodEnd != null) {
+                m.put("periodStart", periodStart);
+                m.put("periodEnd", periodEnd);
+                m.put("startAt", periodStart);
+                m.put("endAt", periodEnd);
+            } else if (item != null) {
                 m.put("startAt", item.get("startAt"));
                 m.put("endAt", item.get("endAt"));
                 m.put("applyDeadlineAt", item.get("applyDeadlineAt"));

@@ -33,7 +33,8 @@ export const api = {
   getProject: (id) => http.get(`/projects/${id}`),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
   generate: (id) => http.post(`/projects/${id}/generate`),
-  deleteProject: (id) => http.delete(`/projects/${id}`),
+  deleteProject: (id, { keepDb = false } = {}) =>
+    http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
   erSvgUrl: (id) => `/api/projects/${id}/schema/er.svg`,

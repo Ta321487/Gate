@@ -281,6 +281,32 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         "ticket-allow-checkin",
         "true" if ticket_ent.get("allowCheckin") else "false",
     )
+    text = _set_key(
+        text,
+        "ticket-pick-loan-period",
+        "true" if ticket_ent.get("pickLoanPeriod") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-allow-qty",
+        "true" if ticket_ent.get("allowQty") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-require-remark",
+        "true" if ticket_ent.get("requireRemark") else "false",
+    )
+    text = _set_key(
+        text,
+        "ticket-pick-date-range",
+        "true" if ticket_ent.get("pickDateRange") else "false",
+    )
+    resv_ent = ((spec.get("schema") or {}).get("entities") or {}).get("reservation") or {}
+    text = _set_key(
+        text,
+        "slot-require-remark",
+        "true" if resv_ent.get("requireRemark") else "false",
+    )
     archive_ent = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
     text = _set_key(
         text,

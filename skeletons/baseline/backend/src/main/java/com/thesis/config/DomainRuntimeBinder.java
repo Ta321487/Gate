@@ -112,6 +112,21 @@ public class DomainRuntimeBinder {
     @Value("${thesis.ticket-allow-checkin:false}")
     private boolean ticketAllowCheckin;
 
+    @Value("${thesis.ticket-pick-loan-period:false}")
+    private boolean ticketPickLoanPeriod;
+
+    @Value("${thesis.ticket-allow-qty:false}")
+    private boolean ticketAllowQty;
+
+    @Value("${thesis.ticket-require-remark:false}")
+    private boolean ticketRequireRemark;
+
+    @Value("${thesis.ticket-pick-date-range:false}")
+    private boolean ticketPickDateRange;
+
+    @Value("${thesis.slot-require-remark:false}")
+    private boolean slotRequireRemark;
+
     @PostConstruct
     public void bind() {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
@@ -132,6 +147,8 @@ public class DomainRuntimeBinder {
             TicketStore.configureL1(ticketTwoLevel, ticketRequireAttach, ticketAllowRating);
             TicketStore.configureRules(ticketCheckMutex, ticketCategoryLimit);
             TicketStore.configureCheckin(ticketAllowCheckin);
+            TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
+            TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
         }
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
@@ -140,6 +157,7 @@ public class DomainRuntimeBinder {
         }
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
+            SlotStore.configureRemark(slotRequireRemark);
         } else {
             SlotStore.unbind();
         }

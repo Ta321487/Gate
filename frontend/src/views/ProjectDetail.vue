@@ -355,6 +355,24 @@
       </n-tab-pane>
     </n-tabs>
 
+    <n-modal
+      v-model:show="showDelete"
+      preset="dialog"
+      title="删除项目"
+      positive-text="确认删除"
+      negative-text="取消"
+      type="error"
+      :loading="deleting"
+      @positive-click="confirmDelete"
+      @negative-click="showDelete = false"
+    >
+      <p style="margin:0 0 12px">将清理工作区与 ZIP，此操作不可恢复。</p>
+      <p v-if="p.db_name" class="small muted" style="margin:0 0 12px">
+        学生库 <span class="mono">{{ p.db_name }}</span>
+        {{ keepDb ? '将被保留' : '将一并删除' }}
+      </p>
+      <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留数据库（不执行 DROP）</n-checkbox>
+    </n-modal>
     <n-modal v-model:show="showSpec" preset="card" title="spec.json" style="width:640px">
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
@@ -444,6 +462,9 @@ const logFilter = ref('')
 const logSides = LOG_SIDES
 const showSpec = ref(false)
 const showEr = ref(false)
+const showDelete = ref(false)
+const keepDb = ref(false)
+const deleting = ref(false)
 const schema = ref(null)
 const erSvgHtml = ref('')
 const erFrameRef = ref(null)
@@ -893,18 +914,29 @@ function downloadZip() {
   window.open(api.downloadUrl(p.value.id), '_blank')
 }
 
-async function onDelete() {
+function onDelete() {
   if (deleteBlocked.value) {
     message.warning(deleteBlockedReason.value || '请先停止运行后再删除')
     return
   }
-  if (!confirm('确认删除该项目？工作区将一并清理。')) return
+  keepDb.value = false
+  showDelete.value = true
+}
+
+async function confirmDelete() {
+  if (!p.value || deleting.value) return false
+  deleting.value = true
   try {
-    await api.deleteProject(p.value.id)
-    message.success('已删除')
+    const res = await api.deleteProject(p.value.id, { keepDb: keepDb.value })
+    message.success(res?.message || '已删除')
+    showDelete.value = false
     router.push('/')
+    return true
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '删除失败')
+    return false
+  } finally {
+    deleting.value = false
   }
 }
 
