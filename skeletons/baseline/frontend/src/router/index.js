@@ -34,6 +34,32 @@ function useArchiveOnlyShell() {
   return hasCap('archive') && !hasCap('ticket_flow') && !hasCap('order_lines') && !hasCap('slot_reserve')
 }
 
+/** 门户公共页：首页枢纽 + 消息中心（各壳共用，避免顶栏只有 2～3 项） */
+function withPortalHub(baseRoutes) {
+  const routes = structuredClone(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (!kids) return routes
+  const has = (p) => kids.some((c) => c.path === p)
+  const redir = kids.find((c) => c.path === '' && c.redirect)
+  if (redir) redir.redirect = '/home'
+  if (!has('home')) {
+    kids.splice(1, 0, {
+      path: 'home',
+      component: () => import('../views/user/PortalHome.vue'),
+    })
+  }
+  if (!has('messages')) {
+    const noticeIdx = kids.findIndex((c) => c.path === 'notices')
+    const at = noticeIdx >= 0 ? noticeIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'messages',
+      component: () => import('../views/user/Messages.vue'),
+    })
+  }
+  return routes
+}
+
 /** 在档案+单据壳上追加预约/订单子路由（多主路径，避免再抄一整套 routes） */
 function withExtraBizRoutes(baseRoutes, { order = false, slot = false } = {}) {
   const routes = structuredClone(baseRoutes)
@@ -338,13 +364,13 @@ function pickRoutes() {
   const slot = hasCap('slot_reserve') && hasCap('archive')
   // 多主路径：单据壳 + 预约/订单（复用 archiveTicketRoutes，不另写三套）
   if (ticket && (order || slot)) {
-    return withExtraBizRoutes(archiveTicketRoutes, { order, slot })
+    return withPortalHub(withExtraBizRoutes(archiveTicketRoutes, { order, slot }))
   }
-  if (useArchiveTicketShell()) return archiveTicketRoutes
-  if (useTicketShell()) return ticketRoutes
-  if (useOrderShell()) return orderRoutes
-  if (useSlotShell()) return slotRoutes
-  if (useArchiveOnlyShell()) return archiveOnlyRoutes
+  if (useArchiveTicketShell()) return withPortalHub(archiveTicketRoutes)
+  if (useTicketShell()) return withPortalHub(ticketRoutes)
+  if (useOrderShell()) return withPortalHub(orderRoutes)
+  if (useSlotShell()) return withPortalHub(slotRoutes)
+  if (useArchiveOnlyShell()) return withPortalHub(archiveOnlyRoutes)
   return baselineRoutes
 }
 

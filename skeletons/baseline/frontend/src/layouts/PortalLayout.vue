@@ -75,6 +75,7 @@ const hasStage = computed(() => {
 })
 
 const MENU_TO = {
+  home: '/home',
   my_tickets: '/tickets',
   content: '/notices',
   profile: '/profile',
@@ -84,25 +85,23 @@ const MENU_TO = {
   my_reservations: '/reservations',
   slots: '/slots',
   week_calendar: '/week',
+  messages: '/messages',
 }
 
-const GUEST_MENU_KEYS = new Set(['archive', 'content', 'slots'])
+const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'slots'])
 
 const nav = computed(() => {
+  // 资料留在右侧按钮，避免与顶栏重复；首页/消息等进导航
   const menus = schemaMenus('user').filter((m) => m.key !== 'profile')
   let list = menus
   if (!loggedIn.value && isGuestBrowseEnabled()) {
     list = menus.filter((m) => GUEST_MENU_KEYS.has(m.key))
+  } else if (!loggedIn.value) {
+    list = menus.filter((m) => m.key === 'home' || m.key === 'content')
   }
   if (!list.length) {
-    if (!loggedIn.value && isGuestBrowseEnabled()) {
-      return [
-        { to: '/archive', label: menuLabel('user', 'archive', '目录') },
-        { to: '/notices', label: menuLabel('user', 'content', '公告') },
-      ]
-    }
     return [
-      { to: '/tickets', label: menuLabel('user', 'my_tickets', '我的申请') },
+      { to: '/home', label: '首页' },
       { to: '/notices', label: menuLabel('user', 'content', '公告') },
     ]
   }
@@ -111,7 +110,7 @@ const nav = computed(() => {
     .filter((m) => m.to)
 })
 
-const homePath = computed(() => nav.value[0]?.to || '/tickets')
+const homePath = computed(() => '/home')
 
 function logout() {
   localStorage.clear()

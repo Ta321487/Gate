@@ -39,9 +39,37 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
   'content',
 ])
 
+/**
+ * 门户用户菜单：在 schema 基础上补「首页 / 消息」真入口（有页面，非灌水）。
+ * 管理端原样返回。
+ */
 export function schemaMenus(side = 'admin') {
   const menus = getSchema().menus || {}
-  return menus[side] || []
+  const raw = menus[side] || []
+  if (side !== 'user') return raw
+
+  const list = raw.map((m) => ({ ...m }))
+  const keys = new Set(list.map((m) => m.key))
+  if (!keys.has('home')) {
+    list.unshift({ key: 'home', label: '首页' })
+    keys.add('home')
+  }
+  if (!keys.has('messages')) {
+    const item = { key: 'messages', label: '消息' }
+    const pi = list.findIndex((m) => m.key === 'profile')
+    if (pi >= 0) list.splice(pi, 0, item)
+    else list.push(item)
+    keys.add('messages')
+  }
+  // 预约壳有 /slots 页时露出独立入口（目录仍保留）
+  const caps = getSchema().capabilities || []
+  if (caps.includes('slot_reserve') && !keys.has('slots')) {
+    const item = { key: 'slots', label: '预约选时' }
+    const ai = list.findIndex((m) => m.key === 'archive')
+    if (ai >= 0) list.splice(ai + 1, 0, item)
+    else list.splice(1, 0, item)
+  }
+  return list
 }
 
 export function isSuperOnlyMenu(item) {
