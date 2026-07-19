@@ -1,0 +1,201 @@
+"""各领域档案字段映射（注册/个人资料）。"""
+
+from __future__ import annotations
+
+import copy
+from typing import Any
+
+
+def _pf(
+    key: str,
+    label: str,
+    *,
+    storage: str = "json",
+    required: bool = False,
+    on_register: bool = False,
+    max_length: int = 64,
+    placeholder: str = "",
+    field_type: str = "string",
+    options: list[str] | None = None,
+    format: str = "",
+) -> dict[str, Any]:
+    f: dict[str, Any] = {
+        "key": key,
+        "label": label,
+        "storage": storage,
+        "type": field_type,
+        "required": required,
+        "onRegister": on_register,
+        "maxLength": max_length,
+    }
+    if placeholder:
+        f["placeholder"] = placeholder
+    if options:
+        f["options"] = options
+    if format:
+        f["format"] = format
+    return f
+
+
+COMMON_PROFILE_FIELDS: list[dict[str, Any]] = [
+    _pf("realName", "姓名", required=True, on_register=True, max_length=32),
+    _pf("phone", "手机", storage="phone", required=True, on_register=True, max_length=20,
+        format="phone", placeholder="11 位手机号"),
+    _pf("email", "邮箱", on_register=True, max_length=64, format="email", placeholder="选填"),
+    _pf("gender", "性别", on_register=True, field_type="select", options=["男", "女", "保密"]),
+]
+
+# 各领域业务档案（不含公共底座；由 attach_profile_fields 合并）
+PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
+    "DOM-LIBRARY": [
+        _pf("cardNo", "借书证号", required=True, on_register=True, max_length=32),
+        _pf("readerType", "读者类型", required=True, on_register=True, field_type="select",
+            options=["本科生", "研究生", "教职工", "校外"]),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+        _pf("major", "专业", on_register=True, max_length=64),
+        _pf("enrollYear", "入学年份", max_length=16, placeholder="如 2023"),
+    ],
+    "DOM-EQUIP": [
+        _pf("employeeNo", "工号/学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["学生", "教职工", "实验室"]),
+        _pf("labOrOffice", "实验室/办公室", on_register=True, max_length=64),
+        _pf("contactAlt", "备用联系人", max_length=32),
+    ],
+    "DOM-ASSET": [
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "部门", required=True, on_register=True, max_length=64),
+        _pf("jobTitle", "职务", on_register=True, max_length=32),
+        _pf("costCenter", "成本中心/科室", max_length=64),
+        _pf("officeLoc", "办公地点", on_register=True, max_length=64),
+    ],
+    "DOM-DORM": [
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("college", "学院", required=True, on_register=True, max_length=64),
+        _pf("className", "班级", required=True, on_register=True, max_length=64),
+        _pf("grade", "年级", on_register=True, max_length=16, placeholder="如 2023 级"),
+        _pf("dormBuilding", "楼栋", required=True, on_register=True, max_length=32, placeholder="如 一号楼"),
+        _pf("dormRoom", "房间", required=True, on_register=True, max_length=16, placeholder="如 101"),
+        _pf("bedNo", "床位", max_length=8),
+    ],
+    "DOM-PROPERTY": [
+        _pf("houseBuilding", "楼栋", required=True, on_register=True, max_length=32),
+        _pf("houseUnit", "单元", on_register=True, max_length=16),
+        _pf("houseNo", "房号", required=True, on_register=True, max_length=16),
+        _pf("ownerType", "住户类型", required=True, on_register=True, field_type="select",
+            options=["业主", "租户", "家属"]),
+        _pf("parkingNo", "车位号", max_length=32),
+        _pf("emergencyContact", "紧急联系人", max_length=32),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
+    "DOM-IT": [
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["学生", "教职工", "其他"]),
+        _pf("campusNo", "学号/工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+        _pf("officeOrDorm", "办公/宿舍地址", on_register=True, max_length=64),
+        _pf("title", "职务/年级", max_length=32),
+    ],
+    "DOM-ACTIVITY": [
+        _pf("studentNoOrEmp", "学号/工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["学生", "教职工", "校外"]),
+        _pf("orgOrClub", "社团/组织", on_register=True, max_length=64),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
+    "DOM-LOST": [
+        _pf("campusNo", "学号/工号", on_register=True, max_length=32),
+        _pf("dept", "院系/单位", on_register=True, max_length=64),
+        _pf("contactWechat", "微信/备用联系", on_register=True, max_length=64),
+        _pf("usualPlace", "常出现区域", max_length=64),
+    ],
+    "DOM-COURSE": [
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("college", "学院", required=True, on_register=True, max_length=64),
+        _pf("major", "专业", required=True, on_register=True, max_length=64),
+        _pf("className", "班级", required=True, on_register=True, max_length=64),
+        _pf("grade", "年级", on_register=True, max_length=16),
+        _pf("enrollYear", "入学年份", max_length=16),
+    ],
+    "DOM-SHOP": [
+        _pf("receiverName", "收货人", required=True, on_register=True, max_length=32),
+        _pf("campusAddress", "校内地址", required=True, on_register=True, max_length=128),
+        _pf("dormOrBuilding", "楼栋宿舍", on_register=True, max_length=64),
+        _pf("defaultRemark", "下单备注偏好", max_length=128),
+    ],
+    "DOM-FOOD": [
+        _pf("receiverName", "取餐人", required=True, on_register=True, max_length=32),
+        _pf("canteenPrefer", "常去食堂", on_register=True, max_length=64),
+        _pf("studentNoOrEmp", "学号/工号", on_register=True, max_length=32),
+        _pf("allergyNote", "忌口说明", max_length=128),
+    ],
+    "DOM-HOSPITAL": [
+        _pf("patientNo", "就诊卡号", required=True, on_register=True, max_length=32),
+        _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
+            options=["身份证", "护照", "其他"]),
+        _pf("deptPrefer", "常挂科室", max_length=64),
+        _pf("allergyNote", "过敏史简述", max_length=128),
+        _pf("emergencyContact", "紧急联系人", max_length=32),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
+    "DOM-PARKING": [
+        _pf("plateNo", "车牌号", required=True, on_register=True, max_length=16),
+        _pf("vehicleType", "车辆类型", required=True, on_register=True, field_type="select",
+            options=["小型车", "新能源", "摩托车"]),
+        _pf("ownerType", "车主身份", required=True, on_register=True, field_type="select",
+            options=["教职工", "学生", "访客"]),
+        _pf("campusNo", "学号/工号", on_register=True, max_length=32),
+        _pf("dept", "单位", on_register=True, max_length=64),
+    ],
+    "DOM-MEETING": [
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "部门", required=True, on_register=True, max_length=64),
+        _pf("jobTitle", "职务", on_register=True, max_length=32),
+        _pf("officePhone", "办公电话", max_length=20),
+    ],
+    "DOM-SALON": [
+        _pf("memberNo", "会员号", on_register=True, max_length=32),
+        _pf("skinOrPrefer", "偏好备注", max_length=128),
+        _pf("birthday", "生日", max_length=16, placeholder="如 01-15"),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
+    "DOM-HOTEL": [
+        _pf("guestName", "入住人", required=True, on_register=True, max_length=32),
+        _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
+            options=["身份证", "护照", "其他"]),
+        _pf("companyOrSchool", "单位/学校", on_register=True, max_length=64),
+        _pf("arrivePrefer", "预计到达时段", field_type="select",
+            options=["上午", "下午", "晚上"]),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
+    "DOM-GENERIC": [
+        _pf("orgName", "所属单位", on_register=True, max_length=64),
+        _pf("jobTitle", "职务", max_length=32),
+        _pf("employeeNo", "工号", on_register=True, max_length=32),
+    ],
+    "DOM-MEDIA": [
+        _pf("memberNo", "会员号", on_register=True, max_length=32),
+        _pf("orgName", "学校/单位", on_register=True, max_length=64),
+        _pf("preferredGenre", "偏好类型", on_register=True, field_type="select",
+            options=["电影", "电视剧", "综艺", "动漫", "纪录片", "不限"]),
+    ],
+    "DOM-MUSIC": [
+        _pf("memberNo", "会员号", on_register=True, max_length=32),
+        _pf("orgName", "学校/单位", on_register=True, max_length=64),
+        _pf("preferredGenre", "偏好曲风", on_register=True, field_type="select",
+            options=["流行", "摇滚", "民谣", "电子", "古典", "不限"]),
+    ],
+}
+
+
+def profile_fields_for(domain: str) -> list[dict[str, Any]]:
+    specific = PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
+    return copy.deepcopy(COMMON_PROFILE_FIELDS) + copy.deepcopy(specific)
+
+
+def attach_profile_fields(schema: dict[str, Any], domain: str) -> dict[str, Any]:
+    out = copy.deepcopy(schema)
+    out["profileFields"] = profile_fields_for(domain)
+    return out
