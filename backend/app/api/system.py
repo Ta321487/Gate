@@ -25,8 +25,7 @@ from app.schemas import (
 from app.services import runtime as rt
 from app.services.projects import mask_key, reclaim_idle_ports
 
-router = APIRouter(prefix="/api", tags=["system"])
-
+router = APIRouter(prefix="/api")
 
 DEFAULT_DS = {
     "thinking": True,
@@ -61,7 +60,7 @@ def _hydrate_ds_settings(s, cfg: dict) -> None:
         s.fix_rounds_max = int(cfg["fix_rounds_max"])
 
 
-@router.get("/deepseek", response_model=DeepSeekSettings)
+@router.get("/deepseek", response_model=DeepSeekSettings, tags=["DeepSeek"], summary="读取 DeepSeek 配置")
 async def get_deepseek(db: AsyncSession = Depends(get_db)):
     s = get_settings()
     cfg = await _get_ds_row(db)
@@ -86,7 +85,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.put("/deepseek", response_model=DeepSeekSettings)
+@router.put("/deepseek", response_model=DeepSeekSettings, tags=["DeepSeek"], summary="保存 DeepSeek 配置")
 async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db)):
     s = get_settings()
     row = await db.get(SettingRow, "deepseek")
@@ -119,7 +118,7 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
     return await get_deepseek(db)
 
 
-@router.post("/deepseek/test", response_model=ApiOk)
+@router.post("/deepseek/test", response_model=ApiOk, tags=["DeepSeek"], summary="测试 DeepSeek 连通")
 async def test_deepseek():
     s = get_settings()
     if not s.deepseek_api_key:
@@ -139,7 +138,7 @@ async def test_deepseek():
         return ApiOk(ok=False, message=str(e))
 
 
-@router.get("/deepseek/balance", response_model=DeepSeekBalance)
+@router.get("/deepseek/balance", response_model=DeepSeekBalance, tags=["DeepSeek"], summary="查询账户余额")
 async def deepseek_balance(db: AsyncSession = Depends(get_db)):
     """查询 DeepSeek 官方账户余额：GET /user/balance。"""
     s = get_settings()
@@ -203,7 +202,7 @@ def _parse_dt(value: str | None, *, end: bool = False) -> datetime | None:
         raise HTTPException(status_code=400, detail=f"时间格式无效: {value}") from e
 
 
-@router.get("/deepseek/usage")
+@router.get("/deepseek/usage", tags=["DeepSeek"], summary="按项目用量")
 async def list_usage(
     q: str | None = None,
     date_from: str | None = None,
@@ -233,7 +232,7 @@ async def list_usage(
     }
 
 
-@router.get("/deepseek/usage/chart")
+@router.get("/deepseek/usage/chart", tags=["DeepSeek"], summary="用量折线图")
 async def usage_chart(
     q: str | None = None,
     date_from: str | None = None,
@@ -249,7 +248,7 @@ async def usage_chart(
     )
 
 
-@router.get("/deepseek/calls")
+@router.get("/deepseek/calls", tags=["DeepSeek"], summary="最近调用记录")
 async def list_calls(
     project_id: str | None = None,
     stage: str | None = None,
@@ -419,7 +418,7 @@ def _probe_student_mysql() -> str:
         return f"{target} · 失败（{msg}）"
 
 
-@router.get("/system", response_model=SystemInfo)
+@router.get("/system", response_model=SystemInfo, tags=["系统"], summary="运行环境信息")
 async def system_info(db: AsyncSession = Depends(get_db)):
     s = get_settings()
     result = await db.execute(select(Project.id, Project.backend_port, Project.frontend_port))
@@ -454,7 +453,7 @@ async def system_info(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/system/free-ports", response_model=ApiOk)
+@router.post("/system/free-ports", response_model=ApiOk, tags=["系统"], summary="释放僵尸端口")
 async def free_ports(db: AsyncSession = Depends(get_db)):
     """清理未托管但仍占端口的僵尸进程；正在预览的项目不会被停止。"""
     result = await db.execute(select(Project))
@@ -512,7 +511,7 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
     return ApiOk(message="没有可释放的空闲占用", data=data)
 
 
-@router.get("/catalog")
+@router.get("/catalog", tags=["系统"], summary="骨架与领域目录")
 async def catalog():
     from app.bake.catalog import ARCHETYPES, DOMAINS, themes_for_domain
 

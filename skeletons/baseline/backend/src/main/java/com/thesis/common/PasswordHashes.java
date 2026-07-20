@@ -8,12 +8,22 @@ import java.util.Locale;
 
 /**
  * 密码编解码：由 thesis.password-hash 控制（none / bcrypt / md5 / sha256）。
- * 种子账号可能仍是明文；登录成功后会升级为当前算法。
+ * <p>
+ * 校验按<strong>库内实际形态</strong>识别（明文 / bcrypt / md5 / sha256），不依赖当前策略；
+ * 换算法或改回 none 后，旧哈希仍可登录，成功后升级为当前策略。
+ * 种子账号常为明文，同理。
  */
 public final class PasswordHashes {
 
     private static volatile String mode = "none";
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
+
+    private enum StoredKind {
+        PLAIN,
+        BCRYPT,
+        MD5,
+        SHA256
+    }
 
     private PasswordHashes() {}
 
@@ -46,32 +56,41 @@ public final class PasswordHashes {
 
     public static boolean matches(String raw, String stored) {
         if (raw == null || stored == null) return false;
-        if ("none".equals(mode)) return stored.equals(raw);
-        if (isEncoded(stored)) {
-            return switch (mode) {
-                case "bcrypt" -> BCRYPT.matches(raw, stored);
-                case "md5" -> digestHex("MD5", raw).equalsIgnoreCase(stored);
-                case "sha256" -> digestHex("SHA-256", raw).equalsIgnoreCase(stored);
-                default -> stored.equals(raw);
-            };
-        }
-        // 种子/历史明文
-        return stored.equals(raw);
-    }
-
-    /** 当前策略非明文，且库内仍是明文 → 登录后应重写 */
-    public static boolean needsUpgrade(String stored) {
-        if ("none".equals(mode) || stored == null) return false;
-        return !isEncoded(stored);
-    }
-
-    private static boolean isEncoded(String stored) {
-        return switch (mode) {
-            case "bcrypt" -> stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$");
-            case "md5" -> stored.matches("(?i)^[a-f0-9]{32}$");
-            case "sha256" -> stored.matches("(?i)^[a-f0-9]{64}$");
-            default -> false;
+        return switch (detect(stored)) {
+            case BCRYPT -> BCRYPT.matches(raw, stored);
+            case MD5 -> digestHex("MD5", raw).equalsIgnoreCase(stored);
+            case SHA256 -> digestHex("SHA-256", raw).equalsIgnoreCase(stored);
+            case PLAIN -> stored.equals(raw);
         };
+    }
+
+    /** 库内形态与当前策略不一致 → 登录后应重写（含哈希→明文、明文→哈希、哈希互转） */
+    public static boolean needsUpgrade(String stored) {
+        if (stored == null) return false;
+        return detect(stored) != kindForMode(mode);
+    }
+
+    private static StoredKind kindForMode(String m) {
+        return switch (m == null ? "none" : m) {
+            case "bcrypt" -> StoredKind.BCRYPT;
+            case "md5" -> StoredKind.MD5;
+            case "sha256" -> StoredKind.SHA256;
+            default -> StoredKind.PLAIN;
+        };
+    }
+
+    /** 按存储串形态识别，与当前 password-hash 无关 */
+    private static StoredKind detect(String stored) {
+        if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
+            return StoredKind.BCRYPT;
+        }
+        if (stored.matches("(?i)^[a-f0-9]{64}$")) {
+            return StoredKind.SHA256;
+        }
+        if (stored.matches("(?i)^[a-f0-9]{32}$")) {
+            return StoredKind.MD5;
+        }
+        return StoredKind.PLAIN;
     }
 
     private static String digestHex(String algo, String raw) {

@@ -102,7 +102,7 @@ import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, menuLabel, ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
@@ -112,7 +112,7 @@ const richRemark = computed(() => !!ticket.richRemark)
 const twoLevel = computed(() => !!ticket.twoLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
-const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
+const dueLabel = computed(() => ticketDueLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
 const superAdmin = localStorage.getItem('superAdmin') === 'true'

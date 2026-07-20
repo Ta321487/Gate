@@ -37,10 +37,22 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="毕设港",
+    description=(
+        "毕设港运营后端（FastAPI）。"
+        "日常请用工作台页面；本页供查参与 Postman / 脚本调试。"
+        "勿与学生端 ZIP 内的 Spring 接口混淆。"
+    ),
     version="3.0.0",
     lifespan=lifespan,
     # 默认 redoc@next CDN 已 404，改用自定义 /redoc
     redoc_url=None,
+    openapi_tags=[
+        {"name": "健康", "description": "服务存活探测"},
+        {"name": "项目", "description": "开题上传、匹配、生成、产物对照与预览运行"},
+        {"name": "任务", "description": "异步生成任务队列"},
+        {"name": "DeepSeek", "description": "大模型配置、余额与用量"},
+        {"name": "系统", "description": "本机环境、端口池与领域目录"},
+    ],
 )
 app.add_middleware(
     CORSMiddleware,
@@ -59,13 +71,13 @@ app.include_router(system.router)
 async def redoc_html() -> HTMLResponse:
     return get_redoc_html(
         openapi_url=app.openapi_url,
-        title=f"{app.title} - ReDoc",
+        title=f"{app.title} · API 文档",
         redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js",
         with_google_fonts=False,
     )
 
 
-@app.get("/api/health")
+@app.get("/api/health", tags=["健康"], summary="健康检查")
 async def health():
     return {"ok": True, "service": "thesis-harbor"}
 

@@ -232,7 +232,7 @@
           <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载 ZIP。' : 'ZIP 已解锁。请到「运行」预览后再交付。' }}</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
-            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
             <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
             <n-button size="small" @click="startGenerate">重新生成</n-button>
           </div>
@@ -242,7 +242,7 @@
           <p class="small muted">工作区与当前门禁不一致（常见于骨架升级后）。请重新生成，或到「产物」查看未过项。</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="startGenerate">重新生成</n-button>
-            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
             <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
           </div>
         </div>
@@ -251,7 +251,7 @@
           <p class="small muted">{{ currentJob?.error || '主流程 / 功能清单未通过则禁止下载 ZIP。' }}</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
-            <n-button size="small" @click="tab = 'artifacts'">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
             <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
           </div>
         </div>
@@ -343,131 +343,244 @@
       </n-tab-pane>
 
       <!-- Artifacts -->
-      <n-tab-pane name="artifacts" tab="产物 / 数据库">
-        <div class="grid-2">
-          <div class="panel">
-            <div class="panel-hd"><h3>产物</h3></div>
-            <div class="panel-bd stack">
-              <div class="file-row" style="margin:0">
-                <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
-                <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
-                  {{ canDownload ? '下载' : '锁定' }}
-                </n-button>
-              </div>
-              <div class="file-row" style="margin:0">
-                <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
-                <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
-              </div>
-              <div class="file-row" style="margin:0">
-                <span><strong>spec.json</strong></span>
-                <div class="row" style="margin:0;gap:6px">
-                  <CopyIconButton :text="specText" tip="复制 JSON" />
-                  <n-button text size="small" @click="showSpec = true">查看</n-button>
-                </div>
-              </div>
-            </div>
+      <n-tab-pane name="artifacts" tab="产物 / 对照">
+        <div class="panel artifacts-files">
+          <div class="panel-hd">
+            <h3>产物</h3>
+            <span class="small muted">交付文件与工作区路径</span>
           </div>
-          <div class="panel">
-            <div class="panel-hd">
-              <h3>数据库</h3>
-              <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'">{{ schema ? '已解析' : (p.workspace_path ? '无 SQL' : '未生成') }}</span>
+          <div class="panel-bd artifacts-file-grid">
+            <div class="file-row" style="margin:0">
+              <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
+              <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+                {{ canDownload ? '下载' : '锁定' }}
+              </n-button>
             </div>
-            <div class="panel-bd stack">
-              <div class="small">
-                <span class="muted">库名</span> · <span class="mono">{{ p.db_name }}</span>
-                <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
+            <div class="file-row" style="margin:0">
+              <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
+              <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
+            </div>
+            <div class="file-row" style="margin:0">
+              <span><strong>spec.json</strong><br /><span class="small muted">匹配与生成配置</span></span>
+              <div class="row" style="margin:0;gap:6px">
+                <CopyIconButton :text="specText" tip="复制 JSON" />
+                <n-button text size="small" @click="showSpec = true">查看</n-button>
               </div>
-              <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
-              <template v-if="schema?.tables?.length">
-                <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
-                  <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
-                    <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
-                      （{{ schema.tables.length >= 6 && schema.tables.length <= 13 ? '符合' : '不符合' }} 6~13）
-                    </span>
-                  </div>
-                  <label class="type-mode-switch small">
-                    <n-switch v-model:value="typeParenMode" size="small" />
-                    <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
-                  </label>
-                </div>
-                <div class="table-list">
-                  <div v-for="t in schema.tables" :key="t.name" class="table-card">
-                    <div
-                      class="table-card-hd"
-                      :class="{ collapsed: isTableCollapsed(t.name) }"
-                      role="button"
-                      tabindex="0"
-                      :title="isTableCollapsed(t.name) ? '展开列' : '折叠列'"
-                      @click="toggleTable(t.name)"
-                      @keyup.enter="toggleTable(t.name)"
-                    >
-                      <span class="table-caret" aria-hidden="true">{{ isTableCollapsed(t.name) ? '▸' : '▾' }}</span>
-                      <span class="mono">{{ t.name }}</span>
-                      <span v-if="t.label && t.label !== t.name" class="table-zh">{{ t.label }}</span>
-                      <span class="small muted">{{ t.columns?.length || 0 }} 列</span>
-                      <CopyIconButton class="table-copy" :text="tableCopyText(t)" tip="复制本表（可贴 Word 转表格）" />
-                    </div>
-                    <ul
-                      v-show="!isTableCollapsed(t.name)"
-                      class="table-cols"
-                      :class="{ 'split-type': !typeParenMode }"
-                    >
-                      <li class="table-cols-hd">
-                        <span>字段名</span>
-                        <span>中文名</span>
-                        <span>类型</span>
-                        <span v-if="!typeParenMode">长度</span>
-                      </li>
-                      <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
-                        <span class="col-name">{{ c.name }}</span>
-                        <span class="col-zh">{{ c.label || '—' }}</span>
-                        <template v-if="typeParenMode">
-                          <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>
-                        </template>
-                        <template v-else>
-                          <span class="col-type muted">{{ parseMysqlType(c.type).base }}</span>
-                          <span class="col-len muted">{{ parseMysqlType(c.type).len || '—' }}</span>
-                        </template>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <div v-if="schema.relations?.length" class="rel-list">
-                  <div class="parse-sec-hd">推断联系</div>
-                  <div v-for="(r, i) in schema.relations" :key="i" class="rel-row">
-                    <span class="mono">{{ r.left }}</span>
-                    <span class="muted">{{ r.card_left }}</span>
-                    —〈{{ r.label || r.name }}〉—
-                    <span class="muted">{{ r.card_right }}</span>
-                    <span class="mono">{{ r.right }}</span>
-                    <span class="small muted">via {{ r.via }}</span>
-                  </div>
-                </div>
-                <div class="row">
-                  <n-button size="small" @click="openEr">查看 E-R 图</n-button>
-                  <n-button size="small" secondary @click="downloadEr">下载 SVG</n-button>
-                </div>
-              </template>
-              <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
             </div>
           </div>
         </div>
 
-        <n-collapse class="artifacts-collapse mt-16" display-directive="show" :default-expanded-names="[]">
-          <n-collapse-item name="gates">
-            <template #header>
-              <span>质量门禁 · 交付 DoD</span>
-              <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
-                {{ canDownload ? '可交付' : '禁止交付' }}
-              </span>
-            </template>
-            <p class="small muted mb-12">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
-            <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
-          </n-collapse-item>
-          <n-collapse-item title="开题对照清单" name="checklist">
-            <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
-          </n-collapse-item>
-        </n-collapse>
+        <div class="panel mt-16">
+          <div class="panel-hd">
+            <h3>对照视图</h3>
+            <span class="small muted">库表 · 学生端 API · 门禁（不写入 ZIP）</span>
+          </div>
+          <div class="panel-bd" style="padding-top:4px">
+            <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
+              <n-tab-pane name="db" tab="数据库">
+                <div class="artifact-pane stack">
+                  <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
+                    <div class="small">
+                      <span class="muted">库名</span> · <span class="mono">{{ p.db_name || '—' }}</span>
+                      <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
+                      <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'" style="margin-left:8px">
+                        {{ schema ? '已解析' : (p.workspace_path ? '无 SQL' : '未生成') }}
+                      </span>
+                    </div>
+                    <div class="row" style="margin:0;gap:8px">
+                      <label v-if="schema?.tables?.length" class="type-mode-switch small">
+                        <n-switch v-model:value="typeParenMode" size="small" />
+                        <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
+                      </label>
+                      <n-button size="small" :disabled="!schema?.tables?.length" @click="openEr">E-R 图</n-button>
+                      <n-button size="small" secondary :disabled="!schema?.tables?.length" @click="downloadEr">下载 SVG</n-button>
+                    </div>
+                  </div>
+                  <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
+                  <template v-if="schema?.tables?.length">
+                    <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
+                      <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
+                        （{{ schema.tables.length >= 6 && schema.tables.length <= 13 ? '符合' : '不符合' }} 6~13）
+                      </span>
+                    </div>
+                    <div class="table-list">
+                      <div v-for="t in schema.tables" :key="t.name" class="table-card">
+                        <div
+                          class="table-card-hd"
+                          :class="{ collapsed: isTableCollapsed(t.name) }"
+                          role="button"
+                          tabindex="0"
+                          :title="isTableCollapsed(t.name) ? '展开列' : '折叠列'"
+                          @click="toggleTable(t.name)"
+                          @keyup.enter="toggleTable(t.name)"
+                        >
+                          <span class="table-caret" aria-hidden="true">{{ isTableCollapsed(t.name) ? '▸' : '▾' }}</span>
+                          <span class="mono">{{ t.name }}</span>
+                          <span v-if="t.label && t.label !== t.name" class="table-zh">{{ t.label }}</span>
+                          <span class="small muted">{{ t.columns?.length || 0 }} 列</span>
+                          <CopyIconButton class="table-copy" :text="tableCopyText(t)" tip="复制本表（可贴 Word 转表格）" />
+                        </div>
+                        <ul
+                          v-show="!isTableCollapsed(t.name)"
+                          class="table-cols"
+                          :class="{ 'split-type': !typeParenMode }"
+                        >
+                          <li class="table-cols-hd">
+                            <span>字段名</span>
+                            <span>中文名</span>
+                            <span>类型</span>
+                            <span v-if="!typeParenMode">长度</span>
+                          </li>
+                          <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
+                            <span class="col-name">{{ c.name }}</span>
+                            <span class="col-zh">{{ c.label || '—' }}</span>
+                            <template v-if="typeParenMode">
+                              <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>
+                            </template>
+                            <template v-else>
+                              <span class="col-type muted">{{ parseMysqlType(c.type).base }}</span>
+                              <span class="col-len muted">{{ parseMysqlType(c.type).len || '—' }}</span>
+                            </template>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div v-if="schema.relations?.length" class="rel-list">
+                      <div class="parse-sec-hd">推断联系</div>
+                      <div v-for="(r, i) in schema.relations" :key="i" class="rel-row">
+                        <span class="mono">{{ r.left }}</span>
+                        <span class="muted">{{ r.card_left }}</span>
+                        —〈{{ r.label || r.name }}〉—
+                        <span class="muted">{{ r.card_right }}</span>
+                        <span class="mono">{{ r.right }}</span>
+                        <span class="small muted">via {{ r.via }}</span>
+                      </div>
+                    </div>
+                  </template>
+                  <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
+                </div>
+              </n-tab-pane>
+
+              <n-tab-pane name="api" tab="学生端 API">
+                <div class="artifact-pane stack">
+                  <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
+                    <div class="small">
+                      <template v-if="apis">
+                        <strong>{{ apis.count }}</strong> 条 ·
+                        <span class="muted">{{ apis.controller_count }} 个 Controller</span>
+                        <span v-if="apis.flow_marked" class="pill pill-green" style="margin-left:8px">
+                          主流程 {{ apis.flow_marked }}
+                        </span>
+                      </template>
+                      <span v-else class="pill pill-neutral">{{ p.workspace_path ? '无 Controller' : '未生成' }}</span>
+                    </div>
+                    <div class="row" style="margin:0;gap:8px">
+                      <n-input
+                        v-model:value="apiQuery"
+                        size="small"
+                        clearable
+                        placeholder="筛选 path / 方法 / handler"
+                        style="width:220px"
+                        :disabled="!apis"
+                      />
+                      <CopyIconButton
+                        v-if="apiCopyText"
+                        :text="apiCopyText"
+                        tip="复制接口地址"
+                      />
+                    </div>
+                  </div>
+                  <div class="small muted">
+                    静态扫描工作区 Controller · 对照门禁 flow_api · 不写入学生 ZIP。
+                    复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。
+                  </div>
+                  <div v-if="apis?.surfaces?.length" class="api-surface-bar row" style="margin:0;gap:6px">
+                    <button
+                      type="button"
+                      class="api-chip"
+                      :class="{ active: apiSurface === 'all' }"
+                      @click="apiSurface = 'all'"
+                    >全部 {{ apis.count }}</button>
+                    <button
+                      v-for="s in apis.surfaces"
+                      :key="s.id"
+                      type="button"
+                      class="api-chip"
+                      :class="{ active: apiSurface === s.id }"
+                      @click="apiSurface = s.id"
+                    >{{ s.label }} {{ s.count }}</button>
+                  </div>
+                  <template v-if="filteredApiGroups.length">
+                    <div class="table-list">
+                      <div v-for="g in filteredApiGroups" :key="g.controller" class="table-card">
+                        <div
+                          class="table-card-hd"
+                          :class="{ collapsed: isApiCollapsed(g.controller) }"
+                          role="button"
+                          tabindex="0"
+                          @click="toggleApi(g.controller)"
+                          @keyup.enter="toggleApi(g.controller)"
+                        >
+                          <span class="table-caret" aria-hidden="true">{{ isApiCollapsed(g.controller) ? '▸' : '▾' }}</span>
+                          <span class="mono">{{ g.controller }}</span>
+                          <span v-if="g.base" class="table-zh mono">{{ g.base }}</span>
+                          <span class="small muted">{{ g.endpoints.length }} 条</span>
+                          <CopyIconButton
+                            class="table-copy"
+                            :text="apiGroupCopyText(g)"
+                            tip="复制本组地址"
+                          />
+                        </div>
+                        <ul v-show="!isApiCollapsed(g.controller)" class="api-cols">
+                          <li class="api-cols-hd">
+                            <span>方法</span>
+                            <span>路径</span>
+                            <span>Handler</span>
+                            <span>面</span>
+                            <span>契约</span>
+                          </li>
+                          <li v-for="(ep, i) in g.endpoints" :key="i">
+                            <span class="api-method" :data-m="ep.method">{{ ep.method }}</span>
+                            <span class="mono api-path">{{ ep.path }}</span>
+                            <span class="muted">{{ ep.handler }}</span>
+                            <span class="small">{{ ep.surface_label }}</span>
+                            <span>
+                              <span
+                                v-for="k in ep.flow_keys"
+                                :key="k"
+                                class="api-flow-tag"
+                              >{{ k }}</span>
+                              <span v-if="!ep.flow_keys?.length" class="muted">—</span>
+                            </span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </template>
+                  <p v-else-if="apis" class="small muted">无匹配接口，试试清空筛选。</p>
+                  <p v-else class="small muted">生成工作区后可对照学生端 REST 映射。</p>
+                </div>
+              </n-tab-pane>
+
+              <n-tab-pane name="gates" tab="门禁 / 清单">
+                <div class="artifact-pane stack">
+                  <div class="row" style="justify-content:space-between;align-items:center">
+                    <div class="small">
+                      质量门禁 · 交付 DoD
+                      <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
+                        {{ canDownload ? '可交付' : '禁止交付' }}
+                      </span>
+                    </div>
+                  </div>
+                  <p class="small muted" style="margin:0">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
+                  <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
+                  <div class="parse-sec-hd mt-12">开题对照清单</div>
+                  <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
+                </div>
+              </n-tab-pane>
+            </n-tabs>
+          </div>
+        </div>
       </n-tab-pane>
     </n-tabs>
 
@@ -614,6 +727,11 @@ const showDelete = ref(false)
 const keepDb = ref(false)
 const deleting = ref(false)
 const schema = ref(null)
+const apis = ref(null)
+const artifactView = ref('db')
+const apiQuery = ref('')
+const apiSurface = ref('all')
+const collapsedApis = ref({})
 const erSvgHtml = ref('')
 const erFrameRef = ref(null)
 const erScale = ref(1)
@@ -1019,8 +1137,8 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     if (syncTab) tab.value = defaultTabForStatus(p.value.status)
     if (!lite && p.value.workspace_path && tab.value === 'runtime') await refreshRuntime(id)
     await refreshJob({ silent: lite })
-    // schema 只在产物 Tab 拉，避免生成轮询疯狂刷 /schema
-    if (!lite && tab.value === 'artifacts') await loadSchema()
+    // schema / apis 只在产物 Tab 拉，避免生成轮询疯狂刷
+    if (!lite && tab.value === 'artifacts') await loadArtifactView()
   } catch (e) {
     if (lite) {
       pollFailStreak.value += 1
@@ -1055,6 +1173,79 @@ async function loadSchema() {
     schema.value = null
   }
 }
+
+async function loadApis() {
+  if (!p.value?.workspace_path) {
+    apis.value = null
+    return
+  }
+  try {
+    apis.value = await api.getApis(p.value.id)
+  } catch {
+    apis.value = null
+  }
+}
+
+async function loadArtifactView() {
+  if (artifactView.value === 'api') await loadApis()
+  else if (artifactView.value === 'db') await loadSchema()
+  else {
+    // 门禁数据已在项目上；顺带预热 schema
+    await loadSchema()
+  }
+}
+
+function onArtifactView(name) {
+  if (name === 'api') loadApis()
+  else if (name === 'db') loadSchema()
+}
+
+function goArtifacts(view = 'db') {
+  artifactView.value = view
+  tab.value = 'artifacts'
+  loadArtifactView()
+}
+
+function isApiCollapsed(name) {
+  return !!collapsedApis.value[name]
+}
+
+function toggleApi(name) {
+  collapsedApis.value = {
+    ...collapsedApis.value,
+    [name]: !collapsedApis.value[name],
+  }
+}
+
+const filteredApiGroups = computed(() => {
+  const inv = apis.value
+  if (!inv?.controllers?.length) return []
+  const q = (apiQuery.value || '').trim().toLowerCase()
+  const surface = apiSurface.value
+  const groups = []
+  for (const c of inv.controllers) {
+    const endpoints = (c.endpoints || []).filter((ep) => {
+      if (surface !== 'all' && ep.surface !== surface) return false
+      if (!q) return true
+      const blob = `${ep.method} ${ep.path} ${ep.handler} ${(ep.flow_keys || []).join(' ')} ${c.controller}`.toLowerCase()
+      return blob.includes(q)
+    })
+    if (endpoints.length) groups.push({ ...c, endpoints })
+  }
+  return groups
+})
+
+function apiGroupCopyText(g) {
+  return (g.endpoints || [])
+    .map((ep) => `${ep.method} ${ep.path}`)
+    .join('\n')
+}
+
+const apiCopyText = computed(() => {
+  const groups = filteredApiGroups.value
+  if (!groups.length) return ''
+  return groups.map((g) => apiGroupCopyText(g)).filter(Boolean).join('\n')
+})
 
 async function openEr() {
   if (!p.value) return
@@ -1394,7 +1585,7 @@ function stopPoll() {
 watch(tab, (v) => {
   if (v === 'logs') loadLog(logSide.value)
   if (v === 'runtime') refreshRuntime()
-  if (v === 'artifacts') loadSchema()
+  if (v === 'artifacts') loadArtifactView()
 })
 
 watch(

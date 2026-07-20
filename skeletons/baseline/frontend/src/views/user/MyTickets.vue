@@ -68,8 +68,8 @@
           </div>
           <p v-if="row.pickupAt" class="sub">已领取 {{ row.pickupPlace || '' }} · {{ row.pickupAt }}</p>
           <p v-if="row.fineYuan > 0" class="sub">
-            罚款 ¥{{ row.fineYuan }}
-            <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已缴' : row.fineStatus }}</template>
+            {{ fineLabel }} ¥{{ row.fineYuan }}
+            <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已结清' : row.fineStatus }}</template>
           </p>
           <p v-if="row.contactChannel || row.nextFollowAt" class="sub">
             <template v-if="row.contactChannel">渠道 {{ row.contactChannel }}</template>
@@ -150,7 +150,7 @@
       @done="load"
     />
 
-    <el-dialog v-model="checkinVisible" title="活动签到" width="400px" destroy-on-close>
+    <el-dialog v-model="checkinVisible" :title="checkinLabel" width="400px" destroy-on-close>
       <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('编号 ' + checkinRow.id) }}」输入签到码</p>
       <el-input v-model="checkinCode" maxlength="16" placeholder="向主办方索取口令" @keyup.enter="submitCheckin" />
       <template #footer>
@@ -170,7 +170,7 @@ import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
@@ -178,7 +178,9 @@ const states = computed(() => ticket.states || {
   pending: '待受理', pending_final: '待终审', approved: '处理中', rejected: '已驳回', returned: '已完成',
 })
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
-const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
+const dueLabel = computed(() => ticketDueLabel())
+const fineLabel = computed(() => ticketFineLabel())
+const checkinLabel = computed(() => ticketCheckinLabel())
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)

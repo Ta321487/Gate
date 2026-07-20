@@ -56,7 +56,7 @@ import http from '../../api/http'
 import { ticketCopy } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
-const title = computed(() => ticket.weekCalendarLabel || '我的课表')
+const title = computed(() => ticket.weekCalendarLabel || '我的日程')
 const ticketNoun = computed(() => ticket.label || ticket.labelPlural || '记录')
 const states = computed(() => ticket.states || {})
 

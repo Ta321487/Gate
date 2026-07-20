@@ -104,6 +104,33 @@ export function ticketCopy() {
   return (getSchema().entities || {}).ticket || {}
 }
 
+/** 到期日文案：缺省用中性「到期日」，勿 fallback「应还」 */
+export function ticketDueLabel(fallback = '到期日') {
+  const t = ticketCopy()
+  return t.dueLabel || t.dueAtLabel || fallback
+}
+
+/** 逾期费用文案：缺省「逾期费用」，图书/设备域由 schema 写「罚款」 */
+export function ticketFineLabel(fallback = '逾期费用') {
+  return ticketCopy().fineLabel || fallback
+}
+
+export function ticketFinePaidLabel(fallback = '费用已结清') {
+  return ticketCopy().finePaidLabel || fallback
+}
+
+export function ticketCheckinLabel(fallback = '签到') {
+  return ticketCopy().checkinLabel || fallback
+}
+
+export function ticketRemindVerb(fallback = '催办') {
+  return ticketCopy().verbs?.remind || fallback
+}
+
+export function ticketReturnVerb(fallback = '完结') {
+  return ticketCopy().verbs?.return || fallback
+}
+
 export function reservationCopy() {
   return (getSchema().entities || {}).reservation || {}
 }

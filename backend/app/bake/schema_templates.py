@@ -74,6 +74,9 @@ def _library_schema(title: str) -> dict[str, Any]:
                 },
                 "pickLoanPeriod": True,
                 "allowQty": True,
+                "dueLabel": "应还日",
+                "fineLabel": "罚款",
+                "finePaidLabel": "罚款已缴",
             },
         },
         "menus": {
@@ -102,7 +105,9 @@ def _library_schema(title: str) -> dict[str, Any]:
             "registerRoleHint": "注册后以读者身份使用系统",
             "noticePageTitle": "馆内公告",
             "noticePageLead": "开放时间、借阅须知与临时通知，点击条目阅读全文。",
+            "messagesPageLead": "审核结果、还书提醒与系统通知。",
             "recommendSectionTitle": "猜你喜欢",
+            "recommendLatestHint": "最新上架",
         },
         "seeds": {
             "noticeTitle": "开放借阅通知",
@@ -144,6 +149,7 @@ def _archive_ticket_schema(
     notice_body: str,
     notice_page_title: str = "公告",
     notice_page_lead: str = "通知与须知，点击条目阅读全文。",
+    messages_page_lead: str | None = None,
     my_tickets_label: str = "我的借用",
     pending_label: str = "借用审核",
     records_label: str = "借用记录",
@@ -161,13 +167,18 @@ def _archive_ticket_schema(
     soft_delete: bool = False,
     tag_filter: bool = False,
     week_calendar: bool = False,
-    week_calendar_label: str = "我的课表",
+    week_calendar_label: str = "我的日程",
     allow_checkin: bool = False,
     pick_loan_period: bool | None = None,
     allow_qty: bool | None = None,
     require_remark: bool = False,
     remark_label: str = "说明",
     pick_date_range: bool = False,
+    due_label: str | None = None,
+    fine_label: str | None = None,
+    fine_paid_label: str | None = None,
+    checkin_label: str | None = None,
+    recommend_latest_hint: str | None = None,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
@@ -197,6 +208,15 @@ def _archive_ticket_schema(
             if k == "pending":
                 ordered["pending_final"] = "待终审"
         states_out = ordered
+    remind = verbs.get("remind") or "提醒"
+    if due_label is None and pick_loan_period:
+        due_label = "应还日" if remind == "催还" else "到期日"
+    if fine_label is None and with_deadline:
+        fine_label = "罚款" if remind == "催还" else "逾期费用"
+    if fine_paid_label is None and with_deadline:
+        fine_paid_label = "罚款已缴" if remind == "催还" else "费用已结清"
+    if checkin_label is None and allow_checkin:
+        checkin_label = "签到"
     ticket_entity: dict[str, Any] = {
         "key": ticket_key,
         "label": ticket_label,
@@ -216,6 +236,14 @@ def _archive_ticket_schema(
         "remarkLabel": remark_label or "说明",
         "pickDateRange": bool(pick_date_range),
     }
+    if due_label:
+        ticket_entity["dueLabel"] = due_label
+    if fine_label:
+        ticket_entity["fineLabel"] = fine_label
+    if fine_paid_label:
+        ticket_entity["finePaidLabel"] = fine_paid_label
+    if checkin_label:
+        ticket_entity["checkinLabel"] = checkin_label
     if week_calendar:
         ticket_entity["weekCalendarLabel"] = week_calendar_label
     if rich_remark:
@@ -243,6 +271,15 @@ def _archive_ticket_schema(
             {"key": "profile", "label": "个人资料"},
         ]
     )
+    if messages_page_lead is None:
+        if with_deadline:
+            messages_page_lead = f"审核结果、{remind}提醒与系统通知。"
+        elif allow_checkin:
+            messages_page_lead = "审核结果、活动提醒与系统通知。"
+        else:
+            messages_page_lead = "审核结果与系统通知。"
+    if recommend_latest_hint is None:
+        recommend_latest_hint = "最新上架" if soft_delete and stock_display == "count" else "最新发布"
     return {
         "version": 1,
         "title": title,
@@ -268,7 +305,9 @@ def _archive_ticket_schema(
             "registerRoleHint": register_hint,
             "noticePageTitle": notice_page_title,
             "noticePageLead": notice_page_lead,
+            "messagesPageLead": messages_page_lead,
             "recommendSectionTitle": "猜你喜欢",
+            "recommendLatestHint": recommend_latest_hint,
         },
         "seeds": {
             "noticeTitle": notice_title,
@@ -1019,6 +1058,8 @@ def _standalone_ticket_schema(
             "registerRoleHint": register_hint,
             "noticePageTitle": notice_page_title,
             "noticePageLead": notice_page_lead,
+            "messagesPageLead": "审核结果与系统通知。",
+            "recommendLatestHint": "最新发布",
         },
         "seeds": {
             "noticeTitle": notice_title,
@@ -1193,6 +1234,8 @@ def _generic_schema(title: str, domain: str) -> dict[str, Any]:
             "registerRoleHint": "注册后即可使用系统",
             "noticePageTitle": "系统公告",
             "noticePageLead": "通知与须知，点击条目阅读全文。",
+            "messagesPageLead": "审核结果与系统通知。",
+            "recommendLatestHint": "最新发布",
         },
         "seeds": {
             "noticeTitle": "系统公告",
@@ -1286,6 +1329,8 @@ def _order_shell_schema(
             "registerRoleHint": register_hint,
             "noticePageTitle": notice_page_title,
             "noticePageLead": "通知与须知，点击条目阅读全文。",
+            "messagesPageLead": "订单进度与系统通知。",
+            "recommendLatestHint": "最新上架",
         },
         "seeds": {"noticeTitle": notice_title, "noticeBody": notice_body},
     }
@@ -1391,6 +1436,8 @@ def _slot_shell_schema(
             "registerRoleHint": register_hint,
             "noticePageTitle": notice_page_title,
             "noticePageLead": "通知与须知，点击条目阅读全文。",
+            "messagesPageLead": "预约提醒与系统通知。",
+            "recommendLatestHint": "最新发布",
         },
         "seeds": {"noticeTitle": notice_title, "noticeBody": notice_body},
     }
