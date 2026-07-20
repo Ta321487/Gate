@@ -26,7 +26,7 @@ class ProjectSummary(BaseModel):
 class ProjectDetail(ProjectSummary):
     model_config = ConfigDict(from_attributes=True, title="项目详情")
 
-    source_filename: Optional[str] = Field(default=None, description="开题文件名")
+    source_filename: Optional[str] = Field(default=None, description="源材料文件名（多份用分号连接）")
     source_size: int = Field(default=0, description="开题文件大小（字节）")
     recommended_arch: str = Field(description="推荐骨架")
     recommended_domain: str = Field(description="推荐领域")

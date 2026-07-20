@@ -29,10 +29,10 @@
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
       <el-form label-position="top">
-        <el-form-item v-if="domain === 'DOM-PARKING'" label="车牌号" required>
+        <el-form-item v-if="slotParking" label="车牌号" required>
           <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />
         </el-form-item>
-        <template v-if="domain === 'DOM-HOSPITAL'">
+        <template v-if="slotHospital">
           <el-form-item label="就诊人" required>
             <el-input v-model="extra.patientName" maxlength="32" />
           </el-form-item>
@@ -46,7 +46,7 @@
             <el-input v-model="extra.symptomNote" maxlength="200" />
           </el-form-item>
         </template>
-        <template v-if="domain === 'DOM-MEETING'">
+        <template v-if="slotMeeting">
           <el-form-item :label="remarkLabel" required>
             <el-input v-model="remark" maxlength="64" :placeholder="`请填写${remarkLabel}`" />
           </el-form-item>
@@ -54,7 +54,7 @@
             <el-input-number v-model="extra.partySize" :min="1" :max="200" />
           </el-form-item>
         </template>
-        <template v-if="domain === 'DOM-HOTEL'">
+        <template v-if="slotHotel">
           <el-form-item label="入住人" required>
             <el-input v-model="extra.guestName" maxlength="32" />
           </el-form-item>
@@ -62,11 +62,11 @@
             <el-input-number v-model="extra.guestCount" :min="1" :max="20" />
           </el-form-item>
         </template>
-        <el-form-item v-if="domain === 'DOM-SALON'" label="偏好技师">
+        <el-form-item v-if="slotSalon" label="偏好技师">
           <el-input v-model="extra.preferredStylist" maxlength="32" placeholder="选填" />
         </el-form-item>
         <el-form-item
-          v-if="requireRemark && !['DOM-MEETING', 'DOM-PARKING', 'DOM-HOSPITAL', 'DOM-HOTEL'].includes(domain)"
+          v-if="requireRemark && !slotMeeting && !slotParking && !slotHospital && !slotHotel"
           :label="remarkLabel"
           required
         >
@@ -87,7 +87,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
-import { getDomain, reservationCopy } from '../../utils/domainSchema.js'
+import { hasTrait, reservationCopy } from '../../utils/domainSchema.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -98,7 +98,11 @@ import {
 const route = useRoute()
 const router = useRouter()
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
-const domain = computed(() => getDomain())
+const slotParking = computed(() => hasTrait('slotParking'))
+const slotHospital = computed(() => hasTrait('slotHospital'))
+const slotMeeting = computed(() => hasTrait('slotMeeting'))
+const slotHotel = computed(() => hasTrait('slotHotel'))
+const slotSalon = computed(() => hasTrait('slotSalon'))
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
 const resv = reservationCopy()
@@ -107,8 +111,12 @@ const resvVerb = computed(() => resv.verbs?.apply || '预约')
 const requireRemark = computed(() => !!resv.requireRemark)
 const remarkLabel = computed(() => resv.remarkLabel || '备注')
 const structured = computed(() =>
-  ['DOM-PARKING', 'DOM-HOSPITAL', 'DOM-MEETING', 'DOM-HOTEL', 'DOM-SALON'].includes(domain.value)
-    || requireRemark.value)
+  slotParking.value
+  || slotHospital.value
+  || slotMeeting.value
+  || slotHotel.value
+  || slotSalon.value
+  || requireRemark.value)
 const day = ref('2026-09-20')
 const list = ref([])
 const visible = ref(false)
@@ -166,25 +174,28 @@ async function openReserve(s) {
 async function submitReserve() {
   if (!pending.value) return
   const note = (remark.value || '').trim()
-  if (domain.value === 'DOM-PARKING' && !extra.plateNo.trim()) {
+  if (slotParking.value && !extra.plateNo.trim()) {
     ElMessage.warning('请填写车牌号')
     return
   }
-  if (domain.value === 'DOM-HOSPITAL' && !extra.patientName.trim()) {
+  if (slotHospital.value && !extra.patientName.trim()) {
     ElMessage.warning('请填写就诊人')
     return
   }
-  if (domain.value === 'DOM-HOTEL' && !extra.guestName.trim()) {
+  if (slotHotel.value && !extra.guestName.trim()) {
     ElMessage.warning('请填写入住人')
     return
   }
-  if (domain.value === 'DOM-MEETING' && !note) {
+  if (slotMeeting.value && !note) {
     ElMessage.warning(`请填写${remarkLabel.value}`)
     return
   }
   if (
     requireRemark.value
-    && !['DOM-MEETING', 'DOM-PARKING', 'DOM-HOSPITAL', 'DOM-HOTEL'].includes(domain.value)
+    && !slotMeeting.value
+    && !slotParking.value
+    && !slotHospital.value
+    && !slotHotel.value
     && !note
   ) {
     ElMessage.warning(`请填写${remarkLabel.value}`)
@@ -199,7 +210,7 @@ async function submitReserve() {
       patientName: extra.patientName || undefined,
       visitType: extra.visitType || undefined,
       symptomNote: extra.symptomNote || undefined,
-      subject: domain.value === 'DOM-MEETING' ? note : undefined,
+      subject: slotMeeting.value ? note : undefined,
       partySize: extra.partySize || undefined,
       guestName: extra.guestName || undefined,
       guestCount: extra.guestCount || undefined,

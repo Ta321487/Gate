@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1 class="page-title">项目</h1>
-    <p class="page-desc">上传开题报告创建项目。</p>
+    <p class="page-desc">上传开题、任务书等材料创建项目（可多选，至少一份）。</p>
 
     <div
       class="dropzone"
@@ -10,10 +10,10 @@
       @dragleave="dragover = false"
       @drop.prevent="onDrop"
     >
-      <input type="file" accept=".pdf,.doc,.docx,.txt" @change="onFile" />
+      <input type="file" multiple accept=".pdf,.doc,.docx,.txt" @change="onFile" />
       <div class="dropzone-icon">↑</div>
-      <div class="dropzone-title">拖入开题报告，或点击选择</div>
-      <div class="dropzone-hint">支持 PDF / Word / TXT · 上传后自动解析题目并创建项目</div>
+      <div class="dropzone-title">拖入材料，或点击多选</div>
+      <div class="dropzone-hint">支持开题 / 任务书 / 功能清单 · PDF / Word（.docx 直读，.doc 需本机 Word 或 LibreOffice）· 最多 8 份</div>
     </div>
 
     <div v-if="uploading" class="panel mb-16">
@@ -58,7 +58,7 @@
             <template #empty>
               <div class="empty-hint">
                 <div class="empty-title">暂无项目</div>
-                <div class="empty-desc">拖入开题报告即可创建</div>
+                <div class="empty-desc">拖入开题或任务书即可创建</div>
               </div>
             </template>
           </n-data-table>
@@ -205,21 +205,28 @@ async function refresh() {
   }
 }
 
-async function doUpload(file) {
-  if (!file) return
+async function doUpload(fileList) {
+  const files = [...(fileList || [])].filter(Boolean)
+  if (!files.length) {
+    message.warning('请至少选择一份材料')
+    return
+  }
+  if (files.length > 8) {
+    message.warning('单次最多 8 份材料')
+    return
+  }
   uploading.value = true
-  uploadName.value = file.name
+  uploadName.value = files.length === 1 ? files[0].name : `${files[0].name} 等 ${files.length} 份`
   uploadPct.value = 0
   uploadPhase.value = '上传文件…'
   let tick = null
   try {
-    const project = await api.upload(file, (e) => {
+    const project = await api.upload(files, (e) => {
       if (!e.total) return
-      // 传输进度最多到 90%：字节传完后服务端还要解析开题 / 匹配领域
       const pct = Math.round((e.loaded / e.total) * 90)
       uploadPct.value = Math.min(90, pct)
       if (e.loaded >= e.total) {
-        uploadPhase.value = '解析开题 · 匹配领域…'
+        uploadPhase.value = '解析材料 · 匹配领域…'
         if (!tick) {
           tick = setInterval(() => {
             if (uploadPct.value < 98) uploadPct.value += 1
@@ -232,7 +239,7 @@ async function doUpload(file) {
     if (tick) clearInterval(tick)
     uploadPct.value = 100
     uploadPhase.value = '完成'
-    message.success('已建项')
+    message.success(files.length > 1 ? `已建项（${files.length} 份材料）` : '已建项')
     if (!project?.id) {
       message.error('建项成功但未返回项目 ID，请从列表进入')
       await load()
@@ -247,13 +254,13 @@ async function doUpload(file) {
 }
 
 function onFile(e) {
-  doUpload(e.target.files?.[0])
+  doUpload(e.target.files)
   e.target.value = ''
 }
 
 function onDrop(e) {
   dragover.value = false
-  doUpload(e.dataTransfer.files?.[0])
+  doUpload(e.dataTransfer.files)
 }
 
 onMounted(load)

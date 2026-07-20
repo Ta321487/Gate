@@ -427,7 +427,7 @@ async def run_fix_agent(
 
 # ---------- Agent D：QA（LLM 主审；仅无模型时做结构回退） ----------
 _QA_FILES = (
-    "frontend/src/factoryDelivered.js",
+    "frontend/src/appDelivered.js",
     "frontend/src/views/Notices.vue",
     "frontend/src/views/NoticeDetail.vue",
     "frontend/src/views/user/MyTickets.vue",

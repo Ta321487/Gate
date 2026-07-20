@@ -13,7 +13,30 @@ def _read(path: Path) -> str:
 
 
 def _has_files(workspace: Path, rels: list[str]) -> tuple[bool, list[str]]:
-    missing = [r for r in rels if not (workspace / r).exists()]
+    from app.bake.java_package import find_java_package_root
+
+    java_root = workspace / "backend" / "src" / "main" / "java"
+    pkg_root = find_java_package_root(workspace)
+    missing: list[str] = []
+    for r in rels:
+        rp = str(r).replace("\\", "/")
+        if (workspace / rp).exists():
+            continue
+        # 契约仍写 com/thesis/... 时，按包内相对路径查找
+        marker = "/com/thesis/"
+        if marker in f"/{rp}":
+            suffix = rp.split("com/thesis/", 1)[-1]
+            candidate = pkg_root / Path(suffix)
+            if candidate.is_file():
+                continue
+            hits = [
+                p
+                for p in java_root.rglob(Path(suffix).name)
+                if str(p).replace("\\", "/").endswith("/" + suffix)
+            ]
+            if hits:
+                continue
+        missing.append(r)
     return len(missing) == 0, missing
 
 
@@ -271,7 +294,9 @@ def _checklist_feature_ok(
 
 def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
     """有 Spec.gate 契约时的评测（archive/ticket/order/slot 等薄壳共用）。"""
-    be = workspace / "backend" / "src" / "main" / "java" / "com" / "thesis"
+    from app.bake.java_package import find_java_package_root
+
+    be = find_java_package_root(workspace)
     fe = workspace / "frontend" / "src"
     gate = spec.get("gate") or {}
 

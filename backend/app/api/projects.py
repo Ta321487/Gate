@@ -84,19 +84,61 @@ async def list_projects(
     return summaries
 
 
-@router.post("/upload", response_model=ProjectDetail, summary="上传开题")
-async def upload_proposal(file: UploadFile = File(..., description="开题文件 PDF / Word / TXT"), db: AsyncSession = Depends(get_db)):
+@router.post("/upload", response_model=ProjectDetail, summary="上传开题/任务书等材料")
+async def upload_proposal(
+    files: list[UploadFile] | None = File(
+        default=None,
+        description="一份或多份材料（PDF / Word / TXT）；至少一份",
+    ),
+    file: UploadFile | None = File(
+        default=None,
+        description="兼容旧客户端单文件字段名 file",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     settings = get_settings()
-    suffix = Path(file.filename or "proposal.txt").suffix.lower()
-    if suffix not in {".pdf", ".doc", ".docx", ".txt"}:
-        raise HTTPException(400, "仅支持 PDF / Word / TXT")
-    dest_dir = settings.uploads_dir
+    uploaded: list[UploadFile] = []
+    if files:
+        uploaded.extend([f for f in files if f and (f.filename or "").strip()])
+    if file and (file.filename or "").strip():
+        uploaded.append(file)
+    # 去重同名连续重复
+    if not uploaded:
+        raise HTTPException(400, "请至少上传一份材料（开题 / 任务书 / 功能清单等）")
+    if len(uploaded) > 8:
+        raise HTTPException(400, "单次最多 8 份材料")
+
+    allowed = {".pdf", ".doc", ".docx", ".txt"}
+    stamp = datetime_stamp()
+    dest_dir = settings.uploads_dir / f"{stamp}_bundle"
     dest_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = Path(file.filename or "proposal.txt").name
-    dest = dest_dir / f"{datetime_stamp()}_{safe_name}"
-    content = await file.read()
-    dest.write_bytes(content)
-    project = await project_svc.create_from_upload(db, dest, safe_name, len(content))
+
+    saved: list[tuple[Path, str, int]] = []
+    used_names: set[str] = set()
+    for uf in uploaded:
+        suffix = Path(uf.filename or "proposal.txt").suffix.lower()
+        if suffix not in allowed:
+            raise HTTPException(400, f"不支持 {uf.filename or ''}，仅 PDF / Word / TXT")
+        safe_name = Path(uf.filename or "proposal.txt").name
+        # 避免重名覆盖
+        base, ext = Path(safe_name).stem, Path(safe_name).suffix
+        candidate = safe_name
+        n = 2
+        while candidate.lower() in used_names:
+            candidate = f"{base}_{n}{ext}"
+            n += 1
+        used_names.add(candidate.lower())
+        dest = dest_dir / candidate
+        content = await uf.read()
+        if not content:
+            raise HTTPException(400, f"文件为空：{safe_name}")
+        dest.write_bytes(content)
+        saved.append((dest, candidate, len(content)))
+
+    try:
+        project = await project_svc.create_from_uploads(db, saved)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     return _detail(project)
 
 

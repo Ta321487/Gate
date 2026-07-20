@@ -55,16 +55,57 @@ class MatchResult:
 
 
 def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    """从开题/任务书等结构里捞课题名。"""
+    from app.services.proposal import (
+        _SKIP_TITLE_LINE,
+        _TITLE_EXPLICIT,
+        _TITLE_HEADING,
+        _TITLE_PHRASE,
+        _TITLE_TABLE,
+        strip_non_dev_sections,
+    )
+
+    body = strip_non_dev_sections(text or "")
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
+
+    m = _TITLE_TABLE.search(body[:3000])
+    if m and len(m.group(1).strip()) >= 4:
+        return m.group(1).strip()[:80]
+
+    for ln in lines[:40]:
+        m = _TITLE_EXPLICIT.search(ln)
+        if m and len(m.group(1).strip()) >= 4:
+            t = m.group(1).strip()
+            if not t.startswith("|"):
+                return t[:80]
+
+    # 任务书：「一、毕业设计题目」下一行才是题名
+    for i, ln in enumerate(lines[:40]):
+        if _TITLE_HEADING.match(ln) and i + 1 < len(lines):
+            nxt = lines[i + 1].strip()
+            if 4 <= len(nxt) <= 60 and not _SKIP_TITLE_LINE.match(nxt) and "。" not in nxt:
+                return nxt[:80]
+
+    phrases: list[str] = []
+    for m in _TITLE_PHRASE.finditer(body[:8000]):
+        p = m.group(1).strip()
+        if 4 <= len(p) <= 40 and not _SKIP_TITLE_LINE.match(p):
+            phrases.append(p)
+    if phrases:
+        best = max(set(phrases), key=lambda p: (phrases.count(p), len(p)))
+        return best[:80]
+
     for ln in lines[:30]:
-        if "题目" in ln or "课题" in ln:
-            m = re.search(r"[：:]\s*(.+)$", ln)
-            if m and len(m.group(1)) >= 4:
-                return m.group(1)[:80]
-        if ln.startswith("基于") and len(ln) >= 8:
+        if ln.startswith("基于") and 8 <= len(ln) <= 80 and "。" not in ln:
             return ln[:80]
-    for ln in lines[:10]:
-        if 6 <= len(ln) <= 60 and not ln.startswith("http"):
+        m = _TITLE_PHRASE.search(ln)
+        if m:
+            return m.group(1).strip()[:80]
+
+    for ln in lines[:12]:
+        if _SKIP_TITLE_LINE.match(ln):
+            continue
+        if 8 <= len(ln) <= 48 and "。" not in ln and not ln.startswith("http"):
             return ln[:80]
     return fallback
 
@@ -241,22 +282,33 @@ def match_warnings_from_hits(hits: list[str] | None) -> list[str]:
 # 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
 _FOCUS_SECTION = re.compile(
     r"(?:^|\n)\s*[（(]?\d*[)）.、]?\s*"
-    r"(?:主要功能|研究内容|功能模块|功能需求|拟实现(?:功能)?|核心功能|系统功能)"
-    r"[^\n]{0,40}\n([\s\S]{0,3000})",
+    r"(?:主要功能|功能模块|功能清单|功能需求|拟实现(?:功能)?|核心功能|系统功能|系统实现|"
+    r"主要任务|任务与要求|实现下列功能|答辩必演示|"
+    r"研究内容[^\n]{0,20}拟实现|拟实现[^\n]{0,12}功能)"
+    r"[^\n]{0,80}\n([\s\S]{0,3500})",
     re.IGNORECASE,
 )
 
 
 def proposal_focus_for_match(text: str) -> str:
-    """抽取开题功能/研究内容段并加权；无则退回全文（上传链路本就喂全文）。"""
-    raw = text or ""
+    """抽取对开发有用的片段并加权：功能/实现段 + 模块行；去掉参考文献噪声。"""
+    from app.services.proposal import extract_module_lines, strip_non_dev_sections
+
+    raw = strip_non_dev_sections(text or "")
     blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
-    if not blocks:
-        return raw
+    modules = extract_module_lines(raw)
     head = "\n".join(ln for ln in raw.splitlines()[:8] if ln.strip())
-    focus = "\n".join(blocks)
-    # 功能段计两遍，压过背景综述里顺带出现的词
-    return f"{head}\n{focus}\n{focus}"
+    title = extract_title(raw)
+    parts = [title, head]
+    if blocks:
+        focus = "\n".join(blocks)
+        parts.extend([focus, focus])
+    if modules:
+        mod_block = "\n".join(modules)
+        # 模块行再加权重：直接对应要开发的实体/能力
+        parts.extend([mod_block, mod_block, mod_block])
+    scored = "\n".join(p for p in parts if p)
+    return scored or raw
 
 
 def match_text(text: str, filename: str = "") -> MatchResult:

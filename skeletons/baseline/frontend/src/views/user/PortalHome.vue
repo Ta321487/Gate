@@ -28,13 +28,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FACTORY_DELIVERED } from '../../factoryDelivered.js'
+import { APP_DELIVERED } from '../../appDelivered.js'
 import { getSchema, schemaLabels, schemaMenus, ticketCopy } from '../../utils/domainSchema.js'
 import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/session.js'
 
 const router = useRouter()
 const labels = schemaLabels()
-const appName = labels.appName || FACTORY_DELIVERED.title || '业务门户'
+const appName = labels.appName || APP_DELIVERED.title || '业务门户'
 const lead = computed(
   () =>
     labels.portalHomeLead ||

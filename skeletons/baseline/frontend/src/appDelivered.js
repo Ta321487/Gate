@@ -1,12 +1,12 @@
 /**
- * 工厂 bake 写入的交付配置（会打进 ZIP）。
- * 勿手改；重新生成项目时会被覆盖。
+ * 课题交付配置（文案 / 菜单 / 能力）。由生成写入，一般无需手改。
  */
-export const FACTORY_DELIVERED = {
+export const APP_DELIVERED = {
   title: '',
   theme: 'lib-ink',
-  domain: 'DOM-GENERIC',
+  flavor: 'generic',
   domainLabel: '通用',
+  traits: { addressBook: true },
   authTemplate: 'split',
   authEntryMode: 'role_pick',
   authRoleWidget: 'radio',

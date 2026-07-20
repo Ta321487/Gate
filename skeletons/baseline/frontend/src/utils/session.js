@@ -1,7 +1,7 @@
 /** 会话：localStorage 只是壳，真登录态在服务端 HttpSession。 */
 
 import axios from 'axios'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { adminLoginPath, isSplitEntry, staffLoginPath } from './authEntry.js'
 import { schemaLabels } from './domainSchema.js'
 
@@ -46,16 +46,16 @@ export function isLoggedIn() {
 }
 
 export function isGuestBrowseEnabled() {
-  return !!FACTORY_DELIVERED?.portalGuestBrowse
+  return !!APP_DELIVERED?.portalGuestBrowse
 }
 
 export function guestTeaserLimit() {
-  const n = Number(FACTORY_DELIVERED?.guestTeaserLimit)
+  const n = Number(APP_DELIVERED?.guestTeaserLimit)
   return Number.isFinite(n) && n > 0 ? n : 3
 }
 
 export function guestLoginCta() {
-  const fromDelivered = (FACTORY_DELIVERED?.guestLoginCta || '').trim()
+  const fromDelivered = (APP_DELIVERED?.guestLoginCta || '').trim()
   if (fromDelivered) return fromDelivered
   const fromLabels = (schemaLabels()?.guestLoginCta || '').trim()
   return fromLabels || '登录查看更多'

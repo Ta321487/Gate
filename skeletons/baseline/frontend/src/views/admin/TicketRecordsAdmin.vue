@@ -88,12 +88,11 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getDomain, getSchema, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const ticket = ticketCopy()
-const domain = computed(() => getDomain())
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
@@ -104,8 +103,8 @@ const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
-const showPickup = computed(() => ['DOM-LOST', 'DOM-ASSET'].includes(domain.value))
-const showFine = computed(() => ['DOM-LIBRARY', 'DOM-EQUIP'].includes(domain.value) || !!ticket.fineLabel)
+const showPickup = computed(() => hasTrait('pickupFlow'))
+const showFine = computed(() => hasTrait('loanFine') || !!ticket.fineLabel)
 
 function remarkText(v) {
   if (!v) return '—'

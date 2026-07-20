@@ -106,7 +106,7 @@ import http from '../api/http'
 import AuthShell from '../components/AuthShell.vue'
 import ProfileFieldInputs from '../components/ProfileFieldInputs.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import {
   emptyProfileExtras,
   profileFieldsOnRegister,
@@ -118,7 +118,7 @@ const router = useRouter()
 const template = ref(pickAuthTemplate())
 const labels = schemaLabels()
 const title = ref(
-  labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
+  labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
 const captchaImg = ref('')
 const loading = ref(false)
@@ -240,7 +240,7 @@ async function onPrimary() {
 onMounted(async () => {
   try {
     const meta = await http.get('/api/meta')
-    const hasName = !!(labels.appName || FACTORY_DELIVERED.title)
+    const hasName = !!(labels.appName || APP_DELIVERED.title)
     if (!hasName && meta.data?.title) title.value = meta.data.title
   } catch { /* ignore */ }
   Object.assign(form.extras, emptyProfileExtras(profileFieldsOnRegister()))

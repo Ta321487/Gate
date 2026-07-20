@@ -54,12 +54,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getDomain, getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, menuLabel } from '../../utils/domainSchema.js'
 
 const label = menuLabel('user', 'my_orders', '我的订单')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const states = computed(() => getSchema()?.entities?.order?.states || {})
-const isFood = computed(() => getDomain() === 'DOM-FOOD')
+const isFood = computed(() => hasTrait('food'))
 const list = ref([])
 const total = ref(0)
 const page = ref(1)

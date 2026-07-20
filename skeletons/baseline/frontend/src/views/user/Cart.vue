@@ -110,14 +110,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
-import { getDomain, getSchema, menuLabel } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, menuLabel } from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
 
 const router = useRouter()
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
-const domain = computed(() => getDomain())
-const isFood = computed(() => domain.value === 'DOM-FOOD')
+const isFood = computed(() => hasTrait('food'))
 const tagOptions = computed(() => addressTagOptions())
 const deliveryOptions = computed(() =>
   isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],

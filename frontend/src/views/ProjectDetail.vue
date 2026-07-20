@@ -23,7 +23,7 @@
       <!-- Match -->
       <n-tab-pane name="match" tab="匹配确认">
         <div class="file-row">
-          <span>开题报告：<strong>{{ p.source_filename }}</strong> · {{ formatSize(p.source_size) }}</span>
+          <span>源材料：<strong>{{ p.source_filename }}</strong> · {{ formatSize(p.source_size) }}</span>
           <n-button text size="small" @click="$router.push('/')">另建项目</n-button>
         </div>
         <div class="banner success">

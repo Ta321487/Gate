@@ -2,10 +2,10 @@
  * 各领域特殊页（404 / 500 / 加载）文案与图形母题。
  * 配色走 themes.css 的 --portal-*，此处只定「领域个性」。
  */
-import { getDelivered, getDomain, getDomainLabel, schemaLabels } from './domainSchema.js'
+import { getDelivered, getFlavor, getDomainLabel, schemaLabels } from './domainSchema.js'
 
 const FLAVORS = {
-  'DOM-LIBRARY': {
+  'library': {
     motif: 'book',
     notFound: {
       title: '这本书不在架上',
@@ -22,7 +22,7 @@ const FLAVORS = {
       lead: '索书号核对中，马上送到你手上。',
     },
   },
-  'DOM-EQUIP': {
+  'equipment': {
     motif: 'gear',
     notFound: {
       title: '设备不在库',
@@ -39,7 +39,7 @@ const FLAVORS = {
       lead: '设备状态同步中。',
     },
   },
-  'DOM-ASSET': {
+  'asset': {
     motif: 'box',
     notFound: {
       title: '物资未登记',
@@ -56,7 +56,7 @@ const FLAVORS = {
       lead: '正在汇总台账与申领记录。',
     },
   },
-  'DOM-CRM': {
+  'crm': {
     motif: 'users',
     notFound: {
       title: '客户未找到',
@@ -73,7 +73,7 @@ const FLAVORS = {
       lead: '正在同步资料与跟进记录。',
     },
   },
-  'DOM-SHOP': {
+  'shop': {
     motif: 'cart',
     notFound: {
       title: '商品已下架',
@@ -90,7 +90,7 @@ const FLAVORS = {
       lead: '商品信息加载中。',
     },
   },
-  'DOM-DORM': {
+  'dorm': {
     motif: 'bed',
     notFound: {
       title: '宿舍楼层走错了',
@@ -107,7 +107,7 @@ const FLAVORS = {
       lead: '正在同步宿舍报修进度。',
     },
   },
-  'DOM-PROPERTY': {
+  'property': {
     motif: 'wrench',
     notFound: {
       title: '工单未找到',
@@ -124,7 +124,7 @@ const FLAVORS = {
       lead: '正在匹配维修资源。',
     },
   },
-  'DOM-IT': {
+  'ithelp': {
     motif: 'chip',
     notFound: {
       title: '节点未响应',
@@ -141,7 +141,7 @@ const FLAVORS = {
       lead: '正在拉取运维工单状态。',
     },
   },
-  'DOM-ACTIVITY': {
+  'activity': {
     motif: 'calendar',
     notFound: {
       title: '活动已结束或不存在',
@@ -158,7 +158,7 @@ const FLAVORS = {
       lead: '正在同步活动报名信息。',
     },
   },
-  'DOM-LOST': {
+  'lostfound': {
     motif: 'pin',
     notFound: {
       title: '启事已撤下',
@@ -175,7 +175,7 @@ const FLAVORS = {
       lead: '失物信息加载中。',
     },
   },
-  'DOM-COURSE': {
+  'course': {
     motif: 'board',
     notFound: {
       title: '课程不在课表',
@@ -192,7 +192,7 @@ const FLAVORS = {
       lead: '正在同步可选课程。',
     },
   },
-  'DOM-FOOD': {
+  'food': {
     motif: 'bowl',
     notFound: {
       title: '菜品售罄下架',
@@ -209,7 +209,7 @@ const FLAVORS = {
       lead: '菜单与档口信息加载中。',
     },
   },
-  'DOM-HOSPITAL': {
+  'hospital': {
     motif: 'cross',
     notFound: {
       title: '号源或页面不存在',
@@ -226,7 +226,7 @@ const FLAVORS = {
       lead: '正在同步预约与号源。',
     },
   },
-  'DOM-PARKING': {
+  'parking': {
     motif: 'car',
     notFound: {
       title: '车位号无效',
@@ -243,7 +243,7 @@ const FLAVORS = {
       lead: '正在更新空余车位。',
     },
   },
-  'DOM-MEETING': {
+  'meeting': {
     motif: 'door',
     notFound: {
       title: '场地未开放',
@@ -260,7 +260,7 @@ const FLAVORS = {
       lead: '正在核对占用与空闲时段。',
     },
   },
-  'DOM-SALON': {
+  'salon': {
     motif: 'scissors',
     notFound: {
       title: '服务项目已调整',
@@ -277,7 +277,7 @@ const FLAVORS = {
       lead: '正在加载可预约时段。',
     },
   },
-  'DOM-HOTEL': {
+  'hotel': {
     motif: 'key',
     notFound: {
       title: '房型已满或不存在',
@@ -294,7 +294,7 @@ const FLAVORS = {
       lead: '正在同步房态。',
     },
   },
-  'DOM-MEDIA': {
+  'media': {
     motif: 'film',
     notFound: {
       title: '片源不在片单',
@@ -311,7 +311,7 @@ const FLAVORS = {
       lead: '片单与封面加载中。',
     },
   },
-  'DOM-MUSIC': {
+  'music': {
     motif: 'note',
     notFound: {
       title: '曲目已下架',
@@ -328,7 +328,7 @@ const FLAVORS = {
       lead: '曲库信息加载中。',
     },
   },
-  'DOM-FORUM': {
+  'forum': {
     motif: 'board',
     notFound: {
       title: '帖子已撤下',
@@ -345,7 +345,7 @@ const FLAVORS = {
       lead: '正在同步板块与楼层。',
     },
   },
-  'DOM-BLOG': {
+  'blog': {
     motif: 'book',
     notFound: {
       title: '文章已下架',
@@ -362,7 +362,7 @@ const FLAVORS = {
       lead: '文章与封面加载中。',
     },
   },
-  'DOM-GENERIC': {
+  'generic': {
     motif: 'grid',
     notFound: {
       title: '页面不存在',
@@ -387,8 +387,8 @@ const KIND_META = {
   loading: { code: '', homeLabel: '返回首页' },
 }
 
-export function domainFlavor(domainId = getDomain()) {
-  return FLAVORS[domainId] || FLAVORS['DOM-GENERIC']
+export function domainFlavor(flavorId = getFlavor()) {
+  return FLAVORS[flavorId] || FLAVORS['generic']
 }
 
 /** @param {'404'|'500'|'loading'} kind */

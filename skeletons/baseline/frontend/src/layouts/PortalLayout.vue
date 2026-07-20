@@ -41,7 +41,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
@@ -50,7 +50,7 @@ import { isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 const router = useRouter()
 const route = useRoute()
 const labels = schemaLabels()
-const title = labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
 const loggedIn = ref(isLoggedIn())
 const username = ref(localStorage.getItem('username') || '')
@@ -70,7 +70,7 @@ watch(
 const displayName = computed(() => nickname.value || username.value)
 const userRoleLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const hasStage = computed(() => {
-  const list = FACTORY_DELIVERED?.portalBanners
+  const list = APP_DELIVERED?.portalBanners
   return Array.isArray(list) && list.some((x) => x && x.src)
 })
 

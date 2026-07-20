@@ -6,12 +6,11 @@ import Profile from '../views/Profile.vue'
 import Notices from '../views/Notices.vue'
 import NoticeDetail from '../views/NoticeDetail.vue'
 import NoticesAdmin from '../views/admin/NoticesAdmin.vue'
-import { getDomain, getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
+import { hasTrait, getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
 
-/** 收货地址簿：仅交易域（点餐/商城/GENERIC 交易），勿挂到酒店预约等壳 */
+/** 收货地址簿：仅带 addressBook 特征的交易壳，勿挂到酒店预约等 */
 function domainNeedsAddressBook() {
-  const d = getDomain()
-  return d === 'DOM-FOOD' || d === 'DOM-SHOP' || d === 'DOM-GENERIC'
+  return hasTrait('addressBook')
 }
 import { adminLoginPath, isSplitEntry, staffLoginPath } from '../utils/authEntry.js'
 import {

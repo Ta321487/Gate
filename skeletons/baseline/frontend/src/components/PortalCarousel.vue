@@ -35,7 +35,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
 
 const props = defineProps({
@@ -43,13 +43,13 @@ const props = defineProps({
 })
 
 const raw = computed(() => {
-  const list = FACTORY_DELIVERED?.portalBanners
+  const list = APP_DELIVERED?.portalBanners
   return Array.isArray(list) ? list.filter((x) => x && x.src) : []
 })
 const slides = ref([])
 const index = ref(0)
 const labels = schemaLabels()
-const kicker = computed(() => labels.appName || FACTORY_DELIVERED.title || '门户')
+const kicker = computed(() => labels.appName || APP_DELIVERED.title || '门户')
 const ariaLabel = computed(() => `${kicker.value}轮播`)
 
 let timer = null

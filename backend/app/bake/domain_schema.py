@@ -187,9 +187,12 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         spec.get("capabilities")
         or required_capabilities(domain, archetype, archetypes=arches)
     )
+    # 超范围信号只扫正文，参考文献/进度里的「小程序」等不当作交付要求
+    from app.services.proposal import strip_non_dev_sections
+
     decision = resolve_accept(
         req,
-        proposal_text,
+        strip_non_dev_sections(proposal_text or ""),
         has_domain_overlay=domain in DOMAINS_WITH_OVERLAY,
         has_baseline_runtime=baseline_runtime_covers(
             domain, archetype, archetypes=arches

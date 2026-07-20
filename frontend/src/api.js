@@ -25,12 +25,16 @@ export const api = {
   health: () => http.get('/health'),
   stats: () => http.get('/projects/stats'),
   listProjects: (params) => http.get('/projects', { params }),
-  upload: (file, onProgress) => {
+  upload: (files, onProgress) => {
+    const list = Array.isArray(files) ? files : [files]
     const fd = new FormData()
-    fd.append('file', file)
+    list.forEach((f) => {
+      if (f) fd.append('files', f)
+    })
     return http.post('/projects/upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,
+      timeout: 120000,
     })
   },
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
