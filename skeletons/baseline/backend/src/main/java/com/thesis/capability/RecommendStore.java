@@ -59,6 +59,7 @@ public final class RecommendStore {
         out.put("list", list);
         out.put("mode", mode);
         out.put("total", list.size());
+        ArchiveStore.redactSensitiveListForPublic(list);
         return out;
     }
 

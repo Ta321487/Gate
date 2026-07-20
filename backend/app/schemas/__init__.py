@@ -137,6 +137,17 @@ class DeepSeekBalance(BaseModel):
     balance_infos: list[DeepSeekBalanceInfo] = Field(default_factory=list, description="余额列表")
 
 
+class UnsplashSettings(BaseModel):
+    model_config = ConfigDict(title="Unsplash 配图配置")
+
+    key_configured: bool = Field(description="是否已配置 Access Key")
+    key_masked: str = Field(description="Key 掩码")
+    hint: str = Field(
+        default="环境变量 UNSPLASH_ACCESS_KEY；用于登录氛围图与门户轮播检索",
+        description="配置说明",
+    )
+
+
 class StatsOut(BaseModel):
     model_config = ConfigDict(title="项目统计")
 

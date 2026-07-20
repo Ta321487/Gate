@@ -47,6 +47,7 @@ public class ProfileController {
             p.extras = ProfileFields.filterExtras(merged);
         }
 
+        boolean passwordChanged = false;
         String newPassword = str(body.get("newPassword"));
         if (newPassword.isBlank()) newPassword = str(body.get("password"));
         if (!newPassword.isBlank()) {
@@ -68,13 +69,23 @@ public class ProfileController {
                 throw new BizException(ErrorCode.BAD_REQUEST, "新密码至少 6 位");
             }
             p.password = PasswordHashes.encode(newPassword);
+            passwordChanged = true;
         }
         try {
             UserStore.saveProfile(p);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
-        return R.ok(p.toMap());
+        Map<String, Object> out = new LinkedHashMap<>(p.toMap());
+        if (passwordChanged) {
+            // 改密后作废当前会话，须用新密码重新登录
+            try {
+                session.invalidate();
+            } catch (IllegalStateException ignored) {
+            }
+            out.put("requireRelogin", true);
+        }
+        return R.ok(out);
     }
 
     @PostMapping("/avatar")

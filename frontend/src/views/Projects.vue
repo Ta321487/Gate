@@ -89,12 +89,12 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
-/** 与状态/运行列语义对齐：运行中 · 可交付 · 失败 */
+/** 与状态/运行列语义对齐：运行中 · 可交付 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
   { id: 'done', label: '可交付', pill: 'pill-teal' },
-  { id: 'fail', label: '失败', pill: 'pill-red' },
+  { id: 'fail', label: '质检未过', pill: 'pill-red' },
 ]
 const q = ref('')
 const dragover = ref(false)

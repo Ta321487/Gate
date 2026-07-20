@@ -44,6 +44,12 @@
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ remarkText(row.remark) }}</template>
       </el-table-column>
+      <el-table-column label="附件" width="90">
+        <template #default="{ row }">
+          <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column prop="approveAt" label="受理时间" width="170" />
       <el-table-column v-if="allowCheckin" label="签到" width="170">
@@ -229,11 +235,17 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = [
-    '编号', '标题', '类型', '地点', userLabel.value, '处理人', '状态',
-    '数量', dueLabel.value, '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
-  ]
+  const headers = ['编号', '标题', '类型', '地点', userLabel.value, '处理人', '状态']
+  if (allowQty.value) headers.push('数量')
+  if (pickLoanPeriod.value) headers.push(dueLabel.value)
+  if (showFine.value) headers.push(fineLabel.value)
+  if (showPickup.value) headers.push('领取地点', '领取时间')
+  headers.push('开始', '结束', '说明', '附件')
+  headers.push('申请时间', '受理时间')
+  if (allowCheckin.value) headers.push('签到时间')
+  headers.push('完成时间')
   if (allowRating.value) headers.push('评分', '短评', '评价时间')
+
   const data = rows.map((row) => {
     const line = [
       row.id,
@@ -241,17 +253,21 @@ async function exportCsv() {
       row.typeName,
       row.location,
       row.username,
-      row.assigneeUsername,
+      row.assigneeUsername || '',
       states.value[row.status] || row.status,
-      row.qty ?? 1,
-      row.dueAt,
-      row.startAt,
-      row.endAt,
-      remarkText(row.remark),
-      row.applyAt,
-      row.approveAt,
-      row.returnAt,
     ]
+    if (allowQty.value) line.push(row.qty ?? 1)
+    if (pickLoanPeriod.value) line.push(row.dueAt || '')
+    if (showFine.value) {
+      line.push(Number(row.fineYuan) > 0 ? `¥${row.fineYuan} · ${row.fineStatus || ''}` : '')
+    }
+    if (showPickup.value) {
+      line.push(row.pickupPlace || '', row.pickupAt || '')
+    }
+    line.push(row.startAt, row.endAt, remarkText(row.remark), row.attachUrl || '')
+    line.push(row.applyAt, row.approveAt)
+    if (allowCheckin.value) line.push(row.checkedInAt || '')
+    line.push(row.returnAt)
     if (allowRating.value) {
       line.push(row.rating || '', row.ratingRemark || '', row.ratedAt || '')
     }

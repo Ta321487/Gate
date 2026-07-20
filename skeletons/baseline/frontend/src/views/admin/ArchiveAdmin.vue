@@ -26,14 +26,37 @@
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" :label="fieldLabel('title', '名称')" />
       <el-table-column prop="author" :label="fieldLabel('author', '型号')" width="140" />
+      <el-table-column
+        v-if="showIsbnCol"
+        prop="isbn"
+        :label="fieldLabel('isbn', '编号')"
+        min-width="120"
+        show-overflow-tooltip
+      >
+        <template #default="{ row }">{{ isbnPlain(row.isbn) }}</template>
+      </el-table-column>
       <el-table-column prop="categoryName" label="分类" width="100" />
       <el-table-column v-if="hasMutex" prop="mutexCode" :label="fieldLabel('mutexCode', '互斥码')" width="110" />
+      <el-table-column v-if="hasCheckin" prop="checkinCode" :label="fieldLabel('checkinCode', '签到码')" width="120">
+        <template #default="{ row }">{{ row.checkinCode || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
         <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column prop="stock" :label="fieldLabel('stock', '数量')" width="90" />
+      <el-table-column v-if="showStock" prop="stock" :label="fieldLabel('stock', '数量')" width="90" />
       <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
       <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
+      <el-table-column v-if="hasDeadline" prop="applyDeadlineAt" :label="fieldLabel('applyDeadlineAt', '报名截止')" width="170" />
+      <el-table-column
+        v-for="f in listExtraFields"
+        :key="f.key"
+        :prop="f.key"
+        :label="f.label || f.key"
+        min-width="100"
+        show-overflow-tooltip
+      >
+        <template #default="{ row }">{{ row[f.key] ?? '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="softDelete" label="状态" width="80">
         <template #default="{ row }">
           <el-tag v-if="row.deleted" size="small" type="info">{{ softCopy.off }}</el-tag>
@@ -210,10 +233,24 @@ const CORE_FIELD_KEYS = new Set([
   'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
 ])
 const extraFields = computed(() => fields.value.filter((f) => f?.key && !CORE_FIELD_KEYS.has(f.key)))
+/** 列表展示的扩展列（排除富文本等过宽类型） */
+const listExtraFields = computed(() =>
+  extraFields.value.filter((f) => f.type !== 'richtext' && f.type !== 'hidden'),
+)
 const isbnRich = computed(() => {
   const f = fields.value.find((x) => x.key === 'isbn')
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
+const showIsbnCol = computed(() => {
+  const f = fields.value.find((x) => x.key === 'isbn')
+  if (!f || f.type === 'hidden') return false
+  return !isbnRich.value
+})
+function isbnPlain(v) {
+  if (v == null || v === '') return '—'
+  const s = String(v).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return s || '—'
+}
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' || x.key === 'endAt'))
 const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
 const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
@@ -390,13 +427,136 @@ async function onCover(opt) {
   ElMessage.success('已上传')
 }
 
+/** 核心列兜底中文名（schema 缺 label 时用） */
+const FIELD_FALLBACK_LABELS = {
+  title: '名称',
+  author: '型号',
+  isbn: '编号',
+  category: '分类',
+  stock: '数量',
+  mutexCode: '互斥码',
+  checkinCode: '签到码',
+  startAt: '开始时间',
+  endAt: '结束时间',
+  applyDeadlineAt: '报名截止',
+}
+
+/**
+ * 导入/导出列 = 当前领域 archive.fields 全量（hidden 除外）+ 可选标签。
+ * 表头用领域中文 label；键与 ArchiveStore / updateItem 一致。
+ */
+function importColumns() {
+  const cols = []
+  const seen = new Set()
+  for (const f of fields.value) {
+    if (!f?.key || f.type === 'hidden') continue
+    if (seen.has(f.key)) continue
+    seen.add(f.key)
+    cols.push({
+      key: f.key,
+      label: (f.label || FIELD_FALLBACK_LABELS[f.key] || f.key).trim(),
+      type: f.type || 'string',
+    })
+  }
+  for (const k of ['title', 'author', 'isbn', 'category', 'stock']) {
+    if (seen.has(k)) continue
+    const meta = fields.value.find((f) => f?.key === k)
+    if (meta?.type === 'hidden') continue
+    seen.add(k)
+    cols.push({ key: k, label: FIELD_FALLBACK_LABELS[k], type: k === 'stock' ? 'number' : 'string' })
+  }
+  if (tagFilter.value && !seen.has('tags')) {
+    cols.push({ key: 'tags', label: '标签', type: 'string' })
+  }
+  return cols
+}
+
+function sampleForCol(col) {
+  if (col.key === 'category') return '默认分类'
+  if (col.key === 'stock') return '1'
+  if (col.key === 'tags') return ''
+  if (col.key === 'checkinCode') return 'ACT1001'
+  if (col.type === 'number') return '1'
+  if (col.type === 'datetime') return '2026-07-21 09:00'
+  if (col.type === 'url') return 'https://example.com'
+  return `示例${col.label}`
+}
+
+function exportCell(row, col) {
+  if (col.key === 'category') return row.categoryName ?? ''
+  if (col.key === 'tags') return (row.tagNames || []).join('、')
+  const v = row[col.key]
+  return v == null ? '' : v
+}
+
 function downloadTemplate() {
+  const cols = importColumns()
   downloadCsv(
     `${label.value || 'archive'}_import_template.csv`,
-    ['title', 'author', 'isbn', 'category', 'stock'],
-    [['示例名称', '规格或责任人', '编号说明', '默认分类', '1']],
+    cols.map((c) => c.label),
+    [cols.map(sampleForCol)],
   )
   ElMessage.success('已下载导入模板（UTF-8 BOM，Excel 可直接打开）')
+}
+
+/**
+ * 把表头（领域中文 label 或英文 key）规范成后端 import 认可的 camelCase 键。
+ * 兼容旧模板英文表头与当前领域导出的中文表头。
+ */
+function normalizeArchiveImportCsv(text) {
+  const raw = stripBom(text)
+  if (!raw.trim()) return raw
+  const nl = raw.includes('\r\n') ? '\r\n' : raw.includes('\r') ? '\r' : '\n'
+  const lines = raw.split(/\r\n|\n|\r/)
+  const cols = importColumns()
+  const alias = Object.create(null)
+  cols.forEach((c) => {
+    alias[c.key] = c.key
+    alias[c.key.toLowerCase()] = c.key
+    if (c.label) {
+      alias[c.label] = c.key
+      alias[c.label.toLowerCase()] = c.key
+    }
+  })
+  ;[
+    ['名称', 'title'], ['标题', 'title'], ['书名', 'title'],
+    ['分类', 'category'], ['库存', 'stock'], ['数量', 'stock'],
+    ['标签', 'tags'],
+  ].forEach(([a, k]) => {
+    if (!alias[a]) alias[a] = k
+  })
+  const headCells = splitCsvLineSimple(lines[0])
+  const mapped = headCells.map((h) => {
+    const t = String(h || '').trim()
+    return alias[t] || alias[t.toLowerCase()] || t
+  })
+  lines[0] = mapped.map(csvEscapeCell).join(',')
+  return lines.join(nl)
+}
+
+function splitCsvLineSimple(line) {
+  const cells = []
+  let cur = ''
+  let inQuote = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      inQuote = !inQuote
+    } else if ((ch === ',' && !inQuote) || ch === '\t') {
+      cells.push(cur)
+      cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  cells.push(cur)
+  return cells
+}
+
+function csvEscapeCell(v) {
+  let s = v == null ? '' : String(v)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
 }
 
 async function exportCsv() {
@@ -408,35 +568,19 @@ async function exportCsv() {
     ElMessage.warning('当前无数据可导出')
     return
   }
-  const headers = [
-    fieldLabel('title', '名称'),
-    fieldLabel('author', '型号'),
-    fieldLabel('isbn', '编号'),
-    '分类',
-    fieldLabel('stock', '数量'),
-  ]
-  if (hasSchedule.value) {
-    headers.push(fieldLabel('startAt', '开始'), fieldLabel('endAt', '结束'))
-  }
-  const data = rows.map((row) => {
-    const line = [
-      row.title,
-      row.author,
-      row.isbn,
-      row.categoryName,
-      row.stock,
-    ]
-    if (hasSchedule.value) line.push(row.startAt, row.endAt)
-    return line
-  })
-  downloadCsv(`${label.value || 'archive'}_${Date.now()}.csv`, headers, data)
+  const cols = importColumns()
+  downloadCsv(
+    `${label.value || 'archive'}_${Date.now()}.csv`,
+    cols.map((c) => c.label),
+    rows.map((row) => cols.map((c) => exportCell(row, c))),
+  )
   ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }
 
 async function onImport(opt) {
   const file = opt.file
   if (!file) return
-  const text = stripBom(await file.text())
+  const text = normalizeArchiveImportCsv(await file.text())
   if (!text.trim()) {
     ElMessage.warning('文件为空')
     return

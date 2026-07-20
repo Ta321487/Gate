@@ -410,9 +410,9 @@ def ensure_proposal_in_spec(project: Project) -> Project:
     return project
 
 
-def mask_key(key: str) -> str:
+def mask_key(key: str, *, env_name: str = "API_KEY", hint_prefix: str = "") -> str:
     if not key:
-        return "未配置（环境变量 DEEPSEEK_API_KEY）"
+        return f"未配置（环境变量 {env_name}）"
     if len(key) < 8:
-        return "sk-••••"
-    return f"sk-••••••••••••{key[-4:]}（来自环境变量）"
+        return f"{hint_prefix}••••" if hint_prefix else "••••"
+    return f"{hint_prefix}••••••••••••{key[-4:]}（来自环境变量）"

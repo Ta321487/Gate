@@ -140,7 +140,7 @@ const subLabel = computed(() => roles.value.subadmin?.label || '子管')
 const postOptions = computed(() => staffPosts())
 const canAppoint = computed(() => postOptions.value.length > 0)
 const walletOn = computed(() => isWalletEnabled())
-const adminCols = computed(() => profileAdminColumns(2))
+const adminCols = computed(() => profileAdminColumns())
 const allFields = computed(() => profileFields())
 const visibleFields = computed(() =>
   allFields.value.filter((f) => isProfileFieldVisible(f, form.extras)),
@@ -229,7 +229,7 @@ async function resetPwd(row) {
     inputErrorMessage: '至少 6 位',
   })
   await http.post(`/api/admin/users/${row.username}/reset-password`, { password: value })
-  ElMessage.success('已重置')
+  ElMessage.success('已重置，对方需用新密码重新登录')
 }
 
 async function recharge(row) {

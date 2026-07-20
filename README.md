@@ -125,7 +125,7 @@ npm run dev
 | `GF_PUBLIC_HOST` | 预览/复制地址用的对外 IP 或域名；非本机时学生进程自动绑 `0.0.0.0` |
 | `GF_BIND_HOST` | 可选；强制学生前后端监听地址 |
 | `GF_STUDENT_MYSQL_*` | 学生库连接（默认 `root` / `root123` @ `3306`） |
-| `UNSPLASH_ACCESS_KEY` | 可选；登录页氛围图 |
+| `UNSPLASH_ACCESS_KEY` | 可选；登录氛围图与门户轮播检索（Key 不入库，工作台可测连通） |
 
 完整示例：`backend/.env.example`。
 
@@ -139,7 +139,7 @@ data/
   samples/        样例开题
   uploads/        上传落盘
   workspace/      每题工作区与 ZIP
-scripts/          Windows 启动脚本
+scripts/          Windows 脚本（launcher.bat 控制台；verify-bats.bat 防 bat 乱码）
 prototype/        UI 对照原型
 docker-compose.yml   仅 MySQL
 HANDOFF.md        能力清单与领域覆盖（开发交接）

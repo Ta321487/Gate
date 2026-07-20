@@ -9,7 +9,7 @@
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">毕设港</div>
-          <div class="brand-sub">Thesis Harbor · 运营台</div>
+          <div class="brand-sub">Gate · 运营台</div>
         </div>
         <nav class="nav">
           <div class="nav-label">工作台</div>
@@ -76,6 +76,7 @@ const workNav = [
 ]
 const sysNav = [
   { to: '/deepseek', label: 'DeepSeek', match: ['deepseek'] },
+  { to: '/unsplash', label: 'Unsplash', match: ['unsplash'] },
   { to: '/system', label: '运行环境', match: ['system'] },
 ]
 

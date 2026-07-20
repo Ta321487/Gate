@@ -1,7 +1,6 @@
 <template>
-  <div class="er-viewer">
+  <div class="er-viewer" :class="{ 'is-dark': isDark }">
     <div class="er-toolbar row mb-12">
-      <span class="small muted">拖元素调整 · 空白平移 · 滚轮缩放 · 直线联系</span>
       <div class="er-zoom-btns row">
         <n-button size="small" @click="zoomOut">缩小</n-button>
         <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
@@ -29,6 +28,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import { isDark } from '../theme'
 
 const props = defineProps({
   /** 后端初始 SVG（可含 xml 声明） */
@@ -107,7 +107,7 @@ function loadSource(raw) {
     })
     const bg = svg.querySelector('rect')
     if (bg && !bg.classList.contains('er-bg-hit')) {
-      bg.classList.add('er-bg-hit')
+      bg.classList.add('er-bg-hit', 'er-paper')
       bg.style.pointerEvents = 'none'
     }
   })
@@ -369,7 +369,7 @@ defineExpose({ serializeSvg, download, resetView })
 
 <style scoped>
 .er-toolbar {
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -414,5 +414,18 @@ defineExpose({ serializeSvg, download, resetView })
 .er-canvas :deep(.er-node-active) polygon {
   stroke: #2563eb;
   stroke-width: 2;
+}
+
+/* 夜间：黑白线框图直接反相，避免半套 CSS 盖属性导致浅字白底 */
+.er-viewer.is-dark .er-frame {
+  background: #0f161e;
+}
+.er-viewer.is-dark .er-canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
+.er-viewer.is-dark .er-canvas :deep(.er-node-active) rect,
+.er-viewer.is-dark .er-canvas :deep(.er-node-active) ellipse,
+.er-viewer.is-dark .er-canvas :deep(.er-node-active) polygon {
+  stroke: #1d4ed8;
 }
 </style>

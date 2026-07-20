@@ -4,7 +4,7 @@
 
     <section class="hero">
       <h1>个人资料</h1>
-      <p>维护基本信息与业务资料；改密时请填写原密码与确认密码。</p>
+      <p>维护基本信息与业务资料；改密后需用新密码重新登录。</p>
     </section>
 
     <p v-if="!form.profileEditable" class="locked">顶级管理员不提供个人资料修改。</p>
@@ -177,6 +177,7 @@ import {
   isProfileFieldRequired,
   isProfileFieldVisible,
 } from '../utils/profileValidate.js'
+import { clearAuthStorage, loginPathForRole } from '../utils/session.js'
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
@@ -312,6 +313,14 @@ async function save() {
     }
     const res = await http.put('/api/profile', body)
     const data = res.data || {}
+    if (changingPwd || data.requireRelogin) {
+      const role = localStorage.getItem('role') || ''
+      const staffKind = localStorage.getItem('staffKind') || ''
+      clearAuthStorage()
+      ElMessage.success('密码已修改，请重新登录')
+      router.replace({ path: loginPathForRole(role, staffKind), query: { reason: 'password' } })
+      return
+    }
     form.extras = { ...emptyProfileExtras(), ...(data.extras || {}) }
     form.phone = data.phone || form.phone
     form.nickname = data.nickname || form.nickname
@@ -319,7 +328,7 @@ async function save() {
     clearPasswords()
     if (form.nickname) localStorage.setItem('nickname', form.nickname)
     if (form.avatarUrl) localStorage.setItem('avatarUrl', form.avatarUrl)
-    ElMessage.success(changingPwd ? '资料与密码已保存' : '已保存')
+    ElMessage.success('已保存')
   } finally {
     saving.value = false
   }
