@@ -281,13 +281,27 @@ def match_warnings_from_hits(hits: list[str] | None) -> list[str]:
 
 # 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
 _FOCUS_SECTION = re.compile(
-    r"(?:^|\n)\s*[（(]?\d*[)）.、]?\s*"
+    r"(?:^|\n)\s*(?:[（(]?\d+[)）.、]|[一二三四五六七八九十百]+[、．.]|"
+    r"[（(][一二三四五六七八九十\d]+[)）])?\s*"
     r"(?:主要功能|功能模块|功能清单|功能需求|拟实现(?:功能)?|核心功能|系统功能|系统实现|"
     r"主要任务|任务与要求|实现下列功能|答辩必演示|"
     r"研究内容[^\n]{0,20}拟实现|拟实现[^\n]{0,12}功能)"
     r"[^\n]{0,80}\n([\s\S]{0,3500})",
     re.IGNORECASE,
 )
+
+
+def proposal_impl_sections_for_scope(text: str) -> str:
+    """仅「拟实现/主要功能」段 + 模块行，供业务过重扫描（不含文首现状综述）。"""
+    from app.services.proposal import extract_module_lines, strip_non_dev_sections
+
+    raw = strip_non_dev_sections(text or "")
+    blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
+    modules = extract_module_lines(raw)
+    parts = list(blocks)
+    if modules:
+        parts.append("\n".join(modules))
+    return "\n".join(parts).strip()
 
 
 def proposal_focus_for_match(text: str) -> str:

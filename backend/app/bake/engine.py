@@ -142,6 +142,7 @@ def domain_sql(
         )
     text = ensure_ticket_progress_sql(text, resolved_ticket)
     text = append_staff_seed_sql(text, domain, archetype)
+    # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)
         .replace("${DOMAIN}", domain)
@@ -305,6 +306,17 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if guest_on:
         lines.append(f"  guest-teaser-limit: {GUEST_TEASER_LIMIT}")
 
+    roles = ((spec.get("schema") or {}).get("roles") or {}) if isinstance(spec.get("schema"), dict) else {}
+    from app.bake.staff_posts import allow_appoint_from_users as _allow_appoint
+
+    appoint_ok = roles.get("allowAppointFromUsers")
+    if appoint_ok is None:
+        appoint_ok = _allow_appoint(domain, spec.get("archetype"))
+    lines.append(
+        "  # 是否允许把门户业务用户任命为岗位（挂号等域关闭，岗靠种子账号）"
+    )
+    lines.append(f"  allow-appoint-from-users: {'true' if appoint_ok else 'false'}")
+
     if enable_ticket:
         lines.append("  # 单据主流程")
         lines.append("  enable-ticket: true")
@@ -425,6 +437,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  reservation-table: {rt}")
         if resv_ent.get("requireRemark"):
             lines.append("  slot-require-remark: true")
+        if resv_ent.get("requireConfirm"):
+            lines.append("  slot-require-confirm: true")
 
     block = "\n".join(lines) + "\n"
     if re.search(r"(?m)^thesis:\s*$", text):
@@ -451,10 +465,16 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
     ticket = ((schema.get("entities") or {}).get("ticket") or {}) if isinstance(schema, dict) else {}
     archive = ((schema.get("entities") or {}).get("archive") or {}) if isinstance(schema, dict) else {}
     apply_deadline_label = "报名截止"
+    stock_label = "库存"
     for f in archive.get("fields") or []:
-        if isinstance(f, dict) and f.get("key") == "applyDeadlineAt":
-            apply_deadline_label = str(f.get("label") or apply_deadline_label).strip() or apply_deadline_label
-            break
+        if not isinstance(f, dict):
+            continue
+        key = f.get("key")
+        lab = str(f.get("label") or "").strip()
+        if key == "applyDeadlineAt" and lab:
+            apply_deadline_label = lab
+        if key == "stock" and lab:
+            stock_label = lab
     payload = {
         "states": ticket.get("states") if isinstance(ticket.get("states"), dict) else {},
         "verbs": ticket.get("verbs") if isinstance(ticket.get("verbs"), dict) else {},
@@ -462,6 +482,7 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
         "finePaidLabel": ticket.get("finePaidLabel") or "费用已结清",
         "archiveLabel": archive.get("label") or "",
         "applyDeadlineLabel": apply_deadline_label,
+        "stockLabel": stock_label,
     }
     path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
     _write(path, json.dumps(payload, ensure_ascii=False, indent=2))
@@ -543,7 +564,7 @@ def _write_factory_delivered(
 
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:
-    """把已合并的 schema 写入 islands / appDelivered / spec.json。"""
+    """把已合并的 schema 写入 islands / appDelivered / spec.json，并同步 thesis yml。"""
     merged = spec.get("schema") or {}
     ok, errors = validate_schema(merged)
     if not ok:
@@ -565,7 +586,18 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         auth_role_widget=auth_widget,
         seed=workspace.name,
     )
+    sync_workspace_thesis_yml(workspace, spec)
     return written
+
+
+def sync_workspace_thesis_yml(workspace: Path, spec: dict[str, Any]) -> None:
+    """与 bake 同一套 _patch_thesis_yml，避免只改 schema 导致 Java 默认值漂移。"""
+    app_yml = workspace / "backend" / "src" / "main" / "resources" / "application.yml"
+    if not app_yml.exists():
+        return
+    domain = str(spec.get("domain") or "DOM-GENERIC")
+    text = app_yml.read_text(encoding="utf-8")
+    app_yml.write_text(_patch_thesis_yml(text, domain, spec), encoding="utf-8")
 
 
 def llm_fill_islands(workspace: Path, spec: dict[str, Any], enabled: bool) -> list[str]:

@@ -477,7 +477,7 @@ def _augment_menus_for_paths(schema: dict[str, Any], *, need_flow: bool, need_tr
         _ensure_menu(user, "addresses", {"key": "addresses", "label": "收货地址"}, before_key="content")
         _ensure_menu(admin, "orders", {"key": "orders", "label": "订单管理"}, before_key="users")
     if need_reserve:
-        _ensure_menu(user, "slots", {"key": "slots", "label": "时段预约"}, before_key="content")
+        # 时段页须带 itemId，不挂独立顶栏；与具名预约域 / domainSchema.js 一致
         _ensure_menu(user, "my_reservations", {"key": "my_reservations", "label": "我的预约"}, before_key="content")
         _ensure_menu(admin, "reservations", {"key": "reservations", "label": "预约记录"}, before_key="users")
 

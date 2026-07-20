@@ -159,11 +159,12 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
     else:
         if not (spec["schema"].get("profileFields")):
             spec["schema"] = attach_profile_fields(spec["schema"], domain)
-        roles = spec["schema"].get("roles") or {}
-        if not isinstance(roles.get("staff_posts"), list) or not roles.get("staff_posts"):
-            from app.bake.staff_posts import attach_staff_posts
+        # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
+        from app.bake.staff_posts import attach_staff_posts
 
-            spec["schema"] = attach_staff_posts(dict(spec["schema"]), domain, archetype)
+        spec["schema"] = attach_staff_posts(
+            dict(spec["schema"]), domain, archetype
+        )
     if not spec.get("accept"):
         proposal_text = ""
         prop = spec.get("proposal")
@@ -181,6 +182,25 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
             proposal_text = title
         spec = attach_accept(spec, proposal_text)
     return spec
+
+
+def apply_reservation_options_from_proposal(schema: dict[str, Any], proposal_text: str) -> None:
+    """开题若写明人工确认预约，打开 reservation.requireConfirm（默认占坑即确认）。"""
+    caps = schema.get("capabilities") or []
+    if "slot_reserve" not in caps:
+        return
+    text = proposal_text or ""
+    if not re.search(
+        r"人工确认|管理员确认|人工审核|"
+        r"预约须?(?:经)?审核|审核通过后(?:再)?(?:预约|挂号|生效)|"
+        r"确认后(?:再)?(?:生效|预约|挂号)|待确认后",
+        text,
+    ):
+        return
+    entities = schema.setdefault("entities", {})
+    resv = entities.get("reservation")
+    if isinstance(resv, dict):
+        resv["requireConfirm"] = True
 
 
 def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
@@ -216,6 +236,8 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     schema["accept"] = decision["accept"]
     schema["missing_capabilities"] = decision["missing_capabilities"]
     schema["out_of_mvp_signals"] = decision["out_of_mvp_signals"]
+
+    apply_reservation_options_from_proposal(schema, body)
 
     # 将未实现卖点并入 features out_of_mvp（去重）
     features = list(spec.get("features") or [])

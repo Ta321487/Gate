@@ -193,7 +193,8 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 人脸/指纹门禁、物联网传感器、真微信支付支付宝、小程序/安卓为交付物、协同过滤与深度学习训练、直播弹幕与转码 CDN、区块链、Hadoop/Spark、BPMN 可配置工作流、多仓批次 ERP、实时私信与无限楼中楼树、富文本多人协同编辑。
 
-命中 `OUT_OF_SCOPE_SIGNALS` → accept 最多 degraded；不要当作本期演示承诺。
+命中 `OUT_OF_SCOPE_SIGNALS` / `BUSINESS_OVERREACH_SIGNALS` → accept 最多 degraded；不要当作本期演示承诺。
+业务过重（电子病历、处方、叫号大屏、BPMN、智能排课等）优先扫功能/拟实现段。
 
 ### 开题怎么写（推荐）
 

@@ -172,6 +172,36 @@ public class UserStore {
         return list.isEmpty() ? null : list.get(0);
     }
 
+    /** 站内信等展示用：昵称 → 资料真实姓名 → 用户名。 */
+    public static String displayName(String username) {
+        if (username == null || username.isBlank()) return "用户";
+        Profile p = get(username.trim());
+        if (p == null) return username.trim();
+        if (p.nickname != null && !p.nickname.isBlank()) return p.nickname.trim();
+        if (p.extras != null) {
+            String real = p.extras.get("realName");
+            if (real != null && !real.isBlank()) return real.trim();
+        }
+        return p.username;
+    }
+
+    /**
+     * 管理端通知里的「谁」：账号展示名为主；业务名（就诊人/入住人）若有效且不同于登录名则附带。
+     * 避免把 username 原样写进文案。
+     */
+    public static String notifyWho(String username, String... bizNames) {
+        String shown = displayName(username);
+        String un = username == null ? "" : username.trim();
+        for (String raw : bizNames) {
+            if (raw == null) continue;
+            String n = raw.trim();
+            if (n.isEmpty() || n.equalsIgnoreCase(un)) continue;
+            if (n.equals(shown)) return shown;
+            return shown + "（" + n + "）";
+        }
+        return shown;
+    }
+
     public static Profile authenticate(String username, String password) {
         Profile p = get(username);
         if (p == null || !PasswordHashes.matches(password, p.password)) return null;
@@ -278,9 +308,22 @@ public class UserStore {
             String phone,
             Boolean enabled,
             Map<String, String> extras) {
+        return adminUpdate(username, nickname, phone, enabled, extras, false);
+    }
+
+    public static Profile adminUpdate(
+            String username,
+            String nickname,
+            String phone,
+            Boolean enabled,
+            Map<String, String> extras,
+            boolean protectLastStaff) {
         Profile p = requireManaged(username);
         if (nickname != null) p.nickname = nickname.trim();
         if (phone != null) p.phone = phone.trim();
+        if (enabled != null && !enabled && p.enabled) {
+            assertNotSoleActiveStaff(p, protectLastStaff, "停用");
+        }
         if (enabled != null) p.enabled = enabled;
         if (extras != null) {
             Map<String, String> merged = new LinkedHashMap<>(p.extras == null ? Map.of() : p.extras);
@@ -300,7 +343,7 @@ public class UserStore {
     }
 
     public static Profile adminUpdate(String username, String nickname, String phone, Boolean enabled) {
-        return adminUpdate(username, nickname, phone, enabled, null);
+        return adminUpdate(username, nickname, phone, enabled, null, false);
     }
 
     public static void adminResetPassword(String username, String newPassword) {
@@ -340,11 +383,19 @@ public class UserStore {
     }
 
     public static Profile revokeSubAdmin(String username, String userRole) {
+        return revokeSubAdmin(username, userRole, true);
+    }
+
+    /**
+     * @param protectLastStaff 为 true 且本岗仅剩一名启用账号时拒绝撤销（禁任命域）
+     */
+    public static Profile revokeSubAdmin(String username, String userRole, boolean protectLastStaff) {
         ensureStaffColumns();
         Profile p = get(username);
         if (p == null) throw new IllegalArgumentException("用户不存在");
         if (p.superAdmin) throw new IllegalArgumentException("不可撤销总管");
         if (!"admin".equals(p.role)) throw new IllegalArgumentException("该账号不是岗位员工");
+        assertNotSoleActiveStaff(p, protectLastStaff, "撤销");
         String ur = (userRole == null || userRole.isBlank()) ? "user" : userRole.trim();
         if (hasStaffColumns()) {
             db().update(
@@ -356,6 +407,49 @@ public class UserStore {
                     ur, username);
         }
         return get(username);
+    }
+
+    /**
+     * 禁任命域：该岗「启用中」只剩此人时不可撤/停用。
+     * 与 countStaffWithPost(enabledOnly=true) 共用计数，避免两套规则。
+     */
+    public static void assertNotSoleActiveStaff(Profile p, boolean protect, String action) {
+        if (!protect || p == null) return;
+        if (!"admin".equals(p.role) || p.superAdmin) return;
+        if (!p.enabled) return;
+        String post = p.staffPost == null ? "" : p.staffPost.trim();
+        if (countStaffWithPost(post, true) <= 1) {
+            throw new IllegalArgumentException(
+                    "这是该岗位唯一启用账号，" + action + "后无法再任命业务用户顶替，已禁止" + action);
+        }
+    }
+
+    public static int countStaffWithPost(String staffPost) {
+        return countStaffWithPost(staffPost, false);
+    }
+
+    /** 非总管且 role=admin、同一 staff_post；enabledOnly 时只计启用中 */
+    public static int countStaffWithPost(String staffPost, boolean enabledOnly) {
+        ensureStaffColumns();
+        String post = staffPost == null ? "" : staffPost.trim();
+        String en = enabledOnly ? " AND IFNULL(enabled,1)=1" : "";
+        Integer n;
+        if (post.isEmpty()) {
+            n = db().queryForObject(
+                    "SELECT COUNT(*) FROM sys_user WHERE role='admin' AND IFNULL(super_admin,0)=0" + en,
+                    Integer.class);
+        } else if (hasStaffColumns()) {
+            n = db().queryForObject(
+                    "SELECT COUNT(*) FROM sys_user WHERE role='admin' AND IFNULL(super_admin,0)=0"
+                            + en + " AND IFNULL(staff_post,'')=?",
+                    Integer.class,
+                    post);
+        } else {
+            n = db().queryForObject(
+                    "SELECT COUNT(*) FROM sys_user WHERE role='admin' AND IFNULL(super_admin,0)=0" + en,
+                    Integer.class);
+        }
+        return n == null ? 0 : n;
     }
 
     private static Profile requireManaged(String username) {

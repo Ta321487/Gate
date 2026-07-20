@@ -18,7 +18,9 @@
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" />
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
-      <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column :label="userLabel" width="110">
+        <template #default="{ row }">{{ personLabel(row) }}</template>
+      </el-table-column>
       <el-table-column prop="assigneeUsername" label="处理人" width="110">
         <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
       </el-table-column>
@@ -113,7 +115,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { hasTrait, getSchema, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -252,7 +254,7 @@ async function exportCsv() {
       row.title,
       row.typeName,
       row.location,
-      row.username,
+      personLabel(row, ''),
       row.assigneeUsername || '',
       states.value[row.status] || row.status,
     ]

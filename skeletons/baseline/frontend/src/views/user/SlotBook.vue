@@ -3,10 +3,17 @@
     <section class="hero">
       <h1>选择时段</h1>
       <p v-if="itemTitle">为「{{ itemTitle }}」{{ resvVerb }}可用时段（约满不可再约）。</p>
+      <p v-else class="warn">请先从目录选择要{{ resvVerb }}的对象，再进入本页选时段。</p>
       <div class="tools">
-        <el-date-picker v-model="day" type="date" value-format="YYYY-MM-DD" @change="load" />
-        <el-button type="primary" @click="load">查询</el-button>
-        <el-button link @click="$router.push('/archive')">返回浏览</el-button>
+        <el-date-picker
+          v-model="day"
+          type="date"
+          value-format="YYYY-MM-DD"
+          :disabled="!itemId"
+          @change="load"
+        />
+        <el-button type="primary" :disabled="!itemId" @click="load">查询</el-button>
+        <el-button link @click="$router.push('/archive')">{{ itemId ? '返回浏览' : '去选择' }}</el-button>
       </div>
     </section>
 
@@ -23,7 +30,8 @@
         <div class="r">剩余 {{ s.remain }} / {{ s.capacity }}</div>
       </button>
     </div>
-    <div v-if="!list.length" class="empty">该日暂无时段，换一天试试或联系管理员生成。</div>
+    <div v-if="!itemId" class="empty">请先选择后再查看可{{ resvVerb }}时段。</div>
+    <div v-else-if="!list.length" class="empty">该日暂无可{{ resvVerb }}时段，请换一天试试。</div>
     <GuestLoginHint />
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
@@ -87,7 +95,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
-import { hasTrait, reservationCopy } from '../../utils/domainSchema.js'
+import { hasTrait, personLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { todayStr } from '../../utils/dates.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -109,6 +118,7 @@ const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
 const resvVerb = computed(() => resv.verbs?.apply || '预约')
 const requireRemark = computed(() => !!resv.requireRemark)
+const requireConfirm = computed(() => !!resv.requireConfirm)
 const remarkLabel = computed(() => resv.remarkLabel || '备注')
 const structured = computed(() =>
   slotParking.value
@@ -117,7 +127,8 @@ const structured = computed(() =>
   || slotHotel.value
   || slotSalon.value
   || requireRemark.value)
-const day = ref('2026-09-20')
+
+const day = ref(todayStr())
 const list = ref([])
 const visible = ref(false)
 const pending = ref(null)
@@ -135,11 +146,26 @@ const extra = reactive({
 })
 
 async function load() {
-  if (!itemId.value) return
+  if (!itemId.value) {
+    list.value = []
+    return
+  }
   const res = await http.get('/api/slots', {
     params: { itemId: itemId.value, day: day.value || undefined },
   })
-  const rows = res.data || []
+  let rows = res.data || []
+  // 所选日无时段时，落到该资源最近有档的一天，避免种子日与「今天」错位
+  if (!rows.length) {
+    const all = await http.get('/api/slots', { params: { itemId: itemId.value } })
+    const pool = all.data || []
+    if (pool.length) {
+      const nextDay = String(pool[0].startAt || '').slice(0, 10)
+      if (nextDay && nextDay !== day.value) {
+        day.value = nextDay
+        rows = pool.filter((s) => String(s.startAt || '').startsWith(nextDay))
+      }
+    }
+  }
   list.value = isGuest.value ? rows.slice(0, guestTeaserLimit()) : rows
 }
 
@@ -148,7 +174,7 @@ async function openReserve(s) {
   if (!structured.value) {
     await ElMessageBox.confirm(`确认${resvVerb.value} ${s.startAt} ~ ${s.endAt}？`, resvNoun.value)
     await http.post('/api/slots/reserve', { slotId: s.id })
-    ElMessage.success(`${resvNoun.value}成功`)
+    ElMessage.success(requireConfirm.value ? `已提交，等待确认` : `${resvNoun.value}成功`)
     router.push('/reservations')
     return
   }
@@ -166,6 +192,11 @@ async function openReserve(s) {
     if (extras.realName) {
       if (!extra.patientName) extra.patientName = extras.realName
       if (!extra.guestName) extra.guestName = extras.realName
+    }
+    const nick = (me.data?.nickname || '').trim()
+    if (nick) {
+      if (!extra.patientName) extra.patientName = nick
+      if (!extra.guestName) extra.guestName = nick
     }
   } catch { /* ignore */ }
   visible.value = true
@@ -216,7 +247,7 @@ async function submitReserve() {
       guestCount: extra.guestCount || undefined,
       preferredStylist: extra.preferredStylist || undefined,
     })
-    ElMessage.success(`${resvNoun.value}成功`)
+    ElMessage.success(requireConfirm.value ? `已提交，等待确认` : `${resvNoun.value}成功`)
     visible.value = false
     router.push('/reservations')
   } finally {
@@ -231,6 +262,7 @@ onMounted(load)
 .hero { margin-bottom: 16px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 10px; color: #64748b; font-size: 13px; }
+.hero p.warn { color: #b45309; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid {
   display: grid;

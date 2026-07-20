@@ -9,7 +9,9 @@
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="80" />
-      <el-table-column prop="username" :label="userLabel" width="120" />
+      <el-table-column :label="userLabel" width="120">
+        <template #default="{ row }">{{ personLabel(row) }}</template>
+      </el-table-column>
       <el-table-column prop="totalYuan" label="金额" width="90" />
       <el-table-column :label="fulfillLabel" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
@@ -95,7 +97,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled, personLabel } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const order = computed(() => getSchema()?.entities?.order || {})
@@ -155,7 +157,7 @@ async function exportCsv() {
   const data = rows.map((row) => {
     const base = [
       row.id,
-      row.username,
+      personLabel(row, ''),
       row.totalYuan,
       row.deliveryType || '',
       [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),

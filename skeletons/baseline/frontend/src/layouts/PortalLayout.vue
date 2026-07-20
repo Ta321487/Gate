@@ -39,13 +39,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { APP_DELIVERED } from '../appDelivered.js'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
-import { isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
+import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -57,15 +57,23 @@ const username = ref(localStorage.getItem('username') || '')
 const nickname = ref(localStorage.getItem('nickname') || '')
 const avatarUrl = ref(localStorage.getItem('avatarUrl') || '')
 
-watch(
-  () => route.fullPath,
-  () => {
-    loggedIn.value = isLoggedIn()
-    username.value = localStorage.getItem('username') || ''
-    nickname.value = localStorage.getItem('nickname') || ''
-    avatarUrl.value = localStorage.getItem('avatarUrl') || ''
-  },
-)
+function refreshUserDisplay() {
+  loggedIn.value = isLoggedIn()
+  username.value = localStorage.getItem('username') || ''
+  nickname.value = localStorage.getItem('nickname') || ''
+  avatarUrl.value = localStorage.getItem('avatarUrl') || ''
+}
+
+watch(() => route.fullPath, refreshUserDisplay)
+
+let offProfileDisplay
+onMounted(() => {
+  offProfileDisplay = onProfileDisplayChange(({ nickname: n, avatarUrl: a }) => {
+    nickname.value = n || ''
+    avatarUrl.value = a || ''
+  })
+})
+onUnmounted(() => offProfileDisplay?.())
 
 const displayName = computed(() => nickname.value || username.value)
 const userRoleLabel = computed(() => getSchema()?.roles?.user?.label || '用户')

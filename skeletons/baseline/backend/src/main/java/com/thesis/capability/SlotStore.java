@@ -2,6 +2,7 @@ package com.thesis.capability;
 
 import com.thesis.config.JdbcSupport;
 import com.thesis.service.MessageStore;
+import com.thesis.service.UserStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -25,6 +26,8 @@ public final class SlotStore {
     private static String RESV = "";
     private static boolean enabled = false;
     private static boolean requireRemark = false;
+    /** true：预约进 pending，管理端确认后才变 confirmed；false：占坑即确认 */
+    private static boolean requireConfirm = false;
 
     private SlotStore() {}
 
@@ -33,6 +36,7 @@ public final class SlotStore {
         RESV = reservationTable == null ? "" : reservationTable.trim();
         enabled = !SLOT.isBlank() && !RESV.isBlank();
         requireRemark = false;
+        requireConfirm = false;
         if (enabled) ensureResvColumns();
     }
 
@@ -40,9 +44,18 @@ public final class SlotStore {
         requireRemark = required;
     }
 
+    public static void configureConfirm(boolean required) {
+        requireConfirm = required;
+    }
+
+    public static boolean requireConfirm() {
+        return requireConfirm;
+    }
+
     public static void unbind() {
         enabled = false;
         requireRemark = false;
+        requireConfirm = false;
         SLOT = RESV = "";
     }
 
@@ -152,6 +165,7 @@ public final class SlotStore {
             throw new IllegalStateException("请填写备注后再预约");
         }
         final String noteFinal = noteFilled.length() > 255 ? noteFilled.substring(0, 255) : noteFilled;
+        final String initialStatus = requireConfirm ? "pending" : "confirmed";
         boolean rich = hasResvColumn("plate_no");
         db().update(con -> {
             PreparedStatement ps;
@@ -164,7 +178,7 @@ public final class SlotStore {
                         Statement.RETURN_GENERATED_KEYS);
                 ps.setLong(1, slotId);
                 ps.setString(2, username);
-                ps.setString(3, "confirmed");
+                ps.setString(3, initialStatus);
                 ps.setString(4, noteFinal);
                 ps.setString(5, plate);
                 ps.setString(6, patient);
@@ -183,7 +197,7 @@ public final class SlotStore {
                         Statement.RETURN_GENERATED_KEYS);
                 ps.setLong(1, slotId);
                 ps.setString(2, username);
-                ps.setString(3, "confirmed");
+                ps.setString(3, initialStatus);
                 ps.setString(4, noteFinal);
                 ps.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
             }
@@ -206,16 +220,55 @@ public final class SlotStore {
             OrderStore.placeSimple(username, itemId, body, price, 1, "reservation:" + resvId, resvId);
         }
         try {
+            String who = UserStore.notifyWho(username, patient, guest);
+            if (requireConfirm) {
+                MessageStore.send(
+                        username,
+                        "预约已提交",
+                        "已提交「" + slot.get("itemTitle") + "」" + slot.get("startAt") + " ~ " + slot.get("endAt")
+                                + "，请等待确认。",
+                        "reservation",
+                        resvId);
+                MessageStore.notifyAdmins(
+                        "待确认预约",
+                        who + " 提交了「" + slot.get("itemTitle") + "」"
+                                + slot.get("startAt") + " ~ " + slot.get("endAt") + "，请确认。",
+                        "reservation",
+                        resvId);
+            } else {
+                MessageStore.send(
+                        username,
+                        "预约成功",
+                        "已预约「" + slot.get("itemTitle") + "」" + slot.get("startAt") + " ~ " + slot.get("endAt"),
+                        "reservation",
+                        resvId);
+                MessageStore.notifyAdmins(
+                        "新预约",
+                        who + " 预约了「" + slot.get("itemTitle") + "」"
+                                + slot.get("startAt") + " ~ " + slot.get("endAt"),
+                        "reservation",
+                        resvId);
+            }
+        } catch (Exception ignored) {
+        }
+        return getReservation(resvId);
+    }
+
+    /** 管理端：pending → confirmed */
+    public static Map<String, Object> confirm(long resvId) {
+        requireEnabled();
+        Map<String, Object> m = getReservation(resvId);
+        if (m == null) throw new IllegalArgumentException("预约不存在");
+        if (!"pending".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("当前状态不可确认");
+        }
+        db().update("UPDATE " + RESV + " SET status='confirmed' WHERE id=?", resvId);
+        try {
+            String user = String.valueOf(m.get("username"));
             MessageStore.send(
-                    username,
-                    "预约成功",
-                    "已预约「" + slot.get("itemTitle") + "」" + slot.get("startAt") + " ~ " + slot.get("endAt"),
-                    "reservation",
-                    resvId);
-            MessageStore.notifyAdmins(
-                    "新预约",
-                    username + " 预约了「" + slot.get("itemTitle") + "」"
-                            + slot.get("startAt") + " ~ " + slot.get("endAt"),
+                    user,
+                    "预约已确认",
+                    "「" + m.get("itemTitle") + "」" + m.get("startAt") + " ~ " + m.get("endAt") + " 已确认。",
                     "reservation",
                     resvId);
         } catch (Exception ignored) {
@@ -443,6 +496,10 @@ public final class SlotStore {
             m.put("itemId", slot.get("itemId"));
             m.put("itemTitle", slot.get("itemTitle"));
             m.put("title", slot.get("itemTitle"));
+        }
+        Object u = m.get("username");
+        if (u != null && !String.valueOf(u).isBlank()) {
+            m.put("displayName", UserStore.displayName(String.valueOf(u)));
         }
         return m;
     }

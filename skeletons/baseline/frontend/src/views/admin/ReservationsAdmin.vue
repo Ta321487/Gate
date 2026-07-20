@@ -11,7 +11,9 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="itemTitle" :label="archiveLabel" min-width="140" />
-      <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column :label="userLabel" width="110">
+        <template #default="{ row }">{{ personLabel(row) }}</template>
+      </el-table-column>
       <el-table-column prop="startAt" label="开始" width="170" />
       <el-table-column prop="endAt" label="结束" width="170" />
       <el-table-column prop="status" label="状态" width="100">
@@ -21,14 +23,20 @@
       <el-table-column label="详情" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ resvDetail(row) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
+          <el-button
+            v-if="requireConfirm && row.status === 'pending'"
+            link
+            type="primary"
+            @click="confirmRow(row)"
+          >确认</el-button>
           <el-button
             v-if="row.status === 'pending' || row.status === 'confirmed'"
             link
             type="danger"
             @click="cancel(row)"
-          >取消</el-button>
+          >{{ row.status === 'pending' && requireConfirm ? '驳回' : '取消' }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -75,11 +83,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { archiveCopy, getSchema, reservationCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, personLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { todayStr } from '../../utils/dates.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
+const requireConfirm = computed(() => !!resv.requireConfirm)
 const archiveLabel = computed(() => archiveCopy().label || '资源')
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
@@ -91,7 +101,7 @@ const status = ref(null)
 const genVisible = ref(false)
 const gen = reactive({
   itemId: 1,
-  day: '2026-09-20',
+  day: todayStr(),
   startHour: 9,
   endHour: 17,
   slotMinutes: 60,
@@ -119,9 +129,20 @@ async function load() {
 }
 
 async function cancel(row) {
-  await ElMessageBox.confirm(`取消${resvNoun.value} #${row.id}？`, '取消')
+  const reject = requireConfirm.value && row.status === 'pending'
+  await ElMessageBox.confirm(
+    reject ? `驳回${resvNoun.value} #${row.id}？号源将释放。` : `取消${resvNoun.value} #${row.id}？`,
+    reject ? '驳回' : '取消',
+  )
   await http.post(`/api/slots/reservations/${row.id}/cancel`)
-  ElMessage.success('已取消')
+  ElMessage.success(reject ? '已驳回' : '已取消')
+  load()
+}
+
+async function confirmRow(row) {
+  await ElMessageBox.confirm(`确认${resvNoun.value} #${row.id}？`, '确认')
+  await http.post(`/api/slots/reservations/${row.id}/confirm`)
+  ElMessage.success('已确认')
   load()
 }
 
@@ -144,7 +165,7 @@ async function exportCsv() {
   const data = rows.map((row) => [
     row.id,
     row.itemTitle,
-    row.username,
+    personLabel(row, ''),
     row.startAt,
     row.endAt,
     states.value[row.status] || row.status,
