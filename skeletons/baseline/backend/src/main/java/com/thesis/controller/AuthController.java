@@ -103,9 +103,12 @@ public class AuthController {
                     ok = false;
                 } else if (!post.isBlank()) {
                     ok = post.equals(as);
-                } else {
-                    // 旧种子无 staff_post：仅允许 loginAs=subadmin 类别，具体 id 拒登
+                } else if (isWorker) {
+                    // 作业岗必须有 staff_post
                     ok = false;
+                } else {
+                    // 旧种子无 staff_post 的子管：前端已改发岗位 id，允许 clerk 通过
+                    ok = isClerk;
                 }
             }
         }

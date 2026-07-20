@@ -391,6 +391,10 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
 
     try:
         if (be / "pom.xml").exists() and mvn:
+            # 包名重映射后 target 可能残留 com.thesis.ThesisApplication.class
+            from app.bake.java_package import purge_stale_thesis_classes
+
+            purge_stale_thesis_classes(be)
             bind = settings.bind_host
             args = [f"--server.port={port}", f"--server.address={bind}"]
             cmd = [

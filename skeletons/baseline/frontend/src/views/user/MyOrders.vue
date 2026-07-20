@@ -13,7 +13,11 @@
         <strong>{{ orderNoun }} #{{ row.id }}</strong>
         <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
       </div>
-      <p class="sub">{{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}</p>
+      <p class="sub">
+        {{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}
+        <template v-if="Number(row.discountYuan) > 0"> · 优惠 ¥{{ row.discountYuan }}</template>
+        <template v-if="Number(row.pointsEarned) > 0"> · 获积分 {{ row.pointsEarned }}</template>
+      </p>
       <p v-if="hasShipInfo(row)" class="ship">
         <template v-if="row.deliveryType">{{ row.deliveryType }} · </template>
         <template v-if="row.receiverName || row.receiverPhone">

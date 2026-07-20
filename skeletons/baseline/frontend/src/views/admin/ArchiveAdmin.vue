@@ -130,27 +130,25 @@
           <el-form-item :label="fieldLabel('startAt', '开始时间')" required>
             <el-date-picker
               v-model="form.startAt"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              v-bind="pickerProps('startAt')"
               style="width:100%"
             />
           </el-form-item>
           <el-form-item :label="fieldLabel('endAt', '结束时间')" required>
             <el-date-picker
               v-model="form.endAt"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              v-bind="pickerProps('endAt')"
               style="width:100%"
             />
           </el-form-item>
           <el-form-item v-if="hasDeadline" :label="fieldLabel('applyDeadlineAt', '报名截止')">
             <el-date-picker
               v-model="form.applyDeadlineAt"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              v-bind="pickerProps('applyDeadlineAt')"
               style="width:100%"
             />
           </el-form-item>
+          <p class="dt-hint">选日期后，点击面板<strong>上方时间</strong>再调时分；有步长时按格点选。</p>
         </template>
         <el-form-item
           v-for="f in extraFields"
@@ -160,8 +158,7 @@
           <el-date-picker
             v-if="f.type === 'datetime'"
             v-model="form[f.key]"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
+            v-bind="dateTimePickerProps(f)"
             style="width:100%"
           />
           <el-input-number
@@ -200,6 +197,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import { archiveCopy, softDeleteCopy } from '../../utils/domainSchema.js'
+import { dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 
@@ -235,6 +233,9 @@ function fieldType(key) {
 }
 function fieldLabel(key, fallback) {
   return fieldMeta(key).label || fallback
+}
+function pickerProps(key) {
+  return dateTimePickerProps(fieldMeta(key))
 }
 
 /** author 列存单价时用数字控件，提交仍写回字符串（后端 OrderStore 认 author） */
@@ -470,4 +471,5 @@ onMounted(async () => {
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .muted { margin-left: 8px; color: #909399; font-size: 12px; }
 .attach-row { display: flex; gap: 8px; width: 100%; align-items: center; }
+.dt-hint { margin: -4px 0 8px; font-size: 12px; color: #909399; line-height: 1.4; }
 </style>

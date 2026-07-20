@@ -78,8 +78,19 @@ def remap_student_java_package(workspace: Path, domain: str) -> str:
     java_root = workspace / "backend" / "src" / "main" / "java"
     old_dir = java_root.joinpath(*_OLD_PKG.split("."))
     if not old_dir.is_dir():
-        # 可能已是别的包
-        return find_java_package_root(workspace).relative_to(java_root).as_posix().replace("/", ".")
+        # 可能已是别的包：仍清残留 target，并补写 mainClass
+        pkg = find_java_package_root(workspace).relative_to(java_root).as_posix().replace("/", ".")
+        apps = sorted((java_root / pkg.replace(".", "/")).glob("*Application.java"))
+        if apps:
+            app_class = apps[0].stem
+            pom = workspace / "backend" / "pom.xml"
+            if pom.is_file():
+                pom.write_text(
+                    _ensure_spring_boot_main_class(pom.read_text(encoding="utf-8"), f"{pkg}.{app_class}"),
+                    encoding="utf-8",
+                )
+        purge_stale_thesis_classes(workspace / "backend")
+        return pkg
 
     # 1) 改源码内容（仍在旧目录）
     for path in old_dir.rglob("*.java"):
@@ -113,7 +124,7 @@ def remap_student_java_package(workspace: Path, domain: str) -> str:
     if old_app.is_file() and old_app != new_app:
         old_app.rename(new_app)
 
-    # 4) pom.xml
+    # 4) pom.xml（含显式 mainClass，避免 target 残留双启动类）
     pom = workspace / "backend" / "pom.xml"
     if pom.is_file():
         pom_text = pom.read_text(encoding="utf-8")
@@ -135,6 +146,7 @@ def remap_student_java_package(workspace: Path, domain: str) -> str:
             pom_text,
             count=1,
         )
+        pom_text = _ensure_spring_boot_main_class(pom_text, f"{new_pkg}.{app_class}")
         pom.write_text(pom_text, encoding="utf-8")
 
     # 5) application.yml spring.application.name
@@ -158,4 +170,53 @@ def remap_student_java_package(workspace: Path, domain: str) -> str:
         rd = rd.replace(_OLD_APP, app_class)
         readme.write_text(rd, encoding="utf-8")
 
+    # 7) 清掉旧编译产物，否则 spring-boot:run 会扫到 ThesisApplication + 新启动类
+    _purge_backend_target(workspace / "backend")
+
     return new_pkg
+
+
+def _ensure_spring_boot_main_class(pom_text: str, main_class: str) -> str:
+    """在 spring-boot-maven-plugin 上写入 / 覆盖 mainClass。"""
+    plugin_pat = re.compile(
+        r"(<plugin>\s*<groupId>org\.springframework\.boot</groupId>\s*"
+        r"<artifactId>spring-boot-maven-plugin</artifactId>)(.*?)(</plugin>)",
+        re.DOTALL,
+    )
+    m = plugin_pat.search(pom_text)
+    if not m:
+        return pom_text
+    body = m.group(2)
+    if re.search(r"<mainClass>.*?</mainClass>", body):
+        body = re.sub(r"<mainClass>.*?</mainClass>", f"<mainClass>{main_class}</mainClass>", body, count=1)
+    elif re.search(r"<configuration\b", body):
+        body = re.sub(
+            r"(<configuration[^>]*>)",
+            rf"\1\n        <mainClass>{main_class}</mainClass>",
+            body,
+            count=1,
+        )
+    else:
+        body = f"\n      <configuration>\n        <mainClass>{main_class}</mainClass>\n      </configuration>\n    "
+    return pom_text[: m.start()] + m.group(1) + body + m.group(3) + pom_text[m.end() :]
+
+
+def _purge_backend_target(backend: Path) -> None:
+    target = backend / "target"
+    if target.exists():
+        shutil.rmtree(target, ignore_errors=True)
+
+
+def purge_stale_thesis_classes(backend: Path) -> None:
+    """启动前：若源码已不在 com.thesis，清掉 target 里残留的旧启动类。"""
+    java = backend / "src" / "main" / "java"
+    old_src = java.joinpath(*_OLD_PKG.split("."))
+    if old_src.is_dir():
+        return
+    stale = backend / "target" / "classes" / "com" / "thesis"
+    if stale.exists():
+        shutil.rmtree(stale, ignore_errors=True)
+    # 若仍有多个 *Application.class，整目录清掉让 Maven 重编
+    apps = list((backend / "target" / "classes").rglob("*Application.class")) if (backend / "target" / "classes").is_dir() else []
+    if len(apps) > 1:
+        _purge_backend_target(backend)

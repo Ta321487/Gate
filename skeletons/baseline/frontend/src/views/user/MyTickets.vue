@@ -42,6 +42,7 @@
           </div>
           <div class="row">
             <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
+            <span v-if="row.status === 'overdue' && row.remindMsg" class="rated">{{ row.remindMsg }}</span>
             <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
             <el-button
               v-if="row.status === 'approved' || row.status === 'overdue'"
@@ -170,13 +171,11 @@ import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel } from '../../utils/domainSchema.js'
+import { getSchema, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
-const states = computed(() => ticket.states || {
-  pending: '待受理', pending_final: '待终审', approved: '处理中', rejected: '已驳回', returned: '已完成',
-})
+const states = computed(() => ticket.states || {})
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
@@ -221,7 +220,7 @@ const checkinCode = ref('')
 const progressVisible = ref(false)
 const progressId = ref(null)
 
-function statusText(s) { return states.value[s] || s }
+function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
 function tagType(s) {
   return ({
     pending: 'warning',

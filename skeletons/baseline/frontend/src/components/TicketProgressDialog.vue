@@ -13,9 +13,9 @@
         :timestamp="p.createdAt"
         placement="top"
       >
-        <strong>{{ p.status }}</strong>
+        <strong>{{ progressStatusLabel(p.status) }}</strong>
         <span v-if="p.operator"> · {{ p.operator }}</span>
-        <div v-if="p.remark" class="note">{{ p.remark }}</div>
+        <div v-if="showRemark(p)" class="note">{{ p.remark }}</div>
       </el-timeline-item>
     </el-timeline>
     <p v-else class="empty">{{ emptyText }}</p>
@@ -25,6 +25,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import http from '../api/http'
+import { ticketCopy, ticketProgressStatusLabel } from '../utils/domainSchema.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -35,6 +36,26 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const list = ref([])
+
+function progressStatusLabel(status) {
+  return ticketProgressStatusLabel(status)
+}
+
+/** 备注与状态文案相同时不重复；旧库写死的「已完结」等交给 states 展示 */
+function showRemark(p) {
+  const r = (p.remark || '').trim()
+  if (!r) return false
+  const lab = progressStatusLabel(p.status)
+  if (r === lab) return false
+  const stateVals = Object.values(ticketCopy().states || {})
+  if (stateVals.includes(r)) return false
+  const st = String(p.status || '')
+  if ((st === 'returned' || st === 'overdue' || st === 'noshow')
+      && (r === '已完结' || r === '已完成')) {
+    return false
+  }
+  return true
+}
 
 watch(
   () => [props.modelValue, props.ticketId],

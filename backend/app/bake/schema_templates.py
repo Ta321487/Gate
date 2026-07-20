@@ -169,6 +169,8 @@ def _archive_ticket_schema(
     week_calendar: bool = False,
     week_calendar_label: str = "我的日程",
     allow_checkin: bool = False,
+    no_show_after_end: bool = False,
+    no_show_penalty_yuan: float = 0,
     pick_loan_period: bool | None = None,
     allow_qty: bool | None = None,
     require_remark: bool = False,
@@ -217,6 +219,16 @@ def _archive_ticket_schema(
         fine_paid_label = "罚款已缴" if remind == "催还" else "费用已结清"
     if checkin_label is None and allow_checkin:
         checkin_label = "签到"
+    if no_show_after_end and allow_checkin:
+        if no_show_penalty_yuan and float(no_show_penalty_yuan) > 0:
+            if fine_label is None:
+                fine_label = "爽约费用"
+            if fine_paid_label is None:
+                fine_paid_label = "爽约费用已缴"
+        if "overdue" not in states_out:
+            states_out["overdue"] = "爽约"
+        elif states_out.get("overdue") in ("已失效", "逾期", "已逾期"):
+            states_out["overdue"] = "爽约"
     ticket_entity: dict[str, Any] = {
         "key": ticket_key,
         "label": ticket_label,
@@ -230,6 +242,8 @@ def _archive_ticket_schema(
         "categoryLimit": max(0, int(category_limit or 0)),
         "weekCalendar": week_calendar,
         "allowCheckin": allow_checkin,
+        "noShowAfterEnd": bool(no_show_after_end and allow_checkin),
+        "noShowPenaltyYuan": float(no_show_penalty_yuan or 0) if (no_show_after_end and allow_checkin) else 0,
         "pickLoanPeriod": bool(pick_loan_period),
         "allowQty": bool(allow_qty),
         "requireRemark": bool(require_remark),
@@ -791,9 +805,9 @@ def _activity_schema(title: str) -> dict[str, Any]:
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "剩余名额", "type": "number"},
                 {"key": "checkinCode", "label": "签到码", "type": "string"},
-                {"key": "startAt", "label": "开始时间", "type": "datetime"},
-                {"key": "endAt", "label": "结束时间", "type": "datetime"},
-                {"key": "applyDeadlineAt", "label": "报名截止", "type": "datetime"},
+                {"key": "startAt", "label": "开始时间", "type": "datetime", "timeStepMinutes": 30},
+                {"key": "endAt", "label": "结束时间", "type": "datetime", "timeStepMinutes": 30},
+                {"key": "applyDeadlineAt", "label": "报名截止", "type": "datetime", "timeStepMinutes": 30},
                 {"key": "serviceHours", "label": "志愿时长(小时)", "type": "number"},
             ],
             ticket_key="signup",
@@ -811,17 +825,17 @@ def _activity_schema(title: str) -> dict[str, Any]:
                 "approved": "已报名",
                 "rejected": "已驳回",
                 "returned": "已取消",
-                "overdue": "已失效",
+                "overdue": "爽约",
             },
             archive_menu_admin="活动管理",
             archive_menu_user="活动检索",
             users_menu="用户管理",
             auth_eyebrow="活动报名",
-            auth_lead="验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到。",
-            auth_points=["验证码登录", "活动检索", "报名、冲突检测与口令签到"],
+            auth_lead="验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到；结束未签到记爽约。",
+            auth_points=["验证码登录", "活动检索", "报名、冲突检测、口令签到与爽约"],
             register_hint="注册后可报名校园活动",
             notice_title="报名须知",
-            notice_body="请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码。",
+            notice_body="请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码；活动结束后未签到将记为爽约。",
             notice_page_title="活动公告",
             notice_page_lead="报名须知、活动变更与临时通知，点击条目阅读全文。",
             my_tickets_label="我的报名",
@@ -832,10 +846,12 @@ def _activity_schema(title: str) -> dict[str, Any]:
             week_calendar=True,
             week_calendar_label="我的日程",
             allow_checkin=True,
+            no_show_after_end=True,
+            no_show_penalty_yuan=0,
         ),
         [
             {"title": "热门活动", "lead": "社团、志愿、讲座分类浏览，在线报名。"},
-            {"title": "冲突与签到", "lead": "时段冲突不可报；到场输入签到码完成核验。"},
+            {"title": "冲突与签到", "lead": "时段冲突不可报；到场输入签到码；结束未签到记爽约。"},
             {"title": "活动公告", "lead": "变更与须知见公告栏。"},
         ],
     )

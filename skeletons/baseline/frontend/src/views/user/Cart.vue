@@ -26,7 +26,22 @@
         </template>
       </el-table-column>
     </el-table>
-    <div v-if="list.length" class="total">合计 ¥{{ totalYuan }}</div>
+    <div v-if="list.length" class="total">
+      <template v-if="anyLoyalty">
+        <div v-if="walletOn" class="loy-line">演示余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
+        <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
+        <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
+      </template>
+      <div>合计 ¥{{ totalYuan }}</div>
+      <template v-if="preview && (discountOn || tierOn)">
+        <div v-if="Number(preview.discountYuan) > 0" class="loy-line muted">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</div>
+        <div v-if="Number(preview.tierDiscountRate) < 1" class="loy-line muted">
+          会员折扣 ×{{ preview.tierDiscountRate }}
+        </div>
+        <div class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
+        <div v-if="walletOn && preview.balanceEnough === false" class="warn">演示余额不足，请联系管理员充值</div>
+      </template>
+    </div>
 
     <el-dialog v-model="checkoutVisible" :title="`提交${orderNoun}`" width="520px" destroy-on-close>
       <el-form label-position="top">
@@ -96,27 +111,52 @@
         <el-form-item label="订单备注">
           <el-input v-model="form.remark" maxlength="200" placeholder="选填" />
         </el-form-item>
+        <div v-if="anyLoyalty && preview" class="checkout-loy">
+          <p v-if="walletOn">演示余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
+          <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
+          <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
+          <p v-if="walletOn && preview.balanceEnough === false" class="warn">余额不足，无法提交</p>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="checkoutVisible = false">取消</el-button>
-        <el-button type="primary" :loading="placing" @click="submitOrder">确认提交</el-button>
+        <el-button
+          type="primary"
+          :loading="placing"
+          :disabled="walletOn && preview?.balanceEnough === false"
+          @click="submitOrder"
+        >确认提交</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
-import { hasTrait, getSchema, menuLabel } from '../../utils/domainSchema.js'
+import {
+  anyLoyaltyEnabled,
+  hasTrait,
+  getSchema,
+  isMemberTierEnabled,
+  isPointsEnabled,
+  isSpendDiscountEnabled,
+  isWalletEnabled,
+  menuLabel,
+} from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
 
 const router = useRouter()
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const isFood = computed(() => hasTrait('food'))
+const anyLoyalty = computed(() => anyLoyaltyEnabled())
+const walletOn = computed(() => isWalletEnabled())
+const pointsOn = computed(() => isPointsEnabled())
+const discountOn = computed(() => isSpendDiscountEnabled())
+const tierOn = computed(() => isMemberTierEnabled())
 const tagOptions = computed(() => addressTagOptions())
 const deliveryOptions = computed(() =>
   isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],
@@ -132,6 +172,8 @@ const list = ref([])
 const addresses = ref([])
 const placing = ref(false)
 const checkoutVisible = ref(false)
+const account = ref({})
+const preview = ref(null)
 const form = reactive({
   deliveryType: '',
   addressId: null,
@@ -148,10 +190,43 @@ const totalYuan = computed(() =>
   list.value.reduce((s, x) => s + Number(x.lineYuan || 0), 0).toFixed(2),
 )
 
+async function loadLoyalty() {
+  if (!anyLoyalty.value) {
+    account.value = {}
+    preview.value = null
+    return
+  }
+  try {
+    const me = await http.get('/api/loyalty/me')
+    account.value = me.data || {}
+  } catch {
+    account.value = {}
+  }
+  await refreshPreview()
+}
+
+async function refreshPreview() {
+  if (!anyLoyalty.value || !list.value.length) {
+    preview.value = null
+    return
+  }
+  try {
+    const res = await http.post('/api/loyalty/preview', { subtotalYuan: Number(totalYuan.value) })
+    preview.value = res.data || null
+  } catch {
+    preview.value = null
+  }
+}
+
 async function load() {
   const res = await http.get('/api/cart')
   list.value = res.data || []
+  await loadLoyalty()
 }
+
+watch(totalYuan, () => {
+  if (anyLoyalty.value) refreshPreview()
+})
 
 async function loadAddresses() {
   try {
@@ -184,6 +259,7 @@ async function openCheckout() {
   form.tasteNote = ''
   form.remark = ''
   await loadAddresses()
+  await loadLoyalty()
   try {
     const me = await http.get('/api/profile')
     const extras = me.data?.extras || {}
@@ -241,6 +317,10 @@ async function submitOrder() {
       return
     }
   }
+  if (walletOn.value && preview.value?.balanceEnough === false) {
+    ElMessage.warning(preview.value?.message || '演示余额不足')
+    return
+  }
   placing.value = true
   try {
     await http.post('/api/orders', {
@@ -269,6 +349,20 @@ onMounted(load)
 .hero p { margin: 0; color: #64748b; font-size: 13px; width: 100%; }
 .tools { display: flex; gap: 8px; }
 .total { margin-top: 14px; text-align: right; font-weight: 700; font-size: 16px; }
+.loy-line { font-weight: 500; font-size: 13px; color: #475569; margin-bottom: 4px; }
+.loy-line.muted { color: #64748b; }
+.payable { margin-top: 4px; color: #0f766e; }
+.warn { color: #b91c1c; font-size: 13px; font-weight: 600; margin-top: 4px; }
+.checkout-loy {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+.checkout-loy p { margin: 0 0 4px; }
+.checkout-loy .payable { font-weight: 700; font-size: 15px; }
 .addr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

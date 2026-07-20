@@ -300,7 +300,7 @@
               <div class="row" style="justify-content:flex-end">
                 <n-button
                   size="small"
-                  :disabled="rtBusyBe || rtAllBusy || runtimeTransient(rt.backend_status)"
+                  :disabled="rtBusyBe || rtAllBusy || runtimeTransient(rt.backend_status) || (rtGenerating && !runtimeCanStop(rt.backend_status))"
                   :loading="rtBusyBe || runtimeTransient(rt.backend_status)"
                   @click="rtAction('backend', runtimeCanStop(rt.backend_status) ? 'stop' : 'start')"
                 >{{ runtimeCanStop(rt.backend_status) ? '停止' : '启动' }}</n-button>
@@ -317,7 +317,7 @@
               <div class="row" style="justify-content:flex-end">
                 <n-button
                   size="small"
-                  :disabled="rtBusyFe || rtAllBusy || runtimeTransient(rt.frontend_status)"
+                  :disabled="rtBusyFe || rtAllBusy || runtimeTransient(rt.frontend_status) || (rtGenerating && !runtimeCanStop(rt.frontend_status))"
                   :loading="rtBusyFe || runtimeTransient(rt.frontend_status)"
                   @click="rtAction('frontend', runtimeCanStop(rt.frontend_status) ? 'stop' : 'start')"
                 >{{ runtimeCanStop(rt.frontend_status) ? '停止' : '启动' }}</n-button>
@@ -609,28 +609,14 @@
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
     <n-modal v-model:show="showEr" preset="card" title="E-R 图（线框）" style="width:min(1280px,96vw)">
-      <div class="er-toolbar row mb-12">
-        <span class="small muted">拖拽平移 · 滚轮缩放 · 菱形联系 · 方框实体 · 椭圆属性</span>
-        <div class="er-zoom-btns row">
-          <n-button size="small" @click="erZoomOut">缩小</n-button>
-          <span class="er-zoom-label">{{ Math.round(erScale * 100) }}%</span>
-          <n-button size="small" @click="erZoomIn">放大</n-button>
-          <n-button size="small" @click="erZoomReset">重置</n-button>
-          <n-button size="small" type="primary" @click="downloadEr">下载 SVG</n-button>
-        </div>
-      </div>
-      <div
-        ref="erFrameRef"
-        class="er-frame"
-        @wheel.prevent="onErWheel"
-        @pointerdown="onErPointerDown"
-        @pointermove="onErPointerMove"
-        @pointerup="onErPointerUp"
-        @pointercancel="onErPointerUp"
-        @pointerleave="onErPointerUp"
-      >
-        <div class="er-canvas" :style="erCanvasStyle" v-html="erSvgHtml" />
-      </div>
+      <ErDiagramViewer
+        v-if="showEr"
+        :key="erLayoutKey"
+        ref="erViewerRef"
+        :svg-source="erSvgSource"
+        :download-name="`${p?.id || 'er'}-er.svg`"
+        @reload="reloadErSvg"
+      />
     </n-modal>
   </div>
   <ErrorPage
@@ -654,6 +640,7 @@ import { api, message, confirm } from '../api'
 import ErrorPage from './ErrorPage.vue'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
+import ErDiagramViewer from '../components/ErDiagramViewer.vue'
 import {
   CHECKLIST_RESULT,
   LOG_SIDES,
@@ -692,18 +679,23 @@ const rtBusyFe = ref(false)
 const rtPendingAll = ref('')
 const rtAnyBusy = computed(() => rtBusyBe.value || rtBusyFe.value)
 const rtAllBusy = computed(() => rtBusyBe.value && rtBusyFe.value)
-/** IDE 式：已在跑就不能再启动；全停就不能关/重启 */
+/** IDE 式：已在跑就不能再启动；全停就不能关/重启；生成中禁止启动/重启 */
+const rtGenerating = computed(() => p.value?.status === 'generating')
 const rtBeLive = computed(() => runtimeCanStop(rt.backend_status))
 const rtFeLive = computed(() => runtimeCanStop(rt.frontend_status))
 const rtAnyLive = computed(() => rtBeLive.value || rtFeLive.value)
 const rtBothLive = computed(() => rtBeLive.value && rtFeLive.value)
 const rtCanStartAll = computed(
-  () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && !rtBothLive.value,
+  () =>
+    Boolean(p.value?.workspace_path) &&
+    !rtGenerating.value &&
+    !rtAnyBusy.value &&
+    !rtBothLive.value,
 )
 const rtCanStopAll = computed(
   () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && rtAnyLive.value,
 )
-const rtCanRestartAll = computed(() => rtCanStopAll.value)
+const rtCanRestartAll = computed(() => rtCanStopAll.value && !rtGenerating.value)
 const backendAddr = computed(() => {
   if (rt.backend_url) return rt.backend_url
   const host = rt.public_host || '127.0.0.1'
@@ -732,84 +724,10 @@ const artifactView = ref('db')
 const apiQuery = ref('')
 const apiSurface = ref('all')
 const collapsedApis = ref({})
-const erSvgHtml = ref('')
-const erFrameRef = ref(null)
-const erScale = ref(1)
-const erPanX = ref(0)
-const erPanY = ref(0)
-const erDragging = ref(false)
-let erLastX = 0
-let erLastY = 0
+const erSvgSource = ref('')
+const erViewerRef = ref(null)
+const erLayoutKey = ref(0)
 let pollTimer = null
-
-const erCanvasStyle = computed(() => ({
-  transform: `translate(${erPanX.value}px, ${erPanY.value}px) scale(${erScale.value})`,
-  transformOrigin: '0 0',
-}))
-
-const ER_SCALE_MIN = 0.25
-const ER_SCALE_MAX = 4
-const ER_SCALE_STEP = 0.15
-
-function erClampScale(s) {
-  return Math.min(ER_SCALE_MAX, Math.max(ER_SCALE_MIN, s))
-}
-
-function erZoomIn() {
-  erScale.value = erClampScale(erScale.value + ER_SCALE_STEP)
-}
-
-function erZoomOut() {
-  erScale.value = erClampScale(erScale.value - ER_SCALE_STEP)
-}
-
-function erZoomReset() {
-  erScale.value = 1
-  erPanX.value = 0
-  erPanY.value = 0
-}
-
-function onErWheel(e) {
-  const frame = erFrameRef.value
-  if (!frame) return
-  const rect = frame.getBoundingClientRect()
-  const mx = e.clientX - rect.left
-  const my = e.clientY - rect.top
-  const prev = erScale.value
-  const next = erClampScale(prev * (e.deltaY < 0 ? 1.1 : 1 / 1.1))
-  if (next === prev) return
-  // 以光标为缩放中心
-  const wx = (mx - erPanX.value) / prev
-  const wy = (my - erPanY.value) / prev
-  erScale.value = next
-  erPanX.value = mx - wx * next
-  erPanY.value = my - wy * next
-}
-
-function onErPointerDown(e) {
-  if (e.button !== 0) return
-  erDragging.value = true
-  erLastX = e.clientX
-  erLastY = e.clientY
-  e.currentTarget.setPointerCapture?.(e.pointerId)
-}
-
-function onErPointerMove(e) {
-  if (!erDragging.value) return
-  erPanX.value += e.clientX - erLastX
-  erPanY.value += e.clientY - erLastY
-  erLastX = e.clientX
-  erLastY = e.clientY
-}
-
-function onErPointerUp(e) {
-  erDragging.value = false
-  try {
-    e.currentTarget?.releasePointerCapture?.(e.pointerId)
-  } catch {
-    /* ignore */
-  }
-}
 
 const planSteps = [
   { t: '解析开题 → 合并 Spec', m: '匹配阶段' },
@@ -1247,21 +1165,47 @@ const apiCopyText = computed(() => {
   return groups.map((g) => apiGroupCopyText(g)).filter(Boolean).join('\n')
 })
 
+async function fetchErSvg() {
+  if (!p.value) return ''
+  const res = await fetch(`${api.erSvgUrl(p.value.id)}?t=${Date.now()}`)
+  if (!res.ok) throw new Error('er svg')
+  return await res.text()
+}
+
 async function openEr() {
   if (!p.value) return
-  const res = await fetch(`${api.erSvgUrl(p.value.id)}?t=${Date.now()}`)
-  if (!res.ok) {
+  try {
+    erSvgSource.value = await fetchErSvg()
+    erLayoutKey.value += 1
+  } catch {
     message.error('无法加载 E-R 图')
     return
   }
-  const raw = await res.text()
-  erSvgHtml.value = raw.replace(/^<\?xml[^>]*>\s*/i, '')
-  erZoomReset()
   showEr.value = true
+}
+
+async function reloadErSvg() {
+  try {
+    erSvgSource.value = await fetchErSvg()
+    erLayoutKey.value += 1
+  } catch {
+    message.error('无法重新加载 E-R 图')
+  }
 }
 
 function downloadEr() {
   if (!p.value) return
+  const xml = erViewerRef.value?.serializeSvg?.()
+  if (xml) {
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${p.value.id}-er.svg`
+    a.click()
+    URL.revokeObjectURL(url)
+    return
+  }
   const a = document.createElement('a')
   a.href = `${api.erSvgUrl(p.value.id)}?t=${Date.now()}`
   a.download = `${p.value.id}-er.svg`
@@ -1468,6 +1412,10 @@ async function confirmDelete() {
 async function rtAction(side, action) {
   const projectId = p.value?.id
   if (!projectId) return
+  if ((action === 'start' || action === 'restart') && p.value?.status === 'generating') {
+    message.warning('生成中，请等待完成后再启动预览')
+    return
+  }
   const epoch = viewEpoch
   const touchBe = side === 'all' || side === 'backend'
   const touchFe = side === 'all' || side === 'frontend'
@@ -1607,45 +1555,3 @@ onUnmounted(() => {
   detailCrumb.value = ''
 })
 </script>
-
-<style scoped>
-.er-toolbar {
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.er-zoom-btns {
-  align-items: center;
-  gap: 8px;
-}
-.er-zoom-label {
-  min-width: 48px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  color: var(--muted);
-}
-.er-frame {
-  height: 72vh;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--er-bg);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-.er-frame:active {
-  cursor: grabbing;
-}
-.er-canvas {
-  display: inline-block;
-  will-change: transform;
-}
-.er-canvas :deep(svg) {
-  display: block;
-  max-width: none;
-  height: auto;
-  pointer-events: none;
-}
-</style>

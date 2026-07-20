@@ -56,6 +56,7 @@ const adminRoleLabel = computed(() => {
 
 const MENU_TO = {
   dashboard: '/admin/dashboard',
+  messages: '/admin/messages',
   ticket_pending: '/admin/tickets',
   ticket_records: '/admin/ticket-records',
   users: '/admin/users',
@@ -90,7 +91,16 @@ const menuItems = computed(() => {
   let items = raw.filter((m) => superAdmin || !m.superOnly)
   if (!superAdmin) {
     const allowed = clerkAllowedMenuKeys(staffPost)
-    if (allowed) items = items.filter((m) => allowed.has(m.key))
+    if (allowed) items = items.filter((m) => allowed.has(m.key) || m.key === 'messages')
+  }
+  if (!items.some((m) => m.key === 'messages')) {
+    const dashAt = items.findIndex((m) => m.key === 'dashboard')
+    items.splice(dashAt >= 0 ? dashAt + 1 : 0, 0, {
+      key: 'messages',
+      index: '/admin/messages',
+      label: '消息',
+      superOnly: false,
+    })
   }
   return items
 })

@@ -30,6 +30,17 @@
       </div>
     </section>
 
+    <section v-if="anyLoyalty && loyalty" class="card block loyalty">
+      <h2 class="block-title">账户权益（演示）</h2>
+      <div class="loy-grid">
+        <div v-if="walletOn"><span class="k">演示余额</span><strong>¥{{ Number(loyalty.balanceYuan || 0).toFixed(2) }}</strong></div>
+        <div v-if="pointsOn"><span class="k">积分</span><strong>{{ loyalty.points || 0 }}</strong></div>
+        <div v-if="tierOn"><span class="k">会员</span><strong>{{ loyalty.memberTierLabel || '—' }}</strong></div>
+        <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>
+      </div>
+      <p class="loy-hint">非真支付；余额由管理员充值，积分仅随订单完成赠送。</p>
+    </section>
+
     <el-form
       class="form"
       :model="form"
@@ -153,7 +164,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
-import { emptyProfileExtras, profileFields } from '../utils/domainSchema.js'
+import {
+  anyLoyaltyEnabled,
+  emptyProfileExtras,
+  isMemberTierEnabled,
+  isPointsEnabled,
+  isWalletEnabled,
+  profileFields,
+} from '../utils/domainSchema.js'
 import {
   validateProfileFormats,
   isProfileFieldRequired,
@@ -167,6 +185,11 @@ const WIDE_KEYS = new Set([
 ])
 const router = useRouter()
 const saving = ref(false)
+const loyalty = ref(null)
+const anyLoyalty = computed(() => anyLoyaltyEnabled())
+const walletOn = computed(() => isWalletEnabled())
+const pointsOn = computed(() => isPointsEnabled())
+const tierOn = computed(() => isMemberTierEnabled())
 const allFields = computed(() => profileFields())
 const basicFields = computed(() => allFields.value.filter((f) => BASIC_KEYS.has(f.key) || f.storage === 'phone'))
 const bizFields = computed(() =>
@@ -225,6 +248,16 @@ async function load() {
   form.profileEditable = data.profileEditable !== false
   form.extras = { ...emptyProfileExtras(), ...(data.extras || {}) }
   clearPasswords()
+  if (anyLoyalty.value) {
+    try {
+      const loy = await http.get('/api/loyalty/me')
+      loyalty.value = loy.data || null
+    } catch {
+      loyalty.value = null
+    }
+  } else {
+    loyalty.value = null
+  }
 }
 
 async function save() {
@@ -389,6 +422,26 @@ onMounted(load)
 }
 .who .uid {
   font-size: 13px;
+  color: var(--portal-muted, #6b7c8a);
+}
+.loy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px 16px;
+}
+.loy-grid .k {
+  display: block;
+  font-size: 12px;
+  color: var(--portal-muted, #6b7c8a);
+  margin-bottom: 4px;
+}
+.loy-grid strong {
+  font-size: 18px;
+  color: var(--portal-ink, #15202b);
+}
+.loy-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
   color: var(--portal-muted, #6b7c8a);
 }
 .block-title {

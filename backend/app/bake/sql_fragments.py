@@ -37,6 +37,36 @@ SYS_USER_STAFF_COLUMNS: list[tuple[str, str]] = [
     ("staff_kind", "VARCHAR(16) DEFAULT ''"),
 ]
 
+# 忠诚度：余额 / 积分 / 会员（运行时按能力使用）
+SYS_USER_LOYALTY_COLUMNS: list[tuple[str, str]] = [
+    ("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("points", "INT NOT NULL DEFAULT 0"),
+    ("member_tier", "VARCHAR(32) DEFAULT ''"),
+    ("spend_total_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+]
+
+ORDER_LOYALTY_COLUMNS: list[tuple[str, str]] = [
+    ("discount_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("pay_balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("points_earned", "INT NOT NULL DEFAULT 0"),
+]
+
+_USER_LEDGER_DDL = """
+CREATE TABLE IF NOT EXISTS user_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  delta DECIMAL(12,2) NOT NULL,
+  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(64) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  operator VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ledger_user (username, id)
+);
+"""
+
 _CREATE_TABLE_RE = re.compile(
     r"(CREATE TABLE IF NOT EXISTS\s+(\w+)\s*\()((?:.|\n)*?)(\);)",
     re.IGNORECASE,
@@ -68,9 +98,46 @@ def ensure_shared_sql_columns(sql: str) -> str:
         if t == "reservation":
             body = _inject_missing_columns(body, RESERVATION_EXTRA_COLUMNS)
         elif t in ("biz_order", "shop_order", "food_order", "hotel_order", "orders"):
-            body = _inject_missing_columns(body, ORDER_SHIP_COLUMNS)
+            body = _inject_missing_columns(body, ORDER_SHIP_COLUMNS + ORDER_LOYALTY_COLUMNS)
         elif t == "sys_user":
-            body = _inject_missing_columns(body, SYS_USER_STAFF_COLUMNS)
+            body = _inject_missing_columns(
+                body, SYS_USER_STAFF_COLUMNS + SYS_USER_LOYALTY_COLUMNS
+            )
         return f"{head}{body}{tail}"
 
-    return _CREATE_TABLE_RE.sub(repl, sql)
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if "user_ledger" not in out.lower():
+        out = out.rstrip() + "\n" + _USER_LEDGER_DDL
+    return out
+
+
+_TICKET_PROGRESS_DDL = """
+CREATE TABLE IF NOT EXISTS `{table}` (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  operator VARCHAR(64),
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_progress_ticket (ticket_id, id)
+);
+"""
+
+
+def ensure_ticket_progress_sql(sql: str, ticket_table: str | None) -> str:
+    """单据进度统一为 {ticket}_progress；去掉同域闲置的 {ticket}_log，避免双表语义。"""
+    t = (ticket_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    progress = f"{t}_progress"
+    log_name = f"{t}_log"
+    out = re.sub(
+        rf"CREATE TABLE IF NOT EXISTS\s+`?{re.escape(log_name)}`?\s*\((?:.|\n)*?\);\s*",
+        "",
+        sql,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    if re.search(rf"CREATE TABLE IF NOT EXISTS\s+`?{re.escape(progress)}`?\b", out, re.I):
+        return out
+    return out.rstrip() + "\n" + _TICKET_PROGRESS_DDL.format(table=progress)

@@ -99,6 +99,8 @@ def domain_sql(
     db_name: str,
     archetype: str | None = None,
     archetypes: list[str] | None = None,
+    *,
+    ticket_table: str | None = None,
 ) -> str:
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
@@ -124,10 +126,21 @@ def domain_sql(
             text = path.read_text(encoding="utf-8")
     else:
         text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
-    from app.bake.sql_fragments import ensure_shared_sql_columns
+    from app.bake.domains import DOMAINS
+    from app.bake.sql_fragments import ensure_shared_sql_columns, ensure_ticket_progress_sql
     from app.bake.staff_posts import append_staff_seed_sql
 
     text = ensure_shared_sql_columns(text)
+    resolved_ticket = ticket_table or (
+        ((DOMAINS.get(domain) or {}).get("runtime") or {}).get("ticket_table")
+    )
+    if not resolved_ticket and domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import shell_runtime
+
+        resolved_ticket = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
+            "ticket_table"
+        )
+    text = ensure_ticket_progress_sql(text, resolved_ticket)
     text = append_staff_seed_sql(text, domain, archetype)
     return (
         text.replace("${DB_NAME}", db_name)
@@ -162,6 +175,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         db_name,
         spec.get("archetype"),
         archetypes=spec.get("archetypes"),
+        ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
     )
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
@@ -326,6 +340,14 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             cat_limit_n = 0
         if cat_limit_n > 0:
             lines.append(f"  ticket-category-limit: {cat_limit_n}")
+        if ticket_ent.get("noShowAfterEnd") and ticket_ent.get("allowCheckin"):
+            lines.append("  ticket-no-show-after-end: true")
+            try:
+                pen = float(ticket_ent.get("noShowPenaltyYuan") or 0)
+            except (TypeError, ValueError):
+                pen = 0.0
+            if pen > 0:
+                lines.append(f"  ticket-no-show-penalty-yuan: {pen:g}")
     else:
         # Java 默认 enable-ticket=true，关闭时必须显式写出
         lines.append("  enable-ticket: false")
@@ -370,6 +392,31 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         if use_quota and not enable_ticket:
             lines.append(f"  use-quota: {'true' if use_quota else 'false'}")
 
+    loyalty = (spec.get("schema") or {}).get("loyalty") or {}
+    if "wallet" in caps:
+        lines.append("  wallet-enabled: true")
+    if "points" in caps:
+        lines.append("  points-enabled: true")
+        pts = loyalty.get("points") if isinstance(loyalty.get("points"), dict) else {}
+        try:
+            epy = int(pts.get("earnPerYuan") or 1)
+        except (TypeError, ValueError):
+            epy = 1
+        if epy > 0:
+            lines.append(f"  points-earn-per-yuan: {epy}")
+    if "spend_discount" in caps:
+        lines.append("  spend-discount-enabled: true")
+        sd = loyalty.get("spendDiscount") if isinstance(loyalty.get("spendDiscount"), dict) else {}
+        try:
+            th = float(sd.get("thresholdYuan") or 100)
+            off = float(sd.get("offYuan") or 10)
+        except (TypeError, ValueError):
+            th, off = 100.0, 10.0
+        lines.append(f"  spend-discount-threshold-yuan: {th:g}")
+        lines.append(f"  spend-discount-off-yuan: {off:g}")
+    if "member_tier" in caps:
+        lines.append("  member-tier-enabled: true")
+
     if "slot_reserve" in caps:
         st = runtime.get("slot_table") or "resource_slot"
         rt = runtime.get("reservation_table") or "reservation"
@@ -390,6 +437,28 @@ def _write_profile_fields_resource(dest: Path, schema: dict[str, Any]) -> None:
     fields = schema.get("profileFields") or []
     path = dest / "backend" / "src" / "main" / "resources" / "domain-profile-fields.json"
     _write(path, json.dumps(fields, ensure_ascii=False, indent=2))
+
+
+def _write_loyalty_resource(dest: Path, schema: dict[str, Any]) -> None:
+    """学生端 LoyaltyStore 读取会员档等配置。"""
+    loyalty = schema.get("loyalty") or {}
+    path = dest / "backend" / "src" / "main" / "resources" / "domain-loyalty.json"
+    _write(path, json.dumps(loyalty, ensure_ascii=False, indent=2))
+
+
+def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
+    """学生端 TicketStore 进度/提示文案：来自 schema.entities.ticket（及 archive 名）。"""
+    ticket = ((schema.get("entities") or {}).get("ticket") or {}) if isinstance(schema, dict) else {}
+    archive = ((schema.get("entities") or {}).get("archive") or {}) if isinstance(schema, dict) else {}
+    payload = {
+        "states": ticket.get("states") if isinstance(ticket.get("states"), dict) else {},
+        "verbs": ticket.get("verbs") if isinstance(ticket.get("verbs"), dict) else {},
+        "checkinLabel": ticket.get("checkinLabel") or "签到",
+        "finePaidLabel": ticket.get("finePaidLabel") or "费用已结清",
+        "archiveLabel": archive.get("label") or "",
+    }
+    path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
+    _write(path, json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def _write_factory_delivered(
@@ -463,6 +532,8 @@ def _write_factory_delivered(
         encoding="utf-8",
     )
     _write_profile_fields_resource(dest, schema)
+    _write_loyalty_resource(dest, schema)
+    _write_ticket_copy_resource(dest, schema)
 
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:

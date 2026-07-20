@@ -212,6 +212,12 @@ public final class SlotStore {
                     "已预约「" + slot.get("itemTitle") + "」" + slot.get("startAt") + " ~ " + slot.get("endAt"),
                     "reservation",
                     resvId);
+            MessageStore.notifyAdmins(
+                    "新预约",
+                    username + " 预约了「" + slot.get("itemTitle") + "」"
+                            + slot.get("startAt") + " ~ " + slot.get("endAt"),
+                    "reservation",
+                    resvId);
         } catch (Exception ignored) {
         }
         return getReservation(resvId);
