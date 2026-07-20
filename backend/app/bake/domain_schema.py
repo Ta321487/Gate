@@ -375,6 +375,17 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
             labels["noticePageLead"] = "与本系统相关的通知与须知，点击条目阅读全文。"
         else:
             labels["noticePageLead"] = "通知与须知，点击条目阅读全文。"
+    if not labels.get("messagesPageLead"):
+        ticket = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        remind = (ticket.get("verbs") or {}).get("remind")
+        if remind and remind != "提醒":
+            labels["messagesPageLead"] = f"审核结果、{remind}提醒与系统通知。"
+        elif ticket.get("allowCheckin"):
+            labels["messagesPageLead"] = "审核结果、活动提醒与系统通知。"
+        else:
+            labels["messagesPageLead"] = "审核结果与系统通知。"
+    if not labels.get("recommendLatestHint"):
+        labels["recommendLatestHint"] = "最新发布"
     if enabled and excerpt and not seeds.get("noticeBody"):
         seeds["noticeBody"] = f"系统已就绪。{excerpt}"[:200]
     return {

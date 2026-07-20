@@ -11,10 +11,10 @@ from app.models import Job, Project
 from app.schemas import ApiOk, JobOut
 from app.services.jobs import cancel_job, resume_step_index, start_job
 
-router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+router = APIRouter(prefix="/api/jobs", tags=["任务"])
 
 
-@router.get("", response_model=list[JobOut])
+@router.get("", response_model=list[JobOut], summary="任务列表")
 async def list_jobs(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Job).order_by(Job.id.desc()).limit(100))
     jobs = list(result.scalars().all())
@@ -27,7 +27,7 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
     return out
 
 
-@router.post("/purge-orphans", response_model=ApiOk)
+@router.post("/purge-orphans", response_model=ApiOk, summary="清理孤儿任务")
 async def purge_orphans(db: AsyncSession = Depends(get_db)):
     """删除 project_id 已不存在对应项目的任务。"""
     result = await db.execute(
@@ -38,7 +38,7 @@ async def purge_orphans(db: AsyncSession = Depends(get_db)):
     return ApiOk(message=f"已清空 {n} 条孤儿任务", data={"deleted": n})
 
 
-@router.get("/{job_id}", response_model=JobOut)
+@router.get("/{job_id}", response_model=JobOut, summary="任务详情")
 async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
     j = await db.get(Job, job_id)
     if not j:
@@ -49,7 +49,7 @@ async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
     return item
 
 
-@router.post("/{job_id}/cancel", response_model=ApiOk)
+@router.post("/{job_id}/cancel", response_model=ApiOk, summary="取消任务")
 async def cancel(job_id: int, db: AsyncSession = Depends(get_db)):
     ok = await cancel_job(db, job_id)
     if not ok:
@@ -57,7 +57,7 @@ async def cancel(job_id: int, db: AsyncSession = Depends(get_db)):
     return ApiOk(message="已取消")
 
 
-@router.post("/{job_id}/retry", response_model=ApiOk)
+@router.post("/{job_id}/retry", response_model=ApiOk, summary="重试任务")
 async def retry(job_id: int, db: AsyncSession = Depends(get_db)):
     old = await db.get(Job, job_id)
     if not old:

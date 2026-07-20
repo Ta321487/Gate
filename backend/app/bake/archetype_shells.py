@@ -645,6 +645,7 @@ def build_generic_shell_schema(
                 "registerRoleHint": "注册后即可使用",
                 "noticePageTitle": "公告",
                 "noticePageLead": "通知与须知，点击条目阅读全文。",
+                "messagesPageLead": "审核结果与系统通知。",
             },
             "seeds": {
                 "noticeTitle": "系统公告",

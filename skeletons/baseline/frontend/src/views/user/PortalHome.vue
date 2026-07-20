@@ -29,7 +29,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FACTORY_DELIVERED } from '../../factoryDelivered.js'
-import { schemaLabels, schemaMenus } from '../../utils/domainSchema.js'
+import { getSchema, schemaLabels, schemaMenus, ticketCopy } from '../../utils/domainSchema.js'
 import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/session.js'
 
 const router = useRouter()
@@ -63,12 +63,32 @@ const LEADS = {
   my_tickets: '查看申请进度与办理记录',
   content: '通知、须知与临时公告',
   profile: '昵称、头像与个人资料',
-  cart: '查看已选商品并结算',
-  my_orders: '跟踪订单状态',
   my_reservations: '查看与管理预约',
   slots: '选择时段并提交预约',
   week_calendar: '按周查看日程安排',
-  messages: '审核结果与系统通知',
+}
+
+function messagesLead() {
+  const lead = labels.messagesPageLead
+  if (lead) return lead.replace(/。$/, '')
+  const ticket = ticketCopy()
+  const remind = ticket.verbs?.remind
+  if (remind && remind !== '提醒') return `审核结果、${remind}提醒与系统通知`
+  if (ticket.allowCheckin) return '审核结果、活动提醒与系统通知'
+  return '审核结果与系统通知'
+}
+
+function cardLead(key, menuLabelText) {
+  if (key === 'messages') return messagesLead()
+  if (key === 'cart') {
+    const cart = menuLabelText || '购物车'
+    return `查看已选内容并结算（${cart}）`
+  }
+  if (key === 'my_orders') {
+    const order = getSchema()?.entities?.order?.label || '订单'
+    return `跟踪${order}状态`
+  }
+  return LEADS[key] || `进入${menuLabelText}`
 }
 
 const GUEST_OK = new Set(['archive', 'content', 'slots', 'home'])
@@ -93,7 +113,7 @@ const cards = computed(() => {
       key: m.key,
       to,
       label: m.label,
-      lead: LEADS[m.key] || `进入${m.label}`,
+      lead: cardLead(m.key, m.label),
       needLogin: NEED_LOGIN.has(m.key),
     })
   }

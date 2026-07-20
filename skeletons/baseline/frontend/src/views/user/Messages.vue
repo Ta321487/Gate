@@ -4,7 +4,7 @@
       <div class="hero-row">
         <div>
           <h1>站内消息</h1>
-          <p>审核结果、催还提醒与系统通知。</p>
+          <p>{{ pageLead }}</p>
         </div>
         <el-button v-if="unread" type="primary" plain @click="readAll">全部已读</el-button>
       </div>
@@ -39,9 +39,22 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+/** 基线消息：导语来自 Domain Schema，避免写死「催还」等借用域词 */
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { schemaLabels, ticketCopy } from '../../utils/domainSchema.js'
+
+const labels = computed(() => schemaLabels())
+const pageLead = computed(() => {
+  const lead = labels.value.messagesPageLead
+  if (lead) return lead
+  const ticket = ticketCopy()
+  const remind = ticket.verbs?.remind
+  if (remind && remind !== '提醒') return `审核结果、${remind}提醒与系统通知。`
+  if (ticket.allowCheckin) return '审核结果、活动提醒与系统通知。'
+  return '审核结果与系统通知。'
+})
 
 const loading = ref(false)
 const list = ref([])

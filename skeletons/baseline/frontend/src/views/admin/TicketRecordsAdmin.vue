@@ -21,7 +21,7 @@
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
       <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
-      <el-table-column v-if="showFine" label="罚款" width="100">
+      <el-table-column v-if="showFine" :label="fineLabel" width="100">
         <template #default="{ row }">
           <span v-if="row.fineYuan > 0">¥{{ row.fineYuan }} · {{ row.fineStatus || '—' }}</span>
           <span v-else>—</span>
@@ -58,7 +58,7 @@
             link
             type="warning"
             @click="doFinePaid(row)"
-          >罚款已缴</el-button>
+          >{{ finePaidLabel }}</el-button>
           <el-button
             v-if="row.status === 'approved' || row.status === 'overdue'"
             link
@@ -88,7 +88,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getDomain, getSchema, ticketCopy } from '../../utils/domainSchema.js'
+import { getDomain, getSchema, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -100,10 +100,12 @@ const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
-const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还')
+const dueLabel = computed(() => ticketDueLabel())
+const fineLabel = computed(() => ticketFineLabel())
+const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
 const showPickup = computed(() => ['DOM-LOST', 'DOM-ASSET'].includes(domain.value))
-const showFine = computed(() => ['DOM-LIBRARY', 'DOM-EQUIP'].includes(domain.value))
+const showFine = computed(() => ['DOM-LIBRARY', 'DOM-EQUIP'].includes(domain.value) || !!ticket.fineLabel)
 
 function remarkText(v) {
   if (!v) return '—'
@@ -175,9 +177,9 @@ async function doPickup(row) {
 }
 
 async function doFinePaid(row) {
-  await ElMessageBox.confirm(`确认「${row.title || row.id}」罚款已缴？`, '罚款已缴')
+  await ElMessageBox.confirm(`确认「${row.title || row.id}」${finePaidLabel.value}？`, finePaidLabel.value)
   await http.post(`/api/tickets/${row.id}/fine-paid`)
-  ElMessage.success('已标记罚款已缴')
+  ElMessage.success(`已标记${finePaidLabel.value}`)
   load()
 }
 

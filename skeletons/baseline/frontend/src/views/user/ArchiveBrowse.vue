@@ -213,7 +213,7 @@ import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, getDomain, getSchema, ticketCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, getDomain, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import {
   guestTeaserLimit,
@@ -241,7 +241,7 @@ const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
-const dueLabel = computed(() => ticket.dueLabel || ticket.dueAtLabel || '应还日期')
+const dueLabel = computed(() => ticketDueLabel('到期日'))
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const allowQty = computed(() => !!ticket.allowQty)
@@ -286,14 +286,16 @@ const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt')
 const hasRecommend = computed(() => caps.value.includes('recommend'))
 const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
 const isSlotMode = computed(() => caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
+const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
+const resvVerb = computed(() => getSchema()?.entities?.reservation?.verbs?.apply || '预约')
 const primaryActionLabel = computed(() => {
-  if (isOrderMode.value) return '加入购物车'
+  if (isOrderMode.value) return `加入${cartLabel.value}`
   if (isSlotMode.value) return '选时段'
   return verbs.value.apply || '申请'
 })
 const actionHint = computed(() => {
-  if (isOrderMode.value) return '加入购物车并下单'
-  if (isSlotMode.value) return '选择时段预约'
+  if (isOrderMode.value) return `加入${cartLabel.value}并下单`
+  if (isSlotMode.value) return `选择时段${resvVerb.value}`
   return `提交${verbs.value.apply || '申请'}`
 })
 
@@ -410,7 +412,7 @@ async function onPrimary(row) {
   if (!requireLogin(router)) return
   if (isOrderMode.value) {
     await http.post('/api/cart', { itemId: row.id, qty: 1 })
-    ElMessage.success('已加入购物车')
+    ElMessage.success(`已加入${cartLabel.value}`)
     return
   }
   if (isSlotMode.value) {

@@ -53,9 +53,9 @@ public final class TicketStore {
     private static boolean checkMutex = false;
     /** L1：同一分类下进行中单据上限；≤0 表示不限 */
     private static int categoryLimit = 0;
-    /** L1：活动签到口令 */
+    /** L1：签到口令 */
     private static boolean allowCheckin = false;
-    /** 申请时可自选应还日（写入 due_at；审批时沿用） */
+    /** 申请时可自选到期日（写入 due_at；审批时沿用） */
     private static boolean pickLoanPeriod = false;
     /** 申请时可填数量（扣/还库存按 qty） */
     private static boolean allowQty = false;
@@ -271,7 +271,7 @@ public final class TicketStore {
 
     /**
      * @param qty 申请数量；未开 allowQty 时固定为 1
-     * @param dueAt 自选应还日；未开 pickLoanPeriod 时忽略
+     * @param dueAt 自选到期日；未开 pickLoanPeriod 时忽略
      * @param periodStart 起止日期（请假等）；未开 pickDateRange 时忽略
      * @param periodEnd 结束日期
      */
@@ -392,15 +392,15 @@ public final class TicketStore {
     private static LocalDateTime resolveRequestedDue(String dueAt) {
         if (!pickLoanPeriod) return null;
         if (dueAt == null || dueAt.isBlank()) {
-            throw new IllegalStateException("请选择应还日期");
+            throw new IllegalStateException("请选择到期日期");
         }
         LocalDateTime due = parseDateTimeFlexible(dueAt.trim(), true);
         LocalDateTime now = LocalDateTime.now();
         if (!due.isAfter(now)) {
-            throw new IllegalStateException("应还日期须晚于当前时间");
+            throw new IllegalStateException("到期日期须晚于当前时间");
         }
         if (due.isAfter(now.plusDays(90))) {
-            throw new IllegalStateException("应还日期不能超过 90 天");
+            throw new IllegalStateException("到期日期不能超过 90 天");
         }
         return due;
     }
@@ -576,11 +576,11 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> markFinePaid(long ticketId, String operator) {
-        if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持罚款登记");
+        if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持逾期费用登记");
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         db().update("UPDATE " + TICKET + " SET fine_status='paid' WHERE id=?", ticketId);
-        appendProgress(ticketId, "fine_paid", operator, "罚款已缴");
+        appendProgress(ticketId, "fine_paid", operator, "费用已结清");
         return get(ticketId);
     }
 

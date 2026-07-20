@@ -51,7 +51,7 @@ const title = computed(
 const modeHint = computed(() => {
   if (mode.value === 'personalized') return '根据你的偏好与历史'
   if (mode.value === 'hot') return '当前热门'
-  if (mode.value === 'latest') return '最新上架'
+  if (mode.value === 'latest') return labels.recommendLatestHint || '最新发布'
   return ''
 })
 

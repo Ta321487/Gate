@@ -25,6 +25,15 @@
           <ul v-if="card.bullets?.length">
             <li v-for="(b, i) in card.bullets" :key="i">{{ b }}</li>
           </ul>
+          <p v-if="card.links?.length" class="help-links">
+            <a
+              v-for="l in card.links"
+              :key="l.href"
+              :href="l.href"
+              target="_blank"
+              rel="noopener"
+            >{{ l.label }}</a>
+          </p>
           <dl v-if="card.terms?.length" class="help-glossary">
             <div v-for="t in card.terms" :key="t.name" class="help-glossary-row">
               <dt>{{ t.name }}</dt>
@@ -77,7 +86,7 @@ const cards = [
       },
       {
         title: '预览与验收',
-        body: '于「运行」页启动前后端预览做冒烟检查；于「产物 / 数据库」页核对门禁、表结构与 E-R 图。',
+        body: '于「运行」页启动前后端预览做冒烟检查；于「产物 / 对照」页核对门禁、表结构、学生端 API 与 E-R 图。',
       },
       {
         title: '交付',
@@ -90,7 +99,7 @@ const cards = [
     tag: 'DoD',
     lead: '质量门禁为交付定义（DoD）的组成部分。主流程或功能清单等关键项未通过时，系统禁止下载 ZIP，以防不合格工程外发。',
     bullets: [
-      '门禁明细见项目详情「产物 / 数据库」中的「质量门禁 · 交付 DoD」。',
+      '门禁明细见项目详情「产物 / 对照」中的「门禁 / 清单」。',
       '骨架或运行时升级后，既有工作区可能与当前规则不一致，须重新生成。',
       '门禁通过仅表示结构与声明能力达标，不替代运营人员对业务路径的人工预览确认。',
     ],
@@ -98,12 +107,36 @@ const cards = [
   {
     title: '数据库结构',
     tag: '产物',
-    lead: '生成完成后，可在「产物 / 数据库」查看数据表、字段中文名及类型，并导出 E-R 图。',
+    lead: '生成完成后，可在「产物 / 对照」查看数据表、字段中文名及类型，并导出 E-R 图。',
     bullets: [
       '字段类型按标准 MySQL 写法展示（如 varchar(60)、decimal(10,2)）。',
       '可通过开关切换「合并类型」与「类型 / 长度分列」；复制内容与当前开关一致。',
       '单表复制为制表符分隔文本，可贴入 Word 后使用「文本转换成表格」。',
       '表头为字段名、中文名、数据类型（分列时另含长度）；中文名已表达业务含义，不设说明列。',
+    ],
+  },
+  {
+    title: '学生端 API',
+    tag: '产物',
+    lead: '「产物 / 对照 → 学生端 API」静态扫描工作区 Controller，列出方法、路径与 Handler，便于对照门禁主流程。',
+    bullets: [
+      '按门户 / 管理端 / 基线等面筛选；可搜索 path 或 handler。',
+      '命中 Spec.gate.flow_api 的接口会标契约键（如 apply / place）。',
+      '复制为「方法 + 路径」地址列表；联调基址取运行页后端地址。该视图仅工厂侧，不写入学生 ZIP。',
+    ],
+  },
+  {
+    title: '工厂后端 API',
+    tag: '运维',
+    lead: '毕设港自身（Python / FastAPI）的运维接口，与学生端 ZIP 无关；用于本机调试工厂、对接脚本或 Postman。',
+    bullets: [
+      '涵盖项目、任务、DeepSeek、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。',
+      '勿与「产物 → 学生端 API」混淆：那是学生工程 Controller，这是工厂 Python 服务。',
+      '健康检查：GET /api/health。',
+    ],
+    links: [
+      { href: '/docs', label: 'Swagger · /docs' },
+      { href: '/redoc', label: 'ReDoc · /redoc' },
     ],
   },
   {

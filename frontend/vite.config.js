@@ -12,6 +12,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': { target: apiProxy, changeOrigin: true },
+      '/docs': { target: apiProxy, changeOrigin: true },
+      '/redoc': { target: apiProxy, changeOrigin: true },
+      '/openapi.json': { target: apiProxy, changeOrigin: true },
     },
   },
 })

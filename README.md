@@ -53,6 +53,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - 复制 `.env.example` 后默认指向 MySQL；若暂不用 Docker，请改回 SQLite 或先 `docker compose up -d`
 - DeepSeek Key 仅环境变量：`DEEPSEEK_API_KEY`（可写 `.env`，界面只读掩码；无 Key 也可 bake，业务岛走确定性填充）
 - 健康检查：`GET http://127.0.0.1:8000/api/health`
+- 工厂 API 文档（调试用，非学生端）：http://127.0.0.1:8000/docs · http://127.0.0.1:8000/redoc
 
 ### 3. 运营前端（`:5173`）
 

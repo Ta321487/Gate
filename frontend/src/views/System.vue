@@ -1,7 +1,14 @@
 <template>
   <div>
     <h1 class="page-title">运行环境</h1>
-    <p class="page-desc">本机依赖与端口池（限制同时预览数，不限制选题库存）。服务器部署时设置 GF_PUBLIC_HOST 为对外 IP/域名。</p>
+    <p class="page-desc">
+      本机依赖与端口池（限制同时预览数，不限制选题库存）。服务器部署时设置 GF_PUBLIC_HOST 为对外 IP/域名。
+      工厂自身（Python）接口文档见
+      <a href="/docs" target="_blank" rel="noopener">/docs</a>
+      ·
+      <a href="/redoc" target="_blank" rel="noopener">/redoc</a>
+      （与学生端 ZIP 无关）。
+    </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else-if="info">
       <div class="stats">

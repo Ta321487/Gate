@@ -3,170 +3,191 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectSummary(BaseModel):
-    id: str
-    title: str
-    status: str
-    archetype: str
-    domain: str
-    backend_running: bool
-    frontend_running: bool
-    backend_port: int
-    frontend_port: int
-    zip_ready: bool
-    updated_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True, title="项目摘要")
 
-    model_config = {"from_attributes": True}
+    id: str = Field(description="项目 ID")
+    title: str = Field(description="标题")
+    status: str = Field(description="状态")
+    archetype: str = Field(description="骨架")
+    domain: str = Field(description="领域")
+    backend_running: bool = Field(description="后端预览是否在跑")
+    frontend_running: bool = Field(description="前端预览是否在跑")
+    backend_port: int = Field(description="后端端口")
+    frontend_port: int = Field(description="前端端口")
+    zip_ready: bool = Field(description="ZIP 是否可下载")
+    updated_at: Optional[datetime] = Field(default=None, description="更新时间")
+    created_at: Optional[datetime] = Field(default=None, description="创建时间")
 
 
 class ProjectDetail(ProjectSummary):
-    source_filename: Optional[str] = None
-    source_size: int = 0
-    recommended_arch: str
-    recommended_domain: str
-    confidence: float
-    theme: str
-    llm_enabled: bool
-    password_hash: str = "none"
-    match_locked: bool
-    match_confirmed: bool
-    match_mode: str
-    db_name: str
-    spec: dict[str, Any] = Field(default_factory=dict)
-    gates: dict[str, Any] = Field(default_factory=dict)
-    checklist: list[Any] = Field(default_factory=list)
-    workspace_path: Optional[str] = None
-    zip_path: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True, title="项目详情")
+
+    source_filename: Optional[str] = Field(default=None, description="开题文件名")
+    source_size: int = Field(default=0, description="开题文件大小（字节）")
+    recommended_arch: str = Field(description="推荐骨架")
+    recommended_domain: str = Field(description="推荐领域")
+    confidence: float = Field(description="匹配置信度")
+    theme: str = Field(description="主题")
+    llm_enabled: bool = Field(description="是否启用 LLM")
+    password_hash: str = Field(default="none", description="学生端密码哈希策略")
+    match_locked: bool = Field(description="匹配是否锁定")
+    match_confirmed: bool = Field(description="匹配是否已确认")
+    match_mode: str = Field(description="匹配模式")
+    db_name: str = Field(description="学生库名")
+    spec: dict[str, Any] = Field(default_factory=dict, description="Spec 配置")
+    gates: dict[str, Any] = Field(default_factory=dict, description="门禁结果")
+    checklist: list[Any] = Field(default_factory=list, description="开题对照清单")
+    workspace_path: Optional[str] = Field(default=None, description="工作区路径")
+    zip_path: Optional[str] = Field(default=None, description="ZIP 路径")
 
 
 class MatchUpdate(BaseModel):
-    archetype: Optional[str] = None
-    domain: Optional[str] = None
-    theme: Optional[str] = None
-    llm_enabled: Optional[bool] = None
-    password_hash: Optional[str] = None
-    unlock: Optional[bool] = None
-    reset: Optional[bool] = None
-    confirm: Optional[bool] = None
-    ack: Optional[bool] = None
+    model_config = ConfigDict(title="匹配更新")
+
+    archetype: Optional[str] = Field(default=None, description="骨架 ID")
+    domain: Optional[str] = Field(default=None, description="领域 ID")
+    theme: Optional[str] = Field(default=None, description="主题 ID")
+    llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
+    password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
+    unlock: Optional[bool] = Field(default=None, description="解锁匹配")
+    reset: Optional[bool] = Field(default=None, description="重置为推荐")
+    confirm: Optional[bool] = Field(default=None, description="确认匹配")
+    ack: Optional[bool] = Field(default=None, description="确认知晓")
 
 
 class JobOut(BaseModel):
-    id: int
-    project_id: str
-    status: str
-    step: str
-    progress: int
-    steps: list[Any] = Field(default_factory=list)
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    project_title: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True, title="任务")
 
-    model_config = {"from_attributes": True}
+    id: int = Field(description="任务 ID")
+    project_id: str = Field(description="项目 ID")
+    status: str = Field(description="状态")
+    step: str = Field(description="当前步骤")
+    progress: int = Field(description="进度 0–100")
+    steps: list[Any] = Field(default_factory=list, description="步骤明细")
+    error: Optional[str] = Field(default=None, description="错误信息")
+    started_at: Optional[datetime] = Field(default=None, description="开始时间")
+    finished_at: Optional[datetime] = Field(default=None, description="结束时间")
+    created_at: Optional[datetime] = Field(default=None, description="创建时间")
+    project_title: Optional[str] = Field(default=None, description="项目标题")
 
 
 class ProjectTokenUsage(BaseModel):
-    project_id: str
-    tokens: int = 0
-    calls: int = 0
-    last_at: Optional[datetime] = None
-    deleted: bool = False
+    model_config = ConfigDict(title="项目 Token 用量")
+
+    project_id: str = Field(description="项目 ID")
+    tokens: int = Field(default=0, description="Token 数")
+    calls: int = Field(default=0, description="调用次数")
+    last_at: Optional[datetime] = Field(default=None, description="最近调用时间")
+    deleted: bool = Field(default=False, description="项目是否已删除")
 
 
 class DeepSeekSettings(BaseModel):
-    base_url: str
-    model: str
-    thinking: bool = True
-    key_configured: bool
-    key_masked: str
-    parse_spec: bool = True
-    island_fill: bool = True
-    auto_fix: bool = True
-    qa_report: bool = False
-    project_token_budget: int = 100_000
-    monthly_token_budget: int = 1_000_000
-    fix_rounds_max: int = 5
-    monthly_tokens_used: int = 0
-    project_usages: list[ProjectTokenUsage] = Field(default_factory=list)
+    model_config = ConfigDict(title="DeepSeek 配置")
+
+    base_url: str = Field(description="API 基址")
+    model: str = Field(description="模型名")
+    thinking: bool = Field(default=True, description="思考模式")
+    key_configured: bool = Field(description="是否已配置 Key")
+    key_masked: str = Field(description="Key 掩码")
+    parse_spec: bool = Field(default=True, description="解析 Spec")
+    island_fill: bool = Field(default=True, description="业务岛填充")
+    auto_fix: bool = Field(default=True, description="自动修复")
+    qa_report: bool = Field(default=False, description="质量报告")
+    project_token_budget: int = Field(default=100_000, description="单项目 Token 预算")
+    monthly_token_budget: int = Field(default=1_000_000, description="月度 Token 预算")
+    fix_rounds_max: int = Field(default=5, description="最大修复轮数")
+    monthly_tokens_used: int = Field(default=0, description="本月已用 Token")
+    project_usages: list[ProjectTokenUsage] = Field(default_factory=list, description="分项目用量")
 
 
 class DeepSeekUpdate(BaseModel):
-    base_url: Optional[str] = None
-    model: Optional[str] = None
-    thinking: Optional[bool] = None
-    parse_spec: Optional[bool] = None
-    island_fill: Optional[bool] = None
-    auto_fix: Optional[bool] = None
-    qa_report: Optional[bool] = None
-    project_token_budget: Optional[int] = None
-    monthly_token_budget: Optional[int] = None
-    fix_rounds_max: Optional[int] = None
+    model_config = ConfigDict(title="DeepSeek 配置更新")
+
+    base_url: Optional[str] = Field(default=None, description="API 基址")
+    model: Optional[str] = Field(default=None, description="模型名")
+    thinking: Optional[bool] = Field(default=None, description="思考模式")
+    parse_spec: Optional[bool] = Field(default=None, description="解析 Spec")
+    island_fill: Optional[bool] = Field(default=None, description="业务岛填充")
+    auto_fix: Optional[bool] = Field(default=None, description="自动修复")
+    qa_report: Optional[bool] = Field(default=None, description="质量报告")
+    project_token_budget: Optional[int] = Field(default=None, description="单项目 Token 预算")
+    monthly_token_budget: Optional[int] = Field(default=None, description="月度 Token 预算")
+    fix_rounds_max: Optional[int] = Field(default=None, description="最大修复轮数")
 
 
 class DeepSeekBalanceInfo(BaseModel):
-    currency: str = "CNY"
-    total_balance: str = "0"
-    granted_balance: str = "0"
-    topped_up_balance: str = "0"
+    model_config = ConfigDict(title="余额明细")
+
+    currency: str = Field(default="CNY", description="币种")
+    total_balance: str = Field(default="0", description="总余额")
+    granted_balance: str = Field(default="0", description="赠送余额")
+    topped_up_balance: str = Field(default="0", description="充值余额")
 
 
 class DeepSeekBalance(BaseModel):
-    ok: bool = True
-    message: str = ""
-    is_available: Optional[bool] = None
-    balance_infos: list[DeepSeekBalanceInfo] = Field(default_factory=list)
+    model_config = ConfigDict(title="账户余额")
+
+    ok: bool = Field(default=True, description="是否成功")
+    message: str = Field(default="", description="说明")
+    is_available: Optional[bool] = Field(default=None, description="账户是否可用")
+    balance_infos: list[DeepSeekBalanceInfo] = Field(default_factory=list, description="余额列表")
 
 
 class StatsOut(BaseModel):
-    total: int
-    generating: int
-    previewable: int
-    monthly_tokens: int
-    monthly_budget: int
+    model_config = ConfigDict(title="项目统计")
+
+    total: int = Field(description="总数")
+    generating: int = Field(description="生成中")
+    previewable: int = Field(description="可预览")
+    monthly_tokens: int = Field(description="本月 Token")
+    monthly_budget: int = Field(description="月度预算")
 
 
 class SystemInfo(BaseModel):
-    jdk: str
-    maven: str
-    node: str
-    mysql: str  # 学生项目库探测
-    factory_db: str = ""  # 工厂元数据（多为 SQLite）
-    public_host: str = "127.0.0.1"  # 预览/复制用对外主机
-    bind_host: str = "127.0.0.1"  # 学生进程监听
-    backend_ports: str
-    frontend_ports: str
-    used_backend: list[int]
-    used_frontend: list[int]
-    # 工厂进程表在跑 / 僵尸占用（「释放」只动 idle_*）
-    managed_backend: list[int] = []
-    managed_frontend: list[int] = []
-    idle_backend: list[int] = []
-    idle_frontend: list[int] = []
-    workspace: str
-    uploads: str
-    skeletons: str
+    model_config = ConfigDict(title="运行环境")
+
+    jdk: str = Field(description="JDK 版本")
+    maven: str = Field(description="Maven 版本")
+    node: str = Field(description="Node 版本")
+    mysql: str = Field(description="学生 MySQL 探测")
+    factory_db: str = Field(default="", description="工厂元数据库")
+    public_host: str = Field(default="127.0.0.1", description="对外主机")
+    bind_host: str = Field(default="127.0.0.1", description="监听主机")
+    backend_ports: str = Field(description="后端端口池")
+    frontend_ports: str = Field(description="前端端口池")
+    used_backend: list[int] = Field(description="已占用后端端口")
+    used_frontend: list[int] = Field(description="已占用前端端口")
+    managed_backend: list[int] = Field(default_factory=list, description="托管中后端端口")
+    managed_frontend: list[int] = Field(default_factory=list, description="托管中前端端口")
+    idle_backend: list[int] = Field(default_factory=list, description="可释放后端端口")
+    idle_frontend: list[int] = Field(default_factory=list, description="可释放前端端口")
+    workspace: str = Field(description="工作区目录")
+    uploads: str = Field(description="上传目录")
+    skeletons: str = Field(description="骨架目录")
 
 
 class RuntimeState(BaseModel):
-    backend_status: str = "stopped"  # stopped|starting|healthy|error
-    frontend_status: str = "stopped"
-    backend_port: int
-    frontend_port: int
-    public_host: str = "127.0.0.1"
-    project_status: str = ""  # 与项目顶栏对齐（如 generated / running）
-    preview_url: Optional[str] = None
-    backend_url: Optional[str] = None
-    backend_log_tail: str = ""
-    frontend_log_tail: str = ""
+    model_config = ConfigDict(title="预览运行状态")
+
+    backend_status: str = Field(default="stopped", description="后端状态")
+    frontend_status: str = Field(default="stopped", description="前端状态")
+    backend_port: int = Field(description="后端端口")
+    frontend_port: int = Field(description="前端端口")
+    public_host: str = Field(default="127.0.0.1", description="对外主机")
+    project_status: str = Field(default="", description="项目状态")
+    preview_url: Optional[str] = Field(default=None, description="前端预览地址")
+    backend_url: Optional[str] = Field(default=None, description="后端地址")
+    backend_log_tail: str = Field(default="", description="后端日志尾")
+    frontend_log_tail: str = Field(default="", description="前端日志尾")
 
 
 class ApiOk(BaseModel):
-    ok: bool = True
-    message: str = ""
-    data: Any = None
+    model_config = ConfigDict(title="通用成功响应")
+
+    ok: bool = Field(default=True, description="是否成功")
+    message: str = Field(default="", description="说明")
+    data: Any = Field(default=None, description="附加数据")

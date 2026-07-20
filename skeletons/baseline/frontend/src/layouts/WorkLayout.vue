@@ -26,7 +26,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FACTORY_DELIVERED } from '../factoryDelivered.js'
 import { staffLoginPath } from '../utils/authEntry.js'
-import { schemaLabels } from '../utils/domainSchema.js'
+import { getSchema, schemaLabels } from '../utils/domainSchema.js'
 import {
   currentStaffPost,
   staffPostLabel,
@@ -44,15 +44,17 @@ const active = computed(() => route.path)
 const postId = currentStaffPost()
 const postLabel = computed(() => staffPostLabel(postId, '业务员工'))
 
-const PAGE_META = {
-  tickets: { index: '/staff/tickets', label: '工单作业' },
-  orders: { index: '/staff/orders', label: '订单作业' },
-  slots: { index: '/staff/slots', label: '预约作业' },
-}
-
 const menuItems = computed(() => {
+  const schema = getSchema()
+  const orderLab = schema?.entities?.order?.label || '订单'
+  const resvLab = schema?.entities?.reservation?.label || '预约'
+  const meta = {
+    tickets: { index: '/staff/tickets', label: '工单作业' },
+    orders: { index: '/staff/orders', label: `${orderLab}作业` },
+    slots: { index: '/staff/slots', label: `${resvLab}作业` },
+  }
   const pages = workerAllowedPages(postId)
-  const items = pages.map((p) => PAGE_META[p]).filter(Boolean)
+  const items = pages.map((p) => meta[p]).filter(Boolean)
   return items.length ? items : [{ index: '/staff/tickets', label: '作业台' }]
 })
 

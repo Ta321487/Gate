@@ -28,7 +28,7 @@ from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/projects", tags=["projects"])
+router = APIRouter(prefix="/api/projects", tags=["项目"])
 
 
 def _detail(p: Project) -> ProjectDetail:
@@ -40,15 +40,15 @@ def _detail(p: Project) -> ProjectDetail:
     return d
 
 
-@router.get("/stats", response_model=StatsOut)
+@router.get("/stats", response_model=StatsOut, summary="项目统计")
 async def project_stats(db: AsyncSession = Depends(get_db)):
     return StatsOut(**(await project_svc.stats(db)))
 
 
-@router.get("", response_model=list[ProjectSummary])
+@router.get("", response_model=list[ProjectSummary], summary="项目列表")
 async def list_projects(
-    q: str = "",
-    filter: str = Query("all", alias="filter"),
+    q: str = Query("", description="标题或 ID 关键字"),
+    filter: str = Query("all", alias="filter", description="all | active | done | fail"),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
@@ -84,8 +84,8 @@ async def list_projects(
     return summaries
 
 
-@router.post("/upload", response_model=ProjectDetail)
-async def upload_proposal(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+@router.post("/upload", response_model=ProjectDetail, summary="上传开题")
+async def upload_proposal(file: UploadFile = File(..., description="开题文件 PDF / Word / TXT"), db: AsyncSession = Depends(get_db)):
     settings = get_settings()
     suffix = Path(file.filename or "proposal.txt").suffix.lower()
     if suffix not in {".pdf", ".doc", ".docx", ".txt"}:
@@ -106,7 +106,7 @@ def datetime_stamp() -> str:
     return datetime.now().strftime("%Y%m%d%H%M%S")
 
 
-@router.get("/{project_id}", response_model=ProjectDetail)
+@router.get("/{project_id}", response_model=ProjectDetail, summary="项目详情")
 async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
@@ -121,7 +121,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     return _detail(p)
 
 
-@router.patch("/{project_id}/match", response_model=ProjectDetail)
+@router.patch("/{project_id}/match", response_model=ProjectDetail, summary="更新匹配")
 async def patch_match(project_id: str, body: MatchUpdate, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
@@ -133,7 +133,7 @@ async def patch_match(project_id: str, body: MatchUpdate, db: AsyncSession = Dep
     return _detail(p)
 
 
-@router.post("/{project_id}/generate", response_model=ApiOk)
+@router.post("/{project_id}/generate", response_model=ApiOk, summary="启动生成")
 async def generate(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
@@ -144,7 +144,7 @@ async def generate(project_id: str, db: AsyncSession = Depends(get_db)):
     return ApiOk(message=f"Job #{job.id} 已启动", data={"job_id": job.id})
 
 
-@router.delete("/{project_id}", response_model=ApiOk)
+@router.delete("/{project_id}", response_model=ApiOk, summary="删除项目")
 async def delete_project(
     project_id: str,
     keep_db: bool = Query(False, description="为 true 时保留学生 MySQL 库"),
@@ -185,7 +185,7 @@ async def delete_project(
     return ApiOk(message=f"已删除{db_note}")
 
 
-@router.get("/{project_id}/download")
+@router.get("/{project_id}/download", summary="下载 ZIP")
 async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
@@ -204,7 +204,7 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/{project_id}/schema")
+@router.get("/{project_id}/schema", summary="库表结构")
 async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     """表结构 + 推断联系（供产物页展示）。"""
     from app.bake.schema_er import load_schema_model
@@ -224,7 +224,23 @@ async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{project_id}/schema/er.svg")
+@router.get("/{project_id}/apis", summary="学生端 API 清单")
+async def get_apis(project_id: str, db: AsyncSession = Depends(get_db)):
+    """学生端 REST 映射清单（静态扫描 Controller，供产物页对照）。"""
+    from app.bake.api_inventory import load_api_inventory
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    inv = load_api_inventory(Path(p.workspace_path), p.spec if isinstance(p.spec, dict) else None)
+    if not inv:
+        raise HTTPException(404, "未找到 Controller")
+    return inv
+
+
+@router.get("/{project_id}/schema/er.svg", summary="下载 E-R 图 SVG")
 async def download_er_svg(project_id: str, db: AsyncSession = Depends(get_db)):
     from fastapi.responses import Response
 
@@ -249,7 +265,7 @@ async def download_er_svg(project_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/{project_id}/runtime", response_model=RuntimeState)
+@router.get("/{project_id}/runtime", response_model=RuntimeState, summary="预览运行状态")
 async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
@@ -275,13 +291,14 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/{project_id}/runtime/{side}/{action}", response_model=ApiOk)
+@router.post("/{project_id}/runtime/{side}/{action}", response_model=ApiOk, summary="预览启停")
 async def runtime_action(
     project_id: str,
     side: str,
     action: str,
     db: AsyncSession = Depends(get_db),
 ):
+    """side：all / backend / frontend；action：start / stop / restart。"""
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
@@ -351,8 +368,9 @@ async def runtime_action(
     )
 
 
-@router.get("/{project_id}/logs/{side}")
+@router.get("/{project_id}/logs/{side}", summary="读取日志")
 async def get_logs(project_id: str, side: str, db: AsyncSession = Depends(get_db)):
+    """side：job / backend / frontend / deepseek。"""
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
