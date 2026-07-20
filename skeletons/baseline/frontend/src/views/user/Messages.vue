@@ -41,12 +41,19 @@
 <script setup>
 /** 基线消息：导语来自 Domain Schema，避免写死「催还」等借用域词 */
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import { schemaLabels, ticketCopy } from '../../utils/domainSchema.js'
+import { messageAdminTarget } from '../../utils/messages.js'
 
+const route = useRoute()
+const router = useRouter()
 const labels = computed(() => schemaLabels())
 const pageLead = computed(() => {
+  if (route.path.startsWith('/admin')) {
+    return '待受理申请、新订单/预约等管理通知。'
+  }
   const lead = labels.value.messagesPageLead
   if (lead) return lead
   const ticket = ticketCopy()
@@ -90,6 +97,12 @@ async function openMsg(m) {
       /* ignore */
     }
   }
+  const go = messageAdminTarget(m, route.path)
+  if (go) {
+    router.push(go)
+    return
+  }
+  if (m.body) ElMessage.info(m.body)
 }
 
 async function readAll() {

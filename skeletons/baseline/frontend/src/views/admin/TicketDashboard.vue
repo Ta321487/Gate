@@ -6,7 +6,13 @@
     </header>
 
     <div class="stats" :style="{ gridTemplateColumns: `repeat(${Math.min(cards.length, 4)}, 1fr)` }">
-      <div class="stat" v-for="s in cards" :key="s.key">
+      <div
+        class="stat"
+        :class="{ clickable: !!s.to }"
+        v-for="s in cards"
+        :key="s.key"
+        @click="s.to && $router.push(s.to)"
+      >
         <div class="num">{{ s.value }}</div>
         <div class="label">{{ s.label }}</div>
       </div>
@@ -34,6 +40,10 @@
         <div class="todo-row">
           <span>处理中 {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
           <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
+        </div>
+        <div v-if="ticket.allowRating" class="todo-row">
+          <span>已评价 {{ data.ratedCount || 0 }} {{ ticketUnit }} · 均分 {{ data.avgRating ?? '—' }}</span>
+          <el-button link @click="$router.push('/admin/ticket-records?rated=1')">看评价</el-button>
         </div>
         <div v-if="showOverdue" class="todo-row">
           <span>逾期 {{ data.overdueBorrow || 0 }} {{ ticketUnit }}</span>
@@ -100,6 +110,7 @@ const cards = computed(() => {
       key: 'avg',
       label: `均分${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
       value: data.value.avgRating,
+      to: '/admin/ticket-records?rated=1',
     })
   }
   if (showArchive.value) {
@@ -131,6 +142,13 @@ onMounted(load)
   border: 1px solid #e4eaf0;
   border-radius: 10px;
   padding: 14px 12px;
+}
+.stat.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.stat.clickable:hover {
+  border-color: #94a3b8;
 }
 .num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .label { margin-top: 4px; font-size: 12px; color: #8a9aa6; }

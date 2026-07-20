@@ -35,10 +35,12 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { messageAdminTarget, messageInboxPath } from '../utils/messages.js'
 
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const list = ref([])
@@ -77,6 +79,12 @@ async function openMsg(m) {
       /* ignore */
     }
   }
+  const go = messageAdminTarget(m, route.path, { fallback: true })
+  if (go) {
+    document.body.click()
+    router.push(go)
+    return
+  }
   if (m.body) ElMessage.info(m.body)
 }
 
@@ -89,7 +97,7 @@ async function readAll() {
 
 function goInbox() {
   document.body.click()
-  router.push('/messages')
+  router.push(messageInboxPath(route.path))
 }
 
 onMounted(() => {

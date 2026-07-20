@@ -1,6 +1,7 @@
 """从 schema.sql 解析表结构，推断联系，输出陈氏 E-R 线框图 SVG。
 
-文案除基数（1 / n）外一律中文；实体按环排列并最小化连线交叉，联系线走环外侧。
+文案除基数（1 / n）外一律中文；实体按环排列并最小化连线交叉。
+联系为直线；SVG 带 er-node / er-edges 分组，供前端拖拽编辑。
 """
 
 from __future__ import annotations
@@ -613,6 +614,18 @@ def _ellipse_edge(cx: float, cy: float, rx: float, ry: float, fx: float, fy: flo
     return cx + ox / s, cy + oy / s
 
 
+def _diamond_edge(cx: float, cy: float, hw: float, hh: float, tx: float, ty: float) -> tuple[float, float]:
+    """菱形 |dx|/hw + |dy|/hh = 1 与中心→目标射线的交点。"""
+    ox, oy = tx - cx, ty - cy
+    if abs(ox) < 1e-9 and abs(oy) < 1e-9:
+        return cx, cy - hh
+    denom = abs(ox) / hw + abs(oy) / hh
+    if denom < 1e-9:
+        return cx, cy - hh
+    t = 1.0 / denom
+    return cx + ox * t, cy + oy * t
+
+
 def _circular_crossings(order: list[str], edges: list[tuple[str, str]]) -> int:
     """环上弦交叉数（四端点交错）。"""
     n = len(order)
@@ -665,17 +678,16 @@ def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) ->
     return order
 
 
-def _outer_control(
-    p1: tuple[float, float],
-    p2: tuple[float, float],
-    origin: tuple[float, float],
-    bulge: float,
-) -> tuple[float, float]:
-    """两点中点向外（背离圆心）偏移，作二次贝塞尔控制点。"""
-    mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-    ox, oy = mx - origin[0], my - origin[1]
-    L = math.hypot(ox, oy) or 1.0
-    return mx + ox / L * bulge, my + oy / L * bulge
+def _pair_offset(lp: tuple[float, float], rp: tuple[float, float], index: int, total: int) -> tuple[float, float]:
+    """同对多联系时，菱形沿弦垂线错开。"""
+    if total <= 1:
+        return 0.0, 0.0
+    dx, dy = rp[0] - lp[0], rp[1] - lp[1]
+    L = math.hypot(dx, dy) or 1.0
+    nx, ny = -dy / L, dx / L
+    mid = (total - 1) / 2
+    dist = (index - mid) * 36.0
+    return nx * dist, ny * dist
 
 
 def render_er_svg(model: dict, title: str = "E-R") -> str:
@@ -714,7 +726,6 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
         ring_r = pair_need / (2 * math.sin(math.pi / n))
         ring_r = max(ring_r, 280.0)
 
-    # 外侧联系弧需要额外边距
     margin = max_cloud + 140
     w = int(2 * (ring_r + margin) + 80)
     h = int(2 * (ring_r + margin) + 110)
@@ -729,69 +740,91 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
             ang = -math.pi / 2 + 2 * math.pi * i / n
             entity_pos[t["name"]] = (cx + ring_r * math.cos(ang), cy + ring_r * math.sin(ang))
 
-    parts: list[str] = []
-    parts.append(
-        f'<text x="24" y="28" font-family="Microsoft YaHei, SimSun, serif" font-size="16">'
-        f"{_esc(show_title)}</text>"
-    )
-    parts.append(
-        '<text x="24" y="48" font-family="Microsoft YaHei, sans-serif" font-size="11" fill="#333">'
-        "方框=实体 · 菱形=联系 · 椭圆=属性 · 下划线=主键 · 波浪线=外键 · 1 / n 为联系基数"
-        "</text>"
-    )
+    # 同对联系计数，便于垂线错开
+    pair_keys: list[tuple[str, str]] = []
+    for r in relations:
+        a, b = r["left"], r["right"]
+        pair_keys.append((a, b) if a <= b else (b, a))
+    pair_totals: dict[tuple[str, str], int] = {}
+    for pk in pair_keys:
+        pair_totals[pk] = pair_totals.get(pk, 0) + 1
+    pair_seen: dict[tuple[str, str], int] = {}
 
-    # 联系：外侧弧线 + 菱形，避免穿心交叉
+    edge_parts: list[str] = []
+    node_parts: list[str] = []
+    card_parts: list[str] = []
+
+    # 联系：直线实体边 → 菱形边 → 实体边
     for ri, r in enumerate(relations):
         lp = entity_pos.get(r["left"])
         rp = entity_pos.get(r["right"])
         if not lp or not rp:
             continue
-        hw1, hw2 = entity_hw.get(r["left"], 40), entity_hw.get(r["right"], 40)
-        # 外侧控制点：弦越长鼓包越大
-        chord = math.hypot(rp[0] - lp[0], rp[1] - lp[1]) or 1
-        bulge = min(160.0, max(56.0, chord * 0.28 + 40))
-        # 多条同对联系微错开
-        bulge += (ri % 3) * 12
-        ctrl = _outer_control(lp, rp, (cx, cy), bulge)
+        left_id = f"entity:{r['left']}"
+        right_id = f"entity:{r['right']}"
+        rel_id = f"rel:{ri}"
+        pk = pair_keys[ri]
+        pi = pair_seen.get(pk, 0)
+        pair_seen[pk] = pi + 1
+        ox, oy = _pair_offset(lp, rp, pi, pair_totals[pk])
+        mx = (lp[0] + rp[0]) / 2 + ox
+        my = (lp[1] + rp[1]) / 2 + oy
 
-        e1 = _rect_edge(lp[0], lp[1], ctrl[0], ctrl[1], hw1, ENTITY_HH)
-        e2 = _rect_edge(rp[0], rp[1], ctrl[0], ctrl[1], hw2, ENTITY_HH)
-        # 二次贝塞尔：实体边 → 外侧 → 实体边
-        parts.append(
-            f'<path d="M {e1[0]:.1f},{e1[1]:.1f} Q {ctrl[0]:.1f},{ctrl[1]:.1f} {e2[0]:.1f},{e2[1]:.1f}" '
-            f'fill="none" stroke="#000" stroke-width="1"/>'
-        )
-
-        # 菱形放在曲线中点（t=0.5 的二次贝塞尔）
-        mx = 0.25 * e1[0] + 0.5 * ctrl[0] + 0.25 * e2[0]
-        my = 0.25 * e1[1] + 0.5 * ctrl[1] + 0.25 * e2[1]
+        hw1 = entity_hw.get(r["left"], 40)
+        hw2 = entity_hw.get(r["right"], 40)
         rel_label = r.get("label") or r["name"]
         dw = max(36.0, _text_w(rel_label, 12) / 2 + 16)
         dh = 22.0
+
+        e1 = _rect_edge(lp[0], lp[1], mx, my, hw1, ENTITY_HH)
+        d1 = _diamond_edge(mx, my, dw, dh, lp[0], lp[1])
+        d2 = _diamond_edge(mx, my, dw, dh, rp[0], rp[1])
+        e2 = _rect_edge(rp[0], rp[1], mx, my, hw2, ENTITY_HH)
+
+        edge_parts.append(
+            f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+            f'x1="{e1[0]:.1f}" y1="{e1[1]:.1f}" x2="{d1[0]:.1f}" y2="{d1[1]:.1f}" '
+            f'stroke="#000" stroke-width="1" fill="none"/>'
+        )
+        edge_parts.append(
+            f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
+            f'x1="{d2[0]:.1f}" y1="{d2[1]:.1f}" x2="{e2[0]:.1f}" y2="{e2[1]:.1f}" '
+            f'stroke="#000" stroke-width="1" fill="none"/>'
+        )
+
         diamond = (
             f"{mx:.1f},{my - dh:.1f} {mx + dw:.1f},{my:.1f} "
             f"{mx:.1f},{my + dh:.1f} {mx - dw:.1f},{my:.1f}"
         )
-        parts.append(
+        node_parts.append(
+            f'<g class="er-node" data-kind="rel" data-id="{_esc(rel_id)}" data-shape="diamond" '
+            f'data-cx="{mx:.1f}" data-cy="{my:.1f}" data-hw="{dw:.1f}" data-hh="{dh:.1f}">'
             f'<polygon points="{diamond}" fill="#fff" stroke="#000" stroke-width="1.2"/>'
-        )
-        parts.append(
             f'<text x="{mx:.1f}" y="{my + 4:.1f}" text-anchor="middle" '
             f'font-family="Microsoft YaHei, SimSun, serif" font-size="12">{_esc(rel_label)}</text>'
+            f"</g>"
         )
 
-        # 基数 1 / n（保持西文）
-        c1x, c1y = e1[0] * 0.65 + mx * 0.35, e1[1] * 0.65 + my * 0.35
-        cnx, cny = e2[0] * 0.65 + mx * 0.35, e2[1] * 0.65 + my * 0.35
-        ox, oy = ctrl[0] - cx, ctrl[1] - cy
-        ol = math.hypot(ox, oy) or 1
-        nx, ny = ox / ol, oy / ol
-        parts.append(
-            f'<text x="{c1x + nx * 12:.1f}" y="{c1y + ny * 12:.1f}" text-anchor="middle" '
+        # 基数：沿直线段 35% 处，垂向微偏
+        def _card_pos(
+            a: tuple[float, float], b: tuple[float, float], t: float = 0.35
+        ) -> tuple[float, float]:
+            px = a[0] * (1 - t) + b[0] * t
+            py = a[1] * (1 - t) + b[1] * t
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            L = math.hypot(dx, dy) or 1.0
+            return px - dy / L * 12, py + dx / L * 12
+
+        c1 = _card_pos(e1, d1)
+        c2 = _card_pos(e2, d2)
+        card_parts.append(
+            f'<text class="er-card" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+            f'x="{c1[0]:.1f}" y="{c1[1]:.1f}" text-anchor="middle" '
             f'font-family="sans-serif" font-size="12">{_esc(r["card_left"])}</text>'
         )
-        parts.append(
-            f'<text x="{cnx + nx * 12:.1f}" y="{cny + ny * 12:.1f}" text-anchor="middle" '
+        card_parts.append(
+            f'<text class="er-card" data-from="{_esc(right_id)}" data-to="{_esc(rel_id)}" '
+            f'x="{c2[0]:.1f}" y="{c2[1]:.1f}" text-anchor="middle" '
             f'font-family="sans-serif" font-size="12">{_esc(r["card_right"])}</text>'
         )
 
@@ -801,15 +834,17 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
         label = t.get("label") or name
         x, y = entity_pos[name]
         hw = entity_hw[name]
-        parts.append(
+        ent_id = f"entity:{name}"
+        node_parts.append(
+            f'<g class="er-node" data-kind="entity" data-id="{_esc(ent_id)}" data-shape="rect" '
+            f'data-cx="{x:.1f}" data-cy="{y:.1f}" data-hw="{hw:.1f}" data-hh="{ENTITY_HH:.1f}">'
             f'<rect x="{x - hw:.1f}" y="{y - ENTITY_HH:.1f}" '
             f'width="{hw * 2:.1f}" height="{ENTITY_HH * 2:.1f}" '
             f'fill="#fff" stroke="#000" stroke-width="1.5"/>'
-        )
-        parts.append(
             f'<text x="{x:.1f}" y="{y + 5:.1f}" text-anchor="middle" '
             f'font-family="Microsoft YaHei, SimSun, serif" font-size="13" font-weight="600">'
             f"{_esc(label)}</text>"
+            f"</g>"
         )
 
         attrs = t.get("core_columns") or t.get("columns") or []
@@ -824,15 +859,13 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
             ay = y + ar * math.sin(ang)
             alabel = col.get("label") or col["name"]
             rx = _attr_rx(alabel)
+            attr_id = f"attr:{name}.{col['name']}"
             p0 = _rect_edge(x, y, ax, ay, hw, ENTITY_HH)
-            p1 = _ellipse_edge(ax, ay, rx, ATTR_RH, p0[0], p0[1])
-            parts.append(
-                f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" '
+            p1 = _ellipse_edge(ax, ay, rx, ATTR_RH, x, y)
+            edge_parts.append(
+                f'<line class="er-edge" data-from="{_esc(ent_id)}" data-to="{_esc(attr_id)}" '
+                f'x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" '
                 f'stroke="#000" stroke-width="0.8" fill="none"/>'
-            )
-            parts.append(
-                f'<ellipse cx="{ax:.1f}" cy="{ay:.1f}" rx="{rx:.1f}" ry="{ATTR_RH:.1f}" '
-                f'fill="#fff" stroke="#000" stroke-width="1"/>'
             )
             tw = min(rx * 1.7, _text_w(alabel, 10))
             deco = ""
@@ -852,14 +885,36 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
                 deco = (
                     f'<polyline points="{" ".join(wave)}" fill="none" stroke="#000" stroke-width="1"/>'
                 )
-            parts.append(
+            node_parts.append(
+                f'<g class="er-node" data-kind="attr" data-id="{_esc(attr_id)}" '
+                f'data-parent="{_esc(ent_id)}" data-shape="ellipse" '
+                f'data-cx="{ax:.1f}" data-cy="{ay:.1f}" data-rx="{rx:.1f}" data-ry="{ATTR_RH:.1f}">'
+                f'<ellipse cx="{ax:.1f}" cy="{ay:.1f}" rx="{rx:.1f}" ry="{ATTR_RH:.1f}" '
+                f'fill="#fff" stroke="#000" stroke-width="1"/>'
                 f'<text x="{ax:.1f}" y="{ay + 4:.1f}" text-anchor="middle" '
                 f'font-family="Microsoft YaHei, sans-serif" font-size="10">{_esc(alabel)}</text>'
+                f"{deco}</g>"
             )
-            if deco:
-                parts.append(deco)
 
+    header = [
+        f'<text class="er-title" x="24" y="28" font-family="Microsoft YaHei, SimSun, serif" font-size="16">'
+        f"{_esc(show_title)}</text>",
+        '<text class="er-legend" x="24" y="48" font-family="Microsoft YaHei, sans-serif" font-size="11" fill="#333">'
+        "方框=实体 · 菱形=联系 · 椭圆=属性 · 下划线=主键 · 波浪线=外键 · 1 / n 为联系基数 · 可拖元素调整"
+        "</text>",
+    ]
+    parts = (
+        header
+        + ['<g class="er-edges">']
+        + edge_parts
+        + card_parts
+        + ["</g>"]
+        + ['<g class="er-nodes">']
+        + node_parts
+        + ["</g>"]
+    )
     return _svg_wrap(w, h, "\n".join(parts))
+
 
 
 def _svg_wrap(w: int, h: int, inner: str) -> str:

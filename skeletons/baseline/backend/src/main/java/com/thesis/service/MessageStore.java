@@ -66,6 +66,41 @@ public class MessageStore {
                 username.trim(), t, b, rt, refId);
     }
 
+    /**
+     * 通知所有管理端账号（role=admin，含总管与子管）。
+     * @param excludeUsername 可空；不发给该账号（如初审人自己）
+     */
+    public static void notifyAdmins(String title, String body, String refType, Long refId, String excludeUsername) {
+        if (!ready()) return;
+        List<String> admins;
+        try {
+            admins = db().query(
+                    "SELECT username FROM sys_user WHERE role='admin' AND (enabled IS NULL OR enabled=1)",
+                    (rs, i) -> rs.getString("username"));
+        } catch (Exception e) {
+            try {
+                admins = db().query(
+                        "SELECT username FROM sys_user WHERE role='admin'",
+                        (rs, i) -> rs.getString("username"));
+            } catch (Exception e2) {
+                return;
+            }
+        }
+        String skip = excludeUsername == null ? "" : excludeUsername.trim();
+        for (String u : admins) {
+            if (u == null || u.isBlank()) continue;
+            if (!skip.isEmpty() && skip.equals(u.trim())) continue;
+            try {
+                send(u, title, body, refType, refId);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public static void notifyAdmins(String title, String body, String refType, Long refId) {
+        notifyAdmins(title, body, refType, refId, null);
+    }
+
     public static Map<String, Object> page(String username, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", List.of());

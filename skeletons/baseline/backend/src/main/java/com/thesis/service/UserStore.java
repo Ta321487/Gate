@@ -148,14 +148,17 @@ public class UserStore {
             if (!columnExists("staff_kind")) {
                 db().execute("ALTER TABLE sys_user ADD COLUMN staff_kind VARCHAR(16) DEFAULT ''");
             }
-            staffColsReady = true;
-        } catch (Exception e) {
             staffColsReady = columnExists("staff_post") && columnExists("staff_kind");
+        } catch (Exception e) {
+            // 数据源未就绪时不缓存失败，避免永久读不到 staff_post → 登录身份全拒
+            staffColsReady = null;
         }
     }
 
     private static boolean hasStaffColumns() {
-        if (staffColsReady == null) ensureStaffColumns();
+        if (!Boolean.TRUE.equals(staffColsReady)) {
+            ensureStaffColumns();
+        }
         return Boolean.TRUE.equals(staffColsReady);
     }
 

@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 import com.thesis.config.JdbcSupport;
+import com.thesis.service.MessageStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -36,7 +37,10 @@ public final class OrderStore {
         enabled = !CART.isBlank() && !ORDER.isBlank() && !LINE.isBlank();
         useQuota = quota;
         AddressStore.resetCache();
-        if (enabled) ensureDeliveryColumns();
+        if (enabled) {
+            ensureDeliveryColumns();
+            ensureLoyaltyColumns();
+        }
     }
 
     public static void unbind() {
@@ -164,7 +168,18 @@ public final class OrderStore {
             }
             total += priceOf(item) * qty;
         }
-        total = round2(total);
+        double subtotal = round2(total);
+        Map<String, Object> priceSnap = null;
+        double payable = subtotal;
+        if (LoyaltyStore.anyEnabled()) {
+            priceSnap = LoyaltyStore.previewPrice(subtotal, username);
+            payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
+            if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
+                throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
+                        "message",
+                        "演示余额不足，请联系管理员充值")));
+            }
+        }
         String note = remark == null ? "" : remark.trim();
         String taste = tasteNote == null ? "" : tasteNote.trim();
         String dtype = deliveryType == null ? "" : deliveryType.trim();
@@ -187,7 +202,7 @@ public final class OrderStore {
             rName = username;
         }
         KeyHolder kh = new GeneratedKeyHolder();
-        double finalTotal = total;
+        double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
         boolean hasDelivery = hasOrderColumn("receiver_name");
         db().update(con -> {
@@ -239,7 +254,19 @@ public final class OrderStore {
                 ArchiveStore.adjustStock(itemId, -qty);
             }
         }
+        if (LoyaltyStore.anyEnabled()) {
+            Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId);
+            applyLoyaltySnapshot(orderId, snap);
+        }
         clearCart(username);
+        try {
+            MessageStore.notifyAdmins(
+                    "新订单待确认",
+                    username + " 下单 ¥" + round2(subtotal) + "，请确认处理。",
+                    "order",
+                    orderId);
+        } catch (Exception ignored) {
+        }
         return getOrder(orderId);
     }
 
@@ -401,6 +428,20 @@ public final class OrderStore {
                         ((Number) line.get("qty")).intValue());
             }
         }
+        if ("cancelled".equals(next) && LoyaltyStore.anyEnabled()) {
+            double paid = toDouble(m.get("payBalanceYuan"));
+            if (paid <= 0) paid = 0;
+            String uname = String.valueOf(m.get("username"));
+            if (paid > 0) {
+                LoyaltyStore.refundOrderPay(uname, orderId, paid);
+            }
+        }
+        if ("completed".equals(next) && LoyaltyStore.anyEnabled()) {
+            String uname = String.valueOf(m.get("username"));
+            double pay = toDouble(m.get("payBalanceYuan"));
+            if (pay <= 0) pay = toDouble(m.get("totalYuan"));
+            LoyaltyStore.onOrderCompleted(uname, orderId, pay);
+        }
         return getOrder(orderId);
     }
 
@@ -467,9 +508,30 @@ public final class OrderStore {
         m.put("shippedAt", fmt(safeTs(rs, "shipped_at")));
         long rid = safeLong(rs, "reservation_id");
         if (rid > 0) m.put("reservationId", rid);
+        m.put("discountYuan", safeDouble(rs, "discount_yuan"));
+        m.put("payBalanceYuan", safeDouble(rs, "pay_balance_yuan"));
+        m.put("pointsEarned", (int) safeLong(rs, "points_earned"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
         return m;
+    }
+
+    private static double safeDouble(java.sql.ResultSet rs, String col) {
+        try {
+            double v = rs.getDouble(col);
+            return rs.wasNull() ? 0 : v;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static double toDouble(Object o) {
+        if (o instanceof Number n) return n.doubleValue();
+        try {
+            return Double.parseDouble(String.valueOf(o));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static Timestamp safeTs(java.sql.ResultSet rs, String col) {
@@ -519,6 +581,31 @@ public final class OrderStore {
         ensureOrderColumn("pickup_code", "VARCHAR(32) DEFAULT ''");
         ensureOrderColumn("shipped_at", "DATETIME NULL");
         ensureOrderColumn("reservation_id", "BIGINT NULL");
+    }
+
+    private static void ensureLoyaltyColumns() {
+        ensureOrderColumn("discount_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+        ensureOrderColumn("pay_balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+        ensureOrderColumn("points_earned", "INT NOT NULL DEFAULT 0");
+    }
+
+    private static void applyLoyaltySnapshot(long orderId, Map<String, Object> snap) {
+        if (snap == null || orderId <= 0) return;
+        double discount = toDouble(snap.get("discountYuan"));
+        double payBal = toDouble(snap.get("payBalanceYuan"));
+        double payable = toDouble(snap.get("payableYuan"));
+        try {
+            if (hasOrderColumn("discount_yuan") && hasOrderColumn("pay_balance_yuan")) {
+                db().update(
+                        "UPDATE " + ORDER + " SET total_yuan=?, discount_yuan=?, pay_balance_yuan=?, updated_at=? WHERE id=?",
+                        BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP),
+                        BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP),
+                        BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP),
+                        Timestamp.valueOf(LocalDateTime.now()),
+                        orderId);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private static void ensureOrderColumn(String col, String ddlType) {

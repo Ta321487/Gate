@@ -1,12 +1,16 @@
 package com.thesis.capability;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.config.JdbcSupport;
 import com.thesis.service.MessageStore;
 import com.thesis.service.UserStore;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
+import java.io.InputStream;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -55,6 +59,10 @@ public final class TicketStore {
     private static int categoryLimit = 0;
     /** L1：签到口令 */
     private static boolean allowCheckin = false;
+    /** 活动结束未签到 → 爽约（复用 overdue 状态） */
+    private static boolean noShowAfterEnd = false;
+    /** 爽约固定费用；0 只改状态 */
+    private static double noShowPenaltyYuan = 0;
     /** 申请时可自选到期日（写入 due_at；审批时沿用） */
     private static boolean pickLoanPeriod = false;
     /** 申请时可填数量（扣/还库存按 qty） */
@@ -64,6 +72,14 @@ public final class TicketStore {
     /** 申请须选起止日期（请假等 → period_start/period_end） */
     private static boolean pickDateRange = false;
     private static String userRole = "reader";
+
+    /** bake 注入的 schema 文案（domain-ticket-copy.json），禁止按域 if/else 写死中文 */
+    private static final ObjectMapper COPY_JSON = new ObjectMapper();
+    private static Map<String, String> STATE_LABELS = Map.of();
+    private static Map<String, String> VERB_LABELS = Map.of();
+    private static String CHECKIN_LABEL = "签到";
+    private static String FINE_PAID_LABEL = "费用已结清";
+    private static String ARCHIVE_LABEL = "";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -91,6 +107,9 @@ public final class TicketStore {
         allowMultiTicket = multiTicket;
         checkTimeConflict = timeConflict;
         enabled = true;
+        bindProgressDefault();
+        loadCopyFromResource();
+        ensureProgressTable();
         ensureL1Columns();
     }
 
@@ -101,15 +120,95 @@ public final class TicketStore {
         useQuota = false;
         useDeadline = false;
         enabled = true;
-        // 默认进度表：repair → repair_progress；ticket → ticket_progress
-        if ("repair".equalsIgnoreCase(TICKET)) PROGRESS = "repair_progress";
-        else if ("ticket".equalsIgnoreCase(TICKET)) PROGRESS = "ticket_progress";
-        else PROGRESS = "";
+        bindProgressDefault();
+        loadCopyFromResource();
+        ensureProgressTable();
         ensureL1Columns();
     }
 
+    /** 约定：进度表 = {单据表}_progress；可显式覆盖。 */
     public static void configureProgress(String progressTable) {
-        PROGRESS = progressTable == null ? "" : progressTable.trim();
+        if (progressTable != null && !progressTable.isBlank()) {
+            PROGRESS = progressTable.trim();
+        } else {
+            bindProgressDefault();
+        }
+        ensureProgressTable();
+    }
+
+    private static void bindProgressDefault() {
+        PROGRESS = TICKET == null || TICKET.isBlank() ? "" : TICKET + "_progress";
+    }
+
+    /** 读取 bake 写入的 domain-ticket-copy.json（states/verbs 文案）。 */
+    private static void loadCopyFromResource() {
+        try {
+            ClassPathResource res = new ClassPathResource("domain-ticket-copy.json");
+            if (!res.exists()) return;
+            try (InputStream in = res.getInputStream()) {
+                Map<String, Object> root = COPY_JSON.readValue(in, new TypeReference<>() {});
+                Object st = root.get("states");
+                if (st instanceof Map<?, ?> map) {
+                    Map<String, String> out = new LinkedHashMap<>();
+                    for (Map.Entry<?, ?> e : map.entrySet()) {
+                        if (e.getKey() == null || e.getValue() == null) continue;
+                        String lab = String.valueOf(e.getValue()).trim();
+                        if (!lab.isBlank()) out.put(String.valueOf(e.getKey()), lab);
+                    }
+                    if (!out.isEmpty()) STATE_LABELS = out;
+                }
+                Object vb = root.get("verbs");
+                if (vb instanceof Map<?, ?> map) {
+                    Map<String, String> out = new LinkedHashMap<>();
+                    for (Map.Entry<?, ?> e : map.entrySet()) {
+                        if (e.getKey() == null || e.getValue() == null) continue;
+                        String lab = String.valueOf(e.getValue()).trim();
+                        if (!lab.isBlank()) out.put(String.valueOf(e.getKey()), lab);
+                    }
+                    if (!out.isEmpty()) VERB_LABELS = out;
+                }
+                String cin = str(root.get("checkinLabel")).trim();
+                if (!cin.isBlank()) CHECKIN_LABEL = cin;
+                String fp = str(root.get("finePaidLabel")).trim();
+                if (!fp.isBlank()) FINE_PAID_LABEL = fp;
+                String arch = str(root.get("archiveLabel")).trim();
+                if (!arch.isBlank()) ARCHIVE_LABEL = arch;
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String stateLabel(String key, String fallback) {
+        if (key == null || key.isBlank()) return fallback;
+        String lab = STATE_LABELS.get(key);
+        return lab == null || lab.isBlank() ? fallback : lab;
+    }
+
+    private static String verbLabel(String key, String fallback) {
+        if (key == null || key.isBlank()) return fallback;
+        String lab = VERB_LABELS.get(key);
+        return lab == null || lab.isBlank() ? fallback : lab;
+    }
+
+    private static String archiveNoun() {
+        return ARCHIVE_LABEL.isBlank() ? "项目" : ARCHIVE_LABEL;
+    }
+
+    /** 幂等建表：未 bake 进 schema 的旧库也能写出进度。 */
+    private static void ensureProgressTable() {
+        if (PROGRESS == null || PROGRESS.isBlank()) return;
+        try {
+            db().execute(
+                    "CREATE TABLE IF NOT EXISTS `" + PROGRESS + "` ("
+                            + "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
+                            + "ticket_id BIGINT NOT NULL,"
+                            + "status VARCHAR(32) NOT NULL,"
+                            + "operator VARCHAR(64),"
+                            + "remark VARCHAR(255) DEFAULT '',"
+                            + "created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+                            + "KEY idx_progress_ticket (ticket_id, id))");
+        } catch (Exception ignored) {
+        }
     }
 
     public static void configureL1(boolean twoLevel, boolean attachRequired, boolean ratingEnabled) {
@@ -178,8 +277,21 @@ public final class TicketStore {
         }
     }
 
+    public static void configureNoShow(boolean afterEnd, double penaltyYuan) {
+        noShowAfterEnd = afterEnd && allowCheckin;
+        noShowPenaltyYuan = Math.max(0, penaltyYuan);
+        if (noShowAfterEnd) {
+            ensureColumn("checked_in_at", "DATETIME NULL");
+            ensureColumn("fine_status", "VARCHAR(16) DEFAULT 'none'");
+        }
+    }
+
     public static boolean isAllowCheckin() {
         return allowCheckin;
+    }
+
+    public static boolean isNoShowAfterEnd() {
+        return noShowAfterEnd;
     }
 
     public static boolean isPickLoanPeriod() {
@@ -361,6 +473,7 @@ public final class TicketStore {
         Number key = kh.getKey();
         long id = key == null ? 0L : key.longValue();
         appendProgress(id, "pending", username, "用户提交");
+        notifyAdminsNewTicket(id, username, subjectOf(get(id)));
         return get(id);
     }
 
@@ -523,6 +636,7 @@ public final class TicketStore {
             // 可选：从 remark 前缀解析不强制；预留列已 ensure
         }
         appendProgress(id, "pending", username, "用户提交");
+        notifyAdminsNewTicket(id, username, t);
         return get(id);
     }
 
@@ -531,21 +645,143 @@ public final class TicketStore {
         return applyStandalone(username, title, location, remark, null, null, null);
     }
 
+    private static void notifyAdminsNewTicket(long ticketId, String applicant, String subject) {
+        if (ticketId <= 0) return;
+        try {
+            String sub = subject == null || subject.isBlank() ? ("单据#" + ticketId) : subject;
+            String who = applicant == null || applicant.isBlank() ? "用户" : applicant;
+            MessageStore.notifyAdmins(
+                    "待受理",
+                    who + " 提交了「" + sub + "」，请尽快处理。",
+                    "ticket",
+                    ticketId);
+        } catch (Exception ignored) {
+        }
+    }
+
     public static List<Map<String, Object>> listProgress(long ticketId) {
-        if (PROGRESS == null || PROGRESS.isBlank() || !progressTableExists()) return List.of();
-        return db().query(
-                "SELECT * FROM " + PROGRESS + " WHERE ticket_id=? ORDER BY id",
-                (rs, i) -> {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", rs.getLong("id"));
-                    row.put("ticketId", rs.getLong("ticket_id"));
-                    row.put("status", rs.getString("status"));
-                    row.put("operator", rs.getString("operator"));
-                    row.put("remark", rs.getString("remark"));
-                    row.put("createdAt", fmt(rs.getTimestamp("created_at")));
-                    return row;
-                },
-                ticketId);
+        ensureProgressTable();
+        if (PROGRESS == null || PROGRESS.isBlank()) return List.of();
+        List<Map<String, Object>> rows = queryProgress(ticketId);
+        if (rows.isEmpty()) {
+            backfillProgressFromTicket(ticketId);
+            rows = queryProgress(ticketId);
+        }
+        return rows;
+    }
+
+    private static List<Map<String, Object>> queryProgress(long ticketId) {
+        try {
+            return db().query(
+                    "SELECT * FROM `" + PROGRESS + "` WHERE ticket_id=? ORDER BY id",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("id", rs.getLong("id"));
+                        row.put("ticketId", rs.getLong("ticket_id"));
+                        row.put("status", rs.getString("status"));
+                        row.put("operator", rs.getString("operator"));
+                        row.put("remark", rs.getString("remark"));
+                        row.put("createdAt", fmt(rs.getTimestamp("created_at")));
+                        return row;
+                    },
+                    ticketId);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** 旧数据无流水时，按单据时间戳回填一次（各域同一套列，无分支）。 */
+    private static void backfillProgressFromTicket(long ticketId) {
+        if (ticketId <= 0 || PROGRESS == null || PROGRESS.isBlank()) return;
+        try {
+            String cols = "username, status, apply_at, approve_at, return_at, assignee_username";
+            boolean withRating = hasColumn("rating");
+            if (withRating) cols += ", rating, rating_remark, rated_at";
+            List<Map<String, Object>> tickets = db().query(
+                    "SELECT " + cols + " FROM " + TICKET + " WHERE id=?",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("username", rs.getString("username"));
+                        row.put("status", rs.getString("status"));
+                        row.put("applyAt", rs.getTimestamp("apply_at"));
+                        row.put("approveAt", safeTs(rs, "approve_at"));
+                        row.put("returnAt", safeTs(rs, "return_at"));
+                        row.put("assignee", safeStr(rs, "assignee_username"));
+                        if (withRating) {
+                            Integer rating = null;
+                            int r = rs.getInt("rating");
+                            if (!rs.wasNull()) rating = r;
+                            row.put("rating", rating);
+                            row.put("ratingRemark", safeStr(rs, "rating_remark"));
+                            row.put("ratedAt", safeTs(rs, "rated_at"));
+                        }
+                        return row;
+                    },
+                    ticketId);
+            if (tickets.isEmpty()) return;
+            Map<String, Object> t = tickets.get(0);
+            String user = String.valueOf(t.getOrDefault("username", ""));
+            String st = String.valueOf(t.getOrDefault("status", ""));
+            String assignee = String.valueOf(t.getOrDefault("assignee", ""));
+            Timestamp applyAt = (Timestamp) t.get("applyAt");
+            Timestamp approveAt = (Timestamp) t.get("approveAt");
+            Timestamp returnAt = (Timestamp) t.get("returnAt");
+            if (applyAt != null) {
+                insertProgressRow(ticketId, "pending", user, "用户提交", applyAt);
+            }
+            if (approveAt != null) {
+                if ("rejected".equals(st)) {
+                    insertProgressRow(ticketId, "rejected", blankTo(assignee, "admin"),
+                            stateLabel("rejected", "已驳回"), approveAt);
+                } else if (!"pending".equals(st) && !"pending_final".equals(st)) {
+                    insertProgressRow(ticketId, "approved", blankTo(assignee, "admin"),
+                            stateLabel("approved", "审核通过"), approveAt);
+                } else if ("pending_final".equals(st)) {
+                    insertProgressRow(ticketId, "pending_final", blankTo(assignee, "admin"),
+                            stateLabel("pending_final", "初审通过"), approveAt);
+                }
+            }
+            if (returnAt != null) {
+                boolean noShow = "overdue".equals(st) && noShowAfterEnd;
+                String fin = noShow ? "overdue" : "returned";
+                String tip = noShow
+                        ? stateLabel("overdue", "爽约")
+                        : stateLabel("returned", verbLabel("return", "已完结"));
+                insertProgressRow(ticketId, fin, blankTo(assignee, "system"), tip, returnAt);
+            } else if ("overdue".equals(st) && noShowAfterEnd) {
+                insertProgressRow(ticketId, "overdue", "system",
+                        stateLabel("overdue", "爽约"), Timestamp.valueOf(LocalDateTime.now()));
+            } else if ("noshow".equals(st)) {
+                insertProgressRow(ticketId, "overdue", "system",
+                        stateLabel("overdue", "爽约"), Timestamp.valueOf(LocalDateTime.now()));
+            }
+            Object ratingObj = t.get("rating");
+            if (ratingObj instanceof Number rn && rn.intValue() > 0) {
+                String tip = rn.intValue() + " 分";
+                String note = str(t.get("ratingRemark"));
+                if (!note.isBlank()) tip = tip + " · " + note;
+                Timestamp ratedAt = (Timestamp) t.get("ratedAt");
+                if (ratedAt == null) ratedAt = Timestamp.valueOf(LocalDateTime.now());
+                insertProgressRow(ticketId, "rated", user, tip, ratedAt);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String blankTo(String s, String fallback) {
+        return s == null || s.isBlank() ? fallback : s;
+    }
+
+    private static void insertProgressRow(
+            long ticketId, String status, String operator, String remark, Timestamp at) {
+        if (at == null) at = Timestamp.valueOf(LocalDateTime.now());
+        db().update(
+                "INSERT INTO `" + PROGRESS + "` (ticket_id,status,operator,remark,created_at) VALUES (?,?,?,?,?)",
+                ticketId,
+                status == null ? "" : status,
+                operator == null ? "" : operator,
+                remark == null ? "" : remark,
+                at);
     }
 
     /** 认领/领用：登记领取 */
@@ -580,32 +816,22 @@ public final class TicketStore {
         Map<String, Object> m = load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         db().update("UPDATE " + TICKET + " SET fine_status='paid' WHERE id=?", ticketId);
-        appendProgress(ticketId, "fine_paid", operator, "费用已结清");
+        appendProgress(ticketId, "fine_paid", operator, FINE_PAID_LABEL);
         return get(ticketId);
     }
 
     private static void appendProgress(long ticketId, String status, String operator, String remark) {
-        if (ticketId <= 0 || PROGRESS == null || PROGRESS.isBlank() || !progressTableExists()) return;
+        if (ticketId <= 0) return;
+        ensureProgressTable();
+        if (PROGRESS == null || PROGRESS.isBlank()) return;
         try {
-            db().update(
-                    "INSERT INTO " + PROGRESS + " (ticket_id,status,operator,remark,created_at) VALUES (?,?,?,?,?)",
+            insertProgressRow(
                     ticketId,
-                    status == null ? "" : status,
-                    operator == null ? "" : operator,
-                    remark == null ? "" : remark,
+                    status,
+                    operator,
+                    remark,
                     Timestamp.valueOf(LocalDateTime.now()));
         } catch (Exception ignored) {
-        }
-    }
-
-    private static boolean progressTableExists() {
-        try {
-            Integer n = db().queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",
-                    Integer.class, PROGRESS);
-            return n != null && n > 0;
-        } catch (Exception e) {
-            return false;
         }
     }
 
@@ -798,7 +1024,8 @@ public final class TicketStore {
                         note, ticketId);
             }
             notifyTicketResult(m, false, note);
-            appendProgress(ticketId, "rejected", op, note);
+            appendProgress(ticketId, "rejected", op,
+                    note == null || note.isBlank() ? stateLabel("rejected", verbLabel("reject", "已驳回")) : note);
             return get(ticketId);
         }
 
@@ -819,9 +1046,16 @@ public final class TicketStore {
                     MessageStore.send(user, "初审已通过", "「" + subjectOf(m) + "」已通过初审，等待终审。",
                             "ticket", toLong(m.get("id")));
                 }
+                MessageStore.notifyAdmins(
+                        "待终审",
+                        "「" + subjectOf(m) + "」已通过初审，等待终审。",
+                        "ticket",
+                        toLong(m.get("id")),
+                        op);
             } catch (Exception ignored) {
             }
-            appendProgress(ticketId, "pending_final", op, note.isBlank() ? "初审通过" : note);
+            appendProgress(ticketId, "pending_final", op, note.isBlank()
+                    ? stateLabel("pending_final", "初审通过") : note);
             return get(ticketId);
         }
 
@@ -867,7 +1101,8 @@ public final class TicketStore {
                     note, ticketId);
         }
         notifyTicketResult(m, true, note);
-        appendProgress(ticketId, "approved", op, note.isBlank() ? "审核通过" : note);
+        appendProgress(ticketId, "approved", op, note.isBlank()
+                ? stateLabel("approved", verbLabel("approve", "审核通过")) : note);
         return get(ticketId);
     }
 
@@ -889,7 +1124,7 @@ public final class TicketStore {
             throw new IllegalStateException("只能评价自己的单据");
         }
         if (!"returned".equals(String.valueOf(m.get("status")))) {
-            throw new IllegalStateException("仅已完结单据可评分");
+            throw new IllegalStateException("仅「" + stateLabel("returned", "已完结") + "」单据可评分");
         }
         Object prev = m.get("rating");
         if (prev != null && !"0".equals(String.valueOf(prev)) && !"".equals(String.valueOf(prev))) {
@@ -900,6 +1135,9 @@ public final class TicketStore {
         db().update(
                 "UPDATE " + TICKET + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
                 rating, note, ticketId);
+        String tip = rating + " 分";
+        if (!note.isBlank()) tip = tip + " · " + note;
+        appendProgress(ticketId, "rated", username, tip);
         return get(ticketId);
     }
 
@@ -922,14 +1160,15 @@ public final class TicketStore {
         long itemId = toLong(m.get("bookId"));
         if (itemId <= 0) itemId = toLong(m.get("itemId"));
         Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
-        if (item == null) throw new IllegalStateException("活动不存在");
+        if (item == null) throw new IllegalStateException(archiveNoun() + "不存在");
         String expect = str(item.get("checkinCode")).trim();
-        if (expect.isBlank()) throw new IllegalStateException("活动尚未设置签到码");
+        if (expect.isBlank()) throw new IllegalStateException(archiveNoun() + "尚未设置签到码");
         String got = code == null ? "" : code.trim();
         if (!expect.equalsIgnoreCase(got)) {
             throw new IllegalStateException("签到码不正确");
         }
         db().update("UPDATE " + TICKET + " SET checked_in_at=NOW() WHERE id=?", ticketId);
+        appendProgress(ticketId, "checkin", username, CHECKIN_LABEL);
         return get(ticketId);
     }
 
@@ -979,8 +1218,9 @@ public final class TicketStore {
         }
         String remind = "";
         if (useDeadline) {
+            String doneLab = stateLabel("returned", verbLabel("return", "已完结"));
             remind = toDouble(m.get("fineYuan")) > 0
-                    ? "已完结，请按登记费用缴纳 " + m.get("fineYuan") + " 元。"
+                    ? doneLab + "，请按登记费用缴纳 " + m.get("fineYuan") + " 元。"
                     : String.valueOf(m.get("remindMsg") == null ? "" : m.get("remindMsg"));
         }
         if (hasColumn("remind_msg")) {
@@ -992,7 +1232,7 @@ public final class TicketStore {
                     "UPDATE " + TICKET + " SET status='returned', return_at=NOW() WHERE id=?",
                     ticketId);
         }
-        appendProgress(ticketId, "returned", actorUid, "已完结");
+        appendProgress(ticketId, "returned", actorUid, stateLabel("returned", verbLabel("return", "已完结")));
         return get(ticketId);
     }
 
@@ -1024,16 +1264,28 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> page(String username, String status, int page, int size) {
-        return page(username, status, page, size, null, true);
+        return page(username, status, page, size, null, true, null);
+    }
+
+    public static Map<String, Object> page(
+            String username, String status, int page, int size, String adminUid, boolean superAdmin) {
+        return page(username, status, page, size, adminUid, superAdmin, null);
     }
 
     /**
      * @param username 业务用户视角：只看自己的单；管理员传 null
-     * @param adminUid 子管用户名；总管传 null 或配合 superAdmin=true
-     * @param superAdmin 总管看全部；子管：待办池全可见，已受理及之后只看自己绑定的
+     * @param adminUid 子管用户名；总管配合 superAdmin=true 看全部
+     * @param superAdmin 总管看全部；子管：待办池 + 自己绑定的进行中 + 全体终态（取消/驳回等）
+     * @param ratedOnly true 时仅返回已评分单据（管理端查看评价）
      */
     public static Map<String, Object> page(
-            String username, String status, int page, int size, String adminUid, boolean superAdmin) {
+            String username,
+            String status,
+            int page,
+            int size,
+            String adminUid,
+            boolean superAdmin,
+            Boolean ratedOnly) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         if (useDeadline) {
@@ -1049,14 +1301,22 @@ public final class TicketStore {
             where.append(" AND username=?");
             args.add(username);
         } else if (!superAdmin && adminUid != null && !adminUid.isBlank() && hasColumn("assignee_username")) {
-            // 子管：待办公开池（初审/终审）；其它状态仅自己绑定的单
+            // 子管可见范围：
+            // - 待办池 pending/pending_final：全员可见（抢单）
+            // - 进行中 approved/overdue 等：仅自己绑定
+            // - 终态 returned/rejected/noshow：全员可读（含用户「取消报名」）
+            boolean historyStatus = isHistoryStatus(status);
             boolean todoPool = status == null || status.isBlank()
                     || "pending".equals(status)
                     || "pending_final".equals(status)
                     || "todo".equals(status);
-            if (todoPool) {
+            if (historyStatus) {
+                // 筛终态：不加处理人条件
+            } else if (todoPool) {
                 if (status == null || status.isBlank()) {
-                    where.append(" AND (status IN ('pending','pending_final') OR assignee_username=?)");
+                    where.append(
+                            " AND (status IN ('pending','pending_final','returned','rejected','noshow')"
+                                    + " OR assignee_username=?)");
                     args.add(adminUid);
                 }
             } else {
@@ -1071,6 +1331,9 @@ public final class TicketStore {
                 where.append(" AND status=?");
                 args.add(status);
             }
+        }
+        if (Boolean.TRUE.equals(ratedOnly) && hasColumn("rating")) {
+            where.append(" AND rating IS NOT NULL AND rating > 0");
         }
         Integer total = db().queryForObject("SELECT COUNT(*) FROM " + TICKET + where, Integer.class, args.toArray());
         int t = total == null ? 0 : total;
@@ -1087,10 +1350,21 @@ public final class TicketStore {
         return out;
     }
 
+    /** 终态：全体子管可读（不按处理人隔离） */
+    public static boolean isHistoryStatus(String status) {
+        return "returned".equals(status)
+                || "rejected".equals(status)
+                || "noshow".equals(status);
+    }
+
+    public static boolean isTodoPoolStatus(String status) {
+        return "pending".equals(status) || "pending_final".equals(status) || "todo".equals(status);
+    }
+
     public static Map<String, Object> get(long id) {
         Map<String, Object> m = load(id);
         if (m == null) return null;
-        if (useDeadline) refreshOverdue(m);
+        touchTicketStatus(m);
         return enrich(load(id));
     }
 
@@ -1280,12 +1554,23 @@ public final class TicketStore {
 
     private static Map<String, Object> enrich(Map<String, Object> b) {
         Map<String, Object> m = new LinkedHashMap<>(b);
+        touchTicketStatus(m);
         if (useDeadline) {
             m.put("loanDays", LOAN_DAYS);
             m.put("finePerDay", FINE_PER_DAY);
         }
+        if (noShowAfterEnd && noShowPenaltyYuan > 0) {
+            m.put("noShowPenaltyYuan", noShowPenaltyYuan);
+        }
         m.put("mode", MODE.name().toLowerCase());
         return m;
+    }
+
+    /** 列表/详情时推进逾期或爽约状态 */
+    private static void touchTicketStatus(Map<String, Object> m) {
+        if (m == null) return;
+        if (useDeadline) refreshOverdue(m);
+        if (noShowAfterEnd) refreshNoShow(m);
     }
 
     private static void refreshOverdue(Map<String, Object> m) {
@@ -1299,6 +1584,44 @@ public final class TicketStore {
             m.put("status", "overdue");
             applyFineAndRemind(m, false);
             persistFine(m);
+        }
+    }
+
+    /**
+     * 活动结束仍未签到 → overdue（文案多为「爽约」）+ 可选固定费用。
+     * 与借还逾期互斥场景：活动域通常 useDeadline=false。
+     */
+    private static void refreshNoShow(Map<String, Object> m) {
+        if (!noShowAfterEnd || !allowCheckin) return;
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st)) return;
+        Object checked = m.get("checkedInAt");
+        if (checked != null && !String.valueOf(checked).isBlank()) return;
+        long itemId = toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = toLong(m.get("itemId"));
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) return;
+        String endStr = str(item.get("endAt"));
+        if (endStr.isBlank()) return;
+        LocalDateTime endAt;
+        try {
+            endAt = LocalDateTime.parse(endStr.length() == 10 ? endStr + " 23:59:59" : endStr, FMT);
+        } catch (Exception e) {
+            return;
+        }
+        if (!LocalDateTime.now().isAfter(endAt)) return;
+        m.put("status", "overdue");
+        double penalty = noShowPenaltyYuan;
+        m.put("fineYuan", penalty);
+        String overdueLab = stateLabel("overdue", "爽约");
+        String msg = penalty > 0
+                ? archiveNoun() + "已结束且未签到，记为" + overdueLab + "；费用 " + penalty + " 元。"
+                : archiveNoun() + "已结束且未签到，记为" + overdueLab + "。";
+        m.put("remindMsg", msg);
+        persistFine(m);
+        try {
+            appendProgress(toLong(m.get("id")), "overdue", "system", msg);
+        } catch (Exception ignored) {
         }
     }
 

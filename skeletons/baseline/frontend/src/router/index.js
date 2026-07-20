@@ -35,6 +35,7 @@ function portalGuard(_to, _from, next) {
 
 const ADMIN_KEY_BY_PATH = {
   '/admin/dashboard': 'dashboard',
+  '/admin/messages': 'messages',
   '/admin/tickets': 'ticket_pending',
   '/admin/ticket-records': 'ticket_records',
   '/admin/overdue': 'deadline',
@@ -65,7 +66,7 @@ function adminGuard(to, _from, next) {
   const allowed = clerkAllowedMenuKeys(currentStaffPost())
   if (allowed && localStorage.getItem('superAdmin') !== 'true') {
     const key = ADMIN_KEY_BY_PATH[to.path]
-    if (key && key !== 'profile' && !allowed.has(key)) {
+    if (key && key !== 'profile' && key !== 'messages' && !allowed.has(key)) {
       next('/admin/dashboard')
       return
     }
@@ -146,17 +147,28 @@ function cloneRoutes(routes) {
   })
 }
 
-/** 门户补消息中心；默认落地仍用各壳原 redirect（/archive、/tickets…），不灌营销首页 */
+/** 门户补消息中心；管理端同步挂 /admin/messages */
 function withPortalHub(baseRoutes) {
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
-  if (!kids) return routes
-  const has = (p) => kids.some((c) => c.path === p)
-  if (!has('messages')) {
-    const noticeIdx = kids.findIndex((c) => c.path === 'notices')
-    const at = noticeIdx >= 0 ? noticeIdx : kids.length
-    kids.splice(at, 0, {
+  if (kids) {
+    const has = (p) => kids.some((c) => c.path === p)
+    if (!has('messages')) {
+      const noticeIdx = kids.findIndex((c) => c.path === 'notices')
+      const at = noticeIdx >= 0 ? noticeIdx : kids.length
+      kids.splice(at, 0, {
+        path: 'messages',
+        component: () => import('../views/user/Messages.vue'),
+      })
+    }
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'messages')) {
+    const dashIdx = adminKids.findIndex((c) => c.path === 'dashboard')
+    const at = dashIdx >= 0 ? dashIdx + 1 : 1
+    adminKids.splice(at, 0, {
       path: 'messages',
       component: () => import('../views/user/Messages.vue'),
     })

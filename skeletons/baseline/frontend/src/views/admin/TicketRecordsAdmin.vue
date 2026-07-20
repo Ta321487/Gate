@@ -1,9 +1,15 @@
 <template>
   <div>
     <div class="toolbar">
-      <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
+      <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="onFilter">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
+      <el-checkbox
+        v-if="allowRating"
+        v-model="ratedOnly"
+        style="margin-left:4px"
+        @change="onFilter"
+      >仅已评分</el-checkbox>
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
@@ -40,9 +46,21 @@
       </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column prop="approveAt" label="受理时间" width="170" />
+      <el-table-column v-if="allowCheckin" label="签到" width="170">
+        <template #default="{ row }">{{ row.checkedInAt || '—' }}</template>
+      </el-table-column>
       <el-table-column prop="returnAt" label="完成时间" width="170" />
-      <el-table-column v-if="allowRating" label="评分" width="90">
-        <template #default="{ row }">{{ row.rating ? `${row.rating} 分` : '—' }}</template>
+      <el-table-column v-if="allowRating" label="评分" width="90" fixed="right">
+        <template #default="{ row }">
+          <span v-if="row.rating" class="rating">{{ row.rating }} 分</span>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowRating" label="短评" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.ratingRemark || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowRating" label="评价时间" width="170">
+        <template #default="{ row }">{{ row.ratedAt || '—' }}</template>
       </el-table-column>
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
@@ -85,6 +103,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
@@ -92,11 +111,13 @@ import { hasTrait, getSchema, ticketCopy, ticketDueLabel, ticketFineLabel, ticke
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
+const route = useRoute()
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
+const allowCheckin = computed(() => !!ticket.allowCheckin)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
@@ -104,7 +125,9 @@ const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
 const showPickup = computed(() => hasTrait('pickupFlow'))
-const showFine = computed(() => hasTrait('loanFine') || !!ticket.fineLabel)
+const showFine = computed(
+  () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
+)
 
 function remarkText(v) {
   if (!v) return '—'
@@ -128,13 +151,28 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 const status = ref(null)
+const ratedOnly = ref(false)
 const progressVisible = ref(false)
 const progressId = ref(null)
 
+function listParams(extra = {}) {
+  const params = {
+    page: page.value,
+    size: size.value,
+    status: status.value || undefined,
+    ...extra,
+  }
+  if (allowRating.value && ratedOnly.value) params.rated = true
+  return params
+}
+
+function onFilter() {
+  page.value = 1
+  load()
+}
+
 async function load() {
-  const res = await http.get('/api/tickets', {
-    params: { page: page.value, size: size.value, status: status.value || undefined },
-  })
+  const res = await http.get('/api/tickets', { params: listParams() })
   list.value = res.data.list
   total.value = res.data.total
 }
@@ -184,7 +222,7 @@ async function doFinePaid(row) {
 
 async function exportCsv() {
   const res = await http.get('/api/tickets', {
-    params: { page: 1, size: 5000, status: status.value || undefined },
+    params: listParams({ page: 1, size: 5000 }),
   })
   const rows = res.data?.list || []
   if (!rows.length) {
@@ -195,7 +233,7 @@ async function exportCsv() {
     '编号', '标题', '类型', '地点', userLabel.value, '处理人', '状态',
     '数量', dueLabel.value, '开始', '结束', '说明', '申请时间', '受理时间', '完成时间',
   ]
-  if (allowRating.value) headers.push('评分', '短评')
+  if (allowRating.value) headers.push('评分', '短评', '评价时间')
   const data = rows.map((row) => {
     const line = [
       row.id,
@@ -215,18 +253,26 @@ async function exportCsv() {
       row.returnAt,
     ]
     if (allowRating.value) {
-      line.push(row.rating || '', row.ratingRemark || '')
+      line.push(row.rating || '', row.ratingRemark || '', row.ratedAt || '')
     }
     return line
   })
-  downloadCsv(`tickets_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
+  const tag = ratedOnly.value ? 'rated' : (status.value || 'all')
+  downloadCsv(`tickets_${tag}_${Date.now()}.csv`, headers, data)
   ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
 }
 
-onMounted(load)
+onMounted(() => {
+  if (allowRating.value && String(route.query.rated || '') === '1') {
+    ratedOnly.value = true
+  }
+  load()
+})
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.rating { color: #b45309; font-weight: 600; }
+.muted { color: #94a3b8; }
 </style>

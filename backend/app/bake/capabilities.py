@@ -37,6 +37,26 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "购物车 + 多明细订单（无真支付）",
     },
+    "wallet": {
+        "label": "演示余额",
+        "status": "implemented",
+        "desc": "用户余额字段+流水；管理端可充值；下单扣减（非真支付）",
+    },
+    "points": {
+        "label": "积分",
+        "status": "implemented",
+        "desc": "积分字段+流水；下单完成赠送；不可充值",
+    },
+    "spend_discount": {
+        "label": "满减",
+        "status": "implemented",
+        "desc": "满 xx 元减 yy（演示优惠，写入订单快照）",
+    },
+    "member_tier": {
+        "label": "会员成长",
+        "status": "implemented",
+        "desc": "累计消费升级；等级折扣叠在下单算价",
+    },
     "content": {
         "label": "内容发布",
         "status": "implemented",

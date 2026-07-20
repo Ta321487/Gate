@@ -346,6 +346,8 @@ async def runtime_action(
         raise HTTPException(404, "项目不存在")
     if not p.workspace_path:
         raise HTTPException(400, "尚未生成工作区")
+    if action in ("start", "restart") and p.status == ProjectStatus.generating.value:
+        raise HTTPException(400, "生成中，请等待完成后再启动预览")
     ws = Path(p.workspace_path)
     if not ws.exists():
         raise HTTPException(400, "工作区目录不存在")

@@ -32,6 +32,10 @@ BASELINE_RUNTIME_CAPS = frozenset({
     "time_conflict",
     "order_lines",
     "slot_reserve",
+    "wallet",
+    "points",
+    "spend_discount",
+    "member_tier",
 })
 
 
@@ -187,16 +191,19 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         spec.get("capabilities")
         or required_capabilities(domain, archetype, archetypes=arches)
     )
-    # 超范围信号只扫正文，参考文献/进度里的「小程序」等不当作交付要求
+    from app.bake.loyalty import apply_loyalty_to_spec, merge_loyalty_capabilities
     from app.services.proposal import strip_non_dev_sections
 
+    body = strip_non_dev_sections(proposal_text or "")
+    req = merge_loyalty_capabilities(req, body)
     decision = resolve_accept(
         req,
-        strip_non_dev_sections(proposal_text or ""),
+        body,
         has_domain_overlay=domain in DOMAINS_WITH_OVERLAY,
         has_baseline_runtime=baseline_runtime_covers(
             domain, archetype, archetypes=arches
-        ),
+        )
+        and not (set(req) - BASELINE_RUNTIME_CAPS),
     )
     schema = spec.get("schema") or build_domain_schema(
         spec.get("title") or "毕设系统",
@@ -222,7 +229,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         if name not in existing:
             features.append({"name": name, "status": "out_of_mvp"})
 
-    return {
+    out = {
         **spec,
         "capabilities": req,
         "accept": decision["accept"],
@@ -232,6 +239,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         "schema": schema,
         "features": features,
     }
+    return apply_loyalty_to_spec(out, body)
 
 
 def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:

@@ -145,6 +145,32 @@ export function ticketReturnVerb(fallback = '完结') {
   return ticketCopy().verbs?.return || fallback
 }
 
+/** 单据状态码 → schema.states 文案 */
+export function ticketStatusLabel(status, fallback = '') {
+  if (status == null || status === '') return fallback || ''
+  const key = String(status)
+  const states = ticketCopy().states || {}
+  if (states[key]) return states[key]
+  // 历史进度曾写 noshow，与 overdue（爽约）同义
+  if (key === 'noshow' && states.overdue) return states.overdue
+  return fallback || key
+}
+
+/**
+ * 进度流水状态展示：优先 states；签到/领取/费用等用实体文案。
+ */
+export function ticketProgressStatusLabel(status) {
+  if (status == null || status === '') return ''
+  const key = String(status)
+  const mapped = ticketStatusLabel(key, '')
+  if (mapped && mapped !== key) return mapped
+  if (key === 'checkin') return ticketCheckinLabel('签到')
+  if (key === 'fine_paid') return ticketFinePaidLabel('费用已结清')
+  if (key === 'pickup') return '领取登记'
+  if (key === 'rated') return '评价'
+  return mapped || key
+}
+
 export function reservationCopy() {
   return (getSchema().entities || {}).reservation || {}
 }
@@ -201,4 +227,34 @@ export function emptyProfileExtras(fields = profileFields()) {
     o[f.key] = ''
   }
   return o
+}
+
+export function hasCap(id) {
+  return (getSchema().capabilities || []).includes(id)
+}
+
+/** schema.loyalty 块（bake 注入） */
+export function loyaltySchema() {
+  const L = getSchema().loyalty
+  return L && typeof L === 'object' ? L : {}
+}
+
+export function isWalletEnabled() {
+  return hasCap('wallet') || !!loyaltySchema().wallet?.enabled
+}
+
+export function isPointsEnabled() {
+  return hasCap('points') || !!loyaltySchema().points?.enabled
+}
+
+export function isSpendDiscountEnabled() {
+  return hasCap('spend_discount') || !!loyaltySchema().spendDiscount?.enabled
+}
+
+export function isMemberTierEnabled() {
+  return hasCap('member_tier') || !!loyaltySchema().memberTiers?.enabled
+}
+
+export function anyLoyaltyEnabled() {
+  return isWalletEnabled() || isPointsEnabled() || isSpendDiscountEnabled() || isMemberTierEnabled()
 }

@@ -215,6 +215,7 @@ public class TicketController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean rated,
             HttpSession session) {
         String uid = requireLogin(session);
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
@@ -222,7 +223,7 @@ public class TicketController {
             return R.ok(TicketStore.page(uid, status, page, size));
         }
         boolean superAdmin = AdminAuth.isSuperAdmin(session);
-        return R.ok(TicketStore.page(null, status, page, size, uid, superAdmin));
+        return R.ok(TicketStore.page(null, status, page, size, uid, superAdmin, rated));
     }
 
     @GetMapping("/{id}")
@@ -236,7 +237,7 @@ public class TicketController {
         }
         if (admin && !AdminAuth.isSuperAdmin(session)) {
             String st = str(br.get("status"));
-            if (!"pending".equals(st) && !"pending_final".equals(st)) {
+            if (!TicketStore.isHistoryStatus(st) && !TicketStore.isTodoPoolStatus(st)) {
                 String asg = str(br.get("assigneeUsername"));
                 if (!asg.isBlank() && !asg.equals(uid)) {
                     throw new BizException(ErrorCode.FORBIDDEN, "该单已由其他处理人受理");

@@ -470,7 +470,7 @@ DOMAINS = {
         "keywords": ["社团活动", "志愿活动", "志愿者", "志愿服务", "活动报名", "讲座报名", "活动管理", "报名系统"],
         "entities": ["Activity", "Category", "Signup", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览活动 → 报名 → 审核占名额"],
+        "flows": ["浏览活动 → 报名 → 审核占名额 → 口令签到（结束未签到记爽约）"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -479,6 +479,8 @@ DOMAINS = {
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "报名申请 → 审核", "status": "flow"},
+            {"name": "口令签到", "status": "module"},
+            {"name": "结束未签到记爽约（可选登记费用，无余额体系）", "status": "module"},
             {"name": "报名记录", "status": "module"},
             {"name": "时间冲突检测", "status": "module"},
             {"name": "公告管理", "status": "module"},

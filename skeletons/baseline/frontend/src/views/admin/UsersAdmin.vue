@@ -42,6 +42,12 @@
       <el-table-column label="操作" min-width="280" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button
+            v-if="walletOn && !isSub(row)"
+            link
+            type="success"
+            @click="recharge(row)"
+          >充值</el-button>
           <el-button link type="warning" @click="resetPwd(row)">重置密码</el-button>
           <el-button link :type="row.enabled ? 'danger' : 'success'" @click="toggle(row)">
             {{ row.enabled ? '停用' : '启用' }}
@@ -121,6 +127,7 @@ import http from '../../api/http'
 import {
   emptyProfileExtras,
   getSchema,
+  isWalletEnabled,
   profileAdminColumns,
   profileFields,
 } from '../../utils/domainSchema.js'
@@ -132,6 +139,7 @@ const userLabel = computed(() => roles.value.user?.label || '用户')
 const subLabel = computed(() => roles.value.subadmin?.label || '子管')
 const postOptions = computed(() => staffPosts())
 const canAppoint = computed(() => postOptions.value.length > 0)
+const walletOn = computed(() => isWalletEnabled())
 const adminCols = computed(() => profileAdminColumns(2))
 const allFields = computed(() => profileFields())
 const visibleFields = computed(() =>
@@ -222,6 +230,25 @@ async function resetPwd(row) {
   })
   await http.post(`/api/admin/users/${row.username}/reset-password`, { password: value })
   ElMessage.success('已重置')
+}
+
+async function recharge(row) {
+  const { value } = await ElMessageBox.prompt(
+    `为「${row.nickname || row.username}」充值演示余额（元，非真支付）`,
+    '演示余额充值',
+    {
+      inputValue: '100',
+      inputPattern: /^\d+(\.\d{1,2})?$/,
+      inputErrorMessage: '请输入有效金额',
+    },
+  )
+  const amount = Number(value)
+  if (!(amount > 0)) {
+    ElMessage.warning('金额须大于 0')
+    return
+  }
+  await http.post('/api/admin/loyalty/recharge', { username: row.username, amount })
+  ElMessage.success(`已充值 ¥${amount.toFixed(2)}`)
 }
 
 function openAppoint(row) {

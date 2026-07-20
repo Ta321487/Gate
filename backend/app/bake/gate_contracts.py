@@ -228,6 +228,31 @@ _GATE_SLOT_FILES = [
     "sql/schema.sql",
 ]
 
+_GATE_LOYALTY_FILES = [
+    "backend/src/main/java/com/thesis/capability/LoyaltyStore.java",
+    "backend/src/main/java/com/thesis/controller/LoyaltyController.java",
+    "frontend/src/views/user/Cart.vue",
+    "frontend/src/views/admin/UsersAdmin.vue",
+    "frontend/src/utils/domainSchema.js",
+]
+
+
+def merge_loyalty_gate(gate: dict, caps: list[str] | None) -> dict:
+    """订单壳 gate 上叠加忠诚度文件与 flow_api。"""
+    caps = set(caps or [])
+    if not caps.intersection({"wallet", "points", "spend_discount", "member_tier"}):
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_LOYALTY_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    flow = dict(out.get("flow_api") or {})
+    flow["loyalty"] = {"file": "LoyaltyController.java", "need": ["/api/loyalty"]}
+    out["flow_api"] = flow
+    return out
+
 
 def gate_order_shell(
     *,

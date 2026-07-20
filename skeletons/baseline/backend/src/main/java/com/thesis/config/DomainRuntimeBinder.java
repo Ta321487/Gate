@@ -1,21 +1,26 @@
 package com.thesis.config;
 
 import com.thesis.capability.ArchiveStore;
+import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
 import com.thesis.service.UserStore;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
  * 按 thesis.* 配置绑定能力运行时（薄领域无专用 Store）。
+ * 用 ApplicationRunner：保证 JdbcSupport 已注入后再 ensureStaffColumns。
  */
 @Component
-public class DomainRuntimeBinder {
+@Order(0)
+public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.ticket-mode:archive}")
     private String ticketMode;
@@ -113,6 +118,12 @@ public class DomainRuntimeBinder {
     @Value("${thesis.ticket-allow-checkin:false}")
     private boolean ticketAllowCheckin;
 
+    @Value("${thesis.ticket-no-show-after-end:false}")
+    private boolean ticketNoShowAfterEnd;
+
+    @Value("${thesis.ticket-no-show-penalty-yuan:0}")
+    private double ticketNoShowPenaltyYuan;
+
     @Value("${thesis.ticket-pick-loan-period:false}")
     private boolean ticketPickLoanPeriod;
 
@@ -128,8 +139,29 @@ public class DomainRuntimeBinder {
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
 
-    @PostConstruct
-    public void bind() {
+    @Value("${thesis.wallet-enabled:false}")
+    private boolean walletEnabled;
+
+    @Value("${thesis.points-enabled:false}")
+    private boolean pointsEnabled;
+
+    @Value("${thesis.spend-discount-enabled:false}")
+    private boolean spendDiscountEnabled;
+
+    @Value("${thesis.member-tier-enabled:false}")
+    private boolean memberTierEnabled;
+
+    @Value("${thesis.points-earn-per-yuan:1}")
+    private int pointsEarnPerYuan;
+
+    @Value("${thesis.spend-discount-threshold-yuan:100}")
+    private double spendDiscountThresholdYuan;
+
+    @Value("${thesis.spend-discount-off-yuan:10}")
+    private double spendDiscountOffYuan;
+
+    @Override
+    public void run(ApplicationArguments args) {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
@@ -148,6 +180,7 @@ public class DomainRuntimeBinder {
             TicketStore.configureL1(ticketTwoLevel, ticketRequireAttach, ticketAllowRating);
             TicketStore.configureRules(ticketCheckMutex, ticketCategoryLimit);
             TicketStore.configureCheckin(ticketAllowCheckin);
+            TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
             TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
         }
@@ -156,6 +189,14 @@ public class DomainRuntimeBinder {
         } else {
             OrderStore.unbind();
         }
+        LoyaltyStore.configure(
+                walletEnabled,
+                pointsEnabled,
+                spendDiscountEnabled,
+                memberTierEnabled,
+                pointsEarnPerYuan,
+                spendDiscountThresholdYuan,
+                spendDiscountOffYuan);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);
