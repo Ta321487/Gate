@@ -40,7 +40,7 @@
         </div>
         <div class="panel-bd">
           <div class="balance-box mb-16">
-            <div class="small muted mb-8">DeepSeek 账户余额（官方 /user/balance）</div>
+            <div class="small muted mb-8">DeepSeek 账户余额（官方接口）</div>
             <template v-if="balance.ok && balance.balance_infos?.length">
               <div v-for="(b, i) in balance.balance_infos" :key="i" class="balance-row">
                 <strong class="mono">{{ b.total_balance }} {{ b.currency }}</strong>
@@ -74,22 +74,22 @@
     </div>
 
     <div class="panel mb-16">
-      <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可确定性 bake</span></div>
+      <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可完成基线生成</span></div>
       <div class="panel-bd">
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>Agent A · Spec</strong><div class="small muted">润色开题摘要/功能点；关则仅关键词</div></div>
+          <div><strong>摘要润色</strong><div class="small muted">润色开题摘要与功能点；关闭后仅用关键词</div></div>
           <n-switch v-model:value="form.parse_spec" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>Agent B · 填岛</strong><div class="small muted">labels/seeds 白名单 JSON，不改源码</div></div>
+          <div><strong>业务配置填充</strong><div class="small muted">仅填充业务文案与种子数据，不改业务源码</div></div>
           <n-switch v-model:value="form.island_fill" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>Agent C · 编译修复</strong><div class="small muted">mvn 失败诊断并重放交付配置</div></div>
+          <div><strong>编译修复</strong><div class="small muted">构建失败时诊断并重试交付配置</div></div>
           <n-switch v-model:value="form.auto_fix" />
         </div>
         <div class="row-between" style="padding:10px 0">
-          <div><strong>Agent D · QA</strong><div class="small muted">漂移扫描 + 摘要，写入 islands/qa_report.json</div></div>
+          <div><strong>质量摘要</strong><div class="small muted">扫描配置漂移并生成质量摘要报告</div></div>
           <n-switch v-model:value="form.qa_report" />
         </div>
         <div class="row mt-12">
@@ -125,7 +125,7 @@
             @update:value="onUsageSearch"
           />
         </div>
-        <p class="small muted mb-12">超项目预算或月度预算时 Agent 会跳过 LLM · 点项目可筛调用</p>
+        <p class="small muted mb-12">超出项目或月度预算时将跳过模型调用 · 点击项目可筛选</p>
         <UsageCharts class="mb-16" :daily="usageChart.daily" />
         <n-data-table
           v-if="projectUsages.length"
@@ -313,15 +313,15 @@ const modelOptions = [
   { label: 'deepseek-v4-pro · 难任务 / 质量', value: 'deepseek-v4-pro' },
 ]
 const stageOptions = [
-  { label: 'parse_spec', value: 'parse_spec' },
-  { label: 'island_fill', value: 'island_fill' },
-  { label: 'auto_fix', value: 'auto_fix' },
-  { label: 'qa_report', value: 'qa_report' },
-  { label: 'emit', value: 'emit' },
+  { label: '摘要润色', value: 'parse_spec' },
+  { label: '业务配置填充', value: 'island_fill' },
+  { label: '编译修复', value: 'auto_fix' },
+  { label: '质量摘要', value: 'qa_report' },
+  { label: '配置写出', value: 'emit' },
 ]
 const okOptions = [
-  { label: 'OK', value: true },
-  { label: 'FAIL', value: false },
+  { label: '成功', value: true },
+  { label: '失败', value: false },
 ]
 const monthPct = computed(() => {
   const budget = form.monthly_token_budget || cfg.monthly_token_budget || 1

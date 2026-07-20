@@ -15,7 +15,7 @@ export const PROJECT_STATUS = {
   ready: { label: '待生成', pill: 'pill-teal', tag: 'info' },
   generating: { label: '生成中', pill: 'pill-teal', tag: 'info' },
   generated: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
-  failed: { label: '门禁未过 · 禁止交付', pill: 'pill-red', tag: 'error' },
+  failed: { label: '质量检查未过 · 暂不可交付', pill: 'pill-red', tag: 'error' },
   // running = 预览已拉起；文案与 generated 同族，「运行中」只出现在「运行」列
   running: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
   archived: { label: '已归档', pill: 'pill-neutral', tag: 'default' },
@@ -32,7 +32,7 @@ export function projectStatusLabel(status, opts = {}) {
     (status === 'generated' || status === 'running')
     && zipReady === false
   ) {
-    return '已生成 · 门禁未过'
+    return '已生成 · 质量检查未过'
   }
   return PROJECT_STATUS[status]?.label || status || '—'
 }
@@ -79,7 +79,7 @@ export function defaultTabForStatus(status) {
 
 export const CHECKLIST_RESULT = {
   done: { label: '已实现', type: 'success', pill: 'pill-green' },
-  out_of_mvp: { label: '砍项', type: 'default', pill: 'pill-neutral' },
+  out_of_mvp: { label: '本期不做', type: 'default', pill: 'pill-neutral' },
   pending: { label: '未覆盖', type: 'error', pill: 'pill-red' },
 }
 

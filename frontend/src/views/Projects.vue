@@ -58,7 +58,7 @@
             <template #empty>
               <div class="empty-hint">
                 <div class="empty-title">暂无项目</div>
-                <div class="empty-desc">拖入开题或任务书即可创建</div>
+                <div class="empty-desc">拖入开题 / 任务书等材料即可创建（可多选）</div>
               </div>
             </template>
           </n-data-table>
@@ -111,19 +111,25 @@ const columns = [
     title: '项目',
     key: 'title',
     render(row) {
+      const when = row.updated_at || row.created_at
+      const whenText = when ? new Date(when).toLocaleString() : ''
+      const meta = [row.db_name, whenText ? `更新 ${whenText}` : ''].filter(Boolean).join(' · ')
       return h('div', {
-        style: 'cursor:pointer',
+        style: 'cursor:pointer;min-width:200px',
         onClick: () => router.push(`/projects/${row.id}`),
       }, [
-        h('div', { style: 'font-weight:600' }, row.title),
+        h('div', { style: 'font-weight:600;line-height:1.35' }, row.title),
         h('div', {
           class: 'small muted mono',
-          style: 'display:inline-flex;align-items:center;gap:4px',
+          style: 'display:inline-flex;align-items:center;gap:4px;margin-top:4px',
           onClick: (e) => e.stopPropagation(),
         }, [
           row.id,
           h(CopyIconButton, { text: row.id, tip: '复制项目 ID' }),
         ]),
+        meta
+          ? h('div', { class: 'small muted', style: 'margin-top:2px' }, meta)
+          : null,
       ])
     },
   },
@@ -157,13 +163,6 @@ const columns = [
         ])
       }
       return h('span', { class: 'muted' }, '—')
-    },
-  },
-  {
-    title: '更新',
-    key: 'updated_at',
-    render(row) {
-      return row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'
     },
   },
 ]
@@ -239,9 +238,9 @@ async function doUpload(fileList) {
     if (tick) clearInterval(tick)
     uploadPct.value = 100
     uploadPhase.value = '完成'
-    message.success(files.length > 1 ? `已建项（${files.length} 份材料）` : '已建项')
+    message.success(files.length > 1 ? `项目已创建（${files.length} 份材料）` : '项目已创建')
     if (!project?.id) {
-      message.error('建项成功但未返回项目 ID，请从列表进入')
+      message.error('创建成功但未返回项目 ID，请从列表进入')
       await load()
       return
     }

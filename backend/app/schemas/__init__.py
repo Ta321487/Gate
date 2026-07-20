@@ -19,6 +19,7 @@ class ProjectSummary(BaseModel):
     backend_port: int = Field(description="后端端口")
     frontend_port: int = Field(description="前端端口")
     zip_ready: bool = Field(description="ZIP 是否可下载")
+    db_name: str = Field(default="", description="学生库名")
     updated_at: Optional[datetime] = Field(default=None, description="更新时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
 
@@ -37,7 +38,6 @@ class ProjectDetail(ProjectSummary):
     match_locked: bool = Field(description="匹配是否锁定")
     match_confirmed: bool = Field(description="匹配是否已确认")
     match_mode: str = Field(description="匹配模式")
-    db_name: str = Field(description="学生库名")
     spec: dict[str, Any] = Field(default_factory=dict, description="Spec 配置")
     gates: dict[str, Any] = Field(default_factory=dict, description="门禁结果")
     checklist: list[Any] = Field(default_factory=list, description="开题对照清单")
