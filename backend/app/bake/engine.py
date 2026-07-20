@@ -450,12 +450,18 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
     """学生端 TicketStore 进度/提示文案：来自 schema.entities.ticket（及 archive 名）。"""
     ticket = ((schema.get("entities") or {}).get("ticket") or {}) if isinstance(schema, dict) else {}
     archive = ((schema.get("entities") or {}).get("archive") or {}) if isinstance(schema, dict) else {}
+    apply_deadline_label = "报名截止"
+    for f in archive.get("fields") or []:
+        if isinstance(f, dict) and f.get("key") == "applyDeadlineAt":
+            apply_deadline_label = str(f.get("label") or apply_deadline_label).strip() or apply_deadline_label
+            break
     payload = {
         "states": ticket.get("states") if isinstance(ticket.get("states"), dict) else {},
         "verbs": ticket.get("verbs") if isinstance(ticket.get("verbs"), dict) else {},
         "checkinLabel": ticket.get("checkinLabel") or "签到",
         "finePaidLabel": ticket.get("finePaidLabel") or "费用已结清",
         "archiveLabel": archive.get("label") or "",
+        "applyDeadlineLabel": apply_deadline_label,
     }
     path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
     _write(path, json.dumps(payload, ensure_ascii=False, indent=2))

@@ -867,6 +867,7 @@ DOMAINS = {
             category_feature="分类管理",
             with_deadline=False,
         ),
+        "portal_banners": True,
         "runtime": {
             "ticket_mode": "archive",
             "ticket_table": "favorite",
@@ -911,6 +912,7 @@ DOMAINS = {
             category_feature="分类管理",
             with_deadline=False,
         ),
+        "portal_banners": True,
         "runtime": {
             "ticket_mode": "archive",
             "ticket_table": "favorite",

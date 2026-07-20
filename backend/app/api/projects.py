@@ -48,16 +48,22 @@ async def project_stats(db: AsyncSession = Depends(get_db)):
 @router.get("", response_model=list[ProjectSummary], summary="项目列表")
 async def list_projects(
     q: str = Query("", description="标题或 ID 关键字"),
-    filter: str = Query("all", alias="filter", description="all | active | done | fail"),
+    filter: str = Query(
+        "all",
+        alias="filter",
+        description="all | active | done | fail（质检未过：status=failed 或已生成但 zip 未解锁）",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
     items = list(result.scalars().all())
     if q:
         items = [p for p in items if q in p.title or q in p.id]
-    # 先纠正运行态，再按筛选过滤（避免 generated 实已在跑却被漏掉）
+    # 先纠正运行态与门禁/zip_ready，再按筛选过滤（避免须进详情才刷新）
     dirty = False
     for p in items:
+        if project_svc.sync_checklist_from_workspace(p):
+            dirty = True
         _, _, changed = project_svc.sync_project_runtime(p)
         if changed:
             dirty = True
@@ -76,7 +82,13 @@ async def list_projects(
             if p.status in ("generated", "running") and p.zip_ready
         ]
     elif filter == "fail":
-        items = [p for p in items if p.status == "failed"]
+        # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
+        items = [
+            p
+            for p in items
+            if p.status == "failed"
+            or (p.status in ("generated", "running") and not p.zip_ready)
+        ]
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
     summaries = [ProjectSummary.model_validate(p) for p in items]
     if dirty:

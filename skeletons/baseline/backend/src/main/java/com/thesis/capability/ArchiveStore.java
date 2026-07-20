@@ -519,6 +519,34 @@ public final class ArchiveStore {
         return m;
     }
 
+    /** 门户/推荐等非管理端：去掉签到码等口令字段。 */
+    public static void redactSensitiveForPublic(Map<String, Object> item) {
+        if (item == null) return;
+        item.remove("checkinCode");
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void redactSensitiveListForPublic(Object listOrPage) {
+        if (listOrPage instanceof Map<?, ?> page) {
+            Object list = page.get("list");
+            if (list instanceof List<?> rows) {
+                for (Object row : rows) {
+                    if (row instanceof Map<?, ?> m) {
+                        redactSensitiveForPublic((Map<String, Object>) m);
+                    }
+                }
+            }
+            return;
+        }
+        if (listOrPage instanceof List<?> rows) {
+            for (Object row : rows) {
+                if (row instanceof Map<?, ?> m) {
+                    redactSensitiveForPublic((Map<String, Object>) m);
+                }
+            }
+        }
+    }
+
     public static boolean hasScheduleColumns() {
         return hasStartAt() && hasEndAt();
     }
@@ -716,9 +744,12 @@ public final class ArchiveStore {
         return ids.isEmpty() ? null : ids.get(0);
     }
 
+    private static final Set<String> IMPORT_CORE_KEYS = Set.of(
+            "title", "author", "isbn", "category", "stock");
+
     /**
-     * CSV 行导入：title,author,isbn,category,stock。
-     * category 按名称匹配，不存在则新建。
+     * CSV 行导入：核心列 title/author/isbn/category/stock，其余列（时段、签到码、扩展字段等）写入 extra。
+     * category 按名称匹配，不存在则新建；tags 按标签名解析（找不到则跳过）。
      */
     public static Map<String, Object> importRows(List<Map<String, String>> rows) {
         int ok = 0;
@@ -744,7 +775,20 @@ public final class ArchiveStore {
                     stock = Integer.parseInt(stockRaw.replaceAll("[^0-9\\-]", ""));
                     if (stock < 0) stock = 0;
                 }
-                addItem(title, author, isbn, catId, stock, "");
+                Map<String, Object> extra = new LinkedHashMap<>();
+                for (Map.Entry<String, String> e : row.entrySet()) {
+                    String k = e.getKey();
+                    if (k == null || IMPORT_CORE_KEYS.contains(k)) continue;
+                    String v = e.getValue() == null ? "" : e.getValue().trim();
+                    if (v.isBlank()) continue;
+                    if ("tags".equals(k) || "tag".equals(k) || "tagNames".equals(k)) {
+                        List<Long> tagIds = resolveTagIdsByCsv(v);
+                        if (!tagIds.isEmpty()) extra.put("tagIds", tagIds);
+                        continue;
+                    }
+                    extra.put(k, v);
+                }
+                addItem(title, author, isbn, catId, stock, "", extra.isEmpty() ? null : extra);
                 ok++;
             } catch (Exception ex) {
                 Map<String, Object> err = new LinkedHashMap<>();
@@ -759,6 +803,38 @@ public final class ArchiveStore {
         result.put("fail", errors.size());
         result.put("errors", errors);
         return result;
+    }
+
+    /** 标签列：支持 id 或名称（逗号/顿号分隔）；名称未命中则跳过。 */
+    private static List<Long> resolveTagIdsByCsv(String raw) {
+        List<Long> ids = new ArrayList<>();
+        if (raw == null || raw.isBlank() || !tagsEnabled()) return ids;
+        for (String part : raw.split("[,，、\\s]+")) {
+            String p = part.trim();
+            if (p.isEmpty()) continue;
+            try {
+                long id = Long.parseLong(p);
+                if (id > 0) ids.add(id);
+                continue;
+            } catch (Exception ignored) {
+            }
+            Long id = findTagIdByName(p);
+            if (id != null) ids.add(id);
+        }
+        return ids;
+    }
+
+    private static Long findTagIdByName(String name) {
+        if (name == null || name.isBlank() || !tagsEnabled()) return null;
+        try {
+            List<Long> ids = db().query(
+                    "SELECT id FROM " + TAG + " WHERE name=? LIMIT 1",
+                    (rs, i) -> rs.getLong(1),
+                    name.trim());
+            return ids.isEmpty() ? null : ids.get(0);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String str(Object o) {

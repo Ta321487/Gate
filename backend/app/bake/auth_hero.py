@@ -222,29 +222,57 @@ def _download(url: str, dest: Path, timeout: float = 8.0) -> bool:
     return True
 
 
-def _fetch_via_api(query: str, access_key: str, dest: Path) -> bool:
+def _search_photo_urls(
+    query: str,
+    access_key: str,
+    *,
+    limit: int = 5,
+    page: int = 1,
+    orientation: str = "landscape",
+    timeout: float = 8.0,
+) -> list[str]:
+    """Unsplash Search API：返回去重后的图片 URL 列表（不下载）。"""
+    limit = max(1, min(int(limit or 1), 30))
     qs = urllib.parse.urlencode(
-        {"query": query, "per_page": 5, "orientation": "landscape"}
+        {
+            "query": query,
+            "per_page": limit,
+            "page": max(1, int(page or 1)),
+            "orientation": orientation,
+        }
     )
     api = f"https://api.unsplash.com/search/photos?{qs}"
     req = urllib.request.Request(
         api,
         headers={
             "Authorization": f"Client-ID {access_key}",
-            "User-Agent": "thesis-harbor/1 auth-hero",
+            "Accept-Version": "v1",
+            "User-Agent": "thesis-harbor/1 unsplash",
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except Exception as e:  # noqa: BLE001
         log.warning("unsplash api search failed: %s", e)
-        return False
-    results = payload.get("results") or []
-    for item in results:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in payload.get("results") or []:
         urls = item.get("urls") or {}
         img = urls.get("regular") or urls.get("full") or urls.get("small")
-        if img and _download(img, dest):
+        if not img or img in seen:
+            continue
+        seen.add(img)
+        out.append(img)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _fetch_via_api(query: str, access_key: str, dest: Path) -> bool:
+    for img in _search_photo_urls(query, access_key, limit=5):
+        if _download(img, dest):
             return True
     return False
 

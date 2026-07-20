@@ -11,9 +11,9 @@
         <div class="photo" :style="{ backgroundImage: `url('${s.src}')` }" />
         <div class="veil" />
         <div class="copy">
-          <p class="kicker">{{ kicker }}</p>
+          <p class="kicker">{{ brand }}</p>
           <h2>{{ s.title }}</h2>
-          <p class="lead">{{ s.lead }}</p>
+          <p v-if="s.lead" class="lead">{{ s.lead }}</p>
         </div>
       </article>
     </div>
@@ -49,8 +49,8 @@ const raw = computed(() => {
 const slides = ref([])
 const index = ref(0)
 const labels = schemaLabels()
-const kicker = computed(() => labels.appName || APP_DELIVERED.title || '门户')
-const ariaLabel = computed(() => `${kicker.value}轮播`)
+const brand = computed(() => labels.appName || APP_DELIVERED.title || '门户')
+const ariaLabel = computed(() => `${brand.value}轮播`)
 
 let timer = null
 
@@ -71,6 +71,21 @@ function restart() {
   }
 }
 
+function isWelcomeSlide(s) {
+  const t = String(s?.title || '').trim()
+  return t === '欢迎使用' || t.startsWith('欢迎')
+}
+
+function orderSlides(list) {
+  const welcome = []
+  const rest = []
+  for (const s of list) {
+    if (isWelcomeSlide(s)) welcome.push(s)
+    else rest.push(s)
+  }
+  return [...welcome, ...rest]
+}
+
 async function probe() {
   const ok = []
   for (const s of raw.value) {
@@ -82,7 +97,7 @@ async function probe() {
     })
     if (pass) ok.push(s)
   }
-  slides.value = ok
+  slides.value = orderSlides(ok)
   index.value = 0
   restart()
 }
@@ -135,8 +150,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  gap: 6px;
   color: #f4f7f8;
   animation: rise 0.7s ease both;
+  box-sizing: border-box;
 }
 .slide.on .copy { animation: rise 0.75s ease both; }
 @keyframes rise {
@@ -144,21 +161,28 @@ onUnmounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 .kicker {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: color-mix(in srgb, #fff 72%, var(--portal-accent, #5eead4));
   font-family: var(--portal-font-ui);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .copy h2 {
-  margin: 0 0 8px;
+  margin: 0;
   font-family: var(--portal-font-display);
-  font-size: clamp(26px, 4.2vw, 40px);
+  font-size: clamp(24px, 3.8vw, 36px);
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.2;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .lead {
   margin: 0;
@@ -167,6 +191,10 @@ onUnmounted(() => {
   line-height: 1.55;
   color: rgba(244, 247, 248, 0.88);
   font-family: var(--portal-font-ui);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .dots {
   position: absolute;

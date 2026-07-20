@@ -31,7 +31,9 @@ public class ArchiveController {
         boolean showDeleted = includeDeleted && admin && AdminAuth.isSuperAdmin(session);
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
-        return R.ok(ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s));
+        Map<String, Object> data = ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s);
+        if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
+        return R.ok(data);
     }
 
     @GetMapping("/{id:\\d+}")
@@ -39,10 +41,11 @@ public class ArchiveController {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         Map<String, Object> item = admin ? ArchiveStore.getItemAdmin(id) : ArchiveStore.getItem(id);
         if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        if (!admin) ArchiveStore.redactSensitiveForPublic(item);
         return R.ok(item);
     }
 
-    /** CSV 批量导入：body.csv 为全文（含表头 title,author,isbn,category,stock） */
+    /** CSV 批量导入：body.csv 为全文；表头为英文字段键（前端会把领域中文列名映射过来），含扩展列 */
     @PostMapping("/import")
     public R<Map<String, Object>> importCsv(@RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
@@ -110,16 +113,63 @@ public class ArchiveController {
         java.util.List<Map<String, String>> rows = new java.util.ArrayList<>();
         if (lines.length < 2) return rows;
         String[] headers = splitCsvLine(lines[0]);
+        for (int i = 0; i < headers.length; i++) {
+            headers[i] = canonArchiveHeader(headers[i]);
+        }
         for (int i = 1; i < lines.length; i++) {
             if (lines[i].isBlank()) continue;
             String[] cols = splitCsvLine(lines[i]);
             Map<String, String> row = new java.util.LinkedHashMap<>();
             for (int c = 0; c < headers.length && c < cols.length; c++) {
-                row.put(headers[c].trim().toLowerCase(), cols[c].trim());
+                String key = headers[c];
+                if (key == null || key.isBlank()) continue;
+                row.put(key, cols[c].trim());
             }
             rows.add(row);
         }
         return rows;
+    }
+
+    /** 表头规范为 ArchiveStore 使用的 camelCase 键（兼容 start_at / StartAt 等）。 */
+    private static String canonArchiveHeader(String raw) {
+        String t = raw == null ? "" : raw.trim();
+        if (t.isEmpty()) return t;
+        String compact = t.replace("_", "").replace("-", "").toLowerCase(java.util.Locale.ROOT);
+        return switch (compact) {
+            case "title" -> "title";
+            case "author" -> "author";
+            case "isbn" -> "isbn";
+            case "category", "categoryname" -> "category";
+            case "stock" -> "stock";
+            case "startat" -> "startAt";
+            case "endat" -> "endAt";
+            case "applydeadlineat" -> "applyDeadlineAt";
+            case "mutexcode" -> "mutexCode";
+            case "checkincode" -> "checkinCode";
+            case "publisher" -> "publisher";
+            case "callno" -> "callNo";
+            case "conditiongrade" -> "conditionGrade";
+            case "sellernote" -> "sellerNote";
+            case "spicylevel" -> "spicyLevel";
+            case "isvegetarian" -> "isVegetarian";
+            case "requirestraining" -> "requiresTraining";
+            case "ownername" -> "ownerName";
+            case "stage" -> "stage";
+            case "credit" -> "credit";
+            case "servicehours" -> "serviceHours";
+            case "seatcapacity" -> "seatCapacity";
+            case "feerule" -> "feeRule";
+            case "stylistname" -> "stylistName";
+            case "durationsec" -> "durationSec";
+            case "releaseyear" -> "releaseYear";
+            case "region" -> "region";
+            case "summary" -> "summary";
+            case "itemkind" -> "itemKind";
+            case "foundat" -> "foundAt";
+            case "coverurl" -> "coverUrl";
+            case "tags", "tag", "tagnames" -> "tags";
+            default -> t;
+        };
     }
 
     private static String[] splitCsvLine(String line) {

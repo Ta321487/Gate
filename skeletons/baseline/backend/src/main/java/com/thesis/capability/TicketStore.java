@@ -80,6 +80,7 @@ public final class TicketStore {
     private static String CHECKIN_LABEL = "签到";
     private static String FINE_PAID_LABEL = "费用已结清";
     private static String ARCHIVE_LABEL = "";
+    private static String APPLY_DEADLINE_LABEL = "报名截止";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -173,6 +174,8 @@ public final class TicketStore {
                 if (!fp.isBlank()) FINE_PAID_LABEL = fp;
                 String arch = str(root.get("archiveLabel")).trim();
                 if (!arch.isBlank()) ARCHIVE_LABEL = arch;
+                String dl = str(root.get("applyDeadlineLabel")).trim();
+                if (!dl.isBlank()) APPLY_DEADLINE_LABEL = dl;
             }
         } catch (Exception ignored) {
         }
@@ -878,7 +881,7 @@ public final class TicketStore {
         try {
             LocalDateTime deadline = LocalDateTime.parse(String.valueOf(raw).substring(0, 19), FMT);
             if (LocalDateTime.now().isAfter(deadline)) {
-                throw new IllegalStateException("已过报名/选课截止时间");
+                throw new IllegalStateException("已过" + APPLY_DEADLINE_LABEL + "时间");
             }
         } catch (IllegalStateException e) {
             throw e;

@@ -140,7 +140,7 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', archiveLabel.value, userLabel.value, '开始', '结束', '状态', `${resvNoun.value}时间`]
+  const headers = ['编号', archiveLabel.value, userLabel.value, '开始', '结束', '状态', `${resvNoun.value}时间`, '详情']
   const data = rows.map((row) => [
     row.id,
     row.itemTitle,
@@ -149,6 +149,7 @@ async function exportCsv() {
     row.endAt,
     states.value[row.status] || row.status,
     row.createdAt,
+    resvDetail(row),
   ])
   downloadCsv(`reservations_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
   ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)

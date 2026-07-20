@@ -212,12 +212,12 @@ export function profileFieldsOnRegister() {
   return profileFields().filter((f) => f && f.onRegister)
 }
 
-/** 管理端表格优先展示的扩展列（跳过公共底座） */
-export function profileAdminColumns(limit = 2) {
+/** 管理端表格展示的扩展列（跳过已单独展示的姓名/手机等底座） */
+export function profileAdminColumns(limit = 0) {
   const skip = new Set(['realName', 'phone', 'email', 'gender'])
-  return profileFields()
-    .filter((f) => f && f.storage !== 'phone' && !skip.has(f.key))
-    .slice(0, limit)
+  const cols = profileFields().filter((f) => f && f.storage !== 'phone' && !skip.has(f.key))
+  if (limit > 0) return cols.slice(0, limit)
+  return cols
 }
 
 export function emptyProfileExtras(fields = profileFields()) {

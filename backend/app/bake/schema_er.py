@@ -900,7 +900,7 @@ def render_er_svg(model: dict, title: str = "E-R") -> str:
         f'<text class="er-title" x="24" y="28" font-family="Microsoft YaHei, SimSun, serif" font-size="16">'
         f"{_esc(show_title)}</text>",
         '<text class="er-legend" x="24" y="48" font-family="Microsoft YaHei, sans-serif" font-size="11" fill="#333">'
-        "方框=实体 · 菱形=联系 · 椭圆=属性 · 下划线=主键 · 波浪线=外键 · 1 / n 为联系基数 · 可拖元素调整"
+        "方框=实体 · 菱形=联系 · 椭圆=属性 · 下划线=主键 · 波浪线=外键 · 1 / n 为基数"
         "</text>",
     ]
     parts = (
@@ -922,6 +922,6 @@ def _svg_wrap(w: int, h: int, inner: str) -> str:
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
         f'viewBox="0 0 {w} {h}">\n'
-        f'<rect width="100%" height="100%" fill="#fff"/>\n'
+        f'<rect class="er-paper" width="100%" height="100%" fill="#fff"/>\n'
         f"{inner}\n</svg>\n"
     )

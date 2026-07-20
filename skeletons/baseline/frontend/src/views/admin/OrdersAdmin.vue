@@ -36,6 +36,18 @@
       <el-table-column prop="status" label="状态" width="110">
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
+      <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.remark || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="showLoyaltyCols" label="优惠" width="90">
+        <template #default="{ row }">
+          <span v-if="Number(row.discountYuan) > 0">¥{{ row.discountYuan }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="showLoyaltyCols" label="获积分" width="80">
+        <template #default="{ row }">{{ Number(row.pointsEarned) > 0 ? row.pointsEarned : '—' }}</template>
+      </el-table-column>
       <el-table-column label="明细" min-width="200">
         <template #default="{ row }">
           {{ (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；') }}
@@ -83,13 +95,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { hasTrait, getSchema } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const isFood = computed(() => hasTrait('food'))
+const showLoyaltyCols = computed(() => isPointsEnabled() || isSpendDiscountEnabled())
 const fulfillLabel = computed(() => (isFood.value ? '配送 / 口味' : '收货信息'))
 const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
 const shipVerb = computed(() => {
@@ -137,8 +150,8 @@ async function exportCsv() {
     return
   }
   const headers = isFood.value
-    ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '明细', '下单时间']
-    : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '明细', '下单时间']
+    ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
+    : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
   const data = rows.map((row) => {
     const base = [
       row.id,
@@ -147,23 +160,18 @@ async function exportCsv() {
       row.deliveryType || '',
       [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),
     ]
-    if (isFood.value) {
-      return [
-        ...base,
-        row.tasteNote || '',
-        row.pickupCode || '',
-        states.value[row.status] || row.status,
-        (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
-        row.createdAt,
-      ]
-    }
-    return [
-      ...base,
-      row.trackingNo || '',
+    const tail = [
       states.value[row.status] || row.status,
+      row.remark || '',
+      Number(row.discountYuan) > 0 ? row.discountYuan : '',
+      Number(row.pointsEarned) > 0 ? row.pointsEarned : '',
       (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
       row.createdAt,
     ]
+    if (isFood.value) {
+      return [...base, row.tasteNote || '', row.pickupCode || '', ...tail]
+    }
+    return [...base, row.trackingNo || '', ...tail]
   })
   downloadCsv(`orders_${status.value || 'all'}_${Date.now()}.csv`, headers, data)
   ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)

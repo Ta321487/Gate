@@ -12,6 +12,15 @@
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
       <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column prop="assigneeUsername" label="处理人" width="110">
+        <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="附件" width="90">
+        <template #default="{ row }">
+          <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
       <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column label="状态" width="100">
@@ -240,4 +249,5 @@ onMounted(load)
   font-style: normal;
   font-weight: 600;
 }
+.muted { color: #94a3b8; }
 </style>
