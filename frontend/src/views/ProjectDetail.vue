@@ -28,10 +28,10 @@
         </div>
         <div class="banner success">
           <h4>推荐匹配已给出</h4>
-          <p class="small muted">确认后开始生成。骨架 / 领域改动需先解锁。</p>
+          <p class="small muted">确认后即可开始生成。如需调整骨架或领域，请先解锁。</p>
         </div>
         <div v-if="matchWarnings.length" class="banner warn">
-          <h4>匹配说明（请看一眼）</h4>
+          <h4>匹配说明</h4>
           <ul class="warn-list">
             <li v-for="(w, i) in matchWarnings" :key="i">{{ warningText(w) }}</li>
           </ul>
@@ -47,12 +47,12 @@
                 <div class="rec-title">系统推荐（置信度 {{ p.confidence.toFixed(2) }}）</div>
                 <div class="rec-main">{{ p.recommended_arch }} × {{ p.recommended_domain }}</div>
                 <div class="rec-sub" v-if="keywordHits.length">命中：{{ keywordHits.join(' / ') }}</div>
-                <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">砍项：{{ p.spec.out_of_mvp.join('、') }}</div>
+                <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">本期不做：{{ p.spec.out_of_mvp.join('、') }}</div>
               </div>
               <div class="lock-row">
-                <span class="small muted">{{ unlocked ? '骨架 / 领域可改' : '骨架 / 领域已锁定' }}</span>
+                <span class="small muted">{{ unlocked ? '骨架 / 领域可调整' : '骨架 / 领域已锁定' }}</span>
                 <div class="row">
-                  <n-button size="small" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁覆盖' }}</n-button>
+                  <n-button size="small" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
                   <n-button v-if="unlocked || deviant" text size="small" @click="resetMatch">恢复推荐</n-button>
                 </div>
               </div>
@@ -70,7 +70,7 @@
                 <n-form-item label="行业配色">
                   <n-select v-model:value="form.theme" :options="themeOptions" @update:value="saveSoft" />
                 </n-form-item>
-                <n-form-item label="LLM 业务岛">
+                <n-form-item label="智能业务填充">
                   <n-select v-model:value="form.llm" :options="llmOptions" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="密码">
@@ -81,18 +81,18 @@
                 <span class="small muted">置信度</span>
                 <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : 'var(--amber)' }" /></div>
                 <strong>{{ displayConf.toFixed(2) }}</strong>
-                <span v-if="deviant" class="small muted">覆盖后降级 · 推荐 {{ (p.confidence || 0).toFixed(2) }}</span>
+                <span v-if="deviant" class="small muted">已偏离推荐 · 原置信度 {{ (p.confidence || 0).toFixed(2) }}</span>
               </div>
               <div class="override-banner" :class="{ show: unlocked || deviant, danger: deviant }">
-                {{ deviant ? '当前与推荐不一致，请确认后再生成。' : '骨架 / 领域可改。无把握请恢复推荐。' }}
+                {{ deviant ? '当前与系统推荐不一致，请确认后再生成。' : '骨架 / 领域可调整。如无把握，建议恢复推荐。' }}
               </div>
             </div>
           </div>
           <div class="panel">
             <div class="panel-hd">
-              <h3>解析摘要 · Spec 预览</h3>
+              <h3>解析摘要 · 生成配置</h3>
               <div class="row" style="margin:0;gap:6px">
-                <CopyIconButton :text="specText" tip="复制 JSON" />
+                <CopyIconButton :text="specText" tip="复制配置" />
                 <n-button text size="small" @click="showSpec = true">查看</n-button>
               </div>
             </div>
@@ -123,13 +123,13 @@
                 <p v-if="!proposal.excerpt && !proposal.feature_lines?.length" class="small muted">暂无开题正文摘要（源文件不可读时可另建项目）</p>
               </div>
               <div class="parse-block">
-                <div class="parse-label">生成 Spec</div>
+                <div class="parse-label">生成配置</div>
                 <dl class="spec-dl">
                   <div><dt>角色</dt><dd>{{ roleSpecText }}</dd></div>
                   <div><dt>实体</dt><dd>{{ (p.spec?.entities || []).join('、') || '—' }}</dd></div>
                   <div><dt>主流程</dt><dd>{{ (p.spec?.flows || []).join('；') || '—' }}</dd></div>
                   <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
-                  <div v-if="p.spec?.out_of_mvp?.length"><dt>砍项</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
+                  <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
                   <div><dt>配色</dt><dd>{{ p.spec?.theme_label || p.theme }}</dd></div>
                   <div><dt>登录入口</dt><dd>{{ p.spec?.auth_entry_mode_label || '—' }}<template v-if="p.spec?.auth_role_widget_label"> · {{ p.spec.auth_role_widget_label }}</template></dd></div>
                 </dl>
@@ -144,7 +144,7 @@
         </div>
         <div class="row mt-16">
           <n-button type="primary" size="large" :disabled="!ack || p.match_confirmed" @click="confirmMatch">
-            {{ deviant ? '确认覆盖并继续' : '确认并继续' }}
+            {{ deviant ? '确认按当前选择继续' : '确认并继续' }}
           </n-button>
         </div>
       </n-tab-pane>
@@ -157,7 +157,7 @@
               <div class="row-between">
                 <div>
                   <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
-                  <div class="small muted">bake 为主 · LLM 仅填业务岛 · 门禁不过禁止 ZIP</div>
+                  <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
                 </div>
                 <n-button type="primary" size="large" :disabled="!p.match_confirmed" @click="startGenerate">一键生成</n-button>
               </div>
@@ -188,7 +188,7 @@
             <div class="panel-bd">
               <div class="row-between" style="margin-bottom:10px">
                 <div style="font-weight:600">正在生成…</div>
-                <div class="small muted">Job #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
+                <div class="small muted">任务 #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
               </div>
               <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
               <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
@@ -228,30 +228,30 @@
           </div>
         </div>
         <div v-else-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success">
-          <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 门禁全过 · 可交付' }}</h4>
-          <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载 ZIP。' : 'ZIP 已解锁。请到「运行」预览后再交付。' }}</p>
+          <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 质量检查已通过 · 可交付' }}</h4>
+          <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载交付包。' : '交付包已解锁。建议到「运行」预览后再交付。' }}</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
             <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
             <n-button size="small" @click="startGenerate">重新生成</n-button>
           </div>
         </div>
         <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail">
-          <h4>已生成 · 门禁回退 · 禁止下载</h4>
-          <p class="small muted">工作区与当前门禁不一致（常见于骨架升级后）。请重新生成，或到「产物」查看未过项。</p>
+          <h4>已生成，但质量检查未通过，暂不可下载</h4>
+          <p class="small muted">工程与当前验收规则不一致（常见于基线升级后）。请重新生成，或到「产物」查看未通过项。</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="startGenerate">重新生成</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
             <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
           </div>
         </div>
         <div v-else class="banner fail">
-          <h4>门禁未过 · 禁止交付</h4>
-          <p class="small muted">{{ currentJob?.error || '主流程 / 功能清单未通过则禁止下载 ZIP。' }}</p>
+          <h4>质量检查未通过 · 暂不可交付</h4>
+          <p class="small muted">{{ currentJob?.error || '主流程或功能清单未通过时，暂不可下载交付包。' }}</p>
           <div class="row mt-12">
             <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看门禁</n-button>
+            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
             <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
           </div>
         </div>
@@ -357,13 +357,13 @@
               </n-button>
             </div>
             <div class="file-row" style="margin:0">
-              <span><strong>workspace/</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
+              <span><strong>工程目录</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
               <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
             </div>
             <div class="file-row" style="margin:0">
-              <span><strong>spec.json</strong><br /><span class="small muted">匹配与生成配置</span></span>
+              <span><strong>生成配置</strong><br /><span class="small muted">匹配与生成参数</span></span>
               <div class="row" style="margin:0;gap:6px">
-                <CopyIconButton :text="specText" tip="复制 JSON" />
+                <CopyIconButton :text="specText" tip="复制配置" />
                 <n-button text size="small" @click="showSpec = true">查看</n-button>
               </div>
             </div>
@@ -373,7 +373,7 @@
         <div class="panel mt-16">
           <div class="panel-hd">
             <h3>对照视图</h3>
-            <span class="small muted">库表 · 学生端 API · 门禁（不写入 ZIP）</span>
+            <span class="small muted">库表 · 学生端 API · 质量检查 · 仅运营端验收</span>
           </div>
           <div class="panel-bd" style="padding-top:4px">
             <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
@@ -384,7 +384,7 @@
                       <span class="muted">库名</span> · <span class="mono">{{ p.db_name || '—' }}</span>
                       <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
                       <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'" style="margin-left:8px">
-                        {{ schema ? '已解析' : (p.workspace_path ? '无 SQL' : '未生成') }}
+                        {{ schema ? '已解析' : (p.workspace_path ? '暂无表结构' : '未生成') }}
                       </span>
                     </div>
                     <div class="row" style="margin:0;gap:8px">
@@ -396,7 +396,7 @@
                       <n-button size="small" secondary :disabled="!schema?.tables?.length" @click="downloadEr">下载 SVG</n-button>
                     </div>
                   </div>
-                  <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
+                  <div class="small muted">数据表结构 · 建议 6～13 张表</div>
                   <template v-if="schema?.tables?.length">
                     <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
                       <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
@@ -467,19 +467,19 @@
                     <div class="small">
                       <template v-if="apis">
                         <strong>{{ apis.count }}</strong> 条 ·
-                        <span class="muted">{{ apis.controller_count }} 个 Controller</span>
+                        <span class="muted">{{ apis.controller_count }} 个接口模块</span>
                         <span v-if="apis.flow_marked" class="pill pill-green" style="margin-left:8px">
                           主流程 {{ apis.flow_marked }}
                         </span>
                       </template>
-                      <span v-else class="pill pill-neutral">{{ p.workspace_path ? '无 Controller' : '未生成' }}</span>
+                      <span v-else class="pill pill-neutral">{{ p.workspace_path ? '暂无接口清单' : '未生成' }}</span>
                     </div>
                     <div class="row" style="margin:0;gap:8px">
                       <n-input
                         v-model:value="apiQuery"
                         size="small"
                         clearable
-                        placeholder="筛选 path / 方法 / handler"
+                        placeholder="筛选路径 / 方法 / 处理函数"
                         style="width:220px"
                         :disabled="!apis"
                       />
@@ -491,8 +491,8 @@
                     </div>
                   </div>
                   <div class="small muted">
-                    静态扫描工作区 Controller · 对照门禁 flow_api · 不写入学生 ZIP。
-                    复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。
+                    自动扫描学生工程接口，便于对照主流程验收；仅供运营端查看，不含于交付包。
+                    复制为「方法 + 路径」；联调请用「运行」页的后端地址（需先登录预览）。
                   </div>
                   <div v-if="apis?.surfaces?.length" class="api-surface-bar row" style="margin:0;gap:6px">
                     <button
@@ -535,7 +535,7 @@
                           <li class="api-cols-hd">
                             <span>方法</span>
                             <span>路径</span>
-                            <span>Handler</span>
+                            <span>处理函数</span>
                             <span>面</span>
                             <span>契约</span>
                           </li>
@@ -558,21 +558,21 @@
                     </div>
                   </template>
                   <p v-else-if="apis" class="small muted">无匹配接口，试试清空筛选。</p>
-                  <p v-else class="small muted">生成工作区后可对照学生端 REST 映射。</p>
+                  <p v-else class="small muted">生成完成后可在此对照学生端接口清单。</p>
                 </div>
               </n-tab-pane>
 
-              <n-tab-pane name="gates" tab="门禁 / 清单">
+              <n-tab-pane name="gates" tab="质量检查">
                 <div class="artifact-pane stack">
                   <div class="row" style="justify-content:space-between;align-items:center">
                     <div class="small">
-                      质量门禁 · 交付 DoD
+                      质量检查 · 交付条件
                       <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
-                        {{ canDownload ? '可交付' : '禁止交付' }}
+                        {{ canDownload ? '可交付' : '暂不可交付' }}
                       </span>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
+                  <p class="small muted" style="margin:0">主流程或功能清单未通过时，暂不可下载交付包。</p>
                   <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
                   <div class="parse-sec-hd mt-12">开题对照清单</div>
                   <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
@@ -595,16 +595,16 @@
       @positive-click="confirmDelete"
       @negative-click="showDelete = false"
     >
-      <p style="margin:0 0 12px">将清理工作区与 ZIP，此操作不可恢复。</p>
+      <p style="margin:0 0 12px">将永久删除本机工程目录与交付包，此操作不可撤销。</p>
       <p v-if="p.db_name" class="small muted" style="margin:0 0 12px">
         学生库 <span class="mono">{{ p.db_name }}</span>
         {{ keepDb ? '将被保留' : '将一并删除' }}
       </p>
-      <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留数据库（不执行 DROP）</n-checkbox>
+      <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留学生数据库</n-checkbox>
     </n-modal>
-    <n-modal v-model:show="showSpec" preset="card" title="spec.json" style="width:640px">
+    <n-modal v-model:show="showSpec" preset="card" title="生成配置" style="width:640px">
       <div class="row" style="justify-content:flex-end;margin:0 0 8px">
-        <CopyIconButton :text="specText" tip="复制 JSON" />
+        <CopyIconButton :text="specText" tip="复制配置" />
       </div>
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
@@ -730,12 +730,12 @@ const erLayoutKey = ref(0)
 let pollTimer = null
 
 const planSteps = [
-  { t: '解析开题 → 合并 Spec', m: '匹配阶段' },
-  { t: '复制骨架 · 写入领域 SQL', m: '确定性 bake' },
-  { t: '业务岛 emit · LLM 填缺口', m: '白名单文件' },
-  { t: '构建验证', m: 'P0' },
-  { t: '门禁：登录 + 主流程 E2E', m: 'P1 / P2' },
-  { t: '开题对照 · 打包 ZIP', m: '仅门禁全过' },
+  { t: '解析材料并合并生成配置', m: '匹配阶段' },
+  { t: '复制基线并写入领域数据表', m: '确定性生成' },
+  { t: '按白名单填充业务配置', m: 'AI 补全配置项' },
+  { t: '构建验证', m: '基础检查' },
+  { t: '登录与主流程验收', m: '关键路径' },
+  { t: '开题对照并打包交付包', m: '检查全部通过后' },
 ]
 
 function stepStatusLabel(st) {
@@ -755,8 +755,8 @@ const passwordHashOptions = [
   { label: 'SHA-256', value: 'sha256' },
 ]
 const llmOptions = [
-  { label: '开启 · 白名单插槽填充', value: 'on' },
-  { label: '关闭 · 仅确定性 bake', value: 'off' },
+  { label: '开启 · 填充业务文案与种子数据', value: 'on' },
+  { label: '关闭 · 仅使用基线生成', value: 'off' },
 ]
 
 const deviant = computed(() => {
@@ -787,7 +787,7 @@ function warningText(w) {
 }
 const confirmHint = computed(() => {
   if (deviant.value) return '确认按当前骨架 / 领域生成。'
-  return '已核对骨架、领域与砍项，确认后开始生成。'
+  return '已核对骨架、领域与本期范围，确认后开始生成。'
 })
 const canDownload = computed(() => {
   if (!p.value) return false
@@ -797,12 +797,12 @@ const canDownload = computed(() => {
 const downloadZipLabel = computed(() => (p.value?.status === 'generating' ? '生成中…' : '下载 ZIP'))
 const downloadBlockedReason = computed(() => {
   if (p.value?.status === 'generating') return '生成中 · 打包完成前不可下载'
-  if (!canDownload.value) return '门禁未过 · 禁止下载 ZIP'
+  if (!canDownload.value) return '质量检查未通过，暂不可下载交付包'
   return ''
 })
 const zipLockHint = computed(() => {
   if (p.value?.status === 'generating') return '生成中 · 打包完成后解锁'
-  return canDownload.value ? '门禁已过' : '门禁未过 · 锁定'
+  return canDownload.value ? '质量检查已通过' : '质量检查未通过 · 暂锁定'
 })
 
 const deleteBlocked = computed(() => {
@@ -825,7 +825,7 @@ function runtimeStatusLabel(st) {
     stopped: '已停止',
     starting: '启动中',
     stopping: '停止中',
-    healthy: '健康',
+    healthy: '正常',
     error: '异常',
   })[st] || st || '已停止'
 }
@@ -1274,8 +1274,10 @@ async function refreshRuntime(projectId) {
 
 async function toggleUnlock() {
   if (!unlocked.value) {
-    const ok = await confirm('解锁后可改骨架/领域。确认解锁？', {
+    const ok = await confirm('解锁后可调整骨架与领域。确认解锁？', {
       title: '解锁匹配',
+      type: 'warning',
+      positiveText: '解锁',
     })
     if (!ok) return
     await api.patchMatch(p.value.id, { unlock: true })
@@ -1330,7 +1332,7 @@ async function saveSoft() {
 
 async function confirmMatch() {
   if (deviant.value) {
-    const ok = await confirm('当前已偏离系统推荐。确认仍要用这套骨架/领域生成？', {
+    const ok = await confirm('当前已偏离系统推荐。确认仍按当前骨架与领域生成？', {
       title: '偏离推荐确认',
       type: 'warning',
     })
@@ -1338,7 +1340,7 @@ async function confirmMatch() {
   }
   p.value = await api.patchMatch(p.value.id, { confirm: true, ack: true })
   unlocked.value = false
-  message.success(deviant.value ? '已按覆盖确认' : '已确认匹配')
+  message.success(deviant.value ? '已按当前选择确认' : '已确认匹配')
   tab.value = 'generate'
 }
 
@@ -1376,7 +1378,7 @@ async function retryCurrent() {
 
 function downloadZip() {
   if (!canDownload.value) {
-    message.error(downloadBlockedReason.value || '门禁未过 · 禁止下载 ZIP')
+    message.error(downloadBlockedReason.value || '质量检查未通过，暂不可下载交付包')
     if (p.value?.status !== 'generating') tab.value = 'gates'
     return
   }
@@ -1465,7 +1467,7 @@ function _runtimeSettled(side, action) {
 
 function openPreview() {
   if (rt.frontend_status !== 'healthy') {
-    message.warning('前端未就绪，请先启动并等待健康')
+    message.warning('前端未就绪，请先启动并等待可访问')
     return
   }
   const url = rt.preview_url || frontendAddr.value
@@ -1473,7 +1475,7 @@ function openPreview() {
     window.open(url, '_blank')
     return
   }
-  message.warning('前端未就绪，请先启动并等待健康')
+  message.warning('前端未就绪，请先启动并等待可访问')
 }
 
 let logReqSeq = 0

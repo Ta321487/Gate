@@ -9,7 +9,7 @@
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">毕设港</div>
-          <div class="brand-sub">Thesis Harbor · Ops</div>
+          <div class="brand-sub">Thesis Harbor · 运营台</div>
         </div>
         <nav class="nav">
           <div class="nav-label">工作台</div>
@@ -33,7 +33,7 @@
             <span class="dot" /><span>{{ item.label }}</span>
           </div>
         </nav>
-        <div class="sidebar-foot">毕设港 · Ops</div>
+        <div class="sidebar-foot">毕设港 · 运营台</div>
       </aside>
       <div class="main">
         <header class="topbar">

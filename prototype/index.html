@@ -1350,7 +1350,7 @@
             <div class="panel mt-16">
               <div class="panel-hd">
                 <h3>对照视图</h3>
-                <span class="small muted">库表 · 学生端 API · 门禁（不写入 ZIP）</span>
+                <span class="small muted">库表 · 学生端 API · 门禁 · 仅运营端验收</span>
               </div>
               <div class="panel-bd" style="padding-top:8px">
                 <div class="tabs-mini mb-12" id="artifact-subtabs">
@@ -1417,7 +1417,7 @@
                     </div>
                     <input type="search" placeholder="筛选 path / 方法 / handler" style="width:220px;height:30px;border:1px solid var(--line);border-radius:6px;padding:0 10px" />
                   </div>
-                  <div class="small muted">静态扫描工作区 Controller · 对照门禁 flow_api · 不写入学生 ZIP。复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。</div>
+                  <div class="small muted">静态扫描工作区 Controller · 对照门禁 flow_api · 仅供运营端验收，不含于交付包。复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。</div>
                   <div class="row gap-sm" style="margin:0">
                     <button type="button" class="api-chip active">全部 12</button>
                     <button type="button" class="api-chip">门户 5</button>
@@ -1491,7 +1491,7 @@
         <!-- ========== JOBS ========== -->
         <section id="view-jobs" class="view">
           <h1 class="page-title">任务队列</h1>
-          <p class="page-desc">生成任务状态、取消与重试。</p>
+          <p class="page-desc">生成任务状态、取消、清空历史与清理失效。</p>
           <div class="panel">
             <div class="panel-hd">
               <h3>任务列表</h3>
@@ -1844,7 +1844,7 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>产品定位</h3><span class="pill pill-teal">总览</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港工作台用于依据开题报告完成选题匹配、工程生成、质量门禁校验与本地预览，并在门禁通过后提供可交付压缩包。</p>
+                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量门禁校验与本地预览，并在门禁通过后提供可交付压缩包。</p>
                 <ul>
                   <li>以固定基线骨架与能力运行时为主体；大语言模型仅填充业务配置（Schema），不承担业务代码编写。</li>
                   <li>交付质量以门禁结果为准，不以生成耗时或文案完整度替代判定。</li>
@@ -1866,7 +1866,7 @@
               <div class="panel-hd"><h3>标准作业流程</h3><span class="pill pill-teal">流程</span></div>
               <div class="panel-bd help-body">
                 <ol class="help-steps">
-                  <li><strong>创建项目</strong><p>在「项目」页上传开题报告（PDF / Word / TXT）。系统解析题目后自动创建项目记录，进入项目详情。</p></li>
+                  <li><strong>创建项目</strong><p>在「项目」页上传材料（开题 / 任务书 / 功能清单等，PDF / Word / TXT，可一次多选，最多 8 份）。系统解析后自动创建项目记录，进入项目详情。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后方可启动生成。生成过程以 bake 为主，进度可在「任务队列」与项目详情中查看。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做冒烟检查；于「产物 / 对照」页核对门禁、表结构、学生端 API 与 E-R 图。</p></li>
@@ -1903,7 +1903,7 @@
                 <ul>
                   <li>按门户 / 管理端 / 基线等面筛选；可搜索 path 或 handler。</li>
                   <li>命中 Spec.gate.flow_api 的接口会标契约键（如 apply / place）。</li>
-                  <li>复制为「方法 + 路径」地址列表；联调基址取运行页后端地址。该视图仅工厂侧，不写入学生 ZIP。</li>
+                  <li>复制为「方法 + 路径」地址列表；联调基址取运行页后端地址。该视图仅供运营端验收，不含于学生交付包。</li>
                 </ul>
               </div>
             </article>
@@ -2115,7 +2115,7 @@
         .filter(map[filter] || map.all)
         .filter((p) => !q || p.name.includes(q) || p.id.includes(q));
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">拖入开题或任务书即可创建</div></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">拖入开题 / 任务书等材料即可创建（可多选）</div></div></td></tr>`;
       } else {
         tb.innerHTML = rows.map((p) => `
           <tr class="clickable" data-action="open-project" data-id="${p.id}">

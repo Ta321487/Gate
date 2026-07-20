@@ -1,6 +1,6 @@
 """从学生工作区 Controller 静态扫描 REST 映射，供工厂产物页对照。
 
-不依赖运行中的后端；不写入学生 ZIP。
+不依赖运行中的后端；仅供运营端验收，不含于学生交付包。
 """
 
 from __future__ import annotations

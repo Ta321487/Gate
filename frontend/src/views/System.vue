@@ -3,11 +3,11 @@
     <h1 class="page-title">运行环境</h1>
     <p class="page-desc">
       本机依赖与端口池（限制同时预览数，不限制选题库存）。服务器部署时设置 GF_PUBLIC_HOST 为对外 IP/域名。
-      工厂自身（Python）接口文档见
+      工作台后端接口文档见
       <a href="/docs" target="_blank" rel="noopener">/docs</a>
       ·
       <a href="/redoc" target="_blank" rel="noopener">/redoc</a>
-      （与学生端 ZIP 无关）。
+      （与学生端交付包无关）。
     </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else-if="info">
@@ -35,9 +35,9 @@
               · 占用 {{ formatPorts(info.used_frontend) }}
               <span class="muted">（运行中 {{ formatPorts(info.managed_frontend) }} · 可释放 {{ formatPorts(info.idle_frontend) }}）</span>
             </div>
-            <p class="small muted mb-12">「释放」只杀工厂未托管的僵尸进程，不会停止正在预览的项目。</p>
+            <p class="small muted mb-12">「释放」只清理工作台未托管但仍占端口的进程，不会停止正在预览的项目。</p>
             <n-button size="small" :loading="freeing" :disabled="!hasIdle" @click="free">
-              释放僵尸占用{{ hasIdle ? `（${idleCount}）` : '' }}
+              释放异常占用{{ hasIdle ? `（${idleCount}）` : '' }}
             </n-button>
           </div>
         </div>

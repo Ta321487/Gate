@@ -27,15 +27,39 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
     return out
 
 
-@router.post("/purge-orphans", response_model=ApiOk, summary="清理孤儿任务")
+@router.post("/purge-orphans", response_model=ApiOk, summary="清理失效任务")
 async def purge_orphans(db: AsyncSession = Depends(get_db)):
-    """删除 project_id 已不存在对应项目的任务。"""
+    """删除项目已不存在的失效任务。"""
     result = await db.execute(
         delete(Job).where(Job.project_id.notin_(select(Project.id)))
     )
     await db.commit()
     n = result.rowcount or 0
-    return ApiOk(message=f"已清空 {n} 条孤儿任务", data={"deleted": n})
+    return ApiOk(message=f"已清理 {n} 条失效任务", data={"deleted": n})
+
+
+@router.post("/purge-finished", response_model=ApiOk, summary="清空历史任务")
+async def purge_finished(db: AsyncSession = Depends(get_db)):
+    """删除 success / failed / cancelled，不影响 queued / running。"""
+    result = await db.execute(
+        delete(Job).where(Job.status.in_(("success", "failed", "cancelled")))
+    )
+    await db.commit()
+    n = result.rowcount or 0
+    return ApiOk(message=f"已清空 {n} 条历史任务", data={"deleted": n})
+
+
+@router.delete("/{job_id}", response_model=ApiOk, summary="删除单条任务")
+async def delete_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    """删除已结束任务；进行中须先取消。"""
+    j = await db.get(Job, job_id)
+    if not j:
+        raise HTTPException(404, "任务不存在")
+    if j.status in ("queued", "running"):
+        raise HTTPException(400, "请先取消进行中的任务，再删除")
+    await db.delete(j)
+    await db.commit()
+    return ApiOk(message=f"已删除任务 #{job_id}", data={"deleted": 1})
 
 
 @router.get("/{job_id}", response_model=JobOut, summary="任务详情")

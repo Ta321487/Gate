@@ -1,20 +1,28 @@
 <template>
   <div class="page-fill">
     <h1 class="page-title">任务队列</h1>
-    <p class="page-desc">生成任务状态、取消与重试。</p>
+    <p class="page-desc">生成任务状态、取消、清空历史与清理失效。</p>
     <PageSkeleton v-if="!booted" variant="list" />
     <div v-else class="panel panel-fill">
       <div class="panel-hd">
         <h3>任务列表</h3>
-        <div class="row" style="gap:8px">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
           <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
+          <n-button
+            size="small"
+            secondary
+            type="warning"
+            :loading="purgingFinished"
+            :disabled="!finishedCount"
+            @click="purgeFinished"
+          >清空历史（{{ finishedCount }}）</n-button>
           <n-button
             size="small"
             secondary
             type="error"
             :loading="purging"
             @click="purgeOrphans"
-          >清空项目不存在的任务</n-button>
+          >清理失效</n-button>
         </div>
       </div>
       <div class="panel-bd panel-bd-fill">
@@ -22,7 +30,7 @@
           <template #empty>
             <div class="empty-hint">
               <div class="empty-title">暂无任务</div>
-              <div class="empty-desc">上传开题并开始生成后，任务会出现在这里</div>
+              <div class="empty-desc">在「项目」上传材料并开始生成后，任务会出现在这里</div>
             </div>
           </template>
         </n-data-table>
@@ -32,7 +40,7 @@
 </template>
 
 <script setup>
-import { h, onMounted, onUnmounted, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
@@ -43,8 +51,13 @@ const router = useRouter()
 const list = ref([])
 const loading = ref(false)
 const purging = ref(false)
+const purgingFinished = ref(false)
 const booted = ref(false)
 let timer = null
+
+const finishedCount = computed(
+  () => list.value.filter((j) => ['success', 'failed', 'cancelled'].includes(j.status)).length,
+)
 
 async function act(fn, okMsg) {
   const res = await fn()
@@ -53,8 +66,23 @@ async function act(fn, okMsg) {
 }
 
 const columns = [
-  { title: 'Job', key: 'id', width: 90, render: (r) => h('span', { class: 'mono' }, `#${r.id}`) },
-  { title: '项目', key: 'project_title', render: (r) => r.project_title || r.project_id },
+  { title: '任务', key: 'id', width: 90, render: (r) => h('span', { class: 'mono' }, `#${r.id}`) },
+  {
+    title: '项目',
+    key: 'project_title',
+    render: (r) => {
+      const title = r.project_title || '（无标题）'
+      const when = r.started_at || r.created_at
+      const whenText = when ? new Date(when).toLocaleString() : ''
+      return h('div', { style: 'min-width:180px' }, [
+        h('div', { style: 'font-weight:600;line-height:1.35' }, title),
+        h('div', { class: 'small muted mono', style: 'margin-top:4px' }, r.project_id || '—'),
+        whenText
+          ? h('div', { class: 'small muted', style: 'margin-top:2px' }, `开始 ${whenText}`)
+          : null,
+      ])
+    },
+  },
   { title: '步骤', key: 'step' },
   {
     title: '状态',
@@ -73,7 +101,7 @@ const columns = [
   {
     title: '',
     key: 'actions',
-    width: 200,
+    width: 220,
     render: (r) => {
       const btns = [
         h(NButton, {
@@ -107,6 +135,22 @@ const columns = [
           }),
         }, { default: () => '重试' }))
       }
+      if (['success', 'failed', 'cancelled'].includes(r.status)) {
+        btns.push(h(NButton, {
+          size: 'small',
+          quaternary: true,
+          type: 'error',
+          onClick: async () => {
+            const ok = await confirm(`确定删除任务 #${r.id}？`, {
+              title: '删除任务',
+              type: 'warning',
+              positiveText: '删除',
+            })
+            if (!ok) return
+            await act(() => api.deleteJob(r.id), '已删除')
+          },
+        }, { default: () => '删除' }))
+      }
       return h('div', { class: 'row' }, btns)
     },
   },
@@ -133,17 +177,37 @@ async function refresh() {
   }
 }
 
+async function purgeFinished() {
+  const ok = await confirm(
+    `将删除成功、失败与已取消的任务（共 ${finishedCount.value} 条），进行中的不受影响。`,
+    {
+      title: '清空历史',
+      type: 'warning',
+      positiveText: '清空',
+    },
+  )
+  if (!ok) return
+  purgingFinished.value = true
+  try {
+    const res = await api.purgeFinishedJobs()
+    message.success(res.message || '已清空历史')
+    await load()
+  } finally {
+    purgingFinished.value = false
+  }
+}
+
 async function purgeOrphans() {
-  const ok = await confirm('确认删除所有「项目已不存在」的任务？此操作不可恢复。', {
-    title: '清空孤儿任务',
+  const ok = await confirm('将删除「项目已不存在」的失效任务，此操作不可恢复。', {
+    title: '清理失效',
     type: 'error',
-    positiveText: '确认删除',
+    positiveText: '清理',
   })
   if (!ok) return
   purging.value = true
   try {
     const res = await api.purgeOrphanJobs()
-    message.success(res.message || '已清空')
+    message.success(res.message || '已清理失效任务')
     await load()
   } finally {
     purging.value = false
