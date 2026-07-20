@@ -139,6 +139,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
 
+    @Value("${thesis.slot-require-confirm:false}")
+    private boolean slotRequireConfirm;
+
     @Value("${thesis.wallet-enabled:false}")
     private boolean walletEnabled;
 
@@ -200,6 +203,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);
+            SlotStore.configureConfirm(slotRequireConfirm);
         } else {
             SlotStore.unbind();
         }

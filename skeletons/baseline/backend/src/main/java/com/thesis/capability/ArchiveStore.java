@@ -1,10 +1,14 @@
 package com.thesis.capability;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.config.JdbcSupport;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
+import java.io.InputStream;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -30,10 +34,51 @@ public final class ArchiveStore {
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String itemTagFk = "post_id";
+    /** bake 注入：库存/名额等列名，供不足提示复用 */
+    private static String STOCK_LABEL = "库存";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private ArchiveStore() {}
+
+    public static void configureStockLabel(String label) {
+        if (label != null && !label.isBlank()) STOCK_LABEL = label.trim();
+    }
+
+    public static String stockLabel() {
+        return STOCK_LABEL == null || STOCK_LABEL.isBlank() ? "库存" : STOCK_LABEL;
+    }
+
+    public static String stockShortage(int remain) {
+        return stockLabel() + "不足（剩余 " + remain + "）";
+    }
+
+    public static String stockShortageNeed(int need) {
+        return stockLabel() + "不足，无法通过（需要 " + need + "）";
+    }
+
+    public static String stockShortageTitled(String title, int remain) {
+        String t = title == null ? "" : title.trim();
+        if (t.isBlank()) return stockShortage(remain);
+        return stockLabel() + "不足：「" + t + "」仅剩 " + remain;
+    }
+
+    /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
+    private static void loadStockLabelFromResource() {
+        try {
+            ClassPathResource res = new ClassPathResource("domain-ticket-copy.json");
+            if (!res.exists()) return;
+            try (InputStream in = res.getInputStream()) {
+                Map<String, Object> root = new ObjectMapper().readValue(in, new TypeReference<>() {});
+                Object raw = root.get("stockLabel");
+                if (raw != null) {
+                    String lab = String.valueOf(raw).trim();
+                    if (!lab.isBlank()) STOCK_LABEL = lab;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
 
     /** 换表（新领域薄落地时调用一次） */
     public static void bind(String categoryTable, String itemTable) {
@@ -47,6 +92,7 @@ public final class ArchiveStore {
         hasCheckinCode = null;
         TAG = "";
         ITEM_TAG = "";
+        loadStockLabelFromResource();
     }
 
     public static void configureSoftDelete(boolean enabled) {
@@ -685,7 +731,7 @@ public final class ArchiveStore {
         Map<String, Object> book = getItemRaw(itemId);
         if (book == null || isSoftDeleted(book)) throw new IllegalStateException("对象不存在");
         int stock = toInt(book.get("stock")) + delta;
-        if (stock < 0) throw new IllegalStateException("库存不足");
+        if (stock < 0) throw new IllegalStateException(stockShortage(0));
         db().update(
                 "UPDATE " + ITEM + " SET stock=?, status=? WHERE id=?",
                 stock, stock > 0 ? "available" : "unavailable", itemId);

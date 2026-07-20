@@ -122,6 +122,42 @@ export function markSessionOk() {
   sessionCache = true
 }
 
+const PROFILE_DISPLAY_EVENT = 'gf-profile-display'
+
+/**
+ * 写入昵称/头像并通知各布局顶栏立即刷新（同页保存后无需跳转）。
+ * @param {{ nickname?: string|null, avatarUrl?: string|null }} [patch]
+ */
+export function syncProfileDisplay(patch = {}) {
+  if (Object.prototype.hasOwnProperty.call(patch, 'nickname')) {
+    const n = patch.nickname == null ? '' : String(patch.nickname)
+    if (n) localStorage.setItem('nickname', n)
+    else localStorage.removeItem('nickname')
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'avatarUrl')) {
+    const a = patch.avatarUrl == null ? '' : String(patch.avatarUrl)
+    if (a) localStorage.setItem('avatarUrl', a)
+    else localStorage.removeItem('avatarUrl')
+  }
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent(PROFILE_DISPLAY_EVENT, {
+      detail: {
+        nickname: localStorage.getItem('nickname') || '',
+        avatarUrl: localStorage.getItem('avatarUrl') || '',
+      },
+    }),
+  )
+}
+
+/** @param {(detail: { nickname: string, avatarUrl: string }) => void} handler */
+export function onProfileDisplayChange(handler) {
+  if (typeof window === 'undefined') return () => {}
+  const fn = (e) => handler(e.detail || {})
+  window.addEventListener(PROFILE_DISPLAY_EVENT, fn)
+  return () => window.removeEventListener(PROFILE_DISPLAY_EVENT, fn)
+}
+
 /**
  * 清本地态并跳登录页。可重复调用，只跳一次。
  * @param {import('vue-router').Router} router

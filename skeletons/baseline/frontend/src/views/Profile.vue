@@ -177,7 +177,7 @@ import {
   isProfileFieldRequired,
   isProfileFieldVisible,
 } from '../utils/profileValidate.js'
-import { clearAuthStorage, loginPathForRole } from '../utils/session.js'
+import { clearAuthStorage, loginPathForRole, syncProfileDisplay } from '../utils/session.js'
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
@@ -326,8 +326,7 @@ async function save() {
     form.nickname = data.nickname || form.nickname
     form.avatarUrl = data.avatarUrl || form.avatarUrl
     clearPasswords()
-    if (form.nickname) localStorage.setItem('nickname', form.nickname)
-    if (form.avatarUrl) localStorage.setItem('avatarUrl', form.avatarUrl)
+    syncProfileDisplay({ nickname: form.nickname, avatarUrl: form.avatarUrl })
     ElMessage.success('已保存')
   } finally {
     saving.value = false
@@ -343,7 +342,7 @@ async function onAvatar(opt) {
     nickname: res.data?.nickname ?? form.nickname,
   })
   clearPasswords()
-  localStorage.setItem('avatarUrl', form.avatarUrl || '')
+  syncProfileDisplay({ nickname: form.nickname, avatarUrl: form.avatarUrl })
   ElMessage.success('头像已更新')
 }
 

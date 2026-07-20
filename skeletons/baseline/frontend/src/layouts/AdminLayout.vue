@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MessageBell from '../components/MessageBell.vue'
 import { APP_DELIVERED } from '../appDelivered.js'
@@ -35,18 +35,27 @@ import {
   currentStaffPost,
   staffPostLabel,
 } from '../utils/staffPosts.js'
+import { onProfileDisplayChange } from '../utils/session.js'
 
 const route = useRoute()
 const router = useRouter()
 const labels = schemaLabels()
 const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
 const username = localStorage.getItem('username') || ''
-const nickname = localStorage.getItem('nickname') || ''
+const nickname = ref(localStorage.getItem('nickname') || '')
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 const staffPost = currentStaffPost()
-const displayName = computed(() => nickname || username)
+const displayName = computed(() => nickname.value || username)
 const active = computed(() => route.path)
+
+let offProfileDisplay
+onMounted(() => {
+  offProfileDisplay = onProfileDisplayChange(({ nickname: n }) => {
+    nickname.value = n || ''
+  })
+})
+onUnmounted(() => offProfileDisplay?.())
 
 const adminRoleLabel = computed(() => {
   const roles = getSchema()?.roles || {}

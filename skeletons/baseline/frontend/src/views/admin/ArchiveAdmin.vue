@@ -43,10 +43,10 @@
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
         <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="showStock" prop="stock" :label="fieldLabel('stock', '数量')" width="90" />
+      <el-table-column v-if="showStock" prop="stock" :label="fieldLabel('stock', '库存')" width="90" />
       <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
       <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
-      <el-table-column v-if="hasDeadline" prop="applyDeadlineAt" :label="fieldLabel('applyDeadlineAt', '报名截止')" width="170" />
+      <el-table-column v-if="hasDeadline" prop="applyDeadlineAt" :label="fieldLabel('applyDeadlineAt', '截止')" width="170" />
       <el-table-column
         v-for="f in listExtraFields"
         :key="f.key"
@@ -130,7 +130,7 @@
         </el-form-item>
         <el-form-item
           v-if="showStock"
-          :label="fieldLabel('stock', '数量')"
+          :label="fieldLabel('stock', '库存')"
           required
         >
           <el-input-number v-model="form.stock" :min="0" :step="1" controls-position="right" style="width:100%" />
@@ -164,7 +164,7 @@
               style="width:100%"
             />
           </el-form-item>
-          <el-form-item v-if="hasDeadline" :label="fieldLabel('applyDeadlineAt', '报名截止')">
+          <el-form-item v-if="hasDeadline" :label="fieldLabel('applyDeadlineAt', '截止')">
             <el-date-picker
               v-model="form.applyDeadlineAt"
               v-bind="pickerProps('applyDeadlineAt')"
@@ -257,9 +257,14 @@ const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
 const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCode'))
 const softDelete = computed(() => !!archive.softDelete)
 const tagFilter = computed(() => !!archive.tagFilter)
+const stockDisplay = computed(() => archive.stockDisplay || 'count')
+/** count：库存数字；available：仅当 schema 声明了 stock 字段（可认领等）；hidden / 预约域：不展示 */
 const showStock = computed(() => {
+  if (stockDisplay.value === 'hidden') return false
   const f = fields.value.find((x) => x.key === 'stock')
-  return !f || f.type !== 'hidden'
+  if (f?.type === 'hidden') return false
+  if (stockDisplay.value === 'available') return !!f
+  return true
 })
 
 function fieldMeta(key) {
@@ -433,12 +438,12 @@ const FIELD_FALLBACK_LABELS = {
   author: '型号',
   isbn: '编号',
   category: '分类',
-  stock: '数量',
+  stock: '库存',
   mutexCode: '互斥码',
   checkinCode: '签到码',
   startAt: '开始时间',
   endAt: '结束时间',
-  applyDeadlineAt: '报名截止',
+  applyDeadlineAt: '截止',
 }
 
 /**
@@ -460,6 +465,7 @@ function importColumns() {
   }
   for (const k of ['title', 'author', 'isbn', 'category', 'stock']) {
     if (seen.has(k)) continue
+    if (k === 'stock' && !showStock.value) continue
     const meta = fields.value.find((f) => f?.key === k)
     if (meta?.type === 'hidden') continue
     seen.add(k)

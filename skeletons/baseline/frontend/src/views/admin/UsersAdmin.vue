@@ -53,12 +53,24 @@
             {{ row.enabled ? '停用' : '启用' }}
           </el-button>
           <el-button
-            v-if="canAppoint && !isSub(row)"
+            v-if="canAppointUser && !isSub(row) && scope === 'all'"
             link
             type="primary"
             @click="openAppoint(row)"
           >任命岗位</el-button>
-          <el-button v-else link type="danger" @click="revoke(row)">撤销任命</el-button>
+          <el-button
+            v-else-if="canAppoint && isSub(row) && canRevokeRow(row)"
+            link
+            type="danger"
+            @click="revoke(row)"
+          >撤销任命</el-button>
+          <el-tooltip
+            v-else-if="canAppoint && isSub(row) && !canRevokeRow(row)"
+            content="该岗位唯一账号，撤销后无法再任命业务用户顶替"
+            placement="top"
+          >
+            <el-button link type="info" disabled>撤销任命</el-button>
+          </el-tooltip>
         </template>
       </el-table-column>
     </el-table>
@@ -138,7 +150,11 @@ const roles = computed(() => getSchema()?.roles || {})
 const userLabel = computed(() => roles.value.user?.label || '用户')
 const subLabel = computed(() => roles.value.subadmin?.label || '子管')
 const postOptions = computed(() => staffPosts())
+/** 有岗位表；撤销仍可用 */
 const canAppoint = computed(() => postOptions.value.length > 0)
+/** 是否允许把门户业务用户升岗；缺省按 false（须 bake 显式 true） */
+const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
+const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
 const adminCols = computed(() => profileAdminColumns())
 const allFields = computed(() => profileFields())
@@ -148,6 +164,35 @@ const visibleFields = computed(() =>
 const appointVisible = ref(false)
 const appointTarget = ref(null)
 const appointPostId = ref('')
+
+/** 禁任命域：同岗仅剩一名启用中账号时不可撤/停用（与后端 assertNotSoleActiveStaff 一致） */
+function isSoleActiveStaff(row) {
+  if (allowAppointFromUsers.value) return false
+  if (!isSub(row) || !row.enabled) return false
+  const post = (row.staffPost || '').toString()
+  const peers = list.value.filter(
+    (r) => isSub(r) && r.enabled && (r.staffPost || '').toString() === post,
+  )
+  return peers.length <= 1
+}
+
+function canRevokeRow(row) {
+  if (!isSub(row)) return false
+  if (allowAppointFromUsers.value) return true
+  return !isSoleActiveStaff(row)
+}
+
+async function toggle(row) {
+  const next = !row.enabled
+  if (!next && isSoleActiveStaff(row)) {
+    ElMessage.warning('该岗位唯一启用账号，停用后无法再任命业务用户顶替')
+    return
+  }
+  await ElMessageBox.confirm(next ? '确认启用？' : '停用后将无法登录，确认？', '状态')
+  await http.put(`/api/admin/users/${row.username}`, { enabled: next })
+  ElMessage.success('已更新')
+  load()
+}
 
 function onIdentityMaybe(f) {
   const drivers = new Set(['identityType', 'readerType', 'ownerType', 'deliveryType', 'pickupType'])
@@ -211,14 +256,6 @@ async function save() {
   })
   ElMessage.success('已保存')
   visible.value = false
-  load()
-}
-
-async function toggle(row) {
-  const next = !row.enabled
-  await ElMessageBox.confirm(next ? '确认启用？' : '停用后将无法登录，确认？', '状态')
-  await http.put(`/api/admin/users/${row.username}`, { enabled: next })
-  ElMessage.success('已更新')
   load()
 }
 

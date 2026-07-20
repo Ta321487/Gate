@@ -14,7 +14,9 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="archiveLabel" min-width="160" />
-      <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column :label="userLabel" width="110">
+        <template #default="{ row }">{{ personLabel(row) }}</template>
+      </el-table-column>
       <el-table-column prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column prop="fineYuan" :label="`预估${fineLabel}`" width="110">
         <template #default="{ row }">{{ row.fineYuan > 0 ? row.fineYuan + ' 元' : '—' }}</template>
@@ -48,6 +50,7 @@ import http from '../../api/http'
 import {
   archiveCopy,
   getSchema,
+  personLabel,
   ticketDueLabel,
   ticketFineLabel,
   ticketRemindVerb,

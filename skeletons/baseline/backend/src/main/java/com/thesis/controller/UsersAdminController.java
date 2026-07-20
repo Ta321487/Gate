@@ -20,6 +20,10 @@ public class UsersAdminController {
     @Value("${thesis.register-role:user}")
     private String userRole;
 
+    /** 门户业务用户可否任命为岗位；缺省 false，须 yml/bake 显式打开 */
+    @Value("${thesis.allow-appoint-from-users:false}")
+    private boolean allowAppointFromUsers;
+
     @GetMapping
     public R<List<Map<String, Object>>> list(
             @RequestParam(required = false) String keyword,
@@ -44,7 +48,8 @@ public class UsersAdminController {
             String phone = body.containsKey("phone") ? String.valueOf(body.get("phone")) : null;
             Map<String, String> extras = AuthController.extractExtras(body);
             if (extras.isEmpty() && !body.containsKey("extras")) extras = null;
-            return R.ok(UserStore.adminUpdate(username, nick, phone, enabled, extras).toMap());
+            boolean protectLast = !allowAppointFromUsers;
+            return R.ok(UserStore.adminUpdate(username, nick, phone, enabled, extras, protectLast).toMap());
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -71,6 +76,9 @@ public class UsersAdminController {
             @RequestBody(required = false) Map<String, Object> body,
             HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
+        if (!allowAppointFromUsers) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "本系统不支持将业务用户任命为岗位，请使用预置岗位账号");
+        }
         try {
             Map<String, Object> b = body == null ? Map.of() : body;
             String staffPost = String.valueOf(b.getOrDefault("staffPost", b.getOrDefault("staff_post", "")));
@@ -91,7 +99,9 @@ public class UsersAdminController {
     public R<Map<String, Object>> revoke(@PathVariable String username, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         try {
-            return R.ok(UserStore.revokeSubAdmin(username, userRole).toMap());
+            // 禁任命域：保护该岗最后一个账号，避免撤光后无法补岗
+            boolean protectLast = !allowAppointFromUsers;
+            return R.ok(UserStore.revokeSubAdmin(username, userRole, protectLast).toMap());
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

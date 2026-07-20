@@ -79,6 +79,28 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-GENERIC": [_clerk("clerk", "业务办理员", "ticket_ops")],
 }
 
+# 门户身份强绑定（患者/车主/顾客等）：岗位靠种子账号，禁止把业务用户「任命」成岗
+NO_APPOINT_FROM_USERS: frozenset[str] = frozenset({
+    "DOM-HOSPITAL",
+    "DOM-PARKING",
+    "DOM-MEETING",
+    "DOM-SALON",
+    "DOM-HOTEL",
+    "DOM-SHOP",
+    "DOM-FOOD",
+})
+
+
+def allow_appoint_from_users(domain: str, archetype: str | None = None) -> bool:
+    """是否允许把门户业务用户升为岗位；无岗位表时亦为 False。"""
+    if domain in NO_APPOINT_FROM_USERS:
+        return False
+    if domain == "DOM-GENERIC":
+        arch = (archetype or "ARCH-CRUD").upper()
+        if "TRADE" in arch or "RESERVE" in arch:
+            return False
+    return bool(staff_posts_for_domain(domain, archetype))
+
 
 def staff_posts_for_domain(domain: str, archetype: str | None = None) -> list[dict[str, Any]]:
     if domain == "DOM-GENERIC":
@@ -140,6 +162,7 @@ def attach_staff_posts(schema: dict[str, Any], domain: str, archetype: str | Non
         raise ValueError(f"{domain}: {e}")
     roles = dict(schema.get("roles") or {})
     roles["staff_posts"] = posts
+    roles["allowAppointFromUsers"] = allow_appoint_from_users(domain, archetype)
     clerks = [p for p in posts if p.get("kind") == "clerk"]
     if clerks:
         first = clerks[0]

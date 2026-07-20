@@ -1425,6 +1425,7 @@ def _slot_shell_schema(
         },
         "requireRemark": bool(reserve_require_remark),
         "remarkLabel": reserve_remark_label or "备注",
+        "requireConfirm": False,
     }
     entities: dict[str, Any] = {
         "archive": {
@@ -1432,7 +1433,7 @@ def _slot_shell_schema(
             "label": archive_label,
             "labelPlural": archive_plural,
             "fields": archive_fields,
-            "stockDisplay": "available",
+            "stockDisplay": "hidden",
         },
         "reservation": reservation_entity,
     }

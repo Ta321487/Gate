@@ -72,14 +72,7 @@ export function schemaMenus(side = 'admin') {
     else list.push(item)
     keys.add('messages')
   }
-  // 预约壳有 /slots 页时露出独立入口（目录仍保留）
-  const caps = getSchema().capabilities || []
-  if (caps.includes('slot_reserve') && !keys.has('slots')) {
-    const item = { key: 'slots', label: '预约选时' }
-    const ai = list.findIndex((m) => m.key === 'archive')
-    if (ai >= 0) list.splice(ai + 1, 0, item)
-    else list.splice(1, 0, item)
-  }
+  // 预约时段页须带资源 itemId（从目录点「选时段」进入），不单独挂顶栏入口，避免空号源+工厂口吻空态
   return list
 }
 
@@ -196,6 +189,13 @@ export function softDeleteCopy() {
     return { on: '在架', off: '已下架', verb: '下架', include: '含下架' }
   }
   return { on: '启用', off: '已停用', verb: '停用', include: '含停用' }
+}
+
+/** 列表/导出：优先 displayName（后端注入）/ 昵称，否则用户名 */
+export function personLabel(row, fallback = '—') {
+  if (!row || typeof row !== 'object') return fallback
+  const name = (row.displayName || row.nickname || row.username || '').toString().trim()
+  return name || fallback
 }
 
 export function acceptLevel() {

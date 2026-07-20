@@ -176,6 +176,8 @@ public final class TicketStore {
                 if (!arch.isBlank()) ARCHIVE_LABEL = arch;
                 String dl = str(root.get("applyDeadlineLabel")).trim();
                 if (!dl.isBlank()) APPLY_DEADLINE_LABEL = dl;
+                String sl = str(root.get("stockLabel")).trim();
+                if (!sl.isBlank()) ArchiveStore.configureStockLabel(sl);
             }
         } catch (Exception ignored) {
         }
@@ -406,7 +408,7 @@ public final class TicketStore {
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         int nQty = resolveQty(qty, stock);
-        if (useQuota && stock < nQty) throw new IllegalStateException("库存不足（剩余 " + stock + "）");
+        if (useQuota && stock < nQty) throw new IllegalStateException(ArchiveStore.stockShortage(stock));
         assertApplyDeadline(item);
         assertNoTimeConflict(username, itemId, item);
         assertNoMutexConflict(username, itemId, item);
@@ -501,7 +503,7 @@ public final class TicketStore {
         int n = qty == null ? 1 : qty;
         if (n < 1) throw new IllegalStateException("数量至少为 1");
         if (n > 99) throw new IllegalStateException("单次数量不能超过 99");
-        if (stock > 0 && n > stock) throw new IllegalStateException("库存不足（剩余 " + stock + "）");
+        if (stock > 0 && n > stock) throw new IllegalStateException(ArchiveStore.stockShortage(stock));
         return n;
     }
 
@@ -652,7 +654,7 @@ public final class TicketStore {
         if (ticketId <= 0) return;
         try {
             String sub = subject == null || subject.isBlank() ? ("单据#" + ticketId) : subject;
-            String who = applicant == null || applicant.isBlank() ? "用户" : applicant;
+            String who = UserStore.displayName(applicant);
             MessageStore.notifyAdmins(
                     "待受理",
                     who + " 提交了「" + sub + "」，请尽快处理。",
@@ -1069,7 +1071,7 @@ public final class TicketStore {
             if (item == null) throw new IllegalStateException("对象不存在");
             int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
             int nQty = rowQty(m);
-            if (stock < nQty) throw new IllegalStateException("库存不足，无法通过（需要 " + nQty + "）");
+            if (stock < nQty) throw new IllegalStateException(ArchiveStore.stockShortageNeed(nQty));
             ArchiveStore.adjustStock(itemId, -nQty);
         }
         if (MODE == Mode.ARCHIVE && useDeadline) {
@@ -1566,6 +1568,10 @@ public final class TicketStore {
             m.put("noShowPenaltyYuan", noShowPenaltyYuan);
         }
         m.put("mode", MODE.name().toLowerCase());
+        Object u = m.get("username");
+        if (u != null && !String.valueOf(u).isBlank()) {
+            m.put("displayName", UserStore.displayName(String.valueOf(u)));
+        }
         return m;
     }
 

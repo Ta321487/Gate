@@ -54,6 +54,17 @@ public class SlotController {
         }
     }
 
+    @PostMapping("/reservations/{id}/confirm")
+    public R<?> confirm(@PathVariable long id, HttpSession session) {
+        requireSlot();
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(SlotStore.confirm(id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping("/reservations")
     public R<?> page(
             @RequestParam(defaultValue = "1") int page,

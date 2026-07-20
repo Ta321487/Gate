@@ -79,7 +79,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     },
 }
 
-# 开题命中这些信号 → 不得进入 complete（最多 degraded）
+# 技术 L3：全文扫描（研究现状里写到也降级，避免当已交付）
 # 注：轻量「猜你喜欢」已落地；协同过滤/深度推荐仍视为超范围卖点
 OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
     ("人脸", "生物识别/人脸"),
@@ -106,27 +106,96 @@ OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
     ("android", "非本仓库主交付形态"),
 ]
 
+# 业务写太大：优先扫「拟实现/主要功能」段，减少国内外现状误伤
+# 短语尽量具体，避免单字「检查」等误报
+BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
+    # 医疗 / 门诊发散
+    ("电子病历", "电子病历"),
+    ("病历管理", "电子病历"),
+    ("处方开药", "处方开药"),
+    ("开具处方", "处方开药"),
+    ("处方管理", "处方开药"),
+    ("检验检查", "检验检查"),
+    ("检验申请", "检验检查"),
+    ("叫号大屏", "排队叫号大屏"),
+    ("排队叫号", "排队叫号大屏"),
+    ("候诊大屏", "排队叫号大屏"),
+    ("医保结算", "医保对接/结算"),
+    ("医保对接", "医保对接/结算"),
+    ("医保接口", "医保对接/结算"),
+    # 企业 / 流程过重
+    ("bpmn", "可配置工作流/BPMN"),
+    ("工作流引擎", "可配置工作流/BPMN"),
+    ("activiti", "可配置工作流/BPMN"),
+    ("camunda", "可配置工作流/BPMN"),
+    ("erp系统", "ERP/多仓进销存"),
+    ("多仓", "ERP/多仓进销存"),
+    ("批次管理", "ERP/多仓进销存"),
+    # 各域常见吹大
+    ("智能排课", "智能排课"),
+    ("自动排课", "智能排课"),
+    ("公海池", "外呼/公海池"),
+    ("外呼中心", "外呼/公海池"),
+    ("实时私信", "实时私信"),
+    ("富文本协同", "富文本协同编辑"),
+    ("协同编辑", "富文本协同编辑"),
+    ("转码cdn", "转码/CDN"),
+    ("转码 CDN", "转码/CDN"),
+    ("歌词同步", "歌词同步"),
+    ("rfid", "RFID全链路"),
+    ("RFID", "RFID全链路"),
+]
+
+
+_NEG = re.compile(
+    r"(?:不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|"
+    r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必)"
+)
+
 
 def implemented_capability_ids() -> set[str]:
     return {k for k, v in CAPABILITIES.items() if v.get("status") == "implemented"}
 
 
-def scan_out_of_scope(text: str) -> list[str]:
-    """扫描超范围卖点；「不做/不要求/不作为必交」等否定语境不计。"""
-    raw = text or ""
-    neg = re.compile(
-        r"(?:不要求|不实现|不做|不作为|不纳入|不属于|仅作展望|仅参考|非本课题|"
-        r"本期不|范围外|不强制|非必交|非必演示|不作为必)"
-    )
+def _scan_signals(raw: str, signals: list[tuple[str, str]], *, window: int = 48) -> list[str]:
     hits: list[str] = []
-    for kw, label in OUT_OF_SCOPE_SIGNALS:
+    if not raw:
+        return hits
+    for kw, label in signals:
         for m in re.finditer(re.escape(kw), raw, flags=re.IGNORECASE):
-            window = raw[max(0, m.start() - 24) : m.end() + 24]
-            if neg.search(window):
+            ctx = raw[max(0, m.start() - window) : m.end() + window]
+            if _NEG.search(ctx):
                 continue
             if label not in hits:
                 hits.append(label)
             break
+    return hits
+
+
+def scan_out_of_scope(text: str) -> list[str]:
+    """扫描超范围卖点；「不做/不纳入」等否定语境不计。
+
+    - 技术 L3：扫全文（去掉参考文献等噪声后）
+    - 业务过重：优先扫功能/拟实现焦点段，避免现状综述里的 HIS 对比误伤
+    """
+    from app.services.proposal import strip_non_dev_sections
+
+    raw = strip_non_dev_sections(text or "")
+    hits = _scan_signals(raw, OUT_OF_SCOPE_SIGNALS)
+
+    focus = raw
+    try:
+        from app.bake.catalog import proposal_impl_sections_for_scope
+
+        focused = proposal_impl_sections_for_scope(text or "")
+        # 有明确功能段才收窄；否则退回全文（无章节标题的清单仍能打标）
+        if focused and focused.strip():
+            focus = focused
+    except Exception:  # noqa: BLE001
+        pass
+    for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS):
+        if label not in hits:
+            hits.append(label)
     return hits
 
 

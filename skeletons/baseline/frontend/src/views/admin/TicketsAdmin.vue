@@ -11,7 +11,9 @@
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" />
       <el-table-column prop="typeName" label="类型" width="100" />
       <el-table-column prop="location" label="地点" width="140" />
-      <el-table-column prop="username" :label="userLabel" width="110" />
+      <el-table-column :label="userLabel" width="110">
+        <template #default="{ row }">{{ personLabel(row) }}</template>
+      </el-table-column>
       <el-table-column prop="assigneeUsername" label="处理人" width="110">
         <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
       </el-table-column>
@@ -111,7 +113,7 @@ import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, personLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})

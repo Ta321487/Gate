@@ -2,6 +2,7 @@ package com.thesis.capability;
 
 import com.thesis.config.JdbcSupport;
 import com.thesis.service.MessageStore;
+import com.thesis.service.UserStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -164,7 +165,8 @@ public final class OrderStore {
             if (item == null) throw new IllegalStateException("商品不存在：" + line.get("title"));
             int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
             if (useQuota && stock < qty) {
-                throw new IllegalStateException("库存不足：「" + item.get("title") + "」仅剩 " + stock);
+                throw new IllegalStateException(ArchiveStore.stockShortageTitled(
+                        String.valueOf(item.get("title")), stock));
             }
             total += priceOf(item) * qty;
         }
@@ -262,7 +264,7 @@ public final class OrderStore {
         try {
             MessageStore.notifyAdmins(
                     "新订单待确认",
-                    username + " 下单 ¥" + round2(subtotal) + "，请确认处理。",
+                    UserStore.displayName(username) + " 下单 ¥" + round2(subtotal) + "，请确认处理。",
                     "order",
                     orderId);
         } catch (Exception ignored) {
@@ -513,6 +515,8 @@ public final class OrderStore {
         m.put("pointsEarned", (int) safeLong(rs, "points_earned"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
+        String un = rs.getString("username");
+        if (un != null && !un.isBlank()) m.put("displayName", UserStore.displayName(un));
         return m;
     }
 
