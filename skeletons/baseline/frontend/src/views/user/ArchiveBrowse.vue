@@ -213,7 +213,7 @@ import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, getDomain, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, hasTrait, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import {
   guestTeaserLimit,
@@ -226,7 +226,7 @@ const router = useRouter()
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const archive = archiveCopy()
 const ticket = ticketCopy()
-const isCrm = computed(() => getDomain() === 'DOM-CRM')
+const isCrm = computed(() => hasTrait('crm'))
 const caps = computed(() => getSchema().capabilities || [])
 const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '业务对象')

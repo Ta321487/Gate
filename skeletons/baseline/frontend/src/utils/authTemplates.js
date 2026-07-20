@@ -1,6 +1,6 @@
 /** 基线登录/注册版式：优先工厂交付配置，其次 .env，交付后固定不变 */
 
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 
 export const AUTH_TEMPLATES = [
   {
@@ -39,7 +39,7 @@ const IDS = new Set(AUTH_TEMPLATES.map((t) => t.id))
 
 /** bake / ZIP 交付固定版式 */
 export function pickAuthTemplate() {
-  const fromFactory = (FACTORY_DELIVERED?.authTemplate || '').trim()
+  const fromFactory = (APP_DELIVERED?.authTemplate || '').trim()
   if (fromFactory && IDS.has(fromFactory)) return fromFactory
   const fromEnv = (import.meta.env.VITE_AUTH_TEMPLATE || '').trim()
   if (fromEnv && IDS.has(fromEnv)) return fromEnv

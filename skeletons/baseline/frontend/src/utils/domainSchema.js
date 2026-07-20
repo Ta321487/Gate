@@ -1,15 +1,29 @@
 /**
- * 读取工厂注入的 Domain Schema（文案 / 菜单 / 能力）。
+ * 读取课题注入的 Domain Schema（文案 / 菜单 / 能力）。
  * 业务页应优先用这里的标签，避免写死领域词。
  */
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 
 export function getDelivered() {
-  return FACTORY_DELIVERED || {}
+  return APP_DELIVERED || {}
 }
 
+/** 短皮肤 id（如 library / food），非工厂 DOM 编号 */
+export function getFlavor() {
+  return getDelivered().flavor || 'generic'
+}
+
+/** @deprecated 兼容旧调用；等价于 getFlavor() */
 export function getDomain() {
-  return getDelivered().domain || 'DOM-GENERIC'
+  return getFlavor()
+}
+
+export function getTraits() {
+  return getDelivered().traits || {}
+}
+
+export function hasTrait(name) {
+  return !!getTraits()[name]
 }
 
 export function getDomainLabel() {
@@ -152,10 +166,7 @@ export function softDeleteCopy() {
       include: arch.softDeleteIncludeLabel || `含${arch.softDeleteVerb || '停用'}`,
     }
   }
-  const shelf = new Set([
-    'DOM-LIBRARY', 'DOM-SHOP', 'DOM-FOOD', 'DOM-MEDIA', 'DOM-MUSIC', 'DOM-BLOG', 'DOM-FORUM',
-  ])
-  if (shelf.has(getDomain())) {
+  if (hasTrait('shelfCopy')) {
     return { on: '在架', off: '已下架', verb: '下架', include: '含下架' }
   }
   return { on: '启用', off: '已停用', verb: '停用', include: '含停用' }

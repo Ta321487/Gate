@@ -49,14 +49,18 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _patch_student_readme(dest: Path, *, app_name: str, db_name: str) -> None:
-    """ZIP 根目录 README：写入课题名与库名，方便学生对照。"""
+def _patch_student_readme(
+    dest: Path, *, app_name: str, db_name: str, java_package: str = "com.thesis"
+) -> None:
+    """ZIP 根目录 README：写入课题名、库名与 Java 包路径。"""
     path = dest / "README.md"
     if not path.is_file():
         return
     text = path.read_text(encoding="utf-8")
     text = text.replace("${APP_NAME}", app_name or "毕设系统")
     text = text.replace("${DB_NAME}", db_name or "thesis_app")
+    text = text.replace("${JAVA_PACKAGE_PATH}", java_package.replace(".", "/"))
+    text = text.replace("${JAVA_PACKAGE}", java_package)
     path.write_text(text, encoding="utf-8")
 
 
@@ -175,10 +179,26 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     if app_yml.exists():
         text = app_yml.read_text(encoding="utf-8")
         text = text.replace("${DB_NAME}", db_name)
-        # thesis.title / meta 用短产品名，避免登录页显示「毕设系统」或整段开题题名
-        text = text.replace("${PROJECT_TITLE}", app_name)
+        # 支持 ${PROJECT_TITLE} 与 ${PROJECT_TITLE:默认值}
+        text = re.sub(
+            r"\$\{PROJECT_TITLE(?::[^}]*)?\}",
+            app_name.replace("\\", "\\\\"),
+            text,
+            count=1,
+        )
         text = _patch_thesis_yml(text, domain, spec)
         app_yml.write_text(text, encoding="utf-8")
+
+    from app.bake.java_package import remap_student_java_package, rewrite_gate_file_paths
+
+    new_pkg = remap_student_java_package(dest, domain)
+    # 门禁契约文件路径随包名改写（写入工作区 spec）
+    gate = spec.get("gate")
+    if isinstance(gate, dict) and gate.get("files"):
+        gate = dict(gate)
+        gate["files"] = rewrite_gate_file_paths(list(gate["files"] or []), new_pkg)
+        spec["gate"] = gate
+        _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
 
     env_fe = dest / "frontend" / ".env"
     auth_tpl = normalize_auth_template(spec.get("auth_template"))
@@ -194,7 +214,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         encoding="utf-8",
     )
 
-    _patch_student_readme(dest, app_name=app_name, db_name=db_name)
+    _patch_student_readme(dest, app_name=app_name, db_name=db_name, java_package=new_pkg)
 
     from app.bake.auth_hero import auth_hero_public_path, fetch_auth_hero
     from app.bake.portal_banners import fetch_portal_banners
@@ -221,11 +241,11 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
 
 
 def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
-    """写入 domain / register-role / ticket-mode（薄领域 runtime 来自 catalog）。"""
+    """按本项目能力重写 thesis 段：只保留用到的键，去掉空开关与工厂话术。"""
     from app.bake.catalog import DOMAINS
     from app.bake.domain_schema import DOMAIN_CAPABILITIES
+    from app.bake.guest_cta import GUEST_TEASER_LIMIT, portal_guest_browse_enabled
 
-    # GENERIC 等域的 runtime 写在 spec 上（按 ARCH-* 绑壳）
     runtime = dict(spec.get("runtime") or {})
     if not runtime:
         runtime = dict((DOMAINS.get(domain) or {}).get("runtime") or {})
@@ -240,147 +260,129 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     use_deadline = runtime.get("use_deadline")
     if use_deadline is None:
         use_deadline = "deadline" in caps
-
-    def _set_key(src: str, key: str, value: str) -> str:
-        import re
-
-        pat = re.compile(rf"(?m)^(\s*{re.escape(key)}:\s*).*$")
-        if pat.search(src):
-            return pat.sub(rf"\g<1>{value}", src, count=1)
-        # 插在 thesis: 块末（简单追加到文件 thesis 段）
-        if "thesis:" in src:
-            return src.replace(
-                "thesis:\n",
-                f"thesis:\n  {key}: {value}\n",
-                1,
-            )
-        return src + f"\nthesis:\n  {key}: {value}\n"
-
-    text = _set_key(text, "domain", domain)
-    text = _set_key(text, "register-role", str(register_role))
-    text = _set_key(text, "ticket-mode", str(ticket_mode))
-    text = _set_key(text, "ticket-table", str(ticket_table))
-    text = _set_key(text, "use-quota", "true" if use_quota else "false")
-    text = _set_key(text, "use-deadline", "true" if use_deadline else "false")
-    allow_multi = runtime.get("allow_multi_ticket")
-    if allow_multi is None:
-        allow_multi = False
-    text = _set_key(text, "allow-multi-ticket", "true" if allow_multi else "false")
+    allow_multi = bool(runtime.get("allow_multi_ticket") or False)
     check_conflict = runtime.get("check_time_conflict")
     if check_conflict is None:
         check_conflict = "time_conflict" in caps
-    text = _set_key(text, "check-time-conflict", "true" if check_conflict else "false")
     enable_ticket = runtime.get("enable_ticket")
     if enable_ticket is None:
         enable_ticket = "ticket_flow" in caps
-    text = _set_key(text, "enable-ticket", "true" if enable_ticket else "false")
-    ticket_ent = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
-    text = _set_key(
-        text,
-        "ticket-two-level",
-        "true" if ticket_ent.get("twoLevelApprove") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-require-attach",
-        "true" if ticket_ent.get("requireAttach") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-allow-rating",
-        "true" if ticket_ent.get("allowRating") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-check-mutex",
-        "true" if ticket_ent.get("checkMutex") else "false",
-    )
-    cat_limit = ticket_ent.get("categoryLimit")
-    try:
-        cat_limit_n = int(cat_limit) if cat_limit is not None else 0
-    except (TypeError, ValueError):
-        cat_limit_n = 0
-    text = _set_key(text, "ticket-category-limit", str(max(0, cat_limit_n)))
-    text = _set_key(
-        text,
-        "ticket-week-calendar",
-        "true" if ticket_ent.get("weekCalendar") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-allow-checkin",
-        "true" if ticket_ent.get("allowCheckin") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-pick-loan-period",
-        "true" if ticket_ent.get("pickLoanPeriod") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-allow-qty",
-        "true" if ticket_ent.get("allowQty") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-require-remark",
-        "true" if ticket_ent.get("requireRemark") else "false",
-    )
-    text = _set_key(
-        text,
-        "ticket-pick-date-range",
-        "true" if ticket_ent.get("pickDateRange") else "false",
-    )
-    resv_ent = ((spec.get("schema") or {}).get("entities") or {}).get("reservation") or {}
-    text = _set_key(
-        text,
-        "slot-require-remark",
-        "true" if resv_ent.get("requireRemark") else "false",
-    )
-    archive_ent = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
-    text = _set_key(
-        text,
-        "archive-soft-delete",
-        "true" if archive_ent.get("softDelete") else "false",
-    )
-    ph = spec.get("password_hash") or "none"
-    text = _set_key(text, "password-hash", str(ph))
-    for yml_key, runtime_key in (
-        ("archive-category-table", "archive_category_table"),
-        ("archive-item-table", "archive_item_table"),
-        ("archive-tag-table", "archive_tag_table"),
-        ("archive-item-tag-table", "archive_item_tag_table"),
-        ("lookup-site-table", "lookup_site_table"),
-        ("lookup-unit-table", "lookup_unit_table"),
-        ("lookup-type-table", "lookup_type_table"),
-        ("lookup-site-label", "lookup_site_label"),
-        ("lookup-unit-label", "lookup_unit_label"),
-        ("lookup-type-label", "lookup_type_label"),
-        ("order-cart-table", "order_cart_table"),
-        ("order-table", "order_table"),
-        ("order-line-table", "order_line_table"),
-        ("slot-table", "slot_table"),
-        ("reservation-table", "reservation_table"),
-    ):
-        val = runtime.get(runtime_key)
-        if val:
-            text = _set_key(text, yml_key, str(val))
-    if "order_lines" not in caps:
-        text = _set_key(text, "order-cart-table", '""')
-        text = _set_key(text, "order-table", '""')
-        text = _set_key(text, "order-line-table", '""')
-    if "slot_reserve" not in caps:
-        text = _set_key(text, "slot-table", '""')
-        text = _set_key(text, "reservation-table", '""')
-    if not runtime.get("archive_tag_table"):
-        text = _set_key(text, "archive-tag-table", '""')
-        text = _set_key(text, "archive-item-tag-table", '""')
-    from app.bake.guest_cta import GUEST_TEASER_LIMIT, portal_guest_browse_enabled
 
+    ticket_ent = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+    resv_ent = ((spec.get("schema") or {}).get("entities") or {}).get("reservation") or {}
+    archive_ent = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
     guest_on = portal_guest_browse_enabled(domain, DOMAINS.get(domain) or {})
-    text = _set_key(text, "portal-guest-browse", "true" if guest_on else "false")
-    text = _set_key(text, "guest-teaser-limit", str(GUEST_TEASER_LIMIT))
-    return text
+    ph = str(spec.get("password_hash") or "none")
+
+    # 保留已替换的 title（${PROJECT_TITLE} → 产品名）
+    title_m = re.search(r"(?m)^\s*title:\s*(.+?)\s*$", text)
+    title_val = (title_m.group(1).strip() if title_m else "").strip("'\"")
+    if not title_val or title_val.startswith("${"):
+        from app.bake.domain_schema import product_name_from_title
+
+        title_val = product_name_from_title(spec.get("title") or "毕设系统")
+
+    lines: list[str] = ["thesis:", f"  title: {title_val}", f"  register-role: {register_role}"]
+    lines.append("  # 密码存储：none（明文）| bcrypt | md5 | sha256")
+    lines.append(f"  password-hash: {ph}")
+
+    lines.append("  # 门户未登录是否可浏览")
+    lines.append(f"  portal-guest-browse: {'true' if guest_on else 'false'}")
+    if guest_on:
+        lines.append(f"  guest-teaser-limit: {GUEST_TEASER_LIMIT}")
+
+    if enable_ticket:
+        lines.append("  # 单据主流程")
+        lines.append("  enable-ticket: true")
+        lines.append(f"  ticket-mode: {ticket_mode}")
+        lines.append(f"  ticket-table: {ticket_table}")
+        lines.append(f"  use-quota: {'true' if use_quota else 'false'}")
+        lines.append(f"  use-deadline: {'true' if use_deadline else 'false'}")
+        if allow_multi:
+            lines.append("  allow-multi-ticket: true")
+        if check_conflict:
+            lines.append("  check-time-conflict: true")
+        # 仅写出开启的单据能力，避免一排 false
+        flag_map = (
+            ("ticket-two-level", bool(ticket_ent.get("twoLevelApprove"))),
+            ("ticket-require-attach", bool(ticket_ent.get("requireAttach"))),
+            ("ticket-allow-rating", bool(ticket_ent.get("allowRating"))),
+            ("ticket-check-mutex", bool(ticket_ent.get("checkMutex"))),
+            ("ticket-week-calendar", bool(ticket_ent.get("weekCalendar"))),
+            ("ticket-allow-checkin", bool(ticket_ent.get("allowCheckin"))),
+            ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
+            ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
+            ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
+            ("ticket-pick-date-range", bool(ticket_ent.get("pickDateRange"))),
+        )
+        on_flags = [(k, v) for k, v in flag_map if v]
+        if on_flags:
+            lines.append("  # 单据扩展能力")
+            for k, _ in on_flags:
+                lines.append(f"  {k}: true")
+        try:
+            cat_limit_n = int(ticket_ent.get("categoryLimit") or 0)
+        except (TypeError, ValueError):
+            cat_limit_n = 0
+        if cat_limit_n > 0:
+            lines.append(f"  ticket-category-limit: {cat_limit_n}")
+    else:
+        # Java 默认 enable-ticket=true，关闭时必须显式写出
+        lines.append("  enable-ticket: false")
+
+    if "archive" in caps:
+        cat = str(runtime.get("archive_category_table") or "category")
+        item = str(runtime.get("archive_item_table") or "book")
+        lines.append("  # 档案主数据表")
+        lines.append(f"  archive-category-table: {cat}")
+        lines.append(f"  archive-item-table: {item}")
+        if archive_ent.get("softDelete"):
+            lines.append("  archive-soft-delete: true")
+        tag = runtime.get("archive_tag_table")
+        item_tag = runtime.get("archive_item_tag_table")
+        if tag and item_tag:
+            lines.append(f"  archive-tag-table: {tag}")
+            lines.append(f"  archive-item-tag-table: {item_tag}")
+
+    site = runtime.get("lookup_site_table")
+    unit = runtime.get("lookup_unit_table")
+    typ = runtime.get("lookup_type_table")
+    if site or unit or typ:
+        lines.append("  # 下拉主数据（楼栋 / 房间 / 类型等）")
+        if site:
+            lines.append(f"  lookup-site-table: {site}")
+            lines.append(f"  lookup-site-label: {runtime.get('lookup_site_label') or '楼栋'}")
+        if unit:
+            lines.append(f"  lookup-unit-table: {unit}")
+            lines.append(f"  lookup-unit-label: {runtime.get('lookup_unit_label') or '房间'}")
+        if typ:
+            lines.append(f"  lookup-type-table: {typ}")
+            lines.append(f"  lookup-type-label: {runtime.get('lookup_type_label') or '类型'}")
+
+    if "order_lines" in caps:
+        cart = runtime.get("order_cart_table") or "cart_line"
+        ot = runtime.get("order_table") or "biz_order"
+        ol = runtime.get("order_line_table") or "order_line"
+        lines.append("  # 购物车 / 订单")
+        lines.append(f"  order-cart-table: {cart}")
+        lines.append(f"  order-table: {ot}")
+        lines.append(f"  order-line-table: {ol}")
+        if use_quota and not enable_ticket:
+            lines.append(f"  use-quota: {'true' if use_quota else 'false'}")
+
+    if "slot_reserve" in caps:
+        st = runtime.get("slot_table") or "resource_slot"
+        rt = runtime.get("reservation_table") or "reservation"
+        lines.append("  # 时段预约")
+        lines.append(f"  slot-table: {st}")
+        lines.append(f"  reservation-table: {rt}")
+        if resv_ent.get("requireRemark"):
+            lines.append("  slot-require-remark: true")
+
+    block = "\n".join(lines) + "\n"
+    if re.search(r"(?m)^thesis:\s*$", text):
+        return re.sub(r"(?ms)^thesis:\s*\n.*\Z", block, text, count=1)
+    return text.rstrip() + "\n\n" + block
 
 
 def _write_profile_fields_resource(dest: Path, schema: dict[str, Any]) -> None:
@@ -404,7 +406,6 @@ def _write_factory_delivered(
     auth_role_widget: str = "radio",
     seed: str = "",
 ) -> None:
-    delivered = dest / "frontend" / "src" / "factoryDelivered.js"
     if not auth_hero:
         from app.bake.auth_hero import auth_hero_public_path
 
@@ -420,6 +421,8 @@ def _write_factory_delivered(
         portal_guest_browse_enabled,
     )
 
+    from app.bake.domain_skin import student_skin_payload
+
     domain_label = (DOMAINS.get(domain) or {}).get("label") or "通用"
     dom_meta = DOMAINS.get(domain) or {}
     guest_on = portal_guest_browse_enabled(domain, dom_meta)
@@ -429,11 +432,13 @@ def _write_factory_delivered(
     if guest_on and guest_cta:
         labels["guestLoginCta"] = guest_cta
         schema = {**schema, "labels": labels}
+    skin = student_skin_payload(domain, domain_label)
     payload = {
         "title": title,
         "theme": theme,
-        "domain": domain,
-        "domainLabel": domain_label,
+        "flavor": skin["flavor"],
+        "domainLabel": skin["domainLabel"],
+        "traits": skin["traits"],
         "authTemplate": auth_tpl,
         "authEntryMode": normalize_auth_entry_mode(auth_entry_mode),
         "authRoleWidget": normalize_auth_role_widget(auth_role_widget),
@@ -445,19 +450,23 @@ def _write_factory_delivered(
         "accept": accept or schema.get("accept") or "reject",
         "schema": schema,
     }
+    delivered = dest / "frontend" / "src" / "appDelivered.js"
+    # 兼容旧文件名（若存在则删掉，避免双份）
+    legacy = dest / "frontend" / "src" / "factoryDelivered.js"
+    if legacy.exists():
+        legacy.unlink()
     delivered.write_text(
         "/**\n"
-        " * 工厂 bake 写入的交付配置（会打进 ZIP）。\n"
-        " * 含 Domain Schema（文案/菜单/能力）；勿手改。\n"
+        " * 课题交付配置（文案 / 菜单 / 能力）。由生成写入，一般无需手改。\n"
         " */\n"
-        f"export const FACTORY_DELIVERED = {json.dumps(payload, ensure_ascii=False, indent=2)}\n",
+        f"export const APP_DELIVERED = {json.dumps(payload, ensure_ascii=False, indent=2)}\n",
         encoding="utf-8",
     )
     _write_profile_fields_resource(dest, schema)
 
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:
-    """把已合并的 schema 写入 islands / factoryDelivered / spec.json。"""
+    """把已合并的 schema 写入 islands / appDelivered / spec.json。"""
     merged = spec.get("schema") or {}
     ok, errors = validate_schema(merged)
     if not ok:

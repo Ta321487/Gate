@@ -24,7 +24,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { staffLoginPath } from '../utils/authEntry.js'
 import { getSchema, schemaLabels } from '../utils/domainSchema.js'
 import {
@@ -36,7 +36,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const labels = schemaLabels()
-const title = labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
 const username = localStorage.getItem('username') || ''
 const nickname = localStorage.getItem('nickname') || ''
 const displayName = computed(() => nickname || username)

@@ -37,7 +37,7 @@ _GATE_STANDALONE_TICKET_FILES = [
     "frontend/src/layouts/PortalLayout.vue",
     "frontend/src/layouts/AdminLayout.vue",
     "frontend/src/utils/domainSchema.js",
-    "frontend/src/factoryDelivered.js",
+    "frontend/src/appDelivered.js",
     "frontend/src/router/index.js",
     "sql/schema.sql",
 ]
@@ -122,7 +122,7 @@ _GATE_ARCHIVE_TICKET_FILES = [
     "frontend/src/layouts/PortalLayout.vue",
     "frontend/src/layouts/AdminLayout.vue",
     "frontend/src/utils/domainSchema.js",
-    "frontend/src/factoryDelivered.js",
+    "frontend/src/appDelivered.js",
     "frontend/src/router/index.js",
     "sql/schema.sql",
 ]

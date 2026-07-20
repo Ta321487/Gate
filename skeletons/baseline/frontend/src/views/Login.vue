@@ -100,7 +100,7 @@ import {
   pickAuthRoleWidget,
   showStaffLoginLink,
 } from '../utils/authEntry'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
 
@@ -117,7 +117,7 @@ const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
 const showStaffLink = computed(() => showStaffLoginLink())
 const title = ref(
-  labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
+  labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
 
 const entrySide = computed(() => {
@@ -281,7 +281,7 @@ onMounted(async () => {
   }
   if (typeof route.query.u === 'string' && route.query.u) form.username = route.query.u
   // 已有 schema.appName / 交付标题时勿被 /api/meta 的「毕设系统」盖掉
-  const hasName = !!(labels.appName || FACTORY_DELIVERED.title)
+  const hasName = !!(labels.appName || APP_DELIVERED.title)
   if (!hasName) {
     try {
       const meta = await http.get('/api/meta')

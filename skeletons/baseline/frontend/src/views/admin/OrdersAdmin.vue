@@ -83,13 +83,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getDomain, getSchema } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
-const isFood = computed(() => getDomain() === 'DOM-FOOD')
+const isFood = computed(() => hasTrait('food'))
 const fulfillLabel = computed(() => (isFood.value ? '配送 / 口味' : '收货信息'))
 const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
 const shipVerb = computed(() => {

@@ -1,6 +1,6 @@
 /** 登录入口模式：优先工厂交付，其次 .env，交付后固定 */
 
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { getSchema } from './domainSchema.js'
 import { clerkPosts, hasWorkerPosts, workerPosts } from './staffPosts.js'
 
@@ -19,7 +19,7 @@ const MODE_IDS = new Set(AUTH_ENTRY_MODES.map((t) => t.id))
 const WIDGET_IDS = new Set(AUTH_ROLE_WIDGETS.map((t) => t.id))
 
 export function pickAuthEntryMode() {
-  const fromFactory = (FACTORY_DELIVERED?.authEntryMode || '').trim()
+  const fromFactory = (APP_DELIVERED?.authEntryMode || '').trim()
   if (fromFactory && MODE_IDS.has(fromFactory)) return fromFactory
   const fromEnv = (import.meta.env.VITE_AUTH_ENTRY_MODE || '').trim()
   if (fromEnv && MODE_IDS.has(fromEnv)) return fromEnv
@@ -27,7 +27,7 @@ export function pickAuthEntryMode() {
 }
 
 export function pickAuthRoleWidget() {
-  const fromFactory = (FACTORY_DELIVERED?.authRoleWidget || '').trim()
+  const fromFactory = (APP_DELIVERED?.authRoleWidget || '').trim()
   if (fromFactory && WIDGET_IDS.has(fromFactory)) return fromFactory
   const fromEnv = (import.meta.env.VITE_AUTH_ROLE_WIDGET || '').trim()
   if (fromEnv && WIDGET_IDS.has(fromEnv)) return fromEnv

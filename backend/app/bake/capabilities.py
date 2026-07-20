@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # status: implemented = 当前骨架/运行时已能交付；planned = 规格已定未落地
@@ -91,12 +92,21 @@ def implemented_capability_ids() -> set[str]:
 
 
 def scan_out_of_scope(text: str) -> list[str]:
-    lower = (text or "").lower()
+    """扫描超范围卖点；「不做/不要求/不作为必交」等否定语境不计。"""
+    raw = text or ""
+    neg = re.compile(
+        r"(?:不要求|不实现|不做|不作为|不纳入|不属于|仅作展望|仅参考|非本课题|"
+        r"本期不|范围外|不强制|非必交|非必演示|不作为必)"
+    )
     hits: list[str] = []
     for kw, label in OUT_OF_SCOPE_SIGNALS:
-        if kw.lower() in lower or kw in (text or ""):
+        for m in re.finditer(re.escape(kw), raw, flags=re.IGNORECASE):
+            window = raw[max(0, m.start() - 24) : m.end() + 24]
+            if neg.search(window):
+                continue
             if label not in hits:
                 hits.append(label)
+            break
     return hits
 
 

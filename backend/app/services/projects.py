@@ -18,7 +18,7 @@ from app.bake.catalog import (
 from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.models import Project, ProjectStatus
-from app.services.proposal import read_proposal, summarize_proposal
+from app.services.proposal import load_merged_proposal_text, summarize_proposal
 from app.services import runtime as rt
 
 
@@ -151,17 +151,43 @@ async def create_from_upload(
     filename: str,
     size: int,
 ) -> Project:
-    text = read_proposal(file_path)
-    matched = match_text(text, filename)
+    """兼容旧单文件入口。"""
+    return await create_from_uploads(db, [(file_path, filename, size)])
+
+
+async def create_from_uploads(
+    db: AsyncSession,
+    files: list[tuple[Path, str, int]],
+) -> Project:
+    """多材料建项：至少一份；按业务信号加权匹配。"""
+    from app.services.proposal import merge_proposal_documents, read_proposal
+
+    if not files:
+        raise ValueError("请至少上传一份材料")
+
+    docs: list[tuple[str, str]] = []
+    total_size = 0
+    for path, name, size in files:
+        docs.append((name, read_proposal(path)))
+        total_size += int(size or 0)
+
+    match_body, summary_text, file_info, weak_tips = merge_proposal_documents(docs)
+    primary_name = files[0][1]
+    matched = match_text(match_body, primary_name)
+    # 弱材料提示并入 hits（详情页可展示）
+    hits = list(matched.hits or [])
+    for tip in weak_tips:
+        if tip not in hits:
+            hits.append(tip)
 
     pid = _next_id()
-    # 避免同秒冲突
     while await db.get(Project, pid):
-        pid = _next_id() + f"-{size % 97}"
+        pid = _next_id() + f"-{total_size % 97}"
 
     db_name = _db_name(matched.domain, pid)
     theme = default_theme(matched.domain)
-    proposal = summarize_proposal(text, matched.hits)
+    proposal = summarize_proposal(summary_text, hits)
+    proposal["source_files"] = file_info
     spec = build_spec(
         title=matched.title,
         archetype=matched.archetype,
@@ -171,11 +197,10 @@ async def create_from_upload(
         password_hash="none",
         match_mode="recommended",
         confidence=matched.confidence,
-        hits=matched.hits,
+        hits=hits,
         proposal=proposal,
         archetypes=matched.archetypes,
     )
-    # Agent A：开关开启且有 Key 时润色 proposal（不改领域选型）
     try:
         from app.llm.agents import run_spec_agent
         from app.llm.runtime import load_llm_runtime
@@ -183,20 +208,43 @@ async def create_from_upload(
         llm_rt = await load_llm_runtime(db)
         if llm_rt.stage_on("parse_spec") and llm_rt.configured:
             spec = await run_spec_agent(
-                db, llm_rt, project_id=pid, raw_text=text, spec=spec
+                db, llm_rt, project_id=pid, raw_text=summary_text, spec=spec
             )
     except Exception:  # noqa: BLE001
         pass
 
     project_title = str(spec.get("title") or matched.title)
-    # 端口启动预览时再租用；创建不占池，库存可多于并发预览数
+    names = [n for _, n, _ in files]
+    joined = "；".join(names)
+    if len(joined) > 240:
+        joined = joined[:237] + "…"
+
+    # 多文件：目录 + manifest；单文件：仍指向原文件（兼容旧逻辑）
+    if len(files) == 1:
+        source_path = str(files[0][0])
+    else:
+        import json
+
+        bundle = files[0][0].parent
+        manifest = {
+            "files": [
+                {"name": name, "path": path.name, "size": size, "score": next(
+                    (i["score"] for i in file_info if i["name"] == name), 0
+                )}
+                for path, name, size in files
+            ]
+        }
+        man_path = bundle / "manifest.json"
+        man_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        source_path = str(man_path)
+
     project = Project(
         id=pid,
         title=project_title,
         status=ProjectStatus.needs_confirm.value,
-        source_filename=filename,
-        source_path=str(file_path),
-        source_size=size,
+        source_filename=joined or primary_name,
+        source_path=source_path,
+        source_size=total_size,
         recommended_arch=matched.archetype,
         recommended_domain=matched.domain,
         confidence=matched.confidence,
@@ -343,10 +391,9 @@ def load_proposal_summary(project: Project) -> dict | None:
         return project.spec["proposal"]
     if not project.source_path:
         return None
-    path = Path(project.source_path)
-    if not path.exists():
+    text = load_merged_proposal_text(project.source_path)
+    if not text:
         return None
-    text = read_proposal(path)
     hits = (project.spec or {}).get("hits") if isinstance(project.spec, dict) else None
     return summarize_proposal(text, hits)
 

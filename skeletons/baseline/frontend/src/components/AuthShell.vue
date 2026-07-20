@@ -35,10 +35,10 @@
 
 <script setup>
 /**
- * 基线鉴权壳：版式由 bake 的 VITE_AUTH_TEMPLATE 固定；氛围图来自 factoryDelivered.authHero。
+ * 基线鉴权壳：版式由 bake 的 VITE_AUTH_TEMPLATE 固定；氛围图来自 appDelivered.authHero。
  */
 import { computed, onMounted, ref } from 'vue'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 
 const props = defineProps({
   template: { type: String, required: true },
@@ -54,7 +54,7 @@ const props = defineProps({
   wide: { type: Boolean, default: false },
 })
 
-const heroSrc = computed(() => (FACTORY_DELIVERED?.authHero || '').trim())
+const heroSrc = computed(() => (APP_DELIVERED?.authHero || '').trim())
 const heroOk = ref(!!heroSrc.value)
 const heroOn = computed(() => heroOk.value && !!heroSrc.value)
 const heroCssVars = computed(() => {

@@ -19,7 +19,7 @@ from app.core.database import SessionLocal
 from app.llm.agents import run_fix_agent, run_island_agent, run_qa_agent, run_spec_agent
 from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobStatus, Project, ProjectStatus
-from app.services.proposal import read_proposal
+from app.services.proposal import load_merged_proposal_text
 
 logger = logging.getLogger("gf.job")
 
@@ -145,9 +145,9 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             if from_step <= 0:
                 await set_step(0, "run", "Spec Agent")
                 raw = ""
-                if project.source_path and Path(project.source_path).exists():
-                    # 读开题可能较慢（PDF），勿堵事件循环
-                    raw = await asyncio.to_thread(read_proposal, Path(project.source_path))
+                if project.source_path:
+                    # 读开题可能较慢（PDF / 多文件），勿堵事件循环
+                    raw = await asyncio.to_thread(load_merged_proposal_text, project.source_path)
                 if isinstance(project.spec, dict):
                     project.spec = await run_spec_agent(
                         db, llm_rt, project_id=project.id, raw_text=raw, spec=dict(project.spec)

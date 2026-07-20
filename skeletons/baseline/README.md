@@ -100,11 +100,11 @@ npm run dev
 ├── README.md                 ← 本说明
 ├── sql/schema.sql            ← 建库 + 演示数据（先执行）
 ├── backend/                  ← Spring Boot 后端
-│   └── src/main/java/com/thesis/
+│   └── src/main/java/${JAVA_PACKAGE_PATH}/
 │       ├── controller/       ← 接口层（给前端调用）
 │       ├── service/          ← 用户、公告、消息等通用业务
 │       ├── capability/       ← 核心业务能力（档案/单据/订单/预约等）
-│       ├── config/           ← 数据源、跨域、领域开关绑定
+│       ├── config/           ← 数据源、跨域、业务开关绑定
 │       └── common/           ← 统一返回、异常、鉴权工具
 └── frontend/                 ← Vue 前端
     └── src/
@@ -131,7 +131,7 @@ npm run dev
 - 管理端：`frontend/src/views/admin/`、`layouts/AdminLayout.vue`
 - 登录/注册：`views/Login.vue`、`views/Register.vue`
 
-菜单与文案多数来自课题配置（如 `factoryDelivered.js`、领域 schema），**改显示名称优先改配置/文案工具，而不是到处硬编码中文。**
+菜单与文案多数来自课题配置（如 `appDelivered.js`、领域 schema），**改显示名称优先改配置/文案工具，而不是到处硬编码中文。**
 
 ---
 
@@ -139,7 +139,7 @@ npm run dev
 
 | 你想改什么 | 优先看哪里 |
 |------------|------------|
-| 登录后标题、主题色 | `frontend/.env`、`factoryDelivered.js`、主题样式 |
+| 登录后标题、主题色 | `frontend/.env`、`appDelivered.js`、主题样式 |
 | 注册要填哪些资料 | 后端 `domain-profile-fields.json` + 前端资料组件 |
 | 某张表字段 / 演示数据 | `sql/schema.sql`（改完需重新导入或手工 ALTER） |
 | 收货地址 / 口味备注（商城点餐） | 表 `user_address`；下单写入订单的收货与 `taste_note` |

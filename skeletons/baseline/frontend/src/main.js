@@ -5,11 +5,11 @@ import 'element-plus/dist/index.css'
 import './styles/themes.css'
 import App from './App.vue'
 import router from './router'
-import { FACTORY_DELIVERED } from './factoryDelivered.js'
+import { APP_DELIVERED } from './appDelivered.js'
 
-const theme = FACTORY_DELIVERED.theme || import.meta.env.VITE_THEME || 'lib-ink'
+const theme = APP_DELIVERED.theme || import.meta.env.VITE_THEME || 'lib-ink'
 document.documentElement.setAttribute('data-theme', theme)
-const appName = FACTORY_DELIVERED?.schema?.labels?.appName || FACTORY_DELIVERED.title
+const appName = APP_DELIVERED?.schema?.labels?.appName || APP_DELIVERED.title
 if (appName) document.title = appName
 
 const app = createApp(App)

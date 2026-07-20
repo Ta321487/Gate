@@ -19,55 +19,8 @@ management:
       exposure:
         include: health,info
 
+# thesis 段由 bake 按本项目能力重写（只保留用到的键；不含工厂 domain 编号）
 thesis:
-  title: ${PROJECT_TITLE:毕设系统}
-  domain: DOM-GENERIC
+  title: ${PROJECT_TITLE}
   register-role: user
-  # none | bcrypt | md5 | sha256（工厂「密码存储」写入）
   password-hash: none
-  ticket-mode: archive
-  ticket-table: borrow
-  use-quota: true
-  use-deadline: true
-  # 论坛跟帖等：同一主帖可多次开单
-  allow-multi-ticket: false
-  # 选课/活动等：申请时做时段相交检测（需主表 start_at/end_at）
-  check-time-conflict: false
-  enable-ticket: true
-  # 门户游客可逛（工厂按域写入）；未登录列表截断条数
-  portal-guest-browse: false
-  guest-teaser-limit: 3
-  # L1 单据亮点（工厂按 schema.entities.ticket 写入）
-  ticket-two-level: false
-  ticket-require-attach: false
-  ticket-allow-rating: false
-  # L1：互斥码检测；分类限额（0=不限）
-  ticket-check-mutex: false
-  ticket-category-limit: 0
-  ticket-week-calendar: false
-  ticket-allow-checkin: false
-  # 自选应还日 / 申请数量（设备·图书等）
-  ticket-pick-loan-period: false
-  ticket-allow-qty: false
-  ticket-require-remark: false
-  ticket-pick-date-range: false
-  slot-require-remark: false
-  archive-soft-delete: false
-  archive-tag-table: ""
-  archive-item-tag-table: ""
-  # order_lines（空表名=关闭）
-  order-cart-table: ""
-  order-table: ""
-  order-line-table: ""
-  # slot_reserve（空表名=关闭）
-  slot-table: ""
-  reservation-table: ""
-  archive-category-table: category
-  archive-item-table: book
-  # standalone 报修壳：楼栋/房间/类型下拉（空则前端退回手填）
-  lookup-site-table: ""
-  lookup-unit-table: ""
-  lookup-type-table: ""
-  lookup-site-label: 楼栋
-  lookup-unit-label: 房间
-  lookup-type-label: 类型

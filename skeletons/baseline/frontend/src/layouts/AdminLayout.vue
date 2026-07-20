@@ -27,7 +27,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MessageBell from '../components/MessageBell.vue'
-import { FACTORY_DELIVERED } from '../factoryDelivered.js'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { getSchema, isSuperOnlyMenu, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 import { adminLoginPath } from '../utils/authEntry.js'
 import {
@@ -39,7 +39,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const labels = schemaLabels()
-const title = labels.appName || FACTORY_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
 const username = localStorage.getItem('username') || ''
 const nickname = localStorage.getItem('nickname') || ''
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
