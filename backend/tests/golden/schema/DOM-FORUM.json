@@ -1,0 +1,194 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users",
+    "recommend"
+  ],
+  "entities": {
+    "archive": {
+      "bodyField": "isbn",
+      "fields": [
+        {
+          "key": "title",
+          "label": "标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "楼主",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "正文",
+          "type": "richtext"
+        },
+        {
+          "key": "category",
+          "label": "板块",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可见",
+          "type": "number"
+        }
+      ],
+      "key": "post",
+      "label": "主帖",
+      "labelPlural": "主帖",
+      "softDelete": true,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已见",
+      "tagFilter": true
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "reply",
+      "label": "回复",
+      "labelPlural": "回复",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "richRemark": true,
+      "states": {
+        "approved": "已展示",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已撤回"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "回复",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "撤回"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "校园论坛",
+    "authLead": "验证码登录；按板块浏览主帖，富文本回复讨论，支持楼中楼引用。",
+    "authPoints": [
+      "验证码登录",
+      "板块与主帖检索",
+      "富文本回复与楼中楼"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "版规、维护窗口与活动通知，点击条目阅读全文。",
+    "noticePageTitle": "站内公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可浏览主帖并回复"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "主帖管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "回复审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "回复记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "帖子检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的回复"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "学习、生活、二手信息分区浏览主帖。",
+      "title": "热门板块"
+    },
+    {
+      "lead": "跟帖回复，支持引用他人发言。",
+      "title": "讨论交流"
+    },
+    {
+      "lead": "版规与活动通知见公告栏。",
+      "title": "站内公告"
+    },
+    {
+      "lead": "登录后管理发帖与回复进度。",
+      "title": "我的帖子"
+    },
+    {
+      "lead": "按标签快速找到感兴趣的话题。",
+      "title": "标签筛选"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "站长（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "版主"
+    },
+    "user": {
+      "id": "user",
+      "label": "用户"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用。",
+    "noticeTitle": "社区公约"
+  },
+  "title": "测试课题",
+  "version": 1
+}

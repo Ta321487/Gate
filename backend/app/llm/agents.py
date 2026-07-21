@@ -160,7 +160,11 @@ def _sanitize_island_patch(data: dict[str, Any], base_labels: dict, base_seeds: 
             continue
         piece: dict[str, Any] = {}
         if ev.get("label"):
-            piece["label"] = str(ev["label"])[:40]
+            lab = str(ev["label"])[:40].strip()
+            # 动作名词勿带「记录」（与 merge_schema 一致）
+            if ek in ("reservation", "ticket") and lab.endswith("记录") and len(lab) > 2:
+                lab = lab.removesuffix("记录").strip() or lab
+            piece["label"] = lab
         if ev.get("labelPlural"):
             piece["labelPlural"] = str(ev["labelPlural"])[:40]
         if isinstance(ev.get("verbs"), dict):
@@ -217,10 +221,11 @@ async def run_island_agent(
             "role": "system",
             "content": (
                 "你是毕设港 Island Agent。只输出 JSON："
-                '{"title","labels":{...},"seeds":{noticeTitle,noticeBody},"entities":{ticket?:{label,labelPlural,verbs,states}}}。'
+                '{"title","labels":{...},"seeds":{noticeTitle,noticeBody},"entities":{ticket?:{label,labelPlural,verbs,states},reservation?:{label,labelPlural,states}}}。'
                 "labels 可含: " + ",".join(_LABEL_KEYS) + "。"
                 "禁止改 menus/capabilities/路由/表结构；禁止输出代码。"
                 "文案必须贴合领域，禁止出现其它领域错词（如宿舍系统勿写馆内/借阅）。"
+                "entities.reservation/ticket 的 label 须为短动作名词（如挂号/预约/借阅），禁止带「记录」；「XX记录」仅用于管理端菜单。"
             ),
         },
         {

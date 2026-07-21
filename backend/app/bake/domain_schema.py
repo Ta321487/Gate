@@ -13,7 +13,7 @@ from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.schema_templates import (  # re-export
     SCHEMA_BUILDERS,
     product_name_from_title,
-    _generic_schema,
+    generic_schema,
 )
 from app.bake.profile_fields import attach_profile_fields
 
@@ -74,11 +74,11 @@ def build_domain_schema(
         schema = build_generic_shell_schema(title, archetype, archetypes=archetypes)
         schema = attach_profile_fields(schema, domain)
         return attach_staff_posts(schema, domain, archetype)
-    builder = SCHEMA_BUILDERS.get(domain, lambda t: _generic_schema(t, domain))
+    builder = SCHEMA_BUILDERS.get(domain, lambda t: generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
         schema = builder(title)
     else:
-        schema = _generic_schema(title, domain)
+        schema = generic_schema(title, domain)
     schema = attach_profile_fields(schema, domain)
     return attach_staff_posts(schema, domain, archetype)
 
@@ -370,6 +370,11 @@ def merge_schema(base: dict[str, Any], patch: dict[str, Any] | None) -> dict[str
                     merged["verbs"] = {**(cur.get("verbs") or {}), **ev["verbs"]}
                 if isinstance(ev.get("states"), dict):
                     merged["states"] = {**(cur.get("states") or {}), **ev["states"]}
+                # 动作实体 label 须为短名词；LLM 常把管理端「XX记录」写进 label
+                if ek in ("reservation", "ticket") and isinstance(merged.get("label"), str):
+                    lab = merged["label"].strip()
+                    if lab.endswith("记录") and len(lab) > 2:
+                        merged["label"] = lab.removesuffix("记录").strip() or cur.get("label") or lab
                 out["entities"][ek] = merged
     return out
 

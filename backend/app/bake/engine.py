@@ -27,7 +27,7 @@ TABLE_COUNT_MIN = 6
 # 含 L0 平台表 sys_message；论坛等顶格域可达 13
 TABLE_COUNT_MAX = 13
 
-# 领域 DDL / 种子模板：backend/app/bake/sql/<DOMAIN>.sql；缺省回落 DOM-GENERIC.sql
+# GENERIC 壳：bake/sql/DOM-GENERIC*.sql；具名域：sql_domain_templates（唯一路径，无散文件）
 _SQL_DIR = Path(__file__).resolve().parent / "sql"
 _FALLBACK_SQL = "DOM-GENERIC.sql"
 
@@ -79,19 +79,24 @@ def _merge_tree(src: Path, dest: Path) -> None:
 
 
 def _sql_template_path(domain: str, archetype: str | None = None) -> Path:
+    """GENERIC 壳仍读 bake/sql/DOM-GENERIC*.sql；具名域见 DOMAIN_SQL_TEMPLATES。"""
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import shell_sql_filename
 
         path = _SQL_DIR / shell_sql_filename(archetype)
         if path.is_file():
             return path
-    path = _SQL_DIR / f"{domain}.sql"
-    if path.is_file():
-        return path
     fallback = _SQL_DIR / _FALLBACK_SQL
     if not fallback.is_file():
-        raise FileNotFoundError(f"缺少 SQL 模板: {path} 与 {_FALLBACK_SQL}")
+        raise FileNotFoundError(f"缺少 SQL 模板: {_FALLBACK_SQL}")
     return fallback
+
+
+def _load_named_domain_sql(domain: str) -> str:
+    """具名域唯一路径：见 sql_compose.compose_named_domain_sql。"""
+    from app.bake.sql_compose import compose_named_domain_sql
+
+    return compose_named_domain_sql(domain)
 
 
 def domain_sql(
@@ -125,7 +130,7 @@ def domain_sql(
                 path = _sql_template_path(domain, archetype)
             text = path.read_text(encoding="utf-8")
     else:
-        text = _sql_template_path(domain, archetype).read_text(encoding="utf-8")
+        text = _load_named_domain_sql(domain)
     from app.bake.domains import DOMAINS
     from app.bake.sql_fragments import ensure_shared_sql_columns, ensure_ticket_progress_sql
     from app.bake.staff_posts import append_staff_seed_sql
@@ -462,6 +467,8 @@ def _write_loyalty_resource(dest: Path, schema: dict[str, Any]) -> None:
 
 def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
     """学生端 TicketStore 进度/提示文案：来自 schema.entities.ticket（及 archive 名）。"""
+    from app.bake.ticket_copy_text import sibling_reject_tip, stock_unavailable_label
+
     ticket = ((schema.get("entities") or {}).get("ticket") or {}) if isinstance(schema, dict) else {}
     archive = ((schema.get("entities") or {}).get("archive") or {}) if isinstance(schema, dict) else {}
     apply_deadline_label = "报名截止"
@@ -475,14 +482,20 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
             apply_deadline_label = lab
         if key == "stock" and lab:
             stock_label = lab
+    verbs = ticket.get("verbs") if isinstance(ticket.get("verbs"), dict) else {}
+    apply_verb = str(verbs.get("apply") or "")
+    archive_label = str(archive.get("label") or "")
+    stock_gone = archive.get("stockUnavailableLabel") or stock_unavailable_label(stock_label)
     payload = {
         "states": ticket.get("states") if isinstance(ticket.get("states"), dict) else {},
-        "verbs": ticket.get("verbs") if isinstance(ticket.get("verbs"), dict) else {},
+        "verbs": verbs,
         "checkinLabel": ticket.get("checkinLabel") or "签到",
         "finePaidLabel": ticket.get("finePaidLabel") or "费用已结清",
-        "archiveLabel": archive.get("label") or "",
+        "archiveLabel": archive_label,
         "applyDeadlineLabel": apply_deadline_label,
         "stockLabel": stock_label,
+        "stockUnavailableLabel": stock_gone,
+        "siblingRejectTip": sibling_reject_tip(archive_label, apply_verb),
     }
     path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
     _write(path, json.dumps(payload, ensure_ascii=False, indent=2))

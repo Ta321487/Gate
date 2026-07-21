@@ -6,7 +6,7 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 
 | 脚本 | 用途 |
 |------|------|
-| `launcher.bat` | **推荐** 控制台菜单（起停 / 打开目录 / Compose / 健康检查） |
+| `launcher.bat` | **推荐** 控制台菜单（起停 / 打开目录 / Compose / 健康检查）；有 Windows Terminal 时进 WT，服务用同窗标签页 |
 | `start-backend.bat` | 仅启动后端 `:8000` |
 | `start-frontend.bat` | 仅启动前端 `:5173` |
 | `stop-backend.bat` | 停止全部 uvicorn 后端 |
@@ -28,6 +28,13 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 ```bat
 scripts\verify-bats.bat
 ```
+
+## Windows Terminal 标签页
+
+- 双击 / 运行 `launcher.bat`：若已装 Windows Terminal，会进 **一个 WT 窗口**跑 Gate 控制台。
+- 菜单 `[1]` / `[2]` / `[3]` / `[8]`：在同窗 **新标签** 里跑 `start-*.bat`（cmd），不是再弹一堆独立窗口。
+- 直接双击 `start-backend.bat` / `start-frontend.bat`：仍是 **独立窗口**（不变）。
+- 强制旧行为：启动前设环境变量 `GF_LAUNCH_STYLE=window`。
 
 ## Compose 数据库
 

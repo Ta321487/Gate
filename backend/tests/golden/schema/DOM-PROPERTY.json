@@ -1,0 +1,115 @@
+{
+  "capabilities": [
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "ticket": {
+      "allowRating": true,
+      "key": "repair",
+      "label": "报修单",
+      "labelPlural": "报修",
+      "requireAttach": true,
+      "states": {
+        "approved": "处理中",
+        "pending": "待初审",
+        "pending_final": "待终审",
+        "rejected": "已驳回",
+        "returned": "已完成"
+      },
+      "twoLevelApprove": true,
+      "verbs": {
+        "apply": "提交报修",
+        "approve": "受理",
+        "reject": "驳回",
+        "return": "完成"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "物业报修",
+    "authLead": "验证码登录；住户提交报修，物业受理跟进。",
+    "authPoints": [
+      "验证码登录",
+      "报修申请",
+      "受理进度"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "报修须知、社区安排与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "物业公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后以住户身份提交报修"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "ticket_pending",
+        "label": "报修受理"
+      },
+      {
+        "key": "ticket_records",
+        "label": "报修记录"
+      },
+      {
+        "key": "lookup_site",
+        "label": "楼栋房间",
+        "superOnly": true
+      },
+      {
+        "key": "lookup_type",
+        "label": "报修类型",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "my_tickets",
+        "label": "我的报修"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "物业主管"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "维修员"
+    },
+    "user": {
+      "id": "user",
+      "label": "住户"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写地址与故障描述并上传现场照片，物业将尽快受理。",
+    "noticeTitle": "报修须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

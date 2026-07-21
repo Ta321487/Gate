@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ label }}</h1>
-      <p>已占坑的{{ resvNoun }}记录，可取消释放时段。</p>
+      <p>已占坑的{{ resvNoun }}，可取消释放时段。</p>
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>

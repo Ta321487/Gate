@@ -24,7 +24,7 @@ import * as echarts from 'echarts/core'
 import { PieChart, BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { ticketCopy, getSchema, archiveCopy } from '../utils/domainSchema.js'
+import { ticketCopy, getSchema, archiveCopy, reservationCopy } from '../utils/domainSchema.js'
 
 echarts.use([PieChart, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -58,7 +58,7 @@ const statusTitle = computed(() => {
     return `${lab}状态`
   }
   if (props.mode === 'reservation') {
-    const lab = getSchema()?.entities?.reservation?.label || '预约'
+    const lab = reservationCopy().label || '预约'
     return `${lab}状态`
   }
   const lab = ticketCopy().label || '申请'

@@ -1,0 +1,210 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "deadline",
+    "content",
+    "org_users",
+    "recommend"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "设备名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "品牌/型号",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "资产编号",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可借数量",
+          "type": "number"
+        },
+        {
+          "key": "requiresTraining",
+          "label": "需培训(1是0否)",
+          "type": "number"
+        },
+        {
+          "key": "ownerName",
+          "label": "责任人",
+          "type": "string"
+        }
+      ],
+      "key": "equip",
+      "label": "设备",
+      "labelPlural": "设备",
+      "softDelete": true,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": true,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "dueLabel": "应还日",
+      "fineLabel": "罚款",
+      "finePaidLabel": "罚款已缴",
+      "key": "loan",
+      "label": "借用单",
+      "labelPlural": "借用",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": true,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "借用中",
+        "overdue": "已逾期",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已归还"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "申请借用",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "催还",
+        "return": "归还"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "实验室设备",
+    "authLead": "验证码登录；检索设备并申请借用，管理员审核后领用。",
+    "authPoints": [
+      "验证码登录",
+      "设备检索",
+      "借用申请与归还"
+    ],
+    "messagesPageLead": "审核结果、催还提醒与系统通知。",
+    "noticePageLead": "借用须知、开放时段与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "实验室公告",
+    "recommendLatestHint": "最新上架",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可申请借用实验室设备"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "设备管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "借用审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "借用记录"
+      },
+      {
+        "key": "deadline",
+        "label": "逾期催还"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "设备检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的借用"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "检索设备、查看库存，在线提交借用申请。",
+      "title": "实验室器材"
+    },
+    {
+      "lead": "按需申请、按时归还；逾期将登记催还。",
+      "title": "借用须知"
+    },
+    {
+      "lead": "工作日办理领用与归还，详见实验室公告。",
+      "title": "领用时段"
+    },
+    {
+      "lead": "登录后查看审核进度与归还期限。",
+      "title": "我的借用"
+    },
+    {
+      "lead": "检修停用与临时安排见公告栏。",
+      "title": "器材公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "实验室主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "器材管理员"
+    },
+    "user": {
+      "id": "user",
+      "label": "借用人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请按需申请、按时归还；逾期将登记催还。",
+    "noticeTitle": "设备借用须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

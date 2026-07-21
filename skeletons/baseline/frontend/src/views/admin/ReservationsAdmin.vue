@@ -6,7 +6,7 @@
       </el-select>
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
-      <el-button @click="genVisible = true">生成时段</el-button>
+      <el-button @click="openGenerate">生成时段</el-button>
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
@@ -51,13 +51,33 @@
       />
     </div>
 
-    <el-dialog v-model="genVisible" :title="`为${archiveLabel}生成当日时段`" width="440px">
+    <el-dialog v-model="genVisible" :title="`为${archiveLabel}生成当日时段`" width="520px">
       <el-form label-width="96px">
-        <el-form-item :label="`${archiveLabel} ID`" required>
-          <el-input-number v-model="gen.itemId" :min="1" />
+        <el-form-item :label="archiveLabel" required>
+          <el-select
+            v-model="gen.itemId"
+            filterable
+            clearable
+            :placeholder="`选择${archiveLabel}`"
+            style="width:100%"
+            @change="loadSlotPreview"
+          >
+            <el-option
+              v-for="it in archiveOptions"
+              :key="it.id"
+              :label="archiveOptionLabel(it)"
+              :value="it.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="日期" required>
-          <el-date-picker v-model="gen.day" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+          <el-date-picker
+            v-model="gen.day"
+            type="date"
+            value-format="YYYY-MM-DD"
+            style="width:100%"
+            @change="loadSlotPreview"
+          />
         </el-form-item>
         <el-form-item label="起止小时">
           <el-input-number v-model="gen.startHour" :min="0" :max="23" />
@@ -71,9 +91,22 @@
           <el-input-number v-model="gen.capacity" :min="1" />
         </el-form-item>
       </el-form>
+      <p class="hint">
+        生成的是可预约号源，不会出现在下方「{{ resvNoun }}记录」表中；
+        {{ userLabel }}在「选{{ archiveLabel }}」页可见。
+      </p>
+      <div v-if="genPreview.length" class="preview">
+        <div class="preview-hd">当日号源（{{ genPreview.length }}）</div>
+        <ul>
+          <li v-for="s in genPreview" :key="s.id">
+            {{ s.startAt }} ~ {{ s.endAt }}
+            <span class="muted">余 {{ Math.max(0, (s.capacity || 0) - (s.booked || 0)) }}/{{ s.capacity || 0 }}</span>
+          </li>
+        </ul>
+      </div>
       <template #footer>
-        <el-button @click="genVisible = false">取消</el-button>
-        <el-button type="primary" @click="generate">生成</el-button>
+        <el-button @click="genVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="genLoading" @click="generate">生成</el-button>
       </template>
     </el-dialog>
   </div>
@@ -99,14 +132,23 @@ const page = ref(1)
 const size = ref(10)
 const status = ref(null)
 const genVisible = ref(false)
+const genLoading = ref(false)
+const genPreview = ref([])
+const archiveOptions = ref([])
 const gen = reactive({
-  itemId: 1,
+  itemId: null,
   day: todayStr(),
   startHour: 9,
   endHour: 17,
   slotMinutes: 60,
   capacity: 1,
 })
+
+function archiveOptionLabel(it) {
+  const title = (it.title || it.name || `${archiveLabel.value}#${it.id}`).toString().trim()
+  const cat = (it.categoryName || '').toString().trim()
+  return cat ? `${title} · ${cat}` : title
+}
 
 function resvDetail(row) {
   const parts = []
@@ -128,6 +170,32 @@ async function load() {
   total.value = res.data?.total || 0
 }
 
+async function loadArchiveOptions() {
+  const res = await http.get('/api/archive', { params: { page: 1, size: 200 } })
+  const rows = res.data?.list || []
+  archiveOptions.value = rows
+  const ids = new Set(rows.map((r) => r.id))
+  if (gen.itemId != null && !ids.has(gen.itemId)) gen.itemId = null
+  if (gen.itemId == null && rows.length) gen.itemId = rows[0].id
+}
+
+async function openGenerate() {
+  genPreview.value = []
+  genVisible.value = true
+  await loadArchiveOptions()
+  await loadSlotPreview()
+}
+
+async function loadSlotPreview() {
+  if (!gen.itemId || !gen.day) {
+    genPreview.value = []
+    return
+  }
+  const res = await http.get('/api/slots', { params: { itemId: gen.itemId, day: gen.day } })
+  const rows = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+  genPreview.value = rows
+}
+
 async function cancel(row) {
   const reject = requireConfirm.value && row.status === 'pending'
   await ElMessageBox.confirm(
@@ -147,9 +215,23 @@ async function confirmRow(row) {
 }
 
 async function generate() {
-  const res = await http.post('/api/slots/generate', { ...gen })
-  ElMessage.success(`已生成 ${res.data?.created ?? 0} 个时段`)
-  genVisible.value = false
+  if (!gen.itemId || !gen.day) {
+    ElMessage.warning(`请选择${archiveLabel.value}并填写日期`)
+    return
+  }
+  genLoading.value = true
+  try {
+    const res = await http.post('/api/slots/generate', { ...gen })
+    const n = res.data?.created ?? 0
+    await loadSlotPreview()
+    if (n > 0) {
+      ElMessage.success(`已生成 ${n} 个号源时段（见弹窗列表；下方表格仍是已${resvNoun.value}记录）`)
+    } else {
+      ElMessage.warning('未新增时段（可能该日号源已存在），已刷新弹窗内当日号源列表')
+    }
+  } finally {
+    genLoading.value = false
+  }
 }
 
 async function exportCsv() {
@@ -182,4 +264,13 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.hint { margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.preview {
+  max-height: 220px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px;
+  background: #f8fafc;
+}
+.preview-hd { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+.preview ul { margin: 0; padding-left: 18px; }
+.preview li { font-size: 13px; margin: 4px 0; }
+.muted { color: #94a3b8; margin-left: 8px; }
 </style>

@@ -1,0 +1,137 @@
+{
+  "capabilities": [
+    "archive",
+    "slot_reserve",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "医生",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "挂号费(元)",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "职称/说明",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "科室",
+          "type": "select"
+        }
+      ],
+      "key": "doctor",
+      "label": "医生",
+      "labelPlural": "医生",
+      "stockDisplay": "hidden"
+    },
+    "reservation": {
+      "key": "reservation",
+      "label": "挂号",
+      "labelPlural": "我的挂号",
+      "remarkLabel": "就诊人",
+      "requireConfirm": false,
+      "requireRemark": true,
+      "states": {
+        "cancelled": "已取消",
+        "confirmed": "已挂号",
+        "pending": "待确认"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "门诊挂号",
+    "authLead": "验证码登录；选择科室医生与号源时段挂号。",
+    "authPoints": [
+      "验证码登录",
+      "医生检索",
+      "分时挂号"
+    ],
+    "messagesPageLead": "预约提醒与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "医院公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可以患者身份挂号"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "医生管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "患者管理",
+        "superOnly": true
+      },
+      {
+        "key": "reservations",
+        "label": "挂号记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "选医生"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的挂号"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "医务主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "挂号员"
+    },
+    "user": {
+      "id": "patient",
+      "label": "患者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "号源有限；请填写就诊人姓名，按时就诊，取消请提前操作。",
+    "noticeTitle": "挂号须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

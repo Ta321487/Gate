@@ -1,0 +1,196 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "客户名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "联系人",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "电话/备注",
+          "type": "string"
+        },
+        {
+          "key": "stage",
+          "label": "销售阶段",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "客户分级",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可跟进",
+          "type": "number"
+        }
+      ],
+      "key": "customer",
+      "label": "客户",
+      "labelPlural": "客户",
+      "softDelete": false,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已跟进",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "follow_up",
+      "label": "跟进单",
+      "labelPlural": "跟进",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "跟进内容",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "跟进中",
+        "overdue": "已失效",
+        "pending": "待确认",
+        "rejected": "已驳回",
+        "returned": "已完结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交跟进",
+        "approve": "确认",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "完结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "客户跟进",
+    "authLead": "验证码登录；维护客户档案并提交跟进记录，主管确认后完结。",
+    "authPoints": [
+      "验证码登录",
+      "客户档案",
+      "跟进审核"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "跟进规范与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "销售公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可维护名下客户并提交跟进"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "客户档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "跟进确认"
+      },
+      {
+        "key": "ticket_records",
+        "label": "跟进记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "客户列表"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的跟进"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分级浏览客户，维护联系人与备注。",
+      "title": "客户档案"
+    },
+    {
+      "lead": "提交跟进单，主管确认后进入跟进中并可完结。",
+      "title": "客户跟进"
+    },
+    {
+      "lead": "跟进规范与活动通知见公告栏。",
+      "title": "销售公告"
+    },
+    {
+      "lead": "登录后查看待办与跟进进度。",
+      "title": "我的跟进"
+    },
+    {
+      "lead": "按客户分级筛选重点对象。",
+      "title": "分级管理"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "销售主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "客户经理"
+    },
+    "user": {
+      "id": "user",
+      "label": "业务员"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实登记联系结果；重要商机请及时提交跟进单由主管确认。",
+    "noticeTitle": "跟进须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

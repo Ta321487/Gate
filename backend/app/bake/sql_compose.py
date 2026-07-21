@@ -125,3 +125,19 @@ def compose_generic_sql(
         "FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='使用须知');\n"
     )
     return "\n".join(parts)
+
+
+def compose_named_domain_sql(domain: str) -> str:
+    """具名域 SQL 唯一入口（原 bake/sql/DOM-*.sql）。
+
+    模板登记于 ``DOMAIN_SQL_TEMPLATES``；bake 不再读散落的域 SQL 文件。
+    GENERIC 多路径仍走 ``compose_generic_sql`` / DOM-GENERIC*.sql。
+    """
+    from app.bake.sql_domain_templates import DOMAIN_SQL_TEMPLATES
+
+    text = DOMAIN_SQL_TEMPLATES.get(domain)
+    if text is None:
+        raise FileNotFoundError(
+            f"缺少领域 SQL 模板: {domain}（未登记于 DOMAIN_SQL_TEMPLATES）"
+        )
+    return text

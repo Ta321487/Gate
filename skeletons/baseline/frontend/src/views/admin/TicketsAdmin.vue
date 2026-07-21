@@ -9,13 +9,19 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" />
-      <el-table-column prop="typeName" label="类型" width="100" />
-      <el-table-column prop="location" label="地点" width="140" />
+      <el-table-column prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
       <el-table-column prop="assigneeUsername" label="处理人" width="110">
         <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="requireRemark" :label="remarkLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row.remark">{{ remarkPlain(row.remark) }}</span>
+          <span v-else class="muted">—</span>
+        </template>
       </el-table-column>
       <el-table-column label="附件" width="90">
         <template #default="{ row }">
@@ -73,9 +79,15 @@
         <div class="lab">附件</div>
         <a :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">查看附件</a>
       </div>
-      <div v-if="richRemark && audit.row?.remark" class="audit-body">
-        <div class="lab">申请内容</div>
-        <RichTextView :html="audit.row.remark" />
+      <div v-if="audit.row?.typeName || audit.row?.location" class="audit-body">
+        <div class="lab">启事信息</div>
+        <p v-if="audit.row.typeName" class="audit-meta">{{ typeColLabel }}：{{ audit.row.typeName }}</p>
+        <p v-if="audit.row.location" class="audit-meta">{{ locationColLabel }}：{{ audit.row.location }}</p>
+      </div>
+      <div v-if="audit.row?.remark" class="audit-body">
+        <div class="lab">{{ remarkLabel }}</div>
+        <RichTextView v-if="richRemark" :html="audit.row.remark" />
+        <p v-else class="audit-meta">{{ audit.row.remark }}</p>
       </div>
       <label class="audit-field">
         <span class="lab">
@@ -113,13 +125,17 @@ import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, menuLabel, personLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, menuLabel, personLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import { plainFromHtml } from '../../utils/richHtml.js'
 
 const ticket = ticketCopy()
+const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const ticketNoun = computed(() => ticket.label || '申请')
 const richRemark = computed(() => !!ticket.richRemark)
+const requireRemark = computed(() => !!ticket.requireRemark)
+const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const twoLevel = computed(() => !!ticket.twoLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
@@ -127,6 +143,33 @@ const dueLabel = computed(() => ticketDueLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
+
+function archiveFieldLabel(key, fallback) {
+  const f = (archive.fields || []).find((x) => x.key === key)
+  return f?.label || fallback
+}
+
+const typeColLabel = computed(() => {
+  if ((archive.fields || []).some((f) => f.key === 'itemKind')) {
+    return archiveFieldLabel('itemKind', '类型')
+  }
+  if ((archive.fields || []).some((f) => f.key === 'category')) {
+    return archiveFieldLabel('category', '类型')
+  }
+  return '类型'
+})
+
+const locationColLabel = computed(() => {
+  if ((archive.fields || []).some((f) => f.key === 'isbn')) {
+    return archiveFieldLabel('isbn', '地点')
+  }
+  return '地点'
+})
+
+function remarkPlain(v) {
+  if (!v) return ''
+  return richRemark.value ? plainFromHtml(String(v)) : String(v)
+}
 
 const todoHint = computed(() => {
   const base = `待受理 · 历史见「${recordsLabel.value}」`
@@ -199,11 +242,16 @@ async function submitAudit() {
   }
   audit.loading = true
   try {
-    await http.post(`/api/tickets/${audit.row.id}/approve`, {
+    const res = await http.post(`/api/tickets/${audit.row.id}/approve`, {
       pass: audit.pass,
       remark,
     })
-    ElMessage.success('已处理')
+    const n = Number(res?.data?.autoRejectedCount) || 0
+    ElMessage.success(
+      audit.pass && n > 0
+        ? `已处理；另有 ${n} 条同对象待审已自动驳回`
+        : '已处理',
+    )
     audit.visible = false
     load()
   } finally {
@@ -245,6 +293,15 @@ onMounted(load)
 }
 .audit-body .lab { margin-bottom: 6px; font-size: 13px; color: #64748b; }
 .audit-body a { color: #0369a1; font-size: 13px; }
+.audit-meta {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.audit-meta:last-child { margin-bottom: 0; }
 .req {
   color: var(--el-color-danger, #f56c6c);
   margin-left: 2px;

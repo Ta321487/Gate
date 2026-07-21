@@ -1,0 +1,191 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "物资名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "规格/型号",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "资产编号",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可领数量",
+          "type": "number"
+        }
+      ],
+      "key": "asset",
+      "label": "物资",
+      "labelPlural": "物资",
+      "softDelete": true,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": true,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "requisition",
+      "label": "申领单",
+      "labelPlural": "申领",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "用途说明",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已出库",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已退库"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交申领",
+        "approve": "通过出库",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "退库"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "物资领用",
+    "authLead": "验证码登录；浏览物资台账并提交申领，库管审核后出库。",
+    "authPoints": [
+      "验证码登录",
+      "物资目录",
+      "申领审核与出库"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "领用须知、盘点安排与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "仓储公告",
+    "recommendLatestHint": "最新上架",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可按部门申领办公物资与耗材"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "物资台账",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "申领审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "申领记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "物资目录"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的申领"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "固定资产与耗材分类浏览，查看可领库存。",
+      "title": "物资台账"
+    },
+    {
+      "lead": "提交申领单，库管审核通过后办理出库。",
+      "title": "在线申领"
+    },
+    {
+      "lead": "盘点安排与领用须知见公告栏。",
+      "title": "仓储公告"
+    },
+    {
+      "lead": "登录后跟踪审核与出库进度。",
+      "title": "我的申领"
+    },
+    {
+      "lead": "按品类快速定位可领物资。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "仓管主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "库管员"
+    },
+    "user": {
+      "id": "user",
+      "label": "申领人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材出库不退。",
+    "noticeTitle": "领用须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

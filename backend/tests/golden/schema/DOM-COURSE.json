@@ -1,0 +1,222 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users",
+    "time_conflict"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "课程名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "授课教师",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "课号/教室",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "剩余名额",
+          "type": "number"
+        },
+        {
+          "key": "mutexCode",
+          "label": "互斥码",
+          "type": "string"
+        },
+        {
+          "key": "startAt",
+          "label": "上课开始",
+          "type": "datetime"
+        },
+        {
+          "key": "endAt",
+          "label": "上课结束",
+          "type": "datetime"
+        },
+        {
+          "key": "applyDeadlineAt",
+          "label": "选课截止",
+          "type": "datetime"
+        },
+        {
+          "key": "credit",
+          "label": "学分",
+          "type": "number"
+        }
+      ],
+      "key": "course",
+      "label": "课程",
+      "labelPlural": "课程",
+      "softDelete": false,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "categoryLimit": 1,
+      "checkMutex": true,
+      "key": "enrollment",
+      "label": "选课单",
+      "labelPlural": "选课",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "已选上",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已退选"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "申请选课",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "退选"
+      },
+      "weekCalendar": true,
+      "weekCalendarLabel": "我的课表"
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "公选选课",
+    "authLead": "验证码登录；浏览公选课并申请；系统检测上课时段冲突、互斥组与分类限额。",
+    "authPoints": [
+      "验证码登录",
+      "课程检索",
+      "选课、冲突/互斥与分类限额"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "选课须知、开放时段与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "教务公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可以学生身份选课"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "课程管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "学生管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "选课审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "选课记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "课程检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的选课"
+      },
+      {
+        "key": "week_calendar",
+        "label": "我的课表"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分类浏览课程、课时与剩余名额。",
+      "title": "本学期公选"
+    },
+    {
+      "lead": "时段重叠或名额已满时无法提交，请注意截止时间。",
+      "title": "选课须知"
+    },
+    {
+      "lead": "开放时段与变更通知见公告栏。",
+      "title": "教务公告"
+    },
+    {
+      "lead": "登录后查看已选课程与上课时间。",
+      "title": "我的课表"
+    },
+    {
+      "lead": "选课前可查看课程学分与教师信息。",
+      "title": "学分一览"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "教务主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "选课管理员"
+    },
+    "user": {
+      "id": "student",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请在截止前选课；名额有限；时段冲突、互斥组或分类超额将无法提交。",
+    "noticeTitle": "选课须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

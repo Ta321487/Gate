@@ -1,4 +1,4 @@
-﻿# Gate console launcher
+# Gate console launcher
 # Entry: scripts\launcher.bat
 # Save as UTF-8 with BOM (Chinese + Windows PowerShell 5.1)
 
@@ -77,10 +77,41 @@ function Invoke-HealthCheck {
     }
 }
 
+function Test-WindowsTerminalCli {
+    return [bool](Get-Command wt -ErrorAction SilentlyContinue)
+}
+
 function Start-InNewWindow([string]$Title, [string]$BatPath) {
+    <# 兼容旧名：优先 Windows Terminal 同窗新标签；无 wt 则弹独立 cmd。
+       单独双击 start-*.bat 仍是独立窗口，不受影响。 #>
+    Start-ServiceHost -Title $Title -BatPath $BatPath
+}
+
+function Start-ServiceHost([string]$Title, [string]$BatPath) {
     if (-not (Test-Path -LiteralPath $BatPath)) {
         Write-Line "  [错误] 找不到 $BatPath" "Red"
         return
+    }
+    # GF_LAUNCH_STYLE=window 强制独立 cmd（调试用）
+    $forceWindow = ($env:GF_LAUNCH_STYLE -eq "window")
+    if (-not $forceWindow -and (Test-WindowsTerminalCli)) {
+        # -w last：挂到最近使用的 WT 窗口（通常就是本控制台所在窗）
+        # 不在 WT 内时也会开一个 wt 窗口并建标签
+        $arg = @(
+            "-w", "last",
+            "nt",
+            "--title", $Title,
+            "-d", $Repo,
+            "cmd", "/k",
+            "title $Title & call `"$BatPath`""
+        )
+        try {
+            Start-Process -FilePath "wt.exe" -ArgumentList $arg | Out-Null
+            Write-Line "  [完成] 已开标签页：$Title" "Green"
+            return
+        } catch {
+            Write-Line "  [警告] wt 开标签失败，回退独立窗口" "Yellow"
+        }
     }
     Start-Process -FilePath "cmd.exe" -WorkingDirectory $Repo -ArgumentList @(
         "/k",
@@ -232,6 +263,9 @@ function Show-Menu {
     Write-Host ""
     Write-Host "  UI  $UiUrl" -ForegroundColor DarkGray
     Write-Host "  API $ApiUrl   docs $DocsUrl" -ForegroundColor DarkGray
+    if (Test-WindowsTerminalCli) {
+        Write-Host "  服务启动 → Windows Terminal 同窗标签（单独 bat 仍可独立窗口）" -ForegroundColor DarkGray
+    }
     Write-Host ""
 }
 

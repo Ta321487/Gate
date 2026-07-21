@@ -364,8 +364,14 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
 
 
 def profile_fields_for(domain: str) -> list[dict[str, Any]]:
-    specific = PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
-    return copy.deepcopy(COMMON_PROFILE_FIELDS) + copy.deepcopy(specific)
+    """公共底座全角色可用；领域业务档案默认仅终端用户（患者/车主等），管理岗不填。"""
+    specific = copy.deepcopy(
+        PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
+    )
+    for f in specific:
+        if isinstance(f, dict):
+            f.setdefault("forRoles", ["user"])
+    return copy.deepcopy(COMMON_PROFILE_FIELDS) + specific
 
 
 def attach_profile_fields(schema: dict[str, Any], domain: str) -> dict[str, Any]:

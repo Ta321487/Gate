@@ -1,0 +1,142 @@
+{
+  "capabilities": [
+    "archive",
+    "slot_reserve",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "场地",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "费用",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "位置",
+          "type": "string"
+        },
+        {
+          "key": "seatCapacity",
+          "label": "容纳人数",
+          "type": "number"
+        },
+        {
+          "key": "category",
+          "label": "类型",
+          "type": "select"
+        }
+      ],
+      "key": "room",
+      "label": "场地",
+      "labelPlural": "场地",
+      "stockDisplay": "hidden"
+    },
+    "reservation": {
+      "key": "reservation",
+      "label": "预约",
+      "labelPlural": "我的预约",
+      "remarkLabel": "预约说明",
+      "requireConfirm": false,
+      "requireRemark": true,
+      "states": {
+        "cancelled": "已取消",
+        "confirmed": "已预约",
+        "pending": "待确认"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "场地预约",
+    "authLead": "验证码登录；选择场地与时段，占坑预约（约满不可再约）。",
+    "authPoints": [
+      "验证码登录",
+      "场地检索",
+      "时段占坑预约"
+    ],
+    "messagesPageLead": "预约提醒与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "预约公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可预约场地"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "场地管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "reservations",
+        "label": "预约记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "场地"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的预约"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "场地主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "场地管理员"
+    },
+    "user": {
+      "id": "user",
+      "label": "预约人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请填写预约说明；按时使用并及时取消不用的预约以释放时段。",
+    "noticeTitle": "预约须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

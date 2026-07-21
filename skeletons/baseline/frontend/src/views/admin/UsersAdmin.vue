@@ -141,7 +141,8 @@ import {
   getSchema,
   isWalletEnabled,
   profileAdminColumns,
-  profileFields,
+  profileAudienceOf,
+  profileFieldsForAudience,
 } from '../../utils/domainSchema.js'
 import { isProfileFieldRequired, isProfileFieldVisible } from '../../utils/profileValidate.js'
 import { findStaffPost, staffPostLabel, staffPosts } from '../../utils/staffPosts.js'
@@ -157,7 +158,8 @@ const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers =
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
 const adminCols = computed(() => profileAdminColumns())
-const allFields = computed(() => profileFields())
+const editAudience = computed(() => profileAudienceOf(form))
+const allFields = computed(() => profileFieldsForAudience(editAudience.value))
 const visibleFields = computed(() =>
   allFields.value.filter((f) => isProfileFieldVisible(f, form.extras)),
 )
@@ -212,6 +214,8 @@ const form = reactive({
   nickname: '',
   phone: '',
   role: '',
+  superAdmin: false,
+  staffPost: '',
   extras: emptyProfileExtras(),
 })
 
@@ -238,12 +242,15 @@ async function load() {
 }
 
 function openEdit(row) {
+  const audience = profileAudienceOf(row)
   Object.assign(form, {
     username: row.username,
     nickname: row.nickname || '',
     phone: row.phone || '',
     role: row.role || '',
-    extras: { ...emptyProfileExtras(), ...(row.extras || {}) },
+    superAdmin: !!row.superAdmin,
+    staffPost: row.staffPost || '',
+    extras: { ...emptyProfileExtras(profileFieldsForAudience(audience)), ...(row.extras || {}) },
   })
   visible.value = true
 }
