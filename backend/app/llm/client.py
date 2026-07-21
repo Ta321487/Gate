@@ -131,14 +131,17 @@ async def project_usage_rows(
     rows_q = base.order_by(order_expr).offset(offset).limit(page_size)
     rows = (await db.execute(rows_q)).all()
     ids = [r.project_id for r in rows if r.project_id]
-    alive: set[str] = set()
+    titles: dict[str, str] = {}
     if ids:
-        alive = set(
-            (await db.execute(select(Project.id).where(Project.id.in_(ids)))).scalars().all()
-        )
+        for pid, title in (
+            await db.execute(select(Project.id, Project.title).where(Project.id.in_(ids)))
+        ).all():
+            titles[pid] = title or ""
+    alive = set(titles)
     items = [
         {
             "project_id": r.project_id or "",
+            "title": titles.get(r.project_id or "", ""),
             "tokens": int(r.tokens or 0),
             "calls": int(r.calls or 0),
             "last_at": r.last_at,
