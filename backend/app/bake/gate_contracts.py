@@ -237,10 +237,186 @@ _GATE_LOYALTY_FILES = [
 ]
 
 
+_GATE_GUESTBOOK_FILES = [
+    "backend/src/main/java/com/thesis/service/GuestbookStore.java",
+    "backend/src/main/java/com/thesis/controller/GuestbookController.java",
+    "frontend/src/views/Guestbook.vue",
+    "frontend/src/views/admin/GuestbookAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_guestbook_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加留言板文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "guestbook" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_GUESTBOOK_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "guestbook" not in have:
+        routes.append({"seg": "guestbook", "from_feature": "访客留言"})
+    if "admin/guestbook" not in have:
+        routes.append({"seg": "admin/guestbook", "from_feature": "访客留言"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["guestbook"] = {"file": "GuestbookController.java", "need": ["/api/guestbook"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "guestbook" not in super_menus:
+        # 插在 content 前
+        if "content" in super_menus:
+            super_menus.insert(super_menus.index("content"), "guestbook")
+        else:
+            super_menus.append("guestbook")
+        inv["super_menus"] = super_menus
+        out["admin_invariants"] = inv
+    return out
+
+
+_GATE_FAVORITES_FILES = [
+    "backend/src/main/java/com/thesis/capability/FavoriteStore.java",
+    "backend/src/main/java/com/thesis/controller/FavoriteController.java",
+    "frontend/src/views/user/MyFavorites.vue",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_favorites_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "favorites" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_FAVORITES_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "favorites" not in have:
+        routes.append({"seg": "favorites", "from_feature": "商品收藏"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["favorites"] = {"file": "FavoriteController.java", "need": ["/api/favorites"]}
+    out["flow_api"] = flow
+    return out
+
+
+_GATE_UX_FILES = [
+    "backend/src/main/java/com/thesis/capability/BrowseHistoryStore.java",
+    "backend/src/main/java/com/thesis/controller/BrowseHistoryController.java",
+    "frontend/src/views/user/BrowseHistory.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_ux_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if not caps.intersection({"search_assist", "browse_history", "gallery"}):
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    if "browse_history" in caps:
+        for f in _GATE_UX_FILES:
+            if f not in files:
+                files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "browse_history" in caps and "browse_history" not in have:
+        routes.append({"seg": "browse_history", "from_feature": "浏览历史"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    if "browse_history" in caps:
+        flow["browse_history"] = {
+            "file": "BrowseHistoryController.java",
+            "need": ["/api/browse-history"],
+        }
+    if "search_assist" in caps:
+        flow["search_assist"] = {
+            "file": "ArchiveController.java",
+            "need": ["/api/archive/suggest"],
+        }
+    out["flow_api"] = flow
+    return out
+
+
+_GATE_COUPON_FILES = [
+    "backend/src/main/java/com/thesis/capability/CouponStore.java",
+    "backend/src/main/java/com/thesis/controller/CouponController.java",
+    "frontend/src/views/user/MyCoupons.vue",
+    "frontend/src/views/admin/CouponsAdmin.vue",
+    "frontend/src/router/index.js",
+]
+
+_GATE_ORDER_REVIEW_FILES = [
+    "backend/src/main/java/com/thesis/capability/OrderReviewStore.java",
+    "backend/src/main/java/com/thesis/controller/OrderReviewController.java",
+    "frontend/src/views/user/MyOrderReviews.vue",
+    "frontend/src/views/admin/OrderReviewsAdmin.vue",
+    "frontend/src/router/index.js",
+]
+
+_GATE_SCHEDULE_FILES = [
+    "backend/src/main/java/com/thesis/config/DemoScheduleJobs.java",
+]
+
+
+def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minutes: int = 0) -> dict:
+    caps = set(caps or [])
+    if "order_review" not in caps and timeout_minutes <= 0 and "coupon" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    need_files: list[str] = []
+    if "coupon" in caps:
+        need_files.extend(_GATE_COUPON_FILES)
+        need_files.extend(_GATE_SCHEDULE_FILES)
+    if "order_review" in caps:
+        need_files.extend(_GATE_ORDER_REVIEW_FILES)
+    if timeout_minutes > 0:
+        need_files.extend(_GATE_SCHEDULE_FILES)
+    for f in need_files:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "order_review" in caps and "order_reviews" not in have:
+        routes.append({"seg": "order_reviews", "from_feature": "订单评价"})
+    if "order_review" in caps and "admin/order_reviews" not in have:
+        routes.append({"seg": "admin/order_reviews", "from_feature": "订单评价"})
+    if "coupon" in caps and "coupons" not in have:
+        routes.append({"seg": "coupons", "from_feature": "优惠券"})
+    if "coupon" in caps and "admin/coupons" not in have:
+        routes.append({"seg": "admin/coupons", "from_feature": "优惠券"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    if "order_review" in caps:
+        flow["order_review"] = {
+            "file": "OrderReviewController.java",
+            "need": ["/api/order-reviews"],
+        }
+    if "coupon" in caps:
+        flow["coupon"] = {"file": "CouponController.java", "need": ["/api/coupons"]}
+    out["flow_api"] = flow
+    return out
+
+
 def merge_loyalty_gate(gate: dict, caps: list[str] | None) -> dict:
     """订单壳 gate 上叠加忠诚度文件与 flow_api。"""
     caps = set(caps or [])
-    if not caps.intersection({"wallet", "points", "spend_discount", "member_tier"}):
+    if not caps.intersection({"wallet", "points", "spend_discount", "member_tier", "coupon"}):
         return gate
     out = dict(gate or {})
     files = list(out.get("files") or [])

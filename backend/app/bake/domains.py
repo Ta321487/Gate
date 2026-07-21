@@ -84,11 +84,11 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-IT": ["ticket_flow", "content", "org_users"],
     # C 报名/申请
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
-    "DOM-LOST": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-LOST": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
     # D 交易（order_lines）
-    "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users"],
-    "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users"],
+    "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
+    "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
     # E 预约（slot_reserve；资源走 archive）
     "DOM-HOSPITAL": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-PARKING": ["archive", "slot_reserve", "content", "org_users"],
@@ -308,7 +308,7 @@ DOMAINS = {
     "DOM-SHOP": {
         "label": "商城",
         "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手"],
-        "entities": ["Product", "Category", "Order", "Cart"],
+        "entities": ["Product", "Category", "Order", "Cart", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["加购 → 下单 → 发货"],
         "features": [
@@ -320,6 +320,7 @@ DOMAINS = {
             {"name": "订单管理", "status": "flow"},
             {"name": "用户管理", "status": "module"},
             {"name": "公告管理", "status": "module"},
+            {"name": "访客留言", "status": "module"},
             {"name": "推荐算法", "status": "out_of_mvp"},
         ],
         "out_of_mvp": ["推荐算法"],
@@ -612,7 +613,7 @@ DOMAINS = {
     "DOM-FOOD": {
         "label": "点餐",
         "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐饮", "餐厅", "奶茶", "快餐"],
-        "entities": ["Dish", "Order", "Category"],
+        "entities": ["Dish", "Order", "Category", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选菜 → 下单 → 堂食/自取/配送"],
         "features": [
@@ -624,6 +625,7 @@ DOMAINS = {
             {"name": "订单管理", "status": "flow"},
             {"name": "用户管理", "status": "module"},
             {"name": "公告管理", "status": "module"},
+            {"name": "访客留言", "status": "module"},
         ],
         "out_of_mvp": [],
         "themes": [
@@ -777,7 +779,7 @@ DOMAINS = {
         "keywords": ["美发", "美容", "美容院", "理发预约", "服务预约"],
         "entities": ["Service", "Slot", "Booking"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选服务 → 预约时段"],
+        "flows": ["选服务 → 预约时段 → 到店完成"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

@@ -86,10 +86,15 @@ const MENU_TO = {
   home: '/home',
   my_tickets: '/tickets',
   content: '/notices',
+  guestbook: '/guestbook',
   profile: '/profile',
   archive: '/archive',
+  favorites: '/favorites',
+  browse_history: '/browse-history',
+  coupons: '/coupons',
   cart: '/cart',
   my_orders: '/orders',
+  order_reviews: '/order-reviews',
   addresses: '/addresses',
   my_reservations: '/reservations',
   slots: '/slots',
@@ -97,7 +102,7 @@ const MENU_TO = {
   messages: '/messages',
 }
 
-const GUEST_MENU_KEYS = new Set(['archive', 'content', 'slots'])
+const GUEST_MENU_KEYS = new Set(['archive', 'content', 'guestbook', 'slots'])
 
 const nav = computed(() => {
   // 资料留在右侧按钮，避免与顶栏重复
@@ -106,7 +111,7 @@ const nav = computed(() => {
   if (!loggedIn.value && isGuestBrowseEnabled()) {
     list = menus.filter((m) => GUEST_MENU_KEYS.has(m.key))
   } else if (!loggedIn.value) {
-    list = menus.filter((m) => m.key === 'content' || m.key === 'archive')
+    list = menus.filter((m) => m.key === 'content' || m.key === 'guestbook' || m.key === 'archive')
   }
   if (!list.length) {
     return [{ to: '/notices', label: menuLabel('user', 'content', '公告') }]
@@ -172,7 +177,7 @@ function logout() {
 .body { flex: 1; max-width: 1080px; width: 100%; margin: 0 auto; padding: 20px 20px 40px; box-sizing: border-box; }
 .foot {
   padding: 16px 20px; text-align: center; font-size: 12px;
-  color: var(--portal-muted, #5b6b76); border-top: 1px solid var(--portal-line, #d5dde3);
+  color: var(--portal-muted, #5b6b76); border-top: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
 }
 .sep { margin: 0 6px; opacity: 0.5; }
 </style>

@@ -154,7 +154,24 @@ public final class OrderStore {
             String addressLine,
             String deliveryType,
             String tasteNote) {
+        return placeOrder(
+                username, remark, addressId, receiverName, receiverPhone, addressLine, deliveryType, tasteNote, null);
+    }
+
+    public static Map<String, Object> placeOrder(
+            String username,
+            String remark,
+            Long addressId,
+            String receiverName,
+            String receiverPhone,
+            String addressLine,
+            String deliveryType,
+            String tasteNote,
+            String couponCode) {
         requireEnabled();
+        ensureDeliveryColumns();
+        ensureLoyaltyColumns();
+        ensureRefundColumns();
         List<Map<String, Object>> cart = listCart(username);
         if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
         double total = 0;
@@ -171,15 +188,21 @@ public final class OrderStore {
             total += priceOf(item) * qty;
         }
         double subtotal = round2(total);
+        String coupon = couponCode == null ? "" : couponCode.trim();
         Map<String, Object> priceSnap = null;
         double payable = subtotal;
         if (LoyaltyStore.anyEnabled()) {
-            priceSnap = LoyaltyStore.previewPrice(subtotal, username);
+            priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
                         "演示余额不足，请联系管理员充值")));
+            }
+            if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()
+                    && priceSnap.get("couponCode") == null
+                    && priceSnap.get("couponMessage") != null) {
+                throw new IllegalStateException(String.valueOf(priceSnap.get("couponMessage")));
             }
         }
         String note = remark == null ? "" : remark.trim();
@@ -244,21 +267,59 @@ public final class OrderStore {
             return ps;
         }, kh);
         long orderId = kh.getKey() == null ? 0L : kh.getKey().longValue();
-        for (Map<String, Object> line : cart) {
-            long itemId = ((Number) line.get("itemId")).longValue();
-            int qty = ((Number) line.get("qty")).intValue();
-            Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
-            double price = priceOf(item);
-            db().update(
-                    "INSERT INTO " + LINE + " (order_id,item_id,title,price_yuan,qty) VALUES (?,?,?,?,?)",
-                    orderId, itemId, String.valueOf(item.get("title")), price, qty);
-            if (useQuota) {
-                ArchiveStore.adjustStock(itemId, -qty);
+        List<long[]> deducted = new ArrayList<>();
+        try {
+            for (Map<String, Object> line : cart) {
+                long itemId = ((Number) line.get("itemId")).longValue();
+                int qty = ((Number) line.get("qty")).intValue();
+                Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+                double price = priceOf(item);
+                db().update(
+                        "INSERT INTO " + LINE + " (order_id,item_id,title,price_yuan,qty) VALUES (?,?,?,?,?)",
+                        orderId, itemId, String.valueOf(item.get("title")), price, qty);
+                if (useQuota) {
+                    ArchiveStore.adjustStock(itemId, -qty);
+                    deducted.add(new long[] {itemId, qty});
+                }
             }
-        }
-        if (LoyaltyStore.anyEnabled()) {
-            Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId);
-            applyLoyaltySnapshot(orderId, snap);
+            if (LoyaltyStore.anyEnabled()) {
+                Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
+                applyLoyaltySnapshot(orderId, snap);
+                if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()) {
+                    try {
+                        CouponStore.markUsed(username, coupon, orderId);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        } catch (RuntimeException ex) {
+            for (int i = deducted.size() - 1; i >= 0; i--) {
+                long[] d = deducted.get(i);
+                try {
+                    ArchiveStore.adjustStock(d[0], (int) d[1]);
+                } catch (Exception ignored) {
+                }
+            }
+            try {
+                if (LoyaltyStore.anyEnabled()) {
+                    Map<String, Object> m = getOrder(orderId);
+                    if (m != null) {
+                        double paid = 0;
+                        Object pb = m.get("payBalanceYuan");
+                        if (pb instanceof Number n) paid = n.doubleValue();
+                        if (paid > 0) {
+                            LoyaltyStore.refundOrderPay(username, orderId, paid);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                db().update("DELETE FROM " + LINE + " WHERE order_id=?", orderId);
+                db().update("DELETE FROM " + ORDER + " WHERE id=?", orderId);
+            } catch (Exception ignored) {
+            }
+            throw ex;
         }
         clearCart(username);
         try {
@@ -381,8 +442,67 @@ public final class OrderStore {
         return out;
     }
 
+    /** 宾馆等：预约办结时把关联订单一并完成 */
+    public static void completeByReservation(long reservationId) {
+        advanceByReservation(reservationId, "complete");
+    }
+
+    /** 取消预约时关掉关联订单（回补库存走 advance cancel） */
+    public static void cancelByReservation(long reservationId) {
+        advanceByReservation(reservationId, "cancel");
+    }
+
+    private static void advanceByReservation(long reservationId, String action) {
+        if (!enabled || reservationId <= 0 || !hasOrderColumn("reservation_id")) return;
+        List<Long> ids = db().query(
+                "SELECT id FROM " + ORDER + " WHERE reservation_id=? AND status IN ('pending','confirmed','shipped')",
+                (rs, i) -> rs.getLong("id"),
+                reservationId);
+        for (Long id : ids) {
+            if (id == null) continue;
+            try {
+                // cancel 仅 pending/confirmed；shipped 走 complete 更稳妥
+                String act = action;
+                if ("cancel".equals(action)) {
+                    Map<String, Object> m = getOrder(id);
+                    if (m != null && "shipped".equals(String.valueOf(m.get("status")))) {
+                        act = "complete";
+                    }
+                }
+                advance(id, act, null);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     public static Map<String, Object> advance(long orderId, String action) {
         return advance(orderId, action, null);
+    }
+
+    /** 超时关单：取消超时仍 pending 的订单（回补库存/退演示余额）。 */
+    public static int cancelTimedOutPending(int minutes) {
+        if (!enabled || minutes <= 0) return 0;
+        List<Long> ids;
+        try {
+            ids = db().query(
+                    "SELECT id FROM " + ORDER
+                            + " WHERE status='pending' AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)",
+                    (rs, i) -> rs.getLong(1),
+                    minutes);
+        } catch (Exception e) {
+            return 0;
+        }
+        if (ids == null || ids.isEmpty()) return 0;
+        int n = 0;
+        for (Long id : ids) {
+            if (id == null) continue;
+            try {
+                advance(id, "cancel", null);
+                n++;
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
     }
 
     public static Map<String, Object> advance(long orderId, String action, Map<String, Object> opts) {
@@ -513,6 +633,10 @@ public final class OrderStore {
         m.put("discountYuan", safeDouble(rs, "discount_yuan"));
         m.put("payBalanceYuan", safeDouble(rs, "pay_balance_yuan"));
         m.put("pointsEarned", (int) safeLong(rs, "points_earned"));
+        m.put("couponCode", safeStr(rs, "coupon_code"));
+        m.put("refundStatus", safeStr(rs, "refund_status"));
+        m.put("refundReason", safeStr(rs, "refund_reason"));
+        m.put("refundAt", fmt(safeTs(rs, "refund_at")));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
         String un = rs.getString("username");
@@ -591,6 +715,13 @@ public final class OrderStore {
         ensureOrderColumn("discount_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0");
         ensureOrderColumn("pay_balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0");
         ensureOrderColumn("points_earned", "INT NOT NULL DEFAULT 0");
+        ensureOrderColumn("coupon_code", "VARCHAR(32) DEFAULT ''");
+    }
+
+    private static void ensureRefundColumns() {
+        ensureOrderColumn("refund_status", "VARCHAR(16) DEFAULT ''");
+        ensureOrderColumn("refund_reason", "VARCHAR(255) DEFAULT ''");
+        ensureOrderColumn("refund_at", "DATETIME NULL");
     }
 
     private static void applyLoyaltySnapshot(long orderId, Map<String, Object> snap) {
@@ -598,18 +729,175 @@ public final class OrderStore {
         double discount = toDouble(snap.get("discountYuan"));
         double payBal = toDouble(snap.get("payBalanceYuan"));
         double payable = toDouble(snap.get("payableYuan"));
+        String coupon = String.valueOf(snap.getOrDefault("couponCode", ""));
         try {
             if (hasOrderColumn("discount_yuan") && hasOrderColumn("pay_balance_yuan")) {
-                db().update(
-                        "UPDATE " + ORDER + " SET total_yuan=?, discount_yuan=?, pay_balance_yuan=?, updated_at=? WHERE id=?",
-                        BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP),
-                        BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP),
-                        BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP),
-                        Timestamp.valueOf(LocalDateTime.now()),
-                        orderId);
+                if (hasOrderColumn("coupon_code")) {
+                    db().update(
+                            "UPDATE " + ORDER
+                                    + " SET total_yuan=?, discount_yuan=?, pay_balance_yuan=?, coupon_code=?, updated_at=? WHERE id=?",
+                            BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP),
+                            BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP),
+                            BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP),
+                            coupon == null || "null".equals(coupon) ? "" : coupon,
+                            Timestamp.valueOf(LocalDateTime.now()),
+                            orderId);
+                } else {
+                    db().update(
+                            "UPDATE " + ORDER + " SET total_yuan=?, discount_yuan=?, pay_balance_yuan=?, updated_at=? WHERE id=?",
+                            BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP),
+                            BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP),
+                            BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP),
+                            Timestamp.valueOf(LocalDateTime.now()),
+                            orderId);
+                }
             }
         } catch (Exception ignored) {
         }
+    }
+
+    /** 用户申请售后/退款：shipped/completed → refund_status=pending */
+    public static Map<String, Object> requestRefund(long orderId, String username, String reason) {
+        requireEnabled();
+        ensureRefundColumns();
+        Map<String, Object> m = getOrder(orderId);
+        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (!username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("无权申请");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!"shipped".equals(st) && !"completed".equals(st)) {
+            throw new IllegalStateException("仅配送中/已完成订单可申请售后");
+        }
+        String rs = String.valueOf(m.getOrDefault("refundStatus", ""));
+        if ("pending".equals(rs) || "approved".equals(rs)) {
+            throw new IllegalStateException("已有售后申请");
+        }
+        String why = reason == null ? "" : reason.trim();
+        if (why.isBlank()) throw new IllegalStateException("请填写售后原因");
+        if (why.length() > 255) why = why.substring(0, 255);
+        db().update(
+                "UPDATE " + ORDER + " SET refund_status='pending', refund_reason=?, updated_at=? WHERE id=?",
+                why, Timestamp.valueOf(LocalDateTime.now()), orderId);
+        try {
+            MessageStore.notifyAdmins(
+                    "售后待处理",
+                    UserStore.displayName(username) + " 申请订单 #" + orderId + " 售后：" + why,
+                    "order",
+                    orderId);
+        } catch (Exception ignored) {
+        }
+        return getOrder(orderId);
+    }
+
+    /** 管理端：通过售后（回补库存、退余额、订单 cancelled）或驳回 */
+    public static Map<String, Object> decideRefund(long orderId, boolean pass, String note) {
+        requireEnabled();
+        ensureRefundColumns();
+        Map<String, Object> m = getOrder(orderId);
+        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (!"pending".equals(String.valueOf(m.getOrDefault("refundStatus", "")))) {
+            throw new IllegalStateException("当前无待审售后");
+        }
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        if (!pass) {
+            String tip = note == null || note.isBlank() ? "售后已驳回" : note.trim();
+            db().update(
+                    "UPDATE " + ORDER + " SET refund_status='rejected', refund_reason=?, refund_at=?, updated_at=? WHERE id=?",
+                    tip, now, now, orderId);
+            try {
+                MessageStore.send(
+                        String.valueOf(m.get("username")),
+                        "售后已驳回",
+                        "订单 #" + orderId + "：" + tip,
+                        "order",
+                        orderId);
+            } catch (Exception ignored) {
+            }
+            return getOrder(orderId);
+        }
+        // 通过：按取消回补库存与余额，状态改为 cancelled
+        if (useQuota) {
+            for (Map<String, Object> line : listLines(orderId)) {
+                ArchiveStore.adjustStock(
+                        ((Number) line.get("itemId")).longValue(),
+                        ((Number) line.get("qty")).intValue());
+            }
+        }
+        if (LoyaltyStore.anyEnabled()) {
+            double paid = toDouble(m.get("payBalanceYuan"));
+            if (paid > 0) {
+                LoyaltyStore.refundOrderPay(String.valueOf(m.get("username")), orderId, paid);
+            }
+        }
+        db().update(
+                "UPDATE " + ORDER
+                        + " SET status='cancelled', refund_status='approved', refund_at=?, updated_at=? WHERE id=?",
+                now, now, orderId);
+        try {
+            MessageStore.send(
+                    String.valueOf(m.get("username")),
+                    "售后已通过",
+                    "订单 #" + orderId + " 已退款办结（演示环境）。",
+                    "order",
+                    orderId);
+        } catch (Exception ignored) {
+        }
+        return getOrder(orderId);
+    }
+
+    /** 演示物流轨迹：按状态拼多节点时间线（含运输中/派送中；无第三方快递 API）。 */
+    public static List<Map<String, Object>> logisticsTrace(long orderId) {
+        requireEnabled();
+        Map<String, Object> m = getOrder(orderId);
+        if (m == null) throw new IllegalArgumentException("订单不存在");
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        nodes.add(traceNode(m.get("createdAt"), "已下单", "商家待确认"));
+        String st = String.valueOf(m.get("status"));
+        if (!"pending".equals(st) && !"cancelled".equals(st)) {
+            nodes.add(traceNode(m.get("updatedAt"), "商家已确认", "备货中"));
+        }
+        boolean inTransit = "shipped".equals(st) || "completed".equals(st);
+        if (inTransit) {
+            Object shipAt = m.get("shippedAt") != null ? m.get("shippedAt") : m.get("updatedAt");
+            String track = String.valueOf(m.getOrDefault("trackingNo", ""));
+            String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
+            boolean pickup = dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提");
+            if (pickup) {
+                String code = String.valueOf(m.getOrDefault("pickupCode", ""));
+                String tip = code.isBlank() || "null".equals(code) ? "请到店领取" : ("取餐码 " + code);
+                nodes.add(traceNode(shipAt, "已出餐", tip));
+                nodes.add(traceNode(shipAt, "待取餐", "请尽快到店领取"));
+            } else {
+                String tip = track.isBlank() || "null".equals(track) ? "已交接承运" : ("运单 " + track);
+                nodes.add(traceNode(shipAt, "已发货", tip));
+                nodes.add(traceNode(shipAt, "运输中", "快件运输途中（演示）"));
+                nodes.add(traceNode(shipAt, "派送中", "快递员正在派送（演示）"));
+            }
+        }
+        if ("completed".equals(st)) {
+            nodes.add(traceNode(m.get("updatedAt"), "已签收/完成", "订单完结"));
+        }
+        if ("cancelled".equals(st)) {
+            nodes.add(traceNode(m.get("updatedAt"), "已取消", "订单关闭"));
+        }
+        String rs = String.valueOf(m.getOrDefault("refundStatus", ""));
+        if ("pending".equals(rs)) {
+            nodes.add(traceNode(m.get("updatedAt"), "售后申请中", String.valueOf(m.getOrDefault("refundReason", ""))));
+        } else if ("approved".equals(rs)) {
+            nodes.add(traceNode(m.get("refundAt"), "售后已通过", "已退款办结"));
+        } else if ("rejected".equals(rs)) {
+            nodes.add(traceNode(m.get("refundAt"), "售后已驳回", String.valueOf(m.getOrDefault("refundReason", ""))));
+        }
+        return nodes;
+    }
+
+    private static Map<String, Object> traceNode(Object at, String title, String detail) {
+        Map<String, Object> n = new LinkedHashMap<>();
+        n.put("at", at == null || "null".equals(String.valueOf(at)) ? "" : String.valueOf(at));
+        n.put("title", title);
+        n.put("detail", detail == null ? "" : detail);
+        return n;
     }
 
     private static void ensureOrderColumn(String col, String ddlType) {

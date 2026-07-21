@@ -54,6 +54,7 @@
       }
     },
     "reservation": {
+      "completeVerb": "入住/离店",
       "key": "reservation",
       "label": "预订",
       "labelPlural": "我的预订",
@@ -62,6 +63,7 @@
       "requireRemark": false,
       "states": {
         "cancelled": "已取消",
+        "completed": "已离店",
         "confirmed": "已预订",
         "pending": "待确认"
       }
@@ -70,11 +72,11 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "客房预订",
-    "authLead": "验证码登录；选择房型与入住时段预订，同步生成订单（无真支付）。",
+    "authLead": "验证码登录；选择房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。",
     "authPoints": [
       "验证码登录",
       "房型浏览",
-      "分时预订与订单"
+      "分时预订与入住离店"
     ],
     "messagesPageLead": "预约提醒与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
@@ -155,7 +157,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "演示环境无真支付；预约成功即占坑并生成订单。",
+    "noticeBody": "演示环境无真支付；预约成功即占坑并生成订单；入住/离店由前台办结。",
     "noticeTitle": "入住须知"
   },
   "title": "测试课题",

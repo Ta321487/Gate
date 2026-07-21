@@ -14,7 +14,7 @@ ARCH_CAPABILITIES: dict[str, list[str]] = {
     "ARCH-CONTENT": ["archive", "ticket_flow", "content", "org_users", "recommend"],
     "ARCH-FLOW": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "ARCH-STOCK": ["archive", "ticket_flow", "quota", "content", "org_users"],
-    "ARCH-TRADE": ["archive", "order_lines", "quota", "content", "org_users"],
+    "ARCH-TRADE": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
     "ARCH-RESERVE": ["archive", "slot_reserve", "content", "org_users"],
 }
 
@@ -434,6 +434,8 @@ def shell_features(
         {"name": "用户管理", "status": "module"},
         {"name": "公告管理", "status": "module"},
     ]
+    if need_trade:
+        feats.append({"name": "访客留言", "status": "module"})
     if need_flow:
         feats += [
             {"name": "申请 → 审核", "status": "flow"},
@@ -479,6 +481,15 @@ def _augment_menus_for_paths(schema: dict[str, Any], *, need_flow: bool, need_tr
         # 收货地址：仅交易路径（点餐/商城同类），预约壳不挂
         _ensure_menu(user, "addresses", {"key": "addresses", "label": "收货地址"}, before_key="content")
         _ensure_menu(admin, "orders", {"key": "orders", "label": "订单管理"}, before_key="users")
+        _ensure_menu(
+            user, "guestbook", {"key": "guestbook", "label": "留言"}, before_key="content"
+        )
+        _ensure_menu(
+            admin,
+            "guestbook",
+            {"key": "guestbook", "label": "留言管理", "superOnly": True},
+            before_key="content",
+        )
     if need_reserve:
         # 时段页须带 itemId，不挂独立顶栏；与具名预约域 / domainSchema.js 一致
         _ensure_menu(user, "my_reservations", {"key": "my_reservations", "label": "我的预约"}, before_key="content")
@@ -563,12 +574,14 @@ def build_generic_shell_schema(
             resv_admin_label="预约记录",
             auth_eyebrow=app,
             auth_lead=f"验证码登录；选择{noun}办理预约等业务。",
-            auth_points=["验证码登录", f"{noun}检索", "时段预约"],
+            auth_points=["验证码登录", f"{noun}检索", "时段预约与办结"],
             register_hint="注册后即可预约",
             notice_title="预约须知",
-            notice_body="请按时使用；取消预约将释放时段名额。",
+            notice_body="请按时使用；管理端可登记办结；取消预约将释放时段名额。",
             notice_page_title="公告",
             with_orders=need_trade,
+            complete_verb="办结",
+            completed_label="已办结",
         )
     elif need_trade:
         schema = order_shell_schema(
@@ -732,7 +745,7 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     if any(a in _FLOW_FAMILY for a in arches):
         ents.append("Ticket")
     if "ARCH-TRADE" in arches:
-        ents.extend(["CartLine", "Order"])
+        ents.extend(["CartLine", "Order", "Guestbook"])
     if "ARCH-RESERVE" in arches:
         ents.append("Reservation")
     ents.append("Notice")

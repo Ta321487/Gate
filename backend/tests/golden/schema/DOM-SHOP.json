@@ -4,7 +4,8 @@
     "order_lines",
     "quota",
     "content",
-    "org_users"
+    "org_users",
+    "guestbook"
   ],
   "entities": {
     "archive": {
@@ -73,6 +74,8 @@
       "商品浏览",
       "购物车与订单"
     ],
+    "guestbookPageLead": "欢迎留下建议或咨询；管理员可简短回复。",
+    "guestbookPageTitle": "留言板",
     "messagesPageLead": "订单进度与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "noticePageTitle": "商城公告",
@@ -105,6 +108,11 @@
         "label": "订单管理"
       },
       {
+        "key": "guestbook",
+        "label": "留言管理",
+        "superOnly": true
+      },
+      {
         "key": "content",
         "label": "公告管理",
         "superOnly": true
@@ -126,6 +134,10 @@
       {
         "key": "addresses",
         "label": "收货地址"
+      },
+      {
+        "key": "guestbook",
+        "label": "留言"
       },
       {
         "key": "content",

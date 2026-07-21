@@ -41,6 +41,7 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "completeVerb": "登记入场",
       "key": "reservation",
       "label": "预约",
       "labelPlural": "我的预约",
@@ -49,6 +50,7 @@
       "requireRemark": true,
       "states": {
         "cancelled": "已取消",
+        "completed": "已入场",
         "confirmed": "已预约",
         "pending": "待确认"
       }
@@ -57,11 +59,11 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "车位预约",
-    "authLead": "验证码登录；选择车位与时段占坑预约。",
+    "authLead": "验证码登录；选择车位与时段占坑预约；入场由管理端登记。",
     "authPoints": [
       "验证码登录",
       "车位检索",
-      "时段预约"
+      "时段预约与入场登记"
     ],
     "messagesPageLead": "预约提醒与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
@@ -134,7 +136,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请按时入场；取消预约将释放时段。请填写车牌号便于核对。",
+    "noticeBody": "请按时入场；入场后由车场登记办结；取消预约将释放时段。请填写车牌号便于核对。",
     "noticeTitle": "停车须知"
   },
   "title": "测试课题",

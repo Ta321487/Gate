@@ -148,6 +148,19 @@ CREATE TABLE IF NOT EXISTS user_ledger (
   KEY idx_ledger_user (username, id)
 );
 
+CREATE TABLE IF NOT EXISTS sys_guestbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  reply VARCHAR(500) DEFAULT '',
+  reply_username VARCHAR(64) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_gb_created (id),
+  KEY idx_gb_user (username)
+);
+
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
 UPDATE sys_user SET staff_post='order_clerk', staff_kind='clerk', nickname='订单办理员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;

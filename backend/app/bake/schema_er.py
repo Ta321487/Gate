@@ -33,6 +33,7 @@ _INFRA_TABLE_ZH: dict[str, str] = {
     "sys_user": "用户",
     "sys_notice": "公告",
     "sys_message": "消息",
+    "sys_guestbook": "留言",
     "sys_config": "配置",
     "category": "分类",
     "user_ledger": "账户流水",
@@ -897,6 +898,7 @@ def _rel_zh_from_via(via: str, right: str = "", left: str = "") -> str:
         by_child = {
             "sys_notice": "发布",
             "sys_message": "接收",
+            "sys_guestbook": "发表",
             "user_ledger": "归属",
         }
         if right in by_child:
@@ -958,6 +960,7 @@ def _rel_zh(
         if right_lab and right not in {
             "sys_message",
             "sys_notice",
+            "sys_guestbook",
             "user_ledger",
             "sys_config",
         }:

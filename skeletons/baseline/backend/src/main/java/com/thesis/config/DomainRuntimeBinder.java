@@ -1,7 +1,11 @@
 package com.thesis.config;
 
 import com.thesis.capability.ArchiveStore;
+import com.thesis.capability.BrowseHistoryStore;
+import com.thesis.capability.CouponStore;
+import com.thesis.capability.FavoriteStore;
 import com.thesis.capability.LoyaltyStore;
+import com.thesis.capability.OrderReviewStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
@@ -157,6 +161,21 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.member-tier-enabled:false}")
     private boolean memberTierEnabled;
 
+    @Value("${thesis.coupon-enabled:false}")
+    private boolean couponEnabled;
+
+    @Value("${thesis.order-review-enabled:false}")
+    private boolean orderReviewEnabled;
+
+    @Value("${thesis.favorites-enabled:false}")
+    private boolean favoritesEnabled;
+
+    @Value("${thesis.browse-history-enabled:false}")
+    private boolean browseHistoryEnabled;
+
+    @Value("${thesis.gallery-enabled:false}")
+    private boolean galleryEnabled;
+
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
@@ -170,6 +189,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
+        ArchiveStore.configureGallery(galleryEnabled);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }
@@ -201,9 +221,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsEnabled,
                 spendDiscountEnabled,
                 memberTierEnabled,
+                couponEnabled,
                 pointsEarnPerYuan,
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
+        CouponStore.configure(couponEnabled);
+        OrderReviewStore.configure(orderReviewEnabled);
+        FavoriteStore.configure(favoritesEnabled);
+        BrowseHistoryStore.configure(browseHistoryEnabled, 20);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);

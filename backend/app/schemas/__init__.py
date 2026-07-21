@@ -51,6 +51,7 @@ class MatchUpdate(BaseModel):
     archetype: Optional[str] = Field(default=None, description="骨架 ID")
     domain: Optional[str] = Field(default=None, description="领域 ID")
     theme: Optional[str] = Field(default=None, description="主题 ID")
+    chrome: Optional[str] = Field(default=None, description="界面质感 ID")
     llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
     password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
     unlock: Optional[bool] = Field(default=None, description="解锁匹配")

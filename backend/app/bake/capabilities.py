@@ -31,7 +31,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "slot_reserve": {
         "label": "时段预约",
         "status": "implemented",
-        "desc": "资源时段库存占坑与取消（有别于本人已选时段相交）",
+        "desc": "资源时段库存占坑、取消与履约办结（入场/就诊/到店/入住离店等）",
     },
     "order_lines": {
         "label": "多明细履约",
@@ -62,6 +62,41 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "label": "内容发布",
         "status": "implemented",
         "desc": "公告/资讯",
+    },
+    "guestbook": {
+        "label": "访客留言",
+        "status": "implemented",
+        "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信）",
+    },
+    "favorites": {
+        "label": "商品收藏",
+        "status": "implemented",
+        "desc": "交易域收藏夹：收藏/取消，我的收藏再加购",
+    },
+    "coupon": {
+        "label": "优惠券码",
+        "status": "implemented",
+        "desc": "券模板领取/我的券/下单核销/过期扫标（非真支付）",
+    },
+    "order_review": {
+        "label": "订单评价",
+        "status": "implemented",
+        "desc": "已完成订单星级+文字评价；管理端回复；仅开题写到才挂",
+    },
+    "search_assist": {
+        "label": "搜索联想与热搜",
+        "status": "implemented",
+        "desc": "标题前缀联想 + 配置热搜词；仅开题写到才挂",
+    },
+    "browse_history": {
+        "label": "浏览历史",
+        "status": "implemented",
+        "desc": "最近浏览足迹；仅开题写到才挂",
+    },
+    "gallery": {
+        "label": "商品多图",
+        "status": "implemented",
+        "desc": "档案图集（非 SKU 多规格）；仅开题写到才挂",
     },
     "org_users": {
         "label": "组织与用户",

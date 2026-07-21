@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bake.catalog import (
     THEME_ALIASES,
+    CHROME_STYLES,
     build_spec,
-    default_theme,
+    pick_theme,
     match_text,
+    normalize_chrome,
     normalize_password_hash,
     normalize_theme,
     themes_for_domain,
@@ -237,7 +239,7 @@ async def create_from_uploads(
     db_name = _db_name(
         matched.domain, pid, match_meta["delivery_slug"], reserved=reserved
     )
-    theme = default_theme(matched.domain)
+    theme = pick_theme(matched.domain, f"{matched.title}|{matched.domain}|theme")
     proposal = summarize_proposal(summary_text, hits)
     proposal["source_files"] = file_info
     spec = build_spec(
@@ -330,7 +332,9 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
     if body.reset:
         project.archetype = project.recommended_arch
         project.domain = project.recommended_domain
-        project.theme = default_theme(project.domain)
+        project.theme = pick_theme(
+            project.domain, f"{project.title}|{project.domain}|theme"
+        )
         project.match_locked = True
         project.match_mode = "recommended"
         project.match_confirmed = False
@@ -355,8 +359,15 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             project.db_name = _db_name(
                 project.domain, project.id, slug, reserved=reserved
             )
-            # 换行业模板后，配色必须落在该行业可选集内
-            project.theme = normalize_theme(project.theme, project.domain)
+            # 换行业后：仍合法则保留，否则按种子重选（避免总落第一个）
+            allowed = {t["id"] for t in themes_for_domain(project.domain)}
+            cur = THEME_ALIASES.get(project.theme, project.theme)
+            if cur in allowed:
+                project.theme = cur
+            else:
+                project.theme = pick_theme(
+                    project.domain, f"{project.title}|{project.domain}|theme"
+                )
         # 改骨架/领域后必须重新确认，避免绕过确认直接生成
         if (project.archetype, project.domain) != (prev_arch, prev_dom) and project.match_confirmed:
             project.match_confirmed = False
@@ -371,6 +382,18 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         if raw not in allowed:
             raise ValueError("该配色不属于当前行业模板")
         project.theme = raw
+    chrome_override = None
+    prev_spec = project.spec if isinstance(project.spec, dict) else {}
+    if body.reset:
+        chrome_override = None  # 恢复推荐时按种子重抽质感
+    elif getattr(body, "chrome", None) is not None:
+        allowed_chrome = {t["id"] for t in CHROME_STYLES}
+        if body.chrome not in allowed_chrome:
+            raise ValueError("未知质感样式")
+        chrome_override = normalize_chrome(body.chrome)
+    elif prev_spec.get("chrome"):
+        # 保留已选定质感，避免改配色时被种子重抽
+        chrome_override = normalize_chrome(prev_spec.get("chrome"))
     if body.llm_enabled is not None:
         project.llm_enabled = body.llm_enabled
     if body.password_hash is not None:
@@ -413,6 +436,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         if deviant
         else list(old_spec.get("archetypes") or [project.archetype]),
         match_meta=match_meta or None,
+        chrome=chrome_override,
     )
     if match_meta.get("delivery_slug"):
         project.spec["delivery_slug"] = match_meta["delivery_slug"]

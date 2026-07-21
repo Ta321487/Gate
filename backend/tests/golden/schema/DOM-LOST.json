@@ -2,6 +2,7 @@
   "capabilities": [
     "archive",
     "ticket_flow",
+    "quota",
     "content",
     "org_users"
   ],

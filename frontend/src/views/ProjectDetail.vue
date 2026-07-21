@@ -81,6 +81,9 @@
                 <n-form-item label="行业配色">
                   <n-select v-model:value="form.theme" :options="themeOptions" @update:value="saveSoft" />
                 </n-form-item>
+                <n-form-item label="界面质感">
+                  <n-select v-model:value="form.chrome" :options="chromeOptions" @update:value="saveSoft" />
+                </n-form-item>
                 <n-form-item label="智能业务填充">
                   <n-select v-model:value="form.llm" :options="llmOptions" @update:value="saveSoft" />
                 </n-form-item>
@@ -418,7 +421,7 @@
                   <template v-if="schema?.tables?.length">
                     <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
                       <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
-                        （{{ schema.tables.length >= 6 && schema.tables.length <= 13 ? '符合' : '不符合' }} 6~13）
+                        （{{ schema.tables.length >= 6 && schema.tables.length <= 15 ? '符合' : '不符合' }} 6~15）
                       </span>
                     </div>
                     <div class="table-list">
@@ -682,8 +685,8 @@ const p = ref(null)
 const loadError = ref('')
 const loadErrorCode = ref(500)
 const tab = ref('match')
-const catalog = ref({ archetypes: [], domains: [], themes_by_domain: {} })
-const form = reactive({ archetype: '', domain: '', theme: '', llm: 'on', passwordHash: 'none' })
+const catalog = ref({ archetypes: [], domains: [], themes_by_domain: {}, chrome_styles: [] })
+const form = reactive({ archetype: '', domain: '', theme: '', chrome: 'soft', llm: 'on', passwordHash: 'none' })
 const ack = ref(false)
 const unlocked = ref(false)
 const currentJob = ref(null)
@@ -769,6 +772,10 @@ const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label:
 const domOptions = computed(() => catalog.value.domains.map((x) => ({ label: x.label, value: x.id })))
 const themeOptions = computed(() => {
   const list = catalog.value.themes_by_domain?.[form.domain] || []
+  return list.map((x) => ({ label: x.label, value: x.id }))
+})
+const chromeOptions = computed(() => {
+  const list = catalog.value.chrome_styles || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
 const passwordHashOptions = [
@@ -1102,6 +1109,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.archetype = p.value.archetype
       form.domain = p.value.domain
       form.theme = p.value.theme
+      form.chrome = p.value.spec?.chrome || 'soft'
       form.llm = p.value.llm_enabled ? 'on' : 'off'
       form.passwordHash = p.value.password_hash || 'none'
       unlocked.value = !p.value.match_locked
@@ -1373,6 +1381,7 @@ async function resetMatch() {
   form.archetype = p.value.archetype
   form.domain = p.value.domain
   form.theme = p.value.theme
+  form.chrome = p.value.spec?.chrome || 'soft'
   form.passwordHash = p.value.password_hash || 'none'
   unlocked.value = false
   ack.value = false
@@ -1386,17 +1395,20 @@ async function onArchDomChange() {
       domain: form.domain,
     })
     form.theme = p.value.theme
+    form.chrome = p.value.spec?.chrome || form.chrome
     ack.value = false
   } catch {
     form.archetype = p.value.archetype
     form.domain = p.value.domain
     form.theme = p.value.theme
+    form.chrome = p.value.spec?.chrome || form.chrome
   }
 }
 
 async function saveSoft() {
   p.value = await api.patchMatch(p.value.id, {
     theme: form.theme,
+    chrome: form.chrome,
     llm_enabled: form.llm === 'on',
     password_hash: form.passwordHash,
   })

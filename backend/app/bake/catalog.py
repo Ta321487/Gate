@@ -26,6 +26,7 @@ from app.bake.themes import (  # re-export for callers
     pick_auth_role_widget,
     pick_auth_template,
     pick_chrome,
+    pick_theme,
     themes_for_domain,
 )
 
@@ -514,6 +515,7 @@ def build_spec(
     password_hash: str = "none",
     archetypes: list[str] | None = None,
     match_meta: dict | None = None,
+    chrome: str | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
     from app.bake.staff_posts import roles_for_spec
@@ -525,7 +527,7 @@ def build_spec(
     auth_template = pick_auth_template(seed)
     auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
     auth_role_widget = pick_auth_role_widget(f"{seed}|widget")
-    chrome = pick_chrome(f"{seed}|chrome")
+    chrome = normalize_chrome(chrome) if chrome else pick_chrome(f"{seed}|chrome")
     arches = list(archetypes or [archetype])
     # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
     schema = (

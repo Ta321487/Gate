@@ -27,6 +27,13 @@ BASELINE_RUNTIME_CAPS = frozenset({
     "quota",
     "deadline",
     "content",
+    "guestbook",
+    "favorites",
+    "coupon",
+    "order_review",
+    "search_assist",
+    "browse_history",
+    "gallery",
     "org_users",
     "recommend",
     "time_conflict",
@@ -209,11 +216,25 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         spec.get("capabilities")
         or required_capabilities(domain, archetype, archetypes=arches)
     )
+    from app.bake.favorites import apply_favorites_to_spec, merge_favorites_capabilities
+    from app.bake.guestbook import apply_guestbook_to_spec, merge_guestbook_capabilities
     from app.bake.loyalty import apply_loyalty_to_spec, merge_loyalty_capabilities
+    from app.bake.order_extras import apply_order_extras_to_spec, merge_order_extras_capabilities
+    from app.bake.ux_scan import apply_ux_to_spec, merge_ux_capabilities
     from app.services.proposal import strip_non_dev_sections
 
     body = strip_non_dev_sections(proposal_text or "")
     req = merge_loyalty_capabilities(req, body)
+    req = merge_guestbook_capabilities(
+        req,
+        body,
+        domain=domain,
+        archetype=archetype,
+        archetypes=arches,
+    )
+    req = merge_favorites_capabilities(req, body, domain=domain)
+    req = merge_ux_capabilities(req, body)
+    req = merge_order_extras_capabilities(req, body)
     decision = resolve_accept(
         req,
         body,
@@ -262,7 +283,11 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         "schema": schema,
         "features": features,
     }
-    return apply_loyalty_to_spec(out, body)
+    out = apply_loyalty_to_spec(out, body)
+    out = apply_guestbook_to_spec(out, body)
+    out = apply_favorites_to_spec(out, body)
+    out = apply_ux_to_spec(out, body)
+    return apply_order_extras_to_spec(out, body)
 
 
 def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:

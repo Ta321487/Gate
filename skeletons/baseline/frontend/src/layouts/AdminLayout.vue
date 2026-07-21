@@ -73,12 +73,15 @@ const MENU_TO = {
   ticket_records: '/admin/ticket-records',
   users: '/admin/users',
   content: '/admin/notices',
+  guestbook: '/admin/guestbook',
   lookup_site: '/admin/sites',
   lookup_type: '/admin/types',
   archive: '/admin/archive',
   category: '/admin/categories',
   deadline: '/admin/overdue',
+  coupons: '/admin/coupons',
   orders: '/admin/orders',
+  order_reviews: '/admin/order-reviews',
   reservations: '/admin/reservations',
 }
 
@@ -98,6 +101,7 @@ const menuItems = computed(() => {
         { key: 'lookup_site', index: '/admin/sites', label: '楼栋房间', superOnly: true },
         { key: 'lookup_type', index: '/admin/types', label: '类型管理', superOnly: true },
         { key: 'users', index: '/admin/users', label: '用户管理', superOnly: true },
+        { key: 'guestbook', index: '/admin/guestbook', label: '留言管理', superOnly: true },
         { key: 'content', index: '/admin/notices', label: '公告管理', superOnly: true },
       ]
   let items = raw.filter((m) => superAdmin || !m.superOnly)

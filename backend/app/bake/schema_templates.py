@@ -1390,6 +1390,7 @@ def order_shell_schema(
                 {"key": "category", "label": category_menu_label(archive_fields), "superOnly": True},
                 {"key": "users", "label": users_menu, "superOnly": True},
                 {"key": "orders", "label": orders_admin_label},
+                {"key": "guestbook", "label": "留言管理", "superOnly": True},
                 {"key": "content", "label": "公告管理", "superOnly": True},
             ],
             "user": [
@@ -1397,6 +1398,7 @@ def order_shell_schema(
                 {"key": "cart", "label": cart_label},
                 {"key": "my_orders", "label": my_orders_label},
                 {"key": "addresses", "label": "收货地址"},
+                {"key": "guestbook", "label": "留言"},
                 {"key": "content", "label": "公告"},
                 {"key": "profile", "label": "个人资料"},
             ],
@@ -1409,6 +1411,8 @@ def order_shell_schema(
             "registerRoleHint": register_hint,
             "noticePageTitle": notice_page_title,
             "noticePageLead": "通知与须知，点击条目阅读全文。",
+            "guestbookPageTitle": "留言板",
+            "guestbookPageLead": "欢迎留下建议或咨询；管理员可简短回复。",
             "messagesPageLead": "订单进度与系统通知。",
             "recommendLatestHint": "最新上架",
         },
@@ -1446,9 +1450,13 @@ def slot_shell_schema(
     # 动作名词（取消/确认用）；勿带「记录」——记录仅给管理端列表菜单
     resv_label: str = "预约",
     category_menu: str | None = None,
+    # 履约办结：confirmed → completed（入场/就诊/到店/入住离店）
+    complete_verb: str = "办结",
+    completed_label: str | None = None,
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
     noun = (resv_label or "预约").removesuffix("记录").strip() or "预约"
+    done_lab = completed_label or f"已{complete_verb}"
     cat_menu_label = category_menu_label(archive_fields, override=category_menu)
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
@@ -1470,8 +1478,10 @@ def slot_shell_schema(
         "states": {
             "pending": "待确认",
             "confirmed": f"已{noun}",
+            "completed": done_lab,
             "cancelled": "已取消",
         },
+        "completeVerb": complete_verb or "办结",
         "requireRemark": bool(reserve_require_remark),
         "remarkLabel": reserve_remark_label or "备注",
         "requireConfirm": False,
@@ -1662,14 +1672,16 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         my_resv_label="我的预约",
         resv_admin_label="预约记录",
         auth_eyebrow=f"{noun}预约",
-        auth_lead=f"验证码登录；选择{noun}与时段，占坑预约（约满不可再约）。",
-        auth_points=["验证码登录", f"{noun}检索", "时段占坑预约"],
+        auth_lead=f"验证码登录；选择{noun}与时段，占坑预约；管理端可办结履约。",
+        auth_points=["验证码登录", f"{noun}检索", "时段占坑预约与办结"],
         register_hint=f"注册后可预约{noun}",
         notice_title="预约须知",
-        notice_body=f"请填写{remark}；按时使用并及时取消不用的预约以释放时段。",
+        notice_body=f"请填写{remark}；按时使用；管理端可登记完成；不用请及时取消以释放时段。",
         notice_page_title="预约公告",
         reserve_require_remark=True,
         reserve_remark_label=remark,
+        complete_verb="完成使用",
+        completed_label="已完成",
     )
 
 
@@ -1697,14 +1709,16 @@ def _hospital_schema(title: str) -> dict[str, Any]:
         resv_admin_label="挂号记录",
         resv_label="挂号",
         auth_eyebrow="门诊挂号",
-        auth_lead="验证码登录；选择科室医生与号源时段挂号。",
-        auth_points=["验证码登录", "医生检索", "分时挂号"],
+        auth_lead="验证码登录；选择科室医生与号源时段挂号；到诊后由管理端登记就诊完成。",
+        auth_points=["验证码登录", "医生检索", "分时挂号与就诊办结"],
         register_hint="注册后可以患者身份挂号",
         notice_title="挂号须知",
-        notice_body="号源有限；请填写就诊人姓名，按时就诊，取消请提前操作。",
+        notice_body="号源有限；请填写就诊人姓名，按时就诊；就诊完成后由挂号台办结；取消请提前操作。",
         notice_page_title="医院公告",
         reserve_require_remark=True,
         reserve_remark_label="就诊人",
+        complete_verb="就诊完成",
+        completed_label="已就诊",
     )
 
 
@@ -1732,14 +1746,16 @@ def _parking_schema(title: str) -> dict[str, Any]:
         my_resv_label="我的预约",
         resv_admin_label="预约记录",
         auth_eyebrow="车位预约",
-        auth_lead="验证码登录；选择车位与时段占坑预约。",
-        auth_points=["验证码登录", "车位检索", "时段预约"],
+        auth_lead="验证码登录；选择车位与时段占坑预约；入场由管理端登记。",
+        auth_points=["验证码登录", "车位检索", "时段预约与入场登记"],
         register_hint="注册后可预约车位",
         notice_title="停车须知",
-        notice_body="请按时入场；取消预约将释放时段。请填写车牌号便于核对。",
+        notice_body="请按时入场；入场后由车场登记办结；取消预约将释放时段。请填写车牌号便于核对。",
         notice_page_title="车场公告",
         reserve_require_remark=True,
         reserve_remark_label="车牌号",
+        complete_verb="登记入场",
+        completed_label="已入场",
     )
 
 
@@ -1767,12 +1783,14 @@ def _salon_schema(title: str) -> dict[str, Any]:
         my_resv_label="我的预约",
         resv_admin_label="预约记录",
         auth_eyebrow="服务预约",
-        auth_lead="验证码登录；选择服务项目与时段预约到店。",
-        auth_points=["验证码登录", "服务浏览", "时段预约"],
+        auth_lead="验证码登录；选择服务项目与时段预约到店；到店后由门店登记完成。",
+        auth_points=["验证码登录", "服务浏览", "时段预约与到店办结"],
         register_hint="注册后可预约服务",
         notice_title="预约须知",
-        notice_body="请准时到店；改约请先取消原时段。",
+        notice_body="请准时到店；到店完成后由前台办结；改约请先取消原时段。",
         notice_page_title="门店公告",
+        complete_verb="到店完成",
+        completed_label="已完成",
     )
 
 
@@ -1801,13 +1819,15 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         resv_admin_label="预订记录",
         resv_label="预订",
         auth_eyebrow="客房预订",
-        auth_lead="验证码登录；选择房型与入住时段预订，同步生成订单（无真支付）。",
-        auth_points=["验证码登录", "房型浏览", "分时预订与订单"],
+        auth_lead="验证码登录；选择房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。",
+        auth_points=["验证码登录", "房型浏览", "分时预订与入住离店"],
         register_hint="注册后可预订客房",
         notice_title="入住须知",
-        notice_body="演示环境无真支付；预约成功即占坑并生成订单。",
+        notice_body="演示环境无真支付；预约成功即占坑并生成订单；入住/离店由前台办结。",
         notice_page_title="酒店公告",
         with_orders=True,
+        complete_verb="入住/离店",
+        completed_label="已离店",
     )
 
 
