@@ -1,4 +1,4 @@
-    const projects = [
+﻿    const projects = [
       { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚" },
       { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
       { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SECOND", status: "failed", statusLabel: "门禁未过 · 禁止交付", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
@@ -114,6 +114,30 @@
         project: ["毕设港", "项目", "详情"],
       };
       setCrumb(crumbs[name] || ["毕设港"]);
+      closeNav();
+    }
+
+    function setNavOpen(open) {
+      const shell = document.getElementById("app-shell");
+      const toggle = document.getElementById("nav-toggle");
+      const backdrop = document.getElementById("nav-backdrop");
+      if (!shell) return;
+      shell.classList.toggle("nav-open", open);
+      document.body.classList.toggle("nav-lock", open);
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.setAttribute("aria-label", open ? "关闭菜单" : "打开菜单");
+      }
+      if (backdrop) backdrop.hidden = !open;
+    }
+
+    function closeNav() {
+      setNavOpen(false);
+    }
+
+    function toggleNav() {
+      const shell = document.getElementById("app-shell");
+      setNavOpen(!(shell && shell.classList.contains("nav-open")));
     }
 
     function renderList(filter = "all", q = "") {
@@ -802,6 +826,16 @@
         return;
       }
 
+      if (e.target.closest("#nav-toggle")) {
+        toggleNav();
+        return;
+      }
+
+      if (e.target.id === "nav-backdrop" || e.target.closest("#nav-backdrop")) {
+        closeNav();
+        return;
+      }
+
       const tab = e.target.closest("#proj-tabs .tab");
       if (tab) {
         setProjectTab(tab.dataset.tab);
@@ -897,6 +931,13 @@
         document.getElementById("theme-toggle").textContent = "日间";
         document.getElementById("theme-toggle").title = "切换日间模式";
       }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeNav();
+    });
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 901px)").matches) closeNav();
     });
 
     document.getElementById("type-paren-mode")?.addEventListener("change", (e) => {

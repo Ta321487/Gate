@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -10,8 +10,9 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
+  <div class="app" id="app-shell">
+    <div class="nav-backdrop" id="nav-backdrop" hidden></div>
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">毕设港</div>
         <div class="brand-sub">Gate · Ops</div>
@@ -30,11 +31,18 @@
 
     <div class="main">
       <header class="topbar">
-        <div class="crumb" id="crumb"><strong>毕设港</strong> / 项目</div>
+        <div class="topbar-left">
+          <button type="button" class="nav-toggle" id="nav-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="sidebar">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+          </button>
+          <div class="crumb" id="crumb"><strong>毕设港</strong> / 项目</div>
+        </div>
         <div class="topbar-right">
           <div class="demo-box">
-            <span>演示状态</span>
-            <select id="demo-state">
+            <span class="demo-label">演示状态</span>
+            <select id="demo-state" aria-label="演示状态">
               <option value="list">列表 · 混合状态</option>
               <option value="needs_confirm">项目 · 待确认匹配</option>
               <option value="generating">项目 · 生成中</option>
