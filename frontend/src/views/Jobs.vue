@@ -22,11 +22,19 @@
             type="error"
             :loading="purging"
             @click="purgeOrphans"
-          >清理失效</n-button>
+          >清空项目不存在的任务</n-button>
         </div>
       </div>
       <div class="panel-bd panel-bd-fill">
-        <n-data-table :columns="columns" :data="list" :bordered="false" size="small">
+        <n-data-table
+          :columns="columns"
+          :data="treeList"
+          :row-key="rowKey"
+          :expanded-row-keys="expandedKeys"
+          :bordered="false"
+          size="small"
+          @update:expanded-row-keys="onExpandedKeys"
+        >
           <template #empty>
             <div class="empty-hint">
               <div class="empty-title">暂无任务</div>
@@ -49,6 +57,8 @@ import { JOB_STATUS, statusPillNode } from '../opsShared'
 
 const router = useRouter()
 const list = ref([])
+const treeList = ref([])
+const expandedKeys = ref([])
 const loading = ref(false)
 const purging = ref(false)
 const purgingFinished = ref(false)
@@ -59,6 +69,91 @@ const finishedCount = computed(
   () => list.value.filter((j) => ['success', 'failed', 'cancelled'].includes(j.status)).length,
 )
 
+function jobTime(j) {
+  const t = j.started_at || j.created_at
+  return t ? new Date(t).getTime() : 0
+}
+
+function titleKey(j) {
+  return String(j.project_title || '').trim()
+}
+
+function groupId(title) {
+  return `g:${title}`
+}
+
+function summarizeStatuses(jobs) {
+  const counts = new Map()
+  for (const j of jobs) {
+    const key = j.status || 'unknown'
+    counts.set(key, (counts.get(key) || 0) + 1)
+  }
+  const order = ['running', 'queued', 'failed', 'success', 'cancelled']
+  const parts = []
+  for (const s of order) {
+    const n = counts.get(s)
+    if (!n) continue
+    const m = JOB_STATUS[s] || { label: s }
+    parts.push(`${m.label} ${n}`)
+    counts.delete(s)
+  }
+  for (const [s, n] of counts) {
+    const m = JOB_STATUS[s] || { label: s }
+    parts.push(`${m.label} ${n}`)
+  }
+  return parts.join(' · ')
+}
+
+/** 非空标题相同且 ≥2 条折叠为组头 + children；空标题不折叠 */
+function buildJobTree(jobs) {
+  const buckets = new Map()
+  const singles = []
+  for (const j of jobs) {
+    const key = titleKey(j)
+    if (!key) {
+      singles.push({ job: j, sort: jobTime(j) })
+      continue
+    }
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key).push(j)
+  }
+
+  const rows = []
+  for (const [title, group] of buckets) {
+    if (group.length === 1) {
+      rows.push({ row: group[0], sort: jobTime(group[0]) })
+      continue
+    }
+    const children = [...group].sort((a, b) => jobTime(b) - jobTime(a))
+    rows.push({
+      row: {
+        id: groupId(title),
+        isGroup: true,
+        project_title: title,
+        children,
+        statusSummary: summarizeStatuses(children),
+      },
+      sort: jobTime(children[0]),
+    })
+  }
+  for (const s of singles) rows.push({ row: s.job, sort: s.sort })
+  rows.sort((a, b) => b.sort - a.sort)
+  return rows.map((x) => x.row)
+}
+
+function rowKey(r) {
+  return r.isGroup ? r.id : r.id
+}
+
+function onExpandedKeys(keys) {
+  expandedKeys.value = keys
+}
+
+function pruneExpanded(tree) {
+  const alive = new Set(tree.filter((r) => r.isGroup).map((r) => r.id))
+  expandedKeys.value = expandedKeys.value.filter((k) => alive.has(k))
+}
+
 async function act(fn, okMsg) {
   const res = await fn()
   message.success(typeof res === 'string' ? res : (okMsg || '完成'))
@@ -66,11 +161,25 @@ async function act(fn, okMsg) {
 }
 
 const columns = [
-  { title: '任务', key: 'id', width: 90, render: (r) => h('span', { class: 'mono' }, `#${r.id}`) },
+  {
+    title: '任务',
+    key: 'id',
+    width: 90,
+    render: (r) => {
+      if (r.isGroup) return h('span', { class: 'muted' }, '—')
+      return h('span', { class: 'mono' }, `#${r.id}`)
+    },
+  },
   {
     title: '项目',
     key: 'project_title',
     render: (r) => {
+      if (r.isGroup) {
+        return h('div', { style: 'min-width:180px' }, [
+          h('div', { style: 'font-weight:600;line-height:1.35' }, r.project_title),
+          h('div', { class: 'small muted', style: 'margin-top:4px' }, `共 ${r.children.length} 条`),
+        ])
+      }
       const title = r.project_title || '（无标题）'
       const when = r.started_at || r.created_at
       const whenText = when ? new Date(when).toLocaleString() : ''
@@ -83,11 +192,18 @@ const columns = [
       ])
     },
   },
-  { title: '步骤', key: 'step' },
+  {
+    title: '步骤',
+    key: 'step',
+    render: (r) => (r.isGroup ? h('span', { class: 'muted' }, '—') : r.step),
+  },
   {
     title: '状态',
     key: 'status',
     render: (r) => {
+      if (r.isGroup) {
+        return h('span', { class: 'small muted' }, r.statusSummary || '—')
+      }
       const m = JOB_STATUS[r.status] || { label: r.status, pill: 'pill-neutral' }
       return statusPillNode(m.label, m.pill)
     },
@@ -96,13 +212,14 @@ const columns = [
     title: '进度',
     key: 'progress',
     width: 80,
-    render: (r) => `${r.progress || 0}%`,
+    render: (r) => (r.isGroup ? h('span', { class: 'muted' }, '—') : `${r.progress || 0}%`),
   },
   {
     title: '',
     key: 'actions',
     width: 220,
     render: (r) => {
+      if (r.isGroup) return null
       const btns = [
         h(NButton, {
           text: true,
@@ -160,6 +277,9 @@ async function load() {
   try {
     const data = await api.listJobs()
     list.value = Array.isArray(data) ? data : []
+    const tree = buildJobTree(list.value)
+    treeList.value = tree
+    pruneExpanded(tree)
   } catch {
     /* api 拦截器已提示 */
   } finally {
@@ -198,16 +318,16 @@ async function purgeFinished() {
 }
 
 async function purgeOrphans() {
-  const ok = await confirm('将删除「项目已不存在」的失效任务，此操作不可恢复。', {
-    title: '清理失效',
+  const ok = await confirm('将清空项目已不存在的任务，此操作不可恢复。', {
+    title: '清空项目不存在的任务',
     type: 'error',
-    positiveText: '清理',
+    positiveText: '清空',
   })
   if (!ok) return
   purging.value = true
   try {
     const res = await api.purgeOrphanJobs()
-    message.success(res.message || '已清理失效任务')
+    message.success(res.message || '已清空项目不存在的任务')
     await load()
   } finally {
     purging.value = false

@@ -140,7 +140,7 @@ data/
   uploads/        上传落盘
   workspace/      每题工作区与 ZIP
 scripts/          Windows 脚本（launcher.bat 控制台；verify-bats.bat 防 bat 乱码）
-prototype/        UI 对照原型
+prototype/        UI 对照原型（index.html + styles.css + app.js）
 docker-compose.yml   仅 MySQL
 HANDOFF.md        能力清单与领域覆盖（开发交接）
 ```
