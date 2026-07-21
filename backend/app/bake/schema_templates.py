@@ -28,6 +28,29 @@ def product_name_from_title(title: str) -> str:
     return t
 
 
+def category_menu_label(
+    archive_fields: list[dict[str, Any]] | None,
+    *,
+    override: str | None = None,
+) -> str:
+    """分类菜单文案：跟 archive.fields 里 category 的 label（科室→科室管理）。"""
+    if (override or "").strip():
+        noun = override.strip()
+    else:
+        cat = next(
+            (
+                f
+                for f in (archive_fields or [])
+                if isinstance(f, dict) and f.get("key") == "category"
+            ),
+            None,
+        )
+        noun = str((cat or {}).get("label") or "分类").strip() or "分类"
+    if noun.endswith("管理"):
+        return noun
+    return f"{noun}管理"
+
+
 def _library_schema(title: str) -> dict[str, Any]:
     return {
         "version": 1,
@@ -281,7 +304,7 @@ def archive_ticket_schema(
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
-        {"key": "category", "label": "分类管理", "superOnly": True},
+        {"key": "category", "label": category_menu_label(archive_fields), "superOnly": True},
         {"key": "users", "label": users_menu, "superOnly": True},
         {"key": "ticket_pending", "label": pending_label},
         {"key": "ticket_records", "label": records_label},
@@ -1364,7 +1387,7 @@ def order_shell_schema(
             "admin": [
                 {"key": "dashboard", "label": "工作台"},
                 {"key": "archive", "label": archive_menu_admin, "superOnly": True},
-                {"key": "category", "label": "分类管理", "superOnly": True},
+                {"key": "category", "label": category_menu_label(archive_fields), "superOnly": True},
                 {"key": "users", "label": users_menu, "superOnly": True},
                 {"key": "orders", "label": orders_admin_label},
                 {"key": "content", "label": "公告管理", "superOnly": True},
@@ -1422,13 +1445,15 @@ def slot_shell_schema(
     reserve_remark_label: str = "备注",
     # 动作名词（取消/确认用）；勿带「记录」——记录仅给管理端列表菜单
     resv_label: str = "预约",
+    category_menu: str | None = None,
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
     noun = (resv_label or "预约").removesuffix("记录").strip() or "预约"
+    cat_menu_label = category_menu_label(archive_fields, override=category_menu)
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
-        {"key": "category", "label": "分类管理", "superOnly": True},
+        {"key": "category", "label": cat_menu_label, "superOnly": True},
         {"key": "users", "label": users_menu, "superOnly": True},
         {"key": "reservations", "label": resv_admin_label},
     ]

@@ -211,15 +211,30 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         app_yml.write_text(text, encoding="utf-8")
 
     from app.bake.java_package import remap_student_java_package, rewrite_gate_file_paths
+    from app.bake.naming import resolve_slug_from_spec
 
-    new_pkg = remap_student_java_package(dest, domain)
+    delivery_slug = resolve_slug_from_spec(spec, domain)
+    new_pkg = remap_student_java_package(dest, domain, delivery_slug, project_id)
     # 门禁契约文件路径随包名改写（写入工作区 spec）
     gate = spec.get("gate")
     if isinstance(gate, dict) and gate.get("files"):
         gate = dict(gate)
         gate["files"] = rewrite_gate_file_paths(list(gate["files"] or []), new_pkg)
         spec["gate"] = gate
-        _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
+    # 回写 Maven 坐标到 spec，便于产物页展示
+    from app.bake.java_package import java_coords_for_delivery
+    from app.bake.naming import zip_download_name
+
+    pkg, app_cls, artifact = java_coords_for_delivery(domain, delivery_slug, project_id)
+    spec["delivery_slug"] = delivery_slug
+    spec["java_package"] = pkg
+    spec["java_application"] = app_cls
+    spec["maven_artifact"] = artifact
+    spec["zip_name"] = zip_download_name(delivery_slug, project_id)
+    meta = spec.get("match_meta")
+    if isinstance(meta, dict):
+        meta["zip_name"] = spec["zip_name"]
+    _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
 
     env_fe = dest / "frontend" / ".env"
     auth_tpl = normalize_auth_template(spec.get("auth_template"))

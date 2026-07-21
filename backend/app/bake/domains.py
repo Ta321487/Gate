@@ -10,6 +10,16 @@ from app.bake.gate_contracts import (
 )
 
 # 行为词桶（有上限）：对齐运行时积木，不堆行业名词。新增词先问「是不是新能力」。
+# 同分/并集排序：预约 > 交易 > 审核流（catalog 与 archetype_shells 共用）
+ARCH_PATH_ORDER: tuple[str, ...] = (
+    "ARCH-RESERVE",
+    "ARCH-TRADE",
+    "ARCH-FLOW",
+    "ARCH-STOCK",
+    "ARCH-CONTENT",
+    "ARCH-CRUD",
+)
+
 ARCHETYPES = {
     # 不用光杆「管理」：开题几乎都带「管理系统」，会压过预约/订单等更具体原型
     "ARCH-CRUD": {"label": "纯管理", "keywords": ["信息维护", "增删改查", "档案管理", "台账管理"]},
@@ -99,7 +109,7 @@ DOMAINS = {
         "label": "图书",
         "keywords": ["图书", "借阅", "图书馆", "读者"],
         "entities": ["Book", "Category", "Borrow", "Notice"],
-        "roles": ["reader", "admin", "subadmin"],
+        "roles": ["user", "admin", "subadmin"],
         "flows": ["申请借阅 → 审核 → 归还", "逾期提醒 → 归还 / 罚款登记"],
         "features": [
             {"name": "读者注册 / 登录", "status": "baseline"},

@@ -159,15 +159,27 @@ def datasource_env(db_name: str) -> dict[str, str]:
     }
 
 
-_SAFE_DB_NAME = re.compile(r"^[a-zA-Z0-9_]+$")
-_STUDENT_DB_PREFIX = "gf_thesis_"
+_SAFE_DB_NAME = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{1,63}$")
+_SYSTEM_DBS = frozenset(
+    {"mysql", "information_schema", "performance_schema", "sys"}
+)
+
+
+def _is_droppable_student_db(db_name: str) -> bool:
+    """允许删：语义库名 / 历史 gf_thesis_* / gf_*；拒绝系统库。"""
+    if not db_name or not _SAFE_DB_NAME.match(db_name):
+        return False
+    if db_name.lower() in _SYSTEM_DBS:
+        return False
+    if db_name.startswith(("gf_thesis_", "gf_")):
+        return True
+    # 新命名：题目语义短名（无工厂前缀）
+    return bool(re.match(r"^[a-z][a-z0-9_]{2,63}$", db_name))
 
 
 def drop_student_database(db_name: str) -> None:
-    """删除学生项目库。仅允许 gf_thesis_* 库名；失败抛 RuntimeError。"""
-    if not db_name or not _SAFE_DB_NAME.match(db_name):
-        raise RuntimeError(f"非法库名: {db_name!r}")
-    if not db_name.startswith(_STUDENT_DB_PREFIX):
+    """删除学生项目库；失败抛 RuntimeError。"""
+    if not _is_droppable_student_db(db_name):
         raise RuntimeError(f"拒绝删除非学生库: {db_name!r}")
 
     settings = get_settings()

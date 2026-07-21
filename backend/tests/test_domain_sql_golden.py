@@ -17,6 +17,8 @@ _GENERIC_CASES: list[tuple[str, str | None, list[str] | None]] = [
     ("DOM-GENERIC", "ARCH-TRADE", None),
     ("DOM-GENERIC", "ARCH-RESERVE", None),
     ("DOM-GENERIC", None, ["ARCH-FLOW", "ARCH-TRADE"]),
+    ("DOM-GENERIC", None, ["ARCH-FLOW", "ARCH-RESERVE"]),
+    ("DOM-GENERIC", None, ["ARCH-TRADE", "ARCH-RESERVE"]),
 ]
 
 

@@ -224,6 +224,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
             domain, archetype, archetypes=arches
         )
         and not (set(req) - BASELINE_RUNTIME_CAPS),
+        archetypes=arches,
+        domain=domain,
+        primary_archetype=archetype,
     )
     schema = spec.get("schema") or build_domain_schema(
         spec.get("title") or "毕设系统",

@@ -15,6 +15,7 @@ from app.bake.catalog import (
     normalize_theme,
     themes_for_domain,
 )
+from app.bake.naming import sanitize_delivery_slug, student_db_name, zip_download_name
 from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.models import Project, ProjectStatus
@@ -26,10 +27,28 @@ def _next_id() -> str:
     return f"gf-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
 
-def _db_name(domain: str, project_id: str) -> str:
-    short = domain.replace("DOM-", "").lower()
-    suffix = project_id.split("-")[-1]
-    return f"gf_thesis_{short}_{suffix}"[:64]
+def _db_name(
+    domain: str,
+    project_id: str,
+    slug: str | None = None,
+    *,
+    reserved: set[str] | None = None,
+) -> str:
+    s = sanitize_delivery_slug(slug, domain=domain)
+    return student_db_name(s, project_id, reserved=reserved)
+
+
+async def _reserved_db_names(
+    db: AsyncSession, *, exclude_id: str | None = None
+) -> set[str]:
+    result = await db.execute(select(Project.id, Project.db_name))
+    out: set[str] = set()
+    for pid, name in result.all():
+        if exclude_id and pid == exclude_id:
+            continue
+        if name:
+            out.add(str(name))
+    return out
 
 
 async def reclaim_idle_ports(db: AsyncSession, *, keep_id: str | None = None) -> int:
@@ -208,9 +227,16 @@ async def create_from_uploads(
         "alts": list(matched.alts or []),
         "keyword_arch": matched.keyword_arch or matched.archetype,
         "keyword_domain": matched.keyword_domain or matched.domain,
+        "delivery_slug": sanitize_delivery_slug(
+            matched.delivery_slug, domain=matched.domain
+        ),
     }
+    match_meta["zip_name"] = zip_download_name(match_meta["delivery_slug"], pid)
 
-    db_name = _db_name(matched.domain, pid)
+    reserved = await _reserved_db_names(db)
+    db_name = _db_name(
+        matched.domain, pid, match_meta["delivery_slug"], reserved=reserved
+    )
     theme = default_theme(matched.domain)
     proposal = summarize_proposal(summary_text, hits)
     proposal["source_files"] = file_info
@@ -228,6 +254,8 @@ async def create_from_uploads(
         archetypes=matched.archetypes,
         match_meta=match_meta,
     )
+    spec["delivery_slug"] = match_meta["delivery_slug"]
+    spec["zip_name"] = match_meta["zip_name"]
 
     if llm_rt is not None and llm_rt.configured:
         try:
@@ -321,7 +349,12 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             project.archetype = body.archetype
         if body.domain:
             project.domain = body.domain
-            project.db_name = _db_name(project.domain, project.id)
+            # 换领域后库名跟新领域短码，避免旧 slug 与行业皮错位
+            slug = sanitize_delivery_slug(None, domain=project.domain)
+            reserved = await _reserved_db_names(db, exclude_id=project.id)
+            project.db_name = _db_name(
+                project.domain, project.id, slug, reserved=reserved
+            )
             # 换行业模板后，配色必须落在该行业可选集内
             project.theme = normalize_theme(project.theme, project.domain)
         # 改骨架/领域后必须重新确认，避免绕过确认直接生成
@@ -353,7 +386,17 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         conf = project.confidence
 
     old_feature_names = _feature_names((project.spec or {}).get("features"))
-    match_meta = (project.spec or {}).get("match_meta") if isinstance(project.spec, dict) else None
+    old_spec = project.spec if isinstance(project.spec, dict) else {}
+    match_meta = dict(old_spec.get("match_meta") or {}) if isinstance(old_spec.get("match_meta"), dict) else {}
+    # 领域变更：刷新交付短名；否则保留上传时大模型/领域 slug
+    if body.domain is not None:
+        slug = sanitize_delivery_slug(None, domain=project.domain)
+        match_meta["delivery_slug"] = slug
+        match_meta["zip_name"] = zip_download_name(slug, project.id)
+    elif not match_meta.get("delivery_slug"):
+        slug = sanitize_delivery_slug(old_spec.get("delivery_slug"), domain=project.domain)
+        match_meta["delivery_slug"] = slug
+        match_meta["zip_name"] = zip_download_name(slug, project.id)
 
     project.spec = build_spec(
         title=project.title,
@@ -364,13 +407,18 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         password_hash=getattr(project, "password_hash", None) or "none",
         match_mode=project.match_mode,
         confidence=conf,
-        hits=project.spec.get("hits", []) if isinstance(project.spec, dict) else [],
-        proposal=project.spec.get("proposal") if isinstance(project.spec, dict) else None,
+        hits=old_spec.get("hits", []),
+        proposal=old_spec.get("proposal"),
         archetypes=[project.archetype]
         if deviant
-        else list((project.spec or {}).get("archetypes") or [project.archetype]),
-        match_meta=match_meta if isinstance(match_meta, dict) else None,
+        else list(old_spec.get("archetypes") or [project.archetype]),
+        match_meta=match_meta or None,
     )
+    if match_meta.get("delivery_slug"):
+        project.spec["delivery_slug"] = match_meta["delivery_slug"]
+        project.spec["zip_name"] = match_meta.get("zip_name") or zip_download_name(
+            match_meta["delivery_slug"], project.id
+        )
     # 仅功能集变化时重置清单；勿用裸 features 冲掉门禁 result
     new_features = project.spec.get("features") or []
     if _feature_names(new_features) != old_feature_names:

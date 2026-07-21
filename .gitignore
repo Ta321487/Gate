@@ -22,3 +22,7 @@ data/title_check.txt
 **/target/
 skeletons/**/node_modules/
 backend/scripts/
+
+# launcher-owned backend pid
+backend/.gate_backend.pid
+

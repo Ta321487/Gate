@@ -41,6 +41,23 @@ def java_coords_for_domain(domain: str) -> tuple[str, str, str]:
     return _DOMAIN_JAVA.get(domain) or _DOMAIN_JAVA["DOM-GENERIC"]
 
 
+def java_coords_for_delivery(
+    domain: str, slug: str | None = None, project_id: str = ""
+) -> tuple[str, str, str]:
+    """题目语义 → 包坐标（像普通毕设）；project_id 仅兼容调用方，不进包名。"""
+    from app.bake.naming import java_coords_from_slug, sanitize_delivery_slug
+
+    _ = project_id
+    s = sanitize_delivery_slug((slug or "").strip() or None, domain=domain)
+    domain_only = sanitize_delivery_slug(None, domain=domain)
+    use_catalog = not (slug or "").strip() or s == domain_only
+
+    if use_catalog:
+        return java_coords_for_domain(domain)
+
+    return java_coords_from_slug(s)
+
+
 def find_java_package_root(workspace: Path) -> Path:
     """含 controller/ 的包根目录（…/java/com/campus/library）。"""
     java = workspace / "backend" / "src" / "main" / "java"
@@ -69,9 +86,14 @@ def rewrite_gate_file_paths(files: list[str], new_package: str) -> list[str]:
     return out
 
 
-def remap_student_java_package(workspace: Path, domain: str) -> str:
-    """将骨架 com.thesis 重映射为领域包名；返回新 package。"""
-    new_pkg, app_class, artifact = java_coords_for_domain(domain)
+def remap_student_java_package(
+    workspace: Path,
+    domain: str,
+    slug: str | None = None,
+    project_id: str = "",
+) -> str:
+    """将骨架 com.thesis 重映射为领域/题目包名；返回新 package。"""
+    new_pkg, app_class, artifact = java_coords_for_delivery(domain, slug, project_id)
     if new_pkg == _OLD_PKG:
         return new_pkg
 

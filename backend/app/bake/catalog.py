@@ -6,7 +6,8 @@ import copy
 import re
 from dataclasses import dataclass
 
-from app.bake.domains import ARCHETYPES, DOMAIN_CAPABILITIES, DOMAINS  # re-export for callers
+from app.bake.domains import ARCHETYPES, DOMAIN_CAPABILITIES, DOMAINS, ARCH_PATH_ORDER
+from app.bake.proposal_lexicon import FEATURE_HEAD_TERMS
 from app.bake.themes import (  # re-export for callers
     AUTH_ENTRY_MODES,
     AUTH_ROLE_WIDGETS,
@@ -60,6 +61,7 @@ class MatchResult:
     alts: list[dict] | None = None
     keyword_arch: str | None = None
     keyword_domain: str | None = None
+    delivery_slug: str = ""
 
 
 def catalog_brief_for_match() -> str:
@@ -79,7 +81,11 @@ def catalog_brief_for_match() -> str:
 
 
 def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
-    """校验 LLM 推荐；非法则返回 None（调用方回落关键词）。"""
+    """校验 LLM 推荐；非法则返回 None（调用方回落关键词）。
+
+    Path B：关键词已打出多主路径并集时，与 LLM 结果做并集再 reconcile，
+    禁止压成单行业皮丢掉开题里的第二条路径（如图书馆挤掉二手下单）。
+    """
     arch = str(data.get("archetype") or "").strip()
     dom = str(data.get("domain") or "").strip()
     if arch not in ARCHETYPES or dom not in DOMAINS:
@@ -90,29 +96,57 @@ def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
         raw_conf = 0.7
     raw_conf = max(0.35, min(0.95, raw_conf))
 
-    arches = [arch]
-    # 与关键词一致时抬一点置信；不一致则压一点并提示
-    same_dom = dom == kw.domain
-    same_arch = arch == kw.archetype
-    if same_dom and same_arch:
+    llm_arches_raw = data.get("archetypes")
+    llm_arches: list[str] = []
+    if isinstance(llm_arches_raw, list):
+        llm_arches = [str(a).strip() for a in llm_arches_raw if str(a).strip() in ARCHETYPES]
+    if not llm_arches:
+        llm_arches = [arch]
+
+    combined: list[str] = []
+    for a in list(kw.archetypes or []) + llm_arches + [arch]:
+        if a in ARCHETYPES and a not in combined:
+            combined.append(a)
+    if not combined:
+        combined = [arch]
+
+    primary, dom_final, arches_final, recon_notes = reconcile_match(arch, dom, combined)
+
+    same_dom = dom_final == kw.domain
+    same_arch = primary == kw.archetype
+    if same_dom and same_arch and set(arches_final) == set(kw.archetypes or []):
         conf = min(0.95, max(raw_conf, kw.confidence) + 0.05)
     elif same_dom:
         conf = min(0.92, (raw_conf * 0.7 + kw.confidence * 0.3))
     else:
         conf = min(0.88, raw_conf * 0.85)
 
-    # LLM 已覆盖关键词定案：丢掉关键词 reconcile 的「已改用通用壳」类提示，避免与最终推荐打架
-    hits = [h for h in (kw.hits or []) if not (isinstance(h, str) and h.startswith("提示："))]
+    # 保留关键词 reconcile 提示 + 本轮并集提示；若 LLM 原推荐被改写则明示
+    hits = [h for h in (kw.hits or []) if isinstance(h, str)]
     warnings: list[str] = []
-    if not same_dom or not same_arch:
-        kw_label = (DOMAINS.get(kw.domain) or {}).get("label") or kw.domain
-        llm_label = (DOMAINS.get(dom) or {}).get("label") or dom
+    for n in recon_notes:
+        if n not in hits:
+            hits.append(n)
+        if n.startswith("提示：") and n not in warnings:
+            warnings.append(n)
+    if dom != dom_final or arch != primary or set(llm_arches) != set(arches_final):
         tip = (
-            f"提示：大模型推荐 {arch}×{dom}（{llm_label}）；"
-            f"关键词初判为 {kw.archetype}×{kw.domain}（{kw_label}），已按大模型覆盖，请人工确认。"
+            f"提示：大模型初荐 {arch}×{dom}；已与关键词主路径并集调和为 "
+            f"{primary}×{dom_final}（{'+'.join(arches_final)}），请人工确认。"
+        )
+        if tip not in hits:
+            hits.append(tip)
+        warnings.append(tip)
+    elif not same_dom or not same_arch:
+        kw_label = (DOMAINS.get(kw.domain) or {}).get("label") or kw.domain
+        llm_label = (DOMAINS.get(dom_final) or {}).get("label") or dom_final
+        tip = (
+            f"提示：大模型推荐 {primary}×{dom_final}（{llm_label}）；"
+            f"关键词初判为 {kw.archetype}×{kw.domain}（{kw_label}），请人工确认。"
         )
         warnings.append(tip)
-        hits.append(tip)
+        if tip not in hits:
+            hits.append(tip)
 
     alts_out: list[dict] = []
     for item in data.get("alts") or []:
@@ -122,7 +156,7 @@ def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
         d = str(item.get("domain") or "").strip()
         if a not in ARCHETYPES or d not in DOMAINS:
             continue
-        if a == arch and d == dom:
+        if a == primary and d == dom_final:
             continue
         try:
             c = float(item.get("confidence") if item.get("confidence") is not None else 0.5)
@@ -140,21 +174,28 @@ def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
             break
 
     rationale = str(data.get("rationale") or "").strip()[:400]
+    from app.bake.naming import sanitize_delivery_slug
+
+    delivery_slug = sanitize_delivery_slug(
+        str(data.get("slug") or data.get("delivery_slug") or ""),
+        domain=dom_final,
+    )
 
     return MatchResult(
         title=kw.title,
-        archetype=arch,
-        domain=dom,
+        archetype=primary,
+        domain=dom_final,
         confidence=round(conf, 2),
         hits=hits,
         text_excerpt=kw.text_excerpt,
-        archetypes=arches,
+        archetypes=arches_final,
         match_warnings=warnings,
         match_source="llm",
         rationale=rationale,
         alts=alts_out,
         keyword_arch=kw.archetype,
         keyword_domain=kw.domain,
+        delivery_slug=delivery_slug,
     )
 
 
@@ -215,14 +256,7 @@ def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
 
 
 # 同分时优先更具体的行为原型（避免 CRUD 因字典顺序压过预约/交易）
-_ARCHETYPE_TIE_PRIORITY = (
-    "ARCH-RESERVE",
-    "ARCH-TRADE",
-    "ARCH-FLOW",
-    "ARCH-STOCK",
-    "ARCH-CONTENT",
-    "ARCH-CRUD",
-)
+_ARCHETYPE_TIE_PRIORITY = ARCH_PATH_ORDER
 
 
 def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]]:
@@ -329,8 +363,8 @@ def reconcile_match(
     """行为优先：多 ARCH 并集。
 
     - 域完全盖不住 → 降 GENERIC，保留全部行为路径。
-    - 域只能盖住一部分：若丢掉的是预约/交易等「重」路径 → 仍降 GENERIC 保行为；
-      否则保留行业皮并丢掉多余轻路径。
+    - 域只能盖住一部分 → **一律**降 GENERIC 并保留并集（Path B：
+      不再把「审核流」当可丢掉的轻路径；否则借阅+二手会落成纯商城）。
     """
     notes: list[str] = []
     arches = [a for a in (archetypes or [archetype]) if a in ARCHETYPES]
@@ -343,16 +377,17 @@ def reconcile_match(
         promoted = _DOMAIN_DEFAULT_ARCH.get(dom)
         if promoted:
             arches = [promoted]
-            notes.append(f"提示：按「{dom_label}」默认补齐行为 → {ARCHETYPES.get(promoted, {}).get('label', promoted)}")
-
-    # 预约/交易比「纯审核流」更重：丢掉它们会答辩像套错模板
-    _HEAVY = frozenset({"ARCH-RESERVE", "ARCH-TRADE"})
+            notes.append(
+                f"提示：按「{dom_label}」默认补齐行为 → "
+                f"{ARCHETYPES.get(promoted, {}).get('label', promoted)}"
+            )
 
     if dom != "DOM-GENERIC":
         covered = [a for a in arches if domain_covers_archetype(dom, a)]
         if not covered:
             notes.append(
-                f"提示：行业皮「{dom_label}」撑不起当前行为，已改用通用壳，保留预约/下单/审核等能力。"
+                f"提示：行业皮「{dom_label}」撑不起当前行为，已改用通用壳，"
+                "保留预约/下单/审核等能力。"
             )
             dom = "DOM-GENERIC"
         else:
@@ -361,16 +396,11 @@ def reconcile_match(
                 drop_labels = "、".join(
                     ARCHETYPES.get(a, {}).get("label", a) for a in dropped
                 )
-                if any(a in _HEAVY for a in dropped):
-                    notes.append(
-                        f"提示：若保留「{dom_label}」将丢掉{drop_labels}；已改用通用壳以保住这些能力（行为优先于行业皮）。"
-                    )
-                    dom = "DOM-GENERIC"
-                else:
-                    notes.append(
-                        f"提示：已保留「{dom_label}」皮肤，并去掉不兼容路径：{drop_labels}。"
-                    )
-                    arches = covered
+                notes.append(
+                    f"提示：若保留「{dom_label}」将丢掉{drop_labels}；"
+                    "已改用通用壳以保住开题全部主路径（行为优先于行业皮）。"
+                )
+                dom = "DOM-GENERIC"
 
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     arches = sorted(dict.fromkeys(arches), key=lambda a: tie_rank.get(a, 99))
@@ -383,25 +413,30 @@ def match_warnings_from_hits(hits: list[str] | None) -> list[str]:
     return [h for h in (hits or []) if isinstance(h, str) and h.startswith("提示：")]
 
 
-# 开题里「要做什么」优先于综述噪声；accept 的 L3 扫描仍用全文
+# 开题里「要做什么」优先于综述噪声；标题词表见 proposal_lexicon
 _FOCUS_SECTION = re.compile(
     r"(?:^|\n)\s*(?:[（(]?\d+[)）.、]|[一二三四五六七八九十百]+[、．.]|"
     r"[（(][一二三四五六七八九十\d]+[)）])?\s*"
-    r"(?:主要功能|功能模块|功能清单|功能需求|拟实现(?:功能)?|核心功能|系统功能|系统实现|"
-    r"主要任务|任务与要求|实现下列功能|答辩必演示|"
+    rf"(?:{FEATURE_HEAD_TERMS}|"
     r"研究内容[^\n]{0,20}拟实现|拟实现[^\n]{0,12}功能)"
     r"[^\n]{0,80}\n([\s\S]{0,3500})",
     re.IGNORECASE,
 )
 
 
-def proposal_impl_sections_for_scope(text: str) -> str:
-    """仅「拟实现/主要功能」段 + 模块行，供业务过重扫描（不含文首现状综述）。"""
+def _proposal_focus_parts(text: str) -> tuple[str, list[str], list[str]]:
+    """共用：去噪声正文 + 功能段块 + 模块行。"""
     from app.services.proposal import extract_module_lines, strip_non_dev_sections
 
     raw = strip_non_dev_sections(text or "")
     blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
     modules = extract_module_lines(raw)
+    return raw, blocks, modules
+
+
+def proposal_impl_sections_for_scope(text: str) -> str:
+    """仅「拟实现/主要功能」段 + 模块行，供业务过重扫描（不含文首现状综述）。"""
+    _raw, blocks, modules = _proposal_focus_parts(text)
     parts = list(blocks)
     if modules:
         parts.append("\n".join(modules))
@@ -410,11 +445,7 @@ def proposal_impl_sections_for_scope(text: str) -> str:
 
 def proposal_focus_for_match(text: str) -> str:
     """抽取对开发有用的片段并加权：功能/实现段 + 模块行；去掉参考文献噪声。"""
-    from app.services.proposal import extract_module_lines, strip_non_dev_sections
-
-    raw = strip_non_dev_sections(text or "")
-    blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
-    modules = extract_module_lines(raw)
+    raw, blocks, modules = _proposal_focus_parts(text)
     head = "\n".join(ln for ln in raw.splitlines()[:8] if ln.strip())
     title = extract_title(raw)
     parts = [title, head]
@@ -471,19 +502,27 @@ def normalize_password_hash(mode: str | None) -> str:
 
 # schema.roles 里的非角色键（布尔开关 / 岗位表），不得进 Spec「角色」列表
 _ROLE_META_KEYS = frozenset({"staff_posts", "allowAppointFromUsers"})
+# 领域清单里的门户角色别名：与 schema.roles.user 同槽，禁止并列进 Spec（否则 reader+user（读者））
+_PORTAL_ROLE_ALIASES = frozenset({"reader", "student", "patient", "buyer"})
 
 
 def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
-    """领域 roles 定序；展开 staff_posts。已声明岗位表时不再列笼统 subadmin（空表=无子管理）。"""
+    """以 schema.roles 的 user/admin 为准；展开 staff_posts；去掉与 user 重复的门户别名。
+
+    单域 LIBRARY 也曾出现 reader + user（读者）：domain 写 reader、schema 键是 user（id 仍可为 reader）。
+    """
     schema_roles = schema.get("roles") if isinstance(schema, dict) else None
     keys = list(schema_roles.keys()) if isinstance(schema_roles, dict) else []
     posts = schema_roles.get("staff_posts") if isinstance(schema_roles, dict) else None
     posts_declared = isinstance(posts, list)
+    has_user_slot = isinstance(schema_roles, dict) and isinstance(schema_roles.get("user"), dict)
     out: list[str] = []
     for r in domain_roles or []:
         if not r:
             continue
         if posts_declared and str(r) == "subadmin":
+            continue
+        if has_user_slot and str(r) in _PORTAL_ROLE_ALIASES:
             continue
         if str(r) not in out:
             out.append(str(r))
