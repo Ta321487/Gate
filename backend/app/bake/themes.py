@@ -24,6 +24,13 @@ def default_theme(domain: str) -> str:
     return themes[0]["id"] if themes else "gen-ink"
 
 
+def pick_theme(domain: str, seed: str | None = None) -> str:
+    """按种子从领域配色集中稳定挑选，避免同领域总落第一个。"""
+    themes = themes_for_domain(domain)
+    ids = [t["id"] for t in themes]
+    return _pick_by_seed(ids, seed, default_theme(domain))
+
+
 # 登录/注册版式：bake 时随机写入 spec，交付后固定
 AUTH_TEMPLATES = [
     {"id": "split", "label": "双栏书香"},
@@ -97,12 +104,14 @@ def normalize_auth_role_widget(widget: str | None) -> str:
     return "radio"
 
 
-# 界面质感（圆角/边框/按钮）：与配色正交，bake 时按种子挑选，交付后固定
+# 界面质感（圆角/边框/按钮/密度）：与配色正交，bake 时按种子挑选，交付后固定
 CHROME_STYLES = [
     {"id": "soft", "label": "圆润浮起"},
     {"id": "sharp", "label": "直角扁平"},
     {"id": "pill", "label": "胶囊按钮"},
     {"id": "outline", "label": "粗线线框"},
+    {"id": "dense", "label": "紧凑密排"},
+    {"id": "ruled", "label": "细线分区"},
 ]
 
 

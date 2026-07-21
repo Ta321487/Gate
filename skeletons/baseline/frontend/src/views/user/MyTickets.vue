@@ -67,7 +67,15 @@
             >评分</el-button>
             <span v-else-if="row.rating" class="rated">已评 {{ row.rating }} 分</span>
           </div>
-          <p v-if="row.pickupAt" class="sub">已领取 {{ row.pickupPlace || '' }} · {{ row.pickupAt }}</p>
+          <p
+            v-if="pickupPending(row)"
+            class="sub pickup-tip"
+          >已出库待领取：请查看站内消息中的领取地点，到场后由工作人员登记实发。</p>
+          <p v-if="row.pickupAt" class="sub">
+            已领取 {{ row.pickupPlace || '' }}
+            <template v-if="row.actualQty != null"> · 实发 {{ row.actualQty }}</template>
+            · {{ row.pickupAt }}
+          </p>
           <p v-if="row.fineYuan > 0" class="sub">
             {{ fineLabel }} ¥{{ row.fineYuan }}
             <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已结清' : row.fineStatus }}</template>
@@ -171,7 +179,7 @@ import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
+import { getSchema, hasTrait, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
@@ -185,6 +193,37 @@ const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
+const showPickup = computed(() => hasTrait('pickupFlow'))
+
+function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
+function tagType(s) {
+  return ({
+    pending: 'warning',
+    pending_final: '',
+    approved: 'success',
+    rejected: 'danger',
+    returned: 'info',
+    overdue: 'danger',
+  })[s] || 'info'
+}
+
+function canRate(row) {
+  if (!allowRating.value || !row) return false
+  if (row.status !== 'returned') return false
+  const r = row.rating
+  return r == null || r === 0 || r === '0' || r === ''
+}
+
+function canCheckin(row) {
+  if (!allowCheckin.value || !row) return false
+  if (row.status !== 'approved') return false
+  return !row.checkedInAt
+}
+
+function pickupPending(row) {
+  if (!showPickup.value || !row || row.pickupAt) return false
+  return row.status === 'approved' || row.status === 'overdue'
+}
 
 const list = ref([])
 const total = ref(0)
@@ -219,31 +258,6 @@ const checkinRow = ref(null)
 const checkinCode = ref('')
 const progressVisible = ref(false)
 const progressId = ref(null)
-
-function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
-function tagType(s) {
-  return ({
-    pending: 'warning',
-    pending_final: '',
-    approved: 'success',
-    rejected: 'danger',
-    returned: 'info',
-    overdue: 'danger',
-  })[s] || 'info'
-}
-
-function canRate(row) {
-  if (!allowRating.value || !row) return false
-  if (row.status !== 'returned') return false
-  const r = row.rating
-  return r == null || r === 0 || r === '0' || r === ''
-}
-
-function canCheckin(row) {
-  if (!allowCheckin.value || !row) return false
-  if (row.status !== 'approved') return false
-  return !row.checkedInAt
-}
 
 async function loadLookup() {
   try {
@@ -392,11 +406,14 @@ onMounted(async () => {
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
 .card {
-  display: flex; gap: 14px; padding: 16px; background: #fff;
-  border: 1px solid #e2e8f0; border-radius: 12px;
+  display: flex; gap: 14px; padding: var(--portal-pad, 16px);
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
 }
 .mark {
-  width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+  width: 44px; height: 44px; border-radius: var(--portal-radius-sm, 10px); flex-shrink: 0;
   display: grid; place-items: center; font-weight: 700; color: #0369a1;
   background: #e0f2fe;
 }
@@ -404,6 +421,7 @@ onMounted(async () => {
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .sub { margin: 0; color: #64748b; font-size: 12px; }
 .sub.sched { margin-top: 2px; color: #0f766e; }
+.sub.pickup-tip { margin-top: 6px; color: #b45309; }
 .sub a { color: #0369a1; }
 .tip { margin: 6px 0 0; color: #475569; font-size: 13px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

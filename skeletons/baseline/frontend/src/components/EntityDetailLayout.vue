@@ -208,7 +208,7 @@ defineProps({
 .ed-body :deep(.ed-tip) {
   margin: 0;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: var(--portal-radius-sm, 8px);
   background: var(--portal-accent-soft, #d7eef0);
   color: var(--portal-ink, #15202b);
   border-left: 3px solid var(--portal-accent, #0b6e75);
@@ -224,8 +224,8 @@ defineProps({
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 8px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius-sm, 8px);
   cursor: pointer;
   text-decoration: none;
   color: inherit;
@@ -239,7 +239,7 @@ defineProps({
 .ed-related :deep(.ed-rel-cover) {
   width: 40px;
   height: 52px;
-  border-radius: 4px;
+  border-radius: var(--portal-radius-sm, 4px);
   flex-shrink: 0;
   object-fit: cover;
   display: grid;

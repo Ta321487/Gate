@@ -123,7 +123,10 @@ onUnmounted(() => {
 .empty { color: #94a3b8; font-size: 13px; padding: 16px 0; text-align: center; }
 .list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
 .list li {
-  padding: 10px 8px; border-top: 1px solid #f1f5f9; cursor: pointer; border-radius: 6px;
+  padding: 10px 8px;
+  border-top: var(--portal-border-width, 1px) solid var(--portal-line, #f1f5f9);
+  cursor: pointer;
+  border-radius: var(--portal-radius-sm, 6px);
 }
 .list li:hover { background: #f8fafc; }
 .list li.unread { background: #f0fdfa; }

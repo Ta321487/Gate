@@ -96,12 +96,17 @@ defineExpose({ reload: load })
 }
 .rec-card {
   display: flex; gap: 12px; padding: 12px 14px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
   cursor: default;
 }
-.rec-card:hover { border-color: #cbd5e1; }
+.rec-card:hover {
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #e2e8f0));
+}
 .glyph {
-  width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
+  width: 40px; height: 40px; border-radius: var(--portal-radius-sm, 8px); flex-shrink: 0;
   display: grid; place-items: center; font-weight: 700; color: #0369a1;
   background: #e0f2fe; overflow: hidden;
 }

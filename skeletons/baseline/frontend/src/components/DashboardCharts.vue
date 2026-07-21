@@ -219,9 +219,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .card {
-  background: #fff;
-  border: 1px solid #e4eaf0;
-  border-radius: 10px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e4eaf0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
   padding: 16px;
   margin-top: 16px;
 }
@@ -229,11 +230,11 @@ onBeforeUnmount(() => {
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--portal-gap, 12px);
 }
 .chart-box {
-  border: 1px solid #f0f3f6;
-  border-radius: 8px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #f0f3f6);
+  border-radius: var(--portal-radius-sm, 8px);
   padding: 8px 8px 4px;
   min-height: 260px;
 }

@@ -88,33 +88,33 @@ onMounted(async () => {
 
 <style scoped>
 .rte {
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
-  background: #fff;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dcdfe6);
+  border-radius: var(--portal-radius-sm, 8px);
+  background: var(--portal-surface, #fff);
   overflow: hidden;
 }
 .rte.focused {
-  border-color: var(--el-color-primary, #409eff);
+  border-color: var(--portal-accent, var(--el-color-primary, #409eff));
 }
 .bar {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   padding: 6px 8px;
-  border-bottom: 1px solid #ebeef5;
-  background: #f8fafc;
+  border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #ebeef5);
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, #fff);
 }
 .bar button {
   border: 0;
   background: transparent;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--portal-radius-sm, 4px);
   font-size: 12px;
   color: #475569;
   cursor: pointer;
 }
 .bar button:hover {
-  background: #e2e8f0;
+  background: var(--portal-accent-soft, #e2e8f0);
   color: #0f172a;
 }
 .body {

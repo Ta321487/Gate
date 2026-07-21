@@ -216,6 +216,20 @@
             <span v-else class="muted">未上传</span>
           </div>
         </el-form-item>
+        <el-form-item v-if="galleryOn" label="图集">
+          <div class="gallery-edit">
+            <el-upload :show-file-list="false" accept="image/*" :http-request="onGalleryAdd">
+              <el-button size="small" :disabled="form.galleryImages.length >= 9">添加图片</el-button>
+            </el-upload>
+            <div class="gallery-list">
+              <div v-for="(u, i) in form.galleryImages" :key="i" class="gallery-item">
+                <img :src="u" alt="" />
+                <el-button link type="danger" size="small" @click="form.galleryImages.splice(i, 1)">移除</el-button>
+              </div>
+            </div>
+            <p class="muted">最多 9 张；封面仍可单独设置。无封面时首张图集可作展示。</p>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -230,13 +244,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextEditor from '../../components/RichTextEditor.vue'
-import { archiveCopy, formatArchiveScalar, softDeleteCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, formatArchiveScalar, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
 import { dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 
 const archive = archiveCopy()
 const softCopy = softDeleteCopy()
+const galleryOn = computed(() => isGalleryEnabled())
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
 const CORE_FIELD_KEYS = new Set([
@@ -331,6 +346,7 @@ const form = reactive({
   categoryId: null,
   stock: 1,
   coverUrl: '',
+  galleryImages: [],
   startAt: '',
   endAt: '',
   applyDeadlineAt: '',
@@ -386,6 +402,7 @@ function openEdit(row) {
       categoryId: row.categoryId,
       stock: row.stock ?? 1,
       coverUrl: row.coverUrl || '',
+      galleryImages: Array.isArray(row.galleryImages) ? [...row.galleryImages] : [],
       startAt: row.startAt || '',
       endAt: row.endAt || '',
       applyDeadlineAt: row.applyDeadlineAt || '',
@@ -403,6 +420,7 @@ function openEdit(row) {
       categoryId: categories.value[0]?.id || null,
       stock: 1,
       coverUrl: '',
+      galleryImages: [],
       startAt: '',
       endAt: '',
       applyDeadlineAt: '',
@@ -453,6 +471,19 @@ async function onCover(opt) {
   const res = await http.post('/api/upload', fd)
   form.coverUrl = res.data.url
   ElMessage.success('已上传')
+}
+
+async function onGalleryAdd(opt) {
+  if (form.galleryImages.length >= 9) {
+    ElMessage.warning('最多 9 张')
+    return
+  }
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  form.galleryImages.push(res.data.url)
+  if (!form.coverUrl) form.coverUrl = res.data.url
+  ElMessage.success('已加入图集')
 }
 
 /** 核心列兜底中文名（schema 缺 label 时用） */
@@ -648,8 +679,19 @@ onMounted(async () => {
 .muted { margin-left: 8px; color: #909399; font-size: 12px; }
 .cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cover-preview {
-  width: 96px; height: 96px; object-fit: cover; border-radius: 8px;
-  border: 1px solid #e4e7ed; background: #f5f7fa;
+  width: 96px; height: 96px; object-fit: cover;
+  border-radius: var(--portal-radius-sm, 8px);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e4e7ed);
+  background: #f5f7fa;
+}
+.gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.gallery-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery-item {
+  width: 88px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.gallery-item img {
+  width: 80px; height: 80px; object-fit: cover;
+  border-radius: 8px; border: 1px solid #e4e7ed;
 }
 .attach-row { display: flex; gap: 8px; width: 100%; align-items: center; }
 .dt-hint { margin: -4px 0 8px; font-size: 12px; color: #909399; line-height: 1.4; }

@@ -68,13 +68,14 @@ onMounted(load)
   text-align: center;
   color: var(--portal-muted, #6b7c8a);
   background: var(--portal-surface, #fff);
-  border: 1px dashed var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) dashed var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
 }
 .card {
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
   padding: 20px 22px;
 }
 .hero { margin-bottom: 14px; }

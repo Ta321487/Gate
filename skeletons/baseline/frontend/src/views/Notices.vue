@@ -107,8 +107,10 @@ onMounted(load)
   gap: 16px;
   padding: 16px 18px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #e2e8f0);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
   border-left: 3px solid transparent;
+  border-radius: var(--portal-radius, 0);
+  box-shadow: var(--portal-shadow, none);
   cursor: pointer;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }

@@ -162,9 +162,10 @@ onMounted(load)
 .range { margin: 10px 0 0; font-size: 13px; color: #0f766e; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
   overflow: auto;
 }
 .head, .row { display: grid; grid-template-columns: 64px repeat(7, minmax(100px, 1fr)); min-width: 820px; }
@@ -183,7 +184,7 @@ onMounted(load)
   width: 100%;
   text-align: left;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--portal-radius-sm, 6px);
   background: #e0f2fe;
   color: #0369a1;
   font-size: 12px;

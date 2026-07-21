@@ -551,16 +551,57 @@ public final class TicketStore {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         String st = String.valueOf(m.get("status"));
-        if (!"approved".equals(st) && !"returned".equals(st)) {
-            throw new IllegalStateException("仅已通过/完结单据可登记领取");
+        // 仅进行中单据可登记；退库后库存已回补，再登记会乱账
+        if (!"approved".equals(st) && !"overdue".equals(st)) {
+            throw new IllegalStateException("仅已通过/进行中单据可登记领取");
+        }
+        if (hasColumn("pickup_at")) {
+            String prev = TicketSql.str(m.get("pickupAt"));
+            if (!prev.isBlank()) {
+                throw new IllegalStateException("该单已登记领取，不可重复操作");
+            }
         }
         String loc = place == null ? "" : place.trim();
         if (loc.isBlank()) loc = configValue("pickup_place");
+        if (loc.isBlank()) {
+            throw new IllegalStateException("请填写领取地点，或先在系统配置中设置默认领取地点");
+        }
+        if (loc.length() > 128) {
+            throw new IllegalStateException("领取地点过长");
+        }
+
+        int applied = rowQty(m);
+        Integer qtyToWrite = null;
+        if (allowQty && hasColumn("actual_qty")) {
+            if (actualQty == null || actualQty <= 0) {
+                throw new IllegalStateException("请填写实发数量（正整数）");
+            }
+            if (actualQty > applied) {
+                throw new IllegalStateException("实发数量不能超过申领数量 " + applied);
+            }
+            qtyToWrite = actualQty;
+            // 少发：把未发出部分回补库存，避免完结时按申领量超额回库
+            if (MODE == Mode.ARCHIVE && useQuota && actualQty < applied) {
+                long itemId = TicketSql.toLong(m.get("bookId"));
+                if (itemId > 0 && ArchiveStore.getItemRaw(itemId) != null) {
+                    ArchiveStore.adjustStock(itemId, applied - actualQty);
+                }
+            }
+        } else if (actualQty != null && hasColumn("actual_qty")) {
+            if (actualQty <= 0) {
+                throw new IllegalStateException("实发数量须为正整数");
+            }
+            if (actualQty > applied) {
+                throw new IllegalStateException("实发数量不能超过申领数量 " + applied);
+            }
+            qtyToWrite = actualQty;
+        }
+
         if (hasColumn("pickup_at")) {
-            if (hasColumn("actual_qty") && actualQty != null && actualQty > 0) {
+            if (hasColumn("actual_qty") && qtyToWrite != null) {
                 TicketSql.db().update(
                         "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=?, actual_qty=? WHERE id=?",
-                        loc, actualQty, ticketId);
+                        loc, qtyToWrite, ticketId);
             } else if (hasColumn("pickup_place")) {
                 TicketSql.db().update(
                         "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=? WHERE id=?",
@@ -569,7 +610,10 @@ public final class TicketStore {
                 TicketSql.db().update("UPDATE " + TICKET + " SET pickup_at=NOW() WHERE id=?", ticketId);
             }
         }
-        appendProgress(ticketId, "pickup", operator, "领取登记：" + loc);
+        String tip = "领取登记：" + loc;
+        if (qtyToWrite != null) tip = tip + "，实发 " + qtyToWrite;
+        appendProgress(ticketId, "pickup", operator, tip);
+        notifyPickup(m, loc, qtyToWrite);
         return get(ticketId);
     }
 
@@ -836,8 +880,10 @@ public final class TicketStore {
         if (!TicketSql.str(m.get("username")).equals(username)) {
             throw new IllegalStateException("只能为自己的单据签到");
         }
+        // 先推进爽约，避免活动已结束后仍可签到
+        TicketStatusOps.touchTicketStatus(m);
         if (!"approved".equals(String.valueOf(m.get("status")))) {
-            throw new IllegalStateException("仅已通过的单据可签到");
+            throw new IllegalStateException("仅已通过且未爽约的单据可签到");
         }
         Object prev = m.get("checkedInAt");
         if (prev != null && !String.valueOf(prev).isBlank()) {
@@ -868,7 +914,30 @@ public final class TicketStore {
             String body = pass
                     ? ("「" + subject + "」已通过" + (note == null || note.isBlank() ? "" : "：" + note))
                     : ("「" + subject + "」已驳回" + (note == null || note.isBlank() ? "" : "：" + note));
+            if (pass && hasColumn("pickup_at")) {
+                String place = configValue("pickup_place");
+                // 仅种子/配置了默认领取点的领域（仓储、失物等）才附加领取指引
+                if (!place.isBlank()) {
+                    body = body + "。请到「" + place + "」领取，到场后由工作人员登记实发。";
+                }
+            }
             MessageStore.send(user, title, body, "ticket", TicketSql.toLong(ticket.get("id")));
+        } catch (Exception ignored) {
+            // 消息失败不影响主流程
+        }
+    }
+
+    /** 领取登记后通知申请人地点与实发数量 */
+    private static void notifyPickup(Map<String, Object> ticket, String place, Integer actualQty) {
+        try {
+            String user = TicketSql.str(ticket.get("username"));
+            if (user.isBlank()) return;
+            String subject = subjectOf(ticket);
+            String body = "「" + subject + "」已登记领取，地点：" + (place == null || place.isBlank() ? "—" : place);
+            if (actualQty != null && actualQty > 0) {
+                body = body + "，实发数量：" + actualQty;
+            }
+            MessageStore.send(user, "领取已登记", body, "ticket", TicketSql.toLong(ticket.get("id")));
         } catch (Exception ignored) {
             // 消息失败不影响主流程
         }
@@ -899,7 +968,13 @@ public final class TicketStore {
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
             if (ArchiveStore.getItemRaw(itemId) != null) {
-                ArchiveStore.adjustStock(itemId, rowQty(m));
+                // 已登记实发则按实发回补；少发差额已在领取时回库
+                int restore = rowQty(m);
+                Object aq = m.get("actualQty");
+                if (aq instanceof Number n && n.intValue() > 0) {
+                    restore = n.intValue();
+                }
+                ArchiveStore.adjustStock(itemId, restore);
             }
         }
         String remind = "";

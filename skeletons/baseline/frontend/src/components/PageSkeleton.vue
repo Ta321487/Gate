@@ -55,8 +55,8 @@ defineProps({
   gap: 22px;
   padding: 20px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
   box-shadow: var(--portal-shadow, none);
 }
 .col { min-width: 0; }
@@ -64,8 +64,8 @@ defineProps({
   margin-top: 14px;
   padding: 18px 20px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
 }
 .block,
 .line,
@@ -78,7 +78,7 @@ defineProps({
   );
   background-size: 200% 100%;
   animation: shimmer 1.35s ease-in-out infinite;
-  border-radius: 8px;
+  border-radius: var(--portal-radius-sm, 8px);
 }
 .cover {
   width: 140px;
@@ -87,7 +87,7 @@ defineProps({
 .thumb {
   width: 48px;
   height: 48px;
-  border-radius: 10px;
+  border-radius: var(--portal-radius-sm, 10px);
   flex-shrink: 0;
 }
 .line {
@@ -123,8 +123,8 @@ defineProps({
   padding: 12px 14px;
   margin-bottom: 8px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 10px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 10px);
 }
 .list-row .line { margin-bottom: 8px; }
 .list-row .line:last-child { margin-bottom: 0; }

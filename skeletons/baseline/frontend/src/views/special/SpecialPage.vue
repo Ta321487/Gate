@@ -94,9 +94,9 @@ function reload() {
   position: relative;
   width: min(440px, 100%);
   padding: 28px 28px 26px;
-  border-radius: 20px;
+  border-radius: var(--portal-radius-lg, 20px);
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #d5dde3);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow, 0 8px 24px rgba(0, 0, 0, 0.06));
   text-align: center;
 }
@@ -170,7 +170,7 @@ function reload() {
 }
 .sp-skel .bar {
   height: 10px;
-  border-radius: 6px;
+  border-radius: var(--portal-radius-sm, 6px);
   margin-bottom: 10px;
   background: linear-gradient(
     90deg,
@@ -192,7 +192,7 @@ function reload() {
 }
 .sp-skel .card {
   height: 56px;
-  border-radius: 10px;
+  border-radius: var(--portal-radius, 10px);
   background: var(--portal-accent-soft, #d7eef0);
   animation: shimmer 1.4s ease-in-out infinite;
   background-image: linear-gradient(
@@ -216,8 +216,8 @@ function reload() {
 }
 .btn {
   appearance: none;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: var(--portal-border-width, 1px) solid transparent;
+  border-radius: var(--portal-btn-radius, 10px);
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;

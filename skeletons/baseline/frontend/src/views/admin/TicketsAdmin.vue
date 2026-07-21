@@ -287,9 +287,9 @@ onMounted(load)
 .audit-body {
   margin: 0 0 14px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--portal-radius-sm, 8px);
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
 }
 .audit-body .lab { margin-bottom: 6px; font-size: 13px; color: #64748b; }
 .audit-body a { color: #0369a1; font-size: 13px; }

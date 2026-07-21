@@ -36,6 +36,13 @@ public class ArchiveController {
         return R.ok(data);
     }
 
+    @GetMapping("/suggest")
+    public R<?> suggest(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "8") int limit) {
+        return R.ok(ArchiveStore.suggestTitles(q, limit));
+    }
+
     @GetMapping("/{id:\\d+}")
     public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
