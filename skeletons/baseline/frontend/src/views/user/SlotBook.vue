@@ -271,10 +271,11 @@ onMounted(load)
 }
 .slot {
   text-align: left;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
-  background: #fff;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
+  padding: var(--portal-pad, 12px);
+  background: var(--portal-surface, #fff);
   cursor: pointer;
 }
 .slot:disabled { opacity: 0.45; cursor: not-allowed; }

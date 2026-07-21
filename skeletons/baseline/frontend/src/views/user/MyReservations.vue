@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ label }}</h1>
-      <p>已占坑的{{ resvNoun }}，可取消释放时段。</p>
+      <p>已占坑的{{ resvNoun }}；可取消或改约到其它空闲时段，办结由管理端登记。</p>
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
       </el-select>
@@ -26,7 +26,14 @@
       <p v-if="row.queueNo" class="sub">排队号：{{ row.queueNo }}</p>
       <p v-if="row.remark && !row.plateNo && !row.patientName && !row.subject && !row.guestName" class="sub">备注：{{ row.remark }}</p>
       <p class="sub">申请于 {{ row.createdAt }}</p>
+      <p v-if="row.entryAt" class="sub">办结于 {{ row.entryAt }}</p>
       <div class="acts">
+        <el-button
+          v-if="row.status === 'pending' || row.status === 'confirmed'"
+          size="small"
+          type="primary"
+          @click="openReschedule(row)"
+        >改约</el-button>
         <el-button
           v-if="row.status === 'pending' || row.status === 'confirmed'"
           size="small"
@@ -45,6 +52,23 @@
         @current-change="load"
       />
     </div>
+
+    <el-dialog v-model="dlgVisible" title="改约到新时段" width="480px" destroy-on-close>
+      <p class="dlg-tip">原时段将释放；请选择同资源的其它空闲时段。</p>
+      <el-select v-model="newSlotId" filterable placeholder="选择时段" style="width: 100%">
+        <el-option
+          v-for="s in slotOptions"
+          :key="s.id"
+          :label="`${s.startAt} ~ ${s.endAt}（余 ${Math.max(0, (s.capacity || 0) - (s.booked || 0))}）`"
+          :value="s.id"
+          :disabled="s.id === currentSlotId || (s.booked || 0) >= (s.capacity || 0)"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="dlgVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" :disabled="!newSlotId" @click="submitReschedule">确认改约</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -64,6 +88,13 @@ const page = ref(1)
 const size = ref(10)
 const status = ref(null)
 
+const dlgVisible = ref(false)
+const saving = ref(false)
+const currentId = ref(0)
+const currentSlotId = ref(0)
+const newSlotId = ref(null)
+const slotOptions = ref([])
+
 async function load() {
   const res = await http.get('/api/slots/reservations', {
     params: { page: page.value, size: size.value, status: status.value || undefined },
@@ -79,6 +110,39 @@ async function cancel(row) {
   load()
 }
 
+async function openReschedule(row) {
+  currentId.value = row.id
+  currentSlotId.value = Number(row.slotId) || 0
+  newSlotId.value = null
+  slotOptions.value = []
+  dlgVisible.value = true
+  if (!row.itemId) {
+    ElMessage.warning('无法加载时段')
+    return
+  }
+  try {
+    const res = await http.get('/api/slots', { params: { itemId: row.itemId } })
+    slotOptions.value = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+  } catch {
+    slotOptions.value = []
+  }
+}
+
+async function submitReschedule() {
+  if (!newSlotId.value) return
+  saving.value = true
+  try {
+    await http.post(`/api/slots/reservations/${currentId.value}/reschedule`, {
+      slotId: newSlotId.value,
+    })
+    ElMessage.success('改约成功')
+    dlgVisible.value = false
+    load()
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -87,12 +151,17 @@ onMounted(load)
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 10px; color: #64748b; font-size: 13px; }
 .card {
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-  padding: 14px 16px; margin-bottom: 12px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
+  padding: var(--portal-pad, 14px) 16px;
+  margin-bottom: var(--portal-gap, 12px);
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .sub { margin: 4px 0 0; color: #64748b; font-size: 12px; }
-.acts { margin-top: 10px; }
+.acts { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.dlg-tip { margin: 0 0 12px; color: #64748b; font-size: 13px; }
 </style>
