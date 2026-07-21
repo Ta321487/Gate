@@ -200,7 +200,7 @@ onMounted(() => {
 .panel-ft {
   margin-top: 22px;
   padding-top: 16px;
-  border-top: 1px solid var(--portal-line, #dfe7ec);
+  border-top: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
   font-size: 13px;
   color: var(--portal-muted, #6b7c8a);
   display: flex;
@@ -472,7 +472,7 @@ onMounted(() => {
 .auth[data-auth="folio"] .brand {
   background: transparent;
   color: var(--portal-ink, #15202b);
-  border-right: 1px solid var(--portal-line, #d5dde3);
+  border-right: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -511,7 +511,7 @@ onMounted(() => {
   .auth[data-auth="mirror"] .brand { order: 0; }
   .auth[data-auth="folio"] .brand {
     border-right: none;
-    border-bottom: 1px solid var(--portal-line, #d5dde3);
+    border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
     padding: 28px 24px 22px;
   }
   .auth[data-auth="split"] .points,

@@ -1,4 +1,5 @@
-/* 界面质感：与配色正交。bake 写入 VITE_CHROME → data-chrome 落地 */
+/* 界面质感：与配色正交。bake 写入 VITE_CHROME → data-chrome 落地
+ * 阴影：主题只提供 --portal-shadow-color，chrome 决定 elevation 形态 */
 
 :root,
 [data-chrome="soft"] {
@@ -7,9 +8,12 @@
   --portal-radius-lg: 28px;
   --portal-btn-radius: 14px;
   --portal-border-width: 1px;
+  --portal-border-style: solid;
   --portal-control-h: 40px;
+  --portal-gap: 14px;
+  --portal-pad: 16px;
   --auth-radius: 28px;
-  --portal-shadow: 0 18px 44px rgba(15, 40, 50, 0.12);
+  --portal-shadow: 0 18px 44px var(--portal-shadow-color, rgba(15, 40, 50, 0.12));
 }
 
 [data-chrome="sharp"] {
@@ -18,7 +22,10 @@
   --portal-radius-lg: 6px;
   --portal-btn-radius: 2px;
   --portal-border-width: 1px;
+  --portal-border-style: solid;
   --portal-control-h: 36px;
+  --portal-gap: 10px;
+  --portal-pad: 12px;
   --auth-radius: 6px;
   --portal-shadow: none;
 }
@@ -29,9 +36,12 @@
   --portal-radius-lg: 22px;
   --portal-btn-radius: 999px;
   --portal-border-width: 1px;
+  --portal-border-style: solid;
   --portal-control-h: 40px;
+  --portal-gap: 12px;
+  --portal-pad: 14px;
   --auth-radius: 24px;
-  --portal-shadow: 0 12px 32px rgba(15, 40, 50, 0.1);
+  --portal-shadow: 0 12px 32px var(--portal-shadow-color, rgba(15, 40, 50, 0.1));
 }
 
 [data-chrome="outline"] {
@@ -40,9 +50,50 @@
   --portal-radius-lg: 14px;
   --portal-btn-radius: 8px;
   --portal-border-width: 2px;
+  --portal-border-style: solid;
   --portal-control-h: 38px;
+  --portal-gap: 12px;
+  --portal-pad: 14px;
   --auth-radius: 14px;
   --portal-shadow: none;
+}
+
+/* 紧凑：小圆角、矮控件、密间距 */
+[data-chrome="dense"] {
+  --portal-radius-sm: 4px;
+  --portal-radius: 6px;
+  --portal-radius-lg: 10px;
+  --portal-btn-radius: 4px;
+  --portal-border-width: 1px;
+  --portal-border-style: solid;
+  --portal-control-h: 32px;
+  --portal-gap: 8px;
+  --portal-pad: 10px;
+  --auth-radius: 8px;
+  --portal-shadow: 0 6px 16px var(--portal-shadow-color, rgba(15, 40, 50, 0.08));
+}
+
+/* 细线分区：靠分割线与底边强调层次，不用浮起阴影 */
+[data-chrome="ruled"] {
+  --portal-radius-sm: 0;
+  --portal-radius: 0;
+  --portal-radius-lg: 0;
+  --portal-btn-radius: 2px;
+  --portal-border-width: 1px;
+  --portal-border-style: solid;
+  --portal-control-h: 36px;
+  --portal-gap: 12px;
+  --portal-pad: 14px;
+  --auth-radius: 0;
+  --portal-shadow: none;
+}
+
+/* 通用表面：业务页优先用 token，避免写死灰边 */
+.portal-surface {
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) var(--portal-border-style, solid) var(--portal-line, #d5dde3);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
 }
 
 /* Element Plus 桥接：按钮/输入/卡片跟 chrome + 主题色 */
@@ -67,6 +118,8 @@ html {
   --el-border-radius: var(--portal-btn-radius);
   border-radius: var(--portal-btn-radius) !important;
   border-width: var(--portal-border-width);
+  border-style: var(--portal-border-style, solid);
+  min-height: var(--portal-control-h, 40px);
 }
 
 .el-button--primary {
@@ -89,13 +142,14 @@ html {
   --el-card-border-radius: var(--portal-radius);
   border-radius: var(--portal-radius);
   border-width: var(--portal-border-width);
+  border-style: var(--portal-border-style, solid);
   border-color: var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow);
 }
 
 .el-dialog {
   border-radius: var(--portal-radius-lg) !important;
-  border: var(--portal-border-width) solid var(--portal-line, #d5dde3);
+  border: var(--portal-border-width) var(--portal-border-style, solid) var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow, 0 16px 40px rgba(15, 40, 50, 0.12));
 }
 
@@ -138,8 +192,43 @@ html {
 }
 
 [data-chrome="sharp"] .el-card,
-[data-chrome="sharp"] .el-dialog {
+[data-chrome="sharp"] .el-dialog,
+[data-chrome="ruled"] .el-card,
+[data-chrome="ruled"] .el-dialog {
   box-shadow: none !important;
+}
+
+/* ruled：卡片用底边加粗做分区感 */
+[data-chrome="ruled"] .el-card,
+[data-chrome="ruled"] .portal-surface {
+  border-radius: 0;
+  border-width: 0 0 2px 0;
+  border-style: solid;
+  border-color: var(--portal-line, #d5dde3);
+  box-shadow: none;
+}
+
+[data-chrome="ruled"] .el-button--primary:not(.is-link):not(.is-text) {
+  border-radius: 0 !important;
+}
+
+[data-chrome="dense"] .el-button {
+  min-height: var(--portal-control-h, 32px);
+  padding: 5px 12px;
+}
+
+[data-chrome="dense"] .workbench .wb-aside .el-menu-item {
+  height: 34px;
+  line-height: 34px;
+  margin: 1px 8px;
+}
+
+[data-chrome="dense"] .workbench .wb-main {
+  padding: 12px 14px 20px;
+}
+
+[data-chrome="dense"] .workbench .wb-header {
+  height: 48px !important;
 }
 
 /* 管理端 / 作业台：与门户同一套色与质感，避免「另一套系统」感 */

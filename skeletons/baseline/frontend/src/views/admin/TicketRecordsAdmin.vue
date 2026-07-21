@@ -35,10 +35,14 @@
           <span v-else>—</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="showPickup" label="领取" width="140">
+      <el-table-column v-if="showPickup" label="领取" width="180">
         <template #default="{ row }">
-          <span v-if="row.pickupAt">{{ row.pickupPlace || '已领' }} · {{ row.pickupAt }}</span>
-          <span v-else>—</span>
+          <span v-if="row.pickupAt">
+            {{ row.pickupPlace || '已领' }}
+            <template v-if="row.actualQty != null"> · 实发{{ row.actualQty }}</template>
+            · {{ row.pickupAt }}
+          </span>
+          <span v-else class="muted">待登记</span>
         </template>
       </el-table-column>
       <el-table-column prop="startAt" label="开始" width="160" />
@@ -168,7 +172,8 @@ function remarkText(v) {
 function canPickup(row) {
   if (!showPickup.value || !row) return false
   if (row.pickupAt) return false
-  return row.status === 'approved' || row.status === 'returned'
+  // 与后端一致：退库后不可再登记，避免库存回补错乱
+  return row.status === 'approved' || row.status === 'overdue'
 }
 
 function canFinePaid(row) {
@@ -221,27 +226,50 @@ function openProgress(row) {
 }
 
 async function doPickup(row) {
-  const { value } = await ElMessageBox.prompt('领取地点（可留空用系统默认）', '领取登记', {
-    confirmButtonText: '登记',
-    cancelButtonText: '取消',
-    inputPlaceholder: '如 行政楼一楼服务台',
-    inputValue: row.pickupPlace || '',
-  }).catch(() => ({ value: null }))
+  const applied = Math.max(1, Number(row.qty) || 1)
+  const { value } = await ElMessageBox.prompt(
+    '领取地点（可留空则使用系统默认配置；两者皆空将无法登记）',
+    '领取登记',
+    {
+      confirmButtonText: '下一步',
+      cancelButtonText: '取消',
+      inputPlaceholder: '如 行政楼地下库房',
+      inputValue: row.pickupPlace || '',
+      inputValidator: (v) => {
+        if (String(v || '').trim().length > 128) return '领取地点过长'
+        return true
+      },
+    },
+  ).catch(() => ({ value: null }))
   if (value === null) return
   const body = { pickupPlace: String(value || '').trim() }
   if (allowQty.value) {
-    const { value: qty } = await ElMessageBox.prompt('实发数量', '领取登记', {
-      confirmButtonText: '确定',
-      inputValue: String(row.qty || 1),
-      inputPattern: /^[1-9]\d*$/,
-      inputErrorMessage: '请输入正整数',
-    }).catch(() => ({ value: null }))
+    const { value: qty } = await ElMessageBox.prompt(
+      `实发数量（申领 ${applied}，不可超过）`,
+      '领取登记',
+      {
+        confirmButtonText: '登记',
+        cancelButtonText: '取消',
+        inputValue: String(applied),
+        inputValidator: (v) => {
+          const s = String(v ?? '').trim()
+          if (!/^[1-9]\d*$/.test(s)) return '请输入正整数'
+          const n = Number(s)
+          if (n > applied) return `不能超过申领数量 ${applied}`
+          return true
+        },
+      },
+    ).catch(() => ({ value: null }))
     if (qty === null) return
     body.actualQty = Number(qty)
   }
-  await http.post(`/api/tickets/${row.id}/pickup`, body)
-  ElMessage.success('已登记领取')
-  load()
+  try {
+    await http.post(`/api/tickets/${row.id}/pickup`, body)
+    ElMessage.success('已登记领取，已通知申请人')
+    load()
+  } catch {
+    // http 拦截器已提示业务错误
+  }
 }
 
 async function doFinePaid(row) {
@@ -264,7 +292,10 @@ async function exportCsv() {
   if (allowQty.value) headers.push('数量')
   if (pickLoanPeriod.value) headers.push(dueLabel.value)
   if (showFine.value) headers.push(fineLabel.value)
-  if (showPickup.value) headers.push('领取地点', '领取时间')
+  if (showPickup.value) {
+    headers.push('领取地点', '领取时间')
+    if (allowQty.value) headers.push('实发数量')
+  }
   headers.push('开始', '结束', '说明', '附件')
   headers.push('申请时间', '受理时间')
   if (allowCheckin.value) headers.push('签到时间')
@@ -288,6 +319,7 @@ async function exportCsv() {
     }
     if (showPickup.value) {
       line.push(row.pickupPlace || '', row.pickupAt || '')
+      if (allowQty.value) line.push(row.actualQty ?? '')
     }
     line.push(row.startAt, row.endAt, remarkText(row.remark), row.attachUrl || '')
     line.push(row.applyAt, row.approveAt)

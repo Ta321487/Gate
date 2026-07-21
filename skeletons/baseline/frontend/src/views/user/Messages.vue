@@ -142,10 +142,11 @@ onMounted(load)
   gap: 8px;
 }
 .list li {
-  border: 1px solid var(--portal-line, #d5dde3);
-  border-radius: 10px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
   padding: 12px 14px;
-  background: #fff;
+  background: var(--portal-surface, #fff);
   cursor: pointer;
 }
 .list li.unread {

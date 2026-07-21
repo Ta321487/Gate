@@ -385,16 +385,18 @@ onMounted(load)
 .locked {
   margin: 0 0 16px;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 10px);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  box-shadow: var(--portal-shadow, none);
   background: var(--portal-surface, #fff);
   color: var(--portal-muted, #6b7c8a);
   font-size: 13px;
 }
 .card {
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
   padding: 20px 22px;
   margin-bottom: 14px;
 }
@@ -418,8 +420,8 @@ onMounted(load)
 }
 .avatar-btn {
   padding: 2px 10px;
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 8px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-btn-radius, 8px);
   background: var(--portal-surface, #fff);
   color: var(--portal-accent, #0b6e75);
   font-size: 11px;
@@ -495,13 +497,13 @@ onMounted(load)
   margin-bottom: 6px !important;
 }
 .form :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--portal-line, #d5dde3) inset;
+  border-radius: var(--portal-radius-sm, 8px);
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-line, #d5dde3) inset;
   background: color-mix(in srgb, var(--portal-surface, #fff) 92%, var(--portal-bg, #eef3f5));
 }
 .form :deep(.el-input__wrapper:hover),
 .form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--portal-accent, #0b6e75) inset;
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-accent, #0b6e75) inset;
 }
 .actions { padding-top: 4px; }
 @media (max-width: 720px) {

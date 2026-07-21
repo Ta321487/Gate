@@ -30,7 +30,9 @@ public final class ArchiveStore {
     private static Boolean hasMutexCode;
     private static Boolean hasDeletedAt;
     private static Boolean hasCheckinCode;
+    private static Boolean hasGalleryJson;
     private static boolean softDeleteEnabled = false;
+    private static boolean galleryEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String itemTagFk = "post_id";
@@ -90,9 +92,19 @@ public final class ArchiveStore {
         hasMutexCode = null;
         hasDeletedAt = null;
         hasCheckinCode = null;
+        hasGalleryJson = null;
         TAG = "";
         ITEM_TAG = "";
         loadStockLabelFromResource();
+    }
+
+    public static void configureGallery(boolean enabled) {
+        galleryEnabled = enabled;
+        if (enabled) ensureGalleryColumn();
+    }
+
+    public static boolean galleryEnabled() {
+        return galleryEnabled;
     }
 
     public static void configureSoftDelete(boolean enabled) {
@@ -290,6 +302,11 @@ public final class ArchiveStore {
             if (code.length() > 16) code = code.substring(0, 16);
             db().update("UPDATE " + ITEM + " SET checkin_code=? WHERE id=?", code, id);
         }
+        if (galleryEnabled && hasGalleryJson() && patch.containsKey("galleryImages")) {
+            db().update(
+                    "UPDATE " + ITEM + " SET gallery_json=? WHERE id=?",
+                    toGalleryJson(patch.get("galleryImages")), id);
+        }
         patchOptStr(id, patch, "publisher", "publisher", 100);
         patchOptStr(id, patch, "callNo", "call_no", 64);
         patchOptStr(id, patch, "conditionGrade", "condition_grade", 16);
@@ -450,6 +467,14 @@ public final class ArchiveStore {
         m.put("status", rs.getString("status"));
         m.put("coverUrl", rs.getString("cover_url"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
+        if (galleryEnabled && hasGalleryJson()) {
+            try {
+                String raw = rs.getString("gallery_json");
+                m.put("galleryImages", parseGallery(raw));
+            } catch (Exception e) {
+                m.put("galleryImages", List.of());
+            }
+        }
         if (hasStartAt()) m.put("startAt", fmt(rs.getTimestamp("start_at")));
         if (hasEndAt()) m.put("endAt", fmt(rs.getTimestamp("end_at")));
         if (hasApplyDeadline()) m.put("applyDeadlineAt", fmt(rs.getTimestamp("apply_deadline_at")));
@@ -627,6 +652,95 @@ public final class ArchiveStore {
         return hasCheckinCode;
     }
 
+    public static boolean hasGalleryJson() {
+        if (hasGalleryJson == null) hasGalleryJson = hasItemColumn("gallery_json");
+        return hasGalleryJson;
+    }
+
+    public static void ensureGalleryColumn() {
+        if (hasGalleryJson()) return;
+        try {
+            db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `gallery_json` TEXT NULL");
+            hasGalleryJson = true;
+        } catch (Exception ignored) {
+            hasGalleryJson = hasItemColumn("gallery_json");
+        }
+    }
+
+    /** 标题前缀联想（搜索辅助）。 */
+    public static List<Map<String, Object>> suggestTitles(String q, int limit) {
+        if (limit < 1) limit = 8;
+        if (limit > 20) limit = 20;
+        String prefix = q == null ? "" : q.trim();
+        if (prefix.isBlank()) return List.of();
+        if (prefix.length() > 64) prefix = prefix.substring(0, 64);
+        String where = " WHERE title LIKE ?";
+        List<Object> args = new ArrayList<>();
+        args.add(prefix + "%");
+        if (hasDeletedAt() && softDeleteEnabled) {
+            where += " AND deleted_at IS NULL";
+        }
+        args.add(limit);
+        try {
+            return db().query(
+                    "SELECT id, title, cover_url FROM " + ITEM + where + " ORDER BY id DESC LIMIT ?",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("title", rs.getString("title"));
+                        m.put("coverUrl", rs.getString("cover_url"));
+                        m.put("value", rs.getString("title"));
+                        return m;
+                    },
+                    args.toArray());
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static List<String> parseGallery(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        try {
+            List<String> list = new ObjectMapper().readValue(raw, new TypeReference<>() {});
+            if (list == null) return List.of();
+            List<String> out = new ArrayList<>();
+            for (String s : list) {
+                if (s == null) continue;
+                String u = s.trim();
+                if (!u.isBlank()) out.add(u);
+                if (out.size() >= 9) break;
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static String toGalleryJson(Object raw) {
+        List<String> urls = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o == null) continue;
+                String u = String.valueOf(o).trim();
+                if (!u.isBlank()) urls.add(u);
+                if (urls.size() >= 9) break;
+            }
+        } else if (raw != null) {
+            String s = String.valueOf(raw).trim();
+            if (!s.isBlank()) {
+                try {
+                    urls.addAll(parseGallery(s.startsWith("[") ? s : "[]"));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        try {
+            return new ObjectMapper().writeValueAsString(urls);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     /** L1 互斥：缺列时补上（选课域 bake 后亦应有 SQL 列） */
     public static void ensureMutexColumn() {
         if (hasMutexCode()) return;
@@ -730,11 +844,20 @@ public final class ArchiveStore {
     public static void adjustStock(long itemId, int delta) {
         Map<String, Object> book = getItemRaw(itemId);
         if (book == null || isSoftDeleted(book)) throw new IllegalStateException("对象不存在");
-        int stock = toInt(book.get("stock")) + delta;
-        if (stock < 0) throw new IllegalStateException(stockShortage(0));
-        db().update(
-                "UPDATE " + ITEM + " SET stock=?, status=? WHERE id=?",
-                stock, stock > 0 ? "available" : "unavailable", itemId);
+        if (delta == 0) return;
+        // 条件更新：MySQL 同句内后写 status 读到已更新的 stock；扣减要求 stock 够
+        int n;
+        if (delta < 0) {
+            n = db().update(
+                    "UPDATE " + ITEM
+                            + " SET stock=stock+?, status=IF(stock>0,'available','unavailable') WHERE id=? AND stock>=?",
+                    delta, itemId, -delta);
+        } else {
+            n = db().update(
+                    "UPDATE " + ITEM + " SET stock=stock+?, status='available' WHERE id=?",
+                    delta, itemId);
+        }
+        if (n <= 0) throw new IllegalStateException(stockShortage(0));
     }
 
     public static long countItems() {

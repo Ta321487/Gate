@@ -145,11 +145,11 @@ defineProps({
   width: 120px;
   height: 120px;
   margin: 0 auto;
-  border-radius: 28px;
+  border-radius: var(--portal-radius-lg, 28px);
   background:
     radial-gradient(circle at 30% 20%, var(--portal-accent-soft, #d7eef0), transparent 55%),
     var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #d5dde3);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow, none);
   display: grid;
   place-items: center;

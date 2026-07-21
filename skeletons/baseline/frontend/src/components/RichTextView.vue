@@ -52,7 +52,7 @@ const fallback = computed(() => {
 .rtv :deep(ul),
 .rtv :deep(ol) { margin: 0.4em 0 0.6em; padding-left: 1.4em; }
 .rtv :deep(a) { color: var(--portal-brand, #2563eb); }
-.rtv :deep(img) { max-width: 100%; height: auto; border-radius: 6px; }
+.rtv :deep(img) { max-width: 100%; height: auto; border-radius: var(--portal-radius-sm, 6px); }
 .rtv :deep(blockquote) {
   margin: 0.5em 0;
   padding: 0.2em 0.8em;

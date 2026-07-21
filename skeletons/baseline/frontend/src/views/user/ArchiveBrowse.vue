@@ -7,7 +7,19 @@
         <template v-if="ruleHint"> {{ ruleHint }}</template>
       </p>
       <div class="search">
+        <el-autocomplete
+          v-if="searchAssist"
+          v-model="keyword"
+          size="large"
+          clearable
+          :fetch-suggestions="fetchSuggest"
+          :placeholder="searchPlaceholder"
+          style="flex:1; min-width:180px"
+          @keyup.enter="load"
+          @select="onSuggestSelect"
+        />
         <el-input
+          v-else
           v-model="keyword"
           size="large"
           clearable
@@ -32,6 +44,16 @@
           <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <el-button type="primary" size="large" @click="load">搜索</el-button>
+      </div>
+      <div v-if="searchAssist && hotKeywords.length" class="hot">
+        <span class="hot-lab">热搜</span>
+        <button
+          v-for="(w, i) in hotKeywords"
+          :key="i"
+          type="button"
+          class="hot-chip"
+          @click="applyHot(w)"
+        >{{ w }}</button>
       </div>
     </section>
 
@@ -75,16 +97,22 @@
               @click="play(row)"
             >播放</el-button>
             <el-button
-              v-if="bodyRich"
+              v-if="bodyRich || galleryOn || browseOn"
               size="small"
               @click="openDetail(row)"
-            >阅读</el-button>
+            >{{ bodyRich ? '阅读' : '详情' }}</el-button>
             <el-button
               size="small"
               type="primary"
               :disabled="!isSlotMode && !stockOk(row)"
               @click="onPrimary(row)"
             >{{ primaryActionLabel }}</el-button>
+            <el-button
+              v-if="favOn && !isGuest"
+              size="small"
+              :type="favIds.includes(row.id) ? 'warning' : 'default'"
+              @click="toggleFav(row)"
+            >{{ favIds.includes(row.id) ? '已收藏' : '收藏' }}</el-button>
           </div>
         </div>
       </article>
@@ -105,7 +133,14 @@
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
-        <img v-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
+        <div v-if="galleryUrls.length" class="gallery">
+          <el-carousel height="220px" indicator-position="outside">
+            <el-carousel-item v-for="(u, i) in galleryUrls" :key="i">
+              <img :src="u" class="detail-cover" alt="" />
+            </el-carousel-item>
+          </el-carousel>
+        </div>
+        <img v-else-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
         <p
           v-for="f in cardDetailFields"
@@ -227,7 +262,19 @@ import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, formatArchiveScalar, hasTrait, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import {
+  archiveCopy,
+  formatArchiveScalar,
+  hasTrait,
+  getSchema,
+  isBrowseHistoryEnabled,
+  isGalleryEnabled,
+  isSearchAssistEnabled,
+  menuLabel,
+  searchHotKeywords,
+  ticketCopy,
+  ticketDueLabel,
+} from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import {
   guestTeaserLimit,
@@ -326,7 +373,20 @@ const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt')
 const hasRecommend = computed(() => caps.value.includes('recommend'))
 const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
 const isSlotMode = computed(() => caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
+const favOn = computed(() => caps.value.includes('favorites') && isOrderMode.value)
+const favIds = ref([])
+const searchAssist = computed(() => isSearchAssistEnabled())
+const hotKeywords = computed(() => searchHotKeywords())
+const galleryOn = computed(() => isGalleryEnabled())
+const browseOn = computed(() => isBrowseHistoryEnabled())
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
+const galleryUrls = computed(() => {
+  if (!detail.value) return []
+  const g = detail.value.galleryImages
+  if (galleryOn.value && Array.isArray(g) && g.length) return g
+  if (detail.value.coverUrl) return [detail.value.coverUrl]
+  return []
+})
 const resvVerb = computed(() => getSchema()?.entities?.reservation?.verbs?.apply || '预约')
 const primaryActionLabel = computed(() => {
   if (isOrderMode.value) return `加入${cartLabel.value}`
@@ -428,9 +488,44 @@ const applyChannel = ref('')
 const applyNextFollow = ref('')
 const applyLoading = ref(false)
 
-function openDetail(row) {
+async function openDetail(row) {
   detail.value = row
   detailVisible.value = true
+  if (!row?.id) return
+  try {
+    const res = await http.get(`/api/archive/${row.id}`)
+    if (res.data) detail.value = { ...row, ...res.data }
+  } catch { /* keep list row */ }
+  if (browseOn.value && isLoggedIn()) {
+    try {
+      await http.post(`/api/browse-history/${row.id}`)
+    } catch { /* ignore */ }
+  }
+}
+
+async function fetchSuggest(query, cb) {
+  const q = String(query || '').trim()
+  if (!q) {
+    cb([])
+    return
+  }
+  try {
+    const res = await http.get('/api/archive/suggest', { params: { q, limit: 8 } })
+    const list = Array.isArray(res.data) ? res.data : []
+    cb(list.map((x) => ({ value: x.title || x.value, id: x.id })))
+  } catch {
+    cb([])
+  }
+}
+
+function onSuggestSelect(item) {
+  keyword.value = item?.value || ''
+  load()
+}
+
+function applyHot(w) {
+  keyword.value = String(w || '')
+  load()
 }
 
 async function onAttach(opt) {
@@ -469,6 +564,32 @@ async function load() {
   })
   list.value = res.data.list
   total.value = res.data.total
+}
+
+async function loadFavIds() {
+  if (!favOn.value || isGuest.value) {
+    favIds.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/favorites/ids')
+    favIds.value = (res.data?.ids || []).map(Number)
+  } catch {
+    favIds.value = []
+  }
+}
+
+async function toggleFav(row) {
+  if (!requireLogin(router)) return
+  const res = await http.post(`/api/favorites/${row.id}/toggle`)
+  const on = !!res.data?.favorited
+  if (on) {
+    if (!favIds.value.includes(row.id)) favIds.value = [...favIds.value, row.id]
+    ElMessage.success('已收藏')
+  } else {
+    favIds.value = favIds.value.filter((x) => x !== row.id)
+    ElMessage.success('已取消收藏')
+  }
 }
 
 async function onPrimary(row) {
@@ -586,6 +707,7 @@ onMounted(async () => {
   await loadCats()
   await loadTags()
   await load()
+  await loadFavIds()
 })
 </script>
 
@@ -594,15 +716,32 @@ onMounted(async () => {
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: #64748b; font-size: 13px; }
 .search { display: flex; gap: 10px; flex-wrap: wrap; }
+.hot { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hot-lab { font-size: 12px; color: #94a3b8; }
+.hot-chip {
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: var(--portal-surface, #fff);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+.hot-chip:hover { border-color: var(--el-color-primary); color: var(--el-color-primary); }
+.gallery { margin-bottom: 12px; }
+.gallery .detail-cover { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
 }
 .card {
-  display: flex; gap: 14px; padding: 16px; background: #fff;
-  border: 1px solid #e2e8f0; border-radius: 12px;
+  display: flex; gap: 14px; padding: var(--portal-pad, 16px);
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
 }
 .cover {
-  width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0;
+  width: 48px; height: 48px; border-radius: var(--portal-radius-sm, 10px); flex-shrink: 0;
   display: grid; place-items: center; font-weight: 700; color: #0369a1;
   background: #e0f2fe; overflow: hidden;
 }
@@ -622,7 +761,8 @@ onMounted(async () => {
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .sub { margin: 0 0 16px; color: #64748b; font-size: 13px; }
 .detail-cover {
-  width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px;
+  width: 100%; max-height: 220px; object-fit: cover;
+  border-radius: var(--portal-radius, 10px);
   margin-bottom: 12px; background: #e0f2fe;
 }
 .drawer-acts { margin-top: 24px; }

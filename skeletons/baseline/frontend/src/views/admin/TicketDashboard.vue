@@ -28,8 +28,8 @@
       </template>
       <template v-else-if="caps.includes('slot_reserve') && !caps.includes('ticket_flow')">
         <div class="todo-row">
-          <span>已确认{{ reservationLabel }} {{ data.confirmedReservations || 0 }}</span>
-          <el-button type="primary" link @click="$router.push('/admin/reservations')">看{{ reservationLabel }}</el-button>
+          <span>待办结{{ reservationLabel }} {{ data.confirmedReservations || 0 }}</span>
+          <el-button type="primary" link @click="$router.push('/admin/reservations')">去办结</el-button>
         </div>
       </template>
       <template v-else>
@@ -107,6 +107,7 @@ const cards = computed(() => {
     list.push(
       { key: 'rp', label: `待确认${reservationLabel.value}`, value: data.value.pendingReservations ?? '—' },
       { key: 'rc', label: `已确认${reservationLabel.value}`, value: data.value.confirmedReservations ?? '—' },
+      { key: 'rd', label: `已办结${reservationLabel.value}`, value: data.value.completedReservations ?? '—' },
     )
   } else {
     list.push(
@@ -172,9 +173,10 @@ onMounted(load)
   margin-bottom: 16px;
 }
 .stat {
-  background: #fff;
-  border: 1px solid #e4eaf0;
-  border-radius: 10px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e4eaf0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
   padding: 14px 12px;
 }
 .stat.clickable {
@@ -182,14 +184,15 @@ onMounted(load)
   transition: border-color 0.15s ease;
 }
 .stat.clickable:hover {
-  border-color: #94a3b8;
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-line, #e4eaf0));
 }
 .num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 .label { margin-top: 4px; font-size: 12px; color: #8a9aa6; }
 .card {
-  background: #fff;
-  border: 1px solid #e4eaf0;
-  border-radius: 10px;
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e4eaf0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
   padding: 16px;
 }
 .card h3 { margin: 0 0 12px; font-size: 15px; }
