@@ -2,14 +2,44 @@
   <div class="er-viewer" :class="{ 'is-dark': isDark }">
     <div class="er-toolbar row mb-12">
       <div class="er-zoom-btns row">
+        <n-radio-group v-model:value="modeLocal" size="small" @update:value="onModeChange">
+          <n-radio-button value="total">总图</n-radio-button>
+          <n-radio-button value="part">分图</n-radio-button>
+        </n-radio-group>
+        <n-select
+          v-if="modeLocal === 'part'"
+          v-model:value="entityLocal"
+          size="small"
+          :options="entityOptions"
+          placeholder="选择实体"
+          style="width:140px"
+          @update:value="onEntityChange"
+        />
         <n-button size="small" @click="zoomOut">缩小</n-button>
         <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
         <n-button size="small" @click="$emit('reload')">重置布局</n-button>
-        <n-button size="small" type="primary" @click="download">下载 SVG</n-button>
+        <n-select
+          v-model:value="strokePreset"
+          size="small"
+          :options="strokeOptions"
+          :consistent-menu-width="false"
+          style="width:148px"
+          @update:value="applyStrokePreset"
+        />
+        <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
+        <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
+        <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
       </div>
     </div>
+    <p class="small muted er-hint mb-8">
+      {{
+        modeLocal === 'total'
+          ? '总图：实体 + 联系 + 基数（不含属性）'
+          : '分图：单个实体 + 全部属性（按实体各导出一张）'
+      }}
+    </p>
     <div
       ref="frameRef"
       class="er-frame"
@@ -28,15 +58,32 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import { message } from '../api'
 import { isDark } from '../theme'
 
 const props = defineProps({
   /** 后端初始 SVG（可含 xml 声明） */
   svgSource: { type: String, default: '' },
-  downloadName: { type: String, default: 'er.svg' },
+  /** 下载文件名（可带 .svg/.png，导出时自动换扩展名） */
+  downloadName: { type: String, default: 'er' },
+  /** total | part */
+  mode: { type: String, default: 'total' },
+  /** 分图实体表名 */
+  entity: { type: String, default: '' },
+  /** [{ value, label }] */
+  entityOptions: { type: Array, default: () => [] },
 })
 
-defineEmits(['reload'])
+const emit = defineEmits(['reload', 'update:mode', 'update:entity'])
+
+const PNG_SCALE = 2.5
+
+const strokeOptions = [
+  { label: '线宽 · 细', value: 'thin' },
+  { label: '线宽 · 标准', value: 'normal' },
+  { label: '线宽 · 粗', value: 'thick' },
+]
+const STROKE_SCALE = { thin: 0.75, normal: 1, thick: 1.5 }
 
 const frameRef = ref(null)
 const svgHtml = ref('')
@@ -45,6 +92,10 @@ const panX = ref(0)
 const panY = ref(0)
 const panning = ref(false)
 const dragNode = ref(null)
+const strokePreset = ref('normal')
+const busy = ref(false)
+const modeLocal = ref(props.mode === 'part' ? 'part' : 'total')
+const entityLocal = ref(props.entity || '')
 
 /** nodeId -> { dx, dy } 相对初始坐标的位移 */
 const offsets = new Map()
@@ -64,6 +115,30 @@ const canvasStyle = computed(() => ({
   transform: `translate(${panX.value}px, ${panY.value}px) scale(${scale.value})`,
   transformOrigin: '0 0',
 }))
+
+const fileBase = computed(() =>
+  String(props.downloadName || 'er').replace(/\.(svg|png)$/i, '') || 'er',
+)
+
+watch(
+  () => props.mode,
+  (v) => {
+    modeLocal.value = v === 'part' ? 'part' : 'total'
+  },
+)
+watch(
+  () => props.entity,
+  (v) => {
+    entityLocal.value = v || ''
+  },
+)
+
+function onModeChange(v) {
+  emit('update:mode', v)
+}
+function onEntityChange(v) {
+  emit('update:entity', v || '')
+}
 
 function clampScale(s) {
   return Math.min(SCALE_MAX, Math.max(SCALE_MIN, s))
@@ -89,6 +164,26 @@ function applyOffsetsToDom() {
   refreshAllEdges(svg)
 }
 
+function snapshotBaseStrokes(svg) {
+  svg.querySelectorAll('[stroke-width]').forEach((el) => {
+    if (!el.hasAttribute('data-base-sw')) {
+      el.setAttribute('data-base-sw', el.getAttribute('stroke-width') || '1')
+    }
+  })
+}
+
+function applyStrokePreset() {
+  const svg = getSvg()
+  if (!svg) return
+  snapshotBaseStrokes(svg)
+  const mul = STROKE_SCALE[strokePreset.value] ?? 1
+  svg.querySelectorAll('[data-base-sw]').forEach((el) => {
+    const base = Number(el.getAttribute('data-base-sw')) || 1
+    const next = Math.round(base * mul * 100) / 100
+    el.setAttribute('stroke-width', String(next))
+  })
+}
+
 function loadSource(raw) {
   offsets.clear()
   dragNode.value = null
@@ -102,7 +197,7 @@ function loadSource(raw) {
       g.style.pointerEvents = 'all'
     })
     // 连线不抢事件，便于点到节点
-    svg.querySelectorAll('.er-edge, .er-card, .er-title, .er-legend').forEach((el) => {
+    svg.querySelectorAll('.er-edge, .er-card').forEach((el) => {
       el.style.pointerEvents = 'none'
     })
     const bg = svg.querySelector('rect')
@@ -110,15 +205,14 @@ function loadSource(raw) {
       bg.classList.add('er-bg-hit', 'er-paper')
       bg.style.pointerEvents = 'none'
     }
+    applyStrokePreset()
+    fitToFrame()
   })
 }
 
 watch(
   () => props.svgSource,
   (v) => {
-    scale.value = 1
-    panX.value = 0
-    panY.value = 0
     loadSource(v)
   },
   { immediate: true },
@@ -232,6 +326,113 @@ function setNodeTransform(g, id) {
   else g.removeAttribute('transform')
 }
 
+const CANVAS_PAD = 48
+const CANVAS_MAX_W = 2200
+const CANVAS_MAX_H = 1600
+
+function nodeExtent(g) {
+  const c = nodeCenter(g)
+  const shape = g.getAttribute('data-shape') || 'rect'
+  let hw = 40
+  let hh = 22
+  if (shape === 'ellipse') {
+    hw = Number(g.getAttribute('data-rx')) || 28
+    hh = Number(g.getAttribute('data-ry')) || 14
+  } else {
+    hw = Number(g.getAttribute('data-hw')) || 40
+    hh = Number(g.getAttribute('data-hh')) || 22
+  }
+  return { minX: c.x - hw, maxX: c.x + hw, minY: c.y - hh, maxY: c.y + hh }
+}
+
+function clampNodesToCanvas(svg, w, h) {
+  const xMax = w - CANVAS_PAD
+  const yMax = h - CANVAS_PAD
+  let changed = false
+  svg.querySelectorAll('.er-node').forEach((g) => {
+    const e = nodeExtent(g)
+    let ddx = 0
+    let ddy = 0
+    if (e.minX < CANVAS_PAD) ddx = CANVAS_PAD - e.minX
+    else if (e.maxX > xMax) ddx = xMax - e.maxX
+    if (e.minY < CANVAS_PAD) ddy = CANVAS_PAD - e.minY
+    else if (e.maxY > yMax) ddy = yMax - e.maxY
+    if (!ddx && !ddy) return
+    const id = g.getAttribute('data-id')
+    bumpOffset(id, ddx, ddy)
+    setNodeTransform(g, id)
+    changed = true
+  })
+  if (changed) refreshAllEdges(svg)
+}
+
+/** 四向扩画布，但有上限；到顶后卡住，不再无限变大 */
+function expandCanvasToFit(svg) {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  svg.querySelectorAll('.er-node').forEach((g) => {
+    const e = nodeExtent(g)
+    minX = Math.min(minX, e.minX)
+    maxX = Math.max(maxX, e.maxX)
+    minY = Math.min(minY, e.minY)
+    maxY = Math.max(maxY, e.maxY)
+  })
+  if (!Number.isFinite(minX)) return
+
+  let shiftX = 0
+  let shiftY = 0
+  if (minX < CANVAS_PAD) {
+    const want = CANVAS_PAD - minX
+    if (maxX + want + CANVAS_PAD <= CANVAS_MAX_W) shiftX = want
+  }
+  if (minY < CANVAS_PAD) {
+    const want = CANVAS_PAD - minY
+    if (maxY + want + CANVAS_PAD <= CANVAS_MAX_H) shiftY = want
+  }
+
+  if (shiftX || shiftY) {
+    svg.querySelectorAll('.er-node').forEach((g) => {
+      const id = g.getAttribute('data-id')
+      bumpOffset(id, shiftX, shiftY)
+      setNodeTransform(g, id)
+    })
+    maxX += shiftX
+    maxY += shiftY
+    refreshAllEdges(svg)
+  }
+
+  const { w, h } = svgSize(svg)
+  const nw = Math.min(Math.max(Math.ceil(maxX + CANVAS_PAD), w), CANVAS_MAX_W)
+  const nh = Math.min(Math.max(Math.ceil(maxY + CANVAS_PAD), h), CANVAS_MAX_H)
+  if (nw !== w || nh !== h) {
+    svg.setAttribute('width', String(nw))
+    svg.setAttribute('height', String(nh))
+    svg.setAttribute('viewBox', `0 0 ${nw} ${nh}`)
+  }
+  clampNodesToCanvas(svg, nw, nh)
+}
+
+/** 拖到预览窗口边缘时跟手平移（右/下也适用，不只是左上） */
+function autoPanWhileDrag(clientX, clientY) {
+  const frame = frameRef.value
+  if (!frame) return
+  const rect = frame.getBoundingClientRect()
+  const margin = 36
+  const step = 14
+  let dx = 0
+  let dy = 0
+  if (clientX <= rect.left + margin) dx = step
+  else if (clientX >= rect.right - margin) dx = -step
+  if (clientY <= rect.top + margin) dy = step
+  else if (clientY >= rect.bottom - margin) dy = -step
+  if (dx || dy) {
+    panX.value += dx
+    panY.value += dy
+  }
+}
+
 function findNode(target) {
   if (!target) return null
   if (typeof target.closest === 'function') return target.closest('.er-node')
@@ -285,7 +486,11 @@ function onPointerMove(e) {
       setNodeTransform(g, fid)
     }
     const svg = getSvg()
-    if (svg) refreshAllEdges(svg)
+    if (svg) {
+      refreshAllEdges(svg)
+      expandCanvasToFit(svg)
+    }
+    autoPanWhileDrag(e.clientX, e.clientY)
     return
   }
   if (!panning.value) return
@@ -300,6 +505,8 @@ function onPointerUp(e) {
     dragNode.value.classList.remove('er-node-active')
     dragNode.value = null
     dragFollowers = []
+    const svg = getSvg()
+    if (svg) expandCanvasToFit(svg)
   }
   panning.value = false
   try {
@@ -334,37 +541,154 @@ function zoomOut() {
 }
 
 function resetView() {
-  scale.value = 1
-  panX.value = 0
-  panY.value = 0
+  fitToFrame()
+}
+
+function fitToFrame() {
+  const frame = frameRef.value
+  const svg = getSvg()
+  if (!frame || !svg) {
+    scale.value = 1
+    panX.value = 0
+    panY.value = 0
+    return
+  }
+  const { w, h } = svgSize(svg)
+  const fw = frame.clientWidth || 1
+  const fh = frame.clientHeight || 1
+  const next = clampScale(Math.min(fw / w, fh / h) * 0.92)
+  scale.value = next
+  panX.value = (fw - w * next) / 2
+  panY.value = (fh - h * next) / 2
 }
 
 function serializeSvg() {
   const svg = getSvg()
   if (!svg) return ''
   applyOffsetsToDom()
+  applyStrokePreset()
   const clone = svg.cloneNode(true)
   clone.querySelectorAll('.er-node-active').forEach((el) => el.classList.remove('er-node-active'))
   clone.querySelectorAll('[style]').forEach((el) => el.removeAttribute('style'))
-  // bake transforms into data-cx/cy for a cleaner export? keep transform is fine for SVG viewers
+  clone.querySelectorAll('[data-base-sw]').forEach((el) => el.removeAttribute('data-base-sw'))
+  // 导出白底（预览里纸面透明，避免夜间一大块黑底）
+  const paper = clone.querySelector('.er-paper')
+  if (paper) paper.setAttribute('fill', '#ffffff')
   const xml = new XMLSerializer().serializeToString(clone)
   if (xml.startsWith('<?xml')) return xml
   return `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`
 }
 
-function download() {
+function svgSize(svg) {
+  const vb = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number)
+  let w = Number(svg.getAttribute('width')) || 0
+  let h = Number(svg.getAttribute('height')) || 0
+  if ((!w || !h) && vb.length === 4) {
+    w = vb[2]
+    h = vb[3]
+  }
+  return { w: w || 800, h: h || 600 }
+}
+
+function rasterizePng(pixelRatio = PNG_SCALE) {
   const xml = serializeSvg()
-  if (!xml) return
+  if (!xml) return Promise.reject(new Error('empty svg'))
+  const svg = getSvg()
+  const { w, h } = svgSize(svg)
   const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(w * pixelRatio))
+        canvas.height = Math.max(1, Math.round(h * pixelRatio))
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+        ctx.drawImage(img, 0, 0, w, h)
+        canvas.toBlob(
+          (png) => {
+            URL.revokeObjectURL(url)
+            if (!png) reject(new Error('toBlob failed'))
+            else resolve(png)
+          },
+          'image/png',
+        )
+      } catch (err) {
+        URL.revokeObjectURL(url)
+        reject(err)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('svg load failed'))
+    }
+    img.src = url
+  })
+}
+
+function triggerDownload(blob, name) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = props.downloadName
+  a.download = name
   a.click()
   URL.revokeObjectURL(url)
 }
 
-defineExpose({ serializeSvg, download, resetView })
+function downloadSvg() {
+  const xml = serializeSvg()
+  if (!xml) {
+    message.error('无法导出矢量图')
+    return
+  }
+  triggerDownload(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
+}
+
+async function downloadPng() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const png = await rasterizePng()
+    triggerDownload(png, `${fileBase.value}.png`)
+    message.success('已下载 PNG，可直接插入 Word')
+  } catch {
+    message.error('导出 PNG 失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function copyPng() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const png = await rasterizePng()
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      triggerDownload(png, `${fileBase.value}.png`)
+      message.warning('当前环境不支持复制图片，已改为下载 PNG')
+      return
+    }
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': Promise.resolve(png) }),
+      ])
+      message.success('已复制图片，可在 Word 中粘贴')
+    } catch {
+      triggerDownload(png, `${fileBase.value}.png`)
+      message.warning('复制失败，已改为下载 PNG')
+    }
+  } catch {
+    message.error('复制图片失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 </script>
 
 <style scoped>
@@ -383,6 +707,9 @@ defineExpose({ serializeSvg, download, resetView })
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--muted);
+}
+.er-hint {
+  margin: 0;
 }
 .er-frame {
   height: 72vh;
@@ -408,6 +735,11 @@ defineExpose({ serializeSvg, download, resetView })
   display: block;
   max-width: none;
   height: auto;
+  overflow: visible;
+}
+/* 预览纸面透明，画布跟着内容走；导出时再填白 */
+.er-canvas :deep(.er-paper) {
+  fill: transparent !important;
 }
 .er-canvas :deep(.er-node-active) rect,
 .er-canvas :deep(.er-node-active) ellipse,
@@ -416,7 +748,7 @@ defineExpose({ serializeSvg, download, resetView })
   stroke-width: 2;
 }
 
-/* 夜间：黑白线框图直接反相，避免半套 CSS 盖属性导致浅字白底 */
+/* 夜间：只反相图元，不再出现整页大黑底 */
 .er-viewer.is-dark .er-frame {
   background: #0f161e;
 }

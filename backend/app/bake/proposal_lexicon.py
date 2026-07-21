@@ -20,6 +20,25 @@ OUT_HEAD_RE = re.compile(rf"({NEGATION_TERMS})")
 NEGATION_RE = re.compile(rf"(?:{NEGATION_TERMS})")
 
 
+def keyword_mentioned(text: str, kw: str, *, window: int = 48) -> bool:
+    """正文是否正向提及关键词；同一分句前缀含否定词则不计（匹配 / 超范围扫描共用）。"""
+    if not text or not kw:
+        return False
+    flags = re.IGNORECASE if kw.isascii() else 0
+    for m in re.finditer(re.escape(kw), text, flags):
+        left = max(0, m.start() - window)
+        chunk = text[left : m.start()]
+        for sep in ("。", "；", ";", "！", "!", "？", "?", "\n"):
+            i = chunk.rfind(sep)
+            if i >= 0:
+                chunk = chunk[i + 1 :]
+                break
+        if NEGATION_RE.search(chunk):
+            continue
+        return True
+    return False
+
+
 def dedupe_out_scope_vs_features(
     feature_lines: list[str] | None,
     out_scope_lines: list[str] | None,

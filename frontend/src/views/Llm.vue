@@ -154,6 +154,10 @@
           <n-switch v-model:value="form.island_fill" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
+          <div><strong>E-R 中文补全</strong><div class="small muted">把漏网英文表/列名补成中文展示，不改 SQL</div></div>
+          <n-switch v-model:value="form.er_labels" />
+        </div>
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>编译修复</strong><div class="small muted">构建失败时诊断并重试交付配置</div></div>
           <n-switch v-model:value="form.auto_fix" />
         </div>
@@ -351,6 +355,7 @@ const form = reactive({
   match_recommend: true,
   parse_spec: true,
   island_fill: true,
+  er_labels: true,
   auto_fix: true,
   qa_report: false,
   project_token_budget: 100000,
@@ -412,6 +417,7 @@ const stageOptions = [
   { label: '匹配推荐', value: 'match_recommend' },
   { label: '摘要润色', value: 'parse_spec' },
   { label: '业务配置填充', value: 'island_fill' },
+  { label: 'E-R 中文补全', value: 'er_labels' },
   { label: '编译修复', value: 'auto_fix' },
   { label: '质量摘要', value: 'qa_report' },
   { label: '配置写出', value: 'emit' },
@@ -680,6 +686,7 @@ async function load() {
     form.match_recommend = dsRes.match_recommend !== false
     form.parse_spec = dsRes.parse_spec
     form.island_fill = dsRes.island_fill
+    form.er_labels = dsRes.er_labels !== false
     form.auto_fix = dsRes.auto_fix
     form.qa_report = dsRes.qa_report
     form.project_token_budget = dsRes.project_token_budget
@@ -708,6 +715,7 @@ async function save() {
         match_recommend: form.match_recommend,
         parse_spec: form.parse_spec,
         island_fill: form.island_fill,
+        er_labels: form.er_labels,
         auto_fix: form.auto_fix,
         qa_report: form.qa_report,
         project_token_budget: form.project_token_budget,
@@ -723,6 +731,7 @@ async function save() {
         match_recommend: form.match_recommend,
         parse_spec: form.parse_spec,
         island_fill: form.island_fill,
+        er_labels: form.er_labels,
         auto_fix: form.auto_fix,
         qa_report: form.qa_report,
         project_token_budget: form.project_token_budget,

@@ -69,18 +69,16 @@ def build_domain_schema(
     from app.bake.staff_posts import attach_staff_posts
 
     if domain == "DOM-GENERIC":
-        from app.bake.archetype_shells import build_generic_shell_schema
+        from app.bake.archetype_shells import finalize_generic_schema
 
-        schema = build_generic_shell_schema(title, archetype, archetypes=archetypes)
-        schema = attach_profile_fields(schema, domain)
-        return attach_staff_posts(schema, domain, archetype)
+        return finalize_generic_schema(title, archetype, archetypes)
     builder = SCHEMA_BUILDERS.get(domain, lambda t: generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
         schema = builder(title)
     else:
         schema = generic_schema(title, domain)
     schema = attach_profile_fields(schema, domain)
-    return attach_staff_posts(schema, domain, archetype)
+    return attach_staff_posts(schema, domain, archetype, archetypes)
 
 
 def required_capabilities(
@@ -142,7 +140,7 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
     archetype = spec.get("archetype") or "ARCH-CRUD"
     title = spec.get("title") or "毕设系统"
     _merge_baseline_tags(spec)
-    # GENERIC：按 ARCH-* 重绑壳（runtime/gate/features/capabilities/schema）
+    # GENERIC：按 ARCH-* 重绑壳（runtime/gate/features/capabilities/schema/岗位）
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
@@ -151,20 +149,20 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
     else:
         dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
         _sync_named_domain_from_catalog(spec, dom)
-    arches = list(spec.get("archetypes") or [archetype])
-    if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
-        spec["schema"] = build_domain_schema(
-            title, domain, archetype=archetype, archetypes=arches
-        )
-    else:
-        if not (spec["schema"].get("profileFields")):
-            spec["schema"] = attach_profile_fields(spec["schema"], domain)
-        # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
-        from app.bake.staff_posts import attach_staff_posts
+        arches = list(spec.get("archetypes") or [archetype])
+        if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
+            spec["schema"] = build_domain_schema(
+                title, domain, archetype=archetype, archetypes=arches
+            )
+        else:
+            if not (spec["schema"].get("profileFields")):
+                spec["schema"] = attach_profile_fields(spec["schema"], domain)
+            # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
+            from app.bake.staff_posts import attach_staff_posts
 
-        spec["schema"] = attach_staff_posts(
-            dict(spec["schema"]), domain, archetype
-        )
+            spec["schema"] = attach_staff_posts(
+                dict(spec["schema"]), domain, archetype, arches
+            )
     if not spec.get("accept"):
         proposal_text = ""
         prop = spec.get("proposal")

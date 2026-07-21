@@ -3,12 +3,15 @@ package com.thesis.controller;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.config.UploadStorage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 @RestController
@@ -55,8 +58,7 @@ public class CommonController {
     @PostMapping("/upload")
     public R<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "文件为空");
-        Path dir = Paths.get("uploads");
-        Files.createDirectories(dir);
+        Path dir = UploadStorage.root();
         String name = System.currentTimeMillis() + "_" + Objects.requireNonNull(file.getOriginalFilename());
         Path dest = dir.resolve(name);
         Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);

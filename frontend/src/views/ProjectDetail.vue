@@ -412,7 +412,6 @@
                         <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
                       </label>
                       <n-button size="small" :disabled="!schema?.tables?.length" @click="openEr">E-R 图</n-button>
-                      <n-button size="small" secondary :disabled="!schema?.tables?.length" @click="downloadEr">下载 SVG</n-button>
                     </div>
                   </div>
                   <div class="small muted">数据表结构 · 建议 6～13 张表</div>
@@ -631,9 +630,13 @@
       <ErDiagramViewer
         v-if="showEr"
         :key="erLayoutKey"
-        ref="erViewerRef"
         :svg-source="erSvgSource"
-        :download-name="`${p?.id || 'er'}-er.svg`"
+        :download-name="erDownloadBase"
+        :mode="erMode"
+        :entity="erEntity"
+        :entity-options="erEntityOptions"
+        @update:mode="onErMode"
+        @update:entity="onErEntity"
         @reload="reloadErSvg"
       />
     </n-modal>
@@ -744,8 +747,9 @@ const apiQuery = ref('')
 const apiSurface = ref('all')
 const collapsedApis = ref({})
 const erSvgSource = ref('')
-const erViewerRef = ref(null)
 const erLayoutKey = ref(0)
+const erMode = ref('total')
+const erEntity = ref('')
 let pollTimer = null
 
 const planSteps = [
@@ -1219,13 +1223,36 @@ const apiCopyText = computed(() => {
 
 async function fetchErSvg() {
   if (!p.value) return ''
-  const res = await fetch(`${api.erSvgUrl(p.value.id)}?t=${Date.now()}`)
+  const params = { mode: erMode.value }
+  if (erMode.value === 'part' && erEntity.value) params.entity = erEntity.value
+  const res = await fetch(`${api.erSvgUrl(p.value.id, params)}&t=${Date.now()}`)
   if (!res.ok) throw new Error('er svg')
   return await res.text()
 }
 
+const erEntityOptions = computed(() =>
+  (schema.value?.tables || []).map((t) => ({
+    value: t.name,
+    label: t.label && t.label !== t.name ? `${t.label}（${t.name}）` : t.name,
+  })),
+)
+
+const erDownloadBase = computed(() => {
+  const id = p.value?.id || 'er'
+  if (erMode.value === 'part') {
+    const ent = erEntity.value || 'entity'
+    const lab = (schema.value?.tables || []).find((t) => t.name === ent)?.label
+    const tag = lab && lab !== ent ? lab : ent
+    return `${id}-er-分图-${tag}`
+  }
+  return `${id}-er-总图`
+})
+
 async function openEr() {
   if (!p.value) return
+  if (!erEntity.value && schema.value?.tables?.length) {
+    erEntity.value = schema.value.tables[0].name
+  }
   try {
     erSvgSource.value = await fetchErSvg()
     erLayoutKey.value += 1
@@ -1245,23 +1272,17 @@ async function reloadErSvg() {
   }
 }
 
-function downloadEr() {
-  if (!p.value) return
-  const xml = erViewerRef.value?.serializeSvg?.()
-  if (xml) {
-    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${p.value.id}-er.svg`
-    a.click()
-    URL.revokeObjectURL(url)
-    return
+async function onErMode(v) {
+  erMode.value = v === 'part' ? 'part' : 'total'
+  if (erMode.value === 'part' && !erEntity.value && schema.value?.tables?.length) {
+    erEntity.value = schema.value.tables[0].name
   }
-  const a = document.createElement('a')
-  a.href = `${api.erSvgUrl(p.value.id)}?t=${Date.now()}`
-  a.download = `${p.value.id}-er.svg`
-  a.click()
+  await reloadErSvg()
+}
+
+async function onErEntity(v) {
+  erEntity.value = v || ''
+  if (erMode.value === 'part') await reloadErSvg()
 }
 
 async function refreshJob({ silent = false } = {}) {

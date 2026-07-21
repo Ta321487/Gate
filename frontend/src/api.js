@@ -46,7 +46,11 @@ export const api = {
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
   getApis: (id) => http.get(`/projects/${id}/apis`),
-  erSvgUrl: (id) => `/api/projects/${id}/schema/er.svg`,
+  erSvgUrl: (id, { mode = 'total', entity } = {}) => {
+    const q = new URLSearchParams({ mode })
+    if (entity) q.set('entity', entity)
+    return `/api/projects/${id}/schema/er.svg?${q}`
+  },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),
   logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),

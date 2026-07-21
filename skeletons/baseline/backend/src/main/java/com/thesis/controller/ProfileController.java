@@ -4,6 +4,7 @@ import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.PasswordHashes;
 import com.thesis.common.R;
+import com.thesis.config.UploadStorage;
 import com.thesis.service.ProfileFields;
 import com.thesis.service.UserStore;
 import jakarta.servlet.http.HttpSession;
@@ -11,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -99,8 +102,7 @@ public class ProfileController {
         if (!contentType.startsWith("image/")) {
             throw new BizException(ErrorCode.BAD_REQUEST, "仅支持图片");
         }
-        Path dir = Paths.get("uploads", "avatars");
-        Files.createDirectories(dir);
+        Path dir = UploadStorage.avatars();
         String name = p.username + "_" + System.currentTimeMillis() + "_" + Objects.requireNonNull(file.getOriginalFilename());
         Path dest = dir.resolve(name);
         Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);

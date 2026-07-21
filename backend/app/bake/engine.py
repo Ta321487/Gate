@@ -147,7 +147,7 @@ def domain_sql(
             "ticket_table"
         )
     text = ensure_ticket_progress_sql(text, resolved_ticket)
-    text = append_staff_seed_sql(text, domain, archetype)
+    text = append_staff_seed_sql(text, domain, archetype, archetypes)
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)
@@ -335,7 +335,11 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
 
     appoint_ok = roles.get("allowAppointFromUsers")
     if appoint_ok is None:
-        appoint_ok = _allow_appoint(domain, spec.get("archetype"))
+        appoint_ok = _allow_appoint(
+            domain,
+            spec.get("archetype"),
+            spec.get("archetypes") if isinstance(spec.get("archetypes"), list) else None,
+        )
     lines.append(
         "  # 是否允许把门户业务用户任命为岗位（挂号等域关闭，岗靠种子账号）"
     )

@@ -314,7 +314,12 @@ async def get_apis(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{project_id}/schema/er.svg", summary="下载 E-R 图 SVG")
-async def download_er_svg(project_id: str, db: AsyncSession = Depends(get_db)):
+async def download_er_svg(
+    project_id: str,
+    mode: str = Query("total", description="total=总图 part=分图"),
+    entity: str | None = Query(None, description="分图实体表名"),
+    db: AsyncSession = Depends(get_db),
+):
     from fastapi.responses import Response
 
     from app.bake.schema_er import load_schema_model, render_er_svg
@@ -327,13 +332,21 @@ async def download_er_svg(project_id: str, db: AsyncSession = Depends(get_db)):
     model = load_schema_model(Path(p.workspace_path))
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
-    svg = render_er_svg(model, title=f"实体联系图 · {p.db_name or project_id}")
+    m = (mode or "total").strip().lower()
+    if m not in ("total", "part"):
+        m = "total"
+    ent = (entity or "").strip() or None
+    if m == "part" and not ent:
+        tables = model.get("tables") or []
+        ent = str((tables[0] or {}).get("name") or "") if tables else None
+    svg = render_er_svg(model, mode=m, entity=ent)
+    suffix = f"part-{(ent or 'entity')}" if m == "part" else "total"
     return Response(
         content=svg.encode("utf-8"),
         media_type="image/svg+xml; charset=utf-8",
         headers={
             "Cache-Control": "no-store",
-            "Content-Disposition": f'inline; filename="{project_id}-er.svg"',
+            "Content-Disposition": f'inline; filename="{project_id}-er-{suffix}.svg"',
         },
     )
 

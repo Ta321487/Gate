@@ -260,13 +260,14 @@ _ARCHETYPE_TIE_PRIORITY = ARCH_PATH_ORDER
 
 
 def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]]:
-    lower = text.lower()
+    from app.bake.proposal_lexicon import keyword_mentioned
+
     scored: list[tuple[str, int, list[str]]] = []
     for key, meta in catalog.items():
         score = 0
         local_hits: list[str] = []
         for kw in meta.get("keywords", []):
-            if kw.lower() in lower or kw in text:
+            if keyword_mentioned(text, kw):
                 score += 1
                 local_hits.append(kw)
         if score > 0:
@@ -500,54 +501,6 @@ def normalize_password_hash(mode: str | None) -> str:
     return m if m in PASSWORD_HASH_MODES else "none"
 
 
-# schema.roles 里的非角色键（布尔开关 / 岗位表），不得进 Spec「角色」列表
-_ROLE_META_KEYS = frozenset({"staff_posts", "allowAppointFromUsers"})
-# 领域清单里的门户角色别名：与 schema.roles.user 同槽，禁止并列进 Spec（否则 reader+user（读者））
-_PORTAL_ROLE_ALIASES = frozenset({"reader", "student", "patient", "buyer"})
-
-
-def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
-    """以 schema.roles 的 user/admin 为准；展开 staff_posts；去掉与 user 重复的门户别名。
-
-    单域 LIBRARY 也曾出现 reader + user（读者）：domain 写 reader、schema 键是 user（id 仍可为 reader）。
-    """
-    schema_roles = schema.get("roles") if isinstance(schema, dict) else None
-    keys = list(schema_roles.keys()) if isinstance(schema_roles, dict) else []
-    posts = schema_roles.get("staff_posts") if isinstance(schema_roles, dict) else None
-    posts_declared = isinstance(posts, list)
-    has_user_slot = isinstance(schema_roles, dict) and isinstance(schema_roles.get("user"), dict)
-    out: list[str] = []
-    for r in domain_roles or []:
-        if not r:
-            continue
-        if posts_declared and str(r) == "subadmin":
-            continue
-        if has_user_slot and str(r) in _PORTAL_ROLE_ALIASES:
-            continue
-        if str(r) not in out:
-            out.append(str(r))
-    if posts_declared:
-        for p in posts:
-            if isinstance(p, dict) and p.get("id"):
-                pid = str(p["id"])
-                if pid not in out:
-                    out.append(pid)
-    for r in keys:
-        if r in _ROLE_META_KEYS or r == "subadmin":
-            continue
-        # 只收角色对象；跳过布尔开关等误挂在 roles 下的配置
-        val = schema_roles.get(r) if isinstance(schema_roles, dict) else None
-        if not isinstance(val, dict):
-            continue
-        if r and r not in out:
-            out.append(str(r))
-    # 未挂 staff_posts 的旧 schema：保留 subadmin 键
-    if not posts_declared and isinstance(schema_roles, dict) and "subadmin" in schema_roles:
-        if "subadmin" not in out:
-            out.append("subadmin")
-    return out or ["user", "admin"]
-
-
 def build_spec(
     title: str,
     archetype: str,
@@ -563,6 +516,7 @@ def build_spec(
     match_meta: dict | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
+    from app.bake.staff_posts import roles_for_spec
 
     dom = DOMAINS.get(domain, DOMAINS["DOM-GENERIC"])
     arch = ARCHETYPES.get(archetype, ARCHETYPES["ARCH-CRUD"])
@@ -573,7 +527,12 @@ def build_spec(
     auth_role_widget = pick_auth_role_widget(f"{seed}|widget")
     chrome = pick_chrome(f"{seed}|chrome")
     arches = list(archetypes or [archetype])
-    schema = build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
+    # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
+    schema = (
+        {}
+        if domain == "DOM-GENERIC"
+        else build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
+    )
     spec = {
         "title": title,
         "archetype": archetype,
@@ -607,7 +566,7 @@ def build_spec(
         "hits": hits or [],
         "match_warnings": match_warnings_from_hits(hits),
         # 角色顺序跟领域清单，文案/补全跟 schema.roles（避免 Spec 漏子管）
-        "roles": _roles_for_spec(dom.get("roles") or [], schema),
+        "roles": roles_for_spec(dom.get("roles") or [], schema),
         "entities": dom["entities"],
         "flows": dom["flows"],
         "baseline": list(BASELINE_TAGS),
