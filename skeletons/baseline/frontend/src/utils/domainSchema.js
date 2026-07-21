@@ -165,11 +165,47 @@ export function ticketProgressStatusLabel(status) {
 }
 
 export function reservationCopy() {
-  return (getSchema().entities || {}).reservation || {}
+  const raw = (getSchema().entities || {}).reservation || {}
+  const label = typeof raw.label === 'string' ? raw.label.trim() : ''
+  // 动作名词勿带「记录」（管理端菜单才用 XX记录）；避免「取消预约记录」
+  if (label.endsWith('记录') && label.length > 2) {
+    return { ...raw, label: label.replace(/记录$/, '') || '预约' }
+  }
+  return raw
 }
 
 export function archiveCopy() {
   return (getSchema().entities || {}).archive || {}
+}
+
+/**
+ * 档案字段是否按金额展示（0 / 0.00 为有效值，空串才是空）。
+ * 由 schema 驱动：type=number 且（format=money / author 存单价 / 文案含元费价格）。
+ */
+export function isArchiveMoneyField(field) {
+  const f = field || {}
+  if (f.format === 'money' || f.money === true) return true
+  if (f.type !== 'number') return false
+  const key = String(f.key || '')
+  const label = String(f.label || '')
+  if (key === 'author') return true
+  return /元|费|价|金额|房价|单价|挂号/.test(label)
+}
+
+/**
+ * 档案标量展示：金额域 0.00 ≠ 空；其它数字 0 ≠ 空；空串/null 才用 empty。
+ */
+export function formatArchiveScalar(field, value, empty = '—') {
+  if (value == null || value === '') return empty
+  const f = field || {}
+  const type = f.type || 'string'
+  if (type === 'number' || isArchiveMoneyField(f)) {
+    const n = Number(String(value).replace(/[¥￥,\s]/g, ''))
+    if (!Number.isFinite(n)) return String(value)
+    if (isArchiveMoneyField(f)) return n.toFixed(2)
+    return String(n)
+  }
+  return String(value)
 }
 
 /**
@@ -208,14 +244,53 @@ export function profileFields() {
   return Array.isArray(list) ? list : []
 }
 
-export function profileFieldsOnRegister() {
-  return profileFields().filter((f) => f && f.onRegister)
+/**
+ * 资料受众：user=终端业务用户；staff=总管/子管/业务岗。
+ * 领域业务字段（就诊卡、车牌等）默认仅 user。
+ */
+export function profileAudienceOf(account) {
+  if (account && typeof account === 'object') {
+    const role = String(account.role || '')
+    if (account.superAdmin || account.staffPost || role === 'admin') return 'staff'
+    const userId = getSchema()?.roles?.user?.id || 'user'
+    if (role === userId || role === 'user' || role === 'patient') return 'user'
+    if (role) return 'staff'
+    return 'user'
+  }
+  const role = localStorage.getItem('role') || ''
+  const staffPost = localStorage.getItem('staffPost') || ''
+  if (role === 'admin' || staffPost) return 'staff'
+  const userId = getSchema()?.roles?.user?.id || 'user'
+  if (role === userId || role === 'user' || role === 'patient') return 'user'
+  return role ? 'staff' : 'user'
 }
 
-/** 管理端表格展示的扩展列（跳过已单独展示的姓名/手机等底座） */
+/** 字段是否对某受众可见（无 forRoles=全员；含 user 仅终端用户） */
+export function profileFieldAllowsAudience(f, audience = 'user') {
+  if (!f) return false
+  const roles = f.forRoles
+  if (!Array.isArray(roles) || roles.length === 0) return true
+  if (roles.includes('*')) return true
+  if (audience === 'staff') {
+    return roles.includes('staff') || roles.includes('admin')
+  }
+  return roles.includes('user') || roles.includes(audience)
+}
+
+export function profileFieldsForAudience(audience = 'user') {
+  return profileFields().filter((f) => profileFieldAllowsAudience(f, audience))
+}
+
+export function profileFieldsOnRegister() {
+  return profileFieldsForAudience('user').filter((f) => f && f.onRegister)
+}
+
+/** 管理端表格展示的扩展列（跳过已单独展示的姓名/手机等底座）；仅终端用户业务列 */
 export function profileAdminColumns(limit = 0) {
   const skip = new Set(['realName', 'phone', 'email', 'gender'])
-  const cols = profileFields().filter((f) => f && f.storage !== 'phone' && !skip.has(f.key))
+  const cols = profileFieldsForAudience('user').filter(
+    (f) => f && f.storage !== 'phone' && !skip.has(f.key),
+  )
   if (limit > 0) return cols.slice(0, limit)
   return cols
 }

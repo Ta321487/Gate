@@ -1,0 +1,198 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users",
+    "recommend"
+  ],
+  "entities": {
+    "archive": {
+      "bodyField": "isbn",
+      "fields": [
+        {
+          "key": "title",
+          "label": "标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "作者",
+          "type": "string"
+        },
+        {
+          "key": "summary",
+          "label": "摘要",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "正文",
+          "type": "richtext"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可阅读",
+          "type": "number"
+        }
+      ],
+      "key": "article",
+      "label": "文章",
+      "labelPlural": "文章",
+      "softDelete": true,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已阅读",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "favorite",
+      "label": "收藏单",
+      "labelPlural": "收藏",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "已收藏",
+        "overdue": "已失效",
+        "pending": "待确认",
+        "rejected": "已驳回",
+        "returned": "已取消"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "收藏",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "取消收藏"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "个人博客",
+    "authLead": "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。",
+    "authPoints": [
+      "验证码登录",
+      "文章检索与阅读",
+      "收藏订阅"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "上新、维护与征稿通知，点击条目阅读全文。",
+    "noticePageTitle": "站点公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可阅读文章并收藏"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "文章管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "收藏确认"
+      },
+      {
+        "key": "ticket_records",
+        "label": "收藏记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "文章检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的收藏"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "技术、随笔、资讯分类浏览富文本正文。",
+      "title": "最新文章"
+    },
+    {
+      "lead": "喜欢的文章一键收藏，方便回看。",
+      "title": "收藏订阅"
+    },
+    {
+      "lead": "上新与征稿通知见公告栏。",
+      "title": "站点公告"
+    },
+    {
+      "lead": "根据阅读偏好推荐文章。",
+      "title": "猜你喜欢"
+    },
+    {
+      "lead": "按分类快速进入感兴趣的专栏。",
+      "title": "分类阅读"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "主编（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "编辑"
+    },
+    "user": {
+      "id": "user",
+      "label": "读者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "文章仅供学习演示；转载请注明出处。内容由主编维护发布。",
+    "noticeTitle": "阅读须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

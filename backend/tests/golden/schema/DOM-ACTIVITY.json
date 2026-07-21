@@ -1,0 +1,226 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users",
+    "time_conflict"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "活动名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "主办方",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "地点",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "剩余名额",
+          "type": "number"
+        },
+        {
+          "key": "checkinCode",
+          "label": "签到码",
+          "type": "string"
+        },
+        {
+          "key": "startAt",
+          "label": "开始时间",
+          "timeStepMinutes": 30,
+          "type": "datetime"
+        },
+        {
+          "key": "endAt",
+          "label": "结束时间",
+          "timeStepMinutes": 30,
+          "type": "datetime"
+        },
+        {
+          "key": "applyDeadlineAt",
+          "label": "报名截止",
+          "timeStepMinutes": 30,
+          "type": "datetime"
+        },
+        {
+          "key": "serviceHours",
+          "label": "志愿时长(小时)",
+          "type": "number"
+        }
+      ],
+      "key": "activity",
+      "label": "活动",
+      "labelPlural": "活动",
+      "softDelete": false,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": true,
+      "allowQty": false,
+      "allowRating": true,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "checkinLabel": "签到",
+      "key": "signup",
+      "label": "报名单",
+      "labelPlural": "报名",
+      "noShowAfterEnd": true,
+      "noShowPenaltyYuan": 0.0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "已报名",
+        "overdue": "爽约",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已取消"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "报名",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "取消报名"
+      },
+      "weekCalendar": true,
+      "weekCalendarLabel": "我的日程"
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "活动报名",
+    "authLead": "验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到；结束未签到记爽约。",
+    "authPoints": [
+      "验证码登录",
+      "活动检索",
+      "报名、冲突检测、口令签到与爽约"
+    ],
+    "messagesPageLead": "审核结果、活动提醒与系统通知。",
+    "noticePageLead": "报名须知、活动变更与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "活动公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可报名校园活动"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "活动管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "报名审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "报名记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "活动检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的报名"
+      },
+      {
+        "key": "week_calendar",
+        "label": "我的日程"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "社团、志愿、讲座分类浏览，在线报名。",
+      "title": "热门活动"
+    },
+    {
+      "lead": "到场向主办方索取签到码完成核验；时段重叠将无法重复报名。",
+      "title": "到场签到"
+    },
+    {
+      "lead": "变更与须知见公告栏。",
+      "title": "活动公告"
+    },
+    {
+      "lead": "登录后查看已报名活动与时段安排。",
+      "title": "我的日程"
+    },
+    {
+      "lead": "志愿类活动可登记服务时长。",
+      "title": "志愿时长"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "活动主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "活动助理"
+    },
+    "user": {
+      "id": "user",
+      "label": "报名者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码；活动结束后未签到将记为爽约。",
+    "noticeTitle": "报名须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

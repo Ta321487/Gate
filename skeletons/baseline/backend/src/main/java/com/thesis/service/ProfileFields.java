@@ -39,10 +39,17 @@ public final class ProfileFields {
         }
     }
 
-    /** 校验必填 + 手机/邮箱格式（含条件必填）。 */
+    /** 校验必填 + 手机/邮箱格式（含条件必填）。audience: user|staff */
     public static void requireFilled(String phone, Map<String, String> extras, boolean registerOnly) {
+        requireFilled(phone, extras, registerOnly, "user");
+    }
+
+    public static void requireFilled(
+            String phone, Map<String, String> extras, boolean registerOnly, String audience) {
         Map<String, String> ex = extras == null ? Map.of() : extras;
+        String aud = audience == null || audience.isBlank() ? "user" : audience.trim();
         for (Map<String, Object> f : all()) {
+            if (!allowsAudience(f, aud)) continue;
             if (registerOnly && !truthy(f.get("onRegister"))) continue;
             if (!isVisible(f, ex)) continue;
             String key = str(f.get("key"));
@@ -74,6 +81,21 @@ public final class ProfileFields {
             String em = ex.getOrDefault("email", "");
             if (em != null && !em.isBlank()) checkFormat("email", em.trim(), "邮箱");
         }
+    }
+
+    /** 无 forRoles → 全员；forRoles 含 user → 仅终端用户；含 staff/admin → 管理岗。 */
+    @SuppressWarnings("unchecked")
+    static boolean allowsAudience(Map<String, Object> f, String audience) {
+        Object fr = f.get("forRoles");
+        if (!(fr instanceof Collection<?> col) || col.isEmpty()) return true;
+        boolean staff = "staff".equals(audience) || "admin".equals(audience);
+        for (Object o : col) {
+            String r = String.valueOf(o).trim();
+            if ("*".equals(r)) return true;
+            if (staff && ("staff".equals(r) || "admin".equals(r))) return true;
+            if (!staff && ("user".equals(r) || audience.equals(r))) return true;
+        }
+        return false;
     }
 
     @SuppressWarnings("unchecked")

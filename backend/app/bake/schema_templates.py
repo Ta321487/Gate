@@ -123,7 +123,7 @@ def _library_schema(title: str) -> dict[str, Any]:
     }
 
 
-def _archive_ticket_schema(
+def archive_ticket_schema(
     title: str,
     *,
     domain: str,
@@ -203,6 +203,17 @@ def _archive_ticket_schema(
         archive_entity["playUrlField"] = play_url_field
     if body_field:
         archive_entity["bodyField"] = body_field
+    if stock_display == "available":
+        from app.bake.ticket_copy_text import stock_unavailable_label
+
+        stock_lab = "可认领"
+        for f in archive_fields:
+            if isinstance(f, dict) and f.get("key") == "stock":
+                lab = str(f.get("label") or "").strip()
+                if lab:
+                    stock_lab = lab
+                break
+        archive_entity["stockUnavailableLabel"] = stock_unavailable_label(stock_lab)
     states_out = dict(states)
     if two_level_approve and "pending_final" not in states_out:
         # 插在 pending 后
@@ -340,7 +351,7 @@ def _with_portal_banners(schema: dict[str, Any], banners: list[dict[str, str]]) 
 
 def _equip_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-EQUIP",
             user_role_id="user",
@@ -406,7 +417,7 @@ def _equip_schema(title: str) -> dict[str, Any]:
 def _asset_schema(title: str) -> dict[str, Any]:
     """固定资产 / 耗材申领：档案+单据+库存，无逾期（与设备借用区分）。"""
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-ASSET",
             user_role_id="user",
@@ -473,7 +484,7 @@ def _asset_schema(title: str) -> dict[str, Any]:
 def _crm_schema(title: str) -> dict[str, Any]:
     """轻量 CRM：客户档案 + 跟进单据（非公海/外呼引擎）。"""
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-CRM",
             user_role_id="user",
@@ -539,7 +550,7 @@ def _crm_schema(title: str) -> dict[str, Any]:
 
 def _media_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-MEDIA",
             user_role_id="user",
@@ -605,7 +616,7 @@ def _media_schema(title: str) -> dict[str, Any]:
 
 def _music_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-MUSIC",
             user_role_id="user",
@@ -671,7 +682,7 @@ def _music_schema(title: str) -> dict[str, Any]:
 
 def _forum_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-FORUM",
             user_role_id="user",
@@ -738,7 +749,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
 
 def _blog_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-BLOG",
             user_role_id="user",
@@ -804,7 +815,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
 
 def _activity_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-ACTIVITY",
             user_role_id="user",
@@ -876,7 +887,7 @@ def _activity_schema(title: str) -> dict[str, Any]:
 
 
 def _lost_schema(title: str) -> dict[str, Any]:
-    return _archive_ticket_schema(
+    return archive_ticket_schema(
         title,
         domain="DOM-LOST",
         user_role_id="user",
@@ -937,7 +948,7 @@ def _lost_schema(title: str) -> dict[str, Any]:
 
 def _course_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        _archive_ticket_schema(
+        archive_ticket_schema(
             title,
             domain="DOM-COURSE",
             user_role_id="student",
@@ -1006,7 +1017,7 @@ def _course_schema(title: str) -> dict[str, Any]:
     )
 
 
-def _standalone_ticket_schema(
+def standalone_ticket_schema(
     title: str,
     *,
     domain: str,
@@ -1105,7 +1116,7 @@ def _standalone_ticket_schema(
 
 
 def _dorm_schema(title: str) -> dict[str, Any]:
-    return _standalone_ticket_schema(
+    return standalone_ticket_schema(
         title,
         domain="DOM-DORM",
         user_role_id="student",
@@ -1145,7 +1156,7 @@ def _dorm_schema(title: str) -> dict[str, Any]:
 
 
 def _property_schema(title: str) -> dict[str, Any]:
-    return _standalone_ticket_schema(
+    return standalone_ticket_schema(
         title,
         domain="DOM-PROPERTY",
         user_role_id="user",
@@ -1185,7 +1196,7 @@ def _property_schema(title: str) -> dict[str, Any]:
 
 
 def _it_schema(title: str) -> dict[str, Any]:
-    return _standalone_ticket_schema(
+    return standalone_ticket_schema(
         title,
         domain="DOM-IT",
         user_role_id="user",
@@ -1227,7 +1238,7 @@ def _it_schema(title: str) -> dict[str, Any]:
     )
 
 
-def _generic_schema(title: str, domain: str) -> dict[str, Any]:
+def generic_schema(title: str, domain: str) -> dict[str, Any]:
     caps = list(DOMAIN_CAPABILITIES.get(domain, DOMAIN_CAPABILITIES["DOM-GENERIC"]))
     return {
         "version": 1,
@@ -1280,7 +1291,7 @@ def _generic_schema(title: str, domain: str) -> dict[str, Any]:
     }
 
 
-def _order_shell_schema(
+def order_shell_schema(
     title: str,
     *,
     domain: str,
@@ -1372,7 +1383,7 @@ def _order_shell_schema(
     }
 
 
-def _slot_shell_schema(
+def slot_shell_schema(
     title: str,
     *,
     domain: str,
@@ -1399,8 +1410,11 @@ def _slot_shell_schema(
     with_orders: bool = False,
     reserve_require_remark: bool = False,
     reserve_remark_label: str = "备注",
+    # 动作名词（取消/确认用）；勿带「记录」——记录仅给管理端列表菜单
+    resv_label: str = "预约",
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
+    noun = (resv_label or "预约").removesuffix("记录").strip() or "预约"
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
@@ -1416,11 +1430,11 @@ def _slot_shell_schema(
     ]
     reservation_entity: dict[str, Any] = {
         "key": "reservation",
-        "label": "预约",
+        "label": noun,
         "labelPlural": my_resv_label,
         "states": {
             "pending": "待确认",
-            "confirmed": "已预约",
+            "confirmed": f"已{noun}",
             "cancelled": "已取消",
         },
         "requireRemark": bool(reserve_require_remark),
@@ -1489,7 +1503,7 @@ def _shop_schema(title: str) -> dict[str, Any]:
         if not campus
         else "验证码登录；浏览校园商品、加入购物车并提交订单（演示无真支付）。"
     )
-    return _order_shell_schema(
+    return order_shell_schema(
         title,
         domain="DOM-SHOP",
         user_role_id="user",
@@ -1501,7 +1515,7 @@ def _shop_schema(title: str) -> dict[str, Any]:
         archive_plural="商品",
             archive_fields=[
             {"key": "title", "label": "商品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "number"},
+            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": "货号", "type": "string"},
             {"key": "conditionGrade", "label": "成色", "type": "string"},
             {"key": "sellerNote", "label": "卖家备注", "type": "string"},
@@ -1533,7 +1547,7 @@ def _food_schema(title: str) -> dict[str, Any]:
     else:
         admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "档口/门店", "门店公告"
         body = "支持堂食、自取或外卖配送演示；无真支付。"
-    return _order_shell_schema(
+    return order_shell_schema(
         title,
         domain="DOM-FOOD",
         user_role_id="user",
@@ -1545,7 +1559,7 @@ def _food_schema(title: str) -> dict[str, Any]:
         archive_plural="菜品",
         archive_fields=[
             {"key": "title", "label": "菜品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "number"},
+            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": win, "type": "string"},
             {"key": "spicyLevel", "label": "辣度", "type": "string"},
             {"key": "isVegetarian", "label": "素食(1是0否)", "type": "number"},
@@ -1590,7 +1604,7 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         noun, remark, admin, sub = "会议室", "会议主题", "会务主管（总管）", "会务管理员"
     else:
         noun, remark, admin, sub = "场地", "预约说明", "场地主管（总管）", "场地管理员"
-    return _slot_shell_schema(
+    return slot_shell_schema(
         title,
         domain="DOM-MEETING",
         user_role_id="user",
@@ -1602,7 +1616,7 @@ def _meeting_schema(title: str) -> dict[str, Any]:
         archive_plural=noun,
         archive_fields=[
             {"key": "title", "label": noun, "type": "string"},
-            {"key": "author", "label": "费用", "type": "number"},
+            {"key": "author", "label": "费用", "type": "number", "format": "money"},
             {"key": "isbn", "label": "位置", "type": "string"},
             {"key": "seatCapacity", "label": "容纳人数", "type": "number"},
             {"key": "category", "label": "类型", "type": "select"},
@@ -1625,7 +1639,7 @@ def _meeting_schema(title: str) -> dict[str, Any]:
 
 
 def _hospital_schema(title: str) -> dict[str, Any]:
-    return _slot_shell_schema(
+    return slot_shell_schema(
         title,
         domain="DOM-HOSPITAL",
         user_role_id="patient",
@@ -1637,7 +1651,7 @@ def _hospital_schema(title: str) -> dict[str, Any]:
         archive_plural="医生",
         archive_fields=[
             {"key": "title", "label": "医生", "type": "string"},
-            {"key": "author", "label": "挂号费(元)", "type": "number"},
+            {"key": "author", "label": "挂号费(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": "职称/说明", "type": "string"},
             {"key": "category", "label": "科室", "type": "select"},
         ],
@@ -1646,6 +1660,7 @@ def _hospital_schema(title: str) -> dict[str, Any]:
         users_menu="患者管理",
         my_resv_label="我的挂号",
         resv_admin_label="挂号记录",
+        resv_label="挂号",
         auth_eyebrow="门诊挂号",
         auth_lead="验证码登录；选择科室医生与号源时段挂号。",
         auth_points=["验证码登录", "医生检索", "分时挂号"],
@@ -1659,7 +1674,7 @@ def _hospital_schema(title: str) -> dict[str, Any]:
 
 
 def _parking_schema(title: str) -> dict[str, Any]:
-    return _slot_shell_schema(
+    return slot_shell_schema(
         title,
         domain="DOM-PARKING",
         user_role_id="user",
@@ -1671,7 +1686,7 @@ def _parking_schema(title: str) -> dict[str, Any]:
         archive_plural="车位",
         archive_fields=[
             {"key": "title", "label": "车位号", "type": "string"},
-            {"key": "author", "label": "费用(元)", "type": "number"},
+            {"key": "author", "label": "费用(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": "位置", "type": "string"},
             {"key": "feeRule", "label": "计费规则", "type": "string"},
             {"key": "category", "label": "分区", "type": "select"},
@@ -1694,7 +1709,7 @@ def _parking_schema(title: str) -> dict[str, Any]:
 
 
 def _salon_schema(title: str) -> dict[str, Any]:
-    return _slot_shell_schema(
+    return slot_shell_schema(
         title,
         domain="DOM-SALON",
         user_role_id="user",
@@ -1706,7 +1721,7 @@ def _salon_schema(title: str) -> dict[str, Any]:
         archive_plural="服务",
         archive_fields=[
             {"key": "title", "label": "服务项目", "type": "string"},
-            {"key": "author", "label": "价格(元)", "type": "number"},
+            {"key": "author", "label": "价格(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": "时长说明", "type": "string"},
             {"key": "stylistName", "label": "默认技师", "type": "string"},
             {"key": "category", "label": "分类", "type": "select"},
@@ -1727,7 +1742,7 @@ def _salon_schema(title: str) -> dict[str, Any]:
 
 
 def _hotel_schema(title: str) -> dict[str, Any]:
-    return _slot_shell_schema(
+    return slot_shell_schema(
         title,
         domain="DOM-HOTEL",
         user_role_id="user",
@@ -1739,7 +1754,7 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         archive_plural="房型",
         archive_fields=[
             {"key": "title", "label": "房型", "type": "string"},
-            {"key": "author", "label": "房价(元)", "type": "number"},
+            {"key": "author", "label": "房价(元)", "type": "number", "format": "money"},
             {"key": "isbn", "label": "说明", "type": "string"},
             {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可售间数", "type": "number"},
@@ -1749,6 +1764,7 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         users_menu="住客管理",
         my_resv_label="我的预订",
         resv_admin_label="预订记录",
+        resv_label="预订",
         auth_eyebrow="客房预订",
         auth_lead="验证码登录；选择房型与入住时段预订，同步生成订单（无真支付）。",
         auth_points=["验证码登录", "房型浏览", "分时预订与订单"],

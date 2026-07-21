@@ -1,0 +1,115 @@
+{
+  "capabilities": [
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "ticket": {
+      "allowRating": true,
+      "key": "repair",
+      "label": "报修单",
+      "labelPlural": "报修",
+      "requireAttach": true,
+      "states": {
+        "approved": "处理中",
+        "pending": "待初审",
+        "pending_final": "待终审",
+        "rejected": "已驳回",
+        "returned": "已完成"
+      },
+      "twoLevelApprove": true,
+      "verbs": {
+        "apply": "提交报修",
+        "approve": "受理",
+        "reject": "驳回",
+        "return": "完成"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "宿舍服务",
+    "authLead": "验证码登录；学生可提交报修，宿管受理跟进。",
+    "authPoints": [
+      "验证码登录",
+      "报修申请",
+      "受理进度"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "报修须知、宿舍安排与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "宿舍公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后以学生身份提交报修"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "ticket_pending",
+        "label": "报修受理"
+      },
+      {
+        "key": "ticket_records",
+        "label": "报修记录"
+      },
+      {
+        "key": "lookup_site",
+        "label": "楼栋房间",
+        "superOnly": true
+      },
+      {
+        "key": "lookup_type",
+        "label": "报修类型",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "学生管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "my_tickets",
+        "label": "我的报修"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "宿管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "楼管"
+    },
+    "user": {
+      "id": "student",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写宿舍与故障描述并上传现场照片，宿管将尽快受理。",
+    "noticeTitle": "报修须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

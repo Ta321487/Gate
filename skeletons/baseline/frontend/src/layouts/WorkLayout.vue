@@ -26,7 +26,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { staffLoginPath } from '../utils/authEntry.js'
-import { getSchema, schemaLabels } from '../utils/domainSchema.js'
+import { getSchema, reservationCopy, schemaLabels } from '../utils/domainSchema.js'
 import {
   currentStaffPost,
   staffPostLabel,
@@ -47,7 +47,7 @@ const postLabel = computed(() => staffPostLabel(postId, '业务员工'))
 const menuItems = computed(() => {
   const schema = getSchema()
   const orderLab = schema?.entities?.order?.label || '订单'
-  const resvLab = schema?.entities?.reservation?.label || '预约'
+  const resvLab = reservationCopy().label || '预约'
   const meta = {
     tickets: { index: '/staff/tickets', label: '工单作业' },
     orders: { index: '/staff/orders', label: `${orderLab}作业` },

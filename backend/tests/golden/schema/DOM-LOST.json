@@ -1,0 +1,179 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "物品名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "拾获/登记人",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "地点/特征",
+          "type": "string"
+        },
+        {
+          "key": "itemKind",
+          "label": "类型(招领/寻物)",
+          "type": "string"
+        },
+        {
+          "key": "foundAt",
+          "label": "拾获时间",
+          "type": "datetime"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可认领",
+          "type": "number"
+        }
+      ],
+      "key": "lost_item",
+      "label": "启事",
+      "labelPlural": "启事",
+      "softDelete": false,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已认领",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": true,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "claim",
+      "label": "认领单",
+      "labelPlural": "认领",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "认领说明",
+      "requireAttach": true,
+      "requireRemark": true,
+      "states": {
+        "approved": "已认领",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已撤销"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "申请认领",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "撤销认领"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "失物招领",
+    "authLead": "验证码登录；浏览失物启事，提交认领申请，管理员审核后领取。",
+    "authPoints": [
+      "验证码登录",
+      "失物检索",
+      "认领申请与审核"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "招领须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "招领公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可浏览启事并申请认领"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "启事管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "认领审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "认领记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "失物检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的认领"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "招领主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "招领管理员"
+    },
+    "user": {
+      "id": "user",
+      "label": "用户"
+    }
+  },
+  "seeds": {
+    "noticeBody": "认领时请提供有效身份与物品特征；审核通过后到指定地点领取。",
+    "noticeTitle": "招领须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

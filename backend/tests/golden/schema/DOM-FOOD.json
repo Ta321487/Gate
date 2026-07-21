@@ -1,0 +1,160 @@
+{
+  "capabilities": [
+    "archive",
+    "order_lines",
+    "quota",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "菜品名",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "单价(元)",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "档口/门店",
+          "type": "string"
+        },
+        {
+          "key": "spicyLevel",
+          "label": "辣度",
+          "type": "string"
+        },
+        {
+          "key": "isVegetarian",
+          "label": "素食(1是0否)",
+          "type": "number"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可售份数",
+          "type": "number"
+        }
+      ],
+      "key": "dish",
+      "label": "菜品",
+      "labelPlural": "菜品",
+      "stockDisplay": "count"
+    },
+    "order": {
+      "key": "order",
+      "label": "订单",
+      "labelPlural": "我的订单",
+      "states": {
+        "cancelled": "已取消",
+        "completed": "已完成",
+        "confirmed": "制作中",
+        "pending": "待出餐",
+        "shipped": "配送中/待取"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "点餐外卖",
+    "authLead": "验证码登录；选菜加入清单并下单（演示无真支付）。",
+    "authPoints": [
+      "验证码登录",
+      "菜品浏览",
+      "下单"
+    ],
+    "messagesPageLead": "订单进度与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "门店公告",
+    "recommendLatestHint": "最新上架",
+    "registerRoleHint": "注册后可点餐"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "菜品管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "orders",
+        "label": "订单管理"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "点餐"
+      },
+      {
+        "key": "cart",
+        "label": "已选菜品"
+      },
+      {
+        "key": "my_orders",
+        "label": "我的订单"
+      },
+      {
+        "key": "addresses",
+        "label": "收货地址"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "门店主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "店员"
+    },
+    "user": {
+      "id": "user",
+      "label": "用餐者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "支持堂食、自取或外卖配送演示；无真支付。",
+    "noticeTitle": "点餐须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

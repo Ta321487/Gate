@@ -11,7 +11,7 @@
           v-model="keyword"
           size="large"
           clearable
-          :placeholder="`搜索${fieldLabel('title', '名称')} / ${fieldLabel('author', '型号')}`"
+          :placeholder="searchPlaceholder"
           @keyup.enter="load"
         />
         <el-select v-model="categoryId" clearable :placeholder="fieldLabel('category', '分类')" size="large" style="width:140px" @change="load">
@@ -47,7 +47,12 @@
         <div class="cover">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
           <h3>{{ row.title }}</h3>
-          <p>{{ row.author || '—' }} · {{ row.categoryName || '未分类' }}</p>
+          <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
+          <p
+            v-for="f in cardDetailFields"
+            :key="f.key"
+            class="detail-line muted"
+          >{{ f.label }}：{{ formatFieldValue(row, f) }}</p>
           <p v-if="row.tagNames?.length" class="sched muted">{{ row.tagNames.join(' · ') }}</p>
           <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
@@ -74,7 +79,7 @@
             <el-button
               size="small"
               type="primary"
-              :disabled="stockDisplay === 'count' && !stockOk(row) && !isSlotMode"
+              :disabled="!isSlotMode && !stockOk(row)"
               @click="onPrimary(row)"
             >{{ primaryActionLabel }}</el-button>
           </div>
@@ -97,14 +102,19 @@
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
-        <p class="sub">{{ detail.author || '—' }} · {{ detail.categoryName || '未分类' }}</p>
+        <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
+        <p
+          v-for="f in cardDetailFields"
+          :key="f.key"
+          class="detail-line"
+        >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
         <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
         <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
-        <RichTextView :html="detail.isbn || ''" />
+        <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <div class="drawer-acts">
           <el-button
             type="primary"
-            :disabled="stockDisplay === 'count' && !stockOk(detail) && !isSlotMode"
+            :disabled="!isSlotMode && !stockOk(detail)"
             @click="onPrimary(detail)"
           >{{ primaryActionLabel }}</el-button>
         </div>
@@ -213,7 +223,7 @@ import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, hasTrait, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, formatArchiveScalar, hasTrait, getSchema, menuLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import {
   guestTeaserLimit,
@@ -264,6 +274,32 @@ const stockCountLabel = computed(() => {
   if (stockField?.label) return stockField.label
   return '余量'
 })
+
+/** 卡片/详情副文案：schema 里除标题作者分类外的短字段（地点、类型、编号等） */
+const cardDetailFields = computed(() => {
+  const skip = new Set([
+    'title', 'author', 'category', 'stock', 'coverUrl',
+    'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
+  ])
+  return fields.value.filter((f) => {
+    if (!f?.key || skip.has(f.key)) return false
+    if (f.type === 'hidden' || f.type === 'richtext' || f.type === 'select') return false
+    // 正文/播放链路由摘要或播放按钮承担，避免卡片再堆一长串 URL
+    if (f.key === 'isbn' && (bodyRich.value || playUrlField.value === 'isbn')) return false
+    const t = f.type || 'string'
+    return ['string', 'number', 'datetime', 'date', 'url', 'textarea'].includes(t)
+  })
+})
+
+const searchPlaceholder = computed(() => {
+  const parts = [fieldLabel('title', '名称'), fieldLabel('author', '型号')]
+  const isbnF = fields.value.find((x) => x.key === 'isbn')
+  if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden' && playUrlField.value !== 'isbn') {
+    parts.push(isbnF.label || '编号')
+  }
+  return `搜索${parts.join(' / ')}`
+})
+
 const ruleHint = computed(() => {
   const parts = []
   const catLab = fieldLabel('category', '分类')
@@ -304,6 +340,16 @@ function fieldLabel(key, fallback) {
   return (f && f.label) || fallback
 }
 
+function formatAuthor(v) {
+  const f = fields.value.find((x) => x.key === 'author') || { key: 'author', type: 'string' }
+  return formatArchiveScalar(f, v)
+}
+
+function formatFieldValue(row, field) {
+  if (!row || !field) return '—'
+  return formatArchiveScalar(field, row[field.key], '—')
+}
+
 function scheduleText(row) {
   if (!row || !hasSchedule.value) return ''
   if (!row.startAt && !row.endAt) return ''
@@ -318,9 +364,22 @@ function stockOk(row) {
 function stockText(row) {
   if (stockDisplay.value === 'available') {
     const ok = fieldLabel('stock', stockCountLabel.value)
-    return stockOk(row) ? ok : `暂不${ok.replace(/^可/, '')}`
+    if (!stockOk(row)) {
+      return archive.stockUnavailableLabel || stockUnavailableFrom(ok)
+    }
+    const n = Number(row.stock)
+    // 同款多件登记在一条时展示余量，便于区分「仅一件」与「可多认领」
+    if (Number.isFinite(n) && n > 1) return `${ok} · 余 ${n}`
+    return ok
   }
   return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : `暂无${stockCountLabel.value}`
+}
+
+/** 与 bake ticket_copy_text.stock_unavailable_label 同规则，无 schema 字段时兜底 */
+function stockUnavailableFrom(stockLabel) {
+  const s = String(stockLabel || '可用').trim() || '可用'
+  if (s.startsWith('可')) return `已${s.slice(1)}`
+  return `暂无${s}`
 }
 
 function playUrlOf(row) {
@@ -546,6 +605,8 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .meta p { margin: 0; color: #64748b; font-size: 12px; }
+.detail-line { margin-top: 4px !important; line-height: 1.4; }
+.detail-line.muted { color: #64748b !important; }
 .sched { margin-top: 4px !important; color: #0f766e !important; }
 .sched.muted { color: #94a3b8 !important; }
 .excerpt { margin-top: 8px; color: #64748b; }

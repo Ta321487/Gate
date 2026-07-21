@@ -1,0 +1,142 @@
+{
+  "capabilities": [
+    "archive",
+    "slot_reserve",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "服务项目",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "价格(元)",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "时长说明",
+          "type": "string"
+        },
+        {
+          "key": "stylistName",
+          "label": "默认技师",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        }
+      ],
+      "key": "service",
+      "label": "服务",
+      "labelPlural": "服务",
+      "stockDisplay": "hidden"
+    },
+    "reservation": {
+      "key": "reservation",
+      "label": "预约",
+      "labelPlural": "我的预约",
+      "remarkLabel": "备注",
+      "requireConfirm": false,
+      "requireRemark": false,
+      "states": {
+        "cancelled": "已取消",
+        "confirmed": "已预约",
+        "pending": "待确认"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "服务预约",
+    "authLead": "验证码登录；选择服务项目与时段预约到店。",
+    "authPoints": [
+      "验证码登录",
+      "服务浏览",
+      "时段预约"
+    ],
+    "messagesPageLead": "预约提醒与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "门店公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可预约服务"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "服务管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "顾客管理",
+        "superOnly": true
+      },
+      {
+        "key": "reservations",
+        "label": "预约记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "选服务"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的预约"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "门店主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "预约管理员"
+    },
+    "user": {
+      "id": "user",
+      "label": "顾客"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请准时到店；改约请先取消原时段。",
+    "noticeTitle": "预约须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

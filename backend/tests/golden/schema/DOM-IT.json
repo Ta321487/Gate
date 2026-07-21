@@ -1,0 +1,115 @@
+{
+  "capabilities": [
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "ticket": {
+      "allowRating": true,
+      "key": "ticket",
+      "label": "故障单",
+      "labelPlural": "故障报修",
+      "requireAttach": true,
+      "states": {
+        "approved": "处理中",
+        "pending": "待初审",
+        "pending_final": "待终审",
+        "rejected": "已驳回",
+        "returned": "已完成"
+      },
+      "twoLevelApprove": true,
+      "verbs": {
+        "apply": "提交故障",
+        "approve": "受理",
+        "reject": "驳回",
+        "return": "完成"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "校园网运维",
+    "authLead": "验证码登录；师生提交故障，运维受理跟进。",
+    "authPoints": [
+      "验证码登录",
+      "故障报修",
+      "受理进度"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "故障处理须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "运维公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可提交故障报修"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "ticket_pending",
+        "label": "故障受理"
+      },
+      {
+        "key": "ticket_records",
+        "label": "报修记录"
+      },
+      {
+        "key": "lookup_site",
+        "label": "区域终端",
+        "superOnly": true
+      },
+      {
+        "key": "lookup_type",
+        "label": "故障类型",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "my_tickets",
+        "label": "我的故障"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "运维主管"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "运维员"
+    },
+    "user": {
+      "id": "user",
+      "label": "师生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请写明区域、终端与故障现象并上传截图/照片，运维将尽快受理。",
+    "noticeTitle": "报修须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

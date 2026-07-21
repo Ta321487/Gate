@@ -16,8 +16,8 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" />
-      <el-table-column prop="typeName" label="类型" width="100" />
-      <el-table-column prop="location" label="地点" width="140" />
+      <el-table-column prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -115,12 +115,13 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { hasTrait, getSchema, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, hasTrait, getSchema, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const route = useRoute()
 const ticket = ticketCopy()
+const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const richRemark = computed(() => !!ticket.richRemark)
@@ -136,6 +137,28 @@ const showPickup = computed(() => hasTrait('pickupFlow'))
 const showFine = computed(
   () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
 )
+
+function archiveFieldLabel(key, fallback) {
+  const f = (archive.fields || []).find((x) => x.key === key)
+  return f?.label || fallback
+}
+
+const typeColLabel = computed(() => {
+  if ((archive.fields || []).some((f) => f.key === 'itemKind')) {
+    return archiveFieldLabel('itemKind', '类型')
+  }
+  if ((archive.fields || []).some((f) => f.key === 'category')) {
+    return archiveFieldLabel('category', '类型')
+  }
+  return '类型'
+})
+
+const locationColLabel = computed(() => {
+  if ((archive.fields || []).some((f) => f.key === 'isbn')) {
+    return archiveFieldLabel('isbn', '地点')
+  }
+  return '地点'
+})
 
 function remarkText(v) {
   if (!v) return '—'
@@ -237,7 +260,7 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', '标题', '类型', '地点', userLabel.value, '处理人', '状态']
+  const headers = ['编号', '标题', typeColLabel.value, locationColLabel.value, userLabel.value, '处理人', '状态']
   if (allowQty.value) headers.push('数量')
   if (pickLoanPeriod.value) headers.push(dueLabel.value)
   if (showFine.value) headers.push(fineLabel.value)

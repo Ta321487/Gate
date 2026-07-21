@@ -460,7 +460,8 @@ public class UserStore {
     }
 
     public static void saveProfile(Profile p) {
-        ProfileFields.requireFilled(p.phone, p.extras, false);
+        String audience = isStaffAccount(p) ? "staff" : "user";
+        ProfileFields.requireFilled(p.phone, p.extras, false, audience);
         if (hasProfileJson()) {
             db().update(
                     "UPDATE sys_user SET nickname=?, phone=?, avatar_url=?, password=?, profile_json=? WHERE username=?",
@@ -470,5 +471,13 @@ public class UserStore {
                     "UPDATE sys_user SET nickname=?, phone=?, avatar_url=?, password=? WHERE username=?",
                     p.nickname, p.phone, p.avatarUrl, p.password, p.username);
         }
+    }
+
+    /** 总管/子管/业务岗：不校验终端用户业务档案（就诊卡等） */
+    private static boolean isStaffAccount(Profile p) {
+        if (p == null) return false;
+        if (p.superAdmin) return true;
+        if (p.staffPost != null && !p.staffPost.isBlank()) return true;
+        return "admin".equals(p.role);
     }
 }

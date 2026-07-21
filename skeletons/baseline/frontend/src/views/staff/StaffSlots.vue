@@ -10,9 +10,9 @@
 <script setup>
 import { computed } from 'vue'
 import ReservationsAdmin from '../admin/ReservationsAdmin.vue'
-import { getSchema } from '../../utils/domainSchema.js'
+import { getSchema, reservationCopy } from '../../utils/domainSchema.js'
 
-const resvNoun = computed(() => getSchema()?.entities?.reservation?.label || '预约')
+const resvNoun = computed(() => reservationCopy().label || '预约')
 const hint = computed(() => `作业台：查看${resvNoun.value}与现场服务状态`)
 </script>
 

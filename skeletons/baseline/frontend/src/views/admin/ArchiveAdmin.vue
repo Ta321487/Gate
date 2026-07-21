@@ -25,7 +25,9 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" :label="fieldLabel('title', '名称')" />
-      <el-table-column prop="author" :label="fieldLabel('author', '型号')" width="140" />
+      <el-table-column :label="fieldLabel('author', '型号')" width="140">
+        <template #default="{ row }">{{ formatAuthorCell(row.author) }}</template>
+      </el-table-column>
       <el-table-column
         v-if="showIsbnCol"
         prop="isbn"
@@ -55,7 +57,7 @@
         min-width="100"
         show-overflow-tooltip
       >
-        <template #default="{ row }">{{ row[f.key] ?? '—' }}</template>
+        <template #default="{ row }">{{ formatArchiveScalar(f, row[f.key]) }}</template>
       </el-table-column>
       <el-table-column v-if="softDelete" label="状态" width="80">
         <template #default="{ row }">
@@ -100,6 +102,8 @@
             :step="1"
             controls-position="right"
             style="width:100%"
+            :value-on-clear="null"
+            placeholder="可填 0.00；留空表示未设置"
           />
           <el-input v-else v-model="form.author" />
         </el-form-item>
@@ -219,7 +223,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextEditor from '../../components/RichTextEditor.vue'
-import { archiveCopy, softDeleteCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, formatArchiveScalar, softDeleteCopy } from '../../utils/domainSchema.js'
 import { dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
@@ -280,14 +284,26 @@ function pickerProps(key) {
   return dateTimePickerProps(fieldMeta(key))
 }
 
-/** author 列存单价时用数字控件，提交仍写回字符串（后端 OrderStore 认 author） */
+function formatAuthorCell(v) {
+  // 金额域：0.00 有效；空才显示 —
+  return formatArchiveScalar({ ...fieldMeta('author'), key: 'author' }, v)
+}
+
+/** author 列存单价时用数字控件；空与 0.00 分开（空=未设置，0=免费） */
 const authorNum = computed({
   get() {
-    const n = Number(String(form.author ?? '').replace(/[¥￥,\s]/g, ''))
-    return Number.isFinite(n) ? n : 0
+    const raw = form.author
+    if (raw == null || String(raw).trim() === '') return null
+    const n = Number(String(raw).replace(/[¥￥,\s]/g, ''))
+    return Number.isFinite(n) ? n : null
   },
   set(v) {
-    form.author = v == null || v === '' ? '' : String(v)
+    if (v == null || v === '') {
+      form.author = ''
+      return
+    }
+    const n = Number(v)
+    form.author = Number.isFinite(n) ? String(n) : ''
   },
 })
 
@@ -492,7 +508,10 @@ function exportCell(row, col) {
   if (col.key === 'category') return row.categoryName ?? ''
   if (col.key === 'tags') return (row.tagNames || []).join('、')
   const v = row[col.key]
-  return v == null ? '' : v
+  if (v == null || v === '') return ''
+  const meta = { key: col.key, label: col.label, type: col.type }
+  const shown = formatArchiveScalar(meta, v, '')
+  return shown
 }
 
 function downloadTemplate() {

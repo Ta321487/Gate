@@ -1,0 +1,196 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "deadline",
+    "content",
+    "org_users",
+    "recommend"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "书名",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "作者",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "ISBN",
+          "type": "string"
+        },
+        {
+          "key": "publisher",
+          "label": "出版社",
+          "type": "string"
+        },
+        {
+          "key": "callNo",
+          "label": "索书号",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "库存",
+          "type": "number"
+        }
+      ],
+      "key": "book",
+      "label": "图书",
+      "labelPlural": "图书",
+      "softDelete": true
+    },
+    "ticket": {
+      "allowQty": true,
+      "dueLabel": "应还日",
+      "fineLabel": "罚款",
+      "finePaidLabel": "罚款已缴",
+      "key": "borrow",
+      "label": "借阅单",
+      "labelPlural": "借阅",
+      "pickLoanPeriod": true,
+      "states": {
+        "approved": "借阅中",
+        "overdue": "已逾期",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已归还"
+      },
+      "verbs": {
+        "apply": "申请借阅",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "催还",
+        "return": "归还"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "欢迎使用",
+    "authLead": "验证码登录，开放注册；读者可检索图书并申请借阅。",
+    "authPoints": [
+      "验证码登录",
+      "开放注册",
+      "借阅申请与归还"
+    ],
+    "messagesPageLead": "审核结果、还书提醒与系统通知。",
+    "noticePageLead": "开放时间、借阅须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "馆内公告",
+    "recommendLatestHint": "最新上架",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后以读者身份使用系统"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "图书管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "读者管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "借阅审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "借阅记录"
+      },
+      {
+        "key": "deadline",
+        "label": "逾期罚款"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "图书检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的借阅"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按书名、作者或 ISBN 检索，在线提交借阅。",
+      "title": "开架阅览"
+    },
+    {
+      "lead": "每人同时最多借阅 5 本，请按时归还。",
+      "title": "借阅须知"
+    },
+    {
+      "lead": "工作日开放；临时调整见馆内公告。",
+      "title": "开放时间"
+    },
+    {
+      "lead": "登录后查看借阅进度与到期提醒。",
+      "title": "我的书架"
+    },
+    {
+      "lead": "分类浏览最新到馆图书。",
+      "title": "新书上架"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "馆长（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "馆员"
+    },
+    "user": {
+      "id": "reader",
+      "label": "读者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "系统已就绪，欢迎检索图书并提交借阅申请。",
+    "noticeTitle": "开放借阅通知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

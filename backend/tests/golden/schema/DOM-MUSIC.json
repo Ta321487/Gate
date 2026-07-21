@@ -1,0 +1,198 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users",
+    "recommend"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "歌名",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "歌手/专辑",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "播放链接",
+          "type": "url"
+        },
+        {
+          "key": "durationSec",
+          "label": "时长(秒)",
+          "type": "number"
+        },
+        {
+          "key": "category",
+          "label": "曲风",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可播放",
+          "type": "number"
+        }
+      ],
+      "key": "track",
+      "label": "歌曲",
+      "labelPlural": "曲库",
+      "playUrlField": "isbn",
+      "softDelete": true,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已播放",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "favorite",
+      "label": "收藏单",
+      "labelPlural": "收藏",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "说明",
+      "requireAttach": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "已收藏",
+        "overdue": "已失效",
+        "pending": "待确认",
+        "rejected": "已驳回",
+        "returned": "已取消"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "收藏",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "提醒",
+        "return": "取消收藏"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "在线音乐",
+    "authLead": "验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。",
+    "authPoints": [
+      "验证码登录",
+      "曲库检索与播放",
+      "收藏喜欢"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "上新歌单、维护窗口与试听须知，点击条目阅读全文。",
+    "noticePageTitle": "平台公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可浏览曲库并收藏"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "曲库管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "收藏确认"
+      },
+      {
+        "key": "ticket_records",
+        "label": "收藏记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "曲库检索"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的收藏"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。",
+      "title": "热门曲库"
+    },
+    {
+      "lead": "喜欢的歌曲一键收藏，方便下次回听。",
+      "title": "收藏喜欢"
+    },
+    {
+      "lead": "上新与维护通知见公告栏。",
+      "title": "平台公告"
+    },
+    {
+      "lead": "根据听歌偏好推荐曲目。",
+      "title": "猜你喜欢"
+    },
+    {
+      "lead": "按曲风快速找到想听的歌。",
+      "title": "曲风浏览"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "曲库主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "运营编辑"
+    },
+    "user": {
+      "id": "user",
+      "label": "听众"
+    }
+  },
+  "seeds": {
+    "noticeBody": "曲源仅供学习演示；请尊重版权，勿传播未授权内容。",
+    "noticeTitle": "试听须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

@@ -1,0 +1,142 @@
+{
+  "capabilities": [
+    "archive",
+    "slot_reserve",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "车位号",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "费用(元)",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "位置",
+          "type": "string"
+        },
+        {
+          "key": "feeRule",
+          "label": "计费规则",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分区",
+          "type": "select"
+        }
+      ],
+      "key": "space",
+      "label": "车位",
+      "labelPlural": "车位",
+      "stockDisplay": "hidden"
+    },
+    "reservation": {
+      "key": "reservation",
+      "label": "预约",
+      "labelPlural": "我的预约",
+      "remarkLabel": "车牌号",
+      "requireConfirm": false,
+      "requireRemark": true,
+      "states": {
+        "cancelled": "已取消",
+        "confirmed": "已预约",
+        "pending": "待确认"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "车位预约",
+    "authLead": "验证码登录；选择车位与时段占坑预约。",
+    "authPoints": [
+      "验证码登录",
+      "车位检索",
+      "时段预约"
+    ],
+    "messagesPageLead": "预约提醒与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "车场公告",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可预约车位"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "车位管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "reservations",
+        "label": "预约记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "选车位"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的预约"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "车场主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "车场管理员"
+    },
+    "user": {
+      "id": "user",
+      "label": "车主"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请按时入场；取消预约将释放时段。请填写车牌号便于核对。",
+    "noticeTitle": "停车须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

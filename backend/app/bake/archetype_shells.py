@@ -488,7 +488,7 @@ def build_generic_shell_schema(
     archetypes: list[str] | None = None,
 ) -> dict[str, Any]:
     """GENERIC + ARCH-*（可多条）→ 文案壳；菜单按路径并集补齐。"""
-    from app.bake.schema_templates import _archive_ticket_schema, _order_shell_schema, _slot_shell_schema
+    from app.bake.schema_templates import archive_ticket_schema, order_shell_schema, slot_shell_schema
 
     arches = normalize_archetypes(archetypes, primary=archetype)
     need_flow, need_trade, need_reserve = path_flags(arches)
@@ -500,7 +500,7 @@ def build_generic_shell_schema(
     # 实体/文案：优先用「最重」单壳模板，再补菜单（避免三套 schema 复制）
     if need_flow:
         fc = _generic_flow_copy(title, noun)
-        schema = _archive_ticket_schema(
+        schema = archive_ticket_schema(
             title,
             domain="DOM-GENERIC",
             user_role_id="user",
@@ -536,7 +536,7 @@ def build_generic_shell_schema(
             pick_date_range=bool(fc.get("pick_date_range")),
         )
     elif need_reserve:
-        schema = _slot_shell_schema(
+        schema = slot_shell_schema(
             title,
             domain="DOM-GENERIC",
             user_role_id="user",
@@ -567,7 +567,7 @@ def build_generic_shell_schema(
             with_orders=need_trade,
         )
     elif need_trade:
-        schema = _order_shell_schema(
+        schema = order_shell_schema(
             title,
             domain="DOM-GENERIC",
             user_role_id="user",

@@ -170,7 +170,8 @@ import {
   isMemberTierEnabled,
   isPointsEnabled,
   isWalletEnabled,
-  profileFields,
+  profileAudienceOf,
+  profileFieldsForAudience,
 } from '../utils/domainSchema.js'
 import {
   validateProfileFormats,
@@ -191,7 +192,7 @@ const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
-const allFields = computed(() => profileFields())
+const allFields = computed(() => profileFieldsForAudience(profileAudienceOf()))
 const basicFields = computed(() => allFields.value.filter((f) => BASIC_KEYS.has(f.key) || f.storage === 'phone'))
 const bizFields = computed(() =>
   allFields.value.filter(
@@ -204,7 +205,7 @@ const form = reactive({
   nickname: '',
   phone: '',
   avatarUrl: '',
-  extras: emptyProfileExtras(),
+  extras: emptyProfileExtras(profileFieldsForAudience(profileAudienceOf())),
   oldPassword: '',
   newPassword: '',
   confirmPassword: '',
@@ -247,7 +248,10 @@ async function load() {
   form.phone = data.phone || ''
   form.avatarUrl = data.avatarUrl || ''
   form.profileEditable = data.profileEditable !== false
-  form.extras = { ...emptyProfileExtras(), ...(data.extras || {}) }
+  form.extras = {
+    ...emptyProfileExtras(profileFieldsForAudience(profileAudienceOf())),
+    ...(data.extras || {}),
+  }
   clearPasswords()
   if (anyLoyalty.value) {
     try {
@@ -321,7 +325,10 @@ async function save() {
       router.replace({ path: loginPathForRole(role, staffKind), query: { reason: 'password' } })
       return
     }
-    form.extras = { ...emptyProfileExtras(), ...(data.extras || {}) }
+    form.extras = {
+      ...emptyProfileExtras(profileFieldsForAudience(profileAudienceOf())),
+      ...(data.extras || {}),
+    }
     form.phone = data.phone || form.phone
     form.nickname = data.nickname || form.nickname
     form.avatarUrl = data.avatarUrl || form.avatarUrl
