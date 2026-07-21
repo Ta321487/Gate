@@ -64,6 +64,11 @@ public final class TicketStore {
     static boolean requireRemark = false;
     /** 申请须选起止日期（请假等 → period_start/period_end） */
     static boolean pickDateRange = false;
+    /**
+     * 审核通过/驳回即为收口（报名、选课、认领、收藏等）。
+     * 工作台「已完成」统计 approved+rejected(+returned)；「处理中」不再含 approved。
+     */
+    static boolean approveEndsFlow = false;
     static String userRole = "reader";
 
     private TicketStore() {}
@@ -163,6 +168,11 @@ public final class TicketStore {
             ensureColumn("period_start", "DATETIME NULL");
             ensureColumn("period_end", "DATETIME NULL");
         }
+    }
+
+    /** 审核即收口：通过/驳回都算办结，不再把 approved 算作处理中 */
+    public static void configureApproveEndsFlow(boolean enabled) {
+        approveEndsFlow = enabled;
     }
 
     /** L1：互斥码 + 分类限额（选课等） */
@@ -1109,6 +1119,8 @@ public final class TicketStore {
             empty.put("pendingTickets", 0);
             empty.put("activeTickets", 0);
             empty.put("completedTickets", 0);
+            empty.put("rejectedTickets", 0);
+            empty.put("approveEndsFlow", approveEndsFlow);
             empty.put("userTotal", UserStore.countByRole(
                     readerRole == null || readerRole.isBlank() ? userRole : readerRole));
             empty.put("bookTotal", ArchiveStore.countItems());
@@ -1128,19 +1140,40 @@ public final class TicketStore {
         Long pending = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TICKET + " WHERE status IN ('pending','pending_final')", Long.class);
         Long approved = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TICKET + " WHERE status='approved'", Long.class);
-        Long overdue = useDeadline
+        Long overdue = useDeadline || noShowAfterEnd
                 ? TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TICKET + " WHERE status='overdue'", Long.class)
                 : 0L;
         Long returned = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TICKET + " WHERE status='returned'", Long.class);
+        Long rejected = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TICKET + " WHERE status='rejected'", Long.class);
+        Long completed;
+        Long active;
+        if (approveEndsFlow) {
+            long a = approved == null ? 0 : approved;
+            long r = returned == null ? 0 : returned;
+            long j = rejected == null ? 0 : rejected;
+            long o = overdue == null ? 0 : overdue;
+            // 通过 / 驳回 / 取消 / 爽约 均视为已处理；处理中不再含 approved
+            completed = a + r + j + o;
+            active = 0L;
+        } else {
+            completed = returned == null ? 0L : returned;
+            active = approved == null ? 0L : approved;
+        }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("pendingTickets", pending == null ? 0 : pending);
-        m.put("activeTickets", approved == null ? 0 : approved);
-        m.put("completedTickets", returned == null ? 0 : returned);
+        m.put("activeTickets", active);
+        m.put("completedTickets", completed);
+        m.put("rejectedTickets", rejected == null ? 0 : rejected);
+        m.put("approveEndsFlow", approveEndsFlow);
         m.put("userTotal", UserStore.countByRole(role));
         m.put("pendingBorrow", pending == null ? 0 : pending);
-        m.put("onLoan", approved == null ? 0 : approved);
+        m.put("onLoan", approveEndsFlow ? 0 : (approved == null ? 0 : approved));
         m.put("overdueBorrow", overdue == null ? 0 : overdue);
         m.put("returnedBorrow", returned == null ? 0 : returned);
+        if (approveEndsFlow) {
+            m.put("approvedTickets", approved == null ? 0 : approved);
+        }
         m.put("readerTotal", UserStore.countByRole(role));
         if (MODE == Mode.ARCHIVE) {
             m.put("bookTotal", ArchiveStore.countItems());

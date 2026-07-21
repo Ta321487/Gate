@@ -1,20 +1,23 @@
 <template>
-  <el-container class="layout">
-    <el-aside width="200px" class="aside">
-      <div class="brand">员工作业台</div>
-      <el-menu :default-active="active" router background-color="#1a242e" text-color="#a8b8c4" active-text-color="#7dd3c7">
+  <el-container class="layout workbench">
+    <el-aside width="200px" class="wb-aside">
+      <div class="wb-brand">
+        <span class="wb-brand-mark" aria-hidden="true" />
+        <span>员工作业台</span>
+      </div>
+      <el-menu :default-active="active" router class="wb-menu">
         <el-menu-item v-for="item in menuItems" :key="item.index" :index="item.index">{{ item.label }}</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header class="header">
-        <span class="muted">{{ title }}</span>
-        <div class="right">
+      <el-header class="wb-header">
+        <span class="wb-header-title">{{ title }}</span>
+        <div class="wb-header-right">
           <span>{{ displayName }} · {{ postLabel }}</span>
           <el-button link type="primary" @click="logout">退出</el-button>
         </div>
       </el-header>
-      <el-main class="main">
+      <el-main class="wb-main">
         <router-view />
       </el-main>
     </el-container>
@@ -66,17 +69,4 @@ function logout() {
 
 <style scoped>
 .layout { min-height: 100vh; }
-.aside { background: #1a242e; }
-.brand {
-  padding: 20px 16px; font-weight: 700; color: #fff; font-size: 15px;
-  border-bottom: 1px solid #2a3844;
-}
-.aside :deep(.el-menu) { border-right: none; }
-.header {
-  display: flex; justify-content: space-between; align-items: center;
-  background: #fff; border-bottom: 1px solid #ebeef5;
-}
-.right { display: flex; gap: 12px; align-items: center; font-size: 13px; color: #606266; }
-.muted { color: #909399; font-size: 13px; }
-.main { background: #f3f5f7; }
 </style>

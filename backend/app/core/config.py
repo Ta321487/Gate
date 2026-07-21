@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
     deepseek_model: str = Field(default="deepseek-v4-flash", alias="DEEPSEEK_MODEL")
 
+    # Gemini（OpenAI 兼容端点）；与 DeepSeek 并存，由 LLM_PROVIDER / 设置页切换
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    gemini_base_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta/openai",
+        alias="GEMINI_BASE_URL",
+    )
+    gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
+    llm_provider: str = Field(default="deepseek", alias="LLM_PROVIDER")
+
     # 登录氛围图（可选；无 key 时用领域兜底 Unsplash 直链）
     unsplash_access_key: str = Field(default="", alias="UNSPLASH_ACCESS_KEY")
 

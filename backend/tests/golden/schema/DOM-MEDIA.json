@@ -53,6 +53,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "approveEndsFlow": true,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "favorite",

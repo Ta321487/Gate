@@ -141,7 +141,7 @@ function logout() {
   position: sticky; top: 0; z-index: 20;
   background: color-mix(in srgb, var(--portal-surface, #fff) 88%, transparent);
   backdrop-filter: blur(12px) saturate(1.1);
-  border-bottom: 1px solid var(--portal-line, #d5dde3);
+  border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
 }
 .top-inner {
   max-width: 1080px; margin: 0 auto;
@@ -153,7 +153,7 @@ function logout() {
   cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 42%;
 }
 .brand-mark {
-  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: var(--portal-radius-sm, 6px); flex-shrink: 0;
   background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff));
 }
 .brand-text {
@@ -162,7 +162,7 @@ function logout() {
 }
 .nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; overflow-x: auto; }
 .nav a {
-  padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  padding: 6px 12px; border-radius: var(--portal-radius-sm, 8px); font-size: 13px; font-weight: 500;
   color: var(--portal-muted, #5b6b76); text-decoration: none;
 }
 .nav a.router-link-active,

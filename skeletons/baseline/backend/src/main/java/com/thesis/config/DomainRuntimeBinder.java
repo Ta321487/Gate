@@ -136,6 +136,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-pick-date-range:false}")
     private boolean ticketPickDateRange;
 
+    @Value("${thesis.ticket-approve-ends-flow:false}")
+    private boolean ticketApproveEndsFlow;
+
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
 
@@ -186,6 +189,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
             TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
+            TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
         }
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);

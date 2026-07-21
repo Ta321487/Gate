@@ -2,7 +2,7 @@
   <div>
     <h1 class="page-title">Unsplash</h1>
     <p class="page-desc">
-      登录氛围图与门户轮播配图。Access Key 仅环境变量，与 DeepSeek 相同；未配置时按领域用公开图直链兜底。
+      登录氛围图与门户轮播配图。Access Key 仅环境变量，与大模型 Key 相同；未配置时按领域用公开图直链兜底。
     </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="2" />
     <template v-else>

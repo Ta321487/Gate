@@ -56,6 +56,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": true,
+      "approveEndsFlow": true,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "claim",

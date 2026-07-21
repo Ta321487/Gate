@@ -97,6 +97,27 @@ def normalize_auth_role_widget(widget: str | None) -> str:
     return "radio"
 
 
+# 界面质感（圆角/边框/按钮）：与配色正交，bake 时按种子挑选，交付后固定
+CHROME_STYLES = [
+    {"id": "soft", "label": "圆润浮起"},
+    {"id": "sharp", "label": "直角扁平"},
+    {"id": "pill", "label": "胶囊按钮"},
+    {"id": "outline", "label": "粗线线框"},
+]
+
+
+def pick_chrome(seed: str | None = None) -> str:
+    ids = [t["id"] for t in CHROME_STYLES]
+    return _pick_by_seed(ids, seed, "soft")
+
+
+def normalize_chrome(chrome: str | None) -> str:
+    ids = {t["id"] for t in CHROME_STYLES}
+    if chrome and chrome in ids:
+        return chrome
+    return "soft"
+
+
 def all_theme_ids() -> set[str]:
     ids = set(THEME_ALIASES.keys())
     for dom in DOMAINS.values():

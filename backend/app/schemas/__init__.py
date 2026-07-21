@@ -102,6 +102,9 @@ class DeepSeekSettings(BaseModel):
     fix_rounds_max: int = Field(default=5, description="最大修复轮数")
     monthly_tokens_used: int = Field(default=0, description="本月已用 Token")
     project_usages: list[ProjectTokenUsage] = Field(default_factory=list, description="分项目用量")
+    deepseek_enabled: bool = Field(default=True, description="是否启用 DeepSeek")
+    gemini_enabled: bool = Field(default=False, description="是否启用 Gemini")
+    preferred: str = Field(default="deepseek", description="双开时优先厂商")
 
 
 class DeepSeekUpdate(BaseModel):
@@ -117,6 +120,46 @@ class DeepSeekUpdate(BaseModel):
     project_token_budget: Optional[int] = Field(default=None, description="单项目 Token 预算")
     monthly_token_budget: Optional[int] = Field(default=None, description="月度 Token 预算")
     fix_rounds_max: Optional[int] = Field(default=None, description="最大修复轮数")
+    deepseek_enabled: Optional[bool] = Field(default=None, description="启用 DeepSeek")
+    gemini_enabled: Optional[bool] = Field(default=None, description="启用 Gemini")
+    preferred: Optional[str] = Field(default=None, description="双开时优先厂商")
+
+
+class GeminiSettings(BaseModel):
+    model_config = ConfigDict(title="Gemini 配置")
+
+    base_url: str = Field(description="API 基址（OpenAI 兼容）")
+    model: str = Field(description="模型名")
+    key_configured: bool = Field(description="是否已配置 Key")
+    key_masked: str = Field(description="Key 掩码")
+    parse_spec: bool = Field(default=True, description="解析 Spec")
+    island_fill: bool = Field(default=True, description="业务岛填充")
+    auto_fix: bool = Field(default=True, description="自动修复")
+    qa_report: bool = Field(default=False, description="质量报告")
+    project_token_budget: int = Field(default=100_000, description="单项目 Token 预算")
+    monthly_token_budget: int = Field(default=1_000_000, description="月度 Token 预算")
+    fix_rounds_max: int = Field(default=5, description="最大修复轮数")
+    monthly_tokens_used: int = Field(default=0, description="本月已用 Token")
+    deepseek_enabled: bool = Field(default=True, description="是否启用 DeepSeek")
+    gemini_enabled: bool = Field(default=False, description="是否启用 Gemini")
+    preferred: str = Field(default="deepseek", description="双开时优先厂商")
+
+
+class GeminiUpdate(BaseModel):
+    model_config = ConfigDict(title="Gemini 配置更新")
+
+    base_url: Optional[str] = Field(default=None, description="API 基址")
+    model: Optional[str] = Field(default=None, description="模型名")
+    parse_spec: Optional[bool] = Field(default=None, description="解析 Spec")
+    island_fill: Optional[bool] = Field(default=None, description="业务岛填充")
+    auto_fix: Optional[bool] = Field(default=None, description="自动修复")
+    qa_report: Optional[bool] = Field(default=None, description="质量报告")
+    project_token_budget: Optional[int] = Field(default=None, description="单项目 Token 预算")
+    monthly_token_budget: Optional[int] = Field(default=None, description="月度 Token 预算")
+    fix_rounds_max: Optional[int] = Field(default=None, description="最大修复轮数")
+    deepseek_enabled: Optional[bool] = Field(default=None, description="启用 DeepSeek")
+    gemini_enabled: Optional[bool] = Field(default=None, description="启用 Gemini")
+    preferred: Optional[str] = Field(default=None, description="双开时优先厂商")
 
 
 class DeepSeekBalanceInfo(BaseModel):

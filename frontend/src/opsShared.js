@@ -95,7 +95,7 @@ export const LOG_SIDES = [
   { id: 'job', label: '任务' },
   { id: 'backend', label: '后端' },
   { id: 'frontend', label: '前端' },
-  { id: 'deepseek', label: 'DeepSeek' },
+  { id: 'deepseek', label: '大模型' },
 ]
 
 let _catalogPromise = null

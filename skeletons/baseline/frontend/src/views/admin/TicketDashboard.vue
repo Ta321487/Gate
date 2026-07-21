@@ -37,10 +37,20 @@
           <span>待受理 {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
           <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
         </div>
-        <div class="todo-row">
+        <div v-if="!approveEndsFlow" class="todo-row">
           <span>处理中 {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
           <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
         </div>
+        <div v-if="!approveEndsFlow && Number(data.rejectedTickets) > 0" class="todo-row">
+          <span>{{ rejectedLabel }} {{ data.rejectedTickets || 0 }} {{ ticketUnit }}</span>
+          <el-button link @click="$router.push({ path: '/admin/ticket-records', query: { status: 'rejected' } })">看记录</el-button>
+        </div>
+        <template v-else-if="approveEndsFlow">
+          <div class="todo-row">
+            <span>已通过 {{ data.approvedTickets || 0 }} · {{ rejectedLabel }} {{ data.rejectedTickets || 0 }}</span>
+            <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
+          </div>
+        </template>
         <div v-if="ticket.allowRating" class="todo-row">
           <span>已评价 {{ data.ratedCount || 0 }} {{ ticketUnit }} · 均分 {{ data.avgRating ?? '—' }}</span>
           <el-button link @click="$router.push('/admin/ticket-records?rated=1')">看评价</el-button>
@@ -70,6 +80,10 @@ const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
 const ticket = computed(() => ticketCopy() || {})
 const ticketUnit = computed(() => ticket.value.label || '单')
+const approveEndsFlow = computed(
+  () => !!(ticket.value.approveEndsFlow || data.value.approveEndsFlow),
+)
+const rejectedLabel = computed(() => ticket.value.states?.rejected || '已驳回')
 const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
 const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
 const reservationLabel = computed(() => reservationCopy()?.label || '预约')
@@ -97,11 +111,31 @@ const cards = computed(() => {
   } else {
     list.push(
       { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
-      { key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' },
-      { key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' },
     )
+    if (!approveEndsFlow.value) {
+      list.push({ key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' })
+      list.push({ key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' })
+      list.push({
+        key: 'rejected',
+        label: rejectedLabel.value,
+        value: data.value.rejectedTickets ?? '—',
+        to: '/admin/ticket-records?status=rejected',
+      })
+    } else {
+      list.push(
+        { key: 'approved', label: '已通过', value: data.value.approvedTickets ?? '—' },
+        {
+          key: 'rejected',
+          label: rejectedLabel.value,
+          value: data.value.rejectedTickets ?? '—',
+          to: '/admin/ticket-records?status=rejected',
+        },
+        { key: 'done', label: '已处理', value: data.value.completedTickets ?? '—' },
+      )
+    }
     if (showOverdue.value && Number(data.value.overdueBorrow) > 0) {
-      list.splice(2, 0, { key: 'overdue', label: '逾期', value: data.value.overdueBorrow })
+      const insertAt = approveEndsFlow.value ? 1 : 2
+      list.splice(insertAt, 0, { key: 'overdue', label: '逾期', value: data.value.overdueBorrow })
     }
   }
   list.push({ key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' })

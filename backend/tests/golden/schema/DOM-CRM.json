@@ -51,6 +51,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "approveEndsFlow": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "follow_up",

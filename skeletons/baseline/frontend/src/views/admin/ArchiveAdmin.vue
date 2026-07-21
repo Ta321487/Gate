@@ -65,7 +65,7 @@
           <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>

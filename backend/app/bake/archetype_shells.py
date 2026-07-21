@@ -139,6 +139,7 @@ def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
             "require_remark": True,
             "remark_label": "请假事由",
             "pick_date_range": True,
+            "approve_ends_flow": True,
         }
     if any(k in t for k in ("考勤", "打卡", "出勤")):
         return {
@@ -180,6 +181,7 @@ def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
             "register_hint": "注册后可登记出勤",
             "notice_title": "考勤须知",
             "notice_body": "请按班次如实登记；异常出勤须备注原因。",
+            "approve_ends_flow": True,
         }
     if any(k in t for k in ("人事", "员工档案", "人力资源", "HR")):
         return {
@@ -534,6 +536,7 @@ def build_generic_shell_schema(
             require_remark=bool(fc.get("require_remark")),
             remark_label=str(fc.get("remark_label") or "说明"),
             pick_date_range=bool(fc.get("pick_date_range")),
+            approve_ends_flow=bool(fc.get("approve_ends_flow")),
         )
     elif need_reserve:
         schema = slot_shell_schema(

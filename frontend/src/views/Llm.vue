@@ -1,74 +1,139 @@
 <template>
   <div>
-    <h1 class="page-title">DeepSeek</h1>
-    <p class="page-desc">连接、用量与阶段开关。旧模型名将于 7/24 停用，请改用 V4。</p>
+    <h1 class="page-title">大模型</h1>
+    <p class="page-desc">
+      DeepSeek / Gemini 统一管理：Key 仅环境变量；可单开或双开接力。用量与阶段开关共用一套。
+    </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else>
+
+    <div class="panel mb-16">
+      <div class="panel-hd"><h3>作战模式</h3></div>
+      <div class="panel-bd">
+        <p class="small muted mb-12">{{ modeHint }}</p>
+        <div class="grid-2">
+          <n-form-item label="启用 DeepSeek">
+            <n-switch v-model:value="form.deepseek_enabled" />
+          </n-form-item>
+          <n-form-item label="启用 Gemini">
+            <n-switch v-model:value="form.gemini_enabled" />
+          </n-form-item>
+        </div>
+        <n-form-item label="双开时优先">
+          <n-select
+            v-model:value="form.preferred"
+            :options="preferredOptions"
+            :disabled="!(form.deepseek_enabled && form.gemini_enabled)"
+          />
+        </n-form-item>
+      </div>
+    </div>
 
     <div class="grid-2 mb-16">
       <div class="panel">
         <div class="panel-hd">
-          <h3>连接</h3>
-          <span class="pill" :class="cfg.key_configured ? 'pill-green' : 'pill-amber'">{{ cfg.key_configured ? '已配置' : '未配置 Key' }}</span>
+          <h3>DeepSeek 连接</h3>
+          <span class="pill" :class="ds.key_configured ? 'pill-green' : 'pill-amber'">
+            {{ ds.key_configured ? '已配置' : '未配置 Key' }}
+          </span>
         </div>
         <div class="panel-bd stack">
           <n-form-item label="API Key">
-            <n-input :value="cfg.key_masked" disabled />
+            <n-input :value="ds.key_masked" disabled />
           </n-form-item>
+          <p class="small muted">环境变量 <span class="mono">DEEPSEEK_API_KEY</span> · DeepSeek V4</p>
           <n-form-item label="Base URL">
-            <n-input v-model:value="form.base_url" />
+            <n-input v-model:value="form.ds_base_url" />
           </n-form-item>
           <div class="grid-2">
             <n-form-item label="模型">
-              <n-select v-model:value="form.model" :options="modelOptions" />
+              <n-select v-model:value="form.ds_model" :options="dsModelOptions" />
             </n-form-item>
             <n-form-item label="Thinking">
-              <n-select v-model:value="form.thinking" :options="[{label:'开启 · 更准更贵',value:true},{label:'关闭 · 更快更省',value:false}]" />
+              <n-select
+                v-model:value="form.thinking"
+                :options="[{label:'开启 · 更准更贵',value:true},{label:'关闭 · 更快更省',value:false}]"
+              />
             </n-form-item>
           </div>
           <div class="row">
-            <n-button type="primary" size="small" :loading="saving" @click="save">保存</n-button>
-            <n-button size="small" :loading="testing" @click="test">测试连接</n-button>
-            <span class="small muted">{{ latency }}</span>
+            <n-button size="small" :loading="testingDs" @click="testDs">测试连接</n-button>
+            <span class="small muted">{{ latencyDs }}</span>
           </div>
         </div>
       </div>
+
       <div class="panel">
         <div class="panel-hd">
-          <h3>用量与预算</h3>
-          <n-button size="small" :loading="balanceLoading" @click="loadBalance">刷新</n-button>
+          <h3>Gemini 连接</h3>
+          <span class="pill" :class="gm.key_configured ? 'pill-green' : 'pill-amber'">
+            {{ gm.key_configured ? '已配置' : '未配置 Key' }}
+          </span>
         </div>
-        <div class="panel-bd">
-          <div class="balance-box mb-16">
-            <div class="small muted mb-8">DeepSeek 账户余额（官方接口）</div>
-            <template v-if="balance.ok && balance.balance_infos?.length">
-              <div v-for="(b, i) in balance.balance_infos" :key="i" class="balance-row">
-                <strong class="mono">{{ b.total_balance }} {{ b.currency }}</strong>
-                <span class="small muted">充值 {{ b.topped_up_balance }} · 赠送 {{ b.granted_balance }}</span>
-              </div>
-              <div class="small mt-8" :class="balance.is_available === false ? 'warn' : 'muted'">
-                {{ balance.is_available === false ? '当前余额可能不足以调用 API' : '账户可调用' }}
-              </div>
-            </template>
-            <div v-else class="small muted">{{ balance.message || '点击刷新查询余额' }}</div>
+        <div class="panel-bd stack">
+          <n-form-item label="API Key">
+            <n-input :value="gm.key_masked" disabled />
+          </n-form-item>
+          <p class="small muted">
+            环境变量 <span class="mono">GEMINI_API_KEY</span> ·
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+          </p>
+          <n-form-item label="Base URL">
+            <n-input v-model:value="form.gm_base_url" />
+          </n-form-item>
+          <n-form-item label="模型">
+            <n-select v-model:value="form.gm_model" :options="gmModelOptions" filterable tag />
+          </n-form-item>
+          <div class="row">
+            <n-button size="small" :loading="testingGm" :disabled="!gm.key_configured" @click="testGm">
+              测试连接
+            </n-button>
+            <span class="small muted">{{ latencyGm }}</span>
           </div>
-          <div class="small mb-8">
-            本月 Token ·
-            <span class="mono">{{ cfg.monthly_tokens_used || 0 }}</span>
-            /
-            <span class="mono">{{ form.monthly_token_budget || cfg.monthly_token_budget }}</span>
-            <span v-if="monthPct >= 90" class="warn"> · 接近上限</span>
-          </div>
-          <div class="progress mb-16"><i :style="{ width: monthPct + '%' }" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mb-16">
+      <div class="panel-hd">
+        <h3>用量与预算</h3>
+        <n-button size="small" :loading="balanceLoading" @click="loadBalance">刷新余额</n-button>
+      </div>
+      <div class="panel-bd">
+        <div class="balance-box mb-16">
+          <div class="small muted mb-8">DeepSeek 账户余额（官方接口；Gemini 无对等余额 API）</div>
+          <template v-if="balance.ok && balance.balance_infos?.length">
+            <div v-for="(b, i) in balance.balance_infos" :key="i" class="balance-row">
+              <strong class="mono">{{ b.total_balance }} {{ b.currency }}</strong>
+              <span class="small muted">充值 {{ b.topped_up_balance }} · 赠送 {{ b.granted_balance }}</span>
+            </div>
+            <div class="small mt-8" :class="balance.is_available === false ? 'warn' : 'muted'">
+              {{ balance.is_available === false ? '当前余额可能不足以调用 API' : '账户可调用' }}
+            </div>
+          </template>
+          <div v-else class="small muted">{{ balance.message || '点击刷新查询余额' }}</div>
+        </div>
+        <div class="small mb-8">
+          本月 Token ·
+          <span class="mono">{{ ds.monthly_tokens_used || 0 }}</span>
+          /
+          <span class="mono">{{ form.monthly_token_budget || ds.monthly_token_budget }}</span>
+          <span v-if="monthPct >= 90" class="warn"> · 接近上限</span>
+        </div>
+        <div class="progress mb-16"><i :style="{ width: monthPct + '%' }" /></div>
+        <div class="grid-2">
           <n-form-item label="月度 Token 预算">
             <n-input-number v-model:value="form.monthly_token_budget" :min="10000" :step="10000" style="width:100%" />
           </n-form-item>
           <n-form-item label="项目级 Token 预算">
             <n-input-number v-model:value="form.project_token_budget" :min="1000" :step="10000" style="width:100%" />
           </n-form-item>
-          <n-form-item label="修复轮次上限">
-            <n-input-number v-model:value="form.fix_rounds_max" :min="0" :max="10" style="width:100%" />
-          </n-form-item>
+        </div>
+        <n-form-item label="修复轮次上限">
+          <n-input-number v-model:value="form.fix_rounds_max" :min="0" :max="10" style="width:100%" />
+        </n-form-item>
+        <div class="row mt-8">
+          <n-button type="primary" size="small" :loading="saving" @click="save">保存连接与预算</n-button>
         </div>
       </div>
     </div>
@@ -262,10 +327,22 @@ import {
   statusPillNode,
 } from '../opsShared'
 
-const cfg = reactive({})
+const ds = reactive({
+  key_configured: false,
+  key_masked: '',
+  monthly_tokens_used: 0,
+  monthly_token_budget: 1000000,
+  project_token_budget: 100000,
+})
+const gm = reactive({
+  key_configured: false,
+  key_masked: '',
+})
 const form = reactive({
-  base_url: '',
-  model: 'deepseek-v4-flash',
+  ds_base_url: '',
+  ds_model: 'deepseek-v4-flash',
+  gm_base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  gm_model: 'gemini-2.5-flash',
   thinking: true,
   parse_spec: true,
   island_fill: true,
@@ -274,11 +351,16 @@ const form = reactive({
   project_token_budget: 100000,
   monthly_token_budget: 1000000,
   fix_rounds_max: 5,
+  deepseek_enabled: true,
+  gemini_enabled: false,
+  preferred: 'deepseek',
 })
 const booted = ref(false)
-const latency = ref('')
+const latencyDs = ref('')
+const latencyGm = ref('')
 const saving = ref(false)
-const testing = ref(false)
+const testingDs = ref(false)
+const testingGm = ref(false)
 const calls = ref([])
 const projectUsages = ref([])
 const usageChart = reactive({ daily: [] })
@@ -308,9 +390,18 @@ const balance = reactive({
   is_available: null,
   balance_infos: [],
 })
-const modelOptions = [
+const preferredOptions = [
+  { label: '优先 DeepSeek，失败再 Gemini', value: 'deepseek' },
+  { label: '优先 Gemini，失败再 DeepSeek', value: 'gemini' },
+]
+const dsModelOptions = [
   { label: 'deepseek-v4-flash · 日常 / 省钱', value: 'deepseek-v4-flash' },
   { label: 'deepseek-v4-pro · 难任务 / 质量', value: 'deepseek-v4-pro' },
+]
+const gmModelOptions = [
+  { label: 'gemini-2.5-flash · 日常 / 省钱', value: 'gemini-2.5-flash' },
+  { label: 'gemini-2.5-pro · 难任务 / 质量', value: 'gemini-2.5-pro' },
+  { label: 'gemini-2.0-flash · 兼容旧名', value: 'gemini-2.0-flash' },
 ]
 const stageOptions = [
   { label: '摘要润色', value: 'parse_spec' },
@@ -324,9 +415,21 @@ const okOptions = [
   { label: '失败', value: false },
 ]
 const monthPct = computed(() => {
-  const budget = form.monthly_token_budget || cfg.monthly_token_budget || 1
-  const used = cfg.monthly_tokens_used || 0
+  const budget = form.monthly_token_budget || ds.monthly_token_budget || 1
+  const used = ds.monthly_tokens_used || 0
   return Math.min(100, Math.round((used / budget) * 100))
+})
+const modeHint = computed(() => {
+  const onDs = form.deepseek_enabled
+  const onGm = form.gemini_enabled
+  if (onDs && onGm) {
+    const first = form.preferred === 'gemini' ? 'Gemini' : 'DeepSeek'
+    const second = form.preferred === 'gemini' ? 'DeepSeek' : 'Gemini'
+    return `双开接力：每次调用先打 ${first}；失败或 JSON 不可用时自动换 ${second}，共同服务工厂。`
+  }
+  if (onDs && !onGm) return '仅 DeepSeek：全部 LLM 阶段只走 DeepSeek；失败则该阶段回退确定性逻辑。'
+  if (!onDs && onGm) return '仅 Gemini：全部 LLM 阶段只走 Gemini；失败则该阶段回退确定性逻辑。'
+  return '两家都关：不调大模型，生成仍可完成（业务岛走确定性填充）。'
 })
 function usageSortOrder(key) {
   const s = usageSorter.value
@@ -380,7 +483,7 @@ const usageCols = computed(() => [
     sorter: true,
     sortOrder: usageSortOrder('pct'),
     render: (r) => {
-      const budget = form.project_token_budget || cfg.project_token_budget || 1
+      const budget = form.project_token_budget || ds.project_token_budget || 1
       const pct = Math.min(100, Math.round((r.tokens / budget) * 100))
       const over = r.tokens >= budget
       return h('span', { class: over ? 'warn mono' : 'mono' }, `${pct}%`)
@@ -551,18 +654,36 @@ function onCallsPageSize() {
 
 async function load() {
   try {
-    Object.assign(cfg, await api.deepseek())
-    form.base_url = cfg.base_url
-    form.model = migrateModel(cfg.model)
-    form.thinking = cfg.thinking
-    form.parse_spec = cfg.parse_spec
-    form.island_fill = cfg.island_fill
-    form.auto_fix = cfg.auto_fix
-    form.qa_report = cfg.qa_report
-    form.project_token_budget = cfg.project_token_budget
-    form.monthly_token_budget = cfg.monthly_token_budget
-    form.fix_rounds_max = cfg.fix_rounds_max
+    const [dsRes, gmRes] = await Promise.all([api.deepseek(), api.gemini()])
+    Object.assign(ds, {
+      key_configured: dsRes.key_configured,
+      key_masked: dsRes.key_masked,
+      monthly_tokens_used: dsRes.monthly_tokens_used,
+      monthly_token_budget: dsRes.monthly_token_budget,
+      project_token_budget: dsRes.project_token_budget,
+    })
+    Object.assign(gm, {
+      key_configured: gmRes.key_configured,
+      key_masked: gmRes.key_masked,
+    })
+    form.ds_base_url = dsRes.base_url
+    form.ds_model = migrateModel(dsRes.model)
+    form.thinking = dsRes.thinking
+    form.gm_base_url = gmRes.base_url
+    form.gm_model = gmRes.model || 'gemini-2.5-flash'
+    form.parse_spec = dsRes.parse_spec
+    form.island_fill = dsRes.island_fill
+    form.auto_fix = dsRes.auto_fix
+    form.qa_report = dsRes.qa_report
+    form.project_token_budget = dsRes.project_token_budget
+    form.monthly_token_budget = dsRes.monthly_token_budget
+    form.fix_rounds_max = dsRes.fix_rounds_max
+    form.deepseek_enabled = !!dsRes.deepseek_enabled
+    form.gemini_enabled = !!dsRes.gemini_enabled
+    form.preferred = dsRes.preferred || 'deepseek'
     await Promise.all([loadUsage(), loadCalls(), loadBalance()])
+  } catch (e) {
+    message.error(e?.message || '读取大模型配置失败（请确认已重启后端）')
   } finally {
     booted.value = true
   }
@@ -572,24 +693,68 @@ async function save() {
   if (saving.value) return
   saving.value = true
   try {
-    Object.assign(cfg, await api.saveDeepseek({ ...form }))
+    const [dsRes] = await Promise.all([
+      api.saveDeepseek({
+        base_url: form.ds_base_url,
+        model: form.ds_model,
+        thinking: form.thinking,
+        parse_spec: form.parse_spec,
+        island_fill: form.island_fill,
+        auto_fix: form.auto_fix,
+        qa_report: form.qa_report,
+        project_token_budget: form.project_token_budget,
+        monthly_token_budget: form.monthly_token_budget,
+        fix_rounds_max: form.fix_rounds_max,
+        deepseek_enabled: form.deepseek_enabled,
+        gemini_enabled: form.gemini_enabled,
+        preferred: form.preferred,
+      }),
+      api.saveGemini({
+        base_url: form.gm_base_url,
+        model: form.gm_model,
+      }),
+    ])
+    Object.assign(ds, {
+      key_configured: dsRes.key_configured,
+      key_masked: dsRes.key_masked,
+      monthly_tokens_used: dsRes.monthly_tokens_used,
+      monthly_token_budget: dsRes.monthly_token_budget,
+      project_token_budget: dsRes.project_token_budget,
+    })
+    form.deepseek_enabled = !!dsRes.deepseek_enabled
+    form.gemini_enabled = !!dsRes.gemini_enabled
+    form.preferred = dsRes.preferred || form.preferred
     message.success('已保存（Key 仍只读环境变量）')
   } finally {
     saving.value = false
   }
 }
 
-async function test() {
-  if (testing.value) return
-  testing.value = true
-  latency.value = '测试中…'
+async function testDs() {
+  if (testingDs.value) return
+  testingDs.value = true
+  latencyDs.value = '测试中…'
   try {
     const res = await api.testDeepseek()
-    latency.value = res.message
+    latencyDs.value = res.message
     if (res.ok) message.success(res.message)
     else message.error(res.message)
   } finally {
-    testing.value = false
+    testingDs.value = false
+  }
+}
+
+async function testGm() {
+  if (testingGm.value) return
+  testingGm.value = true
+  latencyGm.value = '测试中…'
+  try {
+    const res = await api.testGemini()
+    latencyGm.value = res.message
+    if (res.ok) message.success(res.message)
+    else message.error(res.message)
+  } finally {
+    testingGm.value = false
   }
 }
 

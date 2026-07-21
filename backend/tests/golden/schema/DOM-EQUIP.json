@@ -58,6 +58,7 @@
       "allowCheckin": false,
       "allowQty": true,
       "allowRating": false,
+      "approveEndsFlow": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "dueLabel": "应还日",

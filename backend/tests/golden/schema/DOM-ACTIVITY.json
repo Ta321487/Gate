@@ -75,6 +75,7 @@
       "allowCheckin": true,
       "allowQty": false,
       "allowRating": true,
+      "approveEndsFlow": true,
       "categoryLimit": 0,
       "checkMutex": false,
       "checkinLabel": "签到",

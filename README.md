@@ -54,6 +54,8 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - 不配 `GF_DATABASE_URL` 时，代码默认使用 `data/factory.db`（SQLite）
 - 复制 `.env.example` 后默认指向 MySQL；若暂不用 Docker，请改回 SQLite 或先 `docker compose up -d`
 - DeepSeek Key 仅环境变量：`DEEPSEEK_API_KEY`（可写 `.env`，界面只读掩码；无 Key 也可 bake，业务岛走确定性填充）
+- 可选 Gemini：`GEMINI_API_KEY`；与 DeepSeek 可分别启用或双开（优先一家，失败自动换另一家）
+- 默认仅开 DeepSeek（`LLM_PROVIDER` / 运营台开关）
 - 健康检查：`GET http://127.0.0.1:8000/api/health`
 - 工厂 API 文档（调试用，非学生端）：http://127.0.0.1:8000/docs · http://127.0.0.1:8000/redoc
 
@@ -83,7 +85,7 @@ npm run dev
 4. **运营端预览**：在端口池内起停学生前后端（后端 `9100–9120`，前端 `9200–9220`）  
 5. **下载 ZIP**：仅 `zip_ready` 且门禁整体通过时开放  
 
-运营端页面：项目、任务队列、DeepSeek 设置、运行环境。运营端本身无登录鉴权。
+运营端页面：项目、任务队列、大模型设置、运行环境。运营端本身无登录鉴权。
 
 ## 能力与领域
 
@@ -121,7 +123,9 @@ npm run dev
 |---|---|
 | `GF_DATABASE_URL` | 工厂元库；默认 SQLite，示例见 `.env.example` |
 | `GF_DATA_DIR` / `GF_SKELETONS_DIR` | 数据目录 / 骨架目录 |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | LLM；Key 不入库 |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek LLM；Key 不入库 |
+| `GEMINI_API_KEY` / `GEMINI_BASE_URL` / `GEMINI_MODEL` | 可选 Gemini（OpenAI 兼容）；与 DeepSeek 并存 |
+| `LLM_PROVIDER` | 初始偏好（迁移用）；日常在运营台用双开关控制 |
 | `GF_*_PORT_START/END` | 学生预览端口池（限制**同时运行**数，不限制选题库存；停预览后还池） |
 | `GF_HOST` / `GF_PORT` | 工厂 API 监听（服务器用 `0.0.0.0`） |
 | `GF_PUBLIC_HOST` | 预览/复制地址用的对外 IP 或域名；非本机时学生进程自动绑 `0.0.0.0` |

@@ -11,6 +11,7 @@ from app.bake.themes import (  # re-export for callers
     AUTH_ENTRY_MODES,
     AUTH_ROLE_WIDGETS,
     AUTH_TEMPLATES,
+    CHROME_STYLES,
     THEME_ALIASES,
     THEMES,
     all_theme_ids,
@@ -18,10 +19,12 @@ from app.bake.themes import (  # re-export for callers
     normalize_auth_entry_mode,
     normalize_auth_role_widget,
     normalize_auth_template,
+    normalize_chrome,
     normalize_theme,
     pick_auth_entry_mode,
     pick_auth_role_widget,
     pick_auth_template,
+    pick_chrome,
     themes_for_domain,
 )
 
@@ -414,6 +417,7 @@ def build_spec(
     auth_template = pick_auth_template(seed)
     auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
     auth_role_widget = pick_auth_role_widget(f"{seed}|widget")
+    chrome = pick_chrome(f"{seed}|chrome")
     arches = list(archetypes or [archetype])
     schema = build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
     spec = {
@@ -426,6 +430,10 @@ def build_spec(
         "industry": dom["label"],
         "theme": theme,
         "theme_label": THEMES.get(theme, theme),
+        "chrome": chrome,
+        "chrome_label": next(
+            (t["label"] for t in CHROME_STYLES if t["id"] == chrome), chrome
+        ),
         "auth_template": auth_template,
         "auth_template_label": next(
             (t["label"] for t in AUTH_TEMPLATES if t["id"] == auth_template), auth_template
