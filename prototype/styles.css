@@ -72,6 +72,11 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
     body {
       font-family: var(--font);
       color: var(--ink);
@@ -81,8 +86,10 @@
         repeating-linear-gradient(90deg, transparent, transparent 23px, var(--main-grid) 24px),
         var(--bg);
       min-height: 100vh;
+      min-height: 100dvh;
       font-size: 14px;
       line-height: 1.5;
+      overflow-x: hidden;
     }
 
     button, input, select, textarea { font: inherit; color: inherit; }
@@ -90,7 +97,47 @@
     a:hover { text-decoration: underline; }
     code, .mono { font-family: var(--mono); font-size: 12px; }
 
-    .app { display: flex; min-height: 100vh; }
+    .app { display: flex; min-height: 100vh; min-height: 100dvh; position: relative; }
+
+    .nav-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(8, 14, 20, 0.45);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      width: 36px;
+      height: 36px;
+      padding: 0 8px;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .nav-toggle-bar {
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: var(--ink-2);
+      border-radius: 1px;
+    }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
 
     /* —— Sidebar —— */
     .sidebar {
@@ -165,6 +212,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
       padding: 0 24px;
       position: sticky;
       top: 0;
@@ -179,9 +227,12 @@
       cursor: pointer;
     }
     .theme-toggle:hover { border-color: var(--teal); color: var(--teal-deep); }
-    .crumb { color: var(--muted); font-size: 13px; }
+    .crumb {
+      color: var(--muted); font-size: 13px;
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .crumb strong { color: var(--ink); font-weight: 600; }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .demo-box {
       display: flex; align-items: center; gap: 8px;
       font-size: 12px; color: var(--muted);
@@ -192,6 +243,7 @@
       border-radius: 4px;
       padding: 4px 8px;
       font-size: 12px;
+      max-width: 180px;
     }
 
     .content {
@@ -863,12 +915,41 @@
     @media (max-width: 900px) {
       .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr 1fr; }
       .help-card.wide { grid-column: 1 / -1; }
-      .sidebar { width: 64px; }
-      .brand-sub, .nav-item span, .sidebar-foot, .nav-label { display: none; }
-      .nav-item { justify-content: center; }
+      .nav-toggle { display: inline-flex; }
+      .nav-backdrop { display: block; }
+      .nav-backdrop[hidden] { display: none; }
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: min(280px, 86vw);
+        z-index: 50;
+        transform: translateX(-105%);
+        transition: transform 0.22s ease;
+        box-shadow: none;
+      }
+      .app.nav-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
+      }
+      body.nav-lock { overflow: hidden; }
+      .topbar { padding: 0 12px; }
+      .demo-label { display: none; }
+      .demo-box select { max-width: min(42vw, 150px); }
+      .tools input { width: min(160px, 40vw); }
+      .panel-bd { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .panel-bd > table,
+      .panel-bd table { min-width: 560px; }
+      .guide-bar { padding: 8px 12px; font-size: 11px; }
     }
     @media (max-width: 640px) {
       .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr; }
       .help-card.wide { grid-column: auto; }
-      .content { padding: 16px; }
+      .content { padding: 14px 12px; }
+      .page-title, .proj-title { font-size: 18px; }
+      .dropzone { padding: 28px 16px; }
+      .panel-hd, .panel-bd { padding-left: 14px; padding-right: 14px; }
+      .proj-actions .btn { flex: 1 1 auto; }
+      .tabs { gap: 0; }
+      .tab { padding: 10px 12px; flex-shrink: 0; }
+      .modal { width: calc(100vw - 24px); margin: 12px; }
     }
