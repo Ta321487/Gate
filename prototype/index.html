@@ -7,862 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --ink: #15202b;
-      --ink-2: #3d4f5f;
-      --muted: #6b7c8a;
-      --line: #d5dde3;
-      --line-soft: #e8eef2;
-      --surface: #ffffff;
-      --surface-2: #f4f7f9;
-      --bg: #e9eef2;
-      --teal: #0b6e75;
-      --teal-deep: #08545a;
-      --teal-soft: #d7eef0;
-      --amber: #b45309;
-      --amber-soft: #fef3c7;
-      --green: #047857;
-      --green-soft: #d1fae5;
-      --red: #b91c1c;
-      --red-soft: #fee2e2;
-      --sidebar: #101820;
-      --sidebar-text: #9aadb8;
-      --topbar-bg: rgba(255, 255, 255, 0.88);
-      --main-tint: rgba(11, 110, 117, 0.04);
-      --main-grid: rgba(21, 32, 43, 0.03);
-      --dropzone-hover: #f3fbfb;
-      --banner-ok-bg: #f0fdf6;
-      --banner-ok-line: #a7e3c4;
-      --banner-fail-bg: #fef2f2;
-      --banner-fail-line: #fecaca;
-      --banner-warn-bg: #fffbeb;
-      --banner-warn-line: #fcd34d;
-      --code-bg: #0f1720;
-      --code-fg: #c8d6e0;
-      --radius: 6px;
-      --font: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-      --mono: "IBM Plex Mono", "Noto Sans SC", ui-monospace, monospace;
-      color-scheme: light;
-    }
-    html[data-theme="dark"] {
-      --ink: #e8eef2;
-      --ink-2: #b8c5d0;
-      --muted: #8a9ba8;
-      --line: #2a3a48;
-      --line-soft: #1e2c38;
-      --surface: #151e27;
-      --surface-2: #1a2430;
-      --bg: #0c1218;
-      --teal: #2dd4bf;
-      --teal-deep: #5eead4;
-      --teal-soft: #134e4a;
-      --amber: #fbbf24;
-      --amber-soft: #422006;
-      --green: #34d399;
-      --green-soft: #064e3b;
-      --red: #f87171;
-      --red-soft: #450a0a;
-      --sidebar: #080d12;
-      --sidebar-text: #8a9ba8;
-      --topbar-bg: rgba(12, 18, 24, 0.9);
-      --main-tint: rgba(45, 212, 191, 0.06);
-      --main-grid: rgba(232, 238, 242, 0.035);
-      --dropzone-hover: #122028;
-      --banner-ok-bg: rgba(6, 78, 59, 0.35);
-      --banner-ok-line: #047857;
-      --banner-fail-bg: rgba(69, 10, 10, 0.45);
-      --banner-fail-line: #991b1b;
-      --banner-warn-bg: rgba(66, 32, 6, 0.45);
-      --banner-warn-line: #b45309;
-      --code-bg: #0a1018;
-      --code-fg: #b8c7d1;
-      color-scheme: dark;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: var(--font);
-      color: var(--ink);
-      background:
-        linear-gradient(180deg, var(--main-tint), transparent 220px),
-        repeating-linear-gradient(0deg, transparent, transparent 23px, var(--main-grid) 24px),
-        repeating-linear-gradient(90deg, transparent, transparent 23px, var(--main-grid) 24px),
-        var(--bg);
-      min-height: 100vh;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    button, input, select, textarea { font: inherit; color: inherit; }
-    a { color: var(--teal); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    code, .mono { font-family: var(--mono); font-size: 12px; }
-
-    .app { display: flex; min-height: 100vh; }
-
-    /* —— Sidebar —— */
-    .sidebar {
-      width: 220px;
-      background: var(--sidebar);
-      color: var(--sidebar-text);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
-    .brand {
-      padding: 22px 18px 18px;
-      border-bottom: 1px solid #243140;
-    }
-    .brand-mark {
-      font-size: 20px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-    }
-    .brand-sub {
-      margin-top: 4px;
-      font-size: 11px;
-      color: #6d8290;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .nav { padding: 12px 10px; flex: 1; }
-    .nav-label {
-      padding: 8px 10px 6px;
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #5a6f7c;
-    }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      margin-bottom: 2px;
-      transition: background 0.15s, color 0.15s;
-    }
-    .nav-item:hover { background: #1a2733; color: #d7e2ea; }
-    .nav-item.active {
-      background: #1e3340;
-      color: #fff;
-      box-shadow: inset 3px 0 0 var(--teal);
-    }
-    .nav-item .dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: currentColor; opacity: 0.45;
-    }
-    .nav-item.active .dot { background: #5eead4; opacity: 1; }
-    .sidebar-foot {
-      padding: 14px 16px;
-      border-top: 1px solid #243140;
-      font-size: 11px;
-      color: #5a6f7c;
-    }
-
-    /* —— Main —— */
-    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .topbar {
-      height: 52px;
-      background: var(--topbar-bg);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      position: sticky;
-      top: 0;
-      z-index: 20;
-    }
-    .theme-toggle {
-      flex-shrink: 0;
-      height: 30px; padding: 0 12px;
-      border-radius: 6px; border: 1px solid var(--line);
-      background: var(--surface); color: var(--ink-2);
-      font: inherit; font-size: 12px; font-weight: 600;
-      cursor: pointer;
-    }
-    .theme-toggle:hover { border-color: var(--teal); color: var(--teal-deep); }
-    .crumb { color: var(--muted); font-size: 13px; }
-    .crumb strong { color: var(--ink); font-weight: 600; }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
-    .demo-box {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: var(--muted);
-    }
-    .demo-box select {
-      border: 1px solid var(--line);
-      background: var(--surface);
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
-    }
-
-    .content {
-      padding: 24px;
-      max-width: 1120px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .view { display: none; }
-    .view.active { display: block; }
-
-    h1.page-title {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
-    }
-    .page-desc { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
-
-    /* —— Controls —— */
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      height: 34px; padding: 0 14px;
-      border-radius: var(--radius);
-      border: 1px solid transparent;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 13px;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-      white-space: nowrap;
-    }
-    .btn:disabled,
-    .btn.is-disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-primary { background: var(--teal); color: #fff; }
-    .btn-primary:hover:not(:disabled):not(.is-disabled) { background: var(--teal-deep); }
-    .btn-secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
-    .btn-secondary:hover:not(:disabled):not(.is-disabled) { border-color: var(--teal); color: var(--teal); }
-    .btn-danger { background: var(--surface); border-color: #f0c4c4; color: var(--red); }
-    .btn-danger:hover:not(:disabled) { background: var(--red-soft); }
-    .btn-ghost { background: transparent; color: var(--ink-2); }
-    .btn-ghost:hover { color: var(--teal); }
-    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
-    .btn-lg { height: 40px; padding: 0 18px; font-size: 14px; }
-
-    .pill {
-      display: inline-flex; align-items: center;
-      height: 22px; padding: 0 8px;
-      border-radius: 999px;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-    .pill-neutral { background: var(--line-soft); color: var(--ink-2); }
-    .pill-teal { background: var(--teal-soft); color: var(--teal-deep); }
-    .pill-amber { background: var(--amber-soft); color: var(--amber); }
-    .pill-green { background: var(--green-soft); color: var(--green); }
-    .pill-red { background: var(--red-soft); color: var(--red); }
-
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .panel-hd {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--line-soft);
-      background: var(--surface-2);
-    }
-    .panel-hd h3 { font-size: 14px; font-weight: 600; }
-    .panel-bd { padding: 18px; }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px 16px;
-    }
-    .stat .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .stat .value { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .stat .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    /* —— Dropzone —— */
-    .dropzone {
-      border: 1.5px dashed #b7c5ce;
-      border-radius: 10px;
-      background: var(--surface);
-      padding: 36px 24px;
-      text-align: center;
-      cursor: pointer;
-      margin-bottom: 20px;
-      transition: border-color 0.15s, background 0.15s;
-      position: relative;
-    }
-    .dropzone:hover, .dropzone.dragover {
-      border-color: var(--teal);
-      background: var(--dropzone-hover);
-    }
-    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .dropzone-icon {
-      width: 44px; height: 44px; margin: 0 auto 12px;
-      border-radius: 10px;
-      background: var(--teal-soft);
-      color: var(--teal-deep);
-      display: grid; place-items: center;
-      font-weight: 700; font-size: 18px;
-    }
-    .dropzone-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .dropzone-hint { color: var(--muted); font-size: 12px; }
-
-    .upload-bar {
-      display: none;
-      margin-bottom: 16px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px 16px;
-    }
-    .upload-bar.show { display: block; }
-    .upload-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
-    .progress {
-      height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden;
-    }
-    .progress > i {
-      display: block; height: 100%; width: 0%;
-      background: var(--teal);
-      transition: width 0.2s;
-    }
-
-    /* —— Table —— */
-    .toolbar {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      margin-bottom: 12px; flex-wrap: wrap;
-    }
-    .tabs-mini { display: flex; gap: 4px; }
-    .tabs-mini button {
-      height: 30px; padding: 0 12px;
-      border: 1px solid transparent;
-      background: transparent;
-      border-radius: 6px;
-      color: var(--muted);
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 13px;
-    }
-    .tabs-mini button.active {
-      background: var(--surface);
-      border-color: var(--line);
-      color: var(--ink);
-    }
-    .tools { display: flex; gap: 8px; align-items: center; }
-    .tools input, .tools select {
-      height: 32px; border: 1px solid var(--line); border-radius: 6px;
-      padding: 0 10px; background: var(--surface); font-size: 13px;
-    }
-    .tools input { width: 200px; }
-
-    table { width: 100%; border-collapse: collapse; }
-    th, td {
-      padding: 12px 14px; text-align: left;
-      border-bottom: 1px solid var(--line-soft);
-      font-size: 13px;
-    }
-    th {
-      background: var(--surface-2);
-      color: var(--muted);
-      font-weight: 500;
-      font-size: 12px;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr.clickable { cursor: pointer; }
-    tr.clickable:hover td { background: #f7fbfb; }
-    .list-footer {
-      padding: 12px 14px;
-      color: var(--muted);
-      font-size: 12px;
-      border-top: 1px solid var(--line-soft);
-    }
-
-    /* —— Project header —— */
-    .back {
-      display: inline-flex; align-items: center; gap: 4px;
-      color: var(--muted); font-size: 13px; margin-bottom: 12px; cursor: pointer;
-      background: none; border: none;
-    }
-    .back:hover { color: var(--teal); }
-    .proj-head {
-      display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
-      margin-bottom: 18px; flex-wrap: wrap;
-    }
-    .proj-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
-    .proj-meta {
-      display: flex; flex-wrap: wrap; gap: 8px 14px;
-      margin-top: 8px; color: var(--muted); font-size: 12px; align-items: center;
-    }
-    .proj-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .tabs {
-      display: flex; gap: 0; border-bottom: 1px solid var(--line);
-      margin-bottom: 18px; overflow-x: auto;
-    }
-    .tab {
-      padding: 10px 16px;
-      cursor: pointer;
-      color: var(--muted);
-      font-weight: 500;
-      font-size: 13px;
-      border-bottom: 2px solid transparent;
-      white-space: nowrap;
-      margin-bottom: -1px;
-    }
-    .tab:hover { color: var(--ink); }
-    .tab.active { color: var(--teal-deep); border-bottom-color: var(--teal); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-    .stack { display: flex; flex-direction: column; gap: 14px; }
-    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .gap-sm { gap: 8px; }
-    .mt-12 { margin-top: 12px; }
-    .mt-16 { margin-top: 16px; }
-    .mb-12 { margin-bottom: 12px; }
-    .mb-16 { margin-bottom: 16px; }
-    .muted { color: var(--muted); }
-    .small { font-size: 12px; }
-
-    .field label {
-      display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500;
-    }
-    .field select, .field input, .field textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px 10px;
-      background: var(--surface);
-      font-size: 13px;
-    }
-    .field textarea { min-height: 80px; resize: vertical; font-family: var(--mono); }
-    .field select:disabled, .field input:disabled { background: var(--surface-2); color: var(--muted); }
-
-    .confidence {
-      display: flex; align-items: center; gap: 10px; margin-top: 14px;
-    }
-    .confidence .bar {
-      flex: 1; height: 8px; background: var(--line-soft); border-radius: 99px; overflow: hidden;
-    }
-    .confidence .bar > i { display: block; height: 100%; background: var(--green); }
-
-    .gate {
-      margin-top: 16px;
-      padding: 14px 16px;
-      border-radius: 8px;
-      border: 1px solid #f0d9a8;
-      background: #fffbeb;
-    }
-    .gate.ok { border-color: #a7e3c4; background: #f0fdf6; }
-    .gate label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
-    .gate input { margin-top: 3px; }
-
-    .file-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 14px; background: var(--surface-2);
-      border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px;
-      font-size: 13px;
-    }
-
-    /* —— Generate —— */
-    .step-list { list-style: none; }
-    .step-list li {
-      display: flex; gap: 12px; padding: 10px 0;
-      border-bottom: 1px solid var(--line-soft);
-      font-size: 13px;
-    }
-    .step-list li:last-child { border-bottom: none; }
-    .step-ico {
-      width: 22px; height: 22px; border-radius: 50%;
-      display: grid; place-items: center;
-      font-size: 11px; font-weight: 700; flex-shrink: 0;
-      background: var(--line-soft); color: var(--muted);
-    }
-    .step-list li.done .step-ico { background: var(--green-soft); color: var(--green); }
-    .step-list li.run .step-ico { background: var(--teal-soft); color: var(--teal-deep); }
-    .step-list li.fail .step-ico { background: var(--red-soft); color: var(--red); }
-    .step-list li .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
-
-    .banner {
-      padding: 16px 18px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      margin-bottom: 14px;
-    }
-    .banner.success { background: var(--banner-ok-bg); border-color: var(--banner-ok-line); }
-    .banner.fail { background: var(--banner-fail-bg); border-color: var(--banner-fail-line); }
-    .banner.warn { background: var(--banner-warn-bg); border-color: var(--banner-warn-line); }
-    .banner.warn .warn-list { margin: 8px 0 0; padding-left: 1.2em; }
-    .banner.warn .warn-list li { margin: 4px 0; line-height: 1.45; }
-    .banner h4 { font-size: 15px; margin-bottom: 4px; }
-
-    .spec-preview {
-      background: var(--code-bg);
-      color: var(--code-fg);
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 1.65;
-      overflow: auto;
-      max-height: 220px;
-    }
-
-    /* —— Runtime —— */
-    .runtime-card .status-line {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 10px;
-    }
-    .log-box {
-      margin-top: 12px;
-      background: var(--code-bg);
-      color: var(--code-fg);
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 1.55;
-      height: 160px;
-      overflow: auto;
-      white-space: pre-wrap;
-    }
-    .log-box .ok { color: #5eead4; }
-    .log-box .err { color: #fca5a5; }
-    .log-box .warn { color: #fcd34d; }
-
-    .health-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
-    }
-    .health {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-      background: var(--surface);
-    }
-    .health .k { font-size: 11px; color: var(--muted); }
-    .health .v { font-size: 14px; font-weight: 600; margin-top: 4px; }
-
-    /* —— Logs page —— */
-    .log-toolbar {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center;
-    }
-    .log-viewer {
-      background: var(--code-bg);
-      color: var(--code-fg);
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.6;
-      height: 420px;
-      overflow: auto;
-      white-space: pre-wrap;
-    }
-
-    /* —— Settings —— */
-    .switch-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--line-soft);
-      gap: 16px;
-    }
-    .switch-row:last-child { border-bottom: none; }
-    .switch {
-      width: 40px; height: 22px; border-radius: 99px;
-      background: #c5d0d8; position: relative; cursor: pointer; flex-shrink: 0;
-      border: none;
-    }
-    .switch.on { background: var(--teal); }
-    .switch::after {
-      content: "";
-      position: absolute; top: 3px; left: 3px;
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #fff; transition: left 0.15s;
-    }
-    .switch.on::after { left: 21px; }
-
-    .usage-bars { display: grid; gap: 10px; }
-    .usage-item .top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
-    .usage-item .bar { height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
-    .usage-item .bar > i { display: block; height: 100%; background: var(--teal); }
-
-    .balance-box {
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: var(--surface-2);
-      border: 1px solid var(--line-soft);
-    }
-    .balance-row { display: flex; flex-direction: column; gap: 2px; }
-    .warn { color: #c45c26; }
-    .pager-row {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 4px 14px 14px;
-    }
-    .filter-row {
-      display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;
-    }
-    .filter-row input, .filter-row select {
-      height: 30px; border: 1px solid var(--line); border-radius: 6px;
-      padding: 0 10px; background: var(--surface); font-size: 12px;
-    }
-    .dt-range {
-      display: inline-flex; align-items: center; gap: 6px;
-      height: 30px; padding: 0 10px;
-      border: 1px solid var(--line); border-radius: 6px;
-      background: var(--surface); font-size: 12px; color: var(--ink-2);
-      cursor: default;
-    }
-    .dt-range .sep { color: var(--muted); }
-    .dt-shortcuts { display: inline-flex; gap: 4px; }
-    .dt-shortcuts button {
-      height: 26px; padding: 0 8px; border: 1px solid var(--line);
-      border-radius: 4px; background: var(--surface-2); font-size: 11px;
-      color: var(--ink-2); cursor: pointer;
-    }
-    .dt-shortcuts button:hover { border-color: var(--teal); color: var(--teal); }
-
-    .parse-panel { display: flex; flex-direction: column; gap: 16px; }
-    .parse-block { padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
-    .parse-block:last-child { border-bottom: none; padding-bottom: 0; }
-    .parse-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 6px; }
-    .parse-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-    .parse-bg { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
-    .parse-hits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .hit-chip {
-      font-size: 11px; padding: 2px 8px; border-radius: 999px;
-      background: var(--teal-soft); color: var(--teal-deep); font-weight: 500;
-    }
-    .parse-sec-hd { font-size: 12px; font-weight: 600; margin: 8px 0 4px; }
-    .parse-list { margin: 0 0 0 18px; font-size: 12px; color: var(--ink-2); }
-    .parse-list.plain { list-style: disc; }
-    .parse-excerpt { font-size: 12px; color: var(--muted); }
-    .parse-excerpt pre {
-      margin-top: 6px; padding: 10px; background: var(--surface-2);
-      border-radius: 6px; font-family: var(--mono); font-size: 11px;
-      white-space: pre-wrap; max-height: 120px; overflow: auto;
-    }
-    .spec-dl { display: grid; gap: 8px; font-size: 12px; }
-    .spec-dl > div { display: grid; grid-template-columns: 56px 1fr; gap: 8px; }
-    .spec-dl dt { color: var(--muted); }
-    .spec-dl dd { margin: 0; color: var(--ink); }
-
-    .table-list { display: grid; gap: 8px; margin: 10px 0; max-height: 280px; overflow: auto; }
-    .table-card {
-      border: 1px solid var(--line-soft); border-radius: 6px; padding: 8px 10px;
-      background: var(--surface-2);
-    }
-    .table-card-hd { font-weight: 600; font-size: 12px; margin-bottom: 4px; font-family: var(--mono); }
-    .table-cols { list-style: none; margin: 0; padding: 0; }
-    .table-cols li {
-      display: flex; gap: 8px; align-items: center;
-      font-size: 11px; padding: 2px 0;
-    }
-    .col-name { font-family: var(--mono); min-width: 90px; }
-    .col-type { flex: 1; }
-    .col-mark { font-size: 10px; font-weight: 700; color: var(--teal-deep); }
-    .rel-list { margin: 8px 0; }
-    .rel-row { font-size: 11px; padding: 4px 0; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
-    .th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-    .th-sort:hover { color: var(--teal-deep); }
-    .th-sort .sort-ico { font-size: 10px; color: var(--teal); margin-left: 2px; }
-
-    .toast {
-      position: fixed; right: 20px; bottom: 20px;
-      background: var(--ink); color: #fff;
-      padding: 10px 14px; border-radius: 8px;
-      font-size: 13px; z-index: 100;
-      opacity: 0; transform: translateY(8px);
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      max-width: 360px;
-    }
-    .toast.show { opacity: 1; transform: translateY(0); }
-
-    .guide-bar {
-      background: #10242a;
-      color: #b7d4da;
-      font-size: 12px;
-      padding: 8px 24px;
-      border-bottom: 1px solid #1e3a42;
-    }
-    .guide-bar strong { color: #5eead4; font-weight: 600; }
-
-    .modal-mask {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(15, 23, 32, 0.45);
-      z-index: 80;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .modal-mask.show { display: flex; }
-    .modal {
-      background: var(--surface);
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      width: min(560px, 100%);
-      max-height: 80vh;
-      overflow: auto;
-    }
-    .modal-hd {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 18px; border-bottom: 1px solid var(--line-soft);
-      font-weight: 600;
-    }
-    .modal-bd { padding: 18px; }
-    .modal-ft {
-      padding: 12px 18px; border-top: 1px solid var(--line-soft);
-      display: flex; justify-content: flex-end; gap: 8px;
-    }
-
-    .override-banner {
-      display: none;
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 6px;
-      border: 1px solid #f0d9a8;
-      background: #fffbeb;
-      font-size: 12px;
-      color: #92400e;
-    }
-    .override-banner.show { display: block; }
-    .override-banner.danger {
-      border-color: #fecaca;
-      background: #fef2f2;
-      color: #991b1b;
-    }
-    .rec-box {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface-2);
-      padding: 12px 14px;
-      margin-bottom: 12px;
-    }
-    .rec-box .rec-title {
-      font-size: 12px; color: var(--muted); margin-bottom: 6px;
-    }
-    .rec-box .rec-main {
-      font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
-    }
-    .rec-box .rec-sub {
-      font-size: 12px; color: var(--muted); margin-top: 4px;
-    }
-    .field.locked select {
-      background: var(--surface-2);
-      color: var(--ink-2);
-      pointer-events: none;
-    }
-    .lock-row {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
-    }
-    .row-between {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; flex-wrap: wrap;
-    }
-    .api-chip {
-      height: 28px; padding: 0 10px; border-radius: 6px;
-      border: 1px solid var(--line); background: var(--surface-2);
-      color: var(--ink-2); font-size: 12px; cursor: pointer;
-    }
-    .api-chip:hover { border-color: var(--teal); color: var(--teal); }
-    .api-chip.active { background: var(--teal-soft); border-color: var(--teal); color: var(--teal-deep); font-weight: 600; }
-    .api-cols { list-style: none; margin: 0; padding: 0 12px 10px; }
-    .api-cols li, .api-cols-hd {
-      display: grid; grid-template-columns: 64px 1.4fr 1fr 72px 80px;
-      gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--line-soft);
-      align-items: center;
-    }
-    .api-cols-hd { color: var(--muted); font-weight: 600; border-bottom-color: var(--line); }
-    .api-method { font-weight: 700; font-size: 11px; }
-    .api-flow-tag {
-      display: inline-block; margin-right: 4px; padding: 1px 6px;
-      border-radius: 4px; background: var(--teal-soft); color: var(--teal-deep); font-size: 10px;
-    }
-    .table-cols-hd {
-      display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px;
-      color: var(--muted); font-weight: 600; font-size: 11px; padding: 4px 0 6px;
-      border-bottom: 1px solid var(--line);
-    }
-    .table-cols.split-type .table-cols-hd,
-    .table-cols.split-type > li:not(.table-cols-hd) {
-      grid-template-columns: 1.1fr 1fr 0.8fr 0.6fr;
-    }
-    .table-cols > li:not(.table-cols-hd) {
-      display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px;
-      padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--line-soft);
-    }
-    .type-mode-switch { display: inline-flex; align-items: center; gap: 8px; }
-    .artifacts-file-grid { display: grid; gap: 10px; }
-    .help-cards {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px; align-items: stretch;
-    }
-    .help-card { display: flex; flex-direction: column; min-height: 100%; }
-    .help-card.wide { grid-column: 1 / -1; }
-    .help-card .panel-hd .pill { margin-left: auto; }
-    .help-body { color: var(--ink-2); font-size: 13px; line-height: 1.7; }
-    .help-body p { margin: 0 0 10px; }
-    .help-body ul { margin: 0; padding-left: 1.25em; }
-    .help-body li { margin-bottom: 6px; }
-    .help-links { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 12px 0 0; font-weight: 600; }
-    .help-steps {
-      margin: 0; padding: 0; list-style: none;
-      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
-    }
-    .help-steps > li {
-      margin: 0; padding: 10px 12px; border: 1px solid var(--line-soft);
-      border-radius: 6px; background: var(--surface-2);
-    }
-    .help-steps > li > strong { display: block; color: var(--ink); font-size: 12px; margin-bottom: 4px; }
-    .help-steps > li > p { margin: 0; font-size: 12px; }
-    .help-glossary { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-    .help-glossary-row {
-      display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px;
-      padding: 8px 0; border-bottom: 1px solid var(--line-soft);
-    }
-    .help-glossary dt { margin: 0; font-weight: 600; color: var(--ink); font-size: 12px; }
-    .help-glossary dd { margin: 0; font-size: 12px; }
-    .usage-chart-box {
-      border: 1px solid var(--line); border-radius: 8px;
-      background: var(--surface-2); padding: 12px 14px; margin-bottom: 14px;
-    }
-    .usage-chart-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
-    .usage-chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
-    .usage-chart-bars span {
-      flex: 1; background: var(--teal); border-radius: 3px 3px 0 0; min-height: 4px; opacity: 0.85;
-    }
-    .empty-hint { padding: 48px 20px; text-align: center; }
-    .empty-hint .empty-title { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
-    .empty-hint .empty-desc { font-size: 12px; color: var(--muted); }
-
-    @media (max-width: 900px) {
-      .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr 1fr; }
-      .help-card.wide { grid-column: 1 / -1; }
-      .sidebar { width: 64px; }
-      .brand-sub, .nav-item span, .sidebar-foot, .nav-label { display: none; }
-      .nav-item { justify-content: center; }
-    }
-    @media (max-width: 640px) {
-      .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr; }
-      .help-card.wide { grid-column: auto; }
-      .content { padding: 16px; }
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
@@ -1497,18 +642,38 @@
               <h3>任务列表</h3>
               <div class="row gap-sm">
                 <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-jobs">刷新</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-action="purge-finished">清空历史（2）</button>
                 <button type="button" class="btn btn-danger btn-sm" data-action="purge-orphans">清空项目不存在的任务</button>
               </div>
             </div>
             <div class="panel-bd" style="padding:0">
               <table>
                 <thead>
-                  <tr><th>Job</th><th>项目</th><th>步骤</th><th>状态</th><th>进度</th><th></th></tr>
+                  <tr><th>任务</th><th>项目</th><th>步骤</th><th>状态</th><th>进度</th><th></th></tr>
                 </thead>
                 <tbody id="jobs-tbody">
-                  <tr class="clickable" data-action="open-job" data-job-state="generating" data-project="gf-20260717-001">
+                  <!-- 同名折叠：组头默认收起，展开见时间不同的多条 -->
+                  <tr class="job-group" data-action="toggle-job-group" data-group="library" aria-expanded="false">
+                    <td class="muted">—</td>
+                    <td>
+                      <div class="job-group-title">
+                        <span class="job-tree-toggle" aria-hidden="true">▸</span>
+                        <strong>图书借阅管理系统</strong>
+                      </div>
+                      <div class="small muted" style="margin-top:4px;padding-left:18px">共 3 条</div>
+                    </td>
+                    <td class="muted">—</td>
+                    <td><span class="small muted">运行中 1 · 成功 2</span></td>
+                    <td class="muted">—</td>
+                    <td></td>
+                  </tr>
+                  <tr class="job-child clickable hidden" data-group="library" data-action="open-job" data-job-state="generating" data-project="gf-20260717-001">
                     <td class="mono">#1042</td>
-                    <td>图书借阅管理系统</td>
+                    <td>
+                      <div><strong>图书借阅管理系统</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260717-001</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/17 11:02:01</div>
+                    </td>
                     <td>bake_frontend</td>
                     <td><span class="pill pill-teal">运行中</span></td>
                     <td>42%</td>
@@ -1517,9 +682,37 @@
                       <button type="button" class="btn btn-danger btn-sm" data-action="cancel-from-jobs">取消</button>
                     </td>
                   </tr>
+                  <tr class="job-child clickable hidden" data-group="library" data-action="open-job" data-job-state="generated" data-project="gf-20260716-020">
+                    <td class="mono">#1038</td>
+                    <td>
+                      <div><strong>图书借阅管理系统</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260716-020</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/16 20:14:33</div>
+                    </td>
+                    <td>pack</td>
+                    <td><span class="pill pill-green">成功</span></td>
+                    <td>100%</td>
+                    <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
+                  </tr>
+                  <tr class="job-child clickable hidden" data-group="library" data-action="open-job" data-job-state="generated" data-project="gf-20260715-009">
+                    <td class="mono">#1035</td>
+                    <td>
+                      <div><strong>图书借阅管理系统</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260715-009</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/15 09:41:12</div>
+                    </td>
+                    <td>pack</td>
+                    <td><span class="pill pill-green">成功</span></td>
+                    <td>100%</td>
+                    <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
+                  </tr>
                   <tr class="clickable" data-action="open-job" data-job-state="generated" data-project="gf-20260716-014">
                     <td class="mono">#1041</td>
-                    <td>宿舍报修管理系统</td>
+                    <td>
+                      <div><strong>宿舍报修管理系统</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260716-014</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/16 21:10:08</div>
+                    </td>
                     <td>pack</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
@@ -1527,7 +720,11 @@
                   </tr>
                   <tr class="clickable" data-action="open-job" data-job-state="failed" data-project="gf-20260716-011">
                     <td class="mono">#1040</td>
-                    <td>校园二手交易平台</td>
+                    <td>
+                      <div><strong>校园二手交易平台</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260716-011</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/16 18:40:22</div>
+                    </td>
                     <td>island_fill</td>
                     <td><span class="pill pill-red">失败</span></td>
                     <td>58%</td>
@@ -1538,7 +735,11 @@
                   </tr>
                   <tr class="clickable" data-action="open-job" data-job-state="generated" data-project="gf-20260715-008">
                     <td class="mono">#1039</td>
-                    <td>停车场预约系统</td>
+                    <td>
+                      <div><strong>停车场预约系统</strong></div>
+                      <div class="small muted mono" style="margin-top:4px">gf-20260715-008</div>
+                      <div class="small muted" style="margin-top:2px">开始 2026/7/15 14:02:55</div>
+                    </td>
                     <td>—</td>
                     <td><span class="pill pill-neutral">已取消</span></td>
                     <td>12%</td>
@@ -1820,8 +1021,8 @@
                   <span class="muted">前端</span> 9200–9220 · 占用 9201, 9203
                   <span class="muted">（运行中 9201 · 可释放 9203）</span>
                 </div>
-                <p class="small muted mb-12">「释放」只杀工厂未托管的僵尸进程，不会停止正在预览的项目。</p>
-                <button class="btn btn-secondary btn-sm" data-action="free-ports">释放僵尸占用（2）</button>
+                <p class="small muted mb-12">「释放」只杀工作台未托管的异常进程，不会停止正在预览的项目。</p>
+                <button class="btn btn-secondary btn-sm" data-action="free-ports">释放异常占用（2）</button>
               </div>
             </div>
             <div class="panel">
@@ -1844,10 +1045,10 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>产品定位</h3><span class="pill pill-teal">总览</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量门禁校验与本地预览，并在门禁通过后提供可交付压缩包。</p>
+                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览，并在检查通过后提供可交付压缩包。</p>
                 <ul>
-                  <li>以固定基线骨架与能力运行时为主体；大语言模型仅填充业务配置（Schema），不承担业务代码编写。</li>
-                  <li>交付质量以门禁结果为准，不以生成耗时或文案完整度替代判定。</li>
+                  <li>以固定基线骨架与能力运行时为主体；大语言模型仅填充业务配置，不承担业务代码编写。</li>
+                  <li>交付质量以质量检查结果为准，不以生成耗时或文案完整度替代判定。</li>
                 </ul>
               </div>
             </article>
@@ -1855,7 +1056,7 @@
               <div class="panel-hd"><h3>注意事项</h3><span class="pill pill-teal">规范</span></div>
               <div class="panel-bd help-body">
                 <ul>
-                  <li>请勿将未过门禁的工程作为最终交付物提供给学生或指导教师。</li>
+                  <li>请勿将未通过质量检查的工程作为最终交付物提供给学生或指导教师。</li>
                   <li>匹配确认前请认真阅读解析摘要；擅自更换领域可能导致能力组合与题目不符。</li>
                   <li>预览仅供验收使用，不构成生产环境部署方案。</li>
                   <li>界面与操作约定如有调整，以当前版本页面提示为准。</li>
@@ -1868,20 +1069,20 @@
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传材料（开题 / 任务书 / 功能清单等，PDF / Word / TXT，可一次多选，最多 8 份）。系统解析后自动创建项目记录，进入项目详情。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。</p></li>
-                  <li><strong>一键生成</strong><p>匹配确认后方可启动生成。生成过程以 bake 为主，进度可在「任务队列」与项目详情中查看。</p></li>
-                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做冒烟检查；于「产物 / 对照」页核对门禁、表结构、学生端 API 与 E-R 图。</p></li>
-                  <li><strong>交付</strong><p>规定门禁全部通过后方可下载 ZIP。未通过或工作区与门禁不一致时下载保持锁定，须重新生成或排查未过项。</p></li>
+                  <li><strong>一键生成</strong><p>匹配确认后方可启动生成。生成以基线工程落地为主，进度可在「任务队列」与项目详情中查看。</p></li>
+                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」页核对质量检查、表结构、学生端 API 与 E-R 图。</p></li>
+                  <li><strong>交付</strong><p>质量检查全部通过后方可下载交付包。未通过或工程与验收规则不一致时下载保持锁定，须重新生成或排查未通过项。</p></li>
                 </ol>
               </div>
             </article>
             <article class="help-card panel">
-              <div class="panel-hd"><h3>质量门禁与交付</h3><span class="pill pill-teal">DoD</span></div>
+              <div class="panel-hd"><h3>质量检查与交付</h3><span class="pill pill-teal">交付</span></div>
               <div class="panel-bd help-body">
-                <p>质量门禁为交付定义（DoD）的组成部分。主流程或功能清单等关键项未通过时，系统禁止下载 ZIP，以防不合格工程外发。</p>
+                <p>质量检查是交付条件的组成部分。主流程或功能清单等关键项未通过时，系统暂不可下载交付包，以防不合格工程外发。</p>
                 <ul>
-                  <li>门禁明细见项目详情「产物 / 对照」中的「门禁 / 清单」。</li>
-                  <li>骨架或运行时升级后，既有工作区可能与当前规则不一致，须重新生成。</li>
-                  <li>门禁通过仅表示结构与声明能力达标，不替代运营人员对业务路径的人工预览确认。</li>
+                  <li>检查明细见项目详情「产物 / 对照」中的「质量检查」。</li>
+                  <li>骨架或运行时升级后，既有工程目录可能与当前规则不一致，须重新生成。</li>
+                  <li>质量检查通过仅表示结构与声明能力达标，不替代运营人员对业务路径的人工预览确认。</li>
                 </ul>
               </div>
             </article>
@@ -1893,28 +1094,29 @@
                   <li>字段类型按标准 MySQL 写法展示（如 varchar(60)、decimal(10,2)）。</li>
                   <li>可通过开关切换「合并类型」与「类型 / 长度分列」；复制内容与当前开关一致。</li>
                   <li>单表复制为制表符分隔文本，可贴入 Word 后使用「文本转换成表格」。</li>
+                  <li>表头为字段名、中文名、数据类型（分列时另含长度）；中文名已表达业务含义，不设说明列。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
               <div class="panel-hd"><h3>学生端 API</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>「产物 / 对照 → 学生端 API」静态扫描工作区 Controller，列出方法、路径与 Handler，便于对照门禁主流程。</p>
+                <p>「产物 / 对照 → 学生端 API」自动扫描学生工程接口，列出方法、路径与处理函数，便于对照主流程验收。</p>
                 <ul>
-                  <li>按门户 / 管理端 / 基线等面筛选；可搜索 path 或 handler。</li>
-                  <li>命中 Spec.gate.flow_api 的接口会标契约键（如 apply / place）。</li>
-                  <li>复制为「方法 + 路径」地址列表；联调基址取运行页后端地址。该视图仅供运营端验收，不含于学生交付包。</li>
+                  <li>按门户 / 管理端 / 基线等面筛选；可搜索路径或处理函数。</li>
+                  <li>命中主流程契约的接口会标注契约键（如申请 / 下单）。</li>
+                  <li>复制为「方法 + 路径」地址列表；联调基址取「运行」页后端地址。该视图仅供运营端验收，不含于学生交付包。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
-              <div class="panel-hd"><h3>工厂后端 API</h3><span class="pill pill-teal">运维</span></div>
+              <div class="panel-hd"><h3>工作台后端 API</h3><span class="pill pill-teal">运维</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港自身（Python / FastAPI）的运维接口，与学生端 ZIP 无关；用于本机调试工厂、对接脚本或 Postman。</p>
+                <p>毕设港自身（Python / FastAPI）的运维接口，与学生端交付包无关；用于本机调试、对接脚本或 Postman。</p>
                 <ul>
-                  <li>涵盖项目、任务、DeepSeek、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。</li>
-                  <li>勿与「产物 → 学生端 API」混淆：那是学生工程 Controller，这是工厂 Python 服务。</li>
-                  <li>健康检查：GET /api/health。</li>
+                  <li>涵盖项目、任务、DeepSeek、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。</li>
+                  <li>勿与「产物 → 学生端 API」混淆：那是学生工程接口清单，这是工作台后端服务。</li>
+                  <li>服务探活：GET /api/health。</li>
                 </ul>
                 <p class="help-links">
                   <a href="/docs" target="_blank" rel="noopener">Swagger · /docs</a>
@@ -1937,7 +1139,7 @@
                 <p>「运行环境」页展示本机 JDK、Maven、Node、学生库 MySQL 以及预览端口池占用。端口池限制同时预览数量，不限制选题库存。</p>
                 <ul>
                   <li>服务器部署时须配置 GF_PUBLIC_HOST（公网 IP 或域名），以保证预览链接可被正确访问。</li>
-                  <li>「释放僵尸占用」只清理工厂未托管但仍占端口的进程；正在预览的项目须到项目详情停止。</li>
+                  <li>「释放异常占用」只清理工作台未托管但仍占端口的进程；正在预览的项目须到项目详情停止。</li>
                 </ul>
               </div>
             </article>
@@ -1948,13 +1150,13 @@
                   <div class="help-glossary-row"><dt>骨架</dt><dd>学生工程的技术基线模板。匹配时选定骨架，决定可生成工程的基础形态。</dd></div>
                   <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域。决定文案、菜单与能力组合，与骨架配合使用。</dd></div>
                   <div class="help-glossary-row"><dt>匹配确认</dt><dd>核验并锁定推荐骨架与领域。确认前不可正式生成；改动后须重新确认。</dd></div>
-                  <div class="help-glossary-row"><dt>Spec / Schema</dt><dd>描述业务配置的结构化数据。大模型主要填充此类配置，而非手写业务代码。</dd></div>
-                  <div class="help-glossary-row"><dt>bake</dt><dd>基于骨架与 Spec 将工程落地的主生成路径，区别于仅调用大模型写代码。</dd></div>
+                  <div class="help-glossary-row"><dt>生成配置</dt><dd>描述业务配置的结构化数据（内部亦称 Spec / Schema）。大模型主要填充此类配置，而非手写业务代码。</dd></div>
+                  <div class="help-glossary-row"><dt>基线生成</dt><dd>基于骨架与生成配置将工程落地的主路径（内部亦称 bake），区别于仅调用大模型写代码。</dd></div>
                   <div class="help-glossary-row"><dt>能力运行时</dt><dd>基线内已实现的通用业务能力；领域通过能力组合复用同一套运行时。</dd></div>
-                  <div class="help-glossary-row"><dt>工作区</dt><dd>单个项目生成后的本机工程目录，供预览、门禁与打包下载使用。</dd></div>
-                  <div class="help-glossary-row"><dt>质量门禁 / DoD</dt><dd>交付前的自动验收项集合。关键项未通过时禁止下载 ZIP。</dd></div>
-                  <div class="help-glossary-row"><dt>ZIP 锁定</dt><dd>因门禁未过或工作区与门禁不一致，系统禁用压缩包下载的状态。</dd></div>
-                  <div class="help-glossary-row"><dt>预览</dt><dd>在端口池内临时启动前后端做冒烟验收；不作为生产部署。</dd></div>
+                  <div class="help-glossary-row"><dt>工程目录</dt><dd>单个项目生成后的本机工程目录，供预览、质量检查与打包下载使用。</dd></div>
+                  <div class="help-glossary-row"><dt>质量检查</dt><dd>交付前的自动验收项集合。关键项未通过时暂不可下载交付包。</dd></div>
+                  <div class="help-glossary-row"><dt>交付包锁定</dt><dd>因质量检查未过或工程与验收规则不一致，系统禁用压缩包下载的状态。</dd></div>
+                  <div class="help-glossary-row"><dt>预览</dt><dd>在端口池内临时启动前后端做快速验收；不作为生产部署。</dd></div>
                   <div class="help-glossary-row"><dt>端口池</dt><dd>预留给预览的端口区间，用于限制同时运行的预览实例数量。</dd></div>
                   <div class="help-glossary-row"><dt>任务队列</dt><dd>异步生成等任务的状态列表，用于查看排队、执行、失败与重试。</dd></div>
                 </dl>
@@ -1983,940 +1185,6 @@
     </div>
   </div>
 
-  <script>
-    const projects = [
-      { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚" },
-      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
-      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SECOND", status: "failed", statusLabel: "门禁未过 · 禁止交付", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
-      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前" },
-      { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", running: false, updated: "12 分钟前" },
-      { id: "gf-20260712-003", name: "新闻资讯发布平台", arch: "ARCH-CONTENT · DOM-NEWS", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
-      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-STOCK", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
-      { id: "gf-20260708-001", name: "宠物寄养管理系统", arch: "ARCH-CRUD · DOM-PET", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周" },
-    ];
-
-    const logSamples = {
-      job: `[11:02:01] INFO  job#1042 parse_report done (1.2s)
-[11:02:03] INFO  match ARCH-FLOW / DOM-LIBRARY confidence=0.86
-[11:02:04] INFO  confirm gate passed by operator
-[11:02:10] INFO  copy_skeleton ARCH-FLOW → workspace/gf-20260717-001
-[11:02:18] INFO  bake_backend emit entities: Book, Borrow, Category, Notice
-[11:03:40] INFO  llm_fill slots=4 tokens=12480
-[11:04:12] INFO  bake_frontend pages=12
-[11:04:55] INFO  build backend SUCCESS
-[11:05:40] WARN  build frontend retry 1/5 — missing view import
-[11:06:12] INFO  auto_fix applied patch to router/index.js
-[11:06:48] INFO  build frontend SUCCESS
-[11:07:01] INFO  seed_db ok · pack zip ok`,
-      backend: `[boot] Starting ThesisApplication v1.0.0
-[boot] Tomcat started on port 9103
-[boot] HikariPool-1 - Start completed
-[http] GET /api/auth/captcha 200 18ms
-[http] POST /api/auth/login 200 42ms
-[http] GET /api/admin/books?page=1&size=10 200 25ms`,
-      frontend: `VITE v5.4.2  ready in 420 ms
-➜  Local:   http://127.0.0.1:9203/
-➜  Network: use --host to expose
-[proxy] /api -> http://127.0.0.1:9103`,
-      deepseek: `[ds] stage=parse_spec model=deepseek-v4-flash thinking=on
-[ds] prompt_tokens=2100 completion=1110
-[ds] stage=island_fill files=4 ok
-[ds] stage=auto_fix round=1 error=MODULE_NOT_FOUND → patched router`,
-    };
-
-    const liveSteps = [
-      { t: "done", title: "解析开题 → 合并 Spec", meta: "匹配阶段" },
-      { t: "done", title: "复制骨架 · 写入领域 SQL", meta: "确定性 bake" },
-      { t: "done", title: "业务岛 emit · LLM 填缺口", meta: "白名单文件" },
-      { t: "run", title: "构建验证", meta: "P0" },
-      { t: "wait", title: "门禁：登录 + 主流程 E2E", meta: "P1 / P2" },
-      { t: "wait", title: "开题对照 · 打包 ZIP", meta: "仅门禁全过" },
-    ];
-
-    let beOn = false;
-    let feOn = false;
-    let currentLogSide = "job";
-    let genTimer = null;
-    let matchConfirmed = false;
-    let matchUnlocked = false;
-    /** 交付门禁：P2 不过则 zip 锁定 */
-    let gatesPass = true;
-
-    const RECOMMENDED = {
-      arch: "ARCH-FLOW · 审核流",
-      dom: "DOM-LIBRARY · 图书",
-      conf: 0.86,
-    };
-
-    function setDisabled(id, off) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.classList.toggle("is-disabled", !!off);
-      el.setAttribute("aria-disabled", off ? "true" : "false");
-    }
-
-    function isDisabled(el) {
-      return !!(el && (el.classList.contains("is-disabled") || el.getAttribute("aria-disabled") === "true"));
-    }
-
-    function toast(msg) {
-      const el = document.getElementById("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => el.classList.remove("show"), 2200);
-    }
-
-    function openModal(title, body) {
-      document.getElementById("modal-title").textContent = title;
-      document.getElementById("modal-body").textContent = body;
-      document.getElementById("modal-mask").classList.add("show");
-    }
-
-    function closeModal() {
-      document.getElementById("modal-mask").classList.remove("show");
-    }
-
-    function setCrumb(parts) {
-      document.getElementById("crumb").innerHTML = parts.map((p, i) =>
-        i === parts.length - 1 ? `<strong>${p}</strong>` : p
-      ).join(" / ");
-    }
-
-    function showView(name) {
-      document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-      document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
-      const view = document.getElementById("view-" + name);
-      if (view) view.classList.add("active");
-      const navKey = name === "project" ? "home" : name;
-      const nav = document.querySelector(`.nav-item[data-nav="${navKey}"]`);
-      if (nav) nav.classList.add("active");
-      const crumbs = {
-        home: ["毕设港", "项目"],
-        jobs: ["毕设港", "任务队列"],
-        help: ["毕设港", "帮助文档"],
-        settings: ["毕设港", "DeepSeek"],
-        system: ["毕设港", "运行环境"],
-        project: ["毕设港", "项目", "详情"],
-      };
-      setCrumb(crumbs[name] || ["毕设港"]);
-    }
-
-    function renderList(filter = "all", q = "") {
-      const tb = document.getElementById("project-tbody");
-      const map = {
-        all: () => true,
-        // 产品：运行中 = 预览已拉起
-        active: (p) => p.running || p.status === "running",
-        done: (p) => ["generated", "running"].includes(p.status),
-        fail: (p) => p.status === "failed",
-      };
-      const rows = projects
-        .filter(map[filter] || map.all)
-        .filter((p) => !q || p.name.includes(q) || p.id.includes(q));
-      if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">拖入开题 / 任务书等材料即可创建（可多选）</div></div></td></tr>`;
-      } else {
-        tb.innerHTML = rows.map((p) => `
-          <tr class="clickable" data-action="open-project" data-id="${p.id}">
-            <td>
-              <div style="font-weight:600">${p.name}</div>
-              <div class="small muted mono">${p.id}</div>
-            </td>
-            <td class="small">${p.arch}</td>
-            <td><span class="pill ${p.pill}">${p.statusLabel}</span></td>
-            <td class="small">${p.running
-              ? `<span class="pill pill-green">运行中</span><div class="mono muted" style="margin-top:4px">${p.runtime}</div>`
-              : `<span class="muted">—</span>`}</td>
-            <td class="small muted">${p.updated}</td>
-          </tr>
-        `).join("");
-      }
-      document.getElementById("list-footer").textContent = `共 ${rows.length} 条 · 点击行进入详情`;
-    }
-
-    function setProjectTab(tab) {
-      document.querySelectorAll("#proj-tabs .tab").forEach((t) => {
-        t.classList.toggle("active", t.dataset.tab === tab);
-      });
-      document.querySelectorAll("#view-project .tab-panel").forEach((p) => p.classList.remove("active"));
-      const panel = document.getElementById("tab-" + tab);
-      if (panel) panel.classList.add("active");
-    }
-
-    function setArtifactView(view) {
-      const v = view || "db";
-      document.querySelectorAll("#artifact-subtabs button").forEach((b) => {
-        b.classList.toggle("active", b.dataset.aview === v);
-      });
-      ["db", "api", "gates"].forEach((id) => {
-        const el = document.getElementById("aview-" + id);
-        if (el) el.style.display = id === v ? "flex" : "none";
-      });
-    }
-
-    function renderGates(pass) {
-      gatesPass = !!pass;
-      const results = {
-        p0a: true,
-        p0b: true,
-        p1: true,
-        p2: pass,
-        p3a: pass,
-        p3b: true,
-        p3t: true,
-      };
-      document.querySelectorAll("#gate-tbody tr[data-gate]").forEach((tr) => {
-        const ok = results[tr.dataset.gate];
-        const cell = tr.querySelector(".gate-res");
-        cell.innerHTML = ok
-          ? '<span class="pill pill-green">通过</span>'
-          : '<span class="pill pill-red">未通过</span>';
-      });
-      const overall = document.getElementById("gate-overall-pill");
-      const zipHint = document.getElementById("zip-hint");
-      const zipBtn = document.getElementById("btn-zip-dl");
-      if (pass) {
-        overall.className = "pill pill-green";
-        overall.textContent = "可交付";
-        setDisabled("btn-download", false);
-        if (zipHint) zipHint.textContent = "门禁已过";
-        if (zipBtn) {
-          zipBtn.textContent = "下载";
-          zipBtn.classList.remove("is-disabled");
-        }
-        document.getElementById("cl-flow").className = "pill pill-green";
-        document.getElementById("cl-flow").textContent = "已实现";
-        document.getElementById("cl-return").className = "pill pill-green";
-        document.getElementById("cl-return").textContent = "已实现";
-      } else {
-        overall.className = "pill pill-red";
-        overall.textContent = "禁止交付";
-        setDisabled("btn-download", true);
-        if (zipHint) zipHint.textContent = "门禁未过 · 锁定";
-        if (zipBtn) {
-          zipBtn.textContent = "锁定";
-          zipBtn.classList.add("is-disabled");
-        }
-        document.getElementById("cl-flow").className = "pill pill-red";
-        document.getElementById("cl-flow").textContent = "未覆盖";
-        document.getElementById("cl-return").className = "pill pill-red";
-        document.getElementById("cl-return").textContent = "未覆盖";
-      }
-    }
-
-    function applyGenState(state) {
-      const idle = document.getElementById("gen-idle");
-      const run = document.getElementById("gen-running");
-      const ok = document.getElementById("gen-success");
-      const fail = document.getElementById("gen-failed");
-      const reg = document.getElementById("gen-regression");
-      [idle, run, ok, fail, reg].forEach((el) => { if (el) el.style.display = "none"; });
-      if (state === "generating") {
-        run.style.display = "block";
-        document.getElementById("live-steps").innerHTML = liveSteps.map((s) => `
-          <li class="${s.t === "done" ? "done" : s.t === "run" ? "run" : ""}">
-            <span class="step-ico">${s.t === "done" ? "✓" : s.t === "run" ? "…" : "·"}</span>
-            <div><div>${s.title}</div><div class="meta">${s.meta}</div></div>
-          </li>
-        `).join("");
-      } else if (state === "running") {
-        ok.style.display = "block";
-        document.getElementById("gen-success-title").textContent = "已生成 · 预览运行中";
-        document.getElementById("gen-success-desc").textContent = "前后端已启动，可打开预览或下载 ZIP。";
-        renderGates(true);
-      } else if (state === "generated") {
-        ok.style.display = "block";
-        document.getElementById("gen-success-title").textContent = "生成完成 · 门禁全过 · 可交付";
-        document.getElementById("gen-success-desc").textContent = "ZIP 已解锁。请到「运行」预览后再交付。";
-        renderGates(true);
-      } else if (state === "regression") {
-        reg.style.display = "block";
-        renderGates(false);
-      } else if (state === "failed") {
-        fail.style.display = "block";
-        document.getElementById("fail-title").textContent = "门禁未过 · 禁止交付";
-        document.getElementById("fail-desc").textContent =
-          "主流程 / 功能清单未通过则禁止下载 ZIP。";
-        renderGates(false);
-      } else {
-        idle.style.display = "block";
-        renderGates(false);
-        setDisabled("btn-download", true);
-      }
-    }
-
-    function setStatus(label, pill) {
-      const el = document.getElementById("proj-status-pill");
-      el.className = "pill " + pill;
-      el.textContent = label;
-    }
-
-    function syncRuntimeUI() {
-      const bePill = document.getElementById("be-pill");
-      const fePill = document.getElementById("fe-pill");
-      bePill.className = "pill " + (beOn ? "pill-green" : "pill-neutral");
-      bePill.textContent = beOn ? "健康" : "已停止";
-      fePill.className = "pill " + (feOn ? "pill-green" : "pill-neutral");
-      fePill.textContent = feOn ? "健康" : "已停止";
-      document.getElementById("toggle-be").textContent = beOn ? "停止" : "启动";
-      document.getElementById("toggle-fe").textContent = feOn ? "停止" : "启动";
-      setDisabled("open-preview", !(beOn && feOn));
-      setDisabled("copy-preview", !(beOn && feOn));
-      document.getElementById("be-log").innerHTML = beOn
-        ? `<span class="ok">Tomcat started on 9103</span>\nHikariPool ready\nGET /api/auth/captcha 200`
-        : "—";
-      document.getElementById("fe-log").innerHTML = feOn
-        ? `<span class="ok">VITE ready</span>\nLocal: http://127.0.0.1:9203/\nproxy /api -> 9103`
-        : "—";
-    }
-
-    function setRuntime(on) {
-      beOn = on;
-      feOn = on;
-      syncRuntimeUI();
-    }
-
-    function showLog(side) {
-      currentLogSide = side || currentLogSide;
-      let text = logSamples[currentLogSide] || logSamples.job;
-      const q = (document.getElementById("log-filter").value || "").trim().toLowerCase();
-      let lines = text.split("\n");
-      if (q) lines = lines.filter((l) => l.toLowerCase().includes(q));
-      document.getElementById("log-viewer").textContent = lines.join("\n") || (q ? "（无匹配）" : "（无日志）");
-      document.querySelectorAll("#log-side button").forEach((b) => {
-        b.classList.toggle("active", b.dataset.side === currentLogSide);
-      });
-      const viewer = document.getElementById("log-viewer");
-      viewer.scrollTop = viewer.scrollHeight;
-    }
-
-    function isDeviated() {
-      const arch = document.getElementById("sel-arch").value;
-      const dom = document.getElementById("sel-dom").value;
-      return arch !== RECOMMENDED.arch || dom !== RECOMMENDED.dom;
-    }
-
-    function updateMatchRiskUI(clearAck) {
-      document.getElementById("field-arch").classList.toggle("locked", !matchUnlocked);
-      document.getElementById("field-dom").classList.toggle("locked", !matchUnlocked);
-      document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁覆盖";
-      document.getElementById("btn-reset-match").style.display = matchUnlocked || isDeviated() ? "inline-flex" : "none";
-
-      const pill = document.getElementById("match-mode-pill");
-      const banner = document.getElementById("override-banner");
-      const ackText = document.getElementById("match-ack-text");
-      const btnConfirm = document.getElementById("btn-confirm");
-      const conf = isDeviated() ? 0.41 : RECOMMENDED.conf;
-      document.getElementById("conf-val").textContent = conf.toFixed(2);
-      document.getElementById("conf-fill").style.width = Math.round(conf * 100) + "%";
-      document.getElementById("conf-fill").style.background = conf >= 0.75 ? "var(--green)" : "#d97706";
-
-      if (!matchUnlocked && !isDeviated()) {
-        pill.className = "pill pill-green";
-        pill.textContent = "已锁定推荐";
-        banner.classList.remove("show", "danger");
-        ackText.innerHTML = `已核对骨架、领域与砍项，确认后开始生成。
-          <span class="muted" style="display:block;margin-top:4px">置信度 0.86</span>`;
-        btnConfirm.textContent = "确认并继续";
-      } else if (matchUnlocked && !isDeviated()) {
-        pill.className = "pill pill-amber";
-        pill.textContent = "已解锁";
-        banner.classList.add("show");
-        banner.classList.remove("danger");
-        banner.textContent = "骨架 / 领域可改。无把握请恢复推荐。";
-        ackText.innerHTML = `确认当前匹配后开始生成。`;
-        btnConfirm.textContent = "确认并继续";
-      } else {
-        pill.className = "pill pill-red";
-        pill.textContent = "已偏离推荐";
-        banner.classList.add("show", "danger");
-        banner.textContent = "当前与推荐不一致，请确认后再生成。";
-        ackText.innerHTML = `确认按当前骨架 / 领域生成。`;
-        btnConfirm.textContent = "确认覆盖并继续";
-      }
-
-      if (clearAck) {
-        document.getElementById("match-ack").checked = false;
-        document.getElementById("match-gate").classList.remove("ok");
-        setDisabled("btn-confirm", true);
-      }
-    }
-
-    function syncMatchFields(clearAck) {
-      const arch = document.getElementById("sel-arch").value;
-      const dom = document.getElementById("sel-dom").value;
-      document.getElementById("proj-arch").textContent =
-        arch.split(" · ")[0] + " · " + dom.split(" · ")[0];
-      document.getElementById("rec-label").textContent =
-        "ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书";
-      document.getElementById("spec-preview").textContent = `{
-  "title": "图书借阅管理系统",
-  "archetype": "${arch.split(" · ")[0]}",
-  "domain": "${dom.split(" · ")[0]}",
-  "match_mode": "${isDeviated() ? "manual_override" : "recommended"}",
-  "roles": ["reader", "admin"],
-  "entities": ["Book", "Category", "Borrow", "Notice"],
-  "flows": ["申请借阅 → 审核 → 归还"],
-  "baseline": ["captcha", "upload", "page", "errorcode"],
-  "out_of_mvp": ["人脸识别", "协同过滤推荐"]
-}`;
-      updateMatchRiskUI(!!clearAck);
-    }
-
-    function openProject(id, demoOverride) {
-      clearTimeout(genTimer);
-      const p = projects.find((x) => x.id === id) || projects[0];
-      document.getElementById("proj-title").textContent = p.name;
-      document.getElementById("proj-id").textContent = p.id;
-      document.getElementById("proj-arch").textContent = p.arch;
-      const statusEl = document.getElementById("proj-status-pill");
-      statusEl.className = "pill " + p.pill;
-      statusEl.textContent = p.statusLabel;
-
-      const state = demoOverride || p.status;
-      matchConfirmed = state !== "needs_confirm";
-      matchUnlocked = false;
-      document.getElementById("sel-arch").value = RECOMMENDED.arch;
-      document.getElementById("sel-dom").value = RECOMMENDED.dom;
-      document.getElementById("match-ack").checked = matchConfirmed;
-      document.getElementById("match-ack").disabled = false;
-      document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
-      setDisabled("btn-confirm", !matchConfirmed);
-      // download 由门禁决定，先锁上
-      setDisabled("btn-download", true);
-
-      if (state === "needs_confirm") setProjectTab("match");
-      else if (state === "generating") setProjectTab("generate");
-      else if (state === "failed") { setProjectTab("artifacts"); setArtifactView("gates"); }
-      else if (state === "running") setProjectTab("runtime");
-      else if (state === "generated") setProjectTab("runtime");
-      else setProjectTab("generate");
-
-      applyGenState(state === "needs_confirm" ? "idle" : state);
-      setRuntime(state === "running");
-      showView("project");
-      syncMatchFields(false);
-      if (matchConfirmed) {
-        document.getElementById("match-ack").checked = true;
-        setDisabled("btn-confirm", true);
-      }
-    }
-
-    function startGenerate() {
-      clearTimeout(genTimer);
-      applyGenState("generating");
-      setStatus("生成中", "pill-teal");
-      setDisabled("btn-download", true);
-      toast("Job #1042 已启动（将跑 P0→P2 门禁）");
-      let w = 42;
-      const bar = document.getElementById("job-bar");
-      bar.style.width = w + "%";
-      const tick = setInterval(() => {
-        w = Math.min(w + 18, 100);
-        bar.style.width = w + "%";
-      }, 400);
-      genTimer = setTimeout(() => {
-        clearInterval(tick);
-        applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
-        toast("门禁全过 · ZIP 已解锁");
-        setProjectTab("artifacts");
-      }, 2000);
-    }
-
-    function handleAction(action, el, e) {
-      if (!action) return;
-
-      if (action === "open-project") {
-        openProject(el.dataset.id || el.closest("[data-id]")?.dataset.id);
-        return;
-      }
-      if (action === "open-job") {
-        const state = el.dataset.jobState || el.closest("[data-job-state]")?.dataset.jobState || "generating";
-        const pid = el.dataset.project || el.closest("[data-project]")?.dataset.project || "gf-20260717-001";
-        openProject(pid, state);
-        toast("已打开对应项目 · " + state);
-        return;
-      }
-      if (action === "retry-from-jobs") {
-        openProject("gf-20260716-011", "failed");
-        toast("已进入失败项目 · 可点「从失败步骤重试」");
-        return;
-      }
-      if (action === "refresh-list") {
-        renderList(
-          document.querySelector("#list-filter button.active")?.dataset.f || "all",
-          document.getElementById("list-search").value.trim()
-        );
-        toast("列表已刷新");
-        return;
-      }
-      if (action === "reupload") {
-        toast("另建项目 · 回到列表上传新开题报告");
-        showView("home");
-        return;
-      }
-      if (action === "toggle-override") {
-        if (!matchUnlocked) {
-          if (!confirm("解锁后可改骨架/领域。改错会生成另一套系统。确认解锁？")) return;
-          matchUnlocked = true;
-          toast("已解锁 · 请谨慎修改");
-        } else {
-          if (isDeviated()) {
-            toast("当前已偏离推荐，请先「恢复推荐」再锁定，或保持解锁状态");
-            return;
-          }
-          matchUnlocked = false;
-          toast("已重新锁定推荐");
-        }
-        syncMatchFields(true);
-        return;
-      }
-      if (action === "reset-match") {
-        document.getElementById("sel-arch").value = RECOMMENDED.arch;
-        document.getElementById("sel-dom").value = RECOMMENDED.dom;
-        matchUnlocked = false;
-        syncMatchFields(true);
-        toast("已恢复系统推荐 · 骨架/领域已锁定");
-        return;
-      }
-      if (action === "confirm-match") {
-        if (isDisabled(el)) {
-          toast("请先勾选确认门禁");
-          return;
-        }
-        if (isDeviated() && !confirm("当前已偏离系统推荐。确认仍要用这套骨架/领域生成？")) {
-          return;
-        }
-        const deviant = isDeviated();
-        matchConfirmed = true;
-        if (!deviant) matchUnlocked = false;
-        else matchUnlocked = false; // lock whatever was chosen
-        setStatus("待生成", "pill-teal");
-        document.getElementById("match-gate").classList.add("ok");
-        setDisabled("btn-confirm", true);
-        updateMatchRiskUI(false);
-        setProjectTab("generate");
-        applyGenState("idle");
-        toast(deviant ? "已按手动覆盖确认（有偏离风险）" : "已确认推荐匹配 · 可一键生成");
-        return;
-      }
-      if (action === "generate") {
-        if (!matchConfirmed && !document.getElementById("match-ack").checked) {
-          toast("请先在「匹配确认」完成确认");
-          setProjectTab("match");
-          return;
-        }
-        matchConfirmed = true;
-        startGenerate();
-        return;
-      }
-      if (action === "cancel-job") {
-        clearTimeout(genTimer);
-        applyGenState("idle");
-        setStatus("待生成", "pill-teal");
-        toast("任务已取消");
-        return;
-      }
-      if (action === "finish-job-demo") {
-        clearTimeout(genTimer);
-        applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
-        toast("门禁全过 · ZIP 已解锁");
-        setProjectTab("artifacts");
-        return;
-      }
-      if (action === "demo-gate-fail") {
-        applyGenState("failed");
-        setStatus("门禁未过 · 禁止交付", "pill-red");
-        setProjectTab("artifacts");
-        setArtifactView("gates");
-        toast("演示：P2 失败 → ZIP 锁定");
-        return;
-      }
-      if (action === "demo-gate-pass") {
-        applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
-        setProjectTab("artifacts");
-        setArtifactView("gates");
-        toast("演示：门禁全过 → ZIP 解锁");
-        return;
-      }
-      if (action === "regenerate") {
-        if (!confirm("重新生成将覆盖当前工作区业务岛文件，确认？")) return;
-        startGenerate();
-        return;
-      }
-      if (action === "retry-job") {
-        toast("从 bake_frontend 重试");
-        startGenerate();
-        return;
-      }
-      if (action === "rollback-island") {
-        toast("已回滚业务岛至 bake 前快照（演示）");
-        applyGenState("idle");
-        setStatus("待生成", "pill-teal");
-        return;
-      }
-      if (action === "goto-tab") {
-        setProjectTab(el.dataset.tab);
-        return;
-      }
-      if (action === "goto-artifacts-gates") {
-        setProjectTab("artifacts");
-        setArtifactView("gates");
-        return;
-      }
-      if (action === "goto-logs") {
-        setProjectTab("logs");
-        showLog(el.dataset.logSide || "job");
-        return;
-      }
-      if (action === "download-zip") {
-        if (!gatesPass || isDisabled(document.getElementById("btn-download"))) {
-          toast("门禁未过（尤其是 P2 主流程）· 禁止下载交付包");
-          setProjectTab("artifacts");
-          return;
-        }
-        toast("开始下载 thesis-app.zip（门禁已通过）");
-        return;
-      }
-      if (action === "delete-project") {
-        if (!confirm("删除项目\n\n将清理工作区与 ZIP。\n确认删除？\n（演示：默认不保留数据库）")) return;
-        toast("项目已删除（演示）");
-        showView("home");
-        return;
-      }
-      if (action === "toggle-be") {
-        beOn = !beOn;
-        syncRuntimeUI();
-        toast(beOn ? "后端已启动 · 9103" : "后端已停止");
-        return;
-      }
-      if (action === "toggle-fe") {
-        feOn = !feOn;
-        syncRuntimeUI();
-        toast(feOn ? "前端已启动 · 9203" : "前端已停止");
-        return;
-      }
-      if (action === "restart-be") {
-        beOn = false;
-        syncRuntimeUI();
-        setTimeout(() => {
-          beOn = true;
-          syncRuntimeUI();
-          toast("后端已重启");
-        }, 250);
-        return;
-      }
-      if (action === "restart-fe") {
-        feOn = false;
-        syncRuntimeUI();
-        setTimeout(() => {
-          feOn = true;
-          syncRuntimeUI();
-          toast("前端已重启");
-        }, 250);
-        return;
-      }
-      if (action === "start-all") {
-        setRuntime(true);
-        toast("已全部启动");
-        return;
-      }
-      if (action === "stop-all") {
-        setRuntime(false);
-        toast("已全部关闭");
-        return;
-      }
-      if (action === "restart-all") {
-        setRuntime(false);
-        setTimeout(() => {
-          setRuntime(true);
-          toast("已全部重启");
-        }, 250);
-        return;
-      }
-      if (action === "open-preview") {
-        if (!(beOn && feOn)) {
-          toast("请先启动后端与前端");
-          return;
-        }
-        toast("原型：将打开 http://127.0.0.1:9203");
-        return;
-      }
-      if (action === "copy-preview") {
-        if (!(beOn && feOn)) {
-          toast("请先启动前端预览");
-          return;
-        }
-        toast("已复制预览地址 http://127.0.0.1:9203");
-        return;
-      }
-      if (action === "refresh-log") {
-        showLog(currentLogSide);
-        toast("日志已刷新");
-        return;
-      }
-      if (action === "view-spec") {
-        openModal("spec.json", document.getElementById("spec-preview").textContent);
-        return;
-      }
-      if (action === "view-er") {
-        openModal("E-R 图（线框）", "演示：实际页面为可缩放平移的 SVG（拖拽平移 · 滚轮缩放）。\n实体：book / category / borrow / notice / sys_user …\n联系：belong / of / issued_by");
-        return;
-      }
-      if (action === "download-er") {
-        toast("下载 E-R SVG（演示）");
-        return;
-      }
-      if (action === "test-ds") {
-        document.getElementById("ds-latency").textContent = "测试中…";
-        setTimeout(() => {
-          document.getElementById("ds-latency").textContent = "延迟 287 ms · 模型可用";
-          toast("DeepSeek 连接正常");
-        }, 500);
-        return;
-      }
-      if (action === "save-ds") {
-        toast("已保存（Key 仍只读环境变量）");
-        return;
-      }
-      if (action === "refresh-balance") {
-        toast("余额已刷新");
-        return;
-      }
-      if (action === "refresh-usage" || action === "refresh-calls") {
-        toast("已刷新");
-        return;
-      }
-      if (action === "dt-shortcut") {
-        toast("时间范围 · " + (el.textContent || "").trim() + "（演示 · 中文快捷项）");
-        return;
-      }
-      if (action === "filter-calls-project") {
-        const pid = el.dataset.pid || "";
-        const input = document.getElementById("call-filter-pid");
-        if (input) input.value = pid;
-        toast("已按项目筛选调用 · " + pid);
-        return;
-      }
-      if (action === "sort-usage") {
-        const key = el.dataset.sort || "tokens";
-        const tbody = document.getElementById("usage-tbody");
-        if (!tbody) return;
-        const prev = el.dataset.order || "";
-        const next = prev === "desc" ? "asc" : "desc";
-        document.querySelectorAll("#usage-table .th-sort").forEach((th) => {
-          th.dataset.order = "";
-          const ico = th.querySelector(".sort-ico");
-          if (ico) ico.textContent = "";
-        });
-        el.dataset.order = next;
-        const ico = el.querySelector(".sort-ico");
-        if (ico) ico.textContent = next === "desc" ? "↓" : "↑";
-        const rows = [...tbody.querySelectorAll("tr")];
-        const num = (r) => Number(r.dataset[key === "last_at" ? "last" : key] || 0);
-        const ts = (r) => Date.parse(r.dataset.last || 0) || 0;
-        rows.sort((a, b) => {
-          const av = key === "last_at" ? ts(a) : num(a);
-          const bv = key === "last_at" ? ts(b) : num(b);
-          return next === "asc" ? av - bv : bv - av;
-        });
-        rows.forEach((r) => tbody.appendChild(r));
-        toast("按「" + el.textContent.replace(/\s*[↑↓]\s*$/, "").trim() + "」" + (next === "asc" ? "升序" : "降序"));
-        return;
-      }
-      if (action === "refresh-jobs") {
-        toast("任务列表已刷新");
-        return;
-      }
-      if (action === "purge-orphans") {
-        if (!confirm("确认删除所有「项目已不存在」的任务？此操作不可恢复。")) return;
-        toast("已清空项目不存在的任务（演示）");
-        return;
-      }
-      if (action === "cancel-from-jobs") {
-        toast("已取消任务（演示）");
-        return;
-      }
-      if (action === "refresh-system") {
-        toast("运行环境已刷新");
-        return;
-      }
-      if (action === "free-ports") {
-        toast("已释放僵尸占用（演示）");
-        return;
-      }
-      if (action === "close-modal") {
-        closeModal();
-        return;
-      }
-
-      toast("已响应：" + action);
-    }
-
-    // —— Global click delegation ——
-    document.addEventListener("click", (e) => {
-      const switchBtn = e.target.closest("[data-switch]");
-      if (switchBtn) {
-        switchBtn.classList.toggle("on");
-        toast(switchBtn.classList.contains("on") ? "阶段已开启" : "阶段已关闭 · 仍可 bake");
-        return;
-      }
-
-      const nav = e.target.closest(".nav-item[data-nav]");
-      if (nav) {
-        showView(nav.dataset.nav);
-        return;
-      }
-
-      const tab = e.target.closest("#proj-tabs .tab");
-      if (tab) {
-        setProjectTab(tab.dataset.tab);
-        return;
-      }
-
-      const logSide = e.target.closest("#log-side button");
-      if (logSide) {
-        showLog(logSide.dataset.side);
-        return;
-      }
-
-      const aviewBtn = e.target.closest("#artifact-subtabs button");
-      if (aviewBtn) {
-        setArtifactView(aviewBtn.dataset.aview);
-        return;
-      }
-
-      const filterBtn = e.target.closest("#list-filter button");
-      if (filterBtn) {
-        document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
-        filterBtn.classList.add("active");
-        renderList(filterBtn.dataset.f, document.getElementById("list-search").value.trim());
-        return;
-      }
-
-      if (e.target.id === "back-home" || e.target.closest("#back-home")) {
-        showView("home");
-        return;
-      }
-
-      if (e.target.closest("#modal-mask") === e.target) {
-        closeModal();
-        return;
-      }
-
-      const actionable = e.target.closest("[data-action]");
-      if (actionable) {
-        e.preventDefault();
-        handleAction(actionable.dataset.action, actionable, e);
-      }
-    });
-
-    document.getElementById("match-ack").addEventListener("change", (e) => {
-      setDisabled("btn-confirm", !e.target.checked);
-      document.getElementById("match-gate").classList.toggle("ok", e.target.checked);
-      if (e.target.checked) toast("门禁已勾选 · 可确认匹配");
-    });
-
-    document.getElementById("list-search").addEventListener("input", (e) => {
-      const active = document.querySelector("#list-filter button.active");
-      renderList(active?.dataset.f || "all", e.target.value.trim());
-    });
-
-    document.getElementById("sel-arch").addEventListener("change", () => {
-      if (!matchUnlocked) {
-        document.getElementById("sel-arch").value = RECOMMENDED.arch;
-        toast("骨架已锁定 · 请先点「解锁覆盖」");
-        return;
-      }
-      syncMatchFields(true);
-      toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "骨架已改回推荐值");
-    });
-    document.getElementById("sel-dom").addEventListener("change", () => {
-      if (!matchUnlocked) {
-        document.getElementById("sel-dom").value = RECOMMENDED.dom;
-        toast("领域已锁定 · 请先点「解锁覆盖」");
-        return;
-      }
-      syncMatchFields(true);
-      toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "领域已改回推荐值");
-    });
-    document.getElementById("sel-theme")?.addEventListener("change", () => toast("行业配色已自动保存"));
-    document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
-    document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
-
-    document.getElementById("log-filter").addEventListener("input", () => showLog());
-
-    document.getElementById("demo-state").addEventListener("change", (e) => {
-      const v = e.target.value;
-      if (v === "list") showView("home");
-      else openProject("gf-20260717-001", v);
-    });
-
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      const dark = document.documentElement.getAttribute("data-theme") === "dark";
-      if (dark) {
-        document.documentElement.removeAttribute("data-theme");
-        document.getElementById("theme-toggle").textContent = "夜间";
-        document.getElementById("theme-toggle").title = "切换夜间模式";
-      } else {
-        document.documentElement.setAttribute("data-theme", "dark");
-        document.getElementById("theme-toggle").textContent = "日间";
-        document.getElementById("theme-toggle").title = "切换日间模式";
-      }
-    });
-
-    document.getElementById("type-paren-mode")?.addEventListener("change", (e) => {
-      document.getElementById("type-mode-label").textContent =
-        e.target.checked ? "类型 varchar(60)" : "类型分列 varchar | 60";
-    });
-
-    // Upload
-    const dz = document.getElementById("dropzone");
-    const fileInput = document.getElementById("file-input");
-    function simulateUpload(name) {
-      const bar = document.getElementById("upload-bar");
-      bar.classList.add("show");
-      document.getElementById("upload-name").textContent = name || "开题报告.docx";
-      let pct = 0;
-      const fill = document.getElementById("upload-fill");
-      const pctEl = document.getElementById("upload-pct");
-      const timer = setInterval(() => {
-        pct += 12;
-        const show = Math.min(pct, 100);
-        fill.style.width = show + "%";
-        if (show < 90) pctEl.textContent = "上传中 " + show + "%";
-        else if (show < 100) pctEl.textContent = "解析材料 · 匹配领域…";
-        else pctEl.textContent = "完成";
-        if (pct >= 100) {
-          clearInterval(timer);
-          toast("已建项 · 进入匹配确认");
-          setTimeout(() => openProject("gf-20260717-001", "needs_confirm"), 350);
-        }
-      }, 70);
-    }
-    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("dragover"); });
-    dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
-    dz.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dz.classList.remove("dragover");
-      simulateUpload(e.dataTransfer.files[0]?.name);
-    });
-    fileInput.addEventListener("change", () => {
-      if (fileInput.files[0]) simulateUpload(fileInput.files[0].name);
-    });
-
-    // Click dropzone label area (file input covers it already)
-
-    renderList();
-    showLog("job");
-    syncRuntimeUI();
-    syncMatchFields(false);
-    renderGates(false);
-    setArtifactView("db");
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
