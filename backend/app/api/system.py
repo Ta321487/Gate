@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.llm.client import monthly_tokens_used, project_usage_chart, project_usage_rows
-from app.llm.runtime import get_llm_flags, set_llm_flags
+from app.llm.runtime import DEFAULT_DS, get_llm_flags, set_llm_flags
 from app.models import LlmCall, Project, ProjectStatus, SettingRow
 from app.schemas import (
     ApiOk,
@@ -30,14 +30,6 @@ from app.services import runtime as rt
 from app.services.projects import mask_key, reclaim_idle_ports
 
 router = APIRouter(prefix="/api")
-
-DEFAULT_DS = {
-    "thinking": True,
-    "parse_spec": True,
-    "island_fill": True,
-    "auto_fix": True,
-    "qa_report": False,
-}
 
 
 async def _get_ds_row(db: AsyncSession) -> dict:
@@ -78,6 +70,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         key_configured=bool(s.deepseek_api_key),
         key_masked=mask_key(s.deepseek_api_key, env_name="DEEPSEEK_API_KEY", hint_prefix="sk-"),
         parse_spec=bool(cfg.get("parse_spec", True)),
+        match_recommend=bool(cfg.get("match_recommend", True)),
         island_fill=bool(cfg.get("island_fill", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
@@ -101,7 +94,7 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         db.add(row)
     cfg = dict(row.value or DEFAULT_DS)
     data = body.model_dump(exclude_none=True)
-    for k in ("thinking", "parse_spec", "island_fill", "auto_fix", "qa_report"):
+    for k in ("thinking", "match_recommend", "parse_spec", "island_fill", "auto_fix", "qa_report"):
         if k in data:
             cfg[k] = data[k]
     if "base_url" in data:
@@ -183,6 +176,7 @@ async def get_gemini(db: AsyncSession = Depends(get_db)):
         model=str(cfg.get("model") or s.gemini_model),
         key_configured=bool((s.gemini_api_key or "").strip()),
         key_masked=mask_key(s.gemini_api_key, env_name="GEMINI_API_KEY"),
+        match_recommend=bool(ds.get("match_recommend", True)),
         parse_spec=bool(ds.get("parse_spec", True)),
         island_fill=bool(ds.get("island_fill", True)),
         auto_fix=bool(ds.get("auto_fix", True)),
@@ -217,6 +211,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
 
     # 阶段开关 / 预算与 DeepSeek 页共用 deepseek settings 行
     pipeline_keys = (
+        "match_recommend",
         "parse_spec",
         "island_fill",
         "auto_fix",
@@ -231,7 +226,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
             ds_row = SettingRow(key="deepseek", value=dict(DEFAULT_DS))
             db.add(ds_row)
         ds_cfg = dict(ds_row.value or DEFAULT_DS)
-        for k in ("parse_spec", "island_fill", "auto_fix", "qa_report"):
+        for k in ("match_recommend", "parse_spec", "island_fill", "auto_fix", "qa_report"):
             if k in data:
                 ds_cfg[k] = data[k]
         if "project_token_budget" in data:

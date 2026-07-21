@@ -9,6 +9,7 @@ from app.models import SettingRow
 
 DEFAULT_DS = {
     "thinking": True,
+    "match_recommend": True,
     "parse_spec": True,
     "island_fill": True,
     "auto_fix": True,
@@ -40,6 +41,7 @@ class LlmRuntime:
     deepseek_enabled: bool
     gemini_enabled: bool
     preferred: str
+    match_recommend: bool
     parse_spec: bool
     island_fill: bool
     auto_fix: bool
@@ -65,6 +67,7 @@ class LlmRuntime:
 
     def stage_on(self, stage: str) -> bool:
         return {
+            "match_recommend": self.match_recommend,
             "parse_spec": self.parse_spec,
             "island_fill": self.island_fill,
             "auto_fix": self.auto_fix,
@@ -211,6 +214,7 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
         deepseek_enabled=flags["deepseek_enabled"],
         gemini_enabled=flags["gemini_enabled"],
         preferred=flags["preferred"],
+        match_recommend=bool(cfg.get("match_recommend", True)),
         parse_spec=bool(cfg.get("parse_spec", True)),
         island_fill=bool(cfg.get("island_fill", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),

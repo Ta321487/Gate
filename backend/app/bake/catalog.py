@@ -55,6 +55,107 @@ class MatchResult:
     text_excerpt: str
     archetypes: list[str] | None = None
     match_warnings: list[str] | None = None
+    match_source: str = "keyword"  # keyword | llm
+    rationale: str = ""
+    alts: list[dict] | None = None
+    keyword_arch: str | None = None
+    keyword_domain: str | None = None
+
+
+def catalog_brief_for_match() -> str:
+    """给 Match Agent 的封闭目录摘要（短）。"""
+    arch_lines = [f"- {k}: {v.get('label')}" for k, v in ARCHETYPES.items()]
+    dom_lines: list[str] = []
+    for k, v in DOMAINS.items():
+        kws = "、".join((v.get("keywords") or [])[:6])
+        flows = "；".join((v.get("flows") or [])[:2])
+        dom_lines.append(f"- {k}（{v.get('label')}）关键词:{kws} 流程:{flows}")
+    return (
+        "骨架 ARCHETYPES:\n"
+        + "\n".join(arch_lines)
+        + "\n\n领域 DOMAINS:\n"
+        + "\n".join(dom_lines)
+    )
+
+
+def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
+    """校验 LLM 推荐；非法则返回 None（调用方回落关键词）。"""
+    arch = str(data.get("archetype") or "").strip()
+    dom = str(data.get("domain") or "").strip()
+    if arch not in ARCHETYPES or dom not in DOMAINS:
+        return None
+    try:
+        raw_conf = float(data.get("confidence") if data.get("confidence") is not None else 0.7)
+    except (TypeError, ValueError):
+        raw_conf = 0.7
+    raw_conf = max(0.35, min(0.95, raw_conf))
+
+    arches = [arch]
+    # 与关键词一致时抬一点置信；不一致则压一点并提示
+    same_dom = dom == kw.domain
+    same_arch = arch == kw.archetype
+    if same_dom and same_arch:
+        conf = min(0.95, max(raw_conf, kw.confidence) + 0.05)
+    elif same_dom:
+        conf = min(0.92, (raw_conf * 0.7 + kw.confidence * 0.3))
+    else:
+        conf = min(0.88, raw_conf * 0.85)
+
+    # LLM 已覆盖关键词定案：丢掉关键词 reconcile 的「已改用通用壳」类提示，避免与最终推荐打架
+    hits = [h for h in (kw.hits or []) if not (isinstance(h, str) and h.startswith("提示："))]
+    warnings: list[str] = []
+    if not same_dom or not same_arch:
+        kw_label = (DOMAINS.get(kw.domain) or {}).get("label") or kw.domain
+        llm_label = (DOMAINS.get(dom) or {}).get("label") or dom
+        tip = (
+            f"提示：大模型推荐 {arch}×{dom}（{llm_label}）；"
+            f"关键词初判为 {kw.archetype}×{kw.domain}（{kw_label}），已按大模型覆盖，请人工确认。"
+        )
+        warnings.append(tip)
+        hits.append(tip)
+
+    alts_out: list[dict] = []
+    for item in data.get("alts") or []:
+        if not isinstance(item, dict):
+            continue
+        a = str(item.get("archetype") or "").strip()
+        d = str(item.get("domain") or "").strip()
+        if a not in ARCHETYPES or d not in DOMAINS:
+            continue
+        if a == arch and d == dom:
+            continue
+        try:
+            c = float(item.get("confidence") if item.get("confidence") is not None else 0.5)
+        except (TypeError, ValueError):
+            c = 0.5
+        alts_out.append(
+            {
+                "archetype": a,
+                "domain": d,
+                "confidence": max(0.2, min(0.9, c)),
+                "label": f"{ARCHETYPES[a]['label']} × {DOMAINS[d]['label']}",
+            }
+        )
+        if len(alts_out) >= 3:
+            break
+
+    rationale = str(data.get("rationale") or "").strip()[:400]
+
+    return MatchResult(
+        title=kw.title,
+        archetype=arch,
+        domain=dom,
+        confidence=round(conf, 2),
+        hits=hits,
+        text_excerpt=kw.text_excerpt,
+        archetypes=arches,
+        match_warnings=warnings,
+        match_source="llm",
+        rationale=rationale,
+        alts=alts_out,
+        keyword_arch=kw.archetype,
+        keyword_domain=kw.domain,
+    )
 
 
 def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
@@ -350,6 +451,11 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         text_excerpt=text[:2000],
         archetypes=arches,
         match_warnings=warnings,
+        match_source="keyword",
+        rationale="",
+        alts=[],
+        keyword_arch=arch,
+        keyword_domain=dom,
     )
 
 
@@ -361,6 +467,10 @@ def normalize_password_hash(mode: str | None) -> str:
     if m in ("sha", "sha-256", "sha_256"):
         m = "sha256"
     return m if m in PASSWORD_HASH_MODES else "none"
+
+
+# schema.roles 里的非角色键（布尔开关 / 岗位表），不得进 Spec「角色」列表
+_ROLE_META_KEYS = frozenset({"staff_posts", "allowAppointFromUsers"})
 
 
 def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
@@ -384,7 +494,11 @@ def _roles_for_spec(domain_roles: list, schema: dict | None) -> list[str]:
                 if pid not in out:
                     out.append(pid)
     for r in keys:
-        if r in ("staff_posts", "subadmin"):
+        if r in _ROLE_META_KEYS or r == "subadmin":
+            continue
+        # 只收角色对象；跳过布尔开关等误挂在 roles 下的配置
+        val = schema_roles.get(r) if isinstance(schema_roles, dict) else None
+        if not isinstance(val, dict):
             continue
         if r and r not in out:
             out.append(str(r))
@@ -407,6 +521,7 @@ def build_spec(
     proposal: dict | None = None,
     password_hash: str = "none",
     archetypes: list[str] | None = None,
+    match_meta: dict | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
 
@@ -464,6 +579,8 @@ def build_spec(
         "schema": schema,
         "runtime": copy.deepcopy(dom.get("runtime") or {}),
     }
+    if match_meta:
+        spec["match_meta"] = match_meta
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 

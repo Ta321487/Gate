@@ -34,7 +34,7 @@ export const api = {
     return http.post('/projects/upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,
-      timeout: 120000,
+      timeout: 300000,
     })
   },
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
