@@ -137,10 +137,7 @@ public final class SlotStore {
                         + " WHERE username=? AND slot_id=? AND status IN ('pending','confirmed')",
                 Integer.class, username, slotId);
         if (dup != null && dup > 0) throw new IllegalStateException("您已预约该时段");
-        int updated = db().update(
-                "UPDATE " + SLOT + " SET booked=booked+1 WHERE id=? AND booked<capacity", slotId);
-        if (updated == 0) throw new IllegalStateException("该时段已约满");
-        KeyHolder kh = new GeneratedKeyHolder();
+
         String rawNote = remark == null ? "" : remark.trim();
         final String note = rawNote.length() > 255 ? rawNote.substring(0, 255) : rawNote;
         Map<String, Object> ex = extras == null ? Map.of() : extras;
@@ -161,48 +158,60 @@ public final class SlotStore {
             else if (!guest.isBlank()) noteFilled = guest;
             else if (!subject.isBlank()) noteFilled = subject;
         }
+        // 先校验再占坑，避免校验失败泄漏 booked
         if (requireRemark && noteFilled.isBlank()) {
             throw new IllegalStateException("请填写备注后再预约");
         }
         final String noteFinal = noteFilled.length() > 255 ? noteFilled.substring(0, 255) : noteFilled;
         final String initialStatus = requireConfirm ? "pending" : "confirmed";
+
+        int updated = db().update(
+                "UPDATE " + SLOT + " SET booked=booked+1 WHERE id=? AND booked<capacity", slotId);
+        if (updated == 0) throw new IllegalStateException("该时段已约满");
+        KeyHolder kh = new GeneratedKeyHolder();
         boolean rich = hasResvColumn("plate_no");
-        db().update(con -> {
-            PreparedStatement ps;
-            if (rich) {
-                ps = con.prepareStatement(
-                        "INSERT INTO " + RESV
-                                + " (slot_id,username,status,remark,plate_no,patient_name,visit_type,symptom_note,"
-                                + "subject,party_size,guest_name,guest_count,preferred_stylist,queue_no,created_at)"
-                                + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, slotId);
-                ps.setString(2, username);
-                ps.setString(3, initialStatus);
-                ps.setString(4, noteFinal);
-                ps.setString(5, plate);
-                ps.setString(6, patient);
-                ps.setString(7, visit);
-                ps.setString(8, symptom);
-                ps.setString(9, subject);
-                ps.setInt(10, party);
-                ps.setString(11, guest);
-                ps.setInt(12, guestCount);
-                ps.setString(13, stylist);
-                ps.setInt(14, queue > 0 ? queue : (int) (slotId % 1000) + 1);
-                ps.setTimestamp(15, Timestamp.valueOf(LocalDateTime.now()));
-            } else {
-                ps = con.prepareStatement(
-                        "INSERT INTO " + RESV + " (slot_id,username,status,remark,created_at) VALUES (?,?,?,?,?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, slotId);
-                ps.setString(2, username);
-                ps.setString(3, initialStatus);
-                ps.setString(4, noteFinal);
-                ps.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
-            }
-            return ps;
-        }, kh);
+        try {
+            db().update(con -> {
+                PreparedStatement ps;
+                if (rich) {
+                    ps = con.prepareStatement(
+                            "INSERT INTO " + RESV
+                                    + " (slot_id,username,status,remark,plate_no,patient_name,visit_type,symptom_note,"
+                                    + "subject,party_size,guest_name,guest_count,preferred_stylist,queue_no,created_at)"
+                                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            Statement.RETURN_GENERATED_KEYS);
+                    ps.setLong(1, slotId);
+                    ps.setString(2, username);
+                    ps.setString(3, initialStatus);
+                    ps.setString(4, noteFinal);
+                    ps.setString(5, plate);
+                    ps.setString(6, patient);
+                    ps.setString(7, visit);
+                    ps.setString(8, symptom);
+                    ps.setString(9, subject);
+                    ps.setInt(10, party);
+                    ps.setString(11, guest);
+                    ps.setInt(12, guestCount);
+                    ps.setString(13, stylist);
+                    ps.setInt(14, queue > 0 ? queue : (int) (slotId % 1000) + 1);
+                    ps.setTimestamp(15, Timestamp.valueOf(LocalDateTime.now()));
+                } else {
+                    ps = con.prepareStatement(
+                            "INSERT INTO " + RESV + " (slot_id,username,status,remark,created_at) VALUES (?,?,?,?,?)",
+                            Statement.RETURN_GENERATED_KEYS);
+                    ps.setLong(1, slotId);
+                    ps.setString(2, username);
+                    ps.setString(3, initialStatus);
+                    ps.setString(4, noteFinal);
+                    ps.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+                }
+                return ps;
+            }, kh);
+        } catch (RuntimeException e) {
+            db().update(
+                    "UPDATE " + SLOT + " SET booked=GREATEST(booked-1,0) WHERE id=?", slotId);
+            throw e;
+        }
         long resvId = kh.getKey() == null ? 0L : kh.getKey().longValue();
         if (OrderStore.enabled()) {
             long itemId = ((Number) slot.get("itemId")).longValue();
@@ -217,7 +226,17 @@ public final class SlotStore {
                 }
             }
             String body = title + " · " + slot.get("startAt") + " ~ " + slot.get("endAt");
-            OrderStore.placeSimple(username, itemId, body, price, 1, "reservation:" + resvId, resvId);
+            try {
+                OrderStore.placeSimple(username, itemId, body, price, 1, "reservation:" + resvId, resvId);
+            } catch (RuntimeException e) {
+                try {
+                    db().update("DELETE FROM " + RESV + " WHERE id=?", resvId);
+                } catch (Exception ignored) {
+                }
+                db().update(
+                        "UPDATE " + SLOT + " SET booked=GREATEST(booked-1,0) WHERE id=?", slotId);
+                throw e;
+            }
         }
         try {
             String who = UserStore.notifyWho(username, patient, guest);
@@ -276,6 +295,41 @@ public final class SlotStore {
         return getReservation(resvId);
     }
 
+    /**
+     * 履约办结：confirmed → completed（入场 / 就诊 / 到店 / 入住离店等，文案由 schema 决定）。
+     * 不回补号源（时段已使用）；联动订单则一并完成。
+     */
+    public static Map<String, Object> complete(long resvId) {
+        requireEnabled();
+        Map<String, Object> m = getReservation(resvId);
+        if (m == null) throw new IllegalArgumentException("预约不存在");
+        if (!"confirmed".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅已确认的预约可办结");
+        }
+        if (hasResvColumn("entry_at")) {
+            db().update(
+                    "UPDATE " + RESV + " SET status='completed', entry_at=NOW() WHERE id=?",
+                    resvId);
+        } else {
+            db().update("UPDATE " + RESV + " SET status='completed' WHERE id=?", resvId);
+        }
+        try {
+            OrderStore.completeByReservation(resvId);
+        } catch (Exception ignored) {
+        }
+        try {
+            String user = String.valueOf(m.get("username"));
+            MessageStore.send(
+                    user,
+                    "预约已办结",
+                    "「" + m.get("itemTitle") + "」" + m.get("startAt") + " ~ " + m.get("endAt") + " 已办结。",
+                    "reservation",
+                    resvId);
+        } catch (Exception ignored) {
+        }
+        return getReservation(resvId);
+    }
+
     public static Map<String, Object> cancel(long resvId, String username, boolean asAdmin) {
         requireEnabled();
         Map<String, Object> m = getReservation(resvId);
@@ -292,7 +346,48 @@ public final class SlotStore {
         db().update(
                 "UPDATE " + SLOT + " SET booked=GREATEST(booked-1,0) WHERE id=?",
                 ((Number) m.get("slotId")).longValue());
+        try {
+            OrderStore.cancelByReservation(resvId);
+        } catch (Exception ignored) {
+        }
         return getReservation(resvId);
+    }
+
+    /**
+     * 改约：取消原时段占坑并预约新时段（同一用户；保留备注等扩展字段）。
+     */
+    public static Map<String, Object> reschedule(long resvId, long newSlotId, String username) {
+        requireEnabled();
+        Map<String, Object> old = getReservation(resvId);
+        if (old == null) throw new IllegalArgumentException("预约不存在");
+        if (!username.equals(String.valueOf(old.get("username")))) {
+            throw new IllegalStateException("无权改约");
+        }
+        String st = String.valueOf(old.get("status"));
+        if (!"pending".equals(st) && !"confirmed".equals(st)) {
+            throw new IllegalStateException("仅待确认/已确认可改约");
+        }
+        long oldSlot = ((Number) old.get("slotId")).longValue();
+        if (oldSlot == newSlotId) throw new IllegalStateException("请选择不同时段");
+        Map<String, Object> extras = new LinkedHashMap<>();
+        extras.put("plateNo", old.get("plateNo"));
+        extras.put("patientName", old.get("patientName"));
+        extras.put("visitType", old.get("visitType"));
+        extras.put("symptomNote", old.get("symptomNote"));
+        extras.put("subject", old.get("subject"));
+        extras.put("partySize", old.get("partySize"));
+        extras.put("guestName", old.get("guestName"));
+        extras.put("guestCount", old.get("guestCount"));
+        extras.put("preferredStylist", old.get("preferredStylist"));
+        String remark = String.valueOf(old.getOrDefault("remark", ""));
+        // 先取消原单（放号源、关联动订单），再占新坑
+        cancel(resvId, username, true);
+        try {
+            return reserve(username, newSlotId, remark, extras);
+        } catch (RuntimeException e) {
+            // 尽力提示：原约已取消
+            throw new IllegalStateException("原预约已取消，但新时段预约失败：" + e.getMessage());
+        }
     }
 
     public static Map<String, Object> getReservation(long id) {
@@ -339,8 +434,11 @@ public final class SlotStore {
                 "SELECT COUNT(*) FROM " + RESV + " WHERE status='pending'", Long.class);
         Long confirmed = db().queryForObject(
                 "SELECT COUNT(*) FROM " + RESV + " WHERE status='confirmed'", Long.class);
+        Long completed = db().queryForObject(
+                "SELECT COUNT(*) FROM " + RESV + " WHERE status='completed'", Long.class);
         m.put("pendingReservations", pending == null ? 0 : pending);
         m.put("confirmedReservations", confirmed == null ? 0 : confirmed);
+        m.put("completedReservations", completed == null ? 0 : completed);
         return m;
     }
 

@@ -20,10 +20,13 @@
         <template #default="{ row }">{{ states[row.status] || row.status }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" :label="`${resvNoun}时间`" width="170" />
+      <el-table-column prop="entryAt" label="办结时间" width="170">
+        <template #default="{ row }">{{ row.entryAt || '—' }}</template>
+      </el-table-column>
       <el-table-column label="详情" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ resvDetail(row) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="requireConfirm && row.status === 'pending'"
@@ -31,6 +34,12 @@
             type="primary"
             @click="confirmRow(row)"
           >确认</el-button>
+          <el-button
+            v-if="row.status === 'confirmed'"
+            link
+            type="success"
+            @click="completeRow(row)"
+          >{{ completeVerb }}</el-button>
           <el-button
             v-if="row.status === 'pending' || row.status === 'confirmed'"
             link
@@ -123,6 +132,7 @@ import { downloadCsv } from '../../utils/csvDownload.js'
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
 const requireConfirm = computed(() => !!resv.requireConfirm)
+const completeVerb = computed(() => resv.completeVerb || '办结')
 const archiveLabel = computed(() => archiveCopy().label || '资源')
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
@@ -214,6 +224,16 @@ async function confirmRow(row) {
   load()
 }
 
+async function completeRow(row) {
+  await ElMessageBox.confirm(
+    `对「${row.itemTitle || resvNoun.value}」执行「${completeVerb.value}」？`,
+    completeVerb.value,
+  )
+  await http.post(`/api/slots/reservations/${row.id}/complete`)
+  ElMessage.success(`已${completeVerb.value}`)
+  load()
+}
+
 async function generate() {
   if (!gen.itemId || !gen.day) {
     ElMessage.warning(`请选择${archiveLabel.value}并填写日期`)
@@ -266,7 +286,10 @@ onMounted(load)
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .hint { margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.5; }
 .preview {
-  max-height: 220px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px;
+  max-height: 220px; overflow: auto;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius-sm, 8px);
+  padding: 10px 12px;
   background: #f8fafc;
 }
 .preview-hd { font-weight: 600; margin-bottom: 6px; font-size: 13px; }

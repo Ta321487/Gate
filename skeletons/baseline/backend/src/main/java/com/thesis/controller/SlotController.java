@@ -65,6 +65,32 @@ public class SlotController {
         }
     }
 
+    /** 履约办结：入场 / 就诊 / 到店完成 / 入住离店等 */
+    @PostMapping("/reservations/{id}/complete")
+    public R<?> complete(@PathVariable long id, HttpSession session) {
+        requireSlot();
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(SlotStore.complete(id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 改约：取消原时段并预约新时段 */
+    @PostMapping("/reservations/{id}/reschedule")
+    public R<?> reschedule(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        requireSlot();
+        String uid = AdminAuth.requireLogin(session);
+        long newSlotId = Long.parseLong(String.valueOf(body.get("slotId")));
+        try {
+            return R.ok(SlotStore.reschedule(id, newSlotId, uid));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping("/reservations")
     public R<?> page(
             @RequestParam(defaultValue = "1") int page,
