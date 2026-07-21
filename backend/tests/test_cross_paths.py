@@ -1,5 +1,7 @@
 """Path B：交叉白名单与 accept 变严。"""
 
+import re
+
 from app.bake.capabilities import resolve_accept, scan_out_of_scope
 from app.bake.cross_paths import evaluate_cross_path, path_key_from_archetypes
 
@@ -164,3 +166,129 @@ def test_match_keeps_trade_and_reserve_union():
     assert "ARCH-RESERVE" in (m.archetypes or [])
     # 无「宾馆/酒店」词时走通用交叉壳
     assert m.domain == "DOM-GENERIC"
+
+
+def test_match_ignores_negated_pay_keyword():
+    """「不扩展真实支付」不得单独抬升交易流。"""
+    from app.bake.catalog import match_text
+
+    m = match_text(
+        "仓储物资申领系统。主要功能：物资目录；提交申领；库管审核出库；"
+        "范围控制：不扩展真实支付与重型盘点设备对接。"
+    )
+    assert "ARCH-TRADE" not in (m.archetypes or [])
+    assert "ARCH-FLOW" in (m.archetypes or [])
+
+
+def test_match_material_claim_opening_to_asset():
+    """仓储物资申领开题 → 物资域；角色为库管而非商城骑手。"""
+    from pathlib import Path
+
+    from app.bake.catalog import build_spec, match_text
+
+    text = Path("d:/graduate_factory_v3/data/samples/仓储物资申领开题.txt").read_text(
+        encoding="utf-8"
+    )
+    m = match_text(text, "仓储物资申领开题.txt")
+    assert m.domain == "DOM-ASSET"
+    assert "ARCH-TRADE" not in (m.archetypes or [])
+    assert "ARCH-FLOW" in (m.archetypes or []) or "ARCH-STOCK" in (m.archetypes or [])
+
+    spec = build_spec(
+        m.title,
+        m.archetype,
+        m.domain,
+        "asset-olive",
+        False,
+        "keyword",
+        m.confidence,
+        hits=m.hits,
+        archetypes=m.archetypes,
+    )
+    roles = spec.get("roles") or []
+    assert "order_clerk" not in roles
+    assert "rider" not in roles
+    assert "storekeeper" in roles
+    ents = spec.get("entities") or []
+    assert all(re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", e) for e in ents)
+    assert "Asset" in ents
+    assert not any("申领" in e or "仓储" in e for e in ents)
+
+
+def test_generic_shell_entities_are_english():
+    from app.bake.archetype_shells import apply_generic_shell
+
+    spec = apply_generic_shell(
+        {
+            "title": "基于 Spring Boot 的高校仓储物资申领管理系统的设计与实现",
+            "domain": "DOM-GENERIC",
+            "archetype": "ARCH-FLOW",
+            "archetypes": ["ARCH-FLOW"],
+        }
+    )
+    assert "Item" in (spec.get("entities") or [])
+    assert not any("\u4e00" <= c <= "\u9fff" for e in (spec["entities"] or []) for c in e)
+
+
+def test_generic_cross_staff_posts_union_no_rider():
+    """交叉壳按能力并集挂 clerk，不默认塞配送员。"""
+    from app.bake.staff_posts import staff_posts_for_domain
+
+    posts = staff_posts_for_domain(
+        "DOM-GENERIC", archetypes=["ARCH-FLOW", "ARCH-TRADE"]
+    )
+    ids = [p["id"] for p in posts]
+    assert ids == ["clerk", "order_clerk"]
+    assert all(p.get("kind") == "clerk" for p in posts)
+
+    trade_only = staff_posts_for_domain("DOM-GENERIC", archetype="ARCH-TRADE")
+    assert [p["id"] for p in trade_only] == ["order_clerk"]
+    assert "rider" not in [p["id"] for p in trade_only]
+
+
+def test_build_spec_generic_cross_keeps_staff_posts():
+    """apply_generic_shell 不得冲掉交叉岗位表。"""
+    from app.bake.catalog import build_spec, match_text
+
+    m = match_text(
+        "校园综合小平台。主要功能：图书借阅申请与归还；"
+        "二手商品浏览、加入购物车并提交订单；公告。"
+    )
+    assert m.domain == "DOM-GENERIC"
+    spec = build_spec(
+        m.title,
+        m.archetype,
+        m.domain,
+        "ink-blue",
+        False,
+        "keyword",
+        m.confidence,
+        hits=m.hits,
+        archetypes=m.archetypes,
+    )
+    posts = ((spec.get("schema") or {}).get("roles") or {}).get("staff_posts") or []
+    assert [p.get("id") for p in posts] == ["clerk", "order_clerk"]
+    assert "rider" not in (spec.get("roles") or [])
+
+
+def test_cross_sql_seeds_all_clerks():
+    """交叉多 clerk：首岗绑 subadmin，其余各一演示账号。"""
+    from app.bake.engine import domain_sql
+
+    sql = domain_sql(
+        "DOM-GENERIC", "t", archetypes=["ARCH-FLOW", "ARCH-TRADE"]
+    )
+    assert "staff_post='clerk'" in sql
+    assert "VALUES ('order_clerk'" in sql
+    assert "rider" not in sql
+
+
+def test_announce_publish_does_not_force_content_arch():
+    """公告发布不得单独抬升内容流。"""
+    from app.bake.catalog import match_text
+
+    m = match_text(
+        "仓储物资申领。主要功能：提交申领；库管审核出库；仓储公告的发布与查阅。"
+    )
+    assert "ARCH-CONTENT" not in (m.archetypes or [])
+    assert "ARCH-FLOW" in (m.archetypes or [])

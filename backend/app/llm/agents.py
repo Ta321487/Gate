@@ -1,4 +1,4 @@
-"""五个窄 Agent：匹配推荐 / Spec 润色 / 填岛 / 修复 / 质检；不生成业务 Java/Vue。"""
+"""六个窄 Agent：匹配推荐 / Spec 润色 / 填岛 / E-R 中文补全 / 修复 / 质检；不生成业务 Java/Vue。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,16 @@ from app.bake.domain_schema import (
 )
 from app.bake.engine import emit_schema_to_workspace, llm_fill_islands
 from app.bake.proposal_lexicon import dedupe_out_scope_vs_features
+from app.bake.schema_er import (
+    apply_er_label_patch,
+    build_schema_model,
+    collect_english_gaps,
+    count_er_gaps,
+    count_er_patch_fills,
+    load_er_label_patch,
+    sanitize_er_label_patch,
+    save_er_label_patch,
+)
 from app.llm.client import (
     append_deepseek_log,
     budget_ok,
@@ -385,6 +395,112 @@ async def run_island_agent(
         detail=format_usage_detail(res, f"{mode}," + ",".join(written)),
     )
     return written, mode
+
+
+# ---------- Agent E：E-R 中文补全（只补展示名，不改 SQL/源码） ----------
+async def run_er_label_agent(
+    db: AsyncSession,
+    rt: LlmRuntime,
+    *,
+    project_id: str,
+    workspace: Path,
+    spec: dict[str, Any] | None = None,
+    llm_enabled: bool = True,
+) -> dict[str, Any]:
+    """扫描 E-R 展示名漏网英文，调 LLM 补中文；写入 islands/er_labels.json。"""
+    fresh = build_schema_model(workspace, with_er_patch=False)
+    if not fresh:
+        return {"mode": "skip", "gaps": 0, "filled": 0, "detail": "no schema"}
+
+    gaps = collect_english_gaps(fresh)
+    n_gaps = count_er_gaps(gaps)
+    if n_gaps == 0:
+        save_er_label_patch(workspace, {"mode": "clean", "tables": {}, "columns": {}, "relations": {}})
+        await record_call(
+            db, project_id=project_id, stage="er_labels", tokens=0, ok=True, detail="no english gaps"
+        )
+        return {"mode": "clean", "gaps": 0, "filled": 0}
+
+    use_llm = bool(llm_enabled and rt.stage_on("er_labels") and rt.configured)
+    if use_llm and not await budget_ok(db, project_id, rt):
+        use_llm = False
+        append_deepseek_log(project_id, "er_labels skip llm · budget exceeded")
+
+    def remain_after(patch: dict | None) -> int:
+        return count_er_gaps(collect_english_gaps(apply_er_label_patch(dict(fresh), patch)))
+
+    if not use_llm:
+        existing = load_er_label_patch(workspace)
+        remain = remain_after(existing)
+        mode = "deterministic_only"
+        await record_call(
+            db,
+            project_id=project_id,
+            stage="er_labels",
+            tokens=0,
+            ok=True,
+            detail=f"{mode} · gaps={n_gaps} · remain={remain}",
+        )
+        append_deepseek_log(project_id, f"er_labels {mode} gaps={n_gaps} remain={remain}")
+        return {"mode": mode, "gaps": n_gaps, "filled": 0, "remain": remain}
+
+    title = ""
+    domain = ""
+    if isinstance(spec, dict):
+        title = str(spec.get("title") or "")
+        domain = str(spec.get("domain") or "")
+        schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+        labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
+        if not title:
+            title = str(labels.get("appName") or "")
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是毕设港 ER Label Agent。只输出 JSON：\n"
+                '{"tables":{"表名":"中文实体名"},'
+                '"columns":{"表名":{"列名":"中文属性名"}},'
+                '"relations":{"联系名":"中文联系名"}}\n'
+                "规则：只翻译 gaps 里列出的项；纯中文短名（实体≤8字、属性≤8字、联系≤6字）；"
+                "联系名必须是动词或动宾（发布/指派/属于/接收…），禁止用实体名（用户/分类/公告）；"
+                "禁止拼音/英文/代码；贴合领域语义；不要发明 gaps 以外的键。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {"domain": domain, "title": title, "gaps": gaps},
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    res = await chat(rt, messages, json_mode=True, temperature=0.2)
+    append_deepseek_log(project_id, f"er_labels ok={res.ok} {format_usage_detail(res)}")
+
+    if res.ok and isinstance(res.data, dict):
+        patch = {**sanitize_er_label_patch(res.data, gaps), "mode": "llm"}
+    else:
+        old = sanitize_er_label_patch(load_er_label_patch(workspace), gaps)
+        patch = {
+            **old,
+            "mode": "llm_failed_keep_old" if count_er_patch_fills(old) else "llm_failed",
+        }
+
+    save_er_label_patch(workspace, patch)
+    filled = count_er_patch_fills(patch)
+    remain = remain_after(patch)
+    await record_call(
+        db,
+        project_id=project_id,
+        stage="er_labels",
+        tokens=res.tokens,
+        ok=bool(res.ok),
+        detail=format_usage_detail(
+            res, f"{patch.get('mode')} · gaps={n_gaps} · filled={filled} · remain={remain}"
+        ),
+    )
+    return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "remain": remain}
 
 
 # ---------- Agent C：构建修复（诊断 + 重放填岛，不改 Java/Vue） ----------

@@ -72,6 +72,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         parse_spec=bool(cfg.get("parse_spec", True)),
         match_recommend=bool(cfg.get("match_recommend", True)),
         island_fill=bool(cfg.get("island_fill", True)),
+        er_labels=bool(cfg.get("er_labels", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
         project_token_budget=int(cfg.get("project_token_budget", s.project_token_budget)),
@@ -94,7 +95,15 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         db.add(row)
     cfg = dict(row.value or DEFAULT_DS)
     data = body.model_dump(exclude_none=True)
-    for k in ("thinking", "match_recommend", "parse_spec", "island_fill", "auto_fix", "qa_report"):
+    for k in (
+        "thinking",
+        "match_recommend",
+        "parse_spec",
+        "island_fill",
+        "er_labels",
+        "auto_fix",
+        "qa_report",
+    ):
         if k in data:
             cfg[k] = data[k]
     if "base_url" in data:
@@ -179,6 +188,7 @@ async def get_gemini(db: AsyncSession = Depends(get_db)):
         match_recommend=bool(ds.get("match_recommend", True)),
         parse_spec=bool(ds.get("parse_spec", True)),
         island_fill=bool(ds.get("island_fill", True)),
+        er_labels=bool(ds.get("er_labels", True)),
         auto_fix=bool(ds.get("auto_fix", True)),
         qa_report=bool(ds.get("qa_report", False)),
         project_token_budget=int(ds.get("project_token_budget", s.project_token_budget)),
@@ -214,6 +224,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
         "match_recommend",
         "parse_spec",
         "island_fill",
+        "er_labels",
         "auto_fix",
         "qa_report",
         "project_token_budget",
@@ -226,7 +237,14 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
             ds_row = SettingRow(key="deepseek", value=dict(DEFAULT_DS))
             db.add(ds_row)
         ds_cfg = dict(ds_row.value or DEFAULT_DS)
-        for k in ("match_recommend", "parse_spec", "island_fill", "auto_fix", "qa_report"):
+        for k in (
+            "match_recommend",
+            "parse_spec",
+            "island_fill",
+            "er_labels",
+            "auto_fix",
+            "qa_report",
+        ):
             if k in data:
                 ds_cfg[k] = data[k]
         if "project_token_budget" in data:

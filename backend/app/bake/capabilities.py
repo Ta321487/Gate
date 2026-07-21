@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
-from app.bake.proposal_lexicon import NEGATION_RE
+from app.bake.proposal_lexicon import keyword_mentioned
 
 # status: implemented = 当前骨架/运行时已能交付；planned = 规格已定未落地
 CAPABILITIES: dict[str, dict[str, Any]] = {
@@ -168,13 +167,8 @@ def _scan_signals(raw: str, signals: list[tuple[str, str]], *, window: int = 48)
     if not raw:
         return hits
     for kw, label in signals:
-        for m in re.finditer(re.escape(kw), raw, flags=re.IGNORECASE):
-            ctx = raw[max(0, m.start() - window) : m.end() + window]
-            if NEGATION_RE.search(ctx):
-                continue
-            if label not in hits:
-                hits.append(label)
-            break
+        if keyword_mentioned(raw, kw, window=window) and label not in hits:
+            hits.append(label)
     return hits
 
 

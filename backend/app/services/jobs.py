@@ -16,7 +16,13 @@ from app.bake.engine import bake_project
 from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.core.database import SessionLocal
-from app.llm.agents import run_fix_agent, run_island_agent, run_qa_agent, run_spec_agent
+from app.llm.agents import (
+    run_er_label_agent,
+    run_fix_agent,
+    run_island_agent,
+    run_qa_agent,
+    run_spec_agent,
+)
 from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobStatus, Project, ProjectStatus
 from app.services.proposal import load_merged_proposal_text
@@ -200,7 +206,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             elif workspace is None:
                 raise RuntimeError("工作区不存在，无法续跑，请重新一键生成")
 
-            # 3 Island Agent
+            # 3 Island Agent + ER Label Agent
             if from_step <= 2:
                 await set_step(2, "run", "Island Agent")
                 filled, island_mode = await run_island_agent(
@@ -212,10 +218,32 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     llm_enabled=bool(project.llm_enabled),
                 )
                 flag_modified(project, "spec")
+                er_meta = ""
+                try:
+                    er = await run_er_label_agent(
+                        db,
+                        llm_rt,
+                        project_id=project.id,
+                        workspace=workspace,
+                        spec=project.spec if isinstance(project.spec, dict) else None,
+                        llm_enabled=bool(project.llm_enabled),
+                    )
+                    er_meta = (
+                        f" · er={er.get('mode')} gaps={er.get('gaps', 0)}"
+                        f" filled={er.get('filled', 0)}"
+                    )
+                    await append_log(
+                        project.id,
+                        f"ER Label · mode={er.get('mode')} gaps={er.get('gaps')} "
+                        f"filled={er.get('filled')} remain={er.get('remain', 0)}",
+                    )
+                except Exception as ee:  # noqa: BLE001
+                    er_meta = " · er=skip"
+                    await append_log(project.id, f"ER Label skip · {ee}")
                 await set_step(
                     2,
                     "done",
-                    f"{island_mode} · slots={len(filled)} · accept={project.spec.get('accept')}",
+                    f"{island_mode} · slots={len(filled)} · accept={project.spec.get('accept')}{er_meta}",
                 )
                 await asyncio.sleep(0.2)
 

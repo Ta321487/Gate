@@ -672,10 +672,28 @@ def build_generic_shell_schema(
     return schema
 
 
+def finalize_generic_schema(
+    title: str,
+    archetype: str | None = None,
+    archetypes: list[str] | None = None,
+) -> dict[str, Any]:
+    """GENERIC 最终 schema：壳文案 + profile + 交叉岗位（唯一出口）。"""
+    from app.bake.profile_fields import attach_profile_fields
+    from app.bake.staff_posts import attach_staff_posts
+
+    arches = normalize_archetypes(archetypes, primary=archetype)
+    schema = build_generic_shell_schema(title, archetypes=arches)
+    schema = attach_profile_fields(schema, "DOM-GENERIC")
+    primary = arches[0] if arches else "ARCH-CRUD"
+    return attach_staff_posts(schema, "DOM-GENERIC", primary, arches)
+
+
 def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     """当 domain=DOM-GENERIC 时，按 archetypes 并集写入 runtime/gate/features/schema。"""
     if (spec.get("domain") or "") != "DOM-GENERIC":
         return spec
+    from app.bake.staff_posts import roles_for_spec
+
     spec = dict(spec)
     arches = normalize_archetypes(spec.get("archetypes"), primary=spec.get("archetype"))
     title = spec.get("title") or "毕设系统"
@@ -709,7 +727,8 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     if not flow_bits:
         flow_bits = ["新增 → 编辑 → 查询"]
     spec["flows"] = flow_bits
-    ents = [noun, "Category"]
+    # entities 用英文键（与具体 DOM-* 一致）；中文题名只进 schema 文案，不进实体列表
+    ents = ["Item", "Category"]
     if any(a in _FLOW_FAMILY for a in arches):
         ents.append("Ticket")
     if "ARCH-TRADE" in arches:
@@ -720,8 +739,7 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     spec["entities"] = ents
     spec["domain_label"] = product_name_from_title(title)
     spec["industry"] = spec["domain_label"]
-    from app.bake.profile_fields import attach_profile_fields
-
-    schema = build_generic_shell_schema(title, archetypes=arches)
-    spec["schema"] = attach_profile_fields(schema, "DOM-GENERIC")
+    schema = finalize_generic_schema(title, primary, arches)
+    spec["schema"] = schema
+    spec["roles"] = roles_for_spec(["user", "admin"], schema)
     return spec
