@@ -117,7 +117,38 @@ public class OrderController {
                     str(b.get("receiverPhone")),
                     str(b.get("addressLine")),
                     str(b.get("deliveryType")),
-                    str(b.get("tasteNote"))));
+                    str(b.get("tasteNote")),
+                    str(b.get("couponCode"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/api/orders/{id}/trace")
+    public R<?> trace(@PathVariable long id, HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
+        }
+        return R.ok(OrderStore.logisticsTrace(id));
+    }
+
+    @PostMapping("/api/orders/{id}/refund")
+    public R<?> refund(@PathVariable long id, @RequestBody(required = false) Map<String, Object> body, HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        try {
+            if (admin && b.containsKey("pass")) {
+                boolean pass = bool(b.get("pass"), true);
+                return R.ok(OrderStore.decideRefund(id, pass, str(b.get("note"))));
+            }
+            return R.ok(OrderStore.requestRefund(id, uid, str(b.get("reason"))));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

@@ -31,7 +31,8 @@ public class LoyaltyController {
     public R<?> preview(@RequestBody Map<String, Object> body, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
         double subtotal = toDouble(body == null ? null : body.get("subtotalYuan"));
-        return R.ok(LoyaltyStore.previewPrice(subtotal, uid));
+        String coupon = str(body == null ? null : body.get("couponCode"));
+        return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon));
     }
 
     /** 管理端：仅演示余额可充值；积分不可充值 */

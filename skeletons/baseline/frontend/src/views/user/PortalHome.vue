@@ -49,9 +49,14 @@ const MENU_TO = {
   archive: '/archive',
   my_tickets: '/tickets',
   content: '/notices',
+  guestbook: '/guestbook',
   profile: '/profile',
+  favorites: '/favorites',
+  browse_history: '/browse-history',
+  coupons: '/coupons',
   cart: '/cart',
   my_orders: '/orders',
+  order_reviews: '/order-reviews',
   my_reservations: '/reservations',
   slots: '/slots',
   week_calendar: '/week',
@@ -62,6 +67,11 @@ const LEADS = {
   archive: '浏览与检索业务目录',
   my_tickets: '查看申请进度与办理记录',
   content: '通知、须知与临时公告',
+  guestbook: '发表建议或咨询，查看管理员回复',
+  favorites: '收藏的商品，便于再次加购',
+  browse_history: '最近看过的记录',
+  coupons: '领取与查看可用优惠券',
+  order_reviews: '已完成订单的评价与商家回复',
   profile: '昵称、头像与个人资料',
   my_reservations: '查看与管理预约',
   slots: '选择时段并提交预约',
@@ -91,7 +101,7 @@ function cardLead(key, menuLabelText) {
   return LEADS[key] || `进入${menuLabelText}`
 }
 
-const GUEST_OK = new Set(['archive', 'content', 'slots', 'home'])
+const GUEST_OK = new Set(['archive', 'content', 'guestbook', 'slots', 'home'])
 const NEED_LOGIN = new Set([
   'my_tickets',
   'profile',
@@ -169,10 +179,11 @@ function go(card) {
 }
 .card {
   text-align: left;
-  border: 1px solid var(--portal-line, #d5dde3);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   background: color-mix(in srgb, var(--portal-surface, #fff) 92%, transparent);
-  border-radius: 12px;
-  padding: 16px 16px 18px;
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
+  padding: var(--portal-pad, 16px) 16px 18px;
   cursor: pointer;
   display: flex;
   flex-direction: column;

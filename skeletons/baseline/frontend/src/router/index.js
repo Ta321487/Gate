@@ -43,6 +43,7 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/reservations': 'reservations',
   '/admin/users': 'users',
   '/admin/notices': 'content',
+  '/admin/guestbook': 'guestbook',
   '/admin/sites': 'lookup_site',
   '/admin/types': 'lookup_type',
   '/admin/archive': 'archive',
@@ -171,6 +172,121 @@ function withPortalHub(baseRoutes) {
     adminKids.splice(at, 0, {
       path: 'messages',
       component: () => import('../views/user/Messages.vue'),
+    })
+  }
+  return routes
+}
+
+/** 留言板路由：有 guestbook 能力时挂门户与管理端入口 */
+function withGuestbookRoutes(baseRoutes) {
+  if (!hasCap('guestbook')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'guestbook')) {
+    const noticeIdx = kids.findIndex((c) => c.path === 'notices')
+    const at = noticeIdx >= 0 ? noticeIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'guestbook',
+      component: () => import('../views/Guestbook.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'guestbook')) {
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = noticeIdx >= 0 ? noticeIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'guestbook',
+      component: () => import('../views/admin/GuestbookAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 收藏夹：有 favorites 能力时挂门户入口 */
+function withFavoritesRoutes(baseRoutes) {
+  if (!hasCap('favorites')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'favorites')) {
+    const cartIdx = kids.findIndex((c) => c.path === 'cart')
+    const at = cartIdx >= 0 ? cartIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'favorites',
+      component: () => import('../views/user/MyFavorites.vue'),
+    })
+  }
+  return routes
+}
+
+/** 浏览历史：有 browse_history 能力时挂门户入口 */
+function withBrowseHistoryRoutes(baseRoutes) {
+  if (!hasCap('browse_history')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'browse-history')) {
+    const favIdx = kids.findIndex((c) => c.path === 'favorites')
+    const at = favIdx >= 0 ? favIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'browse-history',
+      component: () => import('../views/user/BrowseHistory.vue'),
+    })
+  }
+  return routes
+}
+
+/** 优惠券：领取 / 我的券 / 管理端 */
+function withCouponRoutes(baseRoutes) {
+  if (!hasCap('coupon')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'coupons')) {
+    const cartIdx = kids.findIndex((c) => c.path === 'cart')
+    const at = cartIdx >= 0 ? cartIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'coupons',
+      component: () => import('../views/user/MyCoupons.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'coupons')) {
+    const ordIdx = adminKids.findIndex((c) => c.path === 'orders')
+    const at = ordIdx >= 0 ? ordIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'coupons',
+      component: () => import('../views/admin/CouponsAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 订单评价：用户列表 + 管理端回复 */
+function withOrderReviewRoutes(baseRoutes) {
+  if (!hasCap('order_review')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'order-reviews')) {
+    const ordIdx = kids.findIndex((c) => c.path === 'orders')
+    const at = ordIdx >= 0 ? ordIdx + 1 : kids.length
+    kids.splice(at, 0, {
+      path: 'order-reviews',
+      component: () => import('../views/user/MyOrderReviews.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'order-reviews')) {
+    const ordIdx = adminKids.findIndex((c) => c.path === 'orders')
+    const at = ordIdx >= 0 ? ordIdx + 1 : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'order-reviews',
+      component: () => import('../views/admin/OrderReviewsAdmin.vue'),
     })
   }
   return routes
@@ -426,15 +542,18 @@ function pickRoutes() {
   const order = hasCap('order_lines') && hasCap('archive')
   const slot = hasCap('slot_reserve') && hasCap('archive')
   // 多主路径：单据壳 + 预约/订单（复用 archiveTicketRoutes，不另写三套）
+  let routes
   if (ticket && (order || slot)) {
-    return withPortalHub(withExtraBizRoutes(archiveTicketRoutes, { order, slot }))
-  }
-  if (useArchiveTicketShell()) return withPortalHub(archiveTicketRoutes)
-  if (useTicketShell()) return withPortalHub(ticketRoutes)
-  if (useOrderShell()) return withPortalHub(orderRoutes)
-  if (useSlotShell()) return withPortalHub(slotRoutes)
-  if (useArchiveOnlyShell()) return withPortalHub(archiveOnlyRoutes)
-  return baselineRoutes
+    routes = withPortalHub(withExtraBizRoutes(archiveTicketRoutes, { order, slot }))
+  } else if (useArchiveTicketShell()) routes = withPortalHub(archiveTicketRoutes)
+  else if (useTicketShell()) routes = withPortalHub(ticketRoutes)
+  else if (useOrderShell()) routes = withPortalHub(orderRoutes)
+  else if (useSlotShell()) routes = withPortalHub(slotRoutes)
+  else if (useArchiveOnlyShell()) routes = withPortalHub(archiveOnlyRoutes)
+  else routes = baselineRoutes
+  return withOrderReviewRoutes(
+    withCouponRoutes(withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes)))),
+  )
 }
 
 const specialRoutes = [

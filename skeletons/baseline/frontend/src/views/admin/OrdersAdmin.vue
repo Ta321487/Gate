@@ -50,13 +50,19 @@
       <el-table-column v-if="showLoyaltyCols" label="获积分" width="80">
         <template #default="{ row }">{{ Number(row.pointsEarned) > 0 ? row.pointsEarned : '—' }}</template>
       </el-table-column>
+      <el-table-column label="售后" width="100">
+        <template #default="{ row }">
+          <span v-if="row.refundStatus">{{ refundLabel(row.refundStatus) }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="明细" min-width="200">
         <template #default="{ row }">
           {{ (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；') }}
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">确认</el-button>
           <el-button
@@ -77,6 +83,18 @@
             type="danger"
             @click="act(row, 'cancel')"
           >取消</el-button>
+          <el-button
+            v-if="row.refundStatus === 'pending'"
+            link
+            type="success"
+            @click="decideRefund(row, true)"
+          >通过售后</el-button>
+          <el-button
+            v-if="row.refundStatus === 'pending'"
+            link
+            type="danger"
+            @click="decideRefund(row, false)"
+          >驳回售后</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -139,6 +157,26 @@ async function act(row, action) {
   }
   await http.post(`/api/orders/${row.id}/${action}`, body)
   ElMessage.success('已更新')
+  load()
+}
+
+function refundLabel(st) {
+  return ({ pending: '待审', approved: '已通过', rejected: '已驳回' }[st] || st)
+}
+
+async function decideRefund(row, pass) {
+  let note = ''
+  if (!pass) {
+    const { value } = await ElMessageBox.prompt('驳回说明（可选）', '驳回售后', {
+      inputPlaceholder: '原因',
+    }).catch(() => ({ value: null }))
+    if (value === null) return
+    note = String(value || '').trim()
+  } else {
+    await ElMessageBox.confirm(`通过订单 #${row.id} 售后？将回补库存并退演示余额。`, '通过售后')
+  }
+  await http.post(`/api/orders/${row.id}/refund`, { pass, note })
+  ElMessage.success(pass ? '已通过售后' : '已驳回')
   load()
 }
 

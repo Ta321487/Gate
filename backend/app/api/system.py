@@ -707,7 +707,7 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/catalog", tags=["系统"], summary="骨架与领域目录")
 async def catalog():
-    from app.bake.catalog import ARCHETYPES, DOMAINS, themes_for_domain
+    from app.bake.catalog import ARCHETYPES, CHROME_STYLES, DOMAINS, themes_for_domain
 
     return {
         "archetypes": [
@@ -718,4 +718,5 @@ async def catalog():
         ]
         + [{"id": "DOM-GENERIC", "label": "DOM-GENERIC · 通用"}],
         "themes_by_domain": {k: themes_for_domain(k) for k in DOMAINS},
+        "chrome_styles": list(CHROME_STYLES),
     }

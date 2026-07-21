@@ -13,6 +13,7 @@ import java.util.*;
 
 /**
  * 忠诚度：演示余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
+ * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
 
@@ -22,6 +23,7 @@ public final class LoyaltyStore {
     private static boolean pointsEnabled;
     private static boolean spendDiscountEnabled;
     private static boolean memberTierEnabled;
+    private static boolean couponEnabled;
     private static int pointsEarnPerYuan = 1;
     private static double spendThresholdYuan = 100;
     private static double spendOffYuan = 10;
@@ -38,10 +40,23 @@ public final class LoyaltyStore {
             int earnPerYuan,
             double thresholdYuan,
             double offYuan) {
+        configure(wallet, points, spendDiscount, memberTier, false, earnPerYuan, thresholdYuan, offYuan);
+    }
+
+    public static void configure(
+            boolean wallet,
+            boolean points,
+            boolean spendDiscount,
+            boolean memberTier,
+            boolean coupon,
+            int earnPerYuan,
+            double thresholdYuan,
+            double offYuan) {
         walletEnabled = wallet;
         pointsEnabled = points;
         spendDiscountEnabled = spendDiscount;
         memberTierEnabled = memberTier;
+        couponEnabled = coupon;
         pointsEarnPerYuan = Math.max(0, earnPerYuan);
         spendThresholdYuan = Math.max(0, thresholdYuan);
         spendOffYuan = Math.max(0, offYuan);
@@ -52,7 +67,11 @@ public final class LoyaltyStore {
     }
 
     public static boolean anyEnabled() {
-        return walletEnabled || pointsEnabled || spendDiscountEnabled || memberTierEnabled;
+        return walletEnabled || pointsEnabled || spendDiscountEnabled || memberTierEnabled || couponEnabled;
+    }
+
+    public static boolean isCouponEnabled() {
+        return couponEnabled;
     }
 
     public static boolean isWalletEnabled() {
@@ -100,6 +119,33 @@ public final class LoyaltyStore {
         } catch (Exception ignored) {
         }
         memberTiers = defaultTiers();
+    }
+
+    /** 校验券码；返回抵扣金额（0 表示不适用）。统一委托 CouponStore。 */
+    public static Map<String, Object> matchCoupon(String code, double amountYuan) {
+        return matchCoupon(null, code, amountYuan);
+    }
+
+    public static Map<String, Object> matchCoupon(String username, String code, double amountYuan) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", false);
+        out.put("offYuan", 0);
+        out.put("code", code == null ? "" : code.trim());
+        if (!couponEnabled || code == null || code.isBlank()) return out;
+        if (!CouponStore.enabled()) {
+            out.put("message", "券码无效");
+            return out;
+        }
+        return CouponStore.matchForCheckout(username, code, amountYuan);
+    }
+
+    private static double toD(Object o) {
+        if (o instanceof Number n) return n.doubleValue();
+        try {
+            return Double.parseDouble(String.valueOf(o));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static List<Map<String, Object>> defaultTiers() {
@@ -154,6 +200,14 @@ public final class LoyaltyStore {
         m.put("pointsEnabled", pointsEnabled);
         m.put("spendDiscountEnabled", spendDiscountEnabled);
         m.put("memberTierEnabled", memberTierEnabled);
+        m.put("couponEnabled", couponEnabled);
+        if (couponEnabled) {
+            try {
+                m.put("coupons", CouponStore.enabled() ? CouponStore.listActiveTemplates() : List.of());
+            } catch (Exception e) {
+                m.put("coupons", List.of());
+            }
+        }
         m.put("balanceYuan", 0.0);
         m.put("points", 0);
         m.put("memberTier", "");
@@ -218,6 +272,10 @@ public final class LoyaltyStore {
     }
 
     public static Map<String, Object> previewPrice(double subtotal, String username) {
+        return previewPrice(subtotal, username, null);
+    }
+
+    public static Map<String, Object> previewPrice(double subtotal, String username, String couponCode) {
         Map<String, Object> out = new LinkedHashMap<>();
         double sub = round2(Math.max(0, subtotal));
         out.put("subtotalYuan", sub);
@@ -238,6 +296,21 @@ public final class LoyaltyStore {
         if (spendDiscountEnabled && spendOffYuan > 0 && afterTier + 1e-9 >= spendThresholdYuan) {
             discount = Math.min(spendOffYuan, afterTier);
         }
+        Map<String, Object> couponHit = matchCoupon(username, couponCode, afterTier);
+        double couponOff = Boolean.TRUE.equals(couponHit.get("ok"))
+                ? ((Number) couponHit.get("offYuan")).doubleValue()
+                : 0;
+        out.put("couponOffYuan", round2(couponOff));
+        if (couponOff > discount) {
+            discount = couponOff;
+            out.put("couponCode", couponHit.get("code"));
+            out.put("couponLabel", couponHit.get("label"));
+        } else if (couponCode != null && !couponCode.isBlank() && !Boolean.TRUE.equals(couponHit.get("ok"))) {
+            out.put("couponMessage", couponHit.get("message"));
+        } else if (couponOff > 0 && couponOff <= discount) {
+            out.put("couponMessage", "满减已更优，未使用该券");
+        }
+        out.put("couponEnabled", couponEnabled);
         out.put("discountYuan", round2(discount));
         double payable = round2(Math.max(0, afterTier - discount));
         out.put("payableYuan", payable);
@@ -262,7 +335,12 @@ public final class LoyaltyStore {
 
     /** 下单扣余额；返回实付与折扣快照 */
     public static Map<String, Object> settleOnPlace(String username, double subtotal, long orderId) {
-        Map<String, Object> preview = previewPrice(subtotal, username);
+        return settleOnPlace(username, subtotal, orderId, null);
+    }
+
+    public static Map<String, Object> settleOnPlace(
+            String username, double subtotal, long orderId, String couponCode) {
+        Map<String, Object> preview = previewPrice(subtotal, username, couponCode);
         double payable = ((Number) preview.get("payableYuan")).doubleValue();
         double discount = ((Number) preview.get("discountYuan")).doubleValue();
         if (walletEnabled) {

@@ -51,6 +51,7 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
   ...MASTER_MENU_KEYS,
   'users',
   'content',
+  'guestbook',
 ])
 
 /**
@@ -87,6 +88,7 @@ export function superOnlyAdminPaths() {
   const map = {
     users: '/admin/users',
     content: '/admin/notices',
+    guestbook: '/admin/guestbook',
     lookup_site: '/admin/sites',
     lookup_type: '/admin/types',
     archive: '/admin/archive',
@@ -97,7 +99,7 @@ export function superOnlyAdminPaths() {
     if (isSuperOnlyMenu(m) && map[m.key]) paths.add(map[m.key])
   }
   if (!paths.size) {
-    ;['/admin/users', '/admin/notices', '/admin/sites', '/admin/types'].forEach((p) => paths.add(p))
+    ;['/admin/users', '/admin/notices', '/admin/guestbook', '/admin/sites', '/admin/types'].forEach((p) => paths.add(p))
   }
   return paths
 }
@@ -330,6 +332,33 @@ export function isMemberTierEnabled() {
   return hasCap('member_tier') || !!loyaltySchema().memberTiers?.enabled
 }
 
+export function isCouponEnabled() {
+  return hasCap('coupon') || !!loyaltySchema().coupons?.enabled
+}
+
+export function isSearchAssistEnabled() {
+  return hasCap('search_assist') || !!getSchema()?.search?.suggestEnabled
+}
+
+export function searchHotKeywords() {
+  const list = getSchema()?.search?.hotKeywords
+  return Array.isArray(list) ? list.filter((x) => x && String(x).trim()) : []
+}
+
+export function isGalleryEnabled() {
+  return hasCap('gallery') || !!(getSchema()?.entities?.archive || {}).galleryEnabled
+}
+
+export function isBrowseHistoryEnabled() {
+  return hasCap('browse_history')
+}
+
 export function anyLoyaltyEnabled() {
-  return isWalletEnabled() || isPointsEnabled() || isSpendDiscountEnabled() || isMemberTierEnabled()
+  return (
+    isWalletEnabled() ||
+    isPointsEnabled() ||
+    isSpendDiscountEnabled() ||
+    isMemberTierEnabled() ||
+    isCouponEnabled()
+  )
 }

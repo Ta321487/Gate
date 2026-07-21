@@ -381,6 +381,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     schema_js = _read(fe / "utils" / "domainSchema.js")
     users_admin_src = _read(be / "controller" / "UsersAdminController.java")
     notice_src = _read(be / "controller" / "NoticeController.java")
+    guestbook_src = _read(be / "controller" / "GuestbookController.java")
 
     has_admin_auth = "requireSuperAdmin" in admin_auth_src
     has_super_session = "superAdmin" in auth_src
@@ -389,6 +390,14 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     has_super_route = "superOnlyAdminPaths" in router_src or "superAdmin" in router_src
     users_gated = "requireSuperAdmin" in users_admin_src
     notice_gated = "requireSuperAdmin" in notice_src
+    guestbook_cap = "guestbook" in (spec.get("capabilities") or []) or "guestbook" in (
+        (spec.get("schema") or {}).get("capabilities") or []
+    )
+    guestbook_gated = (not guestbook_cap) or (
+        "requireSuperAdmin" in guestbook_src
+        and (fe / "views" / "Guestbook.vue").exists()
+        and (fe / "views" / "admin" / "GuestbookAdmin.vue").exists()
+    )
 
     master_ok = True
     master_detail: dict[str, Any] = {}
@@ -440,6 +449,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         and has_super_route
         and users_gated
         and notice_gated
+        and guestbook_gated
         and master_ok
         and ("isSuperOnlyMenu" in schema_js or "SUPER_ONLY" in layout_src)
     )
@@ -483,6 +493,8 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
                 "super_route": has_super_route,
                 "users_gated": users_gated,
                 "notice_gated": notice_gated,
+                "guestbook_cap": guestbook_cap,
+                "guestbook_gated": guestbook_gated,
                 "master": master_detail,
             },
         },

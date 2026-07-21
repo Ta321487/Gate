@@ -33,10 +33,13 @@
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
       <div>合计 ¥{{ totalYuan }}</div>
-      <template v-if="preview && (discountOn || tierOn)">
+      <template v-if="preview && (discountOn || tierOn || couponOn)">
         <div v-if="Number(preview.discountYuan) > 0" class="loy-line muted">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</div>
         <div v-if="Number(preview.tierDiscountRate) < 1" class="loy-line muted">
           会员折扣 ×{{ preview.tierDiscountRate }}
+        </div>
+        <div v-if="Number(preview.couponOffYuan) > 0" class="loy-line muted">
+          券 {{ preview.couponCode }} −¥{{ Number(preview.couponOffYuan).toFixed(2) }}
         </div>
         <div class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
         <div v-if="walletOn && preview.balanceEnough === false" class="warn">演示余额不足，请联系管理员充值</div>
@@ -108,12 +111,40 @@
             :placeholder="tastePlaceholder"
           />
         </el-form-item>
+        <el-form-item v-if="couponOn" label="优惠券">
+          <el-select
+            v-model="form.couponCode"
+            filterable
+            allow-create
+            clearable
+            default-first-option
+            placeholder="选择已领券或输入券码"
+            style="width: 100%"
+            @change="refreshPreview"
+          >
+            <el-option
+              v-for="c in mineCoupons"
+              :key="c.id"
+              :label="`${c.code} · ${c.label || '满减'}（减¥${Number(c.offYuan || 0).toFixed(0)}）`"
+              :value="c.code"
+            />
+          </el-select>
+          <p v-if="preview?.couponMessage" class="warn tip">{{ preview.couponMessage }}</p>
+          <p v-else-if="preview?.couponCode" class="tip muted">
+            已用 {{ preview.couponCode }}
+            <template v-if="Number(preview.couponOffYuan) > 0"> −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</template>
+          </p>
+          <p class="tip muted">
+            <router-link to="/coupons">去领券</router-link>
+          </p>
+        </el-form-item>
         <el-form-item label="订单备注">
           <el-input v-model="form.remark" maxlength="200" placeholder="选填" />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
           <p v-if="walletOn">演示余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
+          <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
           <p v-if="walletOn && preview.balanceEnough === false" class="warn">余额不足，无法提交</p>
         </div>
@@ -140,6 +171,7 @@ import {
   anyLoyaltyEnabled,
   hasTrait,
   getSchema,
+  isCouponEnabled,
   isMemberTierEnabled,
   isPointsEnabled,
   isSpendDiscountEnabled,
@@ -157,6 +189,8 @@ const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const discountOn = computed(() => isSpendDiscountEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
+const couponOn = computed(() => isCouponEnabled())
+const mineCoupons = ref([])
 const tagOptions = computed(() => addressTagOptions())
 const deliveryOptions = computed(() =>
   isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],
@@ -184,6 +218,7 @@ const form = reactive({
   saveAsDefault: false,
   tasteNote: '',
   remark: '',
+  couponCode: '',
 })
 
 const totalYuan = computed(() =>
@@ -211,7 +246,10 @@ async function refreshPreview() {
     return
   }
   try {
-    const res = await http.post('/api/loyalty/preview', { subtotalYuan: Number(totalYuan.value) })
+    const res = await http.post('/api/loyalty/preview', {
+      subtotalYuan: Number(totalYuan.value),
+      couponCode: form.couponCode?.trim() || undefined,
+    })
     preview.value = res.data || null
   } catch {
     preview.value = null
@@ -248,6 +286,21 @@ async function remove(row) {
   load()
 }
 
+async function loadMineCoupons() {
+  if (!couponOn.value) {
+    mineCoupons.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/coupons/mine', {
+      params: { status: 'unused', page: 1, size: 50 },
+    })
+    mineCoupons.value = res.data?.list || []
+  } catch {
+    mineCoupons.value = []
+  }
+}
+
 async function openCheckout() {
   form.deliveryType = deliveryOptions.value[0]
   form.addressId = null
@@ -258,7 +311,9 @@ async function openCheckout() {
   form.saveAsDefault = false
   form.tasteNote = ''
   form.remark = ''
+  form.couponCode = ''
   await loadAddresses()
+  await loadMineCoupons()
   await loadLoyalty()
   try {
     const me = await http.get('/api/profile')
@@ -331,6 +386,7 @@ async function submitOrder() {
       addressLine: form.addressLine.trim(),
       tasteNote: form.tasteNote.trim(),
       remark: form.remark.trim(),
+      couponCode: form.couponCode.trim() || undefined,
     })
     ElMessage.success('下单成功')
     checkoutVisible.value = false
@@ -356,13 +412,16 @@ onMounted(load)
 .checkout-loy {
   margin-top: 8px;
   padding: 10px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius-sm, 8px);
   font-size: 13px;
   color: #334155;
 }
 .checkout-loy p { margin: 0 0 4px; }
 .checkout-loy .payable { font-weight: 700; font-size: 15px; }
+.tip { margin: 4px 0 0; font-size: 12px; }
+.tip.muted { color: #64748b; }
 .addr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

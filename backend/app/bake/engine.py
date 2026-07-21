@@ -25,8 +25,8 @@ from app.bake.domain_schema import (
 
 # 答辩/开题常见硬约束：交付库表不宜过少或灌水过多
 TABLE_COUNT_MIN = 6
-# 含 L0 平台表 sys_message；论坛等顶格域可达 13
-TABLE_COUNT_MAX = 13
+# 含 L0 平台表 sys_message；论坛等顶格域可达 15
+TABLE_COUNT_MAX = 15
 
 # GENERIC 壳：bake/sql/DOM-GENERIC*.sql；具名域：sql_domain_templates（唯一路径，无散文件）
 _SQL_DIR = Path(__file__).resolve().parent / "sql"
@@ -107,6 +107,8 @@ def domain_sql(
     archetypes: list[str] | None = None,
     *,
     ticket_table: str | None = None,
+    capabilities: list[str] | None = None,
+    proposal_text: str = "",
 ) -> str:
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
@@ -133,20 +135,80 @@ def domain_sql(
     else:
         text = _load_named_domain_sql(domain)
     from app.bake.domains import DOMAINS
-    from app.bake.sql_fragments import ensure_shared_sql_columns, ensure_ticket_progress_sql
+    from app.bake.favorites import favorites_wanted
+    from app.bake.guestbook import guestbook_wanted
+    from app.bake.ux_scan import (
+        BROWSE_HISTORY_CAP,
+        GALLERY_CAP,
+        scan_browse_history,
+        scan_gallery,
+    )
+    from app.bake.order_extras import ORDER_REVIEW_CAP, scan_order_review
+    from app.bake.sql_fragments import (
+        ensure_browse_history_sql,
+        ensure_coupon_lifecycle_sql,
+        ensure_favorites_sql,
+        ensure_gallery_sql,
+        ensure_guestbook_sql,
+        ensure_order_review_sql,
+        ensure_shared_sql_columns,
+        ensure_ticket_progress_sql,
+    )
     from app.bake.staff_posts import append_staff_seed_sql
 
     text = ensure_shared_sql_columns(text)
-    resolved_ticket = ticket_table or (
-        ((DOMAINS.get(domain) or {}).get("runtime") or {}).get("ticket_table")
-    )
+    runtime = ((DOMAINS.get(domain) or {}).get("runtime") or {})
+    resolved_ticket = ticket_table or runtime.get("ticket_table")
     if not resolved_ticket and domain == "DOM-GENERIC":
         from app.bake.archetype_shells import shell_runtime
 
         resolved_ticket = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
             "ticket_table"
         )
+    resolved_item = runtime.get("archive_item_table")
+    if not resolved_item and domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import shell_runtime
+
+        resolved_item = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
+            "archive_item_table"
+        ) or "biz_item"
     text = ensure_ticket_progress_sql(text, resolved_ticket)
+    text = ensure_guestbook_sql(
+        text,
+        enabled=guestbook_wanted(
+            domain=domain,
+            archetype=archetype,
+            archetypes=archetypes,
+            capabilities=capabilities,
+            proposal_text=proposal_text,
+        ),
+    )
+    text = ensure_favorites_sql(
+        text,
+        enabled=favorites_wanted(
+            domain=domain,
+            capabilities=capabilities,
+            proposal_text=proposal_text,
+        ),
+    )
+    caps = list(capabilities or [])
+    text = ensure_browse_history_sql(
+        text,
+        enabled=BROWSE_HISTORY_CAP in caps or scan_browse_history(proposal_text),
+    )
+    text = ensure_gallery_sql(
+        text,
+        enabled=GALLERY_CAP in caps or scan_gallery(proposal_text),
+        item_table=resolved_item,
+    )
+    text = ensure_coupon_lifecycle_sql(
+        text,
+        enabled="coupon" in caps,
+    )
+    text = ensure_order_review_sql(
+        text,
+        enabled=ORDER_REVIEW_CAP in caps or scan_order_review(proposal_text),
+    )
     text = append_staff_seed_sql(text, domain, archetype, archetypes)
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
@@ -183,6 +245,8 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         spec.get("archetype"),
         archetypes=spec.get("archetypes"),
         ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
+        capabilities=spec.get("capabilities"),
+        proposal_text=str(spec.get("proposal_text") or spec.get("title") or ""),
     )
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
@@ -457,6 +521,25 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  spend-discount-off-yuan: {off:g}")
     if "member_tier" in caps:
         lines.append("  member-tier-enabled: true")
+    if "coupon" in caps:
+        lines.append("  coupon-enabled: true")
+    if "order_review" in caps:
+        lines.append("  order-review-enabled: true")
+    timeout = 0
+    try:
+        timeout = int((spec.get("schema") or {}).get("orderTimeoutMinutes") or 0)
+    except (TypeError, ValueError):
+        timeout = 0
+    if timeout > 0:
+        lines.append(f"  order-timeout-minutes: {timeout}")
+    if "favorites" in caps:
+        lines.append("  favorites-enabled: true")
+    if "browse_history" in caps:
+        lines.append("  browse-history-enabled: true")
+    if "gallery" in caps:
+        lines.append("  gallery-enabled: true")
+    if "search_assist" in caps:
+        lines.append("  search-assist-enabled: true")
 
     if "slot_reserve" in caps:
         st = runtime.get("slot_table") or "resource_slot"

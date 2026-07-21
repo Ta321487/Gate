@@ -36,6 +36,7 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "completeVerb": "就诊完成",
       "key": "reservation",
       "label": "挂号",
       "labelPlural": "我的挂号",
@@ -44,6 +45,7 @@
       "requireRemark": true,
       "states": {
         "cancelled": "已取消",
+        "completed": "已就诊",
         "confirmed": "已挂号",
         "pending": "待确认"
       }
@@ -52,11 +54,11 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "门诊挂号",
-    "authLead": "验证码登录；选择科室医生与号源时段挂号。",
+    "authLead": "验证码登录；选择科室医生与号源时段挂号；到诊后由管理端登记就诊完成。",
     "authPoints": [
       "验证码登录",
       "医生检索",
-      "分时挂号"
+      "分时挂号与就诊办结"
     ],
     "messagesPageLead": "预约提醒与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
@@ -129,7 +131,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "号源有限；请填写就诊人姓名，按时就诊，取消请提前操作。",
+    "noticeBody": "号源有限；请填写就诊人姓名，按时就诊；就诊完成后由挂号台办结；取消请提前操作。",
     "noticeTitle": "挂号须知"
   },
   "title": "测试课题",
