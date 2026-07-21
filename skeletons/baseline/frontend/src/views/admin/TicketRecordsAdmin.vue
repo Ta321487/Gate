@@ -58,7 +58,7 @@
         <template #default="{ row }">{{ row.checkedInAt || '—' }}</template>
       </el-table-column>
       <el-table-column prop="returnAt" label="完成时间" width="170" />
-      <el-table-column v-if="allowRating" label="评分" width="90" fixed="right">
+      <el-table-column v-if="allowRating" label="评分" width="90">
         <template #default="{ row }">
           <span v-if="row.rating" class="rating">{{ row.rating }} 分</span>
           <span v-else class="muted">—</span>
@@ -306,6 +306,10 @@ async function exportCsv() {
 onMounted(() => {
   if (allowRating.value && String(route.query.rated || '') === '1') {
     ratedOnly.value = true
+  }
+  const st = String(route.query.status || '').trim()
+  if (st && Object.prototype.hasOwnProperty.call(states.value, st)) {
+    status.value = st
   }
   load()
 })

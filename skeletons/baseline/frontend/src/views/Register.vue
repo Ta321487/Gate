@@ -314,20 +314,20 @@ onMounted(async () => {
   font-weight: 600;
 }
 .form :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--portal-line, #d5dde3) inset;
+  border-radius: var(--portal-radius-sm, 8px);
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-line, #d5dde3) inset;
   background: color-mix(in srgb, var(--portal-surface, #fff) 88%, var(--portal-bg, #eef3f5));
 }
 .form :deep(.el-input__wrapper:hover),
 .form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--portal-accent, #0b6e75) inset;
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-accent, #0b6e75) inset;
 }
 .captcha-row { display: flex; gap: 8px; }
 .captcha-btn {
   width: 104px;
   flex-shrink: 0;
-  border: 1px solid var(--portal-line, #d5dde3);
-  border-radius: 8px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  border-radius: var(--portal-radius-sm, 8px);
   background: var(--portal-accent-soft, #d7eef0);
   cursor: pointer;
   padding: 0;
@@ -353,8 +353,8 @@ onMounted(async () => {
 }
 .submit {
   flex: 1;
-  height: 38px !important;
-  border-radius: 8px !important;
+  height: var(--portal-control-h, 38px) !important;
+  border-radius: var(--portal-btn-radius, 8px) !important;
   font-weight: 600;
   background: var(--portal-accent, #0b6e75) !important;
   border-color: var(--portal-accent, #0b6e75) !important;

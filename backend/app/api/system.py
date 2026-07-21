@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.llm.client import monthly_tokens_used, project_usage_chart, project_usage_rows
+from app.llm.runtime import get_llm_flags, set_llm_flags
 from app.models import LlmCall, Project, ProjectStatus, SettingRow
 from app.schemas import (
     ApiOk,
@@ -20,6 +21,8 @@ from app.schemas import (
     DeepSeekBalanceInfo,
     DeepSeekSettings,
     DeepSeekUpdate,
+    GeminiSettings,
+    GeminiUpdate,
     SystemInfo,
     UnsplashSettings,
 )
@@ -67,7 +70,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
     cfg = await _get_ds_row(db)
     _hydrate_ds_settings(s, cfg)
     tokens = await monthly_tokens_used(db)
-    # 预算/开关优先读 DB cfg，避免「已保存」重启后回退到默认值
+    flags = await get_llm_flags(db)
     return DeepSeekSettings(
         base_url=str(cfg.get("base_url") or s.deepseek_base_url),
         model=str(cfg.get("model") or s.deepseek_model),
@@ -83,6 +86,9 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
         monthly_tokens_used=int(tokens),
         project_usages=[],
+        deepseek_enabled=flags["deepseek_enabled"],
+        gemini_enabled=flags["gemini_enabled"],
+        preferred=flags["preferred"],
     )
 
 
@@ -95,7 +101,6 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         db.add(row)
     cfg = dict(row.value or DEFAULT_DS)
     data = body.model_dump(exclude_none=True)
-    # base_url / model 存 settings 行，Key 永不入库
     for k in ("thinking", "parse_spec", "island_fill", "auto_fix", "qa_report"):
         if k in data:
             cfg[k] = data[k]
@@ -116,6 +121,14 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         cfg["fix_rounds_max"] = data["fix_rounds_max"]
     row.value = cfg
     await db.commit()
+    flag_keys = ("deepseek_enabled", "gemini_enabled", "preferred")
+    if any(k in data for k in flag_keys):
+        await set_llm_flags(
+            db,
+            deepseek_enabled=data.get("deepseek_enabled"),
+            gemini_enabled=data.get("gemini_enabled"),
+            preferred=data.get("preferred"),
+        )
     return await get_deepseek(db)
 
 
@@ -130,6 +143,133 @@ async def test_deepseek():
             r = await client.get(
                 f"{s.deepseek_base_url.rstrip('/')}/models",
                 headers={"Authorization": f"Bearer {s.deepseek_api_key}"},
+            )
+        ms = int((time.perf_counter() - t0) * 1000)
+        if r.status_code >= 400:
+            return ApiOk(ok=False, message=f"HTTP {r.status_code} · {ms} ms")
+        return ApiOk(ok=True, message=f"延迟 {ms} ms · 模型可用", data={"latency_ms": ms})
+    except Exception as e:  # noqa: BLE001
+        return ApiOk(ok=False, message=str(e))
+
+
+async def _get_gemini_row(db: AsyncSession) -> dict:
+    row = await db.get(SettingRow, "gemini")
+    if not row:
+        row = SettingRow(key="gemini", value={})
+        db.add(row)
+        await db.commit()
+        await db.refresh(row)
+    return dict(row.value or {})
+
+
+def _hydrate_gemini_settings(s, cfg: dict) -> None:
+    if cfg.get("base_url"):
+        s.gemini_base_url = str(cfg["base_url"])
+    if cfg.get("model"):
+        s.gemini_model = str(cfg["model"])
+
+
+@router.get("/gemini", response_model=GeminiSettings, tags=["Gemini"], summary="读取 Gemini 配置")
+async def get_gemini(db: AsyncSession = Depends(get_db)):
+    s = get_settings()
+    cfg = await _get_gemini_row(db)
+    _hydrate_gemini_settings(s, cfg)
+    ds = await _get_ds_row(db)
+    _hydrate_ds_settings(s, ds)
+    tokens = await monthly_tokens_used(db)
+    flags = await get_llm_flags(db)
+    return GeminiSettings(
+        base_url=str(cfg.get("base_url") or s.gemini_base_url),
+        model=str(cfg.get("model") or s.gemini_model),
+        key_configured=bool((s.gemini_api_key or "").strip()),
+        key_masked=mask_key(s.gemini_api_key, env_name="GEMINI_API_KEY"),
+        parse_spec=bool(ds.get("parse_spec", True)),
+        island_fill=bool(ds.get("island_fill", True)),
+        auto_fix=bool(ds.get("auto_fix", True)),
+        qa_report=bool(ds.get("qa_report", False)),
+        project_token_budget=int(ds.get("project_token_budget", s.project_token_budget)),
+        monthly_token_budget=int(ds.get("monthly_token_budget", s.monthly_token_budget)),
+        fix_rounds_max=int(ds.get("fix_rounds_max", s.fix_rounds_max)),
+        monthly_tokens_used=int(tokens),
+        deepseek_enabled=flags["deepseek_enabled"],
+        gemini_enabled=flags["gemini_enabled"],
+        preferred=flags["preferred"],
+    )
+
+
+@router.put("/gemini", response_model=GeminiSettings, tags=["Gemini"], summary="保存 Gemini 配置")
+async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
+    s = get_settings()
+    row = await db.get(SettingRow, "gemini")
+    if not row:
+        row = SettingRow(key="gemini", value={})
+        db.add(row)
+    cfg = dict(row.value or {})
+    data = body.model_dump(exclude_none=True)
+    if "base_url" in data:
+        cfg["base_url"] = data["base_url"]
+        s.gemini_base_url = data["base_url"]
+    if "model" in data:
+        cfg["model"] = data["model"]
+        s.gemini_model = data["model"]
+    row.value = cfg
+    await db.commit()
+
+    # 阶段开关 / 预算与 DeepSeek 页共用 deepseek settings 行
+    pipeline_keys = (
+        "parse_spec",
+        "island_fill",
+        "auto_fix",
+        "qa_report",
+        "project_token_budget",
+        "monthly_token_budget",
+        "fix_rounds_max",
+    )
+    if any(k in data for k in pipeline_keys):
+        ds_row = await db.get(SettingRow, "deepseek")
+        if not ds_row:
+            ds_row = SettingRow(key="deepseek", value=dict(DEFAULT_DS))
+            db.add(ds_row)
+        ds_cfg = dict(ds_row.value or DEFAULT_DS)
+        for k in ("parse_spec", "island_fill", "auto_fix", "qa_report"):
+            if k in data:
+                ds_cfg[k] = data[k]
+        if "project_token_budget" in data:
+            s.project_token_budget = data["project_token_budget"]
+            ds_cfg["project_token_budget"] = data["project_token_budget"]
+        if "monthly_token_budget" in data:
+            s.monthly_token_budget = data["monthly_token_budget"]
+            ds_cfg["monthly_token_budget"] = data["monthly_token_budget"]
+        if "fix_rounds_max" in data:
+            s.fix_rounds_max = data["fix_rounds_max"]
+            ds_cfg["fix_rounds_max"] = data["fix_rounds_max"]
+        ds_row.value = ds_cfg
+        await db.commit()
+
+    if any(k in data for k in ("deepseek_enabled", "gemini_enabled", "preferred")):
+        await set_llm_flags(
+            db,
+            deepseek_enabled=data.get("deepseek_enabled"),
+            gemini_enabled=data.get("gemini_enabled"),
+            preferred=data.get("preferred"),
+        )
+    return await get_gemini(db)
+
+
+@router.post("/gemini/test", response_model=ApiOk, tags=["Gemini"], summary="测试 Gemini 连通")
+async def test_gemini(db: AsyncSession = Depends(get_db)):
+    s = get_settings()
+    if not (s.gemini_api_key or "").strip():
+        return ApiOk(ok=False, message="未配置 GEMINI_API_KEY")
+    cfg = await _get_gemini_row(db)
+    _hydrate_gemini_settings(s, cfg)
+    base = str(cfg.get("base_url") or s.gemini_base_url).rstrip("/")
+    t0 = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                f"{base}/models",
+                headers={"Authorization": f"Bearer {s.gemini_api_key}"},
             )
         ms = int((time.perf_counter() - t0) * 1000)
         if r.status_code >= 400:

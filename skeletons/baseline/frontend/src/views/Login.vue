@@ -332,13 +332,13 @@ onMounted(async () => {
   font-weight: 600;
 }
 .form :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px var(--portal-line, #d5dde3) inset;
+  border-radius: var(--portal-radius-sm, 10px);
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-line, #d5dde3) inset;
   background: color-mix(in srgb, var(--portal-surface, #fff) 88%, var(--portal-bg, #eef3f5));
 }
 .form :deep(.el-input__wrapper:hover),
 .form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--portal-accent, #0b6e75) inset;
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-accent, #0b6e75) inset;
 }
 .role-radio {
   display: flex;
@@ -347,14 +347,14 @@ onMounted(async () => {
 }
 .role-radio :deep(.el-radio) {
   margin-right: 0;
-  border-radius: 10px;
+  border-radius: var(--portal-radius-sm, 10px);
 }
 .captcha-row { display: flex; gap: 10px; align-items: stretch; }
 .captcha-btn {
   width: 112px;
   flex-shrink: 0;
-  border: 1px solid var(--portal-line, #d5dde3);
-  border-radius: 10px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  border-radius: var(--portal-radius-sm, 10px);
   background: var(--portal-accent-soft, #d7eef0);
   cursor: pointer;
   padding: 0;
@@ -372,8 +372,8 @@ onMounted(async () => {
 }
 .submit {
   margin-top: 8px;
-  height: 44px !important;
-  border-radius: 10px !important;
+  height: var(--portal-control-h, 44px) !important;
+  border-radius: var(--portal-btn-radius, 10px) !important;
   font-weight: 600;
   background: var(--portal-accent, #0b6e75) !important;
   border-color: var(--portal-accent, #0b6e75) !important;

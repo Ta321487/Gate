@@ -93,8 +93,8 @@ defineProps({
   text-align: center;
   color: var(--portal-muted, #6b7c8a);
   background: var(--portal-surface, #fff);
-  border: 1px dashed var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) dashed var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
 }
 .ed-hero {
   display: grid;
@@ -103,8 +103,8 @@ defineProps({
   align-items: start;
   padding: 22px 24px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
   box-shadow: var(--portal-shadow, none);
 }
 .ed-media {
@@ -116,7 +116,7 @@ defineProps({
   width: 160px;
   height: 210px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--portal-radius-sm, 8px);
   display: block;
 }
 .ed-media :deep(.ed-cover) {
@@ -165,8 +165,8 @@ defineProps({
   margin-top: 18px;
   padding: 18px 22px 20px;
   background: var(--portal-surface, #fff);
-  border: 1px solid var(--portal-line, #dfe7ec);
-  border-radius: 12px;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #dfe7ec);
+  border-radius: var(--portal-radius, 12px);
 }
 .ed-block-hd {
   display: flex;

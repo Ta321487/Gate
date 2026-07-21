@@ -130,7 +130,7 @@ const cards = [
     tag: '运维',
     lead: '毕设港自身（Python / FastAPI）的运维接口，与学生端交付包无关；用于本机调试、对接脚本或 Postman。',
     bullets: [
-      '涵盖项目、任务、DeepSeek、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。',
+      '涵盖项目、任务、大模型（DeepSeek / Gemini）、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。',
       '勿与「产物 → 学生端 API」混淆：那是学生工程接口清单，这是工作台后端服务。',
       '服务探活：GET /api/health。',
     ],

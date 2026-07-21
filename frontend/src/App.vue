@@ -97,7 +97,7 @@ const workNav = [
   { to: '/help', label: '帮助文档', match: ['help'] },
 ]
 const sysNav = [
-  { to: '/deepseek', label: 'DeepSeek', match: ['deepseek'] },
+  { to: '/llm', label: '大模型', match: ['llm'] },
   { to: '/unsplash', label: 'Unsplash', match: ['unsplash'] },
   { to: '/system', label: '运行环境', match: ['system'] },
 ]

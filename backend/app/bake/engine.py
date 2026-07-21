@@ -13,6 +13,7 @@ from app.bake.catalog import (
     normalize_auth_entry_mode,
     normalize_auth_role_widget,
     normalize_auth_template,
+    normalize_chrome,
 )
 from app.bake.domain_schema import (
     deterministic_llm_patch,
@@ -224,10 +225,12 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     auth_tpl = normalize_auth_template(spec.get("auth_template"))
     auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
     auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
+    chrome = normalize_chrome(spec.get("chrome"))
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
         f"VITE_THEME={theme}\n"
+        f"VITE_CHROME={chrome}\n"
         f"VITE_AUTH_TEMPLATE={auth_tpl}\n"
         f"VITE_AUTH_ENTRY_MODE={auth_entry}\n"
         f"VITE_AUTH_ROLE_WIDGET={auth_widget}\n",
@@ -253,6 +256,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         domain=domain,
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
+        chrome=chrome,
         seed=dest.name,
     )
 
@@ -345,6 +349,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
             ("ticket-pick-date-range", bool(ticket_ent.get("pickDateRange"))),
+            ("ticket-approve-ends-flow", bool(ticket_ent.get("approveEndsFlow"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
         if on_flags:
@@ -513,6 +518,7 @@ def _write_factory_delivered(
     domain: str = "DOM-GENERIC",
     auth_entry_mode: str = "role_pick",
     auth_role_widget: str = "radio",
+    chrome: str = "soft",
     seed: str = "",
 ) -> None:
     if not auth_hero:
@@ -545,6 +551,7 @@ def _write_factory_delivered(
     payload = {
         "title": title,
         "theme": theme,
+        "chrome": normalize_chrome(chrome),
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],
         "traits": skin["traits"],
@@ -587,6 +594,7 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     auth_tpl = normalize_auth_template(spec.get("auth_template"))
     auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
     auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
+    chrome = normalize_chrome(spec.get("chrome"))
     _write_factory_delivered(
         workspace,
         spec.get("title", "毕设系统"),
@@ -597,6 +605,7 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         domain=spec.get("domain", "DOM-GENERIC"),
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
+        chrome=chrome,
         seed=workspace.name,
     )
     sync_workspace_thesis_yml(workspace, spec)

@@ -77,7 +77,6 @@ onMounted(() => {
 
 <style scoped>
 .auth {
-  --auth-radius: 18px;
   box-sizing: border-box;
   /* 用父级 100% 高度，避免 100vh+padding 撑出整页滚动条 */
   height: 100%;
@@ -100,9 +99,9 @@ onMounted(() => {
   position: relative;
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
-  border-radius: var(--auth-radius);
+  border-radius: var(--auth-radius, 18px);
   overflow: hidden;
-  border: 1px solid var(--portal-line, #d5dde3);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   background: var(--portal-surface, #fff);
   box-shadow: var(--portal-shadow, 0 16px 40px rgba(15, 40, 50, 0.1));
 }
@@ -296,8 +295,8 @@ onMounted(() => {
 .auth[data-auth="center"] .points,
 .auth[data-auth="center"] .tpl-tag { display: none; }
 .auth[data-auth="center"] .panel {
-  border-radius: var(--auth-radius);
-  border: 1px solid var(--portal-line, #d5dde3);
+  border-radius: var(--auth-radius, 18px);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow, 0 16px 40px rgba(15, 40, 50, 0.1));
 }
 
@@ -458,11 +457,11 @@ onMounted(() => {
   margin-bottom: 0;
 }
 .auth[data-auth="ledge"] .panel {
-  border-radius: 16px 16px 4px 4px;
-  border: 1px solid var(--portal-line, #d5dde3);
+  border-radius: var(--portal-radius-lg, 16px) var(--portal-radius-lg, 16px) var(--portal-radius-sm, 4px) var(--portal-radius-sm, 4px);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   border-bottom-width: 4px;
   border-bottom-color: var(--portal-accent, #0b6e75);
-  box-shadow: 0 20px 48px rgba(15, 40, 50, 0.12);
+  box-shadow: var(--portal-shadow, 0 20px 48px rgba(15, 40, 50, 0.12));
 }
 
 /* —— 6 folio —— */

@@ -44,6 +44,7 @@ public class TicketDashboardController {
                 m.put("pendingTickets", 0);
                 m.put("activeTickets", 0);
                 m.put("completedTickets", 0);
+                m.put("rejectedTickets", 0);
             }
         } else {
             try {

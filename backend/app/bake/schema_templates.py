@@ -183,6 +183,8 @@ def archive_ticket_schema(
     fine_paid_label: str | None = None,
     checkin_label: str | None = None,
     recommend_latest_hint: str | None = None,
+    # True：审核通过/驳回即为收口（报名/选课/认领/收藏等）；工作台「已完成」含 approved+rejected
+    approve_ends_flow: bool = False,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
@@ -262,6 +264,7 @@ def archive_ticket_schema(
         "requireRemark": bool(require_remark),
         "remarkLabel": remark_label or "说明",
         "pickDateRange": bool(pick_date_range),
+        "approveEndsFlow": bool(approve_ends_flow),
     }
     if due_label:
         ticket_entity["dueLabel"] = due_label
@@ -603,6 +606,7 @@ def _media_schema(title: str) -> dict[str, Any]:
             play_url_field="isbn",
             stock_display="available",
             soft_delete=True,
+            approve_ends_flow=True,
         ),
         [
             {"title": "热播片单", "lead": "电影、电视剧、综艺分类浏览，点击即可播放。"},
@@ -669,6 +673,7 @@ def _music_schema(title: str) -> dict[str, Any]:
             play_url_field="isbn",
             stock_display="available",
             soft_delete=True,
+            approve_ends_flow=True,
         ),
         [
             {"title": "热门曲库", "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。"},
@@ -736,6 +741,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
             stock_display="available",
             soft_delete=True,
             tag_filter=True,
+            approve_ends_flow=True,
         ),
         [
             {"title": "热门板块", "lead": "学习、生活、二手信息分区浏览主帖。"},
@@ -802,6 +808,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             body_field="isbn",
             stock_display="available",
             soft_delete=True,
+            approve_ends_flow=True,
         ),
         [
             {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览富文本正文。"},
@@ -875,6 +882,7 @@ def _activity_schema(title: str) -> dict[str, Any]:
             allow_checkin=True,
             no_show_after_end=True,
             no_show_penalty_yuan=0,
+            approve_ends_flow=True,
         ),
         [
             {"title": "热门活动", "lead": "社团、志愿、讲座分类浏览，在线报名。"},
@@ -943,6 +951,7 @@ def _lost_schema(title: str) -> dict[str, Any]:
         allow_rating=True,
         require_remark=True,
         remark_label="认领说明",
+        approve_ends_flow=True,
     )
 
 
@@ -1006,6 +1015,7 @@ def _course_schema(title: str) -> dict[str, Any]:
             category_limit=1,
             week_calendar=True,
             week_calendar_label="我的课表",
+            approve_ends_flow=True,
         ),
         [
             {"title": "本学期公选", "lead": "按分类浏览课程、课时与剩余名额。"},

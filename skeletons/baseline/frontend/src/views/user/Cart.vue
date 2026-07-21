@@ -20,7 +20,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="lineYuan" label="小计" width="100" />
-      <el-table-column label="操作" width="90">
+      <el-table-column label="操作" width="90" fixed="right">
         <template #default="{ row }">
           <el-button link type="danger" @click="remove(row)">移除</el-button>
         </template>

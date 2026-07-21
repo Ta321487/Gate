@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.llm.runtime import LlmRuntime
+from app.llm.runtime import LlmRuntime, ProviderEndpoint
 from app.models import LlmCall, Project
 
 logger = logging.getLogger("gf.llm")
@@ -38,10 +38,14 @@ class ChatResult:
     completion_tokens: int = 0
     reasoning_tokens: int = 0
     model: str = ""
+    provider: str = ""
 
 
-def resolve_model(model: str) -> str:
-    m = (model or "").strip() or "deepseek-v4-flash"
+def resolve_model(model: str, *, provider: str = "deepseek") -> str:
+    m = (model or "").strip()
+    if provider == "gemini":
+        return m or "gemini-2.5-flash"
+    m = m or "deepseek-v4-flash"
     return _LEGACY_MODELS.get(m, m)
 
 
@@ -53,6 +57,8 @@ def format_usage_detail(res: ChatResult, note: str = "") -> str:
     parts.append(f"out={res.completion_tokens}")
     if res.reasoning_tokens:
         parts.append(f"think={res.reasoning_tokens}")
+    if res.provider:
+        parts.append(res.provider)
     if res.model:
         parts.append(res.model)
     return " · ".join(p for p in parts if p)
@@ -286,22 +292,81 @@ async def chat(
     temperature: float = 0.3,
     timeout: float = 90.0,
 ) -> ChatResult:
-    if not rt.configured:
-        return ChatResult(text="", tokens=0, ok=False, error="未配置 DEEPSEEK_API_KEY")
-    model = resolve_model(rt.model)
-    url = f"{rt.base_url.rstrip('/')}/chat/completions"
+    """按启用链调用：优先厂商失败或 JSON 不可用时自动换下一家。"""
+    chain = rt.endpoint_chain()
+    if not chain:
+        return ChatResult(
+            text="",
+            tokens=0,
+            ok=False,
+            error="未启用或未配置任何 LLM（DeepSeek / Gemini）",
+        )
+    last = ChatResult(text="", tokens=0, ok=False, error="无可用结果")
+    for i, ep in enumerate(chain):
+        res = await _chat_endpoint(
+            ep,
+            messages,
+            json_mode=json_mode,
+            temperature=temperature,
+            timeout=timeout,
+        )
+        # 成功且（非 JSON 模式，或已解析出对象）→ 采用
+        if res.ok and (not json_mode or res.data is not None):
+            if i > 0:
+                logger.info("llm failover ok · %s after %s", ep.name, chain[0].name)
+            return res
+        # 成功但 JSON 解析失败 → 记下来，试下一家
+        if res.ok and json_mode and res.data is None:
+            last = ChatResult(
+                text=res.text,
+                tokens=res.tokens,
+                ok=False,
+                error=f"{ep.name}: JSON 解析失败",
+                prompt_tokens=res.prompt_tokens,
+                completion_tokens=res.completion_tokens,
+                reasoning_tokens=res.reasoning_tokens,
+                model=res.model,
+                provider=ep.name,
+            )
+            continue
+        last = res
+    return last
+
+
+async def _chat_endpoint(
+    ep: ProviderEndpoint,
+    messages: list[dict[str, str]],
+    *,
+    json_mode: bool,
+    temperature: float,
+    timeout: float,
+) -> ChatResult:
+    provider = (ep.name or "deepseek").strip().lower() or "deepseek"
+    if not ep.configured:
+        key_env = "GEMINI_API_KEY" if provider == "gemini" else "DEEPSEEK_API_KEY"
+        return ChatResult(
+            text="",
+            tokens=0,
+            ok=False,
+            error=f"未配置 {key_env}",
+            provider=provider,
+        )
+    model = resolve_model(ep.model, provider=provider)
+    url = f"{ep.base_url.rstrip('/')}/chat/completions"
     body: dict[str, Any] = {
         "model": model,
         "messages": messages,
-        "thinking": {"type": "enabled" if rt.thinking else "disabled"},
     }
-    # thinking 模式下 temperature 等采样参数无效，仅非 thinking 时发送
-    if not rt.thinking:
+    if provider == "deepseek":
+        body["thinking"] = {"type": "enabled" if ep.thinking else "disabled"}
+        if not ep.thinking:
+            body["temperature"] = temperature
+    else:
         body["temperature"] = temperature
     if json_mode:
         body["response_format"] = {"type": "json_object"}
     headers = {
-        "Authorization": f"Bearer {rt.api_key}",
+        "Authorization": f"Bearer {ep.api_key}",
         "Content-Type": "application/json",
     }
     try:
@@ -314,6 +379,7 @@ async def chat(
                 ok=False,
                 error=f"HTTP {r.status_code}: {r.text[:300]}",
                 model=model,
+                provider=provider,
             )
         payload = r.json()
         choice = (payload.get("choices") or [{}])[0]
@@ -337,10 +403,18 @@ async def chat(
             completion_tokens=completion_tokens,
             reasoning_tokens=reasoning_tokens,
             model=model,
+            provider=provider,
         )
     except Exception as e:  # noqa: BLE001
-        logger.exception("llm chat failed")
-        return ChatResult(text="", tokens=0, ok=False, error=str(e), model=model)
+        logger.exception("llm chat failed · %s", provider)
+        return ChatResult(
+            text="",
+            tokens=0,
+            ok=False,
+            error=str(e),
+            model=model,
+            provider=provider,
+        )
 
 
 def write_qa_report(workspace: Path, report: dict[str, Any]) -> Path:

@@ -46,6 +46,7 @@
       "allowCheckin": false,
       "allowQty": true,
       "allowRating": false,
+      "approveEndsFlow": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "requisition",
