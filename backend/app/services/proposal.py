@@ -3,16 +3,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from app.bake.proposal_lexicon import (
+    FEATURE_HEAD_TERMS,
+    FEATURE_HEAD_RE as _FEATURE_HEAD,
+    OUT_HEAD_RE as _OUT_HEAD,
+    RESEARCH_WITH_IMPL_RE as _RESEARCH_WITH_IMPL,
+    dedupe_out_scope_vs_features,
+)
 
-# 真正指向「要开发什么」的标题（不含宽泛的「研究内容」 alone）
-_FEATURE_HEAD = re.compile(
-    r"(主要功能|功能需求|功能模块|功能清单|实现内容|系统功能|系统实现|核心功能|"
-    r"拟实现(?:功能)?|主要任务|任务与要求|实现下列功能|答辩必演示)"
-)
-_RESEARCH_WITH_IMPL = re.compile(r"研究内容.{0,12}拟实现|拟实现.{0,12}功能")
-_OUT_HEAD = re.compile(
-    r"(非本期|不在本期|本期不|范围外|不做|不实现|不要求|仅作展望|不作为|不做范围)"
-)
 _SECTION = re.compile(r"^[一二三四五六七八九十百]+[、．.]|^第[一二三四五六七八九十\d]+[章节部分]")
 _BULLET = re.compile(r"^(\d+[\.、\)）]|[（(]\d+[)）]|[-•·▪])\s*")
 # 参考文献 / 进度 / 致谢：对开发匹配是噪声
@@ -421,8 +419,7 @@ def summarize_proposal(text: str, hits: list[str] | None = None) -> dict:
         )
         # 「3. 实现下列功能：」或「（3）系统实现」
         if not is_heading and re.match(
-            r"^[（(]?\d*[)）.、]?\s*(?:主要功能|功能模块|功能清单|功能需求|系统实现|"
-            r"拟实现|系统功能|实现下列功能|主要任务)",
+            rf"^[（(]?\d*[)）.、]?\s*(?:{FEATURE_HEAD_TERMS})",
             ln,
         ):
             is_heading = True
@@ -494,7 +491,9 @@ def summarize_proposal(text: str, hits: list[str] | None = None) -> dict:
         "title": title,
         "background": background[:240],
         "feature_lines": feature_lines[:20],
-        "out_scope_lines": out_lines[:12],
+        "out_scope_lines": dedupe_out_scope_vs_features(
+            feature_lines[:20], out_lines, limit=12
+        ),
         "sections": sections[:8],
         "hits": list(hits or []),
         "excerpt": raw[:2000],

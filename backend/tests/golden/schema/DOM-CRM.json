@@ -111,7 +111,7 @@
       },
       {
         "key": "category",
-        "label": "分类管理",
+        "label": "客户分级管理",
         "superOnly": true
       },
       {

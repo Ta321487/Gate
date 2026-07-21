@@ -82,7 +82,7 @@
       },
       {
         "key": "category",
-        "label": "分类管理",
+        "label": "类型管理",
         "superOnly": true
       },
       {

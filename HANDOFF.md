@@ -9,9 +9,24 @@
 
 1. **能力运行时（基线）** ✅ 已齐：`ArchiveStore` / `TicketStore` / `OrderStore` / `SlotStore` + 通用 API  
 2. **薄领域** ✅ 组 A～G + GENERIC 兜底已可 bake；差的是按需冒烟与文案微调  
-3. **当前主线**：薄域冒烟 → **LLM 只填 schema JSON**（不生成业务 Java/Vue）；L1 亮点（审批/附件/评分/互斥/限额/软删/标签/周历/签到）已齐  
+3. **当前主线**：薄域冒烟 → **LLM 只填 schema JSON**（不生成业务 Java/Vue）；L1 亮点已齐  
+4. **Path B · 开题全文答辩** ✅ 三条真交叉可 full（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 reject；超壳 reject
 
-接 LLM 后「代码无误」靠的是运行时固定，不是 LLM 写码。
+接 LLM 后「代码无误」靠的是运行时固定，不是 LLM 写码。  
+**Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就 **拒收 / 改开题 / 先扩能力**，禁止再用 `degraded` 交半成品装全文。
+
+### 接题边界（硬原则，Path B 也遵守）
+
+本产品定位：**专科 / 本科毕设、课设级别的 Web 管理系统生成**（演示级主路径），不是研究生平台，也不是真实业务交付。
+
+| 接 | 不接 |
+|----|------|
+| **专科 / 本科** 毕设、**课设**（Web 管理、演示级） | **硕士研究生 / 博士研究生** 课题与开题 |
+| 薄域单路径；白名单内且 `defense_ready` 的交叉 | **真实业务全流程** / 生产级全链路 / 企业级端到端 |
+| L0～L2 积木内可演示的功能 | L3、HIS/ERP 级发散、未就绪交叉 |
+
+Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现、且落在白名单/单域能力内的全文**，不是把硕博题或真实生产流程接进来。  
+信号：`OUT_OF_SCOPE_SIGNALS`（硕博学位论文、真实业务全流程等）→ `reject`。
 
 ---
 
@@ -35,7 +50,7 @@
 
 ## 90% 毕设覆盖：领域清单（薄配置，不是厚代码包）
 
-按**能力组合**分组；同组共享同一套运行时，差别主要在 schema 文案/种子/菜单。
+按**能力组合**分组；同组共享同一套运行时，差别主要在 schema 文案/种子/菜单。组 **H** 为真交叉（两套玩法），见 G 节之后。
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 
@@ -87,8 +102,10 @@
 
 未命中具体 `DOM-*` 时 **禁止**误落 LIBRARY：`score_catalog(..., fallback="DOM-GENERIC")`。  
 匹配原则：**行为词桶（ARCH）有上限**，不堆行业百科；具体 DOM 若盖不住原型能力 → 降 `DOM-GENERIC`（`reconcile_match`）。  
-上传开题时对**全文**匹配，并优先加权「主要功能 / 研究内容」段（`proposal_focus_for_match`）：开题写到的行为应对齐可交付壳；小程序/人脸等 L3 信号 → `degraded`（主路径仍可做）。  
-**多主路径**：功能段命中多条 ARCH 时写入 `archetypes` 并集（FLOW/TRADE/RESERVE）；GENERIC SQL 由 `sql_compose` 从单路径模板拼装；前端在档案+单据壳上追加预约/订单路由（`withExtraBizRoutes`）。  
+上传开题时对**全文**匹配，并优先加权「主要功能 / 研究内容」段（`proposal_focus_for_match`）：开题写到的行为应对齐可交付壳。  
+小程序/人脸/真支付等 L3 与业务过重信号 → **`accept=reject`（Path B）**，不可 degraded 出 ZIP。  
+**多主路径**：功能段命中多条 ARCH 时写入 `archetypes` 并集；须命中交叉白名单且 `defense_ready`（见下节），否则 reject。  
+GENERIC SQL 由 `sql_compose` 拼装；前端 `withExtraBizRoutes` 追加预约/订单路由。  
 GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 | ARCH | 能力 | bake SQL |
@@ -130,7 +147,32 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / FORUM / BLOG；**不是**协同过滤。
 
-**覆盖率怎么理解**：A+B+C+D+E+F+G ≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full（L3 仍 reject/degraded）。
+### H. 真交叉（专科/本科·课设常见；Path B 已可 full）
+
+与组 A～G **单域换皮**并列；开题写清**两套玩法**时匹配降 `DOM-GENERIC` 并保留行为并集（不再挤掉借用/审核）。  
+样例开题（可上传匹配）：`data/samples/图书借阅与二手交叉开题.txt`。三合一 / 智慧校园大杂烩 → reject。
+
+| 交叉 ID | 覆盖题目关键词（开题常见说法） | 两套玩法 | 生成落点 | 状态 |
+|---------|-------------------------------|----------|----------|------|
+| **X-BORROW-SHOP** | 二手/跳蚤 + 借阅；点餐 + 报修；闲置交易 + 物品借用 | 申请/借用审核 + 购物车下单 | GENERIC 单据壳 + 订单路由 | ✅ |
+| **X-BORROW-RESERVE** | 图书借阅 + 座位预约；场地预约 + 设备借用；报修 + 活动室预约 | 申请/借用审核 + 时段占坑 | GENERIC 单据壳 + 预约路由 | ✅ |
+| **X-SHOP-RESERVE** | 小卖部 + 会议室预约；到店预约 + 卖套餐（非宾馆） | 下单 + 时段占坑 | GENERIC 订单壳 + 预约路由 | ✅ |
+| （具名优先） | 宾馆 / 民宿 / 酒店客房 + 附加消费 | 预约 + 订单 | **DOM-HOTEL** 单域 | ✅ 走组 E |
+| — | 借阅+二手+预约三套；智慧校园 N 合一 | — | reject / 裁成上表一条 | ❌ |
+
+**答辩演示（三条共用口径，种子账号 bake 后见交付 README）**  
+1. 借用+下单：门户提交借阅 → 管理端审核；再加购下单 → 订单办理。  
+2. 借用+预约：借阅审核一路 + 选资源约时段（约满不可再约）一路。  
+3. 下单+预约：约时段一路 + 购物车订单一路（宾馆题优先 DOM-HOTEL）。
+
+匹配原则（`reconcile_match`）：行业皮盖不住开题里任一主路径 → **改用通用壳，保留全部路径**（禁止「留商城、丢借阅」）。
+
+**Path B 白名单**（`cross_paths.py`）：上表三条可 full；实现键内部为 FT/FR/TR。  
+SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…TRADE_ARCH-RESERVE`。  
+**禁止**：DOM×DOM 厚融合；L3；硕博；真实业务全流程；三合一装全文。  
+代码：`evaluate_cross_path` + `reconcile_match` + `resolve_accept`。
+
+**覆盖率怎么理解**：A+B+C+D+E+F+G+**H（真交叉三条）** ≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full。L3 / 三合一 → **reject**（Path B）。
 
 ---
 
@@ -193,8 +235,11 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 人脸/指纹门禁、物联网传感器、真微信支付支付宝、小程序/安卓为交付物、协同过滤与深度学习训练、直播弹幕与转码 CDN、区块链、Hadoop/Spark、BPMN 可配置工作流、多仓批次 ERP、实时私信与无限楼中楼树、富文本多人协同编辑。
 
-命中 `OUT_OF_SCOPE_SIGNALS` / `BUSINESS_OVERREACH_SIGNALS` → accept 最多 degraded；不要当作本期演示承诺。
-业务过重（电子病历、处方、叫号大屏、BPMN、智能排课等）优先扫功能/拟实现段。
+**学历 / 真实生产（硬不接）**：硕士研究生、博士研究生课题；真实业务全流程 / 生产级全链路。本产品只做 **专科/本科毕设与课设** 演示级 Web 管理。
+
+命中 `OUT_OF_SCOPE_SIGNALS` / `BUSINESS_OVERREACH_SIGNALS` → **`accept=reject`（Path B）**；改开题划入「非本期」或先扩能力，禁止当作本期演示承诺。  
+业务过重（电子病历、处方、叫号大屏、BPMN、智能排课等）优先扫功能/拟实现段。  
+多 ARCH 交叉另见「Path B · 交叉白名单」；`defense_ready=false` 的组合同样 reject。
 
 ### 开题怎么写（推荐）
 
@@ -234,6 +279,8 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 - [x] L0 **站内消息** + **薄域工作台** + **ECharts / CSV 导出导入**
 - [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL
 - [x] **匹配兜底**：零命中 → `DOM-GENERIC`；按 ARCH-* 绑 FLOW/TRADE/RESERVE（`archetype_shells.py`）；多 ARCH 并集可拼 SQL
+- [x] **Path B**：三条真交叉可 full；匹配并集不再挤掉借用；HANDOFF 组 H 表；样例 `data/samples/图书借阅与二手交叉开题.txt`；三合一仍 reject
+- [ ] Path B 可选：交叉组合端到端冒烟（预览点通）与开题对照表 UI
 - [x] L1 **二级审批 / 强制附件 / 完结评分**：`configureL1`；FE 待办 `todo`、上传、`TicketRateDialog`
 - [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门
 - [x] L1 **软删除 / 标签 AND / 周历 / 签到码**：按域 schema 开关；FORUM 复用 tag 表；COURSE/ACTIVITY 周历；ACTIVITY 口令签到
@@ -286,8 +333,9 @@ Schema：`domain_schema.py`（组装/accept）；模板：`schema_templates.py`
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md。
-主线：薄域冒烟或 LLM 填 schema；能力运行时与 L1 亮点已齐。
-不要新开厚 DOM 包。领域清单以 HANDOFF「90% 覆盖」为准。
+主线：Path B 三条交叉已可 full；薄域冒烟或 LLM 填 schema。
+超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
+不要新开厚 DOM 包。领域清单以 HANDOFF「90% 覆盖」+「Path B」为准。
 ```
 
 ## 新对话开场（某个薄领域）

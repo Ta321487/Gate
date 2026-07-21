@@ -18,6 +18,7 @@ from app.bake.domain_schema import (
     validate_schema,
 )
 from app.bake.engine import emit_schema_to_workspace, llm_fill_islands
+from app.bake.proposal_lexicon import dedupe_out_scope_vs_features
 from app.llm.client import (
     append_deepseek_log,
     budget_ok,
@@ -78,23 +79,22 @@ async def run_match_agent(
         {
             "role": "system",
             "content": (
-                "你是毕设港 Match Agent。只输出 JSON，不要 markdown。\n"
-                "任务：根据开题，从给定封闭目录中选一对 archetype + domain。\n"
-                "规则：\n"
-                "1) archetype/domain 必须是目录中的 ID，禁止发明新 ID。\n"
-                "2) 以「拟实现/主要功能」为准；现状综述、对比中的支付/采购/盘点等不要当成主路径。\n"
-                "3) 否定语境（不纳入/不做/不扩展）中的能力不要当成要交付。\n"
-                "4) 行业皮与行为要一致：物资领用→DOM-ASSET+ARCH-FLOW；"
-                "商城/点餐才用 ARCH-TRADE；挂号/车位等用 ARCH-RESERVE。\n"
-                "5) 字段：archetype, domain, confidence(0~1), rationale(中文≤120字), "
-                "alts([{archetype,domain,confidence}] 最多3条备选)。\n"
+                "你是毕设港 Match Agent。只输出 JSON。\n"
+                "从目录选 archetype/domain（须为目录 ID）；可附 archetypes[]。\n"
+                "以拟实现/主要功能为准；综述对比与否定句不当事。\n"
+                "关键词初判已给路径并集；多路径请尽量都列出，最终以服务端并集+reconcile 为准。\n"
+                "单路径时行业皮与行为一致（领用→FLOW、商城→TRADE、挂号/车位→RESERVE）。\n"
+                "另给 slug：英文短标识，小写字母开头，可含数字下划线，3～24 字；"
+                "抓题目功能差异，勿一律领域泛名（如 dorm_repair 而非一律 dorm）。\n"
+                "字段：archetype, domain, archetypes, confidence, rationale(≤120字), slug, "
+                "alts([{archetype,domain,confidence}]≤3)。\n"
             ),
         },
         {
             "role": "user",
             "content": (
                 f"关键词初判：{keyword.archetype} × {keyword.domain} "
-                f"（置信 {keyword.confidence}）\n"
+                f"（置信 {keyword.confidence}；路径并集 {', '.join(keyword.archetypes or [keyword.archetype])}）\n"
                 f"命中词：{', '.join((keyword.hits or [])[:12])}\n\n"
                 f"目录：\n{catalog}\n\n"
                 f"开题摘录：\n{excerpt}"
@@ -155,11 +155,10 @@ async def run_spec_agent(
         {
             "role": "system",
             "content": (
-                "你是毕设开题 Spec Agent。只输出 JSON，不要 markdown。"
-                "禁止改技术栈/造新表/改领域 ID。"
-                "字段：title(string), background(string), feature_lines(string[]), "
-                "out_scope_lines(string[]), summary(string)。"
-                "feature_lines≤8，out_scope_lines≤5，中文短句。"
+                "你是毕设开题 Spec Agent。只输出 JSON。禁止改技术栈/造新表/改领域 ID。\n"
+                "字段：title, background, feature_lines(≤8), out_scope_lines(≤5), summary；中文短句。\n"
+                "feature←开题肯定要做；out_scope←开题明确否定；禁止臆造排除项。"
+                "互斥与去重由服务端处理。\n"
             ),
         },
         {
@@ -200,7 +199,11 @@ async def run_spec_agent(
     if isinstance(data.get("feature_lines"), list):
         prop["feature_lines"] = [str(x)[:80] for x in data["feature_lines"][:8]]
     if isinstance(data.get("out_scope_lines"), list):
-        prop["out_scope_lines"] = [str(x)[:80] for x in data["out_scope_lines"][:5]]
+        prop["out_scope_lines"] = dedupe_out_scope_vs_features(
+            prop.get("feature_lines"),
+            data["out_scope_lines"],
+            limit=5,
+        )
     prop["llm_enriched"] = True
     spec["proposal"] = prop
     return spec

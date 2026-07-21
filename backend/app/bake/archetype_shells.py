@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.domains import ARCH_PATH_ORDER
 from app.bake.gate_contracts import gate_archive_ticket, gate_order_shell, gate_slot_shell
 from app.bake.schema_templates import product_name_from_title
 
@@ -18,7 +19,7 @@ ARCH_CAPABILITIES: dict[str, list[str]] = {
 }
 
 _FLOW_FAMILY = frozenset({"ARCH-FLOW", "ARCH-STOCK", "ARCH-CONTENT"})
-_PATH_ORDER = ("ARCH-RESERVE", "ARCH-TRADE", "ARCH-FLOW", "ARCH-STOCK", "ARCH-CONTENT", "ARCH-CRUD")
+_PATH_ORDER = ARCH_PATH_ORDER
 
 
 def normalize_archetype(archetype: str | None) -> str:
@@ -708,7 +709,15 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     if not flow_bits:
         flow_bits = ["新增 → 编辑 → 查询"]
     spec["flows"] = flow_bits
-    spec["entities"] = [noun, "Category", "Notice"]
+    ents = [noun, "Category"]
+    if any(a in _FLOW_FAMILY for a in arches):
+        ents.append("Ticket")
+    if "ARCH-TRADE" in arches:
+        ents.extend(["CartLine", "Order"])
+    if "ARCH-RESERVE" in arches:
+        ents.append("Reservation")
+    ents.append("Notice")
+    spec["entities"] = ents
     spec["domain_label"] = product_name_from_title(title)
     spec["industry"] = spec["domain_label"]
     from app.bake.profile_fields import attach_profile_fields

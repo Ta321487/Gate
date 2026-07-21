@@ -143,7 +143,14 @@
                   <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
                   <div><dt>配色</dt><dd>{{ p.spec?.theme_label || p.theme }}</dd></div>
                   <div><dt>质感</dt><dd>{{ p.spec?.chrome_label || p.spec?.chrome || '—' }}</dd></div>
-                  <div><dt>登录入口</dt><dd>{{ p.spec?.auth_entry_mode_label || '—' }}<template v-if="p.spec?.auth_role_widget_label"> · {{ p.spec.auth_role_widget_label }}</template></dd></div>
+                  <div><dt>登录入口</dt><dd>{{ authEntryDisplay }}</dd></div>
+                  <div v-if="p.spec?.delivery_slug || p.db_name || p.spec?.maven_artifact"><dt>交付标识</dt><dd>
+                    <span v-if="p.spec?.delivery_slug" class="mono">{{ p.spec.delivery_slug }}</span>
+                    <template v-if="p.spec?.zip_name"> · {{ p.spec.zip_name }}</template>
+                    <template v-if="p.spec?.maven_artifact"> · Maven {{ p.spec.maven_artifact }}</template>
+                    <template v-if="p.spec?.java_package"> · {{ p.spec.java_package }}</template>
+                    <template v-if="p.db_name"> · 库 {{ p.db_name }}</template>
+                  </dd></div>
                 </dl>
               </div>
             </div>
@@ -363,7 +370,7 @@
           </div>
           <div class="panel-bd artifacts-file-grid">
             <div class="file-row" style="margin:0">
-              <span><strong>thesis-app.zip</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
+              <span><strong>{{ zipFileName }}</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
               <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
                 {{ canDownload ? '下载' : '锁定' }}
               </n-button>
@@ -902,6 +909,21 @@ const matchAltsText = computed(() => {
       return c ? `${label}(${c})` : label
     })
     .join('；')
+})
+/** 统一登录无身份选择时不展示身份控件样式，避免文案打架 */
+const authEntryDisplay = computed(() => {
+  const spec = p.value?.spec || {}
+  const modeLabel = spec.auth_entry_mode_label || '—'
+  const mode = spec.auth_entry_mode
+  const needWidget = mode === 'role_pick' || mode === 'split_entry'
+  if (needWidget && spec.auth_role_widget_label) {
+    return `${modeLabel} · ${spec.auth_role_widget_label}`
+  }
+  return modeLabel
+})
+const zipFileName = computed(() => {
+  const name = p.value?.spec?.zip_name || p.value?.spec?.match_meta?.zip_name
+  return (typeof name === 'string' && name.endsWith('.zip')) ? name : 'thesis-app.zip'
 })
 /** Spec 角色文案：schema.roles / staff_posts[].label，不写死中文 */
 const roleSpecText = computed(() => {

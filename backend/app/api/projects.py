@@ -220,6 +220,17 @@ async def delete_project(
     zip_path = settings.workspace_dir / f"{project_id}-thesis-app.zip"
     if zip_path.exists():
         zip_path.unlink()
+    # 新命名：{id}-{slug}.zip
+    for zp in settings.workspace_dir.glob(f"{project_id}-*.zip"):
+        try:
+            zp.unlink()
+        except OSError:
+            pass
+    if p.zip_path:
+        try:
+            Path(p.zip_path).unlink(missing_ok=True)
+        except OSError:
+            pass
 
     db_note = ""
     if not keep_db and p.db_name:
@@ -251,9 +262,17 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(403, "门禁未过 · 禁止下载 ZIP")
     if not p.zip_path or not Path(p.zip_path).exists():
         raise HTTPException(404, "ZIP 不存在")
+    from app.bake.naming import resolve_slug_from_spec, zip_download_name
+
+    slug = resolve_slug_from_spec(p.spec if isinstance(p.spec, dict) else {}, p.domain)
+    download_name = ""
+    if isinstance(p.spec, dict):
+        download_name = str(p.spec.get("zip_name") or "").strip()
+    if not download_name.endswith(".zip"):
+        download_name = zip_download_name(slug, project_id)
     return FileResponse(
         p.zip_path,
-        filename="thesis-app.zip",
+        filename=download_name,
         media_type="application/zip",
     )
 

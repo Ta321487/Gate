@@ -37,7 +37,7 @@
       >
         <template #default="{ row }">{{ isbnPlain(row.isbn) }}</template>
       </el-table-column>
-      <el-table-column prop="categoryName" label="分类" width="100" />
+      <el-table-column prop="categoryName" :label="fieldLabel('category', '分类')" width="100" />
       <el-table-column v-if="hasMutex" prop="mutexCode" :label="fieldLabel('mutexCode', '互斥码')" width="110" />
       <el-table-column v-if="hasCheckin" prop="checkinCode" :label="fieldLabel('checkinCode', '签到码')" width="120">
         <template #default="{ row }">{{ row.checkinCode || '—' }}</template>
@@ -128,7 +128,11 @@
           <el-input v-else v-model="form.isbn" />
         </el-form-item>
         <el-form-item :label="fieldLabel('category', '分类')" required>
-          <el-select v-model="form.categoryId" style="width:100%" placeholder="请选择分类">
+          <el-select
+            v-model="form.categoryId"
+            style="width:100%"
+            :placeholder="`请选择${fieldLabel('category', '分类')}`"
+          >
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -204,10 +208,13 @@
           <el-input v-else v-model="form[f.key]" />
         </el-form-item>
         <el-form-item label="封面">
-          <el-upload :show-file-list="false" accept="image/*" :http-request="onCover">
-            <el-button size="small">上传</el-button>
-          </el-upload>
-          <span v-if="form.coverUrl" class="muted">{{ form.coverUrl }}</span>
+          <div class="cover-edit">
+            <el-upload :show-file-list="false" accept="image/*" :http-request="onCover">
+              <el-button size="small">上传</el-button>
+            </el-upload>
+            <img v-if="form.coverUrl" :src="form.coverUrl" class="cover-preview" alt="封面" />
+            <span v-else class="muted">未上传</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -494,7 +501,7 @@ function importColumns() {
 }
 
 function sampleForCol(col) {
-  if (col.key === 'category') return '默认分类'
+  if (col.key === 'category') return `默认${col.label || fieldLabel('category', '分类')}`
   if (col.key === 'stock') return '1'
   if (col.key === 'tags') return ''
   if (col.key === 'checkinCode') return 'ACT1001'
@@ -639,6 +646,11 @@ onMounted(async () => {
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .muted { margin-left: 8px; color: #909399; font-size: 12px; }
+.cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.cover-preview {
+  width: 96px; height: 96px; object-fit: cover; border-radius: 8px;
+  border: 1px solid #e4e7ed; background: #f5f7fa;
+}
 .attach-row { display: flex; gap: 8px; width: 100%; align-items: center; }
 .dt-hint { margin: -4px 0 8px; font-size: 12px; color: #909399; line-height: 1.4; }
 </style>

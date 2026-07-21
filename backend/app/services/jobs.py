@@ -277,9 +277,29 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             if from_step <= 5:
                 await set_step(5, "run")
                 settings = get_settings()
-                zip_path = settings.workspace_dir / f"{project.id}-thesis-app.zip"
+                from app.bake.naming import resolve_slug_from_spec, zip_storage_name
+
+                slug = resolve_slug_from_spec(project.spec, project.domain)
+                zip_path = settings.workspace_dir / zip_storage_name(project.id, slug)
+                # 清理旧固定名，避免残留
+                legacy = settings.workspace_dir / f"{project.id}-thesis-app.zip"
+                if legacy.exists() and legacy != zip_path:
+                    try:
+                        legacy.unlink()
+                    except OSError:
+                        pass
                 await asyncio.to_thread(pack_zip, workspace, zip_path)
                 project.zip_path = str(zip_path)
+                if isinstance(project.spec, dict):
+                    from app.bake.naming import zip_download_name
+
+                    project.spec["delivery_slug"] = slug
+                    project.spec["zip_name"] = zip_download_name(slug, project.id)
+                    meta = project.spec.get("match_meta")
+                    if isinstance(meta, dict):
+                        meta["delivery_slug"] = slug
+                        meta["zip_name"] = project.spec["zip_name"]
+                    flag_modified(project, "spec")
                 project.zip_ready = True
                 project.status = ProjectStatus.generated.value
                 await set_step(5, "done", zip_path.name)

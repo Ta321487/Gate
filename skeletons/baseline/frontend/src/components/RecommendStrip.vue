@@ -11,7 +11,10 @@
         class="rec-card"
         @click="onCardClick(row)"
       >
-        <div class="glyph">{{ (row.title || '?').slice(0, 1) }}</div>
+        <div class="glyph">
+          <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
+          <template v-else>{{ (row.title || '?').slice(0, 1) }}</template>
+        </div>
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ row.author || '—' }} · {{ row.categoryName || '未分类' }}</p>
@@ -100,7 +103,10 @@ defineExpose({ reload: load })
 .glyph {
   width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
   display: grid; place-items: center; font-weight: 700; color: #0369a1;
-  background: #e0f2fe;
+  background: #e0f2fe; overflow: hidden;
+}
+.glyph img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .meta { flex: 1; min-width: 0; }
 .meta h3 {

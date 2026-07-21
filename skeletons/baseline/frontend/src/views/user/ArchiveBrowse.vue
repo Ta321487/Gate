@@ -44,7 +44,10 @@
 
     <div class="grid">
       <article v-for="row in list" :key="row.id" class="card">
-        <div class="cover">{{ (row.title || '?').slice(0, 1) }}</div>
+        <div class="cover">
+          <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
+          <template v-else>{{ (row.title || '?').slice(0, 1) }}</template>
+        </div>
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
@@ -102,6 +105,7 @@
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
+        <img v-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
         <p
           v-for="f in cardDetailFields"
@@ -600,7 +604,10 @@ onMounted(async () => {
 .cover {
   width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0;
   display: grid; place-items: center; font-weight: 700; color: #0369a1;
-  background: #e0f2fe;
+  background: #e0f2fe; overflow: hidden;
+}
+.cover img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
@@ -614,6 +621,10 @@ onMounted(async () => {
 .empty { text-align: center; color: #94a3b8; padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .sub { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+.detail-cover {
+  width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px;
+  margin-bottom: 12px; background: #e0f2fe;
+}
 .drawer-acts { margin-top: 24px; }
 .apply-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
 .apply-tip.muted { color: #64748b; }

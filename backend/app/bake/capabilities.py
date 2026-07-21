@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import NEGATION_RE
+
 # status: implemented = 当前骨架/运行时已能交付；planned = 规格已定未落地
 CAPABILITIES: dict[str, dict[str, Any]] = {
     "archive": {
@@ -104,6 +106,16 @@ OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
     ("小程序", "非本仓库主交付形态"),
     ("安卓", "非本仓库主交付形态"),
     ("android", "非本仓库主交付形态"),
+    # 接题边界：专科/本科毕设·课设；硕博 / 真实全流程不接（扫全文）
+    ("硕士学位论文", "硕博课题（不接）"),
+    ("博士学位论文", "硕博课题（不接）"),
+    ("研究生学位论文", "硕博课题（不接）"),
+    ("硕士研究生开题", "硕博课题（不接）"),
+    ("博士研究生开题", "硕博课题（不接）"),
+    ("真实业务全流程", "真实业务全流程（不接）"),
+    ("生产级全流程", "真实业务全流程（不接）"),
+    ("端到端真实业务", "真实业务全流程（不接）"),
+    ("企业级全链路", "真实业务全流程（不接）"),
 ]
 
 # 业务写太大：优先扫「拟实现/主要功能」段，减少国内外现状误伤
@@ -147,12 +159,6 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
 ]
 
 
-_NEG = re.compile(
-    r"(?:不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|"
-    r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必)"
-)
-
-
 def implemented_capability_ids() -> set[str]:
     return {k for k, v in CAPABILITIES.items() if v.get("status") == "implemented"}
 
@@ -164,7 +170,7 @@ def _scan_signals(raw: str, signals: list[tuple[str, str]], *, window: int = 48)
     for kw, label in signals:
         for m in re.finditer(re.escape(kw), raw, flags=re.IGNORECASE):
             ctx = raw[max(0, m.start() - window) : m.end() + window]
-            if _NEG.search(ctx):
+            if NEGATION_RE.search(ctx):
                 continue
             if label not in hits:
                 hits.append(label)
@@ -205,11 +211,14 @@ def resolve_accept(
     *,
     has_domain_overlay: bool = False,
     has_baseline_runtime: bool = False,
+    archetypes: list[str] | None = None,
+    domain: str | None = None,
+    primary_archetype: str | None = None,
 ) -> dict[str, Any]:
     """
-    full: 所需能力均已实现，且有可跑骨架（领域 overlay 或基线通用壳）
-    degraded: 主路径可交付，但开题含未实现卖点
-    reject: 主路径依赖未实现能力，或无任何可运行骨架
+    full: 所需能力均已实现，有可跑骨架，且开题无超壳/未就绪交叉（Path B）
+    reject: 缺能力、无骨架、开题命中 OOS/过重，或交叉未 defense_ready
+    degraded: 保留枚举兼容旧项目；Path B 新匹配不再给出（超壳改 reject）
     """
     req = [c for c in required if c]
     impl = implemented_capability_ids()
@@ -235,13 +244,34 @@ def resolve_accept(
             "reason": "能力已规划但当前无对应可运行骨架",
         }
 
+    # Path B：开题超壳 / L3 → reject（不可再 degraded 装作能全文答辩）
     if oos:
         return {
-            "accept": "degraded",
+            "accept": "reject",
             "required_capabilities": req,
             "missing_capabilities": [],
             "out_of_mvp_signals": oos,
-            "reason": "主路径可交付；开题中的未实现卖点已标出",
+            "reason": "开题含未实现卖点（"
+            + "、".join(oos[:6])
+            + ("…" if len(oos) > 6 else "")
+            + "）；Path B 要求改开题或扩能力后再 full",
+        }
+
+    from app.bake.cross_paths import evaluate_cross_path
+
+    _key, _entry, cross_reject = evaluate_cross_path(
+        archetypes,
+        primary=primary_archetype,
+        domain=domain,
+    )
+    if cross_reject:
+        return {
+            "accept": "reject",
+            "required_capabilities": req,
+            "missing_capabilities": [],
+            "out_of_mvp_signals": [],
+            "reason": cross_reject,
+            "cross_path": _key,
         }
 
     return {
@@ -249,5 +279,6 @@ def resolve_accept(
         "required_capabilities": req,
         "missing_capabilities": [],
         "out_of_mvp_signals": [],
-        "reason": "主路径能力齐备",
+        "reason": "主路径能力齐备；开题未超壳",
+        "cross_path": _key,
     }
