@@ -44,8 +44,19 @@
             </div>
             <div class="panel-bd">
               <div class="rec-box">
-                <div class="rec-title">系统推荐（置信度 {{ p.confidence.toFixed(2) }}）</div>
+                <div class="rec-title">
+                  系统推荐（置信度 {{ p.confidence.toFixed(2) }}）
+                  <span v-if="matchMeta.source" class="rec-src">· {{ matchSourceLabel }}</span>
+                </div>
                 <div class="rec-main">{{ p.recommended_arch }} × {{ p.recommended_domain }}</div>
+                <div class="rec-sub" v-if="matchMeta.rationale">理由：{{ matchMeta.rationale }}</div>
+                <div
+                  class="rec-sub"
+                  v-if="matchMeta.keyword_domain && (matchMeta.keyword_domain !== p.recommended_domain || matchMeta.keyword_arch !== p.recommended_arch)"
+                >
+                  关键词对照：{{ matchMeta.keyword_arch }} × {{ matchMeta.keyword_domain }}
+                </div>
+                <div class="rec-sub" v-if="matchAltsText">备选：{{ matchAltsText }}</div>
                 <div class="rec-sub" v-if="keywordHits.length">命中：{{ keywordHits.join(' / ') }}</div>
                 <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">本期不做：{{ p.spec.out_of_mvp.join('、') }}</div>
               </div>
@@ -874,6 +885,24 @@ const genState = computed(() => {
 
 const specText = computed(() => JSON.stringify(p.value?.spec || {}, null, 2))
 const proposal = computed(() => p.value?.spec?.proposal || {})
+const matchMeta = computed(() => p.value?.spec?.match_meta || {})
+const matchSourceLabel = computed(() => {
+  const s = matchMeta.value?.source
+  if (s === 'llm') return '大模型推荐'
+  if (s === 'keyword') return '关键词'
+  return ''
+})
+const matchAltsText = computed(() => {
+  const alts = matchMeta.value?.alts
+  if (!Array.isArray(alts) || !alts.length) return ''
+  return alts
+    .map((a) => {
+      const label = a.label || `${a.archetype}×${a.domain}`
+      const c = typeof a.confidence === 'number' ? a.confidence.toFixed(2) : ''
+      return c ? `${label}(${c})` : label
+    })
+    .join('；')
+})
 /** Spec 角色文案：schema.roles / staff_posts[].label，不写死中文 */
 const roleSpecText = computed(() => {
   const roles = p.value?.spec?.roles || []

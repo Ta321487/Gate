@@ -142,6 +142,10 @@
       <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可完成基线生成</span></div>
       <div class="panel-bd">
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
+          <div><strong>匹配推荐</strong><div class="small muted">大模型推荐骨架×领域；关闭或失败时回落关键词</div></div>
+          <n-switch v-model:value="form.match_recommend" />
+        </div>
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>摘要润色</strong><div class="small muted">润色开题摘要与功能点；关闭后仅用关键词</div></div>
           <n-switch v-model:value="form.parse_spec" />
         </div>
@@ -344,6 +348,7 @@ const form = reactive({
   gm_base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
   gm_model: 'gemini-2.5-flash',
   thinking: true,
+  match_recommend: true,
   parse_spec: true,
   island_fill: true,
   auto_fix: true,
@@ -404,6 +409,7 @@ const gmModelOptions = [
   { label: 'gemini-2.0-flash · 兼容旧名', value: 'gemini-2.0-flash' },
 ]
 const stageOptions = [
+  { label: '匹配推荐', value: 'match_recommend' },
   { label: '摘要润色', value: 'parse_spec' },
   { label: '业务配置填充', value: 'island_fill' },
   { label: '编译修复', value: 'auto_fix' },
@@ -671,6 +677,7 @@ async function load() {
     form.thinking = dsRes.thinking
     form.gm_base_url = gmRes.base_url
     form.gm_model = gmRes.model || 'gemini-2.5-flash'
+    form.match_recommend = dsRes.match_recommend !== false
     form.parse_spec = dsRes.parse_spec
     form.island_fill = dsRes.island_fill
     form.auto_fix = dsRes.auto_fix
@@ -698,6 +705,7 @@ async function save() {
         base_url: form.ds_base_url,
         model: form.ds_model,
         thinking: form.thinking,
+        match_recommend: form.match_recommend,
         parse_spec: form.parse_spec,
         island_fill: form.island_fill,
         auto_fix: form.auto_fix,
@@ -712,6 +720,17 @@ async function save() {
       api.saveGemini({
         base_url: form.gm_base_url,
         model: form.gm_model,
+        match_recommend: form.match_recommend,
+        parse_spec: form.parse_spec,
+        island_fill: form.island_fill,
+        auto_fix: form.auto_fix,
+        qa_report: form.qa_report,
+        project_token_budget: form.project_token_budget,
+        monthly_token_budget: form.monthly_token_budget,
+        fix_rounds_max: form.fix_rounds_max,
+        deepseek_enabled: form.deepseek_enabled,
+        gemini_enabled: form.gemini_enabled,
+        preferred: form.preferred,
       }),
     ])
     Object.assign(ds, {

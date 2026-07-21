@@ -1,7 +1,10 @@
 <template>
   <div>
     <h1 class="page-title">项目</h1>
-    <p class="page-desc">上传开题、任务书等材料创建项目（可多选，至少一份）。</p>
+    <p class="page-desc">
+      上传开题、任务书等材料以创建项目（可多选，至少一份）。
+      单次上传对应一个项目；如需创建多个项目，请分次提交，系统将按队列依次处理并展示进度。
+    </p>
 
     <div
       class="dropzone"
@@ -12,17 +15,41 @@
     >
       <input type="file" multiple accept=".pdf,.doc,.docx,.txt" @change="onFile" />
       <div class="dropzone-icon">↑</div>
-      <div class="dropzone-title">拖入材料，或点击多选</div>
-      <div class="dropzone-hint">支持开题 / 任务书 / 功能清单 · PDF / Word（.docx 直读，.doc 需本机 Word 或 LibreOffice）· 最多 8 份</div>
+      <div class="dropzone-title">拖入材料，或点击选择</div>
+      <div class="dropzone-hint">
+        单次最多 8 份（同一项目）· 多个项目请分次上传 · 支持 PDF / Word / TXT
+      </div>
     </div>
 
-    <div v-if="uploading" class="panel mb-16">
-      <div class="panel-bd">
-        <div class="row" style="justify-content:space-between;margin-bottom:8px">
-          <span>{{ uploadName }}</span>
-          <span class="muted">{{ uploadPhase }}</span>
+    <div v-if="uploadJobs.length" class="panel mb-16">
+      <div class="panel-hd">
+        <h3>上传任务</h3>
+        <span class="small muted">{{ uploadQueueHint }}</span>
+      </div>
+      <div class="panel-bd stack" style="gap:14px">
+        <div v-for="job in uploadJobs" :key="job.id" class="upload-job">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px;gap:8px">
+            <div style="min-width:0">
+              <div style="font-weight:600;line-height:1.35">{{ job.name }}</div>
+              <div class="small muted">{{ job.fileCount }} 份材料 · {{ jobPhaseLabel(job) }}</div>
+            </div>
+            <div class="row" style="gap:6px;flex-shrink:0">
+              <n-button
+                v-if="job.status === 'done' && job.projectId"
+                size="tiny"
+                @click="router.push(`/projects/${job.projectId}`)"
+              >查看</n-button>
+              <n-button
+                v-if="job.status === 'done' || job.status === 'error'"
+                text
+                size="tiny"
+                @click="dismissJob(job.id)"
+              >移除</n-button>
+            </div>
+          </div>
+          <div class="progress"><i :style="{ width: job.pct + '%', background: jobBarColor(job) }" /></div>
+          <div v-if="job.error" class="small warn" style="margin-top:6px">{{ job.error }}</div>
         </div>
-        <div class="progress"><i :style="{ width: uploadPct + '%' }" /></div>
       </div>
     </div>
 
@@ -58,7 +85,7 @@
             <template #empty>
               <div class="empty-hint">
                 <div class="empty-title">暂无项目</div>
-                <div class="empty-desc">拖入开题 / 任务书等材料即可创建（可多选）</div>
+                <div class="empty-desc">上传材料即可创建项目；多个项目请分次提交</div>
               </div>
             </template>
           </n-data-table>
@@ -70,7 +97,7 @@
 </template>
 
 <script setup>
-import { h, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message } from '../api'
@@ -98,10 +125,37 @@ const filters = [
 ]
 const q = ref('')
 const dragover = ref(false)
-const uploading = ref(false)
-const uploadName = ref('')
-const uploadPct = ref(0)
-const uploadPhase = ref('')
+/** @type {import('vue').Ref<Array<{
+ *  id: number
+ *  name: string
+ *  fileCount: number
+ *  files: File[]
+ *  status: 'queued'|'uploading'|'parsing'|'done'|'error'
+ *  pct: number
+ *  error: string
+ *  projectId: string
+ *  tick: any
+ * }>>} */
+const uploadJobs = ref([])
+let uploadSeq = 1
+/** 同时跑几路上传（Match Agent 较重，默认 2） */
+const UPLOAD_CONCURRENCY = 2
+let activeUploads = 0
+
+const uploadQueueHint = computed(() => {
+  const jobs = uploadJobs.value
+  const running = jobs.filter((j) => j.status === 'uploading' || j.status === 'parsing').length
+  const queued = jobs.filter((j) => j.status === 'queued').length
+  const done = jobs.filter((j) => j.status === 'done').length
+  const err = jobs.filter((j) => j.status === 'error').length
+  const parts = []
+  if (running) parts.push(`处理中 ${running}`)
+  if (queued) parts.push(`待处理 ${queued}`)
+  if (done) parts.push(`已完成 ${done}`)
+  if (err) parts.push(`失败 ${err}`)
+  return parts.join(' · ') || '—'
+})
+
 const booted = ref(false)
 const loading = ref(false)
 const stats = reactive({ total: 0, generating: 0, previewable: 0, monthly_tokens: 0, monthly_budget: 1000000 })
@@ -204,64 +258,136 @@ async function refresh() {
   }
 }
 
-async function doUpload(fileList) {
+function jobPhaseLabel(job) {
+  if (job.status === 'queued') return '待处理'
+  if (job.status === 'uploading') return job.pct < 90 ? `上传中 ${job.pct}%` : '上传中'
+  if (job.status === 'parsing') return '正在解析并匹配'
+  if (job.status === 'done') return '项目已创建'
+  if (job.status === 'error') return '上传失败'
+  return ''
+}
+
+function jobBarColor(job) {
+  if (job.status === 'error') return 'var(--danger, #c45c5c)'
+  if (job.status === 'done') return 'var(--green)'
+  if (job.status === 'queued') return 'var(--line-soft)'
+  return ''
+}
+
+function dismissJob(id) {
+  const job = uploadJobs.value.find((j) => j.id === id)
+  if (job?.tick) clearInterval(job.tick)
+  uploadJobs.value = uploadJobs.value.filter((j) => j.id !== id)
+}
+
+function enqueueUpload(fileList) {
   const files = [...(fileList || [])].filter(Boolean)
   if (!files.length) {
     message.warning('请至少选择一份材料')
     return
   }
   if (files.length > 8) {
-    message.warning('单次最多 8 份材料')
+    message.warning('单次最多 8 份材料；多个项目请分次上传')
     return
   }
-  uploading.value = true
-  uploadName.value = files.length === 1 ? files[0].name : `${files[0].name} 等 ${files.length} 份`
-  uploadPct.value = 0
-  uploadPhase.value = '上传文件…'
-  let tick = null
+  const name = files.length === 1 ? files[0].name : `${files[0].name} 等 ${files.length} 份`
+  uploadJobs.value = [
+    ...uploadJobs.value,
+    {
+      id: uploadSeq++,
+      name,
+      fileCount: files.length,
+      files,
+      status: 'queued',
+      pct: 0,
+      error: '',
+      projectId: '',
+      tick: null,
+    },
+  ]
+  pumpUploadQueue()
+}
+
+function pumpUploadQueue() {
+  while (activeUploads < UPLOAD_CONCURRENCY) {
+    const next = uploadJobs.value.find((j) => j.status === 'queued')
+    if (!next) break
+    activeUploads += 1
+    next.status = 'uploading'
+    next.pct = 0
+    runUploadJob(next).finally(() => {
+      activeUploads -= 1
+      pumpUploadQueue()
+    })
+  }
+}
+
+async function runUploadJob(job) {
   try {
-    const project = await api.upload(files, (e) => {
+    const project = await api.upload(job.files, (e) => {
       if (!e.total) return
       const pct = Math.round((e.loaded / e.total) * 90)
-      uploadPct.value = Math.min(90, pct)
+      job.pct = Math.min(90, pct)
       if (e.loaded >= e.total) {
-        uploadPhase.value = '解析材料 · 匹配领域…'
-        if (!tick) {
-          tick = setInterval(() => {
-            if (uploadPct.value < 98) uploadPct.value += 1
+        job.status = 'parsing'
+        if (!job.tick) {
+          job.tick = setInterval(() => {
+            if (job.pct < 98) job.pct += 1
           }, 400)
         }
-      } else {
-        uploadPhase.value = `上传中 ${Math.round((e.loaded / e.total) * 100)}%`
       }
     })
-    if (tick) clearInterval(tick)
-    uploadPct.value = 100
-    uploadPhase.value = '完成'
-    message.success(files.length > 1 ? `项目已创建（${files.length} 份材料）` : '项目已创建')
-    if (!project?.id) {
-      message.error('创建成功但未返回项目 ID，请从列表进入')
-      await load()
-      return
+    if (job.tick) {
+      clearInterval(job.tick)
+      job.tick = null
     }
-    router.push(`/projects/${project.id}`)
-  } finally {
-    if (tick) clearInterval(tick)
-    uploading.value = false
-    uploadPhase.value = ''
+    job.pct = 100
+    job.status = 'done'
+    job.projectId = project?.id || ''
+    message.success(
+      job.fileCount > 1
+        ? `项目「${project?.title || job.name}」已创建（${job.fileCount} 份材料）`
+        : `项目「${project?.title || job.name}」已创建`,
+    )
+    await load()
+    const stillBusy = uploadJobs.value.some(
+      (j) => j.id !== job.id && (j.status === 'queued' || j.status === 'uploading' || j.status === 'parsing'),
+    )
+    // 多批时留在列表；仅单独一批成功时进详情（沿用旧习惯）
+    if (!stillBusy && job.projectId) {
+      const doneCount = uploadJobs.value.filter((j) => j.status === 'done').length
+      const errCount = uploadJobs.value.filter((j) => j.status === 'error').length
+      if (doneCount === 1 && errCount === 0) {
+        router.push(`/projects/${job.projectId}`)
+      }
+    }
+  } catch (err) {
+    if (job.tick) {
+      clearInterval(job.tick)
+      job.tick = null
+    }
+    job.status = 'error'
+    job.pct = 100
+    const detail = err?.response?.data?.detail || err?.message || '上传失败'
+    job.error = typeof detail === 'string' ? detail : JSON.stringify(detail)
   }
 }
 
 function onFile(e) {
-  doUpload(e.target.files)
+  enqueueUpload(e.target.files)
   e.target.value = ''
 }
 
 function onDrop(e) {
   dragover.value = false
-  doUpload(e.dataTransfer.files)
+  enqueueUpload(e.dataTransfer.files)
 }
 
 onMounted(load)
-onUnmounted(() => onSearch.cancel())
+onUnmounted(() => {
+  onSearch.cancel()
+  for (const job of uploadJobs.value) {
+    if (job.tick) clearInterval(job.tick)
+  }
+})
 </script>

@@ -1,4 +1,4 @@
-"""四个窄 Agent：只碰白名单 JSON / 诊断，不生成业务 Java/Vue。"""
+"""五个窄 Agent：匹配推荐 / Spec 润色 / 填岛 / 修复 / 质检；不生成业务 Java/Vue。"""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bake.catalog import MatchResult, catalog_brief_for_match, merge_llm_match
 from app.bake.domain_schema import (
     deterministic_llm_patch,
     merge_schema,
@@ -53,6 +54,82 @@ def _proposal_text(spec: dict[str, Any]) -> str:
         ]
         return "\n".join(str(x) for x in parts if x)
     return str(prop or "")
+
+
+# ---------- Agent M：匹配推荐 ----------
+async def run_match_agent(
+    db: AsyncSession,
+    rt: LlmRuntime,
+    *,
+    project_id: str,
+    raw_text: str,
+    keyword: MatchResult,
+) -> MatchResult:
+    """在封闭目录内推荐 archetype/domain；失败回落关键词结果。"""
+    if not (rt.stage_on("match_recommend") and rt.configured):
+        return keyword
+    if not await budget_ok(db, project_id, rt):
+        append_deepseek_log(project_id, "match skip · budget exceeded")
+        return keyword
+
+    excerpt = (raw_text or "")[:7000]
+    catalog = catalog_brief_for_match()
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是毕设港 Match Agent。只输出 JSON，不要 markdown。\n"
+                "任务：根据开题，从给定封闭目录中选一对 archetype + domain。\n"
+                "规则：\n"
+                "1) archetype/domain 必须是目录中的 ID，禁止发明新 ID。\n"
+                "2) 以「拟实现/主要功能」为准；现状综述、对比中的支付/采购/盘点等不要当成主路径。\n"
+                "3) 否定语境（不纳入/不做/不扩展）中的能力不要当成要交付。\n"
+                "4) 行业皮与行为要一致：物资领用→DOM-ASSET+ARCH-FLOW；"
+                "商城/点餐才用 ARCH-TRADE；挂号/车位等用 ARCH-RESERVE。\n"
+                "5) 字段：archetype, domain, confidence(0~1), rationale(中文≤120字), "
+                "alts([{archetype,domain,confidence}] 最多3条备选)。\n"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"关键词初判：{keyword.archetype} × {keyword.domain} "
+                f"（置信 {keyword.confidence}）\n"
+                f"命中词：{', '.join((keyword.hits or [])[:12])}\n\n"
+                f"目录：\n{catalog}\n\n"
+                f"开题摘录：\n{excerpt}"
+            ),
+        },
+    ]
+    res = await chat(rt, messages, json_mode=True, temperature=0.1, timeout=120.0)
+    await record_call(
+        db,
+        project_id=project_id,
+        stage="match_recommend",
+        tokens=res.tokens,
+        ok=res.ok and bool(res.data),
+        detail=format_usage_detail(res, "match recommend"),
+    )
+    append_deepseek_log(
+        project_id,
+        f"match ok={res.ok} {format_usage_detail(res)}",
+    )
+    if not res.ok or not isinstance(res.data, dict):
+        append_deepseek_log(project_id, "match fallback · keyword")
+        return keyword
+    merged = merge_llm_match(keyword, res.data)
+    if not merged:
+        append_deepseek_log(
+            project_id,
+            f"match invalid ids · fallback keyword · raw={str(res.data)[:200]}",
+        )
+        return keyword
+    append_deepseek_log(
+        project_id,
+        f"match pick {merged.archetype}×{merged.domain} conf={merged.confidence} "
+        f"(kw {keyword.archetype}×{keyword.domain})",
+    )
+    return merged
 
 
 # ---------- Agent A：Spec ----------

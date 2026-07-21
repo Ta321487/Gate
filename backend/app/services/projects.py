@@ -174,15 +174,41 @@ async def create_from_uploads(
     match_body, summary_text, file_info, weak_tips = merge_proposal_documents(docs)
     primary_name = files[0][1]
     matched = match_text(match_body, primary_name)
-    # 弱材料提示并入 hits（详情页可展示）
+
+    pid = _next_id()
+    while await db.get(Project, pid):
+        pid = _next_id() + f"-{total_size % 97}"
+
+    llm_rt = None
+    try:
+        from app.llm.runtime import load_llm_runtime
+
+        llm_rt = await load_llm_runtime(db)
+    except Exception:  # noqa: BLE001
+        llm_rt = None
+
+    if llm_rt is not None and llm_rt.configured:
+        try:
+            from app.llm.agents import run_match_agent
+
+            matched = await run_match_agent(
+                db, llm_rt, project_id=pid, raw_text=match_body, keyword=matched
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
     hits = list(matched.hits or [])
     for tip in weak_tips:
         if tip not in hits:
             hits.append(tip)
 
-    pid = _next_id()
-    while await db.get(Project, pid):
-        pid = _next_id() + f"-{total_size % 97}"
+    match_meta = {
+        "source": matched.match_source or "keyword",
+        "rationale": matched.rationale or "",
+        "alts": list(matched.alts or []),
+        "keyword_arch": matched.keyword_arch or matched.archetype,
+        "keyword_domain": matched.keyword_domain or matched.domain,
+    }
 
     db_name = _db_name(matched.domain, pid)
     theme = default_theme(matched.domain)
@@ -200,18 +226,18 @@ async def create_from_uploads(
         hits=hits,
         proposal=proposal,
         archetypes=matched.archetypes,
+        match_meta=match_meta,
     )
-    try:
-        from app.llm.agents import run_spec_agent
-        from app.llm.runtime import load_llm_runtime
 
-        llm_rt = await load_llm_runtime(db)
-        if llm_rt.stage_on("parse_spec") and llm_rt.configured:
+    if llm_rt is not None and llm_rt.configured:
+        try:
+            from app.llm.agents import run_spec_agent
+
             spec = await run_spec_agent(
                 db, llm_rt, project_id=pid, raw_text=summary_text, spec=spec
             )
-    except Exception:  # noqa: BLE001
-        pass
+        except Exception:  # noqa: BLE001
+            pass
 
     project_title = str(spec.get("title") or matched.title)
     names = [n for _, n, _ in files]
@@ -327,6 +353,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         conf = project.confidence
 
     old_feature_names = _feature_names((project.spec or {}).get("features"))
+    match_meta = (project.spec or {}).get("match_meta") if isinstance(project.spec, dict) else None
 
     project.spec = build_spec(
         title=project.title,
@@ -337,11 +364,12 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         password_hash=getattr(project, "password_hash", None) or "none",
         match_mode=project.match_mode,
         confidence=conf,
-        hits=project.spec.get("hits", []),
-        proposal=project.spec.get("proposal"),
+        hits=project.spec.get("hits", []) if isinstance(project.spec, dict) else [],
+        proposal=project.spec.get("proposal") if isinstance(project.spec, dict) else None,
         archetypes=[project.archetype]
         if deviant
         else list((project.spec or {}).get("archetypes") or [project.archetype]),
+        match_meta=match_meta if isinstance(match_meta, dict) else None,
     )
     # 仅功能集变化时重置清单；勿用裸 features 冲掉门禁 result
     new_features = project.spec.get("features") or []
