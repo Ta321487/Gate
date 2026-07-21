@@ -347,6 +347,7 @@ const usageCols = computed(() => [
             text: true,
             type: 'primary',
             size: 'small',
+            title: r.title || undefined,
             onClick: (e) => {
               e.stopPropagation()
               filterCallsByProject(r.project_id)

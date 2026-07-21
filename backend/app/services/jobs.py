@@ -131,6 +131,15 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 if wp.exists():
                     workspace = wp
 
+            # 一点生成就停预览，避免 Spec 阶段仍挂着旧前端（列表「生成中+运行中」误导）
+            await asyncio.to_thread(
+                rt.stop_all, project.id, project.backend_port, project.frontend_port
+            )
+            project.backend_running = False
+            project.frontend_running = False
+            await db.commit()
+            await append_log(project.id, "preview stopped · 生成前已停旧进程")
+
             # 续跑若工作区没了，至少从 bake 重来
             if from_step > 1 and workspace is None:
                 await append_log(project.id, "RESUME · workspace missing → bake")
@@ -165,6 +174,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             # 2 bake —— copytree / 下图 / 灌库都是同步重活，必须进线程，否则整站 API 假死
             if from_step <= 1:
                 await set_step(1, "run")
+                # 再停一次：防 Spec 期间又有人点了启动；rmtree 前必须空端口
                 await asyncio.to_thread(
                     rt.stop_all, project.id, project.backend_port, project.frontend_port
                 )
