@@ -474,9 +474,13 @@ async def list_usage(
     page_size: int = 10,
     sort_by: str | None = None,
     sort_order: str | None = None,
+    presence: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """按项目用量（项目流水线，不含系统支持）：时间范围 + 项目 ID 模糊查询 + 排序 + 分页。"""
+    """按项目用量（项目流水线，不含系统支持）：时间范围 + 项目 ID 模糊查询 + 排序 + 分页。
+
+    presence: all | alive | deleted（默认 alive）
+    """
     items, total = await project_usage_rows(
         db,
         q=q,
@@ -486,6 +490,7 @@ async def list_usage(
         page_size=page_size,
         sort_by=sort_by,
         sort_order=sort_order,
+        presence=presence,
     )
     return {
         "items": items,
@@ -507,6 +512,7 @@ async def usage_chart(
     q: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    presence: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """用量透视：按日 Token 折线（项目流水线，不含系统支持）。"""
@@ -515,6 +521,7 @@ async def usage_chart(
         q=q,
         date_from=_parse_dt(date_from),
         date_to=_parse_dt(date_to, end=True),
+        presence=presence,
     )
 
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -165,8 +165,12 @@ async def project_usage_rows(
     limit: int | None = None,
     sort_by: str | None = None,
     sort_order: str | None = None,
+    presence: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    """按项目汇总用量（仅流水线，不含系统支持）；支持时间范围、项目 ID 模糊查、排序与分页。"""
+    """按项目汇总用量（仅流水线，不含系统支持）；支持时间范围、项目 ID 模糊查、排序与分页。
+
+    presence: all | alive | deleted（默认 alive，隐藏已删项目）
+    """
     start = date_from or datetime.now().replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
@@ -186,6 +190,12 @@ async def project_usage_rows(
     needle = (q or "").strip()
     if needle:
         base = base.where(LlmCall.project_id.ilike(f"%{needle}%"))
+    alive_exists = exists().where(Project.id == LlmCall.project_id)
+    mode = (presence or "alive").strip().lower()
+    if mode == "deleted":
+        base = base.where(~alive_exists)
+    elif mode != "all":
+        base = base.where(alive_exists)
     base = base.group_by(LlmCall.project_id)
     # 分组后总数：子查询计数
     count_q = select(func.count()).select_from(base.subquery())
@@ -253,6 +263,7 @@ async def project_usage_chart(
     q: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    presence: str | None = None,
 ) -> dict[str, Any]:
     """用量透视：按日 Token 合计（折线，仅流水线）。"""
     start = date_from or datetime.now().replace(
@@ -271,6 +282,12 @@ async def project_usage_chart(
     needle = (q or "").strip()
     if needle:
         filters.append(LlmCall.project_id.ilike(f"%{needle}%"))
+    alive_exists = exists().where(Project.id == LlmCall.project_id)
+    mode = (presence or "alive").strip().lower()
+    if mode == "deleted":
+        filters.append(~alive_exists)
+    elif mode != "all":
+        filters.append(alive_exists)
 
     day_expr = func.date(LlmCall.created_at)
     daily_rows = (

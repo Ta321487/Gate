@@ -573,7 +573,7 @@ async def build_upload_plan(
     llm_rt=None,
 ) -> ClusterPlan:
     """读材料 → 规则分堆 → 可选 LLM 结构分堆（失败回落规则）。"""
-    plan_id = uuid.uuid4().hex[:12]
+    plan_id = f"gf-plan-{uuid.uuid4().hex[:12]}"
     profiles = build_profiles(files)
     rule_clusters, rule_discard, rule_notes = rule_cluster(profiles)
     llm_reasons: dict[str, str] = {}
