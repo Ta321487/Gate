@@ -330,7 +330,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - **现状样板**：GENERIC CRUD 6 / FLOW·RESERVE 7 / TRADE（含 guestbook）约 8～9 · SHOP/FOOD（guestbook+favorites）约 **12** · 多数薄域 8~9 · 图书/报修壳 9 · 论坛约 13 · **顶格 15**（券表/评价/足迹等按开题叠加）
 - 论坛含：`sys_message` + 原业务/平台表
 - 报修薄壳：楼栋/房间/类型/单据/进度/附件 + 用户/公告/消息
-- 论文 **E-R** 按交付 SQL 如实画；**功能模块图** 按交付 menus 如实画（开题只辅助中文命名）；默认 **按业务拆**，工厂可切换 **按端拆**；**软件测试用例表** 按交付 menus/roles 推导（5～9 列可选，默认 6），可选 LLM 只润色已有行文案，不增删用例、不发明功能
+- 论文 **E-R** 按交付 SQL 如实画（优先全环 / 内点直线零交叉，必要时环外折线；实现拆为 `schema_er_model` / `schema_er_labels` / `schema_er_svg`）；**功能模块图** 按交付 menus 如实画（开题只辅助中文命名）；默认 **按业务拆**，工厂可切换 **按端拆**；**软件测试用例表** 按交付 menus/roles 推导（5～9 列可选，默认 6），可选 LLM 只润色已有行文案，不增删用例、不发明功能
 
 ## 学生端持久化（已完成）
 

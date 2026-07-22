@@ -67,19 +67,19 @@
               <div class="lock-row">
                 <span class="small muted">{{ unlocked ? '骨架 / 领域可调整' : '骨架 / 领域已锁定' }}</span>
                 <div class="row">
-                  <n-button size="small" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
-                  <n-button v-if="unlocked || deviant" text size="small" @click="resetMatch">恢复推荐</n-button>
+                  <n-button size="small" :loading="matchBusy" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
+                  <n-button v-if="unlocked || deviant" text size="small" :loading="matchBusy" @click="resetMatch">恢复推荐</n-button>
                 </div>
               </div>
               <div class="grid-2">
                 <div class="field" :class="{ locked: !unlocked }">
                   <n-form-item label="骨架">
-                    <n-select v-model:value="form.archetype" :options="archOptions" :disabled="!unlocked" @update:value="onArchDomChange" />
+                    <n-select v-model:value="form.archetype" :options="archOptions" :disabled="!unlocked || matchBusy" :loading="matchBusy" @update:value="onArchDomChange" />
                   </n-form-item>
                 </div>
                 <div class="field" :class="{ locked: !unlocked }">
                   <n-form-item label="领域">
-                    <n-select v-model:value="form.domain" :options="domOptions" :disabled="!unlocked" @update:value="onArchDomChange" />
+                    <n-select v-model:value="form.domain" :options="domOptions" :disabled="!unlocked || matchBusy" :loading="matchBusy" @update:value="onArchDomChange" />
                   </n-form-item>
                 </div>
               </div>
@@ -159,7 +159,7 @@
           </n-checkbox>
         </div>
         <div class="row mt-16">
-          <n-button type="primary" size="large" :disabled="!ack || p.match_confirmed" @click="confirmMatch">
+          <n-button type="primary" size="large" :disabled="!ack || p.match_confirmed" :loading="matchBusy" @click="confirmMatch">
             {{ deviant ? '确认按当前选择继续' : '确认并继续' }}
           </n-button>
         </div>
@@ -177,7 +177,7 @@
               <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
               <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
               <div class="row mt-12">
-                <n-button size="small" type="error" secondary @click="cancelCurrent">取消任务</n-button>
+                <n-button size="small" type="error" secondary :loading="jobActing === 'cancel'" @click="cancelCurrent">取消任务</n-button>
                 <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
               </div>
             </div>
@@ -233,7 +233,7 @@
             <h4>质量检查未通过 · 暂不可交付</h4>
             <p class="small muted">{{ currentJob?.error || '主流程或功能清单未通过时，暂不可下载交付包。' }}</p>
             <div class="row mt-12">
-              <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
+              <n-button type="primary" size="small" :loading="jobActing === 'retry'" @click="retryCurrent">从失败步骤重试</n-button>
               <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
               <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
             </div>
@@ -247,22 +247,22 @@
             <div class="panel-bd">
               <div class="grid-2">
                 <n-form-item label="行业配色">
-                  <n-select v-model:value="form.theme" :options="themeOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.theme" :options="themeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="界面质感">
-                  <n-select v-model:value="form.chrome" :options="chromeOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.chrome" :options="chromeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="门户布局">
-                  <n-select v-model:value="form.layout" :options="layoutOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.layout" :options="layoutOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="字体配对">
-                  <n-select v-model:value="form.typeface" :options="typefaceOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.typeface" :options="typefaceOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="智能业务填充">
-                  <n-select v-model:value="form.llm" :options="llmOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.llm" :options="llmOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="密码">
-                  <n-select v-model:value="form.passwordHash" :options="passwordHashOptions" @update:value="saveSoft" />
+                  <n-select v-model:value="form.passwordHash" :options="passwordHashOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
               </div>
               <div v-if="genState !== 'idle'" class="row mt-16">
@@ -400,17 +400,26 @@
           </div>
           <div class="panel-bd artifacts-file-grid">
             <div class="file-row" style="margin:0">
-              <span><strong>{{ zipFileName }}</strong><br /><span class="small muted">{{ zipLockHint }}</span></span>
+              <div class="file-row-main">
+                <strong>{{ zipFileName }}</strong>
+                <span class="small muted">{{ zipLockHint }}</span>
+              </div>
               <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
                 {{ canDownload ? '下载' : '锁定' }}
               </n-button>
             </div>
             <div class="file-row" style="margin:0">
-              <span><strong>工程目录</strong><br /><span class="small muted mono">{{ p.workspace_path || '尚未生成' }}</span></span>
+              <div class="file-row-main">
+                <strong>工程目录</strong>
+                <span class="small muted mono file-path">{{ p.workspace_path || '尚未生成' }}</span>
+              </div>
               <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
             </div>
             <div class="file-row" style="margin:0">
-              <span><strong>生成配置</strong><br /><span class="small muted">匹配与生成参数</span></span>
+              <div class="file-row-main">
+                <strong>生成配置</strong>
+                <span class="small muted">匹配与生成参数</span>
+              </div>
               <div class="row" style="margin:0;gap:6px">
                 <CopyIconButton :text="specText" tip="复制配置" />
                 <n-button text size="small" @click="showSpec = true">查看</n-button>
@@ -422,26 +431,35 @@
         <div class="panel mt-16">
           <div class="panel-hd">
             <h3>对照视图</h3>
-            <span class="small muted">库表 · 论文材料 · 学生端 API · 质量检查 · 仅运营端验收</span>
+            <span class="small muted">
+              {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 学生端 API · 质量检查 · 仅运营端验收' }}
+            </span>
           </div>
           <div class="panel-bd" style="padding-top:4px">
             <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
               <n-tab-pane name="db" tab="数据库">
                 <div class="artifact-pane stack">
+                  <p v-if="artifactLoading" class="small muted">加载中…</p>
                   <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
                     <div class="small">
                       <span class="muted">库名</span> · <span class="mono">{{ p.db_name || '—' }}</span>
                       <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
                       <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'" style="margin-left:8px">
-                        {{ schema ? '已解析' : (p.workspace_path ? '暂无表结构' : '未生成') }}
+                        {{ schema ? '已解析' : (p.workspace_path ? (artifactLoading ? '加载中' : '暂无表结构') : '未生成') }}
                       </span>
                     </div>
                     <div class="row" style="margin:0;gap:8px">
                       <label v-if="schema?.tables?.length" class="type-mode-switch small">
-                        <n-switch v-model:value="typeParenMode" size="small" />
+                        <n-switch v-model:value="typeParenMode" size="small" :disabled="artifactsFrozen" />
                         <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
                       </label>
-                      <n-button size="small" :disabled="!schema?.tables?.length" @click="openEr">E-R 图</n-button>
+                      <n-button
+                        size="small"
+                        :disabled="!schema?.tables?.length || artifactsFrozen"
+                        :loading="erLoading"
+                        :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                        @click="openEr"
+                      >E-R 图</n-button>
                     </div>
                   </div>
                   <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节</div>
@@ -511,6 +529,7 @@
 
               <n-tab-pane name="thesis" tab="论文材料">
                 <div class="artifact-pane stack">
+                  <p v-if="artifactLoading" class="small muted">加载中…</p>
                   <p class="small muted mb-8">
                     贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。均按交付菜单推导，不发明功能。
                   </p>
@@ -518,22 +537,50 @@
                     <div class="thesis-card">
                       <div class="thesis-card-hd">
                         <strong>功能模块图</strong>
-                        <span class="pill" :class="modulesOk ? 'pill-green' : 'pill-neutral'">
-                          {{ modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成') }}
+                        <span
+                          class="pill"
+                          :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                        >
+                          {{
+                            artifactsFrozen
+                              ? '生成中'
+                              : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                          }}
                         </span>
                       </div>
                       <p class="small muted">按业务 / 按端切换 · 黑白线框 · 复制 PNG 或下载矢量</p>
-                      <n-button size="small" type="primary" :disabled="!modulesOk" @click="openModules">打开模块图</n-button>
+                      <n-button
+                        size="small"
+                        type="primary"
+                        :disabled="!modulesOk || artifactsFrozen"
+                        :loading="modLoading"
+                        :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                        @click="openModules"
+                      >打开模块图</n-button>
                     </div>
                     <div class="thesis-card">
                       <div class="thesis-card-hd">
                         <strong>软件测试用例</strong>
-                        <span class="pill" :class="modulesOk ? 'pill-green' : 'pill-neutral'">
-                          {{ modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成') }}
+                        <span
+                          class="pill"
+                          :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                        >
+                          {{
+                            artifactsFrozen
+                              ? '生成中'
+                              : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                          }}
                         </span>
                       </div>
                       <p class="small muted">5～9 字段模板可选（默认 6）· 复制表格 / Markdown</p>
-                      <n-button size="small" type="primary" :disabled="!modulesOk" @click="openTestcases">打开测试用例</n-button>
+                      <n-button
+                        size="small"
+                        type="primary"
+                        :disabled="!modulesOk || artifactsFrozen"
+                        :loading="tcLoading"
+                        :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                        @click="openTestcases"
+                      >打开测试用例</n-button>
                     </div>
                   </div>
                 </div>
@@ -541,6 +588,7 @@
 
               <n-tab-pane name="api" tab="学生端 API">
                 <div class="artifact-pane stack">
+                  <p v-if="artifactLoading" class="small muted">加载中…</p>
                   <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
                     <div class="small">
                       <template v-if="apis">
@@ -550,7 +598,7 @@
                           主流程 {{ apis.flow_marked }}
                         </span>
                       </template>
-                      <span v-else class="pill pill-neutral">{{ p.workspace_path ? '暂无接口清单' : '未生成' }}</span>
+                      <span v-else class="pill pill-neutral">{{ p.workspace_path ? (artifactLoading ? '加载中' : '暂无接口清单') : '未生成' }}</span>
                     </div>
                     <div class="row" style="margin:0;gap:8px">
                       <n-input
@@ -695,6 +743,7 @@
         :mode="erMode"
         :entity="erEntity"
         :entity-options="erEntityOptions"
+        :loading="erLoading"
         @update:mode="onErMode"
         @update:entity="onErEntity"
         @reload="reloadErSvg"
@@ -707,6 +756,7 @@
         :svg-source="modSvgSource"
         :download-name="modDownloadBase"
         :layout="modulesLayout"
+        :loading="modLoading"
         @update:layout="onModulesLayout"
         @reload="reloadModSvg"
       />
@@ -720,6 +770,7 @@
         :fields="tcFields"
         :count="tcCount"
         :download-name="tcDownloadBase"
+        :loading="tcLoading"
         @update:fields="onTcFields"
         @reload="reloadTestcases"
       />
@@ -841,6 +892,13 @@ const showSpec = ref(false)
 const showEr = ref(false)
 const showModules = ref(false)
 const showTestcases = ref(false)
+const erLoading = ref(false)
+const modLoading = ref(false)
+const tcLoading = ref(false)
+const matchBusy = ref(false)
+const softSaving = ref(false)
+const jobActing = ref('')
+const artifactLoading = ref(false)
 const showDelete = ref(false)
 const keepDb = ref(false)
 const deleting = ref(false)
@@ -1018,6 +1076,10 @@ const genState = computed(() => {
   if (p.value.status === 'failed') return 'failed'
   return 'idle'
 })
+
+/** 重生中：工程目录在改写，导出类对照操作冻结 */
+const artifactsFrozen = computed(() => genState.value === 'running')
+const artifactsFrozenReason = '工程正在重新生成，完成后可再打开'
 
 /** 已有工程产物（含运行中 / 失败），匹配页不再当首次门禁 */
 const alreadyBaked = computed(() =>
@@ -1287,10 +1349,13 @@ async function loadSchema() {
     schema.value = null
     return
   }
+  artifactLoading.value = true
   try {
     schema.value = await api.getSchema(p.value.id)
   } catch {
     schema.value = null
+  } finally {
+    artifactLoading.value = false
   }
 }
 
@@ -1299,10 +1364,13 @@ async function loadApis() {
     apis.value = null
     return
   }
+  artifactLoading.value = true
   try {
     apis.value = await api.getApis(p.value.id)
   } catch {
     apis.value = null
+  } finally {
+    artifactLoading.value = false
   }
 }
 
@@ -1412,25 +1480,31 @@ async function fetchModSvg() {
 }
 
 async function openModules() {
-  if (!p.value) return
+  if (!p.value || modLoading.value || artifactsFrozen.value) return
+  modLoading.value = true
   try {
     modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
     modSvgSource.value = await fetchModSvg()
     modLayoutKey.value += 1
+    showModules.value = true
   } catch {
     message.error('无法加载功能模块图')
-    return
+  } finally {
+    modLoading.value = false
   }
-  showModules.value = true
 }
 
 async function reloadModSvg() {
+  if (!p.value || modLoading.value) return
+  modLoading.value = true
   try {
     modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
     modSvgSource.value = await fetchModSvg()
     modLayoutKey.value += 1
   } catch {
     message.error('无法重新加载模块图')
+  } finally {
+    modLoading.value = false
   }
 }
 
@@ -1446,7 +1520,8 @@ const tcDownloadBase = computed(() => {
 })
 
 async function reloadTestcases() {
-  if (!p.value) return
+  if (!p.value || tcLoading.value) return
+  tcLoading.value = true
   try {
     const data = await api.getTestcases(p.value.id, { fields: tcFields.value })
     tcColumns.value = data.columns || []
@@ -1456,14 +1531,17 @@ async function reloadTestcases() {
     if (data.fields) tcFields.value = data.fields
   } catch {
     message.error('无法加载测试用例')
+  } finally {
+    tcLoading.value = false
   }
 }
 
 async function openTestcases() {
-  if (!p.value) return
+  if (!p.value || tcLoading.value || artifactsFrozen.value) return
   await reloadTestcases()
-  if (!tcRows.value.length && !tcColumns.value.length) return
-  showTestcases.value = true
+  if (tcRows.value.length || tcColumns.value.length) {
+    showTestcases.value = true
+  }
 }
 
 async function onTcFields(v) {
@@ -1473,26 +1551,32 @@ async function onTcFields(v) {
 }
 
 async function openEr() {
-  if (!p.value) return
+  if (!p.value || erLoading.value || artifactsFrozen.value) return
   if (!erEntity.value && schema.value?.tables?.length) {
     erEntity.value = schema.value.tables[0].name
   }
+  erLoading.value = true
   try {
     erSvgSource.value = await fetchErSvg()
     erLayoutKey.value += 1
+    showEr.value = true
   } catch {
     message.error('无法加载 E-R 图')
-    return
+  } finally {
+    erLoading.value = false
   }
-  showEr.value = true
 }
 
 async function reloadErSvg() {
+  if (!p.value || erLoading.value) return
+  erLoading.value = true
   try {
     erSvgSource.value = await fetchErSvg()
     erLayoutKey.value += 1
   } catch {
     message.error('无法重新加载 E-R 图')
+  } finally {
+    erLoading.value = false
   }
 }
 
@@ -1570,6 +1654,7 @@ async function refreshRuntime(projectId) {
 }
 
 async function toggleUnlock() {
+  if (matchBusy.value) return
   if (!unlocked.value) {
     const ok = await confirm('解锁后可调整骨架与领域。确认解锁？', {
       title: '解锁匹配',
@@ -1577,36 +1662,55 @@ async function toggleUnlock() {
       positiveText: '解锁',
     })
     if (!ok) return
-    await api.patchMatch(p.value.id, { unlock: true })
-    unlocked.value = true
-    message.success('已解锁')
+    matchBusy.value = true
+    try {
+      await api.patchMatch(p.value.id, { unlock: true })
+      unlocked.value = true
+      message.success('已解锁')
+      await load()
+    } finally {
+      matchBusy.value = false
+    }
   } else {
     if (deviant.value) {
       message.warning('已偏离推荐，请先恢复推荐再锁定')
       return
     }
-    await api.patchMatch(p.value.id, { unlock: false })
-    unlocked.value = false
-    message.success('已重新锁定')
+    matchBusy.value = true
+    try {
+      await api.patchMatch(p.value.id, { unlock: false })
+      unlocked.value = false
+      message.success('已重新锁定')
+      await load()
+    } finally {
+      matchBusy.value = false
+    }
   }
-  await load()
 }
 
 async function resetMatch() {
-  p.value = await api.patchMatch(p.value.id, { reset: true })
-  form.archetype = p.value.archetype
-  form.domain = p.value.domain
-  form.theme = p.value.theme
-  form.chrome = p.value.spec?.chrome || 'soft'
-  form.layout = p.value.spec?.layout || 'topbar'
-  form.typeface = p.value.spec?.typeface || 'clean'
-  form.passwordHash = p.value.password_hash || 'none'
-  unlocked.value = false
-  ack.value = false
-  message.success('已恢复推荐')
+  if (matchBusy.value) return
+  matchBusy.value = true
+  try {
+    p.value = await api.patchMatch(p.value.id, { reset: true })
+    form.archetype = p.value.archetype
+    form.domain = p.value.domain
+    form.theme = p.value.theme
+    form.chrome = p.value.spec?.chrome || 'soft'
+    form.layout = p.value.spec?.layout || 'topbar'
+    form.typeface = p.value.spec?.typeface || 'clean'
+    form.passwordHash = p.value.password_hash || 'none'
+    unlocked.value = false
+    ack.value = false
+    message.success('已恢复推荐')
+  } finally {
+    matchBusy.value = false
+  }
 }
 
 async function onArchDomChange() {
+  if (matchBusy.value) return
+  matchBusy.value = true
   try {
     p.value = await api.patchMatch(p.value.id, {
       archetype: form.archetype,
@@ -1624,22 +1728,31 @@ async function onArchDomChange() {
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
+  } finally {
+    matchBusy.value = false
   }
 }
 
 async function saveSoft() {
-  p.value = await api.patchMatch(p.value.id, {
-    theme: form.theme,
-    chrome: form.chrome,
-    layout: form.layout,
-    typeface: form.typeface,
-    llm_enabled: form.llm === 'on',
-    password_hash: form.passwordHash,
-  })
-  message.success('已保存')
+  if (softSaving.value) return
+  softSaving.value = true
+  try {
+    p.value = await api.patchMatch(p.value.id, {
+      theme: form.theme,
+      chrome: form.chrome,
+      layout: form.layout,
+      typeface: form.typeface,
+      llm_enabled: form.llm === 'on',
+      password_hash: form.passwordHash,
+    })
+    message.success('已保存')
+  } finally {
+    softSaving.value = false
+  }
 }
 
 async function confirmMatch() {
+  if (matchBusy.value) return
   if (deviant.value) {
     const ok = await confirm('当前已偏离系统推荐。确认仍按当前骨架与领域生成？', {
       title: '偏离推荐确认',
@@ -1647,10 +1760,15 @@ async function confirmMatch() {
     })
     if (!ok) return
   }
-  p.value = await api.patchMatch(p.value.id, { confirm: true, ack: true })
-  unlocked.value = false
-  message.success(deviant.value ? '已按当前选择确认' : '已确认匹配')
-  tab.value = 'generate'
+  matchBusy.value = true
+  try {
+    p.value = await api.patchMatch(p.value.id, { confirm: true, ack: true })
+    unlocked.value = false
+    message.success(deviant.value ? '已按当前选择确认' : '已确认匹配')
+    tab.value = 'generate'
+  } finally {
+    matchBusy.value = false
+  }
 }
 
 async function startGenerate() {
@@ -1668,27 +1786,38 @@ async function startGenerate() {
 }
 
 async function cancelCurrent() {
-  if (!currentJob.value) return
+  if (!currentJob.value || jobActing.value) return
   const ok = await confirm('确认取消该生成任务？进行中的步骤将中止。', {
     title: '取消任务',
     type: 'warning',
     positiveText: '确认取消',
   })
   if (!ok) return
-  await api.cancelJob(currentJob.value.id)
-  message.success('已取消')
-  await load()
+  jobActing.value = 'cancel'
+  try {
+    await api.cancelJob(currentJob.value.id)
+    message.success('已取消')
+    await load()
+  } finally {
+    jobActing.value = ''
+  }
 }
 
 async function retryCurrent() {
+  if (jobActing.value) return
   if (!currentJob.value) {
     await startGenerate()
     return
   }
-  const res = await api.retryJob(currentJob.value.id)
-  message.success(res?.message || '已从失败步骤续跑')
-  await load()
-  startPoll()
+  jobActing.value = 'retry'
+  try {
+    const res = await api.retryJob(currentJob.value.id)
+    message.success(res?.message || '已从失败步骤续跑')
+    await load()
+    startPoll()
+  } finally {
+    jobActing.value = ''
+  }
 }
 
 function downloadZip() {
@@ -1851,6 +1980,13 @@ watch(tab, (v) => {
   if (v === 'logs') loadLog(logSide.value)
   if (v === 'runtime') refreshRuntime()
   if (v === 'artifacts') loadArtifactView()
+})
+
+watch(artifactsFrozen, (frozen) => {
+  if (!frozen) return
+  showEr.value = false
+  showModules.value = false
+  showTestcases.value = false
 })
 
 watch(
