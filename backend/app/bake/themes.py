@@ -1,4 +1,7 @@
-"""主题 / 登录版式映射与规范化。"""
+"""主题 / 登录版式 / 质感 / 门户壳：目录挑选与规范化。
+
+配色、质感、布局壳正交；共用 pick/normalize/label，避免每轴复制一份。
+"""
 
 from __future__ import annotations
 
@@ -24,37 +27,6 @@ def default_theme(domain: str) -> str:
     return themes[0]["id"] if themes else "gen-ink"
 
 
-def pick_theme(domain: str, seed: str | None = None) -> str:
-    """按种子从领域配色集中稳定挑选，避免同领域总落第一个。"""
-    themes = themes_for_domain(domain)
-    ids = [t["id"] for t in themes]
-    return _pick_by_seed(ids, seed, default_theme(domain))
-
-
-# 登录/注册版式：bake 时随机写入 spec，交付后固定
-AUTH_TEMPLATES = [
-    {"id": "split", "label": "双栏书香"},
-    {"id": "mirror", "label": "镜像入口"},
-    {"id": "center", "label": "雾面居中"},
-    {"id": "ribbon", "label": "顶栏色带"},
-    {"id": "ledge", "label": "浮台登录"},
-    {"id": "folio", "label": "对开页"},
-]
-
-# 登录入口：统一 / 身份选择 / 门户与管理分端（交付后固定）
-AUTH_ENTRY_MODES = [
-    {"id": "unified", "label": "统一登录（无身份选择）"},
-    {"id": "role_pick", "label": "登录页身份选择（毕设经典）"},
-    {"id": "split_entry", "label": "门户与管理端分入口"},
-]
-
-# 身份控件：仅 role_pick / split 管理端会用到
-AUTH_ROLE_WIDGETS = [
-    {"id": "radio", "label": "单选分段"},
-    {"id": "select", "label": "下拉选择"},
-]
-
-
 def _pick_by_seed(ids: list[str], seed: str | None, default: str) -> str:
     """按种子稳定挑选，便于同一项目重 bake 可复现；无种子则随机。"""
     import hashlib
@@ -68,43 +40,82 @@ def _pick_by_seed(ids: list[str], seed: str | None, default: str) -> str:
     return random.choice(ids)
 
 
-def pick_auth_template(seed: str | None = None) -> str:
-    ids = [t["id"] for t in AUTH_TEMPLATES]
-    return _pick_by_seed(ids, seed, "split")
+def pick_from_catalog(catalog: list[dict], seed: str | None, default: str) -> str:
+    return _pick_by_seed([t["id"] for t in catalog], seed, default)
 
 
-def normalize_auth_template(template: str | None) -> str:
-    ids = {t["id"] for t in AUTH_TEMPLATES}
-    if template and template in ids:
-        return template
-    return "split"
+def normalize_from_catalog(catalog: list[dict], value: str | None, default: str) -> str:
+    ids = {t["id"] for t in catalog}
+    if value and value in ids:
+        return value
+    return default
 
 
-def pick_auth_entry_mode(seed: str | None = None) -> str:
-    ids = [t["id"] for t in AUTH_ENTRY_MODES]
-    return _pick_by_seed(ids, seed, "role_pick")
+def label_from_catalog(catalog: list[dict], value: str) -> str:
+    return next((t["label"] for t in catalog if t["id"] == value), value)
 
 
-def normalize_auth_entry_mode(mode: str | None) -> str:
-    ids = {t["id"] for t in AUTH_ENTRY_MODES}
-    if mode and mode in ids:
-        return mode
-    return "role_pick"
+def resolve_or_pick(
+    catalog: list[dict],
+    override: str | None,
+    seed: str | None,
+    default: str,
+) -> str:
+    """有覆盖用覆盖，否则按种子挑。"""
+    if override:
+        return normalize_from_catalog(catalog, override, default)
+    return pick_from_catalog(catalog, seed, default)
 
 
-def pick_auth_role_widget(seed: str | None = None) -> str:
-    ids = [t["id"] for t in AUTH_ROLE_WIDGETS]
-    return _pick_by_seed(ids, seed, "radio")
+def resolve_style_override(
+    *,
+    reset: bool,
+    body_value: str | None,
+    prev_value: str | None,
+    catalog: list[dict],
+    default: str,
+    unknown_message: str,
+) -> str | None:
+    """匹配更新时：重置→重抽；显式选择→校验；否则保留上次。None = 交给 resolve_or_pick。"""
+    if reset:
+        return None
+    if body_value is not None:
+        if body_value not in {t["id"] for t in catalog}:
+            raise ValueError(unknown_message)
+        return normalize_from_catalog(catalog, body_value, default)
+    if prev_value:
+        return normalize_from_catalog(catalog, prev_value, default)
+    return None
 
 
-def normalize_auth_role_widget(widget: str | None) -> str:
-    ids = {t["id"] for t in AUTH_ROLE_WIDGETS}
-    if widget and widget in ids:
-        return widget
-    return "radio"
+def pick_theme(domain: str, seed: str | None = None) -> str:
+    """按种子从领域配色集中稳定挑选，避免同领域总落第一个。"""
+    themes = themes_for_domain(domain)
+    return pick_from_catalog(themes, seed, default_theme(domain))
 
 
-# 界面质感（圆角/边框/按钮/密度）：与配色正交，bake 时按种子挑选，交付后固定
+# 登录/注册版式：bake 时随机写入 spec，交付后固定
+AUTH_TEMPLATES = [
+    {"id": "split", "label": "双栏书香"},
+    {"id": "mirror", "label": "镜像入口"},
+    {"id": "center", "label": "雾面居中"},
+    {"id": "ribbon", "label": "顶栏色带"},
+    {"id": "ledge", "label": "浮台登录"},
+    {"id": "folio", "label": "对开页"},
+]
+
+AUTH_ENTRY_MODES = [
+    {"id": "unified", "label": "统一登录（无身份选择）"},
+    {"id": "role_pick", "label": "登录页身份选择（毕设经典）"},
+    {"id": "split_entry", "label": "门户与管理端分入口"},
+]
+
+AUTH_ROLE_WIDGETS = [
+    {"id": "radio", "label": "单选分段"},
+    {"id": "select", "label": "下拉选择"},
+]
+
+# 界面质感（圆角/边框/按钮/密度）：与配色正交
 CHROME_STYLES = [
     {"id": "soft", "label": "圆润浮起"},
     {"id": "sharp", "label": "直角扁平"},
@@ -114,17 +125,69 @@ CHROME_STYLES = [
     {"id": "ruled", "label": "细线分区"},
 ]
 
+# 门户壳（导航放置）：与质感正交；管理端仍用工作台
+LAYOUT_SHELLS = [
+    {"id": "topbar", "label": "顶栏门户"},
+    {"id": "rail", "label": "侧栏门户"},
+    {"id": "masthead", "label": "通栏抬头"},
+    {"id": "island", "label": "居中岛屿"},
+]
+
+# 字体配对：标题/正文字族成套挑，与配色·质感·布局正交
+TYPE_PAIRINGS = [
+    {"id": "clean", "label": "净白无衬线"},
+    {"id": "serif", "label": "书香衬线"},
+    {"id": "tech", "label": "理工无衬线"},
+    {"id": "soft", "label": "圆润人文"},
+]
+
+
+def pick_auth_template(seed: str | None = None) -> str:
+    return pick_from_catalog(AUTH_TEMPLATES, seed, "split")
+
+
+def normalize_auth_template(template: str | None) -> str:
+    return normalize_from_catalog(AUTH_TEMPLATES, template, "split")
+
+
+def pick_auth_entry_mode(seed: str | None = None) -> str:
+    return pick_from_catalog(AUTH_ENTRY_MODES, seed, "role_pick")
+
+
+def normalize_auth_entry_mode(mode: str | None) -> str:
+    return normalize_from_catalog(AUTH_ENTRY_MODES, mode, "role_pick")
+
+
+def pick_auth_role_widget(seed: str | None = None) -> str:
+    return pick_from_catalog(AUTH_ROLE_WIDGETS, seed, "radio")
+
+
+def normalize_auth_role_widget(widget: str | None) -> str:
+    return normalize_from_catalog(AUTH_ROLE_WIDGETS, widget, "radio")
+
 
 def pick_chrome(seed: str | None = None) -> str:
-    ids = [t["id"] for t in CHROME_STYLES]
-    return _pick_by_seed(ids, seed, "soft")
+    return pick_from_catalog(CHROME_STYLES, seed, "soft")
 
 
 def normalize_chrome(chrome: str | None) -> str:
-    ids = {t["id"] for t in CHROME_STYLES}
-    if chrome and chrome in ids:
-        return chrome
-    return "soft"
+    return normalize_from_catalog(CHROME_STYLES, chrome, "soft")
+
+
+def pick_layout(seed: str | None = None) -> str:
+    return pick_from_catalog(LAYOUT_SHELLS, seed, "topbar")
+
+
+def normalize_layout(layout: str | None) -> str:
+    return normalize_from_catalog(LAYOUT_SHELLS, layout, "topbar")
+
+
+def pick_typeface(seed: str | None = None) -> str:
+    return pick_from_catalog(TYPE_PAIRINGS, seed, "clean")
+
+
+def normalize_typeface(typeface: str | None) -> str:
+    return normalize_from_catalog(TYPE_PAIRINGS, typeface, "clean")
 
 
 def all_theme_ids() -> set[str]:

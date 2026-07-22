@@ -1,0 +1,218 @@
+/* 门户壳：与配色/质感正交。bake 写入 VITE_LAYOUT → data-layout
+ * 仍用同一套 PortalLayout DOM，只改导航放置与内容宽度 */
+
+/* —— topbar：默认（PortalLayout scoped 已覆盖） —— */
+
+/* —— rail：左侧竖导航 —— */
+html[data-layout="rail"] .portal {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "aside stage"
+    "aside body"
+    "aside foot";
+  min-height: 100vh;
+}
+
+html[data-layout="rail"] .portal > .top {
+  grid-area: aside;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: auto;
+  border-bottom: none;
+  border-right: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  background: var(--portal-surface, #fff);
+  backdrop-filter: none;
+}
+
+html[data-layout="rail"] .portal > .top .top-inner {
+  max-width: none;
+  margin: 0;
+  height: auto;
+  min-height: 100%;
+  padding: 18px 14px 24px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+html[data-layout="rail"] .portal > .top .brand {
+  max-width: none;
+}
+
+html[data-layout="rail"] .portal > .top .nav {
+  flex-direction: column;
+  flex: 1;
+  overflow-x: visible;
+  overflow-y: auto;
+  gap: 2px;
+}
+
+html[data-layout="rail"] .portal > .top .nav a {
+  display: block;
+  padding: 8px 12px;
+}
+
+html[data-layout="rail"] .portal > .top .user {
+  margin-left: 0;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+}
+
+html[data-layout="rail"] .portal > .stage {
+  grid-area: stage;
+}
+
+html[data-layout="rail"] .portal > .body {
+  grid-area: body;
+  max-width: none;
+  margin: 0;
+  padding: 20px 28px 40px;
+}
+
+html[data-layout="rail"] .portal > .foot {
+  grid-area: foot;
+  text-align: left;
+  padding-left: 28px;
+}
+
+html[data-layout="rail"] .portal > .foot .foot-inner {
+  max-width: none;
+  margin: 0;
+  justify-content: flex-start;
+}
+
+html[data-layout="masthead"] .portal > .foot .foot-inner {
+  max-width: 1200px;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+html[data-layout="masthead"] .portal > .foot .sep {
+  display: none;
+}
+
+html[data-layout="masthead"] .portal > .foot .foot-tag {
+  margin-left: auto;
+}
+
+html[data-layout="island"] .portal > .foot {
+  border-top: none;
+  opacity: 0.85;
+}
+
+html[data-layout="island"] .portal > .foot .foot-inner {
+  max-width: 760px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-layout="island"] .portal > .foot .sep {
+  display: none;
+}
+
+
+/* —— masthead：通栏抬头，导航在品牌下 —— */
+html[data-layout="masthead"] .portal > .top {
+  position: relative;
+}
+
+html[data-layout="masthead"] .portal > .top .top-inner {
+  max-width: none;
+  height: auto;
+  min-height: 72px;
+  padding: 14px 28px 12px;
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+html[data-layout="masthead"] .portal > .top .brand {
+  max-width: none;
+  flex: 1 1 auto;
+}
+
+html[data-layout="masthead"] .portal > .top .brand-text {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+html[data-layout="masthead"] .portal > .top .nav {
+  order: 3;
+  flex: 1 1 100%;
+  padding-top: 4px;
+  border-top: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+}
+
+html[data-layout="masthead"] .portal > .top .user {
+  order: 2;
+  margin-left: auto;
+}
+
+html[data-layout="masthead"] .portal > .body {
+  max-width: 1200px;
+  padding: 24px 28px 48px;
+}
+
+/* —— island：窄内容、淡顶栏 —— */
+html[data-layout="island"] .portal > .top {
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: none;
+}
+
+html[data-layout="island"] .portal > .top .top-inner {
+  max-width: 760px;
+  height: 52px;
+}
+
+html[data-layout="island"] .portal > .body {
+  max-width: 760px;
+  padding-top: 8px;
+}
+
+html[data-layout="island"] .portal > .foot {
+  border-top: none;
+  opacity: 0.85;
+}
+
+@media (max-width: 860px) {
+  html[data-layout="rail"] .portal {
+    display: flex;
+    flex-direction: column;
+  }
+
+  html[data-layout="rail"] .portal > .top {
+    position: sticky;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  }
+
+  html[data-layout="rail"] .portal > .top .top-inner {
+    flex-direction: row;
+    align-items: center;
+    padding: 0 16px;
+    height: 56px;
+    gap: 12px;
+  }
+
+  html[data-layout="rail"] .portal > .top .nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  html[data-layout="rail"] .portal > .top .user {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  html[data-layout="rail"] .portal > .body {
+    padding: 16px 16px 32px;
+  }
+}

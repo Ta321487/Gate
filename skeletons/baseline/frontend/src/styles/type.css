@@ -1,0 +1,43 @@
+/* 字体配对：与配色/质感/布局正交。bake → VITE_TYPEFACE → data-typeface */
+
+:root,
+html[data-typeface="clean"] {
+  --portal-font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --portal-font-ui: "Plus Jakarta Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --portal-font-tracking: 0.01em;
+  --portal-display-tracking: -0.02em;
+}
+
+html[data-typeface="serif"] {
+  --portal-font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --portal-font-ui: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "Noto Sans SC", "Microsoft YaHei", serif;
+  --portal-font-tracking: 0.02em;
+  --portal-display-tracking: -0.01em;
+}
+
+html[data-typeface="tech"] {
+  --portal-font-display: "DM Sans", "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", "PingFang SC", sans-serif;
+  --portal-font-ui: "DM Sans", "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --portal-font-tracking: 0;
+  --portal-display-tracking: -0.03em;
+}
+
+html[data-typeface="soft"] {
+  --portal-font-display: "Nunito Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --portal-font-ui: "Nunito Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --portal-font-tracking: 0.015em;
+  --portal-display-tracking: -0.015em;
+}
+
+html[data-typeface="serif"] .brand-text,
+html[data-typeface="serif"] .portal .hero h1,
+html[data-typeface="serif"] .sp-brand,
+html[data-typeface="serif"] .sp-code {
+  font-family: var(--portal-font-display);
+}
+
+html[data-typeface="tech"] .brand-text {
+  font-weight: 700;
+  letter-spacing: var(--portal-display-tracking);
+  text-transform: none;
+}

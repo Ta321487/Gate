@@ -381,6 +381,32 @@ const FLAVORS = {
   },
 }
 
+/** 页脚短句：跟领域皮走，不另开随机轴 */
+const FOOTER_TAGS = {
+  library: '馆藏服务台',
+  equipment: '设备借还窗口',
+  asset: '物资台账入口',
+  crm: '客户跟进台',
+  shop: '商城服务台',
+  dorm: '宿舍事务窗口',
+  property: '物业报修台',
+  ithelp: 'IT 服务台',
+  activity: '活动报名处',
+  lostfound: '失物招领榜',
+  course: '选课服务中心',
+  food: '点餐服务台',
+  hospital: '预约分诊入口',
+  parking: '车位服务台',
+  meeting: '场地预约台',
+  salon: '预约前台',
+  hotel: '客房服务台',
+  media: '片库服务台',
+  music: '曲库服务台',
+  forum: '社区服务台',
+  blog: '站点阅读台',
+  generic: '在线服务入口',
+}
+
 const KIND_META = {
   '404': { code: '404', homeLabel: '返回首页' },
   '500': { code: '500', homeLabel: '返回首页', retryLabel: '重新加载' },
@@ -388,7 +414,24 @@ const KIND_META = {
 }
 
 export function domainFlavor(flavorId = getFlavor()) {
-  return FLAVORS[flavorId] || FLAVORS['generic']
+  const id = flavorId || 'generic'
+  const base = FLAVORS[id] || FLAVORS.generic
+  return {
+    ...base,
+    footerTag: FOOTER_TAGS[id] || FOOTER_TAGS.generic,
+  }
+}
+
+/** 门户页脚：品牌名 + 领域短句 */
+export function portalFooterCopy() {
+  const delivered = getDelivered()
+  const labels = schemaLabels()
+  const flavor = domainFlavor()
+  const domainLabel = getDomainLabel()
+  return {
+    brand: labels.appName || delivered.title || '本系统',
+    tagline: flavor.footerTag || `${domainLabel}服务门户`,
+  }
 }
 
 /** @param {'404'|'500'|'loading'} kind */

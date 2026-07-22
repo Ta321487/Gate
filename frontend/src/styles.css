@@ -384,6 +384,27 @@ button.filter-pill.on {
   gap: 10px;
 }
 .artifact-pane { padding: 8px 0 4px; }
+.thesis-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.thesis-card {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.thesis-card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.thesis-card .n-button { align-self: flex-start; }
 .api-surface-bar { flex-wrap: wrap; }
 .api-chip {
   appearance: none; border: 1px solid var(--line); background: var(--surface-2);

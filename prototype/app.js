@@ -1,12 +1,12 @@
 ﻿    const projects = [
       { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚" },
       { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
-      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SECOND", status: "failed", statusLabel: "门禁未过 · 禁止交付", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
+      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可交付", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
       { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前" },
       { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", running: false, updated: "12 分钟前" },
-      { id: "gf-20260712-003", name: "新闻资讯发布平台", arch: "ARCH-CONTENT · DOM-NEWS", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
-      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-STOCK", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
-      { id: "gf-20260708-001", name: "宠物寄养管理系统", arch: "ARCH-CRUD · DOM-PET", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周" },
+      { id: "gf-20260712-003", name: "影视点播管理系统", arch: "ARCH-CONTENT · DOM-MEDIA", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
+      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-GENERIC", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
+      { id: "gf-20260708-001", name: "社团活动报名系统", arch: "ARCH-FLOW · DOM-ACTIVITY", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周" },
     ];
 
     const logSamples = {
@@ -39,12 +39,12 @@
     };
 
     const liveSteps = [
-      { t: "done", title: "解析开题 → 合并 Spec", meta: "匹配阶段" },
-      { t: "done", title: "复制骨架 · 写入领域 SQL", meta: "确定性 bake" },
-      { t: "done", title: "业务岛 emit · LLM 填缺口", meta: "白名单文件" },
-      { t: "run", title: "构建验证", meta: "P0" },
-      { t: "wait", title: "门禁：登录 + 主流程 E2E", meta: "P1 / P2" },
-      { t: "wait", title: "开题对照 · 打包 ZIP", meta: "仅门禁全过" },
+      { t: "done", title: "解析材料并合并生成配置", meta: "匹配阶段" },
+      { t: "done", title: "复制基线并写入领域数据表", meta: "确定性生成" },
+      { t: "done", title: "按白名单填充业务配置", meta: "AI 补全配置项" },
+      { t: "run", title: "构建验证", meta: "基础检查" },
+      { t: "wait", title: "登录与主流程验收", meta: "关键路径" },
+      { t: "wait", title: "开题对照并打包交付包", meta: "检查全部通过后" },
     ];
 
     let beOn = false;
@@ -53,7 +53,7 @@
     let genTimer = null;
     let matchConfirmed = false;
     let matchUnlocked = false;
-    /** 交付门禁：P2 不过则 zip 锁定 */
+    /** 交付质量检查：未过则 zip 锁定 */
     let gatesPass = true;
 
     const RECOMMENDED = {
@@ -109,7 +109,8 @@
         home: ["毕设港", "项目"],
         jobs: ["毕设港", "任务队列"],
         help: ["毕设港", "帮助文档"],
-        settings: ["毕设港", "DeepSeek"],
+        llm: ["毕设港", "大模型"],
+        unsplash: ["毕设港", "Unsplash"],
         system: ["毕设港", "运行环境"],
         project: ["毕设港", "项目", "详情"],
       };
@@ -187,7 +188,7 @@
       document.querySelectorAll("#artifact-subtabs button").forEach((b) => {
         b.classList.toggle("active", b.dataset.aview === v);
       });
-      ["db", "api", "gates"].forEach((id) => {
+      ["db", "thesis", "api", "gates"].forEach((id) => {
         const el = document.getElementById("aview-" + id);
         if (el) el.style.display = id === v ? "flex" : "none";
       });
@@ -203,6 +204,9 @@
         p3a: pass,
         p3b: true,
         p3t: true,
+        p3d: true,
+        p3c: true,
+        accept: pass,
       };
       document.querySelectorAll("#gate-tbody tr[data-gate]").forEach((tr) => {
         const ok = results[tr.dataset.gate];
@@ -218,7 +222,7 @@
         overall.className = "pill pill-green";
         overall.textContent = "可交付";
         setDisabled("btn-download", false);
-        if (zipHint) zipHint.textContent = "门禁已过";
+        if (zipHint) zipHint.textContent = "质量检查已过";
         if (zipBtn) {
           zipBtn.textContent = "下载";
           zipBtn.classList.remove("is-disabled");
@@ -229,9 +233,9 @@
         document.getElementById("cl-return").textContent = "已实现";
       } else {
         overall.className = "pill pill-red";
-        overall.textContent = "禁止交付";
+        overall.textContent = "暂不可交付";
         setDisabled("btn-download", true);
-        if (zipHint) zipHint.textContent = "门禁未过 · 锁定";
+        if (zipHint) zipHint.textContent = "质量检查未过 · 锁定";
         if (zipBtn) {
           zipBtn.textContent = "锁定";
           zipBtn.classList.add("is-disabled");
@@ -261,21 +265,21 @@
       } else if (state === "running") {
         ok.style.display = "block";
         document.getElementById("gen-success-title").textContent = "已生成 · 预览运行中";
-        document.getElementById("gen-success-desc").textContent = "前后端已启动，可打开预览或下载 ZIP。";
+        document.getElementById("gen-success-desc").textContent = "前后端已启动，可打开预览或下载交付包。";
         renderGates(true);
       } else if (state === "generated") {
         ok.style.display = "block";
-        document.getElementById("gen-success-title").textContent = "生成完成 · 门禁全过 · 可交付";
-        document.getElementById("gen-success-desc").textContent = "ZIP 已解锁。请到「运行」预览后再交付。";
+        document.getElementById("gen-success-title").textContent = "生成完成 · 质量检查已通过 · 可交付";
+        document.getElementById("gen-success-desc").textContent = "交付包已解锁。建议到「运行」预览后再交付。";
         renderGates(true);
       } else if (state === "regression") {
         reg.style.display = "block";
         renderGates(false);
       } else if (state === "failed") {
         fail.style.display = "block";
-        document.getElementById("fail-title").textContent = "门禁未过 · 禁止交付";
+        document.getElementById("fail-title").textContent = "质量检查未通过 · 暂不可交付";
         document.getElementById("fail-desc").textContent =
-          "主流程 / 功能清单未通过则禁止下载 ZIP。";
+          "主流程或功能清单未通过时，暂不可下载交付包。";
         renderGates(false);
       } else {
         idle.style.display = "block";
@@ -338,7 +342,7 @@
     function updateMatchRiskUI(clearAck) {
       document.getElementById("field-arch").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-dom").classList.toggle("locked", !matchUnlocked);
-      document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁覆盖";
+      document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁调整";
       document.getElementById("btn-reset-match").style.display = matchUnlocked || isDeviated() ? "inline-flex" : "none";
 
       const pill = document.getElementById("match-mode-pill");
@@ -354,24 +358,23 @@
         pill.className = "pill pill-green";
         pill.textContent = "已锁定推荐";
         banner.classList.remove("show", "danger");
-        ackText.innerHTML = `已核对骨架、领域与砍项，确认后开始生成。
-          <span class="muted" style="display:block;margin-top:4px">置信度 0.86</span>`;
+        ackText.textContent = "已核对骨架、领域与本期范围，确认后开始生成。";
         btnConfirm.textContent = "确认并继续";
       } else if (matchUnlocked && !isDeviated()) {
         pill.className = "pill pill-amber";
         pill.textContent = "已解锁";
         banner.classList.add("show");
         banner.classList.remove("danger");
-        banner.textContent = "骨架 / 领域可改。无把握请恢复推荐。";
-        ackText.innerHTML = `确认当前匹配后开始生成。`;
+        banner.textContent = "骨架 / 领域可调整。如无把握，建议恢复推荐。";
+        ackText.textContent = "已核对骨架、领域与本期范围，确认后开始生成。";
         btnConfirm.textContent = "确认并继续";
       } else {
         pill.className = "pill pill-red";
         pill.textContent = "已偏离推荐";
         banner.classList.add("show", "danger");
-        banner.textContent = "当前与推荐不一致，请确认后再生成。";
-        ackText.innerHTML = `确认按当前骨架 / 领域生成。`;
-        btnConfirm.textContent = "确认覆盖并继续";
+        banner.textContent = "当前与系统推荐不一致，请确认后再生成。";
+        ackText.textContent = "确认按当前骨架 / 领域生成。";
+        btnConfirm.textContent = "确认按当前选择继续";
       }
 
       if (clearAck) {
@@ -421,7 +424,7 @@
       document.getElementById("match-ack").disabled = false;
       document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
       setDisabled("btn-confirm", !matchConfirmed);
-      // download 由门禁决定，先锁上
+      // download 由质量检查决定，先锁上
       setDisabled("btn-download", true);
 
       if (state === "needs_confirm") setProjectTab("match");
@@ -446,7 +449,7 @@
       applyGenState("generating");
       setStatus("生成中", "pill-teal");
       setDisabled("btn-download", true);
-      toast("Job #1042 已启动（将跑 P0→P2 门禁）");
+      toast("Job #1042 已启动（将跑质量检查）");
       let w = 42;
       const bar = document.getElementById("job-bar");
       bar.style.width = w + "%";
@@ -458,7 +461,7 @@
         clearInterval(tick);
         applyGenState("generated");
         setStatus("已生成 · 可交付", "pill-green");
-        toast("门禁全过 · ZIP 已解锁");
+        toast("质量检查已过 · 交付包已解锁");
         setProjectTab("artifacts");
       }, 2000);
     }
@@ -521,7 +524,7 @@
       }
       if (action === "confirm-match") {
         if (isDisabled(el)) {
-          toast("请先勾选确认门禁");
+          toast("请先勾选确认");
           return;
         }
         if (isDeviated() && !confirm("当前已偏离系统推荐。确认仍要用这套骨架/领域生成？")) {
@@ -561,13 +564,13 @@
         clearTimeout(genTimer);
         applyGenState("generated");
         setStatus("已生成 · 可交付", "pill-green");
-        toast("门禁全过 · ZIP 已解锁");
+        toast("质量检查已过 · 交付包已解锁");
         setProjectTab("artifacts");
         return;
       }
       if (action === "demo-gate-fail") {
         applyGenState("failed");
-        setStatus("门禁未过 · 禁止交付", "pill-red");
+        setStatus("质量检查未过 · 暂不可交付", "pill-red");
         setProjectTab("artifacts");
         setArtifactView("gates");
         toast("演示：P2 失败 → ZIP 锁定");
@@ -578,11 +581,11 @@
         setStatus("已生成 · 可交付", "pill-green");
         setProjectTab("artifacts");
         setArtifactView("gates");
-        toast("演示：门禁全过 → ZIP 解锁");
+        toast("演示：质量检查全过 → 交付包解锁");
         return;
       }
       if (action === "regenerate") {
-        if (!confirm("重新生成将覆盖当前工作区业务岛文件，确认？")) return;
+        if (!confirm("重新生成将覆盖当前工作区业务配置，确认？")) return;
         startGenerate();
         return;
       }
@@ -592,7 +595,7 @@
         return;
       }
       if (action === "rollback-island") {
-        toast("已回滚业务岛至 bake 前快照（演示）");
+        toast("现网已无「回滚业务岛」；请重新生成");
         applyGenState("idle");
         setStatus("待生成", "pill-teal");
         return;
@@ -613,11 +616,11 @@
       }
       if (action === "download-zip") {
         if (!gatesPass || isDisabled(document.getElementById("btn-download"))) {
-          toast("门禁未过（尤其是 P2 主流程）· 禁止下载交付包");
+          toast("质量检查未过（尤其是主流程）· 禁止下载交付包");
           setProjectTab("artifacts");
           return;
         }
-        toast("开始下载 thesis-app.zip（门禁已通过）");
+        toast("开始下载 thesis-app.zip（质量检查已通过）");
         return;
       }
       if (action === "delete-project") {
@@ -698,11 +701,23 @@
         return;
       }
       if (action === "view-spec") {
-        openModal("spec.json", document.getElementById("spec-preview").textContent);
+        openModal("生成配置", document.getElementById("spec-preview").textContent);
         return;
       }
       if (action === "view-er") {
         openModal("E-R 图（线框）", "演示：实际页面为可缩放平移的 SVG（拖拽平移 · 滚轮缩放）。\n实体：book / category / borrow / notice / sys_user …\n联系：belong / of / issued_by");
+        return;
+      }
+      if (action === "view-modules") {
+        setProjectTab("artifacts");
+        setArtifactView("thesis");
+        openModal("功能模块图", "演示：按交付菜单推导；可切换「按业务 / 按端」。\n节点：门户浏览 · 借阅申请 · 管理审核 · 公告 …");
+        return;
+      }
+      if (action === "view-testcases") {
+        setProjectTab("artifacts");
+        setArtifactView("thesis");
+        openModal("软件测试用例", "演示：默认 6 列；可选 5～9 列。\n大模型仅润色步骤/预期，不增删用例、不发明功能。");
         return;
       }
       if (action === "download-er") {
@@ -713,8 +728,16 @@
         document.getElementById("ds-latency").textContent = "测试中…";
         setTimeout(() => {
           document.getElementById("ds-latency").textContent = "延迟 287 ms · 模型可用";
-          toast("DeepSeek 连接正常");
+          toast("大模型连接正常");
         }, 500);
+        return;
+      }
+      if (action === "test-gm") {
+        toast("请先配置 GEMINI_API_KEY");
+        return;
+      }
+      if (action === "test-unsplash" || action === "refresh-unsplash") {
+        toast(action === "test-unsplash" ? "请先配置 UNSPLASH_ACCESS_KEY" : "已刷新（演示）");
         return;
       }
       if (action === "save-ds") {
@@ -882,7 +905,7 @@
     document.getElementById("match-ack").addEventListener("change", (e) => {
       setDisabled("btn-confirm", !e.target.checked);
       document.getElementById("match-gate").classList.toggle("ok", e.target.checked);
-      if (e.target.checked) toast("门禁已勾选 · 可确认匹配");
+      if (e.target.checked) toast("已勾选 · 可确认匹配");
     });
 
     document.getElementById("list-search").addEventListener("input", (e) => {
@@ -893,7 +916,7 @@
     document.getElementById("sel-arch").addEventListener("change", () => {
       if (!matchUnlocked) {
         document.getElementById("sel-arch").value = RECOMMENDED.arch;
-        toast("骨架已锁定 · 请先点「解锁覆盖」");
+        toast("骨架已锁定 · 请先点「解锁调整」");
         return;
       }
       syncMatchFields(true);
@@ -902,7 +925,7 @@
     document.getElementById("sel-dom").addEventListener("change", () => {
       if (!matchUnlocked) {
         document.getElementById("sel-dom").value = RECOMMENDED.dom;
-        toast("领域已锁定 · 请先点「解锁覆盖」");
+        toast("领域已锁定 · 请先点「解锁调整」");
         return;
       }
       syncMatchFields(true);

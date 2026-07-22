@@ -74,6 +74,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         island_fill=bool(cfg.get("island_fill", True)),
         er_labels=bool(cfg.get("er_labels", True)),
         module_labels=bool(cfg.get("module_labels", True)),
+        testcase_labels=bool(cfg.get("testcase_labels", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
         project_token_budget=int(cfg.get("project_token_budget", s.project_token_budget)),
@@ -103,6 +104,7 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         "island_fill",
         "er_labels",
         "module_labels",
+        "testcase_labels",
         "auto_fix",
         "qa_report",
     ):
@@ -192,6 +194,7 @@ async def get_gemini(db: AsyncSession = Depends(get_db)):
         island_fill=bool(ds.get("island_fill", True)),
         er_labels=bool(ds.get("er_labels", True)),
         module_labels=bool(ds.get("module_labels", True)),
+        testcase_labels=bool(ds.get("testcase_labels", True)),
         auto_fix=bool(ds.get("auto_fix", True)),
         qa_report=bool(ds.get("qa_report", False)),
         project_token_budget=int(ds.get("project_token_budget", s.project_token_budget)),
@@ -229,6 +232,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
         "island_fill",
         "er_labels",
         "module_labels",
+        "testcase_labels",
         "auto_fix",
         "qa_report",
         "project_token_budget",
@@ -247,6 +251,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
             "island_fill",
             "er_labels",
             "module_labels",
+            "testcase_labels",
             "auto_fix",
             "qa_report",
         ):
@@ -712,7 +717,14 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/catalog", tags=["系统"], summary="骨架与领域目录")
 async def catalog():
-    from app.bake.catalog import ARCHETYPES, CHROME_STYLES, DOMAINS, themes_for_domain
+    from app.bake.catalog import (
+        ARCHETYPES,
+        CHROME_STYLES,
+        DOMAINS,
+        LAYOUT_SHELLS,
+        TYPE_PAIRINGS,
+        themes_for_domain,
+    )
 
     return {
         "archetypes": [
@@ -724,4 +736,6 @@ async def catalog():
         + [{"id": "DOM-GENERIC", "label": "DOM-GENERIC · 通用"}],
         "themes_by_domain": {k: themes_for_domain(k) for k in DOMAINS},
         "chrome_styles": list(CHROME_STYLES),
+        "layout_shells": list(LAYOUT_SHELLS),
+        "type_pairings": list(TYPE_PAIRINGS),
     }
