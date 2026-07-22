@@ -2,7 +2,7 @@
   <div class="er-viewer" :class="{ 'is-dark': isDark }">
     <div class="er-toolbar row mb-12">
       <div class="er-zoom-btns row">
-        <n-radio-group v-model:value="modeLocal" size="small" @update:value="onModeChange">
+        <n-radio-group v-model:value="modeLocal" size="small" :disabled="loading" @update:value="onModeChange">
           <n-radio-button value="total">总图</n-radio-button>
           <n-radio-button value="part">分图</n-radio-button>
         </n-radio-group>
@@ -11,6 +11,8 @@
           v-model:value="entityLocal"
           size="small"
           :options="entityOptions"
+          :loading="loading"
+          :disabled="loading"
           placeholder="选择实体"
           style="width:140px"
           @update:value="onEntityChange"
@@ -19,7 +21,7 @@
         <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" @click="$emit('reload')">重置布局</n-button>
+        <n-button size="small" :loading="loading" @click="$emit('reload')">重置布局</n-button>
         <n-select
           v-model:value="strokePreset"
           size="small"
@@ -72,6 +74,8 @@ const props = defineProps({
   entity: { type: String, default: '' },
   /** [{ value, label }] */
   entityOptions: { type: Array, default: () => [] },
+  /** 后端重新拉 SVG 中 */
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reload', 'update:mode', 'update:entity'])

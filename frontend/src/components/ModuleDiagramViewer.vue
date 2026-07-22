@@ -2,7 +2,7 @@
   <div class="mod-viewer" :class="{ 'is-dark': isDark }">
     <div class="mod-toolbar row mb-12">
       <div class="mod-zoom-btns row">
-        <n-radio-group v-model:value="layoutLocal" size="small" @update:value="onLayoutChange">
+        <n-radio-group v-model:value="layoutLocal" size="small" :disabled="loading" @update:value="onLayoutChange">
           <n-radio-button value="biz">按业务</n-radio-button>
           <n-radio-button value="side">按端</n-radio-button>
         </n-radio-group>
@@ -10,7 +10,7 @@
         <span class="mod-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" @click="$emit('reload')">重新加载</n-button>
+        <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
         <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
         <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
         <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
@@ -49,6 +49,7 @@ const props = defineProps({
   svgSource: { type: String, default: '' },
   downloadName: { type: String, default: 'modules' },
   layout: { type: String, default: 'biz' },
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reload', 'update:layout'])

@@ -1,14 +1,14 @@
 <template>
   <div class="tc-viewer" :class="{ 'is-dark': isDark }">
     <div class="tc-toolbar row mb-12">
-      <n-radio-group :value="fieldsLocal" size="small" @update:value="onFields">
+      <n-radio-group :value="fieldsLocal" size="small" :disabled="loading" @update:value="onFields">
         <n-radio-button :value="5">5字段</n-radio-button>
         <n-radio-button :value="6">6字段</n-radio-button>
         <n-radio-button :value="7">7字段</n-radio-button>
         <n-radio-button :value="8">8字段</n-radio-button>
         <n-radio-button :value="9">9字段</n-radio-button>
       </n-radio-group>
-      <n-button size="small" @click="$emit('reload')">重新加载</n-button>
+      <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
       <n-button size="small" type="primary" @click="copyTable">复制表格</n-button>
       <n-button size="small" type="primary" secondary @click="copyMarkdown">复制 Markdown</n-button>
       <n-button size="small" quaternary @click="downloadMd">下载 .md</n-button>
@@ -47,6 +47,7 @@ const props = defineProps({
   fields: { type: Number, default: 6 },
   count: { type: Number, default: 0 },
   downloadName: { type: String, default: 'testcases' },
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reload', 'update:fields'])
