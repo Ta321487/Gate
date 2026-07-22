@@ -91,6 +91,22 @@ export const JOB_STATUS = {
   cancelled: { label: '已取消', pill: 'pill-neutral' },
 }
 
+/** 步骤状态：旧数据 wait → pending，供 step-rail class 使用 */
+export function normalizeStepStatus(st) {
+  const s = String(st || 'pending')
+  return s === 'wait' ? 'pending' : s
+}
+
+export function stepStatusLabel(st) {
+  const s = normalizeStepStatus(st)
+  return ({ done: '已完成', run: '进行中', fail: '失败', pending: '等待中' })[s] || s || '等待中'
+}
+
+export function stepStatusMark(st) {
+  const s = normalizeStepStatus(st)
+  return s === 'done' ? '✓' : s === 'run' ? '' : s === 'fail' ? '!' : '·'
+}
+
 export const LOG_SIDES = [
   { id: 'job', label: '任务' },
   { id: 'backend', label: '后端' },

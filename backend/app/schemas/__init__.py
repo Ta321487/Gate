@@ -43,6 +43,12 @@ class ProjectDetail(ProjectSummary):
     checklist: list[Any] = Field(default_factory=list, description="开题对照清单")
     workspace_path: Optional[str] = Field(default=None, description="工作区路径")
     zip_path: Optional[str] = Field(default=None, description="ZIP 路径")
+    download_blocked_reason: Optional[str] = Field(
+        default=None, description="不可下载 ZIP 的原因；空=可下载"
+    )
+    preview_blocked_reason: Optional[str] = Field(
+        default=None, description="不可启动预览的原因；空=可启动"
+    )
 
 
 class MatchUpdate(BaseModel):
@@ -256,6 +262,8 @@ class RuntimeState(BaseModel):
     backend_url: Optional[str] = Field(default=None, description="后端地址")
     backend_log_tail: str = Field(default="", description="后端日志尾")
     frontend_log_tail: str = Field(default="", description="前端日志尾")
+    preview_allowed: bool = Field(default=True, description="是否允许启动预览")
+    preview_blocked_reason: Optional[str] = Field(default=None, description="不可启动预览的原因")
 
 
 class ApiOk(BaseModel):
@@ -264,3 +272,25 @@ class ApiOk(BaseModel):
     ok: bool = Field(default=True, description="是否成功")
     message: str = Field(default="", description="说明")
     data: Any = Field(default=None, description="附加数据")
+
+
+class SampleProposalRequest(BaseModel):
+    model_config = ConfigDict(title="生成测试开题")
+
+    domain: Optional[str] = Field(default=None, description="锚定领域 ID，如 DOM-FORUM")
+    pack_id: Optional[str] = Field(default=None, description="指定选题包 ID")
+    seed: Optional[int] = Field(default=None, description="随机种子")
+    use_llm: bool = Field(default=True, description="是否用 DeepSeek/Gemini 润色")
+
+
+class SampleProposalResult(BaseModel):
+    model_config = ConfigDict(title="测试开题结果")
+
+    pack_id: str = Field(description="选题包 ID")
+    anchor_domain: str = Field(description="锚定领域")
+    title: str = Field(description="题目")
+    filename: str = Field(description="建议文件名")
+    text: str = Field(description="开题全文")
+    used_llm: bool = Field(description="是否经过 LLM 润色")
+    digressions: list[str] = Field(default_factory=list, description="本期不做的跑偏项")
+    l1_extras: list[str] = Field(default_factory=list, description="可选亮点")

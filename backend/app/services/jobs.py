@@ -27,6 +27,7 @@ from app.llm.agents import (
 )
 from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobStatus, Project, ProjectStatus
+from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
 
 logger = logging.getLogger("gf.job")
@@ -42,7 +43,8 @@ STEP_DEFS = [
 
 
 def _default_steps() -> list[dict[str, Any]]:
-    return [{"key": k, "title": t, "status": "wait", "meta": ""} for k, t in STEP_DEFS]
+    # pending 与前端 step-rail CSS 对齐（旧数据 wait 由前端兼容）
+    return [{"key": k, "title": t, "status": "pending", "meta": ""} for k, t in STEP_DEFS]
 
 
 def resume_step_index(steps: list[dict[str, Any]] | None) -> int:
@@ -50,10 +52,36 @@ def resume_step_index(steps: list[dict[str, Any]] | None) -> int:
     if not steps:
         return 0
     for i, s in enumerate(steps):
-        st = str((s or {}).get("status") or "wait")
+        st = str((s or {}).get("status") or "pending")
         if st != "done":
             return i
     return 0
+
+
+def _short_error(exc: BaseException | str, *, limit: int = 280) -> str:
+    text = str(exc).strip() or "未知错误"
+    text = " ".join(text.split())
+    if len(text) > limit:
+        return text[: limit - 1] + "…"
+    return text
+
+
+def _fail_running_step(steps: list[dict[str, Any]] | None, meta: str) -> list[dict[str, Any]]:
+    """把当前 run 步标为 fail；若无 run 则标首个非 done。"""
+    out = [dict(s or {}) for s in (steps or [])]
+    if not out:
+        return out
+    for s in out:
+        if str(s.get("status") or "") == "run":
+            s["status"] = "fail"
+            s["meta"] = meta
+            return out
+    for s in out:
+        if str(s.get("status") or "") != "done":
+            s["status"] = "fail"
+            s["meta"] = meta
+            return out
+    return out
 
 
 def _append_log_sync(project_id: str, line: str) -> None:
@@ -110,6 +138,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         from_step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
         job.status = JobStatus.running.value
         job.started_at = datetime.now()
+        job.error = None
         job.steps = _default_steps()
         project.status = ProjectStatus.generating.value
         project.zip_ready = False
@@ -313,10 +342,15 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 project.checklist = gates.get("checklist") or []
 
                 if not gates.get("overall"):
-                    await set_step(4, "fail", "P2/功能清单未过")
+                    detail = _short_error(
+                        (gates.get("p2") or {}).get("detail")
+                        or (gates.get("p0") or {}).get("detail")
+                        or "主流程或功能清单未通过",
+                        limit=200,
+                    )
+                    await set_step(4, "fail", detail)
                     job.status = JobStatus.failed.value
-                    detail = gates.get("p2", {}).get("detail")
-                    job.error = f"门禁未通过 · 禁止打包 ZIP · {detail or ''}"
+                    job.error = f"{MSG_DOWNLOAD_GATES} · {detail}"
                     job.finished_at = datetime.now()
                     project.status = ProjectStatus.failed.value
                     project.zip_ready = False
@@ -381,19 +415,23 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             await append_log(project.id, "SUCCESS · zip unlocked")
         except asyncio.CancelledError:
             job.status = JobStatus.cancelled.value
+            job.error = "已取消"
+            job.steps = _fail_running_step(job.steps, "已取消")
             job.finished_at = datetime.now()
             project.status = ProjectStatus.ready.value
             await db.commit()
             raise
         except Exception as e:  # noqa: BLE001
             logger.exception("job failed")
+            err = _short_error(e)
             job.status = JobStatus.failed.value
-            job.error = str(e)
+            job.error = err
+            job.steps = _fail_running_step(job.steps, err)
             job.finished_at = datetime.now()
             project.status = ProjectStatus.failed.value
             project.zip_ready = False
             await db.commit()
-            await append_log(project.id, f"ERROR {e}")
+            await append_log(project.id, f"ERROR {err}")
 
 
 _running: dict[int, asyncio.Task] = {}
@@ -439,10 +477,14 @@ async def cancel_job(db: AsyncSession, job_id: int) -> bool:
     job = await db.get(Job, job_id)
     if not job:
         return False
+    if job.status not in (JobStatus.queued.value, JobStatus.running.value):
+        return True
     t = _running.pop(job_id, None)
     if t:
         t.cancel()
     job.status = JobStatus.cancelled.value
+    job.error = "已取消"
+    job.steps = _fail_running_step(job.steps, "已取消")
     job.finished_at = datetime.now()
     project = await db.get(Project, job.project_id)
     if project and project.status == ProjectStatus.generating.value:

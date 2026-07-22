@@ -288,6 +288,20 @@ button.filter-pill.on {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 .stack { display: flex; flex-direction: column; gap: 14px; }
+
+.sample-proposal-pre {
+  margin: 0;
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  background: color-mix(in srgb, var(--panel, #fff) 92%, #888 8%);
+  border-radius: 6px;
+}
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .mt-8 { margin-top: 8px; }
@@ -584,7 +598,8 @@ button.filter-pill.on {
   border: 1.5px solid var(--line);
   box-sizing: border-box;
 }
-.step-rail > li.pending .step-ico { color: var(--ink-2); }
+.step-rail > li.pending .step-ico,
+.step-rail > li.wait .step-ico { color: var(--ink-2); }
 .step-rail > li.done .step-ico {
   background: var(--green-soft);
   color: var(--green);

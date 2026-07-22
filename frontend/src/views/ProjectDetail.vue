@@ -167,51 +167,22 @@
 
       <!-- Generate -->
       <n-tab-pane name="generate" tab="一键生成">
-        <div v-if="genState === 'running'">
-          <div class="panel mb-16">
-            <div class="panel-bd">
-              <div class="row-between" style="margin-bottom:10px">
-                <div style="font-weight:600">正在生成…</div>
-                <div class="small muted">任务 #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
-              </div>
-              <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
-              <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
-              <div class="row mt-12">
-                <n-button size="small" type="error" secondary :loading="jobActing === 'cancel'" @click="cancelCurrent">取消任务</n-button>
-                <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
-              </div>
+        <div v-if="genState === 'running'" class="panel mb-16">
+          <div class="panel-bd">
+            <div class="row-between" style="margin-bottom:10px">
+              <div style="font-weight:600">正在生成…</div>
+              <div class="small muted">任务 #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
             </div>
-          </div>
-          <div class="panel">
-            <div class="panel-hd">
-              <h3>流水线进度</h3>
-              <span class="small muted">{{ currentJob?.progress || 0 }}%</span>
-            </div>
-            <div class="panel-bd">
-              <ol class="step-rail">
-                <li
-                  v-for="s in (currentJob?.steps || [])"
-                  :key="s.key"
-                  :class="s.status || 'pending'"
-                >
-                  <div class="step-rail-track" aria-hidden="true">
-                    <span class="step-ico">{{
-                      s.status === 'done' ? '✓'
-                      : s.status === 'run' ? ''
-                      : s.status === 'fail' ? '!'
-                      : '·'
-                    }}</span>
-                  </div>
-                  <div class="step-body">
-                    <div class="step-title">{{ s.title }}</div>
-                    <div class="meta">{{ s.meta || stepStatusLabel(s.status) }}</div>
-                  </div>
-                </li>
-              </ol>
+            <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
+            <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
+            <div class="row mt-12">
+              <n-button size="small" type="error" secondary :loading="jobActing === 'cancel'" @click="cancelCurrent">取消任务</n-button>
+              <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
             </div>
           </div>
         </div>
-        <template v-else>
+
+        <template v-if="genState !== 'running'">
           <div v-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success mb-16">
             <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 质量检查已通过 · 可交付' }}</h4>
             <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载交付包。' : '交付包已解锁。建议到「运行」预览后再交付。' }}</p>
@@ -230,16 +201,41 @@
             </div>
           </div>
           <div v-else-if="genState === 'failed'" class="banner fail mb-16">
-            <h4>质量检查未通过 · 暂不可交付</h4>
-            <p class="small muted">{{ currentJob?.error || '主流程或功能清单未通过时，暂不可下载交付包。' }}</p>
+            <h4>{{ failedBannerTitle }}</h4>
+            <p class="small muted">{{ currentJob?.error || '生成未完成 · 暂不可下载交付包。可从失败步骤重试或查看日志。' }}</p>
             <div class="row mt-12">
               <n-button type="primary" size="small" :loading="jobActing === 'retry'" @click="retryCurrent">从失败步骤重试</n-button>
               <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
               <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
             </div>
           </div>
+        </template>
 
-          <div v-if="showSoftBakePanel" class="panel mb-16">
+        <div v-if="showJobSteps" class="panel mb-16">
+          <div class="panel-hd">
+            <h3>流水线进度</h3>
+            <span class="small muted">{{ genState === 'running' ? ((currentJob?.progress || 0) + '%') : ('任务 #' + (currentJob?.id || '—')) }}</span>
+          </div>
+          <div class="panel-bd">
+            <ol class="step-rail">
+              <li
+                v-for="s in (currentJob?.steps || [])"
+                :key="s.key"
+                :class="normalizeStepStatus(s.status)"
+              >
+                <div class="step-rail-track" aria-hidden="true">
+                  <span class="step-ico">{{ stepStatusMark(s.status) }}</span>
+                </div>
+                <div class="step-body">
+                  <div class="step-title">{{ s.title }}</div>
+                  <div class="meta">{{ s.meta || stepStatusLabel(s.status) }}</div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div v-if="genState !== 'running' && showSoftBakePanel" class="panel mb-16">
             <div class="panel-hd">
               <h3>视觉与生成选项</h3>
               <span class="small muted">{{ softBakeHint }}</span>
@@ -303,7 +299,6 @@
               </div>
             </div>
           </div>
-        </template>
       </n-tab-pane>
 
       <!-- Runtime -->
@@ -315,6 +310,7 @@
               size="small"
               :type="rtCanStartAll && !rtAnyLive ? 'primary' : 'default'"
               :disabled="!rtCanStartAll"
+              :title="rtStartBlockedReason || undefined"
               :loading="rtPendingAll==='start'"
               @click="rtAction('all','start')"
             >全部启动</n-button>
@@ -328,6 +324,7 @@
             <n-button
               size="small"
               :disabled="!rtCanRestartAll"
+              :title="rtGenerating ? '生成中 · 请等待完成后再重启' : undefined"
               :loading="rtPendingAll==='restart'"
               @click="rtAction('all','restart')"
             >全部重启</n-button>
@@ -620,6 +617,20 @@
                     自动扫描学生工程接口，便于对照主流程验收；仅供运营端查看，不含于交付包。
                     复制为「方法 + 路径」；联调请用「运行」页的后端地址（需先登录预览）。
                   </div>
+                  <div v-if="apis?.api_style_notes?.length" class="small muted" style="padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;line-height:1.55">
+                    <div style="margin-bottom:6px;color:var(--fg)">
+                      <strong>本课题传参风格</strong>
+                      <span v-if="apis.api_style" class="mono" style="margin-left:8px">
+                        item_ref={{ apis.api_style.item_ref }} · cart_mutate={{ apis.api_style.cart_mutate }}
+                      </span>
+                      <span v-if="apis.style_hidden" class="pill pill-neutral" style="margin-left:8px">
+                        已隐藏变体 {{ apis.style_hidden }}
+                      </span>
+                    </div>
+                    <ul style="margin:0;padding-left:1.2em">
+                      <li v-for="(n, i) in apis.api_style_notes" :key="i">{{ n }}</li>
+                    </ul>
+                  </div>
                   <div v-if="apis?.surfaces?.length" class="api-surface-bar row" style="margin:0;gap:6px">
                     <button
                       type="button"
@@ -806,9 +817,12 @@ import {
   defaultTabForStatus,
   detailCrumb,
   getCatalog,
+  normalizeStepStatus,
   projectStatusLabel,
   projectStatusPill,
   statusPillNode,
+  stepStatusLabel,
+  stepStatusMark,
 } from '../opsShared'
 
 const route = useRoute()
@@ -932,10 +946,6 @@ const planSteps = [
   { t: '开题对照并打包交付包', m: '检查全部通过后' },
 ]
 
-function stepStatusLabel(st) {
-  return ({ done: '已完成', run: '进行中', fail: '失败', pending: '等待中' })[st] || st || '等待中'
-}
-
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
 const domOptions = computed(() => catalog.value.domains.map((x) => ({ label: x.label, value: x.id })))
 const themeOptions = computed(() => {
@@ -995,20 +1005,28 @@ const confirmHint = computed(() => {
   if (deviant.value) return '确认按当前骨架 / 领域生成。'
   return '已核对骨架、领域与本期范围，确认后开始生成。'
 })
-const canDownload = computed(() => {
-  if (!p.value) return false
-  if (p.value.status === 'generating') return false
-  return !!(p.value.zip_ready && p.value?.gates?.zip_allowed && p.value?.gates?.overall)
-})
+const canDownload = computed(() => !p.value?.download_blocked_reason)
 const downloadZipLabel = computed(() => (p.value?.status === 'generating' ? '生成中…' : '下载 ZIP'))
-const downloadBlockedReason = computed(() => {
-  if (p.value?.status === 'generating') return '生成中 · 打包完成前不可下载'
-  if (!canDownload.value) return '质量检查未通过，暂不可下载交付包'
-  return ''
+const downloadBlockedReason = computed(() => p.value?.download_blocked_reason || '')
+const zipLockHint = computed(() =>
+  canDownload.value ? '质量检查已通过' : (downloadBlockedReason.value || '暂锁定'),
+)
+const failedBannerTitle = computed(() => {
+  const err = String(currentJob.value?.error || '')
+  if (err.includes('质量检查未通过') || err.includes('门禁')) {
+    return '质量检查未通过 · 暂不可交付'
+  }
+  if (err.includes('已取消')) return '任务已取消'
+  return '生成失败 · 暂不可交付'
 })
-const zipLockHint = computed(() => {
-  if (p.value?.status === 'generating') return '生成中 · 打包完成后解锁'
-  return canDownload.value ? '质量检查已通过' : '质量检查未通过 · 暂锁定'
+const rtStartBlockedReason = computed(() => {
+  const base = p.value?.preview_blocked_reason || ''
+  if (base) return base
+  if (!rtCanStartAll.value) {
+    if (rtBothLive.value) return '前后端已在运行'
+    if (rtAnyBusy.value) return '启停进行中 · 请稍候'
+  }
+  return ''
 })
 
 const deleteBlocked = computed(() => {
@@ -1075,6 +1093,12 @@ const genState = computed(() => {
   if (p.value.status === 'generated') return 'success'
   if (p.value.status === 'failed') return 'failed'
   return 'idle'
+})
+
+const showJobSteps = computed(() => {
+  const steps = currentJob.value?.steps || []
+  if (!steps.length) return false
+  return ['running', 'failed', 'success', 'live'].includes(genState.value)
 })
 
 /** 重生中：工程目录在改写，导出类对照操作冻结 */
@@ -1822,8 +1846,8 @@ async function retryCurrent() {
 
 function downloadZip() {
   if (!canDownload.value) {
-    message.error(downloadBlockedReason.value || '质量检查未通过，暂不可下载交付包')
-    if (p.value?.status !== 'generating') tab.value = 'gates'
+    message.error(downloadBlockedReason.value || '质量检查未通过 · 暂不可下载交付包')
+    if (p.value?.status !== 'generating') goArtifacts('gates')
     return
   }
   window.open(api.downloadUrl(p.value.id), '_blank')
@@ -1858,9 +1882,12 @@ async function confirmDelete() {
 async function rtAction(side, action) {
   const projectId = p.value?.id
   if (!projectId) return
-  if ((action === 'start' || action === 'restart') && p.value?.status === 'generating') {
-    message.warning('生成中，请等待完成后再启动预览')
-    return
+  if (action === 'start' || action === 'restart') {
+    const blocked = p.value?.preview_blocked_reason
+    if (blocked) {
+      message.warning(blocked)
+      return
+    }
   }
   const epoch = viewEpoch
   const touchBe = side === 'all' || side === 'backend'

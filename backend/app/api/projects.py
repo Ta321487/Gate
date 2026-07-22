@@ -37,7 +37,17 @@ def _detail(p: Project) -> ProjectDetail:
     project_svc.ensure_proposal_in_spec(p)
     d = ProjectDetail.model_validate(p)
     d.theme = normalize_theme(p.theme or "", p.domain)
+    d.download_blocked_reason = project_svc.delivery_block_reason(p)
+    d.preview_blocked_reason = project_svc.preview_start_block_reason(p)
     return d
+
+
+def _workspace_or_400(p: Project) -> Path:
+    ws, reason = project_svc.workspace_or_reason(p)
+    if reason:
+        raise HTTPException(400, reason)
+    assert ws is not None
+    return ws
 
 
 @router.get("/stats", response_model=StatsOut, summary="项目统计")
@@ -255,13 +265,11 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if p.status == "generating":
-        raise HTTPException(403, "生成中 · 请等待打包完成后再下载")
-    gates = p.gates or {}
-    if not (p.zip_ready and gates.get("zip_allowed") and gates.get("overall")):
-        raise HTTPException(403, "门禁未过 · 禁止下载 ZIP")
+    blocked = project_svc.delivery_block_reason(p)
+    if blocked:
+        raise HTTPException(403, blocked)
     if not p.zip_path or not Path(p.zip_path).exists():
-        raise HTTPException(404, "ZIP 不存在")
+        raise HTTPException(404, "ZIP 文件不存在 · 请重新生成")
     from app.bake.naming import resolve_slug_from_spec, zip_download_name
 
     slug = resolve_slug_from_spec(p.spec if isinstance(p.spec, dict) else {}, p.domain)
@@ -280,14 +288,13 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/{project_id}/schema", summary="库表结构")
 async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     """表结构 + 推断联系（供产物页展示）。"""
-    from app.bake.schema_er import load_schema_model
+    from app.bake.schema.er import load_schema_model
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    model = load_schema_model(Path(p.workspace_path))
+    ws = _workspace_or_400(p)
+    model = load_schema_model(ws)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     return {
@@ -305,9 +312,8 @@ async def get_apis(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    inv = load_api_inventory(Path(p.workspace_path), p.spec if isinstance(p.spec, dict) else None)
+    ws = _workspace_or_400(p)
+    inv = load_api_inventory(ws, p.spec if isinstance(p.spec, dict) else None)
     if not inv:
         raise HTTPException(404, "未找到 Controller")
     return inv
@@ -322,14 +328,13 @@ async def download_er_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema_er import load_schema_model, render_er_svg
+    from app.bake.schema.er import load_schema_model, render_er_svg
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    model = load_schema_model(Path(p.workspace_path))
+    ws = _workspace_or_400(p)
+    model = load_schema_model(ws)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     m = (mode or "total").strip().lower()
@@ -358,15 +363,13 @@ async def get_modules(
     db: AsyncSession = Depends(get_db),
 ):
     """菜单 + features 推导的功能模块树（供产物页 / 论文模块图）。"""
-    from app.bake.schema_modules import load_module_model, normalize_module_layout
+    from app.bake.schema.modules import load_module_model, normalize_module_layout
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    ws = Path(p.workspace_path)
+    ws = _workspace_or_400(p)
     prop = ""
     try:
         if p.source_path:
@@ -389,7 +392,7 @@ async def download_modules_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema_modules import (
+    from app.bake.schema.modules import (
         load_module_model,
         normalize_module_layout,
         render_module_svg,
@@ -399,9 +402,7 @@ async def download_modules_svg(
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    ws = Path(p.workspace_path)
+    ws = _workspace_or_400(p)
     prop = ""
     try:
         if p.source_path:
@@ -432,15 +433,14 @@ async def get_testcases(
     db: AsyncSession = Depends(get_db),
 ):
     """由交付 menus/roles/entities 推导；不发明未实现功能。"""
-    from app.bake.schema_testcases import load_testcase_model, normalize_testcase_fields
+    from app.bake.schema.testcases import load_testcase_model, normalize_testcase_fields
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
+    ws = _workspace_or_400(p)
     model = load_testcase_model(
-        Path(p.workspace_path), fields=normalize_testcase_fields(fields)
+        ws, fields=normalize_testcase_fields(fields)
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
@@ -455,15 +455,14 @@ async def download_testcases_md(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema_testcases import load_testcase_model, normalize_testcase_fields
+    from app.bake.schema.testcases import load_testcase_model, normalize_testcase_fields
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
+    ws = _workspace_or_400(p)
     model = load_testcase_model(
-        Path(p.workspace_path), fields=normalize_testcase_fields(fields)
+        ws, fields=normalize_testcase_fields(fields)
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
@@ -491,6 +490,7 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     s = get_settings()
     be_url = s.public_url(p.backend_port) if p.backend_port else None
     fe_url = s.public_url(p.frontend_port) if p.frontend_port else None
+    preview_blocked = project_svc.preview_start_block_reason(p)
     return RuntimeState(
         backend_status=be_st,
         frontend_status=fe_st,
@@ -502,6 +502,8 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
         backend_url=be_url,
         backend_log_tail=rt.backend_log(project_id),
         frontend_log_tail=rt.frontend_log(project_id),
+        preview_allowed=preview_blocked is None,
+        preview_blocked_reason=preview_blocked,
     )
 
 
@@ -516,13 +518,11 @@ async def runtime_action(
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if not p.workspace_path:
-        raise HTTPException(400, "尚未生成工作区")
-    if action in ("start", "restart") and p.status == ProjectStatus.generating.value:
-        raise HTTPException(400, "生成中，请等待完成后再启动预览")
-    ws = Path(p.workspace_path)
-    if not ws.exists():
-        raise HTTPException(400, "工作区目录不存在")
+    if action in ("start", "restart"):
+        blocked = project_svc.preview_start_block_reason(p)
+        if blocked:
+            raise HTTPException(400, blocked)
+    ws = _workspace_or_400(p)
 
     try:
         if action in ("start", "restart"):
