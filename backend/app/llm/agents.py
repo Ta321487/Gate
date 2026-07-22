@@ -1,4 +1,4 @@
-"""六个窄 Agent：匹配推荐 / Spec 润色 / 填岛 / E-R 中文补全 / 修复 / 质检；不生成业务 Java/Vue。"""
+"""窄 Agent：匹配推荐 / Spec 润色 / 填岛 / E-R 中文补全 / 模块图命名 / 修复 / 质检；不生成业务 Java/Vue。"""
 
 from __future__ import annotations
 
@@ -28,6 +28,13 @@ from app.bake.schema_er import (
     load_er_label_patch,
     sanitize_er_label_patch,
     save_er_label_patch,
+)
+from app.bake.schema_modules import (
+    build_module_model,
+    collect_module_label_gaps,
+    load_module_label_patch,
+    sanitize_module_label_patch,
+    save_module_label_patch,
 )
 from app.llm.client import (
     append_deepseek_log,
@@ -501,6 +508,154 @@ async def run_er_label_agent(
         ),
     )
     return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "remain": remain}
+
+
+# ---------- Agent E2：功能模块图中文补全（只改展示名，不增删模块） ----------
+async def run_module_label_agent(
+    db: AsyncSession,
+    rt: LlmRuntime,
+    *,
+    project_id: str,
+    workspace: Path,
+    spec: dict[str, Any] | None = None,
+    proposal_text: str = "",
+    llm_enabled: bool = True,
+) -> dict[str, Any]:
+    """扫描模块图漏网英文名，结合开题片段补中文；写入 islands/module_labels.json。"""
+    # 两种布局的节点 id 不同，都扫一遍缺口
+    fresh_biz = build_module_model(
+        workspace, with_label_patch=False, proposal_text=proposal_text or "", layout="biz"
+    )
+    fresh_side = build_module_model(
+        workspace, with_label_patch=False, proposal_text=proposal_text or "", layout="side"
+    )
+    fresh = fresh_biz or fresh_side
+    if not fresh:
+        return {"mode": "skip", "gaps": 0, "filled": 0, "detail": "no schema"}
+
+    # 开题辅助：即使无英文缺口，也允许 LLM 按材料微调已有节点称呼（仅 gaps 为空时用全量节点作候选）
+    gaps_by_id: dict[str, dict[str, str]] = {}
+    for m in (fresh_biz, fresh_side):
+        if not m:
+            continue
+        for g in collect_module_label_gaps(m):
+            gid = str(g.get("id") or "")
+            if gid and gid not in gaps_by_id:
+                gaps_by_id[gid] = g
+    gaps = list(gaps_by_id.values())
+    n_gaps = len(gaps)
+    use_llm = bool(llm_enabled and rt.stage_on("module_labels") and rt.configured)
+    if use_llm and not await budget_ok(db, project_id, rt):
+        use_llm = False
+        append_deepseek_log(project_id, "module_labels skip llm · budget exceeded")
+
+    if not use_llm:
+        save_module_label_patch(
+            workspace,
+            {**sanitize_module_label_patch(load_module_label_patch(workspace)), "mode": "deterministic"},
+        )
+        await record_call(
+            db,
+            project_id=project_id,
+            stage="module_labels",
+            tokens=0,
+            ok=True,
+            detail=f"deterministic · latin_gaps={n_gaps}",
+        )
+        return {"mode": "deterministic", "gaps": n_gaps, "filled": 0}
+
+    title = ""
+    domain = ""
+    if isinstance(spec, dict):
+        title = str(spec.get("title") or "")
+        domain = str(spec.get("domain") or "")
+
+    def _flat(n: dict, acc: list) -> None:
+        acc.append({"id": n.get("id"), "label": n.get("label"), "source": n.get("source")})
+        for c in n.get("children") or []:
+            if isinstance(c, dict):
+                _flat(c, acc)
+
+    flat: list[dict] = []
+    for m in (fresh_biz, fresh_side):
+        if isinstance(m, dict) and isinstance(m.get("root"), dict):
+            _flat(m["root"], flat)
+    # 按 id 去重，优先保留先出现的（biz）
+    seen_flat: set[str] = set()
+    flat_dedup: list[dict] = []
+    for row in flat:
+        rid = str(row.get("id") or "")
+        if not rid or rid in seen_flat:
+            continue
+        seen_flat.add(rid)
+        flat_dedup.append(row)
+    flat = flat_dedup
+
+    # 有英文缺口只翻缺口；否则允许按开题微调一级分支称呼
+    if n_gaps:
+        target = gaps
+        scope = "gaps_only"
+    else:
+        target = [x for x in flat if str(x.get("source") or "") in ("branch", "system")]
+        scope = "branch_refine"
+        if not target:
+            save_module_label_patch(workspace, {"mode": "clean", "nodes": {}})
+            await record_call(
+                db, project_id=project_id, stage="module_labels", tokens=0, ok=True, detail="clean"
+            )
+            return {"mode": "clean", "gaps": 0, "filled": 0}
+
+    excerpt = (proposal_text or "")[:2400]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是毕设港 Module Label Agent。只输出 JSON：\n"
+                '{"nodes":{"节点id":"中文模块名"}}\n'
+                "规则：只翻译/微调 target 列出的 id；纯中文短名（≤10字）；"
+                "必须贴合开题材料用语，但禁止发明 target 以外的模块；"
+                "禁止拼音/英文/代码。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "domain": domain,
+                    "title": title,
+                    "scope": scope,
+                    "target": target,
+                    "proposal_excerpt": excerpt,
+                },
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    res = await chat(rt, messages, json_mode=True, temperature=0.2)
+    append_deepseek_log(project_id, f"module_labels ok={res.ok} {format_usage_detail(res)}")
+
+    allowed_ids = {str(t.get("id") or "") for t in target}
+    gap_like = [{"id": i, "label": "", "source": ""} for i in allowed_ids if i]
+    if res.ok and isinstance(res.data, dict):
+        patch = {**sanitize_module_label_patch(res.data, gap_like), "mode": "llm"}
+    else:
+        old = sanitize_module_label_patch(load_module_label_patch(workspace), gap_like)
+        patch = {
+            **old,
+            "mode": "llm_failed_keep_old" if old.get("nodes") else "llm_failed",
+        }
+
+    save_module_label_patch(workspace, patch)
+    filled = len(patch.get("nodes") or {})
+    await record_call(
+        db,
+        project_id=project_id,
+        stage="module_labels",
+        tokens=res.tokens,
+        ok=bool(res.ok),
+        detail=format_usage_detail(res, f"{patch.get('mode')} · filled={filled} · scope={scope}"),
+    )
+    return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "scope": scope}
 
 
 # ---------- Agent C：构建修复（诊断 + 重放填岛，不改 Java/Vue） ----------

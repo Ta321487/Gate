@@ -74,7 +74,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "desc": "交易域收藏夹：收藏/取消，我的收藏再加购",
     },
     "coupon": {
-        "label": "优惠券码",
+        "label": "优惠券",
         "status": "implemented",
         "desc": "券模板领取/我的券/下单核销/过期扫标（非真支付）",
     },

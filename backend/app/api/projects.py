@@ -351,6 +351,80 @@ async def download_er_svg(
     )
 
 
+@router.get("/{project_id}/schema/modules", summary="功能模块树")
+async def get_modules(
+    project_id: str,
+    layout: str = Query("biz", description="biz=按业务拆 · side=按端拆"),
+    db: AsyncSession = Depends(get_db),
+):
+    """菜单 + features 推导的功能模块树（供产物页 / 论文模块图）。"""
+    from app.bake.schema_modules import load_module_model, normalize_module_layout
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    ws = Path(p.workspace_path)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    model = load_module_model(
+        ws, proposal_text=prop, layout=normalize_module_layout(layout)
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/modules.svg", summary="下载功能模块图 SVG")
+async def download_modules_svg(
+    project_id: str,
+    layout: str = Query("biz", description="biz=按业务拆 · side=按端拆"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema_modules import (
+        load_module_model,
+        normalize_module_layout,
+        render_module_svg,
+    )
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    ws = Path(p.workspace_path)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    layout_n = normalize_module_layout(layout)
+    model = load_module_model(ws, proposal_text=prop, layout=layout_n)
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    svg = render_module_svg(model)
+    # Content-Disposition 必须是 latin-1；中文名仅给前端下载时自行命名
+    fname = f"{project_id}-modules-{layout_n}.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/runtime", response_model=RuntimeState, summary="预览运行状态")
 async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)

@@ -45,11 +45,17 @@ export const api = {
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
+  getModules: (id, { layout = 'biz' } = {}) =>
+    http.get(`/projects/${id}/schema/modules`, { params: { layout } }),
   getApis: (id) => http.get(`/projects/${id}/apis`),
   erSvgUrl: (id, { mode = 'total', entity } = {}) => {
     const q = new URLSearchParams({ mode })
     if (entity) q.set('entity', entity)
     return `/api/projects/${id}/schema/er.svg?${q}`
+  },
+  modulesSvgUrl: (id, { layout = 'biz' } = {}) => {
+    const q = new URLSearchParams({ layout })
+    return `/api/projects/${id}/schema/modules.svg?${q}`
   },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),

@@ -214,6 +214,90 @@ function Get-GfListenPids {
     }
 }
 
+function Invoke-GfTaskkill {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $raw = & taskkill.exe /PID $ProcessId /T /F 2>&1
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
+    # Drop RemoteException noise; keep ERROR: lines from taskkill
+    $text = @(
+        $raw | ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.ToString() } else { "$_" }
+        } | Where-Object { $_ -and ($_ -notmatch 'RemoteException') }
+    ) -join " "
+    return [pscustomobject]@{
+        code = [int]$code
+        text = $text.Trim()
+    }
+}
+
+function Stop-GfProcessTree {
+    # Prefer taskkill on tree *roots*. Windows venv re-execs to home python.exe;
+    # killing that child alone often Access Denied — killing the venv parent /T works.
+    # Exit 128 = process already gone (treat as ok).
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+    $out = [pscustomobject]@{
+        ok      = $false
+        message = ""
+    }
+    if ($ProcessId -le 0) {
+        $out.message = "invalid pid"
+        return $out
+    }
+
+    $r = Invoke-GfTaskkill -ProcessId $ProcessId
+    if ($r.code -eq 0 -or $r.code -eq 128) {
+        $out.ok = $true
+        $out.message = if ($r.code -eq 128) { "already gone" } else { "killed" }
+        return $out
+    }
+
+    # Access denied on child → try parent (venv Scripts\python.exe)
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
+    $ppid = if ($proc) { [int]$proc.ParentProcessId } else { 0 }
+    if ($ppid -gt 0) {
+        $alive = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if (-not $alive) {
+            $out.ok = $true
+            $out.message = "already gone"
+            return $out
+        }
+        $r2 = Invoke-GfTaskkill -ProcessId $ppid
+        if ($r2.code -eq 0 -or $r2.code -eq 128) {
+            Start-Sleep -Milliseconds 200
+            if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
+                $out.ok = $true
+                $out.message = "killed via parent pid=$ppid"
+                return $out
+            }
+        }
+    }
+
+    $detail = if ($r.text) { $r.text } else { "taskkill exit $($r.code)" }
+    $out.message = $detail
+    return $out
+}
+
+function Get-GfTreeRootPids {
+    # Among a pid set, keep only roots (parent not in the set). Kill these with /T.
+    param([int[]]$ProcessIds)
+    $set = @{}
+    foreach ($id in @($ProcessIds)) {
+        if ($id -gt 0) { $set[[int]$id] = $true }
+    }
+    $roots = New-Object System.Collections.Generic.List[int]
+    foreach ($id in @($set.Keys)) {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+        $ppid = if ($proc) { [int]$proc.ParentProcessId } else { 0 }
+        if ($ppid -le 0 -or -not $set.ContainsKey($ppid)) {
+            $roots.Add([int]$id)
+        }
+    }
+    return @($roots | Sort-Object)
+}
+
 function Get-GfBackendProcs {
     param([int]$Port = $script:GfBackendPort)
     $needle = $script:GfUvicornNeedle

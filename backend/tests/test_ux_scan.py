@@ -1,4 +1,4 @@
-"""门户 UX 扫词：仅材料命中才挂；无词保持原样。"""
+"""search_assist / browse_history / gallery：仅开题写到才挂；无词保持原样。"""
 
 from __future__ import annotations
 

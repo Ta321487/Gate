@@ -121,7 +121,7 @@
       },
       {
         "key": "ticket_pending",
-        "label": "跟进确认"
+        "label": "跟进审核"
       },
       {
         "key": "ticket_records",

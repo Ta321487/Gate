@@ -20,6 +20,7 @@ from app.llm.agents import (
     run_er_label_agent,
     run_fix_agent,
     run_island_agent,
+    run_module_label_agent,
     run_qa_agent,
     run_spec_agent,
 )
@@ -237,9 +238,32 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         f"ER Label · mode={er.get('mode')} gaps={er.get('gaps')} "
                         f"filled={er.get('filled')} remain={er.get('remain', 0)}",
                     )
-                except Exception as ee:  # noqa: BLE001
-                    er_meta = " · er=skip"
-                    await append_log(project.id, f"ER Label skip · {ee}")
+                    try:
+                        raw_prop = await asyncio.to_thread(
+                            load_merged_proposal_text, project.source_path
+                        )
+                    except Exception:
+                        raw_prop = ""
+                    mod = await run_module_label_agent(
+                        db,
+                        llm_rt,
+                        project_id=project.id,
+                        workspace=workspace,
+                        spec=project.spec if isinstance(project.spec, dict) else None,
+                        proposal_text=raw_prop or "",
+                        llm_enabled=bool(project.llm_enabled),
+                    )
+                    er_meta += (
+                        f" · mod={mod.get('mode')} filled={mod.get('filled', 0)}"
+                    )
+                    await append_log(
+                        project.id,
+                        f"Module Label · mode={mod.get('mode')} filled={mod.get('filled')} "
+                        f"scope={mod.get('scope', '')}",
+                    )
+                except Exception as e:
+                    er_meta = f" · er/mod skip: {e}"
+                    await append_log(project.id, f"ER/Module Label skip · {e}")
                 await set_step(
                     2,
                     "done",
