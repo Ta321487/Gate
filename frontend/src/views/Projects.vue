@@ -101,12 +101,20 @@
           <div class="row" style="gap:8px">
             <n-button :disabled="planConfirming" @click="planOpen = false">取消</n-button>
             <n-button
+              v-if="!planData.clusters?.length"
               type="primary"
               :loading="planConfirming"
-              :disabled="!planData.clusters?.length"
+              @click="dismissEmptyPlan"
+            >
+              确认跳过
+            </n-button>
+            <n-button
+              v-else
+              type="primary"
+              :loading="planConfirming"
               @click="confirmPlan"
             >
-              确认创建 {{ planData.clusters?.length || 0 }} 个项目
+              确认创建 {{ planData.clusters.length }} 个项目
             </n-button>
           </div>
         </div>
@@ -302,7 +310,7 @@ let planCloseFromConfirm = false
 
 const otherPendingPlans = computed(() =>
   uploadJobs.value.filter(
-    (j) => j.status === 'planned' && j.plan && j.id !== planJobId.value,
+    (j) => j.status === 'planned' && j.plan && !j.deferred && j.id !== planJobId.value,
   ).length,
 )
 
@@ -354,6 +362,11 @@ function onPlanLeave() {
   if (planConfirming.value) return
   const closedId = planJobId.value
   syncOverridesToJob()
+  // 取消/关窗：标记 deferred，避免多份 planned 时 A↔B 反复弹（干扰项 0 项目只能取消时必现）
+  if (!planCloseFromConfirm && closedId != null) {
+    const job = uploadJobs.value.find((j) => j.id === closedId)
+    if (job && job.status === 'planned') job.deferred = true
+  }
   planJobId.value = null
   planClustersOverride.value = null
   planDiscardOverride.value = null
@@ -362,7 +375,7 @@ function onPlanLeave() {
     planCloseFromConfirm = false
     return
   }
-  // 取消关闭：自动打开下一份待确认
+  // 取消关闭：只翻尚未 deferred 的下一份
   queueMicrotask(() => openNextPendingPlan(closedId))
 }
 
@@ -404,17 +417,40 @@ function showPlanForJob(job, opts = {}) {
 function openNextPendingPlan(exceptId = null) {
   if (planOpen.value || planConfirming.value) return
   const next = uploadJobs.value.find(
-    (j) => j.status === 'planned' && j.plan && j.id !== exceptId,
+    (j) => j.status === 'planned' && j.plan && !j.deferred && j.id !== exceptId,
   )
   if (next) showPlanForJob(next)
 }
 
 function reopenPlan(job) {
+  if (job) job.deferred = false
   if (!showPlanForJob(job, { force: true })) return
 }
 
 function pendingPlanCount() {
-  return uploadJobs.value.filter((j) => j.status === 'planned' && j.plan).length
+  return uploadJobs.value.filter((j) => j.status === 'planned' && j.plan && !j.deferred).length
+}
+
+/** 全剔除 / 0 项目：确认跳过，结束任务，避免只能取消却仍占 planned 队列 */
+function dismissEmptyPlan() {
+  if (planData.value?.clusters?.length) return
+  const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+  if (job) {
+    job.status = 'done'
+    job.pct = 100
+    job.plan = null
+    job.deferred = false
+    job.name = '已跳过 · 无项目可创建'
+    const n = (planData.value?.discard || []).length
+    message.info(n ? `已跳过，剔除 ${n} 份无关材料` : '已跳过（无项目可创建）')
+  }
+  planCloseFromConfirm = true
+  planOpen.value = false
+  planData.value = null
+  planJobId.value = null
+  planClustersOverride.value = null
+  planDiscardOverride.value = null
+  queueMicrotask(() => openNextPendingPlan())
 }
 
 function planSplitAll() {
@@ -732,9 +768,10 @@ function jobPhaseLabel(job) {
   }
   if (job.status === 'planned') {
     const n = job.plan?.clusters?.length
-    return n != null ? `待确认分堆（${n} 个项目）` : '待确认分堆'
+    const base = n != null ? `待确认分堆（${n} 个项目）` : '待确认分堆'
+    return job.deferred ? `${base} · 已搁置` : base
   }
-  if (job.status === 'done') return job.projectId ? '项目已创建' : '已完成'
+  if (job.status === 'done') return job.projectId ? '项目已创建' : (job.name?.includes('跳过') ? '已跳过' : '已完成')
   if (job.status === 'error') return '上传失败'
   return ''
 }
