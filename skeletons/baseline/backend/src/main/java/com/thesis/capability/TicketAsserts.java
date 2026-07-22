@@ -59,8 +59,8 @@ final class TicketAsserts {
         String itemTable = ArchiveStore.itemTable();
         List<String> titles = TicketSql.db().query(
                 "SELECT i.title FROM " + TicketStore.TICKET + " t "
-                        + "JOIN " + itemTable + " i ON t.book_id=i.id "
-                        + "WHERE t.username=? AND t.book_id<>? "
+                        + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
+                        + "WHERE t.username=? AND t." + TicketStore.itemFkColumn() + "<>? "
                         + "AND t.status IN ('pending','pending_final','approved','overdue') "
                         + "AND i.mutex_code=? AND i.mutex_code<>''",
                 (rs, i) -> rs.getString(1),
@@ -88,7 +88,7 @@ final class TicketAsserts {
         String itemTable = ArchiveStore.itemTable();
         Integer n = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " t "
-                        + "JOIN " + itemTable + " i ON t.book_id=i.id "
+                        + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
                         + "WHERE t.username=? AND t.status IN ('pending','pending_final','approved','overdue') "
                         + "AND i.category_id=?",
                 Integer.class, username, categoryId);
@@ -120,8 +120,9 @@ final class TicketAsserts {
         String itemTable = ArchiveStore.itemTable();
         List<Map<String, Object>> occupied = TicketSql.db().query(
                 "SELECT i.title AS title, i.start_at AS start_at, i.end_at AS end_at FROM " + TicketStore.TICKET + " t "
-                        + "JOIN " + itemTable + " i ON t.book_id=i.id "
-                        + "WHERE t.username=? AND t.book_id<>? AND t.status IN ('pending','pending_final','approved','overdue') "
+                        + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
+                        + "WHERE t.username=? AND t." + TicketStore.itemFkColumn()
+                        + "<>? AND t.status IN ('pending','pending_final','approved','overdue') "
                         + "AND i.start_at IS NOT NULL AND i.end_at IS NOT NULL",
                 (rs, i) -> {
                     Map<String, Object> row = new LinkedHashMap<>();

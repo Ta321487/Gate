@@ -1,0 +1,5 @@
+{
+  "ticketTable": "borrow",
+  "itemFkColumn": "book_id",
+  "loanShell": true
+}

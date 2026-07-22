@@ -2,13 +2,12 @@ package com.thesis.capability;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thesis.config.DomainResourceJson;
 import com.thesis.config.JdbcSupport;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
-import java.io.InputStream;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -24,6 +23,9 @@ public final class ArchiveStore {
 
     private static String CAT = "category";
     private static String ITEM = "book";
+    /** 逻辑键 author/isbn 对应的物理列（bake 写入 domain-archive-columns.json） */
+    private static String COL_AUTHOR = "author";
+    private static String COL_ISBN = "isbn";
     private static Boolean hasStartAt;
     private static Boolean hasEndAt;
     private static Boolean hasApplyDeadline;
@@ -68,19 +70,9 @@ public final class ArchiveStore {
 
     /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
     private static void loadStockLabelFromResource() {
-        try {
-            ClassPathResource res = new ClassPathResource("domain-ticket-copy.json");
-            if (!res.exists()) return;
-            try (InputStream in = res.getInputStream()) {
-                Map<String, Object> root = new ObjectMapper().readValue(in, new TypeReference<>() {});
-                Object raw = root.get("stockLabel");
-                if (raw != null) {
-                    String lab = String.valueOf(raw).trim();
-                    if (!lab.isBlank()) STOCK_LABEL = lab;
-                }
-            }
-        } catch (Exception ignored) {
-        }
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-copy.json");
+        String lab = DomainResourceJson.str(root, "stockLabel", "");
+        if (!lab.isBlank()) STOCK_LABEL = lab;
     }
 
     /** 换表（新领域薄落地时调用一次） */
@@ -96,7 +88,25 @@ public final class ArchiveStore {
         hasGalleryJson = null;
         TAG = "";
         ITEM_TAG = "";
+        COL_AUTHOR = "author";
+        COL_ISBN = "isbn";
         loadStockLabelFromResource();
+        loadColumnMapFromResource();
+    }
+
+    private static void loadColumnMapFromResource() {
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-archive-columns.json");
+        COL_AUTHOR = DomainResourceJson.str(root, "authorColumn", "author");
+        COL_ISBN = DomainResourceJson.str(root, "isbnColumn", "isbn");
+    }
+
+    /** 物理列名（SQL）；API JSON 仍用逻辑键 author / isbn */
+    public static String authorColumn() {
+        return COL_AUTHOR == null || COL_AUTHOR.isBlank() ? "author" : COL_AUTHOR;
+    }
+
+    public static String isbnColumn() {
+        return COL_ISBN == null || COL_ISBN.isBlank() ? "isbn" : COL_ISBN;
     }
 
     public static void configureGallery(boolean enabled) {
@@ -248,7 +258,8 @@ public final class ArchiveStore {
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO " + ITEM + " (title,author,isbn,category_id,stock,status,cover_url) VALUES (?,?,?,?,?,?,?)",
+                    "INSERT INTO " + ITEM + " (title," + authorColumn() + "," + isbnColumn()
+                            + ",category_id,stock,status,cover_url) VALUES (?,?,?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, title);
             ps.setString(2, author);
@@ -268,8 +279,8 @@ public final class ArchiveStore {
     }
 
     /**
-     * 门户用户发帖：即时上架（stock=1），author 固定为登录名便于「我的主帖」归属。
-     * 正文走 isbn（论坛 schema bodyField）；站长下架走既有 soft-delete。
+     * 门户用户发帖：即时上架（stock=1），作者列固定为登录名便于「我的主帖」归属。
+     * 正文走 isbn 逻辑键（论坛/博客 schema bodyField → 物理 body_html）；站长下架走 soft-delete。
      */
     public static Map<String, Object> addUserPost(String username, String title, String body, long categoryId) {
         if (!userPublishEnabled) {
@@ -293,7 +304,7 @@ public final class ArchiveStore {
         if (uid.isBlank()) throw new IllegalArgumentException("未登录");
         if (page < 1) page = 1;
         if (size < 1) size = 10;
-        String where = " WHERE author=?";
+        String where = " WHERE " + authorColumn() + "=?";
         Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, uid);
         int t = total == null ? 0 : total;
         List<Map<String, Object>> list = db().query(
@@ -324,7 +335,8 @@ public final class ArchiveStore {
         int stock = patch.get("stock") != null ? toInt(patch.get("stock")) : toInt(m.get("stock"));
         String status = stock > 0 ? "available" : "unavailable";
         db().update(
-                "UPDATE " + ITEM + " SET title=?, author=?, isbn=?, category_id=?, stock=?, status=?, cover_url=? WHERE id=?",
+                "UPDATE " + ITEM + " SET title=?, " + authorColumn() + "=?, " + isbnColumn()
+                        + "=?, category_id=?, stock=?, status=?, cover_url=? WHERE id=?",
                 title, author, isbn, categoryId, stock, status, cover, id);
         if (hasStartAt()) {
             Timestamp ts = parseTs(patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt"));
@@ -476,7 +488,7 @@ public final class ArchiveStore {
             args.add(categoryId);
         }
         if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (title LIKE ? OR author LIKE ? OR isbn LIKE ?)");
+            where.append(" AND (title LIKE ? OR " + authorColumn() + " LIKE ? OR " + isbnColumn() + " LIKE ?)");
             String like = "%" + keyword.trim() + "%";
             args.add(like);
             args.add(like);
@@ -510,8 +522,8 @@ public final class ArchiveStore {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", rs.getLong("id"));
         m.put("title", rs.getString("title"));
-        m.put("author", rs.getString("author"));
-        m.put("isbn", rs.getString("isbn"));
+        m.put("author", safeStr(rs, authorColumn()));
+        m.put("isbn", safeStr(rs, isbnColumn()));
         m.put("categoryId", rs.getLong("category_id"));
         m.put("stock", rs.getInt("stock"));
         m.put("status", rs.getString("status"));
@@ -1058,5 +1070,14 @@ public final class ArchiveStore {
 
     private static String str(Object o) {
         return o == null ? "" : String.valueOf(o);
+    }
+
+    private static String safeStr(java.sql.ResultSet rs, String col) {
+        try {
+            String v = rs.getString(col);
+            return v == null ? "" : v;
+        } catch (Exception e) {
+            return "";
+        }
     }
 }

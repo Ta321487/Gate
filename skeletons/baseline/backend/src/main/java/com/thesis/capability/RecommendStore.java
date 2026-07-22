@@ -68,8 +68,9 @@ public final class RecommendStore {
             try {
                 String ticket = TicketStore.ticketTable();
                 List<Long> ids = db().query(
-                        "SELECT DISTINCT book_id FROM " + ticket
-                                + " WHERE username=? AND status<>'rejected' AND book_id IS NOT NULL",
+                        "SELECT DISTINCT " + TicketStore.itemFkColumn() + " FROM " + ticket
+                                + " WHERE username=? AND status<>'rejected' AND "
+                                + TicketStore.itemFkColumn() + " IS NOT NULL",
                         (rs, i) -> rs.getLong(1),
                         username);
                 if (ids != null) out.addAll(ids);
@@ -231,8 +232,9 @@ public final class RecommendStore {
     private static String hotJoinSql(String itemIdCol) {
         if (TicketStore.enabled() && TicketStore.isArchiveMode()) {
             String ticket = TicketStore.ticketTable();
-            return "LEFT JOIN (SELECT book_id AS hid, COUNT(*) AS hot FROM " + ticket
-                    + " WHERE status<>'rejected' GROUP BY book_id) h ON h.hid=" + itemIdCol + " ";
+            return "LEFT JOIN (SELECT " + TicketStore.itemFkColumn() + " AS hid, COUNT(*) AS hot FROM " + ticket
+                    + " WHERE status<>'rejected' GROUP BY " + TicketStore.itemFkColumn()
+                    + ") h ON h.hid=" + itemIdCol + " ";
         }
         if (FavoriteStore.enabled()) {
             return "LEFT JOIN (SELECT item_id AS hid, COUNT(*) AS hot FROM user_favorite"

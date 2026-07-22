@@ -1,14 +1,11 @@
 package com.thesis.capability;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thesis.config.DomainResourceJson;
 import com.thesis.config.JdbcSupport;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.PreparedStatement;
@@ -24,7 +21,6 @@ import java.util.*;
  */
 public final class CouponStore {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String PROMO = "promo_coupon";
     private static final String MINE = "user_coupon";
@@ -106,31 +102,23 @@ public final class CouponStore {
     }
 
     private static List<Map<String, Object>> loadSeedItems() {
-        try {
-            ClassPathResource res = new ClassPathResource("domain-loyalty.json");
-            if (res.exists()) {
-                try (InputStream in = res.getInputStream()) {
-                    Map<String, Object> root = JSON.readValue(in, new TypeReference<>() {});
-                    Object cp = root.get("coupons");
-                    if (cp instanceof Map<?, ?> map) {
-                        Object items = map.get("items");
-                        if (items instanceof List<?> list && !list.isEmpty()) {
-                            List<Map<String, Object>> out = new ArrayList<>();
-                            for (Object o : list) {
-                                if (o instanceof Map<?, ?> m) {
-                                    Map<String, Object> row = new LinkedHashMap<>();
-                                    for (Map.Entry<?, ?> e : m.entrySet()) {
-                                        row.put(String.valueOf(e.getKey()), e.getValue());
-                                    }
-                                    out.add(row);
-                                }
-                            }
-                            if (!out.isEmpty()) return out;
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-loyalty.json");
+        Object cp = root.get("coupons");
+        if (cp instanceof Map<?, ?> map) {
+            Object items = map.get("items");
+            if (items instanceof List<?> list && !list.isEmpty()) {
+                List<Map<String, Object>> out = new ArrayList<>();
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> m) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        for (Map.Entry<?, ?> e : m.entrySet()) {
+                            row.put(String.valueOf(e.getKey()), e.getValue());
                         }
+                        out.add(row);
                     }
                 }
+                if (!out.isEmpty()) return out;
             }
-        } catch (Exception ignored) {
         }
         return List.of(
                 Map.of("code", "SAVE10", "label", "满50减10", "minYuan", 50, "offYuan", 10),
@@ -395,7 +383,7 @@ public final class CouponStore {
         return rows == null || rows.isEmpty() ? Map.of() : rows.get(0);
     }
 
-    private static Map<String, Object> mapPromo(java.sql.ResultSet rs) throws java.sql.SQLException {
+    private static Map<String, Object> mapPromo(ResultSet rs) throws SQLException {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", rs.getLong("id"));
         m.put("code", rs.getString("code"));

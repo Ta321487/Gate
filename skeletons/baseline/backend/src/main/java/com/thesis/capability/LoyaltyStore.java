@@ -1,12 +1,9 @@
 package com.thesis.capability;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thesis.config.DomainResourceJson;
 import com.thesis.config.JdbcSupport;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -16,8 +13,6 @@ import java.util.*;
  * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
-
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     private static boolean walletEnabled;
     private static boolean pointsEnabled;
@@ -87,36 +82,28 @@ public final class LoyaltyStore {
     }
 
     private static void loadTiersFromResource() {
-        try {
-            ClassPathResource res = new ClassPathResource("domain-loyalty.json");
-            if (!res.exists()) {
-                memberTiers = defaultTiers();
-                return;
-            }
-            try (InputStream in = res.getInputStream()) {
-                Map<String, Object> root = JSON.readValue(in, new TypeReference<>() {});
-                Object mt = root.get("memberTiers");
-                if (mt instanceof Map<?, ?> map) {
-                    Object tiers = map.get("tiers");
-                    if (tiers instanceof List<?> list) {
-                        List<Map<String, Object>> out = new ArrayList<>();
-                        for (Object o : list) {
-                            if (o instanceof Map<?, ?> m) {
-                                Map<String, Object> row = new LinkedHashMap<>();
-                                for (Map.Entry<?, ?> e : m.entrySet()) {
-                                    row.put(String.valueOf(e.getKey()), e.getValue());
-                                }
-                                out.add(row);
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-loyalty.json");
+        if (!root.isEmpty()) {
+            Object mt = root.get("memberTiers");
+            if (mt instanceof Map<?, ?> map) {
+                Object tiers = map.get("tiers");
+                if (tiers instanceof List<?> list) {
+                    List<Map<String, Object>> out = new ArrayList<>();
+                    for (Object o : list) {
+                        if (o instanceof Map<?, ?> m) {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            for (Map.Entry<?, ?> e : m.entrySet()) {
+                                row.put(String.valueOf(e.getKey()), e.getValue());
                             }
+                            out.add(row);
                         }
-                        if (!out.isEmpty()) {
-                            memberTiers = out;
-                            return;
-                        }
+                    }
+                    if (!out.isEmpty()) {
+                        memberTiers = out;
+                        return;
                     }
                 }
             }
-        } catch (Exception ignored) {
         }
         memberTiers = defaultTiers();
     }

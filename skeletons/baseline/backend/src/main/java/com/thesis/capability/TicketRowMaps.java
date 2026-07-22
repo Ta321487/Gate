@@ -56,7 +56,7 @@ final class TicketRowMaps {
             m.put("remindedAt", null);
             m.put("remindMsg", "");
         } else {
-            long bookId = rs.getLong("book_id");
+            long bookId = rs.getLong(TicketStore.itemFkColumn());
             m.put("bookId", bookId);
             m.put("itemId", bookId);
             m.put("dueAt", TicketSql.fmt(TicketSql.safeTs(rs, "due_at")));

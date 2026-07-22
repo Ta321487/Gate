@@ -201,7 +201,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }
         if (ticketAllowCheckin) {
-            ArchiveStore.ensureCheckinCodeColumn();
+            // checkin_code 由 bake 写入档案表；此处不再 ALTER
         }
         if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
             if ("standalone".equalsIgnoreCase(ticketMode)) {
@@ -219,11 +219,6 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
             TicketStore.configureAutoApprove(ticketAutoApprove);
         }
-        if (orderCartTable != null && !orderCartTable.isBlank()) {
-            OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
-        } else {
-            OrderStore.unbind();
-        }
         LoyaltyStore.configure(
                 walletEnabled,
                 pointsEnabled,
@@ -234,6 +229,11 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
         CouponStore.configure(couponEnabled);
+        if (orderCartTable != null && !orderCartTable.isBlank()) {
+            OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
+        } else {
+            OrderStore.unbind();
+        }
         OrderReviewStore.configure(orderReviewEnabled);
         FavoriteStore.configure(favoritesEnabled);
         BrowseHistoryStore.configure(browseHistoryEnabled, 20);

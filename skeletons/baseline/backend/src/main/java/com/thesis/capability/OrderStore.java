@@ -38,10 +38,7 @@ public final class OrderStore {
         enabled = !CART.isBlank() && !ORDER.isBlank() && !LINE.isBlank();
         useQuota = quota;
         AddressStore.resetCache();
-        if (enabled) {
-            ensureDeliveryColumns();
-            ensureLoyaltyColumns();
-        }
+        // 履约列由 bake 按域写入 schema，禁止运行时补餐饮/物流超集
     }
 
     public static void unbind() {
@@ -169,9 +166,12 @@ public final class OrderStore {
             String tasteNote,
             String couponCode) {
         requireEnabled();
-        ensureDeliveryColumns();
-        ensureLoyaltyColumns();
-        ensureRefundColumns();
+        if (LoyaltyStore.anyEnabled()) {
+            ensureLoyaltyColumns();
+        }
+        if (hasOrderColumn("refund_status")) {
+            ensureRefundColumns();
+        }
         List<Map<String, Object>> cart = listCart(username);
         if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
         double total = 0;
@@ -218,51 +218,60 @@ public final class OrderStore {
             if (rPhone.isBlank()) rPhone = String.valueOf(a.getOrDefault("phone", ""));
             if (addr.isBlank()) addr = String.valueOf(a.getOrDefault("addressLine", ""));
         }
-        // 配送到家类：地址必填；到店自提可空地址
-        boolean needAddr = dtype.isBlank() || dtype.contains("配送") || dtype.contains("快递") || "配送到家".equals(dtype);
-        if (needAddr && (rName.isBlank() || rPhone.isBlank() || addr.isBlank())) {
-            throw new IllegalArgumentException("请选择或填写收货人、手机与地址");
-        }
-        if (!needAddr && rName.isBlank()) {
-            rName = username;
+        // 仅当 schema 含收货列时校验地址；酒店等瘦订单表跳过
+        if (hasOrderColumn("receiver_name")) {
+            boolean needAddr = dtype.isBlank() || dtype.contains("配送") || dtype.contains("快递")
+                    || "配送到家".equals(dtype);
+            if (needAddr && (rName.isBlank() || rPhone.isBlank() || addr.isBlank())) {
+                throw new IllegalArgumentException("请选择或填写收货人、手机与地址");
+            }
+            if (!needAddr && rName.isBlank()) {
+                rName = username;
+            }
         }
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
-        boolean hasDelivery = hasOrderColumn("receiver_name");
+        LinkedHashMap<String, Object> extraCols = new LinkedHashMap<>();
+        if (hasOrderColumn("receiver_name")) extraCols.put("receiver_name", fName);
+        if (hasOrderColumn("receiver_phone")) extraCols.put("receiver_phone", fPhone);
+        if (hasOrderColumn("address_line")) extraCols.put("address_line", fAddr);
+        if (hasOrderColumn("delivery_type")) extraCols.put("delivery_type", fType);
+        if (hasOrderColumn("taste_note")) extraCols.put("taste_note", fTaste);
         db().update(con -> {
-            PreparedStatement ps;
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-            if (hasDelivery) {
-                ps = con.prepareStatement(
-                        "INSERT INTO " + ORDER
-                                + " (username,status,total_yuan,remark,receiver_name,receiver_phone,address_line,delivery_type,taste_note,created_at,updated_at)"
-                                + " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, username);
-                ps.setString(2, "pending");
-                ps.setBigDecimal(3, BigDecimal.valueOf(finalTotal).setScale(2, RoundingMode.HALF_UP));
-                ps.setString(4, note);
-                ps.setString(5, fName);
-                ps.setString(6, fPhone);
-                ps.setString(7, fAddr);
-                ps.setString(8, fType);
-                ps.setString(9, fTaste);
-                ps.setTimestamp(10, now);
-                ps.setTimestamp(11, now);
-            } else {
-                ps = con.prepareStatement(
-                        "INSERT INTO " + ORDER + " (username,status,total_yuan,remark,created_at,updated_at) VALUES (?,?,?,?,?,?)",
-                        Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, username);
-                ps.setString(2, "pending");
-                ps.setBigDecimal(3, BigDecimal.valueOf(finalTotal).setScale(2, RoundingMode.HALF_UP));
-                String merged = note;
-                if (!fTaste.isBlank()) merged = (merged.isBlank() ? "" : merged + "；") + "口味:" + fTaste;
-                if (!fAddr.isBlank()) merged = (merged.isBlank() ? "" : merged + "；") + "地址:" + fName + " " + fPhone + " " + fAddr;
-                ps.setString(4, merged);
-                ps.setTimestamp(5, now);
-                ps.setTimestamp(6, now);
+            StringBuilder cols = new StringBuilder("username,status,total_yuan,remark");
+            StringBuilder marks = new StringBuilder("?,?,?,?");
+            List<Object> args = new ArrayList<>();
+            args.add(username);
+            args.add("pending");
+            args.add(BigDecimal.valueOf(finalTotal).setScale(2, RoundingMode.HALF_UP));
+            String noteOut = note;
+            if (extraCols.isEmpty() && !fTaste.isBlank()) {
+                noteOut = (noteOut.isBlank() ? "" : noteOut + "；") + "口味:" + fTaste;
+            }
+            if (extraCols.isEmpty() && !fAddr.isBlank()) {
+                noteOut = (noteOut.isBlank() ? "" : noteOut + "；")
+                        + "地址:" + fName + " " + fPhone + " " + fAddr;
+            }
+            args.add(noteOut);
+            for (Map.Entry<String, Object> e : extraCols.entrySet()) {
+                cols.append(',').append(e.getKey());
+                marks.append(",?");
+                args.add(e.getValue());
+            }
+            cols.append(",created_at,updated_at");
+            marks.append(",?,?");
+            args.add(now);
+            args.add(now);
+            PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO " + ORDER + " (" + cols + ") VALUES (" + marks + ")",
+                    Statement.RETURN_GENERATED_KEYS);
+            for (int i = 0; i < args.size(); i++) {
+                Object v = args.get(i);
+                if (v instanceof Timestamp ts) ps.setTimestamp(i + 1, ts);
+                else if (v instanceof BigDecimal bd) ps.setBigDecimal(i + 1, bd);
+                else ps.setString(i + 1, v == null ? "" : String.valueOf(v));
             }
             return ps;
         }, kh);
@@ -519,25 +528,37 @@ public final class OrderStore {
         else if ("cancel".equals(act) && ("pending".equals(st) || "confirmed".equals(st))) next = "cancelled";
         else throw new IllegalStateException("当前状态不可执行：" + act);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-        if ("shipped".equals(next) && hasOrderColumn("tracking_no")) {
+        if ("shipped".equals(next)
+                && (hasOrderColumn("tracking_no")
+                || hasOrderColumn("pickup_code")
+                || hasOrderColumn("shipped_at"))) {
             String tracking = opts == null ? "" : String.valueOf(opts.getOrDefault("trackingNo", "")).trim();
             String pickup = opts == null ? "" : String.valueOf(opts.getOrDefault("pickupCode", "")).trim();
             if (pickup.isBlank() && hasOrderColumn("pickup_code")) {
-                // 点餐自取：自动生成取餐码
                 String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
-                if (dtype.contains("自取") || dtype.contains("堂食")) {
+                if (dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提")) {
                     pickup = String.format("%04d", (int) (orderId % 10000));
                 }
             }
-            if (hasOrderColumn("shipped_at")) {
-                db().update(
-                        "UPDATE " + ORDER + " SET status=?, tracking_no=?, pickup_code=?, shipped_at=?, updated_at=? WHERE id=?",
-                        next, tracking, pickup, now, now, orderId);
-            } else {
-                db().update(
-                        "UPDATE " + ORDER + " SET status=?, tracking_no=?, pickup_code=?, updated_at=? WHERE id=?",
-                        next, tracking, pickup, now, orderId);
+            StringBuilder sql = new StringBuilder("UPDATE " + ORDER + " SET status=?");
+            List<Object> args = new ArrayList<>();
+            args.add(next);
+            if (hasOrderColumn("tracking_no")) {
+                sql.append(", tracking_no=?");
+                args.add(tracking);
             }
+            if (hasOrderColumn("pickup_code")) {
+                sql.append(", pickup_code=?");
+                args.add(pickup);
+            }
+            if (hasOrderColumn("shipped_at")) {
+                sql.append(", shipped_at=?");
+                args.add(now);
+            }
+            sql.append(", updated_at=? WHERE id=?");
+            args.add(now);
+            args.add(orderId);
+            db().update(sql.toString(), args.toArray());
         } else {
             db().update(
                     "UPDATE " + ORDER + " SET status=?, updated_at=? WHERE id=?",
@@ -700,15 +721,7 @@ public final class OrderStore {
     }
 
     private static void ensureDeliveryColumns() {
-        ensureOrderColumn("receiver_name", "VARCHAR(64) DEFAULT ''");
-        ensureOrderColumn("receiver_phone", "VARCHAR(32) DEFAULT ''");
-        ensureOrderColumn("address_line", "VARCHAR(255) DEFAULT ''");
-        ensureOrderColumn("delivery_type", "VARCHAR(32) DEFAULT ''");
-        ensureOrderColumn("taste_note", "VARCHAR(255) DEFAULT ''");
-        ensureOrderColumn("tracking_no", "VARCHAR(64) DEFAULT ''");
-        ensureOrderColumn("pickup_code", "VARCHAR(32) DEFAULT ''");
-        ensureOrderColumn("shipped_at", "DATETIME NULL");
-        ensureOrderColumn("reservation_id", "BIGINT NULL");
+        // no-op：履约列由 bake 按域写入，禁止运行时补跨域超集
     }
 
     private static void ensureLoyaltyColumns() {
