@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,7 +53,11 @@ CREATE TABLE IF NOT EXISTS repair (
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
   return_at DATETIME NULL,
-  remark VARCHAR(512) DEFAULT ''
+  remark VARCHAR(512) DEFAULT '',
+  attach_url VARCHAR(255) NOT NULL DEFAULT '',
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
 );
 
 CREATE TABLE IF NOT EXISTS repair_progress (
@@ -115,20 +115,6 @@ INSERT IGNORE INTO repair_type (id, name, sort_no) VALUES (1, '水电', 1), (2, 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请如实填写宿舍与故障描述，宿管将尽快受理。', 'admin', '宿管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

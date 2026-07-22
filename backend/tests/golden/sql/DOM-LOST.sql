@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS lost_item (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(256),
+  registrant VARCHAR(100),
+  feature_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -46,21 +42,21 @@ CREATE TABLE IF NOT EXISTS lost_item (
 -- book_id=lost_item.id
 CREATE TABLE IF NOT EXISTS claim (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  lost_item_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   fine_status VARCHAR(16) DEFAULT 'none',
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(255),
   pickup_at DATETIME NULL,
-  pickup_place VARCHAR(128) DEFAULT ''
+  pickup_place VARCHAR(128) DEFAULT '',
+  attach_url VARCHAR(255) NOT NULL DEFAULT '',
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -101,7 +97,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '证件卡类'), (2, '电子数码'), (3, '生活用品');
-INSERT IGNORE INTO lost_item (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO lost_item (id, title, registrant, feature_note, category_id, stock, status) VALUES
 (1, '校园卡（尾号 8821）', '保卫处', '一食堂窗口拾获 / 蓝色挂绳', 1, 1, 'available'),
 (2, '黑色无线耳机盒', '图书馆值班', '三楼阅览室 / AirPods 样式', 2, 1, 'available'),
 (3, '蓝色水杯', '学生甲', '实验楼 B201 / 杯身有贴纸', 3, 1, 'available'),
@@ -116,20 +112,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='招领须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周公示', '证件与数码类启事已更新，请及时认领。', 'admin', '招领主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周公示');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `claim_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

@@ -1,14 +1,20 @@
 """跨域 SQL 共享片段：bake 时幂等补列，避免各 DOM-*.sql 手改漏列。
 
-运行时 SlotStore.ensureResvCol / OrderStore ensure 仍会兜底；
-此处保证交付的 schema.sql 一开始就完整。
+预约/订单/单据扩展列均按域（及能力开关）注入并剔除跨域超集；
+运行时禁止再 ALTER 补全套。
 """
 
 from __future__ import annotations
 
 import re
 
-# 预约表扩展列（停车/挂号/场地/酒店/美发共用超集）
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
+# 预约扩展列全集（仅作剔除名单；注入按域拆分，禁止跨域超集）
 RESERVATION_EXTRA_COLUMNS: list[tuple[str, str]] = [
     ("plate_no", "VARCHAR(16) DEFAULT ''"),
     ("patient_name", "VARCHAR(32) DEFAULT ''"),
@@ -23,13 +29,69 @@ RESERVATION_EXTRA_COLUMNS: list[tuple[str, str]] = [
     ("entry_at", "DATETIME NULL"),
 ]
 
-# 订单物流/取餐
+_RESERVATION_EXTRA_NAMES = {n.lower() for n, _ in RESERVATION_EXTRA_COLUMNS}
+
+# 具名预约域各自只保留本域字段；GENERIC / 未登记域不加扩展列
+RESERVATION_COLUMNS_BY_DOMAIN: dict[str, list[tuple[str, str]]] = {
+    "DOM-PARKING": [
+        ("plate_no", "VARCHAR(16) DEFAULT ''"),
+        ("entry_at", "DATETIME NULL"),
+    ],
+    "DOM-HOSPITAL": [
+        ("patient_name", "VARCHAR(32) DEFAULT ''"),
+        ("visit_type", "VARCHAR(16) DEFAULT ''"),
+        ("symptom_note", "VARCHAR(255) DEFAULT ''"),
+        ("queue_no", "INT DEFAULT 0"),
+    ],
+    "DOM-MEETING": [
+        ("subject", "VARCHAR(128) DEFAULT ''"),
+        ("party_size", "INT DEFAULT 0"),
+    ],
+    "DOM-HOTEL": [
+        ("guest_name", "VARCHAR(32) DEFAULT ''"),
+        ("guest_count", "INT DEFAULT 0"),
+    ],
+    "DOM-SALON": [
+        ("preferred_stylist", "VARCHAR(32) DEFAULT ''"),
+        ("queue_no", "INT DEFAULT 0"),
+    ],
+}
+
+# 订单履约扩展列全集（剔除名单）；注入按域拆分，禁止餐饮/商城/酒店串味
+ORDER_ADDRESS_COLUMNS: list[tuple[str, str]] = [
+    ("receiver_name", "VARCHAR(64) DEFAULT ''"),
+    ("receiver_phone", "VARCHAR(32) DEFAULT ''"),
+    ("address_line", "VARCHAR(255) DEFAULT ''"),
+    ("delivery_type", "VARCHAR(32) DEFAULT ''"),
+]
+
+ORDER_FOOD_COLUMNS: list[tuple[str, str]] = [
+    ("taste_note", "VARCHAR(255) DEFAULT ''"),
+    ("pickup_code", "VARCHAR(32) DEFAULT ''"),
+    ("shipped_at", "DATETIME NULL"),
+]
+
+ORDER_SHOP_FULFILL_COLUMNS: list[tuple[str, str]] = [
+    ("tracking_no", "VARCHAR(64) DEFAULT ''"),
+    ("pickup_code", "VARCHAR(32) DEFAULT ''"),
+    ("shipped_at", "DATETIME NULL"),
+]
+
+ORDER_RESERVATION_LINK_COLUMNS: list[tuple[str, str]] = [
+    ("reservation_id", "BIGINT NULL"),
+]
+
+# 兼容旧名：曾作「全交易域超集」；现仅作已知列目录
 ORDER_SHIP_COLUMNS: list[tuple[str, str]] = [
+    *ORDER_ADDRESS_COLUMNS,
+    ("taste_note", "VARCHAR(255) DEFAULT ''"),
     ("tracking_no", "VARCHAR(64) DEFAULT ''"),
     ("pickup_code", "VARCHAR(32) DEFAULT ''"),
     ("shipped_at", "DATETIME NULL"),
     ("reservation_id", "BIGINT NULL"),
 ]
+
+_ORDER_FULFILL_NAMES = {n.lower() for n, _ in ORDER_SHIP_COLUMNS}
 
 # 子管/业务员工岗位（任命与登录分流）
 SYS_USER_STAFF_COLUMNS: list[tuple[str, str]] = [
@@ -74,48 +136,99 @@ CREATE TABLE IF NOT EXISTS user_ledger (
 );
 """
 
-_CREATE_TABLE_RE = re.compile(
-    r"(CREATE TABLE IF NOT EXISTS\s+(\w+)\s*\()((?:.|\n)*?)(\);)",
-    re.IGNORECASE,
-)
+
+_SYS_USER_LOYALTY_NAMES = {n.lower() for n, _ in SYS_USER_LOYALTY_COLUMNS}
+_ORDER_LOYALTY_NAMES = {n.lower() for n, _ in ORDER_LOYALTY_COLUMNS}
 
 
-def _inject_missing_columns(body: str, columns: list[tuple[str, str]]) -> str:
-    lower = body.lower()
-    missing = [(name, ddl) for name, ddl in columns if name.lower() not in lower]
-    if not missing:
-        return body
-    lines = [f"  {name} {ddl}," for name, ddl in missing]
-    # 插在 created_at 前；没有则插在末尾逗号后
-    m = re.search(r"(?m)^(\s*created_at\b)", body)
-    if m:
-        return body[: m.start()] + "\n".join(lines) + "\n" + body[m.start() :]
-    trimmed = body.rstrip()
-    if not trimmed.endswith(","):
-        trimmed += ","
-    return trimmed + "\n" + "\n".join(lines) + "\n"
+def order_fulfill_columns_for(
+    domain: str,
+    archetypes: list[str] | None = None,
+) -> list[tuple[str, str]]:
+    """按域返回订单履约列（不含退款/忠诚度）。"""
+    d = (domain or "").strip()
+    arches = {a for a in (archetypes or []) if a}
+
+    if d == "DOM-FOOD":
+        return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_FOOD_COLUMNS)
+    if d == "DOM-SHOP":
+        return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
+    if d == "DOM-HOTEL":
+        return list(ORDER_RESERVATION_LINK_COLUMNS)
+    if d == "DOM-GENERIC":
+        cols = list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
+        if "ARCH-RESERVE" in arches:
+            cols = cols + list(ORDER_RESERVATION_LINK_COLUMNS)
+        return cols
+    # 其他带订单的域：按商城履约，不含餐饮口味/预约外键
+    return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
 
 
-def ensure_shared_sql_columns(sql: str) -> str:
-    """对 reservation / biz_order / sys_user / 常见订单表补齐共享列。"""
+def ensure_shared_sql_columns(
+    sql: str,
+    *,
+    domain: str = "",
+    archetypes: list[str] | None = None,
+    staff: bool = True,
+    loyalty: bool = False,
+) -> str:
+    """对 reservation / 订单表 / sys_user 补齐共享列。
+
+    预约/订单履约列均按 domain（及 GENERIC 的 archetype）注入并剔除跨域字段。
+    """
+    resv_cols = list(RESERVATION_COLUMNS_BY_DOMAIN.get(domain or "", []))
+    resv_allow = {n.lower() for n, _ in resv_cols}
+    order_fulfill = order_fulfill_columns_for(domain, archetypes)
+    order_allow = {n.lower() for n, _ in order_fulfill} | {
+        n.lower() for n, _ in ORDER_REFUND_COLUMNS
+    }
+    if loyalty:
+        order_allow |= _ORDER_LOYALTY_NAMES
 
     def repl(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         t = table.lower()
         if t == "reservation":
-            body = _inject_missing_columns(body, RESERVATION_EXTRA_COLUMNS)
+            body = _prune_columns(
+                body, allow=resv_allow, known=_RESERVATION_EXTRA_NAMES
+            )
+            if resv_cols:
+                body = _inject_missing_columns(body, resv_cols)
         elif t in ("biz_order", "shop_order", "food_order", "hotel_order", "orders"):
-            body = _inject_missing_columns(
-                body, ORDER_SHIP_COLUMNS + ORDER_LOYALTY_COLUMNS + ORDER_REFUND_COLUMNS
+            body = _prune_columns(
+                body,
+                allow=order_allow,
+                known=_ORDER_FULFILL_NAMES | _ORDER_LOYALTY_NAMES,
             )
+            cols = list(order_fulfill) + list(ORDER_REFUND_COLUMNS)
+            if loyalty:
+                cols = list(order_fulfill) + list(ORDER_LOYALTY_COLUMNS) + list(
+                    ORDER_REFUND_COLUMNS
+                )
+            body = _inject_missing_columns(body, cols)
         elif t == "sys_user":
-            body = _inject_missing_columns(
-                body, SYS_USER_STAFF_COLUMNS + SYS_USER_LOYALTY_COLUMNS
-            )
+            if not loyalty:
+                body = _prune_columns(
+                    body, allow=set(), known=_SYS_USER_LOYALTY_NAMES
+                )
+            cols: list[tuple[str, str]] = []
+            if staff:
+                cols.extend(SYS_USER_STAFF_COLUMNS)
+            if loyalty:
+                cols.extend(SYS_USER_LOYALTY_COLUMNS)
+            if cols:
+                body = _inject_missing_columns(body, cols)
         return f"{head}{body}{tail}"
 
     out = _CREATE_TABLE_RE.sub(repl, sql)
-    if "user_ledger" not in out.lower():
+    if not loyalty:
+        out = re.sub(
+            r"CREATE TABLE IF NOT EXISTS\s+`?user_ledger`?\s*\((?:.|\n)*?\);\s*",
+            "",
+            out,
+            flags=re.IGNORECASE,
+        )
+    elif "user_ledger" not in out.lower():
         out = out.rstrip() + "\n" + _USER_LEDGER_DDL
     return out
 
@@ -222,6 +335,44 @@ def ensure_gallery_sql(sql: str, *, enabled: bool, item_table: str | None) -> st
     return _CREATE_TABLE_RE.sub(repl, sql)
 
 
+CHECKIN_CODE_COLUMNS: list[tuple[str, str]] = [
+    ("checkin_code", "VARCHAR(16) NOT NULL DEFAULT ''"),
+]
+
+MUTEX_CODE_COLUMNS: list[tuple[str, str]] = [
+    ("mutex_code", "VARCHAR(32) NOT NULL DEFAULT ''"),
+]
+
+
+def ensure_archive_flag_columns(
+    sql: str,
+    *,
+    item_table: str | None,
+    allow_checkin: bool = False,
+    check_mutex: bool = False,
+) -> str:
+    """档案表按单据能力补签到码 / 互斥码（禁止运行时再 ALTER）。"""
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    cols: list[tuple[str, str]] = []
+    if allow_checkin:
+        cols.extend(CHECKIN_CODE_COLUMNS)
+    if check_mutex:
+        cols.extend(MUTEX_CODE_COLUMNS)
+    if not cols:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, cols)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+
 _PROMO_COUPON_DDL = """
 CREATE TABLE IF NOT EXISTS promo_coupon (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -285,6 +436,158 @@ def ensure_order_review_sql(sql: str, *, enabled: bool) -> str:
     if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?order_review`?\b", sql):
         return sql
     return sql.rstrip() + "\n" + _ORDER_REVIEW_DDL
+
+
+# 单据可选扩展列全集（剔除名单）；注入按域 + schema.ticket 能力
+TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
+    ("attach_url", "VARCHAR(255) NOT NULL DEFAULT ''"),
+    ("rating", "INT NULL"),
+    ("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''"),
+    ("rated_at", "DATETIME NULL"),
+    ("priority", "VARCHAR(16) DEFAULT '普通'"),
+    ("contact_phone", "VARCHAR(20) DEFAULT ''"),
+    ("fine_status", "VARCHAR(16) DEFAULT 'none'"),
+    ("pickup_at", "DATETIME NULL"),
+    ("pickup_place", "VARCHAR(128) DEFAULT ''"),
+    ("actual_qty", "INT NULL"),
+    ("contact_channel", "VARCHAR(32) DEFAULT ''"),
+    ("next_follow_at", "DATETIME NULL"),
+    ("checked_in_at", "DATETIME NULL"),
+    ("qty", "INT NOT NULL DEFAULT 1"),
+    ("period_start", "DATETIME NULL"),
+    ("period_end", "DATETIME NULL"),
+]
+
+_TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
+_TICKET_COL_DDL = {n.lower(): ddl for n, ddl in TICKET_OPTIONAL_COLUMNS}
+
+# 域固有业务列（不含 attach/rating 等能力开关列）
+TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
+    "DOM-LIBRARY": ["fine_status"],
+    "DOM-EQUIP": ["fine_status"],
+    "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty"],
+    "DOM-CRM": ["contact_channel", "next_follow_at"],
+    "DOM-DORM": ["priority", "contact_phone"],
+    "DOM-PROPERTY": ["priority", "contact_phone"],
+    "DOM-IT": ["priority", "contact_phone"],
+    "DOM-LOST": ["fine_status", "pickup_at", "pickup_place"],
+    "DOM-ACTIVITY": [],
+    "DOM-COURSE": [],
+    "DOM-FORUM": [],
+}
+
+
+def _ticket_flag_column_names(flags: dict | None) -> list[str]:
+    """由 schema.entities.ticket 能力开关推导列名。"""
+    f = flags or {}
+    names: list[str] = []
+    if f.get("requireAttach"):
+        names.append("attach_url")
+    if f.get("allowRating"):
+        names.extend(["rating", "rating_remark", "rated_at"])
+    if f.get("allowQty"):
+        names.append("qty")
+    if f.get("pickDateRange"):
+        names.extend(["period_start", "period_end"])
+    if f.get("allowCheckin"):
+        names.append("checked_in_at")
+    if f.get("noShowAfterEnd") or f.get("fineLabel"):
+        names.append("fine_status")
+    # 去重保序
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out
+
+
+def resolve_ticket_flags(
+    domain: str,
+    *,
+    archetype: str | None = None,
+    archetypes: list[str] | None = None,
+    ticket_flags: dict | None = None,
+) -> dict:
+    """优先用 bake 传入的 ticket 实体；否则回落域默认 schema。"""
+    if isinstance(ticket_flags, dict) and ticket_flags:
+        return ticket_flags
+    d = (domain or "").strip()
+    try:
+        from app.bake.schema.templates import SCHEMA_BUILDERS
+
+        builder = SCHEMA_BUILDERS.get(d)
+        if builder:
+            schema = builder("thesis")
+            ent = ((schema.get("entities") or {}).get("ticket") or {})
+            if isinstance(ent, dict):
+                return ent
+    except Exception:
+        pass
+    if d == "DOM-GENERIC":
+        try:
+            from app.bake.archetype_shells import build_generic_shell_schema
+
+            schema = build_generic_shell_schema(
+                "thesis",
+                archetype=archetype,
+                archetypes=archetypes,
+            )
+            ent = ((schema.get("entities") or {}).get("ticket") or {})
+            if isinstance(ent, dict):
+                return ent
+        except Exception:
+            pass
+    return {}
+
+
+def ticket_optional_columns_for(
+    domain: str,
+    *,
+    ticket_flags: dict | None = None,
+) -> list[tuple[str, str]]:
+    names: list[str] = []
+    names.extend(TICKET_DOMAIN_COLUMNS.get(domain or "", []))
+    names.extend(_ticket_flag_column_names(ticket_flags))
+    seen: set[str] = set()
+    cols: list[tuple[str, str]] = []
+    for n in names:
+        key = n.lower()
+        if key in seen:
+            continue
+        for cat_name, cat_ddl in TICKET_OPTIONAL_COLUMNS:
+            if cat_name.lower() == key:
+                seen.add(key)
+                cols.append((cat_name, cat_ddl))
+                break
+    return cols
+
+
+def ensure_ticket_extra_sql(
+    sql: str,
+    *,
+    domain: str,
+    ticket_table: str | None,
+    ticket_flags: dict | None = None,
+) -> str:
+    """对单据主表按域/能力补齐扩展列，并剔除跨域 L1 超集。"""
+    t = (ticket_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    want = ticket_optional_columns_for(domain, ticket_flags=ticket_flags)
+    allow = {n.lower() for n, _ in want}
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _prune_columns(body, allow=allow, known=_TICKET_OPTIONAL_NAMES)
+        if want:
+            body = _inject_missing_columns(body, want)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
 
 
 def ensure_ticket_progress_sql(sql: str, ticket_table: str | None) -> str:

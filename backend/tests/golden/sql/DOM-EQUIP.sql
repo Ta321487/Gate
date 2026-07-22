@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS equip (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(64),
+  brand_model VARCHAR(100),
+  asset_no VARCHAR(64),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -47,7 +43,7 @@ CREATE TABLE IF NOT EXISTS equip (
 -- book_id 列名兼容 TicketStore archive 模式（存 equip.id）
 CREATE TABLE IF NOT EXISTS loan (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  equip_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
@@ -101,7 +97,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '测量仪器'), (2, '电子器材'), (3, '机械工具');
-INSERT IGNORE INTO equip (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO equip (id, title, brand_model, asset_no, category_id, stock, status) VALUES
 (1, '数字万用表', 'Fluke 15B+', 'EQ-DMM-001', 1, 5, 'available'),
 (2, '示波器', 'Rigol DS1054Z', 'EQ-OSC-002', 1, 3, 'available'),
 (3, '电钻套装', 'Bosch', 'EQ-TOOL-003', 3, 2, 'available');
@@ -114,20 +110,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='设备借用�
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '开放时间', '工作日 8:30–17:30 办理领用与归还。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开放时间');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `loan_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

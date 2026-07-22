@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS category (
@@ -30,8 +26,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS product (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(128),
+  price_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sku VARCHAR(64) DEFAULT '',
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -72,15 +68,9 @@ CREATE TABLE IF NOT EXISTS biz_order (
   receiver_phone VARCHAR(32) DEFAULT '',
   address_line VARCHAR(255) DEFAULT '',
   delivery_type VARCHAR(32) DEFAULT '',
-  taste_note VARCHAR(255) DEFAULT '',
   tracking_no VARCHAR(64) DEFAULT '',
   pickup_code VARCHAR(32) DEFAULT '',
   shipped_at DATETIME NULL,
-  reservation_id BIGINT NULL,
-  discount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  pay_balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points_earned INT NOT NULL DEFAULT 0,
-  coupon_code VARCHAR(32) DEFAULT '',
   refund_status VARCHAR(16) DEFAULT '',
   refund_reason VARCHAR(255) DEFAULT '',
   refund_at DATETIME NULL,
@@ -126,7 +116,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '数码'), (2, '日用'), (3, '文创');
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO product (id, title, price_yuan, sku, category_id, stock, status) VALUES
 (1, '机械键盘', '199.00', 'KB-01', 1, 20, 'available'),
 (2, '桌面台灯', '59.90', 'LAMP-02', 2, 35, 'available'),
 (3, '校徽帆布袋', '29.00', 'BAG-03', 3, 50, 'available'),
@@ -140,20 +130,6 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

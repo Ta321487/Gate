@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -31,8 +27,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS biz_item (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(255),
+  subtitle VARCHAR(100),
+  detail VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -43,17 +39,13 @@ CREATE TABLE IF NOT EXISTS biz_item (
 -- TicketStore archive 模式：book_id = biz_item.id
 CREATE TABLE IF NOT EXISTS biz_ticket (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  item_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(255)
 );
 
@@ -88,7 +80,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '一类'), (2, '二类'), (3, '三类');
-INSERT IGNORE INTO biz_item (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO biz_item (id, title, subtitle, detail, category_id, stock, status) VALUES
 (1, '示例对象甲', '责任人A', 'NO-001', 1, 10, 'available'),
 (2, '示例对象乙', '责任人B', 'NO-002', 2, 5, 'available'),
 (3, '示例对象丙', '责任人C', 'NO-003', 3, 8, 'available');
@@ -96,20 +88,6 @@ INSERT IGNORE INTO biz_item (id, title, author, isbn, category_id, stock, status
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '办理须知', '请提交申请并等待审核；结果将写入站内消息。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='办理须知');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `biz_ticket_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

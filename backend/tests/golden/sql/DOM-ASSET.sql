@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS asset (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(64),
+  spec_model VARCHAR(100),
+  asset_no VARCHAR(64),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -45,18 +41,14 @@ CREATE TABLE IF NOT EXISTS asset (
 -- book_id 列名兼容 TicketStore archive 模式（存 asset.id）
 CREATE TABLE IF NOT EXISTS requisition (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  asset_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
   qty INT NOT NULL DEFAULT 1,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(255),
   pickup_at DATETIME NULL,
   pickup_place VARCHAR(128) DEFAULT '',
@@ -101,7 +93,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '办公耗材'), (2, '固定资产'), (3, '劳保用品');
-INSERT IGNORE INTO asset (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO asset (id, title, spec_model, asset_no, category_id, stock, status) VALUES
 (1, 'A4 复印纸', '70g / 500 张', 'AS-PAPER-001', 1, 40, 'available'),
 (2, '台式办公电脑', '联想启天 / i5', 'AS-PC-002', 2, 3, 'available'),
 (3, '安全帽', 'ABS 黄色', 'AS-PPE-003', 3, 20, 'available'),
@@ -116,20 +108,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领用须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周盘点', '周五下午库房盘点，请提前完成申领。', 'admin', '仓管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周盘点');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `requisition_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
