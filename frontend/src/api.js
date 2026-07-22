@@ -37,6 +37,22 @@ export const api = {
       timeout: 300000,
     })
   },
+  /** 多材料分堆预览（不建项目） */
+  uploadPlan: (files, onProgress) => {
+    const list = Array.isArray(files) ? files : [files]
+    const fd = new FormData()
+    list.forEach((f) => {
+      if (f) fd.append('files', f)
+    })
+    return http.post('/projects/upload/plan', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+      timeout: 300000,
+    })
+  },
+  /** 确认分堆并创建项目 */
+  uploadConfirm: (body) =>
+    http.post('/projects/upload/confirm', body, { timeout: 600000 }),
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
   getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
@@ -79,9 +95,11 @@ export const api = {
   saveDeepseek: (body) => http.put('/deepseek', body),
   testDeepseek: () => http.post('/deepseek/test'),
   deepseekBalance: () => http.get('/deepseek/balance'),
-  deepseekUsage: (params) => http.get('/deepseek/usage', { params }),
-  deepseekUsageChart: (params) => http.get('/deepseek/usage/chart', { params }),
-  deepseekCalls: (params) => http.get('/deepseek/calls', { params }),
+  llmUsage: (params) => http.get('/llm/usage', { params }),
+  llmUsageChart: (params) => http.get('/llm/usage/chart', { params }),
+  llmUsageSupport: (params) => http.get('/llm/usage/support', { params }),
+  llmProjectTokens: () => http.get('/llm/usage/project-tokens'),
+  llmCalls: (params) => http.get('/llm/calls', { params }),
   gemini: () => http.get('/gemini'),
   saveGemini: (body) => http.put('/gemini', body),
   testGemini: () => http.post('/gemini/test'),

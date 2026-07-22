@@ -113,7 +113,9 @@ class DeepSeekSettings(BaseModel):
     project_token_budget: int = Field(default=100_000, description="单项目 Token 预算")
     monthly_token_budget: int = Field(default=1_000_000, description="月度 Token 预算")
     fix_rounds_max: int = Field(default=5, description="最大修复轮数")
-    monthly_tokens_used: int = Field(default=0, description="本月已用 Token")
+    monthly_tokens_used: int = Field(default=0, description="本月已用 Token（合计）")
+    monthly_tokens_pipeline: int = Field(default=0, description="本月项目流水线 Token")
+    monthly_tokens_support: int = Field(default=0, description="本月系统支持 Token")
     project_usages: list[ProjectTokenUsage] = Field(default_factory=list, description="分项目用量")
     deepseek_enabled: bool = Field(default=True, description="是否启用 DeepSeek")
     gemini_enabled: bool = Field(default=False, description="是否启用 Gemini")
@@ -160,7 +162,9 @@ class GeminiSettings(BaseModel):
     project_token_budget: int = Field(default=100_000, description="单项目 Token 预算")
     monthly_token_budget: int = Field(default=1_000_000, description="月度 Token 预算")
     fix_rounds_max: int = Field(default=5, description="最大修复轮数")
-    monthly_tokens_used: int = Field(default=0, description="本月已用 Token")
+    monthly_tokens_used: int = Field(default=0, description="本月已用 Token（合计）")
+    monthly_tokens_pipeline: int = Field(default=0, description="本月项目流水线 Token")
+    monthly_tokens_support: int = Field(default=0, description="本月系统支持 Token")
     deepseek_enabled: bool = Field(default=True, description="是否启用 DeepSeek")
     gemini_enabled: bool = Field(default=False, description="是否启用 Gemini")
     preferred: str = Field(default="deepseek", description="双开时优先厂商")
@@ -222,7 +226,9 @@ class StatsOut(BaseModel):
     total: int = Field(description="总数")
     generating: int = Field(description="生成中")
     previewable: int = Field(description="可预览")
-    monthly_tokens: int = Field(description="本月 Token")
+    monthly_tokens: int = Field(description="本月 Token（合计）")
+    monthly_tokens_pipeline: int = Field(default=0, description="本月项目流水线 Token")
+    monthly_tokens_support: int = Field(default=0, description="本月系统支持 Token")
     monthly_budget: int = Field(description="月度预算")
 
 
@@ -272,6 +278,65 @@ class ApiOk(BaseModel):
     ok: bool = Field(default=True, description="是否成功")
     message: str = Field(default="", description="说明")
     data: Any = Field(default=None, description="附加数据")
+
+
+class UploadClusterFile(BaseModel):
+    model_config = ConfigDict(title="分堆材料")
+
+    index: int = Field(description="文件索引")
+    name: str = Field(description="文件名")
+    role: str = Field(default="", description="proposal/taskbook/checklist/unknown")
+    title: str = Field(default="", description="题目锚")
+    signal: int = Field(default=0, description="业务信号分")
+    fingerprint: list[str] = Field(default_factory=list, description="能力指纹")
+    chars: int = Field(default=0, description="有效正文长度")
+
+
+class UploadClusterGroup(BaseModel):
+    model_config = ConfigDict(title="分堆项目簇")
+
+    id: int = Field(description="簇序号")
+    label: str = Field(description="建议项目标题")
+    reason: str = Field(default="", description="归为一组的理由")
+    files: list[UploadClusterFile] = Field(default_factory=list)
+
+
+class UploadDiscardItem(BaseModel):
+    model_config = ConfigDict(title="剔除材料")
+
+    index: int = Field(description="文件索引")
+    name: str = Field(description="文件名")
+    reason: str = Field(default="", description="剔除原因")
+
+
+class UploadPlanOut(BaseModel):
+    model_config = ConfigDict(title="上传分堆方案")
+
+    plan_id: str = Field(description="方案 ID，确认时回传")
+    source: str = Field(description="llm / rules / confirmed")
+    llm_ok: bool = Field(default=False, description="是否采用了 LLM 分堆")
+    notes: str = Field(default="", description="说明")
+    files: list[UploadClusterFile] = Field(default_factory=list)
+    discard: list[UploadDiscardItem] = Field(default_factory=list)
+    clusters: list[UploadClusterGroup] = Field(default_factory=list)
+
+
+class UploadConfirmIn(BaseModel):
+    model_config = ConfigDict(title="确认上传分堆")
+
+    plan_id: str = Field(description="方案 ID")
+    clusters: Optional[list[list[int]]] = Field(
+        default=None, description="可选：覆盖簇内文件索引"
+    )
+    discard: Optional[list[int]] = Field(default=None, description="可选：覆盖剔除索引")
+
+
+class UploadConfirmOut(BaseModel):
+    model_config = ConfigDict(title="确认上传结果")
+
+    projects: list[ProjectDetail] = Field(default_factory=list)
+    discarded: list[UploadDiscardItem] = Field(default_factory=list)
+    notes: str = Field(default="")
 
 
 class SampleProposalRequest(BaseModel):
