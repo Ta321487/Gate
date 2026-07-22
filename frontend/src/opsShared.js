@@ -85,10 +85,33 @@ export const CHECKLIST_RESULT = {
 
 export const JOB_STATUS = {
   queued: { label: '排队', pill: 'pill-neutral' },
-  running: { label: '运行中', pill: 'pill-teal' },
+  running: { label: '生成中', pill: 'pill-teal' },
   success: { label: '成功', pill: 'pill-green' },
   failed: { label: '失败', pill: 'pill-red' },
   cancelled: { label: '已取消', pill: 'pill-neutral' },
+}
+
+/** 与 backend STEP_DEFS 对齐；任务列表 step 字段存 key */
+export const JOB_STEP_LABELS = {
+  queued: '排队',
+  parse_merge: '解析开题 · 合并 Spec',
+  copy_bake: '复制骨架 · 领域 SQL',
+  island_fill: '业务配置填充',
+  build_verify: '构建验证',
+  gate_e2e: '门禁：登录 + 主流程',
+  pack: '开题对照 · 打包 ZIP',
+}
+
+export function jobStepLabel(step) {
+  const raw = String(step || '').trim()
+  if (!raw) return '—'
+  if (JOB_STEP_LABELS[raw]) return JOB_STEP_LABELS[raw]
+  if (raw.startsWith('resume:')) {
+    const key = raw.slice('resume:'.length)
+    const title = JOB_STEP_LABELS[key] || key
+    return `续跑 · ${title}`
+  }
+  return raw
 }
 
 /** 步骤状态：旧数据 wait → pending，供 step-rail class 使用 */

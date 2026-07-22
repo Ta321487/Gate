@@ -53,7 +53,7 @@ import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
-import { JOB_STATUS, statusPillNode } from '../opsShared'
+import { JOB_STATUS, jobStepLabel, statusPillNode } from '../opsShared'
 
 const router = useRouter()
 const list = ref([])
@@ -195,7 +195,7 @@ const columns = [
   {
     title: '步骤',
     key: 'step',
-    render: (r) => (r.isGroup ? h('span', { class: 'muted' }, '—') : r.step),
+    render: (r) => (r.isGroup ? h('span', { class: 'muted' }, '—') : jobStepLabel(r.step)),
   },
   {
     title: '状态',
