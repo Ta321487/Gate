@@ -60,15 +60,6 @@ CREATE TABLE IF NOT EXISTS biz_order (
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
-  receiver_name VARCHAR(64) DEFAULT '',
-  receiver_phone VARCHAR(32) DEFAULT '',
-  address_line VARCHAR(255) DEFAULT '',
-  delivery_type VARCHAR(32) DEFAULT '',
-  taste_note VARCHAR(255) DEFAULT '',
-  tracking_no VARCHAR(64) DEFAULT '',
-  pickup_code VARCHAR(32) DEFAULT '',
-  shipped_at DATETIME NULL,
-  reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

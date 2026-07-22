@@ -111,6 +111,7 @@ def domain_sql(
     ticket_table: str | None = None,
     capabilities: list[str] | None = None,
     proposal_text: str = "",
+    ticket_flags: dict | None = None,
 ) -> str:
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
@@ -146,7 +147,11 @@ def domain_sql(
         scan_gallery,
     )
     from app.bake.features.order_extras import ORDER_REVIEW_CAP, scan_order_review
+    from app.bake.features.loyalty import LOYALTY_CAPS, scan_loyalty_caps
+    from app.bake.archive_columns import apply_archive_semantic_columns
+    from app.bake.ticket_columns import apply_ticket_shell_sql
     from app.bake.sql.fragments import (
+        ensure_archive_flag_columns,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
         ensure_favorites_sql,
@@ -154,11 +159,28 @@ def domain_sql(
         ensure_guestbook_sql,
         ensure_order_review_sql,
         ensure_shared_sql_columns,
+        ensure_ticket_extra_sql,
         ensure_ticket_progress_sql,
+        resolve_ticket_flags,
     )
     from app.bake.staff_posts import append_staff_seed_sql
 
-    text = ensure_shared_sql_columns(text)
+    caps = list(capabilities or [])
+    for c in scan_loyalty_caps(proposal_text or ""):
+        if c not in caps:
+            caps.append(c)
+    loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
+    arches_for_sql = list(
+        archetypes or ([archetype] if archetype else [])
+    )
+    # 有子管/岗位任命的域保留 staff 列；预约/订单履约列按域拆分；忠诚度按能力
+    text = ensure_shared_sql_columns(
+        text,
+        domain=domain or "",
+        archetypes=arches_for_sql,
+        staff=True,
+        loyalty=loyalty_on,
+    )
     runtime = ((DOMAINS.get(domain) or {}).get("runtime") or {})
     resolved_ticket = ticket_table or runtime.get("ticket_table")
     if not resolved_ticket and domain == "DOM-GENERIC":
@@ -174,6 +196,36 @@ def domain_sql(
         resolved_item = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
             "archive_item_table"
         ) or "biz_item"
+    flags = resolve_ticket_flags(
+        domain or "",
+        archetype=archetype,
+        archetypes=archetypes,
+        ticket_flags=ticket_flags,
+    )
+    text = ensure_ticket_extra_sql(
+        text,
+        domain=domain or "",
+        ticket_table=resolved_ticket,
+        ticket_flags=flags,
+    )
+    text = apply_ticket_shell_sql(
+        text,
+        domain=domain or "",
+        ticket_table=resolved_ticket,
+        ticket_flags=flags,
+    )
+    text = ensure_archive_flag_columns(
+        text,
+        item_table=resolved_item,
+        allow_checkin=bool(flags.get("allowCheckin")),
+        check_mutex=bool(flags.get("checkMutex")),
+    )
+    text = apply_archive_semantic_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+        archetypes=arches_for_sql,
+    )
     text = ensure_ticket_progress_sql(text, resolved_ticket)
     text = ensure_guestbook_sql(
         text,
@@ -193,7 +245,6 @@ def domain_sql(
             proposal_text=proposal_text,
         ),
     )
-    caps = list(capabilities or [])
     text = ensure_browse_history_sql(
         text,
         enabled=BROWSE_HISTORY_CAP in caps or scan_browse_history(proposal_text),
@@ -249,6 +300,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
         capabilities=spec.get("capabilities"),
         proposal_text=str(spec.get("proposal_text") or spec.get("title") or ""),
+        ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
     )
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
@@ -587,6 +639,51 @@ def _write_loyalty_resource(dest: Path, schema: dict[str, Any]) -> None:
     _write(path, json.dumps(loyalty, ensure_ascii=False, indent=2))
 
 
+def _write_ticket_columns_resource(
+    dest: Path,
+    *,
+    domain: str,
+    ticket_table: str | None,
+    ticket_flags: dict | None,
+) -> None:
+    from app.bake.ticket_columns import ticket_column_payload
+
+    path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-columns.json"
+    _write(
+        path,
+        json.dumps(
+            ticket_column_payload(
+                domain, ticket_table=ticket_table, ticket_flags=ticket_flags
+            ),
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+
+def _write_archive_columns_resource(
+    dest: Path,
+    *,
+    domain: str,
+    archetypes: list[str] | None,
+    item_table: str | None,
+) -> None:
+    """学生端 ArchiveStore 读取：逻辑键 author/isbn → 物理列名。"""
+    from app.bake.archive_columns import archive_column_payload
+
+    path = dest / "backend" / "src" / "main" / "resources" / "domain-archive-columns.json"
+    _write(
+        path,
+        json.dumps(
+            archive_column_payload(
+                domain, archetypes=archetypes, item_table=item_table
+            ),
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+
 def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
     """学生端 TicketStore 进度/提示文案：来自 schema.entities.ticket（及 archive 名）。"""
     from app.bake.ticket_copy_text import sibling_reject_tip, stock_unavailable_label
@@ -702,6 +799,52 @@ def _write_factory_delivered(
     _write_profile_fields_resource(dest, schema)
     _write_loyalty_resource(dest, schema)
     _write_ticket_copy_resource(dest, schema)
+    arches = None
+    item_table = ((dom_meta.get("runtime") or {}).get("archive_item_table"))
+    spec_path = dest / "spec.json"
+    if spec_path.is_file():
+        try:
+            spec_obj = json.loads(spec_path.read_text(encoding="utf-8"))
+            arches = spec_obj.get("archetypes")
+            if not arches and spec_obj.get("archetype"):
+                arches = [spec_obj.get("archetype")]
+            rt = spec_obj.get("runtime") or {}
+            if rt.get("archive_item_table"):
+                item_table = rt.get("archive_item_table")
+        except Exception:
+            pass
+    if not item_table and domain == "DOM-GENERIC":
+        from app.bake.archetype_shells import shell_runtime
+
+        item_table = (shell_runtime(archetypes=arches) or {}).get(
+            "archive_item_table"
+        ) or "biz_item"
+    _write_archive_columns_resource(
+        dest,
+        domain=domain,
+        archetypes=arches if isinstance(arches, list) else None,
+        item_table=item_table,
+    )
+    ticket_table = ((dom_meta.get("runtime") or {}).get("ticket_table"))
+    ticket_flags = ((schema.get("entities") or {}).get("ticket")) if isinstance(schema, dict) else None
+    if spec_path.is_file():
+        try:
+            spec_obj = json.loads(spec_path.read_text(encoding="utf-8"))
+            rt = spec_obj.get("runtime") or {}
+            if rt.get("ticket_table"):
+                ticket_table = rt.get("ticket_table")
+            ent = ((spec_obj.get("schema") or {}).get("entities") or {}).get("ticket")
+            if isinstance(ent, dict):
+                ticket_flags = ent
+        except Exception:
+            pass
+    if ticket_table:
+        _write_ticket_columns_resource(
+            dest,
+            domain=domain,
+            ticket_table=ticket_table,
+            ticket_flags=ticket_flags if isinstance(ticket_flags, dict) else None,
+        )
 
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:

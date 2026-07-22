@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,7 +29,7 @@ CREATE TABLE IF NOT EXISTS article (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
-  isbn TEXT,
+  body_html TEXT,
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -84,7 +80,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '技术'), (2, '随笔'), (3, '资讯');
-INSERT IGNORE INTO article (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO article (id, title, author, body_html, category_id, stock, status) VALUES
 (1, '从零搭建个人博客', '主编', '<p>用 <strong>Spring Boot</strong> + <em>Vue</em> 搭一套可演示的文章站点。</p><ol><li>建库与种子</li><li>档案与收藏单据</li><li>富文本正文</li></ol>', 1, 1, 'available'),
 (2, 'JdbcTemplate 幂等种子实践', '编辑甲', '<p>重启不 Cle 业务数据：</p><ul><li><code>INSERT IGNORE</code></li><li><code>WHERE NOT EXISTS</code></li></ul>', 1, 1, 'available'),
 (3, '毕业季的咖啡馆', '读者甲', '<p>期末周的一角安静时光，写给即将离开的校园。</p>', 2, 1, 'available'),
@@ -98,20 +94,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='阅读须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '技术与随笔栏目已更新演示文章，欢迎收藏订阅。', 'admin', '主编'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS user_favorite (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

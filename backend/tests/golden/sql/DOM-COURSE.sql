@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS course (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(128),
+  teacher VARCHAR(100),
+  course_code VARCHAR(128),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -49,17 +45,13 @@ CREATE TABLE IF NOT EXISTS course (
 -- book_id=course.id
 CREATE TABLE IF NOT EXISTS enrollment (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  course_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(255)
 );
 
@@ -102,7 +94,7 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '人文素养'), (2, '艺术审美'), (3, '创新创业');
 -- 1 与 4 时段重叠；2 与 3 同互斥码 MX-ELECTIVE；分类限额默认每类 1 门（schema categoryLimit）
-INSERT IGNORE INTO course (id, title, author, isbn, category_id, stock, status, mutex_code, start_at, end_at, apply_deadline_at) VALUES
+INSERT IGNORE INTO course (id, title, teacher, course_code, category_id, stock, status, mutex_code, start_at, end_at, apply_deadline_at) VALUES
 (1, '中国古典诗词鉴赏', '张老师', 'GX2301 / 文楼 301', 1, 60, 'available', '', '2026-09-10 14:00:00', '2026-09-10 15:40:00', '2026-09-08 23:59:59'),
 (2, '摄影基础与构图', '李老师', 'GX2302 / 艺术楼 102', 2, 40, 'available', 'MX-ELECTIVE', '2026-09-11 10:00:00', '2026-09-11 11:40:00', '2026-09-08 23:59:59'),
 (3, '大学生创新创业导论', '王老师', 'GX2303 / 经管楼 205', 3, 80, 'available', 'MX-ELECTIVE', '2026-09-12 19:00:00', '2026-09-12 20:40:00', '2026-09-08 23:59:59'),
@@ -118,20 +110,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选课须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本学期开放', '公选课已开放申请，请登录系统选课。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本学期开放');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `enrollment_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS customer (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(256),
+  contact_name VARCHAR(100),
+  contact_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -45,17 +41,13 @@ CREATE TABLE IF NOT EXISTS customer (
 -- book_id=customer.id
 CREATE TABLE IF NOT EXISTS follow_up (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  customer_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
   next_follow_at DATETIME NULL
@@ -99,7 +91,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '重点客户'), (2, '普通客户'), (3, '潜在线索');
-INSERT IGNORE INTO customer (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO customer (id, title, contact_name, contact_note, category_id, stock, status) VALUES
 (1, '星河科技有限公司', '李总', '13811110001 / 意向采购办公设备', 1, 1, 'available'),
 (2, '青禾教育', '王老师', '13922220002 / 咨询培训合作', 2, 1, 'available'),
 (3, '未命名线索-展会', '张女士', '13733330003 / 展会名片', 3, 1, 'available'),
@@ -114,20 +106,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跟进须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周重点', '重点客户续约与展会线索请于周五前提交跟进。', 'admin', '销售主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周重点');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `follow_up_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

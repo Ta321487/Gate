@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS category (
@@ -30,8 +26,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS doctor (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(128),
+  fee_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  title_note VARCHAR(128) DEFAULT '',
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -54,17 +50,10 @@ CREATE TABLE IF NOT EXISTS reservation (
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'confirmed',
   remark VARCHAR(255) DEFAULT '',
-  plate_no VARCHAR(16) DEFAULT '',
   patient_name VARCHAR(32) DEFAULT '',
   visit_type VARCHAR(16) DEFAULT '',
   symptom_note VARCHAR(255) DEFAULT '',
-  subject VARCHAR(128) DEFAULT '',
-  party_size INT DEFAULT 0,
-  guest_name VARCHAR(32) DEFAULT '',
-  guest_count INT DEFAULT 0,
-  preferred_stylist VARCHAR(32) DEFAULT '',
   queue_no INT DEFAULT 0,
-  entry_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -97,7 +86,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '内科'), (2, '外科'), (3, '口腔');
-INSERT IGNORE INTO doctor (id, title, author, isbn, category_id, stock, status) VALUES
+INSERT IGNORE INTO doctor (id, title, fee_yuan, title_note, category_id, stock, status) VALUES
 (1, '张医生', '15.00', '主任医师 / 上午门诊', 1, 1, 'available'),
 (2, '李医生', '15.00', '副主任医师', 2, 1, 'available'),
 (3, '王医生', '20.00', '口腔专科', 3, 1, 'available');
@@ -117,20 +106,6 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '挂号须知', '选择医生与时段挂号；号源有限，约满不可再约。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='挂号须知');
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

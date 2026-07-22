@@ -16,10 +16,6 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
-  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  points INT NOT NULL DEFAULT 0,
-  member_tier VARCHAR(32) DEFAULT '',
-  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS activity (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(128),
+  organizer VARCHAR(100),
+  venue VARCHAR(128),
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
@@ -49,18 +45,19 @@ CREATE TABLE IF NOT EXISTS activity (
 -- book_id=activity.id
 CREATE TABLE IF NOT EXISTS signup (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
+  activity_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
-  due_at DATETIME NULL,
   return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(255)
+  remark VARCHAR(255),
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
+  checked_in_at DATETIME NULL,
+  fine_status VARCHAR(16) DEFAULT 'none',
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -102,7 +99,7 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '社团活动'), (2, '志愿活动'), (3, '讲座');
 -- 1 与 4 时段重叠，便于演示冲突；截止日放在开课前
-INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+INSERT IGNORE INTO activity (id, title, organizer, venue, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
 (1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅', 1, 40, 'available', '2026-10-11 09:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
 (2, '校园环保志愿清扫', '青年志愿者协会', '南门集合', 2, 30, 'available', '2026-10-12 08:30:00', '2026-10-12 11:30:00', '2026-10-11 20:00:00'),
 (3, '就业指导讲座', '就业指导中心', '图书馆报告厅', 3, 80, 'available', '2026-10-15 19:00:00', '2026-10-15 21:00:00', '2026-10-15 12:00:00'),
@@ -119,20 +116,6 @@ SELECT '本周精选', '编程马拉松与环保志愿已开放报名，欢迎�
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');
 
 UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
-
-CREATE TABLE IF NOT EXISTS user_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  kind VARCHAR(16) NOT NULL,
-  delta DECIMAL(12,2) NOT NULL,
-  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(64) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  operator VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ledger_user (username, id)
-);
 
 CREATE TABLE IF NOT EXISTS `signup_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
