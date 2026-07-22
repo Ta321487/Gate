@@ -37,7 +37,6 @@ public final class SlotStore {
         enabled = !SLOT.isBlank() && !RESV.isBlank();
         requireRemark = false;
         requireConfirm = false;
-        if (enabled) ensureResvColumns();
     }
 
     public static void configureRemark(boolean required) {
@@ -169,41 +168,46 @@ public final class SlotStore {
                 "UPDATE " + SLOT + " SET booked=booked+1 WHERE id=? AND booked<capacity", slotId);
         if (updated == 0) throw new IllegalStateException("该时段已约满");
         KeyHolder kh = new GeneratedKeyHolder();
-        boolean rich = hasResvColumn("plate_no");
+        LinkedHashMap<String, Object> extraCols = new LinkedHashMap<>();
+        if (hasResvColumn("plate_no")) extraCols.put("plate_no", plate);
+        if (hasResvColumn("patient_name")) extraCols.put("patient_name", patient);
+        if (hasResvColumn("visit_type")) extraCols.put("visit_type", visit);
+        if (hasResvColumn("symptom_note")) extraCols.put("symptom_note", symptom);
+        if (hasResvColumn("subject")) extraCols.put("subject", subject);
+        if (hasResvColumn("party_size")) extraCols.put("party_size", party);
+        if (hasResvColumn("guest_name")) extraCols.put("guest_name", guest);
+        if (hasResvColumn("guest_count")) extraCols.put("guest_count", guestCount);
+        if (hasResvColumn("preferred_stylist")) extraCols.put("preferred_stylist", stylist);
+        if (hasResvColumn("queue_no")) {
+            extraCols.put("queue_no", queue > 0 ? queue : (int) (slotId % 1000) + 1);
+        }
         try {
             db().update(con -> {
-                PreparedStatement ps;
-                if (rich) {
-                    ps = con.prepareStatement(
-                            "INSERT INTO " + RESV
-                                    + " (slot_id,username,status,remark,plate_no,patient_name,visit_type,symptom_note,"
-                                    + "subject,party_size,guest_name,guest_count,preferred_stylist,queue_no,created_at)"
-                                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                            Statement.RETURN_GENERATED_KEYS);
-                    ps.setLong(1, slotId);
-                    ps.setString(2, username);
-                    ps.setString(3, initialStatus);
-                    ps.setString(4, noteFinal);
-                    ps.setString(5, plate);
-                    ps.setString(6, patient);
-                    ps.setString(7, visit);
-                    ps.setString(8, symptom);
-                    ps.setString(9, subject);
-                    ps.setInt(10, party);
-                    ps.setString(11, guest);
-                    ps.setInt(12, guestCount);
-                    ps.setString(13, stylist);
-                    ps.setInt(14, queue > 0 ? queue : (int) (slotId % 1000) + 1);
-                    ps.setTimestamp(15, Timestamp.valueOf(LocalDateTime.now()));
-                } else {
-                    ps = con.prepareStatement(
-                            "INSERT INTO " + RESV + " (slot_id,username,status,remark,created_at) VALUES (?,?,?,?,?)",
-                            Statement.RETURN_GENERATED_KEYS);
-                    ps.setLong(1, slotId);
-                    ps.setString(2, username);
-                    ps.setString(3, initialStatus);
-                    ps.setString(4, noteFinal);
-                    ps.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+                StringBuilder cols = new StringBuilder(
+                        "slot_id,username,status,remark");
+                StringBuilder marks = new StringBuilder("?,?,?,?");
+                List<Object> args = new ArrayList<>();
+                args.add(slotId);
+                args.add(username);
+                args.add(initialStatus);
+                args.add(noteFinal);
+                for (Map.Entry<String, Object> e : extraCols.entrySet()) {
+                    cols.append(',').append(e.getKey());
+                    marks.append(",?");
+                    args.add(e.getValue());
+                }
+                cols.append(",created_at");
+                marks.append(",?");
+                args.add(Timestamp.valueOf(LocalDateTime.now()));
+                PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO " + RESV + " (" + cols + ") VALUES (" + marks + ")",
+                        Statement.RETURN_GENERATED_KEYS);
+                for (int i = 0; i < args.size(); i++) {
+                    Object v = args.get(i);
+                    if (v instanceof Timestamp ts) ps.setTimestamp(i + 1, ts);
+                    else if (v instanceof Integer n) ps.setInt(i + 1, n);
+                    else if (v instanceof Long n) ps.setLong(i + 1, n);
+                    else ps.setString(i + 1, v == null ? "" : String.valueOf(v));
                 }
                 return ps;
             }, kh);
@@ -560,28 +564,6 @@ public final class SlotStore {
             return n != null && n > 0;
         } catch (Exception e) {
             return false;
-        }
-    }
-
-    private static void ensureResvColumns() {
-        ensureResvCol("plate_no", "VARCHAR(16) DEFAULT ''");
-        ensureResvCol("patient_name", "VARCHAR(32) DEFAULT ''");
-        ensureResvCol("visit_type", "VARCHAR(16) DEFAULT ''");
-        ensureResvCol("symptom_note", "VARCHAR(255) DEFAULT ''");
-        ensureResvCol("subject", "VARCHAR(128) DEFAULT ''");
-        ensureResvCol("party_size", "INT DEFAULT 0");
-        ensureResvCol("guest_name", "VARCHAR(32) DEFAULT ''");
-        ensureResvCol("guest_count", "INT DEFAULT 0");
-        ensureResvCol("preferred_stylist", "VARCHAR(32) DEFAULT ''");
-        ensureResvCol("queue_no", "INT DEFAULT 0");
-        ensureResvCol("entry_at", "DATETIME NULL");
-    }
-
-    private static void ensureResvCol(String col, String ddl) {
-        if (hasResvColumn(col)) return;
-        try {
-            db().execute("ALTER TABLE " + RESV + " ADD COLUMN " + col + " " + ddl);
-        } catch (Exception ignored) {
         }
     }
 

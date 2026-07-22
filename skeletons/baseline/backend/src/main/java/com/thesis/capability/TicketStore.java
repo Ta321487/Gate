@@ -1,5 +1,6 @@
 package com.thesis.capability;
 
+import com.thesis.config.DomainResourceJson;
 import com.thesis.service.MessageStore;
 import com.thesis.service.UserStore;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -32,6 +33,8 @@ public final class TicketStore {
 
     static String TICKET = "borrow";
     static String PROGRESS = "";
+    /** archive 行外键物理列（bake：book_id / customer_id / activity_id …） */
+    static String ITEM_FK = "book_id";
     static Mode MODE = Mode.ARCHIVE;
     static boolean enabled = false;
     static boolean useQuota = true;
@@ -101,6 +104,7 @@ public final class TicketStore {
         TicketCopy.loadCopyFromResource();
         ensureProgressTable();
         ensureL1Columns();
+        loadTicketColumnsFromResource();
     }
 
     /** 报修等：无档案占用、无到期催办 */
@@ -114,6 +118,7 @@ public final class TicketStore {
         TicketCopy.loadCopyFromResource();
         ensureProgressTable();
         ensureL1Columns();
+        loadTicketColumnsFromResource();
     }
 
     /** 约定：进度表 = {单据表}_progress；可显式覆盖。 */
@@ -157,19 +162,14 @@ public final class TicketStore {
     public static void configureLoanOptions(boolean pickPeriod, boolean qtyEnabled) {
         pickLoanPeriod = pickPeriod && useDeadline;
         allowQty = qtyEnabled && useQuota && MODE == Mode.ARCHIVE;
-        if (allowQty) {
-            ensureColumn("qty", "INT NOT NULL DEFAULT 1");
-        }
+        // qty 列由 bake 按域/能力写入，禁止运行时 ALTER
     }
 
     /** 必填说明 + 起止日期（申领用途 / 跟进 / 请假等） */
     public static void configureApplyExtras(boolean remarkRequired, boolean dateRange) {
         requireRemark = remarkRequired;
         pickDateRange = dateRange && MODE == Mode.ARCHIVE;
-        if (pickDateRange) {
-            ensureColumn("period_start", "DATETIME NULL");
-            ensureColumn("period_end", "DATETIME NULL");
-        }
+        // period_* 列由 bake 写入
     }
 
     /** 审核即收口：通过/驳回都算办结，不再把 approved 算作处理中 */
@@ -190,9 +190,21 @@ public final class TicketStore {
     public static void configureRules(boolean mutex, int catLimit) {
         checkMutex = mutex;
         categoryLimit = Math.max(0, catLimit);
-        if (checkMutex) {
-            ArchiveStore.ensureMutexColumn();
-        }
+        // mutex_code 由 bake 写入档案表
+    }
+
+    public static String ticketTable() {
+        return TICKET;
+    }
+
+    /** 档案外键物理列名；API 仍暴露 bookId/itemId */
+    public static String itemFkColumn() {
+        return ITEM_FK == null || ITEM_FK.isBlank() ? "book_id" : ITEM_FK;
+    }
+
+    private static void loadTicketColumnsFromResource() {
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-columns.json");
+        ITEM_FK = DomainResourceJson.str(root, "itemFkColumn", "book_id");
     }
 
     public static boolean enabled() {
@@ -221,19 +233,12 @@ public final class TicketStore {
 
     public static void configureCheckin(boolean enabled) {
         allowCheckin = enabled;
-        if (enabled) {
-            ensureColumn("checked_in_at", "DATETIME NULL");
-            ArchiveStore.ensureCheckinCodeColumn();
-        }
+        // checked_in_at / 档案 checkin_code 由 bake 按能力写入
     }
 
     public static void configureNoShow(boolean afterEnd, double penaltyYuan) {
         noShowAfterEnd = afterEnd && allowCheckin;
         noShowPenaltyYuan = Math.max(0, penaltyYuan);
-        if (noShowAfterEnd) {
-            ensureColumn("checked_in_at", "DATETIME NULL");
-            ensureColumn("fine_status", "VARCHAR(16) DEFAULT 'none'");
-        }
     }
 
     public static boolean isAllowCheckin() {
@@ -266,11 +271,6 @@ public final class TicketStore {
 
     public static Mode mode() {
         return MODE;
-    }
-
-    /** 当前单据表名（推荐等跨能力读行为用） */
-    public static String ticketTable() {
-        return TICKET;
     }
 
     public static boolean isArchiveMode() {
@@ -329,7 +329,8 @@ public final class TicketStore {
         if (!allowMultiTicket) {
             Integer dup = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TICKET
-                            + " WHERE username=? AND book_id=? AND status IN ('pending','pending_final','approved','overdue')",
+                            + " WHERE username=? AND " + itemFkColumn()
+                            + "=? AND status IN ('pending','pending_final','approved','overdue')",
                     Integer.class, username, itemId);
             if (dup != null && dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
         }
@@ -352,8 +353,17 @@ public final class TicketStore {
         final String initialStatus = autoApprove ? "approved" : "pending";
         final boolean withApproveAt = autoApprove && hasColumn("approve_at");
         TicketSql.db().update(con -> {
-            StringBuilder cols = new StringBuilder("book_id,username,status,apply_at,fine_yuan,remind_msg,remark");
-            StringBuilder vals = new StringBuilder("?,?, ?, NOW(), 0, '', ?");
+            StringBuilder cols = new StringBuilder(
+                    itemFkColumn() + ",username,status,apply_at,remark");
+            StringBuilder vals = new StringBuilder("?,?,?,NOW(),?");
+            if (hasColumn("fine_yuan")) {
+                cols.append(",fine_yuan");
+                vals.append(",0");
+            }
+            if (hasColumn("remind_msg")) {
+                cols.append(",remind_msg");
+                vals.append(",''");
+            }
             if (withApproveAt) {
                 cols.append(",approve_at");
                 vals.append(",NOW()");
@@ -779,15 +789,44 @@ public final class TicketStore {
                 }
             }
             if (bind) {
-                TicketSql.db().update(
-                        "UPDATE " + TICKET + " SET status='approved', approve_at=?, due_at=?, fine_yuan=0, remind_msg='', remark=?, assignee_username=? WHERE id=?",
-                        Timestamp.valueOf(approveAt), Timestamp.valueOf(dueAt),
-                        note, op, ticketId);
+                StringBuilder sql = new StringBuilder(
+                        "UPDATE " + TICKET + " SET status='approved', approve_at=?, remark=?, assignee_username=?");
+                List<Object> args = new ArrayList<>();
+                args.add(Timestamp.valueOf(approveAt));
+                args.add(note);
+                args.add(op);
+                if (hasColumn("due_at")) {
+                    sql.append(", due_at=?");
+                    args.add(Timestamp.valueOf(dueAt));
+                }
+                if (hasColumn("fine_yuan")) {
+                    sql.append(", fine_yuan=0");
+                }
+                if (hasColumn("remind_msg")) {
+                    sql.append(", remind_msg=''");
+                }
+                sql.append(" WHERE id=?");
+                args.add(ticketId);
+                TicketSql.db().update(sql.toString(), args.toArray());
             } else {
-                TicketSql.db().update(
-                        "UPDATE " + TICKET + " SET status='approved', approve_at=?, due_at=?, fine_yuan=0, remind_msg='', remark=? WHERE id=?",
-                        Timestamp.valueOf(approveAt), Timestamp.valueOf(dueAt),
-                        note, ticketId);
+                StringBuilder sql = new StringBuilder(
+                        "UPDATE " + TICKET + " SET status='approved', approve_at=?, remark=?");
+                List<Object> args = new ArrayList<>();
+                args.add(Timestamp.valueOf(approveAt));
+                args.add(note);
+                if (hasColumn("due_at")) {
+                    sql.append(", due_at=?");
+                    args.add(Timestamp.valueOf(dueAt));
+                }
+                if (hasColumn("fine_yuan")) {
+                    sql.append(", fine_yuan=0");
+                }
+                if (hasColumn("remind_msg")) {
+                    sql.append(", remind_msg=''");
+                }
+                sql.append(" WHERE id=?");
+                args.add(ticketId);
+                TicketSql.db().update(sql.toString(), args.toArray());
             }
         } else if (bind) {
             TicketSql.db().update(
@@ -828,7 +867,7 @@ public final class TicketStore {
         try {
             ids = TicketSql.db().query(
                     "SELECT id FROM " + TICKET
-                            + " WHERE book_id=? AND id<>? AND status IN ('pending','pending_final')",
+                            + " WHERE " + itemFkColumn() + "=? AND id<>? AND status IN ('pending','pending_final')",
                     (rs, i) -> rs.getLong(1),
                     itemId,
                     approvedTicketId);
@@ -1150,12 +1189,12 @@ public final class TicketStore {
         if (size < 1) size = 20;
         if (size > 50) size = 50;
         Integer total = TicketSql.db().queryForObject(
-                "SELECT COUNT(*) FROM " + TICKET + " WHERE book_id=? AND status='approved'",
+                "SELECT COUNT(*) FROM " + TICKET + " WHERE " + itemFkColumn() + "=? AND status='approved'",
                 Integer.class, itemId);
         int t = total == null ? 0 : total;
         List<Map<String, Object>> list = TicketSql.db().query(
                 "SELECT * FROM " + TICKET
-                        + " WHERE book_id=? AND status='approved' ORDER BY id ASC LIMIT ? OFFSET ?",
+                        + " WHERE " + itemFkColumn() + "=? AND status='approved' ORDER BY id ASC LIMIT ? OFFSET ?",
                 (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
                 itemId, size, (page - 1) * size);
         // 公开楼层不暴露内部字段
@@ -1205,21 +1244,7 @@ public final class TicketStore {
     }
 
     static void ensureL1Columns() {
-        ensureColumn("attach_url", "VARCHAR(255) NOT NULL DEFAULT ''");
-        ensureColumn("rating", "INT NULL");
-        ensureColumn("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''");
-        ensureColumn("rated_at", "DATETIME NULL");
-        ensureColumn("priority", "VARCHAR(16) DEFAULT '普通'");
-        ensureColumn("contact_phone", "VARCHAR(20) DEFAULT ''");
-        ensureColumn("fine_status", "VARCHAR(16) DEFAULT 'none'");
-        ensureColumn("pickup_at", "DATETIME NULL");
-        ensureColumn("pickup_place", "VARCHAR(128) DEFAULT ''");
-        ensureColumn("actual_qty", "INT NULL");
-        ensureColumn("contact_channel", "VARCHAR(32) DEFAULT ''");
-        ensureColumn("next_follow_at", "DATETIME NULL");
-        if (allowCheckin) {
-            ensureColumn("checked_in_at", "DATETIME NULL");
-        }
+        // no-op：单据扩展列由 bake 按域/能力写入，禁止运行时补 L1 超集
     }
 
     /** CRM 等：申请后补写可选列 */
@@ -1318,10 +1343,14 @@ public final class TicketStore {
             m.put("bookTotal", ArchiveStore.countItems());
             m.put("stockTotal", ArchiveStore.sumStock());
             m.put("categoryTotal", ArchiveStore.countCategories());
-            if (useDeadline) {
+            if (useDeadline && hasColumn("fine_yuan")) {
                 Double fineOpen = TicketSql.db().queryForObject(
                         "SELECT COALESCE(SUM(fine_yuan),0) FROM " + TICKET + " WHERE status='overdue'", Double.class);
                 m.put("openFineYuan", Math.round((fineOpen == null ? 0 : fineOpen) * 10.0) / 10.0);
+                m.put("loanDays", LOAN_DAYS);
+                m.put("finePerDay", FINE_PER_DAY);
+            } else if (useDeadline) {
+                m.put("openFineYuan", 0);
                 m.put("loanDays", LOAN_DAYS);
                 m.put("finePerDay", FINE_PER_DAY);
             }

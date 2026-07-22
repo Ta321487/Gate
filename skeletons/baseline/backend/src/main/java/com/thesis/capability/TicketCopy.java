@@ -1,16 +1,12 @@
 package com.thesis.capability;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.io.ClassPathResource;
+import com.thesis.config.DomainResourceJson;
 
-import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 final class TicketCopy {
 
-    static final ObjectMapper COPY_JSON = new ObjectMapper();
     static Map<String, String> STATE_LABELS = Map.of();
     static Map<String, String> VERB_LABELS = Map.of();
     static String CHECKIN_LABEL = "签到";
@@ -24,46 +20,40 @@ final class TicketCopy {
 
     /** 读取 bake 写入的 domain-ticket-copy.json（states/verbs 文案）。 */
     static void loadCopyFromResource() {
-        try {
-            ClassPathResource res = new ClassPathResource("domain-ticket-copy.json");
-            if (!res.exists()) return;
-            try (InputStream in = res.getInputStream()) {
-                Map<String, Object> root = COPY_JSON.readValue(in, new TypeReference<>() {});
-                Object st = root.get("states");
-                if (st instanceof Map<?, ?> map) {
-                    Map<String, String> out = new LinkedHashMap<>();
-                    for (Map.Entry<?, ?> e : map.entrySet()) {
-                        if (e.getKey() == null || e.getValue() == null) continue;
-                        String lab = String.valueOf(e.getValue()).trim();
-                        if (!lab.isBlank()) out.put(String.valueOf(e.getKey()), lab);
-                    }
-                    if (!out.isEmpty()) STATE_LABELS = out;
-                }
-                Object vb = root.get("verbs");
-                if (vb instanceof Map<?, ?> map) {
-                    Map<String, String> out = new LinkedHashMap<>();
-                    for (Map.Entry<?, ?> e : map.entrySet()) {
-                        if (e.getKey() == null || e.getValue() == null) continue;
-                        String lab = String.valueOf(e.getValue()).trim();
-                        if (!lab.isBlank()) out.put(String.valueOf(e.getKey()), lab);
-                    }
-                    if (!out.isEmpty()) VERB_LABELS = out;
-                }
-                String cin = TicketSql.str(root.get("checkinLabel")).trim();
-                if (!cin.isBlank()) CHECKIN_LABEL = cin;
-                String fp = TicketSql.str(root.get("finePaidLabel")).trim();
-                if (!fp.isBlank()) FINE_PAID_LABEL = fp;
-                String arch = TicketSql.str(root.get("archiveLabel")).trim();
-                if (!arch.isBlank()) ARCHIVE_LABEL = arch;
-                String dl = TicketSql.str(root.get("applyDeadlineLabel")).trim();
-                if (!dl.isBlank()) APPLY_DEADLINE_LABEL = dl;
-                String sl = TicketSql.str(root.get("stockLabel")).trim();
-                if (!sl.isBlank()) ArchiveStore.configureStockLabel(sl);
-                String srt = TicketSql.str(root.get("siblingRejectTip")).trim();
-                if (!srt.isBlank()) SIBLING_REJECT_TIP = srt;
-            }
-        } catch (Exception ignored) {
+        Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-copy.json");
+        if (root.isEmpty()) return;
+        Object st = root.get("states");
+        if (st instanceof Map<?, ?> map) {
+            Map<String, String> out = stringMap(map);
+            if (!out.isEmpty()) STATE_LABELS = out;
         }
+        Object vb = root.get("verbs");
+        if (vb instanceof Map<?, ?> map) {
+            Map<String, String> out = stringMap(map);
+            if (!out.isEmpty()) VERB_LABELS = out;
+        }
+        String cin = DomainResourceJson.str(root, "checkinLabel", "").trim();
+        if (!cin.isBlank()) CHECKIN_LABEL = cin;
+        String fp = DomainResourceJson.str(root, "finePaidLabel", "").trim();
+        if (!fp.isBlank()) FINE_PAID_LABEL = fp;
+        String arch = DomainResourceJson.str(root, "archiveLabel", "").trim();
+        if (!arch.isBlank()) ARCHIVE_LABEL = arch;
+        String dl = DomainResourceJson.str(root, "applyDeadlineLabel", "").trim();
+        if (!dl.isBlank()) APPLY_DEADLINE_LABEL = dl;
+        String sl = DomainResourceJson.str(root, "stockLabel", "").trim();
+        if (!sl.isBlank()) ArchiveStore.configureStockLabel(sl);
+        String srt = DomainResourceJson.str(root, "siblingRejectTip", "").trim();
+        if (!srt.isBlank()) SIBLING_REJECT_TIP = srt;
+    }
+
+    private static Map<String, String> stringMap(Map<?, ?> map) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> e : map.entrySet()) {
+            if (e.getKey() == null || e.getValue() == null) continue;
+            String lab = String.valueOf(e.getValue()).trim();
+            if (!lab.isBlank()) out.put(String.valueOf(e.getKey()), lab);
+        }
+        return out;
     }
 
     static String stateLabel(String key, String fallback) {

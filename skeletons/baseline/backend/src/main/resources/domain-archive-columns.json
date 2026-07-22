@@ -1,0 +1,7 @@
+{
+  "itemTable": "book",
+  "authorColumn": "author",
+  "isbnColumn": "isbn",
+  "authorDdl": "VARCHAR(100)",
+  "isbnDdl": "VARCHAR(32)"
+}
