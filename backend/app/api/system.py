@@ -23,6 +23,8 @@ from app.schemas import (
     DeepSeekUpdate,
     GeminiSettings,
     GeminiUpdate,
+    SampleProposalRequest,
+    SampleProposalResult,
     SystemInfo,
     UnsplashSettings,
 )
@@ -725,6 +727,7 @@ async def catalog():
         TYPE_PAIRINGS,
         themes_for_domain,
     )
+    from app.bake.api_style import CART_MUTATE_STYLES, ITEM_REF_STYLES
 
     return {
         "archetypes": [
@@ -738,4 +741,63 @@ async def catalog():
         "chrome_styles": list(CHROME_STYLES),
         "layout_shells": list(LAYOUT_SHELLS),
         "type_pairings": list(TYPE_PAIRINGS),
+        "api_style_axes": {
+            "item_ref": list(ITEM_REF_STYLES),
+            "cart_mutate": list(CART_MUTATE_STYLES),
+        },
     }
+
+
+@router.get("/tools/sample-proposal/packs", tags=["工具"], summary="列出测试开题选题包")
+async def list_sample_proposal_packs():
+    from app.bake.sample_proposal import list_packs
+
+    return {"packs": list_packs()}
+
+
+@router.post(
+    "/tools/sample-proposal",
+    response_model=SampleProposalResult,
+    tags=["工具"],
+    summary="生成测试开题（可 LLM 润色）",
+)
+async def create_sample_proposal(
+    body: SampleProposalRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """随机/指定选题 → 模板拼装 → 可选 DeepSeek/Gemini 润色。仅返回正文，由前端下载 txt。"""
+    from app.bake.sample_proposal import build_sample_proposal
+    from app.llm.agents import run_sample_proposal_agent
+    from app.llm.runtime import load_llm_runtime
+
+    try:
+        sample = build_sample_proposal(
+            domain=body.domain,
+            seed=body.seed,
+            pack_id=body.pack_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    used_llm = False
+    text = sample.text
+    if body.use_llm:
+        rt = await load_llm_runtime(db)
+        text, used_llm = await run_sample_proposal_agent(
+            db,
+            rt,
+            draft_text=sample.text,
+            title=sample.title,
+            anchor_domain=sample.anchor_domain,
+        )
+
+    return SampleProposalResult(
+        pack_id=sample.pack_id,
+        anchor_domain=sample.anchor_domain,
+        title=sample.title,
+        filename=sample.filename,
+        text=text,
+        used_llm=used_llm,
+        digressions=list(sample.digressions or []),
+        l1_extras=list(sample.l1_extras or []),
+    )

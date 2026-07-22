@@ -90,6 +90,9 @@ export const api = {
   system: () => http.get('/system'),
   freePorts: () => http.post('/system/free-ports'),
   catalog: () => http.get('/catalog'),
+  sampleProposalPacks: () => http.get('/tools/sample-proposal/packs'),
+  sampleProposal: (body) =>
+    http.post('/tools/sample-proposal', body || {}, { timeout: 180000 }),
 }
 
 export default http

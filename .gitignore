@@ -16,12 +16,13 @@ data/cache/*
 !data/workspace/.gitkeep
 !data/logs/.gitkeep
 !data/cache/.gitkeep
+data/samples/_generated/*.txt
+!data/samples/_generated/.gitkeep
 *.zip
 .title_check.txt
 data/title_check.txt
 **/target/
 skeletons/**/node_modules/
-backend/scripts/
 
 # launcher-owned backend pid
 backend/.gate_backend.pid
