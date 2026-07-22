@@ -6,6 +6,10 @@
       单次上传对应一个项目；如需创建多个项目，请分次提交，系统将按队列依次处理并展示进度。
     </p>
 
+    <div class="row mb-12" style="justify-content:flex-end;gap:8px">
+      <n-button size="small" @click="openSampleProposal">生成测试开题</n-button>
+    </div>
+
     <div
       class="dropzone"
       :class="{ dragover }"
@@ -20,6 +24,52 @@
         单次最多 8 份（同一项目）· 多个项目请分次上传 · 支持 PDF / Word / TXT
       </div>
     </div>
+
+    <n-modal
+      v-model:show="sampleOpen"
+      preset="card"
+      title="生成测试开题"
+      style="width:min(720px,94vw)"
+      :mask-closable="!sampleLoading"
+    >
+      <p class="small muted" style="margin:0 0 12px">
+        随机覆盖常见毕设方向，可选 DeepSeek / Gemini 润色（与「大模型」页启用链一致）。下载 txt 后拖到上方上传即可。
+      </p>
+      <div class="stack" style="gap:10px">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <n-select
+            v-model:value="sampleDomain"
+            clearable
+            placeholder="领域（空=随机）"
+            :options="sampleDomainOptions"
+            style="min-width:220px;flex:1"
+            :disabled="sampleLoading"
+          />
+          <label class="row small" style="gap:8px;align-items:center">
+            <n-switch v-model:value="sampleUseLlm" :disabled="sampleLoading" />
+            LLM 润色（DeepSeek / Gemini）
+          </label>
+        </div>
+        <div v-if="sampleResult" class="panel" style="margin:0">
+          <div class="panel-bd stack" style="gap:8px;padding:12px">
+            <div class="small">
+              <strong>{{ sampleResult.title }}</strong>
+              <span class="muted"> · {{ sampleResult.anchor_domain }} · {{ sampleResult.pack_id }}</span>
+              <span v-if="sampleResult.used_llm" class="pill pill-teal" style="margin-left:6px">已润色</span>
+              <span v-else class="pill pill-neutral" style="margin-left:6px">模板</span>
+            </div>
+            <pre class="sample-proposal-pre">{{ sampleResult.text }}</pre>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="row" style="justify-content:flex-end;gap:8px">
+          <n-button :disabled="sampleLoading" @click="sampleOpen = false">关闭</n-button>
+          <n-button :loading="sampleLoading" @click="generateSample">{{ sampleResult ? '再抽一份' : '生成' }}</n-button>
+          <n-button type="primary" :disabled="!sampleResult || sampleLoading" @click="downloadSample">下载 txt</n-button>
+        </div>
+      </template>
+    </n-modal>
 
     <div v-if="uploadJobs.length" class="panel mb-16">
       <div class="panel-hd">
@@ -159,6 +209,54 @@ const uploadQueueHint = computed(() => {
 const booted = ref(false)
 const loading = ref(false)
 const stats = reactive({ total: 0, generating: 0, previewable: 0, monthly_tokens: 0, monthly_budget: 1000000 })
+
+const sampleOpen = ref(false)
+const sampleLoading = ref(false)
+const sampleUseLlm = ref(true)
+const sampleDomain = ref(null)
+const sampleResult = ref(null)
+const sampleDomainOptions = computed(() =>
+  (catalog.value.domains || []).map((d) => ({ label: d.label || d.id, value: d.id })),
+)
+
+async function openSampleProposal() {
+  sampleOpen.value = true
+  sampleResult.value = null
+  if (!catalog.value.domains?.length) {
+    try {
+      catalog.value = await getCatalog()
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+async function generateSample() {
+  sampleLoading.value = true
+  try {
+    sampleResult.value = await api.sampleProposal({
+      domain: sampleDomain.value || undefined,
+      use_llm: sampleUseLlm.value,
+    })
+  } catch {
+    /* api interceptor 已提示 */
+  } finally {
+    sampleLoading.value = false
+  }
+}
+
+function downloadSample() {
+  const r = sampleResult.value
+  if (!r?.text) return
+  const blob = new Blob([r.text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = r.filename || '测试开题.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+  message.success('已开始下载')
+}
 
 const columns = [
   {

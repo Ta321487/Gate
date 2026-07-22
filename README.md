@@ -2,7 +2,7 @@
 
 面向专科/本科毕设与课设交付团队的 B 端运营中台：把开题、任务书等材料稳定加工成可答辩的 Web 管理系统（演示级；不接硕博课题与真实业务全流程）。
 
-**运营端原型（手机可直接打开）：** [https://ta321487.github.io/Gate/](https://ta321487.github.io/Gate/)
+**运营端原型（在线预览版，手机可直接打开）：** [https://ta321487.github.io/Gate/](https://ta321487.github.io/Gate/)
 
 **上传材料 → 匹配确认 → bake 生成 → 门禁质检 → ZIP 交付**
 
@@ -140,6 +140,8 @@ npm run dev
 
 ```
 backend/          运营 API（bake / gates / llm / jobs）
+  app/bake/       工厂核心（schema/ sql/ features/ gates/ …）
+  tests/          单测；helpers/ 公共；tools/ 压测与一次性检查
 frontend/         运营端 UI
 skeletons/        学生项目骨架（baseline + 少量领域 overlay）
 data/
@@ -147,7 +149,7 @@ data/
   uploads/        上传落盘
   workspace/      每题工作区与 ZIP
 scripts/          Windows 脚本（launcher.bat 控制台；verify-bats.bat 防 bat 乱码）
-prototype/        UI 对照原型（index.html + styles.css + app.js）
+prototype/        运营端原型（在线预览版；见 prototype/README.md）
 docker-compose.yml   仅 MySQL
 HANDOFF.md        能力清单与领域覆盖（开发交接）
 ```
