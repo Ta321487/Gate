@@ -22,12 +22,13 @@
         {
           "key": "isbn",
           "label": "地点/特征",
-          "type": "string"
+          "type": "textarea"
         },
         {
           "key": "itemKind",
-          "label": "类型(招领/寻物)",
-          "type": "string"
+          "label": "类型",
+          "type": "select",
+          "options": ["招领", "寻物"]
         },
         {
           "key": "foundAt",

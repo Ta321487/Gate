@@ -45,7 +45,7 @@
       "labelPlural": "曲库",
       "playUrlField": "isbn",
       "softDelete": true,
-      "stockDisplay": "available",
+      "stockDisplay": "toggle",
       "stockUnavailableLabel": "已播放",
       "tagFilter": false
     },

@@ -38,8 +38,8 @@
         },
         {
           "key": "requiresTraining",
-          "label": "需培训(1是0否)",
-          "type": "number"
+          "label": "需培训",
+          "type": "boolean"
         },
         {
           "key": "ownerName",

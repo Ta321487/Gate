@@ -23,7 +23,7 @@
         {
           "key": "summary",
           "label": "摘要",
-          "type": "string"
+          "type": "textarea"
         },
         {
           "key": "isbn",
@@ -45,7 +45,7 @@
       "label": "文章",
       "labelPlural": "文章",
       "softDelete": true,
-      "stockDisplay": "available",
+      "stockDisplay": "toggle",
       "stockUnavailableLabel": "已阅读",
       "tagFilter": false
     },

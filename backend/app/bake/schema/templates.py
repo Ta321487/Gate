@@ -234,7 +234,7 @@ def archive_ticket_schema(
         archive_entity["playUrlField"] = play_url_field
     if body_field:
         archive_entity["bodyField"] = body_field
-    if stock_display == "available":
+    if stock_display in ("available", "toggle"):
         from app.bake.ticket_copy_text import stock_unavailable_label
 
         stock_lab = "可认领"
@@ -411,7 +411,7 @@ def _equip_schema(title: str) -> dict[str, Any]:
                 {"key": "isbn", "label": "资产编号", "type": "string"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可借数量", "type": "number"},
-                {"key": "requiresTraining", "label": "需培训(1是0否)", "type": "number"},
+                {"key": "requiresTraining", "label": "需培训", "type": "boolean"},
                 {"key": "ownerName", "label": "责任人", "type": "string"},
             ],
             ticket_key="loan",
@@ -541,7 +541,7 @@ def _crm_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "客户名称", "type": "string"},
                 {"key": "author", "label": "联系人", "type": "string"},
-                {"key": "isbn", "label": "电话/备注", "type": "string"},
+                {"key": "isbn", "label": "电话/备注", "type": "textarea"},
                 {"key": "stage", "label": "销售阶段", "type": "string"},
                 {"key": "category", "label": "客户分级", "type": "select"},
                 {"key": "stock", "label": "可跟进", "type": "number"},
@@ -578,7 +578,7 @@ def _crm_schema(title: str) -> dict[str, Any]:
             pending_label="跟进审核",
             records_label="跟进记录",
             with_deadline=False,
-            stock_display="available",
+            stock_display="toggle",
             require_remark=True,
             remark_label="跟进内容",
             auto_approve=True,
@@ -619,7 +619,7 @@ def archive_favorites_schema(
     favorites_page_lead: str = "收藏感兴趣的内容，方便随时回看。",
     play_url_field: str = "",
     body_field: str = "",
-    stock_display: str = "available",
+    stock_display: str = "toggle",
     soft_delete: bool = True,
     tag_filter: bool = False,
     recommend_latest_hint: str | None = None,
@@ -641,7 +641,7 @@ def archive_favorites_schema(
         archive_entity["playUrlField"] = play_url_field
     if body_field:
         archive_entity["bodyField"] = body_field
-    if stock_display == "available":
+    if stock_display in ("available", "toggle"):
         from app.bake.ticket_copy_text import stock_unavailable_label
 
         stock_lab = "可点播"
@@ -734,7 +734,7 @@ def _media_schema(title: str) -> dict[str, Any]:
             notice_page_lead="上新片单、维护窗口与观影须知，点击条目阅读全文。",
             favorites_page_lead="收藏想看的影视综，方便下次回看。",
             play_url_field="isbn",
-            stock_display="available",
+            stock_display="toggle",
             soft_delete=True,
         ),
         [
@@ -780,7 +780,7 @@ def _music_schema(title: str) -> dict[str, Any]:
             notice_page_lead="上新歌单、维护窗口与试听须知，点击条目阅读全文。",
             favorites_page_lead="收藏喜欢的歌曲，方便下次回听。",
             play_url_field="isbn",
-            stock_display="available",
+            stock_display="toggle",
             soft_delete=True,
         ),
         [
@@ -846,7 +846,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
             with_deadline=False,
             body_field="isbn",
             rich_remark=True,
-            stock_display="available",
+            stock_display="toggle",
             soft_delete=True,
             tag_filter=True,
             user_publish=True,
@@ -877,7 +877,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             archive_fields=[
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "作者", "type": "string"},
-                {"key": "summary", "label": "摘要", "type": "string"},
+                {"key": "summary", "label": "摘要", "type": "textarea"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可阅读", "type": "number"},
@@ -895,7 +895,7 @@ def _blog_schema(title: str) -> dict[str, Any]:
             notice_page_lead="上新、维护与征稿通知，点击条目阅读全文。",
             favorites_page_lead="收藏喜欢的文章，方便回看。",
             body_field="isbn",
-            stock_display="available",
+            stock_display="toggle",
             soft_delete=True,
         ),
         [
@@ -996,8 +996,8 @@ def _lost_schema(title: str) -> dict[str, Any]:
         archive_fields=[
             {"key": "title", "label": "物品名称", "type": "string"},
             {"key": "author", "label": "拾获/登记人", "type": "string"},
-            {"key": "isbn", "label": "地点/特征", "type": "string"},
-            {"key": "itemKind", "label": "类型(招领/寻物)", "type": "string"},
+            {"key": "isbn", "label": "地点/特征", "type": "textarea"},
+            {"key": "itemKind", "label": "类型", "type": "select", "options": ["招领", "寻物"]},
             {"key": "foundAt", "label": "拾获时间", "type": "datetime"},
             {"key": "category", "label": "分类", "type": "select"},
             {"key": "stock", "label": "可认领", "type": "number"},

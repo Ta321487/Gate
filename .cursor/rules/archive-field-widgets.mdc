@@ -1,0 +1,26 @@
+---
+description: 档案/表单字段按语义选控件，禁止一律文本框
+globs: skeletons/baseline/frontend/src/**/*.{vue,js}
+alwaysApply: false
+---
+
+# 表单控件看语义
+
+写或改档案管理、资料字段、扩展字段表单时：
+
+- **禁止**默认一律 `el-input` 文本框。
+- 先看 schema `type`，再看标签/display 语义兜底。
+- 映射入口：`archiveFieldWidget` + `ArchiveFieldControl`。
+
+| type / 语义 | 控件 |
+|---|---|
+| `boolean` / `switch` / `stockDisplay=toggle` / 标签含「1是0否」 | `el-switch`（存 0/1） |
+| `select` + `options` | `el-select` |
+| `number`（金额/单价） | `el-input-number` precision 2 |
+| `number`（库存/名额） | `el-input-number` |
+| `datetime` | `el-date-picker` |
+| `url` | `type=url` |
+| `textarea` / 标签含摘要·备注·特征 | 多行文本 |
+| `richtext` / `bodyField` | `RichTextEditor` |
+
+新增领域字段时：语义是开关就标 `boolean` 或 `stockDisplay: toggle`，枚举就 `select`+`options`，长文就 `textarea`/`richtext`，不要先写成 `string` 再靠界面硬猜。
