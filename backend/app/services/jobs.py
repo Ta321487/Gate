@@ -35,7 +35,7 @@ logger = logging.getLogger("gf.job")
 STEP_DEFS = [
     ("parse_merge", "解析开题 · 合并 Spec"),
     ("copy_bake", "复制骨架 · 领域 SQL"),
-    ("island_fill", "业务岛 emit · LLM 填缺口"),
+    ("island_fill", "业务配置填充"),
     ("build_verify", "构建验证"),
     ("gate_e2e", "门禁：登录 + 主流程"),
     ("pack", "开题对照 · 打包 ZIP"),
@@ -64,6 +64,26 @@ def _short_error(exc: BaseException | str, *, limit: int = 280) -> str:
     if len(text) > limit:
         return text[: limit - 1] + "…"
     return text
+
+
+_MODE_ZH = {
+    "llm": "大模型",
+    "deterministic": "确定性",
+    "deterministic_recover": "确定性恢复",
+    "deterministic_only": "仅确定性",
+    "llm_fallback_deterministic": "大模型回退·确定性",
+    "llm_failed": "大模型失败",
+    "llm_failed_keep_old": "大模型失败·保留旧值",
+    "clean": "无需补全",
+    "skip": "跳过",
+    "gaps_only": "仅补缺口",
+    "branch_refine": "分支精炼",
+}
+
+
+def _mode_zh(mode: Any) -> str:
+    key = str(mode or "").strip()
+    return _MODE_ZH.get(key, key or "—")
 
 
 def _fail_running_step(steps: list[dict[str, Any]] | None, meta: str) -> list[dict[str, Any]]:
@@ -189,7 +209,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
 
             # 1 Spec Agent（上传时可能已跑；生成时再补强一次）
             if from_step <= 0:
-                await set_step(0, "run", "Spec Agent")
+                await set_step(0, "run", "解析与匹配")
                 raw = ""
                 if project.source_path:
                     # 读开题可能较慢（PDF / 多文件），勿堵事件循环
@@ -204,13 +224,15 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 await set_step(
                     0,
                     "done",
-                    "LLM Spec" if llm_rt.stage_on("parse_spec") and llm_rt.configured else "关键词匹配",
+                    "大模型润色"
+                    if llm_rt.stage_on("parse_spec") and llm_rt.configured
+                    else "关键词匹配",
                 )
                 await asyncio.sleep(0.2)
 
             # 2 bake —— copytree / 下图 / 灌库都是同步重活，必须进线程，否则整站 API 假死
             if from_step <= 1:
-                await set_step(1, "run")
+                await set_step(1, "run", "复制骨架")
                 # 再停一次：防 Spec 期间又有人点了启动；rmtree 前必须空端口
                 await asyncio.to_thread(
                     rt.stop_all, project.id, project.backend_port, project.frontend_port
@@ -230,16 +252,16 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     from app.services.student_db import ensure_student_schema
 
                     await asyncio.to_thread(ensure_student_schema, workspace, project.db_name)
-                    await set_step(1, "done", "bake ok · db ready")
+                    await set_step(1, "done", "骨架就绪 · 库表已准备")
                 except RuntimeError as e:
-                    await set_step(1, "done", f"bake ok · db skip: {e}")
+                    await set_step(1, "done", f"骨架就绪 · 库表跳过：{e}")
                 await asyncio.sleep(0.2)
             elif workspace is None:
                 raise RuntimeError("工作区不存在，无法续跑，请重新一键生成")
 
             # 3 Island Agent + ER Label Agent
             if from_step <= 2:
-                await set_step(2, "run", "Island Agent")
+                await set_step(2, "run", "业务配置填充")
                 filled, island_mode = await run_island_agent(
                     db,
                     llm_rt,
@@ -260,8 +282,9 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         llm_enabled=bool(project.llm_enabled),
                     )
                     er_meta = (
-                        f" · er={er.get('mode')} gaps={er.get('gaps', 0)}"
-                        f" filled={er.get('filled', 0)}"
+                        f" · E-R={_mode_zh(er.get('mode'))}"
+                        f" 缺口={er.get('gaps', 0)}"
+                        f" 已填={er.get('filled', 0)}"
                     )
                     await append_log(
                         project.id,
@@ -284,7 +307,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         llm_enabled=bool(project.llm_enabled),
                     )
                     er_meta += (
-                        f" · mod={mod.get('mode')} filled={mod.get('filled', 0)}"
+                        f" · 模块图={_mode_zh(mod.get('mode'))}"
+                        f" 已填={mod.get('filled', 0)}"
                     )
                     await append_log(
                         project.id,
@@ -301,7 +325,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         llm_enabled=bool(project.llm_enabled),
                     )
                     er_meta += (
-                        f" · tc={tc.get('mode')} filled={tc.get('filled', 0)}"
+                        f" · 用例={_mode_zh(tc.get('mode'))}"
+                        f" 已填={tc.get('filled', 0)}"
                     )
                     await append_log(
                         project.id,
@@ -309,18 +334,19 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         f"filled={tc.get('filled')}",
                     )
                 except Exception as e:
-                    er_meta = f" · er/mod/tc skip: {e}"
+                    er_meta = f" · 标签补全跳过：{e}"
                     await append_log(project.id, f"ER/Module/Testcase Label skip · {e}")
                 await set_step(
                     2,
                     "done",
-                    f"{island_mode} · slots={len(filled)} · accept={project.spec.get('accept')}{er_meta}",
+                    f"{_mode_zh(island_mode)} · 写入={len(filled)}"
+                    f" · 验收={project.spec.get('accept')}{er_meta}",
                 )
                 await asyncio.sleep(0.2)
 
             # 4 构建验证 + Fix Agent
             if from_step <= 3:
-                await set_step(3, "run", "Build / Fix")
+                await set_step(3, "run", "构建与修复")
                 build_ok, build_meta = await run_fix_agent(
                     db,
                     llm_rt,
@@ -335,7 +361,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
 
             # 5 gates（只传 spec 快照，勿把 ORM 丢进线程）
             if from_step <= 4:
-                await set_step(4, "run")
+                await set_step(4, "run", "门禁验收")
                 gate_spec = dict(project.spec or {})
                 gates = await asyncio.to_thread(evaluate_domain_gates, workspace, gate_spec)
                 project.gates = {k: v for k, v in gates.items() if k != "checklist"}
@@ -379,7 +405,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
 
             # 6 pack
             if from_step <= 5:
-                await set_step(5, "run")
+                await set_step(5, "run", "打包交付")
                 settings = get_settings()
                 from app.bake.naming import resolve_slug_from_spec, zip_storage_name
 

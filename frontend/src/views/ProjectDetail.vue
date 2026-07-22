@@ -813,6 +813,7 @@ import ModuleDiagramViewer from '../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../components/TestcaseViewer.vue'
 import {
   CHECKLIST_RESULT,
+  JOB_STEP_LABELS,
   LOG_SIDES,
   defaultTabForStatus,
   detailCrumb,
@@ -938,12 +939,12 @@ const tcCount = ref(0)
 let pollTimer = null
 
 const planSteps = [
-  { t: '解析材料并合并生成配置', m: '匹配阶段' },
-  { t: '复制基线并写入领域数据表', m: '确定性生成' },
-  { t: '按白名单填充业务配置', m: 'AI 补全配置项' },
-  { t: '构建验证', m: '基础检查' },
-  { t: '登录与主流程验收', m: '关键路径' },
-  { t: '开题对照并打包交付包', m: '检查全部通过后' },
+  { t: JOB_STEP_LABELS.parse_merge, m: '匹配与 Spec' },
+  { t: JOB_STEP_LABELS.copy_bake, m: '确定性生成' },
+  { t: JOB_STEP_LABELS.island_fill, m: '大模型补全' },
+  { t: JOB_STEP_LABELS.build_verify, m: '编译检查' },
+  { t: JOB_STEP_LABELS.gate_e2e, m: '关键路径' },
+  { t: JOB_STEP_LABELS.pack, m: '检查通过后打包' },
 ]
 
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
@@ -1222,7 +1223,15 @@ const checkCols = [
       return statusPillNode(m.label, m.pill)
     },
   },
-  { title: '说明', key: 'status' },
+  {
+    title: '说明',
+    key: 'status',
+    render: (r) => {
+      // status 若只是 result 的英文 key，不再重复展示
+      if (!r.status || CHECKLIST_RESULT[r.status]) return '—'
+      return String(r.status)
+    },
+  },
 ]
 const checkRows = computed(() => (p.value?.checklist || []).map((x) => ({
   name: x.name,
