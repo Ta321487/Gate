@@ -13,15 +13,30 @@ NEGATION_TERMS = (
     r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必|"
     r"非本期|不在本期|不做范围"
 )
+# 对比/扩展语境：关键词出现在「容易涉及的扩展」里，不应抬升拟实现主路径
+CONTRAST_TERMS = (
+    r"扩展性|扩展能力|背景对比|仅作对比|作为对比|未来展望|调研阶段|"
+    r"容易将|容易出现|往往超出|超出.{0,8}规模|庞大模块|商业属性"
+)
 
 FEATURE_HEAD_RE = re.compile(rf"({FEATURE_HEAD_TERMS})")
 RESEARCH_WITH_IMPL_RE = re.compile(r"研究内容.{0,12}拟实现|拟实现.{0,12}功能")
 OUT_HEAD_RE = re.compile(rf"({NEGATION_TERMS})")
 NEGATION_RE = re.compile(rf"(?:{NEGATION_TERMS})")
+CONTRAST_RE = re.compile(rf"(?:{CONTRAST_TERMS})")
 
 
-def keyword_mentioned(text: str, kw: str, *, window: int = 48) -> bool:
-    """正文是否正向提及关键词；同一分句前缀含否定词则不计（匹配 / 超范围扫描共用）。"""
+def keyword_mentioned(
+    text: str,
+    kw: str,
+    *,
+    window: int = 48,
+    ignore_contrast: bool = False,
+) -> bool:
+    """正文是否正向提及关键词；同一分句前缀含否定词则不计（匹配 / 超范围扫描共用）。
+
+    ignore_contrast=True（目录匹配）：扩展/对比/展望语境也不计，避免范围外词抬主路径。
+    """
     if not text or not kw:
         return False
     flags = re.IGNORECASE if kw.isascii() else 0
@@ -34,6 +49,17 @@ def keyword_mentioned(text: str, kw: str, *, window: int = 48) -> bool:
                 chunk = chunk[i + 1 :]
                 break
         if NEGATION_RE.search(chunk):
+            continue
+        if ignore_contrast and CONTRAST_RE.search(chunk):
+            continue
+        # 同句右侧短窗：先提能力再写「本期不」
+        right = text[m.end() : m.end() + window]
+        for sep in ("。", "；", ";", "！", "!", "？", "?", "\n"):
+            i = right.find(sep)
+            if i >= 0:
+                right = right[:i]
+                break
+        if NEGATION_RE.search(right):
             continue
         return True
     return False

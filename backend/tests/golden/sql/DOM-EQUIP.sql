@@ -1,4 +1,4 @@
-﻿-- bake domain=DOM-EQUIP · tables in [6,13]
+﻿-- bake domain=DOM-EQUIP · tables in [6,15]
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 

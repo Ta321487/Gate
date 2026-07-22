@@ -1,4 +1,4 @@
-﻿-- bake domain=DOM-BLOG · tables in [6,13]
+﻿-- bake domain=DOM-BLOG · tables in [6,15]
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 
@@ -45,21 +45,6 @@ CREATE TABLE IF NOT EXISTS article (
 );
 
 -- book_id 列名兼容 TicketStore archive 模式（存 article.id）
-CREATE TABLE IF NOT EXISTS favorite (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  book_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'pending',
-  assignee_username VARCHAR(64) NULL,
-  apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  approve_at DATETIME NULL,
-  due_at DATETIME NULL,
-  return_at DATETIME NULL,
-  fine_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reminded_at DATETIME NULL,
-  remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(255)
-);
 
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -106,7 +91,6 @@ INSERT IGNORE INTO article (id, title, author, isbn, category_id, stock, status)
 (4, '读《设计中的设计》札记', '主编', '<p>关于日常与设计的几段摘录与感想。</p><blockquote>设计在于发现，而不是创造。</blockquote>', 2, 1, 'available'),
 (5, '本站上线说明', '编辑甲', '<p>演示站点已开放<strong>阅读</strong>与<strong>收藏</strong>，欢迎留言建议。</p>', 3, 1, 'available');
 INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('max_favorite', '30', '每人最大收藏数提示'),
 ('blog_hint', '主编维护文章', '发布方式说明');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '阅读须知', '文章仅供学习演示；转载请注明出处。内容由主编维护发布。', 'admin', '主编'
@@ -129,14 +113,13 @@ CREATE TABLE IF NOT EXISTS user_ledger (
   KEY idx_ledger_user (username, id)
 );
 
-CREATE TABLE IF NOT EXISTS `favorite_progress` (
+CREATE TABLE IF NOT EXISTS user_favorite (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  status VARCHAR(32) NOT NULL,
-  operator VARCHAR(64),
-  remark VARCHAR(255) DEFAULT '',
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_progress_ticket (ticket_id, id)
+  UNIQUE KEY uk_fav_user_item (username, item_id),
+  KEY idx_fav_user (username, id)
 );
 
 -- staff posts (clerk / worker)

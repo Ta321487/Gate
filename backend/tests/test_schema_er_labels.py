@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from app.bake.schema_er import (
+from app.bake.schema.er import (
     apply_er_label_patch,
     collect_english_gaps,
     looks_latin,
     schema_model,
     scrub_relation_labels,
 )
-from app.bake.sql_fragments import _USER_LEDGER_DDL
+from app.bake.sql.fragments import _USER_LEDGER_DDL
 
 
 def test_user_ledger_fully_chinese():
@@ -75,7 +75,7 @@ def test_reject_latin_in_patch():
 def test_expand_user_roles_from_domain_json(tmp_path):
     """同一张 sys_user，总图按 roles JSON 拆成申领人 / 库管员，不再只显示「用户」。"""
     import json
-    from app.bake.schema_er import expand_user_role_entities, schema_model
+    from app.bake.schema.er import expand_user_role_entities, schema_model
 
     sql = """
     CREATE TABLE IF NOT EXISTS sys_user (

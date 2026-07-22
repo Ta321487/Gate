@@ -7,7 +7,7 @@ from typing import Any
 
 from app.bake.domains import ARCH_PATH_ORDER
 from app.bake.gate_contracts import gate_archive_ticket, gate_order_shell, gate_slot_shell
-from app.bake.schema_templates import product_name_from_title
+from app.bake.schema.templates import product_name_from_title
 
 ARCH_CAPABILITIES: dict[str, list[str]] = {
     "ARCH-CRUD": ["archive", "content", "org_users"],
@@ -177,12 +177,13 @@ def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
             "pending_label": "考勤确认",
             "records_label": "考勤记录",
             "auth_eyebrow": "考勤管理",
-            "auth_lead": "验证码登录；按班次提交出勤登记，人事确认后入档。",
-            "auth_points": ["验证码登录", "出勤登记", "人事确认"],
+            "auth_lead": "验证码登录；按班次提交出勤登记，提交后即时入档。",
+            "auth_points": ["验证码登录", "出勤登记", "考勤记录"],
             "register_hint": "注册后可登记出勤",
             "notice_title": "考勤须知",
             "notice_body": "请按班次如实登记；异常出勤须备注原因。",
             "approve_ends_flow": True,
+            "auto_approve": True,
         }
     if any(k in t for k in ("人事", "员工档案", "人力资源", "HR")):
         return {
@@ -502,7 +503,7 @@ def build_generic_shell_schema(
     archetypes: list[str] | None = None,
 ) -> dict[str, Any]:
     """GENERIC + ARCH-*（可多条）→ 文案壳；菜单按路径并集补齐。"""
-    from app.bake.schema_templates import archive_ticket_schema, order_shell_schema, slot_shell_schema
+    from app.bake.schema.templates import archive_ticket_schema, order_shell_schema, slot_shell_schema
 
     arches = normalize_archetypes(archetypes, primary=archetype)
     need_flow, need_trade, need_reserve = path_flags(arches)
@@ -549,6 +550,7 @@ def build_generic_shell_schema(
             remark_label=str(fc.get("remark_label") or "说明"),
             pick_date_range=bool(fc.get("pick_date_range")),
             approve_ends_flow=bool(fc.get("approve_ends_flow")),
+            auto_approve=bool(fc.get("auto_approve")),
         )
     elif need_reserve:
         schema = slot_shell_schema(

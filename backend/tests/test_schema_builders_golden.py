@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from app.bake.schema_templates import SCHEMA_BUILDERS
-from tests._normalize import normalize_json
+from app.bake.schema.templates import SCHEMA_BUILDERS
+from tests.helpers.normalize import normalize_json
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden" / "schema"
 

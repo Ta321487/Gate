@@ -47,6 +47,7 @@
       "allowQty": true,
       "allowRating": false,
       "approveEndsFlow": false,
+      "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "requisition",

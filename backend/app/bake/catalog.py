@@ -19,6 +19,7 @@ from app.bake.themes import (  # re-export for callers
     THEMES,
     all_theme_ids,
     default_theme,
+    is_dark_theme,
     label_from_catalog,
     normalize_auth_entry_mode,
     normalize_auth_role_widget,
@@ -130,6 +131,15 @@ def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
         conf = min(0.92, (raw_conf * 0.7 + kw.confidence * 0.3))
     else:
         conf = min(0.88, raw_conf * 0.85)
+    # 与关键词路径相同：行业皮被并集顶成 GENERIC 时置信度不得虚高
+    demoted = (
+        dom_final == "DOM-GENERIC"
+        and (kw.keyword_domain or kw.domain) not in ("", "DOM-GENERIC")
+        and any(isinstance(n, str) and n.startswith("提示：") for n in recon_notes)
+    )
+    if demoted:
+        conf = min(conf, 0.58) * 0.9 + 0.05
+    conf = round(max(0.28, min(0.95, conf)), 2)
 
     # 保留关键词 reconcile 提示 + 本轮并集提示；若 LLM 原推荐被改写则明示
     hits = [h for h in (kw.hits or []) if isinstance(h, str)]
@@ -277,7 +287,8 @@ def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]
         score = 0
         local_hits: list[str] = []
         for kw in meta.get("keywords", []):
-            if keyword_mentioned(text, kw):
+            # 目录匹配忽略「扩展/对比」语境，避免范围外词抬主路径（全域通用）
+            if keyword_mentioned(text, kw, ignore_contrast=True):
                 score += 1
                 local_hits.append(kw)
         if score > 0:
@@ -306,13 +317,19 @@ def score_catalog(
 
 
 def score_all_archetypes(text: str) -> list[str]:
-    """开题命中的全部行为原型（score>0），按优先级排序；无命中则 CRUD。"""
+    """开题命中的行为原型（score>0），按优先级排序；弱于峰值一半的命中丢弃。"""
     scored = _catalog_scores(text, ARCHETYPES)
     if not scored:
         return ["ARCH-CRUD"]
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     scored.sort(key=lambda t: (-t[1], tie_rank.get(t[0], 99)))
-    return [k for k, _, _ in scored]
+    best = scored[0][1]
+    # 全域通用弱命中过滤：
+    # - 峰值≥2 时丢掉仅 1 分噪声（范围外「支付」、顺口「库存」）
+    # - 仍保留 score≥2 的次路径（借阅+二手：FLOW=3 / TRADE=6 都进并集）
+    min_keep = 1 if best <= 1 else 2
+    kept = [(k, s, h) for k, s, h in scored if s >= min_keep]
+    return [k for k, _, _ in kept] or ["ARCH-CRUD"]
 
 
 # 原型要求的能力：具体 DOM 若不覆盖，降为 GENERIC（行为优先于行业皮肤）
@@ -321,7 +338,8 @@ _ARCH_REQUIRED_CAPS: dict[str, frozenset[str]] = {
     "ARCH-TRADE": frozenset({"order_lines"}),
     "ARCH-FLOW": frozenset({"ticket_flow"}),
     "ARCH-STOCK": frozenset({"ticket_flow"}),
-    "ARCH-CONTENT": frozenset({"ticket_flow"}),
+    # 内容流：回帖审核（ticket）或即时收藏（favorites）任一即可撑起
+    "ARCH-CONTENT": frozenset({"ticket_flow", "favorites"}),
     "ARCH-CRUD": frozenset(),
 }
 
@@ -433,6 +451,21 @@ _FOCUS_SECTION = re.compile(
     r"[^\n]{0,80}\n([\s\S]{0,3500})",
     re.IGNORECASE,
 )
+# 功能段不得拖进关键问题/进度等（否则「扩展里顺口提支付」会抬交易流）
+# 不用 \\b：中文后无词边界，「关键问题与解决思路」会截不断
+_FOCUS_TAIL_CUT = re.compile(
+    r"(?:^|\n)\s*(?:[（(]?\d+[)）.、]|[一二三四五六七八九十百]+[、．.]|"
+    r"[（(][一二三四五六七八九十\d]+[)）]|第[一二三四五六七八九十\d]+[章节部分])?\s*"
+    r"(?:关键问题|拟解决的关键问题|技术路线|进度安排|研究进度|时间安排|"
+    r"预期成果|主要参考文献|参考文献|研究方法|系统测试|测试计划)"
+)
+
+
+def _trim_focus_block(block: str) -> str:
+    m = _FOCUS_TAIL_CUT.search(block or "")
+    if not m or m.start() < 40:
+        return (block or "").strip()
+    return (block or "")[: m.start()].rstrip()
 
 
 def _proposal_focus_parts(text: str) -> tuple[str, list[str], list[str]]:
@@ -440,7 +473,11 @@ def _proposal_focus_parts(text: str) -> tuple[str, list[str], list[str]]:
     from app.services.proposal import extract_module_lines, strip_non_dev_sections
 
     raw = strip_non_dev_sections(text or "")
-    blocks = [m.group(0) for m in _FOCUS_SECTION.finditer(raw)]
+    blocks = []
+    for m in _FOCUS_SECTION.finditer(raw):
+        trimmed = _trim_focus_block(m.group(0))
+        if trimmed:
+            blocks.append(trimmed)
     modules = extract_module_lines(raw)
     return raw, blocks, modules
 
@@ -471,6 +508,27 @@ def proposal_focus_for_match(text: str) -> str:
     return scored or raw
 
 
+def _confidence_after_reconcile(
+    arch_conf: float,
+    dom_conf: float,
+    *,
+    keyword_domain: str,
+    final_domain: str,
+    recon_notes: list[str],
+) -> float:
+    """合成置信度；行业皮被行为并集顶成 GENERIC 时打折（全域通用，避免虚高 0.9）。"""
+    conf = (arch_conf + dom_conf) / 2
+    demoted = (
+        final_domain == "DOM-GENERIC"
+        and keyword_domain
+        and keyword_domain != "DOM-GENERIC"
+        and any(isinstance(n, str) and n.startswith("提示：") for n in (recon_notes or []))
+    )
+    if demoted:
+        conf = min(conf, 0.58) * 0.9 + 0.05
+    return round(max(0.28, min(0.95, conf)), 2)
+
+
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
     scored = proposal_focus_for_match(text)
@@ -478,10 +536,17 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     for _k, _s, local in _catalog_scores(scored, ARCHETYPES):
         arch_hits_all.extend(local)
     arches = score_all_archetypes(scored)
+    kw_primary = arches[0]
     _, arch_conf, _ = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
-    dom, dom_conf, dom_hits = score_catalog(scored, DOMAINS, fallback="DOM-GENERIC")
-    arch, dom, arches, recon_notes = reconcile_match(arches[0], dom, arches)
-    confidence = round((arch_conf + dom_conf) / 2, 2)
+    dom_kw, dom_conf, dom_hits = score_catalog(scored, DOMAINS, fallback="DOM-GENERIC")
+    arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
+    confidence = _confidence_after_reconcile(
+        arch_conf,
+        dom_conf,
+        keyword_domain=dom_kw,
+        final_domain=dom,
+        recon_notes=recon_notes,
+    )
     hits = list(dict.fromkeys(arch_hits_all + dom_hits + recon_notes))
     warnings = match_warnings_from_hits(hits)
     return MatchResult(
@@ -496,8 +561,8 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         match_source="keyword",
         rationale="",
         alts=[],
-        keyword_arch=arch,
-        keyword_domain=dom,
+        keyword_arch=kw_primary,
+        keyword_domain=dom_kw,
     )
 
 
@@ -541,6 +606,13 @@ def build_spec(
     chrome = resolve_or_pick(CHROME_STYLES, chrome, f"{seed}|chrome", "soft")
     layout = resolve_or_pick(LAYOUT_SHELLS, layout, f"{seed}|layout", "topbar")
     typeface = resolve_or_pick(TYPE_PAIRINGS, typeface, f"{seed}|type", "clean")
+    from app.bake.api_style import (
+        api_style_labels,
+        normalize_api_style,
+        pick_api_style,
+    )
+
+    api_style = normalize_api_style(pick_api_style(seed))
     arches = list(archetypes or [archetype])
     # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
     schema = (
@@ -564,6 +636,8 @@ def build_spec(
         "layout_label": label_from_catalog(LAYOUT_SHELLS, layout),
         "typeface": typeface,
         "typeface_label": label_from_catalog(TYPE_PAIRINGS, typeface),
+        "api_style": api_style,
+        "api_style_label": api_style_labels(api_style),
         "auth_template": auth_template,
         "auth_template_label": label_from_catalog(AUTH_TEMPLATES, auth_template),
         "auth_entry_mode": auth_entry_mode,

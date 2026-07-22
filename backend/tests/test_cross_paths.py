@@ -180,6 +180,23 @@ def test_match_ignores_negated_pay_keyword():
     assert "ARCH-FLOW" in (m.archetypes or [])
 
 
+def test_match_media_ignores_oos_pay_and_keeps_skin():
+    """关键问题里顺口提支付，不得抬 TRADE 并顶掉影视综皮。"""
+    from pathlib import Path
+
+    from app.bake.catalog import match_text
+
+    path = Path(__file__).resolve().parents[2] / "data/samples/校园影视资源点播系统开题.txt"
+    if not path.is_file():
+        path = Path("d:/graduate_factory_v3/data/samples/校园影视资源点播系统开题.txt")
+    text = path.read_text(encoding="utf-8")
+    m = match_text(text, path.name)
+    assert m.domain == "DOM-MEDIA"
+    assert "ARCH-TRADE" not in (m.archetypes or [])
+    assert m.archetype in ("ARCH-CONTENT", "ARCH-FLOW")
+    assert m.confidence < 0.9
+
+
 def test_match_material_claim_opening_to_asset():
     """仓储物资申领开题 → 物资域；角色为库管而非商城骑手。"""
     from pathlib import Path

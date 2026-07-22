@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from app.bake.schema_er_labels import (
+from app.bake.schema.er_labels import (
     apply_er_label_patch,
     collect_english_gaps,
     count_er_gaps,
@@ -23,7 +23,7 @@ from app.bake.schema_er_labels import (
     save_er_label_patch,
     scrub_relation_labels,
 )
-from app.bake.schema_er_model import (
+from app.bake.schema.er_model import (
     Column,
     Relation,
     Table,
@@ -34,7 +34,7 @@ from app.bake.schema_er_model import (
     pick_core_attrs,
     schema_model,
 )
-from app.bake.schema_er_svg import (
+from app.bake.schema.er_svg import (
     _book_embedding,
     _circular_crossings,
     _layout_entities,

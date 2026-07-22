@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.bake.schema_modules import (
+from app.bake.schema.modules import (
     _SKIP_MENU_KEYS,
     _archive_biz_label,
     _biz_id_for_item,

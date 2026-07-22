@@ -73,6 +73,7 @@
       "allowQty": false,
       "allowRating": false,
       "approveEndsFlow": true,
+      "autoApprove": false,
       "categoryLimit": 1,
       "checkMutex": true,
       "key": "enrollment",

@@ -96,8 +96,8 @@ def _sql_template_path(domain: str, archetype: str | None = None) -> Path:
 
 
 def _load_named_domain_sql(domain: str) -> str:
-    """具名域唯一路径：见 sql_compose.compose_named_domain_sql。"""
-    from app.bake.sql_compose import compose_named_domain_sql
+    """具名域唯一路径：见 sql.compose.compose_named_domain_sql。"""
+    from app.bake.sql.compose import compose_named_domain_sql
 
     return compose_named_domain_sql(domain)
 
@@ -115,7 +115,7 @@ def domain_sql(
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import path_flags, shell_sql_filename
-        from app.bake.sql_compose import compose_generic_sql
+        from app.bake.sql.compose import compose_generic_sql
 
         arches = list(archetypes or ([archetype] if archetype else ["ARCH-CRUD"]))
         need_flow, need_trade, need_reserve = path_flags(arches)
@@ -137,16 +137,16 @@ def domain_sql(
     else:
         text = _load_named_domain_sql(domain)
     from app.bake.domains import DOMAINS
-    from app.bake.favorites import favorites_wanted
-    from app.bake.guestbook import guestbook_wanted
-    from app.bake.ux_scan import (
+    from app.bake.features.favorites import favorites_wanted
+    from app.bake.features.guestbook import guestbook_wanted
+    from app.bake.features.ux_scan import (
         BROWSE_HISTORY_CAP,
         GALLERY_CAP,
         scan_browse_history,
         scan_gallery,
     )
-    from app.bake.order_extras import ORDER_REVIEW_CAP, scan_order_review
-    from app.bake.sql_fragments import (
+    from app.bake.features.order_extras import ORDER_REVIEW_CAP, scan_order_review
+    from app.bake.sql.fragments import (
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
         ensure_favorites_sql,
@@ -275,6 +275,10 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         )
         text = _patch_thesis_yml(text, domain, spec)
         app_yml.write_text(text, encoding="utf-8")
+
+    from app.bake.api_style import apply_api_style_to_workspace, normalize_api_style
+
+    apply_api_style_to_workspace(dest, normalize_api_style(spec.get("api_style")))
 
     from app.bake.java_package import remap_student_java_package, rewrite_gate_file_paths
     from app.bake.naming import resolve_slug_from_spec
@@ -441,6 +445,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
             ("ticket-pick-date-range", bool(ticket_ent.get("pickDateRange"))),
             ("ticket-approve-ends-flow", bool(ticket_ent.get("approveEndsFlow"))),
+            ("ticket-auto-approve", bool(ticket_ent.get("autoApprove"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
         if on_flags:
@@ -473,6 +478,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  archive-item-table: {item}")
         if archive_ent.get("softDelete"):
             lines.append("  archive-soft-delete: true")
+        if archive_ent.get("userPublish"):
+            lines.append("  archive-user-publish: true")
         tag = runtime.get("archive_tag_table")
         item_tag = runtime.get("archive_item_tag_table")
         if tag and item_tag:

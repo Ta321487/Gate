@@ -198,6 +198,16 @@ def all_theme_ids() -> set[str]:
     return ids
 
 
+def is_dark_theme(theme: str | None) -> bool:
+    """深色行业配色（与骨架 themes.css / themeScheme.js 一致）。"""
+    tid = THEME_ALIASES.get(theme or "", theme or "")
+    if not tid:
+        return False
+    if tid.endswith("-night") or tid == "theme-night":
+        return True
+    return tid in {"media-cinema", "music-vinyl"}
+
+
 def normalize_theme(theme: str, domain: str) -> str:
     theme = THEME_ALIASES.get(theme, theme)
     allowed = {t["id"] for t in themes_for_domain(domain)}

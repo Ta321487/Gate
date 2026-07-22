@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from app.bake.schema_er_labels import (
+from app.bake.schema.er_labels import (
     _COMMON_COL_ZH,
     _INFRA_TABLE_ZH,
     _col_zh,

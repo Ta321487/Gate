@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from app.bake.engine import domain_sql
-from tests._normalize import normalize_sql
+from tests.helpers.normalize import normalize_sql
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden" / "sql"
 

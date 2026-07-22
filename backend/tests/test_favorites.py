@@ -6,13 +6,13 @@ import unittest
 
 from app.bake.domain_schema import attach_accept
 from app.bake.engine import count_create_tables, domain_sql
-from app.bake.favorites import (
+from app.bake.features.favorites import (
     FAVORITES_CAP,
     apply_favorites_to_spec,
     merge_favorites_capabilities,
     scan_favorites,
 )
-from tests._normalize import normalize_sql
+from tests.helpers.normalize import normalize_sql
 
 
 class FavoritesCapabilityTests(unittest.TestCase):
@@ -30,13 +30,28 @@ class FavoritesCapabilityTests(unittest.TestCase):
             )
             self.assertIn(FAVORITES_CAP, caps)
 
-    def test_requires_order_lines(self) -> None:
+    def test_requires_order_lines_or_content_domain(self) -> None:
         caps = merge_favorites_capabilities(
             ["archive", "ticket_flow"],
             "我的收藏",
             domain="DOM-LIBRARY",
         )
         self.assertNotIn(FAVORITES_CAP, caps)
+
+    def test_content_domains_default_favorites(self) -> None:
+        for domain in ("DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"):
+            caps = merge_favorites_capabilities(
+                ["archive", "content", "org_users"],
+                "",
+                domain=domain,
+            )
+            self.assertIn(FAVORITES_CAP, caps, domain)
+        forum = merge_favorites_capabilities(
+            ["archive", "ticket_flow", "content"],
+            "我的收藏",
+            domain="DOM-FORUM",
+        )
+        self.assertNotIn(FAVORITES_CAP, forum)
 
     def test_sql_injects_user_favorite(self) -> None:
         sql = domain_sql("DOM-SHOP", "thesis_shop")

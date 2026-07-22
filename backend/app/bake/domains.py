@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.bake.gate_contracts import (
+    gate_archive_favorites,
     gate_archive_ticket,
     gate_order_shell,
     gate_slot_shell,
@@ -97,11 +98,11 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
     # F 兜底
     "DOM-GENERIC": ["archive", "content", "org_users"],
-    # G 内容/媒资/社区
-    "DOM-MEDIA": ["archive", "ticket_flow", "content", "org_users", "recommend"],
-    "DOM-MUSIC": ["archive", "ticket_flow", "content", "org_users", "recommend"],
+    # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
+    "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend"],
+    "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend"],
     "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "recommend"],
-    "DOM-BLOG": ["archive", "ticket_flow", "content", "org_users", "recommend"],
+    "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend"],
 }
 
 
@@ -276,7 +277,7 @@ DOMAINS = {
             {"name": "客户档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
-            {"name": "跟进审核", "status": "flow"},
+            {"name": "客户跟进", "status": "flow"},
             {"name": "跟进记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "外呼中心/公海池", "status": "out_of_mvp"},
@@ -290,7 +291,7 @@ DOMAINS = {
         ],
         "gate": gate_archive_ticket(
             archive_feature="客户档案",
-            flow_feature="跟进审核",
+            flow_feature="客户跟进",
             records_feature="跟进记录",
             users_feature="用户管理",
             category_feature="分类管理",
@@ -865,7 +866,7 @@ DOMAINS = {
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "收藏 / 想看", "status": "flow"},
-            {"name": "收藏记录", "status": "module"},
+            {"name": "我的收藏", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "猜你喜欢", "status": "module"},
             {"name": "协同过滤推荐", "status": "out_of_mvp"},
@@ -879,18 +880,15 @@ DOMAINS = {
             {"id": "media-teal", "label": "荧幕青绿"},
             {"id": "media-night", "label": "观影深色"},
         ],
-        "gate": gate_archive_ticket(
+        "gate": gate_archive_favorites(
             archive_feature="片单检索",
-            flow_feature="收藏 / 想看",
-            records_feature="收藏记录",
+            favorites_feature="收藏 / 想看",
             users_feature="用户管理",
             category_feature="分类管理",
-            with_deadline=False,
         ),
         "portal_banners": True,
         "runtime": {
-            "ticket_mode": "archive",
-            "ticket_table": "favorite",
+            "enable_ticket": False,
             "register_role": "user",
             "archive_category_table": "category",
             "archive_item_table": "media",
@@ -910,7 +908,7 @@ DOMAINS = {
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "收藏 / 喜欢", "status": "flow"},
-            {"name": "收藏记录", "status": "module"},
+            {"name": "我的收藏", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "猜你喜欢", "status": "module"},
             {"name": "协同过滤推荐", "status": "out_of_mvp"},
@@ -924,18 +922,15 @@ DOMAINS = {
             {"id": "music-teal", "label": "波形青绿"},
             {"id": "music-night", "label": "夜听深色"},
         ],
-        "gate": gate_archive_ticket(
+        "gate": gate_archive_favorites(
             archive_feature="曲库检索",
-            flow_feature="收藏 / 喜欢",
-            records_feature="收藏记录",
+            favorites_feature="收藏 / 喜欢",
             users_feature="用户管理",
             category_feature="分类管理",
-            with_deadline=False,
         ),
         "portal_banners": True,
         "runtime": {
-            "ticket_mode": "archive",
-            "ticket_table": "favorite",
+            "enable_ticket": False,
             "register_role": "user",
             "archive_category_table": "category",
             "archive_item_table": "track",
@@ -946,12 +941,13 @@ DOMAINS = {
         "keywords": ["论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼"],
         "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览主帖 → 回复 → 版主审核展示"],
+        "flows": ["发帖 / 浏览 → 回复 → 版主审核展示"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
             {"name": "管理端工作台", "status": "module"},
             {"name": "帖子检索", "status": "domain"},
+            {"name": "用户发帖", "status": "flow"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "回复 / 楼中楼", "status": "flow"},
@@ -961,11 +957,10 @@ DOMAINS = {
             {"name": "猜你喜欢", "status": "module"},
             {"name": "标签与附件（库表/ER）", "status": "module"},
             {"name": "实时私信", "status": "out_of_mvp"},
-            {"name": "用户自由开新主帖无审核", "status": "out_of_mvp"},
             {"name": "无限深度树形嵌套引擎", "status": "out_of_mvp"},
             {"name": "富文本协同编辑", "status": "out_of_mvp"},
         ],
-        "out_of_mvp": ["实时私信", "用户自由开新主帖无审核", "无限深度树形嵌套引擎", "富文本协同编辑"],
+        "out_of_mvp": ["实时私信", "无限深度树形嵌套引擎", "富文本协同编辑"],
         "themes": [
             {"id": "forum-ink", "label": "论坛墨蓝"},
             {"id": "forum-amber", "label": "暖帖琥珀"},
@@ -979,6 +974,8 @@ DOMAINS = {
             users_feature="用户管理",
             category_feature="分类管理",
             with_deadline=False,
+            user_publish=True,
+            publish_feature="用户发帖",
         ),
         "portal_banners": True,
         "runtime": {
@@ -997,7 +994,7 @@ DOMAINS = {
         "keywords": ["博客", "个人博客", "文章系统", "资讯发布", "CMS", "博文"],
         "entities": ["Article", "Category", "Favorite", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览文章 → 收藏 → 编辑确认"],
+        "flows": ["浏览文章 → 收藏"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -1006,7 +1003,7 @@ DOMAINS = {
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "收藏 / 订阅", "status": "flow"},
-            {"name": "收藏记录", "status": "module"},
+            {"name": "我的收藏", "status": "module"},
             {"name": "富文本编辑", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "猜你喜欢", "status": "module"},
@@ -1021,18 +1018,15 @@ DOMAINS = {
             {"id": "blog-clay", "label": "暖陶阅读"},
             {"id": "blog-night", "label": "夜读深色"},
         ],
-        "gate": gate_archive_ticket(
+        "gate": gate_archive_favorites(
             archive_feature="文章检索",
-            flow_feature="收藏 / 订阅",
-            records_feature="收藏记录",
+            favorites_feature="收藏 / 订阅",
             users_feature="用户管理",
             category_feature="分类管理",
-            with_deadline=False,
         ),
         "portal_banners": True,
         "runtime": {
-            "ticket_mode": "archive",
-            "ticket_table": "favorite",
+            "enable_ticket": False,
             "register_role": "user",
             "archive_category_table": "category",
             "archive_item_table": "article",

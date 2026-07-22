@@ -69,9 +69,9 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信）",
     },
     "favorites": {
-        "label": "商品收藏",
+        "label": "收藏夹",
         "status": "implemented",
-        "desc": "交易域收藏夹：收藏/取消，我的收藏再加购",
+        "desc": "即时收藏/取消；交易域可再加购，内容流用于片单/曲库/文章",
     },
     "coupon": {
         "label": "优惠券",

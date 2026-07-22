@@ -141,6 +141,8 @@ def gate_archive_ticket(
     dashboard_feature: str = "管理端工作台",
     notice_feature: str = "公告管理",
     with_deadline: bool = True,
+    user_publish: bool = False,
+    publish_feature: str = "用户发帖",
 ) -> dict:
     """借用/收藏类薄领域：archive + ticket_flow（±quota ±deadline）共用门禁。"""
     routes = [
@@ -159,9 +161,12 @@ def gate_archive_ticket(
         {"seg": "register", "from_baseline": "register"},
     ]
     files = list(_GATE_ARCHIVE_TICKET_FILES)
+    if user_publish:
+        routes.insert(1, {"seg": "my-archive", "from_feature": publish_feature})
+        files.append("frontend/src/views/user/MyArchive.vue")
     if with_deadline:
         routes.insert(
-            7,
+            7 + (1 if user_publish else 0),
             {"seg": "admin/overdue", "from_feature": overdue_feature},
         )
         files.append(_GATE_OVERDUE_FILE)
@@ -170,6 +175,11 @@ def gate_archive_ticket(
         "approve": {"file": "TicketController.java", "need": ["approve"]},
         "return": {"file": "TicketController.java", "need": ["/return", "complete"]},
     }
+    if user_publish:
+        flow_api["publish"] = {
+            "file": "ArchiveController.java",
+            "need": ["/publish", "ArchiveStore.addUserPost"],
+        }
     if with_deadline:
         flow_api["overdue"] = {"file": "TicketController.java", "need": ["/overdue", "markOverdue"]}
         flow_api["remind"] = {"file": "TicketController.java", "need": ["/remind", "remind"]}
@@ -203,6 +213,7 @@ _GATE_ORDER_FILES = [
     "frontend/src/components/MessageBell.vue",
     "frontend/src/layouts/PortalLayout.vue",
     "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/utils/apiCalls.js",
     "frontend/src/router/index.js",
     "sql/schema.sql",
 ]
@@ -287,11 +298,17 @@ _GATE_FAVORITES_FILES = [
     "backend/src/main/java/com/thesis/controller/FavoriteController.java",
     "frontend/src/views/user/MyFavorites.vue",
     "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/utils/apiCalls.js",
     "frontend/src/router/index.js",
 ]
 
 
-def merge_favorites_gate(gate: dict, caps: list[str] | None) -> dict:
+def merge_favorites_gate(
+    gate: dict,
+    caps: list[str] | None,
+    *,
+    feature: str = "商品收藏",
+) -> dict:
     caps = set(caps or [])
     if "favorites" not in caps:
         return gate
@@ -304,7 +321,7 @@ def merge_favorites_gate(gate: dict, caps: list[str] | None) -> dict:
     routes = list(out.get("routes") or [])
     have = {r.get("seg") for r in routes if isinstance(r, dict)}
     if "favorites" not in have:
-        routes.append({"seg": "favorites", "from_feature": "商品收藏"})
+        routes.append({"seg": "favorites", "from_feature": feature})
     out["routes"] = routes
     flow = dict(out.get("flow_api") or {})
     flow["favorites"] = {"file": "FavoriteController.java", "need": ["/api/favorites"]}
@@ -312,10 +329,91 @@ def merge_favorites_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_ARCHIVE_FAVORITES_FILES = [
+    "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+    "backend/src/main/java/com/thesis/capability/FavoriteStore.java",
+    "backend/src/main/java/com/thesis/capability/RecommendStore.java",
+    "backend/src/main/java/com/thesis/common/AdminAuth.java",
+    "backend/src/main/java/com/thesis/controller/ArchiveController.java",
+    "backend/src/main/java/com/thesis/controller/CategoryController.java",
+    "backend/src/main/java/com/thesis/controller/FavoriteController.java",
+    "backend/src/main/java/com/thesis/controller/RecommendController.java",
+    "backend/src/main/java/com/thesis/controller/UsersAdminController.java",
+    "backend/src/main/java/com/thesis/controller/GateController.java",
+    "backend/src/main/java/com/thesis/controller/NoticeController.java",
+    "backend/src/main/java/com/thesis/controller/MessageController.java",
+    "backend/src/main/java/com/thesis/service/MessageStore.java",
+    "backend/src/main/java/com/thesis/controller/AuthController.java",
+    "backend/src/main/java/com/thesis/controller/ProfileController.java",
+    "backend/src/main/java/com/thesis/controller/TicketDashboardController.java",
+    "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/views/user/MyFavorites.vue",
+    "frontend/src/components/RecommendStrip.vue",
+    "frontend/src/components/MessageBell.vue",
+    "frontend/src/views/admin/ArchiveAdmin.vue",
+    "frontend/src/views/admin/CategoriesAdmin.vue",
+    "frontend/src/views/admin/TicketDashboard.vue",
+    "frontend/src/views/admin/UsersAdmin.vue",
+    "frontend/src/views/Notices.vue",
+    "frontend/src/views/NoticeDetail.vue",
+    "frontend/src/views/admin/NoticesAdmin.vue",
+    "frontend/src/views/Profile.vue",
+    "frontend/src/views/Login.vue",
+    "frontend/src/views/Register.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/utils/domainSchema.js",
+    "frontend/src/utils/apiCalls.js",
+    "frontend/src/appDelivered.js",
+    "frontend/src/router/index.js",
+    "sql/schema.sql",
+]
+
+
+def gate_archive_favorites(
+    *,
+    archive_feature: str,
+    favorites_feature: str,
+    users_feature: str,
+    category_feature: str = "分类管理",
+    dashboard_feature: str = "管理端工作台",
+    notice_feature: str = "公告管理",
+) -> dict:
+    """内容流：档案浏览 + 即时收藏（无单据审核）。"""
+    routes = [
+        {"seg": "archive", "from_feature": archive_feature},
+        {"seg": "favorites", "from_feature": favorites_feature},
+        {"seg": "admin/dashboard", "from_feature": dashboard_feature},
+        {"seg": "admin/archive", "from_feature": archive_feature},
+        {"seg": "admin/categories", "from_feature": category_feature},
+        {"seg": "admin/users", "from_feature": users_feature},
+        {"seg": "admin/notices", "from_feature": notice_feature},
+        {"seg": "notices", "from_feature": notice_feature},
+        {"seg": "notices/:id", "from_feature": notice_feature},
+        {"seg": "profile", "from_baseline": "profile"},
+        {"seg": "register", "from_baseline": "register"},
+    ]
+    return {
+        "routes": routes,
+        "files": list(_GATE_ARCHIVE_FAVORITES_FILES),
+        "flow_api": {
+            "favorites": {"file": "FavoriteController.java", "need": ["/api/favorites"]},
+        },
+        "admin_invariants": {
+            "require_super_auth": True,
+            "master_kind": "archive",
+            "master_menus": ["archive", "category"],
+            "super_menus": ["users", "content", "archive", "category"],
+        },
+    }
+
+
 _GATE_UX_FILES = [
     "backend/src/main/java/com/thesis/capability/BrowseHistoryStore.java",
     "backend/src/main/java/com/thesis/controller/BrowseHistoryController.java",
     "frontend/src/views/user/BrowseHistory.vue",
+    "frontend/src/utils/apiCalls.js",
     "frontend/src/router/index.js",
 ]
 
