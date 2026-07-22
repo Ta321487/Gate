@@ -21,6 +21,7 @@ from app.llm.agents import (
     run_fix_agent,
     run_island_agent,
     run_module_label_agent,
+    run_testcase_label_agent,
     run_qa_agent,
     run_spec_agent,
 )
@@ -261,9 +262,26 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         f"Module Label · mode={mod.get('mode')} filled={mod.get('filled')} "
                         f"scope={mod.get('scope', '')}",
                     )
+                    tc = await run_testcase_label_agent(
+                        db,
+                        llm_rt,
+                        project_id=project.id,
+                        workspace=workspace,
+                        spec=project.spec if isinstance(project.spec, dict) else None,
+                        proposal_text=raw_prop or "",
+                        llm_enabled=bool(project.llm_enabled),
+                    )
+                    er_meta += (
+                        f" · tc={tc.get('mode')} filled={tc.get('filled', 0)}"
+                    )
+                    await append_log(
+                        project.id,
+                        f"Testcase Label · mode={tc.get('mode')} rows={tc.get('rows')} "
+                        f"filled={tc.get('filled')}",
+                    )
                 except Exception as e:
-                    er_meta = f" · er/mod skip: {e}"
-                    await append_log(project.id, f"ER/Module Label skip · {e}")
+                    er_meta = f" · er/mod/tc skip: {e}"
+                    await append_log(project.id, f"ER/Module/Testcase Label skip · {e}")
                 await set_step(
                     2,
                     "done",

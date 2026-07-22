@@ -1,4 +1,4 @@
-"""窄 Agent：匹配推荐 / Spec 润色 / 填岛 / E-R 中文补全 / 模块图命名 / 修复 / 质检；不生成业务 Java/Vue。"""
+"""窄 Agent：匹配推荐 / Spec 润色 / 填岛 / E-R 中文补全 / 模块图命名 / 测试用例文案 / 修复 / 质检；不生成业务 Java/Vue。"""
 
 from __future__ import annotations
 
@@ -35,6 +35,12 @@ from app.bake.schema_modules import (
     load_module_label_patch,
     sanitize_module_label_patch,
     save_module_label_patch,
+)
+from app.bake.schema_testcases import (
+    build_testcase_skeleton,
+    load_testcase_label_patch,
+    sanitize_testcase_label_patch,
+    save_testcase_label_patch,
 )
 from app.llm.client import (
     append_deepseek_log,
@@ -656,6 +662,121 @@ async def run_module_label_agent(
         detail=format_usage_detail(res, f"{patch.get('mode')} · filled={filled} · scope={scope}"),
     )
     return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "scope": scope}
+
+
+# ---------- Agent E3：测试用例文案润色（只改已有行的前置/步骤/输入/预期，不增删用例） ----------
+async def run_testcase_label_agent(
+    db: AsyncSession,
+    rt: LlmRuntime,
+    *,
+    project_id: str,
+    workspace: Path,
+    spec: dict[str, Any] | None = None,
+    proposal_text: str = "",
+    llm_enabled: bool = True,
+) -> dict[str, Any]:
+    """确定性骨架已由 menus 生成；LLM 仅润色文案列，写入 islands/testcase_labels.json。"""
+    skeleton_model = build_testcase_skeleton(workspace)
+    if not skeleton_model:
+        return {"mode": "skip", "rows": 0, "filled": 0, "detail": "no schema"}
+
+    rows = skeleton_model.get("skeleton") or []
+    n_rows = len(rows)
+    allowed = {str(r.get("id") or "") for r in rows if r.get("id")}
+    use_llm = bool(llm_enabled and rt.stage_on("testcase_labels") and rt.configured)
+    if use_llm and not await budget_ok(db, project_id, rt):
+        use_llm = False
+        append_deepseek_log(project_id, "testcase_labels skip llm · budget exceeded")
+
+    if not use_llm or n_rows == 0:
+        save_testcase_label_patch(
+            workspace,
+            {
+                **sanitize_testcase_label_patch(load_testcase_label_patch(workspace), allowed),
+                "mode": "deterministic",
+            },
+        )
+        await record_call(
+            db,
+            project_id=project_id,
+            stage="testcase_labels",
+            tokens=0,
+            ok=True,
+            detail=f"deterministic · rows={n_rows}",
+        )
+        return {"mode": "deterministic", "rows": n_rows, "filled": 0}
+
+    title = ""
+    domain = ""
+    if isinstance(spec, dict):
+        title = str(spec.get("title") or "")
+        domain = str(spec.get("domain") or "")
+
+    # 控制 token：只送 id/module/item/key/side + 当前文案
+    target = [
+        {
+            "id": r.get("id"),
+            "module": r.get("module"),
+            "item": r.get("item"),
+            "key": r.get("key"),
+            "side": r.get("side"),
+            "precondition": r.get("precondition"),
+            "steps": r.get("steps"),
+            "input": r.get("input"),
+            "expected": r.get("expected"),
+        }
+        for r in rows
+    ]
+    excerpt = (proposal_text or "")[:1800]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是毕设港 Testcase Label Agent。只输出 JSON：\n"
+                '{"cases":{"TC-XXX-001":{"precondition":"...","steps":"...","input":"...","expected":"..."}}}\n'
+                "硬约束：\n"
+                "1) 只能改 target 里已有的 id；禁止新增/删除用例；禁止改 id/module/item；\n"
+                "2) 文案必须描述该菜单已实现操作，贴合开题用语但禁止发明未实现功能；\n"
+                "3) steps 用①②③…；中文为主；input 可含 username=admin 这类演示数据；\n"
+                "4) 不要写 actual/verdict；不要输出 target 以外的键。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "domain": domain,
+                    "title": title,
+                    "target": target,
+                    "proposal_excerpt": excerpt,
+                },
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    res = await chat(rt, messages, json_mode=True, temperature=0.2)
+    append_deepseek_log(project_id, f"testcase_labels ok={res.ok} {format_usage_detail(res)}")
+
+    if res.ok and isinstance(res.data, dict):
+        patch = {**sanitize_testcase_label_patch(res.data, allowed), "mode": "llm"}
+    else:
+        old = sanitize_testcase_label_patch(load_testcase_label_patch(workspace), allowed)
+        patch = {
+            **old,
+            "mode": "llm_failed_keep_old" if old.get("cases") else "llm_failed",
+        }
+
+    save_testcase_label_patch(workspace, patch)
+    filled = len(patch.get("cases") or {})
+    await record_call(
+        db,
+        project_id=project_id,
+        stage="testcase_labels",
+        tokens=res.tokens,
+        ok=bool(res.ok),
+        detail=format_usage_detail(res, f"{patch.get('mode')} · rows={n_rows} · filled={filled}"),
+    )
+    return {"mode": patch.get("mode"), "rows": n_rows, "filled": filled}
 
 
 # ---------- Agent C：构建修复（诊断 + 重放填岛，不改 Java/Vue） ----------

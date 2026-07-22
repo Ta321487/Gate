@@ -47,6 +47,12 @@ export const api = {
   getSchema: (id) => http.get(`/projects/${id}/schema`),
   getModules: (id, { layout = 'biz' } = {}) =>
     http.get(`/projects/${id}/schema/modules`, { params: { layout } }),
+  getTestcases: (id, { fields = 6 } = {}) =>
+    http.get(`/projects/${id}/schema/testcases`, { params: { fields } }),
+  testcasesMdUrl: (id, { fields = 6 } = {}) => {
+    const q = new URLSearchParams({ fields: String(fields) })
+    return `/api/projects/${id}/schema/testcases.md?${q}`
+  },
   getApis: (id) => http.get(`/projects/${id}/apis`),
   erSvgUrl: (id, { mode = 'total', entity } = {}) => {
     const q = new URLSearchParams({ mode })

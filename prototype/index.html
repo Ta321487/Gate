@@ -15,7 +15,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">毕设港</div>
-        <div class="brand-sub">Gate · Ops</div>
+        <div class="brand-sub">Gate · 运营台</div>
       </div>
       <nav class="nav">
         <div class="nav-label">工作台</div>
@@ -23,10 +23,11 @@
         <div class="nav-item" data-nav="jobs"><span class="dot"></span><span>任务队列</span></div>
         <div class="nav-item" data-nav="help"><span class="dot"></span><span>帮助文档</span></div>
         <div class="nav-label">系统</div>
-        <div class="nav-item" data-nav="settings"><span class="dot"></span><span>DeepSeek</span></div>
+        <div class="nav-item" data-nav="llm"><span class="dot"></span><span>大模型</span></div>
+        <div class="nav-item" data-nav="unsplash"><span class="dot"></span><span>Unsplash</span></div>
         <div class="nav-item" data-nav="system"><span class="dot"></span><span>运行环境</span></div>
       </nav>
-      <div class="sidebar-foot">毕设港 · Ops</div>
+      <div class="sidebar-foot">毕设港 · 运营台</div>
     </aside>
 
     <div class="main">
@@ -48,7 +49,7 @@
               <option value="generating">项目 · 生成中</option>
               <option value="generated">项目 · 已生成待启动</option>
               <option value="running">项目 · 运行中</option>
-              <option value="failed">项目 · P2 门禁失败</option>
+              <option value="failed">项目 · 质量检查失败</option>
             </select>
           </div>
           <button type="button" class="theme-toggle" id="theme-toggle" title="切换夜间模式">夜间</button>
@@ -157,13 +158,13 @@
 
             <div class="banner success mb-16" style="margin-bottom:14px">
               <h4 style="font-size:14px;margin-bottom:4px">推荐匹配已给出</h4>
-              <p class="small muted">确认后开始生成。骨架 / 领域改动需先解锁。</p>
+              <p class="small muted">确认后到「一键生成」调整视觉并开跑。如需调整骨架或领域，请先解锁。</p>
             </div>
 
             <div class="banner warn mb-16" style="margin-bottom:14px">
-              <h4 style="font-size:14px;margin-bottom:4px">匹配说明（请看一眼）</h4>
+              <h4 style="font-size:14px;margin-bottom:4px">匹配说明</h4>
               <ul class="warn-list">
-                <li>人脸识别等能力已降级为砍项，不影响主路径交付。</li>
+                <li>人脸识别等能力已标为「本期不做」，不影响主路径交付。</li>
               </ul>
             </div>
 
@@ -177,13 +178,13 @@
                   <div class="rec-box">
                     <div class="rec-title">系统推荐（置信度 0.86）</div>
                     <div class="rec-main" id="rec-label">ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书</div>
-                    <div class="rec-sub">命中：借阅 / 审核 / 图书 / 管理员 · 砍项：人脸识别、协同过滤推荐</div>
+                    <div class="rec-sub">命中：借阅 / 审核 / 图书 / 管理员 · 本期不做：人脸识别、协同过滤推荐</div>
                   </div>
 
                   <div class="lock-row">
                     <span class="small muted">骨架 / 领域已锁定</span>
                     <div class="row gap-sm">
-                      <button type="button" class="btn btn-secondary btn-sm" id="btn-unlock-match" data-action="toggle-override">解锁覆盖</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-unlock-match" data-action="toggle-override">解锁调整</button>
                       <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-match" data-action="reset-match" style="display:none">恢复推荐</button>
                     </div>
                   </div>
@@ -204,36 +205,15 @@
                       <label>领域</label>
                       <select id="sel-dom">
                         <option selected>DOM-LIBRARY · 图书</option>
+                        <option>DOM-EQUIP · 设备</option>
+                        <option>DOM-DORM · 宿舍报修</option>
+                        <option>DOM-ACTIVITY · 活动报名</option>
                         <option>DOM-SHOP · 商城</option>
-                        <option>DOM-DORM · 宿舍</option>
                         <option>DOM-FOOD · 点餐</option>
-                        <option>DOM-HOSPITAL · 医院</option>
+                        <option>DOM-HOSPITAL · 挂号</option>
                         <option>DOM-PARKING · 车位</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label>行业配色</label>
-                      <select id="sel-theme">
-                        <option selected>theme-ink · 墨蓝学术</option>
-                        <option>theme-grove · 青松校园</option>
-                        <option>theme-clay · 陶土工坊</option>
-                        <option>theme-night · 深色答辩</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label>LLM 业务岛</label>
-                      <select id="sel-llm">
-                        <option selected>开启 · 白名单插槽填充</option>
-                        <option>关闭 · 仅确定性 bake</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label>密码</label>
-                      <select id="sel-password">
-                        <option selected>明文</option>
-                        <option>BCrypt</option>
-                        <option>MD5</option>
-                        <option>SHA-256</option>
+                        <option>DOM-MEDIA · 影视</option>
+                        <option>DOM-GENERIC · 通用兜底</option>
                       </select>
                     </div>
                   </div>
@@ -252,7 +232,7 @@
 
               <div class="panel">
                 <div class="panel-hd">
-                  <h3>解析摘要 · Spec 预览</h3>
+                  <h3>解析摘要 · 生成配置</h3>
                   <button type="button" class="btn btn-ghost btn-sm" data-action="view-spec">查看</button>
                 </div>
                 <div class="panel-bd parse-panel">
@@ -288,15 +268,19 @@
                     </details>
                   </div>
                   <div class="parse-block">
-                    <div class="parse-label">生成 Spec</div>
+                    <div class="parse-label">生成配置</div>
                     <dl class="spec-dl">
-                      <div><dt>角色</dt><dd>reader、admin</dd></div>
+                      <div><dt>角色</dt><dd>user、admin、subadmin</dd></div>
                       <div><dt>实体</dt><dd>Book、Category、Borrow、Notice</dd></div>
                       <div><dt>主流程</dt><dd>申请借阅 → 审核 → 归还</dd></div>
                       <div><dt>基线</dt><dd>captcha、upload、page、errorcode</dd></div>
-                      <div><dt>砍项</dt><dd>人脸识别、协同过滤推荐</dd></div>
+                      <div><dt>本期不做</dt><dd>人脸识别、协同过滤推荐</dd></div>
                       <div><dt>配色</dt><dd>theme-ink · 墨蓝学术</dd></div>
-                      <div><dt>登录入口</dt><dd>统一登录页 · 角色选择控件</dd></div>
+                      <div><dt>质感</dt><dd>soft · 圆润浮起</dd></div>
+                      <div><dt>门户布局</dt><dd>topbar · 顶栏门户</dd></div>
+                      <div><dt>字体</dt><dd>clean · 净白无衬线</dd></div>
+                      <div><dt>登录入口</dt><dd>登录页身份选择 · 单选分段</dd></div>
+                      <div><dt>交付标识</dt><dd><span class="mono">library</span> · thesis-app.zip · Maven library-app · com.campus.library · 库 gf_thesis_library_001</dd></div>
                     </dl>
                   </div>
                   <pre class="spec-preview" id="spec-preview" style="display:none">{
@@ -317,8 +301,7 @@
               <label>
                 <input type="checkbox" id="match-ack" />
                 <span id="match-ack-text">
-                  已核对骨架、领域与砍项，确认后开始生成。
-                  <span class="muted" style="display:block;margin-top:4px">置信度 0.86</span>
+                  已核对骨架、领域与本期范围，确认后开始生成。
                 </span>
               </label>
             </div>
@@ -331,11 +314,75 @@
           <div class="tab-panel" id="tab-generate">
             <div id="gen-idle">
               <div class="panel mb-16">
+                <div class="panel-hd">
+                  <h3>视觉与生成选项</h3>
+                  <span class="small muted">选项即时保存；点「一键生成」写入工程</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>行业配色</label>
+                      <select id="sel-theme">
+                        <option selected>theme-ink · 墨蓝学术</option>
+                        <option>theme-grove · 青松校园</option>
+                        <option>theme-clay · 陶土工坊</option>
+                        <option>theme-night · 深色答辩</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>界面质感</label>
+                      <select id="sel-chrome">
+                        <option selected>soft · 圆润浮起</option>
+                        <option>sharp · 直角扁平</option>
+                        <option>pill · 胶囊按钮</option>
+                        <option>outline · 粗线线框</option>
+                        <option>dense · 紧凑密排</option>
+                        <option>ruled · 细线分区</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>门户布局</label>
+                      <select id="sel-layout">
+                        <option selected>topbar · 顶栏门户</option>
+                        <option>rail · 侧栏门户</option>
+                        <option>masthead · 通栏抬头</option>
+                        <option>island · 居中岛屿</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>字体配对</label>
+                      <select id="sel-typeface">
+                        <option selected>clean · 净白无衬线</option>
+                        <option>serif · 书香衬线</option>
+                        <option>tech · 理工无衬线</option>
+                        <option>soft · 圆润人文</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>智能业务填充</label>
+                      <select id="sel-llm">
+                        <option selected>开启 · 填充业务文案与种子数据</option>
+                        <option>关闭 · 仅使用基线生成</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>密码</label>
+                      <select id="sel-password">
+                        <option selected>明文</option>
+                        <option>BCrypt</option>
+                        <option>MD5</option>
+                        <option>SHA-256</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="panel mb-16">
                 <div class="panel-bd">
                   <div class="row" style="justify-content:space-between">
                     <div>
                       <div style="font-weight:600;margin-bottom:4px">匹配已确认 · 可以生成</div>
-                      <div class="small muted">bake 为主 · LLM 仅填业务岛 · 门禁不过禁止 ZIP</div>
+                      <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
                     </div>
                     <button type="button" class="btn btn-primary btn-lg" id="btn-generate" data-action="generate">一键生成</button>
                   </div>
@@ -348,12 +395,12 @@
                 </div>
                 <div class="panel-bd">
                   <ul class="step-list">
-                    <li><span class="step-ico">1</span><div><div>解析开题 → 合并 Spec</div><div class="meta">匹配阶段</div></div></li>
-                    <li><span class="step-ico">2</span><div><div>复制骨架 · 写入领域 SQL</div><div class="meta">确定性 bake</div></div></li>
-                    <li><span class="step-ico">3</span><div><div>业务岛 emit · LLM 填缺口</div><div class="meta">白名单文件</div></div></li>
-                    <li><span class="step-ico">4</span><div><div>构建验证</div><div class="meta">P0</div></div></li>
-                    <li><span class="step-ico">5</span><div><div>门禁：登录 + <strong>主流程 E2E</strong></div><div class="meta">P1 / P2</div></div></li>
-                    <li><span class="step-ico">6</span><div><div>开题对照 · 打包 ZIP</div><div class="meta">仅门禁全过</div></div></li>
+                    <li><span class="step-ico">1</span><div><div>解析材料并合并生成配置</div><div class="meta">匹配阶段</div></div></li>
+                    <li><span class="step-ico">2</span><div><div>复制基线并写入领域数据表</div><div class="meta">确定性生成</div></div></li>
+                    <li><span class="step-ico">3</span><div><div>按白名单填充业务配置</div><div class="meta">AI 补全配置项</div></div></li>
+                    <li><span class="step-ico">4</span><div><div>构建验证</div><div class="meta">基础检查</div></div></li>
+                    <li><span class="step-ico">5</span><div><div>登录与主流程验收</div><div class="meta">关键路径</div></div></li>
+                    <li><span class="step-ico">6</span><div><div>开题对照并打包交付包</div><div class="meta">检查全部通过后</div></div></li>
                   </ul>
                 </div>
               </div>
@@ -383,40 +430,115 @@
             </div>
 
             <div id="gen-success" style="display:none">
-              <div class="banner success">
-                <h4 id="gen-success-title">生成完成 · 门禁全过 · 可交付</h4>
-                <p class="small muted" id="gen-success-desc">ZIP 已解锁。请到「运行」预览后再交付。</p>
+              <div class="banner success mb-16">
+                <h4 id="gen-success-title">生成完成 · 质量检查已通过 · 可交付</h4>
+                <p class="small muted" id="gen-success-desc">交付包已解锁。建议到「运行」预览后再交付。</p>
                 <div class="row mt-12 gap-sm">
                   <button type="button" class="btn btn-primary" data-action="goto-tab" data-tab="runtime">前往运行</button>
-                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看门禁</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看质量检查</button>
                   <button type="button" class="btn btn-secondary" data-action="download-zip">下载 ZIP</button>
-                  <button type="button" class="btn btn-secondary" data-action="regenerate">重新生成</button>
+                </div>
+              </div>
+              <div class="panel mb-16" id="gen-soft-panel">
+                <div class="panel-hd">
+                  <h3>视觉与生成选项</h3>
+                  <span class="small muted">选项即时保存；点下方按钮写入工程</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>行业配色</label>
+                      <select>
+                        <option selected>theme-ink · 墨蓝学术</option>
+                        <option>theme-grove · 青松校园</option>
+                        <option>theme-clay · 陶土工坊</option>
+                        <option>theme-night · 深色答辩</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>界面质感</label>
+                      <select>
+                        <option selected>soft · 圆润浮起</option>
+                        <option>sharp · 直角扁平</option>
+                        <option>pill · 胶囊按钮</option>
+                        <option>outline · 粗线线框</option>
+                        <option>dense · 紧凑密排</option>
+                        <option>ruled · 细线分区</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>门户布局</label>
+                      <select>
+                        <option selected>topbar · 顶栏门户</option>
+                        <option>rail · 侧栏门户</option>
+                        <option>masthead · 通栏抬头</option>
+                        <option>island · 居中岛屿</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>字体配对</label>
+                      <select>
+                        <option selected>clean · 净白无衬线</option>
+                        <option>serif · 书香衬线</option>
+                        <option>tech · 理工无衬线</option>
+                        <option>soft · 圆润人文</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>智能业务填充</label>
+                      <select>
+                        <option selected>开启 · 填充业务文案与种子数据</option>
+                        <option>关闭 · 仅使用基线生成</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>密码</label>
+                      <select>
+                        <option selected>明文</option>
+                        <option>BCrypt</option>
+                        <option>MD5</option>
+                        <option>SHA-256</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row mt-16 gap-sm">
+                    <button type="button" class="btn btn-primary" data-action="regenerate">按当前选项重新生成</button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div id="gen-regression" style="display:none">
-              <div class="banner fail">
-                <h4>已生成 · 门禁回退 · 禁止下载</h4>
-                <p class="small muted">工作区与当前门禁不一致（常见于骨架升级后）。请重新生成，或到「产物」查看未过项。</p>
+              <div class="banner fail mb-16">
+                <h4>已生成，但质量检查未通过，暂不可下载</h4>
+                <p class="small muted">工程与当前验收规则不一致（常见于基线升级后）。可调整下方选项后重新生成，或到「产物」查看未通过项。</p>
                 <div class="row mt-12 gap-sm">
-                  <button type="button" class="btn btn-primary" data-action="regenerate">重新生成</button>
-                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看门禁</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看质量检查</button>
                   <button type="button" class="btn btn-secondary" data-action="goto-tab" data-tab="runtime">前往运行</button>
+                </div>
+              </div>
+              <div class="panel mb-16">
+                <div class="panel-hd">
+                  <h3>视觉与生成选项</h3>
+                  <span class="small muted">选项即时保存；点下方按钮写入工程</span>
+                </div>
+                <div class="panel-bd">
+                  <div class="row gap-sm">
+                    <button type="button" class="btn btn-primary" data-action="regenerate">按当前选项重新生成</button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div id="gen-failed" style="display:none">
               <div class="banner fail">
-                <h4 id="fail-title">门禁未过 · 禁止交付</h4>
-                <p class="small muted" id="fail-desc">主流程 / 功能清单未通过则禁止下载 ZIP。</p>
+                <h4 id="fail-title">质量检查未通过 · 暂不可交付</h4>
+                <p class="small muted" id="fail-desc">主流程或功能清单未通过时，暂不可下载交付包。</p>
                 <div class="row mt-12 gap-sm">
                   <button type="button" class="btn btn-primary" data-action="retry-job">从失败步骤重试</button>
-                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看门禁</button>
+                  <button type="button" class="btn btn-secondary" data-action="goto-artifacts-gates">查看质量检查</button>
                   <button type="button" class="btn btn-secondary" data-action="goto-logs" data-log-side="job">查看日志</button>
-                  <button type="button" class="btn btn-secondary" data-action="rollback-island">回滚业务岛</button>
-                  <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示：门禁改通过</button>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示：检查改通过</button>
                 </div>
               </div>
             </div>
@@ -470,7 +592,7 @@
                 <button class="active" data-side="job">任务</button>
                 <button data-side="backend">后端</button>
                 <button data-side="frontend">前端</button>
-                <button data-side="deepseek">DeepSeek</button>
+                <button data-side="deepseek">大模型</button>
               </div>
               <input type="search" id="log-filter" placeholder="过滤关键字…" style="height:30px;border:1px solid var(--line);border-radius:6px;padding:0 10px;width:180px" />
               <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-log" style="margin-left:auto">刷新</button>
@@ -487,14 +609,14 @@
               </div>
               <div class="panel-bd artifacts-file-grid">
                 <div class="file-row" style="margin:0">
-                  <span><strong>thesis-app.zip</strong><br /><span class="small muted" id="zip-hint">门禁未过 · 锁定</span></span>
+                  <span><strong>thesis-app.zip</strong><br /><span class="small muted" id="zip-hint">质量检查未过 · 锁定</span></span>
                   <button type="button" class="btn btn-secondary btn-sm" id="btn-zip-dl" data-action="download-zip">锁定</button>
                 </div>
                 <div class="file-row" style="margin:0">
-                  <span><strong>workspace/</strong><br /><span class="small muted mono">data/workspace/gf-20260717-001</span></span>
+                  <span><strong>工程目录</strong><br /><span class="small muted mono">data/workspace/gf-20260717-001</span></span>
                 </div>
                 <div class="file-row" style="margin:0">
-                  <span><strong>spec.json</strong><br /><span class="small muted">匹配与生成配置</span></span>
+                  <span><strong>生成配置</strong><br /><span class="small muted">匹配与生成参数</span></span>
                   <button type="button" class="btn btn-ghost btn-sm" data-action="view-spec">查看</button>
                 </div>
               </div>
@@ -503,13 +625,14 @@
             <div class="panel mt-16">
               <div class="panel-hd">
                 <h3>对照视图</h3>
-                <span class="small muted">库表 · 学生端 API · 门禁 · 仅运营端验收</span>
+                <span class="small muted">库表 · 论文材料 · 学生端 API · 质量检查 · 仅运营端验收</span>
               </div>
               <div class="panel-bd" style="padding-top:8px">
                 <div class="tabs-mini mb-12" id="artifact-subtabs">
                   <button class="active" data-aview="db">数据库</button>
+                  <button data-aview="thesis">论文材料</button>
                   <button data-aview="api">学生端 API</button>
-                  <button data-aview="gates">门禁 / 清单</button>
+                  <button data-aview="gates">质量检查</button>
                 </div>
 
                 <div id="aview-db" class="stack">
@@ -524,11 +647,10 @@
                         <span class="muted" id="type-mode-label">类型 varchar(60)</span>
                       </label>
                       <button type="button" class="btn btn-secondary btn-sm" data-action="view-er">E-R 图</button>
-                      <button type="button" class="btn btn-secondary btn-sm" data-action="download-er">下载 SVG</button>
                     </div>
                   </div>
-                  <div class="small muted">SQL · sql/schema.sql · 约束 6~13 张表</div>
-                  <div class="small">当前 <strong>8</strong> 张 <span class="muted">（符合 6~13）</span></div>
+                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节</div>
+                  <div class="small">当前 <strong>8</strong> 张 <span class="muted">（符合 6~15）</span></div>
                   <div class="table-list">
                     <div class="table-card">
                       <div class="table-card-hd"><span class="mono">book</span> <span class="muted">图书</span> <span class="small muted">3 列</span></div>
@@ -562,6 +684,32 @@
                   </div>
                 </div>
 
+                <div id="aview-thesis" class="stack" style="display:none">
+                  <p class="small muted" style="margin:0">贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。均按交付菜单推导，不发明功能。</p>
+                  <div class="grid-2">
+                    <div class="panel" style="margin:0">
+                      <div class="panel-bd">
+                        <div class="row-between" style="margin-bottom:8px">
+                          <strong>功能模块图</strong>
+                          <span class="pill pill-green">可导出</span>
+                        </div>
+                        <p class="small muted">按业务 / 按端切换 · 黑白线框 · 复制 PNG 或下载矢量</p>
+                        <button type="button" class="btn btn-primary btn-sm" data-action="view-modules">打开模块图</button>
+                      </div>
+                    </div>
+                    <div class="panel" style="margin:0">
+                      <div class="panel-bd">
+                        <div class="row-between" style="margin-bottom:8px">
+                          <strong>软件测试用例</strong>
+                          <span class="pill pill-green">可导出</span>
+                        </div>
+                        <p class="small muted">5～9 字段模板可选（默认 6）· 复制表格 / Markdown</p>
+                        <button type="button" class="btn btn-primary btn-sm" data-action="view-testcases">打开测试用例</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div id="aview-api" class="stack" style="display:none">
                   <div class="row-between">
                     <div class="small">
@@ -570,7 +718,7 @@
                     </div>
                     <input type="search" placeholder="筛选 path / 方法 / handler" style="width:220px;height:30px;border:1px solid var(--line);border-radius:6px;padding:0 10px" />
                   </div>
-                  <div class="small muted">静态扫描工作区 Controller · 对照门禁 flow_api · 仅供运营端验收，不含于交付包。复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。</div>
+                  <div class="small muted">静态扫描工作区 Controller · 对照质量检查 flow_api · 仅供运营端验收，不含于交付包。复制为「方法 + 路径」；联调基址用运行页后端地址（Session Cookie）。</div>
                   <div class="row gap-sm" style="margin:0">
                     <button type="button" class="api-chip active">全部 12</button>
                     <button type="button" class="api-chip">门户 5</button>
@@ -601,25 +749,28 @@
                 <div id="aview-gates" class="stack" style="display:none">
                   <div class="row-between">
                     <div class="small">
-                      质量门禁 · 交付 DoD
+                      质量检查 · 交付条件
                       <span class="pill" id="gate-overall-pill" style="margin-left:8px">—</span>
                     </div>
                     <div class="row gap-sm" style="margin:0">
-                      <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-fail">演示 P2 失败</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-fail">演示未通过</button>
                       <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示全过</button>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">P2 主流程或功能清单未过，禁止下载 ZIP。</p>
+                  <p class="small muted" style="margin:0">主流程或功能清单未过，禁止下载交付包。</p>
                   <table>
                     <thead><tr><th>级别</th><th>检查项</th><th>结果</th><th>说明</th></tr></thead>
                     <tbody id="gate-tbody">
-                      <tr data-gate="p0a"><td><span class="pill pill-neutral">P0</span></td><td>mvn compile</td><td class="gate-res"></td><td class="muted">后端编译</td></tr>
-                      <tr data-gate="p0b"><td><span class="pill pill-neutral">P0</span></td><td>npm build</td><td class="gate-res"></td><td class="muted">前端构建</td></tr>
-                      <tr data-gate="p1"><td><span class="pill pill-neutral">P1</span></td><td>登录 + 双侧进系统</td><td class="gate-res"></td><td class="muted">reader / admin + 验证码</td></tr>
+                      <tr data-gate="p0a"><td><span class="pill pill-neutral">P0</span></td><td>后端骨架</td><td class="gate-res"></td><td class="muted">工作区后端基线</td></tr>
+                      <tr data-gate="p0b"><td><span class="pill pill-neutral">P0</span></td><td>前端骨架</td><td class="gate-res"></td><td class="muted">工作区前端基线</td></tr>
+                      <tr data-gate="p1"><td><span class="pill pill-neutral">P1</span></td><td>登录 + 验证码基线</td><td class="gate-res"></td><td class="muted">user / admin + 验证码</td></tr>
                       <tr data-gate="p2"><td><span class="pill pill-amber">P2</span></td><td>领域主流程 E2E</td><td class="gate-res"></td><td class="muted" id="gate-p2-desc">申请借阅 → 审核 → 归还</td></tr>
                       <tr data-gate="p3a"><td><span class="pill pill-neutral">P3</span></td><td>开题对照 · 核心项</td><td class="gate-res"></td><td class="muted">见下方清单</td></tr>
-                      <tr data-gate="p3b"><td><span class="pill pill-neutral">P3</span></td><td>API 漂移 / UI 门禁</td><td class="gate-res"></td><td class="muted">路径一致 · 非默认蓝 · 无 lorem</td></tr>
-                      <tr data-gate="p3t"><td><span class="pill pill-neutral">P3</span></td><td>表数量 6~13</td><td class="gate-res"></td><td class="muted">schema 约束</td></tr>
+                      <tr data-gate="p3b"><td><span class="pill pill-neutral">P3</span></td><td>Spec / 契约一致</td><td class="gate-res"></td><td class="muted">路由与契约对齐</td></tr>
+                      <tr data-gate="p3t"><td><span class="pill pill-neutral">P3</span></td><td>表数量 6~15</td><td class="gate-res"></td><td class="muted">schema 约束</td></tr>
+                      <tr data-gate="p3d"><td><span class="pill pill-neutral">P3</span></td><td>总管/子管管理边界</td><td class="gate-res"></td><td class="muted">总管门禁与主数据页</td></tr>
+                      <tr data-gate="p3c"><td><span class="pill pill-neutral">P3</span></td><td>Domain Schema</td><td class="gate-res"></td><td class="muted">领域配置完整性</td></tr>
+                      <tr data-gate="accept"><td><span class="pill pill-neutral">P3</span></td><td>可接题边界</td><td class="gate-res"></td><td class="muted">accept=full</td></tr>
                     </tbody>
                   </table>
                   <div class="parse-sec-hd mt-12">开题对照清单</div>
@@ -629,10 +780,10 @@
                       <tr><td>读者注册 / 登录</td><td><span class="pill pill-green">已实现</span></td><td class="muted">基线包</td></tr>
                       <tr><td>图书检索与详情</td><td><span class="pill pill-green">已实现</span></td><td class="muted">DOM-LIBRARY</td></tr>
                       <tr><td>借阅申请 → 审核</td><td><span class="pill pill-green" id="cl-flow">已实现</span></td><td class="muted">ARCH-FLOW 主路径</td></tr>
-                      <tr><td>归还 / 逾期</td><td><span class="pill pill-green" id="cl-return">已实现</span></td><td class="muted">主流程 E2E 覆盖</td></tr>
+                      <tr><td>归还 / 逾期</td><td><span class="pill pill-green" id="cl-return">已实现</span></td><td class="muted">主流程验收覆盖</td></tr>
                       <tr><td>公告管理</td><td><span class="pill pill-green">已实现</span></td><td class="muted">标准模块</td></tr>
-                      <tr><td>人脸识别进馆</td><td><span class="pill pill-neutral">砍项</span></td><td class="muted">匹配阶段已砍</td></tr>
-                      <tr><td>协同过滤推荐</td><td><span class="pill pill-neutral">砍项</span></td><td class="muted">匹配阶段已砍</td></tr>
+                      <tr><td>人脸识别进馆</td><td><span class="pill pill-neutral">本期不做</span></td><td class="muted">匹配阶段已排除</td></tr>
+                      <tr><td>协同过滤推荐</td><td><span class="pill pill-neutral">本期不做</span></td><td class="muted">匹配阶段已排除</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -759,19 +910,44 @@
           </div>
         </section>
 
-        <!-- ========== SETTINGS · DeepSeek ========== -->
-        <section id="view-settings" class="view">
-          <h1 class="page-title">DeepSeek</h1>
-          <p class="page-desc">连接、用量与阶段开关。旧模型名将于 7/24 停用，请改用 V4。</p>
+        <!-- ========== LLM · 大模型 ========== -->
+        <section id="view-llm" class="view">
+          <h1 class="page-title">大模型</h1>
+          <p class="page-desc">DeepSeek / Gemini 统一管理：Key 仅环境变量；可单开或双开接力。用量与阶段开关共用一套。</p>
+
+          <div class="panel mb-16">
+            <div class="panel-hd"><h3>作战模式</h3></div>
+            <div class="panel-bd">
+              <p class="small muted mb-12">双开时优先一家，失败自动换另一家；两家都关则不调大模型，业务配置走确定性填充。</p>
+              <div class="grid-2">
+                <div class="field">
+                  <label>启用 DeepSeek</label>
+                  <button class="switch on" data-switch></button>
+                </div>
+                <div class="field">
+                  <label>启用 Gemini</label>
+                  <button class="switch on" data-switch></button>
+                </div>
+              </div>
+              <div class="field">
+                <label>双开时优先</label>
+                <select>
+                  <option selected>DeepSeek</option>
+                  <option>Gemini</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
           <div class="grid-2 mb-16">
             <div class="panel">
-              <div class="panel-hd"><h3>连接</h3><span class="pill pill-green">已配置</span></div>
+              <div class="panel-hd"><h3>DeepSeek 连接</h3><span class="pill pill-green">已配置</span></div>
               <div class="panel-bd stack">
                 <div class="field">
                   <label>API Key</label>
                   <input value="sk-••••••••••••7a2f（来自环境变量）" disabled />
                 </div>
+                <p class="small muted">环境变量 <span class="mono">DEEPSEEK_API_KEY</span> · DeepSeek V4</p>
                 <div class="field">
                   <label>Base URL</label>
                   <input value="https://api.deepseek.com" />
@@ -793,7 +969,6 @@
                   </div>
                 </div>
                 <div class="row gap-sm">
-                  <button type="button" class="btn btn-secondary btn-sm" data-action="save-ds">保存</button>
                   <button type="button" class="btn btn-primary btn-sm" data-action="test-ds">测试连接</button>
                   <span class="small muted" id="ds-latency">延迟 312 ms · 模型可用</span>
                 </div>
@@ -801,23 +976,51 @@
             </div>
 
             <div class="panel">
-              <div class="panel-hd">
-                <h3>用量与预算</h3>
-                <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-balance">刷新</button>
+              <div class="panel-hd"><h3>Gemini 连接</h3><span class="pill pill-amber">未配置 Key</span></div>
+              <div class="panel-bd stack">
+                <div class="field">
+                  <label>API Key</label>
+                  <input value="（未配置）" disabled />
+                </div>
+                <p class="small muted">环境变量 <span class="mono">GEMINI_API_KEY</span> · Google AI Studio</p>
+                <div class="field">
+                  <label>Base URL</label>
+                  <input value="https://generativelanguage.googleapis.com/v1beta/openai/" />
+                </div>
+                <div class="field">
+                  <label>模型</label>
+                  <select>
+                    <option selected>gemini-2.5-flash</option>
+                    <option>gemini-2.5-pro</option>
+                  </select>
+                </div>
+                <div class="row gap-sm">
+                  <button type="button" class="btn btn-primary btn-sm is-disabled" data-action="test-gm">测试连接</button>
+                  <span class="small muted">未配置 Key</span>
+                </div>
               </div>
-              <div class="panel-bd">
-                <div class="balance-box mb-16">
-                  <div class="small muted mb-12">DeepSeek 账户余额（官方 /user/balance）</div>
-                  <div class="balance-row">
-                    <strong class="mono">12.80 CNY</strong>
-                    <span class="small muted">充值 10.00 · 赠送 2.80</span>
-                  </div>
-                  <div class="small muted mt-12">账户可调用</div>
+            </div>
+          </div>
+
+          <div class="panel mb-16">
+            <div class="panel-hd">
+              <h3>用量与预算</h3>
+              <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-balance">刷新余额</button>
+            </div>
+            <div class="panel-bd">
+              <div class="balance-box mb-16">
+                <div class="small muted mb-12">DeepSeek 账户余额（官方接口；Gemini 无对等余额 API）</div>
+                <div class="balance-row">
+                  <strong class="mono">12.80 CNY</strong>
+                  <span class="small muted">充值 10.00 · 赠送 2.80</span>
                 </div>
-                <div class="small mb-12">
-                  本月 Token · <span class="mono">182400</span> / <span class="mono">1000000</span>
-                </div>
-                <div class="progress mb-16"><i style="width:18%"></i></div>
+                <div class="small muted mt-12">账户可调用</div>
+              </div>
+              <div class="small mb-12">
+                本月 Token · <span class="mono">182400</span> / <span class="mono">1000000</span>
+              </div>
+              <div class="progress mb-16"><i style="width:18%"></i></div>
+              <div class="grid-2">
                 <div class="field mb-12">
                   <label>月度 Token 预算</label>
                   <input type="number" value="1000000" />
@@ -826,31 +1029,50 @@
                   <label>项目级 Token 预算</label>
                   <input type="number" value="100000" />
                 </div>
-                <div class="field">
-                  <label>修复轮次上限</label>
-                  <input type="number" value="5" min="0" max="10" />
-                </div>
+              </div>
+              <div class="field">
+                <label>修复轮次上限</label>
+                <input type="number" value="5" min="0" max="10" />
+              </div>
+              <div class="row mt-12">
+                <button type="button" class="btn btn-primary btn-sm" data-action="save-ds">保存连接与预算</button>
               </div>
             </div>
           </div>
 
           <div class="panel mb-16">
-            <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可确定性 bake</span></div>
+            <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可完成基线生成</span></div>
             <div class="panel-bd">
               <div class="switch-row">
-                <div><strong>Agent A · Spec</strong><div class="small muted">润色开题摘要/功能点；关则仅关键词</div></div>
+                <div><strong>匹配推荐</strong><div class="small muted">大模型推荐骨架×领域；关闭或失败时回落关键词</div></div>
                 <button class="switch on" data-switch></button>
               </div>
               <div class="switch-row">
-                <div><strong>Agent B · 填岛</strong><div class="small muted">labels/seeds 白名单 JSON，不改源码</div></div>
+                <div><strong>摘要润色</strong><div class="small muted">润色开题摘要与功能点；关闭后仅用关键词</div></div>
                 <button class="switch on" data-switch></button>
               </div>
               <div class="switch-row">
-                <div><strong>Agent C · 编译修复</strong><div class="small muted">mvn 失败诊断并重放交付配置</div></div>
+                <div><strong>业务配置填充</strong><div class="small muted">仅填充业务文案与种子数据，不改业务源码</div></div>
                 <button class="switch on" data-switch></button>
               </div>
               <div class="switch-row">
-                <div><strong>Agent D · QA</strong><div class="small muted">漂移扫描 + 摘要，写入 islands/qa_report.json</div></div>
+                <div><strong>E-R 中文补全</strong><div class="small muted">把漏网英文表/列名补成中文展示，不改 SQL</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>模块图命名</strong><div class="small muted">按开题用语微调模块图节点名，不增删模块</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>测试用例文案</strong><div class="small muted">只润色已有用例的步骤/预期等，不增删用例、不发明功能</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>编译修复</strong><div class="small muted">构建失败时诊断并重试交付配置</div></div>
+                <button class="switch on" data-switch></button>
+              </div>
+              <div class="switch-row">
+                <div><strong>质量摘要</strong><div class="small muted">扫描配置漂移并生成质量摘要报告</div></div>
                 <button class="switch" data-switch></button>
               </div>
               <div class="row mt-12">
@@ -936,13 +1158,16 @@
                   <button type="button" data-action="dt-shortcut">近30天</button>
                 </span>
                 <input type="search" id="call-filter-pid" placeholder="项目 ID（精确）" style="width:180px" />
-                <select style="width:130px">
+                <select style="width:160px">
                   <option value="">阶段</option>
+                  <option>match_recommend</option>
                   <option>parse_spec</option>
                   <option>island_fill</option>
+                  <option>er_labels</option>
+                  <option>module_labels</option>
+                  <option>testcase_labels</option>
                   <option>auto_fix</option>
                   <option>qa_report</option>
-                  <option>emit</option>
                 </select>
                 <select style="width:100px">
                   <option value="">结果</option>
@@ -993,6 +1218,29 @@
               <div class="pager-row">
                 <span class="small muted">共 8 条</span>
                 <span class="small muted">20 条 / 页</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== UNSPLASH ========== -->
+        <section id="view-unsplash" class="view">
+          <h1 class="page-title">Unsplash</h1>
+          <p class="page-desc">登录氛围图与门户轮播配图。Access Key 仅环境变量，与大模型 Key 相同；未配置时按领域用公开图直链兜底。</p>
+          <div class="panel" style="max-width:560px">
+            <div class="panel-hd">
+              <h3>连接</h3>
+              <span class="pill pill-amber">未配置 Key</span>
+            </div>
+            <div class="panel-bd stack">
+              <div class="field">
+                <label>Access Key</label>
+                <input value="（未配置）" disabled />
+              </div>
+              <p class="small muted">申请地址：unsplash.com/developers · 写入 <span class="mono">backend/.env</span> 的 <span class="mono">UNSPLASH_ACCESS_KEY</span> 后重启后端。</p>
+              <div class="row gap-sm">
+                <button type="button" class="btn btn-primary btn-sm is-disabled" data-action="test-unsplash">测试连接</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-unsplash">刷新</button>
               </div>
             </div>
           </div>
@@ -1076,9 +1324,9 @@
               <div class="panel-bd help-body">
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传材料（开题 / 任务书 / 功能清单等，PDF / Word / TXT，可一次多选，最多 8 份）。系统解析后自动创建项目记录，进入项目详情。</p></li>
-                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。</p></li>
-                  <li><strong>一键生成</strong><p>匹配确认后方可启动生成。生成以基线工程落地为主，进度可在「任务队列」与项目详情中查看。</p></li>
-                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」页核对质量检查、表结构、学生端 API 与 E-R 图。</p></li>
+                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
+                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。生成完成后可同页改选项并「按当前选项重新生成」。进度可在「任务队列」与项目详情中查看。</p></li>
+                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」页核对质量检查、表结构、论文材料（功能模块图 / 软件测试用例）、学生端 API 与 E-R 图。</p></li>
                   <li><strong>交付</strong><p>质量检查全部通过后方可下载交付包。未通过或工程与验收规则不一致时下载保持锁定，须重新生成或排查未通过项。</p></li>
                 </ol>
               </div>
@@ -1097,12 +1345,24 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>数据库结构</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>生成完成后，可在「产物 / 对照」查看数据表、字段中文名及类型，并导出 E-R 图。</p>
+                <p>生成完成后，可在「产物 / 对照」查看数据表；E-R 支持总图与分图，可复制图片或下载 PNG 贴进 Word。</p>
                 <ul>
                   <li>字段类型按标准 MySQL 写法展示（如 varchar(60)、decimal(10,2)）。</li>
                   <li>可通过开关切换「合并类型」与「类型 / 长度分列」；复制内容与当前开关一致。</li>
                   <li>单表复制为制表符分隔文本，可贴入 Word 后使用「文本转换成表格」。</li>
                   <li>表头为字段名、中文名、数据类型（分列时另含长度）；中文名已表达业务含义，不设说明列。</li>
+                  <li>库表数量约束为 6～15 张（含平台表）。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel">
+              <div class="panel-hd"><h3>论文材料</h3><span class="pill pill-teal">产物</span></div>
+              <div class="panel-bd help-body">
+                <p>「产物 / 对照 → 论文材料」提供可贴说明书的功能模块图与软件测试用例表，均按交付菜单 / 角色推导，不发明功能。</p>
+                <ul>
+                  <li>功能模块图可按业务或按端切换；黑白线框，可复制 PNG 或下载矢量；可选大模型只微调节点中文名。</li>
+                  <li>软件测试用例 5～9 字段可选（默认 6）；可复制表格 / Markdown；大模型仅润色步骤/预期等文案，不增删用例。</li>
+                  <li>与质量检查相互独立：论文材料便于贴文档，交付闸门仍以质量检查为准。</li>
                 </ul>
               </div>
             </article>
@@ -1122,7 +1382,7 @@
               <div class="panel-bd help-body">
                 <p>毕设港自身（Python / FastAPI）的运维接口，与学生端交付包无关；用于本机调试、对接脚本或 Postman。</p>
                 <ul>
-                  <li>涵盖项目、任务、DeepSeek、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。</li>
+                  <li>涵盖项目、任务、大模型（DeepSeek / Gemini）、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。</li>
                   <li>勿与「产物 → 学生端 API」混淆：那是学生工程接口清单，这是工作台后端服务。</li>
                   <li>服务探活：GET /api/health。</li>
                 </ul>
@@ -1157,8 +1417,9 @@
                 <dl class="help-glossary">
                   <div class="help-glossary-row"><dt>骨架</dt><dd>学生工程的技术基线模板。匹配时选定骨架，决定可生成工程的基础形态。</dd></div>
                   <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域。决定文案、菜单与能力组合，与骨架配合使用。</dd></div>
-                  <div class="help-glossary-row"><dt>匹配确认</dt><dd>核验并锁定推荐骨架与领域。确认前不可正式生成；改动后须重新确认。</dd></div>
+                  <div class="help-glossary-row"><dt>匹配确认</dt><dd>核验并锁定推荐骨架与领域。确认前不可正式生成；改动后须重新确认。视觉与生成选项在「一键生成」页调整。</dd></div>
                   <div class="help-glossary-row"><dt>生成配置</dt><dd>描述业务配置的结构化数据（内部亦称 Spec / Schema）。大模型主要填充此类配置，而非手写业务代码。</dd></div>
+                  <div class="help-glossary-row"><dt>视觉与生成选项</dt><dd>配色、质感、布局、字体、智能填充与密码策略等软项；在「一键生成」页调整并即时保存，写入工程须重新生成。</dd></div>
                   <div class="help-glossary-row"><dt>基线生成</dt><dd>基于骨架与生成配置将工程落地的主路径（内部亦称 bake），区别于仅调用大模型写代码。</dd></div>
                   <div class="help-glossary-row"><dt>能力运行时</dt><dd>基线内已实现的通用业务能力；领域通过能力组合复用同一套运行时。</dd></div>
                   <div class="help-glossary-row"><dt>工程目录</dt><dd>单个项目生成后的本机工程目录，供预览、质量检查与打包下载使用。</dd></div>

@@ -27,8 +27,12 @@
           <n-button text size="small" @click="$router.push('/')">另建项目</n-button>
         </div>
         <div class="banner success">
-          <h4>推荐匹配已给出</h4>
-          <p class="small muted">确认后即可开始生成。如需调整骨架或领域，请先解锁。</p>
+          <h4>{{ alreadyBaked ? '工程已生成' : '推荐匹配已给出' }}</h4>
+          <p class="small muted">
+            {{ alreadyBaked
+              ? '改骨架 / 领域须先解锁。改配色、布局等视觉选项请到「一键生成」。'
+              : '确认后到「一键生成」调整视觉并开跑。如需调整骨架或领域，请先解锁。' }}
+          </p>
         </div>
         <div v-if="matchWarnings.length" class="banner warn">
           <h4>匹配说明</h4>
@@ -78,18 +82,6 @@
                     <n-select v-model:value="form.domain" :options="domOptions" :disabled="!unlocked" @update:value="onArchDomChange" />
                   </n-form-item>
                 </div>
-                <n-form-item label="行业配色">
-                  <n-select v-model:value="form.theme" :options="themeOptions" @update:value="saveSoft" />
-                </n-form-item>
-                <n-form-item label="界面质感">
-                  <n-select v-model:value="form.chrome" :options="chromeOptions" @update:value="saveSoft" />
-                </n-form-item>
-                <n-form-item label="智能业务填充">
-                  <n-select v-model:value="form.llm" :options="llmOptions" @update:value="saveSoft" />
-                </n-form-item>
-                <n-form-item label="密码">
-                  <n-select v-model:value="form.passwordHash" :options="passwordHashOptions" @update:value="saveSoft" />
-                </n-form-item>
               </div>
               <div class="confidence">
                 <span class="small muted">置信度</span>
@@ -146,6 +138,8 @@
                   <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
                   <div><dt>配色</dt><dd>{{ p.spec?.theme_label || p.theme }}</dd></div>
                   <div><dt>质感</dt><dd>{{ p.spec?.chrome_label || p.spec?.chrome || '—' }}</dd></div>
+                  <div><dt>门户布局</dt><dd>{{ p.spec?.layout_label || p.spec?.layout || '—' }}</dd></div>
+                  <div><dt>字体</dt><dd>{{ p.spec?.typeface_label || p.spec?.typeface || '—' }}</dd></div>
                   <div><dt>登录入口</dt><dd>{{ authEntryDisplay }}</dd></div>
                   <div v-if="p.spec?.delivery_slug || p.db_name || p.spec?.maven_artifact"><dt>交付标识</dt><dd>
                     <span v-if="p.spec?.delivery_slug" class="mono">{{ p.spec.delivery_slug }}</span>
@@ -173,39 +167,7 @@
 
       <!-- Generate -->
       <n-tab-pane name="generate" tab="一键生成">
-        <div v-if="genState === 'idle'">
-          <div class="panel mb-16">
-            <div class="panel-bd">
-              <div class="row-between">
-                <div>
-                  <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
-                  <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
-                </div>
-                <n-button type="primary" size="large" :disabled="!p.match_confirmed" @click="startGenerate">一键生成</n-button>
-              </div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-hd">
-              <h3>生成流水线</h3>
-              <span class="small muted">{{ planSteps.length }} 步 · 顺序执行</span>
-            </div>
-            <div class="panel-bd">
-              <ol class="step-rail">
-                <li v-for="(s, i) in planSteps" :key="i" class="pending">
-                  <div class="step-rail-track" aria-hidden="true">
-                    <span class="step-ico">{{ i + 1 }}</span>
-                  </div>
-                  <div class="step-body">
-                    <div class="step-title">{{ s.t }}</div>
-                    <div class="meta">{{ s.m }}</div>
-                  </div>
-                </li>
-              </ol>
-            </div>
-          </div>
-        </div>
-        <div v-else-if="genState === 'running'">
+        <div v-if="genState === 'running'">
           <div class="panel mb-16">
             <div class="panel-bd">
               <div class="row-between" style="margin-bottom:10px">
@@ -249,34 +211,99 @@
             </div>
           </div>
         </div>
-        <div v-else-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success">
-          <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 质量检查已通过 · 可交付' }}</h4>
-          <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载交付包。' : '交付包已解锁。建议到「运行」预览后再交付。' }}</p>
-          <div class="row mt-12">
-            <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-            <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
-            <n-button size="small" @click="startGenerate">重新生成</n-button>
+        <template v-else>
+          <div v-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success mb-16">
+            <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 质量检查已通过 · 可交付' }}</h4>
+            <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载交付包。' : '交付包已解锁。建议到「运行」预览后再交付。' }}</p>
+            <div class="row mt-12">
+              <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
+              <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
+              <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
+            </div>
           </div>
-        </div>
-        <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail">
-          <h4>已生成，但质量检查未通过，暂不可下载</h4>
-          <p class="small muted">工程与当前验收规则不一致（常见于基线升级后）。请重新生成，或到「产物」查看未通过项。</p>
-          <div class="row mt-12">
-            <n-button type="primary" size="small" @click="startGenerate">重新生成</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-            <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
+          <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail mb-16">
+            <h4>已生成，但质量检查未通过，暂不可下载</h4>
+            <p class="small muted">工程与当前验收规则不一致（常见于基线升级后）。可调整下方选项后重新生成，或到「产物」查看未通过项。</p>
+            <div class="row mt-12">
+              <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
+              <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
+            </div>
           </div>
-        </div>
-        <div v-else class="banner fail">
-          <h4>质量检查未通过 · 暂不可交付</h4>
-          <p class="small muted">{{ currentJob?.error || '主流程或功能清单未通过时，暂不可下载交付包。' }}</p>
-          <div class="row mt-12">
-            <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
-            <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-            <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
+          <div v-else-if="genState === 'failed'" class="banner fail mb-16">
+            <h4>质量检查未通过 · 暂不可交付</h4>
+            <p class="small muted">{{ currentJob?.error || '主流程或功能清单未通过时，暂不可下载交付包。' }}</p>
+            <div class="row mt-12">
+              <n-button type="primary" size="small" @click="retryCurrent">从失败步骤重试</n-button>
+              <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
+              <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
+            </div>
           </div>
-        </div>
+
+          <div v-if="showSoftBakePanel" class="panel mb-16">
+            <div class="panel-hd">
+              <h3>视觉与生成选项</h3>
+              <span class="small muted">{{ softBakeHint }}</span>
+            </div>
+            <div class="panel-bd">
+              <div class="grid-2">
+                <n-form-item label="行业配色">
+                  <n-select v-model:value="form.theme" :options="themeOptions" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="界面质感">
+                  <n-select v-model:value="form.chrome" :options="chromeOptions" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="门户布局">
+                  <n-select v-model:value="form.layout" :options="layoutOptions" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="字体配对">
+                  <n-select v-model:value="form.typeface" :options="typefaceOptions" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="智能业务填充">
+                  <n-select v-model:value="form.llm" :options="llmOptions" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="密码">
+                  <n-select v-model:value="form.passwordHash" :options="passwordHashOptions" @update:value="saveSoft" />
+                </n-form-item>
+              </div>
+              <div v-if="genState !== 'idle'" class="row mt-16">
+                <n-button type="primary" :loading="softApplying" @click="startGenerate">按当前选项重新生成</n-button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="genState === 'idle'">
+            <div class="panel mb-16">
+              <div class="panel-bd">
+                <div class="row-between">
+                  <div>
+                    <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
+                    <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
+                  </div>
+                  <n-button type="primary" size="large" :disabled="!p.match_confirmed" :loading="softApplying" @click="startGenerate">一键生成</n-button>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-hd">
+                <h3>生成流水线</h3>
+                <span class="small muted">{{ planSteps.length }} 步 · 顺序执行</span>
+              </div>
+              <div class="panel-bd">
+                <ol class="step-rail">
+                  <li v-for="(s, i) in planSteps" :key="i" class="pending">
+                    <div class="step-rail-track" aria-hidden="true">
+                      <span class="step-ico">{{ i + 1 }}</span>
+                    </div>
+                    <div class="step-body">
+                      <div class="step-title">{{ s.t }}</div>
+                      <div class="meta">{{ s.m }}</div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </template>
       </n-tab-pane>
 
       <!-- Runtime -->
@@ -395,7 +422,7 @@
         <div class="panel mt-16">
           <div class="panel-hd">
             <h3>对照视图</h3>
-            <span class="small muted">库表 · 学生端 API · 质量检查 · 仅运营端验收</span>
+            <span class="small muted">库表 · 论文材料 · 学生端 API · 质量检查 · 仅运营端验收</span>
           </div>
           <div class="panel-bd" style="padding-top:4px">
             <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
@@ -415,10 +442,9 @@
                         <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
                       </label>
                       <n-button size="small" :disabled="!schema?.tables?.length" @click="openEr">E-R 图</n-button>
-                      <n-button size="small" :disabled="!modulesOk" @click="openModules">模块图</n-button>
                     </div>
                   </div>
-                  <div class="small muted">数据表结构 · 建议 6～13 张表</div>
+                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节</div>
                   <template v-if="schema?.tables?.length">
                     <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
                       <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
@@ -480,6 +506,36 @@
                     </div>
                   </template>
                   <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
+                </div>
+              </n-tab-pane>
+
+              <n-tab-pane name="thesis" tab="论文材料">
+                <div class="artifact-pane stack">
+                  <p class="small muted mb-8">
+                    贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。均按交付菜单推导，不发明功能。
+                  </p>
+                  <div class="thesis-cards">
+                    <div class="thesis-card">
+                      <div class="thesis-card-hd">
+                        <strong>功能模块图</strong>
+                        <span class="pill" :class="modulesOk ? 'pill-green' : 'pill-neutral'">
+                          {{ modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成') }}
+                        </span>
+                      </div>
+                      <p class="small muted">按业务 / 按端切换 · 黑白线框 · 复制 PNG 或下载矢量</p>
+                      <n-button size="small" type="primary" :disabled="!modulesOk" @click="openModules">打开模块图</n-button>
+                    </div>
+                    <div class="thesis-card">
+                      <div class="thesis-card-hd">
+                        <strong>软件测试用例</strong>
+                        <span class="pill" :class="modulesOk ? 'pill-green' : 'pill-neutral'">
+                          {{ modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成') }}
+                        </span>
+                      </div>
+                      <p class="small muted">5～9 字段模板可选（默认 6）· 复制表格 / Markdown</p>
+                      <n-button size="small" type="primary" :disabled="!modulesOk" @click="openTestcases">打开测试用例</n-button>
+                    </div>
+                  </div>
                 </div>
               </n-tab-pane>
 
@@ -655,6 +711,19 @@
         @reload="reloadModSvg"
       />
     </n-modal>
+    <n-modal v-model:show="showTestcases" preset="card" title="软件测试用例" style="width:min(1280px,96vw)">
+      <TestcaseViewer
+        v-if="showTestcases"
+        :columns="tcColumns"
+        :rows="tcRows"
+        :markdown="tcMarkdown"
+        :fields="tcFields"
+        :count="tcCount"
+        :download-name="tcDownloadBase"
+        @update:fields="onTcFields"
+        @reload="reloadTestcases"
+      />
+    </n-modal>
   </div>
   <ErrorPage
     v-else-if="loadError"
@@ -679,6 +748,7 @@ import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import ErDiagramViewer from '../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../components/ModuleDiagramViewer.vue'
+import TestcaseViewer from '../components/TestcaseViewer.vue'
 import {
   CHECKLIST_RESULT,
   LOG_SIDES,
@@ -698,8 +768,24 @@ const p = ref(null)
 const loadError = ref('')
 const loadErrorCode = ref(500)
 const tab = ref('match')
-const catalog = ref({ archetypes: [], domains: [], themes_by_domain: {}, chrome_styles: [] })
-const form = reactive({ archetype: '', domain: '', theme: '', chrome: 'soft', llm: 'on', passwordHash: 'none' })
+const catalog = ref({
+  archetypes: [],
+  domains: [],
+  themes_by_domain: {},
+  chrome_styles: [],
+  layout_shells: [],
+  type_pairings: [],
+})
+const form = reactive({
+  archetype: '',
+  domain: '',
+  theme: '',
+  chrome: 'soft',
+  layout: 'topbar',
+  typeface: 'clean',
+  llm: 'on',
+  passwordHash: 'none',
+})
 const ack = ref(false)
 const unlocked = ref(false)
 const currentJob = ref(null)
@@ -754,6 +840,7 @@ const logSides = LOG_SIDES
 const showSpec = ref(false)
 const showEr = ref(false)
 const showModules = ref(false)
+const showTestcases = ref(false)
 const showDelete = ref(false)
 const keepDb = ref(false)
 const deleting = ref(false)
@@ -771,6 +858,11 @@ const modSvgSource = ref('')
 const modLayoutKey = ref(0)
 const modulesLayout = ref('biz')
 const modulesMeta = ref(null)
+const tcFields = ref(6)
+const tcColumns = ref([])
+const tcRows = ref([])
+const tcMarkdown = ref('')
+const tcCount = ref(0)
 let pollTimer = null
 
 const planSteps = [
@@ -794,6 +886,14 @@ const themeOptions = computed(() => {
 })
 const chromeOptions = computed(() => {
   const list = catalog.value.chrome_styles || []
+  return list.map((x) => ({ label: x.label, value: x.id }))
+})
+const layoutOptions = computed(() => {
+  const list = catalog.value.layout_shells || []
+  return list.map((x) => ({ label: x.label, value: x.id }))
+})
+const typefaceOptions = computed(() => {
+  const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
 const passwordHashOptions = [
@@ -918,6 +1018,24 @@ const genState = computed(() => {
   if (p.value.status === 'failed') return 'failed'
   return 'idle'
 })
+
+/** 已有工程产物（含运行中 / 失败），匹配页不再当首次门禁 */
+const alreadyBaked = computed(() =>
+  ['success', 'live', 'failed'].includes(genState.value),
+)
+
+const showSoftBakePanel = computed(() => {
+  if (!p.value || genState.value === 'running') return false
+  return !!(p.value.match_confirmed || alreadyBaked.value)
+})
+
+const softBakeHint = computed(() =>
+  genState.value === 'idle'
+    ? '选项即时保存；点「一键生成」写入工程'
+    : '选项即时保存；点下方按钮写入工程',
+)
+
+const softApplying = ref(false)
 
 const specText = computed(() => JSON.stringify(p.value?.spec || {}, null, 2))
 const proposal = computed(() => p.value?.spec?.proposal || {})
@@ -1128,6 +1246,8 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.domain = p.value.domain
       form.theme = p.value.theme
       form.chrome = p.value.spec?.chrome || 'soft'
+      form.layout = p.value.spec?.layout || 'topbar'
+      form.typeface = p.value.spec?.typeface || 'clean'
       form.llm = p.value.llm_enabled ? 'on' : 'off'
       form.passwordHash = p.value.password_hash || 'none'
       unlocked.value = !p.value.match_locked
@@ -1188,7 +1308,7 @@ async function loadApis() {
 
 async function loadArtifactView() {
   if (artifactView.value === 'api') await loadApis()
-  else if (artifactView.value === 'db') await loadSchema()
+  else if (artifactView.value === 'db' || artifactView.value === 'thesis') await loadSchema()
   else {
     // 门禁数据已在项目上；顺带预热 schema
     await loadSchema()
@@ -1197,7 +1317,7 @@ async function loadArtifactView() {
 
 function onArtifactView(name) {
   if (name === 'api') loadApis()
-  else if (name === 'db') loadSchema()
+  else if (name === 'db' || name === 'thesis') loadSchema()
 }
 
 function goArtifacts(view = 'db') {
@@ -1317,6 +1437,39 @@ async function reloadModSvg() {
 async function onModulesLayout(v) {
   modulesLayout.value = v === 'side' ? 'side' : 'biz'
   await reloadModSvg()
+}
+
+const tcDownloadBase = computed(() => {
+  const id = p.value?.id || 'tc'
+  const title = modulesMeta.value?.title || schema.value?.title || '测试用例'
+  return `${id}-测试用例-${tcFields.value}字段-${title}`
+})
+
+async function reloadTestcases() {
+  if (!p.value) return
+  try {
+    const data = await api.getTestcases(p.value.id, { fields: tcFields.value })
+    tcColumns.value = data.columns || []
+    tcRows.value = data.rows || []
+    tcMarkdown.value = data.markdown || ''
+    tcCount.value = data.count || 0
+    if (data.fields) tcFields.value = data.fields
+  } catch {
+    message.error('无法加载测试用例')
+  }
+}
+
+async function openTestcases() {
+  if (!p.value) return
+  await reloadTestcases()
+  if (!tcRows.value.length && !tcColumns.value.length) return
+  showTestcases.value = true
+}
+
+async function onTcFields(v) {
+  const n = Number(v)
+  tcFields.value = [5, 6, 7, 8, 9].includes(n) ? n : 6
+  await reloadTestcases()
 }
 
 async function openEr() {
@@ -1445,6 +1598,8 @@ async function resetMatch() {
   form.domain = p.value.domain
   form.theme = p.value.theme
   form.chrome = p.value.spec?.chrome || 'soft'
+  form.layout = p.value.spec?.layout || 'topbar'
+  form.typeface = p.value.spec?.typeface || 'clean'
   form.passwordHash = p.value.password_hash || 'none'
   unlocked.value = false
   ack.value = false
@@ -1459,12 +1614,16 @@ async function onArchDomChange() {
     })
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
+    form.layout = p.value.spec?.layout || form.layout
+    form.typeface = p.value.spec?.typeface || form.typeface
     ack.value = false
   } catch {
     form.archetype = p.value.archetype
     form.domain = p.value.domain
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
+    form.layout = p.value.spec?.layout || form.layout
+    form.typeface = p.value.spec?.typeface || form.typeface
   }
 }
 
@@ -1472,6 +1631,8 @@ async function saveSoft() {
   p.value = await api.patchMatch(p.value.id, {
     theme: form.theme,
     chrome: form.chrome,
+    layout: form.layout,
+    typeface: form.typeface,
     llm_enabled: form.llm === 'on',
     password_hash: form.passwordHash,
   })
@@ -1493,11 +1654,17 @@ async function confirmMatch() {
 }
 
 async function startGenerate() {
-  const res = await api.generate(p.value.id)
-  message.success(res.message)
-  await load()
-  tab.value = 'generate'
-  startPoll()
+  if (softApplying.value) return
+  softApplying.value = true
+  try {
+    const res = await api.generate(p.value.id)
+    message.success(res.message)
+    await load()
+    tab.value = 'generate'
+    startPoll()
+  } finally {
+    softApplying.value = false
+  }
 }
 
 async function cancelCurrent() {

@@ -5,6 +5,8 @@ export const APP_DELIVERED = {
   title: '',
   theme: 'lib-ink',
   chrome: 'soft',
+  layout: 'topbar',
+  typeface: 'clean',
   flavor: 'generic',
   domainLabel: '通用',
   traits: { addressBook: true },

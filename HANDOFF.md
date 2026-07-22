@@ -330,7 +330,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - **现状样板**：GENERIC CRUD 6 / FLOW·RESERVE 7 / TRADE（含 guestbook）约 8～9 · SHOP/FOOD（guestbook+favorites）约 **12** · 多数薄域 8~9 · 图书/报修壳 9 · 论坛约 13 · **顶格 15**（券表/评价/足迹等按开题叠加）
 - 论坛含：`sys_message` + 原业务/平台表
 - 报修薄壳：楼栋/房间/类型/单据/进度/附件 + 用户/公告/消息
-- 论文 **E-R** 按交付 SQL 如实画；**功能模块图** 按交付 menus/features 如实画（开题只辅助中文命名，与 E-R 同口径）；默认 **按业务拆**，工厂可切换 **按端拆** 预览/下载
+- 论文 **E-R** 按交付 SQL 如实画；**功能模块图** 按交付 menus 如实画（开题只辅助中文命名）；默认 **按业务拆**，工厂可切换 **按端拆**；**软件测试用例表** 按交付 menus/roles 推导（5～9 列可选，默认 6），可选 LLM 只润色已有行文案，不增删用例、不发明功能
 
 ## 学生端持久化（已完成）
 
@@ -361,7 +361,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - [x] L0 **访客留言 `guestbook`**：`GuestbookStore` + 门户/总管；默认 SHOP/FOOD/GENERIC·TRADE；开题可扫入
 - [x] L1 交易 **`favorites` / `coupon` 完整券生命周期 + loyalty 扫词**：领取/我的券/核销/过期；SHOP/FOOD 默认收藏
 - [x] L1 **`order_review` + 超时关单**：材料命中评价；超时扫词 → 30 分钟 `@Scheduled`
-- [x] **论文图**：E-R（SQL）+ 功能模块图（menus/features；按业务 / 按端可切换）；开题只辅助中文命名，不发明表/模块
+- [x] **论文图 / 测试表**：E-R（SQL）+ 功能模块图（menus；按业务 / 按端）+ 软件测试用例（menus 骨架；5～9 列；可选 LLM 只润色文案，sanitize 禁增删/禁发明）
 - [x] L1/L2 订单附带 **售后 + 演示物流轨迹**：`refund_*`；`OrderTraceDialog`（与审核进度同款 timeline）
 - [x] L2 预约附带 **履约办结 `complete` + 用户改约 `reschedule`**
 - [x] **登录入口随机**：`authEntryMode` = unified / role_pick / split_entry；身份控件 `authRoleWidget` = radio / select；后端按 `loginAs` 校验（选错身份拒登）

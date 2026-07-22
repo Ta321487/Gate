@@ -25,15 +25,19 @@
       </div>
     </header>
 
-    <PortalCarousel v-if="hasStage" />
+    <div v-if="hasStage" class="stage">
+      <PortalCarousel />
+    </div>
 
     <main class="body">
       <router-view />
     </main>
     <footer class="foot">
-      <span>{{ title }}</span>
-      <span class="sep">·</span>
-      <span>{{ userRoleLabel }}门户</span>
+      <div class="foot-inner">
+        <span class="foot-brand">{{ footer.brand }}</span>
+        <span class="sep">·</span>
+        <span class="foot-tag">{{ footer.tagline }}</span>
+      </div>
     </footer>
   </div>
 </template>
@@ -44,13 +48,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { APP_DELIVERED } from '../appDelivered.js'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
-import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
+import { portalFooterCopy } from '../utils/domainFlavor.js'
+import { menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
 
 const router = useRouter()
 const route = useRoute()
 const labels = schemaLabels()
 const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const footer = computed(() => portalFooterCopy())
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
 const loggedIn = ref(isLoggedIn())
 const username = ref(localStorage.getItem('username') || '')
@@ -76,7 +82,6 @@ onMounted(() => {
 onUnmounted(() => offProfileDisplay?.())
 
 const displayName = computed(() => nickname.value || username.value)
-const userRoleLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const hasStage = computed(() => {
   const list = APP_DELIVERED?.portalBanners
   return Array.isArray(list) && list.some((x) => x && x.src)
@@ -162,7 +167,8 @@ function logout() {
   background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff));
 }
 .brand-text {
-  font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+  font-family: var(--portal-font-display);
+  font-weight: 700; font-size: 15px; letter-spacing: var(--portal-display-tracking, 0.02em);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; overflow-x: auto; }
@@ -179,5 +185,20 @@ function logout() {
   padding: 16px 20px; text-align: center; font-size: 12px;
   color: var(--portal-muted, #5b6b76); border-top: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
 }
+.foot-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 2px;
+}
+.foot-brand {
+  font-family: var(--portal-font-display);
+  font-weight: 600;
+  color: var(--portal-ink, #15202b);
+}
+.foot-tag { opacity: 0.92; }
 .sep { margin: 0 6px; opacity: 0.5; }
 </style>

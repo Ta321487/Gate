@@ -13,20 +13,29 @@ from app.bake.themes import (  # re-export for callers
     AUTH_ROLE_WIDGETS,
     AUTH_TEMPLATES,
     CHROME_STYLES,
+    LAYOUT_SHELLS,
+    TYPE_PAIRINGS,
     THEME_ALIASES,
     THEMES,
     all_theme_ids,
     default_theme,
+    label_from_catalog,
     normalize_auth_entry_mode,
     normalize_auth_role_widget,
     normalize_auth_template,
     normalize_chrome,
+    normalize_layout,
     normalize_theme,
+    normalize_typeface,
     pick_auth_entry_mode,
     pick_auth_role_widget,
     pick_auth_template,
     pick_chrome,
+    pick_layout,
     pick_theme,
+    pick_typeface,
+    resolve_or_pick,
+    resolve_style_override,
     themes_for_domain,
 )
 
@@ -516,6 +525,8 @@ def build_spec(
     archetypes: list[str] | None = None,
     match_meta: dict | None = None,
     chrome: str | None = None,
+    layout: str | None = None,
+    typeface: str | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
     from app.bake.staff_posts import roles_for_spec
@@ -527,7 +538,9 @@ def build_spec(
     auth_template = pick_auth_template(seed)
     auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
     auth_role_widget = pick_auth_role_widget(f"{seed}|widget")
-    chrome = normalize_chrome(chrome) if chrome else pick_chrome(f"{seed}|chrome")
+    chrome = resolve_or_pick(CHROME_STYLES, chrome, f"{seed}|chrome", "soft")
+    layout = resolve_or_pick(LAYOUT_SHELLS, layout, f"{seed}|layout", "topbar")
+    typeface = resolve_or_pick(TYPE_PAIRINGS, typeface, f"{seed}|type", "clean")
     arches = list(archetypes or [archetype])
     # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
     schema = (
@@ -546,21 +559,17 @@ def build_spec(
         "theme": theme,
         "theme_label": THEMES.get(theme, theme),
         "chrome": chrome,
-        "chrome_label": next(
-            (t["label"] for t in CHROME_STYLES if t["id"] == chrome), chrome
-        ),
+        "chrome_label": label_from_catalog(CHROME_STYLES, chrome),
+        "layout": layout,
+        "layout_label": label_from_catalog(LAYOUT_SHELLS, layout),
+        "typeface": typeface,
+        "typeface_label": label_from_catalog(TYPE_PAIRINGS, typeface),
         "auth_template": auth_template,
-        "auth_template_label": next(
-            (t["label"] for t in AUTH_TEMPLATES if t["id"] == auth_template), auth_template
-        ),
+        "auth_template_label": label_from_catalog(AUTH_TEMPLATES, auth_template),
         "auth_entry_mode": auth_entry_mode,
-        "auth_entry_mode_label": next(
-            (t["label"] for t in AUTH_ENTRY_MODES if t["id"] == auth_entry_mode), auth_entry_mode
-        ),
+        "auth_entry_mode_label": label_from_catalog(AUTH_ENTRY_MODES, auth_entry_mode),
         "auth_role_widget": auth_role_widget,
-        "auth_role_widget_label": next(
-            (t["label"] for t in AUTH_ROLE_WIDGETS if t["id"] == auth_role_widget), auth_role_widget
-        ),
+        "auth_role_widget_label": label_from_catalog(AUTH_ROLE_WIDGETS, auth_role_widget),
         "llm_enabled": llm_enabled,
         "password_hash": normalize_password_hash(password_hash),
         "match_mode": match_mode,

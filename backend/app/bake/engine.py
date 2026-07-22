@@ -14,6 +14,8 @@ from app.bake.catalog import (
     normalize_auth_role_widget,
     normalize_auth_template,
     normalize_chrome,
+    normalize_layout,
+    normalize_typeface,
 )
 from app.bake.domain_schema import (
     deterministic_llm_patch,
@@ -305,11 +307,15 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
     auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
     chrome = normalize_chrome(spec.get("chrome"))
+    layout = normalize_layout(spec.get("layout"))
+    typeface = normalize_typeface(spec.get("typeface"))
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
         f"VITE_THEME={theme}\n"
         f"VITE_CHROME={chrome}\n"
+        f"VITE_LAYOUT={layout}\n"
+        f"VITE_TYPEFACE={typeface}\n"
         f"VITE_AUTH_TEMPLATE={auth_tpl}\n"
         f"VITE_AUTH_ENTRY_MODE={auth_entry}\n"
         f"VITE_AUTH_ROLE_WIDGET={auth_widget}\n",
@@ -336,6 +342,8 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
         chrome=chrome,
+        layout=layout,
+        typeface=typeface,
         seed=dest.name,
     )
 
@@ -621,6 +629,8 @@ def _write_factory_delivered(
     auth_entry_mode: str = "role_pick",
     auth_role_widget: str = "radio",
     chrome: str = "soft",
+    layout: str = "topbar",
+    typeface: str = "clean",
     seed: str = "",
 ) -> None:
     if not auth_hero:
@@ -654,6 +664,8 @@ def _write_factory_delivered(
         "title": title,
         "theme": theme,
         "chrome": normalize_chrome(chrome),
+        "layout": normalize_layout(layout),
+        "typeface": normalize_typeface(typeface),
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],
         "traits": skin["traits"],
@@ -697,6 +709,8 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     auth_entry = normalize_auth_entry_mode(spec.get("auth_entry_mode"))
     auth_widget = normalize_auth_role_widget(spec.get("auth_role_widget"))
     chrome = normalize_chrome(spec.get("chrome"))
+    layout = normalize_layout(spec.get("layout"))
+    typeface = normalize_typeface(spec.get("typeface"))
     _write_factory_delivered(
         workspace,
         spec.get("title", "毕设系统"),
@@ -708,6 +722,8 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         auth_entry_mode=auth_entry,
         auth_role_widget=auth_widget,
         chrome=chrome,
+        layout=layout,
+        typeface=typeface,
         seed=workspace.name,
     )
     sync_workspace_thesis_yml(workspace, spec)

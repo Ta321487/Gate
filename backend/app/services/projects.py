@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bake.catalog import (
     THEME_ALIASES,
     CHROME_STYLES,
+    LAYOUT_SHELLS,
+    TYPE_PAIRINGS,
     build_spec,
     pick_theme,
     match_text,
-    normalize_chrome,
     normalize_password_hash,
     normalize_theme,
+    resolve_style_override,
     themes_for_domain,
 )
 from app.bake.naming import sanitize_delivery_slug, student_db_name, zip_download_name
@@ -382,18 +384,32 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         if raw not in allowed:
             raise ValueError("该配色不属于当前行业模板")
         project.theme = raw
-    chrome_override = None
     prev_spec = project.spec if isinstance(project.spec, dict) else {}
-    if body.reset:
-        chrome_override = None  # 恢复推荐时按种子重抽质感
-    elif getattr(body, "chrome", None) is not None:
-        allowed_chrome = {t["id"] for t in CHROME_STYLES}
-        if body.chrome not in allowed_chrome:
-            raise ValueError("未知质感样式")
-        chrome_override = normalize_chrome(body.chrome)
-    elif prev_spec.get("chrome"):
-        # 保留已选定质感，避免改配色时被种子重抽
-        chrome_override = normalize_chrome(prev_spec.get("chrome"))
+    reset = bool(body.reset)
+    chrome_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "chrome", None),
+        prev_value=prev_spec.get("chrome"),
+        catalog=CHROME_STYLES,
+        default="soft",
+        unknown_message="未知质感样式",
+    )
+    layout_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "layout", None),
+        prev_value=prev_spec.get("layout"),
+        catalog=LAYOUT_SHELLS,
+        default="topbar",
+        unknown_message="未知门户布局",
+    )
+    typeface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "typeface", None),
+        prev_value=prev_spec.get("typeface"),
+        catalog=TYPE_PAIRINGS,
+        default="clean",
+        unknown_message="未知字体配对",
+    )
     if body.llm_enabled is not None:
         project.llm_enabled = body.llm_enabled
     if body.password_hash is not None:
@@ -437,6 +453,8 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         else list(old_spec.get("archetypes") or [project.archetype]),
         match_meta=match_meta or None,
         chrome=chrome_override,
+        layout=layout_override,
+        typeface=typeface_override,
     )
     if match_meta.get("delivery_slug"):
         project.spec["delivery_slug"] = match_meta["delivery_slug"]

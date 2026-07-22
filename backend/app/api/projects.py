@@ -425,6 +425,60 @@ async def download_modules_svg(
     )
 
 
+@router.get("/{project_id}/schema/testcases", summary="论文测试用例表")
+async def get_testcases(
+    project_id: str,
+    fields: int = Query(6, description="5|6|7|8|9 列模板"),
+    db: AsyncSession = Depends(get_db),
+):
+    """由交付 menus/roles/entities 推导；不发明未实现功能。"""
+    from app.bake.schema_testcases import load_testcase_model, normalize_testcase_fields
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    model = load_testcase_model(
+        Path(p.workspace_path), fields=normalize_testcase_fields(fields)
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/testcases.md", summary="下载测试用例 Markdown")
+async def download_testcases_md(
+    project_id: str,
+    fields: int = Query(6, description="5|6|7|8|9 列模板"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema_testcases import load_testcase_model, normalize_testcase_fields
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    model = load_testcase_model(
+        Path(p.workspace_path), fields=normalize_testcase_fields(fields)
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    body = str(model.get("markdown") or "")
+    fname = f"{project_id}-testcases-{model.get('fields')}.md"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/runtime", response_model=RuntimeState, summary="预览运行状态")
 async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
