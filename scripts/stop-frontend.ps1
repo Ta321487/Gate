@@ -1,6 +1,7 @@
 ﻿param()
 $ErrorActionPreference = "Continue"
 try { chcp 65001 | Out-Null } catch {}
+. (Join-Path $PSScriptRoot "_backend-procs.ps1")
 $port = 5173
 $ids = @(
     Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
@@ -11,10 +12,10 @@ if ($ids.Count -eq 0) {
     exit 0
 }
 foreach ($id in $ids) {
-    try {
-        Stop-Process -Id $id -Force -ErrorAction Stop
+    $r = Stop-GfProcessTree -ProcessId ([int]$id)
+    if ($r.ok) {
         Write-Host "[kill] 前端 pid=$id"
-    } catch {
-        Write-Host "[warn] 无法结束 pid=$id"
+    } else {
+        Write-Host ("[warn] 无法结束 pid={0}: {1}" -f $id, $r.message)
     }
 }

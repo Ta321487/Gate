@@ -123,7 +123,7 @@
       },
       {
         "key": "ticket_pending",
-        "label": "收藏确认"
+        "label": "收藏审核"
       },
       {
         "key": "ticket_records",

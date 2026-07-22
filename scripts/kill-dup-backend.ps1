@@ -43,25 +43,27 @@ if (-not $All) {
 }
 
 if ($All) {
-    $victims = $procs
+    $victimIds = @($procs | ForEach-Object { [int]$_.ProcessId })
     $keptLabel = $null
 } else {
-    $victims = $foreign
+    $victimIds = @($foreign | ForEach-Object { [int]$_.ProcessId })
     $keptLabel = ($listenPids -join ",")
 }
 
-foreach ($p in $victims) {
-    try {
-        Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop
-        Write-Host ("[kill] pid={0}" -f $p.ProcessId)
-    } catch {
-        Write-Host ("[warn] failed to kill pid={0}: {1}" -f $p.ProcessId, $_.Exception.Message)
+# Only kill tree roots — venv child (home python.exe) often Access Denied if killed alone
+$roots = @(Get-GfTreeRootPids -ProcessIds $victimIds)
+foreach ($id in $roots) {
+    $r = Stop-GfProcessTree -ProcessId $id
+    if ($r.ok) {
+        Write-Host ("[kill] pid={0}" -f $id)
+    } else {
+        Write-Host ("[warn] failed to kill pid={0}: {1}" -f $id, $r.message)
     }
 }
 
 if ($All) {
     Write-Host "[ok] all cleaned"
-} elseif ($victims.Count -eq 0) {
+} elseif ($roots.Count -eq 0) {
     Write-Host "[ok] nothing to kill"
 } else {
     Write-Host ("[keep] listening tree pid(s)={0}" -f $keptLabel)

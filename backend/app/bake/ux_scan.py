@@ -1,9 +1,4 @@
-"""门户体验增强（仅开题材料命中才挂；无域默认）。
-
-- search_assist：标题前缀联想 + 配置热搜词
-- browse_history：最近浏览足迹
-- gallery：档案多图（仍单规格/单库存，非 SKU）
-"""
+"""开题写到才挂的三项：search_assist / browse_history / gallery（无域默认；没有描述则保持原样）。"""
 
 from __future__ import annotations
 

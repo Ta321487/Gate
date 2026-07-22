@@ -415,6 +415,7 @@
                         <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
                       </label>
                       <n-button size="small" :disabled="!schema?.tables?.length" @click="openEr">E-R 图</n-button>
+                      <n-button size="small" :disabled="!modulesOk" @click="openModules">模块图</n-button>
                     </div>
                   </div>
                   <div class="small muted">数据表结构 · 建议 6～13 张表</div>
@@ -643,6 +644,17 @@
         @reload="reloadErSvg"
       />
     </n-modal>
+    <n-modal v-model:show="showModules" preset="card" title="功能模块图" style="width:min(1280px,96vw)">
+      <ModuleDiagramViewer
+        v-if="showModules"
+        :key="modLayoutKey"
+        :svg-source="modSvgSource"
+        :download-name="modDownloadBase"
+        :layout="modulesLayout"
+        @update:layout="onModulesLayout"
+        @reload="reloadModSvg"
+      />
+    </n-modal>
   </div>
   <ErrorPage
     v-else-if="loadError"
@@ -666,6 +678,7 @@ import ErrorPage from './ErrorPage.vue'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import ErDiagramViewer from '../components/ErDiagramViewer.vue'
+import ModuleDiagramViewer from '../components/ModuleDiagramViewer.vue'
 import {
   CHECKLIST_RESULT,
   LOG_SIDES,
@@ -740,6 +753,7 @@ const logLoading = ref(false)
 const logSides = LOG_SIDES
 const showSpec = ref(false)
 const showEr = ref(false)
+const showModules = ref(false)
 const showDelete = ref(false)
 const keepDb = ref(false)
 const deleting = ref(false)
@@ -753,6 +767,10 @@ const erSvgSource = ref('')
 const erLayoutKey = ref(0)
 const erMode = ref('total')
 const erEntity = ref('')
+const modSvgSource = ref('')
+const modLayoutKey = ref(0)
+const modulesLayout = ref('biz')
+const modulesMeta = ref(null)
 let pollTimer = null
 
 const planSteps = [
@@ -1255,6 +1273,51 @@ const erDownloadBase = computed(() => {
   }
   return `${id}-er-总图`
 })
+
+const modulesOk = computed(() => !!modulesMeta.value?.root || !!schema.value)
+
+const modDownloadBase = computed(() => {
+  const id = p.value?.id || 'modules'
+  const title = modulesMeta.value?.title || '功能模块图'
+  const tag = modulesLayout.value === 'side' ? '按端' : '按业务'
+  return `${id}-模块图-${tag}-${title}`
+})
+
+async function fetchModSvg() {
+  if (!p.value) return ''
+  const url = `${api.modulesSvgUrl(p.value.id, { layout: modulesLayout.value })}&t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('modules svg')
+  return await res.text()
+}
+
+async function openModules() {
+  if (!p.value) return
+  try {
+    modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
+    modSvgSource.value = await fetchModSvg()
+    modLayoutKey.value += 1
+  } catch {
+    message.error('无法加载功能模块图')
+    return
+  }
+  showModules.value = true
+}
+
+async function reloadModSvg() {
+  try {
+    modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
+    modSvgSource.value = await fetchModSvg()
+    modLayoutKey.value += 1
+  } catch {
+    message.error('无法重新加载模块图')
+  }
+}
+
+async function onModulesLayout(v) {
+  modulesLayout.value = v === 'side' ? 'side' : 'biz'
+  await reloadModSvg()
+}
 
 async function openEr() {
   if (!p.value) return

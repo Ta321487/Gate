@@ -13,6 +13,7 @@ DEFAULT_DS = {
     "parse_spec": True,
     "island_fill": True,
     "er_labels": True,
+    "module_labels": True,
     "auto_fix": True,
     "qa_report": False,
 }
@@ -46,6 +47,7 @@ class LlmRuntime:
     parse_spec: bool
     island_fill: bool
     er_labels: bool
+    module_labels: bool
     auto_fix: bool
     qa_report: bool
     fix_rounds_max: int
@@ -73,6 +75,7 @@ class LlmRuntime:
             "parse_spec": self.parse_spec,
             "island_fill": self.island_fill,
             "er_labels": self.er_labels,
+            "module_labels": self.module_labels,
             "auto_fix": self.auto_fix,
             "qa_report": self.qa_report,
         }.get(stage, False)
@@ -221,6 +224,7 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
         parse_spec=bool(cfg.get("parse_spec", True)),
         island_fill=bool(cfg.get("island_fill", True)),
         er_labels=bool(cfg.get("er_labels", True)),
+        module_labels=bool(cfg.get("module_labels", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
