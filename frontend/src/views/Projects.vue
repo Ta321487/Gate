@@ -2,8 +2,7 @@
   <div>
     <h1 class="page-title">项目</h1>
     <p class="page-desc">
-      上传开题、任务书等材料以创建项目（可多选，至少一份）。
-      单次上传对应一个项目；如需创建多个项目，请分次提交，系统将按队列依次处理并展示进度。
+      上传开题等材料，确认分堆后创建项目。细则见「帮助 → 上传与分堆」。
     </p>
 
     <div class="row mb-12" style="justify-content:flex-end;gap:8px">
@@ -17,13 +16,102 @@
       @dragleave="dragover = false"
       @drop.prevent="onDrop"
     >
-      <input type="file" multiple accept=".pdf,.doc,.docx,.txt" @change="onFile" />
+      <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.zip" @change="onFile" />
       <div class="dropzone-icon">↑</div>
       <div class="dropzone-title">拖入材料，或点击选择</div>
       <div class="dropzone-hint">
-        单次最多 8 份（同一项目）· 多个项目请分次上传 · 支持 PDF / Word / TXT
+        文件 / 文件夹 / zip · 展开后最多 {{ MAX_UPLOAD_MATERIALS }} 份 · PDF / Word / TXT
       </div>
     </div>
+
+    <n-modal
+      v-model:show="planOpen"
+      preset="card"
+      title="确认分堆"
+      style="width:min(720px,94vw)"
+      :mask-closable="false"
+      @after-leave="onPlanLeave"
+    >
+      <div v-if="planLoading" class="muted">正在解析并分堆…</div>
+      <template v-else-if="planData">
+        <p class="small muted" style="margin:0 0 12px">
+          {{ planData.notes || '请核对下方分堆后确认创建。' }}
+          <span v-if="planData.llm_ok"> · LLM 结构分堆</span>
+          <span v-else> · 规则分堆</span>
+          · 来源 {{ planData.source }}
+          <span v-if="otherPendingPlans > 0"> · 另有 {{ otherPendingPlans }} 份待确认</span>
+        </p>
+        <div class="stack" style="gap:10px;max-height:55vh;overflow:auto">
+          <div
+            v-for="cl in planData.clusters"
+            :key="cl.id"
+            class="plan-cluster"
+          >
+            <div class="row" style="justify-content:space-between;gap:8px;align-items:flex-start">
+              <div style="min-width:0;flex:1">
+                <div class="row" style="gap:8px;align-items:baseline;flex-wrap:wrap">
+                  <span class="plan-cluster-idx">项目 {{ cl.id }}</span>
+                  <span class="plan-cluster-title" :title="cl.label">{{ shortLabel(cl.label) }}</span>
+                </div>
+                <div
+                  v-if="clusterReasonVisible(cl)"
+                  class="small muted"
+                  style="margin-top:4px"
+                >{{ cl.reason }}</div>
+              </div>
+              <span class="small muted" style="flex-shrink:0">{{ cl.files?.length || 0 }} 份</span>
+            </div>
+            <div class="plan-cluster-files">
+              <span
+                v-for="f in cl.files"
+                :key="f.index"
+                class="plan-file-chip"
+              >
+                {{ f.name }}
+                <span class="muted">{{ roleLabel(f.role) }}</span>
+              </span>
+            </div>
+          </div>
+          <div v-if="planData.discard?.length" class="small warn">
+            <div style="font-weight:600;margin-bottom:4px">将剔除（不参与匹配）</div>
+            <div class="plan-cluster-files">
+              <span
+                v-for="d in planData.discard"
+                :key="d.index"
+                class="plan-file-chip plan-file-chip--discard"
+                :title="d.reason"
+              >
+                {{ d.name }}
+              </span>
+            </div>
+          </div>
+          <div v-if="!planData.clusters?.length" class="warn small">
+            没有可创建的项目（材料可能均被剔除或信号过弱）。
+          </div>
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:16px;gap:8px;flex-wrap:wrap">
+          <div class="row" style="gap:8px">
+            <n-button size="small" quaternary :disabled="planConfirming" @click="planSplitAll">
+              全部拆开
+            </n-button>
+            <n-button size="small" quaternary :disabled="planConfirming" @click="planMergeAll">
+              合并为一个
+            </n-button>
+          </div>
+          <div class="row" style="gap:8px">
+            <n-button :disabled="planConfirming" @click="planOpen = false">取消</n-button>
+            <n-button
+              type="primary"
+              :loading="planConfirming"
+              :disabled="!planData.clusters?.length"
+              @click="confirmPlan"
+            >
+              确认创建 {{ planData.clusters?.length || 0 }} 个项目
+            </n-button>
+          </div>
+        </div>
+      </template>
+    </n-modal>
 
     <n-modal
       v-model:show="sampleOpen"
@@ -85,12 +173,17 @@
             </div>
             <div class="row" style="gap:6px;flex-shrink:0">
               <n-button
+                v-if="job.status === 'planned' && job.plan"
+                size="tiny"
+                @click="reopenPlan(job)"
+              >查看分堆</n-button>
+              <n-button
                 v-if="job.status === 'done' && job.projectId"
                 size="tiny"
                 @click="router.push(`/projects/${job.projectId}`)"
               >查看</n-button>
               <n-button
-                v-if="job.status === 'done' || job.status === 'error'"
+                v-if="job.status === 'done' || job.status === 'error' || job.status === 'planned'"
                 text
                 size="tiny"
                 @click="dismissJob(job.id)"
@@ -107,9 +200,9 @@
     <template v-else>
       <div class="stats">
         <div class="stat"><div class="label">全部项目</div><div class="value">{{ stats.total }}</div><div class="hint">本机工作区</div></div>
-        <div class="stat"><div class="label">生成中</div><div class="value">{{ stats.generating }}</div><div class="hint">含排队</div></div>
-        <div class="stat"><div class="label">可预览</div><div class="value">{{ stats.previewable }}</div><div class="hint">已生成 / 运行中</div></div>
-        <div class="stat"><div class="label">本月 Token</div><div class="value">{{ formatK(stats.monthly_tokens) }}</div><div class="hint">预算 {{ formatK(stats.monthly_budget) }}</div></div>
+        <div class="stat"><div class="label">生成中</div><div class="value">{{ stats.generating }}</div><div class="hint">正在跑流水线</div></div>
+        <div class="stat"><div class="label">可预览</div><div class="value">{{ stats.previewable }}</div><div class="hint">已生成 · 可启预览</div></div>
+        <div class="stat"><div class="label">本月 Token</div><div class="value">{{ formatK(stats.monthly_tokens) }}</div><div class="hint">流水线 {{ formatK(stats.monthly_tokens_pipeline) }} · 系统支持 {{ formatK(stats.monthly_tokens_support) }} · 预算 {{ formatK(stats.monthly_budget) }}</div></div>
       </div>
 
       <div class="panel">
@@ -135,7 +228,7 @@
             <template #empty>
               <div class="empty-hint">
                 <div class="empty-title">暂无项目</div>
-                <div class="empty-desc">上传材料即可创建项目；多个项目请分次提交</div>
+                <div class="empty-desc">上传材料后确认分堆即可创建；同课题会合并，不同课题会拆开</div>
               </div>
             </template>
           </n-data-table>
@@ -151,6 +244,7 @@ import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message } from '../api'
+import { collectUploadMaterials, MAX_UPLOAD_MATERIALS } from '../uploadMaterials'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import {
@@ -166,10 +260,11 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
-/** 与状态/运行列语义对齐：运行中 · 可交付 · 质检未过 */
+/** 与状态/运行列语义对齐：运行中 · 生成中 · 可交付 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
+  { id: 'generating', label: '生成中', pill: 'pill-teal' },
   { id: 'done', label: '可交付', pill: 'pill-teal' },
   { id: 'fail', label: '质检未过', pill: 'pill-red' },
 ]
@@ -180,10 +275,11 @@ const dragover = ref(false)
  *  name: string
  *  fileCount: number
  *  files: File[]
- *  status: 'queued'|'uploading'|'parsing'|'done'|'error'
+ *  status: 'queued'|'uploading'|'parsing'|'planned'|'done'|'error'
  *  pct: number
  *  error: string
  *  projectId: string
+ *  plan?: object|null
  *  tick: any
  * }>>} */
 const uploadJobs = ref([])
@@ -191,10 +287,30 @@ let uploadSeq = 1
 /** 同时跑几路上传（Match Agent 较重，默认 2） */
 const UPLOAD_CONCURRENCY = 2
 let activeUploads = 0
+/** 当前确认弹窗对应的 uploadJobs.id */
+const planJobId = ref(null)
+
+const planOpen = ref(false)
+const planLoading = ref(false)
+const planConfirming = ref(false)
+const planData = ref(null)
+/** 确认时覆盖分堆：number[][] | null */
+const planClustersOverride = ref(null)
+const planDiscardOverride = ref(null)
+/** 确认成功关闭弹窗时跳过 after-leave 自动翻页（由 confirmPlan 自行决定） */
+let planCloseFromConfirm = false
+
+const otherPendingPlans = computed(() =>
+  uploadJobs.value.filter(
+    (j) => j.status === 'planned' && j.plan && j.id !== planJobId.value,
+  ).length,
+)
 
 const uploadQueueHint = computed(() => {
   const jobs = uploadJobs.value
-  const running = jobs.filter((j) => j.status === 'uploading' || j.status === 'parsing').length
+  const running = jobs.filter((j) =>
+    j.status === 'uploading' || j.status === 'parsing' || j.status === 'planned',
+  ).length
   const queued = jobs.filter((j) => j.status === 'queued').length
   const done = jobs.filter((j) => j.status === 'done').length
   const err = jobs.filter((j) => j.status === 'error').length
@@ -206,9 +322,261 @@ const uploadQueueHint = computed(() => {
   return parts.join(' · ') || '—'
 })
 
+function roleLabel(role) {
+  return ({ proposal: '开题', taskbook: '任务书', checklist: '功能清单', unknown: '材料' })[role] || role || '材料'
+}
+
+/** 长题名缩短展示，悬停仍见全称（用 title 属性） */
+function shortLabel(label) {
+  const s = (label || '').trim()
+  if (!s) return '未命名课题'
+  const m = s.match(/的(.{4,28}?)(?:的设计与实现|的设计与开发)?$/)
+  if (m && m[1] && m[1].length >= 4 && m[1].length < s.length - 8) return m[1]
+  if (s.length > 36) return `${s.slice(0, 34)}…`
+  return s
+}
+
+function clusterReasonVisible(cl) {
+  const reason = (cl?.reason || '').trim()
+  if (!reason) return false
+  const label = (cl?.label || '').trim()
+  if (!label) return true
+  // 理由只是复述题名时不展示，避免「标题 + 几乎同样的灰色一行」
+  if (reason === label) return false
+  if (label.includes(reason) || reason.includes(label)) return false
+  const core = shortLabel(label)
+  if (core && (reason.includes(core) || core.includes(reason))) return false
+  if (reason.startsWith('同题「') && reason.includes(core)) return false
+  return true
+}
+
+function onPlanLeave() {
+  if (planConfirming.value) return
+  const closedId = planJobId.value
+  syncOverridesToJob()
+  planJobId.value = null
+  planClustersOverride.value = null
+  planDiscardOverride.value = null
+  planData.value = null
+  if (planCloseFromConfirm) {
+    planCloseFromConfirm = false
+    return
+  }
+  // 取消关闭：自动打开下一份待确认
+  queueMicrotask(() => openNextPendingPlan(closedId))
+}
+
+function syncOverridesToJob() {
+  const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+  if (!job) return
+  job.clustersOverride = planClustersOverride.value
+  job.discardOverride = planDiscardOverride.value
+  if (planData.value) job.plan = planData.value
+}
+
+function loadOverridesFromJob(job) {
+  planClustersOverride.value = job.clustersOverride || null
+  planDiscardOverride.value = job.discardOverride || null
+}
+
+/** @param {{ force?: boolean }} [opts] force=用户点「查看分堆」显式切换 */
+function showPlanForJob(job, opts = {}) {
+  if (!job?.plan) return false
+  if (planConfirming.value) {
+    message.warning('正在创建项目，请稍候再切换分堆')
+    return false
+  }
+  // 弹窗已开且不是当前任务：后到的分堆只挂队列，不顶掉正在确认的内容
+  if (planOpen.value && planJobId.value != null && planJobId.value !== job.id && !opts.force) {
+    return false
+  }
+  if (planOpen.value && planJobId.value != null && planJobId.value !== job.id && opts.force) {
+    syncOverridesToJob()
+  }
+  planJobId.value = job.id
+  loadOverridesFromJob(job)
+  planData.value = job.plan
+  planLoading.value = false
+  planOpen.value = true
+  return true
+}
+
+function openNextPendingPlan(exceptId = null) {
+  if (planOpen.value || planConfirming.value) return
+  const next = uploadJobs.value.find(
+    (j) => j.status === 'planned' && j.plan && j.id !== exceptId,
+  )
+  if (next) showPlanForJob(next)
+}
+
+function reopenPlan(job) {
+  if (!showPlanForJob(job, { force: true })) return
+}
+
+function pendingPlanCount() {
+  return uploadJobs.value.filter((j) => j.status === 'planned' && j.plan).length
+}
+
+function planSplitAll() {
+  if (!planData.value?.files?.length) return
+  const disc = new Set((planData.value.discard || []).map((d) => d.index))
+  const allFiles = planData.value.files
+  planDiscardOverride.value = [...disc]
+  planClustersOverride.value = allFiles
+    .filter((f) => !disc.has(f.index))
+    .map((f) => [f.index])
+  const next = {
+    ...planData.value,
+    source: 'override',
+    notes: '已改为：每份材料单独成项目（确认后生效）',
+    clusters: planClustersOverride.value.map((idxs, i) => {
+      const f = allFiles.find((x) => x.index === idxs[0])
+      return {
+        id: i + 1,
+        label: f?.title || f?.name || `项目 ${i + 1}`,
+        reason: '人工：全部拆开',
+        files: f ? [f] : [],
+      }
+    }),
+  }
+  planData.value = next
+  const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+  if (job) job.plan = next
+}
+
+function planMergeAll() {
+  if (!planData.value?.files?.length) return
+  const disc = new Set((planData.value.discard || []).map((d) => d.index))
+  const keep = planData.value.files.filter((f) => !disc.has(f.index))
+  if (!keep.length) return
+  planDiscardOverride.value = [...disc]
+  planClustersOverride.value = [keep.map((f) => f.index)]
+  const next = {
+    ...planData.value,
+    source: 'override',
+    notes: '已改为：合并为单个项目（确认后生效）',
+    clusters: [
+      {
+        id: 1,
+        label: keep.find((f) => f.role === 'proposal')?.title || keep[0].title || keep[0].name,
+        reason: '人工：合并为一个',
+        files: keep,
+      },
+    ],
+  }
+  planData.value = next
+  const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+  if (job) job.plan = next
+}
+
+async function confirmPlan() {
+  if (!planData.value?.plan_id || !planData.value.clusters?.length) return
+  planConfirming.value = true
+  const planId = planData.value.plan_id
+  const sourceJob = uploadJobs.value.find((j) => j.id === planJobId.value)
+  const job = sourceJob || {
+    id: uploadSeq++,
+    name: `确认创建 ${planData.value.clusters.length} 个项目`,
+    fileCount: planData.value.files?.length || 0,
+    files: [],
+    status: 'parsing',
+    pct: 40,
+    error: '',
+    projectId: '',
+    plan: planData.value,
+    tick: null,
+  }
+  if (!sourceJob) {
+    uploadJobs.value = [...uploadJobs.value, job]
+  } else {
+    job.status = 'parsing'
+    job.pct = 40
+    job.error = ''
+    job.name = `确认创建 ${planData.value.clusters.length} 个项目`
+  }
+  job.tick = setInterval(() => {
+    if (job.pct < 95) job.pct += 1
+  }, 500)
+  try {
+    const body = { plan_id: planId }
+    if (planClustersOverride.value) body.clusters = planClustersOverride.value
+    if (planDiscardOverride.value) body.discard = planDiscardOverride.value
+    const res = await api.uploadConfirm(body)
+    if (job.tick) {
+      clearInterval(job.tick)
+      job.tick = null
+    }
+    job.pct = 100
+    job.status = 'done'
+    job.plan = null
+    const projects = res?.projects || []
+    job.projectId = projects[0]?.id || ''
+    job.name =
+      projects.length === 1
+        ? projects[0].title || job.name
+        : `已创建 ${projects.length} 个项目`
+    message.success(
+      projects.length
+        ? `已创建 ${projects.length} 个项目`
+        : '未创建项目',
+    )
+    if (res?.discarded?.length) {
+      message.info(`已剔除 ${res.discarded.length} 份无关材料`)
+    }
+    // 多项目时追加可点进详情的条目
+    if (projects.length > 1) {
+      const extras = projects.slice(1).map((p) => ({
+        id: uploadSeq++,
+        name: p.title || p.id,
+        fileCount: 0,
+        files: [],
+        status: 'done',
+        pct: 100,
+        error: '',
+        projectId: p.id,
+        plan: null,
+        tick: null,
+      }))
+      uploadJobs.value = [...uploadJobs.value, ...extras]
+    }
+    const goDetail = projects.length === 1 && projects[0].id
+    planCloseFromConfirm = true
+    planOpen.value = false
+    planData.value = null
+    planJobId.value = null
+    planClustersOverride.value = null
+    planDiscardOverride.value = null
+    await load()
+    if (goDetail) {
+      router.push(`/projects/${projects[0].id}`)
+    } else {
+      queueMicrotask(() => openNextPendingPlan())
+    }
+  } catch (err) {
+    if (job.tick) {
+      clearInterval(job.tick)
+      job.tick = null
+    }
+    job.status = sourceJob?.plan ? 'planned' : 'error'
+    job.pct = 100
+    const detail = err?.response?.data?.detail || err?.message || '创建失败'
+    job.error = typeof detail === 'string' ? detail : JSON.stringify(detail)
+  } finally {
+    planConfirming.value = false
+  }
+}
+
 const booted = ref(false)
 const loading = ref(false)
-const stats = reactive({ total: 0, generating: 0, previewable: 0, monthly_tokens: 0, monthly_budget: 1000000 })
+const stats = reactive({
+  total: 0,
+  generating: 0,
+  previewable: 0,
+  monthly_tokens: 0,
+  monthly_tokens_pipeline: 0,
+  monthly_tokens_support: 0,
+  monthly_budget: 1000000,
+})
 
 const sampleOpen = ref(false)
 const sampleLoading = ref(false)
@@ -358,9 +726,15 @@ async function refresh() {
 
 function jobPhaseLabel(job) {
   if (job.status === 'queued') return '待处理'
-  if (job.status === 'uploading') return job.pct < 90 ? `上传中 ${job.pct}%` : '上传中'
-  if (job.status === 'parsing') return '正在解析并匹配'
-  if (job.status === 'done') return '项目已创建'
+  if (job.status === 'uploading') return job.pct < 70 ? `上传中 ${job.pct}%` : '上传中'
+  if (job.status === 'parsing') {
+    return job.plan || job.name?.includes('确认') ? '正在创建项目' : '正在解析并分堆'
+  }
+  if (job.status === 'planned') {
+    const n = job.plan?.clusters?.length
+    return n != null ? `待确认分堆（${n} 个项目）` : '待确认分堆'
+  }
+  if (job.status === 'done') return job.projectId ? '项目已创建' : '已完成'
   if (job.status === 'error') return '上传失败'
   return ''
 }
@@ -368,6 +742,7 @@ function jobPhaseLabel(job) {
 function jobBarColor(job) {
   if (job.status === 'error') return 'var(--danger, #c45c5c)'
   if (job.status === 'done') return 'var(--green)'
+  if (job.status === 'planned') return 'var(--teal, #2a9d8f)'
   if (job.status === 'queued') return 'var(--line-soft)'
   return ''
 }
@@ -378,14 +753,31 @@ function dismissJob(id) {
   uploadJobs.value = uploadJobs.value.filter((j) => j.id !== id)
 }
 
-function enqueueUpload(fileList) {
-  const files = [...(fileList || [])].filter(Boolean)
-  if (!files.length) {
-    message.warning('请至少选择一份材料')
+async function enqueueUpload(source) {
+  let files = []
+  try {
+    const collected = await collectUploadMaterials(source, { maxFiles: MAX_UPLOAD_MATERIALS })
+    if (collected.error) {
+      message.warning(collected.error)
+      return
+    }
+    files = collected.files
+    if (collected.notes?.length) {
+      collected.notes.forEach((n) => message.info(n))
+    }
+    if (collected.skipped?.length && !files.length) {
+      message.warning(`没有可用材料：${collected.skipped.slice(0, 3).join('、')}`)
+      return
+    }
+    if (collected.skipped?.length) {
+      message.warning(`已跳过 ${collected.skipped.length} 项非材料文件`)
+    }
+  } catch (err) {
+    message.error(err?.message || '读取文件失败')
     return
   }
-  if (files.length > 8) {
-    message.warning('单次最多 8 份材料；多个项目请分次上传')
+  if (!files.length) {
+    message.warning('请至少选择一份材料（PDF / Word / TXT，或含这些文件的文件夹 / zip）')
     return
   }
   const name = files.length === 1 ? files[0].name : `${files[0].name} 等 ${files.length} 份`
@@ -422,15 +814,15 @@ function pumpUploadQueue() {
 
 async function runUploadJob(job) {
   try {
-    const project = await api.upload(job.files, (e) => {
+    const plan = await api.uploadPlan(job.files, (e) => {
       if (!e.total) return
-      const pct = Math.round((e.loaded / e.total) * 90)
-      job.pct = Math.min(90, pct)
+      const pct = Math.round((e.loaded / e.total) * 70)
+      job.pct = Math.min(70, pct)
       if (e.loaded >= e.total) {
         job.status = 'parsing'
         if (!job.tick) {
           job.tick = setInterval(() => {
-            if (job.pct < 98) job.pct += 1
+            if (job.pct < 92) job.pct += 1
           }, 400)
         }
       }
@@ -440,24 +832,24 @@ async function runUploadJob(job) {
       job.tick = null
     }
     job.pct = 100
-    job.status = 'done'
-    job.projectId = project?.id || ''
-    message.success(
-      job.fileCount > 1
-        ? `项目「${project?.title || job.name}」已创建（${job.fileCount} 份材料）`
-        : `项目「${project?.title || job.name}」已创建`,
-    )
-    await load()
-    const stillBusy = uploadJobs.value.some(
-      (j) => j.id !== job.id && (j.status === 'queued' || j.status === 'uploading' || j.status === 'parsing'),
-    )
-    // 多批时留在列表；仅单独一批成功时进详情（沿用旧习惯）
-    if (!stillBusy && job.projectId) {
-      const doneCount = uploadJobs.value.filter((j) => j.status === 'done').length
-      const errCount = uploadJobs.value.filter((j) => j.status === 'error').length
-      if (doneCount === 1 && errCount === 0) {
-        router.push(`/projects/${job.projectId}`)
-      }
+    job.status = 'planned'
+    job.plan = plan
+    job.clustersOverride = null
+    job.discardOverride = null
+    job.name = `分堆就绪 · ${plan?.clusters?.length || 0} 个项目`
+    const n = (plan?.clusters || []).length
+    const discarded = (plan?.discard || []).length
+    const opened = showPlanForJob(job)
+    if (opened) {
+      message.success(
+        `识别为 ${n} 个项目` +
+          (discarded ? `，剔除 ${discarded} 份` : '') +
+          '，请确认',
+      )
+    } else {
+      message.info(
+        `另有分堆就绪（${n} 个项目）· 当前弹窗确认完后可点「查看分堆」（待确认 ${pendingPlanCount()}）`,
+      )
     }
   } catch (err) {
     if (job.tick) {
@@ -471,14 +863,14 @@ async function runUploadJob(job) {
   }
 }
 
-function onFile(e) {
-  enqueueUpload(e.target.files)
+async function onFile(e) {
+  await enqueueUpload(e.target)
   e.target.value = ''
 }
 
-function onDrop(e) {
+async function onDrop(e) {
   dragover.value = false
-  enqueueUpload(e.dataTransfer.files)
+  await enqueueUpload(e)
 }
 
 onMounted(load)
@@ -489,3 +881,50 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.plan-cluster {
+  margin: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--panel, transparent);
+}
+.plan-cluster-idx {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.plan-cluster-title {
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.plan-cluster-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.plan-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--chip-bg, rgba(0, 0, 0, 0.04));
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.plan-file-chip .muted {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.plan-file-chip--discard {
+  opacity: 0.85;
+  text-decoration: line-through;
+}
+</style>

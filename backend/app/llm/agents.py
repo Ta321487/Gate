@@ -81,6 +81,70 @@ def _proposal_text(spec: dict[str, Any]) -> str:
     return str(prop or "")
 
 
+# ---------- Agent U：上传材料分堆（只输出结构 JSON） ----------
+async def run_upload_cluster_agent(
+    db: AsyncSession,
+    rt: LlmRuntime,
+    *,
+    plan_id: str,
+    profiles: list[Any],
+) -> dict[str, Any] | None:
+    """多材料聚类：discard + clusters[].files/reason。失败返回 None。"""
+    if not (rt.stage_on("match_recommend") and rt.configured):
+        return None
+    if not await budget_ok(db, plan_id, rt):
+        append_deepseek_log(plan_id, "upload_cluster skip · budget exceeded")
+        return None
+
+    lines: list[str] = []
+    for p in profiles:
+        fp = "、".join(getattr(p, "fingerprint", [])[:10])
+        lines.append(
+            f"[{p.index}] name={p.name} role={p.role} signal={p.signal} "
+            f"title={p.title}\n"
+            f"  fingerprint={fp or '（空）'}\n"
+            f"  excerpt={(getattr(p, 'excerpt', '') or '')[:400]}"
+        )
+    blob = "\n".join(lines)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是毕设港上传分堆 Agent。只输出 JSON，禁止改写材料、禁止推荐领域。\n"
+                "任务：把多份上传材料分成若干「同一毕设项目」簇，并剔除无关文件。\n"
+                "规则：\n"
+                "1) 开题/任务书/功能清单若同一课题（题目相近或清单能力是开题子集）→ 同簇；\n"
+                "2) 不同课题 → 不同簇；同领域但功能清单差异大（如都图书，一套借阅罚金、一套二手交易）→ 拆开；\n"
+                "3) 与本科毕设无关（简历、课程笔记、空文件等）→ discard；\n"
+                "4) 每个文件索引必须恰好出现一次（在 discard 或某个 cluster.files）；\n"
+                "5) 两份都像完整开题且题目明显不同 → 禁止同簇。\n"
+                "字段：discard:number[]；clusters:[{files:number[], reason:string≤80}]；notes:string≤120。\n"
+                "reason 只写归组依据（如「独立开题」「开题+清单同题」），禁止复述题目全文。\n"
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"共 {len(profiles)} 份材料（索引从 0）：\n\n{blob}",
+        },
+    ]
+    res = await chat(rt, messages, json_mode=True, temperature=0.05, timeout=90.0)
+    await record_call(
+        db,
+        project_id=plan_id,
+        stage="upload_cluster",
+        tokens=res.tokens,
+        ok=res.ok and bool(res.data),
+        detail=format_usage_detail(res, "上传分堆"),
+    )
+    append_deepseek_log(
+        plan_id,
+        f"upload_cluster ok={res.ok} {format_usage_detail(res)}",
+    )
+    if not res.ok or not isinstance(res.data, dict):
+        return None
+    return res.data
+
+
 # ---------- Agent M：匹配推荐 ----------
 async def run_match_agent(
     db: AsyncSession,
@@ -132,7 +196,7 @@ async def run_match_agent(
         stage="match_recommend",
         tokens=res.tokens,
         ok=res.ok and bool(res.data),
-        detail=format_usage_detail(res, "match recommend"),
+        detail=format_usage_detail(res, "匹配推荐"),
     )
     append_deepseek_log(
         project_id,
@@ -200,7 +264,7 @@ async def run_spec_agent(
         stage="parse_spec",
         tokens=res.tokens,
         ok=res.ok and bool(res.data),
-        detail=format_usage_detail(res, "spec enrich"),
+        detail=format_usage_detail(res, "摘要润色"),
     )
     append_deepseek_log(
         project_id,
@@ -312,7 +376,7 @@ async def run_island_agent(
             stage="emit",
             tokens=0,
             ok=True,
-            detail="deterministic," + ",".join(written),
+            detail="确定性," + ",".join(written),
         )
         return written, "deterministic"
 
@@ -431,7 +495,7 @@ async def run_er_label_agent(
     if n_gaps == 0:
         save_er_label_patch(workspace, {"mode": "clean", "tables": {}, "columns": {}, "relations": {}})
         await record_call(
-            db, project_id=project_id, stage="er_labels", tokens=0, ok=True, detail="no english gaps"
+            db, project_id=project_id, stage="er_labels", tokens=0, ok=True, detail="无需补全 · 无英文缺口"
         )
         return {"mode": "clean", "gaps": 0, "filled": 0}
 
@@ -453,7 +517,7 @@ async def run_er_label_agent(
             stage="er_labels",
             tokens=0,
             ok=True,
-            detail=f"{mode} · gaps={n_gaps} · remain={remain}",
+            detail=f"仅确定性 · 缺口={n_gaps} · 剩余={remain}",
         )
         append_deepseek_log(project_id, f"er_labels {mode} gaps={n_gaps} remain={remain}")
         return {"mode": mode, "gaps": n_gaps, "filled": 0, "remain": remain}
@@ -511,7 +575,7 @@ async def run_er_label_agent(
         tokens=res.tokens,
         ok=bool(res.ok),
         detail=format_usage_detail(
-            res, f"{patch.get('mode')} · gaps={n_gaps} · filled={filled} · remain={remain}"
+            res, f"{patch.get('mode')} · 缺口={n_gaps} · 已填={filled} · 剩余={remain}"
         ),
     )
     return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "remain": remain}
@@ -567,7 +631,7 @@ async def run_module_label_agent(
             stage="module_labels",
             tokens=0,
             ok=True,
-            detail=f"deterministic · latin_gaps={n_gaps}",
+            detail=f"确定性 · 拉丁缺口={n_gaps}",
         )
         return {"mode": "deterministic", "gaps": n_gaps, "filled": 0}
 
@@ -608,7 +672,7 @@ async def run_module_label_agent(
         if not target:
             save_module_label_patch(workspace, {"mode": "clean", "nodes": {}})
             await record_call(
-                db, project_id=project_id, stage="module_labels", tokens=0, ok=True, detail="clean"
+                db, project_id=project_id, stage="module_labels", tokens=0, ok=True, detail="无需补全"
             )
             return {"mode": "clean", "gaps": 0, "filled": 0}
 
@@ -660,7 +724,7 @@ async def run_module_label_agent(
         stage="module_labels",
         tokens=res.tokens,
         ok=bool(res.ok),
-        detail=format_usage_detail(res, f"{patch.get('mode')} · filled={filled} · scope={scope}"),
+        detail=format_usage_detail(res, f"{patch.get('mode')} · 已填={filled} · 范围={scope}"),
     )
     return {"mode": patch.get("mode"), "gaps": n_gaps, "filled": filled, "scope": scope}
 
@@ -703,7 +767,7 @@ async def run_testcase_label_agent(
             stage="testcase_labels",
             tokens=0,
             ok=True,
-            detail=f"deterministic · rows={n_rows}",
+            detail=f"确定性 · 行数={n_rows}",
         )
         return {"mode": "deterministic", "rows": n_rows, "filled": 0}
 
@@ -775,7 +839,7 @@ async def run_testcase_label_agent(
         stage="testcase_labels",
         tokens=res.tokens,
         ok=bool(res.ok),
-        detail=format_usage_detail(res, f"{patch.get('mode')} · rows={n_rows} · filled={filled}"),
+        detail=format_usage_detail(res, f"{patch.get('mode')} · 行数={n_rows} · 已填={filled}"),
     )
     return {"mode": patch.get("mode"), "rows": n_rows, "filled": filled}
 
@@ -844,7 +908,7 @@ async def run_fix_agent(
             stage="auto_fix",
             tokens=0,
             ok=True,
-            detail="compile ok / skip",
+            detail="编译通过 / 已跳过",
         )
         return True, "结构+编译通过" if "skip" not in log else "结构校验通过 · " + log
 
@@ -887,7 +951,7 @@ async def run_fix_agent(
                 stage="auto_fix",
                 tokens=total_tokens,
                 ok=True,
-                detail=f"fixed after {i+1} round(s)",
+                detail=f"修复成功 · 共 {i+1} 轮",
             )
             return True, f"编译修复成功 · {i+1} 轮"
 
@@ -897,7 +961,7 @@ async def run_fix_agent(
         stage="auto_fix",
         tokens=total_tokens,
         ok=False,
-        detail=(last or "compile failed")[:500],
+        detail=(last or "编译失败")[:500],
     )
     # 编译失败不阻断交付（本机缺 JDK/依赖常见）；记警告继续门禁
     return True, f"编译未过已记录 · 继续门禁 · {(last or '')[:120]}"
@@ -1015,7 +1079,7 @@ async def run_qa_agent(
             stage="qa_report",
             tokens=0,
             ok=True,
-            detail="fallback structural only",
+            detail="回退：仅结构扫描（未调用大模型）",
         )
         write_qa_report(
             workspace, {**report, "domain": ctx.get("domain"), "title": ctx.get("title")}
@@ -1066,7 +1130,7 @@ async def run_qa_agent(
             stage="qa_report",
             tokens=res.tokens,
             ok=False,
-            detail=format_usage_detail(res, "qa llm failed"),
+            detail=format_usage_detail(res, "质量摘要：大模型失败"),
         )
         write_qa_report(
             workspace, {**report, "domain": ctx.get("domain"), "title": ctx.get("title")}
@@ -1155,7 +1219,7 @@ async def run_sample_proposal_agent(
         stage="sample_proposal",
         tokens=res.tokens,
         ok=res.ok and bool((res.text or "").strip()),
-        detail=format_usage_detail(res, "sample proposal"),
+        detail=format_usage_detail(res, "样例开题"),
     )
     append_deepseek_log(
         _SAMPLE_PROPOSAL_PID,

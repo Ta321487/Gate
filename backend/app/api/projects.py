@@ -21,6 +21,9 @@ from app.schemas import (
     ProjectSummary,
     RuntimeState,
     StatsOut,
+    UploadConfirmIn,
+    UploadConfirmOut,
+    UploadPlanOut,
 )
 from app.services import projects as project_svc
 from app.services import runtime as rt
@@ -29,6 +32,9 @@ from app.services.student_db import drop_student_database
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["项目"])
+
+# 与前端 uploadMaterials.MAX_UPLOAD_MATERIALS 保持一致（按展开后材料份数）
+MAX_UPLOAD_MATERIALS = 8
 
 
 def _detail(p: Project) -> ProjectDetail:
@@ -61,7 +67,7 @@ async def list_projects(
     filter: str = Query(
         "all",
         alias="filter",
-        description="all | active | done | fail（质检未过：status=failed 或已生成但 zip 未解锁）",
+        description="all | active | generating | done | fail",
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -84,6 +90,8 @@ async def list_projects(
             for p in items
             if p.status == "running" or p.backend_running or p.frontend_running
         ]
+    elif filter == "generating":
+        items = [p for p in items if p.status == "generating"]
     elif filter == "done":
         # 可交付 = 已生成/运行中且 ZIP 仍解锁（门禁回退后 zip_ready=False）
         items = [
@@ -118,23 +126,138 @@ async def upload_proposal(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    """单次直接建一个项目（兼容旧客户端）。多课题请走 /upload/plan → /upload/confirm。"""
+    saved = await _save_upload_bundle(files, file)
+    try:
+        project = await project_svc.create_from_uploads(db, saved)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return _detail(project)
+
+
+@router.post("/upload/plan", response_model=UploadPlanOut, summary="上传材料并生成分堆方案（待确认）")
+async def upload_plan(
+    files: list[UploadFile] | None = File(
+        default=None,
+        description=f"一份或多份材料；最多 {MAX_UPLOAD_MATERIALS} 份",
+    ),
+    file: UploadFile | None = File(default=None, description="兼容单文件字段"),
+    db: AsyncSession = Depends(get_db),
+):
+    """解析材料 → 规则/LLM 结构分堆 → 返回方案；确认前不建项目。"""
+    from app.llm.runtime import load_llm_runtime
+    from app.services.upload_cluster import build_upload_plan, save_plan_bundle
+
     settings = get_settings()
+    uploaded = _require_uploads(files, file)
+
+    # 先落到临时目录读文本，再迁入 plan 目录
+    stamp = datetime_stamp()
+    tmp = settings.uploads_dir / f"{stamp}_plan_tmp"
+    tmp.mkdir(parents=True, exist_ok=True)
+    try:
+        saved = await _write_uploads(tmp, uploaded)
+        llm_rt = None
+        try:
+            llm_rt = await load_llm_runtime(db)
+        except Exception:  # noqa: BLE001
+            llm_rt = None
+        plan = await build_upload_plan(saved, db=db, llm_rt=llm_rt)
+        plan_dir = settings.uploads_dir / "plans" / plan.plan_id
+        plan_dir.mkdir(parents=True, exist_ok=True)
+        relocated: list[tuple[Path, str, int]] = []
+        for path, name, size in saved:
+            dest = plan_dir / path.name
+            if path.resolve() != dest.resolve():
+                shutil.move(str(path), str(dest))
+            relocated.append((dest, name, size))
+        save_plan_bundle(relocated, plan)
+        return UploadPlanOut.model_validate(plan.to_dict())
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+@router.post("/upload/confirm", response_model=UploadConfirmOut, summary="确认分堆并创建项目")
+async def upload_confirm(body: UploadConfirmIn, db: AsyncSession = Depends(get_db)):
+    from app.services.upload_cluster import apply_overrides, load_plan_bundle
+
+    try:
+        _root, data, all_files = load_plan_bundle(body.plan_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+
+    plan = data.get("plan") or {}
+    try:
+        plan = apply_overrides(plan, clusters=body.clusters, discard=body.discard)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    by_name = {name: (path, name, size) for path, name, size in all_files}
+    file_meta = plan.get("files") or []
+    idx_to_tuple: dict[int, tuple[Path, str, int]] = {}
+    for row in file_meta:
+        i = int(row.get("index", -1))
+        name = str(row.get("name") or "")
+        if name in by_name:
+            idx_to_tuple[i] = by_name[name]
+    for i, tup in enumerate(all_files):
+        idx_to_tuple.setdefault(i, tup)
+
+    settings = get_settings()
+    projects: list[ProjectDetail] = []
+    for ci, cl in enumerate(plan.get("clusters") or []):
+        idxs = [int(f["index"]) for f in cl.get("files") or []]
+        bundle_src = [idx_to_tuple[i] for i in idxs if i in idx_to_tuple]
+        if not bundle_src:
+            continue
+        # 每簇拷到独立目录，避免多项目共享 plan 目录写崩 manifest
+        dest_dir = settings.uploads_dir / f"{datetime_stamp()}_{ci}_bundle"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        bundle: list[tuple[Path, str, int]] = []
+        used: set[str] = set()
+        for path, name, size in bundle_src:
+            candidate = name
+            base, ext = Path(name).stem, Path(name).suffix
+            n = 2
+            while candidate.lower() in used:
+                candidate = f"{base}_{n}{ext}"
+                n += 1
+            used.add(candidate.lower())
+            dest = dest_dir / candidate
+            shutil.copy2(path, dest)
+            bundle.append((dest, candidate, size))
+        try:
+            project = await project_svc.create_from_uploads(db, bundle)
+            projects.append(_detail(project))
+        except ValueError as e:
+            raise HTTPException(400, f"创建失败（{cl.get('label') or idxs}）：{e}") from e
+
+    discarded = plan.get("discard") or []
+    return UploadConfirmOut(
+        projects=projects,
+        discarded=discarded,
+        notes=str(plan.get("notes") or ""),
+    )
+
+
+def _collect_uploads(
+    files: list[UploadFile] | None,
+    file: UploadFile | None,
+) -> list[UploadFile]:
     uploaded: list[UploadFile] = []
     if files:
         uploaded.extend([f for f in files if f and (f.filename or "").strip()])
     if file and (file.filename or "").strip():
         uploaded.append(file)
-    # 去重同名连续重复
-    if not uploaded:
-        raise HTTPException(400, "请至少上传一份材料（开题 / 任务书 / 功能清单等）")
-    if len(uploaded) > 8:
-        raise HTTPException(400, "单次最多 8 份材料")
+    return uploaded
 
+
+async def _write_uploads(
+    dest_dir: Path,
+    uploaded: list[UploadFile],
+) -> list[tuple[Path, str, int]]:
     allowed = {".pdf", ".doc", ".docx", ".txt"}
-    stamp = datetime_stamp()
-    dest_dir = settings.uploads_dir / f"{stamp}_bundle"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-
     saved: list[tuple[Path, str, int]] = []
     used_names: set[str] = set()
     for uf in uploaded:
@@ -142,7 +265,6 @@ async def upload_proposal(
         if suffix not in allowed:
             raise HTTPException(400, f"不支持 {uf.filename or ''}，仅 PDF / Word / TXT")
         safe_name = Path(uf.filename or "proposal.txt").name
-        # 避免重名覆盖
         base, ext = Path(safe_name).stem, Path(safe_name).suffix
         candidate = safe_name
         n = 2
@@ -156,12 +278,34 @@ async def upload_proposal(
             raise HTTPException(400, f"文件为空：{safe_name}")
         dest.write_bytes(content)
         saved.append((dest, candidate, len(content)))
+    return saved
 
-    try:
-        project = await project_svc.create_from_uploads(db, saved)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    return _detail(project)
+
+async def _save_upload_bundle(
+    files: list[UploadFile] | None,
+    file: UploadFile | None,
+) -> list[tuple[Path, str, int]]:
+    uploaded = _require_uploads(
+        files, file, empty_msg="请至少上传一份材料（开题 / 任务书 / 功能清单等）"
+    )
+    settings = get_settings()
+    dest_dir = settings.uploads_dir / f"{datetime_stamp()}_bundle"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    return await _write_uploads(dest_dir, uploaded)
+
+
+def _require_uploads(
+    files: list[UploadFile] | None,
+    file: UploadFile | None,
+    *,
+    empty_msg: str = "请至少上传一份材料",
+) -> list[UploadFile]:
+    uploaded = _collect_uploads(files, file)
+    if not uploaded:
+        raise HTTPException(400, empty_msg)
+    if len(uploaded) > MAX_UPLOAD_MATERIALS:
+        raise HTTPException(400, f"单次最多 {MAX_UPLOAD_MATERIALS} 份材料")
+    return uploaded
 
 
 def datetime_stamp() -> str:
