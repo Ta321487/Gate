@@ -53,10 +53,10 @@ def format_usage_detail(res: ChatResult, note: str = "") -> str:
     if res.error:
         return res.error
     parts = [note or "ok"]
-    parts.append(f"in={res.prompt_tokens}")
-    parts.append(f"out={res.completion_tokens}")
+    parts.append(f"输入={res.prompt_tokens}")
+    parts.append(f"输出={res.completion_tokens}")
     if res.reasoning_tokens:
-        parts.append(f"think={res.reasoning_tokens}")
+        parts.append(f"思考={res.reasoning_tokens}")
     if res.provider:
         parts.append(res.provider)
     if res.model:
@@ -71,13 +71,78 @@ async def project_tokens_used(db: AsyncSession, project_id: str) -> int:
     return int(n or 0)
 
 
+async def project_lifetime_token_rows(db: AsyncSession) -> list[dict[str, Any]]:
+    """库内全部项目的全期 Token（与 budget_ok 的项目闸一致，无时间窗）。"""
+    usage_sq = (
+        select(
+            LlmCall.project_id.label("project_id"),
+            func.coalesce(func.sum(LlmCall.tokens), 0).label("tokens"),
+        )
+        .where(LlmCall.project_id.is_not(None))
+        .group_by(LlmCall.project_id)
+        .subquery()
+    )
+    rows = (
+        await db.execute(
+            select(Project.id, func.coalesce(usage_sq.c.tokens, 0))
+            .outerjoin(usage_sq, Project.id == usage_sq.c.project_id)
+            .order_by(Project.id)
+        )
+    ).all()
+    return [{"project_id": pid, "tokens": int(tokens or 0)} for pid, tokens in rows]
+
+
+# 工厂侧辅助调用（上传分堆、样例开题等），仍服务毕设场景，但与项目生成流水线分开统计
+SUPPORT_STAGES = frozenset({"upload_cluster", "sample_proposal"})
+
+
+def call_kind(stage: str | None) -> str:
+    """返回 support | pipeline。"""
+    return "support" if (stage or "").strip() in SUPPORT_STAGES else "pipeline"
+
+
 async def monthly_tokens_used(db: AsyncSession) -> int:
-    """当前自然月累计 token（工厂侧记账）。"""
+    """当前自然月累计 token（工厂侧记账，含流水线 + 系统支持）。"""
     start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     n = await db.scalar(
         select(func.coalesce(func.sum(LlmCall.tokens), 0)).where(LlmCall.created_at >= start)
     )
     return int(n or 0)
+
+
+async def monthly_tokens_breakdown(db: AsyncSession) -> dict[str, Any]:
+    """本月 Token 拆分：合计 / 项目流水线 / 系统支持（含按 stage）。"""
+    start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    rows = (
+        await db.execute(
+            select(
+                LlmCall.stage,
+                func.coalesce(func.sum(LlmCall.tokens), 0).label("tokens"),
+                func.count(LlmCall.id).label("calls"),
+            )
+            .where(LlmCall.created_at >= start)
+            .group_by(LlmCall.stage)
+        )
+    ).all()
+    pipeline = 0
+    support = 0
+    support_by_stage: list[dict[str, Any]] = []
+    for stage, tokens, calls in rows:
+        n = int(tokens or 0)
+        c = int(calls or 0)
+        st = str(stage or "")
+        if st in SUPPORT_STAGES:
+            support += n
+            support_by_stage.append({"stage": st, "tokens": n, "calls": c})
+        else:
+            pipeline += n
+    support_by_stage.sort(key=lambda x: (-int(x["tokens"]), str(x["stage"])))
+    return {
+        "total": pipeline + support,
+        "pipeline": pipeline,
+        "support": support,
+        "support_by_stage": support_by_stage,
+    }
 
 
 _USAGE_SORT_COLS = {
@@ -101,7 +166,7 @@ async def project_usage_rows(
     sort_by: str | None = None,
     sort_order: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    """按项目汇总用量；支持时间范围、项目 ID 模糊查、排序与分页。返回 (rows, total)。"""
+    """按项目汇总用量（仅流水线，不含系统支持）；支持时间范围、项目 ID 模糊查、排序与分页。"""
     start = date_from or datetime.now().replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
@@ -114,6 +179,7 @@ async def project_usage_rows(
         )
         .where(LlmCall.created_at >= start)
         .where(LlmCall.project_id.is_not(None))
+        .where(LlmCall.stage.notin_(SUPPORT_STAGES))
     )
     if date_to is not None:
         base = base.where(LlmCall.created_at <= date_to)
@@ -158,6 +224,29 @@ async def project_usage_rows(
     return items, total
 
 
+def _fill_daily_series(
+    by_day: dict[str, dict[str, int]],
+    *,
+    start: datetime,
+    end: datetime,
+) -> list[dict[str, Any]]:
+    daily: list[dict[str, Any]] = []
+    cursor = start.date()
+    last = end.date()
+    span_days = (last - cursor).days + 1
+    if span_days > 120:
+        for key in sorted(by_day.keys()):
+            hit = by_day[key]
+            daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
+        return daily
+    while cursor <= last:
+        key = cursor.isoformat()
+        hit = by_day.get(key) or {"tokens": 0, "calls": 0}
+        daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
+        cursor = cursor + timedelta(days=1)
+    return daily
+
+
 async def project_usage_chart(
     db: AsyncSession,
     *,
@@ -165,7 +254,7 @@ async def project_usage_chart(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
 ) -> dict[str, Any]:
-    """用量透视：按日 Token 合计（折线）。"""
+    """用量透视：按日 Token 合计（折线，仅流水线）。"""
     start = date_from or datetime.now().replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
@@ -177,6 +266,7 @@ async def project_usage_chart(
         LlmCall.created_at >= start,
         LlmCall.created_at <= end,
         LlmCall.project_id.is_not(None),
+        LlmCall.stage.notin_(SUPPORT_STAGES),
     ]
     needle = (q or "").strip()
     if needle:
@@ -200,24 +290,85 @@ async def project_usage_chart(
         key = str(r.day)[:10]
         by_day[key] = {"tokens": int(r.tokens or 0), "calls": int(r.calls or 0)}
 
-    daily: list[dict[str, Any]] = []
-    cursor = start.date()
-    last = end.date()
-    span_days = (last - cursor).days + 1
-    if span_days > 120:
-        # 过长区间不补零日，避免前端点过密
-        for key in sorted(by_day.keys()):
-            hit = by_day[key]
-            daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
-    else:
-        while cursor <= last:
-            key = cursor.isoformat()
-            hit = by_day.get(key) or {"tokens": 0, "calls": 0}
-            daily.append({"date": key, "tokens": hit["tokens"], "calls": hit["calls"]})
-            cursor = cursor + timedelta(days=1)
-
     return {
-        "daily": daily,
+        "daily": _fill_daily_series(by_day, start=start, end=end),
+        "date_from": start,
+        "date_to": end,
+    }
+
+
+async def support_usage(
+    db: AsyncSession,
+    *,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> dict[str, Any]:
+    """系统支持用量：按 stage 汇总 + 按日折线。"""
+    start = date_from or datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    end = date_to or datetime.now()
+    if end < start:
+        start, end = end, start
+
+    filters = [
+        LlmCall.created_at >= start,
+        LlmCall.created_at <= end,
+        LlmCall.stage.in_(SUPPORT_STAGES),
+    ]
+    stage_rows = (
+        await db.execute(
+            select(
+                LlmCall.stage,
+                func.coalesce(func.sum(LlmCall.tokens), 0).label("tokens"),
+                func.count(LlmCall.id).label("calls"),
+                func.max(LlmCall.created_at).label("last_at"),
+            )
+            .where(*filters)
+            .group_by(LlmCall.stage)
+            .order_by(func.sum(LlmCall.tokens).desc())
+        )
+    ).all()
+    by_stage = [
+        {
+            "stage": str(r.stage or ""),
+            "tokens": int(r.tokens or 0),
+            "calls": int(r.calls or 0),
+            "last_at": r.last_at,
+        }
+        for r in stage_rows
+    ]
+    # 保证已知 stage 也出现（零用量）
+    seen = {x["stage"] for x in by_stage}
+    for st in sorted(SUPPORT_STAGES):
+        if st not in seen:
+            by_stage.append({"stage": st, "tokens": 0, "calls": 0, "last_at": None})
+
+    day_expr = func.date(LlmCall.created_at)
+    daily_rows = (
+        await db.execute(
+            select(
+                day_expr.label("day"),
+                func.coalesce(func.sum(LlmCall.tokens), 0).label("tokens"),
+                func.count(LlmCall.id).label("calls"),
+            )
+            .where(*filters)
+            .group_by(day_expr)
+            .order_by(day_expr)
+        )
+    ).all()
+    by_day: dict[str, dict[str, int]] = {}
+    for r in daily_rows:
+        key = str(r.day)[:10]
+        by_day[key] = {"tokens": int(r.tokens or 0), "calls": int(r.calls or 0)}
+
+    total_tokens = sum(int(x["tokens"]) for x in by_stage)
+    total_calls = sum(int(x["calls"]) for x in by_stage)
+    return {
+        "tokens": total_tokens,
+        "calls": total_calls,
+        "by_stage": by_stage,
+        "daily": _fill_daily_series(by_day, start=start, end=end),
         "date_from": start,
         "date_to": end,
     }

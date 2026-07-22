@@ -11,19 +11,20 @@
       <div class="panel-hd"><h3>作战模式</h3></div>
       <div class="panel-bd">
         <p class="small muted mb-12">{{ modeHint }}</p>
+        <p v-if="providerLockHint" class="small warn mb-12">{{ providerLockHint }}</p>
         <div class="grid-2">
           <n-form-item label="启用 DeepSeek">
-            <n-switch v-model:value="form.deepseek_enabled" />
+            <n-switch v-model:value="form.deepseek_enabled" :disabled="providerLocked('deepseek')" />
           </n-form-item>
           <n-form-item label="启用 Gemini">
-            <n-switch v-model:value="form.gemini_enabled" />
+            <n-switch v-model:value="form.gemini_enabled" :disabled="providerLocked('gemini')" />
           </n-form-item>
         </div>
         <n-form-item label="双开时优先">
           <n-select
             v-model:value="form.preferred"
             :options="preferredOptions"
-            :disabled="!(form.deepseek_enabled && form.gemini_enabled)"
+            :disabled="!(form.deepseek_enabled && form.gemini_enabled) || !!lockedProvider"
           />
         </n-form-item>
       </div>
@@ -118,17 +119,36 @@
           <span class="mono">{{ ds.monthly_tokens_used || 0 }}</span>
           /
           <span class="mono">{{ form.monthly_token_budget || ds.monthly_token_budget }}</span>
-          <span v-if="monthPct >= 90" class="warn"> · 接近上限</span>
+          <span v-if="budgetTier === 'over'" class="warn"> · 已超限</span>
+          <span v-else-if="budgetTier === 'near'" class="warn"> · 接近上限</span>
         </div>
+        <p class="small muted mb-8">
+          流水线
+          <span class="mono">{{ ds.monthly_tokens_pipeline || 0 }}</span>
+          · 系统支持
+          <span class="mono">{{ ds.monthly_tokens_support || 0 }}</span>
+          （上传分堆、样例开题等；预算按合计扣）
+        </p>
+        <p v-if="budgetLockHint" class="small warn mb-8">{{ budgetLockHint }}</p>
         <div class="progress mb-16"><i :style="{ width: monthPct + '%' }" /></div>
         <div class="grid-2">
           <n-form-item label="月度 Token 预算">
             <n-input-number v-model:value="form.monthly_token_budget" :min="10000" :step="10000" style="width:100%" />
           </n-form-item>
           <n-form-item label="项目级 Token 预算">
-            <n-input-number v-model:value="form.project_token_budget" :min="1000" :step="10000" style="width:100%" />
+            <n-input-number
+              v-model:value="form.project_token_budget"
+              :min="1000"
+              :max="form.monthly_token_budget || undefined"
+              :step="10000"
+              style="width:100%"
+            />
           </n-form-item>
         </div>
+        <p v-if="projectBudgetHint" class="small mb-8" :class="projectBudgetHintWarn ? 'warn' : 'muted'">
+          {{ projectBudgetHint }}
+        </p>
+        <p class="small muted mb-8">项目级预算不能超过月度预算</p>
         <n-form-item label="修复轮次上限">
           <n-input-number v-model:value="form.fix_rounds_max" :min="0" :max="10" style="width:100%" />
         </n-form-item>
@@ -139,39 +159,42 @@
     </div>
 
     <div class="panel mb-16">
-      <div class="panel-hd"><h3>阶段开关</h3><span class="small muted">关闭后仍可完成基线生成</span></div>
+      <div class="panel-hd">
+        <h3>阶段开关</h3>
+        <span class="small muted">{{ stagePanelHint }}</span>
+      </div>
       <div class="panel-bd">
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>匹配推荐</strong><div class="small muted">大模型推荐骨架×领域；关闭或失败时回落关键词</div></div>
-          <n-switch v-model:value="form.match_recommend" />
+          <n-switch v-model:value="form.match_recommend" :disabled="stageLocked('match_recommend')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>摘要润色</strong><div class="small muted">润色开题摘要与功能点；关闭后仅用关键词</div></div>
-          <n-switch v-model:value="form.parse_spec" />
+          <n-switch v-model:value="form.parse_spec" :disabled="stageLocked('parse_spec')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>业务配置填充</strong><div class="small muted">仅填充业务文案与种子数据，不改业务源码</div></div>
-          <n-switch v-model:value="form.island_fill" />
+          <n-switch v-model:value="form.island_fill" :disabled="stageLocked('island_fill')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>E-R 中文补全</strong><div class="small muted">把漏网英文表/列名补成中文展示，不改 SQL</div></div>
-          <n-switch v-model:value="form.er_labels" />
+          <n-switch v-model:value="form.er_labels" :disabled="stageLocked('er_labels')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>模块图命名</strong><div class="small muted">按开题用语微调模块图节点名，不增删模块</div></div>
-          <n-switch v-model:value="form.module_labels" />
+          <n-switch v-model:value="form.module_labels" :disabled="stageLocked('module_labels')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>测试用例文案</strong><div class="small muted">只润色已有用例的步骤/预期等，不增删用例、不发明功能</div></div>
-          <n-switch v-model:value="form.testcase_labels" />
+          <n-switch v-model:value="form.testcase_labels" :disabled="stageLocked('testcase_labels')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>编译修复</strong><div class="small muted">构建失败时诊断并重试交付配置</div></div>
-          <n-switch v-model:value="form.auto_fix" />
+          <n-switch v-model:value="form.auto_fix" :disabled="stageLocked('auto_fix')" />
         </div>
         <div class="row-between" style="padding:10px 0">
           <div><strong>质量摘要</strong><div class="small muted">扫描配置漂移并生成质量摘要报告</div></div>
-          <n-switch v-model:value="form.qa_report" />
+          <n-switch v-model:value="form.qa_report" :disabled="stageLocked('qa_report')" />
         </div>
         <div class="row mt-12">
           <n-button type="primary" size="small" :loading="saving" @click="save">保存开关</n-button>
@@ -206,7 +229,9 @@
             @update:value="onUsageSearch"
           />
         </div>
-        <p class="small muted mb-12">超出项目或月度预算时将跳过模型调用 · 点击项目可筛选</p>
+        <p class="small muted mb-12">
+          仅统计<strong>项目流水线</strong>。超出<strong>项目</strong>预算时仅跳过该项目的模型调用；超出<strong>月度</strong>预算时跳过全部调用并锁定上方阶段开关。点击项目可筛选调用。
+        </p>
         <UsageCharts class="mb-16" :daily="usageChart.daily" />
         <n-data-table
           v-if="projectUsages.length"
@@ -238,6 +263,52 @@
             @update:page="loadUsage"
             @update:page-size="onUsagePageSize"
           />
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mb-16">
+      <div class="panel-hd">
+        <h3>系统支持用量</h3>
+        <n-button size="small" :loading="supportLoading" @click="loadSupportUsage">刷新</n-button>
+      </div>
+      <div class="panel-bd">
+        <div class="row mb-12" style="gap:10px;flex-wrap:wrap">
+          <n-date-picker
+            v-model:value="supportRange"
+            type="datetimerange"
+            clearable
+            size="small"
+            :shortcuts="dateRangeShortcuts"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            style="width:340px"
+            @update:value="onSupportRange"
+          />
+        </div>
+        <p class="small muted mb-12">
+          工厂辅助调用（上传分堆、样例开题等），仍计入月度合计预算。合计
+          <span class="mono">{{ supportUsage.tokens || 0 }}</span>
+          tokens ·
+          <span class="mono">{{ supportUsage.calls || 0 }}</span>
+          次。点击阶段可筛选下方调用明细。
+        </p>
+        <UsageCharts class="mb-16" :daily="supportUsage.daily" />
+        <n-data-table
+          v-if="supportUsage.by_stage?.length"
+          :columns="supportCols"
+          :data="supportUsage.by_stage"
+          :row-key="(r) => r.stage"
+          :bordered="false"
+          size="small"
+          :row-props="supportRowProps"
+        />
+        <div v-else-if="supportLoading" class="skel-stack" style="padding:8px 0">
+          <div v-for="i in 2" :key="i" class="skel skel-row-bar" />
+        </div>
+        <div v-else class="empty-hint">
+          <div class="empty-title">暂无系统支持调用</div>
+          <div class="empty-desc">调整时间范围后再刷新</div>
         </div>
       </div>
     </div>
@@ -290,7 +361,7 @@
             v-model:value="callFilter.q"
             clearable
             size="small"
-            placeholder="明细 / 阶段关键字…"
+            placeholder="明细关键字…"
             style="width:180px"
             @update:value="onCallSearch"
           />
@@ -330,11 +401,12 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { NButton } from 'naive-ui'
 import { api, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import UsageCharts from '../components/UsageCharts.vue'
+import { blendYuanPer1M, pricierProvider } from '../llmPricing'
 import {
   dateRangeShortcuts,
   debounce,
@@ -343,10 +415,27 @@ import {
   statusPillNode,
 } from '../opsShared'
 
+const HEAVY_STAGES = ['auto_fix', 'island_fill', 'match_recommend', 'parse_spec']
+const LIGHT_STAGES = ['er_labels', 'module_labels', 'testcase_labels', 'qa_report']
+const ALL_STAGES = [...HEAVY_STAGES, ...LIGHT_STAGES]
+
+/** @type {Record<string, boolean | string>} 锁前快照，抬高预算后恢复 */
+const lockPrefs = reactive({})
+let applyingLock = false
+let locksReady = false
+
+function stagesForTier(tier) {
+  if (tier === 'over') return ALL_STAGES
+  if (tier === 'near') return HEAVY_STAGES
+  return []
+}
+
 const ds = reactive({
   key_configured: false,
   key_masked: '',
   monthly_tokens_used: 0,
+  monthly_tokens_pipeline: 0,
+  monthly_tokens_support: 0,
   monthly_token_budget: 1000000,
   project_token_budget: 100000,
 })
@@ -383,8 +472,18 @@ const testingDs = ref(false)
 const testingGm = ref(false)
 const calls = ref([])
 const projectUsages = ref([])
+/** 库内全部项目全期 Token，供项目预算汇总（与下方看板分页无关） */
+const projectLifetimeTokens = ref([])
 const usageChart = reactive({ daily: [] })
 const usageLoading = ref(false)
+const supportLoading = ref(false)
+const supportRange = ref(monthRangeMs())
+const supportUsage = reactive({
+  tokens: 0,
+  calls: 0,
+  by_stage: [],
+  daily: [],
+})
 const callsLoading = ref(false)
 const usageQ = ref('')
 const usageRange = ref(monthRangeMs())
@@ -433,16 +532,272 @@ const stageOptions = [
   { label: '编译修复', value: 'auto_fix' },
   { label: '质量摘要', value: 'qa_report' },
   { label: '配置写出', value: 'emit' },
+  { label: '上传分堆', value: 'upload_cluster' },
+  { label: '样例开题', value: 'sample_proposal' },
 ]
+const stageLabelMap = Object.fromEntries(stageOptions.map((o) => [o.value, o.label]))
+function stageLabel(stage) {
+  if (!stage) return '—'
+  return stageLabelMap[stage] || stage
+}
+
+/** 调用明细展示：新旧英文/中文片段统一成可读中文 */
+const DETAIL_WORD_LABELS = {
+  'fallback structural only': '回退：仅结构扫描（未调用大模型）',
+  'qa llm failed': '质量摘要：大模型失败',
+  'match recommend': '匹配推荐',
+  'spec enrich': '摘要润色',
+  'sample proposal': '样例开题',
+  'upload cluster': '上传分堆',
+  'no english gaps': '无需补全 · 无英文缺口',
+  'compile ok / skip': '编译通过 / 已跳过',
+  'compile failed': '编译失败',
+  llm: '大模型',
+  deterministic: '确定性',
+  deterministic_recover: '确定性恢复',
+  deterministic_only: '仅确定性',
+  llm_fallback_deterministic: '大模型回退·确定性',
+  clean: '无需补全',
+  skip: '跳过',
+  llm_failed: '大模型失败',
+  llm_failed_keep_old: '大模型失败·保留旧值',
+  gaps_only: '仅补缺口',
+  branch_refine: '分支精炼',
+  ok: '成功',
+}
+const DETAIL_KEY_LABELS = {
+  in: '输入',
+  out: '输出',
+  think: '思考',
+  filled: '已填',
+  gaps: '缺口',
+  remain: '剩余',
+  rows: '行数',
+  scope: '范围',
+  latin_gaps: '拉丁缺口',
+  slots: '写入',
+  accept: '验收',
+  输入: '输入',
+  输出: '输出',
+  思考: '思考',
+  已填: '已填',
+  缺口: '缺口',
+  剩余: '剩余',
+  行数: '行数',
+  范围: '范围',
+  拉丁缺口: '拉丁缺口',
+}
+function callDetailLabel(detail) {
+  if (!detail) return '—'
+  const raw = String(detail)
+  if (DETAIL_WORD_LABELS[raw]) return DETAIL_WORD_LABELS[raw]
+  // fixed after N round(s)
+  const fixM = raw.match(/^fixed after (\d+) round\(s\)$/i)
+  if (fixM) return `修复成功 · 共 ${fixM[1]} 轮`
+  return raw
+    .split(' · ')
+    .map((part) => {
+      const full = DETAIL_WORD_LABELS[part]
+      if (full) return full
+      const eq = part.indexOf('=')
+      if (eq > 0) {
+        const key = part.slice(0, eq)
+        const val = part.slice(eq + 1)
+        const keyZh = DETAIL_KEY_LABELS[key] || key
+        const valZh = DETAIL_WORD_LABELS[val] || val
+        return `${keyZh}=${valZh}`
+      }
+      if (part.includes(',') && !part.includes(' ')) {
+        return part
+          .split(',')
+          .map((bit) => DETAIL_WORD_LABELS[bit] || bit)
+          .join('、')
+      }
+      return part
+    })
+    .join(' · ')
+}
+
 const okOptions = [
   { label: '成功', value: true },
   { label: '失败', value: false },
 ]
-const monthPct = computed(() => {
-  const budget = form.monthly_token_budget || ds.monthly_token_budget || 1
-  const used = ds.monthly_tokens_used || 0
-  return Math.min(100, Math.round((used / budget) * 100))
+const monthBudget = computed(() => form.monthly_token_budget || ds.monthly_token_budget || 1)
+const monthUsed = computed(() => ds.monthly_tokens_used || 0)
+const monthPct = computed(() =>
+  Math.min(100, Math.round((monthUsed.value / monthBudget.value) * 100)),
+)
+const budgetTier = computed(() => {
+  const ratio = monthUsed.value / monthBudget.value
+  if (ratio >= 1) return 'over'
+  if (ratio >= 0.9) return 'near'
+  return 'normal'
 })
+
+/** 双开意图下当前应锁的更贵厂商 */
+const lockedProvider = computed(() => {
+  if (budgetTier.value === 'normal') return null
+  const intendDs =
+    'deepseek_enabled' in lockPrefs ? !!lockPrefs.deepseek_enabled : form.deepseek_enabled
+  const intendGm =
+    'gemini_enabled' in lockPrefs ? !!lockPrefs.gemini_enabled : form.gemini_enabled
+  if (!(intendDs && intendGm)) return null
+  return pricierProvider({ deepseekModel: form.ds_model, geminiModel: form.gm_model })
+})
+
+function stageLocked(key) {
+  return stagesForTier(budgetTier.value).includes(key)
+}
+
+function providerLocked(name) {
+  return lockedProvider.value === name
+}
+
+const budgetLockHint = computed(() => {
+  if (budgetTier.value === 'over') {
+    return '已超限 · 阶段开关已锁定，模型调用将跳过；调高月度预算可解锁'
+  }
+  if (budgetTier.value === 'near') {
+    return '接近上限 · 已锁定高耗阶段；调高月度预算可解锁'
+  }
+  return ''
+})
+
+const stagePanelHint = computed(() => {
+  if (budgetTier.value === 'over') return '已超限 · 全部阶段已锁定'
+  if (budgetTier.value === 'near') return '接近上限 · 高耗阶段已锁定'
+  return '关闭后仍可完成基线生成'
+})
+
+const providerLockHint = computed(() => {
+  const p = lockedProvider.value
+  if (!p) return ''
+  const model = p === 'gemini' ? form.gm_model : form.ds_model
+  const blend = blendYuanPer1M(model)
+  const label = p === 'gemini' ? 'Gemini' : 'DeepSeek'
+  const price =
+    blend != null ? ` · 约 ${blend.toFixed(2)} 元/百万 Token` : ''
+  return `预算紧张 · 已锁定更贵的 ${label}${price}`
+})
+
+function projectBudgetTier(used, budget) {
+  const b = budget || 1
+  const ratio = (used || 0) / b
+  if (ratio >= 1) return 'over'
+  if (ratio >= 0.9) return 'near'
+  return 'normal'
+}
+
+const projectBudget = computed(() => form.project_token_budget || ds.project_token_budget || 1)
+
+const projectBudgetStats = computed(() => {
+  const budget = projectBudget.value
+  let over = 0
+  let near = 0
+  for (const row of projectLifetimeTokens.value) {
+    const tier = projectBudgetTier(row.tokens, budget)
+    if (tier === 'over') over += 1
+    else if (tier === 'near') near += 1
+  }
+  return { over, near, total: projectLifetimeTokens.value.length }
+})
+
+const projectBudgetHintWarn = computed(
+  () => projectBudgetStats.value.over > 0 || projectBudgetStats.value.near > 0,
+)
+
+const projectBudgetHint = computed(() => {
+  const { over, near, total } = projectBudgetStats.value
+  if (!total) {
+    return '库内暂无项目；单项目超限只拦该项目，不锁全局阶段开关'
+  }
+  if (over || near) {
+    const parts = []
+    if (over) parts.push(`${over} 个已超限`)
+    if (near) parts.push(`${near} 个接近`)
+    return `库内 ${total} 个项目：${parts.join('、')}（全期用量 · 相对录入中的项目预算）`
+  }
+  return `库内 ${total} 个项目均在项目预算内（全期用量）`
+})
+
+function applyBudgetLocks() {
+  if (!locksReady || applyingLock) return
+  applyingLock = true
+  try {
+    const tier = budgetTier.value
+    const stageSet = new Set(stagesForTier(tier))
+
+    for (const key of ALL_STAGES) {
+      if (stageSet.has(key)) {
+        if (!(key in lockPrefs)) lockPrefs[key] = !!form[key]
+        form[key] = false
+      } else if (key in lockPrefs) {
+        form[key] = !!lockPrefs[key]
+        delete lockPrefs[key]
+      }
+    }
+
+    if (tier !== 'normal' && form.deepseek_enabled && form.gemini_enabled) {
+      if (!('deepseek_enabled' in lockPrefs)) lockPrefs.deepseek_enabled = true
+      if (!('gemini_enabled' in lockPrefs)) lockPrefs.gemini_enabled = true
+      if (!('preferred' in lockPrefs)) lockPrefs.preferred = form.preferred
+    }
+
+    const intendDs =
+      'deepseek_enabled' in lockPrefs ? !!lockPrefs.deepseek_enabled : form.deepseek_enabled
+    const intendGm =
+      'gemini_enabled' in lockPrefs ? !!lockPrefs.gemini_enabled : form.gemini_enabled
+    let pricier = null
+    if (tier !== 'normal' && intendDs && intendGm) {
+      pricier = pricierProvider({ deepseekModel: form.ds_model, geminiModel: form.gm_model })
+    }
+
+    for (const name of ['deepseek', 'gemini']) {
+      const key = `${name}_enabled`
+      if (pricier === name) {
+        if (!(key in lockPrefs)) lockPrefs[key] = !!form[key]
+        form[key] = false
+        if (form.preferred === name) {
+          form.preferred = name === 'gemini' ? 'deepseek' : 'gemini'
+        }
+      } else if (tier === 'normal' && key in lockPrefs) {
+        form[key] = !!lockPrefs[key]
+        delete lockPrefs[key]
+      } else if (pricier && pricier !== name && key in lockPrefs) {
+        form[key] = !!lockPrefs[key]
+      }
+    }
+
+    if (tier === 'normal' && 'preferred' in lockPrefs) {
+      form.preferred = String(lockPrefs.preferred)
+      delete lockPrefs.preferred
+    }
+  } finally {
+    applyingLock = false
+  }
+}
+
+watch(
+  () => [
+    budgetTier.value,
+    form.ds_model,
+    form.gm_model,
+    form.monthly_token_budget,
+    ds.monthly_tokens_used,
+  ],
+  () => applyBudgetLocks(),
+)
+
+function clampProjectBudget() {
+  const monthly = form.monthly_token_budget
+  if (monthly == null || form.project_token_budget == null) return
+  if (form.project_token_budget > monthly) {
+    form.project_token_budget = monthly
+  }
+}
+
+watch(() => form.monthly_token_budget, () => clampProjectBudget())
+
 const modeHint = computed(() => {
   const onDs = form.deepseek_enabled
   const onGm = form.gemini_enabled
@@ -503,14 +858,19 @@ const usageCols = computed(() => [
   {
     title: '占项目预算',
     key: 'pct',
-    width: 120,
+    width: 150,
     sorter: true,
     sortOrder: usageSortOrder('pct'),
     render: (r) => {
       const budget = form.project_token_budget || ds.project_token_budget || 1
       const pct = Math.min(100, Math.round((r.tokens / budget) * 100))
-      const over = r.tokens >= budget
-      return h('span', { class: over ? 'warn mono' : 'mono' }, `${pct}%`)
+      const tier = projectBudgetTier(r.tokens, budget)
+      const label = tier === 'over' ? ' · 已超限' : tier === 'near' ? ' · 接近' : ''
+      return h(
+        'span',
+        { class: tier === 'normal' ? 'mono' : 'warn mono' },
+        `${pct}%${label}`,
+      )
     },
   },
   {
@@ -525,15 +885,15 @@ const usageCols = computed(() => [
 const cols = [
   { title: '时间', key: 'created_at', width: 160, render: (r) => (r.created_at ? new Date(r.created_at).toLocaleString() : '—') },
   { title: '项目', key: 'project_id', ellipsis: { tooltip: true } },
-  { title: '阶段', key: 'stage', width: 110 },
+  { title: '阶段', key: 'stage', width: 110, render: (r) => stageLabel(r.stage) },
   { title: 'Tokens', key: 'tokens', width: 90, render: (r) => h('span', { class: 'mono' }, String(r.tokens)) },
   {
     title: '结果',
     key: 'ok',
     width: 70,
-    render: (r) => statusPillNode(r.ok ? 'OK' : 'FAIL', r.ok ? 'pill-green' : 'pill-red'),
+    render: (r) => statusPillNode(r.ok ? '成功' : '失败', r.ok ? 'pill-green' : 'pill-red'),
   },
-  { title: '明细', key: 'detail', ellipsis: { tooltip: true }, render: (r) => r.detail || '—' },
+  { title: '明细', key: 'detail', ellipsis: { tooltip: true }, render: (r) => callDetailLabel(r.detail) },
 ]
 
 function usageRowProps(row) {
@@ -543,9 +903,59 @@ function usageRowProps(row) {
   }
 }
 
+const supportCols = [
+  {
+    title: '阶段',
+    key: 'stage',
+    render: (r) =>
+      h(
+        NButton,
+        {
+          text: true,
+          type: 'primary',
+          size: 'small',
+          onClick: (e) => {
+            e.stopPropagation()
+            filterCallsByStage(r.stage)
+          },
+        },
+        { default: () => stageLabel(r.stage) },
+      ),
+  },
+  {
+    title: 'Tokens',
+    key: 'tokens',
+    width: 100,
+    render: (r) => h('span', { class: 'mono' }, String(r.tokens)),
+  },
+  { title: '次数', key: 'calls', width: 70 },
+  {
+    title: '最近',
+    key: 'last_at',
+    width: 160,
+    render: (r) => (r.last_at ? new Date(r.last_at).toLocaleString() : '—'),
+  },
+]
+
+function supportRowProps(row) {
+  return {
+    style: 'cursor:pointer',
+    onClick: () => filterCallsByStage(row.stage),
+  }
+}
+
 function filterCallsByProject(pid) {
   callFilter.project_id = pid
+  callFilter.stage = null
   callRange.value = usageRange.value ? [...usageRange.value] : null
+  callsPage.value = 1
+  loadCalls()
+}
+
+function filterCallsByStage(stage) {
+  callFilter.stage = stage || null
+  callFilter.project_id = null
+  callRange.value = supportRange.value ? [...supportRange.value] : null
   callsPage.value = 1
   loadCalls()
 }
@@ -571,15 +981,42 @@ function migrateModel(m) {
   return m || 'deepseek-v4-flash'
 }
 
+async function loadProjectLifetimeTokens() {
+  try {
+    const res = await api.llmProjectTokens()
+    projectLifetimeTokens.value = res?.items || []
+  } catch {
+    projectLifetimeTokens.value = []
+  }
+}
+
 async function loadUsageChart(rangeParams) {
   try {
-    const chart = await api.deepseekUsageChart({
+    const chart = await api.llmUsageChart({
       q: usageQ.value || undefined,
       ...rangeParams,
     })
     usageChart.daily = chart?.daily || []
   } catch {
     usageChart.daily = []
+  }
+}
+
+async function loadSupportUsage() {
+  supportLoading.value = true
+  try {
+    const res = await api.llmUsageSupport(rangeToParams(supportRange.value))
+    supportUsage.tokens = res?.tokens || 0
+    supportUsage.calls = res?.calls || 0
+    supportUsage.by_stage = res?.by_stage || []
+    supportUsage.daily = res?.daily || []
+  } catch {
+    supportUsage.tokens = 0
+    supportUsage.calls = 0
+    supportUsage.by_stage = []
+    supportUsage.daily = []
+  } finally {
+    supportLoading.value = false
   }
 }
 
@@ -599,8 +1036,9 @@ async function loadUsage() {
       params.sort_order = s.order === 'ascend' ? 'asc' : 'desc'
     }
     const [res] = await Promise.all([
-      api.deepseekUsage(params),
+      api.llmUsage(params),
       loadUsageChart(rangeParams),
+      loadProjectLifetimeTokens(),
     ])
     projectUsages.value = res?.items || []
     usageTotal.value = res?.total || 0
@@ -633,7 +1071,7 @@ async function loadCalls() {
     if (callFilter.stage) params.stage = callFilter.stage
     if (callFilter.ok !== null && callFilter.ok !== undefined) params.ok = callFilter.ok
     if (callFilter.q) params.q = callFilter.q
-    const res = await api.deepseekCalls(params)
+    const res = await api.llmCalls(params)
     if (Array.isArray(res)) {
       calls.value = res
       callsTotal.value = res.length
@@ -661,6 +1099,10 @@ function onUsageRange() {
   loadUsage()
 }
 
+function onSupportRange() {
+  loadSupportUsage()
+}
+
 function onCallFilter() {
   callsPage.value = 1
   loadCalls()
@@ -683,6 +1125,8 @@ async function load() {
       key_configured: dsRes.key_configured,
       key_masked: dsRes.key_masked,
       monthly_tokens_used: dsRes.monthly_tokens_used,
+      monthly_tokens_pipeline: dsRes.monthly_tokens_pipeline || 0,
+      monthly_tokens_support: dsRes.monthly_tokens_support || 0,
       monthly_token_budget: dsRes.monthly_token_budget,
       project_token_budget: dsRes.project_token_budget,
     })
@@ -705,11 +1149,20 @@ async function load() {
     form.qa_report = dsRes.qa_report
     form.project_token_budget = dsRes.project_token_budget
     form.monthly_token_budget = dsRes.monthly_token_budget
+    clampProjectBudget()
     form.fix_rounds_max = dsRes.fix_rounds_max
     form.deepseek_enabled = !!dsRes.deepseek_enabled
     form.gemini_enabled = !!dsRes.gemini_enabled
     form.preferred = dsRes.preferred || 'deepseek'
-    await Promise.all([loadUsage(), loadCalls(), loadBalance()])
+    locksReady = true
+    applyBudgetLocks()
+    await Promise.all([
+      loadUsage(),
+      loadSupportUsage(),
+      loadCalls(),
+      loadBalance(),
+      loadProjectLifetimeTokens(),
+    ])
   } catch (e) {
     message.error(e?.message || '读取大模型配置失败（请确认已重启后端）')
   } finally {
@@ -719,6 +1172,7 @@ async function load() {
 
 async function save() {
   if (saving.value) return
+  clampProjectBudget()
   saving.value = true
   try {
     const [dsRes] = await Promise.all([
@@ -764,12 +1218,15 @@ async function save() {
       key_configured: dsRes.key_configured,
       key_masked: dsRes.key_masked,
       monthly_tokens_used: dsRes.monthly_tokens_used,
+      monthly_tokens_pipeline: dsRes.monthly_tokens_pipeline || 0,
+      monthly_tokens_support: dsRes.monthly_tokens_support || 0,
       monthly_token_budget: dsRes.monthly_token_budget,
       project_token_budget: dsRes.project_token_budget,
     })
     form.deepseek_enabled = !!dsRes.deepseek_enabled
     form.gemini_enabled = !!dsRes.gemini_enabled
     form.preferred = dsRes.preferred || form.preferred
+    applyBudgetLocks()
     message.success('已保存（Key 仍只读环境变量）')
   } finally {
     saving.value = false

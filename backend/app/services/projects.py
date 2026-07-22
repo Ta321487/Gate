@@ -537,15 +537,17 @@ async def stats(db: AsyncSession) -> dict:
         .select_from(Project)
         .where(Project.status.in_([ProjectStatus.generated.value, ProjectStatus.running.value]))
     ) or 0
-    from app.llm.client import monthly_tokens_used
+    from app.llm.client import monthly_tokens_breakdown
 
-    tokens = await monthly_tokens_used(db)
+    tokens_bd = await monthly_tokens_breakdown(db)
     s = get_settings()
     return {
         "total": total,
         "generating": generating,
         "previewable": previewable,
-        "monthly_tokens": int(tokens),
+        "monthly_tokens": int(tokens_bd["total"]),
+        "monthly_tokens_pipeline": int(tokens_bd["pipeline"]),
+        "monthly_tokens_support": int(tokens_bd["support"]),
         "monthly_budget": s.monthly_token_budget,
     }
 
