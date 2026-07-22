@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <section class="todo card">
+    <section v-if="hasTodo" class="todo card">
       <h3>待办</h3>
       <template v-if="caps.includes('order_lines')">
         <div class="todo-row">
@@ -32,7 +32,7 @@
           <el-button type="primary" link @click="$router.push('/admin/reservations')">去办结</el-button>
         </div>
       </template>
-      <template v-else>
+      <template v-else-if="caps.includes('ticket_flow')">
         <div class="todo-row">
           <span>待受理 {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
           <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
@@ -58,6 +58,12 @@
         <div v-if="showOverdue" class="todo-row">
           <span>逾期 {{ data.overdueBorrow || 0 }} {{ ticketUnit }}</span>
           <el-button link @click="$router.push('/admin/overdue')">去{{ remindVerb }}</el-button>
+        </div>
+      </template>
+      <template v-else-if="caps.includes('favorites')">
+        <div class="todo-row">
+          <span>{{ archiveMenuLabel }}内容维护与读者收藏（无受理队列）</span>
+          <el-button type="primary" link @click="$router.push('/admin/archive')">去管理</el-button>
         </div>
       </template>
     </section>
@@ -87,6 +93,15 @@ const rejectedLabel = computed(() => ticket.value.states?.rejected || '已驳回
 const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
 const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
 const reservationLabel = computed(() => reservationCopy()?.label || '预约')
+const archiveMenuLabel = computed(() => menuLabel('admin', 'archive', '内容'))
+/** 纯档案/收藏域无单据队列，勿链到不存在的 /admin/tickets */
+const hasTodo = computed(
+  () =>
+    caps.value.includes('order_lines')
+    || (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
+    || caps.value.includes('ticket_flow')
+    || caps.value.includes('favorites'),
+)
 
 const chartMode = computed(() => {
   if (caps.value.includes('order_lines') && !caps.value.includes('ticket_flow')) return 'order'
@@ -109,7 +124,7 @@ const cards = computed(() => {
       { key: 'rc', label: `已确认${reservationLabel.value}`, value: data.value.confirmedReservations ?? '—' },
       { key: 'rd', label: `已办结${reservationLabel.value}`, value: data.value.completedReservations ?? '—' },
     )
-  } else {
+  } else if (caps.value.includes('ticket_flow')) {
     list.push(
       { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
     )

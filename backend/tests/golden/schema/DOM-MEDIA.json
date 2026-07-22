@@ -45,7 +45,7 @@
       "labelPlural": "片单",
       "playUrlField": "isbn",
       "softDelete": true,
-      "stockDisplay": "available",
+      "stockDisplay": "toggle",
       "stockUnavailableLabel": "已点播",
       "tagFilter": false
     },

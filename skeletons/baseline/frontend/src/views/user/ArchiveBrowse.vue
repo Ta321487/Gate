@@ -489,13 +489,14 @@ function stockOk(row) {
 }
 
 function stockText(row) {
-  if (stockDisplay.value === 'available') {
+  if (stockDisplay.value === 'toggle' || stockDisplay.value === 'available') {
     const ok = fieldLabel('stock', stockCountLabel.value)
     if (!stockOk(row)) {
       return archive.stockUnavailableLabel || stockUnavailableFrom(ok)
     }
+    if (stockDisplay.value === 'toggle') return ok
     const n = Number(row.stock)
-    // 同款多件登记在一条时展示余量，便于区分「仅一件」与「可多认领」
+    // available：同款多件登记在一条时展示余量
     if (Number.isFinite(n) && n > 1) return `${ok} · 余 ${n}`
     return ok
   }

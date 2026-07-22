@@ -201,9 +201,17 @@ export function formatArchiveScalar(field, value, empty = '—') {
   if (value == null || value === '') return empty
   const f = field || {}
   const type = f.type || 'string'
+  if (type === 'boolean' || type === 'switch') {
+    const on = value === true || value === 1 || value === '1' || value === '是'
+    return on ? '是' : '否'
+  }
   if (type === 'number' || isArchiveMoneyField(f)) {
     const n = Number(String(value).replace(/[¥￥,\s]/g, ''))
     if (!Number.isFinite(n)) return String(value)
+    // 语义布尔（需培训 1是0否）列表也显示是/否
+    if (/[（(]?\s*1\s*是\s*0\s*否\s*[）)]?|是否/.test(String(f.label || ''))) {
+      return n > 0 ? '是' : '否'
+    }
     if (isArchiveMoneyField(f)) return n.toFixed(2)
     return String(n)
   }

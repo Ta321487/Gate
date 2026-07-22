@@ -21,7 +21,7 @@
         {
           "key": "isbn",
           "label": "电话/备注",
-          "type": "string"
+          "type": "textarea"
         },
         {
           "key": "stage",
@@ -43,7 +43,7 @@
       "label": "客户",
       "labelPlural": "客户",
       "softDelete": false,
-      "stockDisplay": "available",
+      "stockDisplay": "toggle",
       "stockUnavailableLabel": "已跟进",
       "tagFilter": false
     },

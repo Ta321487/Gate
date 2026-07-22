@@ -45,7 +45,15 @@
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
         <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="showStock" prop="stock" :label="fieldLabel('stock', '库存')" width="90" />
+      <el-table-column v-if="showStock" :label="fieldLabel('stock', '库存')" width="100">
+        <template #default="{ row }">
+          <template v-if="stockAsToggle">
+            <el-tag v-if="Number(row.stock) > 0" size="small" type="success" effect="plain">是</el-tag>
+            <el-tag v-else size="small" type="info">否</el-tag>
+          </template>
+          <template v-else>{{ row.stock }}</template>
+        </template>
+      </el-table-column>
       <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
       <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
       <el-table-column v-if="hasDeadline" prop="applyDeadlineAt" :label="fieldLabel('applyDeadlineAt', '截止')" width="170" />
@@ -91,41 +99,24 @@
     >
       <el-form :model="form" label-width="96px" require-asterisk-position="right">
         <el-form-item :label="fieldLabel('title', '名称')" required>
-          <el-input v-model="form.title" />
+          <ArchiveFieldControl
+            :field="fieldMeta('title')"
+            v-model="form.title"
+            :placeholder="fieldLabel('title', '名称')"
+          />
         </el-form-item>
         <el-form-item :label="fieldLabel('author', '型号')">
-          <el-input-number
-            v-if="fieldType('author') === 'number'"
-            v-model="authorNum"
-            :min="0"
-            :precision="2"
-            :step="1"
-            controls-position="right"
-            style="width:100%"
-            :value-on-clear="null"
-            placeholder="可填 0.00；留空表示未设置"
+          <ArchiveFieldControl
+            :field="{ ...fieldMeta('author'), key: 'author', label: fieldLabel('author', '型号') }"
+            v-model="form.author"
           />
-          <el-input v-else v-model="form.author" />
         </el-form-item>
         <el-form-item :label="fieldLabel('isbn', '编号')">
-          <RichTextEditor
-            v-if="isbnRich"
+          <ArchiveFieldControl
+            :field="{ ...fieldMeta('isbn'), key: 'isbn', label: fieldLabel('isbn', '编号'), type: isbnRich ? 'richtext' : fieldType('isbn') }"
             v-model="form.isbn"
-            :placeholder="`请输入${fieldLabel('isbn', '正文')}`"
+            :body-field="archive.bodyField || ''"
           />
-          <el-input
-            v-else-if="fieldType('isbn') === 'url'"
-            v-model="form.isbn"
-            type="url"
-            placeholder="https://"
-          />
-          <el-input
-            v-else-if="fieldType('isbn') === 'textarea'"
-            v-model="form.isbn"
-            type="textarea"
-            :rows="3"
-          />
-          <el-input v-else v-model="form.isbn" />
         </el-form-item>
         <el-form-item :label="fieldLabel('category', '分类')" required>
           <el-select
@@ -139,9 +130,13 @@
         <el-form-item
           v-if="showStock"
           :label="fieldLabel('stock', '库存')"
-          required
+          :required="!stockAsToggle"
         >
-          <el-input-number v-model="form.stock" :min="0" :step="1" controls-position="right" style="width:100%" />
+          <ArchiveFieldControl
+            :field="{ ...fieldMeta('stock'), key: 'stock', label: fieldLabel('stock', '库存'), type: 'number' }"
+            v-model="form.stock"
+            :stock-as-toggle="stockAsToggle"
+          />
         </el-form-item>
         <el-form-item v-if="hasMutex" :label="fieldLabel('mutexCode', '互斥码')">
           <el-input v-model="form.mutexCode" maxlength="32" :placeholder="`相同互斥码的${label}不可同选，可留空`" />
@@ -186,26 +181,11 @@
           :key="f.key"
           :label="f.label || f.key"
         >
-          <el-date-picker
-            v-if="f.type === 'datetime'"
+          <ArchiveFieldControl
+            :field="f"
             v-model="form[f.key]"
-            v-bind="dateTimePickerProps(f)"
-            style="width:100%"
+            :body-field="archive.bodyField || ''"
           />
-          <el-input-number
-            v-else-if="f.type === 'number'"
-            v-model="form[f.key]"
-            :min="0"
-            controls-position="right"
-            style="width:100%"
-          />
-          <el-input
-            v-else-if="f.type === 'url'"
-            v-model="form[f.key]"
-            type="url"
-            placeholder="https://"
-          />
-          <el-input v-else v-model="form[f.key]" />
         </el-form-item>
         <el-form-item label="封面">
           <div class="cover-edit">
@@ -243,9 +223,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import RichTextEditor from '../../components/RichTextEditor.vue'
-import { archiveCopy, formatArchiveScalar, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
+import ArchiveFieldControl from '../../components/ArchiveFieldControl.vue'
+import { archiveCopy, formatArchiveScalar, getSchema, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
 import { dateTimePickerProps } from '../../utils/dateTimeField.js'
+import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 
@@ -284,17 +265,26 @@ const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCod
 const softDelete = computed(() => !!archive.softDelete)
 const tagFilter = computed(() => !!archive.tagFilter)
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
-/** count：库存数字；available：仅当 schema 声明了 stock 字段（可认领等）；hidden / 预约域：不展示 */
+/** count：库存数字；available：可认领等余量；toggle：可读/可点播等开关；hidden：不展示 */
+const stockAsToggle = computed(() => {
+  if (stockDisplay.value === 'toggle') return true
+  // 旧内容域 schema 仍写 available：无单据时按开关（失物招领等有 ticket_flow 仍用数字）
+  if (stockDisplay.value === 'available') {
+    const caps = getSchema()?.capabilities || []
+    return !caps.includes('ticket_flow')
+  }
+  return false
+})
 const showStock = computed(() => {
   if (stockDisplay.value === 'hidden') return false
   const f = fields.value.find((x) => x.key === 'stock')
   if (f?.type === 'hidden') return false
-  if (stockDisplay.value === 'available') return !!f
+  if (stockDisplay.value === 'available' || stockDisplay.value === 'toggle') return !!f
   return true
 })
 
 function fieldMeta(key) {
-  return fields.value.find((x) => x.key === key) || {}
+  return fields.value.find((x) => x.key === key) || { key }
 }
 function fieldType(key) {
   return fieldMeta(key).type || 'string'
@@ -307,27 +297,14 @@ function pickerProps(key) {
 }
 
 function formatAuthorCell(v) {
-  // 金额域：0.00 有效；空才显示 —
   return formatArchiveScalar({ ...fieldMeta('author'), key: 'author' }, v)
 }
 
-/** author 列存单价时用数字控件；空与 0.00 分开（空=未设置，0=免费） */
-const authorNum = computed({
-  get() {
-    const raw = form.author
-    if (raw == null || String(raw).trim() === '') return null
-    const n = Number(String(raw).replace(/[¥￥,\s]/g, ''))
-    return Number.isFinite(n) ? n : null
-  },
-  set(v) {
-    if (v == null || v === '') {
-      form.author = ''
-      return
-    }
-    const n = Number(v)
-    form.author = Number.isFinite(n) ? String(n) : ''
-  },
-})
+function extraDefault(f) {
+  const w = archiveFieldWidget(f, { bodyField: archive.bodyField || '' })
+  if (w === 'switch' || w === 'number' || w === 'money') return 0
+  return ''
+}
 
 const list = ref([])
 const total = ref(0)
@@ -391,7 +368,7 @@ function genCheckin() {
 function openEdit(row) {
   const extras = {}
   for (const f of extraFields.value) {
-    extras[f.key] = row?.[f.key] ?? (f.type === 'number' ? 0 : '')
+    extras[f.key] = row?.[f.key] ?? extraDefault(f)
   }
   if (row) {
     Object.assign(form, {
@@ -536,9 +513,15 @@ function sampleForCol(col) {
   if (col.key === 'stock') return '1'
   if (col.key === 'tags') return ''
   if (col.key === 'checkinCode') return 'ACT1001'
+  if (col.type === 'boolean' || col.type === 'switch') return '1'
   if (col.type === 'number') return '1'
   if (col.type === 'datetime') return '2026-07-21 09:00'
   if (col.type === 'url') return 'https://example.com'
+  if (col.type === 'textarea') return '示例说明'
+  if (col.type === 'select' && Array.isArray(col.options) && col.options.length) {
+    const o = col.options[0]
+    return typeof o === 'object' && o != null ? (o.value ?? o.label) : o
+  }
   return `示例${col.label}`
 }
 

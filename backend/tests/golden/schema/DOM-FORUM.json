@@ -40,7 +40,7 @@
       "label": "主帖",
       "labelPlural": "主帖",
       "softDelete": true,
-      "stockDisplay": "available",
+      "stockDisplay": "toggle",
       "stockUnavailableLabel": "已见",
       "tagFilter": true,
       "userPublish": true
