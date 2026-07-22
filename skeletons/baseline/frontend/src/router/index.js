@@ -221,6 +221,24 @@ function withFavoritesRoutes(baseRoutes) {
   return routes
 }
 
+/** 我的主帖：archive.userPublish 时挂门户入口 */
+function withMyArchiveRoutes(baseRoutes) {
+  const archive = getSchema()?.entities?.archive || {}
+  if (!archive.userPublish) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'my-archive')) {
+    const archIdx = kids.findIndex((c) => c.path === 'archive')
+    const at = archIdx >= 0 ? archIdx + 1 : kids.length
+    kids.splice(at, 0, {
+      path: 'my-archive',
+      component: () => import('../views/user/MyArchive.vue'),
+    })
+  }
+  return routes
+}
+
 /** 浏览历史：有 browse_history 能力时挂门户入口 */
 function withBrowseHistoryRoutes(baseRoutes) {
   if (!hasCap('browse_history')) return baseRoutes
@@ -551,8 +569,10 @@ function pickRoutes() {
   else if (useSlotShell()) routes = withPortalHub(slotRoutes)
   else if (useArchiveOnlyShell()) routes = withPortalHub(archiveOnlyRoutes)
   else routes = baselineRoutes
-  return withOrderReviewRoutes(
-    withCouponRoutes(withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes)))),
+  return withMyArchiveRoutes(
+    withOrderReviewRoutes(
+      withCouponRoutes(withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes)))),
+    ),
   )
 }
 

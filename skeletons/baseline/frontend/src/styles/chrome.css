@@ -96,22 +96,100 @@
   box-shadow: var(--portal-shadow, none);
 }
 
-/* Element Plus 桥接：按钮/输入/卡片跟 chrome + 主题色 */
+/* Element Plus 桥接：按钮/输入/卡片跟 chrome + 主题色
+ * --portal-mix：浅色混白 / 深色混黑，避免深色主题 light-* 被洗成浅底浅字 */
 html {
   --el-color-primary: var(--portal-accent, #0b6e75);
-  --el-color-primary-light-3: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #fff);
-  --el-color-primary-light-5: color-mix(in srgb, var(--portal-accent, #0b6e75) 50%, #fff);
-  --el-color-primary-light-7: color-mix(in srgb, var(--portal-accent, #0b6e75) 30%, #fff);
-  --el-color-primary-light-8: color-mix(in srgb, var(--portal-accent, #0b6e75) 20%, #fff);
-  --el-color-primary-light-9: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, #fff);
+  --el-color-primary-light-3: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, var(--portal-mix, #fff));
+  --el-color-primary-light-5: color-mix(in srgb, var(--portal-accent, #0b6e75) 50%, var(--portal-mix, #fff));
+  --el-color-primary-light-7: color-mix(in srgb, var(--portal-accent, #0b6e75) 30%, var(--portal-mix, #fff));
+  --el-color-primary-light-8: color-mix(in srgb, var(--portal-accent, #0b6e75) 20%, var(--portal-mix, #fff));
+  --el-color-primary-light-9: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, var(--portal-mix, #fff));
   --el-color-primary-dark-2: var(--portal-brand, #08545a);
   --el-border-radius-base: var(--portal-radius-sm);
   --el-border-radius-small: var(--portal-radius-sm);
   --el-border-radius-round: var(--portal-btn-radius);
   --el-border-color: var(--portal-line, #d5dde3);
   --el-border-color-light: var(--portal-line, #d5dde3);
-  --el-border-color-lighter: color-mix(in srgb, var(--portal-line, #d5dde3) 70%, #fff);
-  --el-border-color-extra-light: color-mix(in srgb, var(--portal-line, #d5dde3) 45%, #fff);
+  --el-border-color-lighter: color-mix(in srgb, var(--portal-line, #d5dde3) 70%, var(--portal-mix, #fff));
+  --el-border-color-extra-light: color-mix(in srgb, var(--portal-line, #d5dde3) 45%, var(--portal-mix, #fff));
+}
+
+/* 深色行业配色：把 EP 默认浅色面板接到 portal token，避免浅字落在白底卡片上 */
+html.dark,
+html[data-scheme="dark"] {
+  --el-bg-color-page: var(--portal-bg, #0f1720);
+  --el-bg-color: var(--portal-surface, #18232e);
+  --el-bg-color-overlay: var(--portal-surface, #18232e);
+  --el-text-color-primary: var(--portal-ink, #e8eef2);
+  --el-text-color-regular: color-mix(in srgb, var(--portal-ink, #e8eef2) 88%, var(--portal-muted, #8aa0ae));
+  --el-text-color-secondary: var(--portal-muted, #8aa0ae);
+  --el-text-color-placeholder: var(--portal-muted, #8aa0ae);
+  --el-text-color-disabled: color-mix(in srgb, var(--portal-muted, #8aa0ae) 70%, var(--portal-mix, #000));
+  --el-border-color-darker: color-mix(in srgb, var(--portal-line, #2a3a48) 70%, var(--portal-ink, #e8eef2));
+  --el-border-color-dark: var(--portal-line, #2a3a48);
+  --el-border-color: var(--portal-line, #2a3a48);
+  --el-border-color-light: var(--portal-line, #2a3a48);
+  --el-border-color-lighter: color-mix(in srgb, var(--portal-line, #2a3a48) 75%, var(--portal-mix, #000));
+  --el-border-color-extra-light: color-mix(in srgb, var(--portal-line, #2a3a48) 55%, var(--portal-mix, #000));
+  --el-fill-color-blank: var(--portal-surface, #18232e);
+  --el-fill-color-darker: color-mix(in srgb, var(--portal-surface, #18232e) 70%, var(--portal-ink, #e8eef2));
+  --el-fill-color-dark: color-mix(in srgb, var(--portal-surface, #18232e) 82%, var(--portal-ink, #e8eef2));
+  --el-fill-color: color-mix(in srgb, var(--portal-surface, #18232e) 78%, var(--portal-bg, #0f1720));
+  --el-fill-color-light: color-mix(in srgb, var(--portal-accent-soft, #134e4a) 35%, var(--portal-surface, #18232e));
+  --el-fill-color-lighter: var(--portal-bg, #0f1720);
+  --el-fill-color-extra-light: var(--portal-bg, #0f1720);
+  --el-mask-color: rgba(0, 0, 0, 0.72);
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.4);
+  --el-box-shadow: 0 12px 32px var(--portal-shadow-color, rgba(0, 0, 0, 0.35));
+  --el-box-shadow-light: 0 0 12px var(--portal-shadow-color, rgba(0, 0, 0, 0.35));
+  --el-box-shadow-lighter: 0 0 6px var(--portal-shadow-color, rgba(0, 0, 0, 0.35));
+}
+
+html.dark .el-card,
+html[data-scheme="dark"] .el-card {
+  --el-card-bg-color: var(--portal-surface, #18232e);
+  --el-fill-color-blank: var(--portal-surface, #18232e);
+  color: var(--portal-ink, #e8eef2);
+}
+
+html.dark .el-dialog,
+html[data-scheme="dark"] .el-dialog,
+html.dark .el-message-box,
+html[data-scheme="dark"] .el-message-box {
+  --el-dialog-bg-color: var(--portal-surface, #18232e);
+  --el-bg-color: var(--portal-surface, #18232e);
+  color: var(--portal-ink, #e8eef2);
+}
+
+html.dark .el-table,
+html[data-scheme="dark"] .el-table {
+  --el-table-bg-color: var(--portal-surface, #18232e);
+  --el-table-tr-bg-color: var(--portal-surface, #18232e);
+  --el-table-header-bg-color: color-mix(in srgb, var(--portal-surface, #18232e) 88%, var(--portal-bg, #0f1720));
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--portal-accent, #2dd4bf) 10%, var(--portal-surface, #18232e));
+  --el-table-border-color: var(--portal-line, #2a3a48);
+  --el-table-text-color: var(--portal-ink, #e8eef2);
+  --el-table-header-text-color: var(--portal-muted, #8aa0ae);
+}
+
+html.dark .el-input__wrapper,
+html[data-scheme="dark"] .el-input__wrapper,
+html.dark .el-textarea__inner,
+html[data-scheme="dark"] .el-textarea__inner,
+html.dark .el-select__wrapper,
+html[data-scheme="dark"] .el-select__wrapper {
+  background-color: color-mix(in srgb, var(--portal-surface, #18232e) 88%, var(--portal-bg, #0f1720)) !important;
+  color: var(--portal-ink, #e8eef2);
+}
+
+html.dark .el-menu,
+html[data-scheme="dark"] .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: color-mix(in srgb, var(--portal-accent, #2dd4bf) 12%, transparent);
+  --el-menu-text-color: var(--portal-muted, #8aa0ae);
+  --el-menu-active-color: var(--portal-accent, #2dd4bf);
+  --el-menu-hover-text-color: var(--portal-ink, #e8eef2);
 }
 
 .el-button {
@@ -238,7 +316,11 @@ html {
   color: var(--portal-ink, #15202b);
   background:
     radial-gradient(900px 320px at 0% -10%, var(--portal-bg-glow, rgba(11, 110, 117, 0.12)), transparent 55%),
-    linear-gradient(180deg, var(--portal-bg, #eef3f5) 0%, color-mix(in srgb, var(--portal-bg, #eef3f5) 90%, #fff) 100%);
+    linear-gradient(
+      180deg,
+      var(--portal-bg, #eef3f5) 0%,
+      color-mix(in srgb, var(--portal-bg, #eef3f5) 90%, var(--portal-mix, #fff)) 100%
+    );
 }
 
 .workbench .wb-aside {
@@ -267,7 +349,7 @@ html {
   background: linear-gradient(
     135deg,
     var(--portal-accent, #0b6e75),
-    color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff)
+    color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-mix, #fff))
   );
 }
 
@@ -330,3 +412,48 @@ html {
   background: transparent;
   padding: 18px 20px 28px;
 }
+
+/* 挂到 body 的浮层：跟深色行业配色，避免白底浅字 / 深底深字 */
+html.dark .el-popper.el-dropdown__popper,
+html[data-scheme="dark"] .el-popper.el-dropdown__popper,
+html.dark .el-popover.el-popper,
+html[data-scheme="dark"] .el-popover.el-popper,
+html.dark .el-select__popper.el-popper,
+html[data-scheme="dark"] .el-select__popper.el-popper,
+html.dark .el-picker__popper.el-popper,
+html[data-scheme="dark"] .el-picker__popper.el-popper,
+html.dark .el-autocomplete__popper.el-popper,
+html[data-scheme="dark"] .el-autocomplete__popper.el-popper {
+  --el-bg-color-overlay: var(--portal-surface, #18232e);
+  --el-border-color-light: var(--portal-line, #2a3a48);
+  --el-text-color-regular: var(--portal-ink, #e8eef2);
+  --el-text-color-secondary: var(--portal-muted, #8aa0ae);
+  background: var(--portal-surface, #18232e) !important;
+  border-color: var(--portal-line, #2a3a48) !important;
+  color: var(--portal-ink, #e8eef2) !important;
+}
+
+html.dark .el-dropdown-menu__item,
+html[data-scheme="dark"] .el-dropdown-menu__item {
+  color: var(--portal-ink, #e8eef2) !important;
+}
+
+html.dark .el-dropdown-menu__item:not(.is-disabled):hover,
+html[data-scheme="dark"] .el-dropdown-menu__item:not(.is-disabled):hover {
+  background: color-mix(in srgb, var(--portal-accent, #2dd4bf) 12%, transparent) !important;
+  color: var(--portal-accent, #2dd4bf) !important;
+}
+
+html.dark .el-pager li,
+html[data-scheme="dark"] .el-pager li,
+html.dark .el-pagination button,
+html[data-scheme="dark"] .el-pagination button {
+  background: transparent !important;
+  color: var(--portal-muted, #8aa0ae) !important;
+}
+
+html.dark .el-pager li.is-active,
+html[data-scheme="dark"] .el-pager li.is-active {
+  color: var(--portal-accent, #2dd4bf) !important;
+}
+

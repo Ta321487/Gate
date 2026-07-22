@@ -226,6 +226,18 @@ public class TicketController {
         return R.ok(TicketStore.page(null, status, page, size, uid, superAdmin, rated));
     }
 
+    /** 档案下已通过单据（论坛楼层等）；无需登录 */
+    @GetMapping("/thread/{itemId}")
+    public R<Map<String, Object>> thread(
+            @PathVariable long itemId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        if (!TicketStore.enabled() || !TicketStore.isArchiveMode()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前不支持楼层");
+        }
+        return R.ok(TicketStore.listPublicByItem(itemId, page, size));
+    }
+
     @GetMapping("/{id}")
     public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);

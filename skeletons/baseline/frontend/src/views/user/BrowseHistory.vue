@@ -77,7 +77,7 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; width: 100%; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; width: 100%; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; width: 100%; }
 .tools { display: flex; gap: 8px; }
 .grid {
   display: grid;
@@ -95,14 +95,14 @@ onMounted(load)
 .cover {
   width: 72px; height: 72px; flex-shrink: 0;
   border-radius: var(--portal-radius-sm, 8px);
-  background: #f1f5f9;
+  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, var(--portal-mix, #fff));
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; color: #94a3b8; overflow: hidden;
+  font-size: 22px; color: var(--portal-muted, #94a3b8); overflow: hidden;
 }
 .cover img { width: 100%; height: 100%; object-fit: cover; }
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 15px; }
-.muted { margin: 0 0 8px; color: #94a3b8; font-size: 12px; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.muted { margin: 0 0 8px; color: var(--portal-muted, #94a3b8); font-size: 12px; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

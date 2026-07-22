@@ -43,6 +43,48 @@ public class ArchiveController {
         return R.ok(ArchiveStore.suggestTitles(q, limit));
     }
 
+    /** 我的主帖：登录用户按 author=username 列表（含已下架） */
+    @GetMapping("/mine")
+    public R<Map<String, Object>> mine(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        if (!ArchiveStore.userPublishEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前领域未开放用户发帖");
+        }
+        return R.ok(ArchiveStore.pageMine(uid, page, size));
+    }
+
+    /** 用户发帖：即时可见，无需审核 */
+    @PostMapping("/publish")
+    public R<Map<String, Object>> publish(@RequestBody Map<String, Object> body, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        if (!ArchiveStore.userPublishEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前领域未开放用户发帖");
+        }
+        String title = str(body.get("title"));
+        String content = str(body.get("isbn"));
+        if (content.isBlank()) content = str(body.get("body"));
+        long categoryId = 1L;
+        if (body.get("categoryId") != null) {
+            try {
+                categoryId = Long.parseLong(String.valueOf(body.get("categoryId")));
+            } catch (Exception ignored) {
+                categoryId = 1L;
+            }
+        }
+        try {
+            Map<String, Object> item = ArchiveStore.addUserPost(uid, title, content, categoryId);
+            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发帖失败");
+            return R.ok(item);
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping("/{id:\\d+}")
     public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));

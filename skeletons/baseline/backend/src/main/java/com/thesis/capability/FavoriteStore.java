@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 能力 favorites：交易域收藏夹（user_favorite）。 */
+/** 能力 favorites：即时收藏夹（user_favorite）；交易/内容流共用。 */
 public final class FavoriteStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -51,7 +51,7 @@ public final class FavoriteStore {
     public static boolean toggle(String username, long itemId) {
         require();
         if (ArchiveStore.getItemRaw(itemId) == null) {
-            throw new IllegalArgumentException("商品不存在");
+            throw new IllegalArgumentException("对象不存在");
         }
         Integer n = db().queryForObject(
                 "SELECT COUNT(*) FROM " + TABLE + " WHERE username=? AND item_id=?",

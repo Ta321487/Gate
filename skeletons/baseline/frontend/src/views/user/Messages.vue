@@ -151,7 +151,7 @@ onMounted(load)
 }
 .list li.unread {
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #d5dde3));
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, #fff);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-mix, #fff));
 }
 .t { font-weight: 650; font-size: 14px; margin-bottom: 4px; }
 .b {
@@ -160,7 +160,7 @@ onMounted(load)
   line-height: 1.45;
   white-space: pre-wrap;
 }
-.tm { margin-top: 6px; font-size: 12px; color: #8a97a3; }
+.tm { margin-top: 6px; font-size: 12px; color: var(--portal-muted, #8a97a3); }
 .empty {
   padding: 28px;
   text-align: center;

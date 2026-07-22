@@ -159,5 +159,5 @@ onMounted(load)
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.hint { margin-left: 8px; color: #94a3b8; font-size: 12px; }
+.hint { margin-left: 8px; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 </style>

@@ -7,8 +7,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.*;
 
 /**
- * 轻量个性化推荐（规则版）：分类偏好 + 全局热度 + 上新兜底。
- * 依赖 archive 单据行为（borrow/loan/favorite 的 book_id）；standalone 报修域不启用。
+ * 轻量个性化推荐（规则版）：分类偏好 + 热度 + 上新兜底。
+ * 互动信号：单据（若开启）+ 收藏夹 + 浏览历史；无单据域（媒资/博客）仍可用。
  */
 public final class RecommendStore {
 
@@ -23,32 +23,30 @@ public final class RecommendStore {
         if (limit > 24) limit = 24;
 
         Map<String, Object> out = new LinkedHashMap<>();
-        if (!TicketStore.isArchiveMode()) {
+        String item = ArchiveStore.itemTable();
+        if (item == null || item.isBlank()) {
             out.put("list", List.of());
             out.put("mode", "disabled");
             out.put("reason", "暂无推荐");
             return out;
         }
-
-        String item = ArchiveStore.itemTable();
         String cat = ArchiveStore.categoryTable();
-        String ticket = TicketStore.ticketTable();
 
         Set<Long> seen = new LinkedHashSet<>();
         List<Map<String, Object>> list = new ArrayList<>();
         String mode = "cold";
 
-        Set<Long> interacted = interactedItemIds(ticket, username);
-        List<Long> preferredCats = preferredCategoryIds(ticket, item, cat, username, interacted);
+        Set<Long> interacted = interactedItemIds(username);
+        List<Long> preferredCats = preferredCategoryIds(item, cat, username, interacted);
 
         if (!preferredCats.isEmpty()) {
             mode = "personalized";
-            appendByCategories(list, seen, interacted, preferredCats, item, ticket, limit);
+            appendByCategories(list, seen, interacted, preferredCats, item, limit);
         }
 
         if (list.size() < limit) {
             if ("cold".equals(mode)) mode = "hot";
-            appendHot(list, seen, interacted, item, ticket, limit);
+            appendHot(list, seen, interacted, item, limit);
         }
 
         if (list.size() < limit) {
@@ -63,42 +61,64 @@ public final class RecommendStore {
         return out;
     }
 
-    private static Set<Long> interactedItemIds(String ticket, String username) {
-        if (username == null || username.isBlank()) return Set.of();
-        try {
-            List<Long> ids = db().query(
-                    "SELECT DISTINCT book_id FROM " + ticket
-                            + " WHERE username=? AND status<>'rejected' AND book_id IS NOT NULL",
-                    (rs, i) -> rs.getLong(1),
-                    username);
-            return new LinkedHashSet<>(ids);
-        } catch (Exception e) {
-            return Set.of();
+    private static Set<Long> interactedItemIds(String username) {
+        Set<Long> out = new LinkedHashSet<>();
+        if (username == null || username.isBlank()) return out;
+        if (TicketStore.enabled() && TicketStore.isArchiveMode()) {
+            try {
+                String ticket = TicketStore.ticketTable();
+                List<Long> ids = db().query(
+                        "SELECT DISTINCT book_id FROM " + ticket
+                                + " WHERE username=? AND status<>'rejected' AND book_id IS NOT NULL",
+                        (rs, i) -> rs.getLong(1),
+                        username);
+                if (ids != null) out.addAll(ids);
+            } catch (Exception ignored) {
+                // ignore
+            }
         }
+        if (FavoriteStore.enabled()) {
+            out.addAll(FavoriteStore.idsOf(username));
+        }
+        if (BrowseHistoryStore.enabled()) {
+            out.addAll(BrowseHistoryStore.idsOf(username));
+        }
+        return out;
     }
 
     private static List<Long> preferredCategoryIds(
-            String ticket, String item, String cat, String username, Set<Long> interacted) {
+            String item, String cat, String username, Set<Long> interacted) {
         Map<Long, Integer> scores = new LinkedHashMap<>();
 
-        if (username != null && !username.isBlank() && !interacted.isEmpty()) {
+        if (!interacted.isEmpty()) {
             try {
-                List<Map<String, Object>> rows = db().query(
-                        "SELECT b.category_id AS cid, COUNT(*) AS cnt FROM " + ticket + " t "
-                                + "JOIN " + item + " b ON b.id=t.book_id "
-                                + "WHERE t.username=? AND t.status<>'rejected' AND t.book_id IS NOT NULL "
-                                + "GROUP BY b.category_id",
-                        (rs, i) -> {
-                            Map<String, Object> m = new LinkedHashMap<>();
-                            m.put("cid", rs.getLong("cid"));
-                            m.put("cnt", rs.getInt("cnt"));
-                            return m;
-                        },
-                        username);
-                for (Map<String, Object> row : rows) {
-                    long cid = ((Number) row.get("cid")).longValue();
-                    if (cid > 0) {
-                        scores.merge(cid, ((Number) row.get("cnt")).intValue() * 3, Integer::sum);
+                StringBuilder in = new StringBuilder();
+                List<Object> args = new ArrayList<>();
+                int n = 0;
+                for (Long id : interacted) {
+                    if (id == null || id <= 0) continue;
+                    if (n > 0) in.append(',');
+                    in.append('?');
+                    args.add(id);
+                    n++;
+                    if (n >= 80) break;
+                }
+                if (n > 0) {
+                    List<Map<String, Object>> rows = db().query(
+                            "SELECT category_id AS cid, COUNT(*) AS cnt FROM " + item
+                                    + " WHERE id IN (" + in + ") GROUP BY category_id",
+                            (rs, i) -> {
+                                Map<String, Object> m = new LinkedHashMap<>();
+                                m.put("cid", rs.getLong("cid"));
+                                m.put("cnt", rs.getInt("cnt"));
+                                return m;
+                            },
+                            args.toArray());
+                    for (Map<String, Object> row : rows) {
+                        long cid = ((Number) row.get("cid")).longValue();
+                        if (cid > 0) {
+                            scores.merge(cid, ((Number) row.get("cnt")).intValue() * 3, Integer::sum);
+                        }
                     }
                 }
             } catch (Exception ignored) {
@@ -120,7 +140,7 @@ public final class RecommendStore {
 
     /** profile_json 中 preferredGenre / preferredCategory 与分类名模糊匹配 */
     private static void boostFromProfile(Map<Long, Integer> scores, String cat, String username) {
-        if (username == null || username.isBlank()) return;
+        if (username == null || username.isBlank() || cat == null || cat.isBlank()) return;
         UserStore.Profile p = UserStore.get(username);
         if (p == null || p.extras == null || p.extras.isEmpty()) return;
         String pref = firstNonBlank(
@@ -155,7 +175,6 @@ public final class RecommendStore {
             Set<Long> exclude,
             List<Long> categoryIds,
             String item,
-            String ticket,
             int limit) {
         if (categoryIds.isEmpty()) return;
         StringBuilder in = new StringBuilder();
@@ -166,10 +185,9 @@ public final class RecommendStore {
             args.add(categoryIds.get(i));
         }
         String excl = excludeSql("b.id", exclude, args);
-        String sql = "SELECT b.id FROM " + item + " b "
-                + "LEFT JOIN (SELECT book_id, COUNT(*) AS hot FROM " + ticket
-                + " WHERE status<>'rejected' GROUP BY book_id) h ON h.book_id=b.id "
-                + "WHERE b.category_id IN (" + in + ")" + excl
+        String hotJoin = hotJoinSql("b.id");
+        String sql = "SELECT b.id FROM " + item + " b " + hotJoin
+                + " WHERE b.category_id IN (" + in + ")" + excl
                 + " ORDER BY COALESCE(h.hot,0) DESC, b.id DESC LIMIT ?";
         args.add(limit * 2);
         try {
@@ -188,14 +206,14 @@ public final class RecommendStore {
             Set<Long> seen,
             Set<Long> exclude,
             String item,
-            String ticket,
             int limit) {
         List<Object> args = new ArrayList<>();
         String excl = excludeSql("b.id", exclude, args);
-        String sql = "SELECT b.id FROM " + item + " b "
-                + "INNER JOIN (SELECT book_id, COUNT(*) AS hot FROM " + ticket
-                + " WHERE status<>'rejected' GROUP BY book_id) h ON h.book_id=b.id "
-                + "WHERE 1=1" + excl
+        String hotJoin = hotJoinSql("b.id");
+        // 无热度源时 hotJoin 为空表，直接跳过
+        if (hotJoin.isBlank()) return;
+        String sql = "SELECT b.id FROM " + item + " b " + hotJoin
+                + " WHERE COALESCE(h.hot,0) > 0" + excl
                 + " ORDER BY h.hot DESC, b.id DESC LIMIT ?";
         args.add(limit * 2);
         try {
@@ -207,6 +225,20 @@ public final class RecommendStore {
         } catch (Exception ignored) {
             // ignore
         }
+    }
+
+    /** LEFT JOIN 热度子查询：优先单据，其次收藏次数 */
+    private static String hotJoinSql(String itemIdCol) {
+        if (TicketStore.enabled() && TicketStore.isArchiveMode()) {
+            String ticket = TicketStore.ticketTable();
+            return "LEFT JOIN (SELECT book_id AS hid, COUNT(*) AS hot FROM " + ticket
+                    + " WHERE status<>'rejected' GROUP BY book_id) h ON h.hid=" + itemIdCol + " ";
+        }
+        if (FavoriteStore.enabled()) {
+            return "LEFT JOIN (SELECT item_id AS hid, COUNT(*) AS hot FROM user_favorite"
+                    + " GROUP BY item_id) h ON h.hid=" + itemIdCol + " ";
+        }
+        return "";
     }
 
     private static void appendLatest(

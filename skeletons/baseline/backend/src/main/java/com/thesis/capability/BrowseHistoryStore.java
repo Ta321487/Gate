@@ -116,6 +116,19 @@ public final class BrowseHistoryStore {
         return out;
     }
 
+    public static List<Long> idsOf(String username) {
+        if (!enabled || username == null || username.isBlank()) return List.of();
+        try {
+            List<Long> ids = db().query(
+                    "SELECT item_id FROM " + TABLE + " WHERE username=? ORDER BY viewed_at DESC",
+                    (rs, i) -> rs.getLong(1),
+                    username);
+            return ids == null ? List.of() : ids;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     public static boolean clear(String username) {
         require();
         return db().update("DELETE FROM " + TABLE + " WHERE username=?", username) >= 0;

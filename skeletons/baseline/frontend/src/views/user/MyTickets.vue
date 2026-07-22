@@ -402,7 +402,7 @@ onMounted(async () => {
 .hero { margin-bottom: 18px; }
 .hero-row { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
 .card {
@@ -419,16 +419,16 @@ onMounted(async () => {
 }
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
-.sub { margin: 0; color: #64748b; font-size: 12px; }
+.sub { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
 .sub.sched { margin-top: 2px; color: #0f766e; }
 .sub.pickup-tip { margin-top: 6px; color: #b45309; }
 .sub a { color: #0369a1; }
-.tip { margin: 6px 0 0; color: #475569; font-size: 13px; }
+.tip { margin: 6px 0 0; color: var(--portal-muted, #475569); font-size: 13px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .rated { font-size: 12px; color: #b45309; }
 .attach-row { display: flex; gap: 12px; align-items: center; }
 .attach-row a { font-size: 13px; color: #0369a1; }
-.rate-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.rate-tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

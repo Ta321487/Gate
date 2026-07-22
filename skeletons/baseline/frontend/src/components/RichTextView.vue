@@ -33,7 +33,7 @@ const fallback = computed(() => {
 
 <style scoped>
 .rtv {
-  color: #334155;
+  color: var(--portal-ink, #334155);
   font-size: 14px;
   line-height: 1.65;
   word-break: break-word;
@@ -56,7 +56,7 @@ const fallback = computed(() => {
 .rtv :deep(blockquote) {
   margin: 0.5em 0;
   padding: 0.2em 0.8em;
-  border-left: 3px solid #cbd5e1;
-  color: #64748b;
+  border-left: 3px solid var(--portal-line, #cbd5e1);
+  color: var(--portal-muted, #64748b);
 }
 </style>

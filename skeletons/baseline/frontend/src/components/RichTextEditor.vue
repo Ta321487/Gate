@@ -102,7 +102,7 @@ onMounted(async () => {
   gap: 4px;
   padding: 6px 8px;
   border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #ebeef5);
-  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, #fff);
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, var(--portal-mix, #fff));
 }
 .bar button {
   border: 0;
@@ -110,12 +110,12 @@ onMounted(async () => {
   padding: 4px 8px;
   border-radius: var(--portal-radius-sm, 4px);
   font-size: 12px;
-  color: #475569;
+  color: var(--portal-muted, #475569);
   cursor: pointer;
 }
 .bar button:hover {
   background: var(--portal-accent-soft, #e2e8f0);
-  color: #0f172a;
+  color: var(--portal-ink, #0f172a);
 }
 .body {
   min-height: v-bind(minHeight);
@@ -123,11 +123,11 @@ onMounted(async () => {
   outline: none;
   font-size: 14px;
   line-height: 1.6;
-  color: #1e293b;
+  color: var(--portal-ink, #1e293b);
 }
 .body:empty::before {
   content: attr(data-placeholder);
-  color: #94a3b8;
+  color: var(--portal-muted, #94a3b8);
   pointer-events: none;
 }
 </style>

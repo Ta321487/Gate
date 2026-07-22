@@ -89,8 +89,15 @@ onMounted(load)
 
 <style scoped>
 .layout { min-height: 100%; }
-.header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #ebeef5; }
-.right { display: flex; gap: 12px; align-items: center; color: #606266; font-size: 13px; }
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--portal-surface, #fff);
+  border-bottom: 1px solid var(--portal-line, #ebeef5);
+  color: var(--portal-ink, #15202b);
+}
+.right { display: flex; gap: 12px; align-items: center; color: var(--portal-muted, #606266); font-size: 13px; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

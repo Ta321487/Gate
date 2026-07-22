@@ -88,7 +88,7 @@ defineExpose({ reload: load })
 .rec-hd h2 {
   margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.02em;
 }
-.hint { font-size: 12px; color: #94a3b8; }
+.hint { font-size: 12px; color: var(--portal-muted, #94a3b8); }
 .rec-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -118,6 +118,6 @@ defineExpose({ reload: load })
   margin: 0 0 2px; font-size: 14px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.meta p { margin: 0; color: #64748b; font-size: 12px; }
+.meta p { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
 .acts { margin-top: 8px; }
 </style>

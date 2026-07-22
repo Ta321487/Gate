@@ -291,12 +291,12 @@ onMounted(load)
   background: #f8fafc;
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
 }
-.audit-body .lab { margin-bottom: 6px; font-size: 13px; color: #64748b; }
+.audit-body .lab { margin-bottom: 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
 .audit-body a { color: #0369a1; font-size: 13px; }
 .audit-meta {
   margin: 0 0 4px;
   font-size: 13px;
-  color: #334155;
+  color: var(--portal-ink, #334155);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -308,5 +308,5 @@ onMounted(load)
   font-style: normal;
   font-weight: 600;
 }
-.muted { color: #94a3b8; }
+.muted { color: var(--portal-muted, #94a3b8); }
 </style>

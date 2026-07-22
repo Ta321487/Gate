@@ -94,6 +94,7 @@ const MENU_TO = {
   guestbook: '/guestbook',
   profile: '/profile',
   archive: '/archive',
+  my_archive: '/my-archive',
   favorites: '/favorites',
   browse_history: '/browse-history',
   coupons: '/coupons',
@@ -143,7 +144,7 @@ function logout() {
   background:
     radial-gradient(1100px 380px at 8% -8%, var(--portal-bg-glow, rgba(11, 110, 117, 0.14)), transparent 58%),
     radial-gradient(800px 280px at 96% 12%, color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent), transparent 50%),
-    linear-gradient(180deg, var(--portal-bg, #eef3f5) 0%, color-mix(in srgb, var(--portal-bg, #eef3f5) 88%, #fff) 100%);
+    linear-gradient(180deg, var(--portal-bg, #eef3f5) 0%, color-mix(in srgb, var(--portal-bg, #eef3f5) 88%, var(--portal-mix, #fff)) 100%);
   color: var(--portal-ink, #15202b);
   font-family: var(--portal-font-ui);
 }
@@ -164,7 +165,7 @@ function logout() {
 }
 .brand-mark {
   width: 22px; height: 22px; border-radius: var(--portal-radius-sm, 6px); flex-shrink: 0;
-  background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, #fff));
+  background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-mix, #fff)));
 }
 .brand-text {
   font-family: var(--portal-font-display);

@@ -261,7 +261,7 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 16px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0 0 10px; color: #64748b; font-size: 13px; }
+.hero p { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .hero p.warn { color: #b45309; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid {
@@ -280,7 +280,7 @@ onMounted(load)
 }
 .slot:disabled { opacity: 0.45; cursor: not-allowed; }
 .t { font-weight: 600; font-size: 14px; }
-.e, .r { margin-top: 4px; font-size: 12px; color: #64748b; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.e, .r { margin-top: 4px; font-size: 12px; color: var(--portal-muted, #64748b); }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .tip { margin: 0 0 8px; font-size: 13px; }
 </style>

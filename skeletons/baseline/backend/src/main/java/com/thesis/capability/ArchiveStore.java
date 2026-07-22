@@ -32,6 +32,7 @@ public final class ArchiveStore {
     private static Boolean hasCheckinCode;
     private static Boolean hasGalleryJson;
     private static boolean softDeleteEnabled = false;
+    private static boolean userPublishEnabled = false;
     private static boolean galleryEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
@@ -110,6 +111,14 @@ public final class ArchiveStore {
     public static void configureSoftDelete(boolean enabled) {
         softDeleteEnabled = enabled;
         if (enabled) ensureSoftDeleteColumn();
+    }
+
+    public static void configureUserPublish(boolean enabled) {
+        userPublishEnabled = enabled;
+    }
+
+    public static boolean userPublishEnabled() {
+        return userPublishEnabled;
     }
 
     /** L1 标签：FORUM 的 tag + post_tag */
@@ -256,6 +265,47 @@ public final class ArchiveStore {
             updateItem(id, extra);
         }
         return getItem(id);
+    }
+
+    /**
+     * 门户用户发帖：即时上架（stock=1），author 固定为登录名便于「我的主帖」归属。
+     * 正文走 isbn（论坛 schema bodyField）；站长下架走既有 soft-delete。
+     */
+    public static Map<String, Object> addUserPost(String username, String title, String body, long categoryId) {
+        if (!userPublishEnabled) {
+            throw new IllegalStateException("当前领域未开放用户发帖");
+        }
+        String uid = username == null ? "" : username.trim();
+        if (uid.isBlank()) throw new IllegalArgumentException("未登录");
+        String t = title == null ? "" : title.trim();
+        if (t.isBlank()) throw new IllegalArgumentException("标题不能为空");
+        long cat = categoryId > 0 ? categoryId : 1L;
+        String content = body == null ? "" : body;
+        return addItem(t, uid, content, cat, 1, "");
+    }
+
+    /** 本人主帖（含站长下架），按 id 倒序 */
+    public static Map<String, Object> pageMine(String username, int page, int size) {
+        if (!userPublishEnabled) {
+            throw new IllegalStateException("当前领域未开放用户发帖");
+        }
+        String uid = username == null ? "" : username.trim();
+        if (uid.isBlank()) throw new IllegalArgumentException("未登录");
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String where = " WHERE author=?";
+        Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, uid);
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM " + ITEM + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> enrichItem(mapItemRow(rs)),
+                uid, size, (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
     }
 
     public static Map<String, Object> updateItem(long id, Map<String, Object> patch) {

@@ -284,7 +284,7 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.hint { margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.hint { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.5; }
 .preview {
   max-height: 220px; overflow: auto;
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
@@ -295,5 +295,5 @@ onMounted(load)
 .preview-hd { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
 .preview ul { margin: 0; padding-left: 18px; }
 .preview li { font-size: 13px; margin: 4px 0; }
-.muted { color: #94a3b8; margin-left: 8px; }
+.muted { color: var(--portal-muted, #94a3b8); margin-left: 8px; }
 </style>

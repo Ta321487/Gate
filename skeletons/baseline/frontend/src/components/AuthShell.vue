@@ -91,7 +91,11 @@ onMounted(() => {
   background:
     radial-gradient(900px 420px at 8% -10%, var(--portal-bg-glow, rgba(11, 110, 117, 0.16)), transparent 60%),
     radial-gradient(700px 360px at 100% 100%, color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent), transparent 55%),
-    linear-gradient(165deg, var(--portal-bg, #eef3f5) 0%, color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, #fff) 100%);
+    linear-gradient(
+      165deg,
+      var(--portal-bg, #eef3f5) 0%,
+      color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, var(--portal-mix, #fff)) 100%
+    );
 }
 
 .stage {
@@ -264,7 +268,7 @@ onMounted(() => {
     linear-gradient(
       165deg,
       color-mix(in srgb, var(--portal-bg, #eef3f5) 82%, transparent) 0%,
-      color-mix(in srgb, #fff 55%, transparent) 100%
+      color-mix(in srgb, var(--portal-mix, #fff) 55%, transparent) 100%
     ),
     var(--auth-hero) center / cover no-repeat;
 }
@@ -394,7 +398,7 @@ onMounted(() => {
     linear-gradient(
       115deg,
       color-mix(in srgb, var(--portal-bg, #eef3f5) 78%, transparent) 0%,
-      color-mix(in srgb, #fff 40%, transparent) 55%,
+      color-mix(in srgb, var(--portal-mix, #fff) 40%, transparent) 55%,
       color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, transparent) 100%
     ),
     var(--auth-hero) center / cover no-repeat fixed;

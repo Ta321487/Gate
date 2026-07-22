@@ -47,6 +47,7 @@ const guestBrowse = computed(() => isGuestBrowseEnabled())
 const MENU_TO = {
   home: '/home',
   archive: '/archive',
+  my_archive: '/my-archive',
   my_tickets: '/tickets',
   content: '/notices',
   guestbook: '/guestbook',
@@ -65,6 +66,7 @@ const MENU_TO = {
 
 const LEADS = {
   archive: '浏览与检索业务目录',
+  my_archive: '查看本人发布的内容',
   my_tickets: '查看申请进度与办理记录',
   content: '通知、须知与临时公告',
   guestbook: '发表建议或咨询，查看管理员回复',
@@ -192,7 +194,7 @@ function go(card) {
 }
 .card:hover {
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #d5dde3));
-  background: #fff;
+  background: var(--portal-surface, #fff);
   transform: translateY(-1px);
 }
 .card-label {

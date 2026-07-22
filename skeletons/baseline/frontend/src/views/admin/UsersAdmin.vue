@@ -338,7 +338,7 @@ onMounted(load)
 }
 .edit-form :deep(.el-form-item) { margin-bottom: 12px; }
 .edit-form :deep(.el-form-item__label) { margin-bottom: 4px !important; }
-.appoint-tip { margin: 0 0 12px; color: #606266; font-size: 14px; }
+.appoint-tip { margin: 0 0 12px; color: var(--portal-muted, #606266); font-size: 14px; }
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
 }

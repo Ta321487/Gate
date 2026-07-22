@@ -121,7 +121,7 @@ onMounted(() => {
 <style scoped>
 .hero { margin-bottom: 12px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .filter { margin-bottom: 12px; }
 .card {
   background: var(--portal-surface, #fff);
@@ -132,7 +132,7 @@ onMounted(() => {
   margin-bottom: var(--portal-gap, 12px);
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.sub { margin: 6px 0 10px; color: #64748b; font-size: 12px; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.sub { margin: 6px 0 10px; color: var(--portal-muted, #64748b); font-size: 12px; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

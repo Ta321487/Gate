@@ -76,6 +76,6 @@ watch(
 </script>
 
 <style scoped>
-.note { margin-top: 4px; font-size: 13px; color: #64748b; }
-.empty { margin: 0; color: #94a3b8; font-size: 13px; }
+.note { margin-top: 4px; font-size: 13px; color: var(--portal-muted, #64748b); }
+.empty { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 13px; }
 </style>

@@ -44,6 +44,11 @@
           <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <el-button type="primary" size="large" @click="load">搜索</el-button>
+        <el-button
+          v-if="userPublish && !isGuest"
+          size="large"
+          @click="openPublish"
+        >发帖</el-button>
       </div>
       <div v-if="searchAssist && hotKeywords.length" class="hot">
         <span class="hot-lab">热搜</span>
@@ -60,8 +65,8 @@
     <RecommendStrip
       v-if="hasRecommend && !isGuest"
       ref="recRef"
-      :apply-label="primaryActionLabel"
-      @apply="onPrimary"
+      :apply-label="favOn && !showPrimaryApply ? '收藏' : primaryActionLabel"
+      @apply="onRecommendApply"
     />
 
     <div class="grid">
@@ -102,6 +107,7 @@
               @click="openDetail(row)"
             >{{ bodyRich ? '阅读' : '详情' }}</el-button>
             <el-button
+              v-if="showPrimaryApply"
               size="small"
               type="primary"
               :disabled="!isSlotMode && !stockOk(row)"
@@ -150,12 +156,31 @@
         <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
         <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
+        <div v-if="showThread" class="thread">
+          <h4 class="thread-title">{{ threadTitle }}</h4>
+          <div v-if="threadLoading" class="thread-empty muted">加载中…</div>
+          <div v-else-if="!threadList.length" class="thread-empty muted">暂无回复</div>
+          <article v-for="r in threadList" :key="r.id" class="thread-item">
+            <p class="thread-meta">
+              <span>{{ r.username || '用户' }}</span>
+              <span class="muted">{{ r.approveAt || r.applyAt || '' }}</span>
+            </p>
+            <RichTextView v-if="r.remark" :html="r.remark" />
+            <p v-else class="muted">（无内容）</p>
+          </article>
+        </div>
         <div class="drawer-acts">
           <el-button
+            v-if="showPrimaryApply"
             type="primary"
             :disabled="!isSlotMode && !stockOk(detail)"
             @click="onPrimary(detail)"
           >{{ primaryActionLabel }}</el-button>
+          <el-button
+            v-if="favOn && !isGuest"
+            :type="favIds.includes(detail.id) ? 'warning' : 'default'"
+            @click="toggleFav(detail)"
+          >{{ favIds.includes(detail.id) ? '已收藏' : '收藏' }}</el-button>
         </div>
       </template>
     </el-drawer>
@@ -244,10 +269,33 @@
           </div>
         </el-form-item>
       </el-form>
-      <p v-if="!needApplyDialog" class="apply-tip muted">确认后提交，等待审核。</p>
+      <p v-if="!needApplyDialog" class="apply-tip muted">
+        {{ autoApprove ? '确认后立即生效。' : '确认后提交，等待审核。' }}
+      </p>
       <template #footer>
         <el-button @click="applyVisible = false">取消</el-button>
         <el-button type="primary" :loading="applyLoading" @click="submitApply">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="publishVisible" title="发帖" width="640px" destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item :label="fieldLabel('title', '标题')" required>
+          <el-input v-model="publishTitle" maxlength="80" show-word-limit placeholder="请输入标题" />
+        </el-form-item>
+        <el-form-item :label="fieldLabel('category', '板块')" required>
+          <el-select v-model="publishCategoryId" style="width:100%" placeholder="选择板块">
+            <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="fieldLabel('isbn', '正文')" required>
+          <RichTextEditor v-model="publishBody" placeholder="请输入正文，可用工具栏排版" />
+        </el-form-item>
+      </el-form>
+      <p class="apply-tip muted">发布后即时可见，无需审核；违规由站长下架。</p>
+      <template #footer>
+        <el-button @click="publishVisible = false">取消</el-button>
+        <el-button type="primary" :loading="publishLoading" @click="submitPublish">发布</el-button>
       </template>
     </el-dialog>
   </div>
@@ -262,6 +310,7 @@ import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
+import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
   formatArchiveScalar,
@@ -299,6 +348,7 @@ const bodyRich = computed(() => {
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
 const richRemark = computed(() => !!ticket.richRemark)
+const autoApprove = computed(() => !!ticket.autoApprove)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
@@ -319,6 +369,7 @@ const needApplyDialog = computed(
 const checkMutex = computed(() => !!ticket.checkMutex)
 const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
 const tagFilter = computed(() => !!archive.tagFilter)
+const userPublish = computed(() => !!archive.userPublish)
 const stockCountLabel = computed(() => {
   if (archive.stockCountLabel) return archive.stockCountLabel
   const stockField = fields.value.find((x) => x.key === 'stock')
@@ -373,7 +424,16 @@ const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt')
 const hasRecommend = computed(() => caps.value.includes('recommend'))
 const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
 const isSlotMode = computed(() => caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
-const favOn = computed(() => caps.value.includes('favorites') && isOrderMode.value)
+/** 即时收藏：交易域或内容流（无单据审核） */
+const favOn = computed(() => {
+  if (!caps.value.includes('favorites')) return false
+  if (isOrderMode.value) return true
+  return !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve')
+})
+/** 有单据/下单/预约时才显示主操作；内容流只保留播放/阅读 + 收藏 */
+const showPrimaryApply = computed(
+  () => isOrderMode.value || isSlotMode.value || caps.value.includes('ticket_flow'),
+)
 const favIds = ref([])
 const searchAssist = computed(() => isSearchAssistEnabled())
 const hotKeywords = computed(() => searchHotKeywords())
@@ -391,11 +451,14 @@ const resvVerb = computed(() => getSchema()?.entities?.reservation?.verbs?.apply
 const primaryActionLabel = computed(() => {
   if (isOrderMode.value) return `加入${cartLabel.value}`
   if (isSlotMode.value) return '选时段'
+  if (!showPrimaryApply.value) return '收藏'
   return verbs.value.apply || '申请'
 })
 const actionHint = computed(() => {
   if (isOrderMode.value) return `加入${cartLabel.value}并下单`
   if (isSlotMode.value) return `选择时段${resvVerb.value}`
+  if (favOn.value && !showPrimaryApply.value) return '一键收藏感兴趣的内容'
+  if (userPublish.value) return `发帖后可${verbs.value.apply || '回复'}`
   return `提交${verbs.value.apply || '申请'}`
 })
 
@@ -487,18 +550,48 @@ const applyPeriod = ref(null)
 const applyChannel = ref('')
 const applyNextFollow = ref('')
 const applyLoading = ref(false)
+const publishVisible = ref(false)
+const publishTitle = ref('')
+const publishBody = ref('')
+const publishCategoryId = ref(null)
+const publishLoading = ref(false)
+const threadList = ref([])
+const threadLoading = ref(false)
+const showThread = computed(() => richRemark.value && !!detail.value?.id)
+const threadTitle = computed(() => {
+  const plural = ticket.labelPlural || ticket.label || '回复'
+  return `${plural}（${threadList.value.length}）`
+})
+
+async function loadThread(itemId) {
+  if (!richRemark.value || !itemId) {
+    threadList.value = []
+    return
+  }
+  threadLoading.value = true
+  try {
+    const res = await http.get(`/api/tickets/thread/${itemId}`, { params: { page: 1, size: 50 } })
+    threadList.value = res.data?.list || []
+  } catch {
+    threadList.value = []
+  } finally {
+    threadLoading.value = false
+  }
+}
 
 async function openDetail(row) {
   detail.value = row
   detailVisible.value = true
+  threadList.value = []
   if (!row?.id) return
   try {
     const res = await http.get(`/api/archive/${row.id}`)
     if (res.data) detail.value = { ...row, ...res.data }
   } catch { /* keep list row */ }
+  await loadThread(row.id)
   if (browseOn.value && isLoggedIn()) {
     try {
-      await http.post(`/api/browse-history/${row.id}`)
+      await touchBrowseHistory(row.id)
     } catch { /* ignore */ }
   }
 }
@@ -581,7 +674,7 @@ async function loadFavIds() {
 
 async function toggleFav(row) {
   if (!requireLogin(router)) return
-  const res = await http.post(`/api/favorites/${row.id}/toggle`)
+  const res = await toggleFavorite(row.id)
   const on = !!res.data?.favorited
   if (on) {
     if (!favIds.value.includes(row.id)) favIds.value = [...favIds.value, row.id]
@@ -595,7 +688,7 @@ async function toggleFav(row) {
 async function onPrimary(row) {
   if (!requireLogin(router)) return
   if (isOrderMode.value) {
-    await http.post('/api/cart', { itemId: row.id, qty: 1 })
+    await upsertCart(row.id, 1)
     ElMessage.success(`已加入${cartLabel.value}`)
     return
   }
@@ -604,6 +697,54 @@ async function onPrimary(row) {
     return
   }
   await apply(row)
+}
+
+async function onRecommendApply(row) {
+  if (favOn.value && !showPrimaryApply.value) {
+    if (!requireLogin(router)) return
+    await toggleFav(row)
+    return
+  }
+  await onPrimary(row)
+}
+
+function openPublish() {
+  if (!requireLogin(router)) return
+  publishTitle.value = ''
+  publishBody.value = ''
+  publishCategoryId.value = categories.value[0]?.id || null
+  publishVisible.value = true
+}
+
+async function submitPublish() {
+  const title = publishTitle.value.trim()
+  if (!title) {
+    ElMessage.warning('请填写标题')
+    return
+  }
+  if (!publishCategoryId.value) {
+    ElMessage.warning(`请选择${fieldLabel('category', '板块')}`)
+    return
+  }
+  const plain = plainFromHtml(publishBody.value || '')
+  if (!plain.trim()) {
+    ElMessage.warning('请填写正文')
+    return
+  }
+  publishLoading.value = true
+  try {
+    await http.post('/api/archive/publish', {
+      title,
+      categoryId: publishCategoryId.value,
+      isbn: sanitizeHtml(publishBody.value || ''),
+    })
+    ElMessage.success('已发布')
+    publishVisible.value = false
+    await load()
+    recRef.value?.reload?.()
+  } finally {
+    publishLoading.value = false
+  }
 }
 
 async function apply(row) {
@@ -694,9 +835,12 @@ async function submitApply() {
       if (applyNextFollow.value) body.nextFollowAt = applyNextFollow.value
     }
     await http.post('/api/tickets/apply', body)
-    ElMessage.success('已提交，等待审核')
+    ElMessage.success(autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核')
     applyVisible.value = false
-    detailVisible.value = false
+    if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
+      await loadThread(applyRow.value.id)
+    }
+    if (!richRemark.value) detailVisible.value = false
     recRef.value?.reload?.()
   } finally {
     applyLoading.value = false
@@ -714,17 +858,17 @@ onMounted(async () => {
 <style scoped>
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0 0 14px; color: #64748b; font-size: 13px; }
+.hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .search { display: flex; gap: 10px; flex-wrap: wrap; }
 .hot { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.hot-lab { font-size: 12px; color: #94a3b8; }
+.hot-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
 .hot-chip {
   border: 1px solid var(--portal-line, #e2e8f0);
   background: var(--portal-surface, #fff);
   border-radius: 999px;
   padding: 2px 10px;
   font-size: 12px;
-  color: #475569;
+  color: var(--portal-muted, #475569);
   cursor: pointer;
 }
 .hot-chip:hover { border-color: var(--el-color-primary); color: var(--el-color-primary); }
@@ -750,24 +894,37 @@ onMounted(async () => {
 }
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
-.meta p { margin: 0; color: #64748b; font-size: 12px; }
+.meta p { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
 .detail-line { margin-top: 4px !important; line-height: 1.4; }
-.detail-line.muted { color: #64748b !important; }
+.detail-line.muted { color: var(--portal-muted, #64748b) !important; }
 .sched { margin-top: 4px !important; color: #0f766e !important; }
-.sched.muted { color: #94a3b8 !important; }
-.excerpt { margin-top: 8px; color: #64748b; }
+.sched.muted { color: var(--portal-muted, #94a3b8) !important; }
+.excerpt { margin-top: 8px; color: var(--portal-muted, #64748b); }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.sub { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+.sub { margin: 0 0 16px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .detail-cover {
   width: 100%; max-height: 220px; object-fit: cover;
   border-radius: var(--portal-radius, 10px);
   margin-bottom: 12px; background: #e0f2fe;
 }
 .drawer-acts { margin-top: 24px; }
-.apply-tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
-.apply-tip.muted { color: #64748b; }
+.thread { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.thread-title { margin: 0 0 12px; font-size: 15px; }
+.thread-empty { font-size: 13px; }
+.thread-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--portal-line, #e2e8f0);
+}
+.thread-item:last-child { border-bottom: 0; }
+.thread-meta {
+  margin: 0 0 6px;
+  display: flex; gap: 10px; justify-content: space-between;
+  font-size: 12px; color: var(--portal-ink, #334155);
+}
+.apply-tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
+.apply-tip.muted { color: var(--portal-muted, #64748b); }
 .attach-row { display: flex; gap: 12px; align-items: center; }
 .attach-row a { font-size: 13px; color: #0369a1; }
 </style>

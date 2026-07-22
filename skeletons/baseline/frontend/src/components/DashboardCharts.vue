@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
   min-height: 260px;
 }
 .chart-box.wide { grid-column: 1 / -1; }
-.chart-title { font-size: 13px; color: #8a9aa6; margin: 0 4px 4px; }
+.chart-title { font-size: 13px; color: var(--portal-muted, #8a9aa6); margin: 0 4px 4px; }
 .chart { width: 100%; height: 240px; }
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }

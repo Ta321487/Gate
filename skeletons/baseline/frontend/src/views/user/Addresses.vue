@@ -182,9 +182,9 @@ onMounted(load)
   align-items: flex-start;
 }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .tools { display: flex; gap: 8px; }
-.muted { color: #94a3b8; }
+.muted { color: var(--portal-muted, #94a3b8); }
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
