@@ -42,6 +42,53 @@ def _db_name(
     return student_db_name(s, project_id, reserved=reserved)
 
 
+def gates_allow_delivery(gates: dict | None) -> bool:
+    g = gates if isinstance(gates, dict) else {}
+    return bool(g.get("zip_allowed") and g.get("overall"))
+
+
+MSG_DOWNLOAD_GENERATING = "生成中 · 请等待打包完成后再下载"
+MSG_DOWNLOAD_GATES = "质量检查未通过 · 暂不可下载交付包"
+MSG_DOWNLOAD_NO_ZIP = "交付包尚未生成或不存在"
+MSG_DOWNLOAD_ZIP_MISSING = "ZIP 文件不存在 · 请重新生成"
+MSG_PREVIEW_GENERATING = "生成中 · 请等待完成后再启动预览"
+MSG_WS_MISSING = "尚未生成工作区 · 请先完成一键生成"
+MSG_WS_GONE = "工作区目录不存在 · 请重新生成"
+
+
+def workspace_or_reason(project: Project) -> tuple[Path | None, str | None]:
+    """返回 (工作区路径, 错误文案)；成功时错误为 None。"""
+    if not project.workspace_path:
+        return None, MSG_WS_MISSING
+    ws = Path(project.workspace_path)
+    if not ws.exists():
+        return None, MSG_WS_GONE
+    return ws, None
+
+
+def delivery_block_reason(project: Project) -> str | None:
+    """None = 可下载 ZIP。唯一文案来源（详情 API 下发，前端勿再抄一份）。"""
+    if project.status == ProjectStatus.generating.value:
+        return MSG_DOWNLOAD_GENERATING
+    zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
+    zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
+    if zip_ok and zip_exists:
+        return None
+    if zip_ok and not zip_exists:
+        return MSG_DOWNLOAD_ZIP_MISSING
+    if not zip_exists:
+        return MSG_DOWNLOAD_NO_ZIP
+    return MSG_DOWNLOAD_GATES
+
+
+def preview_start_block_reason(project: Project) -> str | None:
+    """None = 可启动预览。预览不要求门禁通过（便于排查失败包）。"""
+    if project.status == ProjectStatus.generating.value:
+        return MSG_PREVIEW_GENERATING
+    _, reason = workspace_or_reason(project)
+    return reason
+
+
 async def _reserved_db_names(
     db: AsyncSession, *, exclude_id: str | None = None
 ) -> set[str]:
@@ -146,7 +193,7 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     gates = evaluate_domain_gates(ws, project.spec or {})
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
-    deliverable = bool(new_gates.get("zip_allowed") and new_gates.get("overall"))
+    deliverable = gates_allow_delivery(new_gates)
     generating = project.status == ProjectStatus.generating.value
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
     # 门禁回退时关掉 zip_ready；生成中禁止因门禁重算把旧包重新解锁

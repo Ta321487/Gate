@@ -205,7 +205,14 @@ const columns = [
         return h('span', { class: 'small muted' }, r.statusSummary || '—')
       }
       const m = JOB_STATUS[r.status] || { label: r.status, pill: 'pill-neutral' }
-      return statusPillNode(m.label, m.pill)
+      const pill = statusPillNode(m.label, m.pill)
+      if (r.error && (r.status === 'failed' || r.status === 'cancelled')) {
+        return h('div', { title: r.error }, [
+          pill,
+          h('div', { class: 'small muted', style: 'margin-top:4px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, r.error),
+        ])
+      }
+      return pill
     },
   },
   {

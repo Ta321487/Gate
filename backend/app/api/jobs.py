@@ -86,6 +86,8 @@ async def retry(job_id: int, db: AsyncSession = Depends(get_db)):
     old = await db.get(Job, job_id)
     if not old:
         raise HTTPException(404, "任务不存在")
+    if old.status in ("queued", "running"):
+        raise HTTPException(400, "任务进行中 · 请先取消再重试")
     p = await db.get(Project, old.project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
