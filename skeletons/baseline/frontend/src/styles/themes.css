@@ -1,9 +1,13 @@
 /* 工厂「行业配色」→ bake 写入 VITE_THEME → data-theme 落地
- * 旧 id（theme-*）保留为别名，兼容已生成工程 */
+ * 旧 id（theme-*）保留为别名，兼容已生成工程
+ * --portal-mix：color-mix 淡化基点（浅色主题混白，深色主题混黑）
+ * --portal-scheme：light|dark，供 chrome / Element Plus 桥接 */
 
 :root,
 [data-theme="lib-ink"],
 [data-theme="theme-ink"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef3f5;
   --portal-bg-glow: rgba(11, 110, 117, 0.12);
   --portal-surface: #ffffff;
@@ -15,6 +19,17 @@
   --portal-accent-soft: #d7eef0;
   --portal-cover: linear-gradient(160deg, #0b6e75, #08545a);
   --portal-shadow-color: rgba(11, 110, 117, 0.08);
+  color-scheme: light;
+}
+
+/* 深色配色：统一 scheme / mix，避免浅字落在未适配的浅底控件上 */
+[data-theme$="-night"],
+[data-theme="theme-night"],
+[data-theme="media-cinema"],
+[data-theme="music-vinyl"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
+  color-scheme: dark;
 }
 
 [data-theme="lib-grove"],

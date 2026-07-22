@@ -16,7 +16,13 @@
           <h3>{{ row.title || '已下架' }}</h3>
           <p class="muted">收藏于 {{ row.createdAt || '—' }}</p>
           <div class="row">
-            <el-button size="small" type="primary" :disabled="!row.title || row.title === '已下架'" @click="addCart(row)">
+            <el-button
+              v-if="canAddCart"
+              size="small"
+              type="primary"
+              :disabled="!row.title || row.title === '已下架'"
+              @click="addCart(row)"
+            >
               加入{{ cartLabel }}
             </el-button>
             <el-button size="small" @click="toggle(row)">取消收藏</el-button>
@@ -43,7 +49,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
-import { menuLabel, schemaLabels } from '../../utils/domainSchema.js'
+import { toggleFavorite, upsertCart } from '../../utils/apiCalls.js'
+import { getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
 
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.favoritesPageTitle || '我的收藏')
@@ -51,6 +58,7 @@ const pageLead = computed(
   () => labels.value.favoritesPageLead || '收藏感兴趣的商品，便于再次加购。',
 )
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
+const canAddCart = computed(() => (getSchema().capabilities || []).includes('order_lines'))
 
 const list = ref([])
 const total = ref(0)
@@ -66,12 +74,12 @@ async function load() {
 }
 
 async function addCart(row) {
-  await http.post('/api/cart', { itemId: row.id || row.itemId, qty: 1 })
+  await upsertCart(row.id || row.itemId, 1)
   ElMessage.success(`已加入${cartLabel.value}`)
 }
 
 async function toggle(row) {
-  await http.post(`/api/favorites/${row.id || row.itemId}/toggle`)
+  await toggleFavorite(row.id || row.itemId)
   ElMessage.success('已取消收藏')
   load()
 }
@@ -80,41 +88,28 @@ onMounted(load)
 </script>
 
 <style scoped>
-.hero { margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
-.hero h1 { margin: 0 0 6px; font-size: 22px; width: 100%; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; width: 100%; }
+.hero { margin-bottom: 18px; }
+.hero h1 { margin: 0 0 6px; font-size: 22px; }
+.hero p { margin: 0 0 14px; color: #64748b; font-size: 13px; }
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--portal-gap, 12px);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
 }
 .card {
-  display: flex;
-  gap: 12px;
-  background: var(--portal-surface, #fff);
-  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  display: flex; gap: 14px; padding: var(--portal-pad, 16px);
+  border: 1px solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius, 12px);
-  box-shadow: var(--portal-shadow, none);
-  padding: var(--portal-pad, 12px);
+  background: var(--portal-surface, #fff);
 }
 .cover {
-  width: 72px;
-  height: 72px;
-  flex-shrink: 0;
-  border-radius: var(--portal-radius-sm, 8px);
-  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 70%, #fff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  color: #94a3b8;
-  overflow: hidden;
+  width: 72px; height: 72px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; font-weight: 700; color: #0369a1;
+  background: #e0f2fe; overflow: hidden;
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; }
-.meta { flex: 1; min-width: 0; }
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meta { min-width: 0; flex: 1; }
 .meta h3 { margin: 0 0 4px; font-size: 15px; }
-.muted { margin: 0 0 8px; color: #94a3b8; font-size: 12px; }
-.row { display: flex; flex-wrap: wrap; gap: 6px; }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.muted { margin: 0; color: #94a3b8; font-size: 12px; }
+.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.empty { margin-top: 24px; color: #94a3b8; text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

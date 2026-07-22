@@ -158,7 +158,7 @@ onMounted(load)
 .hero { margin-bottom: 16px; }
 .hero-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .range { margin: 10px 0 0; font-size: 13px; color: #0f766e; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid {
@@ -175,10 +175,10 @@ onMounted(load)
   padding: 8px;
   min-height: 56px;
 }
-.cell.time { color: #64748b; font-size: 12px; background: #f8fafc; }
+.cell.time { color: var(--portal-muted, #64748b); font-size: 12px; background: #f8fafc; }
 .head .cell { background: #f8fafc; font-size: 12px; text-align: center; }
-.dow { font-weight: 600; color: #0f172a; }
-.date { color: #64748b; margin-top: 2px; }
+.dow { font-weight: 600; color: var(--portal-ink, #0f172a); }
+.date { color: var(--portal-muted, #64748b); margin-top: 2px; }
 .ev {
   display: block;
   width: 100%;
@@ -194,6 +194,6 @@ onMounted(load)
   line-height: 1.3;
 }
 .ev:hover { background: #bae6fd; }
-.empty { text-align: center; color: #94a3b8; padding: 28px 0; }
-.sub { margin: 0 0 8px; color: #475569; font-size: 14px; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 28px 0; }
+.sub { margin: 0 0 8px; color: var(--portal-muted, #475569); font-size: 14px; }
 </style>

@@ -165,7 +165,7 @@ onMounted(load)
 <style scoped>
 .hd { margin-bottom: 18px; }
 .hd h2 { margin: 0 0 6px; font-size: 20px; }
-.hd p { margin: 0; color: #8a9aa6; font-size: 13px; }
+.hd p { margin: 0; color: var(--portal-muted, #8a9aa6); font-size: 13px; }
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -187,7 +187,7 @@ onMounted(load)
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-line, #e4eaf0));
 }
 .num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
-.label { margin-top: 4px; font-size: 12px; color: #8a9aa6; }
+.label { margin-top: 4px; font-size: 12px; color: var(--portal-muted, #8a9aa6); }
 .card {
   background: var(--portal-surface, #fff);
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e4eaf0);

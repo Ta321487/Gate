@@ -25,12 +25,20 @@ public class OrderController {
         return R.ok(OrderStore.listCart(uid));
     }
 
+    /* @@CART_MUTATE_BEGIN */
     @PostMapping("/api/cart")
     public R<?> upsertCart(@RequestBody Map<String, Object> body, HttpSession session) {
+        return doUpsertCart(toLong(body.get("itemId")), qtyOf(body), session);
+    }
+
+    @PostMapping("/api/cart/remove")
+    public R<Void> removeCart(@RequestBody Map<String, Object> body, HttpSession session) {
+        return doRemoveCart(toLong(body.get("itemId")), session);
+    }
+
+    private R<?> doUpsertCart(long itemId, int qty, HttpSession session) {
         requireOrder();
         String uid = AdminAuth.requireLogin(session);
-        long itemId = toLong(body.get("itemId"));
-        int qty = body.get("qty") == null ? 1 : Integer.parseInt(String.valueOf(body.get("qty")));
         try {
             return R.ok(OrderStore.upsertCart(uid, itemId, qty));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -38,13 +46,22 @@ public class OrderController {
         }
     }
 
-    @DeleteMapping("/api/cart/{itemId}")
-    public R<Void> removeCart(@PathVariable long itemId, HttpSession session) {
+    private R<Void> doRemoveCart(long itemId, HttpSession session) {
         requireOrder();
         String uid = AdminAuth.requireLogin(session);
         OrderStore.removeCart(uid, itemId);
         return R.ok(null);
     }
+
+    private static int qtyOf(Map<String, Object> body) {
+        if (body == null || body.get("qty") == null) return 1;
+        try {
+            return Integer.parseInt(String.valueOf(body.get("qty")));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+    /* @@CART_MUTATE_END */
 
     @GetMapping("/api/addresses")
     public R<?> addresses(HttpSession session) {

@@ -167,6 +167,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { removeCart, upsertCart } from '../../utils/apiCalls.js'
 import {
   anyLoyaltyEnabled,
   hasTrait,
@@ -276,12 +277,12 @@ async function loadAddresses() {
 }
 
 async function saveQty(row, qty) {
-  await http.post('/api/cart', { itemId: row.itemId, qty })
+  await upsertCart(row.itemId, qty)
   await load()
 }
 
 async function remove(row) {
-  await http.delete(`/api/cart/${row.itemId}`)
+  await removeCart(row.itemId)
   ElMessage.success('已移除')
   load()
 }
@@ -402,26 +403,26 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; width: 100%; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; width: 100%; }
 .tools { display: flex; gap: 8px; }
 .total { margin-top: 14px; text-align: right; font-weight: 700; font-size: 16px; }
-.loy-line { font-weight: 500; font-size: 13px; color: #475569; margin-bottom: 4px; }
-.loy-line.muted { color: #64748b; }
+.loy-line { font-weight: 500; font-size: 13px; color: var(--portal-muted, #475569); margin-bottom: 4px; }
+.loy-line.muted { color: var(--portal-muted, #64748b); }
 .payable { margin-top: 4px; color: #0f766e; }
 .warn { color: #b91c1c; font-size: 13px; font-weight: 600; margin-top: 4px; }
 .checkout-loy {
   margin-top: 8px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, #fff);
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, var(--portal-mix, #fff));
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius-sm, 8px);
   font-size: 13px;
-  color: #334155;
+  color: var(--portal-ink, #334155);
 }
 .checkout-loy p { margin: 0 0 4px; }
 .checkout-loy .payable { font-weight: 700; font-size: 15px; }
 .tip { margin: 4px 0 0; font-size: 12px; }
-.tip.muted { color: #64748b; }
+.tip.muted { color: var(--portal-muted, #64748b); }
 .addr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

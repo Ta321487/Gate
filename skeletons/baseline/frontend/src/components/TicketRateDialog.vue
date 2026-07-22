@@ -83,5 +83,5 @@ async function submit() {
 </script>
 
 <style scoped>
-.tip { margin: 0 0 12px; color: #334155; font-size: 14px; }
+.tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
 </style>

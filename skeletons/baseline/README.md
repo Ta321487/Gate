@@ -122,6 +122,7 @@ npm run dev
 - **\*Store（JdbcTemplate）**：真正访问数据库。  
   例如 `ArchiveStore`（业务档案）、`TicketStore`（申请/借阅/报修等单据）、`OrderStore`、`SlotStore`、`UserStore`。
 - **application.yml 里的 `thesis.*`**：本课题打开了哪些能力（是否有库存、逾期、预约表名等），启动时由配置绑定到运行时。
+- **接口传参**：收藏 / 足迹 / 购物车等少数接口写法因课题略有不同，**本包前后端已对齐**。改的时候跟着现有 `Controller` 和 `frontend/src/utils/apiCalls.js` 即可。
 
 没有 `mapper` 包是**刻意设计**：毕设体量用 JDBC 模板更直观，SQL 和 Java 在同一处，方便你对照改和讲解。
 

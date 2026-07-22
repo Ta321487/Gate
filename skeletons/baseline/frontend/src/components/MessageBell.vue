@@ -120,7 +120,7 @@ onUnmounted(() => {
   margin-bottom: 8px; font-size: 13px; gap: 8px;
 }
 .hd-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.empty { color: #94a3b8; font-size: 13px; padding: 16px 0; text-align: center; }
+.empty { color: var(--portal-muted, #94a3b8); font-size: 13px; padding: 16px 0; text-align: center; }
 .list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
 .list li {
   padding: 10px 8px;
@@ -128,12 +128,12 @@ onUnmounted(() => {
   cursor: pointer;
   border-radius: var(--portal-radius-sm, 6px);
 }
-.list li:hover { background: #f8fafc; }
-.list li.unread { background: #f0fdfa; }
-.t { font-size: 13px; font-weight: 600; color: #0f172a; }
+.list li:hover { background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-surface, #f8fafc)); }
+.list li.unread { background: var(--portal-accent-soft, #f0fdfa); }
+.t { font-size: 13px; font-weight: 600; color: var(--portal-ink, #0f172a); }
 .b {
-  margin-top: 4px; font-size: 12px; color: #64748b;
+  margin-top: 4px; font-size: 12px; color: var(--portal-muted, #64748b);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.tm { margin-top: 4px; font-size: 11px; color: #94a3b8; }
+.tm { margin-top: 4px; font-size: 11px; color: var(--portal-muted, #94a3b8); }
 </style>

@@ -351,5 +351,5 @@ onMounted(() => {
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .rating { color: #b45309; font-weight: 600; }
-.muted { color: #94a3b8; }
+.muted { color: var(--portal-muted, #94a3b8); }
 </style>

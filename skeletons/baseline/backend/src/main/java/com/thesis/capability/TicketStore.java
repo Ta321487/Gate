@@ -69,6 +69,8 @@ public final class TicketStore {
      * 工作台「已完成」统计 approved+rejected(+returned)；「处理中」不再含 approved。
      */
     static boolean approveEndsFlow = false;
+    /** 提交即生效（跟进/考勤登记等），不进待审队列、不通知管理员 */
+    static boolean autoApprove = false;
     static String userRole = "reader";
 
     private TicketStore() {}
@@ -173,6 +175,15 @@ public final class TicketStore {
     /** 审核即收口：通过/驳回都算办结，不再把 approved 算作处理中 */
     public static void configureApproveEndsFlow(boolean enabled) {
         approveEndsFlow = enabled;
+    }
+
+    /** 提交即生效：申请直接落 approved，跳过管理端待审 */
+    public static void configureAutoApprove(boolean enabled) {
+        autoApprove = enabled;
+    }
+
+    public static boolean isAutoApprove() {
+        return autoApprove;
     }
 
     /** L1：互斥码 + 分类限额（选课等） */
@@ -338,9 +349,15 @@ public final class TicketStore {
         final Timestamp dueTs = withDue ? Timestamp.valueOf(due) : null;
         final Timestamp periodStartTs = withPeriod ? Timestamp.valueOf(period[0]) : null;
         final Timestamp periodEndTs = withPeriod ? Timestamp.valueOf(period[1]) : null;
+        final String initialStatus = autoApprove ? "approved" : "pending";
+        final boolean withApproveAt = autoApprove && hasColumn("approve_at");
         TicketSql.db().update(con -> {
             StringBuilder cols = new StringBuilder("book_id,username,status,apply_at,fine_yuan,remind_msg,remark");
-            StringBuilder vals = new StringBuilder("?,?, 'pending', NOW(), 0, '', ?");
+            StringBuilder vals = new StringBuilder("?,?, ?, NOW(), 0, '', ?");
+            if (withApproveAt) {
+                cols.append(",approve_at");
+                vals.append(",NOW()");
+            }
             if (withAttach) {
                 cols.append(",attach_url");
                 vals.append(",?");
@@ -363,6 +380,7 @@ public final class TicketStore {
             int i = 1;
             ps.setLong(i++, itemId);
             ps.setString(i++, username);
+            ps.setString(i++, initialStatus);
             ps.setString(i++, note);
             if (withAttach) ps.setString(i++, attachFinal);
             if (withQty) ps.setInt(i++, qtyFinal);
@@ -375,8 +393,12 @@ public final class TicketStore {
         }, kh);
         Number key = kh.getKey();
         long id = key == null ? 0L : key.longValue();
-        appendProgress(id, "pending", username, "用户提交");
-        notifyAdminsNewTicket(id, username, subjectOf(get(id)));
+        if (autoApprove) {
+            appendProgress(id, "approved", username, "用户提交（即时生效）");
+        } else {
+            appendProgress(id, "pending", username, "用户提交");
+            notifyAdminsNewTicket(id, username, subjectOf(get(id)));
+        }
         return get(id);
     }
 
@@ -1105,6 +1127,48 @@ public final class TicketStore {
                 (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /**
+     * 公开楼层：某档案下已通过的单据（论坛回复等），访客可读。
+     * 仅返回 approved；不含待审/驳回。
+     */
+    public static Map<String, Object> listPublicByItem(long itemId, int page, int size) {
+        if (!enabled || MODE != Mode.ARCHIVE) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", Math.max(1, page));
+            empty.put("size", Math.max(1, size));
+            return empty;
+        }
+        if (page < 1) page = 1;
+        if (size < 1) size = 20;
+        if (size > 50) size = 50;
+        Integer total = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TICKET + " WHERE book_id=? AND status='approved'",
+                Integer.class, itemId);
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = TicketSql.db().query(
+                "SELECT * FROM " + TICKET
+                        + " WHERE book_id=? AND status='approved' ORDER BY id ASC LIMIT ? OFFSET ?",
+                (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
+                itemId, size, (page - 1) * size);
+        // 公开楼层不暴露内部字段
+        if (list != null) {
+            for (Map<String, Object> row : list) {
+                row.remove("assigneeUsername");
+                row.remove("fineYuan");
+                row.remove("remindMsg");
+                row.remove("attachUrl");
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list == null ? List.of() : list);
         out.put("total", t);
         out.put("page", page);
         out.put("size", size);

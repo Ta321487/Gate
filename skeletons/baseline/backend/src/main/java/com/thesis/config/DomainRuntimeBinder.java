@@ -110,6 +110,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.archive-soft-delete:false}")
     private boolean archiveSoftDelete;
 
+    @Value("${thesis.archive-user-publish:false}")
+    private boolean archiveUserPublish;
+
     @Value("${thesis.archive-tag-table:}")
     private String archiveTagTable;
 
@@ -142,6 +145,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.ticket-approve-ends-flow:false}")
     private boolean ticketApproveEndsFlow;
+
+    @Value("${thesis.ticket-auto-approve:false}")
+    private boolean ticketAutoApprove;
 
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
@@ -189,6 +195,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
+        ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configureGallery(galleryEnabled);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
@@ -210,6 +217,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
             TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
+            TicketStore.configureAutoApprove(ticketAutoApprove);
         }
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);

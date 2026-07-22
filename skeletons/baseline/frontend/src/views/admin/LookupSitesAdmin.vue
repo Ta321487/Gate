@@ -177,5 +177,5 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
 .toolbar.mid { margin-top: 28px; }
-.sec { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: #303133; }
+.sec { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--portal-ink, #303133); }
 </style>

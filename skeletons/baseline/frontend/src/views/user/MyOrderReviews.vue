@@ -59,7 +59,7 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; width: 100%; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; width: 100%; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; width: 100%; }
 .card {
   background: var(--portal-surface, #fff);
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
@@ -69,16 +69,16 @@ onMounted(load)
   margin-bottom: var(--portal-gap, 12px);
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.body { margin: 8px 0; color: #334155; font-size: 14px; white-space: pre-wrap; }
-.sub { margin: 0; color: #94a3b8; font-size: 12px; }
+.body { margin: 8px 0; color: var(--portal-ink, #334155); font-size: 14px; white-space: pre-wrap; }
+.sub { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .reply {
   margin: 10px 0 0;
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, #fff);
+  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, var(--portal-mix, #fff));
   border-radius: var(--portal-radius-sm, 8px);
-  color: #475569;
+  color: var(--portal-muted, #475569);
   font-size: 13px;
 }
-.empty { text-align: center; color: #94a3b8; padding: 40px 0; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>
