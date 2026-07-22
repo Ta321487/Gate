@@ -11,7 +11,7 @@ from app.bake.domain_registry import (
     listed_domains,
     schema_builder,
 )
-from app.bake.schema_templates import SCHEMA_BUILDERS
+from app.bake.schema.templates import SCHEMA_BUILDERS
 
 
 class DomainRegistryTests(unittest.TestCase):

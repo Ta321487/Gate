@@ -4,6 +4,7 @@ from app.bake.themes import (
     CHROME_STYLES,
     LAYOUT_SHELLS,
     TYPE_PAIRINGS,
+    is_dark_theme,
     normalize_chrome,
     normalize_layout,
     normalize_typeface,
@@ -71,6 +72,18 @@ def test_pick_theme_stable_and_varied():
     assert a == b
     seen = {pick_theme("DOM-LIBRARY", f"t{i}|DOM-LIBRARY|theme") for i in range(48)}
     assert len(seen) >= 3
+
+
+def test_is_dark_theme_covers_cinema_and_night():
+    assert is_dark_theme("media-cinema")
+    assert is_dark_theme("media-night")
+    assert is_dark_theme("music-vinyl")
+    assert is_dark_theme("lib-night")
+    assert is_dark_theme("theme-night")
+    assert not is_dark_theme("media-amber")
+    assert not is_dark_theme("lib-ink")
+    assert not is_dark_theme(None)
+    assert not is_dark_theme("")
 
 
 def test_resolve_style_override_shared():

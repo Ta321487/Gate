@@ -1,4 +1,4 @@
-"""Domain Schema 组装：accept / merge / 校验；模板见 schema_templates，档案见 profile_fields。"""
+"""Domain Schema 组装：accept / merge / 校验；模板见 schema.templates，档案见 profile_fields。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 
 from app.bake.capabilities import CAPABILITIES, resolve_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
-from app.bake.schema_templates import (  # re-export
+from app.bake.schema.templates import (  # re-export
     SCHEMA_BUILDERS,
     product_name_from_title,
     generic_schema,
@@ -216,11 +216,11 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         spec.get("capabilities")
         or required_capabilities(domain, archetype, archetypes=arches)
     )
-    from app.bake.favorites import apply_favorites_to_spec, merge_favorites_capabilities
-    from app.bake.guestbook import apply_guestbook_to_spec, merge_guestbook_capabilities
-    from app.bake.loyalty import apply_loyalty_to_spec, merge_loyalty_capabilities
-    from app.bake.order_extras import apply_order_extras_to_spec, merge_order_extras_capabilities
-    from app.bake.ux_scan import apply_ux_to_spec, merge_ux_capabilities
+    from app.bake.features.favorites import apply_favorites_to_spec, merge_favorites_capabilities
+    from app.bake.features.guestbook import apply_guestbook_to_spec, merge_guestbook_capabilities
+    from app.bake.features.loyalty import apply_loyalty_to_spec, merge_loyalty_capabilities
+    from app.bake.features.order_extras import apply_order_extras_to_spec, merge_order_extras_capabilities
+    from app.bake.features.ux_scan import apply_ux_to_spec, merge_ux_capabilities
     from app.services.proposal import strip_non_dev_sections
 
     body = strip_non_dev_sections(proposal_text or "")

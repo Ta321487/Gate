@@ -9,8 +9,8 @@ from collections.abc import Callable
 from typing import Any
 
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
-from app.bake.schema_templates import SCHEMA_BUILDERS
-from app.bake.sql_domain_templates import DOMAIN_SQL_TEMPLATES
+from app.bake.schema.templates import SCHEMA_BUILDERS
+from app.bake.sql.domain_templates import DOMAIN_SQL_TEMPLATES
 
 
 def listed_domains() -> list[str]:

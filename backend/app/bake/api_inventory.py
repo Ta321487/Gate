@@ -54,6 +54,29 @@ _SURFACE_LABEL = {
     "gate": "门禁自检",
 }
 
+# 跨题风格变体端点：(method, path_regex) → (axis, style_id)
+# 清单只展示本课题选用的一侧，避免同一 ZIP 看起来混用。
+_VARIANT_RULES: list[tuple[str, re.Pattern[str], str, str]] = [
+    ("POST", re.compile(r"^/api/favorites/\{\w+\}/toggle$"), "item_ref", "path"),
+    ("POST", re.compile(r"^/api/favorites/toggle$"), "item_ref", "body"),
+    ("POST", re.compile(r"^/api/browse-history/\{\w+\}$"), "item_ref", "path"),
+    ("POST", re.compile(r"^/api/browse-history$"), "item_ref", "body"),
+    ("POST", re.compile(r"^/api/cart/remove$"), "cart_mutate", "body"),
+    ("POST", re.compile(r"^/api/cart/\{\w+\}$"), "cart_mutate", "path"),
+    ("DELETE", re.compile(r"^/api/cart/\{\w+\}$"), "cart_mutate", "path"),
+    ("POST", re.compile(r"^/api/cart$"), "cart_mutate", "body"),
+]
+
+
+def _variant_tag(method: str, path: str) -> tuple[str, str] | None:
+    m = (method or "").upper()
+    p = _normalize_path(path)
+    for http, rx, axis, style_id in _VARIANT_RULES:
+        if http == m and rx.match(p):
+            return axis, style_id
+    return None
+
+
 
 def _strip_java_noise(src: str) -> str:
     """去掉块注释 / 行注释，减少误匹配。"""
@@ -228,11 +251,18 @@ def parse_controller_source(
 
 def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """扫描 workspace 下 Controller，返回分组清单。无 Java 控制器时返回 None。"""
+    from app.bake.api_style import (
+        api_style_labels,
+        api_style_notes,
+        normalize_api_style,
+    )
+
     be = workspace / "backend" / "src" / "main" / "java"
     if not be.is_dir():
         return None
 
     flow_api = ((spec or {}).get("gate") or {}).get("flow_api") or {}
+    api_style = normalize_api_style((spec or {}).get("api_style"))
     controllers: list[dict[str, Any]] = []
     for path in sorted(be.rglob("*Controller.java")):
         try:
@@ -248,9 +278,22 @@ def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> d
         return None
 
     all_eps: list[dict[str, Any]] = []
+    hidden = 0
     for c in controllers:
+        kept: list[dict[str, Any]] = []
         for ep in c["endpoints"]:
+            tag = _variant_tag(ep["method"], ep["path"])
+            if tag:
+                axis, style_id = tag
+                if api_style.get(axis) != style_id:
+                    hidden += 1
+                    continue
+                ep = {**ep, "api_style_axis": axis, "api_style_value": style_id}
+            kept.append(ep)
             all_eps.append({**ep, "controller": c["controller"], "file": c["file"]})
+        c["endpoints"] = kept
+
+    controllers = [c for c in controllers if c["endpoints"]]
 
     by_surface: dict[str, int] = {}
     for ep in all_eps:
@@ -269,4 +312,8 @@ def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> d
             for sid in ("portal", "admin", "baseline", "gate")
             if by_surface.get(sid)
         ],
+        "api_style": api_style,
+        "api_style_label": api_style_labels(api_style),
+        "api_style_notes": api_style_notes(api_style),
+        "style_hidden": hidden,
     }

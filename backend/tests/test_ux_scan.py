@@ -7,7 +7,7 @@ import unittest
 
 from app.bake.domain_schema import attach_accept
 from app.bake.engine import count_create_tables, domain_sql
-from app.bake.ux_scan import (
+from app.bake.features.ux_scan import (
     BROWSE_HISTORY_CAP,
     GALLERY_CAP,
     SEARCH_ASSIST_CAP,
@@ -16,7 +16,7 @@ from app.bake.ux_scan import (
     scan_gallery,
     scan_search_assist,
 )
-from tests._normalize import normalize_sql
+from tests.helpers.normalize import normalize_sql
 
 
 class UxScanTests(unittest.TestCase):

@@ -42,13 +42,15 @@
       "softDelete": true,
       "stockDisplay": "available",
       "stockUnavailableLabel": "已见",
-      "tagFilter": true
+      "tagFilter": true,
+      "userPublish": true
     },
     "ticket": {
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
       "approveEndsFlow": true,
+      "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "reply",
@@ -83,18 +85,20 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "校园论坛",
-    "authLead": "验证码登录；按板块浏览主帖，富文本回复讨论，支持楼中楼引用。",
+    "authLead": "验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。",
     "authPoints": [
       "验证码登录",
-      "板块与主帖检索",
+      "发帖与检索",
       "富文本回复与楼中楼"
     ],
     "messagesPageLead": "审核结果与系统通知。",
+    "myArchivePageLead": "本人发布的主帖即时可见；站长下架后仍可在此查看状态。",
+    "myArchivePageTitle": "我的主帖",
     "noticePageLead": "版规、维护窗口与活动通知，点击条目阅读全文。",
     "noticePageTitle": "站内公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "注册后可浏览主帖并回复"
+    "registerRoleHint": "注册后可发帖并回复"
   },
   "menus": {
     "admin": [
@@ -137,6 +141,10 @@
         "label": "帖子检索"
       },
       {
+        "key": "my_archive",
+        "label": "我的主帖"
+      },
+      {
         "key": "my_tickets",
         "label": "我的回复"
       },
@@ -156,15 +164,15 @@
       "title": "热门板块"
     },
     {
-      "lead": "跟帖回复，支持引用他人发言。",
-      "title": "讨论交流"
+      "lead": "登录后发布主帖，跟帖回复支持引用。",
+      "title": "发帖讨论"
     },
     {
       "lead": "版规与活动通知见公告栏。",
       "title": "站内公告"
     },
     {
-      "lead": "登录后管理发帖与回复进度。",
+      "lead": "登录后管理本人发帖与回复进度。",
       "title": "我的帖子"
     },
     {
@@ -187,7 +195,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用。",
+    "noticeBody": "请文明讨论；用户可发主帖，违规帖由站长下架。回复经版主审核后展示；可 @他人 一层引用。",
     "noticeTitle": "社区公约"
   },
   "title": "测试课题",

@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from app.bake.schema_modules import (
+from app.bake.schema.modules import (
     apply_proposal_hints,
     module_model,
     render_module_svg,
@@ -150,12 +150,13 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertTrue(labs & {"我的预订", "预订记录", "我的订单", "预订订单"})
         self.assertIn("预订", branches["biz:slot"]["label"])
 
-    def test_blog_favorite_not_ticket_confirm(self) -> None:
+    def test_blog_favorite_instant_not_ticket_audit(self) -> None:
         schema = self._schema("DOM-BLOG")
         model = module_model(schema, layout="biz")
         labels = self._walk_labels(model)
         self.assertNotIn("收藏确认", labels)
-        self.assertIn("收藏审核", labels)
+        self.assertNotIn("收藏审核", labels)
+        self.assertIn("我的收藏", labels)
         branches = {c["id"]: c for c in model["root"]["children"]}
         self.assertIn("biz:favorite", branches)
         self.assertEqual(branches["biz:favorite"]["label"], "收藏模块")

@@ -9,6 +9,8 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
     "ticket_ops": frozenset({"dashboard", "ticket_pending", "ticket_records", "deadline"}),
     "order_ops": frozenset({"dashboard", "orders"}),
     "slot_ops": frozenset({"dashboard", "reservations"}),
+    # 内容流编辑：维护档案与公告（无单据审核队列）
+    "content_ops": frozenset({"dashboard", "archive", "content"}),
 }
 
 # 作业岗：员工端页面 id（前端路由用）
@@ -72,10 +74,10 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _clerk("front", "前台", "slot_ops", "order_ops"),
         _worker("housekeeping", "客房服务", "slot_work"),
     ],
-    "DOM-MEDIA": [_clerk("editor", "运营编辑", "ticket_ops")],
-    "DOM-MUSIC": [_clerk("editor", "运营编辑", "ticket_ops")],
+    "DOM-MEDIA": [_clerk("editor", "运营编辑", "content_ops")],
+    "DOM-MUSIC": [_clerk("editor", "运营编辑", "content_ops")],
     "DOM-FORUM": [_clerk("moderator", "版主", "ticket_ops")],
-    "DOM-BLOG": [_clerk("editor", "编辑", "ticket_ops")],
+    "DOM-BLOG": [_clerk("editor", "编辑", "content_ops")],
     "DOM-GENERIC": [_clerk("clerk", "业务办理员", "ticket_ops")],
 }
 

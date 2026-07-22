@@ -6,13 +6,13 @@ import unittest
 
 from app.bake.domain_schema import attach_accept
 from app.bake.engine import count_create_tables, domain_sql
-from app.bake.guestbook import (
+from app.bake.features.guestbook import (
     GUESTBOOK_CAP,
     apply_guestbook_to_spec,
     merge_guestbook_capabilities,
     scan_guestbook,
 )
-from tests._normalize import normalize_sql
+from tests.helpers.normalize import normalize_sql
 
 
 class GuestbookCapabilityTests(unittest.TestCase):

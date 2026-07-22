@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from app.bake.schema_testcases import (
+from app.bake.schema.testcases import (
     DEFAULT_TESTCASE_FIELDS,
     apply_testcase_label_patch,
     normalize_testcase_fields,

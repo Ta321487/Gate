@@ -26,7 +26,7 @@ DEFAULT_MODULE_LAYOUT = "biz"
 # 未知 key 进 extra，不在这里发明中文名。
 # 分类管理归管理员（教材「系统管理」口径）；收藏审批流按文案进收藏族。
 _USER_KEYS = frozenset({"profile", "messages"})
-_ARCHIVE_KEYS = frozenset({"archive", "browse_history"})
+_ARCHIVE_KEYS = frozenset({"archive", "browse_history", "my_archive"})
 _FAVORITE_KEYS = frozenset({"favorites"})
 _CART_KEYS = frozenset({"cart"})
 _ORDER_KEYS = frozenset({"my_orders", "orders", "addresses", "coupons", "order_reviews"})

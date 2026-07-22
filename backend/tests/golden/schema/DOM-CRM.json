@@ -52,6 +52,7 @@
       "allowQty": false,
       "allowRating": false,
       "approveEndsFlow": false,
+      "autoApprove": true,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "follow_up",
@@ -85,13 +86,13 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "客户跟进",
-    "authLead": "验证码登录；维护客户档案并提交跟进记录，主管确认后完结。",
+    "authLead": "验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
     "authPoints": [
       "验证码登录",
       "客户档案",
-      "跟进审核"
+      "跟进记录"
     ],
-    "messagesPageLead": "审核结果与系统通知。",
+    "messagesPageLead": "系统通知。",
     "noticePageLead": "跟进规范与临时通知，点击条目阅读全文。",
     "noticePageTitle": "销售公告",
     "recommendLatestHint": "最新发布",
@@ -118,10 +119,6 @@
         "key": "users",
         "label": "用户管理",
         "superOnly": true
-      },
-      {
-        "key": "ticket_pending",
-        "label": "跟进审核"
       },
       {
         "key": "ticket_records",
@@ -158,7 +155,7 @@
       "title": "客户档案"
     },
     {
-      "lead": "提交跟进单，主管确认后进入跟进中并可完结。",
+      "lead": "提交跟进记录即时生效，办结后可追溯。",
       "title": "客户跟进"
     },
     {
@@ -166,7 +163,7 @@
       "title": "销售公告"
     },
     {
-      "lead": "登录后查看待办与跟进进度。",
+      "lead": "登录后查看跟进进度与记录。",
       "title": "我的跟进"
     },
     {
@@ -189,7 +186,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实登记联系结果；重要商机请及时提交跟进单由主管确认。",
+    "noticeBody": "请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。",
     "noticeTitle": "跟进须知"
   },
   "title": "测试课题",

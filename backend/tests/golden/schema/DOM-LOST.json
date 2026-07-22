@@ -58,6 +58,7 @@
       "allowQty": false,
       "allowRating": true,
       "approveEndsFlow": true,
+      "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "key": "claim",

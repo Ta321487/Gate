@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_SQL_DIR = Path(__file__).resolve().parent / "sql"
+_SQL_DIR = Path(__file__).resolve().parent
 
 _TABLE_RE = re.compile(
     r"CREATE TABLE IF NOT EXISTS (\w+)\s*\((?:.|\n)*?\);",
@@ -133,7 +133,7 @@ def compose_named_domain_sql(domain: str) -> str:
     模板登记于 ``DOMAIN_SQL_TEMPLATES``；bake 不再读散落的域 SQL 文件。
     GENERIC 多路径仍走 ``compose_generic_sql`` / DOM-GENERIC*.sql。
     """
-    from app.bake.sql_domain_templates import DOMAIN_SQL_TEMPLATES
+    from app.bake.sql.domain_templates import DOMAIN_SQL_TEMPLATES
 
     text = DOMAIN_SQL_TEMPLATES.get(domain)
     if text is None:

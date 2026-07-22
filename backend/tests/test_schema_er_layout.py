@@ -6,7 +6,7 @@ import re
 import unittest
 from pathlib import Path
 
-from app.bake.schema_er import (
+from app.bake.schema.er import (
     _book_embedding,
     _circular_crossings,
     _layout_entities,

@@ -6,16 +6,16 @@ import unittest
 
 from app.bake.domain_schema import attach_accept
 from app.bake.engine import count_create_tables, domain_sql
-from app.bake.loyalty import apply_loyalty_to_spec
-from app.bake.order_extras import (
+from app.bake.features.loyalty import apply_loyalty_to_spec
+from app.bake.features.order_extras import (
     ORDER_REVIEW_CAP,
     apply_order_extras_to_spec,
     order_timeout_minutes,
     scan_order_review,
     scan_order_timeout,
 )
-from app.bake.sql_fragments import ensure_coupon_lifecycle_sql, ensure_order_review_sql
-from tests._normalize import normalize_sql
+from app.bake.sql.fragments import ensure_coupon_lifecycle_sql, ensure_order_review_sql
+from tests.helpers.normalize import normalize_sql
 
 
 class OrderExtrasTests(unittest.TestCase):

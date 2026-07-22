@@ -1,4 +1,4 @@
-﻿-- bake domain=DOM-FORUM · tables in [6,13] · 顶格样板（含 sys_message）
+﻿-- bake domain=DOM-FORUM · tables in [6,15] · 顶格样板（含 sys_message）
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 

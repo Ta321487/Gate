@@ -191,6 +191,8 @@ def archive_ticket_schema(
     category_limit: int = 0,
     soft_delete: bool = False,
     tag_filter: bool = False,
+    # True：门户用户可发帖（主帖入库即时可见；站长可下架）
+    user_publish: bool = False,
     week_calendar: bool = False,
     week_calendar_label: str = "我的日程",
     allow_checkin: bool = False,
@@ -208,6 +210,8 @@ def archive_ticket_schema(
     recommend_latest_hint: str | None = None,
     # True：审核通过/驳回即为收口（报名/选课/认领/收藏等）；工作台「已完成」含 approved+rejected
     approve_ends_flow: bool = False,
+    # True：提交即生效（媒资/博客收藏等个人动作），不进管理端待审队列
+    auto_approve: bool = False,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
@@ -224,6 +228,8 @@ def archive_ticket_schema(
         "softDelete": soft_delete,
         "tagFilter": tag_filter,
     }
+    if user_publish:
+        archive_entity["userPublish"] = True
     if play_url_field:
         archive_entity["playUrlField"] = play_url_field
     if body_field:
@@ -288,6 +294,7 @@ def archive_ticket_schema(
         "remarkLabel": remark_label or "说明",
         "pickDateRange": bool(pick_date_range),
         "approveEndsFlow": bool(approve_ends_flow),
+        "autoApprove": bool(auto_approve),
     }
     if due_label:
         ticket_entity["dueLabel"] = due_label
@@ -306,9 +313,10 @@ def archive_ticket_schema(
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
         {"key": "category", "label": category_menu_label(archive_fields), "superOnly": True},
         {"key": "users", "label": users_menu, "superOnly": True},
-        {"key": "ticket_pending", "label": pending_label},
-        {"key": "ticket_records", "label": records_label},
     ]
+    if not auto_approve:
+        admin_menus.append({"key": "ticket_pending", "label": pending_label})
+    admin_menus.append({"key": "ticket_records", "label": records_label})
     if with_deadline:
         admin_menus.append({"key": "deadline", "label": deadline_label})
     admin_menus.append({"key": "content", "label": "公告管理", "superOnly": True})
@@ -316,6 +324,8 @@ def archive_ticket_schema(
         {"key": "archive", "label": archive_menu_user},
         {"key": "my_tickets", "label": my_tickets_label},
     ]
+    if user_publish:
+        user_menus.insert(1, {"key": "my_archive", "label": f"我的{archive_label}"})
     if week_calendar:
         user_menus.append({"key": "week_calendar", "label": week_calendar_label})
     user_menus.extend(
@@ -325,7 +335,9 @@ def archive_ticket_schema(
         ]
     )
     if messages_page_lead is None:
-        if with_deadline:
+        if auto_approve:
+            messages_page_lead = "系统通知。"
+        elif with_deadline:
             messages_page_lead = f"审核结果、{remind}提醒与系统通知。"
         elif allow_checkin:
             messages_page_lead = "审核结果、活动提醒与系统通知。"
@@ -333,6 +345,23 @@ def archive_ticket_schema(
             messages_page_lead = "审核结果与系统通知。"
     if recommend_latest_hint is None:
         recommend_latest_hint = "最新上架" if soft_delete and stock_display == "count" else "最新发布"
+    labels: dict[str, Any] = {
+        "appName": app,
+        "authEyebrow": auth_eyebrow,
+        "authLead": auth_lead,
+        "authPoints": auth_points,
+        "registerRoleHint": register_hint,
+        "noticePageTitle": notice_page_title,
+        "noticePageLead": notice_page_lead,
+        "messagesPageLead": messages_page_lead,
+        "recommendSectionTitle": "猜你喜欢",
+        "recommendLatestHint": recommend_latest_hint,
+    }
+    if user_publish:
+        labels["myArchivePageTitle"] = f"我的{archive_label}"
+        labels["myArchivePageLead"] = (
+            f"本人发布的{archive_label}即时可见；站长下架后仍可在此查看状态。"
+        )
     return {
         "version": 1,
         "title": title,
@@ -350,18 +379,7 @@ def archive_ticket_schema(
             "admin": admin_menus,
             "user": user_menus,
         },
-        "labels": {
-            "appName": app,
-            "authEyebrow": auth_eyebrow,
-            "authLead": auth_lead,
-            "authPoints": auth_points,
-            "registerRoleHint": register_hint,
-            "noticePageTitle": notice_page_title,
-            "noticePageLead": notice_page_lead,
-            "messagesPageLead": messages_page_lead,
-            "recommendSectionTitle": "猜你喜欢",
-            "recommendLatestHint": recommend_latest_hint,
-        },
+        "labels": labels,
         "seeds": {
             "noticeTitle": notice_title,
             "noticeBody": notice_body,
@@ -549,11 +567,11 @@ def _crm_schema(title: str) -> dict[str, Any]:
             archive_menu_user="客户列表",
             users_menu="用户管理",
             auth_eyebrow="客户跟进",
-            auth_lead="验证码登录；维护客户档案并提交跟进记录，主管确认后完结。",
-            auth_points=["验证码登录", "客户档案", "跟进审核"],
+            auth_lead="验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
+            auth_points=["验证码登录", "客户档案", "跟进记录"],
             register_hint="注册后可维护名下客户并提交跟进",
             notice_title="跟进须知",
-            notice_body="请如实登记联系结果；重要商机请及时提交跟进单由主管确认。",
+            notice_body="请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。",
             notice_page_title="销售公告",
             notice_page_lead="跟进规范与临时通知，点击条目阅读全文。",
             my_tickets_label="我的跟进",
@@ -563,20 +581,129 @@ def _crm_schema(title: str) -> dict[str, Any]:
             stock_display="available",
             require_remark=True,
             remark_label="跟进内容",
+            auto_approve=True,
         ),
         [
             {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
-            {"title": "客户跟进", "lead": "提交跟进单，主管确认后进入跟进中并可完结。"},
+            {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
             {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
-            {"title": "我的跟进", "lead": "登录后查看待办与跟进进度。"},
+            {"title": "我的跟进", "lead": "登录后查看跟进进度与记录。"},
             {"title": "分级管理", "lead": "按客户分级筛选重点对象。"},
         ],
     )
 
 
+def archive_favorites_schema(
+    title: str,
+    *,
+    domain: str,
+    user_role_id: str,
+    user_label: str,
+    admin_label: str,
+    subadmin_label: str,
+    archive_key: str,
+    archive_label: str,
+    archive_plural: str,
+    archive_fields: list[dict[str, Any]],
+    archive_menu_admin: str,
+    archive_menu_user: str,
+    users_menu: str,
+    auth_eyebrow: str,
+    auth_lead: str,
+    auth_points: list[str],
+    register_hint: str,
+    notice_title: str,
+    notice_body: str,
+    notice_page_title: str = "公告",
+    notice_page_lead: str = "通知与须知，点击条目阅读全文。",
+    favorites_page_lead: str = "收藏感兴趣的内容，方便随时回看。",
+    play_url_field: str = "",
+    body_field: str = "",
+    stock_display: str = "available",
+    soft_delete: bool = True,
+    tag_filter: bool = False,
+    recommend_latest_hint: str | None = None,
+) -> dict[str, Any]:
+    """内容流薄壳：档案浏览 + 即时收藏（无单据/审核）。"""
+    from app.bake.features.favorites import attach_favorites_menus
+
+    app = product_name_from_title(title)
+    archive_entity: dict[str, Any] = {
+        "key": archive_key,
+        "label": archive_label,
+        "labelPlural": archive_plural,
+        "fields": archive_fields,
+        "stockDisplay": stock_display,
+        "softDelete": soft_delete,
+        "tagFilter": tag_filter,
+    }
+    if play_url_field:
+        archive_entity["playUrlField"] = play_url_field
+    if body_field:
+        archive_entity["bodyField"] = body_field
+    if stock_display == "available":
+        from app.bake.ticket_copy_text import stock_unavailable_label
+
+        stock_lab = "可点播"
+        for f in archive_fields:
+            if isinstance(f, dict) and f.get("key") == "stock":
+                lab = str(f.get("label") or "").strip()
+                if lab:
+                    stock_lab = lab
+                break
+        archive_entity["stockUnavailableLabel"] = stock_unavailable_label(stock_lab)
+    if recommend_latest_hint is None:
+        recommend_latest_hint = "最新上架" if soft_delete else "最新发布"
+    schema: dict[str, Any] = {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES[domain]),
+        "roles": {
+            "user": {"id": user_role_id, "label": user_label},
+            "admin": {"id": "admin", "label": admin_label},
+            "subadmin": {"id": "subadmin", "label": subadmin_label},
+        },
+        "entities": {
+            "archive": archive_entity,
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": archive_menu_admin, "superOnly": True},
+                {"key": "category", "label": category_menu_label(archive_fields), "superOnly": True},
+                {"key": "users", "label": users_menu, "superOnly": True},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": archive_menu_user},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": auth_eyebrow,
+            "authLead": auth_lead,
+            "authPoints": auth_points,
+            "registerRoleHint": register_hint,
+            "noticePageTitle": notice_page_title,
+            "noticePageLead": notice_page_lead,
+            "messagesPageLead": "系统通知。",
+            "recommendSectionTitle": "猜你喜欢",
+            "recommendLatestHint": recommend_latest_hint,
+        },
+        "seeds": {
+            "noticeTitle": notice_title,
+            "noticeBody": notice_body,
+        },
+    }
+    attach_favorites_menus(schema, page_lead=favorites_page_lead)
+    return schema
+
+
 def _media_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        archive_ticket_schema(
+        archive_favorites_schema(
             title,
             domain="DOM-MEDIA",
             user_role_id="user",
@@ -594,23 +721,6 @@ def _media_schema(title: str) -> dict[str, Any]:
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可点播", "type": "number"},
             ],
-            ticket_key="favorite",
-            ticket_label="收藏单",
-            ticket_plural="收藏",
-            verbs={
-                "apply": "收藏",
-                "approve": "通过",
-                "reject": "驳回",
-                "return": "取消收藏",
-                "remind": "提醒",
-            },
-            states={
-                "pending": "待确认",
-                "approved": "已收藏",
-                "rejected": "已驳回",
-                "returned": "已取消",
-                "overdue": "已失效",
-            },
             archive_menu_admin="片单管理",
             archive_menu_user="片单检索",
             users_menu="用户管理",
@@ -622,14 +732,10 @@ def _media_schema(title: str) -> dict[str, Any]:
             notice_body="片源仅供学习演示；请文明观影，勿传播未授权内容。",
             notice_page_title="平台公告",
             notice_page_lead="上新片单、维护窗口与观影须知，点击条目阅读全文。",
-            my_tickets_label="我的收藏",
-            pending_label="收藏审核",
-            records_label="收藏记录",
-            with_deadline=False,
+            favorites_page_lead="收藏想看的影视综，方便下次回看。",
             play_url_field="isbn",
             stock_display="available",
             soft_delete=True,
-            approve_ends_flow=True,
         ),
         [
             {"title": "热播片单", "lead": "电影、电视剧、综艺分类浏览，点击即可播放。"},
@@ -643,7 +749,7 @@ def _media_schema(title: str) -> dict[str, Any]:
 
 def _music_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        archive_ticket_schema(
+        archive_favorites_schema(
             title,
             domain="DOM-MUSIC",
             user_role_id="user",
@@ -661,23 +767,6 @@ def _music_schema(title: str) -> dict[str, Any]:
                 {"key": "category", "label": "曲风", "type": "select"},
                 {"key": "stock", "label": "可播放", "type": "number"},
             ],
-            ticket_key="favorite",
-            ticket_label="收藏单",
-            ticket_plural="收藏",
-            verbs={
-                "apply": "收藏",
-                "approve": "通过",
-                "reject": "驳回",
-                "return": "取消收藏",
-                "remind": "提醒",
-            },
-            states={
-                "pending": "待确认",
-                "approved": "已收藏",
-                "rejected": "已驳回",
-                "returned": "已取消",
-                "overdue": "已失效",
-            },
             archive_menu_admin="曲库管理",
             archive_menu_user="曲库检索",
             users_menu="用户管理",
@@ -689,14 +778,10 @@ def _music_schema(title: str) -> dict[str, Any]:
             notice_body="曲源仅供学习演示；请尊重版权，勿传播未授权内容。",
             notice_page_title="平台公告",
             notice_page_lead="上新歌单、维护窗口与试听须知，点击条目阅读全文。",
-            my_tickets_label="我的收藏",
-            pending_label="收藏审核",
-            records_label="收藏记录",
-            with_deadline=False,
+            favorites_page_lead="收藏喜欢的歌曲，方便下次回听。",
             play_url_field="isbn",
             stock_display="available",
             soft_delete=True,
-            approve_ends_flow=True,
         ),
         [
             {"title": "热门曲库", "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。"},
@@ -748,11 +833,11 @@ def _forum_schema(title: str) -> dict[str, Any]:
             archive_menu_user="帖子检索",
             users_menu="用户管理",
             auth_eyebrow="校园论坛",
-            auth_lead="验证码登录；按板块浏览主帖，富文本回复讨论，支持楼中楼引用。",
-            auth_points=["验证码登录", "板块与主帖检索", "富文本回复与楼中楼"],
-            register_hint="注册后可浏览主帖并回复",
+            auth_lead="验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。",
+            auth_points=["验证码登录", "发帖与检索", "富文本回复与楼中楼"],
+            register_hint="注册后可发帖并回复",
             notice_title="社区公约",
-            notice_body="请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用。",
+            notice_body="请文明讨论；用户可发主帖，违规帖由站长下架。回复经版主审核后展示；可 @他人 一层引用。",
             notice_page_title="站内公告",
             notice_page_lead="版规、维护窗口与活动通知，点击条目阅读全文。",
             my_tickets_label="我的回复",
@@ -764,13 +849,14 @@ def _forum_schema(title: str) -> dict[str, Any]:
             stock_display="available",
             soft_delete=True,
             tag_filter=True,
+            user_publish=True,
             approve_ends_flow=True,
         ),
         [
             {"title": "热门板块", "lead": "学习、生活、二手信息分区浏览主帖。"},
-            {"title": "讨论交流", "lead": "跟帖回复，支持引用他人发言。"},
+            {"title": "发帖讨论", "lead": "登录后发布主帖，跟帖回复支持引用。"},
             {"title": "站内公告", "lead": "版规与活动通知见公告栏。"},
-            {"title": "我的帖子", "lead": "登录后管理发帖与回复进度。"},
+            {"title": "我的帖子", "lead": "登录后管理本人发帖与回复进度。"},
             {"title": "标签筛选", "lead": "按标签快速找到感兴趣的话题。"},
         ],
     )
@@ -778,7 +864,7 @@ def _forum_schema(title: str) -> dict[str, Any]:
 
 def _blog_schema(title: str) -> dict[str, Any]:
     return _with_portal_banners(
-        archive_ticket_schema(
+        archive_favorites_schema(
             title,
             domain="DOM-BLOG",
             user_role_id="user",
@@ -796,23 +882,6 @@ def _blog_schema(title: str) -> dict[str, Any]:
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可阅读", "type": "number"},
             ],
-            ticket_key="favorite",
-            ticket_label="收藏单",
-            ticket_plural="收藏",
-            verbs={
-                "apply": "收藏",
-                "approve": "通过",
-                "reject": "驳回",
-                "return": "取消收藏",
-                "remind": "提醒",
-            },
-            states={
-                "pending": "待确认",
-                "approved": "已收藏",
-                "rejected": "已驳回",
-                "returned": "已取消",
-                "overdue": "已失效",
-            },
             archive_menu_admin="文章管理",
             archive_menu_user="文章检索",
             users_menu="用户管理",
@@ -824,14 +893,10 @@ def _blog_schema(title: str) -> dict[str, Any]:
             notice_body="文章仅供学习演示；转载请注明出处。内容由主编维护发布。",
             notice_page_title="站点公告",
             notice_page_lead="上新、维护与征稿通知，点击条目阅读全文。",
-            my_tickets_label="我的收藏",
-            pending_label="收藏审核",
-            records_label="收藏记录",
-            with_deadline=False,
+            favorites_page_lead="收藏喜欢的文章，方便回看。",
             body_field="isbn",
             stock_display="available",
             soft_delete=True,
-            approve_ends_flow=True,
         ),
         [
             {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览富文本正文。"},

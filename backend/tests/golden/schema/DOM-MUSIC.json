@@ -1,7 +1,7 @@
 {
   "capabilities": [
     "archive",
-    "ticket_flow",
+    "favorites",
     "content",
     "org_users",
     "recommend"
@@ -49,39 +49,10 @@
       "stockUnavailableLabel": "已播放",
       "tagFilter": false
     },
-    "ticket": {
-      "allowCheckin": false,
-      "allowQty": false,
-      "allowRating": false,
-      "approveEndsFlow": true,
-      "categoryLimit": 0,
-      "checkMutex": false,
-      "key": "favorite",
-      "label": "收藏单",
-      "labelPlural": "收藏",
-      "noShowAfterEnd": false,
-      "noShowPenaltyYuan": 0,
-      "pickDateRange": false,
-      "pickLoanPeriod": false,
-      "remarkLabel": "说明",
-      "requireAttach": false,
-      "requireRemark": false,
-      "states": {
-        "approved": "已收藏",
-        "overdue": "已失效",
-        "pending": "待确认",
-        "rejected": "已驳回",
-        "returned": "已取消"
-      },
-      "twoLevelApprove": false,
-      "verbs": {
-        "apply": "收藏",
-        "approve": "通过",
-        "reject": "驳回",
-        "remind": "提醒",
-        "return": "取消收藏"
-      },
-      "weekCalendar": false
+    "favorites": {
+      "key": "favorites",
+      "label": "收藏",
+      "labelPlural": "收藏"
     }
   },
   "labels": {
@@ -93,10 +64,12 @@
       "曲库检索与播放",
       "收藏喜欢"
     ],
-    "messagesPageLead": "审核结果与系统通知。",
+    "favoritesPageLead": "收藏喜欢的歌曲，方便下次回听。",
+    "favoritesPageTitle": "我的收藏",
+    "messagesPageLead": "系统通知。",
     "noticePageLead": "上新歌单、维护窗口与试听须知，点击条目阅读全文。",
     "noticePageTitle": "平台公告",
-    "recommendLatestHint": "最新发布",
+    "recommendLatestHint": "最新上架",
     "recommendSectionTitle": "猜你喜欢",
     "registerRoleHint": "注册后可浏览曲库并收藏"
   },
@@ -122,14 +95,6 @@
         "superOnly": true
       },
       {
-        "key": "ticket_pending",
-        "label": "收藏审核"
-      },
-      {
-        "key": "ticket_records",
-        "label": "收藏记录"
-      },
-      {
         "key": "content",
         "label": "公告管理",
         "superOnly": true
@@ -141,7 +106,7 @@
         "label": "曲库检索"
       },
       {
-        "key": "my_tickets",
+        "key": "favorites",
         "label": "我的收藏"
       },
       {

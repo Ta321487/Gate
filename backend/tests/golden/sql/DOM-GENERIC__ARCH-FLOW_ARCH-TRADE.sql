@@ -1,4 +1,4 @@
--- bake domain=DOM-GENERIC · composed · tables in [6,13]
+-- bake domain=DOM-GENERIC · composed · tables in [6,15]
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 
@@ -94,6 +94,10 @@ CREATE TABLE IF NOT EXISTS biz_order (
   discount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   pay_balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   points_earned INT NOT NULL DEFAULT 0,
+  coupon_code VARCHAR(32) DEFAULT '',
+  refund_status VARCHAR(16) DEFAULT '',
+  refund_reason VARCHAR(255) DEFAULT '',
+  refund_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
