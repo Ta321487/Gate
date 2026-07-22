@@ -1,5 +1,5 @@
 <template>
-  <div v-if="daily.length" ref="boxEl" class="usage-chart-box">
+  <div ref="boxEl" class="usage-chart-box">
     <div class="usage-chart-title">
       按日 Token 趋势
       <span class="muted mono">· 合计 {{ fmtK(totalTokens) }}</span>
@@ -56,6 +56,10 @@
         text-anchor="end"
       >{{ t.text }}</text>
     </svg>
+    <div v-else class="empty-hint usage-chart-empty">
+      <div class="empty-title">暂无用量数据</div>
+      <div class="empty-desc">尚未产生调用，或当前筛选范围内没有记录</div>
+    </div>
   </div>
 </template>
 
