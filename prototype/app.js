@@ -39,13 +39,27 @@
     };
 
     const liveSteps = [
-      { t: "done", title: "解析材料并合并生成配置", meta: "匹配阶段" },
-      { t: "done", title: "复制基线并写入领域数据表", meta: "确定性生成" },
-      { t: "done", title: "按白名单填充业务配置", meta: "AI 补全配置项" },
-      { t: "run", title: "构建验证", meta: "基础检查" },
-      { t: "wait", title: "登录与主流程验收", meta: "关键路径" },
-      { t: "wait", title: "开题对照并打包交付包", meta: "检查全部通过后" },
+      { t: "done", title: "解析开题 · 合并 Spec", meta: "匹配与 Spec" },
+      { t: "done", title: "复制骨架 · 领域 SQL", meta: "确定性生成" },
+      { t: "done", title: "业务配置填充", meta: "大模型补全" },
+      { t: "run", title: "构建验证", meta: "编译检查" },
+      { t: "wait", title: "门禁：登录 + 主流程", meta: "关键路径" },
+      { t: "wait", title: "开题对照 · 打包 ZIP", meta: "检查通过后打包" },
     ];
+
+    const JOB_STEP_LABELS = {
+      queued: "排队",
+      parse_merge: "解析开题 · 合并 Spec",
+      copy_bake: "复制骨架 · 领域 SQL",
+      island_fill: "业务配置填充",
+      build_verify: "构建验证",
+      gate_e2e: "门禁：登录 + 主流程",
+      pack: "开题对照 · 打包 ZIP",
+    };
+
+    let uploadJobSeq = 1;
+    const uploadJobs = [];
+    let planDraft = null;
 
     let beOn = false;
     let feOn = false;
@@ -145,8 +159,8 @@
       const tb = document.getElementById("project-tbody");
       const map = {
         all: () => true,
-        // 产品：运行中 = 预览已拉起
         active: (p) => p.running || p.status === "running",
+        generating: (p) => p.status === "generating",
         done: (p) => ["generated", "running"].includes(p.status),
         fail: (p) => p.status === "failed",
       };
@@ -154,7 +168,7 @@
         .filter(map[filter] || map.all)
         .filter((p) => !q || p.name.includes(q) || p.id.includes(q));
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">拖入开题 / 任务书等材料即可创建（可多选）</div></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">上传材料后确认分堆即可创建；同课题会合并，不同课题会拆开</div></div></td></tr>`;
       } else {
         tb.innerHTML = rows.map((p) => `
           <tr class="clickable" data-action="open-project" data-id="${p.id}">
@@ -192,6 +206,33 @@
         const el = document.getElementById("aview-" + id);
         if (el) el.style.display = id === v ? "flex" : "none";
       });
+    }
+
+    function setUsageTab(tab) {
+      const t = tab === "support" ? "support" : "project";
+      document.querySelectorAll("#usage-detail-tabs button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.usageTab === t);
+      });
+      const project = document.getElementById("usage-pane-project");
+      const support = document.getElementById("usage-pane-support");
+      if (project) project.hidden = t !== "project";
+      if (support) support.hidden = t !== "support";
+    }
+
+    function applyUsagePresence(mode) {
+      const m = mode || "alive";
+      const rows = document.querySelectorAll("#usage-tbody tr[data-presence]");
+      let visible = 0;
+      rows.forEach((tr) => {
+        const p = tr.dataset.presence || "alive";
+        const show = m === "all" || p === m;
+        tr.hidden = !show;
+        if (show) visible += 1;
+      });
+      const hint = document.getElementById("usage-count-hint");
+      if (hint) hint.textContent = `共 ${visible} 个项目`;
+      const labels = { alive: "在库", deleted: "已删除", all: "全部" };
+      toast("用量筛选 · " + (labels[m] || m));
     }
 
     function renderGates(pass) {
@@ -590,7 +631,7 @@
         return;
       }
       if (action === "retry-job") {
-        toast("从 bake_frontend 重试");
+        toast("从失败步骤续跑（演示）");
         startGenerate();
         return;
       }
@@ -752,6 +793,102 @@
         toast("已刷新");
         return;
       }
+      if (action === "filter-calls-stage") {
+        const stage = el.dataset.stage || "";
+        const sel = document.getElementById("call-filter-stage");
+        if (sel) sel.value = stage;
+        showView("llm");
+        toast("已按阶段筛选调用 · " + (sel?.selectedOptions?.[0]?.textContent || stage));
+        return;
+      }
+      if (action === "open-sample-proposal") {
+        openSampleModal();
+        return;
+      }
+      if (action === "close-sample-modal") {
+        closeSampleModal();
+        return;
+      }
+      if (action === "generate-sample") {
+        const box = document.getElementById("sample-result");
+        const dl = document.getElementById("sample-dl-btn");
+        if (box) box.hidden = false;
+        if (dl) dl.disabled = false;
+        const btn = document.querySelector('[data-action="generate-sample"]');
+        if (btn) btn.textContent = "再抽一份";
+        toast("已生成测试开题（演示）");
+        return;
+      }
+      if (action === "download-sample") {
+        toast("已下载测试开题 txt（演示）");
+        return;
+      }
+      if (action === "close-plan-modal") {
+        closePlanModal();
+        return;
+      }
+      if (action === "plan-split-all") {
+        if (!planDraft) return;
+        const files = planDraft.clusters.flatMap((c) => c.files);
+        planDraft = {
+          notes: "已全部拆开为单文件项目。",
+          clusters: files.map((f, i) => ({
+            id: i + 1,
+            label: f.name.replace(/\.[^.]+$/, ""),
+            reason: "全部拆开",
+            files: [f],
+          })),
+          discard: planDraft.discard || [],
+        };
+        renderPlanModal(planDraft);
+        toast("已全部拆开");
+        return;
+      }
+      if (action === "plan-merge-all") {
+        if (!planDraft) return;
+        const files = planDraft.clusters.flatMap((c) => c.files);
+        planDraft = {
+          notes: "已合并为一个项目。",
+          clusters: [{
+            id: 1,
+            label: files[0]?.name.replace(/\.[^.]+$/, "") || "合并项目",
+            reason: "手动合并",
+            files,
+          }],
+          discard: planDraft.discard || [],
+        };
+        renderPlanModal(planDraft);
+        toast("已合并为一个");
+        return;
+      }
+      if (action === "confirm-plan") {
+        const n = planDraft?.clusters?.length || 0;
+        closePlanModal();
+        const job = uploadJobs.find((j) => j.status === "planned");
+        if (job) {
+          job.status = "done";
+          job.phase = `已创建 ${n} 个项目`;
+          job.projectId = "gf-20260717-001";
+          job.bar = "var(--green, #2f9e44)";
+          renderUploadJobs();
+        }
+        toast(n ? `已创建 ${n} 个项目 · 进入匹配确认` : "没有可创建的项目");
+        if (n) setTimeout(() => openProject("gf-20260717-001", "needs_confirm"), 350);
+        return;
+      }
+      if (action === "reopen-plan") {
+        const id = Number(el.dataset.jobId);
+        const job = uploadJobs.find((j) => j.id === id);
+        if (job?.plan) openPlanModal(job.plan);
+        return;
+      }
+      if (action === "dismiss-upload-job") {
+        const id = Number(el.dataset.jobId);
+        const idx = uploadJobs.findIndex((j) => j.id === id);
+        if (idx >= 0) uploadJobs.splice(idx, 1);
+        renderUploadJobs();
+        return;
+      }
       if (action === "dt-shortcut") {
         toast("时间范围 · " + (el.textContent || "").trim() + "（演示 · 中文快捷项）");
         return;
@@ -877,6 +1014,12 @@
         return;
       }
 
+      const usageTabBtn = e.target.closest("#usage-detail-tabs button");
+      if (usageTabBtn) {
+        setUsageTab(usageTabBtn.dataset.usageTab);
+        return;
+      }
+
       const filterBtn = e.target.closest("#list-filter button");
       if (filterBtn) {
         document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
@@ -934,6 +1077,9 @@
     document.getElementById("sel-theme")?.addEventListener("change", () => toast("行业配色已自动保存"));
     document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
     document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
+    document.getElementById("usage-presence")?.addEventListener("change", (e) => {
+      applyUsagePresence(e.target.value || "alive");
+    });
 
     document.getElementById("log-filter").addEventListener("input", () => showLog());
 
@@ -968,39 +1114,183 @@
         e.target.checked ? "类型 varchar(60)" : "类型分列 varchar | 60";
     });
 
-    // Upload
+    // Upload → plan confirm（与现网一致：确认前不建项）
     const dz = document.getElementById("dropzone");
     const fileInput = document.getElementById("file-input");
-    function simulateUpload(name) {
-      const bar = document.getElementById("upload-bar");
-      bar.classList.add("show");
-      document.getElementById("upload-name").textContent = name || "开题报告.docx";
-      let pct = 0;
-      const fill = document.getElementById("upload-fill");
-      const pctEl = document.getElementById("upload-pct");
-      const timer = setInterval(() => {
-        pct += 12;
-        const show = Math.min(pct, 100);
-        fill.style.width = show + "%";
-        if (show < 90) pctEl.textContent = "上传中 " + show + "%";
-        else if (show < 100) pctEl.textContent = "解析材料 · 匹配领域…";
-        else pctEl.textContent = "完成";
-        if (pct >= 100) {
-          clearInterval(timer);
-          toast("已建项 · 进入匹配确认");
-          setTimeout(() => openProject("gf-20260717-001", "needs_confirm"), 350);
-        }
-      }, 70);
+
+    function roleLabel(role) {
+      return ({ proposal: "开题", task: "任务书", features: "功能清单", material: "材料" })[role] || "材料";
     }
+
+    function renderUploadJobs() {
+      const panel = document.getElementById("upload-jobs-panel");
+      const list = document.getElementById("upload-jobs-list");
+      if (!panel || !list) return;
+      if (!uploadJobs.length) {
+        panel.hidden = true;
+        list.innerHTML = "";
+        return;
+      }
+      panel.hidden = false;
+      const planned = uploadJobs.filter((j) => j.status === "planned").length;
+      const hint = document.getElementById("upload-queue-hint");
+      if (hint) hint.textContent = planned ? `并发 2 · ${planned} 份待确认分堆` : "并发 2";
+      list.innerHTML = uploadJobs.map((job) => `
+        <div class="upload-job" data-job-id="${job.id}">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px;gap:8px">
+            <div style="min-width:0">
+              <div style="font-weight:600;line-height:1.35">${job.name}</div>
+              <div class="small muted">${job.fileCount} 份材料 · ${job.phase}</div>
+            </div>
+            <div class="row gap-sm" style="flex-shrink:0">
+              ${job.status === "planned" ? `<button type="button" class="btn btn-secondary btn-sm" data-action="reopen-plan" data-job-id="${job.id}">查看分堆</button>` : ""}
+              ${job.status === "done" ? `<button type="button" class="btn btn-secondary btn-sm" data-action="open-project" data-id="${job.projectId || "gf-20260717-001"}">查看</button>` : ""}
+              ${["done", "error", "planned"].includes(job.status) ? `<button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-upload-job" data-job-id="${job.id}">移除</button>` : ""}
+            </div>
+          </div>
+          <div class="progress"><i style="width:${job.pct}%;background:${job.bar || "var(--teal)"}"></i></div>
+          ${job.error ? `<div class="small warn" style="margin-top:6px">${job.error}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    function demoPlan(files) {
+      const names = files.length ? files : ["宿舍报修开题.txt", "食堂点餐开题.txt"];
+      if (names.length === 1) {
+        return {
+          notes: "检测到单一课题材料。",
+          clusters: [
+            {
+              id: 1,
+              label: names[0].replace(/\.[^.]+$/, ""),
+              reason: "单份材料自成一堆",
+              files: [{ name: names[0], role: "proposal" }],
+            },
+          ],
+          discard: [],
+        };
+      }
+      return {
+        notes: "检测到多份不同开题，建议拆成多个项目。",
+        clusters: names.slice(0, 2).map((name, i) => ({
+          id: i + 1,
+          label: name.replace(/\.[^.]+$/, ""),
+          reason: i === 0 ? "宿舍报修语义" : "食堂点餐语义",
+          files: [{ name, role: "proposal" }],
+        })),
+        discard: names.length > 2
+          ? [{ name: names[2], reason: "信号过弱 / 疑似无关材料" }]
+          : [],
+      };
+    }
+
+    function renderPlanModal(plan) {
+      planDraft = plan;
+      const box = document.getElementById("plan-clusters");
+      const notes = document.getElementById("plan-notes");
+      const btn = document.getElementById("plan-confirm-btn");
+      if (notes) {
+        notes.textContent = `${plan.notes || "请核对下方分堆后确认创建。"} · LLM 结构分堆 · 来源 demo`;
+      }
+      if (btn) btn.textContent = `确认创建 ${plan.clusters.length} 个项目`;
+      if (!box) return;
+      box.innerHTML = plan.clusters.map((cl) => `
+        <div class="plan-cluster">
+          <div class="row" style="justify-content:space-between;gap:8px;align-items:flex-start">
+            <div style="min-width:0;flex:1">
+              <div class="row" style="gap:8px;align-items:baseline;flex-wrap:wrap">
+                <span class="plan-cluster-idx">项目 ${cl.id}</span>
+                <span class="plan-cluster-title">${cl.label}</span>
+              </div>
+              <div class="small muted" style="margin-top:4px">${cl.reason || ""}</div>
+            </div>
+            <span class="small muted" style="flex-shrink:0">${cl.files.length} 份</span>
+          </div>
+          <div class="plan-cluster-files">
+            ${cl.files.map((f) => `<span class="plan-file-chip">${f.name} <span class="muted">${roleLabel(f.role)}</span></span>`).join("")}
+          </div>
+        </div>
+      `).join("") + (plan.discard?.length ? `
+        <div class="small warn">
+          <div style="font-weight:600;margin-bottom:4px">将剔除（不参与匹配）</div>
+          <div class="plan-cluster-files">
+            ${plan.discard.map((d) => `<span class="plan-file-chip plan-file-chip--discard" title="${d.reason || ""}">${d.name}</span>`).join("")}
+          </div>
+        </div>
+      ` : "");
+    }
+
+    function openPlanModal(plan) {
+      renderPlanModal(plan);
+      document.getElementById("plan-modal-mask")?.classList.add("show");
+    }
+
+    function closePlanModal() {
+      document.getElementById("plan-modal-mask")?.classList.remove("show");
+    }
+
+    function openSampleModal() {
+      document.getElementById("sample-modal-mask")?.classList.add("show");
+    }
+
+    function closeSampleModal() {
+      document.getElementById("sample-modal-mask")?.classList.remove("show");
+    }
+
+    function simulateUpload(fileNames) {
+      const names = (fileNames || []).filter(Boolean);
+      const label = names.length > 1 ? `${names[0]} 等 ${names.length} 份` : (names[0] || "开题材料.txt");
+      const job = {
+        id: uploadJobSeq++,
+        name: label,
+        fileCount: Math.max(1, names.length),
+        files: names.length ? names : ["开题材料.txt"],
+        status: "uploading",
+        phase: "上传中 0%",
+        pct: 0,
+        bar: "var(--teal)",
+        projectId: "",
+        error: "",
+        plan: null,
+      };
+      uploadJobs.unshift(job);
+      renderUploadJobs();
+      let pct = 0;
+      const timer = setInterval(() => {
+        pct += 14;
+        const show = Math.min(pct, 100);
+        job.pct = show;
+        if (show < 55) job.phase = `上传中 ${show}%`;
+        else if (show < 100) {
+          job.status = "parsing";
+          job.phase = "解析并分堆…";
+        } else {
+          clearInterval(timer);
+          job.status = "planned";
+          job.phase = "待确认分堆";
+          job.pct = 100;
+          job.plan = demoPlan(job.files);
+          renderUploadJobs();
+          openPlanModal(job.plan);
+          toast("分堆完成 · 请确认后再创建");
+          return;
+        }
+        renderUploadJobs();
+      }, 80);
+    }
+
     dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("dragover"); });
     dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
     dz.addEventListener("drop", (e) => {
       e.preventDefault();
       dz.classList.remove("dragover");
-      simulateUpload(e.dataTransfer.files[0]?.name);
+      const names = [...(e.dataTransfer.files || [])].map((f) => f.name);
+      simulateUpload(names.length ? names : ["宿舍报修开题.txt", "食堂点餐开题.txt"]);
     });
     fileInput.addEventListener("change", () => {
-      if (fileInput.files[0]) simulateUpload(fileInput.files[0].name);
+      const names = [...(fileInput.files || [])].map((f) => f.name);
+      if (names.length) simulateUpload(names);
+      fileInput.value = "";
     });
 
     // Click dropzone label area (file input covers it already)
@@ -1011,3 +1301,4 @@
     syncMatchFields(false);
     renderGates(false);
     setArtifactView("db");
+    renderUploadJobs();

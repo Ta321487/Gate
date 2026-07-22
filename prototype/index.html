@@ -63,28 +63,32 @@
         <!-- ========== HOME ========== -->
         <section id="view-home" class="view active">
           <h1 class="page-title">项目</h1>
-          <p class="page-desc">上传开题、任务书等材料创建项目（可多选，至少一份）。</p>
+          <p class="page-desc">上传开题等材料，确认分堆后创建项目。细则见「帮助 → 上传与分堆」。</p>
 
-          <div class="dropzone" id="dropzone">
-            <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.txt" />
-            <div class="dropzone-icon">↑</div>
-            <div class="dropzone-title">拖入材料，或点击多选</div>
-            <div class="dropzone-hint">支持开题 / 任务书 / 功能清单 · PDF / Word（.docx 直读，.doc 需本机 Word 或 LibreOffice）· 最多 8 份</div>
+          <div class="row mb-12" style="justify-content:flex-end;gap:8px">
+            <button type="button" class="btn btn-secondary btn-sm" data-action="open-sample-proposal">生成测试开题</button>
           </div>
 
-          <div class="upload-bar" id="upload-bar">
-            <div class="upload-meta">
-              <span id="upload-name">开题报告.docx</span>
-              <span id="upload-pct">0%</span>
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.txt,.zip" />
+            <div class="dropzone-icon">↑</div>
+            <div class="dropzone-title">拖入材料，或点击选择</div>
+            <div class="dropzone-hint">文件 / 文件夹 / zip · 展开后最多 8 份 · PDF / Word / TXT</div>
+          </div>
+
+          <div class="panel mb-16" id="upload-jobs-panel" hidden>
+            <div class="panel-hd">
+              <h3>上传任务</h3>
+              <span class="small muted" id="upload-queue-hint">并发 2</span>
             </div>
-            <div class="progress"><i id="upload-fill"></i></div>
+            <div class="panel-bd stack" id="upload-jobs-list" style="gap:14px"></div>
           </div>
 
           <div class="stats">
             <div class="stat"><div class="label">全部项目</div><div class="value">8</div><div class="hint">本机工作区</div></div>
-            <div class="stat"><div class="label">生成中</div><div class="value">1</div><div class="hint">含排队</div></div>
-            <div class="stat"><div class="label">可预览</div><div class="value">3</div><div class="hint">已生成 / 运行中</div></div>
-            <div class="stat"><div class="label">本月 Token</div><div class="value">182k</div><div class="hint">预算 1.0M</div></div>
+            <div class="stat"><div class="label">生成中</div><div class="value">1</div><div class="hint">正在跑流水线</div></div>
+            <div class="stat"><div class="label">可预览</div><div class="value">3</div><div class="hint">已生成 · 可启预览</div></div>
+            <div class="stat"><div class="label">本月 Token</div><div class="value">182k</div><div class="hint">流水线 168k · 系统支持 14k · 预算 1.0M</div></div>
           </div>
 
           <div class="panel">
@@ -97,8 +101,9 @@
                 <div class="tabs-mini" id="list-filter">
                   <button class="active" data-f="all">全部</button>
                   <button data-f="active">运行中</button>
+                  <button data-f="generating">生成中</button>
                   <button data-f="done">可交付</button>
-                  <button data-f="fail">失败</button>
+                  <button data-f="fail">质检未过</button>
                 </div>
                 <div class="tools">
                   <input type="search" id="list-search" placeholder="搜索题目 / ID…" style="width:220px" />
@@ -395,12 +400,12 @@
                 </div>
                 <div class="panel-bd">
                   <ul class="step-list">
-                    <li><span class="step-ico">1</span><div><div>解析材料并合并生成配置</div><div class="meta">匹配阶段</div></div></li>
-                    <li><span class="step-ico">2</span><div><div>复制基线并写入领域数据表</div><div class="meta">确定性生成</div></div></li>
-                    <li><span class="step-ico">3</span><div><div>按白名单填充业务配置</div><div class="meta">AI 补全配置项</div></div></li>
-                    <li><span class="step-ico">4</span><div><div>构建验证</div><div class="meta">基础检查</div></div></li>
-                    <li><span class="step-ico">5</span><div><div>登录与主流程验收</div><div class="meta">关键路径</div></div></li>
-                    <li><span class="step-ico">6</span><div><div>开题对照并打包交付包</div><div class="meta">检查全部通过后</div></div></li>
+                    <li><span class="step-ico">1</span><div><div>解析开题 · 合并 Spec</div><div class="meta">匹配与 Spec</div></div></li>
+                    <li><span class="step-ico">2</span><div><div>复制骨架 · 领域 SQL</div><div class="meta">确定性生成</div></div></li>
+                    <li><span class="step-ico">3</span><div><div>业务配置填充</div><div class="meta">大模型补全</div></div></li>
+                    <li><span class="step-ico">4</span><div><div>构建验证</div><div class="meta">编译检查</div></div></li>
+                    <li><span class="step-ico">5</span><div><div>门禁：登录 + 主流程</div><div class="meta">关键路径</div></div></li>
+                    <li><span class="step-ico">6</span><div><div>开题对照 · 打包 ZIP</div><div class="meta">检查通过后打包</div></div></li>
                   </ul>
                 </div>
               </div>
@@ -822,7 +827,7 @@
                       <div class="small muted" style="margin-top:4px;padding-left:18px">共 3 条</div>
                     </td>
                     <td class="muted">—</td>
-                    <td><span class="small muted">运行中 1 · 成功 2</span></td>
+                    <td><span class="small muted">生成中 1 · 成功 2</span></td>
                     <td class="muted">—</td>
                     <td></td>
                   </tr>
@@ -833,8 +838,8 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260717-001</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/17 11:02:01</div>
                     </td>
-                    <td>bake_frontend</td>
-                    <td><span class="pill pill-teal">运行中</span></td>
+                    <td>复制骨架 · 领域 SQL</td>
+                    <td><span class="pill pill-teal">生成中</span></td>
                     <td>42%</td>
                     <td class="row gap-sm">
                       <button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generating">详情</button>
@@ -848,7 +853,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260716-020</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/16 20:14:33</div>
                     </td>
-                    <td>pack</td>
+                    <td>开题对照 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -860,7 +865,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260715-009</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/15 09:41:12</div>
                     </td>
-                    <td>pack</td>
+                    <td>开题对照 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -872,7 +877,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260716-014</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/16 21:10:08</div>
                     </td>
-                    <td>pack</td>
+                    <td>开题对照 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -884,7 +889,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260716-011</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/16 18:40:22</div>
                     </td>
-                    <td>island_fill</td>
+                    <td>业务配置填充</td>
                     <td><span class="pill pill-red">失败</span></td>
                     <td>58%</td>
                     <td class="row gap-sm">
@@ -1019,6 +1024,12 @@
               <div class="small mb-12">
                 本月 Token · <span class="mono">182400</span> / <span class="mono">1000000</span>
               </div>
+              <p class="small muted mb-12">
+                流水线 <span class="mono">168200</span>
+                · 系统支持 <span class="mono">14200</span>
+                （上传分堆、样例开题等；预算按合计扣）
+              </p>
+              <p class="small muted mb-12">项目级预算不能超过月度预算 · 库内 8 个项目均在项目预算内（全期用量）</p>
               <div class="progress mb-16"><i style="width:18%"></i></div>
               <div class="grid-2">
                 <div class="field mb-12">
@@ -1083,61 +1094,122 @@
 
           <div class="panel mb-16">
             <div class="panel-hd">
-              <h3>按项目用量</h3>
+              <h3>用量明细</h3>
               <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-usage">刷新</button>
             </div>
-            <div class="panel-bd">
-              <div class="usage-chart-box">
-                <div class="usage-chart-title">每日用量（演示）</div>
-                <div class="usage-chart-bars" aria-hidden="true">
-                  <span style="height:28%"></span><span style="height:42%"></span><span style="height:35%"></span>
-                  <span style="height:58%"></span><span style="height:46%"></span><span style="height:72%"></span>
-                  <span style="height:64%"></span>
+            <div class="panel-bd" style="padding-top:4px">
+              <div class="tabs-mini mb-12" id="usage-detail-tabs">
+                <button type="button" class="active" data-usage-tab="project">按项目用量</button>
+                <button type="button" data-usage-tab="support">系统支持用量</button>
+              </div>
+
+              <div id="usage-pane-project">
+                <div class="filter-row">
+                  <span class="dt-range" title="中文本地化：清除 / 确认 · 本月 / 近7天 / 近30天">
+                    <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-23 03:00:00</span>
+                  </span>
+                  <span class="dt-shortcuts">
+                    <button type="button" data-action="dt-shortcut">本月</button>
+                    <button type="button" data-action="dt-shortcut">近7天</button>
+                    <button type="button" data-action="dt-shortcut">近30天</button>
+                  </span>
+                  <input type="search" placeholder="项目 ID…" style="width:200px" />
+                  <select id="usage-presence" style="width:120px">
+                    <option value="alive" selected>在库</option>
+                    <option value="deleted">已删除</option>
+                    <option value="all">全部</option>
+                  </select>
+                </div>
+                <p class="small muted mb-12">仅统计<strong>项目流水线</strong>。超出<strong>项目</strong>预算时仅跳过该项目的模型调用；超出<strong>月度</strong>预算时跳过全部调用并锁定上方阶段开关。点击项目可筛选调用。</p>
+                <div class="usage-chart-box mb-16">
+                  <div class="usage-chart-title">按日 Token 趋势 · 合计 187k</div>
+                  <div class="usage-chart-bars" aria-hidden="true">
+                    <span style="height:28%"></span><span style="height:42%"></span><span style="height:35%"></span>
+                    <span style="height:58%"></span><span style="height:46%"></span><span style="height:72%"></span>
+                    <span style="height:64%"></span>
+                  </div>
+                </div>
+                <table id="usage-table">
+                  <thead>
+                    <tr>
+                      <th>项目</th>
+                      <th class="th-sort" data-sort="tokens" data-action="sort-usage">Tokens <span class="sort-ico">↓</span></th>
+                      <th class="th-sort" data-sort="calls" data-action="sort-usage">次数 <span class="sort-ico"></span></th>
+                      <th class="th-sort" data-sort="pct" data-action="sort-usage">占项目预算 <span class="sort-ico"></span></th>
+                      <th class="th-sort" data-sort="last_at" data-action="sort-usage">最近 <span class="sort-ico"></span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="usage-tbody">
+                    <tr class="clickable" data-presence="alive" data-action="filter-calls-project" data-pid="gf-20260717-001" data-tokens="45680" data-calls="6" data-pct="46" data-last="2026-07-19T11:04:12">
+                      <td class="mono" style="color:var(--teal)">gf-20260717-001</td>
+                      <td class="mono">45680</td><td>6</td><td class="mono">46%</td>
+                      <td class="muted">2026/7/19 11:04:12</td>
+                    </tr>
+                    <tr class="clickable" data-presence="alive" data-action="filter-calls-project" data-pid="gf-20260716-014" data-tokens="32100" data-calls="4" data-pct="32" data-last="2026-07-18T21:10:03">
+                      <td class="mono" style="color:var(--teal)">gf-20260716-014</td>
+                      <td class="mono">32100</td><td>4</td><td class="mono">32%</td>
+                      <td class="muted">2026/7/18 21:10:03</td>
+                    </tr>
+                    <tr class="clickable" data-presence="alive" data-action="filter-calls-project" data-pid="gf-20260716-011" data-tokens="108902" data-calls="9" data-pct="100" data-last="2026-07-18T18:40:22">
+                      <td class="mono" style="color:var(--teal)">gf-20260716-011</td>
+                      <td class="mono warn">108902</td><td>9</td><td class="mono warn">100% · 已超限</td>
+                      <td class="muted">2026/7/18 18:40:22</td>
+                    </tr>
+                    <tr class="clickable" data-presence="deleted" hidden data-action="filter-calls-project" data-pid="gf-20260715-008" data-tokens="28900" data-calls="5" data-pct="29" data-last="2026-07-16T14:22:01">
+                      <td>
+                        <span class="mono" style="color:var(--teal)">gf-20260715-008</span>
+                        <span class="pill pill-amber" style="margin-left:6px">已删除</span>
+                      </td>
+                      <td class="mono">28900</td><td>5</td><td class="mono">29%</td>
+                      <td class="muted">2026/7/16 14:22:01</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="pager-row">
+                  <span class="small muted" id="usage-count-hint">共 3 个项目</span>
+                  <span class="small muted">10 条 / 页</span>
                 </div>
               </div>
-              <div class="filter-row">
-                <span class="dt-range" title="中文本地化：清除 / 确认 · 本月 / 近7天 / 近30天">
-                  <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-19 09:14:13</span>
-                </span>
-                <span class="dt-shortcuts">
-                  <button type="button" data-action="dt-shortcut">本月</button>
-                  <button type="button" data-action="dt-shortcut">近7天</button>
-                  <button type="button" data-action="dt-shortcut">近30天</button>
-                </span>
-                <input type="search" placeholder="项目 ID…" style="width:200px" />
-              </div>
-              <p class="small muted mb-12">超项目预算或月度预算时 Agent 会跳过 LLM · 点项目可筛调用</p>
-              <table id="usage-table">
-                <thead>
-                  <tr>
-                    <th>项目</th>
-                    <th class="th-sort" data-sort="tokens" data-action="sort-usage">Tokens <span class="sort-ico">↓</span></th>
-                    <th class="th-sort" data-sort="calls" data-action="sort-usage">次数 <span class="sort-ico"></span></th>
-                    <th class="th-sort" data-sort="pct" data-action="sort-usage">占项目预算 <span class="sort-ico"></span></th>
-                    <th class="th-sort" data-sort="last_at" data-action="sort-usage">最近 <span class="sort-ico"></span></th>
-                  </tr>
-                </thead>
-                <tbody id="usage-tbody">
-                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260717-001" data-tokens="45680" data-calls="6" data-pct="46" data-last="2026-07-19T11:04:12">
-                    <td class="mono" style="color:var(--teal)">gf-20260717-001</td>
-                    <td class="mono">45680</td><td>6</td><td class="mono">46%</td>
-                    <td class="muted">2026/7/19 11:04:12</td>
-                  </tr>
-                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260716-014" data-tokens="32100" data-calls="4" data-pct="32" data-last="2026-07-18T21:10:03">
-                    <td class="mono" style="color:var(--teal)">gf-20260716-014</td>
-                    <td class="mono">32100</td><td>4</td><td class="mono">32%</td>
-                    <td class="muted">2026/7/18 21:10:03</td>
-                  </tr>
-                  <tr class="clickable" data-action="filter-calls-project" data-pid="gf-20260716-011" data-tokens="108902" data-calls="9" data-pct="100" data-last="2026-07-18T18:40:22">
-                    <td class="mono" style="color:var(--teal)">gf-20260716-011</td>
-                    <td class="mono warn">108902</td><td>9</td><td class="mono warn">100%</td>
-                    <td class="muted">2026/7/18 18:40:22</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div class="pager-row">
-                <span class="small muted">共 3 个项目</span>
-                <span class="small muted">10 条 / 页</span>
+
+              <div id="usage-pane-support" hidden>
+                <div class="filter-row">
+                  <span class="dt-range">
+                    <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-23 03:00:00</span>
+                  </span>
+                  <span class="dt-shortcuts">
+                    <button type="button" data-action="dt-shortcut">本月</button>
+                    <button type="button" data-action="dt-shortcut">近7天</button>
+                    <button type="button" data-action="dt-shortcut">近30天</button>
+                  </span>
+                </div>
+                <p class="small muted mb-12">
+                  工厂辅助调用（上传分堆、样例开题等），仍计入月度合计预算。合计
+                  <span class="mono">14200</span> tokens ·
+                  <span class="mono">3</span> 次。点击阶段可筛选下方调用明细。
+                </p>
+                <div class="usage-chart-box mb-16">
+                  <div class="usage-chart-title">按日 Token 趋势 · 合计 14k</div>
+                  <div class="usage-chart-bars" aria-hidden="true">
+                    <span style="height:12%"></span><span style="height:0%"></span><span style="height:40%"></span>
+                    <span style="height:22%"></span><span style="height:55%"></span><span style="height:18%"></span>
+                    <span style="height:30%"></span>
+                  </div>
+                </div>
+                <table>
+                  <thead>
+                    <tr><th>阶段</th><th>Tokens</th><th>次数</th><th>最近</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr class="clickable" data-action="filter-calls-stage" data-stage="upload_cluster">
+                      <td style="color:var(--teal)">上传分堆</td>
+                      <td class="mono">9800</td><td>2</td><td class="muted">2026/7/22 21:14:02</td>
+                    </tr>
+                    <tr class="clickable" data-action="filter-calls-stage" data-stage="sample_proposal">
+                      <td style="color:var(--teal)">样例开题</td>
+                      <td class="mono">4400</td><td>1</td><td class="muted">2026/7/21 16:02:40</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1150,7 +1222,7 @@
             <div class="panel-bd">
               <div class="filter-row">
                 <span class="dt-range">
-                  <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-19 09:14:13</span>
+                  <span>2026-07-01 00:00:00</span><span class="sep">至</span><span>2026-07-22 21:14:02</span>
                 </span>
                 <span class="dt-shortcuts">
                   <button type="button" data-action="dt-shortcut">本月</button>
@@ -1158,23 +1230,24 @@
                   <button type="button" data-action="dt-shortcut">近30天</button>
                 </span>
                 <input type="search" id="call-filter-pid" placeholder="项目 ID（精确）" style="width:180px" />
-                <select style="width:160px">
+                <select id="call-filter-stage" style="width:160px">
                   <option value="">阶段</option>
-                  <option>match_recommend</option>
-                  <option>parse_spec</option>
-                  <option>island_fill</option>
-                  <option>er_labels</option>
-                  <option>module_labels</option>
-                  <option>testcase_labels</option>
-                  <option>auto_fix</option>
-                  <option>qa_report</option>
+                  <optgroup label="系统支持">
+                    <option value="upload_cluster">上传分堆</option>
+                    <option value="sample_proposal">样例开题</option>
+                  </optgroup>
+                  <optgroup label="项目流水线">
+                    <option value="match_recommend">匹配推荐</option>
+                    <option value="parse_spec">摘要润色</option>
+                    <option value="island_fill">业务配置填充</option>
+                    <option value="er_labels">E-R 中文补全</option>
+                    <option value="module_labels">模块图命名</option>
+                    <option value="testcase_labels">测试用例文案</option>
+                    <option value="auto_fix">编译修复</option>
+                    <option value="qa_report">质量摘要</option>
+                    <option value="emit">配置写出</option>
+                  </optgroup>
                 </select>
-                <select style="width:100px">
-                  <option value="">结果</option>
-                  <option>OK</option>
-                  <option>FAIL</option>
-                </select>
-                <input type="search" placeholder="明细 / 阶段关键字…" style="width:180px" />
               </div>
               <table>
                 <thead>
@@ -1182,35 +1255,51 @@
                 </thead>
                 <tbody>
                   <tr>
+                    <td class="muted">2026/7/22 21:14:02</td>
+                    <td class="mono">gf-plan-a1b2c3d4e5f6</td>
+                    <td>上传分堆</td>
+                    <td class="mono">6200</td>
+                    <td><span class="pill pill-green">成功</span></td>
+                    <td class="muted">上传分堆 · 输入=4100 · 输出=2100</td>
+                  </tr>
+                  <tr>
+                    <td class="muted">2026/7/21 16:02:40</td>
+                    <td class="mono">gf-sample</td>
+                    <td>样例开题</td>
+                    <td class="mono">4400</td>
+                    <td><span class="pill pill-green">成功</span></td>
+                    <td class="muted">样例开题 · 输入=2800 · 输出=1600</td>
+                  </tr>
+                  <tr>
                     <td class="muted">2026/7/19 11:04:12</td>
                     <td class="mono">gf-20260717-001</td>
-                    <td>island_fill</td>
+                    <td>业务配置填充</td>
                     <td class="mono">12480</td>
-                    <td><span class="pill pill-green">OK</span></td>
+                    <td><span class="pill pill-green">成功</span></td>
                     <td class="muted">slots=4</td>
                   </tr>
                   <tr>
                     <td class="muted">2026/7/19 11:01:03</td>
                     <td class="mono">gf-20260717-001</td>
-                    <td>parse_spec</td>
+                    <td>摘要润色</td>
                     <td class="mono">3210</td>
-                    <td><span class="pill pill-green">OK</span></td>
+                    <td><span class="pill pill-green">成功</span></td>
                     <td class="muted">—</td>
                   </tr>
                   <tr>
                     <td class="muted">2026/7/18 10:22:41</td>
                     <td class="mono">gf-20260716-011</td>
-                    <td>auto_fix</td>
+                    <td>编译修复</td>
                     <td class="mono">8902</td>
-                    <td><span class="pill pill-red">FAIL</span></td>
+                    <td><span class="pill pill-red">失败</span></td>
                     <td class="muted">MODULE_NOT_FOUND</td>
                   </tr>
                   <tr>
                     <td class="muted">2026/7/18 09:55:18</td>
                     <td class="mono">gf-20260716-014</td>
-                    <td>island_fill</td>
+                    <td>业务配置填充</td>
                     <td class="mono">15100</td>
-                    <td><span class="pill pill-green">OK</span></td>
+                    <td><span class="pill pill-green">成功</span></td>
                     <td class="muted">slots=3</td>
                   </tr>
                 </tbody>
@@ -1323,12 +1412,28 @@
               <div class="panel-hd"><h3>标准作业流程</h3><span class="pill pill-teal">流程</span></div>
               <div class="panel-bd help-body">
                 <ol class="help-steps">
-                  <li><strong>创建项目</strong><p>在「项目」页上传材料（开题 / 任务书 / 功能清单等，PDF / Word / TXT，可一次多选，最多 8 份）。系统解析后自动创建项目记录，进入项目详情。</p></li>
+                  <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。生成完成后可同页改选项并「按当前选项重新生成」。进度可在「任务队列」与项目详情中查看。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」页核对质量检查、表结构、论文材料（功能模块图 / 软件测试用例）、学生端 API 与 E-R 图。</p></li>
                   <li><strong>交付</strong><p>质量检查全部通过后方可下载交付包。未通过或工程与验收规则不一致时下载保持锁定，须重新生成或排查未通过项。</p></li>
                 </ol>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>上传与分堆</h3><span class="pill pill-teal">上传</span></div>
+              <div class="panel-bd help-body">
+                <p>上传后先分堆、再确认创建。上限与「直接选文件」相同：只计展开后的 PDF / Word / TXT 份数。</p>
+                <ul>
+                  <li>格式：PDF / Word（.doc / .docx）/ TXT；可多选、拖文件夹，或选择 / 拖入 zip。文件夹与 zip 内非材料文件会跳过。</li>
+                  <li>数量：展开后合计最多 8 份。例：8 个 zip 各含 1 份开题 → 8 份，可通过；1 个 zip 内 9 份 → 拒绝；合计超过 8 → 拒绝，不会截取前 8 份。</li>
+                  <li>同课题：开题 + 任务书 + 功能清单等会并成一个项目。</li>
+                  <li>不同课题：一次拖入多份不同开题，会拆成多个项目；确认弹窗可「全部拆开」或「合并为一个」后微调。</li>
+                  <li>同领域不同实现（如都是图书皮，一套借阅、一套二手交易）会尽量拆开，避免烤成一个项目。</li>
+                  <li>无关材料（简历、空文件、纯闲文等）会剔除，不参与匹配。</li>
+                  <li>确认前不会建项。弹窗打开时再上传下一批，后到的分堆进入队列，不顶掉当前内容；可点「查看分堆」切换，或确认 / 取消后自动翻下一份。</li>
+                  <li>需要超过 8 份材料时，请分多次上传（每次 ≤8）；项目总数不受 8 限制。</li>
+                </ul>
               </div>
             </article>
             <article class="help-card panel">
@@ -1415,6 +1520,8 @@
               <div class="panel-hd"><h3>术语说明</h3><span class="pill pill-teal">词典</span></div>
               <div class="panel-bd help-body">
                 <dl class="help-glossary">
+                  <div class="help-glossary-row"><dt>分堆确认</dt><dd>上传后按是否同一毕设分簇，确认后再建项；细则见「上传与分堆」。</dd></div>
+                  <div class="help-glossary-row"><dt>材料份数</dt><dd>上传上限按展开后的 PDF / Word / TXT 计（单次最多 8）；细则见「上传与分堆」。</dd></div>
                   <div class="help-glossary-row"><dt>骨架</dt><dd>学生工程的技术基线模板。匹配时选定骨架，决定可生成工程的基础形态。</dd></div>
                   <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域。决定文案、菜单与能力组合，与骨架配合使用。</dd></div>
                   <div class="help-glossary-row"><dt>匹配确认</dt><dd>核验并锁定推荐骨架与领域。确认前不可正式生成；改动后须重新确认。视觉与生成选项在「一键生成」页调整。</dd></div>
@@ -1438,6 +1545,76 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- 确认分堆 -->
+  <div class="modal-mask" id="plan-modal-mask">
+    <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title">
+      <div class="modal-hd">
+        <span id="plan-modal-title">确认分堆</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="close-plan-modal">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <p class="small muted" id="plan-notes" style="margin:0 0 12px">
+          请核对下方分堆后确认创建。 · LLM 结构分堆 · 来源 demo
+        </p>
+        <div class="stack" id="plan-clusters" style="gap:10px;max-height:55vh;overflow:auto"></div>
+      </div>
+      <div class="modal-ft" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div class="row gap-sm">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="plan-split-all">全部拆开</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="plan-merge-all">合并为一个</button>
+        </div>
+        <div class="row gap-sm">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="close-plan-modal">取消</button>
+          <button type="button" class="btn btn-primary btn-sm" id="plan-confirm-btn" data-action="confirm-plan">确认创建 2 个项目</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生成测试开题 -->
+  <div class="modal-mask" id="sample-modal-mask">
+    <div class="modal modal-lg" role="dialog" aria-modal="true">
+      <div class="modal-hd">
+        <span>生成测试开题</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="close-sample-modal">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <p class="small muted" style="margin:0 0 12px">
+          随机覆盖常见毕设方向，可选大模型润色。下载 txt 后拖到上方上传即可。
+        </p>
+        <div class="row mb-12" style="gap:8px;flex-wrap:wrap">
+          <select id="sample-domain" style="min-width:220px;flex:1">
+            <option value="">领域（空=随机）</option>
+            <option value="DOM-DORM">宿舍报修</option>
+            <option value="DOM-LIBRARY">图书借阅</option>
+            <option value="DOM-FOOD">食堂点餐</option>
+            <option value="DOM-PARKING">车位预约</option>
+          </select>
+          <label class="row small" style="gap:8px;align-items:center">
+            <button type="button" class="switch on" id="sample-llm-switch" data-switch aria-label="LLM 润色"></button>
+            LLM 润色
+          </label>
+        </div>
+        <div class="panel" id="sample-result" style="margin:0" hidden>
+          <div class="panel-bd stack" style="gap:8px;padding:12px">
+            <div class="small">
+              <strong id="sample-title">宿舍报修管理系统</strong>
+              <span class="muted" id="sample-meta"> · DOM-DORM · pack-demo</span>
+              <span class="pill pill-teal" id="sample-llm-pill" style="margin-left:6px">已润色</span>
+            </div>
+            <pre class="sample-proposal-pre" id="sample-text">一、选题背景
+校园宿舍设施报修流程分散，需要统一在线申报与进度跟踪……</pre>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="close-sample-modal">关闭</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="generate-sample">生成</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="download-sample" disabled id="sample-dl-btn">下载 txt</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-mask" id="modal-mask">
     <div class="modal" role="dialog" aria-modal="true">

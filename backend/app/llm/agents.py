@@ -1172,7 +1172,7 @@ async def run_qa_agent(
 
 
 # ---------- 测试开题润色（DeepSeek / Gemini 链，与现有 chat 一致） ----------
-_SAMPLE_PROPOSAL_PID = "__sample_proposal__"
+_SAMPLE_PROPOSAL_PID = "gf-sample"
 
 
 async def run_sample_proposal_agent(
@@ -1186,7 +1186,7 @@ async def run_sample_proposal_agent(
     """润色测试开题全文。返回 (text, used_llm)。无 Key / 失败则回退草稿。"""
     if not rt.configured:
         return draft_text, False
-    # 仅受月度预算约束；合成项目 ID 避免挤占真实项目额度统计观感
+    # 仅受月度预算约束；合成 ID gf-sample，避免挤占真实项目额度统计观感
     monthly = await monthly_tokens_used(db)
     if monthly >= rt.monthly_token_budget:
         append_deepseek_log(_SAMPLE_PROPOSAL_PID, "sample_proposal skip · monthly budget")

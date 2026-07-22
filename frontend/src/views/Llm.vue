@@ -204,112 +204,120 @@
 
     <div class="panel mb-16">
       <div class="panel-hd">
-        <h3>按项目用量</h3>
-        <n-button size="small" :loading="usageLoading" @click="loadUsage">刷新</n-button>
-      </div>
-      <div class="panel-bd">
-        <div class="row mb-12" style="gap:10px;flex-wrap:wrap">
-          <n-date-picker
-            v-model:value="usageRange"
-            type="datetimerange"
-            clearable
-            size="small"
-            :shortcuts="dateRangeShortcuts"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            style="width:340px"
-            @update:value="onUsageRange"
-          />
-          <n-input
-            v-model:value="usageQ"
-            clearable
-            size="small"
-            placeholder="项目 ID…"
-            style="width:200px"
-            @update:value="onUsageSearch"
-          />
-        </div>
-        <p class="small muted mb-12">
-          仅统计<strong>项目流水线</strong>。超出<strong>项目</strong>预算时仅跳过该项目的模型调用；超出<strong>月度</strong>预算时跳过全部调用并锁定上方阶段开关。点击项目可筛选调用。
-        </p>
-        <UsageCharts class="mb-16" :daily="usageChart.daily" />
-        <n-data-table
-          v-if="projectUsages.length"
-          :columns="usageCols"
-          :data="projectUsages"
-          :row-key="(r) => r.project_id"
-          :bordered="false"
+        <h3>用量明细</h3>
+        <n-button
           size="small"
-          remote
-          :row-props="usageRowProps"
-          @update:sorter="onUsageSorter"
-        />
-        <div v-else-if="usageLoading" class="skel-stack" style="padding:8px 0">
-          <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
-        </div>
-        <div v-else class="empty-hint">
-          <div class="empty-title">无匹配项目</div>
-          <div class="empty-desc">调整时间范围或项目 ID 后再刷新</div>
-        </div>
-        <div v-if="usageTotal > 0" class="pager-row">
-          <span class="small muted">共 {{ usageTotal }} 个项目</span>
-          <n-pagination
-            v-model:page="usagePage"
-            v-model:page-size="usagePageSize"
-            :item-count="usageTotal"
-            :page-sizes="[10, 20, 50]"
-            show-size-picker
-            size="small"
-            @update:page="loadUsage"
-            @update:page-size="onUsagePageSize"
-          />
-        </div>
+          :loading="usageTab === 'project' ? usageLoading : supportLoading"
+          @click="refreshUsageTab"
+        >刷新</n-button>
       </div>
-    </div>
-
-    <div class="panel mb-16">
-      <div class="panel-hd">
-        <h3>系统支持用量</h3>
-        <n-button size="small" :loading="supportLoading" @click="loadSupportUsage">刷新</n-button>
-      </div>
-      <div class="panel-bd">
-        <div class="row mb-12" style="gap:10px;flex-wrap:wrap">
-          <n-date-picker
-            v-model:value="supportRange"
-            type="datetimerange"
-            clearable
-            size="small"
-            :shortcuts="dateRangeShortcuts"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            style="width:340px"
-            @update:value="onSupportRange"
-          />
-        </div>
-        <p class="small muted mb-12">
-          工厂辅助调用（上传分堆、样例开题等），仍计入月度合计预算。合计
-          <span class="mono">{{ supportUsage.tokens || 0 }}</span>
-          tokens ·
-          <span class="mono">{{ supportUsage.calls || 0 }}</span>
-          次。点击阶段可筛选下方调用明细。
-        </p>
-        <UsageCharts class="mb-16" :daily="supportUsage.daily" />
-        <n-data-table
-          v-if="supportUsage.by_stage?.length"
-          :columns="supportCols"
-          :data="supportUsage.by_stage"
-          :row-key="(r) => r.stage"
-          :bordered="false"
-          size="small"
-          :row-props="supportRowProps"
-        />
-        <div v-else-if="supportLoading" class="skel-stack" style="padding:8px 0">
-          <div v-for="i in 2" :key="i" class="skel skel-row-bar" />
-        </div>
-        <div v-else class="empty-hint">
-          <div class="empty-title">暂无系统支持调用</div>
-          <div class="empty-desc">调整时间范围后再刷新</div>
-        </div>
+      <div class="panel-bd" style="padding-top:4px">
+        <n-tabs v-model:value="usageTab" type="line" size="small" animated>
+          <n-tab-pane name="project" tab="按项目用量">
+            <div class="row mb-12" style="gap:10px;flex-wrap:wrap">
+              <n-date-picker
+                v-model:value="usageRange"
+                type="datetimerange"
+                clearable
+                size="small"
+                :shortcuts="dateRangeShortcuts"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                style="width:340px"
+                @update:value="onUsageRange"
+              />
+              <n-input
+                v-model:value="usageQ"
+                clearable
+                size="small"
+                placeholder="项目 ID…"
+                style="width:200px"
+                @update:value="onUsageSearch"
+              />
+              <n-select
+                v-model:value="usagePresence"
+                size="small"
+                :options="usagePresenceOptions"
+                style="width:120px"
+                @update:value="onUsagePresence"
+              />
+            </div>
+            <p class="small muted mb-12">
+              仅统计<strong>项目流水线</strong>。超出<strong>项目</strong>预算时仅跳过该项目的模型调用；超出<strong>月度</strong>预算时跳过全部调用并锁定上方阶段开关。点击项目可筛选调用。
+            </p>
+            <UsageCharts class="mb-16" :daily="usageChart.daily" />
+            <n-data-table
+              v-if="projectUsages.length"
+              :columns="usageCols"
+              :data="projectUsages"
+              :row-key="(r) => r.project_id"
+              :bordered="false"
+              size="small"
+              remote
+              :row-props="usageRowProps"
+              @update:sorter="onUsageSorter"
+            />
+            <div v-else-if="usageLoading" class="skel-stack" style="padding:8px 0">
+              <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
+            </div>
+            <div v-else class="empty-hint">
+              <div class="empty-title">无匹配项目</div>
+              <div class="empty-desc">调整时间范围或项目 ID 后再刷新</div>
+            </div>
+            <div v-if="usageTotal > 0" class="pager-row">
+              <span class="small muted">共 {{ usageTotal }} 个项目</span>
+              <n-pagination
+                v-model:page="usagePage"
+                v-model:page-size="usagePageSize"
+                :item-count="usageTotal"
+                :page-sizes="[10, 20, 50]"
+                show-size-picker
+                size="small"
+                @update:page="loadUsage"
+                @update:page-size="onUsagePageSize"
+              />
+            </div>
+          </n-tab-pane>
+          <n-tab-pane name="support" tab="系统支持用量">
+            <div class="row mb-12" style="gap:10px;flex-wrap:wrap">
+              <n-date-picker
+                v-model:value="supportRange"
+                type="datetimerange"
+                clearable
+                size="small"
+                :shortcuts="dateRangeShortcuts"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                style="width:340px"
+                @update:value="onSupportRange"
+              />
+            </div>
+            <p class="small muted mb-12">
+              工厂辅助调用（上传分堆、样例开题等），仍计入月度合计预算。合计
+              <span class="mono">{{ supportUsage.tokens || 0 }}</span>
+              tokens ·
+              <span class="mono">{{ supportUsage.calls || 0 }}</span>
+              次。点击阶段可筛选下方调用明细。
+            </p>
+            <UsageCharts class="mb-16" :daily="supportUsage.daily" />
+            <n-data-table
+              v-if="supportUsage.by_stage?.length"
+              :columns="supportCols"
+              :data="supportUsage.by_stage"
+              :row-key="(r) => r.stage"
+              :bordered="false"
+              size="small"
+              :row-props="supportRowProps"
+            />
+            <div v-else-if="supportLoading" class="skel-stack" style="padding:8px 0">
+              <div v-for="i in 2" :key="i" class="skel skel-row-bar" />
+            </div>
+            <div v-else class="empty-hint">
+              <div class="empty-title">暂无系统支持调用</div>
+              <div class="empty-desc">调整时间范围后再刷新</div>
+            </div>
+          </n-tab-pane>
+        </n-tabs>
       </div>
     </div>
 
@@ -347,23 +355,6 @@
             :options="stageOptions"
             style="width:130px"
             @update:value="onCallFilter"
-          />
-          <n-select
-            v-model:value="callFilter.ok"
-            clearable
-            size="small"
-            placeholder="结果"
-            :options="okOptions"
-            style="width:100px"
-            @update:value="onCallFilter"
-          />
-          <n-input
-            v-model:value="callFilter.q"
-            clearable
-            size="small"
-            placeholder="明细关键字…"
-            style="width:180px"
-            @update:value="onCallSearch"
           />
         </div>
         <n-data-table
@@ -475,6 +466,7 @@ const projectUsages = ref([])
 /** 库内全部项目全期 Token，供项目预算汇总（与下方看板分页无关） */
 const projectLifetimeTokens = ref([])
 const usageChart = reactive({ daily: [] })
+const usageTab = ref('project')
 const usageLoading = ref(false)
 const supportLoading = ref(false)
 const supportRange = ref(monthRangeMs())
@@ -486,6 +478,13 @@ const supportUsage = reactive({
 })
 const callsLoading = ref(false)
 const usageQ = ref('')
+/** all | alive | deleted · 默认隐藏已删 */
+const usagePresence = ref('alive')
+const usagePresenceOptions = [
+  { label: '在库', value: 'alive' },
+  { label: '已删除', value: 'deleted' },
+  { label: '全部', value: 'all' },
+]
 const usageRange = ref(monthRangeMs())
 const usagePage = ref(1)
 const usagePageSize = ref(10)
@@ -499,8 +498,6 @@ const callsTotal = ref(0)
 const callFilter = reactive({
   project_id: null,
   stage: null,
-  ok: null,
-  q: '',
 })
 const balanceLoading = ref(false)
 const balance = reactive({
@@ -523,19 +520,35 @@ const gmModelOptions = [
   { label: 'gemini-2.0-flash · 兼容旧名', value: 'gemini-2.0-flash' },
 ]
 const stageOptions = [
-  { label: '匹配推荐', value: 'match_recommend' },
-  { label: '摘要润色', value: 'parse_spec' },
-  { label: '业务配置填充', value: 'island_fill' },
-  { label: 'E-R 中文补全', value: 'er_labels' },
-  { label: '模块图命名', value: 'module_labels' },
-  { label: '测试用例文案', value: 'testcase_labels' },
-  { label: '编译修复', value: 'auto_fix' },
-  { label: '质量摘要', value: 'qa_report' },
-  { label: '配置写出', value: 'emit' },
-  { label: '上传分堆', value: 'upload_cluster' },
-  { label: '样例开题', value: 'sample_proposal' },
+  {
+    type: 'group',
+    label: '系统支持',
+    key: 'support',
+    children: [
+      { label: '上传分堆', value: 'upload_cluster' },
+      { label: '样例开题', value: 'sample_proposal' },
+    ],
+  },
+  {
+    type: 'group',
+    label: '项目流水线',
+    key: 'pipeline',
+    children: [
+      { label: '匹配推荐', value: 'match_recommend' },
+      { label: '摘要润色', value: 'parse_spec' },
+      { label: '业务配置填充', value: 'island_fill' },
+      { label: 'E-R 中文补全', value: 'er_labels' },
+      { label: '模块图命名', value: 'module_labels' },
+      { label: '测试用例文案', value: 'testcase_labels' },
+      { label: '编译修复', value: 'auto_fix' },
+      { label: '质量摘要', value: 'qa_report' },
+      { label: '配置写出', value: 'emit' },
+    ],
+  },
 ]
-const stageLabelMap = Object.fromEntries(stageOptions.map((o) => [o.value, o.label]))
+const stageLabelMap = Object.fromEntries(
+  stageOptions.flatMap((g) => (g.children || []).map((o) => [o.value, o.label])),
+)
 function stageLabel(stage) {
   if (!stage) return '—'
   return stageLabelMap[stage] || stage
@@ -618,10 +631,6 @@ function callDetailLabel(detail) {
     .join(' · ')
 }
 
-const okOptions = [
-  { label: '成功', value: true },
-  { label: '失败', value: false },
-]
 const monthBudget = computed(() => form.monthly_token_budget || ds.monthly_token_budget || 1)
 const monthUsed = computed(() => ds.monthly_tokens_used || 0)
 const monthPct = computed(() =>
@@ -994,6 +1003,7 @@ async function loadUsageChart(rangeParams) {
   try {
     const chart = await api.llmUsageChart({
       q: usageQ.value || undefined,
+      presence: usagePresence.value || undefined,
       ...rangeParams,
     })
     usageChart.daily = chart?.daily || []
@@ -1027,6 +1037,7 @@ async function loadUsage() {
     const rangeParams = rangeToParams(usageRange.value)
     const params = {
       q: usageQ.value || undefined,
+      presence: usagePresence.value || undefined,
       page: usagePage.value,
       page_size: usagePageSize.value,
       ...rangeParams,
@@ -1045,6 +1056,11 @@ async function loadUsage() {
   } finally {
     usageLoading.value = false
   }
+}
+
+function refreshUsageTab() {
+  if (usageTab.value === 'support') loadSupportUsage()
+  else loadUsage()
 }
 
 function onUsageSorter(sorter) {
@@ -1069,8 +1085,6 @@ async function loadCalls() {
     }
     if (callFilter.project_id) params.project_id = callFilter.project_id
     if (callFilter.stage) params.stage = callFilter.stage
-    if (callFilter.ok !== null && callFilter.ok !== undefined) params.ok = callFilter.ok
-    if (callFilter.q) params.q = callFilter.q
     const res = await api.llmCalls(params)
     if (Array.isArray(res)) {
       calls.value = res
@@ -1089,12 +1103,12 @@ const onUsageSearch = debounce(() => {
   loadUsage()
 }, 300)
 
-const onCallSearch = debounce(() => {
-  callsPage.value = 1
-  loadCalls()
-}, 300)
-
 function onUsageRange() {
+  usagePage.value = 1
+  loadUsage()
+}
+
+function onUsagePresence() {
   usagePage.value = 1
   loadUsage()
 }
