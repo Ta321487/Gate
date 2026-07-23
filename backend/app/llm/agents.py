@@ -298,7 +298,75 @@ async def run_spec_agent(
 
 
 # ---------- Agent B：填岛 ----------
-def _sanitize_island_patch(data: dict[str, Any], base_labels: dict, base_seeds: dict) -> dict[str, Any]:
+_ROLE_LABEL_SLOTS = ("user", "admin", "subadmin")
+
+
+def _sanitize_island_roles(data: dict[str, Any], base_roles: dict) -> dict[str, Any] | None:
+    """只允许改已有角色/岗位的中文 label（开题原样）；禁止增删 id、改 kind/packs。"""
+    if not isinstance(base_roles, dict) or not base_roles:
+        return None
+    src = data.get("roles") if isinstance(data.get("roles"), dict) else {}
+    if not src:
+        return None
+    out: dict[str, Any] = {}
+    for rid in _ROLE_LABEL_SLOTS:
+        base_slot = base_roles.get(rid)
+        if not isinstance(base_slot, dict):
+            continue
+        piece = src.get(rid) if isinstance(src.get(rid), dict) else None
+        lab = None
+        if piece and piece.get("label"):
+            lab = str(piece["label"]).strip()[:24]
+        elif isinstance(src.get(rid), str):
+            lab = str(src[rid]).strip()[:24]
+        if not lab:
+            continue
+        out[rid] = {
+            **base_slot,
+            "id": base_slot.get("id") or rid,
+            "label": lab,
+        }
+
+    base_posts = base_roles.get("staff_posts")
+    src_posts = src.get("staff_posts")
+    if isinstance(base_posts, list) and base_posts and isinstance(src_posts, list):
+        by_id = {
+            str(p.get("id")): str(p.get("label") or "").strip()[:24]
+            for p in src_posts
+            if isinstance(p, dict) and p.get("id") and p.get("label")
+        }
+        if by_id:
+            merged_posts = []
+            changed = False
+            for p in base_posts:
+                if not isinstance(p, dict) or not p.get("id"):
+                    continue
+                row = dict(p)
+                pid = str(p["id"])
+                if pid in by_id and by_id[pid] and by_id[pid] != str(p.get("label") or ""):
+                    row["label"] = by_id[pid]
+                    changed = True
+                merged_posts.append(row)
+            if changed:
+                out["staff_posts"] = merged_posts
+                # 首个 clerk 与 subadmin 文案对齐（与 attach_staff_posts 一致）
+                clerks = [p for p in merged_posts if p.get("kind") == "clerk"]
+                if clerks and isinstance(base_roles.get("subadmin"), dict):
+                    out["subadmin"] = {
+                        **(out.get("subadmin") or base_roles["subadmin"]),
+                        "id": "subadmin",
+                        "label": clerks[0].get("label") or base_roles["subadmin"].get("label"),
+                        "staffPostId": clerks[0].get("id"),
+                    }
+    return out or None
+
+
+def _sanitize_island_patch(
+    data: dict[str, Any],
+    base_labels: dict,
+    base_seeds: dict,
+    base_roles: dict | None = None,
+) -> dict[str, Any]:
     labels: dict[str, Any] = {}
     src_l = data.get("labels") if isinstance(data.get("labels"), dict) else data
     for k in _LABEL_KEYS:
@@ -344,6 +412,9 @@ def _sanitize_island_patch(data: dict[str, Any], base_labels: dict, base_seeds: 
     patch: dict[str, Any] = {"mode": "llm", "labels": labels, "seeds": seeds}
     if entities_out:
         patch["entities"] = entities_out
+    roles_out = _sanitize_island_roles(data, base_roles or {})
+    if roles_out:
+        patch["roles"] = roles_out
     if data.get("title"):
         patch["title"] = str(data["title"])[:120]
     return patch
@@ -382,6 +453,7 @@ async def run_island_agent(
 
     labels = dict(base.get("labels") or {})
     seeds = dict(base.get("seeds") or {})
+    roles = dict(base.get("roles") or {})
     domain = spec.get("domain") or ""
     title = spec.get("title") or labels.get("appName") or "毕设系统"
     messages = [
@@ -389,8 +461,13 @@ async def run_island_agent(
             "role": "system",
             "content": (
                 "你是毕设港 Island Agent。只输出 JSON："
-                '{"title","labels":{...},"seeds":{noticeTitle,noticeBody},"entities":{ticket?:{label,labelPlural,verbs,states},reservation?:{label,labelPlural,states}}}。'
+                '{"title","labels":{...},"seeds":{noticeTitle,noticeBody},'
+                '"entities":{ticket?:{label,labelPlural,verbs,states},reservation?:{label,labelPlural,states}},'
+                '"roles":{user?:{label},admin?:{label},subadmin?:{label},staff_posts?:[{id,label}]}}。'
                 "labels 可含: " + ",".join(_LABEL_KEYS) + "。"
+                "roles：开题/材料里写了什么岗位称呼就原样填进对应 label，禁止改写、近义替换或「润色」"
+                "（写随访员就填随访员，勿改成上报人/业务员）；材料未写角色则不要输出 roles，保留 current_roles。"
+                "禁止增删角色 id、禁止改 kind/packs。"
                 "禁止改 menus/capabilities/路由/表结构；禁止输出代码。"
                 "文案必须贴合领域，禁止出现其它领域错词（如宿舍系统勿写馆内/借阅）。"
                 "entities.reservation/ticket 的 label 须为短动作名词（如挂号/预约/借阅），禁止带「记录」；「XX记录」仅用于管理端菜单。"
@@ -404,6 +481,22 @@ async def run_island_agent(
                     "title": title,
                     "current_labels": labels,
                     "current_seeds": seeds,
+                    "current_roles": {
+                        "user": (roles.get("user") or {}).get("label")
+                        if isinstance(roles.get("user"), dict)
+                        else None,
+                        "admin": (roles.get("admin") or {}).get("label")
+                        if isinstance(roles.get("admin"), dict)
+                        else None,
+                        "subadmin": (roles.get("subadmin") or {}).get("label")
+                        if isinstance(roles.get("subadmin"), dict)
+                        else None,
+                        "staff_posts": [
+                            {"id": p.get("id"), "label": p.get("label"), "kind": p.get("kind")}
+                            for p in (roles.get("staff_posts") or [])
+                            if isinstance(p, dict) and p.get("id")
+                        ],
+                    },
                     "proposal": _proposal_text(spec)[:2500],
                     "entities_keys": list((base.get("entities") or {}).keys()),
                 },
@@ -421,7 +514,7 @@ async def run_island_agent(
     mode = "llm_fallback_deterministic"
     if res.ok and res.data:
         try:
-            llm_patch = _sanitize_island_patch(res.data, labels, seeds)
+            llm_patch = _sanitize_island_patch(res.data, labels, seeds, roles)
             merged_try = merge_schema(base, llm_patch)
             for k in ("accept", "missing_capabilities", "out_of_mvp_signals", "capabilities"):
                 if k in base:
@@ -896,11 +989,14 @@ async def run_fix_agent(
     if not (ok_be and ok_fe):
         return False, "骨架不完整"
 
+    # mvn compile 可长达数分钟，必须进线程，否则工厂 API 整体假死
+    # 未开自动修复时仍预编译暖 target（失败不挡交付，与原先跳过同口径）
+    compile_ok, log = await asyncio.to_thread(_mvn_compile, workspace)
     if not (rt.stage_on("auto_fix") and rt.configured):
+        if compile_ok:
+            return True, "结构校验通过 · 已预编译" if "skip" not in log else "结构校验通过 · " + log
         return True, "结构校验通过 · 未开自动修复"
 
-    # mvn compile 可长达数分钟，必须进线程，否则工厂 API 整体假死
-    compile_ok, log = await asyncio.to_thread(_mvn_compile, workspace)
     if compile_ok:
         await record_call(
             db,

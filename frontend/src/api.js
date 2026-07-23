@@ -50,6 +50,11 @@ export const api = {
       timeout: 300000,
     })
   },
+  /** 未确认分堆列表（刷新恢复） */
+  uploadPlans: () => http.get('/projects/upload/plans'),
+  /** 丢弃未确认分堆 */
+  uploadPlanDelete: (planId) =>
+    http.delete(`/projects/upload/plans/${encodeURIComponent(planId)}`),
   /** 确认分堆并创建项目 */
   uploadConfirm: (body) =>
     http.post('/projects/upload/confirm', body, { timeout: 600000 }),

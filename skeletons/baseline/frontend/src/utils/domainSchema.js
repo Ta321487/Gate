@@ -114,6 +114,33 @@ export function ticketCopy() {
 }
 
 /** 到期日文案：缺省用中性「到期日」，勿 fallback「应还」 */
+/** CRM 跟进 / EVENT 上报共用列：优先读工厂 schema，再按 flavor 兜底 */
+export function followChannelLabel(fallback = '联系渠道') {
+  const fromSchema = ticketCopy().contactChannelLabel
+  if (fromSchema) return fromSchema
+  return getFlavor() === 'event' ? '上报渠道' : fallback
+}
+
+export function nextFollowLabel(fallback = '下次跟进') {
+  const fromSchema = ticketCopy().nextFollowLabel
+  if (fromSchema) return fromSchema
+  return getFlavor() === 'event' ? '下次复核' : fallback
+}
+
+export function followChannelOptions() {
+  const opts = ticketCopy().contactChannelOptions
+  if (Array.isArray(opts) && opts.length) return opts.map(String)
+  return getFlavor() === 'event'
+    ? ['电话', '现场', '系统填报', '其他']
+    : ['电话', '微信', '邮件', '到访', '其他']
+}
+
+export function followChannelPlaceholder() {
+  const fromSchema = ticketCopy().contactChannelPlaceholder
+  if (fromSchema) return fromSchema
+  return getFlavor() === 'event' ? '电话/现场/系统填报等' : '电话/微信/到访等'
+}
+
 export function ticketDueLabel(fallback = '到期日') {
   const t = ticketCopy()
   return t.dueLabel || t.dueAtLabel || fallback

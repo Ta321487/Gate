@@ -136,10 +136,6 @@
                   <div><dt>主流程</dt><dd>{{ (p.spec?.flows || []).join('；') || '—' }}</dd></div>
                   <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
                   <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
-                  <div><dt>配色</dt><dd>{{ p.spec?.theme_label || p.theme }}</dd></div>
-                  <div><dt>质感</dt><dd>{{ p.spec?.chrome_label || p.spec?.chrome || '—' }}</dd></div>
-                  <div><dt>门户布局</dt><dd>{{ p.spec?.layout_label || p.spec?.layout || '—' }}</dd></div>
-                  <div><dt>字体</dt><dd>{{ p.spec?.typeface_label || p.spec?.typeface || '—' }}</dd></div>
                   <div><dt>登录入口</dt><dd>{{ authEntryDisplay }}</dd></div>
                   <div v-if="p.spec?.delivery_slug || p.db_name || p.spec?.maven_artifact"><dt>交付标识</dt><dd>
                     <span v-if="p.spec?.delivery_slug" class="mono">{{ p.spec.delivery_slug }}</span>
@@ -1918,7 +1914,7 @@ async function rtAction(side, action) {
     if (!viewActive(projectId, epoch)) return
     await load({ id: projectId })
     if (!viewActive(projectId, epoch)) return
-    const deadline = Date.now() + (action === 'stop' ? 8000 : 20000)
+    const deadline = Date.now() + (action === 'stop' ? 8000 : 90000)
     while (Date.now() < deadline && viewActive(projectId, epoch) && tab.value === 'runtime') {
       await refreshRuntime(projectId)
       if (_runtimeSettled(side, action)) break

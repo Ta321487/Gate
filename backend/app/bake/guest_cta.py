@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-# 无档案目录 / 门户即「我的单据」的域：不开游客逛
-GUEST_BROWSE_EXCLUDE = frozenset({"DOM-DORM", "DOM-PROPERTY", "DOM-IT"})
+# 无公开目录 / 偏内部填报的域：不开游客逛
+GUEST_BROWSE_EXCLUDE = frozenset({"DOM-DORM", "DOM-PROPERTY", "DOM-IT", "DOM-EVENT"})
 
 GUEST_TEASER_LIMIT = 3
 
@@ -35,6 +35,12 @@ CTA_BY_DOMAIN: dict[str, list[str]] = {
         "登录解锁完整客户列表",
         "登录查看更多客户详情",
         "登录后提交跟进记录",
+    ],
+    "DOM-EVENT": [
+        "登录后查看全部事件档案并上报",
+        "登录解锁完整事件列表",
+        "登录查看更多事件详情",
+        "登录后提交上报记录",
     ],
     "DOM-ACTIVITY": [
         "登录后查看全部活动并报名",
@@ -132,7 +138,7 @@ CTA_DEFAULT = [
 
 
 def portal_guest_browse_enabled(domain: str, dom_meta: dict[str, Any] | None = None) -> bool:
-    """目录型域默认开；宿舍/物业/IT 不开。显式 portal_guest_browse 优先。"""
+    """目录型域默认开；宿舍/物业/IT/事件上报等内部填报域不开。显式 portal_guest_browse 优先。"""
     meta = dom_meta or {}
     if "portal_guest_browse" in meta:
         return bool(meta.get("portal_guest_browse"))

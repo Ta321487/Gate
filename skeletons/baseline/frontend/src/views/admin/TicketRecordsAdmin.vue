@@ -50,6 +50,12 @@
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ remarkText(row.remark) }}</template>
       </el-table-column>
+      <el-table-column v-if="showFollowCols" :label="channelLabel" width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.contactChannel || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="showFollowCols" :label="nextAtLabel" width="170">
+        <template #default="{ row }">{{ row.nextFollowAt || '—' }}</template>
+      </el-table-column>
       <el-table-column label="附件" width="90">
         <template #default="{ row }">
           <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -119,7 +125,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { archiveCopy, hasTrait, getSchema, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, followChannelLabel, hasTrait, getSchema, nextFollowLabel, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -138,6 +144,9 @@ const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
 const showPickup = computed(() => hasTrait('pickupFlow'))
+const showFollowCols = computed(() => hasTrait('crm'))
+const channelLabel = computed(() => followChannelLabel())
+const nextAtLabel = computed(() => nextFollowLabel())
 const showFine = computed(
   () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
 )
@@ -297,6 +306,7 @@ async function exportCsv() {
     if (allowQty.value) headers.push('实发数量')
   }
   headers.push('开始', '结束', '说明', '附件')
+  if (showFollowCols.value) headers.push(channelLabel.value, nextAtLabel.value)
   headers.push('申请时间', '受理时间')
   if (allowCheckin.value) headers.push('签到时间')
   headers.push('完成时间')
@@ -322,6 +332,9 @@ async function exportCsv() {
       if (allowQty.value) line.push(row.actualQty ?? '')
     }
     line.push(row.startAt, row.endAt, remarkText(row.remark), row.attachUrl || '')
+    if (showFollowCols.value) {
+      line.push(row.contactChannel || '', row.nextFollowAt || '')
+    }
     line.push(row.applyAt, row.approveAt)
     if (allowCheckin.value) line.push(row.checkedInAt || '')
     line.push(row.returnAt)

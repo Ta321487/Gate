@@ -375,10 +375,20 @@ def merge_schema(base: dict[str, Any], patch: dict[str, Any] | None) -> dict[str
     for key in ("title",):
         if patch.get(key):
             out[key] = patch[key]
-    for key in ("labels", "seeds", "roles"):
+    for key in ("labels", "seeds"):
         if isinstance(patch.get(key), dict):
             out.setdefault(key, {})
             out[key] = {**out.get(key, {}), **patch[key]}
+    # roles：user/admin/subadmin 按槽深合并（只改 label 时保留 id）；staff_posts 整表替换
+    if isinstance(patch.get("roles"), dict):
+        out.setdefault("roles", {})
+        for rk, rv in patch["roles"].items():
+            if rk == "staff_posts" and isinstance(rv, list):
+                out["roles"]["staff_posts"] = rv
+            elif isinstance(rv, dict) and isinstance(out["roles"].get(rk), dict):
+                out["roles"][rk] = {**out["roles"][rk], **rv}
+            else:
+                out["roles"][rk] = rv
     if isinstance(patch.get("profileFields"), list):
         out["profileFields"] = patch["profileFields"]
     if isinstance(patch.get("menus"), dict):

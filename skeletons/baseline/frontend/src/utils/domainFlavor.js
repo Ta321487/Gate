@@ -73,6 +73,23 @@ const FLAVORS = {
       lead: '正在同步资料与跟进记录。',
     },
   },
+  'event': {
+    motif: 'clipboard',
+    notFound: {
+      title: '事件未找到',
+      lead: '页面无效，或事件/上报单不存在。',
+      hint: '回事件列表重新选择。',
+    },
+    serverError: {
+      title: '上报服务异常',
+      lead: '事件系统暂时连不上。',
+      hint: '请稍后重试提交或查询上报。',
+    },
+    loading: {
+      title: '事件加载中…',
+      lead: '正在同步档案与上报记录。',
+    },
+  },
   'shop': {
     motif: 'cart',
     notFound: {
@@ -387,6 +404,7 @@ const FOOTER_TAGS = {
   equipment: '设备借还窗口',
   asset: '物资台账入口',
   crm: '客户跟进台',
+  event: '事件上报台',
   shop: '商城服务台',
   dorm: '宿舍事务窗口',
   property: '物业报修台',

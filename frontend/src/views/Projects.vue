@@ -432,9 +432,10 @@ function pendingPlanCount() {
 }
 
 /** 全剔除 / 0 项目：确认跳过，结束任务，避免只能取消却仍占 planned 队列 */
-function dismissEmptyPlan() {
+async function dismissEmptyPlan() {
   if (planData.value?.clusters?.length) return
   const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+  const planId = planData.value?.plan_id || job?.plan?.plan_id
   if (job) {
     job.status = 'done'
     job.pct = 100
@@ -444,6 +445,7 @@ function dismissEmptyPlan() {
     const n = (planData.value?.discard || []).length
     message.info(n ? `已跳过，剔除 ${n} 份无关材料` : '已跳过（无项目可创建）')
   }
+  await discardPlanOnServer(planId)
   planCloseFromConfirm = true
   planOpen.value = false
   planData.value = null
@@ -748,6 +750,61 @@ async function load() {
   } finally {
     booted.value = true
   }
+  await restorePendingPlans()
+}
+
+/** 从磁盘方案恢复待确认队列（刷新不丢；已待确认匹配 / 空堆由后端滤掉） */
+async function restorePendingPlans() {
+  try {
+    const res = await api.uploadPlans()
+    const items = res?.items || []
+    if (!items.length) return
+    const have = new Set(
+      uploadJobs.value.map((j) => j.plan?.plan_id).filter(Boolean),
+    )
+    let added = 0
+    for (const plan of items) {
+      const pid = plan?.plan_id
+      if (!pid || have.has(pid)) continue
+      // 无簇（干扰项）不进队列
+      if (!(plan.clusters || []).length) continue
+      have.add(pid)
+      const n = plan.clusters?.length || 0
+      uploadJobs.value = [
+        ...uploadJobs.value,
+        {
+          id: uploadSeq++,
+          name: `分堆就绪 · ${n} 个项目`,
+          fileCount: plan.files?.length || 0,
+          files: [],
+          status: 'planned',
+          pct: 100,
+          error: '',
+          projectId: '',
+          plan,
+          tick: null,
+          restored: true,
+          // 恢复项默认搁置，避免刷新后自动弹窗抢焦点；点「查看分堆」再开
+          deferred: true,
+        },
+      ]
+      added += 1
+    }
+    if (added) {
+      message.info(`已恢复 ${added} 个待确认分堆（已搁置，可点查看分堆）`)
+    }
+  } catch {
+    // 恢复失败不挡列表
+  }
+}
+
+async function discardPlanOnServer(planId) {
+  if (!planId) return
+  try {
+    await api.uploadPlanDelete(planId)
+  } catch {
+    // 已不存在则忽略
+  }
 }
 
 async function refresh() {
@@ -787,7 +844,11 @@ function jobBarColor(job) {
 function dismissJob(id) {
   const job = uploadJobs.value.find((j) => j.id === id)
   if (job?.tick) clearInterval(job.tick)
+  const planId = job?.plan?.plan_id
   uploadJobs.value = uploadJobs.value.filter((j) => j.id !== id)
+  if (job?.status === 'planned' && planId) {
+    discardPlanOnServer(planId)
+  }
 }
 
 async function enqueueUpload(source) {

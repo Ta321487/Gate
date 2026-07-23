@@ -43,6 +43,7 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-EQUIP": [_clerk("keeper", "器材管理员", "ticket_ops")],
     "DOM-ASSET": [_clerk("storekeeper", "库管员", "ticket_ops")],
     "DOM-CRM": [_clerk("account_mgr", "客户经理", "ticket_ops")],
+    "DOM-EVENT": [_clerk("duty_clerk", "值班员", "ticket_ops")],
     "DOM-DORM": [
         _clerk("dorm_mgr", "楼管", "ticket_ops"),
         _worker("repairer", "维修员", "ticket_work"),

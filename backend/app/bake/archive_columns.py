@@ -32,6 +32,10 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("contact_name", "VARCHAR(100)"),
         ("contact_note", "VARCHAR(255)"),
     ),
+    "DOM-EVENT": (
+        ("reporter_name", "VARCHAR(100)"),
+        ("location_note", "VARCHAR(255)"),
+    ),
     "DOM-MEDIA": (
         ("cast_info", "VARCHAR(100)"),
         ("play_url", "VARCHAR(255)"),

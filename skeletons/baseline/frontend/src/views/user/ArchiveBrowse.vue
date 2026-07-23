@@ -226,16 +226,12 @@
             style="width:100%"
           />
         </el-form-item>
-        <el-form-item v-if="isCrm" label="联系渠道">
-          <el-select v-model="applyChannel" style="width:100%" clearable placeholder="电话/微信/到访等">
-            <el-option label="电话" value="电话" />
-            <el-option label="微信" value="微信" />
-            <el-option label="邮件" value="邮件" />
-            <el-option label="到访" value="到访" />
-            <el-option label="其他" value="其他" />
+        <el-form-item v-if="isCrm" :label="channelLabel">
+          <el-select v-model="applyChannel" style="width:100%" clearable :placeholder="channelPlaceholder">
+            <el-option v-for="opt in channelOptions" :key="opt" :label="opt" :value="opt" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="isCrm" label="下次跟进">
+        <el-form-item v-if="isCrm" :label="nextAtLabel">
           <el-date-picker
             v-model="applyNextFollow"
             type="datetime"
@@ -314,12 +310,16 @@ import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiC
 import {
   archiveCopy,
   formatArchiveScalar,
+  followChannelLabel,
+  followChannelOptions,
+  followChannelPlaceholder,
   hasTrait,
   getSchema,
   isBrowseHistoryEnabled,
   isGalleryEnabled,
   isSearchAssistEnabled,
   menuLabel,
+  nextFollowLabel,
   searchHotKeywords,
   ticketCopy,
   ticketDueLabel,
@@ -337,6 +337,10 @@ const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const archive = archiveCopy()
 const ticket = ticketCopy()
 const isCrm = computed(() => hasTrait('crm'))
+const channelLabel = computed(() => followChannelLabel())
+const nextAtLabel = computed(() => nextFollowLabel())
+const channelPlaceholder = computed(() => followChannelPlaceholder())
+const channelOptions = computed(() => followChannelOptions())
 const caps = computed(() => getSchema().capabilities || [])
 const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '业务对象')

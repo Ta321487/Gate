@@ -82,7 +82,11 @@ def catalog_brief_for_match() -> str:
     for k, v in DOMAINS.items():
         kws = "、".join((v.get("keywords") or [])[:6])
         flows = "；".join((v.get("flows") or [])[:2])
-        dom_lines.append(f"- {k}（{v.get('label')}）关键词:{kws} 流程:{flows}")
+        hint = (v.get("match_hint") or "").strip()
+        line = f"- {k}（{v.get('label')}）关键词:{kws} 流程:{flows}"
+        if hint:
+            line += f" 适用:{hint}"
+        dom_lines.append(line)
     return (
         "骨架 ARCHETYPES:\n"
         + "\n".join(arch_lines)
@@ -301,8 +305,13 @@ def score_catalog(
     catalog: dict,
     *,
     fallback: str | None = None,
+    title: str | None = None,
 ) -> tuple[str, float, list[str]]:
-    """关键词打分；全员 0 分时回落 fallback（域目录务必传 DOM-GENERIC，禁止误落第一项 LIBRARY）。"""
+    """关键词打分；全员 0 分时回落 fallback（域目录务必传 DOM-GENERIC，禁止误落第一项 LIBRARY）。
+
+    同分时：题名命中更多关键词的域优先（不抬分、不做 ×N），避免正文噪声（如顺口「应急物资」）
+    与题名主线（如「公共卫生事件」）打平后误落字典序。
+    """
     scored = _catalog_scores(text, catalog)
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     if not scored:
@@ -310,7 +319,14 @@ def score_catalog(
             return fallback, 0.35, []
         best_key = next(iter(catalog))
         return best_key, 0.42, []
-    scored.sort(key=lambda t: (-t[1], tie_rank.get(t[0], 99)))
+    title_s = (title or "").strip()
+
+    def _title_hits(hits: list[str]) -> int:
+        if not title_s:
+            return 0
+        return sum(1 for h in hits if h and h in title_s)
+
+    scored.sort(key=lambda t: (-t[1], -_title_hits(t[2]), tie_rank.get(t[0], 99)))
     best_key, best_score, hits = scored[0]
     conf = min(0.95, 0.45 + best_score * 0.12)
     return best_key, conf, hits
@@ -359,6 +375,7 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-EQUIP": "ARCH-FLOW",
     "DOM-ASSET": "ARCH-FLOW",
     "DOM-CRM": "ARCH-FLOW",
+    "DOM-EVENT": "ARCH-FLOW",
     "DOM-ACTIVITY": "ARCH-FLOW",
     "DOM-LOST": "ARCH-FLOW",
     "DOM-COURSE": "ARCH-FLOW",
@@ -538,7 +555,9 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     arches = score_all_archetypes(scored)
     kw_primary = arches[0]
     _, arch_conf, _ = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
-    dom_kw, dom_conf, dom_hits = score_catalog(scored, DOMAINS, fallback="DOM-GENERIC")
+    dom_kw, dom_conf, dom_hits = score_catalog(
+        scored, DOMAINS, fallback="DOM-GENERIC", title=title
+    )
     arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
     confidence = _confidence_after_reconcile(
         arch_conf,

@@ -176,6 +176,9 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("camunda", "可配置工作流/BPMN"),
     ("erp系统", "ERP/多仓进销存"),
     ("多仓", "ERP/多仓进销存"),
+    ("进销存", "ERP/多仓进销存"),
+    ("多仓批次", "ERP/多仓进销存"),
+    # 裸「批次管理」歧义大（食安/物资台账也写）；须与 ERP 同伴共现才算过重
     ("批次管理", "ERP/多仓进销存"),
     # 各域常见吹大
     ("智能排课", "智能排课"),
@@ -192,17 +195,38 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("RFID", "RFID全链路"),
 ]
 
+# 歧义词：命中后还须同段出现任一同伴，才记入过重（仍走 keyword_mentioned，不另开扫描）
+_OVERREACH_NEED_COMPANION: dict[str, tuple[str, ...]] = {
+    "批次管理": ("多仓", "进销存", "erp系统", "ERP", "WMS", "多组织库存", "采购入库"),
+}
+
 
 def implemented_capability_ids() -> set[str]:
     return {k for k, v in CAPABILITIES.items() if v.get("status") == "implemented"}
 
 
-def _scan_signals(raw: str, signals: list[tuple[str, str]], *, window: int = 48) -> list[str]:
+def _scan_signals(
+    raw: str,
+    signals: list[tuple[str, str]],
+    *,
+    window: int = 48,
+    ignore_contrast: bool = False,
+) -> list[str]:
     hits: list[str] = []
     if not raw:
         return hits
     for kw, label in signals:
-        if keyword_mentioned(raw, kw, window=window) and label not in hits:
+        if not keyword_mentioned(
+            raw, kw, window=window, ignore_contrast=ignore_contrast
+        ):
+            continue
+        need = _OVERREACH_NEED_COMPANION.get(kw)
+        if need and not any(
+            keyword_mentioned(raw, c, window=window, ignore_contrast=ignore_contrast)
+            for c in need
+        ):
+            continue
+        if label not in hits:
             hits.append(label)
     return hits
 
@@ -211,7 +235,8 @@ def scan_out_of_scope(text: str) -> list[str]:
     """扫描超范围卖点；「不做/不纳入」等否定语境不计。
 
     - 技术 L3：扫全文（去掉参考文献等噪声后）
-    - 业务过重：优先扫功能/拟实现焦点段，避免现状综述里的 HIS 对比误伤
+    - 业务过重：优先扫功能/拟实现焦点段，避免现状综述里的 HIS 对比误伤；
+      对比/展望/「先实现…再扩展」语境走 keyword_mentioned(ignore_contrast=True)
     """
     from app.services.proposal import strip_non_dev_sections
 
@@ -228,7 +253,7 @@ def scan_out_of_scope(text: str) -> list[str]:
             focus = focused
     except Exception:  # noqa: BLE001
         pass
-    for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS):
+    for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS, ignore_contrast=True):
         if label not in hits:
             hits.append(label)
     return hits
