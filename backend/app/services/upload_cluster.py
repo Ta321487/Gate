@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -501,6 +502,113 @@ def load_plan_bundle(plan_id: str) -> tuple[Path, dict[str, Any], list[tuple[Pat
             raise FileNotFoundError(f"材料缺失：{rel}")
         files.append((path, str(row.get("name") or rel), int(row.get("size") or path.stat().st_size)))
     return root, data, files
+
+
+def mark_plan_status(plan_id: str, status: str) -> bool:
+    """写 manifest.status（confirming / confirmed / dismissed）；不存在则 False。"""
+    settings = get_settings()
+    man = settings.uploads_dir / "plans" / (plan_id or "").strip() / "manifest.json"
+    if not man.is_file():
+        return False
+    try:
+        data = json.loads(man.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return False
+    data["status"] = status
+    man.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return True
+
+
+def _topic_keys_from_plan(plan: dict[str, Any]) -> list[str]:
+    keys: list[str] = []
+    for cl in plan.get("clusters") or []:
+        label = str(cl.get("label") or "").strip()
+        if not label and isinstance(cl.get("files"), list) and cl["files"]:
+            f0 = cl["files"][0] if isinstance(cl["files"][0], dict) else {}
+            label = str(f0.get("title") or f0.get("name") or "").strip()
+        key = normalize_title_key(label)
+        if len(key) >= 4:
+            keys.append(key)
+    return keys
+
+
+def plan_covered_by_titles(plan: dict[str, Any], title_keys: set[str]) -> bool:
+    """簇题名大多已出现在已有项目标题中（如待确认匹配）→ 不应再进恢复队列。"""
+    if not title_keys:
+        return False
+    keys = _topic_keys_from_plan(plan)
+    if not keys:
+        return False
+    hit = 0
+    for ck in keys:
+        if any(ck in tk or tk in ck for tk in title_keys):
+            hit += 1
+    return hit > 0 and hit >= (len(keys) + 1) // 2
+
+
+def list_pending_plans(
+    *,
+    limit: int = 40,
+    exclude_title_keys: set[str] | None = None,
+    drop_covered: bool = False,
+    drop_empty: bool = False,
+) -> list[dict[str, Any]]:
+    """磁盘上尚未确认/丢弃的分堆方案（刷新后前端可恢复队列）。
+
+    exclude_title_keys: 已有项目题名规范化集合；命中则跳过（可选顺带删盘）。
+    drop_empty: 0 簇方案不进列表（可选顺带删盘）。
+    """
+    settings = get_settings()
+    root = settings.uploads_dir / "plans"
+    if not root.is_dir():
+        return []
+    excl = exclude_title_keys or set()
+    rows: list[tuple[float, dict[str, Any]]] = []
+    for d in root.iterdir():
+        if not d.is_dir():
+            continue
+        man = d / "manifest.json"
+        if not man.is_file():
+            continue
+        try:
+            data = json.loads(man.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        # confirming：确认进行中，跳过且不删（避免 LLM 建项期间被 drop_covered 清掉）
+        if data.get("status") in ("confirmed", "dismissed", "confirming"):
+            continue
+        plan = data.get("plan")
+        if not isinstance(plan, dict) or not plan.get("plan_id"):
+            continue
+        clusters = plan.get("clusters") or []
+        if drop_empty and not clusters:
+            delete_plan_bundle(str(plan.get("plan_id") or d.name))
+            continue
+        if excl and plan_covered_by_titles(plan, excl):
+            if drop_covered:
+                delete_plan_bundle(str(plan.get("plan_id") or d.name))
+            continue
+        try:
+            mtime = man.stat().st_mtime
+        except OSError:
+            mtime = 0.0
+        rows.append((mtime, plan))
+    rows.sort(key=lambda x: x[0], reverse=True)
+    lim = max(1, min(int(limit or 40), 100))
+    return [p for _, p in rows[:lim]]
+
+
+def delete_plan_bundle(plan_id: str) -> bool:
+    """删除待确认方案目录；不存在则 False。"""
+    pid = (plan_id or "").strip()
+    if not pid or "/" in pid or "\\" in pid or ".." in pid:
+        return False
+    settings = get_settings()
+    root = settings.uploads_dir / "plans" / pid
+    if not root.is_dir():
+        return False
+    shutil.rmtree(root, ignore_errors=True)
+    return not root.exists()
 
 
 def apply_overrides(

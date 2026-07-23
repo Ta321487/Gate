@@ -81,8 +81,8 @@
             <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已结清' : row.fineStatus }}</template>
           </p>
           <p v-if="row.contactChannel || row.nextFollowAt" class="sub">
-            <template v-if="row.contactChannel">渠道 {{ row.contactChannel }}</template>
-            <template v-if="row.nextFollowAt"> · 下次 {{ row.nextFollowAt }}</template>
+            <template v-if="row.contactChannel">{{ channelLabel }} {{ row.contactChannel }}</template>
+            <template v-if="row.nextFollowAt"> · {{ nextAtLabel }} {{ row.nextFollowAt }}</template>
           </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -179,7 +179,17 @@ import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { getSchema, hasTrait, ticketCheckinLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
+import {
+  followChannelLabel,
+  getSchema,
+  hasTrait,
+  nextFollowLabel,
+  ticketCheckinLabel,
+  ticketCopy,
+  ticketDueLabel,
+  ticketFineLabel,
+  ticketStatusLabel,
+} from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
@@ -188,6 +198,8 @@ const plural = computed(() => ticket.labelPlural || ticket.label || '我的申�
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const checkinLabel = computed(() => ticketCheckinLabel())
+const channelLabel = computed(() => followChannelLabel())
+const nextAtLabel = computed(() => nextFollowLabel())
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)

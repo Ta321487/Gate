@@ -180,7 +180,12 @@ async def upload_plan(
 
 @router.post("/upload/confirm", response_model=UploadConfirmOut, summary="确认分堆并创建项目")
 async def upload_confirm(body: UploadConfirmIn, db: AsyncSession = Depends(get_db)):
-    from app.services.upload_cluster import apply_overrides, load_plan_bundle
+    from app.services.upload_cluster import (
+        apply_overrides,
+        delete_plan_bundle,
+        load_plan_bundle,
+        mark_plan_status,
+    )
 
     try:
         _root, data, all_files = load_plan_bundle(body.plan_id)
@@ -204,41 +209,91 @@ async def upload_confirm(body: UploadConfirmIn, db: AsyncSession = Depends(get_d
     for i, tup in enumerate(all_files):
         idx_to_tuple.setdefault(i, tup)
 
+    # 锁定方案：建项（含 LLM）可能数分钟；期间刷新列表不得删盘
+    mark_plan_status(body.plan_id, "confirming")
+
     settings = get_settings()
-    projects: list[ProjectDetail] = []
-    for ci, cl in enumerate(plan.get("clusters") or []):
-        idxs = [int(f["index"]) for f in cl.get("files") or []]
-        bundle_src = [idx_to_tuple[i] for i in idxs if i in idx_to_tuple]
-        if not bundle_src:
-            continue
-        # 每簇拷到独立目录，避免多项目共享 plan 目录写崩 manifest
-        dest_dir = settings.uploads_dir / f"{datetime_stamp()}_{ci}_bundle"
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        bundle: list[tuple[Path, str, int]] = []
-        used: set[str] = set()
-        for path, name, size in bundle_src:
-            candidate = name
-            base, ext = Path(name).stem, Path(name).suffix
-            n = 2
-            while candidate.lower() in used:
-                candidate = f"{base}_{n}{ext}"
-                n += 1
-            used.add(candidate.lower())
-            dest = dest_dir / candidate
-            shutil.copy2(path, dest)
-            bundle.append((dest, candidate, size))
-        try:
-            project = await project_svc.create_from_uploads(db, bundle)
-            projects.append(_detail(project))
-        except ValueError as e:
-            raise HTTPException(400, f"创建失败（{cl.get('label') or idxs}）：{e}") from e
+    # 先把各簇材料拷出 plan 目录，再慢建项——避免中途 drop_covered / 清方案导致 copy 失败
+    stamp = datetime_stamp()
+    prepared: list[tuple[dict, list[tuple[Path, str, int]]]] = []
+    try:
+        for ci, cl in enumerate(plan.get("clusters") or []):
+            idxs = [int(f["index"]) for f in cl.get("files") or []]
+            bundle_src = [idx_to_tuple[i] for i in idxs if i in idx_to_tuple]
+            if not bundle_src:
+                continue
+            dest_dir = settings.uploads_dir / f"{stamp}_{ci}_bundle"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            bundle: list[tuple[Path, str, int]] = []
+            used: set[str] = set()
+            for path, name, size in bundle_src:
+                if not Path(path).is_file():
+                    raise HTTPException(400, f"材料缺失：{name}（请重新上传分堆）")
+                candidate = Path(name).name or f"file_{len(used)}"
+                base, ext = Path(candidate).stem, Path(candidate).suffix
+                n = 2
+                while candidate.lower() in used:
+                    candidate = f"{base}_{n}{ext}"
+                    n += 1
+                used.add(candidate.lower())
+                dest = dest_dir / candidate
+                try:
+                    shutil.copy2(path, dest)
+                except FileNotFoundError as e:
+                    raise HTTPException(400, f"材料缺失：{name}（请重新上传分堆）") from e
+                bundle.append((dest, candidate, size))
+            prepared.append((cl, bundle))
+
+        projects: list[ProjectDetail] = []
+        for cl, bundle in prepared:
+            try:
+                project = await project_svc.create_from_uploads(db, bundle)
+                projects.append(_detail(project))
+            except ValueError as e:
+                label = cl.get("label") or [n for _, n, _ in bundle]
+                raise HTTPException(400, f"创建失败（{label}）：{e}") from e
+    except Exception:
+        # 失败时解开锁定，便于重试或刷新恢复
+        mark_plan_status(body.plan_id, "pending")
+        raise
 
     discarded = plan.get("discard") or []
+    delete_plan_bundle(body.plan_id)
     return UploadConfirmOut(
         projects=projects,
         discarded=discarded,
         notes=str(plan.get("notes") or ""),
     )
+
+
+@router.get("/upload/plans", summary="列出未确认的分堆方案（刷新恢复）")
+async def list_upload_plans(db: AsyncSession = Depends(get_db)):
+    from app.services.upload_cluster import list_pending_plans, normalize_title_key
+
+    # 已是「待确认匹配」的课题不要再进分堆恢复队列
+    result = await db.execute(
+        select(Project.title).where(Project.status == ProjectStatus.needs_confirm.value)
+    )
+    title_keys = {
+        k
+        for (title,) in result.all()
+        if (k := normalize_title_key(str(title or ""))) and len(k) >= 4
+    }
+    items = list_pending_plans(
+        exclude_title_keys=title_keys,
+        drop_covered=True,
+        drop_empty=True,
+    )
+    return {"items": [UploadPlanOut.model_validate(p) for p in items]}
+
+
+@router.delete("/upload/plans/{plan_id}", summary="丢弃未确认的分堆方案")
+async def delete_upload_plan(plan_id: str):
+    from app.services.upload_cluster import delete_plan_bundle
+
+    if not delete_plan_bundle(plan_id):
+        raise HTTPException(404, "分堆方案不存在或已清理")
+    return {"ok": True}
 
 
 def _collect_uploads(

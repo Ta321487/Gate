@@ -23,6 +23,7 @@ _DOMAIN_QUERY: dict[str, str] = {
     "DOM-EQUIP": "laboratory equipment workshop",
     "DOM-ASSET": "warehouse inventory shelves",
     "DOM-CRM": "business meeting handshake office crm",
+    "DOM-EVENT": "emergency response public health report clipboard",
     "DOM-ACTIVITY": "campus event students gathering",
     "DOM-LOST": "campus corridor lost and found desk",
     "DOM-COURSE": "university classroom lecture hall",
@@ -111,6 +112,10 @@ _FALLBACK_PHOTOS: dict[str, list[str]] = {
     "DOM-CRM": [
         "1556761179-b4dda1f7e3e8",
         "1521791138484-c2a0e5d94c05",
+    ],
+    "DOM-EVENT": [
+        "1551836022-d5d88e9218df",
+        "1522202176988-66273c2fd55f",
     ],
     "DOM-ACTIVITY": [
         "1529156069898-49953e39b1ac",

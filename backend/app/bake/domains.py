@@ -30,10 +30,12 @@ ARCHETYPES = {
             # 审核 / 单据
             "审核", "审批", "会签", "申请", "申报", "递交", "认定",
             "借阅", "借还", "报修", "保修", "维修", "工单", "派发", "派单", "回访", "投诉", "挂失",
-            "申领", "领用", "巡检", "报名", "请假",
+            "申领", "领用", "巡检", "巡查", "报名", "请假",
             "跟进", "线索",
             # 流转类 = ticket_flow 同义，不新开 ARCH
             "流转", "上报", "分拨", "转办",
+            # 事件/公卫（DOM-EVENT）
+            "随访", "排查", "晨检", "晨午检", "监测", "处置", "密接", "接触者", "病例",
             # 英文行为（极少）
             "repair", "approval", "workflow",
         ],
@@ -66,7 +68,10 @@ ARCHETYPES = {
     },
     "ARCH-STOCK": {
         "label": "进销存",
-        "keywords": ["进销存", "库存", "采购", "出库", "入库", "盘点", "inventory"],
+        "keywords": [
+            "进销存", "库存", "采购", "出库", "入库", "盘点", "inventory",
+            "仓储", "调拨", "库存预警", "出入库", "物资调度",
+        ],
     },
 }
 
@@ -79,6 +84,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-EQUIP": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend"],
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-EVENT": ["archive", "ticket_flow", "content", "org_users"],
     # B 报修/工单
     "DOM-DORM": ["ticket_flow", "content", "org_users"],
     "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
@@ -110,6 +116,7 @@ DOMAINS = {
     "DOM-LIBRARY": {
         "label": "图书",
         "keywords": ["图书", "借阅", "图书馆", "读者"],
+        "match_hint": "适用：图书借阅、读者借还审核。勿与设备借用（器材/实验室）或选课混淆。",
         "entities": ["Book", "Category", "Borrow", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["申请借阅 → 审核 → 归还", "逾期提醒 → 归还 / 罚款登记"],
@@ -159,6 +166,7 @@ DOMAINS = {
     "DOM-EQUIP": {
         "label": "设备借用",
         "keywords": ["设备借用", "器材", "实验室设备", "物资借用", "实验室管理"],
+        "match_hint": "适用：实验室/器材借用归还审核。勿与物资领用（耗材出库）或图书借阅混淆。",
         "entities": ["Equip", "Category", "Loan", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["申请借用 → 审核 → 归还"],
@@ -215,7 +223,15 @@ DOMAINS = {
             "办公用品申领",
             "耗材管理",
             "入库出库",
+            "应急物资",
+            "物资仓储",
+            "仓储调度",
+            "物资调度",
         ],
+        "match_hint": (
+            "适用：物资/耗材领用、仓储出入库、应急物资调度台账。"
+            "正文顺带提公卫/疫情时，若题名是仓储物资仍选本域，勿改事件上报。"
+        ),
         "entities": ["Asset", "Category", "Requisition", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["提交申领 → 审核出库 → 可选退库"],
@@ -267,6 +283,7 @@ DOMAINS = {
             "线索管理",
             "客户档案",
         ],
+        "match_hint": "适用：客户档案、销售线索跟进审核。勿与事件上报（公卫排查）或通用管理混淆。",
         "entities": ["Customer", "Category", "FollowUp", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["客户建档 → 提交跟进 → 审核完结"],
@@ -306,9 +323,76 @@ DOMAINS = {
             "archive_item_table": "customer",
         },
     },
+    "DOM-EVENT": {
+        "label": "事件上报",
+        # 词表只做硬分流；长尾说法交给 match_recommend（见 match_hint）
+        "keywords": [
+            "事件上报",
+            "公卫",
+            "公共卫生",
+            "公共卫生事件",
+            "院感",
+            "感染防控",
+            "疫情",
+            "晨检",
+            "排查",
+            "密接",
+            "传染病",
+            "随访",
+            "流调",
+            "隐患上报",
+            "网格化",
+            "慢病",
+            "健康监测",
+        ],
+        "match_hint": (
+            "适用：公卫应急、院感、晨午检、慢性病随访、网格排查、食安风险排查、"
+            "员工健康复工、流调协查、献血筛查等「建档+上报/核查」题。"
+            "不适用：门诊挂号（医院）、食堂点餐（点餐）、纯应急物资仓储（物资领用）。"
+        ),
+        "entities": ["EventCase", "Category", "EventReport", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["事件建档 → 提交上报 → 确认处置完结"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "事件档案", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "事件上报", "status": "flow"},
+            {"name": "上报记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "疾控直报对接", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["疾控直报对接"],
+        "themes": [
+            {"id": "event-teal", "label": "应急青绿"},
+            {"id": "event-amber", "label": "警示琥珀"},
+            {"id": "event-slate", "label": "台账灰青"},
+            {"id": "event-night", "label": "值班深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="事件档案",
+            flow_feature="事件上报",
+            records_feature="上报记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "event_report",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "event_case",
+        },
+    },
     "DOM-SHOP": {
         "label": "商城",
         "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手"],
+        "match_hint": "适用：商品浏览、购物车下单交易。勿与点餐（食堂菜品）或客房预订混淆。",
         "entities": ["Product", "Category", "Order", "Cart", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["加购 → 下单 → 发货"],
@@ -352,6 +436,7 @@ DOMAINS = {
         "label": "宿舍",
         # 不用光杆「报修」：仪器/物业报修会误落宿舍壳；报修行为走 ARCH-FLOW
         "keywords": ["宿舍", "寝室", "公寓", "水电", "宿舍报修"],
+        "match_hint": "适用：宿舍水电报修、寝室维修工单。勿与物业报修（小区）或 IT 报修混淆。",
         "entities": ["Dorm", "Repair", "Notice"],
         "roles": ["student", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
@@ -397,6 +482,7 @@ DOMAINS = {
     "DOM-PROPERTY": {
         "label": "物业报修",
         "keywords": ["物业", "社区报修", "维修工单", "小区报修"],
+        "match_hint": "适用：物业/社区/小区报修工单。勿与宿舍报修或 IT 报修混淆。",
         "entities": ["Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
@@ -440,6 +526,7 @@ DOMAINS = {
     "DOM-IT": {
         "label": "IT 报修",
         "keywords": ["校园网", "网络报修", "IT运维", "机房报修"],
+        "match_hint": "适用：校园网、机房、终端故障报修。勿与宿舍/物业报修混淆。",
         "entities": ["Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["提交故障 → 受理 → 完成"],
@@ -483,6 +570,7 @@ DOMAINS = {
     "DOM-ACTIVITY": {
         "label": "活动报名",
         "keywords": ["社团活动", "志愿活动", "志愿者", "志愿服务", "活动报名", "讲座报名", "活动管理", "报名系统"],
+        "match_hint": "适用：社团/志愿/讲座等活动报名审核。勿与选课（课程学分）或场地预约混淆。",
         "entities": ["Activity", "Category", "Signup", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览活动 → 报名 → 审核占名额 → 口令签到（结束未签到记爽约）"],
@@ -529,6 +617,7 @@ DOMAINS = {
     "DOM-LOST": {
         "label": "失物招领",
         "keywords": ["失物招领", "失物", "招领", "寻物", "失物管理"],
+        "match_hint": "适用：失物招领、认领审核。勿与商城二手交易或事件上报混淆。",
         "entities": ["LostItem", "Category", "Claim", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览启事 → 认领申请 → 审核"],
@@ -570,6 +659,7 @@ DOMAINS = {
     "DOM-COURSE": {
         "label": "选课",
         "keywords": ["选课", "公选课", "课程报名", "学分", "选课系统", "课程管理"],
+        "match_hint": "适用：公选课、课程选课占名额。勿与活动报名（讲座/志愿）混淆。",
         "entities": ["Course", "Category", "Enrollment", "Notice"],
         "roles": ["student", "admin", "subadmin"],
         "flows": ["浏览课程 → 选课申请 → 审核占名额"],
@@ -613,7 +703,8 @@ DOMAINS = {
     },
     "DOM-FOOD": {
         "label": "点餐",
-        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐饮", "餐厅", "奶茶", "快餐"],
+        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐厅", "奶茶", "快餐"],
+        "match_hint": "适用：点餐/订餐下单。餐饮食品安全排查、追溯上报选事件上报，不要选本域。",
         "entities": ["Dish", "Order", "Category", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选菜 → 下单 → 堂食/自取/配送"],
@@ -654,7 +745,11 @@ DOMAINS = {
     },
     "DOM-HOSPITAL": {
         "label": "医院",
-        "keywords": ["医院", "挂号", "就诊", "门诊", "疫苗", "接种", "就医", "诊疗"],
+        # 勿单列「医院」：院感/宠物医院/慢病正文易误伤；挂号语义靠下列词
+        "keywords": ["挂号", "就诊", "门诊", "就医", "诊疗", "分诊"],
+        "match_hint": (
+            "适用：挂号预约、门诊分诊。院感防控、病患随访、隔离观察、慢病随访选事件上报，不要选本域。"
+        ),
         "entities": ["Doctor", "Department", "Appointment"],
         "roles": ["patient", "admin", "subadmin"],
         "flows": ["选科室 → 挂号 → 就诊"],
@@ -698,6 +793,7 @@ DOMAINS = {
     "DOM-PARKING": {
         "label": "车位",
         "keywords": ["车位", "停车", "预约车位", "泊车", "停车场", "停车管理"],
+        "match_hint": "适用：停车场车位时段预约。勿与场地预约（会议室/球馆）或客房预订混淆。",
         "entities": ["ParkingLot", "Space", "Reservation"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选车位 → 预约 → 入场"],
@@ -742,6 +838,7 @@ DOMAINS = {
             "自习室", "研习室", "研讨室",
             "场地预约", "订场", "实验室预约", "实训室预约", "游泳馆",
         ],
+        "match_hint": "适用：会议室、球馆、琴房、自习室等场地时段预约。勿与车位预约或服务预约（美发）混淆。",
         "entities": ["Room", "Reservation"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选场地 → 预约 → 取消/完成"],
@@ -778,6 +875,7 @@ DOMAINS = {
     "DOM-SALON": {
         "label": "服务预约",
         "keywords": ["美发", "美容", "美容院", "理发预约", "服务预约"],
+        "match_hint": "适用：美发美容等服务项目时段预约。勿与场地预约（会议室/球馆）或医院挂号混淆。",
         "entities": ["Service", "Slot", "Booking"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选服务 → 预约时段 → 到店完成"],
@@ -814,6 +912,7 @@ DOMAINS = {
     "DOM-HOTEL": {
         "label": "客房",
         "keywords": ["宾馆", "客房", "酒店", "民宿", "酒店预订", "住宿预订"],
+        "match_hint": "适用：酒店/民宿客房预订入住。勿与场地预约或商城交易混淆。",
         "entities": ["Room", "Booking", "Order"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选房 → 预订 → 入住/离店"],
@@ -855,6 +954,7 @@ DOMAINS = {
     "DOM-MEDIA": {
         "label": "影视综",
         "keywords": ["影视", "电影", "电视剧", "综艺", "视频点播", "在线视频", "片库"],
+        "match_hint": "适用：影视综点播、片单收藏。勿与音乐（歌曲曲库）或博客（文章 CMS）混淆。",
         "entities": ["Media", "Category", "Favorite", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览片单 → 播放 → 收藏"],
@@ -897,6 +997,7 @@ DOMAINS = {
     "DOM-MUSIC": {
         "label": "音乐",
         "keywords": ["音乐", "歌曲", "歌单", "在线音乐", "音乐播放器", "听歌", "曲库"],
+        "match_hint": "适用：在线音乐曲库、歌单收藏。勿与影视综或博客混淆。",
         "entities": ["Track", "Category", "Favorite", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览曲库 → 播放 → 收藏"],
@@ -939,6 +1040,7 @@ DOMAINS = {
     "DOM-FORUM": {
         "label": "论坛",
         "keywords": ["论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼"],
+        "match_hint": "适用：BBS 论坛发帖回帖审核。勿与博客（单向文章收藏）混淆。",
         "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["发帖 / 浏览 → 回复 → 版主审核展示"],
@@ -992,6 +1094,7 @@ DOMAINS = {
     "DOM-BLOG": {
         "label": "博客",
         "keywords": ["博客", "个人博客", "文章系统", "资讯发布", "CMS", "博文"],
+        "match_hint": "适用：个人博客/资讯文章浏览收藏。勿与论坛（回帖互动）或影视综混淆。",
         "entities": ["Article", "Category", "Favorite", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览文章 → 收藏"],
@@ -1035,6 +1138,7 @@ DOMAINS = {
     "DOM-GENERIC": {
         "label": "通用",
         "keywords": [],
+        "match_hint": "适用：无明确行业场景的纯档案 CRUD 兜底。有更贴切领域时勿选本域。",
         "entities": ["Item", "Category", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["新增 → 编辑 → 查询"],

@@ -10,48 +10,47 @@
       "fields": [
         {
           "key": "title",
-          "label": "客户名称",
+          "label": "事件标题",
           "type": "string"
         },
         {
           "key": "author",
-          "label": "联系人",
+          "label": "上报人",
           "type": "string"
         },
         {
           "key": "isbn",
-          "label": "电话/备注",
+          "label": "地点/摘要",
           "type": "textarea"
         },
         {
           "key": "stage",
-          "label": "销售阶段",
+          "label": "处置阶段",
           "options": [
-            "线索",
-            "意向",
-            "谈判",
-            "成交",
-            "搁置"
+            "待核查",
+            "排查中",
+            "处置中",
+            "已闭环"
           ],
           "type": "select"
         },
         {
           "key": "category",
-          "label": "客户分级",
+          "label": "事件分类",
           "type": "select"
         },
         {
           "key": "stock",
-          "label": "可跟进",
+          "label": "可上报",
           "type": "number"
         }
       ],
-      "key": "customer",
-      "label": "客户",
-      "labelPlural": "客户",
+      "key": "event_case",
+      "label": "事件",
+      "labelPlural": "事件",
       "softDelete": false,
       "stockDisplay": "toggle",
-      "stockUnavailableLabel": "已跟进",
+      "stockUnavailableLabel": "已上报",
       "tagFilter": false
     },
     "ticket": {
@@ -62,28 +61,27 @@
       "autoApprove": true,
       "categoryLimit": 0,
       "checkMutex": false,
-      "contactChannelLabel": "联系渠道",
+      "contactChannelLabel": "上报渠道",
       "contactChannelOptions": [
         "电话",
-        "微信",
-        "邮件",
-        "到访",
+        "现场",
+        "系统填报",
         "其他"
       ],
-      "contactChannelPlaceholder": "电话/微信/到访等",
-      "key": "follow_up",
-      "label": "跟进单",
-      "labelPlural": "跟进",
-      "nextFollowLabel": "下次跟进",
+      "contactChannelPlaceholder": "电话/现场/系统填报等",
+      "key": "event_report",
+      "label": "上报单",
+      "labelPlural": "上报",
+      "nextFollowLabel": "下次复核",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
       "pickDateRange": false,
       "pickLoanPeriod": false,
-      "remarkLabel": "跟进内容",
+      "remarkLabel": "上报说明",
       "requireAttach": false,
       "requireRemark": true,
       "states": {
-        "approved": "跟进中",
+        "approved": "处置中",
         "overdue": "已失效",
         "pending": "待确认",
         "rejected": "已驳回",
@@ -91,7 +89,7 @@
       },
       "twoLevelApprove": false,
       "verbs": {
-        "apply": "提交跟进",
+        "apply": "提交上报",
         "approve": "确认",
         "reject": "驳回",
         "remind": "催办",
@@ -102,19 +100,19 @@
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "客户跟进",
-    "authLead": "验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
+    "authEyebrow": "事件上报",
+    "authLead": "验证码登录；维护事件档案并提交上报，上报即时入档，可在完成后结案。",
     "authPoints": [
       "验证码登录",
-      "客户档案",
-      "跟进记录"
+      "事件档案",
+      "上报记录"
     ],
     "messagesPageLead": "系统通知。",
-    "noticePageLead": "跟进规范与临时通知，点击条目阅读全文。",
-    "noticePageTitle": "销售公告",
+    "noticePageLead": "上报规范与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "应急公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "注册后可维护名下客户并提交跟进"
+    "registerRoleHint": "内部填报账号登录后可维护事件并提交上报"
   },
   "menus": {
     "admin": [
@@ -124,12 +122,12 @@
       },
       {
         "key": "archive",
-        "label": "客户档案",
+        "label": "事件档案",
         "superOnly": true
       },
       {
         "key": "category",
-        "label": "客户分级管理",
+        "label": "事件分类管理",
         "superOnly": true
       },
       {
@@ -139,7 +137,7 @@
       },
       {
         "key": "ticket_records",
-        "label": "跟进记录"
+        "label": "上报记录"
       },
       {
         "key": "content",
@@ -150,11 +148,11 @@
     "user": [
       {
         "key": "archive",
-        "label": "客户列表"
+        "label": "事件列表"
       },
       {
         "key": "my_tickets",
-        "label": "我的跟进"
+        "label": "我的上报"
       },
       {
         "key": "content",
@@ -168,43 +166,43 @@
   },
   "portalBanners": [
     {
-      "lead": "按分级浏览客户，维护联系人与备注。",
-      "title": "客户档案"
+      "lead": "按分类浏览事件，维护上报人与地点摘要。",
+      "title": "事件档案"
     },
     {
-      "lead": "提交跟进记录即时生效，办结后可追溯。",
-      "title": "客户跟进"
+      "lead": "提交上报即时生效，办结后可追溯。",
+      "title": "事件上报"
     },
     {
-      "lead": "跟进规范与活动通知见公告栏。",
-      "title": "销售公告"
+      "lead": "上报规范与排查通知见公告栏。",
+      "title": "应急公告"
     },
     {
-      "lead": "登录后查看跟进进度与记录。",
-      "title": "我的跟进"
+      "lead": "登录后查看上报进度与记录。",
+      "title": "我的上报"
     },
     {
-      "lead": "按客户分级筛选重点对象。",
-      "title": "分级管理"
+      "lead": "按事件分类筛选重点对象。",
+      "title": "分类管理"
     }
   ],
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "销售主管（总管）"
+      "label": "主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "客户经理"
+      "label": "值班员"
     },
     "user": {
       "id": "user",
-      "label": "业务员"
+      "label": "上报人"
     }
   },
   "seeds": {
-    "noticeBody": "请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。",
-    "noticeTitle": "跟进须知"
+    "noticeBody": "请如实登记事件要素；重大事件请及时上报，办结后可在记录中查阅。",
+    "noticeTitle": "上报须知"
   },
   "title": "测试课题",
   "version": 1

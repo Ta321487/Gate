@@ -30,6 +30,7 @@ TICKET_ITEM_FK_BY_DOMAIN: dict[str, str] = {
     "DOM-EQUIP": "equip_id",
     "DOM-ASSET": "asset_id",
     "DOM-CRM": "customer_id",
+    "DOM-EVENT": "event_id",
     "DOM-ACTIVITY": "activity_id",
     "DOM-COURSE": "course_id",
     "DOM-LOST": "lost_item_id",

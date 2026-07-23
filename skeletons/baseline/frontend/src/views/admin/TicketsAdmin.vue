@@ -23,6 +23,12 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
+      <el-table-column v-if="showFollowCols" :label="channelLabel" width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.contactChannel || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="showFollowCols" :label="nextAtLabel" width="170">
+        <template #default="{ row }">{{ row.nextFollowAt || '—' }}</template>
+      </el-table-column>
       <el-table-column label="附件" width="90">
         <template #default="{ row }">
           <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -80,9 +86,14 @@
         <a :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">查看附件</a>
       </div>
       <div v-if="audit.row?.typeName || audit.row?.location" class="audit-body">
-        <div class="lab">启事信息</div>
+        <div class="lab">{{ archive.label || '档案' }}信息</div>
         <p v-if="audit.row.typeName" class="audit-meta">{{ typeColLabel }}：{{ audit.row.typeName }}</p>
         <p v-if="audit.row.location" class="audit-meta">{{ locationColLabel }}：{{ audit.row.location }}</p>
+      </div>
+      <div v-if="showFollowCols && (audit.row?.contactChannel || audit.row?.nextFollowAt)" class="audit-body">
+        <div class="lab">补充信息</div>
+        <p v-if="audit.row.contactChannel" class="audit-meta">{{ channelLabel }}：{{ audit.row.contactChannel }}</p>
+        <p v-if="audit.row.nextFollowAt" class="audit-meta">{{ nextAtLabel }}：{{ audit.row.nextFollowAt }}</p>
       </div>
       <div v-if="audit.row?.remark" class="audit-body">
         <div class="lab">{{ remarkLabel }}</div>
@@ -125,7 +136,17 @@ import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { archiveCopy, getSchema, menuLabel, personLabel, ticketCopy, ticketDueLabel } from '../../utils/domainSchema.js'
+import {
+  archiveCopy,
+  followChannelLabel,
+  getSchema,
+  hasTrait,
+  menuLabel,
+  nextFollowLabel,
+  personLabel,
+  ticketCopy,
+  ticketDueLabel,
+} from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 
 const ticket = ticketCopy()
@@ -142,6 +163,9 @@ const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
 const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
+const showFollowCols = computed(() => hasTrait('crm'))
+const channelLabel = computed(() => followChannelLabel())
+const nextAtLabel = computed(() => nextFollowLabel())
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 
 function archiveFieldLabel(key, fallback) {

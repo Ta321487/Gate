@@ -208,6 +208,11 @@ def archive_ticket_schema(
     fine_paid_label: str | None = None,
     checkin_label: str | None = None,
     recommend_latest_hint: str | None = None,
+    # CRM/EVENT：跟进/上报渠道文案（与 remark_label 同挂 ticket 实体）
+    contact_channel_label: str | None = None,
+    contact_channel_options: list[str] | None = None,
+    contact_channel_placeholder: str | None = None,
+    next_follow_label: str | None = None,
     # True：审核通过/驳回即为收口（报名/选课/认领/收藏等）；工作台「已完成」含 approved+rejected
     approve_ends_flow: bool = False,
     # True：提交即生效（媒资/博客收藏等个人动作），不进管理端待审队列
@@ -308,6 +313,14 @@ def archive_ticket_schema(
         ticket_entity["weekCalendarLabel"] = week_calendar_label
     if rich_remark:
         ticket_entity["richRemark"] = True
+    if contact_channel_label:
+        ticket_entity["contactChannelLabel"] = contact_channel_label
+    if contact_channel_options:
+        ticket_entity["contactChannelOptions"] = list(contact_channel_options)
+    if contact_channel_placeholder:
+        ticket_entity["contactChannelPlaceholder"] = contact_channel_placeholder
+    if next_follow_label:
+        ticket_entity["nextFollowLabel"] = next_follow_label
     admin_menus = [
         {"key": "dashboard", "label": "工作台"},
         {"key": "archive", "label": archive_menu_admin, "superOnly": True},
@@ -542,7 +555,12 @@ def _crm_schema(title: str) -> dict[str, Any]:
                 {"key": "title", "label": "客户名称", "type": "string"},
                 {"key": "author", "label": "联系人", "type": "string"},
                 {"key": "isbn", "label": "电话/备注", "type": "textarea"},
-                {"key": "stage", "label": "销售阶段", "type": "string"},
+                {
+                    "key": "stage",
+                    "label": "销售阶段",
+                    "type": "select",
+                    "options": ["线索", "意向", "谈判", "成交", "搁置"],
+                },
                 {"key": "category", "label": "客户分级", "type": "select"},
                 {"key": "stock", "label": "可跟进", "type": "number"},
             ],
@@ -582,6 +600,10 @@ def _crm_schema(title: str) -> dict[str, Any]:
             require_remark=True,
             remark_label="跟进内容",
             auto_approve=True,
+            contact_channel_label="联系渠道",
+            contact_channel_options=["电话", "微信", "邮件", "到访", "其他"],
+            contact_channel_placeholder="电话/微信/到访等",
+            next_follow_label="下次跟进",
         ),
         [
             {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
@@ -589,6 +611,84 @@ def _crm_schema(title: str) -> dict[str, Any]:
             {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
             {"title": "我的跟进", "lead": "登录后查看跟进进度与记录。"},
             {"title": "分级管理", "lead": "按客户分级筛选重点对象。"},
+        ],
+    )
+
+
+def _event_schema(title: str) -> dict[str, Any]:
+    """事件/公卫上报：档案 + 上报单，接线同 CRM（archive_ticket + auto_approve）。"""
+    return _with_portal_banners(
+        archive_ticket_schema(
+            title,
+            domain="DOM-EVENT",
+            user_role_id="user",
+            # 默认偏中性；开题专名（随访员/晨检员等）由 Island 润色 label
+            user_label="上报人",
+            admin_label="主管（总管）",
+            subadmin_label="值班员",
+            archive_key="event_case",
+            archive_label="事件",
+            archive_plural="事件",
+            archive_fields=[
+                {"key": "title", "label": "事件标题", "type": "string"},
+                {"key": "author", "label": "上报人", "type": "string"},
+                {"key": "isbn", "label": "地点/摘要", "type": "textarea"},
+                {
+                    "key": "stage",
+                    "label": "处置阶段",
+                    "type": "select",
+                    "options": ["待核查", "排查中", "处置中", "已闭环"],
+                },
+                {"key": "category", "label": "事件分类", "type": "select"},
+                {"key": "stock", "label": "可上报", "type": "number"},
+            ],
+            ticket_key="event_report",
+            ticket_label="上报单",
+            ticket_plural="上报",
+            verbs={
+                "apply": "提交上报",
+                "approve": "确认",
+                "reject": "驳回",
+                "return": "完结",
+                "remind": "催办",
+            },
+            states={
+                "pending": "待确认",
+                "approved": "处置中",
+                "rejected": "已驳回",
+                "returned": "已完结",
+                "overdue": "已失效",
+            },
+            archive_menu_admin="事件档案",
+            archive_menu_user="事件列表",
+            users_menu="用户管理",
+            auth_eyebrow="事件上报",
+            auth_lead="验证码登录；维护事件档案并提交上报，上报即时入档，可在完成后结案。",
+            auth_points=["验证码登录", "事件档案", "上报记录"],
+            register_hint="内部填报账号登录后可维护事件并提交上报",
+            notice_title="上报须知",
+            notice_body="请如实登记事件要素；重大事件请及时上报，办结后可在记录中查阅。",
+            notice_page_title="应急公告",
+            notice_page_lead="上报规范与临时通知，点击条目阅读全文。",
+            my_tickets_label="我的上报",
+            pending_label="上报确认",
+            records_label="上报记录",
+            with_deadline=False,
+            stock_display="toggle",
+            require_remark=True,
+            remark_label="上报说明",
+            auto_approve=True,
+            contact_channel_label="上报渠道",
+            contact_channel_options=["电话", "现场", "系统填报", "其他"],
+            contact_channel_placeholder="电话/现场/系统填报等",
+            next_follow_label="下次复核",
+        ),
+        [
+            {"title": "事件档案", "lead": "按分类浏览事件，维护上报人与地点摘要。"},
+            {"title": "事件上报", "lead": "提交上报即时生效，办结后可追溯。"},
+            {"title": "应急公告", "lead": "上报规范与排查通知见公告栏。"},
+            {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+            {"title": "分类管理", "lead": "按事件分类筛选重点对象。"},
         ],
     )
 
@@ -1901,6 +2001,7 @@ SCHEMA_BUILDERS = {
     "DOM-EQUIP": _equip_schema,
     "DOM-ASSET": _asset_schema,
     "DOM-CRM": _crm_schema,
+    "DOM-EVENT": _event_schema,
     "DOM-MEDIA": _media_schema,
     "DOM-MUSIC": _music_schema,
     "DOM-FORUM": _forum_schema,

@@ -56,17 +56,29 @@ export async function collectUploadMaterials(input, { maxFiles = MAX_UPLOAD_MATE
   }
 
   // 优先：拖放条目（可识别文件夹）
+  // 必须先同步取完 Entry/File：DataTransfer 在 await 让出后会被清空，否则多文件拖拽只剩第 1 个
   if (input.dataTransfer?.items?.length) {
     const items = [...input.dataTransfer.items]
+    /** @type {FileSystemEntry[]} */
+    const entries = []
     for (const item of items) {
       if (item.kind !== 'file') continue
       const entry = item.webkitGetAsEntry?.()
-      if (entry) {
-        await walkEntry(entry, raw, skipped)
-      } else {
+      if (entry) entries.push(entry)
+      else {
         const f = item.getAsFile?.()
         if (f) raw.push(f)
       }
+    }
+    for (const entry of entries) {
+      await walkEntry(entry, raw, skipped)
+    }
+    // 兜底：个别环境 Entry 读不全时，用 files 列表补齐
+    const dtFiles = input.dataTransfer?.files
+    if (dtFiles?.length && raw.length < dtFiles.length) {
+      raw.length = 0
+      skipped.length = 0
+      raw.push(...[...dtFiles])
     }
   } else if (input.files?.length) {
     raw.push(...[...input.files])

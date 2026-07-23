@@ -145,6 +145,11 @@ class DomainColumnForbidTests(unittest.TestCase):
                 "allow": {"contact_channel", "next_follow_at"},
                 "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
             },
+            "DOM-EVENT": {
+                "table": "event_report",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
             "DOM-DORM": {
                 "table": "repair",
                 "allow": {"priority", "contact_phone", "attach_url", "rating"},
@@ -182,6 +187,7 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-BLOG": "article",
             "DOM-HOTEL": "room_type",
             "DOM-CRM": "customer",
+            "DOM-EVENT": "event_case",
             "DOM-LIBRARY": "book",
         }
         for domain, table in cases.items():
@@ -205,6 +211,7 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-LIBRARY": ("borrow", "book_id", True),
             "DOM-EQUIP": ("loan", "equip_id", True),
             "DOM-CRM": ("follow_up", "customer_id", False),
+            "DOM-EVENT": ("event_report", "event_id", False),
             "DOM-ACTIVITY": ("signup", "activity_id", False),
             "DOM-FORUM": ("reply", "post_id", False),
             "DOM-COURSE": ("enrollment", "course_id", False),
