@@ -1,5 +1,6 @@
 package com.thesis.config;
 
+import com.thesis.capability.ArchiveLogStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
 import com.thesis.capability.CouponStore;
@@ -179,6 +180,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.browse-history-enabled:false}")
     private boolean browseHistoryEnabled;
 
+    @Value("${thesis.archive-log-enabled:false}")
+    private boolean archiveLogEnabled;
+
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
@@ -237,6 +241,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         OrderReviewStore.configure(orderReviewEnabled);
         FavoriteStore.configure(favoritesEnabled);
         BrowseHistoryStore.configure(browseHistoryEnabled, 20);
+        ArchiveLogStore.configure(archiveLogEnabled);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);

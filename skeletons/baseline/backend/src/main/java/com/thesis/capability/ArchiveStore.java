@@ -123,6 +123,10 @@ public final class ArchiveStore {
         if (enabled) ensureSoftDeleteColumn();
     }
 
+    public static boolean softDeleteEnabled() {
+        return softDeleteEnabled;
+    }
+
     public static void configureUserPublish(boolean enabled) {
         userPublishEnabled = enabled;
     }

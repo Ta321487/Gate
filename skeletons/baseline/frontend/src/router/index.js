@@ -44,6 +44,7 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/users': 'users',
   '/admin/notices': 'content',
   '/admin/guestbook': 'guestbook',
+  '/admin/archive-logs': 'archive_logs',
   '/admin/sites': 'lookup_site',
   '/admin/types': 'lookup_type',
   '/admin/archive': 'archive',
@@ -251,6 +252,23 @@ function withBrowseHistoryRoutes(baseRoutes) {
     kids.splice(at, 0, {
       path: 'browse-history',
       component: () => import('../views/user/BrowseHistory.vue'),
+    })
+  }
+  return routes
+}
+
+/** 监测打卡：有 archive_log 时挂管理端列表 */
+function withArchiveLogRoutes(baseRoutes) {
+  if (!hasCap('archive_log')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'archive-logs')) {
+    const archIdx = adminKids.findIndex((c) => c.path === 'archive')
+    const at = archIdx >= 0 ? archIdx + 1 : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'archive-logs',
+      component: () => import('../views/admin/ArchiveLogsAdmin.vue'),
     })
   }
   return routes
@@ -571,7 +589,11 @@ function pickRoutes() {
   else routes = baselineRoutes
   return withMyArchiveRoutes(
     withOrderReviewRoutes(
-      withCouponRoutes(withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes)))),
+      withCouponRoutes(
+        withArchiveLogRoutes(
+          withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes))),
+        ),
+      ),
     ),
   )
 }
