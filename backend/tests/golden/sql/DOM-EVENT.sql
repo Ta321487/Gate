@@ -117,6 +117,21 @@ CREATE TABLE IF NOT EXISTS `event_report_progress` (
   KEY idx_progress_ticket (ticket_id, id)
 );
 
+CREATE TABLE IF NOT EXISTS archive_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  log_date DATE NOT NULL,
+  log_type VARCHAR(32) NOT NULL DEFAULT 'checkin',
+  payload_json TEXT,
+  abnormal TINYINT DEFAULT 0,
+  remark VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_alog_item_date (item_id, log_date),
+  KEY idx_alog_date_type (log_date, log_type),
+  KEY idx_alog_user (username, id)
+);
+
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
 UPDATE sys_user SET staff_post='duty_clerk', staff_kind='clerk', nickname='值班员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;

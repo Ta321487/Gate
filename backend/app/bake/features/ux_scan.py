@@ -49,18 +49,9 @@ def merge_ux_capabilities(caps: list[str], proposal_text: str = "") -> list[str]
     return out
 
 
-def _ensure_menu(menus: list[dict], key: str, item: dict, *, before_key: str | None = None) -> None:
-    if any(m.get("key") == key for m in menus):
-        return
-    if before_key:
-        for i, m in enumerate(menus):
-            if m.get("key") == before_key:
-                menus.insert(i, item)
-                return
-    menus.append(item)
-
-
 def attach_ux_schema(schema: dict[str, Any], caps: list[str]) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
     caps = list(caps or [])
     labels = schema.setdefault("labels", {})
     menus = schema.setdefault("menus", {})
@@ -75,14 +66,14 @@ def attach_ux_schema(schema: dict[str, Any], caps: list[str]) -> None:
         search["suggestEnabled"] = True
 
     if BROWSE_HISTORY_CAP in caps:
-        _ensure_menu(
+        ensure_menu(
             user,
             "browse_history",
             {"key": "browse_history", "label": "浏览历史"},
             before_key="favorites",
         )
         if not any(m.get("key") == "browse_history" for m in user):
-            _ensure_menu(user, "browse_history", {"key": "browse_history", "label": "浏览历史"}, before_key="profile")
+            ensure_menu(user, "browse_history", {"key": "browse_history", "label": "浏览历史"}, before_key="profile")
         labels.setdefault("browseHistoryPageTitle", "浏览历史")
         labels.setdefault("browseHistoryPageLead", "最近看过的记录，便于回看。")
         search = schema.setdefault("search", {})

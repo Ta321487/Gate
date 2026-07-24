@@ -76,41 +76,26 @@ def merge_guestbook_capabilities(
     return out
 
 
-def _ensure_menu(
-    menus: list[dict],
-    key: str,
-    item: dict,
-    *,
-    before_key: str | None = None,
-) -> None:
-    if any(m.get("key") == key for m in menus):
-        return
-    if before_key:
-        for i, m in enumerate(menus):
-            if m.get("key") == before_key:
-                menus.insert(i, item)
-                return
-    menus.append(item)
-
-
 def attach_guestbook_menus(schema: dict[str, Any]) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
     menus = schema.setdefault("menus", {})
     admin = menus.setdefault("admin", [])
     user = menus.setdefault("user", [])
-    _ensure_menu(
+    ensure_menu(
         admin,
         "guestbook",
         {"key": "guestbook", "label": "留言管理", "superOnly": True},
         before_key="content",
     )
-    _ensure_menu(
+    ensure_menu(
         user,
         "guestbook",
         {"key": "guestbook", "label": "留言"},
         before_key="content",
     )
     if not any(m.get("key") == "guestbook" for m in user):
-        _ensure_menu(
+        ensure_menu(
             user,
             "guestbook",
             {"key": "guestbook", "label": "留言"},

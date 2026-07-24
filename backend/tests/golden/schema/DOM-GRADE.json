@@ -1,0 +1,213 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "课程名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "授课教师",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "课号/学分",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "开课状态",
+          "options": [
+            "开课中",
+            "已结课",
+            "补考中",
+            "已归档"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "课程类别",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可申请",
+          "type": "number"
+        }
+      ],
+      "key": "course_item",
+      "label": "课程",
+      "labelPlural": "课程",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已申请",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "申请类型",
+      "contactChannelOptions": [
+        "成绩更正",
+        "补考申请",
+        "缓考备案",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "更正/补考/缓考等",
+      "key": "grade_apply",
+      "label": "成绩申请单",
+      "labelPlural": "成绩申请",
+      "nextFollowLabel": "期望处理日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "申请说明",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已确认",
+        "overdue": "已失效",
+        "pending": "待教务审核",
+        "rejected": "已驳回",
+        "returned": "已办结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交申请",
+        "approve": "教务确认",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "办结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "教务成绩",
+    "authLead": "验证码登录；查看课程并提交补考或成绩更正申请，由教务审核。",
+    "authPoints": [
+      "验证码登录",
+      "课程列表",
+      "成绩申请"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "补考安排与成绩说明，点击条目阅读全文。",
+    "noticePageTitle": "教务公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可提交成绩相关申请"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "课程档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "课程类别管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "成绩审核"
+      },
+      {
+        "key": "ticket_records",
+        "label": "成绩申请记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "课程列表"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的成绩申请"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按类别浏览课程与授课教师。",
+      "title": "课程列表"
+    },
+    {
+      "lead": "提交补考或成绩更正，等待教务确认。",
+      "title": "成绩申请"
+    },
+    {
+      "lead": "补考与成绩节点见公告栏。",
+      "title": "教务公告"
+    },
+    {
+      "lead": "跟踪审核进度。",
+      "title": "我的申请"
+    },
+    {
+      "lead": "必修/选修快速定位。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "教务主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "教务员"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "补考与更正须说明理由；不对接学信网。",
+    "noticeTitle": "成绩须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

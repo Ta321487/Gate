@@ -26,7 +26,7 @@ DEFAULT_MODULE_LAYOUT = "biz"
 # 未知 key 进 extra，不在这里发明中文名。
 # 分类管理归管理员（教材「系统管理」口径）；收藏审批流按文案进收藏族。
 _USER_KEYS = frozenset({"profile", "messages"})
-_ARCHIVE_KEYS = frozenset({"archive", "browse_history", "my_archive"})
+_ARCHIVE_KEYS = frozenset({"archive", "browse_history", "my_archive", "archive_logs"})
 _FAVORITE_KEYS = frozenset({"favorites"})
 _CART_KEYS = frozenset({"cart"})
 _ORDER_KEYS = frozenset({"my_orders", "orders", "addresses", "coupons", "order_reviews"})
@@ -44,6 +44,7 @@ _BIZ_CORES: dict[str, tuple[str, ...]] = {
     "slot": ("预订", "预约", "时段", "挂号"),
     "content": ("公告", "资讯"),
     "guestbook": ("留言",),
+    "archive_log": ("打卡", "随访", "监测", "晨检"),
     "cart": ("购物车", "购物"),
 }
 

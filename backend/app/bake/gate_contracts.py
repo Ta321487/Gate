@@ -449,6 +449,40 @@ def merge_ux_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_ARCHIVE_LOG_FILES = [
+    "backend/src/main/java/com/thesis/capability/ArchiveLogStore.java",
+    "backend/src/main/java/com/thesis/controller/ArchiveLogController.java",
+    "backend/src/main/java/com/thesis/controller/AdminArchiveLogController.java",
+    "frontend/src/views/admin/ArchiveLogsAdmin.vue",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_archive_log_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "archive_log" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_ARCHIVE_LOG_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "admin/archive-logs" not in have:
+        routes.append({"seg": "admin/archive-logs", "from_feature": "健康打卡/监测记录"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["archive_log"] = {
+        "file": "ArchiveLogController.java",
+        "need": ["/api/archive-logs", "/api/admin/archive-logs"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
 _GATE_COUPON_FILES = [
     "backend/src/main/java/com/thesis/capability/CouponStore.java",
     "backend/src/main/java/com/thesis/controller/CouponController.java",

@@ -36,6 +36,26 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("reporter_name", "VARCHAR(100)"),
         ("location_note", "VARCHAR(255)"),
     ),
+    "DOM-ATTEND": (
+        ("dept_name", "VARCHAR(100)"),
+        ("badge_note", "VARCHAR(255)"),
+    ),
+    "DOM-RECRUIT": (
+        ("dept_name", "VARCHAR(100)"),
+        ("salary_note", "VARCHAR(255)"),
+    ),
+    "DOM-GRADE": (
+        ("teacher_name", "VARCHAR(100)"),
+        ("course_code", "VARCHAR(255)"),
+    ),
+    "DOM-INTERN": (
+        ("mentor_name", "VARCHAR(100)"),
+        ("org_note", "VARCHAR(255)"),
+    ),
+    "DOM-PARCEL": (
+        ("station_name", "VARCHAR(100)"),
+        ("pickup_code", "VARCHAR(255)"),
+    ),
     "DOM-MEDIA": (
         ("cast_info", "VARCHAR(100)"),
         ("play_url", "VARCHAR(255)"),

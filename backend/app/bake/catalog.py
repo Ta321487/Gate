@@ -332,13 +332,20 @@ def score_catalog(
     return best_key, conf, hits
 
 
-def score_all_archetypes(text: str) -> list[str]:
+def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
     """开题命中的行为原型（score>0），按优先级排序；弱于峰值一半的命中丢弃。"""
     scored = _catalog_scores(text, ARCHETYPES)
     if not scored:
         return ["ARCH-CRUD"]
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
-    scored.sort(key=lambda t: (-t[1], tie_rank.get(t[0], 99)))
+    title_s = (title or "").strip()
+
+    def _title_hits(hits: list[str]) -> int:
+        if not title_s:
+            return 0
+        return sum(1 for h in hits if h and h in title_s)
+
+    scored.sort(key=lambda t: (-t[1], -_title_hits(t[2]), tie_rank.get(t[0], 99)))
     best = scored[0][1]
     # 全域通用弱命中过滤：
     # - 峰值≥2 时丢掉仅 1 分噪声（范围外「支付」、顺口「库存」）
@@ -376,6 +383,11 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-ASSET": "ARCH-FLOW",
     "DOM-CRM": "ARCH-FLOW",
     "DOM-EVENT": "ARCH-FLOW",
+    "DOM-ATTEND": "ARCH-FLOW",
+    "DOM-RECRUIT": "ARCH-FLOW",
+    "DOM-GRADE": "ARCH-FLOW",
+    "DOM-INTERN": "ARCH-FLOW",
+    "DOM-PARCEL": "ARCH-FLOW",
     "DOM-ACTIVITY": "ARCH-FLOW",
     "DOM-LOST": "ARCH-FLOW",
     "DOM-COURSE": "ARCH-FLOW",
@@ -552,7 +564,7 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     arch_hits_all: list[str] = []
     for _k, _s, local in _catalog_scores(scored, ARCHETYPES):
         arch_hits_all.extend(local)
-    arches = score_all_archetypes(scored)
+    arches = score_all_archetypes(scored, title=title)
     kw_primary = arches[0]
     _, arch_conf, _ = score_catalog(scored, ARCHETYPES, fallback="ARCH-CRUD")
     dom_kw, dom_conf, dom_hits = score_catalog(

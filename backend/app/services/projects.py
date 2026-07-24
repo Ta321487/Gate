@@ -190,19 +190,21 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     ws = Path(project.workspace_path)
     if not ws.exists():
         return False
+    generating = project.status == ProjectStatus.generating.value
+    # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
+    if generating:
+        if project.zip_ready:
+            project.zip_ready = False
+            return True
+        return False
     gates = evaluate_domain_gates(ws, project.spec or {})
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
     deliverable = gates_allow_delivery(new_gates)
-    generating = project.status == ProjectStatus.generating.value
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
-    # 门禁回退时关掉 zip_ready；生成中禁止因门禁重算把旧包重新解锁
+    # 门禁回退时关掉 zip_ready
     zip_changed = False
-    if generating:
-        if project.zip_ready:
-            project.zip_ready = False
-            zip_changed = True
-    elif deliverable and zip_exists and not project.zip_ready:
+    if deliverable and zip_exists and not project.zip_ready:
         project.zip_ready = True
         zip_changed = True
     elif (not deliverable or not zip_exists) and project.zip_ready:

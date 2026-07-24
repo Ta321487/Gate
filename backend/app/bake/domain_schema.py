@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.bake.capabilities import CAPABILITIES, resolve_accept
+from app.bake.capabilities import CAPABILITIES, compose_out_of_mvp, implemented_capability_ids, resolve_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.schema.templates import (  # re-export
     SCHEMA_BUILDERS,
@@ -20,30 +20,8 @@ from app.bake.profile_fields import attach_profile_fields
 # 哪些 domain 仍有 skeletons/domains 厚叠加（空 = 全部走 baseline 薄壳）
 DOMAINS_WITH_OVERLAY = frozenset()
 
-# 基线通用壳已覆盖的能力（无需厚 overlay 即可跑）
-BASELINE_RUNTIME_CAPS = frozenset({
-    "archive",
-    "ticket_flow",
-    "quota",
-    "deadline",
-    "content",
-    "guestbook",
-    "favorites",
-    "coupon",
-    "order_review",
-    "search_assist",
-    "browse_history",
-    "gallery",
-    "org_users",
-    "recommend",
-    "time_conflict",
-    "order_lines",
-    "slot_reserve",
-    "wallet",
-    "points",
-    "spend_discount",
-    "member_tier",
-})
+# 基线通用壳已覆盖的能力 = CAPABILITIES 中 status=implemented（单一真源）
+BASELINE_RUNTIME_CAPS = frozenset(implemented_capability_ids())
 
 
 def baseline_runtime_covers(
@@ -55,11 +33,7 @@ def baseline_runtime_covers(
     req = set(required_capabilities(domain, archetype, archetypes=archetypes))
     if not req:
         return True
-    if req - BASELINE_RUNTIME_CAPS:
-        return False
-    from app.bake.capabilities import implemented_capability_ids
-
-    return req <= implemented_capability_ids()
+    return req <= BASELINE_RUNTIME_CAPS
 
 
 # 主数据菜单 key（领域实体管理，总管专属）
@@ -167,8 +141,24 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
             # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
             from app.bake.staff_posts import attach_staff_posts
 
+            prop_body = ""
+            if isinstance(spec.get("proposal_text"), str):
+                prop_body = spec["proposal_text"]
+            else:
+                prop = spec.get("proposal")
+                if isinstance(prop, dict):
+                    prop_body = str(
+                        prop.get("excerpt")
+                        or prop.get("text")
+                        or prop.get("summary")
+                        or ""
+                    )
             spec["schema"] = attach_staff_posts(
-                dict(spec["schema"]), domain, archetype, arches
+                dict(spec["schema"]),
+                domain,
+                archetype,
+                arches,
+                proposal_text=prop_body,
             )
     if not spec.get("accept"):
         proposal_text = ""
@@ -216,25 +206,23 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         spec.get("capabilities")
         or required_capabilities(domain, archetype, archetypes=arches)
     )
-    from app.bake.features.favorites import apply_favorites_to_spec, merge_favorites_capabilities
-    from app.bake.features.guestbook import apply_guestbook_to_spec, merge_guestbook_capabilities
-    from app.bake.features.loyalty import apply_loyalty_to_spec, merge_loyalty_capabilities
-    from app.bake.features.order_extras import apply_order_extras_to_spec, merge_order_extras_capabilities
-    from app.bake.features.ux_scan import apply_ux_to_spec, merge_ux_capabilities
+    from app.bake.features.archive_log import apply_archive_log_to_spec
+    from app.bake.features.favorites import apply_favorites_to_spec
+    from app.bake.features.guestbook import apply_guestbook_to_spec
+    from app.bake.features.loyalty import apply_loyalty_to_spec
+    from app.bake.features.order_extras import apply_order_extras_to_spec
+    from app.bake.features.proposal_caps import merge_proposal_capabilities
+    from app.bake.features.ux_scan import apply_ux_to_spec
     from app.services.proposal import strip_non_dev_sections
 
     body = strip_non_dev_sections(proposal_text or "")
-    req = merge_loyalty_capabilities(req, body)
-    req = merge_guestbook_capabilities(
+    req = merge_proposal_capabilities(
         req,
         body,
         domain=domain,
         archetype=archetype,
         archetypes=arches,
     )
-    req = merge_favorites_capabilities(req, body, domain=domain)
-    req = merge_ux_capabilities(req, body)
-    req = merge_order_extras_capabilities(req, body)
     decision = resolve_accept(
         req,
         body,
@@ -261,17 +249,21 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
 
     apply_reservation_options_from_proposal(schema, body)
 
-    # 将未实现卖点并入 features out_of_mvp（去重）
-    features = list(spec.get("features") or [])
-    existing = {
-        f.get("name")
-        for f in features
-        if isinstance(f, dict) and f.get("status") == "out_of_mvp"
-    }
-    for sig in decision["out_of_mvp_signals"]:
-        name = f"{sig}（开题提及）"
-        if name not in existing:
-            features.append({"name": name, "status": "out_of_mvp"})
+    # 「本期不做」随域目录 + 开题扫描合成；不把 catalog 列表当写死交付契约
+    composed_oos = compose_out_of_mvp(
+        domain,
+        body,
+        scanned_signals=decision["out_of_mvp_signals"],
+    )
+    signal_set = {str(s) for s in (decision["out_of_mvp_signals"] or [])}
+    keep_features = [
+        f
+        for f in (spec.get("features") or [])
+        if not (isinstance(f, dict) and f.get("status") == "out_of_mvp")
+    ]
+    for item in composed_oos:
+        name = f"{item}（开题提及）" if item in signal_set else item
+        keep_features.append({"name": name, "status": "out_of_mvp"})
 
     out = {
         **spec,
@@ -280,14 +272,34 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         "accept_reason": decision["reason"],
         "missing_capabilities": decision["missing_capabilities"],
         "out_of_mvp_signals": decision["out_of_mvp_signals"],
+        "out_of_mvp": composed_oos,
         "schema": schema,
-        "features": features,
+        "features": keep_features,
+        # bake 扫词/岗位文案用；与 proposal 摘要并存
+        "proposal_text": body,
     }
     out = apply_loyalty_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
     out = apply_favorites_to_spec(out, body)
     out = apply_ux_to_spec(out, body)
-    return apply_order_extras_to_spec(out, body)
+    out = apply_archive_log_to_spec(out, body)
+    out = apply_order_extras_to_spec(out, body)
+
+    # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
+    from app.bake.domains import DOMAINS
+    from app.bake.staff_posts import attach_staff_posts, roles_for_spec
+
+    sch = out.get("schema") if isinstance(out.get("schema"), dict) else {}
+    out["schema"] = attach_staff_posts(
+        dict(sch),
+        domain,
+        archetype,
+        arches,
+        proposal_text=body,
+    )
+    dom_roles = list((DOMAINS.get(domain) or {}).get("roles") or [])
+    out["roles"] = roles_for_spec(dom_roles, out["schema"])
+    return out
 
 
 def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:

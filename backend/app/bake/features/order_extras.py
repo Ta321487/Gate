@@ -56,18 +56,10 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
     if ORDER_REVIEW_CAP not in caps:
         return
 
-    def ensure(menus_list: list, key: str, item: dict, before: str | None = None) -> None:
-        if any(m.get("key") == key for m in menus_list):
-            return
-        if before:
-            for i, m in enumerate(menus_list):
-                if m.get("key") == before:
-                    menus_list.insert(i, item)
-                    return
-        menus_list.append(item)
+    from app.bake.schema.menu_utils import ensure_menu
 
-    ensure(user, "order_reviews", {"key": "order_reviews", "label": "我的评价"}, before="my_orders")
-    ensure(admin, "order_reviews", {"key": "order_reviews", "label": "评价管理"}, before="orders")
+    ensure_menu(user, "order_reviews", {"key": "order_reviews", "label": "我的评价"}, before_key="my_orders")
+    ensure_menu(admin, "order_reviews", {"key": "order_reviews", "label": "评价管理"}, before_key="orders")
     labels.setdefault("orderReviewPageTitle", "我的评价")
     labels.setdefault("orderReviewPageLead", "对已完成订单进行星级与文字评价。")
     ents = schema.setdefault("entities", {})

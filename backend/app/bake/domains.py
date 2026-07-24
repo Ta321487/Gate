@@ -34,8 +34,9 @@ ARCHETYPES = {
             "跟进", "线索",
             # 流转类 = ticket_flow 同义，不新开 ARCH
             "流转", "上报", "分拨", "转办",
-            # 事件/公卫（DOM-EVENT）
+            # 事件/公卫（与 DOM-EVENT 对齐；勿用光杆「打卡/照护」抬分）
             "随访", "排查", "晨检", "晨午检", "监测", "处置", "密接", "接触者", "病例",
+            "健康监测", "健康打卡", "复工监测", "隔离观察", "健康筛查",
             # 英文行为（极少）
             "repair", "approval", "workflow",
         ],
@@ -84,7 +85,12 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-EQUIP": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend"],
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-EVENT": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-EVENT": ["archive", "ticket_flow", "archive_log", "content", "org_users"],
+    "DOM-ATTEND": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-RECRUIT": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-GRADE": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-INTERN": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users"],
     # B 报修/工单
     "DOM-DORM": ["ticket_flow", "content", "org_users"],
     "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
@@ -112,6 +118,8 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
 }
 
 
+# out_of_mvp：行业壳「常见边界」示例外壳，可随时改本表；交付清单由
+# attach_accept → compose_out_of_mvp（目录相关项 ∪ 开题扫词）合成，非写死契约。
 DOMAINS = {
     "DOM-LIBRARY": {
         "label": "图书",
@@ -223,13 +231,17 @@ DOMAINS = {
             "办公用品申领",
             "耗材管理",
             "入库出库",
+            "出入库",
             "应急物资",
             "物资仓储",
             "仓储调度",
             "物资调度",
+            "冷链仓储",
+            "冷库",
+            "货品台账",
         ],
         "match_hint": (
-            "适用：物资/耗材领用、仓储出入库、应急物资调度台账。"
+            "适用：物资/耗材领用、仓储出入库、应急物资调度台账、冷链仓储温湿度台账。"
             "正文顺带提公卫/疫情时，若题名是仓储物资仍选本域，勿改事件上报。"
         ),
         "entities": ["Asset", "Category", "Requisition", "Notice"],
@@ -328,31 +340,36 @@ DOMAINS = {
         # 词表只做硬分流；长尾说法交给 match_recommend（见 match_hint）
         "keywords": [
             "事件上报",
-            "公卫",
             "公共卫生",
             "公共卫生事件",
             "院感",
             "感染防控",
-            "疫情",
             "晨检",
+            "晨午检",
             "排查",
-            "密接",
             "传染病",
             "随访",
             "流调",
-            "隐患上报",
             "网格化",
-            "慢病",
             "健康监测",
+            "因病缺课",
+            "养老",
+            "巡访",
+            "献血",
+            "健康筛查",
+            "食品安全",
+            "复工监测",
         ],
         "match_hint": (
-            "适用：公卫应急、院感、晨午检、慢性病随访、网格排查、食安风险排查、"
-            "员工健康复工、流调协查、献血筛查等「建档+上报/核查」题。"
-            "不适用：门诊挂号（医院）、食堂点餐（点餐）、纯应急物资仓储（物资领用）。"
+            "适用：公卫应急、院感、晨午检、慢性病随访、养老/员工健康监测、网格排查、"
+            "食安风险排查、流调协查、献血筛查等「建档+打卡/随访+上报」题。"
+            "不适用：门诊挂号（医院）、食堂点餐（点餐）、纯应急物资仓储（物资领用）、"
+            "宿舍卫生整改工单（宿舍报修）。"
+            "开题主写物资出入库勿选本域。"
         ),
-        "entities": ["EventCase", "Category", "EventReport", "Notice"],
+        "entities": ["EventCase", "Category", "EventReport", "ArchiveLog", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["事件建档 → 提交上报 → 确认处置完结"],
+        "flows": ["对象建档 → 打卡/随访记录 → 异常上报处置"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -360,12 +377,15 @@ DOMAINS = {
             {"name": "事件档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
+            {"name": "健康打卡/监测记录", "status": "domain"},
             {"name": "事件上报", "status": "flow"},
             {"name": "上报记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "疾控直报对接", "status": "out_of_mvp"},
+            {"name": "物资仓储出入库", "status": "out_of_mvp"},
+            {"name": "完整电子量表引擎", "status": "out_of_mvp"},
         ],
-        "out_of_mvp": ["疾控直报对接"],
+        "out_of_mvp": ["疾控直报对接", "物资仓储出入库", "完整电子量表引擎"],
         "themes": [
             {"id": "event-teal", "label": "应急青绿"},
             {"id": "event-amber", "label": "警示琥珀"},
@@ -387,6 +407,259 @@ DOMAINS = {
             "register_role": "user",
             "archive_category_table": "category",
             "archive_item_table": "event_case",
+        },
+    },
+    "DOM-ATTEND": {
+        "label": "考勤请假",
+        "keywords": [
+            "请假", "销假", "考勤请假", "请假管理", "请假审批", "请假系统",
+            "请假申请", "请销假", "事假", "病假", "假勤", "出勤管理",
+            "学生请假", "员工请假",
+        ],
+        "match_hint": (
+            "适用：员工/学生请假申请与审批、销假、假勤台账。"
+            "勿与公卫健康打卡/晨午检（事件上报）或宿舍卫生整改混淆。"
+        ),
+        "entities": ["StaffPerson", "Category", "LeaveReq", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["人员建档 → 提交请假 → 审批销假"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "人员档案", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "请假审批", "status": "flow"},
+            {"name": "请假记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "人脸考勤", "status": "out_of_mvp"},
+            {"name": "GPS轨迹打卡", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["人脸考勤", "GPS轨迹打卡"],
+        "themes": [
+            {"id": "attend-sky", "label": "假勤天蓝"},
+            {"id": "attend-leaf", "label": "销假叶绿"},
+            {"id": "attend-slate", "label": "台账灰青"},
+            {"id": "attend-night", "label": "值班深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="人员档案",
+            flow_feature="请假审批",
+            records_feature="请假记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "leave_req",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "staff_person",
+        },
+    },
+    "DOM-RECRUIT": {
+        "label": "招聘投递",
+        "keywords": [
+            "招聘", "投递", "校招", "应聘", "简历投递", "校园招聘",
+            "岗位发布", "招聘系统", "人才招聘", "网申", "职位申请",
+            "招聘岗位", "双选会", "求职投递",
+        ],
+        "match_hint": (
+            "适用：岗位发布、简历投递、初筛/录用审核。"
+            "勿与客户跟进（CRM）或实习周报（实习管理）混淆。"
+        ),
+        "entities": ["JobPost", "Category", "JobApply", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["岗位发布 → 简历投递 → 初筛录用"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "岗位档案", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "投递审核", "status": "flow"},
+            {"name": "投递记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "视频面试", "status": "out_of_mvp"},
+            {"name": "ATS爬虫导入", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["视频面试", "ATS爬虫导入"],
+        "themes": [
+            {"id": "recruit-coral", "label": "校招珊瑚"},
+            {"id": "recruit-ocean", "label": "岗位海蓝"},
+            {"id": "recruit-sand", "label": "简历暖沙"},
+            {"id": "recruit-night", "label": "夜招深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="岗位档案",
+            flow_feature="投递审核",
+            records_feature="投递记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "job_apply",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "job_post",
+        },
+    },
+    "DOM-GRADE": {
+        "label": "教务成绩",
+        "keywords": [
+            "成绩", "补考", "成绩管理", "成绩查询", "成绩更正", "教务成绩",
+            "成绩登记", "成绩系统", "成绩录入", "补考申请", "成绩审核",
+            "缓考", "绩点查询", "成绩申请",
+        ],
+        "match_hint": (
+            "适用：课程成绩台账、补考/成绩更正申请与教务审核。"
+            "勿与选课占名额（选课）或活动报名混淆。"
+        ),
+        "entities": ["CourseItem", "Category", "GradeApply", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["课程建档 → 补考/更正申请 → 教务确认"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "课程档案", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "成绩申请审核", "status": "flow"},
+            {"name": "成绩申请记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "学信网对接", "status": "out_of_mvp"},
+            {"name": "复杂绩点引擎", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["学信网对接", "复杂绩点引擎"],
+        "themes": [
+            {"id": "grade-ink", "label": "教务墨蓝"},
+            {"id": "grade-leaf", "label": "成绩青绿"},
+            {"id": "grade-amber", "label": "补考琥珀"},
+            {"id": "grade-night", "label": "夜查深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="课程档案",
+            flow_feature="成绩申请审核",
+            records_feature="成绩申请记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "grade_apply",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "course_item",
+        },
+    },
+    "DOM-INTERN": {
+        "label": "实习周报",
+        "keywords": [
+            "实习", "周报", "实习周报", "实习管理", "实习鉴定", "实习岗位",
+            "学生实习", "顶岗实习", "实习系统", "实习导师", "实习单位",
+            "实习报告", "校外实习", "实习考勤",
+        ],
+        "match_hint": (
+            "适用：实习岗位建档、周报提交与导师审阅。"
+            "勿与活动报名或招聘投递（仅投简历）混淆。"
+        ),
+        "entities": ["InternPost", "Category", "WeekReport", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["实习岗建档 → 提交周报 → 导师审阅"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "实习岗位", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "周报审阅", "status": "flow"},
+            {"name": "周报记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "三方协议电子签", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["三方协议电子签"],
+        "themes": [
+            {"id": "intern-teal", "label": "实习青绿"},
+            {"id": "intern-sand", "label": "周报暖沙"},
+            {"id": "intern-slate", "label": "鉴定灰青"},
+            {"id": "intern-night", "label": "夜写深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="实习岗位",
+            flow_feature="周报审阅",
+            records_feature="周报记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "week_report",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "intern_post",
+        },
+    },
+    "DOM-PARCEL": {
+        "label": "快递驿站",
+        "keywords": [
+            "快递", "驿站", "取件", "包裹", "快递驿站", "校园快递",
+            "取件码", "快递代收", "驿站管理", "包裹取件", "代收点",
+            "快递入库", "快递领取", "催取",
+        ],
+        "match_hint": (
+            "适用：包裹入库、取件码核销、驿站取件申请。"
+            "勿与失物招领（遗失物品）混淆；智能柜硬件对接不在本期。"
+        ),
+        "entities": ["Parcel", "Category", "ParcelClaim", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["包裹入库 → 取件申请 → 核销出库"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "包裹台账", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "取件核销", "status": "flow"},
+            {"name": "取件记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "智能柜硬件对接", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["智能柜硬件对接"],
+        "themes": [
+            {"id": "parcel-orange", "label": "包裹橙"},
+            {"id": "parcel-sky", "label": "驿站天蓝"},
+            {"id": "parcel-slate", "label": "柜号灰青"},
+            {"id": "parcel-night", "label": "夜取深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="包裹台账",
+            flow_feature="取件核销",
+            records_feature="取件记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "parcel_claim",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "parcel",
         },
     },
     "DOM-SHOP": {
@@ -435,8 +708,21 @@ DOMAINS = {
     "DOM-DORM": {
         "label": "宿舍",
         # 不用光杆「报修」：仪器/物业报修会误落宿舍壳；报修行为走 ARCH-FLOW
-        "keywords": ["宿舍", "寝室", "公寓", "水电", "宿舍报修"],
-        "match_hint": "适用：宿舍水电报修、寝室维修工单。勿与物业报修（小区）或 IT 报修混淆。",
+        "keywords": [
+            "宿舍",
+            "寝室",
+            "公寓",
+            "水电",
+            "宿舍报修",
+            "宿舍卫生",
+            "寝室卫生",
+            "卫生检查",
+            "卫生整改",
+        ],
+        "match_hint": (
+            "适用：宿舍水电报修、寝室维修/卫生检查整改工单。"
+            "勿与物业报修（小区）、IT 报修或传染病晨检（事件上报）混淆。"
+        ),
         "entities": ["Dorm", "Repair", "Notice"],
         "roles": ["student", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
@@ -707,7 +993,7 @@ DOMAINS = {
         "match_hint": "适用：点餐/订餐下单。餐饮食品安全排查、追溯上报选事件上报，不要选本域。",
         "entities": ["Dish", "Order", "Category", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选菜 → 下单 → 堂食/自取/配送"],
+        "flows": ["选菜 → 下单 → 堂食/自取"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -1156,3 +1442,8 @@ DOMAINS = {
         ],
     },
 }
+
+# 档案表 / 单据表 / ticket_mode 以 domain_entities 为准（覆盖上方 runtime 同名字段）
+from app.bake.domain_entities import bind_runtime_tables  # noqa: E402
+
+bind_runtime_tables(DOMAINS)

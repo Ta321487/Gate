@@ -5,13 +5,23 @@ from __future__ import annotations
 import re
 
 FEATURE_HEAD_TERMS = (
-    r"主要功能|功能需求|功能模块|功能清单|实现内容|系统功能|系统实现|核心功能|"
+    # 勿用光杆「系统实现」：开题「研究内容→（3）系统实现」是技术栈小节，
+    # 会吞掉后续功能需求段（焦点最多 3500 字），导致商城等题只剩标题词。
+    r"主要功能|功能需求|功能模块|功能清单|实现内容|系统功能|核心功能|"
     r"拟实现(?:功能)?|主要任务|任务与要求|实现下列功能|答辩必演示"
 )
 NEGATION_TERMS = (
-    r"不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|"
+    r"不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|不含|不以|"
     r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必|"
-    r"非本期|不在本期|不做范围"
+    r"非本期|不在本期|不做范围|并非|"
+    # 「非传染病晨检」：仅左侧前缀用；右侧见 RIGHT_NEGATION_TERMS
+    r"非(?!常|法|洲|遗|物质)"
+)
+# 右侧「先提能力再写本期不」：不含光杆「非」，避免「物资领用，非公卫上报」误杀
+RIGHT_NEGATION_TERMS = (
+    r"不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|不含|不以|"
+    r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必|"
+    r"非本期|不在本期|不做范围|并非"
 )
 # 对比/扩展语境：关键词出现在「容易涉及的扩展」里，不应抬升拟实现主路径
 CONTRAST_TERMS = (
@@ -24,7 +34,30 @@ FEATURE_HEAD_RE = re.compile(rf"({FEATURE_HEAD_TERMS})")
 RESEARCH_WITH_IMPL_RE = re.compile(r"研究内容.{0,12}拟实现|拟实现.{0,12}功能")
 OUT_HEAD_RE = re.compile(rf"({NEGATION_TERMS})")
 NEGATION_RE = re.compile(rf"(?:{NEGATION_TERMS})")
+RIGHT_NEGATION_RE = re.compile(rf"(?:{RIGHT_NEGATION_TERMS})")
 CONTRAST_RE = re.compile(rf"(?:{CONTRAST_TERMS})")
+
+_CLAUSE_SEPS = ("。", "；", ";", "！", "!", "？", "?", "\n")
+
+
+def _left_clause(text: str) -> str:
+    """取最近分句边界之后的左侧片段。"""
+    cut = -1
+    for sep in _CLAUSE_SEPS:
+        i = text.rfind(sep)
+        if i >= 0:
+            cut = max(cut, i)
+    return text[cut + 1 :] if cut >= 0 else text
+
+
+def _right_clause(text: str) -> str:
+    """取最近分句边界之前的右侧片段。"""
+    cut = len(text)
+    for sep in _CLAUSE_SEPS:
+        i = text.find(sep)
+        if i >= 0:
+            cut = min(cut, i)
+    return text[:cut]
 
 
 def keyword_mentioned(
@@ -43,24 +76,14 @@ def keyword_mentioned(
     flags = re.IGNORECASE if kw.isascii() else 0
     for m in re.finditer(re.escape(kw), text, flags):
         left = max(0, m.start() - window)
-        chunk = text[left : m.start()]
-        for sep in ("。", "；", ";", "！", "!", "？", "?", "\n"):
-            i = chunk.rfind(sep)
-            if i >= 0:
-                chunk = chunk[i + 1 :]
-                break
+        chunk = _left_clause(text[left : m.start()])
         if NEGATION_RE.search(chunk):
             continue
         if ignore_contrast and CONTRAST_RE.search(chunk):
             continue
-        # 同句右侧短窗：先提能力再写「本期不」
-        right = text[m.end() : m.end() + window]
-        for sep in ("。", "；", ";", "！", "!", "？", "?", "\n"):
-            i = right.find(sep)
-            if i >= 0:
-                right = right[:i]
-                break
-        if NEGATION_RE.search(right):
+        # 同句右侧短窗：先提能力再写「本期不」（不含光杆「非」）
+        right = _right_clause(text[m.end() : m.end() + window])
+        if RIGHT_NEGATION_RE.search(right):
             continue
         return True
     return False

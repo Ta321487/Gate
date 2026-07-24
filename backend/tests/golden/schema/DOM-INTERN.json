@@ -1,0 +1,212 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "岗位名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "企业导师",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "单位/岗位说明",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "实习状态",
+          "options": [
+            "待上岗",
+            "实习中",
+            "已结束",
+            "已鉴定"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "实习类型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可交周报",
+          "type": "number"
+        }
+      ],
+      "key": "intern_post",
+      "label": "实习岗位",
+      "labelPlural": "实习岗位",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已交周报",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "周报形式",
+      "contactChannelOptions": [
+        "在线填写",
+        "附件补交",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "在线/附件等",
+      "key": "week_report",
+      "label": "周报",
+      "labelPlural": "周报",
+      "nextFollowLabel": "下周期望反馈",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "本周工作内容",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已通过",
+        "overdue": "已逾期",
+        "pending": "待审阅",
+        "rejected": "退回修改",
+        "returned": "已完结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交周报",
+        "approve": "导师通过",
+        "reject": "退回修改",
+        "remind": "催交",
+        "return": "审阅完结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "实习周报",
+    "authLead": "验证码登录；关联实习岗位并每周提交周报，辅导员/导师审阅。",
+    "authPoints": [
+      "验证码登录",
+      "实习岗位",
+      "周报提交与审阅"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "实习节点与周报要求，点击条目阅读全文。",
+    "noticePageTitle": "就业办公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可提交实习周报"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "实习岗位",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "实习类型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "周报审阅"
+      },
+      {
+        "key": "ticket_records",
+        "label": "周报记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "我的实习岗"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的周报"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "查看已建档实习单位与导师。",
+      "title": "实习岗位"
+    },
+    {
+      "lead": "按周提交工作内容，等待审阅。",
+      "title": "提交周报"
+    },
+    {
+      "lead": "实习与鉴定安排见公告。",
+      "title": "就业办公告"
+    },
+    {
+      "lead": "跟踪审阅结果。",
+      "title": "我的周报"
+    },
+    {
+      "lead": "按实习类型筛选岗位。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "就业办主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "实习辅导员"
+    },
+    "user": {
+      "id": "user",
+      "label": "实习生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请按周填写工作与问题；三方协议电子签不在本期。",
+    "noticeTitle": "周报须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

@@ -1,0 +1,205 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "运单号",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "站点",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "取件码/柜号",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "包裹状态",
+          "options": [
+            "待取",
+            "已预约",
+            "已取出",
+            "逾期"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "件型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可取件",
+          "type": "number"
+        }
+      ],
+      "key": "parcel",
+      "label": "包裹",
+      "labelPlural": "包裹",
+      "softDelete": false,
+      "stockDisplay": "available",
+      "stockUnavailableLabel": "已取件",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": true,
+      "approveEndsFlow": true,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "key": "parcel_claim",
+      "label": "取件单",
+      "labelPlural": "取件",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "取件说明",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已取出",
+        "overdue": "已逾期",
+        "pending": "待核销",
+        "rejected": "已驳回",
+        "returned": "已取消"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "申请取件",
+        "approve": "核销出库",
+        "reject": "驳回",
+        "remind": "催取",
+        "return": "取消取件"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "校园驿站",
+    "authLead": "验证码登录；查看待取包裹，提交取件申请并由店员核销。",
+    "authPoints": [
+      "验证码登录",
+      "包裹查询",
+      "取件核销"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "营业时间与催取通知，点击条目阅读全文。",
+    "noticePageTitle": "驿站公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可申请取件"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "包裹台账",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "件型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "取件核销"
+      },
+      {
+        "key": "ticket_records",
+        "label": "取件记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "我的包裹"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的取件"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按运单与取件码查看待取包裹。",
+      "title": "包裹查询"
+    },
+    {
+      "lead": "提交取件单，到站核销出库。",
+      "title": "申请取件"
+    },
+    {
+      "lead": "营业时间与逾期催取见公告。",
+      "title": "驿站公告"
+    },
+    {
+      "lead": "跟踪核销进度。",
+      "title": "我的取件"
+    },
+    {
+      "lead": "普通/生鲜/大件快速定位。",
+      "title": "件型筛选"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "驿站主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "驿站店员"
+    },
+    "user": {
+      "id": "user",
+      "label": "取件人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请凭取件码与手机号取件；智能柜硬件不在本期。",
+    "noticeTitle": "取件须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

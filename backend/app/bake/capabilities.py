@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -92,6 +93,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "label": "浏览历史",
         "status": "implemented",
         "desc": "最近浏览足迹；仅开题写到才挂",
+    },
+    "archive_log": {
+        "label": "档案打卡记录",
+        "status": "implemented",
+        "desc": "挂档案的每日打卡/随访/评估记录；今日未打卡；异常可转上报",
     },
     "gallery": {
         "label": "商品多图",
@@ -257,6 +263,46 @@ def scan_out_of_scope(text: str) -> list[str]:
         if label not in hits:
             hits.append(label)
     return hits
+
+
+def compose_out_of_mvp(
+    domain: str,
+    proposal_text: str = "",
+    *,
+    scanned_signals: list[str] | None = None,
+) -> list[str]:
+    """合成「本期不做」：域目录默认 ∪ 开题扫到的超范围；非写死交付清单。
+
+    - `DOMAINS[*].out_of_mvp`：行业壳常见边界，维护者随时改 domains.py
+    - 开题有实质正文时：仅保留与题面相关的默认项（题面出现该词/片段即相关，含「不做X」）
+    - 再并入 `scan_out_of_scope` 命中项（开题提及的超壳卖点）
+    """
+    from app.bake.domains import DOMAINS
+
+    defaults = list((DOMAINS.get(domain) or {}).get("out_of_mvp") or [])
+    text = (proposal_text or "").strip()
+    substantial = len(text) >= 80
+    out: list[str] = []
+
+    def _add(item: str) -> None:
+        item = (item or "").strip()
+        if item and item not in out:
+            out.append(item)
+
+    for item in defaults:
+        if not substantial:
+            _add(item)
+            continue
+        parts = [item] + [
+            p.strip() for p in re.split(r"[/、与和]", item) if len(p.strip()) >= 2
+        ]
+        if any(p in text for p in parts):
+            _add(item)
+
+    for sig in scanned_signals or []:
+        _add(str(sig))
+
+    return out
 
 
 def resolve_accept(

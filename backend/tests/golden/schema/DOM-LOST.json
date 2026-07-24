@@ -27,8 +27,11 @@
         {
           "key": "itemKind",
           "label": "类型",
-          "type": "select",
-          "options": ["招领", "寻物"]
+          "options": [
+            "招领",
+            "寻物"
+          ],
+          "type": "select"
         },
         {
           "key": "foundAt",

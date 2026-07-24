@@ -109,28 +109,19 @@ def attach_loyalty_schema(schema: dict[str, Any], caps: list[str] | None) -> dic
     return schema
 
 
-def _ensure_menu(menus: list[dict], key: str, item: dict, *, before_key: str | None = None) -> None:
-    if any(m.get("key") == key for m in menus):
-        return
-    if before_key:
-        for i, m in enumerate(menus):
-            if m.get("key") == before_key:
-                menus.insert(i, item)
-                return
-    menus.append(item)
-
-
 def attach_coupon_menus(schema: dict[str, Any]) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
     admin = menus.setdefault("admin", [])
-    _ensure_menu(
+    ensure_menu(
         user,
         "coupons",
         {"key": "coupons", "label": "优惠券"},
         before_key="cart",
     )
-    _ensure_menu(
+    ensure_menu(
         admin,
         "coupons",
         {"key": "coupons", "label": "优惠券管理"},

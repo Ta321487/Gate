@@ -42,7 +42,7 @@ class DomainSqlGoldenTests(unittest.TestCase):
             with self.subTest(domain=domain):
                 got = normalize_sql(domain_sql(domain, "thesis_test"))
                 path = GOLDEN_DIR / f"{domain}.sql"
-                want = path.read_text(encoding="utf-8")
+                want = normalize_sql(path.read_text(encoding="utf-8"))
                 self.assertEqual(got, want, f"domain_sql mismatch: {domain}")
 
     def test_generic_shells(self) -> None:
@@ -52,7 +52,7 @@ class DomainSqlGoldenTests(unittest.TestCase):
                 got = normalize_sql(
                     domain_sql(domain, "thesis_test", archetype=arch, archetypes=arches)
                 )
-                want = (GOLDEN_DIR / name).read_text(encoding="utf-8")
+                want = normalize_sql((GOLDEN_DIR / name).read_text(encoding="utf-8"))
                 self.assertEqual(got, want, f"domain_sql mismatch: {name}")
 
 

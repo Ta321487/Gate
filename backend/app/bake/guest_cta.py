@@ -30,6 +30,28 @@ CTA_BY_DOMAIN: dict[str, list[str]] = {
         "登录查看更多库存物资",
         "登录后继续申领流程",
     ],
+
+    "DOM-ATTEND": [
+        {"title": "提交请假", "lead": "填写事由与起止，等待审批。", "to": "/login"},
+        {"title": "查看公告", "lead": "考勤节点与销假说明。", "to": "/notices"},
+    ],
+    "DOM-RECRUIT": [
+        {"title": "浏览岗位", "lead": "查看在招职位与要求。", "to": "/archive"},
+        {"title": "投递简历", "lead": "登录后提交投递单。", "to": "/login"},
+    ],
+    "DOM-GRADE": [
+        {"title": "课程成绩", "lead": "查看课程并申请更正/补考。", "to": "/login"},
+        {"title": "教务公告", "lead": "补考与成绩安排。", "to": "/notices"},
+    ],
+    "DOM-INTERN": [
+        {"title": "实习岗位", "lead": "查看实习单位与导师。", "to": "/archive"},
+        {"title": "提交周报", "lead": "登录后按周填写。", "to": "/login"},
+    ],
+    "DOM-PARCEL": [
+        {"title": "查包裹", "lead": "按运单与取件码查询。", "to": "/archive"},
+        {"title": "申请取件", "lead": "登录后提交取件单。", "to": "/login"},
+    ],
+
     "DOM-CRM": [
         "登录后查看全部客户档案并跟进",
         "登录解锁完整客户列表",
@@ -144,7 +166,7 @@ def portal_guest_browse_enabled(domain: str, dom_meta: dict[str, Any] | None = N
         return bool(meta.get("portal_guest_browse"))
     if domain in GUEST_BROWSE_EXCLUDE:
         return False
-    from app.bake.domain_schema import DOMAIN_CAPABILITIES
+    from app.bake.domains import DOMAIN_CAPABILITIES
 
     caps = DOMAIN_CAPABILITIES.get(domain) or []
     return "archive" in caps

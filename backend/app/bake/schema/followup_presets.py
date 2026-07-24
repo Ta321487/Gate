@@ -1,0 +1,515 @@
+"""CRM / 考勤等「档案+跟进单」族：参数化预设，避免 templates 七份近同构复制。"""
+
+from __future__ import annotations
+
+from typing import Any, Callable
+
+
+def _stage_field(label: str, options: list[str]) -> dict[str, Any]:
+    return {"key": "stage", "label": label, "type": "select", "options": options}
+
+
+def _std_archive_fields(
+    title_label: str,
+    author_label: str,
+    isbn_label: str,
+    stage_label: str,
+    stage_options: list[str],
+    category_label: str,
+    stock_label: str,
+) -> list[dict[str, Any]]:
+    return [
+        {"key": "title", "label": title_label, "type": "string"},
+        {"key": "author", "label": author_label, "type": "string"},
+        {"key": "isbn", "label": isbn_label, "type": "textarea"},
+        _stage_field(stage_label, stage_options),
+        {"key": "category", "label": category_label, "type": "select"},
+        {"key": "stock", "label": stock_label, "type": "number"},
+    ]
+
+
+# domain -> kwargs for archive_ticket_schema (+ banners, optional postprocess)
+FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
+    "DOM-CRM": {
+        "doc": "轻量 CRM：客户档案 + 跟进单据（非公海/外呼引擎）。",
+        "user_label": "业务员",
+        "admin_label": "销售主管（总管）",
+        "subadmin_label": "客户经理",
+        "archive_key": "customer",
+        "archive_label": "客户",
+        "archive_plural": "客户",
+        "archive_fields": _std_archive_fields(
+            "客户名称",
+            "联系人",
+            "电话/备注",
+            "销售阶段",
+            ["线索", "意向", "谈判", "成交", "搁置"],
+            "客户分级",
+            "可跟进",
+        ),
+        "ticket_key": "follow_up",
+        "ticket_label": "跟进单",
+        "ticket_plural": "跟进",
+        "verbs": {
+            "apply": "提交跟进",
+            "approve": "确认",
+            "reject": "驳回",
+            "return": "完结",
+            "remind": "催办",
+        },
+        "states": {
+            "pending": "待确认",
+            "approved": "跟进中",
+            "rejected": "已驳回",
+            "returned": "已完结",
+            "overdue": "已失效",
+        },
+        "archive_menu_admin": "客户档案",
+        "archive_menu_user": "客户列表",
+        "auth_eyebrow": "客户跟进",
+        "auth_lead": "验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
+        "auth_points": ["验证码登录", "客户档案", "跟进记录"],
+        "register_hint": "注册后可维护名下客户并提交跟进",
+        "notice_title": "跟进须知",
+        "notice_body": "请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。",
+        "notice_page_title": "销售公告",
+        "notice_page_lead": "跟进规范与临时通知，点击条目阅读全文。",
+        "my_tickets_label": "我的跟进",
+        "pending_label": "跟进审核",
+        "records_label": "跟进记录",
+        "remark_label": "跟进内容",
+        "auto_approve": True,
+        "contact_channel_label": "联系渠道",
+        "contact_channel_options": ["电话", "微信", "邮件", "到访", "其他"],
+        "contact_channel_placeholder": "电话/微信/到访等",
+        "next_follow_label": "下次跟进",
+        "banners": [
+            {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+            {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
+            {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
+            {"title": "我的跟进", "lead": "登录后查看跟进进度与记录。"},
+            {"title": "分级管理", "lead": "按客户分级筛选重点对象。"},
+        ],
+    },
+    "DOM-EVENT": {
+        "doc": "事件/公卫上报：档案 + 上报单 + 监测打卡。",
+        "user_label": "上报人",
+        "admin_label": "主管（总管）",
+        "subadmin_label": "值班员",
+        "archive_key": "event_case",
+        "archive_label": "事件",
+        "archive_plural": "事件",
+        "archive_fields": _std_archive_fields(
+            "事件标题",
+            "上报人",
+            "地点/摘要",
+            "处置阶段",
+            ["待核查", "排查中", "处置中", "已闭环"],
+            "事件分类",
+            "可上报",
+        ),
+        "ticket_key": "event_report",
+        "ticket_label": "上报单",
+        "ticket_plural": "上报",
+        "verbs": {
+            "apply": "提交上报",
+            "approve": "确认",
+            "reject": "驳回",
+            "return": "完结",
+            "remind": "催办",
+        },
+        "states": {
+            "pending": "待确认",
+            "approved": "处置中",
+            "rejected": "已驳回",
+            "returned": "已完结",
+            "overdue": "已失效",
+        },
+        "archive_menu_admin": "事件档案",
+        "archive_menu_user": "事件列表",
+        "auth_eyebrow": "事件上报",
+        "auth_lead": "验证码登录；维护对象档案并打卡/上报，异常可转处置。",
+        "auth_points": ["验证码登录", "对象档案", "健康打卡", "上报记录"],
+        "register_hint": "内部账号登录后可维护档案、打卡并提交上报",
+        "notice_title": "上报须知",
+        "notice_body": "请如实登记要素；重大异常请及时上报，办结后可在记录中查阅。",
+        "notice_page_title": "应急公告",
+        "notice_page_lead": "上报规范与临时通知，点击条目阅读全文。",
+        "my_tickets_label": "我的上报",
+        "pending_label": "上报确认",
+        "records_label": "上报记录",
+        "remark_label": "上报说明",
+        "auto_approve": True,
+        "contact_channel_label": "上报渠道",
+        "contact_channel_options": ["电话", "现场", "系统填报", "其他"],
+        "contact_channel_placeholder": "电话/现场/系统填报等",
+        "next_follow_label": "下次复核",
+        "banners": [
+            {"title": "事件档案", "lead": "按分类浏览对象档案，维护摘要与状态。"},
+            {"title": "健康打卡", "lead": "对档案提交每日打卡或随访，查看今日未打卡。"},
+            {"title": "事件上报", "lead": "异常线索提交上报，办结后可追溯。"},
+            {"title": "应急公告", "lead": "上报规范与排查通知见公告栏。"},
+            {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+            {"title": "分类管理", "lead": "按分类筛选重点对象。"},
+        ],
+        "postprocess": "event_archive_log",
+    },
+    "DOM-ATTEND": {
+        "doc": "考勤请假：人员档案 + 请假单。",
+        "user_label": "员工/学生",
+        "admin_label": "人事主管（总管）",
+        "subadmin_label": "考勤员",
+        "archive_key": "staff_person",
+        "archive_label": "人员",
+        "archive_plural": "人员",
+        "archive_fields": _std_archive_fields(
+            "姓名",
+            "部门",
+            "工号/学号备注",
+            "在岗状态",
+            ["在岗", "请假中", "出差", "停职"],
+            "岗位类型",
+            "可请假",
+        ),
+        "ticket_key": "leave_req",
+        "ticket_label": "请假单",
+        "ticket_plural": "请假",
+        "verbs": {
+            "apply": "提交请假",
+            "approve": "批准",
+            "reject": "驳回",
+            "return": "销假",
+            "remind": "催办",
+        },
+        "states": {
+            "pending": "待审批",
+            "approved": "已批准",
+            "rejected": "已驳回",
+            "returned": "已销假",
+            "overdue": "已失效",
+        },
+        "archive_menu_admin": "人员档案",
+        "archive_menu_user": "人员名册",
+        "auth_eyebrow": "考勤请假",
+        "auth_lead": "验证码登录；维护人员档案并提交请假，审批通过后按时销假。",
+        "auth_points": ["验证码登录", "人员档案", "请假与销假"],
+        "register_hint": "注册后可提交请假申请",
+        "notice_title": "请假须知",
+        "notice_body": "事假须提前申请；病假可补交证明；返回当日请销假。",
+        "notice_page_title": "人事公告",
+        "notice_page_lead": "考勤与请假通知，点击条目阅读全文。",
+        "my_tickets_label": "我的请假",
+        "pending_label": "请假审批",
+        "records_label": "请假记录",
+        "remark_label": "请假事由",
+        "auto_approve": False,
+        "contact_channel_label": "请假方式",
+        "contact_channel_options": ["线上申请", "纸质补录", "电话报备", "其他"],
+        "contact_channel_placeholder": "线上/纸质/电话等",
+        "next_follow_label": "预计销假日",
+        "banners": [
+            {"title": "人员名册", "lead": "按岗位类型浏览人员，维护部门与工号。"},
+            {"title": "在线请假", "lead": "提交请假单，人事审批后生效。"},
+            {"title": "人事公告", "lead": "考勤节点与请假须知见公告栏。"},
+            {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
+            {"title": "分类检索", "lead": "按岗位类型快速定位人员。"},
+        ],
+    },
+    "DOM-RECRUIT": {
+        "doc": "招聘投递：岗位 + 投递单。",
+        "user_label": "求职者",
+        "admin_label": "招聘主管（总管）",
+        "subadmin_label": "HR专员",
+        "archive_key": "job_post",
+        "archive_label": "岗位",
+        "archive_plural": "岗位",
+        "archive_fields": _std_archive_fields(
+            "岗位名称",
+            "用人部门",
+            "薪资/任职要求",
+            "招聘状态",
+            ["招聘中", "初筛中", "已满员", "已关闭"],
+            "岗位类型",
+            "可投递",
+        ),
+        "ticket_key": "job_apply",
+        "ticket_label": "投递单",
+        "ticket_plural": "投递",
+        "verbs": {
+            "apply": "投递简历",
+            "approve": "初筛通过",
+            "reject": "不合适",
+            "return": "结束流程",
+            "remind": "催办",
+        },
+        "states": {
+            "pending": "待初筛",
+            "approved": "初筛通过",
+            "rejected": "未通过",
+            "returned": "已结束",
+            "overdue": "已失效",
+        },
+        "archive_menu_admin": "岗位管理",
+        "archive_menu_user": "职位浏览",
+        "auth_eyebrow": "校园招聘",
+        "auth_lead": "验证码登录；浏览岗位并投递简历，HR 初筛后反馈结果。",
+        "auth_points": ["验证码登录", "职位浏览", "投递与初筛"],
+        "register_hint": "注册后可投递岗位",
+        "notice_title": "投递须知",
+        "notice_body": "请如实填写经历；演示环境不含视频面试。",
+        "notice_page_title": "招聘公告",
+        "notice_page_lead": "岗位更新与投递规范，点击条目阅读全文。",
+        "my_tickets_label": "我的投递",
+        "pending_label": "投递初筛",
+        "records_label": "投递记录",
+        "remark_label": "简历摘要/说明",
+        "auto_approve": False,
+        "contact_channel_label": "投递渠道",
+        "contact_channel_options": ["网申", "现场", "内推", "其他"],
+        "contact_channel_placeholder": "网申/现场/内推等",
+        "next_follow_label": "期望到岗",
+        "banners": [
+            {"title": "职位浏览", "lead": "按类型查看在招岗位与任职要求。"},
+            {"title": "投递简历", "lead": "选择岗位提交投递单，等待 HR 初筛。"},
+            {"title": "招聘公告", "lead": "校招节点与材料要求见公告。"},
+            {"title": "我的投递", "lead": "跟踪初筛进度与结果。"},
+            {"title": "分类检索", "lead": "技术/职能/实习快速筛选。"},
+        ],
+    },
+    "DOM-GRADE": {
+        "doc": "教务成绩：课程档案 + 补考/更正申请。",
+        "user_label": "学生",
+        "admin_label": "教务主管（总管）",
+        "subadmin_label": "教务员",
+        "archive_key": "course_item",
+        "archive_label": "课程",
+        "archive_plural": "课程",
+        "archive_fields": _std_archive_fields(
+            "课程名称",
+            "授课教师",
+            "课号/学分",
+            "开课状态",
+            ["开课中", "已结课", "补考中", "已归档"],
+            "课程类别",
+            "可申请",
+        ),
+        "ticket_key": "grade_apply",
+        "ticket_label": "成绩申请单",
+        "ticket_plural": "成绩申请",
+        "verbs": {
+            "apply": "提交申请",
+            "approve": "教务确认",
+            "reject": "驳回",
+            "return": "办结",
+            "remind": "催办",
+        },
+        "states": {
+            "pending": "待教务审核",
+            "approved": "已确认",
+            "rejected": "已驳回",
+            "returned": "已办结",
+            "overdue": "已失效",
+        },
+        "archive_menu_admin": "课程档案",
+        "archive_menu_user": "课程列表",
+        "auth_eyebrow": "教务成绩",
+        "auth_lead": "验证码登录；查看课程并提交补考或成绩更正申请，由教务审核。",
+        "auth_points": ["验证码登录", "课程列表", "成绩申请"],
+        "register_hint": "注册后可提交成绩相关申请",
+        "notice_title": "成绩须知",
+        "notice_body": "补考与更正须说明理由；不对接学信网。",
+        "notice_page_title": "教务公告",
+        "notice_page_lead": "补考安排与成绩说明，点击条目阅读全文。",
+        "my_tickets_label": "我的成绩申请",
+        "pending_label": "成绩审核",
+        "records_label": "成绩申请记录",
+        "remark_label": "申请说明",
+        "auto_approve": False,
+        "contact_channel_label": "申请类型",
+        "contact_channel_options": ["成绩更正", "补考申请", "缓考备案", "其他"],
+        "contact_channel_placeholder": "更正/补考/缓考等",
+        "next_follow_label": "期望处理日",
+        "banners": [
+            {"title": "课程列表", "lead": "按类别浏览课程与授课教师。"},
+            {"title": "成绩申请", "lead": "提交补考或成绩更正，等待教务确认。"},
+            {"title": "教务公告", "lead": "补考与成绩节点见公告栏。"},
+            {"title": "我的申请", "lead": "跟踪审核进度。"},
+            {"title": "分类检索", "lead": "必修/选修快速定位。"},
+        ],
+    },
+    "DOM-INTERN": {
+        "doc": "实习周报：实习岗 + 周报单。",
+        "user_label": "实习生",
+        "admin_label": "就业办主管（总管）",
+        "subadmin_label": "实习辅导员",
+        "archive_key": "intern_post",
+        "archive_label": "实习岗位",
+        "archive_plural": "实习岗位",
+        "archive_fields": _std_archive_fields(
+            "岗位名称",
+            "企业导师",
+            "单位/岗位说明",
+            "实习状态",
+            ["待上岗", "实习中", "已结束", "已鉴定"],
+            "实习类型",
+            "可交周报",
+        ),
+        "ticket_key": "week_report",
+        "ticket_label": "周报",
+        "ticket_plural": "周报",
+        "verbs": {
+            "apply": "提交周报",
+            "approve": "导师通过",
+            "reject": "退回修改",
+            "return": "审阅完结",
+            "remind": "催交",
+        },
+        "states": {
+            "pending": "待审阅",
+            "approved": "已通过",
+            "rejected": "退回修改",
+            "returned": "已完结",
+            "overdue": "已逾期",
+        },
+        "archive_menu_admin": "实习岗位",
+        "archive_menu_user": "我的实习岗",
+        "auth_eyebrow": "实习周报",
+        "auth_lead": "验证码登录；关联实习岗位并每周提交周报，辅导员/导师审阅。",
+        "auth_points": ["验证码登录", "实习岗位", "周报提交与审阅"],
+        "register_hint": "注册后可提交实习周报",
+        "notice_title": "周报须知",
+        "notice_body": "请按周填写工作与问题；三方协议电子签不在本期。",
+        "notice_page_title": "就业办公告",
+        "notice_page_lead": "实习节点与周报要求，点击条目阅读全文。",
+        "my_tickets_label": "我的周报",
+        "pending_label": "周报审阅",
+        "records_label": "周报记录",
+        "remark_label": "本周工作内容",
+        "auto_approve": False,
+        "contact_channel_label": "周报形式",
+        "contact_channel_options": ["在线填写", "附件补交", "其他"],
+        "contact_channel_placeholder": "在线/附件等",
+        "next_follow_label": "下周期望反馈",
+        "banners": [
+            {"title": "实习岗位", "lead": "查看已建档实习单位与导师。"},
+            {"title": "提交周报", "lead": "按周提交工作内容，等待审阅。"},
+            {"title": "就业办公告", "lead": "实习与鉴定安排见公告。"},
+            {"title": "我的周报", "lead": "跟踪审阅结果。"},
+            {"title": "分类检索", "lead": "按实习类型筛选岗位。"},
+        ],
+    },
+    "DOM-PARCEL": {
+        "doc": "快递驿站：包裹 + 取件单（接线近 LOST）。",
+        "user_label": "取件人",
+        "admin_label": "驿站主管（总管）",
+        "subadmin_label": "驿站店员",
+        "archive_key": "parcel",
+        "archive_label": "包裹",
+        "archive_plural": "包裹",
+        "archive_fields": _std_archive_fields(
+            "运单号",
+            "站点",
+            "取件码/柜号",
+            "包裹状态",
+            ["待取", "已预约", "已取出", "逾期"],
+            "件型",
+            "可取件",
+        ),
+        "ticket_key": "parcel_claim",
+        "ticket_label": "取件单",
+        "ticket_plural": "取件",
+        "verbs": {
+            "apply": "申请取件",
+            "approve": "核销出库",
+            "reject": "驳回",
+            "return": "取消取件",
+            "remind": "催取",
+        },
+        "states": {
+            "pending": "待核销",
+            "approved": "已取出",
+            "rejected": "已驳回",
+            "returned": "已取消",
+            "overdue": "已逾期",
+        },
+        "archive_menu_admin": "包裹台账",
+        "archive_menu_user": "我的包裹",
+        "auth_eyebrow": "校园驿站",
+        "auth_lead": "验证码登录；查看待取包裹，提交取件申请并由店员核销。",
+        "auth_points": ["验证码登录", "包裹查询", "取件核销"],
+        "register_hint": "注册后可申请取件",
+        "notice_title": "取件须知",
+        "notice_body": "请凭取件码与手机号取件；智能柜硬件不在本期。",
+        "notice_page_title": "驿站公告",
+        "notice_page_lead": "营业时间与催取通知，点击条目阅读全文。",
+        "my_tickets_label": "我的取件",
+        "pending_label": "取件核销",
+        "records_label": "取件记录",
+        "remark_label": "取件说明",
+        "stock_display": "available",
+        "approve_ends_flow": True,
+        "allow_rating": True,
+        # 无 contact_channel / auto_approve（与 CRM 族其它域不同）
+        "banners": [
+            {"title": "包裹查询", "lead": "按运单与取件码查看待取包裹。"},
+            {"title": "申请取件", "lead": "提交取件单，到站核销出库。"},
+            {"title": "驿站公告", "lead": "营业时间与逾期催取见公告。"},
+            {"title": "我的取件", "lead": "跟踪核销进度。"},
+            {"title": "件型筛选", "lead": "普通/生鲜/大件快速定位。"},
+        ],
+    },
+}
+
+
+def _attach_event_archive_log(schema: dict[str, Any]) -> dict[str, Any]:
+    from app.bake.features.archive_log import ARCHIVE_LOG_CAP, attach_archive_log_schema
+
+    caps = list(schema.get("capabilities") or [])
+    if ARCHIVE_LOG_CAP not in caps:
+        caps.append(ARCHIVE_LOG_CAP)
+        schema["capabilities"] = caps
+    attach_archive_log_schema(schema, caps)
+    return schema
+
+
+_POSTPROCESS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+    "event_archive_log": _attach_event_archive_log,
+}
+
+
+def followup_domain_schema(title: str, domain: str) -> dict[str, Any]:
+    """按 FOLLOWUP_PRESETS 组装 archive_ticket + 门户轮播。"""
+    # 延迟导入，避免与 templates.SCHEMA_BUILDERS 循环依赖
+    from app.bake.schema.templates import _with_portal_banners, archive_ticket_schema
+
+    preset = FOLLOWUP_PRESETS.get(domain)
+    if not preset:
+        raise KeyError(f"no followup preset for {domain}")
+    banners = list(preset.get("banners") or [])
+    post_key = preset.get("postprocess")
+    kw: dict[str, Any] = {
+        "domain": domain,
+        "user_role_id": "user",
+        "users_menu": "用户管理",
+        "with_deadline": False,
+        "stock_display": preset.get("stock_display", "toggle"),
+        "require_remark": True,
+    }
+    skip = {"doc", "banners", "postprocess"}
+    for k, v in preset.items():
+        if k in skip:
+            continue
+        kw[k] = v
+    schema = _with_portal_banners(archive_ticket_schema(title, **kw), banners)
+    if post_key:
+        schema = _POSTPROCESS[post_key](schema)
+    return schema
+
+
+def followup_builder(domain: str) -> Callable[[str], dict[str, Any]]:
+    def _build(title: str) -> dict[str, Any]:
+        return followup_domain_schema(title, domain)
+
+    _build.__doc__ = str(FOLLOWUP_PRESETS[domain].get("doc") or "")
+    _build.__name__ = f"_{domain.split('-', 1)[-1].lower()}_schema"
+    return _build

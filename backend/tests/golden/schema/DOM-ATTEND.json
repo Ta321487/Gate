@@ -1,0 +1,213 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "姓名",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "部门",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "工号/学号备注",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "在岗状态",
+          "options": [
+            "在岗",
+            "请假中",
+            "出差",
+            "停职"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "岗位类型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可请假",
+          "type": "number"
+        }
+      ],
+      "key": "staff_person",
+      "label": "人员",
+      "labelPlural": "人员",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已请假",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "请假方式",
+      "contactChannelOptions": [
+        "线上申请",
+        "纸质补录",
+        "电话报备",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "线上/纸质/电话等",
+      "key": "leave_req",
+      "label": "请假单",
+      "labelPlural": "请假",
+      "nextFollowLabel": "预计销假日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "请假事由",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已批准",
+        "overdue": "已失效",
+        "pending": "待审批",
+        "rejected": "已驳回",
+        "returned": "已销假"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交请假",
+        "approve": "批准",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "销假"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "考勤请假",
+    "authLead": "验证码登录；维护人员档案并提交请假，审批通过后按时销假。",
+    "authPoints": [
+      "验证码登录",
+      "人员档案",
+      "请假与销假"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "考勤与请假通知，点击条目阅读全文。",
+    "noticePageTitle": "人事公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可提交请假申请"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "人员档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "岗位类型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "请假审批"
+      },
+      {
+        "key": "ticket_records",
+        "label": "请假记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "人员名册"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的请假"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按岗位类型浏览人员，维护部门与工号。",
+      "title": "人员名册"
+    },
+    {
+      "lead": "提交请假单，人事审批后生效。",
+      "title": "在线请假"
+    },
+    {
+      "lead": "考勤节点与请假须知见公告栏。",
+      "title": "人事公告"
+    },
+    {
+      "lead": "登录后跟踪审批与销假。",
+      "title": "我的请假"
+    },
+    {
+      "lead": "按岗位类型快速定位人员。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "人事主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "考勤员"
+    },
+    "user": {
+      "id": "user",
+      "label": "员工/学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "事假须提前申请；病假可补交证明；返回当日请销假。",
+    "noticeTitle": "请假须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}
