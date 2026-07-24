@@ -74,6 +74,7 @@ const MENU_TO = {
   users: '/admin/users',
   content: '/admin/notices',
   guestbook: '/admin/guestbook',
+  archive_logs: '/admin/archive-logs',
   lookup_site: '/admin/sites',
   lookup_type: '/admin/types',
   archive: '/admin/archive',

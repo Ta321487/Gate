@@ -56,6 +56,37 @@ const FLAVORS = {
       lead: '正在汇总台账与申领记录。',
     },
   },
+
+  'attend': {
+    motif: 'calendar',
+    notFound: { title: '人员未找到', lead: '页面无效，或人员/请假单不存在。', hint: '回人员名册重新选择。' },
+    serverError: { title: '假勤服务异常', lead: '请假系统暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '假勤加载中…', lead: '正在同步人员与请假记录。' },
+  },
+  'recruit': {
+    motif: 'briefcase',
+    notFound: { title: '岗位未找到', lead: '页面无效，或岗位/投递单不存在。', hint: '回职位列表重新选择。' },
+    serverError: { title: '招聘服务异常', lead: '招聘系统暂时连不上。', hint: '请稍后重试投递或查询。' },
+    loading: { title: '招聘加载中…', lead: '正在同步岗位与投递记录。' },
+  },
+  'grade': {
+    motif: 'book',
+    notFound: { title: '课程未找到', lead: '页面无效，或课程/成绩申请不存在。', hint: '回课程列表重新选择。' },
+    serverError: { title: '教务服务异常', lead: '成绩系统暂时连不上。', hint: '请稍后重试申请或查询。' },
+    loading: { title: '教务加载中…', lead: '正在同步课程与成绩申请。' },
+  },
+  'intern': {
+    motif: 'clipboard',
+    notFound: { title: '实习岗未找到', lead: '页面无效，或实习岗/周报不存在。', hint: '回实习岗位重新选择。' },
+    serverError: { title: '实习服务异常', lead: '周报系统暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '实习加载中…', lead: '正在同步岗位与周报。' },
+  },
+  'parcel': {
+    motif: 'package',
+    notFound: { title: '包裹未找到', lead: '页面无效，或包裹/取件单不存在。', hint: '回包裹台账重新选择。' },
+    serverError: { title: '驿站服务异常', lead: '取件系统暂时连不上。', hint: '请稍后重试取件或查询。' },
+    loading: { title: '驿站加载中…', lead: '正在同步包裹与取件单。' },
+  },
   'crm': {
     motif: 'users',
     notFound: {
@@ -404,6 +435,11 @@ const FOOTER_TAGS = {
   equipment: '设备借还窗口',
   asset: '物资台账入口',
   crm: '客户跟进台',
+  attend: '假勤请假台',
+  recruit: '校园招聘台',
+  grade: '教务成绩台',
+  intern: '实习周报台',
+  parcel: '校园驿站',
   event: '事件上报台',
   shop: '商城服务台',
   dorm: '宿舍事务窗口',

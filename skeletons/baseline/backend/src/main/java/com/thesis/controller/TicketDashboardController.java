@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.ArchiveLogStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.capability.SlotStore;
@@ -76,6 +77,9 @@ public class TicketDashboardController {
             charts.put("stockSeries", ArchiveStore.stockByCategory(8));
         } catch (Exception ignored) {
             charts.put("stockSeries", List.of());
+        }
+        if (ArchiveLogStore.enabled()) {
+            m.put("missingCheckinToday", ArchiveLogStore.countMissingToday("checkin"));
         }
         m.put("charts", charts);
         return R.ok(m);

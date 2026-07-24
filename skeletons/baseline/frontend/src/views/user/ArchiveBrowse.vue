@@ -102,7 +102,7 @@
               @click="play(row)"
             >播放</el-button>
             <el-button
-              v-if="bodyRich || galleryOn || browseOn"
+              v-if="bodyRich || galleryOn || browseOn || logOn"
               size="small"
               @click="openDetail(row)"
             >{{ bodyRich ? '阅读' : '详情' }}</el-button>
@@ -167,6 +167,40 @@
             </p>
             <RichTextView v-if="r.remark" :html="r.remark" />
             <p v-else class="muted">（无内容）</p>
+          </article>
+        </div>
+        <div v-if="logOn && !isGuest" class="alog">
+          <h4 class="thread-title">{{ logSectionTitle }}</h4>
+          <el-form label-position="top" class="alog-form" @submit.prevent>
+            <el-form-item
+              v-for="f in logFields"
+              :key="f.key"
+              :label="f.label || f.key"
+            >
+              <el-input
+                v-if="f.type === 'textarea'"
+                v-model="logForm.payload[f.key]"
+                type="textarea"
+                :rows="2"
+              />
+              <el-input v-else v-model="logForm.payload[f.key]" />
+            </el-form-item>
+            <el-form-item label="异常">
+              <el-switch v-model="logForm.abnormal" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="logSubmitting" @click="submitLog">{{ logSubmitLabel }}</el-button>
+            </el-form-item>
+          </el-form>
+          <div v-if="logLoading" class="thread-empty muted">加载中…</div>
+          <div v-else-if="!logList.length" class="thread-empty muted">暂无记录</div>
+          <article v-for="r in logList" :key="r.id" class="thread-item">
+            <p class="thread-meta">
+              <span>{{ r.logDate }} · {{ r.username || '—' }}</span>
+              <el-tag v-if="r.abnormal" type="danger" size="small" effect="plain">异常</el-tag>
+            </p>
+            <p class="detail-line">{{ logPayloadText(r) }}</p>
+            <p v-if="r.remark" class="muted">{{ r.remark }}</p>
           </article>
         </div>
         <div class="drawer-acts">
@@ -309,12 +343,14 @@ import RichTextView from '../../components/RichTextView.vue'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
+  archiveLogCopy,
   formatArchiveScalar,
   followChannelLabel,
   followChannelOptions,
   followChannelPlaceholder,
   hasTrait,
   getSchema,
+  isArchiveLogEnabled,
   isBrowseHistoryEnabled,
   isGalleryEnabled,
   isSearchAssistEnabled,
@@ -443,6 +479,67 @@ const searchAssist = computed(() => isSearchAssistEnabled())
 const hotKeywords = computed(() => searchHotKeywords())
 const galleryOn = computed(() => isGalleryEnabled())
 const browseOn = computed(() => isBrowseHistoryEnabled())
+const logOn = computed(() => isArchiveLogEnabled())
+const logEnt = computed(() => archiveLogCopy())
+const logFields = computed(() => logEnt.value.fields || [])
+const logSectionTitle = computed(
+  () => getSchema()?.labels?.archiveLogSectionTitle || logEnt.value.labelPlural || '打卡与随访',
+)
+const logSubmitLabel = computed(
+  () => getSchema()?.labels?.archiveLogSubmitLabel || '提交打卡',
+)
+const logList = ref([])
+const logLoading = ref(false)
+const logSubmitting = ref(false)
+const logForm = ref({ payload: {}, abnormal: false })
+
+function resetLogForm() {
+  const payload = {}
+  for (const f of logFields.value) {
+    if (f?.key) payload[f.key] = ''
+  }
+  logForm.value = { payload, abnormal: false }
+}
+
+function logPayloadText(row) {
+  const p = row.payload || {}
+  const parts = []
+  for (const f of logFields.value) {
+    const val = p[f.key]
+    if (val != null && String(val).trim() !== '') parts.push(`${f.label || f.key}:${val}`)
+  }
+  return parts.join(' · ') || '—'
+}
+
+async function loadLogs(itemId) {
+  if (!logOn.value || !itemId) return
+  logLoading.value = true
+  try {
+    const res = await http.get('/api/archive-logs', { params: { itemId, page: 1, size: 20 } })
+    logList.value = res.data?.list || []
+  } finally {
+    logLoading.value = false
+  }
+}
+
+async function submitLog() {
+  if (!detail.value?.id) return
+  if (!requireLogin(router)) return
+  logSubmitting.value = true
+  try {
+    await http.post('/api/archive-logs', {
+      itemId: detail.value.id,
+      logType: logEnt.value.defaultType || 'checkin',
+      payload: { ...logForm.value.payload },
+      abnormal: !!logForm.value.abnormal,
+    })
+    ElMessage.success('已提交')
+    resetLogForm()
+    await loadLogs(detail.value.id)
+  } finally {
+    logSubmitting.value = false
+  }
+}
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
 const galleryUrls = computed(() => {
   if (!detail.value) return []
@@ -588,12 +685,15 @@ async function openDetail(row) {
   detail.value = row
   detailVisible.value = true
   threadList.value = []
+  logList.value = []
+  resetLogForm()
   if (!row?.id) return
   try {
     const res = await http.get(`/api/archive/${row.id}`)
     if (res.data) detail.value = { ...row, ...res.data }
   } catch { /* keep list row */ }
   await loadThread(row.id)
+  if (logOn.value && isLoggedIn()) await loadLogs(row.id)
   if (browseOn.value && isLoggedIn()) {
     try {
       await touchBrowseHistory(row.id)
@@ -916,6 +1016,8 @@ onMounted(async () => {
 }
 .drawer-acts { margin-top: 24px; }
 .thread { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.alog { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.alog-form { margin-bottom: 12px; }
 .thread-title { margin: 0 0 12px; font-size: 15px; }
 .thread-empty { font-size: 13px; }
 .thread-item {
