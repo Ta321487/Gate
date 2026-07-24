@@ -31,8 +31,10 @@ def product_name_from_title(title: str) -> str:
 
 
 def _copy_scan_text(title: str, proposal_text: str = "") -> str:
-    """壳文案场景分支用：题名 + 开题正文（同 staff_posts / attach_accept 扫材料）。"""
-    return f"{title or ''}\n{proposal_text or ''}"
+    """壳文案场景分支用：题名 + 开题正文（真源见 scene_scan）。"""
+    from app.bake.scene_scan import copy_scan_text
+
+    return copy_scan_text(title, proposal_text)
 
 
 # 题名/开题双扫的壳构建器（其余 builder 仍只收 title）
@@ -51,12 +53,11 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-LOST",
 })
 
-_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工", "高校", "学校", "校内")
-_COMMUNITY_HINTS = ("社区", "网格", "养老", "复工", "流调", "居民", "小区")
-
-
-def _scan_has(text: str, hints: tuple[str, ...]) -> bool:
-    return any(k in text for k in hints)
+from app.bake.scene_scan import (  # noqa: E402
+    CAMPUS_HINTS as _CAMPUS_HINTS,
+    COMMUNITY_HINTS as _COMMUNITY_HINTS,
+    scan_has as _scan_has,
+)
 
 
 def category_menu_label(

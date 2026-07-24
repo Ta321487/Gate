@@ -28,6 +28,20 @@
 Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现、且落在白名单/单域能力内的全文**，不是把硕博题或真实生产流程接进来。  
 信号：`OUT_OF_SCOPE_SIGNALS`（硕博学位论文、真实业务全流程等）→ `reject`。
 
+### 开题场景 / 身份文案（硬原则 · 预防针）
+
+**开题与材料为准，工厂跟场景走；禁止改开题迁就模板。**
+
+| 约定 | 含义 |
+|------|------|
+| **单一真源** | `app/bake/scene_scan.py` → `scene_for(domain, title, proposal)` |
+| **同场景同口径** | 壳 eyebrow/roles 与 `profileFields`（注册/资料页）必须读同一 scene |
+| **扫词选分支** | 不是逐字复述开题；场景定了不得再写死冲突身份（如企业 CRM ≠ 学号/教职工） |
+| **业务角色优先** | 背景里的「学院/校园」不压过正文里的「销售/客户跟进」等企业档 |
+| **未写清用域默认** | 默认档在 builder / `PROFILE_FIELDS_BY_DOMAIN`，不是臆造开题 |
+
+须分支域清单见 `SCENE_BRANCH_DOMAINS`。改 hint 只动 `scene_scan`，并补场景测试。
+
 ---
 
 ## 能力积木（`capabilities.py` · 与 `BASELINE_RUNTIME_CAPS` 对齐）

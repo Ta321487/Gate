@@ -79,6 +79,90 @@ class AttendTitleCopyTests(unittest.TestCase):
         dept = next(f for f in schema["profileFields"] if f["key"] == "dept")
         self.assertEqual(dept["label"], "院系/班级")
 
+    def test_profile_enterprise_employee(self) -> None:
+        schema = build_domain_schema("企业员工考勤请假管理系统", "DOM-ATTEND")
+        ident = next(f for f in schema["profileFields"] if f["key"] == "identityType")
+        self.assertEqual(ident["options"], ["员工", "兼职"])
+        keys = {f["key"] for f in schema["profileFields"]}
+        self.assertNotIn("studentNo", keys)
+        dept = next(f for f in schema["profileFields"] if f["key"] == "dept")
+        self.assertEqual(dept["label"], "部门/岗位")
+
+    def test_crm_asset_event_parcel_meeting_profiles(self) -> None:
+        """资料页身份跟开题场景：企业/社区不得残留教职工学号档。"""
+        crm = build_domain_schema(
+            "中小企业客户跟进管理系统",
+            "DOM-CRM",
+            proposal_text="销售人员登录与个人资料；客户档案与跟进记录。",
+        )
+        crm_keys = {f["key"] for f in crm["profileFields"]}
+        self.assertNotIn("studentNo", crm_keys)
+        crm_ident = next(f for f in crm["profileFields"] if f["key"] == "identityType")
+        self.assertEqual(crm_ident["options"], ["销售", "运营", "其他"])
+        self.assertNotIn("教职工", crm_ident["options"])
+
+        asset = build_domain_schema(
+            "物资领用系统",
+            "DOM-ASSET",
+            proposal_text="企业仓储部门办公物资与耗材申领出库。",
+        )
+        asset_ident = next(f for f in asset["profileFields"] if f["key"] == "identityType")
+        self.assertEqual(asset_ident["options"], ["员工", "外包", "其他"])
+        asset_dept = next(f for f in asset["profileFields"] if f["key"] == "dept")
+        self.assertEqual(asset_dept["label"], "部门")
+
+        asset_campus = build_domain_schema(
+            "高校固定资产与耗材申领管理系统",
+            "DOM-ASSET",
+            proposal_text="学院行政与教学单位办公物资申领。",
+        )
+        ac_ident = next(
+            f for f in asset_campus["profileFields"] if f["key"] == "identityType"
+        )
+        self.assertIn("教职工", ac_ident["options"])
+        self.assertIn("学生", ac_ident["options"])
+
+        event = build_domain_schema(
+            "社区健康监测系统",
+            "DOM-EVENT",
+            proposal_text="社区网格员维护居民档案并健康打卡上报。",
+        )
+        ev_ident = next(f for f in event["profileFields"] if f["key"] == "identityType")
+        self.assertEqual(ev_ident["options"], ["居民", "志愿者", "访客"])
+        ev_keys = {f["key"] for f in event["profileFields"]}
+        self.assertNotIn("studentNo", ev_keys)
+
+        parcel = build_domain_schema(
+            "快递代收系统",
+            "DOM-PARCEL",
+            proposal_text="小区菜鸟驿站包裹入库与取件核销。",
+        )
+        parcel_keys = {f["key"] for f in parcel["profileFields"]}
+        self.assertNotIn("campusNo", parcel_keys)
+        self.assertIn("receiveAddress", parcel_keys)
+
+        meeting = build_domain_schema(
+            "企业会议室预约系统",
+            "DOM-MEETING",
+            proposal_text="公司各部门会议室时段预约与会务管理。",
+        )
+        m_ident = next(f for f in meeting["profileFields"] if f["key"] == "identityType")
+        self.assertEqual(m_ident["options"], ["员工", "访客"])
+        self.assertNotIn("学生", m_ident["options"])
+
+        seat = build_domain_schema("图书馆座位预约管理系统", "DOM-MEETING")
+        s_ident = next(f for f in seat["profileFields"] if f["key"] == "identityType")
+        self.assertIn("学生", s_ident["options"])
+
+        adopt = build_domain_schema(
+            "宠物领养管理系统",
+            "DOM-LOST",
+            proposal_text="待领养档案浏览、领养申请与审核。",
+        )
+        adopt_keys = {f["key"] for f in adopt["profileFields"]}
+        self.assertNotIn("campusNo", adopt_keys)
+        self.assertIn("homeAddress", adopt_keys)
+
     def test_recruit_event_asset_parking_parcel_scenes(self) -> None:
         recruit = SCHEMA_BUILDERS["DOM-RECRUIT"](
             "岗位投递系统",

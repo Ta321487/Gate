@@ -706,7 +706,9 @@ def finalize_generic_schema(
     schema = build_generic_shell_schema(
         title, archetypes=arches, proposal_text=proposal_text
     )
-    schema = attach_profile_fields(schema, "DOM-GENERIC")
+    schema = attach_profile_fields(
+        schema, "DOM-GENERIC", title=title, proposal_text=proposal_text
+    )
     primary = arches[0] if arches else "ARCH-CRUD"
     return attach_staff_posts(
         schema, "DOM-GENERIC", primary, arches, proposal_text=proposal_text
