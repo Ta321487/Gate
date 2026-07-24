@@ -143,13 +143,14 @@ import {
   profileAdminColumns,
   profileAudienceOf,
   profileFieldsForAudience,
+  roleLabel,
 } from '../../utils/domainSchema.js'
 import { isProfileFieldRequired, isProfileFieldVisible } from '../../utils/profileValidate.js'
 import { findStaffPost, staffPostLabel, staffPosts } from '../../utils/staffPosts.js'
 
 const roles = computed(() => getSchema()?.roles || {})
-const userLabel = computed(() => roles.value.user?.label || '用户')
-const subLabel = computed(() => roles.value.subadmin?.label || '子管')
+const userLabel = computed(() => roleLabel('user', '用户'))
+const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const postOptions = computed(() => staffPosts())
 /** 有岗位表；撤销仍可用 */
 const canAppoint = computed(() => postOptions.value.length > 0)

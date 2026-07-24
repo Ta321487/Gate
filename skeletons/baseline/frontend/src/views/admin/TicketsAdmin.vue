@@ -144,6 +144,7 @@ import {
   menuLabel,
   nextFollowLabel,
   personLabel,
+  roleLabel,
   ticketCopy,
   ticketDueLabel,
 } from '../../utils/domainSchema.js'
@@ -161,7 +162,7 @@ const twoLevel = computed(() => !!ticket.twoLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const userLabel = computed(() => roleLabel('user', '用户'))
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
 const showFollowCols = computed(() => hasTrait('crm'))
 const channelLabel = computed(() => followChannelLabel())

@@ -125,7 +125,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { archiveCopy, followChannelLabel, hasTrait, getSchema, nextFollowLabel, personLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import { archiveCopy, followChannelLabel, hasTrait, getSchema, nextFollowLabel, personLabel, roleLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -142,7 +142,7 @@ const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '申请人')
+const userLabel = computed(() => roleLabel('user', '申请人'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const showFollowCols = computed(() => hasTrait('crm'))
 const channelLabel = computed(() => followChannelLabel())

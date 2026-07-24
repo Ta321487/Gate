@@ -51,6 +51,7 @@ import {
   archiveCopy,
   getSchema,
   personLabel,
+  roleLabel,
   ticketDueLabel,
   ticketFineLabel,
   ticketRemindVerb,
@@ -59,7 +60,7 @@ import {
 
 const archive = archiveCopy()
 const archiveLabel = computed(() => archive.label || '对象')
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const userLabel = computed(() => roleLabel('user', '用户'))
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const remindVerb = computed(() => ticketRemindVerb())
