@@ -1,9 +1,15 @@
-"""各领域档案字段映射（注册/个人资料）。"""
+"""各领域档案字段映射（注册/个人资料）。
+
+资料页身份须跟开题场景走：与壳文案共用 ``scene_scan.scene_for``，
+禁止写死与开题冲突的校内「教职工/学生/学号」。
+"""
 
 from __future__ import annotations
 
 import copy
 from typing import Any
+
+from app.bake.scene_scan import scene_for
 
 
 def _pf(
@@ -137,27 +143,28 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("officeLoc", "办公地点", on_register=True, max_length=64,
             visible_when=_when("identityType", ["教职工"])),
     ],
+    # 默认企业销售口径（与 followup 业务员/客户经理一致）；校园创业变体见 _scene_profile
     "DOM-CRM": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
-            options=["教职工", "学生", "校外"]),
+            options=["销售", "运营", "其他"]),
         _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
-            required_when=_when("identityType", ["教职工"]),
-            visible_when=_when("identityType", ["教职工"])),
-        _pf("studentNo", "学号", on_register=True, max_length=32,
-            required_when=_when("identityType", ["学生"]),
-            visible_when=_when("identityType", ["学生"])),
+            required_when=_when("identityType", ["销售", "运营"]),
+            visible_when=_when("identityType", ["销售", "运营"]),
+            placeholder="请填写工号"),
         _pf("dept", "部门/团队", required=True, on_register=True, max_length=64,
-            required_when=_when("identityType", ["教职工", "学生"]),
-            visible_when=_when("identityType", ["教职工", "学生"])),
+            required_when=_when("identityType", ["销售", "运营"]),
+            visible_when=_when("identityType", ["销售", "运营"]),
+            placeholder="所在销售组或团队"),
         _pf("orgName", "单位/组织", on_register=True, max_length=64,
-            required_when=_OFF_CAMPUS, visible_when=_OFF_CAMPUS,
-            placeholder="校外请填写单位或组织"),
+            required_when=_when("identityType", ["其他"]),
+            visible_when=_when("identityType", ["其他"]),
+            placeholder="请填写所属单位或组织"),
         _pf("jobTitle", "岗位", on_register=True, max_length=32, placeholder="如 客户经理",
-            visible_when=_when("identityType", ["教职工"])),
+            visible_when=_when("identityType", ["销售", "运营"])),
         _pf("region", "负责区域", on_register=True, max_length=64,
-            visible_when=_when("identityType", ["教职工"])),
+            visible_when=_when("identityType", ["销售", "运营"])),
         _pf("quotaHint", "业绩目标备注", max_length=64,
-            visible_when=_when("identityType", ["教职工"])),
+            visible_when=_when("identityType", ["销售", "运营"])),
     ],
 
     "DOM-ATTEND": [
@@ -214,7 +221,7 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("contactWechat", "联系微信", on_register=True, max_length=32),
     ],
 
-    # 校园口径；「网格员」等社会侧称呼走 staff_posts 开题别名（写到才替换）
+    # 默认校园晨午检口径；社区网格见 _EVENT_COMMUNITY
     "DOM-EVENT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["教职工", "学生", "校外"]),
@@ -437,18 +444,231 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
 }
 
 
-def profile_fields_for(domain: str) -> list[dict[str, Any]]:
-    """公共底座全角色可用；领域业务档案默认仅终端用户（患者/车主等），管理岗不填。"""
-    specific = copy.deepcopy(
-        PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
-    )
+# —— 开题场景变体（与 builders_* 校园/企业/社区分支对齐）——
+
+_CRM_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["教职工", "学生", "校外"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["教职工"]),
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("studentNo", "学号", on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("dept", "部门/团队", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["教职工", "学生"]),
+        visible_when=_when("identityType", ["教职工", "学生"])),
+    _pf("orgName", "单位/组织", on_register=True, max_length=64,
+        required_when=_OFF_CAMPUS, visible_when=_OFF_CAMPUS,
+        placeholder="校外请填写单位或组织"),
+    _pf("jobTitle", "岗位", on_register=True, max_length=32, placeholder="如 客户经理",
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("region", "负责区域", on_register=True, max_length=64,
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("quotaHint", "业绩目标备注", max_length=64,
+        visible_when=_when("identityType", ["教职工"])),
+]
+
+_ASSET_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="所在部门"),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "其他"]),
+        visible_when=_when("identityType", ["外包", "其他"]),
+        placeholder="请填写所属单位"),
+    _pf("jobTitle", "岗位", on_register=True, max_length=32,
+        visible_when=_when("identityType", ["员工"])),
+    _pf("officeLoc", "办公地点", on_register=True, max_length=64,
+        visible_when=_when("identityType", ["员工"])),
+]
+
+_ATTEND_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "兼职"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        placeholder="请填写工号"),
+    _pf("dept", "部门/岗位", required=True, on_register=True, max_length=64,
+        placeholder="所在部门或岗位"),
+]
+
+_EVENT_COMMUNITY: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["居民", "志愿者", "访客"]),
+    _pf("communityName", "小区/网格", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["居民", "志愿者"]),
+        visible_when=_when("identityType", ["居民", "志愿者"]),
+        placeholder="所在小区或网格"),
+    _pf("orgName", "单位/组织", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客"]),
+        visible_when=_when("identityType", ["访客"]),
+        placeholder="访客请填写来访单位"),
+    _pf("address", "住址/楼栋", on_register=True, max_length=64,
+        visible_when=_when("identityType", ["居民"]),
+        placeholder="如 3 栋 2 单元"),
+]
+
+_PARCEL_COMMUNITY: list[dict[str, Any]] = [
+    _pf("receiveAddress", "收件地址", required=True, on_register=True, max_length=128,
+        placeholder="小区楼栋门牌或常用收件地址"),
+    _pf("usualPlace", "常用取件点", on_register=True, max_length=64,
+        placeholder="如驿站货架区或柜机编号偏好"),
+    _pf("contactWechat", "联系微信", on_register=True, max_length=32),
+]
+
+_MEETING_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "访客"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"])),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"])),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客"]),
+        visible_when=_when("identityType", ["访客"]),
+        placeholder="访客请填写单位"),
+    _pf("jobTitle", "职务", on_register=True, max_length=32,
+        visible_when=_when("identityType", ["员工"])),
+    _pf("officePhone", "办公电话", max_length=20,
+        visible_when=_when("identityType", ["员工"])),
+]
+
+_PARKING_COMMERCIAL: list[dict[str, Any]] = [
+    _pf("plateNo", "车牌号", required=True, on_register=True, max_length=16),
+    _pf("vehicleType", "车辆类型", required=True, on_register=True, field_type="select",
+        options=["小型车", "新能源", "摩托车"]),
+    _pf("ownerType", "车主类型", required=True, on_register=True, field_type="select",
+        options=["月租", "临停", "访客"]),
+    _pf("dept", "单位", on_register=True, max_length=64,
+        required_when=_when("ownerType", ["月租"]),
+        visible_when=_when("ownerType", ["月租"]),
+        placeholder="月租所属单位或公司"),
+    _pf("visitUnit", "来访单位", on_register=True, max_length=64,
+        required_when=_when("ownerType", ["访客"]),
+        visible_when=_when("ownerType", ["访客"]),
+        placeholder="访客请填写来访单位"),
+]
+
+_IT_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="所在部门"),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "其他"]),
+        visible_when=_when("identityType", ["外包", "其他"]),
+        placeholder="请填写所属单位"),
+    _pf("officeOrDorm", "办公地址", on_register=True, max_length=64,
+        visible_when=_when("identityType", ["员工"]), placeholder="选填"),
+    _pf("title", "职务", max_length=32,
+        visible_when=_when("identityType", ["员工"]), placeholder="选填"),
+]
+
+_RECRUIT_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["社会求职", "应届", "内部推荐"]),
+    _pf("dept", "专业/方向", required=True, on_register=True, max_length=64),
+    _pf("jobTitle", "求职意向", on_register=True, max_length=32),
+    _pf("workYears", "工作年限", on_register=True, max_length=16,
+        visible_when=_when("identityType", ["社会求职", "内部推荐"]),
+        placeholder="如 3 年"),
+]
+
+_LOST_ADOPT: list[dict[str, Any]] = [
+    _pf("contactWechat", "微信/备用联系", required=True, on_register=True, max_length=64),
+    _pf("homeAddress", "居住地址", on_register=True, max_length=128,
+        placeholder="便于审核养宠条件"),
+    _pf("petExperience", "养宠经验", on_register=True, max_length=128, placeholder="选填"),
+]
+
+_LOST_COMMUNITY: list[dict[str, Any]] = [
+    _pf("contactWechat", "微信/备用联系", required=True, on_register=True, max_length=64),
+    _pf("usualPlace", "常出现区域", on_register=True, max_length=64,
+        placeholder="如小区、写字楼"),
+    _pf("orgName", "单位/住址", on_register=True, max_length=64),
+]
+
+
+def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[str, Any]] | None:
+    """有场景分支时返回覆盖列表；None 表示用 PROFILE_FIELDS_BY_DOMAIN 默认。
+
+    场景 id 唯一来自 ``scene_scan.scene_for``（与壳 builder 同判定）。
+    """
+    scene = scene_for(domain, title, proposal_text)
+    if domain == "DOM-CRM":
+        return _CRM_CAMPUS if scene == "campus" else None
+    if domain == "DOM-ASSET":
+        return None if scene == "campus" else _ASSET_ENTERPRISE
+    if domain == "DOM-ATTEND":
+        return None if scene == "campus" else _ATTEND_ENTERPRISE
+    if domain == "DOM-EVENT":
+        return _EVENT_COMMUNITY if scene == "community" else None
+    if domain == "DOM-PARCEL":
+        return _PARCEL_COMMUNITY if scene == "community" else None
+    if domain == "DOM-MEETING":
+        return None if scene == "campus" else _MEETING_ENTERPRISE
+    if domain == "DOM-PARKING":
+        return None if scene == "campus" else _PARKING_COMMERCIAL
+    if domain == "DOM-IT":
+        return _IT_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-RECRUIT":
+        return None if scene == "campus" else _RECRUIT_ENTERPRISE
+    if domain == "DOM-LOST":
+        if scene == "adopt":
+            return _LOST_ADOPT
+        if scene == "community":
+            return _LOST_COMMUNITY
+        return None
+    return None
+
+
+def profile_fields_for(
+    domain: str,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> list[dict[str, Any]]:
+    """公共底座全角色可用；领域业务档案默认仅终端用户，管理岗不填。
+
+    title/proposal_text 用于校园 vs 企业/社区身份切换（与壳文案场景扫描一致）。
+    """
+    override = _scene_specific(domain, title, proposal_text)
+    if override is not None:
+        specific = copy.deepcopy(override)
+    else:
+        specific = copy.deepcopy(
+            PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
+        )
     for f in specific:
         if isinstance(f, dict):
             f.setdefault("forRoles", ["user"])
     return copy.deepcopy(COMMON_PROFILE_FIELDS) + specific
 
 
-def attach_profile_fields(schema: dict[str, Any], domain: str) -> dict[str, Any]:
+def attach_profile_fields(
+    schema: dict[str, Any],
+    domain: str,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> dict[str, Any]:
     out = copy.deepcopy(schema)
-    out["profileFields"] = profile_fields_for(domain)
+    out["profileFields"] = profile_fields_for(
+        domain, title=title, proposal_text=proposal_text
+    )
     return out

@@ -67,7 +67,9 @@ def build_domain_schema(
             schema = builder(title)
     else:
         schema = generic_schema(title, domain)
-    schema = attach_profile_fields(schema, domain)
+    schema = attach_profile_fields(
+        schema, domain, title=title, proposal_text=proposal_text
+    )
     return attach_staff_posts(
         schema, domain, archetype, archetypes, proposal_text=proposal_text
     )
@@ -180,8 +182,13 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                 proposal_text=prop_body,
             )
         else:
-            if not (spec["schema"].get("profileFields")):
-                spec["schema"] = attach_profile_fields(spec["schema"], domain)
+            # 资料页身份随开题场景；有 profile 时也重绑，避免旧壳校园身份残留
+            spec["schema"] = attach_profile_fields(
+                spec["schema"],
+                domain,
+                title=title,
+                proposal_text=prop_body,
+            )
             # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
             from app.bake.staff_posts import attach_staff_posts
 

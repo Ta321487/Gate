@@ -6,10 +6,7 @@ from typing import Any
 
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.schema.shells import (
-    _CAMPUS_HINTS,
-    _COMMUNITY_HINTS,
     _copy_scan_text,
-    _scan_has,
     _with_portal_banners,
     archive_ticket_schema,
     product_name_from_title,
@@ -175,8 +172,10 @@ def _equip_schema(title: str) -> dict[str, Any]:
 
 def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """固定资产 / 耗材申领：高校物资 vs 企业仓储（同 _food_schema 分支）。"""
+    from app.bake.scene_scan import scene_asset
+
     t = _copy_scan_text(title, proposal_text)
-    campus = _scan_has(t, _CAMPUS_HINTS) or _scan_has(t, ("院系", "教职工", "办公物资"))
+    campus = scene_asset(t) == "campus"
     if campus:
         brow, lead, notice, hint = (
             "高校物资",
@@ -272,9 +271,11 @@ def _crm_schema(title: str) -> dict[str, Any]:
 def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """事件/公卫：校园晨午检 vs 社区网格（同 _food_schema 分支）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
+    from app.bake.scene_scan import scene_event
 
     t = _copy_scan_text(title, proposal_text)
-    if _scan_has(t, ("晨午检", "因病缺课", "校园", "班级", "学生", "学校", "高校")):
+    scene = scene_event(t)
+    if scene == "campus":
         return followup_domain_schema(
             title,
             "DOM-EVENT",
@@ -296,7 +297,7 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
-    if _scan_has(t, _COMMUNITY_HINTS):
+    if scene == "community":
         return followup_domain_schema(
             title,
             "DOM-EVENT",
@@ -320,12 +321,14 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         )
     return followup_domain_schema(title, "DOM-EVENT")
 
+
 def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """考勤请假：题名/开题含学生/校园走学工口径（同 _food_schema 食堂分支）。"""
     from app.bake.schema.followup_presets import _std_archive_fields, followup_domain_schema
+    from app.bake.scene_scan import scene_attend
 
     t = _copy_scan_text(title, proposal_text)
-    campus = _scan_has(t, ("学生", "班级", "班主任", "大学生", "校园", "学工"))
+    campus = scene_attend(t) == "campus"
     if not campus:
         return followup_domain_schema(title, "DOM-ATTEND")
     return followup_domain_schema(
@@ -376,11 +379,11 @@ def _labsafe_schema(title: str) -> dict[str, Any]:
 def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """招聘：校园校招 vs 企业 HR（同 _food_schema 分支）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
+    from app.bake.scene_scan import scene_recruit
 
     t = _copy_scan_text(title, proposal_text)
-    campus = _scan_has(t, ("校园", "校招", "高校", "毕业生", "大学生", "双选会", "就业"))
-    enterprise = _scan_has(t, ("企业", "公司", "人事", "人力资源", "HR"))
-    if campus:
+    scene = scene_recruit(t)
+    if scene == "campus":
         return followup_domain_schema(
             title,
             "DOM-RECRUIT",
@@ -400,7 +403,7 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
-    if enterprise:
+    if scene == "enterprise":
         return followup_domain_schema(
             title,
             "DOM-RECRUIT",
@@ -434,11 +437,10 @@ def _intern_schema(title: str) -> dict[str, Any]:
 def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """驿站：校园 vs 社区代收点（同 _food_schema 分支）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
+    from app.bake.scene_scan import scene_parcel
 
     t = _copy_scan_text(title, proposal_text)
-    if _scan_has(t, ("社区", "小区", "菜鸟", "丰巢", "代收点")) and not _scan_has(
-        t, ("校园", "高校", "学校", "学生")
-    ):
+    if scene_parcel(t) == "community":
         return followup_domain_schema(
             title,
             "DOM-PARCEL",
@@ -534,8 +536,10 @@ def _activity_schema(title: str) -> dict[str, Any]:
 
 def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """失物招领 / 宠物领养：同认领壳，文案跟题名/开题走（同 _meeting_schema）。"""
+    from app.bake.scene_scan import scene_lost
+
     t = _copy_scan_text(title, proposal_text)
-    if any(k in t for k in ("领养", "待领养", "领养站")):
+    if scene_lost(t) == "adopt":
         noun, remark, admin, sub = "待领养", "领养说明", "领养站主管（总管）", "领养专员"
         user, verb = "申请人", "领养"
         title_lab, author_lab, isbn_lab = "昵称/编号", "登记人", "品种/健康说明"

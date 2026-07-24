@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.bake.schema.shells import (
-    _CAMPUS_HINTS,
     _copy_scan_text,
-    _scan_has,
     order_shell_schema,
     slot_shell_schema,
 )
@@ -221,8 +219,10 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """车位：校园 vs 商场/小区车场（同 _food_schema 分支）。"""
+    from app.bake.scene_scan import scene_parking
+
     t = _copy_scan_text(title, proposal_text)
-    campus = _scan_has(t, _CAMPUS_HINTS)
+    campus = scene_parking(t) == "campus"
     if campus:
         brow, lead, admin = (
             "校园车位",

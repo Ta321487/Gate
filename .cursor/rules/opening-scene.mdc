@@ -1,0 +1,26 @@
+---
+description: 开题材料为准；壳文案与资料页身份共用 scene_scan，禁止改开题迁就工厂
+alwaysApply: true
+---
+
+# 开题场景优先（预防针）
+
+## 硬原则
+
+1. **开题 / 任务书等材料为准**：禁止为了匹配工厂模板去改写开题正文或样例开题。
+2. **工厂跟场景走**：壳文案、`profileFields`（注册/资料页身份）、岗位显示名、能力挂载，一律扫「题名 + 开题正文」。
+3. **同一判定**：校园 / 企业 / 社区分支必须走 `backend/app/bake/scene_scan.py` 的 `scene_for`（或域级 `scene_*`）。禁止在 `profile_fields` 与 `builders_*` 各写一套 hint。
+4. **开题未写清 → 域默认**：默认档写在 builder / `PROFILE_FIELDS_BY_DOMAIN`，不是臆造开题。
+5. **业务角色优先于背景装饰**：例如 CRM 里「学院孵化」背景不压过「销售 / 客户跟进」企业档。
+
+## 改场景时必做
+
+- 只改 `scene_scan.py` 的 hint / `scene_*`，并补 `tests/test_scene_scan.py` 或 `test_attend_scene.py` 断言。
+- 壳 eyebrow/roles 与资料页身份必须同一 `scene` 结果（例如企业 CRM 不得出现学号/教职工）。
+- 扫词是选场景，不是全文复述开题措辞；但场景定了之后交付物不得与开题身份打架。
+
+## 禁止
+
+- 把企业/社区开题硬塞校园身份字段「图省事」。
+- 用「改开题」解决工厂默认文案不一致。
+- 在 shells / profile 里复制 `_CAMPUS_HINTS` 本地变体而不回流 `scene_scan`。
