@@ -66,6 +66,13 @@
           <el-button type="primary" link @click="$router.push('/admin/archive')">去管理</el-button>
         </div>
       </template>
+      <div
+        v-if="caps.includes('archive_log') && Number(data.missingCheckinToday) > 0"
+        class="todo-row"
+      >
+        <span>今日未打卡 {{ data.missingCheckinToday || 0 }}</span>
+        <el-button type="primary" link @click="$router.push('/admin/archive-logs')">去查看</el-button>
+      </div>
     </section>
 
     <DashboardCharts :charts="data.charts || {}" :mode="chartMode" />
@@ -75,12 +82,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
-import { getSchema, menuLabel, ticketCopy, reservationCopy } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy } from '../../utils/domainSchema.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const data = ref({})
-const adminLabel = computed(() => getSchema()?.roles?.admin?.label || '管理')
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const adminLabel = computed(() => roleLabel('admin', '管理'))
+const userLabel = computed(() => roleLabel('user', '用户'))
 const caps = computed(() => getSchema()?.capabilities || [])
 const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
@@ -100,7 +107,8 @@ const hasTodo = computed(
     caps.value.includes('order_lines')
     || (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
     || caps.value.includes('ticket_flow')
-    || caps.value.includes('favorites'),
+    || caps.value.includes('favorites')
+    || caps.value.includes('archive_log'),
 )
 
 const chartMode = computed(() => {
@@ -165,6 +173,14 @@ const cards = computed(() => {
   }
   if (showArchive.value) {
     list.push({ key: 'items', label: menuLabel('admin', 'archive', '对象') + '数', value: data.value.bookTotal ?? '—' })
+  }
+  if (caps.value.includes('archive_log') && data.value.missingCheckinToday != null) {
+    list.push({
+      key: 'missingCheckin',
+      label: getSchema()?.labels?.archiveLogMissingTitle || '今日未打卡',
+      value: data.value.missingCheckinToday ?? '—',
+      to: '/admin/archive-logs',
+    })
   }
   return list
 })

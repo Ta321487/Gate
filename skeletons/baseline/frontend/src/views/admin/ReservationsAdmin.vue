@@ -125,7 +125,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { archiveCopy, getSchema, personLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, personLabel, reservationCopy, roleLabel } from '../../utils/domainSchema.js'
 import { todayStr } from '../../utils/dates.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -134,7 +134,7 @@ const resvNoun = computed(() => resv.label || '预约')
 const requireConfirm = computed(() => !!resv.requireConfirm)
 const completeVerb = computed(() => resv.completeVerb || '办结')
 const archiveLabel = computed(() => archiveCopy().label || '资源')
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const userLabel = computed(() => roleLabel('user', '用户'))
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
 const total = ref(0)

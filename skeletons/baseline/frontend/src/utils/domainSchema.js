@@ -109,6 +109,22 @@ export function menuLabel(side, key, fallback = '') {
   return (item && item.label) || fallback
 }
 
+/**
+ * 角色显示名（门户用户 / 总管 / 子管等）。
+ * @param {'user'|'admin'|'subadmin'|string} slot
+ * @param {string} [fallback]
+ */
+export function roleLabel(slot, fallback = '') {
+  const roles = getSchema().roles || {}
+  const raw = roles[slot]
+  const lab = raw && typeof raw === 'object' ? raw.label : ''
+  if (lab) return lab
+  if (fallback) return fallback
+  if (slot === 'admin') return '管理'
+  if (slot === 'subadmin') return '子管理'
+  return '用户'
+}
+
 export function ticketCopy() {
   return (getSchema().entities || {}).ticket || {}
 }
@@ -386,6 +402,14 @@ export function isGalleryEnabled() {
 
 export function isBrowseHistoryEnabled() {
   return hasCap('browse_history')
+}
+
+export function isArchiveLogEnabled() {
+  return hasCap('archive_log')
+}
+
+export function archiveLogCopy() {
+  return getSchema()?.entities?.archiveLog || {}
 }
 
 export function anyLoyaltyEnabled() {

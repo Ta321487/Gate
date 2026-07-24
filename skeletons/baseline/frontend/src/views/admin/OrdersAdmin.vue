@@ -115,12 +115,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled, personLabel } from '../../utils/domainSchema.js'
+import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled, personLabel, roleLabel } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
-const userLabel = computed(() => getSchema()?.roles?.user?.label || '用户')
+const userLabel = computed(() => roleLabel('user', '用户'))
 const isFood = computed(() => hasTrait('food'))
 const showLoyaltyCols = computed(() => isPointsEnabled() || isSpendDiscountEnabled())
 const fulfillLabel = computed(() => (isFood.value ? '配送 / 口味' : '收货信息'))
