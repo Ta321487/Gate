@@ -191,7 +191,7 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
         "值班员",
         "卫生员",
     ),
-    "attend_clerk": ("考勤管理员", "考勤员", "班主任"),
+    "attend_clerk": ("辅导员", "班主任", "考勤管理员", "考勤员"),
     "hr_clerk": ("招聘专员", "人事专员", "HR专员", "HR"),
     "grade_clerk": ("成绩管理员", "教务员", "任课教师"),
     "parcel_clerk": ("驿站管理员", "驿站店员", "取件员"),
@@ -477,6 +477,11 @@ def attach_staff_posts(
             )
         ):
             sub_lab = prev_sub_lab
+            # 与保留的子管文案对齐，避免 SQL 种子 nickname 再盖回目录默认
+            for p in merged_posts:
+                if p.get("id") == first.get("id"):
+                    p["label"] = sub_lab
+                    break
         else:
             sub_lab = clerk_lab or prev_sub_lab or "经办员"
         roles["subadmin"] = {

@@ -645,11 +645,30 @@ def build_spec(
 
     api_style = normalize_api_style(pick_api_style(seed))
     arches = list(archetypes or [archetype])
+    proposal_text = ""
+    if isinstance(proposal, dict):
+        proposal_text = str(
+            proposal.get("excerpt")
+            or proposal.get("text")
+            or proposal.get("summary")
+            or proposal.get("background")
+            or ""
+        )
+    elif isinstance(proposal, str):
+        proposal_text = proposal
+    if not proposal_text:
+        proposal_text = title
     # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
     schema = (
         {}
         if domain == "DOM-GENERIC"
-        else build_domain_schema(title, domain, archetype=archetype, archetypes=arches)
+        else build_domain_schema(
+            title,
+            domain,
+            archetype=archetype,
+            archetypes=arches,
+            proposal_text=proposal_text,
+        )
     )
     spec = {
         "title": title,
@@ -695,23 +714,10 @@ def build_spec(
     }
     if match_meta:
         spec["match_meta"] = match_meta
+    if proposal:
+        spec["proposal"] = proposal
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
-        spec = apply_generic_shell(spec)
-    if proposal:
-        spec["proposal"] = proposal
-    proposal_text = ""
-    if isinstance(proposal, dict):
-        proposal_text = str(
-            proposal.get("excerpt")
-            or proposal.get("text")
-            or proposal.get("summary")
-            or proposal.get("background")
-            or ""
-        )
-    elif isinstance(proposal, str):
-        proposal_text = proposal
-    if not proposal_text:
-        proposal_text = title
+        spec = apply_generic_shell(spec, proposal_text=proposal_text)
     return attach_accept(spec, proposal_text)

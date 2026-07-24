@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.models import Project, ProjectStatus
 from app.schemas import (
     ApiOk,
+    DeliveryMarkUpdate,
     MatchUpdate,
     ProjectDetail,
     ProjectSummary,
@@ -43,6 +44,7 @@ def _detail(p: Project) -> ProjectDetail:
     project_svc.ensure_proposal_in_spec(p)
     d = ProjectDetail.model_validate(p)
     d.theme = normalize_theme(p.theme or "", p.domain)
+    d.delivery_mark = project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
     d.download_blocked_reason = project_svc.delivery_block_reason(p)
     d.preview_blocked_reason = project_svc.preview_start_block_reason(p)
     return d
@@ -67,7 +69,7 @@ async def list_projects(
     filter: str = Query(
         "all",
         alias="filter",
-        description="all | active | generating | done | fail",
+        description="all | active | generating | done | ready | delivered | fail",
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -93,11 +95,24 @@ async def list_projects(
     elif filter == "generating":
         items = [p for p in items if p.status == "generating"]
     elif filter == "done":
-        # 可交付 = 已生成/运行中且 ZIP 仍解锁（门禁回退后 zip_ready=False）
+        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工可交付分离）
         items = [
             p
             for p in items
             if p.status in ("generated", "running") and p.zip_ready
+        ]
+    elif filter == "ready":
+        items = [
+            p
+            for p in items
+            if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "ready"
+        ]
+    elif filter == "delivered":
+        items = [
+            p
+            for p in items
+            if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
+            == "delivered"
         ]
     elif filter == "fail":
         # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
@@ -108,7 +123,13 @@ async def list_projects(
             or (p.status in ("generated", "running") and not p.zip_ready)
         ]
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
-    summaries = [ProjectSummary.model_validate(p) for p in items]
+    summaries = []
+    for p in items:
+        s = ProjectSummary.model_validate(p)
+        s.delivery_mark = project_svc.normalize_delivery_mark(
+            getattr(p, "delivery_mark", None)
+        )
+        summaries.append(s)
     if dirty:
         await db.commit()
     return summaries
@@ -391,6 +412,21 @@ async def patch_match(project_id: str, body: MatchUpdate, db: AsyncSession = Dep
         raise HTTPException(404, "项目不存在")
     try:
         p = await project_svc.update_match(db, p, body)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return _detail(p)
+
+
+@router.patch("/{project_id}/delivery", response_model=ProjectDetail, summary="人工交付标记")
+async def patch_delivery(
+    project_id: str, body: DeliveryMarkUpdate, db: AsyncSession = Depends(get_db)
+):
+    """none → ready（可交付）→ delivered（已交付）；与机器质检 zip_ready 分离。"""
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    try:
+        p = await project_svc.set_delivery_mark(db, p, body.mark)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     return _detail(p)

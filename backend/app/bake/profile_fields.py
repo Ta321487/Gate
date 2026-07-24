@@ -164,14 +164,16 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
 
     "DOM-ATTEND": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
-            options=["教职工", "学生"]),
+            options=["学生", "教职工"]),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]),
+            visible_when=_when("identityType", ["学生"]),
+            placeholder="请填写学号"),
         _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
             required_when=_when("identityType", ["教职工"]),
-            visible_when=_when("identityType", ["教职工"])),
-        _pf("studentNo", "学号", on_register=True, max_length=32,
-            required_when=_when("identityType", ["学生"]),
-            visible_when=_when("identityType", ["学生"])),
-        _pf("dept", "部门/院系", required=True, on_register=True, max_length=64),
+            visible_when=_when("identityType", ["教职工"]),
+            placeholder="教职工填写工号"),
+        _pf("dept", "院系/班级", required=True, on_register=True, max_length=64),
     ],
     "DOM-RECRUIT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
@@ -198,6 +200,7 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("contactWechat", "联系微信", on_register=True, max_length=32),
     ],
 
+    # 校园口径；「网格员」等社会侧称呼走 staff_posts 开题别名（写到才替换）
     "DOM-EVENT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["教职工", "学生", "校外"]),
@@ -207,15 +210,15 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("studentNo", "学号", on_register=True, max_length=32,
             required_when=_when("identityType", ["学生"]),
             visible_when=_when("identityType", ["学生"])),
-        _pf("dept", "部门/网格", required=True, on_register=True, max_length=64,
+        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64,
             required_when=_when("identityType", ["教职工", "学生"]),
             visible_when=_when("identityType", ["教职工", "学生"])),
         _pf("orgName", "单位/组织", on_register=True, max_length=64,
             required_when=_OFF_CAMPUS, visible_when=_OFF_CAMPUS,
             placeholder="校外请填写单位或组织"),
-        _pf("jobTitle", "岗位", on_register=True, max_length=32, placeholder="如 网格员",
+        _pf("jobTitle", "岗位", on_register=True, max_length=32, placeholder="如 晨检员",
             visible_when=_when("identityType", ["教职工"])),
-        _pf("region", "负责网格/区域", on_register=True, max_length=64,
+        _pf("region", "负责楼栋/区域", on_register=True, max_length=64,
             visible_when=_when("identityType", ["教职工"])),
     ],
     "DOM-DORM": [

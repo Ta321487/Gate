@@ -77,3 +77,19 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if "delivery_mark" not in cols:
+        try:
+            sync_conn.execute(
+                text("ALTER TABLE projects ADD COLUMN delivery_mark VARCHAR(16) DEFAULT 'none'")
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        sync_conn.execute(
+            text(
+                "UPDATE projects SET delivery_mark = 'none' "
+                "WHERE delivery_mark IS NULL OR delivery_mark = ''"
+            )
+        )
+    except Exception:  # noqa: BLE001
+        pass

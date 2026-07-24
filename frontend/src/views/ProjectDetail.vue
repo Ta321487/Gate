@@ -12,6 +12,27 @@
         </div>
       </div>
       <div class="proj-actions">
+        <n-button
+          v-if="canMarkReady"
+          size="small"
+          type="primary"
+          :loading="deliveryBusy"
+          @click="markDelivery('ready')"
+        >标记可交付</n-button>
+        <n-button
+          v-if="canMarkDelivered"
+          size="small"
+          type="primary"
+          :loading="deliveryBusy"
+          @click="markDelivery('delivered')"
+        >标记已交付</n-button>
+        <n-button
+          v-if="canUndoDelivery"
+          size="small"
+          secondary
+          :loading="deliveryBusy"
+          @click="undoDelivery"
+        >{{ undoDeliveryLabel }}</n-button>
         <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
           {{ downloadZipLabel }}
         </n-button>
@@ -180,12 +201,26 @@
 
         <template v-if="genState !== 'running'">
           <div v-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success mb-16">
-            <h4>{{ genState === 'live' ? '已生成 · 预览运行中' : '生成完成 · 质量检查已通过 · 可交付' }}</h4>
-            <p class="small muted">{{ genState === 'live' ? '前后端已启动，可打开预览或下载交付包。' : '交付包已解锁。建议到「运行」预览后再交付。' }}</p>
+            <h4>{{ genSuccessBannerTitle }}</h4>
+            <p class="small muted">{{ genSuccessBannerHint }}</p>
             <div class="row mt-12">
               <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
               <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
               <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
+              <n-button
+                v-if="canMarkReady"
+                size="small"
+                type="primary"
+                :loading="deliveryBusy"
+                @click="markDelivery('ready')"
+              >标记可交付</n-button>
+              <n-button
+                v-if="canMarkDelivered"
+                size="small"
+                type="primary"
+                :loading="deliveryBusy"
+                @click="markDelivery('delivered')"
+              >标记已交付</n-button>
             </div>
           </div>
           <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail mb-16">
@@ -699,13 +734,21 @@
                 <div class="artifact-pane stack">
                   <div class="row" style="justify-content:space-between;align-items:center">
                     <div class="small">
-                      质量检查 · 交付条件
+                      质量检查 · 下载条件
                       <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
-                        {{ canDownload ? '可交付' : '暂不可交付' }}
+                        {{ canDownload ? '可下载' : '暂不可下载' }}
+                      </span>
+                      <span
+                        v-if="deliveryMark === 'ready' || deliveryMark === 'delivered'"
+                        class="pill"
+                        :class="deliveryMark === 'delivered' ? 'pill-neutral' : 'pill-green'"
+                        style="margin-left:8px"
+                      >
+                        {{ deliveryMark === 'delivered' ? '已交付' : '可交付' }}
                       </span>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">主流程或功能清单未通过时，暂不可下载交付包。</p>
+                  <p class="small muted" style="margin:0">机器质检未通过时不可下载。文案与业务逻辑须人工审核后再标记「可交付」。</p>
                   <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
                   <div class="parse-sec-hd mt-12">开题对照清单</div>
                   <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
@@ -1006,15 +1049,47 @@ const canDownload = computed(() => !p.value?.download_blocked_reason)
 const downloadZipLabel = computed(() => (p.value?.status === 'generating' ? '生成中…' : '下载 ZIP'))
 const downloadBlockedReason = computed(() => p.value?.download_blocked_reason || '')
 const zipLockHint = computed(() =>
-  canDownload.value ? '质量检查已通过' : (downloadBlockedReason.value || '暂锁定'),
+  canDownload.value ? '质量检查已通过 · 可下载' : (downloadBlockedReason.value || '暂锁定'),
 )
+const deliveryMark = computed(() => String(p.value?.delivery_mark || 'none'))
+const deliveryBusy = ref(false)
+const canMarkReady = computed(() =>
+  canDownload.value
+  && ['generated', 'running'].includes(p.value?.status)
+  && deliveryMark.value === 'none',
+)
+const canMarkDelivered = computed(() => deliveryMark.value === 'ready')
+const canUndoDelivery = computed(() =>
+  deliveryMark.value === 'ready' || deliveryMark.value === 'delivered',
+)
+const undoDeliveryLabel = computed(() =>
+  deliveryMark.value === 'delivered' ? '撤回已交付' : '撤回可交付',
+)
+const genSuccessBannerTitle = computed(() => {
+  if (deliveryMark.value === 'delivered') {
+    return genState.value === 'live' ? '已交付 · 预览运行中' : '已交付'
+  }
+  if (deliveryMark.value === 'ready') {
+    return genState.value === 'live' ? '可交付 · 预览运行中' : '可交付 · 质量检查已通过'
+  }
+  return genState.value === 'live'
+    ? '已生成 · 预览运行中'
+    : '生成完成 · 质量检查已通过 · 可下载'
+})
+const genSuccessBannerHint = computed(() => {
+  if (deliveryMark.value === 'delivered') return '已发给学生。重新生成会清掉交付标记。'
+  if (deliveryMark.value === 'ready') return '人工已审过，可发给学生；发出后请标记「已交付」。'
+  return genState.value === 'live'
+    ? '前后端已启动。机器质检已通过，可下载；文案与逻辑请人工审后再标记可交付。'
+    : '交付包已解锁（可下载）。建议预览验收后，人工审核再标记可交付。'
+})
 const failedBannerTitle = computed(() => {
   const err = String(currentJob.value?.error || '')
   if (err.includes('质量检查未通过') || err.includes('门禁')) {
-    return '质量检查未通过 · 暂不可交付'
+    return '质量检查未通过 · 暂不可下载'
   }
   if (err.includes('已取消')) return '任务已取消'
-  return '生成失败 · 暂不可交付'
+  return '生成失败 · 暂不可下载'
 })
 const rtStartBlockedReason = computed(() => {
   const base = p.value?.preview_blocked_reason || ''
@@ -1077,10 +1152,16 @@ function _tailLines(tail, keep) {
 }
 
 const statusLabel = computed(() =>
-  projectStatusLabel(p.value?.status, { zipReady: canDownload.value }),
+  projectStatusLabel(p.value?.status, {
+    zipReady: canDownload.value,
+    deliveryMark: deliveryMark.value,
+  }),
 )
 const statusPill = computed(() =>
-  projectStatusPill(p.value?.status, { zipReady: canDownload.value }),
+  projectStatusPill(p.value?.status, {
+    zipReady: canDownload.value,
+    deliveryMark: deliveryMark.value,
+  }),
 )
 
 const genState = computed(() => {
@@ -1856,6 +1937,25 @@ function downloadZip() {
     return
   }
   window.open(api.downloadUrl(p.value.id), '_blank')
+}
+
+async function markDelivery(mark) {
+  if (!p.value || deliveryBusy.value) return
+  deliveryBusy.value = true
+  try {
+    const detail = await api.patchDelivery(p.value.id, mark)
+    p.value = detail
+    message.success(
+      mark === 'delivered' ? '已标记为已交付' : mark === 'ready' ? '已标记为可交付' : '已清除交付标记',
+    )
+  } finally {
+    deliveryBusy.value = false
+  }
+}
+
+async function undoDelivery() {
+  const next = deliveryMark.value === 'delivered' ? 'ready' : 'none'
+  await markDelivery(next)
 }
 
 function onDelete() {

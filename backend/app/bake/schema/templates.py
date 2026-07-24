@@ -28,6 +28,20 @@ def product_name_from_title(title: str) -> str:
     return t
 
 
+def _copy_scan_text(title: str, proposal_text: str = "") -> str:
+    """壳文案场景分支用：题名 + 开题正文（同 staff_posts / attach_accept 扫材料）。"""
+    return f"{title or ''}\n{proposal_text or ''}"
+
+
+# 题名/开题双扫的壳构建器（其余 builder 仍只收 title）
+_SCENE_COPY_DOMAINS = frozenset({
+    "DOM-ATTEND",
+    "DOM-FOOD",
+    "DOM-SHOP",
+    "DOM-MEETING",
+})
+
+
 def category_menu_label(
     archive_fields: list[dict[str, Any]] | None,
     *,
@@ -552,10 +566,48 @@ def _event_schema(title: str) -> dict[str, Any]:
     return followup_domain_schema(title, "DOM-EVENT")
 
 
-def _attend_schema(title: str) -> dict[str, Any]:
-    from app.bake.schema.followup_presets import followup_domain_schema
+def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """考勤请假：题名/开题含学生/校园走学工口径（同 _food_schema 食堂分支）。"""
+    from app.bake.schema.followup_presets import _std_archive_fields, followup_domain_schema
 
-    return followup_domain_schema(title, "DOM-ATTEND")
+    t = _copy_scan_text(title, proposal_text)
+    campus = any(k in t for k in ("学生", "班级", "班主任", "大学生", "校园", "学工"))
+    if not campus:
+        return followup_domain_schema(title, "DOM-ATTEND")
+    return followup_domain_schema(
+        title,
+        "DOM-ATTEND",
+        overrides={
+            "user_label": "学生",
+            "admin_label": "学工主管（总管）",
+            "subadmin_label": "辅导员",
+            "archive_label": "学生",
+            "archive_plural": "学生",
+            "archive_fields": _std_archive_fields(
+                "姓名",
+                "院系/班级",
+                "学号备注",
+                "在校状态",
+                ["在校", "请假中", "休学", "离校"],
+                "学生类型",
+                "可请假",
+            ),
+            "archive_menu_admin": "学生档案",
+            "archive_menu_user": "学生名册",
+            "auth_eyebrow": "学生请假",
+            "auth_lead": "验证码登录；维护学生档案并提交请假，审批通过后按时销假。",
+            "auth_points": ["验证码登录", "学生档案", "请假与销假"],
+            "notice_page_title": "学工公告",
+            "notice_page_lead": "请假须知与学工通知，点击条目阅读全文。",
+            "banners": [
+                {"title": "学生名册", "lead": "按学生类型浏览，维护院系与学号。"},
+                {"title": "在线请假", "lead": "提交请假单，学工审批后生效。"},
+                {"title": "学工公告", "lead": "请假节点与销假须知见公告栏。"},
+                {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
+                {"title": "分类检索", "lead": "按学生类型快速定位。"},
+            ],
+        },
+    )
 
 
 def _recruit_schema(title: str) -> dict[str, Any]:
@@ -1593,8 +1645,8 @@ def slot_shell_schema(
     }
 
 
-def _shop_schema(title: str) -> dict[str, Any]:
-    t = title or ""
+def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    t = _copy_scan_text(title, proposal_text)
     campus = any(k in t for k in ("校园", "校内", "二手", "学校"))
     brow = "校园商城" if campus else "在线商城"
     lead = (
@@ -1637,8 +1689,8 @@ def _shop_schema(title: str) -> dict[str, Any]:
     )
 
 
-def _food_schema(title: str) -> dict[str, Any]:
-    t = title or ""
+def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    t = _copy_scan_text(title, proposal_text)
     canteen = any(k in t for k in ("食堂", "校园", "档口", "学子"))
     if canteen:
         admin, sub, brow, win, notice = "食堂主管（总管）", "档口管理员", "食堂点餐", "窗口", "食堂公告"
@@ -1688,9 +1740,9 @@ def _food_schema(title: str) -> dict[str, Any]:
     )
 
 
-def _meeting_schema(title: str) -> dict[str, Any]:
-    """会议室 / 琴房 / 体育场 / 自习室等共用时段预约壳，文案跟题名走。"""
-    t = title or ""
+def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """会议室 / 琴房 / 体育场 / 自习室等共用时段预约壳，文案跟题名/开题走。"""
+    t = _copy_scan_text(title, proposal_text)
     if any(k in t for k in ("琴房", "排练", "舞蹈")):
         noun, remark, admin, sub = "琴房", "排练说明", "琴房管理员（总管）", "琴房值班"
     elif any(k in t for k in ("体育场", "体育馆", "球馆", "羽毛球场", "篮球场", "足球场", "游泳")):

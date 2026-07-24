@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any, Callable
 
 
@@ -477,14 +478,25 @@ _POSTPROCESS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
 }
 
 
-def followup_domain_schema(title: str, domain: str) -> dict[str, Any]:
-    """按 FOLLOWUP_PRESETS 组装 archive_ticket + 门户轮播。"""
+def followup_domain_schema(
+    title: str,
+    domain: str,
+    *,
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """按 FOLLOWUP_PRESETS 组装 archive_ticket + 门户轮播。
+
+    overrides：题名分支覆盖（同 templates 里 _food_schema / _shop_schema）。
+    """
     # 延迟导入，避免与 templates.SCHEMA_BUILDERS 循环依赖
     from app.bake.schema.templates import _with_portal_banners, archive_ticket_schema
 
     preset = FOLLOWUP_PRESETS.get(domain)
     if not preset:
         raise KeyError(f"no followup preset for {domain}")
+    preset = copy.deepcopy(preset)
+    if overrides:
+        preset.update(overrides)
     banners = list(preset.get("banners") or [])
     post_key = preset.get("postprocess")
     kw: dict[str, Any] = {

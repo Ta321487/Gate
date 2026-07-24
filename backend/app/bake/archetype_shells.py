@@ -94,14 +94,17 @@ def entity_noun(title: str) -> str:
     return name
 
 
-def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
-    """GENERIC 审核流：按题名润色请假/考勤等常见壳，避免一律「业务对象」。"""
-    t = title or ""
+def _generic_flow_copy(title: str, noun: str, proposal_text: str = "") -> dict[str, Any]:
+    """GENERIC 审核流：按题名/开题润色请假/考勤等常见壳，避免一律「业务对象」。"""
+    from app.bake.schema.templates import _copy_scan_text
+
+    t = _copy_scan_text(title, proposal_text)
     if any(k in t for k in ("请假", "销假")):
+        campus = any(k in t for k in ("学生", "班级", "班主任", "大学生", "校园", "学工"))
         return {
-            "user_label": "员工",
-            "admin_label": "人事主管（总管）",
-            "subadmin_label": "考勤员",
+            "user_label": "学生" if campus else "员工",
+            "admin_label": "学工主管（总管）" if campus else "人事主管（总管）",
+            "subadmin_label": "辅导员" if campus else "考勤员",
             "archive_label": "假种",
             "archive_fields": [
                 {"key": "title", "label": "假种名称", "type": "string"},
@@ -131,12 +134,20 @@ def _generic_flow_copy(title: str, noun: str) -> dict[str, Any]:
             "my_tickets_label": "我的请假",
             "pending_label": "请假审批",
             "records_label": "请假记录",
-            "auth_eyebrow": "请假管理",
-            "auth_lead": "验证码登录；选择假种提交请假，人事审批后生效。",
+            "auth_eyebrow": "学生请假" if campus else "请假管理",
+            "auth_lead": (
+                "验证码登录；选择假种提交请假，学工审批后生效。"
+                if campus
+                else "验证码登录；选择假种提交请假，人事审批后生效。"
+            ),
             "auth_points": ["验证码登录", "提交请假", "审批进度"],
             "register_hint": "注册后可在线请假",
             "notice_title": "请假须知",
-            "notice_body": "请提前申请并等待审批；紧急情况请先口头报备再补单。",
+            "notice_body": (
+                "请提前申请并等待审批；紧急情况请先向辅导员报备再补单。"
+                if campus
+                else "请提前申请并等待审批；紧急情况请先口头报备再补单。"
+            ),
             "require_remark": True,
             "remark_label": "请假事由",
             "pick_date_range": True,
@@ -492,6 +503,8 @@ def build_generic_shell_schema(
     title: str,
     archetype: str | None = None,
     archetypes: list[str] | None = None,
+    *,
+    proposal_text: str = "",
 ) -> dict[str, Any]:
     """GENERIC + ARCH-*（可多条）→ 文案壳；菜单按路径并集补齐。"""
     from app.bake.schema.templates import archive_ticket_schema, order_shell_schema, slot_shell_schema
@@ -505,7 +518,7 @@ def build_generic_shell_schema(
 
     # 实体/文案：优先用「最重」单壳模板，再补菜单（避免三套 schema 复制）
     if need_flow:
-        fc = _generic_flow_copy(title, noun)
+        fc = _generic_flow_copy(title, noun, proposal_text=proposal_text)
         schema = archive_ticket_schema(
             title,
             domain="DOM-GENERIC",
@@ -682,19 +695,29 @@ def finalize_generic_schema(
     title: str,
     archetype: str | None = None,
     archetypes: list[str] | None = None,
+    *,
+    proposal_text: str = "",
 ) -> dict[str, Any]:
     """GENERIC 最终 schema：壳文案 + profile + 交叉岗位（唯一出口）。"""
     from app.bake.profile_fields import attach_profile_fields
     from app.bake.staff_posts import attach_staff_posts
 
     arches = normalize_archetypes(archetypes, primary=archetype)
-    schema = build_generic_shell_schema(title, archetypes=arches)
+    schema = build_generic_shell_schema(
+        title, archetypes=arches, proposal_text=proposal_text
+    )
     schema = attach_profile_fields(schema, "DOM-GENERIC")
     primary = arches[0] if arches else "ARCH-CRUD"
-    return attach_staff_posts(schema, "DOM-GENERIC", primary, arches)
+    return attach_staff_posts(
+        schema, "DOM-GENERIC", primary, arches, proposal_text=proposal_text
+    )
 
 
-def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
+def apply_generic_shell(
+    spec: dict[str, Any],
+    *,
+    proposal_text: str = "",
+) -> dict[str, Any]:
     """当 domain=DOM-GENERIC 时，按 archetypes 并集写入 runtime/gate/features/schema。"""
     if (spec.get("domain") or "") != "DOM-GENERIC":
         return spec
@@ -703,6 +726,21 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     spec = dict(spec)
     arches = normalize_archetypes(spec.get("archetypes"), primary=spec.get("archetype"))
     title = spec.get("title") or "毕设系统"
+    if not proposal_text:
+        if isinstance(spec.get("proposal_text"), str):
+            proposal_text = spec["proposal_text"]
+        else:
+            prop = spec.get("proposal")
+            if isinstance(prop, dict):
+                proposal_text = str(
+                    prop.get("excerpt")
+                    or prop.get("text")
+                    or prop.get("summary")
+                    or prop.get("background")
+                    or ""
+                )
+            elif isinstance(prop, str):
+                proposal_text = prop
     noun = entity_noun(title)
     caps = shell_capabilities(archetypes=arches)
     primary = arches[0]
@@ -745,7 +783,9 @@ def apply_generic_shell(spec: dict[str, Any]) -> dict[str, Any]:
     spec["entities"] = ents
     spec["domain_label"] = product_name_from_title(title)
     spec["industry"] = spec["domain_label"]
-    schema = finalize_generic_schema(title, primary, arches)
+    schema = finalize_generic_schema(
+        title, primary, arches, proposal_text=proposal_text
+    )
     spec["schema"] = schema
     spec["roles"] = roles_for_spec(["user", "admin"], schema)
     return spec
