@@ -76,6 +76,8 @@ Spring Boot、Spring Security、MyBatis、MySQL、Thymeleaf（或前后端分离
 
 工厂匹配口径（关键词）
 --------------------
-01/02/03/05～12 → 骨架 ARCH-FLOW · 领域 DOM-EVENT（事件上报）
+01/02/03/05～12 → 骨架 ARCH-FLOW · 领域 DOM-EVENT（事件上报 + 监测打卡 archive_log）
 04 应急物资仓储 → 骨架含 ARCH-STOCK · 领域 DOM-ASSET（物资领用）
-公卫主线勿选手动改成进销存/点餐/挂号皮；物资主线再选 ASSET。
+公卫/养老/晨检主线勿选手动改成进销存/点餐/挂号皮；物资主线再选 ASSET。
+「物资出入库」若仅作附属模块请写入非本期，避免误抬 ARCH-STOCK。
+DOM-EVENT 默认能力含 archive_log（健康打卡/随访记录）；异常处置仍走上报单。

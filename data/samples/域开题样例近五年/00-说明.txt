@@ -1,0 +1,11 @@
+域开题样例（近五年 · 2021-2026）
+================================
+每具名域一份缩样开题 + GENERIC 兜底。
+
+用途：上传/回归时验证「匹配对域 → 能生成业务交付物」
+（schema 能力、runtime 表进 SQL、模块图、测试用例表），不是只对题名。
+
+同源：backend/tests/fixtures/domain_opening_corpus.json
+断言：backend/tests/test_domain_opening_corpus.py
+
+正文刻意控在壳内主路径；非完整学校模板。超壳卖点勿写进「拟实现」。
