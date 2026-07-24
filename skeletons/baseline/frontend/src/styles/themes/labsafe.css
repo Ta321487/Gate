@@ -1,0 +1,25 @@
+/* —— 实验室安全准入 LABSAFE —— */
+[data-theme="labsafe-sky"] {
+  --portal-bg: #eef6fb; --portal-bg-glow: rgba(37, 99, 160, 0.12); --portal-surface: #ffffff;
+  --portal-ink: #142536; --portal-muted: #5a7088; --portal-line: #d0dde8;
+  --portal-brand: #1a5f8a; --portal-accent: #2d7eb0; --portal-accent-soft: #d6ebf7;
+  --portal-cover: linear-gradient(160deg, #4aa3d4, #1a5f8a); --portal-shadow-color: rgba(26, 95, 138, 0.1);
+}
+[data-theme="labsafe-leaf"] {
+  --portal-bg: #eef8f1; --portal-bg-glow: rgba(40, 120, 70, 0.1); --portal-surface: #ffffff;
+  --portal-ink: #14301c; --portal-muted: #5a7a62; --portal-line: #d0e4d6;
+  --portal-brand: #2a6b40; --portal-accent: #3d8a55; --portal-accent-soft: #d8f0e0;
+  --portal-cover: linear-gradient(160deg, #5aaa70, #2a6b40); --portal-shadow-color: rgba(42, 107, 64, 0.1);
+}
+[data-theme="labsafe-slate"] {
+  --portal-bg: #f0f2f4; --portal-bg-glow: rgba(71, 85, 105, 0.1); --portal-surface: #ffffff;
+  --portal-ink: #1e293b; --portal-muted: #64748b; --portal-line: #d8dee6;
+  --portal-brand: #334155; --portal-accent: #475569; --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #64748b, #334155); --portal-shadow-color: rgba(51, 65, 85, 0.1);
+}
+[data-theme="labsafe-night"] {
+  --portal-bg: #121820; --portal-bg-glow: rgba(80, 140, 200, 0.08); --portal-surface: #1a222c;
+  --portal-ink: #e8eef4; --portal-muted: #9aabbc; --portal-line: #2a3544;
+  --portal-brand: #6eb0d8; --portal-accent: #4a90b8; --portal-accent-soft: #243040;
+  --portal-cover: linear-gradient(160deg, #3a6080, #1a3048); --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

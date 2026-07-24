@@ -238,27 +238,24 @@ def _scan_signals(
 
 
 def scan_out_of_scope(text: str) -> list[str]:
-    """扫描超范围卖点；「不做/不纳入」等否定语境不计。
+    """扫描开题里「拟交付」的超范围卖点。
 
-    - 技术 L3：扫全文（去掉参考文献等噪声后）
-    - 业务过重：优先扫功能/拟实现焦点段，避免现状综述里的 HIS 对比误伤；
-      对比/展望/「先实现…再扩展」语境走 keyword_mentioned(ignore_contrast=True)
+    真实开题常在研究现状 / 非本期写到人脸、真支付、ERP 等——那是划界，不是承诺。
+    因此只扫「拟实现/主要功能」等实现段（无章节时退回全文），并忽略否定与对比语境。
     """
     from app.services.proposal import strip_non_dev_sections
 
     raw = strip_non_dev_sections(text or "")
-    hits = _scan_signals(raw, OUT_OF_SCOPE_SIGNALS)
-
     focus = raw
     try:
         from app.bake.catalog import proposal_impl_sections_for_scope
 
         focused = proposal_impl_sections_for_scope(text or "")
-        # 有明确功能段才收窄；否则退回全文（无章节标题的清单仍能打标）
         if focused and focused.strip():
             focus = focused
     except Exception:  # noqa: BLE001
         pass
+    hits = _scan_signals(focus, OUT_OF_SCOPE_SIGNALS, ignore_contrast=True)
     for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS, ignore_contrast=True):
         if label not in hits:
             hits.append(label)
@@ -351,10 +348,10 @@ def resolve_accept(
             "required_capabilities": req,
             "missing_capabilities": [],
             "out_of_mvp_signals": oos,
-            "reason": "开题含未实现卖点（"
+            "reason": "拟实现/主要功能段承诺了未落地能力（"
             + "、".join(oos[:6])
             + ("…" if len(oos) > 6 else "")
-            + "）；Path B 要求改开题或扩能力后再 full",
+            + "）；请改开题承诺或先扩能力后再 full",
         }
 
     from app.bake.cross_paths import evaluate_cross_path

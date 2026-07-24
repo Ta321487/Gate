@@ -100,7 +100,15 @@
                 </div>
                 <div class="field" :class="{ locked: !unlocked }">
                   <n-form-item label="领域">
-                    <n-select v-model:value="form.domain" :options="domOptions" :disabled="!unlocked || matchBusy" :loading="matchBusy" @update:value="onArchDomChange" />
+                    <n-cascader
+                      v-model:value="form.domain"
+                      :options="domCascaderOptions"
+                      check-strategy="child"
+                      :show-path="true"
+                      filterable
+                      :disabled="!unlocked || matchBusy"
+                      @update:value="onArchDomChange"
+                    />
                   </n-form-item>
                 </div>
               </div>
@@ -863,6 +871,7 @@ import {
   statusPillNode,
   stepStatusLabel,
   stepStatusMark,
+  domainCascaderOptions as buildDomainCascaderOptions,
 } from '../opsShared'
 
 const route = useRoute()
@@ -987,7 +996,7 @@ const planSteps = [
 ]
 
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
-const domOptions = computed(() => catalog.value.domains.map((x) => ({ label: x.label, value: x.id })))
+const domCascaderOptions = computed(() => buildDomainCascaderOptions(catalog.value))
 const themeOptions = computed(() => {
   const list = catalog.value.themes_by_domain?.[form.domain] || []
   return list.map((x) => ({ label: x.label, value: x.id }))

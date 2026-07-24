@@ -12,6 +12,8 @@ _DOMAIN_FLAVOR: dict[str, str] = {
     "DOM-CRM": "crm",
     "DOM-EVENT": "event",
     "DOM-ATTEND": "attend",
+    "DOM-FUND": "fund",
+    "DOM-LABSAFE": "labsafe",
     "DOM-RECRUIT": "recruit",
     "DOM-GRADE": "grade",
     "DOM-INTERN": "intern",
@@ -44,6 +46,8 @@ _DOMAIN_TRAITS: dict[str, dict[str, bool]] = {
     "DOM-CRM": {"crm": True},
     "DOM-EVENT": {"crm": True},
     "DOM-ATTEND": {"crm": True},
+    "DOM-FUND": {"crm": True},
+    "DOM-LABSAFE": {"crm": True},
     "DOM-RECRUIT": {"crm": True},
     "DOM-GRADE": {"crm": True},
     "DOM-INTERN": {"crm": True},
@@ -84,6 +88,8 @@ _DOMAIN_AUTH_QUERY: dict[str, str] = {
     "DOM-ASSET": "warehouse inventory shelves",
     "DOM-CRM": "business meeting handshake office crm",
     "DOM-ATTEND": "office attendance leave request calendar desk",
+    "DOM-FUND": "campus student financial aid scholarship application desk",
+    "DOM-LABSAFE": "university laboratory safety access training badge",
     "DOM-RECRUIT": "campus job fair recruitment resume interview",
     "DOM-GRADE": "university academic transcript grades classroom",
     "DOM-INTERN": "student internship workplace mentor weekly report",
@@ -115,6 +121,6 @@ def student_skin_payload(domain: str, domain_label: str) -> dict[str, Any]:
     """写入 APP_DELIVERED 的皮肤字段（无 DOM-*）。"""
     return {
         "flavor": flavor_for_domain(domain),
-        "domainLabel": domain_label or "通用",
+        "domainLabel": domain_label or "合成壳",
         "traits": traits_for_domain(domain),
     }

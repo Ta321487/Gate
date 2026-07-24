@@ -1,0 +1,53 @@
+/* —— 服务预约 —— */
+[data-theme="salon-rose"] {
+  --portal-bg: #fdf2f4;
+  --portal-bg-glow: rgba(190, 70, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #2a1820;
+  --portal-muted: #8a5f6e;
+  --portal-line: #f0d4dc;
+  --portal-brand: #be466e;
+  --portal-accent: #d45a82;
+  --portal-accent-soft: #fce4ec;
+  --portal-cover: linear-gradient(160deg, #f090a8, #be466e);
+  --portal-shadow-color: rgba(190, 70, 110, 0.1);
+}
+[data-theme="salon-cream"] {
+  --portal-bg: #faf6ef;
+  --portal-bg-glow: rgba(180, 150, 100, 0.12);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a2418;
+  --portal-muted: #7a6f55;
+  --portal-line: #e8dcc8;
+  --portal-brand: #a89060;
+  --portal-accent: #c4a86e;
+  --portal-accent-soft: #f5ecd8;
+  --portal-cover: linear-gradient(160deg, #dcc496, #a89060);
+  --portal-shadow-color: rgba(168, 144, 96, 0.1);
+}
+[data-theme="salon-ink"] {
+  --portal-bg: #f0eef2;
+  --portal-bg-glow: rgba(60, 48, 80, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e1828;
+  --portal-muted: #6e6580;
+  --portal-line: #ddd6e4;
+  --portal-brand: #3c3050;
+  --portal-accent: #5a4878;
+  --portal-accent-soft: #e8e0f0;
+  --portal-cover: linear-gradient(160deg, #7a6898, #3c3050);
+  --portal-shadow-color: rgba(60, 48, 80, 0.1);
+}
+[data-theme="salon-night"] {
+  --portal-bg: #16121a;
+  --portal-bg-glow: rgba(244, 114, 182, 0.1);
+  --portal-surface: #221c28;
+  --portal-ink: #f5eef4;
+  --portal-muted: #b098a8;
+  --portal-line: #3a3040;
+  --portal-brand: #f472b6;
+  --portal-accent: #ec4899;
+  --portal-accent-soft: #500724;
+  --portal-cover: linear-gradient(160deg, #9d174d, #16121a);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

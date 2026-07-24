@@ -1,0 +1,70 @@
+/* —— 商城 —— */
+[data-theme="shop-coral"] {
+  --portal-bg: #fff1f0;
+  --portal-bg-glow: rgba(225, 69, 61, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #2a1514;
+  --portal-muted: #8a5f5c;
+  --portal-line: #f0d4d2;
+  --portal-brand: #c2302a;
+  --portal-accent: #e1453d;
+  --portal-accent-soft: #ffe4e1;
+  --portal-cover: linear-gradient(160deg, #ff6b63, #c2302a);
+  --portal-shadow-color: rgba(194, 48, 42, 0.1);
+}
+
+[data-theme="shop-ocean"] {
+  --portal-bg: #eef6fb;
+  --portal-bg-glow: rgba(14, 116, 180, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #122433;
+  --portal-muted: #5f7a8c;
+  --portal-line: #cfe0eb;
+  --portal-brand: #0b5f8a;
+  --portal-accent: #0e74b4;
+  --portal-accent-soft: #d6ebf7;
+  --portal-cover: linear-gradient(160deg, #38bdf8, #0b5f8a);
+  --portal-shadow-color: rgba(11, 95, 138, 0.1);
+}
+
+[data-theme="shop-lime"] {
+  --portal-bg: #f2f8ec;
+  --portal-bg-glow: rgba(101, 163, 13, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #1a2a12;
+  --portal-muted: #657a55;
+  --portal-line: #d5e4c8;
+  --portal-brand: #4d7c0f;
+  --portal-accent: #65a30d;
+  --portal-accent-soft: #ecfccb;
+  --portal-cover: linear-gradient(160deg, #84cc16, #4d7c0f);
+  --portal-shadow-color: rgba(77, 124, 15, 0.1);
+}
+
+[data-theme="shop-gold"] {
+  --portal-bg: #faf6ec;
+  --portal-bg-glow: rgba(180, 140, 40, 0.12);
+  --portal-surface: #fffdf7;
+  --portal-ink: #2a2414;
+  --portal-muted: #7a6f4e;
+  --portal-line: #e8dcc0;
+  --portal-brand: #a16207;
+  --portal-accent: #ca8a04;
+  --portal-accent-soft: #fef3c7;
+  --portal-cover: linear-gradient(160deg, #eab308, #a16207);
+  --portal-shadow-color: rgba(161, 98, 7, 0.1);
+}
+
+[data-theme="shop-night"] {
+  --portal-bg: #12141c;
+  --portal-bg-glow: rgba(251, 113, 133, 0.1);
+  --portal-surface: #1c2030;
+  --portal-ink: #f1eef4;
+  --portal-muted: #9aa0b4;
+  --portal-line: #2e3448;
+  --portal-brand: #fb7185;
+  --portal-accent: #f43f5e;
+  --portal-accent-soft: #4c1d2a;
+  --portal-cover: linear-gradient(160deg, #881337, #12141c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

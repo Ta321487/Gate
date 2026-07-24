@@ -1,0 +1,53 @@
+/* —— 物资领用 —— */
+[data-theme="asset-olive"] {
+  --portal-bg: #f0f5ea;
+  --portal-bg-glow: rgba(95, 122, 58, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #1a2614;
+  --portal-muted: #65755a;
+  --portal-line: #d4e0c8;
+  --portal-brand: #4d6b28;
+  --portal-accent: #6b8f3c;
+  --portal-accent-soft: #e4f0d4;
+  --portal-cover: linear-gradient(160deg, #8fb85a, #4d6b28);
+  --portal-shadow-color: rgba(77, 107, 40, 0.1);
+}
+[data-theme="asset-clay"] {
+  --portal-bg: #f6f0e8;
+  --portal-bg-glow: rgba(154, 92, 58, 0.12);
+  --portal-surface: #fffdf9;
+  --portal-ink: #2a2218;
+  --portal-muted: #7a6b58;
+  --portal-line: #e4d8c6;
+  --portal-brand: #8a5234;
+  --portal-accent: #a35d38;
+  --portal-accent-soft: #f3e4d9;
+  --portal-cover: linear-gradient(160deg, #c2784f, #8a5234);
+  --portal-shadow-color: rgba(138, 82, 52, 0.1);
+}
+[data-theme="asset-slate"] {
+  --portal-bg: #eef2f4;
+  --portal-bg-glow: rgba(71, 95, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #1a2830;
+  --portal-muted: #647684;
+  --portal-line: #d2dce2;
+  --portal-brand: #3d5564;
+  --portal-accent: #54748a;
+  --portal-accent-soft: #dde8ee;
+  --portal-cover: linear-gradient(160deg, #6d8fa3, #3d5564);
+  --portal-shadow-color: rgba(61, 85, 100, 0.1);
+}
+[data-theme="asset-night"] {
+  --portal-bg: #12181c;
+  --portal-bg-glow: rgba(163, 190, 140, 0.08);
+  --portal-surface: #1a2228;
+  --portal-ink: #e8eee4;
+  --portal-muted: #96a494;
+  --portal-line: #2a343c;
+  --portal-brand: #a3be8c;
+  --portal-accent: #8fbc6b;
+  --portal-accent-soft: #2a3824;
+  --portal-cover: linear-gradient(160deg, #3d4f30, #12181c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

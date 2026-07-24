@@ -162,6 +162,32 @@ export function catalogLabel(list, id) {
   return hit?.label || id || '—'
 }
 
+/** 领域级联选项：分组 → 短中文名；value 仍为 DOM-* */
+export function domainCascaderOptions(catalog) {
+  const byId = Object.fromEntries((catalog?.domains || []).map((d) => [d.id, d]))
+  const groups = catalog?.domain_groups || []
+  if (groups.length) {
+    return groups
+      .map((g) => {
+        const children = (g.domains || [])
+          .map((id) => {
+            const d = byId[id]
+            if (!d) return null
+            return { label: d.name || d.label || id, value: id }
+          })
+          .filter(Boolean)
+        if (!children.length) return null
+        return { label: g.label, value: g.id, children }
+      })
+      .filter(Boolean)
+  }
+  // 无分组时回落为单层（兼容旧 catalog）
+  return (catalog?.domains || []).map((d) => ({
+    label: d.name || d.label || d.id,
+    value: d.id,
+  }))
+}
+
 export function formatArchDom(catalog, archetype, domain) {
   if (!archetype && !domain) return '—'
   const a = catalogLabel(catalog?.archetypes, archetype)

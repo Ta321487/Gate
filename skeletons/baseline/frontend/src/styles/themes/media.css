@@ -1,0 +1,53 @@
+/* —— 影视综 —— */
+[data-theme="media-cinema"] {
+  --portal-bg: #141218;
+  --portal-bg-glow: rgba(225, 29, 72, 0.12);
+  --portal-surface: #1e1a24;
+  --portal-ink: #f5eef2;
+  --portal-muted: #a898a4;
+  --portal-line: #342e3c;
+  --portal-brand: #e11d48;
+  --portal-accent: #f43f5e;
+  --portal-accent-soft: #4c0519;
+  --portal-cover: linear-gradient(160deg, #9f1239, #141218);
+  --portal-shadow-color: rgba(0, 0, 0, 0.45);
+}
+[data-theme="media-amber"] {
+  --portal-bg: #f7f2e8;
+  --portal-bg-glow: rgba(180, 120, 30, 0.12);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a2214;
+  --portal-muted: #7a6b4e;
+  --portal-line: #e5d9c0;
+  --portal-brand: #8a5a18;
+  --portal-accent: #b4781e;
+  --portal-accent-soft: #f5e6c4;
+  --portal-cover: linear-gradient(160deg, #d4a017, #8a5a18);
+  --portal-shadow-color: rgba(138, 90, 24, 0.1);
+}
+[data-theme="media-teal"] {
+  --portal-bg: #eef6f3;
+  --portal-bg-glow: rgba(15, 118, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142422;
+  --portal-muted: #5a736e;
+  --portal-line: #cfe0db;
+  --portal-brand: #0f766e;
+  --portal-accent: #0d9488;
+  --portal-accent-soft: #ccfbf1;
+  --portal-cover: linear-gradient(160deg, #2dd4bf, #0f766e);
+  --portal-shadow-color: rgba(15, 118, 110, 0.1);
+}
+[data-theme="media-night"] {
+  --portal-bg: #0c0a10;
+  --portal-bg-glow: rgba(168, 85, 247, 0.1);
+  --portal-surface: #16121c;
+  --portal-ink: #f1e8f8;
+  --portal-muted: #9a8eac;
+  --portal-line: #2a2434;
+  --portal-brand: #a855f7;
+  --portal-accent: #c084fc;
+  --portal-accent-soft: #3b0764;
+  --portal-cover: linear-gradient(160deg, #6b21a8, #0c0a10);
+  --portal-shadow-color: rgba(0, 0, 0, 0.45);
+}

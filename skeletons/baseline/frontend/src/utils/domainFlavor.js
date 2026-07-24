@@ -63,6 +63,18 @@ const FLAVORS = {
     serverError: { title: '假勤服务异常', lead: '请假系统暂时连不上。', hint: '请稍后重试提交或查询。' },
     loading: { title: '假勤加载中…', lead: '正在同步人员与请假记录。' },
   },
+  'fund': {
+    motif: 'briefcase',
+    notFound: { title: '项目未找到', lead: '页面无效，或资助项目/申请单不存在。', hint: '回项目列表重新选择。' },
+    serverError: { title: '资助服务异常', lead: '资助系统暂时连不上。', hint: '请稍后重试申请或查询。' },
+    loading: { title: '资助加载中…', lead: '正在同步项目与申请记录。' },
+  },
+  'labsafe': {
+    motif: 'gear',
+    notFound: { title: '实验室未找到', lead: '页面无效，或实验室/准入单不存在。', hint: '回实验室列表重新选择。' },
+    serverError: { title: '准入服务异常', lead: '安全准入系统暂时连不上。', hint: '请稍后重试申请或查询。' },
+    loading: { title: '准入加载中…', lead: '正在同步实验室与准入记录。' },
+  },
   'recruit': {
     motif: 'briefcase',
     notFound: { title: '岗位未找到', lead: '页面无效，或岗位/投递单不存在。', hint: '回职位列表重新选择。' },
@@ -436,6 +448,8 @@ const FOOTER_TAGS = {
   asset: '物资台账入口',
   crm: '客户跟进台',
   attend: '假勤请假台',
+  fund: '资助申请台',
+  labsafe: '安全准入台',
   recruit: '校园招聘台',
   grade: '教务成绩台',
   intern: '实习周报台',

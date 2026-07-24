@@ -326,7 +326,7 @@ def merge_proposal_documents(
     if best < 3:
         tips.append(
             "提示：上传材料业务信号偏弱（偏综述/进度/参考文献），"
-            "匹配可能落通用壳；建议补充任务书或带功能清单的开题后再确认。"
+            "匹配可能落合成壳；建议补充任务书或带功能清单的开题后再确认。"
         )
     elif len(scored) > 1 and scored[-1][2] == 0 and best >= 5:
         tips.append("提示：部分材料几乎无业务内容，已降低其在匹配中的权重。")

@@ -1,0 +1,53 @@
+/* —— 客房 —— */
+[data-theme="hotel-gold"] {
+  --portal-bg: #faf6ec;
+  --portal-bg-glow: rgba(180, 140, 40, 0.12);
+  --portal-surface: #fffdf7;
+  --portal-ink: #2a2414;
+  --portal-muted: #7a6f4e;
+  --portal-line: #e8dcc0;
+  --portal-brand: #a16207;
+  --portal-accent: #ca8a04;
+  --portal-accent-soft: #fef3c7;
+  --portal-cover: linear-gradient(160deg, #eab308, #a16207);
+  --portal-shadow-color: rgba(161, 98, 7, 0.1);
+}
+[data-theme="hotel-navy"] {
+  --portal-bg: #eef2f8;
+  --portal-bg-glow: rgba(30, 58, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #141c2e;
+  --portal-muted: #5f6e88;
+  --portal-line: #d0d8e8;
+  --portal-brand: #1e3a6e;
+  --portal-accent: #2a4f96;
+  --portal-accent-soft: #d8e2f4;
+  --portal-cover: linear-gradient(160deg, #3d6ab8, #1e3a6e);
+  --portal-shadow-color: rgba(30, 58, 110, 0.1);
+}
+[data-theme="hotel-sand"] {
+  --portal-bg: #f7f2ea;
+  --portal-bg-glow: rgba(180, 140, 80, 0.12);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a2418;
+  --portal-muted: #7a6f55;
+  --portal-line: #e6dcc8;
+  --portal-brand: #9a7b3c;
+  --portal-accent: #b8954a;
+  --portal-accent-soft: #f3e8d0;
+  --portal-cover: linear-gradient(160deg, #d4b06a, #9a7b3c);
+  --portal-shadow-color: rgba(154, 123, 60, 0.1);
+}
+[data-theme="hotel-night"] {
+  --portal-bg: #12141c;
+  --portal-bg-glow: rgba(212, 175, 55, 0.1);
+  --portal-surface: #1c2030;
+  --portal-ink: #f1eef4;
+  --portal-muted: #9aa0b4;
+  --portal-line: #2e3448;
+  --portal-brand: #d4af37;
+  --portal-accent: #e0c060;
+  --portal-accent-soft: #3a3010;
+  --portal-cover: linear-gradient(160deg, #6b5420, #12141c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

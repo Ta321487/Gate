@@ -31,6 +31,15 @@ class SlimMatchDataTests(unittest.TestCase):
             ("疾控流调协查风险管理系统", "DOM-EVENT"),
             ("小型餐厅点餐系统", "DOM-FOOD"),
             ("医院门诊挂号预约系统", "DOM-HOSPITAL"),
+            ("宠物医院挂号预约管理系统", "DOM-HOSPITAL"),
+            ("HPV疫苗预约系统", "DOM-HOSPITAL"),
+            ("宠物医院病患随访隔离观察管理系统", "DOM-EVENT"),
+            ("图书馆预约占座系统", "DOM-MEETING"),
+            ("实验室工位预约系统", "DOM-MEETING"),
+            ("实验室安全准入管理系统", "DOM-LABSAFE"),
+            ("高校学生资助奖学金申请系统", "DOM-FUND"),
+            ("健身房私教预约管理系统", "DOM-SALON"),
+            ("宠物领养管理系统", "DOM-LOST"),
         ]
         for title, want in cases:
             with self.subTest(title=title):

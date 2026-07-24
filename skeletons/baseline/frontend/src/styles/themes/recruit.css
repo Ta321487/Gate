@@ -1,0 +1,25 @@
+/* —— 招聘 RECRUIT —— */
+[data-theme="recruit-coral"] {
+  --portal-bg: #fbf0ee; --portal-bg-glow: rgba(180, 70, 60, 0.1); --portal-surface: #fff9f8;
+  --portal-ink: #2a1816; --portal-muted: #8a6058; --portal-line: #ecd8d4;
+  --portal-brand: #b04a40; --portal-accent: #c45a4e; --portal-accent-soft: #f5e0dc;
+  --portal-cover: linear-gradient(160deg, #d87868, #b04a40); --portal-shadow-color: rgba(176, 74, 64, 0.1);
+}
+[data-theme="recruit-ocean"] {
+  --portal-bg: #eef4f8; --portal-bg-glow: rgba(37, 99, 140, 0.12); --portal-surface: #ffffff;
+  --portal-ink: #142230; --portal-muted: #5a7084; --portal-line: #d0dde8;
+  --portal-brand: #1d5a7a; --portal-accent: #2d7a9e; --portal-accent-soft: #d8eaf4;
+  --portal-cover: linear-gradient(160deg, #4a9fc4, #1d5a7a); --portal-shadow-color: rgba(29, 90, 122, 0.1);
+}
+[data-theme="recruit-sand"] {
+  --portal-bg: #f7f3ec; --portal-bg-glow: rgba(180, 130, 70, 0.1); --portal-surface: #fffdf9;
+  --portal-ink: #2a2418; --portal-muted: #7a6e58; --portal-line: #e6dcc8;
+  --portal-brand: #8a6a3a; --portal-accent: #a67c3d; --portal-accent-soft: #f0e6d4;
+  --portal-cover: linear-gradient(160deg, #c4a060, #8a6a3a); --portal-shadow-color: rgba(138, 106, 58, 0.1);
+}
+[data-theme="recruit-night"] {
+  --portal-bg: #141018; --portal-bg-glow: rgba(200, 100, 90, 0.08); --portal-surface: #1e1820;
+  --portal-ink: #f0e8e6; --portal-muted: #b0a0a0; --portal-line: #322830;
+  --portal-brand: #e09088; --portal-accent: #c07068; --portal-accent-soft: #2a2028;
+  --portal-cover: linear-gradient(160deg, #804040, #401818); --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

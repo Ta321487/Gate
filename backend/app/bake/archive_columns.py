@@ -40,6 +40,14 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("dept_name", "VARCHAR(100)"),
         ("badge_note", "VARCHAR(255)"),
     ),
+    "DOM-FUND": (
+        ("dept_name", "VARCHAR(100)"),
+        ("quota_note", "VARCHAR(255)"),
+    ),
+    "DOM-LABSAFE": (
+        ("building_name", "VARCHAR(100)"),
+        ("safety_note", "VARCHAR(255)"),
+    ),
     "DOM-RECRUIT": (
         ("dept_name", "VARCHAR(100)"),
         ("salary_note", "VARCHAR(255)"),

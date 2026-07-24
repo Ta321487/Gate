@@ -150,6 +150,16 @@ class DomainColumnForbidTests(unittest.TestCase):
                 "allow": {"contact_channel", "next_follow_at"},
                 "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
             },
+            "DOM-FUND": {
+                "table": "fund_apply",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
+            "DOM-LABSAFE": {
+                "table": "access_apply",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
             "DOM-RECRUIT": {
                 "table": "job_apply",
                 "allow": {"contact_channel", "next_follow_at"},

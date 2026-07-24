@@ -495,6 +495,8 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty"],
     "DOM-CRM": ["contact_channel", "next_follow_at"],
     "DOM-ATTEND": ["contact_channel", "next_follow_at"],
+    "DOM-FUND": ["contact_channel", "next_follow_at"],
+    "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
     "DOM-RECRUIT": ["contact_channel", "next_follow_at"],
     "DOM-GRADE": ["contact_channel", "next_follow_at"],
     "DOM-INTERN": ["contact_channel", "next_follow_at"],

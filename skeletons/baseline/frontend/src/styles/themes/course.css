@@ -1,0 +1,53 @@
+/* —— 选课 —— */
+[data-theme="course-ink"] {
+  --portal-bg: #eef3f5;
+  --portal-bg-glow: rgba(11, 110, 117, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #15202b;
+  --portal-muted: #6b7c8a;
+  --portal-line: #d5dde3;
+  --portal-brand: #08545a;
+  --portal-accent: #0b6e75;
+  --portal-accent-soft: #d7eef0;
+  --portal-cover: linear-gradient(160deg, #0b6e75, #08545a);
+  --portal-shadow-color: rgba(11, 110, 117, 0.08);
+}
+[data-theme="course-grove"] {
+  --portal-bg: #eef5f0;
+  --portal-bg-glow: rgba(22, 101, 52, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #14261a;
+  --portal-muted: #5f7366;
+  --portal-line: #d4e0d7;
+  --portal-brand: #166534;
+  --portal-accent: #15803d;
+  --portal-accent-soft: #dcfce7;
+  --portal-cover: linear-gradient(160deg, #22c55e, #166534);
+  --portal-shadow-color: rgba(22, 101, 52, 0.1);
+}
+[data-theme="course-clay"] {
+  --portal-bg: #f3f1ef;
+  --portal-bg-glow: rgba(154, 92, 58, 0.1);
+  --portal-surface: #fffcfa;
+  --portal-ink: #2a221c;
+  --portal-muted: #7a6b5f;
+  --portal-line: #e2d8cf;
+  --portal-brand: #8a5234;
+  --portal-accent: #a35d38;
+  --portal-accent-soft: #f3e4d9;
+  --portal-cover: linear-gradient(160deg, #c2784f, #8a5234);
+  --portal-shadow-color: rgba(138, 82, 52, 0.1);
+}
+[data-theme="course-night"] {
+  --portal-bg: #0f1720;
+  --portal-bg-glow: rgba(94, 234, 212, 0.08);
+  --portal-surface: #18232e;
+  --portal-ink: #e8eef2;
+  --portal-muted: #8aa0ae;
+  --portal-line: #2a3a48;
+  --portal-brand: #5eead4;
+  --portal-accent: #2dd4bf;
+  --portal-accent-soft: #134e4a;
+  --portal-cover: linear-gradient(160deg, #134e4a, #0f1720);
+  --portal-shadow-color: rgba(0, 0, 0, 0.35);
+}

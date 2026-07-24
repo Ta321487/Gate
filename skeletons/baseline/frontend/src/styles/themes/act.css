@@ -1,0 +1,53 @@
+/* —— 活动报名 —— */
+[data-theme="act-coral"] {
+  --portal-bg: #fff1f0;
+  --portal-bg-glow: rgba(225, 69, 61, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #2a1514;
+  --portal-muted: #8a5f5c;
+  --portal-line: #f0d4d2;
+  --portal-brand: #c2302a;
+  --portal-accent: #e1453d;
+  --portal-accent-soft: #ffe4e1;
+  --portal-cover: linear-gradient(160deg, #ff6b63, #c2302a);
+  --portal-shadow-color: rgba(194, 48, 42, 0.1);
+}
+[data-theme="act-sky"] {
+  --portal-bg: #eef6fb;
+  --portal-bg-glow: rgba(14, 165, 233, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142433;
+  --portal-muted: #5f7a8c;
+  --portal-line: #cfe3ef;
+  --portal-brand: #0284c7;
+  --portal-accent: #0ea5e9;
+  --portal-accent-soft: #e0f2fe;
+  --portal-cover: linear-gradient(160deg, #38bdf8, #0284c7);
+  --portal-shadow-color: rgba(2, 132, 199, 0.1);
+}
+[data-theme="act-lime"] {
+  --portal-bg: #f0f7ee;
+  --portal-bg-glow: rgba(52, 120, 60, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #162816;
+  --portal-muted: #5f735f;
+  --portal-line: #d0e0cc;
+  --portal-brand: #2f6b38;
+  --portal-accent: #3f8f4a;
+  --portal-accent-soft: #dcf5de;
+  --portal-cover: linear-gradient(160deg, #6bbf72, #2f6b38);
+  --portal-shadow-color: rgba(47, 107, 56, 0.1);
+}
+[data-theme="act-night"] {
+  --portal-bg: #15101a;
+  --portal-bg-glow: rgba(251, 113, 133, 0.1);
+  --portal-surface: #221828;
+  --portal-ink: #f1eef4;
+  --portal-muted: #a898b0;
+  --portal-line: #3a2e44;
+  --portal-brand: #fb7185;
+  --portal-accent: #f43f5e;
+  --portal-accent-soft: #4c1d2a;
+  --portal-cover: linear-gradient(160deg, #881337, #15101a);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}
