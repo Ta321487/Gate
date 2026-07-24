@@ -14,10 +14,10 @@ export const PROJECT_STATUS = {
   needs_confirm: { label: '待确认匹配', pill: 'pill-amber', tag: 'warning' },
   ready: { label: '待生成', pill: 'pill-teal', tag: 'info' },
   generating: { label: '生成中', pill: 'pill-teal', tag: 'info' },
-  generated: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
-  failed: { label: '质量检查未过 · 暂不可交付', pill: 'pill-red', tag: 'error' },
+  generated: { label: '已生成', pill: 'pill-teal', tag: 'info' },
+  failed: { label: '生成失败 · 质检未过', pill: 'pill-red', tag: 'error' },
   // running = 预览已拉起；文案与 generated 同族，「运行中」只出现在「运行」列
-  running: { label: '已生成 · 可交付', pill: 'pill-green', tag: 'success' },
+  running: { label: '已生成', pill: 'pill-teal', tag: 'info' },
   archived: { label: '已归档', pill: 'pill-neutral', tag: 'default' },
 }
 
@@ -26,35 +26,42 @@ export function statusPillNode(label, pillClass = 'pill-neutral') {
   return h('span', { class: ['pill', pillClass] }, label || '—')
 }
 
+/**
+ * 机器质检（zipReady）与人工履约（deliveryMark）分层：
+ * delivered → 已交付；ready → 可交付；zipReady → 已生成 · 质检通过；否则质检未过。
+ */
 export function projectStatusLabel(status, opts = {}) {
   const zipReady = opts.zipReady
-  if (
-    (status === 'generated' || status === 'running')
-    && zipReady === false
-  ) {
-    return '已生成 · 质量检查未过'
+  const mark = String(opts.deliveryMark || 'none')
+  if (status === 'generated' || status === 'running') {
+    if (mark === 'delivered') return '已交付'
+    if (mark === 'ready') return '可交付'
+    if (zipReady === false) return '已生成 · 质检未过'
+    if (zipReady === true) return '已生成 · 质检通过'
   }
   return PROJECT_STATUS[status]?.label || status || '—'
 }
 
 export function projectStatusPill(status, opts = {}) {
   const zipReady = opts.zipReady
-  if (
-    (status === 'generated' || status === 'running')
-    && zipReady === false
-  ) {
-    return 'pill-amber'
+  const mark = String(opts.deliveryMark || 'none')
+  if (status === 'generated' || status === 'running') {
+    if (mark === 'delivered') return 'pill-neutral'
+    if (mark === 'ready') return 'pill-green'
+    if (zipReady === false) return 'pill-amber'
+    if (zipReady === true) return 'pill-teal'
   }
   return PROJECT_STATUS[status]?.pill || 'pill-neutral'
 }
 
 export function projectStatusTag(status, opts = {}) {
   const zipReady = opts.zipReady
-  if (
-    (status === 'generated' || status === 'running')
-    && zipReady === false
-  ) {
-    return 'warning'
+  const mark = String(opts.deliveryMark || 'none')
+  if (status === 'generated' || status === 'running') {
+    if (mark === 'delivered') return 'default'
+    if (mark === 'ready') return 'success'
+    if (zipReady === false) return 'warning'
+    if (zipReady === true) return 'info'
   }
   return PROJECT_STATUS[status]?.tag || 'default'
 }

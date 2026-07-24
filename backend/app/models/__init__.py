@@ -66,6 +66,8 @@ class Project(Base):
     workspace_path: Mapped[Optional[str]] = mapped_column(String(512))
     zip_path: Mapped[Optional[str]] = mapped_column(String(512))
     zip_ready: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 人工履约：none → ready（可交付）→ delivered（已交付）；与机器质检 zip_ready 分离
+    delivery_mark: Mapped[str] = mapped_column(String(16), default="none")
 
     backend_running: Mapped[bool] = mapped_column(Boolean, default=False)
     frontend_running: Mapped[bool] = mapped_column(Boolean, default=False)

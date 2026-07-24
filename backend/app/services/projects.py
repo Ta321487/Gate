@@ -55,6 +55,55 @@ MSG_PREVIEW_GENERATING = "生成中 · 请等待完成后再启动预览"
 MSG_WS_MISSING = "尚未生成工作区 · 请先完成一键生成"
 MSG_WS_GONE = "工作区目录不存在 · 请重新生成"
 
+DELIVERY_MARKS = frozenset({"none", "ready", "delivered"})
+
+
+def normalize_delivery_mark(raw: str | None) -> str:
+    m = str(raw or "none").strip().lower()
+    return m if m in DELIVERY_MARKS else "none"
+
+
+def reset_delivery_mark(project: Project) -> bool:
+    """机器门禁回退或重新生成时清掉人工标记。"""
+    cur = str(getattr(project, "delivery_mark", None) or "none")
+    if cur == "none":
+        return False
+    project.delivery_mark = "none"
+    return True
+
+
+def apply_delivery_mark(project: Project, mark: str) -> str:
+    """校验并写入 delivery_mark，返回新标记；不写库。"""
+    raw = str(mark or "").strip().lower()
+    target = normalize_delivery_mark(raw)
+    if target != raw:
+        raise ValueError("标记须为 none / ready / delivered")
+    current = normalize_delivery_mark(getattr(project, "delivery_mark", None))
+    if target == current:
+        project.delivery_mark = current
+        return current
+    if target == "ready":
+        if delivery_block_reason(project):
+            raise ValueError("质量检查未通过 · 请先通过机器质检后再标记可交付")
+        if project.status not in (
+            ProjectStatus.generated.value,
+            ProjectStatus.running.value,
+        ):
+            raise ValueError("仅已生成的项目可标记可交付")
+    elif target == "delivered":
+        if current != "ready":
+            raise ValueError("请先标记「可交付」，再标记「已交付」")
+    project.delivery_mark = target
+    return target
+
+
+async def set_delivery_mark(db: AsyncSession, project: Project, mark: str) -> Project:
+    """人工标记：none / ready（可交付）/ delivered（已交付）。"""
+    apply_delivery_mark(project, mark)
+    await db.commit()
+    await db.refresh(project)
+    return project
+
 
 def workspace_or_reason(project: Project) -> tuple[Path | None, str | None]:
     """返回 (工作区路径, 错误文案)；成功时错误为 None。"""
@@ -193,23 +242,27 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     generating = project.status == ProjectStatus.generating.value
     # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
     if generating:
+        changed = False
         if project.zip_ready:
             project.zip_ready = False
-            return True
-        return False
+            changed = True
+        if reset_delivery_mark(project):
+            changed = True
+        return changed
     gates = evaluate_domain_gates(ws, project.spec or {})
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
-    deliverable = gates_allow_delivery(new_gates)
+    downloadable = gates_allow_delivery(new_gates)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
-    # 门禁回退时关掉 zip_ready
+    # 门禁回退时关掉 zip_ready，并清掉人工可交付/已交付
     zip_changed = False
-    if deliverable and zip_exists and not project.zip_ready:
+    if downloadable and zip_exists and not project.zip_ready:
         project.zip_ready = True
         zip_changed = True
-    elif (not deliverable or not zip_exists) and project.zip_ready:
+    elif (not downloadable or not zip_exists) and project.zip_ready:
         project.zip_ready = False
         zip_changed = True
+        reset_delivery_mark(project)
     if project.checklist == new_checklist and project.gates == new_gates and not zip_changed:
         return False
     project.checklist = new_checklist

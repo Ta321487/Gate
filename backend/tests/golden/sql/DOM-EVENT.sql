@@ -83,16 +83,16 @@ CREATE TABLE IF NOT EXISTS sys_config (
 );
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '应急主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '网格员', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '网格员甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","employeeNo":"G2026008","dept":"应急网格","jobTitle":"网格员","region":"华东"}',
+('admin', 'admin123', 'admin', '防控主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '晨检员甲', '13800000002',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","employeeNo":"T2026008","dept":"校医院","jobTitle":"晨检员","region":"东区宿舍"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '应急事件'), (2, '日常隐患'), (3, '公卫监测');
+INSERT IGNORE INTO category (id, name) VALUES (1, '传染病线索'), (2, '晨午检异常'), (3, '健康监测');
 INSERT IGNORE INTO event_case (id, title, reporter_name, location_note, category_id, stock, status, stage) VALUES
-(1, '南门网格聚集性发热报告', '网格员李华', '南门广场 / 聚集性发热待核查', 1, 1, 'available', '待核查'),
+(1, '南门聚集性发热报告', '校医李华', '南门广场 / 聚集性发热待核查', 1, 1, 'available', '待核查'),
 (2, '食堂晨检异常', '食安员王芳', '一食堂窗口 / 晨检不合格', 2, 1, 'available', '排查中'),
 (3, '宿舍楼疑似传染病报告', '楼管张敏', '3号楼 / 疑似传染病待排查', 3, 1, 'available', '处置中'),
 (4, '校园消杀物资申领关联事件', '后勤赵强', '仓库区 / 消杀物资调度', 1, 1, 'available', '已闭环'),
@@ -101,10 +101,10 @@ INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
 ('report_hint', '请填写上报说明', '上报说明'),
 ('max_open_report', '20', '每人最大在途上报单');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '上报须知', '请如实登记事件要素；重大事件请及时上报并由主管确认处置。', 'admin', '应急主管'
+SELECT '上报须知', '请如实登记事件要素；重大事件请及时上报并由主管确认处置。', 'admin', '防控主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='上报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周排查', '请于周五前完成晨检异常与聚集性发热线索的复核上报。', 'admin', '应急主管'
+SELECT '本周排查', '请于周五前完成晨检异常与聚集性发热线索的复核上报。', 'admin', '防控主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
 
 CREATE TABLE IF NOT EXISTS `event_report_progress` (

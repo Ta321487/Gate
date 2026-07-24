@@ -268,12 +268,14 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
-/** 与状态/运行列语义对齐：运行中 · 生成中 · 可交付 · 质检未过 */
+/** 与状态/运行列语义对齐：运行中 · 生成中 · 可下载 · 可交付 · 已交付 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
   { id: 'generating', label: '生成中', pill: 'pill-teal' },
-  { id: 'done', label: '可交付', pill: 'pill-teal' },
+  { id: 'done', label: '可下载', pill: 'pill-teal' },
+  { id: 'ready', label: '可交付', pill: 'pill-green' },
+  { id: 'delivered', label: '已交付', pill: 'pill-neutral' },
   { id: 'fail', label: '质检未过', pill: 'pill-red' },
 ]
 const q = ref('')
@@ -702,7 +704,7 @@ const columns = [
     title: '状态',
     key: 'status',
     render(row) {
-      const opts = { zipReady: row.zip_ready }
+      const opts = { zipReady: row.zip_ready, deliveryMark: row.delivery_mark }
       return statusPillNode(
         projectStatusLabel(row.status, opts),
         projectStatusPill(row.status, opts),

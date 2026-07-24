@@ -162,6 +162,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         job.steps = _default_steps()
         project.status = ProjectStatus.generating.value
         project.zip_ready = False
+        project.delivery_mark = "none"
         await db.commit()
 
         async def set_step(idx: int, status: str, meta: str = "") -> None:
@@ -456,6 +457,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             job.finished_at = datetime.now()
             project.status = ProjectStatus.failed.value
             project.zip_ready = False
+            project.delivery_mark = "none"
             await db.commit()
             await append_log(project.id, f"ERROR {err}")
 

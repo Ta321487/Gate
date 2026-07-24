@@ -18,7 +18,11 @@ class ProjectSummary(BaseModel):
     frontend_running: bool = Field(description="前端预览是否在跑")
     backend_port: int = Field(description="后端端口")
     frontend_port: int = Field(description="前端端口")
-    zip_ready: bool = Field(description="ZIP 是否可下载")
+    zip_ready: bool = Field(description="ZIP 是否可下载（机器质检通过）")
+    delivery_mark: str = Field(
+        default="none",
+        description="人工交付标记：none | ready（可交付）| delivered（已交付）",
+    )
     db_name: str = Field(default="", description="学生库名")
     updated_at: Optional[datetime] = Field(default=None, description="更新时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
@@ -49,6 +53,12 @@ class ProjectDetail(ProjectSummary):
     preview_blocked_reason: Optional[str] = Field(
         default=None, description="不可启动预览的原因；空=可启动"
     )
+
+
+class DeliveryMarkUpdate(BaseModel):
+    model_config = ConfigDict(title="人工交付标记")
+
+    mark: str = Field(description="none | ready | delivered")
 
 
 class MatchUpdate(BaseModel):

@@ -46,20 +46,31 @@ def build_domain_schema(
     domain: str,
     archetype: str | None = None,
     archetypes: list[str] | None = None,
+    *,
+    proposal_text: str = "",
 ) -> dict[str, Any]:
     from app.bake.staff_posts import attach_staff_posts
 
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import finalize_generic_schema
 
-        return finalize_generic_schema(title, archetype, archetypes)
+        return finalize_generic_schema(
+            title, archetype, archetypes, proposal_text=proposal_text
+        )
     builder = SCHEMA_BUILDERS.get(domain, lambda t: generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
-        schema = builder(title)
+        from app.bake.schema.templates import _SCENE_COPY_DOMAINS
+
+        if domain in _SCENE_COPY_DOMAINS:
+            schema = builder(title, proposal_text=proposal_text)
+        else:
+            schema = builder(title)
     else:
         schema = generic_schema(title, domain)
     schema = attach_profile_fields(schema, domain)
-    return attach_staff_posts(schema, domain, archetype, archetypes)
+    return attach_staff_posts(
+        schema, domain, archetype, archetypes, proposal_text=proposal_text
+    )
 
 
 def required_capabilities(
@@ -125,15 +136,48 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
-        spec = apply_generic_shell(spec)
+        prop_body = ""
+        if isinstance(spec.get("proposal_text"), str):
+            prop_body = spec["proposal_text"]
+        else:
+            prop = spec.get("proposal")
+            if isinstance(prop, dict):
+                prop_body = str(
+                    prop.get("excerpt")
+                    or prop.get("text")
+                    or prop.get("summary")
+                    or prop.get("background")
+                    or ""
+                )
+            elif isinstance(prop, str):
+                prop_body = prop
+        spec = apply_generic_shell(spec, proposal_text=prop_body)
         _merge_baseline_tags(spec)
     else:
         dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
         _sync_named_domain_from_catalog(spec, dom)
         arches = list(spec.get("archetypes") or [archetype])
+        prop_body = ""
+        if isinstance(spec.get("proposal_text"), str):
+            prop_body = spec["proposal_text"]
+        else:
+            prop = spec.get("proposal")
+            if isinstance(prop, dict):
+                prop_body = str(
+                    prop.get("excerpt")
+                    or prop.get("text")
+                    or prop.get("summary")
+                    or ""
+                )
+            elif isinstance(prop, str):
+                prop_body = prop
         if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
             spec["schema"] = build_domain_schema(
-                title, domain, archetype=archetype, archetypes=arches
+                title,
+                domain,
+                archetype=archetype,
+                archetypes=arches,
+                proposal_text=prop_body,
             )
         else:
             if not (spec["schema"].get("profileFields")):
@@ -141,18 +185,6 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
             # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
             from app.bake.staff_posts import attach_staff_posts
 
-            prop_body = ""
-            if isinstance(spec.get("proposal_text"), str):
-                prop_body = spec["proposal_text"]
-            else:
-                prop = spec.get("proposal")
-                if isinstance(prop, dict):
-                    prop_body = str(
-                        prop.get("excerpt")
-                        or prop.get("text")
-                        or prop.get("summary")
-                        or ""
-                    )
             spec["schema"] = attach_staff_posts(
                 dict(spec["schema"]),
                 domain,
@@ -235,11 +267,12 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         domain=domain,
         primary_archetype=archetype,
     )
-    schema = spec.get("schema") or build_domain_schema(
+    schema = build_domain_schema(
         spec.get("title") or "毕设系统",
         domain,
         archetype=archetype,
         archetypes=arches,
+        proposal_text=body,
     )
     schema = copy.deepcopy(schema)
     schema["capabilities"] = req

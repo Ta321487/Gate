@@ -61,6 +61,7 @@ export const api = {
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
   getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
+  patchDelivery: (id, mark) => http.patch(`/projects/${id}/delivery`, { mark }),
   generate: (id) => http.post(`/projects/${id}/generate`),
   deleteProject: (id, { keepDb = false } = {}) =>
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
