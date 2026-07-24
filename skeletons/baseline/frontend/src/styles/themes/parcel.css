@@ -1,0 +1,25 @@
+/* —— 快递驿站 PARCEL —— */
+[data-theme="parcel-orange"] {
+  --portal-bg: #fbf4ec; --portal-bg-glow: rgba(200, 110, 40, 0.1); --portal-surface: #fffaf5;
+  --portal-ink: #2a1e10; --portal-muted: #8a6a48; --portal-line: #ead8c0;
+  --portal-brand: #c06a20; --portal-accent: #d88430; --portal-accent-soft: #f5e4cc;
+  --portal-cover: linear-gradient(160deg, #e09840, #c06a20); --portal-shadow-color: rgba(192, 106, 32, 0.1);
+}
+[data-theme="parcel-sky"] {
+  --portal-bg: #eef6fb; --portal-bg-glow: rgba(37, 99, 160, 0.12); --portal-surface: #ffffff;
+  --portal-ink: #142536; --portal-muted: #5a7088; --portal-line: #d0dde8;
+  --portal-brand: #1a5f8a; --portal-accent: #2d7eb0; --portal-accent-soft: #d6ebf7;
+  --portal-cover: linear-gradient(160deg, #4aa3d4, #1a5f8a); --portal-shadow-color: rgba(26, 95, 138, 0.1);
+}
+[data-theme="parcel-slate"] {
+  --portal-bg: #f0f2f4; --portal-bg-glow: rgba(71, 85, 105, 0.1); --portal-surface: #ffffff;
+  --portal-ink: #1e293b; --portal-muted: #64748b; --portal-line: #d8dee6;
+  --portal-brand: #334155; --portal-accent: #475569; --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #64748b, #334155); --portal-shadow-color: rgba(51, 65, 85, 0.1);
+}
+[data-theme="parcel-night"] {
+  --portal-bg: #14120e; --portal-bg-glow: rgba(200, 120, 50, 0.08); --portal-surface: #1e1a14;
+  --portal-ink: #f0eae0; --portal-muted: #b0a090; --portal-line: #32281c;
+  --portal-brand: #e0a060; --portal-accent: #c08040; --portal-accent-soft: #2a2218;
+  --portal-cover: linear-gradient(160deg, #805030, #402010); --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

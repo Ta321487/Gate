@@ -1,0 +1,212 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "实验室名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "楼宇/负责人",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "安全等级备注",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "开放状态",
+          "options": [
+            "可申请",
+            "审核中",
+            "暂停准入",
+            "已关闭"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "实验室类型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可申请准入",
+          "type": "number"
+        }
+      ],
+      "key": "lab_room",
+      "label": "实验室",
+      "labelPlural": "实验室",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已申请准入",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "申请方式",
+      "contactChannelOptions": [
+        "线上申请",
+        "纸质补录",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "线上/纸质等",
+      "key": "access_apply",
+      "label": "准入单",
+      "labelPlural": "准入",
+      "nextFollowLabel": "拟进室日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "实验内容摘要",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已准入",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已办结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "申请准入",
+        "approve": "批准",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "办结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "安全准入",
+    "authLead": "验证码登录；选择实验室提交准入申请，完成安全培训审核后方可进室。",
+    "authPoints": [
+      "验证码登录",
+      "实验室档案",
+      "准入申请与审核"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "准入规范与安全通知，点击条目阅读全文。",
+    "noticePageTitle": "实验室公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可提交准入申请"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "实验室档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "实验室类型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "准入审批"
+      },
+      {
+        "key": "ticket_records",
+        "label": "准入记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "实验室列表"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的准入"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按类型浏览实验室与安全等级。",
+      "title": "实验室目录"
+    },
+    {
+      "lead": "提交准入单并附培训证明，等待安全员审核。",
+      "title": "准入申请"
+    },
+    {
+      "lead": "准入节点与安全须知见公告栏。",
+      "title": "实验室公告"
+    },
+    {
+      "lead": "登录后跟踪审批结果。",
+      "title": "我的准入"
+    },
+    {
+      "lead": "化学/机房/金工等快速定位。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "实验室主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "安全员"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生/教师"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请完成安全培训并上传证明；审核通过后方可进室。",
+    "noticeTitle": "准入须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

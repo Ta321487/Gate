@@ -30,6 +30,13 @@ class DomainRegistryTests(unittest.TestCase):
         self.assertTrue(entry["has_sql_template"])
         self.assertTrue(entry["has_schema_builder"])
 
+    def test_domain_groups_cover_catalog(self) -> None:
+        from app.bake.domains import DOMAIN_GROUPS, DOMAINS
+
+        grouped = [d for _g, _l, members in DOMAIN_GROUPS for d in members]
+        self.assertEqual(sorted(grouped), sorted(DOMAINS))
+        self.assertEqual(len(grouped), len(set(grouped)))
+
 
 if __name__ == "__main__":
     unittest.main()

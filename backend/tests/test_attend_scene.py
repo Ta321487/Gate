@@ -79,6 +79,97 @@ class AttendTitleCopyTests(unittest.TestCase):
         dept = next(f for f in schema["profileFields"] if f["key"] == "dept")
         self.assertEqual(dept["label"], "院系/班级")
 
+    def test_recruit_event_asset_parking_parcel_scenes(self) -> None:
+        recruit = SCHEMA_BUILDERS["DOM-RECRUIT"](
+            "岗位投递系统",
+            proposal_text="面向高校毕业生的校园招聘与就业办初筛。",
+        )
+        self.assertEqual(recruit["roles"]["admin"]["label"], "就业办主管（总管）")
+        self.assertEqual(recruit["labels"]["authEyebrow"], "校园招聘")
+
+        event = SCHEMA_BUILDERS["DOM-EVENT"](
+            "健康监测系统",
+            proposal_text="校园传染病防控晨午检与因病缺课上报。",
+        )
+        self.assertEqual(event["roles"]["subadmin"]["label"], "班主任")
+        self.assertEqual(event["labels"]["authEyebrow"], "校园晨午检")
+
+        asset = SCHEMA_BUILDERS["DOM-ASSET"](
+            "物资领用系统",
+            proposal_text="高校行政部门与教学单位办公物资申领。",
+        )
+        self.assertEqual(asset["labels"]["authEyebrow"], "高校物资")
+
+        parking = SCHEMA_BUILDERS["DOM-PARKING"](
+            "车位预约系统",
+            proposal_text="校园教职工与访客车位时段预约。",
+        )
+        self.assertEqual(parking["labels"]["authEyebrow"], "校园车位")
+
+        parcel = SCHEMA_BUILDERS["DOM-PARCEL"](
+            "快递代收系统",
+            proposal_text="小区菜鸟驿站包裹入库与取件核销。",
+        )
+        self.assertEqual(parcel["labels"]["authEyebrow"], "快递代收")
+        self.assertNotEqual(parcel["labels"]["authEyebrow"], "校园驿站")
+
+    def test_library_seat_matches_meeting(self) -> None:
+        from app.bake.catalog import match_text
+
+        m = match_text("图书馆座位预约管理系统")
+        self.assertEqual(m.domain, "DOM-MEETING")
+        self.assertEqual(m.archetype, "ARCH-RESERVE")
+
+    def test_vaccine_and_adopt_scene_copy(self) -> None:
+        """HPV 疫苗 → HOSPITAL 号源壳；宠物领养 → LOST 认领壳（同 _meeting 分支写法）。"""
+        from app.bake.catalog import match_text
+
+        v = match_text("HPV疫苗预约系统的设计与实现")
+        self.assertEqual(v.domain, "DOM-HOSPITAL")
+        self.assertEqual(v.archetype, "ARCH-RESERVE")
+        vs = SCHEMA_BUILDERS["DOM-HOSPITAL"]("HPV疫苗预约系统")
+        self.assertEqual(vs["labels"]["authEyebrow"], "疫苗预约")
+        self.assertEqual(vs["roles"]["user"]["label"], "接种人")
+
+        a = match_text("springboot宠物领养系统的设计与实现")
+        self.assertEqual(a.domain, "DOM-LOST")
+        self.assertEqual(a.archetype, "ARCH-FLOW")
+        as_ = SCHEMA_BUILDERS["DOM-LOST"]("宠物领养管理系统")
+        self.assertEqual(as_["labels"]["authEyebrow"], "宠物领养")
+        self.assertEqual(as_["roles"]["subadmin"]["label"], "领养专员")
+        self.assertEqual(as_["entities"]["ticket"]["label"], "领养单")
+
+        # 开题正文双扫：题名无领养词时正文写到仍换皮
+        body = build_domain_schema(
+            "流浪动物管理系统",
+            "DOM-LOST",
+            proposal_text="主要功能：待领养档案浏览、领养申请与审核。",
+        )
+        self.assertEqual(body["labels"]["authEyebrow"], "宠物领养")
+
+    def test_seat_gym_pet_scene_copy(self) -> None:
+        seat = SCHEMA_BUILDERS["DOM-MEETING"]("图书馆座位预约管理系统")
+        self.assertEqual(seat["labels"]["authEyebrow"], "座位预约")
+        archive_admin = next(m for m in seat["menus"]["admin"] if m.get("key") == "archive")
+        self.assertIn("座位", archive_admin["label"])
+
+        gym = SCHEMA_BUILDERS["DOM-SALON"]("健身房私教预约管理系统")
+        self.assertEqual(gym["labels"]["authEyebrow"], "健身预约")
+        self.assertEqual(gym["roles"]["user"]["label"], "会员")
+
+        pet = SCHEMA_BUILDERS["DOM-HOSPITAL"]("宠物医院挂号预约管理系统")
+        self.assertEqual(pet["labels"]["authEyebrow"], "宠物挂号")
+        self.assertEqual(pet["roles"]["user"]["label"], "宠主")
+
+    def test_fund_labsafe_builders(self) -> None:
+        fund = SCHEMA_BUILDERS["DOM-FUND"]("测试课题")
+        self.assertEqual(fund["roles"]["admin"]["label"], "资助主管（总管）")
+        self.assertEqual(fund["entities"]["archive"]["key"], "fund_program")
+
+        lab = SCHEMA_BUILDERS["DOM-LABSAFE"]("测试课题")
+        self.assertEqual(lab["roles"]["subadmin"]["label"], "安全员")
+        self.assertEqual(lab["entities"]["ticket"]["key"], "access_apply")
+
 
 if __name__ == "__main__":
     unittest.main()

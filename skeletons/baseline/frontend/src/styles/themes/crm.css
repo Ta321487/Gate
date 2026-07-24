@@ -1,0 +1,53 @@
+/* —— 客户跟进 CRM —— */
+[data-theme="crm-ocean"] {
+  --portal-bg: #eef4f8;
+  --portal-bg-glow: rgba(37, 99, 140, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142230;
+  --portal-muted: #5a7084;
+  --portal-line: #d0dde8;
+  --portal-brand: #1d5a7a;
+  --portal-accent: #2d7a9e;
+  --portal-accent-soft: #d8eaf4;
+  --portal-cover: linear-gradient(160deg, #4a9fc4, #1d5a7a);
+  --portal-shadow-color: rgba(29, 90, 122, 0.1);
+}
+[data-theme="crm-slate"] {
+  --portal-bg: #f0f2f4;
+  --portal-bg-glow: rgba(71, 85, 105, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e293b;
+  --portal-muted: #64748b;
+  --portal-line: #d8dee6;
+  --portal-brand: #334155;
+  --portal-accent: #475569;
+  --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #64748b, #334155);
+  --portal-shadow-color: rgba(51, 65, 85, 0.1);
+}
+[data-theme="crm-sand"] {
+  --portal-bg: #f7f3ec;
+  --portal-bg-glow: rgba(180, 130, 70, 0.1);
+  --portal-surface: #fffdf9;
+  --portal-ink: #2a2418;
+  --portal-muted: #7a6e58;
+  --portal-line: #e6dcc8;
+  --portal-brand: #8a6a3a;
+  --portal-accent: #a67c3d;
+  --portal-accent-soft: #f0e6d4;
+  --portal-cover: linear-gradient(160deg, #c4a06a, #8a6a3a);
+  --portal-shadow-color: rgba(138, 106, 58, 0.1);
+}
+[data-theme="crm-night"] {
+  --portal-bg: #121820;
+  --portal-bg-glow: rgba(96, 165, 200, 0.08);
+  --portal-surface: #1a222c;
+  --portal-ink: #e6eef4;
+  --portal-muted: #8aa0b4;
+  --portal-line: #2a3440;
+  --portal-brand: #6eb0d0;
+  --portal-accent: #4a9fc4;
+  --portal-accent-soft: #1e3344;
+  --portal-cover: linear-gradient(160deg, #2a4a5e, #121820);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

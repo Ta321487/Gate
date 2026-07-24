@@ -1,0 +1,53 @@
+/* —— 音乐 —— */
+[data-theme="music-vinyl"] {
+  --portal-bg: #12141c;
+  --portal-bg-glow: rgba(244, 63, 94, 0.1);
+  --portal-surface: #1c2030;
+  --portal-ink: #f1eef4;
+  --portal-muted: #9aa0b4;
+  --portal-line: #2e3448;
+  --portal-brand: #f43f5e;
+  --portal-accent: #fb7185;
+  --portal-accent-soft: #4c1d2a;
+  --portal-cover: linear-gradient(160deg, #881337, #12141c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}
+[data-theme="music-amber"] {
+  --portal-bg: #f7f2e8;
+  --portal-bg-glow: rgba(180, 120, 30, 0.12);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a2214;
+  --portal-muted: #7a6b4e;
+  --portal-line: #e5d9c0;
+  --portal-brand: #8a5a18;
+  --portal-accent: #b4781e;
+  --portal-accent-soft: #f5e6c4;
+  --portal-cover: linear-gradient(160deg, #d4a017, #8a5a18);
+  --portal-shadow-color: rgba(138, 90, 24, 0.1);
+}
+[data-theme="music-teal"] {
+  --portal-bg: #eef6f3;
+  --portal-bg-glow: rgba(15, 118, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142422;
+  --portal-muted: #5a736e;
+  --portal-line: #cfe0db;
+  --portal-brand: #0f766e;
+  --portal-accent: #0d9488;
+  --portal-accent-soft: #ccfbf1;
+  --portal-cover: linear-gradient(160deg, #2dd4bf, #0f766e);
+  --portal-shadow-color: rgba(15, 118, 110, 0.1);
+}
+[data-theme="music-night"] {
+  --portal-bg: #0c1220;
+  --portal-bg-glow: rgba(34, 211, 238, 0.08);
+  --portal-surface: #151d2e;
+  --portal-ink: #e2e8f0;
+  --portal-muted: #8aa0b4;
+  --portal-line: #243044;
+  --portal-brand: #22d3ee;
+  --portal-accent: #06b6d4;
+  --portal-accent-soft: #164e63;
+  --portal-cover: linear-gradient(160deg, #155e75, #0c1220);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

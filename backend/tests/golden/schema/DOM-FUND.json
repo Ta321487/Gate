@@ -1,0 +1,212 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "项目名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "归口单位",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "名额/条件备注",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "开放状态",
+          "options": [
+            "开放申请",
+            "审核中",
+            "已截止",
+            "已关闭"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "资助类型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可申请",
+          "type": "number"
+        }
+      ],
+      "key": "fund_program",
+      "label": "资助项目",
+      "labelPlural": "资助项目",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已申请",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "申请方式",
+      "contactChannelOptions": [
+        "线上申请",
+        "纸质补录",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "线上/纸质等",
+      "key": "fund_apply",
+      "label": "申请单",
+      "labelPlural": "申请",
+      "nextFollowLabel": "预计办结日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "申请理由",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已通过",
+        "overdue": "已失效",
+        "pending": "待审核",
+        "rejected": "已驳回",
+        "returned": "已办结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交申请",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "办结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "学生资助",
+    "authLead": "验证码登录；浏览资助项目并提交申请，资助办审核后反馈结果。",
+    "authPoints": [
+      "验证码登录",
+      "资助项目",
+      "申请与审核"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "资助节点与材料要求，点击条目阅读全文。",
+    "noticePageTitle": "资助公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可提交资助申请"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "资助项目",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "资助类型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "资助审批"
+      },
+      {
+        "key": "ticket_records",
+        "label": "申请记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "项目列表"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的申请"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按资助类型查看开放项目与申请条件。",
+      "title": "项目浏览"
+    },
+    {
+      "lead": "选择项目提交申请单，等待资助办审核。",
+      "title": "在线申请"
+    },
+    {
+      "lead": "材料节点与发放说明见公告栏。",
+      "title": "资助公告"
+    },
+    {
+      "lead": "登录后跟踪审批进度。",
+      "title": "我的申请"
+    },
+    {
+      "lead": "国家助学/校内奖学金/困难补助快速筛选。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "资助主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "资助专员"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请按通知提交申请材料；审批通过后留意发放进度。",
+    "noticeTitle": "资助须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

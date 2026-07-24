@@ -6,7 +6,13 @@ import copy
 import re
 from dataclasses import dataclass
 
-from app.bake.domains import ARCHETYPES, DOMAIN_CAPABILITIES, DOMAINS, ARCH_PATH_ORDER
+from app.bake.domains import (
+    ARCHETYPES,
+    ARCH_PATH_ORDER,
+    DOMAIN_CAPABILITIES,
+    DOMAIN_GROUPS,
+    DOMAINS,
+)
 from app.bake.proposal_lexicon import FEATURE_HEAD_TERMS
 from app.bake.themes import (  # re-export for callers
     AUTH_ENTRY_MODES,
@@ -326,7 +332,15 @@ def score_catalog(
             return 0
         return sum(1 for h in hits if h and h in title_s)
 
-    scored.sort(key=lambda t: (-t[1], -_title_hits(t[2]), tie_rank.get(t[0], 99)))
+    scored.sort(
+        key=lambda t: (
+            -t[1],
+            -_title_hits(t[2]),
+            # 同分再比命中词总长：更长更具体的词优先（如「图书馆座位」压过「图书」）
+            -sum(len(h) for h in t[2]),
+            tie_rank.get(t[0], 99),
+        )
+    )
     best_key, best_score, hits = scored[0]
     conf = min(0.95, 0.45 + best_score * 0.12)
     return best_key, conf, hits
@@ -335,6 +349,20 @@ def score_catalog(
 def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
     """开题命中的行为原型（score>0），按优先级排序；弱于峰值一半的命中丢弃。"""
     scored = _catalog_scores(text, ARCHETYPES)
+    # 预约/挂号语境里常写「提交预约申请」「管理员审核办结」，不等于单据审核流；
+    # 若只有这类软词抬 FLOW，会把会议室等壳误降成 GENERIC。
+    if any(k == "ARCH-RESERVE" and s > 0 for k, s, _ in scored):
+        soft_flow = {"申请", "审核", "审批"}
+        trimmed: list[tuple[str, int, list[str]]] = []
+        for k, s, h in scored:
+            if k == "ARCH-FLOW":
+                hard = [x for x in h if x not in soft_flow]
+                if not hard:
+                    continue
+                trimmed.append((k, len(hard), hard))
+            else:
+                trimmed.append((k, s, h))
+        scored = trimmed
     if not scored:
         return ["ARCH-CRUD"]
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
@@ -350,6 +378,7 @@ def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
     # 全域通用弱命中过滤：
     # - 峰值≥2 时丢掉仅 1 分噪声（范围外「支付」、顺口「库存」）
     # - 仍保留 score≥2 的次路径（借阅+二手：FLOW=3 / TRADE=6 都进并集）
+    # - 峰值仅 1 时保留全部 1 分命中（如快递「入库」STOCK）
     min_keep = 1 if best <= 1 else 2
     kept = [(k, s, h) for k, s, h in scored if s >= min_keep]
     return [k for k, _, _ in kept] or ["ARCH-CRUD"]
@@ -384,6 +413,8 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-CRM": "ARCH-FLOW",
     "DOM-EVENT": "ARCH-FLOW",
     "DOM-ATTEND": "ARCH-FLOW",
+    "DOM-FUND": "ARCH-FLOW",
+    "DOM-LABSAFE": "ARCH-FLOW",
     "DOM-RECRUIT": "ARCH-FLOW",
     "DOM-GRADE": "ARCH-FLOW",
     "DOM-INTERN": "ARCH-FLOW",
@@ -473,7 +504,7 @@ def match_warnings_from_hits(hits: list[str] | None) -> list[str]:
 
 # 开题里「要做什么」优先于综述噪声；标题词表见 proposal_lexicon
 _FOCUS_SECTION = re.compile(
-    r"(?:^|\n)\s*(?:[（(]?\d+[)）.、]|[一二三四五六七八九十百]+[、．.]|"
+    r"(?:^|\n)\s*(?:[（(]?\d+(?:[.\-]\d+)*[)）.、.]?|[一二三四五六七八九十百]+[、．.]|"
     r"[（(][一二三四五六七八九十\d]+[)）])?\s*"
     rf"(?:{FEATURE_HEAD_TERMS}|"
     r"研究内容[^\n]{0,20}拟实现|拟实现[^\n]{0,12}功能)"

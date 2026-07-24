@@ -1,0 +1,25 @@
+/* —— 教务成绩 GRADE —— */
+[data-theme="grade-ink"] {
+  --portal-bg: #eef1f6; --portal-bg-glow: rgba(40, 60, 120, 0.1); --portal-surface: #ffffff;
+  --portal-ink: #141c30; --portal-muted: #5a6480; --portal-line: #d0d6e4;
+  --portal-brand: #2a3a6a; --portal-accent: #3d5088; --portal-accent-soft: #dde4f4;
+  --portal-cover: linear-gradient(160deg, #5a70a8, #2a3a6a); --portal-shadow-color: rgba(42, 58, 106, 0.1);
+}
+[data-theme="grade-leaf"] {
+  --portal-bg: #eef8f1; --portal-bg-glow: rgba(40, 120, 70, 0.1); --portal-surface: #ffffff;
+  --portal-ink: #14301c; --portal-muted: #5a7a62; --portal-line: #d0e4d6;
+  --portal-brand: #2a6b40; --portal-accent: #3d8a55; --portal-accent-soft: #d8f0e0;
+  --portal-cover: linear-gradient(160deg, #5aaa70, #2a6b40); --portal-shadow-color: rgba(42, 107, 64, 0.1);
+}
+[data-theme="grade-amber"] {
+  --portal-bg: #fbf6ea; --portal-bg-glow: rgba(180, 120, 40, 0.1); --portal-surface: #fffdf8;
+  --portal-ink: #2a2210; --portal-muted: #7a6a48; --portal-line: #eadcc0;
+  --portal-brand: #9a6a20; --portal-accent: #b88430; --portal-accent-soft: #f5e8cc;
+  --portal-cover: linear-gradient(160deg, #d0a040, #9a6a20); --portal-shadow-color: rgba(154, 106, 32, 0.1);
+}
+[data-theme="grade-night"] {
+  --portal-bg: #10141c; --portal-bg-glow: rgba(80, 100, 180, 0.08); --portal-surface: #181e28;
+  --portal-ink: #e8ecf4; --portal-muted: #9aa4b8; --portal-line: #282e3c;
+  --portal-brand: #8898d0; --portal-accent: #6878b0; --portal-accent-soft: #222838;
+  --portal-cover: linear-gradient(160deg, #405080, #182040); --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

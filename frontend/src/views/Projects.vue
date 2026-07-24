@@ -133,11 +133,14 @@
       </p>
       <div class="stack" style="gap:10px">
         <div class="row" style="gap:8px;flex-wrap:wrap">
-          <n-select
+          <n-cascader
             v-model:value="sampleDomain"
             clearable
             placeholder="领域（空=随机）"
             :options="sampleDomainOptions"
+            check-strategy="child"
+            :show-path="true"
+            filterable
             style="min-width:220px;flex:1"
             :disabled="sampleLoading"
           />
@@ -257,6 +260,7 @@ import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   debounce,
+  domainCascaderOptions,
   formatArchDom,
   getCatalog,
   projectStatusLabel,
@@ -623,9 +627,7 @@ const sampleLoading = ref(false)
 const sampleUseLlm = ref(true)
 const sampleDomain = ref(null)
 const sampleResult = ref(null)
-const sampleDomainOptions = computed(() =>
-  (catalog.value.domains || []).map((d) => ({ label: d.label || d.id, value: d.id })),
-)
+const sampleDomainOptions = computed(() => domainCascaderOptions(catalog.value))
 
 async function openSampleProposal() {
   sampleOpen.value = true

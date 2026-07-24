@@ -1,0 +1,53 @@
+/* —— 会议室 —— */
+[data-theme="meet-blue"] {
+  --portal-bg: #eef5fb;
+  --portal-bg-glow: rgba(37, 99, 235, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142033;
+  --portal-muted: #5f738c;
+  --portal-line: #cfdced;
+  --portal-brand: #1d4ed8;
+  --portal-accent: #2563eb;
+  --portal-accent-soft: #dbeafe;
+  --portal-cover: linear-gradient(160deg, #60a5fa, #1d4ed8);
+  --portal-shadow-color: rgba(29, 78, 216, 0.1);
+}
+[data-theme="meet-gray"] {
+  --portal-bg: #f1f3f5;
+  --portal-bg-glow: rgba(100, 116, 139, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e293b;
+  --portal-muted: #64748b;
+  --portal-line: #d8dee6;
+  --portal-brand: #475569;
+  --portal-accent: #64748b;
+  --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #94a3b8, #475569);
+  --portal-shadow-color: rgba(71, 85, 105, 0.1);
+}
+[data-theme="meet-green"] {
+  --portal-bg: #eef7f0;
+  --portal-bg-glow: rgba(22, 163, 74, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #14261a;
+  --portal-muted: #5f7366;
+  --portal-line: #d0e4d6;
+  --portal-brand: #15803d;
+  --portal-accent: #16a34a;
+  --portal-accent-soft: #dcfce7;
+  --portal-cover: linear-gradient(160deg, #4ade80, #15803d);
+  --portal-shadow-color: rgba(21, 128, 61, 0.1);
+}
+[data-theme="meet-night"] {
+  --portal-bg: #0f172a;
+  --portal-bg-glow: rgba(96, 165, 250, 0.08);
+  --portal-surface: #1e293b;
+  --portal-ink: #e2e8f0;
+  --portal-muted: #94a3b8;
+  --portal-line: #334155;
+  --portal-brand: #60a5fa;
+  --portal-accent: #3b82f6;
+  --portal-accent-soft: #1e3a5f;
+  --portal-cover: linear-gradient(160deg, #1e3a8a, #0f172a);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

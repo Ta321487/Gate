@@ -1,0 +1,53 @@
+/* —— 论坛 —— */
+[data-theme="forum-ink"] {
+  --portal-bg: #eef2f7;
+  --portal-bg-glow: rgba(30, 64, 175, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #152033;
+  --portal-muted: #5a6b82;
+  --portal-line: #d0dae8;
+  --portal-brand: #1e40af;
+  --portal-accent: #2563eb;
+  --portal-accent-soft: #dbeafe;
+  --portal-cover: linear-gradient(160deg, #3b82f6, #1e40af);
+  --portal-shadow-color: rgba(30, 64, 175, 0.1);
+}
+[data-theme="forum-amber"] {
+  --portal-bg: #f7f3ea;
+  --portal-bg-glow: rgba(180, 120, 30, 0.12);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a2214;
+  --portal-muted: #7a6b4e;
+  --portal-line: #e5d9c0;
+  --portal-brand: #8a5a18;
+  --portal-accent: #b4781e;
+  --portal-accent-soft: #f5e6c4;
+  --portal-cover: linear-gradient(160deg, #d4a017, #8a5a18);
+  --portal-shadow-color: rgba(138, 90, 24, 0.1);
+}
+[data-theme="forum-teal"] {
+  --portal-bg: #eef6f3;
+  --portal-bg-glow: rgba(15, 118, 110, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142422;
+  --portal-muted: #5a736e;
+  --portal-line: #cfe0db;
+  --portal-brand: #0f766e;
+  --portal-accent: #0d9488;
+  --portal-accent-soft: #ccfbf1;
+  --portal-cover: linear-gradient(160deg, #2dd4bf, #0f766e);
+  --portal-shadow-color: rgba(15, 118, 110, 0.1);
+}
+[data-theme="forum-night"] {
+  --portal-bg: #0f141c;
+  --portal-bg-glow: rgba(59, 130, 246, 0.1);
+  --portal-surface: #171e2a;
+  --portal-ink: #e8eef8;
+  --portal-muted: #8a9ab0;
+  --portal-line: #2a3448;
+  --portal-brand: #3b82f6;
+  --portal-accent: #60a5fa;
+  --portal-accent-soft: #1e3a5f;
+  --portal-cover: linear-gradient(160deg, #1e40af, #0f141c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

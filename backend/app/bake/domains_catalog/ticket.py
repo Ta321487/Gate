@@ -1,0 +1,158 @@
+"""领域目录 — DORM/PROPERTY/IT。"""
+
+from __future__ import annotations
+
+from app.bake.gate_contracts import (
+    gate_standalone_ticket,
+)
+
+DOMAINS: dict = {
+    "DOM-DORM": {
+        "label": "宿舍",
+        # 不用光杆「报修」：仪器/物业报修会误落宿舍壳；报修行为走 ARCH-FLOW
+        "keywords": [
+            "宿舍",
+            "寝室",
+            "公寓",
+            "水电",
+            "宿舍报修",
+            "宿舍卫生",
+            "寝室卫生",
+            "卫生检查",
+            "卫生整改",
+        ],
+        "match_hint": (
+            "适用：宿舍水电报修、寝室维修/卫生检查整改工单。"
+            "勿与物业报修（小区）、IT 报修或传染病晨检（事件上报）混淆。"
+        ),
+        "entities": ["Dorm", "Repair", "Notice"],
+        "roles": ["student", "admin", "subadmin"],
+        "flows": ["提交报修 → 受理 → 完成"],
+        "features": [
+            {"name": "学生登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "楼栋房间管理", "status": "module"},
+            {"name": "报修类型管理", "status": "module"},
+            {"name": "学生管理", "status": "module"},
+            {"name": "报修申请 → 受理", "status": "flow"},
+            {"name": "报修记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "人脸门禁", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["人脸门禁"],
+        "themes": [
+            {"id": "dorm-sky", "label": "宿舍天蓝"},
+            {"id": "dorm-orange", "label": "维修橙"},
+            {"id": "dorm-leaf", "label": "生活绿"},
+            {"id": "dorm-violet", "label": "寝室紫雾"},
+            {"id": "dorm-night", "label": "熄灯模式"},
+        ],
+        "gate": gate_standalone_ticket(
+            flow_feature="报修申请 → 受理",
+            records_feature="报修记录",
+            users_feature="学生管理",
+            site_feature="楼栋房间管理",
+            type_feature="报修类型管理",
+        ),
+        "runtime": {
+            "ticket_mode": "standalone",
+            "ticket_table": "repair",
+            "register_role": "student",
+            "lookup_site_table": "dorm_building",
+            "lookup_unit_table": "dorm_room",
+            "lookup_type_table": "repair_type",
+            "lookup_site_label": "楼栋",
+            "lookup_unit_label": "房间",
+            "lookup_type_label": "报修类型",
+        },
+    },
+    "DOM-PROPERTY": {
+        "label": "物业报修",
+        "keywords": ["物业", "社区报修", "维修工单", "小区报修"],
+        "match_hint": "适用：物业/社区/小区报修工单。勿与宿舍报修或 IT 报修混淆。",
+        "entities": ["Ticket", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["提交报修 → 受理 → 完成"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "楼栋房间管理", "status": "module"},
+            {"name": "报修类型管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "报修申请 → 受理", "status": "flow"},
+            {"name": "报修记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+        ],
+        "out_of_mvp": [],
+        "themes": [
+            {"id": "prop-teal", "label": "物业青绿"},
+            {"id": "prop-sand", "label": "社区暖沙"},
+            {"id": "prop-ink", "label": "工单墨蓝"},
+            {"id": "prop-night", "label": "夜间值班"},
+        ],
+        "gate": gate_standalone_ticket(
+            flow_feature="报修申请 → 受理",
+            records_feature="报修记录",
+            users_feature="用户管理",
+            site_feature="楼栋房间管理",
+            type_feature="报修类型管理",
+        ),
+        "runtime": {
+            "ticket_mode": "standalone",
+            "ticket_table": "ticket",
+            "register_role": "user",
+            "lookup_site_table": "building",
+            "lookup_unit_table": "room",
+            "lookup_type_table": "ticket_type",
+            "lookup_site_label": "楼栋",
+            "lookup_unit_label": "房间",
+            "lookup_type_label": "报修类型",
+        },
+    },
+    "DOM-IT": {
+        "label": "IT 报修",
+        "keywords": ["校园网", "网络报修", "IT运维", "机房报修"],
+        "match_hint": "适用：校园网、机房、终端故障报修。勿与宿舍/物业报修混淆。",
+        "entities": ["Ticket", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["提交故障 → 受理 → 完成"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "区域终端管理", "status": "module"},
+            {"name": "故障类型管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "故障报修 → 受理", "status": "flow"},
+            {"name": "报修记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+        ],
+        "out_of_mvp": [],
+        "themes": [
+            {"id": "it-cyan", "label": "运维青"},
+            {"id": "it-violet", "label": "机房紫"},
+            {"id": "it-lime", "label": "终端绿"},
+            {"id": "it-night", "label": "机房夜色"},
+        ],
+        "gate": gate_standalone_ticket(
+            flow_feature="故障报修 → 受理",
+            records_feature="报修记录",
+            users_feature="用户管理",
+            site_feature="区域终端管理",
+            type_feature="故障类型管理",
+        ),
+        "runtime": {
+            "ticket_mode": "standalone",
+            "ticket_table": "ticket",
+            "register_role": "user",
+            "lookup_site_table": "campus_zone",
+            "lookup_unit_table": "endpoint",
+            "lookup_type_table": "fault_type",
+            "lookup_site_label": "区域",
+            "lookup_unit_label": "终端点",
+            "lookup_type_label": "故障类型",
+        },
+    }
+}

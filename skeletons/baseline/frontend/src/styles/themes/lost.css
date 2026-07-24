@@ -1,0 +1,53 @@
+/* —— 失物招领 —— */
+[data-theme="lost-amber"] {
+  --portal-bg: #fffbeb;
+  --portal-bg-glow: rgba(217, 119, 6, 0.12);
+  --portal-surface: #fffef8;
+  --portal-ink: #2a2210;
+  --portal-muted: #7a6a40;
+  --portal-line: #ece0b8;
+  --portal-brand: #b45309;
+  --portal-accent: #d97706;
+  --portal-accent-soft: #fef3c7;
+  --portal-cover: linear-gradient(160deg, #fbbf24, #b45309);
+  --portal-shadow-color: rgba(180, 83, 9, 0.1);
+}
+[data-theme="lost-blue"] {
+  --portal-bg: #eef5fb;
+  --portal-bg-glow: rgba(37, 99, 235, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #142033;
+  --portal-muted: #5f738c;
+  --portal-line: #cfdced;
+  --portal-brand: #1d4ed8;
+  --portal-accent: #2563eb;
+  --portal-accent-soft: #dbeafe;
+  --portal-cover: linear-gradient(160deg, #60a5fa, #1d4ed8);
+  --portal-shadow-color: rgba(29, 78, 216, 0.1);
+}
+[data-theme="lost-gray"] {
+  --portal-bg: #f1f3f5;
+  --portal-bg-glow: rgba(100, 116, 139, 0.12);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e293b;
+  --portal-muted: #64748b;
+  --portal-line: #d8dee6;
+  --portal-brand: #475569;
+  --portal-accent: #64748b;
+  --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #94a3b8, #475569);
+  --portal-shadow-color: rgba(71, 85, 105, 0.1);
+}
+[data-theme="lost-night"] {
+  --portal-bg: #111827;
+  --portal-bg-glow: rgba(251, 191, 36, 0.08);
+  --portal-surface: #1f2937;
+  --portal-ink: #e5e7eb;
+  --portal-muted: #9ca3af;
+  --portal-line: #374151;
+  --portal-brand: #fbbf24;
+  --portal-accent: #f59e0b;
+  --portal-accent-soft: #451a03;
+  --portal-cover: linear-gradient(160deg, #78350f, #111827);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+}

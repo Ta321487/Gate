@@ -1,0 +1,150 @@
+"""领域目录 — ACTIVITY/LOST/COURSE。"""
+
+from __future__ import annotations
+
+from app.bake.gate_contracts import (
+    gate_archive_ticket,
+)
+
+DOMAINS: dict = {
+    "DOM-ACTIVITY": {
+        "label": "活动报名",
+        "keywords": ["社团活动", "志愿活动", "志愿者", "志愿服务", "活动报名", "讲座报名", "活动管理", "报名系统"],
+        "match_hint": "适用：社团/志愿/讲座等活动报名审核。勿与选课（课程学分）或场地预约混淆。",
+        "entities": ["Activity", "Category", "Signup", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["浏览活动 → 报名 → 审核占名额 → 口令签到（结束未签到记爽约）"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "活动检索", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "报名申请 → 审核", "status": "flow"},
+            {"name": "口令签到", "status": "module"},
+            {"name": "结束未签到记爽约（可选登记费用，无余额体系）", "status": "module"},
+            {"name": "报名记录", "status": "module"},
+            {"name": "时间冲突检测", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "人脸签到", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["人脸签到"],
+        "themes": [
+            {"id": "act-coral", "label": "活动珊瑚"},
+            {"id": "act-sky", "label": "报名天蓝"},
+            {"id": "act-lime", "label": "志愿青绿"},
+            {"id": "act-night", "label": "晚会夜色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="活动检索",
+            flow_feature="报名申请 → 审核",
+            records_feature="报名记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "signup",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "activity",
+            "check_time_conflict": True,
+        },
+    },
+    "DOM-LOST": {
+        "label": "失物招领",
+        "keywords": [
+            "失物招领", "失物", "招领", "寻物", "失物管理",
+            "宠物领养", "领养申请", "领养系统", "动物领养", "流浪动物领养",
+        ],
+        "match_hint": (
+            "适用：失物招领、认领审核；题名含宠物领养时走领养申请皮（同认领壳）。"
+            "勿与商城二手交易、宠物医院挂号或事件上报混淆。"
+        ),
+        "entities": ["LostItem", "Category", "Claim", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["浏览启事 → 认领申请 → 审核"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "失物检索", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "认领申请 → 审核", "status": "flow"},
+            {"name": "认领记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "图像识别匹配", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["图像识别匹配"],
+        "themes": [
+            {"id": "lost-amber", "label": "招领暖黄"},
+            {"id": "lost-blue", "label": "寻物蓝"},
+            {"id": "lost-gray", "label": "登记灰"},
+            {"id": "lost-night", "label": "夜间公示"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="失物检索",
+            flow_feature="认领申请 → 审核",
+            records_feature="认领记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "claim",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "lost_item",
+        },
+    },
+    "DOM-COURSE": {
+        "label": "选课",
+        "keywords": ["选课", "公选课", "课程报名", "学分", "选课系统", "课程管理"],
+        "match_hint": "适用：公选课、课程选课占名额。勿与活动报名（讲座/志愿）混淆。",
+        "entities": ["Course", "Category", "Enrollment", "Notice"],
+        "roles": ["student", "admin", "subadmin"],
+        "flows": ["浏览课程 → 选课申请 → 审核占名额"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "课程检索", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "学生管理", "status": "module"},
+            {"name": "选课申请 → 审核", "status": "flow"},
+            {"name": "选课记录", "status": "module"},
+            {"name": "时间冲突检测", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "智能排课", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["智能排课"],
+        "themes": [
+            {"id": "course-ink", "label": "课表墨蓝"},
+            {"id": "course-grove", "label": "学期青绿"},
+            {"id": "course-clay", "label": "教室暖陶"},
+            {"id": "course-night", "label": "夜修模式"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="课程检索",
+            flow_feature="选课申请 → 审核",
+            records_feature="选课记录",
+            users_feature="学生管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "enrollment",
+            "register_role": "student",
+            "archive_category_table": "category",
+            "archive_item_table": "course",
+            "check_time_conflict": True,
+        },
+    }
+}
