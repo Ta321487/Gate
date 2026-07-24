@@ -34,14 +34,20 @@ def capabilities(domain: str) -> list[str]:
 
 def domain_entry(domain: str) -> dict[str, Any] | None:
     """单域摘要；未知域返回 None。"""
+    from app.bake.domain_entities import entity_for
+
     if domain not in DOMAINS and domain != "DOM-GENERIC":
         # DOMAINS 应含 GENERIC；兜底仍查能力表
         if domain not in DOMAIN_CAPABILITIES and domain not in DOMAIN_SQL_TEMPLATES:
             return None
+    ent = entity_for(domain)
     return {
         "domain": domain,
         "capabilities": capabilities(domain),
         "has_schema_builder": domain in SCHEMA_BUILDERS,
         "has_sql_template": has_sql_template(domain),
         "in_catalog": domain in DOMAINS,
+        "archive_table": ent.archive_table if ent else None,
+        "ticket_table": ent.ticket_table if ent else None,
+        "item_fk": ent.item_fk if ent else None,
     }

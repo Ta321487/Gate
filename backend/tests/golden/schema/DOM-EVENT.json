@@ -2,6 +2,7 @@
   "capabilities": [
     "archive",
     "ticket_flow",
+    "archive_log",
     "content",
     "org_users"
   ],
@@ -53,6 +54,49 @@
       "stockUnavailableLabel": "已上报",
       "tagFilter": false
     },
+    "archiveLog": {
+      "defaultType": "checkin",
+      "fields": [
+        {
+          "key": "temperature",
+          "label": "体温℃",
+          "type": "string"
+        },
+        {
+          "key": "bloodPressure",
+          "label": "血压",
+          "type": "string"
+        },
+        {
+          "key": "bloodSugar",
+          "label": "血糖",
+          "type": "string"
+        },
+        {
+          "key": "note",
+          "label": "备注",
+          "type": "textarea"
+        }
+      ],
+      "key": "archive_log",
+      "label": "监测记录",
+      "labelPlural": "监测记录",
+      "requireItem": true,
+      "typeOptions": [
+        {
+          "label": "健康打卡",
+          "value": "checkin"
+        },
+        {
+          "label": "随访记录",
+          "value": "followup"
+        },
+        {
+          "label": "评估记录",
+          "value": "assess"
+        }
+      ]
+    },
     "ticket": {
       "allowCheckin": false,
       "allowQty": false,
@@ -100,11 +144,17 @@
   },
   "labels": {
     "appName": "测试课题",
+    "archiveLogMissingTitle": "今日未打卡",
+    "archiveLogPageLead": "按对象查看打卡与随访；可筛选今日未打卡。",
+    "archiveLogPageTitle": "监测记录",
+    "archiveLogSectionTitle": "打卡与随访",
+    "archiveLogSubmitLabel": "提交打卡",
     "authEyebrow": "事件上报",
-    "authLead": "验证码登录；维护事件档案并提交上报，上报即时入档，可在完成后结案。",
+    "authLead": "验证码登录；维护对象档案并打卡/上报，异常可转处置。",
     "authPoints": [
       "验证码登录",
-      "事件档案",
+      "对象档案",
+      "健康打卡",
       "上报记录"
     ],
     "messagesPageLead": "系统通知。",
@@ -112,7 +162,7 @@
     "noticePageTitle": "应急公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "内部填报账号登录后可维护事件并提交上报"
+    "registerRoleHint": "内部账号登录后可维护档案、打卡并提交上报"
   },
   "menus": {
     "admin": [
@@ -143,6 +193,10 @@
         "key": "content",
         "label": "公告管理",
         "superOnly": true
+      },
+      {
+        "key": "archive_logs",
+        "label": "监测记录"
       }
     ],
     "user": [
@@ -166,11 +220,15 @@
   },
   "portalBanners": [
     {
-      "lead": "按分类浏览事件，维护上报人与地点摘要。",
+      "lead": "按分类浏览对象档案，维护摘要与状态。",
       "title": "事件档案"
     },
     {
-      "lead": "提交上报即时生效，办结后可追溯。",
+      "lead": "对档案提交每日打卡或随访，查看今日未打卡。",
+      "title": "健康打卡"
+    },
+    {
+      "lead": "异常线索提交上报，办结后可追溯。",
       "title": "事件上报"
     },
     {
@@ -182,7 +240,7 @@
       "title": "我的上报"
     },
     {
-      "lead": "按事件分类筛选重点对象。",
+      "lead": "按分类筛选重点对象。",
       "title": "分类管理"
     }
   ],
@@ -201,7 +259,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实登记事件要素；重大事件请及时上报，办结后可在记录中查阅。",
+    "noticeBody": "请如实登记要素；重大异常请及时上报，办结后可在记录中查阅。",
     "noticeTitle": "上报须知"
   },
   "title": "测试课题",

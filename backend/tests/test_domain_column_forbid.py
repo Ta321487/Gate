@@ -145,6 +145,31 @@ class DomainColumnForbidTests(unittest.TestCase):
                 "allow": {"contact_channel", "next_follow_at"},
                 "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
             },
+            "DOM-ATTEND": {
+                "table": "leave_req",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
+            "DOM-RECRUIT": {
+                "table": "job_apply",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
+            "DOM-GRADE": {
+                "table": "grade_apply",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
+            "DOM-INTERN": {
+                "table": "week_report",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
+            "DOM-PARCEL": {
+                "table": "parcel_claim",
+                "allow": {"fine_status", "pickup_at", "pickup_place"},
+                "forbid": {"contact_channel", "priority", "taste_note"},
+            },
             "DOM-EVENT": {
                 "table": "event_report",
                 "allow": {"contact_channel", "next_follow_at"},
@@ -188,6 +213,11 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-HOTEL": "room_type",
             "DOM-CRM": "customer",
             "DOM-EVENT": "event_case",
+            "DOM-ATTEND": "staff_person",
+            "DOM-RECRUIT": "job_post",
+            "DOM-GRADE": "course_item",
+            "DOM-INTERN": "intern_post",
+            "DOM-PARCEL": "parcel",
             "DOM-LIBRARY": "book",
         }
         for domain, table in cases.items():
@@ -212,6 +242,11 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-EQUIP": ("loan", "equip_id", True),
             "DOM-CRM": ("follow_up", "customer_id", False),
             "DOM-EVENT": ("event_report", "event_id", False),
+            "DOM-ATTEND": ("leave_req", "staff_person_id", False),
+            "DOM-RECRUIT": ("job_apply", "job_post_id", False),
+            "DOM-GRADE": ("grade_apply", "course_item_id", False),
+            "DOM-INTERN": ("week_report", "intern_post_id", False),
+            "DOM-PARCEL": ("parcel_claim", "parcel_id", False),
             "DOM-ACTIVITY": ("signup", "activity_id", False),
             "DOM-FORUM": ("reply", "post_id", False),
             "DOM-COURSE": ("enrollment", "course_id", False),

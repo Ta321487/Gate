@@ -68,22 +68,13 @@ def merge_favorites_capabilities(
     return out
 
 
-def _ensure_menu(menus: list[dict], key: str, item: dict, *, before_key: str | None = None) -> None:
-    if any(m.get("key") == key for m in menus):
-        return
-    if before_key:
-        for i, m in enumerate(menus):
-            if m.get("key") == before_key:
-                menus.insert(i, item)
-                return
-    menus.append(item)
-
-
 def attach_favorites_menus(
     schema: dict[str, Any],
     *,
     page_lead: str | None = None,
 ) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
     item = {"key": "favorites", "label": "我的收藏"}
@@ -91,7 +82,7 @@ def attach_favorites_menus(
         placed = False
         for before in ("cart", "my_orders", "content", "profile"):
             if any(m.get("key") == before for m in user):
-                _ensure_menu(user, "favorites", item, before_key=before)
+                ensure_menu(user, "favorites", item, before_key=before)
                 placed = True
                 break
         if not placed:

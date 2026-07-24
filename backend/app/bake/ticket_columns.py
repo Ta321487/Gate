@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.bake.domain_entities import (
+    DOMAIN_ENTITIES,
+    TICKET_STANDALONE_DOMAINS,
+    ticket_item_fk_for,
+)
 from app.bake.sql.ddl_edit import (
     inject_missing_columns,
     map_create_table,
@@ -23,33 +28,12 @@ TICKET_LOAN_SHELL_COLUMNS: list[tuple[str, str]] = [
 
 _TICKET_LOAN_NAMES = {n.lower() for n, _ in TICKET_LOAN_SHELL_COLUMNS}
 
-# archive 模式单据 → 档案行外键物理名（图书馆保留 book_id）
-# standalone 报修域无档案外键，勿写入 item_id
+# 兼容旧导入：派生自 domain_entities（勿再手扩）
 TICKET_ITEM_FK_BY_DOMAIN: dict[str, str] = {
-    "DOM-LIBRARY": "book_id",
-    "DOM-EQUIP": "equip_id",
-    "DOM-ASSET": "asset_id",
-    "DOM-CRM": "customer_id",
-    "DOM-EVENT": "event_id",
-    "DOM-ACTIVITY": "activity_id",
-    "DOM-COURSE": "course_id",
-    "DOM-LOST": "lost_item_id",
-    "DOM-FORUM": "post_id",
-    "DOM-MEDIA": "media_id",
-    "DOM-BLOG": "article_id",
-    "DOM-MUSIC": "track_id",
-    "DOM-GENERIC": "item_id",
+    d: e.item_fk
+    for d, e in DOMAIN_ENTITIES.items()
+    if e.item_fk and not e.standalone
 }
-
-TICKET_STANDALONE_DOMAINS = frozenset({"DOM-DORM", "DOM-PROPERTY", "DOM-IT"})
-
-
-def ticket_item_fk_for(domain: str) -> str | None:
-    """archive 模式返回外键列名；standalone 返回 None。"""
-    d = (domain or "").strip()
-    if d in TICKET_STANDALONE_DOMAINS:
-        return None
-    return TICKET_ITEM_FK_BY_DOMAIN.get(d, "item_id")
 
 
 def ticket_loan_shell_wanted(domain: str, ticket_flags: dict | None = None) -> bool:

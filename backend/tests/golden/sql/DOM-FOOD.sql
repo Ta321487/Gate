@@ -156,4 +156,3 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
 UPDATE sys_user SET staff_post='counter', staff_kind='clerk', nickname='档口店员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
-INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('rider', 'rider123', 'admin', '骑手', '13800000010', '{}', 0, 1, 1, 'rider', 'worker') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

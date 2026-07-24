@@ -11,35 +11,9 @@ import urllib.request
 from pathlib import Path
 
 from app.core.config import get_settings
+from app.bake.domain_skin import auth_hero_query_for
 
 log = logging.getLogger("gf.auth_hero")
-
-# 领域英文检索锚点
-_DOMAIN_QUERY: dict[str, str] = {
-    "DOM-LIBRARY": "university library books reading",
-    "DOM-DORM": "university dormitory campus building",
-    "DOM-PROPERTY": "residential apartment community property",
-    "DOM-IT": "server room network operations campus it",
-    "DOM-EQUIP": "laboratory equipment workshop",
-    "DOM-ASSET": "warehouse inventory shelves",
-    "DOM-CRM": "business meeting handshake office crm",
-    "DOM-EVENT": "emergency response public health report clipboard",
-    "DOM-ACTIVITY": "campus event students gathering",
-    "DOM-LOST": "campus corridor lost and found desk",
-    "DOM-COURSE": "university classroom lecture hall",
-    "DOM-SHOP": "modern retail store aisle",
-    "DOM-FOOD": "campus cafeteria food counter",
-    "DOM-HOSPITAL": "hospital clinic corridor",
-    "DOM-PARKING": "parking garage cars",
-    "DOM-MEETING": "conference meeting room",
-    "DOM-SALON": "salon service studio interior",
-    "DOM-HOTEL": "hotel lobby interior",
-    "DOM-MEDIA": "cinema movie theater screen audience",
-    "DOM-MUSIC": "headphones music vinyl record studio",
-    "DOM-FORUM": "online forum discussion community bulletin board",
-    "DOM-BLOG": "writing desk laptop coffee blog journal",
-    "DOM-GENERIC": "modern office workspace",
-}
 
 # 主题气质（取 id 后缀 / 关键词）
 _THEME_MOOD: dict[str, str] = {
@@ -186,7 +160,7 @@ _FALLBACK_PHOTOS: dict[str, list[str]] = {
 
 
 def build_query(domain: str, theme: str) -> str:
-    base = _DOMAIN_QUERY.get(domain) or _DOMAIN_QUERY["DOM-GENERIC"]
+    base = auth_hero_query_for(domain)
     mood = ""
     tid = (theme or "").lower()
     for key, words in _THEME_MOOD.items():

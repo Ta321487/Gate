@@ -161,6 +161,43 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("quotaHint", "业绩目标备注", max_length=64,
             visible_when=_when("identityType", ["教职工"])),
     ],
+
+    "DOM-ATTEND": [
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["教职工", "学生"]),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["教职工"]),
+            visible_when=_when("identityType", ["教职工"])),
+        _pf("studentNo", "学号", on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]),
+            visible_when=_when("identityType", ["学生"])),
+        _pf("dept", "部门/院系", required=True, on_register=True, max_length=64),
+    ],
+    "DOM-RECRUIT": [
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["应届生", "往届", "在职"]),
+        _pf("studentNo", "学号", on_register=True, max_length=32,
+            visible_when=_when("identityType", ["应届生"])),
+        _pf("dept", "专业/方向", required=True, on_register=True, max_length=64),
+        _pf("jobTitle", "求职意向", on_register=True, max_length=32),
+    ],
+    "DOM-GRADE": [
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("gradeYear", "年级", on_register=True, max_length=16),
+    ],
+    "DOM-INTERN": [
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("internOrg", "实习单位", on_register=True, max_length=64),
+    ],
+    "DOM-PARCEL": [
+        _pf("campusNo", "学号/工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("usualPlace", "常用取件点", on_register=True, max_length=64),
+        _pf("contactWechat", "联系微信", on_register=True, max_length=32),
+    ],
+
     "DOM-EVENT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["教职工", "学生", "校外"]),

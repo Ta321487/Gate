@@ -454,38 +454,29 @@ def shell_features(
     return feats
 
 
-def _ensure_menu(menus: list[dict], key: str, item: dict, *, before_key: str | None = None) -> None:
-    if any(m.get("key") == key for m in menus):
-        return
-    if before_key:
-        for i, m in enumerate(menus):
-            if m.get("key") == before_key:
-                menus.insert(i, item)
-                return
-    menus.append(item)
-
-
 def _augment_menus_for_paths(schema: dict[str, Any], *, need_flow: bool, need_trade: bool, need_reserve: bool) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
     admin = schema.setdefault("menus", {}).setdefault("admin", [])
     user = schema.setdefault("menus", {}).setdefault("user", [])
     if need_flow:
-        _ensure_menu(user, "my_tickets", {"key": "my_tickets", "label": "我的申请"}, before_key="content")
-        _ensure_menu(
+        ensure_menu(user, "my_tickets", {"key": "my_tickets", "label": "我的申请"}, before_key="content")
+        ensure_menu(
             admin, "ticket_pending", {"key": "ticket_pending", "label": "待审申请"}, before_key="users"
         )
-        _ensure_menu(
+        ensure_menu(
             admin, "ticket_records", {"key": "ticket_records", "label": "申请记录"}, before_key="users"
         )
     if need_trade:
-        _ensure_menu(user, "cart", {"key": "cart", "label": "购物车"}, before_key="content")
-        _ensure_menu(user, "my_orders", {"key": "my_orders", "label": "我的订单"}, before_key="content")
+        ensure_menu(user, "cart", {"key": "cart", "label": "购物车"}, before_key="content")
+        ensure_menu(user, "my_orders", {"key": "my_orders", "label": "我的订单"}, before_key="content")
         # 收货地址：仅交易路径（点餐/商城同类），预约壳不挂
-        _ensure_menu(user, "addresses", {"key": "addresses", "label": "收货地址"}, before_key="content")
-        _ensure_menu(admin, "orders", {"key": "orders", "label": "订单管理"}, before_key="users")
-        _ensure_menu(
+        ensure_menu(user, "addresses", {"key": "addresses", "label": "收货地址"}, before_key="content")
+        ensure_menu(admin, "orders", {"key": "orders", "label": "订单管理"}, before_key="users")
+        ensure_menu(
             user, "guestbook", {"key": "guestbook", "label": "留言"}, before_key="content"
         )
-        _ensure_menu(
+        ensure_menu(
             admin,
             "guestbook",
             {"key": "guestbook", "label": "留言管理", "superOnly": True},
@@ -493,8 +484,8 @@ def _augment_menus_for_paths(schema: dict[str, Any], *, need_flow: bool, need_tr
         )
     if need_reserve:
         # 时段页须带 itemId，不挂独立顶栏；与具名预约域 / domainSchema.js 一致
-        _ensure_menu(user, "my_reservations", {"key": "my_reservations", "label": "我的预约"}, before_key="content")
-        _ensure_menu(admin, "reservations", {"key": "reservations", "label": "预约记录"}, before_key="users")
+        ensure_menu(user, "my_reservations", {"key": "my_reservations", "label": "我的预约"}, before_key="content")
+        ensure_menu(admin, "reservations", {"key": "reservations", "label": "预约记录"}, before_key="users")
 
 
 def build_generic_shell_schema(

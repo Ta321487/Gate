@@ -312,6 +312,33 @@ def ensure_browse_history_sql(sql: str, *, enabled: bool) -> str:
     return sql.rstrip() + "\n" + _BROWSE_HISTORY_DDL
 
 
+_ARCHIVE_LOG_DDL = """
+CREATE TABLE IF NOT EXISTS archive_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  log_date DATE NOT NULL,
+  log_type VARCHAR(32) NOT NULL DEFAULT 'checkin',
+  payload_json TEXT,
+  abnormal TINYINT DEFAULT 0,
+  remark VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_alog_item_date (item_id, log_date),
+  KEY idx_alog_date_type (log_date, log_type),
+  KEY idx_alog_user (username, id)
+);
+"""
+
+
+def ensure_archive_log_sql(sql: str, *, enabled: bool) -> str:
+    """档案打卡/随访表；archive_log 能力开启时注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?archive_log`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _ARCHIVE_LOG_DDL
+
+
 GALLERY_COLUMNS: list[tuple[str, str]] = [
     ("gallery_json", "TEXT NULL"),
 ]
@@ -467,11 +494,16 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-EQUIP": ["fine_status"],
     "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty"],
     "DOM-CRM": ["contact_channel", "next_follow_at"],
+    "DOM-ATTEND": ["contact_channel", "next_follow_at"],
+    "DOM-RECRUIT": ["contact_channel", "next_follow_at"],
+    "DOM-GRADE": ["contact_channel", "next_follow_at"],
+    "DOM-INTERN": ["contact_channel", "next_follow_at"],
     "DOM-EVENT": ["contact_channel", "next_follow_at"],
     "DOM-DORM": ["priority", "contact_phone"],
     "DOM-PROPERTY": ["priority", "contact_phone"],
     "DOM-IT": ["priority", "contact_phone"],
     "DOM-LOST": ["fine_status", "pickup_at", "pickup_place"],
+    "DOM-PARCEL": ["fine_status", "pickup_at", "pickup_place"],
     "DOM-ACTIVITY": [],
     "DOM-COURSE": [],
     "DOM-FORUM": [],

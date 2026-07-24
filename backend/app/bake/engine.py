@@ -112,6 +112,7 @@ def domain_sql(
     capabilities: list[str] | None = None,
     proposal_text: str = "",
     ticket_flags: dict | None = None,
+    staff_posts: list | None = None,
 ) -> str:
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
@@ -137,21 +138,19 @@ def domain_sql(
             text = path.read_text(encoding="utf-8")
     else:
         text = _load_named_domain_sql(domain)
-    from app.bake.domains import DOMAINS
-    from app.bake.features.favorites import favorites_wanted
-    from app.bake.features.guestbook import guestbook_wanted
-    from app.bake.features.ux_scan import (
-        BROWSE_HISTORY_CAP,
-        GALLERY_CAP,
-        scan_browse_history,
-        scan_gallery,
-    )
-    from app.bake.features.order_extras import ORDER_REVIEW_CAP, scan_order_review
-    from app.bake.features.loyalty import LOYALTY_CAPS, scan_loyalty_caps
+    from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
+    from app.bake.features.favorites import FAVORITES_CAP
+    from app.bake.features.guestbook import GUESTBOOK_CAP
+    from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
+    from app.bake.features.archive_log import ARCHIVE_LOG_CAP
+    from app.bake.features.order_extras import ORDER_REVIEW_CAP
+    from app.bake.features.loyalty import LOYALTY_CAPS
+    from app.bake.features.proposal_caps import merge_proposal_capabilities
     from app.bake.archive_columns import apply_archive_semantic_columns
     from app.bake.ticket_columns import apply_ticket_shell_sql
     from app.bake.sql.fragments import (
         ensure_archive_flag_columns,
+        ensure_archive_log_sql,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
         ensure_favorites_sql,
@@ -165,14 +164,20 @@ def domain_sql(
     )
     from app.bake.staff_posts import append_staff_seed_sql
 
-    caps = list(capabilities or [])
-    for c in scan_loyalty_caps(proposal_text or ""):
-        if c not in caps:
-            caps.append(c)
-    loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
     arches_for_sql = list(
         archetypes or ([archetype] if archetype else [])
     )
+    # 与 attach_accept 同一条能力合并链（避免 schema/SQL 双轨）
+    caps = merge_proposal_capabilities(
+        capabilities
+        if capabilities is not None
+        else (DOMAIN_CAPABILITIES.get(domain) or []),
+        proposal_text or "",
+        domain=domain,
+        archetype=archetype,
+        archetypes=arches_for_sql,
+    )
+    loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
     # 有子管/岗位任命的域保留 staff 列；预约/订单履约列按域拆分；忠诚度按能力
     text = ensure_shared_sql_columns(
         text,
@@ -183,19 +188,15 @@ def domain_sql(
     )
     runtime = ((DOMAINS.get(domain) or {}).get("runtime") or {})
     resolved_ticket = ticket_table or runtime.get("ticket_table")
-    if not resolved_ticket and domain == "DOM-GENERIC":
-        from app.bake.archetype_shells import shell_runtime
-
-        resolved_ticket = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
-            "ticket_table"
-        )
     resolved_item = runtime.get("archive_item_table")
-    if not resolved_item and domain == "DOM-GENERIC":
+    if domain == "DOM-GENERIC" and (not resolved_ticket or not resolved_item):
         from app.bake.archetype_shells import shell_runtime
 
-        resolved_item = (shell_runtime(archetype, archetypes=archetypes) or {}).get(
-            "archive_item_table"
-        ) or "biz_item"
+        shell_rt = shell_runtime(archetype, archetypes=archetypes) or {}
+        if not resolved_ticket:
+            resolved_ticket = shell_rt.get("ticket_table")
+        if not resolved_item:
+            resolved_item = shell_rt.get("archive_item_table") or "biz_item"
     flags = resolve_ticket_flags(
         domain or "",
         archetype=archetype,
@@ -229,29 +230,23 @@ def domain_sql(
     text = ensure_ticket_progress_sql(text, resolved_ticket)
     text = ensure_guestbook_sql(
         text,
-        enabled=guestbook_wanted(
-            domain=domain,
-            archetype=archetype,
-            archetypes=archetypes,
-            capabilities=capabilities,
-            proposal_text=proposal_text,
-        ),
+        enabled=GUESTBOOK_CAP in caps,
     )
     text = ensure_favorites_sql(
         text,
-        enabled=favorites_wanted(
-            domain=domain,
-            capabilities=capabilities,
-            proposal_text=proposal_text,
-        ),
+        enabled=FAVORITES_CAP in caps,
     )
     text = ensure_browse_history_sql(
         text,
-        enabled=BROWSE_HISTORY_CAP in caps or scan_browse_history(proposal_text),
+        enabled=BROWSE_HISTORY_CAP in caps,
+    )
+    text = ensure_archive_log_sql(
+        text,
+        enabled=ARCHIVE_LOG_CAP in caps,
     )
     text = ensure_gallery_sql(
         text,
-        enabled=GALLERY_CAP in caps or scan_gallery(proposal_text),
+        enabled=GALLERY_CAP in caps,
         item_table=resolved_item,
     )
     text = ensure_coupon_lifecycle_sql(
@@ -260,9 +255,16 @@ def domain_sql(
     )
     text = ensure_order_review_sql(
         text,
-        enabled=ORDER_REVIEW_CAP in caps or scan_order_review(proposal_text),
+        enabled=ORDER_REVIEW_CAP in caps,
     )
-    text = append_staff_seed_sql(text, domain, archetype, archetypes)
+    text = append_staff_seed_sql(
+        text,
+        domain,
+        archetype,
+        archetypes,
+        proposal_text=proposal_text or "",
+        posts=staff_posts,
+    )
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)
@@ -292,6 +294,24 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         _merge_tree(overlay, dest)
 
     _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
+    schema_pre = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    roles_pre = schema_pre.get("roles") if isinstance(schema_pre.get("roles"), dict) else {}
+    staff_posts_pre = roles_pre.get("staff_posts") if isinstance(roles_pre.get("staff_posts"), list) else None
+    proposal_for_sql = str(spec.get("proposal_text") or "").strip()
+    if not proposal_for_sql:
+        prop = spec.get("proposal")
+        if isinstance(prop, dict):
+            proposal_for_sql = str(
+                prop.get("excerpt")
+                or prop.get("text")
+                or prop.get("summary")
+                or prop.get("background")
+                or ""
+            ).strip()
+        elif isinstance(prop, str):
+            proposal_for_sql = prop.strip()
+    if not proposal_for_sql:
+        proposal_for_sql = str(spec.get("title") or "")
     sql = domain_sql(
         domain,
         db_name,
@@ -299,8 +319,9 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         archetypes=spec.get("archetypes"),
         ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
         capabilities=spec.get("capabilities"),
-        proposal_text=str(spec.get("proposal_text") or spec.get("title") or ""),
+        proposal_text=proposal_for_sql,
         ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
+        staff_posts=staff_posts_pre,
     )
     assert_table_budget(sql, domain)
     _write(dest / "sql" / "schema.sql", sql)
@@ -410,7 +431,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
 def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     """按本项目能力重写 thesis 段：只保留用到的键，去掉空开关与工厂话术。"""
     from app.bake.catalog import DOMAINS
-    from app.bake.domain_schema import DOMAIN_CAPABILITIES
+    from app.bake.domains import DOMAIN_CAPABILITIES
     from app.bake.guest_cta import GUEST_TEASER_LIMIT, portal_guest_browse_enabled
 
     runtime = dict(spec.get("runtime") or {})
@@ -603,6 +624,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  favorites-enabled: true")
     if "browse_history" in caps:
         lines.append("  browse-history-enabled: true")
+    if "archive_log" in caps:
+        lines.append("  archive-log-enabled: true")
     if "gallery" in caps:
         lines.append("  gallery-enabled: true")
     if "search_assist" in caps:

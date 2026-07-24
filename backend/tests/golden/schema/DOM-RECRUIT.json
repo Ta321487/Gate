@@ -1,0 +1,213 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "岗位名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "用人部门",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "薪资/任职要求",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "招聘状态",
+          "options": [
+            "招聘中",
+            "初筛中",
+            "已满员",
+            "已关闭"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "岗位类型",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可投递",
+          "type": "number"
+        }
+      ],
+      "key": "job_post",
+      "label": "岗位",
+      "labelPlural": "岗位",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已投递",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "approveEndsFlow": false,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "投递渠道",
+      "contactChannelOptions": [
+        "网申",
+        "现场",
+        "内推",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "网申/现场/内推等",
+      "key": "job_apply",
+      "label": "投递单",
+      "labelPlural": "投递",
+      "nextFollowLabel": "期望到岗",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "简历摘要/说明",
+      "requireAttach": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "初筛通过",
+        "overdue": "已失效",
+        "pending": "待初筛",
+        "rejected": "未通过",
+        "returned": "已结束"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "投递简历",
+        "approve": "初筛通过",
+        "reject": "不合适",
+        "remind": "催办",
+        "return": "结束流程"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "校园招聘",
+    "authLead": "验证码登录；浏览岗位并投递简历，HR 初筛后反馈结果。",
+    "authPoints": [
+      "验证码登录",
+      "职位浏览",
+      "投递与初筛"
+    ],
+    "messagesPageLead": "审核结果与系统通知。",
+    "noticePageLead": "岗位更新与投递规范，点击条目阅读全文。",
+    "noticePageTitle": "招聘公告",
+    "recommendLatestHint": "最新发布",
+    "recommendSectionTitle": "猜你喜欢",
+    "registerRoleHint": "注册后可投递岗位"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "岗位管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "岗位类型管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "投递初筛"
+      },
+      {
+        "key": "ticket_records",
+        "label": "投递记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "职位浏览"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的投递"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按类型查看在招岗位与任职要求。",
+      "title": "职位浏览"
+    },
+    {
+      "lead": "选择岗位提交投递单，等待 HR 初筛。",
+      "title": "投递简历"
+    },
+    {
+      "lead": "校招节点与材料要求见公告。",
+      "title": "招聘公告"
+    },
+    {
+      "lead": "跟踪初筛进度与结果。",
+      "title": "我的投递"
+    },
+    {
+      "lead": "技术/职能/实习快速筛选。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "招聘主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "HR专员"
+    },
+    "user": {
+      "id": "user",
+      "label": "求职者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写经历；演示环境不含视频面试。",
+    "noticeTitle": "投递须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

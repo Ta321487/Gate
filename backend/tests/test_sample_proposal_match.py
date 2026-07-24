@@ -74,6 +74,25 @@ class SlimMatchDataTests(unittest.TestCase):
                 got = match_text(path.read_text(encoding="utf-8"), path.name)
                 self.assertEqual(got.domain, want, f"arch={got.archetype} hits={got.hits[:10]}")
 
+    def test_flower_shop_opening_not_hijacked_by_xitong_shixian(self) -> None:
+        """「研究内容→系统实现」不得吞掉功能需求；鲜花开题应落商城皮。"""
+        from pathlib import Path
+
+        from app.bake.catalog import proposal_focus_for_match
+
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "data"
+            / "samples"
+            / "鲜花销售管理系统开题报告.txt"
+        )
+        text = path.read_text(encoding="utf-8")
+        focus = proposal_focus_for_match(text)
+        self.assertIn("商品", focus)
+        self.assertIn("购物车", focus)
+        got = match_text(text, path.name)
+        self.assertEqual(got.domain, "DOM-SHOP", f"arch={got.archetype} hits={got.hits[:10]}")
+
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -16,8 +17,24 @@ url = settings.database_url
 if url.startswith("mysql+pymysql://"):
     url = url.replace("mysql+pymysql://", "mysql+aiomysql://", 1)
 
-engine = create_async_engine(url, echo=False, pool_pre_ping=True)
+_is_sqlite = url.startswith("sqlite")
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
+if _is_sqlite:
+    # 默认 busy 等待仅约 5s；生成 Job 与列表轮询同写 projects 时易 database is locked
+    _engine_kwargs["connect_args"] = {"timeout": 60}
+
+engine = create_async_engine(url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+if _is_sqlite:
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _sqlite_on_connect(dbapi_conn, _connection_record) -> None:  # noqa: ANN001
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=60000")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

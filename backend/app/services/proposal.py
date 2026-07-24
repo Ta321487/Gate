@@ -417,7 +417,7 @@ def summarize_proposal(text: str, hits: list[str] | None = None) -> dict:
         is_heading = bool(_SECTION.match(ln)) or (
             len(ln) <= 28 and bool(_is_feature_heading(ln) or _OUT_HEAD.search(ln))
         )
-        # 「3. 实现下列功能：」或「（3）系统实现」
+        # 「3. 实现下列功能：」等功能头（词表见 FEATURE_HEAD_TERMS）
         if not is_heading and re.match(
             rf"^[（(]?\d*[)）.、]?\s*(?:{FEATURE_HEAD_TERMS})",
             ln,

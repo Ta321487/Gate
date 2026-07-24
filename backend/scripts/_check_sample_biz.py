@@ -95,9 +95,19 @@ def check_biz(num: str, spec: dict) -> list[str]:
             errs.append(f"verbs.apply={(ticket.get('verbs') or {}).get('apply')}")
         if "archive" not in caps or "ticket_flow" not in caps:
             errs.append(f"caps={sorted(caps)}")
+        if "archive_log" not in caps:
+            errs.append(f"missing archive_log caps={sorted(caps)}")
+        log_ent = ents.get("archiveLog") or {}
+        if not log_ent.get("fields"):
+            errs.append("archiveLog.fields missing")
         flows = spec.get("flows") or []
-        if not any("上报" in str(f) for f in flows):
+        if not any(("上报" in str(f) or "打卡" in str(f) or "随访" in str(f)) for f in flows):
             errs.append(f"flows={flows}")
+        # 07 等监测题主路径应为 FLOW，勿被物资词抬成 STOCK
+        if num in {"03", "06", "07", "09", "11"}:
+            arch = spec.get("archetype") or ""
+            if arch == "ARCH-STOCK":
+                errs.append(f"archetype={arch} (want FLOW for monitor samples)")
     if want == "DOM-ASSET":
         if archive.get("key") not in ("asset", "item") and "asset" not in str(
             archive.get("key") or ""

@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS repair_attach (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -119,4 +120,3 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知')
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
 UPDATE sys_user SET staff_post='dorm_mgr', staff_kind='clerk', nickname='楼管' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
-INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('repairer', 'repairer123', 'admin', '维修员', '13800000010', '{}', 0, 1, 1, 'repairer', 'worker') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

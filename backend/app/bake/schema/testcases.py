@@ -94,6 +94,7 @@ _PREFIX_ALIAS = {
     "guestbook": "GUEST",
     "favorites": "FAV",
     "browse_history": "HIST",
+    "archive_logs": "ALOG",
     "coupons": "COUPON",
     "order_reviews": "REVIEW",
     "week_calendar": "CAL",
@@ -292,6 +293,20 @@ _BLUEPRINTS: dict[str, Blueprint] = {
             "steps": ["进入「{label}」", "查看足迹列表"],
             "expected": "展示最近浏览记录",
         }
+    ],
+    "archive_logs": [
+        {
+            "item": "提交监测打卡",
+            "pre": "{pre}，且存在可打卡档案",
+            "steps": ["打开档案详情", "填写打卡字段并提交"],
+            "input": "体温/血压等监测字段",
+            "expected": "打卡记录写入成功，可在列表中看到",
+        },
+        {
+            "item": "查看「{label}」与今日未打卡",
+            "steps": ["进入「{label}」", "查看记录列表", "切换今日未打卡"],
+            "expected": "展示监测记录，并能列出今日未打卡对象",
+        },
     ],
     "coupons": [
         {
