@@ -116,7 +116,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '站长', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '版主甲', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '用户甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"男","memberNo":"U20260001","orgName":"计算机学院","preferredGenre":"学习交流"}',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","identityType":"学生","studentNo":"S20260001","dept":"计算机学院","preferredGenre":"学习交流"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -156,6 +156,41 @@ CREATE TABLE IF NOT EXISTS `reply_progress` (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS sys_dm_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  from_username VARCHAR(64) NOT NULL,
+  to_username VARCHAR(64) NOT NULL,
+  body VARCHAR(500) NOT NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_dm_from (from_username, id),
+  KEY idx_dm_to (to_username, id),
+  KEY idx_dm_pair (from_username, to_username, id),
+  KEY idx_dm_unread (to_username, read_at, id)
+);
+
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled)
+SELECT 'user2', 'user123', 'user', '用户乙', '13800000003', '{}', 0, 1, 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username='user2');
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '你好，方便私信问下帖子细节吗？', DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND NOT EXISTS (SELECT 1 FROM sys_dm_message LIMIT 1);
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user2', 'user', '可以，你说。', DATE_SUB(NOW(), INTERVAL 8 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 2;
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '谢谢，演示环境用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 3;
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

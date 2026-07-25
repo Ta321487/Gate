@@ -80,6 +80,9 @@ class MatchUpdate(BaseModel):
     chrome: Optional[str] = Field(default=None, description="界面质感 ID")
     layout: Optional[str] = Field(default=None, description="门户布局壳 ID")
     typeface: Optional[str] = Field(default=None, description="字体配对 ID")
+    portal_home_style: Optional[str] = Field(
+        default=None, description="门户首页构图 cards | editorial"
+    )
     llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
     password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
     unlock: Optional[bool] = Field(default=None, description="解锁匹配")
@@ -246,6 +249,9 @@ class StatsOut(BaseModel):
     total: int = Field(description="总数")
     generating: int = Field(description="生成中")
     previewable: int = Field(description="可预览")
+    pending_review: int = Field(default=0, description="待审：质检可下且未标可交付")
+    delivery_ready: int = Field(default=0, description="可交付（人工）")
+    delivery_delivered: int = Field(default=0, description="已交付（人工）")
     monthly_tokens: int = Field(description="本月 Token（合计）")
     monthly_tokens_pipeline: int = Field(default=0, description="本月项目流水线 Token")
     monthly_tokens_support: int = Field(default=0, description="本月系统支持 Token")

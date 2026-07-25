@@ -210,10 +210,54 @@
     <PageSkeleton v-if="!booted" variant="dashboard" />
     <template v-else>
       <div class="stats">
-        <div class="stat"><div class="label">全部项目</div><div class="value">{{ stats.total }}</div><div class="hint">本机工作区</div></div>
-        <div class="stat"><div class="label">生成中</div><div class="value">{{ stats.generating }}</div><div class="hint">正在跑流水线</div></div>
-        <div class="stat"><div class="label">可预览</div><div class="value">{{ stats.previewable }}</div><div class="hint">已生成 · 可启预览</div></div>
-        <div class="stat"><div class="label">本月 Token</div><div class="value">{{ formatK(stats.monthly_tokens) }}</div><div class="hint">流水线 {{ formatK(stats.monthly_tokens_pipeline) }} · 系统支持 {{ formatK(stats.monthly_tokens_support) }} · 预算 {{ formatK(stats.monthly_budget) }}</div></div>
+        <div
+          class="stat clickable"
+          :class="{ on: filter === 'all' }"
+          role="button"
+          tabindex="0"
+          @click="setFilter('all')"
+          @keydown.enter="setFilter('all')"
+        >
+          <div class="label">全部项目</div>
+          <div class="value">{{ stats.total }}</div>
+          <div class="hint">生成中 {{ stats.generating }} · Token {{ formatK(stats.monthly_tokens) }}</div>
+        </div>
+        <div
+          class="stat clickable"
+          :class="{ on: filter === 'pending' }"
+          role="button"
+          tabindex="0"
+          @click="setFilter('pending')"
+          @keydown.enter="setFilter('pending')"
+        >
+          <div class="label">待审</div>
+          <div class="value">{{ stats.pending_review || 0 }}</div>
+          <div class="hint">质检过 · 未标可交付</div>
+        </div>
+        <div
+          class="stat clickable"
+          :class="{ on: filter === 'ready' }"
+          role="button"
+          tabindex="0"
+          @click="setFilter('ready')"
+          @keydown.enter="setFilter('ready')"
+        >
+          <div class="label">可交付</div>
+          <div class="value">{{ stats.delivery_ready || 0 }}</div>
+          <div class="hint">人工已审 · 待发出</div>
+        </div>
+        <div
+          class="stat clickable"
+          :class="{ on: filter === 'delivered' }"
+          role="button"
+          tabindex="0"
+          @click="setFilter('delivered')"
+          @keydown.enter="setFilter('delivered')"
+        >
+          <div class="label">已交付</div>
+          <div class="value">{{ stats.delivery_delivered || 0 }}</div>
+          <div class="hint">已发给学生</div>
+        </div>
       </div>
 
       <div class="panel">
@@ -243,7 +287,7 @@
               </div>
             </template>
           </n-data-table>
-          <div class="small muted mt-12">共 {{ list.length }} 条 · 点击行进入详情</div>
+          <div class="small muted mt-12">共 {{ list.length }} 条 · 点击行进详情；履约列可直接下载 / 标记</div>
         </div>
       </div>
     </template>
@@ -272,11 +316,12 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
-/** 与状态/运行列语义对齐：运行中 · 生成中 · 可下载 · 可交付 · 已交付 · 质检未过 */
+/** 与状态/运行列语义对齐：运行中 · 生成中 · 待审 · 可下载 · 可交付 · 已交付 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
   { id: 'generating', label: '生成中', pill: 'pill-teal' },
+  { id: 'pending', label: '待审', pill: 'pill-amber' },
   { id: 'done', label: '可下载', pill: 'pill-teal' },
   { id: 'ready', label: '可交付', pill: 'pill-green' },
   { id: 'delivered', label: '已交付', pill: 'pill-neutral' },
@@ -616,11 +661,42 @@ const stats = reactive({
   total: 0,
   generating: 0,
   previewable: 0,
+  pending_review: 0,
+  delivery_ready: 0,
+  delivery_delivered: 0,
   monthly_tokens: 0,
   monthly_tokens_pipeline: 0,
   monthly_tokens_support: 0,
   monthly_budget: 1000000,
 })
+const deliveryBusyId = ref('')
+
+function downloadRowZip(row) {
+  if (!row?.zip_ready) {
+    message.error('质量检查未通过 · 暂不可下载')
+    return
+  }
+  window.open(api.downloadUrl(row.id), '_blank')
+}
+
+async function markRowDelivery(row, mark) {
+  if (!row?.id || deliveryBusyId.value) return
+  deliveryBusyId.value = row.id
+  try {
+    await api.patchDelivery(row.id, mark)
+    message.success(
+      mark === 'delivered' ? '已标记为已交付' : mark === 'ready' ? '已标记为可交付' : '已清除交付标记',
+    )
+    await load()
+  } finally {
+    deliveryBusyId.value = ''
+  }
+}
+
+async function downloadAndDeliverRow(row) {
+  downloadRowZip(row)
+  await markRowDelivery(row, 'delivered')
+}
 
 const sampleOpen = ref(false)
 const sampleLoading = ref(false)
@@ -725,6 +801,58 @@ const columns = [
         ])
       }
       return h('span', { class: 'muted' }, '—')
+    },
+  },
+  {
+    title: '履约',
+    key: 'delivery',
+    width: 220,
+    render(row) {
+      const mark = String(row.delivery_mark || 'none')
+      const baked = row.status === 'generated' || row.status === 'running'
+      const zipOk = !!row.zip_ready && baked
+      const busy = deliveryBusyId.value === row.id
+      const kids = []
+      if (zipOk) {
+        kids.push(h(NButton, {
+          size: 'tiny',
+          secondary: true,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
+        }, { default: () => '下载' }))
+      }
+      if (zipOk && mark === 'none') {
+        kids.push(h(NButton, {
+          size: 'tiny',
+          secondary: true,
+          loading: busy,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'ready') },
+        }, { default: () => '可交付' }))
+        kids.push(h(NButton, {
+          size: 'tiny',
+          type: 'primary',
+          loading: busy,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'delivered') },
+        }, { default: () => '已交付' }))
+      } else if (mark === 'ready') {
+        kids.push(h(NButton, {
+          size: 'tiny',
+          type: 'primary',
+          loading: busy,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); downloadAndDeliverRow(row) },
+        }, { default: () => '下载并已交付' }))
+      }
+      if (!kids.length) {
+        return h('span', { class: 'muted small' }, '—')
+      }
+      return h('div', {
+        class: 'row',
+        style: 'gap:6px;flex-wrap:wrap',
+        onClick: (e) => e.stopPropagation(),
+      }, kids)
     },
   },
 ]

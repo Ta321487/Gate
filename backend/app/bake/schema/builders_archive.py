@@ -575,14 +575,99 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
     )
 
-def _fund_schema(title: str) -> dict[str, Any]:
-    from app.bake.schema.followup_presets import followup_domain_schema
+def _fund_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """资助：校园奖助学金默认；员工福利/企业补助走 enterprise。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import scene_fund
 
+    t = _copy_scan_text(title, proposal_text)
+    if scene_fund(t) == "enterprise":
+        return followup_domain_schema(
+            title,
+            "DOM-FUND",
+            overrides={
+                "user_label": "员工",
+                "admin_label": "福利主管（总管）",
+                "subadmin_label": "人事专员",
+                "archive_label": "福利项目",
+                "archive_plural": "福利项目",
+                "archive_fields": _std_archive_fields(
+                    "项目名称",
+                    "归口部门",
+                    "名额/条件备注",
+                    "开放状态",
+                    ["开放申请", "审核中", "已截止", "已关闭"],
+                    "福利类型",
+                    "可申请",
+                ),
+                "archive_menu_admin": "福利项目",
+                "archive_menu_user": "项目列表",
+                "auth_eyebrow": "员工福利",
+                "auth_lead": "验证码登录；浏览福利项目并提交申请，人事审核后反馈结果。",
+                "auth_points": ["验证码登录", "福利项目", "申请与审核"],
+                "register_hint": "注册后可提交福利申请",
+                "notice_title": "福利须知",
+                "notice_body": "请按通知提交申请材料；审批通过后留意发放进度。",
+                "notice_page_title": "人事公告",
+                "notice_page_lead": "福利节点与材料要求，点击条目阅读全文。",
+                "pending_label": "福利审批",
+                "contact_channel_options": ["线上申请", "人事窗口", "其他"],
+                "banners": [
+                    {"title": "项目浏览", "lead": "按福利类型查看开放项目与申请条件。"},
+                    {"title": "在线申请", "lead": "选择项目提交申请单，等待人事审核。"},
+                    {"title": "人事公告", "lead": "材料节点与发放说明见公告栏。"},
+                    {"title": "我的申请", "lead": "登录后跟踪审批进度。"},
+                    {"title": "分类检索", "lead": "节日慰问/困难补助/培训补贴快速筛选。"},
+                ],
+            },
+        )
     return followup_domain_schema(title, "DOM-FUND")
 
-def _labsafe_schema(title: str) -> dict[str, Any]:
-    from app.bake.schema.followup_presets import followup_domain_schema
+def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """实验室准入：校园默认；厂区/安环走 enterprise。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import scene_labsafe
 
+    t = _copy_scan_text(title, proposal_text)
+    if scene_labsafe(t) == "enterprise":
+        return followup_domain_schema(
+            title,
+            "DOM-LABSAFE",
+            overrides={
+                "user_label": "员工",
+                "admin_label": "安环主管（总管）",
+                "subadmin_label": "安全员",
+                "archive_label": "实验室",
+                "archive_plural": "实验室",
+                "archive_fields": _std_archive_fields(
+                    "实验室名称",
+                    "厂区/负责人",
+                    "安全等级备注",
+                    "开放状态",
+                    ["可申请", "审核中", "暂停准入", "已关闭"],
+                    "实验室类型",
+                    "可申请准入",
+                ),
+                "auth_eyebrow": "安环准入",
+                "auth_lead": "验证码登录；选择实验室提交准入申请，完成安全培训审核后方可进室。",
+                "auth_points": ["验证码登录", "实验室档案", "准入申请与审核"],
+                "register_hint": "注册后可提交准入申请",
+                "notice_page_title": "安环公告",
+                "banners": [
+                    {"title": "实验室目录", "lead": "按类型浏览厂区实验室与安全等级。"},
+                    {"title": "准入申请", "lead": "提交准入单并附培训证明，等待安全员审核。"},
+                    {"title": "安环公告", "lead": "准入节点与安全须知见公告栏。"},
+                    {"title": "我的准入", "lead": "登录后跟踪审批结果。"},
+                    {"title": "分类检索", "lead": "化学/机房/金工等快速定位。"},
+                ],
+            },
+        )
     return followup_domain_schema(title, "DOM-LABSAFE")
 
 def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -633,14 +718,127 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         )
     return followup_domain_schema(title, "DOM-RECRUIT")
 
-def _grade_schema(title: str) -> dict[str, Any]:
+def _dating_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """婚恋交友：校园联谊 vs 社区相亲（默认社区）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
+    from app.bake.scene_scan import scene_dating
 
+    t = _copy_scan_text(title, proposal_text)
+    scene = scene_dating(t)
+    if scene == "campus":
+        return followup_domain_schema(
+            title,
+            "DOM-DATING",
+            overrides={
+                "user_label": "同学",
+                "admin_label": "学工主管（总管）",
+                "subadmin_label": "联谊辅导员",
+                "auth_eyebrow": "校园交友",
+                "auth_lead": "验证码登录；浏览同学资料并发起牵线，学工审核后反馈结果。",
+                "auth_points": ["验证码登录", "资料浏览", "牵线与审核"],
+                "notice_page_title": "联谊公告",
+                "banners": [
+                    {"title": "资料浏览", "lead": "按类型查看同学资料与择偶意向。"},
+                    {"title": "发起牵线", "lead": "选择资料提交牵线单，等待学工审核。"},
+                    {"title": "联谊公告", "lead": "校园联谊节点与规范见公告。"},
+                    {"title": "我的牵线", "lead": "跟踪审核进度与结果。"},
+                    {"title": "分类检索", "lead": "按院系/年级等快速筛选。"},
+                ],
+            },
+        )
+    return followup_domain_schema(title, "DOM-DATING")
+
+def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """教务成绩默认；内训/培训考核走 enterprise。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import scene_grade
+
+    t = _copy_scan_text(title, proposal_text)
+    if scene_grade(t) == "enterprise":
+        return followup_domain_schema(
+            title,
+            "DOM-GRADE",
+            overrides={
+                "user_label": "学员",
+                "admin_label": "培训主管（总管）",
+                "subadmin_label": "培训专员",
+                "archive_label": "培训课",
+                "archive_plural": "培训课",
+                "archive_fields": _std_archive_fields(
+                    "课程名称",
+                    "讲师",
+                    "课号/学时",
+                    "开课状态",
+                    ["开课中", "已结课", "补考中", "已归档"],
+                    "课程类别",
+                    "可申请",
+                ),
+                "archive_menu_admin": "培训课档案",
+                "archive_menu_user": "培训课列表",
+                "ticket_label": "成绩申请单",
+                "auth_eyebrow": "内训成绩",
+                "auth_lead": "验证码登录；查看培训课并提交补考或成绩更正申请，由培训专员审核。",
+                "auth_points": ["验证码登录", "培训课列表", "成绩申请"],
+                "register_hint": "注册后可提交成绩相关申请",
+                "notice_title": "成绩须知",
+                "notice_body": "补考与更正须说明理由；不对接外部证书库。",
+                "notice_page_title": "培训公告",
+                "pending_label": "成绩审核",
+                "contact_channel_options": ["成绩更正", "补考申请", "缓考备案", "其他"],
+                "banners": [
+                    {"title": "培训课列表", "lead": "按类别浏览内训课与讲师。"},
+                    {"title": "成绩申请", "lead": "提交补考或成绩更正，等待培训确认。"},
+                    {"title": "培训公告", "lead": "补考与成绩节点见公告栏。"},
+                    {"title": "我的申请", "lead": "跟踪审核进度。"},
+                    {"title": "分类检索", "lead": "必修/选修快速定位。"},
+                ],
+            },
+        )
     return followup_domain_schema(title, "DOM-GRADE")
 
-def _intern_schema(title: str) -> dict[str, Any]:
-    from app.bake.schema.followup_presets import followup_domain_schema
+def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """实习周报：校就业办默认；企业带教走 enterprise。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import scene_intern
 
+    t = _copy_scan_text(title, proposal_text)
+    if scene_intern(t) == "enterprise":
+        return followup_domain_schema(
+            title,
+            "DOM-INTERN",
+            overrides={
+                "user_label": "实习生",
+                "admin_label": "实习主管（总管）",
+                "subadmin_label": "带教导师",
+                "archive_fields": _std_archive_fields(
+                    "岗位名称",
+                    "带教导师",
+                    "部门/岗位说明",
+                    "实习状态",
+                    ["待上岗", "实习中", "已结束", "已鉴定"],
+                    "实习类型",
+                    "可交周报",
+                ),
+                "auth_eyebrow": "企业实习周报",
+                "auth_lead": "验证码登录；关联实习岗位并每周提交周报，带教导师审阅。",
+                "auth_points": ["验证码登录", "实习岗位", "周报提交与审阅"],
+                "notice_page_title": "实习公告",
+                "pending_label": "周报审阅",
+                "banners": [
+                    {"title": "实习岗位", "lead": "查看已建档实习部门与带教导师。"},
+                    {"title": "提交周报", "lead": "按周提交工作内容，等待审阅。"},
+                    {"title": "实习公告", "lead": "实习与鉴定安排见公告。"},
+                    {"title": "我的周报", "lead": "跟踪审阅结果。"},
+                    {"title": "分类检索", "lead": "按实习类型筛选岗位。"},
+                ],
+            },
+        )
     return followup_domain_schema(title, "DOM-INTERN")
 
 def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:

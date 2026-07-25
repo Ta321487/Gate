@@ -17,6 +17,7 @@ _DOMAIN_JAVA: dict[str, tuple[str, str, str]] = {
     "DOM-FUND": ("com.campus.fund", "FundApplication", "fund-app"),
     "DOM-LABSAFE": ("com.campus.labsafe", "LabsafeApplication", "labsafe-app"),
     "DOM-RECRUIT": ("com.campus.recruit", "RecruitApplication", "recruit-app"),
+    "DOM-DATING": ("com.campus.dating", "DatingApplication", "dating-app"),
     "DOM-GRADE": ("com.campus.grade", "GradeApplication", "grade-app"),
     "DOM-INTERN": ("com.campus.intern", "InternApplication", "intern-app"),
     "DOM-PARCEL": ("com.campus.parcel", "ParcelApplication", "parcel-app"),

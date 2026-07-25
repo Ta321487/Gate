@@ -233,6 +233,8 @@ def _via_to_role_id(via: str, roles: dict[str, str]) -> str:
     portal = "user" if "user" in roles else next(iter(roles), "user")
     if via in ("username", "uploaded_by", "uploader"):
         return portal
+    if via in ("from_username", "to_username"):
+        return portal
     if via == "operator":
         # 流水登记人多为管理侧
         return admin if "admin" in roles else staff
@@ -486,11 +488,14 @@ def _rel_zh_from_via(via: str, right: str = "", left: str = "") -> str:
             "sys_notice": "发布",
             "sys_message": "接收",
             "sys_guestbook": "发表",
+            "sys_dm_message": "收发",
             "user_ledger": "归属",
         }
         if right in by_child:
             return by_child[right]
         return "归属"
+    if via in ("from_username", "to_username") and right == "sys_dm_message":
+        return "发送" if via == "from_username" else "接收"
     if via.endswith("_username"):
         return "关联"
     if via in ("book_id", "item_id") or via.endswith("_id"):
@@ -548,6 +553,7 @@ def _rel_zh(
             "sys_message",
             "sys_notice",
             "sys_guestbook",
+            "sys_dm_message",
             "user_ledger",
         }:
             verb = _apply_verb_label(right_lab, right_lab)

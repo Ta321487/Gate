@@ -245,7 +245,7 @@ INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VA
         "doctor",
         "patient",
         "患者甲",
-        '{"realName":"钱患者","email":"qian@demo.edu","gender":"女","cardNo":"H20260001"}',
+        '{"realName":"钱患者","email":"qian@demo.edu","gender":"女","patientNo":"H20260001"}',
         "INSERT IGNORE INTO category (id, name) VALUES (1, '内科'), (2, '外科'), (3, '口腔');\n",
         """INSERT IGNORE INTO doctor (id, title, author, isbn, category_id, stock, status) VALUES
 (1, '张医生', '15.00', '主任医师 / 上午门诊', 1, 1, 'available'),

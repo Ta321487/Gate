@@ -50,6 +50,8 @@ class TestSpringSecurityBake(unittest.TestCase):
         self.assertTrue(any((ws / "backend").rglob("SessionAuthFilter.java")))
         cfg = next((ws / "backend").rglob("SecurityConfig.java")).read_text(encoding="utf-8")
         self.assertIn("SecurityFilterChain", cfg)
+        # 禁用默认 session fixation，避免 SPA 并发请求换 JSESSIONID 后被踢
+        self.assertIn("sessionFixation(sf -> sf.none())", cfg)
         readme = (ws / "README.md").read_text(encoding="utf-8")
         self.assertIn("Spring Security", readme)
         self.assertIn("过滤器链", readme)

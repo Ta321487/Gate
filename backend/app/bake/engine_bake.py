@@ -15,6 +15,7 @@ from app.bake.catalog import (
     normalize_auth_template,
     normalize_chrome,
     normalize_layout,
+    normalize_portal_home_style,
     normalize_typeface,
 )
 from app.bake.domain_schema import (
@@ -173,6 +174,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     chrome = normalize_chrome(spec.get("chrome"))
     layout = normalize_layout(spec.get("layout"))
     typeface = normalize_typeface(spec.get("typeface"))
+    portal_home = normalize_portal_home_style(spec.get("portal_home_style"))
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
@@ -180,6 +182,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         f"VITE_CHROME={chrome}\n"
         f"VITE_LAYOUT={layout}\n"
         f"VITE_TYPEFACE={typeface}\n"
+        f"VITE_PORTAL_HOME_STYLE={portal_home}\n"
         f"VITE_AUTH_TEMPLATE={auth_tpl}\n"
         f"VITE_AUTH_ENTRY_MODE={auth_entry}\n"
         f"VITE_AUTH_ROLE_WIDGET={auth_widget}\n",
@@ -193,6 +196,8 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         java_package=new_pkg,
         persistence=spec.get("persistence") or "jdbc",
         spring_security=bool(spec.get("spring_security")),
+        schema_sql=sql,
+        spec=spec,
     )
 
     from app.bake.auth_hero import auth_hero_public_path, fetch_auth_hero
@@ -215,6 +220,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         chrome=chrome,
         layout=layout,
         typeface=typeface,
+        portal_home_style=portal_home,
         seed=dest.name,
     )
 

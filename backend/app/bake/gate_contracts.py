@@ -293,6 +293,37 @@ def merge_guestbook_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_DM_FILES = [
+    "backend/src/main/java/com/thesis/service/DmStore.java",
+    "backend/src/main/java/com/thesis/controller/DmController.java",
+    "frontend/src/views/user/Dm.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_dm_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠一对一私信文件、路由与 flow_api（仅门户，无管理端）。"""
+    caps = set(caps or [])
+    if "dm" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_DM_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "dm" not in have:
+        routes.append({"seg": "dm", "from_feature": "一对一私信"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["dm"] = {"file": "DmController.java", "need": ["/api/dm"]}
+    out["flow_api"] = flow
+    return out
+
+
 _GATE_FAVORITES_FILES = [
     "backend/src/main/java/com/thesis/capability/FavoriteStore.java",
     "backend/src/main/java/com/thesis/controller/FavoriteController.java",

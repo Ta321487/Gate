@@ -239,6 +239,7 @@ async def catalog():
         DOMAIN_GROUPS,
         DOMAINS,
         LAYOUT_SHELLS,
+        PORTAL_HOME_STYLES,
         TYPE_PAIRINGS,
         themes_for_domain,
     )
@@ -276,6 +277,7 @@ async def catalog():
         "chrome_styles": list(CHROME_STYLES),
         "layout_shells": list(LAYOUT_SHELLS),
         "type_pairings": list(TYPE_PAIRINGS),
+        "portal_home_styles": list(PORTAL_HOME_STYLES),
         "api_style_axes": {
             "item_ref": list(ITEM_REF_STYLES),
             "cart_mutate": list(CART_MUTATE_STYLES),

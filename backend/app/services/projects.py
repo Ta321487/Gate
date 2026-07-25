@@ -7,13 +7,14 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bake.catalog import (
     THEME_ALIASES,
     CHROME_STYLES,
     LAYOUT_SHELLS,
+    PORTAL_HOME_STYLES,
     TYPE_PAIRINGS,
     build_spec,
     pick_theme,
@@ -98,7 +99,16 @@ def apply_delivery_mark(project: Project, mark: str) -> str:
         ):
             raise ValueError("仅已生成的项目可标记可交付")
     elif target == "delivered":
-        if current != "ready":
+        # none→delivered：质检已过时允许一步到位（仍要求可下载；跳过「可交付」暂存）
+        if current == "none":
+            if delivery_block_reason(project):
+                raise ValueError("质量检查未通过 · 请先通过机器质检后再标记已交付")
+            if project.status not in (
+                ProjectStatus.generated.value,
+                ProjectStatus.running.value,
+            ):
+                raise ValueError("仅已生成的项目可标记已交付")
+        elif current != "ready":
             raise ValueError("请先标记「可交付」，再标记「已交付」")
     project.delivery_mark = target
     return target
@@ -690,6 +700,14 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         default="clean",
         unknown_message="未知字体配对",
     )
+    portal_home_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "portal_home_style", None),
+        prev_value=prev_spec.get("portal_home_style"),
+        catalog=PORTAL_HOME_STYLES,
+        default="cards",
+        unknown_message="未知门户首页构图",
+    )
     if body.llm_enabled is not None:
         project.llm_enabled = body.llm_enabled
     if body.password_hash is not None:
@@ -741,6 +759,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         chrome=chrome_override,
         layout=layout_override,
         typeface=typeface_override,
+        portal_home_style=portal_home_override,
         persistence=getattr(project, "persistence", None) or "jdbc",
         spring_security=getattr(project, "spring_security", None),
     )
@@ -778,6 +797,33 @@ async def stats(db: AsyncSession) -> dict:
         .select_from(Project)
         .where(Project.status.in_([ProjectStatus.generated.value, ProjectStatus.running.value]))
     ) or 0
+    # 履约 backlog：待审 = 质检可下且尚未人工标记
+    baked = Project.status.in_(
+        [ProjectStatus.generated.value, ProjectStatus.running.value]
+    )
+    pending_review = await db.scalar(
+        select(func.count())
+        .select_from(Project)
+        .where(
+            baked,
+            Project.zip_ready.is_(True),
+            or_(
+                Project.delivery_mark == "none",
+                Project.delivery_mark.is_(None),
+                Project.delivery_mark == "",
+            ),
+        )
+    ) or 0
+    delivery_ready = await db.scalar(
+        select(func.count())
+        .select_from(Project)
+        .where(Project.delivery_mark == "ready")
+    ) or 0
+    delivery_delivered = await db.scalar(
+        select(func.count())
+        .select_from(Project)
+        .where(Project.delivery_mark == "delivered")
+    ) or 0
     from app.llm.client import monthly_tokens_breakdown
 
     tokens_bd = await monthly_tokens_breakdown(db)
@@ -786,6 +832,9 @@ async def stats(db: AsyncSession) -> dict:
         "total": total,
         "generating": generating,
         "previewable": previewable,
+        "pending_review": int(pending_review),
+        "delivery_ready": int(delivery_ready),
+        "delivery_delivered": int(delivery_delivered),
         "monthly_tokens": int(tokens_bd["total"]),
         "monthly_tokens_pipeline": int(tokens_bd["pipeline"]),
         "monthly_tokens_support": int(tokens_bd["support"]),

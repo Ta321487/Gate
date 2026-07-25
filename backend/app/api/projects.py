@@ -102,6 +102,16 @@ async def list_projects(
             for p in items
             if p.status in ("generated", "running") and p.zip_ready
         ]
+    elif filter == "pending":
+        # 待审 = 质检可下、尚未人工标记（履约 backlog）
+        items = [
+            p
+            for p in items
+            if p.status in ("generated", "running")
+            and p.zip_ready
+            and project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
+            == "none"
+        ]
     elif filter == "ready":
         items = [
             p

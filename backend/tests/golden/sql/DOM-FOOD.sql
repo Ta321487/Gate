@@ -111,7 +111,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '用餐者甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"女","studentNo":"20260002","college":"经管学院"}',
+ '{"realName":"李女士","email":"li@demo.com","gender":"女","receiverName":"李女士","pickupType":"堂食","preferredStore":"窗口A","memberNo":"M20260002"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -123,9 +123,9 @@ INSERT IGNORE INTO dish (id, title, price_yuan, spec_note, category_id, stock, s
 (4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
-(1, 'user', '李同学', '13800000002', '示例宿舍 5 号楼 302', '学校', 1),
-(2, 'user', '李同学', '13800000002', '创业街 88 号写字楼', '公司', 0),
-(3, 'user', '李同学', '13800000002', '阳光小区 3 栋 1201', '家', 0);
+(1, 'user', '李女士', '13800000002', '示例小区 5 号楼 302', '家', 1),
+(2, 'user', '李女士', '13800000002', '创业街 88 号写字楼', '公司', 0),
+(3, 'user', '李女士', '13800000002', '阳光广场 B1 美食区', '自取', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '系统管理员'

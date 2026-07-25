@@ -53,7 +53,11 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // 登录态在 AuthController 已写入 HttpSession；默认 changeSessionId
+                // 会在 SessionAuthFilter 首次桥接认证时换新 JSESSIONID，与 SPA 并发 XHR 竞态导致 401 踢登录。
+                .sessionManagement(s -> s
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .sessionFixation(sf -> sf.none()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
@@ -76,6 +80,7 @@ public class SecurityConfig {
                                 "/api/slots/**",
                                 "/api/lookups/**")
                         .permitAll()
+                        .requestMatchers("/api/dm/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/upload").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {

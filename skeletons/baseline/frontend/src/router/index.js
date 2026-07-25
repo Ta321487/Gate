@@ -6,6 +6,7 @@ import Profile from '../views/Profile.vue'
 import Notices from '../views/Notices.vue'
 import NoticeDetail from '../views/NoticeDetail.vue'
 import NoticesAdmin from '../views/admin/NoticesAdmin.vue'
+import { APP_DELIVERED } from '../appDelivered.js'
 import { hasTrait, getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
 
 /** 收货地址簿：仅带 addressBook 特征的交易壳，勿挂到酒店预约等 */
@@ -149,13 +150,19 @@ function cloneRoutes(routes) {
   })
 }
 
-/** 门户补消息中心；管理端同步挂 /admin/messages */
+/** 门户补首页 / 消息中心；管理端同步挂 /admin/messages */
 function withPortalHub(baseRoutes) {
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
   if (kids) {
     const has = (p) => kids.some((c) => c.path === p)
+    if (!has('home')) {
+      kids.splice(1, 0, {
+        path: 'home',
+        component: () => import('../views/user/PortalHome.vue'),
+      })
+    }
     if (!has('messages')) {
       const noticeIdx = kids.findIndex((c) => c.path === 'notices')
       const at = noticeIdx >= 0 ? noticeIdx : kids.length
@@ -163,6 +170,11 @@ function withPortalHub(baseRoutes) {
         path: 'messages',
         component: () => import('../views/user/Messages.vue'),
       })
+    }
+    const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
+    if (style === 'editorial') {
+      const red = kids.find((c) => c.path === '' && c.redirect != null)
+      if (red) red.redirect = '/home'
     }
   }
   const admin = routes.find((r) => r.path === '/admin')
@@ -217,6 +229,23 @@ function withFavoritesRoutes(baseRoutes) {
     kids.splice(at, 0, {
       path: 'favorites',
       component: () => import('../views/user/MyFavorites.vue'),
+    })
+  }
+  return routes
+}
+
+/** 一对一私信：有 dm 能力时挂门户入口 */
+function withDmRoutes(baseRoutes) {
+  if (!hasCap('dm')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'dm')) {
+    const msgIdx = kids.findIndex((c) => c.path === 'messages')
+    const at = msgIdx >= 0 ? msgIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'dm',
+      component: () => import('../views/user/Dm.vue'),
     })
   }
   return routes
@@ -591,7 +620,7 @@ function pickRoutes() {
     withOrderReviewRoutes(
       withCouponRoutes(
         withArchiveLogRoutes(
-          withBrowseHistoryRoutes(withFavoritesRoutes(withGuestbookRoutes(routes))),
+          withBrowseHistoryRoutes(withFavoritesRoutes(withDmRoutes(withGuestbookRoutes(routes)))),
         ),
       ),
     ),

@@ -7,6 +7,8 @@ export const APP_DELIVERED = {
   chrome: 'soft',
   layout: 'topbar',
   typeface: 'clean',
+  portalHomeStyle: 'cards',
+  domain: '',
   flavor: 'generic',
   domainLabel: '通用',
   traits: { addressBook: true },

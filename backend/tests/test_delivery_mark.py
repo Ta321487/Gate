@@ -48,7 +48,8 @@ def test_apply_delivery_mark_ready_then_delivered(tmp_path):
     assert project_svc.apply_delivery_mark(p, "delivered") == "delivered"
 
 
-def test_apply_delivery_mark_delivered_requires_ready(tmp_path):
+def test_apply_delivery_mark_none_to_delivered_when_downloadable(tmp_path):
+    """质检可下时允许一步标已交付（跳过可交付暂存）。"""
     zip_file = tmp_path / "demo.zip"
     zip_file.write_bytes(b"PK")
     p = SimpleNamespace(
@@ -58,5 +59,16 @@ def test_apply_delivery_mark_delivered_requires_ready(tmp_path):
         gates={"overall": True, "zip_allowed": True},
         zip_path=str(zip_file),
     )
-    with pytest.raises(ValueError, match="请先标记"):
+    assert project_svc.apply_delivery_mark(p, "delivered") == "delivered"
+
+
+def test_apply_delivery_mark_delivered_blocked_without_zip(tmp_path):
+    p = SimpleNamespace(
+        status="generated",
+        delivery_mark="none",
+        zip_ready=False,
+        gates={"overall": False, "zip_allowed": False},
+        zip_path=None,
+    )
+    with pytest.raises(ValueError, match="质量检查未通过"):
         project_svc.apply_delivery_mark(p, "delivered")

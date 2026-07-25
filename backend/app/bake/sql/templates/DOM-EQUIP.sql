@@ -92,7 +92,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '实验室主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '器材管理员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '借用人甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"男","employeeNo":"S20230001","dept":"机电工程学院","identityType":"学生","labOrOffice":"机电楼 301"}',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNo":"S20230001","dept":"机电工程学院","identityType":"学生","labOrOffice":"机电楼 301"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 

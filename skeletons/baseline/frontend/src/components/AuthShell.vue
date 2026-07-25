@@ -506,13 +506,70 @@ onMounted(() => {
   justify-content: center;
 }
 
+/* 资讯侧栏：表单在左，右侧竖幅品牌 + 底色主张块（与门户 editorial 呼应） */
+.auth[data-auth="editorial"] .stage {
+  grid-template-columns: 1.05fr 0.9fr;
+  width: min(980px, 100%);
+}
+.auth[data-auth="editorial"] .brand { order: 2; }
+.auth[data-auth="editorial"] .panel { order: 1; }
+.auth[data-auth="editorial"] .brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 420px;
+  padding: 28px 24px 24px;
+}
+.auth[data-auth="editorial"] .glow { opacity: 0.35; }
+.auth[data-auth="editorial"] .eyebrow {
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.auth[data-auth="editorial"] .points {
+  margin: auto 0 0;
+  padding: 14px 16px 16px;
+  background: var(--portal-accent, #0b6e75);
+  border-radius: 4px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+.auth[data-auth="editorial"] .points li {
+  color: #fff;
+  opacity: 0.95;
+}
+.auth[data-auth="editorial"] .points li::before {
+  background: #fff;
+}
+.auth[data-auth="editorial"] .tpl-tag { display: none; }
+.auth[data-hero="1"][data-auth="editorial"] .brand {
+  background-image:
+    linear-gradient(180deg, rgba(8, 20, 28, 0.15) 0%, rgba(8, 20, 28, 0.72) 100%),
+    var(--auth-hero);
+  background-size: cover;
+  background-position: center;
+}
+.auth[data-wide="1"][data-auth="editorial"] .stage {
+  width: min(1040px, 100%);
+}
+
 @media (max-width: 820px) {
   .auth[data-auth="split"] .stage,
   .auth[data-auth="mirror"] .stage,
-  .auth[data-auth="folio"] .stage {
+  .auth[data-auth="folio"] .stage,
+  .auth[data-auth="editorial"] .stage {
     grid-template-columns: 1fr;
   }
-  .auth[data-auth="mirror"] .brand { order: 0; }
+  .auth[data-auth="mirror"] .brand,
+  .auth[data-auth="editorial"] .brand { order: 0; }
+  .auth[data-auth="editorial"] .panel { order: 1; }
+  .auth[data-auth="editorial"] .brand {
+    min-height: 200px;
+    justify-content: flex-end;
+  }
   .auth[data-auth="folio"] .brand {
     border-right: none;
     border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);

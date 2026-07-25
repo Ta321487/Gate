@@ -206,7 +206,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 **楼中楼（FORUM，在范围内）**：同一主帖下多条回复即楼层；「回复某人」用正文 `@昵称` 一层引用。不接无限深度树形引擎。
 
-**刻意不接（reject / out_of_mvp）**：实时私信、富文本协同编辑、人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。域目录 `out_of_mvp` 只是壳默认示意，可改 `domains_catalog/` 各条目；项目交付清单由 `compose_out_of_mvp`（相关默认项 ∪ 开题扫词）合成。
+**刻意不接（reject / out_of_mvp）**：WebSocket/IM SDK 实时推送、富文本协同编辑、人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。毕设级一对一私信已落地为 `dm`（短轮询）。域目录 `out_of_mvp` 只是壳默认示意，可改 `domains_catalog/` 各条目；项目交付清单由 `compose_out_of_mvp`（相关默认项 ∪ 开题扫词）合成。
 
 轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / FORUM / BLOG；**不是**协同过滤。
 
@@ -309,7 +309,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 |--------|-------------------|----------|
 | 真短信 / 邮件通道 | 站内信 + 验证码（本地/演示） | 运营商/SMTP |
 | 地图 SDK（选点/导航） | 地址簿纯文本 | 高德/腾讯等 |
-| 实时客服 IM | 留言板 / 站内信 | WebSocket 私信 |
+| 实时客服 IM / WebSocket 推送 | 一对一私信（短轮询，`dm`） / 留言板 / 站内信 | 环信/融云/WebSocket 推送引擎 |
 | 电子发票 / 税控 | 不接 | 开票服务对接 |
 | 数据大屏 / 自定义报表 | 工作台 ECharts | 大屏工程 |
 | 完整 SKU / 候补队列引擎 | 演示库存 + 时段占坑 | 独立库存/候补引擎 |
@@ -327,7 +327,9 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 
 ### L3 · 仍不接（超毕设纯 Web 舒适区 / OOS）
 
-人脸/指纹门禁、物联网传感器、真微信支付支付宝、小程序/安卓为交付物、协同过滤与深度学习训练、直播弹幕与转码 CDN、区块链、Hadoop/Spark、BPMN 可配置工作流、多仓批次 ERP、实时私信与无限楼中楼树、富文本多人协同编辑。
+人脸/指纹门禁、物联网传感器、真微信支付支付宝、小程序/安卓为交付物、协同过滤与深度学习训练、直播弹幕与转码 CDN、区块链、Hadoop/Spark、BPMN 可配置工作流、多仓批次 ERP、WebSocket/IM SDK 实时推送与无限楼中楼树、富文本多人协同编辑。
+
+（毕设级一对一私信已落地为可选能力 `dm`：短轮询，非 WebSocket。）
 
 **学历 / 真实生产（硬不接）**：硕士研究生、博士研究生课题；真实业务全流程 / 生产级全链路。本产品只做 **专科/本科毕设与课设** 演示级 Web 管理。
 

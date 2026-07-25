@@ -247,6 +247,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     )
     from app.bake.features.archive_log import apply_archive_log_to_spec
     from app.bake.features.favorites import apply_favorites_to_spec
+    from app.bake.features.dm import apply_dm_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
     from app.bake.features.loyalty import apply_loyalty_to_spec
     from app.bake.features.order_extras import apply_order_extras_to_spec
@@ -288,6 +289,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     schema["out_of_mvp_signals"] = decision["out_of_mvp_signals"]
 
     apply_reservation_options_from_proposal(schema, body)
+    from app.bake.features.ticket_flow_opts import apply_ticket_flow_opts_to_schema
+
+    apply_ticket_flow_opts_to_schema(schema, body)
 
     # 「本期不做」随域目录 + 开题扫描合成；不把 catalog 列表当写死交付契约
     composed_oos = compose_out_of_mvp(
@@ -320,10 +324,16 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     }
     out = apply_loyalty_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
+    out = apply_dm_to_spec(out, body)
     out = apply_favorites_to_spec(out, body)
     out = apply_ux_to_spec(out, body)
     out = apply_archive_log_to_spec(out, body)
     out = apply_order_extras_to_spec(out, body)
+    from app.bake.features.core_cap_scan import apply_core_caps_to_spec
+    from app.bake.features.ticket_flow_opts import apply_ticket_flow_opts_to_spec
+
+    out = apply_core_caps_to_spec(out, body)
+    out = apply_ticket_flow_opts_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
     from app.bake.domains import DOMAINS
@@ -471,6 +481,40 @@ _MATERIAL_HEADER_RE = re.compile(r"【材料[：:][^】]*】\s*")
 _THESIS_BOILER_RE = re.compile(
     r"(?:本科)?毕业设计[（(]?论文[）)]?开题报告\s*(?:题目[：:]\s*)?"
 )
+_AUTH_LEAD_FALLBACK = "验证码登录，开放注册；登录后可使用系统主流程。"
+# 开题合并正文 / 样例文件名不得上登录页与轮播
+_UI_COPY_DOM_ID_RE = re.compile(r"(?:^|[^\w-])DOM-[A-Z]{2,}(?:-|[^A-Z]|$)")
+_UI_COPY_SAMPLE_FILE_RE = re.compile(r"\d{1,2}-DOM-[A-Z]+")
+
+
+def ui_copy_polluted(text: str) -> bool:
+    """界面导语是否粘进开题材料头、样例文件名或开题报告套话。"""
+    s = str(text or "")
+    if not s.strip():
+        return False
+    if "【材料：" in s or "【材料:" in s:
+        return True
+    if "开题报告" in s:
+        return True
+    if ".txt】" in s or ".txt]" in s:
+        return True
+    if _UI_COPY_SAMPLE_FILE_RE.search(s) or _UI_COPY_DOM_ID_RE.search(s):
+        return True
+    if "题目：" in s or "题目:" in s:
+        return True
+    if "毕业设计" in s and ("论文" in s or "Spring" in s or "Vue" in s):
+        return True
+    return False
+
+
+def scrub_ui_copy(text: str, *, fallback: str = "") -> str:
+    """污染则回退；否则原样（已截断的开题句不硬修）。"""
+    raw = str(text or "").strip()
+    if not raw:
+        return fallback
+    if ui_copy_polluted(raw):
+        return fallback
+    return raw
 
 
 def _ui_safe_excerpt(text: str, limit: int = 80) -> str:
@@ -479,6 +523,8 @@ def _ui_safe_excerpt(text: str, limit: int = 80) -> str:
     s = _MATERIAL_HEADER_RE.sub("", s)
     s = _THESIS_BOILER_RE.sub("", s)
     s = re.sub(r"\s+", " ", s).strip(" ：:，,。.")
+    if ui_copy_polluted(s):
+        return ""
     return s[:limit]
 
 
@@ -503,14 +549,14 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
     # 污染的导语槽清空，后面按缺省补中性句（与 _welcome_lead 同一套材料头判断）
     for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
         raw = str(labels.get(key) or "")
-        if "【材料：" in raw or "【材料:" in raw or "开题报告" in raw:
+        if ui_copy_polluted(raw):
             labels[key] = ""
     # 保留领域已给的短产品名；勿用开题长标题盖掉
     if not labels.get("appName") or labels.get("appName") == title:
         labels["appName"] = product_name_from_title(title)
     # 领域壳已写 authLead 时绝不覆盖；缺省才给中性登录导语（禁止粘贴开题原文）
     if not str(labels.get("authLead") or "").strip():
-        labels["authLead"] = "验证码登录，开放注册；登录后可使用系统主流程。"
+        labels["authLead"] = _AUTH_LEAD_FALLBACK
     seeds = dict((spec.get("schema") or {}).get("seeds") or {})
     if not seeds.get("noticeTitle"):
         seeds["noticeTitle"] = f"{title}上线通知"

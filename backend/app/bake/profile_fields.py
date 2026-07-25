@@ -204,6 +204,13 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("dept", "专业/方向", required=True, on_register=True, max_length=64),
         _pf("jobTitle", "求职意向", on_register=True, max_length=32),
     ],
+    "DOM-DATING": [
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["会员", "征婚者"]),
+        _pf("city", "所在城市", required=True, on_register=True, max_length=32),
+        _pf("education", "学历", on_register=True, max_length=16),
+        _pf("ageRange", "年龄段", on_register=True, max_length=16, placeholder="如 26-30"),
+    ],
     "DOM-GRADE": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系", required=True, on_register=True, max_length=64),
@@ -430,8 +437,20 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
             options=["流行", "摇滚", "民谣", "电子", "古典", "不限"]),
     ],
     "DOM-FORUM": [
-        _pf("memberNo", "用户号", on_register=True, max_length=32),
-        _pf("orgName", "学院/单位", on_register=True, max_length=64),
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["学生", "教职工", "其他"]),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["学生"]),
+            visible_when=_when("identityType", ["学生"])),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+            required_when=_when("identityType", ["教职工"]),
+            visible_when=_when("identityType", ["教职工"])),
+        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+            required_when=_when("identityType", ["学生", "教职工"]),
+            visible_when=_when("identityType", ["学生", "教职工"])),
+        _pf("orgName", "单位/组织", on_register=True, max_length=64,
+            required_when=_when("identityType", ["其他"]),
+            visible_when=_when("identityType", ["其他"])),
         _pf("preferredGenre", "偏好板块", on_register=True, field_type="select",
             options=["学习交流", "校园生活", "二手信息", "求助问答", "不限"]),
     ],
@@ -649,6 +668,16 @@ _RECRUIT_ENTERPRISE: list[dict[str, Any]] = [
         placeholder="如 3 年"),
 ]
 
+_DATING_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["学生", "校友"]),
+    _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("dept", "院系", required=True, on_register=True, max_length=64),
+    _pf("gradeYear", "年级", on_register=True, max_length=16),
+]
+
 _LOST_ADOPT: list[dict[str, Any]] = [
     _pf("contactWechat", "微信/备用联系", required=True, on_register=True, max_length=64),
     _pf("homeAddress", "居住地址", on_register=True, max_length=128,
@@ -671,6 +700,128 @@ _LOST_COMMUNITY: list[dict[str, Any]] = [
     _pf("usualPlace", "常出现区域", on_register=True, max_length=64,
         placeholder="如小区、写字楼"),
     _pf("orgName", "单位/住址", on_register=True, max_length=64),
+]
+
+_FUND_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"])),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "其他"]),
+        visible_when=_when("identityType", ["外包", "其他"])),
+]
+
+_GRADE_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包学员"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        placeholder="请填写工号"),
+    _pf("dept", "部门/岗位", required=True, on_register=True, max_length=64),
+]
+
+_INTERN_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["实习生", "见习生"]),
+    _pf("employeeNo", "工号/实习号", required=True, on_register=True, max_length=32),
+    _pf("dept", "实习部门", required=True, on_register=True, max_length=64),
+    _pf("internOrg", "实习单位", on_register=True, max_length=64, placeholder="默认本公司"),
+]
+
+_LABSAFE_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "访客施工"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"])),
+    _pf("dept", "部门/班组", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工", "外包"]),
+        visible_when=_when("identityType", ["员工", "外包"])),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "访客施工"]),
+        visible_when=_when("identityType", ["外包", "访客施工"])),
+]
+
+_PROPERTY_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["学生", "教职工"]),
+    _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["教职工"]),
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+    _pf("dormBuilding", "楼栋", required=True, on_register=True, max_length=32,
+        placeholder="如 学生公寓3号楼"),
+    _pf("dormRoom", "房间", required=True, on_register=True, max_length=16, placeholder="如 405"),
+]
+
+_MEDIA_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["学生", "教职工", "其他"]),
+    _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["教职工"]),
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["学生", "教职工"]),
+        visible_when=_when("identityType", ["学生", "教职工"])),
+    _pf("preferredGenre", "偏好类型", on_register=True, field_type="select",
+        options=["教学片", "纪录片", "活动回放", "影视综", "不限"]),
+]
+
+_MUSIC_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["学生", "教职工", "其他"]),
+    _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["教职工"]),
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["学生", "教职工"]),
+        visible_when=_when("identityType", ["学生", "教职工"])),
+    _pf("preferredGenre", "偏好曲风", on_register=True, field_type="select",
+        options=["合唱", "器乐", "校园原创", "流行", "不限"]),
+]
+
+_BLOG_CAMPUS: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["学生", "教职工", "其他"]),
+    _pf("studentNo", "学号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["学生"]),
+        visible_when=_when("identityType", ["学生"])),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["教职工"]),
+        visible_when=_when("identityType", ["教职工"])),
+    _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["学生", "教职工"]),
+        visible_when=_when("identityType", ["学生", "教职工"])),
+    _pf("preferredGenre", "偏好栏目", on_register=True, field_type="select",
+        options=["教学", "学工", "活动", "资讯", "不限"]),
+]
+
+_FORUM_COMMUNITY: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["居民", "访客"]),
+    _pf("communityName", "小区/社区", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["居民"]),
+        visible_when=_when("identityType", ["居民"]),
+        placeholder="所在小区或社区"),
+    _pf("orgName", "单位/组织", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客"]),
+        visible_when=_when("identityType", ["访客"])),
+    _pf("preferredGenre", "偏好板块", on_register=True, field_type="select",
+        options=["邻里互助", "二手闲置", "活动通知", "求助问答", "不限"]),
 ]
 
 
@@ -706,6 +857,8 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
         return _IT_ENTERPRISE if scene == "enterprise" else None
     if domain == "DOM-RECRUIT":
         return None if scene == "campus" else _RECRUIT_ENTERPRISE
+    if domain == "DOM-DATING":
+        return _DATING_CAMPUS if scene == "campus" else None
     if domain == "DOM-LOST":
         if scene == "adopt":
             return _LOST_ADOPT
@@ -714,6 +867,24 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
         return None
     if domain == "DOM-HOSPITAL":
         return _HOSPITAL_PET if scene == "adopt" else None
+    if domain == "DOM-FUND":
+        return _FUND_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-GRADE":
+        return _GRADE_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-INTERN":
+        return _INTERN_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-LABSAFE":
+        return _LABSAFE_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-PROPERTY":
+        return _PROPERTY_CAMPUS if scene == "campus" else None
+    if domain == "DOM-MEDIA":
+        return _MEDIA_CAMPUS if scene == "campus" else None
+    if domain == "DOM-MUSIC":
+        return _MUSIC_CAMPUS if scene == "campus" else None
+    if domain == "DOM-BLOG":
+        return _BLOG_CAMPUS if scene == "campus" else None
+    if domain == "DOM-FORUM":
+        return _FORUM_COMMUNITY if scene == "community" else None
     return None
 
 

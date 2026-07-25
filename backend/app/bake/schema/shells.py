@@ -44,6 +44,7 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-SHOP",
     "DOM-MEETING",
     "DOM-RECRUIT",
+    "DOM-DATING",
     "DOM-EVENT",
     "DOM-ASSET",
     "DOM-PARKING",
@@ -53,6 +54,15 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-LOST",
     "DOM-CRM",
     "DOM-IT",
+    "DOM-FUND",
+    "DOM-GRADE",
+    "DOM-INTERN",
+    "DOM-LABSAFE",
+    "DOM-PROPERTY",
+    "DOM-MEDIA",
+    "DOM-MUSIC",
+    "DOM-BLOG",
+    "DOM-FORUM",
 })
 
 from app.bake.scene_scan import (  # noqa: E402

@@ -37,6 +37,7 @@ ATTEND_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "
 EVENT_CAMPUS_HINTS = ("晨午检", "因病缺课", "校园", "班级", "学生", "学校", "高校")
 RECRUIT_CAMPUS_HINTS = ("校园", "校招", "高校", "毕业生", "大学生", "双选会", "就业")
 RECRUIT_ENTERPRISE_HINTS = ("企业", "公司", "人事", "人力资源", "HR")
+DATING_CAMPUS_HINTS = ("校园", "高校", "大学生", "同学", "校内", "学工", "院系", "学校")
 CRM_ENTERPRISE_HINTS = ("业务员", "销售", "客户经理", "客户跟进", "中小企业", "线索", "意向客户")
 CRM_CAMPUS_EXTRA = ("校园创业", "创业孵化", "学生团队")
 PARCEL_COMMUNITY_HINTS = ("社区", "小区", "菜鸟", "丰巢", "代收点")
@@ -60,6 +61,39 @@ IT_ENTERPRISE_HINTS = ("企业", "公司", "办公", "员工", "运维工单")
 FOOD_CAMPUS_HINTS = ("食堂", "校园", "档口", "学子", "高校", "学校")
 SHOP_CAMPUS_HINTS = ("校园", "校内", "二手", "学校", "高校")
 HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
+# 资助：校园奖助学金默认；企业员工福利/补助走 enterprise
+FUND_CAMPUS_HINTS = (
+    "学生资助",
+    "奖学金",
+    "助学金",
+    "困难补助",
+    "奖助",
+    "学工",
+    "高校",
+    "校园",
+    "学生",
+)
+FUND_ENTERPRISE_HINTS = ("员工福利", "企业补助", "人事福利", "职工补助", "内部福利", "HR福利")
+# 成绩：教务默认；企业内训/培训考核走 enterprise
+GRADE_ENTERPRISE_HINTS = ("内训", "培训成绩", "员工考核", "培训结业", "企业培训", "岗位认证")
+# 实习：校就业办默认；企业带教周报走 enterprise
+INTERN_ENTERPRISE_HINTS = ("企业带教", "带教导师", "校招实习生", "入职实习", "企业实习生", "导师审阅周报")
+# 实验室准入：校园默认；厂区/安环走 enterprise
+LABSAFE_ENTERPRISE_HINTS = ("厂区", "安环", "企业实验室", "EHS准入", "产线实验室", "车间实验室")
+# 物业：小区住户默认；校园物业/公寓走 campus
+PROPERTY_CAMPUS_HINTS = ("校园物业", "学生公寓", "高校物业", "宿舍物业", "校园报修", "学校物业")
+# 内容域：商业点播默认；校园媒资/院刊走 campus
+CONTENT_CAMPUS_HINTS = ("校园", "高校", "学校", "院系", "学院", "学工", "大学生")
+# 论坛：校园 BBS 默认；兴趣/小区社区走 community（有校园词仍 campus）
+FORUM_COMMUNITY_HINTS = (
+    "兴趣社区",
+    "社区论坛",
+    "居民论坛",
+    "小区论坛",
+    "同城论坛",
+    "贴吧",
+    "邻里互助",
+)
 
 Scene = Literal[
     "campus",
@@ -79,6 +113,7 @@ SCENE_BRANCH_DOMAINS = frozenset(
         "DOM-ATTEND",
         "DOM-EVENT",
         "DOM-RECRUIT",
+        "DOM-DATING",
         "DOM-PARCEL",
         "DOM-MEETING",
         "DOM-PARKING",
@@ -88,6 +123,15 @@ SCENE_BRANCH_DOMAINS = frozenset(
         "DOM-SHOP",
         "DOM-HOSPITAL",
         "DOM-SALON",
+        "DOM-FUND",
+        "DOM-GRADE",
+        "DOM-INTERN",
+        "DOM-LABSAFE",
+        "DOM-PROPERTY",
+        "DOM-MEDIA",
+        "DOM-MUSIC",
+        "DOM-BLOG",
+        "DOM-FORUM",
     }
 )
 
@@ -153,6 +197,13 @@ def scene_recruit(text: str) -> Scene:
     return "campus"  # 默认校招（与 builder 一致）
 
 
+def scene_dating(text: str) -> Scene:
+    """校园交友 vs 社区相亲；未写清默认社区。"""
+    if scan_has(text, DATING_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    return "community"
+
+
 def scene_parcel(text: str) -> Scene:
     if scan_has(text, PARCEL_COMMUNITY_HINTS) and not scan_has(text, PARCEL_CAMPUS_HINTS):
         return "community"
@@ -211,6 +262,75 @@ def scene_salon(text: str) -> Scene:
     return "commercial"
 
 
+def scene_fund(text: str) -> Scene:
+    """默认校园资助；开题写清员工福利/企业补助时 enterprise。"""
+    if scan_has(text, FUND_ENTERPRISE_HINTS):
+        return "enterprise"
+    if scan_has(text, FUND_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    return "campus"
+
+
+def scene_grade(text: str) -> Scene:
+    """默认教务成绩；内训/培训考核走 enterprise。"""
+    if scan_has(text, GRADE_ENTERPRISE_HINTS):
+        return "enterprise"
+    return "campus"
+
+
+def scene_intern(text: str) -> Scene:
+    """默认校就业办周报；企业带教走 enterprise。"""
+    if scan_has(text, INTERN_ENTERPRISE_HINTS):
+        return "enterprise"
+    return "campus"
+
+
+def scene_labsafe(text: str) -> Scene:
+    """默认校园实验室准入；厂区/安环走 enterprise。"""
+    if scan_has(text, LABSAFE_ENTERPRISE_HINTS):
+        return "enterprise"
+    return "campus"
+
+
+def scene_property(text: str) -> Scene:
+    """默认小区物业；校园公寓/高校物业走 campus。"""
+    if scan_has(text, PROPERTY_CAMPUS_HINTS) or (
+        is_campus_general(text) and scan_has(text, ("物业", "报修", "公寓"))
+    ):
+        return "campus"
+    return "community"
+
+
+def scene_media(text: str) -> Scene:
+    """默认商业点播；校园媒资走 campus。"""
+    if scan_has(text, CONTENT_CAMPUS_HINTS):
+        return "campus"
+    return "commercial"
+
+
+def scene_music(text: str) -> Scene:
+    if scan_has(text, CONTENT_CAMPUS_HINTS):
+        return "campus"
+    return "commercial"
+
+
+def scene_blog(text: str) -> Scene:
+    if scan_has(text, CONTENT_CAMPUS_HINTS):
+        return "campus"
+    return "commercial"
+
+
+def scene_forum(text: str) -> Scene:
+    """默认校园论坛；开题写清兴趣/小区社区且无校园口径时 community。"""
+    if is_campus_general(text) or scan_has(text, CONTENT_CAMPUS_HINTS):
+        return "campus"
+    if scan_has(text, FORUM_COMMUNITY_HINTS) or (
+        scan_has(text, COMMUNITY_HINTS) and scan_has(text, ("论坛", "BBS", "发帖", "回帖", "贴吧"))
+    ):
+        return "community"
+    return "campus"
+
+
 def scene_for(
     domain: str,
     title: str = "",
@@ -228,6 +348,8 @@ def scene_for(
         return scene_event(t)
     if domain == "DOM-RECRUIT":
         return scene_recruit(t)
+    if domain == "DOM-DATING":
+        return scene_dating(t)
     if domain == "DOM-PARCEL":
         return scene_parcel(t)
     if domain == "DOM-MEETING":
@@ -246,4 +368,22 @@ def scene_for(
         return scene_hospital(t)
     if domain == "DOM-SALON":
         return scene_salon(t)
+    if domain == "DOM-FUND":
+        return scene_fund(t)
+    if domain == "DOM-GRADE":
+        return scene_grade(t)
+    if domain == "DOM-INTERN":
+        return scene_intern(t)
+    if domain == "DOM-LABSAFE":
+        return scene_labsafe(t)
+    if domain == "DOM-PROPERTY":
+        return scene_property(t)
+    if domain == "DOM-MEDIA":
+        return scene_media(t)
+    if domain == "DOM-MUSIC":
+        return scene_music(t)
+    if domain == "DOM-BLOG":
+        return scene_blog(t)
+    if domain == "DOM-FORUM":
+        return scene_forum(t)
     return "default"

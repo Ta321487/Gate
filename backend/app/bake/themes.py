@@ -102,7 +102,19 @@ AUTH_TEMPLATES = [
     {"id": "ribbon", "label": "顶栏色带"},
     {"id": "ledge", "label": "浮台登录"},
     {"id": "folio", "label": "对开页"},
+    {"id": "editorial", "label": "资讯侧栏"},
 ]
+
+# 门户首页构图（与 layout 壳正交）：功能卡片 vs 资讯+侧栏
+PORTAL_HOME_STYLES = [
+    {"id": "cards", "label": "功能卡片首页"},
+    {"id": "editorial", "label": "资讯侧栏首页"},
+]
+
+# 内容域：未手选时按种子在 cards/editorial 间抽；其它域默认 cards
+CONTENT_PORTAL_HOME_DOMAINS = frozenset(
+    {"DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC", "DOM-FORUM"}
+)
 
 AUTH_ENTRY_MODES = [
     {"id": "unified", "label": "统一登录（无身份选择）"},
@@ -188,6 +200,27 @@ def pick_typeface(seed: str | None = None) -> str:
 
 def normalize_typeface(typeface: str | None) -> str:
     return normalize_from_catalog(TYPE_PAIRINGS, typeface, "clean")
+
+
+def pick_portal_home_style(seed: str | None = None) -> str:
+    return pick_from_catalog(PORTAL_HOME_STYLES, seed, "editorial")
+
+
+def normalize_portal_home_style(style: str | None) -> str:
+    return normalize_from_catalog(PORTAL_HOME_STYLES, style, "cards")
+
+
+def resolve_portal_home_style(
+    domain: str,
+    override: str | None,
+    seed: str | None,
+) -> str:
+    """手选优先；内容域未选手动则种子抽 cards/editorial；其它域固定 cards。"""
+    if override:
+        return normalize_portal_home_style(override)
+    if domain in CONTENT_PORTAL_HOME_DOMAINS:
+        return pick_portal_home_style(f"{seed or ''}|portalHome")
+    return "cards"
 
 
 def all_theme_ids() -> set[str]:

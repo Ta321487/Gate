@@ -79,22 +79,22 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '实验室主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '安全员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","employeeNo":"E2026008","dept":"行政办","jobTitle":"科员"}',
+ '{"realName":"周明","email":"zhou@demo.edu","gender":"男","identityType":"学生","studentNo":"S2026008","dept":"化学学院"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '化学实验室'), (2, '机房'), (3, '金工实训');
 INSERT IGNORE INTO lab_room (id, title, building_name, safety_note, category_id, stock, status) VALUES
-(1, '周明', '行政办', 'E2026008 / 坐班', 2, 1, 'available'),
-(2, '李芳', '计算机学院', 'T2026012 / 教师', 1, 1, 'available'),
-(3, '王强', '后勤处', 'L2026003 / 维修', 3, 1, 'available'),
-(4, '赵敏', '教务处', 'A2026044 / 教务员', 2, 1, 'available'),
-(5, '陈浩', '外国语学院', 'T2026088 / 教师', 1, 1, 'available');
+(1, '有机化学实验室 A301', '化学楼 / 张老师', '二级安全 / 需安全培训证', 1, 1, 'available'),
+(2, '软件实训机房 B205', '信息楼 / 李老师', '普通机房 / 门禁卡准入', 2, 1, 'available'),
+(3, '金工实训车间 C101', '工程训练中心 / 王工', '护目镜必戴 / 安全等级高', 3, 1, 'available'),
+(4, '分析化学实验室 A208', '化学楼 / 赵老师', '危化品柜已上锁', 1, 1, 'available'),
+(5, '嵌入式实验室 B312', '信息楼 / 陈老师', '示波器与开发板在架', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '准入须知', '请完成安全培训并上传证明；审核通过后方可进室。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='准入须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周准入', '月底前提交未销假单据，逾期将记入准入材料异常。', 'admin', '实验室主管'
+SELECT '本周准入', '本周开放有机化学与机房准入申请，请提前完成培训。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周准入');
 
 CREATE TABLE IF NOT EXISTS `access_apply_progress` (

@@ -5,19 +5,24 @@ from __future__ import annotations
 from typing import Any
 
 from app.bake.schema.shells import (
+    _copy_scan_text,
     _with_portal_banners,
     archive_favorites_schema,
     archive_ticket_schema,
 )
 
-def _media_schema(title: str) -> dict[str, Any]:
+def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """影视点播：商业默认；校园媒资走 campus。"""
+    from app.bake.scene_scan import scene_media
+
+    campus = scene_media(_copy_scan_text(title, proposal_text)) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-MEDIA",
             user_role_id="user",
-            user_label="观众",
-            admin_label="内容总监（总管）",
+            user_label="师生" if campus else "观众",
+            admin_label="媒资主管（总管）" if campus else "内容总监（总管）",
             subadmin_label="运营编辑",
             archive_key="media",
             archive_label="影片",
@@ -33,8 +38,12 @@ def _media_schema(title: str) -> dict[str, Any]:
             archive_menu_admin="片单管理",
             archive_menu_user="片单检索",
             users_menu="用户管理",
-            auth_eyebrow="影视点播",
-            auth_lead="验证码登录；浏览片单、在线播放，收藏想看的影视综。",
+            auth_eyebrow="校园媒资" if campus else "影视点播",
+            auth_lead=(
+                "验证码登录；浏览校园片单、在线播放，收藏想看的影视综。"
+                if campus
+                else "验证码登录；浏览片单、在线播放，收藏想看的影视综。"
+            ),
             auth_points=["验证码登录", "片单检索与播放", "收藏想看"],
             register_hint="注册后可浏览片单并收藏",
             notice_title="观影须知",
@@ -47,7 +56,14 @@ def _media_schema(title: str) -> dict[str, Any]:
             soft_delete=True,
         ),
         [
-            {"title": "热播片单", "lead": "电影、电视剧、综艺分类浏览，点击即可播放。"},
+            {
+                "title": "热播片单",
+                "lead": (
+                    "教学片、纪录片、活动回放分类浏览，点击即可播放。"
+                    if campus
+                    else "电影、电视剧、综艺分类浏览，点击即可播放。"
+                ),
+            },
             {"title": "收藏想看", "lead": "感兴趣的内容一键收藏，方便下次回看。"},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据浏览偏好推荐片单。"},
@@ -55,13 +71,17 @@ def _media_schema(title: str) -> dict[str, Any]:
         ],
     )
 
-def _music_schema(title: str) -> dict[str, Any]:
+def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """在线音乐：商业默认；校园曲库走 campus。"""
+    from app.bake.scene_scan import scene_music
+
+    campus = scene_music(_copy_scan_text(title, proposal_text)) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-MUSIC",
             user_role_id="user",
-            user_label="听众",
+            user_label="师生" if campus else "听众",
             admin_label="曲库主管（总管）",
             subadmin_label="运营编辑",
             archive_key="track",
@@ -78,8 +98,12 @@ def _music_schema(title: str) -> dict[str, Any]:
             archive_menu_admin="曲库管理",
             archive_menu_user="曲库检索",
             users_menu="用户管理",
-            auth_eyebrow="在线音乐",
-            auth_lead="验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。",
+            auth_eyebrow="校园曲库" if campus else "在线音乐",
+            auth_lead=(
+                "验证码登录；浏览校园曲库、在线试听，收藏喜欢的歌曲。"
+                if campus
+                else "验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。"
+            ),
             auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"],
             register_hint="注册后可浏览曲库并收藏",
             notice_title="试听须知",
@@ -92,7 +116,14 @@ def _music_schema(title: str) -> dict[str, Any]:
             soft_delete=True,
         ),
         [
-            {"title": "热门曲库", "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。"},
+            {
+                "title": "热门曲库",
+                "lead": (
+                    "合唱、器乐、校园原创等分类浏览，点击即可试听。"
+                    if campus
+                    else "流行、摇滚、民谣等分类浏览，点击即可试听。"
+                ),
+            },
             {"title": "收藏喜欢", "lead": "喜欢的歌曲一键收藏，方便下次回听。"},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据听歌偏好推荐曲目。"},
@@ -100,13 +131,17 @@ def _music_schema(title: str) -> dict[str, Any]:
         ],
     )
 
-def _forum_schema(title: str) -> dict[str, Any]:
+def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """论坛：校园 BBS 默认；兴趣/小区社区走 community。"""
+    from app.bake.scene_scan import scene_forum
+
+    community = scene_forum(_copy_scan_text(title, proposal_text)) == "community"
     return _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-FORUM",
             user_role_id="user",
-            user_label="用户",
+            user_label="居民" if community else "师生",
             admin_label="站长（总管）",
             subadmin_label="版主",
             archive_key="post",
@@ -139,8 +174,12 @@ def _forum_schema(title: str) -> dict[str, Any]:
             archive_menu_admin="主帖管理",
             archive_menu_user="帖子检索",
             users_menu="用户管理",
-            auth_eyebrow="校园论坛",
-            auth_lead="验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。",
+            auth_eyebrow="兴趣社区" if community else "校园论坛",
+            auth_lead=(
+                "验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。"
+                if not community
+                else "验证码登录；邻里发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。"
+            ),
             auth_points=["验证码登录", "发帖与检索", "富文本回复与楼中楼"],
             register_hint="注册后可发帖并回复",
             notice_title="社区公约",
@@ -160,7 +199,14 @@ def _forum_schema(title: str) -> dict[str, Any]:
             approve_ends_flow=True,
         ),
         [
-            {"title": "热门板块", "lead": "学习、生活、二手信息分区浏览主帖。"},
+            {
+                "title": "热门板块",
+                "lead": (
+                    "邻里互助、二手闲置、活动通知分区浏览主帖。"
+                    if community
+                    else "学习、生活、二手信息分区浏览主帖。"
+                ),
+            },
             {"title": "发帖讨论", "lead": "登录后发布主帖，跟帖回复支持引用。"},
             {"title": "站内公告", "lead": "版规与活动通知见公告栏。"},
             {"title": "我的帖子", "lead": "登录后管理本人发帖与回复进度。"},
@@ -168,13 +214,17 @@ def _forum_schema(title: str) -> dict[str, Any]:
         ],
     )
 
-def _blog_schema(title: str) -> dict[str, Any]:
+def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """博客：个人站默认；校园院刊/学工资讯走 campus。"""
+    from app.bake.scene_scan import scene_blog
+
+    campus = scene_blog(_copy_scan_text(title, proposal_text)) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-BLOG",
             user_role_id="user",
-            user_label="读者",
+            user_label="师生" if campus else "读者",
             admin_label="主编（总管）",
             subadmin_label="编辑",
             archive_key="article",
@@ -191,8 +241,12 @@ def _blog_schema(title: str) -> dict[str, Any]:
             archive_menu_admin="文章管理",
             archive_menu_user="文章检索",
             users_menu="用户管理",
-            auth_eyebrow="个人博客",
-            auth_lead="验证码登录；按分类阅读富文本文章，收藏喜欢的博文。",
+            auth_eyebrow="校园资讯" if campus else "个人博客",
+            auth_lead=(
+                "验证码登录；按分类阅读院刊/学工资讯，收藏喜欢的文章。"
+                if campus
+                else "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。"
+            ),
             auth_points=["验证码登录", "文章检索与阅读", "收藏订阅"],
             register_hint="注册后可阅读文章并收藏",
             notice_title="阅读须知",
@@ -205,11 +259,17 @@ def _blog_schema(title: str) -> dict[str, Any]:
             soft_delete=True,
         ),
         [
-            {"title": "最新文章", "lead": "技术、随笔、资讯分类浏览富文本正文。"},
+            {
+                "title": "最新文章",
+                "lead": (
+                    "教学、学工、活动资讯分类浏览富文本正文。"
+                    if campus
+                    else "技术、随笔、资讯分类浏览富文本正文。"
+                ),
+            },
             {"title": "收藏订阅", "lead": "喜欢的文章一键收藏，方便回看。"},
             {"title": "站点公告", "lead": "上新与征稿通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据阅读偏好推荐文章。"},
             {"title": "分类阅读", "lead": "按分类快速进入感兴趣的专栏。"},
         ],
     )
-

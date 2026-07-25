@@ -99,10 +99,45 @@ def test_dorm_repairer_when_opening_wants():
     ]
 
 
-def test_corpus_samples_no_orphan_workers():
-    """近五年缩样（未写现场岗）不应挂可选 worker。"""
+def test_it_default_no_field_tech():
+    assert _ids("DOM-IT") == ["ops"]
+
+
+def test_it_field_tech_when_opening_wants():
+    assert _ids("DOM-IT", "网络故障报修后安排上门运维现场排障。") == [
+        "ops",
+        "field_tech",
+    ]
+
+
+def test_parcel_default_no_courier():
+    assert _ids("DOM-PARCEL") == ["parcel_clerk"]
+
+
+def test_parcel_courier_when_opening_wants():
+    assert _ids("DOM-PARCEL", "驿站入库后由派件员上门派件。") == [
+        "parcel_clerk",
+        "courier",
+    ]
+
+
+def test_hospital_default_no_nurse_worker():
+    assert _ids("DOM-HOSPITAL") == ["registrar"]
+
+
+def test_hospital_nurse_when_opening_wants():
+    assert _ids("DOM-HOSPITAL", "挂号后由导诊护士分诊引导就诊。") == [
+        "registrar",
+        "nurse",
+    ]
+
+
+def test_corpus_samples_worker_matches_scan():
+    """缩样挂 worker 须与扫词一致：写了现场岗才挂，没写不挂。"""
     import json
     from pathlib import Path
+
+    from app.bake.staff_posts import _OPTIONAL_WORKERS, _proposal_wants_any
 
     corp = json.loads(
         Path(__file__).resolve().parent.joinpath(
@@ -115,4 +150,11 @@ def test_corpus_samples_no_orphan_workers():
             for p in staff_posts_for_domain(s["domain"], proposal_text=s["text"])
             if p.get("kind") == "worker"
         ]
-        assert workers == [], f"{s['domain']} orphan workers={workers}"
+        expected: list[str] = []
+        for post, hints in _OPTIONAL_WORKERS.get(s["domain"]) or []:
+            pid = str(post.get("id") or "")
+            if pid and _proposal_wants_any(s["text"], hints):
+                expected.append(pid)
+        assert workers == expected, (
+            f"{s['domain']} workers={workers} expected={expected}"
+        )

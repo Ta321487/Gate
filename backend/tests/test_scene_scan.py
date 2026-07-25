@@ -207,11 +207,21 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-LOST", "宠物领养管理系统", "待领养档案与申请", "adopt"),
             ("DOM-PARCEL", "小区快递代收", "菜鸟驿站取件", "community"),
             ("DOM-RECRUIT", "企业社会招聘系统", "HR 社招投递", "enterprise"),
+            ("DOM-DATING", "社区相亲交友平台", "红娘牵线审核", "community"),
             ("DOM-ATTEND", "学生请假销假", "", "campus"),
             ("DOM-MEETING", "企业会议室预约", "部门会议室占坑", "enterprise"),
             ("DOM-PARKING", "商场车位预约", "商场地下车场", "commercial"),
             ("DOM-ASSET", "企业仓储耗材申领", "仓储出库", "enterprise"),
             ("DOM-EVENT", "养老机构健康监测", "照护员打卡上报", "institution"),
+            ("DOM-FUND", "企业员工福利补助申请", "员工福利与困难补助", "enterprise"),
+            ("DOM-GRADE", "企业内训成绩管理系统", "培训成绩与岗位认证", "enterprise"),
+            ("DOM-INTERN", "企业带教实习生周报", "带教导师审阅周报", "enterprise"),
+            ("DOM-LABSAFE", "厂区实验室安环准入", "安环准入与 EHS 培训", "enterprise"),
+            ("DOM-PROPERTY", "校园物业报修系统", "学生公寓物业报修", "campus"),
+            ("DOM-MEDIA", "高校校园媒资点播", "校园教学片点播", "campus"),
+            ("DOM-MUSIC", "高校校园曲库试听", "校园原创曲库", "campus"),
+            ("DOM-BLOG", "高校学工资讯博客", "学工与院刊资讯", "campus"),
+            ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
         self.assertEqual(_SCENE_COPY_DOMAINS, covered)
@@ -279,25 +289,100 @@ class SceneScanContractTests(unittest.TestCase):
         single = [
             "DOM-LIBRARY",
             "DOM-EQUIP",
-            "DOM-FUND",
-            "DOM-LABSAFE",
-            "DOM-GRADE",
-            "DOM-INTERN",
             "DOM-COURSE",
             "DOM-DORM",
-            "DOM-PROPERTY",
             "DOM-HOTEL",
             "DOM-ACTIVITY",
-            "DOM-MEDIA",
-            "DOM-MUSIC",
-            "DOM-FORUM",
-            "DOM-BLOG",
         ]
         for dom in single:
             with self.subTest(dom=dom):
                 schema = build_domain_schema("测试课题", dom, proposal_text="")
                 self.assertTrue(schema.get("labels") or schema.get("roles"))
-                self.assertIn(dom, SCHEMA_BUILDERS)
+
+    def test_thin_domains_scene_shell_and_seed(self) -> None:
+        """原薄域：开题可解析场景，壳与种子跟开题走。"""
+        from app.bake.engine_sql import domain_sql
+
+        fund = build_domain_schema(
+            "企业员工福利补助申请系统",
+            "DOM-FUND",
+            proposal_text="员工福利与困难补助线上申请。",
+        )
+        self.assertEqual(fund["labels"].get("authEyebrow"), "员工福利")
+        self.assertIn("employeeNo", {f["key"] for f in fund["profileFields"]})
+        self.assertNotIn("studentNo", {f["key"] for f in fund["profileFields"]})
+        fund_sql = domain_sql(
+            "DOM-FUND",
+            "thesis_test",
+            title="企业员工福利补助申请系统",
+            proposal_text="员工福利与困难补助线上申请。",
+        )
+        self.assertIn("中秋慰问金", fund_sql)
+        self.assertNotIn("国家助学金", fund_sql)
+
+        campus_fund = build_domain_schema(
+            "高校学生资助奖学金申请系统",
+            "DOM-FUND",
+            proposal_text="国家助学金与校内奖学金申请审核。",
+        )
+        self.assertEqual(campus_fund["labels"].get("authEyebrow"), "学生资助")
+        campus_sql = domain_sql(
+            "DOM-FUND",
+            "thesis_test",
+            title="高校学生资助奖学金申请系统",
+            proposal_text="国家助学金与校内奖学金申请审核。",
+        )
+        self.assertIn("国家助学金", campus_sql)
+        self.assertIn("studentNo", campus_sql)
+
+        prop = build_domain_schema(
+            "校园物业报修系统",
+            "DOM-PROPERTY",
+            proposal_text="学生公寓物业报修受理。",
+        )
+        self.assertEqual(prop["labels"].get("authEyebrow"), "校园物业")
+        self.assertIn("studentNo", {f["key"] for f in prop["profileFields"]})
+
+        media = build_domain_schema(
+            "高校校园媒资点播系统",
+            "DOM-MEDIA",
+            proposal_text="校园教学片与活动回放点播。",
+        )
+        self.assertEqual(media["labels"].get("authEyebrow"), "校园媒资")
+        media_sql = domain_sql(
+            "DOM-MEDIA",
+            "thesis_test",
+            title="高校校园媒资点播系统",
+            proposal_text="校园教学片与活动回放点播。",
+        )
+        self.assertIn("studentNo", media_sql)
+        self.assertIn("教学片", media_sql)
+        self.assertNotIn("memberNo", media_sql)
+
+        forum_campus = build_domain_schema(
+            "高校校园论坛系统",
+            "DOM-FORUM",
+            proposal_text="学生发帖回帖，版主审核。",
+        )
+        self.assertEqual(forum_campus["labels"].get("authEyebrow"), "校园论坛")
+        self.assertIn("studentNo", {f["key"] for f in forum_campus["profileFields"]})
+        forum_community = build_domain_schema(
+            "小区兴趣社区论坛",
+            "DOM-FORUM",
+            proposal_text="邻里互助发帖回帖，社区论坛管理。",
+        )
+        self.assertEqual(forum_community["labels"].get("authEyebrow"), "兴趣社区")
+        self.assertIn("communityName", {f["key"] for f in forum_community["profileFields"]})
+        self.assertNotIn("studentNo", {f["key"] for f in forum_community["profileFields"]})
+        community_sql = domain_sql(
+            "DOM-FORUM",
+            "thesis_test",
+            title="小区兴趣社区论坛",
+            proposal_text="邻里互助发帖回帖，社区论坛管理。",
+        )
+        self.assertIn("邻里互助", community_sql)
+        self.assertIn("居民甲", community_sql)
+        self.assertNotIn("期末复习资料汇总", community_sql)
 
 
 if __name__ == "__main__":

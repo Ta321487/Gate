@@ -32,6 +32,26 @@ def test_user_ledger_fully_chinese():
     assert gaps["columns"] == []
 
 
+def test_sys_user_staff_cols_chinese():
+    """骨架公共列：岗位字段进词表，不靠按域手补 / LLM。"""
+    sql = """
+    CREATE TABLE IF NOT EXISTS sys_user (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      username VARCHAR(64) NOT NULL,
+      staff_post VARCHAR(64) DEFAULT '',
+      staff_kind VARCHAR(16) DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    model = schema_model(sql)
+    user = next(t for t in model["tables"] if t["name"] == "sys_user")
+    by_name = {c["name"]: c["label"] for c in user["columns"]}
+    assert by_name["staff_post"] == "岗位"
+    assert by_name["staff_kind"] == "岗位类型"
+    gaps = collect_english_gaps(model)
+    assert not any(c["name"] in ("staff_post", "staff_kind") for c in gaps["columns"])
+
+
 def test_collect_english_gaps_and_patch():
     sql = """
     CREATE TABLE IF NOT EXISTS weird_widget (

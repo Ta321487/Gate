@@ -1,8 +1,18 @@
 ﻿# Gate console launcher
-# Entry: scripts\launcher.bat
+# Entry: scripts\launcher.bat [action]
 # Save as UTF-8 with BOM (Chinese + Windows PowerShell 5.1)
+#
+# Hot keys (daily): 1 both | 2 restart BE | 5 stop all | 0 quit
+# CLI:  scripts\launcher.bat 1
+#       scripts\launcher.bat restart
+
+param(
+    [Parameter(Position = 0)]
+    [string]$Go = ""
+)
 
 $ErrorActionPreference = "Continue"
+$script:CliMode = -not [string]::IsNullOrWhiteSpace($Go)
 
 try { chcp 65001 | Out-Null } catch {}
 $utf8 = New-Object System.Text.UTF8Encoding $false
@@ -22,7 +32,7 @@ $UiUrl = "http://127.0.0.1:$FrontendPort"
 $ApiUrl = "http://127.0.0.1:$BackendPort"
 $DocsUrl = "$ApiUrl/docs"
 $HealthUrl = "$ApiUrl/api/health"
-$ColWidth = 26   # display columns for left menu cell (CJK-aware)
+$ColWidth = 26
 
 function Write-Line([string]$Text = "", [string]$Color = "Gray") {
     Write-Host $Text -ForegroundColor $Color
@@ -42,18 +52,24 @@ function Pad-Display([string]$Text, [int]$Width) {
     return ($Text + (" " * $pad))
 }
 
-function Pause-Menu([string]$Hint = "按 Enter 返回菜单...") {
+function Pause-Menu([string]$Hint = "按 Enter 继续...") {
+    if ($script:CliMode) { return }
     Write-Host ""
     Write-Host "  $Hint" -ForegroundColor DarkGray
     [void][Console]::ReadLine()
 }
 
+function Flash-ThenContinue([int]$Ms = 700) {
+    # Hot-path: show result briefly, then redraw menu (no Enter)
+    if ($script:CliMode) { return }
+    Start-Sleep -Milliseconds $Ms
+}
+
 function Test-PortListening([int]$Port) {
-    # 优先 TcpClient：Get-NetTCPConnection 在部分环境会漏检已 Listen 的端口
     try {
         $client = New-Object System.Net.Sockets.TcpClient
         $async = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
-        $waited = $async.AsyncWaitHandle.WaitOne(500, $false)
+        $waited = $async.AsyncWaitHandle.WaitOne(280, $false)
         if ($waited -and $client.Connected) {
             try { $client.EndConnect($async) } catch {}
             $client.Close()
@@ -69,53 +85,11 @@ function Test-PortListening([int]$Port) {
     }
 }
 
-function Get-BackendProcInfo {
-    return (Get-GfBackendProcs -Port $BackendPort)
-}
-
-function Get-BackendProcs {
-    $r = Get-BackendProcInfo
-    return @($r.Procs)
-}
-
 function Test-BackendPythonEnv([switch]$CheckImport) {
     return (Get-GfBackendPythonEnv -RepoRoot $Repo -CheckImport:$CheckImport)
 }
 
-function Test-BackendListenerIsRepoVenv {
-    if (Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort) {
-        return $true
-    }
-    $info = Get-BackendProcInfo
-    $listenPids = @($info.ListenPids)
-    if ($listenPids.Count -eq 0) { return $false }
-    $listeners = @($info.Procs | Where-Object { $listenPids -contains $_.ProcessId })
-    if ($listeners.Count -eq 0) { return $false }
-    $ok = @($listeners | Where-Object { Test-GfProcUsesRepoVenv -Proc $_ -RepoRoot $Repo })
-    return ($ok.Count -eq $listeners.Count -and $ok.Count -gt 0)
-}
-
-function Write-BackendVenvHints {
-    $info = Get-BackendProcInfo
-    $listenPids = @($info.ListenPids)
-    $ours = Read-GfBackendPid -RepoRoot $Repo
-    $protected = Get-GfProtectedBackendPids -ListenPids $listenPids
-    $foreign = @($info.Procs | Where-Object { -not $protected.ContainsKey([int]$_.ProcessId) })
-    if ($ours -and (Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort)) {
-        if ($foreign.Count -gt 0) {
-            Write-Line ("  [提示] 本仓库 venv 已在听（pid {0}）；另有 {1} 个无关进程，按 7 清理" -f $ours, $foreign.Count) "DarkGray"
-        }
-        return
-    }
-    if ($listenPids.Count -gt 0) {
-        Write-Line ("  [警告] :{0} 监听 pid={1}，不是本次 venv 启动（请按 8）" -f $BackendPort, ($listenPids -join ",")) "Yellow"
-    }
-    if ($foreign.Count -gt 0) {
-        Write-Line ("  [提示] 另有 {0} 个无关 uvicorn，按 7 可清理" -f $foreign.Count) "DarkGray"
-    }
-}
-
-function Invoke-HealthCheck([int]$TimeoutSec = 2) {
+function Invoke-HealthCheck([int]$TimeoutSec = 1) {
     try {
         $r = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec $TimeoutSec
         return @{ ok = $true; body = ($r | ConvertTo-Json -Compress) }
@@ -124,7 +98,7 @@ function Invoke-HealthCheck([int]$TimeoutSec = 2) {
     }
 }
 
-function Wait-BackendReady([int]$TimeoutSec = 30) {
+function Wait-BackendReady([int]$TimeoutSec = 25) {
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
         $h = Invoke-HealthCheck -TimeoutSec 1
@@ -132,9 +106,9 @@ function Wait-BackendReady([int]$TimeoutSec = 30) {
         if ($h.ok -and $ours) {
             return @{ ok = $true; body = $h.body }
         }
-        Start-Sleep -Milliseconds 400
+        Start-Sleep -Milliseconds 350
     }
-    $h2 = Invoke-HealthCheck -TimeoutSec 2
+    $h2 = Invoke-HealthCheck -TimeoutSec 1
     return @{
         ok     = $false
         body   = $h2.body
@@ -146,78 +120,27 @@ function Wait-BackendPortFree([int]$TimeoutSec = 10) {
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
         if (-not (Test-PortListening $BackendPort)) { return $true }
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 250
     }
     return -not (Test-PortListening $BackendPort)
 }
 
-function Start-BackendService([switch]$ForceRestart) {
-    $envCheck = Test-BackendPythonEnv -CheckImport
-    if (-not $envCheck.ok) {
-        if (-not $envCheck.exists) {
-            Write-Line "  [错误] 缺少 backend\.venv\Scripts\python.exe · 请先创建 venv 并安装依赖" "Red"
-        } elseif ($envCheck.uvicorn -eq $false) {
-            Write-Line "  [错误] venv 无法 import uvicorn · 请在 backend 执行 pip install -r requirements.txt" "Red"
-        } else {
-            Write-Line "  [错误] $($envCheck.message)" "Red"
-        }
-        return
+function Wait-PortUp([int]$Port, [int]$TimeoutSec = 25) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-PortListening $Port) { return $true }
+        Start-Sleep -Milliseconds 350
     }
-    Write-Line "  [环境] venv 文件可用（import uvicorn OK）" "DarkGray"
-
-    $health = Invoke-HealthCheck
-    $oursOk = Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort
-    if ($health.ok -and $oursOk -and -not $ForceRestart) {
-        Write-Line ("  [跳过] 本仓库 venv 已在运行 pid={0} · {1}" -f (Read-GfBackendPid -RepoRoot $Repo), $health.body) "Green"
-        Write-BackendVenvHints
-        return
-    }
-
-    Write-Line "  清理旧进程并启动本仓库 venv ..." "DarkGray"
-    Stop-BackendAll
-    if (-not (Wait-BackendPortFree 15)) {
-        Write-Line "  [错误] :$BackendPort 仍被占用，无法启动" "Red"
-        return
-    }
-
-    # 同窗 WT 标签启动（start-backend.ps1 写 pidfile；venv 父子进程由进程树识别）
-    Start-InNewWindow "GF-Backend" (Join-Path $Scripts "start-backend.bat")
-    Write-Line "  等待本仓库进程就绪（health + 端口归属）..." "DarkGray"
-    $ready = Wait-BackendReady 35
-    if ($ready.ok) {
-        Write-Line ("  [OK] {0} · pid={1} 本仓库 venv" -f $ready.body, (Read-GfBackendPid -RepoRoot $Repo)) "Green"
-        Write-BackendVenvHints
-    } else {
-        Write-Line "  [错误] 未能用本仓库 venv 接管 :$BackendPort" "Red"
-        if ($ready.health) {
-            Write-Line ("  （端口有响应，但不是本次启动的 pid={0}）" -f (Read-GfBackendPid -RepoRoot $Repo)) "Yellow"
-        } else {
-            Write-Line "  （健康检查失败：$($ready.body)）" "Yellow"
-        }
-        Write-Line "  请查看 GF-Backend 标签页日志，或按 8 重试" "DarkGray"
-    }
+    return (Test-PortListening $Port)
 }
 
 function Test-WindowsTerminalCli {
     return [bool](Get-Command wt -ErrorAction SilentlyContinue)
 }
 
-function Start-InNewWindow([string]$Title, [string]$BatPath) {
-    <# 兼容旧名：优先 Windows Terminal 同窗新标签；无 wt 则弹独立 cmd。
-       单独双击 start-*.bat 仍是独立窗口，不受影响。 #>
-    Start-ServiceHost -Title $Title -BatPath $BatPath
-}
-
-function Start-ServiceHost([string]$Title, [string]$BatPath) {
-    if (-not (Test-Path -LiteralPath $BatPath)) {
-        Write-Line "  [错误] 找不到 $BatPath" "Red"
-        return
-    }
-    # GF_LAUNCH_STYLE=window 强制独立 cmd（调试用）
+function Start-ServiceHostCmd([string]$Title, [string]$InnerCmd) {
     $forceWindow = ($env:GF_LAUNCH_STYLE -eq "window")
-    $inner = "title $Title & call `"$BatPath`""
     if (-not $forceWindow -and (Test-WindowsTerminalCli)) {
-        # 固定挂到命名窗口（与 launcher.bat / $script:GfWtWindow 一致）
         $arg = @(
             "-w", $script:GfWtWindow,
             "nt",
@@ -225,11 +148,11 @@ function Start-ServiceHost([string]$Title, [string]$BatPath) {
             "-d", $Repo,
             "--",
             "cmd", "/k",
-            $inner
+            $InnerCmd
         )
         try {
             Start-Process -FilePath "wt.exe" -ArgumentList $arg | Out-Null
-            Write-Line ("  [完成] 已开标签页：$Title（窗口 {0}）" -f $script:GfWtWindow) "Green"
+            Write-Line ("  [完成] 标签页 $Title") "Green"
             return
         } catch {
             Write-Line "  [警告] wt 开标签失败，回退独立窗口" "Yellow"
@@ -237,9 +160,28 @@ function Start-ServiceHost([string]$Title, [string]$BatPath) {
     }
     Start-Process -FilePath "cmd.exe" -WorkingDirectory $Repo -ArgumentList @(
         "/k",
-        $inner
+        $InnerCmd
     ) | Out-Null
-    Write-Line "  [完成] 已打开窗口：$Title" "Green"
+    Write-Line "  [完成] 窗口 $Title" "Green"
+}
+
+function Start-InNewWindow([string]$Title, [string]$BatPath) {
+    if (-not (Test-Path -LiteralPath $BatPath)) {
+        Write-Line "  [错误] 找不到 $BatPath" "Red"
+        return
+    }
+    Start-ServiceHostCmd $Title ("title $Title & call `"$BatPath`"")
+}
+
+function Start-BackendTab([switch]$SkipClean) {
+    $ps1 = Join-Path $Scripts "start-backend.ps1"
+    if (-not (Test-Path -LiteralPath $ps1)) {
+        Write-Line "  [错误] 找不到 $ps1" "Red"
+        return
+    }
+    $flag = if ($SkipClean) { " -SkipClean" } else { "" }
+    $inner = "title GF-Backend & powershell -NoProfile -ExecutionPolicy Bypass -File `"$ps1`"$flag"
+    Start-ServiceHostCmd "GF-Backend" $inner
 }
 
 function Invoke-LocalBat([string]$BatPath, [string[]]$BatArgs = @()) {
@@ -250,12 +192,20 @@ function Invoke-LocalBat([string]$BatPath, [string[]]$BatArgs = @()) {
     & cmd.exe /c "call `"$BatPath`" $($BatArgs -join ' ')"
 }
 
+function Invoke-LocalPs1([string]$Ps1Path, [string[]]$Ps1Args = @()) {
+    if (-not (Test-Path -LiteralPath $Ps1Path)) {
+        Write-Line "  [错误] 找不到 $Ps1Path" "Red"
+        return
+    }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Ps1Path @Ps1Args
+}
+
 function Stop-BackendAll {
-    Invoke-LocalBat (Join-Path $Scripts "stop-backend.bat")
+    Invoke-LocalPs1 (Join-Path $Scripts "kill-dup-backend.ps1") @("-All")
 }
 
 function Stop-FrontendAll {
-    Invoke-LocalBat (Join-Path $Scripts "stop-frontend.bat")
+    Invoke-LocalPs1 (Join-Path $Scripts "stop-frontend.ps1")
 }
 
 function Open-PathOrUrl([string]$Target) {
@@ -278,24 +228,79 @@ function Invoke-Docker([string[]]$ComposeArgs) {
         return
     }
     if (-not (Test-DockerCli)) {
-        Write-Line "  [错误] 未找到 docker 命令（需要 Docker Desktop）" "Red"
-        Write-Line "  说明：这里管的是仓库 docker-compose.yml 里的 MySQL 容器，" "DarkGray"
-        Write-Line "        不是 Windows 本机的 MySQL80 服务。" "DarkGray"
+        Write-Line "  [错误] 未找到 docker（需要 Docker Desktop）" "Red"
+        Write-Line "  说明：管的是 docker-compose 里的 MySQL 容器，不是本机 MySQL80" "DarkGray"
         return
     }
     Push-Location $Repo
     try {
         Write-Line ("  > docker compose {0}" -f ($ComposeArgs -join " ")) "DarkGray"
-        Write-Line "  （Compose 容器，非本机 MySQL80）" "DarkGray"
         & docker compose @ComposeArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Line "  [警告] docker 退出码 $LASTEXITCODE" "Yellow"
         }
     } catch {
         Write-Line "  [错误] $($_.Exception.Message)" "Red"
-        Write-Line "  请确认 Docker Desktop 已安装并正在运行" "DarkGray"
     } finally {
         Pop-Location
+    }
+}
+
+function Start-BackendService([switch]$ForceRestart) {
+    $envCheck = Test-BackendPythonEnv -CheckImport
+    if (-not $envCheck.ok) {
+        if (-not $envCheck.exists) {
+            Write-Line "  [错误] 缺少 backend\.venv · 先建 venv 并 pip install" "Red"
+        } elseif ($envCheck.uvicorn -eq $false) {
+            Write-Line "  [错误] venv 无法 import uvicorn · pip install -r requirements.txt" "Red"
+        } else {
+            Write-Line "  [错误] $($envCheck.message)" "Red"
+        }
+        return
+    }
+
+    $health = Invoke-HealthCheck
+    $oursOk = Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort
+    if ($health.ok -and $oursOk -and -not $ForceRestart) {
+        Write-Line ("  [跳过] 后端已在跑 pid={0}" -f (Read-GfBackendPid -RepoRoot $Repo)) "Green"
+        return
+    }
+
+    Write-Line "  清理并启动后端..." "DarkGray"
+    Stop-BackendAll
+    if (-not (Wait-BackendPortFree 12)) {
+        Write-Line "  [错误] :$BackendPort 仍被占用" "Red"
+        return
+    }
+
+    # launcher 已清过；tab 内 skip 二次 kill
+    Start-BackendTab -SkipClean
+    Write-Line "  等待就绪..." "DarkGray"
+    $ready = Wait-BackendReady 25
+    if ($ready.ok) {
+        Write-Line ("  [OK] pid={0} · {1}" -f (Read-GfBackendPid -RepoRoot $Repo), $ready.body) "Green"
+    } else {
+        Write-Line "  [错误] 后端未就绪" "Red"
+        if ($ready.health) {
+            Write-Line ("  （有响应但非本仓库 pid={0}）" -f (Read-GfBackendPid -RepoRoot $Repo)) "Yellow"
+        } else {
+            Write-Line "  （$($ready.body)）" "Yellow"
+        }
+        Write-Line "  看 GF-Backend 标签页，或按 2 重试" "DarkGray"
+    }
+}
+
+function Start-FrontendService {
+    if (Test-PortListening $FrontendPort) {
+        Write-Line "  [跳过] 前端已在 :$FrontendPort" "Green"
+        return
+    }
+    Start-InNewWindow "GF-Frontend" (Join-Path $Scripts "start-frontend.bat")
+    Write-Line "  等待前端..." "DarkGray"
+    if (Wait-PortUp $FrontendPort 25) {
+        Write-Line "  [OK] 前端 :$FrontendPort" "Green"
+    } else {
+        Write-Line "  [警告] 窗口已开，:$FrontendPort 尚未就绪" "Yellow"
     }
 }
 
@@ -329,19 +334,23 @@ function Write-BlockTitle([string]$Title) {
 }
 
 function Show-StatusStrip {
-    # 后端：health 通了就一定是 ON（不再被「未运行」文案盖掉）
-    $beHealth = Invoke-HealthCheck -TimeoutSec 2
+    # Light strip: port + health + pidfile; skip heavy WMI unless needed
+    $beHealth = Invoke-HealthCheck -TimeoutSec 1
     $bePort = Test-PortListening $BackendPort
     $feUp = Test-PortListening $FrontendPort
-    $beProcs = @(Get-BackendProcs)
-    $pyEnv = Test-BackendPythonEnv   # 状态条只查 venv 是否存在，不每次 import
+    $pyExists = Test-Path -LiteralPath (Get-GfBackendVenvPython -RepoRoot $Repo)
+    $oursPid = Read-GfBackendPid -RepoRoot $Repo
+    $oursAlive = $false
+    if ($oursPid) {
+        $oursAlive = [bool](Get-Process -Id $oursPid -ErrorAction SilentlyContinue)
+    }
 
     Write-Host ""
     Write-Host "  " -NoNewline
     Write-Host "后端" -NoNewline -ForegroundColor DarkGray
     Write-Host (" :{0} " -f $BackendPort) -NoNewline -ForegroundColor DarkGray
     if ($beHealth.ok) { Write-Host "ON " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
-    elseif ($bePort) { Write-Host "端口开/health失败 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
+    elseif ($bePort) { Write-Host "端口开 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
     else { Write-Host "-- " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
     Write-Host "   " -NoNewline
     Write-Host "前端" -NoNewline -ForegroundColor DarkGray
@@ -349,57 +358,16 @@ function Show-StatusStrip {
     if ($feUp) { Write-Host "ON " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
     else { Write-Host "-- " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
 
-    if (-not $pyEnv.exists) {
+    if (-not $pyExists) {
         Write-Host "    venv 缺失" -ForegroundColor Red
+    } elseif ($beHealth.ok -and $oursAlive) {
+        Write-Host ("    pid {0}" -f $oursPid) -ForegroundColor DarkGray
     } elseif ($beHealth.ok) {
-        $oursPid = Read-GfBackendPid -RepoRoot $Repo
-        $oursLive = Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort
-        if ($oursLive) {
-            Write-Host ("    health OK · venv pid {0}" -f $oursPid) -ForegroundColor DarkGray
-        } elseif ($beProcs.Count -gt 1) {
-            Write-Host ("    health OK · uvicorn×{0}（非本次venv，请按8）" -f $beProcs.Count) -ForegroundColor Yellow
-        } elseif ($beProcs.Count -ge 1) {
-            Write-Host ("    health OK · 非本次venv · pid {0}（请按8）" -f $beProcs[-1].ProcessId) -ForegroundColor Yellow
-        } else {
-            Write-Host "    health OK" -ForegroundColor DarkGray
-        }
+        Write-Host "    health OK（非本次 pid，按 2 接管）" -ForegroundColor Yellow
     } elseif ($bePort) {
-        Write-Host "    端口可连但 /api/health 失败" -ForegroundColor Yellow
-    } elseif ($beProcs.Count -gt 1) {
-        Write-Host ("    uvicorn×{0} 僵死未就绪（请按 7 或 8）" -f $beProcs.Count) -ForegroundColor Yellow
-    } elseif ($beProcs.Count -eq 1) {
-        Write-Host ("    pid {0} 未监听（请按 7 或 8）" -f $beProcs[0].ProcessId) -ForegroundColor Yellow
+        Write-Host "    端口开但 health 失败" -ForegroundColor Yellow
     } else {
-        Write-Host "    未运行 · venv OK" -ForegroundColor DarkGray
-    }
-}
-
-function Show-StatusAfterAction {
-    Write-Host ""
-    Write-Host "  -------- 操作后状态（上面菜单是启动前的快照）--------" -ForegroundColor DarkCyan
-    Show-StatusStrip
-}
-
-function Wait-PortUp([int]$Port, [int]$TimeoutSec = 25) {
-    $deadline = (Get-Date).AddSeconds($TimeoutSec)
-    while ((Get-Date) -lt $deadline) {
-        if (Test-PortListening $Port) { return $true }
-        Start-Sleep -Milliseconds 400
-    }
-    return (Test-PortListening $Port)
-}
-
-function Start-FrontendService {
-    if (Test-PortListening $FrontendPort) {
-        Write-Line "  [跳过] 前端已在监听 :$FrontendPort" "Green"
-        return
-    }
-    Start-InNewWindow "GF-Frontend" (Join-Path $Scripts "start-frontend.bat")
-    Write-Line "  等待前端 :$FrontendPort ..." "DarkGray"
-    if (Wait-PortUp $FrontendPort 30) {
-        Write-Line "  [OK] 前端已监听 :$FrontendPort" "Green"
-    } else {
-        Write-Line "  [警告] 前端窗口已开，但 :$FrontendPort 尚未就绪" "Yellow"
+        Write-Host "    未运行" -ForegroundColor DarkGray
     }
 }
 
@@ -414,152 +382,201 @@ function Show-Menu {
 
     Show-StatusStrip
 
-    Write-BlockTitle "服务"
-    Write-Pair "1" "启动后端"      "2" "启动前端"
-    Write-Pair "3" "前后端一起开"  "8" "重启后端" "Cyan" "Gray"
-    Write-Pair "4" "停止后端"      "5" "停止前端"
-    Write-Pair "6" "全部停止"      "7" "清理重复后端" "Gray" "Yellow"
+    Write-BlockTitle "服务（高频）"
+    Write-Pair "1" "前后端一起开"  "2" "重启后端" "Cyan" "Cyan"
+    Write-Pair "3" "只开后端"      "4" "只开前端"
+    Write-Pair "5" "全部停止"      "8" "清重复后端" "Gray" "Yellow"
 
-    Write-BlockTitle "打开"
+    Write-BlockTitle "停止 / 打开"
+    Write-Pair "6" "停后端"        "7" "停前端"
     Write-Pair "9" "运营台 UI"     "A" "API 文档"
     Write-Pair "B" "健康检查"      "C" "仓库目录"
     Write-Pair "D" "工作区"        "E" "上传目录"
     Write-Pair "S" "样例开题"
 
-    Write-BlockTitle "Compose 库 / 其他"
+    Write-BlockTitle "Compose / 其他"
     Write-Pair "F" "起 Compose 库"  "G" "Compose 状态"
-    Write-Pair "H" "停 Compose 库"  "R" "刷新状态"
+    Write-Pair "H" "停 Compose 库"  "R" "刷新"
     Write-Pair "V" "检查 bat 编码"  "0" "退出" "Gray" "DarkGray"
 
     Write-Host ""
     Write-Host "  UI  $UiUrl" -ForegroundColor DarkGray
     Write-Host "  API $ApiUrl   docs $DocsUrl" -ForegroundColor DarkGray
-    if (Test-WindowsTerminalCli) {
-        Write-Host ("  服务启动 → Windows Terminal 窗口 {0} 的标签页（单独 bat 仍可独立窗口）" -f $script:GfWtWindow) -ForegroundColor DarkGray
-    }
+    Write-Host "  直达  launcher.bat 1 | 2 | 5   （启停后自动回菜单，不必按 Enter）" -ForegroundColor DarkGray
     Write-Host ""
 }
 
-while ($true) {
-    Show-Menu
-    Write-Host "  请选择" -NoNewline -ForegroundColor Cyan
-    $choice = (Read-Host " ").Trim().ToUpperInvariant()
+function Resolve-Choice([string]$Raw) {
+    $c = $Raw.Trim().ToUpperInvariant()
+    switch ($c) {
+        "BOTH" { return "1" }
+        "ALL" { return "1" }
+        "RESTART" { return "2" }
+        "BE" { return "3" }
+        "BACKEND" { return "3" }
+        "FE" { return "4" }
+        "FRONTEND" { return "4" }
+        "STOP" { return "5" }
+        "STOPALL" { return "5" }
+        "QUIT" { return "0" }
+        "EXIT" { return "0" }
+        "Q" { return "0" }
+        default { return $c }
+    }
+}
 
-    switch ($choice) {
+function Invoke-Choice([string]$Choice) {
+    $c = Resolve-Choice $Choice
+    switch ($c) {
         "1" {
             Start-BackendService
-            Show-StatusAfterAction
-            Pause-Menu
+            Start-FrontendService
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "2" {
-            Start-FrontendService
-            Show-StatusAfterAction
-            Pause-Menu
+            Write-Line "  重启后端..." "Cyan"
+            Start-BackendService -ForceRestart
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "3" {
             Start-BackendService
-            Start-FrontendService
-            Show-StatusAfterAction
-            Pause-Menu
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "4" {
-            Write-Line "  停止后端..." "Cyan"
-            Stop-BackendAll
-            Show-StatusAfterAction
-            Pause-Menu
+            Start-FrontendService
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "5" {
-            Write-Line "  停止前端..." "Cyan"
-            Stop-FrontendAll
-            Show-StatusAfterAction
-            Pause-Menu
-        }
-        "6" {
             Write-Line "  全部停止..." "Cyan"
             Stop-FrontendAll
             Stop-BackendAll
-            Show-StatusAfterAction
-            Pause-Menu
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
+        }
+        "6" {
+            Write-Line "  停止后端..." "Cyan"
+            Stop-BackendAll
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "7" {
-            Write-Line "  清理重复后端..." "Cyan"
-            Invoke-LocalBat (Join-Path $Scripts "kill-dup-backend.bat")
-            Show-StatusAfterAction
-            Pause-Menu
+            Write-Line "  停止前端..." "Cyan"
+            Stop-FrontendAll
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "8" {
-            Write-Line "  重启后端..." "Cyan"
-            Start-BackendService -ForceRestart
-            Show-StatusAfterAction
-            Pause-Menu
+            Write-Line "  清理重复后端..." "Cyan"
+            Invoke-LocalPs1 (Join-Path $Scripts "kill-dup-backend.ps1")
+            Show-StatusStrip
+            Flash-ThenContinue
+            return "ok"
         }
         "9" {
             Open-PathOrUrl $UiUrl
-            Start-Sleep -Milliseconds 400
+            Flash-ThenContinue 400
+            return "ok"
         }
         "A" {
             Open-PathOrUrl $DocsUrl
-            Start-Sleep -Milliseconds 400
+            Flash-ThenContinue 400
+            return "ok"
         }
         "B" {
             Write-Line "  GET $HealthUrl" "DarkGray"
             $h = Invoke-HealthCheck
-            if ($h.ok) {
-                Write-Line "  [OK] $($h.body)" "Green"
-            } else {
-                Write-Line "  [FAIL] $($h.body)" "Red"
-            }
+            if ($h.ok) { Write-Line "  [OK] $($h.body)" "Green" }
+            else { Write-Line "  [FAIL] $($h.body)" "Red" }
             Pause-Menu
+            return "ok"
         }
         "C" {
             Open-PathOrUrl $Repo
-            Start-Sleep -Milliseconds 300
+            Flash-ThenContinue 300
+            return "ok"
         }
         "D" {
             $p = Join-Path $Repo "data\workspace"
             if (-not (Test-Path $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }
             Open-PathOrUrl $p
-            Start-Sleep -Milliseconds 300
+            Flash-ThenContinue 300
+            return "ok"
         }
         "E" {
             $p = Join-Path $Repo "data\uploads"
             if (-not (Test-Path $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }
             Open-PathOrUrl $p
-            Start-Sleep -Milliseconds 300
+            Flash-ThenContinue 300
+            return "ok"
         }
         "S" {
             $p = Join-Path $Repo "data\samples"
             if (-not (Test-Path $p)) {
                 Write-Line "  [提示] 尚无 data/samples" "Yellow"
-                Pause-Menu
+                Flash-ThenContinue 600
             } else {
                 Open-PathOrUrl $p
-                Start-Sleep -Milliseconds 300
+                Flash-ThenContinue 300
             }
+            return "ok"
         }
         "F" {
             Invoke-Docker @("up", "-d")
             Pause-Menu
+            return "ok"
         }
         "G" {
             Invoke-Docker @("ps")
             Pause-Menu
+            return "ok"
         }
         "H" {
-            Write-Line "  将停止 docker-compose 中的 MySQL 容器（非本机 MySQL80；数据卷默认保留）" "Yellow"
+            Write-Line "  停 Compose MySQL 容器（非本机 MySQL80；卷默认保留）" "Yellow"
             Invoke-Docker @("down")
             Pause-Menu
+            return "ok"
         }
-        "R" { continue }
+        "R" { return "ok" }
         "V" {
             Invoke-LocalBat (Join-Path $Scripts "verify-bats.bat")
             Pause-Menu
+            return "ok"
         }
-        "0" { exit 0 }
-        "" { continue }
+        "0" { return "exit" }
+        "" { return "ok" }
         default {
-            Write-Line "  [提示] 无效选项：$choice" "Yellow"
-            Start-Sleep -Milliseconds 700
+            Write-Line "  [提示] 无效：$Choice  （1 一起开 · 2 重启 · 5 全停 · 0 退出）" "Yellow"
+            if ($script:CliMode) { return "bad" }
+            Start-Sleep -Milliseconds 800
+            return "ok"
         }
     }
+}
+
+# --- entry -------------------------------------------------------------------
+
+if ($script:CliMode) {
+    $code = Invoke-Choice $Go
+    if ($code -eq "exit") { exit 0 }
+    if ($code -eq "bad") { exit 1 }
+    exit 0
+}
+
+while ($true) {
+    Show-Menu
+    Write-Host "  请选择" -NoNewline -ForegroundColor Cyan
+    $choice = (Read-Host " ")
+    $result = Invoke-Choice $choice
+    if ($result -eq "exit") { exit 0 }
 }

@@ -92,6 +92,7 @@ _PREFIX_ALIAS = {
     "reservations": "RSV",
     "slots": "SLOT",
     "guestbook": "GUEST",
+    "dm": "DM",
     "favorites": "FAV",
     "browse_history": "HIST",
     "archive_logs": "ALOG",
@@ -279,6 +280,14 @@ _BLUEPRINTS: dict[str, Blueprint] = {
             "expected": "留言状态更新，用户端可见回复（如有）",
         }
     ],
+    "dm": [
+        {
+            "item": "发送与查看私信",
+            "steps": ["进入「{label}」", "选择或新建会话对象", "发送一条私信", "另一账号打开会话查看"],
+            "input": "私信正文",
+            "expected": "双方会话中可见互发消息（短轮询刷新）",
+        }
+    ],
     "favorites": [
         {
             "item": "收藏与取消收藏",
@@ -439,6 +448,7 @@ def _module_name(key: str, label: str, schema: dict[str, Any]) -> str:
         "order": "订单模块",
         "content": "公告模块",
         "guestbook": "留言模块",
+        "dm": "私信模块",
     }
     if biz in mapping:
         return mapping[biz]
@@ -469,6 +479,8 @@ def _kind(key: str, side: str) -> str:
         return f"content_{side}"
     if key == "guestbook":
         return f"guestbook_{side}"
+    if key == "dm":
+        return "dm"
     if key in ("my_reservations", "slots"):
         return "reserve_user"
     if key.startswith("lookup_"):

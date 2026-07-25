@@ -6,13 +6,40 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 
 | 脚本 | 用途 |
 |------|------|
-| `launcher.bat` | **推荐** 控制台菜单（起停 / 打开目录 / Compose / 健康检查）；有 Windows Terminal 时进 WT，服务用同窗标签页 |
-| `start-backend.bat` | 仅启动后端 `:8000` |
+| `launcher.bat` | **推荐** 控制台菜单；有 Windows Terminal 时进 WT，服务用同窗标签页 |
+| `start-backend.bat` | 仅启动后端 `:8000`（独立窗口） |
 | `start-frontend.bat` | 仅启动前端 `:5173` |
 | `stop-backend.bat` | 停止全部 uvicorn 后端 |
 | `stop-frontend.bat` | 停止 `:5173` 监听进程 |
 | `kill-dup-backend.bat` | 清理重复 uvicorn（默认保留最新；`/all` 全杀） |
 | `verify-bats.bat` | 检查 bat 是否误存为 UTF-8 BOM / 含中文 |
+
+## 控制台键位（高频优先）
+
+| 键 | 作用 |
+|----|------|
+| `1` | 前后端一起开 |
+| `2` | 重启后端 |
+| `3` / `4` | 只开后端 / 只开前端 |
+| `5` | 全部停止 |
+| `6` / `7` | 停后端 / 停前端 |
+| `8` | 清重复后端 |
+| `9` / `A` | 运营台 / API 文档 |
+| `R` | 刷新状态 |
+| `0` | 退出 |
+
+启停后**自动回菜单**（不必再按 Enter）。健康检查 / Compose / 查编码仍会停一下方便看输出。
+
+### 命令行直达（不开菜单）
+
+```bat
+scripts\launcher.bat 1
+scripts\launcher.bat 2
+scripts\launcher.bat 5
+scripts\launcher.bat restart
+scripts\launcher.bat both
+scripts\launcher.bat stop
+```
 
 ## 编码（重要）
 
@@ -32,10 +59,10 @@ scripts\verify-bats.bat
 ## Windows Terminal 标签页
 
 - 双击 / 运行 `launcher.bat`：若已装 Windows Terminal，会进 **一个 WT 窗口**跑 Gate 控制台。
-- 菜单 `[1]` / `[2]` / `[3]` / `[8]`：在同窗 **新标签** 里跑 `start-*.bat`（cmd），不是再弹一堆独立窗口。
+- 菜单 `1` / `2` / `3` / `4`：在同窗 **新标签** 里跑服务（不是再弹一堆独立窗口）。
 - 直接双击 `start-backend.bat` / `start-frontend.bat`：仍是 **独立窗口**（不变）。
 - 强制旧行为：启动前设环境变量 `GF_LAUNCH_STYLE=window`。
 
 ## Compose 数据库
 
-菜单 `[F/G/H]` 管的是仓库根目录 `docker-compose.yml` 里的 **MySQL 容器**，不是 Windows 本机 **MySQL80** 服务。需要已安装并运行 Docker Desktop。
+菜单 `F` / `G` / `H` 管的是仓库根目录 `docker-compose.yml` 里的 **MySQL 容器**，不是 Windows 本机 **MySQL80** 服务。需要已安装并运行 Docker Desktop。
