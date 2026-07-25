@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.SchemaMapper">
+
+    <select id="countTable" resultType="int">
+        SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = #{tableName}
+    </select>
+
+    <select id="countColumn" resultType="int">
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = #{tableName} AND COLUMN_NAME = #{columnName}
+    </select>
+
+    <update id="executeDdl">${ddl}</update>
+
+    <select id="listTablesWithColumn" resultType="string">
+        SELECT TABLE_NAME FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = #{columnName}
+          AND DATA_TYPE IN ('date','datetime','timestamp')
+    </select>
+
+    <select id="minDate" resultType="java.time.LocalDate">
+        SELECT MIN(DATE(`${column}`)) FROM `${table}`
+        WHERE `${column}` IS NOT NULL AND DATE(`${column}`) &gt;= #{floor}
+    </select>
+
+    <update id="shiftDates">
+        UPDATE `${table}` SET `${column}` = DATE_ADD(`${column}`, INTERVAL #{days} DAY)
+        WHERE `${column}` IS NOT NULL AND DATE(`${column}`) &gt;= #{floor}
+    </update>
+</mapper>

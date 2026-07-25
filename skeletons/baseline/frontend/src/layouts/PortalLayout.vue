@@ -172,7 +172,8 @@ function logout() {
   font-weight: 700; font-size: 15px; letter-spacing: var(--portal-display-tracking, 0.02em);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; overflow-x: auto; }
+/* overflow 由 layout.css 按 data-layout 覆盖，此处不写死，避免 scoped 盖掉 rail */
+.nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; }
 .nav a {
   padding: 6px 12px; border-radius: var(--portal-radius-sm, 8px); font-size: 13px; font-weight: 500;
   color: var(--portal-muted, #5b6b76); text-decoration: none;

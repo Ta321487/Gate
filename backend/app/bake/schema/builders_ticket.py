@@ -84,7 +84,52 @@ def _property_schema(title: str) -> dict[str, Any]:
         allow_rating=True,
     )
 
-def _it_schema(title: str) -> dict[str, Any]:
+def _it_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    from app.bake.scene_scan import scene_it
+
+    t = f"{title or ''}\n{proposal_text or ''}"
+    enterprise = scene_it(t) == "enterprise"
+    if enterprise:
+        return standalone_ticket_schema(
+            title,
+            domain="DOM-IT",
+            user_role_id="user",
+            user_label="员工",
+            admin_label="运维主管",
+            subadmin_label="运维员",
+            ticket_key="ticket",
+            ticket_label="故障单",
+            ticket_plural="故障报修",
+            verbs={
+                "apply": "提交故障",
+                "approve": "受理",
+                "reject": "驳回",
+                "return": "完成",
+            },
+            states={
+                "pending": "待受理",
+                "approved": "处理中",
+                "rejected": "已驳回",
+                "returned": "已完成",
+            },
+            site_menu="区域终端",
+            type_menu="故障类型",
+            users_menu="用户管理",
+            auth_eyebrow="企业运维",
+            auth_lead="验证码登录；员工提交故障，运维受理跟进。",
+            auth_points=["验证码登录", "故障报修", "受理进度"],
+            register_hint="注册后可提交故障报修",
+            notice_title="报修须知",
+            notice_body="请写明区域、终端与故障现象并上传截图/照片，运维将尽快受理。",
+            notice_page_title="运维公告",
+            notice_page_lead="故障处理须知与临时通知，点击条目阅读全文。",
+            my_tickets_label="我的故障",
+            pending_label="故障受理",
+            records_label="报修记录",
+            two_level_approve=True,
+            require_attach=True,
+            allow_rating=True,
+        )
     return standalone_ticket_schema(
         title,
         domain="DOM-IT",

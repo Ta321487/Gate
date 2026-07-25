@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.TicketLookupMapper">
+
+    <select id="selectSites" resultType="map">
+        SELECT id, name FROM `${siteTable}` ORDER BY id
+    </select>
+
+    <select id="selectSitesAdmin" resultType="map">
+        SELECT id, name, remark FROM `${siteTable}` ORDER BY id
+    </select>
+
+    <select id="selectSiteById" resultType="map">
+        SELECT id, name, remark FROM `${siteTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectUnits" resultType="map">
+        SELECT id, building_id AS siteId, code FROM `${unitTable}`
+        <where>
+            <if test="siteId != null and siteId &gt; 0">building_id=#{siteId}</if>
+        </where>
+        ORDER BY building_id, code
+    </select>
+
+    <select id="selectUnitsAdmin" resultType="map">
+        SELECT id, building_id AS siteId, code, capacity FROM `${unitTable}`
+        <where>
+            <if test="siteId != null and siteId &gt; 0">building_id=#{siteId}</if>
+        </where>
+        ORDER BY building_id, code
+    </select>
+
+    <select id="selectUnitById" resultType="map">
+        SELECT id, building_id AS siteId, code, capacity FROM `${unitTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectTypes" resultType="map">
+        SELECT id, name FROM `${typeTable}` ORDER BY sort_no, id
+    </select>
+
+    <select id="selectTypesAdmin" resultType="map">
+        SELECT id, name, sort_no AS sortNo FROM `${typeTable}` ORDER BY sort_no, id
+    </select>
+
+    <select id="selectTypeById" resultType="map">
+        SELECT id, name, sort_no AS sortNo FROM `${typeTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectLocation" resultType="map">
+        SELECT u.code AS code, s.name AS siteName
+        FROM `${unitTable}` u JOIN `${siteTable}` s ON s.id = u.building_id
+        WHERE u.id=#{unitId}
+    </select>
+</mapper>

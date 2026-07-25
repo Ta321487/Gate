@@ -26,6 +26,12 @@ public final class TicketStore {
     public static final double FINE_PER_DAY = 0.5;
     public static final int MAX_ACTIVE = 5;
 
+    /** bake 经 thesis.ticket-* 写入；学生包无配置表 */
+    private static int bizLoanDays = LOAN_DAYS;
+    private static int bizMaxActive = MAX_ACTIVE;
+    private static double bizFinePerDay = FINE_PER_DAY;
+    private static String bizPickupPlace = "";
+
     public enum Mode {
         ARCHIVE,
         STANDALONE
@@ -191,6 +197,14 @@ public final class TicketStore {
         checkMutex = mutex;
         categoryLimit = Math.max(0, catLimit);
         // mutex_code 由 bake 写入档案表
+    }
+
+    /** bake 灌入的借期/在途上限/逾期费/默认领取地（≤0 或空表示保持默认） */
+    public static void configureBizParams(int loanDays, int maxActive, double finePerDay, String pickupPlace) {
+        if (loanDays > 0) bizLoanDays = Math.min(365, loanDays);
+        if (maxActive > 0) bizMaxActive = Math.min(200, maxActive);
+        if (finePerDay >= 0) bizFinePerDay = Math.min(100.0, finePerDay);
+        if (pickupPlace != null && !pickupPlace.isBlank()) bizPickupPlace = pickupPlace.trim();
     }
 
     public static String ticketTable() {
@@ -471,7 +485,7 @@ public final class TicketStore {
             String remark,
             Long typeId,
             Long roomId) {
-        return applyStandalone(username, title, location, remark, typeId, roomId, null);
+        return applyStandalone(username, title, location, remark, typeId, roomId, null, null, null);
     }
 
     public static Map<String, Object> applyStandalone(
@@ -482,6 +496,19 @@ public final class TicketStore {
             Long typeId,
             Long roomId,
             String attachUrl) {
+        return applyStandalone(username, title, location, remark, typeId, roomId, attachUrl, null, null);
+    }
+
+    public static Map<String, Object> applyStandalone(
+            String username,
+            String title,
+            String location,
+            String remark,
+            Long typeId,
+            Long roomId,
+            String attachUrl,
+            String priority,
+            String contactPhone) {
         if (MODE != Mode.STANDALONE) {
             throw new IllegalStateException("当前为档案关联模式，请使用 apply");
         }
@@ -548,9 +575,7 @@ public final class TicketStore {
         }
         Number key = kh.getKey();
         long id = key == null ? 0L : key.longValue();
-        if (hasColumn("priority") || hasColumn("contact_phone")) {
-            // 可选：从 remark 前缀解析不强制；预留列已 ensure
-        }
+        patchStandaloneExtras(id, priority, contactPhone);
         appendProgress(id, "pending", username, "用户提交");
         notifyAdminsNewTicket(id, username, t);
         return get(id);
@@ -558,7 +583,26 @@ public final class TicketStore {
 
     /** 兼容旧调用：仅标题/地点/说明 */
     public static Map<String, Object> applyStandalone(String username, String title, String location, String remark) {
-        return applyStandalone(username, title, location, remark, null, null, null);
+        return applyStandalone(username, title, location, remark, null, null, null, null, null);
+    }
+
+    private static void patchStandaloneExtras(long id, String priority, String contactPhone) {
+        if (id <= 0) return;
+        boolean hasP = hasColumn("priority");
+        boolean hasC = hasColumn("contact_phone");
+        if (!hasP && !hasC) return;
+        String p = priority == null || priority.isBlank() ? "普通" : priority.trim();
+        if (p.length() > 16) p = p.substring(0, 16);
+        String phone = contactPhone == null ? "" : contactPhone.trim();
+        if (phone.length() > 20) phone = phone.substring(0, 20);
+        if (hasP && hasC) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET priority=?, contact_phone=? WHERE id=?", p, phone, id);
+        } else if (hasP) {
+            TicketSql.db().update("UPDATE " + TICKET + " SET priority=? WHERE id=?", p, id);
+        } else {
+            TicketSql.db().update("UPDATE " + TICKET + " SET contact_phone=? WHERE id=?", phone, id);
+        }
     }
 
     private static void notifyAdminsNewTicket(long ticketId, String applicant, String subject) {
@@ -594,9 +638,9 @@ public final class TicketStore {
             }
         }
         String loc = place == null ? "" : place.trim();
-        if (loc.isBlank()) loc = configValue("pickup_place");
+        if (loc.isBlank()) loc = bizPickupPlace;
         if (loc.isBlank()) {
-            throw new IllegalStateException("请填写领取地点，或先在系统配置中设置默认领取地点");
+            throw new IllegalStateException("请填写领取地点");
         }
         if (loc.length() > 128) {
             throw new IllegalStateException("领取地点过长");
@@ -673,15 +717,19 @@ public final class TicketStore {
         }
     }
 
-    private static String configValue(String key) {
-        try {
-            List<String> rows = TicketSql.db().query(
-                    "SELECT cfg_value FROM sys_config WHERE cfg_key=? LIMIT 1",
-                    (rs, i) -> rs.getString(1), key);
-            return rows.isEmpty() || rows.get(0) == null ? "" : rows.get(0);
-        } catch (Exception e) {
-            return "";
-        }
+    /** 默认借期（天）：bake 写入，缺省 LOAN_DAYS */
+    public static int loanDays() {
+        return bizLoanDays;
+    }
+
+    /** 每人在途单据上限：bake 写入，缺省 MAX_ACTIVE */
+    public static int maxActive() {
+        return bizMaxActive;
+    }
+
+    /** 逾期预估单价：bake 写入，缺省 FINE_PER_DAY */
+    public static double finePerDay() {
+        return bizFinePerDay;
     }
 
     /** 兼容：无处理人（门禁自检等） */
@@ -779,7 +827,7 @@ public final class TicketStore {
         }
         if (MODE == Mode.ARCHIVE && useDeadline) {
             LocalDateTime approveAt = LocalDateTime.now();
-            LocalDateTime dueAt = approveAt.plusDays(LOAN_DAYS);
+            LocalDateTime dueAt = approveAt.plusDays(loanDays());
             Object requested = m.get("dueAt");
             if (requested != null && !String.valueOf(requested).isBlank()) {
                 try {
@@ -975,12 +1023,8 @@ public final class TicketStore {
             String body = pass
                     ? ("「" + subject + "」已通过" + (note == null || note.isBlank() ? "" : "：" + note))
                     : ("「" + subject + "」已驳回" + (note == null || note.isBlank() ? "" : "：" + note));
-            if (pass && hasColumn("pickup_at")) {
-                String place = configValue("pickup_place");
-                // 仅种子/配置了默认领取点的领域（仓储、失物等）才附加领取指引
-                if (!place.isBlank()) {
-                    body = body + "。请到「" + place + "」领取，到场后由工作人员登记实发。";
-                }
+            if (pass && hasColumn("pickup_at") && !bizPickupPlace.isBlank()) {
+                body = body + "。请到「" + bizPickupPlace + "」领取，到场后由工作人员登记实发。";
             }
             MessageStore.send(user, title, body, "ticket", TicketSql.toLong(ticket.get("id")));
         } catch (Exception ignored) {
@@ -1347,12 +1391,8 @@ public final class TicketStore {
                 Double fineOpen = TicketSql.db().queryForObject(
                         "SELECT COALESCE(SUM(fine_yuan),0) FROM " + TICKET + " WHERE status='overdue'", Double.class);
                 m.put("openFineYuan", Math.round((fineOpen == null ? 0 : fineOpen) * 10.0) / 10.0);
-                m.put("loanDays", LOAN_DAYS);
-                m.put("finePerDay", FINE_PER_DAY);
-            } else if (useDeadline) {
+            } else {
                 m.put("openFineYuan", 0);
-                m.put("loanDays", LOAN_DAYS);
-                m.put("finePerDay", FINE_PER_DAY);
             }
         } else {
             m.put("bookTotal", 0);
@@ -1361,6 +1401,11 @@ public final class TicketStore {
             m.put("openFineYuan", 0);
         }
         m.put("mode", MODE.name().toLowerCase());
+        m.put("maxActive", maxActive());
+        if (useDeadline) {
+            m.put("loanDays", loanDays());
+            m.put("finePerDay", finePerDay());
+        }
         if (allowRating && hasColumn("rating")) {
             Double avg = TicketSql.db().queryForObject(
                     "SELECT AVG(rating) FROM " + TICKET + " WHERE rating IS NOT NULL AND rating > 0",

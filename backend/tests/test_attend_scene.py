@@ -63,14 +63,15 @@ class AttendTitleCopyTests(unittest.TestCase):
 
     def test_enterprise_title_keeps_hr_copy(self) -> None:
         schema = SCHEMA_BUILDERS["DOM-ATTEND"]("企业员工考勤请假管理系统")
-        self.assertEqual(schema["roles"]["user"]["label"], "员工/学生")
+        self.assertEqual(schema["roles"]["user"]["label"], "员工")
         self.assertEqual(schema["roles"]["admin"]["label"], "人事主管（总管）")
         self.assertEqual(schema["labels"]["noticePageTitle"], "人事公告")
+        self.assertEqual(schema["entities"]["archive"].get("label"), "员工")
 
     def test_golden_title_unchanged(self) -> None:
         schema = SCHEMA_BUILDERS["DOM-ATTEND"]("测试课题")
         self.assertEqual(schema["roles"]["admin"]["label"], "人事主管（总管）")
-        self.assertEqual(schema["roles"]["user"]["label"], "员工/学生")
+        self.assertEqual(schema["roles"]["user"]["label"], "员工")
 
     def test_profile_student_first(self) -> None:
         schema = build_domain_schema("学生请假销假管理系统", "DOM-ATTEND")

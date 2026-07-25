@@ -45,7 +45,7 @@ const nickname = localStorage.getItem('nickname') || ''
 const displayName = computed(() => nickname || username)
 const active = computed(() => route.path)
 const postId = currentStaffPost()
-const postLabel = computed(() => staffPostLabel(postId, '业务员工'))
+const postLabel = computed(() => staffPostLabel(postId, '岗位员工'))
 
 const menuItems = computed(() => {
   const schema = getSchema()

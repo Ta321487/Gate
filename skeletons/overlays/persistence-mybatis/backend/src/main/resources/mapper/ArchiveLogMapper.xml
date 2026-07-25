@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.ArchiveLogMapper">
+    <select id="selectById" resultType="map">
+        SELECT * FROM archive_log WHERE id=#{id}
+    </select>
+    <select id="selectByItemId" resultType="map">
+        SELECT * FROM archive_log WHERE item_id=#{itemId} ORDER BY log_date DESC, id DESC
+    </select>
+    <select id="selectAdmin" resultType="map">
+        SELECT * FROM archive_log
+        <where>
+            <if test="itemId != null and itemId &gt; 0">AND item_id=#{itemId}</if>
+            <if test="logType != null and logType != ''">AND log_type=#{logType}</if>
+            <if test="day != null">AND log_date=#{day}</if>
+            <if test="abnormalOnly != null and abnormalOnly">AND abnormal=1</if>
+        </where>
+        ORDER BY log_date DESC, id DESC
+    </select>
+    <select id="selectMissingToday" resultType="map">
+        SELECT i.id, i.title FROM `${itemTable}` i
+        WHERE 1=1
+        <if test="soft">AND i.deleted_at IS NULL</if>
+        AND NOT EXISTS (
+            SELECT 1 FROM archive_log l
+            WHERE l.item_id=i.id AND l.log_date=#{day} AND l.log_type=#{logType}
+        )
+        ORDER BY i.id DESC
+        LIMIT 200
+    </select>
+</mapper>

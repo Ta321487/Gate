@@ -101,7 +101,7 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "校园招聘",
-    "authLead": "验证码登录；浏览岗位并投递简历，HR 初筛后反馈结果。",
+    "authLead": "验证码登录；浏览校招岗位并投递简历，就业办初筛后反馈结果。",
     "authPoints": [
       "验证码登录",
       "职位浏览",
@@ -109,7 +109,7 @@
     ],
     "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "岗位更新与投递规范，点击条目阅读全文。",
-    "noticePageTitle": "招聘公告",
+    "noticePageTitle": "就业公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
     "registerRoleHint": "注册后可投递岗位"
@@ -170,16 +170,16 @@
   },
   "portalBanners": [
     {
-      "lead": "按类型查看在招岗位与任职要求。",
+      "lead": "按类型查看校招岗位与任职要求。",
       "title": "职位浏览"
     },
     {
-      "lead": "选择岗位提交投递单，等待 HR 初筛。",
+      "lead": "选择岗位提交投递单，等待就业办初筛。",
       "title": "投递简历"
     },
     {
       "lead": "校招节点与材料要求见公告。",
-      "title": "招聘公告"
+      "title": "就业公告"
     },
     {
       "lead": "跟踪初筛进度与结果。",
@@ -193,11 +193,11 @@
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "招聘主管（总管）"
+      "label": "就业办主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "HR专员"
+      "label": "就业专员"
     },
     "user": {
       "id": "user",

@@ -110,6 +110,7 @@ import { APP_DELIVERED } from '../appDelivered.js'
 import {
   emptyProfileExtras,
   profileFieldsOnRegister,
+  roleLabel,
   schemaLabels,
 } from '../utils/domainSchema.js'
 import { validateProfileFormats, isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileValidate.js'
@@ -117,6 +118,7 @@ import { validateProfileFormats, isProfileFieldRequired, isProfileFieldVisible }
 const router = useRouter()
 const template = ref(pickAuthTemplate())
 const labels = schemaLabels()
+const userLabel = computed(() => roleLabel('user', '用户'))
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
@@ -130,10 +132,10 @@ const stepLead = computed(() =>
 )
 const stepSub = computed(() =>
   !hasProfileStep.value
-    ? '创建业务账号'
+    ? `创建${userLabel.value}账号`
     : step.value === 1
       ? '第 1 步 · 账号与安全'
-      : '第 2 步 · 业务资料',
+      : `第 2 步 · ${userLabel.value}资料`,
 )
 const primaryLabel = computed(() => {
   if (hasProfileStep.value && step.value === 1) return '下一步'

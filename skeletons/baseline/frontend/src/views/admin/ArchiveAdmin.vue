@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="toolbar">
-      <el-input v-model="keyword" placeholder="搜索" clearable style="width:200px" @keyup.enter="load" />
+      <el-input v-model="keyword" :placeholder="searchPlaceholder" clearable style="width:260px" @keyup.enter="load" />
       <el-switch
         v-if="softDelete"
         v-model="includeDeleted"
@@ -292,6 +292,14 @@ function fieldType(key) {
 function fieldLabel(key, fallback) {
   return fieldMeta(key).label || fallback
 }
+const searchPlaceholder = computed(() => {
+  const parts = [fieldLabel('title', '名称'), fieldLabel('author', '型号')]
+  const isbnF = fields.value.find((x) => x.key === 'isbn')
+  if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden') {
+    parts.push(isbnF.label || '编号')
+  }
+  return `搜索${parts.join(' / ')}`
+})
 function pickerProps(key) {
   return dateTimePickerProps(fieldMeta(key))
 }

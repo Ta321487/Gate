@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.UserMapper">
+    <select id="selectByUsername" resultType="map">
+        SELECT * FROM sys_user WHERE username=#{username}
+    </select>
+    <select id="selectAll" resultType="map">
+        SELECT * FROM sys_user
+    </select>
+    <select id="countStaff" resultType="int">
+        SELECT COUNT(*) FROM sys_user
+        WHERE role='admin' AND IFNULL(super_admin,0)=0
+        <if test="enabledOnly">AND IFNULL(enabled,1)=1</if>
+        <if test="hasStaffCols and staffPost != null and staffPost != ''">
+            AND IFNULL(staff_post,'')=#{staffPost}
+        </if>
+    </select>
+</mapper>

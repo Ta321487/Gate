@@ -221,7 +221,7 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("contactWechat", "联系微信", on_register=True, max_length=32),
     ],
 
-    # 默认校园晨午检口径；社区网格见 _EVENT_COMMUNITY
+    # 默认校园晨午检口径；社区/机构/企业/随访见 _EVENT_* 覆盖
     "DOM-EVENT": [
         _pf("identityType", "身份", required=True, on_register=True, field_type="select",
             options=["教职工", "学生", "校外"]),
@@ -515,6 +515,66 @@ _EVENT_COMMUNITY: list[dict[str, Any]] = [
         placeholder="如 3 栋 2 单元"),
 ]
 
+_EVENT_INSTITUTION: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["照护员", "家属", "访客"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["照护员"]),
+        visible_when=_when("identityType", ["照护员"]),
+        placeholder="院内工号"),
+    _pf("dept", "楼栋/照护组", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["照护员"]),
+        visible_when=_when("identityType", ["照护员"]),
+        placeholder="如 一号楼 A 组"),
+    _pf("elderName", "关联老人", on_register=True, max_length=64,
+        required_when=_when("identityType", ["家属"]),
+        visible_when=_when("identityType", ["家属"]),
+        placeholder="入住老人姓名"),
+    _pf("orgName", "单位/来访事由", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客"]),
+        visible_when=_when("identityType", ["访客"]),
+        placeholder="访客请填写单位或事由"),
+]
+
+_EVENT_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "访客"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门/班组", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="所在部门或班组"),
+    _pf("orgName", "来访单位", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客"]),
+        visible_when=_when("identityType", ["访客"]),
+        placeholder="访客请填写单位"),
+]
+
+# 慢病/院感/献血等 default：禁止校园学号档
+_EVENT_CLINIC: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["随访对象", "医护", "其他"]),
+    _pf("patientNo", "档案号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["随访对象"]),
+        visible_when=_when("identityType", ["随访对象"]),
+        placeholder="建档编号"),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["医护"]),
+        visible_when=_when("identityType", ["医护"]),
+        placeholder="医护工号"),
+    _pf("dept", "科室/站点", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["随访对象", "医护"]),
+        visible_when=_when("identityType", ["随访对象", "医护"]),
+        placeholder="如 慢病管理站"),
+    _pf("orgName", "单位/组织", on_register=True, max_length=64,
+        required_when=_when("identityType", ["其他"]),
+        visible_when=_when("identityType", ["其他"]),
+        placeholder="请填写所属单位"),
+]
+
 _PARCEL_COMMUNITY: list[dict[str, Any]] = [
     _pf("receiveAddress", "收件地址", required=True, on_register=True, max_length=128,
         placeholder="小区楼栋门牌或常用收件地址"),
@@ -596,6 +656,16 @@ _LOST_ADOPT: list[dict[str, Any]] = [
     _pf("petExperience", "养宠经验", on_register=True, max_length=128, placeholder="选填"),
 ]
 
+_HOSPITAL_PET: list[dict[str, Any]] = [
+    _pf("petName", "宠物昵称", required=True, on_register=True, max_length=32),
+    _pf("petSpecies", "物种", required=True, on_register=True, field_type="select",
+        options=["猫", "狗", "其他"]),
+    _pf("ownerName", "饲养人", required=True, on_register=True, max_length=32),
+    _pf("allergyNote", "过敏/病史简述", max_length=128),
+    _pf("emergencyContact", "紧急联系人", max_length=32),
+    _pf("emergencyPhone", "紧急联系电话", max_length=20),
+]
+
 _LOST_COMMUNITY: list[dict[str, Any]] = [
     _pf("contactWechat", "微信/备用联系", required=True, on_register=True, max_length=64),
     _pf("usualPlace", "常出现区域", on_register=True, max_length=64,
@@ -617,7 +687,15 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
     if domain == "DOM-ATTEND":
         return None if scene == "campus" else _ATTEND_ENTERPRISE
     if domain == "DOM-EVENT":
-        return _EVENT_COMMUNITY if scene == "community" else None
+        if scene == "community":
+            return _EVENT_COMMUNITY
+        if scene == "institution":
+            return _EVENT_INSTITUTION
+        if scene == "enterprise":
+            return _EVENT_ENTERPRISE
+        if scene == "default":
+            return _EVENT_CLINIC
+        return None  # campus → PROFILE_FIELDS_BY_DOMAIN 晨午检
     if domain == "DOM-PARCEL":
         return _PARCEL_COMMUNITY if scene == "community" else None
     if domain == "DOM-MEETING":
@@ -634,6 +712,8 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
         if scene == "community":
             return _LOST_COMMUNITY
         return None
+    if domain == "DOM-HOSPITAL":
+        return _HOSPITAL_PET if scene == "adopt" else None
     return None
 
 

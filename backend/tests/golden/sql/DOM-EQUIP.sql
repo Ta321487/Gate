@@ -81,13 +81,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '实验室主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '器材管理员', '13800000001', '{}', 0, 1, 1),
@@ -101,9 +94,6 @@ INSERT IGNORE INTO equip (id, title, brand_model, asset_no, category_id, stock, 
 (1, '数字万用表', 'Fluke 15B+', 'EQ-DMM-001', 1, 5, 'available'),
 (2, '示波器', 'Rigol DS1054Z', 'EQ-OSC-002', 1, 3, 'available'),
 (3, '电钻套装', 'Bosch', 'EQ-TOOL-003', 3, 2, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('loan_days', '14', '默认借用天数'),
-('max_borrow', '5', '每人最大在借件数');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '设备借用须知', '请按需申请、按时归还；逾期将登记催还。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='设备借用须知');

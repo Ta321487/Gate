@@ -66,7 +66,7 @@
           >撤销任命</el-button>
           <el-tooltip
             v-else-if="canAppoint && isSub(row) && !canRevokeRow(row)"
-            content="该岗位唯一账号，撤销后无法再任命业务用户顶替"
+            content="该岗位唯一账号，撤销后无法再任命门户用户顶替"
             placement="top"
           >
             <el-button link type="info" disabled>撤销任命</el-button>
@@ -81,7 +81,7 @@
         <el-option
           v-for="p in postOptions"
           :key="p.id"
-          :label="`${p.label}（${p.kind === 'worker' ? '业务员工' : '子管理'}）`"
+          :label="`${p.label}（${p.kind === 'worker' ? '作业岗' : '子管理'}）`"
           :value="p.id"
         />
       </el-select>
@@ -158,7 +158,10 @@ const canAppoint = computed(() => postOptions.value.length > 0)
 const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
-const adminCols = computed(() => profileAdminColumns())
+/** 仅「用户」tab 摊业务档案列；子管理 / 全部与资料页一致不摊 */
+const adminCols = computed(() =>
+  profileAdminColumns(scope.value === 'users' ? 'user' : 'staff'),
+)
 const editAudience = computed(() => profileAudienceOf(form))
 const allFields = computed(() => profileFieldsForAudience(editAudience.value))
 const visibleFields = computed(() =>
@@ -188,7 +191,7 @@ function canRevokeRow(row) {
 async function toggle(row) {
   const next = !row.enabled
   if (!next && isSoleActiveStaff(row)) {
-    ElMessage.warning('该岗位唯一启用账号，停用后无法再任命业务用户顶替')
+    ElMessage.warning(`该岗位唯一启用账号，停用后无法再任命${userLabel.value}顶替`)
     return
   }
   await ElMessageBox.confirm(next ? '确认启用？' : '停用后将无法登录，确认？', '状态')

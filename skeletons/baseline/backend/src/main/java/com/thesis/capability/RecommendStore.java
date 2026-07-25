@@ -41,17 +41,18 @@ public final class RecommendStore {
 
         if (!preferredCats.isEmpty()) {
             mode = "personalized";
-            appendByCategories(list, seen, interacted, preferredCats, item, limit);
+            appendByCategories(list, seen, interacted, preferredCats, item, limit, "偏好分类");
         }
 
         if (list.size() < limit) {
             if ("cold".equals(mode)) mode = "hot";
-            appendHot(list, seen, interacted, item, limit);
+            appendHot(list, seen, interacted, item, limit, "热门");
         }
 
         if (list.size() < limit) {
             if ("cold".equals(mode)) mode = "latest";
-            appendLatest(list, seen, interacted, item, limit);
+            // 跳过与默认列表首页高度重合的最新条目
+            appendLatest(list, seen, interacted, item, limit, "上新", 8);
         }
 
         out.put("list", list);
@@ -176,7 +177,8 @@ public final class RecommendStore {
             Set<Long> exclude,
             List<Long> categoryIds,
             String item,
-            int limit) {
+            int limit,
+            String reason) {
         if (categoryIds.isEmpty()) return;
         StringBuilder in = new StringBuilder();
         List<Object> args = new ArrayList<>();
@@ -195,7 +197,7 @@ public final class RecommendStore {
             List<Long> ids = db().query(sql, (rs, i) -> rs.getLong(1), args.toArray());
             for (Long id : ids) {
                 if (list.size() >= limit) break;
-                addItem(list, seen, id);
+                addItem(list, seen, id, reason);
             }
         } catch (Exception ignored) {
             // ignore
@@ -207,7 +209,8 @@ public final class RecommendStore {
             Set<Long> seen,
             Set<Long> exclude,
             String item,
-            int limit) {
+            int limit,
+            String reason) {
         List<Object> args = new ArrayList<>();
         String excl = excludeSql("b.id", exclude, args);
         String hotJoin = hotJoinSql("b.id");
@@ -221,7 +224,7 @@ public final class RecommendStore {
             List<Long> ids = db().query(sql, (rs, i) -> rs.getLong(1), args.toArray());
             for (Long id : ids) {
                 if (list.size() >= limit) break;
-                addItem(list, seen, id);
+                addItem(list, seen, id, reason);
             }
         } catch (Exception ignored) {
             // ignore
@@ -248,16 +251,21 @@ public final class RecommendStore {
             Set<Long> seen,
             Set<Long> exclude,
             String item,
-            int limit) {
+            int limit,
+            String reason,
+            int skipNewest) {
         List<Object> args = new ArrayList<>();
         String excl = excludeSql("id", exclude, args);
-        String sql = "SELECT id FROM " + item + " WHERE 1=1" + excl + " ORDER BY id DESC LIMIT ?";
+        int offset = Math.max(0, skipNewest);
+        String sql = "SELECT id FROM " + item + " WHERE 1=1" + excl
+                + " ORDER BY id DESC LIMIT ? OFFSET ?";
         args.add(limit * 2);
+        args.add(offset);
         try {
             List<Long> ids = db().query(sql, (rs, i) -> rs.getLong(1), args.toArray());
             for (Long id : ids) {
                 if (list.size() >= limit) break;
-                addItem(list, seen, id);
+                addItem(list, seen, id, reason);
             }
         } catch (Exception ignored) {
             // ignore
@@ -278,10 +286,14 @@ public final class RecommendStore {
         return sb.toString();
     }
 
-    private static void addItem(List<Map<String, Object>> list, Set<Long> seen, long id) {
+    private static void addItem(List<Map<String, Object>> list, Set<Long> seen, long id, String reason) {
         if (id <= 0 || !seen.add(id)) return;
         Map<String, Object> item = ArchiveStore.getItem(id);
-        if (item != null) list.add(item);
+        if (item == null) return;
+        if (reason != null && !reason.isBlank()) {
+            item.put("recommendReason", reason);
+        }
+        list.add(item);
     }
 
     private static String firstNonBlank(String... vals) {

@@ -124,7 +124,13 @@ def _sanitize_island_patch(
             if k == "authPoints" and isinstance(v, list):
                 labels[k] = [str(x)[:40] for x in v[:6]]
             else:
-                labels[k] = str(v)[:200]
+                text = str(v)[:200]
+                # 与 _welcome_lead 相同：材料头 / 开题报告不得进 authLead，保留领域基线
+                if k == "authLead" and (
+                    "【材料：" in text or "【材料:" in text or "开题报告" in text
+                ):
+                    continue
+                labels[k] = text
     # 领域专名标题：若基线已有 noticePageTitle，LLM 可润色但保留非空
     if not labels.get("noticePageTitle") and base_labels.get("noticePageTitle"):
         labels["noticePageTitle"] = base_labels["noticePageTitle"]

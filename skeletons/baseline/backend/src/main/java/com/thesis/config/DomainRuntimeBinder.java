@@ -108,6 +108,18 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-category-limit:0}")
     private int ticketCategoryLimit;
 
+    @Value("${thesis.ticket-loan-days:0}")
+    private int ticketLoanDays;
+
+    @Value("${thesis.ticket-max-active:0}")
+    private int ticketMaxActive;
+
+    @Value("${thesis.ticket-fine-per-day:-1}")
+    private double ticketFinePerDay;
+
+    @Value("${thesis.ticket-pickup-place:}")
+    private String ticketPickupPlace;
+
     @Value("${thesis.archive-soft-delete:false}")
     private boolean archiveSoftDelete;
 
@@ -216,6 +228,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.setUserRole(registerRole);
             TicketStore.configureL1(ticketTwoLevel, ticketRequireAttach, ticketAllowRating);
             TicketStore.configureRules(ticketCheckMutex, ticketCategoryLimit);
+            TicketStore.configureBizParams(ticketLoanDays, ticketMaxActive, ticketFinePerDay, ticketPickupPlace);
             TicketStore.configureCheckin(ticketAllowCheckin);
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);

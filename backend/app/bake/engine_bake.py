@@ -68,6 +68,12 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     if overlay.exists():
         _merge_tree(overlay, dest)
 
+    from app.bake.addons import apply_addons_overlays
+    from app.bake.persistence import apply_persistence_overlay
+
+    apply_persistence_overlay(dest, spec, merge_tree=_merge_tree)
+    apply_addons_overlays(dest, spec, merge_tree=_merge_tree)
+
     _write(dest / "spec.json", json.dumps(spec, ensure_ascii=False, indent=2))
     schema_pre = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
     roles_pre = schema_pre.get("roles") if isinstance(schema_pre.get("roles"), dict) else {}
@@ -95,6 +101,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
         capabilities=spec.get("capabilities"),
         proposal_text=proposal_for_sql,
+        title=str(spec.get("title") or ""),
         ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
         staff_posts=staff_posts_pre,
     )
@@ -123,6 +130,11 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         )
         text = _patch_thesis_yml(text, domain, spec)
         app_yml.write_text(text, encoding="utf-8")
+        # thesis 段重写后再次确保 mybatis 块仍在（防旧正则误删；idempotent）
+        if (spec.get("persistence") or "jdbc") == "mybatis":
+            from app.bake.persistence import ensure_mybatis_application_yml
+
+            ensure_mybatis_application_yml(dest)
 
     from app.bake.api_style import apply_api_style_to_workspace, normalize_api_style
 
@@ -174,7 +186,14 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         encoding="utf-8",
     )
 
-    _patch_student_readme(dest, app_name=app_name, db_name=db_name, java_package=new_pkg)
+    _patch_student_readme(
+        dest,
+        app_name=app_name,
+        db_name=db_name,
+        java_package=new_pkg,
+        persistence=spec.get("persistence") or "jdbc",
+        spring_security=bool(spec.get("spring_security")),
+    )
 
     from app.bake.auth_hero import auth_hero_public_path, fetch_auth_hero
     from app.bake.portal_banners import fetch_portal_banners
@@ -305,6 +324,36 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             cat_limit_n = 0
         if cat_limit_n > 0:
             lines.append(f"  ticket-category-limit: {cat_limit_n}")
+        from app.bake.ticket_rules import rules_for
+
+        rules = rules_for(domain)
+        rule_lines: list[str] = []
+        try:
+            loan_n = int(rules.get("loan_days") or 0)
+        except (TypeError, ValueError):
+            loan_n = 0
+        if loan_n > 0:
+            rule_lines.append(f"  ticket-loan-days: {loan_n}")
+        try:
+            max_n = int(rules.get("max_active") or 0)
+        except (TypeError, ValueError):
+            max_n = 0
+        if max_n > 0:
+            rule_lines.append(f"  ticket-max-active: {max_n}")
+        if "fine_per_day" in rules:
+            try:
+                fine_n = float(rules.get("fine_per_day"))
+            except (TypeError, ValueError):
+                fine_n = -1.0
+            if fine_n >= 0:
+                rule_lines.append(f"  ticket-fine-per-day: {fine_n:g}")
+        place = str(rules.get("pickup_place") or "").strip()
+        if place:
+            # yml 简单值；地点文案无冒号
+            rule_lines.append(f"  ticket-pickup-place: {place}")
+        if rule_lines:
+            lines.append("  # 业务参数（工厂 bake 写入；学生包无配置表）")
+            lines.extend(rule_lines)
         if ticket_ent.get("noShowAfterEnd") and ticket_ent.get("allowCheckin"):
             lines.append("  ticket-no-show-after-end: true")
             try:
@@ -418,6 +467,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
 
     block = "\n".join(lines) + "\n"
     if re.search(r"(?m)^thesis:\s*$", text):
-        return re.sub(r"(?ms)^thesis:\s*\n.*\Z", block, text, count=1)
+        # 只替换 thesis 段（缩进行），保留其后的 mybatis / pagehelper 等顶层配置
+        return re.sub(r"(?ms)^thesis:\s*\n(?:[ \t].*\n?)*", block, text, count=1)
     return text.rstrip() + "\n\n" + block
 

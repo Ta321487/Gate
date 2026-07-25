@@ -79,13 +79,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '驿站主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '驿站店员', '13800000001', '{}', 0, 1, 1),
@@ -101,9 +94,6 @@ INSERT IGNORE INTO parcel (id, title, station_name, pickup_code, category_id, st
 (3, '顺丰SF1003003', '南区代收点', '取件码 7740 / 大件区', 3, 1, 'available'),
 (4, '韵达YD2204004', '东门驿站', '取件码 1098 / B03 柜', 1, 1, 'available'),
 (5, '极兔JT3305005', '东门驿站', '取件码 6644 / A08 柜', 1, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('claim_hint', '核验取件码与手机尾号', '取件说明'),
-('pickup_place', '东门校园驿站前台', '取件地点');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '取件须知', '请凭取件码与本人手机号取件；超时未取将移至逾期架。', 'admin', '驿站主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='取件须知');

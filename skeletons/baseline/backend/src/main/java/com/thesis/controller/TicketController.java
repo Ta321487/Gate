@@ -32,7 +32,11 @@ public class TicketController {
                 Long typeId = toLongOrNull(body.get("typeId"));
                 Long roomId = toLongOrNull(body.get("roomId"));
                 String attachUrl = str(body.get("attachUrl"));
-                return R.ok(TicketStore.applyStandalone(uid, title, location, remark, typeId, roomId, attachUrl));
+                String priority = str(body.get("priority"));
+                String contactPhone = str(body.get("contactPhone"));
+                if (contactPhone.isBlank()) contactPhone = str(body.get("phone"));
+                return R.ok(TicketStore.applyStandalone(
+                        uid, title, location, remark, typeId, roomId, attachUrl, priority, contactPhone));
             }
             long itemId = Long.parseLong(String.valueOf(body.get("itemId") != null ? body.get("itemId") : body.get("bookId")));
             String remark = str(body.get("remark"));

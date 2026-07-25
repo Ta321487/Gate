@@ -4,7 +4,7 @@
 
     <section class="hero">
       <h1>个人资料</h1>
-      <p>维护基本信息与业务资料；改密后需用新密码重新登录。</p>
+      <p>维护基本信息与{{ userLabel }}资料；改密后需用新密码重新登录。</p>
     </section>
 
     <p v-if="!form.profileEditable" class="locked">顶级管理员不提供个人资料修改。</p>
@@ -87,7 +87,7 @@
       </section>
 
       <section v-if="bizFields.length" class="card block">
-        <h2 class="block-title">业务资料</h2>
+        <h2 class="block-title">{{ userLabel }}资料</h2>
         <div class="grid">
           <el-form-item
             v-for="f in bizFields"
@@ -172,6 +172,7 @@ import {
   isWalletEnabled,
   profileAudienceOf,
   profileFieldsForAudience,
+  roleLabel,
 } from '../utils/domainSchema.js'
 import {
   validateProfileFormats,
@@ -188,6 +189,7 @@ const WIDE_KEYS = new Set([
 const router = useRouter()
 const saving = ref(false)
 const loyalty = ref(null)
+const userLabel = computed(() => roleLabel('user', '用户'))
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())

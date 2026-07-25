@@ -101,7 +101,6 @@ CREATE TABLE IF NOT EXISTS reply_attach (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -122,13 +121,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   publisher_name VARCHAR(64),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
 );
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
@@ -159,9 +151,6 @@ INSERT IGNORE INTO reply (id, book_id, username, status, apply_at, approve_at, r
 (3, 3, 'user', 'pending', NOW(), NULL, '<p>我报名，带相机记录路线。</p>');
 INSERT IGNORE INTO reply_attach (id, ticket_id, file_url, file_name, uploaded_by) VALUES
 (1, 2, '/uploads/demo/discrete-outline.pdf', '离散提纲.pdf', 'subadmin');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('max_reply', '50', '每人每帖回复上限提示'),
-('forum_hint', '主帖站长维护，回复可审核', '发帖方式说明');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '社区公约', '请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用形成楼中楼。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社区公约');

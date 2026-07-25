@@ -62,13 +62,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '主编', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '编辑甲', '13800000001', '{}', 0, 1, 1),
@@ -84,8 +77,6 @@ INSERT IGNORE INTO article (id, title, author, isbn, category_id, stock, status)
 (3, '毕业季的咖啡馆', '读者甲', '<p>期末周的一角安静时光，写给即将离开的校园。</p>', 2, 1, 'available'),
 (4, '读《设计中的设计》札记', '主编', '<p>关于日常与设计的几段摘录与感想。</p><blockquote>设计在于发现，而不是创造。</blockquote>', 2, 1, 'available'),
 (5, '本站上线说明', '编辑甲', '<p>演示站点已开放<strong>阅读</strong>与<strong>收藏</strong>，欢迎留言建议。</p>', 3, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('blog_hint', '主编维护文章', '发布方式说明');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '阅读须知', '文章仅供学习演示；转载请注明出处。内容由主编维护发布。', 'admin', '主编'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='阅读须知');

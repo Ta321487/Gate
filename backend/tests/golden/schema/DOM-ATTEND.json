@@ -20,7 +20,7 @@
         },
         {
           "key": "isbn",
-          "label": "工号/学号备注",
+          "label": "工号备注",
           "type": "textarea"
         },
         {
@@ -46,8 +46,8 @@
         }
       ],
       "key": "staff_person",
-      "label": "人员",
-      "labelPlural": "人员",
+      "label": "员工",
+      "labelPlural": "员工",
       "softDelete": false,
       "stockDisplay": "toggle",
       "stockUnavailableLabel": "已请假",
@@ -100,11 +100,11 @@
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "考勤请假",
-    "authLead": "验证码登录；维护人员档案并提交请假，审批通过后按时销假。",
+    "authEyebrow": "员工考勤",
+    "authLead": "验证码登录；维护员工档案并提交请假，审批通过后按时销假。",
     "authPoints": [
       "验证码登录",
-      "人员档案",
+      "员工档案",
       "请假与销假"
     ],
     "messagesPageLead": "审核结果与系统通知。",
@@ -122,7 +122,7 @@
       },
       {
         "key": "archive",
-        "label": "人员档案",
+        "label": "员工档案",
         "superOnly": true
       },
       {
@@ -152,7 +152,7 @@
     "user": [
       {
         "key": "archive",
-        "label": "人员名册"
+        "label": "员工名册"
       },
       {
         "key": "my_tickets",
@@ -170,15 +170,15 @@
   },
   "portalBanners": [
     {
-      "lead": "按岗位类型浏览人员，维护部门与工号。",
-      "title": "人员名册"
+      "lead": "按岗位类型浏览，维护部门与工号。",
+      "title": "员工名册"
     },
     {
       "lead": "提交请假单，人事审批后生效。",
       "title": "在线请假"
     },
     {
-      "lead": "考勤节点与请假须知见公告栏。",
+      "lead": "请假节点与销假须知见公告栏。",
       "title": "人事公告"
     },
     {
@@ -186,7 +186,7 @@
       "title": "我的请假"
     },
     {
-      "lead": "按岗位类型快速定位人员。",
+      "lead": "按岗位类型快速定位。",
       "title": "分类检索"
     }
   ],
@@ -201,7 +201,7 @@
     },
     "user": {
       "id": "user",
-      "label": "员工/学生"
+      "label": "员工"
     }
   },
   "seeds": {

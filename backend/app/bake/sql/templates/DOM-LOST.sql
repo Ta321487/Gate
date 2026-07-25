@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS claim (
   pickup_place VARCHAR(128) DEFAULT ''
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -89,13 +88,6 @@ CREATE TABLE IF NOT EXISTS claim_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '招领主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '招领管理员', '13800000001', '{}', 0, 1, 1),
@@ -111,9 +103,6 @@ INSERT IGNORE INTO lost_item (id, title, author, isbn, category_id, stock, statu
 (3, '蓝色水杯', '学生甲', '实验楼 B201 / 杯身有贴纸', 3, 1, 'available'),
 (4, '学生证', '宿舍楼管', '3 栋门厅 / 计算机学院', 1, 1, 'available'),
 (5, '充电器一套', '教室保洁', '教学楼 305 / Type-C 线', 2, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('claim_hint', '需核对特征', '认领说明'),
-('pickup_place', '保卫处失物点', '领取地点');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '招领须知', '认领时请提供有效身份与物品特征；审核通过后到指定地点领取。', 'admin', '招领主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='招领须知');

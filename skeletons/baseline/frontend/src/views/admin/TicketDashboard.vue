@@ -3,6 +3,7 @@
     <header class="hd">
       <h2>工作台</h2>
       <p>{{ adminLabel }}概览、待办与统计分析。</p>
+      <p v-if="configHint" class="cfg-hint">{{ configHint }}</p>
     </header>
 
     <div class="stats" :style="{ gridTemplateColumns: `repeat(${Math.min(cards.length, 4)}, 1fr)` }">
@@ -117,6 +118,16 @@ const chartMode = computed(() => {
   return 'ticket'
 })
 
+/** bake 写入的借期/限额等，工作台只读展示 */
+const configHint = computed(() => {
+  const d = data.value || {}
+  const parts = []
+  if (d.loanDays != null) parts.push(`默认借期 ${d.loanDays} 天`)
+  if (d.maxActive != null) parts.push(`在途上限 ${d.maxActive} 单`)
+  if (d.finePerDay != null && showOverdue.value) parts.push(`逾期 ${d.finePerDay} 元/天`)
+  return parts.length ? `业务参数：${parts.join(' · ')}` : ''
+})
+
 const cards = computed(() => {
   const list = []
   if (caps.value.includes('order_lines')) {
@@ -197,6 +208,7 @@ onMounted(load)
 .hd { margin-bottom: 18px; }
 .hd h2 { margin: 0 0 6px; font-size: 20px; }
 .hd p { margin: 0; color: var(--portal-muted, #8a9aa6); font-size: 13px; }
+.hd .cfg-hint { margin-top: 6px; font-size: 12px; color: var(--portal-accent, #0b6e75); }
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

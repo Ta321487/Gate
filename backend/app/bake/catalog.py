@@ -654,13 +654,24 @@ def build_spec(
     chrome: str | None = None,
     layout: str | None = None,
     typeface: str | None = None,
+    persistence: str | None = None,
+    spine: str | None = None,
+    spring_security: bool | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
     from app.bake.staff_posts import roles_for_spec
+    from app.bake.stack_scan import (
+        normalize_persistence,
+        normalize_spine,
+        normalize_spring_security,
+    )
 
     dom = DOMAINS.get(domain, DOMAINS["DOM-GENERIC"])
     arch = ARCHETYPES.get(archetype, ARCHETYPES["ARCH-CRUD"])
     theme = normalize_theme(theme, domain)
+    persistence = normalize_persistence(persistence)
+    spine = normalize_spine(spine)
+    spring_security = normalize_spring_security(spring_security)
     seed = f"{title}|{domain}"
     auth_template = pick_auth_template(seed)
     auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
@@ -727,6 +738,13 @@ def build_spec(
         "auth_role_widget_label": label_from_catalog(AUTH_ROLE_WIDGETS, auth_role_widget),
         "llm_enabled": llm_enabled,
         "password_hash": normalize_password_hash(password_hash),
+        "spine": spine,
+        "persistence": persistence,
+        "persistence_label": (
+            "MyBatis + PageHelper" if persistence == "mybatis" else "Spring JDBC（JdbcTemplate）"
+        ),
+        "spring_security": spring_security,
+        "addons": {"spring_security": spring_security},
         "match_mode": match_mode,
         "confidence": confidence,
         "hits": hits or [],

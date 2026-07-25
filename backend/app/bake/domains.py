@@ -137,10 +137,10 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # F 兜底
     "DOM-GENERIC": ["archive", "content", "org_users"],
     # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
-    "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend"],
-    "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend"],
+    "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
+    "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "recommend"],
-    "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend"],
+    "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
 }
 
 

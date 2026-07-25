@@ -75,13 +75,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '教务主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '教务员', '13800000001', '{}', 0, 1, 1),
@@ -97,9 +90,6 @@ INSERT IGNORE INTO course_item (id, title, teacher_name, course_code, category_i
 (3, '软件工程导论', '赵老师', 'SE3001 / 3学分', 1, 1, 'available'),
 (4, '线性代数', '陈老师', 'MA1203 / 3学分', 2, 1, 'available'),
 (5, 'Python 程序设计', '周老师', 'CS1050 / 2学分', 3, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('grade_hint', '请说明更正或补考理由', '成绩申请说明'),
-('max_open_grade', '2', '每人最大在途成绩单');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '成绩须知', '成绩更正与补考申请由教务审核；不对接学信网。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='成绩须知');

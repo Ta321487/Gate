@@ -10,7 +10,6 @@ _INFRA_TABLE_ZH: dict[str, str] = {
     "sys_notice": "公告",
     "sys_message": "消息",
     "sys_guestbook": "留言",
-    "sys_config": "配置",
     "category": "分类",
     "archive_log": "监测记录",
     "user_browse_history": "浏览足迹",

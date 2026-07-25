@@ -94,3 +94,18 @@ def _proposal_text(spec: dict[str, Any]) -> str:
         return "\n".join(str(x) for x in parts if x)
     return str(prop or "")
 
+
+# `from agents_common import *` skips _-names unless listed here.
+__all__ = [
+    "LlmRuntime",
+    "record_call",
+    "write_qa_report",
+    "_LABEL_KEYS",
+    "_SEED_KEYS",
+    "_ROLE_LABEL_SLOTS",
+    "_QA_FILES",
+    "_SAMPLE_PROPOSAL_PID",
+    "_proposal_text",
+    "_resolve_cmd",
+]
+
