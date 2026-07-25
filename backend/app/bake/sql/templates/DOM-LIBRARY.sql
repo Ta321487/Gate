@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS borrow (
   remark VARCHAR(255)
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -95,13 +94,6 @@ CREATE TABLE IF NOT EXISTS book_favorite (
   UNIQUE KEY uk_user_book (username, book_id)
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '子管理员', '13800000001', '{}', 0, 1, 1),
@@ -115,9 +107,6 @@ INSERT IGNORE INTO book (id, title, author, isbn, category_id, stock, status) VA
 (1, 'Spring Boot 实战', '张三', '9787111111111', 1, 5, 'available'),
 (2, '深入理解计算机系统', 'Bryant', '9787111111112', 1, 3, 'available'),
 (3, '围城', '钱钟书', '9787111111113', 2, 2, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('loan_days', '30', '默认借阅天数'),
-('max_borrow', '5', '每人最大在借册数');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '开馆通知', '本馆工作日 8:00–22:00 开放。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开馆通知');

@@ -21,7 +21,7 @@
         },
         {
           "key": "isbn",
-          "label": "地点/特征",
+          "label": "小区地点/特征",
           "type": "textarea"
         },
         {
@@ -95,8 +95,8 @@
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "失物招领",
-    "authLead": "验证码登录；浏览失物启事，提交认领申请，管理员审核后领取。",
+    "authEyebrow": "社区招领",
+    "authLead": "验证码登录；浏览社区失物启事，提交认领申请，管理员审核后领取。",
     "authPoints": [
       "验证码登录",
       "失物检索",
@@ -104,7 +104,7 @@
     ],
     "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "招领须知与临时通知，点击条目阅读全文。",
-    "noticePageTitle": "招领公告",
+    "noticePageTitle": "社区公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
     "registerRoleHint": "注册后可浏览启事并申请认领"
@@ -166,7 +166,7 @@
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "招领主管（总管）"
+      "label": "社区招领主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
@@ -174,11 +174,11 @@
     },
     "user": {
       "id": "user",
-      "label": "用户"
+      "label": "居民"
     }
   },
   "seeds": {
-    "noticeBody": "认领时请提供有效身份与物品特征；审核通过后到指定地点领取。",
+    "noticeBody": "认领时请提供有效身份与物品特征；审核通过后到物业/驿站领取。",
     "noticeTitle": "招领须知"
   },
   "title": "测试课题",

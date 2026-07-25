@@ -17,7 +17,21 @@ from typing import Literal
 
 # 与历史 shells 导出名兼容（builders / profile 经本模块或 shells 再导出使用）
 CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工", "高校", "学校", "校内")
-COMMUNITY_HINTS = ("社区", "网格", "养老", "复工", "流调", "居民", "小区")
+# 社区网格/公卫排查口径。勿把光杆「养老」算进来：养老机构走 institution。
+# 「复工」不进社区：企业复工健康监测走 enterprise（见 EVENT_ENTERPRISE_HINTS）。
+COMMUNITY_HINTS = ("社区", "网格", "流调", "居民", "小区")
+# 机构端照护（养老院等）：用强词，避免「老人/护士/院内」误伤慢病随访、院感等题
+EVENT_INSTITUTION_HINTS = (
+    "养老机构",
+    "养老院",
+    "护理院",
+    "敬老院",
+    "照护员",
+    "入住老人",
+    "重点老人",
+)
+# 企业员工健康监测/复工（压过 community 的「复工」误伤）
+EVENT_ENTERPRISE_HINTS = ("企业员工", "复工", "班组", "园区办公", "EHS", "同班次")
 
 ATTEND_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工")
 EVENT_CAMPUS_HINTS = ("晨午检", "因病缺课", "校园", "班级", "学生", "学校", "高校")
@@ -43,6 +57,9 @@ MEETING_CAMPUS_NOUNS = (
 )
 LOST_ADOPT_HINTS = ("领养", "待领养", "领养站")
 IT_ENTERPRISE_HINTS = ("企业", "公司", "办公", "员工", "运维工单")
+FOOD_CAMPUS_HINTS = ("食堂", "校园", "档口", "学子", "高校", "学校")
+SHOP_CAMPUS_HINTS = ("校园", "校内", "二手", "学校", "高校")
+HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
 
 Scene = Literal[
     "campus",
@@ -50,6 +67,7 @@ Scene = Literal[
     "community",
     "commercial",
     "adopt",
+    "institution",
     "default",
 ]
 
@@ -111,8 +129,17 @@ def scene_attend(text: str) -> Scene:
 def scene_event(text: str) -> Scene:
     if scan_has(text, EVENT_CAMPUS_HINTS):
         return "campus"
+    # 机构养老/照护：独立档，不用社区网格壳、也不用校园晨午检种子
+    if scan_has(text, EVENT_INSTITUTION_HINTS):
+        return "institution"
+    # 企业复工/员工监测：先于 community，避免「复工」套网格壳
+    if scan_has(text, EVENT_ENTERPRISE_HINTS) or (
+        scan_has(text, ("企业", "公司")) and scan_has(text, ("员工", "健康监测", "健康打卡"))
+    ):
+        return "enterprise"
     if scan_has(text, COMMUNITY_HINTS):
         return "community"
+    # 慢病随访/院感/献血等：default（公卫随访档，非校园种子）
     return "default"
 
 
@@ -160,6 +187,30 @@ def scene_lost(text: str) -> Scene:
     return "community"
 
 
+def scene_food(text: str) -> Scene:
+    if scan_has(text, FOOD_CAMPUS_HINTS):
+        return "campus"
+    return "commercial"
+
+
+def scene_shop(text: str) -> Scene:
+    if scan_has(text, SHOP_CAMPUS_HINTS):
+        return "campus"
+    return "commercial"
+
+
+def scene_hospital(text: str) -> Scene:
+    """门诊默认；宠物医院走 adopt（资料页宠主口径）。疫苗仍 default。"""
+    if scan_has(text, HOSPITAL_PET_HINTS):
+        return "adopt"
+    return "default"
+
+
+def scene_salon(text: str) -> Scene:
+    """美发/健身均为商业门店身份；产品文案仍由 builder 本地扫词。"""
+    return "commercial"
+
+
 def scene_for(
     domain: str,
     title: str = "",
@@ -187,4 +238,12 @@ def scene_for(
         return scene_it(t)
     if domain == "DOM-LOST":
         return scene_lost(t)
+    if domain == "DOM-FOOD":
+        return scene_food(t)
+    if domain == "DOM-SHOP":
+        return scene_shop(t)
+    if domain == "DOM-HOSPITAL":
+        return scene_hospital(t)
+    if domain == "DOM-SALON":
+        return scene_salon(t)
     return "default"

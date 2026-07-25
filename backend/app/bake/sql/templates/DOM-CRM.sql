@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS follow_up (
   next_follow_at DATETIME NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -87,13 +86,6 @@ CREATE TABLE IF NOT EXISTS follow_up_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '销售主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '客户经理', '13800000001', '{}', 0, 1, 1),
@@ -109,9 +101,6 @@ INSERT IGNORE INTO customer (id, title, author, isbn, category_id, stock, status
 (3, '未命名线索-展会', '张女士', '13733330003 / 展会名片', 3, 1, 'available'),
 (4, '海川物流', '赵经理', '13644440004 / 合同续签跟进', 1, 1, 'available'),
 (5, '邻里便利店连锁', '陈店长', '13555550005 / 新开门店合作', 2, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('follow_hint', '请填写沟通纪要', '跟进说明'),
-('max_open_follow', '20', '每人最大在途跟进单');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '跟进须知', '请如实登记联系结果；重要商机请及时提交跟进单由主管确认。', 'admin', '销售主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跟进须知');

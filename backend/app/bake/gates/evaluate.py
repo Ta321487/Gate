@@ -321,6 +321,47 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
 
     files_ok, missing = _has_files(workspace, required)
 
+    from app.bake.stack_scan import normalize_persistence
+
+    persistence = normalize_persistence(spec.get("persistence"))
+    if persistence == "mybatis":
+        mapper_dir = workspace / "backend" / "src" / "main" / "resources" / "mapper"
+        mybatis_support = be / "config" / "MybatisSupport.java"
+        notice_mapper = be / "mapper" / "NoticeMapper.java"
+        if not mapper_dir.is_dir() or not any(mapper_dir.glob("*.xml")):
+            files_ok = False
+            missing = list(missing) + ["backend/src/main/resources/mapper/*.xml"]
+        if not mybatis_support.is_file():
+            files_ok = False
+            missing = list(missing) + ["MybatisSupport.java"]
+        if not notice_mapper.is_file():
+            files_ok = False
+            missing = list(missing) + ["NoticeMapper.java"]
+        # 禁止残留 JdbcSupport / MbBridge
+        if (be / "config" / "JdbcSupport.java").is_file():
+            files_ok = False
+            missing = list(missing) + ["（mybatis 包不应保留 JdbcSupport.java）"]
+        if (be / "config" / "MbBridge.java").is_file():
+            files_ok = False
+            missing = list(missing) + ["（mybatis 包不应保留 MbBridge.java）"]
+
+    from app.bake.addons import resolve_spring_security
+
+    if resolve_spring_security(spec):
+        # 包名 remap 后按文件名认，不绑 com.thesis 路径
+        has_sec = any(p.name == "SecurityConfig.java" for p in be.rglob("*.java"))
+        has_filter = any(p.name == "SessionAuthFilter.java" for p in be.rglob("*.java"))
+        pom_txt = _read(workspace / "backend" / "pom.xml")
+        if not has_sec:
+            files_ok = False
+            missing = list(missing) + ["SecurityConfig.java"]
+        if not has_filter:
+            files_ok = False
+            missing = list(missing) + ["SessionAuthFilter.java"]
+        if "spring-boot-starter-security" not in pom_txt:
+            files_ok = False
+            missing = list(missing) + ["pom.xml → spring-boot-starter-security"]
+
     flow_api = gate.get("flow_api") or {}
     api_hits = _eval_flow_api(be, flow_api)
 

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.OrderMapper">
+
+    <select id="selectCart" resultType="map">
+        SELECT c.id, c.item_id, c.qty FROM `${cartTable}` c
+        WHERE c.username=#{username} ORDER BY c.id
+    </select>
+
+    <select id="selectCartItem" resultType="map">
+        SELECT id, item_id, qty FROM `${cartTable}`
+        WHERE username=#{username} AND item_id=#{itemId}
+    </select>
+
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO `${orderTable}` (
+            username, status, total_yuan, remark
+            <if test="extraCols != null">
+                <foreach collection="extraCols" index="col" item="val" open="," separator=",">
+                    `${col}`
+                </foreach>
+            </if>
+            , created_at, updated_at
+        ) VALUES (
+            #{username}, #{status}, #{totalYuan}, #{remark}
+            <if test="extraCols != null">
+                <foreach collection="extraCols" item="val" open="," separator=",">
+                    #{val}
+                </foreach>
+            </if>
+            , #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="selectOrderById" resultType="map">
+        SELECT * FROM `${orderTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectLines" resultType="map">
+        SELECT * FROM `${lineTable}` WHERE order_id=#{orderId} ORDER BY id
+    </select>
+
+    <select id="selectOrders" resultType="map">
+        SELECT * FROM `${orderTable}`
+        <where>
+            <if test="username != null and username != ''">AND username=#{username}</if>
+            <if test="status != null and status != ''">AND status=#{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectIdsByReservation" resultType="long">
+        SELECT id FROM `${orderTable}`
+        WHERE reservation_id=#{reservationId} AND status IN ('pending','confirmed','shipped')
+    </select>
+
+    <select id="selectTimedOutPendingIds" resultType="long">
+        SELECT id FROM `${orderTable}`
+        WHERE status='pending' AND created_at &lt; DATE_SUB(NOW(), INTERVAL #{minutes} MINUTE)
+    </select>
+
+    <update id="updateOrderShip">
+        UPDATE `${orderTable}` SET status=#{status}
+        <if test="trackingNo != null">, tracking_no=#{trackingNo}</if>
+        <if test="pickupCode != null">, pickup_code=#{pickupCode}</if>
+        <if test="shippedAt != null">, shipped_at=#{shippedAt}</if>
+        , updated_at=#{updatedAt}
+        WHERE id=#{id}
+    </update>
+
+    <select id="selectStatusSeries" resultType="map">
+        SELECT status AS name, COUNT(*) AS value FROM `${orderTable}` GROUP BY status
+    </select>
+
+    <select id="selectTrendSeries" resultType="map">
+        SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM `${orderTable}`
+        WHERE created_at &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day
+    </select>
+
+    <update id="applyLoyaltyWithCoupon">
+        UPDATE `${orderTable}`
+        SET total_yuan=#{totalYuan}, discount_yuan=#{discountYuan}, pay_balance_yuan=#{payBalanceYuan},
+            coupon_code=#{couponCode}, updated_at=#{updatedAt}
+        WHERE id=#{id}
+    </update>
+
+    <update id="applyLoyaltyPlain">
+        UPDATE `${orderTable}`
+        SET total_yuan=#{totalYuan}, discount_yuan=#{discountYuan}, pay_balance_yuan=#{payBalanceYuan},
+            updated_at=#{updatedAt}
+        WHERE id=#{id}
+    </update>
+</mapper>

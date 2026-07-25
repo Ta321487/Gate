@@ -16,9 +16,10 @@ final class TicketStatusOps {
     static Map<String, Object> enrich(Map<String, Object> b) {
         Map<String, Object> m = new LinkedHashMap<>(b);
         touchTicketStatus(m);
+        m.put("maxActive", TicketStore.maxActive());
         if (TicketStore.useDeadline) {
-            m.put("loanDays", TicketStore.LOAN_DAYS);
-            m.put("finePerDay", TicketStore.FINE_PER_DAY);
+            m.put("loanDays", TicketStore.loanDays());
+            m.put("finePerDay", TicketStore.finePerDay());
         }
         if (TicketStore.noShowAfterEnd && TicketStore.noShowPenaltyYuan > 0) {
             m.put("TicketStore.noShowPenaltyYuan", TicketStore.noShowPenaltyYuan);
@@ -95,9 +96,9 @@ final class TicketStatusOps {
         m.put("fineYuan", fine);
         String msg;
         if (fine > 0) {
-            msg = "已逾期，请尽快处理。当前预估费用 " + fine + " 元（" + TicketStore.FINE_PER_DAY + " 元/天）。";
+            msg = "已逾期，请尽快处理。当前预估费用 " + fine + " 元（" + TicketStore.finePerDay() + " 元/天）。";
         } else {
-            msg = "请于到期日前处理，逾期将按 " + TicketStore.FINE_PER_DAY + " 元/天计费。";
+            msg = "请于到期日前处理，逾期将按 " + TicketStore.finePerDay() + " 元/天计费。";
         }
         if (forceRemind) {
             m.put("remindedAt", TicketSql.now());
@@ -129,7 +130,7 @@ final class TicketStatusOps {
                 : LocalDateTime.now();
         long days = ChronoUnit.DAYS.between(dueAt.toLocalDate(), end.toLocalDate());
         if (days <= 0) return 0.0;
-        return Math.round(days * TicketStore.FINE_PER_DAY * 10.0) / 10.0;
+        return Math.round(days * TicketStore.finePerDay() * 10.0) / 10.0;
     }
 
 

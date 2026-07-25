@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -21,10 +25,13 @@ from app.bake.catalog import (
 )
 from app.bake.naming import sanitize_delivery_slug, student_db_name, zip_download_name
 from app.bake.gates import evaluate_domain_gates
+from app.bake.stack_scan import normalize_persistence, normalize_spring_security, scan_stack
 from app.core.config import get_settings
 from app.models import Project, ProjectStatus
 from app.services.proposal import load_merged_proposal_text, summarize_proposal
 from app.services import runtime as rt
+
+logger = logging.getLogger(__name__)
 
 
 def _next_id() -> str:
@@ -141,14 +148,132 @@ def preview_start_block_reason(project: Project) -> str | None:
 async def _reserved_db_names(
     db: AsyncSession, *, exclude_id: str | None = None
 ) -> set[str]:
+    """其它项目库名 ∪ 本机已有学生库（防 keep_db / 删库失败残留撞名）。
+
+    exclude_id 对应项目的当前库名不计入本机探测结果，避免改领域时被迫改名。
+    """
     result = await db.execute(select(Project.id, Project.db_name))
     out: set[str] = set()
+    own_name = ""
     for pid, name in result.all():
         if exclude_id and pid == exclude_id:
+            if name:
+                own_name = str(name)
             continue
         if name:
             out.add(str(name))
+    from app.services.student_db import list_existing_student_db_names
+
+    live = await asyncio.to_thread(list_existing_student_db_names)
+    own_l = own_name.lower()
+    for n in live:
+        if own_l and n.lower() == own_l:
+            continue
+        out.add(n)
     return out
+
+
+def resolve_workspace_dir(project: Project) -> Path:
+    """优先 workspace_path；否则 data/workspace/{id}。"""
+    if project.workspace_path:
+        return Path(project.workspace_path)
+    return get_settings().workspace_dir / project.id
+
+
+def remove_tree_reliable(
+    path: Path, *, retries: int = 8, delay: float = 0.25
+) -> None:
+    """带重试删除目录；仍残留则抛 RuntimeError（避免假成功）。"""
+    if not path.exists():
+        return
+    last_err: Exception | None = None
+    for i in range(retries):
+        try:
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink(missing_ok=True)
+        except OSError as e:
+            last_err = e
+            time.sleep(delay * (1 + i * 0.4))
+            continue
+        if not path.exists():
+            return
+        time.sleep(delay)
+    if path.exists():
+        raise RuntimeError(f"无法删除 {path}: {last_err or '目录仍存在'}")
+
+
+def remove_project_zips(project_id: str, zip_path: str | None) -> None:
+    """清理工作区下该项目 ZIP（旧名 + {id}-*.zip + 记录路径）。"""
+    settings = get_settings()
+    legacy = settings.workspace_dir / f"{project_id}-thesis-app.zip"
+    if legacy.exists():
+        try:
+            legacy.unlink()
+        except OSError as e:
+            logger.warning("删除旧 ZIP 失败 %s: %s", legacy, e)
+    for zp in settings.workspace_dir.glob(f"{project_id}-*.zip"):
+        try:
+            zp.unlink()
+        except OSError as e:
+            logger.warning("删除 ZIP 失败 %s: %s", zp, e)
+    if zip_path:
+        try:
+            Path(zip_path).unlink(missing_ok=True)
+        except OSError as e:
+            logger.warning("删除 zip_path 失败 %s: %s", zip_path, e)
+
+
+def remove_project_logs(project_id: str) -> None:
+    logs = get_settings().logs_dir / project_id
+    if logs.exists():
+        shutil.rmtree(logs, ignore_errors=True)
+
+
+def remove_project_source_if_owned(
+    source_path: str | None, *, shared: bool
+) -> None:
+    """仅当路径在 uploads 下且无其它项目共用时清理开题材料。"""
+    if shared or not source_path:
+        return
+    path = Path(source_path)
+    try:
+        uploads = get_settings().uploads_dir.resolve()
+        resolved = path.resolve()
+    except OSError:
+        return
+    if uploads != resolved and uploads not in resolved.parents:
+        return
+    try:
+        if resolved.is_file():
+            parent = resolved.parent
+            # 上传包目录整删；散落单文件只删文件
+            if parent != uploads and (
+                parent.name.endswith("_bundle") or resolved.name == "manifest.json"
+            ):
+                shutil.rmtree(parent, ignore_errors=True)
+            else:
+                resolved.unlink(missing_ok=True)
+        elif resolved.is_dir():
+            shutil.rmtree(resolved, ignore_errors=True)
+    except OSError as e:
+        logger.warning("清理开题材料失败 %s: %s", source_path, e)
+
+
+def purge_project_disk(project: Project) -> None:
+    """删除工程目录与 ZIP；工程目录删不干净则抛错（项目行勿先删）。"""
+    ws = resolve_workspace_dir(project)
+    if ws.exists():
+        rt.detach_frontend_deps(ws)
+        remove_tree_reliable(ws)
+    # 兼容：workspace_path 与默认目录不一致时两边都清
+    default_ws = get_settings().workspace_dir / project.id
+    if default_ws != ws and default_ws.exists():
+        rt.detach_frontend_deps(default_ws)
+        remove_tree_reliable(default_ws)
+    remove_project_zips(project.id, project.zip_path)
+    remove_project_logs(project.id)
 
 
 async def reclaim_idle_ports(db: AsyncSession, *, keep_id: str | None = None) -> int:
@@ -339,6 +464,21 @@ async def create_from_uploads(
     }
     match_meta["zip_name"] = zip_download_name(match_meta["delivery_slug"], pid)
 
+    stack = scan_stack(matched.title, match_body)
+    persistence = normalize_persistence(stack.get("persistence"))
+    spring_security = normalize_spring_security(stack.get("spring_security"))
+    match_meta["stack"] = {
+        "spine": stack.get("spine") or "spa",
+        "recommended_persistence": persistence,
+        "recommended_spring_security": spring_security,
+        "hits": list(stack.get("hits") or []),
+        "warnings": list(stack.get("warnings") or []),
+        "addons": dict(stack.get("addons") or {}),
+    }
+    for tip in stack.get("warnings") or []:
+        if tip not in hits:
+            hits.append(tip)
+
     reserved = await _reserved_db_names(db)
     db_name = _db_name(
         matched.domain, pid, match_meta["delivery_slug"], reserved=reserved
@@ -359,6 +499,8 @@ async def create_from_uploads(
         proposal=proposal,
         archetypes=matched.archetypes,
         match_meta=match_meta,
+        persistence=persistence,
+        spring_security=spring_security,
     )
     spec["delivery_slug"] = match_meta["delivery_slug"]
     spec["zip_name"] = match_meta["zip_name"]
@@ -407,9 +549,13 @@ async def create_from_uploads(
         source_size=total_size,
         recommended_arch=matched.archetype,
         recommended_domain=matched.domain,
+        recommended_persistence=persistence,
+        recommended_spring_security=spring_security,
         confidence=matched.confidence,
         archetype=matched.archetype,
         domain=matched.domain,
+        persistence=persistence,
+        spring_security=spring_security,
         theme=theme,
         llm_enabled=True,
         password_hash="none",
@@ -436,6 +582,12 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
     if body.reset:
         project.archetype = project.recommended_arch
         project.domain = project.recommended_domain
+        project.persistence = normalize_persistence(
+            getattr(project, "recommended_persistence", None) or "jdbc"
+        )
+        project.spring_security = normalize_spring_security(
+            getattr(project, "recommended_spring_security", None)
+        )
         project.theme = pick_theme(
             project.domain, f"{project.title}|{project.domain}|theme"
         )
@@ -446,13 +598,29 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
     if body.unlock is True:
         project.match_locked = False
     elif body.unlock is False:
-        if project.archetype == project.recommended_arch and project.domain == project.recommended_domain:
+        if (
+            project.archetype == project.recommended_arch
+            and project.domain == project.recommended_domain
+            and normalize_persistence(getattr(project, "persistence", None))
+            == normalize_persistence(getattr(project, "recommended_persistence", None))
+            and normalize_spring_security(getattr(project, "spring_security", None))
+            == normalize_spring_security(
+                getattr(project, "recommended_spring_security", None)
+            )
+        ):
             project.match_locked = True
 
-    if body.archetype is not None or body.domain is not None:
+    if (
+        body.archetype is not None
+        or body.domain is not None
+        or getattr(body, "persistence", None) is not None
+        or getattr(body, "spring_security", None) is not None
+    ):
         if project.match_locked:
-            raise ValueError("骨架/领域已锁定，请先解锁")
+            raise ValueError("骨架/领域/持久层/鉴权已锁定，请先解锁")
         prev_arch, prev_dom = project.archetype, project.domain
+        prev_pers = normalize_persistence(getattr(project, "persistence", None))
+        prev_sec = normalize_spring_security(getattr(project, "spring_security", None))
         if body.archetype:
             project.archetype = body.archetype
         if body.domain:
@@ -472,8 +640,18 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
                 project.theme = pick_theme(
                     project.domain, f"{project.title}|{project.domain}|theme"
                 )
-        # 改骨架/领域后必须重新确认，避免绕过确认直接生成
-        if (project.archetype, project.domain) != (prev_arch, prev_dom) and project.match_confirmed:
+        if getattr(body, "persistence", None) is not None:
+            project.persistence = normalize_persistence(body.persistence)
+        if getattr(body, "spring_security", None) is not None:
+            project.spring_security = normalize_spring_security(body.spring_security)
+        # 改骨架/领域/持久层/鉴权后必须重新确认，避免绕过确认直接生成
+        changed = (
+            (project.archetype, project.domain) != (prev_arch, prev_dom)
+            or normalize_persistence(getattr(project, "persistence", None)) != prev_pers
+            or normalize_spring_security(getattr(project, "spring_security", None))
+            != prev_sec
+        )
+        if changed and project.match_confirmed:
             project.match_confirmed = False
             if project.status == ProjectStatus.ready.value:
                 project.status = ProjectStatus.needs_confirm.value
@@ -520,6 +698,12 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
     deviant = (
         project.archetype != project.recommended_arch
         or project.domain != project.recommended_domain
+        or normalize_persistence(getattr(project, "persistence", None))
+        != normalize_persistence(getattr(project, "recommended_persistence", None))
+        or normalize_spring_security(getattr(project, "spring_security", None))
+        != normalize_spring_security(
+            getattr(project, "recommended_spring_security", None)
+        )
     )
     project.match_mode = "manual_override" if deviant else "recommended"
     conf = 0.41 if deviant else project.confidence
@@ -557,6 +741,8 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         chrome=chrome_override,
         layout=layout_override,
         typeface=typeface_override,
+        persistence=getattr(project, "persistence", None) or "jdbc",
+        spring_security=getattr(project, "spring_security", None),
     )
     if match_meta.get("delivery_slug"):
         project.spec["delivery_slug"] = match_meta["delivery_slug"]

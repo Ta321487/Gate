@@ -217,10 +217,13 @@ def _welcome_lead(schema: dict[str, Any]) -> str:
         if not raw:
             continue
         text = str(raw).strip()
+        # 开题合并前缀 / 开题报告套话不能上轮播（与 domain_schema._ui_safe_excerpt 同源判断）
+        if "【材料：" in text or "【材料:" in text or "开题报告" in text:
+            continue
         for sep in ("。", "；", ";", "\n"):
             if sep in text:
                 head = text.split(sep, 1)[0].strip()
-                if head:
+                if head and "【材料：" not in head and "开题报告" not in head:
                     return head + ("。" if sep == "。" else "。")
         return text if text.endswith("。") else text + "。"
     return _DEFAULT_CAPTIONS[0]["lead"]
@@ -235,13 +238,15 @@ def _ensure_welcome_first(
     rest: list[dict[str, str]] = []
     for cap in captions:
         title = str(cap.get("title") or "").strip()
+        lead = str(cap.get("lead") or "").strip()
+        if "【材料：" in lead or "【材料:" in lead or "开题报告" in lead:
+            lead = ""
         if _is_welcome_title(title):
             if not welcome.get("lead") or welcome["lead"] == _DEFAULT_CAPTIONS[0]["lead"]:
-                lead = str(cap.get("lead") or "").strip()
                 if lead:
                     welcome["lead"] = lead
             continue
-        rest.append({"title": title or "通知", "lead": str(cap.get("lead") or "").strip()})
+        rest.append({"title": title or "通知", "lead": lead})
     return [welcome, *rest]
 
 
@@ -265,18 +270,20 @@ def _caption_seeds(schema: dict[str, Any] | None) -> list[dict[str, str]]:
                 continue
             title = str(b.get("title") or "").strip()
             lead = str(b.get("lead") or "").strip()
+            if "【材料：" in lead or "【材料:" in lead or "开题报告" in lead:
+                lead = ""
             if title or lead:
                 out.append({"title": title or "通知", "lead": lead})
         if out:
             return _ensure_welcome_first(out, schema)
     labels = schema.get("labels") or {}
+    lead0 = str(labels.get("portalBannerLead") or _DEFAULT_CAPTIONS[0]["lead"]).strip()
+    if "【材料：" in lead0 or "【材料:" in lead0 or "开题报告" in lead0:
+        lead0 = _DEFAULT_CAPTIONS[0]["lead"]
     base = [
         {
             "title": str(labels.get("portalBannerTitle") or _DEFAULT_CAPTIONS[0]["title"]),
-            "lead": str(
-                labels.get("portalBannerLead")
-                or _DEFAULT_CAPTIONS[0]["lead"]
-            ),
+            "lead": lead0,
         },
         *[dict(c) for c in _DEFAULT_CAPTIONS[1:]],
     ]

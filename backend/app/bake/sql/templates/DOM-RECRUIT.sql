@@ -86,13 +86,6 @@ CREATE TABLE IF NOT EXISTS job_apply_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '招聘主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', 'HR专员', '13800000001', '{}', 0, 1, 1),
@@ -108,9 +101,6 @@ INSERT IGNORE INTO job_post (id, title, author, isbn, category_id, stock, status
 (3, '行政助理', '综合办', '4-5k / 大专及以上', 2, 1, 'available'),
 (4, '测试工程师', '质量部', '7-10k / 校招', 1, 1, 'available'),
 (5, '产品助理实习', '产品组', '面议 / 周报实习', 3, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('apply_hint', '请附简历摘要与到岗时间', '投递说明'),
-('max_open_apply', '5', '每人最大在途投递');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（演示环境无视频面试）。', 'admin', '招聘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投递须知');

@@ -243,7 +243,35 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
 
                 project.theme = normalize_theme(project.theme, project.domain)
                 if isinstance(project.spec, dict):
-                    project.spec = ensure_spec_schema({**project.spec, "theme": project.theme})
+                    from app.bake.stack_scan import (
+                        normalize_persistence,
+                        normalize_spring_security,
+                    )
+
+                    pers = normalize_persistence(
+                        getattr(project, "persistence", None)
+                        or project.spec.get("persistence")
+                    )
+                    sec = normalize_spring_security(
+                        getattr(project, "spring_security", None)
+                        if getattr(project, "spring_security", None) is not None
+                        else project.spec.get("spring_security")
+                    )
+                    project.persistence = pers
+                    project.spring_security = sec
+                    project.spec = ensure_spec_schema(
+                        {
+                            **project.spec,
+                            "theme": project.theme,
+                            "persistence": pers,
+                            "spine": "spa",
+                            "spring_security": sec,
+                            "addons": {
+                                **(project.spec.get("addons") or {}),
+                                "spring_security": sec,
+                            },
+                        }
+                    )
                     flag_modified(project, "spec")
                 # 快照进线程，避免 ORM 对象跨线程
                 bake_id, bake_spec, bake_db = project.id, dict(project.spec or {}), project.db_name

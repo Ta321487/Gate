@@ -129,6 +129,8 @@ def remap_student_java_package(
         text = text.replace(f"package {_OLD_PKG};", f"package {new_pkg};")
         text = text.replace(f"import {_OLD_PKG}.", f"import {new_pkg}.")
         text = text.replace(f"import {_OLD_PKG};", f"import {new_pkg};")
+        # @MapperScan("com.thesis.mapper") 等字符串字面量
+        text = text.replace(f'"{_OLD_PKG}.', f'"{new_pkg}.')
         if path.name == f"{_OLD_APP}.java":
             text = text.replace(_OLD_APP, app_class)
         path.write_text(text, encoding="utf-8")
@@ -189,7 +191,19 @@ def remap_student_java_package(
             yml_text,
             count=1,
         )
+        # mybatis type-aliases-package / MapperScan 包名
+        yml_text = yml_text.replace(f"type-aliases-package: {_OLD_PKG}", f"type-aliases-package: {new_pkg}")
+        yml_text = yml_text.replace(f"type-aliases-package: {_OLD_PKG}.", f"type-aliases-package: {new_pkg}.")
         yml.write_text(yml_text, encoding="utf-8")
+
+    # 5b) MyBatis mapper XML namespace
+    mapper_dir = workspace / "backend" / "src" / "main" / "resources" / "mapper"
+    if mapper_dir.is_dir():
+        for path in mapper_dir.rglob("*.xml"):
+            text = path.read_text(encoding="utf-8")
+            text = text.replace(f"namespace=\"{_OLD_PKG}.", f"namespace=\"{new_pkg}.")
+            text = text.replace(f"namespace='{_OLD_PKG}.", f"namespace='{new_pkg}.")
+            path.write_text(text, encoding="utf-8")
 
     # 6) 学生 README 包路径
     readme = workspace / "README.md"

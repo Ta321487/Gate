@@ -11,25 +11,25 @@
       "fields": [
         {
           "key": "title",
-          "label": "事件标题",
+          "label": "对象姓名",
           "type": "string"
         },
         {
           "key": "author",
-          "label": "上报人",
+          "label": "责任随访",
           "type": "string"
         },
         {
           "key": "isbn",
-          "label": "地点/摘要",
+          "label": "病种/健康摘要",
           "type": "textarea"
         },
         {
           "key": "stage",
-          "label": "处置阶段",
+          "label": "随访阶段",
           "options": [
             "待核查",
-            "排查中",
+            "随访中",
             "处置中",
             "已闭环"
           ],
@@ -37,7 +37,7 @@
         },
         {
           "key": "category",
-          "label": "事件分类",
+          "label": "随访分类",
           "type": "select"
         },
         {
@@ -47,8 +47,8 @@
         }
       ],
       "key": "event_case",
-      "label": "事件",
-      "labelPlural": "事件",
+      "label": "对象",
+      "labelPlural": "对象",
       "softDelete": false,
       "stockDisplay": "toggle",
       "stockUnavailableLabel": "已上报",
@@ -149,17 +149,17 @@
     "archiveLogPageTitle": "监测记录",
     "archiveLogSectionTitle": "打卡与随访",
     "archiveLogSubmitLabel": "提交打卡",
-    "authEyebrow": "事件上报",
-    "authLead": "验证码登录；维护对象档案并打卡/上报，异常可转处置。",
+    "authEyebrow": "健康随访",
+    "authLead": "验证码登录；维护随访对象档案并打卡/上报，异常由随访员处置。",
     "authPoints": [
       "验证码登录",
       "对象档案",
-      "健康打卡",
-      "上报记录"
+      "随访打卡",
+      "异常上报"
     ],
     "messagesPageLead": "系统通知。",
     "noticePageLead": "上报规范与临时通知，点击条目阅读全文。",
-    "noticePageTitle": "应急公告",
+    "noticePageTitle": "公卫公告",
     "recommendLatestHint": "最新发布",
     "recommendSectionTitle": "猜你喜欢",
     "registerRoleHint": "内部账号登录后可维护档案、打卡并提交上报"
@@ -172,12 +172,12 @@
       },
       {
         "key": "archive",
-        "label": "事件档案",
+        "label": "对象档案",
         "superOnly": true
       },
       {
         "key": "category",
-        "label": "事件分类管理",
+        "label": "随访分类管理",
         "superOnly": true
       },
       {
@@ -202,7 +202,7 @@
     "user": [
       {
         "key": "archive",
-        "label": "事件列表"
+        "label": "对象列表"
       },
       {
         "key": "my_tickets",
@@ -220,47 +220,47 @@
   },
   "portalBanners": [
     {
-      "lead": "按分类浏览对象档案，维护摘要与状态。",
-      "title": "事件档案"
+      "lead": "按分类浏览随访对象，维护病种与摘要。",
+      "title": "对象档案"
     },
     {
-      "lead": "对档案提交每日打卡或随访，查看今日未打卡。",
-      "title": "健康打卡"
+      "lead": "按计划打卡或随访，查看今日未随访。",
+      "title": "随访打卡"
     },
     {
-      "lead": "异常线索提交上报，办结后可追溯。",
-      "title": "事件上报"
+      "lead": "指标异常等线索提交上报，办结可追溯。",
+      "title": "异常上报"
     },
     {
-      "lead": "上报规范与排查通知见公告栏。",
-      "title": "应急公告"
+      "lead": "随访规范与通知见公告栏。",
+      "title": "公卫公告"
     },
     {
       "lead": "登录后查看上报进度与记录。",
       "title": "我的上报"
     },
     {
-      "lead": "按分类筛选重点对象。",
+      "lead": "按随访分类筛选重点对象。",
       "title": "分类管理"
     }
   ],
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "主管（总管）"
+      "label": "公卫主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "值班员"
+      "label": "随访员"
     },
     "user": {
       "id": "user",
-      "label": "上报人"
+      "label": "随访对象"
     }
   },
   "seeds": {
-    "noticeBody": "请如实登记要素；重大异常请及时上报，办结后可在记录中查阅。",
-    "noticeTitle": "上报须知"
+    "noticeBody": "请如实登记随访要素与指标；异常请及时上报并由主管确认处置。",
+    "noticeTitle": "随访须知"
   },
   "title": "测试课题",
   "version": 1

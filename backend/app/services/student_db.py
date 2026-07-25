@@ -177,6 +177,43 @@ def _is_droppable_student_db(db_name: str) -> bool:
     return bool(re.match(r"^[a-z][a-z0-9_]{2,63}$", db_name))
 
 
+def _connect_student_mysql():
+    """连接学生 MySQL（无默认库）；失败抛原异常。"""
+    settings = get_settings()
+    return pymysql.connect(
+        host=settings.gf_student_mysql_host,
+        port=settings.gf_student_mysql_port,
+        user=settings.gf_student_mysql_user,
+        password=settings.gf_student_mysql_password,
+        charset="utf8mb4",
+        autocommit=True,
+        connect_timeout=5,
+    )
+
+
+def list_existing_student_db_names() -> set[str]:
+    """本机学生 MySQL 上已存在的可删库名（含 keep_db 残留）。
+
+    连不上时返回空集，不阻断建项；与删库白名单同一套规则。
+    """
+    try:
+        conn = _connect_student_mysql()
+    except Exception:  # noqa: BLE001
+        return set()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SHOW DATABASES")
+            names = [row[0] for row in cur.fetchall()]
+    except Exception:  # noqa: BLE001
+        return set()
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+    return {n for n in names if isinstance(n, str) and _is_droppable_student_db(n)}
+
+
 def drop_student_database(db_name: str) -> None:
     """删除学生项目库；失败抛 RuntimeError。"""
     if not _is_droppable_student_db(db_name):
@@ -184,15 +221,7 @@ def drop_student_database(db_name: str) -> None:
 
     settings = get_settings()
     try:
-        conn = pymysql.connect(
-            host=settings.gf_student_mysql_host,
-            port=settings.gf_student_mysql_port,
-            user=settings.gf_student_mysql_user,
-            password=settings.gf_student_mysql_password,
-            charset="utf8mb4",
-            autocommit=True,
-            connect_timeout=5,
-        )
+        conn = _connect_student_mysql()
     except Exception as e:  # noqa: BLE001
         raise RuntimeError(
             f"无法连接学生 MySQL "

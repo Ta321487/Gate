@@ -59,7 +59,7 @@
     </form>
     <template #footer>
       <template v-if="entrySide === 'admin' || entrySide === 'staff'">
-        <span>业务用户？</span>
+        <span>{{ userLabel }}？</span>
         <router-link to="/login">返回门户登录</router-link>
         <template v-if="entrySide === 'admin' && showStaffLink">
           <span class="sep">·</span>
@@ -101,7 +101,7 @@ import {
   showStaffLoginLink,
 } from '../utils/authEntry'
 import { APP_DELIVERED } from '../appDelivered.js'
-import { schemaLabels } from '../utils/domainSchema.js'
+import { roleLabel, schemaLabels } from '../utils/domainSchema.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
 
 const props = defineProps({
@@ -115,6 +115,8 @@ const template = ref(pickAuthTemplate())
 const entryMode = pickAuthEntryMode()
 const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
+const userLabel = computed(() => roleLabel('user', '用户'))
+const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const showStaffLink = computed(() => showStaffLoginLink())
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
@@ -150,19 +152,21 @@ const heading = computed(() => {
   return '登录'
 })
 const sub = computed(() => {
-  if (entrySide.value === 'admin') return '使用总管或子管理账号进入后台'
-  if (entrySide.value === 'staff') return '使用业务员工账号进入作业台'
+  if (entrySide.value === 'admin') return `使用总管或${subLabel.value}账号进入后台`
+  if (entrySide.value === 'staff') return '使用岗位账号进入作业台'
   return '使用已有账号进入系统'
 })
 const note = computed(() => {
   if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份。'
   if (entryMode === 'split_entry' && entrySide.value === 'admin') {
-    return '管理端仅接受总管/子管理账号；业务员工请走员工端，用户请走门户。'
+    return `管理端仅接受总管/${subLabel.value}账号；岗位员工请走员工端，${userLabel.value}请走门户。`
   }
   if (entryMode === 'split_entry' && entrySide.value === 'staff') {
-    return '员工端仅接受业务员工账号；管理岗请走管理端入口。'
+    return '员工端仅接受岗位员工账号；管理岗请走管理端入口。'
   }
-  if (entryMode === 'split_entry') return '门户仅接受业务用户；管理/员工请走对应入口。'
+  if (entryMode === 'split_entry') {
+    return `门户仅接受${userLabel.value}；管理/员工请走对应入口。`
+  }
   return '新用户可先注册再登录。'
 })
 const authLead = computed(() => {

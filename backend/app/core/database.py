@@ -84,6 +84,43 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if "persistence" not in cols:
+        try:
+            sync_conn.execute(
+                text("ALTER TABLE projects ADD COLUMN persistence VARCHAR(16) DEFAULT 'jdbc'")
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if "recommended_persistence" not in cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE projects ADD COLUMN recommended_persistence "
+                    "VARCHAR(16) DEFAULT 'jdbc'"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if "spring_security" not in cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE projects ADD COLUMN spring_security "
+                    "BOOLEAN DEFAULT 0"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if "recommended_spring_security" not in cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE projects ADD COLUMN recommended_spring_security "
+                    "BOOLEAN DEFAULT 0"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
     try:
         sync_conn.execute(
             text(

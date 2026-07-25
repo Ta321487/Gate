@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.SlotMapper">
+
+    <select id="selectSlots" resultType="map">
+        SELECT * FROM `${slotTable}`
+        <where>
+            <if test="itemId != null and itemId &gt; 0">AND item_id=#{itemId}</if>
+            <if test="day != null and day != ''">AND DATE(start_at)=#{day}</if>
+        </where>
+        ORDER BY start_at, id
+    </select>
+
+    <select id="selectSlotById" resultType="map">
+        SELECT * FROM `${slotTable}` WHERE id=#{id}
+    </select>
+
+    <insert id="insertReservation" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO `${resvTable}` (
+            slot_id, username, status, remark
+            <if test="extraCols != null">
+                <foreach collection="extraCols" index="col" item="val" open="," separator=",">
+                    `${col}`
+                </foreach>
+            </if>
+            , created_at
+        ) VALUES (
+            #{slotId}, #{username}, #{status}, #{remark}
+            <if test="extraCols != null">
+                <foreach collection="extraCols" item="val" open="," separator=",">
+                    #{val}
+                </foreach>
+            </if>
+            , #{createdAt}
+        )
+    </insert>
+
+    <select id="selectResvById" resultType="map">
+        SELECT * FROM `${resvTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectReservations" resultType="map">
+        SELECT * FROM `${resvTable}`
+        <where>
+            <if test="username != null and username != ''">AND username=#{username}</if>
+            <if test="status != null and status != ''">AND status=#{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectStatusSeries" resultType="map">
+        SELECT status AS name, COUNT(*) AS value FROM `${resvTable}` GROUP BY status
+    </select>
+
+    <select id="selectTrendSeries" resultType="map">
+        SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM `${resvTable}`
+        WHERE created_at &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day
+    </select>
+</mapper>

@@ -75,13 +75,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '资助主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '资助专员', '13800000001', '{}', 0, 1, 1),
@@ -97,9 +90,6 @@ INSERT IGNORE INTO fund_program (id, title, dept_name, quota_note, category_id, 
 (3, '王强', '后勤处', 'L2026003 / 维修', 3, 1, 'available'),
 (4, '赵敏', '教务处', 'A2026044 / 教务员', 2, 1, 'available'),
 (5, '陈浩', '外国语学院', 'T2026088 / 教师', 1, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('fund_hint', '请填写申请理由与家庭经济情况摘要', '资助说明'),
-('max_open_fund', '3', '每人最大在途资助申请');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '资助须知', '请按通知提交申请材料；审批通过后留意发放进度。', 'admin', '资助主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='资助须知');

@@ -169,11 +169,19 @@ def _write_factory_delivered(
     dom_meta = DOMAINS.get(domain) or {}
     guest_on = portal_guest_browse_enabled(domain, dom_meta)
     guest_cta = pick_guest_login_cta(domain, seed or dest.name or title)
-    # 便于页面用 schemaLabels 读取
-    labels = dict((schema.get("labels") or {}))
+    # 便于页面用 schemaLabels 读取；开题材料头不得进学生端导语（同 _welcome_lead 判断）
+    labels = dict(schema.get("labels") or {}) if isinstance(schema.get("labels"), dict) else {}
+    for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
+        raw = str(labels.get(key) or "")
+        if "【材料：" in raw or "【材料:" in raw or "开题报告" in raw:
+            labels[key] = (
+                "验证码登录，开放注册；登录后可使用系统主流程。"
+                if key == "authLead"
+                else ""
+            )
     if guest_on and guest_cta:
         labels["guestLoginCta"] = guest_cta
-        schema = {**schema, "labels": labels}
+    schema = {**schema, "labels": labels}
     skin = student_skin_payload(domain, domain_label)
     payload = {
         "title": title,

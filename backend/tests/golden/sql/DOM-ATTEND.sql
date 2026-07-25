@@ -75,13 +75,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '人事主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '考勤员', '13800000001', '{}', 0, 1, 1),
@@ -97,9 +90,6 @@ INSERT IGNORE INTO staff_person (id, title, dept_name, badge_note, category_id, 
 (3, '王强', '后勤处', 'L2026003 / 维修', 3, 1, 'available'),
 (4, '赵敏', '教务处', 'A2026044 / 教务员', 2, 1, 'available'),
 (5, '陈浩', '外国语学院', 'T2026088 / 教师', 1, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('leave_hint', '请填写请假事由与起止时间', '请假说明'),
-('max_open_leave', '3', '每人最大在途请假单');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '请假须知', '事假须提前申请；病假可补交证明；销假请在返回当日确认。', 'admin', '人事主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='请假须知');

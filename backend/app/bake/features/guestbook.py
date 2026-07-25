@@ -18,8 +18,8 @@ _GUESTBOOK_SIGNALS = re.compile(
 # 论坛已有跟帖，勿再叠留言表（表预算也顶格）
 _SKIP_DOMAINS = frozenset({"DOM-FORUM"})
 
-# 交易门户默认开
-_DEFAULT_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD"})
+# 交易门户 + 内容浏览域默认开（补表须带门户/管理整链；论坛有跟帖故跳过）
+_DEFAULT_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC"})
 
 
 def scan_guestbook(text: str) -> bool:

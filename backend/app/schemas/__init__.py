@@ -14,6 +14,8 @@ class ProjectSummary(BaseModel):
     status: str = Field(description="状态")
     archetype: str = Field(description="骨架")
     domain: str = Field(description="领域")
+    persistence: str = Field(default="jdbc", description="持久层：jdbc | mybatis")
+    spring_security: bool = Field(default=False, description="是否启用 Spring Security")
     backend_running: bool = Field(description="后端预览是否在跑")
     frontend_running: bool = Field(description="前端预览是否在跑")
     backend_port: int = Field(description="后端端口")
@@ -35,6 +37,10 @@ class ProjectDetail(ProjectSummary):
     source_size: int = Field(default=0, description="开题文件大小（字节）")
     recommended_arch: str = Field(description="推荐骨架")
     recommended_domain: str = Field(description="推荐领域")
+    recommended_persistence: str = Field(default="jdbc", description="推荐持久层")
+    recommended_spring_security: bool = Field(
+        default=False, description="推荐是否启用 Spring Security"
+    )
     confidence: float = Field(description="匹配置信度")
     theme: str = Field(description="主题")
     llm_enabled: bool = Field(description="是否启用 LLM")
@@ -66,6 +72,10 @@ class MatchUpdate(BaseModel):
 
     archetype: Optional[str] = Field(default=None, description="骨架 ID")
     domain: Optional[str] = Field(default=None, description="领域 ID")
+    persistence: Optional[str] = Field(default=None, description="持久层 jdbc | mybatis")
+    spring_security: Optional[bool] = Field(
+        default=None, description="是否启用 Spring Security 过滤器链"
+    )
     theme: Optional[str] = Field(default=None, description="主题 ID")
     chrome: Optional[str] = Field(default=None, description="界面质感 ID")
     layout: Optional[str] = Field(default=None, description="门户布局壳 ID")

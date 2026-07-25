@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import shutil
 import time
@@ -8,12 +9,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models import Project, ProjectStatus
+from app.models import Job, Project, ProjectStatus
 from app.schemas import (
     ApiOk,
     DeliveryMarkUpdate,
@@ -452,35 +453,52 @@ async def delete_project(
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    project_svc.sync_project_runtime(p)
-    if p.status == ProjectStatus.generating.value or p.backend_running or p.frontend_running:
+    be_st, fe_st, _ = project_svc.sync_project_runtime(p)
+    busy = (
+        p.status == ProjectStatus.generating.value
+        or p.backend_running
+        or p.frontend_running
+        or be_st in ("starting", "healthy")
+        or fe_st in ("starting", "healthy")
+    )
+    if busy:
         raise HTTPException(400, "项目运行中或正在生成，请先停止后再删除")
-    rt.stop_backend(project_id, p.backend_port)
-    rt.stop_frontend(project_id, p.frontend_port)
-    settings = get_settings()
-    ws = settings.workspace_dir / project_id
-    if ws.exists():
-        rt.detach_frontend_deps(ws)
-        shutil.rmtree(ws, ignore_errors=True)
-    zip_path = settings.workspace_dir / f"{project_id}-thesis-app.zip"
-    if zip_path.exists():
-        zip_path.unlink()
-    # 新命名：{id}-{slug}.zip
-    for zp in settings.workspace_dir.glob(f"{project_id}-*.zip"):
-        try:
-            zp.unlink()
-        except OSError:
-            pass
-    if p.zip_path:
-        try:
-            Path(p.zip_path).unlink(missing_ok=True)
-        except OSError:
-            pass
+
+    # 再停一次 + 等到端口空闲，降低 Windows 下 rmtree 撞锁概率
+    rt.stop_backend(project_id, p.backend_port or None)
+    rt.stop_frontend(project_id, p.frontend_port or None)
+    await asyncio.to_thread(
+        rt.wait_runtime_cleared,
+        project_id,
+        p.backend_port or None,
+        p.frontend_port or None,
+    )
+
+    try:
+        await asyncio.to_thread(project_svc.purge_project_disk, p)
+    except RuntimeError as e:
+        raise HTTPException(400, f"工程目录清理失败，请确认已停止预览后重试：{e}") from e
+
+    # 开题材料：无其它项目共用才清
+    source_shared = False
+    if p.source_path:
+        shared_q = await db.execute(
+            select(Project.id).where(
+                Project.source_path == p.source_path,
+                Project.id != project_id,
+            ).limit(1)
+        )
+        source_shared = shared_q.scalar_one_or_none() is not None
+    await asyncio.to_thread(
+        project_svc.remove_project_source_if_owned,
+        p.source_path,
+        shared=source_shared,
+    )
 
     db_note = ""
     if not keep_db and p.db_name:
         try:
-            drop_student_database(p.db_name)
+            await asyncio.to_thread(drop_student_database, p.db_name)
             db_note = f"，已删除库 {p.db_name}"
         except Exception as e:  # noqa: BLE001
             logger.warning(
@@ -490,6 +508,7 @@ async def delete_project(
     elif keep_db and p.db_name:
         db_note = f"，已保留库 {p.db_name}"
 
+    await db.execute(delete(Job).where(Job.project_id == project_id))
     await db.delete(p)
     await db.commit()
     return ApiOk(message=f"已删除{db_note}")

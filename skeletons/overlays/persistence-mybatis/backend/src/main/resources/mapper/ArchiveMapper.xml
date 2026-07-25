@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.ArchiveMapper">
+
+    <insert id="insertCategory" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO `${catTable}` (name) VALUES (#{name})
+    </insert>
+
+    <select id="selectCategories" resultType="map">
+        SELECT c.id, c.name,
+        <choose>
+            <when test="excludeDeleted">
+                (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id AND b.deleted_at IS NULL)
+            </when>
+            <otherwise>
+                (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id)
+            </otherwise>
+        </choose>
+        AS item_count
+        FROM `${catTable}` c ORDER BY c.id
+    </select>
+
+    <select id="countItemsByCategory" resultType="int">
+        SELECT COUNT(*) FROM `${itemTable}` WHERE category_id=#{categoryId}
+        <if test="excludeDeleted">AND deleted_at IS NULL</if>
+    </select>
+
+    <insert id="insertItem" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO `${itemTable}` (
+            title, `${authorCol}`, `${isbnCol}`, category_id, stock, status, cover_url
+        ) VALUES (
+            #{title}, #{author}, #{isbn}, #{categoryId}, #{stock}, #{status}, #{coverUrl}
+        )
+    </insert>
+
+    <update id="updateItemCore">
+        UPDATE `${itemTable}` SET
+            title=#{title},
+            `${authorCol}`=#{author},
+            `${isbnCol}`=#{isbn},
+            category_id=#{categoryId},
+            stock=#{stock},
+            status=#{status},
+            cover_url=#{coverUrl}
+        WHERE id=#{id}
+    </update>
+
+    <select id="selectItemById" resultType="map">
+        SELECT * FROM `${itemTable}` WHERE id=#{id}
+    </select>
+
+    <select id="selectItems" resultType="map">
+        SELECT * FROM `${itemTable}`
+        <where>
+            <if test="excludeDeleted">AND deleted_at IS NULL</if>
+            <if test="categoryId != null and categoryId &gt; 0">AND category_id=#{categoryId}</if>
+            <if test="like != null and like != ''">
+                AND (title LIKE #{like} OR `${authorCol}` LIKE #{like} OR `${isbnCol}` LIKE #{like})
+            </if>
+            <if test="tagIds != null and tagIds.size() &gt; 0">
+                <foreach collection="tagIds" item="tid">
+                    AND EXISTS (
+                        SELECT 1 FROM `${itemTagTable}` it
+                        WHERE it.`${itemTagFk}`=`${itemTable}`.id AND it.tag_id=#{tid}
+                    )
+                </foreach>
+            </if>
+        </where>
+        ORDER BY id
+    </select>
+
+    <select id="selectMine" resultType="map">
+        SELECT * FROM `${itemTable}` WHERE `${authorCol}`=#{username} ORDER BY id DESC
+    </select>
+
+    <select id="suggestTitles" resultType="map">
+        SELECT id, title, cover_url FROM `${itemTable}`
+        WHERE title LIKE #{prefix}
+        <if test="excludeDeleted">AND deleted_at IS NULL</if>
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countItems" resultType="long">
+        SELECT COUNT(*) FROM `${itemTable}`
+        <if test="excludeDeleted">WHERE deleted_at IS NULL</if>
+    </select>
+
+    <select id="sumStock" resultType="long">
+        SELECT COALESCE(SUM(stock),0) FROM `${itemTable}`
+        <if test="excludeDeleted">WHERE deleted_at IS NULL</if>
+    </select>
+
+    <select id="stockByCategory" resultType="map">
+        SELECT c.name AS name, COALESCE(SUM(i.stock),0) AS value
+        FROM `${catTable}` c
+        LEFT JOIN `${itemTable}` i ON i.category_id=c.id
+        GROUP BY c.id, c.name
+        ORDER BY value DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectTags" resultType="map">
+        SELECT id, name FROM `${tagTable}` ORDER BY id
+    </select>
+
+    <select id="selectItemTags" resultType="map">
+        SELECT t.id, t.name
+        FROM `${tagTable}` t
+        JOIN `${itemTagTable}` it ON it.tag_id=t.id
+        WHERE it.`${itemTagFk}`=#{itemId}
+        ORDER BY t.id
+    </select>
+</mapper>

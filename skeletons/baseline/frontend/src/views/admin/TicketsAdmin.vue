@@ -9,8 +9,10 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" />
-      <el-table-column prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
-      <el-table-column prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
+      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
+      <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
+      <el-table-column v-if="showPriorityCols" prop="contactPhone" label="联系电话" width="120" show-overflow-tooltip />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -140,13 +142,16 @@ import {
   archiveCopy,
   followChannelLabel,
   getSchema,
-  hasTrait,
   menuLabel,
   nextFollowLabel,
   personLabel,
   roleLabel,
   ticketCopy,
   ticketDueLabel,
+  ticketShowsFollowCols,
+  ticketShowsLocationCol,
+  ticketShowsPriorityCols,
+  ticketShowsTypeCol,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 
@@ -164,9 +169,12 @@ const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
 const userLabel = computed(() => roleLabel('user', '用户'))
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
-const showFollowCols = computed(() => hasTrait('crm'))
+const showFollowCols = computed(() => ticketShowsFollowCols())
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
+const showTypeCol = computed(() => ticketShowsTypeCol(archive))
+const showLocationCol = computed(() => ticketShowsLocationCol(archive))
+const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 
 function archiveFieldLabel(key, fallback) {

@@ -224,6 +224,47 @@ export function archiveCopy() {
 }
 
 /**
+ * 单据列表是否展示「开始/结束」：仅 pickDateRange 或档案自带时段字段。
+ * 跟进类域（crm）禁止空列占位。
+ */
+export function ticketShowsScheduleCols(ticket = ticketCopy(), archive = archiveCopy()) {
+  if (ticket?.pickDateRange) return true
+  const fields = archive?.fields || []
+  return fields.some((f) => f?.key === 'startAt' || f?.key === 'endAt')
+}
+
+/** 上报渠道 / 下次复核（crm 族） */
+export function ticketShowsFollowCols() {
+  return hasTrait('crm')
+}
+
+/** 类型列：有分类/品类，或独立报修（无档案表） */
+export function ticketShowsTypeCol(archive = archiveCopy()) {
+  const fields = archive?.fields || []
+  if (!fields.length) return true
+  return fields.some((f) => f?.key === 'category' || f?.key === 'itemKind')
+}
+
+/** 地点列：有可用 isbn 字段；正文富文本不进单据表（会空/刷 HTML） */
+export function ticketShowsLocationCol(archive = archiveCopy()) {
+  const fields = archive?.fields || []
+  if (!fields.length) return true
+  const isbn = fields.find((f) => f?.key === 'isbn')
+  if (!isbn || isbn.type === 'hidden' || isbn.type === 'richtext') return false
+  return true
+}
+
+/** 独立报修（无档案）：优先级 / 联系电话 */
+export function ticketIsStandalone() {
+  const caps = getSchema().capabilities || []
+  return caps.includes('ticket_flow') && !caps.includes('archive')
+}
+
+export function ticketShowsPriorityCols() {
+  return ticketIsStandalone()
+}
+
+/**
  * 档案字段是否按金额展示（0 / 0.00 为有效值，空串才是空）。
  * 由 schema 驱动：type=number 且（format=money / author 存单价 / 文案含元费价格）。
  */
@@ -338,10 +379,10 @@ export function profileFieldsOnRegister() {
   return profileFieldsForAudience('user').filter((f) => f && f.onRegister)
 }
 
-/** 管理端表格展示的扩展列（跳过已单独展示的姓名/手机等底座）；仅终端用户业务列 */
-export function profileAdminColumns(limit = 0) {
+/** 管理端表格扩展列（跳过姓名/手机等已单独展示的底座）；受众与资料页一致 */
+export function profileAdminColumns(audience = 'user', limit = 0) {
   const skip = new Set(['realName', 'phone', 'email', 'gender'])
-  const cols = profileFieldsForAudience('user').filter(
+  const cols = profileFieldsForAudience(audience).filter(
     (f) => f && f.storage !== 'phone' && !skip.has(f.key),
   )
   if (limit > 0) return cols.slice(0, limit)

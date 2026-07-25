@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.OrderReviewMapper">
+    <select id="selectById" resultType="map">
+        SELECT * FROM order_review WHERE id=#{id}
+    </select>
+    <select id="selectByOrderId" resultType="map">
+        SELECT * FROM order_review WHERE order_id=#{orderId}
+    </select>
+    <select id="selectAllOrderByIdDesc" resultType="map">
+        SELECT * FROM order_review ORDER BY id DESC
+    </select>
+    <select id="selectByUsername" resultType="map">
+        SELECT * FROM order_review WHERE username=#{username} ORDER BY id DESC
+    </select>
+</mapper>

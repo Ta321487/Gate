@@ -25,25 +25,24 @@ from app.bake.domain_schema import (
     write_schema_artifacts,
 )
 
-# 答辩/开题常见硬约束：交付库表不宜过少或灌水过多
-from app.bake.engine_sql import (  # noqa: F401
-    TABLE_COUNT_MAX,
-    TABLE_COUNT_MIN,
-    _SQL_DIR,
-    _FALLBACK_SQL,
-    _load_named_domain_sql,
-    _merge_tree,
-    _patch_student_readme,
-    _sql_template_path,
-    _write,
-    assert_table_budget,
-    count_create_tables,
-    domain_sql,
-)
+from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.engine_resources import _write_factory_delivered
+from app.bake.engine_sql import _write
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:
     """把已合并的 schema 写入 islands / appDelivered / spec.json，并同步 thesis yml。"""
-    merged = spec.get("schema") or {}
+    merged = dict(spec.get("schema") or {})
+    labels = dict(merged.get("labels") or {}) if isinstance(merged.get("labels"), dict) else {}
+    for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
+        raw = str(labels.get(key) or "")
+        if "【材料：" in raw or "【材料:" in raw or "开题报告" in raw:
+            labels[key] = (
+                "验证码登录，开放注册；登录后可使用系统主流程。"
+                if key == "authLead"
+                else ""
+            )
+    merged["labels"] = labels
+    spec["schema"] = merged
     ok, errors = validate_schema(merged)
     if not ok:
         raise RuntimeError("schema 校验失败: " + "; ".join(errors))
@@ -81,6 +80,11 @@ def sync_workspace_thesis_yml(workspace: Path, spec: dict[str, Any]) -> None:
     domain = str(spec.get("domain") or "DOM-GENERIC")
     text = app_yml.read_text(encoding="utf-8")
     app_yml.write_text(_patch_thesis_yml(text, domain, spec), encoding="utf-8")
+    if (spec.get("persistence") or "jdbc") == "mybatis":
+        from app.bake.persistence import ensure_mybatis_application_yml
+
+        pkg = str(spec.get("java_package") or "").strip() or None
+        ensure_mybatis_application_yml(workspace, java_package=pkg)
 
 def llm_fill_islands(workspace: Path, spec: dict[str, Any], enabled: bool) -> list[str]:
     """确定性填岛（无 LLM）。真填岛走 app.llm.agents.run_island_agent。"""

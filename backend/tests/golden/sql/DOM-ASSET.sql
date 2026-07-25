@@ -77,13 +77,6 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '仓管主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '库管员', '13800000001', '{}', 0, 1, 1),
@@ -99,9 +92,6 @@ INSERT IGNORE INTO asset (id, title, spec_model, asset_no, category_id, stock, s
 (3, '安全帽', 'ABS 黄色', 'AS-PPE-003', 3, 20, 'available'),
 (4, '签字笔盒装', '0.5mm 黑色 / 12 支', 'AS-PEN-004', 1, 25, 'available'),
 (5, '移动硬盘', '1TB USB3.0', 'AS-HDD-005', 2, 2, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('max_open_req', '5', '每人最大在途申领单数'),
-('pickup_place', '行政楼地下库房', '出库领取地点');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '领用须知', '请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材出库不退。', 'admin', '仓管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领用须知');

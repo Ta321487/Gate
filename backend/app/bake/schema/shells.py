@@ -51,6 +51,8 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-SALON",
     "DOM-HOSPITAL",
     "DOM-LOST",
+    "DOM-CRM",
+    "DOM-IT",
 })
 
 from app.bake.scene_scan import (  # noqa: E402

@@ -8,6 +8,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -73,6 +74,11 @@ def _kill(handle: ProcHandle) -> None:
             handle.process.kill()
         except Exception:  # noqa: BLE001
             pass
+    # 等句柄退出，避免随后 rmtree 撞上未释放的文件锁（尤其 Windows）
+    try:
+        handle.process.wait(timeout=3)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _listening_ports_win() -> dict[int, set[int]]:
@@ -392,9 +398,23 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
     try:
         if (be / "pom.xml").exists() and mvn:
             # 包名重映射后 target 可能残留 com.thesis.ThesisApplication.class
-            from app.bake.java_package import purge_stale_thesis_classes
+            from app.bake.java_package import find_java_package_root, purge_stale_thesis_classes
+            from app.bake.persistence import ensure_mybatis_application_yml
 
             purge_stale_thesis_classes(be)
+            # 旧 bake 可能被 thesis 重写吞掉 mybatis 段；启动前按实包补齐
+            if any(be.rglob("MybatisSupport.java")):
+                try:
+                    java_root = be / "src" / "main" / "java"
+                    pkg = (
+                        find_java_package_root(workspace)
+                        .relative_to(java_root)
+                        .as_posix()
+                        .replace("/", ".")
+                    )
+                except Exception:  # noqa: BLE001
+                    pkg = "com.thesis"
+                ensure_mybatis_application_yml(workspace, java_package=pkg)
             bind = settings.bind_host
             args = [f"--server.port={port}", f"--server.address={bind}"]
             cmd = [
@@ -702,3 +722,33 @@ def free_idle_ports(
         return False
     stop_all(project_id, backend_port or None, frontend_port or None)
     return True
+
+
+def runtime_side_busy(project_id: str, port: int | None, side: str) -> bool:
+    """进程表或端口仍占用则视为忙（删目录前用）。"""
+    if side == "backend" and backend_running(project_id):
+        return True
+    if side == "frontend" and frontend_running(project_id):
+        return True
+    if port and port in listening_tcp_ports():
+        return True
+    return False
+
+
+def wait_runtime_cleared(
+    project_id: str,
+    backend_port: int | None,
+    frontend_port: int | None,
+    *,
+    timeout: float = 6.0,
+) -> bool:
+    """停进程后等到 STORE/端口空闲；超时返回 False（调用方可仍尝试清理）。"""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        be_busy = runtime_side_busy(project_id, backend_port, "backend")
+        fe_busy = runtime_side_busy(project_id, frontend_port, "frontend")
+        if not be_busy and not fe_busy:
+            time.sleep(0.2)  # Windows 句柄释放缓冲
+            return True
+        time.sleep(0.2)
+    return False

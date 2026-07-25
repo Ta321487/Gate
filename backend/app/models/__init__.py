@@ -42,11 +42,17 @@ class Project(Base):
     # 推荐（锁定默认）
     recommended_arch: Mapped[str] = mapped_column(String(64), default="ARCH-CRUD")
     recommended_domain: Mapped[str] = mapped_column(String(64), default="DOM-GENERIC")
+    recommended_persistence: Mapped[str] = mapped_column(String(16), default="jdbc")
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
 
     # 当前选择
     archetype: Mapped[str] = mapped_column(String(64), default="ARCH-CRUD")
     domain: Mapped[str] = mapped_column(String(64), default="DOM-GENERIC")
+    # jdbc | mybatis — spa 内持久层组合轴（默认跟工厂现网 JdbcTemplate）
+    persistence: Mapped[str] = mapped_column(String(16), default="jdbc")
+    # 按需：开题点名 Spring Security 时推荐开；默认关（仅 crypto）
+    recommended_spring_security: Mapped[bool] = mapped_column(Boolean, default=False)
+    spring_security: Mapped[bool] = mapped_column(Boolean, default=False)
     theme: Mapped[str] = mapped_column(String(64), default="gen-ink")
     llm_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # none | bcrypt | md5 | sha256 — 学生端密码存储策略，默认明文

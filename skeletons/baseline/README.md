@@ -13,10 +13,10 @@
 | 层次 | 技术 |
 |------|------|
 | 前端 | Vue 3 + Vue Router + Element Plus + Vite + Axios |
-| 后端 | Spring Boot 3 + Spring JDBC（`JdbcTemplate`） |
+| 后端 | ${PERSISTENCE_BACKEND} |
 | 数据库 | MySQL 8（脚本见 `sql/schema.sql`） |
 
-**说明：** 本项目**没有使用 MyBatis / Mapper 接口**。持久化统一写在 `*Store` 类里，用 `JdbcTemplate` 执行 SQL。答辩时不要说「MyBatis 自动生成 Mapper」——目录里也没有空的 `mapper`/`entity` 包。
+**说明：** ${PERSISTENCE_NOTE}
 
 ---
 
@@ -119,12 +119,11 @@ npm run dev
 ### 后端怎么分层（重点讲清）
 
 - **Controller**：接收 HTTP，做登录校验，调用 Store。
-- **\*Store（JdbcTemplate）**：真正访问数据库。  
-  例如 `ArchiveStore`（业务档案）、`TicketStore`（申请/借阅/报修等单据）、`OrderStore`、`SlotStore`、`UserStore`。
+- ${PERSISTENCE_STORE_LINE}
 - **application.yml 里的 `thesis.*`**：本课题打开了哪些能力（是否有库存、逾期、预约表名等），启动时由配置绑定到运行时。
 - **接口传参**：收藏 / 足迹 / 购物车等少数接口写法因课题略有不同，**本包前后端已对齐**。改的时候跟着现有 `Controller` 和 `frontend/src/utils/apiCalls.js` 即可。
 
-没有 `mapper` 包是**刻意设计**：毕设体量用 JDBC 模板更直观，SQL 和 Java 在同一处，方便你对照改和讲解。
+${PERSISTENCE_NOTE}
 
 ### 前端怎么找页面
 
@@ -242,9 +241,9 @@ sql/
 
 ## 7. 答辩可以怎么说（简洁版）
 
-1. **前后端分离**：Vue 负责界面，Spring Boot 提供 REST API，Session 维持登录态。  
+1. **${SECURITY_AUTH_LINE}**  
 2. **业务按「能力」组织**：档案维护、流程单据、订单、时段预约等落在不同 Store，课题通过配置开关组合，而不是每个题目重写一整套后端。  
-3. **数据访问**：采用 Spring JDBC，在 Store 中编写 SQL，结构清晰，便于演示与维护。  
+3. **数据访问**：见上文「技术栈」与持久层说明（JdbcTemplate 或 MyBatis）。  
 4. **角色**：普通用户办理业务；子管处理业务；总管维护基础数据与账号。
 
 把「你实际点过的功能路径」准备 2～3 条（例如：注册 → 浏览 → 提交单据 → 管理员审核），比背名词更重要。
@@ -259,14 +258,15 @@ sql/
 **Q：登录提示密码错误？**  
 确认已执行本包里的 `schema.sql`，并用上表账号；若改过 `thesis.password-hash`，需与库中密码存储方式一致。
 
-**Q：为什么没有 Mapper 文件夹？**  
-本系统使用 `JdbcTemplate`，不生成 MyBatis Mapper。以 `*Store` 为准即可。
+${PERSISTENCE_FAQ}
+
+${SECURITY_FAQ}
 
 **Q：论文里数据库设计写什么？**  
 以 `sql/schema.sql` 中的表为准，画 ER 图、说明主键与主要业务流程表即可。
 
 **Q：老师临时要几条 SQL / 加表怎么办？**  
-见上文 **§6.1**：建库交 `schema.sql`；查询单独写 `sql/queries-答辩演示.sql`；加字段写 `ALTER` 或改 `schema.sql`，需要进系统再改对应 Store。
+见上文 **§6.1**：建库交 `schema.sql`；查询单独写 `sql/queries-答辩演示.sql`；加字段写 `ALTER` 或改 `schema.sql`，需要进系统再改对应 Store / Mapper。
 
 ---
 

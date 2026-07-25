@@ -86,13 +86,6 @@ CREATE TABLE IF NOT EXISTS access_apply_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '实验室主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '安全员', '13800000001', '{}', 0, 1, 1),
@@ -108,9 +101,6 @@ INSERT IGNORE INTO lab_room (id, title, author, isbn, category_id, stock, status
 (3, '王强', '后勤处', 'L2026003 / 维修', 3, 1, 'available'),
 (4, '赵敏', '教务处', 'A2026044 / 教务员', 2, 1, 'available'),
 (5, '陈浩', '外国语学院', 'T2026088 / 教师', 1, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('access_hint', '请填写拟进室时段与实验内容摘要', '准入说明'),
-('max_open_access', '3', '每人最大在途准入申请');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '准入须知', '请完成安全培训并上传证明；审核通过后方可进室。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='准入须知');

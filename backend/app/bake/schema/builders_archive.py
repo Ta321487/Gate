@@ -262,15 +262,55 @@ def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         banners,
     )
 
-def _crm_schema(title: str) -> dict[str, Any]:
-    """轻量 CRM：客户档案 + 跟进单据（非公海/外呼引擎）。"""
-    from app.bake.schema.followup_presets import followup_domain_schema
+def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """轻量 CRM：企业销售默认；校园创业团队走 campus（同 scene_crm）。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import scene_crm
 
+    t = _copy_scan_text(title, proposal_text)
+    if scene_crm(t) == "campus":
+        return followup_domain_schema(
+            title,
+            "DOM-CRM",
+            overrides={
+                "user_label": "成员",
+                "admin_label": "指导教师（总管）",
+                "subadmin_label": "项目负责人",
+                "archive_label": "客户",
+                "archive_plural": "客户",
+                "archive_fields": _std_archive_fields(
+                    "客户名称",
+                    "联系人",
+                    "电话/备注",
+                    "跟进阶段",
+                    ["线索", "意向", "成交", "搁置"],
+                    "客户分级",
+                    "可跟进",
+                ),
+                "auth_eyebrow": "校园创业",
+                "auth_lead": "验证码登录；维护客户档案并提交跟进，负责人确认后可办结。",
+                "auth_points": ["验证码登录", "客户档案", "跟进记录"],
+                "notice_page_title": "团队公告",
+                "banners": [
+                    {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+                    {"title": "跟进打卡", "lead": "提交跟进记录，查看待办。"},
+                    {"title": "团队公告", "lead": "跟进规范与通知见公告栏。"},
+                    {"title": "我的跟进", "lead": "登录后查看跟进进度。"},
+                    {"title": "分级管理", "lead": "按客户分级筛选。"},
+                ],
+            },
+        )
     return followup_domain_schema(title, "DOM-CRM")
 
 def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """事件/公卫：校园晨午检 vs 社区网格（同 _food_schema 分支）。"""
-    from app.bake.schema.followup_presets import followup_domain_schema
+    """事件/公卫：校园 / 社区网格 / 养老机构 / 企业复工 / 默认随访（同 _food_schema 分支）。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
     from app.bake.scene_scan import scene_event
 
     t = _copy_scan_text(title, proposal_text)
@@ -283,6 +323,19 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "user_label": "师生",
                 "admin_label": "学工主管（总管）",
                 "subadmin_label": "班主任",
+                "archive_label": "学生",
+                "archive_plural": "学生",
+                "archive_fields": _std_archive_fields(
+                    "学生姓名",
+                    "责任教师",
+                    "班级/健康摘要",
+                    "处置阶段",
+                    ["待核查", "排查中", "处置中", "已闭环"],
+                    "关注分类",
+                    "可上报",
+                ),
+                "archive_menu_admin": "学生档案",
+                "archive_menu_user": "学生列表",
                 "auth_eyebrow": "校园晨午检",
                 "auth_lead": "验证码登录；维护学生档案并打卡/上报，异常由学工处置。",
                 "auth_points": ["验证码登录", "学生档案", "晨午检打卡", "异常上报"],
@@ -297,6 +350,80 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
+    if scene == "institution":
+        return followup_domain_schema(
+            title,
+            "DOM-EVENT",
+            overrides={
+                "user_label": "家属",
+                "admin_label": "机构主管（总管）",
+                "subadmin_label": "照护员",
+                "archive_label": "老人",
+                "archive_plural": "老人",
+                "archive_fields": _std_archive_fields(
+                    "老人姓名",
+                    "责任照护",
+                    "房号/健康摘要",
+                    "照护阶段",
+                    ["待核查", "监测中", "处置中", "已闭环"],
+                    "照护分类",
+                    "可上报",
+                ),
+                "archive_menu_admin": "老人档案",
+                "archive_menu_user": "老人列表",
+                "auth_eyebrow": "机构照护",
+                "auth_lead": "验证码登录；维护入住老人档案并打卡/上报，异常由照护员处置。",
+                "auth_points": ["验证码登录", "老人档案", "健康打卡", "异常上报"],
+                "notice_page_title": "机构公告",
+                "notice_title": "照护须知",
+                "notice_body": "请如实登记老人健康与照护要素；异常请及时上报并由主管确认处置。",
+                "banners": [
+                    {"title": "老人档案", "lead": "按分类浏览入住老人，维护房号与健康摘要。"},
+                    {"title": "健康打卡", "lead": "每日体征打卡或随访，查看今日未打卡。"},
+                    {"title": "异常上报", "lead": "跌倒、发热等线索提交上报，办结可追溯。"},
+                    {"title": "机构公告", "lead": "照护规范与通知见公告栏。"},
+                    {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+                    {"title": "分类管理", "lead": "按分类筛选重点老人。"},
+                ],
+            },
+        )
+    if scene == "enterprise":
+        return followup_domain_schema(
+            title,
+            "DOM-EVENT",
+            overrides={
+                "user_label": "员工",
+                "admin_label": "企管主管（总管）",
+                "subadmin_label": "监测员",
+                "archive_label": "员工",
+                "archive_plural": "员工",
+                "archive_fields": _std_archive_fields(
+                    "员工姓名",
+                    "责任监测",
+                    "部门/健康摘要",
+                    "监测阶段",
+                    ["待核查", "监测中", "处置中", "已闭环"],
+                    "风险分类",
+                    "可上报",
+                ),
+                "archive_menu_admin": "员工档案",
+                "archive_menu_user": "员工列表",
+                "auth_eyebrow": "企业复工",
+                "auth_lead": "验证码登录；维护员工档案并健康打卡/上报，异常由监测员处置。",
+                "auth_points": ["验证码登录", "员工档案", "健康打卡", "异常上报"],
+                "notice_page_title": "企管公告",
+                "notice_title": "监测须知",
+                "notice_body": "请如实登记体温与健康状况；异常请及时上报并由主管确认复工评估。",
+                "banners": [
+                    {"title": "员工档案", "lead": "按部门浏览员工，维护岗位与健康摘要。"},
+                    {"title": "健康打卡", "lead": "每日打卡或随访，查看今日未打卡。"},
+                    {"title": "异常上报", "lead": "发热、暴露等线索提交上报，办结可追溯。"},
+                    {"title": "企管公告", "lead": "复工规范与通知见公告栏。"},
+                    {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+                    {"title": "分类管理", "lead": "按风险分类筛选重点员工。"},
+                ],
+            },
+        )
     if scene == "community":
         return followup_domain_schema(
             title,
@@ -305,6 +432,19 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "user_label": "居民",
                 "admin_label": "主管（总管）",
                 "subadmin_label": "网格员",
+                "archive_label": "对象",
+                "archive_plural": "对象",
+                "archive_fields": _std_archive_fields(
+                    "对象姓名",
+                    "责任网格",
+                    "住址/健康摘要",
+                    "处置阶段",
+                    ["待核查", "排查中", "处置中", "已闭环"],
+                    "关注分类",
+                    "可上报",
+                ),
+                "archive_menu_admin": "对象档案",
+                "archive_menu_user": "对象列表",
                 "auth_eyebrow": "社区公卫",
                 "auth_lead": "验证码登录；维护对象档案并打卡/上报，异常由网格处置。",
                 "auth_points": ["验证码登录", "对象档案", "健康打卡", "上报记录"],
@@ -319,7 +459,43 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
-    return followup_domain_schema(title, "DOM-EVENT")
+    # default：慢病随访/院感/献血等公卫随访档（禁止校园学号壳与食堂种子）
+    return followup_domain_schema(
+        title,
+        "DOM-EVENT",
+        overrides={
+            "user_label": "随访对象",
+            "admin_label": "公卫主管（总管）",
+            "subadmin_label": "随访员",
+            "archive_label": "对象",
+            "archive_plural": "对象",
+            "archive_fields": _std_archive_fields(
+                "对象姓名",
+                "责任随访",
+                "病种/健康摘要",
+                "随访阶段",
+                ["待核查", "随访中", "处置中", "已闭环"],
+                "随访分类",
+                "可上报",
+            ),
+            "archive_menu_admin": "对象档案",
+            "archive_menu_user": "对象列表",
+            "auth_eyebrow": "健康随访",
+            "auth_lead": "验证码登录；维护随访对象档案并打卡/上报，异常由随访员处置。",
+            "auth_points": ["验证码登录", "对象档案", "随访打卡", "异常上报"],
+            "notice_page_title": "公卫公告",
+            "notice_title": "随访须知",
+            "notice_body": "请如实登记随访要素与指标；异常请及时上报并由主管确认处置。",
+            "banners": [
+                {"title": "对象档案", "lead": "按分类浏览随访对象，维护病种与摘要。"},
+                {"title": "随访打卡", "lead": "按计划打卡或随访，查看今日未随访。"},
+                {"title": "异常上报", "lead": "指标异常等线索提交上报，办结可追溯。"},
+                {"title": "公卫公告", "lead": "随访规范与通知见公告栏。"},
+                {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+                {"title": "分类管理", "lead": "按随访分类筛选重点对象。"},
+            ],
+        },
+    )
 
 
 def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -330,7 +506,40 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     t = _copy_scan_text(title, proposal_text)
     campus = scene_attend(t) == "campus"
     if not campus:
-        return followup_domain_schema(title, "DOM-ATTEND")
+        return followup_domain_schema(
+            title,
+            "DOM-ATTEND",
+            overrides={
+                "user_label": "员工",
+                "admin_label": "人事主管（总管）",
+                "subadmin_label": "考勤员",
+                "archive_label": "员工",
+                "archive_plural": "员工",
+                "archive_fields": _std_archive_fields(
+                    "姓名",
+                    "部门",
+                    "工号备注",
+                    "在岗状态",
+                    ["在岗", "请假中", "出差", "停职"],
+                    "岗位类型",
+                    "可请假",
+                ),
+                "archive_menu_admin": "员工档案",
+                "archive_menu_user": "员工名册",
+                "auth_eyebrow": "员工考勤",
+                "auth_lead": "验证码登录；维护员工档案并提交请假，审批通过后按时销假。",
+                "auth_points": ["验证码登录", "员工档案", "请假与销假"],
+                "notice_page_title": "人事公告",
+                "notice_page_lead": "考勤与请假通知，点击条目阅读全文。",
+                "banners": [
+                    {"title": "员工名册", "lead": "按岗位类型浏览，维护部门与工号。"},
+                    {"title": "在线请假", "lead": "提交请假单，人事审批后生效。"},
+                    {"title": "人事公告", "lead": "请假节点与销假须知见公告栏。"},
+                    {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
+                    {"title": "分类检索", "lead": "按岗位类型快速定位。"},
+                ],
+            },
+        )
     return followup_domain_schema(
         title,
         "DOM-ATTEND",
@@ -549,6 +758,16 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "请如实填写养宠条件与联系方式；审核通过后按通知办理交接。"
         notice_t, notice_page, return_v = "领养须知", "领养公告", "撤销申请"
         reg = "注册后可浏览并申请领养"
+    elif scene_lost(t) == "community":
+        noun, remark, admin, sub = "启事", "认领说明", "社区招领主管（总管）", "招领管理员"
+        user, verb = "居民", "认领"
+        title_lab, author_lab, isbn_lab = "物品名称", "拾获/登记人", "小区地点/特征"
+        kind_opts, found_lab = ["招领", "寻物"], "拾获时间"
+        brow, menu_u = "社区招领", "失物检索"
+        lead = "验证码登录；浏览社区失物启事，提交认领申请，管理员审核后领取。"
+        notice = "认领时请提供有效身份与物品特征；审核通过后到物业/驿站领取。"
+        notice_t, notice_page, return_v = "招领须知", "社区公告", "撤销认领"
+        reg = "注册后可浏览启事并申请认领"
     else:
         noun, remark, admin, sub = "启事", "认领说明", "招领主管（总管）", "招领管理员"
         user, verb = "用户", "认领"

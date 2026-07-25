@@ -51,8 +51,8 @@
           <h4>{{ alreadyBaked ? '工程已生成' : '推荐匹配已给出' }}</h4>
           <p class="small muted">
             {{ alreadyBaked
-              ? '改骨架 / 领域须先解锁。改配色、布局等视觉选项请到「一键生成」。'
-              : '确认后到「一键生成」调整视觉并开跑。如需调整骨架或领域，请先解锁。' }}
+              ? '改骨架 / 领域 / 持久层须先解锁。改配色、布局等视觉选项请到「一键生成」。'
+              : '确认后到「一键生成」调整视觉并开跑。如需调整骨架、领域或持久层，请先解锁。' }}
           </p>
         </div>
         <div v-if="matchWarnings.length" class="banner warn">
@@ -74,6 +74,14 @@
                   <span v-if="matchMeta.source" class="rec-src">· {{ matchSourceLabel }}</span>
                 </div>
                 <div class="rec-main">{{ p.recommended_arch }} × {{ p.recommended_domain }}</div>
+                <div class="rec-sub">
+                  推荐持久层：{{ persistenceLabel(p.recommended_persistence || 'jdbc') }}
+                  <span v-if="persistenceDeviant"> · 当前出包：{{ persistenceLabel(form.persistence) }}</span>
+                </div>
+                <div class="rec-sub">
+                  推荐鉴权：{{ securityLabel(p.recommended_spring_security) }}
+                  <span v-if="securityDeviant"> · 当前出包：{{ securityLabel(form.springSecurity) }}</span>
+                </div>
                 <div class="rec-sub" v-if="matchMeta.rationale">理由：{{ matchMeta.rationale }}</div>
                 <div
                   class="rec-sub"
@@ -86,7 +94,7 @@
                 <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">本期不做：{{ p.spec.out_of_mvp.join('、') }}</div>
               </div>
               <div class="lock-row">
-                <span class="small muted">{{ unlocked ? '骨架 / 领域可调整' : '骨架 / 领域已锁定' }}</span>
+                <span class="small muted">{{ unlocked ? '骨架 / 领域 / 持久层 / 鉴权可调整' : '骨架 / 领域 / 持久层 / 鉴权已锁定' }}</span>
                 <div class="row">
                   <n-button size="small" :loading="matchBusy" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
                   <n-button v-if="unlocked || deviant" text size="small" :loading="matchBusy" @click="resetMatch">恢复推荐</n-button>
@@ -112,6 +120,28 @@
                   </n-form-item>
                 </div>
               </div>
+              <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
+                <n-form-item label="持久层">
+                  <n-select
+                    v-model:value="form.persistence"
+                    :options="persistenceOptions"
+                    :disabled="!unlocked || matchBusy"
+                    :loading="matchBusy"
+                    @update:value="onArchDomChange"
+                  />
+                </n-form-item>
+              </div>
+              <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
+                <n-form-item label="Spring Security">
+                  <n-select
+                    v-model:value="form.springSecurity"
+                    :options="securityOptions"
+                    :disabled="!unlocked || matchBusy"
+                    :loading="matchBusy"
+                    @update:value="onArchDomChange"
+                  />
+                </n-form-item>
+              </div>
               <div class="confidence">
                 <span class="small muted">置信度</span>
                 <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : 'var(--amber)' }" /></div>
@@ -119,7 +149,7 @@
                 <span v-if="deviant" class="small muted">已偏离推荐 · 原置信度 {{ (p.confidence || 0).toFixed(2) }}</span>
               </div>
               <div class="override-banner" :class="{ show: unlocked || deviant, danger: deviant }">
-                {{ deviant ? '当前与系统推荐不一致，请确认后再生成。' : '骨架 / 领域可调整。如无把握，建议恢复推荐。' }}
+                {{ deviant ? '当前与系统推荐不一致，请确认后再生成。' : '骨架 / 领域 / 持久层 / 鉴权可调整。如无把握，建议恢复推荐。' }}
               </div>
             </div>
           </div>
@@ -893,6 +923,8 @@ const catalog = ref({
 const form = reactive({
   archetype: '',
   domain: '',
+  persistence: 'jdbc',
+  springSecurity: 'off',
   theme: '',
   chrome: 'soft',
   layout: 'topbar',
@@ -1019,14 +1051,45 @@ const passwordHashOptions = [
   { label: 'MD5', value: 'md5' },
   { label: 'SHA-256', value: 'sha256' },
 ]
+const persistenceOptions = [
+  { label: 'Spring JDBC（JdbcTemplate）', value: 'jdbc' },
+  { label: 'MyBatis + PageHelper', value: 'mybatis' },
+]
+const securityOptions = [
+  { label: '关 · 仅 Session + AdminAuth（默认）', value: 'off' },
+  { label: '开 · Spring Security 过滤器链', value: 'on' },
+]
+function persistenceLabel(v) {
+  return v === 'mybatis' ? 'MyBatis + PageHelper' : 'JdbcTemplate'
+}
+function securityLabel(v) {
+  const on = v === true || v === 'on' || v === 1
+  return on ? 'Spring Security' : 'Session（无过滤器链）'
+}
+function securityOn(v) {
+  return v === true || v === 'on' || v === 1
+}
 const llmOptions = [
   { label: '开启 · 填充业务文案与种子数据', value: 'on' },
   { label: '关闭 · 仅使用基线生成', value: 'off' },
 ]
 
+const persistenceDeviant = computed(() => {
+  if (!p.value) return false
+  return (form.persistence || 'jdbc') !== (p.value.recommended_persistence || 'jdbc')
+})
+const securityDeviant = computed(() => {
+  if (!p.value) return false
+  return securityOn(form.springSecurity) !== securityOn(p.value.recommended_spring_security)
+})
 const deviant = computed(() => {
   if (!p.value) return false
-  return form.archetype !== p.value.recommended_arch || form.domain !== p.value.recommended_domain
+  return (
+    form.archetype !== p.value.recommended_arch
+    || form.domain !== p.value.recommended_domain
+    || persistenceDeviant.value
+    || securityDeviant.value
+  )
 })
 const displayConf = computed(() => (deviant.value ? 0.41 : (p.value?.confidence || 0)))
 const matchPillClass = computed(() => {
@@ -1041,6 +1104,10 @@ const matchPillText = computed(() => {
 })
 const matchWarnings = computed(() => {
   const spec = p.value?.spec || {}
+  const stackWarn = spec.match_meta?.stack?.warnings
+  if (Array.isArray(stackWarn) && stackWarn.length) {
+    return [...stackWarn, ...((Array.isArray(spec.match_warnings) && spec.match_warnings) || [])]
+  }
   if (Array.isArray(spec.match_warnings) && spec.match_warnings.length) return spec.match_warnings
   return (spec.hits || []).filter((h) => typeof h === 'string' && h.startsWith('提示：'))
 })
@@ -1051,7 +1118,7 @@ function warningText(w) {
   return String(w || '').replace(/^提示：/, '')
 }
 const confirmHint = computed(() => {
-  if (deviant.value) return '确认按当前骨架 / 领域生成。'
+  if (deviant.value) return '确认按当前骨架 / 领域 / 持久层 / 鉴权生成。'
   return '已核对骨架、领域与本期范围，确认后开始生成。'
 })
 const canDownload = computed(() => !p.value?.download_blocked_reason)
@@ -1425,6 +1492,8 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     if (!lite) {
       form.archetype = p.value.archetype
       form.domain = p.value.domain
+      form.persistence = p.value.persistence || p.value.spec?.persistence || 'jdbc'
+      form.springSecurity = securityOn(p.value.spring_security ?? p.value.spec?.spring_security) ? 'on' : 'off'
       form.theme = p.value.theme
       form.chrome = p.value.spec?.chrome || 'soft'
       form.layout = p.value.spec?.layout || 'topbar'
@@ -1775,7 +1844,7 @@ async function refreshRuntime(projectId) {
 async function toggleUnlock() {
   if (matchBusy.value) return
   if (!unlocked.value) {
-    const ok = await confirm('解锁后可调整骨架与领域。确认解锁？', {
+    const ok = await confirm('解锁后可调整骨架、领域与持久层。确认解锁？', {
       title: '解锁匹配',
       type: 'warning',
       positiveText: '解锁',
@@ -1814,6 +1883,8 @@ async function resetMatch() {
     p.value = await api.patchMatch(p.value.id, { reset: true })
     form.archetype = p.value.archetype
     form.domain = p.value.domain
+    form.persistence = p.value.persistence || 'jdbc'
+    form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || 'soft'
     form.layout = p.value.spec?.layout || 'topbar'
@@ -1834,15 +1905,21 @@ async function onArchDomChange() {
     p.value = await api.patchMatch(p.value.id, {
       archetype: form.archetype,
       domain: form.domain,
+      persistence: form.persistence,
+      spring_security: securityOn(form.springSecurity),
     })
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
+    form.persistence = p.value.persistence || form.persistence
+    form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
     ack.value = false
   } catch {
     form.archetype = p.value.archetype
     form.domain = p.value.domain
+    form.persistence = p.value.persistence || 'jdbc'
+    form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
@@ -1873,7 +1950,7 @@ async function saveSoft() {
 async function confirmMatch() {
   if (matchBusy.value) return
   if (deviant.value) {
-    const ok = await confirm('当前已偏离系统推荐。确认仍按当前骨架与领域生成？', {
+    const ok = await confirm('当前已偏离系统推荐。确认仍按当前骨架、领域与持久层生成？', {
       title: '偏离推荐确认',
       type: 'warning',
     })

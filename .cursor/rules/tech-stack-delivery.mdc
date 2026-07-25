@@ -1,0 +1,120 @@
+---
+description: 开题扫技术栈；主骨架 Boot+Vue；Web 可配置项与组合轴；交付物除具体技术外一致。禁止未落地前改 bake 逻辑
+alwaysApply: true
+---
+
+# 技术栈交付契约（预防针）
+
+## 与现网关系
+
+- **现行唯一学生 ZIP**：Spring Boot + Vue 3 + Element Plus + MySQL + `JdbcTemplate`（`skeletons/baseline`）。
+- **本规则是交付口径与演进契约**。未单独开任务落地前，**禁止**为「组合轴 / 第二物理骨架」改 bake、门禁、匹配或现有骨架行为。
+- 场景、身份、领域仍走 `scene_scan` 与开题优先规则；技术栈是另一轴，不替代场景判定。
+- **近期优先落地轴**：`spine=spa` 下的 `persistence=mybatis`（绑 PageHelper）。落地后，开题写 MyBatis 的题走「已可 bake → 跟开题」，不再走「未落地偏差」档。
+
+## 硬原则
+
+1. **开题 / 任务书技术方案为准（在可交付范围内）**：题名 + 正文「技术路线」写明的栈，若工厂**已能 bake**，则实包 + README/论文「系统实现」必须与之对齐。禁止改开题迁就工厂。**不能交时**见下文「开题明确写了别的技术时」，不得假装已对齐。
+2. **技术主线默认分离**：材料写明或默认可推断为 Spring Boot + Vue 时，走分离 ZIP（`frontend/` + `backend/` + `sql/`）。一次 bake **只出一条主线**、一份 ZIP。
+3. **组合轴（同一 `spine=spa` 内）**：持久层 `jdbc` | `mybatis` 等只换实现与说明书措辞，**不换**业务能力与域语义。`mybatis` 绑定 PageHelper；`jdbc` 用手写 `LIMIT`。
+4. **开题未写清 → 工厂现网默认**：分离 + `JdbcTemplate` + 手写分页 + Element Plus；写在栈配置 / 基线说明，不是臆造开题。
+5. **第二物理骨架（可选，未落地）**：材料明确要求 SSR / 无 Vue（如 Thymeleaf + AdminLTE）时另出一套 ZIP，**不得**与 Vue 包混搭。与匹配页 `ARCH-*`「骨架」不是同一概念。SSR 包内持久层**在物理骨架内定死**（建议 MyBatis），**不**复用 spa 的 `persistence` 下拉。
+6. **交付物等价**：同题不同技术组合时，领域能力、场景身份、主流程、演示数据、论文材料结构同质；**仅**具体技术实现与「系统实现」表述可不同。
+
+## 工厂 Web：现网已可配（勿改语义）
+
+| 位置 | 项 | 作用 |
+|------|-----|------|
+| 匹配确认 | 骨架 archetype（`ARCH-*`） | **能力路径**，不是 Boot+Vue / SSR |
+| 匹配确认 | 领域 domain（`DOM-*`） | 业务域 / 能力组合 |
+| 一键生成 | theme / chrome / layout / typeface | 视觉 |
+| 一键生成 | llm / passwordHash | 业务岛填充、演示密码策略 |
+
+以上**不是**技术主线。
+
+### 命名防撞（必读）
+
+| 词 | 现网含义 | 技术栈 |
+|----|----------|--------|
+| 骨架 / archetype | `ARCH-*` 能力路径 | **禁止**用来表达 `spine` |
+| 技术主线 / spine | （尚无） | `spa` \| `ssr` 物理目录形态 |
+| 基线 / baseline | `skeletons/baseline` | `spine=spa` 的默认物理骨架 |
+
+界面：`ARCH-*` 仍叫「骨架」；`spine` 叫「技术主线」或「工程形态」。
+
+## 工厂 Web：技术栈落地后才增加（开干依据）
+
+### 交互
+
+1. 开题扫描填推荐 → 匹配确认解锁可手改（锁定交互对齐 `ARCH-*` / 领域）。
+2. 控件在**匹配确认**，与领域同级、**独立于** archetype；禁止进「一键生成」视觉区。
+3. 切换 `spine` / `persistence` 后须再确认再 bake（不必重选领域；须让操作员看见栈已变）。
+4. 若「开题/扫描拟选」≠「当前可出包栈」：**双显**（拟选 + 实际出包），禁止只显示一个让人以为已对齐。
+
+### 推荐控件
+
+| 字段 | 选项 | 默认 | 说明 |
+|------|------|------|------|
+| `spine` | `spa` \| `ssr` | `spa` | `ssr` 无物理骨架前**不出现在界面** |
+| `persistence` | `jdbc` \| `mybatis` | `jdbc` | **仅 `spine=spa`**；`mybatis`⇒PageHelper，无单独分页下拉 |
+
+禁止运营文案「V 线 / T 线」。
+
+### 不做 / 后置
+
+- 分页单独下拉；UI 库 Web 可选（未写清→Element；写清另任务）；SSR 引擎三选一。
+- 技术栈不得驱动 `scene_scan`，不得替代 `ARCH-*` / 领域。
+
+### 常见点名但不进 `spine` / `persistence` 的库
+
+开题常写 **Spring Security**、**ECharts** 等。这些**不做成**主线下拉，避免轴膨胀；点名要了按「现网是否已常驻 / 是否有按需开关」处理：
+
+| 点名 | 现网 | 策略 |
+|------|------|------|
+| **ECharts** | 基线已常驻（工作台图表） | 无需开关；开题点名 → 论文/README 写上即可 |
+| **Spring Security** | **已可 bake**（`addons.spring_security`） | 开题点名 → 推荐开；实包含 `spring-boot-starter-security` + `SecurityFilterChain`；关 = 仅 crypto |
+| **Element Plus** | 基线默认 | 未写清用 Element；换库另任务，短期不进开关 |
+| 其它（Redis、MQ 等） | 多不在演示包 | 默认可标不支持；若要做再单开按需项 |
+
+### 按需实现开关（已落地：`spring_security`）
+
+与 `spine` / `persistence` **分开**：主线定形态，按需开关定「额外技术是否打进本包」。
+
+1. **形态**：`spec.spring_security` / `addons.spring_security` 布尔；匹配确认可解锁手改；**开题扫描点名则推荐开**。
+2. **默认**：关（跟现网最小可交包）；开题点名 → 推荐开并出包。
+3. **开** = 实包真有 `spring-boot-starter-security`、`SecurityConfig`、`SessionAuthFilter`；README 写过滤器链 + Session；关 = 不写 Security 技术名（仅 crypto）。
+4. **不要**：把按需项塞进 `persistence`；不要为每个名词自动加 Web 下拉——只对「反复被点名 + 有明确实现方案」的项加开关（Security 已落地；ECharts 已常驻故不加）。
+
+### 开题明确写了别的技术时
+
+**禁止改开题**。按工厂**当前能否交付**：
+
+| 情况 | 怎么做 |
+|------|--------|
+| **已可 bake**（含 MyBatis、Spring Security） | **跟开题**（或 Web 手改）；实包 = README = 论文系统实现 |
+| **规划内未落地**（SSR 未做前） | 强提示偏差；实包 = **工厂现网默认可交栈**；论文/README 写实包；可重 bake 对齐 |
+| **超出范围**（Django / Android / .NET 等） | 标「不支持」；禁止静默 Boot+Vue 冒充符合开题 |
+
+- 未写清 → 工厂默认。  
+- 写清且能交 → 开题优先。  
+- 写清不能交 → 开题原文保留；交付诚实跟工厂默认 + 提示。
+
+### 运行时、门禁、实现形态
+
+- `spa`：运行 = 前端 + 后端；`ssr`：仅 Boot，禁止仍要 `frontend` 端口。
+- 门禁按 `spine` / `persistence` / `spring_security` 分支：`jdbc` 认 Store+JdbcTemplate；`mybatis` 认 Mapper/XML；`spring_security` 开时认 SecurityConfig + starter-security。
+- 学生 README：与实包一致（切 `mybatis` / 开 Security 后须改生成文案）。
+
+## 禁止
+
+- 「V/T 线」话术；`spine` 塞进 `ARCH-*`；未落地先改 Store/门禁挖坑。
+- MyBatis 当借口改领域/`ARCH-*`；SSR↔Vue 混包。
+- 技术栈影响场景扫描；`spine`/`persistence` 当视觉软选项。
+- 开题与实包不一致且无双显/提示；论文抄开题未实现技术名。
+- 按需开关无生成路径仍可打开，或打开后 ZIP/论文假装已集成。
+
+## 落地时（另开任务）才允许
+
+1. ~~`persistence=mybatis`~~、~~`addons.spring_security`~~ 已落地。
+2. 再视需求做 `spine=ssr` 物理骨架 + 运行面板 + 门禁分支；其它按需开关（有生成路径才允许打开）。
+3. 每加一轴或一开关：扫描断言 + 同题开关开/关冒烟（关=现网最小包，开=真有对应实现）。

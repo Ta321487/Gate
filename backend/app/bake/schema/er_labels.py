@@ -549,7 +549,6 @@ def _rel_zh(
             "sys_notice",
             "sys_guestbook",
             "user_ledger",
-            "sys_config",
         }:
             verb = _apply_verb_label(right_lab, right_lab)
             if verb:

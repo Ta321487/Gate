@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.BrowseHistoryMapper">
+    <select id="selectByUsername" resultType="map">
+        SELECT item_id AS itemId, viewed_at AS viewedAt
+        FROM user_browse_history WHERE username=#{username} ORDER BY viewed_at DESC
+    </select>
+</mapper>

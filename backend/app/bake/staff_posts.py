@@ -187,6 +187,8 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
         "随访员",
         "随访专员",
         "晨检员",
+        "照护员",
+        "护士",
         "网格员",
         "流调员",
         "防控专员",
@@ -222,7 +224,8 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
 # 门户 user 槽：开题写到才替换（短泛词如「学生」不进表，避免开题套话误伤）
 _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-INTERN": ("实习生", "实习学生"),
-    "DOM-EVENT": ("随访对象", "上报人", "居民"),
+    # 照护员/随访员是 duty_clerk；门户 user 用场景预设，勿用「老人」盖掉家属
+    "DOM-EVENT": ("随访对象", "上报人", "家属", "居民", "员工"),
     "DOM-FOOD": ("就餐用户", "就餐者"),
     "DOM-HOSPITAL": ("患者", "就诊人", "接种人", "宠主"),
     "DOM-LOST": ("失主", "认领人", "申请人"),
@@ -496,6 +499,20 @@ def attach_staff_posts(
             "label": sub_lab,
             "staffPostId": first.get("id"),
         }
+        # EVENT：档案「责任*」列与子管称呼对齐（开题改岗名后列表头同步）
+        if domain == "DOM-EVENT" and sub_lab:
+            arch = ((schema.get("entities") or {}).get("archive") or {})
+            fields = arch.get("fields")
+            if isinstance(fields, list):
+                new_fields = []
+                for f in fields:
+                    if isinstance(f, dict) and f.get("key") == "author":
+                        new_fields.append({**f, "label": sub_lab})
+                    else:
+                        new_fields.append(f)
+                ents = dict(schema.get("entities") or {})
+                ents["archive"] = {**arch, "fields": new_fields}
+                schema["entities"] = ents
     else:
         roles.pop("subadmin", None)
     schema["roles"] = roles

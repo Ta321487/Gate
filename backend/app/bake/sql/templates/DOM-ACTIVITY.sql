@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS signup (
   remark VARCHAR(255)
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -89,13 +88,6 @@ CREATE TABLE IF NOT EXISTS signup_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '活动主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '活动助理', '13800000001', '{}', 0, 1, 1),
@@ -112,9 +104,6 @@ INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status
 (3, '就业指导讲座', '就业指导中心', '图书馆报告厅', 3, 80, 'available', '2026-10-15 19:00:00', '2026-10-15 21:00:00', '2026-10-15 12:00:00'),
 (4, '摄影社外拍活动', '摄影社', '湿地公园', 1, 20, 'available', '2026-10-11 14:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
 (5, '敬老院慰问志愿', '青年志愿者协会', '校门口集合', 2, 15, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('max_signup', '5', '每人同时进行中报名上限提示'),
-('signup_hint', '审核通过占名额', '报名说明');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报名须知', '请如实填写资料；名额有限，审核通过后请按时参加。', 'admin', '活动主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');

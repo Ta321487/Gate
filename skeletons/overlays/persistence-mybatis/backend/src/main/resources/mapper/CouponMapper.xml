@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.CouponMapper">
+
+    <select id="selectActivePromos" resultType="map">
+        SELECT * FROM promo_coupon WHERE status='active' ORDER BY id
+    </select>
+
+    <select id="selectAllPromosDesc" resultType="map">
+        SELECT * FROM promo_coupon ORDER BY id DESC
+    </select>
+
+    <select id="selectPromoById" resultType="map">
+        SELECT * FROM promo_coupon WHERE id=#{id}
+    </select>
+
+    <select id="countMineFiltered" resultType="int">
+        SELECT COUNT(*) FROM user_coupon u
+        WHERE u.username=#{username}
+        <if test="status != null and status != ''">AND u.status=#{status}</if>
+    </select>
+
+    <select id="selectMineJoined" resultType="map">
+        SELECT u.*, p.code, p.label, p.min_yuan, p.off_yuan, p.expire_at AS promo_expire
+        FROM user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id
+        WHERE u.username=#{username}
+        <if test="status != null and status != ''">AND u.status=#{status}</if>
+        ORDER BY u.id DESC
+    </select>
+
+    <select id="selectMineJoinedOne" resultType="map">
+        SELECT u.*, p.code, p.label, p.min_yuan, p.off_yuan, p.expire_at AS promo_expire
+        FROM user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id
+        WHERE u.username=#{username} AND u.coupon_id=#{couponId}
+    </select>
+
+    <select id="selectUnusedMineByCode" resultType="map">
+        SELECT u.id AS user_coupon_id, p.*
+        FROM user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id
+        WHERE u.username=#{username} AND u.status='unused' AND UPPER(p.code)=#{code}
+    </select>
+
+    <select id="selectActivePromoByCode" resultType="map">
+        SELECT * FROM promo_coupon WHERE status='active' AND UPPER(code)=#{code}
+    </select>
+
+    <select id="selectUnusedMineIdByCode" resultType="long">
+        SELECT u.id FROM user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id
+        WHERE u.username=#{username} AND u.status='unused' AND UPPER(p.code)=#{code}
+        LIMIT 1
+    </select>
+</mapper>

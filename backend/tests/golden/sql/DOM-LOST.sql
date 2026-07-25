@@ -81,33 +81,23 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '招领主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '招领管理员', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '用户甲', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"女","campusNo":"S20260002","dept":"文学院","contactWechat":"wang_demo","usualPlace":"图书馆"}',
+('user', 'user123', 'user', '居民甲', '13800000002',
+ '{"realName":"王芳","email":"wang@demo.com","gender":"女","contactWechat":"wang_demo","usualPlace":"阳光小区","orgName":"3栋2单元"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '证件卡类'), (2, '电子数码'), (3, '生活用品');
 INSERT IGNORE INTO lost_item (id, title, registrant, feature_note, category_id, stock, status) VALUES
-(1, '校园卡（尾号 8821）', '保卫处', '一食堂窗口拾获 / 蓝色挂绳', 1, 1, 'available'),
-(2, '黑色无线耳机盒', '图书馆值班', '三楼阅览室 / AirPods 样式', 2, 1, 'available'),
-(3, '蓝色水杯', '学生甲', '实验楼 B201 / 杯身有贴纸', 3, 1, 'available'),
-(4, '学生证', '宿舍楼管', '3 栋门厅 / 计算机学院', 1, 1, 'available'),
-(5, '充电器一套', '教室保洁', '教学楼 305 / Type-C 线', 2, 1, 'available');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('claim_hint', '需核对特征', '认领说明'),
-('pickup_place', '保卫处失物点', '领取地点');
+(1, '门禁卡（尾号 8821）', '物业值班', '阳光小区门岗 / 蓝色挂绳', 1, 1, 'available'),
+(2, '黑色无线耳机盒', '快递驿站', '3栋大厅 / AirPods 样式', 2, 1, 'available'),
+(3, '蓝色水杯', '居民甲', '健身步道 / 杯身有贴纸', 3, 1, 'available'),
+(4, '身份证复印件套', '保洁员', '地下车库电梯口', 1, 1, 'available'),
+(5, '充电器一套', '业委会', '会所阅览室 / Type-C 线', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '招领须知', '认领时请提供有效身份与物品特征；审核通过后到指定地点领取。', 'admin', '招领主管'
+SELECT '招领须知', '认领时请提供有效身份与物品特征；审核通过后到物业领取。', 'admin', '招领主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='招领须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周公示', '证件与数码类启事已更新，请及时认领。', 'admin', '招领主管'

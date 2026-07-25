@@ -43,6 +43,7 @@ from app.api.system_router import router  # noqa: E402
 from app.api.system_deepseek import (  # noqa: E402
     _clamp_token_budgets,
     _get_ds_row,
+    _get_gemini_row,
     _hydrate_ds_settings,
 )
 

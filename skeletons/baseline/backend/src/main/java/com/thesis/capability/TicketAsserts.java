@@ -27,11 +27,12 @@ final class TicketAsserts {
         Integer active = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE username=? AND status IN " + statuses,
                 Integer.class, username);
-        if (active != null && active >= TicketStore.MAX_ACTIVE) {
+        if (active != null && active >= TicketStore.maxActive()) {
+            int lim = TicketStore.maxActive();
             throw new IllegalStateException(
                     TicketStore.allowMultiTicket
-                            ? "待审核回复不得超过 " + TicketStore.MAX_ACTIVE + " 条，请稍后再发"
-                            : "同时进行中的单据不得超过 " + TicketStore.MAX_ACTIVE + " 条");
+                            ? "待审核回复不得超过 " + lim + " 条，请稍后再发"
+                            : "同时进行中的单据不得超过 " + lim + " 条");
         }
     }
 

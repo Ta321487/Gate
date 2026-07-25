@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.LoyaltyMapper">
+    <select id="selectAccount" resultType="map">
+        SELECT balance_yuan, points, member_tier, spend_total_yuan
+        FROM sys_user WHERE username=#{username}
+    </select>
+    <select id="selectLedger" resultType="map">
+        SELECT id, kind, delta, balance_after, reason, ref_type, ref_id, operator, created_at
+        FROM user_ledger WHERE username=#{username} ORDER BY id DESC
+    </select>
+</mapper>

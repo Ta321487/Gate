@@ -11,8 +11,10 @@ from app.bake.schema.shells import (
 )
 
 def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    from app.bake.scene_scan import scene_shop
+
     t = _copy_scan_text(title, proposal_text)
-    campus = any(k in t for k in ("校园", "校内", "二手", "学校"))
+    campus = scene_shop(t) == "campus"
     brow = "校园商城" if campus else "在线商城"
     lead = (
         "验证码登录；浏览商品、加入购物车并提交订单（演示无真支付）。"
@@ -54,8 +56,10 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    from app.bake.scene_scan import scene_food
+
     t = _copy_scan_text(title, proposal_text)
-    canteen = any(k in t for k in ("食堂", "校园", "档口", "学子"))
+    canteen = scene_food(t) == "campus"
     if canteen:
         admin, sub, brow, win, notice = "食堂主管（总管）", "档口管理员", "食堂点餐", "窗口", "食堂公告"
         body = "下单后到对应窗口取餐或按约定配送；演示无真支付。"
@@ -156,17 +160,11 @@ def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """门诊 / 疫苗接种 / 宠物医院：同号源预约壳，文案跟题名/开题走（同 _meeting_schema）。"""
+    """门诊 / 疫苗接种 / 宠物医院：同号源预约壳；宠物走 scene_hospital=adopt。"""
+    from app.bake.scene_scan import scene_hospital
+
     t = _copy_scan_text(title, proposal_text)
-    if any(k in t for k in ("疫苗", "HPV", "接种预约", "接种点")):
-        noun, remark, admin, sub = "接种门诊", "接种人", "接种点主管（总管）", "预约管理员"
-        user, brow, resv = "接种人", "疫苗预约", "预约"
-        fee, isbn, cat, title_lab = "费用(元)", "针次/说明", "疫苗类型", "门诊/疫苗名称"
-        lead = "验证码登录；选择疫苗门诊与时段预约接种；到点后由管理端登记完成。"
-        notice = "号源有限；请填写接种人姓名，按预约时段到点；完成后由前台办结；取消请提前操作。"
-        notice_t, notice_page, reg, done = "接种须知", "接种公告", "注册后可预约疫苗接种", "接种"
-        menu_u, points_mid = "选门诊", "门诊检索"
-    elif any(k in t for k in ("宠物", "宠医", "爱宠", "猫狗", "犬猫")):
+    if scene_hospital(t) == "adopt" or any(k in t for k in ("宠物", "宠医", "爱宠", "猫狗", "犬猫")):
         noun, remark, admin, sub = "医生", "宠物/就诊人", "宠物医院主管（总管）", "挂号员"
         user, brow, resv = "宠主", "宠物挂号", "挂号"
         fee, isbn, cat, title_lab = "挂号费(元)", "职称/说明", "科室", "医生"
@@ -174,6 +172,14 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "号源有限；请填写宠物昵称与就诊人；按时到诊；就诊完成后由前台办结；取消请提前操作。"
         notice_t, notice_page, reg, done = "挂号须知", "宠物医院公告", "注册后可以宠主身份挂号", "就诊"
         menu_u, points_mid = "选医生", "医生检索"
+    elif any(k in t for k in ("疫苗", "HPV", "接种预约", "接种点")):
+        noun, remark, admin, sub = "接种门诊", "接种人", "接种点主管（总管）", "预约管理员"
+        user, brow, resv = "接种人", "疫苗预约", "预约"
+        fee, isbn, cat, title_lab = "费用(元)", "针次/说明", "疫苗类型", "门诊/疫苗名称"
+        lead = "验证码登录；选择疫苗门诊与时段预约接种；到点后由管理端登记完成。"
+        notice = "号源有限；请填写接种人姓名，按预约时段到点；完成后由前台办结；取消请提前操作。"
+        notice_t, notice_page, reg, done = "接种须知", "接种公告", "注册后可预约疫苗接种", "接种"
+        menu_u, points_mid = "选门诊", "门诊检索"
     else:
         noun, remark, admin, sub = "医生", "就诊人", "医务主管（总管）", "挂号员"
         user, brow, resv = "患者", "门诊挂号", "挂号"

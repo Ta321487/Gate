@@ -16,8 +16,10 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" />
-      <el-table-column prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
-      <el-table-column prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
+      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
+      <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
+      <el-table-column v-if="showPriorityCols" prop="contactPhone" label="联系电话" width="120" show-overflow-tooltip />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -45,8 +47,8 @@
           <span v-else class="muted">待登记</span>
         </template>
       </el-table-column>
-      <el-table-column prop="startAt" label="开始" width="160" />
-      <el-table-column prop="endAt" label="结束" width="160" />
+      <el-table-column v-if="showScheduleCols" prop="startAt" label="开始" width="160" />
+      <el-table-column v-if="showScheduleCols" prop="endAt" label="结束" width="160" />
       <el-table-column prop="remark" :label="richRemark ? '内容/说明' : '审核说明'" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ remarkText(row.remark) }}</template>
       </el-table-column>
@@ -125,7 +127,23 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
-import { archiveCopy, followChannelLabel, hasTrait, getSchema, nextFollowLabel, personLabel, roleLabel, ticketCopy, ticketDueLabel, ticketFineLabel, ticketFinePaidLabel } from '../../utils/domainSchema.js'
+import {
+  archiveCopy,
+  followChannelLabel,
+  hasTrait,
+  nextFollowLabel,
+  personLabel,
+  roleLabel,
+  ticketCopy,
+  ticketDueLabel,
+  ticketFineLabel,
+  ticketFinePaidLabel,
+  ticketShowsFollowCols,
+  ticketShowsLocationCol,
+  ticketShowsPriorityCols,
+  ticketShowsScheduleCols,
+  ticketShowsTypeCol,
+} from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -144,9 +162,13 @@ const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => roleLabel('user', '申请人'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
-const showFollowCols = computed(() => hasTrait('crm'))
+const showFollowCols = computed(() => ticketShowsFollowCols())
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
+const showScheduleCols = computed(() => ticketShowsScheduleCols(ticket, archive))
+const showTypeCol = computed(() => ticketShowsTypeCol(archive))
+const showLocationCol = computed(() => ticketShowsLocationCol(archive))
+const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const showFine = computed(
   () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
 )
@@ -297,7 +319,11 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = ['编号', '标题', typeColLabel.value, locationColLabel.value, userLabel.value, '处理人', '状态']
+  const headers = ['编号', '标题']
+  if (showTypeCol.value) headers.push(typeColLabel.value)
+  if (showLocationCol.value) headers.push(locationColLabel.value)
+  if (showPriorityCols.value) headers.push('优先级', '联系电话')
+  headers.push(userLabel.value, '处理人', '状态')
   if (allowQty.value) headers.push('数量')
   if (pickLoanPeriod.value) headers.push(dueLabel.value)
   if (showFine.value) headers.push(fineLabel.value)
@@ -305,7 +331,8 @@ async function exportCsv() {
     headers.push('领取地点', '领取时间')
     if (allowQty.value) headers.push('实发数量')
   }
-  headers.push('开始', '结束', '说明', '附件')
+  if (showScheduleCols.value) headers.push('开始', '结束')
+  headers.push('说明', '附件')
   if (showFollowCols.value) headers.push(channelLabel.value, nextAtLabel.value)
   headers.push('申请时间', '受理时间')
   if (allowCheckin.value) headers.push('签到时间')
@@ -313,15 +340,15 @@ async function exportCsv() {
   if (allowRating.value) headers.push('评分', '短评', '评价时间')
 
   const data = rows.map((row) => {
-    const line = [
-      row.id,
-      row.title,
-      row.typeName,
-      row.location,
+    const line = [row.id, row.title]
+    if (showTypeCol.value) line.push(row.typeName)
+    if (showLocationCol.value) line.push(row.location)
+    if (showPriorityCols.value) line.push(row.priority || '', row.contactPhone || '')
+    line.push(
       personLabel(row, ''),
       row.assigneeUsername || '',
       states.value[row.status] || row.status,
-    ]
+    )
     if (allowQty.value) line.push(row.qty ?? 1)
     if (pickLoanPeriod.value) line.push(row.dueAt || '')
     if (showFine.value) {
@@ -331,7 +358,8 @@ async function exportCsv() {
       line.push(row.pickupPlace || '', row.pickupAt || '')
       if (allowQty.value) line.push(row.actualQty ?? '')
     }
-    line.push(row.startAt, row.endAt, remarkText(row.remark), row.attachUrl || '')
+    if (showScheduleCols.value) line.push(row.startAt, row.endAt)
+    line.push(remarkText(row.remark), row.attachUrl || '')
     if (showFollowCols.value) {
       line.push(row.contactChannel || '', row.nextFollowAt || '')
     }

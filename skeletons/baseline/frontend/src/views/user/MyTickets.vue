@@ -28,11 +28,13 @@
             <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
+            <template v-if="showPriorityCols && row.priority"> · {{ row.priority }}</template>
           </p>
           <p v-if="row.startAt || row.endAt" class="sub sched">
             {{ row.periodStart || row.periodEnd ? '起止' : '时段' }}
             {{ row.startAt || '—' }} ~ {{ row.endAt || '—' }}
           </p>
+          <p v-if="showPriorityCols && row.contactPhone" class="sub">电话 {{ row.contactPhone }}</p>
           <div v-if="row.remark" class="tip">
             <template v-if="row.status === 'rejected'">驳回原因：</template>
             <template v-else-if="richRemark">内容：</template>
@@ -130,6 +132,18 @@
         <el-form-item v-else label="地点" required>
           <el-input v-model="form.location" maxlength="64" placeholder="请填写地点" />
         </el-form-item>
+        <template v-if="showPriorityCols">
+          <el-form-item label="优先级">
+            <el-select v-model="form.priority" style="width:100%">
+              <el-option label="普通" value="普通" />
+              <el-option label="紧急" value="紧急" />
+              <el-option label="高" value="高" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="联系电话">
+            <el-input v-model="form.contactPhone" maxlength="20" placeholder="便于回访联系" />
+          </el-form-item>
+        </template>
         <el-form-item label="说明">
           <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />
         </el-form-item>
@@ -188,6 +202,7 @@ import {
   ticketCopy,
   ticketDueLabel,
   ticketFineLabel,
+  ticketShowsPriorityCols,
   ticketStatusLabel,
 } from '../../utils/domainSchema.js'
 
@@ -206,6 +221,7 @@ const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
 const showPickup = computed(() => hasTrait('pickupFlow'))
+const showPriorityCols = computed(() => ticketShowsPriorityCols())
 
 function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
 function tagType(s) {
@@ -260,6 +276,8 @@ const form = reactive({
   typeId: null,
   siteId: null,
   roomId: null,
+  priority: '普通',
+  contactPhone: '',
 })
 
 const rateVisible = ref(false)
@@ -319,7 +337,15 @@ async function load() {
 
 function openApply() {
   Object.assign(form, {
-    title: '', location: '', remark: '', attachUrl: '', typeId: null, siteId: null, roomId: null,
+    title: '',
+    location: '',
+    remark: '',
+    attachUrl: '',
+    typeId: null,
+    siteId: null,
+    roomId: null,
+    priority: '普通',
+    contactPhone: '',
   })
   units.value = []
   visible.value = true
@@ -358,6 +384,8 @@ async function submit() {
     typeId: form.typeId,
     roomId: form.roomId,
     attachUrl: form.attachUrl || undefined,
+    priority: showPriorityCols.value ? form.priority : undefined,
+    contactPhone: showPriorityCols.value ? (form.contactPhone || undefined) : undefined,
   })
   ElMessage.success('已提交')
   visible.value = false

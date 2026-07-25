@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS event_report (
   next_follow_at DATETIME NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -87,13 +86,6 @@ CREATE TABLE IF NOT EXISTS event_report_log (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sys_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  cfg_key VARCHAR(64) NOT NULL UNIQUE,
-  cfg_value VARCHAR(255) NOT NULL,
-  remark VARCHAR(128) DEFAULT ''
-);
-
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '防控主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1),
@@ -109,9 +101,6 @@ INSERT IGNORE INTO event_case (id, title, author, isbn, category_id, stock, stat
 (3, '宿舍楼疑似传染病报告', '楼管张敏', '3号楼 / 疑似传染病待排查', 3, 1, 'available', '处置中'),
 (4, '校园消杀物资申领关联事件', '后勤赵强', '仓库区 / 消杀物资调度', 1, 1, 'available', '已闭环'),
 (5, '校门口食品安全抽检', '市监联络员陈洁', '校东门商铺 / 快检阳性复核', 2, 1, 'available', '待核查');
-INSERT IGNORE INTO sys_config (cfg_key, cfg_value, remark) VALUES
-('report_hint', '请填写上报说明', '上报说明'),
-('max_open_report', '20', '每人最大在途上报单');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '上报须知', '请如实登记事件要素；重大事件请及时上报并由主管确认处置。', 'admin', '防控主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='上报须知');

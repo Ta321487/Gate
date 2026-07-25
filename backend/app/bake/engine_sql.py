@@ -49,9 +49,18 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 def _patch_student_readme(
-    dest: Path, *, app_name: str, db_name: str, java_package: str = "com.thesis"
+    dest: Path,
+    *,
+    app_name: str,
+    db_name: str,
+    java_package: str = "com.thesis",
+    persistence: str = "jdbc",
+    spring_security: bool = False,
 ) -> None:
-    """ZIP 根目录 README：写入课题名、库名与 Java 包路径。"""
+    """ZIP 根目录 README：写入课题名、库名、Java 包与持久层/鉴权口径。"""
+    from app.bake.addons import security_readme_bits
+    from app.bake.persistence import persistence_readme_bits
+
     path = dest / "README.md"
     if not path.is_file():
         return
@@ -60,6 +69,14 @@ def _patch_student_readme(
     text = text.replace("${DB_NAME}", db_name or "thesis_app")
     text = text.replace("${JAVA_PACKAGE_PATH}", java_package.replace(".", "/"))
     text = text.replace("${JAVA_PACKAGE}", java_package)
+    backend_cell, note, store_line, faq = persistence_readme_bits(persistence)
+    backend_cell, auth_line, sec_faq = security_readme_bits(spring_security, backend_cell)
+    text = text.replace("${PERSISTENCE_BACKEND}", backend_cell)
+    text = text.replace("${PERSISTENCE_NOTE}", note)
+    text = text.replace("${PERSISTENCE_STORE_LINE}", store_line)
+    text = text.replace("${PERSISTENCE_FAQ}", faq)
+    text = text.replace("${SECURITY_AUTH_LINE}", auth_line)
+    text = text.replace("${SECURITY_FAQ}", sec_faq)
     path.write_text(text, encoding="utf-8")
 
 def _merge_tree(src: Path, dest: Path) -> None:
@@ -103,6 +120,7 @@ def domain_sql(
     ticket_table: str | None = None,
     capabilities: list[str] | None = None,
     proposal_text: str = "",
+    title: str = "",
     ticket_flags: dict | None = None,
     staff_posts: list | None = None,
 ) -> str:
@@ -130,6 +148,14 @@ def domain_sql(
             text = path.read_text(encoding="utf-8")
     else:
         text = _load_named_domain_sql(domain)
+    from app.bake.sql.domain_scene_seed import apply_domain_scene_seed
+
+    text = apply_domain_scene_seed(
+        domain,
+        text,
+        title=title or "",
+        proposal_text=proposal_text or "",
+    )
     from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
     from app.bake.features.favorites import FAVORITES_CAP
     from app.bake.features.guestbook import GUESTBOOK_CAP

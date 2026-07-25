@@ -66,9 +66,14 @@
       v-if="hasRecommend && !isGuest"
       ref="recRef"
       :apply-label="favOn && !showPrimaryApply ? '收藏' : primaryActionLabel"
+      :exclude-ids="list.map((r) => r.id)"
       @apply="onRecommendApply"
     />
 
+    <div class="list-hd">
+      <h2>{{ plural }}列表</h2>
+      <span class="list-hd-hint">检索与筛选结果</span>
+    </div>
     <div class="grid">
       <article v-for="row in list" :key="row.id" class="card">
         <div class="cover">
@@ -379,7 +384,7 @@ const channelPlaceholder = computed(() => followChannelPlaceholder())
 const channelOptions = computed(() => followChannelOptions())
 const caps = computed(() => getSchema().capabilities || [])
 const verbs = computed(() => ticket.verbs || {})
-const plural = computed(() => archive.labelPlural || archive.label || '业务对象')
+const plural = computed(() => archive.labelPlural || archive.label || '对象')
 const fields = computed(() => archive.fields || [])
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
 const playUrlField = computed(() => archive.playUrlField || '')
@@ -417,7 +422,7 @@ const stockCountLabel = computed(() => {
   return '余量'
 })
 
-/** 卡片/详情副文案：schema 里除标题作者分类外的短字段（地点、类型、编号等） */
+/** 卡片/详情副文案：schema 里除标题作者分类外的短字段（地点、阶段、编号等） */
 const cardDetailFields = computed(() => {
   const skip = new Set([
     'title', 'author', 'category', 'stock', 'coverUrl',
@@ -425,11 +430,11 @@ const cardDetailFields = computed(() => {
   ])
   return fields.value.filter((f) => {
     if (!f?.key || skip.has(f.key)) return false
-    if (f.type === 'hidden' || f.type === 'richtext' || f.type === 'select') return false
+    if (f.type === 'hidden' || f.type === 'richtext') return false
     // 正文/播放链路由摘要或播放按钮承担，避免卡片再堆一长串 URL
     if (f.key === 'isbn' && (bodyRich.value || playUrlField.value === 'isbn')) return false
     const t = f.type || 'string'
-    return ['string', 'number', 'datetime', 'date', 'url', 'textarea'].includes(t)
+    return ['string', 'number', 'datetime', 'date', 'url', 'textarea', 'select'].includes(t)
   })
 })
 
@@ -977,6 +982,22 @@ onMounted(async () => {
   cursor: pointer;
 }
 .hot-chip:hover { border-color: var(--el-color-primary); color: var(--el-color-primary); }
+.list-hd {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+.list-hd h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.list-hd-hint {
+  font-size: 12px;
+  color: var(--portal-muted, #94a3b8);
+}
 .gallery { margin-bottom: 12px; }
 .gallery .detail-cover { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; }
 .grid {
