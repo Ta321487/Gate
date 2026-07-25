@@ -18,6 +18,8 @@ _FAVORITES_SIGNALS = re.compile(
 _DEFAULT_TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD"})
 # 内容流默认即时收藏；不含 FORUM（回帖仍走 ticket 审核）
 _CONTENT_FAVORITE_DOMAINS = frozenset({"DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"})
+# 资料型：开题写「收藏」才挂（婚恋心仪对象等），默认不挂
+_PROFILE_SCAN_FAVORITE_DOMAINS = frozenset({"DOM-DATING"})
 
 
 def scan_favorites(text: str) -> bool:
@@ -41,6 +43,8 @@ def favorites_wanted(
         caps = list(DOMAIN_CAPABILITIES.get(domain) or [])
     if domain in _CONTENT_FAVORITE_DOMAINS:
         return True
+    if domain in _PROFILE_SCAN_FAVORITE_DOMAINS:
+        return scan_favorites(proposal_text)
     if "order_lines" not in caps:
         return False
     if domain in _DEFAULT_TRADE_DOMAINS:
@@ -57,8 +61,12 @@ def merge_favorites_capabilities(
 ) -> list[str]:
     out = list(caps or [])
     domain = domain or ""
-    # 非交易且非内容收藏域：剥掉误带的 favorites
-    if "order_lines" not in out and domain not in _CONTENT_FAVORITE_DOMAINS:
+    # 非交易且非内容/资料扫描收藏域：剥掉误带的 favorites
+    if (
+        "order_lines" not in out
+        and domain not in _CONTENT_FAVORITE_DOMAINS
+        and domain not in _PROFILE_SCAN_FAVORITE_DOMAINS
+    ):
         return [c for c in out if c != FAVORITES_CAP]
     want = force or favorites_wanted(
         domain=domain, capabilities=out, proposal_text=proposal_text
@@ -112,6 +120,8 @@ def apply_favorites_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         lead = None
         if domain in _CONTENT_FAVORITE_DOMAINS:
             lead = "收藏感兴趣的内容，方便随时回看。"
+        elif domain in _PROFILE_SCAN_FAVORITE_DOMAINS:
+            lead = "收藏感兴趣的资料，便于再次牵线。"
         attach_favorites_menus(schema, page_lead=lead)
         from app.bake.gate_contracts import merge_favorites_gate
 
@@ -119,7 +129,12 @@ def apply_favorites_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         spec["gate"] = merge_favorites_gate(gate, caps)
         features = list(spec.get("features") or [])
         names = {f.get("name") for f in features if isinstance(f, dict)}
-        fav_name = "内容收藏" if domain in _CONTENT_FAVORITE_DOMAINS else "商品收藏"
+        if domain in _CONTENT_FAVORITE_DOMAINS:
+            fav_name = "内容收藏"
+        elif domain in _PROFILE_SCAN_FAVORITE_DOMAINS:
+            fav_name = "资料收藏"
+        else:
+            fav_name = "商品收藏"
         if fav_name not in names and "商品收藏" not in names:
             features.append({"name": fav_name, "status": "module"})
         spec["features"] = features

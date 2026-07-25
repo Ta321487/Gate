@@ -24,6 +24,7 @@ TICKET_RULES_BY_DOMAIN: dict[str, dict[str, Any]] = {
     "DOM-FUND": {"max_active": 3},
     "DOM-GRADE": {"max_active": 2},
     "DOM-RECRUIT": {"max_active": 5},
+    "DOM-DATING": {"max_active": 5},
     "DOM-COURSE": {"max_active": 3},
     "DOM-ACTIVITY": {"max_active": 5},
     "DOM-FORUM": {"max_active": 50},

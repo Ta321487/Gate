@@ -15,6 +15,7 @@ from app.bake.catalog import (
     normalize_auth_template,
     normalize_chrome,
     normalize_layout,
+    normalize_portal_home_style,
     normalize_typeface,
 )
 from app.bake.domain_schema import (
@@ -146,6 +147,7 @@ def _write_factory_delivered(
     chrome: str = "soft",
     layout: str = "topbar",
     typeface: str = "clean",
+    portal_home_style: str = "cards",
     seed: str = "",
 ) -> None:
     if not auth_hero:
@@ -169,13 +171,15 @@ def _write_factory_delivered(
     dom_meta = DOMAINS.get(domain) or {}
     guest_on = portal_guest_browse_enabled(domain, dom_meta)
     guest_cta = pick_guest_login_cta(domain, seed or dest.name or title)
-    # 便于页面用 schemaLabels 读取；开题材料头不得进学生端导语（同 _welcome_lead 判断）
+    # 便于页面用 schemaLabels 读取；开题材料头不得进学生端导语
+    from app.bake.domain_schema import _AUTH_LEAD_FALLBACK, ui_copy_polluted
+
     labels = dict(schema.get("labels") or {}) if isinstance(schema.get("labels"), dict) else {}
     for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
         raw = str(labels.get(key) or "")
-        if "【材料：" in raw or "【材料:" in raw or "开题报告" in raw:
+        if ui_copy_polluted(raw):
             labels[key] = (
-                "验证码登录，开放注册；登录后可使用系统主流程。"
+                _AUTH_LEAD_FALLBACK
                 if key == "authLead"
                 else ""
             )
@@ -189,6 +193,8 @@ def _write_factory_delivered(
         "chrome": normalize_chrome(chrome),
         "layout": normalize_layout(layout),
         "typeface": normalize_typeface(typeface),
+        "portalHomeStyle": normalize_portal_home_style(portal_home_style),
+        "domain": domain,
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],
         "traits": skin["traits"],

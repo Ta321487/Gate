@@ -84,6 +84,7 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "DOM-FUND",
             "DOM-LABSAFE",
             "DOM-RECRUIT",
+            "DOM-DATING",
             "DOM-GRADE",
             "DOM-INTERN",
             "DOM-PARCEL",
@@ -114,6 +115,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-FUND": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-LABSAFE": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-RECRUIT": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-DATING": ["archive", "ticket_flow", "content", "org_users", "dm"],
     "DOM-GRADE": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-INTERN": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users"],
@@ -139,7 +141,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
     "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
-    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "recommend"],
+    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "recommend", "dm"],
     "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
 }
 

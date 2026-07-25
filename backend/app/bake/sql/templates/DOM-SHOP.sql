@@ -108,7 +108,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"男","studentNo":"20260001","college":"计算机学院"}',
+ '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -120,9 +120,9 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status)
 (4, '无线鼠标', '89.00', 'MS-04', 1, 15, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
-(1, 'user', '王同学', '13800000002', '示例小区 3 栋 1201', '家', 1),
-(2, 'user', '王同学', '13800000002', '科技园 A 座前台', '公司', 0),
-(3, 'user', '王同学', '13800000002', '教学楼旁快递点', '学校', 0);
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '系统管理员'

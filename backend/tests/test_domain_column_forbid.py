@@ -165,6 +165,11 @@ class DomainColumnForbidTests(unittest.TestCase):
                 "allow": {"contact_channel", "next_follow_at"},
                 "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
             },
+            "DOM-DATING": {
+                "table": "match_apply",
+                "allow": {"contact_channel", "next_follow_at"},
+                "forbid": {"fine_status", "pickup_at", "priority", "taste_note"},
+            },
             "DOM-GRADE": {
                 "table": "grade_apply",
                 "allow": {"contact_channel", "next_follow_at"},
@@ -225,6 +230,7 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-EVENT": "event_case",
             "DOM-ATTEND": "staff_person",
             "DOM-RECRUIT": "job_post",
+            "DOM-DATING": "dating_profile",
             "DOM-GRADE": "course_item",
             "DOM-INTERN": "intern_post",
             "DOM-PARCEL": "parcel",
@@ -254,6 +260,7 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-EVENT": ("event_report", "event_id", False),
             "DOM-ATTEND": ("leave_req", "staff_person_id", False),
             "DOM-RECRUIT": ("job_apply", "job_post_id", False),
+            "DOM-DATING": ("match_apply", "dating_profile_id", False),
             "DOM-GRADE": ("grade_apply", "course_item_id", False),
             "DOM-INTERN": ("week_report", "intern_post_id", False),
             "DOM-PARCEL": ("parcel_claim", "parcel_id", False),

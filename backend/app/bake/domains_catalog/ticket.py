@@ -69,9 +69,15 @@ DOMAINS: dict = {
     },
     "DOM-PROPERTY": {
         "label": "物业报修",
-        "keywords": ["物业", "社区报修", "维修工单", "小区报修"],
-        "match_hint": "适用：物业/社区/小区报修工单。勿与宿舍报修或 IT 报修混淆。",
-        "entities": ["Ticket", "Notice"],
+        "keywords": [
+            "物业", "社区报修", "维修工单", "小区报修",
+            "校园物业", "学生公寓", "高校物业", "宿舍物业",
+        ],
+        "match_hint": (
+            "适用：物业/社区/小区报修工单；或校园公寓/高校物业报修。"
+            "勿与宿舍专项报修或 IT 报修混淆。"
+        ),
+        "entities": ["Ticket", "Building", "Room", "TicketType", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["提交报修 → 受理 → 完成"],
         "features": [
@@ -113,7 +119,10 @@ DOMAINS: dict = {
     },
     "DOM-IT": {
         "label": "IT 报修",
-        "keywords": ["校园网", "网络报修", "IT运维", "机房报修"],
+        "keywords": [
+            "校园网", "网络报修", "IT运维", "机房报修",
+            "电脑报修", "网络故障", "终端报修", "IT报修", "信息中心报修",
+        ],
         "match_hint": "适用：校园网、机房、终端故障报修。勿与宿舍/物业报修混淆。",
         "entities": ["Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
@@ -128,8 +137,10 @@ DOMAINS: dict = {
             {"name": "故障报修 → 受理", "status": "flow"},
             {"name": "报修记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
+            {"name": "远程桌面集中管控", "status": "out_of_mvp"},
+            {"name": "全网设备自动发现", "status": "out_of_mvp"},
         ],
-        "out_of_mvp": [],
+        "out_of_mvp": ["远程桌面集中管控", "全网设备自动发现"],
         "themes": [
             {"id": "it-cyan", "label": "运维青"},
             {"id": "it-violet", "label": "机房紫"},

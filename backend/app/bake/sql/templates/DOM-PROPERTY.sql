@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '物业管理员', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '维修员', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '物业调度', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '业主甲', '13800000002',
  '{"realName":"张业主","email":"owner@demo.com","gender":"女","houseBuilding":"A栋","houseUnit":"1","houseNo":"101","ownerType":"业主","parkingNo":"B-12","emergencyContact":"张先生","emergencyPhone":"13900000002"}',
  0, 1, 1)

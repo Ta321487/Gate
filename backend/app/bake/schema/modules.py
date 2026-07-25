@@ -34,6 +34,7 @@ _TICKET_KEYS = frozenset({"my_tickets", "ticket_pending", "ticket_records", "wee
 _SLOT_KEYS = frozenset({"slots", "my_reservations", "reservations"})
 _CONTENT_KEYS = frozenset({"content"})
 _GUESTBOOK_KEYS = frozenset({"guestbook"})
+_DM_KEYS = frozenset({"dm"})
 _ADMIN_KEYS = frozenset({"dashboard", "users", "category", "lookup_site", "lookup_type", "deadline"})
 
 # 从子菜单文案抽组名时用的词根（命中多数叶子才采用）
@@ -44,6 +45,7 @@ _BIZ_CORES: dict[str, tuple[str, ...]] = {
     "slot": ("预订", "预约", "时段", "挂号"),
     "content": ("公告", "资讯"),
     "guestbook": ("留言",),
+    "dm": ("私信", "聊天"),
     "archive_log": ("打卡", "随访", "监测", "晨检"),
     "cart": ("购物车", "购物"),
 }
@@ -133,6 +135,8 @@ def _biz_id_for_item(key: str, label: str = "") -> str:
         return "content"
     if k in _GUESTBOOK_KEYS:
         return "guestbook"
+    if k in _DM_KEYS:
+        return "dm"
     if k in _ADMIN_KEYS or k.startswith("lookup_"):
         return "admin"
     return "extra"

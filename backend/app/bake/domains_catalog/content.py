@@ -10,8 +10,8 @@ from app.bake.gate_contracts import (
 DOMAINS: dict = {
     "DOM-MEDIA": {
         "label": "影视综",
-        "keywords": ["影视", "电影", "电视剧", "综艺", "视频点播", "在线视频", "片库"],
-        "match_hint": "适用：影视综点播、片单收藏。勿与音乐（歌曲曲库）或博客（文章 CMS）混淆。",
+        "keywords": ["影视", "电影", "电视剧", "综艺", "视频点播", "在线视频", "片库", "校园媒资", "教学片"],
+        "match_hint": "适用：影视综点播、片单收藏；含校园媒资。勿与音乐（歌曲曲库）或博客（文章 CMS）混淆。",
         "entities": ["Media", "Category", "Favorite", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览片单 → 播放 → 收藏"],
@@ -98,9 +98,15 @@ DOMAINS: dict = {
     },
     "DOM-FORUM": {
         "label": "论坛",
-        "keywords": ["论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼"],
-        "match_hint": "适用：BBS 论坛发帖回帖审核。勿与博客（单向文章收藏）混淆。",
-        "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
+        "keywords": [
+            "论坛", "BBS", "贴吧", "社区帖子", "板块", "发帖", "回帖", "楼中楼",
+            "校园论坛", "兴趣社区", "社区论坛", "小区论坛",
+        ],
+        "match_hint": (
+            "适用：BBS 论坛发帖回帖审核；含校园论坛或兴趣/小区社区。"
+            "勿与博客（单向文章收藏）混淆。"
+        ),
+        "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Dm", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["发帖 / 浏览 → 回复 → 版主审核展示"],
         "features": [
@@ -117,11 +123,11 @@ DOMAINS: dict = {
             {"name": "公告管理", "status": "module"},
             {"name": "猜你喜欢", "status": "module"},
             {"name": "标签与附件（库表/ER）", "status": "module"},
-            {"name": "实时私信", "status": "out_of_mvp"},
+            {"name": "一对一私信", "status": "module"},
             {"name": "无限深度树形嵌套引擎", "status": "out_of_mvp"},
             {"name": "富文本协同编辑", "status": "out_of_mvp"},
         ],
-        "out_of_mvp": ["实时私信", "无限深度树形嵌套引擎", "富文本协同编辑"],
+        "out_of_mvp": ["无限深度树形嵌套引擎", "富文本协同编辑"],
         "themes": [
             {"id": "forum-ink", "label": "论坛墨蓝"},
             {"id": "forum-amber", "label": "暖帖琥珀"},

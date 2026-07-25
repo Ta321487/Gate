@@ -79,6 +79,14 @@ _PORTAL_FALLBACK: dict[str, list[str]] = {
         "1556761179-b4dda1f7e3e8",
         "1600880292203-757bb62b4baf",
     ],
+    "DOM-DATING": [
+        "1522202176988-66273c2fd55f",
+        "1556761179-b4dda1f7e3e8",
+        "1521791138484-c2a0e5d94c05",
+        "1600880292203-757bb62b4baf",
+        "1551836022-d5d88e9218df",
+        "1552664730-d307ca884978",
+    ],
     "DOM-GRADE": [
         "1524995997941-a1c2fe3ad0e4",
         "1486312338219-ce68d2c6f44d",
@@ -192,6 +200,72 @@ _PORTAL_FALLBACK: dict[str, list[str]] = {
         "1455390582262-044cdead135a",
         "1497215728101-856f4ea42174",
     ],
+
+    # 以下与 auth_hero 错开顺序；图源均复用现网已有 Unsplash id
+    "DOM-DORM": [
+        "1497366216548-37526070297c",
+        "1562774053-701939374585",
+        "1541339907198-e08756dedf3f",
+        "1498243691581-b145c3f54a5a",
+        "1486406146926-c627a92ad1ab",
+        "1529156069898-49953e39b1ac",
+    ],
+    "DOM-PROPERTY": [
+        "1460317443168-6bc7e1a8e3b0",
+        "1545324418-cc1a3fa10c00",
+        "1486406146926-c627a92ad1ab",
+        "1497215728101-856f4ea42174",
+        "1497366811353-6870744d04b2",
+        "1553413077-190dd305871c",
+    ],
+    "DOM-IT": [
+        "1518770660439-4636190af475",
+        "1558494949-ef010cbdcc31",
+        "1451188502541-13943edb6acb",
+        "1581091226825-a6a2a5aee158",
+        "1532094349884-543bc11b234d",
+        "1504384308090-c894fdcc538f",
+    ],
+    "DOM-HOSPITAL": [
+        "1579684385127-1ef15d508118",
+        "1519494026892-80bbd2d6fd0d",
+        "1551836022-d5d88e9218df",
+        "1522202176988-66273c2fd55f",
+        "1556761179-b4dda1f7e3e8",
+        "1521791138484-c2a0e5d94c05",
+    ],
+    "DOM-PARKING": [
+        "1590674899484-d5640e854abe",
+        "1506521780686-c9a7f9e1c3f7",
+        "1553413077-190dd305871c",
+        "1586528116311-ad8dd3c8310d",
+        "1497215728101-856f4ea42174",
+        "1486406146926-c627a92ad1ab",
+    ],
+    "DOM-MEETING": [
+        "1431540015161-0bf868a2d407",
+        "1497366216548-37526070297c",
+        "1517245386807-bb43f82c33c4",
+        "1556761179-b4dda1f7e3e8",
+        "1522071820081-009f0129c71c",
+        "1497366811353-6870744d04b2",
+    ],
+    "DOM-SALON": [
+        "1522337660859-02fbefca4702",
+        "1560066984-138dadb4c035",
+        "1517245386807-bb43f82c33c4",
+        "1529156069898-49953e39b1ac",
+        "1552664730-d307ca884978",
+        "1522202176988-66273c2fd55f",
+    ],
+    "DOM-HOTEL": [
+        "1551882547-ff40c63fe5fa",
+        "1566073771259-6a8506099945",
+        "1497366216548-37526070297c",
+        "1486406146926-c627a92ad1ab",
+        "1497215728101-856f4ea42174",
+        "1441986300917-64674bd600d8",
+    ],
 }
 
 _DEFAULT_CAPTIONS = [
@@ -211,19 +285,21 @@ def _is_welcome_title(title: str) -> bool:
 
 
 def _welcome_lead(schema: dict[str, Any]) -> str:
+    from app.bake.domain_schema import ui_copy_polluted
+
     labels = schema.get("labels") or {}
     for key in ("portalBannerWelcomeLead", "portalBannerLead", "authLead"):
         raw = labels.get(key)
         if not raw:
             continue
         text = str(raw).strip()
-        # 开题合并前缀 / 开题报告套话不能上轮播（与 domain_schema._ui_safe_excerpt 同源判断）
-        if "【材料：" in text or "【材料:" in text or "开题报告" in text:
+        # 开题合并前缀 / 开题报告套话不能上轮播
+        if ui_copy_polluted(text):
             continue
         for sep in ("。", "；", ";", "\n"):
             if sep in text:
                 head = text.split(sep, 1)[0].strip()
-                if head and "【材料：" not in head and "开题报告" not in head:
+                if head and not ui_copy_polluted(head):
                     return head + ("。" if sep == "。" else "。")
         return text if text.endswith("。") else text + "。"
     return _DEFAULT_CAPTIONS[0]["lead"]
@@ -233,13 +309,15 @@ def _ensure_welcome_first(
     captions: list[dict[str, str]], schema: dict[str, Any] | None
 ) -> list[dict[str, str]]:
     """各域轮播第一帧固定「欢迎使用」，领域句从第二帧起。"""
+    from app.bake.domain_schema import ui_copy_polluted
+
     schema = schema or {}
     welcome = {"title": _WELCOME_TITLE, "lead": _welcome_lead(schema)}
     rest: list[dict[str, str]] = []
     for cap in captions:
         title = str(cap.get("title") or "").strip()
         lead = str(cap.get("lead") or "").strip()
-        if "【材料：" in lead or "【材料:" in lead or "开题报告" in lead:
+        if ui_copy_polluted(lead):
             lead = ""
         if _is_welcome_title(title):
             if not welcome.get("lead") or welcome["lead"] == _DEFAULT_CAPTIONS[0]["lead"]:
@@ -261,6 +339,8 @@ def domain_wants_portal_banners(domain: str) -> bool:
 
 
 def _caption_seeds(schema: dict[str, Any] | None) -> list[dict[str, str]]:
+    from app.bake.domain_schema import ui_copy_polluted
+
     schema = schema or {}
     banners = schema.get("portalBanners")
     if isinstance(banners, list) and banners:
@@ -270,7 +350,7 @@ def _caption_seeds(schema: dict[str, Any] | None) -> list[dict[str, str]]:
                 continue
             title = str(b.get("title") or "").strip()
             lead = str(b.get("lead") or "").strip()
-            if "【材料：" in lead or "【材料:" in lead or "开题报告" in lead:
+            if ui_copy_polluted(lead):
                 lead = ""
             if title or lead:
                 out.append({"title": title or "通知", "lead": lead})
@@ -278,7 +358,7 @@ def _caption_seeds(schema: dict[str, Any] | None) -> list[dict[str, str]]:
             return _ensure_welcome_first(out, schema)
     labels = schema.get("labels") or {}
     lead0 = str(labels.get("portalBannerLead") or _DEFAULT_CAPTIONS[0]["lead"]).strip()
-    if "【材料：" in lead0 or "【材料:" in lead0 or "开题报告" in lead0:
+    if ui_copy_polluted(lead0):
         lead0 = _DEFAULT_CAPTIONS[0]["lead"]
     base = [
         {

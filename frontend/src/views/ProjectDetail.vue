@@ -13,19 +13,27 @@
       </div>
       <div class="proj-actions">
         <n-button
-          v-if="canMarkReady"
+          v-if="canDownloadAndDeliver"
           size="small"
           type="primary"
           :loading="deliveryBusy"
-          @click="markDelivery('ready')"
-        >标记可交付</n-button>
+          @click="downloadAndDeliver"
+        >下载并标已交付</n-button>
         <n-button
-          v-if="canMarkDelivered"
+          v-else-if="canMarkDelivered"
           size="small"
           type="primary"
           :loading="deliveryBusy"
           @click="markDelivery('delivered')"
         >标记已交付</n-button>
+        <n-button
+          v-if="canMarkReady"
+          size="small"
+          :type="canMarkDelivered ? 'default' : 'primary'"
+          :secondary="!!canMarkDelivered"
+          :loading="deliveryBusy"
+          @click="markDelivery('ready')"
+        >{{ canMarkDelivered ? '仅标可交付' : '标记可交付' }}</n-button>
         <n-button
           v-if="canUndoDelivery"
           size="small"
@@ -242,23 +250,37 @@
             <h4>{{ genSuccessBannerTitle }}</h4>
             <p class="small muted">{{ genSuccessBannerHint }}</p>
             <div class="row mt-12">
-              <n-button type="primary" size="small" @click="tab = 'runtime'">前往运行</n-button>
-              <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-              <n-button size="small" @click="downloadZip">下载 ZIP</n-button>
               <n-button
-                v-if="canMarkReady"
-                size="small"
+                v-if="canDownloadAndDeliver"
                 type="primary"
+                size="small"
                 :loading="deliveryBusy"
-                @click="markDelivery('ready')"
-              >标记可交付</n-button>
+                @click="downloadAndDeliver"
+              >下载并标已交付</n-button>
               <n-button
-                v-if="canMarkDelivered"
-                size="small"
+                v-else-if="canMarkDelivered"
                 type="primary"
+                size="small"
                 :loading="deliveryBusy"
                 @click="markDelivery('delivered')"
               >标记已交付</n-button>
+              <n-button
+                v-else-if="canMarkReady"
+                type="primary"
+                size="small"
+                :loading="deliveryBusy"
+                @click="markDelivery('ready')"
+              >标记可交付</n-button>
+              <n-button size="small" :disabled="!canDownload" @click="downloadZip">下载 ZIP</n-button>
+              <n-button
+                v-if="canMarkReady && canMarkDelivered"
+                size="small"
+                secondary
+                :loading="deliveryBusy"
+                @click="markDelivery('ready')"
+              >仅标可交付</n-button>
+              <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
+              <n-button size="small" secondary @click="tab = 'runtime'">前往运行</n-button>
             </div>
           </div>
           <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail mb-16">
@@ -322,6 +344,9 @@
                 </n-form-item>
                 <n-form-item label="字体配对">
                   <n-select v-model:value="form.typeface" :options="typefaceOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
+                </n-form-item>
+                <n-form-item label="门户首页">
+                  <n-select v-model:value="form.portalHomeStyle" :options="portalHomeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="智能业务填充">
                   <n-select v-model:value="form.llm" :options="llmOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
@@ -919,6 +944,7 @@ const catalog = ref({
   chrome_styles: [],
   layout_shells: [],
   type_pairings: [],
+  portal_home_styles: [],
 })
 const form = reactive({
   archetype: '',
@@ -929,6 +955,7 @@ const form = reactive({
   chrome: 'soft',
   layout: 'topbar',
   typeface: 'clean',
+  portalHomeStyle: 'cards',
   llm: 'on',
   passwordHash: 'none',
 })
@@ -1045,6 +1072,10 @@ const typefaceOptions = computed(() => {
   const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
+const portalHomeOptions = computed(() => {
+  const list = catalog.value.portal_home_styles || []
+  return list.map((x) => ({ label: x.label || x.id, value: x.id }))
+})
 const passwordHashOptions = [
   { label: '明文', value: 'none' },
   { label: 'BCrypt', value: 'bcrypt' },
@@ -1134,7 +1165,18 @@ const canMarkReady = computed(() =>
   && ['generated', 'running'].includes(p.value?.status)
   && deliveryMark.value === 'none',
 )
-const canMarkDelivered = computed(() => deliveryMark.value === 'ready')
+/** 可交付暂存，或质检可下时一步标已交付 */
+const canMarkDelivered = computed(() =>
+  deliveryMark.value === 'ready'
+  || (
+    deliveryMark.value === 'none'
+    && canDownload.value
+    && ['generated', 'running'].includes(p.value?.status)
+  ),
+)
+const canDownloadAndDeliver = computed(() =>
+  deliveryMark.value === 'ready' && canDownload.value,
+)
 const canUndoDelivery = computed(() =>
   deliveryMark.value === 'ready' || deliveryMark.value === 'delivered',
 )
@@ -1154,10 +1196,10 @@ const genSuccessBannerTitle = computed(() => {
 })
 const genSuccessBannerHint = computed(() => {
   if (deliveryMark.value === 'delivered') return '已发给学生。重新生成会清掉交付标记。'
-  if (deliveryMark.value === 'ready') return '人工已审过，可发给学生；发出后请标记「已交付」。'
+  if (deliveryMark.value === 'ready') return '人工已审过，可发给学生；下载发出后点「下载并标已交付」一步完成。'
   return genState.value === 'live'
-    ? '前后端已启动。机器质检已通过，可下载；文案与逻辑请人工审后再标记可交付。'
-    : '交付包已解锁（可下载）。建议预览验收后，人工审核再标记可交付。'
+    ? '前后端已启动。机器质检已通过。审过可直接「标记已交付」，或先「标记可交付」暂存。'
+    : '交付包已解锁。审过可直接「标记已交付」；若要暂存待发，用「标记可交付」。'
 })
 const failedBannerTitle = computed(() => {
   const err = String(currentJob.value?.error || '')
@@ -1498,6 +1540,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.chrome = p.value.spec?.chrome || 'soft'
       form.layout = p.value.spec?.layout || 'topbar'
       form.typeface = p.value.spec?.typeface || 'clean'
+      form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
       form.llm = p.value.llm_enabled ? 'on' : 'off'
       form.passwordHash = p.value.password_hash || 'none'
       unlocked.value = !p.value.match_locked
@@ -1889,6 +1932,7 @@ async function resetMatch() {
     form.chrome = p.value.spec?.chrome || 'soft'
     form.layout = p.value.spec?.layout || 'topbar'
     form.typeface = p.value.spec?.typeface || 'clean'
+    form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
     form.passwordHash = p.value.password_hash || 'none'
     unlocked.value = false
     ack.value = false
@@ -1912,6 +1956,7 @@ async function onArchDomChange() {
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
+    form.portalHomeStyle = p.value.spec?.portal_home_style || form.portalHomeStyle
     form.persistence = p.value.persistence || form.persistence
     form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
     ack.value = false
@@ -1924,6 +1969,7 @@ async function onArchDomChange() {
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
+    form.portalHomeStyle = p.value.spec?.portal_home_style || form.portalHomeStyle
   } finally {
     matchBusy.value = false
   }
@@ -1938,6 +1984,7 @@ async function saveSoft() {
       chrome: form.chrome,
       layout: form.layout,
       typeface: form.typeface,
+      portal_home_style: form.portalHomeStyle,
       llm_enabled: form.llm === 'on',
       password_hash: form.passwordHash,
     })
@@ -2037,6 +2084,11 @@ async function markDelivery(mark) {
   } finally {
     deliveryBusy.value = false
   }
+}
+
+async function downloadAndDeliver() {
+  downloadZip()
+  await markDelivery('delivered')
 }
 
 async function undoDelivery() {

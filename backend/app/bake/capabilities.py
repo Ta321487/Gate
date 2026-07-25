@@ -69,6 +69,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信）",
     },
+    "dm": {
+        "label": "一对一私信",
+        "status": "implemented",
+        "desc": "用户↔用户私信；短轮询刷新（非 WebSocket / 非环信等 IM SDK）",
+    },
     "favorites": {
         "label": "收藏夹",
         "status": "implemented",
@@ -191,7 +196,13 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("自动排课", "智能排课"),
     ("公海池", "外呼/公海池"),
     ("外呼中心", "外呼/公海池"),
-    ("实时私信", "实时私信"),
+    # 毕设级一对一私信已落地为 cap=dm（短轮询）；真 IM SDK / WebSocket 推送仍过重
+    ("websocket私信", "WebSocket实时推送"),
+    ("WebSocket私信", "WebSocket实时推送"),
+    ("环信", "IM云服务/SDK"),
+    ("融云", "IM云服务/SDK"),
+    ("即时通讯sdk", "IM云服务/SDK"),
+    ("IM SDK", "IM云服务/SDK"),
     ("富文本协同", "富文本协同编辑"),
     ("协同编辑", "富文本协同编辑"),
     ("转码cdn", "转码/CDN"),

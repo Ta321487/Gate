@@ -33,6 +33,11 @@ export const AUTH_TEMPLATES = [
     label: '对开页',
     hint: '竖分割线，编辑式排版',
   },
+  {
+    id: 'editorial',
+    label: '资讯侧栏',
+    hint: '表单在左，右侧竖幅品牌主张',
+  },
 ]
 
 const IDS = new Set(AUTH_TEMPLATES.map((t) => t.id))

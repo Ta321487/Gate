@@ -45,14 +45,56 @@ def _dorm_schema(title: str) -> dict[str, Any]:
         allow_rating=True,
     )
 
-def _property_schema(title: str) -> dict[str, Any]:
+def _property_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """物业报修：小区住户默认；校园公寓/高校物业走 campus。"""
+    from app.bake.scene_scan import scene_property
+
+    t = f"{title or ''}\n{proposal_text or ''}"
+    if scene_property(t) == "campus":
+        return standalone_ticket_schema(
+            title,
+            domain="DOM-PROPERTY",
+            user_role_id="user",
+            user_label="师生",
+            admin_label="物业主管",
+            subadmin_label="物业调度",
+            ticket_key="repair",
+            ticket_label="报修单",
+            ticket_plural="报修",
+            verbs={
+                "apply": "提交报修",
+                "approve": "受理",
+                "reject": "驳回",
+                "return": "完成",
+            },
+            states={
+                "pending": "待受理",
+                "approved": "处理中",
+                "rejected": "已驳回",
+                "returned": "已完成",
+            },
+            site_menu="楼栋房间",
+            type_menu="报修类型",
+            users_menu="用户管理",
+            auth_eyebrow="校园物业",
+            auth_lead="验证码登录；师生提交公寓/公共设施报修，物业受理跟进。",
+            auth_points=["验证码登录", "报修申请", "受理进度"],
+            register_hint="注册后可提交校园报修",
+            notice_title="报修须知",
+            notice_body="请如实填写楼栋房号与故障描述并上传现场照片，物业将尽快受理。",
+            notice_page_title="物业公告",
+            notice_page_lead="报修须知、公寓安排与临时通知，点击条目阅读全文。",
+            two_level_approve=True,
+            require_attach=True,
+            allow_rating=True,
+        )
     return standalone_ticket_schema(
         title,
         domain="DOM-PROPERTY",
         user_role_id="user",
         user_label="住户",
         admin_label="物业主管",
-        subadmin_label="维修员",
+        subadmin_label="物业调度",
         ticket_key="repair",
         ticket_label="报修单",
         ticket_plural="报修",
@@ -170,4 +212,3 @@ def _it_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         require_attach=True,
         allow_rating=True,
     )
-

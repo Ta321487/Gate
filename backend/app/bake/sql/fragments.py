@@ -261,15 +261,44 @@ CREATE TABLE IF NOT EXISTS sys_guestbook (
 );
 """
 
-_FAVORITE_DDL = """
-CREATE TABLE IF NOT EXISTS user_favorite (
+_DM_DDL = """
+CREATE TABLE IF NOT EXISTS sys_dm_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  item_id BIGINT NOT NULL,
+  from_username VARCHAR(64) NOT NULL,
+  to_username VARCHAR(64) NOT NULL,
+  body VARCHAR(500) NOT NULL,
+  read_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_fav_user_item (username, item_id),
-  KEY idx_fav_user (username, id)
+  KEY idx_dm_from (from_username, id),
+  KEY idx_dm_to (to_username, id),
+  KEY idx_dm_pair (from_username, to_username, id),
+  KEY idx_dm_unread (to_username, read_at, id)
 );
+"""
+
+# 私信演示：补第二用户 + 几条互发（幂等；依赖已有 user 账号）
+_DM_SEED = """
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled)
+SELECT 'user2', 'user123', 'user', '用户乙', '13800000003', '{}', 0, 1, 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username='user2');
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '你好，方便私信问下帖子细节吗？', DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND NOT EXISTS (SELECT 1 FROM sys_dm_message LIMIT 1);
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user2', 'user', '可以，你说。', DATE_SUB(NOW(), INTERVAL 8 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 2;
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '谢谢，演示环境用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 3;
 """
 
 
@@ -280,6 +309,30 @@ def ensure_guestbook_sql(sql: str, *, enabled: bool) -> str:
     if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", sql):
         return sql
     return sql.rstrip() + "\n" + _GUESTBOOK_DDL
+
+
+def ensure_dm_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补私信表与演示种子；未开启不注入。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_dm_message`?\b", out):
+        out = out.rstrip() + "\n" + _DM_DDL
+    if "sys_dm_message" in out and "用户乙" not in out:
+        out = out.rstrip() + "\n" + _DM_SEED
+    return out
+
+
+_FAVORITE_DDL = """
+CREATE TABLE IF NOT EXISTS user_favorite (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_fav_user_item (username, item_id),
+  KEY idx_fav_user (username, id)
+);
+"""
 
 
 def ensure_favorites_sql(sql: str, *, enabled: bool) -> str:
@@ -371,14 +424,26 @@ MUTEX_CODE_COLUMNS: list[tuple[str, str]] = [
 ]
 
 
+APPLY_DEADLINE_COLUMNS: list[tuple[str, str]] = [
+    ("apply_deadline_at", "DATETIME NULL"),
+]
+
+SCHEDULE_COLUMNS: list[tuple[str, str]] = [
+    ("start_at", "DATETIME NULL"),
+    ("end_at", "DATETIME NULL"),
+]
+
+
 def ensure_archive_flag_columns(
     sql: str,
     *,
     item_table: str | None,
     allow_checkin: bool = False,
     check_mutex: bool = False,
+    apply_deadline: bool = False,
+    schedule: bool = False,
 ) -> str:
-    """档案表按单据能力补签到码 / 互斥码（禁止运行时再 ALTER）。"""
+    """档案表按单据能力补签到码 / 互斥码 / 申报截止 / 起止时间列（禁止运行时再 ALTER）。"""
     t = (item_table or "").strip()
     if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
         return sql
@@ -387,6 +452,10 @@ def ensure_archive_flag_columns(
         cols.extend(CHECKIN_CODE_COLUMNS)
     if check_mutex:
         cols.extend(MUTEX_CODE_COLUMNS)
+    if apply_deadline:
+        cols.extend(APPLY_DEADLINE_COLUMNS)
+    if schedule:
+        cols.extend(SCHEDULE_COLUMNS)
     if not cols:
         return sql
 
@@ -498,6 +567,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-FUND": ["contact_channel", "next_follow_at"],
     "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
     "DOM-RECRUIT": ["contact_channel", "next_follow_at"],
+    "DOM-DATING": ["contact_channel", "next_follow_at"],
     "DOM-GRADE": ["contact_channel", "next_follow_at"],
     "DOM-INTERN": ["contact_channel", "next_follow_at"],
     "DOM-EVENT": ["contact_channel", "next_follow_at"],

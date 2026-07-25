@@ -9,7 +9,7 @@ from app.bake.gate_contracts import (
 DOMAINS: dict = {
     "DOM-SHOP": {
         "label": "商城",
-        "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手"],
+        "keywords": ["商城", "商品", "购物车", "下单", "电商", "网购", "二手", "校园商城", "二手交易", "在线商城"],
         "match_hint": "适用：商品浏览、购物车下单交易。勿与点餐（食堂菜品）或客房预订混淆。",
         "entities": ["Product", "Category", "Order", "Cart", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
@@ -52,7 +52,7 @@ DOMAINS: dict = {
     },
     "DOM-FOOD": {
         "label": "点餐",
-        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐厅", "奶茶", "快餐"],
+        "keywords": ["点餐", "订餐", "食堂", "饭堂", "外卖", "菜品", "餐厅", "奶茶", "快餐", "食堂点餐"],
         "match_hint": "适用：点餐/订餐下单。餐饮食品安全排查、追溯上报选事件上报，不要选本域。",
         "entities": ["Dish", "Order", "Category", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],

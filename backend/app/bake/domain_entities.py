@@ -33,6 +33,7 @@ DOMAIN_ENTITIES: dict[str, DomainEntity] = {
     "DOM-FUND": DomainEntity("fund_program", "fund_apply", "fund_program_id", "archive"),
     "DOM-LABSAFE": DomainEntity("lab_room", "access_apply", "lab_room_id", "archive"),
     "DOM-RECRUIT": DomainEntity("job_post", "job_apply", "job_post_id", "archive"),
+    "DOM-DATING": DomainEntity("dating_profile", "match_apply", "dating_profile_id", "archive"),
     "DOM-GRADE": DomainEntity("course_item", "grade_apply", "course_item_id", "archive"),
     "DOM-INTERN": DomainEntity("intern_post", "week_report", "intern_post_id", "archive"),
     "DOM-PARCEL": DomainEntity("parcel", "parcel_claim", "parcel_id", "archive"),

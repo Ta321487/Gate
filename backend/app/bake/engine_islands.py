@@ -15,6 +15,7 @@ from app.bake.catalog import (
     normalize_auth_template,
     normalize_chrome,
     normalize_layout,
+    normalize_portal_home_style,
     normalize_typeface,
 )
 from app.bake.domain_schema import (
@@ -33,11 +34,13 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     """把已合并的 schema 写入 islands / appDelivered / spec.json，并同步 thesis yml。"""
     merged = dict(spec.get("schema") or {})
     labels = dict(merged.get("labels") or {}) if isinstance(merged.get("labels"), dict) else {}
+    from app.bake.domain_schema import _AUTH_LEAD_FALLBACK, ui_copy_polluted
+
     for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
         raw = str(labels.get(key) or "")
-        if "【材料：" in raw or "【材料:" in raw or "开题报告" in raw:
+        if ui_copy_polluted(raw):
             labels[key] = (
-                "验证码登录，开放注册；登录后可使用系统主流程。"
+                _AUTH_LEAD_FALLBACK
                 if key == "authLead"
                 else ""
             )
@@ -54,6 +57,7 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     chrome = normalize_chrome(spec.get("chrome"))
     layout = normalize_layout(spec.get("layout"))
     typeface = normalize_typeface(spec.get("typeface"))
+    portal_home = normalize_portal_home_style(spec.get("portal_home_style"))
     _write_factory_delivered(
         workspace,
         spec.get("title", "毕设系统"),
@@ -67,6 +71,7 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         chrome=chrome,
         layout=layout,
         typeface=typeface,
+        portal_home_style=portal_home,
         seed=workspace.name,
     )
     sync_workspace_thesis_yml(workspace, spec)

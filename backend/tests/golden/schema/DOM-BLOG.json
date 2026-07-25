@@ -4,7 +4,8 @@
     "favorites",
     "content",
     "org_users",
-    "recommend"
+    "recommend",
+    "guestbook"
   ],
   "entities": {
     "archive": {

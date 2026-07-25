@@ -2,7 +2,8 @@
 # Save as UTF-8 with BOM for Windows PowerShell 5.1
 
 param(
-    [switch]$NoWait
+    [switch]$NoWait,
+    [switch]$SkipClean
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,19 +29,23 @@ if (-not (Test-Path -LiteralPath $py)) {
     exit 1
 }
 
-Write-Host "[info] cleaning old uvicorn ..." -ForegroundColor DarkGray
-& (Join-Path $Scripts "kill-dup-backend.ps1") -All
+if (-not $SkipClean) {
+    Write-Host "[info] cleaning old uvicorn ..." -ForegroundColor DarkGray
+    & (Join-Path $Scripts "kill-dup-backend.ps1") -All
 
-$deadline = (Get-Date).AddSeconds(15)
-while ((Get-Date) -lt $deadline) {
-    $listen = @(Get-GfListenPids -Port $script:GfBackendPort)
-    if ($listen.Count -eq 0) { break }
-    Start-Sleep -Milliseconds 300
-}
-if (@(Get-GfListenPids -Port $script:GfBackendPort).Count -gt 0) {
-    Write-Host "[ERROR] port $($script:GfBackendPort) still busy" -ForegroundColor Red
-    if (-not $NoWait) { Wait-Key }
-    exit 1
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $deadline) {
+        $listen = @(Get-GfListenPids -Port $script:GfBackendPort)
+        if ($listen.Count -eq 0) { break }
+        Start-Sleep -Milliseconds 300
+    }
+    if (@(Get-GfListenPids -Port $script:GfBackendPort).Count -gt 0) {
+        Write-Host "[ERROR] port $($script:GfBackendPort) still busy" -ForegroundColor Red
+        if (-not $NoWait) { Wait-Key }
+        exit 1
+    }
+} else {
+    Write-Host "[info] SkipClean: launcher already cleared port" -ForegroundColor DarkGray
 }
 
 Write-Host "Gate API - http://127.0.0.1:$($script:GfBackendPort)" -ForegroundColor Cyan

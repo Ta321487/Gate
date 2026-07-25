@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.DmMapper">
+    <select id="selectById" resultType="map">
+        SELECT * FROM sys_dm_message WHERE id=#{id}
+    </select>
+    <select id="selectPeers" resultType="map">
+        SELECT username, nickname, role FROM sys_user
+        WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
+        ORDER BY role DESC, id ASC
+        LIMIT #{limit}
+    </select>
+    <select id="selectConversationPeers" resultType="map">
+        SELECT peer_user AS peer, MAX(id) AS lastId FROM (
+          SELECT CASE WHEN from_username=#{me} THEN to_username ELSE from_username END AS peer_user, id
+          FROM sys_dm_message WHERE from_username=#{me} OR to_username=#{me}
+        ) t GROUP BY peer_user ORDER BY lastId DESC
+    </select>
+    <select id="selectMessages" resultType="map">
+        SELECT * FROM sys_dm_message WHERE
+          ((from_username=#{me} AND to_username=#{peer}) OR (from_username=#{peer} AND to_username=#{me}))
+          AND id&gt;#{sinceId}
+        ORDER BY id ASC
+        LIMIT 200
+    </select>
+</mapper>

@@ -172,7 +172,14 @@ const note = computed(() => {
 const authLead = computed(() => {
   if (entrySide.value === 'admin') return '管理端独立入口，按总管/子管理身份登录。'
   if (entrySide.value === 'staff') return '员工端独立入口，办理派送、维修等现场作业。'
-  return labels.authLead || '验证码登录，开放注册；登录后可使用系统基础能力。'
+  const raw = String(labels.authLead || '').trim()
+  // 开题材料头 / 样例文件名 / 开题报告套话不得上登录页
+  if (
+    /【材料[:：]|开题报告|\d{1,2}-DOM-|DOM-[A-Z]{2,}|\.txt[】\]]|题目[:：]|毕业设计/.test(raw)
+  ) {
+    return '验证码登录，开放注册；登录后可使用系统主流程。'
+  }
+  return raw || '验证码登录，开放注册；登录后可使用系统基础能力。'
 })
 const authPoints = computed(() => {
   if (entrySide.value === 'admin') return ['身份校验', '总管/子管理分权', '验证码登录']

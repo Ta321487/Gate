@@ -83,6 +83,7 @@ onUnmounted(() => offProfileDisplay?.())
 
 const displayName = computed(() => nickname.value || username.value)
 const hasStage = computed(() => {
+  if (String(APP_DELIVERED?.portalHomeStyle || '').trim() === 'editorial') return false
   const list = APP_DELIVERED?.portalBanners
   return Array.isArray(list) && list.some((x) => x && x.src)
 })
@@ -92,8 +93,10 @@ const MENU_TO = {
   my_tickets: '/tickets',
   content: '/notices',
   guestbook: '/guestbook',
+  dm: '/dm',
   profile: '/profile',
   archive: '/archive',
+  home: '/home',
   my_archive: '/my-archive',
   favorites: '/favorites',
   browse_history: '/browse-history',
@@ -108,7 +111,7 @@ const MENU_TO = {
   messages: '/messages',
 }
 
-const GUEST_MENU_KEYS = new Set(['archive', 'content', 'guestbook', 'slots'])
+const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'guestbook', 'slots'])
 
 const nav = computed(() => {
   // 资料留在右侧按钮，避免与顶栏重复
@@ -127,8 +130,10 @@ const nav = computed(() => {
     .filter((m) => m.to)
 })
 
-/** 品牌点击回门户根，走各壳默认 redirect（业务页） */
-const homePath = computed(() => '/')
+/** 品牌点击：资讯首页落 /home，其它壳走根 redirect */
+const homePath = computed(() =>
+  String(APP_DELIVERED?.portalHomeStyle || '').trim() === 'editorial' ? '/home' : '/',
+)
 
 function logout() {
   localStorage.clear()

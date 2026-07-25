@@ -48,6 +48,7 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-FUND": [_clerk("fund_clerk", "资助专员", "ticket_ops")],
     "DOM-LABSAFE": [_clerk("lab_safety", "安全员", "ticket_ops")],
     "DOM-RECRUIT": [_clerk("hr_clerk", "HR专员", "ticket_ops")],
+    "DOM-DATING": [_clerk("matchmaker", "红娘专员", "ticket_ops")],
     "DOM-GRADE": [_clerk("grade_clerk", "教务员", "ticket_ops")],
     "DOM-INTERN": [_clerk("intern_tutor", "实习辅导员", "ticket_ops")],
     "DOM-PARCEL": [_clerk("parcel_clerk", "驿站店员", "ticket_ops")],
@@ -105,42 +106,132 @@ _ROLE_META_KEYS = frozenset({"staff_posts", "allowAppointFromUsers"})
 _PORTAL_ROLE_ALIASES = frozenset({"reader", "student", "patient", "buyer"})
 
 # 可选 worker：默认不进岗位表；开题命中词才追加（keyword_mentioned，同 guestbook/loyalty）
-# 现场岗易空挂：报修维修员 / 骑手 / 拣货 / 技师 / 客房 — 均开题写到才挂
+# 现场岗易空挂：报修维修员 / 骑手 / 拣货 / 技师 / 客房 / 派件 / 上门运维 / 导诊护士 — 均开题写到才挂
 _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
     "DOM-FOOD": [
         (
             _worker("rider", "骑手", "order_work"),
-            ("骑手", "配送员", "外卖配送", "送餐上门", "配送到寝", "配送到宿舍"),
+            (
+                "骑手",
+                "配送员",
+                "外卖配送",
+                "送餐上门",
+                "配送到寝",
+                "配送到宿舍",
+                "骑手配送",
+                "外卖骑手",
+            ),
         ),
     ],
     "DOM-SHOP": [
         (
             _worker("picker", "拣货员", "order_work"),
-            ("拣货员", "配货员", "仓库拣货", "拣配", "拣货", "配货"),
+            (
+                "拣货员",
+                "配货员",
+                "仓库拣货",
+                "拣配",
+                "拣货",
+                "配货",
+                "仓配",
+                "分拣发货",
+            ),
         ),
     ],
     "DOM-SALON": [
         (
             _worker("stylist", "技师", "slot_work"),
-            ("发型师", "美发师", "美容师", "理发师", "造型师", "技师"),
+            (
+                "发型师",
+                "美发师",
+                "美容师",
+                "理发师",
+                "造型师",
+                "技师",
+                "美容技师",
+                "私教教练",
+                "健身教练",
+            ),
         ),
     ],
     "DOM-HOTEL": [
         (
             _worker("housekeeping", "客房服务", "slot_work"),
-            ("客房服务", "客房保洁", "客房打扫", "客房整理", "楼层服务员", "保洁员"),
+            (
+                "客房服务",
+                "客房保洁",
+                "客房打扫",
+                "客房整理",
+                "楼层服务员",
+                "保洁员",
+                "客房服务员",
+            ),
         ),
     ],
     "DOM-DORM": [
         (
             _worker("repairer", "维修员", "ticket_work"),
-            ("维修员", "维修师傅", "维修人员", "维修班组", "上门维修"),
+            (
+                "维修员",
+                "维修师傅",
+                "维修人员",
+                "维修班组",
+                "上门维修",
+                "水电维修",
+                "报修派工",
+            ),
         ),
     ],
     "DOM-PROPERTY": [
         (
             _worker("repairer", "维修员", "ticket_work"),
-            ("维修员", "维修师傅", "维修人员", "维修班组", "上门维修"),
+            (
+                "维修员",
+                "维修师傅",
+                "维修人员",
+                "维修班组",
+                "上门维修",
+                "水电维修",
+                "报修派工",
+            ),
+        ),
+    ],
+    "DOM-IT": [
+        (
+            _worker("field_tech", "上门运维", "ticket_work"),
+            (
+                "上门运维",
+                "现场工程师",
+                "驻场运维",
+                "上门排障",
+                "现场排障",
+                "IT上门",
+            ),
+        ),
+    ],
+    "DOM-PARCEL": [
+        (
+            _worker("courier", "派件员", "ticket_work"),
+            (
+                "派件员",
+                "送件员",
+                "快递小哥",
+                "快递员上门",
+                "上门派件",
+                "派送员",
+            ),
+        ),
+    ],
+    "DOM-HOSPITAL": [
+        (
+            _worker("nurse", "导诊护士", "slot_work"),
+            (
+                "导诊护士",
+                "分诊护士",
+                "接诊护士",
+                "门诊护士",
+                "护士分诊",
+            ),
         ),
     ],
 }
@@ -212,6 +303,9 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "storekeeper": ("库管员", "仓管"),
     "account_mgr": ("客户经理", "客户专员"),
     "ops": ("运维员", "运维工程师"),
+    "field_tech": ("上门运维", "现场工程师", "驻场运维"),
+    "courier": ("派件员", "送件员", "派送员"),
+    "nurse": ("导诊护士", "分诊护士", "接诊护士", "门诊护士"),
     "assistant": ("活动助理", "活动管理员"),
     "claim_clerk": ("招领管理员", "失物管理员", "领养专员", "领养管理员"),
     "course_clerk": ("选课管理员", "教务员"),
@@ -234,6 +328,7 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-FUND": ("受助学生", "申请学生"),
     "DOM-LABSAFE": ("实验人员", "申请人"),
     "DOM-RECRUIT": ("求职者", "应聘者"),
+    "DOM-DATING": ("会员", "征婚者", "同学"),
     "DOM-DORM": ("宿舍学生", "住户"),
     "DOM-PROPERTY": ("业主", "住户"),
 }

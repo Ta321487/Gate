@@ -4,7 +4,8 @@
     "ticket_flow",
     "content",
     "org_users",
-    "recommend"
+    "recommend",
+    "dm"
   ],
   "entities": {
     "archive": {
@@ -191,7 +192,7 @@
     },
     "user": {
       "id": "user",
-      "label": "用户"
+      "label": "师生"
     }
   },
   "seeds": {

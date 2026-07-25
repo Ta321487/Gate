@@ -20,6 +20,7 @@ from app.bake.themes import (  # re-export for callers
     AUTH_TEMPLATES,
     CHROME_STYLES,
     LAYOUT_SHELLS,
+    PORTAL_HOME_STYLES,
     TYPE_PAIRINGS,
     THEME_ALIASES,
     THEMES,
@@ -32,6 +33,7 @@ from app.bake.themes import (  # re-export for callers
     normalize_auth_template,
     normalize_chrome,
     normalize_layout,
+    normalize_portal_home_style,
     normalize_theme,
     normalize_typeface,
     pick_auth_entry_mode,
@@ -42,6 +44,7 @@ from app.bake.themes import (  # re-export for callers
     pick_theme,
     pick_typeface,
     resolve_or_pick,
+    resolve_portal_home_style,
     resolve_style_override,
     themes_for_domain,
 )
@@ -416,6 +419,7 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-FUND": "ARCH-FLOW",
     "DOM-LABSAFE": "ARCH-FLOW",
     "DOM-RECRUIT": "ARCH-FLOW",
+    "DOM-DATING": "ARCH-FLOW",
     "DOM-GRADE": "ARCH-FLOW",
     "DOM-INTERN": "ARCH-FLOW",
     "DOM-PARCEL": "ARCH-FLOW",
@@ -654,6 +658,7 @@ def build_spec(
     chrome: str | None = None,
     layout: str | None = None,
     typeface: str | None = None,
+    portal_home_style: str | None = None,
     persistence: str | None = None,
     spine: str | None = None,
     spring_security: bool | None = None,
@@ -679,6 +684,10 @@ def build_spec(
     chrome = resolve_or_pick(CHROME_STYLES, chrome, f"{seed}|chrome", "soft")
     layout = resolve_or_pick(LAYOUT_SHELLS, layout, f"{seed}|layout", "topbar")
     typeface = resolve_or_pick(TYPE_PAIRINGS, typeface, f"{seed}|type", "clean")
+    portal_home = resolve_portal_home_style(domain, portal_home_style, seed)
+    # 资讯侧栏首页与登录/注册同一构图：强制 auth editorial
+    if portal_home == "editorial":
+        auth_template = "editorial"
     from app.bake.api_style import (
         api_style_labels,
         normalize_api_style,
@@ -728,6 +737,8 @@ def build_spec(
         "layout_label": label_from_catalog(LAYOUT_SHELLS, layout),
         "typeface": typeface,
         "typeface_label": label_from_catalog(TYPE_PAIRINGS, typeface),
+        "portal_home_style": portal_home,
+        "portal_home_style_label": label_from_catalog(PORTAL_HOME_STYLES, portal_home),
         "api_style": api_style,
         "api_style_label": api_style_labels(api_style),
         "auth_template": auth_template,

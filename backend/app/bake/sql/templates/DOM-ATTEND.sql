@@ -90,17 +90,17 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '人事主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '考勤员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '员工甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","employeeNo":"E2026008","dept":"行政办","jobTitle":"科员"}',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"员工","employeeNo":"E2026008","dept":"行政办"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '教学岗'), (2, '行政岗'), (3, '后勤岗');
+INSERT IGNORE INTO category (id, name) VALUES (1, '职能岗'), (2, '业务岗'), (3, '一线岗');
 INSERT IGNORE INTO staff_person (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '周明', '行政办', 'E2026008 / 坐班', 2, 1, 'available'),
-(2, '李芳', '计算机学院', 'T2026012 / 教师', 1, 1, 'available'),
-(3, '王强', '后勤处', 'L2026003 / 维修', 3, 1, 'available'),
-(4, '赵敏', '教务处', 'A2026044 / 教务员', 2, 1, 'available'),
-(5, '陈浩', '外国语学院', 'T2026088 / 教师', 1, 1, 'available');
+(1, '周明', '行政办', 'E2026008 / 坐班', 1, 1, 'available'),
+(2, '李芳', '研发中心', 'E2026012 / 工程师', 2, 1, 'available'),
+(3, '王强', '后勤保障', 'E2026003 / 维修', 3, 1, 'available'),
+(4, '赵敏', '人事部', 'E2026044 / 专员', 1, 1, 'available'),
+(5, '陈浩', '客户成功', 'E2026088 / 顾问', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '请假须知', '事假须提前申请；病假可补交证明；销假请在返回当日确认。', 'admin', '人事主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='请假须知');

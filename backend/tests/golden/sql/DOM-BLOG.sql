@@ -86,6 +86,19 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '技术与随笔栏目已更新演示文章，欢迎收藏订阅。', 'admin', '主编'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
 
+CREATE TABLE IF NOT EXISTS sys_guestbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  reply VARCHAR(500) DEFAULT '',
+  reply_username VARCHAR(64) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_gb_created (id),
+  KEY idx_gb_user (username)
+);
+
 CREATE TABLE IF NOT EXISTS user_favorite (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,

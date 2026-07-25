@@ -99,7 +99,7 @@
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "维修员"
+      "label": "物业调度"
     },
     "user": {
       "id": "user",

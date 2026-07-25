@@ -61,7 +61,7 @@ DOMAINS: dict = {
     },
     "DOM-PARKING": {
         "label": "车位",
-        "keywords": ["车位", "停车", "预约车位", "泊车", "停车场", "停车管理"],
+        "keywords": ["车位", "停车", "预约车位", "泊车", "停车场", "停车管理", "车位预约", "停车位"],
         "match_hint": "适用：停车场车位时段预约。勿与场地预约（会议室/球馆）或客房预订混淆。",
         "entities": ["ParkingLot", "Space", "Reservation"],
         "roles": ["user", "admin", "subadmin"],
@@ -148,6 +148,7 @@ DOMAINS: dict = {
         "keywords": [
             "美发", "美容", "美容院", "理发预约", "服务预约",
             "健身", "健身房", "私教", "私教预约", "健身预约", "瑜伽预约",
+            "美甲预约", "推拿预约", "到店预约",
         ],
         "match_hint": (
             "适用：美发美容、健身私教等服务项目时段预约。"
@@ -188,7 +189,7 @@ DOMAINS: dict = {
     },
     "DOM-HOTEL": {
         "label": "客房",
-        "keywords": ["宾馆", "客房", "酒店", "民宿", "酒店预订", "住宿预订"],
+        "keywords": ["宾馆", "客房", "酒店", "民宿", "酒店预订", "住宿预订", "客栈", "旅馆", "客房预订"],
         "match_hint": "适用：酒店/民宿客房预订入住。勿与场地预约或商城交易混淆。",
         "entities": ["Room", "Booking", "Order"],
         "roles": ["user", "admin", "subadmin"],

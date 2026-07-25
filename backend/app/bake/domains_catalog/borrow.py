@@ -9,7 +9,7 @@ from app.bake.gate_contracts import (
 DOMAINS: dict = {
     "DOM-LIBRARY": {
         "label": "图书",
-        "keywords": ["图书", "借阅", "图书馆", "读者"],
+        "keywords": ["图书", "借阅", "图书馆", "读者", "图书借阅", "借还管理", "馆藏"],
         "match_hint": "适用：图书借阅、读者借还审核。勿与设备借用（器材/实验室）或选课混淆。",
         "entities": ["Book", "Category", "Borrow", "Notice"],
         "roles": ["user", "admin", "subadmin"],
@@ -59,7 +59,7 @@ DOMAINS: dict = {
     },
     "DOM-EQUIP": {
         "label": "设备借用",
-        "keywords": ["设备借用", "器材", "实验室设备", "物资借用", "实验室管理"],
+        "keywords": ["设备借用", "器材", "实验室设备", "物资借用", "实验室管理", "仪器借用", "实验器材", "设备租借"],
         "match_hint": "适用：实验室/器材借用归还审核。勿与物资领用（耗材出库）或图书借阅混淆。",
         "entities": ["Equip", "Category", "Loan", "Notice"],
         "roles": ["user", "admin", "subadmin"],
@@ -351,9 +351,11 @@ DOMAINS: dict = {
         "keywords": [
             "资助", "奖学金", "助学金", "困难补助", "奖助学金",
             "学生资助", "资助申请", "助学贷款", "勤工助学补助",
+            "员工福利", "企业补助", "职工补助", "福利申请",
         ],
         "match_hint": (
-            "适用：奖助学金/困难补助等资助项目发布与学生申请审核。"
+            "适用：奖助学金/困难补助等资助项目发布与学生申请审核；"
+            "或企业员工福利/补助申请审核。"
             "勿与招聘投递、选课或活动报名混淆。"
         ),
         "entities": ["FundProgram", "Category", "FundApply", "Notice"],
@@ -401,9 +403,11 @@ DOMAINS: dict = {
         "keywords": [
             "实验室安全", "安全准入", "准入申请", "入室许可",
             "实验室准入", "安全培训证明", "实验室许可",
+            "厂区", "安环", "企业实验室", "EHS准入",
         ],
         "match_hint": (
-            "适用：实验室/实训室安全培训与准入申请审核。"
+            "适用：实验室/实训室安全培训与准入申请审核；"
+            "或厂区/安环实验室准入。"
             "勿与实验室器材借用（设备）或实验室工位时段预约（场地预约）混淆。"
         ),
         "entities": ["LabRoom", "Category", "AccessApply", "Notice"],
@@ -497,15 +501,71 @@ DOMAINS: dict = {
             "archive_item_table": "job_post",
         },
     },
+    "DOM-DATING": {
+        "label": "婚恋交友",
+        "keywords": [
+            "婚恋", "相亲", "交友", "红娘", "牵线", "征婚", "择偶",
+            "婚恋交友", "相亲平台", "交友系统", "会员资料", "恋爱交友",
+            "婚姻介绍", "相亲资料", "牵线申请",
+        ],
+        "match_hint": (
+            "适用：会员/交友资料建档、浏览与牵线意向审核（红娘撮合）。"
+            "有婚恋资料+牵线主线时优先本域；开题点到的收藏/留言/推荐走能力交叉挂载，勿因出现活动/论坛/商城一词就换域。"
+            "题名主业务是活动报名、论坛发帖或婚宴酒店/婚纱商城时再分别选活动/论坛/酒店/商城。"
+            "勿与招聘投递或客户跟进（CRM）混淆。"
+        ),
+        "entities": ["DatingProfile", "Category", "MatchApply", "Dm", "Notice"],
+        "roles": ["user", "admin", "subadmin"],
+        "flows": ["资料建档 → 牵线意向 → 红娘审核撮合"],
+        "features": [
+            {"name": "登录", "status": "baseline"},
+            {"name": "个人资料与头像", "status": "baseline"},
+            {"name": "管理端工作台", "status": "module"},
+            {"name": "交友资料", "status": "domain"},
+            {"name": "分类管理", "status": "module"},
+            {"name": "用户管理", "status": "module"},
+            {"name": "牵线审核", "status": "flow"},
+            {"name": "牵线记录", "status": "module"},
+            {"name": "公告管理", "status": "module"},
+            {"name": "一对一私信", "status": "module"},
+            {"name": "视频相亲", "status": "out_of_mvp"},
+            {"name": "红娘费支付", "status": "out_of_mvp"},
+        ],
+        "out_of_mvp": ["视频相亲", "红娘费支付"],
+        "themes": [
+            {"id": "dating-rose", "label": "相亲玫粉"},
+            {"id": "dating-coral", "label": "联谊珊瑚"},
+            {"id": "dating-ink", "label": "资料墨蓝"},
+            {"id": "dating-night", "label": "夜谈深色"},
+        ],
+        "gate": gate_archive_ticket(
+            archive_feature="交友资料",
+            flow_feature="牵线审核",
+            records_feature="牵线记录",
+            users_feature="用户管理",
+            category_feature="分类管理",
+            with_deadline=False,
+        ),
+        "portal_banners": True,
+        "runtime": {
+            "ticket_mode": "archive",
+            "ticket_table": "match_apply",
+            "register_role": "user",
+            "archive_category_table": "category",
+            "archive_item_table": "dating_profile",
+        },
+    },
     "DOM-GRADE": {
         "label": "教务成绩",
         "keywords": [
             "成绩", "补考", "成绩管理", "成绩查询", "成绩更正", "教务成绩",
             "成绩登记", "成绩系统", "成绩录入", "补考申请", "成绩审核",
             "缓考", "绩点查询", "成绩申请",
+            "内训", "培训成绩", "员工考核", "培训结业", "岗位认证",
         ],
         "match_hint": (
-            "适用：课程成绩台账、补考/成绩更正申请与教务审核。"
+            "适用：课程成绩台账、补考/成绩更正申请与教务审核；"
+            "或企业内训/培训成绩与考核申请。"
             "勿与选课占名额（选课）或活动报名混淆。"
         ),
         "entities": ["CourseItem", "Category", "GradeApply", "Notice"],
@@ -554,9 +614,11 @@ DOMAINS: dict = {
             "实习", "周报", "实习周报", "实习管理", "实习鉴定", "实习岗位",
             "学生实习", "顶岗实习", "实习系统", "实习导师", "实习单位",
             "实习报告", "校外实习", "实习考勤",
+            "企业带教", "带教导师", "校招实习生", "入职实习",
         ],
         "match_hint": (
-            "适用：实习岗位建档、周报提交与导师审阅。"
+            "适用：实习岗位建档、周报提交与导师审阅；"
+            "含校就业办或企业带教场景。"
             "勿与活动报名或招聘投递（仅投简历）混淆。"
         ),
         "entities": ["InternPost", "Category", "WeekReport", "Notice"],

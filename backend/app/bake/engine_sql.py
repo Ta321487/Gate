@@ -48,6 +48,33 @@ def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
+def _demo_portal_from_sql(sql: str) -> tuple[str, str]:
+    """从 schema.sql 种子行解析门户演示账号（用户名、密码）。"""
+    for uname in ("student", "reader", "patient", "buyer", "user"):
+        pwd = f"{uname}123"
+        # ('student', 'student123', 'student' …) 或仅用户名+密码
+        if f"('{uname}', '{pwd}'" in sql:
+            return uname, pwd
+    return "user", "user123"
+
+
+def _demo_portal_desc(spec: dict[str, Any] | None, username: str) -> str:
+    """门户账号说明：优先 schema.roles.user.label。"""
+    schema = (spec or {}).get("schema") if isinstance((spec or {}).get("schema"), dict) else {}
+    roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+    user_slot = roles.get("user") if isinstance(roles.get("user"), dict) else {}
+    label = str(user_slot.get("label") or "").strip()
+    if label:
+        return f"{label}（门户用户）：发起/办理本人侧业务"
+    fallback = {
+        "student": "学生（门户用户）：发起/办理本人侧业务",
+        "reader": "读者（门户用户）：发起/办理本人侧业务",
+        "patient": "患者（门户用户）：发起/办理本人侧业务",
+        "buyer": "买家（门户用户）：发起/办理本人侧业务",
+    }
+    return fallback.get(username, "普通用户（门户）：发起/办理本人侧业务")
+
+
 def _patch_student_readme(
     dest: Path,
     *,
@@ -56,8 +83,10 @@ def _patch_student_readme(
     java_package: str = "com.thesis",
     persistence: str = "jdbc",
     spring_security: bool = False,
+    schema_sql: str = "",
+    spec: dict[str, Any] | None = None,
 ) -> None:
-    """ZIP 根目录 README：写入课题名、库名、Java 包与持久层/鉴权口径。"""
+    """ZIP 根目录 README：写入课题名、库名、Java 包、持久层/鉴权与演示账号。"""
     from app.bake.addons import security_readme_bits
     from app.bake.persistence import persistence_readme_bits
 
@@ -69,6 +98,13 @@ def _patch_student_readme(
     text = text.replace("${DB_NAME}", db_name or "thesis_app")
     text = text.replace("${JAVA_PACKAGE_PATH}", java_package.replace(".", "/"))
     text = text.replace("${JAVA_PACKAGE}", java_package)
+    portal_user, portal_pass = _demo_portal_from_sql(schema_sql or "")
+    text = text.replace("${DEMO_PORTAL_USER}", portal_user)
+    text = text.replace("${DEMO_PORTAL_PASS}", portal_pass)
+    text = text.replace(
+        "${DEMO_PORTAL_DESC}",
+        _demo_portal_desc(spec, portal_user),
+    )
     backend_cell, note, store_line, faq = persistence_readme_bits(persistence)
     backend_cell, auth_line, sec_faq = security_readme_bits(spring_security, backend_cell)
     text = text.replace("${PERSISTENCE_BACKEND}", backend_cell)
@@ -157,6 +193,7 @@ def domain_sql(
         proposal_text=proposal_text or "",
     )
     from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
+    from app.bake.features.dm import DM_CAP
     from app.bake.features.favorites import FAVORITES_CAP
     from app.bake.features.guestbook import GUESTBOOK_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
@@ -171,6 +208,7 @@ def domain_sql(
         ensure_archive_log_sql,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
+        ensure_dm_sql,
         ensure_favorites_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
@@ -221,6 +259,21 @@ def domain_sql(
         archetypes=archetypes,
         ticket_flags=ticket_flags,
     )
+    from app.bake.features.core_cap_scan import (
+        TIME_CONFLICT_CAP,
+        enrich_loan_deadline_flags,
+    )
+    from app.bake.features.ticket_flow_opts import (
+        enrich_ticket_flags_from_proposal,
+        scan_apply_deadline,
+    )
+
+    flags = enrich_ticket_flags_from_proposal(flags, proposal_text or "")
+    flags = enrich_loan_deadline_flags(
+        flags,
+        proposal_text or "",
+        capabilities=caps,
+    )
     text = ensure_ticket_extra_sql(
         text,
         domain=domain or "",
@@ -238,6 +291,8 @@ def domain_sql(
         item_table=resolved_item,
         allow_checkin=bool(flags.get("allowCheckin")),
         check_mutex=bool(flags.get("checkMutex")),
+        apply_deadline=scan_apply_deadline(proposal_text or ""),
+        schedule=TIME_CONFLICT_CAP in caps,
     )
     text = apply_archive_semantic_columns(
         text,
@@ -249,6 +304,10 @@ def domain_sql(
     text = ensure_guestbook_sql(
         text,
         enabled=GUESTBOOK_CAP in caps,
+    )
+    text = ensure_dm_sql(
+        text,
+        enabled=DM_CAP in caps,
     )
     text = ensure_favorites_sql(
         text,

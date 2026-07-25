@@ -125,11 +125,12 @@ def _sanitize_island_patch(
                 labels[k] = [str(x)[:40] for x in v[:6]]
             else:
                 text = str(v)[:200]
-                # 与 _welcome_lead 相同：材料头 / 开题报告不得进 authLead，保留领域基线
-                if k == "authLead" and (
-                    "【材料：" in text or "【材料:" in text or "开题报告" in text
-                ):
-                    continue
+                # 材料头 / 开题报告 / 样例文件名不得进 authLead，保留领域基线
+                if k == "authLead":
+                    from app.bake.domain_schema import ui_copy_polluted
+
+                    if ui_copy_polluted(text):
+                        continue
                 labels[k] = text
     # 领域专名标题：若基线已有 noticePageTitle，LLM 可润色但保留非空
     if not labels.get("noticePageTitle") and base_labels.get("noticePageTitle"):
