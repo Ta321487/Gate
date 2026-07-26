@@ -321,11 +321,11 @@ onMounted(load)
   margin: 0 0 14px;
   padding: 10px 12px;
   border-radius: var(--portal-radius-sm, 8px);
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
 }
 .audit-body .lab { margin-bottom: 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
-.audit-body a { color: #0369a1; font-size: 13px; }
+.audit-body a { color: var(--portal-accent, #0369a1); font-size: 13px; }
 .audit-meta {
   margin: 0 0 4px;
   font-size: 13px;

@@ -151,7 +151,7 @@ onMounted(load)
 }
 .list li.unread {
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #d5dde3));
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-mix, #fff));
+  background: var(--portal-accent-soft, #d7eef0);
 }
 .t { font-weight: 650; font-size: 14px; margin-bottom: 4px; }
 .b {

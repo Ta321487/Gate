@@ -69,17 +69,17 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '曲库主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '运营编辑', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '听众甲', '13800000002',
- '{"realName":"陈听友","email":"chen@demo.edu","gender":"男","memberNo":"M20260011","orgName":"艺术学院","preferredGenre":"流行"}',
+ '{"realName":"陈听友","email":"chen@demo.com","gender":"男","memberNo":"M20260011","orgName":"星河音乐","preferredGenre":"流行"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '流行'), (2, '摇滚'), (3, '民谣');
 INSERT IGNORE INTO track (id, title, artist, play_url, category_id, stock, status) VALUES
-(1, '校园晚风', '歌手甲 / 青春专辑', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 1, 1, 'available'),
-(2, '实验室节奏', '乐队乙', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 2, 1, 'available'),
-(3, '图书馆角落', '歌手丙', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 3, 1, 'available'),
-(4, '毕业季合唱', '合唱团丁', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
-(5, '夜跑歌单', '制作人戊', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 2, 1, 'available');
+(1, '城市晚风', '歌手甲 / 流行专辑', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 1, 1, 'available'),
+(2, '夜跑节拍', '乐队乙', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 2, 1, 'available'),
+(3, '咖啡馆角落', '歌手丙', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 3, 1, 'available'),
+(4, '周末合唱', '合唱团丁', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
+(5, '公路歌单', '制作人戊', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '试听须知', '曲源仅供学习演示；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='试听须知');

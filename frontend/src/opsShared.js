@@ -27,15 +27,29 @@ export function statusPillNode(label, pillClass = 'pill-neutral') {
 }
 
 /**
+ * 人工履约标记文案（内部值 ready / delivered 不变）。
+ * ready = 已审待发；delivered = 已发出。勿与机器「可下载」混称。
+ */
+export const DELIVERY_MARK_LABEL = {
+  none: '未标记',
+  ready: '已审待发',
+  delivered: '已发出',
+}
+
+export function deliveryMarkLabel(mark) {
+  const m = String(mark || 'none')
+  return DELIVERY_MARK_LABEL[m] || DELIVERY_MARK_LABEL.none
+}
+
+/**
  * 机器质检（zipReady）与人工履约（deliveryMark）分层：
- * delivered → 已交付；ready → 可交付；zipReady → 已生成 · 质检通过；否则质检未过。
+ * delivered → 已发出；ready → 已审待发；zipReady → 已生成 · 质检通过；否则质检未过。
  */
 export function projectStatusLabel(status, opts = {}) {
   const zipReady = opts.zipReady
   const mark = String(opts.deliveryMark || 'none')
   if (status === 'generated' || status === 'running') {
-    if (mark === 'delivered') return '已交付'
-    if (mark === 'ready') return '可交付'
+    if (mark === 'delivered' || mark === 'ready') return deliveryMarkLabel(mark)
     if (zipReady === false) return '已生成 · 质检未过'
     if (zipReady === true) return '已生成 · 质检通过'
   }
@@ -147,7 +161,8 @@ export const LOG_SIDES = [
 let _catalogPromise = null
 
 /** 全页共用一份 catalog，避免轮询/多页重复拉取 */
-export function getCatalog() {
+export function getCatalog({ force = false } = {}) {
+  if (force) _catalogPromise = null
   if (!_catalogPromise) {
     _catalogPromise = api.catalog().catch((err) => {
       _catalogPromise = null

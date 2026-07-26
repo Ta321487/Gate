@@ -95,7 +95,7 @@ onMounted(load)
 .cover {
   width: 72px; height: 72px; flex-shrink: 0;
   border-radius: var(--portal-radius-sm, 8px);
-  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, var(--portal-mix, #fff));
+  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 72%, var(--portal-surface, #fff));
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; color: var(--portal-muted, #94a3b8); overflow: hidden;
 }

@@ -1,0 +1,65 @@
+/* —— 婚恋交友 DATING —— */
+[data-theme="dating-rose"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #fbf0f3;
+  --portal-bg-glow: rgba(190, 60, 100, 0.12);
+  --portal-surface: #fff8fa;
+  --portal-ink: #3a1524;
+  --portal-muted: #8a5a6c;
+  --portal-line: #efd0da;
+  --portal-brand: #b83b66;
+  --portal-accent: #d4537e;
+  --portal-accent-soft: #f8d6e2;
+  --portal-cover: linear-gradient(160deg, #e88aa8, #b83b66);
+  --portal-shadow-color: rgba(184, 59, 102, 0.12);
+  color-scheme: light;
+}
+[data-theme="dating-coral"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #fbf1ec;
+  --portal-bg-glow: rgba(200, 90, 60, 0.12);
+  --portal-surface: #fff9f6;
+  --portal-ink: #3a1e14;
+  --portal-muted: #8a6454;
+  --portal-line: #efd5c8;
+  --portal-brand: #c45c3a;
+  --portal-accent: #e07850;
+  --portal-accent-soft: #f8ddd0;
+  --portal-cover: linear-gradient(160deg, #f0a080, #c45c3a);
+  --portal-shadow-color: rgba(196, 92, 58, 0.12);
+  color-scheme: light;
+}
+[data-theme="dating-ink"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #eef2f7;
+  --portal-bg-glow: rgba(40, 70, 120, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1a2436;
+  --portal-muted: #5a6e88;
+  --portal-line: #d0dae8;
+  --portal-brand: #2a4a7a;
+  --portal-accent: #3d6aa8;
+  --portal-accent-soft: #d6e4f5;
+  --portal-cover: linear-gradient(160deg, #6a90c4, #2a4a7a);
+  --portal-shadow-color: rgba(42, 74, 122, 0.1);
+  color-scheme: light;
+}
+[data-theme="dating-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
+  --portal-bg: #16121a;
+  --portal-bg-glow: rgba(232, 138, 168, 0.08);
+  --portal-surface: #221c28;
+  --portal-ink: #f2e8ee;
+  --portal-muted: #b098a8;
+  --portal-line: #3a3040;
+  --portal-brand: #e88aa8;
+  --portal-accent: #d4537e;
+  --portal-accent-soft: #4a2034;
+  --portal-cover: linear-gradient(160deg, #7a3050, #16121a);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}

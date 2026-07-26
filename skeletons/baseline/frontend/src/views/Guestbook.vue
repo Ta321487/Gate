@@ -166,8 +166,9 @@ onMounted(load)
 .reply {
   margin-top: 12px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-mix, #fff));
+  background: var(--portal-accent-soft, #d7eef0);
   border-left: 3px solid var(--portal-accent, #0b6e75);
+  color: var(--portal-ink, #15202b);
 }
 .reply-tag {
   display: inline-block;
@@ -180,6 +181,7 @@ onMounted(load)
   white-space: pre-wrap;
   font-size: 13px;
   line-height: 1.55;
+  color: var(--portal-ink, #15202b);
 }
 .reply time {
   display: block;

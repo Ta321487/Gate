@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS signup (
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
   rated_at DATETIME NULL,
   checked_in_at DATETIME NULL,
-  fine_status VARCHAR(16) DEFAULT 'none',
+  fine_status VARCHAR(16) DEFAULT 'none'
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

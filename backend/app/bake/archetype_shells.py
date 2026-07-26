@@ -96,11 +96,19 @@ def entity_noun(title: str) -> str:
 
 def _generic_flow_copy(title: str, noun: str, proposal_text: str = "") -> dict[str, Any]:
     """GENERIC 审核流：按题名/开题润色请假/考勤等常见壳，避免一律「业务对象」。"""
-    from app.bake.schema.templates import _copy_scan_text
-
-    t = _copy_scan_text(title, proposal_text)
+    title_s = (title or "").strip()
+    body_s = (proposal_text or "").strip()
+    t = f"{title_s}\n{body_s}"
     if any(k in t for k in ("请假", "销假")):
-        campus = any(k in t for k in ("学生", "班级", "班主任", "大学生", "校园", "学工"))
+        # 题名优先：企业员工请假不被正文「学生」对比句洗成学工档
+        if any(k in title_s for k in ("学生", "班级", "班主任", "大学生", "校园", "学工")):
+            campus = True
+        elif title_s:
+            campus = False
+        else:
+            campus = any(
+                k in body_s for k in ("学生", "班级", "班主任", "大学生", "校园", "学工")
+            )
         return {
             "user_label": "学生" if campus else "员工",
             "admin_label": "学工主管（总管）" if campus else "人事主管（总管）",
@@ -711,7 +719,12 @@ def finalize_generic_schema(
     )
     primary = arches[0] if arches else "ARCH-CRUD"
     return attach_staff_posts(
-        schema, "DOM-GENERIC", primary, arches, proposal_text=proposal_text
+        schema,
+        "DOM-GENERIC",
+        primary,
+        arches,
+        proposal_text=proposal_text,
+        title=title,
     )
 
 

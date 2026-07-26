@@ -241,7 +241,7 @@ onMounted(load)
 .card h3 { margin: 0 0 12px; font-size: 15px; }
 .todo-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 0; border-top: 1px solid #f0f3f6; font-size: 14px;
+  padding: 8px 0; border-top: 1px solid var(--portal-line, #f0f3f6); font-size: 14px;
 }
 .todo-row:first-of-type { border-top: none; }
 @media (max-width: 900px) {

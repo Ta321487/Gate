@@ -18,14 +18,14 @@
           type="primary"
           :loading="deliveryBusy"
           @click="downloadAndDeliver"
-        >下载并标已交付</n-button>
+        >下载并发出</n-button>
         <n-button
           v-else-if="canMarkDelivered"
           size="small"
           type="primary"
           :loading="deliveryBusy"
           @click="markDelivery('delivered')"
-        >标记已交付</n-button>
+        >标记已发出</n-button>
         <n-button
           v-if="canMarkReady"
           size="small"
@@ -33,7 +33,7 @@
           :secondary="!!canMarkDelivered"
           :loading="deliveryBusy"
           @click="markDelivery('ready')"
-        >{{ canMarkDelivered ? '仅标可交付' : '标记可交付' }}</n-button>
+        >{{ canMarkDelivered ? '暂存待发' : '标记已审待发' }}</n-button>
         <n-button
           v-if="canUndoDelivery"
           size="small"
@@ -41,7 +41,13 @@
           :loading="deliveryBusy"
           @click="undoDelivery"
         >{{ undoDeliveryLabel }}</n-button>
-        <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
+        <n-button
+          v-if="!canDownloadAndDeliver"
+          size="small"
+          :disabled="!canDownload"
+          :title="downloadBlockedReason"
+          @click="downloadZip"
+        >
           {{ downloadZipLabel }}
         </n-button>
         <n-button type="error" secondary size="small" :disabled="deleteBlocked" :title="deleteBlockedReason" @click="onDelete">删除</n-button>
@@ -250,35 +256,6 @@
             <h4>{{ genSuccessBannerTitle }}</h4>
             <p class="small muted">{{ genSuccessBannerHint }}</p>
             <div class="row mt-12">
-              <n-button
-                v-if="canDownloadAndDeliver"
-                type="primary"
-                size="small"
-                :loading="deliveryBusy"
-                @click="downloadAndDeliver"
-              >下载并标已交付</n-button>
-              <n-button
-                v-else-if="canMarkDelivered"
-                type="primary"
-                size="small"
-                :loading="deliveryBusy"
-                @click="markDelivery('delivered')"
-              >标记已交付</n-button>
-              <n-button
-                v-else-if="canMarkReady"
-                type="primary"
-                size="small"
-                :loading="deliveryBusy"
-                @click="markDelivery('ready')"
-              >标记可交付</n-button>
-              <n-button size="small" :disabled="!canDownload" @click="downloadZip">下载 ZIP</n-button>
-              <n-button
-                v-if="canMarkReady && canMarkDelivered"
-                size="small"
-                secondary
-                :loading="deliveryBusy"
-                @click="markDelivery('ready')"
-              >仅标可交付</n-button>
               <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
               <n-button size="small" secondary @click="tab = 'runtime'">前往运行</n-button>
             </div>
@@ -346,7 +323,13 @@
                   <n-select v-model:value="form.typeface" :options="typefaceOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
                 </n-form-item>
                 <n-form-item label="门户首页">
-                  <n-select v-model:value="form.portalHomeStyle" :options="portalHomeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
+                  <n-select
+                    v-model:value="form.portalHomeStyle"
+                    :options="portalHomeOptions"
+                    :loading="softSaving"
+                    :disabled="softSaving"
+                    @update:value="saveSoft"
+                  />
                 </n-form-item>
                 <n-form-item label="智能业务填充">
                   <n-select v-model:value="form.llm" :options="llmOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
@@ -801,17 +784,9 @@
                       <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
                         {{ canDownload ? '可下载' : '暂不可下载' }}
                       </span>
-                      <span
-                        v-if="deliveryMark === 'ready' || deliveryMark === 'delivered'"
-                        class="pill"
-                        :class="deliveryMark === 'delivered' ? 'pill-neutral' : 'pill-green'"
-                        style="margin-left:8px"
-                      >
-                        {{ deliveryMark === 'delivered' ? '已交付' : '可交付' }}
-                      </span>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">机器质检未通过时不可下载。文案与业务逻辑须人工审核后再标记「可交付」。</p>
+                  <p class="small muted" style="margin:0">机器质检未通过时不可下载。人工履约（已审待发 / 已发出）在页头操作，与此处机器门禁分开。</p>
                   <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
                   <div class="parse-sec-hd mt-12">开题对照清单</div>
                   <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
@@ -923,6 +898,7 @@ import {
   normalizeStepStatus,
   projectStatusLabel,
   projectStatusPill,
+  deliveryMarkLabel,
   statusPillNode,
   stepStatusLabel,
   stepStatusMark,
@@ -1072,9 +1048,16 @@ const typefaceOptions = computed(() => {
   const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
+const PORTAL_HOME_FALLBACK = [
+  { label: '功能卡片首页', value: 'cards' },
+  { label: '资讯侧栏首页', value: 'editorial' },
+]
 const portalHomeOptions = computed(() => {
   const list = catalog.value.portal_home_styles || []
-  return list.map((x) => ({ label: x.label || x.id, value: x.id }))
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  return mapped.length ? mapped : PORTAL_HOME_FALLBACK
 })
 const passwordHashOptions = [
   { label: '明文', value: 'none' },
@@ -1165,7 +1148,7 @@ const canMarkReady = computed(() =>
   && ['generated', 'running'].includes(p.value?.status)
   && deliveryMark.value === 'none',
 )
-/** 可交付暂存，或质检可下时一步标已交付 */
+/** 已审待发暂存，或质检可下时一步标已发出 */
 const canMarkDelivered = computed(() =>
   deliveryMark.value === 'ready'
   || (
@@ -1181,25 +1164,21 @@ const canUndoDelivery = computed(() =>
   deliveryMark.value === 'ready' || deliveryMark.value === 'delivered',
 )
 const undoDeliveryLabel = computed(() =>
-  deliveryMark.value === 'delivered' ? '撤回已交付' : '撤回可交付',
+  deliveryMark.value === 'delivered' ? '撤回已发出' : '撤回待发',
 )
 const genSuccessBannerTitle = computed(() => {
-  if (deliveryMark.value === 'delivered') {
-    return genState.value === 'live' ? '已交付 · 预览运行中' : '已交付'
-  }
-  if (deliveryMark.value === 'ready') {
-    return genState.value === 'live' ? '可交付 · 预览运行中' : '可交付 · 质量检查已通过'
+  if (deliveryMark.value === 'delivered' || deliveryMark.value === 'ready') {
+    const base = deliveryMarkLabel(deliveryMark.value)
+    return genState.value === 'live' ? `${base} · 预览运行中` : base
   }
   return genState.value === 'live'
     ? '已生成 · 预览运行中'
     : '生成完成 · 质量检查已通过 · 可下载'
 })
 const genSuccessBannerHint = computed(() => {
-  if (deliveryMark.value === 'delivered') return '已发给学生。重新生成会清掉交付标记。'
-  if (deliveryMark.value === 'ready') return '人工已审过，可发给学生；下载发出后点「下载并标已交付」一步完成。'
-  return genState.value === 'live'
-    ? '前后端已启动。机器质检已通过。审过可直接「标记已交付」，或先「标记可交付」暂存。'
-    : '交付包已解锁。审过可直接「标记已交付」；若要暂存待发，用「标记可交付」。'
+  if (deliveryMark.value === 'delivered') return '已发给学生。重新生成会清掉履约标记。'
+  if (deliveryMark.value === 'ready') return '人工已审过。发出时用页头「下载并发出」。'
+  return '机器质检已通过。履约请用页头：直接「标记已发出」，或先「暂存待发」。'
 })
 const failedBannerTitle = computed(() => {
   const err = String(currentJob.value?.error || '')
@@ -1523,8 +1502,17 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     return
   }
   try {
-    if (!lite && !catalog.value.archetypes.length) {
-      catalog.value = await getCatalog()
+    if (
+      !lite
+      && (
+        !catalog.value.archetypes.length
+        || !(catalog.value.portal_home_styles || []).length
+      )
+    ) {
+      catalog.value = await getCatalog({
+        force: !(catalog.value.portal_home_styles || []).length
+          && !!catalog.value.archetypes.length,
+      })
     }
     // 轮询用短超时静默接口：后端 reload 时不弹错、不卡 60s
     p.value = lite ? await api.getProjectPoll(id) : await api.getProject(id)
@@ -2079,7 +2067,9 @@ async function markDelivery(mark) {
     const detail = await api.patchDelivery(p.value.id, mark)
     p.value = detail
     message.success(
-      mark === 'delivered' ? '已标记为已交付' : mark === 'ready' ? '已标记为可交付' : '已清除交付标记',
+      mark === 'delivered' || mark === 'ready'
+        ? `已标记为${deliveryMarkLabel(mark)}`
+        : '已清除履约标记',
     )
   } finally {
     deliveryBusy.value = false

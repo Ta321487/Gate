@@ -129,9 +129,11 @@ class AttendTitleCopyTests(unittest.TestCase):
             proposal_text="社区网格员维护居民档案并健康打卡上报。",
         )
         ev_ident = next(f for f in event["profileFields"] if f["key"] == "identityType")
-        self.assertEqual(ev_ident["options"], ["居民", "志愿者", "访客"])
+        self.assertEqual(ev_ident["options"], ["网格员", "志愿者", "居民"])
         ev_keys = {f["key"] for f in event["profileFields"]}
         self.assertNotIn("studentNo", ev_keys)
+        self.assertEqual(event["roles"]["user"]["label"], "网格员")
+        self.assertEqual(event["roles"]["subadmin"]["label"], "值班员")
 
         parcel = build_domain_schema(
             "快递代收系统",
@@ -245,6 +247,87 @@ class AttendTitleCopyTests(unittest.TestCase):
         pet = SCHEMA_BUILDERS["DOM-HOSPITAL"]("宠物医院挂号预约管理系统")
         self.assertEqual(pet["labels"]["authEyebrow"], "宠物挂号")
         self.assertEqual(pet["roles"]["user"]["label"], "宠主")
+
+    def test_meeting_title_beats_pack_boilerplate_qin_fang(self) -> None:
+        """样例开题正文常写「会议室、琴房或…」，不能把自习室题洗成琴房。"""
+        polluted = (
+            "会议室、琴房或实验室工位若靠口头预约，容易出现撞场、空占与使用记录难追溯等问题。"
+        )
+        study = SCHEMA_BUILDERS["DOM-MEETING"](
+            "基于 Spring Boot 与 Vue 的自习室座位占座预约系统的设计与实现",
+            proposal_text=polluted,
+        )
+        self.assertEqual(study["entities"]["archive"]["label"], "自习室")
+        self.assertEqual(study["labels"]["authEyebrow"], "自习室预约")
+        self.assertEqual(study["roles"]["subadmin"]["label"], "自习室管理员")
+        self.assertNotIn("琴房", study["roles"]["admin"]["label"])
+
+        piano = SCHEMA_BUILDERS["DOM-MEETING"](
+            "高校琴房预约管理系统",
+            proposal_text="建设场地预约系统，将场地目录与分时预约集中管理。",
+        )
+        self.assertEqual(piano["entities"]["archive"]["label"], "琴房")
+        self.assertEqual(piano["roles"]["subadmin"]["label"], "琴房值班")
+
+    def test_variant_titles_beat_pack_boilerplate(self) -> None:
+        """随机样例常把多变体写进同一段 scene/problem；题名必须压过正文污染。"""
+        hosp = SCHEMA_BUILDERS["DOM-HOSPITAL"](
+            "基于 Spring Boot 与 Vue 的 HPV 疫苗预约系统的设计与实现",
+            proposal_text="校医院 / 宠物医院挂号；宠主可为宠物挂号。",
+        )
+        self.assertEqual(hosp["labels"]["authEyebrow"], "疫苗预约")
+        self.assertEqual(hosp["roles"]["user"]["label"], "接种人")
+        self.assertNotEqual(hosp["roles"]["user"]["label"], "宠主")
+
+        salon = SCHEMA_BUILDERS["DOM-SALON"](
+            "健身房私教预约管理系统",
+            proposal_text="美发 / 健身私教预约；美发门店档期管理。",
+        )
+        self.assertEqual(salon["labels"]["authEyebrow"], "健身预约")
+        self.assertEqual(salon["roles"]["user"]["label"], "会员")
+
+        lost = SCHEMA_BUILDERS["DOM-LOST"](
+            "校园失物招领管理系统",
+            proposal_text="校园失物招领 / 宠物领养；待领养档案浏览。",
+        )
+        self.assertEqual(lost["labels"]["authEyebrow"], "失物招领")
+        self.assertNotIn("领养", lost["labels"]["authEyebrow"])
+
+        event = SCHEMA_BUILDERS["DOM-EVENT"](
+            "社区公共卫生事件应急上报系统",
+            proposal_text="社区或校园在疫情排查、隐患上报；晨午检与因病缺课。",
+        )
+        self.assertEqual(event["labels"]["authEyebrow"], "社区公卫")
+        self.assertNotEqual(event["labels"]["authEyebrow"], "校园晨午检")
+
+        crm = SCHEMA_BUILDERS["DOM-CRM"](
+            "校园创业团队客户跟进管理系统",
+            proposal_text="中小企业或校园创业团队在客户建档与跟进上若仅靠表格。",
+        )
+        self.assertEqual(crm["labels"]["authEyebrow"], "校园创业")
+
+    def test_hospital_pack_body_does_not_overwrite_pet_user(self) -> None:
+        """样例开题 features 常写「患者」；宠物/疫苗题名 bake 后不得被盖回患者。"""
+        from app.bake.domain_schema import build_domain_schema
+        from app.bake.proposal_packs import PACKS
+        from app.bake.sample_proposal import render_template
+
+        pack = next(p for p in PACKS if p["id"] == "hospital")
+        pet_title = next(t for t in pack["title_variants"] if "宠物" in t)
+        pet_text = render_template({**pack, "title": pet_title}, digressions=[], l1_extras=[])
+        pet = build_domain_schema(pet_title, "DOM-HOSPITAL", proposal_text=pet_text)
+        self.assertEqual(pet["labels"]["authEyebrow"], "宠物挂号")
+        self.assertEqual(pet["roles"]["user"]["label"], "宠主")
+
+        vax_title = next(t for t in pack["title_variants"] if "HPV" in t)
+        # 故意保留正文「患者」污染，验证 staff_posts 不盖接种人
+        vax = build_domain_schema(
+            vax_title,
+            "DOM-HOSPITAL",
+            proposal_text="患者注册登录；校医院 / 宠物医院挂号；宠主可为爱宠挂号。",
+        )
+        self.assertEqual(vax["labels"]["authEyebrow"], "疫苗预约")
+        self.assertEqual(vax["roles"]["user"]["label"], "接种人")
 
     def test_fund_labsafe_builders(self) -> None:
         fund = SCHEMA_BUILDERS["DOM-FUND"]("测试课题")

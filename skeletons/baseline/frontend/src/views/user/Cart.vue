@@ -413,7 +413,7 @@ onMounted(load)
 .checkout-loy {
   margin-top: 8px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, var(--portal-mix, #fff));
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius-sm, 8px);
   font-size: 13px;

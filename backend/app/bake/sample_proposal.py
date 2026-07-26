@@ -126,6 +126,34 @@ def _out_scope_phrase(digressions: list[str]) -> str:
     return "、".join(digressions[:-1]) + "与" + digressions[-1]
 
 
+def _system_name_from_title(title: str) -> str | None:
+    m = re.search(r"的(.+?)的设计与实现\s*$", (title or "").strip())
+    if not m:
+        return None
+    name = m.group(1).strip()
+    return name or None
+
+
+def apply_title_variant_pack(pack: dict[str, Any], title: str) -> dict[str, Any]:
+    """按 ``scene_scan.product_kind_for`` 取 ``variant_overlays[kind]``。
+
+    扫词与 bake builder 同一真源；此处只叠样例开题文案，不另写 when_title_has。
+    """
+    from app.bake.scene_scan import product_kind_for
+
+    out = dict(pack)
+    overlays = pack.get("variant_overlays")
+    kind = product_kind_for(str(pack.get("anchor_domain") or ""), title, "")
+    if kind and isinstance(overlays, dict):
+        overlay = overlays.get(kind)
+        if isinstance(overlay, dict):
+            out.update(overlay)
+    derived = _system_name_from_title(title)
+    if derived:
+        out["system_name"] = derived
+    return out
+
+
 def render_template(
     pack: dict[str, Any],
     *,
@@ -136,6 +164,7 @@ def render_template(
 ) -> str:
     when = when or datetime.now()
     title = title or pack["title"]
+    pack = apply_title_variant_pack(pack, title)
     user = pack.get("user_role") or "用户"
     admin = pack.get("admin_role") or "管理人员"
     out_scope = _out_scope_phrase(digressions)
@@ -250,10 +279,11 @@ def build_sample_proposal(
     else:
         pack = _pick_pack(rng, domain)
 
-    digressions = _sample_some(rng, list(pack.get("digressions") or []), 1, 2)
-    l1 = _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
     titles = list(pack.get("title_variants") or [])
     title = rng.choice(titles) if titles else pack["title"]
+    pack = apply_title_variant_pack(pack, title)
+    digressions = _sample_some(rng, list(pack.get("digressions") or []), 1, 2)
+    l1 = _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
 
     text = render_template(pack, digressions=digressions, l1_extras=l1, title=title)
 

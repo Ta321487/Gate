@@ -222,7 +222,7 @@ onUnmounted(stopPoll)
 <style scoped>
 .hero { margin-bottom: 14px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0; color: #64748b; font-size: 13px; }
+.hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .dm-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -232,7 +232,7 @@ onUnmounted(stopPoll)
 .pane {
   border: 1px solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius, 12px);
-  background: #fff;
+  background: var(--portal-surface, #fff);
   display: flex;
   flex-direction: column;
   min-height: 480px;
@@ -244,14 +244,16 @@ onUnmounted(stopPoll)
   padding: 12px 14px;
   border-bottom: 1px solid var(--portal-line, #e2e8f0);
 }
-.muted { color: #94a3b8; font-size: 12px; }
+.muted { color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .conv-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
 .conv-list li {
   padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--portal-line, #f1f5f9);
   cursor: pointer;
 }
-.conv-list li:hover, .conv-list li.active { background: #f8fafc; }
+.conv-list li:hover, .conv-list li.active {
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 65%, var(--portal-surface, #fff));
+}
 .conv-list .name {
   display: flex;
   align-items: center;
@@ -262,13 +264,13 @@ onUnmounted(stopPoll)
 }
 .conv-list .preview {
   margin-top: 4px;
-  color: #64748b;
+  color: var(--portal-muted, #64748b);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.empty { padding: 24px 14px; color: #94a3b8; font-size: 13px; }
+.empty { padding: 24px 14px; color: var(--portal-muted, #94a3b8); font-size: 13px; }
 .empty.center { margin: auto; text-align: center; }
 .chat-body {
   flex: 1;
@@ -277,23 +279,24 @@ onUnmounted(stopPoll)
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
 }
 .bubble {
   max-width: 75%;
   align-self: flex-start;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--portal-surface, #fff);
+  border: 1px solid var(--portal-line, #e2e8f0);
   border-radius: 12px;
   padding: 8px 12px;
+  color: var(--portal-ink, #15202b);
 }
 .bubble.mine {
   align-self: flex-end;
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, var(--portal-surface, #fff));
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #e2e8f0));
 }
 .bubble .txt { white-space: pre-wrap; word-break: break-word; font-size: 14px; }
-.bubble .tm { margin-top: 4px; color: #94a3b8; font-size: 11px; }
+.bubble .tm { margin-top: 4px; color: var(--portal-muted, #94a3b8); font-size: 11px; }
 .chat-ft {
   display: grid;
   grid-template-columns: 1fr auto;

@@ -290,7 +290,7 @@ onMounted(load)
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius-sm, 8px);
   padding: 10px 12px;
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
 }
 .preview-hd { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
 .preview ul { margin: 0; padding-left: 18px; }

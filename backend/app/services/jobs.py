@@ -66,6 +66,39 @@ def _short_error(exc: BaseException | str, *, limit: int = 280) -> str:
     return text
 
 
+def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
+    """优先可接题边界 / 首个未过项文案；勿把已通过的 p2.detail 整包甩进日志。"""
+    g = gates or {}
+    acc = g.get("accept")
+    if isinstance(acc, dict) and acc.get("ok") is False:
+        return _short_error(acc.get("desc") or acc.get("label") or "可接题边界未通过", limit=200)
+    for k in ("p3c", "p3d", "p3t", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
+        item = g.get(k)
+        if not isinstance(item, dict) or item.get("ok") is not False:
+            continue
+        label = item.get("label") or k
+        desc = item.get("desc")
+        if desc:
+            return _short_error(f"{label} · {desc}", limit=200)
+        detail = item.get("detail")
+        if isinstance(detail, dict):
+            bad = []
+            if detail.get("files_ok") is False:
+                bad.append("缺文件")
+            if detail.get("missing"):
+                bad.append("missing=" + ",".join(str(x) for x in detail["missing"][:6]))
+            if detail.get("missing_routes"):
+                bad.append("缺路由")
+            if detail.get("logic") is False:
+                bad.append("主路径逻辑")
+            if detail.get("routes") is False:
+                bad.append("路由")
+            if bad:
+                return _short_error(f"{label} · " + "；".join(bad), limit=200)
+        return _short_error(label, limit=200)
+    return "主流程或功能清单未通过"
+
+
 _MODE_ZH = {
     "llm": "大模型",
     "deterministic": "确定性",
@@ -127,20 +160,58 @@ _ZIP_EXCLUDE_DIRS = frozenset({"node_modules", "target", ".git", "islands", ".vi
 
 
 def pack_zip(workspace: Path, zip_path: Path) -> None:
+    """打包学生交付 ZIP：跳过排除目录；先写临时文件再替换，避免中断留下坏包。"""
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = zip_path.with_suffix(zip_path.suffix + ".packing")
+    if tmp_path.exists():
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+    with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for dirpath, dirnames, filenames in workspace.walk():
+            # 原地剪枝，避免扫进 node_modules / target
+            dirnames[:] = [d for d in dirnames if d not in _ZIP_EXCLUDE_DIRS]
+            base = Path(dirpath)
+            for name in filenames:
+                if name in _ZIP_EXCLUDE_NAMES:
+                    continue
+                path = base / name
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(workspace)
+                if set(rel.parts) & _ZIP_EXCLUDE_DIRS:
+                    continue
+                zf.write(path, rel.as_posix())
     if zip_path.exists():
         zip_path.unlink()
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for path in workspace.rglob("*"):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(workspace)
-            parts = set(rel.parts)
-            if parts & _ZIP_EXCLUDE_DIRS:
-                continue
-            if rel.name in _ZIP_EXCLUDE_NAMES:
-                continue
-            zf.write(path, rel.as_posix())
+    tmp_path.replace(zip_path)
+
+
+async def fail_orphaned_jobs() -> int:
+    """进程重启后，DB 里仍 running/queued 的任务已无内存 Task，标失败避免进度条卡死。"""
+    from app.core.database import SessionLocal
+
+    n = 0
+    async with SessionLocal() as db:
+        q = await db.execute(
+            select(Job).where(
+                Job.status.in_([JobStatus.queued.value, JobStatus.running.value])
+            )
+        )
+        for job in q.scalars().all():
+            job.status = JobStatus.failed.value
+            job.error = "服务重启，任务中断 · 请从失败步骤重试"
+            job.steps = _fail_running_step(job.steps, "服务重启中断")
+            job.finished_at = datetime.now()
+            project = await db.get(Project, job.project_id)
+            if project and project.status == ProjectStatus.generating.value:
+                project.status = ProjectStatus.ready.value
+                project.zip_ready = False
+            n += 1
+        if n:
+            await db.commit()
+    return n
 
 
 async def run_job(job_id: int, from_step: int = 0) -> None:
@@ -397,12 +468,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 project.checklist = gates.get("checklist") or []
 
                 if not gates.get("overall"):
-                    detail = _short_error(
-                        (gates.get("p2") or {}).get("detail")
-                        or (gates.get("p0") or {}).get("detail")
-                        or "主流程或功能清单未通过",
-                        limit=200,
-                    )
+                    detail = _gate_fail_summary(gates)
                     await set_step(4, "fail", detail)
                     job.status = JobStatus.failed.value
                     job.error = f"{MSG_DOWNLOAD_GATES} · {detail}"

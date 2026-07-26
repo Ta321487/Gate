@@ -108,19 +108,19 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '门店主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '用餐者甲', '13800000002',
- '{"realName":"李女士","email":"li@demo.com","gender":"女","receiverName":"李女士","pickupType":"堂食","preferredStore":"窗口A","memberNo":"M20260002"}',
+ '{"realName":"李女士","email":"li@demo.com","gender":"女","receiverName":"李女士","pickupType":"堂食","preferredStore":"总店","memberNo":"M20260002"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '套餐'), (2, '面食'), (3, '饮品');
 INSERT IGNORE INTO dish (id, title, price_yuan, spec_note, category_id, stock, status) VALUES
-(1, '红烧肉套餐', '18.00', '窗口A', 1, 80, 'available'),
-(2, '番茄鸡蛋面', '12.00', '窗口B', 2, 60, 'available'),
-(3, '豆浆油条', '8.00', '早餐档', 1, 100, 'available'),
-(4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
+(1, '红烧肉套餐', '18.00', '总店', 1, 80, 'available'),
+(2, '番茄鸡蛋面', '12.00', '总店', 2, 60, 'available'),
+(3, '豆浆油条', '8.00', '早市档', 1, 100, 'available'),
+(4, '柠檬茶', '6.00', '饮品吧', 3, 120, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '李女士', '13800000002', '示例小区 5 号楼 302', '家', 1),
@@ -128,7 +128,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '李女士', '13800000002', '阳光广场 B1 美食区', '自取', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '系统管理员'
+SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '门店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知' OR title='食堂点餐');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
@@ -155,4 +155,4 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='counter', staff_kind='clerk', nickname='档口店员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+UPDATE sys_user SET staff_post='counter', staff_kind='clerk', nickname='店员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;

@@ -94,7 +94,7 @@ onMounted(() => {
     linear-gradient(
       165deg,
       var(--portal-bg, #eef3f5) 0%,
-      color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, var(--portal-mix, #fff)) 100%
+      color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, var(--portal-surface, #fff)) 100%
     );
 }
 
@@ -533,16 +533,17 @@ onMounted(() => {
 .auth[data-auth="editorial"] .points {
   margin: auto 0 0;
   padding: 14px 16px 16px;
-  background: var(--portal-accent, #0b6e75);
+  background: var(--portal-accent-soft, #d7eef0);
+  border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, transparent);
   border-radius: 4px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
 }
 .auth[data-auth="editorial"] .points li {
-  color: #fff;
+  color: var(--portal-ink, #15202b);
   opacity: 0.95;
 }
 .auth[data-auth="editorial"] .points li::before {
-  background: #fff;
+  background: var(--portal-accent, #0b6e75);
 }
 .auth[data-auth="editorial"] .tpl-tag { display: none; }
 .auth[data-hero="1"][data-auth="editorial"] .brand {

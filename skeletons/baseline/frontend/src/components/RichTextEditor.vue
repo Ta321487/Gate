@@ -102,7 +102,7 @@ onMounted(async () => {
   gap: 4px;
   padding: 6px 8px;
   border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #ebeef5);
-  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, var(--portal-mix, #fff));
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
 }
 .bar button {
   border: 0;

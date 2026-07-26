@@ -332,7 +332,11 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append(f"  ticket-category-limit: {cat_limit_n}")
         from app.bake.ticket_rules import rules_for
 
-        rules = rules_for(domain)
+        rules = rules_for(
+            domain,
+            title=str(spec.get("title") or ""),
+            proposal_text=str(spec.get("proposal_text") or ""),
+        )
         rule_lines: list[str] = []
         try:
             loan_n = int(rules.get("loan_days") or 0)

@@ -1,5 +1,7 @@
 /* —— 宿舍 —— */
 [data-theme="dorm-sky"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef6fb;
   --portal-bg-glow: rgba(14, 165, 233, 0.12);
   --portal-surface: #ffffff;
@@ -11,9 +13,12 @@
   --portal-accent-soft: #e0f2fe;
   --portal-cover: linear-gradient(160deg, #38bdf8, #0284c7);
   --portal-shadow-color: rgba(2, 132, 199, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="dorm-orange"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #fff5eb;
   --portal-bg-glow: rgba(234, 88, 12, 0.12);
   --portal-surface: #ffffff;
@@ -25,9 +30,12 @@
   --portal-accent-soft: #ffedd5;
   --portal-cover: linear-gradient(160deg, #fb923c, #c2410c);
   --portal-shadow-color: rgba(194, 65, 12, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="dorm-leaf"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef7f0;
   --portal-bg-glow: rgba(22, 163, 74, 0.12);
   --portal-surface: #ffffff;
@@ -39,9 +47,12 @@
   --portal-accent-soft: #dcfce7;
   --portal-cover: linear-gradient(160deg, #4ade80, #15803d);
   --portal-shadow-color: rgba(21, 128, 61, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="dorm-violet"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f3f0f8;
   --portal-bg-glow: rgba(124, 58, 237, 0.1);
   --portal-surface: #ffffff;
@@ -53,9 +64,12 @@
   --portal-accent-soft: #ede9fe;
   --portal-cover: linear-gradient(160deg, #a78bfa, #6d28d9);
   --portal-shadow-color: rgba(109, 40, 217, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="dorm-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #111827;
   --portal-bg-glow: rgba(96, 165, 250, 0.08);
   --portal-surface: #1f2937;
@@ -67,4 +81,5 @@
   --portal-accent-soft: #1e3a5f;
   --portal-cover: linear-gradient(160deg, #1e3a8a, #111827);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

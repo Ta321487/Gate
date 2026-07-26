@@ -69,7 +69,8 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         # 拣货员：默认不挂；开题写到才追加（见 _OPTIONAL_WORKERS）
     ],
     "DOM-FOOD": [
-        _clerk("counter", "档口店员", "order_ops"),
+        # 默认社会餐饮「店员」；食堂档在 attach 里按 food_product_kind 改成档口店员
+        _clerk("counter", "店员", "order_ops"),
         # 骑手：默认不挂；开题写到才追加
     ],
     "DOM-HOSPITAL": [_clerk("registrar", "挂号员", "slot_ops")],
@@ -280,7 +281,7 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
         "晨检员",
         "照护员",
         "护士",
-        "网格员",
+        # 网格员=门户一线填报（见 _USER_LABEL_ALIASES），勿扫进值班子管
         "流调员",
         "防控专员",
         "值班员",
@@ -319,9 +320,9 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
 _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-INTERN": ("实习生", "实习学生"),
     # 照护员/随访员是 duty_clerk；门户 user 用场景预设，勿用「老人」盖掉家属
-    "DOM-EVENT": ("随访对象", "上报人", "家属", "居民", "员工"),
+    "DOM-EVENT": ("随访对象", "上报人", "家属", "网格员", "居民", "员工"),
     "DOM-FOOD": ("就餐用户", "就餐者"),
-    "DOM-HOSPITAL": ("患者", "就诊人", "接种人", "宠主"),
+    "DOM-HOSPITAL": ("宠主", "接种人", "就诊人", "患者"),
     "DOM-LOST": ("失主", "认领人", "申请人"),
     "DOM-PARKING": ("车主",),
     "DOM-ATTEND": ("考勤对象", "员工"),
@@ -523,6 +524,7 @@ def attach_staff_posts(
     archetypes: list[str] | None = None,
     *,
     proposal_text: str = "",
+    title: str = "",
 ) -> dict[str, Any]:
     """写入 roles.staff_posts；有 clerk 时同步 subadmin（兼容旧前端），否则去掉。
 
@@ -537,6 +539,36 @@ def attach_staff_posts(
     posts = staff_posts_for_domain(
         domain, archetype, archetypes, proposal_text=proposal_text
     )
+    if domain == "DOM-FOOD":
+        from app.bake.scene_scan import food_product_kind
+
+        canteen = food_product_kind(title, proposal_text) == "canteen"
+        # 食堂专属别称：餐厅档不得被正文「食堂档口」对比句洗成档口岗
+        _canteen_counter = ("档口店员", "窗口服务员", "食堂窗口", "档口")
+        for p in posts:
+            if str(p.get("id") or "") != "counter":
+                continue
+            lab = str(p.get("label") or "").strip()
+            if canteen:
+                if lab in ("", "店员"):
+                    p["label"] = "档口店员"
+            elif lab in ("", "店员", *_canteen_counter):
+                p["label"] = "店员"
+    if domain == "DOM-HOSPITAL":
+        from app.bake.scene_scan import hospital_product_kind
+
+        kind = hospital_product_kind(title, proposal_text)
+        want = {
+            "vaccine": "预约管理员",
+            "pet": "挂号员",
+            "clinic": "挂号员",
+        }.get(kind, "挂号员")
+        for p in posts:
+            if str(p.get("id") or "") != "registrar":
+                continue
+            lab = str(p.get("label") or "").strip()
+            if lab in ("", "挂号员", "预约管理员", "导诊", "分诊台"):
+                p["label"] = want
     merged_posts: list[dict[str, Any]] = []
     for p in posts:
         row = dict(p)
@@ -562,7 +594,19 @@ def attach_staff_posts(
     )
     # 门户 user：开题写到才替换；否则保留 schema 原 label
     user_aliases = _USER_LABEL_ALIASES.get(domain) or ()
-    user_picked = _pick_label_from_proposal(proposal_text, user_aliases)
+    title_hit = _pick_label_from_proposal(title, user_aliases)
+    body_hit = _pick_label_from_proposal(proposal_text, user_aliases)
+    user_picked = title_hit or body_hit
+    prev_user_lab = str((roles.get("user") or {}).get("label") or "").strip()
+    generic_user = user_aliases[-1] if user_aliases else ""
+    # 题名未写称呼时：
+    # - builder 已是特称（宠主/接种人）→ 正文别名不得改
+    # - 正文仅命中泛称（患者）→ 不得盖掉 builder 已有别名
+    if user_picked and not title_hit and prev_user_lab in user_aliases:
+        if prev_user_lab != generic_user and user_picked != prev_user_lab:
+            user_picked = None
+        elif user_picked == generic_user and user_picked != prev_user_lab:
+            user_picked = None
     if user_picked and isinstance(roles.get("user"), dict):
         roles["user"] = {**roles["user"], "label": user_picked}
     clerks = [p for p in merged_posts if p.get("kind") == "clerk"]
@@ -594,15 +638,17 @@ def attach_staff_posts(
             "label": sub_lab,
             "staffPostId": first.get("id"),
         }
-        # EVENT：档案「责任*」列与子管称呼对齐（开题改岗名后列表头同步）
+        # EVENT：档案「责任*」列跟一线岗——社区网格员在门户 user，其余跟子管
         if domain == "DOM-EVENT" and sub_lab:
+            user_lab = str((roles.get("user") or {}).get("label") or "").strip()
+            author_lab = user_lab if user_lab == "网格员" else sub_lab
             arch = ((schema.get("entities") or {}).get("archive") or {})
             fields = arch.get("fields")
             if isinstance(fields, list):
                 new_fields = []
                 for f in fields:
                     if isinstance(f, dict) and f.get("key") == "author":
-                        new_fields.append({**f, "label": sub_lab})
+                        new_fields.append({**f, "label": author_lab})
                     else:
                         new_fields.append(f)
                 ents = dict(schema.get("entities") or {})

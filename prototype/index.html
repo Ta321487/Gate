@@ -102,7 +102,7 @@
                   <button class="active" data-f="all">全部</button>
                   <button data-f="active">运行中</button>
                   <button data-f="generating">生成中</button>
-                  <button data-f="done">可交付</button>
+                  <button data-f="done">可下载</button>
                   <button data-f="fail">质检未过</button>
                 </div>
                 <div class="tools">
@@ -436,7 +436,7 @@
 
             <div id="gen-success" style="display:none">
               <div class="banner success mb-16">
-                <h4 id="gen-success-title">生成完成 · 质量检查已通过 · 可交付</h4>
+                <h4 id="gen-success-title">生成完成 · 质量检查已通过 · 可下载</h4>
                 <p class="small muted" id="gen-success-desc">交付包已解锁。建议到「运行」预览后再交付。</p>
                 <div class="row mt-12 gap-sm">
                   <button type="button" class="btn btn-primary" data-action="goto-tab" data-tab="runtime">前往运行</button>
@@ -537,7 +537,7 @@
 
             <div id="gen-failed" style="display:none">
               <div class="banner fail">
-                <h4 id="fail-title">质量检查未通过 · 暂不可交付</h4>
+                <h4 id="fail-title">质量检查未通过 · 暂不可下载</h4>
                 <p class="small muted" id="fail-desc">主流程或功能清单未通过时，暂不可下载交付包。</p>
                 <div class="row mt-12 gap-sm">
                   <button type="button" class="btn btn-primary" data-action="retry-job">从失败步骤重试</button>
@@ -1390,7 +1390,7 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>产品定位</h3><span class="pill pill-teal">总览</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览，并在检查通过后提供可交付压缩包。</p>
+                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览，并在检查通过后提供可下载压缩包。</p>
                 <ul>
                   <li>以固定基线骨架与能力运行时为主体；大语言模型仅填充业务配置，不承担业务代码编写。</li>
                   <li>交付质量以质量检查结果为准，不以生成耗时或文案完整度替代判定。</li>

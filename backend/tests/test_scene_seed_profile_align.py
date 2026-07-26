@@ -113,6 +113,24 @@ class SceneSeedProfileAlignTests(unittest.TestCase):
         self.assertIn("ownerType", prof)
         self.assertNotIn("孙同学", json.dumps(prof, ensure_ascii=False))
 
+    def test_parking_campus_seed_switches(self) -> None:
+        sql = domain_sql(
+            "DOM-PARKING",
+            "thesis_test",
+            title="校园车位预约管理系统",
+            proposal_text="教职工与学生预约校内车位。",
+        )
+        prof = _user_profile_json(sql)
+        self.assertEqual(prof.get("ownerType"), "教职工")
+        self.assertIn("employeeNo", prof)
+        keys = _profile_keys(
+            "DOM-PARKING",
+            "校园车位预约管理系统",
+            "教职工与学生预约校内车位。",
+        )
+        self.assertTrue(set(prof) <= keys | {"realName", "email", "gender"})
+        self.assertNotIn("星河科技", sql)
+
     def test_property_subadmin_is_dispatcher(self) -> None:
         sql = domain_sql("DOM-PROPERTY", "thesis_test", title="小区物业报修")
         self.assertIn("'物业调度'", sql)

@@ -1,5 +1,7 @@
 /* —— 博客 —— */
 [data-theme="blog-ink"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f0f2f6;
   --portal-bg-glow: rgba(51, 65, 85, 0.08);
   --portal-surface: #ffffff;
@@ -11,8 +13,11 @@
   --portal-accent-soft: #e2e8f0;
   --portal-cover: linear-gradient(160deg, #64748b, #334155);
   --portal-shadow-color: rgba(51, 65, 85, 0.1);
+  color-scheme: light;
 }
 [data-theme="blog-grove"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef5f0;
   --portal-bg-glow: rgba(22, 101, 52, 0.1);
   --portal-surface: #ffffff;
@@ -24,8 +29,11 @@
   --portal-accent-soft: #dcfce7;
   --portal-cover: linear-gradient(160deg, #4ade80, #166534);
   --portal-shadow-color: rgba(22, 101, 52, 0.1);
+  color-scheme: light;
 }
 [data-theme="blog-clay"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f6f0ea;
   --portal-bg-glow: rgba(154, 92, 58, 0.1);
   --portal-surface: #fffaf6;
@@ -37,18 +45,23 @@
   --portal-accent-soft: #f5e6d8;
   --portal-cover: linear-gradient(160deg, #d4a574, #9a5c3a);
   --portal-shadow-color: rgba(154, 92, 58, 0.1);
+  color-scheme: light;
 }
 [data-theme="blog-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #12141a;
   --portal-bg-glow: rgba(148, 163, 184, 0.08);
   --portal-surface: #1a1e28;
   --portal-ink: #e8ecf4;
   --portal-muted: #94a3b8;
   --portal-line: #2a3040;
+  /* accent 须能做主按钮底（白字可读）；勿用接近 ink 的浅灰 */
   --portal-brand: #94a3b8;
-  --portal-accent: #cbd5e1;
-  --portal-accent-soft: #334155;
+  --portal-accent: #64748b;
+  --portal-accent-soft: #2a3344;
   --portal-cover: linear-gradient(160deg, #475569, #12141a);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }
 

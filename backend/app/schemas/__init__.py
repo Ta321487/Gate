@@ -23,7 +23,7 @@ class ProjectSummary(BaseModel):
     zip_ready: bool = Field(description="ZIP 是否可下载（机器质检通过）")
     delivery_mark: str = Field(
         default="none",
-        description="人工交付标记：none | ready（可交付）| delivered（已交付）",
+        description="人工履约标记：none | ready（已审待发）| delivered（已发出）",
     )
     db_name: str = Field(default="", description="学生库名")
     updated_at: Optional[datetime] = Field(default=None, description="更新时间")
@@ -249,9 +249,9 @@ class StatsOut(BaseModel):
     total: int = Field(description="总数")
     generating: int = Field(description="生成中")
     previewable: int = Field(description="可预览")
-    pending_review: int = Field(default=0, description="待审：质检可下且未标可交付")
-    delivery_ready: int = Field(default=0, description="可交付（人工）")
-    delivery_delivered: int = Field(default=0, description="已交付（人工）")
+    pending_review: int = Field(default=0, description="待审：质检可下且未人工标")
+    delivery_ready: int = Field(default=0, description="已审待发（人工）")
+    delivery_delivered: int = Field(default=0, description="已发出（人工）")
     monthly_tokens: int = Field(description="本月 Token（合计）")
     monthly_tokens_pipeline: int = Field(default=0, description="本月项目流水线 Token")
     monthly_tokens_support: int = Field(default=0, description="本月系统支持 Token")

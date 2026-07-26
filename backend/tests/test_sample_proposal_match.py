@@ -46,6 +46,24 @@ class SlimMatchDataTests(unittest.TestCase):
                 got = match_text(f"基于 Spring Boot 的{title}的设计与实现")
                 self.assertEqual(got.domain, want, f"hits={got.hits[:8]}")
 
+    def test_hospital_pet_variant_overlay_in_sample(self) -> None:
+        """宠物医院题名的样例开题正文不得仍写「门诊挂号」。"""
+        from app.bake.domain_schema import build_domain_schema
+        from app.bake.proposal_packs import PACKS
+        from app.bake.sample_proposal import render_template
+
+        pack = next(p for p in PACKS if p["id"] == "hospital")
+        title = next(t for t in pack["title_variants"] if "宠物" in t)
+        text = render_template(pack, digressions=[], l1_extras=[], title=title)
+        self.assertIn("宠物医院", text)
+        self.assertIn("宠主", text)
+        self.assertNotIn("门诊挂号若依赖", text)
+        self.assertNotIn("互联网医院", text)
+        schema = build_domain_schema(title, "DOM-HOSPITAL", proposal_text=text)
+        self.assertEqual(schema["labels"]["authEyebrow"], "宠物挂号")
+        self.assertEqual(schema["roles"]["user"]["label"], "宠主")
+        self.assertIn("petName", {f["key"] for f in schema["profileFields"]})
+
     def test_batch_mgmt_overreach_needs_erp_companion(self) -> None:
         from app.bake.capabilities import scan_out_of_scope
 

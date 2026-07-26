@@ -12,6 +12,7 @@ from app.bake.sql.ddl_edit import (
     CREATE_TABLE_RE as _CREATE_TABLE_RE,
     inject_missing_columns as _inject_missing_columns,
     prune_columns as _prune_columns,
+    strip_trailing_comma_before_close as _strip_trailing_comma,
 )
 
 # 预约扩展列全集（仅作剔除名单；注入按域拆分，禁止跨域超集）
@@ -690,6 +691,7 @@ def ensure_ticket_extra_sql(
         body = _prune_columns(body, allow=allow, known=_TICKET_OPTIONAL_NAMES)
         if want:
             body = _inject_missing_columns(body, want)
+        body = _strip_trailing_comma(body)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)

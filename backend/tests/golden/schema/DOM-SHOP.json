@@ -27,13 +27,8 @@
           "type": "string"
         },
         {
-          "key": "conditionGrade",
-          "label": "成色",
-          "type": "string"
-        },
-        {
           "key": "sellerNote",
-          "label": "卖家备注",
+          "label": "商品说明",
           "type": "string"
         },
         {

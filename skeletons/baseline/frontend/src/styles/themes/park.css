@@ -1,5 +1,7 @@
 /* —— 车位 —— */
 [data-theme="park-asphalt"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef1f5;
   --portal-bg-glow: rgba(71, 85, 105, 0.12);
   --portal-surface: #ffffff;
@@ -11,9 +13,12 @@
   --portal-accent-soft: #e2e8f0;
   --portal-cover: linear-gradient(160deg, #64748b, #1e293b);
   --portal-shadow-color: rgba(30, 41, 59, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="park-signal"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef8f0;
   --portal-bg-glow: rgba(22, 163, 74, 0.12);
   --portal-surface: #ffffff;
@@ -25,9 +30,12 @@
   --portal-accent-soft: #dcfce7;
   --portal-cover: linear-gradient(160deg, #4ade80, #15803d);
   --portal-shadow-color: rgba(21, 128, 61, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="park-amber"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #fffbeb;
   --portal-bg-glow: rgba(217, 119, 6, 0.12);
   --portal-surface: #fffef8;
@@ -39,9 +47,12 @@
   --portal-accent-soft: #fef3c7;
   --portal-cover: linear-gradient(160deg, #fbbf24, #b45309);
   --portal-shadow-color: rgba(180, 83, 9, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="park-cyan"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef9fb;
   --portal-bg-glow: rgba(8, 145, 178, 0.12);
   --portal-surface: #ffffff;
@@ -53,18 +64,22 @@
   --portal-accent-soft: #cffafe;
   --portal-cover: linear-gradient(160deg, #22d3ee, #0e7490);
   --portal-shadow-color: rgba(14, 116, 144, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="park-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #0c1220;
   --portal-bg-glow: rgba(34, 211, 238, 0.08);
   --portal-surface: #151d2e;
   --portal-ink: #e2e8f0;
   --portal-muted: #8aa0b4;
   --portal-line: #243044;
-  --portal-brand: #22d3ee;
-  --portal-accent: #06b6d4;
+  --portal-brand: #3ca7b9;
+  --portal-accent: #058ea6;
   --portal-accent-soft: #164e63;
   --portal-cover: linear-gradient(160deg, #155e75, #0c1220);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

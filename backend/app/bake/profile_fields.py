@@ -458,7 +458,7 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("memberNo", "读者号", on_register=True, max_length=32),
         _pf("orgName", "学校/单位", on_register=True, max_length=64),
         _pf("preferredGenre", "偏好栏目", on_register=True, field_type="select",
-            options=["技术", "随笔", "资讯", "教程", "不限"]),
+            options=["技术", "随笔", "生活", "教程", "不限"]),
     ],
 }
 
@@ -519,16 +519,16 @@ _ATTEND_ENTERPRISE: list[dict[str, Any]] = [
 ]
 
 _EVENT_COMMUNITY: list[dict[str, Any]] = [
+    # 门户一线=网格员（上报/打卡）；居民是档案对象身份，不是默认登录岗
     _pf("identityType", "身份", required=True, on_register=True, field_type="select",
-        options=["居民", "志愿者", "访客"]),
+        options=["网格员", "志愿者", "居民"]),
     _pf("communityName", "小区/网格", required=True, on_register=True, max_length=64,
-        required_when=_when("identityType", ["居民", "志愿者"]),
-        visible_when=_when("identityType", ["居民", "志愿者"]),
+        required_when=_when("identityType", ["网格员", "志愿者", "居民"]),
+        visible_when=_when("identityType", ["网格员", "志愿者", "居民"]),
         placeholder="所在小区或网格"),
-    _pf("orgName", "单位/组织", on_register=True, max_length=64,
-        required_when=_when("identityType", ["访客"]),
-        visible_when=_when("identityType", ["访客"]),
-        placeholder="访客请填写来访单位"),
+    _pf("region", "负责片区", on_register=True, max_length=64,
+        visible_when=_when("identityType", ["网格员", "志愿者"]),
+        placeholder="如 阳光小区东片 / 3 栋"),
     _pf("address", "住址/楼栋", on_register=True, max_length=64,
         visible_when=_when("identityType", ["居民"]),
         placeholder="如 3 栋 2 单元"),

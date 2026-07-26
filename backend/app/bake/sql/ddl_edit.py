@@ -16,14 +16,24 @@ def inject_missing_columns(body: str, columns: list[tuple[str, str]]) -> str:
     missing = [(name, ddl) for name, ddl in columns if name.lower() not in lower]
     if not missing:
         return body
-    lines = [f"  {name} {ddl}," for name, ddl in missing]
     m = re.search(r"(?m)^(\s*created_at\b)", body)
     if m:
+        # created_at 仍在后面：每一行都要逗号
+        lines = [f"  {name} {ddl}," for name, ddl in missing]
         return body[: m.start()] + "\n".join(lines) + "\n" + body[m.start() :]
+    # 追加到表尾：末列不得带逗号，否则 MySQL 1064 near ')'
+    lines = [f"  {name} {ddl}," for name, ddl in missing[:-1]]
+    last_name, last_ddl = missing[-1]
+    lines.append(f"  {last_name} {last_ddl}")
     trimmed = body.rstrip()
     if not trimmed.endswith(","):
         trimmed += ","
     return trimmed + "\n" + "\n".join(lines) + "\n"
+
+
+def strip_trailing_comma_before_close(body: str) -> str:
+    """去掉 CREATE 体末尾多余逗号（补列/剔列后的兜底）。"""
+    return re.sub(r",(\s*)$", r"\1", body.rstrip() + ("\n" if body.endswith("\n") else ""))
 
 
 def prune_columns(body: str, *, allow: set[str], known: set[str]) -> str:
@@ -40,7 +50,7 @@ def prune_columns(body: str, *, allow: set[str], known: set[str]) -> str:
             if name in known_l and name not in allow_l:
                 continue
         out.append(line)
-    return "".join(out)
+    return strip_trailing_comma_before_close("".join(out))
 
 
 def rewrite_col_def(body: str, old: str, new_name: str, new_ddl: str | None = None) -> str:
@@ -105,7 +115,8 @@ def map_create_table(
         head, name, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         if name.lower() != t:
             return m.group(0)
-        return f"{head}{transform(body)}{tail}"
+        new_body = strip_trailing_comma_before_close(transform(body))
+        return f"{head}{new_body}{tail}"
 
     return CREATE_TABLE_RE.sub(repl, sql)
 

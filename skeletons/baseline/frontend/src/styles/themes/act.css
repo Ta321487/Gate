@@ -1,5 +1,7 @@
 /* —— 活动报名 —— */
 [data-theme="act-coral"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #fff1f0;
   --portal-bg-glow: rgba(225, 69, 61, 0.12);
   --portal-surface: #ffffff;
@@ -11,8 +13,11 @@
   --portal-accent-soft: #ffe4e1;
   --portal-cover: linear-gradient(160deg, #ff6b63, #c2302a);
   --portal-shadow-color: rgba(194, 48, 42, 0.1);
+  color-scheme: light;
 }
 [data-theme="act-sky"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef6fb;
   --portal-bg-glow: rgba(14, 165, 233, 0.12);
   --portal-surface: #ffffff;
@@ -24,8 +29,11 @@
   --portal-accent-soft: #e0f2fe;
   --portal-cover: linear-gradient(160deg, #38bdf8, #0284c7);
   --portal-shadow-color: rgba(2, 132, 199, 0.1);
+  color-scheme: light;
 }
 [data-theme="act-lime"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f0f7ee;
   --portal-bg-glow: rgba(52, 120, 60, 0.12);
   --portal-surface: #ffffff;
@@ -37,8 +45,11 @@
   --portal-accent-soft: #dcf5de;
   --portal-cover: linear-gradient(160deg, #6bbf72, #2f6b38);
   --portal-shadow-color: rgba(47, 107, 56, 0.1);
+  color-scheme: light;
 }
 [data-theme="act-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #15101a;
   --portal-bg-glow: rgba(251, 113, 133, 0.1);
   --portal-surface: #221828;
@@ -50,4 +61,5 @@
   --portal-accent-soft: #4c1d2a;
   --portal-cover: linear-gradient(160deg, #881337, #15101a);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

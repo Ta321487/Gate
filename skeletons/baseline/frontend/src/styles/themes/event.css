@@ -1,5 +1,7 @@
 /* —— 事件上报 EVENT —— */
 [data-theme="event-teal"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef7f5;
   --portal-bg-glow: rgba(15, 118, 110, 0.12);
   --portal-surface: #ffffff;
@@ -11,8 +13,11 @@
   --portal-accent-soft: #ccfbf1;
   --portal-cover: linear-gradient(160deg, #2dd4bf, #0f766e);
   --portal-shadow-color: rgba(15, 118, 110, 0.1);
+  color-scheme: light;
 }
 [data-theme="event-amber"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f8f4ec;
   --portal-bg-glow: rgba(180, 120, 40, 0.12);
   --portal-surface: #fffdf8;
@@ -24,8 +29,11 @@
   --portal-accent-soft: #fef3c7;
   --portal-cover: linear-gradient(160deg, #f59e0b, #b45309);
   --portal-shadow-color: rgba(180, 83, 9, 0.1);
+  color-scheme: light;
 }
 [data-theme="event-slate"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef2f4;
   --portal-bg-glow: rgba(71, 85, 105, 0.1);
   --portal-surface: #ffffff;
@@ -37,17 +45,21 @@
   --portal-accent-soft: #e2e8f0;
   --portal-cover: linear-gradient(160deg, #64748b, #334155);
   --portal-shadow-color: rgba(51, 65, 85, 0.1);
+  color-scheme: light;
 }
 [data-theme="event-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #10181a;
   --portal-bg-glow: rgba(45, 212, 191, 0.08);
   --portal-surface: #182226;
   --portal-ink: #e6f2ef;
   --portal-muted: #8aaba3;
   --portal-line: #2a383c;
-  --portal-brand: #5eead4;
-  --portal-accent: #2dd4bf;
+  --portal-brand: #53ada2;
+  --portal-accent: #1f9486;
   --portal-accent-soft: #1a3330;
   --portal-cover: linear-gradient(160deg, #134e4a, #10181a);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

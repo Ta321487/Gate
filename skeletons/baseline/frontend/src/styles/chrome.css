@@ -209,6 +209,13 @@ html[data-scheme="dark"] .el-menu {
   --el-button-active-border-color: var(--portal-brand, #08545a);
 }
 
+/* 深色皮：主按钮固定浅色字，避免 EP dark 变量把字色冲成与浅 accent 同色 */
+html.dark .el-button--primary:not(.is-link):not(.is-text):not(.is-disabled),
+html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is-disabled) {
+  --el-button-text-color: #ffffff;
+  color: #ffffff;
+}
+
 .el-input__wrapper,
 .el-textarea__inner,
 .el-select__wrapper,
@@ -319,7 +326,7 @@ html[data-scheme="dark"] .el-menu {
     linear-gradient(
       180deg,
       var(--portal-bg, #eef3f5) 0%,
-      color-mix(in srgb, var(--portal-bg, #eef3f5) 90%, var(--portal-mix, #fff)) 100%
+      color-mix(in srgb, var(--portal-bg, #eef3f5) 90%, var(--portal-surface, #fff)) 100%
     );
 }
 
@@ -349,7 +356,7 @@ html[data-scheme="dark"] .el-menu {
   background: linear-gradient(
     135deg,
     var(--portal-accent, #0b6e75),
-    color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-mix, #fff))
+    color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-brand, #08545a))
   );
 }
 

@@ -232,7 +232,7 @@
         >
           <div class="label">待审</div>
           <div class="value">{{ stats.pending_review || 0 }}</div>
-          <div class="hint">质检过 · 未标可交付</div>
+          <div class="hint">质检过 · 未人工标</div>
         </div>
         <div
           class="stat clickable"
@@ -242,9 +242,9 @@
           @click="setFilter('ready')"
           @keydown.enter="setFilter('ready')"
         >
-          <div class="label">可交付</div>
+          <div class="label">已审待发</div>
           <div class="value">{{ stats.delivery_ready || 0 }}</div>
-          <div class="hint">人工已审 · 待发出</div>
+          <div class="hint">审过 · 未发出</div>
         </div>
         <div
           class="stat clickable"
@@ -254,7 +254,7 @@
           @click="setFilter('delivered')"
           @keydown.enter="setFilter('delivered')"
         >
-          <div class="label">已交付</div>
+          <div class="label">已发出</div>
           <div class="value">{{ stats.delivery_delivered || 0 }}</div>
           <div class="hint">已发给学生</div>
         </div>
@@ -309,6 +309,7 @@ import {
   getCatalog,
   projectStatusLabel,
   projectStatusPill,
+  deliveryMarkLabel,
   statusPillNode,
 } from '../opsShared'
 
@@ -316,15 +317,15 @@ const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
-/** 与状态/运行列语义对齐：运行中 · 生成中 · 待审 · 可下载 · 可交付 · 已交付 · 质检未过 */
+/** 与状态/运行列语义对齐：运行中 · 生成中 · 待审 · 可下载 · 已审待发 · 已发出 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
   { id: 'generating', label: '生成中', pill: 'pill-teal' },
   { id: 'pending', label: '待审', pill: 'pill-amber' },
   { id: 'done', label: '可下载', pill: 'pill-teal' },
-  { id: 'ready', label: '可交付', pill: 'pill-green' },
-  { id: 'delivered', label: '已交付', pill: 'pill-neutral' },
+  { id: 'ready', label: '已审待发', pill: 'pill-green' },
+  { id: 'delivered', label: '已发出', pill: 'pill-neutral' },
   { id: 'fail', label: '质检未过', pill: 'pill-red' },
 ]
 const q = ref('')
@@ -685,7 +686,9 @@ async function markRowDelivery(row, mark) {
   try {
     await api.patchDelivery(row.id, mark)
     message.success(
-      mark === 'delivered' ? '已标记为已交付' : mark === 'ready' ? '已标记为可交付' : '已清除交付标记',
+      mark === 'delivered' || mark === 'ready'
+        ? `已标记为${deliveryMarkLabel(mark)}`
+        : '已清除履约标记',
     )
     await load()
   } finally {
@@ -806,44 +809,49 @@ const columns = [
   {
     title: '履约',
     key: 'delivery',
-    width: 220,
+    width: 200,
     render(row) {
       const mark = String(row.delivery_mark || 'none')
       const baked = row.status === 'generated' || row.status === 'running'
       const zipOk = !!row.zip_ready && baked
       const busy = deliveryBusyId.value === row.id
       const kids = []
-      if (zipOk) {
-        kids.push(h(NButton, {
-          size: 'tiny',
-          secondary: true,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
-        }, { default: () => '下载' }))
-      }
       if (zipOk && mark === 'none') {
-        kids.push(h(NButton, {
-          size: 'tiny',
-          secondary: true,
-          loading: busy,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'ready') },
-        }, { default: () => '可交付' }))
         kids.push(h(NButton, {
           size: 'tiny',
           type: 'primary',
           loading: busy,
           disabled: busy,
           onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'delivered') },
-        }, { default: () => '已交付' }))
-      } else if (mark === 'ready') {
+        }, { default: () => '已发出' }))
+        kids.push(h(NButton, {
+          size: 'tiny',
+          secondary: true,
+          loading: busy,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'ready') },
+        }, { default: () => '暂存' }))
+        kids.push(h(NButton, {
+          size: 'tiny',
+          quaternary: true,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
+        }, { default: () => '下载' }))
+      } else if (mark === 'ready' && zipOk) {
         kids.push(h(NButton, {
           size: 'tiny',
           type: 'primary',
           loading: busy,
           disabled: busy,
           onClick: (e) => { e.stopPropagation(); downloadAndDeliverRow(row) },
-        }, { default: () => '下载并已交付' }))
+        }, { default: () => '下载并发出' }))
+      } else if (zipOk) {
+        kids.push(h(NButton, {
+          size: 'tiny',
+          secondary: true,
+          disabled: busy,
+          onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
+        }, { default: () => '下载' }))
       }
       if (!kids.length) {
         return h('span', { class: 'muted small' }, '—')

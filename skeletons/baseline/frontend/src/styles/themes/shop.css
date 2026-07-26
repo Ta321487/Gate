@@ -1,5 +1,7 @@
 /* —— 商城 —— */
 [data-theme="shop-coral"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #fff1f0;
   --portal-bg-glow: rgba(225, 69, 61, 0.12);
   --portal-surface: #ffffff;
@@ -11,9 +13,12 @@
   --portal-accent-soft: #ffe4e1;
   --portal-cover: linear-gradient(160deg, #ff6b63, #c2302a);
   --portal-shadow-color: rgba(194, 48, 42, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="shop-ocean"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef6fb;
   --portal-bg-glow: rgba(14, 116, 180, 0.12);
   --portal-surface: #ffffff;
@@ -25,9 +30,12 @@
   --portal-accent-soft: #d6ebf7;
   --portal-cover: linear-gradient(160deg, #38bdf8, #0b5f8a);
   --portal-shadow-color: rgba(11, 95, 138, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="shop-lime"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f2f8ec;
   --portal-bg-glow: rgba(101, 163, 13, 0.12);
   --portal-surface: #ffffff;
@@ -39,9 +47,12 @@
   --portal-accent-soft: #ecfccb;
   --portal-cover: linear-gradient(160deg, #84cc16, #4d7c0f);
   --portal-shadow-color: rgba(77, 124, 15, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="shop-gold"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #faf6ec;
   --portal-bg-glow: rgba(180, 140, 40, 0.12);
   --portal-surface: #fffdf7;
@@ -53,9 +64,12 @@
   --portal-accent-soft: #fef3c7;
   --portal-cover: linear-gradient(160deg, #eab308, #a16207);
   --portal-shadow-color: rgba(161, 98, 7, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="shop-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #12141c;
   --portal-bg-glow: rgba(251, 113, 133, 0.1);
   --portal-surface: #1c2030;
@@ -67,4 +81,5 @@
   --portal-accent-soft: #4c1d2a;
   --portal-cover: linear-gradient(160deg, #881337, #12141c);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

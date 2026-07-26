@@ -54,6 +54,61 @@ def test_pair_cross_defense_ready():
         assert d["accept"] == "full", (label, d)
 
 
+def test_hotel_named_covers_tr_ok():
+    """宾馆域目录自带预约+订单：TR 具名满配应 full（HANDOFF 组 E）。"""
+    from app.bake.domains import DOMAIN_CAPABILITIES
+
+    arches = ["ARCH-RESERVE", "ARCH-TRADE"]
+    key, entry, reason = evaluate_cross_path(arches, domain="DOM-HOTEL", primary="ARCH-RESERVE")
+    assert key == "TR"
+    assert entry and entry.defense_ready
+    assert reason is None
+    d = resolve_accept(
+        list(DOMAIN_CAPABILITIES["DOM-HOTEL"]),
+        "宾馆客房。主要功能：分时预约入住；附加消费下单；办结。",
+        has_domain_overlay=True,
+        has_baseline_runtime=True,
+        archetypes=arches,
+        domain="DOM-HOTEL",
+        primary_archetype="ARCH-RESERVE",
+    )
+    assert d["accept"] == "full", d
+    assert d.get("cross_path") == "TR"
+
+
+def test_shop_named_cannot_keep_tr():
+    """商城皮盖不住预约：具名+TR 仍 reject（应走 GENERIC）。"""
+    key, entry, reason = evaluate_cross_path(
+        ["ARCH-TRADE", "ARCH-RESERVE"], domain="DOM-SHOP", primary="ARCH-TRADE"
+    )
+    assert key == "TR"
+    assert reason and "具名域不可夹带" in reason
+
+
+def test_match_hotel_opening_keeps_named_tr():
+    """宾馆开题：匹配 DOM-HOTEL 且保留 RESERVE+TRADE，accept full。"""
+    from app.bake.catalog import match_text
+    from app.bake.domains import DOMAIN_CAPABILITIES
+
+    m = match_text(
+        "题目：宾馆客房预订系统。主要功能：房型浏览；分时预约入住；"
+        "客房服务加入购物车下单；入住离店办结；公告。"
+    )
+    assert m.domain == "DOM-HOTEL"
+    assert "ARCH-RESERVE" in (m.archetypes or [])
+    assert "ARCH-TRADE" in (m.archetypes or [])
+    d = resolve_accept(
+        list(DOMAIN_CAPABILITIES["DOM-HOTEL"]),
+        "宾馆客房预订。",
+        has_domain_overlay=True,
+        has_baseline_runtime=True,
+        archetypes=m.archetypes,
+        domain=m.domain,
+        primary_archetype=m.archetype,
+    )
+    assert d["accept"] == "full", d
+
+
 def test_triple_cross_not_defense_ready():
     key, entry, reason = evaluate_cross_path(
         ["ARCH-RESERVE", "ARCH-TRADE", "ARCH-FLOW"],
@@ -166,6 +221,28 @@ def test_match_keeps_trade_and_reserve_union():
     assert "ARCH-RESERVE" in (m.archetypes or [])
     # 无「宾馆/酒店」词时走通用交叉壳
     assert m.domain == "DOM-GENERIC"
+
+
+def test_score_all_keeps_weak_secondary_path_without_peak_cut():
+    """各族自洁后 1 分次路径仍进并集；不再相对峰值砍掉。"""
+    from app.bake.catalog import score_all_archetypes
+
+    arches = score_all_archetypes(
+        "宾馆客房。主要功能：分时预约；购物车下单；办结。"
+    )
+    assert "ARCH-TRADE" in arches
+    assert "ARCH-RESERVE" in arches
+
+
+def test_score_all_trade_requires_hard_not_pay_alone():
+    """仅「支付」不得抬 TRADE（内容题顺口/对比漏网）。"""
+    from app.bake.catalog import score_all_archetypes
+
+    arches = score_all_archetypes(
+        "影视点播。主要功能：片库浏览；收藏片单；拟解决支付对接问题。"
+    )
+    assert "ARCH-CONTENT" in arches or "ARCH-FLOW" in arches or arches == ["ARCH-CRUD"]
+    assert "ARCH-TRADE" not in arches
 
 
 def test_match_ignores_negated_pay_keyword():

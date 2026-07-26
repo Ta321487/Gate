@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS claim (
   attach_url VARCHAR(255) NOT NULL DEFAULT '',
   rating INT NULL,
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
-  rated_at DATETIME NULL,
+  rated_at DATETIME NULL
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

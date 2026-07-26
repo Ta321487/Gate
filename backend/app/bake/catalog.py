@@ -349,25 +349,146 @@ def score_catalog(
     return best_key, conf, hits
 
 
+# 路径自洁：各族用自己的硬/软词，不再用「相对峰值」砍次路径（Path B 并集根因）。
+# 旁路语境（预约/内容/交易已出现）下，FLOW 仅保留单据/公卫硬词；「申请/审核/流转」不够。
+_FLOW_SOFT = frozenset({"申请", "审核", "审批", "流转", "递交"})
+_FLOW_TICKET_HARD = frozenset(
+    {
+        "借阅",
+        "借还",
+        "报修",
+        "保修",
+        "维修",
+        "工单",
+        "派发",
+        "派单",
+        "回访",
+        "投诉",
+        "挂失",
+        "申领",
+        "领用",
+        "巡检",
+        "巡查",
+        "报名",
+        "请假",
+        "跟进",
+        "线索",
+        "会签",
+        "申报",
+        "认定",
+        "上报",
+        "分拨",
+        "转办",
+        "随访",
+        "晨检",
+        "晨午检",
+        "密接",
+        "接触者",
+        "病例",
+        "健康监测",
+        "健康打卡",
+        "复工监测",
+        "隔离观察",
+        "健康筛查",
+        "repair",
+        "approval",
+        "workflow",
+    }
+)
+# 公卫「排查」易出现在「勿与…排查系统混淆」；有交易主路径时不单独抬 FLOW
+_FLOW_EVENT_EXTRA = frozenset({"排查", "监测", "处置"})
+# 真交易硬词（不含「支付/销售/成交」：易被范围外句或 CRM 话术误抬）
+_TRADE_HARD = frozenset(
+    {
+        "交易",
+        "二手",
+        "订单",
+        "下单",
+        "购物",
+        "购物车",
+        "交换",
+        "配送",
+        "助餐",
+        "拼单",
+        "预售",
+        "点单",
+        "订餐",
+        "代购",
+        "接单",
+        "结算",
+        "团购",
+        "转卖",
+        "提货",
+        "拍卖",
+        "跑腿",
+        "售票",
+        "点餐",
+        "电商",
+        "直销",
+        "order",
+        "checkout",
+        "cart",
+    }
+)
+# 演示视频 / 背景论坛 / 商城收藏：有其它主路径时不抬内容流
+_CONTENT_AMBIENT = frozenset({"视频", "论坛", "收藏"})
+_STOCK_WEAK = frozenset({"库存"})
+
+
 def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
-    """开题命中的行为原型（score>0），按优先级排序；弱于峰值一半的命中丢弃。"""
+    """开题命中的行为原型：各族自洁后凡过门槛一律进入并集。
+
+    不再用全局峰值 ``min_keep`` 砍次路径（会误伤「预约=1 + 下单=3」类真交叉）。
+    噪声改由各路径自己的硬/软词处理，再交给 reconcile / cross_paths。
+    """
     scored = _catalog_scores(text, ARCHETYPES)
-    # 预约/挂号语境里常写「提交预约申请」「管理员审核办结」，不等于单据审核流；
-    # 若只有这类软词抬 FLOW，会把会议室等壳误降成 GENERIC。
-    if any(k == "ARCH-RESERVE" and s > 0 for k, s, _ in scored):
-        soft_flow = {"申请", "审核", "审批"}
-        trimmed: list[tuple[str, int, list[str]]] = []
-        for k, s, h in scored:
-            if k == "ARCH-FLOW":
-                hard = [x for x in h if x not in soft_flow]
+    has_reserve = any(k == "ARCH-RESERVE" and s > 0 for k, s, _ in scored)
+    has_content = any(k == "ARCH-CONTENT" and s > 0 for k, s, _ in scored)
+    has_trade = any(k == "ARCH-TRADE" and s > 0 for k, s, _ in scored)
+    has_flow = any(k == "ARCH-FLOW" and s > 0 for k, s, _ in scored)
+    side_ctx = has_reserve or has_content or has_trade
+
+    cleaned: list[tuple[str, int, list[str]]] = []
+    for key, _score, hits in scored:
+        if key == "ARCH-FLOW":
+            if side_ctx:
+                allow = set(_FLOW_TICKET_HARD)
+                if not has_trade:
+                    allow |= _FLOW_EVENT_EXTRA
+                hard = [h for h in hits if h in allow and h not in _FLOW_SOFT]
                 if not hard:
                     continue
-                trimmed.append((k, len(hard), hard))
+                cleaned.append((key, len(hard), hard))
             else:
-                trimmed.append((k, s, h))
-        scored = trimmed
-    if not scored:
+                cleaned.append((key, len(hits), list(hits)))
+        elif key == "ARCH-TRADE":
+            hard = [h for h in hits if h in _TRADE_HARD]
+            if not hard:
+                continue
+            cleaned.append((key, len(hard), hard))
+        elif key == "ARCH-CONTENT":
+            if has_trade or has_flow or has_reserve:
+                hard = [h for h in hits if h not in _CONTENT_AMBIENT]
+                if not hard:
+                    continue
+                cleaned.append((key, len(hard), hard))
+            else:
+                cleaned.append((key, len(hits), list(hits)))
+        elif key == "ARCH-STOCK":
+            hard = [h for h in hits if h not in _STOCK_WEAK]
+            if not hard:
+                continue
+            cleaned.append((key, len(hard), hard))
+        else:
+            cleaned.append((key, len(hits), list(hits)))
+
+    if not cleaned:
         return ["ARCH-CRUD"]
+
+    # 有任一主路径时丢掉纯 CRUD 抬分（「信息维护」等）
+    mains = [(k, s, h) for k, s, h in cleaned if k != "ARCH-CRUD"]
+    kept = mains if mains else cleaned
+
     tie_rank = {k: i for i, k in enumerate(_ARCHETYPE_TIE_PRIORITY)}
     title_s = (title or "").strip()
 
@@ -376,14 +497,7 @@ def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
             return 0
         return sum(1 for h in hits if h and h in title_s)
 
-    scored.sort(key=lambda t: (-t[1], -_title_hits(t[2]), tie_rank.get(t[0], 99)))
-    best = scored[0][1]
-    # 全域通用弱命中过滤：
-    # - 峰值≥2 时丢掉仅 1 分噪声（范围外「支付」、顺口「库存」）
-    # - 仍保留 score≥2 的次路径（借阅+二手：FLOW=3 / TRADE=6 都进并集）
-    # - 峰值仅 1 时保留全部 1 分命中（如快递「入库」STOCK）
-    min_keep = 1 if best <= 1 else 2
-    kept = [(k, s, h) for k, s, h in scored if s >= min_keep]
+    kept.sort(key=lambda t: (-t[1], -_title_hits(t[2]), tie_rank.get(t[0], 99)))
     return [k for k, _, _ in kept] or ["ARCH-CRUD"]
 
 

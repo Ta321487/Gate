@@ -32,6 +32,17 @@ async def lifespan(_app: FastAPI):
             _hydrate_ds_settings(get_settings(), cfg)
     except Exception:  # noqa: BLE001
         pass
+    # 重启后无内存 Task 的 running 任务会永远卡在进度条（如 pack=91%）
+    try:
+        from app.services.jobs import fail_orphaned_jobs
+
+        n = await fail_orphaned_jobs()
+        if n:
+            import logging
+
+            logging.getLogger("gf.job").warning("marked %s orphaned job(s) failed", n)
+    except Exception:  # noqa: BLE001
+        pass
     yield
 
 

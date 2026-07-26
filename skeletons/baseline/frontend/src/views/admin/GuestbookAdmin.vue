@@ -96,7 +96,7 @@ onMounted(load)
 .quote {
   margin: 0 0 12px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--portal-bg, #f5f7fa) 85%, var(--portal-mix, #fff));
+  background: color-mix(in srgb, var(--portal-bg, #f5f7fa) 72%, var(--portal-surface, #fff));
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
   border-radius: var(--portal-radius-sm, 4px);
   white-space: pre-wrap;
