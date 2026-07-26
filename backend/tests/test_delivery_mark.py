@@ -49,7 +49,7 @@ def test_apply_delivery_mark_ready_then_delivered(tmp_path):
 
 
 def test_apply_delivery_mark_none_to_delivered_when_downloadable(tmp_path):
-    """质检可下时允许一步标已交付（跳过可交付暂存）。"""
+    """质检可下时允许一步标已发出（跳过已审待发暂存）。"""
     zip_file = tmp_path / "demo.zip"
     zip_file.write_bytes(b"PK")
     p = SimpleNamespace(

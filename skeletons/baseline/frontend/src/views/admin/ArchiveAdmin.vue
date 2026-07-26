@@ -667,13 +667,13 @@ onMounted(async () => {
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.muted { margin-left: 8px; color: #909399; font-size: 12px; }
+.muted { margin-left: 8px; color: var(--portal-muted, #909399); font-size: 12px; }
 .cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cover-preview {
   width: 96px; height: 96px; object-fit: cover;
   border-radius: var(--portal-radius-sm, 8px);
   border: var(--portal-border-width, 1px) solid var(--portal-line, #e4e7ed);
-  background: #f5f7fa;
+  background: color-mix(in srgb, var(--portal-bg, #f5f7fa) 72%, var(--portal-surface, #fff));
 }
 .gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .gallery-list { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -2,7 +2,13 @@
  * 旧 id（theme-*）保留为别名，兼容已生成工程
  * --portal-mix：color-mix 淡化基点（浅色主题混白，深色主题混黑）
  * --portal-scheme：light|dark，供 chrome / Element Plus 桥接
- * PostCSS：@import 必须在所有规则之前 */
+ * PostCSS：@import 必须在所有规则之前
+ *
+ * 层叠约定（易踩坑）：
+ *  - 行业皮在 @import 的 themes/*.css 里
+ *  - :root 只放 scheme/mix 兜底，禁止写 bg/ink/surface，否则会盖掉 @import 的深色皮，
+ *    再被下方 [data-theme$="-night"] 写成 mix=#000 → 浅字浅底 + 黑块回复栏
+ */
 
 @import "./themes/shop.css";
 @import "./themes/dorm.css";
@@ -33,8 +39,15 @@
 @import "./themes/grade.css";
 @import "./themes/intern.css";
 @import "./themes/parcel.css";
+@import "./themes/dating.css";
 
-:root,
+/* 仅 scheme/mix；完整色板见 [data-theme=…] 与 themes/* */
+:root {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  color-scheme: light;
+}
+
 [data-theme="lib-ink"],
 [data-theme="theme-ink"] {
   --portal-scheme: light;
@@ -53,7 +66,7 @@
   color-scheme: light;
 }
 
-/* 深色配色：统一 scheme / mix，避免浅字落在未适配的浅底控件上 */
+/* 深色配色：统一 scheme / mix（色板仍由各 *-night / cinema / vinyl 块提供） */
 [data-theme$="-night"],
 [data-theme="theme-night"],
 [data-theme="media-cinema"],
@@ -65,6 +78,8 @@
 
 [data-theme="lib-grove"],
 [data-theme="theme-grove"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef5f0;
   --portal-bg-glow: rgba(22, 101, 52, 0.12);
   --portal-surface: #ffffff;
@@ -76,10 +91,13 @@
   --portal-accent-soft: #dcfce7;
   --portal-cover: linear-gradient(160deg, #22c55e, #166534);
   --portal-shadow-color: rgba(22, 101, 52, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="lib-amber"],
 [data-theme="theme-clay"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f6f1e8;
   --portal-bg-glow: rgba(180, 120, 40, 0.12);
   --portal-surface: #fffdf8;
@@ -91,9 +109,12 @@
   --portal-accent-soft: #f5e6c8;
   --portal-cover: linear-gradient(160deg, #d4a017, #8a5a20);
   --portal-shadow-color: rgba(154, 107, 47, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="lib-plum"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #f4eef2;
   --portal-bg-glow: rgba(136, 48, 96, 0.1);
   --portal-surface: #fffafc;
@@ -105,9 +126,12 @@
   --portal-accent-soft: #f3d9e8;
   --portal-cover: linear-gradient(160deg, #c45a8c, #7a2e58);
   --portal-shadow-color: rgba(122, 46, 88, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="lib-slate"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
   --portal-bg: #eef1f5;
   --portal-bg-glow: rgba(71, 85, 105, 0.12);
   --portal-surface: #ffffff;
@@ -119,19 +143,23 @@
   --portal-accent-soft: #e2e8f0;
   --portal-cover: linear-gradient(160deg, #64748b, #334155);
   --portal-shadow-color: rgba(51, 65, 85, 0.1);
+  color-scheme: light;
 }
 
 [data-theme="lib-night"],
 [data-theme="theme-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #000000;
   --portal-bg: #0f1720;
   --portal-bg-glow: rgba(94, 234, 212, 0.08);
   --portal-surface: #18232e;
   --portal-ink: #e8eef2;
   --portal-muted: #8aa0ae;
   --portal-line: #2a3a48;
-  --portal-brand: #5eead4;
-  --portal-accent: #2dd4bf;
+  --portal-brand: #53ada2;
+  --portal-accent: #1f9486;
   --portal-accent-soft: #134e4a;
   --portal-cover: linear-gradient(160deg, #134e4a, #0f1720);
   --portal-shadow-color: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }

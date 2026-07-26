@@ -47,10 +47,9 @@ def _dorm_schema(title: str) -> dict[str, Any]:
 
 def _property_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """物业报修：小区住户默认；校园公寓/高校物业走 campus。"""
-    from app.bake.scene_scan import scene_property
+    from app.bake.scene_scan import scene_for
 
-    t = f"{title or ''}\n{proposal_text or ''}"
-    if scene_property(t) == "campus":
+    if scene_for("DOM-PROPERTY", title, proposal_text) == "campus":
         return standalone_ticket_schema(
             title,
             domain="DOM-PROPERTY",
@@ -127,10 +126,9 @@ def _property_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _it_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    from app.bake.scene_scan import scene_it
+    from app.bake.scene_scan import scene_for
 
-    t = f"{title or ''}\n{proposal_text or ''}"
-    enterprise = scene_it(t) == "enterprise"
+    enterprise = scene_for("DOM-IT", title, proposal_text) == "enterprise"
     if enterprise:
         return standalone_ticket_schema(
             title,

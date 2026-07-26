@@ -159,7 +159,7 @@ DOMAINS: dict = {
     "DOM-BLOG": {
         "label": "博客",
         "keywords": ["博客", "个人博客", "文章系统", "资讯发布", "CMS", "博文"],
-        "match_hint": "适用：个人博客/资讯文章浏览收藏。勿与论坛（回帖互动）或影视综混淆。",
+        "match_hint": "适用：个人博客/博文浏览收藏。校园院刊/学工资讯也走本域。勿与论坛（回帖互动）或影视综混淆。",
         "entities": ["Article", "Category", "Favorite", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["浏览文章 → 收藏"],

@@ -98,7 +98,7 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0 0 14px; color: #64748b; font-size: 13px; }
+.hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .acts { display: flex; gap: 10px; flex-wrap: wrap; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
@@ -110,10 +110,10 @@ onMounted(load)
   background: var(--portal-surface, #fff);
 }
 .meta h3 { margin: 0 0 6px; font-size: 15px; }
-.muted { margin: 0; color: #94a3b8; font-size: 12px; }
+.muted { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .warn { margin: 8px 0 0; color: #b45309; font-size: 12px; }
 .excerpt { margin-top: 8px; max-height: 72px; overflow: hidden; }
 .row { margin-top: 12px; display: flex; gap: 10px; }
-.empty { margin-top: 24px; color: #94a3b8; text-align: center; }
+.empty { margin-top: 24px; color: var(--portal-muted, #94a3b8); text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

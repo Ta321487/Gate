@@ -155,7 +155,7 @@ defineExpose({ reload: load })
   padding: 2px 8px;
   border-radius: 999px;
   color: var(--portal-accent, #0b6e75);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, #fff);
+  background: var(--portal-accent-soft, #d7eef0);
   border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 28%, transparent);
 }
 .rec-lead {
@@ -174,7 +174,7 @@ defineExpose({ reload: load })
 }
 .rec-rail::-webkit-scrollbar { height: 6px; }
 .rec-rail::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, #cbd5e1);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #cbd5e1));
   border-radius: 999px;
 }
 .rec-tile {
@@ -192,7 +192,7 @@ defineExpose({ reload: load })
   aspect-ratio: 3 / 4;
   border-radius: 10px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, #e2e8f0);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, var(--portal-line, #e2e8f0));
   box-shadow: 0 6px 16px color-mix(in srgb, var(--portal-ink, #0f172a) 12%, transparent);
 }
 .poster img {
@@ -208,7 +208,7 @@ defineExpose({ reload: load })
   place-items: center;
   font-size: 28px;
   font-weight: 700;
-  color: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #0f172a);
+  color: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, var(--portal-ink, #0f172a));
 }
 .why {
   position: absolute;
@@ -251,7 +251,7 @@ defineExpose({ reload: load })
   margin-top: 8px;
   width: 100%;
   border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-line, #e2e8f0));
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, #fff);
+  background: var(--portal-accent-soft, #d7eef0);
   color: var(--portal-accent, #0b6e75);
   border-radius: 8px;
   padding: 5px 0;
@@ -260,7 +260,7 @@ defineExpose({ reload: load })
   cursor: pointer;
 }
 .tile-cta:hover {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 16%, #fff);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, var(--portal-accent-soft, #d7eef0));
 }
 @media (max-width: 560px) {
   .rec-tile { flex-basis: 118px; width: 118px; }

@@ -2,6 +2,7 @@
 
 路径键由 ARCH 并集归一：F=单据流族 / T=交易 / R=预约。
 具名单域单路径不走本表；GENERIC 多路径必须命中白名单且 defense_ready。
+具名域若目录能力已覆盖该并集（如 DOM-HOTEL=TR）视为单域满配，可 full。
 硕博课题、真实业务全流程不在接题范围（见 HANDOFF「接题边界」）。
 """
 
@@ -95,8 +96,11 @@ def evaluate_cross_path(
 
     具名单域且单路径键（C/F/T/R）→ 不拦截（由域门禁负责）。
     多路径或 GENERIC 多路径 → 必须白名单且 defense_ready。
+    具名域若 DOMAIN_CAPABILITIES 已覆盖该并集（如 HOTEL=TR）→ 放行。
     """
-    key = path_key_from_archetypes(archetypes, primary=primary)
+    raw = list(archetypes) if not isinstance(archetypes, str) else archetypes
+    arches = normalize_archetypes(raw, primary=primary)
+    key = path_key_from_flags(*path_flags(arches))
     entry = lookup_cross_path(key)
     multi = len(key) > 1  # FT/FR/TR/FTR
     named = (domain or "") not in ("", "DOM-GENERIC")
@@ -111,7 +115,16 @@ def evaluate_cross_path(
 
     # 多路径交叉
     if named and multi:
-        # 具名域不应残留多 ARCH（reconcile 应已降 GENERIC）；仍拦一道
+        # 目录能力已覆盖该并集（如 DOM-HOTEL = 预约+订单）→ 视同单域满配，不拦。
+        # 盖不住的具名域仍 reject（应由 reconcile 降 GENERIC；此处兜底）。
+        from app.bake.catalog import domain_covers_archetypes
+
+        if (
+            entry
+            and entry.defense_ready
+            and domain_covers_archetypes(domain, arches)
+        ):
+            return key, entry, None
         return (
             key,
             entry,

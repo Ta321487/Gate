@@ -23,7 +23,7 @@
         },
         {
           "key": "isbn",
-          "label": "档口/门店",
+          "label": "门店",
           "type": "string"
         },
         {

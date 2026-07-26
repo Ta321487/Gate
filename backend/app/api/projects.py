@@ -96,7 +96,7 @@ async def list_projects(
     elif filter == "generating":
         items = [p for p in items if p.status == "generating"]
     elif filter == "done":
-        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工可交付分离）
+        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离）
         items = [
             p
             for p in items
@@ -432,7 +432,7 @@ async def patch_match(project_id: str, body: MatchUpdate, db: AsyncSession = Dep
 async def patch_delivery(
     project_id: str, body: DeliveryMarkUpdate, db: AsyncSession = Depends(get_db)
 ):
-    """none → ready（可交付）→ delivered（已交付）；与机器质检 zip_ready 分离。"""
+    """none → ready（已审待发）→ delivered（已发出）；与机器质检 zip_ready 分离。"""
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")

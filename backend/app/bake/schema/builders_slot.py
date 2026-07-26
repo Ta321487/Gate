@@ -5,22 +5,43 @@ from __future__ import annotations
 from typing import Any
 
 from app.bake.schema.shells import (
-    _copy_scan_text,
     order_shell_schema,
     slot_shell_schema,
 )
 
 def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    from app.bake.scene_scan import scene_shop
+    """校园二手 vs 社会零售（鲜花/数码店等共用）：只分两档，不按售卖主体开皮。"""
+    from app.bake.scene_scan import shop_product_kind
 
-    t = _copy_scan_text(title, proposal_text)
-    campus = scene_shop(t) == "campus"
-    brow = "校园商城" if campus else "在线商城"
-    lead = (
-        "验证码登录；浏览商品、加入购物车并提交订单（演示无真支付）。"
-        if not campus
-        else "验证码登录；浏览校园商品、加入购物车并提交订单（演示无真支付）。"
-    )
+    campus = shop_product_kind(title, proposal_text) == "campus"
+    if campus:
+        brow, lead = (
+            "校园商城",
+            "验证码登录；浏览校园商品、加入购物车并提交订单（演示无真支付）。",
+        )
+        fields = [
+            {"key": "title", "label": "商品名", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
+            {"key": "isbn", "label": "货号", "type": "string"},
+            {"key": "conditionGrade", "label": "成色", "type": "string"},
+            {"key": "sellerNote", "label": "卖家备注", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
+            {"key": "stock", "label": "库存", "type": "number"},
+        ]
+    else:
+        brow, lead = (
+            "在线商城",
+            "验证码登录；浏览商品、加入购物车并提交订单（演示无真支付）。",
+        )
+        # 零售档：无「成色」（二手专用）；行业名跟题名/开题，不在此开鲜花/服装分皮
+        fields = [
+            {"key": "title", "label": "商品名", "type": "string"},
+            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
+            {"key": "isbn", "label": "货号", "type": "string"},
+            {"key": "sellerNote", "label": "商品说明", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
+            {"key": "stock", "label": "库存", "type": "number"},
+        ]
     return order_shell_schema(
         title,
         domain="DOM-SHOP",
@@ -31,15 +52,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         archive_key="product",
         archive_label="商品",
         archive_plural="商品",
-            archive_fields=[
-            {"key": "title", "label": "商品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
-            {"key": "isbn", "label": "货号", "type": "string"},
-            {"key": "conditionGrade", "label": "成色", "type": "string"},
-            {"key": "sellerNote", "label": "卖家备注", "type": "string"},
-            {"key": "category", "label": "分类", "type": "select"},
-            {"key": "stock", "label": "库存", "type": "number"},
-        ],
+        archive_fields=fields,
         archive_menu_admin="商品管理",
         archive_menu_user="商品浏览",
         users_menu="用户管理",
@@ -56,15 +69,15 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    from app.bake.scene_scan import scene_food
+    """食堂 vs 社会餐饮：只分两档，不按菜系开皮。"""
+    from app.bake.scene_scan import food_product_kind
 
-    t = _copy_scan_text(title, proposal_text)
-    canteen = scene_food(t) == "campus"
+    canteen = food_product_kind(title, proposal_text) == "canteen"
     if canteen:
         admin, sub, brow, win, notice = "食堂主管（总管）", "档口管理员", "食堂点餐", "窗口", "食堂公告"
         body = "下单后到对应窗口取餐或按约定配送；演示无真支付。"
     else:
-        admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "档口/门店", "门店公告"
+        admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "门店", "门店公告"
         body = "支持堂食、自取或外卖配送演示；无真支付。"
     return order_shell_schema(
         title,
@@ -109,19 +122,19 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """会议室 / 琴房 / 体育场 / 自习室 / 座位等共用时段预约壳，文案跟题名/开题走。"""
-    t = _copy_scan_text(title, proposal_text)
-    if any(k in t for k in ("琴房", "排练", "舞蹈")):
-        noun, remark, admin, sub = "琴房", "排练说明", "琴房管理员（总管）", "琴房值班"
-    elif any(k in t for k in ("体育场", "体育馆", "球馆", "羽毛球场", "篮球场", "足球场", "游泳")):
-        noun, remark, admin, sub = "场地", "预约说明", "场馆主管（总管）", "场馆管理员"
-    elif any(k in t for k in ("座位", "占座", "选座")):
-        noun, remark, admin, sub = "座位", "用途说明", "座位管理员（总管）", "座位管理员"
-    elif any(k in t for k in ("自习室", "研习室", "研讨室")):
-        noun, remark, admin, sub = "自习室", "用途说明", "教务主管（总管）", "自习室管理员"
-    elif any(k in t for k in ("工位", "实验室", "实训室")):
-        noun, remark, admin, sub = "实验室", "使用说明", "实验室主管（总管）", "实验室管理员"
-    elif "会议" in t:
-        noun, remark, admin, sub = "会议室", "会议主题", "会务主管（总管）", "会务管理员"
+    from app.bake.scene_scan import meeting_product_kind
+
+    noun_by_kind = {
+        "study": ("自习室", "用途说明", "教务主管（总管）", "自习室管理员"),
+        "piano": ("琴房", "排练说明", "琴房管理员（总管）", "琴房值班"),
+        "gym": ("场地", "预约说明", "场馆主管（总管）", "场馆管理员"),
+        "seat": ("座位", "用途说明", "座位管理员（总管）", "座位管理员"),
+        "lab": ("实验室", "使用说明", "实验室主管（总管）", "实验室管理员"),
+        "meeting": ("会议室", "会议主题", "会务主管（总管）", "会务管理员"),
+    }
+    picked = noun_by_kind.get(meeting_product_kind(title, proposal_text))
+    if picked:
+        noun, remark, admin, sub = picked
     else:
         noun, remark, admin, sub = "场地", "预约说明", "场地主管（总管）", "场地管理员"
     return slot_shell_schema(
@@ -161,10 +174,10 @@ def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """门诊 / 疫苗接种 / 宠物医院：同号源预约壳；宠物走 scene_hospital=adopt。"""
-    from app.bake.scene_scan import scene_hospital
+    from app.bake.scene_scan import hospital_product_kind
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_hospital(t) == "adopt" or any(k in t for k in ("宠物", "宠医", "爱宠", "猫狗", "犬猫")):
+    kind = hospital_product_kind(title, proposal_text)
+    if kind == "pet":
         noun, remark, admin, sub = "医生", "宠物/就诊人", "宠物医院主管（总管）", "挂号员"
         user, brow, resv = "宠主", "宠物挂号", "挂号"
         fee, isbn, cat, title_lab = "挂号费(元)", "职称/说明", "科室", "医生"
@@ -172,7 +185,7 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "号源有限；请填写宠物昵称与就诊人；按时到诊；就诊完成后由前台办结；取消请提前操作。"
         notice_t, notice_page, reg, done = "挂号须知", "宠物医院公告", "注册后可以宠主身份挂号", "就诊"
         menu_u, points_mid = "选医生", "医生检索"
-    elif any(k in t for k in ("疫苗", "HPV", "接种预约", "接种点")):
+    elif kind == "vaccine":
         noun, remark, admin, sub = "接种门诊", "接种人", "接种点主管（总管）", "预约管理员"
         user, brow, resv = "接种人", "疫苗预约", "预约"
         fee, isbn, cat, title_lab = "费用(元)", "针次/说明", "疫苗类型", "门诊/疫苗名称"
@@ -225,10 +238,9 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """车位：校园 vs 商场/小区车场（同 _food_schema 分支）。"""
-    from app.bake.scene_scan import scene_parking
+    from app.bake.scene_scan import scene_parking_parts
 
-    t = _copy_scan_text(title, proposal_text)
-    campus = scene_parking(t) == "campus"
+    campus = scene_parking_parts(title, proposal_text) == "campus"
     if campus:
         brow, lead, admin = (
             "校园车位",
@@ -278,8 +290,9 @@ def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """美发 / 健身私教：同服务预约壳，文案跟题名/开题走（同 _meeting_schema）。"""
-    t = _copy_scan_text(title, proposal_text)
-    if any(k in t for k in ("健身", "私教", "瑜伽", "游泳私教", "器械课")):
+    from app.bake.scene_scan import salon_product_kind
+
+    if salon_product_kind(title, proposal_text) == "fitness":
         noun, staff, admin, user = "课程", "默认教练", "场馆主管（总管）", "会员"
         title_lab, brow, place, notice_page = "课程/私教项目", "健身预约", "到馆", "场馆公告"
         lead = "验证码登录；选择私教/团课与时段预约到馆；到馆后由前台登记完成。"

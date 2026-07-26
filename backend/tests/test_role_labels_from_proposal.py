@@ -30,6 +30,32 @@ def test_event_duty_label_from_suifangyuan():
     assert _label("DOM-EVENT", "duty_clerk", text) == "随访员"
 
 
+def test_event_wanggeyuan_is_portal_user_not_duty_clerk():
+    """开题「网格员」是一线填报岗，不得扫成 duty_clerk 子管。"""
+    text = "社区网格员维护居民档案并提交上报；值班员确认处置。"
+    assert _label("DOM-EVENT", "duty_clerk", text) == "值班员"
+    schema = {
+        "roles": {
+            "user": {"id": "user", "label": "网格员"},
+            "admin": {"id": "admin", "label": "主管（总管）"},
+            "subadmin": {"id": "subadmin", "label": "值班员"},
+        },
+        "entities": {
+            "archive": {
+                "fields": [
+                    {"key": "title", "label": "对象姓名"},
+                    {"key": "author", "label": "责任网格"},
+                ]
+            }
+        },
+    }
+    out = attach_staff_posts(schema, "DOM-EVENT", proposal_text=text)
+    assert out["roles"]["user"]["label"] == "网格员"
+    assert out["roles"]["subadmin"]["label"] == "值班员"
+    author = next(f for f in out["entities"]["archive"]["fields"] if f["key"] == "author")
+    assert author["label"] == "网格员"
+
+
 def test_food_rider_label_peisongyuan():
     text = "档口接单后由配送员送到宿舍楼下。"
     posts = staff_posts_for_domain("DOM-FOOD", proposal_text=text)
@@ -73,3 +99,19 @@ def test_attach_user_label_from_proposal():
     )
     assert out["roles"]["user"]["label"] == "实习生"
     assert out["roles"]["staff_posts"][0]["label"] == "辅导员"
+
+
+def test_attach_hospital_keeps_pet_when_body_says_patient():
+    schema = {
+        "roles": {
+            "user": {"id": "patient", "label": "宠主"},
+            "admin": {"id": "admin", "label": "宠物医院主管（总管）"},
+        }
+    }
+    out = attach_staff_posts(
+        schema,
+        "DOM-HOSPITAL",
+        title="宠物医院挂号预约管理系统",
+        proposal_text="患者注册登录；校医院门诊挂号预约。",
+    )
+    assert out["roles"]["user"]["label"] == "宠主"

@@ -80,10 +80,108 @@ def test_is_dark_theme_covers_cinema_and_night():
     assert is_dark_theme("music-vinyl")
     assert is_dark_theme("lib-night")
     assert is_dark_theme("theme-night")
+    assert is_dark_theme("dating-night")
     assert not is_dark_theme("media-amber")
     assert not is_dark_theme("lib-ink")
     assert not is_dark_theme(None)
     assert not is_dark_theme("")
+
+
+def test_all_catalog_themes_declare_scheme_mix_and_colors():
+    """每个目录主题（含浅色）必须自带 scheme/mix/bg/ink，避免层叠残缺。"""
+    from pathlib import Path
+    import re
+
+    from app.bake.domains import DOMAINS
+
+    root = Path(__file__).resolve().parents[2] / "skeletons/baseline/frontend/src/styles"
+    css = (root / "themes.css").read_text(encoding="utf-8")
+    for p in sorted((root / "themes").glob("*.css")):
+        css += "\n" + p.read_text(encoding="utf-8")
+
+    rule_pat = re.compile(
+        r"((?:\[[^\]]+\]\s*,\s*)*\[[^\]]+\])\s*\{([^}]+)\}",
+        re.DOTALL,
+    )
+    missing = []
+    for domain, meta in sorted(DOMAINS.items()):
+        for t in meta.get("themes") or []:
+            tid = t["id"]
+            needle = f'[data-theme="{tid}"]'
+            ok = False
+            for sel, body in rule_pat.findall(css):
+                if needle not in sel:
+                    continue
+                if (
+                    "--portal-bg:" in body
+                    and "--portal-ink:" in body
+                    and "--portal-mix:" in body
+                    and "--portal-scheme:" in body
+                ):
+                    ok = True
+                    break
+            if not ok:
+                missing.append(f"{domain}:{tid}")
+    assert not missing, "themes missing full tokens: " + ", ".join(missing)
+
+
+def test_root_must_not_override_imported_theme_colors():
+    """:root 若写 bg/ink，会盖掉 @import 的行业皮，再叠 night 的 mix=#000 → 留言黑块。"""
+    from pathlib import Path
+    import re
+
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "skeletons/baseline/frontend/src/styles/themes.css"
+    )
+    css = path.read_text(encoding="utf-8")
+    # 只检查顶层 :root { ... }，不含 [data-theme=…] 合并选择器
+    roots = re.findall(r"(?m)^:root\s*\{([^}]+)\}", css)
+    assert roots, "expected a standalone :root block"
+    for body in roots:
+        assert "--portal-bg:" not in body
+        assert "--portal-ink:" not in body
+        assert "--portal-surface:" not in body
+
+
+def test_dark_theme_accent_usable_as_primary_button():
+    """深色皮 accent 过浅时，主按钮/editorial 要点会洗成惨白块。"""
+    from pathlib import Path
+    import re
+
+    from app.bake.domains import DOMAINS
+
+    root = Path(__file__).resolve().parents[2] / "skeletons/baseline/frontend/src/styles"
+    css = (root / "themes.css").read_text(encoding="utf-8")
+    for p in sorted((root / "themes").glob("*.css")):
+        css += "\n" + p.read_text(encoding="utf-8")
+
+    def lum(h: str) -> float:
+        h = h.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+
+    rule_pat = re.compile(
+        r"((?:\[[^\]]+\]\s*,\s*)*\[[^\]]+\])\s*\{([^}]+)\}",
+        re.DOTALL,
+    )
+    too_light = []
+    for domain, meta in sorted(DOMAINS.items()):
+        for t in meta.get("themes") or []:
+            tid = t["id"]
+            if not is_dark_theme(tid):
+                continue
+            needle = f'[data-theme="{tid}"]'
+            for sel, body in rule_pat.findall(css):
+                if needle not in sel or "--portal-bg:" not in body:
+                    continue
+                m = re.search(r"--portal-accent:\s*(#[0-9a-fA-F]+)", body)
+                if m and lum(m.group(1)) > 0.55:
+                    too_light.append(f"{domain}:{tid}={m.group(1)}")
+                break
+    assert not too_light, "dark accents too light for primary buttons: " + ", ".join(too_light)
 
 
 def test_resolve_style_override_shared():

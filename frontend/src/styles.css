@@ -302,7 +302,9 @@ button.filter-pill.on {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--mono);
-  background: color-mix(in srgb, var(--panel, #fff) 92%, #888 8%);
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 6px;
 }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

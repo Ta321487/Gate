@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from app.bake.schema.shells import (
-    _copy_scan_text,
     _with_portal_banners,
     archive_favorites_schema,
     archive_ticket_schema,
@@ -13,9 +12,9 @@ from app.bake.schema.shells import (
 
 def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影视点播：商业默认；校园媒资走 campus。"""
-    from app.bake.scene_scan import scene_media
+    from app.bake.scene_scan import scene_content_parts
 
-    campus = scene_media(_copy_scan_text(title, proposal_text)) == "campus"
+    campus = scene_content_parts(title, proposal_text) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -73,9 +72,9 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """在线音乐：商业默认；校园曲库走 campus。"""
-    from app.bake.scene_scan import scene_music
+    from app.bake.scene_scan import scene_content_parts
 
-    campus = scene_music(_copy_scan_text(title, proposal_text)) == "campus"
+    campus = scene_content_parts(title, proposal_text) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -133,9 +132,9 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """论坛：校园 BBS 默认；兴趣/小区社区走 community。"""
-    from app.bake.scene_scan import scene_forum
+    from app.bake.scene_scan import scene_for
 
-    community = scene_forum(_copy_scan_text(title, proposal_text)) == "community"
+    community = scene_for("DOM-FORUM", title, proposal_text) == "community"
     return _with_portal_banners(
         archive_ticket_schema(
             title,
@@ -215,10 +214,14 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """博客：个人站默认；校园院刊/学工资讯走 campus。"""
-    from app.bake.scene_scan import scene_blog
+    """博客：个人站默认；校园院刊/学工资讯走 campus。
 
-    campus = scene_blog(_copy_scan_text(title, proposal_text)) == "campus"
+    上架/下架走 softDelete（shelfCopy：在架/已下架），不再叠一层 stock 开关，
+    避免「可阅读/已阅读」与软删文案打架、看起来像资讯 CMS。
+    """
+    from app.bake.scene_scan import scene_content_parts
+
+    campus = scene_content_parts(title, proposal_text) == "campus"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -236,7 +239,8 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "summary", "label": "摘要", "type": "textarea"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
                 {"key": "category", "label": "分类", "type": "select"},
-                {"key": "stock", "label": "可阅读", "type": "number"},
+                # 列仍保留供 ArchiveStore；展示隐藏，上下架只靠 softDelete
+                {"key": "stock", "label": "在架", "type": "hidden"},
             ],
             archive_menu_admin="文章管理",
             archive_menu_user="文章检索",
@@ -248,14 +252,18 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 else "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。"
             ),
             auth_points=["验证码登录", "文章检索与阅读", "收藏订阅"],
-            register_hint="注册后可阅读文章并收藏",
+            register_hint="注册后可浏览文章并收藏",
             notice_title="阅读须知",
             notice_body="文章仅供学习演示；转载请注明出处。内容由主编维护发布。",
             notice_page_title="站点公告",
-            notice_page_lead="上新、维护与征稿通知，点击条目阅读全文。",
+            notice_page_lead=(
+                "上新、维护与征稿通知，点击条目阅读全文。"
+                if campus
+                else "上新与维护通知，点击条目阅读全文。"
+            ),
             favorites_page_lead="收藏喜欢的文章，方便回看。",
             body_field="isbn",
-            stock_display="toggle",
+            stock_display="hidden",
             soft_delete=True,
         ),
         [
@@ -264,11 +272,14 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "lead": (
                     "教学、学工、活动资讯分类浏览富文本正文。"
                     if campus
-                    else "技术、随笔、资讯分类浏览富文本正文。"
+                    else "技术、随笔、教程分类浏览富文本正文。"
                 ),
             },
             {"title": "收藏订阅", "lead": "喜欢的文章一键收藏，方便回看。"},
-            {"title": "站点公告", "lead": "上新与征稿通知见公告栏。"},
+            {
+                "title": "站点公告",
+                "lead": "上新与征稿通知见公告栏。" if campus else "上新与维护通知见公告栏。",
+            },
             {"title": "猜你喜欢", "lead": "根据阅读偏好推荐文章。"},
             {"title": "分类阅读", "lead": "按分类快速进入感兴趣的专栏。"},
         ],

@@ -31,5 +31,16 @@ TICKET_RULES_BY_DOMAIN: dict[str, dict[str, Any]] = {
 }
 
 
-def rules_for(domain: str | None) -> dict[str, Any]:
-    return dict(TICKET_RULES_BY_DOMAIN.get(domain or "") or {})
+def rules_for(
+    domain: str | None,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> dict[str, Any]:
+    out = dict(TICKET_RULES_BY_DOMAIN.get(domain or "") or {})
+    if domain == "DOM-PARCEL":
+        from app.bake.scene_scan import scene_for
+
+        if scene_for("DOM-PARCEL", title, proposal_text) == "community":
+            out["pickup_place"] = "小区驿站前台"
+    return out

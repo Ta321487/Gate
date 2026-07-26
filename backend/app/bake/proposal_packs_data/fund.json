@@ -4,7 +4,7 @@
   "anchor_domain": "DOM-FUND",
   "title": "基于 Spring Boot 与 Vue 的高校学生资助奖学金申请系统的设计与实现",
   "system_name": "高校学生资助奖学金申请系统",
-  "scene": "学生资助 / 奖学金申请",
+  "scene": "学生资助奖学金申请",
   "user_role": "学生",
   "admin_role": "资助管理人员",
   "problem": "奖助学金、困难补助若靠表格汇总与线下签字，容易出现材料分散、审核进度不透明与发放台账难追溯等问题。",

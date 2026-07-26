@@ -81,6 +81,49 @@ function labelOf(name) {
   return stateLabels.value[name] || name || '未知'
 }
 
+/** 图表文字/轴线跟门户 token，避免深色皮肤轴标发黑不可读 */
+function portalChartInk() {
+  const s = getComputedStyle(document.documentElement)
+  return {
+    ink: s.getPropertyValue('--portal-ink').trim() || '#15202b',
+    muted: s.getPropertyValue('--portal-muted').trim() || '#6b7c8a',
+    line: s.getPropertyValue('--portal-line').trim() || '#d5dde3',
+    accent: s.getPropertyValue('--portal-accent').trim() || '#0b6e75',
+  }
+}
+
+function withPortalChartTheme(opt) {
+  if (!opt) return opt
+  const c = portalChartInk()
+  const out = {
+    ...opt,
+    color: opt.color || [c.accent, '#60a5fa', '#f59e0b', '#34d399', '#f472b6'],
+    textStyle: { ...(opt.textStyle || {}), color: c.ink },
+  }
+  if (opt.legend) {
+    out.legend = {
+      ...opt.legend,
+      textStyle: { ...(opt.legend.textStyle || {}), color: c.muted },
+    }
+  }
+  if (opt.xAxis) {
+    const xa = { ...opt.xAxis }
+    xa.axisLabel = { ...(xa.axisLabel || {}), color: c.muted }
+    xa.axisLine = { ...(xa.axisLine || {}), lineStyle: { color: c.line } }
+    out.xAxis = xa
+  }
+  if (opt.yAxis) {
+    const ya = { ...opt.yAxis }
+    ya.axisLabel = { ...(ya.axisLabel || {}), color: c.muted }
+    ya.splitLine = {
+      ...(ya.splitLine || {}),
+      lineStyle: { color: c.line },
+    }
+    out.yAxis = ya
+  }
+  return out
+}
+
 function fillTrend(raw) {
   const map = {}
   for (const r of raw || []) {
@@ -167,21 +210,21 @@ const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || stockOpt.v
 function render() {
   if (statusOpt.value && statusEl.value) {
     if (!statusChart) statusChart = echarts.init(statusEl.value)
-    statusChart.setOption(statusOpt.value, true)
+    statusChart.setOption(withPortalChartTheme(statusOpt.value), true)
   } else if (statusChart) {
     statusChart.dispose()
     statusChart = null
   }
   if (trendOpt.value && trendEl.value) {
     if (!trendChart) trendChart = echarts.init(trendEl.value)
-    trendChart.setOption(trendOpt.value, true)
+    trendChart.setOption(withPortalChartTheme(trendOpt.value), true)
   } else if (trendChart) {
     trendChart.dispose()
     trendChart = null
   }
   if (stockOpt.value && stockEl.value) {
     if (!stockChart) stockChart = echarts.init(stockEl.value)
-    stockChart.setOption(stockOpt.value, true)
+    stockChart.setOption(withPortalChartTheme(stockOpt.value), true)
   } else if (stockChart) {
     stockChart.dispose()
     stockChart = null

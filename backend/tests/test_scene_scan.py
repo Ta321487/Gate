@@ -102,10 +102,24 @@ class SceneScanContractTests(unittest.TestCase):
             proposal_text="社区网格员维护居民档案。",
         )
         self.assertEqual(community["entities"]["archive"].get("label"), "对象")
+        # 一线填报=门户网格员；值班员确认；责任列跟网格员而非子管
+        self.assertEqual(community["roles"]["user"]["label"], "网格员")
+        self.assertEqual(community["roles"]["subadmin"]["label"], "值班员")
         author = next(
             f for f in community["entities"]["archive"]["fields"] if f["key"] == "author"
         )
         self.assertEqual(author["label"], "网格员")
+        from app.bake.engine_sql import domain_sql
+
+        sql = domain_sql(
+            "DOM-EVENT",
+            "thesis_test",
+            title="社区健康监测",
+            proposal_text="社区网格员维护居民档案。",
+        )
+        self.assertIn("网格员甲", sql)
+        self.assertIn("('subadmin', 'sub123', 'admin', '值班员'", sql)
+        self.assertNotIn("'居民甲'", sql)
 
     def test_attend_enterprise_archive_columns(self) -> None:
         schema = build_domain_schema(
@@ -193,6 +207,49 @@ class SceneScanContractTests(unittest.TestCase):
                 schema = fn("测试课题", proposal_text="占位开题正文")
                 self.assertTrue(schema.get("labels") or schema.get("roles"))
 
+    def test_title_beats_pack_boilerplate_scene_for(self) -> None:
+        """样例开题 scene/problem 双写不得压过题名分支。"""
+        self.assertEqual(
+            scene_for(
+                "DOM-CRM",
+                "校园创业团队客户跟进管理系统",
+                "中小企业或校园创业团队在客户建档与跟进上若仅靠表格。",
+            ),
+            "campus",
+        )
+        self.assertEqual(
+            scene_for(
+                "DOM-EVENT",
+                "社区公共卫生事件应急上报系统",
+                "社区或校园在疫情排查；晨午检与因病缺课。",
+            ),
+            "community",
+        )
+        self.assertEqual(
+            scene_for(
+                "DOM-HOSPITAL",
+                "HPV 疫苗预约系统",
+                "校医院 / 宠物医院挂号；宠主为爱宠挂号。",
+            ),
+            "default",
+        )
+        self.assertEqual(
+            scene_for(
+                "DOM-LOST",
+                "校园失物招领管理系统",
+                "校园失物招领 / 宠物领养；待领养档案。",
+            ),
+            "campus",
+        )
+        self.assertEqual(
+            scene_for(
+                "DOM-MEETING",
+                "企业会议室预约系统",
+                "会议室、琴房或自习室若靠口头预约。",
+            ),
+            "enterprise",
+        )
+
     def test_scene_branch_domains_wired_in_scene_for(self) -> None:
         """SCENE_COPY 域不得一律 default；壳/资料页须能按开题分档。"""
         from app.bake.schema.shells import _SCENE_COPY_DOMAINS
@@ -228,6 +285,104 @@ class SceneScanContractTests(unittest.TestCase):
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
                 self.assertEqual(scene_for(domain, title, body), want)
+
+    def test_shop_retail_vs_campus_secondhand(self) -> None:
+        """社会售卖（鲜花等）共用零售档：无成色、无校园种子；不按行业逐个开皮。"""
+        from app.bake.engine_sql import domain_sql
+        from app.bake.scene_scan import shop_product_kind
+
+        flower = "基于 Spring Boot 与 Vue 的鲜花销售管理系统的设计与实现"
+        polluted = "校园商城二手教材也可参考；花店接单与配送。"
+        self.assertEqual(shop_product_kind(flower, polluted), "retail")
+        self.assertEqual(scene_for("DOM-SHOP", flower, polluted), "commercial")
+        schema = build_domain_schema(flower, "DOM-SHOP", proposal_text=polluted)
+        self.assertEqual(schema["labels"].get("authEyebrow"), "在线商城")
+        keys = {f["key"] for f in schema["entities"]["archive"]["fields"]}
+        self.assertNotIn("conditionGrade", keys)
+        sql = domain_sql("DOM-SHOP", "thesis_test", title=flower, proposal_text=polluted)
+        self.assertIn("基础款商品", sql)
+        self.assertNotIn("校徽帆布袋", sql)
+        self.assertNotIn("condition_grade", sql)
+        self.assertNotIn("成色", sql)
+
+        # 其它社会售卖主体同一零售档
+        self.assertEqual(
+            shop_product_kind("数码配件在线销售系统", "校园二手可作对比。"),
+            "retail",
+        )
+        # 裸「二手」无校园词 → 零售档（不成色）
+        self.assertEqual(shop_product_kind("社区二手闲置交易系统", ""), "retail")
+
+        campus = build_domain_schema(
+            "校园二手商品交易系统",
+            "DOM-SHOP",
+            proposal_text="校内闲置教材数码流转。",
+        )
+        self.assertEqual(campus["labels"].get("authEyebrow"), "校园商城")
+        campus_keys = {f["key"] for f in campus["entities"]["archive"]["fields"]}
+        self.assertIn("conditionGrade", campus_keys)
+
+    def test_food_canteen_vs_restaurant(self) -> None:
+        """食堂 vs 社会餐饮两档：餐厅题不被正文食堂对比句洗成档口。"""
+        from app.bake.engine_sql import domain_sql
+        from app.bake.scene_scan import food_product_kind
+
+        restaurant = "基于 Spring Boot 与 Vue 的小型餐厅点餐系统的设计与实现"
+        polluted = "也可参考食堂档口堂食模式；本店支持外卖配送。"
+        self.assertEqual(food_product_kind(restaurant, polluted), "restaurant")
+        self.assertEqual(scene_for("DOM-FOOD", restaurant, polluted), "commercial")
+        schema = build_domain_schema(restaurant, "DOM-FOOD", proposal_text=polluted)
+        self.assertEqual(schema["labels"].get("authEyebrow"), "点餐外卖")
+        isbn = next(
+            f for f in schema["entities"]["archive"]["fields"] if f["key"] == "isbn"
+        )
+        self.assertEqual(isbn["label"], "门店")
+        posts = schema["roles"]["staff_posts"]
+        self.assertEqual(posts[0]["label"], "店员")
+        sql = domain_sql(
+            "DOM-FOOD", "thesis_test", title=restaurant, proposal_text=polluted
+        )
+        self.assertIn("总店", sql)
+        self.assertNotIn("窗口A", sql)
+
+        canteen = build_domain_schema(
+            "高校食堂在线点餐系统",
+            "DOM-FOOD",
+            proposal_text="餐品目录与下单取餐。",
+        )
+        self.assertEqual(canteen["labels"].get("authEyebrow"), "食堂点餐")
+        self.assertEqual(canteen["roles"]["staff_posts"][0]["label"], "档口店员")
+        canteen_sql = domain_sql(
+            "DOM-FOOD",
+            "thesis_test",
+            title="高校食堂在线点餐系统",
+            proposal_text="餐品目录与下单取餐。",
+        )
+        self.assertIn("窗口A", canteen_sql)
+        self.assertIn("学生公寓", canteen_sql)
+
+    def test_parking_campus_vs_commercial_seed(self) -> None:
+        """校园车位种子与资料页对齐；题名商场不被正文校园对比句洗档。"""
+        from app.bake.engine_sql import domain_sql
+
+        mall = "商场地下车位预约系统"
+        polluted = "校园或园区车位紧张时也可参考。"
+        self.assertEqual(scene_for("DOM-PARKING", mall, polluted), "commercial")
+        mall_sql = domain_sql(
+            "DOM-PARKING", "thesis_test", title=mall, proposal_text=polluted
+        )
+        self.assertIn("月租", mall_sql)
+        self.assertIn("星河科技", mall_sql)
+
+        campus_sql = domain_sql(
+            "DOM-PARKING",
+            "thesis_test",
+            title="校园车位预约管理系统",
+            proposal_text="教职工与学生预约校内车位。",
+        )
+        self.assertIn("教职工", campus_sql)
+        self.assertIn("图书馆东侧", campus_sql)
+        self.assertNotIn("星河科技", campus_sql)
 
     def test_hospital_pet_profile_and_seed(self) -> None:
         title, body = "宠物医院挂号预约系统", "宠主为爱宠选择医生挂号。"

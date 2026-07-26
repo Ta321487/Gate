@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from app.bake.scene_scan import copy_scan_text, scene_event
+from app.bake.scene_scan import scene_event_parts
 
 # 与 templates/DOM-EVENT.sql 中种子块对齐；整块替换，避免半改漏行
 _CAMPUS_SEED_RE = re.compile(
@@ -47,9 +47,9 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查')
 _COMMUNITY_SEED = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '防控主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '网格员', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '居民甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"居民","communityName":"阳光小区","address":"3栋2单元"}',
+('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '网格员甲', '13800000002',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"网格员","communityName":"阳光小区","region":"3栋片区"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -123,7 +123,7 @@ def apply_event_scene_seed(
     proposal_text: str = "",
 ) -> str:
     """按 ``scene_event`` 替换 DOM-EVENT 演示种子；校园档保留模板原文。"""
-    scene = scene_event(copy_scan_text(title, proposal_text))
+    scene = scene_event_parts(title, proposal_text)
     if scene == "institution":
         seed = _INSTITUTION_SEED
     elif scene == "community":

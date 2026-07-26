@@ -6,7 +6,6 @@ from typing import Any
 
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.schema.shells import (
-    _copy_scan_text,
     _with_portal_banners,
     archive_ticket_schema,
     product_name_from_title,
@@ -172,10 +171,9 @@ def _equip_schema(title: str) -> dict[str, Any]:
 
 def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """固定资产 / 耗材申领：高校物资 vs 企业仓储（同 _food_schema 分支）。"""
-    from app.bake.scene_scan import scene_asset
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    campus = scene_asset(t) == "campus"
+    campus = scene_for("DOM-ASSET", title, proposal_text) == "campus"
     if campus:
         brow, lead, notice, hint = (
             "高校物资",
@@ -268,10 +266,9 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_crm
+    from app.bake.scene_scan import scene_crm_parts
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_crm(t) == "campus":
+    if scene_crm_parts(title, proposal_text) == "campus":
         return followup_domain_schema(
             title,
             "DOM-CRM",
@@ -311,10 +308,9 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_event
+    from app.bake.scene_scan import scene_event_parts
 
-    t = _copy_scan_text(title, proposal_text)
-    scene = scene_event(t)
+    scene = scene_event_parts(title, proposal_text)
     if scene == "campus":
         return followup_domain_schema(
             title,
@@ -425,13 +421,14 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             },
         )
     if scene == "community":
+        # 开题一线填报=网格员（门户 user）；值班员=子管确认；对象档案≠登录身份
         return followup_domain_schema(
             title,
             "DOM-EVENT",
             overrides={
-                "user_label": "居民",
+                "user_label": "网格员",
                 "admin_label": "主管（总管）",
-                "subadmin_label": "网格员",
+                "subadmin_label": "值班员",
                 "archive_label": "对象",
                 "archive_plural": "对象",
                 "archive_fields": _std_archive_fields(
@@ -446,7 +443,7 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "archive_menu_admin": "对象档案",
                 "archive_menu_user": "对象列表",
                 "auth_eyebrow": "社区公卫",
-                "auth_lead": "验证码登录；维护对象档案并打卡/上报，异常由网格处置。",
+                "auth_lead": "验证码登录；维护对象档案并打卡/上报，异常由值班员确认处置。",
                 "auth_points": ["验证码登录", "对象档案", "健康打卡", "上报记录"],
                 "notice_page_title": "社区公告",
                 "banners": [
@@ -501,10 +498,9 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """考勤请假：题名/开题含学生/校园走学工口径（同 _food_schema 食堂分支）。"""
     from app.bake.schema.followup_presets import _std_archive_fields, followup_domain_schema
-    from app.bake.scene_scan import scene_attend
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    campus = scene_attend(t) == "campus"
+    campus = scene_for("DOM-ATTEND", title, proposal_text) == "campus"
     if not campus:
         return followup_domain_schema(
             title,
@@ -581,10 +577,9 @@ def _fund_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_fund
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_fund(t) == "enterprise":
+    if scene_for("DOM-FUND", title, proposal_text) == "enterprise":
         return followup_domain_schema(
             title,
             "DOM-FUND",
@@ -632,10 +627,9 @@ def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_labsafe
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_labsafe(t) == "enterprise":
+    if scene_for("DOM-LABSAFE", title, proposal_text) == "enterprise":
         return followup_domain_schema(
             title,
             "DOM-LABSAFE",
@@ -673,10 +667,9 @@ def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """招聘：校园校招 vs 企业 HR（同 _food_schema 分支）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
-    from app.bake.scene_scan import scene_recruit
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    scene = scene_recruit(t)
+    scene = scene_for("DOM-RECRUIT", title, proposal_text)
     if scene == "campus":
         return followup_domain_schema(
             title,
@@ -721,10 +714,9 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _dating_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """婚恋交友：校园联谊 vs 社区相亲（默认社区）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
-    from app.bake.scene_scan import scene_dating
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    scene = scene_dating(t)
+    scene = scene_for("DOM-DATING", title, proposal_text)
     if scene == "campus":
         return followup_domain_schema(
             title,
@@ -754,10 +746,9 @@ def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_grade
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_grade(t) == "enterprise":
+    if scene_for("DOM-GRADE", title, proposal_text) == "enterprise":
         return followup_domain_schema(
             title,
             "DOM-GRADE",
@@ -805,10 +796,9 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_intern
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_intern(t) == "enterprise":
+    if scene_for("DOM-INTERN", title, proposal_text) == "enterprise":
         return followup_domain_schema(
             title,
             "DOM-INTERN",
@@ -844,10 +834,9 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """驿站：校园 vs 社区代收点（同 _food_schema 分支）。"""
     from app.bake.schema.followup_presets import followup_domain_schema
-    from app.bake.scene_scan import scene_parcel
+    from app.bake.scene_scan import scene_for
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_parcel(t) == "community":
+    if scene_for("DOM-PARCEL", title, proposal_text) == "community":
         return followup_domain_schema(
             title,
             "DOM-PARCEL",
@@ -943,10 +932,10 @@ def _activity_schema(title: str) -> dict[str, Any]:
 
 def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """失物招领 / 宠物领养：同认领壳，文案跟题名/开题走（同 _meeting_schema）。"""
-    from app.bake.scene_scan import scene_lost
+    from app.bake.scene_scan import scene_lost_parts
 
-    t = _copy_scan_text(title, proposal_text)
-    if scene_lost(t) == "adopt":
+    sc = scene_lost_parts(title, proposal_text)
+    if sc == "adopt":
         noun, remark, admin, sub = "待领养", "领养说明", "领养站主管（总管）", "领养专员"
         user, verb = "申请人", "领养"
         title_lab, author_lab, isbn_lab = "昵称/编号", "登记人", "品种/健康说明"
@@ -956,7 +945,7 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "请如实填写养宠条件与联系方式；审核通过后按通知办理交接。"
         notice_t, notice_page, return_v = "领养须知", "领养公告", "撤销申请"
         reg = "注册后可浏览并申请领养"
-    elif scene_lost(t) == "community":
+    elif sc == "community":
         noun, remark, admin, sub = "启事", "认领说明", "社区招领主管（总管）", "招领管理员"
         user, verb = "居民", "认领"
         title_lab, author_lab, isbn_lab = "物品名称", "拾获/登记人", "小区地点/特征"

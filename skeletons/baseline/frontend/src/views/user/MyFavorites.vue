@@ -90,7 +90,7 @@ onMounted(load)
 <style scoped>
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0 0 14px; color: #64748b; font-size: 13px; }
+.hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
 }
@@ -102,14 +102,16 @@ onMounted(load)
 }
 .cover {
   width: 72px; height: 72px; border-radius: 10px; flex-shrink: 0;
-  display: grid; place-items: center; font-weight: 700; color: #0369a1;
-  background: #e0f2fe; overflow: hidden;
+  display: grid; place-items: center; font-weight: 700;
+  color: var(--portal-brand, #0369a1);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 16%, var(--portal-surface, #fff));
+  overflow: hidden;
 }
 .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .meta { min-width: 0; flex: 1; }
 .meta h3 { margin: 0 0 4px; font-size: 15px; }
-.muted { margin: 0; color: #94a3b8; font-size: 12px; }
+.muted { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.empty { margin-top: 24px; color: #94a3b8; text-align: center; }
+.empty { margin-top: 24px; color: var(--portal-muted, #94a3b8); text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

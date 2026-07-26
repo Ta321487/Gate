@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS product (
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  condition_grade VARCHAR(16) DEFAULT '全新',
   seller_note VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -105,19 +104,19 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '商城主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
  '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '数码'), (2, '日用'), (3, '文创');
+INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
 INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '机械键盘', '199.00', 'KB-01', 1, 20, 'available'),
-(2, '桌面台灯', '59.90', 'LAMP-02', 2, 35, 'available'),
-(3, '校徽帆布袋', '29.00', 'BAG-03', 3, 50, 'available'),
-(4, '无线鼠标', '89.00', 'MS-04', 1, 15, 'available');
+(1, '基础款商品 A', '99.00', 'SKU-A01', 1, 30, 'available'),
+(2, '基础款商品 B', '59.90', 'SKU-B02', 2, 40, 'available'),
+(3, '基础款商品 C', '129.00', 'SKU-C03', 1, 20, 'available'),
+(4, '基础款商品 D', '39.00', 'SKU-D04', 3, 50, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -125,5 +124,5 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '系统管理员'
+SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');

@@ -38,16 +38,15 @@
         },
         {
           "key": "stock",
-          "label": "可阅读",
-          "type": "number"
+          "label": "在架",
+          "type": "hidden"
         }
       ],
       "key": "article",
       "label": "文章",
       "labelPlural": "文章",
       "softDelete": true,
-      "stockDisplay": "toggle",
-      "stockUnavailableLabel": "已阅读",
+      "stockDisplay": "hidden",
       "tagFilter": false
     },
     "favorites": {
@@ -68,11 +67,11 @@
     "favoritesPageLead": "收藏喜欢的文章，方便回看。",
     "favoritesPageTitle": "我的收藏",
     "messagesPageLead": "系统通知。",
-    "noticePageLead": "上新、维护与征稿通知，点击条目阅读全文。",
+    "noticePageLead": "上新与维护通知，点击条目阅读全文。",
     "noticePageTitle": "站点公告",
     "recommendLatestHint": "最新上架",
     "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "注册后可阅读文章并收藏"
+    "registerRoleHint": "注册后可浏览文章并收藏"
   },
   "menus": {
     "admin": [
@@ -122,7 +121,7 @@
   },
   "portalBanners": [
     {
-      "lead": "技术、随笔、资讯分类浏览富文本正文。",
+      "lead": "技术、随笔、教程分类浏览富文本正文。",
       "title": "最新文章"
     },
     {
@@ -130,7 +129,7 @@
       "title": "收藏订阅"
     },
     {
-      "lead": "上新与征稿通知见公告栏。",
+      "lead": "上新与维护通知见公告栏。",
       "title": "站点公告"
     },
     {

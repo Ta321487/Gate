@@ -92,30 +92,30 @@ def apply_delivery_mark(project: Project, mark: str) -> str:
         return current
     if target == "ready":
         if delivery_block_reason(project):
-            raise ValueError("质量检查未通过 · 请先通过机器质检后再标记可交付")
+            raise ValueError("质量检查未通过 · 请先通过机器质检后再标记已审待发")
         if project.status not in (
             ProjectStatus.generated.value,
             ProjectStatus.running.value,
         ):
-            raise ValueError("仅已生成的项目可标记可交付")
+            raise ValueError("仅已生成的项目可标记已审待发")
     elif target == "delivered":
-        # none→delivered：质检已过时允许一步到位（仍要求可下载；跳过「可交付」暂存）
+        # none→delivered：质检已过时允许一步到位（仍要求可下载；跳过「已审待发」暂存）
         if current == "none":
             if delivery_block_reason(project):
-                raise ValueError("质量检查未通过 · 请先通过机器质检后再标记已交付")
+                raise ValueError("质量检查未通过 · 请先通过机器质检后再标记已发出")
             if project.status not in (
                 ProjectStatus.generated.value,
                 ProjectStatus.running.value,
             ):
-                raise ValueError("仅已生成的项目可标记已交付")
+                raise ValueError("仅已生成的项目可标记已发出")
         elif current != "ready":
-            raise ValueError("请先标记「可交付」，再标记「已交付」")
+            raise ValueError("请先标记「已审待发」，再标记「已发出」")
     project.delivery_mark = target
     return target
 
 
 async def set_delivery_mark(db: AsyncSession, project: Project, mark: str) -> Project:
-    """人工标记：none / ready（可交付）/ delivered（已交付）。"""
+    """人工标记：none / ready（已审待发）/ delivered（已发出）。"""
     apply_delivery_mark(project, mark)
     await db.commit()
     await db.refresh(project)
@@ -389,7 +389,7 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
     downloadable = gates_allow_delivery(new_gates)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
-    # 门禁回退时关掉 zip_ready，并清掉人工可交付/已交付
+    # 门禁回退时关掉 zip_ready，并清掉人工已审待发/已发出
     zip_changed = False
     if downloadable and zip_exists and not project.zip_ready:
         project.zip_ready = True

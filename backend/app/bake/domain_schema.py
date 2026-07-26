@@ -71,7 +71,12 @@ def build_domain_schema(
         schema, domain, title=title, proposal_text=proposal_text
     )
     return attach_staff_posts(
-        schema, domain, archetype, archetypes, proposal_text=proposal_text
+        schema,
+        domain,
+        archetype,
+        archetypes,
+        proposal_text=proposal_text,
+        title=title,
     )
 
 
@@ -198,6 +203,7 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                 archetype,
                 arches,
                 proposal_text=prop_body,
+                title=title,
             )
     if not spec.get("accept"):
         proposal_text = ""
@@ -346,6 +352,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         archetype,
         arches,
         proposal_text=body,
+        title=str(spec.get("title") or ""),
     )
     dom_roles = list((DOMAINS.get(domain) or {}).get("roles") or [])
     out["roles"] = roles_for_spec(dom_roles, out["schema"])

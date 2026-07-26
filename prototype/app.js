@@ -1,11 +1,11 @@
 ﻿    const projects = [
       { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚" },
-      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
-      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可交付", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
-      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前" },
+      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
+      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可下载", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
+      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前" },
       { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", running: false, updated: "12 分钟前" },
-      { id: "gf-20260712-003", name: "影视点播管理系统", arch: "ARCH-CONTENT · DOM-MEDIA", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
-      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-GENERIC", status: "generated", statusLabel: "已生成 · 可交付", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
+      { id: "gf-20260712-003", name: "影视点播管理系统", arch: "ARCH-CONTENT · DOM-MEDIA", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
+      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-GENERIC", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
       { id: "gf-20260708-001", name: "社团活动报名系统", arch: "ARCH-FLOW · DOM-ACTIVITY", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周" },
     ];
 
@@ -261,7 +261,7 @@
       const zipBtn = document.getElementById("btn-zip-dl");
       if (pass) {
         overall.className = "pill pill-green";
-        overall.textContent = "可交付";
+        overall.textContent = "可下载";
         setDisabled("btn-download", false);
         if (zipHint) zipHint.textContent = "质量检查已过";
         if (zipBtn) {
@@ -274,7 +274,7 @@
         document.getElementById("cl-return").textContent = "已实现";
       } else {
         overall.className = "pill pill-red";
-        overall.textContent = "暂不可交付";
+        overall.textContent = "暂不可下载";
         setDisabled("btn-download", true);
         if (zipHint) zipHint.textContent = "质量检查未过 · 锁定";
         if (zipBtn) {
@@ -310,7 +310,7 @@
         renderGates(true);
       } else if (state === "generated") {
         ok.style.display = "block";
-        document.getElementById("gen-success-title").textContent = "生成完成 · 质量检查已通过 · 可交付";
+        document.getElementById("gen-success-title").textContent = "生成完成 · 质量检查已通过 · 可下载";
         document.getElementById("gen-success-desc").textContent = "交付包已解锁。建议到「运行」预览后再交付。";
         renderGates(true);
       } else if (state === "regression") {
@@ -318,7 +318,7 @@
         renderGates(false);
       } else if (state === "failed") {
         fail.style.display = "block";
-        document.getElementById("fail-title").textContent = "质量检查未通过 · 暂不可交付";
+        document.getElementById("fail-title").textContent = "质量检查未通过 · 暂不可下载";
         document.getElementById("fail-desc").textContent =
           "主流程或功能清单未通过时，暂不可下载交付包。";
         renderGates(false);
@@ -501,7 +501,7 @@
       genTimer = setTimeout(() => {
         clearInterval(tick);
         applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
+        setStatus("已生成 · 质检通过", "pill-green");
         toast("质量检查已过 · 交付包已解锁");
         setProjectTab("artifacts");
       }, 2000);
@@ -604,14 +604,14 @@
       if (action === "finish-job-demo") {
         clearTimeout(genTimer);
         applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
+        setStatus("已生成 · 质检通过", "pill-green");
         toast("质量检查已过 · 交付包已解锁");
         setProjectTab("artifacts");
         return;
       }
       if (action === "demo-gate-fail") {
         applyGenState("failed");
-        setStatus("质量检查未过 · 暂不可交付", "pill-red");
+        setStatus("质量检查未过 · 暂不可下载", "pill-red");
         setProjectTab("artifacts");
         setArtifactView("gates");
         toast("演示：P2 失败 → ZIP 锁定");
@@ -619,7 +619,7 @@
       }
       if (action === "demo-gate-pass") {
         applyGenState("generated");
-        setStatus("已生成 · 可交付", "pill-green");
+        setStatus("已生成 · 质检通过", "pill-green");
         setProjectTab("artifacts");
         setArtifactView("gates");
         toast("演示：质量检查全过 → 交付包解锁");

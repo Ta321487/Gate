@@ -67,17 +67,17 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '内容总监', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '运营编辑', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '观众甲', '13800000002',
- '{"realName":"周观影","email":"zhou@demo.edu","gender":"女","memberNo":"M20260001","orgName":"传媒学院","preferredGenre":"电影"}',
+ '{"realName":"周观影","email":"zhou@demo.com","gender":"女","memberNo":"M20260001","orgName":"星河传媒","preferredGenre":"电影"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '电影'), (2, '电视剧'), (3, '综艺');
 INSERT IGNORE INTO media (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '校园青春物语', '导演甲 / 主演乙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
-(2, '实验室的夜', '导演丙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
-(3, '宿舍日记', '制作人丁', 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, 'available'),
-(4, '周末开箱秀', '主持人戊', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available'),
-(5, '毕业季特辑', '编导己', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available');
+(1, '城市夜行记', '导演甲 / 主演乙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
+(2, '周末开箱秀', '主持人戊', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available'),
+(3, '职场百态', '制作人丁', 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, 'available'),
+(4, '旅行见闻录', '导演丙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
+(5, '季节特辑', '编导己', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '观影须知', '片源仅供学习演示；请文明观影，勿传播未授权内容。', 'admin', '内容总监'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='观影须知');

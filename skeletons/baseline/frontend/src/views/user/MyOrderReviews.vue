@@ -74,7 +74,7 @@ onMounted(load)
 .reply {
   margin: 10px 0 0;
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, var(--portal-mix, #fff));
+  background: color-mix(in srgb, var(--portal-bg, #f1f5f9) 72%, var(--portal-surface, #fff));
   border-radius: var(--portal-radius-sm, 8px);
   color: var(--portal-muted, #475569);
   font-size: 13px;
