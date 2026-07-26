@@ -71,7 +71,7 @@
         v-if="caps.includes('archive_log') && Number(data.missingCheckinToday) > 0"
         class="todo-row"
       >
-        <span>今日未打卡 {{ data.missingCheckinToday || 0 }}</span>
+        <span>{{ missingCheckinLabel }} {{ data.missingCheckinToday || 0 }}</span>
         <el-button type="primary" link @click="$router.push('/admin/archive-logs')">去查看</el-button>
       </div>
     </section>
@@ -90,6 +90,9 @@ const data = ref({})
 const adminLabel = computed(() => roleLabel('admin', '管理'))
 const userLabel = computed(() => roleLabel('user', '用户'))
 const caps = computed(() => getSchema()?.capabilities || [])
+const missingCheckinLabel = computed(
+  () => getSchema()?.labels?.archiveLogMissingTitle || '今日未登记',
+)
 const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
 const ticket = computed(() => ticketCopy() || {})
@@ -188,7 +191,7 @@ const cards = computed(() => {
   if (caps.value.includes('archive_log') && data.value.missingCheckinToday != null) {
     list.push({
       key: 'missingCheckin',
-      label: getSchema()?.labels?.archiveLogMissingTitle || '今日未打卡',
+      label: getSchema()?.labels?.archiveLogMissingTitle || '今日未登记',
       value: data.value.missingCheckinToday ?? '—',
       to: '/admin/archive-logs',
     })

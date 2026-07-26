@@ -126,4 +126,4 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '门店主管'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知' OR title='食堂点餐');
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知');

@@ -18,6 +18,7 @@ from app.models import Job, Project, ProjectStatus
 from app.schemas import (
     ApiOk,
     DeliveryMarkUpdate,
+    ErLabelsUpdate,
     MatchUpdate,
     ProjectDetail,
     ProjectSummary,
@@ -552,7 +553,7 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/{project_id}/schema", summary="库表结构")
 async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     """表结构 + 推断联系（供产物页展示）。"""
-    from app.bake.schema.er import load_schema_model
+    from app.bake.schema.er import collect_english_gaps, count_er_gaps, load_schema_model
 
     p = await db.get(Project, project_id)
     if not p:
@@ -564,6 +565,46 @@ async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     return {
         "db_name": p.db_name,
         "path": "sql/schema.sql",
+        "er_gap_count": count_er_gaps(collect_english_gaps(model)),
+        **model,
+    }
+
+
+@router.put("/{project_id}/schema/er-labels", summary="人工补 E-R 中文名")
+async def put_er_labels(
+    project_id: str,
+    body: ErLabelsUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """只改展示中文名（islands/er_labels.json），不改 schema.sql / 学生工程标识符。"""
+    from app.bake.schema.er import apply_manual_er_labels
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if p.status == ProjectStatus.generating.value:
+        raise HTTPException(400, "工程正在生成，请稍后再改中文名")
+    ws = _workspace_or_400(p)
+    try:
+        result = apply_manual_er_labels(
+            ws,
+            {
+                "tables": body.tables,
+                "columns": body.columns,
+                "relations": body.relations,
+            },
+        )
+    except FileNotFoundError:
+        raise HTTPException(404, "未找到 sql/schema.sql") from None
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    model = result["model"]
+    return {
+        "db_name": p.db_name,
+        "path": "sql/schema.sql",
+        "er_gap_count": result["er_gap_count"],
+        "filled": result["filled"],
+        "message": "已保存中文名（仅论文/E-R 展示，未改库表英文名）",
         **model,
     }
 

@@ -50,6 +50,7 @@ import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
 import { menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
+import { userMenuPath } from '../utils/menuRoutes.js'
 import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
 
 const router = useRouter()
@@ -88,29 +89,6 @@ const hasStage = computed(() => {
   return Array.isArray(list) && list.some((x) => x && x.src)
 })
 
-const MENU_TO = {
-  home: '/home',
-  my_tickets: '/tickets',
-  content: '/notices',
-  guestbook: '/guestbook',
-  dm: '/dm',
-  profile: '/profile',
-  archive: '/archive',
-  home: '/home',
-  my_archive: '/my-archive',
-  favorites: '/favorites',
-  browse_history: '/browse-history',
-  coupons: '/coupons',
-  cart: '/cart',
-  my_orders: '/orders',
-  order_reviews: '/order-reviews',
-  addresses: '/addresses',
-  my_reservations: '/reservations',
-  slots: '/slots',
-  week_calendar: '/week',
-  messages: '/messages',
-}
-
 const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'guestbook', 'slots'])
 
 const nav = computed(() => {
@@ -126,7 +104,7 @@ const nav = computed(() => {
     return [{ to: '/notices', label: menuLabel('user', 'content', '公告') }]
   }
   return list
-    .map((m) => ({ to: MENU_TO[m.key], label: m.label }))
+    .map((m) => ({ to: userMenuPath(m.key), label: m.label }))
     .filter((m) => m.to)
 })
 
@@ -161,12 +139,13 @@ function logout() {
 }
 .top-inner {
   max-width: 1080px; margin: 0 auto;
-  height: 60px; padding: 0 20px;
-  display: flex; align-items: center; gap: 20px;
+  min-height: 60px; height: auto; padding: 8px 20px;
+  display: flex; align-items: center; gap: 12px 20px;
+  flex-wrap: wrap;
 }
 .brand {
   display: flex; align-items: center; gap: 10px;
-  cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 42%;
+  cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 36%;
 }
 .brand-mark {
   width: 22px; height: 22px; border-radius: var(--portal-radius-sm, 6px); flex-shrink: 0;
@@ -177,11 +156,13 @@ function logout() {
   font-weight: 700; font-size: 15px; letter-spacing: var(--portal-display-tracking, 0.02em);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* overflow 由 layout.css 按 data-layout 覆盖，此处不写死，避免 scoped 盖掉 rail */
-.nav { display: flex; gap: 4px; flex: 1; flex-wrap: nowrap; min-width: 0; }
+/* 项多时整词换行到下一行，禁止挤成竖排、也不靠横滑藏菜单 */
+.nav { display: flex; gap: 4px; flex: 1 1 280px; flex-wrap: wrap; min-width: 0; }
 .nav a {
   padding: 6px 12px; border-radius: var(--portal-radius-sm, 8px); font-size: 13px; font-weight: 500;
   color: var(--portal-muted, #5b6b76); text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .nav a.router-link-active,
 .nav a:hover { color: var(--portal-ink, #15202b); background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent); }

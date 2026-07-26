@@ -91,8 +91,9 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-GENERIC": [_clerk("clerk", "业务办理员", "ticket_ops")],
 }
 
-# 门户身份强绑定（患者/车主/顾客等）：岗位靠种子账号，禁止把业务用户「任命」成岗
+# 门户身份强绑定（服务对象 / 对方当事人）：岗位靠种子账号，禁止把业务用户「任命」成岗
 NO_APPOINT_FROM_USERS: frozenset[str] = frozenset({
+    # 预约 / 交易：患者、车主、预约人、顾客、住客…
     "DOM-HOSPITAL",
     "DOM-PARKING",
     "DOM-MEETING",
@@ -100,7 +101,26 @@ NO_APPOINT_FROM_USERS: frozenset[str] = frozenset({
     "DOM-HOTEL",
     "DOM-SHOP",
     "DOM-FOOD",
+    # 门户＝求职方 / 会员 / 实习生 / 取件人 / 报名者 / 借用人 / 申领人
+    "DOM-RECRUIT",
+    "DOM-DATING",
+    "DOM-INTERN",
+    "DOM-PARCEL",
+    "DOM-ACTIVITY",
+    "DOM-EQUIP",
+    "DOM-ASSET",
 })
+
+# 按 scene_for 再禁：仅当该档门户明显是服务对象时（校园师生可升岗的档不进表）
+_SCENE_NO_APPOINT: dict[str, frozenset[str]] = {
+    "DOM-PROPERTY": frozenset({"community", "commercial"}),  # 业主/住户
+    "DOM-MEDIA": frozenset({"commercial"}),  # 观众
+    "DOM-MUSIC": frozenset({"commercial"}),  # 听众
+    "DOM-BLOG": frozenset({"commercial"}),  # 读者（商业站）
+    "DOM-EVENT": frozenset({"default", "institution"}),  # 随访对象 / 家属
+    "DOM-LOST": frozenset({"community", "adopt"}),  # 居民 / 领养申请人
+    "DOM-FORUM": frozenset({"community"}),  # 居民 ≠ 版主（校园师生可升版主）
+}
 
 # schema.roles 元数据键 / 门户别名（与 user 同槽，禁止并列进 Spec）
 _ROLE_META_KEYS = frozenset({"staff_posts", "allowAppointFromUsers"})
@@ -268,6 +288,7 @@ def _pick_label_from_proposal(
 _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "intern_tutor": (
         "企业导师",
+        "带教导师",
         "校内导师",
         "实习导师",
         "指导教师",
@@ -410,6 +431,7 @@ def allow_appoint_from_users(
     archetypes: list[str] | None = None,
     *,
     proposal_text: str = "",
+    title: str = "",
 ) -> bool:
     """是否允许把门户业务用户升为岗位；无岗位表时亦为 False。"""
     if domain in NO_APPOINT_FROM_USERS:
@@ -418,11 +440,90 @@ def allow_appoint_from_users(
         _flow, need_trade, need_reserve = _generic_arch_flags(archetype, archetypes)
         if need_trade or need_reserve:
             return False
+    blocked = _SCENE_NO_APPOINT.get(domain)
+    if blocked:
+        from app.bake.scene_scan import scene_for
+
+        if scene_for(domain, title, proposal_text) in blocked:
+            return False
     return bool(
         staff_posts_for_domain(
-            domain, archetype, archetypes, proposal_text=proposal_text
+            domain,
+            archetype,
+            archetypes,
+            proposal_text=proposal_text,
+            title=title,
         )
     )
+
+
+def _apply_scene_post_labels(
+    posts: list[dict[str, Any]],
+    domain: str,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> list[dict[str, Any]]:
+    """场景档岗位显示名：与 domain_scene_seed / builder 同判，避免 append 盖回目录默认。"""
+    out = [dict(p) for p in posts if isinstance(p, dict) and p.get("id")]
+    if domain == "DOM-FOOD":
+        from app.bake.scene_scan import food_product_kind
+
+        canteen = food_product_kind(title, proposal_text) == "canteen"
+        _canteen_counter = ("档口店员", "窗口服务员", "食堂窗口", "档口")
+        for p in out:
+            if str(p.get("id") or "") != "counter":
+                continue
+            lab = str(p.get("label") or "").strip()
+            if canteen:
+                # 开题扫到裸「档口」时升成完整岗名，与食堂种子一致
+                if lab in ("", "店员", *_canteen_counter):
+                    p["label"] = "档口店员"
+            elif lab in ("", "店员", *_canteen_counter):
+                p["label"] = "店员"
+    elif domain == "DOM-FUND":
+        from app.bake.scene_scan import scene_for
+
+        if scene_for("DOM-FUND", title, proposal_text) == "enterprise":
+            for p in out:
+                if str(p.get("id") or "") == "fund_clerk":
+                    p["label"] = "人事专员"
+    elif domain == "DOM-INTERN":
+        from app.bake.scene_scan import scene_for
+
+        if scene_for("DOM-INTERN", title, proposal_text) == "enterprise":
+            for p in out:
+                if str(p.get("id") or "") != "intern_tutor":
+                    continue
+                lab = str(p.get("label") or "").strip()
+                if lab in ("", "实习辅导员", "辅导员", "带教导师"):
+                    p["label"] = "企业导师"
+    elif domain == "DOM-CRM":
+        from app.bake.scene_scan import scene_crm_parts
+
+        if scene_crm_parts(title, proposal_text) == "campus":
+            for p in out:
+                if str(p.get("id") or "") != "account_mgr":
+                    continue
+                lab = str(p.get("label") or "").strip()
+                if lab in ("", "客户经理", "客户专员"):
+                    p["label"] = "项目负责人"
+    elif domain == "DOM-HOSPITAL":
+        from app.bake.scene_scan import hospital_product_kind
+
+        kind = hospital_product_kind(title, proposal_text)
+        want = {
+            "vaccine": "预约管理员",
+            "pet": "挂号员",
+            "clinic": "挂号员",
+        }.get(kind, "挂号员")
+        for p in out:
+            if str(p.get("id") or "") != "registrar":
+                continue
+            lab = str(p.get("label") or "").strip()
+            if lab in ("", "挂号员", "预约管理员", "导诊", "分诊台"):
+                p["label"] = want
+    return out
 
 
 def staff_posts_for_domain(
@@ -431,6 +532,7 @@ def staff_posts_for_domain(
     archetypes: list[str] | None = None,
     *,
     proposal_text: str = "",
+    title: str = "",
 ) -> list[dict[str, Any]]:
     if domain == "DOM-GENERIC":
         need_flow, need_trade, need_reserve = _generic_arch_flags(archetype, archetypes)
@@ -444,7 +546,10 @@ def staff_posts_for_domain(
             posts.append(_clerk("booking_clerk", "预约办理员", "slot_ops"))
         if not posts:
             posts = [_clerk("operator", "业务员")]  # packs 空 → 仅工作台
-        return _apply_post_labels_from_proposal(posts, domain, proposal_text)
+        posts = _apply_post_labels_from_proposal(posts, domain, proposal_text)
+        return _apply_scene_post_labels(
+            posts, domain, title=title, proposal_text=proposal_text
+        )
     posts = [dict(p) for p in (STAFF_POSTS_BY_DOMAIN.get(domain) or []) if isinstance(p, dict)]
     have = {str(p.get("id")) for p in posts if p.get("id")}
     for post, hints in _OPTIONAL_WORKERS.get(domain) or []:
@@ -459,7 +564,10 @@ def staff_posts_for_domain(
                 row["label"] = picked
             posts.append(row)
             have.add(pid)
-    return _apply_post_labels_from_proposal(posts, domain, proposal_text)
+    posts = _apply_post_labels_from_proposal(posts, domain, proposal_text)
+    return _apply_scene_post_labels(
+        posts, domain, title=title, proposal_text=proposal_text
+    )
 
 
 def _apply_post_labels_from_proposal(
@@ -537,38 +645,12 @@ def attach_staff_posts(
         if isinstance(p, dict) and p.get("id")
     }
     posts = staff_posts_for_domain(
-        domain, archetype, archetypes, proposal_text=proposal_text
+        domain,
+        archetype,
+        archetypes,
+        proposal_text=proposal_text,
+        title=title,
     )
-    if domain == "DOM-FOOD":
-        from app.bake.scene_scan import food_product_kind
-
-        canteen = food_product_kind(title, proposal_text) == "canteen"
-        # 食堂专属别称：餐厅档不得被正文「食堂档口」对比句洗成档口岗
-        _canteen_counter = ("档口店员", "窗口服务员", "食堂窗口", "档口")
-        for p in posts:
-            if str(p.get("id") or "") != "counter":
-                continue
-            lab = str(p.get("label") or "").strip()
-            if canteen:
-                if lab in ("", "店员"):
-                    p["label"] = "档口店员"
-            elif lab in ("", "店员", *_canteen_counter):
-                p["label"] = "店员"
-    if domain == "DOM-HOSPITAL":
-        from app.bake.scene_scan import hospital_product_kind
-
-        kind = hospital_product_kind(title, proposal_text)
-        want = {
-            "vaccine": "预约管理员",
-            "pet": "挂号员",
-            "clinic": "挂号员",
-        }.get(kind, "挂号员")
-        for p in posts:
-            if str(p.get("id") or "") != "registrar":
-                continue
-            lab = str(p.get("label") or "").strip()
-            if lab in ("", "挂号员", "预约管理员", "导诊", "分诊台"):
-                p["label"] = want
     merged_posts: list[dict[str, Any]] = []
     for p in posts:
         row = dict(p)
@@ -590,7 +672,11 @@ def attach_staff_posts(
     roles = dict(prev_roles)
     roles["staff_posts"] = merged_posts
     roles["allowAppointFromUsers"] = allow_appoint_from_users(
-        domain, archetype, archetypes, proposal_text=proposal_text
+        domain,
+        archetype,
+        archetypes,
+        proposal_text=proposal_text,
+        title=title,
     )
     # 门户 user：开题写到才替换；否则保留 schema 原 label
     user_aliases = _USER_LABEL_ALIASES.get(domain) or ()
@@ -684,6 +770,7 @@ def append_staff_seed_sql(
     archetypes: list[str] | None = None,
     *,
     proposal_text: str = "",
+    title: str = "",
     posts: list[dict[str, Any]] | None = None,
 ) -> str:
     """幂等补岗位种子：首个 clerk 绑 subadmin；其余 clerk / 全部 worker 各一账号。
@@ -692,9 +779,16 @@ def append_staff_seed_sql(
     """
     if isinstance(posts, list) and posts:
         use_posts = [dict(p) for p in posts if isinstance(p, dict) and p.get("id")]
+        use_posts = _apply_scene_post_labels(
+            use_posts, domain, title=title, proposal_text=proposal_text
+        )
     else:
         use_posts = staff_posts_for_domain(
-            domain, archetype, archetypes, proposal_text=proposal_text
+            domain,
+            archetype,
+            archetypes,
+            proposal_text=proposal_text,
+            title=title,
         )
     clerks = [p for p in use_posts if p.get("kind") == "clerk"]
     workers = [p for p in use_posts if p.get("kind") == "worker"]

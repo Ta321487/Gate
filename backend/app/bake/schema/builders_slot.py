@@ -336,7 +336,7 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _hotel_schema(title: str) -> dict[str, Any]:
-    return slot_shell_schema(
+    schema = slot_shell_schema(
         title,
         domain="DOM-HOTEL",
         user_role_id="user",
@@ -370,4 +370,32 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         complete_verb="入住/离店",
         completed_label="已离店",
     )
+    # 订单跟入住离店，禁止复用商城「物流/发货」叙事
+    order = dict((schema.get("entities") or {}).get("order") or {})
+    order.update(
+        {
+            "key": "order",
+            "label": "订单",
+            "labelPlural": "我的订单",
+            "fulfillMode": "stay",
+            "states": {
+                "pending": "待确认",
+                "confirmed": "已确认",
+                "shipped": "已入住",
+                "completed": "已离店",
+                "cancelled": "已取消",
+            },
+            "verbs": {
+                "ship": "办理入住",
+                "complete": "办理离店",
+            },
+        }
+    )
+    ents = dict(schema.get("entities") or {})
+    ents["order"] = order
+    schema["entities"] = ents
+    labels = dict(schema.get("labels") or {})
+    labels["orderFulfillHint"] = "客房订单随预订生成；前台办理入住/离店，无物流发货。"
+    schema["labels"] = labels
+    return schema
 

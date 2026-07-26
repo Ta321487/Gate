@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from app.bake.domain_schema import build_domain_schema
-from app.bake.scene_scan import scene_for
+from app.bake.domain_schema import build_domain_schema, ensure_spec_schema
+from app.bake.engine_sql import domain_sql
+from app.bake.scene_scan import event_product_kind, product_kind_for, scene_for
 from app.bake.schema.templates import SCHEMA_BUILDERS
 
 
@@ -538,6 +539,91 @@ class SceneScanContractTests(unittest.TestCase):
         self.assertIn("邻里互助", community_sql)
         self.assertIn("居民甲", community_sql)
         self.assertNotIn("期末复习资料汇总", community_sql)
+
+    def test_event_product_kind_incident_vs_monitor(self) -> None:
+        """应急上报皮 vs 监测皮：scene 可同为 community，文案与种子分叉。"""
+        self.assertEqual(
+            event_product_kind("社区公共卫生事件应急上报系统", "晨午检与因病缺课对比。"),
+            "incident",
+        )
+        self.assertEqual(
+            product_kind_for(
+                "DOM-EVENT", "社区公共卫生事件应急上报系统", "晨午检对比。"
+            ),
+            "incident",
+        )
+        self.assertEqual(
+            event_product_kind("社区健康监测", "社区网格员维护居民档案。"),
+            "monitor",
+        )
+        # 现网默认：监测皮不变
+        mon = build_domain_schema(
+            "社区健康监测",
+            "DOM-EVENT",
+            proposal_text="社区网格员维护居民档案。",
+        )
+        self.assertEqual(mon["labels"].get("authEyebrow"), "社区公卫")
+        self.assertEqual(mon["entities"]["archive"].get("label"), "对象")
+        self.assertEqual(mon["roles"]["user"]["label"], "网格员")
+
+        inc = build_domain_schema(
+            "社区公共卫生事件应急上报系统",
+            "DOM-EVENT",
+            proposal_text="社区或校园在疫情排查；晨午检与因病缺课。",
+        )
+        self.assertEqual(scene_for("DOM-EVENT", "社区公共卫生事件应急上报系统", ""), "community")
+        self.assertEqual(inc["labels"].get("authEyebrow"), "应急上报")
+        self.assertEqual(inc["entities"]["archive"].get("label"), "事件")
+        self.assertEqual(inc["roles"]["user"]["label"], "网格员")
+        self.assertNotIn("健康打卡", " ".join(inc["labels"].get("authPoints") or []))
+        log_fields = {
+            f.get("label")
+            for f in ((inc.get("entities") or {}).get("archiveLog") or {}).get("fields") or []
+        }
+        self.assertIn("现场情况", log_fields)
+        self.assertNotIn("体温℃", log_fields)
+        self.assertNotIn("血压", log_fields)
+        self.assertEqual(inc["labels"].get("archiveLogSectionTitle"), "巡查登记")
+        self.assertEqual(inc["labels"].get("archiveLogSubmitLabel"), "登记巡查")
+        user_menus = {m["key"]: m["label"] for m in (inc.get("menus") or {}).get("user") or []}
+        self.assertEqual(user_menus.get("archive"), "事件列表")
+        # monitor 仍保留体征字段
+        mon_log = {
+            f.get("label")
+            for f in ((mon.get("entities") or {}).get("archiveLog") or {}).get("fields") or []
+        }
+        self.assertIn("体温℃", mon_log)
+        sql = domain_sql(
+            "DOM-EVENT",
+            "thesis_test",
+            title="社区公共卫生事件应急上报系统",
+            proposal_text="社区网格员上报公共卫生事件。",
+        )
+        self.assertIn("聚集性发热线索", sql)
+        self.assertNotIn("体温异常待回访", sql)
+
+    def test_ensure_spec_schema_refreshes_stale_event_product_skin(self) -> None:
+        """匹配期留下的监测壳，一键生成时须按开题重编成应急皮（勿只更新 SQL 种子）。"""
+        stale = build_domain_schema(
+            "社区健康监测",
+            "DOM-EVENT",
+            proposal_text="社区网格员维护居民档案。",
+        )
+        self.assertEqual(stale["entities"]["archive"].get("label"), "对象")
+        out = ensure_spec_schema(
+            {
+                "domain": "DOM-EVENT",
+                "title": "社区公共卫生事件应急上报系统",
+                "proposal_text": "社区网格员上报公共卫生事件与隐患。",
+                "schema": stale,
+                "archetype": "ARCH-FLOW",
+            }
+        )
+        arch = (out.get("schema") or {}).get("entities", {}).get("archive") or {}
+        labels = (out.get("schema") or {}).get("labels") or {}
+        self.assertEqual(arch.get("label"), "事件")
+        self.assertEqual(labels.get("authEyebrow"), "应急上报")
+        self.assertEqual(labels.get("archiveLogSubmitLabel"), "登记巡查")
 
 
 if __name__ == "__main__":

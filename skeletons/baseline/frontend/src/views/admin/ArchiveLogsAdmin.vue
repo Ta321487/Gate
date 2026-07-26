@@ -87,11 +87,11 @@ const labels = computed(() => getSchema()?.labels || {})
 const logEnt = computed(() => getSchema()?.entities?.archiveLog || {})
 const pageTitle = computed(() => labels.value.archiveLogPageTitle || logEnt.value.labelPlural || '监测记录')
 const pageLead = computed(
-  () => labels.value.archiveLogPageLead || '按对象查看打卡与随访；可筛选今日未打卡。',
+  () => labels.value.archiveLogPageLead || '按对象查看监测记录；可筛选今日未登记。',
 )
-const missingTitle = computed(() => labels.value.archiveLogMissingTitle || '今日未打卡')
+const missingTitle = computed(() => labels.value.archiveLogMissingTitle || '今日未登记')
 const typeOptions = computed(() => logEnt.value.typeOptions || [
-  { value: 'checkin', label: '健康打卡' },
+  { value: 'checkin', label: '日常登记' },
   { value: 'followup', label: '随访记录' },
   { value: 'assess', label: '评估记录' },
 ])

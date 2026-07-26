@@ -67,6 +67,7 @@ export const api = {
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
+  putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
   getModules: (id, { layout = 'biz' } = {}) =>
     http.get(`/projects/${id}/schema/modules`, { params: { layout } }),
   getTestcases: (id, { fields = 6 } = {}) =>

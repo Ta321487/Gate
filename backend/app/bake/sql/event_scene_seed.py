@@ -116,6 +116,31 @@ SELECT '本周排查', '请于周五前完成高风险对象指标复核与随�
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
 """
 
+_COMMUNITY_INCIDENT_SEED = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '防控主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '网格员甲', '13800000002',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"网格员","communityName":"阳光小区","region":"3栋片区"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '传染病线索'), (2, '环境隐患'), (3, '聚集性风险');
+INSERT IGNORE INTO event_case (id, title, author, isbn, category_id, stock, status, stage) VALUES
+(1, '3栋聚集性发热线索', '网格员李华', '阳光小区 3栋 / 待流调核查', 1, 1, 'available', '待核查'),
+(2, '物业消杀物资短缺', '网格员王芳', '阳光小区物业库房 / 待补给', 2, 1, 'available', '排查中'),
+(3, '东门商铺快检阳性复核', '网格员张敏', '小区东门商铺 / 待复核', 1, 1, 'available', '处置中'),
+(4, '5栋污水井异味排查', '网格员赵强', '阳光小区 5栋北侧 / 已闭环', 2, 1, 'available', '已闭环'),
+(5, '周末集市聚集风险提示', '网格员陈洁', '小区广场 / 待巡查', 3, 1, 'available', '待核查');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '上报须知', '请如实登记事件要素与地点；重大线索请及时上报并由值班员确认处置。', 'admin', '防控主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='上报须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周排查', '请于周五前完成网格重点线索复核与应急上报闭环。', 'admin', '防控主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
+"""
+
+
 def apply_event_scene_seed(
     sql: str,
     *,
@@ -123,11 +148,14 @@ def apply_event_scene_seed(
     proposal_text: str = "",
 ) -> str:
     """按 ``scene_event`` 替换 DOM-EVENT 演示种子；校园档保留模板原文。"""
+    from app.bake.scene_scan import event_product_kind
+
     scene = scene_event_parts(title, proposal_text)
+    kind = event_product_kind(title, proposal_text)
     if scene == "institution":
         seed = _INSTITUTION_SEED
     elif scene == "community":
-        seed = _COMMUNITY_SEED
+        seed = _COMMUNITY_INCIDENT_SEED if kind == "incident" else _COMMUNITY_SEED
     elif scene == "enterprise":
         seed = _ENTERPRISE_SEED
     elif scene == "default":

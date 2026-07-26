@@ -107,12 +107,43 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         staff_posts=staff_posts_pre,
     )
     assert_table_budget(sql, domain)
-    _write(dest / "sql" / "schema.sql", sql)
 
     from app.bake.domain_schema import product_name_from_title
+    from app.bake.identity_align import assert_identity_aligned
+    from app.bake.menu_routes import assert_menu_routes_aligned
 
     title = spec.get("title", "毕设系统")
     schema = spec.get("schema") or {}
+    # 身份/壳穿帮直接失败，禁止带病包出炉
+    assert_identity_aligned(
+        domain,
+        title=str(title or ""),
+        proposal_text=proposal_for_sql,
+        sql=sql,
+        schema=schema if isinstance(schema, dict) else None,
+        profile_fields=(schema.get("profileFields") if isinstance(schema, dict) else None),
+    )
+    # 菜单 key 必须能落到本包有效路由，禁止导航 404
+    from app.bake.domain_skin import traits_for_domain
+
+    assert_menu_routes_aligned(
+        schema if isinstance(schema, dict) else None,
+        domain=domain,
+        capabilities=list(spec.get("capabilities") or []),
+        traits=dict(spec.get("traits") or traits_for_domain(domain)),
+        proposal_text=proposal_for_sql,
+    )
+    from app.bake.skin_invariants import assert_skin_invariants
+
+    assert_skin_invariants(
+        schema if isinstance(schema, dict) else None,
+        domain=domain,
+        title=str(title or ""),
+        proposal_text=proposal_for_sql,
+        frontend_src=dest / "frontend" / "src",
+    )
+    _write(dest / "sql" / "schema.sql", sql)
+
     app_name = (
         ((schema.get("labels") or {}).get("appName") or "").strip()
         or product_name_from_title(title)
@@ -281,15 +312,27 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     roles = ((spec.get("schema") or {}).get("roles") or {}) if isinstance(spec.get("schema"), dict) else {}
     from app.bake.staff_posts import allow_appoint_from_users as _allow_appoint
 
+    # 与 domain.schema.json roles.allowAppointFromUsers 同真源；缺省按域规则重算并回写，避免 FE/yml 分叉
     appoint_ok = roles.get("allowAppointFromUsers")
-    if appoint_ok is None:
+    if not isinstance(appoint_ok, bool):
+        prop_body = ""
+        if isinstance(spec.get("proposal_text"), str):
+            prop_body = spec["proposal_text"]
         appoint_ok = _allow_appoint(
             domain,
             spec.get("archetype"),
             spec.get("archetypes") if isinstance(spec.get("archetypes"), list) else None,
+            proposal_text=prop_body,
+            title=str(spec.get("title") or ""),
         )
+        sch = spec.get("schema") if isinstance(spec.get("schema"), dict) else None
+        if sch is not None:
+            roles_w = dict(sch.get("roles") or {})
+            roles_w["allowAppointFromUsers"] = bool(appoint_ok)
+            sch["roles"] = roles_w
+            spec["schema"] = sch
     lines.append(
-        "  # 是否允许把门户业务用户任命为岗位（挂号等域关闭，岗靠种子账号）"
+        "  # 是否允许把门户用户任命为岗位（服务对象域关闭，岗靠种子账号）"
     )
     lines.append(f"  allow-appoint-from-users: {'true' if appoint_ok else 'false'}")
 

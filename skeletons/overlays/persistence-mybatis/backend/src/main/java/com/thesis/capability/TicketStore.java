@@ -635,6 +635,16 @@ public final class TicketStore {
         if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持逾期费用登记");
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue", "returned").contains(st)) {
+            throw new IllegalStateException("当前状态不可登记费用结清");
+        }
+        if (TicketSql.toDouble(m.get("fineYuan")) <= 0) {
+            throw new IllegalStateException("无待结清费用");
+        }
+        if ("paid".equals(String.valueOf(m.getOrDefault("fineStatus", "")))) {
+            throw new IllegalStateException("费用已结清");
+        }
         mapper().updateFinePaid(TICKET, ticketId);
         appendProgress(ticketId, "fine_paid", operator, TicketCopy.FINE_PAID_LABEL);
         return get(ticketId);
@@ -862,8 +872,14 @@ public final class TicketStore {
         if (!TicketSql.str(m.get("username")).equals(username)) {
             throw new IllegalStateException("只能评价自己的单据");
         }
-        if (!"returned".equals(String.valueOf(m.get("status")))) {
-            throw new IllegalStateException("仅「" + TicketCopy.stateLabel("returned", "已完结") + "」单据可评分");
+        String st = String.valueOf(m.get("status"));
+        boolean rateable = "returned".equals(st)
+                || (approveEndsFlow && "approved".equals(st));
+        if (!rateable) {
+            throw new IllegalStateException(
+                    approveEndsFlow
+                            ? "仅已办结单据可评分"
+                            : "仅「" + TicketCopy.stateLabel("returned", "已完结") + "」单据可评分");
         }
         Object prev = m.get("rating");
         if (prev != null && !"0".equals(String.valueOf(prev)) && !"".equals(String.valueOf(prev))) {
@@ -946,6 +962,25 @@ public final class TicketStore {
         }
     }
 
+    /**
+     * 申请人撤销待审单据（pending / pending_final）。未扣库存，无需回补。
+     */
+    public static Map<String, Object> withdraw(long ticketId, String username) {
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (username == null || username.isBlank()
+                || !username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能撤销自己的申请");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!"pending".equals(st) && !"pending_final".equals(st)) {
+            throw new IllegalStateException("仅待审核申请可撤销");
+        }
+        mapper().updateStatus(TICKET, "cancelled", ticketId);
+        appendProgress(ticketId, "cancelled", username, "用户撤销申请");
+        return get(ticketId);
+    }
+
     public static Map<String, Object> complete(long ticketId) {
         return complete(ticketId, null, true);
     }
@@ -967,6 +1002,11 @@ public final class TicketStore {
         String st = String.valueOf(m.get("status"));
         if (!List.of("approved", "overdue").contains(st)) {
             throw new IllegalStateException("仅进行中/逾期可完结");
+        }
+        // 驿站/失物等：审批即核销出库（approveEndsFlow + pickup 列），禁止再「取消取件」回补库存
+        if (approveEndsFlow && hasColumn("pickup_at")
+                && ("approved".equals(st) || "overdue".equals(st))) {
+            throw new IllegalStateException("已核销办结，不可取消取件");
         }
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
@@ -1147,6 +1187,7 @@ public final class TicketStore {
     public static boolean isHistoryStatus(String status) {
         return "returned".equals(status)
                 || "rejected".equals(status)
+                || "cancelled".equals(status)
                 || "noshow".equals(status);
     }
 

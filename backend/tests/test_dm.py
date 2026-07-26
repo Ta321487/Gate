@@ -23,14 +23,25 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertTrue(scan_dm("即时私信功能"))
         self.assertFalse(scan_dm("仅公告与跟帖，无其它互动"))
 
-    def test_forum_and_dating_default_dm(self) -> None:
-        for domain in ("DOM-FORUM", "DOM-DATING"):
-            caps = merge_dm_capabilities(
-                ["archive", "ticket_flow", "content", "org_users"],
-                "",
-                domain=domain,
-            )
-            self.assertIn(DM_CAP, caps)
+    def test_dating_default_dm_forum_opt_in(self) -> None:
+        dating = merge_dm_capabilities(
+            ["archive", "ticket_flow", "content", "org_users"],
+            "",
+            domain="DOM-DATING",
+        )
+        self.assertIn(DM_CAP, dating)
+        forum = merge_dm_capabilities(
+            ["archive", "ticket_flow", "content", "org_users"],
+            "发帖回帖与版主审核",
+            domain="DOM-FORUM",
+        )
+        self.assertNotIn(DM_CAP, forum)
+        forum_on = merge_dm_capabilities(
+            ["archive", "ticket_flow", "content", "org_users"],
+            "支持用户实时私信与回帖审核",
+            domain="DOM-FORUM",
+        )
+        self.assertIn(DM_CAP, forum_on)
 
     def test_library_without_keyword_no_dm(self) -> None:
         caps = merge_dm_capabilities(
@@ -60,13 +71,14 @@ class DmCapabilityTests(unittest.TestCase):
         spec = apply_dm_to_spec(
             {
                 "domain": "DOM-FORUM",
-                "capabilities": ["archive", "ticket_flow", "content", "org_users", "recommend"],
+                "capabilities": ["archive", "ticket_flow", "content", "org_users"],
                 "entities": ["Post", "Category", "Reply", "Notice"],
                 "features": [{"name": "实时私信", "status": "out_of_mvp"}],
                 "out_of_mvp": ["实时私信", "无限深度树形嵌套引擎"],
                 "schema": {"menus": {"admin": [], "user": []}, "labels": {}},
                 "gate": {},
-            }
+            },
+            "支持用户实时私信与回帖",
         )
         self.assertIn(DM_CAP, spec["capabilities"])
         self.assertIn("Dm", spec["entities"])
@@ -97,7 +109,6 @@ class DmCapabilityTests(unittest.TestCase):
                     "ticket_flow",
                     "content",
                     "org_users",
-                    "recommend",
                 ],
                 "entities": ["Post", "Category", "Reply", "Notice"],
                 "features": [],
@@ -109,13 +120,21 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertEqual(spec.get("accept"), "full")
         self.assertNotIn("实时私信", spec.get("out_of_mvp") or [])
 
-    def test_forum_sql_injects_dm_within_budget(self) -> None:
-        sql = domain_sql("DOM-FORUM", "thesis_test")
+    def test_forum_sql_injects_dm_when_scanned(self) -> None:
+        sql = domain_sql(
+            "DOM-FORUM",
+            "thesis_test",
+            proposal_text="校园论坛发帖回帖，并支持用户实时私信。",
+        )
         self.assertIn("sys_dm_message", sql)
         self.assertIn("user2", sql)
         n = count_create_tables(sql)
         self.assertLessEqual(n, 15)
         self.assertGreaterEqual(n, 6)
+
+    def test_forum_sql_no_dm_by_default(self) -> None:
+        sql = normalize_sql(domain_sql("DOM-FORUM", "thesis_test"))
+        self.assertNotIn("sys_dm_message", sql)
 
     def test_library_sql_no_dm_table(self) -> None:
         sql = normalize_sql(domain_sql("DOM-LIBRARY", "thesis_test"))

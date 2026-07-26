@@ -3,9 +3,7 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users",
-    "recommend",
-    "dm"
+    "org_users"
   ],
   "entities": {
     "archive": {
@@ -95,11 +93,13 @@
     "messagesPageLead": "审核结果与系统通知。",
     "myArchivePageLead": "本人发布的主帖即时可见；站长下架后仍可在此查看状态。",
     "myArchivePageTitle": "我的主帖",
+    "myTicketsBrowseCta": "去帖子检索",
+    "myTicketsEmptyArchive": "还没有回复，请先在帖子页跟帖。",
+    "myTicketsPageLead": "查看本人回复与审核进度；请先在帖子页跟帖。",
     "noticePageLead": "版规、维护窗口与活动通知，点击条目阅读全文。",
     "noticePageTitle": "站内公告",
-    "recommendLatestHint": "最新发布",
-    "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "注册后可发帖并回复"
+    "registerRoleHint": "注册后可发帖并回复",
+    "ticketAppliedAtLabel": "回复于"
   },
   "menus": {
     "admin": [

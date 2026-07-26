@@ -38,6 +38,7 @@ import {
   currentStaffPost,
   staffPostLabel,
 } from '../utils/staffPosts.js'
+import { adminMenuPath } from '../utils/menuRoutes.js'
 import { onProfileDisplayChange } from '../utils/session.js'
 
 const route = useRoute()
@@ -66,32 +67,12 @@ const adminRoleLabel = computed(() => {
   return staffPostLabel(staffPost, roles.subadmin?.label || '经办员')
 })
 
-const MENU_TO = {
-  dashboard: '/admin/dashboard',
-  messages: '/admin/messages',
-  ticket_pending: '/admin/tickets',
-  ticket_records: '/admin/ticket-records',
-  users: '/admin/users',
-  content: '/admin/notices',
-  guestbook: '/admin/guestbook',
-  archive_logs: '/admin/archive-logs',
-  lookup_site: '/admin/sites',
-  lookup_type: '/admin/types',
-  archive: '/admin/archive',
-  category: '/admin/categories',
-  deadline: '/admin/overdue',
-  coupons: '/admin/coupons',
-  orders: '/admin/orders',
-  order_reviews: '/admin/order-reviews',
-  reservations: '/admin/reservations',
-}
-
 const menuItems = computed(() => {
   const menus = schemaMenus('admin')
   const raw = menus.length
     ? menus.map((m) => ({
         key: m.key,
-        index: MENU_TO[m.key],
+        index: adminMenuPath(m.key),
         label: m.label,
         superOnly: isSuperOnlyMenu(m),
       })).filter((m) => m.index)

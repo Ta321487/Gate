@@ -53,6 +53,20 @@ class TestStackScan(unittest.TestCase):
         r = scan_stack("系统", "工作台用 ECharts 做统计图。")
         self.assertTrue(r["addons"]["echarts"]["deliverable"])
 
+    def test_undelivered_ssr_thymeleaf_warns(self) -> None:
+        r = scan_stack(
+            "图书管理系统",
+            "技术路线：Spring Boot + Thymeleaf + AdminLTE，服务端渲染。",
+        )
+        self.assertTrue(any("Thymeleaf" in w for w in r["warnings"]))
+        self.assertTrue(any("AdminLTE" in w for w in r["warnings"]))
+        self.assertEqual(r["spine"], "spa")  # 未落地仍落 spa，但不得静默
+
+    def test_undelivered_jpa_warns(self) -> None:
+        r = scan_stack("商城系统", "持久层采用 Spring Data JPA / Hibernate。")
+        self.assertTrue(any("JPA" in w or "Hibernate" in w for w in r["warnings"]))
+        self.assertEqual(r["persistence"], "jdbc")
+
     def test_normalize(self) -> None:
         self.assertEqual(normalize_persistence("jpa"), "jdbc")  # 非法 → 默认
         self.assertEqual(normalize_persistence("mybatis"), "mybatis")

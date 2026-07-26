@@ -135,7 +135,7 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import scene_for
 
     community = scene_for("DOM-FORUM", title, proposal_text) == "community"
-    return _with_portal_banners(
+    schema = _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-FORUM",
@@ -212,6 +212,15 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             {"title": "标签筛选", "lead": "按标签快速找到感兴趣的话题。"},
         ],
     )
+    # archive_ticket_schema 返回后补门户页导语（回复非「申请」）
+    labels = dict(schema.get("labels") or {})
+    labels.setdefault("myTicketsPageLead", "查看本人回复与审核进度；请先在帖子页跟帖。")
+    labels.setdefault("ticketAppliedAtLabel", "回复于")
+    labels.setdefault("myTicketsBrowseCta", "去帖子检索")
+    labels.setdefault("myTicketsEmptyArchive", "还没有回复，请先在帖子页跟帖。")
+    schema["labels"] = labels
+    return schema
+
 
 def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """博客：个人站默认；校园院刊/学工资讯走 campus。

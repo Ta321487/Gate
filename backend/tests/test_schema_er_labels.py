@@ -252,3 +252,68 @@ def test_reject_entity_name_as_relation():
     by_via3 = {(r["via"], r["right"]): r["label"] for r in patched["relations"]}
     assert by_via3[("category_id", "biz_item")] == "属于"
     assert by_via3[("publisher_username", "sys_notice")] == "发布"
+
+
+def test_merge_and_manual_er_labels(tmp_path):
+    from app.bake.schema.er import (
+        apply_manual_er_labels,
+        collect_english_gaps,
+        load_er_label_patch,
+        merge_er_label_patch,
+    )
+
+    sql = """
+    CREATE TABLE IF NOT EXISTS weird_widget (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      frozzle VARCHAR(32) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    (tmp_path / "sql").mkdir()
+    (tmp_path / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+
+    merged = merge_er_label_patch(
+        {"tables": {"weird_widget": "奇异部件"}, "mode": "llm"},
+        {"columns": {"weird_widget": {"frozzle": "异形码"}}, "mode": "manual"},
+        mode="manual",
+    )
+    assert merged["mode"] == "manual"
+    assert merged["tables"]["weird_widget"] == "奇异部件"
+    assert merged["columns"]["weird_widget"]["frozzle"] == "异形码"
+
+    result = apply_manual_er_labels(
+        tmp_path,
+        {"tables": {"weird_widget": "奇异件"}, "columns": {"weird_widget": {"frozzle": "异码"}}},
+    )
+    assert result["er_gap_count"] == 0
+    w = next(t for t in result["model"]["tables"] if t["name"] == "weird_widget")
+    assert w["label"] == "奇异件"
+    assert {c["name"]: c["label"] for c in w["columns"]}["frozzle"] == "异码"
+    disk = load_er_label_patch(tmp_path)
+    assert disk["mode"] == "manual"
+    assert disk["tables"]["weird_widget"] == "奇异件"
+
+    # 再次合并不丢已有键
+    result2 = apply_manual_er_labels(tmp_path, {"tables": {"weird_widget": "部件"}})
+    disk2 = load_er_label_patch(tmp_path)
+    assert disk2["tables"]["weird_widget"] == "部件"
+    assert disk2["columns"]["weird_widget"]["frozzle"] == "异码"
+    assert collect_english_gaps(result2["model"])["tables"] == []
+
+
+def test_manual_er_labels_reject_latin(tmp_path):
+    from app.bake.schema.er import apply_manual_er_labels
+
+    sql = """
+    CREATE TABLE IF NOT EXISTS t1 (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      x VARCHAR(8)
+    );
+    """
+    (tmp_path / "sql").mkdir()
+    (tmp_path / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+    try:
+        apply_manual_er_labels(tmp_path, {"tables": {"t1": "Widget"}})
+        assert False, "expected ValueError"
+    except ValueError as e:
+        assert "中文" in str(e)

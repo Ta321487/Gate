@@ -150,6 +150,22 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertTrue(labs & {"我的预订", "预订记录", "我的订单", "预订订单"})
         self.assertIn("预订", branches["biz:slot"]["label"])
 
+    def test_hotel_order_stay_fulfill_not_logistics(self) -> None:
+        """客房订单跟入住/离店，禁止商城物流叙事。"""
+        schema = self._schema("DOM-HOTEL")
+        order = (schema.get("entities") or {}).get("order") or {}
+        self.assertEqual(order.get("fulfillMode"), "stay")
+        self.assertEqual((order.get("verbs") or {}).get("ship"), "办理入住")
+        self.assertEqual((order.get("verbs") or {}).get("complete"), "办理离店")
+        self.assertEqual((order.get("states") or {}).get("shipped"), "已入住")
+        self.assertEqual((order.get("states") or {}).get("completed"), "已离店")
+        self.assertEqual(
+            ((schema.get("entities") or {}).get("archive") or {})
+            .get("fields", [{}])[1]
+            .get("format"),
+            "money",
+        )
+
     def test_blog_favorite_instant_not_ticket_audit(self) -> None:
         schema = self._schema("DOM-BLOG")
         model = module_model(schema, layout="biz")

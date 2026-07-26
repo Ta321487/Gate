@@ -24,21 +24,26 @@
         <template v-if="row.refundReason"> · {{ row.refundReason }}</template>
       </p>
       <p v-if="hasShipInfo(row)" class="ship">
-        <template v-if="row.deliveryType">{{ row.deliveryType }} · </template>
-        <template v-if="row.receiverName || row.receiverPhone">
-          {{ row.receiverName }} {{ row.receiverPhone }}
+        <template v-if="isStay">
+          <template v-if="row.remark">备注：{{ row.remark }}</template>
         </template>
-        <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
-        <template v-if="isFood && row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
-        <template v-if="!isFood && row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
-        <template v-if="isFood && row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
-        <template v-if="row.remark"><br />备注：{{ row.remark }}</template>
+        <template v-else>
+          <template v-if="row.deliveryType">{{ row.deliveryType }} · </template>
+          <template v-if="row.receiverName || row.receiverPhone">
+            {{ row.receiverName }} {{ row.receiverPhone }}
+          </template>
+          <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
+          <template v-if="isFood && row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
+          <template v-if="!isFood && row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
+          <template v-if="isFood && row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
+          <template v-if="row.remark"><br />备注：{{ row.remark }}</template>
+        </template>
       </p>
       <ul class="lines">
-        <li v-for="ln in row.lines || []" :key="ln.id">{{ ln.title }} × {{ ln.qty }}（¥{{ ln.lineYuan }}）</li>
+        <li v-for="ln in row.lines || []" :key="ln.id">{{ ln.title }} × {{ ln.qty }}（¥{{ Number(ln.lineYuan || 0).toFixed(2) }}）</li>
       </ul>
       <div class="acts">
-        <el-button size="small" @click="openTrace(row)">物流轨迹</el-button>
+        <el-button v-if="showTrace" size="small" @click="openTrace(row)">物流轨迹</el-button>
         <el-button
           v-if="canRefund(row)"
           size="small"
@@ -85,6 +90,10 @@ const label = menuLabel('user', 'my_orders', '我的订单')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const states = computed(() => getSchema()?.entities?.order?.states || {})
 const isFood = computed(() => hasTrait('food'))
+const isStay = computed(
+  () => hasTrait('slotHotel') || getSchema()?.entities?.order?.fulfillMode === 'stay',
+)
+const showTrace = computed(() => !isStay.value && !isFood.value)
 const reviewOn = computed(() => hasCap('order_review'))
 const list = ref([])
 const total = ref(0)
@@ -101,6 +110,7 @@ function refundLabel(st) {
 
 function hasShipInfo(row) {
   if (!row) return false
+  if (isStay.value) return !!row.remark
   if (row.deliveryType || row.addressLine || row.receiverName || row.receiverPhone || row.remark) return true
   if (isFood.value) return !!(row.tasteNote || row.pickupCode)
   return !!row.trackingNo

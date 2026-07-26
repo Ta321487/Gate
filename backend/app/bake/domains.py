@@ -141,7 +141,8 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
     "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
-    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "recommend", "dm"],
+    # 私信/猜你喜欢：论坛开题常作对比不做；开题点名再扫入（dating 仍默认 dm）
+    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
 }
 

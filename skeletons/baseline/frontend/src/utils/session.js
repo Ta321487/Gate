@@ -23,12 +23,18 @@ export function clearAuthStorage() {
   sessionCache = null
 }
 
-/** 业务码 40100 = 未登录 / 会话失效（验证码错误 40101 不踢） */
+/** 业务码 40100 = 未登录 / 会话失效（验证码错误 40101 不踢；停用 40102 另判） */
 export function isUnauthorizedPayload(body) {
   if (!body || typeof body !== 'object') return false
   const code = Number(body.code)
   if (code === 40100) return true
-  return code !== 40101 && String(body.message || '') === '未登录'
+  return code !== 40101 && code !== 40102 && String(body.message || '') === '未登录'
+}
+
+export function isAccountDisabledPayload(body) {
+  if (!body || typeof body !== 'object') return false
+  if (Number(body.code) === 40102) return true
+  return String(body.message || '').includes('停用')
 }
 
 export function loginPathForRole(role, staffKind = '') {
@@ -170,6 +176,7 @@ export function kickToLogin(router, message) {
   const staffKind = localStorage.getItem('staffKind') || ''
   clearAuthStorage()
   const path = loginPathForRole(role, staffKind)
+  const disabled = String(message || '').includes('停用')
   const go = () => {
     const cur = router.currentRoute?.value?.path
     if (
@@ -182,7 +189,8 @@ export function kickToLogin(router, message) {
       kicking = false
       return
     }
-    router.replace(path).finally(() => {
+    const query = disabled ? { reason: 'disabled' } : undefined
+    router.replace({ path, query }).finally(() => {
       kicking = false
     })
   }

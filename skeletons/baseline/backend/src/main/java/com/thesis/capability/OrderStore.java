@@ -59,11 +59,17 @@ public final class OrderStore {
     }
 
     private static double priceOf(Map<String, Object> item) {
-        // 约定：author 存单价（元）
+        return unitPriceOf(item);
+    }
+
+    /** 档案单价：逻辑键 author（物理列常为 price_yuan）。 */
+    public static double unitPriceOf(Map<String, Object> item) {
+        if (item == null) return 0;
         Object raw = item.get("author");
+        if (raw == null) raw = item.get("priceYuan");
         if (raw == null) return 0;
         try {
-            return Double.parseDouble(String.valueOf(raw).replace("¥", "").trim());
+            return Double.parseDouble(String.valueOf(raw).replace("¥", "").replace("￥", "").trim());
         } catch (Exception e) {
             return 0;
         }
@@ -478,6 +484,17 @@ public final class OrderStore {
                         act = "complete";
                     }
                 }
+                // 办结关联订单：须先确认再履约，再完成（与前台按钮规则一致）
+                if ("complete".equals(act)) {
+                    Map<String, Object> m = getOrder(id);
+                    String st = m == null ? "" : String.valueOf(m.get("status"));
+                    if ("pending".equals(st)) {
+                        advance(id, "confirm", null);
+                        advance(id, "ship", null);
+                    } else if ("confirmed".equals(st)) {
+                        advance(id, "ship", null);
+                    }
+                }
                 advance(id, act, null);
             } catch (Exception ignored) {
             }
@@ -522,9 +539,15 @@ public final class OrderStore {
         String act = action == null ? "" : action.trim().toLowerCase(Locale.ROOT);
         String next;
         if ("confirm".equals(act) && "pending".equals(st)) next = "confirmed";
-        else if ("ship".equals(act) && ("pending".equals(st) || "confirmed".equals(st))) next = "shipped";
-        else if ("complete".equals(act) && ("confirmed".equals(st) || "shipped".equals(st) || "pending".equals(st)))
+        // 发货/出餐须先确认，禁止 pending 跳步
+        else if ("ship".equals(act) && "confirmed".equals(st)) next = "shipped";
+        // 完成必须先发货/出餐，禁止 pending/confirmed 跳步完结；售后中不可完成
+        else if ("complete".equals(act) && "shipped".equals(st)) {
+            if ("pending".equals(String.valueOf(m.getOrDefault("refundStatus", "")))) {
+                throw new IllegalStateException("售后处理中，不可完成订单");
+            }
             next = "completed";
+        }
         else if ("cancel".equals(act) && ("pending".equals(st) || "confirmed".equals(st))) next = "cancelled";
         else throw new IllegalStateException("当前状态不可执行：" + act);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
@@ -577,6 +600,9 @@ public final class OrderStore {
             String uname = String.valueOf(m.get("username"));
             if (paid > 0) {
                 LoyaltyStore.refundOrderPay(uname, orderId, paid);
+            }
+            if (LoyaltyStore.isCouponEnabled()) {
+                CouponStore.releaseByOrder(orderId);
             }
         }
         if ("completed".equals(next) && LoyaltyStore.anyEnabled()) {
@@ -830,6 +856,7 @@ public final class OrderStore {
             return getOrder(orderId);
         }
         // 通过：按取消回补库存与余额，状态改为 cancelled
+        String prevStatus = String.valueOf(m.get("status"));
         if (useQuota) {
             for (Map<String, Object> line : listLines(orderId)) {
                 ArchiveStore.adjustStock(
@@ -838,9 +865,20 @@ public final class OrderStore {
             }
         }
         if (LoyaltyStore.anyEnabled()) {
+            String uname = String.valueOf(m.get("username"));
             double paid = toDouble(m.get("payBalanceYuan"));
             if (paid > 0) {
-                LoyaltyStore.refundOrderPay(String.valueOf(m.get("username")), orderId, paid);
+                LoyaltyStore.refundOrderPay(uname, orderId, paid);
+            }
+            if ("completed".equals(prevStatus)) {
+                int pts = 0;
+                Object pe = m.get("pointsEarned");
+                if (pe instanceof Number n) pts = n.intValue();
+                double pay = paid > 0 ? paid : toDouble(m.get("totalYuan"));
+                LoyaltyStore.clawbackOrderCompleted(uname, orderId, pts, pay);
+            }
+            if (LoyaltyStore.isCouponEnabled()) {
+                CouponStore.releaseByOrder(orderId);
             }
         }
         db().update(

@@ -35,6 +35,29 @@ EVENT_ENTERPRISE_HINTS = ("企业员工", "复工", "班组", "园区办公", "E
 
 ATTEND_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工")
 EVENT_CAMPUS_HINTS = ("晨午检", "因病缺课", "校园", "班级", "学生", "学校", "高校")
+# 产品皮（与 scene 正交）：监测打卡 vs 应急事件上报
+EVENT_MONITOR_HINTS = (
+    "晨午检",
+    "健康监测",
+    "健康打卡",
+    "健康随访",
+    "随访管理",
+    "因病缺课",
+    "体征监测",
+    "复工监测",
+)
+EVENT_INCIDENT_HINTS = (
+    "应急上报",
+    "应急处置",
+    "公共卫生事件",
+    "公卫事件",
+    "疫情事件",
+    "突发事件",
+    "疫情上报",
+    "事件应急",
+    "应急管理",
+    "隐患上报",
+)
 RECRUIT_CAMPUS_HINTS = ("校园", "校招", "高校", "毕业生", "大学生", "双选会", "就业")
 RECRUIT_ENTERPRISE_HINTS = ("企业", "公司", "人事", "人力资源", "HR")
 DATING_CAMPUS_HINTS = ("校园", "高校", "大学生", "同学", "校内", "学工", "院系", "学校")
@@ -280,6 +303,27 @@ def scene_event_parts(title: str, body: str = "") -> Scene:
         if sc != "default":
             return sc
     return "default"
+
+
+def event_product_kind(title: str, body: str = "") -> str:
+    """仅 ``monitor`` | ``incident``。
+
+    - monitor：晨午检 / 健康监测 / 随访打卡（现网默认皮）
+    - incident：应急上报 / 公共卫生事件（弱化每日打卡叙事）
+
+    题名优先；正文「晨午检」对比句不得把应急题洗成 monitor。
+    """
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, EVENT_MONITOR_HINTS):
+        return "monitor"
+    if scan_has(t, EVENT_INCIDENT_HINTS):
+        return "incident"
+    if scan_has(b, EVENT_MONITOR_HINTS) and not scan_has(b, EVENT_INCIDENT_HINTS):
+        return "monitor"
+    if scan_has(b, EVENT_INCIDENT_HINTS):
+        return "incident"
+    return "monitor"
 
 
 def scene_recruit(text: str) -> Scene:
@@ -531,6 +575,8 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return shop_product_kind(title, body)
     if domain == "DOM-FOOD":
         return food_product_kind(title, body)
+    if domain == "DOM-EVENT":
+        return event_product_kind(title, body)
     return None
 
 

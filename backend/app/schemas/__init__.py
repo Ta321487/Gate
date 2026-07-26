@@ -67,6 +67,18 @@ class DeliveryMarkUpdate(BaseModel):
     mark: str = Field(description="none | ready | delivered")
 
 
+class ErLabelsUpdate(BaseModel):
+    """人工补 E-R / 产物页中文展示名（不改 SQL 标识符）。"""
+
+    model_config = ConfigDict(title="E-R 中文名补丁")
+
+    tables: dict[str, str] = Field(default_factory=dict, description="表名 → 中文实体名")
+    columns: dict[str, dict[str, str]] = Field(
+        default_factory=dict, description="表名 → {列名 → 中文属性名}"
+    )
+    relations: dict[str, str] = Field(default_factory=dict, description="联系名 → 中文联系名")
+
+
 class MatchUpdate(BaseModel):
     model_config = ConfigDict(title="匹配更新")
 

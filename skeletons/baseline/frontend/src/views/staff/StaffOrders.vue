@@ -15,6 +15,9 @@ import { hasTrait, getSchema } from '../../utils/domainSchema.js'
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const hint = computed(() => {
   if (hasTrait('food')) return `作业台：处理${orderNoun.value}出餐与配送状态`
+  if (hasTrait('slotHotel') || getSchema()?.entities?.order?.fulfillMode === 'stay') {
+    return `作业台：处理客房${orderNoun.value}入住/离店`
+  }
   return `作业台：处理${orderNoun.value}履约状态`
 })
 </script>

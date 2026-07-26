@@ -12,7 +12,8 @@ from typing import Any
 
 from app.bake.domain_schema import build_domain_schema
 from app.bake.engine_sql import domain_sql
-from app.bake.profile_fields import profile_fields_for
+from app.bake.identity_align import assert_identity_aligned
+from app.bake.menu_routes import assert_menu_routes_aligned
 from app.bake.proposal_packs import PACKS
 from app.bake.sample_proposal import render_template
 from app.bake.scene_scan import (
@@ -65,14 +66,6 @@ def _user_profile(sql: str) -> dict[str, Any]:
     return json.loads(m.group(1).replace("''", "'"))
 
 
-def _profile_field_keys(domain: str, title: str, text: str) -> set[str]:
-    return {
-        str(f.get("key"))
-        for f in profile_fields_for(domain, title=title, proposal_text=text)
-        if isinstance(f, dict) and f.get("key")
-    }
-
-
 def _archive_keys(schema: dict[str, Any]) -> set[str]:
     arch = (schema.get("entities") or {}).get("archive") or {}
     return {str(f.get("key")) for f in (arch.get("fields") or []) if f.get("key")}
@@ -109,11 +102,18 @@ class SamplePackBakeSmokeTests(unittest.TestCase):
                     _TRAILING_COMMA.search(sql),
                     "schema.sql 末列拖尾逗号（near ')'）",
                 )
-                prof = _user_profile(sql)
-                keys = _profile_field_keys(domain, title, text)
-                self.assertTrue(
-                    set(prof) <= keys | {"realName", "email", "gender"},
-                    f"seed profile 键超出资料页: {sorted(set(prof) - keys)}",
+                assert_identity_aligned(
+                    domain,
+                    title=title,
+                    proposal_text=text,
+                    sql=sql,
+                    schema=schema,
+                    profile_fields=schema.get("profileFields"),
+                )
+                assert_menu_routes_aligned(
+                    schema,
+                    domain=domain,
+                    proposal_text=text,
                 )
                 self._assert_domain_invariants(domain, title, text, schema, sql)
 

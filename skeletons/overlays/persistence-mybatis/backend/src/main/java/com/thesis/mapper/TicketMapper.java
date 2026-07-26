@@ -79,6 +79,12 @@ public interface TicketMapper {
 
     int updateComplete(Map<String, Object> row);
 
+    @Update("UPDATE `${ticketTable}` SET status=#{status} WHERE id=#{id}")
+    int updateStatus(
+            @Param("ticketTable") String ticketTable,
+            @Param("status") String status,
+            @Param("id") long id);
+
     @Update("UPDATE `${ticketTable}` SET contact_channel=#{channel} WHERE id=#{id}")
     int updateContactChannel(
             @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("channel") String channel);

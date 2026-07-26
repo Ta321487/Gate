@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="物流轨迹"
+    :title="title"
     width="480px"
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
@@ -28,6 +28,7 @@ import http from '../api/http'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   orderId: { type: [Number, String], default: null },
+  title: { type: String, default: '物流轨迹' },
   emptyText: { type: String, default: '暂无轨迹记录' },
 })
 
