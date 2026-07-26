@@ -98,7 +98,7 @@
             @click="doFinePaid(row)"
           >{{ finePaidLabel }}</el-button>
           <el-button
-            v-if="row.status === 'approved' || row.status === 'overdue'"
+            v-if="canFinish(row)"
             link
             type="primary"
             @click="finish(row)"
@@ -162,6 +162,7 @@ const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
 const userLabel = computed(() => roleLabel('user', '申请人'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
+const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
 const showFollowCols = computed(() => ticketShowsFollowCols())
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
@@ -172,6 +173,20 @@ const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const showFine = computed(
   () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
 )
+
+const superAdmin = localStorage.getItem('superAdmin') === 'true'
+const myUid = localStorage.getItem('uid') || ''
+
+/** 驿站/失物核销流：approved/overdue 即终态；子管仅处理人可完结 */
+function canFinish(row) {
+  if (!row) return false
+  if (approveEndsFlow.value && showPickup.value) return false
+  if (!(row.status === 'approved' || row.status === 'overdue')) return false
+  if (superAdmin) return true
+  const asg = row.assigneeUsername
+  if (!asg) return true
+  return asg === myUid
+}
 
 function archiveFieldLabel(key, fallback) {
   const f = (archive.fields || []).find((x) => x.key === key)
@@ -210,7 +225,8 @@ function canPickup(row) {
 function canFinePaid(row) {
   if (!showFine.value || !row) return false
   if (!(Number(row.fineYuan) > 0)) return false
-  return row.fineStatus !== 'paid'
+  if (row.fineStatus === 'paid') return false
+  return ['approved', 'overdue', 'returned'].includes(row.status)
 }
 
 const list = ref([])

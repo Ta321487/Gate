@@ -303,16 +303,20 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     return followup_domain_schema(title, "DOM-CRM")
 
 def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """事件/公卫：校园 / 社区网格 / 养老机构 / 企业复工 / 默认随访（同 _food_schema 分支）。"""
+    """事件/公卫：校园 / 社区网格 / 养老机构 / 企业复工 / 默认随访（同 _food_schema 分支）。
+
+    scene 管身份档；``event_product_kind`` 管监测皮 vs 应急上报皮（默认 monitor，不改能力壳）。
+    """
     from app.bake.schema.followup_presets import (
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_event_parts
+    from app.bake.scene_scan import event_product_kind, scene_event_parts
 
     scene = scene_event_parts(title, proposal_text)
+    kind = event_product_kind(title, proposal_text)
     if scene == "campus":
-        return followup_domain_schema(
+        schema = followup_domain_schema(
             title,
             "DOM-EVENT",
             overrides={
@@ -346,8 +350,9 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
+        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "institution":
-        return followup_domain_schema(
+        schema = followup_domain_schema(
             title,
             "DOM-EVENT",
             overrides={
@@ -383,8 +388,9 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
+        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "enterprise":
-        return followup_domain_schema(
+        schema = followup_domain_schema(
             title,
             "DOM-EVENT",
             overrides={
@@ -420,9 +426,10 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
+        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "community":
         # 开题一线填报=网格员（门户 user）；值班员=子管确认；对象档案≠登录身份
-        return followup_domain_schema(
+        schema = followup_domain_schema(
             title,
             "DOM-EVENT",
             overrides={
@@ -456,8 +463,9 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 ],
             },
         )
+        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     # default：慢病随访/院感/献血等公卫随访档（禁止校园学号壳与食堂种子）
-    return followup_domain_schema(
+    schema = followup_domain_schema(
         title,
         "DOM-EVENT",
         overrides={
@@ -493,6 +501,152 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             ],
         },
     )
+    return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
+
+
+def _event_apply_incident_skin(schema: dict[str, Any], scene: str) -> dict[str, Any]:
+    """应急上报皮：保留角色/能力，改档案与门户叙事（弱化每日打卡）。"""
+    from app.bake.schema.followup_presets import _std_archive_fields
+
+    ents = dict(schema.get("entities") or {})
+    arch = dict(ents.get("archive") or {})
+    labels = dict(schema.get("labels") or {})
+    menus = dict(schema.get("menus") or {})
+
+    if scene == "community":
+        arch["label"] = "事件"
+        arch["labelPlural"] = "事件"
+        arch["fields"] = _std_archive_fields(
+            "事件标题",
+            "责任网格",
+            "地点/摘要",
+            "处置阶段",
+            ["待核查", "排查中", "处置中", "已闭环"],
+            "事件分类",
+            "可上报",
+        )
+        labels["authEyebrow"] = "应急上报"
+        labels["authLead"] = "验证码登录；维护事件线索并提交上报，由值班员确认处置。"
+        labels["authPoints"] = ["验证码登录", "事件台账", "线索上报", "处置记录"]
+        labels["registerHint"] = "网格账号登录后可维护事件线索并提交上报"
+        labels["noticePageTitle"] = "应急公告"
+        admin_arch, user_arch = "事件台账", "事件列表"
+        banners = [
+            {"title": "事件台账", "lead": "按分类浏览事件线索，维护地点与处置阶段。"},
+            {"title": "线索上报", "lead": "提交聚集性发热、隐患等线索，办结可追溯。"},
+            {"title": "处置确认", "lead": "值班员确认处置进度，闭环后可查阅记录。"},
+            {"title": "应急公告", "lead": "排查规范与临时通知见公告栏。"},
+            {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+            {"title": "分类管理", "lead": "按事件分类筛选重点线索。"},
+        ]
+    elif scene == "campus":
+        arch["label"] = "事件"
+        arch["labelPlural"] = "事件"
+        arch["fields"] = _std_archive_fields(
+            "事件标题",
+            "责任教师",
+            "班级/地点摘要",
+            "处置阶段",
+            ["待核查", "排查中", "处置中", "已闭环"],
+            "事件分类",
+            "可上报",
+        )
+        labels["authEyebrow"] = "校园应急"
+        labels["authLead"] = "验证码登录；维护校园事件线索并提交上报，由学工确认处置。"
+        labels["authPoints"] = ["验证码登录", "事件台账", "线索上报", "处置记录"]
+        labels["registerHint"] = "内部账号登录后可维护事件线索并提交上报"
+        labels["noticePageTitle"] = "学工公告"
+        admin_arch, user_arch = "事件台账", "事件列表"
+        banners = [
+            {"title": "事件台账", "lead": "按班级/分类浏览事件线索。"},
+            {"title": "线索上报", "lead": "因病缺课聚集、校园隐患等提交上报。"},
+            {"title": "处置确认", "lead": "学工确认处置并办结。"},
+            {"title": "学工公告", "lead": "应急规范与通知见公告栏。"},
+            {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+            {"title": "分类管理", "lead": "按事件分类筛选。"},
+        ]
+    else:
+        # institution / enterprise / default：只改叙事，档案主体名保留
+        labels["authEyebrow"] = {
+            "institution": "机构应急",
+            "enterprise": "企管应急",
+        }.get(scene, "应急上报")
+        labels["authLead"] = "验证码登录；维护事件线索并提交上报，异常由值班岗确认处置。"
+        labels["authPoints"] = ["验证码登录", "事件线索", "上报处置", "办结记录"]
+        labels["registerHint"] = "内部账号登录后可维护事件线索并提交上报"
+        admin_arch = user_arch = None
+        banners = [
+            {"title": "事件线索", "lead": "浏览待处置线索，维护摘要与阶段。"},
+            {"title": "线索上报", "lead": "提交异常线索，办结后可追溯。"},
+            {"title": "处置确认", "lead": "值班岗确认处置进度。"},
+            {"title": "应急公告", "lead": "排查规范与通知见公告栏。"},
+            {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+            {"title": "分类管理", "lead": "按分类筛选重点线索。"},
+        ]
+        if arch.get("label") in ("对象", "事件"):
+            arch["label"] = "事件"
+            arch["labelPlural"] = "事件"
+            arch["fields"] = _std_archive_fields(
+                "事件标题",
+                "责任人",
+                "地点/摘要",
+                "处置阶段",
+                ["待核查", "排查中", "处置中", "已闭环"],
+                "事件分类",
+                "可上报",
+            )
+            admin_arch, user_arch = "事件台账", "事件列表"
+
+    # 监测记录能力保留；应急皮换字段与文案（勿再露出体温/血压/血糖）
+    labels["archiveLogPageTitle"] = "排查记录"
+    labels["archiveLogPageLead"] = "按事件查看巡查登记；重大线索请走上报单。"
+    labels["archiveLogSubmitLabel"] = "登记巡查"
+    labels["archiveLogMissingTitle"] = "待巡查"
+    labels["archiveLogSectionTitle"] = "巡查登记"
+
+    log_ent = dict(ents.get("archiveLog") or {})
+    log_ent["key"] = log_ent.get("key") or "archive_log"
+    log_ent["label"] = "排查记录"
+    log_ent["labelPlural"] = "排查记录"
+    log_ent["defaultType"] = "patrol"
+    log_ent["typeOptions"] = [
+        {"value": "patrol", "label": "现场巡查"},
+        {"value": "verify", "label": "线索复核"},
+        {"value": "dispose", "label": "处置登记"},
+    ]
+    log_ent["fields"] = [
+        {"key": "sceneStatus", "label": "现场情况", "type": "string"},
+        {"key": "peopleCount", "label": "涉及人数", "type": "string"},
+        {"key": "measure", "label": "已采取措施", "type": "string"},
+        {"key": "note", "label": "备注", "type": "textarea"},
+    ]
+    log_ent["requireItem"] = True
+    ents["archiveLog"] = log_ent
+
+    ents["archive"] = arch
+    schema["entities"] = ents
+    schema["labels"] = labels
+    if banners:
+        schema["portalBanners"] = banners
+        # 部分壳把 banners 挂在别处时仍刷新 labels 侧入口文案
+    admin = list(menus.get("admin") or [])
+    user = list(menus.get("user") or [])
+    for m in admin:
+        if not isinstance(m, dict):
+            continue
+        if m.get("key") == "archive" and admin_arch:
+            m["label"] = admin_arch
+        if m.get("key") == "archive_logs":
+            m["label"] = labels["archiveLogPageTitle"]
+        if m.get("key") == "category" and scene in ("community", "campus", "default"):
+            m["label"] = "事件分类管理"
+    for m in user:
+        if isinstance(m, dict) and m.get("key") == "archive" and user_arch:
+            m["label"] = user_arch
+    menus["admin"] = admin
+    menus["user"] = user
+    schema["menus"] = menus
+    return schema
 
 
 def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -805,10 +959,10 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             overrides={
                 "user_label": "实习生",
                 "admin_label": "实习主管（总管）",
-                "subadmin_label": "带教导师",
+                "subadmin_label": "企业导师",
                 "archive_fields": _std_archive_fields(
                     "岗位名称",
-                    "带教导师",
+                    "企业导师",
                     "部门/岗位说明",
                     "实习状态",
                     ["待上岗", "实习中", "已结束", "已鉴定"],
@@ -816,12 +970,12 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     "可交周报",
                 ),
                 "auth_eyebrow": "企业实习周报",
-                "auth_lead": "验证码登录；关联实习岗位并每周提交周报，带教导师审阅。",
+                "auth_lead": "验证码登录；关联实习岗位并每周提交周报，企业导师审阅。",
                 "auth_points": ["验证码登录", "实习岗位", "周报提交与审阅"],
                 "notice_page_title": "实习公告",
                 "pending_label": "周报审阅",
                 "banners": [
-                    {"title": "实习岗位", "lead": "查看已建档实习部门与带教导师。"},
+                    {"title": "实习岗位", "lead": "查看已建档实习部门与企业导师。"},
                     {"title": "提交周报", "lead": "按周提交工作内容，等待审阅。"},
                     {"title": "实习公告", "lead": "实习与鉴定安排见公告。"},
                     {"title": "我的周报", "lead": "跟踪审阅结果。"},

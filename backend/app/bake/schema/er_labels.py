@@ -783,6 +783,30 @@ def apply_er_label_patch(model: dict, patch: dict | None) -> dict:
     return scrub_relation_labels(model)
 
 
+def merge_er_label_patch(*parts: dict | None, mode: str | None = None) -> dict:
+    """按顺序合并多份补丁（后者覆盖同键）；只保留纯中文标签。"""
+    tables: dict[str, str] = {}
+    columns: dict[str, dict[str, str]] = {}
+    relations: dict[str, str] = {}
+    last_mode = "llm"
+    for part in parts:
+        if not part:
+            continue
+        if part.get("mode"):
+            last_mode = str(part["mode"])
+        clean = sanitize_er_label_patch(part)
+        tables.update(clean["tables"])
+        for tk, cols in clean["columns"].items():
+            columns.setdefault(str(tk), {}).update(cols)
+        relations.update(clean["relations"])
+    return {
+        "mode": mode or last_mode,
+        "tables": tables,
+        "columns": columns,
+        "relations": relations,
+    }
+
+
 def er_labels_path(workspace: Path) -> Path:
     return workspace / _ER_LABELS_REL
 
@@ -802,3 +826,37 @@ def save_er_label_patch(workspace: Path, patch: dict) -> Path:
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def apply_manual_er_labels(workspace: Path, incoming: dict | None) -> dict:
+    """人工补/改展示中文名：合并进 islands/er_labels.json，不改 schema.sql。
+
+    返回最新 schema 模型（已打补丁）与缺口统计。
+    """
+    from app.bake.schema.er_model import build_schema_model
+
+    incoming = incoming or {}
+    clean = sanitize_er_label_patch(incoming)
+    n_in = count_er_patch_fills(incoming if isinstance(incoming, dict) else {})
+    n_ok = count_er_patch_fills(clean)
+    if n_in > 0 and n_ok == 0:
+        raise ValueError("中文名须为纯中文短名，不能含英文或留空")
+    if n_ok == 0:
+        raise ValueError("没有可保存的中文名")
+
+    merged = merge_er_label_patch(
+        load_er_label_patch(workspace),
+        {**clean, "mode": "manual"},
+        mode="manual",
+    )
+    save_er_label_patch(workspace, merged)
+    model = build_schema_model(workspace, with_er_patch=True)
+    if not model:
+        raise FileNotFoundError("未找到 sql/schema.sql")
+    gaps = collect_english_gaps(model)
+    return {
+        "model": model,
+        "patch": merged,
+        "er_gap_count": count_er_gaps(gaps),
+        "filled": count_er_patch_fills(merged),
+    }

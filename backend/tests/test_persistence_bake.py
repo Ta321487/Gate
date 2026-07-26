@@ -11,15 +11,22 @@ from app.bake.engine import bake_project
 from app.core.config import get_settings
 
 
-def _bake(persistence: str, pid: str) -> Path:
+def _bake(
+    persistence: str,
+    pid: str,
+    *,
+    title: str = "学生请假销假管理系统",
+    domain: str = "DOM-ATTEND",
+    archetype: str = "ARCH-FLOW",
+) -> Path:
     settings = get_settings()
     dest = settings.workspace_dir / pid
     if dest.exists():
         shutil.rmtree(dest)
     spec = build_spec(
-        title="学生请假销假管理系统",
-        archetype="ARCH-FLOW",
-        domain="DOM-ATTEND",
+        title=title,
+        archetype=archetype,
+        domain=domain,
         theme="gen-ink",
         llm_enabled=False,
         match_mode="recommended",
@@ -75,6 +82,24 @@ class TestPersistenceBake(unittest.TestCase):
         self.assertRegex(yml, r"(?m)^pagehelper:\s*$")
         # thesis 重写不得吞掉 mybatis 段
         self.assertLess(yml.index("\nthesis:"), yml.index("\nmybatis:"))
+
+    def test_mybatis_trade_domain_order_store(self) -> None:
+        """交易域也须叠上 OrderStore 状态机，不能只冒烟 ATTEND。"""
+        ws = _bake(
+            "mybatis",
+            "gf-ut-mybatis-food",
+            title="小型餐厅点餐系统",
+            domain="DOM-FOOD",
+            archetype="ARCH-TRADE",
+        )
+        order_stores = list((ws / "backend").rglob("OrderStore.java"))
+        self.assertTrue(order_stores)
+        text = order_stores[0].read_text(encoding="utf-8")
+        self.assertIn('"ship".equals(act) && "confirmed".equals(st)', text)
+        self.assertIn('"complete".equals(act) && "shipped".equals(st)', text)
+        self.assertIn("售后处理中，不可完成订单", text)
+        self.assertIn("CouponStore.releaseByOrder", text)
+        self.assertIn("LoyaltyStore.clawbackOrderCompleted", text)
 
 
 if __name__ == "__main__":

@@ -178,7 +178,14 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                 )
             elif isinstance(prop, str):
                 prop_body = prop
-        if not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels"):
+        from app.bake.schema.shells import _SCENE_COPY_DOMAINS
+
+        # 场景/产品皮域必须按开题重编壳：否则匹配期旧 schema 会卡住
+        # （例：EVENT 种子已是应急事件标题，列表仍显示「对象姓名/提交打卡」）
+        stale_or_missing = (
+            not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels")
+        )
+        if stale_or_missing or domain in _SCENE_COPY_DOMAINS:
             spec["schema"] = build_domain_schema(
                 title,
                 domain,
@@ -432,6 +439,11 @@ def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:
 
             for e in validate_staff_posts(posts if isinstance(posts, list) else []):
                 errors.append(e)
+        # 有岗位表时任命开关必须是显式 bool（避免 FE schema 缺省 false、yml 回落 true 分叉）
+        if isinstance(posts, list) and posts:
+            ap = roles.get("allowAppointFromUsers")
+            if not isinstance(ap, bool):
+                errors.append("roles.allowAppointFromUsers 须为 bool（有 staff_posts 时）")
 
     return len(errors) == 0, errors
 
@@ -584,7 +596,8 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
             labels["messagesPageLead"] = "审核结果、活动提醒与系统通知。"
         else:
             labels["messagesPageLead"] = "审核结果与系统通知。"
-    if not labels.get("recommendLatestHint"):
+    caps = (spec.get("schema") or {}).get("capabilities") or spec.get("capabilities") or []
+    if "recommend" in caps and not labels.get("recommendLatestHint"):
         labels["recommendLatestHint"] = "最新发布"
     if enabled and excerpt and excerpt != title and not seeds.get("noticeBody"):
         seeds["noticeBody"] = f"系统已就绪。{excerpt}"[:200]

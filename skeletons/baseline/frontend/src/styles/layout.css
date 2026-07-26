@@ -1,11 +1,24 @@
 /* 门户壳：与配色/质感正交。bake 写入 VITE_LAYOUT → data-layout
  * 仍用同一套 PortalLayout DOM，只改导航放置与内容宽度 */
 
-/* —— topbar / masthead / island：横向顶栏可横滚 —— */
+/* 菜单项整词不折字；顶栏项多用换行露全，不靠横滑裁切 */
+.portal > .top .nav a {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+html[data-layout="topbar"] .portal > .top .top-inner,
+html[data-layout="island"] .portal > .top .top-inner {
+  height: auto;
+  min-height: 52px;
+  flex-wrap: wrap;
+}
+
 html[data-layout="topbar"] .portal > .top .nav,
 html[data-layout="masthead"] .portal > .top .nav,
 html[data-layout="island"] .portal > .top .nav {
-  overflow-x: auto;
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 /* —— rail：左侧竖导航 —— */
@@ -206,14 +219,17 @@ html[data-layout="island"] .portal > .foot {
   html[data-layout="rail"] .portal > .top .top-inner {
     flex-direction: row;
     align-items: center;
-    padding: 0 16px;
-    height: 56px;
-    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    height: auto;
+    min-height: 56px;
+    gap: 8px 12px;
   }
 
   html[data-layout="rail"] .portal > .top .nav {
     flex-direction: row;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   html[data-layout="rail"] .portal > .top .user {

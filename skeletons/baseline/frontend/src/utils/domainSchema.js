@@ -191,6 +191,7 @@ export function ticketStatusLabel(status, fallback = '') {
   if (states[key]) return states[key]
   // 历史进度曾写 noshow，与 overdue（爽约）同义
   if (key === 'noshow' && states.overdue) return states.overdue
+  if (key === 'cancelled') return states.cancelled || '已撤销'
   return fallback || key
 }
 
@@ -296,7 +297,7 @@ export function formatArchiveScalar(field, value, empty = '—') {
     if (/[（(]?\s*1\s*是\s*0\s*否\s*[）)]?|是否/.test(String(f.label || ''))) {
       return n > 0 ? '是' : '否'
     }
-    if (isArchiveMoneyField(f)) return n.toFixed(2)
+    if (isArchiveMoneyField(f)) return `¥${n.toFixed(2)}`
     return String(n)
   }
   return String(value)

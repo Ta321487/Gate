@@ -294,6 +294,9 @@ onMounted(async () => {
   if (route.query.reason === 'password') {
     ElMessage.info('密码已修改，请使用新密码登录')
   }
+  if (route.query.reason === 'disabled') {
+    ElMessage.warning('账号已停用，请联系管理员')
+  }
   // 已有 schema.appName / 交付标题时勿被 /api/meta 的「毕设系统」盖掉
   const hasName = !!(labels.appName || APP_DELIVERED.title)
   if (!hasName) {

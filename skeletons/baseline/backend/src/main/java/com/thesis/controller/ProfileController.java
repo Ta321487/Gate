@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.PasswordHashes;
@@ -24,9 +25,8 @@ import java.util.Objects;
 public class ProfileController {
 
     private UserStore.Profile requireUser(HttpSession session) {
-        Object uid = session.getAttribute("uid");
-        if (uid == null) throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
-        UserStore.Profile p = UserStore.get(uid.toString());
+        String uid = AdminAuth.requireLogin(session);
+        UserStore.Profile p = UserStore.get(uid);
         if (p == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户不存在");
         return p;
     }

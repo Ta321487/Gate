@@ -32,7 +32,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '学工主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '辅导员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.edu","gender":"男","studentNo":"S2026008","dept":"计算机学院","className":"软工2301"}',
+ '{"realName":"周明","email":"zhou@demo.edu","gender":"男","identityType":"学生","studentNo":"S2026008","dept":"计算机学院"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -56,7 +56,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '驿站主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '驿站店员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '居民甲', '13800000002',
- '{"realName":"刘明","email":"liu@demo.com","gender":"男","communityName":"阳光小区","contactWechat":"liu_demo","usualPlace":"3栋驿站"}',
+ '{"realName":"刘明","email":"liu@demo.com","gender":"男","receiveAddress":"阳光小区3栋2单元501","contactWechat":"liu_demo","usualPlace":"3栋驿站"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -336,7 +336,7 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='补考安排')
 _INTERN_ENTERPRISE = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '实习主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '带教导师', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '企业导师', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '实习生甲', '13800000002',
  '{"realName":"小陈","email":"chen@demo.com","gender":"男","identityType":"实习生","employeeNo":"I2026001","dept":"研发中心","internOrg":"本公司"}',
  0, 1, 1)
@@ -350,7 +350,7 @@ INSERT IGNORE INTO intern_post (id, title, author, isbn, category_id, stock, sta
 (4, '测试实习', '周工', '质量部 / 测试', 1, 1, 'available'),
 (5, '数据分析实习', '陈老师', '数据组 / 分析', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '周报须知', '每周日前提交周报；带教导师审阅后方可计入实习考勤。', 'admin', '实习主管'
+SELECT '周报须知', '每周日前提交周报；企业导师审阅后方可计入实习考勤。', 'admin', '实习主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '鉴定提醒', '实习结束前完成鉴定材料（电子签不在本期）。', 'admin', '实习主管'
@@ -402,7 +402,7 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知')
 _CRM_CAMPUS = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '创业导师', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '项目助理', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '项目负责人', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '团队成员甲', '13800000002',
  '{"realName":"周明","email":"zhou@demo.edu","gender":"男","identityType":"学生","studentNo":"S2026008","dept":"计算机学院创业团队"}',
  0, 1, 1)

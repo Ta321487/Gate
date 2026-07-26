@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from app.bake.schema.er_labels import (
     apply_er_label_patch,
+    apply_manual_er_labels,
     collect_english_gaps,
     count_er_gaps,
     count_er_patch_fills,
@@ -19,6 +20,7 @@ from app.bake.schema.er_labels import (
     expand_user_role_entities,
     load_er_label_patch,
     looks_latin,
+    merge_er_label_patch,
     sanitize_er_label_patch,
     save_er_label_patch,
     scrub_relation_labels,
@@ -47,6 +49,7 @@ __all__ = [
     "Relation",
     "Table",
     "apply_er_label_patch",
+    "apply_manual_er_labels",
     "build_schema_model",
     "collect_english_gaps",
     "count_er_gaps",
@@ -57,6 +60,7 @@ __all__ = [
     "load_er_label_patch",
     "load_schema_model",
     "looks_latin",
+    "merge_er_label_patch",
     "parse_schema_sql",
     "pick_core_attrs",
     "render_er_svg",

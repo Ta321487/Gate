@@ -4,14 +4,14 @@
       <div class="hero-row">
         <div>
           <h1>{{ plural }}</h1>
-          <p>提交申请并查看受理进度。</p>
+          <p>{{ pageLead }}</p>
         </div>
         <div class="tools">
           <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
             <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
           </el-select>
           <el-button v-if="!archiveMode" type="primary" @click="openApply">{{ verbs.apply || '提交' }}</el-button>
-          <el-button v-else type="primary" @click="$router.push('/archive')">去检索申请</el-button>
+          <el-button v-else type="primary" @click="$router.push('/archive')">{{ browseCta }}</el-button>
           <el-button @click="load">刷新</el-button>
         </div>
       </div>
@@ -23,7 +23,7 @@
         <div class="meta">
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
-            编号 {{ row.id }} · 申请于 {{ row.applyAt }}
+            编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
             <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
             <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
@@ -47,7 +47,14 @@
             <span v-if="row.status === 'overdue' && row.remindMsg" class="rated">{{ row.remindMsg }}</span>
             <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
             <el-button
-              v-if="row.status === 'approved' || row.status === 'overdue'"
+              v-if="canWithdraw(row)"
+              type="danger"
+              size="small"
+              plain
+              @click="withdraw(row)"
+            >撤销</el-button>
+            <el-button
+              v-if="canFinish(row)"
               type="primary"
               size="small"
               @click="finish(row)"
@@ -94,7 +101,7 @@
     </div>
 
     <div v-if="!list.length" class="empty">
-      {{ archiveMode ? '还没有记录，请先在检索页申请。' : '还没有记录，点击右上角提交。' }}
+      {{ emptyText }}
     </div>
     <div class="pager">
       <el-pagination
@@ -210,18 +217,64 @@ const ticket = ticketCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
+const labels = computed(() => getSchema().labels || {})
+const applyVerb = computed(() => verbs.value.apply || '提交')
+const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
+const pageLead = computed(() => {
+  const custom = labels.value.myTicketsPageLead
+  if (custom) return custom
+  if (archiveMode.value) {
+    return `在检索页${applyVerb.value}后，可在此查看进度。`
+  }
+  return `提交${plural.value}并查看受理进度。`
+})
+const browseCta = computed(
+  () => labels.value.myTicketsBrowseCta || `去检索${applyVerb.value}`,
+)
+const appliedAtLabel = computed(
+  () => labels.value.ticketAppliedAtLabel || `${applyVerb.value}于`,
+)
+const emptyText = computed(() => {
+  if (archiveMode.value) {
+    return (
+      labels.value.myTicketsEmptyArchive
+      || `还没有记录，请先在检索页${applyVerb.value}。`
+    )
+  }
+  return labels.value.myTicketsEmpty || '还没有记录，点击右上角提交。'
+})
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const checkinLabel = computed(() => ticketCheckinLabel())
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
-const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
 const showPickup = computed(() => hasTrait('pickupFlow'))
+const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
+
+/** 驿站/失物核销流：approved/overdue 即终态，不展示「取消取件」 */
+function canFinish(row) {
+  if (!row) return false
+  if (approveEndsFlow.value && showPickup.value) return false
+  return row.status === 'approved' || row.status === 'overdue'
+}
+
+function canWithdraw(row) {
+  return !!row && (row.status === 'pending' || row.status === 'pending_final')
+}
+
+function canRate(row) {
+  if (!allowRating.value || !row) return false
+  const r = row.rating
+  if (!(r == null || r === 0 || r === '0' || r === '')) return false
+  if (row.status === 'returned') return true
+  // 核销即终态的域：通过后即可评
+  return !!(approveEndsFlow.value && row.status === 'approved')
+}
 
 function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
 function tagType(s) {
@@ -230,16 +283,10 @@ function tagType(s) {
     pending_final: '',
     approved: 'success',
     rejected: 'danger',
+    cancelled: 'info',
     returned: 'info',
     overdue: 'danger',
   })[s] || 'info'
-}
-
-function canRate(row) {
-  if (!allowRating.value || !row) return false
-  if (row.status !== 'returned') return false
-  const r = row.rating
-  return r == null || r === 0 || r === '0' || r === ''
 }
 
 function canCheckin(row) {
@@ -389,6 +436,13 @@ async function submit() {
   })
   ElMessage.success('已提交')
   visible.value = false
+  load()
+}
+
+async function withdraw(row) {
+  await ElMessageBox.confirm(`确认撤销「${row.title || ('编号 ' + row.id)}」？`, '确认撤销')
+  await http.post(`/api/tickets/${row.id}/withdraw`)
+  ElMessage.success('已撤销')
   load()
 }
 

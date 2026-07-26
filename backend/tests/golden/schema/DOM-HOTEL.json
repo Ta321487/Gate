@@ -42,15 +42,20 @@
       "stockDisplay": "hidden"
     },
     "order": {
+      "fulfillMode": "stay",
       "key": "order",
       "label": "订单",
       "labelPlural": "我的订单",
       "states": {
         "cancelled": "已取消",
-        "completed": "已完成",
+        "completed": "已离店",
         "confirmed": "已确认",
         "pending": "待确认",
-        "shipped": "履约中"
+        "shipped": "已入住"
+      },
+      "verbs": {
+        "complete": "办理离店",
+        "ship": "办理入住"
       }
     },
     "reservation": {
@@ -81,6 +86,7 @@
     "messagesPageLead": "预约提醒与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "noticePageTitle": "酒店公告",
+    "orderFulfillHint": "客房订单随预订生成；前台办理入住/离店，无物流发货。",
     "recommendLatestHint": "最新发布",
     "registerRoleHint": "注册后可预订客房"
   },

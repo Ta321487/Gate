@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
@@ -63,6 +64,10 @@ public class AuthController {
         String password = body.getOrDefault("password", "");
         if (username.isBlank() || password.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "用户名或密码不能为空");
+        }
+        UserStore.Profile raw = UserStore.get(username.trim());
+        if (raw != null && UserStore.passwordMatches(raw, password) && !raw.enabled) {
+            throw new BizException(ErrorCode.ACCOUNT_DISABLED, AdminAuth.DISABLED_MSG);
         }
         UserStore.Profile profile = UserStore.authenticate(username, password);
         if (profile == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
@@ -146,9 +151,8 @@ public class AuthController {
 
     @GetMapping("/me")
     public R<Map<String, Object>> me(HttpSession session) {
-        Object uid = session.getAttribute("uid");
-        if (uid == null) throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
-        UserStore.Profile p = UserStore.get(uid.toString());
+        String uid = AdminAuth.requireLogin(session);
+        UserStore.Profile p = UserStore.get(uid);
         if (p == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户不存在");
         return R.ok(p.toMap());
     }

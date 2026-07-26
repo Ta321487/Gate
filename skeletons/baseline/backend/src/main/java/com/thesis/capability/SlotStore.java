@@ -223,11 +223,7 @@ public final class SlotStore {
             String title = item == null ? "预约" : String.valueOf(item.get("title"));
             double price = 0;
             if (item != null) {
-                try {
-                    price = Double.parseDouble(String.valueOf(item.get("author")).replace("¥", "").trim());
-                } catch (Exception ignored) {
-                    price = 0;
-                }
+                price = OrderStore.unitPriceOf(item);
             }
             String body = title + " · " + slot.get("startAt") + " ~ " + slot.get("endAt");
             try {

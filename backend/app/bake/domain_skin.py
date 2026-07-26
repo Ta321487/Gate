@@ -54,7 +54,7 @@ _DOMAIN_TRAITS: dict[str, dict[str, bool]] = {
     "DOM-GRADE": {"crm": True},
     "DOM-INTERN": {"crm": True},
     "DOM-PARCEL": {"pickupFlow": True},
-    "DOM-SHOP": {"shop": True, "addressBook": True, "shelfCopy": True},
+    "DOM-SHOP": {"addressBook": True, "shelfCopy": True},
     "DOM-FOOD": {"food": True, "addressBook": True, "shelfCopy": True},
     "DOM-LOST": {"pickupFlow": True},
     "DOM-PARKING": {"slotParking": True},

@@ -1,6 +1,6 @@
 """一对一私信（dm）：用户↔用户短轮询私信，非站内信、非留言板、非 WebSocket。
 
-默认挂 DOM-FORUM / DOM-DATING；其它域开题写「私信/私聊」等可扫入。
+默认挂 DOM-DATING；论坛等域开题写「私信/私聊」等再扫入（论坛样例常把实时私信当对比不做）。
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ _DM_SIGNALS = re.compile(
     re.IGNORECASE,
 )
 
-_DEFAULT_DOMAINS = frozenset({"DOM-FORUM", "DOM-DATING"})
+_DEFAULT_DOMAINS = frozenset({"DOM-DATING"})
 
 # 能力落地后从「本期不做」里摘掉的壳默认名
 _DM_OOS_NAMES = frozenset({"实时私信", "即时私信", "一对一私信", "私信"})

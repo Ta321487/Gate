@@ -36,6 +36,7 @@
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
+      <p v-if="slotHotel && priceText" class="tip price">房价 {{ priceText }}（演示无真支付，将写入订单金额）</p>
       <el-form label-position="top">
         <el-form-item v-if="slotParking" label="车牌号" required>
           <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />
@@ -114,6 +115,13 @@ const slotHotel = computed(() => hasTrait('slotHotel'))
 const slotSalon = computed(() => hasTrait('slotSalon'))
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
+const priceText = computed(() => {
+  const raw = route.query.price
+  if (raw == null || raw === '') return ''
+  const n = Number(String(raw).replace(/[¥￥,\s]/g, ''))
+  if (!Number.isFinite(n)) return ''
+  return `¥${n.toFixed(2)}`
+})
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
 const resvVerb = computed(() => resv.verbs?.apply || '预约')
@@ -283,4 +291,5 @@ onMounted(load)
 .e, .r { margin-top: 4px; font-size: 12px; color: var(--portal-muted, #64748b); }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .tip { margin: 0 0 8px; font-size: 13px; }
+.tip.price { color: var(--el-color-primary); font-weight: 600; }
 </style>

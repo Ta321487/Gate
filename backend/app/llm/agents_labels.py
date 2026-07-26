@@ -26,6 +26,7 @@ from app.bake.schema.er import (
     count_er_gaps,
     count_er_patch_fills,
     load_er_label_patch,
+    merge_er_label_patch,
     sanitize_er_label_patch,
     save_er_label_patch,
 )
@@ -68,6 +69,19 @@ async def run_er_label_agent(
     gaps = collect_english_gaps(fresh)
     n_gaps = count_er_gaps(gaps)
     if n_gaps == 0:
+        # 无拉丁缺口时保留既有人工/LLM 补丁（可能在改错译），勿整文件清空
+        kept = sanitize_er_label_patch(load_er_label_patch(workspace))
+        if count_er_patch_fills(kept):
+            save_er_label_patch(workspace, {**kept, "mode": "clean_keep"})
+            await record_call(
+                db,
+                project_id=project_id,
+                stage="er_labels",
+                tokens=0,
+                ok=True,
+                detail=f"无需补全 · 无英文缺口 · 保留补丁={count_er_patch_fills(kept)}",
+            )
+            return {"mode": "clean_keep", "gaps": 0, "filled": count_er_patch_fills(kept)}
         save_er_label_patch(workspace, {"mode": "clean", "tables": {}, "columns": {}, "relations": {}})
         await record_call(
             db, project_id=project_id, stage="er_labels", tokens=0, ok=True, detail="无需补全 · 无英文缺口"
@@ -131,13 +145,18 @@ async def run_er_label_agent(
     res = await chat(rt, messages, json_mode=True, temperature=0.2)
     append_deepseek_log(project_id, f"er_labels ok={res.ok} {format_usage_detail(res)}")
 
+    old_full = sanitize_er_label_patch(load_er_label_patch(workspace))
     if res.ok and isinstance(res.data, dict):
-        patch = {**sanitize_er_label_patch(res.data, gaps), "mode": "llm"}
+        # 与既有补丁合并：人工改过的非缺口项保留，缺口项以本次 LLM 为准
+        patch = merge_er_label_patch(
+            old_full,
+            {**sanitize_er_label_patch(res.data, gaps), "mode": "llm"},
+            mode="llm",
+        )
     else:
-        old = sanitize_er_label_patch(load_er_label_patch(workspace), gaps)
         patch = {
-            **old,
-            "mode": "llm_failed_keep_old" if count_er_patch_fills(old) else "llm_failed",
+            **old_full,
+            "mode": "llm_failed_keep_old" if count_er_patch_fills(old_full) else "llm_failed",
         }
 
     save_er_label_patch(workspace, patch)

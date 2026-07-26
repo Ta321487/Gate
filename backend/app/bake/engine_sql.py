@@ -340,6 +340,7 @@ def domain_sql(
         archetype,
         archetypes,
         proposal_text=proposal_text or "",
+        title=title or "",
         posts=staff_posts,
     )
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移

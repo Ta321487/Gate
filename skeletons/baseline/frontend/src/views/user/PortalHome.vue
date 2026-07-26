@@ -89,6 +89,7 @@ import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import { APP_DELIVERED } from '../../appDelivered.js'
 import { getSchema, schemaLabels, schemaMenus, ticketCopy } from '../../utils/domainSchema.js'
+import { userMenuPath } from '../../utils/menuRoutes.js'
 import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/session.js'
 
 const router = useRouter()
@@ -109,17 +110,17 @@ const homeStyle = computed(() => {
   return s === 'editorial' ? 'editorial' : 'cards'
 })
 
-const DOMAIN_NEWS = {
-  'DOM-BLOG': { kicker: 'NEWS & UPDATES', title: '资讯动态', claim: '记录与分享本站原创内容' },
-  'DOM-MEDIA': { kicker: 'NOW SHOWING', title: '本周上新', claim: '精选片库，随时开看' },
-  'DOM-MUSIC': { kicker: 'NEW TRACKS', title: '新歌速递', claim: '听见喜欢的声音' },
-  'DOM-FORUM': { kicker: 'COMMUNITY', title: '社区动态', claim: '文明发帖，互助交流' },
+const FLAVOR_NEWS = {
+  blog: { kicker: 'NEWS & UPDATES', title: '资讯动态', claim: '记录与分享本站原创内容' },
+  media: { kicker: 'NOW SHOWING', title: '本周上新', claim: '精选片库，随时开看' },
+  music: { kicker: 'NEW TRACKS', title: '新歌速递', claim: '听见喜欢的声音' },
+  forum: { kicker: 'COMMUNITY', title: '社区动态', claim: '文明发帖，互助交流' },
 }
 
-const domainId = computed(
-  () => getSchema()?.domain || APP_DELIVERED?.domain || APP_DELIVERED?.schema?.domain || '',
-)
-const newsMeta = computed(() => DOMAIN_NEWS[domainId.value] || DOMAIN_NEWS['DOM-BLOG'])
+const newsMeta = computed(() => {
+  const flavor = (APP_DELIVERED?.flavor || getSchema()?.flavor || '').toString()
+  return FLAVOR_NEWS[flavor] || FLAVOR_NEWS.blog
+})
 const newsKicker = computed(() => labels.portalNewsKicker || newsMeta.value.kicker)
 const newsTitle = computed(() => labels.portalNewsTitle || newsMeta.value.title)
 const claimText = computed(
@@ -172,27 +173,6 @@ onMounted(() => {
   if (homeStyle.value === 'editorial') loadNews()
 })
 
-const MENU_TO = {
-  home: '/home',
-  archive: '/archive',
-  my_archive: '/my-archive',
-  my_tickets: '/tickets',
-  content: '/notices',
-  guestbook: '/guestbook',
-  dm: '/dm',
-  profile: '/profile',
-  favorites: '/favorites',
-  browse_history: '/browse-history',
-  coupons: '/coupons',
-  cart: '/cart',
-  my_orders: '/orders',
-  order_reviews: '/order-reviews',
-  my_reservations: '/reservations',
-  slots: '/slots',
-  week_calendar: '/week',
-  messages: '/messages',
-}
-
 const LEADS = {
   archive: '浏览与检索业务目录',
   my_archive: '查看本人发布的内容',
@@ -200,7 +180,7 @@ const LEADS = {
   content: '通知、须知与临时公告',
   guestbook: '发表建议或咨询，查看管理员回复',
   dm: '与其他用户一对一私信沟通',
-  favorites: '收藏的商品，便于再次加购',
+  favorites: '收藏的内容，便于再次查看',
   browse_history: '最近看过的记录',
   coupons: '领取与查看可用优惠券',
   order_reviews: '已完成订单的评价与商家回复',
@@ -230,6 +210,17 @@ function cardLead(key, menuLabelText) {
     const order = getSchema()?.entities?.order?.label || '订单'
     return `跟踪${order}状态`
   }
+  if (key === 'favorites') {
+    const custom = labels.favoritesPageLead || labels.favoritesLead
+    if (custom) return String(custom).replace(/。$/, '')
+    if ((getSchema()?.capabilities || []).includes('order_lines')) {
+      return '收藏的商品，便于再次加购'
+    }
+  }
+  if (key === 'dm') {
+    const custom = labels.dmPageLead
+    if (custom) return String(custom).replace(/。$/, '')
+  }
   return LEADS[key] || `进入${menuLabelText}`
 }
 
@@ -249,7 +240,7 @@ const cards = computed(() => {
   const menus = schemaMenus('user').filter((m) => m.key !== 'home')
   const out = []
   for (const m of menus) {
-    const to = MENU_TO[m.key]
+    const to = userMenuPath(m.key)
     if (!to) continue
     if (!loggedIn.value && guestBrowse.value && !GUEST_OK.has(m.key)) continue
     out.push({

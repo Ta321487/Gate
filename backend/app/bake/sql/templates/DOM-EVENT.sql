@@ -88,9 +88,9 @@ CREATE TABLE IF NOT EXISTS event_report_log (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '防控主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '晨检员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '晨检员甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","employeeNo":"T2026008","dept":"校医院","jobTitle":"晨检员","region":"东区宿舍"}',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"教职工","employeeNo":"T2026008","dept":"校医院","jobTitle":"晨检员","region":"东区宿舍"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 

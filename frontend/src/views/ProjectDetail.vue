@@ -536,12 +536,19 @@
                       >E-R 图</n-button>
                     </div>
                   </div>
-                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节</div>
+                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节 · 中文名可点改（只影响论文/E-R，不改库表英文标识）</div>
                   <template v-if="schema?.tables?.length">
                     <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
                       <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
                         （{{ schema.tables.length >= 6 && schema.tables.length <= 15 ? '符合' : '不符合' }} 6~15）
                       </span>
+                      <span
+                        v-if="schemaErGapCount > 0"
+                        class="pill pill-amber"
+                        style="margin-left:8px"
+                        title="展示名仍含英文，可在下表「中文名」列手改"
+                      >中文缺口 {{ schemaErGapCount }}</span>
+                      <span v-else class="pill pill-green" style="margin-left:8px">中文名齐全</span>
                     </div>
                     <div class="table-list">
                       <div v-for="t in schema.tables" :key="t.name" class="table-card">
@@ -556,7 +563,17 @@
                         >
                           <span class="table-caret" aria-hidden="true">{{ isTableCollapsed(t.name) ? '▸' : '▾' }}</span>
                           <span class="mono">{{ t.name }}</span>
-                          <span v-if="t.label && t.label !== t.name" class="table-zh">{{ t.label }}</span>
+                          <input
+                            class="zh-edit table-zh"
+                            :class="{ 'zh-gap': labelLooksLatin(t.label || t.name) }"
+                            :value="t.label || ''"
+                            :placeholder="t.name"
+                            :disabled="artifactsFrozen || erLabelSaving"
+                            :title="artifactsFrozen ? artifactsFrozenReason : '改中文实体名（回车或失焦保存）'"
+                            @click.stop
+                            @keydown.enter.prevent="($event) => $event.target.blur()"
+                            @blur="($event) => commitTableZh(t, $event)"
+                          />
                           <span class="small muted">{{ t.columns?.length || 0 }} 列</span>
                           <CopyIconButton class="table-copy" :text="tableCopyText(t)" tip="复制本表（可贴 Word 转表格）" />
                         </div>
@@ -573,7 +590,16 @@
                           </li>
                           <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
                             <span class="col-name">{{ c.name }}</span>
-                            <span class="col-zh">{{ c.label || '—' }}</span>
+                            <input
+                              class="zh-edit col-zh"
+                              :class="{ 'zh-gap': labelLooksLatin(c.label || c.name) }"
+                              :value="c.label || ''"
+                              :placeholder="c.name"
+                              :disabled="artifactsFrozen || erLabelSaving"
+                              :title="artifactsFrozen ? artifactsFrozenReason : '改中文属性名（回车或失焦保存）'"
+                              @keydown.enter.prevent="($event) => $event.target.blur()"
+                              @blur="($event) => commitColZh(t, c, $event)"
+                            />
                             <template v-if="typeParenMode">
                               <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>
                             </template>
@@ -590,7 +616,18 @@
                       <div v-for="(r, i) in schema.relations" :key="i" class="rel-row">
                         <span class="mono">{{ r.left }}</span>
                         <span class="muted">{{ r.card_left }}</span>
-                        —〈{{ r.label || r.name }}〉—
+                        —〈
+                        <input
+                          class="zh-edit rel-zh"
+                          :class="{ 'zh-gap': labelLooksLatin(r.label || r.name) }"
+                          :value="r.label || r.name || ''"
+                          :placeholder="r.name"
+                          :disabled="artifactsFrozen || erLabelSaving"
+                          :title="artifactsFrozen ? artifactsFrozenReason : '改中文联系名（回车或失焦保存）'"
+                          @keydown.enter.prevent="($event) => $event.target.blur()"
+                          @blur="($event) => commitRelZh(r, $event)"
+                        />
+                        〉—
                         <span class="muted">{{ r.card_right }}</span>
                         <span class="mono">{{ r.right }}</span>
                         <span class="small muted">via {{ r.via }}</span>
@@ -1001,6 +1038,7 @@ const showDelete = ref(false)
 const keepDb = ref(false)
 const deleting = ref(false)
 const schema = ref(null)
+const erLabelSaving = ref(false)
 const apis = ref(null)
 const artifactView = ref('db')
 const apiQuery = ref('')
@@ -1279,6 +1317,80 @@ const showJobSteps = computed(() => {
 /** 重生中：工程目录在改写，导出类对照操作冻结 */
 const artifactsFrozen = computed(() => genState.value === 'running')
 const artifactsFrozenReason = '工程正在重新生成，完成后可再打开'
+const schemaErGapCount = computed(() => Number(schema.value?.er_gap_count || 0))
+
+/** 展示名仍含拉丁字母（与后端 looks_latin 对齐） */
+function labelLooksLatin(text) {
+  return /[A-Za-z]/.test(String(text || ''))
+}
+
+async function putErLabelPatch(body) {
+  if (!p.value?.id || artifactsFrozen.value || erLabelSaving.value) return null
+  erLabelSaving.value = true
+  try {
+    const res = await api.putErLabels(p.value.id, body)
+    schema.value = res
+    return res
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    message.error((typeof detail === 'string' ? detail : '') || e?.message || '保存中文名失败')
+    return null
+  } finally {
+    erLabelSaving.value = false
+  }
+}
+
+async function commitTableZh(t, ev) {
+  const next = String(ev?.target?.value || '').trim()
+  const prev = String(t?.label || '').trim()
+  if (!next || next === prev) {
+    if (ev?.target && t) ev.target.value = t.label || ''
+    return
+  }
+  if (labelLooksLatin(next)) {
+    message.warning('请填纯中文短名')
+    if (ev?.target) ev.target.value = t.label || ''
+    return
+  }
+  const ok = await putErLabelPatch({ tables: { [t.name]: next } })
+  if (ok) message.success('已保存表中文名')
+  else if (ev?.target) ev.target.value = t.label || ''
+}
+
+async function commitColZh(t, c, ev) {
+  const next = String(ev?.target?.value || '').trim()
+  const prev = String(c?.label || '').trim()
+  if (!next || next === prev) {
+    if (ev?.target && c) ev.target.value = c.label || ''
+    return
+  }
+  if (labelLooksLatin(next)) {
+    message.warning('请填纯中文短名')
+    if (ev?.target) ev.target.value = c.label || ''
+    return
+  }
+  const ok = await putErLabelPatch({ columns: { [t.name]: { [c.name]: next } } })
+  if (ok) message.success('已保存列中文名')
+  else if (ev?.target) ev.target.value = c.label || ''
+}
+
+async function commitRelZh(r, ev) {
+  const next = String(ev?.target?.value || '').trim()
+  const prev = String(r?.label || r?.name || '').trim()
+  if (!next || next === prev) {
+    if (ev?.target && r) ev.target.value = r.label || r.name || ''
+    return
+  }
+  if (labelLooksLatin(next)) {
+    message.warning('请填纯中文短名')
+    if (ev?.target) ev.target.value = r.label || r.name || ''
+    return
+  }
+  const key = r.name || `${r.left}|${r.right}|${r.via}`
+  const ok = await putErLabelPatch({ relations: { [key]: next } })
+  if (ok) message.success('已保存联系中文名')
+  else if (ev?.target) ev.target.value = r.label || r.name || ''
+}
 
 /** 已有工程产物（含运行中 / 失败），匹配页不再当首次门禁 */
 const alreadyBaked = computed(() =>

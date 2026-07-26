@@ -164,6 +164,19 @@ public class TicketController {
         }
     }
 
+    /** 申请人撤销待审申请 */
+    @PostMapping("/{id}/withdraw")
+    public R<Map<String, Object>> withdraw(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.withdraw(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @PostMapping("/{id}/complete")
     public R<Map<String, Object>> complete(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);

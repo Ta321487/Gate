@@ -383,6 +383,31 @@ public final class LoyaltyStore {
         adjustWallet(username, payYuan, "order_refund", "order", orderId, "system");
     }
 
+    /** 已完成后售后/冲正：扣回赠分与累计消费（不低于 0） */
+    public static void clawbackOrderCompleted(String username, long orderId, int pointsEarned, double payYuan) {
+        if (!pointsEnabled && !memberTierEnabled) return;
+        if (username == null || username.isBlank()) return;
+        ensureSchema();
+        if (pointsEnabled && pointsEarned > 0) {
+            debitPoints(username, pointsEarned, "order_clawback", "order", orderId);
+            try {
+                db().update("UPDATE biz_order SET points_earned=0 WHERE id=?", orderId);
+            } catch (Exception ignored) {
+            }
+        }
+        double pay = round2(Math.max(0, payYuan));
+        if (memberTierEnabled && pay > 0) {
+            db().update(
+                    "UPDATE sys_user SET spend_total_yuan=GREATEST(IFNULL(spend_total_yuan,0)-?,0) WHERE username=?",
+                    pay,
+                    username);
+            Map<String, Object> acc = getAccount(username);
+            double spend = ((Number) acc.get("spendTotalYuan")).doubleValue();
+            String next = resolveTierId(spend);
+            db().update("UPDATE sys_user SET member_tier=? WHERE username=?", next, username);
+        }
+    }
+
     private static Map<String, Object> adjustWallet(
             String username, double delta, String reason, String refType, Long refId, String operator) {
         ensureSchema();
@@ -403,6 +428,16 @@ public final class LoyaltyStore {
         int after = before + delta;
         db().update("UPDATE sys_user SET points=? WHERE username=?", after, username);
         appendLedger(username, "points", delta, after, reason, refType, refId, "system");
+    }
+
+    private static void debitPoints(String username, int delta, String reason, String refType, Long refId) {
+        if (delta <= 0) return;
+        ensureSchema();
+        Map<String, Object> acc = getAccount(username);
+        int before = ((Number) acc.get("points")).intValue();
+        int after = Math.max(0, before - delta);
+        db().update("UPDATE sys_user SET points=? WHERE username=?", after, username);
+        appendLedger(username, "points", after - before, after, reason, refType, refId, "system");
     }
 
     private static void appendLedger(

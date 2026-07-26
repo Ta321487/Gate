@@ -376,6 +376,22 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     flow_desc = " → ".join(spec.get("flows") or []) or "主路径"
     main_path_ok = _main_path_ok(be, api_hits, flow_api)
 
+    from app.bake.menu_routes import check_menu_routes_aligned
+
+    schema_obj = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    from app.bake.domain_skin import traits_for_domain
+
+    trait_src = spec.get("traits") if isinstance(spec.get("traits"), dict) else None
+    if not trait_src:
+        trait_src = traits_for_domain(str(spec.get("domain") or ""))
+    menu_issues = check_menu_routes_aligned(
+        schema_obj,
+        domain=str(spec.get("domain") or ""),
+        capabilities=list(spec.get("capabilities") or []),
+        traits=dict(trait_src or {}),
+    )
+    menu_routes_ok = not menu_issues
+
     features = spec.get("features") or []
     checklist = []
     for f in features:
@@ -406,7 +422,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     p1 = (be / "controller" / "AuthController.java").exists() and "captcha" in _read(
         be / "controller" / "AuthController.java"
     )
-    p2 = main_path_ok and has_routes and files_ok
+    p2 = main_path_ok and has_routes and files_ok and menu_routes_ok
     p3a = core_ok and len(checklist) > 0
     p3b = (workspace / "spec.json").exists() and bool(spec.get("archetype"))
     sql_text = _read(workspace / "sql" / "schema.sql")
@@ -511,6 +527,8 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
                 "required_routes": required_routes,
                 "missing_routes": missing_routes,
                 "logic": main_path_ok,
+                "menu_routes_ok": menu_routes_ok,
+                "menu_issues": menu_issues,
             },
         },
         "p3a": {"ok": p3a, "label": "开题对照 · 核心项"},
@@ -596,6 +614,20 @@ def _schema_gate(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             pass
     ok, errors = validate_schema(schema if isinstance(schema, dict) else None)
+    # FE(domain.schema) 与 BE(application.yml) 任命开关须同真源
+    if ok and isinstance(schema, dict):
+        roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+        posts = roles.get("staff_posts") if isinstance(roles, dict) else None
+        if isinstance(posts, list) and posts and isinstance(roles.get("allowAppointFromUsers"), bool):
+            yml_path = workspace / "backend" / "src" / "main" / "resources" / "application.yml"
+            if yml_path.exists():
+                yml = yml_path.read_text(encoding="utf-8")
+                want = "true" if roles["allowAppointFromUsers"] else "false"
+                if f"allow-appoint-from-users: {want}" not in yml:
+                    ok = False
+                    errors = list(errors) + [
+                        f"application.yml allow-appoint-from-users 须为 {want}（与 schema 一致）"
+                    ]
     accept = (spec.get("accept") or (schema or {}).get("accept") or "reject") if isinstance(schema, dict) else "reject"
     return {
         "ok": ok,

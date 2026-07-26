@@ -491,7 +491,7 @@ const logSectionTitle = computed(
   () => getSchema()?.labels?.archiveLogSectionTitle || logEnt.value.labelPlural || '打卡与随访',
 )
 const logSubmitLabel = computed(
-  () => getSchema()?.labels?.archiveLogSubmitLabel || '提交打卡',
+  () => getSchema()?.labels?.archiveLogSubmitLabel || '提交登记',
 )
 const logList = ref([])
 const logLoading = ref(false)
@@ -803,7 +803,14 @@ async function onPrimary(row) {
     return
   }
   if (isSlotMode.value) {
-    router.push({ path: '/slots', query: { itemId: row.id, title: row.title || '' } })
+    router.push({
+      path: '/slots',
+      query: {
+        itemId: row.id,
+        title: row.title || '',
+        price: row.author != null && row.author !== '' ? String(row.author) : '',
+      },
+    })
     return
   }
   await apply(row)

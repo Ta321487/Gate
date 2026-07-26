@@ -55,7 +55,7 @@ import { getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.favoritesPageTitle || '我的收藏')
 const pageLead = computed(
-  () => labels.value.favoritesPageLead || '收藏感兴趣的商品，便于再次加购。',
+  () => labels.value.favoritesPageLead || '收藏感兴趣的内容，便于再次查看。',
 )
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
 const canAddCart = computed(() => (getSchema().capabilities || []).includes('order_lines'))

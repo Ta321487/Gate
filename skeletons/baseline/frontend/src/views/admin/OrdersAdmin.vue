@@ -12,18 +12,23 @@
       <el-table-column :label="userLabel" width="120">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
-      <el-table-column prop="totalYuan" label="金额" width="90" />
-      <el-table-column :label="fulfillLabel" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="totalYuan" label="金额" width="100">
+        <template #default="{ row }">¥{{ Number(row.totalYuan || 0).toFixed(2) }}</template>
+      </el-table-column>
+      <el-table-column v-if="!isStay" :label="fulfillLabel" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
-          <span v-if="row.deliveryType">{{ row.deliveryType }} · </span>
+          <span v-if="row.deliveryType">{{ row.deliveryType }}</span>
+          <span v-if="row.deliveryType && (row.addressLine || row.receiverName)"> · </span>
           <span v-if="row.addressLine || row.receiverName">
             {{ row.receiverName }} {{ row.receiverPhone }} {{ row.addressLine }}
           </span>
-          <span v-if="isFood && row.tasteNote"> / 口味:{{ row.tasteNote }}</span>
-          <span v-if="!row.addressLine && !(isFood && row.tasteNote) && !row.deliveryType">—</span>
+          <span v-if="!row.addressLine && !row.receiverName && !row.deliveryType">—</span>
         </template>
       </el-table-column>
-      <el-table-column :label="shipLabel" min-width="120" show-overflow-tooltip>
+      <el-table-column v-if="isFood" label="口味" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.tasteNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="!isStay" :label="shipLabel" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <template v-if="isFood">
             <span v-if="row.pickupCode">取餐码:{{ row.pickupCode }}</span>
@@ -58,7 +63,7 @@
       </el-table-column>
       <el-table-column label="明细" min-width="200">
         <template #default="{ row }">
-          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；') }}
+          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}¥${Number(x.lineYuan ?? x.priceYuan * x.qty || 0).toFixed(2)}`).join('；') }}
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />
@@ -66,17 +71,17 @@
         <template #default="{ row }">
           <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">确认</el-button>
           <el-button
-            v-if="row.status === 'pending' || row.status === 'confirmed'"
+            v-if="row.status === 'confirmed'"
             link
             type="primary"
             @click="act(row, 'ship')"
           >{{ shipVerb }}</el-button>
           <el-button
-            v-if="['pending', 'confirmed', 'shipped'].includes(row.status)"
+            v-if="row.status === 'shipped' && row.refundStatus !== 'pending'"
             link
             type="success"
             @click="act(row, 'complete')"
-          >完成</el-button>
+          >{{ completeVerb }}</el-button>
           <el-button
             v-if="row.status === 'pending' || row.status === 'confirmed'"
             link
@@ -122,12 +127,20 @@ const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
 const userLabel = computed(() => roleLabel('user', '用户'))
 const isFood = computed(() => hasTrait('food'))
+const isStay = computed(
+  () => hasTrait('slotHotel') || order.value.fulfillMode === 'stay',
+)
 const showLoyaltyCols = computed(() => isPointsEnabled() || isSpendDiscountEnabled())
-const fulfillLabel = computed(() => (isFood.value ? '配送 / 口味' : '收货信息'))
+const fulfillLabel = computed(() => (isFood.value ? '配送' : '收货信息'))
 const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
 const shipVerb = computed(() => {
   if (order.value.verbs?.ship) return order.value.verbs.ship
+  if (isStay.value) return '办理入住'
   return isFood.value ? '出餐' : '发货'
+})
+const completeVerb = computed(() => {
+  if (order.value.verbs?.complete) return order.value.verbs.complete
+  return '完成'
 })
 const list = ref([])
 const total = ref(0)
@@ -146,14 +159,25 @@ async function load() {
 async function act(row, action) {
   let body = {}
   if (action === 'ship') {
-    const food = isFood.value
-    const { value } = await ElMessageBox.prompt(
-      food ? '可填取餐码（留空自动生成）' : '请填写物流单号（可留空）',
-      shipVerb.value,
-      { inputPlaceholder: food ? '取餐码' : '物流单号', inputValue: '' },
-    ).catch(() => ({ value: null }))
-    if (value === null) return
-    body = food ? { pickupCode: String(value || '').trim() } : { trackingNo: String(value || '').trim() }
+    if (isStay.value) {
+      try {
+        await ElMessageBox.confirm(
+          `确认对订单 #${row.id} 执行「${shipVerb.value}」？`,
+          shipVerb.value,
+        )
+      } catch {
+        return
+      }
+    } else {
+      const food = isFood.value
+      const { value } = await ElMessageBox.prompt(
+        food ? '可填取餐码（留空自动生成）' : '请填写物流单号（可留空）',
+        shipVerb.value,
+        { inputPlaceholder: food ? '取餐码' : '物流单号', inputValue: '' },
+      ).catch(() => ({ value: null }))
+      if (value === null) return
+      body = food ? { pickupCode: String(value || '').trim() } : { trackingNo: String(value || '').trim() }
+    }
   }
   await http.post(`/api/orders/${row.id}/${action}`, body)
   ElMessage.success('已更新')
@@ -189,14 +213,32 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = isFood.value
-    ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
-    : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
+  const headers = isStay.value
+    ? ['编号', userLabel.value, '金额', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
+    : isFood.value
+      ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
+      : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
   const data = rows.map((row) => {
+    const money = Number(row.totalYuan || 0).toFixed(2)
+    if (isStay.value) {
+      return [
+        row.id,
+        personLabel(row, ''),
+        money,
+        states.value[row.status] || row.status,
+        row.remark || '',
+        Number(row.discountYuan) > 0 ? row.discountYuan : '',
+        Number(row.pointsEarned) > 0 ? row.pointsEarned : '',
+        (row.lines || [])
+          .map((x) => `${x.title}×${x.qty}¥${Number(x.lineYuan ?? 0).toFixed(2)}`)
+          .join('；'),
+        row.createdAt,
+      ]
+    }
     const base = [
       row.id,
       personLabel(row, ''),
-      row.totalYuan,
+      money,
       row.deliveryType || '',
       [row.receiverName, row.receiverPhone, row.addressLine].filter(Boolean).join(' '),
     ]

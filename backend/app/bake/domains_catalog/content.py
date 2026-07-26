@@ -106,7 +106,7 @@ DOMAINS: dict = {
             "适用：BBS 论坛发帖回帖审核；含校园论坛或兴趣/小区社区。"
             "勿与博客（单向文章收藏）混淆。"
         ),
-        "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Dm", "Notice"],
+        "entities": ["Post", "Category", "Reply", "Tag", "Attach", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["发帖 / 浏览 → 回复 → 版主审核展示"],
         "features": [
@@ -121,13 +121,18 @@ DOMAINS: dict = {
             {"name": "回复记录", "status": "module"},
             {"name": "富文本编辑", "status": "module"},
             {"name": "公告管理", "status": "module"},
-            {"name": "猜你喜欢", "status": "module"},
             {"name": "标签与附件（库表/ER）", "status": "module"},
-            {"name": "一对一私信", "status": "module"},
+            {"name": "猜你喜欢", "status": "out_of_mvp"},
+            {"name": "一对一私信", "status": "out_of_mvp"},
             {"name": "无限深度树形嵌套引擎", "status": "out_of_mvp"},
             {"name": "富文本协同编辑", "status": "out_of_mvp"},
         ],
-        "out_of_mvp": ["无限深度树形嵌套引擎", "富文本协同编辑"],
+        "out_of_mvp": [
+            "猜你喜欢",
+            "一对一私信",
+            "无限深度树形嵌套引擎",
+            "富文本协同编辑",
+        ],
         "themes": [
             {"id": "forum-ink", "label": "论坛墨蓝"},
             {"id": "forum-amber", "label": "暖帖琥珀"},

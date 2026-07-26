@@ -214,6 +214,11 @@ public class UserStore {
         return p;
     }
 
+    /** 仅校验口令（不论是否停用），供登录区分「错密」与「已停用」。 */
+    public static boolean passwordMatches(Profile p, String password) {
+        return p != null && PasswordHashes.matches(password, p.password);
+    }
+
     public static Profile register(
             String username,
             String password,

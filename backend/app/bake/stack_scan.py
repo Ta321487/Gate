@@ -38,6 +38,16 @@ UNSUPPORTED_HINTS = (
     ("uni-app", "uni-app"),
     ("UniApp", "uni-app"),
 )
+# 规划内未落地 / 不能静默冒充已对齐
+UNDELIVERED_STACK_HINTS = (
+    ("Thymeleaf", "Thymeleaf（SSR 未落地，实包仍为 Vue 分离）"),
+    ("AdminLTE", "AdminLTE（SSR 未落地，实包仍为 Vue 分离）"),
+    ("服务端渲染", "服务端渲染（SSR 未落地，实包仍为 Vue 分离）"),
+    ("SSR", "SSR（未落地，实包仍为 Vue 分离）"),
+    ("JPA", "JPA（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
+    ("Hibernate", "Hibernate（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
+    ("Spring Data JPA", "Spring Data JPA（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
+)
 SECURITY_HINTS = ("Spring Security", "spring-security", "SpringSecurity")
 ECHARTS_HINTS = ("ECharts", "echarts", "Echarts")
 
@@ -97,6 +107,12 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
             warnings.append(f"开题点名「{label}」，工厂当前不支持该技术主线")
             if label not in hits:
                 hits.append(label)
+
+    for needle, tip in UNDELIVERED_STACK_HINTS:
+        if needle in text:
+            warnings.append(f"开题点名「{needle}」：{tip}")
+            if needle not in hits:
+                hits.append(needle)
 
     addons: dict[str, Any] = {}
     want_security = scan_has(text, SECURITY_HINTS)

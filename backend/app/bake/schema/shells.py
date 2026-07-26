@@ -308,6 +308,7 @@ def archive_ticket_schema(
             messages_page_lead = "审核结果与系统通知。"
     if recommend_latest_hint is None:
         recommend_latest_hint = "最新上架" if soft_delete and stock_display == "count" else "最新发布"
+    caps = list(DOMAIN_CAPABILITIES[domain])
     labels: dict[str, Any] = {
         "appName": app,
         "authEyebrow": auth_eyebrow,
@@ -317,9 +318,10 @@ def archive_ticket_schema(
         "noticePageTitle": notice_page_title,
         "noticePageLead": notice_page_lead,
         "messagesPageLead": messages_page_lead,
-        "recommendSectionTitle": "猜你喜欢",
-        "recommendLatestHint": recommend_latest_hint,
     }
+    if "recommend" in caps:
+        labels["recommendSectionTitle"] = "猜你喜欢"
+        labels["recommendLatestHint"] = recommend_latest_hint
     if user_publish:
         labels["myArchivePageTitle"] = f"我的{archive_label}"
         labels["myArchivePageLead"] = (
@@ -328,7 +330,7 @@ def archive_ticket_schema(
     return {
         "version": 1,
         "title": title,
-        "capabilities": list(DOMAIN_CAPABILITIES[domain]),
+        "capabilities": caps,
         "roles": {
             "user": {"id": user_role_id, "label": user_label},
             "admin": {"id": "admin", "label": admin_label},
@@ -418,10 +420,24 @@ def archive_favorites_schema(
         archive_entity["stockUnavailableLabel"] = stock_unavailable_label(stock_lab)
     if recommend_latest_hint is None:
         recommend_latest_hint = "最新上架" if soft_delete else "最新发布"
+    caps = list(DOMAIN_CAPABILITIES[domain])
+    fav_labels: dict[str, Any] = {
+            "appName": app,
+            "authEyebrow": auth_eyebrow,
+            "authLead": auth_lead,
+            "authPoints": auth_points,
+            "registerRoleHint": register_hint,
+            "noticePageTitle": notice_page_title,
+            "noticePageLead": notice_page_lead,
+            "messagesPageLead": "系统通知。",
+    }
+    if "recommend" in caps:
+        fav_labels["recommendSectionTitle"] = "猜你喜欢"
+        fav_labels["recommendLatestHint"] = recommend_latest_hint
     schema: dict[str, Any] = {
         "version": 1,
         "title": title,
-        "capabilities": list(DOMAIN_CAPABILITIES[domain]),
+        "capabilities": caps,
         "roles": {
             "user": {"id": user_role_id, "label": user_label},
             "admin": {"id": "admin", "label": admin_label},
@@ -444,18 +460,7 @@ def archive_favorites_schema(
                 {"key": "profile", "label": "个人资料"},
             ],
         },
-        "labels": {
-            "appName": app,
-            "authEyebrow": auth_eyebrow,
-            "authLead": auth_lead,
-            "authPoints": auth_points,
-            "registerRoleHint": register_hint,
-            "noticePageTitle": notice_page_title,
-            "noticePageLead": notice_page_lead,
-            "messagesPageLead": "系统通知。",
-            "recommendSectionTitle": "猜你喜欢",
-            "recommendLatestHint": recommend_latest_hint,
-        },
+        "labels": fav_labels,
         "seeds": {
             "noticeTitle": notice_title,
             "noticeBody": notice_body,

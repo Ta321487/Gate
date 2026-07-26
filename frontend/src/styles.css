@@ -370,6 +370,40 @@ button.filter-pill.on {
 }
 .table-card-hd .mono { font-family: var(--mono); }
 .table-zh { font-weight: 500; color: var(--ink-2); font-size: 12px; }
+.zh-edit {
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-2);
+  font-size: 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  padding: 1px 6px;
+  min-width: 4.5em;
+  max-width: 12em;
+  box-sizing: border-box;
+}
+.zh-edit:hover:not(:disabled),
+.zh-edit:focus {
+  border-color: var(--line);
+  background: var(--surface);
+  outline: none;
+}
+.zh-edit:disabled { opacity: 0.65; cursor: not-allowed; }
+.zh-edit.zh-gap {
+  border-color: color-mix(in srgb, #c47a00 45%, var(--line));
+  background: color-mix(in srgb, #c47a00 10%, var(--surface-2));
+  color: #8a5a00;
+}
+.zh-edit.table-zh { font-weight: 500; }
+.zh-edit.col-zh { width: 100%; max-width: none; }
+.zh-edit.rel-zh {
+  display: inline-block;
+  min-width: 3.5em;
+  max-width: 8em;
+  text-align: center;
+  vertical-align: baseline;
+}
 .table-copy { margin-left: auto; }
 .table-cols { list-style: none; margin: 0; padding: 6px 0; }
 .table-cols li {
