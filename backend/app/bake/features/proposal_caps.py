@@ -21,6 +21,15 @@ def merge_proposal_capabilities(
         merge_time_conflict_capabilities,
     )
     from app.bake.features.dm import merge_dm_capabilities
+    from app.bake.features.exam import merge_exam_capabilities
+    from app.bake.features.survey import merge_survey_capabilities
+    from app.bake.features.vote import merge_vote_capabilities
+    from app.bake.features.doclib import merge_doclib_capabilities
+    from app.bake.features.timebank import merge_timebank_capabilities
+    from app.bake.features.seat_select import merge_seat_select_capabilities
+    from app.bake.features.stock_io import merge_stock_io_capabilities
+    from app.bake.features.e_sign import merge_e_sign_capabilities
+    from app.bake.features.e_sign import merge_e_sign_capabilities
     from app.bake.features.favorites import merge_favorites_capabilities
     from app.bake.features.guestbook import merge_guestbook_capabilities
     from app.bake.features.loyalty import merge_loyalty_capabilities
@@ -31,6 +40,14 @@ def merge_proposal_capabilities(
     body = strip_non_dev_sections(proposal_text or "")
     req = list(caps or [])
     req = merge_loyalty_capabilities(req, body)
+    req = merge_exam_capabilities(req, body, domain=domain)
+    req = merge_survey_capabilities(req, body, domain=domain)
+    req = merge_vote_capabilities(req, body, domain=domain)
+    req = merge_doclib_capabilities(req, body, domain=domain)
+    req = merge_timebank_capabilities(req, body, domain=domain)
+    req = merge_seat_select_capabilities(req, body, domain=domain)
+    req = merge_stock_io_capabilities(req, body, domain=domain)
+    req = merge_e_sign_capabilities(req, body, domain=domain)
     req = merge_guestbook_capabilities(
         req,
         body,

@@ -96,15 +96,17 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '办公耗材'), (2, '固定资产'), (3, '劳保用品');
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '办公耗材'), (2, '固定资产'), (3, '劳保用品'), (4, '实验试剂');
 INSERT IGNORE INTO asset (id, title, author, isbn, category_id, stock, status) VALUES
 (1, 'A4 复印纸', '70g / 500 张', 'AS-PAPER-001', 1, 40, 'available'),
 (2, '台式办公电脑', '联想启天 / i5', 'AS-PC-002', 2, 3, 'available'),
 (3, '安全帽', 'ABS 黄色', 'AS-PPE-003', 3, 20, 'available'),
 (4, '签字笔盒装', '0.5mm 黑色 / 12 支', 'AS-PEN-004', 1, 25, 'available'),
-(5, '移动硬盘', '1TB USB3.0', 'AS-HDD-005', 2, 2, 'available');
+(5, '移动硬盘', '1TB USB3.0', 'AS-HDD-005', 2, 2, 'available'),
+(6, '乙醇分析纯', '500ml / 危化品柜', 'AS-CHEM-006', 4, 8, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '领用须知', '请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材出库不退。', 'admin', '仓管主管'
+SELECT '领用须知', '请按需申领、如实填写用途；固定资产领用后请妥善保管，耗材/试剂出库不退；准入许可另走安全准入域。', 'admin', '仓管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领用须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周盘点', '周五下午库房盘点，请提前完成申领。', 'admin', '仓管主管'

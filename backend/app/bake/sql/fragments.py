@@ -295,7 +295,7 @@ WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
   AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
   AND (SELECT COUNT(*) FROM sys_dm_message) < 2;
 INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
-SELECT 'user', 'user2', '谢谢，演示环境用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+SELECT 'user', 'user2', '谢谢，本期用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
 FROM DUAL
 WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
   AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
@@ -310,6 +310,180 @@ def ensure_guestbook_sql(sql: str, *, enabled: bool) -> str:
     if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", sql):
         return sql
     return sql.rstrip() + "\n" + _GUESTBOOK_DDL
+
+
+_EXAM_WRONGBOOK_DDL = """
+CREATE TABLE IF NOT EXISTS exam_wrongbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  question_id BIGINT NOT NULL,
+  last_answer VARCHAR(2000) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_wb_user_q (username, question_id),
+  KEY idx_wb_user (username, id)
+);
+"""
+
+_EXAM_CORE_DDL = """
+CREATE TABLE IF NOT EXISTS exam_question (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  subject_id BIGINT NULL,
+  type VARCHAR(16) NOT NULL,
+  stem VARCHAR(2000) NOT NULL,
+  options_json VARCHAR(2000) DEFAULT '',
+  answer_key VARCHAR(500) NOT NULL,
+  score INT NOT NULL DEFAULT 5,
+  explain_text VARCHAR(2000) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_paper (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  duration_min INT NOT NULL DEFAULT 0,
+  status VARCHAR(16) NOT NULL DEFAULT 'draft',
+  subject_id BIGINT NULL,
+  max_attempts INT NOT NULL DEFAULT 0,
+  gate_ticket TINYINT NOT NULL DEFAULT 0,
+  pass_score INT NOT NULL DEFAULT 60,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_paper_question (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  paper_id BIGINT NOT NULL,
+  question_id BIGINT NOT NULL,
+  sort_no INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_paper_q (paper_id, question_id)
+);
+
+CREATE TABLE IF NOT EXISTS exam_attempt (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  paper_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  mode VARCHAR(16) NOT NULL DEFAULT 'exam',
+  status VARCHAR(16) NOT NULL DEFAULT 'in_progress',
+  score INT NOT NULL DEFAULT 0,
+  total_score INT NOT NULL DEFAULT 0,
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  submitted_at DATETIME NULL,
+  timed_out TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exam_answer (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  attempt_id BIGINT NOT NULL,
+  question_id BIGINT NOT NULL,
+  answer_text VARCHAR(2000) DEFAULT '',
+  is_correct TINYINT NOT NULL DEFAULT 0,
+  score INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_attempt_q (attempt_id, question_id)
+);
+"""
+
+_EXAM_LABSAFE_GATE_SEED = """
+INSERT IGNORE INTO exam_question (id, subject_id, type, stem, options_json, answer_key, score, explain_text) VALUES
+(9001, NULL, 'single', '进入实验室前应首先确认什么？',
+ '["实验目的","安全须知与防护用品","午餐菜单","课程成绩"]', 'B', 20, '须先完成安全培训与防护准备。'),
+(9002, NULL, 'judge', '未通过安全准入考试也可直接申请入室。',
+ '["正确","错误"]', '错误', 20, '须先考试通过再申请准入。'),
+(9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
+ '["穿实验服","戴护目镜","禁止饮食","随意倾倒废液"]', 'A,B,C', 30, '废液须按规定回收。'),
+(9004, NULL, 'subjective', '简述发现火情时的正确做法（关键词即可）。',
+ '', '报警|撤离|灭火器', 30, '自动判分：答出报警/撤离/灭火器等要点。');
+
+INSERT IGNORE INTO exam_paper (id, title, duration_min, status, subject_id, max_attempts, gate_ticket, pass_score) VALUES
+(9001, '实验室安全准入考试卷', 30, 'published', NULL, 0, 1, 60);
+
+INSERT IGNORE INTO exam_paper_question (id, paper_id, question_id, sort_no) VALUES
+(9001, 9001, 9001, 1), (9002, 9001, 9002, 2), (9003, 9001, 9003, 3), (9004, 9001, 9004, 4);
+"""
+
+
+def ensure_exam_wrongbook_sql(sql: str, *, enabled: bool) -> str:
+    """开题写到错题本时幂等补表；未开启不注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_wrongbook`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _EXAM_WRONGBOOK_DDL
+
+
+_VOTE_CORE_DDL = """
+CREATE TABLE IF NOT EXISTS vote_campaign (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  author VARCHAR(100),
+  isbn VARCHAR(256),
+  category_id BIGINT,
+  stock INT DEFAULT 1,
+  status VARCHAR(32) DEFAULT 'available',
+  cover_url VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS vote_candidate (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  name VARCHAR(128) NOT NULL,
+  intro VARCHAR(1000) DEFAULT '',
+  sort_no INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) DEFAULT 'available',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_vote_cand_camp (campaign_id)
+);
+
+CREATE TABLE IF NOT EXISTS vote_ballot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  candidate_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_vote_user_cand (campaign_id, username, candidate_id),
+  KEY idx_vote_ball_user (campaign_id, username)
+);
+"""
+
+_VOTE_ACTIVITY_SEED = """
+INSERT IGNORE INTO vote_campaign (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '活动优秀个人评选', '主办方', '每人限投 1 票；与活动报名并行', 1, 1, 'available');
+INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status) VALUES
+(1, 1, '候选人甲', '活动积极分子', 1, 'available'),
+(2, 1, '候选人乙', '志愿服务突出', 2, 'available'),
+(3, 1, '候选人丙', '组织协调得力', 3, 'available');
+"""
+
+
+def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
+    """vote 能力开启时幂等补评选表；ACTIVITY 复合再补演示种子。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
+        out = out.rstrip() + "\n" + _VOTE_CORE_DDL
+    if seed_activity and "活动优秀个人评选" not in out:
+        out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
+    return out
+
+
+def ensure_exam_core_sql(sql: str, *, enabled: bool, gate_ticket: bool = False) -> str:
+    """exam 能力开启时幂等补考试核心表；LABSAFE 闸门再补准入卷种子。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_question`?\b", out):
+        out = out.rstrip() + "\n" + _EXAM_CORE_DDL
+    elif "gate_ticket" not in out:
+        out = out.replace(
+            "max_attempts INT NOT NULL DEFAULT 0,\n  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
+            "max_attempts INT NOT NULL DEFAULT 0,\n"
+            "  gate_ticket TINYINT NOT NULL DEFAULT 0,\n"
+            "  pass_score INT NOT NULL DEFAULT 60,\n"
+            "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
+        )
+    if gate_ticket and "实验室安全准入考试卷" not in out:
+        out = out.rstrip() + "\n" + _EXAM_LABSAFE_GATE_SEED
+    return out
 
 
 def ensure_dm_sql(sql: str, *, enabled: bool) -> str:
@@ -420,6 +594,10 @@ CHECKIN_CODE_COLUMNS: list[tuple[str, str]] = [
     ("checkin_code", "VARCHAR(16) NOT NULL DEFAULT ''"),
 ]
 
+OWNER_USERNAME_COLUMNS: list[tuple[str, str]] = [
+    ("owner_username", "VARCHAR(64) NOT NULL DEFAULT ''"),
+]
+
 MUTEX_CODE_COLUMNS: list[tuple[str, str]] = [
     ("mutex_code", "VARCHAR(32) NOT NULL DEFAULT ''"),
 ]
@@ -440,17 +618,20 @@ def ensure_archive_flag_columns(
     *,
     item_table: str | None,
     allow_checkin: bool = False,
+    peer_accept: bool = False,
     check_mutex: bool = False,
     apply_deadline: bool = False,
     schedule: bool = False,
 ) -> str:
-    """档案表按单据能力补签到码 / 互斥码 / 申报截止 / 起止时间列（禁止运行时再 ALTER）。"""
+    """档案表按单据能力补签到码 / 确认人 / 互斥码 / 申报截止 / 起止时间列（禁止运行时再 ALTER）。"""
     t = (item_table or "").strip()
     if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
         return sql
     cols: list[tuple[str, str]] = []
     if allow_checkin:
         cols.extend(CHECKIN_CODE_COLUMNS)
+    if peer_accept:
+        cols.extend(OWNER_USERNAME_COLUMNS)
     if check_mutex:
         cols.extend(MUTEX_CODE_COLUMNS)
     if apply_deadline:
@@ -535,12 +716,63 @@ def ensure_order_review_sql(sql: str, *, enabled: bool) -> str:
     return sql.rstrip() + "\n" + _ORDER_REVIEW_DDL
 
 
+_STOCK_IO_DDL = """
+CREATE TABLE IF NOT EXISTS stock_move (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  move_type VARCHAR(16) NOT NULL,
+  item_id BIGINT NOT NULL,
+  item_title VARCHAR(200) DEFAULT '',
+  qty INT NOT NULL,
+  remark VARCHAR(255) DEFAULT '',
+  operator VARCHAR(64) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_stock_move_item (item_id, id),
+  KEY idx_stock_move_type (move_type, id)
+);
+"""
+
+
+def ensure_stock_io_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补入出库流水表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stock_move`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _STOCK_IO_DDL
+
+
+_E_SIGN_DDL = """
+CREATE TABLE IF NOT EXISTS e_sign_record (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  ticket_id BIGINT NULL,
+  sign_image_url VARCHAR(255) NOT NULL DEFAULT '',
+  agreed TINYINT NOT NULL DEFAULT 0,
+  remark VARCHAR(255) DEFAULT '',
+  signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_e_sign_user (username, id)
+);
+"""
+
+
+def ensure_e_sign_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补签署留痕表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?e_sign_record`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _E_SIGN_DDL
+
+
 # 单据可选扩展列全集（剔除名单）；注入按域 + schema.ticket 能力
 TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("attach_url", "VARCHAR(255) NOT NULL DEFAULT ''"),
     ("rating", "INT NULL"),
     ("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''"),
     ("rated_at", "DATETIME NULL"),
+    ("rating_dims_json", "VARCHAR(1024) DEFAULT ''"),
+    ("rating_anonymous", "TINYINT NOT NULL DEFAULT 0"),
     ("priority", "VARCHAR(16) DEFAULT '普通'"),
     ("contact_phone", "VARCHAR(20) DEFAULT ''"),
     ("fine_status", "VARCHAR(16) DEFAULT 'none'"),
@@ -571,6 +803,39 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-DATING": ["contact_channel", "next_follow_at"],
     "DOM-GRADE": ["contact_channel", "next_follow_at"],
     "DOM-INTERN": ["contact_channel", "next_follow_at"],
+    "DOM-SEAL": ["contact_channel", "next_follow_at"],
+    "DOM-FLEET": ["contact_channel", "next_follow_at"],
+    "DOM-CERT": ["contact_channel", "next_follow_at"],
+    "DOM-PROMO": ["contact_channel", "next_follow_at"],
+    "DOM-FITOUT": ["contact_channel", "next_follow_at"],
+    "DOM-ACAD": ["contact_channel", "next_follow_at"],
+    "DOM-TRIP": ["contact_channel", "next_follow_at"],
+    "DOM-EXPENSE": ["contact_channel", "next_follow_at"],
+    "DOM-CREDIT": ["contact_channel", "next_follow_at"],
+    "DOM-LABOR": ["contact_channel", "next_follow_at"],
+    "DOM-EVAL": [
+        "contact_channel", "next_follow_at",
+        "rating", "rating_remark", "rated_at", "rating_dims_json", "rating_anonymous",
+    ],
+    "DOM-MORAL": ["contact_channel", "next_follow_at"],
+    "DOM-AWARD": ["contact_channel", "next_follow_at"],
+    "DOM-BED": ["contact_channel", "next_follow_at"],
+    "DOM-CHECKIN": ["contact_channel", "next_follow_at"],
+    "DOM-MUTUAL-TUTOR": ["contact_channel", "next_follow_at"],
+    "DOM-MUTUAL-TOPIC": ["contact_channel", "next_follow_at"],
+    "DOM-MUTUAL-TEAM": ["contact_channel", "next_follow_at"],
+    "DOM-VISITOR": ["contact_channel", "next_follow_at"],
+    "DOM-CARPASS": ["contact_channel", "next_follow_at"],
+    "DOM-LISTING": ["contact_channel", "next_follow_at"],
+    "DOM-CARPOOL": ["contact_channel", "next_follow_at"],
+    "DOM-TIMEBANK": ["contact_channel", "next_follow_at"],
+    "DOM-PROCURE": ["contact_channel", "next_follow_at"],
+    "DOM-CLUB": ["contact_channel", "next_follow_at"],
+    "DOM-PROJ": ["contact_channel", "next_follow_at"],
+    "DOM-ETHIC": ["contact_channel", "next_follow_at"],
+    "DOM-PARTY": ["contact_channel", "next_follow_at"],
+    "DOM-CONTRACT": ["contact_channel", "next_follow_at"],
+    "DOM-INSTRUMENT": ["contact_channel", "next_follow_at", "fine_status"],
     "DOM-EVENT": ["contact_channel", "next_follow_at"],
     "DOM-DORM": ["priority", "contact_phone"],
     "DOM-PROPERTY": ["priority", "contact_phone"],
@@ -591,12 +856,16 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("attach_url")
     if f.get("allowRating"):
         names.extend(["rating", "rating_remark", "rated_at"])
+        if f.get("ratingDims"):
+            names.extend(["rating_dims_json", "rating_anonymous"])
     if f.get("allowQty"):
         names.append("qty")
     if f.get("pickDateRange"):
         names.extend(["period_start", "period_end"])
     if f.get("allowCheckin"):
         names.append("checked_in_at")
+    if f.get("issuePassCode"):
+        names.append("pass_code")
     if f.get("noShowAfterEnd") or f.get("fineLabel"):
         names.append("fine_status")
     # 去重保序

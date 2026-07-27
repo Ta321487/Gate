@@ -128,6 +128,8 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
         "stockLabel": stock_label,
         "stockUnavailableLabel": stock_gone,
         "siblingRejectTip": sibling_reject_tip(archive_label, apply_verb),
+        "ratingDims": ticket.get("ratingDims") if isinstance(ticket.get("ratingDims"), list) else [],
+        "allowAnonymousRating": bool(ticket.get("allowAnonymousRating")),
     }
     path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
     _write(path, json.dumps(payload, ensure_ascii=False, indent=2))

@@ -162,11 +162,16 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         )
         text = _patch_thesis_yml(text, domain, spec)
         app_yml.write_text(text, encoding="utf-8")
-        # thesis 段重写后再次确保 mybatis 块仍在（防旧正则误删；idempotent）
-        if (spec.get("persistence") or "jdbc") == "mybatis":
+        # thesis 段重写后再次确保 persistence 块仍在（防旧正则误删；idempotent）
+        pers = spec.get("persistence") or "jdbc"
+        if pers == "mybatis":
             from app.bake.persistence import ensure_mybatis_application_yml
 
             ensure_mybatis_application_yml(dest)
+        elif pers == "jpa":
+            from app.bake.persistence import ensure_jpa_application_yml
+
+            ensure_jpa_application_yml(dest)
 
     from app.bake.api_style import apply_api_style_to_workspace, normalize_api_style
 
@@ -349,12 +354,15 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append("  check-time-conflict: true")
         # 仅写出开启的单据能力，避免一排 false
         flag_map = (
-            ("ticket-two-level", bool(ticket_ent.get("twoLevelApprove"))),
+            ("ticket-two-level", bool(ticket_ent.get("twoLevelApprove") or ticket_ent.get("threeLevelApprove"))),
+            ("ticket-three-level", bool(ticket_ent.get("threeLevelApprove"))),
             ("ticket-require-attach", bool(ticket_ent.get("requireAttach"))),
             ("ticket-allow-rating", bool(ticket_ent.get("allowRating"))),
             ("ticket-check-mutex", bool(ticket_ent.get("checkMutex"))),
             ("ticket-week-calendar", bool(ticket_ent.get("weekCalendar"))),
             ("ticket-allow-checkin", bool(ticket_ent.get("allowCheckin"))),
+            ("ticket-peer-accept", bool(ticket_ent.get("peerAccept"))),
+            ("ticket-issue-pass-code", bool(ticket_ent.get("issuePassCode"))),
             ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
             ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
@@ -506,6 +514,57 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  gallery-enabled: true")
     if "search_assist" in caps:
         lines.append("  search-assist-enabled: true")
+    if "exam" in caps:
+        lines.append("  exam-enabled: true")
+        exam_opts = (spec.get("schema") or {}).get("examOpts") or {}
+        if not isinstance(exam_opts, dict):
+            exam_opts = {}
+        # 兼容实体内 opts
+        if not exam_opts:
+            ent = ((spec.get("schema") or {}).get("entities") or {}).get("exam") or {}
+            raw = ent.get("opts") if isinstance(ent, dict) else {}
+            if isinstance(raw, dict):
+                exam_opts = {
+                    "practice": bool(raw.get("practice")),
+                    "explain": bool(raw.get("explain")),
+                    "timer": bool(raw.get("timer")),
+                    "attempt_limit": bool(raw.get("attemptLimit") or raw.get("attempt_limit")),
+                    "rank": bool(raw.get("rank")),
+                    "wrongbook": bool(raw.get("wrongbook")),
+                }
+        flag_pairs = (
+            ("exam-practice-enabled", "practice"),
+            ("exam-explain-enabled", "explain"),
+            ("exam-timer-enabled", "timer"),
+            ("exam-attempt-limit-enabled", "attempt_limit"),
+            ("exam-rank-enabled", "rank"),
+            ("exam-wrongbook-enabled", "wrongbook"),
+        )
+        for yml_key, opt_key in flag_pairs:
+            if exam_opts.get(opt_key):
+                lines.append(f"  {yml_key}: true")
+        sch = spec.get("schema") or {}
+        gate_on = bool(sch.get("examGateTicket"))
+        if not gate_on:
+            t_ent = (sch.get("entities") or {}).get("ticket") or {}
+            gate_on = bool(isinstance(t_ent, dict) and t_ent.get("requireExamPass"))
+        if gate_on:
+            lines.append("  exam-require-before-ticket: true")
+    if "survey" in caps:
+        lines.append("  survey-enabled: true")
+    if "vote" in caps:
+        lines.append("  vote-enabled: true")
+    if "doclib" in caps:
+        lines.append("  doclib-enabled: true")
+    if "timebank" in caps:
+        lines.append("  timebank-enabled: true")
+        lines.append("  timebank-redeem-on-approve: true")
+    if "seat_select" in caps:
+        lines.append("  seat-select-enabled: true")
+    if "stock_io" in caps:
+        lines.append("  stock-io-enabled: true")
+    if "e_sign" in caps:
+        lines.append("  e-sign-enabled: true")
 
     if "slot_reserve" in caps:
         st = runtime.get("slot_table") or "resource_slot"

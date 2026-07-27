@@ -93,10 +93,10 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "校园驿站",
-    "authLead": "验证码登录；查看待取包裹，提交取件申请并由店员核销。",
+    "authLead": "验证码登录；检索待取包裹，提交取件申请并由店员核销（≠跑腿代买）。",
     "authPoints": [
       "验证码登录",
-      "包裹查询",
+      "包裹检索",
       "取件核销"
     ],
     "messagesPageLead": "审核结果与系统通知。",
@@ -142,7 +142,7 @@
     "user": [
       {
         "key": "archive",
-        "label": "我的包裹"
+        "label": "包裹检索"
       },
       {
         "key": "my_tickets",

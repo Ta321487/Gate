@@ -43,7 +43,7 @@
             <template v-else>{{ row.remark }}</template>
           </div>
           <div class="row">
-            <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
+            <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row) }}</el-tag>
             <span v-if="row.status === 'overdue' && row.remindMsg" class="rated">{{ row.remindMsg }}</span>
             <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
             <el-button
@@ -92,6 +92,10 @@
           <p v-if="row.contactChannel || row.nextFollowAt" class="sub">
             <template v-if="row.contactChannel">{{ channelLabel }} {{ row.contactChannel }}</template>
             <template v-if="row.nextFollowAt"> · {{ nextAtLabel }} {{ row.nextFollowAt }}</template>
+          </p>
+          <p v-if="row.passCode" class="sub pass-code">
+            {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
+            <span class="muted">（通行码，非真门禁）</span>
           </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -252,6 +256,7 @@ const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
+const passCodeLabel = computed(() => ticket.passCodeLabel || '通行码')
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
@@ -260,11 +265,15 @@ const showPriorityCols = computed(() => ticketShowsPriorityCols())
 function canFinish(row) {
   if (!row) return false
   if (approveEndsFlow.value && showPickup.value) return false
+  // 查寝等：returned=已签到，通过后只走口令签到，不走「撤销/完结」误标已签到
+  if (allowCheckin.value && row.status === 'approved' && states.value.returned === '已签到') {
+    return false
+  }
   return row.status === 'approved' || row.status === 'overdue'
 }
 
 function canWithdraw(row) {
-  return !!row && (row.status === 'pending' || row.status === 'pending_final')
+  return !!row && (row.status === 'pending' || row.status === 'pending_mid' || row.status === 'pending_final')
 }
 
 function canRate(row) {
@@ -276,10 +285,17 @@ function canRate(row) {
   return !!(approveEndsFlow.value && row.status === 'approved')
 }
 
-function statusText(s) { return ticketStatusLabel(s, states.value[s] || s) }
+function statusText(rowOrStatus) {
+  const row = rowOrStatus && typeof rowOrStatus === 'object' ? rowOrStatus : null
+  const s = row ? row.status : rowOrStatus
+  // 口令签到成功后须显示「已签到」（status 可能仍为 approved，或已推进到 returned）
+  if (row && row.checkedInAt) return '已签到'
+  return ticketStatusLabel(s, states.value[s] || s)
+}
 function tagType(s) {
   return ({
     pending: 'warning',
+    pending_mid: 'info',
     pending_final: '',
     approved: 'success',
     rejected: 'danger',

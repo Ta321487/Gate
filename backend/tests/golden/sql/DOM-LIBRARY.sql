@@ -95,16 +95,19 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '计算机'), (2, '文学'), (3, '历史');
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '计算机'), (2, '文学'), (3, '历史'), (4, '档案卷宗'), (5, '漂流图书');
 INSERT IGNORE INTO book (id, title, author, isbn, category_id, stock, status) VALUES
 (1, 'Spring Boot 实战', '张三', '9787111111111', 1, 5, 'available'),
 (2, '深入理解计算机系统', 'Bryant', '9787111111112', 1, 3, 'available'),
-(3, '围城', '钱钟书', '9787111111113', 2, 2, 'available');
+(3, '围城', '钱钟书', '9787111111113', 2, 2, 'available'),
+(4, '教务处 2023 级学籍卷宗', '档案馆', 'ARCH-2023-001', 4, 1, 'available'),
+(5, '漂流·平凡的世界', '路遥', 'DRIFT-001', 5, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '开馆通知', '本馆工作日 8:00–22:00 开放。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开馆通知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '借阅须知', '每人同时最多借阅 5 本，逾期请及时归还。', 'admin', '系统管理员'
+SELECT '借阅须知', '每人同时最多借阅 5 本，逾期请及时归还。档案卷宗与漂流图书同走借还审核。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='借阅须知');
 
 CREATE TABLE IF NOT EXISTS `borrow_progress` (

@@ -32,7 +32,7 @@ def shows_schedule(schema: dict) -> bool:
 
 
 def shows_follow(domain: str) -> bool:
-    return bool(traits_for_domain(domain).get("crm"))
+    return bool(traits_for_domain(domain).get("followUp") or traits_for_domain(domain).get("crm"))
 
 
 def shows_type(schema: dict) -> bool:

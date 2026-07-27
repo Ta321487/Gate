@@ -33,11 +33,11 @@
     "authLead": "验证码登录；住户提交报修，物业受理跟进。",
     "authPoints": [
       "验证码登录",
-      "报修申请",
+      "提交报修",
       "受理进度"
     ],
     "messagesPageLead": "审核结果与系统通知。",
-    "noticePageLead": "报修须知、社区安排与临时通知，点击条目阅读全文。",
+    "noticePageLead": "报修/投诉须知、社区安排与临时通知，点击条目阅读全文。",
     "noticePageTitle": "物业公告",
     "recommendLatestHint": "最新发布",
     "registerRoleHint": "注册后以住户身份提交报修"

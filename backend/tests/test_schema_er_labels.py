@@ -317,3 +317,63 @@ def test_manual_er_labels_reject_latin(tmp_path):
         assert False, "expected ValueError"
     except ValueError as e:
         assert "中文" in str(e)
+
+
+def test_manual_col_on_role_entity_maps_to_sys_user(tmp_path):
+    """产物页改的是 sys_user:user 逻辑实体，列补丁须落到物理 sys_user。"""
+    import json
+
+    from app.bake.schema.er import (
+        apply_manual_er_labels,
+        load_er_label_patch,
+        physical_table_name,
+    )
+
+    assert physical_table_name("sys_user:user") == "sys_user"
+    assert physical_table_name("sys_user:worker:repair") == "sys_user"
+
+    sql = """
+    CREATE TABLE IF NOT EXISTS sys_user (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      username VARCHAR(64) NOT NULL,
+      frozzle VARCHAR(32),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS ticket (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      username VARCHAR(64) NOT NULL,
+      title VARCHAR(100)
+    );
+    """
+    (tmp_path / "sql").mkdir()
+    (tmp_path / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+    (tmp_path / "domain.schema.json").write_text(
+        json.dumps(
+            {
+                "roles": {
+                    "user": {"id": "user", "label": "学生"},
+                    "subadmin": {"id": "subadmin", "label": "宿管"},
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    result = apply_manual_er_labels(
+        tmp_path,
+        {"columns": {"sys_user:user": {"frozzle": "异形码"}}},
+    )
+    disk = load_er_label_patch(tmp_path)
+    assert "sys_user" in disk["columns"]
+    assert "sys_user:user" not in disk["columns"]
+    assert disk["columns"]["sys_user"]["frozzle"] == "异形码"
+
+    role = next(t for t in result["model"]["tables"] if t["name"] == "sys_user:user")
+    by_name = {c["name"]: c["label"] for c in role["columns"]}
+    assert by_name["frozzle"] == "异形码"
+
+    # 角色实体表名也可手改，展开后仍可见
+    result2 = apply_manual_er_labels(tmp_path, {"tables": {"sys_user:user": "报修学生"}})
+    role2 = next(t for t in result2["model"]["tables"] if t["name"] == "sys_user:user")
+    assert role2["label"] == "报修学生"

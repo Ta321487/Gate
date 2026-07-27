@@ -1,0 +1,5 @@
+泳道 E · C-17 浅进销存样例（能力 stock_io，挂 DOM-ASSET）
+
+- 正向：入库/出库登记 + 库存流水 + 物资申领；单仓演示。
+- 硬边界：多仓/WMS/ERP/财务一体化、RFID 全链路仍 reject / out_of_mvp。
+- 易混：采购申购（DOM-PROCURE）≠ 入库过账；申领审核出库路径仍保留。

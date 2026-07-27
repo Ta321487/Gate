@@ -52,6 +52,8 @@ public final class TicketStore {
     static boolean checkTimeConflict = false;
     /** L1：初审 → 终审 */
     static boolean twoLevelApprove = false;
+    /** C-16：初审 → 复审 → 终审 */
+    static boolean threeLevelApprove = false;
     /** L1：申请须上传附件 */
     static boolean requireAttach = false;
     /** L1：完结后可评分 */
@@ -62,6 +64,12 @@ public final class TicketStore {
     static int categoryLimit = 0;
     /** L1：签到口令 */
     static boolean allowCheckin = false;
+    /** C-05：档案主人可确认/拒绝志愿（互选） */
+    static boolean peerAccept = false;
+    /** C-09：审核通过签发通行码（非真门禁） */
+    static boolean issuePassCode = false;
+    /** C-14：核销审批通过时扣减时长账户 */
+    static boolean timebankRedeem = false;
     /** 活动结束未签到 → 爽约（复用 overdue 状态） */
     static boolean noShowAfterEnd = false;
     /** 爽约固定费用；0 只改状态 */
@@ -169,16 +177,35 @@ public final class TicketStore {
     }
 
     public static void configureL1(boolean twoLevel, boolean attachRequired, boolean ratingEnabled) {
-        twoLevelApprove = twoLevel;
+        twoLevelApprove = twoLevel || threeLevelApprove;
         requireAttach = attachRequired;
         allowRating = ratingEnabled;
     }
 
-    /** 自选借期 + 申请数量（设备/图书等开题常见） */
+    public static void configureThreeLevel(boolean enabled) {
+        threeLevelApprove = enabled;
+        if (enabled) {
+            twoLevelApprove = true;
+        }
+    }
+
+    public static boolean isThreeLevelApprove() {
+        return threeLevelApprove;
+    }
+
+    /** 自选借期 + 申请数量（设备/图书等开题常见；时间银行核销小时数可无库存） */
     public static void configureLoanOptions(boolean pickPeriod, boolean qtyEnabled) {
         pickLoanPeriod = pickPeriod && useDeadline;
-        allowQty = qtyEnabled && useQuota && MODE == Mode.ARCHIVE;
+        allowQty = qtyEnabled && MODE == Mode.ARCHIVE && (useQuota || timebankRedeem);
         // qty 列由 bake 按域/能力写入，禁止运行时 ALTER
+    }
+
+    /** C-14：审核通过扣减时长 */
+    public static void configureTimebankRedeem(boolean enabled) {
+        timebankRedeem = enabled;
+        if (enabled && MODE == Mode.ARCHIVE) {
+            allowQty = true;
+        }
     }
 
     /** 必填说明 + 起止日期（申领用途 / 跟进 / 请假等） */
@@ -260,6 +287,22 @@ public final class TicketStore {
         // checked_in_at / 档案 checkin_code 由 bake 按能力写入
     }
 
+    public static void configurePeerAccept(boolean enabled) {
+        peerAccept = enabled;
+    }
+
+    public static boolean isPeerAccept() {
+        return peerAccept;
+    }
+
+    public static void configureIssuePassCode(boolean enabled) {
+        issuePassCode = enabled;
+    }
+
+    public static boolean isIssuePassCode() {
+        return issuePassCode;
+    }
+
     public static void configureNoShow(boolean afterEnd, double penaltyYuan) {
         noShowAfterEnd = afterEnd && allowCheckin;
         noShowPenaltyYuan = Math.max(0, penaltyYuan);
@@ -337,6 +380,7 @@ public final class TicketStore {
         if (MODE != Mode.ARCHIVE) {
             throw new IllegalStateException("当前为独立工单模式，请使用 applyStandalone");
         }
+        com.thesis.service.ExamStore.assertTicketGatePassed(username);
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
@@ -393,7 +437,9 @@ public final class TicketStore {
             appendProgress(id, "approved", username, "用户提交（即时生效）");
         } else {
             appendProgress(id, "pending", username, "用户提交");
-            notifyAdminsNewTicket(id, username, subjectOf(get(id)));
+            String subj = subjectOf(get(id));
+            notifyAdminsNewTicket(id, username, subj);
+            notifyPeerOwnerNewTicket(id, itemId, username, subj);
         }
         return get(id);
     }
@@ -552,12 +598,125 @@ public final class TicketStore {
             String sub = subject == null || subject.isBlank() ? ("单据#" + ticketId) : subject;
             String who = UserStore.displayName(applicant);
             MessageStore.notifyAdmins(
-                    "待受理",
+                    peerAccept ? "待调剂" : "待受理",
                     who + " 提交了「" + sub + "」，请尽快处理。",
                     "ticket",
                     ticketId);
         } catch (Exception ignored) {
         }
+    }
+
+    private static void notifyPeerOwnerNewTicket(long ticketId, long itemId, String applicant, String subject) {
+        if (!peerAccept || ticketId <= 0 || itemId <= 0) return;
+        try {
+            Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+            if (item == null) return;
+            String owner = TicketSql.str(item.get("ownerUsername"));
+            if (owner.isBlank() || owner.equals(applicant)) return;
+            String sub = subject == null || subject.isBlank() ? ("单据#" + ticketId) : subject;
+            String who = UserStore.displayName(applicant);
+            MessageStore.send(
+                    owner,
+                    "待确认志愿",
+                    who + " 向「" + sub + "」提交了志愿，请确认或婉拒。",
+                    "ticket",
+                    ticketId);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** C-05：档案主人确认/拒绝志愿；通过时复用 approve 扣库存。 */
+    public static Map<String, Object> peerRespond(long ticketId, String username, boolean pass, String remark) {
+        if (!peerAccept) throw new IllegalStateException("当前未开启互选确认");
+        if (MODE != Mode.ARCHIVE) throw new IllegalStateException("当前不支持互选确认");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!"pending".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅待确认志愿可操作");
+        }
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) throw new IllegalStateException(TicketCopy.archiveNoun() + "不存在");
+        String owner = TicketSql.str(item.get("ownerUsername"));
+        if (owner.isBlank()) throw new IllegalStateException("档案未绑定确认人");
+        if (!owner.equals(username == null ? "" : username.trim())) {
+            throw new IllegalStateException("仅档案确认人可操作");
+        }
+        String note = remark == null ? "" : remark.trim();
+        if (!pass && note.isBlank()) {
+            throw new IllegalStateException("请填写婉拒原因");
+        }
+        Map<String, Object> out = approve(ticketId, pass, note, username, true);
+        appendProgress(
+                ticketId,
+                pass ? "peer_accept" : "peer_reject",
+                username,
+                pass ? "对方确认" : (note.isBlank() ? "对方婉拒" : note));
+        return out;
+    }
+
+    /** 待我确认：档案 owner_username=我 且待审的志愿单。 */
+    public static Map<String, Object> pagePeerInbox(String ownerUsername, String status, int page, int size) {
+        if (!peerAccept || MODE != Mode.ARCHIVE) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", Math.max(1, page));
+            empty.put("size", Math.max(1, size));
+            return empty;
+        }
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page);
+            empty.put("size", size);
+            return empty;
+        }
+        String itemTable = ArchiveStore.itemTable();
+        String fk = itemFkColumn();
+        StringBuilder where = new StringBuilder(
+                " WHERE i.owner_username=? AND t." + fk + "=i.id");
+        List<Object> args = new ArrayList<>();
+        args.add(owner);
+        if (status != null && !status.isBlank()) {
+            where.append(" AND t.status=?");
+            args.add(status);
+        } else {
+            where.append(" AND t.status='pending'");
+        }
+        String from = " FROM " + TICKET + " t JOIN " + itemTable + " i ON t." + fk + "=i.id";
+        Integer total = TicketSql.db().queryForObject(
+                "SELECT COUNT(*)" + from + where, Integer.class, args.toArray());
+        int t = total == null ? 0 : total;
+        args.add(size);
+        args.add((page - 1) * size);
+        List<Map<String, Object>> list = TicketSql.db().query(
+                "SELECT t.*" + from + where + " ORDER BY t.id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
+                args.toArray());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /** 当前用户是否为某单据关联档案的确认人 */
+    public static boolean isPeerOwnerOf(long ticketId, String username) {
+        if (!peerAccept || MODE != Mode.ARCHIVE || username == null || username.isBlank()) return false;
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) return false;
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) return false;
+        return username.trim().equals(TicketSql.str(item.get("ownerUsername")));
     }
 
     public static List<Map<String, Object>> listProgress(long ticketId) {
@@ -690,8 +849,8 @@ public final class TicketStore {
     }
 
     /**
-     * 审批。二级审批时：pending→pending_final（初审，不占库存）→approved（终审占库存）。
-     * 终审通过需总管（superAdmin=true）。
+     * 审批。二级：pending→pending_final→approved；三级（C-16）：pending→pending_mid→pending_final→approved。
+     * 终审通过需总管（superAdmin=true）；中间级不占库存。
      */
     public static Map<String, Object> approve(
             long ticketId, boolean pass, String remark, String operator, boolean superAdmin) {
@@ -699,8 +858,9 @@ public final class TicketStore {
         if (m == null) throw new IllegalArgumentException("单据不存在");
         String st = String.valueOf(m.get("status"));
         boolean first = "pending".equals(st);
+        boolean midStage = "pending_mid".equals(st);
         boolean finalStage = "pending_final".equals(st);
-        if (!first && !finalStage) throw new IllegalStateException("仅待审核单据可审批");
+        if (!first && !midStage && !finalStage) throw new IllegalStateException("仅待审核单据可审批");
         if (twoLevelApprove && finalStage && pass && !superAdmin) {
             throw new IllegalStateException("终审通过需总管操作");
         }
@@ -729,35 +889,32 @@ public final class TicketStore {
             return get(ticketId);
         }
 
+        // 三级：初审通过 → 待复审
+        if (threeLevelApprove && first) {
+            advanceApproveStage(ticketId, "pending_mid", note, op, bind, m,
+                    "初审已通过", "「" + subjectOf(m) + "」已通过初审，等待复审。",
+                    "待复审", "初审通过");
+            return get(ticketId);
+        }
+        // 三级：复审通过 → 待终审
+        if (threeLevelApprove && midStage) {
+            advanceApproveStage(ticketId, "pending_final", note, op, bind, m,
+                    "复审已通过", "「" + subjectOf(m) + "」已通过复审，等待终审。",
+                    "待终审", "复审通过");
+            return get(ticketId);
+        }
         // 二级：初审通过 → 待终审（不扣库存）
-        if (twoLevelApprove && first) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("ticketTable", TICKET);
-            row.put("id", ticketId);
-            row.put("remark", note);
-            row.put("bindAssignee", bind);
-            if (bind) row.put("assigneeUsername", op);
-            mapper().updatePendingFinal(row);
-            try {
-                String user = TicketSql.str(m.get("username"));
-                if (!user.isBlank()) {
-                    MessageStore.send(user, "初审已通过", "「" + subjectOf(m) + "」已通过初审，等待终审。",
-                            "ticket", TicketSql.toLong(m.get("id")));
-                }
-                MessageStore.notifyAdmins(
-                        "待终审",
-                        "「" + subjectOf(m) + "」已通过初审，等待终审。",
-                        "ticket",
-                        TicketSql.toLong(m.get("id")),
-                        op);
-            } catch (Exception ignored) {
-            }
-            appendProgress(ticketId, "pending_final", op, note.isBlank()
-                    ? TicketCopy.stateLabel("pending_final", "初审通过") : note);
+        if (twoLevelApprove && !threeLevelApprove && first) {
+            advanceApproveStage(ticketId, "pending_final", note, op, bind, m,
+                    "初审已通过", "「" + subjectOf(m) + "」已通过初审，等待终审。",
+                    "待终审", "初审通过");
             return get(ticketId);
         }
 
-        // 终审通过或单级通过 → approved（扣库存）
+        // 终审通过或单级通过 → approved（扣库存 / 时间银行扣时长）
+        if (timebankRedeem) {
+            TimebankStore.debitForTicketApprove(m);
+        }
         long approvedItemId = 0L;
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
@@ -804,7 +961,8 @@ public final class TicketStore {
             row.put("withRemindMsg", false);
             mapper().updateApproved(row);
         }
-        notifyTicketResult(m, true, note);
+        String passCode = issuePassCodeIfNeeded(ticketId);
+        notifyTicketResult(m, true, note, passCode);
         appendProgress(ticketId, "approved", op, note.isBlank()
                 ? TicketCopy.stateLabel("approved", TicketCopy.verbLabel("approve", "审核通过")) : note);
         // 库存扣尽：同对象其它待审自动驳回（失物一件一主；图书最后一本等同）
@@ -819,8 +977,60 @@ public final class TicketStore {
         return out;
     }
 
+    /** 中间审批推进（不扣库存）。 */
+    private static void advanceApproveStage(
+            long ticketId,
+            String nextStatus,
+            String note,
+            String op,
+            boolean bind,
+            Map<String, Object> m,
+            String userTitle,
+            String userBody,
+            String adminTitle,
+            String progressDefault) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("ticketTable", TICKET);
+        row.put("id", ticketId);
+        row.put("status", nextStatus);
+        row.put("remark", note);
+        row.put("bindAssignee", bind);
+        if (bind) row.put("assigneeUsername", op);
+        mapper().updateApproveStage(row);
+        try {
+            String user = TicketSql.str(m.get("username"));
+            if (!user.isBlank()) {
+                MessageStore.send(user, userTitle, userBody, "ticket", TicketSql.toLong(m.get("id")));
+            }
+            MessageStore.notifyAdmins(
+                    adminTitle, userBody, "ticket", TicketSql.toLong(m.get("id")), op);
+        } catch (Exception ignored) {
+        }
+        appendProgress(ticketId, nextStatus, op, note.isBlank()
+                ? TicketCopy.stateLabel(nextStatus, progressDefault) : note);
+    }
+
+
+    /** C-09：通过后签发通行码（字符串；非硬件门禁）。 */
+    private static String issuePassCodeIfNeeded(long ticketId) {
+        if (!issuePassCode || !hasColumn("pass_code") || ticketId <= 0) return "";
+        try {
+            Map<String, Object> cur = get(ticketId);
+            if (cur != null) {
+                String prev = TicketSql.str(cur.get("passCode"));
+                if (!prev.isBlank()) return prev;
+            }
+            String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+            TicketSql.db().update("UPDATE " + TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
+            appendProgress(ticketId, "pass_code", "system", "通行码 " + code);
+            return code;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     /**
-     * 通过并扣库存后若余量为 0，驳回同档案其它 pending/pending_final。
+     * 通过并扣库存后若余量为 0，驳回同档案其它 pending/pending_mid/pending_final。
      * @return 实际驳回条数
      */
     private static int rejectSiblingsWhenStockGone(long itemId, long approvedTicketId) {
@@ -862,10 +1072,19 @@ public final class TicketStore {
         return subject;
     }
 
-    /** 完结后评分 1～5 */
+    /** 完结后评分 1～5；可选多维 dims（C-06）与匿名。 */
     public static Map<String, Object> rate(long ticketId, String username, int rating, String ratingRemark) {
+        return rate(ticketId, username, rating, ratingRemark, null, false);
+    }
+
+    public static Map<String, Object> rate(
+            long ticketId,
+            String username,
+            int rating,
+            String ratingRemark,
+            Map<String, Integer> dims,
+            boolean anonymous) {
         if (!allowRating) throw new IllegalStateException("当前未开启评分");
-        if (rating < 1 || rating > 5) throw new IllegalArgumentException("评分须为 1～5 分");
         if (!hasColumn("rating")) throw new IllegalStateException("当前不支持评分");
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
@@ -885,10 +1104,48 @@ public final class TicketStore {
         if (prev != null && !"0".equals(String.valueOf(prev)) && !"".equals(String.valueOf(prev))) {
             throw new IllegalStateException("已评价过，不可重复提交");
         }
+
+        List<Map<String, String>> dimDefs = TicketCopy.RATING_DIMS;
+        String dimsJson = "";
+        int overall = rating;
+        if (dimDefs != null && !dimDefs.isEmpty()) {
+            if (dims == null || dims.isEmpty()) {
+                throw new IllegalArgumentException("请完成各维度评分");
+            }
+            StringBuilder json = new StringBuilder("{");
+            int sum = 0;
+            int n = 0;
+            for (Map<String, String> def : dimDefs) {
+                String key = def.get("key");
+                Integer v = dims.get(key);
+                if (v == null) throw new IllegalArgumentException("请完成「" + def.get("label") + "」评分");
+                if (v < 1 || v > 5) throw new IllegalArgumentException("「" + def.get("label") + "」须为 1～5 分");
+                if (n > 0) json.append(",");
+                json.append("\"").append(key.replace("\"", "")).append("\":").append(v);
+                sum += v;
+                n++;
+            }
+            json.append("}");
+            dimsJson = json.toString();
+            overall = Math.max(1, Math.min(5, (int) Math.round(sum / (double) n)));
+        } else if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("评分须为 1～5 分");
+        }
+
         String note = ratingRemark == null ? "" : ratingRemark.trim();
         if (note.length() > 255) note = note.substring(0, 255);
-        mapper().updateRating(TICKET, ticketId, rating, note);
-        String tip = rating + " 分";
+        boolean anon = anonymous && TicketCopy.ALLOW_ANONYMOUS_RATING;
+        if (hasColumn("rating_dims_json")) {
+            mapper().updateRating(TICKET, ticketId, overall, note, dimsJson, anon ? 1 : 0);
+        } else {
+            // 无多维列的域：走旧签名需兼容——用 dims 空串接口或 JDBC
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
+                    overall, note, ticketId);
+        }
+        String tip = overall + " 分";
+        if (!dimsJson.isBlank()) tip = tip + "（多维）";
+        if (anon) tip = tip + " · 匿名";
         if (!note.isBlank()) tip = tip + " · " + note;
         appendProgress(ticketId, "rated", username, tip);
         return get(ticketId);
@@ -963,7 +1220,7 @@ public final class TicketStore {
     }
 
     /**
-     * 申请人撤销待审单据（pending / pending_final）。未扣库存，无需回补。
+     * 申请人撤销待审单据（pending / pending_mid / pending_final）。未扣库存，无需回补。
      */
     public static Map<String, Object> withdraw(long ticketId, String username) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
@@ -973,7 +1230,7 @@ public final class TicketStore {
             throw new IllegalStateException("只能撤销自己的申请");
         }
         String st = String.valueOf(m.get("status"));
-        if (!"pending".equals(st) && !"pending_final".equals(st)) {
+        if (!"pending".equals(st) && !"pending_mid".equals(st) && !"pending_final".equals(st)) {
             throw new IllegalStateException("仅待审核申请可撤销");
         }
         mapper().updateStatus(TICKET, "cancelled", ticketId);
@@ -1108,6 +1365,7 @@ public final class TicketStore {
             boolean historyStatus = isHistoryStatus(status);
             boolean todoPool = status == null || status.isBlank()
                     || "pending".equals(status)
+                    || "pending_mid".equals(status)
                     || "pending_final".equals(status)
                     || "todo".equals(status);
             q.put("adminUid", adminUid);
@@ -1192,7 +1450,8 @@ public final class TicketStore {
     }
 
     public static boolean isTodoPoolStatus(String status) {
-        return "pending".equals(status) || "pending_final".equals(status) || "todo".equals(status);
+        return "pending".equals(status) || "pending_mid".equals(status)
+                || "pending_final".equals(status) || "todo".equals(status);
     }
 
     public static Map<String, Object> get(long id) {

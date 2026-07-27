@@ -174,7 +174,7 @@ def apply_loyalty_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
     features = list(spec.get("features") or [])
     names = {f.get("name") for f in features if isinstance(f, dict)}
     label_map = {
-        "wallet": "演示余额（管理端充值）",
+        "wallet": "账户余额（管理端充值）",
         "points": "积分（下单赠送，不可充值）",
         "spend_discount": "满减优惠",
         "member_tier": "会员成长等级",

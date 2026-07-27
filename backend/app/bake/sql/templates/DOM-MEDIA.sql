@@ -79,8 +79,8 @@ INSERT IGNORE INTO media (id, title, author, isbn, category_id, stock, status) V
 (4, '旅行见闻录', '导演丙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
 (5, '季节特辑', '编导己', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '观影须知', '片源仅供学习演示；请文明观影，勿传播未授权内容。', 'admin', '内容总监'
+SELECT '观影须知', '片源仅供学习使用；请文明观影，勿传播未授权内容。', 'admin', '内容总监'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='观影须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周上新', '电影与综艺栏目已更新演示片单，欢迎收藏想看。', 'admin', '内容总监'
+SELECT '本周上新', '电影与综艺栏目已更新片单，欢迎收藏想看。', 'admin', '内容总监'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');

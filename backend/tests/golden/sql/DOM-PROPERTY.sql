@@ -110,10 +110,12 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO building (id, name) VALUES (1, 'A 栋'), (2, 'B 栋');
 INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '101'), (2, 1, '102'), (3, 2, '201');
-INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3);
+INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
+(1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3),
+(4, '投诉建议', 4), (5, '路灯井盖', 5), (6, '市政设施', 6);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报修须知', '请填写楼栋房号与故障描述，物业将尽快受理。', 'admin', '物业管理员'
+SELECT '报修须知', '请填写楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知');
 
 -- staff posts (clerk / worker)

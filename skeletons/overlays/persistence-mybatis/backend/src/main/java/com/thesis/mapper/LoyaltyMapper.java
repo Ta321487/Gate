@@ -34,6 +34,9 @@ public interface LoyaltyMapper {
     @Update("UPDATE sys_user SET spend_total_yuan=IFNULL(spend_total_yuan,0)+#{pay} WHERE username=#{username}")
     int addSpend(@Param("username") String username, @Param("pay") BigDecimal pay);
 
+    @Update("UPDATE sys_user SET spend_total_yuan=GREATEST(IFNULL(spend_total_yuan,0)-#{pay},0) WHERE username=#{username}")
+    int subtractSpend(@Param("username") String username, @Param("pay") BigDecimal pay);
+
     @Update("UPDATE sys_user SET member_tier=#{tier} WHERE username=#{username}")
     int updateTier(@Param("username") String username, @Param("tier") String tier);
 

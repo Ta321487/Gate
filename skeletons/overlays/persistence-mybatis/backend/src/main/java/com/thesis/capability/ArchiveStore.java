@@ -374,6 +374,7 @@ public final class ArchiveStore {
         patchOptInt(id, patch, "isVegetarian", "is_vegetarian");
         patchOptInt(id, patch, "requiresTraining", "requires_training");
         patchOptStr(id, patch, "ownerName", "owner_name", 64);
+        patchOptStr(id, patch, "ownerUsername", "owner_username", 64);
         patchOptStr(id, patch, "stage", "stage", 32);
         patchOptNum(id, patch, "credit", "credit");
         patchOptNum(id, patch, "serviceHours", "service_hours");
@@ -547,6 +548,7 @@ public final class ArchiveStore {
         putOptInt(m, raw, "is_vegetarian", "isVegetarian");
         putOptInt(m, raw, "requires_training", "requiresTraining");
         putOptStr(m, raw, "owner_name", "ownerName");
+        putOptStr(m, raw, "owner_username", "ownerUsername");
         putOptStr(m, raw, "stage", "stage");
         putOptNum(m, raw, "credit", "credit");
         putOptNum(m, raw, "service_hours", "serviceHours");

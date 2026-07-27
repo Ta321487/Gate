@@ -34,6 +34,67 @@ _TICKET_KEYS = frozenset({"my_tickets", "ticket_pending", "ticket_records", "wee
 _SLOT_KEYS = frozenset({"slots", "my_reservations", "reservations"})
 _CONTENT_KEYS = frozenset({"content"})
 _GUESTBOOK_KEYS = frozenset({"guestbook"})
+_EXAM_KEYS = frozenset(
+    {
+        "exam_papers",
+        "exam_attempts",
+        "exam_practice",
+        "exam_rank",
+        "exam_wrongbook",
+        "exam_questions",
+    }
+)
+_SURVEY_KEYS = frozenset(
+    {
+        "survey_forms",
+        "survey_fill",
+        "survey_mine",
+        "survey_stats",
+    }
+)
+_VOTE_KEYS = frozenset(
+    {
+        "vote_campaigns",
+        "vote_cast",
+        "vote_mine",
+        "vote_candidates",
+        "vote_results",
+    }
+)
+_TIMEBANK_KEYS = frozenset(
+    {
+        "tb_account",
+        "tb_ledger",
+        "tb_accounts",
+        "tb_ledger_admin",
+    }
+)
+_SEAT_SELECT_KEYS = frozenset(
+    {
+        "seat_shows",
+        "seat_map",
+    }
+)
+_STOCK_IO_KEYS = frozenset(
+    {
+        "stock_moves",
+        "stock_ledger",
+    }
+)
+_E_SIGN_KEYS = frozenset(
+    {
+        "e_sign_mine",
+        "e_sign_admin",
+    }
+)
+_DOCLIB_KEYS = frozenset(
+    {
+        "doc_browse",
+        "doc_mine",
+        "doc_files",
+        "doc_logs",
+    }
+)
 _DM_KEYS = frozenset({"dm"})
 _ADMIN_KEYS = frozenset({"dashboard", "users", "category", "lookup_site", "lookup_type", "deadline"})
 
@@ -45,6 +106,9 @@ _BIZ_CORES: dict[str, tuple[str, ...]] = {
     "slot": ("预订", "预约", "时段", "挂号"),
     "content": ("公告", "资讯"),
     "guestbook": ("留言",),
+    "exam": ("考试", "题库", "试卷", "成绩", "刷题", "错题"),
+    "survey": ("问卷", "调研", "答卷", "回收"),
+    "vote": ("投票", "评选", "选票", "计票", "十佳"),
     "dm": ("私信", "聊天"),
     "archive_log": ("打卡", "随访", "监测", "晨检"),
     "cart": ("购物车", "购物"),
@@ -135,6 +199,22 @@ def _biz_id_for_item(key: str, label: str = "") -> str:
         return "content"
     if k in _GUESTBOOK_KEYS:
         return "guestbook"
+    if k in _EXAM_KEYS or k.startswith("exam_"):
+        return "exam"
+    if k in _SURVEY_KEYS or k.startswith("survey_"):
+        return "survey"
+    if k in _VOTE_KEYS or k.startswith("vote_"):
+        return "vote"
+    if k in _DOCLIB_KEYS or k.startswith("doc_"):
+        return "doclib"
+    if k in _TIMEBANK_KEYS or k.startswith("tb_"):
+        return "timebank"
+    if k in _SEAT_SELECT_KEYS or k.startswith("seat_"):
+        return "seat_select"
+    if k in _STOCK_IO_KEYS or k.startswith("stock_"):
+        return "stock_io"
+    if k in _E_SIGN_KEYS or k.startswith("e_sign"):
+        return "e_sign"
     if k in _DM_KEYS:
         return "dm"
     if k in _ADMIN_KEYS or k.startswith("lookup_"):

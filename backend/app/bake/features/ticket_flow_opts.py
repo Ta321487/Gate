@@ -1,4 +1,4 @@
-"""开题扫词 → 单据流程选项（两级审 / 必传附件 / 申报截止）。
+"""开题扫词 → 单据流程选项（两级/三级审 / 必传附件 / 申报截止）。
 
 硬约束
 ------
@@ -6,6 +6,7 @@
 - **词必须对应该功能**：裸「审核」「截止」不够；否定/本期不 不计（keyword_mentioned）。
 - **截止 ≠ 借阅逾期**：本模块的「截止」是档案 ``applyDeadlineAt``（申报/报名窗口）；
   借阅 ``deadline`` / 罚金壳见 ``core_cap_scan.scan_loan_deadline``，勿在此重复扫词。
+- **三级（C-16）**：固定 pending→pending_mid→pending_final→approved；非任意流程图。
 """
 
 from __future__ import annotations
@@ -14,7 +15,23 @@ from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
 
+MULTI_APPROVE_CAP = "multi_approve"
+
 # —— 扫词（正向提及才算）——
+
+_THREE_LEVEL_TERMS = (
+    "三级审批",
+    "三级审核",
+    "三级会签",
+    "三层审批",
+    "三级审签",
+    "初审复审终审",
+    "初审、复审、终审",
+    "初审复审与终审",
+    "科长复审",
+    "部门复审",
+    "三级签批",
+)
 
 _TWO_LEVEL_TERMS = (
     "两级审批",
@@ -60,8 +77,15 @@ _APPLY_DEADLINE_TERMS = (
 )
 
 
+def scan_three_level(text: str) -> bool:
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _THREE_LEVEL_TERMS)
+
+
 def scan_two_level(text: str) -> bool:
     raw = text or ""
+    if scan_three_level(raw):
+        return True
     return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _TWO_LEVEL_TERMS)
 
 
@@ -96,7 +120,10 @@ def enrich_ticket_flags_from_proposal(
 ) -> dict[str, Any]:
     """合并开题扫到的单据开关；已有 True 保留。"""
     out = dict(flags or {})
-    if scan_two_level(proposal_text):
+    if scan_three_level(proposal_text):
+        out["threeLevelApprove"] = True
+        out["twoLevelApprove"] = True
+    elif scan_two_level(proposal_text):
         out["twoLevelApprove"] = True
     if scan_require_attach(proposal_text):
         out["requireAttach"] = True
@@ -117,6 +144,28 @@ def _ensure_pending_final(ticket: dict[str, Any]) -> None:
     if "pending_final" not in ordered:
         ordered["pending_final"] = "待终审"
     ticket["states"] = ordered
+
+
+def _ensure_three_level_states(ticket: dict[str, Any]) -> None:
+    """pending → pending_mid → pending_final。"""
+    states = ticket.get("states")
+    if not isinstance(states, dict):
+        return
+    ordered: dict[str, str] = {}
+    for k, v in states.items():
+        ordered[k] = v
+        if k == "pending":
+            if "pending_mid" not in states:
+                ordered["pending_mid"] = "待复审"
+            if "pending_final" not in states:
+                ordered["pending_final"] = "待终审"
+    if "pending_mid" not in ordered:
+        ordered["pending_mid"] = "待复审"
+    if "pending_final" not in ordered:
+        ordered["pending_final"] = "待终审"
+    ticket["states"] = ordered
+    ticket["threeLevelApprove"] = True
+    ticket["twoLevelApprove"] = True
 
 
 def _ensure_apply_deadline_field(archive: dict[str, Any], label: str) -> None:
@@ -150,7 +199,9 @@ def apply_ticket_flow_opts_to_schema(
     entities = schema.setdefault("entities", {})
     ticket = entities.get("ticket")
     if isinstance(ticket, dict):
-        if scan_two_level(text):
+        if scan_three_level(text):
+            _ensure_three_level_states(ticket)
+        elif scan_two_level(text):
             ticket["twoLevelApprove"] = True
             _ensure_pending_final(ticket)
         if scan_require_attach(text):
@@ -161,15 +212,27 @@ def apply_ticket_flow_opts_to_schema(
         _ensure_apply_deadline_field(archive, _apply_deadline_label(text))
 
 
+def merge_multi_approve_capabilities(
+    caps: list[str] | None,
+    proposal_text: str = "",
+) -> list[str]:
+    out = list(caps or [])
+    if scan_three_level(proposal_text) and MULTI_APPROVE_CAP not in out:
+        out.append(MULTI_APPROVE_CAP)
+    return out
+
+
 def apply_ticket_flow_opts_to_spec(
     spec: dict[str, Any],
     proposal_text: str = "",
 ) -> dict[str, Any]:
     """挂 features 文案；schema 开关由 apply_ticket_flow_opts_to_schema 完成。"""
     text = proposal_text or ""
+    caps = merge_multi_approve_capabilities(list(spec.get("capabilities") or []), text)
     schema = dict(spec.get("schema") or {})
     apply_ticket_flow_opts_to_schema(schema, text)
-    spec = {**spec, "schema": schema}
+    schema["capabilities"] = caps
+    spec = {**spec, "capabilities": caps, "schema": schema}
 
     features = list(spec.get("features") or [])
     names = {
@@ -184,7 +247,9 @@ def apply_ticket_flow_opts_to_spec(
             names.add(name)
 
     ticket = ((schema.get("entities") or {}).get("ticket") or {})
-    if isinstance(ticket, dict) and ticket.get("twoLevelApprove") and scan_two_level(text):
+    if isinstance(ticket, dict) and ticket.get("threeLevelApprove") and scan_three_level(text):
+        _add_feat("三级会签审批", "flow")
+    elif isinstance(ticket, dict) and ticket.get("twoLevelApprove") and scan_two_level(text):
         _add_feat("两级审批", "flow")
     if isinstance(ticket, dict) and ticket.get("requireAttach") and scan_require_attach(text):
         _add_feat("附件上传", "module")

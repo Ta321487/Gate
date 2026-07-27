@@ -59,7 +59,7 @@ def apply_spring_security_overlay(dest: Path, *, merge_tree) -> None:
 
 
 def ensure_security_pom(dest: Path) -> None:
-    """crypto-only → spring-boot-starter-security（兼容 jdbc / mybatis 两份 pom）。"""
+    """crypto-only → spring-boot-starter-security（兼容 jdbc / mybatis / jpa 的 pom）。"""
     pom = dest / "backend" / "pom.xml"
     if not pom.is_file():
         raise FileNotFoundError(f"缺少 pom.xml: {pom}")

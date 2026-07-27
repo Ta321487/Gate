@@ -11,7 +11,7 @@ import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * 忠诚度：演示余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
+ * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
  * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
@@ -238,7 +238,7 @@ public final class LoyaltyStore {
 
     /** 管理端充值：仅 wallet */
     public static Map<String, Object> adminRecharge(String username, double amount, String operator) {
-        if (!walletEnabled) throw new IllegalStateException("未开启演示余额");
+        if (!walletEnabled) throw new IllegalStateException("未开启账户余额");
         if (amount <= 0) throw new IllegalArgumentException("充值金额须大于 0");
         ensureSchema();
         return adjustWallet(username, amount, "recharge", "admin", null, operator == null ? "" : operator);
@@ -297,7 +297,7 @@ public final class LoyaltyStore {
         if (walletEnabled && !enough) {
             out.put(
                     "message",
-                    "演示余额不足，请联系管理员充值（当前 ¥"
+                    "账户余额不足，请联系管理员充值（当前 ¥"
                             + round2(((Number) acc.get("balanceYuan")).doubleValue())
                             + "，需 ¥"
                             + payable
@@ -319,7 +319,7 @@ public final class LoyaltyStore {
         if (walletEnabled) {
             double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
             if (bal + 1e-9 < payable) {
-                throw new IllegalStateException("演示余额不足，请联系管理员充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
+                throw new IllegalStateException("账户余额不足，请联系管理员充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
             }
             if (payable > 0) {
                 adjustWallet(username, -payable, "order_pay", "order", orderId, username);
@@ -365,6 +365,28 @@ public final class LoyaltyStore {
         adjustWallet(username, payYuan, "order_refund", "order", orderId, "system");
     }
 
+    /** 已完成后售后/冲正：扣回赠分与累计消费（不低于 0） */
+    public static void clawbackOrderCompleted(String username, long orderId, int pointsEarned, double payYuan) {
+        if (!pointsEnabled && !memberTierEnabled) return;
+        if (username == null || username.isBlank()) return;
+        ensureSchema();
+        if (pointsEnabled && pointsEarned > 0) {
+            debitPoints(username, pointsEarned, "order_clawback", "order", orderId);
+            try {
+                mapper().updateOrderPoints(orderId, 0);
+            } catch (Exception ignored) {
+            }
+        }
+        double pay = round2(Math.max(0, payYuan));
+        if (memberTierEnabled && pay > 0) {
+            mapper().subtractSpend(username, BigDecimal.valueOf(pay).setScale(2, RoundingMode.HALF_UP));
+            Map<String, Object> acc = getAccount(username);
+            double spend = ((Number) acc.get("spendTotalYuan")).doubleValue();
+            String next = resolveTierId(spend);
+            mapper().updateTier(username, next);
+        }
+    }
+
     private static Map<String, Object> adjustWallet(
             String username, double delta, String reason, String refType, Long refId, String operator) {
         ensureSchema();
@@ -385,6 +407,16 @@ public final class LoyaltyStore {
         int after = before + delta;
         mapper().updatePoints(username, after);
         appendLedger(username, "points", delta, after, reason, refType, refId, "system");
+    }
+
+    private static void debitPoints(String username, int delta, String reason, String refType, Long refId) {
+        if (delta <= 0) return;
+        ensureSchema();
+        Map<String, Object> acc = getAccount(username);
+        int before = ((Number) acc.get("points")).intValue();
+        int after = Math.max(0, before - delta);
+        mapper().updatePoints(username, after);
+        appendLedger(username, "points", after - before, after, reason, refType, refId, "system");
     }
 
     private static void appendLedger(

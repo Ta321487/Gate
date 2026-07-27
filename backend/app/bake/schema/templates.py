@@ -8,6 +8,9 @@
 
 from __future__ import annotations
 
+from app.bake.oa_apply_meta import OA_APPLY_META
+from app.bake.stuwork_meta import STUWORK_META
+from app.bake.schema.followup_presets import followup_builder
 from app.bake.schema.domain_builders import (  # noqa: F401
     _activity_schema,
     _asset_schema,
@@ -17,6 +20,10 @@ from app.bake.schema.domain_builders import (  # noqa: F401
     _crm_schema,
     _dorm_schema,
     _dating_schema,
+    _exam_schema,
+    _survey_schema,
+    _vote_schema,
+    _doclib_schema,
     _equip_schema,
     _event_schema,
     _food_schema,
@@ -39,6 +46,7 @@ from app.bake.schema.domain_builders import (  # noqa: F401
     _recruit_schema,
     _salon_schema,
     _shop_schema,
+    _cinema_schema,
 )
 from app.bake.schema.shells import (  # noqa: F401
     _SCENE_COPY_DOMAINS,
@@ -80,6 +88,7 @@ SCHEMA_BUILDERS = {
     "DOM-PROPERTY": _property_schema,
     "DOM-IT": _it_schema,
     "DOM-SHOP": _shop_schema,
+    "DOM-CINEMA": _cinema_schema,
     "DOM-FOOD": _food_schema,
     "DOM-MEETING": _meeting_schema,
     "DOM-HOSPITAL": _hospital_schema,
@@ -87,3 +96,35 @@ SCHEMA_BUILDERS = {
     "DOM-SALON": _salon_schema,
     "DOM-HOTEL": _hotel_schema,
 }
+
+for _m in OA_APPLY_META:
+    SCHEMA_BUILDERS[_m["domain"]] = followup_builder(_m["domain"])
+
+for _m in STUWORK_META:
+    SCHEMA_BUILDERS[_m["domain"]] = followup_builder(_m["domain"])
+
+SCHEMA_BUILDERS["DOM-BED"] = followup_builder("DOM-BED")
+
+SCHEMA_BUILDERS["DOM-CHECKIN"] = followup_builder("DOM-CHECKIN")
+
+SCHEMA_BUILDERS["DOM-MUTUAL-TUTOR"] = followup_builder("DOM-MUTUAL-TUTOR")
+SCHEMA_BUILDERS["DOM-MUTUAL-TOPIC"] = followup_builder("DOM-MUTUAL-TOPIC")
+SCHEMA_BUILDERS["DOM-MUTUAL-TEAM"] = followup_builder("DOM-MUTUAL-TEAM")
+
+SCHEMA_BUILDERS["DOM-VISITOR"] = followup_builder("DOM-VISITOR")
+
+SCHEMA_BUILDERS["DOM-CARPASS"] = followup_builder("DOM-CARPASS")
+SCHEMA_BUILDERS["DOM-LISTING"] = followup_builder("DOM-LISTING")
+SCHEMA_BUILDERS["DOM-PROCURE"] = followup_builder("DOM-PROCURE")
+SCHEMA_BUILDERS["DOM-CLUB"] = followup_builder("DOM-CLUB")
+SCHEMA_BUILDERS["DOM-PROJ"] = followup_builder("DOM-PROJ")
+SCHEMA_BUILDERS["DOM-ETHIC"] = followup_builder("DOM-ETHIC")
+SCHEMA_BUILDERS["DOM-PARTY"] = followup_builder("DOM-PARTY")
+SCHEMA_BUILDERS["DOM-CONTRACT"] = followup_builder("DOM-CONTRACT")
+SCHEMA_BUILDERS["DOM-INSTRUMENT"] = followup_builder("DOM-INSTRUMENT")
+SCHEMA_BUILDERS["DOM-EXAM"] = _exam_schema
+SCHEMA_BUILDERS["DOM-SURVEY"] = _survey_schema
+SCHEMA_BUILDERS["DOM-VOTE"] = _vote_schema
+SCHEMA_BUILDERS["DOM-DOCLIB"] = _doclib_schema
+SCHEMA_BUILDERS["DOM-CARPOOL"] = followup_builder("DOM-CARPOOL")
+SCHEMA_BUILDERS["DOM-TIMEBANK"] = followup_builder("DOM-TIMEBANK")

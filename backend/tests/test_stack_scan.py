@@ -62,14 +62,21 @@ class TestStackScan(unittest.TestCase):
         self.assertTrue(any("AdminLTE" in w for w in r["warnings"]))
         self.assertEqual(r["spine"], "spa")  # 未落地仍落 spa，但不得静默
 
-    def test_undelivered_jpa_warns(self) -> None:
+    def test_jpa_named(self) -> None:
         r = scan_stack("商城系统", "持久层采用 Spring Data JPA / Hibernate。")
-        self.assertTrue(any("JPA" in w or "Hibernate" in w for w in r["warnings"]))
-        self.assertEqual(r["persistence"], "jdbc")
+        self.assertEqual(r["persistence"], "jpa")
+        self.assertIn("JPA", r["hits"])
+        self.assertFalse(any("未落地" in w for w in r["warnings"]))
+
+    def test_jpa_wins_over_mybatis_when_both(self) -> None:
+        r = scan_stack("系统", "可用 MyBatis 或 Spring Data JPA。")
+        self.assertEqual(r["persistence"], "jpa")
 
     def test_normalize(self) -> None:
-        self.assertEqual(normalize_persistence("jpa"), "jdbc")  # 非法 → 默认
+        self.assertEqual(normalize_persistence("jpa"), "jpa")
+        self.assertEqual(normalize_persistence("hibernate"), "jpa")
         self.assertEqual(normalize_persistence("mybatis"), "mybatis")
+        self.assertEqual(normalize_persistence("nope"), "jdbc")
         self.assertEqual(normalize_spine("ssr"), "spa")
         self.assertEqual(normalize_spine("spa"), "spa")
 

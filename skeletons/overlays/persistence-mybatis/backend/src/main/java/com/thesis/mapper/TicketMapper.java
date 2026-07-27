@@ -25,7 +25,7 @@ public interface TicketMapper {
             @Param("itemId") long itemId);
 
     @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE username=#{username} AND `${itemFk}`=#{itemId} "
-            + "AND status IN ('pending','pending_final','approved','overdue')")
+            + "AND status IN ('pending','pending_mid','pending_final','approved','overdue')")
     int countActiveDup(
             @Param("ticketTable") String ticketTable,
             @Param("itemFk") String itemFk,
@@ -52,6 +52,8 @@ public interface TicketMapper {
 
     int updatePendingFinal(Map<String, Object> row);
 
+    int updateApproveStage(Map<String, Object> row);
+
     int updateApproved(Map<String, Object> row);
 
     List<Long> selectSiblingPendingIds(
@@ -61,20 +63,23 @@ public interface TicketMapper {
             @Param("excludeId") long excludeId);
 
     @Update("UPDATE `${ticketTable}` SET status='rejected', approve_at=NOW(), remark=#{remark} "
-            + "WHERE id=#{id} AND status IN ('pending','pending_final')")
+            + "WHERE id=#{id} AND status IN ('pending','pending_mid','pending_final')")
     int updateRejectSibling(
             @Param("ticketTable") String ticketTable,
             @Param("id") long id,
             @Param("remark") String remark);
 
-    @Update("UPDATE `${ticketTable}` SET rating=#{rating}, rating_remark=#{ratingRemark}, rated_at=NOW() WHERE id=#{id}")
+    @Update("UPDATE `${ticketTable}` SET rating=#{rating}, rating_remark=#{ratingRemark}, rated_at=NOW(), "
+            + "rating_dims_json=#{ratingDimsJson}, rating_anonymous=#{ratingAnonymous} WHERE id=#{id}")
     int updateRating(
             @Param("ticketTable") String ticketTable,
             @Param("id") long id,
             @Param("rating") int rating,
-            @Param("ratingRemark") String ratingRemark);
+            @Param("ratingRemark") String ratingRemark,
+            @Param("ratingDimsJson") String ratingDimsJson,
+            @Param("ratingAnonymous") int ratingAnonymous);
 
-    @Update("UPDATE `${ticketTable}` SET checked_in_at=NOW() WHERE id=#{id}")
+    @Update("UPDATE `${ticketTable}` SET checked_in_at=NOW(), status='returned' WHERE id=#{id}")
     int updateCheckin(@Param("ticketTable") String ticketTable, @Param("id") long id);
 
     int updateComplete(Map<String, Object> row);
@@ -97,7 +102,7 @@ public interface TicketMapper {
 
     int updateFinePersist(Map<String, Object> row);
 
-    @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE status IN ('pending','pending_final')")
+    @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE status IN ('pending','pending_mid','pending_final')")
     long countPending(@Param("ticketTable") String ticketTable);
 
     @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE status=#{status}")

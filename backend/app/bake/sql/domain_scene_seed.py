@@ -158,7 +158,7 @@ INSERT IGNORE INTO job_post (id, title, author, isbn, category_id, stock, status
 (4, '测试工程师', '质量部', '10-15k / 社招', 1, 1, 'available'),
 (5, '产品助理实习', '产品组', '面议 / 周报实习', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（演示环境无视频面试）。', 'admin', '招聘主管'
+SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（本期无视频面试）。', 'admin', '招聘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投递须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周岗位', '技术岗与职能岗已更新，请及时投递。', 'admin', '招聘主管'
@@ -249,7 +249,7 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '预约须知', '请按时到点接种；取消请提前释放号源。演示无冷链与真库存。', 'admin', '接种点主管'
+SELECT '预约须知', '请按时到点接种；取消请提前释放号源。本期无冷链与真库存。', 'admin', '接种点主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='预约须知' OR title='挂号须知');
 """
 
@@ -343,17 +343,22 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '开发实习'), (2, '运维实习'), (3, '综合实习');
-INSERT IGNORE INTO intern_post (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '后端开发实习', '王工', '研发中心 / Java', 1, 1, 'available'),
-(2, '运维实习', '李工', '基础架构 / 运维', 2, 1, 'available'),
-(3, '行政综合实习', '赵主管', '综合办 / 文员', 3, 1, 'available'),
-(4, '测试实习', '周工', '质量部 / 测试', 1, 1, 'available'),
-(5, '数据分析实习', '陈老师', '数据组 / 分析', 3, 1, 'available');
+-- 岗 1=演示关联岗；其余示范目录待上岗（M-01 / §18）
+INSERT IGNORE INTO intern_post (id, title, author, isbn, category_id, stock, status, stage) VALUES
+(1, '后端开发实习', '王工', '研发中心 / Java', 1, 1, 'available', '实习中'),
+(2, '运维实习', '李工', '基础架构 / 运维', 2, 1, 'available', '待上岗'),
+(3, '行政综合实习', '赵主管', '综合办 / 文员', 3, 1, 'available', '待上岗'),
+(4, '测试实习', '周工', '质量部 / 测试', 1, 1, 'available', '待上岗'),
+(5, '数据分析实习', '陈老师', '数据组 / 分析', 3, 1, 'available', '待上岗');
+INSERT IGNORE INTO week_report (id, book_id, username, status, remark, contact_channel) VALUES
+(1, 1, 'user', 'pending', '第1周：熟悉部门规范与代码库，完成环境搭建。', '在线填写');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '周报须知', '每周日前提交周报；企业导师审阅后方可计入实习考勤。', 'admin', '实习主管'
+SELECT '周报须知',
+  '每周日前提交周报；企业导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。',
+  'admin', '实习主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '鉴定提醒', '实习结束前完成鉴定材料（电子签不在本期）。', 'admin', '实习主管'
+SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意（非 CA）。', 'admin', '实习主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='鉴定提醒');
 """
 
@@ -392,10 +397,11 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO building (id, name) VALUES (1, '学生公寓3号楼'), (2, '教学楼A');
 INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '405'), (2, 1, '406'), (3, 2, '201');
-INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3);
+INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
+(1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3), (4, '投诉建议', 4);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报修须知', '请填写公寓楼栋房号与故障描述，物业将尽快受理。', 'admin', '物业主管'
+SELECT '报修须知', '请填写公寓楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知');
 """
 
@@ -518,13 +524,13 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '教学片'), (2, '纪录片'), (3, '活动回放');
 INSERT IGNORE INTO media (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '实验室安全演示', '教务处 / 主讲甲', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
+(1, '实验室安全培训', '教务处 / 主讲甲', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
 (2, '校史纪录片', '宣传部', 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, 'available'),
 (3, '运动会开幕式回放', '体育部', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available'),
 (4, '新生入学教育', '学工处', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
 (5, '毕业季特辑', '团委', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '观影须知', '片源仅供学习演示；请文明观影，勿传播未授权内容。', 'admin', '媒资主管'
+SELECT '观影须知', '片源仅供学习使用；请文明观影，勿传播未授权内容。', 'admin', '媒资主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='观影须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '教学片与活动回放已更新，欢迎收藏想看。', 'admin', '媒资主管'
@@ -548,7 +554,7 @@ INSERT IGNORE INTO track (id, title, author, isbn, category_id, stock, status) V
 (4, '毕业季合唱', '合唱团', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
 (5, '运动会进行曲', '军乐队', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '试听须知', '曲源仅供学习演示；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
+SELECT '试听须知', '曲源仅供学习使用；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='试听须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '合唱与校园原创已更新，欢迎收藏喜欢。', 'admin', '曲库主管'
@@ -572,7 +578,7 @@ INSERT IGNORE INTO article (id, title, author, isbn, category_id, stock, status)
 (4, '实验室开放时间调整', '资产处', '<p>本月机房与实训室开放时段。</p>', 1, 1, 'available'),
 (5, '心理健康月活动预告', '学工处', '<p>讲座与团体辅导安排。</p>', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '阅读须知', '文章仅供学习演示；转载请注明出处。内容由主编维护发布。', 'admin', '主编'
+SELECT '阅读须知', '文章仅供学习使用；转载请注明出处。内容由主编维护发布。', 'admin', '主编'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='阅读须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '教学与学工栏目已更新，欢迎收藏订阅。', 'admin', '主编'
@@ -635,7 +641,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '李同学', '13800000002', '二食堂北门', '食堂', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址，演示无真支付。', 'admin', '食堂主管'
+SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址，无真支付。', 'admin', '食堂主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='食堂点餐' OR title='点餐须知');
 """
 
@@ -662,7 +668,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单请选择收货地址，演示无真支付。', 'admin', '商城主管'
+SELECT '商城开业', '欢迎选购；下单请选择收货地址，无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
 """
 
@@ -689,7 +695,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王同学', '13800000002', '东门驿站', '驿站', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点，演示无真支付。', 'admin', '商城主管'
+SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点，无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园商城' OR title='商城开业');
 """
 

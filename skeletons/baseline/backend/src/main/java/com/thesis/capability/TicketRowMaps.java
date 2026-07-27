@@ -36,7 +36,19 @@ final class TicketRowMaps {
         m.put("rating", rating);
         m.put("ratingRemark", TicketSql.safeStr(rs, "rating_remark"));
         m.put("ratedAt", TicketSql.fmt(TicketSql.safeTs(rs, "rated_at")));
+        m.put("ratingDimsJson", TicketSql.safeStr(rs, "rating_dims_json"));
+        try {
+            int anon = rs.getInt("rating_anonymous");
+            m.put("ratingAnonymous", !rs.wasNull() && anon == 1);
+        } catch (Exception ignored) {
+            m.put("ratingAnonymous", false);
+        }
+        // 演示匿名：管理端列表隐藏提交人用户名
+        if (Boolean.TRUE.equals(m.get("ratingAnonymous")) && rating != null) {
+            m.put("displayUsername", "匿名同学");
+        }
         m.put("checkedInAt", TicketSql.fmt(TicketSql.safeTs(rs, "checked_in_at")));
+        m.put("passCode", TicketSql.safeStr(rs, "pass_code"));
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", TicketSql.safeStr(rs, "title"));

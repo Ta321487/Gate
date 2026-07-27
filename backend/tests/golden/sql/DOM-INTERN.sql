@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS intern_post (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  stage VARCHAR(32) DEFAULT '实习中',
+  -- 默认待上岗：禁止目录项一律「实习中」造成多单位入职误读（M-01 / §18）
+  stage VARCHAR(32) DEFAULT '待上岗',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -84,14 +85,20 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '开发实习'), (2, '运维实习'), (3, '综合实习');
-INSERT IGNORE INTO intern_post (id, title, mentor_name, org_note, category_id, stock, status) VALUES
-(1, '后端开发实习', '王工', '星河科技 / Java', 1, 1, 'available'),
-(2, '网络运维实习', '李工', '校园信息中心 / 运维', 2, 1, 'available'),
-(3, '行政综合实习', '赵主管', '区政务中心 / 文员', 3, 1, 'available'),
-(4, '测试实习', '周工', '青禾软件 / 测试', 1, 1, 'available'),
-(5, '数据分析实习', '陈老师', '学院实验室 / 数据', 3, 1, 'available');
+-- 岗 1=演示账号关联岗（实习中）；其余为可选示范目录（待上岗），勿理解为一人入职五家
+INSERT IGNORE INTO intern_post (id, title, mentor_name, org_note, category_id, stock, status, stage) VALUES
+(1, '后端开发实习', '王工', '星河科技 / Java', 1, 1, 'available', '实习中'),
+(2, '网络运维实习', '李工', '校园信息中心 / 运维', 2, 1, 'available', '待上岗'),
+(3, '行政综合实习', '赵主管', '区政务中心 / 文员', 3, 1, 'available', '待上岗'),
+(4, '测试实习', '周工', '青禾软件 / 测试', 1, 1, 'available', '待上岗'),
+(5, '数据分析实习', '陈老师', '学院实验室 / 数据', 3, 1, 'available', '待上岗');
+-- 演示账号 user 仅关联岗 1 的周报主路径
+INSERT IGNORE INTO week_report (id, intern_post_id, username, status, remark, contact_channel) VALUES
+(1, 1, 'user', 'pending', '第1周：熟悉项目结构与编码规范，完成环境搭建。', '在线填写');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '周报须知', '每周日前提交周报；导师审阅后方可计入实习考勤。', 'admin', '就业办主管'
+SELECT '周报须知',
+  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标演示关联岗。',
+  'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '鉴定提醒', '实习结束前完成鉴定材料（电子签不在本期）。', 'admin', '就业办主管'

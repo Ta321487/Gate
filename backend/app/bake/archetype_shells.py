@@ -622,11 +622,11 @@ def build_generic_shell_schema(
             my_orders_label="我的订单",
             orders_admin_label="订单管理",
             auth_eyebrow=app,
-            auth_lead=f"验证码登录；浏览{noun}、加入购物车并提交订单（演示无真支付）。",
+            auth_lead=f"验证码登录；浏览{noun}、加入购物车并提交订单（无真支付）。",
             auth_points=["验证码登录", f"{noun}浏览", "购物车与订单"],
             register_hint="注册后即可使用",
             notice_title="使用须知",
-            notice_body=f"本系统用于{noun}相关业务演示；下单流程无真支付。",
+            notice_body=f"本系统用于{noun}相关业务；下单流程无真支付。",
             notice_page_title="公告",
         )
     else:

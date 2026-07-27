@@ -1,14 +1,9 @@
-/* 工厂「行业配色」→ bake 写入 VITE_THEME → data-theme 落地
- * 旧 id（theme-*）保留为别名，兼容已生成工程
- * --portal-mix：color-mix 淡化基点（浅色主题混白，深色主题混黑）
- * --portal-scheme：light|dark，供 chrome / Element Plus 桥接
- * PostCSS：@import 必须在所有规则之前
- *
- * 层叠约定（易踩坑）：
- *  - 行业皮在 @import 的 themes/*.css 里
- *  - :root 只放 scheme/mix 兜底，禁止写 bg/ink/surface，否则会盖掉 @import 的深色皮，
- *    再被下方 [data-theme$="-night"] 写成 mix=#000 → 浅字浅底 + 黑块回复栏
- */
+/* 宸ュ巶銆岃涓氶厤鑹层€嶁啋 bake 鍐欏叆 VITE_THEME 鈫?data-theme 钀藉湴
+ * 鏃?id锛坱heme-*锛変繚鐣欎负鍒悕锛屽吋瀹瑰凡鐢熸垚宸ョ▼
+ * --portal-mix锛歝olor-mix 娣″寲鍩虹偣锛堟祬鑹蹭富棰樻贩鐧斤紝娣辫壊涓婚娣烽粦锛? * --portal-scheme锛歭ight|dark锛屼緵 chrome / Element Plus 妗ユ帴
+ * PostCSS锛欯import 蹇呴』鍦ㄦ墍鏈夎鍒欎箣鍓? *
+ * 灞傚彔绾﹀畾锛堟槗韪╁潙锛夛細
+ *  - 琛屼笟鐨湪 @import 鐨?themes/*.css 閲? *  - :root 鍙斁 scheme/mix 鍏滃簳锛岀姝㈠啓 bg/ink/surface锛屽惁鍒欎細鐩栨帀 @import 鐨勬繁鑹茬毊锛? *    鍐嶈涓嬫柟 [data-theme$="-night"] 鍐欐垚 mix=#000 鈫?娴呭瓧娴呭簳 + 榛戝潡鍥炲鏍? */
 
 @import "./themes/shop.css";
 @import "./themes/dorm.css";
@@ -40,8 +35,41 @@
 @import "./themes/intern.css";
 @import "./themes/parcel.css";
 @import "./themes/dating.css";
+@import "./themes/seal.css";
+@import "./themes/fleet.css";
+@import "./themes/cert.css";
+@import "./themes/promo.css";
+@import "./themes/fitout.css";
+@import "./themes/acad.css";
+@import "./themes/trip.css";
+@import "./themes/expense.css";
+@import "./themes/credit.css";
+@import "./themes/labor.css";
+@import "./themes/eval.css";
+@import "./themes/moral.css";
+@import "./themes/award.css";
+@import "./themes/bed.css";
+@import "./themes/checkin.css";
+@import "./themes/team.css";
+@import "./themes/topic.css";
+@import "./themes/tutor.css";
+@import "./themes/visitor.css";
+@import "./themes/contract.css";
+@import "./themes/instrument.css";
+@import "./themes/exam.css";
+@import "./themes/survey.css";
+@import "./themes/vote.css";
+@import "./themes/doclib.css";
+@import "./themes/party.css";
+@import "./themes/ethic.css";
+@import "./themes/proj.css";
+@import "./themes/club.css";
+@import "./themes/procure.css";
+@import "./themes/listing.css";
+@import "./themes/carpass.css";
+@import "./themes/carpool.css";
 
-/* 仅 scheme/mix；完整色板见 [data-theme=…] 与 themes/* */
+/* 浠?scheme/mix锛涘畬鏁磋壊鏉胯 [data-theme=鈥 涓?themes/* */
 :root {
   --portal-scheme: light;
   --portal-mix: #ffffff;
@@ -66,7 +94,7 @@
   color-scheme: light;
 }
 
-/* 深色配色：统一 scheme / mix（色板仍由各 *-night / cinema / vinyl 块提供） */
+/* 娣辫壊閰嶈壊锛氱粺涓€ scheme / mix锛堣壊鏉夸粛鐢卞悇 *-night / cinema / vinyl 鍧楁彁渚涳級 */
 [data-theme$="-night"],
 [data-theme="theme-night"],
 [data-theme="media-cinema"],

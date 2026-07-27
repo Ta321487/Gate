@@ -63,6 +63,7 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-MUSIC",
     "DOM-BLOG",
     "DOM-FORUM",
+    "DOM-EXAM",
 })
 
 from app.bake.scene_scan import (  # noqa: E402
@@ -137,6 +138,9 @@ def archive_ticket_schema(
     two_level_approve: bool = False,
     require_attach: bool = False,
     allow_rating: bool = False,
+    # C-06：多维评分 [{key,label},...]；空则单分。allow_anonymous_rating 演示匿名。
+    rating_dims: list[dict[str, str]] | None = None,
+    allow_anonymous_rating: bool = False,
     check_mutex: bool = False,
     category_limit: int = 0,
     soft_delete: bool = False,
@@ -146,6 +150,12 @@ def archive_ticket_schema(
     week_calendar: bool = False,
     week_calendar_label: str = "我的日程",
     allow_checkin: bool = False,
+    # C-05：档案主人确认志愿（互选）；管理端仍可调剂审批
+    peer_accept: bool = False,
+    peer_inbox_label: str | None = None,
+    # C-09：审核通过签发通行码（字符串，非真门禁）
+    issue_pass_code: bool = False,
+    pass_code_label: str | None = None,
     no_show_after_end: bool = False,
     no_show_penalty_yuan: float = 0,
     pick_loan_period: bool | None = None,
@@ -241,6 +251,8 @@ def archive_ticket_schema(
         "categoryLimit": max(0, int(category_limit or 0)),
         "weekCalendar": week_calendar,
         "allowCheckin": allow_checkin,
+        "peerAccept": bool(peer_accept),
+        "issuePassCode": bool(issue_pass_code),
         "noShowAfterEnd": bool(no_show_after_end and allow_checkin),
         "noShowPenaltyYuan": float(no_show_penalty_yuan or 0) if (no_show_after_end and allow_checkin) else 0,
         "pickLoanPeriod": bool(pick_loan_period),
@@ -251,6 +263,12 @@ def archive_ticket_schema(
         "approveEndsFlow": bool(approve_ends_flow),
         "autoApprove": bool(auto_approve),
     }
+    dims = [d for d in (rating_dims or []) if isinstance(d, dict) and d.get("key") and d.get("label")]
+    if dims and allow_rating:
+        ticket_entity["ratingDims"] = [
+            {"key": str(d["key"]).strip(), "label": str(d["label"]).strip()} for d in dims
+        ]
+        ticket_entity["allowAnonymousRating"] = bool(allow_anonymous_rating)
     if due_label:
         ticket_entity["dueLabel"] = due_label
     if fine_label:
@@ -259,6 +277,8 @@ def archive_ticket_schema(
         ticket_entity["finePaidLabel"] = fine_paid_label
     if checkin_label:
         ticket_entity["checkinLabel"] = checkin_label
+    if issue_pass_code:
+        ticket_entity["passCodeLabel"] = (pass_code_label or "").strip() or "通行码"
     if week_calendar:
         ticket_entity["weekCalendarLabel"] = week_calendar_label
     if rich_remark:
@@ -287,6 +307,10 @@ def archive_ticket_schema(
         {"key": "archive", "label": archive_menu_user},
         {"key": "my_tickets", "label": my_tickets_label},
     ]
+    if peer_accept:
+        user_menus.append(
+            {"key": "peer_tickets", "label": (peer_inbox_label or "").strip() or "待我确认"}
+        )
     if user_publish:
         user_menus.insert(1, {"key": "my_archive", "label": f"我的{archive_label}"})
     if week_calendar:
@@ -300,6 +324,8 @@ def archive_ticket_schema(
     if messages_page_lead is None:
         if auto_approve:
             messages_page_lead = "系统通知。"
+        elif peer_accept:
+            messages_page_lead = "志愿确认、调剂结果与系统通知。"
         elif with_deadline:
             messages_page_lead = f"审核结果、{remind}提醒与系统通知。"
         elif allow_checkin:
@@ -327,6 +353,10 @@ def archive_ticket_schema(
         labels["myArchivePageLead"] = (
             f"本人发布的{archive_label}即时可见；站长下架后仍可在此查看状态。"
         )
+    if peer_accept:
+        labels["peerInboxTitle"] = (peer_inbox_label or "").strip() or "待我确认"
+        labels["peerInboxLead"] = "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。"
+        labels["peerInboxEmpty"] = "暂无待确认志愿"
     return {
         "version": 1,
         "title": title,

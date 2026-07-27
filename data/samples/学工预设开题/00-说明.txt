@@ -1,0 +1,10 @@
+学工预设开题（泳道 D · P-12～P-16）
+============================
+
+P-12-DOM-CREDIT-高校第二课堂学分认定管理系统.txt -> DOM-CREDIT (已齐)
+P-13-DOM-LABOR-高校劳动教育与志愿时长认定系统.txt -> DOM-LABOR (已齐)
+P-14-DOM-EVAL-高校学生网上评教管理系统.txt -> DOM-EVAL (部分有)
+P-15-DOM-MORAL-高校综合测评与德育分申报系统.txt -> DOM-MORAL (已齐)
+P-16-DOM-AWARD-高校创新学分与竞赛获奖登记系统.txt -> DOM-AWARD (已齐)
+
+P-20～P-22 床位/查寝：见 00-床位查寝骨架-P20-P22.txt（待 C-08/C-10）。

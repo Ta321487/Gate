@@ -261,6 +261,14 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.archive_log import apply_archive_log_to_spec
     from app.bake.features.favorites import apply_favorites_to_spec
     from app.bake.features.dm import apply_dm_to_spec
+    from app.bake.features.exam import apply_exam_to_spec
+    from app.bake.features.survey import apply_survey_to_spec
+    from app.bake.features.vote import apply_vote_to_spec
+    from app.bake.features.doclib import apply_doclib_to_spec
+    from app.bake.features.timebank import apply_timebank_to_spec
+    from app.bake.features.seat_select import apply_seat_select_to_spec
+    from app.bake.features.stock_io import apply_stock_io_to_spec
+    from app.bake.features.e_sign import apply_e_sign_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
     from app.bake.features.loyalty import apply_loyalty_to_spec
     from app.bake.features.order_extras import apply_order_extras_to_spec
@@ -336,6 +344,14 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         "proposal_text": body,
     }
     out = apply_loyalty_to_spec(out, body)
+    out = apply_exam_to_spec(out, body)
+    out = apply_survey_to_spec(out, body)
+    out = apply_vote_to_spec(out, body)
+    out = apply_doclib_to_spec(out, body)
+    out = apply_timebank_to_spec(out, body)
+    out = apply_seat_select_to_spec(out, body)
+    out = apply_stock_io_to_spec(out, body)
+    out = apply_e_sign_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
     out = apply_dm_to_spec(out, body)
     out = apply_favorites_to_spec(out, body)

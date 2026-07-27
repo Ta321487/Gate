@@ -9,7 +9,7 @@ from typing import Any, Literal  # Any：normalize_spring_security 入参
 
 from app.bake.scene_scan import copy_scan_text, scan_has
 
-Persistence = Literal["jdbc", "mybatis"]
+Persistence = Literal["jdbc", "mybatis", "jpa"]
 
 MYBATIS_HINTS = (
     "MyBatis",
@@ -28,6 +28,13 @@ JDBC_HINTS = (
     "spring-jdbc",
     "SpringJdbc",
 )
+JPA_HINTS = (
+    "Spring Data JPA",
+    "spring-data-jpa",
+    "SpringDataJPA",
+    "Hibernate",
+    "JPA",
+)
 UNSUPPORTED_HINTS = (
     ("Django", "Django"),
     (".NET", ".NET"),
@@ -38,20 +45,17 @@ UNSUPPORTED_HINTS = (
     ("uni-app", "uni-app"),
     ("UniApp", "uni-app"),
 )
-# 规划内未落地 / 不能静默冒充已对齐
+# 规划内未落地 / 不能静默冒充已对齐（JPA 已可 bake，勿再列入）
 UNDELIVERED_STACK_HINTS = (
     ("Thymeleaf", "Thymeleaf（SSR 未落地，实包仍为 Vue 分离）"),
     ("AdminLTE", "AdminLTE（SSR 未落地，实包仍为 Vue 分离）"),
     ("服务端渲染", "服务端渲染（SSR 未落地，实包仍为 Vue 分离）"),
     ("SSR", "SSR（未落地，实包仍为 Vue 分离）"),
-    ("JPA", "JPA（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
-    ("Hibernate", "Hibernate（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
-    ("Spring Data JPA", "Spring Data JPA（未落地，实包 persistence 仍为 JdbcTemplate/MyBatis）"),
 )
 SECURITY_HINTS = ("Spring Security", "spring-security", "SpringSecurity")
 ECHARTS_HINTS = ("ECharts", "echarts", "Echarts")
 
-PERSISTENCE_MODES = frozenset({"jdbc", "mybatis"})
+PERSISTENCE_MODES = frozenset({"jdbc", "mybatis", "jpa"})
 DEFAULT_PERSISTENCE: Persistence = "jdbc"
 DEFAULT_SPINE = "spa"
 DEFAULT_SPRING_SECURITY = False
@@ -59,6 +63,8 @@ DEFAULT_SPRING_SECURITY = False
 
 def normalize_persistence(mode: str | None) -> Persistence:
     m = (mode or DEFAULT_PERSISTENCE).strip().lower()
+    if m in ("spring_data_jpa", "spring-data-jpa", "hibernate"):
+        return "jpa"
     return m if m in PERSISTENCE_MODES else DEFAULT_PERSISTENCE  # type: ignore[return-value]
 
 
@@ -90,16 +96,21 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
     warnings: list[str] = []
     hits: list[str] = []
 
+    want_jpa = scan_has(text, JPA_HINTS)
     want_mybatis = scan_has(text, MYBATIS_HINTS)
     want_jdbc = scan_has(text, JDBC_HINTS)
+    if want_jpa:
+        hits.append("JPA")
     if want_mybatis:
         hits.append("MyBatis")
     if want_jdbc:
         hits.append("JdbcTemplate")
 
-    persistence: Persistence = "mybatis" if want_mybatis else DEFAULT_PERSISTENCE
-    # 同时点名时开题写了 MyBatis 优先（已可 bake）
-    if want_mybatis and want_jdbc:
+    # 开题优先：JPA > MyBatis > 默认 jdbc（已可 bake 的跟开题）
+    persistence: Persistence = DEFAULT_PERSISTENCE
+    if want_jpa:
+        persistence = "jpa"
+    elif want_mybatis:
         persistence = "mybatis"
 
     for needle, label in UNSUPPORTED_HINTS:

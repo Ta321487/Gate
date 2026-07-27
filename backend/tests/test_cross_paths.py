@@ -223,6 +223,225 @@ def test_match_keeps_trade_and_reserve_union():
     assert m.domain == "DOM-GENERIC"
 
 
+def test_x03_sample_files_tr_full():
+    """X-03：样例开题文件 → GENERIC + TRADE+RESERVE + accept=full。"""
+    from pathlib import Path
+
+    from app.bake.catalog import match_text
+    from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
+    from app.bake.engine_sql import domain_sql
+
+    root = Path(__file__).resolve().parents[2] / "data" / "samples" / "交叉预设开题"
+    samples = sorted(root.glob("X-03*.txt"))
+    assert len(samples) >= 2, "missing X-03 samples"
+    need = {
+        "ARCH-TRADE": ["archive", "order_lines", "quota", "content", "org_users"],
+        "ARCH-RESERVE": ["archive", "slot_reserve", "content", "org_users"],
+    }
+    for path in samples:
+        body = path.read_text(encoding="utf-8")
+        m = match_text(body)
+        assert m.domain == "DOM-GENERIC", (path.name, m.domain, m.hits[:12])
+        arches = list(m.archetypes or [])
+        assert "ARCH-TRADE" in arches, path.name
+        assert "ARCH-RESERVE" in arches, path.name
+        assert "ARCH-FLOW" not in arches, (path.name, arches)  # 勿抬成三合一
+        caps: list[str] = []
+        for a in arches:
+            for c in need.get(a, []):
+                if c not in caps:
+                    caps.append(c)
+        d = resolve_accept(
+            caps,
+            body,
+            has_domain_overlay=True,
+            has_baseline_runtime=True,
+            archetypes=arches,
+            domain="DOM-GENERIC",
+            primary_archetype=arches[0],
+        )
+        assert d["accept"] == "full", (path.name, d)
+        assert d.get("cross_path") == "TR", path.name
+
+        schema = build_domain_schema(
+            path.stem,
+            "DOM-GENERIC",
+            archetype=arches[0],
+            archetypes=arches,
+            proposal_text=body,
+        )
+        ok, errs = validate_schema(schema)
+        assert ok, (path.name, errs[:5])
+        spec = attach_accept(
+            {
+                "domain": "DOM-GENERIC",
+                "title": path.stem,
+                "capabilities": caps,
+                "archetype": arches[0],
+                "archetypes": arches,
+            },
+            body,
+        )
+        assert spec.get("accept") == "full", (path.name, spec.get("accept_reason"))
+        sql = domain_sql(
+            "DOM-GENERIC",
+            "t_x03",
+            title=path.stem,
+            proposal_text=body,
+            archetype=arches[0],
+            archetypes=arches,
+            capabilities=caps,
+        )
+        assert "resource_slot" in sql or "reservation" in sql, path.name
+        assert "biz_order" in sql or "order_line" in sql or "cart" in sql, path.name
+
+
+def test_x01_sample_files_ft_full():
+    """X-01：点餐+报修样例 → GENERIC + FLOW+TRADE + accept=full。"""
+    from pathlib import Path
+
+    from app.bake.catalog import match_text
+    from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
+    from app.bake.engine_sql import domain_sql
+
+    root = Path(__file__).resolve().parents[2] / "data" / "samples" / "交叉预设开题"
+    samples = sorted(root.glob("X-01*.txt"))
+    assert len(samples) >= 1, "missing X-01 samples"
+    need = {
+        "ARCH-FLOW": ["archive", "ticket_flow", "quota", "content", "org_users"],
+        "ARCH-TRADE": ["archive", "order_lines", "quota", "content", "org_users"],
+    }
+    for path in samples:
+        body = path.read_text(encoding="utf-8")
+        m = match_text(body)
+        assert m.domain == "DOM-GENERIC", (path.name, m.domain, m.hits[:12])
+        arches = list(m.archetypes or [])
+        assert "ARCH-FLOW" in arches, path.name
+        assert "ARCH-TRADE" in arches, path.name
+        assert "ARCH-RESERVE" not in arches, (path.name, arches)
+        caps: list[str] = []
+        for a in arches:
+            for c in need.get(a, []):
+                if c not in caps:
+                    caps.append(c)
+        d = resolve_accept(
+            caps,
+            body,
+            has_domain_overlay=True,
+            has_baseline_runtime=True,
+            archetypes=arches,
+            domain="DOM-GENERIC",
+            primary_archetype=arches[0],
+        )
+        assert d["accept"] == "full", (path.name, d)
+        assert d.get("cross_path") == "FT", path.name
+
+        schema = build_domain_schema(
+            path.stem,
+            "DOM-GENERIC",
+            archetype=arches[0],
+            archetypes=arches,
+            proposal_text=body,
+        )
+        ok, errs = validate_schema(schema)
+        assert ok, (path.name, errs[:5])
+        spec = attach_accept(
+            {
+                "domain": "DOM-GENERIC",
+                "title": path.stem,
+                "capabilities": caps,
+                "archetype": arches[0],
+                "archetypes": arches,
+            },
+            body,
+        )
+        assert spec.get("accept") == "full", (path.name, spec.get("accept_reason"))
+        sql = domain_sql(
+            "DOM-GENERIC",
+            "t_x01",
+            title=path.stem,
+            proposal_text=body,
+            archetype=arches[0],
+            archetypes=arches,
+            capabilities=caps,
+        )
+        assert "ticket" in sql or "apply" in sql or "repair" in sql or "biz_ticket" in sql, path.name
+        assert "biz_order" in sql or "order_line" in sql or "cart" in sql, path.name
+
+
+def test_x02_sample_files_fr_full():
+    """X-02：图书+座位样例 → GENERIC + FLOW+RESERVE + accept=full。"""
+    from pathlib import Path
+
+    from app.bake.catalog import match_text
+    from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
+    from app.bake.engine_sql import domain_sql
+
+    root = Path(__file__).resolve().parents[2] / "data" / "samples" / "交叉预设开题"
+    samples = sorted(root.glob("X-02*.txt"))
+    assert len(samples) >= 1, "missing X-02 samples"
+    need = {
+        "ARCH-FLOW": ["archive", "ticket_flow", "quota", "content", "org_users"],
+        "ARCH-RESERVE": ["archive", "slot_reserve", "content", "org_users"],
+    }
+    for path in samples:
+        body = path.read_text(encoding="utf-8")
+        m = match_text(body)
+        assert m.domain == "DOM-GENERIC", (path.name, m.domain, m.hits[:12])
+        arches = list(m.archetypes or [])
+        assert "ARCH-FLOW" in arches, path.name
+        assert "ARCH-RESERVE" in arches, path.name
+        assert "ARCH-TRADE" not in arches, (path.name, arches)
+        caps: list[str] = []
+        for a in arches:
+            for c in need.get(a, []):
+                if c not in caps:
+                    caps.append(c)
+        d = resolve_accept(
+            caps,
+            body,
+            has_domain_overlay=True,
+            has_baseline_runtime=True,
+            archetypes=arches,
+            domain="DOM-GENERIC",
+            primary_archetype=arches[0],
+        )
+        assert d["accept"] == "full", (path.name, d)
+        assert d.get("cross_path") == "FR", path.name
+
+        schema = build_domain_schema(
+            path.stem,
+            "DOM-GENERIC",
+            archetype=arches[0],
+            archetypes=arches,
+            proposal_text=body,
+        )
+        ok, errs = validate_schema(schema)
+        assert ok, (path.name, errs[:5])
+        spec = attach_accept(
+            {
+                "domain": "DOM-GENERIC",
+                "title": path.stem,
+                "capabilities": caps,
+                "archetype": arches[0],
+                "archetypes": arches,
+            },
+            body,
+        )
+        assert spec.get("accept") == "full", (path.name, spec.get("accept_reason"))
+        sql = domain_sql(
+            "DOM-GENERIC",
+            "t_x02",
+            title=path.stem,
+            proposal_text=body,
+            archetype=arches[0],
+            archetypes=arches,
+            capabilities=caps,
+        )
+        assert "resource_slot" in sql or "reservation" in sql, path.name
+        assert "ticket" in sql or "borrow" in sql or "biz_ticket" in sql or "apply" in sql, path.name
+
+
 def test_score_all_keeps_weak_secondary_path_without_peak_cut():
     """各族自洁后 1 分次路径仍进并集；不再相对峰值砍掉。"""
     from app.bake.catalog import score_all_archetypes

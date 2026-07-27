@@ -59,7 +59,7 @@
                         <!-- 终态：不加处理人条件 -->
                     </when>
                     <when test="todoPoolBlank == true">
-                        AND (status IN ('pending','pending_final','returned','rejected','noshow')
+                        AND (status IN ('pending','pending_mid','pending_final','returned','rejected','noshow')
                             OR assignee_username=#{adminUid})
                     </when>
                     <when test="todoPool == false">
@@ -68,7 +68,7 @@
                 </choose>
             </if>
             <if test="statusTodo">
-                AND status IN ('pending','pending_final')
+                AND status IN ('pending','pending_mid','pending_final')
             </if>
             <if test="statusExact != null and statusExact != ''">
                 AND status=#{statusExact}
@@ -91,10 +91,10 @@
         WHERE username=#{username}
         <choose>
             <when test="multiTicket">
-                AND status IN ('pending','pending_final')
+                AND status IN ('pending','pending_mid','pending_final')
             </when>
             <otherwise>
-                AND status IN ('pending','pending_final','approved','overdue')
+                AND status IN ('pending','pending_mid','pending_final','approved','overdue')
             </otherwise>
         </choose>
     </select>
@@ -103,7 +103,7 @@
         SELECT i.title FROM `${ticketTable}` t
         JOIN `${itemTable}` i ON t.`${itemFk}`=i.id
         WHERE t.username=#{username} AND t.`${itemFk}`&lt;&gt;#{itemId}
-          AND t.status IN ('pending','pending_final','approved','overdue')
+          AND t.status IN ('pending','pending_mid','pending_final','approved','overdue')
           AND i.mutex_code=#{mutexCode} AND i.mutex_code&lt;&gt;''
     </select>
 
@@ -111,7 +111,7 @@
         SELECT COUNT(*) FROM `${ticketTable}` t
         JOIN `${itemTable}` i ON t.`${itemFk}`=i.id
         WHERE t.username=#{username}
-          AND t.status IN ('pending','pending_final','approved','overdue')
+          AND t.status IN ('pending','pending_mid','pending_final','approved','overdue')
           AND i.category_id=#{categoryId}
     </select>
 
@@ -120,7 +120,7 @@
         FROM `${ticketTable}` t
         JOIN `${itemTable}` i ON t.`${itemFk}`=i.id
         WHERE t.username=#{username} AND t.`${itemFk}`&lt;&gt;#{itemId}
-          AND t.status IN ('pending','pending_final','approved','overdue')
+          AND t.status IN ('pending','pending_mid','pending_final','approved','overdue')
           AND i.start_at IS NOT NULL AND i.end_at IS NOT NULL
     </select>
 
@@ -143,6 +143,12 @@
         WHERE id=#{id}
     </update>
 
+    <update id="updateApproveStage" parameterType="map">
+        UPDATE `${ticketTable}` SET status=#{status}, remark=#{remark}
+        <if test="bindAssignee">, assignee_username=#{assigneeUsername}</if>
+        WHERE id=#{id}
+    </update>
+
     <update id="updateApproved" parameterType="map">
         UPDATE `${ticketTable}` SET status='approved',
         <choose>
@@ -160,7 +166,7 @@
     <select id="selectSiblingPendingIds" resultType="long">
         SELECT id FROM `${ticketTable}`
         WHERE `${itemFk}`=#{itemId} AND id&lt;&gt;#{excludeId}
-          AND status IN ('pending','pending_final')
+          AND status IN ('pending','pending_mid','pending_final')
     </select>
 
     <update id="updateComplete" parameterType="map">

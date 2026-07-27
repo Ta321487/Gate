@@ -103,19 +103,19 @@ def compose_generic_sql(
             parts.append(slot_ins.group(0))
             parts.append("")
 
-    notice = "系统已就绪，可开始业务演示。"
+    notice = "系统已就绪，可开始业务办理。"
     if need_flow and need_trade and need_reserve:
-        notice = "支持申请审核、购物车订单与时段预约（演示）。"
+        notice = "支持申请审核、购物车订单与时段预约。"
     elif need_flow and need_trade:
-        notice = "支持申请审核与购物车订单（演示无真支付）。"
+        notice = "支持申请审核与购物车订单（无真支付）。"
     elif need_flow and need_reserve:
         notice = "支持申请审核与时段预约。"
     elif need_trade and need_reserve:
-        notice = "支持购物车订单与时段预约（演示无真支付）。"
+        notice = "支持购物车订单与时段预约（无真支付）。"
     elif need_flow:
         notice = "请提交申请并等待审核；结果将写入站内消息。"
     elif need_trade:
-        notice = "演示环境支持购物车与多明细订单，无真支付。"
+        notice = "本期支持购物车与多明细订单，无真支付。"
     elif need_reserve:
         notice = "选择资源与时段占坑预约；约满后不可再约。"
 

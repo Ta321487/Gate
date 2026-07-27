@@ -45,6 +45,14 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/users': 'users',
   '/admin/notices': 'content',
   '/admin/guestbook': 'guestbook',
+  '/admin/exam/questions': 'exam_questions',
+  '/admin/exam/papers': 'exam_papers',
+  '/admin/survey/forms': 'survey_forms',
+  '/admin/survey/stats': 'survey_stats',
+  '/admin/vote/candidates': 'vote_candidates',
+  '/admin/vote/results': 'vote_results',
+  '/admin/doc/files': 'doc_files',
+  '/admin/doc/logs': 'doc_logs',
   '/admin/archive-logs': 'archive_logs',
   '/admin/sites': 'lookup_site',
   '/admin/types': 'lookup_type',
@@ -213,6 +221,235 @@ function withGuestbookRoutes(baseRoutes) {
       path: 'guestbook',
       component: () => import('../views/admin/GuestbookAdmin.vue'),
     })
+  }
+  return routes
+}
+
+/** 问卷：有 survey 能力时挂门户与管理端入口 */
+function withSurveyRoutes(baseRoutes) {
+  if (!hasCap('survey')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    add('survey/forms', () => import('../views/SurveyForms.vue'))
+    add('survey/fill/:id', () => import('../views/SurveyFill.vue'))
+    add('survey/mine', () => import('../views/SurveyMine.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'survey/forms')) {
+      adminKids.push({
+        path: 'survey/forms',
+        component: () => import('../views/admin/SurveyFormsAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'survey/stats')) {
+      adminKids.push({
+        path: 'survey/stats',
+        component: () => import('../views/admin/SurveyStatsAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 投票评选：有 vote 能力时挂门户与管理端入口 */
+function withVoteRoutes(baseRoutes) {
+  if (!hasCap('vote')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    add('vote/campaigns', () => import('../views/VoteCampaigns.vue'))
+    add('vote/cast/:id', () => import('../views/VoteCast.vue'))
+    add('vote/mine', () => import('../views/VoteMine.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'vote/candidates')) {
+      adminKids.push({
+        path: 'vote/candidates',
+        component: () => import('../views/admin/VoteCandidatesAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'vote/results')) {
+      adminKids.push({
+        path: 'vote/results',
+        component: () => import('../views/admin/VoteResultsAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 文库：有 doclib 能力时挂门户与管理端入口 */
+function withDoclibRoutes(baseRoutes) {
+  if (!hasCap('doclib')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    add('doc/browse', () => import('../views/DocBrowse.vue'))
+    add('doc/mine', () => import('../views/DocMine.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'doc/files')) {
+      adminKids.push({
+        path: 'doc/files',
+        component: () => import('../views/admin/DocFilesAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'doc/logs')) {
+      adminKids.push({
+        path: 'doc/logs',
+        component: () => import('../views/admin/DocLogsAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 时间银行：有 timebank 能力时挂门户与管理端入口 */
+function withTimebankRoutes(baseRoutes) {
+  if (!hasCap('timebank')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    add('tb/account', () => import('../views/TimebankAccount.vue'))
+    add('tb/ledger', () => import('../views/TimebankLedger.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'tb/accounts')) {
+      adminKids.push({
+        path: 'tb/accounts',
+        component: () => import('../views/admin/TimebankAccountsAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'tb/ledger')) {
+      adminKids.push({
+        path: 'tb/ledger',
+        component: () => import('../views/admin/TimebankLedgerAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 本地签章：有 e_sign 能力时挂门户与管理端 */
+function withESignRoutes(baseRoutes) {
+  if (!hasCap('e_sign')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    if (!kids.some((c) => c.path === 'e-sign')) {
+      kids.push({ path: 'e-sign', component: () => import('../views/ESignMine.vue') })
+    }
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'e-sign')) {
+    adminKids.push({
+      path: 'e-sign',
+      component: () => import('../views/admin/ESignAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 浅进销存：有 stock_io 能力时挂管理端入出库 */
+function withStockIoRoutes(baseRoutes) {
+  if (!hasCap('stock_io')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'stock/moves')) {
+      adminKids.push({
+        path: 'stock/moves',
+        component: () => import('../views/admin/StockMovesAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'stock/ledger')) {
+      adminKids.push({
+        path: 'stock/ledger',
+        component: () => import('../views/admin/StockLedgerAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 影院选座：有 seat_select 能力时挂场次与座位图 */
+function withSeatSelectRoutes(baseRoutes) {
+  if (!hasCap('seat_select')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    add('seats/shows', () => import('../views/SeatShows.vue'))
+    add('seats/map/:id', () => import('../views/SeatMap.vue'))
+  }
+  return routes
+}
+
+/** 在线考试：有 exam 能力时挂门户与管理端入口 */
+function withExamRoutes(baseRoutes) {
+  if (!hasCap('exam')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) {
+        kids.push({ path, component: loader })
+      }
+    }
+    add('exam/papers', () => import('../views/ExamPapers.vue'))
+    add('exam/attempts', () => import('../views/ExamAttempts.vue'))
+    add('exam/take/:id', () => import('../views/ExamTake.vue'))
+    add('exam/practice', () => import('../views/ExamPractice.vue'))
+    add('exam/rank', () => import('../views/ExamRank.vue'))
+    add('exam/wrongbook', () => import('../views/ExamWrongbook.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'exam/questions')) {
+      adminKids.push({
+        path: 'exam/questions',
+        component: () => import('../views/admin/ExamQuestionsAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'exam/papers')) {
+      adminKids.push({
+        path: 'exam/papers',
+        component: () => import('../views/admin/ExamPapersAdmin.vue'),
+      })
+    }
   }
   return routes
 }
@@ -460,6 +697,7 @@ const archiveTicketRoutes = [
       { path: '', redirect: '/archive' },
       { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
       { path: 'tickets', component: () => import('../views/user/MyTickets.vue') },
+      { path: 'peer-tickets', component: () => import('../views/user/PeerTickets.vue') },
       { path: 'week', component: () => import('../views/user/WeekCalendar.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
@@ -620,7 +858,23 @@ function pickRoutes() {
     withOrderReviewRoutes(
       withCouponRoutes(
         withArchiveLogRoutes(
-          withBrowseHistoryRoutes(withFavoritesRoutes(withDmRoutes(withGuestbookRoutes(routes)))),
+          withBrowseHistoryRoutes(
+            withFavoritesRoutes(
+              withDmRoutes(
+              withESignRoutes(
+                withStockIoRoutes(
+                  withSeatSelectRoutes(
+                    withTimebankRoutes(
+                      withDoclibRoutes(
+                        withVoteRoutes(withSurveyRoutes(withExamRoutes(withGuestbookRoutes(routes)))),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              ),
+            ),
+          ),
         ),
       ),
     ),

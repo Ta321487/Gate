@@ -96,7 +96,9 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '社团活动'), (2, '志愿活动'), (3, '讲座');
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '社团活动'), (2, '志愿活动'), (3, '讲座'),
+(4, '证书培训'), (5, '研学赛事'), (6, '票务开放日');
 -- 1 与 4 时段重叠，便于演示冲突；截止日放在开课前
 INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
 (1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅', 1, 40, 'available', '2026-10-11 09:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),

@@ -27,7 +27,7 @@
         <template #default="{ row }">{{ row.assigneeUsername || '—' }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">{{ states[row.status] || row.status }}</template>
+        <template #default="{ row }">{{ statusLabel(row) }}</template>
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
       <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
@@ -69,12 +69,21 @@
       <el-table-column v-if="allowCheckin" label="签到" width="170">
         <template #default="{ row }">{{ row.checkedInAt || '—' }}</template>
       </el-table-column>
+      <el-table-column v-if="issuePassCode" :label="passCodeLabel" width="140">
+        <template #default="{ row }">{{ row.passCode || '—' }}</template>
+      </el-table-column>
       <el-table-column prop="returnAt" label="完成时间" width="170" />
-      <el-table-column v-if="allowRating" label="评分" width="90">
+      <el-table-column v-if="allowRating" label="评分" width="110">
         <template #default="{ row }">
-          <span v-if="row.rating" class="rating">{{ row.rating }} 分</span>
+          <span v-if="row.rating" class="rating">
+            {{ row.rating }} 分
+            <template v-if="row.ratingAnonymous"> · 匿名</template>
+          </span>
           <span v-else class="muted">—</span>
         </template>
+      </el-table-column>
+      <el-table-column v-if="allowRating && hasRatingDims" label="维度" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ formatDims(row.ratingDimsJson) }}</template>
       </el-table-column>
       <el-table-column v-if="allowRating" label="短评" min-width="140" show-overflow-tooltip>
         <template #default="{ row }">{{ row.ratingRemark || '—' }}</template>
@@ -152,9 +161,37 @@ const ticket = ticketCopy()
 const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
+function statusLabel(row) {
+  if (row && row.checkedInAt) return '已签到'
+  return states.value[row?.status] || row?.status || ''
+}
 const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
+const hasRatingDims = computed(
+  () => Array.isArray(ticket.ratingDims) && ticket.ratingDims.length > 0,
+)
+const ratingDimLabels = computed(() => {
+  const map = {}
+  for (const d of ticket.ratingDims || []) {
+    if (d?.key) map[d.key] = d.label || d.key
+  }
+  return map
+})
+function formatDims(json) {
+  if (!json) return '—'
+  try {
+    const obj = typeof json === 'string' ? JSON.parse(json) : json
+    if (!obj || typeof obj !== 'object') return '—'
+    return Object.entries(obj)
+      .map(([k, v]) => `${ratingDimLabels.value[k] || k}:${v}`)
+      .join(' · ')
+  } catch {
+    return '—'
+  }
+}
 const allowCheckin = computed(() => !!ticket.allowCheckin)
+const issuePassCode = computed(() => !!ticket.issuePassCode)
+const passCodeLabel = computed(() => ticket.passCodeLabel || '通行码')
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
@@ -363,7 +400,7 @@ async function exportCsv() {
     line.push(
       personLabel(row, ''),
       row.assigneeUsername || '',
-      states.value[row.status] || row.status,
+      statusLabel(row),
     )
     if (allowQty.value) line.push(row.qty ?? 1)
     if (pickLoanPeriod.value) line.push(row.dueAt || '')

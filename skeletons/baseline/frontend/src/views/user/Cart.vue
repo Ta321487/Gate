@@ -28,7 +28,7 @@
     </el-table>
     <div v-if="list.length" class="total">
       <template v-if="anyLoyalty">
-        <div v-if="walletOn" class="loy-line">演示余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
+        <div v-if="walletOn" class="loy-line">账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
@@ -42,7 +42,7 @@
           券 {{ preview.couponCode }} −¥{{ Number(preview.couponOffYuan).toFixed(2) }}
         </div>
         <div class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
-        <div v-if="walletOn && preview.balanceEnough === false" class="warn">演示余额不足，请联系管理员充值</div>
+        <div v-if="walletOn && preview.balanceEnough === false" class="warn">账户余额不足，请联系管理员充值</div>
       </template>
     </div>
 
@@ -142,7 +142,7 @@
           <el-input v-model="form.remark" maxlength="200" placeholder="选填" />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
-          <p v-if="walletOn">演示余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
+          <p v-if="walletOn">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
@@ -374,7 +374,7 @@ async function submitOrder() {
     }
   }
   if (walletOn.value && preview.value?.balanceEnough === false) {
-    ElMessage.warning(preview.value?.message || '演示余额不足')
+    ElMessage.warning(preview.value?.message || '账户余额不足')
     return
   }
   placing.value = true

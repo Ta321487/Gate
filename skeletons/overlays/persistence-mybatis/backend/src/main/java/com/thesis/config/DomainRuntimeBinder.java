@@ -12,7 +12,15 @@ import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
+import com.thesis.service.DoclibStore;
+import com.thesis.service.ExamStore;
+import com.thesis.service.SurveyStore;
+import com.thesis.service.SeatStore;
+import com.thesis.service.ESignStore;
+import com.thesis.service.StockIoStore;
+import com.thesis.service.TimebankStore;
 import com.thesis.service.UserStore;
+import com.thesis.service.VoteStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -96,6 +104,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-two-level:false}")
     private boolean ticketTwoLevel;
 
+    @Value("${thesis.ticket-three-level:false}")
+    private boolean ticketThreeLevel;
+
     @Value("${thesis.ticket-require-attach:false}")
     private boolean ticketRequireAttach;
 
@@ -137,6 +148,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.ticket-allow-checkin:false}")
     private boolean ticketAllowCheckin;
+
+    @Value("${thesis.ticket-peer-accept:false}")
+    private boolean ticketPeerAccept;
+
+    @Value("${thesis.ticket-issue-pass-code:false}")
+    private boolean ticketIssuePassCode;
 
     @Value("${thesis.ticket-no-show-after-end:false}")
     private boolean ticketNoShowAfterEnd;
@@ -195,6 +212,57 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.archive-log-enabled:false}")
     private boolean archiveLogEnabled;
 
+    @Value("${thesis.exam-enabled:false}")
+    private boolean examEnabled;
+
+    @Value("${thesis.exam-practice-enabled:false}")
+    private boolean examPracticeEnabled;
+
+    @Value("${thesis.exam-explain-enabled:false}")
+    private boolean examExplainEnabled;
+
+    @Value("${thesis.exam-timer-enabled:false}")
+    private boolean examTimerEnabled;
+
+    @Value("${thesis.exam-attempt-limit-enabled:false}")
+    private boolean examAttemptLimitEnabled;
+
+    @Value("${thesis.exam-rank-enabled:false}")
+    private boolean examRankEnabled;
+
+    @Value("${thesis.exam-wrongbook-enabled:false}")
+    private boolean examWrongbookEnabled;
+
+    @Value("${thesis.exam-require-before-ticket:false}")
+    private boolean examRequireBeforeTicket;
+
+    @Value("${thesis.survey-enabled:false}")
+    private boolean surveyEnabled;
+
+    @Value("${thesis.vote-enabled:false}")
+    private boolean voteEnabled;
+
+    @Value("${thesis.doclib-enabled:false}")
+    private boolean doclibEnabled;
+
+    @Value("${thesis.timebank-enabled:false}")
+    private boolean timebankEnabled;
+
+    @Value("${thesis.timebank-redeem-on-approve:false}")
+    private boolean timebankRedeemOnApprove;
+
+    /** C-15 影院选座 */
+    @Value("${thesis.seat-select-enabled:false}")
+    private boolean seatSelectEnabled;
+
+    /** C-17 浅进销存 */
+    @Value("${thesis.stock-io-enabled:false}")
+    private boolean stockIoEnabled;
+
+    /** C-18 本地签章 */
+    @Value("${thesis.e-sign-enabled:false}")
+    private boolean eSignEnabled;
+
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
@@ -226,11 +294,15 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
             }
             TicketStore.setUserRole(registerRole);
-            TicketStore.configureL1(ticketTwoLevel, ticketRequireAttach, ticketAllowRating);
+            TicketStore.configureThreeLevel(ticketThreeLevel);
+            TicketStore.configureL1(ticketTwoLevel || ticketThreeLevel, ticketRequireAttach, ticketAllowRating);
             TicketStore.configureRules(ticketCheckMutex, ticketCategoryLimit);
             TicketStore.configureBizParams(ticketLoanDays, ticketMaxActive, ticketFinePerDay, ticketPickupPlace);
             TicketStore.configureCheckin(ticketAllowCheckin);
+            TicketStore.configurePeerAccept(ticketPeerAccept);
+            TicketStore.configureIssuePassCode(ticketIssuePassCode);
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
+            TicketStore.configureTimebankRedeem(timebankEnabled && timebankRedeemOnApprove);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
             TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
@@ -255,6 +327,22 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         FavoriteStore.configure(favoritesEnabled);
         BrowseHistoryStore.configure(browseHistoryEnabled, 20);
         ArchiveLogStore.configure(archiveLogEnabled);
+        ExamStore.configure(
+                examEnabled,
+                examPracticeEnabled,
+                examExplainEnabled,
+                examTimerEnabled,
+                examAttemptLimitEnabled,
+                examRankEnabled,
+                examWrongbookEnabled,
+                examRequireBeforeTicket);
+        SurveyStore.configure(surveyEnabled);
+        VoteStore.configure(voteEnabled);
+        DoclibStore.configure(doclibEnabled);
+        TimebankStore.configure(timebankEnabled, timebankRedeemOnApprove);
+        SeatStore.configure(seatSelectEnabled);
+        StockIoStore.configure(stockIoEnabled);
+        ESignStore.configure(eSignEnabled);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);

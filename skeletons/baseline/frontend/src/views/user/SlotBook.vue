@@ -36,7 +36,7 @@
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
-      <p v-if="slotHotel && priceText" class="tip price">房价 {{ priceText }}（演示无真支付，将写入订单金额）</p>
+      <p v-if="slotHotel && priceText" class="tip price">房价 {{ priceText }}（无真支付，将写入订单金额）</p>
       <el-form label-position="top">
         <el-form-item v-if="slotParking" label="车牌号" required>
           <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />

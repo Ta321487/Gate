@@ -233,7 +233,7 @@
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
       <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
       <el-form label-position="top">
-        <el-form-item v-if="allowQty" label="数量" required>
+        <el-form-item v-if="allowQty" :label="qtyLabel" required>
           <el-input-number
             v-model="applyQty"
             :min="1"
@@ -377,7 +377,7 @@ const router = useRouter()
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const archive = archiveCopy()
 const ticket = ticketCopy()
-const isCrm = computed(() => hasTrait('crm'))
+const isCrm = computed(() => hasTrait('followUp') || hasTrait('crm'))
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
 const channelPlaceholder = computed(() => followChannelPlaceholder())
@@ -401,6 +401,7 @@ const dueLabel = computed(() => ticketDueLabel('到期日'))
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const allowQty = computed(() => !!ticket.allowQty)
+const qtyLabel = computed(() => ticket.qtyLabel || '数量')
 const needApplyDialog = computed(
   () =>
     richRemark.value
@@ -468,7 +469,12 @@ const qtyMax = computed(() => {
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasRecommend = computed(() => caps.value.includes('recommend'))
 const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
-const isSlotMode = computed(() => caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow'))
+const isSlotMode = computed(() => {
+  if (!caps.value.includes('slot_reserve')) return false
+  // C-07 仪器机时等：借+约并存时主按钮走约时段（traits.slotPrimary）
+  if (hasTrait('slotPrimary')) return true
+  return !caps.value.includes('ticket_flow')
+})
 /** 即时收藏：交易域或内容流（无单据审核） */
 const favOn = computed(() => {
   if (!caps.value.includes('favorites')) return false

@@ -344,6 +344,36 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         if (be / "config" / "MbBridge.java").is_file():
             files_ok = False
             missing = list(missing) + ["（mybatis 包不应保留 MbBridge.java）"]
+    elif persistence == "jpa":
+        jpa_support = be / "config" / "JpaSupport.java"
+        notice_repo = be / "repository" / "NoticeRepository.java"
+        notice_entity = be / "entity" / "NoticeEntity.java"
+        if not jpa_support.is_file():
+            files_ok = False
+            missing = list(missing) + ["JpaSupport.java"]
+        if not notice_repo.is_file():
+            files_ok = False
+            missing = list(missing) + ["NoticeRepository.java"]
+        if not notice_entity.is_file():
+            files_ok = False
+            missing = list(missing) + ["NoticeEntity.java"]
+        if (be / "config" / "JdbcSupport.java").is_file():
+            files_ok = False
+            missing = list(missing) + ["（jpa 包不应保留 JdbcSupport.java）"]
+        if (be / "config" / "MybatisSupport.java").is_file():
+            files_ok = False
+            missing = list(missing) + ["（jpa 包不应保留 MybatisSupport.java）"]
+        if (be / "config" / "MbBridge.java").is_file():
+            files_ok = False
+            missing = list(missing) + ["（jpa 包不应保留 MbBridge.java）"]
+        mapper_dir = workspace / "backend" / "src" / "main" / "resources" / "mapper"
+        if mapper_dir.is_dir() and any(mapper_dir.glob("*.xml")):
+            files_ok = False
+            missing = list(missing) + ["（jpa 包不应保留 mapper/*.xml）"]
+        pom_txt = _read(workspace / "backend" / "pom.xml")
+        if "spring-boot-starter-data-jpa" not in pom_txt:
+            files_ok = False
+            missing = list(missing) + ["pom.xml → spring-boot-starter-data-jpa"]
 
     from app.bake.addons import resolve_spring_security
 

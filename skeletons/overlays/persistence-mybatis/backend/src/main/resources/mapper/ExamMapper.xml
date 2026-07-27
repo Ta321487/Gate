@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.ExamMapper">
+
+    <select id="selectQuestion" resultType="map">
+        SELECT * FROM exam_question WHERE id=#{id}
+    </select>
+
+    <select id="countQuestions" resultType="int">
+        SELECT COUNT(*) FROM exam_question
+        <if test="subjectId != null">WHERE subject_id=#{subjectId}</if>
+    </select>
+
+    <select id="pageQuestions" resultType="map">
+        SELECT * FROM exam_question
+        <if test="subjectId != null">WHERE subject_id=#{subjectId}</if>
+        ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <update id="updateQuestion">
+        UPDATE exam_question
+        <set>
+            <if test="type != null">type=#{type},</if>
+            <if test="stem != null">stem=#{stem},</if>
+            <if test="optionsJson != null">options_json=#{optionsJson},</if>
+            <if test="answerKey != null">answer_key=#{answerKey},</if>
+            <if test="score != null">score=#{score},</if>
+            <if test="subjectId != null or clearSubject">subject_id=#{subjectId},</if>
+            <if test="explainText != null">explain_text=#{explainText},</if>
+        </set>
+        WHERE id=#{id}
+    </update>
+
+    <select id="selectPaper" resultType="map">
+        SELECT * FROM exam_paper WHERE id=#{id}
+    </select>
+
+    <update id="updatePaper">
+        UPDATE exam_paper
+        <set>
+            <if test="title != null">title=#{title},</if>
+            <if test="durationMin != null">duration_min=#{durationMin},</if>
+            <if test="status != null">status=#{status},</if>
+            <if test="subjectId != null or clearSubject">subject_id=#{subjectId},</if>
+            <if test="maxAttempts != null">max_attempts=#{maxAttempts},</if>
+        </set>
+        WHERE id=#{id}
+    </update>
+
+    <select id="listPaperQuestions" resultType="map">
+        SELECT q.*, pq.sort_no AS sort_no
+        FROM exam_paper_question pq
+        JOIN exam_question q ON q.id = pq.question_id
+        WHERE pq.paper_id=#{paperId}
+        ORDER BY pq.sort_no ASC, q.id ASC
+    </select>
+
+    <select id="selectAttempt" resultType="map">
+        SELECT * FROM exam_attempt WHERE id=#{id}
+    </select>
+
+    <select id="listAttemptQuestions" resultType="map">
+        SELECT q.*, pq.sort_no AS sort_no
+        FROM exam_attempt a
+        JOIN exam_paper_question pq ON pq.paper_id = a.paper_id
+        JOIN exam_question q ON q.id = pq.question_id
+        WHERE a.id=#{attemptId}
+        ORDER BY pq.sort_no ASC, q.id ASC
+    </select>
+
+    <select id="countMyAttempts" resultType="int">
+        SELECT COUNT(*) FROM exam_attempt WHERE username=#{username}
+    </select>
+
+    <select id="pageMyAttempts" resultType="map">
+        SELECT * FROM exam_attempt WHERE username=#{username}
+        ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAttemptsAdmin" resultType="int">
+        SELECT COUNT(*) FROM exam_attempt
+        <if test="paperId != null">WHERE paper_id=#{paperId}</if>
+    </select>
+
+    <select id="pageAttemptsAdmin" resultType="map">
+        SELECT * FROM exam_attempt
+        <if test="paperId != null">WHERE paper_id=#{paperId}</if>
+        ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countRank" resultType="int">
+        SELECT COUNT(*) FROM exam_attempt
+        WHERE paper_id=#{paperId} AND mode='exam' AND status='submitted'
+    </select>
+
+    <select id="pageRank" resultType="map">
+        SELECT * FROM exam_attempt
+        WHERE paper_id=#{paperId} AND mode='exam' AND status='submitted'
+        ORDER BY score DESC, submitted_at ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countWrongbook" resultType="int">
+        SELECT COUNT(*) FROM exam_wrongbook WHERE username=#{username}
+    </select>
+
+    <select id="pageWrongbook" resultType="map">
+        SELECT w.*, q.stem AS stem, q.type AS type, q.score AS score
+        FROM exam_wrongbook w
+        LEFT JOIN exam_question q ON q.id = w.question_id
+        WHERE w.username=#{username}
+        ORDER BY w.id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

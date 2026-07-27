@@ -43,6 +43,17 @@ final class TicketRowMaps {
         m.put("rating", rating);
         m.put("ratingRemark", str(first(raw, "ratingRemark", "rating_remark")));
         m.put("ratedAt", fmt(first(raw, "ratedAt", "rated_at")));
+        m.put("ratingDimsJson", str(first(raw, "ratingDimsJson", "rating_dims_json")));
+        Object anonObj = first(raw, "ratingAnonymous", "rating_anonymous");
+        boolean anon = false;
+        if (anonObj != null) {
+            String a = String.valueOf(anonObj);
+            anon = "1".equals(a) || "true".equalsIgnoreCase(a);
+        }
+        m.put("ratingAnonymous", anon);
+        if (anon && rating != null) {
+            m.put("displayUsername", "匿名同学");
+        }
         m.put("checkedInAt", fmt(first(raw, "checkedInAt", "checked_in_at")));
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {

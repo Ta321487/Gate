@@ -41,7 +41,11 @@
       <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag size="small" :type="row.status === 'pending_final' ? '' : 'warning'" effect="plain">
+          <el-tag
+            size="small"
+            :type="row.status === 'pending_final' ? '' : row.status === 'pending_mid' ? 'info' : 'warning'"
+            effect="plain"
+          >
             {{ statusText(row.status) }}
           </el-tag>
         </template>
@@ -163,7 +167,8 @@ const ticketNoun = computed(() => ticket.label || '申请')
 const richRemark = computed(() => !!ticket.richRemark)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
-const twoLevel = computed(() => !!ticket.twoLevelApprove)
+const twoLevel = computed(() => !!ticket.twoLevelApprove || !!ticket.threeLevelApprove)
+const threeLevel = computed(() => !!ticket.threeLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
@@ -226,12 +231,18 @@ const progressVisible = ref(false)
 const progressId = ref(null)
 
 function statusText(s) {
-  return states.value[s] || ({ pending: '待初审', pending_final: '待终审' }[s]) || s
+  return (
+    states.value[s]
+    || ({ pending: '待初审', pending_mid: '待复审', pending_final: '待终审' }[s])
+    || s
+  )
 }
 
 function passLabel(row) {
   if (!twoLevel.value || !row) return verbs.value.approve || '受理'
   if (row.status === 'pending_final') return '终审通过'
+  if (threeLevel.value && row.status === 'pending_mid') return '复审通过'
+  if (threeLevel.value && row.status === 'pending') return '初审通过'
   return '初审通过'
 }
 

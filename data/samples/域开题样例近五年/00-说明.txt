@@ -16,5 +16,10 @@
 30–34：同壳换皮/挂载题（座位预约、私教、宠物挂号、疫苗预约、宠物领养），
       仍按正常开题报告写，不另造「测试专用体」
 
+深皮长尾（S-* 全册，泳道 B）：
+  data/samples/深皮开题/
+  与 docs/domain-skin-gap-analysis.md §3 一一对应；匹配回归见
+  backend/tests/test_deep_skin_s.py
+
 同源测试夹具（若与 txt 不一致，以本目录 txt 为准再同步）：
   backend/tests/fixtures/domain_opening_corpus.json

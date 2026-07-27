@@ -88,6 +88,12 @@
                   <span v-if="matchMeta.source" class="rec-src">· {{ matchSourceLabel }}</span>
                 </div>
                 <div class="rec-main">{{ p.recommended_arch }} × {{ p.recommended_domain }}</div>
+                <div class="rec-sub" v-if="recommendedArchesText">
+                  能力路径并集：{{ recommendedArchesText }}
+                </div>
+                <div class="rec-sub" v-if="archDomainDeviant">
+                  当前出包：{{ form.archetype }} × {{ form.domain }}
+                </div>
                 <div class="rec-sub">
                   推荐持久层：{{ persistenceLabel(p.recommended_persistence || 'jdbc') }}
                   <span v-if="persistenceDeviant"> · 当前出包：{{ persistenceLabel(form.persistence) }}</span>
@@ -97,11 +103,8 @@
                   <span v-if="securityDeviant"> · 当前出包：{{ securityLabel(form.springSecurity) }}</span>
                 </div>
                 <div class="rec-sub" v-if="matchMeta.rationale">理由：{{ matchMeta.rationale }}</div>
-                <div
-                  class="rec-sub"
-                  v-if="matchMeta.keyword_domain && (matchMeta.keyword_domain !== p.recommended_domain || matchMeta.keyword_arch !== p.recommended_arch)"
-                >
-                  关键词对照：{{ matchMeta.keyword_arch }} × {{ matchMeta.keyword_domain }}
+                <div class="rec-sub" v-if="narrativeDualText">
+                  拟选叙事对照：{{ narrativeDualText }}
                 </div>
                 <div class="rec-sub" v-if="matchAltsText">备选：{{ matchAltsText }}</div>
                 <div class="rec-sub" v-if="keywordHits.length">命中：{{ keywordHits.join(' / ') }}</div>
@@ -305,7 +308,59 @@
 
         <div v-if="genState !== 'running' && showSoftBakePanel" class="panel mb-16">
             <div class="panel-hd">
-              <h3>视觉与生成选项</h3>
+              <h3 class="soft-label-with-tip">
+                视觉与生成选项
+                <n-tooltip trigger="hover" placement="bottom-start" :delay="120">
+                  <template #trigger>
+                    <button type="button" class="soft-tip-btn" aria-label="当前视觉示意">
+                      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                        <path
+                          fill="currentColor"
+                          d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 15a1.1 1.1 0 1 1 0-2.2A1.1 1.1 0 0 1 12 17zm1.2-4.4h-2.4V7h2.4v5.6z"
+                        />
+                      </svg>
+                    </button>
+                  </template>
+                  <div class="soft-visual-tip">
+                    <div class="soft-visual-tip-title">当前选项示意</div>
+                    <div
+                      class="layout-shell-wire soft-visual-wire"
+                      :data-layout="form.layout || 'topbar'"
+                      :data-chrome="form.chrome || 'soft'"
+                      :data-home="form.portalHomeStyle || 'cards'"
+                      :data-typeface="form.typeface || 'clean'"
+                      :style="softVisualWireStyle"
+                    >
+                      <div class="lsw-chrome">
+                        <span class="lsw-brand" />
+                        <span class="lsw-nav"><i /><i /><i /></span>
+                      </div>
+                      <div class="lsw-body">
+                        <template v-if="(form.portalHomeStyle || 'cards') === 'editorial'">
+                          <div class="lsw-editorial">
+                            <div class="lsw-main">
+                              <span class="lsw-card" />
+                              <span class="lsw-card short" />
+                            </div>
+                            <div class="lsw-side">
+                              <span class="lsw-card" />
+                              <span class="lsw-card" />
+                            </div>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <div class="lsw-cards">
+                            <span class="lsw-card" />
+                            <span class="lsw-card" />
+                            <span class="lsw-card" />
+                          </div>
+                        </template>
+                      </div>
+                      <div class="lsw-type">标题 Aa · 正文示意</div>
+                    </div>
+                  </div>
+                </n-tooltip>
+              </h3>
               <span class="small muted">{{ softBakeHint }}</span>
             </div>
             <div class="panel-bd">
@@ -536,7 +591,7 @@
                       >E-R 图</n-button>
                     </div>
                   </div>
-                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节 · 中文名可点改（只影响论文/E-R，不改库表英文标识）</div>
+                  <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节 · 中文名改完点勾或回车保存（只影响论文/E-R，不改库表英文标识）</div>
                   <template v-if="schema?.tables?.length">
                     <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
                       <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
@@ -546,7 +601,7 @@
                         v-if="schemaErGapCount > 0"
                         class="pill pill-amber"
                         style="margin-left:8px"
-                        title="展示名仍含英文，可在下表「中文名」列手改"
+                        title="展示名仍含英文，改完点勾或回车保存"
                       >中文缺口 {{ schemaErGapCount }}</span>
                       <span v-else class="pill pill-green" style="margin-left:8px">中文名齐全</span>
                     </div>
@@ -563,17 +618,30 @@
                         >
                           <span class="table-caret" aria-hidden="true">{{ isTableCollapsed(t.name) ? '▸' : '▾' }}</span>
                           <span class="mono">{{ t.name }}</span>
-                          <input
-                            class="zh-edit table-zh"
-                            :class="{ 'zh-gap': labelLooksLatin(t.label || t.name) }"
-                            :value="t.label || ''"
-                            :placeholder="t.name"
-                            :disabled="artifactsFrozen || erLabelSaving"
-                            :title="artifactsFrozen ? artifactsFrozenReason : '改中文实体名（回车或失焦保存）'"
-                            @click.stop
-                            @keydown.enter.prevent="($event) => $event.target.blur()"
-                            @blur="($event) => commitTableZh(t, $event)"
-                          />
+                          <span class="zh-edit-wrap" @click.stop>
+                            <input
+                              class="zh-edit table-zh"
+                              :class="{ 'zh-gap': labelLooksLatin(t.label || t.name) }"
+                              :value="t.label || ''"
+                              :placeholder="t.name"
+                              :disabled="artifactsFrozen || erLabelSaving"
+                              :title="artifactsFrozen ? artifactsFrozenReason : '改中文实体名'"
+                              @keydown.enter.prevent="($event) => commitTableZh(t, $event.target)"
+                            />
+                            <button
+                              type="button"
+                              class="zh-ok-btn"
+                              :disabled="artifactsFrozen || erLabelSaving"
+                              title="保存中文名"
+                              aria-label="保存中文名"
+                              @mousedown.prevent
+                              @click="($event) => commitTableZh(t, $event.currentTarget.previousElementSibling)"
+                            >
+                              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                                <path fill="currentColor" d="M9.55 17.6 4.9 12.95l1.4-1.4 3.25 3.25 7.15-7.15 1.4 1.4z" />
+                              </svg>
+                            </button>
+                          </span>
                           <span class="small muted">{{ t.columns?.length || 0 }} 列</span>
                           <CopyIconButton class="table-copy" :text="tableCopyText(t)" tip="复制本表（可贴 Word 转表格）" />
                         </div>
@@ -590,16 +658,30 @@
                           </li>
                           <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
                             <span class="col-name">{{ c.name }}</span>
-                            <input
-                              class="zh-edit col-zh"
-                              :class="{ 'zh-gap': labelLooksLatin(c.label || c.name) }"
-                              :value="c.label || ''"
-                              :placeholder="c.name"
-                              :disabled="artifactsFrozen || erLabelSaving"
-                              :title="artifactsFrozen ? artifactsFrozenReason : '改中文属性名（回车或失焦保存）'"
-                              @keydown.enter.prevent="($event) => $event.target.blur()"
-                              @blur="($event) => commitColZh(t, c, $event)"
-                            />
+                            <span class="zh-edit-wrap">
+                              <input
+                                class="zh-edit col-zh"
+                                :class="{ 'zh-gap': labelLooksLatin(c.label || c.name) }"
+                                :value="c.label || ''"
+                                :placeholder="c.name"
+                                :disabled="artifactsFrozen || erLabelSaving"
+                                :title="artifactsFrozen ? artifactsFrozenReason : '改中文属性名'"
+                                @keydown.enter.prevent="($event) => commitColZh(t, c, $event.target)"
+                              />
+                              <button
+                                type="button"
+                                class="zh-ok-btn"
+                                :disabled="artifactsFrozen || erLabelSaving"
+                                title="保存中文名"
+                                aria-label="保存中文名"
+                                @mousedown.prevent
+                                @click="($event) => commitColZh(t, c, $event.currentTarget.previousElementSibling)"
+                              >
+                                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                                  <path fill="currentColor" d="M9.55 17.6 4.9 12.95l1.4-1.4 3.25 3.25 7.15-7.15 1.4 1.4z" />
+                                </svg>
+                              </button>
+                            </span>
                             <template v-if="typeParenMode">
                               <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>
                             </template>
@@ -617,16 +699,30 @@
                         <span class="mono">{{ r.left }}</span>
                         <span class="muted">{{ r.card_left }}</span>
                         —〈
-                        <input
-                          class="zh-edit rel-zh"
-                          :class="{ 'zh-gap': labelLooksLatin(r.label || r.name) }"
-                          :value="r.label || r.name || ''"
-                          :placeholder="r.name"
-                          :disabled="artifactsFrozen || erLabelSaving"
-                          :title="artifactsFrozen ? artifactsFrozenReason : '改中文联系名（回车或失焦保存）'"
-                          @keydown.enter.prevent="($event) => $event.target.blur()"
-                          @blur="($event) => commitRelZh(r, $event)"
-                        />
+                        <span class="zh-edit-wrap zh-edit-wrap--rel">
+                          <input
+                            class="zh-edit rel-zh"
+                            :class="{ 'zh-gap': labelLooksLatin(r.label || r.name) }"
+                            :value="r.label || r.name || ''"
+                            :placeholder="r.name"
+                            :disabled="artifactsFrozen || erLabelSaving"
+                            :title="artifactsFrozen ? artifactsFrozenReason : '改中文联系名'"
+                            @keydown.enter.prevent="($event) => commitRelZh(r, $event.target)"
+                          />
+                          <button
+                            type="button"
+                            class="zh-ok-btn"
+                            :disabled="artifactsFrozen || erLabelSaving"
+                            title="保存中文名"
+                            aria-label="保存中文名"
+                            @mousedown.prevent
+                            @click="($event) => commitRelZh(r, $event.currentTarget.previousElementSibling)"
+                          >
+                            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                              <path fill="currentColor" d="M9.55 17.6 4.9 12.95l1.4-1.4 3.25 3.25 7.15-7.15 1.4 1.4z" />
+                            </svg>
+                          </button>
+                        </span>
                         〉—
                         <span class="muted">{{ r.card_right }}</span>
                         <span class="mono">{{ r.right }}</span>
@@ -925,6 +1021,7 @@ import CopyIconButton from '../components/CopyIconButton.vue'
 import ErDiagramViewer from '../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../components/TestcaseViewer.vue'
+import { softThemeSwatch } from '../softThemeSwatches.js'
 import {
   CHECKLIST_RESULT,
   JOB_STEP_LABELS,
@@ -1082,6 +1179,17 @@ const layoutOptions = computed(() => {
   const list = catalog.value.layout_shells || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
+function softThemeWireStyle(themeId) {
+  const s = softThemeSwatch(themeId)
+  return {
+    '--lsw-bg': s.bg,
+    '--lsw-surface': s.surface,
+    '--lsw-ink': s.ink,
+    '--lsw-accent': s.accent,
+    '--lsw-soft': s.soft,
+  }
+}
+const softVisualWireStyle = computed(() => softThemeWireStyle(form.theme))
 const typefaceOptions = computed(() => {
   const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
@@ -1106,13 +1214,16 @@ const passwordHashOptions = [
 const persistenceOptions = [
   { label: 'Spring JDBC（JdbcTemplate）', value: 'jdbc' },
   { label: 'MyBatis + PageHelper', value: 'mybatis' },
+  { label: 'Spring Data JPA（Hibernate）', value: 'jpa' },
 ]
 const securityOptions = [
   { label: '关 · 仅 Session + AdminAuth（默认）', value: 'off' },
   { label: '开 · Spring Security 过滤器链', value: 'on' },
 ]
 function persistenceLabel(v) {
-  return v === 'mybatis' ? 'MyBatis + PageHelper' : 'JdbcTemplate'
+  if (v === 'mybatis') return 'MyBatis + PageHelper'
+  if (v === 'jpa') return 'Spring Data JPA'
+  return 'JdbcTemplate'
 }
 function securityLabel(v) {
   const on = v === true || v === 'on' || v === 1
@@ -1134,14 +1245,30 @@ const securityDeviant = computed(() => {
   if (!p.value) return false
   return securityOn(form.springSecurity) !== securityOn(p.value.recommended_spring_security)
 })
-const deviant = computed(() => {
+const archDomainDeviant = computed(() => {
   if (!p.value) return false
   return (
     form.archetype !== p.value.recommended_arch
     || form.domain !== p.value.recommended_domain
+  )
+})
+const deviant = computed(() => {
+  if (!p.value) return false
+  return (
+    archDomainDeviant.value
     || persistenceDeviant.value
     || securityDeviant.value
   )
+})
+/** 交叉题：推荐能力路径并集（多 ARCH） */
+const recommendedArchesText = computed(() => {
+  const arches = p.value?.spec?.archetypes
+  if (!Array.isArray(arches) || arches.length < 2) return ''
+  const labels = arches.map((id) => {
+    const hit = (catalog.value.archetypes || []).find((x) => x.id === id)
+    return hit?.label || id
+  })
+  return labels.join(' + ')
 })
 const displayConf = computed(() => (deviant.value ? 0.41 : (p.value?.confidence || 0)))
 const matchPillClass = computed(() => {
@@ -1162,6 +1289,39 @@ const matchWarnings = computed(() => {
   }
   if (Array.isArray(spec.match_warnings) && spec.match_warnings.length) return spec.match_warnings
   return (spec.hits || []).filter((h) => typeof h === 'string' && h.startsWith('提示：'))
+})
+/** 易混近邻 / 关键词 ≠ 推荐时双显（周报 vs 投递等） */
+const narrativeDualText = computed(() => {
+  if (!p.value) return ''
+  const kwArch = matchMeta.value?.keyword_arch
+  const kwDom = matchMeta.value?.keyword_domain
+  const recArch = p.value.recommended_arch
+  const recDom = p.value.recommended_domain
+  if (kwArch && kwDom && (kwArch !== recArch || kwDom !== recDom)) {
+    return `关键词 ${kwArch} × ${kwDom}；系统推荐 ${recArch} × ${recDom}`
+  }
+  const pairMap = {
+    'DOM-INTERN': ['DOM-RECRUIT', '易混近邻：招聘投递（DOM-RECRUIT）— 本题是交周报/在岗填报，不是投简历找岗'],
+    'DOM-RECRUIT': ['DOM-INTERN', '易混近邻：实习周报（DOM-INTERN）— 本题是岗→投递→初筛，不是在岗周报'],
+    'DOM-ACTIVITY': ['DOM-COURSE', '易混近邻：选课学分（DOM-COURSE）— 本题是活动报名占名额，不是选课'],
+    'DOM-COURSE': ['DOM-ACTIVITY', '易混近邻：活动报名（DOM-ACTIVITY）— 本题是选课学分，不是社团志愿报名'],
+    'DOM-ATTEND': ['DOM-EVENT', '易混近邻：健康打卡/上报（DOM-EVENT）— 本题是请销假单据，不是晨午检'],
+    'DOM-EVENT': ['DOM-ATTEND', '易混近邻：请假考勤（DOM-ATTEND）— 本题是上报/随访/巡检，不是请销假'],
+    'DOM-HOSPITAL': ['DOM-LOST', '易混近邻：领养认领（DOM-LOST）— 本题是挂号/预约时段，不是领养'],
+    'DOM-LOST': ['DOM-HOSPITAL', '易混近邻：宠物医院挂号（DOM-HOSPITAL）— 本题是认领/领养申请，不是门诊'],
+    'DOM-INSTRUMENT': ['DOM-MEETING', '易混近邻：纯场地预约（DOM-MEETING）— 本题是仪器借+机时一体'],
+    'DOM-BED': ['DOM-DORM', '易混近邻：宿舍报修（DOM-DORM）— 本题是床位分配/调宿，不是报修'],
+    'DOM-DORM': ['DOM-BED', '易混近邻：床位调宿（DOM-BED）— 本题是宿舍报修工单，不是分床'],
+  }
+  const pair = pairMap[recDom]
+  if (!pair) return ''
+  const [neighbor, tip] = pair
+  const alts = matchMeta.value?.alts
+  const altHit = Array.isArray(alts) && alts.some((a) => a?.domain === neighbor)
+  const tipHit = (matchWarnings.value || []).some(
+    (w) => typeof w === 'string' && (w.includes(neighbor) || w.includes('请人工确认')),
+  )
+  return altHit || tipHit ? tip : ''
 })
 const keywordHits = computed(() =>
   (p.value?.spec?.hits || []).filter((h) => typeof h === 'string' && !h.startsWith('提示：')),
@@ -1340,56 +1500,61 @@ async function putErLabelPatch(body) {
   }
 }
 
-async function commitTableZh(t, ev) {
-  const next = String(ev?.target?.value || '').trim()
+async function commitTableZh(t, inputEl) {
+  const el = inputEl
+  const next = String(el?.value || '').trim()
   const prev = String(t?.label || '').trim()
   if (!next || next === prev) {
-    if (ev?.target && t) ev.target.value = t.label || ''
+    if (el && t) el.value = t.label || ''
     return
   }
   if (labelLooksLatin(next)) {
     message.warning('请填纯中文短名')
-    if (ev?.target) ev.target.value = t.label || ''
+    if (el) el.value = t.label || ''
     return
   }
   const ok = await putErLabelPatch({ tables: { [t.name]: next } })
   if (ok) message.success('已保存表中文名')
-  else if (ev?.target) ev.target.value = t.label || ''
+  else if (el) el.value = t.label || ''
 }
 
-async function commitColZh(t, c, ev) {
-  const next = String(ev?.target?.value || '').trim()
+async function commitColZh(t, c, inputEl) {
+  const el = inputEl
+  const next = String(el?.value || '').trim()
   const prev = String(c?.label || '').trim()
   if (!next || next === prev) {
-    if (ev?.target && c) ev.target.value = c.label || ''
+    if (el && c) el.value = c.label || ''
     return
   }
   if (labelLooksLatin(next)) {
     message.warning('请填纯中文短名')
-    if (ev?.target) ev.target.value = c.label || ''
+    if (el) el.value = c.label || ''
     return
   }
-  const ok = await putErLabelPatch({ columns: { [t.name]: { [c.name]: next } } })
+  // 角色逻辑实体（sys_user:user）列补丁归物理表，否则保存了盖不上
+  const tableKey = t.role_of || t.name
+  const ok = await putErLabelPatch({ columns: { [tableKey]: { [c.name]: next } } })
   if (ok) message.success('已保存列中文名')
-  else if (ev?.target) ev.target.value = c.label || ''
+  else if (el) el.value = c.label || ''
 }
 
-async function commitRelZh(r, ev) {
-  const next = String(ev?.target?.value || '').trim()
+async function commitRelZh(r, inputEl) {
+  const el = inputEl
+  const next = String(el?.value || '').trim()
   const prev = String(r?.label || r?.name || '').trim()
   if (!next || next === prev) {
-    if (ev?.target && r) ev.target.value = r.label || r.name || ''
+    if (el && r) el.value = r.label || r.name || ''
     return
   }
   if (labelLooksLatin(next)) {
     message.warning('请填纯中文短名')
-    if (ev?.target) ev.target.value = r.label || r.name || ''
+    if (el) el.value = r.label || r.name || ''
     return
   }
   const key = r.name || `${r.left}|${r.right}|${r.via}`
   const ok = await putErLabelPatch({ relations: { [key]: next } })
   if (ok) message.success('已保存联系中文名')
-  else if (ev?.target) ev.target.value = r.label || r.name || ''
+  else if (el) el.value = r.label || r.name || ''
 }
 
 /** 已有工程产物（含运行中 / 失败），匹配页不再当首次门禁 */

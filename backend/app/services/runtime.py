@@ -399,11 +399,11 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
         if (be / "pom.xml").exists() and mvn:
             # 包名重映射后 target 可能残留 com.thesis.ThesisApplication.class
             from app.bake.java_package import find_java_package_root, purge_stale_thesis_classes
-            from app.bake.persistence import ensure_mybatis_application_yml
+            from app.bake.persistence import ensure_jpa_application_yml, ensure_mybatis_application_yml
 
             purge_stale_thesis_classes(be)
-            # 旧 bake 可能被 thesis 重写吞掉 mybatis 段；启动前按实包补齐
-            if any(be.rglob("MybatisSupport.java")):
+            # 旧 bake 可能被 thesis 重写吞掉 persistence 段；启动前按实包补齐
+            if any(be.rglob("MybatisSupport.java")) or any(be.rglob("JpaSupport.java")):
                 try:
                     java_root = be / "src" / "main" / "java"
                     pkg = (
@@ -414,7 +414,10 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
                     )
                 except Exception:  # noqa: BLE001
                     pkg = "com.thesis"
-                ensure_mybatis_application_yml(workspace, java_package=pkg)
+                if any(be.rglob("MybatisSupport.java")):
+                    ensure_mybatis_application_yml(workspace, java_package=pkg)
+                if any(be.rglob("JpaSupport.java")):
+                    ensure_jpa_application_yml(workspace, java_package=pkg)
             bind = settings.bind_host
             args = [f"--server.port={port}", f"--server.address={bind}"]
             cmd = [
