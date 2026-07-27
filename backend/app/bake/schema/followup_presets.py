@@ -379,7 +379,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "auth_points": ["验证码登录", "职位浏览", "投递与初筛"],
         "register_hint": "注册后可投递岗位",
         "notice_title": "投递须知",
-        "notice_body": "请如实填写经历；演示环境不含视频面试。",
+        "notice_body": "请如实填写经历；本期不含视频面试。",
         "notice_page_title": "招聘公告",
         "notice_page_lead": "岗位更新与投递规范，点击条目阅读全文。",
         "my_tickets_label": "我的投递",
@@ -440,7 +440,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "auth_points": ["验证码登录", "资料浏览", "牵线与审核"],
         "register_hint": "注册后可浏览资料并发起牵线",
         "notice_title": "牵线须知",
-        "notice_body": "请如实填写资料；可通过一对一私信沟通；演示环境不含视频相亲。",
+        "notice_body": "请如实填写资料；可通过一对一私信沟通；本期不含视频相亲。",
         "notice_page_title": "交友公告",
         "notice_page_lead": "活动节点与牵线规范，点击条目阅读全文。",
         "my_tickets_label": "我的牵线",
@@ -556,13 +556,17 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已逾期",
         },
         "archive_menu_admin": "实习岗位",
-        "archive_menu_user": "我的实习岗",
+        # 全库示范岗目录，非「我的」过滤；与 §18 / M-01 对齐
+        "archive_menu_user": "岗位目录",
         "auth_eyebrow": "实习周报",
-        "auth_lead": "验证码登录；关联实习岗位并每周提交周报，辅导员/导师审阅。",
-        "auth_points": ["验证码登录", "实习岗位", "周报提交与审阅"],
+        "auth_lead": "验证码登录；从示范岗位目录选岗提交周报，辅导员/导师审阅（≠多单位入职）。",
+        "auth_points": ["验证码登录", "示范岗位目录", "周报提交与审阅"],
         "register_hint": "注册后可提交实习周报",
         "notice_title": "周报须知",
-        "notice_body": "请按周填写工作与问题；三方协议电子签不在本期。",
+        "notice_body": (
+            "请按周填写工作与问题；列表为示范岗位目录，"
+            "「实习中」仅标在关联岗；CA/第三方电子签平台不在本期，本地签章见 e_sign。"
+        ),
         "notice_page_title": "就业办公告",
         "notice_page_lead": "实习节点与周报要求，点击条目阅读全文。",
         "my_tickets_label": "我的周报",
@@ -575,11 +579,11 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "contact_channel_placeholder": "在线/附件等",
         "next_follow_label": "下周期望反馈",
         "banners": [
-            {"title": "实习岗位", "lead": "查看已建档实习单位与导师。"},
-            {"title": "提交周报", "lead": "按周提交工作内容，等待审阅。"},
+            {"title": "岗位目录", "lead": "浏览示范实习岗位与导师（全库目录，非多单位入职）。"},
+            {"title": "提交周报", "lead": "选一岗按周提交工作内容，等待审阅。"},
             {"title": "就业办公告", "lead": "实习与鉴定安排见公告。"},
             {"title": "我的周报", "lead": "跟踪审阅结果。"},
-            {"title": "分类检索", "lead": "按实习类型筛选岗位。"},
+            {"title": "分类检索", "lead": "按实习类型筛选示范岗位。"},
         ],
     },
     "DOM-PARCEL": {
@@ -617,10 +621,11 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已逾期",
         },
         "archive_menu_admin": "包裹台账",
-        "archive_menu_user": "我的包裹",
+        # 全库检索，非按用户过滤；与 §18 对齐
+        "archive_menu_user": "包裹检索",
         "auth_eyebrow": "校园驿站",
-        "auth_lead": "验证码登录；查看待取包裹，提交取件申请并由店员核销。",
-        "auth_points": ["验证码登录", "包裹查询", "取件核销"],
+        "auth_lead": "验证码登录；检索待取包裹，提交取件申请并由店员核销（≠跑腿代买）。",
+        "auth_points": ["验证码登录", "包裹检索", "取件核销"],
         "register_hint": "注册后可申请取件",
         "notice_title": "取件须知",
         "notice_body": "请凭取件码与手机号取件；智能柜硬件不在本期。",
@@ -644,6 +649,46 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
     },
 }
 
+from app.bake.schema.oa_followup_presets import build_oa_followup_presets
+
+FOLLOWUP_PRESETS.update(build_oa_followup_presets(_std_archive_fields))
+
+from app.bake.schema.stuwork_followup_presets import build_stuwork_followup_presets
+
+FOLLOWUP_PRESETS.update(build_stuwork_followup_presets(_std_archive_fields))
+
+from app.bake.schema.bed_followup_presets import build_bed_followup_presets
+
+FOLLOWUP_PRESETS.update(build_bed_followup_presets(_std_archive_fields))
+
+from app.bake.schema.checkin_followup_presets import build_checkin_followup_presets
+
+FOLLOWUP_PRESETS.update(build_checkin_followup_presets(_std_archive_fields))
+
+from app.bake.schema.mutual_followup_presets import build_mutual_followup_presets
+
+FOLLOWUP_PRESETS.update(build_mutual_followup_presets(_std_archive_fields))
+
+from app.bake.schema.visitor_followup_presets import build_visitor_followup_presets
+
+FOLLOWUP_PRESETS.update(build_visitor_followup_presets(_std_archive_fields))
+
+from app.bake.schema.tail_followup_presets import build_tail_followup_presets
+
+FOLLOWUP_PRESETS.update(build_tail_followup_presets(_std_archive_fields))
+
+from app.bake.schema.carpool_followup_presets import build_carpool_followup_presets
+
+FOLLOWUP_PRESETS.update(build_carpool_followup_presets(_std_archive_fields))
+
+from app.bake.schema.timebank_followup_presets import build_timebank_followup_presets
+
+FOLLOWUP_PRESETS.update(build_timebank_followup_presets(_std_archive_fields))
+
+from app.bake.schema.instrument_followup_presets import build_instrument_followup_presets
+
+FOLLOWUP_PRESETS.update(build_instrument_followup_presets(_std_archive_fields))
+
 
 def _attach_event_archive_log(schema: dict[str, Any]) -> dict[str, Any]:
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP, attach_archive_log_schema
@@ -656,8 +701,42 @@ def _attach_event_archive_log(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
+def _attach_instrument_slot(schema: dict[str, Any]) -> dict[str, Any]:
+    """C-07：在 archive+ticket 壳上挂预约实体与菜单（机时为主路径）。"""
+    from app.bake.schema.menu_utils import ensure_menu
+
+    ents = schema.setdefault("entities", {})
+    if "reservation" not in ents:
+        ents["reservation"] = {
+            "key": "reservation",
+            "label": "机时预约",
+            "labelPlural": "我的预约",
+            "states": {
+                "pending": "待确认",
+                "confirmed": "已预约",
+                "completed": "已上机",
+                "cancelled": "已取消",
+            },
+            "completeVerb": "办结",
+            "requireRemark": False,
+            "remarkLabel": "备注",
+            "requireConfirm": False,
+            "verbs": {"apply": "预约机时"},
+        }
+    admin = schema.setdefault("menus", {}).setdefault("admin", [])
+    user = schema.setdefault("menus", {}).setdefault("user", [])
+    ensure_menu(
+        user, "my_reservations", {"key": "my_reservations", "label": "我的预约"}, before_key="content"
+    )
+    ensure_menu(
+        admin, "reservations", {"key": "reservations", "label": "预约记录"}, before_key="users"
+    )
+    return schema
+
+
 _POSTPROCESS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "event_archive_log": _attach_event_archive_log,
+    "instrument_slot": _attach_instrument_slot,
 }
 
 

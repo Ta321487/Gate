@@ -6,7 +6,7 @@
 
 ## 1. 你拿到的是什么
 
-本仓库是一套可运行的毕业设计系统（前端 + 后端 + 数据库脚本），含演示数据，便于本地启动与答辩演示。
+本仓库是一套可运行的毕业设计系统（前端 + 后端 + 数据库脚本），含样例数据，便于本地启动与答辩。
 
 技术栈（可写进论文「系统实现」）：
 
@@ -41,7 +41,7 @@
 sql/schema.sql
 ```
 
-脚本会创建数据库 **`${DB_NAME}`** 并写入表结构与演示数据。  
+脚本会创建数据库 **`${DB_NAME}`** 并写入表结构与样例数据。  
 若你本机 MySQL 密码不是 `root123`，先改后端配置再启动（见下一小节）。
 
 ### 3.2 后端
@@ -80,7 +80,7 @@ npm run dev
 
 ---
 
-## 4. 演示账号
+## 4. 样例账号
 
 导入 `sql/schema.sql` 后可用下列账号登录（以脚本中的插入为准）：
 
@@ -90,10 +90,10 @@ npm run dev
 | `subadmin` | `sub123` | 业务管理员：处理业务单据，不管总控配置 |
 | `${DEMO_PORTAL_USER}` | `${DEMO_PORTAL_PASS}` | ${DEMO_PORTAL_DESC} |
 
-若脚本里还有其它账号（如现场作业人员、`user2` 私信演示号），密码一般为「用户名 + `123`」。  
+若脚本里还有其它账号（如现场作业人员、`user2` 私信样例号），密码一般为「用户名 + `123`」。  
 也可在登录页「注册」自建普通用户（管理员账号一般不开放自助注册）。
 
-开通一对一私信时：用普通窗口登录 `user`、无痕窗口登录 `user2`（密码均为 `user123`），即可互发演示。
+开通一对一私信时：用普通窗口登录 `user`、无痕窗口登录 `user2`（密码均为 `user123`），即可互发消息。
 
 ---
 
@@ -101,7 +101,7 @@ npm run dev
 
 ```text
 ├── README.md                 ← 本说明
-├── sql/schema.sql            ← 建库 + 演示数据（先执行）
+├── sql/schema.sql            ← 建库 + 样例数据（先执行）
 ├── backend/                  ← Spring Boot 后端
 │   └── src/main/java/${JAVA_PACKAGE_PATH}/
 │       ├── controller/       ← 接口层（给前端调用）
@@ -144,7 +144,7 @@ ${PERSISTENCE_NOTE}
 |------------|------------|
 | 登录后标题、主题色 | `frontend/.env`、`appDelivered.js`、主题样式 |
 | 注册要填哪些资料 | 后端 `domain-profile-fields.json` + 前端资料组件 |
-| 某张表字段 / 演示数据 | `sql/schema.sql`（改完需重新导入或手工 ALTER） |
+| 某张表字段 / 样例数据 | `sql/schema.sql`（改完需重新导入或手工 ALTER） |
 | 收货地址 / 口味备注（商城点餐） | 表 `user_address`；下单写入订单的收货与 `taste_note` |
 | 接口逻辑（审核、库存） | `capability/*Store.java` 对应方法 |
 | 管理端某个列表页 | `views/admin/` 下对应 Vue |
@@ -166,7 +166,7 @@ ${PERSISTENCE_NOTE}
 sql/schema.sql
 ```
 
-这就是完整建库 + 演示数据脚本。论文「数据库设计」章节按里面的 `CREATE TABLE` 画表、写字段说明即可。
+这就是完整建库 + 样例数据脚本。论文「数据库设计」章节按里面的 `CREATE TABLE` 画表、写字段说明即可。
 
 ### B. 要「查询类 SQL」（统计、多表关联、条件筛选）
 
@@ -174,7 +174,7 @@ sql/schema.sql
 2. 把语句保存成单独文件，方便上交，例如：
 
 ```text
-sql/queries-答辩演示.sql
+sql/queries-答辩.sql
 ```
 
 可按业务写几条有代表性的，例如（表名以本包 `schema.sql` 为准）：
@@ -219,7 +219,7 @@ CREATE TABLE IF NOT EXISTS activity_attach (
 ```
 
 3. 若页面/接口要用新字段：同步改对应 `*Store.java` 的增删改查，以及前端表单/表格列。  
-   **只交结构、不改功能**：改完 `schema.sql` + 演示插入即可。
+   **只交结构、不改功能**：改完 `schema.sql` + 样例插入即可。
 
 ### D. 要「学生自己会写 SQL」的证明
 
@@ -228,11 +228,11 @@ CREATE TABLE IF NOT EXISTS activity_attach (
 ```text
 sql/
   schema.sql              ← 系统建库（已有）
-  queries-答辩演示.sql     ← 你手写的查询/统计
+  queries-答辩.sql     ← 你手写的查询/统计
   alter-老师要求.sql       ← 若有加表加字段
 ```
 
-答辩时打开 MySQL，现场执行 `queries-答辩演示.sql` 里的 2～3 条，比空讲「用了 JDBC」更有说服力。
+答辩时打开 MySQL，现场执行 `queries-答辩.sql` 里的 2～3 条，比空讲「用了 JDBC」更有说服力。
 
 ### 注意
 
@@ -269,7 +269,7 @@ ${SECURITY_FAQ}
 以 `sql/schema.sql` 中的表为准，画 ER 图、说明主键与主要业务流程表即可。
 
 **Q：老师临时要几条 SQL / 加表怎么办？**  
-见上文 **§6.1**：建库交 `schema.sql`；查询单独写 `sql/queries-答辩演示.sql`；加字段写 `ALTER` 或改 `schema.sql`，需要进系统再改对应 Store / Mapper。
+见上文 **§6.1**：建库交 `schema.sql`；查询单独写 `sql/queries-答辩.sql`；加字段写 `ALTER` 或改 `schema.sql`，需要进系统再改对应 Store / Mapper。
 
 ---
 

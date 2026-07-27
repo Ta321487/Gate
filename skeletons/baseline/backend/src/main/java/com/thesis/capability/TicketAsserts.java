@@ -22,8 +22,8 @@ final class TicketAsserts {
     static void assertUnderActiveLimit(String username) {
         // 多开单（跟帖）：只限制待审数量，已展示的回复不占额度
         String statuses = TicketStore.allowMultiTicket
-                ? "('pending','pending_final')"
-                : "('pending','pending_final','approved','overdue')";
+                ? "('pending','pending_mid','pending_final')"
+                : "('pending','pending_mid','pending_final','approved','overdue')";
         Integer active = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE username=? AND status IN " + statuses,
                 Integer.class, username);
@@ -62,7 +62,7 @@ final class TicketAsserts {
                 "SELECT i.title FROM " + TicketStore.TICKET + " t "
                         + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
                         + "WHERE t.username=? AND t." + TicketStore.itemFkColumn() + "<>? "
-                        + "AND t.status IN ('pending','pending_final','approved','overdue') "
+                        + "AND t.status IN ('pending','pending_mid','pending_final','approved','overdue') "
                         + "AND i.mutex_code=? AND i.mutex_code<>''",
                 (rs, i) -> rs.getString(1),
                 username, itemId, code);
@@ -90,7 +90,7 @@ final class TicketAsserts {
         Integer n = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " t "
                         + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
-                        + "WHERE t.username=? AND t.status IN ('pending','pending_final','approved','overdue') "
+                        + "WHERE t.username=? AND t.status IN ('pending','pending_mid','pending_final','approved','overdue') "
                         + "AND i.category_id=?",
                 Integer.class, username, categoryId);
         if (n != null && n >= TicketStore.categoryLimit) {
@@ -123,7 +123,7 @@ final class TicketAsserts {
                 "SELECT i.title AS title, i.start_at AS start_at, i.end_at AS end_at FROM " + TicketStore.TICKET + " t "
                         + "JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
                         + "WHERE t.username=? AND t." + TicketStore.itemFkColumn()
-                        + "<>? AND t.status IN ('pending','pending_final','approved','overdue') "
+                        + "<>? AND t.status IN ('pending','pending_mid','pending_final','approved','overdue') "
                         + "AND i.start_at IS NOT NULL AND i.end_at IS NOT NULL",
                 (rs, i) -> {
                     Map<String, Object> row = new LinkedHashMap<>();

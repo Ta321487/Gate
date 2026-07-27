@@ -315,10 +315,16 @@ def build_schema_model(workspace: Path, *, with_er_patch: bool = True) -> dict |
         extra_rel_zh=rzh,
         fk_aliases=fk_aliases,
     )
+    patch = load_er_label_patch(workspace) if with_er_patch else None
     if with_er_patch:
-        model = apply_er_label_patch(model, load_er_label_patch(workspace))
+        # 先盖物理表（含 sys_user 列），再拆角色实体
+        model = apply_er_label_patch(model, patch)
     # 同一张用户表按 JSON roles 拆逻辑实体（申领人 / 库管员…），总图不再只写「用户」
-    return expand_user_role_entities(model, domain_path)
+    model = expand_user_role_entities(model, domain_path)
+    if with_er_patch:
+        # 再盖一次：角色实体表名（sys_user:user）与展开后的联系名
+        model = apply_er_label_patch(model, patch)
+    return model
 
 
 def load_schema_model(workspace: Path) -> dict | None:

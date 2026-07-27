@@ -633,6 +633,14 @@ def looks_latin(text: str) -> bool:
     return bool(_LATIN_RE.search(text or ""))
 
 
+def physical_table_name(name: str) -> str:
+    """角色逻辑实体 → 物理表：sys_user:user / sys_user:worker:x → sys_user。"""
+    s = (name or "").strip()
+    if s.startswith("sys_user:"):
+        return "sys_user"
+    return s
+
+
 def collect_english_gaps(model: dict) -> dict[str, list[dict[str, str]]]:
     """收集 E-R 模型里仍含英文的实体 / 属性 / 联系，供 ER Label Agent 补中文。"""
     tables: list[dict[str, str]] = []
@@ -695,11 +703,20 @@ def sanitize_er_label_patch(
     data: dict | None,
     gaps: dict[str, list[dict[str, str]]] | None = None,
 ) -> dict:
-    """清洗补丁；若给 gaps 则只保留缺口内的键，且拒绝拉丁字母标签。"""
+    """清洗补丁；若给 gaps 则只保留缺口内的键，且拒绝拉丁字母标签。
+
+    列补丁：sys_user:user 等逻辑实体键归并到物理表 sys_user（同表同列）。
+    表补丁：保留 sys_user:role，供展开后盖角色实体名。
+    """
     data = data or {}
     allowed_tables = {g["name"] for g in (gaps or {}).get("tables") or []} if gaps else None
     allowed_cols = (
-        {(g["table"], g["name"]) for g in (gaps or {}).get("columns") or []} if gaps else None
+        {
+            (physical_table_name(g["table"]), g["name"])
+            for g in (gaps or {}).get("columns") or []
+        }
+        if gaps
+        else None
     )
     allowed_rels = {g["name"] for g in (gaps or {}).get("relations") or []} if gaps else None
 
@@ -718,8 +735,10 @@ def sanitize_er_label_patch(
         for tk, cols in raw_cols.items():
             if not isinstance(cols, dict):
                 continue
-            tname = str(tk).strip()
-            bucket: dict[str, str] = {}
+            tname = physical_table_name(str(tk).strip())
+            if not tname:
+                continue
+            bucket = columns_out.setdefault(tname, {})
             for ck, lab in cols.items():
                 cname = str(ck).strip()
                 if not cname or (
@@ -729,8 +748,8 @@ def sanitize_er_label_patch(
                 text = _sanitize_zh_label(str(lab or ""), fallback="", max_len=16)
                 if text:
                     bucket[cname] = text
-            if bucket:
-                columns_out[tname] = bucket
+            if not bucket:
+                columns_out.pop(tname, None)
 
     relations_out: dict[str, str] = {}
     for k, v in (data.get("relations") or {}).items():

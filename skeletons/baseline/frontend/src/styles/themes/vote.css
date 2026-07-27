@@ -1,0 +1,28 @@
+[data-theme="vote-coral"] {
+  --bg: #fff5f2;
+  --accent: #d96b4c;
+  --soft: #fde4dc;
+  --ink: #2a1814;
+  --surface: #ffffff;
+}
+[data-theme="vote-sky"] {
+  --bg: #f0f7fb;
+  --accent: #3a7ca5;
+  --soft: #d7ebf5;
+  --ink: #142433;
+  --surface: #ffffff;
+}
+[data-theme="vote-lime"] {
+  --bg: #f4faf0;
+  --accent: #5a8f3c;
+  --soft: #dff0d0;
+  --ink: #1a2a12;
+  --surface: #ffffff;
+}
+[data-theme="vote-night"] {
+  --bg: #14181c;
+  --accent: #d96b4c;
+  --soft: #243038;
+  --ink: #eef2f5;
+  --surface: #1c2228;
+}

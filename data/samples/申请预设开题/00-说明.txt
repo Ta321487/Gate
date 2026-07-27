@@ -1,0 +1,11 @@
+申请预设开题（泳道 C · P-01～P-08）
+============================
+
+P-01-DOM-SEAL-学校行政印章使用申请审批系统.txt -> DOM-SEAL
+P-02-DOM-FLEET-公务用车申请审批管理系统.txt -> DOM-FLEET
+P-03-DOM-CERT-在读成绩单在职证明开具申请系统.txt -> DOM-CERT
+P-04-DOM-PROMO-横幅海报户外宣传审批管理系统.txt -> DOM-PROMO
+P-05-DOM-FITOUT-装修进场施工备案审批系统.txt -> DOM-FITOUT
+P-06-DOM-ACAD-学籍异动转专业缓考申请系统.txt -> DOM-ACAD
+P-07-DOM-TRIP-出差加班申请审批管理系统.txt -> DOM-TRIP
+P-08-DOM-EXPENSE-经费报销申请审批管理系统.txt -> DOM-EXPENSE

@@ -1,0 +1,5 @@
+泳道 E · C-16 会签样例（能力 multi_approve，非新域）
+
+- 正向：开题写「三级审批 / 初审复审终审」→ 挂 multi_approve，状态机 pending→pending_mid→pending_final→approved。
+- 对照：申请预设开题 P-01～P-03 写「多级会签引擎不在本期」→ 不得自动开启三级。
+- 挂靠域示例：DOM-SEAL（用章申请）；其它带 ticket_flow 的申请域同样可扫词挂载。

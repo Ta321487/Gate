@@ -85,6 +85,21 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 | `spend_discount` | ✅ | 满减算价（与券取更优） | 开题写到才挂 |
 | `member_tier` | ✅ | 会员成长等级折扣 | 开题写到才挂 |
 | `order_review` | ✅ | 完成单星级+文字；管理端回复 | 开题写到才挂（无域默认） |
+| `rating_dims` | ✅ | 单据多维评分+评语+可选匿名（综合分=均值） | 域默认 DOM-EVAL（C-06） |
+| `bed_occupy` | ✅ | 床位档案库存占用 + 选房/调宿申请 | 域默认 DOM-BED（C-08；复用 quota） |
+| `checkin` | ✅ | 口令签到；结束未签可记爽约/缺勤 | 域默认 DOM-ACTIVITY、DOM-CHECKIN（C-10） |
+| `mutual_select` | ✅ | 志愿提交后档案确认人接受/婉拒，管理可调剂 | 域默认 DOM-MUTUAL-*（C-05） |
+| `pass_code` | ✅ | 审核通过签发演示通行码字符串（非真门禁） | 域默认 DOM-VISITOR、DOM-CARPASS（C-09） |
+| `instrument_slot` | ✅ | 单域借+约（ticket+slot）；主路径约机时 | 域默认 DOM-INSTRUMENT（C-07） |
+| `exam` | ✅ | 题库/组卷/作答/自动判分；刷题·解析·限时·次数·排行·错题本按需 | 域默认 DOM-EXAM（C-01）；`exam_skin` 换皮；LABSAFE 写「准入考试/先考试」→ 挂载 + 先考后申（C-02） |
+| `survey` | ✅ | 问卷配置、在线填写、回收列表、选项计数统计 | 域默认 DOM-SURVEY（C-03）；≠ 评教 ≠ 考试 |
+| `vote` | ✅ | 候选档案、一票/限票、结果公示 | 域默认 DOM-VOTE（C-04）；ACTIVITY 开题写报名+投票 → 并挂（C-11） |
+| `doclib` | ✅ | 资料附件、演示权限、下载台账 | 域默认 DOM-DOCLIB（C-12）；≠ 借阅 ≠ 博客 |
+| `timebank` | ✅ | 时长账户余额、流水加减、核销审核扣减 | 域默认 DOM-TIMEBANK（C-14）；≠ 劳动认定 ≠ 活动报名 |
+| `seat_select` | ✅ | 场次座位图占座 + 订单 | 域默认 DOM-CINEMA（C-15）；演示级，无真锁座高并发；≠ 点播 ≠ 场地预约 |
+| `multi_approve` | ✅ | 固定三级单据状态机：初审→复审→终审 | 开题写「三级审批/会签」才挂（C-16）；终审仍需总管；≠ 任意流程图 |
+| `stock_io` | ✅ | 管理端入库/出库登记 + 库存流水 | 域默认 DOM-ASSET（C-17）；复用档案 stock；单仓演示；≠ 多仓 ERP ≠ RFID ≠ 采购申购 |
+| `e_sign` | ✅ | 上传签章图 + 勾选同意留痕 | 域默认 DOM-INTERN（C-18）；非 CA/法大大等第三方签平台 |
 | `search_assist` | ✅ | 标题前缀联想 + 配置热搜 | 开题写到才挂（无域默认） |
 | `browse_history` | ✅ | 最近浏览足迹（约 20 条） | 开题写到才挂（无域默认） |
 | `archive_log` | ✅ | 挂档案的打卡/随访/评估记录；今日未打卡 | 域默认 DOM-EVENT；其它域开题写到才挂 |
@@ -103,22 +118,61 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 
 按**能力组合**分组；同组共享同一套运行时，差别主要在 schema 文案/种子/菜单。组 **H** 为真交叉（两套玩法），见 G 节之后。
 
+换皮**全覆盖**清单（深皮 / 新预设 / 新能力，按 ID 待补，不做取舍）：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
+
+**交付审计（Agent 依据）**：审已齐 / 空壳 / 新伤旧 / 落得准 / 论文图 / 字段语义 → [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md)。  
+进度（2026-07-27）：泳道 E/F 已齐 — M/S/P/C/X/Q 全册 §9 已齐；见 [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
+
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users |
 | **DOM-EQUIP** | 设备借用、器材、实验室物资 | 同上 |
-| **DOM-ASSET** | 固定资产领用、耗材申领、物资台账 | archive + ticket_flow + quota + content + org_users（无 deadline；与 EQUIP 设备借用区分） |
+| **DOM-ASSET** | 固定资产领用、耗材申领、物资台账、浅进销存 | archive + ticket_flow + quota + content + org_users + **stock_io**（无 deadline；与 EQUIP 设备借用区分；≠ 采购申购） |
 | **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
 | **DOM-EVENT** | 事件上报、公卫/院感、晨检随访、健康监测、隐患上报 | archive + ticket_flow + **archive_log** + content + org_users（档案 `event_case`、单据 `event_report`、记录 `archive_log`） |
 | **DOM-ATTEND** | 考勤请假、请销假、假勤台账 | archive + ticket_flow + content + org_users（人员 `staff_person`、请假 `leave_req`） |
 | **DOM-FUND** | 资助、奖学金、助学金、困难补助申请 | archive + ticket_flow + content + org_users（项目 `fund_program`、申请 `fund_apply`） |
-| **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users（实验室 `lab_room`、准入 `access_apply`） |
+| **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users（实验室 `lab_room`、准入 `access_apply`）；开题写准入考试 → 另挂 **exam**（先考后申） |
 | **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users（岗位 `job_post`、投递 `job_apply`） |
 | **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`） |
-| **DOM-INTERN** | 实习岗位、实习周报审阅 | archive + ticket_flow + content + org_users（实习岗 `intern_post`、周报 `week_report`） |
+| **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA） |
 | **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users（包裹 `parcel`、取件 `parcel_claim`） |
+| **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users（事项 `seal_item`、申请 `seal_apply`） |
+| **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
+| **DOM-CERT** | 开具证明、在读/在职/成绩单证明 | archive + ticket_flow + content + org_users（类型 `cert_type`、申请 `cert_apply`） |
+| **DOM-PROMO** | 横幅/海报/户外宣传审批 | archive + ticket_flow + content + org_users（事项 `promo_matter`、审批 `promo_apply`） |
+| **DOM-FITOUT** | 装修备案、进场施工 | archive + ticket_flow + content + org_users（区域 `fitout_site`、备案 `fitout_apply`） |
+| **DOM-ACAD** | 学籍异动、转专业、缓考/休复学 | archive + ticket_flow + content + org_users（事项 `acad_matter`、申请 `acad_apply`） |
+| **DOM-TRIP** | 出差、加班审批 | archive + ticket_flow + content + org_users（事项 `trip_matter`、单 `trip_apply`） |
+| **DOM-EXPENSE** | 经费报销、差旅报销（演示级） | archive + ticket_flow + content + org_users（项目 `expense_project`、报销 `expense_apply`） |
+| **DOM-CREDIT** | 第二课堂、素拓学分认定 | archive + ticket_flow + content + org_users（项目 `credit_item`、认定 `credit_apply`） |
+| **DOM-LABOR** | 劳动教育、志愿时长认定 | archive + ticket_flow + content + org_users（项目 `labor_item`、认定 `labor_apply`） |
+| **DOM-EVAL** | 网上评教、教学评价（多维+评语+可选匿名） | archive + ticket_flow + content + org_users + **rating_dims**（课程 `eval_course`、评教卷 `eval_sheet`） |
+| **DOM-MORAL** | 综测、德育分加减分申报 | archive + ticket_flow + content + org_users（指标 `moral_item`、申请 `moral_apply`） |
+| **DOM-AWARD** | 创新学分、竞赛获奖登记 | archive + ticket_flow + content + org_users（类型 `award_item`、登记 `award_apply`） |
+| **DOM-BED** | 床位分配、选房、调宿/退宿 | archive + ticket_flow + **quota** + content + org_users + **bed_occupy**（床位 `bed`、申请 `bed_apply`） |
+| **DOM-CHECKIN** | 查寝、归寝签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（寝室 `dorm_room`、登记 `checkin_apply`） |
+| **DOM-MUTUAL-TUTOR** | 导师双选 | archive + ticket_flow + **quota** + content + org_users + **mutual_select** |
+| **DOM-MUTUAL-TOPIC** | 毕设选题双选 | 同上（选题档案） |
+| **DOM-MUTUAL-TEAM** | 竞赛组队/学习搭子 | 同上（组队资料） |
+| **DOM-VISITOR** | 访客登记、临时门禁申请 | archive + ticket_flow + **quota** + content + org_users + **pass_code** |
+| **DOM-CARPASS** | 车辆通行证、临时车牌备案 | archive + ticket_flow + **quota** + content + org_users + **pass_code** |
+| **DOM-LISTING** | 房源挂牌、带看意向跟进 | archive + ticket_flow + content + org_users |
+| **DOM-PROCURE** | 采购申购、物资申购单 | archive + ticket_flow + **quota** + content + org_users |
+| **DOM-CLUB** | 社团注册、年审材料 | archive + ticket_flow + content + org_users |
+| **DOM-PROJ** | 大创/项目申报、中期检查 | archive + ticket_flow + content + org_users |
+| **DOM-ETHIC** | 伦理审查、开题答辩材料 | archive + ticket_flow + content + org_users |
+| **DOM-PARTY** | 党员发展、入党阶段材料 | archive + ticket_flow + content + org_users |
+| **DOM-CONTRACT** | 合同登记、单级审批 | archive + ticket_flow + content + org_users |
+| **DOM-INSTRUMENT** | 大型仪器借用 + 机时预约 | archive + ticket_flow + **slot_reserve** + quota + deadline + content + org_users + **instrument_slot** |
+| **DOM-EXAM** | 在线考试、题库、组卷、结业考、党建/驾校/安全答题皮 | archive + **exam** + content + org_users（无单据；刷题/解析/限时/次数/排行/错题本开题按需） |
+| **DOM-SURVEY** | 问卷调查、满意度调研、简易量表（非评教/非考试） | archive + **survey** + content + org_users（无单据；配置/填写/回收统计） |
+| **DOM-VOTE** | 投票评选、十佳选票、结果公示（非报名） | archive + **vote** + content + org_users（无单据；候选人/限票/计票） |
+| **DOM-DOCLIB** | 知识库/文库资料下载台账（非借阅/非博客） | archive + **doclib** + content + org_users（无单据；附件权限/下载台账） |
+| **DOM-CARPOOL** | 拼车/结伴行程与同行意向（非地图） | archive + ticket_flow + **quota** + content + org_users（行程 `trip_route`、意向 `carpool_intent`） |
+| **DOM-TIMEBANK** | 时间银行志愿时长账户存取核销 | archive + ticket_flow + content + org_users + **timebank**（服务事项、账户/流水、核销扣减；无 quota） |
 
 ### B. 报修 / 工单流（能力齐）
 
@@ -132,7 +186,7 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** |
+| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** + **checkin**；开题写报名+投票 → 另挂 **vote**（C-11） |
 | **DOM-LOST** | 失物招领；宠物领养（认领壳换皮） | archive + ticket_flow + **quota** + content + org_users |
 | **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict**（+ L1 互斥/分类限额） |
 
@@ -142,8 +196,9 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 |---------|----------------|----------|
 | **DOM-SHOP** | 商城、二手、购物车、订单 | archive + order_lines + quota + content + org_users + **guestbook** + **favorites**（开题可再扫 coupon / loyalty / order_review / 联想·足迹·多图） |
 | **DOM-FOOD** | 食堂、点餐、外卖档口 | 同上 |
+| **DOM-CINEMA** | 影院选座购票、座位图占座 | archive + order_lines + quota + content + org_users + **seat_select**（场次 `cinema_show`、座位 `cinema_seat`；无购物车主路径） |
 
-交易答辩口径：下单 → 管理确认/发货 → 用户看物流轨迹 → 完成；可选领券核销、售后、收藏再加购、评价。
+交易答辩口径：下单 → 管理确认/发货 → 用户看物流轨迹 → 完成；可选领券核销、售后、收藏再加购、评价。影院为选座确认后即时占座生成订单。
 
 ### E. 预约流（`slot_reserve` 已开）
 
@@ -187,7 +242,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | **DOM-FORUM** | 论坛、BBS、贴吧、社区帖子、板块 | archive + ticket_flow + content + org_users + recommend |
 | **DOM-BLOG** | 博客、个人博客、文章系统、资讯发布、CMS | archive + favorites + content + org_users + recommend |
 
-**媒资（MEDIA/MUSIC）**：播放为外链 / HTML5（`isbn` 映射播放链接）；收藏走即时 `favorites`（`user_favorite`），**无审核单据**。不接影院选座购票、直播、转码 CDN。
+**媒资（MEDIA/MUSIC）**：播放为外链 / HTML5（`isbn` 映射播放链接）；收藏走即时 `favorites`（`user_favorite`），**无审核单据**。影院选座购票走 **DOM-CINEMA**；不接直播、转码 CDN。
 
 **论坛 / 博客（FORUM/BLOG）** — 薄配置语义（复用 archive；FORUM 另挂 reply 审核，BLOG 收藏同媒资即时收藏）：
 
@@ -213,7 +268,11 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 ### H. 真交叉（专科/本科·课设常见；Path B 已可 full）
 
 与组 A～G **单域换皮**并列；开题写清**两套玩法**时匹配降 `DOM-GENERIC` 并保留行为并集（不再挤掉借用/审核）。  
-样例开题（可上传匹配）：`data/samples/图书借阅与二手交叉开题.txt`。三合一 / 智慧校园大杂烩 → reject。
+样例开题（可上传匹配）：
+- X-BORROW-SHOP：`data/samples/图书借阅与二手交叉开题.txt`；`交叉预设开题/X-01-*.txt`（点餐+报修）
+- X-BORROW-RESERVE：`data/samples/交叉预设开题/X-02-*.txt`（图书+座位；仪器借+机时 → DOM-INSTRUMENT）
+- X-SHOP-RESERVE：`data/samples/交叉预设开题/X-03-*.txt`
+三合一 / 智慧校园大杂烩 → reject。宾馆客房预约+附加消费 → 具名 DOM-HOTEL（非本交叉壳）。
 
 | 交叉 ID | 覆盖题目关键词（开题常见说法） | 两套玩法 | 生成落点 | 状态 |
 |---------|-------------------------------|----------|----------|------|
@@ -371,7 +430,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - [x] LIBRARY 薄封装；通用 `/api/tickets` + 报修壳前端
 - [x] **accept**：能力齐且落在基线积木内 → `full`（不再强制 DOM overlay）
 - [x] 组 B：**DOM-DORM / PROPERTY / IT**（`gate_standalone_ticket` + runtime + SQL；L1 二级审批默认开）
-- [x] 组 A：**DOM-LIBRARY / DOM-EQUIP**（均走 baseline 薄壳）+ **DOM-ASSET / DOM-CRM / DOM-EVENT**（薄 SQL/schema；ASSET 无 deadline，CRM/EVENT 轻量跟进/上报单）+ **DOM-ATTEND / FUND / LABSAFE / RECRUIT / GRADE / INTERN / PARCEL**（考勤请假/资助奖学金/实验室安全准入/招聘投递/教务成绩/实习周报/快递驿站；题名语料 ≥90%）
+- [x] 组 A：**DOM-LIBRARY / DOM-EQUIP** + **DOM-ASSET / CRM / EVENT** + **DOM-ATTEND / FUND / LABSAFE / RECRUIT / GRADE / INTERN / PARCEL** + **OA：SEAL / FLEET / CERT / PROMO / FITOUT / ACAD / TRIP / EXPENSE**（`test_oa_apply_p`）+ **学工：CREDIT / LABOR / EVAL / MORAL / AWARD**（`test_stuwork_p`）
 - [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（即时收藏、播放外链）+ **DOM-FORUM / DOM-BLOG**（主帖用户发帖即时可见 + 回复审核；博客即时收藏；可选门户轮播）
 - [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启
 - [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（报名/认领/选课；ACTIVITY/COURSE 含 `time_conflict` + 门户轮播）
@@ -379,7 +438,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL
 - [x] **匹配兜底**：零命中 → `DOM-GENERIC`；按 ARCH-* 绑 FLOW/TRADE/RESERVE（`archetype_shells.py`）；多 ARCH 并集可拼 SQL
 - [x] **近五年域开题缩样**：每具名域 1 份（2021–2026）→ **匹配 + schema/SQL/模块图/测试表** 断言（`test_domain_opening_corpus.py`）；样例 `data/samples/域开题样例近五年/`
-- [x] **Path B**：三条真交叉可 full；匹配并集不再挤掉借用；HANDOFF 组 H 表；样例 `data/samples/图书借阅与二手交叉开题.txt`；三合一仍 reject
+- [x] **Path B**：三条真交叉可 full；匹配并集不再挤掉借用；HANDOFF 组 H 表；样例含借阅+二手、`交叉预设开题/X-01|X-02|X-03-*.txt`；三合一仍 reject
 - [ ] Path B 可选：交叉组合端到端冒烟（预览点通）与开题对照表 UI
 - [x] L1 **二级审批 / 强制附件 / 完结评分**：`configureL1`；FE 待办 `todo`、上传、`TicketRateDialog`
 - [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门

@@ -98,15 +98,34 @@ public class TicketController {
             @RequestBody Map<String, Object> body,
             HttpSession session) {
         String uid = requireLogin(session);
-        int rating;
-        try {
-            rating = Integer.parseInt(String.valueOf(body.get("rating")));
-        } catch (Exception e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请选择 1～5 分");
+        int rating = 0;
+        Object ratingRaw = body.get("rating");
+        if (ratingRaw != null && !String.valueOf(ratingRaw).isBlank()
+                && !"null".equalsIgnoreCase(String.valueOf(ratingRaw))) {
+            try {
+                rating = Integer.parseInt(String.valueOf(ratingRaw));
+            } catch (Exception e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "请选择 1～5 分");
+            }
         }
         String note = body.get("remark") == null ? "" : String.valueOf(body.get("remark")).trim();
+        boolean anonymous = Boolean.TRUE.equals(body.get("anonymous"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("anonymous")));
+        Map<String, Integer> dims = null;
+        Object dimsRaw = body.get("dims");
+        if (dimsRaw instanceof Map<?, ?> map) {
+            dims = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getKey() == null || e.getValue() == null) continue;
+                try {
+                    dims.put(String.valueOf(e.getKey()), Integer.parseInt(String.valueOf(e.getValue())));
+                } catch (Exception ignored) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "维度评分须为 1～5 分");
+                }
+            }
+        }
         try {
-            return R.ok(TicketStore.rate(id, uid, rating, note));
+            return R.ok(TicketStore.rate(id, uid, rating, note, dims, anonymous));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
@@ -157,6 +176,38 @@ public class TicketController {
         String code = body.get("code") == null ? "" : String.valueOf(body.get("code")).trim();
         try {
             return R.ok(TicketStore.checkin(id, uid, code));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** C-05：档案确认人收件箱（待确认志愿） */
+    @GetMapping("/peer-inbox")
+    public R<Map<String, Object>> peerInbox(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        return R.ok(TicketStore.pagePeerInbox(uid, status, page, size));
+    }
+
+    /** C-05：档案确认人接受/婉拒志愿 */
+    @PostMapping("/{id}/peer-respond")
+    public R<Map<String, Object>> peerRespond(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        boolean pass = body.get("pass") == null || Boolean.parseBoolean(String.valueOf(body.get("pass")));
+        String remark = body.get("remark") == null ? "" : String.valueOf(body.get("remark")).trim();
+        if (!pass && remark.isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请填写婉拒原因");
+        }
+        try {
+            return R.ok(TicketStore.peerRespond(id, uid, pass, remark));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
@@ -261,7 +312,7 @@ public class TicketController {
         Map<String, Object> br = TicketStore.get(id);
         if (br == null) throw new BizException(ErrorCode.NOT_FOUND, "单据不存在");
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
-        if (!admin && !uid.equals(br.get("username"))) {
+        if (!admin && !uid.equals(br.get("username")) && !TicketStore.isPeerOwnerOf(id, uid)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
         }
         if (admin && !AdminAuth.isSuperAdmin(session)) {

@@ -2,7 +2,9 @@ package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 final class TicketCopy {
@@ -15,6 +17,9 @@ final class TicketCopy {
     static String APPLY_DEADLINE_LABEL = "报名截止";
     /** bake 写入；空则运行时按动词兜底 */
     static String SIBLING_REJECT_TIP = "";
+    /** C-06：维度 key → 显示名；空 = 单分评分 */
+    static List<Map<String, String>> RATING_DIMS = List.of();
+    static boolean ALLOW_ANONYMOUS_RATING = false;
 
     private TicketCopy() {}
 
@@ -44,6 +49,23 @@ final class TicketCopy {
         if (!sl.isBlank()) ArchiveStore.configureStockLabel(sl);
         String srt = DomainResourceJson.str(root, "siblingRejectTip", "").trim();
         if (!srt.isBlank()) SIBLING_REJECT_TIP = srt;
+        ALLOW_ANONYMOUS_RATING = Boolean.TRUE.equals(root.get("allowAnonymousRating"))
+                || "true".equalsIgnoreCase(String.valueOf(root.get("allowAnonymousRating")));
+        Object rd = root.get("ratingDims");
+        if (rd instanceof List<?> list) {
+            List<Map<String, String>> dims = new ArrayList<>();
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> m)) continue;
+                String key = String.valueOf(m.get("key") == null ? "" : m.get("key")).trim();
+                String lab = String.valueOf(m.get("label") == null ? "" : m.get("label")).trim();
+                if (key.isBlank() || lab.isBlank()) continue;
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("key", key);
+                row.put("label", lab);
+                dims.add(row);
+            }
+            RATING_DIMS = dims;
+        }
     }
 
     private static Map<String, String> stringMap(Map<?, ?> map) {

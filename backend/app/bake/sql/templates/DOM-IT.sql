@@ -105,7 +105,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO campus_zone (id, name) VALUES (1, '教学区'), (2, '宿舍区');
 INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, '101'), (2, 1, '102'), (3, 2, '201');
-INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES (1, '校园网', 1), (2, '终端', 2), (3, '机房', 3);
+INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
+(1, '校园网', 1), (2, '终端', 2), (3, '机房', 3),
+(4, '邮箱账号', 4), (5, '设备维保', 5), (6, '售后咨询', 6);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请描述网络/终端故障现象，运维将尽快受理。', 'admin', '运维管理员'

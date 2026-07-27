@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElDialog, ElDrawer, ElMessageBox } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
@@ -25,6 +25,19 @@ document.documentElement.setAttribute('data-scheme', scheme)
 document.documentElement.classList.toggle('dark', scheme === 'dark')
 const appName = APP_DELIVERED?.schema?.labels?.appName || APP_DELIVERED.title
 if (appName) document.title = appName
+
+// 点遮罩不关闭：各域 Dialog / Drawer / MessageBox 统一，避免填表或确认时误关
+ElDialog.props.closeOnClickModal.default = false
+ElDrawer.props.closeOnClickModal.default = false
+for (const method of ['confirm', 'prompt']) {
+  const original = ElMessageBox[method]
+  ElMessageBox[method] = (message, title, options, appContext) => {
+    if (title !== null && typeof title === 'object') {
+      return original(message, { closeOnClickModal: false, ...title }, options)
+    }
+    return original(message, title, { closeOnClickModal: false, ...(options || {}) }, appContext)
+  }
+}
 
 const app = createApp(App)
 app.use(router)

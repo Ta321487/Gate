@@ -49,7 +49,7 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 def _demo_portal_from_sql(sql: str) -> tuple[str, str]:
-    """从 schema.sql 种子行解析门户演示账号（用户名、密码）。"""
+    """从 schema.sql 种子行解析门户样例账号（用户名、密码）。"""
     for uname in ("student", "reader", "patient", "buyer", "user"):
         pwd = f"{uname}123"
         # ('student', 'student123', 'student' …) 或仅用户名+密码
@@ -86,7 +86,7 @@ def _patch_student_readme(
     schema_sql: str = "",
     spec: dict[str, Any] | None = None,
 ) -> None:
-    """ZIP 根目录 README：写入课题名、库名、Java 包、持久层/鉴权与演示账号。"""
+    """ZIP 根目录 README：写入课题名、库名、Java 包、持久层/鉴权与样例账号。"""
     from app.bake.addons import security_readme_bits
     from app.bake.persistence import persistence_readme_bits
 
@@ -195,6 +195,14 @@ def domain_sql(
     from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
     from app.bake.features.dm import DM_CAP
     from app.bake.features.favorites import FAVORITES_CAP
+    from app.bake.features.exam import (
+        EXAM_CAP,
+        apply_exam_skin_sql,
+        scan_exam_gate_ticket,
+        scan_exam_opts,
+        scan_exam_skin,
+    )
+    from app.bake.features.vote import VOTE_CAP
     from app.bake.features.guestbook import GUESTBOOK_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP
@@ -209,15 +217,22 @@ def domain_sql(
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
         ensure_dm_sql,
+        ensure_exam_core_sql,
+        ensure_exam_wrongbook_sql,
+        ensure_vote_sql,
         ensure_favorites_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
         ensure_order_review_sql,
         ensure_shared_sql_columns,
+        ensure_stock_io_sql,
+        ensure_e_sign_sql,
         ensure_ticket_extra_sql,
         ensure_ticket_progress_sql,
         resolve_ticket_flags,
     )
+    from app.bake.features.stock_io import STOCK_IO_CAP
+    from app.bake.features.e_sign import E_SIGN_CAP
     from app.bake.staff_posts import append_staff_seed_sql
 
     arches_for_sql = list(
@@ -290,9 +305,10 @@ def domain_sql(
         text,
         item_table=resolved_item,
         allow_checkin=bool(flags.get("allowCheckin")),
+        peer_accept=bool(flags.get("peerAccept")),
         check_mutex=bool(flags.get("checkMutex")),
         apply_deadline=scan_apply_deadline(proposal_text or ""),
-        schedule=TIME_CONFLICT_CAP in caps,
+        schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),
     )
     text = apply_archive_semantic_columns(
         text,
@@ -301,6 +317,19 @@ def domain_sql(
         archetypes=arches_for_sql,
     )
     text = ensure_ticket_progress_sql(text, resolved_ticket)
+    if EXAM_CAP in caps:
+        gate_ticket = scan_exam_gate_ticket(proposal_text or "", domain)
+        skin = "safety" if gate_ticket else scan_exam_skin(proposal_text or "")
+        text = ensure_exam_core_sql(text, enabled=True, gate_ticket=gate_ticket)
+        text = apply_exam_skin_sql(text, skin)
+        opts = scan_exam_opts(proposal_text or "")
+        text = ensure_exam_wrongbook_sql(text, enabled=bool(opts.get("wrongbook")))
+    if VOTE_CAP in caps:
+        text = ensure_vote_sql(
+            text,
+            enabled=True,
+            seed_activity=(domain or "") == "DOM-ACTIVITY",
+        )
     text = ensure_guestbook_sql(
         text,
         enabled=GUESTBOOK_CAP in caps,
@@ -333,6 +362,14 @@ def domain_sql(
     text = ensure_order_review_sql(
         text,
         enabled=ORDER_REVIEW_CAP in caps,
+    )
+    text = ensure_stock_io_sql(
+        text,
+        enabled=STOCK_IO_CAP in caps,
+    )
+    text = ensure_e_sign_sql(
+        text,
+        enabled=E_SIGN_CAP in caps,
     )
     text = append_staff_seed_sql(
         text,

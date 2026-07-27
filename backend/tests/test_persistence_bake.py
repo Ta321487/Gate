@@ -1,4 +1,4 @@
-"""persistence=jdbc|mybatis bake 洁净契约冒烟。"""
+"""persistence=jdbc|mybatis|jpa bake 洁净契约冒烟。"""
 
 from __future__ import annotations
 
@@ -45,6 +45,7 @@ class TestPersistenceBake(unittest.TestCase):
         self.assertFalse((ws / "backend" / "src" / "main" / "resources" / "mapper").exists())
         pom = (ws / "backend" / "pom.xml").read_text(encoding="utf-8")
         self.assertNotIn("mybatis-spring-boot-starter", pom)
+        self.assertNotIn("spring-boot-starter-data-jpa", pom)
 
     def test_mybatis_package_clean(self) -> None:
         ws = _bake("mybatis", "gf-ut-mybatis")
@@ -83,6 +84,41 @@ class TestPersistenceBake(unittest.TestCase):
         # thesis 重写不得吞掉 mybatis 段
         self.assertLess(yml.index("\nthesis:"), yml.index("\nmybatis:"))
 
+    def test_jpa_package_clean(self) -> None:
+        ws = _bake("jpa", "gf-ut-jpa")
+        readme = (ws / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Spring Data JPA", readme)
+        self.assertNotIn("没有使用 MyBatis / Mapper", readme)
+        self.assertFalse(any((ws / "backend").rglob("JdbcSupport.java")))
+        self.assertFalse(any((ws / "backend").rglob("MybatisSupport.java")))
+        self.assertFalse(any((ws / "backend").rglob("MbBridge.java")))
+        self.assertTrue(any((ws / "backend").rglob("JpaSupport.java")))
+        self.assertTrue(any((ws / "backend").rglob("NoticeRepository.java")))
+        self.assertTrue(any((ws / "backend").rglob("NoticeEntity.java")))
+        self.assertTrue(any((ws / "backend").rglob("NoticeStore.java")))
+        java_files = list((ws / "backend" / "src" / "main" / "java").rglob("*.java"))
+        for p in java_files:
+            text = p.read_text(encoding="utf-8")
+            self.assertNotIn(
+                "import org.springframework.jdbc.core.JdbcTemplate",
+                text,
+                msg=str(p),
+            )
+            self.assertNotIn("import com.github.pagehelper", text, msg=str(p))
+            self.assertNotIn("MybatisSupport.mapper", text, msg=str(p))
+        pom = (ws / "backend" / "pom.xml").read_text(encoding="utf-8")
+        self.assertIn("spring-boot-starter-data-jpa", pom)
+        self.assertNotIn("mybatis-spring-boot-starter", pom)
+        self.assertFalse((ws / "backend" / "src" / "main" / "resources" / "mapper").exists())
+        yml = (ws / "backend" / "src" / "main" / "resources" / "application.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertRegex(yml, r"(?m)^  jpa:\s*$")
+        self.assertIn("ddl-auto: none", yml)
+        # thesis 与 spring.jpa 共存；datasource 不得被吞
+        self.assertIn("datasource:", yml)
+        self.assertIn("\nthesis:", yml)
+
     def test_mybatis_trade_domain_order_store(self) -> None:
         """交易域也须叠上 OrderStore 状态机，不能只冒烟 ATTEND。"""
         ws = _bake(
@@ -100,6 +136,33 @@ class TestPersistenceBake(unittest.TestCase):
         self.assertIn("售后处理中，不可完成订单", text)
         self.assertIn("CouponStore.releaseByOrder", text)
         self.assertIn("LoyaltyStore.clawbackOrderCompleted", text)
+        # 调用方有方法名不够：Store 本体也必须定义，否则 mvn 报「找不到符号」
+        coupon = next((ws / "backend").rglob("CouponStore.java"))
+        loyalty = next((ws / "backend").rglob("LoyaltyStore.java"))
+        user = next((ws / "backend").rglob("UserStore.java"))
+        self.assertIn("public static void releaseByOrder(long orderId)", coupon.read_text(encoding="utf-8"))
+        self.assertIn(
+            "public static void clawbackOrderCompleted(",
+            loyalty.read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "public static boolean passwordMatches(Profile p, String password)",
+            user.read_text(encoding="utf-8"),
+        )
+
+    def test_jpa_trade_domain_order_store(self) -> None:
+        ws = _bake(
+            "jpa",
+            "gf-ut-jpa-food",
+            title="小型餐厅点餐系统",
+            domain="DOM-FOOD",
+            archetype="ARCH-TRADE",
+        )
+        order = next((ws / "backend").rglob("OrderStore.java"))
+        text = order.read_text(encoding="utf-8")
+        self.assertIn("JpaSupport", text)
+        self.assertIn('"ship".equals(act) && "confirmed".equals(st)', text)
+        self.assertIn("CouponStore.releaseByOrder", text)
 
 
 if __name__ == "__main__":

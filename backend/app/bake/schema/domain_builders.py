@@ -25,11 +25,16 @@ from app.bake.schema.builders_archive import (  # noqa: F401
 )
 from app.bake.schema.builders_content import (  # noqa: F401
     _blog_schema,
+    _exam_schema,
+    _survey_schema,
+    _vote_schema,
+    _doclib_schema,
     _forum_schema,
     _media_schema,
     _music_schema,
 )
 from app.bake.schema.builders_slot import (  # noqa: F401
+    _cinema_schema,
     _food_schema,
     _hospital_schema,
     _hotel_schema,
@@ -62,6 +67,7 @@ __all__ = [
     "_lost_schema",
     "_course_schema",
     "_shop_schema",
+    "_cinema_schema",
     "_food_schema",
     "_meeting_schema",
     "_hospital_schema",
@@ -72,6 +78,10 @@ __all__ = [
     "_music_schema",
     "_forum_schema",
     "_blog_schema",
+    "_exam_schema",
+    "_survey_schema",
+    "_vote_schema",
+    "_doclib_schema",
     "_dorm_schema",
     "_property_schema",
     "_it_schema",

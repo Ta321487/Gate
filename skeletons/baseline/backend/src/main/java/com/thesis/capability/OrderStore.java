@@ -203,7 +203,7 @@ public final class OrderStore {
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
-                        "演示余额不足，请联系管理员充值")));
+                        "账户余额不足，请联系管理员充值")));
             }
             if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()
                     && priceSnap.get("couponCode") == null
@@ -505,7 +505,7 @@ public final class OrderStore {
         return advance(orderId, action, null);
     }
 
-    /** 超时关单：取消超时仍 pending 的订单（回补库存/退演示余额）。 */
+    /** 超时关单：取消超时仍 pending 的订单（回补库存/退账户余额）。 */
     public static int cancelTimedOutPending(int minutes) {
         if (!enabled || minutes <= 0) return 0;
         List<Long> ids;
@@ -889,7 +889,7 @@ public final class OrderStore {
             MessageStore.send(
                     String.valueOf(m.get("username")),
                     "售后已通过",
-                    "订单 #" + orderId + " 已退款办结（演示环境）。",
+                    "订单 #" + orderId + " 已退款办结。",
                     "order",
                     orderId);
         } catch (Exception ignored) {
@@ -922,8 +922,8 @@ public final class OrderStore {
             } else {
                 String tip = track.isBlank() || "null".equals(track) ? "已交接承运" : ("运单 " + track);
                 nodes.add(traceNode(shipAt, "已发货", tip));
-                nodes.add(traceNode(shipAt, "运输中", "快件运输途中（演示）"));
-                nodes.add(traceNode(shipAt, "派送中", "快递员正在派送（演示）"));
+                nodes.add(traceNode(shipAt, "运输中", "快件运输途中"));
+                nodes.add(traceNode(shipAt, "派送中", "快递员正在派送"));
             }
         }
         if ("completed".equals(st)) {

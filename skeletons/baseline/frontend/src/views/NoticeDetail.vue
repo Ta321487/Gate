@@ -22,7 +22,7 @@
       </section>
 
       <section class="card body-block">
-        <h2>公告正文</h2>
+        <h2>{{ bodyHeading }}</h2>
         <div class="body">{{ notice.content || '（无正文）' }}</div>
       </section>
     </template>
@@ -38,6 +38,7 @@ import PageSkeleton from '../components/PageSkeleton.vue'
 import { schemaLabels } from '../utils/domainSchema.js'
 
 const pageTitle = computed(() => schemaLabels().noticePageTitle || '公告')
+const bodyHeading = computed(() => schemaLabels().noticeBodyHeading || '正文')
 
 const route = useRoute()
 const notice = ref(null)

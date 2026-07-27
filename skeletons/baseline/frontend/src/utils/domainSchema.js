@@ -52,6 +52,14 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
   'users',
   'content',
   'guestbook',
+  'exam_questions',
+  'exam_papers',
+  'survey_forms',
+  'survey_stats',
+  'vote_candidates',
+  'vote_results',
+  'doc_files',
+  'doc_logs',
 ])
 
 /**
@@ -89,6 +97,19 @@ export function superOnlyAdminPaths() {
     users: '/admin/users',
     content: '/admin/notices',
     guestbook: '/admin/guestbook',
+    exam_questions: '/admin/exam/questions',
+    exam_papers: '/admin/exam/papers',
+    survey_forms: '/admin/survey/forms',
+    survey_stats: '/admin/survey/stats',
+    vote_candidates: '/admin/vote/candidates',
+    vote_results: '/admin/vote/results',
+    doc_files: '/admin/doc/files',
+    doc_logs: '/admin/doc/logs',
+    tb_accounts: '/admin/tb/accounts',
+    stock_moves: '/admin/stock/moves',
+    stock_ledger: '/admin/stock/ledger',
+    e_sign_admin: '/admin/e-sign',
+    tb_ledger_admin: '/admin/tb/ledger',
     lookup_site: '/admin/sites',
     lookup_type: '/admin/types',
     archive: '/admin/archive',
@@ -226,7 +247,7 @@ export function archiveCopy() {
 
 /**
  * 单据列表是否展示「开始/结束」：仅 pickDateRange 或档案自带时段字段。
- * 跟进类域（crm）禁止空列占位。
+ * 跟进类域（followUp）禁止空列占位。
  */
 export function ticketShowsScheduleCols(ticket = ticketCopy(), archive = archiveCopy()) {
   if (ticket?.pickDateRange) return true
@@ -234,9 +255,9 @@ export function ticketShowsScheduleCols(ticket = ticketCopy(), archive = archive
   return fields.some((f) => f?.key === 'startAt' || f?.key === 'endAt')
 }
 
-/** 上报渠道 / 下次复核（crm 族） */
+/** 上报渠道 / 下次复核（跟进族；旧包兼容 traits.crm） */
 export function ticketShowsFollowCols() {
-  return hasTrait('crm')
+  return hasTrait('followUp') || hasTrait('crm')
 }
 
 /** 类型列：有分类/品类，或独立报修（无档案表） */
@@ -325,7 +346,10 @@ export function softDeleteCopy() {
 /** 列表/导出：优先 displayName（后端注入）/ 昵称，否则用户名 */
 export function personLabel(row, fallback = '—') {
   if (!row || typeof row !== 'object') return fallback
-  const name = (row.displayName || row.nickname || row.username || '').toString().trim()
+  // 评教匿名演示：后端可写 displayUsername
+  const name = (
+    row.displayUsername || row.displayName || row.nickname || row.username || ''
+  ).toString().trim()
   return name || fallback
 }
 

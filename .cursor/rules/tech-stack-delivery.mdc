@@ -10,13 +10,13 @@ alwaysApply: true
 - **现行唯一学生 ZIP**：Spring Boot + Vue 3 + Element Plus + MySQL + `JdbcTemplate`（`skeletons/baseline`）。
 - **本规则是交付口径与演进契约**。未单独开任务落地前，**禁止**为「组合轴 / 第二物理骨架」改 bake、门禁、匹配或现有骨架行为。
 - 场景、身份、领域仍走 `scene_scan` 与开题优先规则；技术栈是另一轴，不替代场景判定。
-- **近期优先落地轴**：`spine=spa` 下的 `persistence=mybatis`（绑 PageHelper）。落地后，开题写 MyBatis 的题走「已可 bake → 跟开题」，不再走「未落地偏差」档。
+- **近期优先落地轴**：`spine=spa` 下的 `persistence=mybatis`（绑 PageHelper）、`persistence=jpa`（Spring Data JPA）已落地。开题写明则走「已可 bake → 跟开题」。
 
 ## 硬原则
 
 1. **开题 / 任务书技术方案为准（在可交付范围内）**：题名 + 正文「技术路线」写明的栈，若工厂**已能 bake**，则实包 + README/论文「系统实现」必须与之对齐。禁止改开题迁就工厂。**不能交时**见下文「开题明确写了别的技术时」，不得假装已对齐。
 2. **技术主线默认分离**：材料写明或默认可推断为 Spring Boot + Vue 时，走分离 ZIP（`frontend/` + `backend/` + `sql/`）。一次 bake **只出一条主线**、一份 ZIP。
-3. **组合轴（同一 `spine=spa` 内）**：持久层 `jdbc` | `mybatis` 等只换实现与说明书措辞，**不换**业务能力与域语义。`mybatis` 绑定 PageHelper；`jdbc` 用手写 `LIMIT`。
+3. **组合轴（同一 `spine=spa` 内）**：持久层 `jdbc` | `mybatis` | `jpa` 等只换实现与说明书措辞，**不换**业务能力与域语义。`mybatis` 绑定 PageHelper；`jdbc` 用手写 `LIMIT`；`jpa` 用 Spring Data JPA。
 4. **开题未写清 → 工厂现网默认**：分离 + `JdbcTemplate` + 手写分页 + Element Plus；写在栈配置 / 基线说明，不是臆造开题。
 5. **第二物理骨架（可选，未落地）**：材料明确要求 SSR / 无 Vue（如 Thymeleaf + AdminLTE）时另出一套 ZIP，**不得**与 Vue 包混搭。与匹配页 `ARCH-*`「骨架」不是同一概念。SSR 包内持久层**在物理骨架内定死**（建议 MyBatis），**不**复用 spa 的 `persistence` 下拉。
 6. **交付物等价**：同题不同技术组合时，领域能力、场景身份、主流程、演示数据、论文材料结构同质；**仅**具体技术实现与「系统实现」表述可不同。
@@ -56,7 +56,7 @@ alwaysApply: true
 | 字段 | 选项 | 默认 | 说明 |
 |------|------|------|------|
 | `spine` | `spa` \| `ssr` | `spa` | `ssr` 无物理骨架前**不出现在界面** |
-| `persistence` | `jdbc` \| `mybatis` | `jdbc` | **仅 `spine=spa`**；`mybatis`⇒PageHelper，无单独分页下拉 |
+| `persistence` | `jdbc` \| `mybatis` \| `jpa` | `jdbc` | **仅 `spine=spa`**；`mybatis`⇒PageHelper；`jpa`⇒Spring Data JPA；无单独分页下拉 |
 
 禁止运营文案「V 线 / T 线」。
 
@@ -91,7 +91,7 @@ alwaysApply: true
 
 | 情况 | 怎么做 |
 |------|--------|
-| **已可 bake**（含 MyBatis、Spring Security） | **跟开题**（或 Web 手改）；实包 = README = 论文系统实现 |
+| **已可 bake**（含 MyBatis、JPA、Spring Security） | **跟开题**（或 Web 手改）；实包 = README = 论文系统实现 |
 | **规划内未落地**（SSR 未做前） | 强提示偏差；实包 = **工厂现网默认可交栈**；论文/README 写实包；可重 bake 对齐 |
 | **超出范围**（Django / Android / .NET 等） | 标「不支持」；禁止静默 Boot+Vue 冒充符合开题 |
 
@@ -102,8 +102,8 @@ alwaysApply: true
 ### 运行时、门禁、实现形态
 
 - `spa`：运行 = 前端 + 后端；`ssr`：仅 Boot，禁止仍要 `frontend` 端口。
-- 门禁按 `spine` / `persistence` / `spring_security` 分支：`jdbc` 认 Store+JdbcTemplate；`mybatis` 认 Mapper/XML；`spring_security` 开时认 SecurityConfig + starter-security。
-- 学生 README：与实包一致（切 `mybatis` / 开 Security 后须改生成文案）。
+- 门禁按 `spine` / `persistence` / `spring_security` 分支：`jdbc` 认 Store+JdbcTemplate；`mybatis` 认 Mapper/XML；`jpa` 认 Entity/Repository + data-jpa；`spring_security` 开时认 SecurityConfig + starter-security。
+- 学生 README：与实包一致（切 `mybatis` / `jpa` / 开 Security 后须改生成文案）。
 
 ## 禁止
 
@@ -115,6 +115,6 @@ alwaysApply: true
 
 ## 落地时（另开任务）才允许
 
-1. ~~`persistence=mybatis`~~、~~`addons.spring_security`~~ 已落地。
+1. ~~`persistence=mybatis`~~、~~`persistence=jpa`~~、~~`addons.spring_security`~~ 已落地。
 2. 再视需求做 `spine=ssr` 物理骨架 + 运行面板 + 门禁分支；其它按需开关（有生成路径才允许打开）。
 3. 每加一轴或一开关：扫描断言 + 同题开关开/关冒烟（关=现网最小包，开=真有对应实现）。

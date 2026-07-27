@@ -89,6 +89,81 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "已完成订单星级+文字评价；管理端回复；仅开题写到才挂",
     },
+    "checkin": {
+        "label": "口令签到",
+        "status": "implemented",
+        "desc": "单据口令/列表签到；结束未签到可记爽约或缺勤（C-10；挂 ACTIVITY/CHECKIN）",
+    },
+    "mutual_select": {
+        "label": "互选确认",
+        "status": "implemented",
+        "desc": "志愿提交后由档案确认人接受/婉拒，管理端可调剂（C-05；挂导师/选题/组队互选域）",
+    },
+    "pass_code": {
+        "label": "演示通行码",
+        "status": "implemented",
+        "desc": "审核通过签发演示通行码字符串（非真门禁/二维码硬件；C-09，挂 DOM-VISITOR / DOM-CARPASS）",
+    },
+    "bed_occupy": {
+        "label": "床位占用",
+        "status": "implemented",
+        "desc": "床位档案库存占用 + 选房/调宿申请（C-08；挂 DOM-BED，复用 quota）",
+    },
+    "instrument_slot": {
+        "label": "仪器机时（借+约）",
+        "status": "implemented",
+        "desc": "单域 archive+ticket_flow+slot_reserve；机时预约为主、借用单可选（C-07；挂 DOM-INSTRUMENT）",
+    },
+    "exam": {
+        "label": "在线考试",
+        "status": "implemented",
+        "desc": "题库/组卷/作答/自动判分；刷题·解析·限时·次数·排行·错题本按需（C-01；挂 DOM-EXAM）",
+    },
+    "survey": {
+        "label": "简易问卷",
+        "status": "implemented",
+        "desc": "问卷配置/填写/回收/选项计数（非跳题/SPSS；C-03；挂 DOM-SURVEY）",
+    },
+    "vote": {
+        "label": "投票评选",
+        "status": "implemented",
+        "desc": "候选档案、一票/限票、结果公示（C-04；挂 DOM-VOTE；≠活动报名）",
+    },
+    "doclib": {
+        "label": "文库下载台账",
+        "status": "implemented",
+        "desc": "资料附件、演示权限、下载台账（C-12；挂 DOM-DOCLIB；≠借阅≠博客）",
+    },
+    "timebank": {
+        "label": "时间银行时长账户",
+        "status": "implemented",
+        "desc": "志愿时长账户余额、流水加减、核销审核扣减（C-14；挂 DOM-TIMEBANK；≠劳动认定≠活动报名）",
+    },
+    "seat_select": {
+        "label": "影院选座购票",
+        "status": "implemented",
+        "desc": "场次座位图占座+订单（C-15；挂 DOM-CINEMA；演示级，无真锁座高并发；≠点播≠场地预约）",
+    },
+    "multi_approve": {
+        "label": "多级会签（≤3级）",
+        "status": "implemented",
+        "desc": "固定三级单据状态机：初审→复审→终审（C-16；开题写三级才挂；非任意流程图）",
+    },
+    "stock_io": {
+        "label": "浅进销存（入出库）",
+        "status": "implemented",
+        "desc": "管理端入库/出库登记+库存流水；复用档案 stock（C-17；挂 DOM-ASSET；单仓演示；≠多仓ERP≠RFID）",
+    },
+    "e_sign": {
+        "label": "本地签章演示",
+        "status": "implemented",
+        "desc": "上传签章图+勾选同意留痕（C-18；挂 DOM-INTERN 等；非 CA/第三方签平台）",
+    },
+    "rating_dims": {
+        "label": "多维评分",
+        "status": "implemented",
+        "desc": "单据完结后按维度打分+评语，可选匿名演示；综合分为维度均值（C-06，挂 DOM-EVAL 等）",
+    },
     "search_assist": {
         "label": "搜索联想与热搜",
         "status": "implemented",
@@ -187,6 +262,7 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("camunda", "可配置工作流/BPMN"),
     ("erp系统", "ERP/多仓进销存"),
     ("多仓", "ERP/多仓进销存"),
+    # 裸「进销存」可由 C-17 stock_io 浅演示承接；须与 ERP/多仓同伴共现才过重
     ("进销存", "ERP/多仓进销存"),
     ("多仓批次", "ERP/多仓进销存"),
     # 裸「批次管理」歧义大（食安/物资台账也写）；须与 ERP 同伴共现才算过重
@@ -210,11 +286,19 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("歌词同步", "歌词同步"),
     ("rfid", "RFID全链路"),
     ("RFID", "RFID全链路"),
+    # 真 CA / 第三方签平台；裸「电子签/签章」由 C-18 e_sign 浅演示承接
+    ("电子签章ca", "电子签章CA/第三方签平台"),
+    ("电子签章 CA", "电子签章CA/第三方签平台"),
+    ("法大大", "电子签章CA/第三方签平台"),
+    ("上上签", "电子签章CA/第三方签平台"),
+    ("e签宝", "电子签章CA/第三方签平台"),
+    ("第三方电子签", "电子签章CA/第三方签平台"),
 ]
 
 # 歧义词：命中后还须同段出现任一同伴，才记入过重（仍走 keyword_mentioned，不另开扫描）
 _OVERREACH_NEED_COMPANION: dict[str, tuple[str, ...]] = {
     "批次管理": ("多仓", "进销存", "erp系统", "ERP", "WMS", "多组织库存", "采购入库"),
+    "进销存": ("多仓", "erp系统", "ERP", "WMS", "财务一体化", "多组织库存", "多仓批次", "批次追溯"),
 }
 
 
@@ -270,7 +354,22 @@ def scan_out_of_scope(text: str) -> list[str]:
     for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS, ignore_contrast=True):
         if label not in hits:
             hits.append(label)
+    # P-30：用章+用车+证明三联不得一题三引擎冒充
+    for label in _scan_oa_triple(focus):
+        if label not in hits:
+            hits.append(label)
     return hits
+
+
+def _scan_oa_triple(text: str) -> list[str]:
+    """开题同时承诺用章、用车、开具证明三条申请主路径 → reject。"""
+    t = text or ""
+    seal = any(k in t for k in ("用章", "印章申请", "用印申请", "行政印章"))
+    fleet = any(k in t for k in ("用车申请", "公务用车", "派车申请", "车辆调度申请"))
+    cert = any(k in t for k in ("开具证明", "在读证明", "在职证明", "成绩单证明", "证明开具"))
+    if seal and fleet and cert:
+        return ["OA三联（用章+用车+证明）须裁成单一申请主路径"]
+    return []
 
 
 def compose_out_of_mvp(

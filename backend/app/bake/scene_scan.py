@@ -93,11 +93,17 @@ HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
 # 产品皮（样例开题 / builder 共用）：pet | vaccine | clinic
 HOSPITAL_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (HOSPITAL_PET_HINTS, "pet"),
-    (("疫苗", "HPV", "接种预约", "接种点", "接种"), "vaccine"),
+    (("疫苗", "HPV", "接种预约", "接种点", "接种", "体检预约", "入职体检"), "vaccine"),
+    (("窗口取号", "政务预约", "车管预约", "银行预约", "政务窗口"), "window"),
+    (("探视预约", "探视"), "visit"),
     (("医院", "门诊", "挂号", "校医"), "clinic"),
 ]
 SALON_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("健身", "私教", "瑜伽", "游泳私教", "器械课", "团课"), "fitness"),
+    (("心理咨询", "心理辅导", "咨询预约"), "counsel"),
+    (("驾校", "练车", "陪驾"), "drive"),
+    (("家政", "上门维修预约", "上门服务"), "home"),
+    (("家教", "辅导预约", "技能辅导"), "tutor"),
     (("美发", "理发", "造型", "美甲", "美容"), "salon"),
 ]
 MEETING_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
@@ -105,7 +111,8 @@ MEETING_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("琴房", "排练", "舞蹈"), "piano"),
     (("体育场", "体育馆", "球馆", "羽毛球场", "篮球场", "足球场", "游泳"), "gym"),
     (("座位", "占座", "选座"), "seat"),
-    (("工位", "实验室", "实训室"), "lab"),
+    (("工位", "实验室", "实训室", "创客"), "lab"),
+    (("博物馆", "展览", "党史馆", "参观预约"), "exhibit"),
     (("会议",), "meeting"),
 ]
 # 资助：校园奖助学金默认；企业员工福利/补助走 enterprise

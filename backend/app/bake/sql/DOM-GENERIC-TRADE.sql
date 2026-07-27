@@ -113,5 +113,5 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (1, 'user', '王小明', '13800000002', '示例路 100 号 8 栋 501', '家', 1);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '交易须知', '演示环境支持购物车、收货地址与多明细订单，无真支付。', 'admin', '系统管理员'
+SELECT '交易须知', '本期支持购物车、收货地址与多明细订单，无真支付。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='交易须知');

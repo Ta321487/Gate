@@ -267,6 +267,15 @@ public final class CouponStore {
         }
     }
 
+    /** 取消/售后通过：按订单回退已核销券（仍未过期则回到 unused） */
+    public static void releaseByOrder(long orderId) {
+        if (!enabled || orderId <= 0) return;
+        try {
+            mapper().releaseByOrder(orderId);
+        } catch (Exception ignored) {
+        }
+    }
+
     /** 定时：未用且模板已过期 → expired */
     public static int expireSweep() {
         if (!enabled) return 0;

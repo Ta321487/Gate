@@ -297,8 +297,10 @@ class AttendTitleCopyTests(unittest.TestCase):
             "社区公共卫生事件应急上报系统",
             proposal_text="社区或校园在疫情排查、隐患上报；晨午检与因病缺课。",
         )
-        self.assertEqual(event["labels"]["authEyebrow"], "社区公卫")
+        # 题名「应急上报/公卫事件」→ incident 皮；正文晨午检不得洗成校园监测档
+        self.assertEqual(event["labels"]["authEyebrow"], "应急上报")
         self.assertNotEqual(event["labels"]["authEyebrow"], "校园晨午检")
+        self.assertNotEqual(event["labels"]["authEyebrow"], "社区公卫")
 
         crm = SCHEMA_BUILDERS["DOM-CRM"](
             "校园创业团队客户跟进管理系统",

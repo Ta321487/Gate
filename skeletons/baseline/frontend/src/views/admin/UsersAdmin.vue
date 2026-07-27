@@ -282,8 +282,8 @@ async function resetPwd(row) {
 
 async function recharge(row) {
   const { value } = await ElMessageBox.prompt(
-    `为「${row.nickname || row.username}」充值演示余额（元，非真支付）`,
-    '演示余额充值',
+    `为「${row.nickname || row.username}」充值账户余额（元，非真支付）`,
+    '账户余额充值',
     {
       inputValue: '100',
       inputPattern: /^\d+(\.\d{1,2})?$/,

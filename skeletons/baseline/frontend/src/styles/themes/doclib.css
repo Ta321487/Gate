@@ -1,0 +1,28 @@
+[data-theme="doclib-ink"] {
+  --bg: #f2f5f8;
+  --accent: #2f5d8c;
+  --soft: #d9e4f0;
+  --ink: #152033;
+  --surface: #ffffff;
+}
+[data-theme="doclib-sand"] {
+  --bg: #f7f3ec;
+  --accent: #a67c3d;
+  --soft: #f0e6d4;
+  --ink: #2a2418;
+  --surface: #fffdf9;
+}
+[data-theme="doclib-slate"] {
+  --bg: #f0f2f4;
+  --accent: #475569;
+  --soft: #e2e8f0;
+  --ink: #1e293b;
+  --surface: #ffffff;
+}
+[data-theme="doclib-night"] {
+  --bg: #12161c;
+  --accent: #5b8ab5;
+  --soft: #1e2834;
+  --ink: #e8eef4;
+  --surface: #1a2028;
+}

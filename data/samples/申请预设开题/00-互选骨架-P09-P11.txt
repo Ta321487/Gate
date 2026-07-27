@@ -1,0 +1,16 @@
+互选预设骨架（泳道 C · P-09～P-11）
+================================
+
+状态：部分有 — 仅登记验收句与期望 DOM 名，**未**注册可 bake 域。
+阻塞：清单 C-05「互选/双向确认」引擎未落地前，禁止标已齐、禁止假注册 DOM-MUTUAL-*。
+
+| ID   | 开题短句                         | 期望落点（规划）      | 今日近邻（勿冒充已齐） |
+|------|----------------------------------|-----------------------|------------------------|
+| P-09 | 研究生导师双向选择志愿与确认     | DOM-MUTUAL-TUTOR 等   | RECRUIT / DATING       |
+| P-10 | 毕业论文选题双选志愿与确认       | DOM-MUTUAL-TOPIC 等   | RECRUIT / COURSE       |
+| P-11 | 竞赛组队学习搭子意向匹配         | DOM-MUTUAL-TEAM 等    | DATING / ACTIVITY      |
+
+代码锚点：`backend/app/bake/oa_apply_p.py` → `OA_MUTUAL_SKELETON`
+测试：`backend/tests/test_oa_apply_p.py` → `test_mutual_skeleton_not_registered`
+
+P-01～P-08 具名申请域已齐，样例见同目录 `P-0x-DOM-*.txt`。

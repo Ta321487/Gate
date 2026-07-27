@@ -293,6 +293,410 @@ def merge_guestbook_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_EXAM_FILES = [
+    "backend/src/main/java/com/thesis/service/ExamStore.java",
+    "backend/src/main/java/com/thesis/controller/ExamController.java",
+    "frontend/src/views/ExamPapers.vue",
+    "frontend/src/views/ExamTake.vue",
+    "frontend/src/views/ExamAttempts.vue",
+    "frontend/src/views/ExamPractice.vue",
+    "frontend/src/views/ExamRank.vue",
+    "frontend/src/views/ExamWrongbook.vue",
+    "frontend/src/views/admin/ExamQuestionsAdmin.vue",
+    "frontend/src/views/admin/ExamPapersAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_SURVEY_FILES = [
+    "backend/src/main/java/com/thesis/service/SurveyStore.java",
+    "backend/src/main/java/com/thesis/controller/SurveyController.java",
+    "frontend/src/views/SurveyForms.vue",
+    "frontend/src/views/SurveyFill.vue",
+    "frontend/src/views/SurveyMine.vue",
+    "frontend/src/views/admin/SurveyFormsAdmin.vue",
+    "frontend/src/views/admin/SurveyStatsAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_DOCLIB_FILES = [
+    "backend/src/main/java/com/thesis/service/DoclibStore.java",
+    "backend/src/main/java/com/thesis/controller/DoclibController.java",
+    "frontend/src/views/DocBrowse.vue",
+    "frontend/src/views/DocMine.vue",
+    "frontend/src/views/admin/DocFilesAdmin.vue",
+    "frontend/src/views/admin/DocLogsAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_TIMEBANK_FILES = [
+    "backend/src/main/java/com/thesis/service/TimebankStore.java",
+    "backend/src/main/java/com/thesis/controller/TimebankController.java",
+    "frontend/src/views/TimebankAccount.vue",
+    "frontend/src/views/TimebankLedger.vue",
+    "frontend/src/views/admin/TimebankAccountsAdmin.vue",
+    "frontend/src/views/admin/TimebankLedgerAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_SEAT_SELECT_FILES = [
+    "backend/src/main/java/com/thesis/service/SeatStore.java",
+    "backend/src/main/java/com/thesis/controller/SeatController.java",
+    "frontend/src/views/SeatShows.vue",
+    "frontend/src/views/SeatMap.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_STOCK_IO_FILES = [
+    "backend/src/main/java/com/thesis/service/StockIoStore.java",
+    "backend/src/main/java/com/thesis/controller/StockIoController.java",
+    "frontend/src/views/admin/StockMovesAdmin.vue",
+    "frontend/src/views/admin/StockLedgerAdmin.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+_GATE_E_SIGN_FILES = [
+    "backend/src/main/java/com/thesis/service/ESignStore.java",
+    "backend/src/main/java/com/thesis/controller/ESignController.java",
+    "frontend/src/views/ESignMine.vue",
+    "frontend/src/views/admin/ESignAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+def merge_seat_select_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加选座购票文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "seat_select" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_SEAT_SELECT_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("seats/shows", "选座购票"),
+        ("seats/map/:id", "选座购票"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["seat_select"] = {"file": "SeatController.java", "need": ["/api/seats"]}
+    out["flow_api"] = flow
+    return out
+
+
+def merge_stock_io_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加浅进销存文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "stock_io" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_STOCK_IO_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("admin/stock/moves", "入出库与库存流水"),
+        ("admin/stock/ledger", "入出库与库存流水"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["stock_io"] = {"file": "StockIoController.java", "need": ["/api/stock-io"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("stock_moves", "stock_ledger"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_timebank_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加时间银行文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "timebank" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_TIMEBANK_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("tb/account", "时长账户与流水"),
+        ("tb/ledger", "时长账户与流水"),
+        ("admin/tb/accounts", "时长账户与流水"),
+        ("admin/tb/ledger", "时长账户与流水"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["timebank"] = {"file": "TimebankController.java", "need": ["/api/timebank"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("tb_accounts", "tb_ledger_admin"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_e_sign_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加本地签章文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "e_sign" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_E_SIGN_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("e-sign", "本地签章"),
+        ("admin/e-sign", "本地签章"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["e_sign"] = {"file": "ESignController.java", "need": ["/api/e-sign"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "e_sign_admin" not in super_menus:
+        if "content" in super_menus:
+            super_menus.insert(super_menus.index("content"), "e_sign_admin")
+        else:
+            super_menus.append("e_sign_admin")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_doclib_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加文库下载文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "doclib" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_DOCLIB_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("doc/browse", "资料下载与台账"),
+        ("doc/mine", "资料下载与台账"),
+        ("admin/doc/files", "资料下载与台账"),
+        ("admin/doc/logs", "资料下载与台账"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["doclib"] = {"file": "DoclibController.java", "need": ["/api/doclib"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("doc_files", "doc_logs"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+_GATE_VOTE_FILES = [
+    "backend/src/main/java/com/thesis/service/VoteStore.java",
+    "backend/src/main/java/com/thesis/controller/VoteController.java",
+    "frontend/src/views/VoteCampaigns.vue",
+    "frontend/src/views/VoteCast.vue",
+    "frontend/src/views/VoteMine.vue",
+    "frontend/src/views/admin/VoteCandidatesAdmin.vue",
+    "frontend/src/views/admin/VoteResultsAdmin.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+    "frontend/src/utils/menuRoutes.js",
+]
+
+
+def merge_vote_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加投票评选文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "vote" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_VOTE_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("vote/campaigns", "投票与计票"),
+        ("vote/cast/:id", "投票与计票"),
+        ("vote/mine", "投票与计票"),
+        ("admin/vote/candidates", "投票与计票"),
+        ("admin/vote/results", "投票与计票"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["vote"] = {"file": "VoteController.java", "need": ["/api/vote"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("vote_candidates", "vote_results"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_survey_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加问卷文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "survey" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_SURVEY_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("survey/forms", "问卷填写与回收"),
+        ("survey/fill/:id", "问卷填写与回收"),
+        ("survey/mine", "问卷填写与回收"),
+        ("admin/survey/forms", "问卷填写与回收"),
+        ("admin/survey/stats", "问卷填写与回收"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["survey"] = {"file": "SurveyController.java", "need": ["/api/survey"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("survey_forms", "survey_stats"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_exam_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加在线考试文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "exam" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_EXAM_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("exam/papers", "在线作答与判分"),
+        ("exam/attempts", "在线作答与判分"),
+        ("exam/take/:id", "在线作答与判分"),
+        ("exam/practice", "在线作答与判分"),
+        ("exam/rank", "在线作答与判分"),
+        ("exam/wrongbook", "在线作答与判分"),
+        ("admin/exam/questions", "题库与组卷"),
+        ("admin/exam/papers", "题库与组卷"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["exam"] = {"file": "ExamController.java", "need": ["/api/exam"]}
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    for key in ("exam_questions", "exam_papers"):
+        if key not in super_menus:
+            if "content" in super_menus:
+                super_menus.insert(super_menus.index("content"), key)
+            else:
+                super_menus.append(key)
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
 _GATE_DM_FILES = [
     "backend/src/main/java/com/thesis/service/DmStore.java",
     "backend/src/main/java/com/thesis/controller/DmController.java",
@@ -400,6 +804,46 @@ _GATE_ARCHIVE_FAVORITES_FILES = [
     "frontend/src/router/index.js",
     "sql/schema.sql",
 ]
+
+
+def gate_archive_only(
+    *,
+    archive_feature: str,
+    users_feature: str,
+    category_feature: str = "分类管理",
+    dashboard_feature: str = "管理端工作台",
+    notice_feature: str = "公告管理",
+) -> dict:
+    """档案浏览壳（无单据、无收藏）；考试等岛能力再 merge 路由。"""
+    routes = [
+        {"seg": "archive", "from_feature": archive_feature},
+        {"seg": "admin/dashboard", "from_feature": dashboard_feature},
+        {"seg": "admin/archive", "from_feature": archive_feature},
+        {"seg": "admin/categories", "from_feature": category_feature},
+        {"seg": "admin/users", "from_feature": users_feature},
+        {"seg": "admin/notices", "from_feature": notice_feature},
+        {"seg": "notices", "from_feature": notice_feature},
+        {"seg": "notices/:id", "from_feature": notice_feature},
+        {"seg": "profile", "from_baseline": "profile"},
+        {"seg": "register", "from_baseline": "register"},
+    ]
+    # 复用收藏壳文件集但去掉收藏页（门禁只认存在的基线文件）
+    files = [
+        f
+        for f in _GATE_ARCHIVE_FAVORITES_FILES
+        if "Favorite" not in f and "favorites" not in f.lower()
+    ]
+    return {
+        "routes": routes,
+        "files": files,
+        "flow_api": {},
+        "admin_invariants": {
+            "require_super_auth": True,
+            "master_kind": "archive",
+            "master_menus": ["archive", "category"],
+            "super_menus": ["users", "content", "archive", "category"],
+        },
+    }
 
 
 def gate_archive_favorites(

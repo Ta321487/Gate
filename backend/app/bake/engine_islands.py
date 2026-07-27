@@ -90,6 +90,11 @@ def sync_workspace_thesis_yml(workspace: Path, spec: dict[str, Any]) -> None:
 
         pkg = str(spec.get("java_package") or "").strip() or None
         ensure_mybatis_application_yml(workspace, java_package=pkg)
+    elif (spec.get("persistence") or "jdbc") == "jpa":
+        from app.bake.persistence import ensure_jpa_application_yml
+
+        pkg = str(spec.get("java_package") or "").strip() or None
+        ensure_jpa_application_yml(workspace, java_package=pkg)
 
 def llm_fill_islands(workspace: Path, spec: dict[str, Any], enabled: bool) -> list[str]:
     """确定性填岛（无 LLM）。真填岛走 app.llm.agents.run_island_agent。"""

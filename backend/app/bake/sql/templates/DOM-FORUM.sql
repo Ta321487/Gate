@@ -155,5 +155,5 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '社区公约', '请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用形成楼中楼。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社区公约');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周精选', '学习交流与校园生活板块已更新演示主帖，欢迎跟帖讨论。', 'admin', '站长'
+SELECT '本周精选', '学习交流与校园生活板块已更新主帖，欢迎跟帖讨论。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');

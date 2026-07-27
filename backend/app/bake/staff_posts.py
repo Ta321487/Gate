@@ -11,6 +11,18 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
     "slot_ops": frozenset({"dashboard", "reservations"}),
     # 内容流编辑：维护档案与公告（无单据审核队列）
     "content_ops": frozenset({"dashboard", "archive", "content"}),
+    "exam_ops": frozenset(
+        {"dashboard", "archive", "content", "exam_questions", "exam_papers"}
+    ),
+    "survey_ops": frozenset(
+        {"dashboard", "archive", "content", "survey_forms", "survey_stats"}
+    ),
+    "vote_ops": frozenset(
+        {"dashboard", "archive", "content", "vote_candidates", "vote_results"}
+    ),
+    "doclib_ops": frozenset(
+        {"dashboard", "archive", "content", "doc_files", "doc_logs"}
+    ),
 }
 
 # 作业岗：员工端页面 id（前端路由用）
@@ -52,6 +64,41 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-GRADE": [_clerk("grade_clerk", "教务员", "ticket_ops")],
     "DOM-INTERN": [_clerk("intern_tutor", "实习辅导员", "ticket_ops")],
     "DOM-PARCEL": [_clerk("parcel_clerk", "驿站店员", "ticket_ops")],
+    "DOM-SEAL": [_clerk("seal_clerk", "用章管理员", "ticket_ops")],
+    "DOM-FLEET": [_clerk("fleet_clerk", "调度员", "ticket_ops")],
+    "DOM-CERT": [_clerk("cert_clerk", "证明专员", "ticket_ops")],
+    "DOM-PROMO": [_clerk("promo_clerk", "宣传员", "ticket_ops")],
+    "DOM-FITOUT": [_clerk("fitout_clerk", "备案员", "ticket_ops")],
+    "DOM-ACAD": [_clerk("acad_clerk", "教务员", "ticket_ops")],
+    "DOM-TRIP": [_clerk("trip_clerk", "考勤员", "ticket_ops")],
+    "DOM-EXPENSE": [_clerk("expense_clerk", "报销审核员", "ticket_ops")],
+    "DOM-CREDIT": [_clerk("credit_clerk", "认定专员", "ticket_ops")],
+    "DOM-LABOR": [_clerk("labor_clerk", "劳动专员", "ticket_ops")],
+    "DOM-EVAL": [_clerk("eval_clerk", "评教员", "ticket_ops")],
+    "DOM-MORAL": [_clerk("moral_clerk", "综测专员", "ticket_ops")],
+    "DOM-AWARD": [_clerk("award_clerk", "成果专员", "ticket_ops")],
+    "DOM-BED": [_clerk("bed_clerk", "宿管员", "ticket_ops")],
+    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "ticket_ops")],
+    "DOM-MUTUAL-TUTOR": [_clerk("tutor_clerk", "导师秘书", "ticket_ops")],
+    "DOM-MUTUAL-TOPIC": [_clerk("topic_clerk", "选题秘书", "ticket_ops")],
+    "DOM-MUTUAL-TEAM": [_clerk("team_clerk", "组队协调员", "ticket_ops")],
+    "DOM-VISITOR": [_clerk("visitor_clerk", "接待员", "ticket_ops")],
+    "DOM-CARPASS": [_clerk("carpass_clerk", "车证管理员", "ticket_ops")],
+    "DOM-LISTING": [_clerk("listing_clerk", "置业顾问", "ticket_ops")],
+    "DOM-PROCURE": [_clerk("procure_clerk", "采购专员", "ticket_ops")],
+    "DOM-CLUB": [_clerk("club_clerk", "社团专员", "ticket_ops")],
+    "DOM-PROJ": [_clerk("proj_clerk", "项目专员", "ticket_ops")],
+    "DOM-ETHIC": [_clerk("ethic_clerk", "审核秘书", "ticket_ops")],
+    "DOM-PARTY": [_clerk("party_clerk", "组织员", "ticket_ops")],
+    "DOM-CONTRACT": [_clerk("contract_clerk", "合同专员", "ticket_ops")],
+    "DOM-INSTRUMENT": [_clerk("instrument_clerk", "仪器管理员", "ticket_ops")],
+    "DOM-EXAM": [_clerk("exam_clerk", "教务员", "exam_ops")],
+    "DOM-SURVEY": [_clerk("survey_clerk", "调研员", "survey_ops")],
+    "DOM-VOTE": [_clerk("vote_clerk", "评选员", "vote_ops")],
+    "DOM-DOCLIB": [_clerk("doc_clerk", "资料员", "doclib_ops")],
+    "DOM-CARPOOL": [_clerk("carpool_clerk", "对接员", "ticket_ops")],
+    "DOM-TIMEBANK": [_clerk("tb_clerk", "核销员", "ticket_ops")],
+    "DOM-CINEMA": [_clerk("cinema_clerk", "售票员", "order_ops")],
     "DOM-DORM": [
         _clerk("dorm_mgr", "楼管", "ticket_ops"),
         # 维修员：默认不挂；开题写到才追加（与骑手/拣货同口径）
@@ -348,6 +395,41 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-PARKING": ("车主",),
     "DOM-ATTEND": ("考勤对象", "员工"),
     "DOM-FUND": ("受助学生", "申请学生"),
+    "DOM-SEAL": ("申请人", "办理人"),
+    "DOM-FLEET": ("用车人", "申请人"),
+    "DOM-CERT": ("申请人", "办理人"),
+    "DOM-PROMO": ("申报人", "申请人"),
+    "DOM-FITOUT": ("申报人", "申请人"),
+    "DOM-ACAD": ("学生", "申请人"),
+    "DOM-TRIP": ("员工", "申请人"),
+    "DOM-EXPENSE": ("报销人", "申请人"),
+    "DOM-CREDIT": ("学生", "申请人"),
+    "DOM-LABOR": ("学生", "申请人"),
+    "DOM-EVAL": ("学生", "申请人"),
+    "DOM-MORAL": ("学生", "申请人"),
+    "DOM-AWARD": ("学生", "申请人"),
+    "DOM-BED": ("学生", "住宿学生"),
+    "DOM-CHECKIN": ("学生", "住宿学生"),
+    "DOM-MUTUAL-TUTOR": ("学生", "申请人"),
+    "DOM-MUTUAL-TOPIC": ("学生", "申请人"),
+    "DOM-MUTUAL-TEAM": ("学生", "申请人"),
+    "DOM-VISITOR": ("来访人", "访客"),
+    "DOM-CARPASS": ("申请人", "用户"),
+    "DOM-LISTING": ("申请人", "用户"),
+    "DOM-PROCURE": ("申请人", "用户"),
+    "DOM-CLUB": ("申请人", "用户"),
+    "DOM-PROJ": ("申请人", "用户"),
+    "DOM-ETHIC": ("申请人", "用户"),
+    "DOM-PARTY": ("申请人", "用户"),
+    "DOM-CONTRACT": ("申请人", "用户"),
+    "DOM-INSTRUMENT": ("使用人", "用户"),
+    "DOM-EXAM": ("考生", "用户"),
+    "DOM-SURVEY": ("受访者", "用户"),
+    "DOM-VOTE": ("投票人", "用户"),
+    "DOM-DOCLIB": ("读者", "用户"),
+    "DOM-CARPOOL": ("同行者", "用户"),
+    "DOM-TIMEBANK": ("志愿者", "用户"),
+    "DOM-CINEMA": ("观影者", "用户"),
     "DOM-LABSAFE": ("实验人员", "申请人"),
     "DOM-RECRUIT": ("求职者", "应聘者"),
     "DOM-DATING": ("会员", "征婚者", "同学"),
@@ -743,9 +825,43 @@ def attach_staff_posts(
     else:
         roles.pop("subadmin", None)
     schema["roles"] = roles
-    schema["staffPackMenus"] = {k: sorted(v) for k, v in PACK_ADMIN_MENUS.items()}
-    schema["staffPackPages"] = {k: sorted(v) for k, v in PACK_WORK_PAGES.items()}
+    # 只下发本域岗位实际挂到的 pack，避免把 slot_ops/reservations 等空壳写进无关域
+    used_packs: set[str] = set()
+    for p in merged_posts:
+        for pk in p.get("packs") or []:
+            if isinstance(pk, str) and pk.strip():
+                used_packs.add(pk.strip())
+    schema["staffPackMenus"] = {
+        k: sorted(v) for k, v in PACK_ADMIN_MENUS.items() if k in used_packs
+    }
+    schema["staffPackPages"] = {
+        k: sorted(v) for k, v in PACK_WORK_PAGES.items() if k in used_packs
+    }
+    _ensure_category_entity(schema)
     return schema
+
+
+def _ensure_category_entity(schema: dict[str, Any]) -> None:
+    """菜单有 category 时补薄实体，避免 QA/论文口径「菜单有、entities 无」。"""
+    admin = (schema.get("menus") or {}).get("admin") or []
+    if not isinstance(admin, list):
+        return
+    cat_menu = next(
+        (m for m in admin if isinstance(m, dict) and m.get("key") == "category"),
+        None,
+    )
+    if not cat_menu:
+        return
+    ents = schema.setdefault("entities", {})
+    if not isinstance(ents, dict) or "category" in ents:
+        return
+    lab = str(cat_menu.get("label") or "分类").removesuffix("管理").strip() or "分类"
+    arch = ents.get("archive") if isinstance(ents.get("archive"), dict) else {}
+    for f in arch.get("fields") or []:
+        if isinstance(f, dict) and f.get("key") == "category" and f.get("label"):
+            lab = str(f["label"]).strip() or lab
+            break
+    ents["category"] = {"key": "category", "label": lab, "labelPlural": lab}
 
 
 def domain_has_workers(

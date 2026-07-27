@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.schema.shells import (
     _with_portal_banners,
     archive_favorites_schema,
     archive_ticket_schema,
+    category_menu_label,
+    product_name_from_title,
 )
 
 def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -46,7 +49,7 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             auth_points=["验证码登录", "片单检索与播放", "收藏想看"],
             register_hint="注册后可浏览片单并收藏",
             notice_title="观影须知",
-            notice_body="片源仅供学习演示；请文明观影，勿传播未授权内容。",
+            notice_body="片源仅供学习使用；请文明观影，勿传播未授权内容。",
             notice_page_title="平台公告",
             notice_page_lead="上新片单、维护窗口与观影须知，点击条目阅读全文。",
             favorites_page_lead="收藏想看的影视综，方便下次回看。",
@@ -106,7 +109,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"],
             register_hint="注册后可浏览曲库并收藏",
             notice_title="试听须知",
-            notice_body="曲源仅供学习演示；请尊重版权，勿传播未授权内容。",
+            notice_body="曲源仅供学习使用；请尊重版权，勿传播未授权内容。",
             notice_page_title="平台公告",
             notice_page_lead="上新歌单、维护窗口与试听须知，点击条目阅读全文。",
             favorites_page_lead="收藏喜欢的歌曲，方便下次回听。",
@@ -263,7 +266,7 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             auth_points=["验证码登录", "文章检索与阅读", "收藏订阅"],
             register_hint="注册后可浏览文章并收藏",
             notice_title="阅读须知",
-            notice_body="文章仅供学习演示；转载请注明出处。内容由主编维护发布。",
+            notice_body="文章仅供学习使用；转载请注明出处。内容由主编维护发布。",
             notice_page_title="站点公告",
             notice_page_lead=(
                 "上新、维护与征稿通知，点击条目阅读全文。"
@@ -291,5 +294,281 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             },
             {"title": "猜你喜欢", "lead": "根据阅读偏好推荐文章。"},
             {"title": "分类阅读", "lead": "按分类快速进入感兴趣的专栏。"},
+        ],
+    )
+
+
+def _survey_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """简易问卷：问卷项目档案 + 填写回收统计（无单据）。"""
+    app = product_name_from_title(title)
+    fields = [
+        {"key": "title", "label": "问卷标题", "type": "string"},
+        {"key": "author", "label": "发布单位", "type": "string"},
+        {"key": "isbn", "label": "说明", "type": "textarea"},
+        {"key": "category", "label": "分类", "type": "select"},
+        {"key": "stock", "label": "开放", "type": "number"},
+    ]
+    schema: dict[str, Any] = {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES["DOM-SURVEY"]),
+        "roles": {
+            "user": {"id": "user", "label": "受访者"},
+            "admin": {"id": "admin", "label": "调研主管（总管）"},
+            "subadmin": {"id": "subadmin", "label": "调研员"},
+        },
+        "entities": {
+            "archive": {
+                "key": "survey_form",
+                "label": "问卷项目",
+                "labelPlural": "问卷项目",
+                "fields": fields,
+                "stockDisplay": "toggle",
+            }
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": "问卷项目", "superOnly": True},
+                {"key": "category", "label": category_menu_label(fields), "superOnly": True},
+                {"key": "users", "label": "用户管理", "superOnly": True},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": "问卷项目"},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": "问卷调研",
+            "authLead": "验证码登录；填写已发布问卷，查看本人答卷与回收统计。",
+            "authPoints": ["验证码登录", "问卷填写", "回收统计"],
+            "registerRoleHint": "注册后可填写已发布问卷",
+            "noticePageTitle": "调研公告",
+            "noticePageLead": "调研安排与须知，点击条目阅读全文。",
+            "messagesPageLead": "问卷与系统通知。",
+        },
+        "seeds": {
+            "noticeTitle": "问卷须知",
+            "noticeBody": "请如实填写；每人每卷限填一次。本期无跳题逻辑与 SPSS 导出。",
+        },
+    }
+    return _with_portal_banners(
+        schema,
+        [
+            {"title": "问卷项目", "lead": "按分类浏览开放问卷。"},
+            {"title": "在线填写", "lead": "提交后可在「我的答卷」回看。"},
+            {"title": "回收统计", "lead": "管理端查看选项计数。"},
+            {"title": "调研公告", "lead": "安排与须知见公告栏。"},
+        ],
+    )
+
+
+def _doclib_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """文库资料：资料档案 + 附件权限下载台账（无单据）。"""
+    app = product_name_from_title(title)
+    fields = [
+        {"key": "title", "label": "资料标题", "type": "string"},
+        {"key": "author", "label": "发布单位", "type": "string"},
+        {"key": "isbn", "label": "摘要说明", "type": "textarea"},
+        {"key": "category", "label": "分类", "type": "select"},
+        {"key": "stock", "label": "开放", "type": "number"},
+    ]
+    schema: dict[str, Any] = {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES["DOM-DOCLIB"]),
+        "roles": {
+            "user": {"id": "user", "label": "读者"},
+            "admin": {"id": "admin", "label": "资料主管（总管）"},
+            "subadmin": {"id": "subadmin", "label": "资料员"},
+        },
+        "entities": {
+            "archive": {
+                "key": "doc_item",
+                "label": "资料条目",
+                "labelPlural": "资料条目",
+                "fields": fields,
+                "stockDisplay": "toggle",
+            }
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": "资料条目", "superOnly": True},
+                {"key": "category", "label": category_menu_label(fields), "superOnly": True},
+                {"key": "users", "label": "用户管理", "superOnly": True},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": "资料条目"},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": "文库资料",
+            "authLead": "验证码登录；浏览资料并按权限下载，查看本人下载台账。",
+            "authPoints": ["验证码登录", "资料下载", "下载台账"],
+            "registerRoleHint": "注册后可浏览并下载开放资料",
+            "noticePageTitle": "文库公告",
+            "noticePageLead": "资料更新与须知，点击条目阅读全文。",
+            "messagesPageLead": "文库与系统通知。",
+        },
+        "seeds": {
+            "noticeTitle": "文库须知",
+            "noticeBody": "下载将记入台账；附件为占位 URL，无真对象存储签名。",
+        },
+    }
+    return _with_portal_banners(
+        schema,
+        [
+            {"title": "资料条目", "lead": "按分类浏览开放资料。"},
+            {"title": "按权限下载", "lead": "按登录与管理权限下载。"},
+            {"title": "下载台账", "lead": "管理端可查下载记录。"},
+            {"title": "文库公告", "lead": "安排与须知见公告栏。"},
+        ],
+    )
+
+
+def _vote_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """投票评选：评选活动档案 + 候选人投票计票（无单据）。"""
+    app = product_name_from_title(title)
+    fields = [
+        {"key": "title", "label": "活动标题", "type": "string"},
+        {"key": "author", "label": "主办单位", "type": "string"},
+        {"key": "isbn", "label": "规则说明", "type": "textarea"},
+        {"key": "category", "label": "分类", "type": "select"},
+        {"key": "stock", "label": "每人限票", "type": "number"},
+    ]
+    schema: dict[str, Any] = {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES["DOM-VOTE"]),
+        "roles": {
+            "user": {"id": "user", "label": "投票人"},
+            "admin": {"id": "admin", "label": "评选主管（总管）"},
+            "subadmin": {"id": "subadmin", "label": "评选员"},
+        },
+        "entities": {
+            "archive": {
+                "key": "vote_campaign",
+                "label": "评选活动",
+                "labelPlural": "评选活动",
+                "fields": fields,
+                "stockDisplay": "number",
+            }
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": "评选活动", "superOnly": True},
+                {"key": "category", "label": category_menu_label(fields), "superOnly": True},
+                {"key": "users", "label": "用户管理", "superOnly": True},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": "评选活动"},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": "投票评选",
+            "authLead": "验证码登录；参与开放评选投票，查看本人选票与结果公示。",
+            "authPoints": ["验证码登录", "在线投票", "结果公示"],
+            "registerRoleHint": "注册后可参与开放评选投票",
+            "noticePageTitle": "评选公告",
+            "noticePageLead": "评选安排与须知，点击条目阅读全文。",
+            "messagesPageLead": "投票与系统通知。",
+        },
+        "seeds": {
+            "noticeTitle": "投票须知",
+            "noticeBody": "请公正投票；每人按活动限票数投给不同候选人。本期无刷票防护。",
+        },
+    }
+    return _with_portal_banners(
+        schema,
+        [
+            {"title": "评选活动", "lead": "按分类浏览开放评选。"},
+            {"title": "在线投票", "lead": "按限票数投给候选人。"},
+            {"title": "结果公示", "lead": "管理端与门户可查看得票。"},
+            {"title": "评选公告", "lead": "安排与须知见公告栏。"},
+        ],
+    )
+
+
+def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """在线考试：科目档案 + 题库组卷作答（无单据/收藏）。"""
+    from app.bake.features.exam import scan_exam_skin
+
+    skin = scan_exam_skin(f"{title}\n{proposal_text}")
+    app = product_name_from_title(title)
+    fields = [
+        {"key": "title", "label": "科目名称", "type": "string"},
+        {"key": "author", "label": "开课单位", "type": "string"},
+        {"key": "isbn", "label": "说明", "type": "textarea"},
+        {"key": "category", "label": "分类", "type": "select"},
+        {"key": "stock", "label": "开放", "type": "number"},
+    ]
+    schema: dict[str, Any] = {
+        "version": 1,
+        "title": title,
+        "capabilities": list(DOMAIN_CAPABILITIES["DOM-EXAM"]),
+        "roles": {
+            "user": {"id": "user", "label": "考生"},
+            "admin": {"id": "admin", "label": "教务主管（总管）"},
+            "subadmin": {"id": "subadmin", "label": "教务员"},
+        },
+        "entities": {
+            "archive": {
+                "key": "exam_subject",
+                "label": "考试科目",
+                "labelPlural": "考试科目",
+                "fields": fields,
+                "stockDisplay": "toggle",
+            }
+        },
+        "menus": {
+            "admin": [
+                {"key": "dashboard", "label": "工作台"},
+                {"key": "archive", "label": "科目管理", "superOnly": True},
+                {"key": "category", "label": category_menu_label(fields), "superOnly": True},
+                {"key": "users", "label": "用户管理", "superOnly": True},
+                {"key": "content", "label": "公告管理", "superOnly": True},
+            ],
+            "user": [
+                {"key": "archive", "label": "考试科目"},
+                {"key": "content", "label": "公告"},
+                {"key": "profile", "label": "个人资料"},
+            ],
+        },
+        "labels": {
+            "appName": app,
+            "authEyebrow": "在线考试",
+            "authLead": "验证码登录；浏览考试科目，参加已发布试卷并自动判分。",
+            "authPoints": ["验证码登录", "题库与组卷", "在线作答与判分"],
+            "registerRoleHint": "注册后可参加已发布考试",
+            "noticePageTitle": "考试公告",
+            "noticePageLead": "考试安排与须知，点击条目阅读全文。",
+            "messagesPageLead": "成绩与系统通知。",
+        },
+        "seeds": {
+            "noticeTitle": "考试须知",
+            "noticeBody": "请独立完成作答；客观题自动判分，主观题按关键词/正则自动判分。",
+        },
+        "examSkin": skin,
+    }
+    return _with_portal_banners(
+        schema,
+        [
+            {"title": "考试科目", "lead": "按分类浏览开放科目与说明。"},
+            {"title": "在线作答", "lead": "选择已发布试卷开考，提交后自动判分。"},
+            {"title": "成绩查阅", "lead": "查看本人历史成绩与得分明细。"},
+            {"title": "考试公告", "lead": "安排与须知见公告栏。"},
         ],
     )

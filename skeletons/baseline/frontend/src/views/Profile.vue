@@ -31,9 +31,9 @@
     </section>
 
     <section v-if="anyLoyalty && loyalty" class="card block loyalty">
-      <h2 class="block-title">账户权益（演示）</h2>
+      <h2 class="block-title">账户权益</h2>
       <div class="loy-grid">
-        <div v-if="walletOn"><span class="k">演示余额</span><strong>¥{{ Number(loyalty.balanceYuan || 0).toFixed(2) }}</strong></div>
+        <div v-if="walletOn"><span class="k">账户余额</span><strong>¥{{ Number(loyalty.balanceYuan || 0).toFixed(2) }}</strong></div>
         <div v-if="pointsOn"><span class="k">积分</span><strong>{{ loyalty.points || 0 }}</strong></div>
         <div v-if="tierOn"><span class="k">会员</span><strong>{{ loyalty.memberTierLabel || '—' }}</strong></div>
         <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>

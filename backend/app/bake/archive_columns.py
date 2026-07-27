@@ -68,6 +68,78 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("station_name", "VARCHAR(100)"),
         ("pickup_code", "VARCHAR(255)"),
     ),
+    "DOM-SEAL": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-FLEET": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-CERT": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-PROMO": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-FITOUT": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-ACAD": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-TRIP": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-EXPENSE": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-CREDIT": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-LABOR": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-EVAL": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-MORAL": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-AWARD": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-BED": (
+        ("building_name", "VARCHAR(100)"),
+        ("room_note", "VARCHAR(255)"),
+    ),
+    "DOM-CHECKIN": (
+        ("building_name", "VARCHAR(100)"),
+        ("room_note", "VARCHAR(255)"),
+    ),
+    "DOM-MUTUAL-TUTOR": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-MUTUAL-TOPIC": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-MUTUAL-TEAM": (
+        ("dept_name", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
     "DOM-MEDIA": (
         ("cast_info", "VARCHAR(100)"),
         ("play_url", "VARCHAR(255)"),

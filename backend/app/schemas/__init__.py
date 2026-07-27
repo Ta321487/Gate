@@ -14,7 +14,7 @@ class ProjectSummary(BaseModel):
     status: str = Field(description="状态")
     archetype: str = Field(description="骨架")
     domain: str = Field(description="领域")
-    persistence: str = Field(default="jdbc", description="持久层：jdbc | mybatis")
+    persistence: str = Field(default="jdbc", description="持久层：jdbc | mybatis | jpa")
     spring_security: bool = Field(default=False, description="是否启用 Spring Security")
     backend_running: bool = Field(description="后端预览是否在跑")
     frontend_running: bool = Field(description="前端预览是否在跑")
@@ -84,7 +84,7 @@ class MatchUpdate(BaseModel):
 
     archetype: Optional[str] = Field(default=None, description="骨架 ID")
     domain: Optional[str] = Field(default=None, description="领域 ID")
-    persistence: Optional[str] = Field(default=None, description="持久层 jdbc | mybatis")
+    persistence: Optional[str] = Field(default=None, description="持久层 jdbc | mybatis | jpa")
     spring_security: Optional[bool] = Field(
         default=None, description="是否启用 Spring Security 过滤器链"
     )

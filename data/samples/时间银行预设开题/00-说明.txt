@@ -1,0 +1,3 @@
+说明：C-14 时间银行预设开题（DOM-TIMEBANK + timebank）。
+存入时长即时入账（演示）；核销走单据审核扣减。
+勿与劳动教育项目时长认定（DOM-LABOR）、社团活动报名（DOM-ACTIVITY）混淆。

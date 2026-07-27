@@ -197,7 +197,7 @@ async function decideRefund(row, pass) {
     if (value === null) return
     note = String(value || '').trim()
   } else {
-    await ElMessageBox.confirm(`通过订单 #${row.id} 售后？将回补库存并退演示余额。`, '通过售后')
+    await ElMessageBox.confirm(`通过订单 #${row.id} 售后？将回补库存并退账户余额。`, '通过售后')
   }
   await http.post(`/api/orders/${row.id}/refund`, { pass, note })
   ElMessage.success(pass ? '已通过售后' : '已驳回')

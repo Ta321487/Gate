@@ -96,6 +96,10 @@ public interface CouponMapper {
     int markMineUsed(
             @Param("id") long id, @Param("usedAt") Timestamp usedAt, @Param("orderId") long orderId);
 
+    @Update("UPDATE user_coupon SET status='unused', used_at=NULL, order_id=NULL "
+            + "WHERE order_id=#{orderId} AND status='used'")
+    int releaseByOrder(@Param("orderId") long orderId);
+
     @Update("UPDATE user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id "
             + "SET u.status='expired' "
             + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()")

@@ -13,8 +13,24 @@ USER_MENU_PATHS: dict[str, str] = {
     "archive": "/archive",
     "my_archive": "/my-archive",
     "my_tickets": "/tickets",
+    "peer_tickets": "/peer-tickets",
     "content": "/notices",
     "guestbook": "/guestbook",
+    "exam_papers": "/exam/papers",
+    "exam_attempts": "/exam/attempts",
+    "exam_practice": "/exam/practice",
+    "exam_rank": "/exam/rank",
+    "exam_wrongbook": "/exam/wrongbook",
+    "survey_forms": "/survey/forms",
+    "survey_mine": "/survey/mine",
+    "vote_campaigns": "/vote/campaigns",
+    "vote_mine": "/vote/mine",
+    "doc_browse": "/doc/browse",
+    "doc_mine": "/doc/mine",
+    "tb_account": "/tb/account",
+    "tb_ledger": "/tb/ledger",
+    "seat_shows": "/seats/shows",
+    "e_sign_mine": "/e-sign",
     "dm": "/dm",
     "profile": "/profile",
     "favorites": "/favorites",
@@ -39,6 +55,19 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "users": "/admin/users",
     "content": "/admin/notices",
     "guestbook": "/admin/guestbook",
+    "exam_questions": "/admin/exam/questions",
+    "exam_papers": "/admin/exam/papers",
+    "survey_forms": "/admin/survey/forms",
+    "survey_stats": "/admin/survey/stats",
+    "vote_candidates": "/admin/vote/candidates",
+    "vote_results": "/admin/vote/results",
+    "doc_files": "/admin/doc/files",
+    "doc_logs": "/admin/doc/logs",
+    "tb_accounts": "/admin/tb/accounts",
+    "tb_ledger_admin": "/admin/tb/ledger",
+    "stock_moves": "/admin/stock/moves",
+    "stock_ledger": "/admin/stock/ledger",
+    "e_sign_admin": "/admin/e-sign",
     "archive_logs": "/admin/archive-logs",
     "lookup_site": "/admin/sites",
     "lookup_type": "/admin/types",
@@ -86,6 +115,7 @@ _ARCHIVE_TICKET_SHELL = frozenset(
     {
         "/archive",
         "/tickets",
+        "/peer-tickets",
         "/week",
         "/admin/archive",
         "/admin/categories",
@@ -201,6 +231,60 @@ def effective_paths(
     # 能力叠加（与 with*Routes 对齐）
     if "guestbook" in cap_set:
         paths.update({"/guestbook", "/admin/guestbook"})
+    if "exam" in cap_set:
+        paths.update(
+            {
+                "/exam/papers",
+                "/exam/attempts",
+                "/exam/practice",
+                "/exam/rank",
+                "/exam/wrongbook",
+                "/admin/exam/questions",
+                "/admin/exam/papers",
+            }
+        )
+    if "survey" in cap_set:
+        paths.update(
+            {
+                "/survey/forms",
+                "/survey/mine",
+                "/admin/survey/forms",
+                "/admin/survey/stats",
+            }
+        )
+    if "vote" in cap_set:
+        paths.update(
+            {
+                "/vote/campaigns",
+                "/vote/mine",
+                "/admin/vote/candidates",
+                "/admin/vote/results",
+            }
+        )
+    if "doclib" in cap_set:
+        paths.update(
+            {
+                "/doc/browse",
+                "/doc/mine",
+                "/admin/doc/files",
+                "/admin/doc/logs",
+            }
+        )
+    if "timebank" in cap_set:
+        paths.update(
+            {
+                "/tb/account",
+                "/tb/ledger",
+                "/admin/tb/accounts",
+                "/admin/tb/ledger",
+            }
+        )
+    if "seat_select" in cap_set:
+        paths.update({"/seats/shows", "/seats/map"})
+    if "stock_io" in cap_set:
+        paths.update({"/admin/stock/moves", "/admin/stock/ledger"})
+    if "e_sign" in cap_set:
+        paths.update({"/e-sign", "/admin/e-sign"})
     if "favorites" in cap_set:
         paths.add("/favorites")
     if "dm" in cap_set:

@@ -157,5 +157,5 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '客房预订', '选择房型与入住时段预订；演示无真支付，预约成功生成订单。', 'admin', '系统管理员'
+SELECT '客房预订', '选择房型与入住时段预订；无真支付，预约成功生成订单。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='客房预订');

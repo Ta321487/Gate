@@ -35,12 +35,12 @@ public class LoyaltyController {
         return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon));
     }
 
-    /** 管理端：仅演示余额可充值；积分不可充值 */
+    /** 管理端：仅账户余额可充值；积分不可充值 */
     @PostMapping("/api/admin/loyalty/recharge")
     public R<?> recharge(@RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireAdmin(session);
         if (!LoyaltyStore.isWalletEnabled()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "未开启演示余额");
+            throw new BizException(ErrorCode.BAD_REQUEST, "未开启账户余额");
         }
         String username = str(body == null ? null : body.get("username"));
         if (username.isBlank()) {

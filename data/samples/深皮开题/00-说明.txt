@@ -1,0 +1,57 @@
+深皮开题样例（泳道 B · S-*）
+========================
+
+与 docs/domain-skin-gap-analysis.md §3 一一对应；
+用于匹配回归与试传，不以 bake 为准改写开题写法。
+
+S-01-DOM-LIBRARY-高校档案馆卷宗借阅管理系统.txt  ->  DOM-LIBRARY
+S-02-DOM-EQUIP-校园共享雨伞与充电宝租借管理系统.txt  ->  DOM-EQUIP
+S-03-DOM-EQUIP-校园演出服装道具租借管理系统.txt  ->  DOM-EQUIP
+S-04-DOM-ASSET-实验室试剂与耗材申领管理系统.txt  ->  DOM-ASSET
+S-05-DOM-ASSET-企业办公用品与劳保领用管理系统.txt  ->  DOM-ASSET
+S-06-DOM-LIBRARY-校园图书漂流借阅管理系统.txt  ->  DOM-LIBRARY
+S-10-DOM-CRM-高校学工家访谈心谈话记录系统.txt  ->  DOM-CRM
+S-11-DOM-EVENT-社区网格员走访打卡台账管理系统.txt  ->  DOM-EVENT
+S-12-DOM-EVENT-消防设备巡检打卡管理系统.txt  ->  DOM-EVENT
+S-13-DOM-INTERN-企业员工周报与工时填报管理系统.txt  ->  DOM-INTERN
+S-14-DOM-CRM-法律援助案件跟进管理系统.txt  ->  DOM-CRM
+S-15-DOM-CRM-校企合作单位库跟进管理系统.txt  ->  DOM-CRM
+S-16-DOM-EVENT-慢病家庭医生随访管理系统.txt  ->  DOM-EVENT
+S-17-DOM-RECRUIT-高校勤工助学岗申请投递系统.txt  ->  DOM-RECRUIT
+S-18-DOM-RECRUIT-企业社会招聘与内部竞聘系统.txt  ->  DOM-RECRUIT
+S-19-DOM-GRADE-企业内训成绩与岗位认证管理系统.txt  ->  DOM-GRADE
+S-20-DOM-FUND-高校助学贷款与困难认定申请系统.txt  ->  DOM-FUND
+S-21-DOM-PROPERTY-社区物业投诉建议工单管理系统.txt  ->  DOM-PROPERTY
+S-22-DOM-IT-设备维保工单管理系统.txt  ->  DOM-IT
+S-23-DOM-IT-客服售后工单管理系统.txt  ->  DOM-IT
+S-24-DOM-IT-校园网邮箱账号报修工单系统.txt  ->  DOM-IT
+S-25-DOM-PROPERTY-市政路灯井盖报修管理系统.txt  ->  DOM-PROPERTY
+S-30-DOM-ACTIVITY-讲座志愿社团活动报名管理系统.txt  ->  DOM-ACTIVITY
+S-31-DOM-ACTIVITY-证书报考与培训班报名管理系统.txt  ->  DOM-ACTIVITY
+S-32-DOM-ACTIVITY-研学夏令营赛事报名管理系统.txt  ->  DOM-ACTIVITY
+S-33-DOM-ACTIVITY-景区演出票务报名管理系统.txt  ->  DOM-ACTIVITY
+S-34-DOM-ACTIVITY-献血与开放日报名管理系统.txt  ->  DOM-ACTIVITY
+S-35-DOM-LOST-流浪动物领养申请管理系统.txt  ->  DOM-LOST
+S-36-DOM-LOST-捐赠物资认领管理系统.txt  ->  DOM-LOST
+S-40-DOM-SALON-高校心理咨询预约管理系统.txt  ->  DOM-SALON
+S-41-DOM-SALON-驾校练车陪驾预约管理系统.txt  ->  DOM-SALON
+S-42-DOM-SALON-家政上门维修预约管理系统.txt  ->  DOM-SALON
+S-43-DOM-SALON-家教技能辅导预约管理系统.txt  ->  DOM-SALON
+S-44-DOM-MEETING-博物馆展览参观预约管理系统.txt  ->  DOM-MEETING
+S-45-DOM-HOSPITAL-政务窗口取号预约管理系统.txt  ->  DOM-HOSPITAL
+S-46-DOM-HOSPITAL-入职体检与疫苗预约管理系统.txt  ->  DOM-HOSPITAL
+S-47-DOM-HOSPITAL-宠物医院挂号预约管理系统.txt  ->  DOM-HOSPITAL
+S-48-DOM-MEETING-游泳馆球馆琴房场地预约系统.txt  ->  DOM-MEETING
+S-49-DOM-PARKING-充电桩与共享车位预约管理系统.txt  ->  DOM-PARKING
+S-50-DOM-HOSPITAL-医院探视预约管理系统.txt  ->  DOM-HOSPITAL
+S-60-DOM-SHOP-校园二手教材闲置交易系统.txt  ->  DOM-SHOP
+S-61-DOM-SHOP-文印打印店订单管理系统.txt  ->  DOM-SHOP
+S-62-DOM-SHOP-特产鲜花零售商城管理系统.txt  ->  DOM-SHOP
+S-63-DOM-SHOP-积分兑换商城管理系统.txt  ->  DOM-SHOP
+S-64-DOM-FOOD-奶茶档口食堂点餐管理系统.txt  ->  DOM-FOOD
+S-65-DOM-SHOP-校园跑腿代买订单管理系统.txt  ->  DOM-SHOP
+S-70-DOM-BLOG-校园资讯院刊发布管理系统.txt  ->  DOM-BLOG
+S-71-DOM-FORUM-校园表白墙树洞管理系统.txt  ->  DOM-FORUM
+S-72-DOM-BLOG-记者站广播稿件发布管理系统.txt  ->  DOM-BLOG
+S-73-DOM-MEDIA-点播课课程视频库管理系统.txt  ->  DOM-MEDIA
+S-74-DOM-MUSIC-曲库点歌台管理系统.txt  ->  DOM-MUSIC

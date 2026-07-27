@@ -71,12 +71,15 @@ final class TicketProgressOps {
                 if ("rejected".equals(st)) {
                     insertProgressRow(ticketId, "rejected", TicketSql.blankTo(assignee, "admin"),
                             TicketCopy.stateLabel("rejected", "已驳回"), approveAt);
-                } else if (!"pending".equals(st) && !"pending_final".equals(st)) {
-                    insertProgressRow(ticketId, "approved", TicketSql.blankTo(assignee, "admin"),
-                            TicketCopy.stateLabel("approved", "审核通过"), approveAt);
+                } else if ("pending_mid".equals(st)) {
+                    insertProgressRow(ticketId, "pending_mid", TicketSql.blankTo(assignee, "admin"),
+                            TicketCopy.stateLabel("pending_mid", "初审通过"), approveAt);
                 } else if ("pending_final".equals(st)) {
                     insertProgressRow(ticketId, "pending_final", TicketSql.blankTo(assignee, "admin"),
-                            TicketCopy.stateLabel("pending_final", "初审通过"), approveAt);
+                            TicketCopy.stateLabel("pending_final", "复审通过"), approveAt);
+                } else if (!"pending".equals(st)) {
+                    insertProgressRow(ticketId, "approved", TicketSql.blankTo(assignee, "admin"),
+                            TicketCopy.stateLabel("approved", "审核通过"), approveAt);
                 }
             }
             if (returnAt != null) {

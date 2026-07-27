@@ -355,6 +355,7 @@ _FLOW_SOFT = frozenset({"申请", "审核", "审批", "流转", "递交"})
 _FLOW_TICKET_HARD = frozenset(
     {
         "借阅",
+        "借用",
         "借还",
         "报修",
         "保修",
@@ -433,6 +434,8 @@ _TRADE_HARD = frozenset(
 # 演示视频 / 背景论坛 / 商城收藏：有其它主路径时不抬内容流
 _CONTENT_AMBIENT = frozenset({"视频", "论坛", "收藏"})
 _STOCK_WEAK = frozenset({"库存"})
+# 家政/上门服务预约：文中「维修」是服务项目名，不是报修工单（S-42 ↔ PROPERTY 分流）
+_FLOW_SERVICE_BOOKING = ("家政预约", "上门维修预约", "上门服务预约", "家政上门")
 
 
 def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
@@ -447,6 +450,7 @@ def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
     has_trade = any(k == "ARCH-TRADE" and s > 0 for k, s, _ in scored)
     has_flow = any(k == "ARCH-FLOW" and s > 0 for k, s, _ in scored)
     side_ctx = has_reserve or has_content or has_trade
+    service_booking = has_reserve and any(p in (text or "") for p in _FLOW_SERVICE_BOOKING)
 
     cleaned: list[tuple[str, int, list[str]]] = []
     for key, _score, hits in scored:
@@ -456,6 +460,8 @@ def score_all_archetypes(text: str, *, title: str | None = None) -> list[str]:
                 if not has_trade:
                     allow |= _FLOW_EVENT_EXTRA
                 hard = [h for h in hits if h in allow and h not in _FLOW_SOFT]
+                if service_booking:
+                    hard = [h for h in hard if h != "维修"]
                 if not hard:
                     continue
                 cleaned.append((key, len(hard), hard))
@@ -540,6 +546,41 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-ACTIVITY": "ARCH-FLOW",
     "DOM-LOST": "ARCH-FLOW",
     "DOM-COURSE": "ARCH-FLOW",
+    "DOM-SEAL": "ARCH-FLOW",
+    "DOM-FLEET": "ARCH-FLOW",
+    "DOM-CERT": "ARCH-FLOW",
+    "DOM-PROMO": "ARCH-FLOW",
+    "DOM-FITOUT": "ARCH-FLOW",
+    "DOM-ACAD": "ARCH-FLOW",
+    "DOM-TRIP": "ARCH-FLOW",
+    "DOM-EXPENSE": "ARCH-FLOW",
+    "DOM-CREDIT": "ARCH-FLOW",
+    "DOM-LABOR": "ARCH-FLOW",
+    "DOM-EVAL": "ARCH-FLOW",
+    "DOM-MORAL": "ARCH-FLOW",
+    "DOM-AWARD": "ARCH-FLOW",
+    "DOM-BED": "ARCH-FLOW",
+    "DOM-CHECKIN": "ARCH-FLOW",
+    "DOM-MUTUAL-TUTOR": "ARCH-FLOW",
+    "DOM-MUTUAL-TOPIC": "ARCH-FLOW",
+    "DOM-MUTUAL-TEAM": "ARCH-FLOW",
+    "DOM-VISITOR": "ARCH-FLOW",
+    "DOM-CARPASS": "ARCH-FLOW",
+    "DOM-LISTING": "ARCH-FLOW",
+    "DOM-PROCURE": "ARCH-FLOW",
+    "DOM-CLUB": "ARCH-FLOW",
+    "DOM-PROJ": "ARCH-FLOW",
+    "DOM-ETHIC": "ARCH-FLOW",
+    "DOM-PARTY": "ARCH-FLOW",
+    "DOM-CONTRACT": "ARCH-FLOW",
+    "DOM-INSTRUMENT": "ARCH-FLOW",
+    "DOM-EXAM": "ARCH-CRUD",
+    "DOM-SURVEY": "ARCH-CRUD",
+    "DOM-VOTE": "ARCH-CRUD",
+    "DOM-DOCLIB": "ARCH-CRUD",
+    "DOM-CARPOOL": "ARCH-FLOW",
+    "DOM-TIMEBANK": "ARCH-FLOW",
+    "DOM-CINEMA": "ARCH-TRADE",
     "DOM-MEDIA": "ARCH-CONTENT",
     "DOM-MUSIC": "ARCH-CONTENT",
     "DOM-FORUM": "ARCH-CONTENT",
@@ -590,6 +631,29 @@ def reconcile_match(
             )
 
     if dom != "DOM-GENERIC":
+        # 访客到访/查寝登记开题里的「预约」不是会议室 slot_reserve，勿逼降 GENERIC
+        # 影院选座开题里的「占座」是座位图购票，不是场地时段预约壳
+        _soft_reserve_domains = frozenset(
+            {"DOM-VISITOR", "DOM-CHECKIN", "DOM-CARPASS", "DOM-CINEMA"}
+        )
+        if (
+            dom in _soft_reserve_domains
+            and "ARCH-RESERVE" in arches
+            and not domain_covers_archetype(dom, "ARCH-RESERVE")
+        ):
+            arches = [a for a in arches if a != "ARCH-RESERVE"]
+            if dom == "DOM-CINEMA":
+                notes.append(
+                    f"提示：「{dom_label}」开题中的占座/选座按影票订单处理，不按场地预约壳。"
+                )
+                if not arches:
+                    arches = ["ARCH-TRADE"]
+            else:
+                notes.append(
+                    f"提示：「{dom_label}」开题中的预约/登记按单据流处理，不按场地预约壳。"
+                )
+                if not arches:
+                    arches = ["ARCH-FLOW"]
         covered = [a for a in arches if domain_covers_archetype(dom, a)]
         if not covered:
             notes.append(
@@ -719,6 +783,19 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     dom_kw, dom_conf, dom_hits = score_catalog(
         scored, DOMAINS, fallback="DOM-GENERIC", title=title
     )
+    # C-11：报名+投票复合 → 主路径 ACTIVITY（并挂 vote），勿落纯投票域
+    from app.bake.features.vote import scan_vote_signup_composite
+
+    if scan_vote_signup_composite(scored) and dom_kw == "DOM-VOTE":
+        act = next(
+            (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-ACTIVITY"),
+            None,
+        )
+        if act is not None:
+            tip = "提示：开题同时含报名与投票，主路径取活动报名并挂投票能力（C-11）。"
+            dom_kw = "DOM-ACTIVITY"
+            dom_conf = min(0.95, 0.45 + act[1] * 0.12)
+            dom_hits = list(dict.fromkeys(list(dom_hits) + act[2] + [tip]))
     arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
     confidence = _confidence_after_reconcile(
         arch_conf,
@@ -866,7 +943,13 @@ def build_spec(
         "spine": spine,
         "persistence": persistence,
         "persistence_label": (
-            "MyBatis + PageHelper" if persistence == "mybatis" else "Spring JDBC（JdbcTemplate）"
+            "Spring Data JPA（Hibernate）"
+            if persistence == "jpa"
+            else (
+                "MyBatis + PageHelper"
+                if persistence == "mybatis"
+                else "Spring JDBC（JdbcTemplate）"
+            )
         ),
         "spring_security": spring_security,
         "addons": {"spring_security": spring_security},

@@ -1,0 +1,10 @@
+泳道 F · 真交叉样例（开题须写清两套玩法）
+
+| 交叉 | 样例 | 落点 |
+|------|------|------|
+| X-BORROW-SHOP | `../图书借阅与二手交叉开题.txt`；本目录 X-01-*.txt（点餐+报修） | GENERIC · FLOW+TRADE |
+| X-BORROW-RESERVE | 本目录 X-02-*.txt（图书+座位；仪器借+机时另见 DOM-INSTRUMENT） | GENERIC · FLOW+RESERVE |
+| X-SHOP-RESERVE | 本目录 X-03-*.txt | GENERIC · TRADE+RESERVE |
+
+硬边界：借阅+二手+预约（或更多主路径）三合一 / 智慧校园 → reject。
+宾馆客房预约+附加消费 → 具名 DOM-HOTEL，不是本交叉壳。

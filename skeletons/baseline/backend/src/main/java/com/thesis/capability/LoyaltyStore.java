@@ -9,7 +9,7 @@ import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * 忠诚度：演示余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
+ * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
  * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
@@ -252,7 +252,7 @@ public final class LoyaltyStore {
 
     /** 管理端充值：仅 wallet */
     public static Map<String, Object> adminRecharge(String username, double amount, String operator) {
-        if (!walletEnabled) throw new IllegalStateException("未开启演示余额");
+        if (!walletEnabled) throw new IllegalStateException("未开启账户余额");
         if (amount <= 0) throw new IllegalArgumentException("充值金额须大于 0");
         ensureSchema();
         return adjustWallet(username, amount, "recharge", "admin", null, operator == null ? "" : operator);
@@ -311,7 +311,7 @@ public final class LoyaltyStore {
         if (walletEnabled && !enough) {
             out.put(
                     "message",
-                    "演示余额不足，请联系管理员充值（当前 ¥"
+                    "账户余额不足，请联系管理员充值（当前 ¥"
                             + round2(((Number) acc.get("balanceYuan")).doubleValue())
                             + "，需 ¥"
                             + payable
@@ -333,7 +333,7 @@ public final class LoyaltyStore {
         if (walletEnabled) {
             double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
             if (bal + 1e-9 < payable) {
-                throw new IllegalStateException("演示余额不足，请联系管理员充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
+                throw new IllegalStateException("账户余额不足，请联系管理员充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
             }
             if (payable > 0) {
                 adjustWallet(username, -payable, "order_pay", "order", orderId, username);

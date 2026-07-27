@@ -79,8 +79,8 @@ INSERT IGNORE INTO track (id, title, author, isbn, category_id, stock, status) V
 (4, '周末合唱', '合唱团丁', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
 (5, '公路歌单', '制作人戊', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '试听须知', '曲源仅供学习演示；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
+SELECT '试听须知', '曲源仅供学习使用；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='试听须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周上新', '流行与民谣栏目已更新演示曲目，欢迎收藏喜欢。', 'admin', '曲库主管'
+SELECT '本周上新', '流行与民谣栏目已更新曲目，欢迎收藏喜欢。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
