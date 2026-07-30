@@ -15,7 +15,7 @@ from app.bake.features.stock_io import STOCK_IO_CAP, scan_stock_io
 from app.bake.menu_routes import shell_kind
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "进销存预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 BASELINE = ROOT / "skeletons" / "baseline"
 MYBATIS = ROOT / "skeletons" / "overlays" / "persistence-mybatis"
 JPA = ROOT / "skeletons" / "overlays" / "persistence-jpa"
@@ -125,7 +125,7 @@ class StockIoC17Tests(unittest.TestCase):
 
     def test_sample_file(self) -> None:
         samples = list(SAMPLES.glob("C-17*.txt"))
-        self.assertTrue(samples, "missing C-17 sample under 进销存预设开题")
+        self.assertTrue(samples, "missing C-17 sample under 能力预设开题")
         body = samples[0].read_text(encoding="utf-8")
         self.assertTrue(scan_stock_io(body))
         self.assertIn("DOM-ASSET", body)

@@ -13,7 +13,7 @@ from app.bake.engine_bake import _patch_thesis_yml
 from app.bake.engine_sql import domain_sql
 from app.bake.features.vote import VOTE_CAP, scan_vote_signup_composite
 
-SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "投票预设开题"
+SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "能力预设开题"
 
 
 class VoteSignupC11Tests(unittest.TestCase):

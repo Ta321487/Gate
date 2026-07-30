@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # 办理岗：裁剪 Admin 菜单 key
@@ -54,7 +55,8 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-LIBRARY": [_clerk("librarian", "馆员", "ticket_ops")],
     "DOM-EQUIP": [_clerk("keeper", "器材管理员", "ticket_ops")],
     "DOM-ASSET": [_clerk("storekeeper", "库管员", "ticket_ops")],
-    "DOM-CRM": [_clerk("account_mgr", "客户经理", "ticket_ops")],
+    # CRM / EVAL：主流程门户一次办完 → 双角色（业务员|学生 + 总管），不挂空转办理岗
+    "DOM-CRM": [],
     "DOM-EVENT": [_clerk("duty_clerk", "值班员", "ticket_ops")],
     "DOM-ATTEND": [_clerk("attend_clerk", "考勤员", "ticket_ops")],
     "DOM-FUND": [_clerk("fund_clerk", "资助专员", "ticket_ops")],
@@ -74,11 +76,12 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-EXPENSE": [_clerk("expense_clerk", "报销审核员", "ticket_ops")],
     "DOM-CREDIT": [_clerk("credit_clerk", "认定专员", "ticket_ops")],
     "DOM-LABOR": [_clerk("labor_clerk", "劳动专员", "ticket_ops")],
-    "DOM-EVAL": [_clerk("eval_clerk", "评教员", "ticket_ops")],
+    "DOM-EVAL": [],
     "DOM-MORAL": [_clerk("moral_clerk", "综测专员", "ticket_ops")],
     "DOM-AWARD": [_clerk("award_clerk", "成果专员", "ticket_ops")],
     "DOM-BED": [_clerk("bed_clerk", "宿管员", "ticket_ops")],
-    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "ticket_ops")],
+    # 查寝：学生口令直签；查寝员维护寝室/签到码（非待审闸）
+    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "content_ops")],
     "DOM-MUTUAL-TUTOR": [_clerk("tutor_clerk", "导师秘书", "ticket_ops")],
     "DOM-MUTUAL-TOPIC": [_clerk("topic_clerk", "选题秘书", "ticket_ops")],
     "DOM-MUTUAL-TEAM": [_clerk("team_clerk", "组队协调员", "ticket_ops")],
@@ -97,6 +100,7 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-VOTE": [_clerk("vote_clerk", "评选员", "vote_ops")],
     "DOM-DOCLIB": [_clerk("doc_clerk", "资料员", "doclib_ops")],
     "DOM-CARPOOL": [_clerk("carpool_clerk", "对接员", "ticket_ops")],
+    "DOM-TOUR": [_clerk("tour_clerk", "计调员", "ticket_ops")],
     "DOM-TIMEBANK": [_clerk("tb_clerk", "核销员", "ticket_ops")],
     "DOM-CINEMA": [_clerk("cinema_clerk", "售票员", "order_ops")],
     "DOM-DORM": [
@@ -247,6 +251,8 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
                 "上门维修",
                 "水电维修",
                 "报修派工",
+                "派单",
+                "派工",
             ),
         ),
     ],
@@ -261,6 +267,8 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
                 "上门维修",
                 "水电维修",
                 "报修派工",
+                "派单",
+                "派工",
             ),
         ),
     ],
@@ -274,6 +282,8 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
                 "上门排障",
                 "现场排障",
                 "IT上门",
+                "派单",
+                "派工",
             ),
         ),
     ],
@@ -304,12 +314,164 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
     ],
 }
 
+# CRM/EVAL：默认双角色；开题出现「要第三角」的流程信号才挂办理岗（不靠猜岗名全表）
+_OPTIONAL_FLOW_CLERKS: dict[str, dict[str, Any]] = {
+    "DOM-CRM": {
+        "post": _clerk("account_mgr", "客户经理", "ticket_ops"),
+        "yes": (
+            "三角色",
+            "三种角色",
+            "三类角色",
+            "三个角色",
+            "三级角色",
+            "子管理员",
+            "子管理端",
+            "管理端审核",
+            "管理端审批",
+            "管理员审核",
+            "管理员审批",
+            "主管审核",
+            "跟进审核",
+            "审核跟进",
+            "跟进确认",
+            "审核完结",
+            "审批完结",
+            "待审核",
+            "待审批",
+        ),
+        "no": (
+            "双角色",
+            "两种角色",
+            "两类角色",
+            "无需审核",
+            "无需审批",
+            "不设审核",
+            "不设审批",
+            "无审批环节",
+            "无审核环节",
+        ),
+    },
+    "DOM-EVAL": {
+        "post": _clerk("eval_clerk", "评教员", "content_ops"),
+        "yes": (
+            "三角色",
+            "三种角色",
+            "三类角色",
+            "三个角色",
+            "三级角色",
+            "子管理员",
+            "子管理端",
+            "管理端审核",
+            "管理端审批",
+            "管理员审核",
+            "管理员审批",
+            "评教审核",
+            "审核评教",
+            "审批评教",
+            "审核完结",
+            "审批完结",
+            "待审核",
+            "待审批",
+        ),
+        "no": (
+            "双角色",
+            "两种角色",
+            "两类角色",
+            "无需审核",
+            "无需审批",
+            "不设审核",
+            "不设审批",
+            "提交即完结",
+            "提交即生效",
+        ),
+    },
+}
+
+# 「由××审核/确认」：流程上有第三方办理，且可抠岗名
+_THIRD_ROLE_ACTOR_RE = re.compile(
+    r"(?:由|经|交由|请)([\u4e00-\u9fff]{2,10}?)(?:审核|审批|确认|复核|核销)"
+)
+_THIRD_ROLE_SKIP_LABELS = frozenset(
+    {
+        "管理",
+        "管理员",
+        "系统",
+        "用户",
+        "学生",
+        "业务员",
+        "本人",
+        "人工",
+        "后台",
+        "平台",
+        "本系统",
+        "本课题",
+        "对方",
+        "相关",
+        "有关",
+    }
+)
+
 
 def _proposal_wants_any(proposal_text: str, hints: tuple[str, ...]) -> bool:
     from app.bake.proposal_lexicon import keyword_mentioned
 
     raw = proposal_text or ""
     return any(keyword_mentioned(raw, h) for h in hints)
+
+
+def _extract_third_role_label(blob: str) -> str | None:
+    """从「由××审核/确认」抠办理人称呼；抠不出返回 None。"""
+    raw = blob or ""
+    if not raw:
+        return None
+    for m in _THIRD_ROLE_ACTOR_RE.finditer(raw):
+        lab = str(m.group(1) or "").strip()
+        if len(lab) < 2 or lab in _THIRD_ROLE_SKIP_LABELS:
+            continue
+        # 去掉尾缀「进行/予以」等开题套话
+        for suf in ("进行", "予以", "负责", "统一"):
+            if lab.endswith(suf) and len(lab) - len(suf) >= 2:
+                lab = lab[: -len(suf)]
+        if lab in _THIRD_ROLE_SKIP_LABELS or len(lab) < 2:
+            continue
+        return lab[:24]
+    return None
+
+
+def _wants_flow_clerk(domain: str, blob: str) -> bool:
+    """开题是否要第三角：流程信号、「由××审核」、或点名常见办理岗称呼。"""
+    spec = _OPTIONAL_FLOW_CLERKS.get(domain)
+    if not spec:
+        return False
+    raw = blob or ""
+    no = tuple(spec.get("no") or ())
+    if no and _proposal_wants_any(raw, no):
+        return False
+    yes = tuple(spec.get("yes") or ())
+    if yes and _proposal_wants_any(raw, yes):
+        return True
+    if _extract_third_role_label(raw) is not None:
+        return True
+    # 点名已知办理岗称呼也挂（可选增强，不依赖穷举开题用词）
+    pid = str((spec.get("post") or {}).get("id") or "")
+    aliases = _POST_LABEL_ALIASES.get(pid) or ()
+    return bool(aliases and _proposal_wants_any(raw, aliases))
+
+
+def _flow_clerk_label(domain: str, blob: str, default: str) -> str:
+    """岗名：已知别名 > 由××审核抠词 > 域默认。"""
+    aliases = ()
+    post = (_OPTIONAL_FLOW_CLERKS.get(domain) or {}).get("post") or {}
+    pid = str((post or {}).get("id") or "")
+    if pid:
+        aliases = _POST_LABEL_ALIASES.get(pid) or ()
+    picked = _pick_label_from_proposal(blob, aliases) if aliases else None
+    if picked:
+        return picked
+    extracted = _extract_third_role_label(blob)
+    if extracted:
+        return extracted
+    return (default or "经办员")[:24]
 
 
 def _pick_label_from_proposal(
@@ -368,9 +530,37 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "front": ("前台接待", "前台", "接待员"),
     "registrar": ("挂号员", "导诊", "分诊台"),
     "librarian": ("图书管理员", "馆员"),
-    "keeper": ("器材管理员", "器材员"),
+    "keeper": (
+        "器材管理员",
+        "器材员",
+        "物资管理员",
+        "道具管理员",
+        "服装管理员",
+        "乐器管理员",
+        "教具管理员",
+        "装备管理员",
+    ),
     "storekeeper": ("库管员", "仓管"),
-    "account_mgr": ("客户经理", "客户专员"),
+    "eval_clerk": (
+        "评教员",
+        "评教管理员",
+        "评教专员",
+        "教学督导",
+        "督导员",
+        "督导老师",
+        "教务管理员",
+    ),
+    "account_mgr": (
+        "客户经理",
+        "客户专员",
+        "客户管理员",
+        "销售经理",
+        "跟进专员",
+        "项目负责人",
+        "案件秘书",
+        "项目对接人",
+        "辅导员",
+    ),
     "ops": ("运维员", "运维工程师"),
     "field_tech": ("上门运维", "现场工程师", "驻场运维"),
     "courier": ("派件员", "送件员", "派送员"),
@@ -427,7 +617,8 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-SURVEY": ("受访者", "用户"),
     "DOM-VOTE": ("投票人", "用户"),
     "DOM-DOCLIB": ("读者", "用户"),
-    "DOM-CARPOOL": ("同行者", "用户"),
+    "DOM-CARPOOL": ("拼车用户", "同行者", "用户"),
+    "DOM-TOUR": ("游客", "用户"),
     "DOM-TIMEBANK": ("志愿者", "用户"),
     "DOM-CINEMA": ("观影者", "用户"),
     "DOM-LABSAFE": ("实验人员", "申请人"),
@@ -447,6 +638,11 @@ def _catalog_default_label(domain: str, post_id: str) -> str | None:
         if isinstance(post, dict) and str(post.get("id")) == post_id:
             lab = str(post.get("label") or "").strip()
             return lab or None
+    flow = _OPTIONAL_FLOW_CLERKS.get(domain) or {}
+    post = flow.get("post")
+    if isinstance(post, dict) and str(post.get("id")) == post_id:
+        lab = str(post.get("label") or "").strip()
+        return lab or None
     return None
 
 
@@ -580,16 +776,6 @@ def _apply_scene_post_labels(
                 lab = str(p.get("label") or "").strip()
                 if lab in ("", "实习辅导员", "辅导员", "带教导师"):
                     p["label"] = "企业导师"
-    elif domain == "DOM-CRM":
-        from app.bake.scene_scan import scene_crm_parts
-
-        if scene_crm_parts(title, proposal_text) == "campus":
-            for p in out:
-                if str(p.get("id") or "") != "account_mgr":
-                    continue
-                lab = str(p.get("label") or "").strip()
-                if lab in ("", "客户经理", "客户专员"):
-                    p["label"] = "项目负责人"
     elif domain == "DOM-HOSPITAL":
         from app.bake.scene_scan import hospital_product_kind
 
@@ -604,6 +790,33 @@ def _apply_scene_post_labels(
                 continue
             lab = str(p.get("label") or "").strip()
             if lab in ("", "挂号员", "预约管理员", "导诊", "分诊台"):
+                p["label"] = want
+    elif domain == "DOM-EQUIP":
+        from app.bake.scene_scan import equip_product_kind
+
+        kind = equip_product_kind(title, proposal_text)
+        want = {
+            "light": "物资管理员",
+            "costume": "道具管理员",
+            "music": "乐器管理员",
+            "teach": "教具管理员",
+            "outdoor": "装备管理员",
+        }.get(kind, "器材管理员")
+        for p in out:
+            if str(p.get("id") or "") != "keeper":
+                continue
+            lab = str(p.get("label") or "").strip()
+            if lab in (
+                "",
+                "器材管理员",
+                "器材员",
+                "物资管理员",
+                "道具管理员",
+                "服装管理员",
+                "乐器管理员",
+                "教具管理员",
+                "装备管理员",
+            ):
                 p["label"] = want
     return out
 
@@ -634,19 +847,30 @@ def staff_posts_for_domain(
         )
     posts = [dict(p) for p in (STAFF_POSTS_BY_DOMAIN.get(domain) or []) if isinstance(p, dict)]
     have = {str(p.get("id")) for p in posts if p.get("id")}
+    scan_blob = f"{title or ''}\n{proposal_text or ''}"
     for post, hints in _OPTIONAL_WORKERS.get(domain) or []:
         pid = str(post.get("id") or "")
         if not pid or pid in have:
             continue
-        if _proposal_wants_any(proposal_text, hints):
+        if _proposal_wants_any(scan_blob, hints):
             row = dict(post)
             # 可选岗：命中词里最长称呼作显示名（写「配送员」就显示配送员）
-            picked = _pick_label_from_proposal(proposal_text, hints)
+            picked = _pick_label_from_proposal(scan_blob, hints)
             if picked:
                 row["label"] = picked
             posts.append(row)
             have.add(pid)
-    posts = _apply_post_labels_from_proposal(posts, domain, proposal_text)
+    # CRM/EVAL：流程信号挂第三角（岗名可抠则抠，否则用默认）
+    flow = _OPTIONAL_FLOW_CLERKS.get(domain)
+    if flow and _wants_flow_clerk(domain, scan_blob):
+        base = dict(flow.get("post") or {})
+        pid = str(base.get("id") or "")
+        if pid and pid not in have:
+            default_lab = str(base.get("label") or "经办员")
+            base["label"] = _flow_clerk_label(domain, scan_blob, default_lab)
+            posts.append(base)
+            have.add(pid)
+    posts = _apply_post_labels_from_proposal(posts, domain, scan_blob)
     return _apply_scene_post_labels(
         posts, domain, title=title, proposal_text=proposal_text
     )
@@ -705,6 +929,46 @@ def validate_staff_posts(posts: list[dict[str, Any]]) -> list[str]:
             elif pk not in allowed:
                 errs.append(f"staff_post {pid}: pack {pk} 与 kind={kind} 不匹配")
     return errs
+
+
+def _restore_crm_pending_when_account_mgr(
+    schema: dict[str, Any],
+    clerks: list[dict[str, Any]],
+) -> None:
+    """开题挂上客户经理后恢复待审，避免 auto_approve 下第三角空转。"""
+    if not any(str(c.get("id") or "") == "account_mgr" for c in clerks):
+        return
+    ents = dict(schema.get("entities") or {})
+    ticket = dict(ents.get("ticket") or {})
+    if ticket.get("autoApprove") is False:
+        return
+    ticket["autoApprove"] = False
+    ents["ticket"] = ticket
+    schema["entities"] = ents
+    pending_label = str(
+        ((schema.get("labels") or {}).get("pendingLabel"))
+        or ticket.get("pendingLabel")
+        or "跟进审核"
+    ).strip() or "跟进审核"
+    menus = dict(schema.get("menus") or {})
+    admin = list(menus.get("admin") or [])
+    if any(isinstance(m, dict) and m.get("key") == "ticket_pending" for m in admin):
+        return
+    out: list[Any] = []
+    inserted = False
+    for m in admin:
+        if (
+            not inserted
+            and isinstance(m, dict)
+            and m.get("key") == "ticket_records"
+        ):
+            out.append({"key": "ticket_pending", "label": pending_label})
+            inserted = True
+        out.append(m)
+    if not inserted:
+        out.append({"key": "ticket_pending", "label": pending_label})
+    menus["admin"] = out
+    schema["menus"] = menus
 
 
 def attach_staff_posts(
@@ -822,6 +1086,7 @@ def attach_staff_posts(
                 ents = dict(schema.get("entities") or {})
                 ents["archive"] = {**arch, "fields": new_fields}
                 schema["entities"] = ents
+        _restore_crm_pending_when_account_mgr(schema, clerks)
     else:
         roles.pop("subadmin", None)
     schema["roles"] = roles
@@ -939,10 +1204,16 @@ def append_staff_seed_sql(
         c0 = clerks[0]
         cid = str(c0["id"])
         clabel = str(c0.get("label") or cid).replace("'", "''")
+        # 双角色模板可能无 subadmin 行：开题挂岗时幂等补账号
         lines.append(
-            "UPDATE sys_user SET staff_post="
-            f"'{cid}', staff_kind='clerk', nickname='{clabel}' "
-            "WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;"
+            "INSERT INTO sys_user "
+            "(username, password, role, nickname, phone, profile_json, "
+            "super_admin, profile_editable, enabled, staff_post, staff_kind) "
+            f"VALUES ('subadmin', 'sub123', 'admin', '{clabel}', '13800000001', '{{}}', "
+            f"0, 1, 1, '{cid}', 'clerk') "
+            "ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), "
+            "staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), "
+            "role='admin', super_admin=0;"
         )
         for c in clerks[1:]:
             _insert_staff(str(c["id"]), str(c.get("label") or c["id"]), "clerk")

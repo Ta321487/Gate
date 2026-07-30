@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 FAVORITES_CAP = "favorites"
 
 _FAVORITES_SIGNALS = re.compile(
@@ -23,7 +25,7 @@ _PROFILE_SCAN_FAVORITE_DOMAINS = frozenset({"DOM-DATING"})
 
 
 def scan_favorites(text: str) -> bool:
-    return bool(_FAVORITES_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _FAVORITES_SIGNALS, ignore_contrast=True)
 
 
 def favorites_wanted(

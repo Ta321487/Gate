@@ -15,6 +15,20 @@ public interface TicketMapper {
 
     Map<String, Object> selectById(@Param("ticketTable") String ticketTable, @Param("id") long id);
 
+    @Delete("DELETE FROM `${ticketTable}` WHERE id=#{id}")
+    int deleteById(@Param("ticketTable") String ticketTable, @Param("id") long id);
+
+    List<Map<String, Object>> selectPeerInbox(
+            @Param("ticketTable") String ticketTable,
+            @Param("itemTable") String itemTable,
+            @Param("itemFk") String itemFk,
+            @Param("owner") String owner,
+            @Param("status") String status);
+
+    @Update("UPDATE `${ticketTable}` SET pass_code=#{passCode} WHERE id=#{id}")
+    int updatePassCode(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("passCode") String passCode);
+
     List<Map<String, Object>> selectOpenApprovedOverdue(@Param("ticketTable") String ticketTable);
 
     List<Map<String, Object>> selectTickets(Map<String, Object> q);
@@ -78,6 +92,13 @@ public interface TicketMapper {
             @Param("ratingRemark") String ratingRemark,
             @Param("ratingDimsJson") String ratingDimsJson,
             @Param("ratingAnonymous") int ratingAnonymous);
+
+    @Update("UPDATE `${ticketTable}` SET rating=#{rating}, rating_remark=#{ratingRemark}, rated_at=NOW() WHERE id=#{id}")
+    int updateRatingBasic(
+            @Param("ticketTable") String ticketTable,
+            @Param("id") long id,
+            @Param("rating") int rating,
+            @Param("ratingRemark") String ratingRemark);
 
     @Update("UPDATE `${ticketTable}` SET checked_in_at=NOW(), status='returned' WHERE id=#{id}")
     int updateCheckin(@Param("ticketTable") String ticketTable, @Param("id") long id);

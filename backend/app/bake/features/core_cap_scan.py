@@ -59,6 +59,18 @@ _LOAN_DEADLINE_TERMS = (
     "超期归还",
 )
 
+# 工单处理时效 / 超时列表（与借阅催还共用 deadline 能力）
+_TICKET_SLA_TERMS = (
+    "超时未处理",
+    "超时提醒",
+    "处理时效",
+    "超时工单",
+    "考核时效",
+    "工单超时",
+    "时效可统计",
+    "超时列表",
+)
+
 
 def scan_recommend(text: str) -> bool:
     raw = text or ""
@@ -74,6 +86,12 @@ def scan_loan_deadline(text: str) -> bool:
     """借阅/占用到期催办；不含申报截止。"""
     raw = text or ""
     return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _LOAN_DEADLINE_TERMS)
+
+
+def scan_ticket_sla(text: str) -> bool:
+    """报修/工单处理超时列表。"""
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _TICKET_SLA_TERMS)
 
 
 def merge_recommend_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:
@@ -104,7 +122,8 @@ def merge_loan_deadline_capabilities(caps: list[str], proposal_text: str = "") -
         return [c for c in out if c != DEADLINE_CAP]
     if DEADLINE_CAP in out:
         return out
-    if scan_loan_deadline(proposal_text or ""):
+    text = proposal_text or ""
+    if scan_loan_deadline(text) or scan_ticket_sla(text):
         out.append(DEADLINE_CAP)
     return out
 
@@ -115,11 +134,16 @@ def enrich_loan_deadline_flags(
     *,
     capabilities: list[str] | None = None,
 ) -> dict[str, Any]:
-    """已有 deadline 能力时打开借阅壳列（只增不减）。扫词只走 merge，不在此重复。"""
+    """已有 deadline 能力时打开到期列（只增不减）。扫词只走 merge，不在此重复。"""
     del proposal_text  # 接口与其它 enrich 对齐；命中判断在 merge_loan_deadline_capabilities
     out = dict(flags or {})
     if DEADLINE_CAP in list(capabilities or []):
-        out["pickLoanPeriod"] = True
+        # 独立报修：applicantCompleteOnly / slaDeadline → 处理时限列，不开自选借期
+        if out.get("slaDeadline") or out.get("applicantCompleteOnly"):
+            out["slaDeadline"] = True
+            out["pickLoanPeriod"] = False
+        else:
+            out["pickLoanPeriod"] = True
     return out
 
 
@@ -156,14 +180,25 @@ def attach_core_caps_schema(schema: dict[str, Any], caps: list[str]) -> None:
     if DEADLINE_CAP in caps:
         ticket = ents.get("ticket")
         if isinstance(ticket, dict):
-            ticket["pickLoanPeriod"] = True
+            # 独立报修 SLA：不打开自选借期，只起算处理时限
+            if ticket.get("applicantCompleteOnly"):
+                ticket["slaDeadline"] = True
+                ticket["pickLoanPeriod"] = False
+                ticket.setdefault("dueLabel", "处理时限")
+            else:
+                ticket["pickLoanPeriod"] = True
+        menu_lab = labels.get("deadlineMenuLabel") or (
+            "超时未处理"
+            if isinstance(ticket, dict) and ticket.get("applicantCompleteOnly")
+            else "逾期催还"
+        )
+        labels.setdefault("deadlineMenuLabel", menu_lab)
         ensure_menu(
             admin,
             "deadline",
-            {"key": "deadline", "label": labels.get("deadlineMenuLabel") or "逾期催还"},
+            {"key": "deadline", "label": labels.get("deadlineMenuLabel") or menu_lab},
             before_key="content",
         )
-        labels.setdefault("deadlineMenuLabel", "逾期催还")
 
 
 def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
@@ -189,6 +224,8 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         _add("时间冲突检测")
     if DEADLINE_CAP in caps and scan_loan_deadline(text):
         _add("逾期催还")
+    if DEADLINE_CAP in caps and scan_ticket_sla(text):
+        _add("超时未处理")
 
     spec = {**spec, "capabilities": caps, "schema": schema, "features": features}
     return spec

@@ -189,6 +189,7 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 | **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** + **checkin**；开题写报名+投票 → 另挂 **vote**（C-11） |
 | **DOM-LOST** | 失物招领；宠物领养（认领壳换皮） | archive + ticket_flow + **quota** + content + org_users |
 | **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict**（+ L1 互斥/分类限额） |
+| **DOM-TOUR** | 旅行社线路、跟团游报名、出团确认 | archive + ticket_flow + **quota** + content + org_users（线路 `tour_line`、报名 `tour_signup`；≠酒店≠校园活动≠拼车≠出差） |
 
 ### D. 交易 / 点餐（`order_lines` 已开）
 
@@ -269,7 +270,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 与组 A～G **单域换皮**并列；开题写清**两套玩法**时匹配降 `DOM-GENERIC` 并保留行为并集（不再挤掉借用/审核）。  
 样例开题（可上传匹配）：
-- X-BORROW-SHOP：`data/samples/图书借阅与二手交叉开题.txt`；`交叉预设开题/X-01-*.txt`（点餐+报修）
+- X-BORROW-SHOP：`data/samples/快速试传/图书借阅与二手交叉开题.txt`；`交叉预设开题/X-01-*.txt`（点餐+报修）
 - X-BORROW-RESERVE：`data/samples/交叉预设开题/X-02-*.txt`（图书+座位；仪器借+机时 → DOM-INSTRUMENT）
 - X-SHOP-RESERVE：`data/samples/交叉预设开题/X-03-*.txt`
 三合一 / 智慧校园大杂烩 → reject。宾馆客房预约+附加消费 → 具名 DOM-HOTEL（非本交叉壳）。
@@ -433,7 +434,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - [x] 组 A：**DOM-LIBRARY / DOM-EQUIP** + **DOM-ASSET / CRM / EVENT** + **DOM-ATTEND / FUND / LABSAFE / RECRUIT / GRADE / INTERN / PARCEL** + **OA：SEAL / FLEET / CERT / PROMO / FITOUT / ACAD / TRIP / EXPENSE**（`test_oa_apply_p`）+ **学工：CREDIT / LABOR / EVAL / MORAL / AWARD**（`test_stuwork_p`）
 - [x] 组 G：**DOM-MEDIA / DOM-MUSIC**（即时收藏、播放外链）+ **DOM-FORUM / DOM-BLOG**（主帖用户发帖即时可见 + 回复审核；博客即时收藏；可选门户轮播）
 - [x] 门户轮播：与登录图分套（`portal_banners.py`）；LIBRARY / EQUIP / FORUM / BLOG / ACTIVITY / COURSE 开启
-- [x] 组 C：**DOM-ACTIVITY / LOST / COURSE**（报名/认领/选课；ACTIVITY/COURSE 含 `time_conflict` + 门户轮播）
+- [x] 组 C：**DOM-ACTIVITY / LOST / COURSE / TOUR**（报名/认领/选课/旅行社线路；ACTIVITY/COURSE 含 `time_conflict` + 门户轮播）
 - [x] L0 **站内消息** + **薄域工作台** + **ECharts / CSV 导出导入**
 - [x] L2 **`order_lines` / `slot_reserve`**：组 D SHOP/FOOD + 组 E MEETING/HOSPITAL/PARKING/SALON/HOTEL
 - [x] **匹配兜底**：零命中 → `DOM-GENERIC`；按 ARCH-* 绑 FLOW/TRADE/RESERVE（`archetype_shells.py`）；多 ARCH 并集可拼 SQL

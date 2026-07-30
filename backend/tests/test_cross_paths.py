@@ -482,9 +482,9 @@ def test_match_media_ignores_oos_pay_and_keeps_skin():
 
     from app.bake.catalog import match_text
 
-    path = Path(__file__).resolve().parents[2] / "data/samples/校园影视资源点播系统开题.txt"
+    path = Path(__file__).resolve().parents[2] / "data/samples/快速试传/校园影视资源点播系统开题.txt"
     if not path.is_file():
-        path = Path("d:/graduate_factory_v3/data/samples/校园影视资源点播系统开题.txt")
+        path = Path("d:/graduate_factory_v3/data/samples/快速试传/校园影视资源点播系统开题.txt")
     text = path.read_text(encoding="utf-8")
     m = match_text(text, path.name)
     assert m.domain == "DOM-MEDIA"
@@ -499,7 +499,7 @@ def test_match_material_claim_opening_to_asset():
 
     from app.bake.catalog import build_spec, match_text
 
-    text = Path("d:/graduate_factory_v3/data/samples/仓储物资申领开题.txt").read_text(
+    text = Path("d:/graduate_factory_v3/data/samples/快速试传/仓储物资申领开题.txt").read_text(
         encoding="utf-8"
     )
     m = match_text(text, "仓储物资申领开题.txt")

@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 SEAT_SELECT_CAP = "seat_select"
 
 _SEAT_SIGNALS = re.compile(
@@ -13,7 +15,7 @@ _SEAT_SIGNALS = re.compile(
 
 
 def scan_seat_select(text: str) -> bool:
-    return bool(_SEAT_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _SEAT_SIGNALS, ignore_contrast=True)
 
 
 def seat_select_wanted(

@@ -301,11 +301,22 @@ def domain_sql(
         ticket_table=resolved_ticket,
         ticket_flags=flags,
     )
+    user_publish = False
+    try:
+        from app.bake.schema.templates import SCHEMA_BUILDERS
+
+        builder = SCHEMA_BUILDERS.get(domain or "")
+        if builder:
+            arch = ((builder("thesis").get("entities") or {}).get("archive") or {})
+            user_publish = bool(arch.get("userPublish"))
+    except Exception:
+        user_publish = False
     text = ensure_archive_flag_columns(
         text,
         item_table=resolved_item,
         allow_checkin=bool(flags.get("allowCheckin")),
         peer_accept=bool(flags.get("peerAccept")),
+        user_publish=user_publish,
         check_mutex=bool(flags.get("checkMutex")),
         apply_deadline=scan_apply_deadline(proposal_text or ""),
         schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),

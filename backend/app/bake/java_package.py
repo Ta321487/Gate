@@ -54,6 +54,7 @@ _DOMAIN_JAVA: dict[str, tuple[str, str, str]] = {
     "DOM-VOTE": ("com.campus.vote", "VoteApplication", "vote-app"),
     "DOM-DOCLIB": ("com.campus.doclib", "DoclibApplication", "doclib-app"),
     "DOM-CARPOOL": ("com.campus.carpool", "CarpoolApplication", "carpool-app"),
+    "DOM-TOUR": ("com.campus.tour", "TourApplication", "tour-app"),
     "DOM-TIMEBANK": ("com.campus.timebank", "TimebankApplication", "timebank-app"),
     "DOM-CINEMA": ("com.campus.cinema", "CinemaApplication", "cinema-app"),
     "DOM-DORM": ("com.campus.dorm", "DormApplication", "dorm-app"),
@@ -160,13 +161,16 @@ def remap_student_java_package(
 
     # 1) 改源码内容（仍在旧目录）
     for path in old_dir.rglob("*.java"):
-        text = path.read_text(encoding="utf-8")
+        # utf-8-sig：剥掉骨架/叠层偶发的 BOM，避免 javac「非法字符 \ufeff」
+        text = path.read_text(encoding="utf-8-sig")
         text = text.replace(f"package {_OLD_PKG}.", f"package {new_pkg}.")
         text = text.replace(f"package {_OLD_PKG};", f"package {new_pkg};")
         text = text.replace(f"import {_OLD_PKG}.", f"import {new_pkg}.")
         text = text.replace(f"import {_OLD_PKG};", f"import {new_pkg};")
         # @MapperScan("com.thesis.mapper") 等字符串字面量
         text = text.replace(f'"{_OLD_PKG}.', f'"{new_pkg}.')
+        # 全限定名残留（如 com.thesis.service.ExamStore.xxx）
+        text = text.replace(f"{_OLD_PKG}.", f"{new_pkg}.")
         if path.name == f"{_OLD_APP}.java":
             text = text.replace(_OLD_APP, app_class)
         path.write_text(text, encoding="utf-8")

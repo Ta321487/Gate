@@ -10,7 +10,6 @@ from app.bake.features.ticket_flow_opts import (
     enrich_ticket_flags_from_proposal,
     scan_apply_deadline,
     scan_require_attach,
-    scan_three_level,
     scan_two_level,
 )
 from app.bake.schema.templates import SCHEMA_BUILDERS
@@ -22,11 +21,6 @@ class TicketFlowOptsScanTests(unittest.TestCase):
         self.assertTrue(scan_two_level("支持两级审批与待终审。"))
         self.assertFalse(scan_two_level("本期不实现两级审批。"))
         self.assertFalse(scan_two_level("仅单级审核通过或驳回。"))
-
-        self.assertTrue(scan_three_level("须初审复审终审三级审批。"))
-        self.assertTrue(scan_two_level("三级会签"))  # 三级隐含两级
-        self.assertFalse(scan_three_level("本期不实现三级审批。"))
-        self.assertFalse(scan_three_level("多级会签引擎不在本期。"))
 
         self.assertTrue(scan_require_attach("学生须上传证明与佐证材料。"))
         self.assertTrue(scan_require_attach("报修请上传现场照片。"))

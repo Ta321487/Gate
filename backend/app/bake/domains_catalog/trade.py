@@ -20,7 +20,7 @@ DOMAINS: dict = {
         "match_hint": (
             "适用：商品浏览、购物车下单交易；校园二手/闲置、文印打印、农资特产鲜花零售、"
             "积分兑换商城、校园跑腿代买（订单向）亦挂本域。"
-            "勿与点餐（食堂菜品）、客房预订或快递驿站取件（包裹核销）混淆。"
+            "勿与点餐（食堂菜品）、客房预订、快递驿站取件（包裹核销）或旅行社线路报名混淆。"
         ),
         "entities": ["Product", "Category", "Order", "Cart", "Guestbook", "Notice"],
         "roles": ["user", "admin", "subadmin"],

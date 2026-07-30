@@ -266,7 +266,7 @@ DOMAINS: dict = {
     "DOM-TRIP": {
         "label": "出差加班",
         "keywords": ["出差申请", "加班审批", "出差审批", "加班申请", "公出申请", "加班单"],
-        "match_hint": "适用：出差/加班申请与审批销结。勿与请销假（考勤请假）或用车申请混淆。",
+        "match_hint": "适用：出差/加班申请与审批销结。勿与请销假（考勤请假）、用车申请或旅行社线路报名混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选档案事项 → 提交申请 → 审批完结"],

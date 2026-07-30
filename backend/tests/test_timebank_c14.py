@@ -16,7 +16,7 @@ from app.bake.menu_routes import shell_kind
 from app.bake.schema.templates import SCHEMA_BUILDERS
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "时间银行预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 BASELINE = ROOT / "skeletons" / "baseline"
 
 

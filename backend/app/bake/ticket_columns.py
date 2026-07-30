@@ -37,12 +37,12 @@ TICKET_ITEM_FK_BY_DOMAIN: dict[str, str] = {
 
 
 def ticket_loan_shell_wanted(domain: str, ticket_flags: dict | None = None) -> bool:
-    """仅借阅/设备租借等需要到期与罚金壳。"""
+    """借阅到期/罚金壳，或工单 SLA（due_at 处理时限）需要到期列。"""
     d = (domain or "").strip()
     if d in ("DOM-LIBRARY", "DOM-EQUIP"):
         return True
     f = ticket_flags or {}
-    if f.get("pickLoanPeriod"):
+    if f.get("pickLoanPeriod") or f.get("slaDeadline"):
         return True
     if d == "DOM-ACTIVITY":
         return False

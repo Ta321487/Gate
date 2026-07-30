@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 EXAM_CAP = "exam"
 
 _EXAM_SIGNALS = re.compile(
@@ -129,18 +131,18 @@ _SKIN_SEED_REPLACES: dict[str, list[tuple[str, str]]] = {
 
 
 def scan_exam(text: str) -> bool:
-    return bool(_EXAM_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _EXAM_SIGNALS, ignore_contrast=True)
 
 
 def scan_exam_opts(text: str) -> dict[str, bool]:
     body = text or ""
-    return {k: bool(p.search(body)) for k, p in _OPT_PATTERNS.items()}
+    return {k: pattern_mentioned(body, p, ignore_contrast=True) for k, p in _OPT_PATTERNS.items()}
 
 
 def scan_exam_skin(text: str) -> str:
     body = text or ""
     for skin, pat in _SKIN_PATTERNS:
-        if pat.search(body):
+        if pattern_mentioned(body, pat, ignore_contrast=True):
             return skin
     return "general"
 
@@ -149,7 +151,7 @@ def scan_exam_gate_ticket(text: str, domain: str | None = None) -> bool:
     """LABSAFE 准入闸门：开题写到先考后申类措辞。"""
     if (domain or "") != "DOM-LABSAFE":
         return False
-    return bool(_LABSAFE_EXAM_GATE.search(text or ""))
+    return pattern_mentioned(text or "", _LABSAFE_EXAM_GATE, ignore_contrast=True)
 
 
 def exam_wanted(

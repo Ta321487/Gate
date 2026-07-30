@@ -125,8 +125,8 @@ DOMAINS: dict = {
             "勿与成绩更正、论坛发帖或综测申报混淆。"
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
-        "roles": ["user", "admin", "subadmin"],
-        "flows": ["选课程 → 提交评教卷 → 审通过 → 多维评分"],
+        "roles": ["user", "admin"],
+        "flows": ["选课程 → 多维评分与评语 → 提交完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -134,8 +134,8 @@ DOMAINS: dict = {
             {"name": "评教课程", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
-            {"name": "评教卷审核", "status": "flow"},
-            {"name": "评教卷记录", "status": "module"},
+            {"name": "提交评教", "status": "flow"},
+            {"name": "评教记录", "status": "module"},
             {"name": "多维评分与评语", "status": "module"},
             {"name": "公告管理", "status": "module"},
         ],
@@ -148,8 +148,8 @@ DOMAINS: dict = {
         ],
         "gate": gate_archive_ticket(
             archive_feature="评教课程",
-            flow_feature="评教卷审核",
-            records_feature="评教卷记录",
+            flow_feature="提交评教",
+            records_feature="评教记录",
             users_feature="用户管理",
             category_feature="分类管理",
             with_deadline=False,

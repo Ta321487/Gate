@@ -127,4 +127,5 @@ SCHEMA_BUILDERS["DOM-SURVEY"] = _survey_schema
 SCHEMA_BUILDERS["DOM-VOTE"] = _vote_schema
 SCHEMA_BUILDERS["DOM-DOCLIB"] = _doclib_schema
 SCHEMA_BUILDERS["DOM-CARPOOL"] = followup_builder("DOM-CARPOOL")
+SCHEMA_BUILDERS["DOM-TOUR"] = followup_builder("DOM-TOUR")
 SCHEMA_BUILDERS["DOM-TIMEBANK"] = followup_builder("DOM-TIMEBANK")

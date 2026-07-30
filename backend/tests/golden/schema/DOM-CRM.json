@@ -52,12 +52,14 @@
       "softDelete": false,
       "stockDisplay": "toggle",
       "stockUnavailableLabel": "已跟进",
-      "tagFilter": false
+      "tagFilter": false,
+      "userPublish": true
     },
     "ticket": {
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
       "autoApprove": true,
       "categoryLimit": 0,
@@ -71,16 +73,19 @@
         "其他"
       ],
       "contactChannelPlaceholder": "电话/微信/到访等",
+      "issuePassCode": false,
       "key": "follow_up",
       "label": "跟进单",
       "labelPlural": "跟进",
       "nextFollowLabel": "下次跟进",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "跟进内容",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "跟进中",
@@ -103,16 +108,18 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "客户跟进",
-    "authLead": "验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
+    "authLead": "验证码登录；登记名下客户并提交跟进记录，跟进即时生效，可在完成后结案。",
     "authPoints": [
       "验证码登录",
       "客户档案",
       "跟进记录"
     ],
     "messagesPageLead": "系统通知。",
+    "myArchivePageLead": "本人发布的客户即时可见；站长下架后仍可在此查看状态。",
+    "myArchivePageTitle": "我的客户",
     "noticePageLead": "跟进规范与临时通知，点击条目阅读全文。",
     "noticePageTitle": "销售公告",
-    "registerRoleHint": "注册后可维护名下客户并提交跟进"
+    "registerRoleHint": "注册后可登记名下客户并提交跟进"
   },
   "menus": {
     "admin": [
@@ -151,6 +158,10 @@
         "label": "客户列表"
       },
       {
+        "key": "my_archive",
+        "label": "我的客户"
+      },
+      {
         "key": "my_tickets",
         "label": "我的跟进"
       },
@@ -170,6 +181,10 @@
       "title": "客户档案"
     },
     {
+      "lead": "登录后可登记名下客户，即时可见。",
+      "title": "登记客户"
+    },
+    {
       "lead": "提交跟进记录即时生效，办结后可追溯。",
       "title": "客户跟进"
     },
@@ -180,20 +195,12 @@
     {
       "lead": "登录后查看跟进进度与记录。",
       "title": "我的跟进"
-    },
-    {
-      "lead": "按客户分级筛选重点对象。",
-      "title": "分级管理"
     }
   ],
   "roles": {
     "admin": {
       "id": "admin",
       "label": "销售主管（总管）"
-    },
-    "subadmin": {
-      "id": "subadmin",
-      "label": "客户经理"
     },
     "user": {
       "id": "user",

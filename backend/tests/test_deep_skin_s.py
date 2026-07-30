@@ -41,6 +41,30 @@ class DeepSkinSMatchTests(unittest.TestCase):
         labels = schema.get("labels") or {}
         self.assertEqual(labels.get("authEyebrow"), "投诉建议")
         self.assertIn("提交投诉", labels.get("authPoints") or [])
+        menus = (schema.get("menus") or {}).get("admin") or []
+        site = next((m.get("label") for m in menus if m.get("key") == "lookup_site"), None)
+        self.assertEqual(site, "楼栋单元")
+
+    def test_s02_s03_equip_skin(self) -> None:
+        """S-02/S-03：EQUIP 深皮不得仍显示实验室设备壳。"""
+        from app.bake.scene_scan import equip_product_kind
+
+        s02 = build_domain_schema(
+            "校园共享雨伞与充电宝租借管理系统",
+            "DOM-EQUIP",
+            proposal_text="校园雨伞充电宝门禁卡租借归还",
+        )
+        self.assertEqual(equip_product_kind("校园共享雨伞与充电宝租借管理系统", ""), "light")
+        self.assertEqual((s02.get("labels") or {}).get("authEyebrow"), "校园轻资产")
+        self.assertNotEqual((s02.get("labels") or {}).get("authEyebrow"), "实验室设备")
+
+        s03 = build_domain_schema(
+            "校园演出服装道具租借管理系统",
+            "DOM-EQUIP",
+            proposal_text="演出服装道具器材租借归还审核",
+        )
+        self.assertEqual(equip_product_kind("校园演出服装道具租借管理系统", ""), "costume")
+        self.assertEqual((s03.get("labels") or {}).get("authEyebrow"), "演出道具")
 
     def test_s16_2_spot_checks(self) -> None:
         """§16.2 深皮抽检句。"""

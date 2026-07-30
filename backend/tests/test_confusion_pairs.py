@@ -33,6 +33,7 @@ _POSITIVE: list[tuple[str, str, str]] = [
     ("M-15a", "成绩更正与成绩复核申请", "DOM-GRADE"),
     ("M-15b", "学生网上评教与课程评分", "DOM-EVAL"),
     ("M-15c", "综合测评与德育分申报", "DOM-MORAL"),
+    ("M-16", "旅行社线路报名与出团确认", "DOM-TOUR"),
 ]
 
 # (id, 正句, 禁止落入的域)
@@ -63,6 +64,10 @@ _NEGATIVE: list[tuple[str, str, str]] = [
     ("M-15a", "成绩更正与成绩复核申请", "DOM-EVAL"),
     ("M-15b", "学生网上评教与课程评分", "DOM-GRADE"),
     ("M-15c", "综合测评与德育分申报", "DOM-GRADE"),
+    ("M-16a", "旅行社线路报名与出团确认", "DOM-ACTIVITY"),
+    ("M-16b", "旅行社线路报名与出团确认", "DOM-HOTEL"),
+    ("M-16c", "旅行社线路报名与出团确认", "DOM-CARPOOL"),
+    ("M-16d", "旅行社线路报名与出团确认", "DOM-TRIP"),
 ]
 
 

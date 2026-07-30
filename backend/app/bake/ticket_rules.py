@@ -45,6 +45,7 @@ TICKET_RULES_BY_DOMAIN: dict[str, dict[str, Any]] = {
     "DOM-CARPASS": {"max_active": 5},
     "DOM-LISTING": {"max_active": 5},
     "DOM-CARPOOL": {"max_active": 5},
+    "DOM-TOUR": {"max_active": 5},
     "DOM-TIMEBANK": {"max_active": 5},
     "DOM-PROCURE": {"max_active": 5},
     "DOM-CLUB": {"max_active": 5},
@@ -53,6 +54,10 @@ TICKET_RULES_BY_DOMAIN: dict[str, dict[str, Any]] = {
     "DOM-PARTY": {"max_active": 5},
     "DOM-CONTRACT": {"max_active": 5},
     "DOM-INSTRUMENT": {"loan_days": 7, "max_active": 3, "fine_per_day": 0.5},
+    # 独立报修 SLA：受理后起算处理时限；无罚金
+    "DOM-DORM": {"loan_days": 3, "fine_per_day": 0},
+    "DOM-PROPERTY": {"loan_days": 3, "fine_per_day": 0},
+    "DOM-IT": {"loan_days": 2, "fine_per_day": 0},
     "DOM-RECRUIT": {"max_active": 5},
     "DOM-DATING": {"max_active": 5},
     "DOM-COURSE": {"max_active": 3},

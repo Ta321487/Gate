@@ -1,0 +1,223 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "行程标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "发布人",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "时间地点备注",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "余座",
+          "type": "number"
+        },
+        {
+          "key": "ownerUsername",
+          "label": "确认账号",
+          "type": "string"
+        }
+      ],
+      "key": "trip_route",
+      "label": "行程",
+      "labelPlural": "行程",
+      "softDelete": false,
+      "stockDisplay": "number",
+      "tagFilter": false,
+      "userPublish": true
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "applyFromList": false,
+      "approveEndsFlow": true,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "对接方式",
+      "contactChannelOptions": [
+        "站内留言",
+        "电话联系",
+        "线下碰面",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "选择对接方式",
+      "issuePassCode": false,
+      "key": "carpool_intent",
+      "label": "同行意向",
+      "labelPlural": "同行意向",
+      "nextFollowLabel": "期望出行日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "peerAccept": true,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "同行说明",
+      "requireAttach": false,
+      "requireClaimCode": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已对接",
+        "overdue": "已逾期",
+        "pending": "待对方确认",
+        "rejected": "已婉拒",
+        "returned": "已完结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交意向",
+        "approve": "调剂确认",
+        "reject": "调剂驳回",
+        "remind": "催确认",
+        "return": "完结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "拼车结伴",
+    "authLead": "验证码登录；发布行程或提交同行意向，由车主确认或婉拒；管理端可调剂（无地图）。",
+    "authPoints": [
+      "验证码登录",
+      "行程发布",
+      "意向对接与车主确认"
+    ],
+    "messagesPageLead": "志愿确认、调剂结果与系统通知。",
+    "myArchivePageLead": "本人发布的行程即时可见；站长下架后仍可在此查看状态。",
+    "myArchivePageTitle": "我的行程",
+    "noticePageLead": "出行须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "拼车公告",
+    "peerInboxEmpty": "暂无待确认志愿",
+    "peerInboxLead": "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。",
+    "peerInboxTitle": "待我确认",
+    "registerRoleHint": "注册后可发布行程并提交同行意向"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "行程档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "调剂确认"
+      },
+      {
+        "key": "ticket_records",
+        "label": "意向记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "行程目录"
+      },
+      {
+        "key": "my_archive",
+        "label": "我的行程"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的意向"
+      },
+      {
+        "key": "peer_tickets",
+        "label": "待我确认"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "浏览可对接行程。",
+      "title": "行程目录"
+    },
+    {
+      "lead": "登录后发布本人行程，即时可见。",
+      "title": "发布行程"
+    },
+    {
+      "lead": "填写说明提交同行意向，等待车主确认。",
+      "title": "提交意向"
+    },
+    {
+      "lead": "他人向你发起的意向在此确认或婉拒。",
+      "title": "待我确认"
+    },
+    {
+      "lead": "跟踪对接进度。",
+      "title": "我的意向"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "拼车主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "对接员"
+    },
+    "user": {
+      "id": "user",
+      "label": "拼车用户"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写同行说明；确认后占用余座。本期无地图导航与真支付分账。",
+    "noticeTitle": "拼车须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

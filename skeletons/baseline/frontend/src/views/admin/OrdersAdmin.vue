@@ -63,7 +63,7 @@
       </el-table-column>
       <el-table-column label="明细" min-width="200">
         <template #default="{ row }">
-          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}¥${Number(x.lineYuan ?? x.priceYuan * x.qty || 0).toFixed(2)}`).join('；') }}
+          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}¥${Number((x.lineYuan ?? x.priceYuan * x.qty) || 0).toFixed(2)}`).join('；') }}
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />

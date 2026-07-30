@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS trip_route (
   stock INT DEFAULT 3,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  owner_username VARCHAR(64) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -86,17 +87,20 @@ CREATE TABLE IF NOT EXISTS carpool_intent_log (
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '拼车主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '对接员', '13800000001', '{}', 0, 1, 1),
+('peer', 'user123', 'user', '车主甲', '13800000004',
+ '{"realName":"王同学","email":"wang@demo.edu","gender":"男","studentNo":"20230001","dept":"交通学院"}',
+ 0, 1, 1),
 ('user', 'user123', 'user', '同行者甲', '13800000002',
  '{"realName":"周同学","email":"zhou@demo.edu","gender":"男","studentNo":"20230004","dept":"交通学院"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '城际'), (2, '返乡'), (3, '市内短途');
-INSERT IGNORE INTO trip_route (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '周五晚 学校→火车站', '王同学', '约 18:30 出发 / 可带行李', 3, 3, 'available'),
-(2, '周六上午 本市→邻市', '李老师', '顺路两座 / 非营运拼车', 1, 2, 'available'),
-(3, '寒假返乡拼车意向征集', '学生会', '同方向可留言对接', 2, 4, 'available');
+INSERT IGNORE INTO trip_route (id, title, author, isbn, category_id, stock, status, owner_username) VALUES
+(1, '周五晚 学校→火车站', 'peer', '约 18:30 出发 / 可带行李', 3, 3, 'available', 'peer'),
+(2, '周六上午 本市→邻市', 'peer', '顺路两座 / 非营运拼车', 1, 2, 'available', 'peer'),
+(3, '寒假返乡拼车意向征集', 'peer', '同方向可留言对接', 2, 4, 'available', 'peer');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '拼车须知', '请如实填写同行说明；本期无地图导航与真支付分账。', 'admin', '拼车主管'
+SELECT '拼车须知', '发布行程后他人可提交意向，由车主确认或婉拒；管理端可调剂。本期无地图导航与真支付分账。', 'admin', '拼车主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='拼车须知');

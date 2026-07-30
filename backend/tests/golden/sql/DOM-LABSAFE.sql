@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS lab_room (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  stage VARCHAR(32) DEFAULT '在岗',
+  stage VARCHAR(32) DEFAULT '可申请',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

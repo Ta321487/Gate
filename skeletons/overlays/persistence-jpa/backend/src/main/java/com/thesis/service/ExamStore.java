@@ -1,4 +1,4 @@
-﻿package com.thesis.service;
+package com.thesis.service;
 
 import com.thesis.config.JpaSupport;
 import com.thesis.config.JpaDb;
@@ -852,6 +852,8 @@ public class ExamStore {
         if (!rankEnabled) throw new IllegalStateException("排行榜未开通");
         if (page < 1) page = 1;
         if (size < 1) size = 10;
+        final int pageNum = page;
+        final int pageSize = size;
         Integer total = db().queryForObject(
                 "SELECT COUNT(*) FROM exam_attempt WHERE paper_id=? AND mode='exam' AND status='submitted'",
                 Integer.class, paperId);
@@ -861,7 +863,7 @@ public class ExamStore {
                         + "ORDER BY score DESC, submitted_at ASC LIMIT ? OFFSET ?",
                 (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("rank", (page - 1) * size + i + 1);
+                    m.put("rank", (pageNum - 1) * pageSize + i + 1);
                     m.put("username", rs.getString("username"));
                     m.put("score", rs.getObject("score"));
                     m.put("submittedAt", fmt(rs.getTimestamp("submitted_at")));
@@ -871,8 +873,8 @@ public class ExamStore {
                     }
                     return m;
                 },
-                paperId, size, (page - 1) * size);
-        Map<String, Object> out = pageOut(list, total, page, size);
+                paperId, pageSize, (pageNum - 1) * pageSize);
+        Map<String, Object> out = pageOut(list, total, pageNum, pageSize);
         out.put("paperId", paperId);
         return out;
     }

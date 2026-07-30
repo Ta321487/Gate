@@ -242,7 +242,7 @@ def wire_staff() -> None:
     )
     if '"DOM-SEAL"' not in path.read_text(encoding="utf-8"):
         text = path.read_text(encoding="utf-8")
-        anchor = '    "DOM-ATTEND": ("考勤对象", "员工"),\n'
+        anchor = '    "DOM-ATTEND": ("申请人", "员工", "学生"),\n'
         if anchor in text:
             path.write_text(text.replace(anchor, anchor + ulines, 1), encoding="utf-8")
             print("patched staff user labels")

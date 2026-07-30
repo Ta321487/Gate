@@ -91,9 +91,11 @@ def purge_jdbc_persistence(dest: Path) -> None:
                 bad.append(str(path.relative_to(dest)).replace("\\", "/"))
             if "import com.thesis.config.MbBridge" in text or "MbBridge." in text:
                 bad.append(str(path.relative_to(dest)).replace("\\", "/"))
+            if "TicketSql.db()" in text:
+                bad.append(str(path.relative_to(dest)).replace("\\", "/"))
     if bad:
         raise RuntimeError(
-            "persistence=mybatis 包仍含 JdbcSupport/JdbcTemplate/MbBridge，请补 overlay 覆盖: "
+            "persistence=mybatis 包仍含 JdbcSupport/JdbcTemplate/MbBridge/TicketSql.db()，请补 overlay 覆盖: "
             + ", ".join(sorted(set(bad))[:12])
             + ("…" if len(set(bad)) > 12 else "")
         )

@@ -22,11 +22,11 @@ DOMAINS: dict = {
         ],
         "match_hint": (
             "适用：行程档案发布、同行意向单审核对接（无地图/导航）。"
-            "勿与婚恋交友牵线、学习搭子组队互选、社团活动报名占名额混淆。"
+            "勿与婚恋交友牵线、学习搭子组队互选、社团活动报名占名额、旅行社线路报名混淆。"
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览行程 → 提交同行意向 → 审核对接"],
+        "flows": ["发布行程 → 提交同行意向 → 车主确认/婉拒（管理可调剂）"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -34,7 +34,8 @@ DOMAINS: dict = {
             {"name": "行程档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
-            {"name": "同行意向审核", "status": "flow"},
+            {"name": "行程发布", "status": "flow"},
+            {"name": "同行意向对接", "status": "flow"},
             {"name": "意向记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
             {"name": "地图导航/GPS轨迹", "status": "out_of_mvp"},
@@ -49,11 +50,13 @@ DOMAINS: dict = {
         ],
         "gate": gate_archive_ticket(
             archive_feature="行程档案",
-            flow_feature="同行意向审核",
+            flow_feature="同行意向对接",
             records_feature="意向记录",
             users_feature="用户管理",
             category_feature="分类管理",
             with_deadline=False,
+            user_publish=True,
+            publish_feature="行程发布",
         ),
         "portal_banners": True,
         "runtime": {

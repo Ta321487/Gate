@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 STOCK_IO_CAP = "stock_io"
 
 _STOCK_IO_SIGNALS = re.compile(
@@ -14,7 +16,7 @@ _STOCK_IO_SIGNALS = re.compile(
 
 
 def scan_stock_io(text: str) -> bool:
-    return bool(_STOCK_IO_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _STOCK_IO_SIGNALS, ignore_contrast=True)
 
 
 def stock_io_wanted(

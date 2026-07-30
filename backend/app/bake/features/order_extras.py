@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 ORDER_REVIEW_CAP = "order_review"
 
 _REVIEW_SIGNALS = re.compile(
@@ -16,11 +18,11 @@ _TIMEOUT_SIGNALS = re.compile(
 
 
 def scan_order_review(text: str) -> bool:
-    return bool(_REVIEW_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _REVIEW_SIGNALS, ignore_contrast=True)
 
 
 def scan_order_timeout(text: str) -> bool:
-    return bool(_TIMEOUT_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _TIMEOUT_SIGNALS, ignore_contrast=True)
 
 
 def merge_order_extras_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:

@@ -11,38 +11,102 @@ from app.bake.schema.shells import (
     product_name_from_title,
 )
 
-def _library_schema(title: str) -> dict[str, Any]:
+def _library_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """图书借阅默认；档案馆卷宗 / 漂流换字段与菜单皮。"""
+    from app.bake.scene_scan import library_product_kind
+
+    kind = library_product_kind(title, proposal_text)
+    if kind == "archive":
+        arch_lab, title_lab, author_lab, isbn_lab = "卷宗", "卷宗题名", "责任者", "档号"
+        pub_lab, call_lab, stock_lab = "形成单位", "保管号", "可借份数"
+        user_lab, admin_lab, sub_lab = "查阅人", "档案馆长（总管）", "档案员"
+        ticket_lab, apply = "借阅单", "申请借阅"
+        brow, lead = "档案借阅", "验证码登录；检索卷宗档案并申请借阅，馆员审核后领取归还。"
+        points = ["验证码登录", "开放注册", "卷宗借阅与归还"]
+        menus_arch_a, menus_arch_u = "卷宗管理", "卷宗检索"
+        users_menu, notice = "查阅人管理", "馆内公告"
+        banners = [
+            {"title": "卷宗检索", "lead": "按题名、责任者或档号检索，在线提交借阅。"},
+            {"title": "借阅须知", "lead": "按馆规办理；逾期请及时归还。"},
+            {"title": "开放时间", "lead": "工作日开放；临时调整见馆内公告。"},
+            {"title": "我的借阅", "lead": "登录后查看借阅进度与到期提醒。"},
+            {"title": "分类浏览", "lead": "按档案分类定位卷宗。"},
+        ]
+        seeds = {
+            "noticeTitle": "开放查阅通知",
+            "noticeBody": "系统已就绪，欢迎检索卷宗并提交借阅申请。",
+        }
+    elif kind == "drift":
+        arch_lab, title_lab, author_lab, isbn_lab = "图书", "书名", "作者", "漂流编号"
+        pub_lab, call_lab, stock_lab = "投放点", "索书号", "可借"
+        user_lab, admin_lab, sub_lab = "读者", "漂流站长（总管）", "站务员"
+        ticket_lab, apply = "漂流借阅单", "申请借阅"
+        brow, lead = "图书漂流", "验证码登录；检索漂流图书并申请借阅，站务审核后领取归还。"
+        points = ["验证码登录", "开放注册", "漂流借阅与归还"]
+        menus_arch_a, menus_arch_u = "漂流图书", "漂流检索"
+        users_menu, notice = "读者管理", "漂流公告"
+        banners = [
+            {"title": "漂流书架", "lead": "按书名或漂流编号检索，在线申请借阅。"},
+            {"title": "漂流须知", "lead": "读完请按时归还，方便下一位同学。"},
+            {"title": "投放点", "lead": "各楼栋漂流架位置见公告。"},
+            {"title": "我的借阅", "lead": "登录后查看借阅进度。"},
+            {"title": "新书投放", "lead": "最新漂流图书上架。"},
+        ]
+        seeds = {
+            "noticeTitle": "漂流开放通知",
+            "noticeBody": "欢迎取阅漂流图书并提交借阅登记。",
+        }
+    else:
+        arch_lab, title_lab, author_lab, isbn_lab = "图书", "书名", "作者", "ISBN"
+        pub_lab, call_lab, stock_lab = "出版社", "索书号", "库存"
+        user_lab, admin_lab, sub_lab = "读者", "馆长（总管）", "馆员"
+        ticket_lab, apply = "借阅单", "申请借阅"
+        brow, lead = "欢迎使用", "验证码登录，开放注册；读者可检索图书并申请借阅。"
+        points = ["验证码登录", "开放注册", "借阅申请与归还"]
+        menus_arch_a, menus_arch_u = "图书管理", "图书检索"
+        users_menu, notice = "读者管理", "馆内公告"
+        banners = [
+            {"title": "开架阅览", "lead": "按书名、作者或 ISBN 检索，在线提交借阅。"},
+            {"title": "借阅须知", "lead": "每人同时最多借阅 5 本，请按时归还。"},
+            {"title": "开放时间", "lead": "工作日开放；临时调整见馆内公告。"},
+            {"title": "我的书架", "lead": "登录后查看借阅进度与到期提醒。"},
+            {"title": "新书上架", "lead": "分类浏览最新到馆图书。"},
+        ]
+        seeds = {
+            "noticeTitle": "开放借阅通知",
+            "noticeBody": "系统已就绪，欢迎检索图书并提交借阅申请。",
+        }
     return {
         "version": 1,
         "title": title,
         "capabilities": list(DOMAIN_CAPABILITIES["DOM-LIBRARY"]),
         "roles": {
-            "user": {"id": "reader", "label": "读者"},
-            "admin": {"id": "admin", "label": "馆长（总管）"},
-            "subadmin": {"id": "subadmin", "label": "馆员"},
+            "user": {"id": "reader", "label": user_lab},
+            "admin": {"id": "admin", "label": admin_lab},
+            "subadmin": {"id": "subadmin", "label": sub_lab},
         },
         "entities": {
             "archive": {
                 "key": "book",
-                "label": "图书",
-                "labelPlural": "图书",
+                "label": arch_lab,
+                "labelPlural": arch_lab,
                 "fields": [
-                    {"key": "title", "label": "书名", "type": "string"},
-                    {"key": "author", "label": "作者", "type": "string"},
-                    {"key": "isbn", "label": "ISBN", "type": "string"},
-                    {"key": "publisher", "label": "出版社", "type": "string"},
-                    {"key": "callNo", "label": "索书号", "type": "string"},
+                    {"key": "title", "label": title_lab, "type": "string"},
+                    {"key": "author", "label": author_lab, "type": "string"},
+                    {"key": "isbn", "label": isbn_lab, "type": "string"},
+                    {"key": "publisher", "label": pub_lab, "type": "string"},
+                    {"key": "callNo", "label": call_lab, "type": "string"},
                     {"key": "category", "label": "分类", "type": "select"},
-                    {"key": "stock", "label": "库存", "type": "number"},
+                    {"key": "stock", "label": stock_lab, "type": "number"},
                 ],
                 "softDelete": True,
             },
             "ticket": {
                 "key": "borrow",
-                "label": "借阅单",
+                "label": ticket_lab,
                 "labelPlural": "借阅",
                 "verbs": {
-                    "apply": "申请借阅",
+                    "apply": apply,
                     "approve": "通过",
                     "reject": "驳回",
                     "return": "归还",
@@ -65,16 +129,16 @@ def _library_schema(title: str) -> dict[str, Any]:
         "menus": {
             "admin": [
                 {"key": "dashboard", "label": "工作台"},
-                {"key": "archive", "label": "图书管理", "superOnly": True},
+                {"key": "archive", "label": menus_arch_a, "superOnly": True},
                 {"key": "category", "label": "分类管理", "superOnly": True},
-                {"key": "users", "label": "读者管理", "superOnly": True},
+                {"key": "users", "label": users_menu, "superOnly": True},
                 {"key": "ticket_pending", "label": "借阅审核"},
                 {"key": "ticket_records", "label": "借阅记录"},
                 {"key": "deadline", "label": "逾期罚款"},
                 {"key": "content", "label": "公告管理", "superOnly": True},
             ],
             "user": [
-                {"key": "archive", "label": "图书检索"},
+                {"key": "archive", "label": menus_arch_u},
                 {"key": "my_tickets", "label": "我的借阅"},
                 {"key": "content", "label": "公告"},
                 {"key": "profile", "label": "个人资料"},
@@ -82,49 +146,136 @@ def _library_schema(title: str) -> dict[str, Any]:
         },
         "labels": {
             "appName": product_name_from_title(title),
-            "authEyebrow": "欢迎使用",
-            "authLead": "验证码登录，开放注册；读者可检索图书并申请借阅。",
-            "authPoints": ["验证码登录", "开放注册", "借阅申请与归还"],
-            "registerRoleHint": "注册后以读者身份使用系统",
-            "noticePageTitle": "馆内公告",
+            "authEyebrow": brow,
+            "authLead": lead,
+            "authPoints": points,
+            "registerRoleHint": f"注册后以{user_lab}身份使用系统",
+            "noticePageTitle": notice,
             "noticePageLead": "开放时间、借阅须知与临时通知，点击条目阅读全文。",
             "messagesPageLead": "审核结果、还书提醒与系统通知。",
             "recommendSectionTitle": "猜你喜欢",
             "recommendLatestHint": "最新上架",
         },
-        "seeds": {
-            "noticeTitle": "开放借阅通知",
-            "noticeBody": "系统已就绪，欢迎检索图书并提交借阅申请。",
-        },
-        "portalBanners": [
-            {"title": "开架阅览", "lead": "按书名、作者或 ISBN 检索，在线提交借阅。"},
-            {"title": "借阅须知", "lead": "每人同时最多借阅 5 本，请按时归还。"},
-            {"title": "开放时间", "lead": "工作日开放；临时调整见馆内公告。"},
-            {"title": "我的书架", "lead": "登录后查看借阅进度与到期提醒。"},
-            {"title": "新书上架", "lead": "分类浏览最新到馆图书。"},
-        ],
+        "seeds": seeds,
+        "portalBanners": banners,
     }
 
-def _equip_schema(title: str) -> dict[str, Any]:
+def _equip_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """实验室默认；轻资产/演出/体育/影像/乐器/教具/户外/中性器材换皮（同壳）。
+
+    具名档用 packs；枚举盖不住的开题走 gear，眉题由 ``equip_gear_noun`` 从题名抠。
+    """
+    from app.bake.scene_scan import equip_gear_noun, equip_product_kind
+
+    # arch, title, author, isbn, train, owner, admin, sub, brow, lead_noun, menu, notice_page, banner_title, banner_lead
+    packs: dict[str, tuple[str, str, str, str, str, str, str, str, str, str, str, str, str, str]] = {
+        "light": (
+            "物品", "物品名称", "提供方", "物品编号", "需押金", "保管人",
+            "后勤主管（总管）", "物资管理员", "校园轻资产", "共享物品",
+            "物品", "后勤公告", "共享物品", "雨伞、充电宝、门禁卡等分类检索，在线提交租借。",
+        ),
+        "costume": (
+            "物品", "物品名称", "所属单位", "道具编号", "需试装", "保管人",
+            "艺术团主管（总管）", "道具管理员", "演出道具", "服装道具",
+            "道具", "艺术团公告", "服装道具", "按剧目或品类检索服装、道具与舞台器材。",
+        ),
+        "sports": (
+            "器材", "器材名称", "品牌/规格", "器材编号", "需培训", "保管人",
+            "体育部主管（总管）", "器材管理员", "体育器材", "体育器材",
+            "器材", "体育部公告", "体育器材", "球类与运动器材分类检索，在线提交借用。",
+        ),
+        "media": (
+            "设备", "设备名称", "品牌/型号", "设备编号", "需培训", "保管人",
+            "传媒中心主管（总管）", "器材管理员", "影像设备", "摄影摄像设备",
+            "设备", "传媒公告", "影像设备", "相机、摄像机与多媒体设备分类检索借用。",
+        ),
+        "music": (
+            "乐器", "乐器名称", "品牌/规格", "乐器编号", "需培训", "保管人",
+            "音乐系主管（总管）", "乐器管理员", "乐器租借", "乐器",
+            "乐器", "音乐系公告", "乐器库", "弦乐、管乐与打击乐分类检索，在线申请借用。",
+        ),
+        "teach": (
+            "教具", "教具名称", "规格说明", "教具编号", "需培训", "保管人",
+            "教务主管（总管）", "教具管理员", "教学教具", "教学教具",
+            "教具", "教务公告", "教具库", "模型、挂图与演示教具分类检索借用。",
+        ),
+        "outdoor": (
+            "装备", "装备名称", "规格说明", "装备编号", "需培训", "保管人",
+            "团委主管（总管）", "装备管理员", "户外拓展", "户外拓展装备",
+            "装备", "团委公告", "拓展装备", "帐篷、登山与拓展器材分类检索借用。",
+        ),
+        "gear": (
+            "器材", "器材名称", "品牌/型号", "器材编号", "需培训", "保管人",
+            "设备主管（总管）", "器材管理员", "器材借用", "器材",
+            "器材", "设备公告", "器材库", "检索可借器材、查看库存，在线提交借用申请。",
+        ),
+        "lab": (
+            "设备", "设备名称", "品牌/型号", "资产编号", "需培训", "责任人",
+            "实验室主管（总管）", "器材管理员", "实验室设备", "实验室设备",
+            "设备", "实验室公告", "实验室器材", "检索设备、查看库存，在线提交借用申请。",
+        ),
+    }
+    kind = equip_product_kind(title, proposal_text)
+    (
+        arch_lab, title_lab, author_lab, isbn_lab, train_lab, owner_lab,
+        admin_lab, sub_lab, brow, lead_noun, menu, notice_page, ban_t, ban_lead,
+    ) = packs.get(kind) or packs["lab"]
+    if kind == "gear":
+        noun = equip_gear_noun(title, proposal_text)
+        brow = noun
+        lead_noun = noun
+        ban_t = noun
+        ban_lead = f"检索可借{noun}、查看库存，在线提交借用申请。"
+        if noun.endswith(("器材", "器械", "用具")):
+            arch_lab, title_lab, isbn_lab, menu = "器材", "器材名称", "器材编号", "器材"
+        elif noun.endswith("装备"):
+            arch_lab, title_lab, isbn_lab, menu = "装备", "装备名称", "装备编号", "装备"
+        elif noun.endswith("设备"):
+            arch_lab, title_lab, isbn_lab, menu = "设备", "设备名称", "设备编号", "设备"
+    loan_word = "租借" if kind in ("light", "costume", "music") else "借用"
+    lead = f"验证码登录；检索{lead_noun}并申请{loan_word}，管理员审核后领用。"
+    points = ["验证码登录", f"{menu}检索", f"{loan_word}申请与归还"]
+    if kind == "lab":
+        notice_title, notice_body = "设备借用须知", "请按需申请、按时归还；逾期将登记催还。"
+        notice_lead = "借用须知、开放时段与临时通知，点击条目阅读全文。"
+    elif kind == "costume":
+        notice_title = "租借须知"
+        notice_body = "请爱护服装道具、按时归还；损坏须登记说明。"
+        notice_lead = "租借须知、排练档期与临时通知，点击条目阅读全文。"
+    elif loan_word == "租借":
+        notice_title, notice_body = "租借须知", "请按需申请、按时归还；逾期将登记催还。"
+        notice_lead = "租借须知、开放时段与临时通知，点击条目阅读全文。"
+    else:
+        notice_title, notice_body = "借用须知", "请按需申请、按时归还；逾期将登记催还。"
+        notice_lead = "借用须知、开放时段与临时通知，点击条目阅读全文。"
+    register_hint = f"注册后可申请{loan_word}{lead_noun}"
+    ban_notice = "借用须知" if kind == "lab" else notice_title
+    banners = [
+        {"title": ban_t, "lead": ban_lead},
+        {"title": ban_notice, "lead": notice_body},
+        {"title": "领用时段", "lead": f"工作日办理领用与归还，详见{notice_page}。"},
+        {"title": f"我的{loan_word}", "lead": "登录后查看审核进度与归还期限。"},
+        {"title": f"{menu}公告", "lead": "停用检修与临时安排见公告栏。"},
+    ]
     return _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-EQUIP",
             user_role_id="user",
             user_label="借用人",
-            admin_label="实验室主管（总管）",
-            subadmin_label="器材管理员",
+            admin_label=admin_lab,
+            subadmin_label=sub_lab,
             archive_key="equip",
-            archive_label="设备",
-            archive_plural="设备",
+            archive_label=arch_lab,
+            archive_plural=arch_lab,
             archive_fields=[
-                {"key": "title", "label": "设备名称", "type": "string"},
-                {"key": "author", "label": "品牌/型号", "type": "string"},
-                {"key": "isbn", "label": "资产编号", "type": "string"},
+                {"key": "title", "label": title_lab, "type": "string"},
+                {"key": "author", "label": author_lab, "type": "string"},
+                {"key": "isbn", "label": isbn_lab, "type": "string"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可借数量", "type": "number"},
-                {"key": "requiresTraining", "label": "需培训", "type": "boolean"},
-                {"key": "ownerName", "label": "责任人", "type": "string"},
+                {"key": "requiresTraining", "label": train_lab, "type": "boolean"},
+                {"key": "ownerName", "label": owner_lab, "type": "string"},
             ],
             ticket_key="loan",
             ticket_label="借用单",
@@ -143,30 +294,24 @@ def _equip_schema(title: str) -> dict[str, Any]:
                 "returned": "已归还",
                 "overdue": "已逾期",
             },
-            archive_menu_admin="设备管理",
-            archive_menu_user="设备检索",
+            archive_menu_admin=f"{menu}管理",
+            archive_menu_user=f"{menu}检索",
             users_menu="用户管理",
-            auth_eyebrow="实验室设备",
-            auth_lead="验证码登录；检索设备并申请借用，管理员审核后领用。",
-            auth_points=["验证码登录", "设备检索", "借用申请与归还"],
-            register_hint="注册后可申请借用实验室设备",
-            notice_title="设备借用须知",
-            notice_body="请按需申请、按时归还；逾期将登记催还。",
-            notice_page_title="实验室公告",
-            notice_page_lead="借用须知、开放时段与临时通知，点击条目阅读全文。",
+            auth_eyebrow=brow,
+            auth_lead=lead,
+            auth_points=points,
+            register_hint=register_hint,
+            notice_title=notice_title,
+            notice_body=notice_body,
+            notice_page_title=notice_page,
+            notice_page_lead=notice_lead,
             my_tickets_label="我的借用",
             pending_label="借用审核",
             records_label="借用记录",
             deadline_label="逾期催还",
             soft_delete=True,
         ),
-        [
-            {"title": "实验室器材", "lead": "检索设备、查看库存，在线提交借用申请。"},
-            {"title": "借用须知", "lead": "按需申请、按时归还；逾期将登记催还。"},
-            {"title": "领用时段", "lead": "工作日办理领用与归还，详见实验室公告。"},
-            {"title": "我的借用", "lead": "登录后查看审核进度与归还期限。"},
-            {"title": "器材公告", "lead": "检修停用与临时安排见公告栏。"},
-        ],
+        banners,
     )
 
 def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -261,13 +406,18 @@ def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     )
 
 def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """轻量 CRM：企业销售默认；校园创业团队走 campus（同 scene_crm）。"""
+    """轻量 CRM：销售默认；律所/家访/校企深皮；校园创业团队走 campus。"""
+    from app.bake.schema.deep_skin_overrides import crm_kind_overrides
     from app.bake.schema.followup_presets import (
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_crm_parts
+    from app.bake.scene_scan import crm_product_kind, scene_crm_parts
 
+    kind = crm_product_kind(title, proposal_text)
+    pack = crm_kind_overrides(kind, _std_archive_fields)
+    if pack:
+        return followup_domain_schema(title, "DOM-CRM", overrides=pack)
     if scene_crm_parts(title, proposal_text) == "campus":
         return followup_domain_schema(
             title,
@@ -275,7 +425,6 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             overrides={
                 "user_label": "成员",
                 "admin_label": "指导教师（总管）",
-                "subadmin_label": "项目负责人",
                 "archive_label": "客户",
                 "archive_plural": "客户",
                 "archive_fields": _std_archive_fields(
@@ -288,12 +437,13 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     "可跟进",
                 ),
                 "auth_eyebrow": "校园创业",
-                "auth_lead": "验证码登录；维护客户档案并提交跟进，负责人确认后可办结。",
+                "auth_lead": "验证码登录；登记名下客户并提交跟进，跟进即时生效，可在完成后结案。",
                 "auth_points": ["验证码登录", "客户档案", "跟进记录"],
                 "notice_page_title": "团队公告",
                 "banners": [
                     {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
-                    {"title": "跟进打卡", "lead": "提交跟进记录，查看待办。"},
+                    {"title": "登记客户", "lead": "登录后可登记名下客户，即时可见。"},
+                    {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
                     {"title": "团队公告", "lead": "跟进规范与通知见公告栏。"},
                     {"title": "我的跟进", "lead": "登录后查看跟进进度。"},
                     {"title": "分级管理", "lead": "按客户分级筛选。"},
@@ -650,11 +800,20 @@ def _event_apply_incident_skin(schema: dict[str, Any], scene: str) -> dict[str, 
 
 
 def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """考勤请假：题名/开题含学生/校园走学工口径（同 _food_schema 食堂分支）。"""
+    """考勤请假：假种档案 + 本人请假填单；题名/开题含学生/校园走学工口径。"""
     from app.bake.schema.followup_presets import _std_archive_fields, followup_domain_schema
     from app.bake.scene_scan import scene_for
 
     campus = scene_for("DOM-ATTEND", title, proposal_text) == "campus"
+    leave_fields = _std_archive_fields(
+        "假种名称",
+        "适用说明",
+        "申请须知备注",
+        "开放状态",
+        ["开放申请", "暂停", "已关闭"],
+        "假种分类",
+        "可申请",
+    )
     if not campus:
         return followup_domain_schema(
             title,
@@ -663,30 +822,22 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "user_label": "员工",
                 "admin_label": "人事主管（总管）",
                 "subadmin_label": "考勤员",
-                "archive_label": "员工",
-                "archive_plural": "员工",
-                "archive_fields": _std_archive_fields(
-                    "姓名",
-                    "部门",
-                    "工号备注",
-                    "在岗状态",
-                    ["在岗", "请假中", "出差", "停职"],
-                    "岗位类型",
-                    "可请假",
-                ),
-                "archive_menu_admin": "员工档案",
-                "archive_menu_user": "员工名册",
+                "archive_label": "假种",
+                "archive_plural": "假种",
+                "archive_fields": leave_fields,
+                "archive_menu_admin": "假种档案",
+                "archive_menu_user": "假种说明",
                 "auth_eyebrow": "员工考勤",
-                "auth_lead": "验证码登录；维护员工档案并提交请假，审批通过后按时销假。",
-                "auth_points": ["验证码登录", "员工档案", "请假与销假"],
+                "auth_lead": "验证码登录；在「我的请假」选择假种提交本人请假，审批通过后按时销假（不能代同事请假）。",
+                "auth_points": ["验证码登录", "本人请假填单", "审批与销假"],
                 "notice_page_title": "人事公告",
                 "notice_page_lead": "考勤与请假通知，点击条目阅读全文。",
                 "banners": [
-                    {"title": "员工名册", "lead": "按岗位类型浏览，维护部门与工号。"},
-                    {"title": "在线请假", "lead": "提交请假单，人事审批后生效。"},
+                    {"title": "本人请假", "lead": "登录后在「我的请假」选假种、填事由并提交。"},
+                    {"title": "假种说明", "lead": "查阅事假、病假、年假等开放规则与须知。"},
                     {"title": "人事公告", "lead": "请假节点与销假须知见公告栏。"},
-                    {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
-                    {"title": "分类检索", "lead": "按岗位类型快速定位。"},
+                    {"title": "审批销假", "lead": "跟踪本人审批进度，返回后按时销假。"},
+                    {"title": "分类查阅", "lead": "假种说明可按分类筛选查阅。"},
                 ],
             },
         )
@@ -697,30 +848,22 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "user_label": "学生",
             "admin_label": "学工主管（总管）",
             "subadmin_label": "辅导员",
-            "archive_label": "学生",
-            "archive_plural": "学生",
-            "archive_fields": _std_archive_fields(
-                "姓名",
-                "院系/班级",
-                "学号备注",
-                "在校状态",
-                ["在校", "请假中", "休学", "离校"],
-                "学生类型",
-                "可请假",
-            ),
-            "archive_menu_admin": "学生档案",
-            "archive_menu_user": "学生名册",
+            "archive_label": "假种",
+            "archive_plural": "假种",
+            "archive_fields": leave_fields,
+            "archive_menu_admin": "假种档案",
+            "archive_menu_user": "假种说明",
             "auth_eyebrow": "学生请假",
-            "auth_lead": "验证码登录；维护学生档案并提交请假，审批通过后按时销假。",
-            "auth_points": ["验证码登录", "学生档案", "请假与销假"],
+            "auth_lead": "验证码登录；在「我的请假」选择假种提交本人请假，辅导员审批后按时销假（不能代同学请假）。",
+            "auth_points": ["验证码登录", "本人请假填单", "审批与销假"],
             "notice_page_title": "学工公告",
-            "notice_page_lead": "请假须知与学工通知，点击条目阅读全文。",
+            "notice_page_lead": "请销假通知，点击条目阅读全文。",
             "banners": [
-                {"title": "学生名册", "lead": "按学生类型浏览，维护院系与学号。"},
-                {"title": "在线请假", "lead": "提交请假单，学工审批后生效。"},
-                {"title": "学工公告", "lead": "请假节点与销假须知见公告栏。"},
-                {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
-                {"title": "分类检索", "lead": "按学生类型快速定位。"},
+                {"title": "本人请假", "lead": "登录后在「我的请假」选假种、填事由并提交。"},
+                {"title": "假种说明", "lead": "查阅事假、病假等开放规则与须知。"},
+                {"title": "学工公告", "lead": "请销假节点与须知见公告栏。"},
+                {"title": "审批销假", "lead": "跟踪本人审批进度，返校后按时销假。"},
+                {"title": "分类查阅", "lead": "假种说明可按分类筛选查阅。"},
             ],
         },
     )

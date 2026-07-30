@@ -15,7 +15,7 @@ from app.bake.features.e_sign import E_SIGN_CAP, scan_e_sign
 from app.bake.menu_routes import shell_kind
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "签章预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 BASELINE = ROOT / "skeletons" / "baseline"
 MYBATIS = ROOT / "skeletons" / "overlays" / "persistence-mybatis"
 JPA = ROOT / "skeletons" / "overlays" / "persistence-jpa"
@@ -112,7 +112,7 @@ class ESignC18Tests(unittest.TestCase):
 
     def test_sample_file(self) -> None:
         samples = list(SAMPLES.glob("C-18*.txt"))
-        self.assertTrue(samples, "missing C-18 sample under 签章预设开题")
+        self.assertTrue(samples, "missing C-18 sample under 能力预设开题")
         body = samples[0].read_text(encoding="utf-8")
         self.assertTrue(scan_e_sign(body))
         self.assertIn("DOM-INTERN", body)

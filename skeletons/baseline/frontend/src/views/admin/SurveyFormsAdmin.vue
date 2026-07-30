@@ -44,7 +44,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import http from '../../utils/http'
+import http from '../../api/http'
 
 const forms = ref([])
 const formId = ref(null)

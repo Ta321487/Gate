@@ -19,7 +19,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览寝室 → 归寝登记 → 审 → 口令签到（结束未签到记缺勤）"],
+        "flows": ["浏览寝室 → 口令签到（结束未签到记缺勤）"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -27,8 +27,7 @@ DOMAINS: dict = {
             {"name": "寝室档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
-            {"name": "归寝登记审核", "status": "flow"},
-            {"name": "口令签到", "status": "module"},
+            {"name": "口令签到", "status": "flow"},
             {"name": "结束未签到记缺勤", "status": "module"},
             {"name": "归寝记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
@@ -44,7 +43,7 @@ DOMAINS: dict = {
         ],
         "gate": gate_archive_ticket(
             archive_feature="寝室档案",
-            flow_feature="归寝登记审核",
+            flow_feature="口令签到",
             records_feature="归寝记录",
             users_feature="用户管理",
             category_feature="分类管理",

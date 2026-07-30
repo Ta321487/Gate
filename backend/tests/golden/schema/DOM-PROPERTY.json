@@ -13,7 +13,7 @@
       "requireAttach": true,
       "states": {
         "approved": "处理中",
-        "pending": "待初审",
+        "pending": "待受理",
         "pending_final": "待终审",
         "rejected": "已驳回",
         "returned": "已完成"

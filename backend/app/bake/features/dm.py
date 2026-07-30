@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 DM_CAP = "dm"
 
 # 开题常见写法；「WebSocket / 环信」等真实时通道仍走过重扫词，不进本能力
@@ -23,7 +25,7 @@ _DM_OOS_NAMES = frozenset({"实时私信", "即时私信", "一对一私信", "�
 
 
 def scan_dm(text: str) -> bool:
-    return bool(_DM_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _DM_SIGNALS, ignore_contrast=True)
 
 
 def dm_wanted(

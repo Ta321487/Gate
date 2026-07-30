@@ -369,6 +369,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-pick-date-range", bool(ticket_ent.get("pickDateRange"))),
             ("ticket-approve-ends-flow", bool(ticket_ent.get("approveEndsFlow"))),
             ("ticket-auto-approve", bool(ticket_ent.get("autoApprove"))),
+            ("ticket-require-claim-code", bool(ticket_ent.get("requireClaimCode"))),
+            ("ticket-applicant-complete-only", bool(ticket_ent.get("applicantCompleteOnly"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
         if on_flags:

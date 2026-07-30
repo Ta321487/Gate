@@ -15,7 +15,7 @@ from app.bake.schema.followup_presets import FOLLOWUP_PRESETS
 from app.bake.schema.templates import SCHEMA_BUILDERS
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "拼车预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 
 
 class CarpoolC13Tests(unittest.TestCase):
@@ -59,8 +59,21 @@ class CarpoolC13Tests(unittest.TestCase):
         user_keys = {m.get("key") for m in (schema.get("menus") or {}).get("user") or []}
         admin_keys = {m.get("key") for m in (schema.get("menus") or {}).get("admin") or []}
         self.assertIn("my_tickets", user_keys)
+        self.assertIn("my_archive", user_keys)
+        self.assertIn("peer_tickets", user_keys)
         self.assertIn("ticket_pending", admin_keys)
         self.assertIn("archive", user_keys)
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        archive = (schema.get("entities") or {}).get("archive") or {}
+        self.assertTrue(ticket.get("peerAccept"))
+        self.assertTrue(archive.get("userPublish"))
+        sql = domain_sql(
+            "DOM-CARPOOL",
+            "t_carpool",
+            title="高校校园拼车行程与同行意向对接系统",
+            proposal_text="拼车行程同行意向对接",
+        )
+        self.assertIn("owner_username", sql)
 
     def test_sql_and_accept(self) -> None:
         sql = domain_sql(

@@ -1,0 +1,221 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "content",
+    "org_users",
+    "rating_dims"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "责任部门",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "说明",
+          "type": "textarea"
+        },
+        {
+          "key": "stage",
+          "label": "状态",
+          "options": [
+            "开放",
+            "暂停",
+            "关闭"
+          ],
+          "type": "select"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可申请",
+          "type": "number"
+        }
+      ],
+      "key": "eval_course",
+      "label": "评教课程",
+      "labelPlural": "评教课程",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已申请",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowAnonymousRating": true,
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": true,
+      "applyFromList": false,
+      "approveEndsFlow": true,
+      "autoApprove": true,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "办理方式",
+      "contactChannelOptions": [
+        "线上评教",
+        "窗口补录",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "线上/窗口等",
+      "issuePassCode": false,
+      "key": "eval_sheet",
+      "label": "评教卷",
+      "labelPlural": "评教卷",
+      "nextFollowLabel": "期望办结日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "peerAccept": false,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "ratingDims": [
+        {
+          "key": "content",
+          "label": "教学内容"
+        },
+        {
+          "key": "attitude",
+          "label": "教学态度"
+        },
+        {
+          "key": "outcome",
+          "label": "课程收获"
+        }
+      ],
+      "remarkLabel": "评教评语",
+      "requireAttach": false,
+      "requireClaimCode": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已评教",
+        "overdue": "已逾期",
+        "pending": "待提交",
+        "rejected": "已作废",
+        "returned": "已完结"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交评教",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "催办",
+        "return": "完结"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "网上评教",
+    "authLead": "验证码登录；选择评教课程，当场按维度打分并填写评语，提交即完结。",
+    "authPoints": [
+      "验证码登录",
+      "评教课程",
+      "多维评分与评语"
+    ],
+    "messagesPageLead": "系统通知。",
+    "noticePageLead": "评教节点与须知，点击条目阅读全文。",
+    "noticePageTitle": "评教公告",
+    "registerRoleHint": "注册后可提交评教"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "评教课程",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_records",
+        "label": "评教记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "评教课程目录"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的评教"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "浏览本学期可评课程。",
+      "title": "评教课程目录"
+    },
+    {
+      "lead": "选课当场按维度打分并填写评语，提交即完结。",
+      "title": "提交评教"
+    },
+    {
+      "lead": "评教须知与节点见公告栏。",
+      "title": "评教公告"
+    },
+    {
+      "lead": "查看已提交的评教记录。",
+      "title": "我的评教"
+    },
+    {
+      "lead": "按课程类型筛选。",
+      "title": "分类检索"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "教务主管（总管）"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实按维度评分并填写评语；提交后即时入档。本期无学信网对接。",
+    "noticeTitle": "评教须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

@@ -71,9 +71,11 @@ DOMAINS: dict = {
             "仪器借用", "实验器材", "设备租借",
             "雨伞租借", "充电宝租借", "门禁卡租借", "钥匙租借",
             "服装租借", "道具租借", "演出器材", "共享雨伞", "共享充电宝",
+            "演出服装", "舞台道具", "戏服", "剧社租借",
+            "体育器材", "摄影器材", "摄像器材", "乐器租借", "教具", "户外器材", "拓展器材",
         ],
         "match_hint": (
-            "适用：实验室/器材借用归还审核；校园轻资产（雨伞/充电宝/门禁卡）与演出服装道具租借亦挂本域。"
+            "适用：实验室/器材借用归还审核；亦覆盖校园轻资产、演出道具、体育/影像/乐器/教具/户外等换皮。"
             "勿与物资领用（耗材/试剂出库）、图书借阅或「仪器借用+机时预约」一体题混淆"
             "（机时一体选 DOM-INSTRUMENT，勿只落本域而丢掉预约）。"
         ),
@@ -219,12 +221,12 @@ DOMAINS: dict = {
             "单位库",
         ],
         "match_hint": (
-            "适用：客户档案、销售线索跟进审核；学工家访/谈心谈话、法律援助案件、校企合作单位库跟进亦挂本域。"
+            "适用：客户档案、销售线索跟进（业务员自建档自跟进）；学工家访/谈心谈话、法律援助案件、校企合作单位库跟进亦挂本域。"
             "勿与事件上报（公卫排查）、房源中介带看或合同登记单级审批混淆。"
         ),
         "entities": ["Customer", "Category", "FollowUp", "Notice"],
-        "roles": ["user", "admin", "subadmin"],
-        "flows": ["客户建档 → 提交跟进 → 审核完结"],
+        "roles": ["user", "admin"],
+        "flows": ["建档 → 跟进即时入档 → 办结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -232,6 +234,7 @@ DOMAINS: dict = {
             {"name": "客户档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
+            {"name": "客户建档", "status": "flow"},
             {"name": "客户跟进", "status": "flow"},
             {"name": "跟进记录", "status": "module"},
             {"name": "公告管理", "status": "module"},
@@ -251,6 +254,8 @@ DOMAINS: dict = {
             users_feature="用户管理",
             category_feature="分类管理",
             with_deadline=False,
+            user_publish=True,
+            publish_feature="客户建档",
         ),
         "portal_banners": True,
         "runtime": {
@@ -352,14 +357,14 @@ DOMAINS: dict = {
             "不承诺人脸/指纹闸机或 GPS 轨迹打卡；硬件考勤/定位打卡不在本期。"
             "勿与宿舍查寝归寝签到（查寝签到）、出差/加班（DOM-TRIP）、用车申请或公卫健康打卡/晨午检混淆。"
         ),
-        "entities": ["StaffPerson", "Category", "LeaveReq", "Notice"],
+        "entities": ["LeaveType", "Category", "LeaveReq", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["人员建档 → 提交请假 → 审批销假"],
+        "flows": ["本人请假填单 → 审批 → 销假"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
             {"name": "管理端工作台", "status": "module"},
-            {"name": "人员档案", "status": "domain"},
+            {"name": "假种档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "请假审批", "status": "flow"},
@@ -376,7 +381,7 @@ DOMAINS: dict = {
             {"id": "attend-night", "label": "值班深色"},
         ],
         "gate": gate_archive_ticket(
-            archive_feature="人员档案",
+            archive_feature="假种档案",
             flow_feature="请假审批",
             records_feature="请假记录",
             users_feature="用户管理",
@@ -389,7 +394,7 @@ DOMAINS: dict = {
             "ticket_table": "leave_req",
             "register_role": "user",
             "archive_category_table": "category",
-            "archive_item_table": "staff_person",
+            "archive_item_table": "leave_type",
         },
     },
     "DOM-FUND": {
@@ -736,7 +741,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Parcel", "Category", "ParcelClaim", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["包裹入库 → 取件申请 → 核销出库"],
+        "flows": ["包裹入库 → 凭取件码取件 → 店员核销出库"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

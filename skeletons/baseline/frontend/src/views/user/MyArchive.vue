@@ -4,7 +4,7 @@
       <h1>{{ pageTitle }}</h1>
       <p>{{ pageLead }}</p>
       <div class="acts">
-        <el-button type="primary" @click="$router.push('/archive')">去发帖 / 浏览</el-button>
+        <el-button type="primary" @click="$router.push('/archive')">{{ browseCta }}</el-button>
         <el-button @click="load">刷新</el-button>
       </div>
     </section>
@@ -14,11 +14,13 @@
         <div class="meta">
           <h3>{{ row.title || '（无标题）' }}</h3>
           <p class="muted">
+            <template v-if="row.author">{{ row.author }} · </template>
             {{ row.categoryName || '未分类' }}
             <template v-if="row.createdAt"> · {{ row.createdAt }}</template>
           </p>
           <p v-if="row.deletedAt" class="warn">已下架 · {{ row.deletedAt }}</p>
-          <RichTextView v-if="row.isbn" class="excerpt" :html="row.isbn" compact />
+          <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
+          <p v-else-if="row.isbn" class="excerpt plain">{{ row.isbn }}</p>
           <div class="row">
             <el-button size="small" :disabled="!!row.deletedAt" @click="openDetail(row)">查看</el-button>
           </div>
@@ -26,7 +28,7 @@
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无发布记录，去检索页发一篇吧。</div>
+    <div v-if="!list.length" class="empty">{{ emptyText }}</div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -40,9 +42,13 @@
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
-        <p class="muted">{{ detail.categoryName || '未分类' }}</p>
+        <p class="muted">
+          <template v-if="detail.author">{{ detail.author }} · </template>
+          {{ detail.categoryName || '未分类' }}
+        </p>
         <p v-if="detail.deletedAt" class="warn">已下架 · {{ detail.deletedAt }}</p>
-        <RichTextView :html="detail.isbn || ''" />
+        <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
+        <p v-else class="plain-body">{{ detail.isbn || '—' }}</p>
       </template>
     </el-drawer>
   </div>
@@ -56,14 +62,23 @@ import { archiveCopy, menuLabel, schemaLabels } from '../../utils/domainSchema.j
 
 const archive = archiveCopy()
 const labels = computed(() => schemaLabels())
-const unit = computed(() => archive.label || '主帖')
+const unit = computed(() => archive.label || '内容')
+const fields = computed(() => archive.fields || [])
+const bodyRich = computed(() => {
+  const f = fields.value.find((x) => x.key === 'isbn')
+  return f?.type === 'richtext' || archive.bodyField === 'isbn'
+})
+const browseCta = computed(() => (bodyRich.value ? '去发帖 / 浏览' : '去登记 / 浏览'))
 const pageTitle = computed(
   () => labels.value.myArchivePageTitle || menuLabel('user', 'my_archive', `我的${unit.value}`),
 )
 const pageLead = computed(
   () =>
     labels.value.myArchivePageLead ||
-    `本人发布的${unit.value}即时可见；站长下架后仍可在此查看状态。`,
+    `本人登记的${unit.value}即时可见；管理员下架后仍可在此查看状态。`,
+)
+const emptyText = computed(() =>
+  bodyRich.value ? '暂无发布记录，去检索页发一篇吧。' : `暂无记录，去检索页登记一条吧。`,
 )
 
 const list = ref([])
@@ -113,6 +128,8 @@ onMounted(load)
 .muted { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .warn { margin: 8px 0 0; color: #b45309; font-size: 12px; }
 .excerpt { margin-top: 8px; max-height: 72px; overflow: hidden; }
+.excerpt.plain { margin: 8px 0 0; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.5; }
+.plain-body { margin: 12px 0 0; color: var(--portal-ink, #334155); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
 .row { margin-top: 12px; display: flex; gap: 10px; }
 .empty { margin-top: 24px; color: var(--portal-muted, #94a3b8); text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

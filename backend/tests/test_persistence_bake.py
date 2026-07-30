@@ -64,6 +64,8 @@ class TestPersistenceBake(unittest.TestCase):
             )
             self.assertNotIn("import com.thesis.config.MbBridge", text, msg=str(p))
             self.assertNotIn("MbBridge.", text, msg=str(p))
+            self.assertNotIn("TicketSql.db()", text, msg=str(p))
+            self.assertFalse(text.startswith("\ufeff"), msg=f"BOM in {p}")
         self.assertTrue(any((ws / "backend").rglob("NoticeMapper.java")))
         self.assertTrue(any((ws / "backend").rglob("TicketMapper.java")))
         self.assertTrue(any((ws / "backend").rglob("ArchiveMapper.java")))

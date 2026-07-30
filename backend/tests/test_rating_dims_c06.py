@@ -27,6 +27,7 @@ class RatingDimsC06Tests(unittest.TestCase):
         ticket = (schema.get("entities") or {}).get("ticket") or {}
         self.assertTrue(ticket.get("allowRating"))
         self.assertTrue(ticket.get("approveEndsFlow"))
+        self.assertTrue(ticket.get("autoApprove"))
         self.assertTrue(ticket.get("allowAnonymousRating"))
         dims = ticket.get("ratingDims") or []
         self.assertGreaterEqual(len(dims), 3, dims)

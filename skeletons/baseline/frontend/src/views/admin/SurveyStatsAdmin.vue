@@ -22,7 +22,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import http from '../../utils/http'
+import http from '../../api/http'
 
 const forms = ref([])
 const formId = ref(null)

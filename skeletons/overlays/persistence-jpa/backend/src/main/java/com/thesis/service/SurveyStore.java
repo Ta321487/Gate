@@ -1,4 +1,4 @@
-﻿package com.thesis.service;
+package com.thesis.service;
 
 import com.thesis.config.JpaSupport;
 import com.thesis.config.JpaDb;

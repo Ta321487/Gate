@@ -10,7 +10,7 @@
           <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="load">
             <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
           </el-select>
-          <el-button v-if="!archiveMode" type="primary" @click="openApply">{{ verbs.apply || '提交' }}</el-button>
+          <el-button v-if="!archiveMode || applyFromList" type="primary" @click="openApply">{{ verbs.apply || '提交' }}</el-button>
           <el-button v-else type="primary" @click="$router.push('/archive')">{{ browseCta }}</el-button>
           <el-button @click="load">刷新</el-button>
         </div>
@@ -58,7 +58,7 @@
               type="primary"
               size="small"
               @click="finish(row)"
-            >{{ verbs.return || '完成' }}</el-button>
+            >{{ finishVerb }}</el-button>
             <el-button
               v-if="canCheckin(row)"
               type="success"
@@ -120,56 +120,110 @@
 
     <el-dialog v-model="visible" :title="verbs.apply || '提交'" width="520px">
       <el-form :model="form" label-width="88px" require-asterisk-position="right">
-        <el-form-item label="标题" required>
-          <el-input v-model="form.title" maxlength="80" placeholder="请输入标题" />
-        </el-form-item>
-        <template v-if="lookup.enabled">
-          <el-form-item :label="lookup.typeLabel" required>
-            <el-select v-model="form.typeId" filterable placeholder="请选择" style="width:100%">
-              <el-option v-for="t in types" :key="t.id" :label="t.name" :value="t.id" />
+        <template v-if="applyFromList">
+          <el-form-item :label="archiveLabel" required>
+            <el-select v-model="form.itemId" filterable placeholder="请选择" style="width:100%">
+              <el-option
+                v-for="it in archiveItems"
+                :key="it.id"
+                :label="it.title"
+                :value="it.id"
+              />
             </el-select>
           </el-form-item>
-          <el-form-item :label="lookup.siteLabel" required>
-            <el-select v-model="form.siteId" filterable placeholder="请选择" style="width:100%" @change="onSiteChange">
-              <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
+          <el-form-item v-if="pickDateRange" label="起止日期" required>
+            <el-date-picker
+              v-model="form.period"
+              type="datetimerange"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              range-separator="至"
+              start-placeholder="开始"
+              end-placeholder="结束"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="showFollowCols" :label="channelLabel">
+            <el-select v-model="form.contactChannel" clearable :placeholder="channelPlaceholder" style="width:100%">
+              <el-option v-for="opt in channelOptions" :key="opt" :label="opt" :value="opt" />
             </el-select>
           </el-form-item>
-          <el-form-item :label="lookup.unitLabel" required>
-            <el-select v-model="form.roomId" filterable placeholder="请先选上级" style="width:100%" :disabled="!form.siteId">
-              <el-option v-for="u in units" :key="u.id" :label="u.code || u.name" :value="u.id" />
-            </el-select>
+          <el-form-item v-if="showFollowCols" :label="nextAtLabel">
+            <el-date-picker
+              v-model="form.nextFollowAt"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选填"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item :label="remarkLabel" :required="requireRemark">
+            <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" :placeholder="`请填写${remarkLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="requireAttach" label="附件" required>
+            <div class="attach-row">
+              <el-upload
+                :show-file-list="false"
+                accept="image/*,.pdf,.doc,.docx"
+                :http-request="onAttach"
+              >
+                <el-button size="small">{{ form.attachUrl ? '重新上传' : '上传附件' }}</el-button>
+              </el-upload>
+              <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+            </div>
           </el-form-item>
         </template>
-        <el-form-item v-else label="地点" required>
-          <el-input v-model="form.location" maxlength="64" placeholder="请填写地点" />
-        </el-form-item>
-        <template v-if="showPriorityCols">
-          <el-form-item label="优先级">
-            <el-select v-model="form.priority" style="width:100%">
-              <el-option label="普通" value="普通" />
-              <el-option label="紧急" value="紧急" />
-              <el-option label="高" value="高" />
-            </el-select>
+        <template v-else>
+          <el-form-item label="标题" required>
+            <el-input v-model="form.title" maxlength="80" placeholder="请输入标题" />
           </el-form-item>
-          <el-form-item label="联系电话">
-            <el-input v-model="form.contactPhone" maxlength="20" placeholder="便于回访联系" />
+          <template v-if="lookup.enabled">
+            <el-form-item :label="lookup.typeLabel" required>
+              <el-select v-model="form.typeId" filterable placeholder="请选择" style="width:100%">
+                <el-option v-for="t in types" :key="t.id" :label="t.name" :value="t.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="lookup.siteLabel" required>
+              <el-select v-model="form.siteId" filterable placeholder="请选择" style="width:100%" @change="onSiteChange">
+                <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="lookup.unitLabel" required>
+              <el-select v-model="form.roomId" filterable placeholder="请先选上级" style="width:100%" :disabled="!form.siteId">
+                <el-option v-for="u in units" :key="u.id" :label="u.code || u.name" :value="u.id" />
+              </el-select>
+            </el-form-item>
+          </template>
+          <el-form-item v-else label="地点" required>
+            <el-input v-model="form.location" maxlength="64" placeholder="请填写地点" />
+          </el-form-item>
+          <template v-if="showPriorityCols">
+            <el-form-item label="优先级">
+              <el-select v-model="form.priority" style="width:100%">
+                <el-option label="普通" value="普通" />
+                <el-option label="紧急" value="紧急" />
+                <el-option label="高" value="高" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="联系电话">
+              <el-input v-model="form.contactPhone" maxlength="20" placeholder="便于回访联系" />
+            </el-form-item>
+          </template>
+          <el-form-item label="说明">
+            <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />
+          </el-form-item>
+          <el-form-item v-if="requireAttach" label="附件" required>
+            <div class="attach-row">
+              <el-upload
+                :show-file-list="false"
+                accept="image/*,.pdf,.doc,.docx"
+                :http-request="onAttach"
+              >
+                <el-button size="small">{{ form.attachUrl ? '重新上传' : '上传附件' }}</el-button>
+              </el-upload>
+              <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+            </div>
           </el-form-item>
         </template>
-        <el-form-item label="说明">
-          <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />
-        </el-form-item>
-        <el-form-item v-if="requireAttach" label="附件" required>
-          <div class="attach-row">
-            <el-upload
-              :show-file-list="false"
-              accept="image/*,.pdf,.doc,.docx"
-              :http-request="onAttach"
-            >
-              <el-button size="small">{{ form.attachUrl ? '重新上传' : '上传附件' }}</el-button>
-            </el-upload>
-            <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
-          </div>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -205,7 +259,9 @@ import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
 import {
+  archiveCopy,
   followChannelLabel,
+  followChannelOptions,
   getSchema,
   hasTrait,
   nextFollowLabel,
@@ -213,20 +269,35 @@ import {
   ticketCopy,
   ticketDueLabel,
   ticketFineLabel,
+  ticketShowsFollowCols,
   ticketShowsPriorityCols,
   ticketStatusLabel,
 } from '../../utils/domainSchema.js'
 
 const ticket = ticketCopy()
+const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
 const labels = computed(() => getSchema().labels || {})
 const applyVerb = computed(() => verbs.value.apply || '提交')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
+const applyFromList = computed(() => !!ticket.applyFromList)
+const archiveLabel = computed(() => archive.label || '事项')
+const remarkLabel = computed(() => ticket.remarkLabel || '说明')
+const requireRemark = computed(() => !!ticket.requireRemark)
+const pickDateRange = computed(() => !!ticket.pickDateRange)
+const showFollowCols = computed(() => ticketShowsFollowCols())
+const channelOptions = computed(() => followChannelOptions())
+const channelPlaceholder = computed(
+  () => ticket.contactChannelPlaceholder || '请选择',
+)
 const pageLead = computed(() => {
   const custom = labels.value.myTicketsPageLead
   if (custom) return custom
+  if (applyFromList.value) {
+    return `在此${applyVerb.value}并跟踪进度。`
+  }
   if (archiveMode.value) {
     return `在检索页${applyVerb.value}后，可在此查看进度。`
   }
@@ -239,6 +310,9 @@ const appliedAtLabel = computed(
   () => labels.value.ticketAppliedAtLabel || `${applyVerb.value}于`,
 )
 const emptyText = computed(() => {
+  if (applyFromList.value) {
+    return labels.value.myTicketsEmpty || `还没有记录，点击右上角${applyVerb.value}。`
+  }
   if (archiveMode.value) {
     return (
       labels.value.myTicketsEmptyArchive
@@ -271,6 +345,11 @@ function canFinish(row) {
   }
   return row.status === 'approved' || row.status === 'overdue'
 }
+
+const finishVerb = computed(() => {
+  if (ticket.applicantCompleteOnly) return '确认完结'
+  return verbs.value.return || '完成'
+})
 
 function canWithdraw(row) {
   return !!row && (row.status === 'pending' || row.status === 'pending_mid' || row.status === 'pending_final')
@@ -331,6 +410,7 @@ const lookup = reactive({
 const sites = ref([])
 const units = ref([])
 const types = ref([])
+const archiveItems = ref([])
 const form = reactive({
   title: '',
   location: '',
@@ -339,6 +419,10 @@ const form = reactive({
   typeId: null,
   siteId: null,
   roomId: null,
+  itemId: null,
+  period: null,
+  contactChannel: '',
+  nextFollowAt: '',
   priority: '普通',
   contactPhone: '',
 })
@@ -371,6 +455,16 @@ async function loadLookup() {
     types.value = tRes.data || tRes || []
   } catch {
     lookup.enabled = false
+  }
+}
+
+async function loadArchiveItems() {
+  if (!applyFromList.value) return
+  try {
+    const res = await http.get('/api/archive', { params: { page: 1, size: 100 } })
+    archiveItems.value = res.data?.list || res.list || []
+  } catch {
+    archiveItems.value = []
   }
 }
 
@@ -407,14 +501,58 @@ function openApply() {
     typeId: null,
     siteId: null,
     roomId: null,
+    itemId: null,
+    period: null,
+    contactChannel: '',
+    nextFollowAt: '',
     priority: '普通',
     contactPhone: '',
   })
   units.value = []
+  if (applyFromList.value) loadArchiveItems()
   visible.value = true
 }
 
 async function submit() {
+  if (applyFromList.value) {
+    if (!form.itemId) {
+      ElMessage.warning(`请选择${archiveLabel.value}`)
+      return
+    }
+    if (pickDateRange.value) {
+      const range = form.period
+      if (!Array.isArray(range) || !range[0] || !range[1]) {
+        ElMessage.warning('请选择起止日期')
+        return
+      }
+    }
+    if (requireRemark.value && !(form.remark || '').trim()) {
+      ElMessage.warning(`请填写${remarkLabel.value}`)
+      return
+    }
+    if (requireAttach.value && !form.attachUrl) {
+      ElMessage.warning('请上传附件')
+      return
+    }
+    const body = {
+      itemId: form.itemId,
+      remark: (form.remark || '').trim(),
+      attachUrl: form.attachUrl || undefined,
+    }
+    if (pickDateRange.value && Array.isArray(form.period)) {
+      body.periodStart = form.period[0]
+      body.periodEnd = form.period[1]
+    }
+    if (showFollowCols.value) {
+      if (form.contactChannel) body.contactChannel = form.contactChannel
+      if (form.nextFollowAt) body.nextFollowAt = form.nextFollowAt
+    }
+    await http.post('/api/tickets/apply', body)
+    ElMessage.success('已提交，等待审核')
+    visible.value = false
+    load()
+    return
+  }
   if (!form.title.trim()) {
     ElMessage.warning('请填写标题')
     return

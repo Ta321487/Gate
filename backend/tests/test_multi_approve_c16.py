@@ -16,7 +16,7 @@ from app.bake.features.ticket_flow_opts import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "会签预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 BASELINE = ROOT / "skeletons" / "baseline"
 MYBATIS = ROOT / "skeletons" / "overlays" / "persistence-mybatis"
 JPA = ROOT / "skeletons" / "overlays" / "persistence-jpa"
@@ -121,7 +121,7 @@ class MultiApproveC16Tests(unittest.TestCase):
 
     def test_sample_file(self) -> None:
         samples = list(SAMPLES.glob("C-16*.txt"))
-        self.assertTrue(samples, "missing C-16 sample under 会签预设开题")
+        self.assertTrue(samples, "missing C-16 sample under 能力预设开题")
         body = samples[0].read_text(encoding="utf-8")
         self.assertTrue(scan_three_level(body))
         self.assertIn("DOM-SEAL", body)
