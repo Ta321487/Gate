@@ -179,6 +179,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-auto-approve:false}")
     private boolean ticketAutoApprove;
 
+    @Value("${thesis.ticket-require-claim-code:false}")
+    private boolean ticketRequireClaimCode;
+
+    @Value("${thesis.ticket-applicant-complete-only:false}")
+    private boolean ticketApplicantCompleteOnly;
+
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
 
@@ -289,7 +295,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         }
         if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
             if ("standalone".equalsIgnoreCase(ticketMode)) {
-                TicketStore.bindStandalone(ticketTable);
+                TicketStore.bindStandalone(ticketTable, useDeadline);
             } else {
                 TicketStore.bind(ticketTable, useQuota, useDeadline, allowMultiTicket, checkTimeConflict);
             }
@@ -307,6 +313,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureApplyExtras(ticketRequireRemark, ticketPickDateRange);
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
             TicketStore.configureAutoApprove(ticketAutoApprove);
+            TicketStore.configureRequireClaimCode(ticketRequireClaimCode);
+            TicketStore.configureApplicantCompleteOnly(ticketApplicantCompleteOnly);
         }
         LoyaltyStore.configure(
                 walletEnabled,

@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；author=部门；isbn=工号/备注；stock=可请假
-CREATE TABLE IF NOT EXISTS staff_person (
+-- ArchiveStore 兼容列；author=适用说明；isbn=申请须知；stock=可申请
+CREATE TABLE IF NOT EXISTS leave_type (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   author VARCHAR(100),
@@ -32,11 +32,11 @@ CREATE TABLE IF NOT EXISTS staff_person (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  stage VARCHAR(32) DEFAULT '在岗',
+  stage VARCHAR(32) DEFAULT '开放申请',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- book_id=staff_person.id
+-- book_id=leave_type.id
 CREATE TABLE IF NOT EXISTS leave_req (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   book_id BIGINT NOT NULL,
@@ -94,15 +94,15 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '职能岗'), (2, '业务岗'), (3, '一线岗');
-INSERT IGNORE INTO staff_person (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '周明', '行政办', 'E2026008 / 坐班', 1, 1, 'available'),
-(2, '李芳', '研发中心', 'E2026012 / 工程师', 2, 1, 'available'),
-(3, '王强', '后勤保障', 'E2026003 / 维修', 3, 1, 'available'),
-(4, '赵敏', '人事部', 'E2026044 / 专员', 1, 1, 'available'),
-(5, '陈浩', '客户成功', 'E2026088 / 顾问', 2, 1, 'available');
+INSERT IGNORE INTO category (id, name) VALUES (1, '事假类'), (2, '病假类'), (3, '其它假');
+INSERT IGNORE INTO leave_type (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '事假', '因私事务离岗', '须提前申请；说明起止时间与事由', 1, 1, 'available'),
+(2, '病假', '因病休养', '可补交医院证明；急症可先口头报备', 2, 1, 'available'),
+(3, '年假', '带薪年休假', '按司龄额度；须提前预约排期', 3, 1, 'available'),
+(4, '调休', '加班兑换调休', '须关联已确认加班记录', 3, 1, 'available'),
+(5, '公出', '因公外出', '填写目的地与同行人；返回当日销假', 1, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '请假须知', '事假须提前申请；病假可补交证明；销假请在返回当日确认。', 'admin', '人事主管'
+SELECT '请假须知', '事假须提前申请；病假可补交证明；销假请在返回当日确认。请假单归属登录账号本人，不得代他人请假。', 'admin', '人事主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='请假须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本月考勤', '月底前提交未销假单据，逾期将记入考勤异常。', 'admin', '人事主管'

@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 GUESTBOOK_CAP = "guestbook"
 
 _GUESTBOOK_SIGNALS = re.compile(
@@ -23,7 +25,7 @@ _DEFAULT_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-BLOG", "DOM-MEDIA", "
 
 
 def scan_guestbook(text: str) -> bool:
-    return bool(_GUESTBOOK_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _GUESTBOOK_SIGNALS, ignore_contrast=True)
 
 
 def guestbook_wanted(

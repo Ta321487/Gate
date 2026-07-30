@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from app.bake.scene_scan import scene_for
+from app.bake.scene_scan import it_product_kind, property_product_kind, scene_for
 
 
 def _pf(
@@ -635,6 +635,13 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
     ],
+    "DOM-TOUR": [
+        _pf("memberNo", "会员号", required=True, on_register=True, max_length=32),
+        _pf("orgName", "单位/来源", on_register=True, max_length=64),
+        _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
+            options=["身份证", "护照", "其他"]),
+        _pf("emergencyPhone", "紧急联系电话", max_length=20),
+    ],
     "DOM-TIMEBANK": [
         _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
@@ -882,6 +889,39 @@ _IT_ENTERPRISE: list[dict[str, Any]] = [
         visible_when=_when("identityType", ["员工"]), placeholder="选填"),
 ]
 
+# 客服售后：客户向，禁止学号/教职工校园档
+_IT_AFTERSALES: list[dict[str, Any]] = [
+    _pf("identityType", "客户类型", required=True, on_register=True, field_type="select",
+        options=["个人客户", "企业客户"]),
+    _pf("orgName", "单位名称", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["企业客户"]),
+        visible_when=_when("identityType", ["企业客户"]),
+        placeholder="企业客户请填写单位"),
+    _pf("memberNo", "会员/订单号", on_register=True, max_length=32, placeholder="选填"),
+    _pf("officeOrDorm", "常用门店/地址", on_register=True, max_length=64, placeholder="选填"),
+    _pf("emergencyPhone", "备用联系电话", max_length=20),
+]
+
+# 设备维保：报修人向，无学号
+_IT_MAINTENANCE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="所在部门"),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "其他"]),
+        visible_when=_when("identityType", ["外包", "其他"]),
+        placeholder="请填写所属单位"),
+    _pf("officeOrDorm", "设备区域/机房", on_register=True, max_length=64, placeholder="选填"),
+    _pf("title", "岗位", max_length=32, placeholder="选填"),
+]
+
 _RECRUIT_ENTERPRISE: list[dict[str, Any]] = [
     _pf("identityType", "身份", required=True, on_register=True, field_type="select",
         options=["社会求职", "应届", "内部推荐"]),
@@ -986,6 +1026,20 @@ _PROPERTY_CAMPUS: list[dict[str, Any]] = [
     _pf("dormRoom", "房间", required=True, on_register=True, max_length=16, placeholder="如 405"),
 ]
 
+# 市政报修：市民向；键复用物业默认便于种子兼容，可见 label 换皮
+_PROPERTY_MUNICIPAL: list[dict[str, Any]] = [
+    _pf("houseBuilding", "片区", required=True, on_register=True, max_length=32,
+        placeholder="如 东区"),
+    _pf("houseUnit", "路段", on_register=True, max_length=32, placeholder="如 一街"),
+    _pf("houseNo", "设施点", required=True, on_register=True, max_length=32,
+        placeholder="如 路灯12号 / 井盖A3"),
+    _pf("ownerType", "上报人类型", required=True, on_register=True, field_type="select",
+        options=["居民", "商户", "过路人", "其他"]),
+    _pf("parkingNo", "附近车位/桩号", max_length=32, placeholder="选填"),
+    _pf("emergencyContact", "紧急联系人", max_length=32),
+    _pf("emergencyPhone", "紧急联系电话", max_length=20),
+]
+
 _MEDIA_CAMPUS: list[dict[str, Any]] = [
     _pf("identityType", "身份", required=True, on_register=True, field_type="select",
         options=["学生", "教职工", "其他"]),
@@ -1078,6 +1132,12 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
     if domain == "DOM-PARKING":
         return None if scene == "campus" else _PARKING_COMMERCIAL
     if domain == "DOM-IT":
+        # product_kind 优先于 scene：售后/维保勿落校园学号档
+        pk = it_product_kind(title, proposal_text)
+        if pk == "aftersales":
+            return _IT_AFTERSALES
+        if pk == "maintenance":
+            return _IT_MAINTENANCE
         return _IT_ENTERPRISE if scene == "enterprise" else None
     if domain == "DOM-RECRUIT":
         return None if scene == "campus" else _RECRUIT_ENTERPRISE
@@ -1100,6 +1160,8 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
     if domain == "DOM-LABSAFE":
         return _LABSAFE_ENTERPRISE if scene == "enterprise" else None
     if domain == "DOM-PROPERTY":
+        if property_product_kind(title, proposal_text) == "municipal":
+            return _PROPERTY_MUNICIPAL
         return _PROPERTY_CAMPUS if scene == "campus" else None
     if domain == "DOM-MEDIA":
         return _MEDIA_CAMPUS if scene == "campus" else None

@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 DOCLIB_CAP = "doclib"
 
 _DOCLIB_SIGNALS = re.compile(
@@ -13,7 +15,7 @@ _DOCLIB_SIGNALS = re.compile(
 
 
 def scan_doclib(text: str) -> bool:
-    return bool(_DOCLIB_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _DOCLIB_SIGNALS, ignore_contrast=True)
 
 
 def doclib_wanted(

@@ -106,6 +106,7 @@ _OPENINGS: dict[str, list[tuple[str, str]]] = {
     "DOM-VOTE": [("校园十佳投票评选", "投票计票")],
     "DOM-DOCLIB": [("制度文件文库下载台账", "资料下载")],
     "DOM-CARPOOL": [("校园拼车同行意向", "拼车对接")],
+    "DOM-TOUR": [("旅行社线路报名", "游客报名")],
     "DOM-TIMEBANK": [("时间银行志愿时长账户", "时长核销")],
     "DOM-CINEMA": [("影院选座购票", "选座下单")],
 }

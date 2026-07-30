@@ -10,6 +10,7 @@ from app.bake.engine_sql import domain_sql
 from app.bake.features.core_cap_scan import (
     scan_loan_deadline,
     scan_recommend,
+    scan_ticket_sla,
     scan_time_conflict,
 )
 
@@ -28,6 +29,42 @@ class CoreCapScanTests(unittest.TestCase):
         self.assertFalse(scan_loan_deadline("本期不实现逾期催还。"))
         # 申报窗口里的「逾期」不得当成借阅逾期
         self.assertFalse(scan_loan_deadline("各项目设置申报截止日期，逾期不可申请。"))
+
+        self.assertTrue(scan_ticket_sla("提供超时未处理列表与处理时效考核。"))
+        self.assertFalse(scan_ticket_sla("本期不实现超时未处理列表。"))
+        self.assertFalse(scan_ticket_sla("支持逾期催还与逾期罚款。"))
+
+    def test_it_mounts_sla_deadline(self) -> None:
+        body = "运维侧提供超时未处理列表，按处理时效催办。"
+        caps = list(DOMAIN_CAPABILITIES["DOM-IT"])
+        self.assertNotIn("deadline", caps)
+        spec = attach_accept(
+            {
+                "domain": "DOM-IT",
+                "title": "校园网故障报修",
+                "capabilities": caps,
+                "features": [],
+            },
+            body,
+        )
+        self.assertIn("deadline", spec.get("capabilities") or [])
+        ticket = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        self.assertTrue(ticket.get("applicantCompleteOnly"))
+        self.assertTrue(ticket.get("slaDeadline"))
+        self.assertFalse(ticket.get("pickLoanPeriod"))
+        labels = (spec.get("schema") or {}).get("labels") or {}
+        self.assertEqual(labels.get("deadlineMenuLabel"), "超时未处理")
+        admin = ((spec.get("schema") or {}).get("menus") or {}).get("admin") or []
+        self.assertTrue(any(m.get("key") == "deadline" for m in admin if isinstance(m, dict)))
+
+        sql = domain_sql(
+            "DOM-IT",
+            "thesis_test",
+            title="校园网故障报修",
+            proposal_text=body,
+            ticket_flags=ticket,
+        )
+        self.assertIn("due_at", sql)
 
     def test_shop_no_mount_without_signals(self) -> None:
         caps = list(DOMAIN_CAPABILITIES["DOM-SHOP"])

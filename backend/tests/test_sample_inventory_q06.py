@@ -49,10 +49,10 @@ class SampleInventoryQ06Tests(unittest.TestCase):
         self.assertEqual(ids, expected, f"missing={sorted(expected - ids)} extra={sorted(ids - expected)}")
 
     def test_p_preset_samples_complete(self) -> None:
-        """P-01～P-29 各 ≥1（P-30 为三联 reject，无独立样例）。"""
+        """P-01～P-29、P-31 各 ≥1（P-30 为三联 reject，无独立样例）。"""
         ids = _ids_from_glob("P-*.txt", "P")
-        expected = set(range(1, 30))
-        self.assertEqual(ids, expected, f"missing={sorted(expected - ids)}")
+        expected = set(range(1, 30)) | {31}
+        self.assertEqual(ids, expected, f"missing={sorted(expected - ids)} extra={sorted(ids - expected)}")
 
     def test_c_capability_samples_or_p_cover(self) -> None:
         """C-01～C-18：独立样例或由挂载 P 样例覆盖。"""

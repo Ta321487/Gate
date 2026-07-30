@@ -32,6 +32,7 @@ public final class ArchiveStore {
     private static Boolean hasMutexCode;
     private static Boolean hasDeletedAt;
     private static Boolean hasCheckinCode;
+    private static Boolean hasOwnerUsername;
     private static Boolean hasGalleryJson;
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
@@ -85,6 +86,7 @@ public final class ArchiveStore {
         hasMutexCode = null;
         hasDeletedAt = null;
         hasCheckinCode = null;
+        hasOwnerUsername = null;
         hasGalleryJson = null;
         TAG = "";
         ITEM_TAG = "";
@@ -283,10 +285,20 @@ public final class ArchiveStore {
     }
 
     /**
-     * 门户用户发帖：即时上架（stock=1），作者列固定为登录名便于「我的主帖」归属。
-     * 正文走 isbn 逻辑键（论坛/博客 schema bodyField → 物理 body_html）；站长下架走 soft-delete。
+     * 门户用户发布档案：即时上架；owner_username 固定登录名（「我的」归属）。
+     * author 可填业务字段（如联系人）；未传则仍用登录名。
      */
     public static Map<String, Object> addUserPost(String username, String title, String body, long categoryId) {
+        return addUserPost(username, title, body, categoryId, null, null);
+    }
+
+    public static Map<String, Object> addUserPost(
+            String username,
+            String title,
+            String body,
+            long categoryId,
+            String authorOpt,
+            Integer stockOpt) {
         if (!userPublishEnabled) {
             throw new IllegalStateException("当前领域未开放用户发帖");
         }
@@ -296,10 +308,19 @@ public final class ArchiveStore {
         if (t.isBlank()) throw new IllegalArgumentException("标题不能为空");
         long cat = categoryId > 0 ? categoryId : 1L;
         String content = body == null ? "" : body;
-        return addItem(t, uid, content, cat, 1, "");
+        String author = authorOpt == null ? "" : authorOpt.trim();
+        if (author.isBlank()) author = uid;
+        if (author.length() > 100) author = author.substring(0, 100);
+        int stock = 1;
+        if (stockOpt != null && stockOpt > 0) {
+            stock = Math.min(99, stockOpt);
+        }
+        Map<String, Object> extra = new LinkedHashMap<>();
+        extra.put("ownerUsername", uid);
+        return addItem(t, author, content, cat, stock, "", extra);
     }
 
-    /** 本人主帖（含站长下架），按 id 倒序 */
+    /** 本人发布（含站长下架）：优先按 owner_username，否则按作者列=登录名 */
     public static Map<String, Object> pageMine(String username, int page, int size) {
         if (!userPublishEnabled) {
             throw new IllegalStateException("当前领域未开放用户发帖");
@@ -308,7 +329,9 @@ public final class ArchiveStore {
         if (uid.isBlank()) throw new IllegalArgumentException("未登录");
         if (page < 1) page = 1;
         if (size < 1) size = 10;
-        String where = " WHERE " + authorColumn() + "=?";
+        String where = hasOwnerUsername()
+                ? " WHERE owner_username=?"
+                : (" WHERE " + authorColumn() + "=?");
         Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, uid);
         int t = total == null ? 0 : total;
         List<Map<String, Object>> list = db().query(
@@ -718,6 +741,11 @@ public final class ArchiveStore {
     public static boolean hasCheckinCode() {
         if (hasCheckinCode == null) hasCheckinCode = hasItemColumn("checkin_code");
         return hasCheckinCode;
+    }
+
+    public static boolean hasOwnerUsername() {
+        if (hasOwnerUsername == null) hasOwnerUsername = hasItemColumn("owner_username");
+        return hasOwnerUsername;
     }
 
     public static boolean hasGalleryJson() {

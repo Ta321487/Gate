@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 E_SIGN_CAP = "e_sign"
 
 _E_SIGN_SIGNALS = re.compile(
@@ -14,7 +16,7 @@ _E_SIGN_SIGNALS = re.compile(
 
 
 def scan_e_sign(text: str) -> bool:
-    return bool(_E_SIGN_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _E_SIGN_SIGNALS, ignore_contrast=True)
 
 
 def e_sign_wanted(

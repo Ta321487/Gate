@@ -68,9 +68,9 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "archive_menu_admin": "客户档案",
         "archive_menu_user": "客户列表",
         "auth_eyebrow": "客户跟进",
-        "auth_lead": "验证码登录；维护客户档案并提交跟进记录，跟进即时生效，可在完成后结案。",
+        "auth_lead": "验证码登录；登记名下客户并提交跟进记录，跟进即时生效，可在完成后结案。",
         "auth_points": ["验证码登录", "客户档案", "跟进记录"],
-        "register_hint": "注册后可维护名下客户并提交跟进",
+        "register_hint": "注册后可登记名下客户并提交跟进",
         "notice_title": "跟进须知",
         "notice_body": "请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。",
         "notice_page_title": "销售公告",
@@ -80,19 +80,20 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "跟进记录",
         "remark_label": "跟进内容",
         "auto_approve": True,
+        "user_publish": True,
         "contact_channel_label": "联系渠道",
         "contact_channel_options": ["电话", "微信", "邮件", "到访", "其他"],
         "contact_channel_placeholder": "电话/微信/到访等",
         "next_follow_label": "下次跟进",
         "banners": [
             {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+            {"title": "登记客户", "lead": "登录后可登记名下客户，即时可见。"},
             {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
             {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
             {"title": "我的跟进", "lead": "登录后查看跟进进度与记录。"},
-            {"title": "分级管理", "lead": "按客户分级筛选重点对象。"},
         ],
     },
-    "DOM-EVENT": {
+    "DOM-EVENT": {  # auto_approve=False：值班员确认（与场景文案一致）
         "doc": "事件/公卫上报：档案 + 上报单 + 监测打卡。",
         "user_label": "上报人",
         "admin_label": "主管（总管）",
@@ -140,7 +141,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "pending_label": "上报确认",
         "records_label": "上报记录",
         "remark_label": "上报说明",
-        "auto_approve": True,
+        "auto_approve": False,
         "contact_channel_label": "上报渠道",
         "contact_channel_options": ["电话", "现场", "系统填报", "其他"],
         "contact_channel_placeholder": "电话/现场/系统填报等",
@@ -156,21 +157,21 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "postprocess": "event_archive_log",
     },
     "DOM-ATTEND": {
-        "doc": "考勤请假：人员档案 + 请假单。",
+        "doc": "考勤请假：假种档案 + 本人请假单（我的请假填单选假种，非逛目录下单）。",
         "user_label": "员工/学生",
         "admin_label": "人事主管（总管）",
         "subadmin_label": "考勤员",
-        "archive_key": "staff_person",
-        "archive_label": "人员",
-        "archive_plural": "人员",
+        "archive_key": "leave_type",
+        "archive_label": "假种",
+        "archive_plural": "假种",
         "archive_fields": _std_archive_fields(
-            "姓名",
-            "部门",
-            "工号/学号备注",
-            "在岗状态",
-            ["在岗", "请假中", "出差", "停职"],
-            "岗位类型",
-            "可请假",
+            "假种名称",
+            "归口说明",
+            "申请须知备注",
+            "开放状态",
+            ["开放申请", "暂停", "已关闭"],
+            "假种分类",
+            "可申请",
         ),
         "ticket_key": "leave_req",
         "ticket_label": "请假单",
@@ -189,14 +190,14 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "returned": "已销假",
             "overdue": "已失效",
         },
-        "archive_menu_admin": "人员档案",
-        "archive_menu_user": "人员名册",
+        "archive_menu_admin": "假种档案",
+        "archive_menu_user": "假种说明",
         "auth_eyebrow": "考勤请假",
-        "auth_lead": "验证码登录；维护人员档案并提交请假，审批通过后按时销假。",
-        "auth_points": ["验证码登录", "人员档案", "请假与销假"],
-        "register_hint": "注册后可提交请假申请",
+        "auth_lead": "验证码登录；在「我的请假」选择假种提交本人请假，审批通过后按时销假（不能代他人请假）。",
+        "auth_points": ["验证码登录", "本人请假填单", "审批与销假"],
+        "register_hint": "注册后可提交本人请假申请",
         "notice_title": "请假须知",
-        "notice_body": "事假须提前申请；病假可补交证明；返回当日请销假。",
+        "notice_body": "事假须提前申请；病假可补交证明；返回当日请销假。请假单归属登录账号本人。",
         "notice_page_title": "人事公告",
         "notice_page_lead": "考勤与请假通知，点击条目阅读全文。",
         "my_tickets_label": "我的请假",
@@ -204,16 +205,21 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "请假记录",
         "remark_label": "请假事由",
         "auto_approve": False,
+        "apply_from_list": True,
+        "user_tickets_first": True,
+        "pick_date_range": True,
+        "my_tickets_page_lead": "在此选择假种提交本人请假，并跟踪审批与销假。",
+        "my_tickets_empty": "还没有请假记录，点击右上角提交请假。",
         "contact_channel_label": "请假方式",
         "contact_channel_options": ["线上申请", "纸质补录", "电话报备", "其他"],
         "contact_channel_placeholder": "线上/纸质/电话等",
         "next_follow_label": "预计销假日",
         "banners": [
-            {"title": "人员名册", "lead": "按岗位类型浏览人员，维护部门与工号。"},
-            {"title": "在线请假", "lead": "提交请假单，人事审批后生效。"},
+            {"title": "本人请假", "lead": "登录后在「我的请假」选假种、填事由并提交。"},
+            {"title": "假种说明", "lead": "查阅事假、病假、年假等开放规则与须知。"},
             {"title": "人事公告", "lead": "考勤节点与请假须知见公告栏。"},
-            {"title": "我的请假", "lead": "登录后跟踪审批与销假。"},
-            {"title": "分类检索", "lead": "按岗位类型快速定位人员。"},
+            {"title": "审批销假", "lead": "跟踪本人审批进度，返回后按时销假。"},
+            {"title": "分类查阅", "lead": "假种说明可按分类筛选查阅。"},
         ],
     },
     "DOM-FUND": {
@@ -607,7 +613,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "ticket_label": "取件单",
         "ticket_plural": "取件",
         "verbs": {
-            "apply": "申请取件",
+            "apply": "凭码取件",
             "approve": "核销出库",
             "reject": "驳回",
             "return": "取消取件",
@@ -624,24 +630,25 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         # 全库检索，非按用户过滤；与 §18 对齐
         "archive_menu_user": "包裹检索",
         "auth_eyebrow": "校园驿站",
-        "auth_lead": "验证码登录；检索待取包裹，提交取件申请并由店员核销（≠跑腿代买）。",
-        "auth_points": ["验证码登录", "包裹检索", "取件核销"],
-        "register_hint": "注册后可申请取件",
+        "auth_lead": "验证码登录；检索待取包裹，填写取件码提交后到站由店员核销出库（≠跑腿代买）。",
+        "auth_points": ["验证码登录", "包裹检索", "取件码核销"],
+        "register_hint": "注册后可凭取件码办理取件",
         "notice_title": "取件须知",
-        "notice_body": "请凭取件码与手机号取件；智能柜硬件不在本期。",
+        "notice_body": "请凭取件码与手机号取件；提交后请到站出示，由店员核销。智能柜硬件不在本期。",
         "notice_page_title": "驿站公告",
         "notice_page_lead": "营业时间与催取通知，点击条目阅读全文。",
         "my_tickets_label": "我的取件",
         "pending_label": "取件核销",
         "records_label": "取件记录",
-        "remark_label": "取件说明",
+        "remark_label": "取件码",
         "stock_display": "available",
         "approve_ends_flow": True,
         "allow_rating": True,
+        "require_claim_code": True,
         # 无 contact_channel / auto_approve（与 CRM 族其它域不同）
         "banners": [
             {"title": "包裹查询", "lead": "按运单与取件码查看待取包裹。"},
-            {"title": "申请取件", "lead": "提交取件单，到站核销出库。"},
+            {"title": "凭码取件", "lead": "填写正确取件码提交，到站由店员核销出库。"},
             {"title": "驿站公告", "lead": "营业时间与逾期催取见公告。"},
             {"title": "我的取件", "lead": "跟踪核销进度。"},
             {"title": "件型筛选", "lead": "普通/生鲜/大件快速定位。"},
@@ -678,8 +685,10 @@ from app.bake.schema.tail_followup_presets import build_tail_followup_presets
 FOLLOWUP_PRESETS.update(build_tail_followup_presets(_std_archive_fields))
 
 from app.bake.schema.carpool_followup_presets import build_carpool_followup_presets
+from app.bake.schema.tour_followup_presets import build_tour_followup_presets
 
 FOLLOWUP_PRESETS.update(build_carpool_followup_presets(_std_archive_fields))
+FOLLOWUP_PRESETS.update(build_tour_followup_presets(_std_archive_fields))
 
 from app.bake.schema.timebank_followup_presets import build_timebank_followup_presets
 
@@ -777,6 +786,13 @@ def followup_domain_schema(
     schema = _with_portal_banners(archive_ticket_schema(title, **kw), banners)
     if post_key:
         schema = _POSTPROCESS[post_key](schema)
+    # 双角色域（STAFF_POSTS 空）不落子管，与 bake 侧 attach_staff_posts 一致
+    from app.bake.staff_posts import staff_posts_for_domain
+
+    if not staff_posts_for_domain(domain, title=title, proposal_text=""):
+        roles = dict(schema.get("roles") or {})
+        roles.pop("subadmin", None)
+        schema["roles"] = roles
     return schema
 
 

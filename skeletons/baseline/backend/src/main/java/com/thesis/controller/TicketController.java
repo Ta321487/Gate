@@ -9,6 +9,9 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** 通用单据 API：/api/tickets（借阅 / 报修等均走此路径；LIBRARY 另保留 /api/borrows 兼容） */
@@ -18,6 +21,25 @@ public class TicketController {
 
     @Value("${thesis.register-role:user}")
     private String userRole;
+
+    /** 受理派单：可选处理人（子管/维修员等） */
+    @GetMapping("/dispatch-targets")
+    public R<List<Map<String, Object>>> dispatchTargets(HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        List<Map<String, Object>> raw = com.thesis.service.UserStore.listManaged(userRole, "subadmins", null);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> row : raw) {
+            if (row == null) continue;
+            if (Boolean.FALSE.equals(row.get("enabled"))) continue;
+            Map<String, Object> one = new LinkedHashMap<>();
+            one.put("username", row.get("username"));
+            one.put("nickname", row.get("nickname"));
+            one.put("staffPost", row.get("staffPost"));
+            one.put("staffKind", row.get("staffKind"));
+            out.add(one);
+        }
+        return R.ok(out);
+    }
 
     @PostMapping("/apply")
     public R<Map<String, Object>> apply(@RequestBody Map<String, Object> body, HttpSession session) {
@@ -49,6 +71,9 @@ public class TicketController {
             if (periodStart.isBlank()) periodStart = str(body.get("startAt"));
             String periodEnd = str(body.get("periodEnd"));
             if (periodEnd.isBlank()) periodEnd = str(body.get("endAt"));
+            String claimCode = str(body.get("pickupCode"));
+            if (claimCode.isBlank()) claimCode = str(body.get("claimCode"));
+            TicketStore.assertClaimCodeIfRequired(itemId, claimCode.isBlank() ? remark : claimCode);
             Map<String, Object> created = TicketStore.apply(
                     uid,
                     itemId,
@@ -60,6 +85,12 @@ public class TicketController {
                     periodEnd.isBlank() ? null : periodEnd);
             long tid = created.get("id") instanceof Number n ? n.longValue() : 0L;
             TicketStore.patchTicketExtras(tid, body);
+            try {
+                created = finishApplyExtras(tid, uid, body, created);
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                if (tid > 0) TicketStore.deleteFreshTicket(tid);
+                throw e;
+            }
             return R.ok(tid > 0 ? TicketStore.get(tid) : created);
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "缺少业务对象 id");
@@ -68,6 +99,54 @@ public class TicketController {
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
+    }
+
+    /**
+     * 提交即评分（评教）/ 提交即口令签到（查寝）：须 autoApprove，失败由调用方回滚单据。
+     */
+    private Map<String, Object> finishApplyExtras(
+            long tid, String uid, Map<String, Object> body, Map<String, Object> created) {
+        if (tid <= 0 || !TicketStore.isAutoApprove()) return created;
+        String checkinCode = str(body.get("checkinCode"));
+        if (checkinCode.isBlank()) checkinCode = str(body.get("code"));
+        if (TicketStore.isAllowCheckin() && !checkinCode.isBlank()) {
+            created = TicketStore.checkin(tid, uid, checkinCode);
+        } else if (TicketStore.isAllowCheckin()) {
+            throw new IllegalStateException("请输入签到码");
+        }
+        if (!TicketStore.isAllowRating()) return created;
+        boolean wantRate = body.get("dims") != null || body.get("rating") != null;
+        if (!wantRate && TicketStore.ratingDimsRequiredOnApply()) {
+            throw new IllegalStateException("请完成各维度评分");
+        }
+        if (!wantRate) return created;
+        int rating = 0;
+        Object ratingRaw = body.get("rating");
+        if (ratingRaw != null && !String.valueOf(ratingRaw).isBlank()
+                && !"null".equalsIgnoreCase(String.valueOf(ratingRaw))) {
+            try {
+                rating = Integer.parseInt(String.valueOf(ratingRaw));
+            } catch (Exception e) {
+                throw new IllegalStateException("请选择 1～5 分");
+            }
+        }
+        String rateNote = body.get("ratingRemark") == null ? "" : String.valueOf(body.get("ratingRemark")).trim();
+        boolean anonymous = Boolean.TRUE.equals(body.get("anonymous"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("anonymous")));
+        Map<String, Integer> dims = null;
+        Object dimsRaw = body.get("dims");
+        if (dimsRaw instanceof Map<?, ?> map) {
+            dims = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getKey() == null || e.getValue() == null) continue;
+                try {
+                    dims.put(String.valueOf(e.getKey()), Integer.parseInt(String.valueOf(e.getValue())));
+                } catch (Exception ignored) {
+                    throw new IllegalStateException("维度评分须为 1～5 分");
+                }
+            }
+        }
+        return TicketStore.rate(tid, uid, rating, rateNote, dims, anonymous);
     }
 
     @PostMapping("/{id}/approve")
@@ -84,7 +163,11 @@ public class TicketController {
         }
         try {
             boolean superAdmin = AdminAuth.isSuperAdmin(session);
-            return R.ok(TicketStore.approve(id, pass, remark, uid, superAdmin));
+            String assignee = body.get("assigneeUsername") == null
+                    ? ""
+                    : String.valueOf(body.get("assigneeUsername")).trim();
+            if ("null".equalsIgnoreCase(assignee)) assignee = "";
+            return R.ok(TicketStore.approve(id, pass, remark, uid, superAdmin, assignee));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
@@ -235,7 +318,11 @@ public class TicketController {
         if (br == null) throw new BizException(ErrorCode.NOT_FOUND, "单据不存在");
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         boolean owner = uid.equals(br.get("username"));
-        if (!admin && !owner) {
+        if (TicketStore.isApplicantCompleteOnly()) {
+            if (!owner) {
+                throw new BizException(ErrorCode.FORBIDDEN, "请由申请人确认完结");
+            }
+        } else if (!admin && !owner) {
             throw new BizException(ErrorCode.FORBIDDEN, "只能完结自己的单据");
         }
         try {

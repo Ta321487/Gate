@@ -16,15 +16,21 @@ class AttendTitleCopyTests(unittest.TestCase):
         self.assertEqual(roles["admin"]["label"], "学工主管（总管）")
         self.assertEqual(roles["subadmin"]["label"], "辅导员")
         self.assertEqual(schema["labels"]["noticePageTitle"], "学工公告")
-        self.assertEqual(schema["menus"]["user"][0]["label"], "学生名册")
+        self.assertEqual(schema["menus"]["user"][0]["label"], "我的请假")
+        self.assertEqual(schema["menus"]["user"][1]["label"], "假种说明")
+        self.assertTrue(schema["entities"]["ticket"].get("applyFromList"))
+        self.assertTrue(schema["entities"]["ticket"].get("pickDateRange"))
+        self.assertEqual(schema["labels"].get("userHomePath"), "/tickets")
         fields = {f["key"]: f["label"] for f in schema["entities"]["archive"]["fields"]}
-        self.assertEqual(fields["author"], "院系/班级")
-        self.assertEqual(fields["isbn"], "学号备注")
-        self.assertEqual(fields["category"], "学生类型")
+        self.assertEqual(fields["author"], "适用说明")
+        self.assertEqual(fields["isbn"], "申请须知备注")
+        self.assertEqual(fields["category"], "假种分类")
         leads = " ".join(b.get("lead", "") for b in schema.get("portalBanners") or [])
         self.assertNotIn("人事", leads)
         self.assertNotIn("工号", leads)
         self.assertNotIn("岗位类型", leads)
+        self.assertNotIn("名册", leads)
+        self.assertIn("假种", leads)
 
     def test_proposal_body_without_student_in_title(self) -> None:
         """题名不含学生时，开题正文写到仍走学工口径。"""
@@ -66,7 +72,13 @@ class AttendTitleCopyTests(unittest.TestCase):
         self.assertEqual(schema["roles"]["user"]["label"], "员工")
         self.assertEqual(schema["roles"]["admin"]["label"], "人事主管（总管）")
         self.assertEqual(schema["labels"]["noticePageTitle"], "人事公告")
-        self.assertEqual(schema["entities"]["archive"].get("label"), "员工")
+        self.assertEqual(schema["entities"]["archive"].get("label"), "假种")
+        self.assertEqual(schema["entities"]["archive"].get("key"), "leave_type")
+        self.assertEqual(schema["menus"]["user"][0]["label"], "我的请假")
+        self.assertTrue(schema["entities"]["ticket"].get("applyFromList"))
+        lead = schema["labels"]["authLead"]
+        self.assertIn("本人请假", lead)
+        self.assertIn("不能代", lead)
 
     def test_golden_title_unchanged(self) -> None:
         schema = SCHEMA_BUILDERS["DOM-ATTEND"]("测试课题")

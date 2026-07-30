@@ -53,6 +53,7 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-HOSPITAL",
     "DOM-LOST",
     "DOM-CRM",
+    "DOM-EQUIP",
     "DOM-IT",
     "DOM-FUND",
     "DOM-GRADE",
@@ -177,6 +178,14 @@ def archive_ticket_schema(
     approve_ends_flow: bool = False,
     # True：提交即生效（媒资/博客收藏等个人动作），不进管理端待审队列
     auto_approve: bool = False,
+    # True：申请说明/取件码须与档案 isbn（取件码）一致（驿站）
+    require_claim_code: bool = False,
+    # True：用户在「我的单据」填单选档案项提交（请假/OA 填单感）；仍保留档案浏览作说明
+    apply_from_list: bool = False,
+    # True：用户菜单「我的单据」排在档案目录前
+    user_tickets_first: bool = False,
+    my_tickets_page_lead: str | None = None,
+    my_tickets_empty: str | None = None,
 ) -> dict[str, Any]:
     """借用/收藏/回复薄壳：档案主数据 + 单据流（组 A / G）。"""
     app = product_name_from_title(title)
@@ -262,6 +271,8 @@ def archive_ticket_schema(
         "pickDateRange": bool(pick_date_range),
         "approveEndsFlow": bool(approve_ends_flow),
         "autoApprove": bool(auto_approve),
+        "requireClaimCode": bool(require_claim_code),
+        "applyFromList": bool(apply_from_list),
     }
     dims = [d for d in (rating_dims or []) if isinstance(d, dict) and d.get("key") and d.get("label")]
     if dims and allow_rating:
@@ -303,10 +314,16 @@ def archive_ticket_schema(
     if with_deadline:
         admin_menus.append({"key": "deadline", "label": deadline_label})
     admin_menus.append({"key": "content", "label": "公告管理", "superOnly": True})
-    user_menus = [
-        {"key": "archive", "label": archive_menu_user},
-        {"key": "my_tickets", "label": my_tickets_label},
-    ]
+    if user_tickets_first:
+        user_menus = [
+            {"key": "my_tickets", "label": my_tickets_label},
+            {"key": "archive", "label": archive_menu_user},
+        ]
+    else:
+        user_menus = [
+            {"key": "archive", "label": archive_menu_user},
+            {"key": "my_tickets", "label": my_tickets_label},
+        ]
     if peer_accept:
         user_menus.append(
             {"key": "peer_tickets", "label": (peer_inbox_label or "").strip() or "待我确认"}
@@ -357,6 +374,19 @@ def archive_ticket_schema(
         labels["peerInboxTitle"] = (peer_inbox_label or "").strip() or "待我确认"
         labels["peerInboxLead"] = "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。"
         labels["peerInboxEmpty"] = "暂无待确认志愿"
+    if apply_from_list:
+        labels["myTicketsPageLead"] = (my_tickets_page_lead or "").strip() or (
+            f"在此{verbs.get('apply') or '提交'}并跟踪进度；档案页仅作说明查阅。"
+        )
+        labels["myTicketsEmpty"] = (my_tickets_empty or "").strip() or (
+            f"还没有记录，点击右上角{verbs.get('apply') or '提交'}。"
+        )
+        labels["userHomePath"] = "/tickets"
+    else:
+        if my_tickets_page_lead:
+            labels["myTicketsPageLead"] = my_tickets_page_lead.strip()
+        if my_tickets_empty:
+            labels["myTicketsEmpty"] = my_tickets_empty.strip()
     return {
         "version": 1,
         "title": title,
@@ -536,13 +566,12 @@ def standalone_ticket_schema(
     app = product_name_from_title(title)
     states_out = dict(states)
     if two_level_approve and "pending_final" not in states_out:
+        # 只插入待终审；保留 builder 的「待受理」等可见词（勿改成「待初审」穿帮开题）
         ordered: dict[str, str] = {}
         for k, v in states.items():
+            ordered[k] = v
             if k == "pending":
-                ordered["pending"] = "待初审" if v in ("待受理", "待审核") else v
                 ordered["pending_final"] = "待终审"
-            else:
-                ordered[k] = v
         states_out = ordered
     return {
         "version": 1,
@@ -563,6 +592,7 @@ def standalone_ticket_schema(
                 "twoLevelApprove": two_level_approve,
                 "requireAttach": require_attach,
                 "allowRating": allow_rating,
+                "applicantCompleteOnly": True,
             },
         },
         "menus": {
@@ -575,6 +605,7 @@ def standalone_ticket_schema(
                 {"key": "users", "label": users_menu, "superOnly": True},
                 {"key": "content", "label": "公告管理", "superOnly": True},
             ],
+            # deadline 菜单由 core_cap_scan 在扫到 SLA/逾期词后插入
             "user": [
                 {"key": "my_tickets", "label": my_tickets_label},
                 {"key": "content", "label": "公告"},

@@ -71,7 +71,7 @@
     </select>
 
     <select id="selectMine" resultType="map">
-        SELECT * FROM `${itemTable}` WHERE `${authorCol}`=#{username} ORDER BY id DESC
+        SELECT * FROM `${itemTable}` WHERE `${mineCol}`=#{username} ORDER BY id DESC
     </select>
 
     <select id="suggestTitles" resultType="map">

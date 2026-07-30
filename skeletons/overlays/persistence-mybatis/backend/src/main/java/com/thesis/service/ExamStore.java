@@ -1,4 +1,4 @@
-﻿package com.thesis.service;
+package com.thesis.service;
 
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.ExamMapper;

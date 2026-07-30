@@ -29,7 +29,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import http from '../../utils/http'
+import http from '../../api/http'
 
 const list = ref([])
 const total = ref(0)

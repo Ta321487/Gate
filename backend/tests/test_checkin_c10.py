@@ -31,6 +31,8 @@ class CheckinC10Tests(unittest.TestCase):
         self.assertTrue(ok, errs[:5])
         ticket = (schema.get("entities") or {}).get("ticket") or {}
         self.assertTrue(ticket.get("allowCheckin"))
+        self.assertTrue(ticket.get("autoApprove"))
+        self.assertTrue(ticket.get("noShowAfterEnd"))
         archive = (schema.get("entities") or {}).get("archive") or {}
         keys = {f.get("key") for f in (archive.get("fields") or []) if isinstance(f, dict)}
         self.assertIn("checkinCode", keys)

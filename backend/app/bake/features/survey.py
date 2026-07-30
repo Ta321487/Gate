@@ -5,15 +5,21 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 SURVEY_CAP = "survey"
 
+# 禁止裸「调研」：开题进度几乎都有「文献调研」。
+# 禁止裸「问卷」：「邮箱、问卷或现场投递」是投递渠道，不是 C-03 问卷系统。
 _SURVEY_SIGNALS = re.compile(
-    r"问卷|调研|调查表|简易量表|满意度调查|问卷调查|在线问卷|问卷回收|问卷统计"
+    r"问卷调查|问卷配置|问卷填写|问卷回收|问卷统计|问卷系统|问卷调研|问卷管理|问卷表"
+    r"|在线问卷|调查表|简易量表|满意度调查"
+    r"|用户调研|客户调研|满意度调研|在线调研"
 )
 
 
 def scan_survey(text: str) -> bool:
-    return bool(_SURVEY_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _SURVEY_SIGNALS, ignore_contrast=True)
 
 
 def survey_wanted(

@@ -25,7 +25,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import http from '../utils/http'
+import http from '../api/http'
 import { getSchema } from '../utils/domainSchema'
 
 const labels = computed(() => getSchema().labels || {})

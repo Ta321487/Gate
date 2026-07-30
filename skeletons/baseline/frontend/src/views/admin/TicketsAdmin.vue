@@ -38,7 +38,7 @@
         </template>
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
-      <el-table-column v-if="pickLoanPeriod" prop="dueAt" :label="dueLabel" width="170" />
+      <el-table-column v-if="pickLoanPeriod || slaDeadline" prop="dueAt" :label="dueLabel" width="170" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <el-tag
@@ -121,6 +121,23 @@
           :placeholder="audit.pass ? '可填写受理说明，留空则保留申请说明' : '请说明驳回原因，申请人可见'"
         />
       </label>
+      <label v-if="audit.pass && showDispatch && isFinalPass(audit.row)" class="audit-field" style="margin-top: 12px">
+        <span class="lab">派给（选填）</span>
+        <el-select
+          v-model="audit.assigneeUsername"
+          clearable
+          filterable
+          placeholder="默认派给当前操作人"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="t in dispatchTargets"
+            :key="t.username"
+            :label="dispatchLabel(t)"
+            :value="t.username"
+          />
+        </el-select>
+      </label>
       <template #footer>
         <el-button @click="audit.visible = false">取消</el-button>
         <el-button
@@ -171,7 +188,9 @@ const twoLevel = computed(() => !!ticket.twoLevelApprove || !!ticket.threeLevelA
 const threeLevel = computed(() => !!ticket.threeLevelApprove)
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
-const dueLabel = computed(() => ticketDueLabel())
+const slaDeadline = computed(() => !!ticket.slaDeadline)
+const applicantCompleteOnly = computed(() => !!ticket.applicantCompleteOnly)
+const dueLabel = computed(() => ticketDueLabel(slaDeadline.value ? '处理时限' : '到期日'))
 const userLabel = computed(() => roleLabel('user', '用户'))
 const recordsLabel = computed(() => menuLabel('admin', 'ticket_records', ticket.recordsMenu || '记录'))
 const showFollowCols = computed(() => ticketShowsFollowCols())
@@ -181,6 +200,8 @@ const showTypeCol = computed(() => ticketShowsTypeCol(archive))
 const showLocationCol = computed(() => ticketShowsLocationCol(archive))
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
+/** 终审/单级受理时可选派给维修员等子管 */
+const showDispatch = computed(() => applicantCompleteOnly.value || slaDeadline.value)
 
 function archiveFieldLabel(key, fallback) {
   const f = (archive.fields || []).find((x) => x.key === key)
@@ -218,12 +239,14 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
+const dispatchTargets = ref([])
 
 const audit = reactive({
   visible: false,
   loading: false,
   pass: true,
   remark: '',
+  assigneeUsername: '',
   row: null,
 })
 
@@ -252,6 +275,28 @@ function canPass(row) {
   return true
 }
 
+/** 仅进入「处理中」的那一关展示派单 */
+function isFinalPass(row) {
+  if (!row) return false
+  if (!twoLevel.value) return true
+  return row.status === 'pending_final'
+}
+
+function dispatchLabel(t) {
+  const name = t.nickname || t.username
+  const post = t.staffPost ? ` · ${t.staffPost}` : ''
+  return `${name}${post}`
+}
+
+async function loadDispatchTargets() {
+  try {
+    const res = await http.get('/api/tickets/dispatch-targets')
+    dispatchTargets.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    dispatchTargets.value = []
+  }
+}
+
 async function load() {
   const res = await http.get('/api/tickets', {
     params: { page: page.value, size: size.value, status: 'todo' },
@@ -268,12 +313,17 @@ function openAudit(row, pass) {
   audit.row = row
   audit.pass = pass
   audit.remark = ''
+  audit.assigneeUsername = ''
   audit.visible = true
+  if (pass && showDispatch.value && isFinalPass(row)) {
+    loadDispatchTargets()
+  }
 }
 
 function resetAudit() {
   audit.row = null
   audit.remark = ''
+  audit.assigneeUsername = ''
   audit.loading = false
 }
 
@@ -286,10 +336,14 @@ async function submitAudit() {
   }
   audit.loading = true
   try {
-    const res = await http.post(`/api/tickets/${audit.row.id}/approve`, {
+    const body = {
       pass: audit.pass,
       remark,
-    })
+    }
+    if (audit.pass && showDispatch.value && isFinalPass(audit.row) && audit.assigneeUsername) {
+      body.assigneeUsername = audit.assigneeUsername
+    }
+    const res = await http.post(`/api/tickets/${audit.row.id}/approve`, body)
     const n = Number(res?.data?.autoRejectedCount) || 0
     ElMessage.success(
       audit.pass && n > 0

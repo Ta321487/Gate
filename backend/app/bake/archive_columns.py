@@ -37,8 +37,8 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("location_note", "VARCHAR(255)"),
     ),
     "DOM-ATTEND": (
-        ("dept_name", "VARCHAR(100)"),
-        ("badge_note", "VARCHAR(255)"),
+        ("scope_note", "VARCHAR(100)"),
+        ("apply_note", "VARCHAR(255)"),
     ),
     "DOM-FUND": (
         ("dept_name", "VARCHAR(100)"),

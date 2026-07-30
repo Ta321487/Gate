@@ -36,7 +36,7 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import http from '../../utils/http'
+import http from '../../api/http'
 
 const list = ref([])
 const total = ref(0)

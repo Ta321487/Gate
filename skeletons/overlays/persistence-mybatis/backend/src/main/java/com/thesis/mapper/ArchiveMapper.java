@@ -81,7 +81,7 @@ public interface ArchiveMapper {
 
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,
-            @Param("authorCol") String authorCol,
+            @Param("mineCol") String mineCol,
             @Param("username") String username);
 
     List<Map<String, Object>> suggestTitles(

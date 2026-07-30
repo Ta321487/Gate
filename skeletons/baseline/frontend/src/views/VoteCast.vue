@@ -29,7 +29,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import http from '../utils/http'
+import http from '../api/http'
 
 const route = useRoute()
 const router = useRouter()

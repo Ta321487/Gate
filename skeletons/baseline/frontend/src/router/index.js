@@ -180,9 +180,14 @@ function withPortalHub(baseRoutes) {
       })
     }
     const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
-    if (style === 'editorial') {
-      const red = kids.find((c) => c.path === '' && c.redirect != null)
-      if (red) red.redirect = '/home'
+    const red = kids.find((c) => c.path === '' && c.redirect != null)
+    if (red) {
+      if (style === 'editorial') {
+        red.redirect = '/home'
+      } else {
+        const home = String(APP_DELIVERED?.schema?.labels?.userHomePath || '').trim()
+        if (home.startsWith('/')) red.redirect = home
+      }
     }
   }
   const admin = routes.find((r) => r.path === '/admin')

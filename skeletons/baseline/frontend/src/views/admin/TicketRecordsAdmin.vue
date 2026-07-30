@@ -217,6 +217,8 @@ const myUid = localStorage.getItem('uid') || ''
 /** 驿站/失物核销流：approved/overdue 即终态；子管仅处理人可完结 */
 function canFinish(row) {
   if (!row) return false
+  // 报修等：须申请人确认完结，管理端不代点
+  if (ticket.applicantCompleteOnly) return false
   if (approveEndsFlow.value && showPickup.value) return false
   if (!(row.status === 'approved' || row.status === 'overdue')) return false
   if (superAdmin) return true

@@ -39,7 +39,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import http from '../utils/http'
+import http from '../api/http'
 import { getSchema } from '../utils/domainSchema'
 
 const route = useRoute()

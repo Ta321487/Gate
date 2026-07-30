@@ -43,6 +43,13 @@
         SELECT * FROM `${ticketTable}` WHERE id=#{id}
     </select>
 
+    <select id="selectPeerInbox" resultType="map">
+        SELECT t.* FROM `${ticketTable}` t
+        JOIN `${itemTable}` i ON t.`${itemFk}`=i.id
+        WHERE i.owner_username=#{owner} AND t.status=#{status}
+        ORDER BY t.id DESC
+    </select>
+
     <select id="selectOpenApprovedOverdue" resultType="map">
         SELECT * FROM `${ticketTable}` WHERE status IN ('approved','overdue')
     </select>

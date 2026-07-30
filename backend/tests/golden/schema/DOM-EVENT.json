@@ -101,8 +101,9 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
-      "autoApprove": true,
+      "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "contactChannelLabel": "上报渠道",
@@ -113,16 +114,19 @@
         "其他"
       ],
       "contactChannelPlaceholder": "电话/现场/系统填报等",
+      "issuePassCode": false,
       "key": "event_report",
       "label": "上报单",
       "labelPlural": "上报",
       "nextFollowLabel": "下次复核",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "上报说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "处置中",
@@ -157,7 +161,7 @@
       "随访打卡",
       "异常上报"
     ],
-    "messagesPageLead": "系统通知。",
+    "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "上报规范与临时通知，点击条目阅读全文。",
     "noticePageTitle": "公卫公告",
     "registerRoleHint": "内部账号登录后可维护档案、打卡并提交上报"
@@ -182,6 +186,10 @@
         "key": "users",
         "label": "用户管理",
         "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "上报确认"
       },
       {
         "key": "ticket_records",

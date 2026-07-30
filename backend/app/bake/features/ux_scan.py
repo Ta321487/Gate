@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 SEARCH_ASSIST_CAP = "search_assist"
 BROWSE_HISTORY_CAP = "browse_history"
 GALLERY_CAP = "gallery"
@@ -23,15 +25,15 @@ _GALLERY_SIGNALS = re.compile(
 
 
 def scan_search_assist(text: str) -> bool:
-    return bool(_SEARCH_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _SEARCH_SIGNALS, ignore_contrast=True)
 
 
 def scan_browse_history(text: str) -> bool:
-    return bool(_BROWSE_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _BROWSE_SIGNALS, ignore_contrast=True)
 
 
 def scan_gallery(text: str) -> bool:
-    return bool(_GALLERY_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _GALLERY_SIGNALS, ignore_contrast=True)
 
 
 def merge_ux_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:

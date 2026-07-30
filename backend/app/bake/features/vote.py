@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 VOTE_CAP = "vote"
 
 _VOTE_SIGNALS = re.compile(
@@ -16,11 +18,11 @@ _SIGNUP_SIGNALS = re.compile(
 
 
 def scan_vote(text: str) -> bool:
-    return bool(_VOTE_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _VOTE_SIGNALS, ignore_contrast=True)
 
 
 def scan_signup(text: str) -> bool:
-    return bool(_SIGNUP_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _SIGNUP_SIGNALS, ignore_contrast=True)
 
 
 def scan_vote_signup_composite(text: str) -> bool:

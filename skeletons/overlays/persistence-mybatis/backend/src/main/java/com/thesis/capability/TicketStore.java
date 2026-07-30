@@ -6,7 +6,9 @@ import com.thesis.config.DomainResourceJson;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.SchemaMapper;
 import com.thesis.mapper.TicketMapper;
+import com.thesis.service.ExamStore;
 import com.thesis.service.MessageStore;
+import com.thesis.service.TimebankStore;
 import com.thesis.service.UserStore;
 
 import java.sql.Timestamp;
@@ -58,6 +60,8 @@ public final class TicketStore {
     static boolean requireAttach = false;
     /** L1：完结后可评分 */
     static boolean allowRating = false;
+    /** 报修等：完结须由申请人确认，管理端不可代点完成 */
+    static boolean applicantCompleteOnly = false;
     /** L1：同 mutex_code 的档案不可同时选 */
     static boolean checkMutex = false;
     /** L1：同一分类下进行中单据上限；≤0 表示不限 */
@@ -131,12 +135,16 @@ public final class TicketStore {
         loadTicketColumnsFromResource();
     }
 
-    /** 报修等：无档案占用、无到期催办 */
+    /** 报修等：无档案占用；deadline 可由开题 SLA（超时未处理）打开 */
     public static void bindStandalone(String ticketTable) {
+        bindStandalone(ticketTable, false);
+    }
+
+    public static void bindStandalone(String ticketTable, boolean deadline) {
         if (ticketTable != null && !ticketTable.isBlank()) TICKET = ticketTable.trim();
         MODE = Mode.STANDALONE;
         useQuota = false;
-        useDeadline = false;
+        useDeadline = deadline;
         enabled = true;
         bindProgressDefault();
         TicketCopy.loadCopyFromResource();
@@ -180,6 +188,14 @@ public final class TicketStore {
         twoLevelApprove = twoLevel || threeLevelApprove;
         requireAttach = attachRequired;
         allowRating = ratingEnabled;
+    }
+
+    public static void configureApplicantCompleteOnly(boolean enabled) {
+        applicantCompleteOnly = enabled;
+    }
+
+    public static boolean isApplicantCompleteOnly() {
+        return applicantCompleteOnly;
     }
 
     public static void configureThreeLevel(boolean enabled) {
@@ -227,6 +243,58 @@ public final class TicketStore {
 
     public static boolean isAutoApprove() {
         return autoApprove;
+    }
+
+    /** 驿站等：申请说明/取件码须与档案取件码一致 */
+    static boolean requireClaimCode = false;
+
+    public static void configureRequireClaimCode(boolean enabled) {
+        requireClaimCode = enabled;
+    }
+
+    public static boolean isRequireClaimCode() {
+        return requireClaimCode;
+    }
+
+    /** 评教等：提交即评分且配置了维度时，申请必须带 dims */
+    public static boolean ratingDimsRequiredOnApply() {
+        return autoApprove && allowRating
+                && TicketCopy.RATING_DIMS != null && !TicketCopy.RATING_DIMS.isEmpty();
+    }
+
+    /** 提交后置步骤失败时硬删刚插入的单据（避免半截单） */
+    public static void deleteFreshTicket(long ticketId) {
+        if (ticketId <= 0) return;
+        try {
+            if (hasColumn("id")) {
+                mapper().deleteById(TICKET, ticketId);
+            }
+        } catch (Exception ignored) {
+            // 回滚失败不掩盖主错误
+        }
+    }
+
+    /** requireClaimCode 时校验取件码与档案 isbn（取件码/柜号）一致 */
+    public static void assertClaimCodeIfRequired(long itemId, String code) {
+        if (!requireClaimCode) return;
+        String got = code == null ? "" : code.trim();
+        if (got.isBlank()) {
+            throw new IllegalStateException("请填写取件码");
+        }
+        Map<String, Object> item = ArchiveStore.getItem(itemId);
+        if (item == null) throw new IllegalArgumentException("对象不存在");
+        String expect = TicketSql.str(item.get("isbn")).trim();
+        if (expect.isBlank()) {
+            throw new IllegalStateException("该包裹尚未登记取件码");
+        }
+        String expectCode = expect;
+        int slash = expect.indexOf('/');
+        if (slash > 0) expectCode = expect.substring(0, slash).trim();
+        int dot = expectCode.indexOf('·');
+        if (dot > 0) expectCode = expectCode.substring(0, dot).trim();
+        if (!expectCode.equalsIgnoreCase(got) && !expect.equalsIgnoreCase(got)) {
+            throw new IllegalStateException("取件码不正确");
+        }
     }
 
     /** L1：互斥码 + 分类限额（选课等） */
@@ -380,7 +448,7 @@ public final class TicketStore {
         if (MODE != Mode.ARCHIVE) {
             throw new IllegalStateException("当前为独立工单模式，请使用 applyStandalone");
         }
-        com.thesis.service.ExamStore.assertTicketGatePassed(username);
+        ExamStore.assertTicketGatePassed(username);
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
@@ -677,31 +745,18 @@ public final class TicketStore {
             empty.put("size", size);
             return empty;
         }
-        String itemTable = ArchiveStore.itemTable();
-        String fk = itemFkColumn();
-        StringBuilder where = new StringBuilder(
-                " WHERE i.owner_username=? AND t." + fk + "=i.id");
-        List<Object> args = new ArrayList<>();
-        args.add(owner);
-        if (status != null && !status.isBlank()) {
-            where.append(" AND t.status=?");
-            args.add(status);
-        } else {
-            where.append(" AND t.status='pending'");
+        String st = (status != null && !status.isBlank()) ? status.trim() : "pending";
+        PageHelper.startPage(page, size);
+        List<Map<String, Object>> rawList = mapper().selectPeerInbox(
+                TICKET, ArchiveStore.itemTable(), itemFkColumn(), owner, st);
+        PageInfo<Map<String, Object>> pi = new PageInfo<>(rawList == null ? List.of() : rawList);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> raw : pi.getList()) {
+            list.add(TicketStatusOps.enrich(TicketRowMaps.shape(raw)));
         }
-        String from = " FROM " + TICKET + " t JOIN " + itemTable + " i ON t." + fk + "=i.id";
-        Integer total = TicketSql.db().queryForObject(
-                "SELECT COUNT(*)" + from + where, Integer.class, args.toArray());
-        int t = total == null ? 0 : total;
-        args.add(size);
-        args.add((page - 1) * size);
-        List<Map<String, Object>> list = TicketSql.db().query(
-                "SELECT t.*" + from + where + " ORDER BY t.id DESC LIMIT ? OFFSET ?",
-                (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
-                args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
-        out.put("total", t);
+        out.put("total", pi.getTotal());
         out.put("page", page);
         out.put("size", size);
         return out;
@@ -841,19 +896,28 @@ public final class TicketStore {
 
     /** 兼容：无处理人（门禁自检等） */
     public static Map<String, Object> approve(long ticketId, boolean pass, String remark) {
-        return approve(ticketId, pass, remark, null, true);
+        return approve(ticketId, pass, remark, null, true, null);
     }
 
     public static Map<String, Object> approve(long ticketId, boolean pass, String remark, String operator) {
-        return approve(ticketId, pass, remark, operator, true);
+        return approve(ticketId, pass, remark, operator, true, null);
+    }
+
+    public static Map<String, Object> approve(
+            long ticketId, boolean pass, String remark, String operator, boolean superAdmin) {
+        return approve(ticketId, pass, remark, operator, superAdmin, null);
     }
 
     /**
-     * 审批。二级：pending→pending_final→approved；三级（C-16）：pending→pending_mid→pending_final→approved。
-     * 终审通过需总管（superAdmin=true）；中间级不占库存。
+     * @param assigneeUsername 终审通过时派给的处理人；空则绑定操作者本人
      */
     public static Map<String, Object> approve(
-            long ticketId, boolean pass, String remark, String operator, boolean superAdmin) {
+            long ticketId,
+            boolean pass,
+            String remark,
+            String operator,
+            boolean superAdmin,
+            String assigneeUsername) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         String st = String.valueOf(m.get("status"));
@@ -865,6 +929,7 @@ public final class TicketStore {
             throw new IllegalStateException("终审通过需总管操作");
         }
         String op = operator == null ? "" : operator.trim();
+        String dispatchTo = assigneeUsername == null ? "" : assigneeUsername.trim();
         boolean bind = !op.isBlank() && hasColumn("assignee_username");
         String note = remark == null ? "" : remark.trim();
         if (!pass && note.isBlank()) {
@@ -926,26 +991,30 @@ public final class TicketStore {
             ArchiveStore.adjustStock(itemId, -nQty);
             approvedItemId = itemId;
         }
-        if (MODE == Mode.ARCHIVE && useDeadline) {
+        String handler = !dispatchTo.isBlank() ? dispatchTo : op;
+        boolean bindHandler = !handler.isBlank() && hasColumn("assignee_username");
+        if (useDeadline && hasColumn("due_at")) {
             LocalDateTime approveAt = LocalDateTime.now();
             LocalDateTime dueAt = approveAt.plusDays(loanDays());
-            Object requested = m.get("dueAt");
-            if (requested != null && !String.valueOf(requested).isBlank()) {
-                try {
-                    dueAt = TicketSql.parseDateTimeFlexible(String.valueOf(requested).trim());
-                } catch (Exception ignored) {
-                    // 保留默认借期
+            if (MODE == Mode.ARCHIVE) {
+                Object requested = m.get("dueAt");
+                if (requested != null && !String.valueOf(requested).isBlank()) {
+                    try {
+                        dueAt = TicketSql.parseDateTimeFlexible(String.valueOf(requested).trim());
+                    } catch (Exception ignored) {
+                        // 保留默认借期
+                    }
                 }
             }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("ticketTable", TICKET);
             row.put("id", ticketId);
             row.put("remark", note);
-            row.put("bindAssignee", bind);
-            if (bind) row.put("assigneeUsername", op);
+            row.put("bindAssignee", bindHandler);
+            if (bindHandler) row.put("assigneeUsername", handler);
             row.put("approveAt", Timestamp.valueOf(approveAt));
-            row.put("withDue", hasColumn("due_at"));
-            if (hasColumn("due_at")) row.put("dueAt", Timestamp.valueOf(dueAt));
+            row.put("withDue", true);
+            row.put("dueAt", Timestamp.valueOf(dueAt));
             row.put("withFineYuan", hasColumn("fine_yuan"));
             row.put("withRemindMsg", hasColumn("remind_msg"));
             mapper().updateApproved(row);
@@ -954,8 +1023,8 @@ public final class TicketStore {
             row.put("ticketTable", TICKET);
             row.put("id", ticketId);
             row.put("remark", note);
-            row.put("bindAssignee", bind);
-            if (bind) row.put("assigneeUsername", op);
+            row.put("bindAssignee", bindHandler);
+            if (bindHandler) row.put("assigneeUsername", handler);
             row.put("withDue", false);
             row.put("withFineYuan", false);
             row.put("withRemindMsg", false);
@@ -1021,7 +1090,7 @@ public final class TicketStore {
                 if (!prev.isBlank()) return prev;
             }
             String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
-            TicketSql.db().update("UPDATE " + TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
+            mapper().updatePassCode(TICKET, ticketId, code);
             appendProgress(ticketId, "pass_code", "system", "通行码 " + code);
             return code;
         } catch (Exception ignored) {
@@ -1138,10 +1207,7 @@ public final class TicketStore {
         if (hasColumn("rating_dims_json")) {
             mapper().updateRating(TICKET, ticketId, overall, note, dimsJson, anon ? 1 : 0);
         } else {
-            // 无多维列的域：走旧签名需兼容——用 dims 空串接口或 JDBC
-            TicketSql.db().update(
-                    "UPDATE " + TICKET + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
-                    overall, note, ticketId);
+            mapper().updateRatingBasic(TICKET, ticketId, overall, note);
         }
         String tip = overall + " 分";
         if (!dimsJson.isBlank()) tip = tip + "（多维）";
@@ -1186,6 +1252,10 @@ public final class TicketStore {
 
     /** 审核结果写入申请人站内消息（无表或失败则静默跳过） */
     private static void notifyTicketResult(Map<String, Object> ticket, boolean pass, String note) {
+        notifyTicketResult(ticket, pass, note, "");
+    }
+
+    private static void notifyTicketResult(Map<String, Object> ticket, boolean pass, String note, String passCode) {
         try {
             String user = TicketSql.str(ticket.get("username"));
             if (user.isBlank()) return;
@@ -1196,6 +1266,9 @@ public final class TicketStore {
                     : ("「" + subject + "」已驳回" + (note == null || note.isBlank() ? "" : "：" + note));
             if (pass && hasColumn("pickup_at") && !bizPickupPlace.isBlank()) {
                 body = body + "。请到「" + bizPickupPlace + "」领取，到场后由工作人员登记实发。";
+            }
+            if (pass && passCode != null && !passCode.isBlank()) {
+                body = body + "。通行码：" + passCode + "（非真门禁，到访时出示即可）。";
             }
             MessageStore.send(user, title, body, "ticket", TicketSql.toLong(ticket.get("id")));
         } catch (Exception ignored) {

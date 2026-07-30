@@ -12,7 +12,7 @@ FEATURE_HEAD_TERMS = (
 )
 NEGATION_TERMS = (
     r"不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|不含|不以|"
-    r"不涉及|不对接|不绑定|无需|不必|"
+    r"不涉及|不对接|不绑定|不接|无需|不必|不能|不可|无法|"
     r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必|"
     r"非本期|不在本期|不做范围|并非|"
     # 「非传染病晨检」：仅左侧前缀用；右侧见 RIGHT_NEGATION_TERMS
@@ -21,9 +21,9 @@ NEGATION_TERMS = (
 # 右侧「先提能力再写本期不」：不含光杆「非」，避免「物资领用，非公卫上报」误杀
 RIGHT_NEGATION_TERMS = (
     r"不要求|不实现|不做|不作为|不纳入|不属于|不扩展|不包含|不包括|不含|不以|"
-    r"不涉及|不对接|不绑定|无需|不必|"
+    r"不涉及|不对接|不绑定|不接|无需|不必|不能|不可|无法|"
     r"仅作展望|仅参考|非本课题|本期不|范围外|不强制|非必交|非必演示|不作为必|"
-    r"非本期|不在本期|不做范围|并非"
+    r"非本期|不在本期|不做范围|并非|不能替代|不可替代"
 )
 # 对比/扩展语境：关键词出现在「容易涉及的扩展」里，不应抬升拟实现主路径
 CONTRAST_TERMS = (
@@ -32,7 +32,8 @@ CONTRAST_TERMS = (
     r"再扩展|分阶段交付|先实现单仓|后续扩展|可作为后续|"
     r"商业方案|商业系统|三甲医院|大型单位|功能完善|功能完整|实施成本|"
     r"本科毕设适合|本科.*?聚焦|本科.*?即可|本科.*?不做|"
-    r"勿与|不要与|区别于|勿和|不要和|不要当成|勿当成|混淆"
+    r"勿与|不要与|区别于|区分于|与.?区分|区分|勿和|不要和|不要当成|勿当成|混淆|"
+    r"常通过|仍需人工|信息分散"
 )
 
 FEATURE_HEAD_RE = re.compile(rf"({FEATURE_HEAD_TERMS})")
@@ -79,16 +80,38 @@ def keyword_mentioned(
     if not text or not kw:
         return False
     flags = re.IGNORECASE if kw.isascii() else 0
-    for m in re.finditer(re.escape(kw), text, flags):
+    return pattern_mentioned(
+        text,
+        re.compile(re.escape(kw), flags),
+        window=window,
+        ignore_contrast=ignore_contrast,
+    )
+
+
+def pattern_mentioned(
+    text: str,
+    pattern: re.Pattern[str] | re.Pattern[bytes],
+    *,
+    window: int = 48,
+    ignore_contrast: bool = False,
+) -> bool:
+    """正则命中且同句无「不在本期/不做」等否定时才算正向提及。
+
+    能力扫词应走本函数，避免开题「非本期：电子签/影院选座」误挂能力。
+    """
+    if not text or pattern is None:
+        return False
+    for m in pattern.finditer(text):
         left = max(0, m.start() - window)
         chunk = _left_clause(text[left : m.start()])
         if NEGATION_RE.search(chunk):
             continue
         if ignore_contrast and CONTRAST_RE.search(chunk):
             continue
-        # 同句右侧短窗：先提能力再写「本期不」（不含光杆「非」）
         right = _right_clause(text[m.end() : m.end() + window])
         if RIGHT_NEGATION_RE.search(right):
+            continue
+        if ignore_contrast and CONTRAST_RE.search(right):
             continue
         return True
     return False

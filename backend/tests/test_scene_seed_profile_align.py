@@ -136,6 +136,38 @@ class SceneSeedProfileAlignTests(unittest.TestCase):
         self.assertIn("'物业调度'", sql)
         self.assertNotIn("'维修员'", sql.split("INSERT INTO sys_user")[1].split("INSERT IGNORE")[0])
 
+    def test_municipal_and_aftersales_seed_align_profile(self) -> None:
+        muni_title = "市政路灯井盖报修管理系统"
+        muni_body = "路灯井盖市政设施报修工单"
+        muni_prof = _user_profile_json(
+            domain_sql(
+                "DOM-PROPERTY",
+                "thesis_test",
+                title=muni_title,
+                proposal_text=muni_body,
+            )
+        )
+        muni_keys = _profile_keys("DOM-PROPERTY", muni_title, muni_body)
+        self.assertTrue(set(muni_prof) <= muni_keys | {"realName", "email", "gender"})
+        self.assertEqual(muni_prof.get("ownerType"), "居民")
+        self.assertNotIn("studentNo", muni_prof)
+
+        after_title = "客服售后工单管理系统"
+        after_body = "客服售后工单受理完结"
+        after_prof = _user_profile_json(
+            domain_sql(
+                "DOM-IT",
+                "thesis_test",
+                title=after_title,
+                proposal_text=after_body,
+            )
+        )
+        after_keys = _profile_keys("DOM-IT", after_title, after_body)
+        self.assertTrue(set(after_prof) <= after_keys | {"realName", "email", "gender"})
+        self.assertEqual(after_prof.get("identityType"), "个人客户")
+        self.assertNotIn("studentNo", after_prof)
+        self.assertNotIn("employeeNo", after_prof)
+
 
 if __name__ == "__main__":
     unittest.main()

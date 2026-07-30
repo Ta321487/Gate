@@ -127,10 +127,14 @@ class SceneScanContractTests(unittest.TestCase):
             "企业员工考勤请假管理系统", "DOM-ATTEND", proposal_text=""
         )
         arch = schema["entities"]["archive"]
-        self.assertEqual(arch.get("label"), "员工")
+        self.assertEqual(arch.get("label"), "假种")
+        self.assertEqual(arch.get("key"), "leave_type")
         isbn = next(f for f in arch["fields"] if f["key"] == "isbn")
-        self.assertEqual(isbn["label"], "工号备注")
+        self.assertEqual(isbn["label"], "申请须知备注")
         self.assertNotIn("学号", isbn["label"])
+        self.assertNotIn("工号", isbn["label"])
+        title = next(f for f in arch["fields"] if f["key"] == "title")
+        self.assertEqual(title["label"], "假种名称")
 
     def test_shell_and_profile_same_scene_asset_attend_event(self) -> None:
         cases = [
@@ -282,7 +286,9 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
-        self.assertEqual(_SCENE_COPY_DOMAINS, covered)
+        # EXAM 等在 SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
+        product_copy_only = frozenset({"DOM-EXAM"})
+        self.assertEqual(_SCENE_COPY_DOMAINS - product_copy_only, covered)
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
                 self.assertEqual(scene_for(domain, title, body), want)
@@ -408,6 +414,10 @@ class SceneScanContractTests(unittest.TestCase):
         self.assertIn("学生甲", sql)
         self.assertIn("学工主管", sql)
         self.assertNotIn("员工甲", sql)
+        self.assertIn("leave_type", sql)
+        self.assertIn("事假", sql)
+        self.assertNotIn("staff_person", sql)
+        self.assertNotIn("职能岗", sql)
 
     def test_it_enterprise_seed_not_campus_student(self) -> None:
         title, body = "企业内网故障报修系统", "员工提交办公区终端故障。"

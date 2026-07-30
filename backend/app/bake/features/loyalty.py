@@ -30,10 +30,12 @@ _DEFAULT_COUPONS = [
 
 def scan_loyalty_caps(text: str) -> list[str]:
     """从开题正文扫描忠诚度能力（去重保序）。"""
+    from app.bake.proposal_lexicon import pattern_mentioned
+
     raw = text or ""
     out: list[str] = []
     for pat, caps in _LOYALTY_SIGNALS:
-        if re.search(pat, raw):
+        if pattern_mentioned(raw, re.compile(pat), ignore_contrast=True):
             for c in caps:
                 if c not in out:
                     out.append(c)

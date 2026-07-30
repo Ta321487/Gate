@@ -14,7 +14,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import http from '../utils/http'
+import http from '../api/http'
 import { getSchema } from '../utils/domainSchema'
 
 const list = ref([])

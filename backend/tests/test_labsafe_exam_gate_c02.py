@@ -12,7 +12,7 @@ from app.bake.engine_bake import _patch_thesis_yml
 from app.bake.engine_sql import domain_sql
 from app.bake.features.exam import EXAM_CAP, scan_exam_gate_ticket
 
-SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "考试预设开题"
+SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "能力预设开题"
 
 
 class LabsafeExamGateC02Tests(unittest.TestCase):

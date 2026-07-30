@@ -48,7 +48,7 @@
           v-if="userPublish && !isGuest"
           size="large"
           @click="openPublish"
-        >发帖</el-button>
+        >{{ publishCtaLabel }}</el-button>
       </div>
       <div v-if="searchAssist && hotKeywords.length" class="hot">
         <span class="hot-lab">热搜</span>
@@ -279,6 +279,25 @@
             placeholder="选填"
           />
         </el-form-item>
+        <el-form-item v-if="rateOnApply" label="多维评分" required>
+          <div class="rate-dims">
+            <div v-for="d in ratingDims" :key="d.key" class="rate-dim-row">
+              <span class="rate-dim-lab">{{ d.label }}</span>
+              <el-rate v-model="applyDimScores[d.key]" :max="5" />
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="rateOnApply && allowAnonymousRating" label="匿名">
+          <el-checkbox v-model="applyAnonymous">匿名提交</el-checkbox>
+        </el-form-item>
+        <el-form-item v-if="checkinOnApply" :label="checkinLabel" required>
+          <el-input
+            v-model="applyCheckinCode"
+            maxlength="16"
+            placeholder="向宿管/值班员索取签到码"
+            @keyup.enter="submitApply"
+          />
+        </el-form-item>
         <el-form-item v-if="requireRemark && !richRemark" :label="remarkLabel" required>
           <el-input
             v-model="applyRemark"
@@ -313,31 +332,59 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="publishVisible" title="发帖" width="640px" destroy-on-close>
+    <el-dialog v-model="publishVisible" :title="publishDialogTitle" width="520px" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item :label="fieldLabel('title', '标题')" required>
-          <el-input v-model="publishTitle" maxlength="80" show-word-limit placeholder="请输入标题" />
+        <el-form-item :label="fieldLabel('title', '名称')" required>
+          <el-input
+            v-model="publishTitle"
+            maxlength="80"
+            show-word-limit
+            :placeholder="publishTitlePlaceholder"
+          />
         </el-form-item>
-        <el-form-item :label="fieldLabel('category', '板块')" required>
-          <el-select v-model="publishCategoryId" style="width:100%" placeholder="选择板块">
+        <el-form-item v-if="publishShowAuthor" :label="fieldLabel('author', '联系人')" required>
+          <el-input
+            v-model="publishAuthor"
+            maxlength="64"
+            :placeholder="`请填写${fieldLabel('author', '联系人')}`"
+          />
+        </el-form-item>
+        <el-form-item :label="fieldLabel('category', '分类')" required>
+          <el-select v-model="publishCategoryId" style="width:100%" :placeholder="`选择${fieldLabel('category', '分类')}`">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="fieldLabel('isbn', '正文')" required>
-          <RichTextEditor v-model="publishBody" placeholder="请输入正文，可用工具栏排版" />
+        <el-form-item v-if="publishShowStock" :label="fieldLabel('stock', '余座')" required>
+          <el-input-number v-model="publishStock" :min="1" :max="99" controls-position="right" />
+        </el-form-item>
+        <el-form-item :label="fieldLabel('isbn', publishUsesRichBody ? '正文' : '备注')" required>
+          <RichTextEditor
+            v-if="publishUsesRichBody"
+            v-model="publishBody"
+            placeholder="请输入正文，可用工具栏排版"
+          />
+          <el-input
+            v-else
+            v-model="publishBody"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            show-word-limit
+            :placeholder="publishIsbnPlaceholder"
+          />
         </el-form-item>
       </el-form>
-      <p class="apply-tip muted">发布后即时可见，无需审核；违规由站长下架。</p>
+      <p class="apply-tip muted">{{ publishTip }}</p>
       <template #footer>
         <el-button @click="publishVisible = false">取消</el-button>
-        <el-button type="primary" :loading="publishLoading" @click="submitPublish">发布</el-button>
+        <el-button type="primary" :loading="publishLoading" @click="submitPublish">{{ publishSubmitLabel }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
@@ -363,6 +410,7 @@ import {
   nextFollowLabel,
   searchHotKeywords,
   ticketCopy,
+  ticketCheckinLabel,
   ticketDueLabel,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
@@ -402,6 +450,16 @@ const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const allowQty = computed(() => !!ticket.allowQty)
 const qtyLabel = computed(() => ticket.qtyLabel || '数量')
+const ratingDims = computed(() => {
+  const list = ticket.ratingDims
+  return Array.isArray(list) ? list.filter((d) => d && d.key && d.label) : []
+})
+const allowAnonymousRating = computed(() => !!ticket.allowAnonymousRating)
+const rateOnApply = computed(
+  () => !!autoApprove.value && !!ticket.allowRating && ratingDims.value.length > 0,
+)
+const checkinOnApply = computed(() => !!autoApprove.value && !!ticket.allowCheckin)
+const checkinLabel = computed(() => ticketCheckinLabel('签到'))
 const needApplyDialog = computed(
   () =>
     richRemark.value
@@ -410,12 +468,53 @@ const needApplyDialog = computed(
     || pickLoanPeriod.value
     || pickDateRange.value
     || allowQty.value
-    || isCrm.value,
+    || isCrm.value
+    || rateOnApply.value
+    || checkinOnApply.value,
 )
 const checkMutex = computed(() => !!ticket.checkMutex)
 const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
 const tagFilter = computed(() => !!archive.tagFilter)
 const userPublish = computed(() => !!archive.userPublish)
+/** 论坛类：isbn 富文本；CRM/拼车等：纯文本业务表单 */
+const publishUsesRichBody = computed(() => bodyRich.value)
+/** 联系人等可填；「发布人/作者」由登录账号自动写入 */
+const publishShowAuthor = computed(() => {
+  if (!userPublish.value || publishUsesRichBody.value) return false
+  const lab = fieldLabel('author', '')
+  if (/发布人|作者|发帖/.test(lab)) return false
+  return true
+})
+const publishShowStock = computed(
+  () => userPublish.value && !publishUsesRichBody.value && stockDisplay.value === 'number',
+)
+const publishDialogTitle = computed(() => {
+  if (publishUsesRichBody.value) return '发帖'
+  if (publishShowStock.value) return `发布${archive.label || '行程'}`
+  return `登记${archive.label || '内容'}`
+})
+const publishCtaLabel = computed(() => {
+  if (publishUsesRichBody.value) return '发帖'
+  if (publishShowStock.value) return `发布${archive.label || '行程'}`
+  return `登记${archive.label || '内容'}`
+})
+const publishSubmitLabel = computed(() => {
+  if (publishUsesRichBody.value) return '发布'
+  if (publishShowStock.value) return '发布'
+  return '保存'
+})
+const publishTitlePlaceholder = computed(() => `请填写${fieldLabel('title', '名称')}`)
+const publishIsbnPlaceholder = computed(() => {
+  const lab = fieldLabel('isbn', '备注')
+  if (lab.includes('时间') || lab.includes('地点')) return '例如：周五 18:30 学校东门出发，可带行李'
+  if (lab.includes('电话') || lab.includes('备注')) return '电话、微信或跟进备注'
+  return `请填写${lab}`
+})
+const publishTip = computed(() => {
+  if (publishUsesRichBody.value) return '发布后即时可见，无需审核；违规可由管理员下架。'
+  if (publishShowStock.value) return '行程发布后即时可见；他人提交意向后由你确认或婉拒。'
+  return `登记后即时入档，可在「我的${archive.label || '内容'}」中查看；随后可提交跟进。`
+})
 const stockCountLabel = computed(() => {
   if (archive.stockCountLabel) return archive.stockCountLabel
   const stockField = fields.value.find((x) => x.key === 'stock')
@@ -570,7 +669,11 @@ const actionHint = computed(() => {
   if (isOrderMode.value) return `加入${cartLabel.value}并下单`
   if (isSlotMode.value) return `选择时段${resvVerb.value}`
   if (favOn.value && !showPrimaryApply.value) return '一键收藏感兴趣的内容'
-  if (userPublish.value) return `发帖后可${verbs.value.apply || '回复'}`
+  if (userPublish.value) {
+    return publishUsesRichBody.value
+      ? `发帖后可${verbs.value.apply || '回复'}`
+      : `登记后可${verbs.value.apply || '提交'}`
+  }
   return `提交${verbs.value.apply || '申请'}`
 })
 
@@ -662,10 +765,15 @@ const applyDueAt = ref('')
 const applyPeriod = ref(null)
 const applyChannel = ref('')
 const applyNextFollow = ref('')
+const applyCheckinCode = ref('')
+const applyAnonymous = ref(false)
+const applyDimScores = reactive({})
 const applyLoading = ref(false)
 const publishVisible = ref(false)
 const publishTitle = ref('')
+const publishAuthor = ref('')
 const publishBody = ref('')
+const publishStock = ref(2)
 const publishCategoryId = ref(null)
 const publishLoading = ref(false)
 const threadList = ref([])
@@ -834,7 +942,9 @@ async function onRecommendApply(row) {
 function openPublish() {
   if (!requireLogin(router)) return
   publishTitle.value = ''
+  publishAuthor.value = ''
   publishBody.value = ''
+  publishStock.value = publishShowStock.value ? 2 : 1
   publishCategoryId.value = categories.value[0]?.id || null
   publishVisible.value = true
 }
@@ -842,26 +952,49 @@ function openPublish() {
 async function submitPublish() {
   const title = publishTitle.value.trim()
   if (!title) {
-    ElMessage.warning('请填写标题')
+    ElMessage.warning(`请填写${fieldLabel('title', '名称')}`)
+    return
+  }
+  if (publishShowAuthor.value && !publishAuthor.value.trim()) {
+    ElMessage.warning(`请填写${fieldLabel('author', '联系人')}`)
     return
   }
   if (!publishCategoryId.value) {
-    ElMessage.warning(`请选择${fieldLabel('category', '板块')}`)
+    ElMessage.warning(`请选择${fieldLabel('category', '分类')}`)
     return
   }
-  const plain = plainFromHtml(publishBody.value || '')
-  if (!plain.trim()) {
-    ElMessage.warning('请填写正文')
-    return
+  if (publishShowStock.value) {
+    const n = Number(publishStock.value) || 0
+    if (n < 1) {
+      ElMessage.warning(`${fieldLabel('stock', '余座')}至少为 1`)
+      return
+    }
+  }
+  let isbn = ''
+  if (publishUsesRichBody.value) {
+    isbn = sanitizeHtml(publishBody.value || '')
+    if (!plainFromHtml(isbn).trim()) {
+      ElMessage.warning(`请填写${fieldLabel('isbn', '正文')}`)
+      return
+    }
+  } else {
+    isbn = (publishBody.value || '').trim()
+    if (!isbn) {
+      ElMessage.warning(`请填写${fieldLabel('isbn', '备注')}`)
+      return
+    }
   }
   publishLoading.value = true
   try {
-    await http.post('/api/archive/publish', {
+    const body = {
       title,
       categoryId: publishCategoryId.value,
-      isbn: sanitizeHtml(publishBody.value || ''),
-    })
-    ElMessage.success('已发布')
+      isbn,
+    }
+    if (publishShowAuthor.value) body.author = publishAuthor.value.trim()
+    if (publishShowStock.value) body.stock = Number(publishStock.value) || 1
+    await http.post('/api/archive/publish', body)
+    ElMessage.success(publishUsesRichBody.value || publishShowStock.value ? '已发布' : '已登记')
     publishVisible.value = false
     await load()
     recRef.value?.reload?.()
@@ -879,6 +1012,12 @@ async function apply(row) {
   applyPeriod.value = null
   applyChannel.value = ''
   applyNextFollow.value = ''
+  applyCheckinCode.value = ''
+  applyAnonymous.value = false
+  Object.keys(applyDimScores).forEach((k) => delete applyDimScores[k])
+  for (const d of ratingDims.value) {
+    applyDimScores[d.key] = 5
+  }
   if (needApplyDialog.value) {
     applyVisible.value = true
     return
@@ -940,6 +1079,24 @@ async function submitApply() {
       return
     }
   }
+  if (checkinOnApply.value) {
+    if (!applyCheckinCode.value.trim()) {
+      ElMessage.warning(`请输入${checkinLabel.value}码`)
+      return
+    }
+  }
+  let dimsPayload = null
+  if (rateOnApply.value) {
+    dimsPayload = {}
+    for (const d of ratingDims.value) {
+      const v = applyDimScores[d.key]
+      if (!v || v < 1) {
+        ElMessage.warning(`请完成「${d.label}」评分`)
+        return
+      }
+      dimsPayload[d.key] = v
+    }
+  }
   applyLoading.value = true
   try {
     const body = {
@@ -957,8 +1114,16 @@ async function submitApply() {
       if (applyChannel.value) body.contactChannel = applyChannel.value
       if (applyNextFollow.value) body.nextFollowAt = applyNextFollow.value
     }
+    if (checkinOnApply.value) body.checkinCode = applyCheckinCode.value.trim()
+    if (dimsPayload) {
+      body.dims = dimsPayload
+      if (allowAnonymousRating.value) body.anonymous = !!applyAnonymous.value
+    }
     await http.post('/api/tickets/apply', body)
-    ElMessage.success(autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核')
+    const okMsg = checkinOnApply.value
+      ? '已签到'
+      : (autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核')
+    ElMessage.success(okMsg)
     applyVisible.value = false
     if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
       await loadThread(applyRow.value.id)
@@ -1068,4 +1233,7 @@ onMounted(async () => {
 .apply-tip.muted { color: var(--portal-muted, #64748b); }
 .attach-row { display: flex; gap: 12px; align-items: center; }
 .attach-row a { font-size: 13px; color: #0369a1; }
+.rate-dims { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.rate-dim-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rate-dim-lab { font-size: 13px; color: var(--portal-ink, #334155); min-width: 72px; }
 </style>

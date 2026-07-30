@@ -1,0 +1,219 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users",
+    "checkin"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "寝室号",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "楼栋",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "说明",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "楼区/批次",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "应签人数",
+          "type": "number"
+        },
+        {
+          "key": "checkinCode",
+          "label": "签到码",
+          "type": "string"
+        },
+        {
+          "key": "startAt",
+          "label": "查寝开始",
+          "timeStepMinutes": 30,
+          "type": "datetime"
+        },
+        {
+          "key": "endAt",
+          "label": "查寝结束",
+          "timeStepMinutes": 30,
+          "type": "datetime"
+        }
+      ],
+      "key": "dorm_room",
+      "label": "寝室",
+      "labelPlural": "寝室",
+      "softDelete": false,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": true,
+      "allowQty": false,
+      "allowRating": false,
+      "applyFromList": false,
+      "approveEndsFlow": true,
+      "autoApprove": true,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "checkinLabel": "归寝签到",
+      "contactChannelLabel": "归寝类型",
+      "contactChannelOptions": [
+        "正常归寝",
+        "晚归",
+        "请假外出",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "正常/晚归等",
+      "issuePassCode": false,
+      "key": "checkin_apply",
+      "label": "归寝签到",
+      "labelPlural": "归寝签到",
+      "nextFollowLabel": "备注日",
+      "noShowAfterEnd": true,
+      "noShowPenaltyYuan": 0.0,
+      "peerAccept": false,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "签到说明",
+      "requireAttach": false,
+      "requireClaimCode": false,
+      "requireRemark": false,
+      "states": {
+        "approved": "签到中",
+        "overdue": "缺勤",
+        "pending": "待签到",
+        "rejected": "已驳回",
+        "returned": "已签到"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "归寝签到",
+        "approve": "通过",
+        "reject": "驳回",
+        "remind": "催签",
+        "return": "取消签到"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "查寝签到",
+    "authLead": "验证码登录；在查寝窗口内选择寝室并输入签到码，提交即记已签到；窗口结束后未签到记缺勤。",
+    "authPoints": [
+      "验证码登录",
+      "寝室目录",
+      "口令签到"
+    ],
+    "messagesPageLead": "系统通知。",
+    "noticePageLead": "查寝安排与须知，点击条目阅读全文。",
+    "noticePageTitle": "宿管公告",
+    "registerRoleHint": "注册后可归寝签到"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "寝室档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "楼区/批次管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_records",
+        "label": "归寝记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "寝室目录"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的归寝"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按楼栋浏览查寝寝室与窗口。",
+      "title": "寝室目录"
+    },
+    {
+      "lead": "窗口内输入签到码，提交即已签到。",
+      "title": "口令签到"
+    },
+    {
+      "lead": "窗口结束后未签到记缺勤。",
+      "title": "缺勤台账"
+    },
+    {
+      "lead": "查看本人签到与缺勤记录。",
+      "title": "我的归寝"
+    },
+    {
+      "lead": "查寝安排见公告栏。",
+      "title": "宿管公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "宿管主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "查寝员"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请在查寝窗口内完成口令签到；人脸/GPS 不在本期。缺勤记录由系统在窗口结束后标记。",
+    "noticeTitle": "查寝须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

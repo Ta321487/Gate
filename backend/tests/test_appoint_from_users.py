@@ -64,12 +64,32 @@ class AppointFromUsersTests(unittest.TestCase):
             ("DOM-LIBRARY", "图书借阅", "读者借还图书。"),
             ("DOM-DORM", "宿舍报修", "学生提交报修。"),
             ("DOM-ATTEND", "员工考勤", "员工请假打卡。"),
-            ("DOM-CRM", "客户关系管理", "销售跟进客户线索。"),
             ("DOM-FORUM", "校园论坛", "师生发帖回帖。"),
             ("DOM-FUND", "学生资助", "困难生申请助学金。"),
         ):
             self.assertTrue(_allow(d, title, body), d)
             self.assertTrue(_schema_allow(d, title, body), d)
+
+    def test_dual_role_domains_no_clerk_appoint_closed(self) -> None:
+        """CRM/EVAL 双角色无办理岗：无可任命岗位 → allowAppoint 关。"""
+        for d, title, body in (
+            ("DOM-CRM", "客户关系管理", "销售跟进客户线索。"),
+            ("DOM-EVAL", "学生网上评教", "学生对课程多维打分。"),
+        ):
+            self.assertFalse(_allow(d, title, body), d)
+            self.assertFalse(_schema_allow(d, title, body), d)
+            roles = build_domain_schema(title, d, proposal_text=body).get("roles") or {}
+            self.assertEqual(roles.get("staff_posts") or [], [])
+            self.assertNotIn("subadmin", roles)
+
+    def test_crm_three_roles_when_opening_names_clerk(self) -> None:
+        body = "销售建档；客户经理审核跟进后办结。"
+        self.assertTrue(_allow("DOM-CRM", "客户关系管理", body))
+        roles = build_domain_schema(
+            "客户关系管理", "DOM-CRM", proposal_text=body
+        ).get("roles") or {}
+        self.assertEqual(roles.get("subadmin", {}).get("staffPostId"), "account_mgr")
+        self.assertTrue(roles.get("allowAppointFromUsers"))
 
     def test_every_catalog_domain_flag_is_bool_and_matches_rule(self) -> None:
         """防漏登记：全 catalog 默认开题下 schema 开关必须是 bool，且与规则函数一致。"""

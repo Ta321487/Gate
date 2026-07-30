@@ -126,7 +126,7 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ),
     ),
     ("ticket", "报修/工单", ("DOM-DORM", "DOM-PROPERTY", "DOM-IT")),
-    ("apply", "报名/申请", ("DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE")),
+    ("apply", "报名/申请", ("DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE", "DOM-TOUR")),
     ("trade", "交易", ("DOM-SHOP", "DOM-FOOD", "DOM-CINEMA")),
     (
         "reserve",
@@ -206,6 +206,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin"],
     "DOM-LOST": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
+    "DOM-TOUR": ["archive", "ticket_flow", "quota", "content", "org_users"],
     # D 交易（order_lines）
     "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
     "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],

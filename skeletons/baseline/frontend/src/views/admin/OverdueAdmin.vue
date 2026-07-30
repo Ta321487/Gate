@@ -2,6 +2,14 @@
   <div>
     <div class="toolbar">
       <el-alert
+        v-if="slaMode"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="`处理时限已过的${ticketNoun}；可催办提醒，完结须由申请人确认。`"
+      />
+      <el-alert
+        v-else
         type="warning"
         :closable="false"
         show-icon
@@ -9,26 +17,26 @@
       />
     </div>
     <div class="toolbar">
-      <el-button type="primary" @click="load">刷新逾期</el-button>
+      <el-button type="primary" @click="load">{{ slaMode ? '刷新超时' : '刷新逾期' }}</el-button>
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
-      <el-table-column prop="title" :label="archiveLabel" min-width="160" />
+      <el-table-column prop="title" :label="titleColLabel" min-width="160" />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
       <el-table-column prop="dueAt" :label="dueLabel" width="170" />
-      <el-table-column prop="fineYuan" :label="`预估${fineLabel}`" width="110">
+      <el-table-column v-if="!slaMode" prop="fineYuan" :label="`预估${fineLabel}`" width="110">
         <template #default="{ row }">{{ row.fineYuan > 0 ? row.fineYuan + ' 元' : '—' }}</template>
       </el-table-column>
       <el-table-column prop="remindedAt" :label="`最近${remindVerb}`" width="170" />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" :width="slaMode ? 100 : 180" fixed="right">
         <template #default="{ row }">
           <el-button link type="warning" @click="remind(row)">{{ remindVerb }}</el-button>
-          <el-button link type="primary" @click="ret(row)">{{ returnVerb }}</el-button>
+          <el-button v-if="!slaMode" link type="primary" @click="ret(row)">{{ returnVerb }}</el-button>
         </template>
       </el-table-column>
-      <template #empty>当前无逾期记录</template>
+      <template #empty>{{ slaMode ? '当前无超时未处理' : '当前无逾期记录' }}</template>
     </el-table>
     <div class="pager">
       <el-pagination
@@ -49,19 +57,23 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import {
   archiveCopy,
-  getSchema,
   personLabel,
   roleLabel,
+  ticketCopy,
   ticketDueLabel,
   ticketFineLabel,
   ticketRemindVerb,
   ticketReturnVerb,
 } from '../../utils/domainSchema.js'
 
+const ticket = ticketCopy()
 const archive = archiveCopy()
+const slaMode = computed(() => !!(ticket.slaDeadline || ticket.applicantCompleteOnly))
+const ticketNoun = computed(() => ticket.label || '工单')
 const archiveLabel = computed(() => archive.label || '对象')
+const titleColLabel = computed(() => (slaMode.value ? ticketNoun.value : archiveLabel.value))
 const userLabel = computed(() => roleLabel('user', '用户'))
-const dueLabel = computed(() => ticketDueLabel())
+const dueLabel = computed(() => ticketDueLabel(slaMode.value ? '处理时限' : '到期日'))
 const fineLabel = computed(() => ticketFineLabel())
 const remindVerb = computed(() => ticketRemindVerb())
 const returnVerb = computed(() => ticketReturnVerb())

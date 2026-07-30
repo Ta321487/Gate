@@ -16,7 +16,7 @@ from app.bake.menu_routes import shell_kind
 from app.bake.schema.templates import SCHEMA_BUILDERS
 
 ROOT = Path(__file__).resolve().parents[2]
-SAMPLES = ROOT / "data" / "samples" / "问卷预设开题"
+SAMPLES = ROOT / "data" / "samples" / "能力预设开题"
 BASELINE = ROOT / "skeletons" / "baseline"
 
 
@@ -111,6 +111,31 @@ class SurveyC03Tests(unittest.TestCase):
     def test_sample(self) -> None:
         path = SAMPLES / "C-03-DOM-SURVEY-高校学生满意度问卷调查系统.txt"
         self.assertTrue(path.is_file(), path)
+
+    def test_literature_research_not_survey(self) -> None:
+        """开题进度「文献调研」不得误挂问卷能力（民宿样例即踩坑）。"""
+        from app.bake.features.survey import merge_survey_capabilities, scan_survey
+
+        hotel = (
+            Path(__file__).resolve().parents[2]
+            / "data"
+            / "samples"
+            / "域开题样例近五年"
+            / "23-DOM-HOTEL-乡村民宿客房预订管理系统.txt"
+        )
+        text = hotel.read_text(encoding="utf-8")
+        self.assertIn("文献调研", text)
+        self.assertFalse(scan_survey(text))
+        caps = merge_survey_capabilities(
+            list(DOMAIN_CAPABILITIES["DOM-HOTEL"]),
+            text,
+            domain="DOM-HOTEL",
+        )
+        self.assertNotIn(SURVEY_CAP, caps)
+        # 真问卷题仍要扫到
+        self.assertTrue(scan_survey("问卷配置、在线填写与回收统计"))
+        self.assertTrue(scan_survey("用户调研与问卷回收"))
+        self.assertFalse(scan_survey("学生通过邮箱、问卷或现场投递简历"))
 
 
 if __name__ == "__main__":

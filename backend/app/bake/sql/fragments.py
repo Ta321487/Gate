@@ -619,6 +619,7 @@ def ensure_archive_flag_columns(
     item_table: str | None,
     allow_checkin: bool = False,
     peer_accept: bool = False,
+    user_publish: bool = False,
     check_mutex: bool = False,
     apply_deadline: bool = False,
     schedule: bool = False,
@@ -630,7 +631,8 @@ def ensure_archive_flag_columns(
     cols: list[tuple[str, str]] = []
     if allow_checkin:
         cols.extend(CHECKIN_CODE_COLUMNS)
-    if peer_accept:
+    # 互选确认人、门户发布归属均用 owner_username
+    if peer_accept or user_publish:
         cols.extend(OWNER_USERNAME_COLUMNS)
     if check_mutex:
         cols.extend(MUTEX_CODE_COLUMNS)
@@ -828,6 +830,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-CARPASS": ["contact_channel", "next_follow_at"],
     "DOM-LISTING": ["contact_channel", "next_follow_at"],
     "DOM-CARPOOL": ["contact_channel", "next_follow_at"],
+    "DOM-TOUR": ["contact_channel", "next_follow_at"],
     "DOM-TIMEBANK": ["contact_channel", "next_follow_at"],
     "DOM-PROCURE": ["contact_channel", "next_follow_at"],
     "DOM-CLUB": ["contact_channel", "next_follow_at"],

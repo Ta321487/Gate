@@ -91,7 +91,6 @@ CREATE TABLE IF NOT EXISTS eval_sheet_log (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '教务主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '评教员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
  '{"realName":"样例学生","email":"stu@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院"}',
  0, 1, 1)
@@ -105,5 +104,5 @@ INSERT IGNORE INTO eval_course (id, title, author, isbn, category_id, stock, sta
 (4, '电路实验', '赵老师', '2025 秋 / 实验课', 1, 1, 'available'),
 (5, '形势与政策', '陈老师', '2025 秋 / 公共课', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '评教卷须知', '请如实填写说明与佐证；审批通过后计入台账。本期无学信网/银行对接。', 'admin', '教务主管'
+SELECT '评教卷须知', '请如实按维度评分并填写评语；提交后即时入档。本期无学信网对接。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='评教卷须知');

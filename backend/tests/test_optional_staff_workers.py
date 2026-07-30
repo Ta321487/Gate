@@ -132,6 +132,63 @@ def test_hospital_nurse_when_opening_wants():
     ]
 
 
+def test_crm_eval_default_dual_role_no_optional_clerk():
+    assert _ids("DOM-CRM") == []
+    assert _ids("DOM-EVAL") == []
+
+
+def test_crm_clerk_label_from_homevisit_wording():
+    text = "学工提交家访记录，由辅导员确认后归档。"
+    posts = staff_posts_for_domain("DOM-CRM", proposal_text=text)
+    assert [p["id"] for p in posts] == ["account_mgr"]
+    assert posts[0]["label"] == "辅导员"
+
+
+def test_crm_clerk_from_unknown_title_via_actor_pattern():
+    """开题用从没见过的岗名，只要「由××审核」也能挂，且用原词。"""
+    text = "业务员登记线索，由片区督导审核后完结。"
+    posts = staff_posts_for_domain("DOM-CRM", proposal_text=text)
+    assert [p["id"] for p in posts] == ["account_mgr"]
+    assert posts[0]["label"] == "片区督导"
+
+
+def test_crm_dual_when_opening_says_no_audit():
+    text = "销售自建档自跟进，无需审核，双角色即可。"
+    assert _ids("DOM-CRM", text) == []
+
+
+def test_crm_clerk_from_typical_opening_wording():
+    """样例开题写「主管审核」也应挂第三角。"""
+    text = "客户跟进记录提交；主管审核跟进并标记完结。"
+    assert _ids("DOM-CRM", text) == ["account_mgr"]
+
+
+def test_crm_clerk_when_opening_names_account_mgr():
+    text = "业务员建档跟进，客户经理审核确认后办结。"
+    assert _ids("DOM-CRM", text) == ["account_mgr"]
+    from app.bake.domain_schema import build_domain_schema
+
+    s = build_domain_schema("客户跟进系统", "DOM-CRM", proposal_text=text)
+    assert s["roles"]["subadmin"]["label"] == "客户经理"
+    assert s["entities"]["ticket"]["autoApprove"] is False
+    assert any(m.get("key") == "ticket_pending" for m in s["menus"]["admin"])
+
+
+def test_eval_clerk_when_opening_names_eval_clerk():
+    text = "学生网上评教；评教员维护评教课程目录。"
+    assert _ids("DOM-EVAL", text) == ["eval_clerk"]
+    from app.bake.domain_schema import build_domain_schema
+
+    s = build_domain_schema("网上评教", "DOM-EVAL", proposal_text=text)
+    assert s["roles"]["subadmin"]["staffPostId"] == "eval_clerk"
+    # 评教仍一次提交；第三角只维护课程
+    assert s["entities"]["ticket"]["autoApprove"] is True
+    packs = next(
+        p["packs"] for p in s["roles"]["staff_posts"] if p["id"] == "eval_clerk"
+    )
+    assert "content_ops" in packs
+
+
 def test_corpus_samples_worker_matches_scan():
     """缩样挂 worker 须与扫词一致：写了现场岗才挂，没写不挂。"""
     import json
@@ -152,6 +209,8 @@ def test_corpus_samples_worker_matches_scan():
         ]
         expected: list[str] = []
         for post, hints in _OPTIONAL_WORKERS.get(s["domain"]) or []:
+            if post.get("kind") != "worker":
+                continue
             pid = str(post.get("id") or "")
             if pid and _proposal_wants_any(s["text"], hints):
                 expected.append(pid)

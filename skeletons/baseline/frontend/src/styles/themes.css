@@ -68,6 +68,7 @@
 @import "./themes/listing.css";
 @import "./themes/carpass.css";
 @import "./themes/carpool.css";
+@import "./themes/tour.css";
 
 /* 浠?scheme/mix锛涘畬鏁磋壊鏉胯 [data-theme=鈥 涓?themes/* */
 :root {

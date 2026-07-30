@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 # 与历史 shells 导出名兼容（builders / profile 经本模块或 shells 再导出使用）
@@ -105,6 +106,178 @@ SALON_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("家政", "上门维修预约", "上门服务"), "home"),
     (("家教", "辅导预约", "技能辅导"), "tutor"),
     (("美发", "理发", "造型", "美甲", "美容"), "salon"),
+]
+# CRM 深皮：销售默认；律所/家访/校企合作换档案列与菜单（勿只靠 keywords）
+CRM_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("法律援助", "律所", "案件跟进", "法律咨询案"), "legal"),
+    (("家访", "谈心谈话", "谈心", "家访谈话"), "homevisit"),
+    (("校企合作", "合作单位库", "产学研合作", "校友企业库"), "coop"),
+]
+# 图书域：卷宗档案 / 漂流 / 普通借阅
+LIBRARY_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("档案借阅", "卷宗", "档案馆", "档案室", "文书档案", "学籍卷宗"), "archive"),
+    (("图书漂流", "漂流图书", "漂流借阅"), "drift"),
+]
+# 设备借用深皮：具名档优先；未点名实验室时「器材/设备借用」走中性 gear，避免一律实验室壳
+# light → costume 物品 → sports/media/music/teach/outdoor → gear；演出语境兜底；强实验室 → lab
+EQUIP_LIGHT_HINTS = (
+    "雨伞",
+    "充电宝",
+    "门禁卡",
+    "钥匙卡",
+    "钥匙租借",
+    "共享雨伞",
+    "共享充电宝",
+    "雨伞租借",
+    "充电宝租借",
+    "门禁卡租借",
+    "校园轻资产",
+    "共享物品",
+    "临时门禁",
+    "储物柜钥匙",
+)
+EQUIP_COSTUME_ITEM_HINTS = (
+    "服装",
+    "道具",
+    "戏服",
+    "演出服",
+    "表演服",
+    "舞蹈服",
+    "礼服",
+    "舞美",
+    "布景",
+    "戏箱",
+    "演出器材",
+    "舞台器材",
+    "舞台道具",
+    "服装租借",
+    "道具租借",
+    "演出服装",
+    "演出道具",
+    "服装道具",
+)
+EQUIP_SPORTS_HINTS = (
+    "体育器材",
+    "运动器材",
+    "体育器械",
+    "球类器材",
+    "羽毛球拍",
+    "乒乓球拍",
+    "篮球架",
+    "足球门",
+    "排球",
+    "跳绳",
+    "哑铃",
+    "健身器材借用",
+    "体育用品租借",
+)
+EQUIP_MEDIA_HINTS = (
+    "摄影器材",
+    "摄像器材",
+    "影像器材",
+    "单反",
+    "摄像机",
+    "航拍",
+    "无人机",
+    "录像设备",
+    "相机租借",
+    "摄影设备",
+    "多媒体设备",
+    "投影机",
+    "投影仪借用",
+    "录音笔",
+)
+EQUIP_MUSIC_HINTS = (
+    "乐器",
+    "乐器租借",
+    "乐器借用",
+    "吉他",
+    "小提琴",
+    "大提琴",
+    "钢琴租借",
+    "钢琴借用",
+    "民乐",
+    "管乐",
+    "打击乐",
+    "尤克里里",
+)
+EQUIP_TEACH_HINTS = (
+    "教具",
+    "教学器材",
+    "教学设备借用",
+    "模型教具",
+    "演示教具",
+    "实训教具",
+    "挂图教具",
+)
+EQUIP_OUTDOOR_HINTS = (
+    "户外器材",
+    "拓展器材",
+    "露营",
+    "帐篷",
+    "登山杖",
+    "户外装备",
+    "素质拓展装备",
+)
+EQUIP_GEAR_HINTS = (
+    "器材借用",
+    "设备借用",
+    "设备租借",
+    "器材租借",
+    "器械借用",
+    "器械租借",
+    "公用器材",
+    "公共器材",
+    "物资器材",
+)
+EQUIP_COSTUME_SCENE_HINTS = (
+    "演出",
+    "晚会",
+    "剧社",
+    "话剧",
+    "艺术团",
+    "文艺汇演",
+    "舞台",
+    "戏剧",
+    "音乐会",
+    "合唱",
+    "舞蹈团",
+    "校园文化节",
+    "文艺演出",
+    "毕业汇演",
+    "迎新晚会",
+)
+EQUIP_COSTUME_LOAN_HINTS = ("租借", "借用", "借还", "出借", "归还")
+EQUIP_LAB_STRONG_HINTS = (
+    "实验室",
+    "实验器材",
+    "实验设备",
+    "示波器",
+    "万用表",
+    "实训设备",
+    "仪器仪表",
+    "测量仪器",
+    "单片机",
+)
+EQUIP_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (EQUIP_LIGHT_HINTS, "light"),
+    (EQUIP_COSTUME_ITEM_HINTS, "costume"),
+    (EQUIP_SPORTS_HINTS, "sports"),
+    (EQUIP_MEDIA_HINTS, "media"),
+    (EQUIP_MUSIC_HINTS, "music"),
+    (EQUIP_TEACH_HINTS, "teach"),
+    (EQUIP_OUTDOOR_HINTS, "outdoor"),
+    # gear 不进本表：避免「实验室器材借用」被「器材借用」抢档；见 equip_product_kind 兜底
+]
+# 物业工单：市政 / 投诉 / 报修
+PROPERTY_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("市政", "路灯", "井盖", "市政设施", "路灯报修", "井盖报修"), "municipal"),
+    (("投诉建议", "物业投诉", "业主投诉", "信访"), "complaint"),
+]
+# IT 工单：售后 / 维保 / 故障报修
+IT_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("售后工单", "客服工单", "客服售后", "售后咨询"), "aftersales"),
+    (("设备维保", "维保工单", "维保"), "maintenance"),
 ]
 MEETING_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("自习室", "研习室", "研讨室"), "study"),
@@ -235,9 +408,20 @@ def scene_crm_parts(title: str, body: str = "") -> Scene:
     """题名优先：避免 problem「中小企业或校园创业」把校园创业题洗成销售档。
 
     题名里的「客户跟进」是产品词，不能单独压过「校园创业」场景口径。
+    律所/家访/校企走 product_kind，场景与创业孵化皮分离。
     """
     t = (title or "").strip()
     b = (body or "").strip()
+    kind = crm_product_kind(t, b)
+    if kind == "legal":
+        return "enterprise"
+    if kind == "homevisit":
+        return "campus"
+    if kind == "coop":
+        return "campus" if (
+            is_campus_general(t) or scan_has(t, ("高校", "校园", "学院", "校友"))
+            or is_campus_general(b)
+        ) else "enterprise"
     if scan_has(t, CRM_CAMPUS_EXTRA) or (
         is_campus_general(t)
         and not scan_has(t, ("中小企业", "销售", "业务员", "客户经理"))
@@ -557,6 +741,106 @@ def salon_product_kind(title: str, body: str = "") -> str:
     return str(kind or "salon")
 
 
+def crm_product_kind(title: str, body: str = "") -> str:
+    """销售 / 律所案件 / 家访 / 校企：与 ``_crm_schema`` 同一扫词。"""
+    kind = title_then_body_hit(title, body, CRM_KIND_RULES)
+    return str(kind or "sales")
+
+
+def library_product_kind(title: str, body: str = "") -> str:
+    """图书 / 卷宗档案 / 漂流：与 ``_library_schema`` 同一扫词。"""
+    kind = title_then_body_hit(title, body, LIBRARY_KIND_RULES)
+    return str(kind or "book")
+
+
+def equip_product_kind(title: str, body: str = "") -> str:
+    """设备借用产品皮：与 ``_equip_schema`` 同一扫词。
+
+    具名档见 ``EQUIP_KIND_RULES``；演出语境×租借动词 → costume；
+    强实验室信号 → lab；其余未点名实验室的器材/设备借用 → gear；默认 lab。
+    gear 眉题由 ``equip_gear_noun`` 从题名抠，不必再枚举行业。
+    """
+    kind = title_then_body_hit(title, body, EQUIP_KIND_RULES)
+    if kind:
+        return str(kind)
+    for text in ((title or "").strip(), (body or "").strip()):
+        if not text:
+            continue
+        if scan_has(text, EQUIP_LAB_STRONG_HINTS):
+            return "lab"
+        if scan_has(text, EQUIP_COSTUME_SCENE_HINTS) and scan_has(
+            text, EQUIP_COSTUME_LOAN_HINTS
+        ):
+            return "costume"
+        # 中性器材皮：具名短语或「器材/器械/设备 × 借」；实验室已在上方压回
+        if scan_has(text, EQUIP_GEAR_HINTS) or (
+            scan_has(text, ("器材", "器械", "设备"))
+            and scan_has(text, EQUIP_COSTUME_LOAN_HINTS)
+        ):
+            return "gear"
+    return "lab"
+
+
+_EQUIP_GEAR_NOUN_RE = re.compile(
+    r"((?:[\u4e00-\u9fff]{2,12}?)(?:器材|设备|装备|器械|用具))"
+)
+_EQUIP_GEAR_STRIP_PREFIX = (
+    "基于SpringBoot与Vue的",
+    "基于SpringBoot的",
+    "基于Vue的",
+    "高校",
+    "校园",
+    "学校",
+    "单位",
+    "社区",
+)
+
+
+def equip_gear_noun(title: str, body: str = "") -> str:
+    """gear 档眉题：从题名/开题抠「消防器材」「军训器械」等；抠不出 → 器材借用。
+
+    具名 kind（体育/影像…）不走此函数；只服务枚举盖不住的开题。
+    """
+    for text in ((title or "").strip(), (body or "").strip()):
+        if not text:
+            continue
+        blob = text
+        for p in _EQUIP_GEAR_STRIP_PREFIX:
+            blob = blob.replace(p, "")
+        # 优先「××器材借用/租借」整段前的名词
+        m = re.search(
+            r"([\u4e00-\u9fff]{2,12}(?:器材|设备|装备|器械|用具))(?:借用|租借|借还|管理)",
+            blob,
+        )
+        if not m:
+            m = _EQUIP_GEAR_NOUN_RE.search(blob)
+        if not m:
+            continue
+        noun = m.group(1).strip()
+        for p in ("的", "与", "和", "及"):
+            if noun.startswith(p):
+                noun = noun[len(p) :].strip()
+        # 过短或纯壳词不要
+        if len(noun) < 2 or noun in ("设备", "器材", "装备", "器械", "用具"):
+            continue
+        if scan_has(noun, EQUIP_LAB_STRONG_HINTS):
+            continue
+        return noun[:16]
+    return "器材借用"
+
+
+def property_product_kind(title: str, body: str = "") -> str:
+    """报修 / 投诉 / 市政：与 ``_property_schema`` 同一扫词。"""
+    kind = title_then_body_hit(title, body, PROPERTY_KIND_RULES)
+    return str(kind or "repair")
+
+
+def it_product_kind(title: str, body: str = "") -> str:
+    """故障 / 售后 / 维保：与 ``_it_schema`` 同一扫词。"""
+    kind = title_then_body_hit(title, body, IT_KIND_RULES)
+    return str(kind or "ticket")
+
+
 def meeting_product_kind(title: str, body: str = "") -> str:
     """场地名词：与 ``_meeting_schema`` 同一扫词。"""
     kind = title_then_body_hit(title, body, MEETING_KIND_RULES)
@@ -584,6 +868,16 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return food_product_kind(title, body)
     if domain == "DOM-EVENT":
         return event_product_kind(title, body)
+    if domain == "DOM-CRM":
+        return crm_product_kind(title, body)
+    if domain == "DOM-LIBRARY":
+        return library_product_kind(title, body)
+    if domain == "DOM-EQUIP":
+        return equip_product_kind(title, body)
+    if domain == "DOM-PROPERTY":
+        return property_product_kind(title, body)
+    if domain == "DOM-IT":
+        return it_product_kind(title, body)
     return None
 
 
@@ -735,6 +1029,32 @@ def scene_forum_parts(title: str, body: str = "") -> Scene:
     return scene_forum(copy_scan_text(t, b))
 
 
+_TOUR_CAMPUS_HINTS = (
+    "高校",
+    "校园",
+    "研学旅行社",
+    "学生研学",
+    "暑期社会实践线路",
+)
+
+
+def scene_tour(text: str) -> Scene:
+    """默认旅行社企业档；开题写清高校研学线路再 campus。"""
+    if scan_has(text, _TOUR_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    return "enterprise"
+
+
+def scene_tour_parts(title: str, body: str = "") -> Scene:
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, _TOUR_CAMPUS_HINTS) or is_campus_general(t):
+        return "campus"
+    if t:
+        return "enterprise"
+    return scene_tour(copy_scan_text(t, b))
+
+
 def scene_for(
     domain: str,
     title: str = "",
@@ -790,4 +1110,6 @@ def scene_for(
         return scene_content_parts(title, proposal_text)
     if domain == "DOM-FORUM":
         return scene_forum_parts(title, proposal_text)
+    if domain == "DOM-TOUR":
+        return scene_tour_parts(title, proposal_text)
     return "default"

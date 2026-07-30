@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；author=联系人；isbn=电话/备注；stock=可跟进标记
+-- ArchiveStore 兼容列；author=联系人；isbn=电话/备注；stock=可跟进标记；owner_username=登记人
 CREATE TABLE IF NOT EXISTS customer (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS customer (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '线索',
+  owner_username VARCHAR(64) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -88,22 +89,21 @@ CREATE TABLE IF NOT EXISTS follow_up_log (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '销售主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '客户经理', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '业务员甲', '13800000002',
- '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"销售","employeeNo":"E2026008","dept":"华东销售","jobTitle":"客户经理","region":"上海"}',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"销售","employeeNo":"E2026008","dept":"华东销售","jobTitle":"业务员","region":"上海"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '重点客户'), (2, '普通客户'), (3, '潜在线索');
-INSERT IGNORE INTO customer (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '星河科技有限公司', '李总', '13811110001 / 意向采购办公设备', 1, 1, 'available'),
-(2, '青禾教育', '王老师', '13922220002 / 咨询培训合作', 2, 1, 'available'),
-(3, '未命名线索-展会', '张女士', '13733330003 / 展会名片', 3, 1, 'available'),
-(4, '海川物流', '赵经理', '13644440004 / 合同续签跟进', 1, 1, 'available'),
-(5, '邻里便利店连锁', '陈店长', '13555550005 / 新开门店合作', 2, 1, 'available');
+INSERT IGNORE INTO customer (id, title, author, isbn, category_id, stock, status, owner_username) VALUES
+(1, '星河科技有限公司', '李总', '13811110001 / 意向采购办公设备', 1, 1, 'available', 'user'),
+(2, '青禾教育', '王老师', '13922220002 / 咨询培训合作', 2, 1, 'available', ''),
+(3, '未命名线索-展会', '张女士', '13733330003 / 展会名片', 3, 1, 'available', ''),
+(4, '海川物流', '赵经理', '13644440004 / 合同续签跟进', 1, 1, 'available', ''),
+(5, '邻里便利店连锁', '陈店长', '13555550005 / 新开门店合作', 2, 1, 'available', '');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '跟进须知', '请如实登记联系结果；重要商机请及时提交跟进单由主管确认。', 'admin', '销售主管'
+SELECT '跟进须知', '请如实登记联系结果；跟进提交后即时入档，办结后可在记录中查阅。', 'admin', '销售主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跟进须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周重点', '重点客户续约与展会线索请于周五前提交跟进。', 'admin', '销售主管'
+SELECT '本周重点', '重点客户续约与展会线索请于周五前完成跟进登记。', 'admin', '销售主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周重点');

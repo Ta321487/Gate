@@ -14,7 +14,7 @@ def test_long_proposal_drops_unrelated_defaults():
     text = (
         "本系统实现学生请假申请、审批与销假台账管理。"
         "用户提交请假单，管理员审核通过或驳回，销假后完结。"
-        "主要功能包括人员档案、请假记录与公告管理。" * 2
+        "主要功能包括假种档案、请假记录与公告管理。" * 2
     )
     assert len(text) >= 80
     items = compose_out_of_mvp("DOM-ATTEND", text, scanned_signals=[])

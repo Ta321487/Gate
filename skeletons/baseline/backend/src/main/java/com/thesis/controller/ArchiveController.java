@@ -56,12 +56,12 @@ public class ArchiveController {
         return R.ok(ArchiveStore.pageMine(uid, page, size));
     }
 
-    /** 用户发帖：即时可见，无需审核 */
+    /** 用户发布档案：即时可见，无需审核 */
     @PostMapping("/publish")
     public R<Map<String, Object>> publish(@RequestBody Map<String, Object> body, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
         if (!ArchiveStore.userPublishEnabled()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "当前领域未开放用户发帖");
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前领域未开放用户发布");
         }
         String title = str(body.get("title"));
         String content = str(body.get("isbn"));
@@ -74,9 +74,19 @@ public class ArchiveController {
                 categoryId = 1L;
             }
         }
+        String author = str(body.get("author"));
+        Integer stock = null;
+        if (body.get("stock") != null && !String.valueOf(body.get("stock")).isBlank()) {
+            try {
+                stock = Integer.parseInt(String.valueOf(body.get("stock")).trim());
+            } catch (Exception ignored) {
+                stock = null;
+            }
+        }
         try {
-            Map<String, Object> item = ArchiveStore.addUserPost(uid, title, content, categoryId);
-            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发帖失败");
+            Map<String, Object> item = ArchiveStore.addUserPost(
+                    uid, title, content, categoryId, author.isBlank() ? null : author, stock);
+            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发布失败");
             return R.ok(item);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());

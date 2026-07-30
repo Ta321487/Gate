@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bake.proposal_lexicon import pattern_mentioned
+
 TIMEBANK_CAP = "timebank"
 
 _TIMEBANK_SIGNALS = re.compile(
@@ -13,7 +15,7 @@ _TIMEBANK_SIGNALS = re.compile(
 
 
 def scan_timebank(text: str) -> bool:
-    return bool(_TIMEBANK_SIGNALS.search(text or ""))
+    return pattern_mentioned(text or "", _TIMEBANK_SIGNALS, ignore_contrast=True)
 
 
 def timebank_wanted(

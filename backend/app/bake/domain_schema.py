@@ -61,7 +61,7 @@ def build_domain_schema(
     if domain in SCHEMA_BUILDERS:
         from app.bake.schema.templates import _SCENE_COPY_DOMAINS
 
-        if domain in _SCENE_COPY_DOMAINS:
+        if domain in _SCENE_COPY_DOMAINS or domain == "DOM-LIBRARY":
             schema = builder(title, proposal_text=proposal_text)
         else:
             schema = builder(title)

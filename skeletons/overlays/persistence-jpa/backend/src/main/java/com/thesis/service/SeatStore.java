@@ -1,4 +1,4 @@
-﻿package com.thesis.service;
+package com.thesis.service;
 
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderStore;

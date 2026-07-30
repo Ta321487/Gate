@@ -65,6 +65,7 @@
 | M-13 | 场地预约 = 仪器机时 | MEETING vs **DOM-INSTRUMENT** | 借+约一体具名域 | 已齐 |
 | M-14 | 宿舍报修 = 分床调宿 | DORM vs BED | 叙事分立 | 已齐 |
 | M-15 | 成绩更正 = 综测/评教 | GRADE vs MORAL/EVAL | 叙事分立 | 已齐 |
+| M-16 | 旅行社线路 = 酒店/社团/拼车 | TOUR vs HOTEL/ACTIVITY/CARPOOL/TRIP | match_hint + `test_tour_p31` | 已齐 |
 
 ---
 
@@ -117,6 +118,7 @@
 | S-34 | 献血/开放日报名 | ACTIVITY | 同上 | 词表 | 已齐 |
 | S-35 | 宠物领养（认领壳） | LOST | 启事 → 领养申请 → 审 | 已有领养皮，补样例与 QA 防医院误落 | 已齐 |
 | S-36 | 捐赠物资认领 | LOST 或 ASSET | 名录 → 认领申请 → 审 | 认领皮文案 | 已齐 |
+| — | 旅行社线路/跟团报名（非校园活动） | **DOM-TOUR**（P-31） | 线路 → 报名 → 审占名额 → 出团 | 具名预设，勿吞进 ACTIVITY | 已齐 |
 ### 3.5 预约族
 
 | ID | 题型说法 | 挂靠 | 主流程（演示级） | 须补内容 | 状态 |
@@ -183,7 +185,7 @@
 | P-11 | 竞赛组队/学习搭子匹配 | DATING / ACTIVITY | **DOM-MUTUAL-TEAM** + `mutual_select` | 建资料 → 意向 → 确认组队 | 已齐 |
 | P-12 | 第二课堂学分认定 | ACTIVITY / GRADE | **DOM-CREDIT**：认定项目 + 学分认定 | 选项目 → 举证申请 → 审认定 | 已齐 |
 | P-13 | 劳动教育/志愿时长认定 | ACTIVITY / ATTEND | **DOM-LABOR**：劳动项目 + 时长认定 | 记录/申请 → 审 | 已齐 |
-| P-14 | 评教 / 教学评价 | GRADE / FORUM | **DOM-EVAL**：评教课程 + 评教卷 + `rating_dims`（教学/态度/收获，可选匿名） | 选课 → 审通过 → 多维评分 | 已齐 |
+| P-14 | 评教 / 教学评价 | GRADE / FORUM | **DOM-EVAL**：评教课程 + 评教卷 + `rating_dims`（教学/态度/收获，可选匿名） | 选课 → 多维评分与评语 → 提交完结 | 已齐 |
 | P-15 | 综测 / 德育分申报 | GRADE / FUND | **DOM-MORAL**：测评指标 + 加减分申请 | 申报 → 审 → 台账 | 已齐 |
 | P-16 | 创新学分/竞赛获奖登记 | FUND / GRADE | **DOM-AWARD**：成果类型 + 成果登记 | 登记 → 审 | 已齐 |
 | P-17 | 访客登记 / 临时门禁申请 | LABSAFE / MEETING | **DOM-VISITOR** + `pass_code`（审过签发演示通行码） | 预约到访 → 审 → 发卡 | 已齐 |
@@ -191,7 +193,7 @@
 | P-19 | 大型仪器 / 机时预约 | EQUIP + MEETING | **DOM-INSTRUMENT** + `instrument_slot`（archive+ticket+slot） | 选仪器 → 约机时 → 审/履约；（可选）借用单 | 已齐 |
 | P-20 | 宿舍分配 / 选房 | DORM | **DOM-BED**：床位档案 + 选房申请（quota 占用） | 浏览床位 → 申请 → 审分配 | 已齐 |
 | P-21 | 调宿 / 退宿 | DORM | **DOM-BED**（申请类型含调宿/退宿） | 申请 → 审 | 已齐 |
-| P-22 | 查寝 / 归寝签到（单据向） | DORM / ATTEND | **DOM-CHECKIN**：寝室 + 归寝登记 + 口令签到（缺勤） | 寝室档案 → 登记 → 签到/缺勤 | 已齐 |
+| P-22 | 查寝 / 归寝签到（单据向） | DORM / ATTEND | **DOM-CHECKIN**：寝室 + 口令直签（缺勤） | 寝室档案 → 口令签到/缺勤 | 已齐 |
 | P-23 | 房源中介 / 带看跟进 | CRM / HOTEL / SHOP | **DOM-LISTING**：房源档案 + 带看/意向单 | 挂牌 → 带看跟进 → 完结 | 已齐 |
 | P-24 | 采购申请 / 申购单 | ASSET / FUND | **DOM-PROCURE**：采购品目 + 申购单 | 申购 → 审 → 台账 | 已齐 |
 | P-25 | 社团注册/年审 | ACTIVITY / FUND | **DOM-CLUB**：社团事项 + 注册年审 | 提交材料 → 审 | 已齐 |
@@ -200,6 +202,7 @@
 | P-28 | 党员发展/入党申请台账 | FUND / EVENT | **DOM-PARTY**：发展阶段 + 阶段材料 | 建档 → 阶段材料 → 审 | 已齐 |
 | P-29 | 合同审批（单级演示） | CRM / ATTEND | **DOM-CONTRACT**：合同类型 + 合同审批 | 登记 → 审 | 已齐 |
 | P-30 | 印章+用车+证明（OA 三联） | GENERIC 多单 | **禁止一题三引擎冒充**：`scan_out_of_scope` 命中三联 → reject；裁成 P-01～P-03 之一 | 单主路径可 bake | 已齐 |
+| P-31 | 旅行社线路/跟团报名 | ACTIVITY / HOTEL / GENERIC | **DOM-TOUR**：线路档案 + 报名占名额（`test_tour_p31`）；≠酒店≠校园活动≠拼车≠出差≠商城 | 浏览线路 → 报名 → 审 → 出团 | 已齐 |
 
 ### 4.1 新预设交付清单（每个 `P-*`）
 
@@ -232,7 +235,7 @@
 | C-10 | 打卡签到（口令/列表，非人脸 GPS） | ACTIVITY 部分有 | 通用 `checkin` 能力挂 ACTIVITY/CHECKIN；口令签到+结束未签记缺勤/爽约 | 已齐 |
 | C-11 | 投票+报名复合 | — | ACTIVITY 开题同时写报名+投票 → 挂 `vote` + 注入选票表（`test_vote_signup_c11`）；纯投票仍 DOM-VOTE | 已齐 |
 | C-12 | 简易知识库/文库下载台账 | BLOG / LIBRARY | **DOM-DOCLIB** + `doclib`：资料附件、演示权限、下载台账（`test_doclib_c12`）；≠借阅≠博客 | 已齐 |
-| C-13 | 拼车/结伴信息对接 | DATING / ACTIVITY | **DOM-CARPOOL**：行程档案 + 同行意向单（`test_carpool_c13`）；≠婚恋≠搭子≠报名；无地图 | 已齐 |
+| C-13 | 拼车/结伴信息对接 | DATING / ACTIVITY | **DOM-CARPOOL**：用户发行程 + 同行意向 + 车主确认（`test_carpool_c13`）；≠婚恋≠搭子≠报名；无地图 | 已齐 |
 | C-14 | 时间银行/志愿时长账户 | ACTIVITY | **DOM-TIMEBANK** + `timebank`：账户余额、流水加减、核销审核扣减（`test_timebank_c14`）；≠劳动认定≠活动报名 | 已齐 |
 | C-15 | 选座购票（影院级） | MEDIA out_of_mvp | **DOM-CINEMA** + `seat_select`：场次座位图占座+订单（`test_cinema_c15`）；≠点播≠场地预约≠报名领票 | 已齐 |
 | C-16 | 多级会签（≤3 级演示） | 单级审 | **`multi_approve`**：固定 pending→pending_mid→pending_final→approved（`test_multi_approve_c16`）；开题写三级才挂；≠任意流程图 | 已齐 |
