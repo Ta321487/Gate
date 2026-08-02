@@ -1733,6 +1733,15 @@ public final class TicketStore {
             }
             TicketSql.db().update("UPDATE " + TICKET + " SET next_follow_at=? WHERE id=?", ts, ticketId);
         }
+        // 报销等：提交时写入金额（复用 fine_yuan；借阅罚金/SLA 到期不计此路径）
+        if (hasColumn("fine_yuan") && !useDeadline
+                && (body.containsKey("fineYuan") || body.containsKey("amountYuan"))) {
+            Object raw = body.containsKey("fineYuan") ? body.get("fineYuan") : body.get("amountYuan");
+            double amt = TicketSql.toDouble(raw);
+            if (amt < 0) amt = 0;
+            if (amt > 99999999) amt = 99999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET fine_yuan=? WHERE id=?", amt, ticketId);
+        }
     }
 
     static void ensureColumn(String col, String ddlType) {

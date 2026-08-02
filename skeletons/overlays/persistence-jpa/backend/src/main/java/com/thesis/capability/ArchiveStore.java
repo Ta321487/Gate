@@ -954,6 +954,28 @@ public final class ArchiveStore {
                     delta, itemId);
         }
         if (n <= 0) throw new IllegalStateException(stockShortage(0));
+        syncOccupyStageWithStock(itemId, delta);
+    }
+
+    /**
+     * 床位占用皮：stock 扣至 0 且 stage 为「空闲」→「已分配」；回补且为「已分配」→「空闲」。
+     * 维修中/开放及其它域 stage 语义不动。
+     */
+    private static void syncOccupyStageWithStock(long itemId, int delta) {
+        if (!hasItemColumn("stage")) return;
+        Map<String, Object> book = getItemRaw(itemId);
+        if (book == null || !book.containsKey("stage")) return;
+        String stage = str(book.get("stage")).trim();
+        int stock = toInt(book.get("stock"));
+        try {
+            if (delta < 0 && stock <= 0 && (stage.isEmpty() || "空闲".equals(stage))) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已分配", itemId);
+            } else if (delta > 0 && stock > 0 && "已分配".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "空闲", itemId);
+            }
+        } catch (Exception ignored) {
+            // 无 stage 列或写失败时忽略，stock/status 已更新
+        }
     }
 
     public static long countItems() {

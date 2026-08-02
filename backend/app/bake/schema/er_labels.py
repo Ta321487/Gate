@@ -138,6 +138,18 @@ def _labels_from_domain_schema(
             for tname in name_aliases:
                 rels.setdefault(f"{tname}::assignee_username", "办理")
                 rels.setdefault("::assignee_username", "办理")
+        if slot == "ticket":
+            # followUp 皮：contactChannelLabel / nextFollowLabel → ER 列中文
+            ch = str(ent.get("contactChannelLabel") or "").strip()
+            if ch:
+                _put_col(cols, "contact_channel", ch)
+                if key:
+                    _put_col(scoped, "contact_channel", ch)
+            nf = str(ent.get("nextFollowLabel") or "").strip()
+            if nf:
+                _put_col(cols, "next_follow_at", nf)
+                if key:
+                    _put_col(scoped, "next_follow_at", nf)
         if slot == "archive" and key:
             archive_key, archive_label = key, label
 

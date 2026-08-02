@@ -97,8 +97,32 @@ class StuworkPTests(unittest.TestCase):
                 self.assertTrue(ok, errs[:5])
                 ticket = (schema.get("entities") or {}).get("ticket") or {}
                 self.assertTrue(ticket.get("allowCheckin"))
+                self.assertFalse(ticket.get("autoApprove"))
                 self.assertTrue(ticket.get("noShowAfterEnd"))
                 self.assertEqual(ticket.get("checkinLabel"), "归寝签到")
+                self.assertEqual((ticket.get("states") or {}).get("overdue"), "缺勤")
+                self.assertEqual(ticket.get("contactChannelLabel"), "归寝类型")
+
+    def test_bed_labels_and_er_channel(self) -> None:
+        schema = build_domain_schema("高校宿舍床位分配与调宿申请系统", "DOM-BED")
+        ok, errs = validate_schema(schema)
+        self.assertTrue(ok, errs[:5])
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        self.assertEqual(ticket.get("contactChannelLabel"), "申请类型")
+        self.assertFalse(ticket.get("autoApprove"))
+        self.assertTrue(ticket.get("approveEndsFlow"))
+        from app.bake.schema.er_labels import _labels_from_domain_schema
+        from pathlib import Path
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "domain.schema.json"
+            p.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
+            _tables, cols, by_table, _rels, _fk = _labels_from_domain_schema(p)
+        self.assertEqual(cols.get("contact_channel"), "申请类型")
+        bed_apply = by_table.get("bed_apply") or {}
+        self.assertEqual(bed_apply.get("contact_channel"), "申请类型")
 
 
 if __name__ == "__main__":

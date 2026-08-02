@@ -100,5 +100,5 @@ INSERT IGNORE INTO expense_project (id, title, author, isbn, category_id, stock,
 (4, '培训差旅', '人事处', '提前申请', 1, 1, 'available'),
 (5, '接待费报销', '党政办', '标准内', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报销单须知', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '财务主管'
+SELECT '报销单须知', '请如实填写报销金额与费用说明；审批通过后线下报销。本期无银行打款对接。', 'admin', '财务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报销单须知');

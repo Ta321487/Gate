@@ -80,8 +80,8 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-MORAL": [_clerk("moral_clerk", "综测专员", "ticket_ops")],
     "DOM-AWARD": [_clerk("award_clerk", "成果专员", "ticket_ops")],
     "DOM-BED": [_clerk("bed_clerk", "宿管员", "ticket_ops")],
-    # 查寝：学生口令直签；查寝员维护寝室/签到码（非待审闸）
-    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "content_ops")],
+    # 查寝：归寝登记待审；查寝员审单 + 维护寝室/签到码
+    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "ticket_ops", "content_ops")],
     "DOM-MUTUAL-TUTOR": [_clerk("tutor_clerk", "导师秘书", "ticket_ops")],
     "DOM-MUTUAL-TOPIC": [_clerk("topic_clerk", "选题秘书", "ticket_ops")],
     "DOM-MUTUAL-TEAM": [_clerk("team_clerk", "组队协调员", "ticket_ops")],

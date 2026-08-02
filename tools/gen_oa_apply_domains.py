@@ -25,6 +25,7 @@ OA_SPECS: list[dict] = [
         "archive_label": "印章事项",
         "ticket_label": "用章申请",
         "apply": "提交用章",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": [
             "用章", "印章申请", "公章使用", "用印申请", "行政用章", "用章审批",
             "行政印章", "印章使用", "印章审批", "用印审批",
@@ -56,7 +57,7 @@ OA_SPECS: list[dict] = [
         "ticket_label": "用车申请",
         "apply": "提交用车",
         "keywords": ["用车申请", "公务用车", "派车申请", "车辆申请", "公车预约", "用车审批"],
-        "hint": "适用：公务用车申请与审批（可选时段冲突）。勿与车位预约、请假出差混淆。",
+        "hint": "适用：公务用车选车申请与审批（台账级调度，无时段冲突引擎）。勿与车位预约、请假出差混淆。",
         "cats": ["轿车", "商务车", "中巴"],
         "seeds": [
             ("粤A·行政01", "司机王师傅", "5座轿车 / 本市"),
@@ -218,7 +219,7 @@ OA_SPECS: list[dict] = [
         "ticket_label": "报销单",
         "apply": "提交报销",
         "keywords": ["经费报销", "报销申请", "费用报销", "差旅报销", "报销审批", "报销单"],
-        "hint": "适用：演示级经费/差旅报销单审核（无银行直连）。勿与学生资助、用章或开具证明混淆。",
+        "hint": "适用：经费/差旅报销单审核（无银行直连）。勿与学生资助、用章或开具证明混淆。",
         "cats": ["差旅费", "办公费", "业务费"],
         "seeds": [
             ("教研差旅", "教务处", "预算内"),
@@ -335,7 +336,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '{spec["admin"]}', '13800000000', '{{}}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '{spec["clerk"]}', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '{spec["user"]}甲', '13800000002',
- '{{"realName":"样例用户","email":"demo@demo.edu","gender":"男","identityType":"教职工","employeeNo":"T20260001","dept":"综合办"}}',
+ {_user_profile_json(spec)},
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -343,9 +344,22 @@ INSERT IGNORE INTO category (id, name) VALUES {cats};
 INSERT IGNORE INTO {arch} (id, title, author, isbn, category_id, stock, status) VALUES
 {seeds};
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '{notice}', '请如实填写事由与附件说明；审批通过后方可办理。演示环境无银行/硬件对接。', 'admin', '{spec["admin"]}'
+SELECT '{notice}', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '{spec["admin"]}'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{notice}');
 """
+
+
+def _user_profile_json(spec: dict) -> str:
+    """学籍异动用学生身份；其余 OA 默认教职工。"""
+    if spec.get("domain") == "DOM-ACAD":
+        return (
+            '\'{"realName":"样例学生","email":"student@demo.edu","gender":"男",'
+            '"identityType":"学生","dept":"计算机学院","studentNo":"20260001","gradeYear":"2024"}\''
+        )
+    return (
+        '\'{"realName":"样例用户","email":"demo@demo.edu","gender":"男",'
+        '"identityType":"教职工","dept":"综合办","employeeNo":"T20260001"}\''
+    )
 
 
 def _catalog_py() -> str:

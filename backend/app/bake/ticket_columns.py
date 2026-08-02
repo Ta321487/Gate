@@ -49,6 +49,15 @@ def ticket_loan_shell_wanted(domain: str, ticket_flags: dict | None = None) -> b
     return False
 
 
+def ticket_amount_shell_wanted(domain: str, ticket_flags: dict | None = None) -> bool:
+    """报销等：仅保留 fine_yuan 作金额列（非借阅罚金、非 SLA）。"""
+    d = (domain or "").strip()
+    if d == "DOM-EXPENSE":
+        return True
+    f = ticket_flags or {}
+    return bool(f.get("collectAmount") or f.get("fineLabel"))
+
+
 def ticket_column_payload(
     domain: str,
     *,
@@ -56,10 +65,13 @@ def ticket_column_payload(
     ticket_flags: dict | None = None,
 ) -> dict[str, Any]:
     fk = ticket_item_fk_for(domain)
+    want_loan = ticket_loan_shell_wanted(domain, ticket_flags)
+    want_amount = (not want_loan) and ticket_amount_shell_wanted(domain, ticket_flags)
     return {
         "ticketTable": (ticket_table or "").strip(),
         "itemFkColumn": fk or "",
-        "loanShell": ticket_loan_shell_wanted(domain, ticket_flags),
+        "loanShell": want_loan,
+        "amountShell": want_amount,
         "standalone": fk is None,
     }
 
@@ -71,18 +83,31 @@ def apply_ticket_shell_sql(
     ticket_table: str | None,
     ticket_flags: dict | None = None,
 ) -> str:
-    """剔除非借阅域的 due/fine/remind 壳，并将 book_id 改为域语义外键。"""
+    """剔除非借阅域的 due/fine/remind 壳，并将 book_id 改为域语义外键。
+
+    报销域可仅保留 fine_yuan（金额），不带 due_at / remind_*。
+    """
     t = (ticket_table or "").strip()
     if not valid_ident(t):
         return sql
     fk = ticket_item_fk_for(domain)
     want_loan = ticket_loan_shell_wanted(domain, ticket_flags)
-    loan_allow = _TICKET_LOAN_NAMES if want_loan else set()
+    want_amount = (not want_loan) and ticket_amount_shell_wanted(domain, ticket_flags)
+    if want_loan:
+        loan_allow = _TICKET_LOAN_NAMES
+    elif want_amount:
+        loan_allow = {"fine_yuan"}
+    else:
+        loan_allow = set()
 
     def transform(body: str) -> str:
         body = prune_columns(body, allow=loan_allow, known=_TICKET_LOAN_NAMES)
         if want_loan:
             body = inject_missing_columns(body, list(TICKET_LOAN_SHELL_COLUMNS))
+        elif want_amount:
+            body = inject_missing_columns(
+                body, [("fine_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")]
+            )
         if fk and fk.lower() != "book_id":
             body = rewrite_col_def(body, "book_id", fk)
         return body

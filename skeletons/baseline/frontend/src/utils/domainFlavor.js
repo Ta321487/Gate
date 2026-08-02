@@ -439,6 +439,54 @@ const FLAVORS = {
       lead: '正在准备页面内容。',
     },
   },
+  seal: {
+    motif: 'briefcase',
+    notFound: { title: '用章事项未找到', lead: '页面无效，或印章事项/申请单不存在。', hint: '回印章事项目录重新选择。' },
+    serverError: { title: '用章服务异常', lead: '用章申请暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '用章加载中…', lead: '正在同步印章事项与申请。' },
+  },
+  fleet: {
+    motif: 'gear',
+    notFound: { title: '车辆未找到', lead: '页面无效，或车辆/用车单不存在。', hint: '回车辆目录重新选择。' },
+    serverError: { title: '用车服务异常', lead: '用车申请暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '用车加载中…', lead: '正在同步车辆与申请。' },
+  },
+  cert: {
+    motif: 'book',
+    notFound: { title: '证明类型未找到', lead: '页面无效，或证明类型/开具单不存在。', hint: '回证明类型目录重新选择。' },
+    serverError: { title: '开具服务异常', lead: '证明开具暂时连不上。', hint: '请稍后重试申请或查询。' },
+    loading: { title: '开具加载中…', lead: '正在同步证明类型与申请。' },
+  },
+  promo: {
+    motif: 'grid',
+    notFound: { title: '宣传事项未找到', lead: '页面无效，或宣传事项/审批单不存在。', hint: '回宣传事项目录重新选择。' },
+    serverError: { title: '宣传审批异常', lead: '宣传审批暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '宣传加载中…', lead: '正在同步宣传事项与审批。' },
+  },
+  fitout: {
+    motif: 'gear',
+    notFound: { title: '施工区域未找到', lead: '页面无效，或施工区域/备案单不存在。', hint: '回施工区域目录重新选择。' },
+    serverError: { title: '备案服务异常', lead: '装修备案暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '备案加载中…', lead: '正在同步施工区域与备案。' },
+  },
+  acad: {
+    motif: 'book',
+    notFound: { title: '异动事项未找到', lead: '页面无效，或异动事项/申请单不存在。', hint: '回异动事项目录重新选择。' },
+    serverError: { title: '异动服务异常', lead: '学籍异动暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '异动加载中…', lead: '正在同步异动事项与申请。' },
+  },
+  trip: {
+    motif: 'calendar',
+    notFound: { title: '事项类型未找到', lead: '页面无效，或事项类型/出差加班单不存在。', hint: '回事项类型目录重新选择。' },
+    serverError: { title: '出差加班服务异常', lead: '出差加班申请暂时连不上。', hint: '请稍后重试提交或销结。' },
+    loading: { title: '出差加班加载中…', lead: '正在同步事项类型与单据。' },
+  },
+  expense: {
+    motif: 'briefcase',
+    notFound: { title: '经费项目未找到', lead: '页面无效，或经费项目/报销单不存在。', hint: '回经费项目目录重新选择。' },
+    serverError: { title: '报销服务异常', lead: '经费报销暂时连不上。', hint: '请稍后重试提交或查询。' },
+    loading: { title: '报销加载中…', lead: '正在同步经费项目与报销单。' },
+  },
 }
 
 /** 页脚短句：跟领域皮走，不另开随机轴 */
@@ -472,6 +520,14 @@ const FOOTER_TAGS = {
   music: '曲库服务台',
   forum: '社区服务台',
   blog: '站点阅读台',
+  seal: '用章办理台',
+  fleet: '公务用车调度台',
+  cert: '证明开具窗口',
+  promo: '宣传审批台',
+  fitout: '装修备案台',
+  acad: '学籍异动窗口',
+  trip: '出差加班台',
+  expense: '经费报销台',
   generic: '在线服务入口',
 }
 

@@ -1,4 +1,4 @@
--- bake domain=DOM-CHECKIN · tables in [6,15]
+-- bake domain=DOM-BED · tables in [6,15]
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 
@@ -24,25 +24,23 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore：title=寝室号；author=楼栋；stock=应签人数；checkin_code + 起止窗口
-CREATE TABLE IF NOT EXISTS dorm_room (
+-- ArchiveStore：title=床位号；author=楼栋；isbn=备注；stock=可占用(1/0)
+CREATE TABLE IF NOT EXISTS bed (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   building_name VARCHAR(100),
   room_note VARCHAR(255),
   category_id BIGINT,
-  stock INT DEFAULT 0,
+  stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  checkin_code VARCHAR(16) NOT NULL DEFAULT '',
-  start_at DATETIME NULL,
-  end_at DATETIME NULL,
+  stage VARCHAR(32) DEFAULT '空闲',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS checkin_apply (
+CREATE TABLE IF NOT EXISTS bed_apply (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  dorm_room_id BIGINT NOT NULL,
+  bed_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending',
   assignee_username VARCHAR(64) NULL,
@@ -51,9 +49,7 @@ CREATE TABLE IF NOT EXISTS checkin_apply (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL,
-  checked_in_at DATETIME NULL,
-  fine_status VARCHAR(32) DEFAULT ''
+  next_follow_at DATETIME NULL
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -80,24 +76,24 @@ CREATE TABLE IF NOT EXISTS sys_notice (
 
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '宿管主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '查寝员', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '宿管员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
  '{"realName":"样例学生","email":"stu@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '一号楼'), (2, '二号楼'), (3, '集中查寝');
-INSERT IGNORE INTO dorm_room (id, title, building_name, room_note, category_id, stock, status, checkin_code, start_at, end_at) VALUES
-(1, '1栋101', '1号楼', '四人间 · 晚查', 1, 4, 'available', 'CK101', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
-(2, '1栋102', '1号楼', '四人间 · 晚查', 1, 4, 'available', 'CK102', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
-(3, '2栋205', '2号楼', '六人间 · 晚查', 2, 6, 'available', 'CK205', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
-(4, '集中查寝点', '宿管中心', '临时批次', 3, 30, 'available', 'CK999', DATE_ADD(CURDATE(), INTERVAL 21 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR));
-UPDATE dorm_room SET checkin_code=CONCAT('CK', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
+INSERT IGNORE INTO category (id, name) VALUES (1, '四人间'), (2, '六人间'), (3, '调宿退宿');
+INSERT IGNORE INTO bed (id, title, building_name, room_note, category_id, stock, status, stage) VALUES
+(1, '1栋101-1', '1号楼', '靠窗 / 空闲', 1, 1, 'available', '空闲'),
+(2, '1栋101-2', '1号楼', '靠门 / 空闲', 1, 1, 'available', '空闲'),
+(3, '2栋205-3', '2号楼', '中铺 / 空闲', 2, 1, 'available', '空闲'),
+(4, '3栋312-4', '3号楼', '下铺 / 空闲', 1, 1, 'available', '空闲'),
+(5, '调宿窗口', '宿管中心', '调宿/退宿事项（无实体床）', 3, 99, 'available', '开放');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '查寝须知', '请先提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='查寝须知');
+SELECT '床位申请须知', '选房通过后占用床位库存；调宿/退宿请选择对应事项并写明原床位。本期无门锁对接。', 'admin', '宿管主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='床位申请须知');
 
-CREATE TABLE IF NOT EXISTS `checkin_apply_progress` (
+CREATE TABLE IF NOT EXISTS `bed_apply_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   ticket_id BIGINT NOT NULL,
   status VARCHAR(32) NOT NULL,
@@ -109,4 +105,4 @@ CREATE TABLE IF NOT EXISTS `checkin_apply_progress` (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '查寝员', '13800000001', '{}', 0, 1, 1, 'checkin_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '宿管员', '13800000001', '{}', 0, 1, 1, 'bed_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

@@ -120,8 +120,9 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 
 换皮**全覆盖**清单（深皮 / 新预设 / 新能力，按 ID 待补，不做取舍）：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
 
-**交付审计（Agent 依据）**：审已齐 / 空壳 / 新伤旧 / 落得准 / 论文图 / 字段语义 → [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md)。  
-进度（2026-07-27）：泳道 E/F 已齐 — M/S/P/C/X/Q 全册 §9 已齐；见 [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
+**工厂主链路 / 交付审计**：材料→匹配→出包 → [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md)。  
+ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。  
+组审计进度（借用/占用）：已验 LIBRARY/ASSET/EQUIP/BED/CHECKIN + **P-01～P-08 复审已齐**（2026-08-03）；组内其余未收口。
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 
@@ -153,7 +154,7 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 | **DOM-MORAL** | 综测、德育分加减分申报 | archive + ticket_flow + content + org_users（指标 `moral_item`、申请 `moral_apply`） |
 | **DOM-AWARD** | 创新学分、竞赛获奖登记 | archive + ticket_flow + content + org_users（类型 `award_item`、登记 `award_apply`） |
 | **DOM-BED** | 床位分配、选房、调宿/退宿 | archive + ticket_flow + **quota** + content + org_users + **bed_occupy**（床位 `bed`、申请 `bed_apply`） |
-| **DOM-CHECKIN** | 查寝、归寝签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（寝室 `dorm_room`、登记 `checkin_apply`） |
+| **DOM-CHECKIN** | 查寝、归寝登记审核、口令签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（寝室 `dorm_room`、登记 `checkin_apply`；非直签） |
 | **DOM-MUTUAL-TUTOR** | 导师双选 | archive + ticket_flow + **quota** + content + org_users + **mutual_select** |
 | **DOM-MUTUAL-TOPIC** | 毕设选题双选 | 同上（选题档案） |
 | **DOM-MUTUAL-TEAM** | 竞赛组队/学习搭子 | 同上（组队资料） |
