@@ -130,14 +130,15 @@ class TicketUiColumnContractTests(unittest.TestCase):
                 continue
             with self.subTest(domain=domain):
                 sql = domain_sql(domain, "thesis_test")
-                # INSERT ... start_at ... VALUES ... '20xx-..'
+                # 字面日期 '20xx-..' 或查寝窗 DATE_ADD(CURDATE(), ...)
                 self.assertRegex(
                     sql,
                     re.compile(
-                        r"INSERT IGNORE INTO \w+.*start_at.*VALUES[\s\S]*?'20\d{2}-\d{2}-\d{2}",
+                        r"INSERT IGNORE INTO \w+.*start_at.*VALUES[\s\S]*?"
+                        r"('20\d{2}-\d{2}-\d{2}|DATE_ADD\s*\(\s*CURDATE\s*\()",
                         re.IGNORECASE,
                     ),
-                    f"{domain} 有 startAt 字段但演示种子未写入 start_at",
+                    f"{domain} 有 startAt 字段但种子未写入 start_at",
                 )
 
     def test_baseline_ticket_records_gates_schedule(self) -> None:

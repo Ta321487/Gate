@@ -66,7 +66,7 @@
       "allowRating": false,
       "applyFromList": false,
       "approveEndsFlow": true,
-      "autoApprove": true,
+      "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "checkinLabel": "归寝签到",
@@ -95,17 +95,17 @@
       "states": {
         "approved": "签到中",
         "overdue": "缺勤",
-        "pending": "待签到",
+        "pending": "待审",
         "rejected": "已驳回",
         "returned": "已签到"
       },
       "twoLevelApprove": false,
       "verbs": {
-        "apply": "归寝签到",
+        "apply": "归寝登记",
         "approve": "通过",
         "reject": "驳回",
         "remind": "催签",
-        "return": "取消签到"
+        "return": "撤销登记"
       },
       "weekCalendar": false
     }
@@ -113,16 +113,16 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "查寝签到",
-    "authLead": "验证码登录；在查寝窗口内选择寝室并输入签到码，提交即记已签到；窗口结束后未签到记缺勤。",
+    "authLead": "验证码登录；选择寝室提交归寝登记，宿管审核通过后凭签到码完成归寝签到；窗口结束后未签到记缺勤。",
     "authPoints": [
       "验证码登录",
       "寝室目录",
-      "口令签到"
+      "归寝登记与口令签到"
     ],
-    "messagesPageLead": "系统通知。",
+    "messagesPageLead": "审核结果、查寝提醒与系统通知。",
     "noticePageLead": "查寝安排与须知，点击条目阅读全文。",
     "noticePageTitle": "宿管公告",
-    "registerRoleHint": "注册后可归寝签到"
+    "registerRoleHint": "注册后可归寝登记"
   },
   "menus": {
     "admin": [
@@ -144,6 +144,10 @@
         "key": "users",
         "label": "用户管理",
         "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "归寝审核"
       },
       {
         "key": "ticket_records",
@@ -180,7 +184,11 @@
       "title": "寝室目录"
     },
     {
-      "lead": "窗口内输入签到码，提交即已签到。",
+      "lead": "提交登记后等待宿管审核。",
+      "title": "归寝登记"
+    },
+    {
+      "lead": "审核通过后在窗口内输入签到码完成归寝。",
       "title": "口令签到"
     },
     {
@@ -190,10 +198,6 @@
     {
       "lead": "查看本人签到与缺勤记录。",
       "title": "我的归寝"
-    },
-    {
-      "lead": "查寝安排见公告栏。",
-      "title": "宿管公告"
     }
   ],
   "roles": {
@@ -211,7 +215,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请在查寝窗口内完成口令签到；人脸/GPS 不在本期。缺勤记录由系统在窗口结束后标记。",
+    "noticeBody": "请先提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。",
     "noticeTitle": "查寝须知"
   },
   "title": "测试课题",

@@ -254,6 +254,17 @@
             style="width:100%"
           />
         </el-form-item>
+        <el-form-item v-if="collectAmount" :label="fineLabel" required>
+          <el-input-number
+            v-model="applyAmount"
+            :min="0.01"
+            :max="99999999"
+            :precision="2"
+            :step="10"
+            controls-position="right"
+            style="width:100%"
+          />
+        </el-form-item>
         <el-form-item v-if="pickDateRange" label="起止日期" required>
           <el-date-picker
             v-model="applyPeriod"
@@ -412,6 +423,7 @@ import {
   ticketCopy,
   ticketCheckinLabel,
   ticketDueLabel,
+  ticketFineLabel,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import {
@@ -446,7 +458,12 @@ const requireAttach = computed(() => !!ticket.requireAttach)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const dueLabel = computed(() => ticketDueLabel('到期日'))
+const fineLabel = computed(() => ticketFineLabel('金额'))
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
+/** 报销等：有 fineLabel 且非借阅到期/SLA 时，提交表单收金额 */
+const collectAmount = computed(
+  () => !!ticket.fineLabel && !pickLoanPeriod.value && !ticket.slaDeadline,
+)
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const allowQty = computed(() => !!ticket.allowQty)
 const qtyLabel = computed(() => ticket.qtyLabel || '数量')
@@ -467,6 +484,7 @@ const needApplyDialog = computed(
     || requireRemark.value
     || pickLoanPeriod.value
     || pickDateRange.value
+    || collectAmount.value
     || allowQty.value
     || isCrm.value
     || rateOnApply.value
@@ -762,6 +780,7 @@ const applyRemark = ref('')
 const applyAttachUrl = ref('')
 const applyQty = ref(1)
 const applyDueAt = ref('')
+const applyAmount = ref(null)
 const applyPeriod = ref(null)
 const applyChannel = ref('')
 const applyNextFollow = ref('')
@@ -1009,6 +1028,7 @@ async function apply(row) {
   applyAttachUrl.value = ''
   applyQty.value = 1
   applyDueAt.value = ''
+  applyAmount.value = null
   applyPeriod.value = null
   applyChannel.value = ''
   applyNextFollow.value = ''
@@ -1061,6 +1081,13 @@ async function submitApply() {
     ElMessage.warning(`请选择${dueLabel.value}`)
     return
   }
+  if (collectAmount.value) {
+    const amt = Number(applyAmount.value)
+    if (!(amt > 0)) {
+      ElMessage.warning(`请填写${fineLabel.value}`)
+      return
+    }
+  }
   if (pickDateRange.value) {
     const range = applyPeriod.value
     if (!Array.isArray(range) || range.length < 2 || !range[0] || !range[1]) {
@@ -1106,6 +1133,7 @@ async function submitApply() {
     }
     if (allowQty.value) body.qty = Number(applyQty.value) || 1
     if (pickLoanPeriod.value) body.dueAt = applyDueAt.value
+    if (collectAmount.value) body.fineYuan = Number(applyAmount.value)
     if (pickDateRange.value && Array.isArray(applyPeriod.value)) {
       body.periodStart = applyPeriod.value[0]
       body.periodEnd = applyPeriod.value[1]

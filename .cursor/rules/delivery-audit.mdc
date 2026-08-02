@@ -7,8 +7,8 @@ alwaysApply: true
 
 审交付、标已齐、落地新域/新能力、或声称换皮全覆盖进度时：
 
-1. **必须遵循** [`docs/delivery-audit-rules.md`](docs/delivery-audit-rules.md)（七层含状态机/字段/演示字样、硬闸、新×旧、落得准、论文图、老板小卡）。
-2. 审计报告 **缺该文 §6 任一节 → 无效**；须代填老板小卡 12 条；状态机须对且准；学生可见面默认不得留「演示」字样。
+1. **必须遵循** [`docs/delivery-audit-rules.md`](docs/delivery-audit-rules.md)（工厂主链路：材料→匹配→出包；红灯+老板小卡）。
+2. 审计报告须有：**总表、红灯、旧题回归、老板小卡 12 条**；缺小卡 → 无效。
 3. 审计轮 **默认只出报告、不改代码**（用户明确下令才改）。
-4. 待办 ID 与防坑见 [`docs/domain-skin-gap-analysis.md`](docs/domain-skin-gap-analysis.md)；伤旧或落不准不得标已齐。
+4. 待办 ID 见 [`docs/domain-skin-gap-analysis.md`](docs/domain-skin-gap-analysis.md)；伤旧或落不准不得标已齐。
 5. 场景轴见 `opening-scene.mdc`；技术栈轴见 `tech-stack-delivery.mdc`——两轴勿混。

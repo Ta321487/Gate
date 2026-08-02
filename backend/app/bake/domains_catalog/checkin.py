@@ -13,13 +13,13 @@ DOMAINS: dict = {
             "缺勤记录", "归寝打卡",
         ],
         "match_hint": (
-            "适用：宿舍查寝/归寝口令签到、缺勤登记（单据向，非人脸/GPS）。"
+            "适用：宿舍查寝/归寝登记审核、口令签到、缺勤登记（单据向，非人脸/GPS）。"
             "勿与宿舍水电报修（宿舍报修）、床位选房调宿（床位分配）、请假假勤（考勤请假）"
             "或活动报名签到混淆。"
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览寝室 → 口令签到（结束未签到记缺勤）"],
+        "flows": ["浏览寝室 → 归寝登记 → 审核 → 口令签到（结束未签到记缺勤）"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -27,6 +27,7 @@ DOMAINS: dict = {
             {"name": "寝室档案", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
+            {"name": "归寝登记审核", "status": "flow"},
             {"name": "口令签到", "status": "flow"},
             {"name": "结束未签到记缺勤", "status": "module"},
             {"name": "归寝记录", "status": "module"},
@@ -43,7 +44,7 @@ DOMAINS: dict = {
         ],
         "gate": gate_archive_ticket(
             archive_feature="寝室档案",
-            flow_feature="口令签到",
+            flow_feature="归寝登记审核",
             records_feature="归寝记录",
             users_feature="用户管理",
             category_feature="分类管理",

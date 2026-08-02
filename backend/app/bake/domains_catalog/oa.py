@@ -7,6 +7,7 @@ from app.bake.gate_contracts import gate_archive_ticket
 DOMAINS: dict = {
     "DOM-SEAL": {
         "label": "用章申请",
+        # 词表只做硬分流；长尾说法交给 match_recommend（见 match_hint）
         "keywords": [
             "用章", "印章申请", "公章使用", "用印申请", "行政用章", "用章审批",
             "行政印章", "印章使用", "印章审批", "用印审批",
@@ -55,8 +56,9 @@ DOMAINS: dict = {
     },
     "DOM-FLEET": {
         "label": "用车申请",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["用车申请", "公务用车", "派车申请", "车辆申请", "公车预约", "用车审批"],
-        "match_hint": "适用：公务用车申请与审批（可选时段冲突）。勿与车位预约、请假出差混淆。",
+        "match_hint": "适用：公务用车选车申请与审批（台账级调度，无时段冲突引擎）。勿与车位预约、请假出差混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["选档案事项 → 提交用车 → 审批完结"],
@@ -97,6 +99,7 @@ DOMAINS: dict = {
     },
     "DOM-CERT": {
         "label": "开具证明",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["开具证明", "在读证明", "在职证明", "成绩单证明", "证明申请", "开证明"],
         "match_hint": "适用：在读/在职/成绩单等证明开具申请审核。勿与成绩更正、资助申请或用章混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
@@ -139,6 +142,7 @@ DOMAINS: dict = {
     },
     "DOM-PROMO": {
         "label": "宣传审批",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["横幅审批", "海报审批", "户外宣传", "宣传审批", "条幅申请", "宣传品审批"],
         "match_hint": "适用：横幅/海报/户外宣传方案审批。勿与活动报名或物业报修混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
@@ -181,6 +185,7 @@ DOMAINS: dict = {
     },
     "DOM-FITOUT": {
         "label": "装修备案",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["装修备案", "进场施工", "施工备案", "装修申请", "进场申请", "装修审批"],
         "match_hint": "适用：装修/进场施工备案申请与审核。勿与物业报修工单或事件上报混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
@@ -223,6 +228,7 @@ DOMAINS: dict = {
     },
     "DOM-ACAD": {
         "label": "学籍异动",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["学籍异动", "转专业申请", "缓考申请", "休学申请", "复学申请", "学籍变更"],
         "match_hint": "适用：转专业/缓考/休学复学等学籍异动申请审核。勿与成绩更正、选课占名额或请假混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
@@ -265,6 +271,7 @@ DOMAINS: dict = {
     },
     "DOM-TRIP": {
         "label": "出差加班",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["出差申请", "加班审批", "出差审批", "加班申请", "公出申请", "加班单"],
         "match_hint": "适用：出差/加班申请与审批销结。勿与请销假（考勤请假）、用车申请或旅行社线路报名混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
@@ -307,6 +314,7 @@ DOMAINS: dict = {
     },
     "DOM-EXPENSE": {
         "label": "经费报销",
+        # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["经费报销", "报销申请", "费用报销", "差旅报销", "报销审批", "报销单"],
         "match_hint": "适用：经费/差旅报销单审核（无银行直连）。勿与学生资助、用章或开具证明混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],

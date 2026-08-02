@@ -240,7 +240,7 @@
 
     <el-dialog v-model="checkinVisible" :title="checkinLabel" width="400px" destroy-on-close>
       <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('编号 ' + checkinRow.id) }}」输入签到码</p>
-      <el-input v-model="checkinCode" maxlength="16" placeholder="向主办方索取口令" @keyup.enter="submitCheckin" />
+      <el-input v-model="checkinCode" maxlength="16" placeholder="请输入签到码" @keyup.enter="submitCheckin" />
       <template #footer>
         <el-button @click="checkinVisible = false">取消</el-button>
         <el-button type="primary" :loading="checkinLoading" @click="submitCheckin">签到</el-button>

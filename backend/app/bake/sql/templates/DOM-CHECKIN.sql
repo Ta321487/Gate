@@ -105,5 +105,5 @@ INSERT IGNORE INTO dorm_room (id, title, author, isbn, category_id, stock, statu
 (4, '集中查寝点', '宿管中心', '临时批次', 3, 30, 'available', 'CK999', DATE_ADD(CURDATE(), INTERVAL 21 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR));
 UPDATE dorm_room SET checkin_code=CONCAT('CK', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '查寝须知', '请在查寝窗口内完成口令签到；人脸/GPS 不在本期。窗口结束后未签到记缺勤。', 'admin', '宿管主管'
+SELECT '查寝须知', '请先提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='查寝须知');
