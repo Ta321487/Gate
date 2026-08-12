@@ -85,23 +85,23 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '开发实习'), (2, '运维实习'), (3, '综合实习');
--- 岗 1=演示账号关联岗（实习中）；其余为可选示范目录（待上岗），勿理解为一人入职五家
+-- 岗 1=样例账号关联岗（实习中）；其余为可选示范目录（待上岗），勿理解为一人入职五家
 INSERT IGNORE INTO intern_post (id, title, mentor_name, org_note, category_id, stock, status, stage) VALUES
 (1, '后端开发实习', '王工', '星河科技 / Java', 1, 1, 'available', '实习中'),
 (2, '网络运维实习', '李工', '校园信息中心 / 运维', 2, 1, 'available', '待上岗'),
 (3, '行政综合实习', '赵主管', '区政务中心 / 文员', 3, 1, 'available', '待上岗'),
 (4, '测试实习', '周工', '青禾软件 / 测试', 1, 1, 'available', '待上岗'),
 (5, '数据分析实习', '陈老师', '学院实验室 / 数据', 3, 1, 'available', '待上岗');
--- 演示账号 user 仅关联岗 1 的周报主路径
+-- 样例账号 user 仅关联岗 1 的周报主路径
 INSERT IGNORE INTO week_report (id, intern_post_id, username, status, remark, contact_channel) VALUES
 (1, 1, 'user', 'pending', '第1周：熟悉项目结构与编码规范，完成环境搭建。', '在线填写');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '周报须知',
-  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标演示关联岗。',
+  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。',
   'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '鉴定提醒', '实习结束前完成鉴定材料（电子签不在本期）。', 'admin', '就业办主管'
+SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意（非 CA）。', 'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='鉴定提醒');
 
 CREATE TABLE IF NOT EXISTS `week_report_progress` (
@@ -114,6 +114,18 @@ CREATE TABLE IF NOT EXISTS `week_report_progress` (
   KEY idx_progress_ticket (ticket_id, id)
 );
 
+CREATE TABLE IF NOT EXISTS e_sign_record (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  ticket_id BIGINT NULL,
+  sign_image_url VARCHAR(255) NOT NULL DEFAULT '',
+  agreed TINYINT NOT NULL DEFAULT 0,
+  remark VARCHAR(255) DEFAULT '',
+  signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_e_sign_user (username, id)
+);
+
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='intern_tutor', staff_kind='clerk', nickname='实习辅导员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '实习辅导员', '13800000001', '{}', 0, 1, 1, 'intern_tutor', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

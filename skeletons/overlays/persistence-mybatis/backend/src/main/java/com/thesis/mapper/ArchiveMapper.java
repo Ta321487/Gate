@@ -77,7 +77,17 @@ public interface ArchiveMapper {
             @Param("like") String like,
             @Param("tagIds") List<Long> tagIds,
             @Param("itemTagTable") String itemTagTable,
-            @Param("itemTagFk") String itemTagFk);
+            @Param("itemTagFk") String itemTagFk,
+            @Param("openCatalogOnly") boolean openCatalogOnly,
+            @Param("filterByEnd") boolean filterByEnd);
+
+    @Update("UPDATE `${itemTable}` SET status='unavailable' "
+            + "WHERE status='available' AND start_at IS NOT NULL AND start_at <= NOW()")
+    int expirePastStarts(@Param("itemTable") String itemTable);
+
+    @Update("UPDATE `${itemTable}` SET status='unavailable' "
+            + "WHERE status='available' AND end_at IS NOT NULL AND end_at <= NOW()")
+    int expirePastEnds(@Param("itemTable") String itemTable);
 
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,

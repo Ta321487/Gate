@@ -81,10 +81,10 @@ INSERT IGNORE INTO media (id, title, cast_info, play_url, category_id, stock, st
 (4, '旅行见闻录', '导演丙', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
 (5, '季节特辑', '编导己', 'https://www.w3schools.com/html/mov_bbb.mp4', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '观影须知', '片源仅供学习演示；请文明观影，勿传播未授权内容。', 'admin', '内容总监'
+SELECT '观影须知', '片源仅供学习使用；请文明观影，勿传播未授权内容。', 'admin', '内容总监'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='观影须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周上新', '电影与综艺栏目已更新演示片单，欢迎收藏想看。', 'admin', '内容总监'
+SELECT '本周上新', '电影与综艺栏目已更新片单，欢迎收藏想看。', 'admin', '内容总监'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
@@ -111,4 +111,4 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='editor', staff_kind='clerk', nickname='运营编辑' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '运营编辑', '13800000001', '{}', 0, 1, 1, 'editor', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

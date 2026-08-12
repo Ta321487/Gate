@@ -106,7 +106,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '时间银行主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '核销员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '志愿者甲', '13800000002',
- '{"realName":"吴同学","email":"wu@demo.edu","gender":"女","studentNo":"20230005","dept":"社会学院"}',
+ '{"realName":"吴志愿","email":"wu@demo.com","gender":"女","identityType":"志愿者","communityName":"阳光社区服务站","volunteerNo":"TB2026001"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -120,6 +120,9 @@ INSERT IGNORE INTO tb_account (username, balance_hours) VALUES ('user', 8.00);
 INSERT INTO tb_ledger (username, delta_hours, reason, ref_type, ref_id)
 SELECT 'user', 8.00, '初始存入', 'seed', NULL
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM tb_ledger WHERE username='user' AND reason='初始存入');
+
+INSERT IGNORE INTO tb_redeem (id, username, book_id, status, qty, remark, apply_at) VALUES
+(1, 'user', 3, 'pending', 2, '兑换作业辅导 2 小时', NOW());
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。无真支付兑现与跨校联盟。', 'admin', '时间银行主管'

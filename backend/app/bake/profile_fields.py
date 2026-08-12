@@ -585,32 +585,39 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
     ],
     "DOM-LISTING": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("clientType", "客户类型", required=True, on_register=True, field_type="select",
+            options=["个人求租", "个人求购", "其他"]),
+        _pf("preferArea", "意向区域", on_register=True, max_length=64, placeholder="如城东高新区"),
+        _pf("companyOrSchool", "单位/学校", on_register=True, max_length=64),
     ],
     "DOM-PROCURE": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "部门", required=True, on_register=True, max_length=64),
     ],
     "DOM-CLUB": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("clubName", "所属社团", on_register=True, max_length=64, placeholder="如摄影协会"),
     ],
     "DOM-PROJ": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("projectRole", "项目角色", on_register=True, field_type="select",
+            options=["负责人", "成员", "指导教师", "其他"]),
     ],
     "DOM-ETHIC": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("advisor", "指导教师", on_register=True, max_length=64),
     ],
     "DOM-PARTY": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
+        _pf("partyBranch", "所在党支部", on_register=True, max_length=64, placeholder="如计算机学院学生党支部"),
     ],
     "DOM-CONTRACT": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("employeeNo", "工号", required=True, on_register=True, max_length=32),
+        _pf("dept", "部门", required=True, on_register=True, max_length=64),
     ],
     "DOM-INSTRUMENT": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
@@ -618,19 +625,19 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("labOrOffice", "常用实验室", on_register=True, max_length=64),
     ],
     "DOM-EXAM": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
+        _pf("dept", "院系", required=True, on_register=True, max_length=64),
     ],
     "DOM-SURVEY": [
-        _pf("studentNo", "学号/工号", on_register=True, max_length=32),
+        _pf("studentNo", "学号", on_register=True, max_length=32),
         _pf("dept", "院系/单位", on_register=True, max_length=64),
     ],
     "DOM-VOTE": [
-        _pf("studentNo", "学号/工号", on_register=True, max_length=32),
+        _pf("studentNo", "学号", on_register=True, max_length=32),
         _pf("dept", "院系/单位", on_register=True, max_length=64),
     ],
     "DOM-DOCLIB": [
-        _pf("studentNo", "学号/工号", on_register=True, max_length=32),
+        _pf("studentNo", "学号", on_register=True, max_length=32),
         _pf("dept", "院系/单位", on_register=True, max_length=64),
     ],
     "DOM-CARPOOL": [
@@ -645,12 +652,15 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("emergencyPhone", "紧急联系电话", max_length=20),
     ],
     "DOM-TIMEBANK": [
-        _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
-        _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+        _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+            options=["志愿者", "居民", "站点工作人员"]),
+        _pf("communityName", "社区/站点", required=True, on_register=True, max_length=64,
+            placeholder="所在社区或服务站点"),
+        _pf("volunteerNo", "志愿者编号", on_register=True, max_length=32),
     ],
     "DOM-CINEMA": [
-        _pf("studentNo", "学号/工号", on_register=True, max_length=32),
-        _pf("dept", "院系/单位", on_register=True, max_length=64),
+        _pf("memberNo", "会员号", on_register=True, max_length=32),
+        _pf("orgName", "学校/单位", on_register=True, max_length=64),
     ],
     "DOM-GENERIC": [
         _pf("orgName", "所属单位", on_register=True, max_length=64),
@@ -1104,6 +1114,11 @@ _FORUM_COMMUNITY: list[dict[str, Any]] = [
         options=["邻里互助", "二手闲置", "活动通知", "求助问答", "不限"]),
 ]
 
+_TIMEBANK_CAMPUS: list[dict[str, Any]] = [
+    _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
+    _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
+]
+
 
 def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[str, Any]] | None:
     """有场景分支时返回覆盖列表；None 表示用 PROFILE_FIELDS_BY_DOMAIN 默认。
@@ -1173,6 +1188,8 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
         return _BLOG_CAMPUS if scene == "campus" else None
     if domain == "DOM-FORUM":
         return _FORUM_COMMUNITY if scene == "community" else None
+    if domain == "DOM-TIMEBANK":
+        return _TIMEBANK_CAMPUS if scene == "campus" else None
     return None
 
 

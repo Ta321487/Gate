@@ -77,9 +77,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '制度文件'), (2, '课件资料'), (3, '表格模板');
 INSERT IGNORE INTO doc_item (id, title, author, isbn, category_id, stock, status, file_url, access_level) VALUES
-(1, '学生手册（节选）', '学工处', '校内制度节选文稿', 1, 1, 'available', '/uploads/demo-handbook.pdf', 'login'),
-(2, '实验报告模板', '教务处', 'Word 模板下载链接', 3, 1, 'available', '/uploads/demo-report.docx', 'public'),
-(3, '教职工内部制度汇编', '人事处', '仅管理人员可下载', 1, 1, 'available', '/uploads/demo-staff.pdf', 'staff');
+  (1, '学生手册（节选）', '学工处', '校内制度节选文稿', 1, 1, 'available', '/uploads/handbook.pdf', 'login'),
+  (2, '实验报告模板', '教务处', 'Word 模板下载链接', 3, 1, 'available', '/uploads/report-template.docx', 'public'),
+  (3, '教职工内部制度汇编', '人事处', '仅管理人员可下载', 1, 1, 'available', '/uploads/staff-rules.pdf', 'staff');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '文库须知', '下载将记入台账；附件为占位 URL，无真对象存储签名与全文检索。', 'admin', '平台主管'

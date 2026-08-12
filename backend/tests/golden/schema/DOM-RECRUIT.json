@@ -57,6 +57,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
       "autoApprove": false,
       "categoryLimit": 0,
@@ -69,16 +70,19 @@
         "其他"
       ],
       "contactChannelPlaceholder": "网申/现场/内推等",
+      "issuePassCode": false,
       "key": "job_apply",
       "label": "投递单",
       "labelPlural": "投递",
       "nextFollowLabel": "期望到岗",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "简历摘要/说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "初筛通过",
@@ -203,7 +207,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实填写经历；演示环境不含视频面试。",
+    "noticeBody": "请如实填写经历；本期不含视频面试。",
     "noticeTitle": "投递须知"
   },
   "title": "测试课题",

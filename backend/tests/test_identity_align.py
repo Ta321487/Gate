@@ -17,8 +17,8 @@ _BRANCH_CASES: list[tuple[str, str, str]] = [
     ("DOM-CRM", "中小企业客户管理系统", "销售跟进客户线索与合同"),
     ("DOM-IT", "校园网报修系统", "师生报修校园网"),
     ("DOM-IT", "企业内部IT报修系统", "员工报修办公电脑"),
-    ("DOM-ATTEND", "高校课堂考勤系统", "学生签到请假"),
-    ("DOM-ATTEND", "企业员工考勤打卡系统", "员工上下班打卡"),
+    ("DOM-ATTEND", "高校学生请销假系统", "学生请假销假"),
+    ("DOM-ATTEND", "企业员工请销假系统", "员工请假销假"),
     ("DOM-RECRUIT", "校园招聘管理系统", "学生投递简历"),
     ("DOM-RECRUIT", "企业社会招聘系统", "社会求职者投递"),
     ("DOM-FUND", "高校奖助学金系统", "学生申请奖助学金"),
@@ -78,8 +78,8 @@ class IdentityAlignTests(unittest.TestCase):
         )
         self.assertEqual(issues, [])
 
-        title = "高校课堂考勤系统"
-        body = "学生签到请假"
+        title = "高校学生请销假系统"
+        body = "学生请假销假"
         sql = domain_sql("DOM-ATTEND", "t", title=title, proposal_text=body)
         issues = check_identity_alignment(
             "DOM-ATTEND", title=title, proposal_text=body, sql=sql

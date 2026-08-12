@@ -78,8 +78,11 @@ async function load() {
 
 async function respond(row, pass) {
   let remark = ''
+  const rejectTitle = labels.value.peerRejectDialogTitle || '婉拒志愿'
+  const confirmTitle = labels.value.peerConfirmDialogTitle || '确认互选'
+  const confirmMsg = labels.value.peerConfirmDialogMessage || '确认接受该志愿？'
   if (!pass) {
-    const { value } = await ElMessageBox.prompt('请填写婉拒原因', '婉拒志愿', {
+    const { value } = await ElMessageBox.prompt('请填写婉拒原因', rejectTitle, {
       confirmButtonText: '确认婉拒',
       cancelButtonText: '取消',
       inputPattern: /\S+/,
@@ -87,7 +90,7 @@ async function respond(row, pass) {
     })
     remark = value
   } else {
-    await ElMessageBox.confirm('确认接受该志愿？', '确认互选', { type: 'success' })
+    await ElMessageBox.confirm(confirmMsg, confirmTitle, { type: 'success' })
   }
   await http.post(`/api/tickets/${row.id}/peer-respond`, { pass, remark })
   ElMessage.success(pass ? '已确认' : '已婉拒')

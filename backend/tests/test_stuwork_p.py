@@ -39,6 +39,20 @@ class StuworkPTests(unittest.TestCase):
             ("学期末学生网上评教评分与评语", "DOM-EVAL", "DOM-GRADE"),
             ("综合测评德育分加减分申报审批", "DOM-MORAL", "DOM-GRADE"),
             ("创新学分竞赛获奖成果登记审批", "DOM-AWARD", "DOM-FUND"),
+            # 换说法硬分流（勿堆近义词；锚点落对域且不抢邻域）
+            ("课外素质学分认证管理平台", "DOM-CREDIT", "DOM-COURSE"),
+            ("素拓项目学分审核台账", "DOM-CREDIT", "DOM-COURSE"),
+            ("校园义务劳动工时登记审核", "DOM-LABOR", "DOM-ACTIVITY"),
+            ("志愿服务工时认定与核销台账", "DOM-LABOR", "DOM-ACTIVITY"),
+            ("期末课程教学质量评价系统", "DOM-EVAL", "DOM-GRADE"),
+            ("学生给任课教师打分评语平台", "DOM-EVAL", "DOM-SURVEY"),
+            ("学生品德量化考核分申报审批", "DOM-MORAL", "DOM-GRADE"),
+            ("综合素质加减分材料审核", "DOM-MORAL", "DOM-GRADE"),
+            ("学科竞赛获奖备案管理系统", "DOM-AWARD", "DOM-FUND"),
+            ("大创结题与专利成果备案", "DOM-AWARD", "DOM-FUND"),
+            ("公选课在线选课与学分名额", "DOM-COURSE", "DOM-CREDIT"),
+            ("志愿活动在线报名", "DOM-ACTIVITY", "DOM-LABOR"),
+            ("奖学金评定申报", "DOM-FUND", "DOM-AWARD"),
             ("新生宿舍床位在线选择分配", "DOM-BED", "DOM-DORM"),
             ("学生宿舍调宿退宿申请审批", "DOM-BED", "DOM-DORM"),
             ("宿舍查寝归寝签到缺勤记录", "DOM-CHECKIN", "DOM-DORM"),
@@ -67,9 +81,16 @@ class StuworkPTests(unittest.TestCase):
     def test_eval_has_rating(self) -> None:
         schema = build_domain_schema("高校学生网上评教管理系统", "DOM-EVAL")
         ticket = (schema.get("entities") or {}).get("ticket") or {}
+        archive = (schema.get("entities") or {}).get("archive") or {}
         self.assertTrue(ticket.get("allowRating"))
         self.assertTrue(ticket.get("approveEndsFlow"))
         self.assertGreaterEqual(len(ticket.get("ratingDims") or []), 3)
+        labels = {f.get("key"): f.get("label") for f in (archive.get("fields") or [])}
+        self.assertEqual(labels.get("author"), "任课教师")
+        self.assertEqual(labels.get("isbn"), "开课说明")
+        self.assertEqual(labels.get("stock"), "可评教")
+        self.assertEqual(ticket.get("nextFollowLabel"), "评教截止日")
+        self.assertEqual(archive.get("stockUnavailableLabel"), "已评教")
 
     def test_bed_p20_p21_registered(self) -> None:
         self.assertEqual(len(BED_CASES), 2)

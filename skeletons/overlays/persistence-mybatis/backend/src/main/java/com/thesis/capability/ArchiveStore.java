@@ -345,7 +345,9 @@ public final class ArchiveStore {
         long categoryId = patch.get("categoryId") != null
                 ? toLong(patch.get("categoryId")) : toLong(m.get("categoryId"));
         int stock = patch.get("stock") != null ? toInt(patch.get("stock")) : toInt(m.get("stock"));
-        String status = stock > 0 ? "available" : "unavailable";
+        Object startRaw = patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt");
+        Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
+        String status = availStatus(stock, startRaw, endRaw);
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("itemTable", ITEM);
         row.put("authorCol", authorColumn());
@@ -360,7 +362,7 @@ public final class ArchiveStore {
         row.put("coverUrl", cover);
         mapper().updateItemCore(row);
         if (hasStartAt()) {
-            Timestamp ts = parseTs(patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt"));
+            Timestamp ts = parseTs(startRaw);
             mapper().updateItemColumn(ITEM, "start_at", ts, id);
         }
         if (hasEndAt()) {
@@ -401,6 +403,8 @@ public final class ArchiveStore {
         patchOptNum(id, patch, "credit", "credit");
         patchOptNum(id, patch, "serviceHours", "service_hours");
         patchOptInt(id, patch, "seatCapacity", "seat_capacity");
+        patchOptInt(id, patch, "seatRows", "seat_rows");
+        patchOptInt(id, patch, "seatCols", "seat_cols");
         patchOptStr(id, patch, "feeRule", "fee_rule", 64);
         patchOptStr(id, patch, "stylistName", "stylist_name", 32);
         patchOptInt(id, patch, "durationSec", "duration_sec");
@@ -417,6 +421,12 @@ public final class ArchiveStore {
         }
         if (patch.containsKey("tagIds") && tagsEnabled()) {
             syncItemTags(id, patch.get("tagIds"));
+        }
+        if (patch.containsKey("seatRows") || patch.containsKey("seatCols")) {
+            try {
+                com.thesis.service.SeatStore.syncLayout(id);
+            } catch (Exception ignored) {
+            }
         }
         return getItemAdmin(id);
     }
@@ -476,6 +486,7 @@ public final class ArchiveStore {
 
     /** 用户侧：已下架视为不存在 */
     public static Map<String, Object> getItem(long id) {
+        expirePastStarts();
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
         if (isSoftDeleted(m)) return null;
@@ -489,11 +500,23 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
-        return pageItems(keyword, categoryId, null, false, page, size);
+        return pageItems(keyword, categoryId, null, false, page, size, false);
     }
 
     public static Map<String, Object> pageItems(
             String keyword, Long categoryId, List<Long> tagIds, boolean includeDeleted, int page, int size) {
+        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, false);
+    }
+
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly) {
+        expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         boolean excludeDeleted = hasDeletedAt() && !(includeDeleted && softDeleteEnabled);
@@ -509,6 +532,7 @@ public final class ArchiveStore {
             }
             if (tids.isEmpty()) tids = null;
         }
+        boolean catalog = openCatalogOnly && (hasStartAt() || hasEndAt());
         PageHelper.startPage(page, size);
         List<Map<String, Object>> raw = mapper().selectItems(
                 ITEM,
@@ -519,7 +543,9 @@ public final class ArchiveStore {
                 like,
                 tids,
                 tagsEnabled() ? ITEM_TAG : null,
-                tagsEnabled() ? itemTagFk : null);
+                tagsEnabled() ? itemTagFk : null,
+                catalog,
+                hasEndAt());
         PageInfo<Map<String, Object>> pi = new PageInfo<>(raw == null ? List.of() : raw);
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> r : pi.getList()) {
@@ -575,6 +601,8 @@ public final class ArchiveStore {
         putOptNum(m, raw, "credit", "credit");
         putOptNum(m, raw, "service_hours", "serviceHours");
         putOptInt(m, raw, "seat_capacity", "seatCapacity");
+        putOptInt(m, raw, "seat_rows", "seatRows");
+        putOptInt(m, raw, "seat_cols", "seatCols");
         putOptStr(m, raw, "fee_rule", "feeRule");
         putOptStr(m, raw, "stylist_name", "stylistName");
         putOptInt(m, raw, "duration_sec", "durationSec");
@@ -728,6 +756,68 @@ public final class ArchiveStore {
     public static boolean hasStartAt() {
         if (hasStartAt == null) hasStartAt = hasItemColumn("start_at");
         return hasStartAt;
+    }
+
+    /** 过档期：仅 start→过开始下架；有 end（查寝窗等）→过结束下架。 */
+    public static int expirePastStarts() {
+        if (hasEndAt()) {
+            try {
+                return mapper().expirePastEnds(ITEM);
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+        if (!hasStartAt()) return 0;
+        try {
+            return mapper().expirePastStarts(ITEM);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** 档期已关闭：有结束时间看 end；否则看 start（出发/开场）。 */
+    static boolean isScheduleClosed(Map<String, Object> item) {
+        if (item == null) return false;
+        if (hasEndAt()) return isPastEndValue(item.get("endAt"));
+        if (hasStartAt()) return isPastStartValue(item.get("startAt"));
+        return false;
+    }
+
+    static boolean isPastStart(Map<String, Object> item) {
+        return isPastStartValue(item == null ? null : item.get("startAt"));
+    }
+
+    private static boolean isPastStartValue(Object raw) {
+        return isPastTs(raw);
+    }
+
+    private static boolean isPastEndValue(Object raw) {
+        return isPastTs(raw);
+    }
+
+    private static boolean isPastTs(Object raw) {
+        if (raw == null) return false;
+        String sa = String.valueOf(raw).trim();
+        if (sa.isBlank() || "null".equalsIgnoreCase(sa)) return false;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            LocalDateTime t = LocalDateTime.parse(norm.replace(' ', 'T'));
+            return !t.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            try {
+                LocalDateTime t = LocalDateTime.parse(sa, FMT);
+                return !t.isAfter(LocalDateTime.now());
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+    }
+
+    private static String availStatus(int stock, Object startAt, Object endAt) {
+        if (stock <= 0) return "unavailable";
+        if (hasEndAt() && isPastEndValue(endAt)) return "unavailable";
+        if (!hasEndAt() && hasStartAt() && isPastStartValue(startAt)) return "unavailable";
+        return "available";
     }
 
     public static boolean hasEndAt() {

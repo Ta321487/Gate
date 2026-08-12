@@ -78,9 +78,14 @@ public final class SlotStore {
     }
 
     public static List<Map<String, Object>> listSlots(Long itemId, String day) {
+        return listSlots(itemId, day, false);
+    }
+
+    /** @param bookableOnly 用户预约：只列未开始时段 */
+    public static List<Map<String, Object>> listSlots(Long itemId, String day, boolean bookableOnly) {
         requireEnabled();
         String d = day == null || day.isBlank() ? null : day.trim();
-        List<Map<String, Object>> raw = mapper().selectSlots(SLOT, itemId, d);
+        List<Map<String, Object>> raw = mapper().selectSlots(SLOT, itemId, d, bookableOnly);
         List<Map<String, Object>> out = new ArrayList<>();
         if (raw != null) {
             for (Map<String, Object> r : raw) out.add(enrichSlot(shapeSlot(r)));
@@ -126,6 +131,7 @@ public final class SlotStore {
         requireEnabled();
         Map<String, Object> slot = getSlot(slotId);
         if (slot == null) throw new IllegalArgumentException("时段不存在");
+        if (isPastSlot(slot)) throw new IllegalStateException("该时段已过，不可预约");
         int capacity = ((Number) slot.get("capacity")).intValue();
         int booked = ((Number) slot.get("booked")).intValue();
         if (booked >= capacity) throw new IllegalStateException("该时段已约满");
@@ -414,6 +420,22 @@ public final class SlotStore {
         m.put("capacity", first(raw, "capacity"));
         m.put("booked", first(raw, "booked"));
         return m;
+    }
+
+    private static boolean isPastSlot(Map<String, Object> slot) {
+        String sa = slot == null ? "" : String.valueOf(slot.get("startAt"));
+        if (sa == null || sa.isBlank() || "null".equalsIgnoreCase(sa)) return false;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            LocalDateTime t = LocalDateTime.parse(norm.replace(' ', 'T'));
+            return !t.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            try {
+                return !LocalDateTime.parse(sa, FMT).isAfter(LocalDateTime.now());
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
     }
 
     private static Map<String, Object> enrichSlot(Map<String, Object> slot) {

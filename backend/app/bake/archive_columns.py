@@ -33,23 +33,23 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("contact_note", "VARCHAR(255)"),
     ),
     "DOM-EVENT": (
-        ("reporter_name", "VARCHAR(100)"),
-        ("location_note", "VARCHAR(255)"),
+        ("handler_name", "VARCHAR(100)"),
+        ("case_summary", "VARCHAR(255)"),
     ),
     "DOM-ATTEND": (
         ("scope_note", "VARCHAR(100)"),
         ("apply_note", "VARCHAR(255)"),
     ),
     "DOM-FUND": (
-        ("dept_name", "VARCHAR(100)"),
+        ("own_unit", "VARCHAR(100)"),
         ("quota_note", "VARCHAR(255)"),
     ),
     "DOM-LABSAFE": (
-        ("building_name", "VARCHAR(100)"),
+        ("building_lead", "VARCHAR(100)"),
         ("safety_note", "VARCHAR(255)"),
     ),
     "DOM-RECRUIT": (
-        ("dept_name", "VARCHAR(100)"),
+        ("hire_dept", "VARCHAR(100)"),
         ("salary_note", "VARCHAR(255)"),
     ),
     "DOM-DATING": (
@@ -69,36 +69,36 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("pickup_code", "VARCHAR(255)"),
     ),
     "DOM-SEAL": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("keeper_dept", "VARCHAR(100)"),
+        ("seal_scope", "VARCHAR(255)"),
     ),
     "DOM-FLEET": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("driver_name", "VARCHAR(100)"),
+        ("vehicle_note", "VARCHAR(255)"),
     ),
     "DOM-CERT": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("issue_dept", "VARCHAR(100)"),
+        ("purpose_note", "VARCHAR(255)"),
     ),
     "DOM-PROMO": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("apply_unit", "VARCHAR(100)"),
+        ("post_place", "VARCHAR(255)"),
     ),
     "DOM-FITOUT": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("contractor", "VARCHAR(100)"),
+        ("work_req", "VARCHAR(255)"),
     ),
     "DOM-ACAD": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("accept_dept", "VARCHAR(100)"),
+        ("material_note", "VARCHAR(255)"),
     ),
     "DOM-TRIP": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("own_dept", "VARCHAR(100)"),
+        ("fill_note", "VARCHAR(255)"),
     ),
     "DOM-EXPENSE": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("own_dept", "VARCHAR(100)"),
+        ("budget_note", "VARCHAR(255)"),
     ),
     "DOM-CREDIT": (
         ("dept_name", "VARCHAR(100)"),
@@ -109,8 +109,8 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("note_hint", "VARCHAR(255)"),
     ),
     "DOM-EVAL": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("lecturer_name", "VARCHAR(100)"),
+        ("course_note", "VARCHAR(255)"),
     ),
     "DOM-MORAL": (
         ("dept_name", "VARCHAR(100)"),
@@ -122,23 +122,91 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
     ),
     "DOM-BED": (
         ("building_name", "VARCHAR(100)"),
-        ("room_note", "VARCHAR(255)"),
+        ("layout_note", "VARCHAR(255)"),
     ),
     "DOM-CHECKIN": (
         ("building_name", "VARCHAR(100)"),
         ("room_note", "VARCHAR(255)"),
     ),
+    "DOM-INSTRUMENT": (
+        ("lab_name", "VARCHAR(100)"),
+        ("model_note", "VARCHAR(255)"),
+    ),
     "DOM-MUTUAL-TUTOR": (
-        ("dept_name", "VARCHAR(100)"),
-        ("note_hint", "VARCHAR(255)"),
+        ("college_name", "VARCHAR(100)"),
+        ("research_note", "VARCHAR(255)"),
     ),
     "DOM-MUTUAL-TOPIC": (
+        ("college_name", "VARCHAR(100)"),
+        ("research_note", "VARCHAR(255)"),
+    ),
+    "DOM-MUTUAL-TEAM": (
+        ("college_name", "VARCHAR(100)"),
+        ("skill_note", "VARCHAR(255)"),
+    ),
+    "DOM-VISITOR": (
+        ("zone_place", "VARCHAR(100)"),
+        ("receive_note", "VARCHAR(255)"),
+    ),
+    "DOM-CARPASS": (
         ("dept_name", "VARCHAR(100)"),
         ("note_hint", "VARCHAR(255)"),
     ),
-    "DOM-MUTUAL-TEAM": (
-        ("dept_name", "VARCHAR(100)"),
+    "DOM-LISTING": (
+        ("estate_area", "VARCHAR(100)"),
+        ("house_type_note", "VARCHAR(255)"),
+    ),
+    "DOM-PROCURE": (
+        ("own_dept", "VARCHAR(100)"),
+        ("item_spec", "VARCHAR(255)"),
+    ),
+    "DOM-CLUB": (
+        ("guide_unit", "VARCHAR(100)"),
+        ("matter_note", "VARCHAR(255)"),
+    ),
+    "DOM-PROJ": (
+        ("own_unit", "VARCHAR(100)"),
+        ("declare_note", "VARCHAR(255)"),
+    ),
+    "DOM-ETHIC": (
+        ("own_unit", "VARCHAR(100)"),
+        ("material_brief", "VARCHAR(255)"),
+    ),
+    "DOM-PARTY": (
+        ("party_org", "VARCHAR(100)"),
+        ("material_brief", "VARCHAR(255)"),
+    ),
+    "DOM-CONTRACT": (
+        ("own_dept", "VARCHAR(100)"),
+        ("approve_note", "VARCHAR(255)"),
+    ),
+    "DOM-EXAM": (
+        ("course_unit", "VARCHAR(100)"),
         ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-SURVEY": (
+        ("publish_unit", "VARCHAR(100)"),
+        ("note_hint", "VARCHAR(255)"),
+    ),
+    "DOM-VOTE": (
+        ("host_unit", "VARCHAR(100)"),
+        ("rule_note", "VARCHAR(255)"),
+    ),
+    "DOM-DOCLIB": (
+        ("publish_unit", "VARCHAR(100)"),
+        ("summary_note", "VARCHAR(255)"),
+    ),
+    "DOM-CARPOOL": (
+        ("publisher_name", "VARCHAR(100)"),
+        ("route_note", "VARCHAR(255)"),
+    ),
+    "DOM-TIMEBANK": (
+        ("organizer", "VARCHAR(100)"),
+        ("service_note", "VARCHAR(255)"),
+    ),
+    "DOM-CINEMA": (
+        ("price_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("hall_note", "VARCHAR(128) DEFAULT ''"),
     ),
     "DOM-MEDIA": (
         ("cast_info", "VARCHAR(100)"),

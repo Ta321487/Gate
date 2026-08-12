@@ -94,11 +94,11 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '室内装修'), (2, '外立面'), (3, '机电改造');
 INSERT IGNORE INTO fitout_site (id, title, author, isbn, category_id, stock, status) VALUES
-(1, 'A栋101装修', '物业工程', '工期 7 日', 1, 1, 'available'),
-(2, '食堂二层改造', '后勤处', '夜间施工', 2, 1, 'available'),
+(1, 'A栋101装修', '物业工程', '室内粉刷隔断', 1, 1, 'available'),
+(2, '食堂二层改造', '后勤处', '夜间施工备案', 2, 1, 'available'),
 (3, '实验室水电改造', '实验中心', '需断电备案', 3, 1, 'available'),
 (4, '办公区隔断', '行政办', '周末施工', 1, 1, 'available'),
 (5, '地下车库划线', '物业', '临时围挡', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '装修备案须知', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '工程主管'
+SELECT '装修备案须知', '请如实填写施工内容、工期与安全措施；备案通过后方可进场。本期无物联网门禁对接。', 'admin', '工程主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='装修备案须知');

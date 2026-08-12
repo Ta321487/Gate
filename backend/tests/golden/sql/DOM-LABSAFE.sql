@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS lab_room (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  building_name VARCHAR(100),
+  building_lead VARCHAR(100),
   safety_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
@@ -84,7 +84,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '化学实验室'), (2, '机房'), (3, '金工实训');
-INSERT IGNORE INTO lab_room (id, title, building_name, safety_note, category_id, stock, status) VALUES
+INSERT IGNORE INTO lab_room (id, title, building_lead, safety_note, category_id, stock, status) VALUES
 (1, '有机化学实验室 A301', '化学楼 / 张老师', '二级安全 / 需安全培训证', 1, 1, 'available'),
 (2, '软件实训机房 B205', '信息楼 / 李老师', '普通机房 / 门禁卡准入', 2, 1, 'available'),
 (3, '金工实训车间 C101', '工程训练中心 / 王工', '护目镜必戴 / 安全等级高', 3, 1, 'available'),
@@ -109,4 +109,4 @@ CREATE TABLE IF NOT EXISTS `access_apply_progress` (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='lab_safety', staff_kind='clerk', nickname='安全员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '安全员', '13800000001', '{}', 0, 1, 1, 'lab_safety', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

@@ -368,6 +368,16 @@
         <el-form-item v-if="publishShowStock" :label="fieldLabel('stock', '余座')" required>
           <el-input-number v-model="publishStock" :min="1" :max="99" controls-position="right" />
         </el-form-item>
+        <el-form-item v-if="publishShowStartAt" :label="fieldLabel('startAt', '出发时间')" required>
+          <el-date-picker
+            v-model="publishStartAt"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm"
+            style="width:100%"
+            :placeholder="`请选择${fieldLabel('startAt', '出发时间')}`"
+          />
+        </el-form-item>
         <el-form-item :label="fieldLabel('isbn', publishUsesRichBody ? '正文' : '备注')" required>
           <RichTextEditor
             v-if="publishUsesRichBody"
@@ -505,6 +515,9 @@ const publishShowAuthor = computed(() => {
 })
 const publishShowStock = computed(
   () => userPublish.value && !publishUsesRichBody.value && stockDisplay.value === 'number',
+)
+const publishShowStartAt = computed(
+  () => userPublish.value && !publishUsesRichBody.value && hasSchedule.value,
 )
 const publishDialogTitle = computed(() => {
   if (publishUsesRichBody.value) return '发帖'
@@ -718,7 +731,9 @@ function scheduleText(row) {
 }
 
 function stockOk(row) {
-  return Number(row.stock) > 0
+  if (Number(row.stock) <= 0) return false
+  if (row.status === 'unavailable') return false
+  return true
 }
 
 function stockText(row) {
@@ -793,6 +808,7 @@ const publishTitle = ref('')
 const publishAuthor = ref('')
 const publishBody = ref('')
 const publishStock = ref(2)
+const publishStartAt = ref('')
 const publishCategoryId = ref(null)
 const publishLoading = ref(false)
 const threadList = ref([])
@@ -964,6 +980,7 @@ function openPublish() {
   publishAuthor.value = ''
   publishBody.value = ''
   publishStock.value = publishShowStock.value ? 2 : 1
+  publishStartAt.value = ''
   publishCategoryId.value = categories.value[0]?.id || null
   publishVisible.value = true
 }
@@ -989,6 +1006,10 @@ async function submitPublish() {
       return
     }
   }
+  if (publishShowStartAt.value && !String(publishStartAt.value || '').trim()) {
+    ElMessage.warning(`请填写${fieldLabel('startAt', '出发时间')}`)
+    return
+  }
   let isbn = ''
   if (publishUsesRichBody.value) {
     isbn = sanitizeHtml(publishBody.value || '')
@@ -1012,6 +1033,7 @@ async function submitPublish() {
     }
     if (publishShowAuthor.value) body.author = publishAuthor.value.trim()
     if (publishShowStock.value) body.stock = Number(publishStock.value) || 1
+    if (publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
     await http.post('/api/archive/publish', body)
     ElMessage.success(publishUsesRichBody.value || publishShowStock.value ? '已发布' : '已登记')
     publishVisible.value = false

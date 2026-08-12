@@ -446,6 +446,7 @@ public final class TicketStore {
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         int nQty = resolveQty(qty, stock);
         if (useQuota && stock < nQty) throw new IllegalStateException(ArchiveStore.stockShortage(stock));
+        TicketAsserts.assertItemOpen(item);
         TicketAsserts.assertApplyDeadline(item);
         TicketAsserts.assertNoTimeConflict(username, itemId, item);
         TicketAsserts.assertNoMutexConflict(username, itemId, item);
@@ -1047,11 +1048,15 @@ public final class TicketStore {
                     "待终审", "复审通过");
             return get(ticketId);
         }
-        // 二级：初审通过 → 待终审（不扣库存）
+        // 二级：首关 → 待终审（不扣库存）；文案跟 bake verbs（报修「受理」等），勿写死「初审」
         if (twoLevelApprove && !threeLevelApprove && first) {
+            String approveV = TicketCopy.verbLabel("approve", "通过");
+            String waitLab = TicketCopy.stateLabel("pending_final", "待终审");
             advanceApproveStage(ticketId, "pending_final", note, op, bind, m,
-                    "初审已通过", "「" + subjectOf(m) + "」已通过初审，等待终审。",
-                    "待终审", "初审通过");
+                    approveV + "成功",
+                    "「" + subjectOf(m) + "」" + approveV + "成功，等待终审。",
+                    waitLab,
+                    approveV);
             return get(ticketId);
         }
 

@@ -390,6 +390,16 @@ class DeepSkinLabelTests(unittest.TestCase):
         self.assertEqual(states.get("pending"), "待受理")
         self.assertEqual(states.get("pending_final"), "待终审")
         self.assertEqual(states.get("approved"), "处理中")
+        verbs = ((dorm.get("entities") or {}).get("ticket") or {}).get("verbs") or {}
+        self.assertEqual(verbs.get("approve"), "受理")
+
+    def test_property_ticket_key_matches_sql_table(self) -> None:
+        """PROPERTY schema key 与 domain_entities / SQL 表名 ticket 对齐（≠ DORM 的 repair）。"""
+        prop = build_domain_schema("小区物业报修管理系统", "DOM-PROPERTY")
+        ticket = (prop.get("entities") or {}).get("ticket") or {}
+        self.assertEqual(ticket.get("key"), "ticket")
+        dorm = build_domain_schema("学生宿舍报修管理系统", "DOM-DORM")
+        self.assertEqual(((dorm.get("entities") or {}).get("ticket") or {}).get("key"), "repair")
 
 
 if __name__ == "__main__":

@@ -42,6 +42,20 @@ def check_schema_skin_leaks(
         if "物流" in str(order):
             issues.append("DOM-HOTEL 订单文案不得含「物流」")
 
+    # 影院选座订单必须 cinema，禁止物流皮
+    if "order_lines" in caps and dom == "DOM-CINEMA":
+        if order.get("fulfillMode") != "cinema":
+            issues.append("DOM-CINEMA 订单 fulfillMode 须为 cinema")
+        if "物流" in str(order) or str(order.get("verbs", {}).get("ship") or "") == "发货":
+            issues.append("DOM-CINEMA 订单不得用物流/发货叙事")
+
+    # 拼车 peer 收件箱不得残留互选「志愿」铅字
+    if dom == "DOM-CARPOOL":
+        for key in ("peerInboxLead", "peerInboxEmpty", "messagesPageLead"):
+            val = str(labels.get(key) or "")
+            if "志愿" in val or "互选" in val:
+                issues.append(f"DOM-CARPOOL {key} 仍含志愿/互选皮: {val!r}")
+
     # 论坛默认不得挂私信/推荐
     if dom == "DOM-FORUM":
         if "dm" in caps:

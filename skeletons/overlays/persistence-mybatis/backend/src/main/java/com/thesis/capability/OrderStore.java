@@ -6,6 +6,7 @@ import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.OrderMapper;
 import com.thesis.mapper.SchemaMapper;
 import com.thesis.service.MessageStore;
+import com.thesis.service.SeatStore;
 import com.thesis.service.UserStore;
 
 import java.math.BigDecimal;
@@ -526,6 +527,9 @@ public final class OrderStore {
                         ((Number) line.get("qty")).intValue());
             }
         }
+        if ("cancelled".equals(next)) {
+            SeatStore.releaseByOrder(orderId);
+        }
         if ("cancelled".equals(next) && LoyaltyStore.anyEnabled()) {
             double paid = toDouble(m.get("payBalanceYuan"));
             String uname = String.valueOf(m.get("username"));
@@ -767,6 +771,7 @@ public final class OrderStore {
             }
         }
         mapper().approveRefund(ORDER, orderId, now, now);
+        SeatStore.releaseByOrder(orderId);
         try {
             MessageStore.send(
                     String.valueOf(m.get("username")),

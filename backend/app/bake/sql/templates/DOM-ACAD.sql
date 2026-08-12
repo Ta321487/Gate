@@ -100,5 +100,5 @@ INSERT IGNORE INTO acad_matter (id, title, author, isbn, category_id, stock, sta
 (4, '复学申请', '学工处', '休学期满', 1, 1, 'available'),
 (5, '退学申请', '学工处', '需家长确认', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '异动申请须知', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '教务主管'
+SELECT '异动申请须知', '请如实填写异动事由并按材料要求准备附件说明；审批通过后按教务安排办理。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='异动申请须知');

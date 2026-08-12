@@ -34,7 +34,7 @@ EVENT_INSTITUTION_HINTS = (
 # 企业员工健康监测/复工（压过 community 的「复工」误伤）
 EVENT_ENTERPRISE_HINTS = ("企业员工", "复工", "班组", "园区办公", "EHS", "同班次")
 
-ATTEND_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工")
+ATTEND_CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工", "高校", "课堂")
 EVENT_CAMPUS_HINTS = ("晨午检", "因病缺课", "校园", "班级", "学生", "学校", "高校")
 # 产品皮（与 scene 正交）：监测打卡 vs 应急事件上报
 EVENT_MONITOR_HINTS = (
@@ -304,7 +304,17 @@ FUND_ENTERPRISE_HINTS = ("员工福利", "企业补助", "人事福利", "职工
 # 成绩：教务默认；企业内训/培训考核走 enterprise
 GRADE_ENTERPRISE_HINTS = ("内训", "培训成绩", "员工考核", "培训结业", "企业培训", "岗位认证")
 # 实习：校就业办默认；企业带教周报走 enterprise
-INTERN_ENTERPRISE_HINTS = ("企业带教", "带教导师", "校招实习生", "入职实习", "企业实习生", "导师审阅周报")
+INTERN_ENTERPRISE_HINTS = (
+    "企业带教",
+    "带教导师",
+    "校招实习生",
+    "入职实习",
+    "企业实习生",
+    "导师审阅周报",
+    "企业员工周报",
+    "员工周报",
+    "工时填报",
+)
 # 实验室准入：校园默认；厂区/安环走 enterprise
 LABSAFE_ENTERPRISE_HINTS = ("厂区", "安环", "企业实验室", "EHS准入", "产线实验室", "车间实验室")
 # 物业：小区住户默认；校园物业/公寓走 campus
@@ -932,7 +942,9 @@ def scene_intern(text: str) -> Scene:
 def scene_intern_parts(title: str, body: str = "") -> Scene:
     t = (title or "").strip()
     b = (body or "").strip()
-    if scan_has(t, INTERN_ENTERPRISE_HINTS) or scan_has(t, ("企业带教", "带教导师")):
+    if scan_has(t, INTERN_ENTERPRISE_HINTS) or scan_has(
+        t, ("企业带教", "带教导师", "企业员工周报", "工时填报")
+    ):
         return "enterprise"
     return scene_intern(copy_scan_text(t, b))
 
@@ -1055,6 +1067,29 @@ def scene_tour_parts(title: str, body: str = "") -> Scene:
     return scene_tour(copy_scan_text(t, b))
 
 
+def scene_timebank(text: str) -> Scene:
+    """社区时间银行默认 community；开题写清校园志愿再 campus。"""
+    if scan_has(text, COMMUNITY_HINTS):
+        return "community"
+    if is_campus_general(text) or scan_has(text, ("高校", "校园", "学号", "院系")):
+        return "campus"
+    # C-14 默认社区档（≠劳动认定）
+    return "community"
+
+
+def scene_timebank_parts(title: str, body: str = "") -> Scene:
+    t = (title or "").strip()
+    b = (body or "").strip()
+    joined = copy_scan_text(t, b)
+    if scan_has(t, COMMUNITY_HINTS) or scan_has(joined, COMMUNITY_HINTS):
+        return "community"
+    if is_campus_general(t) or is_campus_general(joined):
+        return "campus"
+    if t:
+        return scene_timebank(joined)
+    return scene_timebank(joined)
+
+
 def scene_for(
     domain: str,
     title: str = "",
@@ -1112,4 +1147,6 @@ def scene_for(
         return scene_forum_parts(title, proposal_text)
     if domain == "DOM-TOUR":
         return scene_tour_parts(title, proposal_text)
+    if domain == "DOM-TIMEBANK":
+        return scene_timebank_parts(title, proposal_text)
     return "default"

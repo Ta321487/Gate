@@ -31,7 +31,8 @@ public class ArchiveController {
         boolean showDeleted = includeDeleted && admin && AdminAuth.isSuperAdmin(session);
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
-        Map<String, Object> data = ArchiveStore.pageItems(keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s);
+        Map<String, Object> data = ArchiveStore.pageItems(
+                keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s, !admin);
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);
     }
@@ -87,6 +88,13 @@ public class ArchiveController {
             Map<String, Object> item = ArchiveStore.addUserPost(
                     uid, title, content, categoryId, author.isBlank() ? null : author, stock);
             if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发布失败");
+            String startAt = str(body.get("startAt"));
+            if (!startAt.isBlank() && ArchiveStore.hasStartAt()) {
+                long id = ((Number) item.get("id")).longValue();
+                Map<String, Object> patch = new java.util.LinkedHashMap<>();
+                patch.put("startAt", startAt);
+                item = ArchiveStore.updateItem(id, patch);
+            }
             return R.ok(item);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());

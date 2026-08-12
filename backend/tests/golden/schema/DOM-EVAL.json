@@ -16,12 +16,12 @@
         },
         {
           "key": "author",
-          "label": "责任部门",
+          "label": "任课教师",
           "type": "string"
         },
         {
           "key": "isbn",
-          "label": "说明",
+          "label": "开课说明",
           "type": "textarea"
         },
         {
@@ -41,7 +41,7 @@
         },
         {
           "key": "stock",
-          "label": "可申请",
+          "label": "可评教",
           "type": "number"
         }
       ],
@@ -50,7 +50,7 @@
       "labelPlural": "评教课程",
       "softDelete": false,
       "stockDisplay": "toggle",
-      "stockUnavailableLabel": "已申请",
+      "stockUnavailableLabel": "已评教",
       "tagFilter": false
     },
     "ticket": {
@@ -74,7 +74,7 @@
       "key": "eval_sheet",
       "label": "评教卷",
       "labelPlural": "评教卷",
-      "nextFollowLabel": "期望办结日",
+      "nextFollowLabel": "评教截止日",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
       "peerAccept": false,

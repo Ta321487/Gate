@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "e_sign"
   ],
   "entities": {
     "archive": {
@@ -57,6 +58,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
       "autoApprove": false,
       "categoryLimit": 0,
@@ -68,16 +70,19 @@
         "其他"
       ],
       "contactChannelPlaceholder": "在线/附件等",
+      "issuePassCode": false,
       "key": "week_report",
       "label": "周报",
       "labelPlural": "周报",
       "nextFollowLabel": "下周期望反馈",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "本周工作内容",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "已通过",
@@ -202,7 +207,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请按周填写工作与问题；列表为示范岗位目录，「实习中」仅标在演示关联岗；三方协议电子签不在本期。",
+    "noticeBody": "请按周填写工作与问题；列表为示范岗位目录，「实习中」仅标在关联岗；CA/第三方电子签平台不在本期，本地签章见 e_sign。",
     "noticeTitle": "周报须知"
   },
   "title": "测试课题",

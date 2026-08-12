@@ -7,7 +7,8 @@
   "entities": {
     "ticket": {
       "allowRating": true,
-      "key": "repair",
+      "applicantCompleteOnly": true,
+      "key": "ticket",
       "label": "报修单",
       "labelPlural": "报修",
       "requireAttach": true,

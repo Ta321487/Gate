@@ -8,7 +8,13 @@
       <article v-for="s in list" :key="s.id" class="card item">
         <div>
           <strong>{{ s.title }}</strong>
-          <div class="muted">{{ s.isbn || '—' }} · 票价 ¥{{ s.author || 0 }} · 余座 {{ s.stock }}</div>
+          <div class="muted">
+            {{ s.isbn || '—' }}
+            <template v-if="s.startAt"> · {{ s.startAt }}</template>
+            · 票价 ¥{{ s.author || 0 }}
+            · 座位 {{ s.seatRows || 6 }}×{{ s.seatCols || 8 }}
+            · 余座 {{ s.stock }}
+          </div>
         </div>
         <el-button type="primary" @click="go(s.id)">选座</el-button>
       </article>

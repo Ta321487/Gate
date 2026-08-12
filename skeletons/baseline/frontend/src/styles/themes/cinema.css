@@ -1,0 +1,65 @@
+/* —— DOM-CINEMA cinema —— */
+[data-theme="cinema-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #1a1520;
+  --portal-bg: #0f0c12;
+  --portal-bg-glow: rgba(212, 148, 72, 0.12);
+  --portal-surface: #1a1520;
+  --portal-ink: #f3ebe0;
+  --portal-muted: #a89888;
+  --portal-line: #2e2834;
+  --portal-brand: #d49448;
+  --portal-accent: #d49448;
+  --portal-accent-soft: #2a2218;
+  --portal-cover: linear-gradient(160deg, #d49448, #0f0c12);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+[data-theme="cinema-amber"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f7f1e8;
+  --portal-bg-glow: rgba(196, 120, 48, 0.1);
+  --portal-surface: #fffdf8;
+  --portal-ink: #2a1e12;
+  --portal-muted: #6b5848;
+  --portal-line: #e4d6c4;
+  --portal-brand: #c47830;
+  --portal-accent: #c47830;
+  --portal-accent-soft: #f3e4d0;
+  --portal-cover: linear-gradient(160deg, #c47830, #2a1e12);
+  --portal-shadow-color: rgba(196, 120, 48, 0.12);
+  color-scheme: light;
+}
+[data-theme="cinema-teal"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #eef6f5;
+  --portal-bg-glow: rgba(45, 138, 128, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #12302c;
+  --portal-muted: #5a706c;
+  --portal-line: #d0e0dc;
+  --portal-brand: #2d8a80;
+  --portal-accent: #2d8a80;
+  --portal-accent-soft: #d6f0ec;
+  --portal-cover: linear-gradient(160deg, #2d8a80, #12302c);
+  --portal-shadow-color: rgba(45, 138, 128, 0.1);
+  color-scheme: light;
+}
+[data-theme="cinema-sand"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f7f3ec;
+  --portal-bg-glow: rgba(166, 124, 61, 0.1);
+  --portal-surface: #fffdf9;
+  --portal-ink: #2a2418;
+  --portal-muted: #6b5e48;
+  --portal-line: #e0d6c4;
+  --portal-brand: #a67c3d;
+  --portal-accent: #a67c3d;
+  --portal-accent-soft: #f0e6d4;
+  --portal-cover: linear-gradient(160deg, #a67c3d, #2a2418);
+  --portal-shadow-color: rgba(166, 124, 61, 0.1);
+  color-scheme: light;
+}

@@ -8,6 +8,7 @@
         <where>
             <if test="itemId != null and itemId &gt; 0">AND item_id=#{itemId}</if>
             <if test="day != null and day != ''">AND DATE(start_at)=#{day}</if>
+            <if test="bookableOnly">AND start_at &gt; NOW()</if>
         </where>
         ORDER BY start_at, id
     </select>

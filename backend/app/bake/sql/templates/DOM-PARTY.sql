@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS party_apply_log (
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '业务主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '组织员', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '申请人甲', '13800000002',
- '{"realName":"样例用户","email":"user@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院"}',
+('user', 'user123', 'user', '入党申请人甲', '13800000002',
+ '{"realName":"样例同学","email":"user@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院","partyBranch":"计算机学院学生党支部"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 

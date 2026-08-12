@@ -124,7 +124,7 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影院选座购票：场次档案 + 订单壳；座位图由 seat_select 能力叠菜单。"""
     from app.bake.schema.shells import _with_portal_banners
 
-    return _with_portal_banners(
+    schema = _with_portal_banners(
         order_shell_schema(
             title,
             domain="DOM-CINEMA",
@@ -137,9 +137,12 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             archive_plural="场次",
             archive_fields=[
                 {"key": "title", "label": "影片/场次名", "type": "string"},
-                {"key": "author", "label": "票价(元)", "type": "number", "format": "money"},
-                {"key": "isbn", "label": "影厅与开场时间", "type": "string"},
-                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "author", "label": "价格", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "影厅名称", "type": "string"},
+                {"key": "category", "label": "影厅类型", "type": "select"},
+                {"key": "startAt", "label": "开场时间", "type": "datetime"},
+                {"key": "seatRows", "label": "座位排数", "type": "number"},
+                {"key": "seatCols", "label": "每排座位数", "type": "number"},
                 {"key": "stock", "label": "余座", "type": "number"},
             ],
             archive_menu_admin="场次管理",
@@ -153,7 +156,7 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             auth_points=["验证码登录", "场次选座", "影票订单"],
             register_hint="注册后可选座购票",
             notice_title="选座购票须知",
-            notice_body="本期无真支付与高并发锁座；确认选座后座位即时占用。",
+            notice_body="本期无真支付与高并发锁座；场次含影厅类型、开场时间与座位排×列；过开场时间自动下架不可售。",
             notice_page_title="影院公告",
             order_states={
                 "pending": "待取票",
@@ -171,6 +174,34 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             {"title": "使用说明", "lead": "无真支付、无跨院线接口。"},
         ],
     )
+    # 选座订单禁止商城「物流/发货」叙事（对齐 HOTEL stay）
+    order = dict((schema.get("entities") or {}).get("order") or {})
+    order.update(
+        {
+            "key": "order",
+            "label": "订单",
+            "labelPlural": "我的影票订单",
+            "fulfillMode": "cinema",
+            "states": {
+                "pending": "待取票",
+                "confirmed": "已确认",
+                "shipped": "已出票",
+                "completed": "已观影",
+                "cancelled": "已取消",
+            },
+            "verbs": {
+                "ship": "出票",
+                "complete": "确认观影",
+            },
+        }
+    )
+    ents = dict(schema.get("entities") or {})
+    ents["order"] = order
+    schema["entities"] = ents
+    labels = dict(schema.get("labels") or {})
+    labels["orderFulfillHint"] = "选座确认后生成订单并占座；柜台出票/确认观影，无物流发货。"
+    schema["labels"] = labels
+    return schema
 
 
 def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:

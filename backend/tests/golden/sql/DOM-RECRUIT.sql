@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS job_post (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  dept_name VARCHAR(100),
+  hire_dept VARCHAR(100),
   salary_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
@@ -84,14 +84,14 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '技术岗'), (2, '职能岗'), (3, '实习岗');
-INSERT IGNORE INTO job_post (id, title, dept_name, salary_note, category_id, stock, status) VALUES
+INSERT IGNORE INTO job_post (id, title, hire_dept, salary_note, category_id, stock, status) VALUES
 (1, 'Java 开发实习生', '信息中心', '3-4k / 本科在读', 3, 1, 'available'),
 (2, '前端工程师', '数字化办', '8-12k / 1年经验', 1, 1, 'available'),
 (3, '行政助理', '综合办', '4-5k / 大专及以上', 2, 1, 'available'),
 (4, '测试工程师', '质量部', '7-10k / 校招', 1, 1, 'available'),
 (5, '产品助理实习', '产品组', '面议 / 周报实习', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（演示环境无视频面试）。', 'admin', '招聘主管'
+SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（本期无视频面试）。', 'admin', '招聘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投递须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周岗位', '技术岗与实习岗已更新，请及时投递。', 'admin', '招聘主管'
@@ -109,4 +109,4 @@ CREATE TABLE IF NOT EXISTS `job_apply_progress` (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='hr_clerk', staff_kind='clerk', nickname='HR专员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', 'HR专员', '13800000001', '{}', 0, 1, 1, 'hr_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

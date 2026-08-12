@@ -75,7 +75,10 @@ def attach_seat_select_menus(schema: dict[str, Any]) -> None:
     ]
     labels = schema.setdefault("labels", {})
     labels.setdefault("seatShowsTitle", "场次选座")
-    labels.setdefault("seatShowsLead", "选择场次后进入座位图；确认后生成订单并占座（无真锁座）。")
+    labels.setdefault(
+        "seatShowsLead",
+        "选择场次后进入座位图；可设影厅类型、开场时间与排×列；过开场自动下架；确认后占座生成订单（无真锁座）。",
+    )
     labels.setdefault("seatMapTitle", "选座购票")
     ents = schema.setdefault("entities", {})
     if "seat" not in ents:
@@ -85,6 +88,8 @@ def attach_seat_select_menus(schema: dict[str, Any]) -> None:
             "labelPlural": "座位",
             "rows": 6,
             "cols": 8,
+            "maxRows": 15,
+            "maxCols": 16,
         }
 
 

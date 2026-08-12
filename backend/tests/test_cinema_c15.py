@@ -82,6 +82,15 @@ class CinemaC15Tests(unittest.TestCase):
         )
         for t in ("cinema_show", "cinema_seat", "biz_order", "order_line"):
             self.assertIn(t, sql)
+        self.assertIn("price_yuan", sql)
+        self.assertIn("hall_note", sql)
+        self.assertIn("seat_rows", sql)
+        self.assertIn("seat_cols", sql)
+        self.assertIn("start_at", sql)
+        self.assertIn("普通厅", sql)
+        self.assertIn("IMAX", sql)
+        # bake 后不得落到 GENERIC subtitle/detail，否则 SeatStore 读列断裂
+        self.assertNotIn("subtitle", sql.split("cinema_show")[1].split("cinema_seat")[0])
         spec = attach_accept(
             {
                 "domain": "DOM-CINEMA",
@@ -91,6 +100,17 @@ class CinemaC15Tests(unittest.TestCase):
             },
             "选座购票",
         )
+        order = ((spec.get("schema") or {}).get("entities") or {}).get("order") or {}
+        self.assertEqual(order.get("fulfillMode"), "cinema")
+        self.assertEqual((order.get("verbs") or {}).get("ship"), "出票")
+        archive = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+        fields = {f.get("key"): f for f in (archive.get("fields") or []) if isinstance(f, dict)}
+        self.assertIn("seatRows", fields)
+        self.assertIn("seatCols", fields)
+        self.assertIn("startAt", fields)
+        self.assertEqual(fields["isbn"].get("label"), "影厅名称")
+        self.assertEqual(fields["category"].get("label"), "影厅类型")
+        self.assertEqual(fields["startAt"].get("label"), "开场时间")
         yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CINEMA", spec)
         self.assertIn("seat-select-enabled: true", yml)
         self.assertIn("order-cart-table:", yml)

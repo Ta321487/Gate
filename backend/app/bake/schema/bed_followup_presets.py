@@ -20,7 +20,7 @@ def build_bed_followup_presets(
             "archive_fields": _std_archive_fields(
                 "床位号",
                 "楼栋",
-                "说明",
+                "布局说明",
                 "状态",
                 ["空闲", "已分配", "维修中", "开放"],
                 "房型/事项",

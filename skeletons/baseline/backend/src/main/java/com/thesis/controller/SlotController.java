@@ -25,8 +25,9 @@ public class SlotController {
             @RequestParam(required = false) String day,
             HttpSession session) {
         requireSlot();
-        // 游客可读时段；未登录由前端限量展示
-        return R.ok(SlotStore.listSlots(itemId, day));
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        // 游客/用户只看未开始时段；管理端可看全日号源
+        return R.ok(SlotStore.listSlots(itemId, day, !admin));
     }
 
     @PostMapping("/reserve")

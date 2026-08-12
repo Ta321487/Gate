@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS fund_program (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  dept_name VARCHAR(100),
+  own_unit VARCHAR(100),
   quota_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
@@ -84,7 +84,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '国家助学'), (2, '校内奖学金'), (3, '困难补助');
-INSERT IGNORE INTO fund_program (id, title, dept_name, quota_note, category_id, stock, status) VALUES
+INSERT IGNORE INTO fund_program (id, title, own_unit, quota_note, category_id, stock, status) VALUES
 (1, '国家助学金（一等）', '学生资助中心', '家庭经济困难认定 / 名额 120', 1, 1, 'available'),
 (2, '校长奖学金', '学工处', '综合测评前 5% / 名额 30', 2, 1, 'available'),
 (3, '临时困难补助', '各学院学工办', '突发困难证明 / 随到随审', 3, 1, 'available'),
@@ -109,4 +109,4 @@ CREATE TABLE IF NOT EXISTS `fund_apply_progress` (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='fund_clerk', staff_kind='clerk', nickname='资助专员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '资助专员', '13800000001', '{}', 0, 1, 1, 'fund_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

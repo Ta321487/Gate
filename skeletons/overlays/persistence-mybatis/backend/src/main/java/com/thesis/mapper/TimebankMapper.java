@@ -55,6 +55,6 @@ public interface TimebankMapper {
     @Select("SELECT COUNT(*) FROM tb_service WHERE id=#{id} AND status='available'")
     Integer countOpenService(long id);
 
-    @Select("SELECT id, title, author, isbn, category_id AS categoryId, stock, status FROM tb_service WHERE status='available' AND stock>0 ORDER BY id DESC")
+    @Select("SELECT id, title, organizer AS author, service_note AS isbn, category_id AS categoryId, stock, status FROM tb_service WHERE status='available' AND stock>0 ORDER BY id DESC")
     List<Map<String, Object>> listOpenServices();
 }

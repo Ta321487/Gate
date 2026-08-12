@@ -111,6 +111,19 @@ CREATE TABLE IF NOT EXISTS `requisition_progress` (
   KEY idx_progress_ticket (ticket_id, id)
 );
 
+CREATE TABLE IF NOT EXISTS stock_move (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  move_type VARCHAR(16) NOT NULL,
+  item_id BIGINT NOT NULL,
+  item_title VARCHAR(200) DEFAULT '',
+  qty INT NOT NULL,
+  remark VARCHAR(255) DEFAULT '',
+  operator VARCHAR(64) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_stock_move_item (item_id, id),
+  KEY idx_stock_move_type (move_type, id)
+);
+
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='storekeeper', staff_kind='clerk', nickname='库管员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '库管员', '13800000001', '{}', 0, 1, 1, 'storekeeper', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

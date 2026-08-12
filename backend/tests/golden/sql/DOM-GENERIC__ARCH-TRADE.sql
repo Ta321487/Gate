@@ -125,7 +125,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (1, 'user', '王小明', '13800000002', '示例路 100 号 8 栋 501', '家', 1);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '交易须知', '演示环境支持购物车、收货地址与多明细订单，无真支付。', 'admin', '系统管理员'
+SELECT '交易须知', '本期支持购物车、收货地址与多明细订单，无真支付。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='交易须知');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
@@ -143,4 +143,4 @@ CREATE TABLE IF NOT EXISTS sys_guestbook (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='order_clerk', staff_kind='clerk', nickname='订单办理员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '订单办理员', '13800000001', '{}', 0, 1, 1, 'order_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

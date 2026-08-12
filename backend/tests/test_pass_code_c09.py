@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from app.bake.capabilities import CAPABILITIES
+from app.bake.capabilities import CAPABILITIES, resolve_accept, scan_out_of_scope
 from app.bake.catalog import match_text
 from app.bake.domain_schema import build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
@@ -65,6 +65,42 @@ class PassCodeC09Tests(unittest.TestCase):
     def test_sample_exists(self) -> None:
         path = SAMPLES / "P-17-DOM-VISITOR-高校访客登记与临时门禁申请系统.txt"
         self.assertTrue(path.is_file(), path)
+
+    def test_barrier_hardware_rejects_carpass_software_ok(self) -> None:
+        """道闸/抬杆/车牌识别属硬件联控 → reject；纯通行证备案仍 full。"""
+        shallow = "主要功能：临时车辆通行证申请与车牌备案审核，通过后签发通行码。"
+        self.assertEqual(scan_out_of_scope(shallow), [])
+        shallow_d = resolve_accept(
+            list(DOMAIN_CAPABILITIES["DOM-CARPASS"]),
+            shallow,
+            has_domain_overlay=True,
+            has_baseline_runtime=True,
+            archetypes=["ARCH-FLOW"],
+            domain="DOM-CARPASS",
+            primary_archetype="ARCH-FLOW",
+        )
+        self.assertEqual(shallow_d["accept"], "full", shallow_d)
+
+        hard = "主要功能：车牌识别自动抬杆与停车场道闸联动。"
+        hits = scan_out_of_scope(hard)
+        self.assertTrue(
+            any("道闸" in h or "车牌识别" in h for h in hits),
+            hits,
+        )
+        hard_d = resolve_accept(
+            list(DOMAIN_CAPABILITIES["DOM-CARPASS"]),
+            hard,
+            has_domain_overlay=True,
+            has_baseline_runtime=True,
+            archetypes=["ARCH-FLOW"],
+            domain="DOM-CARPASS",
+            primary_archetype="ARCH-FLOW",
+        )
+        self.assertEqual(hard_d["accept"], "reject", hard_d)
+
+        # 否定划界不误伤
+        scoped = "主要功能：车辆通行证备案审核。本期不对接道闸抬杆与车牌识别硬件。"
+        self.assertEqual(scan_out_of_scope(scoped), [])
 
 
 if __name__ == "__main__":

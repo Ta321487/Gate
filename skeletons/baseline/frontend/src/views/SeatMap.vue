@@ -4,7 +4,11 @@
       <el-button text @click="$router.push('/seats/shows')">← 返回场次</el-button>
       <h1>{{ title }}</h1>
       <p v-if="show" class="muted">
-        {{ show.title }} · {{ show.isbn }} · ¥{{ show.author }}/座 · 空闲 {{ freeCount }}
+        {{ show.title }}
+        · {{ show.isbn || '—' }}
+        <template v-if="show.startAt"> · {{ show.startAt }}</template>
+        · ¥{{ show.author }}/座
+        · {{ rows }}排×{{ cols }}座 · 空闲 {{ freeCount }}
       </p>
     </section>
     <div class="screen">银幕</div>
