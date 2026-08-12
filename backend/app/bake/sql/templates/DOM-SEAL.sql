@@ -94,11 +94,11 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '行政章'), (2, '合同章'), (3, '财务章');
 INSERT IGNORE INTO seal_item (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '公章外出使用', '党政办', '校外盖章 / 需审批', 1, 1, 'available'),
+(1, '公章外出使用', '党政办', '校外盖章', 1, 1, 'available'),
 (2, '合同章用印', '法务办', '合同签订', 2, 1, 'available'),
 (3, '财务章用印', '财务处', '报销附件', 3, 1, 'available'),
 (4, '法人章用印', '院长办公室', '对外文书', 1, 1, 'available'),
 (5, '业务专用章', '教务处', '成绩证明盖章', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '用章申请须知', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '行政主管'
+SELECT '用章申请须知', '请如实填写用章事由与文件名称；审批通过后方可办理用印。本期无硬件盖章对接。', 'admin', '行政主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='用章申请须知');

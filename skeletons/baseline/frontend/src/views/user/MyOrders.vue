@@ -24,7 +24,7 @@
         <template v-if="row.refundReason"> · {{ row.refundReason }}</template>
       </p>
       <p v-if="hasShipInfo(row)" class="ship">
-        <template v-if="isStay">
+        <template v-if="isStay || isCinema">
           <template v-if="row.remark">备注：{{ row.remark }}</template>
         </template>
         <template v-else>
@@ -93,7 +93,10 @@ const isFood = computed(() => hasTrait('food'))
 const isStay = computed(
   () => hasTrait('slotHotel') || getSchema()?.entities?.order?.fulfillMode === 'stay',
 )
-const showTrace = computed(() => !isStay.value && !isFood.value)
+const isCinema = computed(
+  () => hasTrait('seatSelect') || getSchema()?.entities?.order?.fulfillMode === 'cinema',
+)
+const showTrace = computed(() => !isStay.value && !isFood.value && !isCinema.value)
 const reviewOn = computed(() => hasCap('order_review'))
 const list = ref([])
 const total = ref(0)
@@ -110,7 +113,7 @@ function refundLabel(st) {
 
 function hasShipInfo(row) {
   if (!row) return false
-  if (isStay.value) return !!row.remark
+  if (isStay.value || isCinema.value) return !!row.remark
   if (row.deliveryType || row.addressLine || row.receiverName || row.receiverPhone || row.remark) return true
   if (isFood.value) return !!(row.tasteNote || row.pickupCode)
   return !!row.trackingNo

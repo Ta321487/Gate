@@ -9,6 +9,7 @@ from pathlib import Path
 from app.bake.catalog import match_text
 from app.bake.domain_schema import build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
+from app.bake.engine_sql import domain_sql
 from app.bake.oa_apply_p import MUTUAL_CASES, OA_APPLY_CASES, OA_MUTUAL_SKELETON
 from app.bake.schema.followup_presets import FOLLOWUP_PRESETS
 from app.bake.schema.templates import SCHEMA_BUILDERS
@@ -101,7 +102,7 @@ class OaApplyPTests(unittest.TestCase):
         self.assertEqual(labels["DOM-FLEET"][1], "司机")
         self.assertEqual(labels["DOM-CERT"][0], "证明名称")
         self.assertEqual(labels["DOM-PROMO"][2], "张贴位置")
-        self.assertEqual(labels["DOM-FITOUT"][2], "工期与要求")
+        self.assertEqual(labels["DOM-FITOUT"][2], "施工要求")
         self.assertEqual(labels["DOM-ACAD"][0], "异动事项")
         self.assertEqual(labels["DOM-TRIP"][2], "填报说明")
         self.assertEqual(labels["DOM-EXPENSE"][0], "经费项目")
@@ -138,6 +139,35 @@ class OaApplyPTests(unittest.TestCase):
         hint = str((DOMAINS.get("DOM-FLEET") or {}).get("match_hint") or "")
         self.assertIn("无时段冲突引擎", hint)
         self.assertNotIn("可选时段冲突", hint)
+
+    def test_fleet_fitout_instrument_archive_columns(self) -> None:
+        from app.bake.archive_columns import archive_column_spec_for
+
+        cases = {
+            "DOM-FLEET": ("driver_name", "vehicle_note", "fleet_vehicle"),
+            "DOM-FITOUT": ("contractor", "work_req", "fitout_site"),
+            "DOM-INSTRUMENT": ("lab_name", "model_note", "instrument"),
+            "DOM-SEAL": ("keeper_dept", "seal_scope", "seal_item"),
+            "DOM-CERT": ("issue_dept", "purpose_note", "cert_type"),
+            "DOM-PROMO": ("apply_unit", "post_place", "promo_matter"),
+            "DOM-ACAD": ("accept_dept", "material_note", "acad_matter"),
+            "DOM-TRIP": ("own_dept", "fill_note", "trip_matter"),
+            "DOM-EXPENSE": ("own_dept", "budget_note", "expense_project"),
+        }
+        for domain, (a, i, table) in cases.items():
+            with self.subTest(domain=domain):
+                (aa, _), (ii, _) = archive_column_spec_for(domain)
+                self.assertEqual(aa, a)
+                self.assertEqual(ii, i)
+                sql = domain_sql(domain, "thesis_test")
+                self.assertIn(f"CREATE TABLE IF NOT EXISTS {table}", sql)
+                self.assertIn(a, sql)
+                self.assertIn(i, sql)
+                self.assertNotIn("author VARCHAR", sql)
+                self.assertNotIn("isbn VARCHAR", sql)
+                insert = sql.split(f"INSERT IGNORE INTO {table}")[1].split("INSERT")[0]
+                self.assertNotIn(" / ", insert)
+
 
     def test_oa_keyword_budget(self) -> None:
         """与 DOM-EVENT 同口径：词表预算 ≤20，长尾靠 match_recommend。"""

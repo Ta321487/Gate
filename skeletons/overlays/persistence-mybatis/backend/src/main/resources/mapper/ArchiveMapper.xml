@@ -54,6 +54,13 @@
         SELECT * FROM `${itemTable}`
         <where>
             <if test="excludeDeleted">AND deleted_at IS NULL</if>
+            <if test="openCatalogOnly">
+                AND status='available'
+                <choose>
+                    <when test="filterByEnd">AND (end_at IS NULL OR end_at &gt; NOW())</when>
+                    <otherwise>AND (start_at IS NULL OR start_at &gt; NOW())</otherwise>
+                </choose>
+            </if>
             <if test="categoryId != null and categoryId &gt; 0">AND category_id=#{categoryId}</if>
             <if test="like != null and like != ''">
                 AND (title LIKE #{like} OR `${authorCol}` LIKE #{like} OR `${isbnCol}` LIKE #{like})

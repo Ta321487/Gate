@@ -99,9 +99,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '一号楼'), (2, '二号楼'), (3, '集中查寝');
 INSERT IGNORE INTO dorm_room (id, title, author, isbn, category_id, stock, status, checkin_code, start_at, end_at) VALUES
-(1, '1栋101', '1号楼', '四人间 · 晚查', 1, 4, 'available', 'CK101', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
-(2, '1栋102', '1号楼', '四人间 · 晚查', 1, 4, 'available', 'CK102', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
-(3, '2栋205', '2号楼', '六人间 · 晚查', 2, 6, 'available', 'CK205', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
+(1, '1栋101', '1号楼', '四人间', 1, 4, 'available', 'CK101', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
+(2, '1栋102', '1号楼', '四人间', 1, 4, 'available', 'CK102', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
+(3, '2栋205', '2号楼', '六人间', 2, 6, 'available', 'CK205', DATE_ADD(CURDATE(), INTERVAL 22 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR)),
 (4, '集中查寝点', '宿管中心', '临时批次', 3, 30, 'available', 'CK999', DATE_ADD(CURDATE(), INTERVAL 21 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR));
 UPDATE dorm_room SET checkin_code=CONCAT('CK', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)

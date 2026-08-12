@@ -444,6 +444,7 @@ public final class TicketStore {
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         int nQty = resolveQty(qty, stock);
         if (useQuota && stock < nQty) throw new IllegalStateException(ArchiveStore.stockShortage(stock));
+        TicketAsserts.assertItemOpen(item);
         TicketAsserts.assertApplyDeadline(item);
         TicketAsserts.assertNoTimeConflict(username, itemId, item);
         TicketAsserts.assertNoMutexConflict(username, itemId, item);

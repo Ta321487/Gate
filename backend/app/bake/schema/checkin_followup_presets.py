@@ -20,7 +20,7 @@ def build_checkin_followup_presets(
             "archive_fields": [
                 {"key": "title", "label": "寝室号", "type": "string"},
                 {"key": "author", "label": "楼栋", "type": "string"},
-                {"key": "isbn", "label": "说明", "type": "string"},
+                {"key": "isbn", "label": "房型说明", "type": "string"},
                 {"key": "category", "label": "楼区/批次", "type": "select"},
                 {"key": "stock", "label": "应签人数", "type": "number"},
                 {"key": "checkinCode", "label": "签到码", "type": "string"},

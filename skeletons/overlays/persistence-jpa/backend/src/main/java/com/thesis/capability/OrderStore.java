@@ -2,6 +2,7 @@ package com.thesis.capability;
 
 import com.thesis.config.JpaSupport;
 import com.thesis.service.MessageStore;
+import com.thesis.service.SeatStore;
 import com.thesis.service.UserStore;
 import com.thesis.config.JpaDb;
 import com.thesis.config.GeneratedKeyHolder;
@@ -594,6 +595,9 @@ public final class OrderStore {
                         ((Number) line.get("qty")).intValue());
             }
         }
+        if ("cancelled".equals(next)) {
+            SeatStore.releaseByOrder(orderId);
+        }
         if ("cancelled".equals(next) && LoyaltyStore.anyEnabled()) {
             double paid = toDouble(m.get("payBalanceYuan"));
             if (paid <= 0) paid = 0;
@@ -885,6 +889,7 @@ public final class OrderStore {
                 "UPDATE " + ORDER
                         + " SET status='cancelled', refund_status='approved', refund_at=?, updated_at=? WHERE id=?",
                 now, now, orderId);
+        SeatStore.releaseByOrder(orderId);
         try {
             MessageStore.send(
                     String.valueOf(m.get("username")),

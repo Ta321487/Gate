@@ -20,7 +20,7 @@ def build_instrument_followup_presets(
             "archive_fields": _std_archive_fields(
                 "仪器名称",
                 "所属实验室",
-                "型号/说明",
+                "型号规格",
                 "状态",
                 ["开放", "维护", "停用"],
                 "分类",

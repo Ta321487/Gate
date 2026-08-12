@@ -22,7 +22,7 @@
         },
         {
           "key": "isbn",
-          "label": "说明",
+          "label": "房型说明",
           "type": "string"
         },
         {

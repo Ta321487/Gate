@@ -22,7 +22,7 @@
         },
         {
           "key": "isbn",
-          "label": "说明",
+          "label": "布局说明",
           "type": "textarea"
         },
         {

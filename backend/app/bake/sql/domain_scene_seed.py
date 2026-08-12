@@ -437,7 +437,7 @@ _CRM_LEGAL = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '律所主管', '13800000000', '{}', 1, 0, 1),
 ('user', 'user123', 'user', '承办人甲', '13800000002',
- '{"realName":"周律师","email":"zhou@demo.com","gender":"男","identityType":"销售","employeeNo":"L2026008","dept":"民事部","jobTitle":"律师","region":"城区"}',
+ '{"realName":"周律师","email":"zhou@demo.com","gender":"男","identityType":"其他","orgName":"城区法律援助中心","jobTitle":"律师","dept":"民事部","region":"城区"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1003,6 +1003,34 @@ SELECT '本周上新', '教学与学工栏目已更新，欢迎收藏订阅。',
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
 """
 
+_TIMEBANK_CAMPUS = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '时间银行主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '核销员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '志愿者甲', '13800000002',
+ '{"realName":"吴同学","email":"wu@demo.edu","gender":"女","studentNo":"20230005","dept":"社会学院"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '社区服务'), (2, '校园志愿'), (3, '结对互助');
+INSERT IGNORE INTO tb_service (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '图书馆整理志愿服务', '图书馆', '可登记存入时长', 2, 1, 'available'),
+(2, '社区陪伴老人', '社区站', '结对服务存入', 1, 1, 'available'),
+(3, '互助兑换：作业辅导时段', '学生会', '核销扣减事项', 3, 1, 'available');
+
+INSERT IGNORE INTO tb_account (username, balance_hours) VALUES ('user', 8.00);
+INSERT INTO tb_ledger (username, delta_hours, reason, ref_type, ref_id)
+SELECT 'user', 8.00, '初始存入', 'seed', NULL
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM tb_ledger WHERE username='user' AND reason='初始存入');
+
+INSERT IGNORE INTO tb_redeem (id, username, book_id, status, qty, remark, apply_at) VALUES
+(1, 'user', 3, 'pending', 2, '兑换作业辅导 2 小时', NOW());
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。无真支付兑现与跨校联盟。', 'admin', '时间银行主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='时间银行须知');
+"""
+
 # 校园车位：模板默认商业月租；校园档整块替换（学号/教职工与资料页对齐）
 _PARKING_CAMPUS = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
@@ -1235,6 +1263,8 @@ def apply_domain_scene_seed(
         seed = _MUSIC_CAMPUS
     elif domain == "DOM-BLOG" and scene == "campus":
         seed = _BLOG_CAMPUS
+    elif domain == "DOM-TIMEBANK" and scene == "campus":
+        seed = _TIMEBANK_CAMPUS
     if seed is None:
         return sql
     return _replace_user_seed_tail(sql, seed)

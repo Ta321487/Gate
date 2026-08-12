@@ -256,7 +256,7 @@ def build_oa_followup_presets(
             "archive_fields": _std_archive_fields(
                 "施工区域",
                 "责任单位",
-                "工期与要求",
+                "施工要求",
                 "开放状态",
                 ["开放", "暂停", "关闭"],
                 "工程类型",

@@ -54,6 +54,20 @@ final class TicketAsserts {
         }
     }
 
+    /** 已下架或已过开始时间不可再申请（拼车出发、活动开场等）。 */
+    static void assertItemOpen(Map<String, Object> item) {
+        if (item == null) return;
+        String st = String.valueOf(item.get("status"));
+        if ("unavailable".equals(st)) {
+            throw new IllegalStateException("该对象已下架或不可申请");
+        }
+        if (!ArchiveStore.hasStartAt() && !ArchiveStore.hasEndAt()) return;
+        if (ArchiveStore.isScheduleClosed(item)) {
+            throw new IllegalStateException(
+                    ArchiveStore.hasEndAt() ? "查寝/办理窗口已结束，不可再申请" : "已过开始时间，不可再申请");
+        }
+    }
+
     /** 同互斥码的其它进行中单据不可并存 */
     static void assertNoMutexConflict(String username, long itemId, Map<String, Object> item) {
         if (!TicketStore.checkMutex || !ArchiveStore.hasMutexCode()) return;

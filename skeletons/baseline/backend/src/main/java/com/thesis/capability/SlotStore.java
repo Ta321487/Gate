@@ -71,6 +71,11 @@ public final class SlotStore {
     }
 
     public static List<Map<String, Object>> listSlots(Long itemId, String day) {
+        return listSlots(itemId, day, false);
+    }
+
+    /** @param bookableOnly 用户预约：只列未开始时段 */
+    public static List<Map<String, Object>> listSlots(Long itemId, String day, boolean bookableOnly) {
         requireEnabled();
         StringBuilder sql = new StringBuilder("SELECT * FROM " + SLOT + " WHERE 1=1");
         List<Object> args = new ArrayList<>();
@@ -81,6 +86,9 @@ public final class SlotStore {
         if (day != null && !day.isBlank()) {
             sql.append(" AND DATE(start_at)=?");
             args.add(day.trim());
+        }
+        if (bookableOnly) {
+            sql.append(" AND start_at > NOW()");
         }
         sql.append(" ORDER BY start_at, id");
         return db().query(sql.toString(), (rs, i) -> enrichSlot(mapSlot(rs)), args.toArray());
@@ -128,6 +136,7 @@ public final class SlotStore {
         requireEnabled();
         Map<String, Object> slot = getSlot(slotId);
         if (slot == null) throw new IllegalArgumentException("时段不存在");
+        if (isPastSlot(slot)) throw new IllegalStateException("该时段已过，不可预约");
         int capacity = ((Number) slot.get("capacity")).intValue();
         int booked = ((Number) slot.get("booked")).intValue();
         if (booked >= capacity) throw new IllegalStateException("该时段已约满");
@@ -482,6 +491,22 @@ public final class SlotStore {
         m.put("capacity", rs.getInt("capacity"));
         m.put("booked", rs.getInt("booked"));
         return m;
+    }
+
+    private static boolean isPastSlot(Map<String, Object> slot) {
+        String sa = slot == null ? "" : String.valueOf(slot.get("startAt"));
+        if (sa == null || sa.isBlank() || "null".equalsIgnoreCase(sa)) return false;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            LocalDateTime t = LocalDateTime.parse(norm.replace(' ', 'T'));
+            return !t.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            try {
+                return !LocalDateTime.parse(sa, FMT).isAfter(LocalDateTime.now());
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
     }
 
     private static Map<String, Object> enrichSlot(Map<String, Object> slot) {

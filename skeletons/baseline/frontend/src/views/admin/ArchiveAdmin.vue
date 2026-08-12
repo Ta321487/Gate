@@ -54,8 +54,8 @@
           <template v-else>{{ row.stock }}</template>
         </template>
       </el-table-column>
-      <el-table-column v-if="hasSchedule" prop="startAt" :label="fieldLabel('startAt', '开始')" width="170" />
-      <el-table-column v-if="hasSchedule" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
+      <el-table-column v-if="hasStartAt" prop="startAt" :label="fieldLabel('startAt', '开始时间')" width="170" />
+      <el-table-column v-if="hasEndAt" prop="endAt" :label="fieldLabel('endAt', '结束')" width="170" />
       <el-table-column v-if="hasDeadline" prop="applyDeadlineAt" :label="fieldLabel('applyDeadlineAt', '截止')" width="170" />
       <el-table-column
         v-for="f in listExtraFields"
@@ -152,15 +152,15 @@
             <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
           </el-select>
         </el-form-item>
-        <template v-if="hasSchedule">
-          <el-form-item :label="fieldLabel('startAt', '开始时间')" required>
+        <template v-if="hasStartAt || hasEndAt || hasDeadline">
+          <el-form-item v-if="hasStartAt" :label="fieldLabel('startAt', '开始时间')" required>
             <el-date-picker
               v-model="form.startAt"
               v-bind="pickerProps('startAt')"
               style="width:100%"
             />
           </el-form-item>
-          <el-form-item :label="fieldLabel('endAt', '结束时间')" required>
+          <el-form-item v-if="hasEndAt" :label="fieldLabel('endAt', '结束时间')" required>
             <el-date-picker
               v-model="form.endAt"
               v-bind="pickerProps('endAt')"
@@ -259,6 +259,8 @@ function isbnPlain(v) {
   return s || '—'
 }
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' || x.key === 'endAt'))
+const hasStartAt = computed(() => fields.value.some((x) => x.key === 'startAt'))
+const hasEndAt = computed(() => fields.value.some((x) => x.key === 'endAt'))
 const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
 const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
 const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCode'))
@@ -423,8 +425,12 @@ async function save() {
     ElMessage.warning('请填写名称')
     return
   }
-  if (hasSchedule.value && (!form.startAt || !form.endAt)) {
-    ElMessage.warning('请填写开始与结束时间')
+  if (hasStartAt.value && !form.startAt) {
+    ElMessage.warning(`请填写${fieldLabel('startAt', '开始时间')}`)
+    return
+  }
+  if (hasEndAt.value && !form.endAt) {
+    ElMessage.warning(`请填写${fieldLabel('endAt', '结束时间')}`)
     return
   }
   const payload = { ...form }

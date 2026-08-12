@@ -67,6 +67,10 @@ class CarpoolC13Tests(unittest.TestCase):
         archive = (schema.get("entities") or {}).get("archive") or {}
         self.assertTrue(ticket.get("peerAccept"))
         self.assertTrue(archive.get("userPublish"))
+        labels = schema.get("labels") or {}
+        self.assertNotIn("志愿", str(labels.get("peerInboxLead") or ""))
+        self.assertNotIn("互选", str(labels.get("peerInboxLead") or ""))
+        self.assertIn("意向", str(labels.get("peerInboxLead") or ""))
         sql = domain_sql(
             "DOM-CARPOOL",
             "t_carpool",
@@ -74,6 +78,14 @@ class CarpoolC13Tests(unittest.TestCase):
             proposal_text="拼车行程同行意向对接",
         )
         self.assertIn("owner_username", sql)
+        self.assertIn("publisher_name", sql)
+        self.assertIn("route_note", sql)
+        self.assertIn("start_at", sql)
+        fields = {f.get("key"): f for f in (archive.get("fields") or [])}
+        self.assertIn("startAt", fields)
+        self.assertEqual(fields["startAt"].get("label"), "出发时间")
+        self.assertEqual((fields.get("isbn") or {}).get("label"), "地点备注")
+        self.assertIn("过出发", str(labels.get("authLead") or ""))
 
     def test_sql_and_accept(self) -> None:
         sql = domain_sql(

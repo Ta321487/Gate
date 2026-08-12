@@ -95,7 +95,7 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 INSERT IGNORE INTO category (id, name) VALUES (1, '文体艺术'), (2, '社会实践'), (3, '学术科技');
 INSERT IGNORE INTO credit_item (id, title, author, isbn, category_id, stock, status) VALUES
 (1, '讲座听课认定', '团委', '单次 0.5 学分', 1, 1, 'available'),
-(2, '志愿时长认定', '学工处', '累计折算', 2, 1, 'available'),
+(2, '社会实践折算认定', '学工处', '累计折算', 2, 1, 'available'),
 (3, '竞赛参与认定', '教务处', '校级及以上', 3, 1, 'available'),
 (4, '社团骨干认定', '团委', '任期满一年', 1, 1, 'available'),
 (5, '社会实践认定', '学工处', '暑期实践', 2, 1, 'available');

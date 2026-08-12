@@ -107,3 +107,22 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='上报须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周排查', '请于周五前完成晨检异常与聚集性发热线索的复核上报。', 'admin', '防控主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
+-- 主路径样例：一条待确认上报 + 一条当日打卡（archive_log DDL 与能力片段同构，ensure 遇表则跳过）
+INSERT IGNORE INTO event_report (id, book_id, username, status, remark, contact_channel) VALUES
+(1, 2, 'user', 'pending', '异常线索复核上报，请值班员确认处置。', '现场登记');
+CREATE TABLE IF NOT EXISTS archive_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  log_date DATE NOT NULL,
+  log_type VARCHAR(32) NOT NULL DEFAULT 'checkin',
+  payload_json TEXT,
+  abnormal TINYINT DEFAULT 0,
+  remark VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_alog_item_date (item_id, log_date),
+  KEY idx_alog_date_type (log_date, log_type),
+  KEY idx_alog_user (username, id)
+);
+INSERT IGNORE INTO archive_log (id, item_id, username, log_date, log_type, abnormal, remark) VALUES
+(1, 1, 'user', CURDATE(), 'checkin', 0, '今日打卡正常');

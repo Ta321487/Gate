@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS trip_route (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   owner_username VARCHAR(64) NOT NULL DEFAULT '',
+  start_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -96,11 +97,11 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '城际'), (2, '返乡'), (3, '市内短途');
-INSERT IGNORE INTO trip_route (id, title, author, isbn, category_id, stock, status, owner_username) VALUES
-(1, '周五晚 学校→火车站', 'peer', '约 18:30 出发 / 可带行李', 3, 3, 'available', 'peer'),
-(2, '周六上午 本市→邻市', 'peer', '顺路两座 / 非营运拼车', 1, 2, 'available', 'peer'),
-(3, '寒假返乡拼车意向征集', 'peer', '同方向可留言对接', 2, 4, 'available', 'peer');
+INSERT IGNORE INTO trip_route (id, title, author, isbn, category_id, stock, status, owner_username, start_at) VALUES
+(1, '周五晚 学校→火车站', 'peer', '可带行李 / 校门口汇合', 3, 3, 'available', 'peer', '2026-08-08 18:30:00'),
+(2, '周六上午 本市→邻市', 'peer', '顺路两座 / 非营运拼车', 1, 2, 'available', 'peer', '2026-08-09 09:00:00'),
+(3, '周日下午 返乡方向', 'peer', '同方向可留言对接', 2, 4, 'available', 'peer', '2026-08-10 14:00:00');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '拼车须知', '发布行程后他人可提交意向，由车主确认或婉拒；管理端可调剂。本期无地图导航与真支付分账。', 'admin', '拼车主管'
+SELECT '拼车须知', '发布行程时填写出发时间与地点备注；他人提交意向由车主确认或婉拒；过出发时间自动下架。本期无地图导航与真支付分账。', 'admin', '拼车主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='拼车须知');

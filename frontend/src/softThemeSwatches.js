@@ -1561,6 +1561,62 @@ export const SOFT_THEME_SWATCHES = {
   "ink": "#e8f0ee",
   "surface": "#182020"
 },
+"cinema-night": {
+  "bg": "#0f0c12",
+  "accent": "#d49448",
+  "soft": "#2a2218",
+  "ink": "#f3ebe0",
+  "surface": "#1a1520"
+},
+"cinema-amber": {
+  "bg": "#f7f1e8",
+  "accent": "#c47830",
+  "soft": "#f3e4d0",
+  "ink": "#2a1e12",
+  "surface": "#fffdf8"
+},
+"cinema-teal": {
+  "bg": "#eef6f5",
+  "accent": "#2d8a80",
+  "soft": "#d6f0ec",
+  "ink": "#12302c",
+  "surface": "#ffffff"
+},
+"cinema-sand": {
+  "bg": "#f7f3ec",
+  "accent": "#a67c3d",
+  "soft": "#f0e6d4",
+  "ink": "#2a2418",
+  "surface": "#fffdf9"
+},
+"timebank-teal": {
+  "bg": "#eef7f4",
+  "accent": "#248c70",
+  "soft": "#d4f0e6",
+  "ink": "#123028",
+  "surface": "#ffffff"
+},
+"timebank-sand": {
+  "bg": "#f7f3ec",
+  "accent": "#a67c3d",
+  "soft": "#f0e6d4",
+  "ink": "#2a2418",
+  "surface": "#fffdf9"
+},
+"timebank-slate": {
+  "bg": "#f0f2f4",
+  "accent": "#475569",
+  "soft": "#e2e8f0",
+  "ink": "#1e293b",
+  "surface": "#ffffff"
+},
+"timebank-night": {
+  "bg": "#101810",
+  "accent": "#388c70",
+  "soft": "#203028",
+  "ink": "#e8f0ec",
+  "surface": "#182018"
+},
 "procure-teal": {
   "bg": "#eef7f6",
   "accent": "#2d8a80",

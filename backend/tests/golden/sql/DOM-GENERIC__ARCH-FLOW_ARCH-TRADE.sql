@@ -134,7 +134,7 @@ INSERT IGNORE INTO biz_item (id, title, price_yuan, sku, category_id, stock, sta
 (3, '示例对象丙', '责任人C', 'NO-003', 3, 8, 'available');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '使用须知', '支持申请审核与购物车订单（演示无真支付）。', 'admin', '系统管理员'
+SELECT '使用须知', '支持申请审核与购物车订单（无真支付）。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='使用须知');
 
 CREATE TABLE IF NOT EXISTS `biz_ticket_progress` (
@@ -162,5 +162,5 @@ CREATE TABLE IF NOT EXISTS sys_guestbook (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='clerk', staff_kind='clerk', nickname='业务办理员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '业务办理员', '13800000001', '{}', 0, 1, 1, 'clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('order_clerk', 'order_clerk123', 'admin', '订单办理员', '13800000010', '{}', 0, 1, 1, 'order_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

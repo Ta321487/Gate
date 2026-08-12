@@ -24,12 +24,12 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore：title=床位号；author=楼栋；isbn=备注；stock=可占用(1/0)
+-- ArchiveStore：title=床位号；author=楼栋；isbn=布局说明；stock=可占用(1/0)
 CREATE TABLE IF NOT EXISTS bed (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   building_name VARCHAR(100),
-  room_note VARCHAR(255),
+  layout_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -83,11 +83,11 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '四人间'), (2, '六人间'), (3, '调宿退宿');
-INSERT IGNORE INTO bed (id, title, building_name, room_note, category_id, stock, status, stage) VALUES
-(1, '1栋101-1', '1号楼', '靠窗 / 空闲', 1, 1, 'available', '空闲'),
-(2, '1栋101-2', '1号楼', '靠门 / 空闲', 1, 1, 'available', '空闲'),
-(3, '2栋205-3', '2号楼', '中铺 / 空闲', 2, 1, 'available', '空闲'),
-(4, '3栋312-4', '3号楼', '下铺 / 空闲', 1, 1, 'available', '空闲'),
+INSERT IGNORE INTO bed (id, title, building_name, layout_note, category_id, stock, status, stage) VALUES
+(1, '1栋101-1', '1号楼', '靠窗', 1, 1, 'available', '空闲'),
+(2, '1栋101-2', '1号楼', '靠门', 1, 1, 'available', '空闲'),
+(3, '2栋205-3', '2号楼', '中铺', 2, 1, 'available', '空闲'),
+(4, '3栋312-4', '3号楼', '下铺', 1, 1, 'available', '空闲'),
 (5, '调宿窗口', '宿管中心', '调宿/退宿事项（无实体床）', 3, 99, 'available', '开放');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '床位申请须知', '选房通过后占用床位库存；调宿/退宿请选择对应事项并写明原床位。本期无门锁对接。', 'admin', '宿管主管'

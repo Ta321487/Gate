@@ -100,5 +100,5 @@ INSERT IGNORE INTO promo_matter (id, title, author, isbn, category_id, stock, st
 (4, '运动会条幅', '体育部', '田径场看台', 1, 1, 'available'),
 (5, '社团招新海报', '学生会', '食堂门口', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '宣传审批须知', '请如实填写事由与附件说明；审批通过后方可办理。本期无银行/硬件对接。', 'admin', '宣传主管'
+SELECT '宣传审批须知', '请如实填写张贴内容与位置；未审批不得张贴。本期无户外硬件联动。', 'admin', '宣传主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='宣传审批须知');

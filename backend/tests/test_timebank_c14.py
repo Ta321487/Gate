@@ -87,6 +87,10 @@ class TimebankC14Tests(unittest.TestCase):
         )
         for t in ("tb_service", "tb_account", "tb_ledger", "tb_redeem"):
             self.assertIn(t, sql)
+        self.assertIn("organizer", sql)
+        self.assertIn("service_note", sql)
+        self.assertIn("communityName", sql)
+        self.assertIn("INSERT IGNORE INTO tb_redeem", sql)
         spec = attach_accept(
             {
                 "domain": "DOM-TIMEBANK",

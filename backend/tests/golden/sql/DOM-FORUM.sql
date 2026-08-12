@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS post (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   deleted_at DATETIME NULL,
+  owner_username VARCHAR(64) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -144,7 +145,7 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '社区公约', '请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用形成楼中楼。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社区公约');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周精选', '学习交流与校园生活板块已更新演示主帖，欢迎跟帖讨论。', 'admin', '站长'
+SELECT '本周精选', '学习交流与校园生活板块已更新主帖，欢迎跟帖讨论。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');
 
 CREATE TABLE IF NOT EXISTS `reply_progress` (
@@ -159,4 +160,4 @@ CREATE TABLE IF NOT EXISTS `reply_progress` (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='moderator', staff_kind='clerk', nickname='版主' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '版主', '13800000001', '{}', 0, 1, 1, 'moderator', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

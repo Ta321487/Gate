@@ -128,7 +128,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '李女士', '13800000002', '阳光广场 B1 美食区', '自取', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，演示无真支付。', 'admin', '门店主管'
+SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注，无真支付。', 'admin', '门店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
@@ -155,4 +155,4 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='counter', staff_kind='clerk', nickname='店员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1, 'counter', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

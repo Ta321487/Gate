@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS cinema_show (
   stock INT DEFAULT 48,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  seat_rows INT NOT NULL DEFAULT 6,
+  seat_cols INT NOT NULL DEFAULT 8,
+  start_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -120,16 +123,16 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '影院主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '售票员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '观影者甲', '13800000002',
- '{"realName":"周同学","email":"zhou@demo.edu","gender":"男","studentNo":"20230015","dept":"艺术学院"}',
+ '{"realName":"周观影","email":"zhou@demo.com","gender":"男","memberNo":"M20230015","orgName":"艺术学院"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '国产'), (2, '进口'), (3, '特惠场');
-INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '春日校园·晚场', '35', '1号厅 19:30', 1, 48, 'available'),
-(2, '科幻巨幕·周末场', '45', '巨幕厅 14:00', 2, 48, 'available'),
-(3, '学生特惠午场', '25', '2号厅 11:00', 3, 48, 'available');
+INSERT IGNORE INTO category (id, name) VALUES (1, '普通厅'), (2, '巨幕厅'), (3, 'IMAX'), (4, '杜比');
+INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, status, seat_rows, seat_cols, start_at) VALUES
+(1, '春日校园·晚场', '35', '1号厅', 1, 48, 'available', 6, 8, '2026-08-08 19:30:00'),
+(2, '科幻巨幕·周末场', '45', '巨幕1厅', 2, 50, 'available', 5, 10, '2026-08-09 14:00:00'),
+(3, '学生特惠午场', '25', '2号厅', 3, 32, 'available', 4, 8, '2026-08-08 11:00:00');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '选座购票须知', '说明：选座确认后即时占座并生成订单，无真支付与高并发锁座。', 'admin', '影院主管'
+SELECT '选座购票须知', '说明：选座确认后即时占座并生成订单；过开场时间自动下架不可售；无真支付与高并发锁座。', 'admin', '影院主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选座购票须知');

@@ -286,12 +286,27 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
-        # EXAM 等在 SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
-        product_copy_only = frozenset({"DOM-EXAM"})
+        # EXAM / EQUIP：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
+        product_copy_only = frozenset({"DOM-EXAM", "DOM-EQUIP"})
         self.assertEqual(_SCENE_COPY_DOMAINS - product_copy_only, covered)
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
                 self.assertEqual(scene_for(domain, title, body), want)
+
+    def test_followup_audit_scene_hints(self) -> None:
+        """跟进簇审计挡点：S-13 企业周报；高校课堂请假题落 campus。"""
+        self.assertEqual(
+            scene_for(
+                "DOM-INTERN",
+                "企业员工周报与工时填报管理系统",
+                "企业员工周报日报工时填报审阅",
+            ),
+            "enterprise",
+        )
+        self.assertEqual(
+            scene_for("DOM-ATTEND", "高校课堂考勤请假系统", ""),
+            "campus",
+        )
 
     def test_shop_retail_vs_campus_secondhand(self) -> None:
         """社会售卖（鲜花等）共用零售档：无成色、无校园种子；不按行业逐个开皮。"""
@@ -464,6 +479,34 @@ class SceneScanContractTests(unittest.TestCase):
             with self.subTest(dom=dom):
                 schema = build_domain_schema("测试课题", dom, proposal_text="")
                 self.assertTrue(schema.get("labels") or schema.get("roles"))
+
+    def test_timebank_community_vs_campus_profile(self) -> None:
+        from app.bake.profile_fields import profile_fields_for
+        from app.bake.scene_scan import scene_for
+
+        self.assertEqual(
+            scene_for("DOM-TIMEBANK", "社区时间银行志愿时长账户", "社区互助时长核销"),
+            "community",
+        )
+        self.assertEqual(
+            scene_for("DOM-TIMEBANK", "高校校园时间银行", "学号院系志愿时长账户"),
+            "campus",
+        )
+        community = profile_fields_for(
+            "DOM-TIMEBANK",
+            title="社区时间银行志愿时长账户",
+            proposal_text="社区互助时长核销",
+        )
+        keys = {f.get("key") for f in community}
+        self.assertIn("communityName", keys)
+        self.assertNotIn("studentNo", keys)
+        campus = profile_fields_for(
+            "DOM-TIMEBANK",
+            title="高校校园时间银行",
+            proposal_text="学号院系志愿时长账户",
+        )
+        ckeys = {f.get("key") for f in campus}
+        self.assertIn("studentNo", ckeys)
 
     def test_thin_domains_scene_shell_and_seed(self) -> None:
         """原薄域：开题可解析场景，壳与种子跟开题走。"""

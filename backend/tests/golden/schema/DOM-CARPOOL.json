@@ -20,8 +20,13 @@
           "type": "string"
         },
         {
+          "key": "startAt",
+          "label": "出发时间",
+          "type": "datetime"
+        },
+        {
           "key": "isbn",
-          "label": "时间地点备注",
+          "label": "地点备注",
           "type": "string"
         },
         {
@@ -100,20 +105,23 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "拼车结伴",
-    "authLead": "验证码登录；发布行程或提交同行意向，由车主确认或婉拒；管理端可调剂（无地图）。",
+    "authLead": "验证码登录；发布行程（出发时间）或提交同行意向，由车主确认或婉拒；过出发自动下架（无地图）。",
     "authPoints": [
       "验证码登录",
       "行程发布",
       "意向对接与车主确认"
     ],
-    "messagesPageLead": "志愿确认、调剂结果与系统通知。",
+    "messagesPageLead": "意向确认、调剂结果与系统通知。",
     "myArchivePageLead": "本人发布的行程即时可见；站长下架后仍可在此查看状态。",
     "myArchivePageTitle": "我的行程",
     "noticePageLead": "出行须知与临时通知，点击条目阅读全文。",
     "noticePageTitle": "拼车公告",
-    "peerInboxEmpty": "暂无待确认志愿",
-    "peerInboxLead": "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。",
+    "peerConfirmDialogMessage": "确认接受该同行意向？",
+    "peerConfirmDialogTitle": "确认对接",
+    "peerInboxEmpty": "暂无待确认意向",
+    "peerInboxLead": "他人向你发起的同行意向，确认后即对接成功；也可婉拒。管理端可调剂。",
     "peerInboxTitle": "待我确认",
+    "peerRejectDialogTitle": "婉拒意向",
     "registerRoleHint": "注册后可发布行程并提交同行意向"
   },
   "menus": {
@@ -184,7 +192,7 @@
       "title": "行程目录"
     },
     {
-      "lead": "登录后发布本人行程，即时可见。",
+      "lead": "填写出发时间与地点，即时可见；过点自动下架。",
       "title": "发布行程"
     },
     {
@@ -215,7 +223,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实填写同行说明；确认后占用余座。本期无地图导航与真支付分账。",
+    "noticeBody": "请填写出发时间与地点备注；确认后占用余座；过出发时间自动下架不可对接。本期无地图导航与真支付分账。",
     "noticeTitle": "拼车须知"
   },
   "title": "测试课题",

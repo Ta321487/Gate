@@ -13,12 +13,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/** 影院选座（C-15）MyBatis 叠层。 */
+/** 影院选座（C-15）MyBatis 叠层：排×列跟场次档案。 */
 public class SeatStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_ROWS = 6;
     private static final int DEFAULT_COLS = 8;
+    private static final int MAX_ROWS = 15;
+    private static final int MAX_COLS = 16;
     private static boolean enabled;
     private static Boolean tableReady;
 
@@ -63,6 +65,30 @@ public class SeatStore {
         return o == null ? "" : String.valueOf(o).trim();
     }
 
+    private static int toInt(Object o, int def) {
+        if (o == null) return def;
+        if (o instanceof Number n) return n.intValue();
+        try {
+            String s = String.valueOf(o).trim();
+            if (s.isBlank()) return def;
+            return Integer.parseInt(s);
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    public static int rowsOf(Map<String, Object> show) {
+        return clamp(toInt(show == null ? null : show.get("seatRows"), DEFAULT_ROWS), 1, MAX_ROWS);
+    }
+
+    public static int colsOf(Map<String, Object> show) {
+        return clamp(toInt(show == null ? null : show.get("seatCols"), DEFAULT_COLS), 1, MAX_COLS);
+    }
+
     private static String fmt(Object o) {
         if (o == null) return null;
         if (o instanceof Timestamp ts) return ts.toLocalDateTime().format(FMT);
@@ -76,18 +102,76 @@ public class SeatStore {
         return String.valueOf((char) ('A' + row)) + (col + 1);
     }
 
-    private static void ensureSeatMap(long showId) {
-        Integer n = mapper().countSeats(showId);
-        if (n != null && n > 0) return;
-        for (int r = 0; r < DEFAULT_ROWS; r++) {
-            for (int c = 0; c < DEFAULT_COLS; c++) {
-                mapper().insertSeat(showId, seatCode(r, c));
+    private static List<String> expectedCodes(int rows, int cols) {
+        List<String> codes = new ArrayList<>(rows * cols);
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                codes.add(seatCode(r, c));
+            }
+        }
+        return codes;
+    }
+
+    private static void ensureSeatMap(long showId, Map<String, Object> show) {
+        int rows = rowsOf(show);
+        int cols = colsOf(show);
+        List<String> expected = expectedCodes(rows, cols);
+        for (String code : expected) {
+            mapper().insertSeat(showId, code);
+        }
+        mapper().deleteFreeOutside(showId, expected);
+        Integer sold = mapper().countSold(showId);
+        if (sold != null && sold == 0) {
+            int capacity = rows * cols;
+            mapper().updateShowStock(showId, capacity);
+            show.put("stock", capacity);
+        }
+        show.put("seatRows", rows);
+        show.put("seatCols", cols);
+    }
+
+    public static void syncLayout(long showId) {
+        if (!enabled || showId <= 0) return;
+        if (!ready()) return;
+        try {
+            Map<String, Object> show = getShow(showId);
+            if (show == null) return;
+            ensureSeatMap(showId, show);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 过开场时间：可售场次自动标为不可用。 */
+    public static int expirePastShows() {
+        if (!enabled) return 0;
+        if (!ready()) return 0;
+        try {
+            return mapper().expirePastShows();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static boolean isPastStart(Map<String, Object> show) {
+        String sa = str(show == null ? null : show.get("startAt"));
+        if (sa.isBlank()) return false;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            LocalDateTime t = LocalDateTime.parse(norm.replace(' ', 'T'));
+            return !t.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            try {
+                LocalDateTime t = LocalDateTime.parse(sa, FMT);
+                return !t.isAfter(LocalDateTime.now());
+            } catch (Exception ignored) {
+                return false;
             }
         }
     }
 
     public static List<Map<String, Object>> listOpenShows() {
         require();
+        expirePastShows();
         return mapper().listOpenShows();
     }
 
@@ -98,17 +182,24 @@ public class SeatStore {
 
     public static Map<String, Object> getMap(long showId) {
         require();
+        expirePastShows();
         Map<String, Object> show = getShow(showId);
         if (show == null) throw new IllegalArgumentException("场次不存在");
-        ensureSeatMap(showId);
+        if (!"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            throw new IllegalStateException("场次已开场或已下架，不可选座");
+        }
+        ensureSeatMap(showId, show);
+        show = getShow(showId);
+        int rows = rowsOf(show);
+        int cols = colsOf(show);
         List<Map<String, Object>> seats = mapper().listSeats(showId);
         for (Map<String, Object> s : seats) {
             if (s.containsKey("soldAt")) s.put("soldAt", fmt(s.get("soldAt")));
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("show", show);
-        out.put("rows", DEFAULT_ROWS);
-        out.put("cols", DEFAULT_COLS);
+        out.put("rows", rows);
+        out.put("cols", cols);
         out.put("seats", seats);
         long free = seats.stream().filter(s -> "free".equals(str(s.get("status")))).count();
         out.put("freeCount", free);
@@ -139,10 +230,11 @@ public class SeatStore {
         if (codes.size() > 6) throw new IllegalArgumentException("单次最多选 6 个座位");
 
         Map<String, Object> show = getShow(showId);
-        if (show == null || !"available".equals(str(show.get("status")))) {
-            throw new IllegalStateException("场次不可售");
+        if (show == null || !"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            expirePastShows();
+            throw new IllegalStateException("场次已开场或已下架，不可购票");
         }
-        ensureSeatMap(showId);
+        ensureSeatMap(showId, show);
         for (String code : codes) {
             Integer free = mapper().countFreeSeat(showId, code);
             if (free == null || free == 0) {
@@ -167,5 +259,14 @@ public class SeatStore {
         out.put("seats", codes);
         out.put("totalYuan", BigDecimal.valueOf(unit * codes.size()).setScale(2, RoundingMode.HALF_UP));
         return out;
+    }
+
+    public static void releaseByOrder(long orderId) {
+        if (!enabled || orderId <= 0) return;
+        if (!ready()) return;
+        try {
+            mapper().releaseByOrder(orderId);
+        } catch (Exception ignored) {
+        }
     }
 }

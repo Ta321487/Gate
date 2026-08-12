@@ -81,10 +81,10 @@ INSERT IGNORE INTO track (id, title, artist, play_url, category_id, stock, statu
 (4, '周末合唱', '合唱团丁', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
 (5, '公路歌单', '制作人戊', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '试听须知', '曲源仅供学习演示；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
+SELECT '试听须知', '曲源仅供学习使用；请尊重版权，勿传播未授权内容。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='试听须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周上新', '流行与民谣栏目已更新演示曲目，欢迎收藏喜欢。', 'admin', '曲库主管'
+SELECT '本周上新', '流行与民谣栏目已更新曲目，欢迎收藏喜欢。', 'admin', '曲库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周上新');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
@@ -111,4 +111,4 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='editor', staff_kind='clerk', nickname='运营编辑' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '运营编辑', '13800000001', '{}', 0, 1, 1, 'editor', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

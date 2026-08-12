@@ -235,6 +235,20 @@ class DomainColumnForbidTests(unittest.TestCase):
             "DOM-INTERN": "intern_post",
             "DOM-PARCEL": "parcel",
             "DOM-LIBRARY": "book",
+            "DOM-LISTING": "listing",
+            "DOM-PROCURE": "procure_item",
+            "DOM-CLUB": "club_item",
+            "DOM-PROJ": "proj_item",
+            "DOM-ETHIC": "ethic_item",
+            "DOM-PARTY": "party_stage",
+            "DOM-CONTRACT": "contract_type",
+            "DOM-EXAM": "exam_subject",
+            "DOM-SURVEY": "survey_form",
+            "DOM-VOTE": "vote_campaign",
+            "DOM-DOCLIB": "doc_item",
+            "DOM-CARPOOL": "trip_route",
+            "DOM-TIMEBANK": "tb_service",
+            "DOM-CINEMA": "cinema_show",
         }
         for domain, table in cases.items():
             with self.subTest(domain=domain):

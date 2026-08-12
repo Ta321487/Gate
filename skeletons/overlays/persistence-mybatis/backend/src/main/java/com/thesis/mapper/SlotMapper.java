@@ -12,7 +12,8 @@ public interface SlotMapper {
     List<Map<String, Object>> selectSlots(
             @Param("slotTable") String slotTable,
             @Param("itemId") Long itemId,
-            @Param("day") String day);
+            @Param("day") String day,
+            @Param("bookableOnly") boolean bookableOnly);
 
     Map<String, Object> selectSlotById(@Param("slotTable") String slotTable, @Param("id") long id);
 

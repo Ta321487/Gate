@@ -122,7 +122,7 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 
 **工厂主链路 / 交付审计**：材料→匹配→出包 → [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md)。  
 ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。  
-组审计进度（借用/占用）：已验 LIBRARY/ASSET/EQUIP/BED/CHECKIN + **P-01～P-08 复审已齐**（2026-08-03）；组内其余未收口。
+组审计进度（借用/占用）：**已收口**（2026-08-04）。组 A + CINEMA 共 47 域：H23 + 档案列契约工厂侧齐（`test_borrow_archive_label_align`）。下一组：报修 / 工单。
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 

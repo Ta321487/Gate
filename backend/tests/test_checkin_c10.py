@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from app.bake.capabilities import CAPABILITIES
@@ -95,6 +96,23 @@ class CheckinC10Tests(unittest.TestCase):
         self.assertIn("checkin_code", sql)
         self.assertIn("checked_in_at", sql)
         self.assertIn("start_at", sql)
+        self.assertIn("end_at", sql)
+        # 查寝窗：有 end_at，档期按结束下架（非过开始立刻下架）
+        archive = (
+            Path(__file__).resolve().parents[2]
+            / "skeletons"
+            / "baseline"
+            / "backend"
+            / "src"
+            / "main"
+            / "java"
+            / "com"
+            / "thesis"
+            / "capability"
+            / "ArchiveStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("end_at <= NOW()", archive)
+        self.assertIn("isScheduleClosed", archive)
         self.assertIn("end_at", sql)
         self.assertIn("dorm_room", sql)
         self.assertIn("checkin_apply", sql)

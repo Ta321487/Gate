@@ -1,4 +1,4 @@
-"""简易文库（doclib）：资料附件、演示权限、下载台账（C-12）。"""
+"""简易文库（doclib）：资料附件、权限档、下载台账（C-12）。"""
 
 from __future__ import annotations
 

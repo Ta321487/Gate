@@ -15,6 +15,7 @@ from app.bake.schema.followup_presets import FOLLOWUP_PRESETS
 from app.bake.schema.templates import SCHEMA_BUILDERS
 
 SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "申请预设开题"
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class InstrumentC07Tests(unittest.TestCase):
@@ -77,6 +78,13 @@ class InstrumentC07Tests(unittest.TestCase):
         self.assertIn("instrument_loan", sql)
         self.assertIn("resource_slot", sql)
         self.assertIn("reservation", sql)
+        # 过期时段不可约：SlotStore.listSlots(bookableOnly)/reserve 拦 start_at
+        slot = (
+            (ROOT / "skeletons" / "baseline" / "backend" / "src" / "main" / "java"
+             / "com" / "thesis" / "capability" / "SlotStore.java").read_text(encoding="utf-8")
+        )
+        self.assertIn("bookableOnly", slot)
+        self.assertIn("该时段已过，不可预约", slot)
 
     def test_named_fr_accept_full(self) -> None:
         d = resolve_accept(

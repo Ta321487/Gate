@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS event_case (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  reporter_name VARCHAR(100),
-  location_note VARCHAR(255),
+  handler_name VARCHAR(100),
+  case_summary VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -84,7 +84,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '高血压'), (2, '糖尿病'), (3, '高风险随访');
-INSERT IGNORE INTO event_case (id, title, reporter_name, location_note, category_id, stock, status, stage) VALUES
+INSERT IGNORE INTO event_case (id, title, handler_name, case_summary, category_id, stock, status, stage) VALUES
 (1, '周明', '随访员李华', '高血压 / 血压偏高待复核', 1, 1, 'available', '待核查'),
 (2, '王芳', '随访员王芳', '糖尿病 / 血糖波动待回访', 2, 1, 'available', '随访中'),
 (3, '张敏', '随访员张敏', '冠心病 / 用药依从待排查', 3, 1, 'available', '处置中'),
@@ -96,17 +96,9 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='随访须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周排查', '请于周五前完成高风险对象指标复核与随访上报。', 'admin', '公卫主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
-
-CREATE TABLE IF NOT EXISTS `event_report_progress` (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  status VARCHAR(32) NOT NULL,
-  operator VARCHAR(64),
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_progress_ticket (ticket_id, id)
-);
-
+-- 主路径样例：一条待确认上报 + 一条当日打卡（archive_log DDL 与能力片段同构，ensure 遇表则跳过）
+INSERT IGNORE INTO event_report (id, event_id, username, status, remark, contact_channel) VALUES
+(1, 2, 'user', 'pending', '异常线索复核上报，请值班员确认处置。', '现场登记');
 CREATE TABLE IF NOT EXISTS archive_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   item_id BIGINT NOT NULL,
@@ -121,7 +113,19 @@ CREATE TABLE IF NOT EXISTS archive_log (
   KEY idx_alog_date_type (log_date, log_type),
   KEY idx_alog_user (username, id)
 );
+INSERT IGNORE INTO archive_log (id, item_id, username, log_date, log_type, abnormal, remark) VALUES
+(1, 1, 'user', CURDATE(), 'checkin', 0, '今日打卡正常');
+
+CREATE TABLE IF NOT EXISTS `event_report_progress` (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  operator VARCHAR(64),
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_progress_ticket (ticket_id, id)
+);
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-UPDATE sys_user SET staff_post='duty_clerk', staff_kind='clerk', nickname='值班员' WHERE username='subadmin' AND role='admin' AND IFNULL(super_admin,0)=0;
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '值班员', '13800000001', '{}', 0, 1, 1, 'duty_clerk', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;

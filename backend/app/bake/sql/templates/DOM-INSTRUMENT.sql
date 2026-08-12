@@ -124,9 +124,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '光谱分析'), (2, '显微表征'), (3, '色谱质谱');
 INSERT IGNORE INTO instrument (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '核磁共振波谱仪', '分析测试中心', '400MHz / 预约上机', 1, 1, 'available'),
-(2, '扫描电子显微镜', '材料学院', '含能谱 / 需培训', 2, 1, 'available'),
-(3, '气相色谱质谱联用', '化学学院', 'GC-MS / 开放机时', 3, 1, 'available');
+(1, '核磁共振波谱仪', '分析测试中心', '400MHz', 1, 1, 'available'),
+(2, '扫描电子显微镜', '材料学院', '含能谱 SEM', 2, 1, 'available'),
+(3, '气相色谱质谱联用', '化学学院', 'GC-MS', 3, 1, 'available');
 INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booked) VALUES
 (1, 1, '2026-09-20 09:00:00', '2026-09-20 11:00:00', 1, 0),
 (2, 1, '2026-09-20 13:00:00', '2026-09-20 15:00:00', 1, 0),

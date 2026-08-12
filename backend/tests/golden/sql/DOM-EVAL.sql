@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS eval_course (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
-  dept_name VARCHAR(100),
-  note_hint VARCHAR(255),
+  lecturer_name VARCHAR(100),
+  course_note VARCHAR(255),
   category_id BIGINT,
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
@@ -86,7 +86,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '公共课'), (2, '专业课'), (3, '实验课');
-INSERT IGNORE INTO eval_course (id, title, dept_name, note_hint, category_id, stock, status) VALUES
+INSERT IGNORE INTO eval_course (id, title, lecturer_name, course_note, category_id, stock, status) VALUES
 (1, '高等数学A', '张老师', '2025 秋 / 公共课', 1, 1, 'available'),
 (2, '程序设计基础', '李老师', '2025 秋 / 专业课', 2, 1, 'available'),
 (3, '大学英语', '王老师', '2025 秋 / 公共课', 3, 1, 'available'),

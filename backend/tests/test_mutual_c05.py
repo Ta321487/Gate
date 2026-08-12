@@ -48,12 +48,29 @@ class MutualC05Tests(unittest.TestCase):
             ("竞赛组队学习搭子意向匹配", "DOM-MUTUAL-TEAM", "DOM-DATING"),
             ("竞赛组队学习搭子意向匹配", "DOM-MUTUAL-TEAM", "DOM-ACTIVITY"),
             ("校园相亲牵线交友审核", "DOM-DATING", "DOM-MUTUAL-TUTOR"),
+            # 换说法硬分流
+            ("毕业设计题目师生互选确认", "DOM-MUTUAL-TOPIC", "DOM-COURSE"),
+            ("论文课题志愿填报指导教师确认", "DOM-MUTUAL-TOPIC", "DOM-GENERIC"),
+            ("大创项目队友招募意向确认", "DOM-MUTUAL-TEAM", "DOM-DATING"),
+            ("竞赛队友双向意向对接", "DOM-MUTUAL-TEAM", "DOM-ACTIVITY"),
+            ("公选课在线选课与学分名额", "DOM-COURSE", "DOM-MUTUAL-TOPIC"),
+            ("拼车同行意向对接", "DOM-CARPOOL", "DOM-MUTUAL-TEAM"),
         ]
         for phrase, want, avoid in cases:
             with self.subTest(phrase=f"{phrase}->{want}!={avoid}"):
                 got = match_text(f"基于 Spring Boot 的{phrase}系统的设计与实现")
                 self.assertEqual(got.domain, want, f"hits={got.hits[:10]}")
                 self.assertNotEqual(got.domain, avoid)
+
+    def test_team_archive_labels(self) -> None:
+        schema = build_domain_schema("竞赛组队学习搭子意向匹配系统", "DOM-MUTUAL-TEAM")
+        fields = {
+            f.get("key"): f.get("label")
+            for f in ((schema.get("entities") or {}).get("archive") or {}).get("fields") or []
+        }
+        self.assertEqual(fields.get("isbn"), "技能/缺人说明")
+        self.assertEqual(fields.get("stock"), "可组人数")
+        self.assertEqual(fields.get("title"), "组队名称")
 
     def test_sql_has_owner_username(self) -> None:
         sql = domain_sql(

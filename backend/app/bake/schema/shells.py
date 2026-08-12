@@ -154,6 +154,12 @@ def archive_ticket_schema(
     # C-05：档案主人确认志愿（互选）；管理端仍可调剂审批
     peer_accept: bool = False,
     peer_inbox_label: str | None = None,
+    # 拼车等非互选域可覆盖「志愿」默认铅字
+    peer_inbox_lead: str | None = None,
+    peer_inbox_empty: str | None = None,
+    peer_reject_dialog_title: str | None = None,
+    peer_confirm_dialog_title: str | None = None,
+    peer_confirm_dialog_message: str | None = None,
     # C-09：审核通过签发通行码（字符串，非真门禁）
     issue_pass_code: bool = False,
     pass_code_label: str | None = None,
@@ -372,8 +378,15 @@ def archive_ticket_schema(
         )
     if peer_accept:
         labels["peerInboxTitle"] = (peer_inbox_label or "").strip() or "待我确认"
-        labels["peerInboxLead"] = "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。"
-        labels["peerInboxEmpty"] = "暂无待确认志愿"
+        labels["peerInboxLead"] = (peer_inbox_lead or "").strip() or (
+            "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。"
+        )
+        labels["peerInboxEmpty"] = (peer_inbox_empty or "").strip() or "暂无待确认志愿"
+        labels["peerRejectDialogTitle"] = (peer_reject_dialog_title or "").strip() or "婉拒志愿"
+        labels["peerConfirmDialogTitle"] = (peer_confirm_dialog_title or "").strip() or "确认互选"
+        labels["peerConfirmDialogMessage"] = (peer_confirm_dialog_message or "").strip() or (
+            "确认接受该志愿？"
+        )
     if apply_from_list:
         labels["myTicketsPageLead"] = (my_tickets_page_lead or "").strip() or (
             f"在此{verbs.get('apply') or '提交'}并跟踪进度；档案页仅作说明查阅。"

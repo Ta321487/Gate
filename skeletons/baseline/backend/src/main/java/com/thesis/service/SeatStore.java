@@ -16,13 +16,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 影院选座（C-15）：场次座位图、演示占座并生成订单。
+ * 影院选座（C-15）：场次座位图（排×列可配）、占座并生成订单。
  */
 public class SeatStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_ROWS = 6;
     private static final int DEFAULT_COLS = 8;
+    private static final int MAX_ROWS = 15;
+    private static final int MAX_COLS = 16;
     private static boolean enabled;
     private static Boolean tableReady;
 
@@ -70,16 +72,59 @@ public class SeatStore {
         return o == null ? "" : String.valueOf(o).trim();
     }
 
+    private static int toInt(Object o, int def) {
+        if (o == null) return def;
+        if (o instanceof Number n) return n.intValue();
+        try {
+            String s = String.valueOf(o).trim();
+            if (s.isBlank()) return def;
+            return Integer.parseInt(s);
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    /** 场次档案 seatRows / seatCols；缺省 6×8，上限 15×16。 */
+    public static int rowsOf(Map<String, Object> show) {
+        return clamp(toInt(show == null ? null : show.get("seatRows"), DEFAULT_ROWS), 1, MAX_ROWS);
+    }
+
+    public static int colsOf(Map<String, Object> show) {
+        return clamp(toInt(show == null ? null : show.get("seatCols"), DEFAULT_COLS), 1, MAX_COLS);
+    }
+
     private static Map<String, Object> mapShow(ResultSet rs) throws SQLException {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", rs.getLong("id"));
         m.put("title", rs.getString("title"));
-        m.put("author", rs.getString("author"));
-        m.put("isbn", rs.getString("isbn"));
+        m.put("author", rs.getString(ArchiveStore.authorColumn()));
+        m.put("isbn", rs.getString(ArchiveStore.isbnColumn()));
         m.put("categoryId", rs.getObject("category_id"));
         m.put("stock", rs.getInt("stock"));
         m.put("status", rs.getString("status"));
         m.put("coverUrl", rs.getString("cover_url"));
+        try {
+            Object rows = rs.getObject("seat_rows");
+            m.put("seatRows", rows == null ? DEFAULT_ROWS : toInt(rows, DEFAULT_ROWS));
+        } catch (SQLException e) {
+            m.put("seatRows", DEFAULT_ROWS);
+        }
+        try {
+            Object cols = rs.getObject("seat_cols");
+            m.put("seatCols", cols == null ? DEFAULT_COLS : toInt(cols, DEFAULT_COLS));
+        } catch (SQLException e) {
+            m.put("seatCols", DEFAULT_COLS);
+        }
+        try {
+            Timestamp start = rs.getTimestamp("start_at");
+            m.put("startAt", start == null ? null : start.toLocalDateTime().format(FMT));
+        } catch (SQLException e) {
+            m.put("startAt", null);
+        }
         return m;
     }
 
@@ -100,23 +145,102 @@ public class SeatStore {
         return String.valueOf((char) ('A' + row)) + (col + 1);
     }
 
-    private static void ensureSeatMap(long showId) {
-        Integer n = db().queryForObject(
-                "SELECT COUNT(*) FROM cinema_seat WHERE show_id=?", Integer.class, showId);
-        if (n != null && n > 0) return;
-        for (int r = 0; r < DEFAULT_ROWS; r++) {
-            for (int c = 0; c < DEFAULT_COLS; c++) {
-                db().update(
-                        "INSERT INTO cinema_seat (show_id, seat_code, status) VALUES (?,?, 'free')",
-                        showId, seatCode(r, c));
+    private static List<String> expectedCodes(int rows, int cols) {
+        List<String> codes = new ArrayList<>(rows * cols);
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                codes.add(seatCode(r, c));
             }
+        }
+        return codes;
+    }
+
+    /**
+     * 按场次排×列同步座位：补缺空闲座、删掉布局外仍空闲的座；已售保留。
+     * 无已售时把档案余座对齐为排×列。
+     */
+    private static void ensureSeatMap(long showId, Map<String, Object> show) {
+        int rows = rowsOf(show);
+        int cols = colsOf(show);
+        List<String> expected = expectedCodes(rows, cols);
+        for (String code : expected) {
+            db().update(
+                    "INSERT IGNORE INTO cinema_seat (show_id, seat_code, status) VALUES (?,?, 'free')",
+                    showId, code);
+        }
+        if (!expected.isEmpty()) {
+            String in = expected.stream().map(c -> "?").collect(Collectors.joining(","));
+            List<Object> args = new ArrayList<>();
+            args.add(showId);
+            args.addAll(expected);
+            db().update(
+                    "DELETE FROM cinema_seat WHERE show_id=? AND status='free' AND seat_code NOT IN (" + in + ")",
+                    args.toArray());
+        }
+        Integer sold = db().queryForObject(
+                "SELECT COUNT(*) FROM cinema_seat WHERE show_id=? AND status='sold'",
+                Integer.class, showId);
+        if (sold != null && sold == 0) {
+            int capacity = rows * cols;
+            Integer cur = db().queryForObject(
+                    "SELECT stock FROM cinema_show WHERE id=?", Integer.class, showId);
+            if (cur == null || cur != capacity) {
+                db().update("UPDATE cinema_show SET stock=? WHERE id=?", capacity, showId);
+                show.put("stock", capacity);
+            }
+        }
+        show.put("seatRows", rows);
+        show.put("seatCols", cols);
+    }
+
+    /** 过开场时间：可售场次自动标为不可用（答辩常见逻辑，非真锁座）。 */
+    public static int expirePastShows() {
+        if (!enabled) return 0;
+        if (!ready()) return 0;
+        try {
+            return db().update(
+                    "UPDATE cinema_show SET status='unavailable' "
+                            + "WHERE status='available' AND start_at IS NOT NULL AND start_at <= NOW()");
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static boolean isPastStart(Map<String, Object> show) {
+        String sa = str(show == null ? null : show.get("startAt"));
+        if (sa.isBlank()) return false;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            LocalDateTime t = LocalDateTime.parse(norm.replace(' ', 'T'));
+            return !t.isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            try {
+                LocalDateTime t = LocalDateTime.parse(sa, FMT);
+                return !t.isAfter(LocalDateTime.now());
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+    }
+
+    /** 管理端改排×列后可显式同步（getMap/purchase 也会自动同步）。 */
+    public static void syncLayout(long showId) {
+        if (!enabled || showId <= 0) return;
+        if (!ready()) return;
+        try {
+            Map<String, Object> show = getShow(showId);
+            if (show == null) return;
+            ensureSeatMap(showId, show);
+        } catch (Exception ignored) {
         }
     }
 
     public static List<Map<String, Object>> listOpenShows() {
         require();
+        expirePastShows();
         return db().query(
-                "SELECT * FROM cinema_show WHERE status='available' AND stock>0 ORDER BY id DESC",
+                "SELECT * FROM cinema_show WHERE status='available' AND stock>0 "
+                        + "AND (start_at IS NULL OR start_at > NOW()) ORDER BY id DESC",
                 (rs, i) -> mapShow(rs));
     }
 
@@ -129,17 +253,24 @@ public class SeatStore {
 
     public static Map<String, Object> getMap(long showId) {
         require();
+        expirePastShows();
         Map<String, Object> show = getShow(showId);
         if (show == null) throw new IllegalArgumentException("场次不存在");
-        ensureSeatMap(showId);
+        if (!"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            throw new IllegalStateException("场次已开场或已下架，不可选座");
+        }
+        ensureSeatMap(showId, show);
+        show = getShow(showId);
+        int rows = rowsOf(show);
+        int cols = colsOf(show);
         List<Map<String, Object>> seats = db().query(
                 "SELECT * FROM cinema_seat WHERE show_id=? ORDER BY seat_code",
                 (rs, i) -> mapSeat(rs),
                 showId);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("show", show);
-        out.put("rows", DEFAULT_ROWS);
-        out.put("cols", DEFAULT_COLS);
+        out.put("rows", rows);
+        out.put("cols", cols);
         out.put("seats", seats);
         long free = seats.stream().filter(s -> "free".equals(str(s.get("status")))).count();
         out.put("freeCount", free);
@@ -155,7 +286,6 @@ public class SeatStore {
     }
 
     /** 选座下单：占座 + OrderStore.placeSimple。 */
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> purchase(String username, long showId, List<String> seatCodes) {
         require();
         String u = clip(username, 64);
@@ -172,10 +302,11 @@ public class SeatStore {
         if (codes.size() > 6) throw new IllegalArgumentException("单次最多选 6 个座位");
 
         Map<String, Object> show = getShow(showId);
-        if (show == null || !"available".equals(str(show.get("status")))) {
-            throw new IllegalStateException("场次不可售");
+        if (show == null || !"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            expirePastShows();
+            throw new IllegalStateException("场次已开场或已下架，不可购票");
         }
-        ensureSeatMap(showId);
+        ensureSeatMap(showId, show);
 
         for (String code : codes) {
             Integer free = db().queryForObject(
@@ -214,5 +345,18 @@ public class SeatStore {
         out.put("seats", codes);
         out.put("totalYuan", BigDecimal.valueOf(unit * codes.size()).setScale(2, RoundingMode.HALF_UP));
         return out;
+    }
+
+    /** 取消订单时释放座位（status→free），与 OrderStore.advance cancel 钩子对齐。 */
+    public static void releaseByOrder(long orderId) {
+        if (!enabled || orderId <= 0) return;
+        if (!ready()) return;
+        try {
+            db().update(
+                    "UPDATE cinema_seat SET status='free', username=NULL, order_id=NULL, sold_at=NULL "
+                            + "WHERE order_id=? AND status='sold'",
+                    orderId);
+        } catch (Exception ignored) {
+        }
     }
 }

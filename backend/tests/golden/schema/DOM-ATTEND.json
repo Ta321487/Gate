@@ -81,6 +81,7 @@
       "pickLoanPeriod": false,
       "remarkLabel": "请假事由",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "已批准",

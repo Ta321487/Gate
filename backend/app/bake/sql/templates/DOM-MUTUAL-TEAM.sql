@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS team_wish_log (
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '教务主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '组队协调员', '13800000001', '{}', 0, 1, 1),
-('peer', 'peer123', 'user', '确认人甲', '13800000003',
- '{"realName":"确认人甲","email":"peer@demo.edu","gender":"男","studentNo":"T20260001","dept":"计算机学院"}',
+('peer', 'peer123', 'user', '队长确认', '13800000003',
+ '{"realName":"队长确认","email":"peer@demo.edu","gender":"男","studentNo":"T20260001","dept":"计算机学院"}',
  0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
  '{"realName":"样例学生","email":"stu@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院"}',
@@ -97,9 +97,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '工学'), (2, '理学'), (3, '综合');
 INSERT IGNORE INTO team_profile (id, title, author, isbn, category_id, stock, status, owner_username) VALUES
-(1, '组队资料甲', '计算机学院', '方向一 · 可带 2 人', 1, 2, 'available', 'peer'),
-(2, '组队资料乙', '软件学院', '方向二 · 可带 1 人', 1, 1, 'available', 'peer'),
-(3, '组队资料丙', '数学学院', '方向三 · 可带 2 人', 2, 2, 'available', 'peer');
+(1, 'ACM 集训队招新', '计算机学院', '缺算法/实现队友 · 可组 2 人', 1, 2, 'available', 'peer'),
+(2, '大创边缘计算小队', '软件学院', '缺嵌入式开发 · 可组 1 人', 1, 1, 'available', 'peer'),
+(3, '考研数学学习搭子', '数学学院', '晚自习打卡 · 可组 2 人', 2, 2, 'available', 'peer');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '组队匹配须知', '提交志愿后由确认人接受或婉拒；管理端可调剂。智能推荐不在本期。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='组队匹配须知');

@@ -15,7 +15,7 @@
       <el-table-column prop="totalYuan" label="金额" width="100">
         <template #default="{ row }">¥{{ Number(row.totalYuan || 0).toFixed(2) }}</template>
       </el-table-column>
-      <el-table-column v-if="!isStay" :label="fulfillLabel" min-width="160" show-overflow-tooltip>
+      <el-table-column v-if="!isStay && !isCinema" :label="fulfillLabel" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.deliveryType">{{ row.deliveryType }}</span>
           <span v-if="row.deliveryType && (row.addressLine || row.receiverName)"> · </span>
@@ -28,7 +28,7 @@
       <el-table-column v-if="isFood" label="口味" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.tasteNote || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="!isStay" :label="shipLabel" min-width="120" show-overflow-tooltip>
+      <el-table-column v-if="!isStay && !isCinema" :label="shipLabel" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <template v-if="isFood">
             <span v-if="row.pickupCode">取餐码:{{ row.pickupCode }}</span>
@@ -130,12 +130,16 @@ const isFood = computed(() => hasTrait('food'))
 const isStay = computed(
   () => hasTrait('slotHotel') || order.value.fulfillMode === 'stay',
 )
+const isCinema = computed(
+  () => hasTrait('seatSelect') || order.value.fulfillMode === 'cinema',
+)
 const showLoyaltyCols = computed(() => isPointsEnabled() || isSpendDiscountEnabled())
 const fulfillLabel = computed(() => (isFood.value ? '配送' : '收货信息'))
 const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
 const shipVerb = computed(() => {
   if (order.value.verbs?.ship) return order.value.verbs.ship
   if (isStay.value) return '办理入住'
+  if (isCinema.value) return '出票'
   return isFood.value ? '出餐' : '发货'
 })
 const completeVerb = computed(() => {
@@ -159,7 +163,7 @@ async function load() {
 async function act(row, action) {
   let body = {}
   if (action === 'ship') {
-    if (isStay.value) {
+    if (isStay.value || isCinema.value) {
       try {
         await ElMessageBox.confirm(
           `确认对订单 #${row.id} 执行「${shipVerb.value}」？`,
@@ -213,14 +217,14 @@ async function exportCsv() {
     ElMessage.warning('当前筛选无数据可导出')
     return
   }
-  const headers = isStay.value
+  const headers = (isStay.value || isCinema.value)
     ? ['编号', userLabel.value, '金额', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
     : isFood.value
       ? ['编号', userLabel.value, '金额', '配送方式', '地址', '口味', '取餐码', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
       : ['编号', userLabel.value, '金额', '配送方式', '收货信息', '物流单号', '状态', '备注', '优惠', '获积分', '明细', '下单时间']
   const data = rows.map((row) => {
     const money = Number(row.totalYuan || 0).toFixed(2)
-    if (isStay.value) {
+    if (isStay.value || isCinema.value) {
       return [
         row.id,
         personLabel(row, ''),

@@ -331,10 +331,31 @@
 
 ### 交付审计进度（借用/占用组）
 
+> **组结论（2026-08-04）**：**已收口**。HANDOFF 组 A + 收口簇 `DOM-CINEMA` 共 **47 域**：H23（时间/下架/糊栏）+ 档案列契约（默认 preset 标签 = 物理列 ER）工厂侧齐，回归 `test_borrow_archive_label_align`。  
+> 字段/ER/常见好做类问题可按毕设成品口径放心；抽检 bake 仅例行冒烟，非本轮已知洞。  
+> **下一组**：报修 / 工单（DORM / PROPERTY / IT）。
+
 | 批次 | 域 | 结论 | 日期 |
 |------|-----|------|------|
 | 已验 | LIBRARY / ASSET / EQUIP / BED / CHECKIN | 已齐 | 更早轮次 |
-| P-01～P-08 | SEAL / FLEET / CERT / PROMO / FITOUT / ACAD / TRIP / EXPENSE | **复审已齐**（皮/状态机/金额/种子/flavor；匹配对齐 EVENT 口径） | 2026-08-03 |
-| 未验 | 组内其余域 | 未收口；未完禁止开报修/报名/交易组 | — |
+| P-01～P-08 | SEAL / FLEET / CERT / PROMO / FITOUT / ACAD / TRIP / EXPENSE | **复审已齐** | 2026-08-03 |
+| C-13～C-15 | CARPOOL / TIMEBANK / CINEMA | **H23 已补**（含组内连带） | 2026-08-04 |
+| H23 连带 | CHECKIN / FLEET / FITOUT / INSTRUMENT / BED / OA须知 | 查寝按 **end** 下架；糊栏分列/种子；SQL 须知跟 preset | 2026-08-04 |
+| H23 非时间 | SEAL/CERT/PROMO/ACAD/TRIP/EXPENSE | 档案列契约跟 preset；SEAL 种子去糊合 | 2026-08-04 |
+| H23 一致 | **47 域全组** | preset↔物理列 ER；BED `layout_note`≠CHECKIN `room_note`；VISITOR/CARPASS 脱离 GENERIC subtitle | 2026-08-04 |
+| **收口** | 组 A + CINEMA | **已齐**（工厂侧）；允许开报修组 | 2026-08-04 |
+
+**H23 / 列契约要点（收口备忘）**
+
+| 域 / 范围 | 结论 |
+|-----------|------|
+| CINEMA | 厅/开场分栏、排×列、过开场下架；`price_yuan`→价格 |
+| CARPOOL | 出发时间 + 地点备注；过出发下架 |
+| SlotStore / INSTRUMENT | 过期时段不可约；型号规格列契约 |
+| CHECKIN | 按 **end** 下架；`room_note` 房型说明 |
+| BED | `layout_note` 布局说明（与查寝分列） |
+| FLEET / FITOUT / OA 六域 | 列契约 + 种子/须知单概念 |
+| CRM～PARCEL、学工、互选、访客/通行证、长尾、能力四域 | 档案列语义化；默认 schema↔ER |
+| LIBRARY / EQUIP / ASSET / TIMEBANK 等 | 本轮无同级洞 |
 
 防坑纪律（错域冒充、改开题、场景两套 hint、「我的」=全站目录等）见交付文红灯表；本文不再重复长章。

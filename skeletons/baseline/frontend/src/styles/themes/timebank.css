@@ -1,0 +1,65 @@
+/* —— DOM-TIMEBANK timebank —— */
+[data-theme="timebank-teal"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #eef7f4;
+  --portal-bg-glow: rgba(36, 140, 112, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #123028;
+  --portal-muted: #5a7068;
+  --portal-line: #d0e0d8;
+  --portal-brand: #248c70;
+  --portal-accent: #248c70;
+  --portal-accent-soft: #d4f0e6;
+  --portal-cover: linear-gradient(160deg, #248c70, #123028);
+  --portal-shadow-color: rgba(36, 140, 112, 0.1);
+  color-scheme: light;
+}
+[data-theme="timebank-sand"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f7f3ec;
+  --portal-bg-glow: rgba(166, 124, 61, 0.1);
+  --portal-surface: #fffdf9;
+  --portal-ink: #2a2418;
+  --portal-muted: #6b5e48;
+  --portal-line: #e0d6c4;
+  --portal-brand: #a67c3d;
+  --portal-accent: #a67c3d;
+  --portal-accent-soft: #f0e6d4;
+  --portal-cover: linear-gradient(160deg, #a67c3d, #2a2418);
+  --portal-shadow-color: rgba(166, 124, 61, 0.1);
+  color-scheme: light;
+}
+[data-theme="timebank-slate"] {
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f0f2f4;
+  --portal-bg-glow: rgba(71, 85, 105, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e293b;
+  --portal-muted: #64748b;
+  --portal-line: #e2e8f0;
+  --portal-brand: #475569;
+  --portal-accent: #475569;
+  --portal-accent-soft: #e2e8f0;
+  --portal-cover: linear-gradient(160deg, #475569, #1e293b);
+  --portal-shadow-color: rgba(71, 85, 105, 0.1);
+  color-scheme: light;
+}
+[data-theme="timebank-night"] {
+  --portal-scheme: dark;
+  --portal-mix: #182018;
+  --portal-bg: #101810;
+  --portal-bg-glow: rgba(56, 140, 112, 0.15);
+  --portal-surface: #182018;
+  --portal-ink: #e8f0ec;
+  --portal-muted: #9ab0a4;
+  --portal-line: #2a3830;
+  --portal-brand: #388c70;
+  --portal-accent: #388c70;
+  --portal-accent-soft: #203028;
+  --portal-cover: linear-gradient(160deg, #388c70, #101810);
+  --portal-shadow-color: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
