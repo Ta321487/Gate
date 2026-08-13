@@ -135,6 +135,12 @@ const requireConfirm = computed(() => !!resv.requireConfirm)
 const completeVerb = computed(() => resv.completeVerb || '办结')
 const archiveLabel = computed(() => archiveCopy().label || '资源')
 const userLabel = computed(() => roleLabel('user', '用户'))
+const patientLabel = computed(() => resv.patientNameLabel || resv.remarkLabel || '就诊人')
+const guestLabel = computed(() => resv.guestNameLabel || '入住人')
+const stylistShort = computed(() => {
+  const raw = (resv.stylistLabel || '偏好技师').replace(/^偏好/, '')
+  return raw || '技师'
+})
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
 const total = ref(0)
@@ -163,10 +169,10 @@ function archiveOptionLabel(it) {
 function resvDetail(row) {
   const parts = []
   if (row.plateNo) parts.push(`车牌 ${row.plateNo}`)
-  if (row.patientName) parts.push(`就诊人 ${row.patientName}${row.visitType ? '/' + row.visitType : ''}`)
+  if (row.patientName) parts.push(`${patientLabel.value} ${row.patientName}${row.visitType ? '/' + row.visitType : ''}`)
   if (row.subject) parts.push(`主题 ${row.subject}${row.partySize ? ' ·' + row.partySize + '人' : ''}`)
-  if (row.guestName) parts.push(`入住人 ${row.guestName}`)
-  if (row.preferredStylist) parts.push(`技师 ${row.preferredStylist}`)
+  if (row.guestName) parts.push(`${guestLabel.value} ${row.guestName}`)
+  if (row.preferredStylist) parts.push(`${stylistShort.value} ${row.preferredStylist}`)
   if (row.queueNo) parts.push(`排队号 ${row.queueNo}`)
   if (!parts.length && row.remark) parts.push(row.remark)
   return parts.join(' · ') || '—'

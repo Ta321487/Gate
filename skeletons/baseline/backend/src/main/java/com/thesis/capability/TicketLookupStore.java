@@ -17,6 +17,8 @@ public final class TicketLookupStore {
     private static String SITE_LABEL = "楼栋";
     private static String UNIT_LABEL = "房间";
     private static String TYPE_LABEL = "类型";
+    /** 空串表示管理端隐藏容量列；宿舍等可写「床位数」。 */
+    private static String UNIT_CAPACITY_LABEL = "容量";
 
     private TicketLookupStore() {}
 
@@ -27,12 +29,27 @@ public final class TicketLookupStore {
             String siteLabel,
             String unitLabel,
             String typeLabel) {
+        bind(siteTable, unitTable, typeTable, siteLabel, unitLabel, typeLabel, null);
+    }
+
+    public static void bind(
+            String siteTable,
+            String unitTable,
+            String typeTable,
+            String siteLabel,
+            String unitLabel,
+            String typeLabel,
+            String unitCapacityLabel) {
         SITE = blankToEmpty(siteTable);
         UNIT = blankToEmpty(unitTable);
         TYPE = blankToEmpty(typeTable);
         if (siteLabel != null && !siteLabel.isBlank()) SITE_LABEL = siteLabel.trim();
         if (unitLabel != null && !unitLabel.isBlank()) UNIT_LABEL = unitLabel.trim();
         if (typeLabel != null && !typeLabel.isBlank()) TYPE_LABEL = typeLabel.trim();
+        // null → 保持默认；空串 → 管理端不展示容量列（物业/IT 等无床位语义）
+        if (unitCapacityLabel != null) {
+            UNIT_CAPACITY_LABEL = unitCapacityLabel.trim();
+        }
     }
 
     public static boolean enabled() {
@@ -45,6 +62,8 @@ public final class TicketLookupStore {
         m.put("siteLabel", SITE_LABEL);
         m.put("unitLabel", UNIT_LABEL);
         m.put("typeLabel", TYPE_LABEL);
+        m.put("unitCapacityLabel", UNIT_CAPACITY_LABEL);
+        m.put("showUnitCapacity", UNIT_CAPACITY_LABEL != null && !UNIT_CAPACITY_LABEL.isBlank());
         return m;
     }
 

@@ -102,6 +102,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 1, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, subject, party_size) VALUES
+(1, 1, 'user', 'confirmed', '', '项目周会', 3);
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '会议室预约须知', '请按预约时段使用并按时离开；可取消释放名额。', 'admin', '行政主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='会议室预约须知');

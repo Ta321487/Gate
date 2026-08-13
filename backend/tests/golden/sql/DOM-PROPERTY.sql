@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS ticket_attach (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -113,6 +114,10 @@ INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '101'), (2, 1, '10
 INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3),
 (4, '投诉建议', 4), (5, '路灯井盖', 5), (6, '市政设施', 6);
+
+-- 主路径样例：待审工单
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', 'A栋101卫生间渗水', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '楼上渗水，请上门查看。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请填写楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业管理员'

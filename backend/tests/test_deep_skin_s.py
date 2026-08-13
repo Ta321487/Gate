@@ -15,7 +15,7 @@ SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "深皮开�
 
 class DeepSkinSMatchTests(unittest.TestCase):
     def test_all_s_ids_hit_anchor_domain(self) -> None:
-        self.assertEqual(len(S_SKIN_CASES), 51)
+        self.assertEqual(len(S_SKIN_CASES), 53)
         for sid, phrase, want, title in S_SKIN_CASES:
             with self.subTest(id=sid, title=title):
                 text = f"基于 Spring Boot 的{title}的设计与实现。主要功能：{phrase}。"

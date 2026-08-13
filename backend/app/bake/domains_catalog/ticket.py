@@ -66,6 +66,7 @@ DOMAINS: dict = {
             "lookup_site_label": "楼栋",
             "lookup_unit_label": "房间",
             "lookup_type_label": "报修类型",
+            "lookup_unit_capacity_label": "床位数",
         },
     },
     "DOM-PROPERTY": {
@@ -119,13 +120,14 @@ DOMAINS: dict = {
             "lookup_site_label": "楼栋",
             "lookup_unit_label": "房间",
             "lookup_type_label": "报修类型",
+            "lookup_unit_capacity_label": "",
         },
     },
     "DOM-IT": {
         "label": "IT 报修",
         "keywords": [
             "校园网", "网络报修", "IT运维", "机房报修",
-            "电脑报修", "网络故障", "终端报修", "IT报修", "信息中心报修",
+            "电脑报修", "网络故障", "终端报修", "IT报修", "IT 报修", "信息中心报修",
             "设备维保", "维保工单", "售后工单", "客服工单",
             "邮箱报修", "账号报修", "账号故障",
         ],
@@ -173,6 +175,7 @@ DOMAINS: dict = {
             "lookup_site_label": "区域",
             "lookup_unit_label": "终端点",
             "lookup_type_label": "故障类型",
+            "lookup_unit_capacity_label": "",
         },
     }
 }

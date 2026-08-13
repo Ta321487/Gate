@@ -97,11 +97,11 @@ async def list_projects(
     elif filter == "generating":
         items = [p for p in items if p.status == "generating"]
     elif filter == "done":
-        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离）
+        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
         items = [
             p
             for p in items
-            if p.status in ("generated", "running") and p.zip_ready
+            if p.status in ("generated", "running") and project_svc.is_zip_downloadable(p)
         ]
     elif filter == "pending":
         # 待审 = 质检可下、尚未人工标记（履约 backlog）
@@ -109,7 +109,7 @@ async def list_projects(
             p
             for p in items
             if p.status in ("generated", "running")
-            and p.zip_ready
+            and project_svc.is_zip_downloadable(p)
             and project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
             == "none"
         ]
@@ -132,7 +132,10 @@ async def list_projects(
             p
             for p in items
             if p.status == "failed"
-            or (p.status in ("generated", "running") and not p.zip_ready)
+            or (
+                p.status in ("generated", "running")
+                and not project_svc.is_zip_downloadable(p)
+            )
         ]
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
     summaries = []
@@ -141,6 +144,7 @@ async def list_projects(
         s.delivery_mark = project_svc.normalize_delivery_mark(
             getattr(p, "delivery_mark", None)
         )
+        s.download_blocked_reason = project_svc.delivery_block_reason(p)
         summaries.append(s)
     if dirty:
         await db.commit()
@@ -530,6 +534,9 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
+    if project_svc.sync_checklist_from_workspace(p):
+        await db.commit()
+        await db.refresh(p)
     blocked = project_svc.delivery_block_reason(p)
     if blocked:
         raise HTTPException(403, blocked)
@@ -622,6 +629,49 @@ async def get_apis(project_id: str, db: AsyncSession = Depends(get_db)):
     if not inv:
         raise HTTPException(404, "未找到 Controller")
     return inv
+
+
+@router.post("/{project_id}/apis/smoke", summary="学生端 API 全量冒烟")
+async def smoke_apis(project_id: str, db: AsyncSession = Depends(get_db)):
+    """探测已启动预览上的全部 inventory 路径 + 主流程业务链；不启停进程。"""
+    from app.services.student_api_smoke import FactorySmokeError, run_student_api_smoke
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    be_st, fe_st, dirty = project_svc.sync_project_runtime(p)
+    if dirty:
+        await db.commit()
+        await db.refresh(p)
+    s = get_settings()
+    be_url = s.public_url(p.backend_port) if p.backend_port else None
+    fe_url = s.public_url(p.frontend_port) if p.frontend_port else None
+    if not be_url or not fe_url:
+        raise HTTPException(
+            409,
+            detail={
+                "message": "请先到运行页启动前后端预览",
+                "error_source": "factory",
+                "need_runtime": True,
+                "backend_status": be_st,
+                "frontend_status": fe_st,
+            },
+        )
+    try:
+        return await asyncio.to_thread(
+            run_student_api_smoke,
+            project_id=project_id,
+            workspace=ws,
+            spec=p.spec if isinstance(p.spec, dict) else None,
+            backend_url=be_url,
+            frontend_url=fe_url,
+            backend_status=be_st,
+            frontend_status=fe_st,
+        )
+    except FactorySmokeError as e:
+        detail = {"message": e.detail, "error_source": "factory", **(e.payload or {})}
+        raise HTTPException(409, detail=detail) from e
 
 
 @router.get("/{project_id}/schema/er.svg", summary="下载 E-R 图 SVG")

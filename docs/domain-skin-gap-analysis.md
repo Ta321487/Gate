@@ -61,6 +61,12 @@
 | M-14 | 宿舍报修 = 分床调宿 | DORM vs BED | 叙事分立 | 已齐 |
 | M-15 | 成绩更正 = 综测/评教 | GRADE vs MORAL/EVAL | 叙事分立 | 已齐 |
 | M-16 | 旅行社线路 = 酒店/社团/拼车 | TOUR vs HOTEL/ACTIVITY/CARPOOL/TRIP | match_hint + `test_tour_p31` | 已齐 |
+| M-17 | 家政上门预约 = 物业报修工单 | SALON vs PROPERTY | match_hint + `test_confusion_pairs` M-17a/b | 已齐 |
+| M-18 | 设备巡检打卡 = IT 报修工单 | EVENT vs IT | match_hint + `test_confusion_pairs` M-18a/b | 已齐 |
+| M-19 | 景区演出领票 = 影院选座购票 | ACTIVITY vs CINEMA | match_hint + `test_confusion_pairs` M-19a/b | 已齐 |
+| M-20 | 校园跑腿代买 = 驿站取件核销 | SHOP vs PARCEL | match_hint + `test_confusion_pairs` M-20a/b | 已齐 |
+| M-21 | 充电桩车位预约 = 车辆通行证备案 | PARKING vs CARPASS | match_hint + `test_confusion_pairs` M-21a/b | 已齐 |
+| M-22 | 点播课视频库 = 公选课选课；表白墙 = 院刊资讯 | MEDIA vs COURSE；FORUM vs BLOG | match_hint + `test_confusion_pairs` M-22a～d | 已齐 |
 
 ---
 
@@ -113,6 +119,7 @@
 | S-34 | 献血/开放日报名 | ACTIVITY | 同上 | 词表 | 已齐 |
 | S-35 | 宠物领养（认领壳） | LOST | 启事 → 领养申请 → 审 | 已有领养皮，补样例与 QA 防医院误落 | 已齐 |
 | S-36 | 捐赠物资认领 | LOST 或 ASSET | 名录 → 认领申请 → 审 | 认领皮文案 | 已齐 |
+| S-37 | 公选课选课（学分名额） | COURSE | 浏览 → 选课 → 审占名额 | 与活动报名分流；深皮样例 | 已齐 |
 | — | 旅行社线路/跟团报名（非校园活动） | **DOM-TOUR**（P-31） | 线路 → 报名 → 审占名额 → 出团 | 具名预设，勿吞进 ACTIVITY | 已齐 |
 ### 3.5 预约族
 
@@ -129,6 +136,7 @@
 | S-48 | 游泳馆/羽毛球/琴房/创客工位 | MEETING | 已有场地向，补细分种子 | 分类与标题 | 已齐 |
 | S-49 | 充电桩/共享车位长尾 | PARKING | 车位时段预约 | 词表 | 已齐 |
 | S-50 | 探视预约（医院/养老） | HOSPITAL 或 MEETING | 约时段 | 探视皮 | 已齐 |
+| S-51 | 乡村民宿/客房预订 | HOTEL | 选房型 → 预订订单 → 入住离店 | 民宿叠层种子；≠会议室 | 已齐 |
 ### 3.6 交易族
 
 | ID | 题型说法 | 挂靠 | 主流程（演示级） | 须补内容 | 状态 |
@@ -295,15 +303,15 @@
 
 | 落点 | ID 前缀 | 条数 | 已齐 | 部分有 | 待补 |
 |------|---------|------|------|--------|------|
-| 易混对 | M-* | 15 | 15 | 0 | 0 |
-| 深皮 | S-* | 51 | 51 | 0 | 0 |
+| 易混对 | M-* | 22 | 22 | 0 | 0 |
+| 深皮 | S-* | 53 | 53 | 0 | 0 |
 | 新预设 | P-* | 30 | 30 | 0 | 0 |
 | 新能力 | C-* | 18 | 18 | 0 | 0 |
 | 交叉加固 | X-* | 4 | 4 | 0 | 0 |
 | 匹配 QA | Q-* | 6 | 6 | 0 | 0 |
 
 实现时只改「状态」列与本表计数，不删行。若发现新题型，**追加 ID**，不替换既有行。
-清单计数回写：2026-07-27。组审计另计（见 §10）；P-01～P-08 于 2026-08-03 复审已齐。
+清单计数回写：2026-07-27；M-17/M-18 于 2026-08-12 追加；M-19 于 2026-08-12 追加；S-37 于 2026-08-12 追加；M-21 于 2026-08-12 追加；S-51 于 2026-08-12 追加；M-22 于 2026-08-12 追加。组审计另计（见 §10）；P-01～P-08 于 2026-08-03 复审已齐；报修/工单、报名、交易、预约、内容组于 2026-08-12 收口。
 
 ---
 
@@ -333,7 +341,7 @@
 
 > **组结论（2026-08-04）**：**已收口**。HANDOFF 组 A + 收口簇 `DOM-CINEMA` 共 **47 域**：H23（时间/下架/糊栏）+ 档案列契约（默认 preset 标签 = 物理列 ER）工厂侧齐，回归 `test_borrow_archive_label_align`。  
 > 字段/ER/常见好做类问题可按毕设成品口径放心；抽检 bake 仅例行冒烟，非本轮已知洞。  
-> **下一组**：报修 / 工单（DORM / PROPERTY / IT）。
+> **下一组（当时）**：报修 / 工单 → 已于 2026-08-12 收口，见下节。
 
 | 批次 | 域 | 结论 | 日期 |
 |------|-----|------|------|
@@ -343,7 +351,7 @@
 | H23 连带 | CHECKIN / FLEET / FITOUT / INSTRUMENT / BED / OA须知 | 查寝按 **end** 下架；糊栏分列/种子；SQL 须知跟 preset | 2026-08-04 |
 | H23 非时间 | SEAL/CERT/PROMO/ACAD/TRIP/EXPENSE | 档案列契约跟 preset；SEAL 种子去糊合 | 2026-08-04 |
 | H23 一致 | **47 域全组** | preset↔物理列 ER；BED `layout_note`≠CHECKIN `room_note`；VISITOR/CARPASS 脱离 GENERIC subtitle | 2026-08-04 |
-| **收口** | 组 A + CINEMA | **已齐**（工厂侧）；允许开报修组 | 2026-08-04 |
+| **收口** | 组 A + CINEMA | **已齐**（工厂侧） | 2026-08-04 |
 
 **H23 / 列契约要点（收口备忘）**
 
@@ -357,5 +365,76 @@
 | FLEET / FITOUT / OA 六域 | 列契约 + 种子/须知单概念 |
 | CRM～PARCEL、学工、互选、访客/通行证、长尾、能力四域 | 档案列语义化；默认 schema↔ER |
 | LIBRARY / EQUIP / ASSET / TIMEBANK 等 | 本轮无同级洞 |
+
+### 交付审计进度（报修/工单组）
+
+> **组结论（2026-08-12）**：**已收口**。`DOM-DORM` / `DOM-PROPERTY` / `DOM-IT`（含深皮 S-21～25）：审计黄灯已清；工厂侧可按工单主路径放心出包。  
+> **下一组（当时）**：报名 → 已于同日收口，见下节。
+
+| 批次 | 项 | 结论 | 日期 |
+|------|-----|------|------|
+| H20 | Lookup 单元列「容量」宿舍床位壳残留 | PROPERTY/IT 隐藏容量列；DORM 标「床位数」（`lookup_unit_capacity_label`） | 2026-08-12 |
+| 种子 | 三域无 pending 工单 | 模板 + scene overlay 各补待审单；golden 对齐 | 2026-08-12 |
+| 易混 | PROPERTY↔SALON、IT↔EVENT | `test_confusion_pairs` M-17a/b、M-18a/b | 2026-08-12 |
+| 深皮样例 | S-21～25 工厂套话 | 改真实开题文体（实习/现场叙事） | 2026-08-12 |
+| **收口** | DORM / PROPERTY / IT | **已齐**（工厂侧） | 2026-08-12 |
+
+### 交付审计进度（报名组）
+
+> **组结论（2026-08-12）**：**已收口**。`DOM-ACTIVITY` / `DOM-LOST` / `DOM-COURSE` / `DOM-TOUR`（深皮 S-30～37、P-31）：审计黄灯已清。  
+> **下一组（当时）**：交易 → 已于同日收口，见下节。
+
+| 批次 | 项 | 结论 | 日期 |
+|------|-----|------|------|
+| H23 | TOUR 无报名截止；满员 stage 不跟 stock | 补 `apply_deadline_at` + schema 字段；`syncOccupyStageWithStock` 开放报名↔满员 | 2026-08-12 |
+| H21 | TOUR「确认出团/完结」与占名额/回补穿帮 | 审=确认报名、return=取消报名；已出团/下架拦报名并同步 status | 2026-08-12 |
+| H20 | TOUR 档案列落 GENERIC | `ARCHIVE_COLUMN_SPEC`→`planner`/`highlight_note`；ER 词表对齐 | 2026-08-12 |
+| 易混 | ACTIVITY 领票↔CINEMA 选座 | `test_confusion_pairs` M-19a/b；Help 补一句 | 2026-08-12 |
+| 深皮样例 | S-30～36 工厂套话；COURSE 无深皮 | 改文体；补 S-37 公选课选课 | 2026-08-12 |
+| 身份档 | LOST 捐赠复用社区 profile | `_LOST_DONATE`（认领用途等）+ 种子对齐 | 2026-08-12 |
+| **收口** | ACTIVITY / LOST / COURSE / TOUR | **已齐**（工厂侧） | 2026-08-12 |
+
+### 交付审计进度（交易组）
+
+> **组结论（2026-08-12）**：**已收口**。`DOM-SHOP` / `DOM-FOOD`（深皮 S-60～65）：pending 订单种子、行业货皮、易混与样例文体已清。  
+> **下一组（当时）**：预约 → 已于同日收口，见下节。
+
+| 批次 | 项 | 结论 | 日期 |
+|------|-----|------|------|
+| 种子 | 无 pending 订单 | SHOP/FOOD 模板 + scene overlay 各补待确认/待出餐单 | 2026-08-12 |
+| 货皮 | 文印/鲜花/跑腿落「基础款」或二手键盘 | `shop_product_kind` 分 print/flowers/errand/points/campus/retail + 专用种子 | 2026-08-12 |
+| 易混 | 跑腿↔驿站 | M-20a/b；Help 补一句 | 2026-08-12 |
+| 深皮样例 | S-60～65 工厂套话 | 改真实开题文体 | 2026-08-12 |
+| H21 | FOOD 确认按钮通用 | schema verbs「接单」+ OrdersAdmin `confirmVerb` | 2026-08-12 |
+| **收口** | SHOP / FOOD | **已齐**（工厂侧）；允许开预约组 | 2026-08-12 |
+
+### 交付审计进度（预约组）
+
+> **组结论（2026-08-12）**：**已收口**。`DOM-MEETING` / `DOM-HOSPITAL` / `DOM-SALON` / `DOM-PARKING` / `DOM-HOTEL`（深皮 S-40～51）：行业种子、预约演示行、表单皮与易混已清。  
+> **下一组（当时）**：内容 → 已于同日收口，见下节。
+
+| 批次 | 项 | 结论 | 日期 |
+|------|-----|------|------|
+| 种子 | 窗口/探视/咨询等仍医生或剪发皮；无 reservation 行 | `reserve_scene_overlays` + 模板/既有 overlay 各补 confirmed 预约占坑 | 2026-08-12 |
+| H20 | SlotBook/MyReservations 写死「就诊人」「偏好技师」 | schema `patientNameLabel`/`stylistLabel` 等驱动前端 | 2026-08-12 |
+| 身份档 | window/visit 仍就诊卡 profile | `_HOSPITAL_WINDOW`/`_VISIT`/`_VACCINE`；er_zh 补 fee_yuan 等 | 2026-08-12 |
+| 易混 | 充电车位↔通行证 | M-21a/b；Help 补一句 | 2026-08-12 |
+| 深皮样例 | S-40～50 工厂套话 | 改真实开题文体 | 2026-08-12 |
+| HOTEL | 邻域未加厚 | 预约+订单种子、民宿叠层、S-51、入住人表单皮 | 2026-08-12 |
+| **收口** | MEETING / HOSPITAL / SALON / PARKING / HOTEL | **已齐**（工厂侧） | 2026-08-12 |
+
+### 交付审计进度（内容组）
+
+> **组结论（2026-08-12）**：**已收口**。`DOM-BLOG` / `DOM-FORUM` / `DOM-MEDIA` / `DOM-MUSIC`（深皮 S-70～74）：行业种子、表白墙版块、易混与样例文体已清。  
+> **下一组**：按清单另开。
+
+| 批次 | 项 | 结论 | 日期 |
+|------|-----|------|------|
+| 种子/场景 | 记者站/点播课/点歌台落商业错档 | `blog/media/music/forum_product_kind` + `content_scene_overlays`；扩展校园 hint | 2026-08-12 |
+| 表白墙 | 版块仍学习交流 | `_FORUM_WALL`；社区档补 pending 回复 | 2026-08-12 |
+| 易混 | 点播≠选课；表白墙≠院刊 | M-22a～d；Help 补一句 | 2026-08-12 |
+| 深皮样例 | S-70～74 工厂套话 | 改真实开题文体 | 2026-08-12 |
+| H01 | er_zh 缺 play_url 等 | 补 `cast_info`/`play_url`/`body_html`/`artist` | 2026-08-12 |
+| **收口** | BLOG / FORUM / MEDIA / MUSIC | **已齐**（工厂侧） | 2026-08-12 |
 
 防坑纪律（错域冒充、改开题、场景两套 hint、「我的」=全站目录等）见交付文红灯表；本文不再重复长章。

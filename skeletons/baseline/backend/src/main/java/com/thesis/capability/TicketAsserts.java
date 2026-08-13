@@ -59,6 +59,17 @@ final class TicketAsserts {
         if ("unavailable".equals(st)) {
             throw new IllegalStateException("该对象已下架或不可申请");
         }
+        // 线路报名等：档案 stage 已关闭时禁止再报（与 status 双保险）
+        Object stageObj = item.get("stage");
+        if (stageObj != null) {
+            String stage = String.valueOf(stageObj).trim();
+            if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
+                throw new IllegalStateException(
+                        "满员".equals(stage) ? "该线路已满员，不可再报名"
+                                : ("已出团".equals(stage) ? "该线路已出团，不可再报名"
+                                : "该线路已下架，不可再报名"));
+            }
+        }
         if (!ArchiveStore.hasStartAt() && !ArchiveStore.hasEndAt()) return;
         if (ArchiveStore.isScheduleClosed(item)) {
             throw new IllegalStateException(

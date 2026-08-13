@@ -81,13 +81,18 @@ MEETING_CAMPUS_NOUNS = (
     "实训室",
 )
 LOST_ADOPT_HINTS = ("领养", "待领养", "领养站")
+LOST_DONATE_HINTS = ("捐赠物资", "物资认领", "捐赠认领", "捐赠名录")
 IT_ENTERPRISE_HINTS = ("企业", "公司", "办公", "员工", "运维工单")
 FOOD_CAMPUS_HINTS = ("食堂", "校园", "档口", "学子", "高校", "学校")
 # 点餐只分两档：canteen（食堂/校内）| restaurant（社会餐饮，不按菜系开皮）
 FOOD_RESTAURANT_TITLE_HINTS = ("餐厅", "外卖", "餐饮", "饭店", "美食", "小吃", "快餐", "茶饮")
 # 商城 campus 须有校园口径；裸「二手」≠校园（社区二手走零售档，不按行业开皮）
 SHOP_CAMPUS_HINTS = ("校园", "校内", "学校", "高校")
-# 商城只分两档：campus（校内二手）| retail（社会售卖，含鲜花/数码/同城二手等）
+SHOP_PRINT_HINTS = ("文印", "打印店", "打印社", "复印", "装订")
+SHOP_FLOWER_HINTS = ("鲜花", "花店", "花束", "特产", "农资")
+SHOP_ERRAND_HINTS = ("跑腿", "代买", "代购", "代取")
+SHOP_POINTS_HINTS = ("积分兑换", "积分商城", "积分兑换商城")
+# 商城：campus 二手成色档 + 行业货皮 + retail 兜底
 SHOP_RETAIL_TITLE_HINTS = ("销售", "商城", "电商", "网店", "店铺", "零售", "售卖", "购物")
 PARKING_COMMERCIAL_TITLE_HINTS = ("商场", "园区", "写字楼", "小区", "商业", "地下车库", "停车场")
 HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
@@ -317,10 +322,52 @@ INTERN_ENTERPRISE_HINTS = (
 )
 # 实验室准入：校园默认；厂区/安环走 enterprise
 LABSAFE_ENTERPRISE_HINTS = ("厂区", "安环", "企业实验室", "EHS准入", "产线实验室", "车间实验室")
+
+# OA 申请 / 车证：企业·园区 vs 校园（身份与 profile 同 scene_for）
+OA_ENTERPRISE_HINTS = (
+    "企业", "公司", "单位", "集团", "机关", "事业单位",
+    "员工", "职工", "人事", "行政办", "综合办",
+)
+OA_CAMPUS_HINTS = ("高校", "校园", "学校", "学院", "师生", "教职工", "学工")
+FITOUT_COMMUNITY_HINTS = ("小区", "业主", "物业", "社区装修", "入户装修")
+CARPASS_ENTERPRISE_HINTS = (
+    "园区", "产业园", "厂区", "企业", "公司", "办公区", "写字楼",
+)
+CARPASS_CAMPUS_HINTS = ("高校", "校园", "学校", "校门", "进校", "校内")
 # 物业：小区住户默认；校园物业/公寓走 campus
 PROPERTY_CAMPUS_HINTS = ("校园物业", "学生公寓", "高校物业", "宿舍物业", "校园报修", "学校物业")
 # 内容域：商业点播默认；校园媒资/院刊走 campus
-CONTENT_CAMPUS_HINTS = ("校园", "高校", "学校", "院系", "学院", "学工", "大学生")
+CONTENT_CAMPUS_HINTS = (
+    "校园",
+    "高校",
+    "学校",
+    "院系",
+    "学院",
+    "学工",
+    "大学生",
+    "记者站",
+    "广播稿",
+    "广播台",
+    "院刊",
+    "点播课",
+    "课程视频",
+    "点歌台",
+    "点歌",
+    "表白墙",
+    "树洞",
+)
+BLOG_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("记者站", "广播稿", "广播台", "校媒稿件"), "press"),
+]
+MEDIA_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("点播课", "课程视频", "教学视频库", "微课视频", "课程视频库"), "coursevod"),
+]
+MUSIC_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("点歌台", "点歌"), "karaoke"),
+]
+FORUM_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("表白墙", "树洞", "匿名墙"), "wall"),
+]
 # 论坛：校园 BBS 默认；兴趣/小区社区走 community（有校园词仍 campus）
 FORUM_COMMUNITY_HINTS = (
     "兴趣社区",
@@ -338,6 +385,7 @@ Scene = Literal[
     "community",
     "commercial",
     "adopt",
+    "donate",
     "institution",
     "default",
 ]
@@ -640,6 +688,8 @@ def scene_it_parts(title: str, body: str = "") -> Scene:
 def scene_lost(text: str) -> Scene:
     if any(k in text for k in LOST_ADOPT_HINTS):
         return "adopt"
+    if any(k in text for k in LOST_DONATE_HINTS):
+        return "donate"
     if is_campus_general(text):
         return "campus"
     return "community"
@@ -651,11 +701,32 @@ def scene_lost_parts(title: str, body: str = "") -> Scene:
     b = (body or "").strip()
     if scan_has(t, LOST_ADOPT_HINTS):
         return "adopt"
+    if scan_has(t, LOST_DONATE_HINTS) or (
+        scan_has(t, ("捐赠",)) and scan_has(t, ("认领", "物资"))
+    ):
+        return "donate"
     if scan_has(t, ("失物", "招领", "寻物")):
         return "campus" if is_campus_general(t) else "community"
     if scan_has(b, LOST_ADOPT_HINTS) and not scan_has(t, ("失物", "招领", "寻物", "校园", "高校")):
         return "adopt"
+    if scan_has(b, LOST_DONATE_HINTS) and not scan_has(t, ("失物", "招领", "寻物", "领养")):
+        return "donate"
     return scene_lost(copy_scan_text(t, b))
+
+
+# 活动报名深皮：default | cert | ticket | blood | camp
+ACTIVITY_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("证书报考", "培训班", "四六级", "考证报名", "证书培训"), "cert"),
+    (("票务", "领票", "演出票", "景区票", "门票报名", "演出票务"), "ticket"),
+    (("献血", "开放日"), "blood"),
+    (("研学报名", "夏令营", "赛事报名", "大赛报名", "研学夏令营"), "camp"),
+]
+
+
+def activity_product_kind(title: str, body: str = "") -> str:
+    """活动域产品皮；题名优先。"""
+    picked = title_then_body_hit(title, body, ACTIVITY_KIND_RULES)
+    return str(picked) if picked else "default"
 
 
 def scene_food(text: str) -> Scene:
@@ -694,19 +765,33 @@ def scene_shop(text: str) -> Scene:
 
 
 def shop_product_kind(title: str, body: str = "") -> str:
-    """仅 ``campus`` | ``retail``。
+    """``print`` | ``flowers`` | ``errand`` | ``points`` | ``campus`` | ``retail``。
 
-    不按鲜花/数码/服装开行业皮；社会售卖共用零售档。
-    题名无校园口径时（含社区二手、鲜花销售），正文「校园二手」对比句不得洗成 campus。
+    行业货皮跟题名优先；校园二手成色仅 ``campus``；其余社会售卖 ``retail``。
+    题名无校园口径时，正文「校园二手」对比句不得洗成 campus。
     """
     t = (title or "").strip()
     b = (body or "").strip()
-    if scan_has(t, SHOP_CAMPUS_HINTS):
-        return "campus"
+    for hints, kind in (
+        (SHOP_ERRAND_HINTS, "errand"),
+        (SHOP_PRINT_HINTS, "print"),
+        (SHOP_FLOWER_HINTS, "flowers"),
+        (SHOP_POINTS_HINTS, "points"),
+        (SHOP_CAMPUS_HINTS, "campus"),
+    ):
+        if scan_has(t, hints):
+            return kind
     if t:
         return "retail"
-    if scan_has(b, SHOP_CAMPUS_HINTS):
-        return "campus"
+    for hints, kind in (
+        (SHOP_ERRAND_HINTS, "errand"),
+        (SHOP_PRINT_HINTS, "print"),
+        (SHOP_FLOWER_HINTS, "flowers"),
+        (SHOP_POINTS_HINTS, "points"),
+        (SHOP_CAMPUS_HINTS, "campus"),
+    ):
+        if scan_has(b, hints):
+            return kind
     return "retail"
 
 
@@ -857,8 +942,32 @@ def meeting_product_kind(title: str, body: str = "") -> str:
     return str(kind or "room")
 
 
+PARKING_CHARGE_HINTS = ("充电桩", "充电车位", "新能源充电", "共享充电", "充电站")
+
+
+def parking_product_kind(title: str, body: str = "") -> str:
+    """车位 / 充电桩：与 ``_parking_schema``、充电叠层同一扫词。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, PARKING_CHARGE_HINTS) or scan_has(b, PARKING_CHARGE_HINTS):
+        return "charge"
+    return "space"
+
+
+HOTEL_HOMESTAY_HINTS = ("民宿", "客栈", "农家乐", "乡村民宿")
+
+
+def hotel_product_kind(title: str, body: str = "") -> str:
+    """宾馆 / 民宿：与 ``_hotel_schema``、民宿叠层同一扫词。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, HOTEL_HOMESTAY_HINTS) or scan_has(b, HOTEL_HOMESTAY_HINTS):
+        return "homestay"
+    return "hotel"
+
+
 def lost_product_kind(title: str, body: str = "") -> str:
-    """失物 / 领养：复用 ``scene_lost_parts``。"""
+    """失物 / 领养 / 捐赠认领：复用 ``scene_lost_parts``。"""
     return scene_lost_parts(title, body)
 
 
@@ -870,8 +979,22 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return salon_product_kind(title, body)
     if domain == "DOM-LOST":
         return lost_product_kind(title, body)
+    if domain == "DOM-ACTIVITY":
+        return activity_product_kind(title, body)
     if domain == "DOM-MEETING":
         return meeting_product_kind(title, body)
+    if domain == "DOM-PARKING":
+        return parking_product_kind(title, body)
+    if domain == "DOM-HOTEL":
+        return hotel_product_kind(title, body)
+    if domain == "DOM-BLOG":
+        return blog_product_kind(title, body)
+    if domain == "DOM-MEDIA":
+        return media_product_kind(title, body)
+    if domain == "DOM-MUSIC":
+        return music_product_kind(title, body)
+    if domain == "DOM-FORUM":
+        return forum_product_kind(title, body)
     if domain == "DOM-SHOP":
         return shop_product_kind(title, body)
     if domain == "DOM-FOOD":
@@ -1018,6 +1141,46 @@ def scene_content_parts(title: str, body: str = "") -> Scene:
     return "commercial"
 
 
+def blog_product_kind(title: str, body: str = "") -> str:
+    """院刊校园 / 记者站稿件 / 个人博客。"""
+    kind = title_then_body_hit(title, body, BLOG_KIND_RULES)
+    if kind:
+        return str(kind)
+    if scene_content_parts(title, body) == "campus":
+        return "campus"
+    return "personal"
+
+
+def media_product_kind(title: str, body: str = "") -> str:
+    """点播课 / 校园媒资 / 商业影视综。"""
+    kind = title_then_body_hit(title, body, MEDIA_KIND_RULES)
+    if kind:
+        return str(kind)
+    if scene_content_parts(title, body) == "campus":
+        return "campus"
+    return "commercial"
+
+
+def music_product_kind(title: str, body: str = "") -> str:
+    """点歌台 / 校园曲库 / 商业曲库。"""
+    kind = title_then_body_hit(title, body, MUSIC_KIND_RULES)
+    if kind:
+        return str(kind)
+    if scene_content_parts(title, body) == "campus":
+        return "campus"
+    return "commercial"
+
+
+def forum_product_kind(title: str, body: str = "") -> str:
+    """表白墙 / 社区论坛 / 校园论坛。"""
+    kind = title_then_body_hit(title, body, FORUM_KIND_RULES)
+    if kind:
+        return str(kind)
+    if scene_forum_parts(title, body) == "community":
+        return "community"
+    return "campus"
+
+
 def scene_forum(text: str) -> Scene:
     """默认校园论坛；开题写清兴趣/小区社区且无校园口径时 community。"""
     if is_campus_general(text) or scan_has(text, CONTENT_CAMPUS_HINTS):
@@ -1090,6 +1253,71 @@ def scene_timebank_parts(title: str, body: str = "") -> Scene:
     return scene_timebank(joined)
 
 
+def scene_oa(text: str) -> Scene:
+    """用章/用车/报销等：默认校园办事；开题写清企业/公司走 enterprise。"""
+    if scan_has(text, OA_ENTERPRISE_HINTS) and not scan_has(text, OA_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(text, OA_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    if scan_has(text, OA_ENTERPRISE_HINTS):
+        return "enterprise"
+    return "campus"
+
+
+def scene_oa_parts(title: str, body: str = "") -> Scene:
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, OA_ENTERPRISE_HINTS) and not scan_has(t, OA_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(t, OA_CAMPUS_HINTS) or is_campus_general(t):
+        return "campus"
+    return scene_oa(copy_scan_text(t, b))
+
+
+def scene_fitout(text: str) -> Scene:
+    """装修备案：小区业主 community；企业/校园各走对应档。"""
+    if scan_has(text, FITOUT_COMMUNITY_HINTS) or scan_has(text, COMMUNITY_HINTS):
+        return "community"
+    if scan_has(text, OA_ENTERPRISE_HINTS) and not scan_has(text, OA_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(text, OA_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    return "community"
+
+
+def scene_fitout_parts(title: str, body: str = "") -> Scene:
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, FITOUT_COMMUNITY_HINTS) or scan_has(t, ("小区", "业主")):
+        return "community"
+    if scan_has(t, OA_ENTERPRISE_HINTS) and not scan_has(t, OA_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(t, OA_CAMPUS_HINTS) or is_campus_general(t):
+        return "campus"
+    return scene_fitout(copy_scan_text(t, b))
+
+
+def scene_carpass(text: str) -> Scene:
+    """车辆通行证：校园进校 / 园区企业。"""
+    if scan_has(text, CARPASS_ENTERPRISE_HINTS) and not scan_has(text, CARPASS_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(text, CARPASS_CAMPUS_HINTS) or is_campus_general(text):
+        return "campus"
+    if scan_has(text, CARPASS_ENTERPRISE_HINTS):
+        return "enterprise"
+    return "campus"
+
+
+def scene_carpass_parts(title: str, body: str = "") -> Scene:
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, CARPASS_ENTERPRISE_HINTS) and not scan_has(t, CARPASS_CAMPUS_HINTS):
+        return "enterprise"
+    if scan_has(t, CARPASS_CAMPUS_HINTS) or is_campus_general(t):
+        return "campus"
+    return scene_carpass(copy_scan_text(t, b))
+
+
 def scene_for(
     domain: str,
     title: str = "",
@@ -1149,4 +1377,19 @@ def scene_for(
         return scene_tour_parts(title, proposal_text)
     if domain == "DOM-TIMEBANK":
         return scene_timebank_parts(title, proposal_text)
+    if domain in {
+        "DOM-SEAL",
+        "DOM-FLEET",
+        "DOM-CERT",
+        "DOM-PROMO",
+        "DOM-TRIP",
+        "DOM-EXPENSE",
+    }:
+        return scene_oa_parts(title, proposal_text)
+    if domain == "DOM-FITOUT":
+        return scene_fitout_parts(title, proposal_text)
+    if domain == "DOM-CARPASS":
+        return scene_carpass_parts(title, proposal_text)
+    if domain == "DOM-ACAD":
+        return "campus"
     return "default"

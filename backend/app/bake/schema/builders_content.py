@@ -14,77 +14,105 @@ from app.bake.schema.shells import (
 )
 
 def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """影视点播：商业默认；校园媒资走 campus。"""
-    from app.bake.scene_scan import scene_content_parts
+    """影视点播：商业默认；校园媒资 / 点播课分档。"""
+    from app.bake.scene_scan import media_product_kind
 
-    campus = scene_content_parts(title, proposal_text) == "campus"
+    kind = media_product_kind(title, proposal_text)
+    if kind == "coursevod":
+        noun, plural, author_lab, cat_lab = "课程视频", "课程库", "主讲教师", "课程类型"
+        brow, user, admin = "点播课", "学员", "课程视频库主管（总管）"
+        lead = "验证码登录；浏览点播课视频、在线播放，收藏想看的课程（非选课占名额）。"
+        notice = "课程视频仅供学习点播；非选课占名额。请勿传播未授权内容。"
+        banner_lead = "专业课、通识课、实验演示分类浏览，点击即可播放。"
+        menu_u, fav_lead = "课程检索", "收藏想看的课程视频，方便回看。"
+    elif kind == "campus":
+        noun, plural, author_lab, cat_lab = "影片", "片单", "导演/主演", "分类"
+        brow, user, admin = "校园媒资", "师生", "媒资主管（总管）"
+        lead = "验证码登录；浏览校园片单、在线播放，收藏想看的影视综。"
+        notice = "片源仅供学习使用；请文明观影，勿传播未授权内容。"
+        banner_lead = "教学片、纪录片、活动回放分类浏览，点击即可播放。"
+        menu_u, fav_lead = "片单检索", "收藏想看的影视综，方便下次回看。"
+    else:
+        noun, plural, author_lab, cat_lab = "影片", "片单", "导演/主演", "分类"
+        brow, user, admin = "影视点播", "观众", "内容总监（总管）"
+        lead = "验证码登录；浏览片单、在线播放，收藏想看的影视综。"
+        notice = "片源仅供学习使用；请文明观影，勿传播未授权内容。"
+        banner_lead = "电影、电视剧、综艺分类浏览，点击即可播放。"
+        menu_u, fav_lead = "片单检索", "收藏想看的影视综，方便下次回看。"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-MEDIA",
             user_role_id="user",
-            user_label="师生" if campus else "观众",
-            admin_label="媒资主管（总管）" if campus else "内容总监（总管）",
+            user_label=user,
+            admin_label=admin,
             subadmin_label="运营编辑",
             archive_key="media",
-            archive_label="影片",
-            archive_plural="片单",
+            archive_label=noun,
+            archive_plural=plural,
             archive_fields=[
-                {"key": "title", "label": "片名", "type": "string"},
-                {"key": "author", "label": "导演/主演", "type": "string"},
+                {"key": "title", "label": "片名" if kind != "coursevod" else "课程名称", "type": "string"},
+                {"key": "author", "label": author_lab, "type": "string"},
                 {"key": "isbn", "label": "播放链接", "type": "url"},
                 {"key": "durationSec", "label": "时长(秒)", "type": "number"},
-                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "category", "label": cat_lab, "type": "select"},
                 {"key": "stock", "label": "可点播", "type": "number"},
             ],
-            archive_menu_admin="片单管理",
-            archive_menu_user="片单检索",
+            archive_menu_admin=f"{plural}管理" if kind == "coursevod" else "片单管理",
+            archive_menu_user=menu_u,
             users_menu="用户管理",
-            auth_eyebrow="校园媒资" if campus else "影视点播",
-            auth_lead=(
-                "验证码登录；浏览校园片单、在线播放，收藏想看的影视综。"
-                if campus
-                else "验证码登录；浏览片单、在线播放，收藏想看的影视综。"
-            ),
-            auth_points=["验证码登录", "片单检索与播放", "收藏想看"],
-            register_hint="注册后可浏览片单并收藏",
-            notice_title="观影须知",
-            notice_body="片源仅供学习使用；请文明观影，勿传播未授权内容。",
+            auth_eyebrow=brow,
+            auth_lead=lead,
+            auth_points=["验证码登录", f"{'课程' if kind == 'coursevod' else '片单'}检索与播放", "收藏想看"],
+            register_hint="注册后可浏览并收藏",
+            notice_title="点播须知" if kind == "coursevod" else "观影须知",
+            notice_body=notice,
             notice_page_title="平台公告",
-            notice_page_lead="上新片单、维护窗口与观影须知，点击条目阅读全文。",
-            favorites_page_lead="收藏想看的影视综，方便下次回看。",
+            notice_page_lead="上新与维护通知，点击条目阅读全文。",
+            favorites_page_lead=fav_lead,
             play_url_field="isbn",
             stock_display="toggle",
             soft_delete=True,
         ),
         [
-            {
-                "title": "热播片单",
-                "lead": (
-                    "教学片、纪录片、活动回放分类浏览，点击即可播放。"
-                    if campus
-                    else "电影、电视剧、综艺分类浏览，点击即可播放。"
-                ),
-            },
-            {"title": "收藏想看", "lead": "感兴趣的内容一键收藏，方便下次回看。"},
+            {"title": "热播片单" if kind != "coursevod" else "热门课程", "lead": banner_lead},
+            {"title": "收藏想看", "lead": fav_lead},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
-            {"title": "猜你喜欢", "lead": "根据浏览偏好推荐片单。"},
+            {"title": "猜你喜欢", "lead": "根据浏览偏好推荐内容。"},
             {"title": "分类点播", "lead": "按类型快速找到想看的内容。"},
         ],
     )
 
 def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """在线音乐：商业默认；校园曲库走 campus。"""
-    from app.bake.scene_scan import scene_content_parts
+    """在线音乐：商业默认；校园曲库 / 点歌台分档。"""
+    from app.bake.scene_scan import music_product_kind
 
-    campus = scene_content_parts(title, proposal_text) == "campus"
+    kind = music_product_kind(title, proposal_text)
+    if kind == "karaoke":
+        brow, user, admin = "点歌台", "听众", "点歌台主管（总管）"
+        lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲（非直播）。"
+        notice = "曲库供点歌试听；非直播连麦。请尊重版权。"
+        banner_lead = "热门点歌、校园原创、合唱分类浏览。"
+        cat_lab = "歌单分区"
+    elif kind == "campus":
+        brow, user, admin = "校园曲库", "师生", "曲库主管（总管）"
+        lead = "验证码登录；浏览校园曲库、在线试听，收藏喜欢的歌曲。"
+        notice = "曲源仅供学习使用；请尊重版权，勿传播未授权内容。"
+        banner_lead = "合唱、器乐、校园原创分类浏览。"
+        cat_lab = "曲风"
+    else:
+        brow, user, admin = "在线音乐", "听众", "曲库主管（总管）"
+        lead = "验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。"
+        notice = "曲源仅供学习使用；请尊重版权，勿传播未授权内容。"
+        banner_lead = "流行、摇滚等曲风分类浏览。"
+        cat_lab = "曲风"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-MUSIC",
             user_role_id="user",
-            user_label="师生" if campus else "听众",
-            admin_label="曲库主管（总管）",
+            user_label=user,
+            admin_label=admin,
             subadmin_label="运营编辑",
             archive_key="track",
             archive_label="歌曲",
@@ -94,22 +122,18 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "author", "label": "歌手/专辑", "type": "string"},
                 {"key": "isbn", "label": "播放链接", "type": "url"},
                 {"key": "durationSec", "label": "时长(秒)", "type": "number"},
-                {"key": "category", "label": "曲风", "type": "select"},
+                {"key": "category", "label": cat_lab, "type": "select"},
                 {"key": "stock", "label": "可播放", "type": "number"},
             ],
             archive_menu_admin="曲库管理",
             archive_menu_user="曲库检索",
             users_menu="用户管理",
-            auth_eyebrow="校园曲库" if campus else "在线音乐",
-            auth_lead=(
-                "验证码登录；浏览校园曲库、在线试听，收藏喜欢的歌曲。"
-                if campus
-                else "验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。"
-            ),
+            auth_eyebrow=brow,
+            auth_lead=lead,
             auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"],
             register_hint="注册后可浏览曲库并收藏",
-            notice_title="试听须知",
-            notice_body="曲源仅供学习使用；请尊重版权，勿传播未授权内容。",
+            notice_title="点歌须知" if kind == "karaoke" else "试听须知",
+            notice_body=notice,
             notice_page_title="平台公告",
             notice_page_lead="上新歌单、维护窗口与试听须知，点击条目阅读全文。",
             favorites_page_lead="收藏喜欢的歌曲，方便下次回听。",
@@ -118,32 +142,51 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             soft_delete=True,
         ),
         [
-            {
-                "title": "热门曲库",
-                "lead": (
-                    "合唱、器乐、校园原创等分类浏览，点击即可试听。"
-                    if campus
-                    else "流行、摇滚、民谣等分类浏览，点击即可试听。"
-                ),
-            },
-            {"title": "收藏喜欢", "lead": "喜欢的歌曲一键收藏，方便下次回听。"},
+            {"title": "热门曲目" if kind == "karaoke" else "热播歌单", "lead": banner_lead},
+            {"title": "收藏喜欢", "lead": "感兴趣的歌曲一键收藏，方便下次回听。"},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据听歌偏好推荐曲目。"},
-            {"title": "曲风浏览", "lead": "按曲风快速找到想听的歌。"},
+            {"title": "分区浏览" if kind == "karaoke" else "曲风浏览", "lead": "按分区快速找到想听的歌。"},
         ],
     )
 
 def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """论坛：校园 BBS 默认；兴趣/小区社区走 community。"""
-    from app.bake.scene_scan import scene_for
+    """论坛：校园 BBS 默认；表白墙 / 社区分档。"""
+    from app.bake.scene_scan import forum_product_kind, scene_for
 
-    community = scene_for("DOM-FORUM", title, proposal_text) == "community"
+    kind = forum_product_kind(title, proposal_text)
+    community = scene_for("DOM-FORUM", title, proposal_text) == "community" or kind == "community"
+    wall = kind == "wall"
+    if wall:
+        brow, lead = (
+            "表白墙",
+            "验证码登录；在表白墙/树洞发帖，跟帖回复经版主审核后展示。",
+        )
+        banner_lead = "表白、树洞、寻物墙分类浏览；文明发言。"
+        notice = "请文明发言；回复经版主审核后展示。禁止人身攻击与广告。"
+        notice_t = "表白墙公约"
+    elif community:
+        brow, lead = (
+            "兴趣社区",
+            "验证码登录；在邻里版块发帖，跟帖回复经版主审核后展示。",
+        )
+        banner_lead = "邻里互助、二手闲置、活动通知分类浏览。"
+        notice = "请文明发帖；广告与人身攻击帖将被下架。"
+        notice_t = "社区公约"
+    else:
+        brow, lead = (
+            "校园论坛",
+            "验证码登录；在校园版块发帖，跟帖回复经版主审核后展示。",
+        )
+        banner_lead = "学习交流、校园生活、二手信息分类浏览。"
+        notice = "请文明讨论；回复经版主审核后展示。"
+        notice_t = "社区公约"
     schema = _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-FORUM",
             user_role_id="user",
-            user_label="居民" if community else "师生",
+            user_label="居民" if community and not wall else "师生",
             admin_label="站长（总管）",
             subadmin_label="版主",
             archive_key="post",
@@ -176,16 +219,12 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             archive_menu_admin="主帖管理",
             archive_menu_user="帖子检索",
             users_menu="用户管理",
-            auth_eyebrow="兴趣社区" if community else "校园论坛",
-            auth_lead=(
-                "验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。"
-                if not community
-                else "验证码登录；邻里发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。"
-            ),
+            auth_eyebrow=brow,
+            auth_lead=lead,
             auth_points=["验证码登录", "发帖与检索", "富文本回复与楼中楼"],
             register_hint="注册后可发帖并回复",
-            notice_title="社区公约",
-            notice_body="请文明讨论；用户可发主帖，违规帖由站长下架。回复经版主审核后展示；可 @他人 一层引用。",
+            notice_title=notice_t,
+            notice_body=notice,
             notice_page_title="站内公告",
             notice_page_lead="版规、维护窗口与活动通知，点击条目阅读全文。",
             my_tickets_label="我的回复",
@@ -201,14 +240,7 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             approve_ends_flow=True,
         ),
         [
-            {
-                "title": "热门板块",
-                "lead": (
-                    "邻里互助、二手闲置、活动通知分区浏览主帖。"
-                    if community
-                    else "学习、生活、二手信息分区浏览主帖。"
-                ),
-            },
+            {"title": "热门板块", "lead": banner_lead},
             {"title": "发帖讨论", "lead": "登录后发布主帖，跟帖回复支持引用。"},
             {"title": "站内公告", "lead": "版规与活动通知见公告栏。"},
             {"title": "我的帖子", "lead": "登录后管理本人发帖与回复进度。"},
@@ -226,73 +258,72 @@ def _forum_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 
 def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """博客：个人站默认；校园院刊/学工资讯走 campus。
+    """博客：个人站默认；校园院刊 / 记者站稿件分档。
 
     上架/下架走 softDelete（shelfCopy：在架/已下架），不再叠一层 stock 开关，
     避免「可阅读/已阅读」与软删文案打架、看起来像资讯 CMS。
     """
-    from app.bake.scene_scan import scene_content_parts
+    from app.bake.scene_scan import blog_product_kind
 
-    campus = scene_content_parts(title, proposal_text) == "campus"
+    kind = blog_product_kind(title, proposal_text)
+    if kind == "press":
+        brow, user, admin = "记者站稿件", "读者", "记者站主编（总管）"
+        lead = "验证码登录；按分类阅读广播稿与图文报道，收藏喜欢的稿件（由编辑上架发布）。"
+        notice = "稿件由编辑上架发布；读者可浏览收藏。转载请注明出处。"
+        banner_lead = "广播稿、图文报道、专题分类浏览。"
+        cat_lab, article_lab = "稿件类型", "稿件"
+    elif kind == "campus":
+        brow, user, admin = "校园资讯", "师生", "主编（总管）"
+        lead = "验证码登录；按分类阅读院刊/学工资讯，收藏喜欢的文章。"
+        notice = "文章仅供学习使用；转载请注明出处。内容由主编维护发布。"
+        banner_lead = "教学、学工、活动资讯分类浏览富文本正文。"
+        cat_lab, article_lab = "分类", "文章"
+    else:
+        brow, user, admin = "个人博客", "读者", "主编（总管）"
+        lead = "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。"
+        notice = "文章仅供学习使用；转载请注明出处。内容由主编维护发布。"
+        banner_lead = "技术、随笔、教程分类浏览富文本正文。"
+        cat_lab, article_lab = "分类", "文章"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
             domain="DOM-BLOG",
             user_role_id="user",
-            user_label="师生" if campus else "读者",
-            admin_label="主编（总管）",
+            user_label=user,
+            admin_label=admin,
             subadmin_label="编辑",
             archive_key="article",
-            archive_label="文章",
-            archive_plural="文章",
+            archive_label=article_lab,
+            archive_plural=article_lab,
             archive_fields=[
                 {"key": "title", "label": "标题", "type": "string"},
                 {"key": "author", "label": "作者", "type": "string"},
                 {"key": "summary", "label": "摘要", "type": "textarea"},
                 {"key": "isbn", "label": "正文", "type": "richtext"},
-                {"key": "category", "label": "分类", "type": "select"},
-                # 列仍保留供 ArchiveStore；展示隐藏，上下架只靠 softDelete
+                {"key": "category", "label": cat_lab, "type": "select"},
                 {"key": "stock", "label": "在架", "type": "hidden"},
             ],
-            archive_menu_admin="文章管理",
-            archive_menu_user="文章检索",
+            archive_menu_admin=f"{article_lab}管理",
+            archive_menu_user=f"{article_lab}检索",
             users_menu="用户管理",
-            auth_eyebrow="校园资讯" if campus else "个人博客",
-            auth_lead=(
-                "验证码登录；按分类阅读院刊/学工资讯，收藏喜欢的文章。"
-                if campus
-                else "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。"
-            ),
-            auth_points=["验证码登录", "文章检索与阅读", "收藏订阅"],
-            register_hint="注册后可浏览文章并收藏",
-            notice_title="阅读须知",
-            notice_body="文章仅供学习使用；转载请注明出处。内容由主编维护发布。",
+            auth_eyebrow=brow,
+            auth_lead=lead,
+            auth_points=["验证码登录", f"{article_lab}检索与阅读", "收藏订阅"],
+            register_hint=f"注册后可浏览{article_lab}并收藏",
+            notice_title="投稿须知" if kind == "press" else "阅读须知",
+            notice_body=notice,
             notice_page_title="站点公告",
-            notice_page_lead=(
-                "上新、维护与征稿通知，点击条目阅读全文。"
-                if campus
-                else "上新与维护通知，点击条目阅读全文。"
-            ),
-            favorites_page_lead="收藏喜欢的文章，方便回看。",
+            notice_page_lead="上新与征稿通知，点击条目阅读全文。",
+            favorites_page_lead=f"收藏喜欢的{article_lab}，方便回看。",
             body_field="isbn",
             stock_display="hidden",
             soft_delete=True,
         ),
         [
-            {
-                "title": "最新文章",
-                "lead": (
-                    "教学、学工、活动资讯分类浏览富文本正文。"
-                    if campus
-                    else "技术、随笔、教程分类浏览富文本正文。"
-                ),
-            },
-            {"title": "收藏订阅", "lead": "喜欢的文章一键收藏，方便回看。"},
-            {
-                "title": "站点公告",
-                "lead": "上新与征稿通知见公告栏。" if campus else "上新与维护通知见公告栏。",
-            },
-            {"title": "猜你喜欢", "lead": "根据阅读偏好推荐文章。"},
+            {"title": f"最新{article_lab}", "lead": banner_lead},
+            {"title": "收藏订阅", "lead": f"喜欢的{article_lab}一键收藏，方便回看。"},
+            {"title": "站点公告", "lead": "上新与征稿通知见公告栏。"},
+            {"title": "猜你喜欢", "lead": "根据阅读偏好推荐内容。"},
             {"title": "分类阅读", "lead": "按分类快速进入感兴趣的专栏。"},
         ],
     )

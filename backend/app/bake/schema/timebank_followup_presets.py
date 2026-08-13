@@ -42,7 +42,6 @@ def build_timebank_followup_presets(
                 "approved": "已核销",
                 "rejected": "已驳回",
                 "returned": "已完结",
-                "overdue": "已逾期",
             },
             "archive_menu_admin": "服务事项",
             "archive_menu_user": "服务目录",

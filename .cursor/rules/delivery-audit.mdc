@@ -13,4 +13,4 @@ alwaysApply: true
 4. 待办 ID 见 [`docs/domain-skin-gap-analysis.md`](docs/domain-skin-gap-analysis.md)；伤旧或落不准不得标已齐。
 5. 场景轴见 `opening-scene.mdc`；技术栈轴见 `tech-stack-delivery.mdc`——两轴勿混。
 6. **常见好做默认实现**（见 `delivery-audit-rules.md` §1.1 / H23）：有时间·布局·额度等字段就挂简单规则（过期下架、分栏、拒过截止等）；**不要**刻意收窄。材料未写且非主路径必需（真支付/地图/人脸等）→ 可不做，勿与「省过头」混为一谈。
-7. **组审进度**：借用/占用组已收口（2026-08-04）；当前可开 **报修/工单组**。进度以清单册与 `delivery-audit-rules.md` §3.4 为准。
+7. **组审进度**：借用/占用、报修/工单、报名、交易、预约、内容组均已收口（2026-08-12）。进度以清单册与 `delivery-audit-rules.md` §3.4 为准。

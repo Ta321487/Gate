@@ -93,7 +93,7 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 INSERT IGNORE INTO category (id, name) VALUES
 (1, '社团活动'), (2, '志愿活动'), (3, '讲座'),
 (4, '证书培训'), (5, '研学赛事'), (6, '票务开放日');
--- 1 与 4 时段重叠，便于演示冲突；截止日放在开课前
+-- 1 与 4 时段重叠，便于校验时段冲突；截止日放在开课前
 INSERT IGNORE INTO activity (id, title, organizer, venue, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
 (1, '编程马拉松校内赛', '计算机协会', '创新楼报告厅', 1, 40, 'available', '2026-10-11 09:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
 (2, '校园环保志愿清扫', '青年志愿者协会', '南门集合', 2, 30, 'available', '2026-10-12 08:30:00', '2026-10-12 11:30:00', '2026-10-11 20:00:00'),
@@ -106,6 +106,9 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周精选', '编程马拉松与环保志愿已开放报名，欢迎参加。', 'admin', '活动主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');
+-- 主路径样例：样例账号一条待审报名（占名额须审核通过后）
+INSERT IGNORE INTO signup (id, activity_id, username, status, remark) VALUES
+(1, 3, 'user', 'pending', '希望参加就业指导讲座。');
 
 UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 

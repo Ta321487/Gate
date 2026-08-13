@@ -116,10 +116,10 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
 INSERT IGNORE INTO product (id, title, price_yuan, sku, category_id, stock, status) VALUES
-(1, '基础款商品 A', '99.00', 'SKU-A01', 1, 30, 'available'),
-(2, '基础款商品 B', '59.90', 'SKU-B02', 2, 40, 'available'),
-(3, '基础款商品 C', '129.00', 'SKU-C03', 1, 20, 'available'),
-(4, '基础款商品 D', '39.00', 'SKU-D04', 3, 50, 'available');
+(1, '日用收纳盒', '29.90', 'SKU-A01', 2, 29, 'available'),
+(2, '蓝牙耳机套装', '129.00', 'SKU-B02', 1, 40, 'available'),
+(3, '保温杯 500ml', '59.00', 'SKU-C03', 2, 20, 'available'),
+(4, '手机支架', '19.90', 'SKU-D04', 3, 50, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -129,6 +129,10 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址，无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '日用收纳盒', 29.90, 1);
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

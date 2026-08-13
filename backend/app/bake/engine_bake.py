@@ -456,6 +456,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         if unit:
             lines.append(f"  lookup-unit-table: {unit}")
             lines.append(f"  lookup-unit-label: {runtime.get('lookup_unit_label') or '房间'}")
+            # None 缺省「容量」；显式 "" 表示隐藏（物业/IT）；宿舍写「床位数」
+            if "lookup_unit_capacity_label" in runtime:
+                cap = runtime.get("lookup_unit_capacity_label")
+                lines.append(f"  lookup-unit-capacity-label: \"{cap if cap is not None else ''}\"")
         if typ:
             lines.append(f"  lookup-type-table: {typ}")
             lines.append(f"  lookup-type-label: {runtime.get('lookup_type_label') or '类型'}")

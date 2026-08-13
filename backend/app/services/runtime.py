@@ -419,14 +419,21 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
                 if any(be.rglob("JpaSupport.java")):
                     ensure_jpa_application_yml(workspace, java_package=pkg)
             bind = settings.bind_host
-            args = [f"--server.port={port}", f"--server.address={bind}"]
+            # 本机预览：验证码可回显明文（学生自行 mvn 默认仍关闭）
+            args = [
+                f"--server.port={port}",
+                f"--server.address={bind}",
+                "--thesis.local-dev.captcha-plain=true",
+            ]
             cmd = [
                 mvn,
                 "-q",
                 "spring-boot:run",
                 f"-Dspring-boot.run.arguments={' '.join(args)}",
             ]
-            log_f.write(f"cmd: {cmd[0]} spring-boot:run port={port} address={bind}\n")
+            log_f.write(
+                f"cmd: {cmd[0]} spring-boot:run port={port} address={bind} captcha-plain=on\n"
+            )
             log_f.flush()
             p = _popen(cmd, cwd=be, log_f=log_f, env=env)
         else:

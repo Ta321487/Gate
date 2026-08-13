@@ -283,7 +283,3 @@ async def list_calls(
         "page_size": page_size,
     }
 
-
-_TOOL_VER_CACHE: dict[str, tuple[float, str]] = {}
-_TOOL_VER_TTL = 60.0
-

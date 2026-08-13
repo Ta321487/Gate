@@ -10,14 +10,15 @@ from app.bake.schema.shells import (
 )
 
 def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """校园二手 vs 社会零售（鲜花/数码店等共用）：只分两档，不按售卖主体开皮。"""
+    """校园二手 / 行业货皮 / 社会零售：成色仅 campus；货名跟 scene seed。"""
     from app.bake.scene_scan import shop_product_kind
 
-    campus = shop_product_kind(title, proposal_text) == "campus"
+    pk = shop_product_kind(title, proposal_text)
+    campus = pk == "campus"
     if campus:
         brow, lead = (
             "校园商城",
-            "验证码登录；浏览校园商品、加入购物车并提交订单（无真支付）。",
+            "验证码登录；浏览校园闲置、加入购物车并提交订单（无真支付）。",
         )
         fields = [
             {"key": "title", "label": "商品名", "type": "string"},
@@ -29,11 +30,16 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             {"key": "stock", "label": "库存", "type": "number"},
         ]
     else:
-        brow, lead = (
-            "在线商城",
-            "验证码登录；浏览商品、加入购物车并提交订单（无真支付）。",
+        brow_map = {
+            "print": ("文印下单", "验证码登录；选打印装订服务下单（无真支付）。"),
+            "flowers": ("花店商城", "验证码登录；浏览鲜花特产并下单配送（无真支付）。"),
+            "errand": ("跑腿代买", "验证码登录；下单代买代取，跑腿员接单（非驿站核销；无真支付）。"),
+            "points": ("积分兑换", "验证码登录；用积分兑换商品并提交订单（无真支付）。"),
+        }
+        brow, lead = brow_map.get(
+            pk,
+            ("在线商城", "验证码登录；浏览商品、加入购物车并提交订单（无真支付）。"),
         )
-        # 零售档：无「成色」（二手专用）；行业名跟题名/开题，不在此开鲜花/服装分皮
         fields = [
             {"key": "title", "label": "商品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
@@ -79,7 +85,7 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     else:
         admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "门店", "门店公告"
         body = "支持堂食、自取或外卖配送；无真支付。"
-    return order_shell_schema(
+    schema = order_shell_schema(
         title,
         domain="DOM-FOOD",
         user_role_id="user",
@@ -119,6 +125,14 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "cancelled": "已取消",
         },
     )
+    schema["entities"]["order"]["verbs"] = {
+        "confirm": "接单",
+        "ship": "出餐",
+        "complete": "完成",
+        "cancel": "取消",
+    }
+    return schema
+
 
 def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影院选座购票：场次档案 + 订单壳；座位图由 seat_select 能力叠菜单。"""
@@ -302,7 +316,46 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "号源有限；请填写就诊人姓名，按时就诊；就诊完成后由挂号台办结；取消请提前操作。"
         notice_t, notice_page, reg, done = "挂号须知", "医院公告", "注册后可以患者身份挂号", "就诊"
         menu_u, points_mid = "选医生", "医生检索"
-    return slot_shell_schema(
+    if kind == "window":
+        visit_lab, symptom_lab = "业务类型", "办事说明"
+        visit_opts = [
+            {"label": "初办", "value": "初办"},
+            {"label": "续办", "value": "续办"},
+            {"label": "咨询", "value": "咨询"},
+        ]
+        default_visit = "初办"
+    elif kind == "visit":
+        visit_lab, symptom_lab = "探视类型", "探视说明"
+        visit_opts = [
+            {"label": "普通探视", "value": "普通探视"},
+            {"label": "陪护", "value": "陪护"},
+            {"label": "日间探访", "value": "日间探访"},
+        ]
+        default_visit = "普通探视"
+    elif kind == "vaccine":
+        visit_lab, symptom_lab = "针次", "接种备注"
+        visit_opts = [
+            {"label": "首针", "value": "首针"},
+            {"label": "第二针", "value": "第二针"},
+            {"label": "第三针", "value": "第三针"},
+            {"label": "加强针", "value": "加强针"},
+        ]
+        default_visit = "首针"
+    elif kind == "pet":
+        visit_lab, symptom_lab = "初诊/复诊", "病情简述"
+        visit_opts = [
+            {"label": "初诊", "value": "初诊"},
+            {"label": "复诊", "value": "复诊"},
+        ]
+        default_visit = "初诊"
+    else:
+        visit_lab, symptom_lab = "初诊/复诊", "症状简述"
+        visit_opts = [
+            {"label": "初诊", "value": "初诊"},
+            {"label": "复诊", "value": "复诊"},
+        ]
+        default_visit = "初诊"
+    schema = slot_shell_schema(
         title,
         domain="DOM-HOSPITAL",
         user_role_id="patient",
@@ -336,52 +389,78 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         complete_verb=f"{done}完成",
         completed_label=f"已{done}",
     )
+    resv_ent = schema["entities"]["reservation"]
+    resv_ent["patientNameLabel"] = remark
+    resv_ent["visitTypeLabel"] = visit_lab
+    resv_ent["visitTypeOptions"] = visit_opts
+    resv_ent["visitTypeDefault"] = default_visit
+    resv_ent["symptomNoteLabel"] = symptom_lab
+    return schema
 
 def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """车位：校园 vs 商场/小区车场（同 _food_schema 分支）。"""
-    from app.bake.scene_scan import scene_parking_parts
+    from app.bake.scene_scan import parking_product_kind, scene_parking_parts
 
+    charge = parking_product_kind(title, proposal_text) == "charge"
     campus = scene_parking_parts(title, proposal_text) == "campus"
-    if campus:
+    if charge:
+        brow, lead, admin = (
+            "充电预约",
+            "验证码登录；选择充电桩与时段占坑预约；入位由管理端登记。",
+            "充电站主管（总管）",
+        )
+        archive_lab, title_lab, fee_lab, loc_lab = "充电桩", "桩位号", "电费参考(元)", "功率/位置"
+        menu_u, points_mid, reg = "选充电桩", "桩位检索", "注册后可预约充电"
+        notice = "预约成功后请按时入位充电；取消后释放桩位时段。"
+        notice_t = "充电预约"
+    elif campus:
         brow, lead, admin = (
             "校园车位",
             "验证码登录；选择校内车位与时段占坑预约；入场由管理端登记。",
             "后勤主管（总管）",
         )
+        archive_lab, title_lab, fee_lab, loc_lab = "车位", "车位号", "费用(元)", "位置"
+        menu_u, points_mid, reg = "选车位", "车位检索", "注册后可预约车位"
+        notice = "预约成功后请按时入场；取消后释放车位时段。"
+        notice_t = "校园车位预约"
     else:
         brow, lead, admin = (
             "车位预约",
             "验证码登录；选择车位与时段占坑预约；入场由管理端登记。",
             "车场主管（总管）",
         )
+        archive_lab, title_lab, fee_lab, loc_lab = "车位", "车位号", "费用(元)", "位置"
+        menu_u, points_mid, reg = "选车位", "车位检索", "注册后可预约车位"
+        notice = "预约成功后请按时入场；取消后释放车位时段。"
+        notice_t = "车位预约"
     return slot_shell_schema(
         title,
         domain="DOM-PARKING",
         user_role_id="user",
         user_label="车主",
         admin_label=admin,
-        subadmin_label="车场管理员",
+        subadmin_label="预约管理员",
         archive_key="space",
-        archive_label="车位",
-        archive_plural="车位",
+        archive_label=archive_lab,
+        archive_plural=archive_lab,
         archive_fields=[
-            {"key": "title", "label": "车位号", "type": "string"},
-            {"key": "author", "label": "费用(元)", "type": "number", "format": "money"},
-            {"key": "isbn", "label": "位置", "type": "string"},
+            {"key": "title", "label": title_lab, "type": "string"},
+            {"key": "author", "label": fee_lab, "type": "number", "format": "money"},
+            {"key": "isbn", "label": loc_lab, "type": "string"},
             {"key": "feeRule", "label": "计费规则", "type": "string"},
             {"key": "category", "label": "分区", "type": "select"},
         ],
-        archive_menu_admin="车位管理",
-        archive_menu_user="选车位",
+        archive_menu_admin=f"{archive_lab}管理",
+        archive_menu_user=menu_u,
         users_menu="用户管理",
         my_resv_label="我的预约",
         resv_admin_label="预约记录",
         auth_eyebrow=brow,
         auth_lead=lead,
-        auth_points=["验证码登录", "车位检索", "时段预约与入场登记"],
-        register_hint="注册后可预约车位",
-        notice_title="停车须知",
-        notice_body="请按时入场；入场后由车场登记办结；取消预约将释放时段。请填写车牌号便于核对。",
+        auth_points=["验证码登录", points_mid, "时段预约与入场登记"],
+        register_hint=reg,
+        notice_title=notice_t,
+        notice_body=notice + "请填写车牌号便于核对。",
         notice_page_title="车场公告",
         reserve_require_remark=True,
         reserve_remark_label="车牌号",
@@ -424,7 +503,14 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         title_lab, brow, place, notice_page = "服务项目", "服务预约", "到店", "门店公告"
         lead = "验证码登录；选择服务项目与时段预约到店；到店后由门店登记完成。"
         points = ["验证码登录", "服务浏览", "时段预约与到店办结"]
-    return slot_shell_schema(
+    stylist_label = {
+        "fitness": "偏好教练",
+        "counsel": "偏好咨询师",
+        "drive": "偏好教练",
+        "home": "偏好师傅",
+        "tutor": "偏好老师",
+    }.get(kind, "偏好技师")
+    schema = slot_shell_schema(
         title,
         domain="DOM-SALON",
         user_role_id="user",
@@ -456,14 +542,37 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         complete_verb=f"{place}完成",
         completed_label="已完成",
     )
+    schema["entities"]["reservation"]["stylistLabel"] = stylist_label
+    return schema
 
-def _hotel_schema(title: str) -> dict[str, Any]:
+def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    from app.bake.scene_scan import hotel_product_kind
+
+    homestay = hotel_product_kind(title, proposal_text) == "homestay"
+    if homestay:
+        brow, admin, notice_t, notice_page = (
+            "民宿预订",
+            "民宿老板（总管）",
+            "入住须知",
+            "民宿公告",
+        )
+        lead = "验证码登录；选择民宿房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。"
+        reg = "注册后可预订民宿客房"
+    else:
+        brow, admin, notice_t, notice_page = (
+            "客房预订",
+            "酒店主管（总管）",
+            "入住须知",
+            "酒店公告",
+        )
+        lead = "验证码登录；选择房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。"
+        reg = "注册后可预订客房"
     schema = slot_shell_schema(
         title,
         domain="DOM-HOTEL",
         user_role_id="user",
         user_label="住客",
-        admin_label="酒店主管（总管）",
+        admin_label=admin,
         subadmin_label="前台",
         archive_key="room_type",
         archive_label="房型",
@@ -481,13 +590,13 @@ def _hotel_schema(title: str) -> dict[str, Any]:
         my_resv_label="我的预订",
         resv_admin_label="预订记录",
         resv_label="预订",
-        auth_eyebrow="客房预订",
-        auth_lead="验证码登录；选择房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。",
+        auth_eyebrow=brow,
+        auth_lead=lead,
         auth_points=["验证码登录", "房型浏览", "分时预订与入住离店"],
-        register_hint="注册后可预订客房",
-        notice_title="入住须知",
+        register_hint=reg,
+        notice_title=notice_t,
         notice_body="本期无真支付；预约成功即占坑并生成订单；入住/离店由前台办结。",
-        notice_page_title="酒店公告",
+        notice_page_title=notice_page,
         with_orders=True,
         complete_verb="入住/离店",
         completed_label="已离店",
@@ -519,5 +628,8 @@ def _hotel_schema(title: str) -> dict[str, Any]:
     labels = dict(schema.get("labels") or {})
     labels["orderFulfillHint"] = "客房订单随预订生成；前台办理入住/离店，无物流发货。"
     schema["labels"] = labels
+    resv_ent = schema["entities"]["reservation"]
+    resv_ent["guestNameLabel"] = "入住人"
+    resv_ent["guestCountLabel"] = "入住人数"
     return schema
 

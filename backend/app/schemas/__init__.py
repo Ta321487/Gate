@@ -20,7 +20,13 @@ class ProjectSummary(BaseModel):
     frontend_running: bool = Field(description="前端预览是否在跑")
     backend_port: int = Field(description="后端端口")
     frontend_port: int = Field(description="前端端口")
-    zip_ready: bool = Field(description="ZIP 是否可下载（机器质检通过）")
+    zip_ready: bool = Field(
+        description="库内机器质检标志；列表/详情展示与履约请优先看 download_blocked_reason"
+    )
+    download_blocked_reason: Optional[str] = Field(
+        default=None,
+        description="不可下载 ZIP 的原因；空/null=可下载（列表与详情同源）",
+    )
     delivery_mark: str = Field(
         default="none",
         description="人工履约标记：none | ready（已审待发）| delivered（已发出）",
@@ -53,9 +59,6 @@ class ProjectDetail(ProjectSummary):
     checklist: list[Any] = Field(default_factory=list, description="开题对照清单")
     workspace_path: Optional[str] = Field(default=None, description="工作区路径")
     zip_path: Optional[str] = Field(default=None, description="ZIP 路径")
-    download_blocked_reason: Optional[str] = Field(
-        default=None, description="不可下载 ZIP 的原因；空=可下载"
-    )
     preview_blocked_reason: Optional[str] = Field(
         default=None, description="不可启动预览的原因；空=可启动"
     )

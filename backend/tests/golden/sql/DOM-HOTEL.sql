@@ -119,10 +119,10 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '系统管理员', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '业务管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '酒店主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '前台', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '住客甲', '13800000002',
- '{"realName":"吴旅客","email":"wu@demo.edu","gender":"男"}',
+ '{"realName":"吴旅客","email":"wu@demo.edu","gender":"男","guestName":"吴旅客","companyOrSchool":"星河科技"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -144,8 +144,15 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 3, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, guest_name, guest_count) VALUES
+(1, 1, 'user', 'confirmed', '吴旅客', '吴旅客', 2);
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id) VALUES
+(1, 'user', 'confirmed', 268.00, 'reservation:1', 1);
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '标准双床房', 268.00, 1);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '客房预订', '选择房型与入住时段预订；无真支付，预约成功生成订单。', 'admin', '系统管理员'
+SELECT '客房预订', '选择房型与入住时段预订；无真支付，预约成功生成订单。', 'admin', '酒店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='客房预订');
 
 -- staff posts (clerk / worker)

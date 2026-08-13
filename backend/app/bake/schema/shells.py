@@ -52,6 +52,7 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-SALON",
     "DOM-HOSPITAL",
     "DOM-LOST",
+    "DOM-ACTIVITY",
     "DOM-CRM",
     "DOM-EQUIP",
     "DOM-IT",

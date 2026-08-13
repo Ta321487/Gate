@@ -176,7 +176,7 @@ onMounted(() => {
 const LEADS = {
   archive: '浏览与检索业务目录',
   my_archive: '查看本人发布的内容',
-  my_tickets: '查看申请进度与办理记录',
+  my_tickets: '查看办理进度与记录',
   content: '通知、须知与临时公告',
   guestbook: '发表建议或咨询，查看管理员回复',
   dm: '与其他用户一对一私信沟通',
@@ -201,6 +201,10 @@ function messagesLead() {
 }
 
 function cardLead(key, menuLabelText) {
+  if (key === 'my_tickets') {
+    const lab = String(menuLabelText || '').replace(/^我的/, '').trim()
+    return lab ? `查看${lab}进度与办理记录` : LEADS.my_tickets
+  }
   if (key === 'messages') return messagesLead()
   if (key === 'cart') {
     const cart = menuLabelText || '购物车'

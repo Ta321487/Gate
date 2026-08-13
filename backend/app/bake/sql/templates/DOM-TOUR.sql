@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS category (
   name VARCHAR(64) NOT NULL UNIQUE
 );
 
--- ArchiveStore 兼容列；stock=余位
+-- ArchiveStore 兼容列；stock=余位；stage=线路状态（开放报名/满员/已出团/下架）；apply_deadline_at 报名截止
 CREATE TABLE IF NOT EXISTS tour_line (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS tour_line (
   stock INT DEFAULT 20,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  stage VARCHAR(32) DEFAULT '开放报名',
+  apply_deadline_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -95,15 +97,18 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES
 (1, '周边游'), (2, '省内跟团'), (3, '跨省跟团'), (4, '研学游'), (5, '其他');
-INSERT IGNORE INTO tour_line (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '周末古镇一日游', '计调甲', '含门票 / 往返大巴', 1, 28, 'available'),
-(2, '省内山水三日团', '计调乙', '含两晚住宿 / 导游', 2, 18, 'available'),
-(3, '跨省海岛五日游', '计调甲', '含机票参考价说明 / 无真支付', 3, 12, 'available'),
-(4, '中学生研学两日营', '研学部', '含课程与保险说明', 4, 35, 'available'),
-(5, '亲子农场半日体验', '计调乙', '含采摘体验 / 亲子适合', 1, 20, 'available');
+INSERT IGNORE INTO tour_line (id, title, author, isbn, category_id, stock, status, stage, apply_deadline_at) VALUES
+(1, '周末古镇一日游', '计调甲', '含门票 / 往返大巴', 1, 28, 'available', '开放报名', '2026-10-11 18:00:00'),
+(2, '省内山水三日团', '计调乙', '含两晚住宿 / 导游', 2, 18, 'available', '开放报名', '2026-10-18 20:00:00'),
+(3, '跨省海岛五日游', '计调甲', '含机票参考价说明 / 无真支付', 3, 12, 'available', '开放报名', '2026-10-25 12:00:00'),
+(4, '中学生研学两日营', '研学部', '含课程与保险说明', 4, 35, 'available', '开放报名', '2026-10-20 17:00:00'),
+(5, '亲子农场半日体验', '计调乙', '含采摘体验 / 亲子适合', 1, 20, 'available', '开放报名', '2026-10-12 12:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报名须知', '请如实填写出行人数与联系方式；本期无地图导航、OTA 同步与真支付。', 'admin', '计调主管'
+SELECT '报名须知', '请如实填写出行人数与联系方式；余位有限，过报名截止将无法提交；取消报名将回补余位；本期无地图导航、OTA 同步与真支付。', 'admin', '计调主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周线路', '古镇一日游与山水三日团余位充足，欢迎报名。', 'admin', '计调主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周线路');
+-- 主路径样例：样例账号一条待审报名
+INSERT IGNORE INTO tour_signup (id, book_id, username, status, remark, contact_channel) VALUES
+(1, 2, 'user', 'pending', '两人出行，请确认报名。', '手机电话');

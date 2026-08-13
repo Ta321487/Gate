@@ -368,7 +368,7 @@ OA_PRESET_BLOCKS = {
     },
     "DOM-TRIP": {
         "doc": "出差加班：事项类型 + 出差加班单。",
-        "user_label": "员工",
+        "user_label": "申请人",
         "admin_label": "人事主管（总管）",
         "subadmin_label": "考勤员",
         "archive_key": "trip_matter",

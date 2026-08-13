@@ -632,10 +632,48 @@ def reconcile_match(
             )
 
     if dom != "DOM-GENERIC":
-        # 访客到访/查寝登记开题里的「预约」不是会议室 slot_reserve，勿逼降 GENERIC
-        # 影院选座开题里的「占座」是座位图购票，不是场地时段预约壳
+        # 旁路噪声裁剪：对比句里的预约/下单/审核勿逼行业皮改通用壳（通用壳更穿帮）。
+        # 真交叉（借阅+二手等）仍走下方「丢硬路径 → GENERIC」。
         _soft_reserve_domains = frozenset(
-            {"DOM-VISITOR", "DOM-CHECKIN", "DOM-CARPASS", "DOM-CINEMA"}
+            {
+                "DOM-VISITOR",
+                "DOM-CHECKIN",
+                "DOM-CARPASS",
+                "DOM-CINEMA",
+                # 单据/报名皮开题常顺嘴写「预约」
+                "DOM-PROPERTY",
+                "DOM-DORM",
+                "DOM-IT",
+                "DOM-LOST",
+                "DOM-ACTIVITY",
+                "DOM-COURSE",
+                "DOM-ATTEND",
+                # 勿含 DOM-LIBRARY：借阅+座位预约是 Path B 真交叉，须降 GENERIC
+                "DOM-EQUIP",
+                "DOM-ASSET",
+            }
+        )
+        _soft_trade_domains = frozenset(
+            {
+                # 认领/报修皮对比「二手/订单」时勿抬交易并集
+                "DOM-LOST",
+                "DOM-PROPERTY",
+                "DOM-DORM",
+                "DOM-IT",
+                "DOM-ACTIVITY",
+                "DOM-COURSE",
+                "DOM-ATTEND",
+            }
+        )
+        _soft_flow_domains = frozenset(
+            {
+                # 预约皮开题常写「审核/报名」对比词，勿逼降 GENERIC
+                "DOM-HOTEL",
+                "DOM-MEETING",
+                "DOM-PARKING",
+                "DOM-SALON",
+                "DOM-HOSPITAL",
+            }
         )
         if (
             dom in _soft_reserve_domains
@@ -655,6 +693,28 @@ def reconcile_match(
                 )
                 if not arches:
                     arches = ["ARCH-FLOW"]
+        if (
+            dom in _soft_trade_domains
+            and "ARCH-TRADE" in arches
+            and not domain_covers_archetype(dom, "ARCH-TRADE")
+        ):
+            arches = [a for a in arches if a != "ARCH-TRADE"]
+            notes.append(
+                f"提示：「{dom_label}」开题中的交易/二手表述按对比或附属处理，不抬交易主路径。"
+            )
+            if not arches:
+                arches = ["ARCH-FLOW"]
+        if (
+            dom in _soft_flow_domains
+            and "ARCH-FLOW" in arches
+            and not domain_covers_archetype(dom, "ARCH-FLOW")
+        ):
+            arches = [a for a in arches if a != "ARCH-FLOW"]
+            notes.append(
+                f"提示：「{dom_label}」开题中的审核/报名表述按对比或附属处理，不抬单据主路径。"
+            )
+            if not arches:
+                arches = [_DOMAIN_DEFAULT_ARCH.get(dom) or "ARCH-RESERVE"]
         covered = [a for a in arches if domain_covers_archetype(dom, a)]
         if not covered:
             notes.append(
@@ -668,6 +728,8 @@ def reconcile_match(
                 drop_labels = "、".join(
                     ARCHETYPES.get(a, {}).get("label", a) for a in dropped
                 )
+                # Path B 真交叉：行业皮盖不住的硬路径仍降 GENERIC。
+                # 仅软旁路时保行业皮（通用壳穿帮更严重）。
                 notes.append(
                     f"提示：若保留「{dom_label}」将丢掉{drop_labels}；"
                     "已改用通用壳以保住开题全部主路径（行为优先于行业皮）。"

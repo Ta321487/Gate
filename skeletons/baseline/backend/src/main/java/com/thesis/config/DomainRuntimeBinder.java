@@ -74,6 +74,10 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.lookup-type-label:类型}")
     private String lookupTypeLabel;
 
+    /** 空串 = 管理端不展示单元容量列 */
+    @Value("${thesis.lookup-unit-capacity-label:容量}")
+    private String lookupUnitCapacityLabel;
+
     @Value("${thesis.use-quota:true}")
     private boolean useQuota;
 
@@ -365,7 +369,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 lookupTypeTable,
                 lookupSiteLabel,
                 lookupUnitLabel,
-                lookupTypeLabel);
+                lookupTypeLabel,
+                lookupUnitCapacityLabel);
         UserStore.ensureStaffColumns();
     }
 }

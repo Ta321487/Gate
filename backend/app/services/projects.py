@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bake.catalog import (
@@ -133,7 +133,7 @@ def workspace_or_reason(project: Project) -> tuple[Path | None, str | None]:
 
 
 def delivery_block_reason(project: Project) -> str | None:
-    """None = 可下载 ZIP。唯一文案来源（详情 API 下发，前端勿再抄一份）。"""
+    """None = 可下载 ZIP。唯一文案来源（列表/详情 API 下发，前端勿再抄一份）。"""
     if project.status == ProjectStatus.generating.value:
         return MSG_DOWNLOAD_GENERATING
     zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
@@ -145,6 +145,11 @@ def delivery_block_reason(project: Project) -> str | None:
     if not zip_exists:
         return MSG_DOWNLOAD_NO_ZIP
     return MSG_DOWNLOAD_GATES
+
+
+def is_zip_downloadable(project: Project) -> bool:
+    """与 delivery_block_reason 同源：True = 机器质检可下。"""
+    return delivery_block_reason(project) is None
 
 
 def preview_start_block_reason(project: Project) -> str | None:
@@ -367,15 +372,9 @@ def _feature_names(features: list | None) -> list[str]:
     return [f.get("name", "") for f in (features or []) if isinstance(f, dict)]
 
 
-def sync_checklist_from_workspace(project: Project) -> bool:
-    """工作区存在则按当前门禁逻辑重算 checklist / gates（打开详情即可刷新）。"""
-    if not project.workspace_path:
-        return False
-    ws = Path(project.workspace_path)
-    if not ws.exists():
-        return False
+def _clear_stale_zip_ready(project: Project) -> bool:
+    """无工作区时仍按 ZIP 在盘 + 库内 gates 收敛 zip_ready（只降不升）。"""
     generating = project.status == ProjectStatus.generating.value
-    # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
     if generating:
         changed = False
         if project.zip_ready:
@@ -384,6 +383,26 @@ def sync_checklist_from_workspace(project: Project) -> bool:
         if reset_delivery_mark(project):
             changed = True
         return changed
+    zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
+    downloadable = zip_exists and gates_allow_delivery(project.gates)
+    if project.zip_ready and not downloadable:
+        project.zip_ready = False
+        reset_delivery_mark(project)
+        return True
+    return False
+
+
+def sync_checklist_from_workspace(project: Project) -> bool:
+    """工作区存在则重算 checklist / gates；缺失时仍收敛陈旧 zip_ready。"""
+    if not project.workspace_path:
+        return _clear_stale_zip_ready(project)
+    ws = Path(project.workspace_path)
+    if not ws.exists():
+        return _clear_stale_zip_ready(project)
+    generating = project.status == ProjectStatus.generating.value
+    # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
+    if generating:
+        return _clear_stale_zip_ready(project)
     gates = evaluate_domain_gates(ws, project.spec or {})
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
@@ -788,42 +807,44 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
 
 
 async def stats(db: AsyncSession) -> dict:
-    total = await db.scalar(select(func.count()).select_from(Project)) or 0
-    generating = await db.scalar(
-        select(func.count()).select_from(Project).where(Project.status == ProjectStatus.generating.value)
-    ) or 0
-    previewable = await db.scalar(
-        select(func.count())
-        .select_from(Project)
-        .where(Project.status.in_([ProjectStatus.generated.value, ProjectStatus.running.value]))
-    ) or 0
-    # 履约 backlog：待审 = 质检可下且尚未人工标记
-    baked = Project.status.in_(
-        [ProjectStatus.generated.value, ProjectStatus.running.value]
+    # 先收敛 zip_ready，再计数（与列表筛选同源，避免待审虚高）
+    result = await db.execute(select(Project))
+    items = list(result.scalars().all())
+    dirty = False
+    for p in items:
+        if sync_checklist_from_workspace(p):
+            dirty = True
+    if dirty:
+        await db.commit()
+
+    total = len(items)
+    generating = sum(
+        1 for p in items if p.status == ProjectStatus.generating.value
     )
-    pending_review = await db.scalar(
-        select(func.count())
-        .select_from(Project)
-        .where(
-            baked,
-            Project.zip_ready.is_(True),
-            or_(
-                Project.delivery_mark == "none",
-                Project.delivery_mark.is_(None),
-                Project.delivery_mark == "",
-            ),
-        )
-    ) or 0
-    delivery_ready = await db.scalar(
-        select(func.count())
-        .select_from(Project)
-        .where(Project.delivery_mark == "ready")
-    ) or 0
-    delivery_delivered = await db.scalar(
-        select(func.count())
-        .select_from(Project)
-        .where(Project.delivery_mark == "delivered")
-    ) or 0
+    previewable = sum(
+        1
+        for p in items
+        if p.status
+        in (ProjectStatus.generated.value, ProjectStatus.running.value)
+    )
+    pending_review = sum(
+        1
+        for p in items
+        if p.status
+        in (ProjectStatus.generated.value, ProjectStatus.running.value)
+        and is_zip_downloadable(p)
+        and normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "none"
+    )
+    delivery_ready = sum(
+        1
+        for p in items
+        if normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "ready"
+    )
+    delivery_delivered = sum(
+        1
+        for p in items
+        if normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "delivered"
+    )
     from app.llm.client import monthly_tokens_breakdown
 
     tokens_bd = await monthly_tokens_breakdown(db)
