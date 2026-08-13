@@ -69,7 +69,7 @@
       <el-table-column prop="createdAt" label="下单时间" width="170" />
       <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
-          <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">确认</el-button>
+          <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">{{ confirmVerb }}</el-button>
           <el-button
             v-if="row.status === 'confirmed'"
             link
@@ -141,6 +141,10 @@ const shipVerb = computed(() => {
   if (isStay.value) return '办理入住'
   if (isCinema.value) return '出票'
   return isFood.value ? '出餐' : '发货'
+})
+const confirmVerb = computed(() => {
+  if (order.value.verbs?.confirm) return order.value.verbs.confirm
+  return isFood.value ? '接单' : '确认'
 })
 const completeVerb = computed(() => {
   if (order.value.verbs?.complete) return order.value.verbs.complete

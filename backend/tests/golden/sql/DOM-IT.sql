@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS ticket_attach (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -113,6 +114,10 @@ INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, '101'), (2, 1,
 INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
 (1, '校园网', 1), (2, '终端', 2), (3, '机房', 3),
 (4, '邮箱账号', 4), (5, '设备维保', 5), (6, '售后咨询', 6);
+
+-- 主路径样例：待审故障单
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', '宿舍区无法认证上网', '宿舍区 201', 1, 3, 'pending', '普通', '13800000002', '认证页循环跳转，已重启路由器。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请描述网络/终端故障现象，运维将尽快受理。', 'admin', '运维管理员'

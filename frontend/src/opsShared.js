@@ -42,8 +42,21 @@ export function deliveryMarkLabel(mark) {
 }
 
 /**
+ * 是否可下载 ZIP：与后端 delivery_block_reason 同源。
+ * 优先看 download_blocked_reason（列表/详情均下发）；缺省时回退 zip_ready。
+ */
+export function projectIsDownloadable(row) {
+  if (!row) return false
+  if ('download_blocked_reason' in row) {
+    return !row.download_blocked_reason
+  }
+  return !!row.zip_ready
+}
+
+/**
  * 机器质检（zipReady）与人工履约（deliveryMark）分层：
  * delivered → 已发出；ready → 已审待发；zipReady → 已生成 · 质检通过；否则质检未过。
+ * 调用方应对齐详情：zipReady = projectIsDownloadable(row)，勿直接塞库字段 zip_ready。
  */
 export function projectStatusLabel(status, opts = {}) {
   const zipReady = opts.zipReady

@@ -761,6 +761,25 @@ button.filter-pill.on {
 .api-method[data-m="PATCH"] { color: #8a5a00; }
 .api-method[data-m="DELETE"] { color: #c01c28; }
 .api-path { word-break: break-all; }
+.api-smoke-cols li {
+  grid-template-columns: 72px minmax(140px, 1.4fr) minmax(100px, 0.8fr) minmax(120px, 1.4fr);
+}
+.api-smoke-cols .smoke-detail {
+  word-break: break-word;
+  color: var(--muted);
+}
+.smoke-row-factory {
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+.smoke-row-student {
+  background: color-mix(in srgb, var(--danger, #c01c28) 7%, transparent);
+}
+.smoke-row-skip {
+  opacity: 0.72;
+}
+.smoke-row-biz {
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
+}
 .api-flow-tag {
   display: inline-block; font-size: 10px; font-family: var(--mono);
   padding: 0 5px; margin-right: 4px; border-radius: 3px;

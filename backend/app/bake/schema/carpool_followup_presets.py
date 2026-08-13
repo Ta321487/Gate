@@ -42,7 +42,6 @@ def build_carpool_followup_presets(
                 "approved": "已对接",
                 "rejected": "已婉拒",
                 "returned": "已完结",
-                "overdue": "已逾期",
             },
             "archive_menu_admin": "行程档案",
             "archive_menu_user": "行程目录",

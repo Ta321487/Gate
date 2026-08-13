@@ -410,6 +410,9 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "ownerName", "owner_name", 64);
         patchOptStr(id, patch, "ownerUsername", "owner_username", 64);
         patchOptStr(id, patch, "stage", "stage", 32);
+        if (hasItemColumn("stage") && patch.containsKey("stage")) {
+            syncSignupStageAvailability(id, stock);
+        }
         patchOptNum(id, patch, "credit", "credit");
         patchOptNum(id, patch, "serviceHours", "service_hours");
         patchOptInt(id, patch, "seatCapacity", "seat_capacity");
@@ -1065,7 +1068,8 @@ public final class ArchiveStore {
 
     /**
      * 床位占用皮：stock 扣至 0 且 stage 为「空闲」→「已分配」；回补且为「已分配」→「空闲」。
-     * 维修中/开放及其它域 stage 语义不动。
+     * 线路报名皮：stock 扣至 0 且 stage 为「开放报名」→「满员」；回补且为「满员」→「开放报名」。
+     * 已出团/下架/维修中等其它 stage 语义不动。
      */
     private static void syncOccupyStageWithStock(long itemId, int delta) {
         if (!hasItemColumn("stage")) return;
@@ -1078,9 +1082,29 @@ public final class ArchiveStore {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已分配", itemId);
             } else if (delta > 0 && stock > 0 && "已分配".equals(stage)) {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "空闲", itemId);
+            } else if (delta < 0 && stock <= 0 && "开放报名".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "满员", itemId);
+            } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "开放报名", itemId);
             }
         } catch (Exception ignored) {
             // 无 stage 列或写失败时忽略，stock/status 已更新
+        }
+    }
+
+    /** 线路报名：手改 stage 为满员/已出团/下架时同步 status=unavailable；改回开放报名且有余位则 available。 */
+    private static void syncSignupStageAvailability(long id, int stock) {
+        Map<String, Object> book = getItemRaw(id);
+        if (book == null || !book.containsKey("stage")) return;
+        String stage = str(book.get("stage")).trim();
+        try {
+            if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET status='unavailable' WHERE id=?", id);
+            } else if ("开放报名".equals(stage) && stock > 0) {
+                db().update("UPDATE " + ITEM + " SET status='available' WHERE id=?", id);
+            }
+        } catch (Exception ignored) {
+            // ignore
         }
     }
 

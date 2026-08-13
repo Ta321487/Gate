@@ -31,7 +31,12 @@
         <template #default="{ row }">{{ siteName(row.siteId) }}</template>
       </el-table-column>
       <el-table-column prop="code" :label="unitLabel + '编号'" min-width="120" />
-      <el-table-column prop="capacity" label="容量" width="90" />
+      <el-table-column
+        v-if="showUnitCapacity"
+        prop="capacity"
+        :label="unitCapacityLabel"
+        width="90"
+      />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openUnit(row)">编辑</el-button>
@@ -65,7 +70,7 @@
         <el-form-item :label="unitLabel + '编号'" required>
           <el-input v-model="unitForm.code" maxlength="32" />
         </el-form-item>
-        <el-form-item label="容量">
+        <el-form-item v-if="showUnitCapacity" :label="unitCapacityLabel">
           <el-input-number v-model="unitForm.capacity" :min="1" :max="99" />
         </el-form-item>
       </el-form>
@@ -84,6 +89,8 @@ import http from '../../api/http'
 
 const siteLabel = ref('楼栋')
 const unitLabel = ref('房间')
+const unitCapacityLabel = ref('容量')
+const showUnitCapacity = ref(true)
 const sites = ref([])
 const units = ref([])
 const filterSiteId = ref(null)
@@ -99,8 +106,11 @@ function siteName(id) {
 
 async function loadMeta() {
   const res = await http.get('/api/admin/lookups/meta')
-  siteLabel.value = res.data.siteLabel || '楼栋'
-  unitLabel.value = res.data.unitLabel || '房间'
+  const d = res.data || {}
+  siteLabel.value = d.siteLabel || '楼栋'
+  unitLabel.value = d.unitLabel || '房间'
+  unitCapacityLabel.value = d.unitCapacityLabel != null ? d.unitCapacityLabel : '容量'
+  showUnitCapacity.value = d.showUnitCapacity !== false && !!String(unitCapacityLabel.value || '').trim()
 }
 
 async function load() {
@@ -147,7 +157,7 @@ async function removeSite(row) {
 function openUnit(row) {
   Object.assign(unitForm, row
     ? { id: row.id, siteId: row.siteId, code: row.code || '', capacity: row.capacity || 4 }
-    : { id: null, siteId: filterSiteId.value || (sites.value[0] && sites.value[0].id) || null, code: '', capacity: 4 })
+    : { id: null, siteId: filterSiteId.value || (sites.value[0] && sites.value[0].id) || null, code: '', capacity: showUnitCapacity.value ? 4 : 1 })
   unitVisible.value = true
 }
 
@@ -156,7 +166,11 @@ async function saveUnit() {
     ElMessage.warning('请填写完整')
     return
   }
-  const body = { siteId: unitForm.siteId, code: unitForm.code, capacity: unitForm.capacity }
+  const body = {
+    siteId: unitForm.siteId,
+    code: unitForm.code,
+    capacity: showUnitCapacity.value ? unitForm.capacity : 1,
+  }
   if (unitForm.id) await http.put(`/api/admin/lookups/units/${unitForm.id}`, body)
   else await http.post('/api/admin/lookups/units', body)
   ElMessage.success('已保存')

@@ -99,6 +99,9 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选课须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本学期开放', '公选课已开放申请，请登录系统选课。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本学期开放');
+-- 主路径样例：样例账号一条待审选课（未占互斥组已通过名额）
+INSERT IGNORE INTO enrollment (id, course_id, username, status, remark) VALUES
+(1, 5, 'student', 'pending', '希望选修批判性思维训练。');
 
 CREATE TABLE IF NOT EXISTS `enrollment_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

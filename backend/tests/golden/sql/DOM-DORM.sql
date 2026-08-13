@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS repair_attach (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE IF NOT EXISTS sys_message (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -111,6 +112,10 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 INSERT IGNORE INTO dorm_building (id, name) VALUES (1, '一号楼'), (2, '二号楼');
 INSERT IGNORE INTO dorm_room (id, building_id, code) VALUES (1, 1, '101'), (2, 1, '102'), (3, 2, '201');
 INSERT IGNORE INTO repair_type (id, name, sort_no) VALUES (1, '水电', 1), (2, '门窗', 2), (3, '家具', 3);
+
+-- 主路径样例：待审报修，便于宿管一键受理演示
+INSERT IGNORE INTO repair (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'student', '101寝室水龙头漏水', '一号楼 101', 1, 1, 'pending', '普通', '13800000002', '持续滴水，请尽快维修。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请如实填写宿舍与故障描述，宿管将尽快受理。', 'admin', '宿管'

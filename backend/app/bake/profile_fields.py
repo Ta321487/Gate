@@ -961,12 +961,42 @@ _LOST_ADOPT: list[dict[str, Any]] = [
     _pf("petExperience", "养宠经验", on_register=True, max_length=128, placeholder="选填"),
 ]
 
+_LOST_DONATE: list[dict[str, Any]] = [
+    _pf("contactWechat", "微信/备用联系", required=True, on_register=True, max_length=64),
+    _pf("claimPurpose", "认领用途", required=True, on_register=True, max_length=128,
+        placeholder="如支教、困难帮扶、自用等"),
+    _pf("orgName", "所属单位/社区", on_register=True, max_length=64,
+        placeholder="学院、社区或志愿队"),
+]
+
 _HOSPITAL_PET: list[dict[str, Any]] = [
     _pf("petName", "宠物昵称", required=True, on_register=True, max_length=32),
     _pf("petSpecies", "物种", required=True, on_register=True, field_type="select",
         options=["猫", "狗", "其他"]),
     _pf("ownerName", "饲养人", required=True, on_register=True, max_length=32),
     _pf("allergyNote", "过敏/病史简述", max_length=128),
+    _pf("emergencyContact", "紧急联系人", max_length=32),
+    _pf("emergencyPhone", "紧急联系电话", max_length=20),
+]
+
+_HOSPITAL_WINDOW: list[dict[str, Any]] = [
+    _pf("idNo", "证件号", required=True, on_register=True, max_length=32, placeholder="身份证或其他证件号"),
+    _pf("bizPrefer", "常办业务", on_register=True, max_length=64, placeholder="如社保卡、居住证"),
+    _pf("emergencyPhone", "紧急联系电话", max_length=20),
+]
+
+_HOSPITAL_VISIT: list[dict[str, Any]] = [
+    _pf("patientRelation", "与被访人关系", required=True, on_register=True, field_type="select",
+        options=["子女", "配偶", "亲属", "朋友", "其他"]),
+    _pf("wardPrefer", "常探视病区/院区", on_register=True, max_length=64),
+    _pf("emergencyPhone", "紧急联系电话", max_length=20),
+]
+
+_HOSPITAL_VACCINE: list[dict[str, Any]] = [
+    _pf("patientNo", "接种档案号", required=True, on_register=True, max_length=32),
+    _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
+        options=["身份证", "护照", "其他"]),
+    _pf("allergyNote", "过敏史简述", max_length=128),
     _pf("emergencyContact", "紧急联系人", max_length=32),
     _pf("emergencyPhone", "紧急联系电话", max_length=20),
 ]
@@ -1119,6 +1149,48 @@ _TIMEBANK_CAMPUS: list[dict[str, Any]] = [
     _pf("dept", "院系/单位", required=True, on_register=True, max_length=64),
 ]
 
+# OA / 车证企业档：禁止学号/教职工选项
+_OA_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "外包", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门", required=True, on_register=True, max_length=64,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="所在部门"),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["外包", "其他"]),
+        visible_when=_when("identityType", ["外包", "其他"]),
+        placeholder="请填写所属单位"),
+]
+
+_FITOUT_COMMUNITY: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["业主", "租户", "其他"]),
+    _pf("communityName", "小区", required=True, on_register=True, max_length=64,
+        placeholder="所在小区"),
+    _pf("houseBuilding", "楼栋", required=True, on_register=True, max_length=32),
+    _pf("houseUnit", "单元", on_register=True, max_length=16),
+    _pf("houseNo", "房号", required=True, on_register=True, max_length=16),
+]
+
+_CARPASS_ENTERPRISE: list[dict[str, Any]] = [
+    _pf("identityType", "身份", required=True, on_register=True, field_type="select",
+        options=["员工", "访客", "其他"]),
+    _pf("employeeNo", "工号", required=True, on_register=True, max_length=32,
+        required_when=_when("identityType", ["员工"]),
+        visible_when=_when("identityType", ["员工"]),
+        placeholder="请填写工号"),
+    _pf("dept", "部门/访客单位", required=True, on_register=True, max_length=64,
+        placeholder="所在部门或来访单位"),
+    _pf("orgName", "单位名称", on_register=True, max_length=64,
+        required_when=_when("identityType", ["访客", "其他"]),
+        visible_when=_when("identityType", ["访客", "其他"])),
+]
+
 
 def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[str, Any]] | None:
     """有场景分支时返回覆盖列表；None 表示用 PROFILE_FIELDS_BY_DOMAIN 默认。
@@ -1163,11 +1235,24 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
     if domain == "DOM-LOST":
         if scene == "adopt":
             return _LOST_ADOPT
+        if scene == "donate":
+            return _LOST_DONATE
         if scene == "community":
             return _LOST_COMMUNITY
         return None
     if domain == "DOM-HOSPITAL":
-        return _HOSPITAL_PET if scene == "adopt" else None
+        from app.bake.scene_scan import hospital_product_kind
+
+        pk = hospital_product_kind(title, proposal_text)
+        if pk == "pet" or scene == "adopt":
+            return _HOSPITAL_PET
+        if pk == "window":
+            return _HOSPITAL_WINDOW
+        if pk == "visit":
+            return _HOSPITAL_VISIT
+        if pk == "vaccine":
+            return _HOSPITAL_VACCINE
+        return None
     if domain == "DOM-FUND":
         return _FUND_ENTERPRISE if scene == "enterprise" else None
     if domain == "DOM-GRADE":
@@ -1190,6 +1275,23 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
         return _FORUM_COMMUNITY if scene == "community" else None
     if domain == "DOM-TIMEBANK":
         return _TIMEBANK_CAMPUS if scene == "campus" else None
+    if domain in {
+        "DOM-SEAL",
+        "DOM-FLEET",
+        "DOM-CERT",
+        "DOM-PROMO",
+        "DOM-TRIP",
+        "DOM-EXPENSE",
+    }:
+        return _OA_ENTERPRISE if scene == "enterprise" else None
+    if domain == "DOM-FITOUT":
+        if scene == "community":
+            return _FITOUT_COMMUNITY
+        if scene == "enterprise":
+            return _OA_ENTERPRISE
+        return None
+    if domain == "DOM-CARPASS":
+        return _CARPASS_ENTERPRISE if scene == "enterprise" else None
     return None
 
 

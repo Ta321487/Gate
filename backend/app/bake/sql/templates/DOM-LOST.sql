@@ -109,3 +109,6 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='招领须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周公示', '证件与数码类启事已更新，请及时认领。', 'admin', '招领主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周公示');
+-- 主路径样例：样例账号一条待审认领
+INSERT IGNORE INTO claim (id, book_id, username, status, remark) VALUES
+(1, 2, 'user', 'pending', '耳机盒特征吻合，请审核认领。');

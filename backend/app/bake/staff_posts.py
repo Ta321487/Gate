@@ -591,7 +591,7 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-PROMO": ("申报人", "申请人"),
     "DOM-FITOUT": ("申报人", "申请人"),
     "DOM-ACAD": ("学生", "申请人"),
-    "DOM-TRIP": ("员工", "申请人"),
+    "DOM-TRIP": ("申请人", "出差人"),
     "DOM-EXPENSE": ("报销人", "申请人"),
     "DOM-CREDIT": ("学生", "申请人"),
     "DOM-LABOR": ("学生", "申请人"),

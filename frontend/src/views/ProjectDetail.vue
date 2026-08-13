@@ -808,6 +808,13 @@
                       <span v-else class="pill pill-neutral">{{ p.workspace_path ? (artifactLoading ? '加载中' : '暂无接口清单') : '未生成' }}</span>
                     </div>
                     <div class="row" style="margin:0;gap:8px">
+                      <n-button
+                        size="small"
+                        type="primary"
+                        :loading="apiSmokeBusy"
+                        :disabled="!apis || !p.workspace_path"
+                        @click="runApiSmoke"
+                      >全量冒烟</n-button>
                       <n-input
                         v-model:value="apiQuery"
                         size="small"
@@ -826,6 +833,85 @@
                   <div class="small muted">
                     自动扫描学生工程接口，便于对照主流程验收；仅供运营端查看，不含于交付包。
                     复制为「方法 + 路径」；联调请用「运行」页的后端地址（需先登录预览）。
+                    「全量冒烟」按本域 flow_api 模拟页面主路径点击（可多链：借+约、收藏等），只探测已启动预览，不会自动启停；启停请到「运行」页。
+                    全量表「可达」= 打到学生后端；业务成败看上方「主流程」。
+                  </div>
+                  <div v-if="apiSmokeFactoryHint" class="banner fail" style="margin:0">
+                    <h4>工厂提示</h4>
+                    <p class="small">{{ apiSmokeFactoryHint }}</p>
+                    <div class="row mt-12">
+                      <n-button size="small" type="primary" @click="tab = 'runtime'">前往运行</n-button>
+                    </div>
+                  </div>
+                  <div v-if="apiSmokeResult" class="stack" style="gap:10px">
+                    <div class="row" style="margin:0;gap:8px;flex-wrap:wrap;align-items:center">
+                      <span class="pill" :class="apiSmokeResult.ok ? 'pill-green' : 'pill-red'">
+                        {{ apiSmokeResult.ok ? '冒烟通过' : '冒烟未过' }}
+                      </span>
+                      <span class="small muted">{{ apiSmokeResult.summary }}</span>
+                    </div>
+                    <div class="row" style="margin:0;gap:8px;flex-wrap:wrap">
+                      <span class="pill pill-red">学生失败 {{ apiSmokeResult.student_failures ?? 0 }}</span>
+                      <span class="pill pill-amber">工厂错 {{ apiSmokeResult.factory_errors ?? 0 }}</span>
+                      <span class="pill pill-neutral">跳过 {{ apiSmokeResult.skipped ?? 0 }}</span>
+                    </div>
+                    <div v-if="apiSmokeResult.main_flow?.length" class="table-list">
+                      <div class="table-card">
+                        <div class="table-card-hd">
+                          <span>主流程</span>
+                          <span class="small muted">{{ apiSmokeResult.main_flow.length }} 步</span>
+                        </div>
+                        <ul class="api-cols api-smoke-cols">
+                          <li class="api-cols-hd">
+                            <span>步骤</span>
+                            <span>结果</span>
+                            <span>来源</span>
+                            <span>说明</span>
+                          </li>
+                          <li
+                            v-for="(s, i) in apiSmokeResult.main_flow"
+                            :key="'mf-' + i"
+                            :class="smokeRowClass(s)"
+                          >
+                            <span class="mono">{{ s.name }}</span>
+                            <span>
+                              <span class="pill" :class="smokePillClass(s)">{{ smokeStatusLabel(s) }}</span>
+                            </span>
+                            <span class="small">{{ s.error_source || '—' }}</span>
+                            <span class="small smoke-detail">{{ smokeDetailText(s) }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div v-if="apiSmokeResult.endpoints?.length" class="table-list">
+                      <div class="table-card">
+                        <div class="table-card-hd">
+                          <span>全量探测</span>
+                          <span class="small muted">{{ apiSmokeResult.endpoints.length }} 条</span>
+                        </div>
+                        <ul class="api-cols api-smoke-cols">
+                          <li class="api-cols-hd">
+                            <span>方法</span>
+                            <span>路径</span>
+                            <span>结果</span>
+                            <span>说明</span>
+                          </li>
+                          <li
+                            v-for="(e, i) in apiSmokeResult.endpoints"
+                            :key="'ep-' + i"
+                            :class="smokeRowClass(e)"
+                          >
+                            <span class="api-method" :data-m="e.method">{{ e.method }}</span>
+                            <span class="mono api-path">{{ e.filled_path || e.path }}</span>
+                            <span>
+                              <span class="pill" :class="smokePillClass(e)">{{ smokeStatusLabel(e) }}</span>
+                              <span v-if="e.http_status" class="small muted" style="margin-left:6px">{{ e.http_status }}</span>
+                            </span>
+                            <span class="small smoke-detail">{{ smokeDetailText(e) }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                   <div v-if="apis?.api_style_notes?.length" class="small muted" style="padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;line-height:1.55">
                     <div style="margin-bottom:6px;color:var(--fg)">
@@ -1032,6 +1118,7 @@ import {
   normalizeStepStatus,
   projectStatusLabel,
   projectStatusPill,
+  projectIsDownloadable,
   deliveryMarkLabel,
   statusPillNode,
   stepStatusLabel,
@@ -1137,6 +1224,9 @@ const deleting = ref(false)
 const schema = ref(null)
 const erLabelSaving = ref(false)
 const apis = ref(null)
+const apiSmokeBusy = ref(false)
+const apiSmokeResult = ref(null)
+const apiSmokeFactoryHint = ref('')
 const artifactView = ref('db')
 const apiQuery = ref('')
 const apiSurface = ref('all')
@@ -1333,7 +1423,7 @@ const confirmHint = computed(() => {
   if (deviant.value) return '确认按当前骨架 / 领域 / 持久层 / 鉴权生成。'
   return '已核对骨架、领域与本期范围，确认后开始生成。'
 })
-const canDownload = computed(() => !p.value?.download_blocked_reason)
+const canDownload = computed(() => projectIsDownloadable(p.value))
 const downloadZipLabel = computed(() => (p.value?.status === 'generating' ? '生成中…' : '下载 ZIP'))
 const downloadBlockedReason = computed(() => p.value?.download_blocked_reason || '')
 const zipLockHint = computed(() =>
@@ -1867,6 +1957,97 @@ async function loadApis() {
     apis.value = null
   } finally {
     artifactLoading.value = false
+  }
+}
+
+function smokeStatusLabel(row) {
+  if (!row) return '—'
+  if (row.skip || row.error_source === 'skip') return '跳过'
+  if (row.layer === 'reachability' || row.reachable) {
+    if (!row.ok) return '失败'
+    return '可达'
+  }
+  if (row.ok) return '通过'
+  return '失败'
+}
+
+function smokePillClass(row) {
+  if (!row) return 'pill-neutral'
+  if (row.skip || row.error_source === 'skip') return 'pill-neutral'
+  if (!row.ok) {
+    if (row.error_source === 'factory') return 'pill-amber'
+    return 'pill-red'
+  }
+  if ((row.layer === 'reachability' || row.reachable) && row.business_ok === false) {
+    return 'pill-amber'
+  }
+  return 'pill-green'
+}
+
+function smokeRowClass(row) {
+  if (!row) return ''
+  if (row.skip || row.error_source === 'skip') return 'smoke-row-skip'
+  if (row.error_source === 'factory' && !row.ok) return 'smoke-row-factory'
+  if (row.error_source === 'student' && !row.ok) return 'smoke-row-student'
+  if ((row.layer === 'reachability' || row.reachable) && row.business_ok === false) {
+    return 'smoke-row-biz'
+  }
+  return ''
+}
+
+function smokeDetailText(row) {
+  if (!row) return ''
+  if (row.detail) return row.detail
+  const body = row.student_body
+  if (body && typeof body === 'object') {
+    const data = body.data
+    if (
+      data &&
+      typeof data === 'object' &&
+      data.message != null &&
+      (data.ok === false || body.message === 'ok' || body.message == null)
+    ) {
+      return String(data.message)
+    }
+    if (body.message != null && String(body.message) !== 'ok') {
+      return String(body.message)
+    }
+    try {
+      return typeof body === 'string' ? body : ''
+    } catch {
+      return ''
+    }
+  }
+  if (row.http_status && !(row.layer === 'reachability' || row.reachable)) {
+    return `HTTP ${row.http_status}`
+  }
+  return ''
+}
+
+function smokeDetailFromAxios(err) {
+  const d = err?.response?.data?.detail
+  if (d && typeof d === 'object') return d
+  if (typeof d === 'string') return { message: d, error_source: 'factory' }
+  return { message: err?.message || '冒烟请求失败', error_source: 'factory' }
+}
+
+async function runApiSmoke() {
+  if (!p.value?.id || apiSmokeBusy.value) return
+  apiSmokeBusy.value = true
+  apiSmokeFactoryHint.value = ''
+  apiSmokeResult.value = null
+  try {
+    const res = await api.smokeStudentApis(p.value.id)
+    apiSmokeResult.value = res
+  } catch (err) {
+    const d = smokeDetailFromAxios(err)
+    if (d.need_runtime || err?.response?.status === 409) {
+      apiSmokeFactoryHint.value = d.message || '请先到运行页启动前后端预览'
+    } else {
+      apiSmokeFactoryHint.value = d.message || '冒烟失败'
+    }
+  } finally {
+    apiSmokeBusy.value = false
   }
 }
 

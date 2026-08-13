@@ -286,8 +286,8 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
-        # EXAM / EQUIP：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
-        product_copy_only = frozenset({"DOM-EXAM", "DOM-EQUIP"})
+        # EXAM / EQUIP / ACTIVITY：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
+        product_copy_only = frozenset({"DOM-EXAM", "DOM-EQUIP", "DOM-ACTIVITY"})
         self.assertEqual(_SCENE_COPY_DOMAINS - product_copy_only, covered)
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
@@ -309,25 +309,28 @@ class SceneScanContractTests(unittest.TestCase):
         )
 
     def test_shop_retail_vs_campus_secondhand(self) -> None:
-        """社会售卖（鲜花等）共用零售档：无成色、无校园种子；不按行业逐个开皮。"""
+        """鲜花走 flowers 货皮；数码/社区二手走 retail；校园二手成色档。"""
         from app.bake.engine_sql import domain_sql
         from app.bake.scene_scan import shop_product_kind
 
         flower = "基于 Spring Boot 与 Vue 的鲜花销售管理系统的设计与实现"
         polluted = "校园商城二手教材也可参考；花店接单与配送。"
-        self.assertEqual(shop_product_kind(flower, polluted), "retail")
+        self.assertEqual(shop_product_kind(flower, polluted), "flowers")
         self.assertEqual(scene_for("DOM-SHOP", flower, polluted), "commercial")
         schema = build_domain_schema(flower, "DOM-SHOP", proposal_text=polluted)
-        self.assertEqual(schema["labels"].get("authEyebrow"), "在线商城")
+        self.assertEqual(schema["labels"].get("authEyebrow"), "花店商城")
         keys = {f["key"] for f in schema["entities"]["archive"]["fields"]}
         self.assertNotIn("conditionGrade", keys)
         sql = domain_sql("DOM-SHOP", "thesis_test", title=flower, proposal_text=polluted)
-        self.assertIn("基础款商品", sql)
+        self.assertIn("康乃馨", sql)
+        self.assertIn("biz_order", sql)
+        self.assertIn("'pending'", sql)
+        self.assertNotIn("基础款商品", sql)
         self.assertNotIn("校徽帆布袋", sql)
         self.assertNotIn("condition_grade", sql)
         self.assertNotIn("成色", sql)
 
-        # 其它社会售卖主体同一零售档
+        # 其它社会售卖主体零售档
         self.assertEqual(
             shop_product_kind("数码配件在线销售系统", "校园二手可作对比。"),
             "retail",
@@ -335,6 +338,23 @@ class SceneScanContractTests(unittest.TestCase):
         # 裸「二手」无校园词 → 零售档（不成色）
         self.assertEqual(shop_product_kind("社区二手闲置交易系统", ""), "retail")
 
+        self.assertEqual(shop_product_kind("文印打印店订单管理系统", ""), "print")
+        self.assertEqual(shop_product_kind("校园跑腿代买订单管理系统", ""), "errand")
+        print_sql = domain_sql(
+            "DOM-SHOP",
+            "t",
+            title="文印打印店订单管理系统",
+            proposal_text="打印装订下单",
+        )
+        self.assertIn("胶装", print_sql)
+        errand_sql = domain_sql(
+            "DOM-SHOP",
+            "t",
+            title="校园跑腿代买订单管理系统",
+            proposal_text="代买代取",
+        )
+        self.assertIn("代买", errand_sql)
+        self.assertNotIn("机械键盘", errand_sql)
         campus = build_domain_schema(
             "校园二手商品交易系统",
             "DOM-SHOP",

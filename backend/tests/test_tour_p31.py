@@ -34,7 +34,7 @@ class TourP31Tests(unittest.TestCase):
     def test_match(self) -> None:
         got = match_text(
             "基于 Spring Boot 的旅行社线路报名管理系统的设计与实现。"
-            "主要功能：线路档案、跟团报名、审核占名额、出团确认。"
+            "主要功能：线路档案、跟团报名、审核占名额、确认报名。"
         )
         self.assertEqual(got.domain, "DOM-TOUR", f"hits={got.hits[:12]}")
 
@@ -58,7 +58,7 @@ class TourP31Tests(unittest.TestCase):
             scene_for(
                 "DOM-TOUR",
                 "旅行社线路报名管理系统",
-                "游客在线报名，计调审核出团。",
+                "游客在线报名，计调审核确认。",
             ),
             "enterprise",
         )
@@ -81,19 +81,33 @@ class TourP31Tests(unittest.TestCase):
         self.assertIn("ticket_pending", admin_keys)
         self.assertIn("archive", user_keys)
         self.assertNotIn("studentNo", {f["key"] for f in schema.get("profileFields") or []})
+        verbs = schema["entities"]["ticket"]["verbs"]
+        self.assertEqual(verbs.get("approve"), "确认报名")
+        self.assertEqual(verbs.get("return"), "取消报名")
 
     def test_sql_and_accept(self) -> None:
         sql = domain_sql(
             "DOM-TOUR",
             "t_tour",
             title="旅行社线路报名管理系统",
-            proposal_text="线路报名审核出团",
+            proposal_text="线路报名审核确认",
         )
         self.assertIn("tour_line", sql)
         self.assertIn("tour_signup", sql)
+        self.assertIn("stage", sql)
+        self.assertIn("开放报名", sql)
+        self.assertIn("apply_deadline_at", sql)
+        self.assertIn("请确认报名", sql)
+        schema = build_domain_schema(
+            "旅行社线路报名管理系统",
+            "DOM-TOUR",
+            proposal_text="线路档案；游客报名；计调审核占名额。",
+        )
+        keys = {f.get("key") for f in schema["entities"]["archive"]["fields"]}
+        self.assertIn("applyDeadlineAt", keys)
         d = resolve_accept(
             list(DOMAIN_CAPABILITIES["DOM-TOUR"]),
-            "线路档案；跟团报名；审核占名额；出团确认。",
+            "线路档案；跟团报名；审核占名额；确认报名。",
             has_domain_overlay=True,
             has_baseline_runtime=True,
             archetypes=["ARCH-FLOW"],

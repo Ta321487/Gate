@@ -16,13 +16,13 @@
       <p class="sub">{{ row.startAt }} ~ {{ row.endAt }}</p>
       <p v-if="row.plateNo" class="sub">车牌：{{ row.plateNo }}</p>
       <p v-if="row.patientName" class="sub">
-        就诊人：{{ row.patientName }}
+        {{ patientLabel }}：{{ row.patientName }}
         <template v-if="row.visitType"> · {{ row.visitType }}</template>
       </p>
-      <p v-if="row.symptomNote" class="sub">症状：{{ row.symptomNote }}</p>
+      <p v-if="row.symptomNote" class="sub">{{ symptomLabel }}：{{ row.symptomNote }}</p>
       <p v-if="row.subject" class="sub">主题：{{ row.subject }}<template v-if="row.partySize"> · {{ row.partySize }} 人</template></p>
-      <p v-if="row.guestName" class="sub">入住人：{{ row.guestName }}<template v-if="row.guestCount"> · {{ row.guestCount }} 人</template></p>
-      <p v-if="row.preferredStylist" class="sub">偏好技师：{{ row.preferredStylist }}</p>
+      <p v-if="row.guestName" class="sub">{{ guestLabel }}：{{ row.guestName }}<template v-if="row.guestCount"> · {{ row.guestCount }} 人</template></p>
+      <p v-if="row.preferredStylist" class="sub">{{ stylistLabel }}：{{ row.preferredStylist }}</p>
       <p v-if="row.queueNo" class="sub">排队号：{{ row.queueNo }}</p>
       <p v-if="row.remark && !row.plateNo && !row.patientName && !row.subject && !row.guestName" class="sub">备注：{{ row.remark }}</p>
       <p class="sub">申请于 {{ row.createdAt }}</p>
@@ -81,6 +81,10 @@ import { getSchema, menuLabel, reservationCopy } from '../../utils/domainSchema.
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
 const label = menuLabel('user', 'my_reservations', `我的${resvNoun.value}`)
+const patientLabel = computed(() => resv.patientNameLabel || resv.remarkLabel || '就诊人')
+const symptomLabel = computed(() => resv.symptomNoteLabel || '症状')
+const stylistLabel = computed(() => resv.stylistLabel || '偏好技师')
+const guestLabel = computed(() => resv.guestNameLabel || '入住人')
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const list = ref([])
 const total = ref(0)

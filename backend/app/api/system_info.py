@@ -41,6 +41,10 @@ from app.services.projects import mask_key, reclaim_idle_ports
 
 from app.api.system_router import router  # noqa: E402
 
+_TOOL_VER_CACHE: dict[str, tuple[float, str]] = {}
+_TOOL_VER_TTL = 60.0
+
+
 def _cmd_version(name: str, *args: str) -> str:
     """用与 runtime 相同的可执行解析（Windows 上 mvn → mvn.cmd）。"""
     key = name + " ".join(args)

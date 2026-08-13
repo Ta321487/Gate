@@ -8,17 +8,27 @@ from __future__ import annotations
 import re
 
 from app.bake.scene_scan import (
+    activity_product_kind,
+    blog_product_kind,
     crm_product_kind,
     equip_product_kind,
     food_product_kind,
+    forum_product_kind,
     hospital_product_kind,
+    hotel_product_kind,
     it_product_kind,
     library_product_kind,
+    media_product_kind,
+    meeting_product_kind,
+    music_product_kind,
+    parking_product_kind,
     property_product_kind,
     salon_product_kind,
     scene_for,
     shop_product_kind,
 )
+from app.bake.sql import content_scene_overlays as _content
+from app.bake.sql import reserve_scene_overlays as _rsv
 
 # 模板种子均从 sys_user INSERT 起至文件末；整块替换，避免半改漏行
 _USER_SEED_START = re.compile(
@@ -31,6 +41,42 @@ def _replace_user_seed_tail(sql: str, seed: str) -> str:
     if not m:
         return sql
     return sql[: m.start()] + seed.rstrip() + "\n"
+
+
+def _patch_portal_user_identity(
+    sql: str,
+    *,
+    nickname: str,
+    profile_json: str,
+) -> str:
+    """仅改门户 user 昵称与 profile_json，保留模板档案/单据种子。"""
+    return re.sub(
+        r"\('user',\s*'user123',\s*'user',\s*'[^']*',\s*'[^']*',\s*\n\s*'\{.*?\}'",
+        f"('user', 'user123', 'user', '{nickname}', '13800000002',\n"
+        f" '{profile_json}'",
+        sql,
+        count=1,
+        flags=re.S,
+    )
+
+
+_OA_ENTERPRISE_USER = (
+    "员工甲",
+    '{"realName":"陈工","email":"chen@demo.com","gender":"男",'
+    '"identityType":"员工","employeeNo":"E20230108","dept":"综合管理部"}',
+)
+_FITOUT_COMMUNITY_USER = (
+    "业主甲",
+    '{"realName":"刘明","email":"liu@demo.com","gender":"男",'
+    '"identityType":"业主","communityName":"阳光小区","houseBuilding":"3栋",'
+    '"houseUnit":"2","houseNo":"501"}',
+)
+_CARPASS_ENTERPRISE_USER = (
+    "员工甲",
+    '{"realName":"陈工","email":"chen@demo.com","gender":"男",'
+    '"identityType":"员工","employeeNo":"E20230108","dept":"行政部"}',
+)
+
 
 _ATTEND_CAMPUS = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
@@ -102,6 +148,8 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='招领须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周公示', '证件与数码类启事已更新，请及时认领。', 'admin', '招领主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周公示');
+INSERT IGNORE INTO claim (id, book_id, username, status, remark) VALUES
+(1, 2, 'user', 'pending', '耳机盒特征吻合，请审核认领。');
 """
 
 _LOST_ADOPT = """\
@@ -126,6 +174,154 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领养须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周待领养', '猫咪与犬只档案已更新，欢迎预约看宠。', 'admin', '领养站主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周待领养');
+INSERT IGNORE INTO claim (id, book_id, username, status, remark) VALUES
+(1, 1, 'user', 'pending', '家中可养，申请领养小橘。');
+"""
+
+_LOST_DONATE = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '捐赠站主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '认领专员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '申请人甲', '13800000002',
+ '{"realName":"王芳","email":"wang@demo.com","gender":"女","contactWechat":"wang_demo","claimPurpose":"支教物资","orgName":"志愿队"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '衣物被褥'), (2, '学习用品'), (3, '生活家电');
+INSERT IGNORE INTO lost_item (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '冬衣礼包 A01', '捐赠站李华', '成人外套 3 件 / 已消毒', 1, 1, 'available'),
+(2, '文具套装 B03', '捐赠站王芳', '笔记本与笔袋 / 适合中小学', 2, 1, 'available'),
+(3, '小台灯 C02', '捐赠站张敏', 'LED 台灯 / 配件齐全', 3, 1, 'available'),
+(4, '棉被一套 D01', '捐赠站赵强', '单人被芯被套 / 已清洗', 1, 1, 'available'),
+(5, '科普读物礼包 E01', '捐赠站陈洁', '少儿读物 5 本', 2, 1, 'available');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '认领须知', '请如实填写用途与联系方式；审核通过后按通知到站领取，本期无物流寄送。', 'admin', '捐赠站主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='认领须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周物资', '衣物与学习用品名录已更新，欢迎申请认领。', 'admin', '捐赠站主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周物资');
+INSERT IGNORE INTO claim (id, book_id, username, status, remark) VALUES
+(1, 2, 'user', 'pending', '用于支教，申请认领文具套装。');
+"""
+
+_ACTIVITY_CERT = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '培训主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '报名助理', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '报考人甲', '13800000002',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNoOrEmp":"S20260001","dept":"计算机学院","identityType":"学生","orgOrClub":"考证小组"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '证书报考'), (2, '培训班'), (3, '四六级');
+-- 1 与 4 时段重叠，便于校验时段冲突；截止日放在开课前
+INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '大学英语四级报名', '教务处', '主教学楼考场', 3, 80, 'available', '2026-10-11 09:00:00', '2026-10-11 11:30:00', '2026-10-10 23:59:59'),
+(2, '计算机二级培训班', '继续教育学院', '实验楼机房', 2, 40, 'available', '2026-10-12 14:00:00', '2026-10-12 17:00:00', '2026-10-11 20:00:00'),
+(3, '教师资格证笔试报考', '教师发展中心', '第三教学楼', 1, 60, 'available', '2026-10-15 09:00:00', '2026-10-15 12:00:00', '2026-10-14 18:00:00'),
+(4, '英语口语强化班', '外国语学院', '外语楼语音室', 2, 30, 'available', '2026-10-11 14:00:00', '2026-10-11 16:00:00', '2026-10-10 23:59:59'),
+(5, '普通话水平测试报名', '教务处', '图书馆报告厅', 1, 50, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '报考须知', '请如实填写报考信息；名额有限；本期不对接外部证书库。', 'admin', '培训主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报考须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周开放', '四级报名与计算机二级培训班已开放，欢迎报名。', 'admin', '培训主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周开放');
+INSERT IGNORE INTO signup (id, book_id, username, status, remark) VALUES
+(1, 3, 'user', 'pending', '希望报考教师资格证笔试。');
+
+UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
+"""
+
+_ACTIVITY_TICKET = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '票务主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '票务助理', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '观众甲', '13800000002',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNoOrEmp":"S20260001","dept":"艺术学院","identityType":"学生","orgOrClub":"观众"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '景区场次'), (2, '演出场次'), (3, '开放日');
+-- 1 与 4 时段重叠，便于校验时段冲突；截止日放在开课前
+INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '古城夜游场次', '文旅中心', '南门售票处 / 须知见公告', 1, 100, 'available', '2026-10-11 19:00:00', '2026-10-11 21:00:00', '2026-10-10 23:59:59'),
+(2, '校园音乐会', '团委', '大礼堂', 2, 200, 'available', '2026-10-12 19:30:00', '2026-10-12 21:30:00', '2026-10-11 20:00:00'),
+(3, '博物馆开放日', '博物馆', '东门集合', 3, 80, 'available', '2026-10-15 09:00:00', '2026-10-15 12:00:00', '2026-10-14 18:00:00'),
+(4, '园林日场参观', '文旅中心', '西门检票口', 1, 60, 'available', '2026-10-11 14:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
+(5, '戏剧社公演', '学生会', '小剧场', 2, 120, 'available', '2026-10-19 19:00:00', '2026-10-19 21:00:00', '2026-10-18 18:00:00');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '领票须知', '请如实填写联系方式；票额有限；本期无选座与真支付。', 'admin', '票务主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领票须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周场次', '古城夜游与校园音乐会已开放领票。', 'admin', '票务主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周场次');
+INSERT IGNORE INTO signup (id, book_id, username, status, remark) VALUES
+(1, 2, 'user', 'pending', '希望领取校园音乐会票。');
+
+UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
+"""
+
+_ACTIVITY_BLOOD = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '场次主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '场次助理', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '报名者甲', '13800000002',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNoOrEmp":"S20260001","dept":"医学院","identityType":"学生","orgOrClub":"红十字会"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '献血场次'), (2, '校园开放日'), (3, '其它公益');
+-- 1 与 4 时段重叠，便于校验时段冲突；截止日放在开课前
+INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '无偿献血进校园', '校红十字会', '体育馆一层 / 请带身份证', 1, 50, 'available', '2026-10-11 09:00:00', '2026-10-11 12:00:00', '2026-10-10 23:59:59'),
+(2, '实验室开放日上午场', '实验中心', '实验楼大厅', 2, 40, 'available', '2026-10-12 09:00:00', '2026-10-12 11:30:00', '2026-10-11 20:00:00'),
+(3, '无偿献血补报场', '校医院', '校医院采血室', 1, 30, 'available', '2026-10-15 14:00:00', '2026-10-15 17:00:00', '2026-10-14 18:00:00'),
+(4, '实验室开放日下午场', '实验中心', '实验楼大厅', 2, 40, 'available', '2026-10-11 14:00:00', '2026-10-11 16:30:00', '2026-10-10 23:59:59'),
+(5, '公益健康咨询开放日', '校医院', '校医院一楼', 3, 60, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '报名须知', '请如实填写资料；名额有限；本期无健康筛查建档引擎。', 'admin', '场次主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周场次', '无偿献血与实验室开放日已开放报名。', 'admin', '场次主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周场次');
+INSERT IGNORE INTO signup (id, book_id, username, status, remark) VALUES
+(1, 2, 'user', 'pending', '希望报名实验室开放日上午场。');
+
+UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
+"""
+
+_ACTIVITY_CAMP = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '项目主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '项目助理', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '报名者甲', '13800000002',
+ '{"realName":"李同学","email":"li@demo.edu","gender":"男","studentNoOrEmp":"S20260001","dept":"教育学院","identityType":"学生","orgOrClub":"研学社"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES
+(1, '研学营'), (2, '夏令营'), (3, '赛事');
+-- 1 与 4 时段重叠，便于校验时段冲突；截止日放在开课前
+INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status, start_at, end_at, apply_deadline_at) VALUES
+(1, '红色基地研学两日营', '团委', '南门集合 / 含保险说明', 1, 40, 'available', '2026-10-11 08:00:00', '2026-10-12 17:00:00', '2026-10-09 23:59:59'),
+(2, '科创夏令营一周营', '创新创业学院', '创客中心报到', 2, 35, 'available', '2026-10-12 09:00:00', '2026-10-18 17:00:00', '2026-10-10 20:00:00'),
+(3, '程序设计校内赛', '计算机学院', '创新楼机房', 3, 80, 'available', '2026-10-15 09:00:00', '2026-10-15 17:00:00', '2026-10-14 18:00:00'),
+(4, '博物馆研学半日营', '教务处', '东门集合', 1, 45, 'available', '2026-10-11 13:00:00', '2026-10-11 17:00:00', '2026-10-09 23:59:59'),
+(5, '创新创业大赛报名', '团委', '大礼堂答辩', 3, 60, 'available', '2026-10-19 09:00:00', '2026-10-19 17:00:00', '2026-10-18 18:00:00');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '报名须知', '请如实填写资料；名额有限；到场请向主办方索取签到码。', 'admin', '项目主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周项目', '红色基地研学与程序设计校内赛已开放报名。', 'admin', '项目主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周项目');
+INSERT IGNORE INTO signup (id, book_id, username, status, remark) VALUES
+(1, 3, 'user', 'pending', '希望报名程序设计校内赛。');
+
+UPDATE activity SET checkin_code=CONCAT('ACT', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 """
 
 _IT_ENTERPRISE = """\
@@ -140,6 +336,9 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 INSERT IGNORE INTO campus_zone (id, name) VALUES (1, '办公区'), (2, '机房区');
 INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, '1201'), (2, 1, '1208'), (3, 2, 'M01');
 INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES (1, '内网', 1), (2, '终端', 2), (3, '打印机', 3);
+
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', 'A座1208无法连接内网', '办公区 1208', 1, 2, 'pending', '普通', '13800000002', '网线已插好，指示灯不亮。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请写明办公区、终端与故障现象并上传截图，运维将尽快受理。', 'admin', '运维主管'
@@ -221,6 +420,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 3, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, patient_name, visit_type, symptom_note) VALUES
+(1, 1, 'patient', 'confirmed', '', '钱女士', '初诊', '豆豆皮肤过敏复诊');
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '挂号须知', '号源有限；请填写宠物昵称与就诊人；按时到诊；就诊完成后由前台办结。', 'admin', '宠物医院主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='挂号须知');
@@ -253,6 +455,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 3, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, patient_name, visit_type, symptom_note) VALUES
+(1, 1, 'patient', 'confirmed', '', '钱女士', '首针', 'HPV九价第一针');
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '预约须知', '请按时到点接种；取消请提前释放号源。本期无冷链与真库存。', 'admin', '接种点主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='预约须知' OR title='挂号须知');
@@ -285,6 +490,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 8, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 8, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 8, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, preferred_stylist) VALUES
+(1, 1, 'user', 'confirmed', '', '力量教练甲');
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '健身预约', '请选择课程与时段到馆；迟到可能需改约。', 'admin', '场馆主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='健身预约' OR title='服务预约');
@@ -404,6 +612,9 @@ INSERT IGNORE INTO building (id, name) VALUES (1, '学生公寓3号楼'), (2, '�
 INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '405'), (2, 1, '406'), (3, 2, '201');
 INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3), (4, '投诉建议', 4);
+
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', '学生公寓3号楼405灯不亮', '学生公寓3号楼 405', 1, 1, 'pending', '普通', '13800000002', '卫生间灯具不亮，已换保险丝无效。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请填写公寓楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业主管'
@@ -785,6 +996,9 @@ INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '路灯12'), (2, 1
 INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '路灯', 1), (2, '井盖', 2), (3, '市政设施', 3), (4, '其他', 4);
 
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', '东区一街路灯不亮', '东区一街 路灯12', 1, 1, 'pending', '普通', '13800000002', '夜间整段不亮，影响通行。');
+
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请写明片区路段与设施位置并上传现场照片，市政将尽快受理。', 'admin', '市政主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报修须知');
@@ -803,6 +1017,9 @@ INSERT IGNORE INTO building (id, name) VALUES (1, 'A 栋'), (2, 'B 栋');
 INSERT IGNORE INTO room (id, building_id, code) VALUES (1, 1, '101'), (2, 1, '102'), (3, 2, '201');
 INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '噪音扰民', 1), (2, '环境卫生', 2), (3, '服务态度', 3), (4, '其他投诉', 4);
+
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', 'A栋夜间装修噪音', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '连续三天夜间施工，请核实劝阻。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '投诉须知', '请如实填写地址与诉求描述，物业将尽快受理办结。', 'admin', '物业主管'
@@ -823,6 +1040,9 @@ INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, '柜台1'), (2
 INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
 (1, '退换货', 1), (2, '维修咨询', 2), (3, '服务投诉', 3), (4, '其他售后', 4);
 
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', '城东门店退换货咨询', '城东门店 柜台1', 1, 1, 'pending', '普通', '13800000002', '到货外观破损，申请换货。');
+
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '售后须知', '请写明网点与问题描述并上传凭证，客服将尽快受理。', 'admin', '客服主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='售后须知');
@@ -841,6 +1061,9 @@ INSERT IGNORE INTO campus_zone (id, name) VALUES (1, '机房区'), (2, '办公�
 INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, 'UPS-01'), (2, 1, '空调-02'), (3, 2, '打印-03');
 INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
 (1, '定期保养', 1), (2, '故障维修', 2), (3, '备件更换', 3), (4, '其他维保', 4);
+
+INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
+(1, 'user', '机房UPS-01异响告警', '机房区 UPS-01', 2, 1, 'pending', '紧急', '13800000002', '夜间告警灯闪烁，请上门排查。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '维保须知', '请写明设备区域、资产编号与现象并上传照片，维保将尽快受理。', 'admin', '维保主管'
@@ -899,6 +1122,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 1, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, subject, party_size) VALUES
+(1, 1, 'user', 'confirmed', '', '教研例会', 4);
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '会议室预约须知', '请按预约时段使用并按时离开；可取消释放名额。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='会议室预约须知');
@@ -923,6 +1149,10 @@ INSERT IGNORE INTO post (id, title, author, isbn, category_id, stock, status) VA
 (3, '寻周末拼车去火车站', '居民乙', '<p>周日上午出发，可拼两人。</p>', 1, 1, 'available'),
 (4, '小区绿化浇水志愿者', '物业值班', '<p>本周志愿浇水时间表见楼下。</p>', 3, 1, 'available'),
 (5, '求推荐靠谱开锁师傅', '居民丙', '<p>门锁偶发失灵，求邻里推荐。</p>', 1, 1, 'available');
+INSERT IGNORE INTO reply (id, book_id, username, status, apply_at, approve_at, remark) VALUES
+(1, 1, 'user', 'approved', NOW(), NOW(), '<p>我也想参加义诊，怎么报名？</p>'),
+(2, 3, 'subadmin', 'approved', NOW(), NOW(), '<p>周日上午还可拼一人，私信楼主。</p>'),
+(3, 5, 'user', 'pending', NOW(), NULL, '<p>推荐李师傅，上次换锁很快。</p>');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '社区公约', '请文明发帖；广告与人身攻击帖将被下架。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社区公约');
@@ -1059,6 +1289,9 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (10, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 1, 0),
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, plate_no) VALUES
+(1, 1, 'user', 'confirmed', '', '粤A12345');
+UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '校园车位预约', '预约成功后请按时入场；取消后释放车位时段。访客请选访客身份。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园车位预约' OR title='车位预约');
@@ -1076,7 +1309,7 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '套餐'), (2, '面食'), (3, '饮品');
 INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '红烧肉套餐', '18.00', '窗口A', 1, 80, 'available'),
+(1, '红烧肉套餐', '18.00', '窗口A', 1, 79, 'available'),
 (2, '番茄鸡蛋面', '12.00', '窗口B', 2, 60, 'available'),
 (3, '豆浆油条', '8.00', '早餐档', 1, 100, 'available'),
 (4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
@@ -1089,9 +1322,13 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址，无真支付。', 'admin', '食堂主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='食堂点餐' OR title='点餐须知');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, taste_note) VALUES
+(1, 'user', 'pending', 18.00, '窗口A取餐', '李同学', '13800000002', '学生公寓 3 号楼 405', '堂食', '不辣');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '红烧肉套餐', 18.00, 1);
 """
 
-# 社会零售共用演示种子（鲜花/数码店等不另开行业表）；去掉校徽等校园二手味
+# 社会零售兜底（无行业词时）
 _SHOP_RETAIL = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '商城主管', '13800000000', '{}', 1, 0, 1),
@@ -1103,10 +1340,10 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
 INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '基础款商品 A', '99.00', 'SKU-A01', 1, 30, 'available'),
-(2, '基础款商品 B', '59.90', 'SKU-B02', 2, 40, 'available'),
-(3, '基础款商品 C', '129.00', 'SKU-C03', 1, 20, 'available'),
-(4, '基础款商品 D', '39.00', 'SKU-D04', 3, 50, 'available');
+(1, '日用收纳盒', '29.90', 'SKU-A01', 2, 29, 'available'),
+(2, '蓝牙耳机套装', '129.00', 'SKU-B02', 1, 40, 'available'),
+(3, '保温杯 500ml', '59.00', 'SKU-C03', 2, 20, 'available'),
+(4, '手机支架', '19.90', 'SKU-D04', 3, 50, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -1116,6 +1353,130 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址，无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '日用收纳盒', 29.90, 1);
+"""
+
+_SHOP_PRINT = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '文印店长', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '顾客甲', '13800000002',
+ '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自取","receiverName":"王同学","receiveAddress":"文印店前台"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '黑白打印'), (2, '彩印装订'), (3, '耗材');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+(1, 'A4 黑白单面（50 页）', '5.00', 'PRT-BW50', 1, 99, 'available'),
+(2, '毕业论文胶装', '25.00', 'PRT-BIND', 2, 39, 'available'),
+(3, '彩打封面（10 张）', '12.00', 'PRT-CV10', 2, 60, 'available'),
+(4, 'A4 复印纸（500 张）', '28.00', 'PRT-PAPER', 3, 20, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王同学', '13800000002', '文印店前台自取', '自取', 1),
+(2, 'user', '王同学', '13800000002', '教学楼 A 座门口', '配送', 0),
+(3, 'user', '王同学', '13800000002', '宿舍 3 号楼宿管台', '宿舍', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '文印须知', '下单后到店取件或约定配送；无真支付。', 'admin', '文印店长'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='文印须知' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 25.00, '胶装蓝色封面，今晚取。', '王同学', '13800000002', '文印店前台自取', '到店自取');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 2, '毕业论文胶装', 25.00, 1);
+"""
+
+_SHOP_FLOWERS = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '花店主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '买家甲', '13800000002',
+ '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '鲜切花'), (2, '盆花绿植'), (3, '地方特产');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '康乃馨花束（11 枝）', '68.00', 'FL-CN11', 1, 19, 'available'),
+(2, '向日葵桌花', '88.00', 'FL-SF01', 1, 15, 'available'),
+(3, '绿萝盆栽', '39.00', 'FL-LV01', 2, 30, 'available'),
+(4, '本地蜂蜜礼盒', '58.00', 'SP-HN01', 3, 25, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '花店门店自提', '自提', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '花店须知', '鲜花与特产下单后由店员确认配送；无真支付。', 'admin', '花店主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='花店须知' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 68.00, '周六上午送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '康乃馨花束（11 枝）', 68.00, 1);
+"""
+
+_SHOP_ERRAND = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '跑腿调度', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '跑腿员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '下单同学', '13800000002',
+ '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"宿舍配送","receiverName":"王同学","receiveAddress":"学生公寓 3 号楼 405"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '代买餐饮'), (2, '代买日用'), (3, '代取快递');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '食堂代买套餐（含跑腿费）', '22.00', 'ER-MEAL', 1, 49, 'available'),
+(2, '超市代买日用品', '15.00', 'ER-DAILY', 2, 40, 'available'),
+(3, '东门驿站代取件', '8.00', 'ER-PICK', 3, 80, 'available'),
+(4, '打印店代取资料', '6.00', 'ER-PRINT', 3, 60, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王同学', '13800000002', '学生公寓 3 号楼 405', '宿舍', 1),
+(2, 'user', '王同学', '13800000002', '教学楼 A 座门口', '教学楼', 0),
+(3, 'user', '王同学', '13800000002', '图书馆南门', '图书馆', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '跑腿须知', '代买代取下单后由跑腿员接单；非驿站取件核销系统；无真支付。', 'admin', '跑腿调度'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跑腿须知' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 22.00, '红烧肉套餐，少辣，送到 405。', '王同学', '13800000002', '学生公寓 3 号楼 405', '宿舍配送');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '食堂代买套餐（含跑腿费）', 22.00, 1);
+"""
+
+_SHOP_POINTS = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '积分商城主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '会员甲', '13800000002',
+ '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自提","receiverName":"王同学","receiveAddress":"学生活动中心"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '文创兑换'), (2, '生活兑换'), (3, '虚拟权益');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '校徽帆布袋（500 积分）', '0.00', 'PT-BAG', 1, 39, 'available'),
+(2, '保温杯（800 积分）', '0.00', 'PT-CUP', 2, 20, 'available'),
+(3, '打印券 20 页（200 积分）', '0.00', 'PT-PRT', 3, 100, 'available'),
+(4, '体育馆次卡（1200 积分）', '0.00', 'PT-GYM', 3, 30, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王同学', '13800000002', '学生活动中心兑换点', '自提', 1),
+(2, 'user', '王同学', '13800000002', '学生公寓 3 号楼宿管台', '宿舍', 0),
+(3, 'user', '王同学', '13800000002', '东门驿站', '驿站', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '积分兑换须知', '兑换下单后由管理员确认发放；积分扣减以系统账户为准，无真支付。', 'admin', '积分商城主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='积分兑换须知' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 0.00, '兑换帆布袋，活动中心自提。', '王同学', '13800000002', '学生活动中心兑换点', '到店自提');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '校徽帆布袋（500 积分）', 0.00, 1);
 """
 
 # 校园二手：成色列由 apply 注入；种子含校内二手货
@@ -1128,12 +1489,12 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '数码'), (2, '日用'), (3, '文创');
+INSERT IGNORE INTO category (id, name) VALUES (1, '教材教辅'), (2, '数码'), (3, '日用文创');
 INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, condition_grade, seller_note) VALUES
-(1, '机械键盘', '199.00', 'KB-01', 1, 20, 'available', '九成新', '宿舍自提'),
-(2, '桌面台灯', '59.90', 'LAMP-02', 2, 35, 'available', '全新', '未拆封'),
-(3, '校徽帆布袋', '29.00', 'BAG-03', 3, 50, 'available', '全新', '校内文创'),
-(4, '无线鼠标', '89.00', 'MS-04', 1, 15, 'available', '八成新', '轻微使用痕迹');
+(1, '高等数学上下册', '35.00', 'BOOK-MATH', 1, 9, 'available', '九成新', '宿舍自提'),
+(2, '机械键盘', '199.00', 'KB-01', 2, 20, 'available', '九成新', '宿舍自提'),
+(3, '桌面台灯', '59.90', 'LAMP-02', 3, 35, 'available', '全新', '未拆封'),
+(4, '无线鼠标', '89.00', 'MS-04', 2, 15, 'available', '八成新', '轻微使用痕迹');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王同学', '13800000002', '学生公寓 3 号楼 405', '宿舍', 1),
@@ -1143,6 +1504,10 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点，无真支付。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园商城' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 35.00, '教材两本，宿舍自提。', '王同学', '13800000002', '学生公寓 3 号楼 405', '到店自提');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '高等数学上下册', 35.00, 1);
 """
 
 
@@ -1184,13 +1549,25 @@ def apply_domain_scene_seed(
     scene = scene_for(domain, title, proposal_text)
     seed: str | None = None
     if domain == "DOM-SHOP":
-        campus = shop_product_kind(title, proposal_text) == "campus"
+        pk = shop_product_kind(title, proposal_text)
+        campus = pk == "campus"
         sql = _shop_sql_condition_grade(sql, campus=campus)
-        seed = _SHOP_CAMPUS if campus else _SHOP_RETAIL
+        seed = {
+            "campus": _SHOP_CAMPUS,
+            "print": _SHOP_PRINT,
+            "flowers": _SHOP_FLOWERS,
+            "errand": _SHOP_ERRAND,
+            "points": _SHOP_POINTS,
+        }.get(pk, _SHOP_RETAIL)
     elif domain == "DOM-FOOD" and food_product_kind(title, proposal_text) == "canteen":
         seed = _FOOD_CANTEEN
-    elif domain == "DOM-PARKING" and scene == "campus":
-        seed = _PARKING_CAMPUS
+    elif domain == "DOM-PARKING":
+        if parking_product_kind(title, proposal_text) == "charge":
+            seed = _rsv.PARKING_CHARGE
+        elif scene == "campus":
+            seed = _PARKING_CAMPUS
+    elif domain == "DOM-HOTEL" and hotel_product_kind(title, proposal_text) == "homestay":
+        seed = _rsv.HOTEL_HOMESTAY
     elif domain == "DOM-ATTEND" and scene == "campus":
         seed = _ATTEND_CAMPUS
     elif domain == "DOM-PARCEL" and scene == "community":
@@ -1199,16 +1576,44 @@ def apply_domain_scene_seed(
         seed = _LOST_COMMUNITY
     elif domain == "DOM-LOST" and scene == "adopt":
         seed = _LOST_ADOPT
+    elif domain == "DOM-LOST" and scene == "donate":
+        seed = _LOST_DONATE
+    elif domain == "DOM-ACTIVITY":
+        ak = activity_product_kind(title, proposal_text)
+        if ak == "cert":
+            seed = _ACTIVITY_CERT
+        elif ak == "ticket":
+            seed = _ACTIVITY_TICKET
+        elif ak == "blood":
+            seed = _ACTIVITY_BLOOD
+        elif ak == "camp":
+            seed = _ACTIVITY_CAMP
     elif domain == "DOM-RECRUIT" and scene == "enterprise":
         seed = _RECRUIT_ENTERPRISE
     elif domain == "DOM-DATING" and scene == "campus":
         seed = _DATING_CAMPUS
-    elif domain == "DOM-HOSPITAL" and hospital_product_kind(title, proposal_text) == "pet":
-        seed = _HOSPITAL_PET
-    elif domain == "DOM-HOSPITAL" and hospital_product_kind(title, proposal_text) == "vaccine":
-        seed = _HOSPITAL_VACCINE
-    elif domain == "DOM-SALON" and salon_product_kind(title, proposal_text) == "fitness":
-        seed = _SALON_FITNESS
+    elif domain == "DOM-HOSPITAL":
+        hk = hospital_product_kind(title, proposal_text)
+        if hk == "pet":
+            seed = _HOSPITAL_PET
+        elif hk == "vaccine":
+            seed = _HOSPITAL_VACCINE
+        elif hk == "window":
+            seed = _rsv.HOSPITAL_WINDOW
+        elif hk == "visit":
+            seed = _rsv.HOSPITAL_VISIT
+    elif domain == "DOM-SALON":
+        sk = salon_product_kind(title, proposal_text)
+        if sk == "fitness":
+            seed = _SALON_FITNESS
+        elif sk == "counsel":
+            seed = _rsv.SALON_COUNSEL
+        elif sk == "drive":
+            seed = _rsv.SALON_DRIVE
+        elif sk == "home":
+            seed = _rsv.SALON_HOME
+        elif sk == "tutor":
+            seed = _rsv.SALON_TUTOR
     elif domain == "DOM-FUND" and scene == "enterprise":
         seed = _FUND_ENTERPRISE
     elif domain == "DOM-GRADE" and scene == "enterprise":
@@ -1253,18 +1658,58 @@ def apply_domain_scene_seed(
             seed = _IT_ENTERPRISE
     elif domain == "DOM-ASSET" and scene == "campus":
         seed = _ASSET_CAMPUS
-    elif domain == "DOM-MEETING" and scene == "campus":
-        seed = _MEETING_CAMPUS
-    elif domain == "DOM-FORUM" and scene == "community":
-        seed = _FORUM_COMMUNITY
-    elif domain == "DOM-MEDIA" and scene == "campus":
-        seed = _MEDIA_CAMPUS
-    elif domain == "DOM-MUSIC" and scene == "campus":
-        seed = _MUSIC_CAMPUS
-    elif domain == "DOM-BLOG" and scene == "campus":
-        seed = _BLOG_CAMPUS
+    elif domain == "DOM-MEETING":
+        mk = meeting_product_kind(title, proposal_text)
+        if mk == "exhibit":
+            seed = _rsv.MEETING_EXHIBIT
+        elif mk == "gym":
+            seed = _rsv.MEETING_GYM
+        elif scene == "campus" or mk in ("study", "piano", "seat", "lab"):
+            seed = _MEETING_CAMPUS
+    elif domain == "DOM-FORUM":
+        if forum_product_kind(title, proposal_text) == "wall":
+            seed = _content.FORUM_WALL
+        elif scene == "community":
+            seed = _FORUM_COMMUNITY
+    elif domain == "DOM-MEDIA":
+        mk = media_product_kind(title, proposal_text)
+        if mk == "coursevod":
+            seed = _content.MEDIA_COURSEVOD
+        elif scene == "campus" or mk == "campus":
+            seed = _MEDIA_CAMPUS
+    elif domain == "DOM-MUSIC":
+        mk = music_product_kind(title, proposal_text)
+        if mk == "karaoke":
+            seed = _content.MUSIC_KARAOKE
+        elif scene == "campus" or mk == "campus":
+            seed = _MUSIC_CAMPUS
+    elif domain == "DOM-BLOG":
+        bk = blog_product_kind(title, proposal_text)
+        if bk == "press":
+            seed = _content.BLOG_PRESS
+        elif scene == "campus" or bk == "campus":
+            seed = _BLOG_CAMPUS
     elif domain == "DOM-TIMEBANK" and scene == "campus":
         seed = _TIMEBANK_CAMPUS
+    elif domain in {
+        "DOM-SEAL",
+        "DOM-FLEET",
+        "DOM-CERT",
+        "DOM-PROMO",
+        "DOM-TRIP",
+        "DOM-EXPENSE",
+    } and scene == "enterprise":
+        nick, prof = _OA_ENTERPRISE_USER
+        return _patch_portal_user_identity(sql, nickname=nick, profile_json=prof)
+    elif domain == "DOM-FITOUT" and scene == "community":
+        nick, prof = _FITOUT_COMMUNITY_USER
+        return _patch_portal_user_identity(sql, nickname=nick, profile_json=prof)
+    elif domain == "DOM-FITOUT" and scene == "enterprise":
+        nick, prof = _OA_ENTERPRISE_USER
+        return _patch_portal_user_identity(sql, nickname=nick, profile_json=prof)
+    elif domain == "DOM-CARPASS" and scene == "enterprise":
+        nick, prof = _CARPASS_ENTERPRISE_USER
+        return _patch_portal_user_identity(sql, nickname=nick, profile_json=prof)
     if seed is None:
         return sql
     return _replace_user_seed_tail(sql, seed)

@@ -42,16 +42,20 @@
           <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />
         </el-form-item>
         <template v-if="slotHospital">
-          <el-form-item label="就诊人" required>
+          <el-form-item :label="patientLabel" required>
             <el-input v-model="extra.patientName" maxlength="32" />
           </el-form-item>
-          <el-form-item label="初诊/复诊">
+          <el-form-item :label="visitTypeLabel">
             <el-select v-model="extra.visitType" style="width:100%">
-              <el-option label="初诊" value="初诊" />
-              <el-option label="复诊" value="复诊" />
+              <el-option
+                v-for="opt in visitTypeOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
             </el-select>
           </el-form-item>
-          <el-form-item label="症状简述">
+          <el-form-item :label="symptomLabel">
             <el-input v-model="extra.symptomNote" maxlength="200" />
           </el-form-item>
         </template>
@@ -64,14 +68,14 @@
           </el-form-item>
         </template>
         <template v-if="slotHotel">
-          <el-form-item label="入住人" required>
+          <el-form-item :label="guestLabel" required>
             <el-input v-model="extra.guestName" maxlength="32" />
           </el-form-item>
-          <el-form-item label="入住人数">
+          <el-form-item :label="guestCountLabel">
             <el-input-number v-model="extra.guestCount" :min="1" :max="20" />
           </el-form-item>
         </template>
-        <el-form-item v-if="slotSalon" label="偏好技师">
+        <el-form-item v-if="slotSalon" :label="stylistLabel">
           <el-input v-model="extra.preferredStylist" maxlength="32" placeholder="选填" />
         </el-form-item>
         <el-form-item
@@ -128,6 +132,21 @@ const resvVerb = computed(() => resv.verbs?.apply || '预约')
 const requireRemark = computed(() => !!resv.requireRemark)
 const requireConfirm = computed(() => !!resv.requireConfirm)
 const remarkLabel = computed(() => resv.remarkLabel || '备注')
+const patientLabel = computed(() => resv.patientNameLabel || remarkLabel.value || '就诊人')
+const visitTypeLabel = computed(() => resv.visitTypeLabel || '初诊/复诊')
+const visitTypeOptions = computed(() => {
+  const opts = resv.visitTypeOptions
+  if (Array.isArray(opts) && opts.length) return opts
+  return [
+    { label: '初诊', value: '初诊' },
+    { label: '复诊', value: '复诊' },
+  ]
+})
+const visitTypeDefault = computed(() => resv.visitTypeDefault || visitTypeOptions.value[0]?.value || '初诊')
+const symptomLabel = computed(() => resv.symptomNoteLabel || '症状简述')
+const stylistLabel = computed(() => resv.stylistLabel || '偏好技师')
+const guestLabel = computed(() => resv.guestNameLabel || '入住人')
+const guestCountLabel = computed(() => resv.guestCountLabel || '入住人数')
 const structured = computed(() =>
   slotParking.value
   || slotHospital.value
@@ -189,7 +208,7 @@ async function openReserve(s) {
   pending.value = s
   remark.value = ''
   Object.assign(extra, {
-    plateNo: '', patientName: '', visitType: '初诊', symptomNote: '',
+    plateNo: '', patientName: '', visitType: visitTypeDefault.value, symptomNote: '',
     partySize: 1, guestName: '', guestCount: 1, preferredStylist: '',
   })
   try {
@@ -218,11 +237,11 @@ async function submitReserve() {
     return
   }
   if (slotHospital.value && !extra.patientName.trim()) {
-    ElMessage.warning('请填写就诊人')
+    ElMessage.warning(`请填写${patientLabel.value}`)
     return
   }
   if (slotHotel.value && !extra.guestName.trim()) {
-    ElMessage.warning('请填写入住人')
+    ElMessage.warning(`请填写${guestLabel.value}`)
     return
   }
   if (slotMeeting.value && !note) {

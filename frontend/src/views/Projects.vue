@@ -309,6 +309,7 @@ import {
   getCatalog,
   projectStatusLabel,
   projectStatusPill,
+  projectIsDownloadable,
   deliveryMarkLabel,
   statusPillNode,
 } from '../opsShared'
@@ -673,8 +674,8 @@ const stats = reactive({
 const deliveryBusyId = ref('')
 
 function downloadRowZip(row) {
-  if (!row?.zip_ready) {
-    message.error('质量检查未通过 · 暂不可下载')
+  if (!projectIsDownloadable(row)) {
+    message.error(row?.download_blocked_reason || '质量检查未通过 · 暂不可下载')
     return
   }
   window.open(api.downloadUrl(row.id), '_blank')
@@ -785,7 +786,10 @@ const columns = [
     title: '状态',
     key: 'status',
     render(row) {
-      const opts = { zipReady: row.zip_ready, deliveryMark: row.delivery_mark }
+      const opts = {
+        zipReady: projectIsDownloadable(row),
+        deliveryMark: row.delivery_mark,
+      }
       return statusPillNode(
         projectStatusLabel(row.status, opts),
         projectStatusPill(row.status, opts),
@@ -813,7 +817,7 @@ const columns = [
     render(row) {
       const mark = String(row.delivery_mark || 'none')
       const baked = row.status === 'generated' || row.status === 'running'
-      const zipOk = !!row.zip_ready && baked
+      const zipOk = projectIsDownloadable(row) && baked
       const busy = deliveryBusyId.value === row.id
       const kids = []
       if (zipOk && mark === 'none') {

@@ -77,6 +77,9 @@ export const api = {
     return `/api/projects/${id}/schema/testcases.md?${q}`
   },
   getApis: (id) => http.get(`/projects/${id}/apis`),
+  /** 学生端全量冒烟：静默全局 toast，由页面自绘工厂/学生错误 */
+  smokeStudentApis: (id) =>
+    http.post(`/projects/${id}/apis/smoke`, null, { silent: true, timeout: 120000 }),
   erSvgUrl: (id, { mode = 'total', entity } = {}) => {
     const q = new URLSearchParams({ mode })
     if (entity) q.set('entity', entity)

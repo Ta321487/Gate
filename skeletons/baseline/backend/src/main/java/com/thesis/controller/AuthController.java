@@ -23,6 +23,10 @@ public class AuthController {
     @Value("${thesis.register-role:user}")
     private String registerRole;
 
+    /** 本机调试可回显验证码明文；默认关闭。 */
+    @Value("${thesis.local-dev.captcha-plain:false}")
+    private boolean captchaPlain;
+
     /** 去掉 0/O、1/I/L 等易混字符 */
     private static final char[] CAPTCHA_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ".toCharArray();
 
@@ -54,6 +58,9 @@ public class AuthController {
         String b64 = Base64.getEncoder().encodeToString(baos.toByteArray());
         Map<String, String> m = new HashMap<>();
         m.put("image", "data:image/png;base64," + b64);
+        if (captchaPlain) {
+            m.put("code", code);
+        }
         return R.ok(m);
     }
 

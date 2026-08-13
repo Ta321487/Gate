@@ -236,6 +236,10 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("teacher", "VARCHAR(100)"),
         ("course_code", "VARCHAR(128)"),
     ),
+    "DOM-TOUR": (
+        ("planner", "VARCHAR(100)"),
+        ("highlight_note", "VARCHAR(255)"),
+    ),
     "DOM-SHOP": (
         ("price_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
         ("sku", "VARCHAR(64) DEFAULT ''"),

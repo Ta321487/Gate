@@ -1155,24 +1155,127 @@ def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         )
     return followup_domain_schema(title, "DOM-PARCEL")
 
-def _activity_schema(title: str) -> dict[str, Any]:
+def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    from app.bake.scene_scan import activity_product_kind
+
+    kind = activity_product_kind(title, proposal_text)
+    # default：社团/志愿/讲座
+    arch_title, arch_author, arch_isbn = "活动名称", "主办方", "地点"
+    arch_noun, stock_lab = "活动", "剩余名额"
+    brow = "活动报名"
+    user, admin, sub = "报名者", "活动主管（总管）", "活动助理"
+    apply_v, ticket_lab = "报名", "报名单"
+    lead = "验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到；结束未签到记爽约。"
+    points = ["验证码登录", "活动检索", "报名、冲突检测、口令签到与爽约"]
+    reg = "注册后可报名校园活动"
+    notice_t = "报名须知"
+    notice = "请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码；活动结束后未签到将记为爽约。"
+    notice_page = "活动公告"
+    menu_a, menu_u = "活动管理", "活动检索"
+    banners = [
+        {"title": "热门活动", "lead": "社团、志愿、讲座分类浏览，在线报名。"},
+        {"title": "到场签到", "lead": "到场向主办方索取签到码完成核验；时段重叠将无法重复报名。"},
+        {"title": "活动公告", "lead": "变更与须知见公告栏。"},
+        {"title": "我的日程", "lead": "登录后查看已报名活动与时段安排。"},
+        {"title": "志愿时长", "lead": "志愿类活动可登记服务时长。"},
+    ]
+    if kind == "cert":
+        arch_title, arch_author, arch_isbn = "报考/培训项目", "主办方/考点", "考点/说明"
+        arch_noun, stock_lab = "报考项目", "剩余名额"
+        brow = "证书报考"
+        user, admin, sub = "报考人", "培训主管（总管）", "报名助理"
+        apply_v, ticket_lab = "报名", "报名单"
+        lead = "验证码登录；浏览证书报考与培训班项目并报名；系统检测时段冲突与报名截止。"
+        points = ["验证码登录", "项目检索", "名额报名与审核"]
+        reg = "注册后可报名培训班与证书报考"
+        notice_t = "报考须知"
+        notice = "请如实填写报考信息；名额有限；时段冲突或已截止将无法提交；本期不对接外部证书库。"
+        notice_page = "培训公告"
+        menu_a, menu_u = "项目管理", "项目检索"
+        banners = [
+            {"title": "报考项目", "lead": "证书报考、培训班与四六级名额分类浏览。"},
+            {"title": "在线报名", "lead": "提交报名申请，审核通过后占名额。"},
+            {"title": "培训公告", "lead": "考点变更与须知见公告栏。"},
+            {"title": "我的报名", "lead": "登录后查看报考进度。"},
+            {"title": "名额说明", "lead": "名额有限，请在截止前完成报名。"},
+        ]
+    elif kind == "ticket":
+        arch_title, arch_author, arch_isbn = "场次/演出名称", "主办方", "场馆/须知"
+        arch_noun, stock_lab = "场次", "剩余票额"
+        brow = "票务报名"
+        user, admin, sub = "观众", "票务主管（总管）", "票务助理"
+        apply_v, ticket_lab = "领票报名", "领票单"
+        lead = "验证码登录；浏览景区/演出场次并领票报名；系统检测时段冲突与报名截止（非选座购票）。"
+        points = ["验证码登录", "场次检索", "领票报名与审核"]
+        reg = "注册后可领票报名"
+        notice_t = "领票须知"
+        notice = "请如实填写联系方式；票额有限；时段冲突或已截止将无法提交；本期无选座与真支付。"
+        notice_page = "票务公告"
+        menu_a, menu_u = "场次管理", "场次检索"
+        banners = [
+            {"title": "场次目录", "lead": "景区与演出场次分类浏览，在线领票。"},
+            {"title": "领票报名", "lead": "提交领票申请，审核通过后占票额。"},
+            {"title": "票务公告", "lead": "场次变更与须知见公告栏。"},
+            {"title": "我的领票", "lead": "登录后查看领票进度。"},
+            {"title": "到场核验", "lead": "到场可向主办方索取签到码完成核验。"},
+        ]
+    elif kind == "blood":
+        arch_title, arch_author, arch_isbn = "场次名称", "主办单位", "地点/注意事项"
+        arch_noun, stock_lab = "场次", "剩余名额"
+        brow = "献血开放日"
+        user, admin, sub = "报名者", "场次主管（总管）", "场次助理"
+        apply_v, ticket_lab = "报名", "报名单"
+        lead = "验证码登录；浏览献血与开放日场次并报名；系统检测时段冲突与报名截止。"
+        points = ["验证码登录", "场次检索", "报名与审核"]
+        reg = "注册后可报名献血与开放日场次"
+        notice_t = "报名须知"
+        notice = "请如实填写资料与身体状况说明；名额有限；时段冲突或已截止将无法提交；本期无健康筛查建档引擎。"
+        notice_page = "场次公告"
+        menu_a, menu_u = "场次管理", "场次检索"
+        banners = [
+            {"title": "开放场次", "lead": "献血与开放日场次分类浏览。"},
+            {"title": "在线报名", "lead": "提交报名申请，审核通过后占名额。"},
+            {"title": "场次公告", "lead": "时间地点变更见公告栏。"},
+            {"title": "我的报名", "lead": "登录后查看报名进度。"},
+            {"title": "到场核验", "lead": "到场可向主办方索取签到码。"},
+        ]
+    elif kind == "camp":
+        arch_title, arch_author, arch_isbn = "项目名称", "主办方", "集合地点/行程"
+        arch_noun, stock_lab = "项目", "剩余名额"
+        brow = "研学赛事"
+        user, admin, sub = "报名者", "项目主管（总管）", "项目助理"
+        apply_v, ticket_lab = "报名", "报名单"
+        lead = "验证码登录；浏览研学、夏令营与赛事项目并报名；系统检测时段冲突与报名截止。"
+        points = ["验证码登录", "项目检索", "报名与审核"]
+        reg = "注册后可报名研学与赛事项目"
+        notice_t = "报名须知"
+        notice = "请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码。"
+        notice_page = "项目公告"
+        menu_a, menu_u = "项目管理", "项目检索"
+        banners = [
+            {"title": "研学赛事", "lead": "研学、夏令营与赛事项目分类浏览。"},
+            {"title": "在线报名", "lead": "提交报名申请，审核通过后占名额。"},
+            {"title": "项目公告", "lead": "行程变更与须知见公告栏。"},
+            {"title": "我的日程", "lead": "登录后查看已报名项目与时段。"},
+            {"title": "到场签到", "lead": "到场向主办方索取签到码完成核验。"},
+        ]
     return _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-ACTIVITY",
             user_role_id="user",
-            user_label="报名者",
-            admin_label="活动主管（总管）",
-            subadmin_label="活动助理",
+            user_label=user,
+            admin_label=admin,
+            subadmin_label=sub,
             archive_key="activity",
-            archive_label="活动",
-            archive_plural="活动",
+            archive_label=arch_noun,
+            archive_plural=arch_noun,
             archive_fields=[
-                {"key": "title", "label": "活动名称", "type": "string"},
-                {"key": "author", "label": "主办方", "type": "string"},
-                {"key": "isbn", "label": "地点", "type": "string"},
+                {"key": "title", "label": arch_title, "type": "string"},
+                {"key": "author", "label": arch_author, "type": "string"},
+                {"key": "isbn", "label": arch_isbn, "type": "string"},
                 {"key": "category", "label": "分类", "type": "select"},
-                {"key": "stock", "label": "剩余名额", "type": "number"},
+                {"key": "stock", "label": stock_lab, "type": "number"},
                 {"key": "checkinCode", "label": "签到码", "type": "string"},
                 {"key": "startAt", "label": "开始时间", "type": "datetime", "timeStepMinutes": 30},
                 {"key": "endAt", "label": "结束时间", "type": "datetime", "timeStepMinutes": 30},
@@ -1180,36 +1283,36 @@ def _activity_schema(title: str) -> dict[str, Any]:
                 {"key": "serviceHours", "label": "志愿时长(小时)", "type": "number"},
             ],
             ticket_key="signup",
-            ticket_label="报名单",
-            ticket_plural="报名",
+            ticket_label=ticket_lab,
+            ticket_plural="报名" if kind != "ticket" else "领票",
             verbs={
-                "apply": "报名",
+                "apply": apply_v,
                 "approve": "通过",
                 "reject": "驳回",
-                "return": "取消报名",
+                "return": "取消报名" if kind != "ticket" else "取消领票",
                 "remind": "提醒",
             },
             states={
                 "pending": "待审核",
-                "approved": "已报名",
+                "approved": "已报名" if kind != "ticket" else "已领票",
                 "rejected": "已驳回",
                 "returned": "已取消",
                 "overdue": "爽约",
             },
-            archive_menu_admin="活动管理",
-            archive_menu_user="活动检索",
+            archive_menu_admin=menu_a,
+            archive_menu_user=menu_u,
             users_menu="用户管理",
-            auth_eyebrow="活动报名",
-            auth_lead="验证码登录；浏览活动并报名；系统检测时段冲突与报名截止；到场口令签到；结束未签到记爽约。",
-            auth_points=["验证码登录", "活动检索", "报名、冲突检测、口令签到与爽约"],
-            register_hint="注册后可报名校园活动",
-            notice_title="报名须知",
-            notice_body="请如实填写资料；名额有限；时段冲突或已截止将无法提交；到场请向主办方索取签到码；活动结束后未签到将记为爽约。",
-            notice_page_title="活动公告",
-            notice_page_lead="报名须知、活动变更与临时通知，点击条目阅读全文。",
-            my_tickets_label="我的报名",
-            pending_label="报名审核",
-            records_label="报名记录",
+            auth_eyebrow=brow,
+            auth_lead=lead,
+            auth_points=points,
+            register_hint=reg,
+            notice_title=notice_t,
+            notice_body=notice,
+            notice_page_title=notice_page,
+            notice_page_lead=f"{notice_t}、变更与临时通知，点击条目阅读全文。",
+            my_tickets_label="我的报名" if kind != "ticket" else "我的领票",
+            pending_label="报名审核" if kind != "ticket" else "领票审核",
+            records_label="报名记录" if kind != "ticket" else "领票记录",
             with_deadline=False,
             allow_rating=True,
             week_calendar=True,
@@ -1219,17 +1322,11 @@ def _activity_schema(title: str) -> dict[str, Any]:
             no_show_penalty_yuan=0,
             approve_ends_flow=True,
         ),
-        [
-            {"title": "热门活动", "lead": "社团、志愿、讲座分类浏览，在线报名。"},
-            {"title": "到场签到", "lead": "到场向主办方索取签到码完成核验；时段重叠将无法重复报名。"},
-            {"title": "活动公告", "lead": "变更与须知见公告栏。"},
-            {"title": "我的日程", "lead": "登录后查看已报名活动与时段安排。"},
-            {"title": "志愿时长", "lead": "志愿类活动可登记服务时长。"},
-        ],
+        banners,
     )
 
 def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """失物招领 / 宠物领养：同认领壳，文案跟题名/开题走（同 _meeting_schema）。"""
+    """失物招领 / 宠物领养 / 捐赠认领：同认领壳，文案跟题名/开题走（同 _meeting_schema）。"""
     from app.bake.scene_scan import scene_lost_parts
 
     sc = scene_lost_parts(title, proposal_text)
@@ -1243,6 +1340,16 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "请如实填写养宠条件与联系方式；审核通过后按通知办理交接。"
         notice_t, notice_page, return_v = "领养须知", "领养公告", "撤销申请"
         reg = "注册后可浏览并申请领养"
+    elif sc == "donate":
+        noun, remark, admin, sub = "捐赠物资", "认领说明", "捐赠站主管（总管）", "认领专员"
+        user, verb = "申请人", "认领"
+        title_lab, author_lab, isbn_lab = "物资名称", "登记人", "规格/数量说明"
+        kind_opts, found_lab = ["可认领", "已预约领取"], "登记时间"
+        brow, menu_u = "捐赠认领", "物资名录"
+        lead = "验证码登录；浏览捐赠物资名录，提交认领申请，管理员审核后领取。"
+        notice = "请如实填写用途与联系方式；审核通过后按通知到站领取，本期无物流寄送。"
+        notice_t, notice_page, return_v = "认领须知", "捐赠公告", "撤销认领"
+        reg = "注册后可浏览物资并申请认领"
     elif sc == "community":
         noun, remark, admin, sub = "启事", "认领说明", "社区招领主管（总管）", "招领管理员"
         user, verb = "居民", "认领"
@@ -1297,7 +1404,6 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "approved": f"已{verb}",
             "rejected": "已驳回",
             "returned": "已撤销",
-            "overdue": "已失效",
         },
         archive_menu_admin=f"{noun}管理",
         archive_menu_user=menu_u,
@@ -1361,7 +1467,6 @@ def _course_schema(title: str) -> dict[str, Any]:
                 "approved": "已选上",
                 "rejected": "已驳回",
                 "returned": "已退选",
-                "overdue": "已失效",
             },
             archive_menu_admin="课程管理",
             archive_menu_user="课程检索",
