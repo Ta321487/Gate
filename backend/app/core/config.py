@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     llm_provider: str = Field(default="deepseek", alias="LLM_PROVIDER")
 
-    # 登录氛围图（可选；无 key 时用领域兜底 Unsplash 直链）
+    # 登录氛围图（可选；无 Key / 外网失败时按 themes.css 色板本地生成）
     unsplash_access_key: str = Field(default="", alias="UNSPLASH_ACCESS_KEY")
 
     gf_backend_port_start: int = Field(default=9100, alias="GF_BACKEND_PORT_START")

@@ -265,10 +265,20 @@ def _fetch_fallback_photo(domain: str, theme: str, dest: Path) -> bool:
     return _download(url, dest)
 
 
+def _fetch_local_atmosphere(domain: str, theme: str, dest: Path) -> bool:
+    """外网不可用时：按 themes.css 色板 + 域族构图生成本地氛围图。"""
+    from app.bake.local_atmosphere import write_local_atmosphere_cached
+
+    return write_local_atmosphere_cached(
+        dest, domain=domain, theme=theme, kind="auth", slot=0
+    )
+
+
 def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
     """
     写入 workspace/frontend/public/auth-hero.jpg。
     成功 True；失败不抛，bake 继续。
+    顺序：缓存 → Unsplash API → Unsplash 直链 → 主题色本地生成。
     """
     settings = get_settings()
     public = workspace / "frontend" / "public"
@@ -287,16 +297,27 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
     query = build_query(domain, theme)
     key = (getattr(settings, "unsplash_access_key", None) or "").strip()
     ok = False
+    source = ""
     if key:
         ok = _fetch_via_api(query, key, dest)
+        if ok:
+            source = "unsplash-api"
     if not ok:
         ok = _fetch_fallback_photo(domain, theme, dest)
+        if ok:
+            source = "unsplash-direct"
+    if not ok:
+        ok = _fetch_local_atmosphere(domain, theme, dest)
+        if ok:
+            source = "local-theme"
     if ok and dest.is_file():
-        try:
-            cache_file.write_bytes(dest.read_bytes())
-        except OSError:
-            pass
-        log.info("auth hero saved (%s): %s", query, dest)
+        # 仅缓存外网图；本地生成另有 local-atmosphere 缓存，避免把本地图当成 Unsplash 命中
+        if source.startswith("unsplash"):
+            try:
+                cache_file.write_bytes(dest.read_bytes())
+            except OSError:
+                pass
+        log.info("auth hero saved (%s / %s): %s", source or "?", query, dest)
         return True
     log.warning("auth hero skipped for %s / %s", domain, theme)
     return False

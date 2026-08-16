@@ -253,7 +253,7 @@ class UnsplashSettings(BaseModel):
     key_configured: bool = Field(description="是否已配置 Access Key")
     key_masked: str = Field(description="Key 掩码")
     hint: str = Field(
-        default="环境变量 UNSPLASH_ACCESS_KEY；用于登录氛围图与门户轮播检索",
+        default="环境变量 UNSPLASH_ACCESS_KEY；外网失败时按 themes.css 色板本地生成登录图/轮播",
         description="配置说明",
     )
 

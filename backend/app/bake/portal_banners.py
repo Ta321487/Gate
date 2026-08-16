@@ -598,7 +598,56 @@ def fetch_portal_banners(
             "lead": cap["lead"],
         })
 
-    log.info("portal banners: %s × %s (unique)%s", domain, len(slides), " · api" if api_urls else "")
+    # 外网不足：按 themes.css 色板本地补齐（同域不同 slot 构图有差，配色跟 theme）
+    filled_local = 0
+    if len(slides) < count and len(slides) < len(captions):
+        from app.bake.local_atmosphere import write_local_atmosphere_cached
+
+        local_cache = settings.cache_dir / "local-atmosphere"
+        while len(slides) < count and len(slides) < len(captions):
+            slot = len(slides) + 1
+            dest = public / f"{slot}.jpg"
+            if not write_local_atmosphere_cached(
+                dest,
+                domain=domain,
+                theme=theme,
+                kind="portal",
+                slot=slot,
+                cache_dir=local_cache,
+            ):
+                log.warning("portal banner local fill failed at slot %s (%s)", slot, domain)
+                break
+            digest = _content_md5(dest)
+            if not digest or digest in used_hashes:
+                if not write_local_atmosphere_cached(
+                    dest,
+                    domain=domain,
+                    theme=theme,
+                    kind="portal",
+                    slot=slot + 100,
+                    cache_dir=local_cache,
+                ):
+                    break
+                digest = _content_md5(dest)
+                if not digest or digest in used_hashes:
+                    dest.unlink(missing_ok=True)
+                    break
+            used_hashes.add(digest)
+            filled_local += 1
+            cap = captions[len(slides)]
+            slides.append({
+                "src": f"/portal-banners/{slot}.jpg",
+                "title": cap["title"],
+                "lead": cap["lead"],
+            })
+
+    log.info(
+        "portal banners: %s × %s (unique)%s%s",
+        domain,
+        len(slides),
+        " · api" if api_urls else "",
+        f" · local×{filled_local}" if filled_local else "",
+    )
     return slides
 
 
