@@ -13,6 +13,7 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 | `stop-frontend.bat` | 停止 `:5173` 监听进程 |
 | `kill-dup-backend.bat` | 清理重复 uvicorn（默认保留最新；`/all` 全杀） |
 | `verify-bats.bat` | 检查 bat 是否误存为 UTF-8 BOM / 含中文 |
+| `setup-cn-mirrors.ps1` | 国内镜像一键配置（pip / npm / Maven / Docker，**用户级**） |
 
 ## 控制台键位（高频优先）
 
@@ -66,3 +67,13 @@ scripts\verify-bats.bat
 ## Compose 数据库
 
 菜单 `F` / `G` / `H` 管的是仓库根目录 `docker-compose.yml` 里的 **MySQL 容器**，不是 Windows 本机 **MySQL80** 服务。需要已安装并运行 Docker Desktop。
+
+## 国内镜像（可选）
+
+首次装环境若 pip / npm / Maven / Docker 拉取很慢，可跑：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-cn-mirrors.ps1
+```
+
+会写入**当前用户**的 pip、`.npmrc` / `.pnpmrc` / `.yarnrc`、`.m2/settings.xml`、`.docker/daemon.json`（覆盖已有配置）。Docker 改完需在 Desktop 里重启一次。
