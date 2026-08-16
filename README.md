@@ -146,7 +146,7 @@ npm run dev
 | `GF_PUBLIC_HOST` | 预览/复制地址用的对外 IP 或域名；非本机时学生进程自动绑 `0.0.0.0` |
 | `GF_BIND_HOST` | 可选；强制学生前后端监听地址 |
 | `GF_STUDENT_MYSQL_*` | 学生库连接（默认 `root` / `root123` @ `3306`） |
-| `UNSPLASH_ACCESS_KEY` | 可选；登录氛围图与门户轮播检索（Key 不入库，工作台可测连通） |
+| `UNSPLASH_ACCESS_KEY` | 可选；登录氛围图与门户轮播。外网失败时按 `themes.css` 色板本地生成 |
 
 完整示例：`backend/.env.example`。
 
