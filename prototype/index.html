@@ -84,10 +84,10 @@
             <div class="panel-bd stack" id="upload-jobs-list" style="gap:14px"></div>
           </div>
 
-          <div class="stats">
-            <div class="stat"><div class="label">全部项目</div><div class="value">8</div><div class="hint">本机工作区</div></div>
-            <div class="stat"><div class="label">生成中</div><div class="value">1</div><div class="hint">正在跑流水线</div></div>
-            <div class="stat"><div class="label">可预览</div><div class="value">3</div><div class="hint">已生成 · 可启预览</div></div>
+          <div class="stats" id="home-stats">
+            <div class="stat clickable" data-action="filter-pending"><div class="label">待审</div><div class="value">2</div><div class="hint">质检过 · 未人工标</div></div>
+            <div class="stat clickable" data-action="filter-ready"><div class="label">已审待发</div><div class="value">1</div><div class="hint">审过 · 未发出</div></div>
+            <div class="stat clickable" data-action="filter-delivered"><div class="label">已发出</div><div class="value">2</div><div class="hint">已发给学生</div></div>
             <div class="stat"><div class="label">本月 Token</div><div class="value">182k</div><div class="hint">流水线 168k · 系统支持 14k · 预算 1.0M</div></div>
           </div>
 
@@ -116,12 +116,13 @@
                     <th>骨架 · 领域</th>
                     <th>状态</th>
                     <th>运行</th>
+                    <th>履约</th>
                     <th>更新</th>
                   </tr>
                 </thead>
                 <tbody id="project-tbody"></tbody>
               </table>
-              <div class="list-footer" id="list-footer">共 0 条 · 点击行进入详情</div>
+              <div class="list-footer" id="list-footer">共 0 条 · 点击行进详情；履约列可直接下载 / 标记</div>
             </div>
           </div>
         </section>
@@ -141,6 +142,8 @@
               </div>
             </div>
               <div class="proj-actions">
+              <button type="button" class="btn btn-secondary is-disabled" id="btn-mark-delivered" data-action="mark-delivered">标记已发出</button>
+              <button type="button" class="btn btn-secondary is-disabled" id="btn-mark-ready" data-action="mark-ready">已审待发</button>
               <button type="button" class="btn btn-secondary is-disabled" id="btn-download" data-action="download-zip">下载 ZIP</button>
               <button type="button" class="btn btn-danger btn-sm" data-action="delete-project">删除</button>
             </div>
@@ -637,6 +640,7 @@
                   <button class="active" data-aview="db">数据库</button>
                   <button data-aview="thesis">论文材料</button>
                   <button data-aview="api">学生端 API</button>
+                  <button data-aview="review">交付复审</button>
                   <button data-aview="gates">质量检查</button>
                 </div>
 
@@ -751,6 +755,43 @@
                   </div>
                 </div>
 
+                <div id="aview-review" class="stack" style="display:none">
+                  <div class="row-between" style="align-items:flex-start">
+                    <div>
+                      <div class="small">
+                        <span class="pill pill-neutral" id="review-status-pill">未进入复审</span>
+                      </div>
+                      <p class="small muted" style="margin:8px 0 0">对照开题材料收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。</p>
+                    </div>
+                    <div class="row gap-sm" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="review-start">进入复审</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="review-verify">验圈</button>
+                      <button type="button" class="btn btn-primary btn-sm" data-action="review-repack">合卷</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="review-qa">质量摘要</button>
+                    </div>
+                  </div>
+                  <div class="review-grid">
+                    <div class="review-panel">
+                      <div class="parse-sec-hd">安全区 · 已通过</div>
+                      <ul class="zone-list" id="review-safe-zone">
+                        <li class="muted small">尚无冻结项</li>
+                      </ul>
+                    </div>
+                    <div class="review-panel">
+                      <div class="parse-sec-hd">待收敛 · 毒区</div>
+                      <ul class="zone-list" id="review-poison-zone">
+                        <li>开题对照 · 核心项</li>
+                        <li>领域主流程 E2E</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="parse-sec-hd mt-12">偏差登记</div>
+                  <textarea class="review-note-input" id="review-note-input" rows="2" placeholder="登记与开题或材料不一致之处（仅运营可见，不进学生交付包）"></textarea>
+                  <div class="row gap-sm" style="margin-top:8px">
+                    <button type="button" class="btn btn-primary btn-sm" data-action="review-add-note">登记偏差</button>
+                  </div>
+                </div>
+
                 <div id="aview-gates" class="stack" style="display:none">
                   <div class="row-between">
                     <div class="small">
@@ -762,7 +803,7 @@
                       <button type="button" class="btn btn-ghost btn-sm" data-action="demo-gate-pass">演示全过</button>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">主流程或功能清单未过，禁止下载交付包。</p>
+                  <p class="small muted" style="margin:0">机器质检未通过时不可下载。工程变更后请在「交付复审」验圈并合卷。人工履约标记在页头操作。</p>
                   <table>
                     <thead><tr><th>级别</th><th>检查项</th><th>结果</th><th>说明</th></tr></thead>
                     <tbody id="gate-tbody">
@@ -774,6 +815,8 @@
                       <tr data-gate="p3b"><td><span class="pill pill-neutral">P3</span></td><td>Spec / 契约一致</td><td class="gate-res"></td><td class="muted">路由与契约对齐</td></tr>
                       <tr data-gate="p3t"><td><span class="pill pill-neutral">P3</span></td><td>表数量 6~15</td><td class="gate-res"></td><td class="muted">schema 约束</td></tr>
                       <tr data-gate="p3d"><td><span class="pill pill-neutral">P3</span></td><td>总管/子管管理边界</td><td class="gate-res"></td><td class="muted">总管门禁与主数据页</td></tr>
+                      <tr data-gate="p3s"><td><span class="pill pill-neutral">P3</span></td><td>交付语义 · 可见面与场景</td><td class="gate-res"></td><td class="muted">演示字样 / 场景穿帮</td></tr>
+                      <tr data-gate="p3q"><td><span class="pill pill-neutral">P3</span></td><td>交付质量摘要</td><td class="gate-res"></td><td class="muted">复审验圈刷新</td></tr>
                       <tr data-gate="p3c"><td><span class="pill pill-neutral">P3</span></td><td>Domain Schema</td><td class="gate-res"></td><td class="muted">领域配置完整性</td></tr>
                       <tr data-gate="accept"><td><span class="pill pill-neutral">P3</span></td><td>可接题边界</td><td class="gate-res"></td><td class="muted">accept=full</td></tr>
                     </tbody>
@@ -1390,10 +1433,10 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>产品定位</h3><span class="pill pill-teal">总览</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览，并在检查通过后提供可下载压缩包。</p>
+                <p>毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览；机器质检通过后可下载压缩包。人工审核后可直接标记已发出，或先标已审待发再发出。</p>
                 <ul>
-                  <li>以固定基线骨架与能力运行时为主体；大语言模型仅填充业务配置，不承担业务代码编写。</li>
-                  <li>交付质量以质量检查结果为准，不以生成耗时或文案完整度替代判定。</li>
+                  <li>以固定工程基线与能力运行时为主体；大语言模型仅填充业务配置，不承担业务代码编写。</li>
+                  <li>机器质检通过只代表可下载，不代表文案与业务逻辑已过人工审核。</li>
                 </ul>
               </div>
             </article>
@@ -1401,7 +1444,7 @@
               <div class="panel-hd"><h3>注意事项</h3><span class="pill pill-teal">规范</span></div>
               <div class="panel-bd help-body">
                 <ul>
-                  <li>请勿将未通过质量检查的工程作为最终交付物提供给学生或指导教师。</li>
+                  <li>请勿将未通过质量检查的工程作为最终交付物提供给学生或指导教师；发出前请完成人工审核并标记「已发出」（或先「已审待发」暂存）。</li>
                   <li>匹配确认前请认真阅读解析摘要；擅自更换领域可能导致能力组合与题目不符。</li>
                   <li>预览仅供验收使用，不构成生产环境部署方案。</li>
                   <li>界面与操作约定如有调整，以当前版本页面提示为准。</li>
@@ -1413,10 +1456,10 @@
               <div class="panel-bd help-body">
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
-                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架与领域。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
-                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。生成完成后可同页改选项并「按当前选项重新生成」。进度可在「任务队列」与项目详情中查看。</p></li>
-                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」页核对质量检查、表结构、论文材料（功能模块图 / 软件测试用例）、学生端 API 与 E-R 图。</p></li>
-                  <li><strong>交付</strong><p>质量检查全部通过后方可下载交付包。未通过或工程与验收规则不一致时下载保持锁定，须重新生成或排查未通过项。</p></li>
+                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域与持久层等。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
+                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题对照」摘要。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
+                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
+                  <li><strong>交付</strong><p>机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。</p></li>
                 </ol>
               </div>
             </article>
@@ -1425,71 +1468,93 @@
               <div class="panel-bd help-body">
                 <p>上传后先分堆、再确认创建。上限与「直接选文件」相同：只计展开后的 PDF / Word / TXT 份数。</p>
                 <ul>
-                  <li>格式：PDF / Word（.doc / .docx）/ TXT；可多选、拖文件夹，或选择 / 拖入 zip。文件夹与 zip 内非材料文件会跳过。</li>
-                  <li>数量：展开后合计最多 8 份。例：8 个 zip 各含 1 份开题 → 8 份，可通过；1 个 zip 内 9 份 → 拒绝；合计超过 8 → 拒绝，不会截取前 8 份。</li>
+                  <li>格式：PDF / Word（.doc / .docx）/ TXT；可多选、拖文件夹，或选择 / 拖入 zip。</li>
+                  <li>数量：展开后合计最多 8 份；超过则拒绝，不会截取前 8 份。</li>
                   <li>同课题：开题 + 任务书 + 功能清单等会并成一个项目。</li>
-                  <li>不同课题：一次拖入多份不同开题，会拆成多个项目；确认弹窗可「全部拆开」或「合并为一个」后微调。</li>
-                  <li>同领域不同实现（如都是图书皮，一套借阅、一套二手交易）会尽量拆开，避免烤成一个项目。</li>
-                  <li>无关材料（简历、空文件、纯闲文等）会剔除，不参与匹配。</li>
-                  <li>确认前不会建项。弹窗打开时再上传下一批，后到的分堆进入队列，不顶掉当前内容；可点「查看分堆」切换，或确认 / 取消后自动翻下一份。</li>
-                  <li>需要超过 8 份材料时，请分多次上传（每次 ≤8）；项目总数不受 8 限制。</li>
+                  <li>不同课题：一次拖入多份不同开题，会拆成多个项目；确认弹窗可「全部拆开」或「合并为一个」。</li>
+                  <li>确认前不会建项；需要超过 8 份材料时，请分多次上传。</li>
                 </ul>
               </div>
             </article>
-            <article class="help-card panel">
+            <article class="help-card panel wide">
               <div class="panel-hd"><h3>质量检查与交付</h3><span class="pill pill-teal">交付</span></div>
               <div class="panel-bd help-body">
-                <p>质量检查是交付条件的组成部分。主流程或功能清单等关键项未通过时，系统暂不可下载交付包，以防不合格工程外发。</p>
+                <p>机器质检通过只代表可下载。关键项未通过时不可下载。人工审核后可在列表或详情直接标「已发出」；需要暂存待发再用「已审待发」。工程变更后须先验圈再合卷。</p>
                 <ul>
-                  <li>检查明细见项目详情「产物 / 对照」中的「质量检查」。</li>
-                  <li>骨架或运行时升级后，既有工程目录可能与当前规则不一致，须重新生成。</li>
-                  <li>质量检查通过仅表示结构与声明能力达标，不替代运营人员对业务路径的人工预览确认。</li>
+                  <li>检查明细见「产物 / 对照 → 质量检查」。含语义门禁（学生可见面「演示」字样、场景身份穿帮）与交付质量摘要。</li>
+                  <li>项目列表顶部「待审 / 已审待发 / 已发出」可点开 backlog；履约列无需进详情即可下载与标记。</li>
+                  <li>工程基线或运行时升级后，既有工程目录可能与当前规则不一致，须重新生成。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>交付复审</h3><span class="pill pill-teal">复审</span></div>
+              <div class="panel-bd help-body">
+                <p>「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。</p>
+                <ul>
+                  <li>首包直发：首次打包未进入复审时，质检通过即可下载；工程改动后 ZIP 可能过期，须验圈并合卷。</li>
+                  <li>进入复审 → 验圈 → 合卷：每轮验圈冻结已通过项到安全区；有回退或 open 偏差登记时不可合卷。</li>
+                  <li>偏差登记：记录与开题或材料不一致之处（仅运营可见）；待结案项须处理后再合卷。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>生成前开题对照</h3><span class="pill pill-teal">对照</span></div>
+              <div class="panel-bd help-body">
+                <p>启动生成前弹出，将开题功能行与 Spec checklist 做静态对照（不调大模型），减少包后返工。</p>
+                <ul>
+                  <li>已对照 / 措辞弱匹配 / 开题未落入 checklist 三类结果；不阻断生成，但强烈建议匹配确认阶段已选对领域。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
-              <div class="panel-hd"><h3>数据库结构</h3><span class="pill pill-teal">产物</span></div>
+              <div class="panel-hd"><h3>数据库</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>生成完成后，可在「产物 / 对照」查看数据表；E-R 支持总图与分图，可复制图片或下载 PNG 贴进 Word。</p>
+                <p>「产物 / 对照 → 数据库」查看表结构与 E-R 图，供「数据库设计」章节使用。</p>
                 <ul>
-                  <li>字段类型按标准 MySQL 写法展示（如 varchar(60)、decimal(10,2)）。</li>
-                  <li>可通过开关切换「合并类型」与「类型 / 长度分列」；复制内容与当前开关一致。</li>
-                  <li>单表复制为制表符分隔文本，可贴入 Word 后使用「文本转换成表格」。</li>
-                  <li>表头为字段名、中文名、数据类型（分列时另含长度）；中文名已表达业务含义，不设说明列。</li>
-                  <li>库表数量约束为 6～15 张（含平台表）。</li>
+                  <li>字段类型按标准 MySQL 写法；可切换合并类型 / 类型·长度分列。</li>
+                  <li>库表数量 6～15 张（含平台表）。E-R 总图含实体与联系；分图按实体展开属性。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
               <div class="panel-hd"><h3>论文材料</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>「产物 / 对照 → 论文材料」提供可贴说明书的功能模块图与软件测试用例表，均按交付菜单 / 角色推导，不发明功能。</p>
+                <p>「产物 / 对照 → 论文材料」：功能模块图与软件测试用例。均按交付菜单推导，不发明功能。</p>
                 <ul>
-                  <li>功能模块图可按业务或按端切换；黑白线框，可复制 PNG 或下载矢量；可选大模型只微调节点中文名。</li>
-                  <li>软件测试用例 5～9 字段可选（默认 6）；可复制表格 / Markdown；大模型仅润色步骤/预期等文案，不增删用例。</li>
-                  <li>与质量检查相互独立：论文材料便于贴文档，交付闸门仍以质量检查为准。</li>
+                  <li>模块图可按业务 / 按端切换；测试用例 5～9 字段可选（默认 6）。</li>
+                  <li>大模型只润色文案，不增删用例、不改编号与模块归属。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
               <div class="panel-hd"><h3>学生端 API</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>「产物 / 对照 → 学生端 API」自动扫描学生工程接口，列出方法、路径与处理函数，便于对照主流程验收。</p>
+                <p>「产物 / 对照 → 学生端 API」扫描学生工程接口，便于对照主流程验收。</p>
                 <ul>
-                  <li>按门户 / 管理端 / 基线等面筛选；可搜索路径或处理函数。</li>
-                  <li>命中主流程契约的接口会标注契约键（如申请 / 下单）。</li>
-                  <li>复制为「方法 + 路径」地址列表；联调基址取「运行」页后端地址。该视图仅供运营端验收，不含于学生交付包。</li>
+                  <li>可按门户 / 管理端等面筛选；命中主流程契约的接口会标注契约键。</li>
+                  <li>「运行」页只负责启停预览；「全量冒烟」按本域 flow_api 模拟页面主路径。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>大模型与填岛拆解</h3><span class="pill pill-teal">大模型</span></div>
+              <div class="panel-bd help-body">
+                <p>大模型仅填充业务配置（Island 文案、E-R 中文、模块图、测试用例等），不写业务源码。开启「业务配置填充」后，工厂会先拆解计划再按 Unit 并发调用。</p>
+                <ul>
+                  <li>拆解粒度：各 Unit 独立生成、校验，失败最多重试 1 次。</li>
+                  <li>并发设置：「大模型」页「填岛并发 Unit 数」（1～8，默认 3）。</li>
+                  <li>计划预览：项目详情「产物 / 对照」可点「填岛拆解计划」查看各 Unit（不调 LLM）。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel">
               <div class="panel-hd"><h3>工作台后端 API</h3><span class="pill pill-teal">运维</span></div>
               <div class="panel-bd help-body">
-                <p>毕设港自身（Python / FastAPI）的运维接口，与学生端交付包无关；用于本机调试、对接脚本或 Postman。</p>
+                <p>毕设港自身（Python / FastAPI）运维接口，与学生端交付包无关。</p>
                 <ul>
-                  <li>涵盖项目、任务、大模型（DeepSeek / Gemini）、Unsplash、运行环境、catalog 等；日常用本站页面，文档供查参与手工调试。</li>
-                  <li>勿与「产物 → 学生端 API」混淆：那是学生工程接口清单，这是工作台后端服务。</li>
-                  <li>服务探活：GET /api/health。</li>
+                  <li>涵盖项目、任务、大模型、Unsplash、运行环境、catalog 等。</li>
+                  <li>勿与「产物 → 学生端 API」混淆。服务探活：GET /api/health。</li>
                 </ul>
                 <p class="help-links">
                   <a href="/docs" target="_blank" rel="noopener">Swagger · /docs</a>
@@ -1498,21 +1563,12 @@
               </div>
             </article>
             <article class="help-card panel">
-              <div class="panel-hd"><h3>任务队列</h3><span class="pill pill-teal">运维</span></div>
+              <div class="panel-hd"><h3>任务队列与运行环境</h3><span class="pill pill-teal">运维</span></div>
               <div class="panel-bd help-body">
-                <p>「任务队列」汇总本机生成与相关异步任务状态，用于排查排队、失败与重试；错误信息亦回写至对应项目详情。</p>
+                <p>「任务队列」看生成排队与失败；「运行环境」看本机 JDK / Maven / Node / MySQL 与预览端口池。</p>
                 <ul>
-                  <li>对已失效或孤立的任务记录，可按页面提供的清理能力处理，避免长期堆积干扰判断。</li>
-                </ul>
-              </div>
-            </article>
-            <article class="help-card panel">
-              <div class="panel-hd"><h3>运行环境</h3><span class="pill pill-teal">运维</span></div>
-              <div class="panel-bd help-body">
-                <p>「运行环境」页展示本机 JDK、Maven、Node、学生库 MySQL 以及预览端口池占用。端口池限制同时预览数量，不限制选题库存。</p>
-                <ul>
-                  <li>服务器部署时须配置 GF_PUBLIC_HOST（公网 IP 或域名），以保证预览链接可被正确访问。</li>
-                  <li>「释放异常占用」只清理工作台未托管但仍占端口的进程；正在预览的项目须到项目详情停止。</li>
+                  <li>服务器部署须配置 GF_PUBLIC_HOST，保证预览链接可访问。</li>
+                  <li>「释放异常占用」只清理未托管却占端口的进程；正在预览的项目须到项目详情停止。</li>
                 </ul>
               </div>
             </article>
@@ -1520,21 +1576,16 @@
               <div class="panel-hd"><h3>术语说明</h3><span class="pill pill-teal">词典</span></div>
               <div class="panel-bd help-body">
                 <dl class="help-glossary">
-                  <div class="help-glossary-row"><dt>分堆确认</dt><dd>上传后按是否同一毕设分簇，确认后再建项；细则见「上传与分堆」。</dd></div>
-                  <div class="help-glossary-row"><dt>材料份数</dt><dd>上传上限按展开后的 PDF / Word / TXT 计（单次最多 8）；细则见「上传与分堆」。</dd></div>
-                  <div class="help-glossary-row"><dt>骨架</dt><dd>学生工程的技术基线模板。匹配时选定骨架，决定可生成工程的基础形态。</dd></div>
-                  <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域。决定文案、菜单与能力组合，与骨架配合使用。</dd></div>
-                  <div class="help-glossary-row"><dt>匹配确认</dt><dd>核验并锁定推荐骨架与领域。确认前不可正式生成；改动后须重新确认。视觉与生成选项在「一键生成」页调整。</dd></div>
-                  <div class="help-glossary-row"><dt>生成配置</dt><dd>描述业务配置的结构化数据（内部亦称 Spec / Schema）。大模型主要填充此类配置，而非手写业务代码。</dd></div>
-                  <div class="help-glossary-row"><dt>视觉与生成选项</dt><dd>配色、质感、布局、字体、智能填充与密码策略等软项；在「一键生成」页调整并即时保存，写入工程须重新生成。</dd></div>
-                  <div class="help-glossary-row"><dt>基线生成</dt><dd>基于骨架与生成配置将工程落地的主路径（内部亦称 bake），区别于仅调用大模型写代码。</dd></div>
-                  <div class="help-glossary-row"><dt>能力运行时</dt><dd>基线内已实现的通用业务能力；领域通过能力组合复用同一套运行时。</dd></div>
-                  <div class="help-glossary-row"><dt>工程目录</dt><dd>单个项目生成后的本机工程目录，供预览、质量检查与打包下载使用。</dd></div>
-                  <div class="help-glossary-row"><dt>质量检查</dt><dd>交付前的自动验收项集合。关键项未通过时暂不可下载交付包。</dd></div>
-                  <div class="help-glossary-row"><dt>交付包锁定</dt><dd>因质量检查未过或工程与验收规则不一致，系统禁用压缩包下载的状态。</dd></div>
+                  <div class="help-glossary-row"><dt>骨架</dt><dd>匹配页选定的能力路径（如 ARCH-FLOW）。决定主流程形态，不是 Spring Boot + Vue 等技术主线。</dd></div>
+                  <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域（DOM-*）。决定文案、菜单与能力组合。</dd></div>
+                  <div class="help-glossary-row"><dt>持久层</dt><dd>匹配确认中的数据访问实现：JdbcTemplate、MyBatis 或 Spring Data JPA。</dd></div>
+                  <div class="help-glossary-row"><dt>开题对照</dt><dd>生成前将开题功能行与 Spec checklist 静态比对；亦指质量检查中 checklist 核心项。</dd></div>
+                  <div class="help-glossary-row"><dt>交付复审</dt><dd>产物页运营流程：验圈冻结安全区、登记偏差、合卷同步 ZIP。不进学生交付包。</dd></div>
+                  <div class="help-glossary-row"><dt>验圈 / 合卷</dt><dd>验圈检查门禁单调性并刷新质量摘要；合卷重新打包 ZIP 使交付包与工程目录一致。</dd></div>
+                  <div class="help-glossary-row"><dt>安全区 / 毒区</dt><dd>复审中已冻结通过项 / 尚未收敛待处理项。</dd></div>
+                  <div class="help-glossary-row"><dt>填岛拆解</dt><dd>业务配置填充的执行方式：先根据工程与开题生成 DeliveryPlan，再按 Unit 并发调用大模型。</dd></div>
+                  <div class="help-glossary-row"><dt>质量检查</dt><dd>交付前的自动验收项集合。含语义门禁与交付质量摘要。关键项未通过时暂不可下载。</dd></div>
                   <div class="help-glossary-row"><dt>预览</dt><dd>在端口池内临时启动前后端做快速验收；不作为生产部署。</dd></div>
-                  <div class="help-glossary-row"><dt>端口池</dt><dd>预留给预览的端口区间，用于限制同时运行的预览实例数量。</dd></div>
-                  <div class="help-glossary-row"><dt>任务队列</dt><dd>异步生成等任务的状态列表，用于查看排队、执行、失败与重试。</dd></div>
                 </dl>
               </div>
             </article>
@@ -1612,6 +1663,39 @@
         <button type="button" class="btn btn-secondary btn-sm" data-action="close-sample-modal">关闭</button>
         <button type="button" class="btn btn-secondary btn-sm" data-action="generate-sample">生成</button>
         <button type="button" class="btn btn-primary btn-sm" data-action="download-sample" disabled id="sample-dl-btn">下载 txt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生成前开题对照 -->
+  <div class="modal-mask" id="proposal-diff-mask">
+    <div class="modal modal-lg" role="dialog" aria-modal="true">
+      <div class="modal-hd">
+        <span>生成前 · 开题对照</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="close-proposal-diff">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <p class="small muted" style="margin-top:0">确认开题功能行已落入工厂对照清单后再启动生成，减少包后返工。</p>
+        <div class="banner success mb-12" style="margin-bottom:12px">
+          <p class="small" style="margin:0">6 项已对照 · 1 项措辞弱匹配 · 0 项未落入 checklist</p>
+        </div>
+        <div class="parse-sec-hd">已对照</div>
+        <ul class="zone-list">
+          <li>读者注册 / 登录</li>
+          <li>图书检索与详情</li>
+          <li>借阅申请 → 审核</li>
+          <li>归还 / 逾期</li>
+          <li>公告管理</li>
+          <li>图书分类管理</li>
+        </ul>
+        <div class="parse-sec-hd mt-12">措辞弱匹配 · 建议扫一眼</div>
+        <ul class="zone-list">
+          <li>逾期提醒通知 → 命中「归还 / 逾期」</li>
+        </ul>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="close-proposal-diff">取消</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="confirm-proposal-generate">确认并启动生成</button>
       </div>
     </div>
   </div>

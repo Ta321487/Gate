@@ -781,6 +781,37 @@
       overflow: auto;
     }
     .modal.modal-lg { width: min(720px, 94vw); }
+    .review-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .review-panel {
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--bg-soft, #fafbfc);
+    }
+    .zone-list {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .zone-list li { margin: 2px 0; }
+    .review-note-input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+      margin-top: 6px;
+    }
+    .stat.clickable { cursor: pointer; }
+    .stat.clickable:hover { border-color: var(--teal, #0d9488); }
     .modal-hd {
       display: flex; justify-content: space-between; align-items: center;
       padding: 14px 18px; border-bottom: 1px solid var(--line-soft);

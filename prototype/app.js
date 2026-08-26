@@ -1,12 +1,12 @@
 ﻿    const projects = [
-      { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚" },
-      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10" },
-      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可下载", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40" },
-      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前" },
-      { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", running: false, updated: "12 分钟前" },
-      { id: "gf-20260712-003", name: "影视点播管理系统", arch: "ARCH-CONTENT · DOM-MEDIA", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "3 天前" },
-      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-GENERIC", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "5 天前" },
-      { id: "gf-20260708-001", name: "社团活动报名系统", arch: "ARCH-FLOW · DOM-ACTIVITY", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周" },
+      { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚", deliveryMark: "none", zipOk: false },
+      { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10", deliveryMark: "none", zipOk: true },
+      { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可下载", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40", deliveryMark: "none", zipOk: false },
+      { id: "gf-20260715-008", name: "停车场预约系统", arch: "ARCH-RESERVE · DOM-PARKING", status: "running", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "9101 / 9201", running: true, updated: "2 小时前", deliveryMark: "ready", zipOk: true },
+      { id: "gf-20260714-006", name: "医院挂号管理系统", arch: "ARCH-RESERVE · DOM-HOSPITAL", status: "generating", statusLabel: "生成中", pill: "pill-teal", runtime: "—", running: false, updated: "12 分钟前", deliveryMark: "none", zipOk: false },
+      { id: "gf-20260712-003", name: "影视点播管理系统", arch: "ARCH-CONTENT · DOM-MEDIA", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "3 天前", deliveryMark: "delivered", zipOk: true },
+      { id: "gf-20260710-002", name: "进销存管理系统", arch: "ARCH-STOCK · DOM-GENERIC", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "5 天前", deliveryMark: "none", zipOk: true },
+      { id: "gf-20260708-001", name: "社团活动报名系统", arch: "ARCH-FLOW · DOM-ACTIVITY", status: "archived", statusLabel: "已归档", pill: "pill-neutral", runtime: "—", running: false, updated: "上周", deliveryMark: "delivered", zipOk: false },
     ];
 
     const logSamples = {
@@ -69,6 +69,9 @@
     let matchUnlocked = false;
     /** 交付质量检查：未过则 zip 锁定 */
     let gatesPass = true;
+    let reviewActive = false;
+    let currentProjectId = "gf-20260717-001";
+    let currentDeliveryMark = "none";
 
     const RECOMMENDED = {
       arch: "ARCH-FLOW · 审核流",
@@ -155,6 +158,28 @@
       setNavOpen(!(shell && shell.classList.contains("nav-open")));
     }
 
+    function deliveryCell(p) {
+      const mark = p.deliveryMark || "none";
+      const zipOk = !!p.zipOk;
+      if (!zipOk) return '<span class="muted small">—</span>';
+      if (mark === "ready") {
+        return `<div class="row gap-sm" style="flex-wrap:wrap" onclick="event.stopPropagation()">
+          <button type="button" class="btn btn-primary btn-sm" data-action="row-deliver" data-id="${p.id}">下载并发出</button>
+        </div>`;
+      }
+      if (mark === "delivered") {
+        return `<div class="row gap-sm" style="flex-wrap:wrap" onclick="event.stopPropagation()">
+          <span class="pill pill-neutral">已发出</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="row-download" data-id="${p.id}">下载</button>
+        </div>`;
+      }
+      return `<div class="row gap-sm" style="flex-wrap:wrap" onclick="event.stopPropagation()">
+        <button type="button" class="btn btn-primary btn-sm" data-action="row-mark-delivered" data-id="${p.id}">已发出</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="row-mark-ready" data-id="${p.id}">暂存</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="row-download" data-id="${p.id}">下载</button>
+      </div>`;
+    }
+
     function renderList(filter = "all", q = "") {
       const tb = document.getElementById("project-tbody");
       const map = {
@@ -163,12 +188,15 @@
         generating: (p) => p.status === "generating",
         done: (p) => ["generated", "running"].includes(p.status),
         fail: (p) => p.status === "failed",
+        pending: (p) => p.zipOk && p.deliveryMark === "none",
+        ready: (p) => p.deliveryMark === "ready",
+        delivered: (p) => p.deliveryMark === "delivered",
       };
       const rows = projects
         .filter(map[filter] || map.all)
         .filter((p) => !q || p.name.includes(q) || p.id.includes(q));
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="5"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">上传材料后确认分堆即可创建；同课题会合并，不同课题会拆开</div></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="6"><div class="empty-hint"><div class="empty-title">暂无项目</div><div class="empty-desc">上传材料后确认分堆即可创建；同课题会合并，不同课题会拆开</div></div></td></tr>`;
       } else {
         tb.innerHTML = rows.map((p) => `
           <tr class="clickable" data-action="open-project" data-id="${p.id}">
@@ -181,11 +209,12 @@
             <td class="small">${p.running
               ? `<span class="pill pill-green">运行中</span><div class="mono muted" style="margin-top:4px">${p.runtime}</div>`
               : `<span class="muted">—</span>`}</td>
+            <td class="small">${deliveryCell(p)}</td>
             <td class="small muted">${p.updated}</td>
           </tr>
         `).join("");
       }
-      document.getElementById("list-footer").textContent = `共 ${rows.length} 条 · 点击行进入详情`;
+      document.getElementById("list-footer").textContent = `共 ${rows.length} 条 · 点击行进详情；履约列可直接下载 / 标记`;
     }
 
     function setProjectTab(tab) {
@@ -202,10 +231,83 @@
       document.querySelectorAll("#artifact-subtabs button").forEach((b) => {
         b.classList.toggle("active", b.dataset.aview === v);
       });
-      ["db", "thesis", "api", "gates"].forEach((id) => {
+      ["db", "thesis", "api", "review", "gates"].forEach((id) => {
         const el = document.getElementById("aview-" + id);
         if (el) el.style.display = id === v ? "flex" : "none";
       });
+    }
+
+    function syncDeliveryHead(zipOk) {
+      const mark = currentDeliveryMark;
+      setDisabled("btn-download", !zipOk);
+      const markBtn = document.getElementById("btn-mark-delivered");
+      const readyBtn = document.getElementById("btn-mark-ready");
+      if (mark === "delivered") {
+        setDisabled("btn-mark-delivered", false);
+        if (markBtn) markBtn.textContent = "撤回已发出";
+        if (readyBtn) {
+          readyBtn.style.display = "none";
+        }
+      } else if (mark === "ready") {
+        setDisabled("btn-mark-delivered", true);
+        if (markBtn) markBtn.textContent = "标记已发出";
+        if (readyBtn) {
+          readyBtn.style.display = "";
+          readyBtn.textContent = "下载并发出";
+          setDisabled("btn-mark-ready", !zipOk);
+        }
+      } else {
+        setDisabled("btn-mark-delivered", !zipOk);
+        setDisabled("btn-mark-ready", !zipOk);
+        if (markBtn) markBtn.textContent = "标记已发出";
+        if (readyBtn) {
+          readyBtn.style.display = "";
+          readyBtn.textContent = "已审待发";
+        }
+      }
+    }
+
+    function setProjectDeliveryMark(mark) {
+      currentDeliveryMark = mark;
+      const p = projects.find((x) => x.id === currentProjectId);
+      if (p) p.deliveryMark = mark;
+      syncDeliveryHead(gatesPass);
+      renderList(
+        document.querySelector("#list-filter button.active")?.dataset.f || "all",
+        document.getElementById("list-search").value.trim()
+      );
+    }
+
+    function openProposalDiffModal() {
+      document.getElementById("proposal-diff-mask")?.classList.add("show");
+    }
+
+    function closeProposalDiffModal() {
+      document.getElementById("proposal-diff-mask")?.classList.remove("show");
+    }
+
+    function renderReviewZones(pass) {
+      const safe = document.getElementById("review-safe-zone");
+      const poison = document.getElementById("review-poison-zone");
+      const pill = document.getElementById("review-status-pill");
+      if (pill) {
+        pill.className = "pill " + (reviewActive ? "pill-amber" : "pill-neutral");
+        pill.textContent = reviewActive ? "复审进行中" : "未进入复审";
+      }
+      if (!safe || !poison) return;
+      if (pass && reviewActive) {
+        safe.innerHTML = [
+          "后端骨架", "前端骨架", "登录 + 验证码基线", "领域主流程 E2E",
+          "开题对照 · 核心项", "交付语义 · 可见面与场景",
+        ].map((x) => `<li>${x}</li>`).join("");
+        poison.innerHTML = '<li class="muted small">暂无待处理项</li>';
+      } else if (reviewActive) {
+        safe.innerHTML = '<li>后端骨架</li><li>前端骨架</li><li>登录 + 验证码基线</li>';
+        poison.innerHTML = '<li>领域主流程 E2E</li><li>开题对照 · 核心项</li>';
+      } else {
+        safe.innerHTML = '<li class="muted small">尚无冻结项</li>';
+        poison.innerHTML = '<li>开题对照 · 核心项</li><li>领域主流程 E2E</li>';
+      }
     }
 
     function setUsageTab(tab) {
@@ -246,6 +348,8 @@
         p3b: true,
         p3t: true,
         p3d: true,
+        p3s: pass,
+        p3q: pass,
         p3c: true,
         accept: pass,
       };
@@ -272,6 +376,8 @@
         document.getElementById("cl-flow").textContent = "已实现";
         document.getElementById("cl-return").className = "pill pill-green";
         document.getElementById("cl-return").textContent = "已实现";
+        const p = projects.find((x) => x.id === currentProjectId);
+        if (p) p.zipOk = true;
       } else {
         overall.className = "pill pill-red";
         overall.textContent = "暂不可下载";
@@ -285,7 +391,11 @@
         document.getElementById("cl-flow").textContent = "未覆盖";
         document.getElementById("cl-return").className = "pill pill-red";
         document.getElementById("cl-return").textContent = "未覆盖";
+        const p = projects.find((x) => x.id === currentProjectId);
+        if (p) p.zipOk = false;
       }
+      syncDeliveryHead(pass);
+      renderReviewZones(pass);
     }
 
     function applyGenState(state) {
@@ -449,6 +559,8 @@
     function openProject(id, demoOverride) {
       clearTimeout(genTimer);
       const p = projects.find((x) => x.id === id) || projects[0];
+      currentProjectId = p.id;
+      currentDeliveryMark = p.deliveryMark || "none";
       document.getElementById("proj-title").textContent = p.name;
       document.getElementById("proj-id").textContent = p.id;
       document.getElementById("proj-arch").textContent = p.arch;
@@ -591,7 +703,115 @@
           return;
         }
         matchConfirmed = true;
+        openProposalDiffModal();
+        return;
+      }
+      if (action === "confirm-proposal-generate") {
+        closeProposalDiffModal();
         startGenerate();
+        return;
+      }
+      if (action === "close-proposal-diff") {
+        closeProposalDiffModal();
+        return;
+      }
+      if (action === "mark-delivered") {
+        if (isDisabled(el)) return;
+        if (currentDeliveryMark === "delivered") {
+          setProjectDeliveryMark("ready");
+          toast("已撤回为已审待发");
+        } else {
+          setProjectDeliveryMark("delivered");
+          toast("已标记为已发出");
+        }
+        return;
+      }
+      if (action === "mark-ready") {
+        if (isDisabled(el)) return;
+        if (currentDeliveryMark === "ready") {
+          setProjectDeliveryMark("delivered");
+          toast("已下载并发出（演示）");
+        } else {
+          setProjectDeliveryMark("ready");
+          toast("已标记为已审待发");
+        }
+        return;
+      }
+      if (action === "row-mark-delivered") {
+        currentProjectId = el.dataset.id;
+        setProjectDeliveryMark("delivered");
+        toast("已标记为已发出");
+        return;
+      }
+      if (action === "row-mark-ready") {
+        currentProjectId = el.dataset.id;
+        setProjectDeliveryMark("ready");
+        toast("已标记为已审待发");
+        return;
+      }
+      if (action === "row-deliver") {
+        currentProjectId = el.dataset.id;
+        setProjectDeliveryMark("delivered");
+        toast("已下载并发出（演示）");
+        return;
+      }
+      if (action === "row-download") {
+        toast("下载 ZIP（演示）");
+        return;
+      }
+      if (action === "filter-pending") {
+        document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
+        renderList("pending", document.getElementById("list-search").value.trim());
+        toast("筛选 · 待审");
+        return;
+      }
+      if (action === "filter-ready") {
+        document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
+        renderList("ready", document.getElementById("list-search").value.trim());
+        toast("筛选 · 已审待发");
+        return;
+      }
+      if (action === "filter-delivered") {
+        document.querySelectorAll("#list-filter button").forEach((b) => b.classList.remove("active"));
+        renderList("delivered", document.getElementById("list-search").value.trim());
+        toast("筛选 · 已发出");
+        return;
+      }
+      if (action === "review-start") {
+        reviewActive = true;
+        renderReviewZones(gatesPass);
+        toast("已进入交付复审");
+        return;
+      }
+      if (action === "review-verify") {
+        if (!reviewActive) {
+          toast("请先进入复审");
+          return;
+        }
+        renderReviewZones(gatesPass);
+        toast("验圈完成 · 安全区已冻结");
+        return;
+      }
+      if (action === "review-repack") {
+        if (!reviewActive) {
+          toast("请先进入复审并验圈");
+          return;
+        }
+        toast("合卷完成 · ZIP 已与 workspace 同步");
+        return;
+      }
+      if (action === "review-qa") {
+        toast("质量摘要已刷新（演示）");
+        return;
+      }
+      if (action === "review-add-note") {
+        const input = document.getElementById("review-note-input");
+        if (!input?.value.trim()) {
+          toast("请输入偏差说明");
+          return;
+        }
+        toast("偏差已登记（演示）");
+        input.value = "";
         return;
       }
       if (action === "cancel-job") {
@@ -1035,6 +1255,12 @@
 
       if (e.target.closest("#modal-mask") === e.target) {
         closeModal();
+        return;
+      }
+      if (e.target.closest("#proposal-diff-mask") === e.target) {
+        closeProposalDiffModal();
+        return;
+      }
         return;
       }
 
