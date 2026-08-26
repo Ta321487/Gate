@@ -679,6 +679,10 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
     else:
         results = evaluate_generic_gates(workspace, spec)
 
+    from app.bake.gates.semantic import merge_semantic_into_gates
+
+    merge_semantic_into_gates(results, workspace, spec)
+
     sg = _schema_gate(workspace, spec)
     results["p3c"] = {
         "ok": sg["ok"],
