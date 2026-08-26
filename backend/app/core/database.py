@@ -121,6 +121,18 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if "delivery_review" not in cols:
+        try:
+            if dialect == "sqlite":
+                sync_conn.execute(
+                    text("ALTER TABLE projects ADD COLUMN delivery_review JSON DEFAULT '{}'")
+                )
+            else:
+                sync_conn.execute(
+                    text("ALTER TABLE projects ADD COLUMN delivery_review JSON")
+                )
+        except Exception:  # noqa: BLE001
+            pass
     try:
         sync_conn.execute(
             text(

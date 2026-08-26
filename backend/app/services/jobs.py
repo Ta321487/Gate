@@ -26,6 +26,12 @@ from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobStatus, Project, ProjectStatus
 from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
+from app.services.delivery_review import (
+    apply_qa_to_gates,
+    evaluate_workspace_gates,
+    finalize_pack,
+    forbid_full_rebake,
+)
 
 logger = logging.getLogger("gf.job")
 
@@ -224,6 +230,14 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             return
 
         from_step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
+        resolved = forbid_full_rebake(project, from_step)
+        if resolved is None:
+            job.status = JobStatus.failed.value
+            job.error = "交付复审进行中 · 请先结束复审或仅使用验圈/合卷，不可重跑生成"
+            job.finished_at = datetime.now()
+            await db.commit()
+            return
+        from_step = resolved
         job.status = JobStatus.running.value
         job.started_at = datetime.now()
         job.error = None
@@ -231,6 +245,11 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         project.status = ProjectStatus.generating.value
         project.zip_ready = False
         project.delivery_mark = "none"
+        if from_step <= 1:
+            from app.services.delivery_review import _empty_state
+
+            project.delivery_review = _empty_state()
+            flag_modified(project, "delivery_review")
         await db.commit()
 
         async def set_step(idx: int, status: str, meta: str = "") -> None:
@@ -426,9 +445,28 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             if from_step <= 4:
                 await set_step(4, "run", "门禁验收")
                 gate_spec = dict(project.spec or {})
-                gates = await asyncio.to_thread(evaluate_domain_gates, workspace, gate_spec)
+                gates = await asyncio.to_thread(evaluate_workspace_gates, workspace, gate_spec)
                 project.gates = {k: v for k, v in gates.items() if k != "checklist"}
                 project.checklist = gates.get("checklist") or []
+
+                qa_ok = True
+                try:
+                    qa = await run_qa_agent(
+                        db,
+                        llm_rt,
+                        project_id=project.id,
+                        workspace=workspace,
+                        spec=project.spec,
+                    )
+                    apply_qa_to_gates(gates, qa)
+                    project.gates = {k: v for k, v in gates.items() if k != "checklist"}
+                    qa_ok = bool(qa.get("ok"))
+                    await append_log(
+                        project.id,
+                        f"QA · ok={qa_ok} · {qa.get('summary', '')[:120]}",
+                    )
+                except Exception as qe:  # noqa: BLE001
+                    await append_log(project.id, f"QA skip · {qe}")
 
                 if not gates.get("overall"):
                     detail = _gate_fail_summary(gates)
@@ -442,24 +480,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     await append_log(project.id, f"GATE FAIL · {detail}")
                     return
 
-                await set_step(4, "done", "门禁全过")
+                await set_step(4, "done", "门禁与质量摘要通过")
                 await asyncio.sleep(0.2)
-
-                # QA Agent（不挡打包）
-                try:
-                    qa = await run_qa_agent(
-                        db,
-                        llm_rt,
-                        project_id=project.id,
-                        workspace=workspace,
-                        spec=project.spec,
-                    )
-                    await append_log(
-                        project.id,
-                        f"QA · ok={qa.get('ok')} · {qa.get('summary', '')[:120]}",
-                    )
-                except Exception as qe:  # noqa: BLE001
-                    await append_log(project.id, f"QA skip · {qe}")
 
             # 6 pack
             if from_step <= 5:
@@ -476,7 +498,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         legacy.unlink()
                     except OSError:
                         pass
-                await asyncio.to_thread(pack_zip, workspace, zip_path)
+                await asyncio.to_thread(finalize_pack, project, workspace, zip_path, is_repack=False)
+                flag_modified(project, "delivery_review")
                 project.zip_path = str(zip_path)
                 if isinstance(project.spec, dict):
                     from app.bake.naming import zip_download_name
@@ -553,6 +576,17 @@ async def start_job(
             t.cancel()
 
     from_step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
+    resolved = forbid_full_rebake(project, from_step)
+    if resolved is None:
+        raise ValueError("交付复审进行中 · 不可重跑生成，请使用验圈/合卷")
+    from_step = resolved
+    if (
+        from_step == 0
+        and project.workspace_path
+        and Path(project.workspace_path).exists()
+        and project.status in (ProjectStatus.generated.value, ProjectStatus.running.value)
+    ):
+        from_step = 4
     job = Job(
         project_id=project.id,
         status=JobStatus.queued.value,

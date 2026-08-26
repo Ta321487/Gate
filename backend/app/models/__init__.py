@@ -74,6 +74,8 @@ class Project(Base):
     zip_ready: Mapped[bool] = mapped_column(Boolean, default=False)
     # 人工履约：none → ready（已审待发）→ delivered（已发出）；与机器质检 zip_ready 分离
     delivery_mark: Mapped[str] = mapped_column(String(16), default="none")
+    # 交付复审：轮次、安全区、合卷指纹（运营侧，不进学生 ZIP）
+    delivery_review: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     backend_running: Mapped[bool] = mapped_column(Boolean, default=False)
     frontend_running: Mapped[bool] = mapped_column(Boolean, default=False)

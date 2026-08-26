@@ -59,6 +59,9 @@ MSG_DOWNLOAD_GENERATING = "生成中 · 请等待打包完成后再下载"
 MSG_DOWNLOAD_GATES = "质量检查未通过 · 暂不可下载交付包"
 MSG_DOWNLOAD_NO_ZIP = "交付包尚未生成或不存在"
 MSG_DOWNLOAD_ZIP_MISSING = "ZIP 文件不存在 · 请重新生成"
+MSG_DOWNLOAD_ZIP_STALE = "工程已变更 · 请完成验圈并重新合卷后再下载"
+MSG_DOWNLOAD_REVIEW_REGRESSION = "复审检测到回退 · 请修复后再验圈"
+MSG_DOWNLOAD_OPEN_FIX_NOTES = "仍有未结案复审偏差 · 请先处理后再下载"
 MSG_PREVIEW_GENERATING = "生成中 · 请等待完成后再启动预览"
 MSG_WS_MISSING = "尚未生成工作区 · 请先完成一键生成"
 MSG_WS_GONE = "工作区目录不存在 · 请重新生成"
@@ -136,6 +139,16 @@ def delivery_block_reason(project: Project) -> str | None:
     """None = 可下载 ZIP。唯一文案来源（列表/详情 API 下发，前端勿再抄一份）。"""
     if project.status == ProjectStatus.generating.value:
         return MSG_DOWNLOAD_GENERATING
+    from app.services.delivery_review import get_review_state, is_zip_stale, open_fix_notes
+
+    st = get_review_state(project)
+    last_verify = st.get("last_verify") if isinstance(st.get("last_verify"), dict) else {}
+    if st.get("status") == "active" and last_verify.get("monotonic_ok") is False:
+        return MSG_DOWNLOAD_REVIEW_REGRESSION
+    if st.get("status") == "active" and open_fix_notes(st):
+        return MSG_DOWNLOAD_OPEN_FIX_NOTES
+    if project.workspace_path and is_zip_stale(project):
+        return MSG_DOWNLOAD_ZIP_STALE
     zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
     if zip_ok and zip_exists:
@@ -408,6 +421,10 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
     downloadable = gates_allow_delivery(new_gates)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
+    from app.services.delivery_review import is_zip_stale
+
+    if downloadable and zip_exists and is_zip_stale(project, ws):
+        downloadable = False
     # 门禁回退时关掉 zip_ready，并清掉人工已审待发/已发出
     zip_changed = False
     if downloadable and zip_exists and not project.zip_ready:
