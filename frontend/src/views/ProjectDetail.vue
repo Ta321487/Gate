@@ -247,6 +247,17 @@
             </div>
             <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
             <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
+            <p v-if="fillLiveSummary" class="small muted mt-8">{{ fillLiveSummary }}</p>
+            <div v-if="fillLiveVisible" class="mt-12">
+              <n-data-table
+                size="small"
+                :columns="fillLiveCols"
+                :data="fillLiveRows"
+                :bordered="false"
+                :max-height="220"
+                :pagination="false"
+              />
+            </div>
             <div class="row mt-12">
               <n-button size="small" type="error" secondary :loading="jobActing === 'cancel'" @click="cancelCurrent">取消任务</n-button>
               <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
@@ -543,6 +554,15 @@
                 <span class="small muted mono file-path">{{ p.workspace_path || '尚未生成' }}</span>
               </div>
               <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
+            </div>
+            <div class="file-row" style="margin:0">
+              <div class="file-row-main">
+                <strong>填岛拆解计划</strong>
+                <span class="small muted">{{ fillPlanHint }}</span>
+              </div>
+              <n-button text size="small" :disabled="!p.workspace_path" :loading="fillPlanLoading" @click="openFillPlan">
+                查看
+              </n-button>
             </div>
             <div class="file-row" style="margin:0">
               <div class="file-row-main">
@@ -1035,6 +1055,19 @@
       </p>
       <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留学生数据库</n-checkbox>
     </n-modal>
+    <n-modal v-model:show="showFillPlan" preset="card" title="填岛拆解计划" style="width:min(960px,96vw)">
+      <p class="small muted" style="margin-top:0">
+        与一键生成 step「业务配置填充」同源；生成前为预估，生成后可对照 <span class="mono">islands/unit_flow/plan.json</span>。
+      </p>
+      <n-data-table
+        size="small"
+        :columns="fillPlanCols"
+        :data="fillPlanRows"
+        :bordered="false"
+        :max-height="420"
+        :loading="fillPlanLoading"
+      />
+    </n-modal>
     <n-modal v-model:show="showSpec" preset="card" title="生成配置" style="width:640px">
       <div class="row" style="justify-content:flex-end;margin:0 0 8px">
         <CopyIconButton :text="specText" tip="复制配置" />
@@ -1208,6 +1241,79 @@ const logFilter = ref('')
 const logLoading = ref(false)
 const logSides = LOG_SIDES
 const showSpec = ref(false)
+const showFillPlan = ref(false)
+const fillPlanLoading = ref(false)
+const fillPlanRows = ref([])
+const FILL_UNIT_KIND_ZH = {
+  island_labels: 'Island 文案',
+  island_seeds: '公告种子',
+  island_entities: '实体称呼',
+  island_roles: '岗位称呼',
+  er_labels: 'E-R 中文',
+  module_labels: '模块图',
+  testcase_labels: '测试用例',
+}
+const fillPlanCols = [
+  { title: 'Unit ID', key: 'id', width: 160, ellipsis: { tooltip: true } },
+  { title: '类型', key: 'kind', width: 120 },
+  { title: '状态', key: 'status', width: 88 },
+  { title: '预算字符', key: 'budget_chars', width: 88 },
+  { title: '来源', key: 'source_refs', ellipsis: { tooltip: true } },
+]
+const FILL_UNIT_STATUS_ZH = {
+  pending: '待执行',
+  running: '进行中',
+  done: '完成',
+  failed: '失败',
+  skipped: '跳过',
+}
+const fillLiveSnap = ref(null)
+const fillLiveCols = [
+  { title: 'Unit', key: 'id', width: 150, ellipsis: { tooltip: true } },
+  { title: '类型', key: 'kind', width: 110 },
+  {
+    title: '状态',
+    key: 'status',
+    width: 88,
+    render: (r) => statusPillNode(
+      FILL_UNIT_STATUS_ZH[r.status] || r.status,
+      r.status === 'done'
+        ? 'pill-green'
+        : r.status === 'failed'
+          ? 'pill-red'
+          : r.status === 'running'
+            ? 'pill-teal'
+            : r.status === 'skipped'
+              ? 'pill-neutral'
+              : 'pill-neutral',
+    ),
+  },
+]
+const fillLiveRows = computed(() => {
+  const units = fillLiveSnap.value?.units
+  if (!units || typeof units !== 'object') return []
+  return Object.values(units).map((u) => ({
+    id: u.id,
+    kind: FILL_UNIT_KIND_ZH[u.kind] || u.kind,
+    status: u.status || 'pending',
+  }))
+})
+const fillLiveVisible = computed(() => fillLiveRows.value.length > 0)
+const fillLiveSummary = computed(() => {
+  const s = fillLiveSnap.value
+  if (!s?.total) return ''
+  const parts = [`填岛 ${s.done || 0}/${s.total}`]
+  if (s.running) parts.push(`进行中 ${s.running}`)
+  if (s.failed) parts.push(`失败 ${s.failed}`)
+  if (s.phase === 'done') parts.push('已合并')
+  if (s.phase === 'failed') parts.push('填岛中断')
+  return parts.join(' · ')
+})
+const fillPlanHint = computed(() => {
+  if (!p.value?.workspace_path) return '生成工作区后可预览'
+  if (fillPlanRows.value.length) return `共 ${fillPlanRows.value.length} 个 Unit`
+  return '点击预览拆解粒度'
+})
 const showEr = ref(false)
 const showModules = ref(false)
 const showTestcases = ref(false)
@@ -1245,11 +1351,62 @@ const tcRows = ref([])
 const tcMarkdown = ref('')
 const tcCount = ref(0)
 let pollTimer = null
+let fillEventSource = null
+
+function applyFillSnapshot(event) {
+  if (!event || event.type === 'heartbeat') return
+  if (event.type === 'snapshot') {
+    fillLiveSnap.value = {
+      phase: event.phase || 'idle',
+      units: event.units || {},
+      total: event.total || 0,
+      done: event.done || 0,
+      failed: event.failed || 0,
+      running: event.running || 0,
+      error: event.error || '',
+    }
+    if (showFillPlan.value && fillLiveRows.value.length) {
+      fillPlanRows.value = fillLiveRows.value.map((r) => ({
+        ...r,
+        status: FILL_UNIT_STATUS_ZH[r.status] || r.status,
+        budget_chars: fillLiveSnap.value?.units?.[r.id]?.budget_chars,
+        source_refs: (fillLiveSnap.value?.units?.[r.id]?.source_refs || []).join(' · ') || '—',
+      }))
+    }
+    if (['done', 'failed'].includes(event.phase)) {
+      stopFillEvents()
+    }
+  }
+}
+
+function stopFillEvents() {
+  if (fillEventSource) {
+    fillEventSource.close()
+    fillEventSource = null
+  }
+}
+
+function startFillEvents() {
+  if (!p.value?.id || fillEventSource) return
+  const url = api.fillEventsUrl(p.value.id)
+  const es = new EventSource(url)
+  fillEventSource = es
+  es.onmessage = (ev) => {
+    try {
+      applyFillSnapshot(JSON.parse(ev.data))
+    } catch {
+      /* ignore malformed frame */
+    }
+  }
+  es.onerror = () => {
+    /* EventSource 自动重连；轮询仍作兜底 */
+  }
+}
 
 const planSteps = [
   { t: JOB_STEP_LABELS.parse_merge, m: '匹配与 Spec' },
   { t: JOB_STEP_LABELS.copy_bake, m: '确定性生成' },
-  { t: JOB_STEP_LABELS.island_fill, m: '大模型补全' },
+  { t: JOB_STEP_LABELS.island_fill, m: '拆解 Unit 并发填岛' },
   { t: JOB_STEP_LABELS.build_verify, m: '编译检查' },
   { t: JOB_STEP_LABELS.gate_e2e, m: '关键路径' },
   { t: JOB_STEP_LABELS.pack, m: '检查通过后打包' },
@@ -1926,6 +2083,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
 
 async function reload() {
   stopPoll()
+  fillLiveSnap.value = null
   await load({ syncTab: true })
   if (p.value?.status === 'generating') startPoll()
 }
@@ -2154,6 +2312,28 @@ async function fetchModSvg() {
   const res = await fetch(url)
   if (!res.ok) throw new Error('modules svg')
   return await res.text()
+}
+
+async function openFillPlan() {
+  if (!p.value?.workspace_path || fillPlanLoading.value) return
+  fillPlanLoading.value = true
+  try {
+    const res = await api.getFillPlan(p.value.id)
+    const plan = res?.data?.plan || res?.plan
+    const units = plan?.units || []
+    fillPlanRows.value = units.map((u) => ({
+      id: u.id,
+      kind: FILL_UNIT_KIND_ZH[u.kind] || u.kind,
+      status: FILL_UNIT_STATUS_ZH[u.status] || u.status || '—',
+      budget_chars: u.budget_chars,
+      source_refs: (u.source_refs || []).join(' · ') || '—',
+    }))
+    showFillPlan.value = true
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '无法加载填岛计划')
+  } finally {
+    fillPlanLoading.value = false
+  }
 }
 
 async function openModules() {
@@ -2666,6 +2846,7 @@ function startPoll() {
   stopPoll()
   pollSyncHint.value = ''
   pollFailStreak.value = 0
+  if (p.value?.status === 'generating') startFillEvents()
   pollTimer = setInterval(async () => {
     if (pollInFlight) return
     pollInFlight = true
@@ -2675,6 +2856,7 @@ function startPoll() {
       if (tab.value === 'logs') await loadLog(logSide.value, { silent: true })
       if (!p.value || p.value.status !== 'generating') {
         stopPoll()
+        stopFillEvents()
         pollSyncHint.value = ''
         // 结束后补一次完整刷新；人在日志/产物页则不强切 Tab
         if (p.value) {
@@ -2692,6 +2874,7 @@ function stopPoll() {
   if (pollTimer) clearInterval(pollTimer)
   pollTimer = null
   pollInFlight = false
+  stopFillEvents()
 }
 
 watch(tab, (v) => {
@@ -2723,6 +2906,8 @@ onMounted(reload)
 onUnmounted(() => {
   viewEpoch += 1
   stopPoll()
+  stopFillEvents()
+  fillLiveSnap.value = null
   detailCrumb.value = ''
 })
 </script>

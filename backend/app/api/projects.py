@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -935,6 +935,67 @@ async def runtime_action(
             "backend_port": p.backend_port,
             "frontend_port": p.frontend_port,
             "project_status": p.status,
+        },
+    )
+
+
+@router.get("/{project_id}/fill-plan", summary="填岛拆解计划（不调 LLM）")
+async def get_fill_plan(project_id: str, db: AsyncSession = Depends(get_db)):
+    """返回 DeliveryPlan：各 Unit 任务列表，供运营核对拆解粒度。"""
+    from pathlib import Path
+
+    from app.llm.unit_flow import build_plan_only
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "请先生成工作区")
+    ws = Path(p.workspace_path)
+    if not ws.is_dir():
+        raise HTTPException(400, "工作区不存在")
+    spec = dict(p.spec or {})
+    proposal = ""
+    if p.source_path:
+        try:
+            proposal = load_merged_proposal_text(p.source_path)
+        except Exception:  # noqa: BLE001
+            proposal = ""
+    plan = build_plan_only(ws, spec, proposal)
+    return ApiOk(
+        message=f"共 {len(plan.units)} 个 Unit",
+        data={"plan": plan.to_dict(), "artifact": "islands/unit_flow/plan.json"},
+    )
+
+
+@router.get("/{project_id}/fill-events", summary="填岛进度 SSE")
+async def stream_fill_events(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """业务配置填充阶段的 Unit 实时进度；首帧为快照，断线可重连恢复。"""
+    import json
+
+    from app.services.fill_events import fill_event_hub
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+
+    async def events():
+        async for event in fill_event_hub.subscribe(project_id):
+            if await request.is_disconnected():
+                break
+            if event.get("type") == "heartbeat":
+                yield ": heartbeat\n\n"
+                continue
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         },
     )
 

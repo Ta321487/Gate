@@ -17,14 +17,11 @@ from app.bake.gates import evaluate_domain_gates
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.llm.agents import (
-    run_er_label_agent,
     run_fix_agent,
-    run_island_agent,
-    run_module_label_agent,
-    run_testcase_label_agent,
     run_qa_agent,
     run_spec_agent,
 )
+from app.llm.unit_flow import format_fill_step_meta, run_fill_pipeline
 from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobStatus, Project, ProjectStatus
 from app.services.projects import MSG_DOWNLOAD_GATES
@@ -359,89 +356,55 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             elif workspace is None:
                 raise RuntimeError("工作区不存在，无法续跑，请重新一键生成")
 
-            # 3 Island Agent + ER Label Agent
+            # 3 拆解式填岛：Plan → Unit 并发 → Merge（ island / ER / 模块 / 用例 ）
             if from_step <= 2:
                 await set_step(2, "run", "业务配置填充")
-                filled, island_mode = await run_island_agent(
+                from app.services.fill_events import fill_event_hub
+
+                await fill_event_hub.reset(project.id)
+
+                async def _fill_event(ev: dict) -> None:
+                    await fill_event_hub.handle(project.id, ev)
+                    t = ev.get("type", "")
+                    uid = ev.get("unit_id", "")
+                    if t == "unit_started":
+                        await append_log(project.id, f"unit · start {uid}")
+                    elif t == "unit_skipped":
+                        await append_log(project.id, f"unit · skipped {uid}")
+                    elif t in ("unit_done", "unit_failed"):
+                        await append_log(
+                            project.id,
+                            f"unit · {t} {uid} {ev.get('error', '')}".strip(),
+                        )
+
+                spec_fill = dict(project.spec or {}) if isinstance(project.spec, dict) else {}
+                summary = await run_fill_pipeline(
                     db,
-                    llm_rt,
                     project_id=project.id,
                     workspace=workspace,
-                    spec=project.spec,
+                    spec=spec_fill,
+                    source_path=project.source_path,
                     llm_enabled=bool(project.llm_enabled),
+                    merge=True,
+                    on_event=_fill_event,
+                    llm_rt=llm_rt,
                 )
+                project.spec = spec_fill
+                if isinstance(project.spec, dict) and summary.merge_result and not summary.merge_result.ok:
+                    raise RuntimeError(summary.merge_result.detail or "填岛合并失败")
                 flag_modified(project, "spec")
-                er_meta = ""
-                try:
-                    er = await run_er_label_agent(
-                        db,
-                        llm_rt,
-                        project_id=project.id,
-                        workspace=workspace,
-                        spec=project.spec if isinstance(project.spec, dict) else None,
-                        llm_enabled=bool(project.llm_enabled),
-                    )
-                    er_meta = (
-                        f" · E-R={_mode_zh(er.get('mode'))}"
-                        f" 缺口={er.get('gaps', 0)}"
-                        f" 已填={er.get('filled', 0)}"
-                    )
-                    await append_log(
-                        project.id,
-                        f"ER Label · mode={er.get('mode')} gaps={er.get('gaps')} "
-                        f"filled={er.get('filled')} remain={er.get('remain', 0)}",
-                    )
-                    try:
-                        raw_prop = await asyncio.to_thread(
-                            load_merged_proposal_text, project.source_path
-                        )
-                    except Exception:
-                        raw_prop = ""
-                    mod = await run_module_label_agent(
-                        db,
-                        llm_rt,
-                        project_id=project.id,
-                        workspace=workspace,
-                        spec=project.spec if isinstance(project.spec, dict) else None,
-                        proposal_text=raw_prop or "",
-                        llm_enabled=bool(project.llm_enabled),
-                    )
-                    er_meta += (
-                        f" · 模块图={_mode_zh(mod.get('mode'))}"
-                        f" 已填={mod.get('filled', 0)}"
-                    )
-                    await append_log(
-                        project.id,
-                        f"Module Label · mode={mod.get('mode')} filled={mod.get('filled')} "
-                        f"scope={mod.get('scope', '')}",
-                    )
-                    tc = await run_testcase_label_agent(
-                        db,
-                        llm_rt,
-                        project_id=project.id,
-                        workspace=workspace,
-                        spec=project.spec if isinstance(project.spec, dict) else None,
-                        proposal_text=raw_prop or "",
-                        llm_enabled=bool(project.llm_enabled),
-                    )
-                    er_meta += (
-                        f" · 用例={_mode_zh(tc.get('mode'))}"
-                        f" 已填={tc.get('filled', 0)}"
-                    )
-                    await append_log(
-                        project.id,
-                        f"Testcase Label · mode={tc.get('mode')} rows={tc.get('rows')} "
-                        f"filled={tc.get('filled')}",
-                    )
-                except Exception as e:
-                    er_meta = f" · 标签补全跳过：{e}"
-                    await append_log(project.id, f"ER/Module/Testcase Label skip · {e}")
-                await set_step(
-                    2,
-                    "done",
-                    f"{_mode_zh(island_mode)} · 写入={len(filled)}"
-                    f" · 验收={project.spec.get('accept')}{er_meta}",
+                accept = (project.spec or {}).get("accept") if isinstance(project.spec, dict) else None
+                meta = format_fill_step_meta(summary, accept=accept)
+                written_n = len(summary.merge_result.written_paths()) if summary.merge_result else 0
+                await fill_event_hub.handle(
+                    project.id,
+                    {
+                        "type": "fill_complete",
+                        "done": summary.done,
+                        "total": len(summary.results),
+                    },
                 )
+                await set_step(2, "done", f"{meta} · 写入={written_n}")
                 await asyncio.sleep(0.2)
 
             # 4 构建验证 + Fix Agent
@@ -554,6 +517,17 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             project.delivery_mark = "none"
             await db.commit()
             await append_log(project.id, f"ERROR {err}")
+            try:
+                from app.services.fill_events import fill_event_hub
+
+                snap = fill_event_hub.snapshot(project.id)
+                if snap.get("phase") == "running":
+                    await fill_event_hub.handle(
+                        project.id,
+                        {"type": "fill_failed", "error": err},
+                    )
+            except Exception:  # noqa: BLE001
+                pass
 
 
 _running: dict[int, asyncio.Task] = {}

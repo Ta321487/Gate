@@ -152,6 +152,12 @@
         <n-form-item label="修复轮次上限">
           <n-input-number v-model:value="form.fix_rounds_max" :min="0" :max="10" style="width:100%" />
         </n-form-item>
+        <n-form-item label="填岛并发 Unit 数">
+          <n-input-number v-model:value="form.fill_unit_concurrency" :min="1" :max="8" style="width:100%" />
+        </n-form-item>
+        <p class="small muted mb-8">
+          业务配置填充会拆成多个 Unit（文案 / E-R / 模块图 / 用例）并行调用大模型；过大可能触发厂商限流，默认 3。
+        </p>
         <div class="row mt-8">
           <n-button type="primary" size="small" :loading="saving" @click="save">保存连接与预算</n-button>
         </div>
@@ -173,7 +179,7 @@
           <n-switch v-model:value="form.parse_spec" :disabled="stageLocked('parse_spec')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>业务配置填充</strong><div class="small muted">仅填充业务文案与种子数据，不改业务源码</div></div>
+          <div><strong>业务配置填充</strong><div class="small muted">拆解为 Unit 并发：文案 / E-R / 模块图 / 用例；不改业务源码</div></div>
           <n-switch v-model:value="form.island_fill" :disabled="stageLocked('island_fill')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
@@ -451,6 +457,7 @@ const form = reactive({
   project_token_budget: 100000,
   monthly_token_budget: 1000000,
   fix_rounds_max: 5,
+  fill_unit_concurrency: 3,
   deepseek_enabled: true,
   gemini_enabled: false,
   preferred: 'deepseek',
@@ -1165,6 +1172,7 @@ async function load() {
     form.monthly_token_budget = dsRes.monthly_token_budget
     clampProjectBudget()
     form.fix_rounds_max = dsRes.fix_rounds_max
+    form.fill_unit_concurrency = dsRes.fill_unit_concurrency ?? 3
     form.deepseek_enabled = !!dsRes.deepseek_enabled
     form.gemini_enabled = !!dsRes.gemini_enabled
     form.preferred = dsRes.preferred || 'deepseek'
@@ -1205,6 +1213,7 @@ async function save() {
         project_token_budget: form.project_token_budget,
         monthly_token_budget: form.monthly_token_budget,
         fix_rounds_max: form.fix_rounds_max,
+        fill_unit_concurrency: form.fill_unit_concurrency,
         deepseek_enabled: form.deepseek_enabled,
         gemini_enabled: form.gemini_enabled,
         preferred: form.preferred,
@@ -1223,6 +1232,7 @@ async function save() {
         project_token_budget: form.project_token_budget,
         monthly_token_budget: form.monthly_token_budget,
         fix_rounds_max: form.fix_rounds_max,
+        fill_unit_concurrency: form.fill_unit_concurrency,
         deepseek_enabled: form.deepseek_enabled,
         gemini_enabled: form.gemini_enabled,
         preferred: form.preferred,
