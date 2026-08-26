@@ -54,16 +54,24 @@ export function projectIsDownloadable(row) {
 }
 
 /**
- * 机器质检（zipReady）与人工履约（deliveryMark）分层：
- * delivered → 已发出；ready → 已审待发；zipReady → 已生成 · 质检通过；否则质检未过。
- * 调用方应对齐详情：zipReady = projectIsDownloadable(row)，勿直接塞库字段 zip_ready。
+ * 机器质检（zipReady）与人工履约（deliveryMark）分层；
+ * blockedReason / reviewStatus 用于复审工位细分（列表仅有 reason，详情可带 review）。
  */
 export function projectStatusLabel(status, opts = {}) {
   const zipReady = opts.zipReady
   const mark = String(opts.deliveryMark || 'none')
+  const reason = String(opts.blockedReason || '')
+  const reviewStatus = String(opts.reviewStatus || '')
   if (status === 'generated' || status === 'running') {
     if (mark === 'delivered' || mark === 'ready') return deliveryMarkLabel(mark)
-    if (zipReady === false) return '已生成 · 质检未过'
+    if (zipReady === false) {
+      if (reason.includes('合卷')) return '已生成 · 待合卷'
+      if (reason.includes('复审偏差') || reason.includes('待结案')) return '已生成 · 待结案'
+      if (reason.includes('回退')) return '已生成 · 复审回退'
+      if (reason.includes('质量检查') || reason.includes('质检')) return '已生成 · 质检未过'
+      return '已生成 · 暂不可下'
+    }
+    if (reviewStatus === 'active') return '已生成 · 复审中'
     if (zipReady === true) return '已生成 · 质检通过'
   }
   return PROJECT_STATUS[status]?.label || status || '—'
@@ -72,10 +80,17 @@ export function projectStatusLabel(status, opts = {}) {
 export function projectStatusPill(status, opts = {}) {
   const zipReady = opts.zipReady
   const mark = String(opts.deliveryMark || 'none')
+  const reason = String(opts.blockedReason || '')
+  const reviewStatus = String(opts.reviewStatus || '')
   if (status === 'generated' || status === 'running') {
     if (mark === 'delivered') return 'pill-neutral'
     if (mark === 'ready') return 'pill-green'
-    if (zipReady === false) return 'pill-amber'
+    if (zipReady === false) {
+      if (reason.includes('回退') || reason.includes('质量检查')) return 'pill-red'
+      if (reason.includes('合卷') || reason.includes('复审偏差') || reason.includes('待结案')) return 'pill-amber'
+      return 'pill-amber'
+    }
+    if (reviewStatus === 'active') return 'pill-amber'
     if (zipReady === true) return 'pill-teal'
   }
   return PROJECT_STATUS[status]?.pill || 'pill-neutral'
@@ -84,10 +99,16 @@ export function projectStatusPill(status, opts = {}) {
 export function projectStatusTag(status, opts = {}) {
   const zipReady = opts.zipReady
   const mark = String(opts.deliveryMark || 'none')
+  const reason = String(opts.blockedReason || '')
+  const reviewStatus = String(opts.reviewStatus || '')
   if (status === 'generated' || status === 'running') {
     if (mark === 'delivered') return 'default'
     if (mark === 'ready') return 'success'
-    if (zipReady === false) return 'warning'
+    if (zipReady === false) {
+      if (reason.includes('回退') || reason.includes('质量检查')) return 'error'
+      return 'warning'
+    }
+    if (reviewStatus === 'active') return 'warning'
     if (zipReady === true) return 'info'
   }
   return PROJECT_STATUS[status]?.tag || 'default'

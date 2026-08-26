@@ -19,6 +19,8 @@ from app.schemas import (
     ApiOk,
     DeliveryMarkUpdate,
     ErLabelsUpdate,
+    FixNoteCreate,
+    FixNoteResolve,
     MatchUpdate,
     ProjectDetail,
     ProjectSummary,
@@ -42,6 +44,7 @@ MAX_UPLOAD_MATERIALS = 8
 
 def _detail(p: Project) -> ProjectDetail:
     from app.bake.catalog import normalize_theme
+    from app.services.delivery_review import build_review_payload
 
     project_svc.ensure_proposal_in_spec(p)
     d = ProjectDetail.model_validate(p)
@@ -49,6 +52,8 @@ def _detail(p: Project) -> ProjectDetail:
     d.delivery_mark = project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
     d.download_blocked_reason = project_svc.delivery_block_reason(p)
     d.preview_blocked_reason = project_svc.preview_start_block_reason(p)
+    ws, _ = project_svc.workspace_or_reason(p)
+    d.delivery_review = build_review_payload(p, ws)
     return d
 
 
@@ -450,12 +455,20 @@ async def patch_delivery(
 
 @router.post("/{project_id}/generate", response_model=ApiOk, summary="启动生成")
 async def generate(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import require_pre_generate_ack
+
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     if not p.match_confirmed:
         raise HTTPException(400, "请先确认匹配")
-    job = await start_job(db, p)
+    ack_msg = require_pre_generate_ack(p)
+    if ack_msg:
+        raise HTTPException(400, ack_msg)
+    try:
+        job = await start_job(db, p)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     return ApiOk(message=f"Job #{job.id} 已启动", data={"job_id": job.id})
 
 
@@ -659,6 +672,10 @@ async def smoke_apis(project_id: str, db: AsyncSession = Depends(get_db)):
             },
         )
     try:
+        if p.db_name:
+            from app.services.student_db import repair_student_demo_data
+
+            await asyncio.to_thread(repair_student_demo_data, ws, p.db_name)
         return await asyncio.to_thread(
             run_student_api_smoke,
             project_id=project_id,
@@ -1019,3 +1036,232 @@ async def get_logs(project_id: str, side: str, db: AsyncSession = Depends(get_db
     else:
         raise HTTPException(400, "未知日志侧别")
     return {"side": side, "content": text}
+
+
+@router.get("/{project_id}/proposal-diff", summary="开题功能与 checklist 对照")
+async def get_proposal_diff(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.proposal import load_merged_proposal_text
+    from app.services.proposal_diff import build_proposal_diff
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    proposal = ""
+    if p.source_path:
+        try:
+            proposal = load_merged_proposal_text(p.source_path) or ""
+        except Exception:  # noqa: BLE001
+            proposal = ""
+    diff = build_proposal_diff(dict(p.spec or {}), proposal)
+    from app.services.delivery_review import get_review_state
+
+    st = get_review_state(p)
+    return {
+        **diff,
+        "pre_generate_ack_at": st.get("pre_generate_ack_at"),
+    }
+
+
+@router.post("/{project_id}/delivery-review/ack-pre-generate", response_model=ApiOk, summary="确认开题 diff")
+async def ack_pre_generate_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import ack_pre_generate
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    st = ack_pre_generate(p)
+    await db.commit()
+    return ApiOk(message="已确认开题对照 · 可启动一键生成", data={"review": st})
+
+
+@router.post("/{project_id}/delivery-review/ack-fill-plan", response_model=ApiOk, summary="确认填岛计划")
+async def ack_fill_plan_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import ack_fill_plan
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    st = ack_fill_plan(p)
+    await db.commit()
+    return ApiOk(message="已确认填岛拆解计划", data={"review": st})
+
+
+@router.get("/{project_id}/delivery-review", summary="交付复审状态")
+async def get_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import build_review_payload
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws, reason = project_svc.workspace_or_reason(p)
+    if reason and not ws:
+        raise HTTPException(400, reason)
+    return build_review_payload(p, ws)
+
+
+@router.post("/{project_id}/delivery-review/start", response_model=ApiOk, summary="进入交付复审")
+async def start_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import start_review
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not p.workspace_path:
+        raise HTTPException(400, "尚未生成工作区")
+    st = start_review(p)
+    project_svc.reset_delivery_mark(p)
+    p.zip_ready = False
+    await db.commit()
+    return ApiOk(message="已进入交付复审 · 请登记偏差并完成验圈", data={"review": st})
+
+
+@router.post("/{project_id}/delivery-review/close", response_model=ApiOk, summary="结束交付复审")
+async def close_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import close_review
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    st = close_review(p)
+    await db.commit()
+    return ApiOk(message="已结束交付复审", data={"review": st})
+
+
+@router.post("/{project_id}/delivery-review/notes", response_model=ApiOk, summary="登记复审偏差")
+async def add_delivery_fix_note(
+    project_id: str,
+    body: FixNoteCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.delivery_review import add_fix_note
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    note = add_fix_note(p, body.text)
+    project_svc.reset_delivery_mark(p)
+    await db.commit()
+    return ApiOk(message="已登记复审偏差", data={"note": note})
+
+
+@router.patch(
+    "/{project_id}/delivery-review/notes/{note_id}",
+    response_model=ApiOk,
+    summary="更新复审偏差状态",
+)
+async def resolve_delivery_fix_note(
+    project_id: str,
+    note_id: str,
+    body: FixNoteResolve,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.delivery_review import resolve_fix_note
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if not resolve_fix_note(p, note_id, done=body.done):
+        raise HTTPException(404, "未找到该偏差项")
+    await db.commit()
+    return ApiOk(message="已更新偏差状态")
+
+
+@router.post("/{project_id}/delivery-review/verify", summary="验圈（重跑门禁与单调性）")
+async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.services.delivery_review import verify_round
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    if p.status == ProjectStatus.generating.value:
+        raise HTTPException(409, "生成中 · 请稍后再验圈")
+    result = verify_round(p, ws)
+    downloadable = project_svc.gates_allow_delivery(p.gates) and not project_svc.delivery_block_reason(p)
+    p.zip_ready = bool(downloadable and p.zip_path and Path(str(p.zip_path)).exists())
+    if not result.get("monotonic_ok"):
+        project_svc.reset_delivery_mark(p)
+        p.zip_ready = False
+    await db.commit()
+    await db.refresh(p)
+    result["download_blocked_reason"] = project_svc.delivery_block_reason(p)
+    result["zip_ready"] = p.zip_ready
+    return result
+
+
+@router.post("/{project_id}/delivery-review/repack", response_model=ApiOk, summary="合卷（重打学生 ZIP）")
+async def repack_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.bake.naming import resolve_slug_from_spec, zip_storage_name
+    from app.services.delivery_review import can_repack_after_verify, repack_project, verify_round
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    last = verify_round(p, ws)
+    ok, msg = can_repack_after_verify(last, last.get("review") or {})
+    if not ok:
+        await db.commit()
+        raise HTTPException(400, msg)
+    if not project_svc.gates_allow_delivery(p.gates):
+        await db.commit()
+        raise HTTPException(400, "质量检查未通过 · 暂不可合卷")
+    settings = get_settings()
+    slug = resolve_slug_from_spec(p.spec, p.domain)
+    zip_path = settings.workspace_dir / zip_storage_name(p.id, slug)
+    meta = repack_project(p, ws, zip_path)
+    p.zip_path = str(zip_path)
+    p.zip_ready = True
+    p.status = ProjectStatus.generated.value
+    await db.commit()
+    return ApiOk(message="合卷完成 · 交付包已与当前工程同步", data=meta)
+
+
+@router.post("/{project_id}/delivery-review/qa", summary="重跑交付质量摘要")
+async def run_delivery_qa(project_id: str, db: AsyncSession = Depends(get_db)):
+    from app.llm.agents import run_qa_agent
+    from app.llm.runtime import load_llm_runtime
+    from app.services.delivery_review import apply_qa_to_gates, evaluate_workspace_gates
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    llm_rt = await load_llm_runtime(db)
+    qa = await run_qa_agent(
+        db,
+        llm_rt,
+        project_id=p.id,
+        workspace=ws,
+        spec=p.spec if isinstance(p.spec, dict) else {},
+    )
+    gates = evaluate_workspace_gates(ws, dict(p.spec or {}))
+    apply_qa_to_gates(gates, qa)
+    p.gates = {k: v for k, v in gates.items() if k != "checklist"}
+    p.checklist = gates.get("checklist") or []
+    st = dict(getattr(p, "delivery_review", None) or {})
+    st["last_qa"] = qa
+    p.delivery_review = st
+    project_svc.reset_delivery_mark(p)
+    p.zip_ready = False
+    await db.commit()
+    return {"qa": qa, "gates": p.gates, "download_blocked_reason": project_svc.delivery_block_reason(p)}
+
+
+@router.get("/{project_id}/delivery-review/handoff", summary="导出运营交接包")
+async def export_delivery_handoff(project_id: str, db: AsyncSession = Depends(get_db)):
+    from fastapi.responses import Response
+
+    from app.services.delivery_review import build_operator_handoff_zip
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws, _ = project_svc.workspace_or_reason(p)
+    data = build_operator_handoff_zip(p, ws)
+    fname = f"{p.id}-handoff.zip"
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )

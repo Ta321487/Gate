@@ -62,6 +62,21 @@ class ProjectDetail(ProjectSummary):
     preview_blocked_reason: Optional[str] = Field(
         default=None, description="不可启动预览的原因；空=可启动"
     )
+    delivery_review: dict[str, Any] = Field(
+        default_factory=dict, description="交付复审状态（安全区/毒区/轮次）"
+    )
+
+
+class FixNoteCreate(BaseModel):
+    model_config = ConfigDict(title="复审偏差登记")
+
+    text: str = Field(min_length=2, max_length=500, description="待对齐开题或材料的偏差说明")
+
+
+class FixNoteResolve(BaseModel):
+    model_config = ConfigDict(title="复审偏差结案")
+
+    done: bool = Field(default=True, description="是否标记为已处理")
 
 
 class DeliveryMarkUpdate(BaseModel):

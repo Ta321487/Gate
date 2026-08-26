@@ -97,7 +97,10 @@ async def retry(job_id: int, db: AsyncSession = Depends(get_db)):
     # 工作区没了则无法跳过 bake
     if from_step > 1 and (not p.workspace_path or not Path(p.workspace_path).exists()):
         from_step = 1
-    job = await start_job(db, p, from_step=from_step)
+    try:
+        job = await start_job(db, p, from_step=from_step)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     step_name = (old.steps or [{}])[from_step].get("title") if from_step else "开头"
     if from_step and isinstance(old.steps, list) and from_step < len(old.steps):
         step_name = old.steps[from_step].get("title") or step_name

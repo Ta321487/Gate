@@ -581,7 +581,7 @@
           <div class="panel-hd">
             <h3>对照视图</h3>
             <span class="small muted">
-              {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 学生端 API · 质量检查 · 仅运营端验收' }}
+              {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 交付复审 · 质量检查 · 仅运营端验收' }}
             </span>
           </div>
           <div class="panel-bd" style="padding-top:4px">
@@ -1015,6 +1015,17 @@
                 </div>
               </n-tab-pane>
 
+              <n-tab-pane name="review" tab="交付复审">
+                <div class="artifact-pane">
+                  <DeliveryReviewPane
+                    :project-id="p.id"
+                    :delivery-review="p.delivery_review || {}"
+                    :disabled="artifactsFrozen || !p.workspace_path"
+                    @refresh="load"
+                  />
+                </div>
+              </n-tab-pane>
+
               <n-tab-pane name="gates" tab="质量检查">
                 <div class="artifact-pane stack">
                   <div class="row" style="justify-content:space-between;align-items:center">
@@ -1025,7 +1036,9 @@
                       </span>
                     </div>
                   </div>
-                  <p class="small muted" style="margin:0">机器质检未通过时不可下载。人工履约（已审待发 / 已发出）在页头操作，与此处机器门禁分开。</p>
+                  <p class="small muted" style="margin:0">
+                    机器质检未通过时不可下载。工程变更后请在「交付复审」验圈并合卷。人工履约标记在页头操作。
+                  </p>
                   <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
                   <div class="parse-sec-hd mt-12">开题对照清单</div>
                   <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
@@ -1054,6 +1067,38 @@
         {{ keepDb ? '将被保留' : '将一并删除' }}
       </p>
       <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留学生数据库</n-checkbox>
+    </n-modal>
+    <n-modal v-model:show="showPreGenerate" preset="card" title="生成前 · 开题对照" style="width:min(720px,96vw)">
+      <p class="small muted" style="margin-top:0">
+        确认开题功能行已落入工厂对照清单后再启动生成，减少包后返工。
+      </p>
+      <n-alert v-if="proposalDiff && !proposalDiff.ok" type="warning" :bordered="false" style="margin-bottom:12px">
+        {{ proposalDiff.summary }}
+      </n-alert>
+      <n-alert v-else-if="proposalDiff?.needs_review" type="info" :bordered="false" style="margin-bottom:12px">
+        {{ proposalDiff.summary }}
+      </n-alert>
+      <n-alert v-else-if="proposalDiff?.ok" type="success" :bordered="false" style="margin-bottom:12px">
+        {{ proposalDiff.summary }}
+      </n-alert>
+      <div v-if="proposalDiff?.unmatched_proposal?.length" class="parse-sec-hd">开题未落入 checklist</div>
+      <ul v-if="proposalDiff?.unmatched_proposal?.length" class="zone-list">
+        <li v-for="(line, i) in proposalDiff.unmatched_proposal" :key="'u'+i">{{ line }}</li>
+      </ul>
+      <div v-if="proposalDiff?.review_proposal?.length" class="parse-sec-hd mt-12">措辞弱匹配 · 建议扫一眼</div>
+      <ul v-if="proposalDiff?.review_proposal?.length" class="zone-list">
+        <li v-for="(line, i) in proposalDiff.review_proposal" :key="'r'+i">{{ line }}</li>
+      </ul>
+      <div v-if="proposalDiff?.matched?.length" class="parse-sec-hd mt-12">已对照</div>
+      <ul v-if="proposalDiff?.matched?.length" class="zone-list">
+        <li v-for="(line, i) in proposalDiff.matched" :key="'m'+i">{{ line }}</li>
+      </ul>
+      <div class="row" style="justify-content:flex-end;margin-top:16px;gap:8px">
+        <n-button @click="showPreGenerate = false">取消</n-button>
+        <n-button type="primary" :loading="preGenBusy" @click="confirmPreGenerate">
+          确认并启动生成
+        </n-button>
+      </div>
     </n-modal>
     <n-modal v-model:show="showFillPlan" preset="card" title="填岛拆解计划" style="width:min(960px,96vw)">
       <p class="small muted" style="margin-top:0">
@@ -1140,6 +1185,7 @@ import CopyIconButton from '../components/CopyIconButton.vue'
 import ErDiagramViewer from '../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../components/TestcaseViewer.vue'
+import DeliveryReviewPane from '../components/DeliveryReviewPane.vue'
 import { softThemeSwatch } from '../softThemeSwatches.js'
 import {
   CHECKLIST_RESULT,
@@ -1241,6 +1287,9 @@ const logFilter = ref('')
 const logLoading = ref(false)
 const logSides = LOG_SIDES
 const showSpec = ref(false)
+const showPreGenerate = ref(false)
+const proposalDiff = ref(null)
+const preGenBusy = ref(false)
 const showFillPlan = ref(false)
 const fillPlanLoading = ref(false)
 const fillPlanRows = ref([])
@@ -1697,12 +1746,16 @@ const statusLabel = computed(() =>
   projectStatusLabel(p.value?.status, {
     zipReady: canDownload.value,
     deliveryMark: deliveryMark.value,
+    blockedReason: downloadBlockedReason.value,
+    reviewStatus: p.value?.delivery_review?.review?.status || '',
   }),
 )
 const statusPill = computed(() =>
   projectStatusPill(p.value?.status, {
     zipReady: canDownload.value,
     deliveryMark: deliveryMark.value,
+    blockedReason: downloadBlockedReason.value,
+    reviewStatus: p.value?.delivery_review?.review?.status || '',
   }),
 )
 
@@ -1896,10 +1949,10 @@ const gateCols = [
 const gateRows = computed(() => {
   const g = p.value?.gates || {}
   // 含 p3c/p3d/accept：否则 overall 被这些项卡住时 UI 看不见原因
-  const keys = ['p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3c', 'p3d', 'accept']
+  const keys = ['p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3q', 'p3c', 'p3d', 'accept']
   const levels = {
     p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2',
-    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
+    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3q: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
   }
   return keys
     .filter((k) => g[k] != null)
@@ -2641,6 +2694,37 @@ async function confirmMatch() {
 }
 
 async function startGenerate() {
+  if (softApplying.value) return
+  if (p.value?.source_path || p.value?.source_filename) {
+    preGenBusy.value = true
+    try {
+      proposalDiff.value = await api.getProposalDiff(p.value.id)
+      showPreGenerate.value = true
+    } catch (e) {
+      message.error(e?.response?.data?.detail || e?.message || '加载开题对照失败')
+    } finally {
+      preGenBusy.value = false
+    }
+    return
+  }
+  await runGenerateJob()
+}
+
+async function confirmPreGenerate() {
+  if (!p.value?.id || preGenBusy.value) return
+  preGenBusy.value = true
+  try {
+    await api.ackPreGenerate(p.value.id)
+    showPreGenerate.value = false
+    await runGenerateJob()
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '确认失败')
+  } finally {
+    preGenBusy.value = false
+  }
+}
+
+async function runGenerateJob() {
   if (softApplying.value) return
   softApplying.value = true
   try {

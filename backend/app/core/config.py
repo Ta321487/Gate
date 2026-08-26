@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     project_token_budget: int = 100_000
     fix_rounds_max: int = 5
     gf_fill_unit_concurrency: int = Field(default=3, alias="GF_FILL_UNIT_CONCURRENCY")
+    gf_qa_warn_blocks_pack: bool = Field(default=True, alias="GF_QA_WARN_BLOCKS_PACK")
 
     @property
     def database_url(self) -> str:
