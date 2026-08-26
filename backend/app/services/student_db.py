@@ -137,8 +137,55 @@ def ensure_student_schema(workspace: Path, db_name: str) -> None:
                 if parsed:
                     table, columns = parsed
                     _ensure_table_columns(cur, db_name, table, columns)
+            _post_schema_demo_repair(cur, workspace, db_name, script)
     except Exception as e:  # noqa: BLE001
         raise RuntimeError(f"执行 schema.sql 失败: {e}") from e
+    finally:
+        conn.close()
+
+
+def _post_schema_demo_repair(cur, workspace: Path, db_name: str, script: str) -> None:
+    """落库后补齐演示档案/日程，避免 gate/冒烟 apply「对象不存在」或门户列表空。"""
+    from app.bake.sql.demo_schedule_repair import (
+        archive_item_tables_in_sql,
+        read_archive_item_table,
+        repair_demo_schedules_in_db,
+        replay_archive_inserts_if_empty,
+    )
+
+    item_table = read_archive_item_table(workspace)
+    tables: list[str] = []
+    if item_table:
+        tables.append(item_table)
+    for t in archive_item_tables_in_sql(script):
+        if t not in tables:
+            tables.append(t)
+    replay_archive_inserts_if_empty(
+        cur,
+        db_name,
+        script,
+        item_table=item_table or (tables[0] if tables else None),
+        split_sql=_split_sql,
+    )
+    if tables:
+        repair_demo_schedules_in_db(cur, db_name, item_tables=tables)
+
+
+def repair_student_demo_data(workspace: Path, db_name: str) -> None:
+    """已落库项目的演示档案/日程复位（长跑后过期下架 → gate/冒烟 apply 对象不存在）。"""
+    if not db_name or not re.match(r"^[a-zA-Z0-9_]+$", db_name):
+        return
+    schema_path = workspace / "sql" / "schema.sql"
+    if not schema_path.is_file():
+        return
+    script = _read_sql_text(schema_path)
+    try:
+        conn = _connect_student_mysql()
+    except Exception:  # noqa: BLE001
+        return
+    try:
+        with conn.cursor() as cur:
+            _post_schema_demo_repair(cur, workspace, db_name, script)
     finally:
         conn.close()
 

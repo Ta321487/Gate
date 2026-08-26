@@ -108,6 +108,17 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     )
     assert_table_budget(sql, domain)
 
+    from app.bake.archive_seed_guard import assert_archive_demo_seed
+
+    runtime = spec.get("runtime") if isinstance(spec.get("runtime"), dict) else {}
+    gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+    assert_archive_demo_seed(
+        sql,
+        item_table=runtime.get("archive_item_table"),
+        flow_api=gate.get("flow_api"),
+        ticket_mode=runtime.get("ticket_mode"),
+    )
+
     from app.bake.domain_schema import product_name_from_title
     from app.bake.identity_align import assert_identity_aligned
     from app.bake.menu_routes import assert_menu_routes_aligned

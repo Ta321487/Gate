@@ -139,6 +139,12 @@ def _apply_json(
     body["borrowUntil"] = body["dueAt"]
     if _ticket_flags(spec).get("allowQty"):
         body["qty"] = 1
+    if _ticket_flags(spec).get("requireClaimCode"):
+        code = str(ctx.get("claimCode") or ctx.get("pickupCode") or "")
+        if code:
+            body["pickupCode"] = code
+            body["claimCode"] = code
+            body["remark"] = code
     return body
 
 
@@ -828,36 +834,99 @@ def _probe_endpoint(
     return row
 
 
+def _list_rows(data: Any) -> list[dict[str, Any]]:
+    lst: list[Any] | None = None
+    if isinstance(data, dict):
+        lst = data.get("list") or data.get("records") or data.get("items")
+    elif isinstance(data, list):
+        lst = data
+    if not isinstance(lst, list):
+        return []
+    return [r for r in lst if isinstance(r, dict)]
+
+
+def _claim_code_from_item(data: dict[str, Any]) -> str:
+    isbn = str(data.get("isbn") or "")
+    if not isbn:
+        return ""
+    code = isbn.strip()
+    if code.startswith("取件码"):
+        code = code.replace("取件码", "", 1).strip()
+    for sep in ("/", "·"):
+        if sep in code:
+            code = code.split(sep, 1)[0].strip()
+    return code
+
+
+def _archive_detail_ok(
+    portal: httpx.Client, base: str, item_id: Any
+) -> dict[str, Any] | None:
+    st, body, ferr = _request(portal, "GET", urljoin(base, f"/api/archive/{item_id}"))
+    if ferr or not _student_ok(body):
+        return None
+    data = _r_data(body)
+    return data if isinstance(data, dict) else None
+
+
+def _candidate_item_ids(row: dict[str, Any]) -> list[Any]:
+    out: list[Any] = []
+    seen: set[Any] = set()
+    for k in ("id", "bookId", "itemId"):
+        v = row.get(k)
+        if v is None or v in seen:
+            continue
+        seen.add(v)
+        out.append(v)
+    return out
+
+
+def _stash_apply_item(
+    ctx: dict[str, Any], item_id: Any, detail: dict[str, Any] | None
+) -> None:
+    ctx["itemId"] = item_id
+    ctx["bookId"] = item_id
+    ctx["id"] = item_id
+    if not detail:
+        return
+    for k in ("checkinCode", "checkin_code"):
+        if detail.get(k):
+            ctx["checkinCode"] = detail.get(k)
+    code = _claim_code_from_item(detail)
+    if code:
+        ctx["claimCode"] = code
+
+
 def _warm_context(portal: httpx.Client, base: str, ctx: dict[str, Any]) -> None:
-    for path in ("/api/archive?page=1&size=5", "/api/tickets?page=1&size=10"):
-        st, body, ferr = _request(portal, "GET", urljoin(base, path))
-        if ferr or not body:
-            continue
-        data = _r_data(body)
-        lst = None
-        if isinstance(data, dict):
-            lst = data.get("list") or data.get("records") or data.get("items")
-        if isinstance(data, list):
-            lst = data
-        if not isinstance(lst, list) or not lst:
-            continue
-        first = lst[0] if isinstance(lst[0], dict) else {}
-        iid = first.get("id")
-        if iid is not None and "archive" in path:
-            ctx.setdefault("itemId", iid)
-            ctx.setdefault("bookId", iid)
-            ctx.setdefault("id", iid)
-            for k in ("checkinCode", "checkin_code"):
-                if first.get(k):
-                    ctx["checkinCode"] = first.get(k)
-        if iid is not None and "tickets" in path:
-            ctx.setdefault("ticketId", iid)
-            # pending 优先
-            for row in lst:
-                if isinstance(row, dict) and row.get("status") == "pending" and row.get("id") is not None:
-                    ctx["ticketId"] = row.get("id")
-                    ctx["pendingTicketId"] = row.get("id")
+    st, body, ferr = _request(portal, "GET", urljoin(base, "/api/archive?page=1&size=20"))
+    if not ferr and body:
+        for row in _list_rows(_r_data(body)):
+            for cand in _candidate_item_ids(row):
+                detail = _archive_detail_ok(portal, base, cand)
+                if detail is not None:
+                    _stash_apply_item(ctx, cand, detail)
                     break
+            if ctx.get("itemId") is not None:
+                break
+
+    st_t, body_t, ferr_t = _request(portal, "GET", urljoin(base, "/api/tickets?page=1&size=10"))
+    ticket_rows: list[dict[str, Any]] = []
+    if not ferr_t and body_t:
+        ticket_rows = _list_rows(_r_data(body_t))
+        for row in ticket_rows:
+            if row.get("status") == "pending" and row.get("id") is not None:
+                ctx.setdefault("ticketId", row.get("id"))
+                ctx.setdefault("pendingTicketId", row.get("id"))
+                break
+
+    if ctx.get("itemId") is None:
+        for row in ticket_rows:
+            bid = row.get("bookId")
+            if bid is None:
+                continue
+            detail = _archive_detail_ok(portal, base, bid)
+            if detail is not None:
+                _stash_apply_item(ctx, bid, detail)
+                break
 
 
 def run_student_api_smoke(

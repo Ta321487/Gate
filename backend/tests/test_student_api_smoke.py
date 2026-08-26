@@ -131,6 +131,71 @@ def test_apply_json_includes_period_when_pick_date_range():
     assert body.get("dueAt")
 
 
+def test_apply_json_includes_claim_code_when_required():
+    from app.services.student_api_smoke import _apply_json
+
+    body = _apply_json(
+        {"itemId": 1, "claimCode": "3182"},
+        {"schema": {"entities": {"ticket": {"requireClaimCode": True}}}},
+    )
+    assert body is not None
+    assert body.get("pickupCode") == "3182"
+    assert body.get("remark") == "3182"
+
+
+def test_warm_context_verifies_archive_detail(monkeypatch):
+    from app.services.student_api_smoke import _warm_context
+
+    calls: list[str] = []
+
+    def fake_request(client, method, url, **kwargs):
+        u = str(url)
+        calls.append(u)
+        if "/api/archive?page" in u:
+            return 200, {"code": 0, "data": {"list": [{"id": 9, "title": "A"}]}}, None
+        if "/api/archive/9" in u:
+            return 200, {"code": 0, "data": {"id": 9, "title": "A", "isbn": "x"}}, None
+        if "/api/tickets" in u:
+            return 200, {"code": 0, "data": {"list": []}}, None
+        return 200, {"code": 0, "data": {}}, None
+
+    monkeypatch.setattr("app.services.student_api_smoke._request", fake_request)
+    ctx: dict = {}
+    _warm_context(None, "http://127.0.0.1:18080/", ctx)
+    assert ctx.get("itemId") == 9
+    assert any("/api/archive/9" in c for c in calls)
+
+
+def test_warm_context_skips_phantom_ticket_book_id(monkeypatch):
+    """单据 bookId 指向已删档案时不得当作 apply 的 itemId。"""
+    from app.services.student_api_smoke import _warm_context
+
+    def fake_request(client, method, url, **kwargs):
+        u = str(url)
+        if "/api/archive?page" in u:
+            return 200, {"code": 0, "data": {"list": []}}, None
+        if "/api/archive/99" in u:
+            return 200, {"code": 4004, "message": "对象不存在", "data": None}, None
+        if "/api/tickets" in u:
+            return (
+                200,
+                {
+                    "code": 0,
+                    "data": {
+                        "list": [{"id": 1, "bookId": 99, "status": "pending"}],
+                    },
+                },
+                None,
+            )
+        return 200, {"code": 0, "data": {}}, None
+
+    monkeypatch.setattr("app.services.student_api_smoke._request", fake_request)
+    ctx: dict = {}
+    _warm_context(None, "http://127.0.0.1:18080/", ctx)
+    assert ctx.get("itemId") is None
+    assert ctx.get("pendingTicketId") == 1
+
+
 def test_gate_fail_detail_uses_data_message(tmp_path: Path):
     inv = {
         "count": 0,
