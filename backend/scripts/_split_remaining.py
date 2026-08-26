@@ -222,12 +222,9 @@ def split_agents() -> None:
         "agents_island.py": [
             "_sanitize_island_roles",
             "_sanitize_island_patch",
-            "run_island_agent",
         ],
-        "agents_labels.py": [
-            "run_er_label_agent",
-            "run_module_label_agent",
-            "run_testcase_label_agent",
+        "unit_flow": [
+            "run_fill_pipeline",
         ],
         "agents_fix.py": [
             "_mvn_compile",

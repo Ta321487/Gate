@@ -79,6 +79,7 @@ async def get_gemini(db: AsyncSession = Depends(get_db)):
         project_token_budget=int(ds.get("project_token_budget", s.project_token_budget)),
         monthly_token_budget=int(ds.get("monthly_token_budget", s.monthly_token_budget)),
         fix_rounds_max=int(ds.get("fix_rounds_max", s.fix_rounds_max)),
+        fill_unit_concurrency=int(ds.get("fill_unit_concurrency", s.gf_fill_unit_concurrency)),
         monthly_tokens_used=int(tokens_bd["total"]),
         monthly_tokens_pipeline=int(tokens_bd["pipeline"]),
         monthly_tokens_support=int(tokens_bd["support"]),
@@ -119,6 +120,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
         "project_token_budget",
         "monthly_token_budget",
         "fix_rounds_max",
+        "fill_unit_concurrency",
     )
     if any(k in data for k in pipeline_keys):
         ds_row = await db.get(SettingRow, "deepseek")
@@ -149,6 +151,11 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
         if "fix_rounds_max" in data:
             s.fix_rounds_max = data["fix_rounds_max"]
             ds_cfg["fix_rounds_max"] = data["fix_rounds_max"]
+        if "fill_unit_concurrency" in data:
+            ds_cfg["fill_unit_concurrency"] = data["fill_unit_concurrency"]
+            from app.api.system_deepseek import _clamp_fill_unit_concurrency
+
+            _clamp_fill_unit_concurrency(ds_cfg, s)
         ds_row.value = ds_cfg
         await db.commit()
 

@@ -130,7 +130,7 @@ export const JOB_STEP_LABELS = {
   queued: '排队',
   parse_merge: '解析开题 · 合并 Spec',
   copy_bake: '复制骨架 · 领域 SQL',
-  island_fill: '业务配置填充',
+  island_fill: '业务配置填充（拆解 Unit）',
   build_verify: '构建验证',
   gate_e2e: '门禁：登录 + 主流程',
   pack: '开题对照 · 打包 ZIP',

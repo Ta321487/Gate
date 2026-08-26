@@ -75,6 +75,15 @@ def _hydrate_ds_settings(s, cfg: dict) -> None:
         s.monthly_token_budget = int(cfg["monthly_token_budget"])
     if "fix_rounds_max" in cfg:
         s.fix_rounds_max = int(cfg["fix_rounds_max"])
+    if "fill_unit_concurrency" in cfg:
+        s.gf_fill_unit_concurrency = int(cfg["fill_unit_concurrency"])
+
+
+def _clamp_fill_unit_concurrency(cfg: dict, s) -> None:
+    n = int(cfg.get("fill_unit_concurrency", s.gf_fill_unit_concurrency))
+    n = max(1, min(8, n))
+    s.gf_fill_unit_concurrency = n
+    cfg["fill_unit_concurrency"] = n
 
 
 @router.get("/deepseek", response_model=DeepSeekSettings, tags=["DeepSeek"], summary="读取 DeepSeek 配置")
@@ -101,6 +110,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         project_token_budget=int(cfg.get("project_token_budget", s.project_token_budget)),
         monthly_token_budget=int(cfg.get("monthly_token_budget", s.monthly_token_budget)),
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
+        fill_unit_concurrency=int(cfg.get("fill_unit_concurrency", s.gf_fill_unit_concurrency)),
         monthly_tokens_used=int(tokens_bd["total"]),
         monthly_tokens_pipeline=int(tokens_bd["pipeline"]),
         monthly_tokens_support=int(tokens_bd["support"]),
@@ -150,6 +160,9 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
     if "fix_rounds_max" in data:
         s.fix_rounds_max = data["fix_rounds_max"]
         cfg["fix_rounds_max"] = data["fix_rounds_max"]
+    if "fill_unit_concurrency" in data:
+        cfg["fill_unit_concurrency"] = data["fill_unit_concurrency"]
+        _clamp_fill_unit_concurrency(cfg, s)
     row.value = cfg
     await db.commit()
     flag_keys = ("deepseek_enabled", "gemini_enabled", "preferred")

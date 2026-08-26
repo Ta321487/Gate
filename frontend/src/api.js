@@ -59,6 +59,8 @@ export const api = {
   uploadConfirm: (body) =>
     http.post('/projects/upload/confirm', body, { timeout: 600000 }),
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
+  getFillPlan: (id) => http.get(`/projects/${id}/fill-plan`),
+  fillEventsUrl: (id) => `/api/projects/${id}/fill-events`,
   getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
   patchDelivery: (id, mark) => http.patch(`/projects/${id}/delivery`, { mark }),

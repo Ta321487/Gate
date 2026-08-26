@@ -17,6 +17,7 @@ DEFAULT_DS = {
     "testcase_labels": True,
     "auto_fix": True,
     "qa_report": False,
+    "fill_unit_concurrency": 3,
 }
 
 LLM_PROVIDERS = ("deepseek", "gemini")
@@ -53,6 +54,7 @@ class LlmRuntime:
     auto_fix: bool
     qa_report: bool
     fix_rounds_max: int
+    fill_unit_concurrency: int
     project_token_budget: int
     monthly_token_budget: int
 
@@ -196,6 +198,8 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
         s.monthly_token_budget = int(cfg["monthly_token_budget"])
     if "fix_rounds_max" in cfg:
         s.fix_rounds_max = int(cfg["fix_rounds_max"])
+    if "fill_unit_concurrency" in cfg:
+        s.gf_fill_unit_concurrency = int(cfg["fill_unit_concurrency"])
 
     g_row = await db.get(SettingRow, "gemini")
     g_cfg = dict(g_row.value or {}) if g_row else {}
@@ -232,6 +236,10 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
+        fill_unit_concurrency=max(
+            1,
+            min(8, int(cfg.get("fill_unit_concurrency", s.gf_fill_unit_concurrency))),
+        ),
         project_token_budget=int(cfg.get("project_token_budget", s.project_token_budget)),
         monthly_token_budget=int(cfg.get("monthly_token_budget", s.monthly_token_budget)),
     )

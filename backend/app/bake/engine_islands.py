@@ -97,7 +97,7 @@ def sync_workspace_thesis_yml(workspace: Path, spec: dict[str, Any]) -> None:
         ensure_jpa_application_yml(workspace, java_package=pkg)
 
 def llm_fill_islands(workspace: Path, spec: dict[str, Any], enabled: bool) -> list[str]:
-    """确定性填岛（无 LLM）。真填岛走 app.llm.agents.run_island_agent。"""
+    """确定性填岛（无 LLM）。LLM 填岛走 app.llm.unit_flow.run_fill_pipeline。"""
     base = spec.get("schema") or {}
     patch = deterministic_llm_patch(spec, enabled)
     merged = merge_schema(base, patch)
