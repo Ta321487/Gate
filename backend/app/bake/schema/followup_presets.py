@@ -528,7 +528,8 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         ],
     },
     "DOM-INTERN": {
-        "doc": "实习周报：实习岗 + 周报单。",
+        # 主路径：本人对已建档岗交周报（填单选岗）；岗位说明页查阅。≠投简历、≠多单位入职（M-01）
+        "doc": "实习周报：已建档岗 + 本人周报（我的周报填单选岗，非逛目录找岗）。",
         "user_label": "实习生",
         "admin_label": "就业办主管（总管）",
         "subadmin_label": "实习辅导员",
@@ -562,16 +563,20 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已逾期",
         },
         "archive_menu_admin": "实习岗位",
-        # 全库示范岗目录，非「我的」过滤；与 §18 / M-01 对齐
-        "archive_menu_user": "岗位目录",
+        # 说明页全库岗列表（非「我的岗」过滤）；入口在「我的周报」——与 M-01 / ATTEND 同款
+        "archive_menu_user": "岗位说明",
         "auth_eyebrow": "实习周报",
-        "auth_lead": "验证码登录；从示范岗位目录选岗提交周报，辅导员/导师审阅（≠多单位入职）。",
-        "auth_points": ["验证码登录", "示范岗位目录", "周报提交与审阅"],
+        "auth_lead": (
+            "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅"
+            "（≠投简历找岗、≠同时入职多家）。"
+        ),
+        "auth_points": ["验证码登录", "本人周报填单", "审阅与完结"],
         "register_hint": "注册后可提交实习周报",
         "notice_title": "周报须知",
         "notice_body": (
-            "请按周填写工作与问题；列表为示范岗位目录，"
-            "「实习中」仅标在关联岗；CA/第三方电子签平台不在本期，本地签章见 e_sign。"
+            "请按周填写工作与问题；在「我的周报」选已建档岗提交。"
+            "「实习中」仅标在关联岗；岗位说明页可查阅开放岗。"
+            "CA/第三方电子签平台不在本期，本地签章见 e_sign。"
         ),
         "notice_page_title": "就业办公告",
         "notice_page_lead": "实习节点与周报要求，点击条目阅读全文。",
@@ -580,20 +585,26 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "周报记录",
         "remark_label": "本周工作内容",
         "auto_approve": False,
+        "apply_from_list": True,
+        "user_tickets_first": True,
+        "my_tickets_page_lead": (
+            "在此选择已建档实习岗提交周报并跟踪审阅；岗位说明页仅作查阅。"
+        ),
+        "my_tickets_empty": "还没有周报，点击右上角提交周报。",
         "contact_channel_label": "周报形式",
         "contact_channel_options": ["在线填写", "附件补交", "其他"],
         "contact_channel_placeholder": "在线/附件等",
         "next_follow_label": "下周期望反馈",
         "banners": [
-            {"title": "岗位目录", "lead": "浏览示范实习岗位与导师（全库目录，非多单位入职）。"},
-            {"title": "提交周报", "lead": "选一岗按周提交工作内容，等待审阅。"},
+            {"title": "本人周报", "lead": "在「我的周报」选已建档岗按周提交，等待审阅。"},
+            {"title": "岗位说明", "lead": "查阅示范实习岗位与导师（说明用，非投递找岗）。"},
             {"title": "就业办公告", "lead": "实习与鉴定安排见公告。"},
-            {"title": "我的周报", "lead": "跟踪审阅结果。"},
-            {"title": "分类检索", "lead": "按实习类型筛选示范岗位。"},
+            {"title": "审阅跟踪", "lead": "查看导师通过或退回修改结果。"},
+            {"title": "分类查阅", "lead": "岗位说明可按实习类型筛选。"},
         ],
     },
     "DOM-PARCEL": {
-        "doc": "快递驿站：包裹 + 取件单（接线近 LOST）。",
+        "doc": "快递驿站：包裹台账 + 本人凭码取件（我的取件填单，非逛包裹下单）。",
         "user_label": "取件人",
         "admin_label": "驿站主管（总管）",
         "subadmin_label": "驿站店员",
@@ -627,14 +638,18 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已逾期",
         },
         "archive_menu_admin": "包裹台账",
-        # 全库检索，非按用户过滤；与 §18 对齐
-        "archive_menu_user": "包裹检索",
+        "archive_menu_user": "包裹查阅",
         "auth_eyebrow": "校园驿站",
-        "auth_lead": "验证码登录；检索待取包裹，填写取件码提交后到站由店员核销出库（≠跑腿代买）。",
-        "auth_points": ["验证码登录", "包裹检索", "取件码核销"],
+        "auth_lead": (
+            "验证码登录；在「我的取件」凭取件码提交取件，到站由店员核销出库（≠跑腿代买）。"
+        ),
+        "auth_points": ["验证码登录", "凭码取件", "店员核销"],
         "register_hint": "注册后可凭取件码办理取件",
         "notice_title": "取件须知",
-        "notice_body": "请凭取件码与手机号取件；提交后请到站出示，由店员核销。智能柜硬件不在本期。",
+        "notice_body": (
+            "请凭取件码与手机号在「我的取件」提交；到站出示后由店员核销。"
+            "包裹查阅页仅作查询。智能柜硬件不在本期。"
+        ),
         "notice_page_title": "驿站公告",
         "notice_page_lead": "营业时间与催取通知，点击条目阅读全文。",
         "my_tickets_label": "我的取件",
@@ -645,13 +660,18 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "approve_ends_flow": True,
         "allow_rating": True,
         "require_claim_code": True,
-        # 无 contact_channel / auto_approve（与 CRM 族其它域不同）
+        "apply_from_list": True,
+        "user_tickets_first": True,
+        "my_tickets_page_lead": (
+            "在此凭取件码提交取件并跟踪核销；包裹查阅页仅作查询。"
+        ),
+        "my_tickets_empty": "还没有取件单，点击右上角凭码取件。",
         "banners": [
-            {"title": "包裹查询", "lead": "按运单与取件码查看待取包裹。"},
-            {"title": "凭码取件", "lead": "填写正确取件码提交，到站由店员核销出库。"},
+            {"title": "凭码取件", "lead": "在「我的取件」填写取件码提交，到站核销出库。"},
+            {"title": "包裹查阅", "lead": "按运单与取件码查询待取包裹。"},
             {"title": "驿站公告", "lead": "营业时间与逾期催取见公告。"},
-            {"title": "我的取件", "lead": "跟踪核销进度。"},
-            {"title": "件型筛选", "lead": "普通/生鲜/大件快速定位。"},
+            {"title": "核销跟踪", "lead": "查看取件单是否已出库。"},
+            {"title": "件型查阅", "lead": "普通/生鲜/大件快速定位。"},
         ],
     },
 }

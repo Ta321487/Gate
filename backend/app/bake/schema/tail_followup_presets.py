@@ -8,7 +8,7 @@ from typing import Any, Callable
 def build_tail_followup_presets(
     _std_archive_fields: Callable[..., list[dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
-    return {
+    out = {
 "DOM-CARPASS": {
     "doc": "车辆通行证：通行区域 + 通行证申请。",
     "user_label": "申请人",
@@ -515,3 +515,11 @@ def build_tail_followup_presets(
     ],
 },
     }
+    from app.bake.schema.form_first_entry import apply_form_first_entry
+
+    # LISTING 真人就是逛房源选对象，保持目录入口
+    for domain, preset in out.items():
+        if domain == "DOM-LISTING":
+            continue
+        apply_form_first_entry(preset)
+    return out

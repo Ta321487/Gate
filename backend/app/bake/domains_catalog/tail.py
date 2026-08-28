@@ -11,7 +11,7 @@ DOMAINS: dict = {
         "match_hint": ("适用：临时车辆通行证/车牌备案申请与审核，通过后可签发通行码。勿与车位预约（停车预约）或访客行人登记混淆。"),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览通行区域 → 提交备案 → 审"],
+        "flows": ["本人备案填单（选区域） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -127,7 +127,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览采购品目 → 提交申购 → 审"],
+        "flows": ["本人申购填单（选品目） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -183,7 +183,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览社团事项 → 提交材料 → 审"],
+        "flows": ["本人申请填单（选事项） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -240,7 +240,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览申报项目 → 提交申报 → 审"],
+        "flows": ["本人申报填单（选项目） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -297,7 +297,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览审核事项 → 提交材料 → 审"],
+        "flows": ["本人送审填单（选事项） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -354,7 +354,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览发展阶段 → 提交材料 → 审"],
+        "flows": ["本人阶段填单 → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -413,7 +413,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览合同类型 → 提交合同 → 审"],
+        "flows": ["本人合同填单（选类型） → 审"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

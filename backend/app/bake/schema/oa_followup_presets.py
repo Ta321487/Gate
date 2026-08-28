@@ -23,7 +23,7 @@ _OA_STATES_TRIP = {
 def build_oa_followup_presets(
     _std_archive_fields: Callable[..., list[dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
-    return {
+    out = {
         "DOM-SEAL": {
             "doc": "用章申请：印章事项 + 用章申请。",
             "user_label": "申请人",
@@ -477,3 +477,8 @@ def build_oa_followup_presets(
             ],
         },
     }
+    from app.bake.schema.form_first_entry import apply_form_first_entry
+
+    for preset in out.values():
+        apply_form_first_entry(preset)
+    return out

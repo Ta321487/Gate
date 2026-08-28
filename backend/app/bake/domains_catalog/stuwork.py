@@ -25,7 +25,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交认定 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交认定 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -82,7 +82,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交时长 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交时长 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -195,7 +195,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交申报 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交申报 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -250,7 +250,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交登记 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交登记 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

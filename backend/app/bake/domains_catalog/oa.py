@@ -18,7 +18,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交用章 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交用章 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -61,7 +61,7 @@ DOMAINS: dict = {
         "match_hint": "适用：公务用车选车申请与审批（台账级调度，无时段冲突引擎）。勿与车位预约、请假出差混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交用车 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交用车 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -104,7 +104,7 @@ DOMAINS: dict = {
         "match_hint": "适用：在读/在职/成绩单等证明开具申请审核。勿与成绩更正、资助申请或用章混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 申请开具 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 申请开具 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -147,7 +147,7 @@ DOMAINS: dict = {
         "match_hint": "适用：横幅/海报/户外宣传方案审批。勿与活动报名或物业报修混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交方案 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交方案 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -190,7 +190,7 @@ DOMAINS: dict = {
         "match_hint": "适用：装修/进场施工备案申请与审核。勿与物业报修工单或事件上报混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交备案 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交备案 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -233,7 +233,7 @@ DOMAINS: dict = {
         "match_hint": "适用：转专业/缓考/休学复学等学籍异动申请审核。勿与成绩更正、选课占名额或请假混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交申请 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交申请 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -276,7 +276,7 @@ DOMAINS: dict = {
         "match_hint": "适用：出差/加班申请与审批销结。勿与请销假（考勤请假）、用车申请或旅行社线路报名混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交申请 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交申请 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -319,7 +319,7 @@ DOMAINS: dict = {
         "match_hint": "适用：经费/差旅报销单审核（无银行直连）。勿与学生资助、用章或开具证明混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选档案事项 → 提交报销 → 审批完结"],
+        "flows": ["本人申请填单（选事项） → 提交报销 → 审批完结"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

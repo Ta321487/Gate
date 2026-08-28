@@ -122,16 +122,20 @@ class ConfusionPairMatchTests(unittest.TestCase):
 
 
 class InternMenuSeedSemanticsTests(unittest.TestCase):
-    """M-01 / §18：菜单≠「我的多岗」；种子「实习中」仅关联岗。"""
+    """M-01 / §18：说明页≠「我的多岗」；种子「实习中」仅关联岗；入口在我的周报。"""
 
     def test_intern_user_menu_is_catalog(self) -> None:
         schema = build_domain_schema("顶岗实习周报", "DOM-INTERN", proposal_text="学生提交周报")
         user_menus = schema.get("menus", {}).get("user") or []
+        self.assertEqual(user_menus[0].get("key"), "my_tickets")
+        self.assertIn("周报", str(user_menus[0].get("label") or ""))
         archive = next((m for m in user_menus if m.get("key") == "archive"), None)
         self.assertIsNotNone(archive)
         label = str(archive.get("label") or "")
         self.assertNotIn("我的", label)
         self.assertIn("岗位", label)
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        self.assertTrue(ticket.get("applyFromList"))
 
     def test_intern_seed_single_active_stage(self) -> None:
         sql = domain_sql("DOM-INTERN", "t", title="顶岗实习周报", proposal_text="学生提交周报")
@@ -144,9 +148,12 @@ class InternMenuSeedSemanticsTests(unittest.TestCase):
     def test_parcel_menu_not_mine_prefix(self) -> None:
         schema = build_domain_schema("校园驿站", "DOM-PARCEL", proposal_text="取件核销")
         user_menus = schema.get("menus", {}).get("user") or []
+        self.assertEqual(user_menus[0].get("key"), "my_tickets")
         archive = next((m for m in user_menus if m.get("key") == "archive"), None)
         self.assertIsNotNone(archive)
         self.assertNotIn("我的", str(archive.get("label") or ""))
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        self.assertTrue(ticket.get("applyFromList"))
 
 
 if __name__ == "__main__":
