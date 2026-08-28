@@ -320,6 +320,18 @@ INTERN_ENTERPRISE_HINTS = (
     "员工周报",
     "工时填报",
 )
+# 开题写绑岗/一人一岗 → 资料绑岗交周报（复用 matchProfileRoom）；未写则填单选已建档岗
+INTERN_BIND_HINTS = (
+    "岗位与学生绑定",
+    "学生与岗位绑定",
+    "一人一岗",
+    "岗生绑定",
+    "绑定实习岗位",
+    "分配实习岗",
+    "定岗后交周报",
+    "对号入岗",
+    "实习岗绑定",
+)
 # 实验室准入：校园默认；厂区/安环走 enterprise
 LABSAFE_ENTERPRISE_HINTS = ("厂区", "安环", "企业实验室", "EHS准入", "产线实验室", "车间实验室")
 
@@ -1070,6 +1082,11 @@ def scene_intern_parts(title: str, body: str = "") -> Scene:
     ):
         return "enterprise"
     return scene_intern(copy_scan_text(t, b))
+
+
+def intern_post_bound(title: str = "", proposal_text: str = "") -> bool:
+    """开题要求岗位与学生绑定 / 一人一岗时为 True（否则选已建档岗交周报）。"""
+    return scan_has(copy_scan_text(title or "", proposal_text or ""), INTERN_BIND_HINTS)
 
 
 def scene_labsafe(text: str) -> Scene:

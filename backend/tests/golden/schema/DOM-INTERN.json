@@ -58,7 +58,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
-      "applyFromList": false,
+      "applyFromList": true,
       "approveEndsFlow": false,
       "autoApprove": false,
       "categoryLimit": 0,
@@ -105,16 +105,19 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "实习周报",
-    "authLead": "验证码登录；从示范岗位目录选岗提交周报，辅导员/导师审阅（≠多单位入职）。",
+    "authLead": "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅（≠投简历找岗、≠同时入职多家）。",
     "authPoints": [
       "验证码登录",
-      "示范岗位目录",
-      "周报提交与审阅"
+      "本人周报填单",
+      "审阅与完结"
     ],
     "messagesPageLead": "审核结果与系统通知。",
+    "myTicketsEmpty": "还没有周报，点击右上角提交周报。",
+    "myTicketsPageLead": "在此选择已建档实习岗提交周报并跟踪审阅；岗位说明页仅作查阅。",
     "noticePageLead": "实习节点与周报要求，点击条目阅读全文。",
     "noticePageTitle": "就业办公告",
-    "registerRoleHint": "注册后可提交实习周报"
+    "registerRoleHint": "注册后可提交实习周报",
+    "userHomePath": "/tickets"
   },
   "menus": {
     "admin": [
@@ -153,12 +156,12 @@
     ],
     "user": [
       {
-        "key": "archive",
-        "label": "岗位目录"
-      },
-      {
         "key": "my_tickets",
         "label": "我的周报"
+      },
+      {
+        "key": "archive",
+        "label": "岗位说明"
       },
       {
         "key": "content",
@@ -172,24 +175,24 @@
   },
   "portalBanners": [
     {
-      "lead": "浏览示范实习岗位与导师（全库目录，非多单位入职）。",
-      "title": "岗位目录"
+      "lead": "在「我的周报」选已建档岗按周提交，等待审阅。",
+      "title": "本人周报"
     },
     {
-      "lead": "选一岗按周提交工作内容，等待审阅。",
-      "title": "提交周报"
+      "lead": "查阅示范实习岗位与导师（说明用，非投递找岗）。",
+      "title": "岗位说明"
     },
     {
       "lead": "实习与鉴定安排见公告。",
       "title": "就业办公告"
     },
     {
-      "lead": "跟踪审阅结果。",
-      "title": "我的周报"
+      "lead": "查看导师通过或退回修改结果。",
+      "title": "审阅跟踪"
     },
     {
-      "lead": "按实习类型筛选示范岗位。",
-      "title": "分类检索"
+      "lead": "岗位说明可按实习类型筛选。",
+      "title": "分类查阅"
     }
   ],
   "roles": {
@@ -207,7 +210,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请按周填写工作与问题；列表为示范岗位目录，「实习中」仅标在关联岗；CA/第三方电子签平台不在本期，本地签章见 e_sign。",
+    "noticeBody": "请按周填写工作与问题；在「我的周报」选已建档岗提交。「实习中」仅标在关联岗；岗位说明页可查阅开放岗。CA/第三方电子签平台不在本期，本地签章见 e_sign。",
     "noticeTitle": "周报须知"
   },
   "title": "测试课题",

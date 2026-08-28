@@ -551,7 +551,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '实习主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '企业导师', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '实习生甲', '13800000002',
- '{"realName":"小陈","email":"chen@demo.com","gender":"男","identityType":"实习生","employeeNo":"I2026001","dept":"研发中心","internOrg":"本公司"}',
+ '{"realName":"小陈","email":"chen@demo.com","gender":"男","identityType":"实习生","employeeNo":"I2026001","dept":"研发中心","internOrg":"研发中心","internPost":"后端开发实习"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1710,6 +1710,23 @@ def apply_domain_scene_seed(
     elif domain == "DOM-CARPASS" and scene == "enterprise":
         nick, prof = _CARPASS_ENTERPRISE_USER
         return _patch_portal_user_identity(sql, nickname=nick, profile_json=prof)
-    if seed is None:
-        return sql
-    return _replace_user_seed_tail(sql, seed)
+    if seed is not None:
+        sql = _replace_user_seed_tail(sql, seed)
+    if domain == "DOM-INTERN":
+        from app.bake.scene_scan import intern_post_bound
+
+        if intern_post_bound(title, proposal_text):
+            # 开题写绑岗：周报须知提示资料绑岗
+            if "资料绑岗" not in sql:
+                sql = sql.replace(
+                    "开题要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。",
+                    "本开题要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗），仅可对本岗交周报。",
+                    1,
+                )
+            if "资料绑岗" not in sql:
+                sql = sql.replace(
+                    "「实习中」仅标关联岗。",
+                    "「实习中」仅标关联岗。本开题要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗）。",
+                    1,
+                )
+    return sql

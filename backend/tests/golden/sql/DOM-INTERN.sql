@@ -80,7 +80,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '就业办主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '实习辅导员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '实习生甲', '13800000002',
- '{"realName":"小陈","email":"chen@demo.edu","gender":"男","studentNo":"S20260333","dept":"信息学院"}',
+ '{"realName":"小陈","email":"chen@demo.edu","gender":"男","studentNo":"S20260333","dept":"信息学院","internOrg":"星河科技","internPost":"后端开发实习"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -97,7 +97,7 @@ INSERT IGNORE INTO week_report (id, intern_post_id, username, status, remark, co
 (1, 1, 'user', 'pending', '第1周：熟悉项目结构与编码规范，完成环境搭建。', '在线填写');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '周报须知',
-  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。',
+  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。开题要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。',
   'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
