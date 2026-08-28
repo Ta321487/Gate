@@ -381,6 +381,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-approve-ends-flow", bool(ticket_ent.get("approveEndsFlow"))),
             ("ticket-auto-approve", bool(ticket_ent.get("autoApprove"))),
             ("ticket-require-claim-code", bool(ticket_ent.get("requireClaimCode"))),
+            ("ticket-match-profile-room", bool(ticket_ent.get("matchProfileRoom"))),
             ("ticket-applicant-complete-only", bool(ticket_ent.get("applicantCompleteOnly"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
@@ -388,6 +389,25 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append("  # 单据扩展能力")
             for k, _ in on_flags:
                 lines.append(f"  {k}: true")
+        if ticket_ent.get("matchProfileRoom"):
+            for yml_key, ent_key in (
+                ("ticket-match-profile-building-key", "matchProfileBuildingKey"),
+                ("ticket-match-profile-room-key", "matchProfileRoomKey"),
+                ("ticket-match-profile-building-field", "matchProfileBuildingField"),
+                ("ticket-match-profile-room-field", "matchProfileRoomField"),
+                ("ticket-match-profile-need-message", "matchProfileNeedMessage"),
+                ("ticket-match-profile-deny-message", "matchProfileDenyMessage"),
+            ):
+                val = str(ticket_ent.get(ent_key) or "").strip()
+                if val:
+                    # YAML 简单标量；文案含冒号时加引号
+                    if ":" in val or "#" in val or val.startswith(("*", "&", "!", "[", "{")):
+                        safe = val.replace("\\", "\\\\").replace('"', '\\"')
+                        lines.append(f'  {yml_key}: "{safe}"')
+                    else:
+                        lines.append(f"  {yml_key}: {val}")
+            if ticket_ent.get("matchProfileLooseBuilding"):
+                lines.append("  ticket-match-profile-loose-building: true")
         try:
             cat_limit_n = int(ticket_ent.get("categoryLimit") or 0)
         except (TypeError, ValueError):

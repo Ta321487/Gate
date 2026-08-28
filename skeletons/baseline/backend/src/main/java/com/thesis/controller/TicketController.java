@@ -74,6 +74,7 @@ public class TicketController {
             String claimCode = str(body.get("pickupCode"));
             if (claimCode.isBlank()) claimCode = str(body.get("claimCode"));
             TicketStore.assertClaimCodeIfRequired(itemId, claimCode.isBlank() ? remark : claimCode);
+            TicketStore.assertMatchProfileRoomIfRequired(uid, itemId);
             Map<String, Object> created = TicketStore.apply(
                     uid,
                     itemId,
