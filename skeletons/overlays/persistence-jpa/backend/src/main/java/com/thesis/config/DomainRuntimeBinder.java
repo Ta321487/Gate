@@ -182,6 +182,30 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-require-claim-code:false}")
     private boolean ticketRequireClaimCode;
 
+    @Value("${thesis.ticket-match-profile-room:false}")
+    private boolean ticketMatchProfileRoom;
+
+    @Value("${thesis.ticket-match-profile-building-key:}")
+    private String ticketMatchProfileBuildingKey;
+
+    @Value("${thesis.ticket-match-profile-room-key:}")
+    private String ticketMatchProfileRoomKey;
+
+    @Value("${thesis.ticket-match-profile-building-field:}")
+    private String ticketMatchProfileBuildingField;
+
+    @Value("${thesis.ticket-match-profile-room-field:}")
+    private String ticketMatchProfileRoomField;
+
+    @Value("${thesis.ticket-match-profile-loose-building:false}")
+    private boolean ticketMatchProfileLooseBuilding;
+
+    @Value("${thesis.ticket-match-profile-need-message:}")
+    private String ticketMatchProfileNeedMessage;
+
+    @Value("${thesis.ticket-match-profile-deny-message:}")
+    private String ticketMatchProfileDenyMessage;
+
     @Value("${thesis.ticket-applicant-complete-only:false}")
     private boolean ticketApplicantCompleteOnly;
 
@@ -314,6 +338,15 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
             TicketStore.configureAutoApprove(ticketAutoApprove);
             TicketStore.configureRequireClaimCode(ticketRequireClaimCode);
+                        TicketStore.configureMatchProfileRoom(
+                    ticketMatchProfileRoom,
+                    ticketMatchProfileBuildingKey,
+                    ticketMatchProfileRoomKey,
+                    ticketMatchProfileBuildingField,
+                    ticketMatchProfileRoomField,
+                    ticketMatchProfileLooseBuilding,
+                    ticketMatchProfileNeedMessage,
+                    ticketMatchProfileDenyMessage);
             TicketStore.configureApplicantCompleteOnly(ticketApplicantCompleteOnly);
         }
         LoyaltyStore.configure(

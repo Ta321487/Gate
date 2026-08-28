@@ -93,7 +93,7 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ('admin', 'admin123', 'admin', '宿管主管', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '查寝员', '13800000001', '{}', 0, 1, 1),
 ('user', 'user123', 'user', '学生甲', '13800000002',
- '{"realName":"样例学生","email":"stu@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院"}',
+ '{"realName":"样例学生","email":"stu@demo.edu","gender":"男","studentNo":"20230001","dept":"计算机学院","dormBuilding":"1号楼","dormRoom":"101"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -105,5 +105,5 @@ INSERT IGNORE INTO dorm_room (id, title, author, isbn, category_id, stock, statu
 (4, '集中查寝点', '宿管中心', '临时批次', 3, 30, 'available', 'CK999', DATE_ADD(CURDATE(), INTERVAL 21 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR));
 UPDATE dorm_room SET checkin_code=CONCAT('CK', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '查寝须知', '请先提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
+SELECT '查寝须知', '请先在个人资料填写本人楼栋与房间，再提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。只能对本寝室场次登记。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='查寝须知');

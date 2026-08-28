@@ -122,11 +122,11 @@
       <el-form :model="form" label-width="88px" require-asterisk-position="right">
         <template v-if="applyFromList">
           <el-form-item :label="archiveLabel" required>
-            <el-select v-model="form.itemId" filterable placeholder="请选择" style="width:100%">
+            <el-select v-model="form.itemId" filterable placeholder="请选择本人寝室场次" style="width:100%">
               <el-option
                 v-for="it in archiveItems"
                 :key="it.id"
-                :label="it.title"
+                :label="it.author ? `${it.title}（${it.author}）` : it.title"
                 :value="it.id"
               />
             </el-select>
@@ -273,6 +273,12 @@ import {
   ticketShowsPriorityCols,
   ticketStatusLabel,
 } from '../../utils/domainSchema.js'
+import {
+  filterArchiveByProfileRoom,
+  matchSiteByBuilding,
+  matchUnitByRoom,
+  profileSiteRoomFromExtras,
+} from '../../utils/profileRoomMatch.js'
 
 const ticket = ticketCopy()
 const archive = archiveCopy()
@@ -283,6 +289,20 @@ const labels = computed(() => getSchema().labels || {})
 const applyVerb = computed(() => verbs.value.apply || '提交')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const applyFromList = computed(() => !!ticket.applyFromList)
+const matchProfileRoom = computed(() => !!ticket.matchProfileRoom)
+const matchProfileOpts = computed(() => ({
+  buildingKey: ticket.matchProfileBuildingKey || 'dormBuilding',
+  roomKey: ticket.matchProfileRoomKey || 'dormRoom',
+  buildingField: ticket.matchProfileBuildingField || 'author',
+  roomField: ticket.matchProfileRoomField || 'title',
+  looseBuilding: !!ticket.matchProfileLooseBuilding,
+}))
+const matchProfileNeedMessage = computed(
+  () => ticket.matchProfileNeedMessage || '请先在个人资料填写楼栋与房间',
+)
+const matchProfileDenyMessage = computed(
+  () => ticket.matchProfileDenyMessage || '只能对本寝室的查寝场次登记归寝',
+)
 const archiveLabel = computed(() => archive.label || '事项')
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const requireRemark = computed(() => !!ticket.requireRemark)
@@ -462,7 +482,27 @@ async function loadArchiveItems() {
   if (!applyFromList.value) return
   try {
     const res = await http.get('/api/archive', { params: { page: 1, size: 100 } })
-    archiveItems.value = res.data?.list || res.list || []
+    let list = res.data?.list || res.list || []
+    if (matchProfileRoom.value) {
+      let extras = {}
+      try {
+        const me = await http.get('/api/profile')
+        extras = me.data?.extras || {}
+      } catch {
+        extras = {}
+      }
+      const opts = matchProfileOpts.value
+      if (!(extras[opts.buildingKey] || '').trim() || !(extras[opts.roomKey] || '').trim()) {
+        ElMessage.warning(matchProfileNeedMessage.value)
+        archiveItems.value = []
+        return
+      }
+      list = filterArchiveByProfileRoom(list, extras, opts)
+      if (!list.length) {
+        ElMessage.warning(matchProfileDenyMessage.value)
+      }
+    }
+    archiveItems.value = list
   } catch {
     archiveItems.value = []
   }
@@ -474,6 +514,26 @@ async function onSiteChange() {
   if (!form.siteId) return
   const res = await http.get('/api/lookups/units', { params: { siteId: form.siteId } })
   units.value = res.data || res || []
+}
+
+/** 报修壳：资料已有楼栋/房间时预填 lookup（可改选；比对复用 profileRoomMatch）。 */
+async function prefillLookupFromProfile() {
+  if (!lookup.enabled || !sites.value.length) return
+  let extras = {}
+  try {
+    const me = await http.get('/api/profile')
+    extras = me.data?.extras || me.extras || {}
+  } catch {
+    return
+  }
+  const { building, room } = profileSiteRoomFromExtras(extras)
+  if (!building || !room) return
+  const site = matchSiteByBuilding(sites.value, building, true)
+  if (!site) return
+  form.siteId = site.id
+  await onSiteChange()
+  const unit = matchUnitByRoom(units.value, building, room, site.name, true)
+  if (unit) form.roomId = unit.id
 }
 
 async function onAttach(opt) {
@@ -492,7 +552,7 @@ async function load() {
   total.value = res.data.total
 }
 
-function openApply() {
+async function openApply() {
   Object.assign(form, {
     title: '',
     location: '',
@@ -509,7 +569,14 @@ function openApply() {
     contactPhone: '',
   })
   units.value = []
-  if (applyFromList.value) loadArchiveItems()
+  if (applyFromList.value) {
+    await loadArchiveItems()
+    if (matchProfileRoom.value && archiveItems.value.length === 1) {
+      form.itemId = archiveItems.value[0].id
+    }
+  } else if (lookup.enabled) {
+    await prefillLookupFromProfile()
+  }
   visible.value = true
 }
 

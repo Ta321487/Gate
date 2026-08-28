@@ -246,6 +246,51 @@ public final class TicketStore {
         return requireClaimCode;
     }
 
+    /** 查寝等：资料楼栋/房间须匹配档案 author/title（只能对本寝登记） */
+    static boolean matchProfileRoom = false;
+    static String matchProfileBuildingKey = "dormBuilding";
+    static String matchProfileRoomKey = "dormRoom";
+    static String matchProfileBuildingField = "author";
+    static String matchProfileRoomField = "title";
+    static boolean matchProfileLooseBuilding = false;
+    static String matchProfileNeedMessage = "请先在个人资料填写楼栋与房间";
+    static String matchProfileDenyMessage = "只能对本寝室的查寝场次登记归寝";
+
+    public static void configureMatchProfileRoom(boolean enabled) {
+        configureMatchProfileRoom(enabled, null, null, null, null, false, null, null);
+    }
+
+    public static void configureMatchProfileRoom(
+            boolean enabled,
+            String buildingKey,
+            String roomKey,
+            String buildingField,
+            String roomField,
+            boolean looseBuilding,
+            String needMessage,
+            String denyMessage) {
+        matchProfileRoom = enabled;
+        matchProfileBuildingKey = (buildingKey == null || buildingKey.isBlank()) ? "dormBuilding" : buildingKey.trim();
+        matchProfileRoomKey = (roomKey == null || roomKey.isBlank()) ? "dormRoom" : roomKey.trim();
+        matchProfileBuildingField = (buildingField == null || buildingField.isBlank()) ? "author" : buildingField.trim();
+        matchProfileRoomField = (roomField == null || roomField.isBlank()) ? "title" : roomField.trim();
+        matchProfileLooseBuilding = looseBuilding;
+        if (needMessage != null && !needMessage.isBlank()) {
+            matchProfileNeedMessage = needMessage.trim();
+        } else {
+            matchProfileNeedMessage = "请先在个人资料填写楼栋与房间";
+        }
+        if (denyMessage != null && !denyMessage.isBlank()) {
+            matchProfileDenyMessage = denyMessage.trim();
+        } else {
+            matchProfileDenyMessage = "只能对本寝室的查寝场次登记归寝";
+        }
+    }
+
+    public static boolean isMatchProfileRoom() {
+        return matchProfileRoom;
+    }
+
     /** 评教等：提交即评分且配置了维度时，申请必须带 dims */
     public static boolean ratingDimsRequiredOnApply() {
         return autoApprove && allowRating
@@ -277,6 +322,7 @@ public final class TicketStore {
         if (expect.isBlank()) {
             throw new IllegalStateException("该包裹尚未登记取件码");
         }
+        // 档案可能写成「取件码/柜号」或「码 · 柜」；取第一段比对
         String expectCode = expect;
         int slash = expect.indexOf('/');
         if (slash > 0) expectCode = expect.substring(0, slash).trim();
@@ -285,6 +331,51 @@ public final class TicketStore {
         if (!expectCode.equalsIgnoreCase(got) && !expect.equalsIgnoreCase(got)) {
             throw new IllegalStateException("取件码不正确");
         }
+    }
+
+    /** matchProfileRoom：资料键↔档案列（查寝默认楼栋/房间；实习绑岗可配单位/岗位） */
+    public static void assertMatchProfileRoomIfRequired(String username, long itemId) {
+        if (!matchProfileRoom) return;
+        com.thesis.service.UserStore.Profile p = com.thesis.service.UserStore.get(username);
+        if (p == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        String building = p.extras == null ? "" : TicketSql.str(p.extras.get(matchProfileBuildingKey)).trim();
+        String room = p.extras == null ? "" : TicketSql.str(p.extras.get(matchProfileRoomKey)).trim();
+        if (building.isBlank() || room.isBlank()) {
+            throw new IllegalStateException(matchProfileNeedMessage);
+        }
+        Map<String, Object> item = ArchiveStore.getItem(itemId);
+        if (item == null) throw new IllegalArgumentException("对象不存在");
+        String author = TicketSql.str(item.get(matchProfileBuildingField)).trim();
+        String title = TicketSql.str(item.get(matchProfileRoomField)).trim();
+        if (!profileRoomMatches(building, room, author, title, matchProfileLooseBuilding)) {
+            throw new IllegalStateException(matchProfileDenyMessage);
+        }
+    }
+
+    /** 与前端 profileRoomMatch 同规则，勿分叉 */
+    public static boolean profileRoomMatches(String building, String room, String author, String title) {
+        return profileRoomMatches(building, room, author, title, false);
+    }
+
+    public static boolean profileRoomMatches(
+            String building, String room, String author, String title, boolean looseBuilding) {
+        String b = normRoomToken(building);
+        String r = normRoomToken(room);
+        String a = normRoomToken(author);
+        String t = normRoomToken(title);
+        if (b.isEmpty() || r.isEmpty()) return false;
+        boolean buildingOk = looseBuilding
+                ? (b.equals(a) || a.contains(b) || b.contains(a))
+                : b.equals(a);
+        if (!buildingOk) return false;
+        return t.equals(r) || t.contains(r) || r.contains(t);
+    }
+
+    static String normRoomToken(String s) {
+        if (s == null) return "";
+        return s.trim().replace(" ", "").toLowerCase();
     }
 
     /** L1：互斥码 + 分类限额（选课等） */

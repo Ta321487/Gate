@@ -436,6 +436,7 @@ import {
   ticketFineLabel,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
+import { profileRoomMatches } from '../../utils/profileRoomMatch.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -487,6 +488,20 @@ const rateOnApply = computed(
 )
 const checkinOnApply = computed(() => !!autoApprove.value && !!ticket.allowCheckin)
 const checkinLabel = computed(() => ticketCheckinLabel('签到'))
+const matchProfileRoom = computed(() => !!ticket.matchProfileRoom)
+const matchProfileOpts = computed(() => ({
+  buildingKey: ticket.matchProfileBuildingKey || 'dormBuilding',
+  roomKey: ticket.matchProfileRoomKey || 'dormRoom',
+  buildingField: ticket.matchProfileBuildingField || 'author',
+  roomField: ticket.matchProfileRoomField || 'title',
+  looseBuilding: !!ticket.matchProfileLooseBuilding,
+}))
+const matchProfileNeedMessage = computed(
+  () => ticket.matchProfileNeedMessage || '请先在个人资料填写楼栋与房间',
+)
+const matchProfileDenyMessage = computed(
+  () => ticket.matchProfileDenyMessage || '只能对本寝室的查寝场次登记归寝',
+)
 const needApplyDialog = computed(
   () =>
     richRemark.value
@@ -611,9 +626,12 @@ const favOn = computed(() => {
   if (isOrderMode.value) return true
   return !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve')
 })
-/** 有单据/下单/预约时才显示主操作；内容流只保留播放/阅读 + 收藏 */
+const applyFromList = computed(() => !!ticket.applyFromList)
+/** 有单据/下单/预约时才显示主操作；applyFromList（请假/归寝）主路径在「我的*」，档案页仅查阅 */
 const showPrimaryApply = computed(
-  () => isOrderMode.value || isSlotMode.value || caps.value.includes('ticket_flow'),
+  () =>
+    !applyFromList.value
+    && (isOrderMode.value || isSlotMode.value || caps.value.includes('ticket_flow')),
 )
 const favIds = ref([])
 const searchAssist = computed(() => isSearchAssistEnabled())
@@ -962,6 +980,17 @@ async function onPrimary(row) {
     })
     return
   }
+  // 请假/归寝：主路径在「我的*」填单，档案页不发起申请
+  if (applyFromList.value) {
+    const menus = getSchema()?.menus?.user || []
+    const myLab = menus.find((m) => m?.key === 'my_tickets')?.label
+      || ticket.labelPlural
+      || ticket.label
+      || '我的申请'
+    ElMessage.info(`请到「${myLab}」提交`)
+    router.push('/tickets')
+    return
+  }
   await apply(row)
 }
 
@@ -1045,6 +1074,28 @@ async function submitPublish() {
 }
 
 async function apply(row) {
+  if (matchProfileRoom.value) {
+    try {
+      const me = await http.get('/api/profile')
+      const extras = me.data?.extras || {}
+      const opts = matchProfileOpts.value
+      const building = (extras[opts.buildingKey] || '').trim()
+      const room = (extras[opts.roomKey] || '').trim()
+      if (!building || !room) {
+        ElMessage.warning(matchProfileNeedMessage.value)
+        return
+      }
+      const itemBuilding = row?.[opts.buildingField]
+      const itemRoom = row?.[opts.roomField]
+      if (!profileRoomMatches(building, room, itemBuilding, itemRoom, opts.looseBuilding)) {
+        ElMessage.warning(matchProfileDenyMessage.value)
+        return
+      }
+    } catch {
+      ElMessage.warning('无法读取个人资料，请重新登录后再试')
+      return
+    }
+  }
   applyRow.value = row
   applyRemark.value = ''
   applyAttachUrl.value = ''

@@ -13,13 +13,13 @@ DOMAINS: dict = {
             "缺勤记录", "归寝打卡",
         ],
         "match_hint": (
-            "适用：宿舍查寝/归寝登记审核、口令签到、缺勤登记（单据向，非人脸/GPS）。"
+            "适用：宿舍查寝/本人寝室归寝登记审核、口令签到、缺勤登记（单据向，非人脸/GPS）。"
             "勿与宿舍水电报修（宿舍报修）、床位选房调宿（床位分配）、请假假勤（考勤请假）"
             "或活动报名签到混淆。"
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["浏览寝室 → 归寝登记 → 审核 → 口令签到（结束未签到记缺勤）"],
+        "flows": ["本人寝室归寝登记 → 审核 → 口令签到（结束未签到记缺勤）"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

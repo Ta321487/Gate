@@ -69,6 +69,22 @@ class CheckinC10Tests(unittest.TestCase):
         verbs = ticket.get("verbs") or {}
         self.assertEqual(verbs.get("apply"), "归寝登记")
         self.assertNotEqual(verbs.get("return"), "取消签到")
+        self.assertTrue(ticket.get("applyFromList"))
+        self.assertTrue(ticket.get("matchProfileRoom"))
+        self.assertTrue(ticket.get("approveEndsFlow"))
+        labels = schema.get("labels") or {}
+        lead = str(labels.get("authLead") or "")
+        self.assertTrue("对本寝室" in lead or "本人楼栋" in lead, lead)
+        self.assertNotIn("选择寝室", lead)
+        self.assertIn("本人寝室归寝登记", labels.get("authPoints") or [])
+        user_menus = (schema.get("menus") or {}).get("user") or []
+        self.assertEqual(user_menus[0].get("key"), "my_tickets")
+        self.assertEqual(user_menus[0].get("label"), "我的归寝")
+        archive_menu = next(m for m in user_menus if m.get("key") == "archive")
+        self.assertEqual(archive_menu.get("label"), "查寝安排")
+        pf_keys = {f.get("key") for f in (schema.get("profileFields") or []) if isinstance(f, dict)}
+        self.assertIn("dormBuilding", pf_keys)
+        self.assertIn("dormRoom", pf_keys)
         admin_keys = {m.get("key") for m in (schema.get("menus") or {}).get("admin") or []}
         self.assertIn("ticket_pending", admin_keys)
         pending = next(
@@ -97,6 +113,8 @@ class CheckinC10Tests(unittest.TestCase):
         self.assertIn("checked_in_at", sql)
         self.assertIn("start_at", sql)
         self.assertIn("end_at", sql)
+        self.assertIn("dormBuilding", sql)
+        self.assertIn('"dormRoom":"101"', sql.replace(" ", ""))
         # 查寝窗：有 end_at，档期按结束下架（非过开始立刻下架）
         archive = (
             Path(__file__).resolve().parents[2]

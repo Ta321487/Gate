@@ -98,6 +98,18 @@ def category_menu_label(
     return f"{noun}管理"
 
 
+def _my_archive_page_lead(domain: str, archive_label: str) -> str:
+    """门户「我的档案」页导语：按域区分措辞，避免论坛「站长下架」套进 CRM 等。"""
+    d = (domain or "").strip().upper()
+    noun = (archive_label or "档案").strip() or "档案"
+    if d == "DOM-CRM":
+        return f"本人登记的{noun}即时可见；结案后仍可在此查看状态。"
+    if d == "DOM-CARPOOL":
+        return f"本人发布的{noun}即时可见；过出发自动下架后仍可在此查看状态。"
+    if d == "DOM-FORUM":
+        return f"本人发布的{noun}即时可见；站长下架后仍可在此查看状态。"
+    return f"本人发布的{noun}即时可见；管理员收回后仍可在此查看状态。"
+
 
 def archive_ticket_schema(
     title: str,
@@ -147,7 +159,7 @@ def archive_ticket_schema(
     category_limit: int = 0,
     soft_delete: bool = False,
     tag_filter: bool = False,
-    # True：门户用户可发帖（主帖入库即时可见；站长可下架）
+    # True：门户用户可建档/发帖（入库即时可见；下架/收回措辞见 _my_archive_page_lead）
     user_publish: bool = False,
     week_calendar: bool = False,
     week_calendar_label: str = "我的日程",
@@ -187,6 +199,16 @@ def archive_ticket_schema(
     auto_approve: bool = False,
     # True：申请说明/取件码须与档案 isbn（取件码）一致（驿站）
     require_claim_code: bool = False,
+    # True：资料楼栋/房间须匹配档案 author/title（查寝归寝；禁止选他寝）
+    # 可配 extras 键与档案列（实习绑岗：internOrg↔isbn、internPost↔title）
+    match_profile_room: bool = False,
+    match_profile_building_key: str = "",
+    match_profile_room_key: str = "",
+    match_profile_building_field: str = "",
+    match_profile_room_field: str = "",
+    match_profile_loose_building: bool = False,
+    match_profile_need_message: str = "",
+    match_profile_deny_message: str = "",
     # True：用户在「我的单据」填单选档案项提交（请假/OA 填单感）；仍保留档案浏览作说明
     apply_from_list: bool = False,
     # True：用户菜单「我的单据」排在档案目录前
@@ -281,6 +303,28 @@ def archive_ticket_schema(
         "requireClaimCode": bool(require_claim_code),
         "applyFromList": bool(apply_from_list),
     }
+    if match_profile_room:
+        ticket_entity["matchProfileRoom"] = True
+        bk = (match_profile_building_key or "").strip()
+        rk = (match_profile_room_key or "").strip()
+        bf = (match_profile_building_field or "").strip()
+        rf = (match_profile_room_field or "").strip()
+        if bk:
+            ticket_entity["matchProfileBuildingKey"] = bk
+        if rk:
+            ticket_entity["matchProfileRoomKey"] = rk
+        if bf:
+            ticket_entity["matchProfileBuildingField"] = bf
+        if rf:
+            ticket_entity["matchProfileRoomField"] = rf
+        if match_profile_loose_building:
+            ticket_entity["matchProfileLooseBuilding"] = True
+        need_m = (match_profile_need_message or "").strip()
+        deny_m = (match_profile_deny_message or "").strip()
+        if need_m:
+            ticket_entity["matchProfileNeedMessage"] = need_m
+        if deny_m:
+            ticket_entity["matchProfileDenyMessage"] = deny_m
     dims = [d for d in (rating_dims or []) if isinstance(d, dict) and d.get("key") and d.get("label")]
     if dims and allow_rating:
         ticket_entity["ratingDims"] = [
@@ -374,9 +418,7 @@ def archive_ticket_schema(
         labels["recommendLatestHint"] = recommend_latest_hint
     if user_publish:
         labels["myArchivePageTitle"] = f"我的{archive_label}"
-        labels["myArchivePageLead"] = (
-            f"本人发布的{archive_label}即时可见；站长下架后仍可在此查看状态。"
-        )
+        labels["myArchivePageLead"] = _my_archive_page_lead(domain, archive_label)
     if peer_accept:
         labels["peerInboxTitle"] = (peer_inbox_label or "").strip() or "待我确认"
         labels["peerInboxLead"] = (peer_inbox_lead or "").strip() or (
