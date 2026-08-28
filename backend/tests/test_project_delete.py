@@ -79,6 +79,43 @@ class TestDbNameAvoidsLiveOrphans(unittest.TestCase):
         self.assertEqual(name, "dorm_repair_215435")
 
 
+class TestPurgeOrphanDisk(unittest.TestCase):
+    def test_keeps_alive_removes_orphan(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            ws = base / "workspace"
+            logs = base / "logs"
+            ws.mkdir()
+            logs.mkdir()
+            (ws / "gf-alive").mkdir()
+            (ws / "gf-dead").mkdir()
+            (ws / "gf-dead-app.zip").write_bytes(b"PK")
+            (ws / "gf-alive-app.zip").write_bytes(b"PK")
+            (logs / "gf-alive").mkdir()
+            (logs / "gf-dead").mkdir()
+            (logs / "notes.txt").write_text("keep", encoding="utf-8")
+
+            with (
+                patch("app.services.projects.get_settings") as gs,
+                patch("app.services.projects.rt.detach_frontend_deps"),
+            ):
+                gs.return_value = SimpleNamespace(workspace_dir=ws, logs_dir=logs)
+                data = project_svc.purge_orphan_project_disk({"gf-alive"})
+
+            self.assertTrue((ws / "gf-alive").is_dir())
+            self.assertFalse((ws / "gf-dead").exists())
+            self.assertTrue((ws / "gf-alive-app.zip").is_file())
+            self.assertFalse((ws / "gf-dead-app.zip").exists())
+            self.assertTrue((logs / "gf-alive").is_dir())
+            self.assertFalse((logs / "gf-dead").exists())
+            self.assertTrue((logs / "notes.txt").is_file())
+            self.assertIn("gf-dead", data["removed_workspaces"])
+            self.assertIn("gf-dead", data["removed_logs"])
+            self.assertEqual(data["errors"], [])
+
+
 class TestSourceCleanup(unittest.TestCase):
     def test_skips_when_shared(self) -> None:
         import tempfile

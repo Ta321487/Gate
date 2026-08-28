@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.bake.engine import bake_project
 from app.bake.gates import evaluate_domain_gates
@@ -41,7 +42,7 @@ STEP_DEFS = [
     ("island_fill", "业务配置填充"),
     ("build_verify", "构建验证"),
     ("gate_e2e", "门禁：登录 + 主流程"),
-    ("pack", "开题对照 · 打包 ZIP"),
+    ("pack", "清单验收 · 打包 ZIP"),
 ]
 
 
@@ -75,7 +76,8 @@ def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
     acc = g.get("accept")
     if isinstance(acc, dict) and acc.get("ok") is False:
         return _short_error(acc.get("desc") or acc.get("label") or "可接题边界未通过", limit=200)
-    for k in ("p3c", "p3d", "p3t", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
+    # 含 p3q（QA）/ p3s（语义）；漏列时 overall=False 会落到笼统「主流程或功能清单未通过」
+    for k in ("p3c", "p3d", "p3t", "p3q", "p3s", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
         item = g.get(k)
         if not isinstance(item, dict) or item.get("ok") is not False:
             continue
@@ -246,9 +248,9 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         project.zip_ready = False
         project.delivery_mark = "none"
         if from_step <= 1:
-            from app.services.delivery_review import _empty_state
+            from app.services.delivery_review import empty_review_state
 
-            project.delivery_review = _empty_state()
+            project.delivery_review = empty_review_state()
             flag_modified(project, "delivery_review")
         await db.commit()
 
@@ -266,7 +268,6 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             from app.bake.catalog import normalize_theme
             from app.bake.domain_schema import ensure_spec_schema
             from app.services import runtime as rt
-            from sqlalchemy.orm.attributes import flag_modified
 
             llm_rt = await load_llm_runtime(db)
 
@@ -595,11 +596,29 @@ async def start_job(
         steps=_default_steps(),
     )
     db.add(job)
+    project.status = ProjectStatus.generating.value
+    project.zip_ready = False
+    project.delivery_mark = "none"
+    if from_step <= 1:
+        from app.services.delivery_review import empty_review_state
+
+        project.delivery_review = empty_review_state()
+        flag_modified(project, "delivery_review")
     await db.commit()
     await db.refresh(job)
 
     task = asyncio.create_task(run_job(job.id, from_step=from_step))
     _running[job.id] = task
+
+    def _log_task_crash(t: asyncio.Task, jid: int = job.id) -> None:
+        try:
+            exc = t.exception()
+        except asyncio.CancelledError:
+            return
+        if exc is not None:
+            logger.exception("run_job 后台任务异常 · job #%s", jid, exc_info=exc)
+
+    task.add_done_callback(_log_task_crash)
     return job
 
 

@@ -120,11 +120,9 @@ def merge_semantic_into_gates(gates: dict[str, Any], workspace: Path, spec: dict
     """就地合并 p3s，并同步 overall / zip_allowed。"""
     sem = evaluate_semantic_gates(workspace, spec).get("p3s") or {}
     gates["p3s"] = sem
-    core_keys = [
-        k
-        for k in ("p0a", "p0b", "p1", "p2", "p3a", "p3b", "p3t", "p3d", "p3s", "p3q")
-        if isinstance(gates.get(k), dict)
-    ]
+    from app.bake.gates.keys import GATE_CORE_KEYS
+
+    core_keys = [k for k in GATE_CORE_KEYS if isinstance(gates.get(k), dict)]
     all_ok = all(bool(gates[k].get("ok")) for k in core_keys)
     gates["overall"] = all_ok
     if not all_ok:

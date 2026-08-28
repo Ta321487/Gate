@@ -18,12 +18,16 @@ from app.models import Job, Project, ProjectStatus
 from app.schemas import (
     ApiOk,
     DeliveryMarkUpdate,
+    DeliveryQaOut,
+    DeliveryReviewPanelOut,
+    DeliveryVerifyOut,
     ErLabelsUpdate,
     FixNoteCreate,
     FixNoteResolve,
     MatchUpdate,
     ProjectDetail,
     ProjectSummary,
+    ProposalDiffOut,
     RuntimeState,
     StatsOut,
     UploadConfirmIn,
@@ -70,13 +74,31 @@ async def project_stats(db: AsyncSession = Depends(get_db)):
     return StatsOut(**(await project_svc.stats(db)))
 
 
+@router.post(
+    "/purge-orphan-disk",
+    response_model=ApiOk,
+    summary="清理孤儿工程目录与日志",
+)
+async def purge_orphan_disk(db: AsyncSession = Depends(get_db)):
+    """删除 data/workspace、data/logs 下项目 ID 已不在库中的目录，及对应 ZIP。不动 cache。"""
+    result = await db.execute(select(Project.id))
+    alive = set(result.scalars().all())
+    data = await asyncio.to_thread(project_svc.purge_orphan_project_disk, alive)
+    n = int(data.get("removed") or 0)
+    err_n = len(data.get("errors") or [])
+    msg = f"已清理 {n} 项孤儿磁盘产物"
+    if err_n:
+        msg += f"（{err_n} 项失败）"
+    return ApiOk(message=msg, data=data)
+
+
 @router.get("", response_model=list[ProjectSummary], summary="项目列表")
 async def list_projects(
     q: str = Query("", description="标题或 ID 关键字"),
     filter: str = Query(
         "all",
         alias="filter",
-        description="all | active | generating | done | ready | delivered | fail",
+        description="all | active | generating | done | pending | ready | delivered | fail",
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -144,12 +166,15 @@ async def list_projects(
         ]
     # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
     summaries = []
+    from app.services.delivery_review import review_status_of
+
     for p in items:
         s = ProjectSummary.model_validate(p)
         s.delivery_mark = project_svc.normalize_delivery_mark(
             getattr(p, "delivery_mark", None)
         )
         s.download_blocked_reason = project_svc.delivery_block_reason(p)
+        s.review_status = review_status_of(p)
         summaries.append(s)
     if dirty:
         await db.commit()
@@ -454,14 +479,26 @@ async def patch_delivery(
 
 
 @router.post("/{project_id}/generate", response_model=ApiOk, summary="启动生成")
-async def generate(project_id: str, db: AsyncSession = Depends(get_db)):
-    from app.services.delivery_review import require_pre_generate_ack
+async def generate(
+    project_id: str,
+    confirm_diff: bool = Query(
+        False,
+        description="开题措辞核对弹窗点「确认并启动生成」时传 true，与启动同事务写入确认",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.delivery_review import ack_pre_generate, require_pre_generate_ack
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     if not p.match_confirmed:
         raise HTTPException(400, "请先确认匹配")
+    if confirm_diff:
+        from app.services.delivery_review import has_proposal_material
+
+        if has_proposal_material(p):
+            ack_pre_generate(p)
     ack_msg = require_pre_generate_ack(p)
     if ack_msg:
         raise HTTPException(400, ack_msg)
@@ -1038,7 +1075,7 @@ async def get_logs(project_id: str, side: str, db: AsyncSession = Depends(get_db
     return {"side": side, "content": text}
 
 
-@router.get("/{project_id}/proposal-diff", summary="开题功能与 checklist 对照")
+@router.get("/{project_id}/proposal-diff", response_model=ProposalDiffOut, summary="生成前 · 开题措辞核对")
 async def get_proposal_diff(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.services.proposal import load_merged_proposal_text
     from app.services.proposal_diff import build_proposal_diff
@@ -1056,10 +1093,7 @@ async def get_proposal_diff(project_id: str, db: AsyncSession = Depends(get_db))
     from app.services.delivery_review import get_review_state
 
     st = get_review_state(p)
-    return {
-        **diff,
-        "pre_generate_ack_at": st.get("pre_generate_ack_at"),
-    }
+    return ProposalDiffOut(**{**diff, "pre_generate_ack_at": st.get("pre_generate_ack_at")})
 
 
 @router.post("/{project_id}/delivery-review/ack-pre-generate", response_model=ApiOk, summary="确认开题 diff")
@@ -1071,7 +1105,7 @@ async def ack_pre_generate_review(project_id: str, db: AsyncSession = Depends(ge
         raise HTTPException(404, "项目不存在")
     st = ack_pre_generate(p)
     await db.commit()
-    return ApiOk(message="已确认开题对照 · 可启动一键生成", data={"review": st})
+    return ApiOk(message="已确认开题措辞核对 · 可启动一键生成", data={"review": st})
 
 
 @router.post("/{project_id}/delivery-review/ack-fill-plan", response_model=ApiOk, summary="确认填岛计划")
@@ -1086,7 +1120,7 @@ async def ack_fill_plan_review(project_id: str, db: AsyncSession = Depends(get_d
     return ApiOk(message="已确认填岛拆解计划", data={"review": st})
 
 
-@router.get("/{project_id}/delivery-review", summary="交付复审状态")
+@router.get("/{project_id}/delivery-review", response_model=DeliveryReviewPanelOut, summary="交付复审状态")
 async def get_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.services.delivery_review import build_review_payload
 
@@ -1166,9 +1200,11 @@ async def resolve_delivery_fix_note(
     return ApiOk(message="已更新偏差状态")
 
 
-@router.post("/{project_id}/delivery-review/verify", summary="验圈（重跑门禁与单调性）")
+@router.post("/{project_id}/delivery-review/verify", response_model=DeliveryVerifyOut, summary="验圈（重跑门禁与单调性）")
 async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
-    from app.services.delivery_review import verify_round
+    from app.llm.agents import run_qa_agent
+    from app.llm.runtime import load_llm_runtime
+    from app.services.delivery_review import get_review_state, save_review_state, verify_round
 
     p = await db.get(Project, project_id)
     if not p:
@@ -1176,6 +1212,20 @@ async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get
     ws = _workspace_or_400(p)
     if p.status == ProjectStatus.generating.value:
         raise HTTPException(409, "生成中 · 请稍后再验圈")
+    llm_rt = await load_llm_runtime(db)
+    try:
+        qa = await run_qa_agent(
+            db,
+            llm_rt,
+            project_id=p.id,
+            workspace=ws,
+            spec=p.spec if isinstance(p.spec, dict) else {},
+        )
+        st = get_review_state(p)
+        st["last_qa"] = qa
+        save_review_state(p, st)
+    except Exception as qe:  # noqa: BLE001
+        logger.debug("verify QA skip · %s", qe)
     result = verify_round(p, ws)
     downloadable = project_svc.gates_allow_delivery(p.gates) and not project_svc.delivery_block_reason(p)
     p.zip_ready = bool(downloadable and p.zip_path and Path(str(p.zip_path)).exists())
@@ -1186,7 +1236,7 @@ async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get
     await db.refresh(p)
     result["download_blocked_reason"] = project_svc.delivery_block_reason(p)
     result["zip_ready"] = p.zip_ready
-    return result
+    return DeliveryVerifyOut(**result)
 
 
 @router.post("/{project_id}/delivery-review/repack", response_model=ApiOk, summary="合卷（重打学生 ZIP）")
@@ -1217,11 +1267,11 @@ async def repack_delivery_review(project_id: str, db: AsyncSession = Depends(get
     return ApiOk(message="合卷完成 · 交付包已与当前工程同步", data=meta)
 
 
-@router.post("/{project_id}/delivery-review/qa", summary="重跑交付质量摘要")
+@router.post("/{project_id}/delivery-review/qa", response_model=DeliveryQaOut, summary="重跑交付质量摘要")
 async def run_delivery_qa(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.llm.agents import run_qa_agent
     from app.llm.runtime import load_llm_runtime
-    from app.services.delivery_review import apply_qa_to_gates, evaluate_workspace_gates
+    from app.services.delivery_review import get_review_state, save_review_state, verify_round
 
     p = await db.get(Project, project_id)
     if not p:
@@ -1235,17 +1285,18 @@ async def run_delivery_qa(project_id: str, db: AsyncSession = Depends(get_db)):
         workspace=ws,
         spec=p.spec if isinstance(p.spec, dict) else {},
     )
-    gates = evaluate_workspace_gates(ws, dict(p.spec or {}))
-    apply_qa_to_gates(gates, qa)
-    p.gates = {k: v for k, v in gates.items() if k != "checklist"}
-    p.checklist = gates.get("checklist") or []
-    st = dict(getattr(p, "delivery_review", None) or {})
+    st = get_review_state(p)
     st["last_qa"] = qa
-    p.delivery_review = st
+    save_review_state(p, st)
+    verify_round(p, ws)
     project_svc.reset_delivery_mark(p)
     p.zip_ready = False
     await db.commit()
-    return {"qa": qa, "gates": p.gates, "download_blocked_reason": project_svc.delivery_block_reason(p)}
+    return DeliveryQaOut(
+        qa=qa,
+        gates=p.gates or {},
+        download_blocked_reason=project_svc.delivery_block_reason(p),
+    )
 
 
 @router.get("/{project_id}/delivery-review/handoff", summary="导出运营交接包")

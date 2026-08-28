@@ -254,9 +254,64 @@ def remove_project_zips(project_id: str, zip_path: str | None) -> None:
 
 
 def remove_project_logs(project_id: str) -> None:
+    """删项目日志目录；删不干净则抛错（与工程目录同口径）。"""
     logs = get_settings().logs_dir / project_id
     if logs.exists():
-        shutil.rmtree(logs, ignore_errors=True)
+        remove_tree_reliable(logs)
+
+
+def purge_orphan_project_disk(alive_ids: set[str] | frozenset[str]) -> dict:
+    """清理库中已不存在的工程目录、日志目录与对应 ZIP；不动 cache / uploads。"""
+    alive = {str(x) for x in alive_ids if x}
+    settings = get_settings()
+    removed_workspaces: list[str] = []
+    removed_logs: list[str] = []
+    removed_zips: list[str] = []
+    errors: list[str] = []
+
+    def _purge_dirs(root: Path, *, detach: bool, out: list[str]) -> None:
+        if not root.is_dir():
+            return
+        for child in sorted(root.iterdir(), key=lambda p: p.name):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            if child.name in alive:
+                continue
+            try:
+                if detach:
+                    rt.detach_frontend_deps(child)
+                remove_tree_reliable(child)
+                out.append(child.name)
+            except Exception as e:  # noqa: BLE001
+                msg = f"{child}: {e}"
+                errors.append(msg)
+                logger.warning("清理孤儿目录失败 %s", msg)
+
+    _purge_dirs(settings.workspace_dir, detach=True, out=removed_workspaces)
+    _purge_dirs(settings.logs_dir, detach=False, out=removed_logs)
+
+    ws_root = settings.workspace_dir
+    if ws_root.is_dir():
+        for zp in sorted(ws_root.glob("*.zip")):
+            if not zp.is_file():
+                continue
+            if any(zp.name.startswith(f"{pid}-") for pid in alive):
+                continue
+            try:
+                zp.unlink()
+                removed_zips.append(zp.name)
+            except OSError as e:
+                msg = f"{zp}: {e}"
+                errors.append(msg)
+                logger.warning("清理孤儿 ZIP 失败 %s", msg)
+
+    return {
+        "removed_workspaces": removed_workspaces,
+        "removed_logs": removed_logs,
+        "removed_zips": removed_zips,
+        "errors": errors,
+        "removed": len(removed_workspaces) + len(removed_logs) + len(removed_zips),
+    }
 
 
 def remove_project_source_if_owned(

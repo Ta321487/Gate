@@ -35,7 +35,16 @@
         <n-button size="small" :disabled="disabled || busy" :loading="busy === 'qa'" @click="onQa">
           质量摘要
         </n-button>
-        <n-button size="small" quaternary :disabled="disabled" tag="a" :href="handoffUrl" target="_blank">
+        <n-button
+          v-if="review.status === 'active'"
+          size="small"
+          :disabled="disabled || busy"
+          :loading="busy === 'close'"
+          @click="onClose"
+        >
+          结束复审
+        </n-button>
+        <n-button size="small" :disabled="disabled" tag="a" :href="handoffUrl" target="_blank">
           导出交接包
         </n-button>
       </div>
@@ -195,12 +204,16 @@ const canRepack = computed(() => {
   if (props.disabled || busy.value) return false
   if (regressions.value.length) return false
   if (openNotes.value.length) return false
+  const rounds = review.value.rounds || []
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
+  if (!lastRound?.round_pass) return false
+  if (lastRound.monotonic_ok === false) return false
   return true
 })
 
 const metrics = computed(() => props.deliveryReview?.metrics || {})
 
-const handoffUrl = computed(() => `/api/projects/${props.projectId}/delivery-review/handoff`)
+const handoffUrl = computed(() => api.deliveryHandoffUrl(props.projectId))
 
 const roundCols = [
   { title: '轮次', key: 'round', width: 56 },
@@ -221,6 +234,8 @@ async function onStart() {
     await api.startDeliveryReview(props.projectId)
     message.success('已进入交付复审')
     emit('refresh')
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '进入复审失败')
   } finally {
     busy.value = ''
   }
@@ -240,6 +255,8 @@ async function onVerify() {
       message.info('验圈完成 · 仍有待收敛项')
     }
     emit('refresh')
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '验圈失败')
   } finally {
     busy.value = ''
   }
@@ -251,6 +268,8 @@ async function onRepack() {
     await api.repackDeliveryReview(props.projectId)
     message.success('合卷完成 · 交付包已更新')
     emit('refresh')
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '合卷失败')
   } finally {
     busy.value = ''
   }
@@ -263,6 +282,21 @@ async function onQa() {
     if (res.qa?.ok) message.success('质量摘要已通过')
     else message.warning('质量摘要存在 error 级问题')
     emit('refresh')
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function onClose() {
+  busy.value = 'close'
+  try {
+    await api.closeDeliveryReview(props.projectId)
+    message.success('已结束交付复审')
+    emit('refresh')
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
   } finally {
     busy.value = ''
   }

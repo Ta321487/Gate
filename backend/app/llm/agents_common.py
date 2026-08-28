@@ -84,11 +84,15 @@ _SAMPLE_PROPOSAL_PID = "gf-sample"
 def _proposal_text(spec: dict[str, Any]) -> str:
     prop = spec.get("proposal")
     if isinstance(prop, dict):
+        # out_scope 行须带「非本期」前缀：诚实口径扫描按邻近窗口判定，
+        # 裸列「人脸识别签到」会被误判成「写成本期可用」。
+        out_scope = prop.get("out_scope_lines") or []
+        out_blob = "\n".join(f"非本期：{x}" for x in out_scope if str(x).strip())
         parts = [
             prop.get("title"),
             prop.get("background"),
             "\n".join(prop.get("feature_lines") or []),
-            "\n".join(prop.get("out_scope_lines") or []),
+            out_blob,
             prop.get("excerpt"),
         ]
         return "\n".join(str(x) for x in parts if x)

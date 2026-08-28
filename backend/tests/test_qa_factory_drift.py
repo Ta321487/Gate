@@ -158,6 +158,43 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         )
         self.assertFalse(any(f.get("level") == "error" for f in ok), ok)
 
+    def test_honesty_out_scope_lines_not_as_supported(self) -> None:
+        """开题 out_scope 列人脸/GPS 不得挡包（DOM-CHECKIN 真题回归）。"""
+        from app.llm.agents_common import _proposal_text
+        from app.llm.agents_qa import _honesty_findings
+
+        spec = {
+            "proposal": {
+                "title": "高校宿舍归寝签到管理系统",
+                "background": "归寝登记与口令签到",
+                "feature_lines": [
+                    "寝室信息与查寝场次维护",
+                    "用户信息管理与公告发布",
+                ],
+                "out_scope_lines": [
+                    "门禁硬件联动",
+                    "人脸识别签到",
+                    "GPS轨迹打卡",
+                    "第三方平台接口集成",
+                    "其他扩展能力不作为本期系统必实现项",
+                ],
+            }
+        }
+        blob = _proposal_text(spec)
+        self.assertIn("非本期：人脸识别签到", blob)
+        findings = _honesty_findings(
+            {
+                "domain": "DOM-CHECKIN",
+                "labels": {"authPoints": ["归寝登记与口令签到"]},
+                "menus": {},
+                "proposal": blob[:800],
+            }
+        )
+        self.assertFalse(
+            any(f.get("level") == "error" for f in findings),
+            findings,
+        )
+
     def test_honesty_wrong_domain_entity_warn(self) -> None:
         from app.llm.agents_qa import _honesty_findings
 

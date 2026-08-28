@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from app.bake.gates import evaluate_domain_gates
+from app.bake.gates.keys import GATE_MONOTONE_KEYS
 from app.models import Project
 from app.services.proposal import load_merged_proposal_text
-
-_GATE_MONOTONE_KEYS = ("p0a", "p0b", "p1", "p2", "p3a", "p3b", "p3t", "p3d", "p3s", "p3q")
 
 _HASH_ROOTS = (
     "backend/src",
@@ -28,6 +27,11 @@ _HASH_ROOTS = (
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def empty_review_state() -> dict[str, Any]:
+    """公开：交付复审初始态（jobs 重置时共用）。"""
+    return _empty_state()
 
 
 def _empty_state() -> dict[str, Any]:
@@ -61,6 +65,18 @@ def get_review_state(project: Project) -> dict[str, Any]:
 
 def save_review_state(project: Project, state: dict[str, Any]) -> None:
     project.delivery_review = state
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(project, "delivery_review")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def review_status_of(project: Project) -> str:
+    """列表履约细分：idle | active | closed。"""
+    status = str(get_review_state(project).get("status") or "idle")
+    return status if status in ("idle", "active", "closed") else "idle"
 
 
 def workspace_delivery_hash(workspace: Path) -> str:
@@ -120,7 +136,7 @@ def checklist_done_names(checklist: list[Any]) -> list[str]:
 
 def gates_ok_keys(gates: dict[str, Any]) -> dict[str, bool]:
     out: dict[str, bool] = {}
-    for k in _GATE_MONOTONE_KEYS:
+    for k in GATE_MONOTONE_KEYS:
         item = gates.get(k)
         if isinstance(item, dict):
             out[k] = bool(item.get("ok"))
@@ -152,7 +168,7 @@ def compare_monotonic(
                 {
                     "kind": "checklist",
                     "key": name,
-                    "message": f"开题对照项「{name}」由已通过回退为未通过",
+                    "message": f"清单实装项「{name}」由已通过回退为未通过",
                 }
             )
 
@@ -299,13 +315,17 @@ def pre_generate_acked(project: Project) -> bool:
     return bool(st.get("pre_generate_ack_at"))
 
 
+def has_proposal_material(project: Project) -> bool:
+    return bool(project.source_path or getattr(project, "source_filename", None))
+
+
 def require_pre_generate_ack(project: Project) -> str | None:
     """有开题材料时须先确认 proposal-diff。"""
-    if not project.source_path:
+    if not has_proposal_material(project):
         return None
     if pre_generate_acked(project):
         return None
-    return "请先查看并确认「开题对照 diff」后再一键生成"
+    return "请先查看并确认「开题措辞核对」后再一键生成"
 
 
 def start_review(project: Project) -> dict[str, Any]:
@@ -376,10 +396,13 @@ def verify_round(
 ) -> dict[str, Any]:
     """重跑门禁 + 单调性；更新 project gates/checklist。"""
     spec = dict(project.spec or {})
+    st = get_review_state(project)
     gates = evaluate_workspace_gates(workspace, spec)
+    last_qa = st.get("last_qa")
+    if isinstance(last_qa, dict) and last_qa:
+        apply_qa_to_gates(gates, last_qa)
     checklist = gates.pop("checklist", []) or []
 
-    st = get_review_state(project)
     if st.get("status") != "active":
         start_review(project)
         st = get_review_state(project)

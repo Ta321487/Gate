@@ -1,7 +1,7 @@
 <template>
   <div class="page-fill">
     <h1 class="page-title">任务队列</h1>
-    <p class="page-desc">生成任务状态、取消、清空历史与清理失效。</p>
+    <p class="page-desc">生成任务状态、取消、清空历史；失效项目可一次清掉队列残留与本机工程/日志。</p>
     <PageSkeleton v-if="!booted" variant="list" />
     <div v-else class="panel panel-fill">
       <div class="panel-hd">
@@ -22,7 +22,7 @@
             type="error"
             :loading="purging"
             @click="purgeOrphans"
-          >清空项目不存在的任务</n-button>
+          >清理失效项目残留</n-button>
         </div>
       </div>
       <div class="panel-bd panel-bd-fill">
@@ -325,16 +325,21 @@ async function purgeFinished() {
 }
 
 async function purgeOrphans() {
-  const ok = await confirm('将清空项目已不存在的任务，此操作不可恢复。', {
-    title: '清空项目不存在的任务',
-    type: 'error',
-    positiveText: '清空',
-  })
+  const ok = await confirm(
+    '将清理：① 项目已不存在的任务记录；② 本机工程目录与日志中、库里已无对应项目的文件夹（及 ZIP）。共享缓存与开题材料不动。',
+    {
+      title: '清理失效项目残留',
+      type: 'error',
+      positiveText: '清理',
+    },
+  )
   if (!ok) return
   purging.value = true
   try {
-    const res = await api.purgeOrphanJobs()
-    message.success(res.message || '已清空项目不存在的任务')
+    const jobRes = await api.purgeOrphanJobs()
+    const diskRes = await api.purgeOrphanDisk()
+    const parts = [jobRes.message, diskRes.message].filter(Boolean)
+    message.success(parts.join('；') || '已清理失效项目残留')
     await load()
   } finally {
     purging.value = false

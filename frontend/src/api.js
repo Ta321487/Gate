@@ -64,7 +64,10 @@ export const api = {
   getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
   patchDelivery: (id, mark) => http.patch(`/projects/${id}/delivery`, { mark }),
-  generate: (id) => http.post(`/projects/${id}/generate`),
+  generate: (id, { confirmDiff = false } = {}) =>
+    http.post(`/projects/${id}/generate`, {}, {
+      params: confirmDiff ? { confirm_diff: true } : {},
+    }),
   deleteProject: (id, { keepDb = false } = {}) =>
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
@@ -116,6 +119,7 @@ export const api = {
   deliveryHandoffUrl: (id) => `/api/projects/${id}/delivery-review/handoff`,
   purgeOrphanJobs: () => http.post('/jobs/purge-orphans'),
   purgeFinishedJobs: () => http.post('/jobs/purge-finished'),
+  purgeOrphanDisk: () => http.post('/projects/purge-orphan-disk'),
   deepseek: () => http.get('/deepseek'),
   saveDeepseek: (body) => http.put('/deepseek', body),
   testDeepseek: () => http.post('/deepseek/test'),

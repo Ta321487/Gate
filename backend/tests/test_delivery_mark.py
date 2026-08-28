@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from unittest.mock import patch
 
 from app.services import projects as project_svc
 
@@ -112,6 +113,72 @@ def test_sync_clears_stale_zip_ready_without_workspace(tmp_path):
     assert project_svc.sync_checklist_from_workspace(p) is True
     assert p.zip_ready is False
     assert p.delivery_mark == "none"
+
+
+def test_delivery_block_reason_zip_stale(tmp_path):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=True,
+        gates={"overall": True, "zip_allowed": True},
+        zip_path=str(tmp_path / "demo.zip"),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"workspace_hash_at_pack": "stale-hash"},
+    )
+    with patch("app.services.delivery_review.workspace_delivery_hash", return_value="new-hash"):
+        reason = project_svc.delivery_block_reason(p)
+    assert reason == project_svc.MSG_DOWNLOAD_ZIP_STALE
+
+
+def test_delivery_block_reason_review_regression():
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=None,
+        zip_ready=False,
+        gates={"overall": False, "zip_allowed": False},
+        zip_path=None,
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={
+            "status": "active",
+            "last_verify": {"monotonic_ok": False},
+        },
+    )
+    assert project_svc.delivery_block_reason(p) == project_svc.MSG_DOWNLOAD_REVIEW_REGRESSION
+
+
+def test_delivery_block_reason_open_fix_notes():
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=None,
+        zip_ready=False,
+        gates={"overall": False, "zip_allowed": False},
+        zip_path=None,
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={
+            "status": "active",
+            "last_verify": {"monotonic_ok": True},
+            "fix_notes": [{"id": "1", "text": "x", "status": "open"}],
+        },
+    )
+    assert project_svc.delivery_block_reason(p) == project_svc.MSG_DOWNLOAD_OPEN_FIX_NOTES
+
+
+def test_require_pre_generate_ack_with_filename_only():
+    from app.services.delivery_review import require_pre_generate_ack
+
+    p = SimpleNamespace(source_path=None, source_filename="thesis.docx", delivery_review={})
+    assert require_pre_generate_ack(p) is not None
+
+    p.delivery_review = {"pre_generate_ack_at": "2026-01-01T00:00:00+00:00"}
+    assert require_pre_generate_ack(p) is None
 
 
 def test_sync_clears_stale_zip_ready_when_gates_fail(tmp_path):

@@ -573,6 +573,50 @@ button.filter-pill.on {
 }
 .parse-sec { margin-top: 8px; }
 .parse-sec-hd { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.pre-gen-status {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.pre-gen-ready {
+  background: var(--banner-ok-bg);
+  border-color: var(--banner-ok-line);
+}
+.pre-gen-review {
+  background: color-mix(in srgb, var(--teal) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--teal) 40%, var(--line));
+}
+.pre-gen-check {
+  background: var(--banner-warn-bg);
+  border-color: var(--banner-warn-line);
+}
+.pre-gen-coverage {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+.pre-gen-summary {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pre-gen-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.pre-gen-warn-list li {
+  color: var(--amber);
+}
+.zone-list {
+  margin: 0 0 0 18px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
 .parse-list { margin: 0; padding-left: 1.2em; font-size: 13px; line-height: 1.55; }
 .parse-list.plain { list-style: disc; color: var(--muted); }
 .parse-excerpt { margin-top: 10px; font-size: 12px; }

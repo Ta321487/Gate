@@ -44,9 +44,131 @@ def _proposal_lines(spec: dict[str, Any], proposal_text: str = "") -> list[str]:
 
 
 
-def _checklist_features(spec: dict[str, Any]) -> list[dict[str, Any]]:
+def _active_features(spec: dict[str, Any]) -> list[dict[str, Any]]:
 
-    return [f for f in (spec.get("features") or []) if isinstance(f, dict)]
+    return [
+
+        f
+
+        for f in (spec.get("features") or [])
+
+        if isinstance(f, dict) and f.get("status") != "out_of_mvp"
+
+    ]
+
+
+
+
+
+def _compose_status(
+
+    *,
+
+    total: int,
+
+    matched_n: int,
+
+    review_n: int,
+
+    unmatched_n: int,
+
+) -> dict[str, Any]:
+
+    covered = matched_n + review_n
+
+    if total <= 0:
+
+        return {
+
+            "summary": "将按已选领域默认清单生成",
+
+            "operator_hint": "无开题功能行时跳过措辞对照，直接确认即可。",
+
+            "coverage_label": "按领域默认清单",
+
+            "ok": True,
+
+            "ready": True,
+
+            "needs_review": False,
+
+        }
+
+
+
+    coverage_label = f"{covered}/{total} 已覆盖"
+
+    if unmatched_n == 0:
+
+        if review_n == 0:
+
+            summary = f"开题 {total} 项均已对照，可确认生成"
+
+        else:
+
+            summary = (
+
+                f"开题 {total} 项已覆盖（{matched_n} 项直接对照 · "
+
+                f"{review_n} 项措辞弱匹配），可确认生成"
+
+            )
+
+        return {
+
+            "summary": summary,
+
+            "operator_hint": "主流程已对齐，确认后将按清单出包。",
+
+            "coverage_label": f"{total}/{total} 已覆盖",
+
+            "ok": True,
+
+            "ready": True,
+
+            "needs_review": review_n > 0,
+
+        }
+
+
+
+    ratio = covered / total
+
+    if ratio >= 0.6 and unmatched_n <= 2:
+
+        return {
+
+            "summary": f"开题 {covered}/{total} 项已覆盖，{unmatched_n} 项措辞待核",
+
+            "operator_hint": "多为开题表述与模块名不一致；若领域选对，通常不影响出包与演示。",
+
+            "coverage_label": coverage_label,
+
+            "ok": False,
+
+            "ready": True,
+
+            "needs_review": True,
+
+        }
+
+
+
+    return {
+
+        "summary": f"开题 {unmatched_n} 项可能与清单不一致，请确认领域是否正确",
+
+        "operator_hint": "若领域选错，生成后演示可能与开题不符；请在匹配确认页核对领域。",
+
+        "coverage_label": coverage_label,
+
+        "ok": False,
+
+        "ready": False,
+
+        "needs_review": True,
+
+    }
 
 
 
@@ -64,7 +186,7 @@ def build_proposal_diff(
 
     lines = _proposal_lines(spec, proposal_text)
 
-    features = _checklist_features(spec)
+    features = _active_features(spec)
 
     checklist = [
 
@@ -128,21 +250,23 @@ def build_proposal_diff(
 
 
 
+    matched_n = len(matched)
+
     review_n = len(review)
 
     unmatched_n = len(unmatched)
 
-    if unmatched_n:
+    status = _compose_status(
 
-        summary = f"开题 {unmatched_n} 项未落入 checklist，生成前请确认"
+        total=len(lines),
 
-    elif review_n:
+        matched_n=matched_n,
 
-        summary = f"开题 {review_n} 项措辞与 checklist 仅弱匹配，建议扫一眼再生成"
+        review_n=review_n,
 
-    else:
+        unmatched_n=unmatched_n,
 
-        summary = "开题功能行已纳入对照清单"
+    )
 
 
 
@@ -162,12 +286,17 @@ def build_proposal_diff(
 
         "extra_checklist": extra_in_spec,
 
-        "ok": unmatched_n == 0,
+        "ok": status["ok"],
 
-        "needs_review": review_n > 0,
+        "ready": status["ready"],
 
-        "summary": summary,
+        "needs_review": status["needs_review"],
+
+        "summary": status["summary"],
+
+        "coverage_label": status["coverage_label"],
+
+        "operator_hint": status["operator_hint"],
 
     }
-
 

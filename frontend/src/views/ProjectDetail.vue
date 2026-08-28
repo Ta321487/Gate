@@ -242,7 +242,7 @@
         <div v-if="genState === 'running'" class="panel mb-16">
           <div class="panel-bd">
             <div class="row-between" style="margin-bottom:10px">
-              <div style="font-weight:600">正在生成…</div>
+              <div style="font-weight:600">{{ jobInFlight && p.status !== 'generating' ? '正在启动生成…' : '正在生成…' }}</div>
               <div class="small muted">任务 #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
             </div>
             <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
@@ -1040,7 +1040,10 @@
                     机器质检未通过时不可下载。工程变更后请在「交付复审」验圈并合卷。人工履约标记在页头操作。
                   </p>
                   <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
-                  <div class="parse-sec-hd mt-12">开题对照清单</div>
+                  <div class="parse-sec-hd mt-12">清单实装验收</div>
+                  <p class="small muted" style="margin:0 0 8px">
+                    扫描已生成工程，核对 Spec 清单各项是否在 ZIP 中有对应路由/实现（与生成前「措辞核对」不是同一检查）。
+                  </p>
                   <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
                 </div>
               </n-tab-pane>
@@ -1068,35 +1071,60 @@
       </p>
       <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留学生数据库</n-checkbox>
     </n-modal>
-    <n-modal v-model:show="showPreGenerate" preset="card" title="生成前 · 开题对照" style="width:min(720px,96vw)">
+    <n-modal v-model:show="showPreGenerate" preset="card" title="生成前 · 开题措辞核对" style="width:min(720px,96vw)">
       <p class="small muted" style="margin-top:0">
-        确认开题功能行已落入工厂对照清单后再启动生成，减少包后返工。
+        核对开题主流程是否由已选领域覆盖；下方为措辞对照，不阻断生成。
       </p>
-      <n-alert v-if="proposalDiff && !proposalDiff.ok" type="warning" :bordered="false" style="margin-bottom:12px">
-        {{ proposalDiff.summary }}
+      <div
+        v-if="proposalDiff"
+        class="pre-gen-status"
+        :class="{
+          'pre-gen-ready': preGenReady,
+          'pre-gen-review': proposalDiff && !preGenReady && proposalDiff.needs_review,
+          'pre-gen-check': proposalDiff && !preGenReady && !proposalDiff.needs_review,
+        }"
+      >
+        <div class="pre-gen-coverage">{{ proposalDiff.coverage_label || '—' }}</div>
+        <div class="pre-gen-summary">{{ proposalDiff.summary }}</div>
+        <p v-if="proposalDiff.operator_hint" class="small pre-gen-hint">{{ proposalDiff.operator_hint }}</p>
+      </div>
+      <n-alert v-if="preGenStackWarnings.length" type="warning" :bordered="false" style="margin-bottom:12px;margin-top:12px">
+        <div class="parse-sec-hd" style="margin:0 0 4px">技术栈 · 开题与拟选</div>
+        <div v-for="(w, i) in preGenStackWarnings" :key="'sw' + i" class="small">{{ w }}</div>
+        <div v-if="preGenTechDual" class="small muted" style="margin-top:6px">{{ preGenTechDual }}</div>
       </n-alert>
-      <n-alert v-else-if="proposalDiff?.needs_review" type="info" :bordered="false" style="margin-bottom:12px">
-        {{ proposalDiff.summary }}
-      </n-alert>
-      <n-alert v-else-if="proposalDiff?.ok" type="success" :bordered="false" style="margin-bottom:12px">
-        {{ proposalDiff.summary }}
-      </n-alert>
-      <div v-if="proposalDiff?.unmatched_proposal?.length" class="parse-sec-hd">开题未落入 checklist</div>
-      <ul v-if="proposalDiff?.unmatched_proposal?.length" class="zone-list">
-        <li v-for="(line, i) in proposalDiff.unmatched_proposal" :key="'u'+i">{{ line }}</li>
-      </ul>
-      <div v-if="proposalDiff?.review_proposal?.length" class="parse-sec-hd mt-12">措辞弱匹配 · 建议扫一眼</div>
-      <ul v-if="proposalDiff?.review_proposal?.length" class="zone-list">
-        <li v-for="(line, i) in proposalDiff.review_proposal" :key="'r'+i">{{ line }}</li>
-      </ul>
-      <div v-if="proposalDiff?.matched?.length" class="parse-sec-hd mt-12">已对照</div>
+      <div v-if="proposalDiff?.matched?.length" class="parse-sec-hd mt-12">已对照 · {{ proposalDiff.matched.length }} 项</div>
       <ul v-if="proposalDiff?.matched?.length" class="zone-list">
         <li v-for="(line, i) in proposalDiff.matched" :key="'m'+i">{{ line }}</li>
       </ul>
+      <div v-if="proposalDiff?.review_proposal?.length" class="parse-sec-hd mt-12">措辞弱匹配 · 已纳入覆盖</div>
+      <ul v-if="proposalDiff?.review_proposal?.length" class="zone-list">
+        <li v-for="(line, i) in proposalDiff.review_proposal" :key="'r'+i">{{ line }}</li>
+      </ul>
+      <div v-if="proposalDiff?.unmatched_proposal?.length" class="parse-sec-hd mt-12">措辞待核 · 请确认领域是否正确</div>
+      <ul v-if="proposalDiff?.unmatched_proposal?.length" class="zone-list pre-gen-warn-list">
+        <li v-for="(line, i) in proposalDiff.unmatched_proposal" :key="'u'+i">{{ line }}</li>
+      </ul>
+      <div v-if="proposalDiff?.match_links?.length" class="parse-sec-hd mt-12">对照解释</div>
+      <ul v-if="proposalDiff?.match_links?.length" class="zone-list match-link-list">
+        <li v-for="(row, i) in proposalDiff.match_links" :key="'ml' + i">
+          <span class="muted">{{ row.line }}</span>
+          <span v-for="(hit, j) in row.hits || []" :key="j" class="small">
+            → {{ hit.feature }}<span v-if="hit.reason">（{{ hit.reason }}）</span>
+          </span>
+        </li>
+      </ul>
+      <div v-if="proposalDiff?.extra_checklist?.length" class="parse-sec-hd mt-12">工厂实现模块</div>
+      <p v-if="proposalDiff?.extra_checklist?.length" class="small muted" style="margin:0 0 6px">
+        开题合并表述会拆成下列可交付模块，通常不是多余功能。
+      </p>
+      <ul v-if="proposalDiff?.extra_checklist?.length" class="zone-list">
+        <li v-for="(line, i) in proposalDiff.extra_checklist" :key="'e' + i">{{ line }}</li>
+      </ul>
       <div class="row" style="justify-content:flex-end;margin-top:16px;gap:8px">
         <n-button @click="showPreGenerate = false">取消</n-button>
-        <n-button type="primary" :loading="preGenBusy" @click="confirmPreGenerate">
-          确认并启动生成
+        <n-button type="primary" :loading="preGenBusy || softApplying" @click="confirmPreGenerate">
+          {{ preGenReady ? '确认并启动生成' : '仍要启动生成' }}
         </n-button>
       </div>
     </n-modal>
@@ -1112,6 +1140,12 @@
         :max-height="420"
         :loading="fillPlanLoading"
       />
+      <div class="row" style="justify-content:flex-end;margin-top:16px;gap:8px">
+        <n-button @click="showFillPlan = false">关闭</n-button>
+        <n-button type="primary" :loading="fillPlanAckBusy" @click="confirmFillPlan">
+          确认计划
+        </n-button>
+      </div>
     </n-modal>
     <n-modal v-model:show="showSpec" preset="card" title="生成配置" style="width:640px">
       <div class="row" style="justify-content:flex-end;margin:0 0 8px">
@@ -1292,6 +1326,7 @@ const proposalDiff = ref(null)
 const preGenBusy = ref(false)
 const showFillPlan = ref(false)
 const fillPlanLoading = ref(false)
+const fillPlanAckBusy = ref(false)
 const fillPlanRows = ref([])
 const FILL_UNIT_KIND_ZH = {
   island_labels: 'Island 文案',
@@ -1586,6 +1621,34 @@ const matchWarnings = computed(() => {
   if (Array.isArray(spec.match_warnings) && spec.match_warnings.length) return spec.match_warnings
   return (spec.hits || []).filter((h) => typeof h === 'string' && h.startsWith('提示：'))
 })
+const preGenStackWarnings = computed(() => {
+  const spec = p.value?.spec || {}
+  const stackWarn = spec.match_meta?.stack?.warnings
+  return Array.isArray(stackWarn) ? stackWarn : []
+})
+const preGenTechDual = computed(() => {
+  if (!p.value) return ''
+  const stack = p.value.spec?.match_meta?.stack
+  if (!stack || typeof stack !== 'object') return ''
+  const parts = []
+  const chosen = String(p.value.persistence || 'jdbc')
+  const rec = String(p.value.recommended_persistence || chosen)
+  if (stack.persistence_hint && stack.persistence_hint !== chosen) {
+    parts.push(`持久层 · 开题：${stack.persistence_hint} · 拟选：${chosen}`)
+  } else if (rec && rec !== chosen) {
+    parts.push(`持久层 · 推荐：${rec} · 拟选：${chosen}`)
+  }
+  if (stack.security_hint != null && stack.security_hint !== p.value.spring_security) {
+    parts.push(`Security · 开题：${stack.security_hint ? '是' : '否'} · 拟选：${p.value.spring_security ? '是' : '否'}`)
+  }
+  return parts.join(' · ')
+})
+const preGenReady = computed(() => {
+  const d = proposalDiff.value
+  if (!d) return false
+  if (d.ready === true) return true
+  return !!d.ok && !(d.unmatched_proposal || []).length
+})
 /** 易混近邻 / 关键词 ≠ 推荐时双显（周报 vs 投递等） */
 const narrativeDualText = computed(() => {
   if (!p.value) return ''
@@ -1759,9 +1822,14 @@ const statusPill = computed(() =>
   }),
 )
 
+const jobInFlight = computed(() => {
+  const st = String(currentJob.value?.status || '')
+  return st === 'queued' || st === 'running'
+})
+
 const genState = computed(() => {
   if (!p.value) return 'idle'
-  if (p.value.status === 'generating') return 'running'
+  if (p.value.status === 'generating' || jobInFlight.value) return 'running'
   if (p.value.status === 'running') return 'live'
   if (p.value.status === 'generated') return 'success'
   if (p.value.status === 'failed') return 'failed'
@@ -1771,6 +1839,7 @@ const genState = computed(() => {
 const showJobSteps = computed(() => {
   const steps = currentJob.value?.steps || []
   if (!steps.length) return false
+  if (jobInFlight.value) return true
   return ['running', 'failed', 'success', 'live'].includes(genState.value)
 })
 
@@ -1965,7 +2034,7 @@ const gateRows = computed(() => {
     }))
 })
 const checkCols = [
-  { title: '开题功能', key: 'name' },
+  { title: '清单项', key: 'name' },
   {
     title: '实现状态',
     key: 'result',
@@ -2389,6 +2458,21 @@ async function openFillPlan() {
   }
 }
 
+async function confirmFillPlan() {
+  if (!p.value?.id || fillPlanAckBusy.value) return
+  fillPlanAckBusy.value = true
+  try {
+    await api.ackFillPlan(p.value.id)
+    message.success('已确认填岛拆解计划')
+    showFillPlan.value = false
+    await load()
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '确认失败')
+  } finally {
+    fillPlanAckBusy.value = false
+  }
+}
+
 async function openModules() {
   if (!p.value || modLoading.value || artifactsFrozen.value) return
   modLoading.value = true
@@ -2701,7 +2785,7 @@ async function startGenerate() {
       proposalDiff.value = await api.getProposalDiff(p.value.id)
       showPreGenerate.value = true
     } catch (e) {
-      message.error(e?.response?.data?.detail || e?.message || '加载开题对照失败')
+      message.error(e?.response?.data?.detail || e?.message || '加载开题措辞核对失败')
     } finally {
       preGenBusy.value = false
     }
@@ -2714,25 +2798,39 @@ async function confirmPreGenerate() {
   if (!p.value?.id || preGenBusy.value) return
   preGenBusy.value = true
   try {
-    await api.ackPreGenerate(p.value.id)
+    await runGenerateJob({ confirmDiff: true })
     showPreGenerate.value = false
-    await runGenerateJob()
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '确认失败')
+    message.error(e?.response?.data?.detail || e?.message || '启动生成失败')
   } finally {
     preGenBusy.value = false
   }
 }
 
-async function runGenerateJob() {
-  if (softApplying.value) return
+async function runGenerateJob(opts = {}) {
+  if (softApplying.value) {
+    message.info('生成请求进行中，请稍候')
+    return
+  }
   softApplying.value = true
   try {
-    const res = await api.generate(p.value.id)
-    message.success(res.message)
-    await load()
+    const res = await api.generate(p.value.id, { confirmDiff: !!opts.confirmDiff })
+    message.success(res.message || '已启动生成')
+    const jobId = res?.data?.job_id
+    if (jobId) {
+      try {
+        currentJob.value = await api.getJob(jobId)
+      } catch {
+        /* listJobs 兜底 */
+      }
+    }
+    await refreshJob()
     tab.value = 'generate'
     startPoll()
+    await load({ syncTab: false, lite: true })
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '启动生成失败')
+    throw e
   } finally {
     softApplying.value = false
   }
@@ -2938,7 +3036,10 @@ function startPoll() {
       // 轻量轮询：只刷项目状态/Job/日志，不拉 catalog/schema
       await load({ syncTab: false, lite: true })
       if (tab.value === 'logs') await loadLog(logSide.value, { silent: true })
-      if (!p.value || p.value.status !== 'generating') {
+      const jobActive = currentJob.value
+        && ['queued', 'running'].includes(String(currentJob.value.status || ''))
+      const generating = p.value?.status === 'generating'
+      if (!generating && !jobActive) {
         stopPoll()
         stopFillEvents()
         pollSyncHint.value = ''
@@ -2947,6 +3048,8 @@ function startPoll() {
           const keepTab = tab.value === 'logs' || tab.value === 'artifacts'
           await load({ syncTab: !keepTab, lite: false })
         }
+      } else if (generating) {
+        startFillEvents()
       }
     } finally {
       pollInFlight = false

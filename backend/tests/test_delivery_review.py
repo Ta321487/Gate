@@ -86,6 +86,16 @@ class DeliveryReviewTests(unittest.TestCase):
         self.assertIsNone(dr.forbid_full_rebake(p, 2))
         self.assertEqual(dr.forbid_full_rebake(p, 4), 4)
 
+    def test_review_status_of(self):
+        p = SimpleNamespace(delivery_review={"status": "active"})
+        self.assertEqual(dr.review_status_of(p), "active")
+        p = SimpleNamespace(delivery_review={})
+        self.assertEqual(dr.review_status_of(p), "idle")
+
+    def test_require_pre_generate_ack_no_material(self):
+        p = SimpleNamespace(source_path=None, source_filename=None, delivery_review={})
+        self.assertIsNone(dr.require_pre_generate_ack(p))
+
 
 if __name__ == "__main__":
     unittest.main()
