@@ -790,6 +790,7 @@ const columns = [
         zipReady: projectIsDownloadable(row),
         deliveryMark: row.delivery_mark,
         blockedReason: row.download_blocked_reason || '',
+        reviewStatus: row.review_status || '',
       }
       return statusPillNode(
         projectStatusLabel(row.status, opts),

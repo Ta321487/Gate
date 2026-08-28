@@ -54,7 +54,10 @@ _HARD_BOUNDARY_AS_SUPPORTED = (
 )
 
 # 「非本期 / 不做 / 不接」等诚实划界，不算宣称支持
-_HONEST_SCOPE = re.compile(r"(非本期|本期不|不做|不接|不在本期|超出|硬边界|演示级替代)")
+_HONEST_SCOPE = re.compile(
+    r"(非本期|本期不|不做|不接|不在本期|不作为本期|不纳入|超出|硬边界|演示级替代|"
+    r"仅作为背景|背景对比|调研阶段|扩展能力|必实现项|不实现)"
+)
 
 # 域 → 错域实体词（出现在 labels/菜单且像主叙事时 warn）
 _WRONG_DOMAIN_ENTITY: dict[str, tuple[str, ...]] = {
@@ -193,8 +196,9 @@ def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
     blob = _flatten_label_text(ctx)
     for rx, name in _HARD_BOUNDARY_AS_SUPPORTED:
         for m in rx.finditer(blob):
-            start = max(0, m.start() - 24)
-            end = min(len(blob), m.end() + 24)
+            # 开题研究现状 / out_scope 列表邻近词常在 ±24 外，放宽到 ±100
+            start = max(0, m.start() - 100)
+            end = min(len(blob), m.end() + 100)
             window = blob[start:end]
             if _HONEST_SCOPE.search(window):
                 continue

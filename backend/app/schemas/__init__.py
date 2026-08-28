@@ -31,6 +31,10 @@ class ProjectSummary(BaseModel):
         default="none",
         description="人工履约标记：none | ready（已审待发）| delivered（已发出）",
     )
+    review_status: str = Field(
+        default="idle",
+        description="交付复审状态：idle | active | closed（列表履约细分）",
+    )
     db_name: str = Field(default="", description="学生库名")
     updated_at: Optional[datetime] = Field(default=None, description="更新时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
@@ -56,7 +60,7 @@ class ProjectDetail(ProjectSummary):
     match_mode: str = Field(description="匹配模式")
     spec: dict[str, Any] = Field(default_factory=dict, description="Spec 配置")
     gates: dict[str, Any] = Field(default_factory=dict, description="门禁结果")
-    checklist: list[Any] = Field(default_factory=list, description="开题对照清单")
+    checklist: list[Any] = Field(default_factory=list, description="包后清单实装验收")
     workspace_path: Optional[str] = Field(default=None, description="工作区路径")
     zip_path: Optional[str] = Field(default=None, description="ZIP 路径")
     preview_blocked_reason: Optional[str] = Field(
@@ -77,6 +81,62 @@ class FixNoteResolve(BaseModel):
     model_config = ConfigDict(title="复审偏差结案")
 
     done: bool = Field(default=True, description="是否标记为已处理")
+
+
+class ProposalDiffOut(BaseModel):
+    model_config = ConfigDict(title="开题措辞核对")
+
+    proposal_lines: list[str] = Field(default_factory=list)
+    checklist_names: list[str] = Field(default_factory=list)
+    matched: list[str] = Field(default_factory=list)
+    review_proposal: list[str] = Field(default_factory=list)
+    unmatched_proposal: list[str] = Field(default_factory=list)
+    match_links: list[Any] = Field(default_factory=list)
+    extra_checklist: list[str] = Field(default_factory=list)
+    ok: bool = Field(default=False)
+    ready: bool = Field(default=False, description="运营可放心确认生成")
+    needs_review: bool = Field(default=False)
+    summary: str = Field(default="")
+    coverage_label: str = Field(default="", description="如 8/8 已覆盖")
+    operator_hint: str = Field(default="", description="对照说明，不进学生包")
+    pre_generate_ack_at: Optional[str] = Field(default=None)
+
+
+class DeliveryReviewPanelOut(BaseModel):
+    model_config = ConfigDict(title="交付复审面板")
+
+    review: dict[str, Any] = Field(default_factory=dict)
+    zones: dict[str, Any] = Field(default_factory=dict)
+    workspace_hash: str = Field(default="")
+    zip_stale: bool = Field(default=False)
+    checklist: list[Any] = Field(default_factory=list)
+    gates: dict[str, Any] = Field(default_factory=dict)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class DeliveryVerifyOut(BaseModel):
+    model_config = ConfigDict(title="验圈结果")
+
+    round: dict[str, Any] = Field(default_factory=dict)
+    gates: dict[str, Any] = Field(default_factory=dict)
+    checklist: list[Any] = Field(default_factory=list)
+    monotonic_ok: bool = Field(default=False)
+    regressions: list[Any] = Field(default_factory=list)
+    round_pass: bool = Field(default=False)
+    open_notes_count: int = Field(default=0)
+    zones: dict[str, Any] = Field(default_factory=dict)
+    zip_stale: bool = Field(default=False)
+    review: dict[str, Any] = Field(default_factory=dict)
+    download_blocked_reason: Optional[str] = Field(default=None)
+    zip_ready: bool = Field(default=False)
+
+
+class DeliveryQaOut(BaseModel):
+    model_config = ConfigDict(title="交付质量摘要")
+
+    qa: dict[str, Any] = Field(default_factory=dict)
+    gates: dict[str, Any] = Field(default_factory=dict)
+    download_blocked_reason: Optional[str] = Field(default=None)
 
 
 class DeliveryMarkUpdate(BaseModel):

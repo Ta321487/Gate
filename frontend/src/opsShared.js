@@ -154,7 +154,7 @@ export const JOB_STEP_LABELS = {
   island_fill: '业务配置填充（拆解 Unit）',
   build_verify: '构建验证',
   gate_e2e: '门禁：登录 + 主流程',
-  pack: '开题对照 · 打包 ZIP',
+  pack: '清单验收 · 打包 ZIP',
 }
 
 export function jobStepLabel(step) {

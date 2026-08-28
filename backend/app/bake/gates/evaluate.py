@@ -176,7 +176,7 @@ def _checklist_feature_ok(
     flow_api: dict[str, Any],
     files_ok: bool,
 ) -> bool:
-    """开题对照：优先按能力/路由实装判断，避免死绑 ticket 动词或残缺 baseline。"""
+    """清单实装：优先按能力/路由实装判断，避免死绑 ticket 动词或残缺 baseline。"""
     has_apply = api_hits.get("apply", False)
     has_approve = api_hits.get("approve", False)
     has_return = api_hits.get("return", False)
@@ -307,7 +307,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
             "p0b": {"ok": False, "label": "前端骨架"},
             "p1": {"ok": False, "label": "登录基线"},
             "p2": {"ok": False, "label": "领域主流程 E2E", "desc": "Spec 缺少 gate 契约"},
-            "p3a": {"ok": False, "label": "开题对照 · 核心项"},
+            "p3a": {"ok": False, "label": "清单实装 · 核心项"},
             "p3b": {"ok": False, "label": "Spec / 路由一致"},
             "p3t": {
                 "ok": False,
@@ -561,7 +561,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
                 "menu_issues": menu_issues,
             },
         },
-        "p3a": {"ok": p3a, "label": "开题对照 · 核心项"},
+        "p3a": {"ok": p3a, "label": "清单实装 · 核心项"},
         "p3b": {"ok": p3b, "label": "Spec / 契约一致"},
         "p3t": {
             "ok": p3t_ok,
@@ -617,7 +617,7 @@ def evaluate_generic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
         "p0b": {"ok": p0b, "label": "前端骨架"},
         "p1": {"ok": p1, "label": "登录基线"},
         "p2": {"ok": p2, "label": "领域主流程 E2E", "desc": "该领域尚未做实，禁止交付"},
-        "p3a": {"ok": False, "label": "开题对照 · 核心项"},
+        "p3a": {"ok": False, "label": "清单实装 · 核心项"},
         "p3b": {"ok": (workspace / "spec.json").exists(), "label": "Spec 存在"},
         "p3t": {
             "ok": False,

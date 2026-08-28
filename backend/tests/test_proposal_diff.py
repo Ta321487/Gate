@@ -63,6 +63,65 @@ class ProposalDiffTests(unittest.TestCase):
         diff = build_proposal_diff({"features": features}, sample["text"])
         self.assertLessEqual(len(diff["unmatched_proposal"]), 2, diff)
 
+    def test_checkin_pack_lines_cover_checklist(self):
+        pack = next(p for p in PACKS if p.get("id") == "checkin")
+        features = list((DOMAINS.get("DOM-CHECKIN") or {}).get("features") or [])
+        spec = {
+            "features": features,
+            "proposal": {"feature_lines": list(pack.get("features") or [])},
+        }
+        diff = build_proposal_diff(spec)
+        self.assertEqual(diff["unmatched_proposal"], [], diff)
+        self.assertTrue(diff["ok"], diff)
+        self.assertTrue(diff["ready"], diff)
+        self.assertGreaterEqual(len(diff["matched"]), 6)
+
+    def test_checkin_real_opening_corpus(self):
+        corpus_path = Path(__file__).resolve().parent / "fixtures" / "domain_opening_corpus.json"
+        corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
+        sample = next(s for s in corpus["samples"] if s["domain"] == "DOM-CHECKIN")
+        features = list((DOMAINS.get("DOM-CHECKIN") or {}).get("features") or [])
+        diff = build_proposal_diff({"features": features}, sample["text"])
+        self.assertLessEqual(len(diff["unmatched_proposal"]), 1, diff)
+        self.assertTrue(diff["ready"], diff)
+
+    def test_all_anchor_packs_ok(self):
+        """各域 proposal pack 功能行应全部对照，运营一眼可生成。"""
+        skipped = 0
+        checked = 0
+        for pack in PACKS:
+            dom = pack.get("anchor_domain") or pack.get("domain")
+            if not dom or dom not in DOMAINS or dom == "DOM-GENERIC":
+                continue
+            lines = list(pack.get("features") or [])
+            if not lines:
+                skipped += 1
+                continue
+            features = list((DOMAINS.get(dom) or {}).get("features") or [])
+            diff = build_proposal_diff({"features": features, "proposal": {"feature_lines": lines}})
+            checked += 1
+            self.assertEqual(
+                diff["unmatched_proposal"],
+                [],
+                msg=f"{pack.get('id')} ({dom}): {diff}",
+            )
+            self.assertTrue(diff["ok"], msg=f"{pack.get('id')} ready={diff['ready']}")
+        self.assertGreater(checked, 40, "sanity: enough anchor packs exercised")
+
+    def test_opening_corpus_mostly_ready(self):
+        corpus_path = Path(__file__).resolve().parent / "fixtures" / "domain_opening_corpus.json"
+        corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
+        not_ready = []
+        for sample in corpus.get("samples", []):
+            dom = sample.get("domain")
+            if not dom or dom not in DOMAINS or dom in ("DOM-EVENT",):
+                continue
+            features = list((DOMAINS.get(dom) or {}).get("features") or [])
+            diff = build_proposal_diff({"features": features}, sample["text"])
+            if not diff["ready"]:
+                not_ready.append((dom, len(diff["unmatched_proposal"]), diff["unmatched_proposal"][:2]))
+        self.assertLessEqual(len(not_ready), 3, not_ready)
+
     def test_match_links_explain_hit(self):
         spec = {
             "features": [
