@@ -138,7 +138,7 @@ ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md
 | **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users（实验室 `lab_room`、准入 `access_apply`）；开题写准入考试 → 另挂 **exam**（先考后申） |
 | **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users（岗位 `job_post`、投递 `job_apply`） |
 | **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`） |
-| **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA） |
+| **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA）；默认我的周报填单选岗；开题绑岗→资料 `internOrg`/`internPost` + matchProfileRoom |
 | **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users（包裹 `parcel`、取件 `parcel_claim`） |
 | **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users（事项 `seal_item`、申请 `seal_apply`） |
 | **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
@@ -154,7 +154,7 @@ ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md
 | **DOM-MORAL** | 综测、德育分加减分申报 | archive + ticket_flow + content + org_users（指标 `moral_item`、申请 `moral_apply`） |
 | **DOM-AWARD** | 创新学分、竞赛获奖登记 | archive + ticket_flow + content + org_users（类型 `award_item`、登记 `award_apply`） |
 | **DOM-BED** | 床位分配、选房、调宿/退宿 | archive + ticket_flow + **quota** + content + org_users + **bed_occupy**（床位 `bed`、申请 `bed_apply`） |
-| **DOM-CHECKIN** | 查寝、归寝登记审核、口令签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（寝室 `dorm_room`、登记 `checkin_apply`；非直签） |
+| **DOM-CHECKIN** | 查寝、本人寝室归寝登记审核、口令签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（资料绑楼栋/房间 + `matchProfileRoom`；寝室 `dorm_room`、登记 `checkin_apply`；主路径「我的归寝」；非直签） |
 | **DOM-MUTUAL-TUTOR** | 导师双选 | archive + ticket_flow + **quota** + content + org_users + **mutual_select** |
 | **DOM-MUTUAL-TOPIC** | 毕设选题双选 | 同上（选题档案） |
 | **DOM-MUTUAL-TEAM** | 竞赛组队/学习搭子 | 同上（组队资料） |
@@ -179,8 +179,8 @@ ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-DORM** | 宿舍报修、水电、寝室 | ticket_flow + content + org_users（±archive） |
-| **DOM-PROPERTY** | 物业报修、社区维修 | 同上 |
+| **DOM-DORM** | 宿舍报修、水电、寝室 | ticket_flow + content + org_users（±archive）；报修表单按资料楼栋/房间预填 lookup |
+| **DOM-PROPERTY** | 物业报修、社区维修 | 同上（house* / 校园皮 dorm*） |
 | **DOM-IT** | 校园网报修、IT 运维工单 | 同上 |
 
 ### C. 报名 / 申请流（能力齐）
@@ -441,7 +441,7 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 - [x] **匹配兜底**：零命中 → `DOM-GENERIC`；按 ARCH-* 绑 FLOW/TRADE/RESERVE（`archetype_shells.py`）；多 ARCH 并集可拼 SQL
 - [x] **近五年域开题缩样**：每具名域 1 份（2021–2026）→ **匹配 + schema/SQL/模块图/测试表** 断言（`test_domain_opening_corpus.py`）；样例 `data/samples/域开题样例近五年/`
 - [x] **Path B**：三条真交叉可 full；匹配并集不再挤掉借用；HANDOFF 组 H 表；样例含借阅+二手、`交叉预设开题/X-01|X-02|X-03-*.txt`；三合一仍 reject
-- [ ] Path B 可选：交叉组合端到端冒烟（预览点通）与开题对照表 UI
+- [x] Path B 可选：开题对照表 UI（生成前 modal + 交付复审工位）；交叉组合端到端冒烟仍待补
 - [x] L1 **二级审批 / 强制附件 / 完结评分**：`configureL1`；FE 待办 `todo`、上传、`TicketRateDialog`
 - [x] L1 **互斥码 / 分类限额**：`mutex_code` + `configureRules`；COURSE 种子 MX-ELECTIVE + 每类 1 门
 - [x] L1 **软删除 / 标签 AND / 周历 / 签到码**：按域 schema 开关；FORUM 复用 tag 表；COURSE/ACTIVITY 周历；ACTIVITY 口令签到

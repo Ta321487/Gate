@@ -408,7 +408,7 @@
                     <li><span class="step-ico">3</span><div><div>业务配置填充</div><div class="meta">大模型补全</div></div></li>
                     <li><span class="step-ico">4</span><div><div>构建验证</div><div class="meta">编译检查</div></div></li>
                     <li><span class="step-ico">5</span><div><div>门禁：登录 + 主流程</div><div class="meta">关键路径</div></div></li>
-                    <li><span class="step-ico">6</span><div><div>开题对照 · 打包 ZIP</div><div class="meta">检查通过后打包</div></div></li>
+                    <li><span class="step-ico">6</span><div><div>清单验收 · 打包 ZIP</div><div class="meta">检查通过后打包</div></div></li>
                   </ul>
                 </div>
               </div>
@@ -780,7 +780,7 @@
                     <div class="review-panel">
                       <div class="parse-sec-hd">待收敛 · 毒区</div>
                       <ul class="zone-list" id="review-poison-zone">
-                        <li>开题对照 · 核心项</li>
+                        <li>清单实装 · 核心项</li>
                         <li>领域主流程 E2E</li>
                       </ul>
                     </div>
@@ -811,7 +811,7 @@
                       <tr data-gate="p0b"><td><span class="pill pill-neutral">P0</span></td><td>前端骨架</td><td class="gate-res"></td><td class="muted">工作区前端基线</td></tr>
                       <tr data-gate="p1"><td><span class="pill pill-neutral">P1</span></td><td>登录 + 验证码基线</td><td class="gate-res"></td><td class="muted">user / admin + 验证码</td></tr>
                       <tr data-gate="p2"><td><span class="pill pill-amber">P2</span></td><td>领域主流程 E2E</td><td class="gate-res"></td><td class="muted" id="gate-p2-desc">申请借阅 → 审核 → 归还</td></tr>
-                      <tr data-gate="p3a"><td><span class="pill pill-neutral">P3</span></td><td>开题对照 · 核心项</td><td class="gate-res"></td><td class="muted">见下方清单</td></tr>
+                      <tr data-gate="p3a"><td><span class="pill pill-neutral">P3</span></td><td>清单实装 · 核心项</td><td class="gate-res"></td><td class="muted">见下方清单</td></tr>
                       <tr data-gate="p3b"><td><span class="pill pill-neutral">P3</span></td><td>Spec / 契约一致</td><td class="gate-res"></td><td class="muted">路由与契约对齐</td></tr>
                       <tr data-gate="p3t"><td><span class="pill pill-neutral">P3</span></td><td>表数量 6~15</td><td class="gate-res"></td><td class="muted">schema 约束</td></tr>
                       <tr data-gate="p3d"><td><span class="pill pill-neutral">P3</span></td><td>总管/子管管理边界</td><td class="gate-res"></td><td class="muted">总管门禁与主数据页</td></tr>
@@ -821,7 +821,7 @@
                       <tr data-gate="accept"><td><span class="pill pill-neutral">P3</span></td><td>可接题边界</td><td class="gate-res"></td><td class="muted">accept=full</td></tr>
                     </tbody>
                   </table>
-                  <div class="parse-sec-hd mt-12">开题对照清单</div>
+                  <div class="parse-sec-hd mt-12">清单实装验收</div>
                   <table>
                     <thead><tr><th>开题功能</th><th>实现状态</th><th>说明</th></tr></thead>
                     <tbody id="checklist-tbody">
@@ -896,7 +896,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260716-020</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/16 20:14:33</div>
                     </td>
-                    <td>开题对照 · 打包 ZIP</td>
+                    <td>清单验收 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -908,7 +908,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260715-009</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/15 09:41:12</div>
                     </td>
-                    <td>开题对照 · 打包 ZIP</td>
+                    <td>清单验收 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -920,7 +920,7 @@
                       <div class="small muted mono" style="margin-top:4px">gf-20260716-014</div>
                       <div class="small muted" style="margin-top:2px">开始 2026/7/16 21:10:08</div>
                     </td>
-                    <td>开题对照 · 打包 ZIP</td>
+                    <td>清单验收 · 打包 ZIP</td>
                     <td><span class="pill pill-green">成功</span></td>
                     <td>100%</td>
                     <td><button type="button" class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="generated">详情</button></td>
@@ -1457,7 +1457,7 @@
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域与持久层等。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
-                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题对照」摘要。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
+                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
                   <li><strong>交付</strong><p>机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。</p></li>
                 </ol>
@@ -1499,7 +1499,7 @@
               </div>
             </article>
             <article class="help-card panel wide">
-              <div class="panel-hd"><h3>生成前开题对照</h3><span class="pill pill-teal">对照</span></div>
+              <div class="panel-hd"><h3>生成前 · 开题措辞核对</h3><span class="pill pill-teal">生成前</span></div>
               <div class="panel-bd help-body">
                 <p>启动生成前弹出，将开题功能行与 Spec checklist 做静态对照（不调大模型），减少包后返工。</p>
                 <ul>
@@ -1579,7 +1579,8 @@
                   <div class="help-glossary-row"><dt>骨架</dt><dd>匹配页选定的能力路径（如 ARCH-FLOW）。决定主流程形态，不是 Spring Boot + Vue 等技术主线。</dd></div>
                   <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域（DOM-*）。决定文案、菜单与能力组合。</dd></div>
                   <div class="help-glossary-row"><dt>持久层</dt><dd>匹配确认中的数据访问实现：JdbcTemplate、MyBatis 或 Spring Data JPA。</dd></div>
-                  <div class="help-glossary-row"><dt>开题对照</dt><dd>生成前将开题功能行与 Spec checklist 静态比对；亦指质量检查中 checklist 核心项。</dd></div>
+                  <div class="help-glossary-row"><dt>开题措辞核对</dt><dd>生成前弹窗：开题功能行与 Spec 清单项名静态比对，不扫工程。</dd></div>
+                  <div class="help-glossary-row"><dt>清单实装验收</dt><dd>生成后质量检查：扫描 workspace，核对清单项是否在 ZIP 中有对应实现。</dd></div>
                   <div class="help-glossary-row"><dt>交付复审</dt><dd>产物页运营流程：验圈冻结安全区、登记偏差、合卷同步 ZIP。不进学生交付包。</dd></div>
                   <div class="help-glossary-row"><dt>验圈 / 合卷</dt><dd>验圈检查门禁单调性并刷新质量摘要；合卷重新打包 ZIP 使交付包与工程目录一致。</dd></div>
                   <div class="help-glossary-row"><dt>安全区 / 毒区</dt><dd>复审中已冻结通过项 / 尚未收敛待处理项。</dd></div>
@@ -1667,17 +1668,17 @@
     </div>
   </div>
 
-  <!-- 生成前开题对照 -->
+  <!-- 生成前 · 开题措辞核对 -->
   <div class="modal-mask" id="proposal-diff-mask">
     <div class="modal modal-lg" role="dialog" aria-modal="true">
       <div class="modal-hd">
-        <span>生成前 · 开题对照</span>
+        <span>生成前 · 开题措辞核对</span>
         <button type="button" class="btn btn-ghost btn-sm" data-action="close-proposal-diff">关闭</button>
       </div>
       <div class="modal-bd">
-        <p class="small muted" style="margin-top:0">确认开题功能行已落入工厂对照清单后再启动生成，减少包后返工。</p>
+        <p class="small muted" style="margin-top:0">核对开题主流程是否由已选领域覆盖；措辞对照，不扫工程、不阻断生成。</p>
         <div class="banner success mb-12" style="margin-bottom:12px">
-          <p class="small" style="margin:0">6 项已对照 · 1 项措辞弱匹配 · 0 项未落入 checklist</p>
+          <p class="small" style="margin:0">8/8 已覆盖 · 开题 8 项均已对照，可确认生成</p>
         </div>
         <div class="parse-sec-hd">已对照</div>
         <ul class="zone-list">
