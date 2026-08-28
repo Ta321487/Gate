@@ -1088,18 +1088,17 @@ def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     return followup_domain_schema(title, "DOM-GRADE")
 
 def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """实习周报：校就业办默认；企业带教走 enterprise。"""
+    """实习周报：校就业办默认；企业带教走 enterprise；开题绑岗则 matchProfileRoom。"""
     from app.bake.schema.followup_presets import (
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import scene_for
+    from app.bake.scene_scan import intern_post_bound, scene_for
 
+    overrides: dict[str, Any] = {}
     if scene_for("DOM-INTERN", title, proposal_text) == "enterprise":
-        return followup_domain_schema(
-            title,
-            "DOM-INTERN",
-            overrides={
+        overrides.update(
+            {
                 "user_label": "实习生",
                 "admin_label": "实习主管（总管）",
                 "subadmin_label": "企业导师",
@@ -1112,21 +1111,64 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     "实习类型",
                     "可交周报",
                 ),
-                "archive_menu_user": "岗位目录",
+                "archive_menu_user": "岗位说明",
                 "auth_eyebrow": "企业实习周报",
-                "auth_lead": "验证码登录；从示范岗位目录选岗提交周报，企业导师审阅（≠多部门入职）。",
-                "auth_points": ["验证码登录", "示范岗位目录", "周报提交与审阅"],
+                "auth_lead": (
+                    "验证码登录；在「我的周报」选择已建档实习岗提交周报，企业导师审阅"
+                    "（≠投简历找岗、≠同时入职多部门）。"
+                ),
+                "auth_points": ["验证码登录", "本人周报填单", "审阅与完结"],
                 "notice_page_title": "实习公告",
                 "pending_label": "周报审阅",
                 "banners": [
-                    {"title": "岗位目录", "lead": "浏览示范实习岗位与企业导师（全库目录）。"},
-                    {"title": "提交周报", "lead": "选一岗按周提交工作内容，等待审阅。"},
+                    {"title": "本人周报", "lead": "在「我的周报」选已建档岗按周提交，等待审阅。"},
+                    {"title": "岗位说明", "lead": "查阅示范实习岗位与企业导师（说明用，非投递找岗）。"},
                     {"title": "实习公告", "lead": "实习与鉴定安排见公告。"},
-                    {"title": "我的周报", "lead": "跟踪审阅结果。"},
-                    {"title": "分类检索", "lead": "按实习类型筛选示范岗位。"},
+                    {"title": "审阅跟踪", "lead": "查看导师通过或退回修改结果。"},
+                    {"title": "分类查阅", "lead": "岗位说明可按实习类型筛选。"},
                 ],
-            },
+            }
         )
+    if intern_post_bound(title, proposal_text):
+        overrides.update(
+            {
+                "doc": (
+                    "实习周报：资料绑定实习单位与岗位 + 本人周报"
+                    "（matchProfileRoom：internOrg↔isbn、internPost↔title）。"
+                ),
+                "match_profile_room": True,
+                "match_profile_building_key": "internOrg",
+                "match_profile_room_key": "internPost",
+                "match_profile_building_field": "isbn",
+                "match_profile_room_field": "title",
+                "match_profile_loose_building": True,
+                "match_profile_need_message": "请先在个人资料填写实习单位与岗位名称",
+                "match_profile_deny_message": "只能对资料绑定的实习岗提交周报",
+                "auth_lead": (
+                    "验证码登录；资料确认实习单位与岗位后，在「我的周报」对本岗提交周报并审阅"
+                    "（≠投简历找岗、≠同时入职多家）。"
+                ),
+                "auth_points": ["验证码登录", "资料绑岗", "本人周报与审阅"],
+                "register_hint": "注册时填写实习单位与岗位名称",
+                "notice_body": (
+                    "请先在个人资料填写实习单位与岗位名称，再在「我的周报」提交；"
+                    "只能对绑定岗交周报。岗位说明页可查阅开放岗。"
+                    "CA/第三方电子签平台不在本期，本地签章见 e_sign。"
+                ),
+                "my_tickets_page_lead": (
+                    "在此对资料绑定的实习岗提交周报并跟踪审阅；岗位说明页仅作查阅。"
+                ),
+                "banners": [
+                    {"title": "资料绑岗", "lead": "注册/资料中填写实习单位与岗位名称。"},
+                    {"title": "本人周报", "lead": "在「我的周报」对本岗按周提交，等待审阅。"},
+                    {"title": "岗位说明", "lead": "查阅开放岗与导师（不作选岗购物）。"},
+                    {"title": "审阅跟踪", "lead": "查看导师通过或退回修改结果。"},
+                    {"title": "分类查阅", "lead": "岗位说明可按实习类型筛选。"},
+                ],
+            }
+        )
+    if overrides:
+        return followup_domain_schema(title, "DOM-INTERN", overrides=overrides)
     return followup_domain_schema(title, "DOM-INTERN")
 
 def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -1142,14 +1184,17 @@ def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "admin_label": "站点主管（总管）",
                 "subadmin_label": "店员",
                 "auth_eyebrow": "快递代收",
-                "auth_lead": "验证码登录；查看待取包裹，提交取件申请并由店员核销。",
+                "auth_lead": (
+                    "验证码登录；在「我的取件」凭取件码提交取件，到站由店员核销（≠跑腿代买）。"
+                ),
+                "auth_points": ["验证码登录", "凭码取件", "店员核销"],
                 "notice_page_title": "站点公告",
                 "banners": [
-                    {"title": "包裹查询", "lead": "按运单与取件码查看待取包裹。"},
-                    {"title": "申请取件", "lead": "提交取件单，到站核销出库。"},
+                    {"title": "凭码取件", "lead": "在「我的取件」填写取件码提交，到站核销出库。"},
+                    {"title": "包裹查阅", "lead": "按运单与取件码查询待取包裹。"},
                     {"title": "站点公告", "lead": "营业时间与逾期催取见公告。"},
-                    {"title": "我的取件", "lead": "跟踪核销进度。"},
-                    {"title": "件型筛选", "lead": "普通/生鲜/大件快速定位。"},
+                    {"title": "核销跟踪", "lead": "查看取件单是否已出库。"},
+                    {"title": "件型查阅", "lead": "普通/生鲜/大件快速定位。"},
                 ],
             },
         )

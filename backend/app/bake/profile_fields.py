@@ -219,7 +219,8 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-INTERN": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系", required=True, on_register=True, max_length=64),
-        _pf("internOrg", "实习单位", on_register=True, max_length=64),
+        _pf("internOrg", "实习单位", on_register=True, max_length=64, placeholder="如 星河科技"),
+        _pf("internPost", "岗位名称", on_register=True, max_length=64, placeholder="如 后端开发实习"),
     ],
     "DOM-PARCEL": [
         _pf("campusNo", "学号/工号", required=True, on_register=True, max_length=32),
@@ -559,6 +560,9 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系/班级", required=True, on_register=True, max_length=64),
         _pf("gradeYear", "年级", on_register=True, max_length=16),
+        # 与 DOM-DORM 同键：归寝须绑定本人寝室，禁止目录乱选他寝
+        _pf("dormBuilding", "楼栋", required=True, on_register=True, max_length=32, placeholder="如 1号楼"),
+        _pf("dormRoom", "房间", required=True, on_register=True, max_length=16, placeholder="如 101"),
     ],
     "DOM-MUTUAL-TUTOR": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
@@ -1037,6 +1041,7 @@ _INTERN_ENTERPRISE: list[dict[str, Any]] = [
     _pf("employeeNo", "工号/实习号", required=True, on_register=True, max_length=32),
     _pf("dept", "实习部门", required=True, on_register=True, max_length=64),
     _pf("internOrg", "实习单位", on_register=True, max_length=64, placeholder="默认本公司"),
+    _pf("internPost", "岗位名称", on_register=True, max_length=64, placeholder="如 后端开发实习"),
 ]
 
 _LABSAFE_ENTERPRISE: list[dict[str, Any]] = [
@@ -1312,6 +1317,16 @@ def profile_fields_for(
         specific = copy.deepcopy(
             PROFILE_FIELDS_BY_DOMAIN.get(domain) or PROFILE_FIELDS_BY_DOMAIN["DOM-GENERIC"]
         )
+    if domain == "DOM-INTERN":
+        from app.bake.scene_scan import intern_post_bound
+
+        if intern_post_bound(title, proposal_text):
+            for f in specific:
+                if not isinstance(f, dict):
+                    continue
+                if f.get("key") in ("internOrg", "internPost"):
+                    f["required"] = True
+                    f["onRegister"] = True
     for f in specific:
         if isinstance(f, dict):
             f.setdefault("forRoles", ["user"])
