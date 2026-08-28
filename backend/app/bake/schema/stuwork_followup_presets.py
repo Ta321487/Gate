@@ -8,7 +8,7 @@ from typing import Any, Callable
 def build_stuwork_followup_presets(
     _std_archive_fields: Callable[..., list[dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
-    return {
+    out = {
     "DOM-CREDIT": {
         "doc": "第二课堂认定：认定项目 + 学分认定。",
         "user_label": "学生",
@@ -322,3 +322,8 @@ def build_stuwork_followup_presets(
         ],
     },
     }
+    from app.bake.schema.form_first_entry import apply_form_first_entry
+
+    for preset in out.values():
+        apply_form_first_entry(preset)
+    return out

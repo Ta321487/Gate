@@ -8,7 +8,9 @@ from typing import Any, Callable
 def build_visitor_followup_presets(
     _std_archive_fields: Callable[..., list[dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
-    return {
+    from app.bake.schema.form_first_entry import apply_form_first_entry
+
+    out = {
         "DOM-VISITOR": {
             "doc": "访客登记：到访区域 + 访客申请 + 审过签发通行码。",
             "user_label": "来访人",
@@ -45,10 +47,10 @@ def build_visitor_followup_presets(
                 "overdue": "已失效",
             },
             "archive_menu_admin": "到访区域",
-            "archive_menu_user": "区域目录",
+            "archive_menu_user": "区域说明",
             "auth_eyebrow": "访客登记",
-            "auth_lead": "验证码登录；选择到访区域提交预约，审核通过后获得通行码。",
-            "auth_points": ["验证码登录", "区域目录", "预约到访与通行码"],
+            "auth_lead": "验证码登录；在「我的预约」选择到访区域提交预约，审核通过后获得通行码。",
+            "auth_points": ["验证码登录", "预约到访", "通行码"],
             "register_hint": "注册后可预约到访",
             "notice_title": "访客须知",
             "notice_body": "请如实填写来访事由；通过后出示通行码。真门禁硬件不在本期。",
@@ -67,11 +69,13 @@ def build_visitor_followup_presets(
             "contact_channel_placeholder": "公务/家长等",
             "next_follow_label": "预计到访日",
             "banners": [
-                {"title": "区域目录", "lead": "浏览可预约到访区域。"},
-                {"title": "预约到访", "lead": "填写事由提交申请。"},
+                {"title": "预约到访", "lead": "在「我的预约」选区域填事由提交。"},
+                {"title": "区域说明", "lead": "查阅可预约到访区域。"},
                 {"title": "通行码", "lead": "审核通过后签发通行码。"},
                 {"title": "访客公告", "lead": "须知见公告栏。"},
-                {"title": "我的预约", "lead": "跟踪审批与通行码。"},
+                {"title": "审批跟踪", "lead": "查看审批与通行码。"},
             ],
         },
     }
+    apply_form_first_entry(out["DOM-VISITOR"])
+    return out

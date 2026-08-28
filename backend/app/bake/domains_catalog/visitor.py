@@ -17,7 +17,7 @@ DOMAINS: dict = {
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["选区域 → 访客申请 → 审 → 签发通行码"],
+        "flows": ["本人预约填单（选区域） → 审 → 签发通行码"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

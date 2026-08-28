@@ -8,7 +8,9 @@ from typing import Any, Callable
 def build_timebank_followup_presets(
     _std_archive_fields: Callable[..., list[dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
-    return {
+    from app.bake.schema.form_first_entry import apply_form_first_entry
+
+    out = {
         "DOM-TIMEBANK": {
             "doc": "时间银行：服务事项 + 时长账户 + 核销申请。",
             "user_label": "志愿者",
@@ -44,9 +46,11 @@ def build_timebank_followup_presets(
                 "returned": "已完结",
             },
             "archive_menu_admin": "服务事项",
-            "archive_menu_user": "服务目录",
+            "archive_menu_user": "服务说明",
             "auth_eyebrow": "时间银行",
-            "auth_lead": "验证码登录；存入志愿时长、查看余额流水，提交核销申请经审核扣减。",
+            "auth_lead": (
+                "验证码登录；在「我的核销」选择服务事项申请扣减，审核后从账户扣时长。"
+            ),
             "auth_points": ["验证码登录", "时长账户", "核销申请"],
             "register_hint": "注册后可存入时长并申请核销",
             "notice_title": "时间银行须知",
@@ -65,11 +69,13 @@ def build_timebank_followup_presets(
             "contact_channel_placeholder": "选择用途",
             "next_follow_label": "期望办结日",
             "banners": [
-                {"title": "服务目录", "lead": "浏览可存入/核销的服务事项。"},
+                {"title": "申请核销", "lead": "在「我的核销」选事项填小时数，审核后扣减。"},
+                {"title": "服务说明", "lead": "查阅可存入/核销的服务事项。"},
                 {"title": "存入时长", "lead": "登记服务后即时入账。"},
-                {"title": "申请核销", "lead": "填写小时数提交，审核后扣减。"},
                 {"title": "我的时长", "lead": "查看余额与流水。"},
                 {"title": "公告须知", "lead": "规则见公告栏。"},
             ],
         },
     }
+    apply_form_first_entry(out["DOM-TIMEBANK"])
+    return out
