@@ -44,7 +44,7 @@
       { t: "done", title: "业务配置填充", meta: "大模型补全" },
       { t: "run", title: "构建验证", meta: "编译检查" },
       { t: "wait", title: "门禁：登录 + 主流程", meta: "关键路径" },
-      { t: "wait", title: "开题对照 · 打包 ZIP", meta: "检查通过后打包" },
+      { t: "wait", title: "清单验收 · 打包 ZIP", meta: "检查通过后打包" },
     ];
 
     const JOB_STEP_LABELS = {
@@ -54,7 +54,7 @@
       island_fill: "业务配置填充",
       build_verify: "构建验证",
       gate_e2e: "门禁：登录 + 主流程",
-      pack: "开题对照 · 打包 ZIP",
+      pack: "清单验收 · 打包 ZIP",
     };
 
     let uploadJobSeq = 1;
@@ -298,15 +298,15 @@
       if (pass && reviewActive) {
         safe.innerHTML = [
           "后端骨架", "前端骨架", "登录 + 验证码基线", "领域主流程 E2E",
-          "开题对照 · 核心项", "交付语义 · 可见面与场景",
+          "清单实装 · 核心项", "交付语义 · 可见面与场景",
         ].map((x) => `<li>${x}</li>`).join("");
         poison.innerHTML = '<li class="muted small">暂无待处理项</li>';
       } else if (reviewActive) {
         safe.innerHTML = '<li>后端骨架</li><li>前端骨架</li><li>登录 + 验证码基线</li>';
-        poison.innerHTML = '<li>领域主流程 E2E</li><li>开题对照 · 核心项</li>';
+        poison.innerHTML = '<li>领域主流程 E2E</li><li>清单实装 · 核心项</li>';
       } else {
         safe.innerHTML = '<li class="muted small">尚无冻结项</li>';
-        poison.innerHTML = '<li>开题对照 · 核心项</li><li>领域主流程 E2E</li>';
+        poison.innerHTML = '<li>清单实装 · 核心项</li><li>领域主流程 E2E</li>';
       }
     }
 
@@ -1261,8 +1261,6 @@
         closeProposalDiffModal();
         return;
       }
-        return;
-      }
 
       const actionable = e.target.closest("[data-action]");
       if (actionable) {
@@ -1313,6 +1311,15 @@
       const v = e.target.value;
       if (v === "list") showView("home");
       else openProject("gf-20260717-001", v);
+    });
+
+    document.getElementById("nav-toggle")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleNav();
+    });
+
+    document.getElementById("nav-backdrop")?.addEventListener("click", () => {
+      closeNav();
     });
 
     document.getElementById("theme-toggle").addEventListener("click", () => {
