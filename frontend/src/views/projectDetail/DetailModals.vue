@@ -18,8 +18,14 @@
       </p>
       <n-checkbox v-if="p.db_name" v-model:checked="keepDb">保留学生数据库</n-checkbox>
     </n-modal>
-    <n-modal v-model:show="showPreGenerate" preset="card" title="生成前 · 开题措辞核对" style="width:min(720px,96vw)">
-      <p class="small muted" style="margin-top:0">
+    <n-modal
+      v-model:show="showPreGenerate"
+      preset="card"
+      title="生成前 · 开题措辞核对"
+      class="pre-gen-modal"
+      style="width:min(640px,96vw)"
+    >
+      <p class="small muted" style="margin-top:0;margin-bottom:8px">
         核对开题主流程是否由已选领域覆盖；下方为措辞对照，不阻断生成。
       </p>
       <div
@@ -35,40 +41,52 @@
         <div class="pre-gen-summary">{{ proposalDiff.summary }}</div>
         <p v-if="proposalDiff.operator_hint" class="small pre-gen-hint">{{ proposalDiff.operator_hint }}</p>
       </div>
-      <n-alert v-if="preGenStackWarnings.length" type="warning" :bordered="false" style="margin-bottom:12px;margin-top:12px">
-        <div class="parse-sec-hd" style="margin:0 0 4px">技术栈 · 开题与拟选</div>
-        <div v-for="(w, i) in preGenStackWarnings" :key="'sw' + i" class="small">{{ w }}</div>
-        <div v-if="preGenTechDual" class="small muted" style="margin-top:6px">{{ preGenTechDual }}</div>
-      </n-alert>
-      <div v-if="proposalDiff?.matched?.length" class="parse-sec-hd mt-12">已对照 · {{ proposalDiff.matched.length }} 项</div>
-      <ul v-if="proposalDiff?.matched?.length" class="zone-list">
-        <li v-for="(line, i) in proposalDiff.matched" :key="'m'+i">{{ line }}</li>
-      </ul>
-      <div v-if="proposalDiff?.review_proposal?.length" class="parse-sec-hd mt-12">措辞弱匹配 · 已纳入覆盖</div>
-      <ul v-if="proposalDiff?.review_proposal?.length" class="zone-list">
-        <li v-for="(line, i) in proposalDiff.review_proposal" :key="'r'+i">{{ line }}</li>
-      </ul>
-      <div v-if="proposalDiff?.unmatched_proposal?.length" class="parse-sec-hd mt-12">措辞待核 · 请确认领域是否正确</div>
-      <ul v-if="proposalDiff?.unmatched_proposal?.length" class="zone-list pre-gen-warn-list">
-        <li v-for="(line, i) in proposalDiff.unmatched_proposal" :key="'u'+i">{{ line }}</li>
-      </ul>
-      <div v-if="proposalDiff?.match_links?.length" class="parse-sec-hd mt-12">对照解释</div>
-      <ul v-if="proposalDiff?.match_links?.length" class="zone-list match-link-list">
-        <li v-for="(row, i) in proposalDiff.match_links" :key="'ml' + i">
-          <span class="muted">{{ row.line }}</span>
-          <span v-for="(hit, j) in row.hits || []" :key="j" class="small">
-            → {{ hit.feature }}<span v-if="hit.reason">（{{ hit.reason }}）</span>
-          </span>
-        </li>
-      </ul>
-      <div v-if="proposalDiff?.extra_checklist?.length" class="parse-sec-hd mt-12">工厂实现模块</div>
-      <p v-if="proposalDiff?.extra_checklist?.length" class="small muted" style="margin:0 0 6px">
-        开题合并表述会拆成下列可交付模块，通常不是多余功能。
-      </p>
-      <ul v-if="proposalDiff?.extra_checklist?.length" class="zone-list">
-        <li v-for="(line, i) in proposalDiff.extra_checklist" :key="'e' + i">{{ line }}</li>
-      </ul>
-      <div class="row" style="justify-content:flex-end;margin-top:16px;gap:8px">
+      <div class="pre-gen-scroll">
+        <n-alert v-if="preGenStackWarnings.length" type="warning" :bordered="false" style="margin-bottom:12px;margin-top:12px">
+          <div class="parse-sec-hd" style="margin:0 0 4px">技术栈 · 开题与拟选</div>
+          <div v-for="(w, i) in preGenStackWarnings" :key="'sw' + i" class="small">{{ w }}</div>
+          <div v-if="preGenTechDual" class="small muted" style="margin-top:6px">{{ preGenTechDual }}</div>
+        </n-alert>
+        <div v-if="proposalDiff?.matched?.length" class="parse-sec-hd mt-12">已对照 · {{ proposalDiff.matched.length }} 项</div>
+        <ul v-if="proposalDiff?.matched?.length" class="zone-list pre-gen-line-list">
+          <li v-for="(line, i) in proposalDiff.matched" :key="'m'+i" :title="line">{{ line }}</li>
+        </ul>
+        <div v-if="proposalDiff?.review_proposal?.length" class="parse-sec-hd mt-12">措辞弱匹配 · 已纳入覆盖</div>
+        <ul v-if="proposalDiff?.review_proposal?.length" class="zone-list pre-gen-line-list">
+          <li v-for="(line, i) in proposalDiff.review_proposal" :key="'r'+i" :title="line">{{ line }}</li>
+        </ul>
+        <div v-if="proposalDiff?.unmatched_proposal?.length" class="parse-sec-hd mt-12">措辞待核 · 请确认领域是否正确</div>
+        <ul v-if="proposalDiff?.unmatched_proposal?.length" class="zone-list pre-gen-warn-list pre-gen-line-list">
+          <li v-for="(line, i) in proposalDiff.unmatched_proposal" :key="'u'+i" :title="line">{{ line }}</li>
+        </ul>
+        <div v-if="proposalDiff?.match_links?.length" class="parse-sec-hd mt-12 row-between" style="align-items:center">
+          <span>对照解释 · {{ proposalDiff.match_links.length }} 条</span>
+          <n-button text size="tiny" @click="preGenLinksOpen = !preGenLinksOpen">
+            {{ preGenLinksOpen ? '收起' : '展开' }}
+          </n-button>
+        </div>
+        <ul v-if="proposalDiff?.match_links?.length && preGenLinksOpen" class="zone-list match-link-list">
+          <li v-for="(row, i) in proposalDiff.match_links" :key="'ml' + i">
+            <div class="match-link-line muted" :title="row.line">{{ shortenLine(row.line) }}</div>
+            <div class="match-link-hits">
+              <span
+                v-for="(hit, j) in row.hits || []"
+                :key="j"
+                class="hit-chip"
+                :title="hit.reason || hit.feature"
+              >{{ hit.feature }}</span>
+            </div>
+          </li>
+        </ul>
+        <div v-if="proposalDiff?.extra_checklist?.length" class="parse-sec-hd mt-12">工厂实现模块</div>
+        <p v-if="proposalDiff?.extra_checklist?.length" class="small muted" style="margin:0 0 6px">
+          开题合并表述会拆成下列可交付模块，通常不是多余功能。
+        </p>
+        <ul v-if="proposalDiff?.extra_checklist?.length" class="zone-list">
+          <li v-for="(line, i) in proposalDiff.extra_checklist" :key="'e' + i">{{ line }}</li>
+        </ul>
+      </div>
+      <div class="row pre-gen-actions" style="justify-content:flex-end;margin-top:12px;gap:8px">
         <n-button @click="showPreGenerate = false">取消</n-button>
         <n-button type="primary" :loading="preGenBusy || softApplying" @click="confirmPreGenerate">
           {{ preGenReady ? '确认并启动生成' : '仍要启动生成' }}
@@ -145,11 +163,21 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ErDiagramViewer from '../../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../../components/TestcaseViewer.vue'
+
+const preGenLinksOpen = ref(false)
+
+function shortenLine(s, max = 42) {
+  const t = String(s || '').trim()
+  if (t.length <= max) return t
+  return `${t.slice(0, max)}…`
+}
+
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
@@ -185,4 +213,11 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
+
+watch(showPreGenerate, (open) => {
+  if (!open) return
+  const d = proposalDiff.value
+  // 有待核/弱匹配时默认展开解释；全覆盖时收起，避免弹窗被长文撑爆
+  preGenLinksOpen.value = !!(d?.unmatched_proposal?.length || d?.review_proposal?.length)
+})
 </script>

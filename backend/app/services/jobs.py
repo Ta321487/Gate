@@ -326,6 +326,13 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 await asyncio.to_thread(
                     rt.stop_all, project.id, project.backend_port, project.frontend_port
                 )
+                # 与删项目同口径：等到 STORE/端口空闲，再给 Windows 句柄释放缓冲
+                await asyncio.to_thread(
+                    rt.wait_runtime_cleared,
+                    project.id,
+                    project.backend_port,
+                    project.frontend_port,
+                )
                 project.backend_running = False
                 project.frontend_running = False
 

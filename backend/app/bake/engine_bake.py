@@ -56,10 +56,12 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     src = settings.skeletons_dir / "baseline"
     dest = settings.workspace_dir / project_id
     if dest.exists():
+        from app.services.projects import remove_tree_reliable
         from app.services.runtime import detach_frontend_deps
 
+        # Windows：旧预览 JVM 常短时锁住 application.yml，裸 rmtree 会 WinError 32
         detach_frontend_deps(dest)
-        shutil.rmtree(dest)
+        remove_tree_reliable(dest)
     if not src.exists():
         raise FileNotFoundError(f"骨架不存在: {src}")
     shutil.copytree(src, dest)
