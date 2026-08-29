@@ -542,6 +542,8 @@ button.filter-pill.on {
   border-radius: 6px;
 }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* 包住可能 disabled 的按钮，保证悬停 title 仍可显示 */
+.btn-tip-wrap { display: inline-flex; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }

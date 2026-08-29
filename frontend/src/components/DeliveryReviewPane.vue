@@ -17,36 +17,68 @@
         </p>
       </div>
       <div class="row" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
-        <n-button size="small" :disabled="disabled || !!busy" @click="onStart" v-if="review.status !== 'active'">
-          进入复审
-        </n-button>
-        <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'verify'" @click="onVerify">
-          验圈
-        </n-button>
-        <n-button
-          size="small"
-          type="primary"
-          :disabled="disabled || !canRepack"
-          :loading="busy === 'repack'"
-          @click="onRepack"
-        >
-          合卷
-        </n-button>
-        <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
-          质量摘要
-        </n-button>
-        <n-button
-          v-if="review.status === 'active'"
-          size="small"
-          :disabled="disabled || !!busy"
-          :loading="busy === 'close'"
-          @click="onClose"
-        >
-          结束复审
-        </n-button>
-        <n-button size="small" :disabled="disabled" tag="a" :href="handoffUrl" target="_blank">
-          导出交接包
-        </n-button>
+        <span v-if="review.status !== 'active'" :title="tipStart" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            :disabled="disabled || !!busy"
+            :loading="busy === 'start'"
+            @click="onStart"
+          >
+            进入复审
+          </n-button>
+        </span>
+        <span :title="tipVerify" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            :disabled="disabled || !!busy"
+            :loading="busy === 'verify'"
+            @click="onVerify"
+          >
+            验圈
+          </n-button>
+        </span>
+        <span :title="repackTip" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            type="primary"
+            :disabled="disabled || !canRepack"
+            :loading="busy === 'repack'"
+            @click="onRepack"
+          >
+            合卷
+          </n-button>
+        </span>
+        <span :title="tipQa" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            :disabled="disabled || !!busy"
+            :loading="busy === 'qa'"
+            @click="onQa"
+          >
+            质量摘要
+          </n-button>
+        </span>
+        <span v-if="review.status === 'active'" :title="tipClose" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            :disabled="disabled || !!busy"
+            :loading="busy === 'close'"
+            @click="onClose"
+          >
+            结束复审
+          </n-button>
+        </span>
+        <span :title="tipHandoff" class="btn-tip-wrap">
+          <n-button
+            size="small"
+            :disabled="disabled"
+            tag="a"
+            :href="handoffUrl"
+            target="_blank"
+          >
+            导出交接包
+          </n-button>
+        </span>
       </div>
     </div>
 
@@ -154,6 +186,8 @@ const props = defineProps({
   projectId: { type: String, required: true },
   deliveryReview: { type: Object, default: () => ({}) },
   disabled: { type: Boolean, default: false },
+  /** 可选：返回 Promise 的刷新函数；有则 await，避免 busy 过早清空导致连点 */
+  reload: { type: Function, default: null },
 })
 
 const emit = defineEmits(['refresh'])
@@ -162,6 +196,21 @@ const busy = ref('')
 const noteText = ref('')
 const localRegressions = ref([])
 const showDoneNotes = ref(false)
+
+async function refreshAfter() {
+  if (typeof props.reload === 'function') {
+    await props.reload()
+    return
+  }
+  emit('refresh')
+}
+
+function formatAt(raw) {
+  if (!raw) return '—'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return String(raw)
+  return d.toLocaleString()
+}
 
 const review = computed(() => props.deliveryReview?.review || {})
 const zones = computed(() => props.deliveryReview?.zones || {})
@@ -211,6 +260,25 @@ const canRepack = computed(() => {
   return true
 })
 
+const tipStart = '开始对照开题收窄偏差；可验圈、登记偏差'
+const tipVerify = '本轮验收：通过项进安全区，未过留毒区'
+const tipQa = '再跑一遍交付质检摘要（不替代门禁）'
+const tipClose = '结束本轮复审流程（不删已有登记）'
+const tipHandoff = '导出运营交接材料，不进学生 ZIP'
+
+const repackTip = computed(() => {
+  if (canRepack.value) return '验圈通过后更新交付 ZIP，使与工程一致'
+  if (props.disabled) return '工程重新生成中或尚无工作区，暂不可合卷'
+  if (busy.value) return '请等待当前操作完成'
+  if (regressions.value.length) return '存在安全区回退，请先处理后再合卷'
+  if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再合卷`
+  const rounds = review.value.rounds || []
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
+  if (!lastRound?.round_pass) return '请先完成验圈通过后再合卷'
+  if (lastRound.monotonic_ok === false) return '验圈单调性未通过，暂不可合卷'
+  return '暂不可合卷'
+})
+
 const metrics = computed(() => props.deliveryReview?.metrics || {})
 
 const handoffUrl = computed(() => api.deliveryHandoffUrl(props.projectId))
@@ -225,15 +293,22 @@ const roundCols = [
   },
   { title: '门禁', key: 'gates_ok', width: 72, render: (r) => (r.gates_ok ? '通过' : '未过') },
   { title: '待收敛', key: 'pending_count', width: 72 },
-  { title: '时间', key: 'at', ellipsis: { tooltip: true } },
+  {
+    title: '时间',
+    key: 'at',
+    width: 168,
+    ellipsis: { tooltip: true },
+    render: (r) => formatAt(r.at),
+  },
 ]
 
 async function onStart() {
+  if (busy.value || props.disabled) return
   busy.value = 'start'
   try {
     await api.startDeliveryReview(props.projectId)
     message.success('已进入交付复审')
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '进入复审失败')
   } finally {
@@ -242,6 +317,7 @@ async function onStart() {
 }
 
 async function onVerify() {
+  if (busy.value || props.disabled) return
   busy.value = 'verify'
   localRegressions.value = []
   try {
@@ -254,7 +330,7 @@ async function onVerify() {
     } else {
       message.info('验圈完成 · 仍有待收敛项')
     }
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '验圈失败')
   } finally {
@@ -263,11 +339,12 @@ async function onVerify() {
 }
 
 async function onRepack() {
+  if (busy.value || props.disabled || !canRepack.value) return
   busy.value = 'repack'
   try {
     await api.repackDeliveryReview(props.projectId)
     message.success('合卷完成 · 交付包已更新')
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '合卷失败')
   } finally {
@@ -276,12 +353,13 @@ async function onRepack() {
 }
 
 async function onQa() {
+  if (busy.value || props.disabled) return
   busy.value = 'qa'
   try {
     const res = await api.runDeliveryQa(props.projectId)
     if (res.qa?.ok) message.success('质量摘要已通过')
     else message.warning('质量摘要存在 error 级问题')
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
   } finally {
@@ -290,11 +368,12 @@ async function onQa() {
 }
 
 async function onClose() {
+  if (busy.value || props.disabled) return
   busy.value = 'close'
   try {
     await api.closeDeliveryReview(props.projectId)
     message.success('已结束交付复审')
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
   } finally {
@@ -304,26 +383,26 @@ async function onClose() {
 
 async function onAddNote() {
   const text = noteText.value.trim()
-  if (!text) return
+  if (!text || busy.value || props.disabled) return
   busy.value = 'note'
   try {
     await api.addDeliveryFixNote(props.projectId, text)
     noteText.value = ''
     showDoneNotes.value = false
     message.success('已登记偏差')
-    emit('refresh')
+    await refreshAfter()
   } finally {
     busy.value = ''
   }
 }
 
 async function onResolveNote(noteId, done) {
-  if (!noteId || busy.value) return
+  if (!noteId || busy.value || props.disabled) return
   busy.value = `note-${noteId}`
   try {
     await api.resolveDeliveryFixNote(props.projectId, noteId, done)
     message.success(done ? '已结案' : '已重开')
-    emit('refresh')
+    await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '操作失败')
   } finally {
