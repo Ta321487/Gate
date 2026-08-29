@@ -17,10 +17,10 @@
         </p>
       </div>
       <div class="row" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
-        <n-button size="small" :disabled="disabled || busy" @click="onStart" v-if="review.status !== 'active'">
+        <n-button size="small" :disabled="disabled || !!busy" @click="onStart" v-if="review.status !== 'active'">
           进入复审
         </n-button>
-        <n-button size="small" :disabled="disabled || busy" :loading="busy === 'verify'" @click="onVerify">
+        <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'verify'" @click="onVerify">
           验圈
         </n-button>
         <n-button
@@ -32,13 +32,13 @@
         >
           合卷
         </n-button>
-        <n-button size="small" :disabled="disabled || busy" :loading="busy === 'qa'" @click="onQa">
+        <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
           质量摘要
         </n-button>
         <n-button
           v-if="review.status === 'active'"
           size="small"
-          :disabled="disabled || busy"
+          :disabled="disabled || !!busy"
           :loading="busy === 'close'"
           @click="onClose"
         >
@@ -131,9 +131,9 @@
         type="textarea"
         :autosize="{ minRows: 2, maxRows: 4 }"
         placeholder="登记与开题或材料不一致之处（仅运营可见，不进学生交付包）"
-        :disabled="disabled || busy"
+        :disabled="disabled || !!busy"
       />
-      <n-button size="small" type="primary" :disabled="disabled || !noteText.trim() || busy" @click="onAddNote">
+      <n-button size="small" type="primary" :disabled="disabled || !noteText.trim() || !!busy" @click="onAddNote">
         登记偏差
       </n-button>
     </div>

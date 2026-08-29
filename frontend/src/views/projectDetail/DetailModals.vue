@@ -95,7 +95,8 @@
     </n-modal>
     <n-modal v-model:show="showFillPlan" preset="card" title="填岛拆解计划" style="width:min(960px,96vw)">
       <p class="small muted" style="margin-top:0">
-        与一键生成 step「业务配置填充」同源；生成前为预估，生成后可对照 <span class="mono">islands/unit_flow/plan.json</span>。
+        仅预览拆解结果，不会在此执行。与一键生成 step「业务配置填充」同源；生成前为预估，生成后可对照
+        <span class="mono">islands/unit_flow/plan.json</span>。实际填岛仍在一键生成时跑。
       </p>
       <n-data-table
         size="small"
@@ -106,10 +107,7 @@
         :loading="fillPlanLoading"
       />
       <div class="row" style="justify-content:flex-end;margin-top:16px;gap:8px">
-        <n-button @click="showFillPlan = false">关闭</n-button>
-        <n-button type="primary" :loading="fillPlanAckBusy" @click="confirmFillPlan">
-          确认计划
-        </n-button>
+        <n-button type="primary" @click="showFillPlan = false">关闭</n-button>
       </div>
     </n-modal>
     <n-modal v-model:show="showSpec" preset="card" title="生成配置" style="width:640px">
@@ -184,11 +182,11 @@ const {
   apis, applyFillSnapshot, archDomainDeviant, archOptions, artifactLoading, artifactView, artifactsFrozen, artifactsFrozenReason,
   authEntryDisplay, backendAddr, canDownload, canDownloadAndDeliver, canMarkDelivered, canMarkReady, canUndoDelivery, cancelCurrent,
   catalog, checkCols, checkRows, chromeOptions, collapsedApis, collapsedTables, commitColZh, commitRelZh,
-  commitTableZh, confirmDelete, confirmFillPlan, confirmHint, confirmMatch, confirmPreGenerate, currentJob, deleteBlocked,
+  commitTableZh, confirmDelete, confirmHint, confirmMatch, confirmPreGenerate, currentJob, deleteBlocked,
   deleteBlockedReason, deleting, deliveryBusy, deliveryMark, deviant, displayConf, domCascaderOptions, downloadAndDeliver,
   downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erEntity, erEntityOptions, erLabelSaving,
   erLayoutKey, erLoading, erMode, erSvgSource, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
-  fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanAckBusy, fillPlanCols, fillPlanHint,
+  fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
   gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,

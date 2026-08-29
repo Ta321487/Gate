@@ -106,7 +106,6 @@ export const api = {
   deleteJob: (id) => http.delete(`/jobs/${id}`),
   getProposalDiff: (id) => http.get(`/projects/${id}/proposal-diff`),
   ackPreGenerate: (id) => http.post(`/projects/${id}/delivery-review/ack-pre-generate`),
-  ackFillPlan: (id) => http.post(`/projects/${id}/delivery-review/ack-fill-plan`),
   getDeliveryReview: (id) => http.get(`/projects/${id}/delivery-review`),
   startDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/start`),
   closeDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/close`),

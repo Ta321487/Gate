@@ -1108,18 +1108,6 @@ async def ack_pre_generate_review(project_id: str, db: AsyncSession = Depends(ge
     return ApiOk(message="已确认开题措辞核对 · 可启动一键生成", data={"review": st})
 
 
-@router.post("/{project_id}/delivery-review/ack-fill-plan", response_model=ApiOk, summary="确认填岛计划")
-async def ack_fill_plan_review(project_id: str, db: AsyncSession = Depends(get_db)):
-    from app.services.delivery_review import ack_fill_plan
-
-    p = await db.get(Project, project_id)
-    if not p:
-        raise HTTPException(404, "项目不存在")
-    st = ack_fill_plan(p)
-    await db.commit()
-    return ApiOk(message="已确认填岛拆解计划", data={"review": st})
-
-
 @router.get("/{project_id}/delivery-review", response_model=DeliveryReviewPanelOut, summary="交付复审状态")
 async def get_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.services.delivery_review import build_review_payload

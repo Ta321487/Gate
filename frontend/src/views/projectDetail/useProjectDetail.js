@@ -112,7 +112,6 @@ const proposalDiff = ref(null)
 const preGenBusy = ref(false)
 const showFillPlan = ref(false)
 const fillPlanLoading = ref(false)
-const fillPlanAckBusy = ref(false)
 const fillPlanRows = ref([])
 const FILL_UNIT_KIND_ZH = {
   island_labels: 'Island 文案',
@@ -1278,21 +1277,6 @@ async function openFillPlan() {
   }
 }
 
-async function confirmFillPlan() {
-  if (!p.value?.id || fillPlanAckBusy.value) return
-  fillPlanAckBusy.value = true
-  try {
-    await api.ackFillPlan(p.value.id)
-    message.success('已确认填岛拆解计划')
-    showFillPlan.value = false
-    await load()
-  } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '确认失败')
-  } finally {
-    fillPlanAckBusy.value = false
-  }
-}
-
 async function openModules() {
   if (!p.value || modLoading.value || artifactsFrozen.value) return
   modLoading.value = true
@@ -1996,7 +1980,6 @@ onUnmounted(() => {
     commitRelZh,
     commitTableZh,
     confirmDelete,
-    confirmFillPlan,
     confirmHint,
     confirmMatch,
     confirmPreGenerate,
@@ -2031,7 +2014,6 @@ onUnmounted(() => {
     fillLiveSnap,
     fillLiveSummary,
     fillLiveVisible,
-    fillPlanAckBusy,
     fillPlanCols,
     fillPlanHint,
     fillPlanLoading,
