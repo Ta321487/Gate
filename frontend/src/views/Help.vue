@@ -3,7 +3,36 @@
     <h1 class="page-title">帮助文档</h1>
     <p class="page-desc">本说明面向运营人员，介绍毕设港工作台的标准使用流程、交付条件与常用术语。</p>
 
-    <section v-for="sec in sections" :key="sec.title" class="help-section">
+    <div class="help-toolbar">
+      <n-input
+        v-model:value="query"
+        clearable
+        placeholder="过滤卡片或术语…（如：验圈、填岛、履约）"
+        style="max-width:360px"
+      />
+      <nav v-if="!qNorm" class="help-toc" aria-label="章节目录">
+        <a
+          v-for="sec in sections"
+          :key="sec.title"
+          class="help-toc-link"
+          :href="'#' + sectionId(sec.title)"
+        >{{ sec.title }}</a>
+      </nav>
+      <span v-else class="small muted">{{ filterHint }}</span>
+    </div>
+
+    <n-empty
+      v-if="!visibleSections.length"
+      description="没有匹配的说明，试试换个词"
+      style="margin-top:32px"
+    />
+
+    <section
+      v-for="sec in visibleSections"
+      :id="sectionId(sec.title)"
+      :key="sec.title"
+      class="help-section"
+    >
       <h2 class="help-section-title">{{ sec.title }}</h2>
       <div class="help-cards" :class="sec.grid || ''">
         <article
@@ -50,6 +79,57 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
+import { NEmpty, NInput } from 'naive-ui'
+
+const query = ref('')
+const qNorm = computed(() => String(query.value || '').trim().toLowerCase())
+
+function sectionId(title) {
+  return `help-sec-${String(title || '').replace(/\s+/g, '-')}`
+}
+
+function cardBlob(card, { withTerms = true } = {}) {
+  const parts = [card.title, card.tag, card.lead]
+  for (const s of card.steps || []) parts.push(s.title, s.body)
+  for (const b of card.bullets || []) parts.push(b)
+  for (const l of card.links || []) parts.push(l.label)
+  if (withTerms) {
+    for (const t of card.terms || []) parts.push(t.name, t.def)
+  }
+  return parts.filter(Boolean).join('\n').toLowerCase()
+}
+
+function filterCard(card, q) {
+  if (!q) return card
+  const terms = card.terms || []
+  if (terms.length) {
+    const termHits = terms.filter((t) => `${t.name}\n${t.def}`.toLowerCase().includes(q))
+    const metaHit = cardBlob(card, { withTerms: false }).includes(q)
+    if (metaHit) return card
+    if (termHits.length) return { ...card, terms: termHits }
+    return null
+  }
+  return cardBlob(card).includes(q) ? card : null
+}
+
+const visibleSections = computed(() => {
+  const q = qNorm.value
+  return sections
+    .map((sec) => {
+      if (q && String(sec.title || '').toLowerCase().includes(q)) return sec
+      const cards = (sec.cards || []).map((c) => filterCard(c, q)).filter(Boolean)
+      if (!cards.length) return null
+      return { ...sec, cards }
+    })
+    .filter(Boolean)
+})
+
+const filterHint = computed(() => {
+  const n = visibleSections.value.reduce((acc, s) => acc + s.cards.length, 0)
+  return n ? `匹配 ${n} 张卡片` : '无匹配'
+})
+
 const sections = [
   {
     title: '总览',
@@ -145,6 +225,7 @@ const sections = [
           '合卷：验圈通过后重新打包 ZIP，使交付包与当前 workspace 一致。',
           '偏差登记：记录与开题或材料不一致之处（仅运营可见）；待结案项须处理或结案后再合卷。',
           '导出交接包：供线下交接或留档，不含于学生交付物。',
+          '按钮悬停有一句操作说明；合卷不可用时悬停可见原因。',
         ],
       },
       {
