@@ -65,8 +65,20 @@
           <div class="lock-row">
             <span class="small muted">{{ unlocked ? '骨架 / 领域 / 身份入口 / 持久层 / 鉴权可调整' : '骨架 / 领域 / 身份入口 / 持久层 / 鉴权已锁定' }}</span>
             <div class="row">
-              <n-button size="small" :loading="matchBusy" @click="toggleUnlock">{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
-              <n-button v-if="unlocked || deviant" text size="small" :loading="matchBusy" @click="resetMatch">恢复推荐</n-button>
+              <n-button
+                size="small"
+                :loading="matchBusy"
+                :title="unlocked ? '锁定当前骨架·领域·持久层·鉴权；偏离推荐时可能无法锁定' : '解锁后可改骨架·领域·持久层·鉴权；改完须再确认'"
+                @click="toggleUnlock"
+              >{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
+              <n-button
+                v-if="unlocked || deviant"
+                text
+                size="small"
+                :loading="matchBusy"
+                title="丢掉手改，回到扫描推荐并重新锁定"
+                @click="resetMatch"
+              >恢复推荐</n-button>
             </div>
           </div>
           <div class="grid-2">

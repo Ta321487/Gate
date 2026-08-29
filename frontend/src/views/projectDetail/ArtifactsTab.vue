@@ -27,9 +27,14 @@
             <strong>填岛拆解计划</strong>
             <span class="small muted">{{ fillPlanHint }}</span>
           </div>
-          <n-button text size="small" :disabled="!p.workspace_path" :loading="fillPlanLoading" @click="openFillPlan">
-            查看
-          </n-button>
+          <span
+            class="btn-tip-wrap"
+            :title="p.workspace_path ? '只预览 Unit 拆解，不调大模型、不执行填岛' : '生成工作区后可预览填岛拆解'"
+          >
+            <n-button text size="small" :disabled="!p.workspace_path" :loading="fillPlanLoading" @click="openFillPlan">
+              查看
+            </n-button>
+          </span>
         </div>
         <div class="file-row" style="margin:0">
           <div class="file-row-main">
@@ -297,13 +302,18 @@
                   <span v-else class="pill pill-neutral">{{ p.workspace_path ? (artifactLoading ? '加载中' : '暂无接口清单') : '未生成' }}</span>
                 </div>
                 <div class="row" style="margin:0;gap:8px">
-                  <n-button
-                    size="small"
-                    type="primary"
-                    :loading="apiSmokeBusy"
-                    :disabled="!apis || !p.workspace_path"
-                    @click="runApiSmoke"
-                  >全量冒烟</n-button>
+                  <span
+                    class="btn-tip-wrap"
+                    :title="apis && p.workspace_path ? '对已启动预览跑主路径探测，不启停进程' : '需有工作区与接口清单；预览请到运行页启动'"
+                  >
+                    <n-button
+                      size="small"
+                      type="primary"
+                      :loading="apiSmokeBusy"
+                      :disabled="!apis || !p.workspace_path"
+                      @click="runApiSmoke"
+                    >全量冒烟</n-button>
+                  </span>
                   <n-input
                     v-model:value="apiQuery"
                     size="small"
@@ -491,7 +501,7 @@
                 :project-id="p.id"
                 :delivery-review="p.delivery_review || {}"
                 :disabled="artifactsFrozen || !p.workspace_path"
-                @refresh="load"
+                :reload="load"
               />
             </div>
 

@@ -17,6 +17,7 @@
           size="small"
           type="primary"
           :loading="deliveryBusy"
+          title="下载 ZIP 并标记为已发出（已交学生）"
           @click="downloadAndDeliver"
         >下载并发出</n-button>
         <n-button
@@ -24,6 +25,7 @@
           size="small"
           type="primary"
           :loading="deliveryBusy"
+          title="标记为已发出（已交学生）；不重新打包"
           @click="markDelivery('delivered')"
         >标记已发出</n-button>
         <n-button
@@ -32,6 +34,7 @@
           :type="canMarkDelivered ? 'default' : 'primary'"
           :secondary="!!canMarkDelivered"
           :loading="deliveryBusy"
+          title="人工审过、暂存待发；尚未视为已交学生"
           @click="markDelivery('ready')"
         >{{ canMarkDelivered ? '暂存待发' : '标记已审待发' }}</n-button>
         <n-button
@@ -39,6 +42,7 @@
           size="small"
           secondary
           :loading="deliveryBusy"
+          title="只改履约标记，不删工程或 ZIP"
           @click="undoDelivery"
         >{{ undoDeliveryLabel }}</n-button>
         <n-button
