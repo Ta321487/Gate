@@ -166,7 +166,12 @@
             </n-form-item>
           </div>
           <div v-if="genState !== 'idle'" class="row mt-16">
-            <n-button type="primary" :loading="softApplying" @click="startGenerate">按当前选项重新生成</n-button>
+            <n-button
+              type="primary"
+              :loading="softApplying"
+              title="按当前选项重写工程与交付包；履约标记会清掉"
+              @click="startGenerate"
+            >按当前选项重新生成</n-button>
           </div>
         </div>
       </div>
@@ -179,7 +184,12 @@
                 <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
                 <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
               </div>
-              <n-button type="primary" size="large" :disabled="!p.match_confirmed" :loading="softApplying" @click="startGenerate">一键生成</n-button>
+              <span
+                class="btn-tip-wrap"
+                :title="p.match_confirmed ? '按匹配结果落地工程；AI 只填业务配置' : '请先完成匹配确认后再生成'"
+              >
+                <n-button type="primary" size="large" :disabled="!p.match_confirmed" :loading="softApplying" @click="startGenerate">一键生成</n-button>
+              </span>
             </div>
           </div>
         </div>
