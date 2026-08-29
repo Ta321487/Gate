@@ -158,6 +158,41 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         )
         self.assertFalse(any(f.get("level") == "error" for f in ok), ok)
 
+        # 仅出现硬边界词、无「已支持」类宣称 → 不挡包（非穷举否定词表）
+        mention = _honesty_findings(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {"authPoints": ["调研阶段常见人脸识别与闸机方案"]},
+                "menus": {},
+                "proposal": "",
+            }
+        )
+        self.assertFalse(any(f.get("level") == "error" for f in mention), mention)
+
+        # 划界句含「第三方电子签」字样（DOM-CARPASS eSignLead 回归）
+        esign = _honesty_findings(
+            {
+                "domain": "DOM-CARPASS",
+                "labels": {
+                    "eSignLead": "上传签章图并勾选同意完成签署；非 CA、非法大大等第三方电子签平台。",
+                },
+                "menus": {},
+                "proposal": "",
+            }
+        )
+        self.assertFalse(any(f.get("level") == "error" for f in esign), esign)
+
+        # 「不支持」不得当成宣称支持
+        deny = _honesty_findings(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {"authPoints": ["本系统不支持人脸识别与微信支付"]},
+                "menus": {},
+                "proposal": "",
+            }
+        )
+        self.assertFalse(any(f.get("level") == "error" for f in deny), deny)
+
     def test_honesty_out_scope_lines_not_as_supported(self) -> None:
         """开题 out_scope 列人脸/GPS 不得挡包（DOM-CHECKIN 真题回归）。"""
         from app.llm.agents_common import _proposal_text

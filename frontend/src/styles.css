@@ -611,6 +611,48 @@ button.filter-pill.on {
 .pre-gen-warn-list li {
   color: var(--amber);
 }
+.pre-gen-scroll {
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  margin-top: 4px;
+  padding-right: 4px;
+}
+.pre-gen-line-list li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pre-gen-actions {
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.match-link-list {
+  list-style: none;
+  margin-left: 0;
+}
+.match-link-list > li {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.match-link-list > li:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.match-link-line {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-link-hits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
 .zone-list {
   margin: 0 0 0 18px;
   padding: 0;

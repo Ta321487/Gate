@@ -45,7 +45,7 @@ _SYS = (
     "6) accept=reject 或 out_of_mvp 已标缺口时，禁止在 summary 写「可全文答辩/已支持该能力」。"
 )
 
-# 交付文案若把硬边界写成「本期已支持」→ 本地确定性报错（不依赖 LLM）
+# 硬边界种子（短、稳定；不是域文案穷举）。单独出现不算宣称已支持。
 _HARD_BOUNDARY_AS_SUPPORTED = (
     (re.compile(r"(人脸识别|指纹闸机|GPS\s*轨迹|真门禁开锁)"), "生物识别/硬件定位"),
     (re.compile(r"(微信支付|支付宝(支付|对接)|真实支付)"), "真支付对接"),
@@ -53,11 +53,24 @@ _HARD_BOUNDARY_AS_SUPPORTED = (
     (re.compile(r"(RFID\s*盘点|多仓\s*WMS|ERP\s*财务)"), "RFID/多仓ERP"),
 )
 
-# 「非本期 / 不做 / 不接」等诚实划界，不算宣称支持
+# 同窗「宣称已支持」搭配（小集合）。无搭配 → 不升 error（避免否定句/背景调研误杀）。
+# 排除「不支持/非支持」：前缀否定用 lookbehind。
+_CLAIM_AS_SUPPORTED = re.compile(
+    r"(?<![不非未勿])("
+    r"已支持|已集成|已对接|已接入|已开通|已上线|可全文答辩|已完整实现|"
+    r"支持(?!期)|集成了|对接了|接入了|本期可用"
+    r")"
+)
+
+# 「非本期 / 不做 / 不接」及常见划界，不算宣称支持
 _HONEST_SCOPE = re.compile(
     r"(非本期|本期不|不做|不接|不在本期|不作为本期|不纳入|超出|硬边界|演示级替代|"
-    r"仅作为背景|背景对比|调研阶段|扩展能力|必实现项|不实现)"
+    r"仅作为背景|背景对比|调研阶段|扩展能力|必实现项|不实现|"
+    r"非法大大|非\s*CA|非真支付|非真门禁|并非|不是本期|仅作查阅|演示级)"
 )
+
+# 命中词紧前短窗内的否定（「非 CA…第三方电子签」「未对接微信支付」）
+_PREFIX_NEGATION = re.compile(r"(非|不|勿|禁止|未|并非)[\w\s、，,．.]*$")
 
 # 域 → 错域实体词（出现在 labels/菜单且像主叙事时 warn）
 _WRONG_DOMAIN_ENTITY: dict[str, tuple[str, ...]] = {
@@ -150,6 +163,7 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         "domain": spec.get("domain"),
         "title": spec.get("title"),
         "accept": spec.get("accept"),
+        "out_of_mvp": list(spec.get("out_of_mvp") or []),
         "proposal": _proposal_text(spec)[:1500],
         "labels": schema.get("labels") or {},
         "seeds": schema.get("seeds") or {},
@@ -190,22 +204,39 @@ def _flatten_label_text(ctx: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
+def _honesty_hard_boundary_hit(blob: str, match: re.Match[str]) -> bool:
+    """硬边界词 + 同窗宣称搭配，且无划界/前缀否定 → 才视为「写成已支持」。"""
+    # 宣称窗收紧；划界窗略宽（开题 out_scope / 研究现状）
+    claim_win = blob[max(0, match.start() - 32) : min(len(blob), match.end() + 32)]
+    scope_win = blob[max(0, match.start() - 100) : min(len(blob), match.end() + 100)]
+    before = blob[max(0, match.start() - 24) : match.start()]
+    if _HONEST_SCOPE.search(scope_win):
+        return False
+    if _PREFIX_NEGATION.search(before):
+        return False
+    return bool(_CLAIM_AS_SUPPORTED.search(claim_win))
+
+
 def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
-    """Q-04：硬边界不得写成已支持；错域实体名本地可拦。"""
+    """Q-04：硬边界不得写成已支持；错域实体名本地可拦。
+
+    本地不穷举域措辞、也不替代 LLM：只拦「硬边界种子 ∩ 宣称搭配」的强信号；
+    词单独出现或否定/划界句（如「非 CA…第三方电子签平台」）不升 error。
+    """
     findings: list[dict[str, str]] = []
     blob = _flatten_label_text(ctx)
     for rx, name in _HARD_BOUNDARY_AS_SUPPORTED:
         for m in rx.finditer(blob):
-            # 开题研究现状 / out_scope 列表邻近词常在 ±24 外，放宽到 ±100
-            start = max(0, m.start() - 100)
-            end = min(len(blob), m.end() + 100)
-            window = blob[start:end]
-            if _HONEST_SCOPE.search(window):
+            if not _honesty_hard_boundary_hit(blob, m):
                 continue
+            near = blob[max(0, m.start() - 24) : min(len(blob), m.end() + 24)].strip()
             findings.append(
                 {
                     "level": "error",
-                    "msg": f"交付文案将硬边界「{name}」写成本期可用（附近：{window.strip()[:60]}）",
+                    "msg": (
+                        f"交付文案将硬边界「{name}」写成本期可用"
+                        f"（命中：{m.group(0)} · 附近：{near[:72]}）"
+                    ),
                     "where": "schema.labels|proposal",
                 }
             )
@@ -230,7 +261,7 @@ def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
 
     accept = str(ctx.get("accept") or "")
     if accept in ("reject", "partial") or ctx.get("out_of_mvp"):
-        # summary 由 LLM 写；本地只在 proposal 宣称「已支持全文」时拦
+        # 本地只拦强宣称；细节交给 LLM QA（若开启）
         if re.search(r"(已支持|可全文答辩|已完整实现).{0,8}(人脸|微信支付|法大大|RFID)", blob):
             findings.append(
                 {
@@ -279,12 +310,21 @@ def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def _fallback_qa(ctx: dict[str, Any]) -> dict[str, Any]:
-    """无 Key / 关 QA 时的结构回退（不写死领域错词表）。"""
+    """无 Key / 关 QA 时的结构回退（不写死领域错词表）。
+
+    仅对强信号 error 挡包；弱措辞不做穷举、也不假装 LLM 已审。
+    """
     findings = _structural_findings(ctx)
+    errors = [f for f in findings if f.get("level") == "error"]
+    summary = "未启用 LLM QA，仅做结构回退检查"
+    if errors:
+        summary = f"{summary} · {str(errors[0].get('msg') or '')[:120]}"
+    elif findings:
+        summary = f"{summary} · {len(findings)} 条非挡包发现"
     return {
-        "summary": "未启用 LLM QA，仅做结构回退检查",
+        "summary": summary,
         "findings": findings,
-        "ok": not any(f.get("level") == "error" for f in findings),
+        "ok": not errors,
         "mode": "fallback",
     }
 
