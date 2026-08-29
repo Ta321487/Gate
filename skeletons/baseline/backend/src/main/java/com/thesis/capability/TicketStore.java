@@ -323,15 +323,22 @@ public final class TicketStore {
         if (expect.isBlank()) {
             throw new IllegalStateException("该包裹尚未登记取件码");
         }
-        // 档案可能写成「取件码/柜号」或「码 · 柜」；取第一段比对
+        // 档案可能写成「取件码 3182 / 柜 / 手机」；取第一段比对，也允许纯数字码
         String expectCode = expect;
         int slash = expect.indexOf('/');
         if (slash > 0) expectCode = expect.substring(0, slash).trim();
         int dot = expectCode.indexOf('·');
         if (dot > 0) expectCode = expectCode.substring(0, dot).trim();
-        if (!expectCode.equalsIgnoreCase(got) && !expect.equalsIgnoreCase(got)) {
-            throw new IllegalStateException("取件码不正确");
+        String gotNorm = got.replace("取件码", "").replace(" ", "").trim();
+        String expectNorm = expectCode.replace("取件码", "").replace(" ", "").trim();
+        if (expectCode.equalsIgnoreCase(got)
+                || expect.equalsIgnoreCase(got)
+                || expectNorm.equalsIgnoreCase(gotNorm)
+                || (!gotNorm.isEmpty() && expectNorm.contains(gotNorm))
+                || (!gotNorm.isEmpty() && expect.replace(" ", "").toLowerCase().contains(gotNorm.toLowerCase()))) {
+            return;
         }
+        throw new IllegalStateException("取件码不正确");
     }
 
     /** matchProfileRoom：资料键↔档案列（查寝默认楼栋/房间；实习绑岗可配单位/岗位） */

@@ -15,6 +15,7 @@ from app.bake.schema.domain_builders import (  # noqa: F401
     _activity_schema,
     _asset_schema,
     _attend_schema,
+    _bed_schema,
     _blog_schema,
     _course_schema,
     _crm_schema,
@@ -103,7 +104,7 @@ for _m in OA_APPLY_META:
 for _m in STUWORK_META:
     SCHEMA_BUILDERS[_m["domain"]] = followup_builder(_m["domain"])
 
-SCHEMA_BUILDERS["DOM-BED"] = followup_builder("DOM-BED")
+SCHEMA_BUILDERS["DOM-BED"] = _bed_schema
 
 SCHEMA_BUILDERS["DOM-CHECKIN"] = followup_builder("DOM-CHECKIN")
 

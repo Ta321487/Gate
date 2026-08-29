@@ -70,6 +70,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         _merge_tree(overlay, dest)
 
     from app.bake.addons import apply_addons_overlays
+    from app.bake.match_path_axes import match_path_override_scope
     from app.bake.persistence import apply_persistence_overlay
 
     apply_persistence_overlay(dest, spec, merge_tree=_merge_tree)
@@ -94,65 +95,71 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
             proposal_for_sql = prop.strip()
     if not proposal_for_sql:
         proposal_for_sql = str(spec.get("title") or "")
-    sql = domain_sql(
-        domain,
-        db_name,
-        spec.get("archetype"),
-        archetypes=spec.get("archetypes"),
-        ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
-        capabilities=spec.get("capabilities"),
-        proposal_text=proposal_for_sql,
-        title=str(spec.get("title") or ""),
-        ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
-        staff_posts=staff_posts_pre,
-    )
-    assert_table_budget(sql, domain)
+    path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
+    with match_path_override_scope(
+        str(spec.get("domain") or domain or ""),
+        path.get("scene"),
+        path.get("entry"),
+    ):
+        sql = domain_sql(
+            domain,
+            db_name,
+            spec.get("archetype"),
+            archetypes=spec.get("archetypes"),
+            ticket_table=((spec.get("runtime") or {}).get("ticket_table")),
+            capabilities=spec.get("capabilities"),
+            proposal_text=proposal_for_sql,
+            title=str(spec.get("title") or ""),
+            ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
+            staff_posts=staff_posts_pre,
+        )
+        assert_table_budget(sql, domain)
 
-    from app.bake.archive_seed_guard import assert_archive_demo_seed
+        from app.bake.archive_seed_guard import assert_archive_demo_seed
 
-    runtime = spec.get("runtime") if isinstance(spec.get("runtime"), dict) else {}
-    gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
-    assert_archive_demo_seed(
-        sql,
-        item_table=runtime.get("archive_item_table"),
-        flow_api=gate.get("flow_api"),
-        ticket_mode=runtime.get("ticket_mode"),
-    )
+        runtime = spec.get("runtime") if isinstance(spec.get("runtime"), dict) else {}
+        gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+        assert_archive_demo_seed(
+            sql,
+            item_table=runtime.get("archive_item_table"),
+            flow_api=gate.get("flow_api"),
+            ticket_mode=runtime.get("ticket_mode"),
+        )
 
-    from app.bake.domain_schema import product_name_from_title
-    from app.bake.identity_align import assert_identity_aligned
-    from app.bake.menu_routes import assert_menu_routes_aligned
+        from app.bake.domain_schema import product_name_from_title
+        from app.bake.identity_align import assert_identity_aligned
+        from app.bake.menu_routes import assert_menu_routes_aligned
 
-    title = spec.get("title", "毕设系统")
-    schema = spec.get("schema") or {}
-    # 身份/壳穿帮直接失败，禁止带病包出炉
-    assert_identity_aligned(
-        domain,
-        title=str(title or ""),
-        proposal_text=proposal_for_sql,
-        sql=sql,
-        schema=schema if isinstance(schema, dict) else None,
-        profile_fields=(schema.get("profileFields") if isinstance(schema, dict) else None),
-    )
-    # 菜单 key 必须能落到本包有效路由，禁止导航 404
-    from app.bake.domain_skin import traits_for_domain
+        title = spec.get("title", "毕设系统")
+        schema = spec.get("schema") or {}
+        # 身份/壳穿帮直接失败，禁止带病包出炉
+        assert_identity_aligned(
+            domain,
+            title=str(title or ""),
+            proposal_text=proposal_for_sql,
+            sql=sql,
+            schema=schema if isinstance(schema, dict) else None,
+            profile_fields=(schema.get("profileFields") if isinstance(schema, dict) else None),
+        )
+        # 菜单 key 必须能落到本包有效路由，禁止导航 404
+        from app.bake.domain_skin import traits_for_domain
 
-    assert_menu_routes_aligned(
-        schema if isinstance(schema, dict) else None,
-        domain=domain,
-        capabilities=list(spec.get("capabilities") or []),
-        traits=dict(spec.get("traits") or traits_for_domain(domain)),
-        proposal_text=proposal_for_sql,
-    )
-    from app.bake.skin_invariants import assert_skin_invariants
+        assert_menu_routes_aligned(
+            schema if isinstance(schema, dict) else None,
+            domain=domain,
+            capabilities=list(spec.get("capabilities") or []),
+            traits=dict(spec.get("traits") or traits_for_domain(domain)),
+            proposal_text=proposal_for_sql,
+        )
+        from app.bake.skin_invariants import assert_skin_invariants
 
-    assert_skin_invariants(
-        schema if isinstance(schema, dict) else None,
-        domain=domain,
-        title=str(title or ""),
-        proposal_text=proposal_for_sql,
-        frontend_src=dest / "frontend" / "src",
-    )
+        assert_skin_invariants(
+            schema if isinstance(schema, dict) else None,
+            domain=domain,
+            title=str(title or ""),
+            proposal_text=proposal_for_sql,
+            frontend_src=dest / "frontend" / "src",
+        )
     _write(dest / "sql" / "schema.sql", sql)
 
     app_name = (

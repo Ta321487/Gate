@@ -11,7 +11,7 @@
     </el-aside>
     <el-container>
       <el-header class="wb-header">
-        <span class="wb-header-title">{{ title }}</span>
+        <span class="wb-header-title" :title="title">{{ title }}</span>
         <div class="wb-header-right">
           <span>{{ displayName }} · {{ postLabel }}</span>
           <el-button link type="primary" @click="logout">退出</el-button>

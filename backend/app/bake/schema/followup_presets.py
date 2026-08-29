@@ -467,7 +467,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         ],
     },
     "DOM-GRADE": {
-        "doc": "教务成绩：课程档案 + 补考/更正申请。",
+        "doc": "教务成绩：课程说明 + 本人成绩申请（我的成绩申请填单选课，非逛课表下单）。",
         "user_label": "学生",
         "admin_label": "教务主管（总管）",
         "subadmin_label": "教务员",
@@ -501,13 +501,18 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已失效",
         },
         "archive_menu_admin": "课程档案",
-        "archive_menu_user": "课程列表",
+        "archive_menu_user": "课程说明",
         "auth_eyebrow": "教务成绩",
-        "auth_lead": "验证码登录；查看课程并提交补考或成绩更正申请，由教务审核。",
-        "auth_points": ["验证码登录", "课程列表", "成绩申请"],
+        "auth_lead": (
+            "验证码登录；在「我的成绩申请」选择课程提交补考或成绩更正，由教务审核。"
+        ),
+        "auth_points": ["验证码登录", "本人成绩申请", "教务审核"],
         "register_hint": "注册后可提交成绩相关申请",
         "notice_title": "成绩须知",
-        "notice_body": "补考与更正须说明理由；不对接学信网。",
+        "notice_body": (
+            "请选择本人相关课程（演示库按学号标注本人课；无匹配时开放课可选）。"
+            "请在「我的成绩申请」选课提交补考或更正并说明理由；课程说明页仅作查阅。不对接学信网。"
+        ),
         "notice_page_title": "教务公告",
         "notice_page_lead": "补考安排与成绩说明，点击条目阅读全文。",
         "my_tickets_label": "我的成绩申请",
@@ -515,16 +520,25 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "成绩申请记录",
         "remark_label": "申请说明",
         "auto_approve": False,
+        "apply_from_list": True,
+        "user_tickets_first": True,
+        "filter_by_owner_token": True,
+        "owner_token_source": "studentNo",
+        "owner_token_strict": False,
+        "my_tickets_page_lead": (
+            "在此选择本人相关课程提交补考或成绩更正并跟踪审核；课程说明页仅作查阅。"
+        ),
+        "my_tickets_empty": "还没有成绩申请，点击右上角提交申请。",
         "contact_channel_label": "申请类型",
         "contact_channel_options": ["成绩更正", "补考申请", "缓考备案", "其他"],
         "contact_channel_placeholder": "更正/补考/缓考等",
         "next_follow_label": "期望处理日",
         "banners": [
-            {"title": "课程列表", "lead": "按类别浏览课程与授课教师。"},
-            {"title": "成绩申请", "lead": "提交补考或成绩更正，等待教务确认。"},
+            {"title": "本人申请", "lead": "在「我的成绩申请」选本人相关课提交补考或更正。"},
+            {"title": "课程说明", "lead": "查阅开课课程与授课教师（说明用）。"},
             {"title": "教务公告", "lead": "补考与成绩节点见公告栏。"},
-            {"title": "我的申请", "lead": "跟踪审核进度。"},
-            {"title": "分类检索", "lead": "必修/选修快速定位。"},
+            {"title": "审核跟踪", "lead": "查看教务确认或驳回结果。"},
+            {"title": "分类查阅", "lead": "必修/选修快速定位。"},
         ],
     },
     "DOM-INTERN": {
@@ -638,17 +652,17 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "overdue": "已逾期",
         },
         "archive_menu_admin": "包裹台账",
-        "archive_menu_user": "包裹查阅",
+        "archive_menu_user": "本人件",
         "auth_eyebrow": "校园驿站",
         "auth_lead": (
-            "验证码登录；在「我的取件」凭取件码提交取件，到站由店员核销出库（≠跑腿代买）。"
+            "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库（≠跑腿代买）。"
         ),
-        "auth_points": ["验证码登录", "凭码取件", "店员核销"],
-        "register_hint": "注册后可凭取件码办理取件",
+        "auth_points": ["验证码登录", "本人件", "凭码取件", "店员核销"],
+        "register_hint": "注册手机号用于匹配本人待取件",
         "notice_title": "取件须知",
         "notice_body": (
-            "请凭取件码与手机号在「我的取件」提交；到站出示后由店员核销。"
-            "包裹查阅页仅作查询。智能柜硬件不在本期。"
+            "登录手机号匹配本人待取件；在「我的取件」凭取件码提交，到站出示后由店员核销。"
+            "包裹查阅页仅展示本人件。智能柜硬件不在本期。"
         ),
         "notice_page_title": "驿站公告",
         "notice_page_lead": "营业时间与催取通知，点击条目阅读全文。",
@@ -662,13 +676,16 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "require_claim_code": True,
         "apply_from_list": True,
         "user_tickets_first": True,
+        "filter_by_owner_token": True,
+        "owner_token_source": "phone",
+        "owner_token_strict": True,
         "my_tickets_page_lead": (
-            "在此凭取件码提交取件并跟踪核销；包裹查阅页仅作查询。"
+            "先看本人待取件，再凭取件码提交并跟踪核销；包裹查阅页仅本人件。"
         ),
         "my_tickets_empty": "还没有取件单，点击右上角凭码取件。",
         "banners": [
-            {"title": "凭码取件", "lead": "在「我的取件」填写取件码提交，到站核销出库。"},
-            {"title": "包裹查阅", "lead": "按运单与取件码查询待取包裹。"},
+            {"title": "凭码取件", "lead": "在「我的取件」选本人件并填写取件码提交。"},
+            {"title": "本人件", "lead": "按登录手机号查看待取包裹（非全库商城）。"},
             {"title": "驿站公告", "lead": "营业时间与逾期催取见公告。"},
             {"title": "核销跟踪", "lead": "查看取件单是否已出库。"},
             {"title": "件型查阅", "lead": "普通/生鲜/大件快速定位。"},

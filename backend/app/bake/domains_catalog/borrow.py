@@ -299,7 +299,10 @@ DOMAINS: dict = {
         ),
         "entities": ["EventCase", "Category", "EventReport", "ArchiveLog", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["对象建档 → 打卡/随访记录 → 异常上报处置"],
+        "flows": [
+            "对象建档 → 打卡/随访记录 → 异常上报处置",
+            "本人打卡填单 → 确认处置（开题写本人晨午检/学生自报时）",
+        ],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -627,7 +630,7 @@ DOMAINS: dict = {
         ),
         "entities": ["CourseItem", "Category", "GradeApply", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["课程建档 → 补考/更正申请 → 教务确认"],
+        "flows": ["本人成绩申请填单（选课） → 教务确认"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
@@ -732,13 +735,13 @@ DOMAINS: dict = {
             "快递入库", "快递领取", "催取",
         ],
         "match_hint": (
-            "适用：包裹入库、取件码核销、驿站取件申请。"
+            "适用：包裹入库、按手机看本人件、取件码核销、驿站取件申请。"
             "勿与校园跑腿代买/商城下单（商城或点餐）或失物招领混淆；"
             "智能柜硬件对接不在本期。"
         ),
         "entities": ["Parcel", "Category", "ParcelClaim", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["包裹入库 → 凭取件码取件 → 店员核销出库"],
+        "flows": ["包裹入库 → 本人件（手机匹配）→ 凭码取件 → 店员核销出库"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},

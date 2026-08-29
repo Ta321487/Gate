@@ -318,6 +318,7 @@ function openNews(item) {
   font-weight: 700;
   letter-spacing: 0.01em;
   font-family: var(--portal-font-display, var(--portal-font-ui));
+  overflow-wrap: anywhere;
 }
 .hero p {
   margin: 0;

@@ -19,15 +19,34 @@ def product_name_from_title(title: str) -> str:
     if m:
         name = m.group(1).strip()
         if 4 <= len(name) <= 32:
-            return name
+            return _chrome_friendly_name(name)
     m = re.search(r"基于.+?的(.+)$", t)
     if m:
         name = re.sub(r"(的设计与实现|系统设计|的实现|的设计)\s*$", "", m.group(1)).strip()
         if 4 <= len(name) <= 32:
-            return name
+            return _chrome_friendly_name(name)
     if len(t) > 28:
-        return t[:28].rstrip("的与及")
-    return t
+        return _chrome_friendly_name(t[:28].rstrip("的与及"))
+    return _chrome_friendly_name(t)
+
+
+_GENERIC_NAME_SUFFIX = re.compile(
+    r"(管理信息系统|管理系统|信息系统|服务平台|信息平台|平台|系统)$"
+)
+
+
+def _chrome_friendly_name(name: str) -> str:
+    """窄栏/顶栏用：去掉冗长尾缀，贴近真实产品短品牌（完整题名仍在 document/开题材料）。"""
+    n = (name or "").strip()
+    if not n:
+        return "业务系统"
+    if len(n) > 10:
+        stripped = _GENERIC_NAME_SUFFIX.sub("", n).strip("的与及 ·-_")
+        if len(stripped) >= 4:
+            n = stripped
+    if len(n) > 18:
+        n = n[:18].rstrip("的与及 ·")
+    return n or "业务系统"
 
 
 def _copy_scan_text(title: str, proposal_text: str = "") -> str:
@@ -61,6 +80,7 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-INTERN",
     "DOM-LABSAFE",
     "DOM-PROPERTY",
+    "DOM-BED",
     "DOM-MEDIA",
     "DOM-MUSIC",
     "DOM-BLOG",
@@ -199,6 +219,12 @@ def archive_ticket_schema(
     auto_approve: bool = False,
     # True：申请说明/取件码须与档案 isbn（取件码）一致（驿站）
     require_claim_code: bool = False,
+    # True：档案列表按登录手机/资料学号筛本人件/本人课（软归属，非硬绑课表）
+    filter_by_owner_token: bool = False,
+    # phone=sys_user.phone；其它=profile extras 键（如 studentNo）
+    owner_token_source: str = "phone",
+    # True：无令牌或无匹配则空列表（驿站本人件）；False：无匹配回退全库（成绩演示）
+    owner_token_strict: bool = False,
     # True：资料楼栋/房间须匹配档案 author/title（查寝归寝；禁止选他寝）
     # 可配 extras 键与档案列（实习绑岗：internOrg↔isbn、internPost↔title）
     match_profile_room: bool = False,
@@ -303,6 +329,11 @@ def archive_ticket_schema(
         "requireClaimCode": bool(require_claim_code),
         "applyFromList": bool(apply_from_list),
     }
+    if filter_by_owner_token:
+        ticket_entity["filterByOwnerToken"] = True
+        src = (owner_token_source or "phone").strip() or "phone"
+        ticket_entity["ownerTokenSource"] = src
+        ticket_entity["ownerTokenStrict"] = bool(owner_token_strict)
     if match_profile_room:
         ticket_entity["matchProfileRoom"] = True
         bk = (match_profile_building_key or "").strip()

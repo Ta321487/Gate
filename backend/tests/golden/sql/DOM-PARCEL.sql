@@ -89,13 +89,13 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '普通件'), (2, '生鲜件'), (3, '大件');
 INSERT IGNORE INTO parcel (id, title, station_name, pickup_code, category_id, stock, status) VALUES
-(1, '圆通YT8821001', '东门驿站', '取件码 3182 / A12 柜', 1, 1, 'available'),
-(2, '中通ZT9912002', '东门驿站', '取件码 5521 / 冷藏区', 2, 1, 'available'),
-(3, '顺丰SF1003003', '南区代收点', '取件码 7740 / 大件区', 3, 1, 'available'),
-(4, '韵达YD2204004', '东门驿站', '取件码 1098 / B03 柜', 1, 1, 'available'),
-(5, '极兔JT3305005', '东门驿站', '取件码 6644 / A08 柜', 1, 1, 'available');
+(1, '圆通YT8821001', '东门驿站', '取件码 3182 / A12 柜 / 13800000002', 1, 1, 'available'),
+(2, '中通ZT9912002', '东门驿站', '取件码 5521 / 冷藏区 / 13800000002', 2, 1, 'available'),
+(3, '顺丰SF1003003', '南区代收点', '取件码 7740 / 大件区 / 13800000099', 3, 1, 'available'),
+(4, '韵达YD2204004', '东门驿站', '取件码 1098 / B03 柜 / 13800000002', 1, 1, 'available'),
+(5, '极兔JT3305005', '东门驿站', '取件码 6644 / A08 柜 / 13800000099', 1, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '取件须知', '请凭取件码与本人手机号取件；超时未取将移至逾期架。', 'admin', '驿站主管'
+SELECT '取件须知', '请凭取件码与本人手机号取件；本人件按登录手机号匹配。超时未取将移至逾期架。', 'admin', '驿站主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='取件须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '营业时间', '驿站工作日 8:00-21:00，周末 9:00-20:00。', 'admin', '驿站主管'

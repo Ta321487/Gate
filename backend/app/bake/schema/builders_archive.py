@@ -452,24 +452,57 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         )
     return followup_domain_schema(title, "DOM-CRM")
 
+def _event_self_report_overrides() -> dict[str, Any]:
+    return {
+        "doc": "事件上报：本人打卡/填报（我的打卡填单，档案页作说明；非网格员对象台账）。",
+        "archive_menu_user": "打卡说明",
+        "auth_lead": (
+            "验证码登录；在「我的打卡」选择事项提交本人晨午检或健康填报，异常可转处置。"
+        ),
+        "auth_points": ["验证码登录", "本人打卡填报", "异常上报"],
+        "register_hint": "注册后可提交本人打卡",
+        "my_tickets_label": "我的打卡",
+        "apply_from_list": True,
+        "user_tickets_first": True,
+        "my_tickets_page_lead": (
+            "在此提交本人打卡或上报并跟踪进度；说明页仅作查阅。"
+        ),
+        "my_tickets_empty": "还没有打卡记录，点击右上角提交。",
+        "banners": [
+            {"title": "本人打卡", "lead": "在「我的打卡」选事项填报，等待确认。"},
+            {"title": "打卡说明", "lead": "查阅开放事项与须知（不作对象台账作业）。"},
+            {"title": "异常上报", "lead": "异常线索可转上报处置。"},
+            {"title": "公告须知", "lead": "规范与通知见公告栏。"},
+            {"title": "进度跟踪", "lead": "查看确认与办结结果。"},
+        ],
+    }
+
+
 def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """事件/公卫：校园 / 社区网格 / 养老机构 / 企业复工 / 默认随访（同 _food_schema 分支）。
 
     scene 管身份档；``event_product_kind`` 管监测皮 vs 应急上报皮（默认 monitor，不改能力壳）。
+    开题主写本人打卡填报时叠加 ``event_self_report`` 填单优先覆盖。
     """
     from app.bake.schema.followup_presets import (
         _std_archive_fields,
         followup_domain_schema,
     )
-    from app.bake.scene_scan import event_product_kind, scene_event_parts
+    from app.bake.scene_scan import event_product_kind, event_self_report, scene_event_parts
 
     scene = scene_event_parts(title, proposal_text)
     kind = event_product_kind(title, proposal_text)
+
+    def _build(base_overrides: dict[str, Any]) -> dict[str, Any]:
+        ov = dict(base_overrides)
+        if event_self_report(title, proposal_text):
+            ov.update(_event_self_report_overrides())
+        schema = followup_domain_schema(title, "DOM-EVENT", overrides=ov)
+        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
+
     if scene == "campus":
-        schema = followup_domain_schema(
-            title,
-            "DOM-EVENT",
-            overrides={
+        return _build(
+            {
                 "user_label": "师生",
                 "admin_label": "学工主管（总管）",
                 "subadmin_label": "班主任",
@@ -498,14 +531,11 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
                     {"title": "分类管理", "lead": "按分类筛选重点对象。"},
                 ],
-            },
+            }
         )
-        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "institution":
-        schema = followup_domain_schema(
-            title,
-            "DOM-EVENT",
-            overrides={
+        return _build(
+            {
                 "user_label": "家属",
                 "admin_label": "机构主管（总管）",
                 "subadmin_label": "照护员",
@@ -536,14 +566,11 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
                     {"title": "分类管理", "lead": "按分类筛选重点老人。"},
                 ],
-            },
+            }
         )
-        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "enterprise":
-        schema = followup_domain_schema(
-            title,
-            "DOM-EVENT",
-            overrides={
+        return _build(
+            {
                 "user_label": "员工",
                 "admin_label": "企管主管（总管）",
                 "subadmin_label": "监测员",
@@ -574,15 +601,12 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
                     {"title": "分类管理", "lead": "按风险分类筛选重点员工。"},
                 ],
-            },
+            }
         )
-        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     if scene == "community":
         # 开题一线填报=网格员（门户 user）；值班员=子管确认；对象档案≠登录身份
-        schema = followup_domain_schema(
-            title,
-            "DOM-EVENT",
-            overrides={
+        return _build(
+            {
                 "user_label": "网格员",
                 "admin_label": "主管（总管）",
                 "subadmin_label": "值班员",
@@ -611,14 +635,11 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
                     {"title": "分类管理", "lead": "按分类筛选重点对象。"},
                 ],
-            },
+            }
         )
-        return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
     # default：慢病随访/院感/献血等公卫随访档（禁止校园学号壳与食堂种子）
-    schema = followup_domain_schema(
-        title,
-        "DOM-EVENT",
-        overrides={
+    return _build(
+        {
             "user_label": "随访对象",
             "admin_label": "公卫主管（总管）",
             "subadmin_label": "随访员",
@@ -649,9 +670,8 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
                 {"title": "分类管理", "lead": "按随访分类筛选重点对象。"},
             ],
-        },
+        }
     )
-    return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
 
 
 def _event_apply_incident_skin(schema: dict[str, Any], scene: str) -> dict[str, Any]:
@@ -1065,27 +1085,81 @@ def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     "可申请",
                 ),
                 "archive_menu_admin": "培训课档案",
-                "archive_menu_user": "培训课列表",
+                "archive_menu_user": "培训课说明",
                 "ticket_label": "成绩申请单",
                 "auth_eyebrow": "内训成绩",
-                "auth_lead": "验证码登录；查看培训课并提交补考或成绩更正申请，由培训专员审核。",
-                "auth_points": ["验证码登录", "培训课列表", "成绩申请"],
+                "auth_lead": (
+                    "验证码登录；在「我的成绩申请」选择培训课提交补考或成绩更正，由培训专员审核。"
+                ),
+                "auth_points": ["验证码登录", "本人成绩申请", "培训审核"],
                 "register_hint": "注册后可提交成绩相关申请",
                 "notice_title": "成绩须知",
-                "notice_body": "补考与更正须说明理由；不对接外部证书库。",
+                "notice_body": (
+                    "请选择本人相关培训课提交补考或更正并说明理由；"
+                    "培训课说明页仅作查阅。不对接外部证书库。"
+                ),
                 "notice_page_title": "培训公告",
                 "pending_label": "成绩审核",
+                "apply_from_list": True,
+                "user_tickets_first": True,
+                "filter_by_owner_token": True,
+                "owner_token_source": "employeeNo",
+                "owner_token_strict": False,
+                "my_tickets_page_lead": (
+                    "在此选择本人相关培训课提交补考或成绩更正并跟踪审核；培训课说明页仅作查阅。"
+                ),
+                "my_tickets_empty": "还没有成绩申请，点击右上角提交申请。",
                 "contact_channel_options": ["成绩更正", "补考申请", "缓考备案", "其他"],
                 "banners": [
-                    {"title": "培训课列表", "lead": "按类别浏览内训课与讲师。"},
-                    {"title": "成绩申请", "lead": "提交补考或成绩更正，等待培训确认。"},
+                    {"title": "本人申请", "lead": "在「我的成绩申请」选培训课提交补考或更正。"},
+                    {"title": "培训课说明", "lead": "查阅内训课与讲师（说明用）。"},
                     {"title": "培训公告", "lead": "补考与成绩节点见公告栏。"},
-                    {"title": "我的申请", "lead": "跟踪审核进度。"},
-                    {"title": "分类检索", "lead": "必修/选修快速定位。"},
+                    {"title": "审核跟踪", "lead": "查看培训确认或驳回结果。"},
+                    {"title": "分类查阅", "lead": "必修/选修快速定位。"},
                 ],
             },
         )
     return followup_domain_schema(title, "DOM-GRADE")
+
+
+def _bed_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """床位：默认选房逛目录；开题主写调宿/退宿则填单优先。"""
+    from app.bake.schema.followup_presets import followup_domain_schema
+    from app.bake.scene_scan import bed_transfer_primary
+
+    if bed_transfer_primary(title, proposal_text):
+        return followup_domain_schema(
+            title,
+            "DOM-BED",
+            overrides={
+                "doc": "床位：调宿/退宿填单优先（床位说明查阅；非新生选房逛目录）。",
+                "archive_menu_user": "床位说明",
+                "auth_lead": (
+                    "验证码登录；在「我的床位申请」选择调宿或退宿事项并填写原床位说明，宿管审核。"
+                ),
+                "auth_points": ["验证码登录", "调宿/退宿填单", "宿管审批"],
+                "register_hint": "注册时建议填写现楼栋与房间",
+                "notice_body": (
+                    "请在「我的床位申请」提交调宿/退宿并写明原床位；床位说明页可查阅余量。"
+                    "本期无门锁对接。"
+                ),
+                "apply_from_list": True,
+                "user_tickets_first": True,
+                "my_tickets_page_lead": "在此提交调宿或退宿并跟踪审批；床位说明页仅作查阅。",
+                "my_tickets_empty": "还没有申请，点击右上角提交。",
+                "contact_channel_options": ["调宿", "退宿", "其他"],
+                "contact_channel_placeholder": "调宿/退宿",
+                "banners": [
+                    {"title": "调宿退宿", "lead": "在「我的床位申请」选类型并填写原床位。"},
+                    {"title": "床位说明", "lead": "查阅楼栋房型与余量（不作选房主入口）。"},
+                    {"title": "宿管公告", "lead": "调宿节点与须知见公告栏。"},
+                    {"title": "审批跟踪", "lead": "查看分配或驳回结果。"},
+                    {"title": "分类查阅", "lead": "按房型筛选说明。"},
+                ],
+            },
+        )
+    return followup_domain_schema(title, "DOM-BED")
+
 
 def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """实习周报：校就业办默认；企业带教走 enterprise；开题绑岗则 matchProfileRoom。"""
@@ -1185,13 +1259,14 @@ def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "subadmin_label": "店员",
                 "auth_eyebrow": "快递代收",
                 "auth_lead": (
-                    "验证码登录；在「我的取件」凭取件码提交取件，到站由店员核销（≠跑腿代买）。"
+                    "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销（≠跑腿代买）。"
                 ),
-                "auth_points": ["验证码登录", "凭码取件", "店员核销"],
+                "auth_points": ["验证码登录", "本人件", "凭码取件", "店员核销"],
                 "notice_page_title": "站点公告",
+                "archive_menu_user": "本人件",
                 "banners": [
-                    {"title": "凭码取件", "lead": "在「我的取件」填写取件码提交，到站核销出库。"},
-                    {"title": "包裹查阅", "lead": "按运单与取件码查询待取包裹。"},
+                    {"title": "凭码取件", "lead": "在「我的取件」选本人件并填写取件码提交。"},
+                    {"title": "本人件", "lead": "按登录手机号查看待取包裹。"},
                     {"title": "站点公告", "lead": "营业时间与逾期催取见公告。"},
                     {"title": "核销跟踪", "lead": "查看取件单是否已出库。"},
                     {"title": "件型查阅", "lead": "普通/生鲜/大件快速定位。"},

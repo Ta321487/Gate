@@ -868,6 +868,19 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         recon_notes=recon_notes,
     )
     hits = list(dict.fromkeys(arch_hits_all + dom_hits + recon_notes))
+    # 选课域：开题写排课引擎 → 接题诚实双显（不 reject，见 SOFT_OVERREACH）
+    if dom == "DOM-COURSE":
+        from app.bake.capabilities import scan_soft_out_of_mvp
+
+        soft = scan_soft_out_of_mvp(scored)
+        if "智能排课" in soft or any(
+            k in (scored or "") for k in ("智能排课", "自动排课", "排课引擎", "排课系统", "教务排课")
+        ):
+            tip = (
+                "提示：开题拟选排课引擎 · 实包为选课占名额与冲突检测（无自动排课），接题须双显。"
+            )
+            if tip not in hits:
+                hits.append(tip)
     warnings = match_warnings_from_hits(hits)
     return MatchResult(
         title=title,
@@ -916,8 +929,10 @@ def build_spec(
     persistence: str | None = None,
     spine: str | None = None,
     spring_security: bool | None = None,
+    match_path: dict | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
+    from app.bake.match_path_axes import match_path_override_scope, resolve_match_path
     from app.bake.staff_posts import roles_for_spec
     from app.bake.stack_scan import (
         normalize_persistence,
@@ -963,18 +978,26 @@ def build_spec(
         proposal_text = proposal
     if not proposal_text:
         proposal_text = title
-    # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
-    schema = (
-        {}
-        if domain == "DOM-GENERIC"
-        else build_domain_schema(
-            title,
-            domain,
-            archetype=archetype,
-            archetypes=arches,
-            proposal_text=proposal_text,
-        )
+    prev_path = match_path if isinstance(match_path, dict) else None
+    path = resolve_match_path(
+        domain,
+        title,
+        proposal_text,
+        prev=prev_path,
     )
+    # GENERIC 壳由 apply_generic_shell 一次组装（含岗位）；具名域在此建 schema
+    with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
+        schema = (
+            {}
+            if domain == "DOM-GENERIC"
+            else build_domain_schema(
+                title,
+                domain,
+                archetype=archetype,
+                archetypes=arches,
+                proposal_text=proposal_text,
+            )
+        )
     spec = {
         "title": title,
         "archetype": archetype,
@@ -1036,8 +1059,11 @@ def build_spec(
         spec["match_meta"] = match_meta
     if proposal:
         spec["proposal"] = proposal
+    spec["match_path"] = path
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
-        spec = apply_generic_shell(spec, proposal_text=proposal_text)
-    return attach_accept(spec, proposal_text)
+        with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
+            spec = apply_generic_shell(spec, proposal_text=proposal_text)
+    with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
+        return attach_accept(spec, proposal_text)

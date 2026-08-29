@@ -178,41 +178,49 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                 )
             elif isinstance(prop, str):
                 prop_body = prop
+        from app.bake.match_path_axes import match_path_override_scope
         from app.bake.schema.shells import _SCENE_COPY_DOMAINS
 
         # 场景/产品皮域必须按开题重编壳：否则匹配期旧 schema 会卡住
         # （例：EVENT 种子已是应急事件标题，列表仍显示「对象姓名/提交打卡」）
+        # 须带 match_path 覆盖：否则生成前重编会丢掉运营台手改的身份/入口
+        path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
         stale_or_missing = (
             not isinstance(spec.get("schema"), dict) or not spec["schema"].get("labels")
         )
-        if stale_or_missing or domain in _SCENE_COPY_DOMAINS:
-            spec["schema"] = build_domain_schema(
-                title,
-                domain,
-                archetype=archetype,
-                archetypes=arches,
-                proposal_text=prop_body,
-            )
-        else:
-            # 资料页身份随开题场景；有 profile 时也重绑，避免旧壳校园身份残留
-            spec["schema"] = attach_profile_fields(
-                spec["schema"],
-                domain,
-                title=title,
-                proposal_text=prop_body,
-            )
-            # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
-            from app.bake.staff_posts import attach_staff_posts
+        with match_path_override_scope(
+            domain, path.get("scene"), path.get("entry")
+        ):
+            if stale_or_missing or domain in _SCENE_COPY_DOMAINS:
+                spec["schema"] = build_domain_schema(
+                    title,
+                    domain,
+                    archetype=archetype,
+                    archetypes=arches,
+                    proposal_text=prop_body,
+                )
+            else:
+                # 资料页身份随开题场景；有 profile 时也重绑，避免旧壳校园身份残留
+                spec["schema"] = attach_profile_fields(
+                    spec["schema"],
+                    domain,
+                    title=title,
+                    proposal_text=prop_body,
+                )
+                # 始终重绑岗位表 + allowAppointFromUsers（仅有 staff_posts 的旧壳会漏关任命）
+                from app.bake.staff_posts import attach_staff_posts
 
-            spec["schema"] = attach_staff_posts(
-                dict(spec["schema"]),
-                domain,
-                archetype,
-                arches,
-                proposal_text=prop_body,
-                title=title,
-            )
+                spec["schema"] = attach_staff_posts(
+                    dict(spec["schema"]),
+                    domain,
+                    archetype,
+                    arches,
+                    proposal_text=prop_body,
+                    title=title,
+                )
     if not spec.get("accept"):
+        from app.bake.match_path_axes import match_path_override_scope
+
         proposal_text = ""
         prop = spec.get("proposal")
         if isinstance(prop, dict):
@@ -227,7 +235,11 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
             proposal_text = prop
         if not proposal_text:
             proposal_text = title
-        spec = attach_accept(spec, proposal_text)
+        path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
+        with match_path_override_scope(
+            domain, path.get("scene"), path.get("entry")
+        ):
+            spec = attach_accept(spec, proposal_text)
     return spec
 
 
@@ -274,6 +286,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.order_extras import apply_order_extras_to_spec
     from app.bake.features.proposal_caps import merge_proposal_capabilities
     from app.bake.features.ux_scan import apply_ux_to_spec
+    from app.bake.match_path_axes import match_path_override_scope
     from app.services.proposal import strip_non_dev_sections
 
     body = strip_non_dev_sections(proposal_text or "")
@@ -296,13 +309,16 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         domain=domain,
         primary_archetype=archetype,
     )
-    schema = build_domain_schema(
-        spec.get("title") or "毕设系统",
-        domain,
-        archetype=archetype,
-        archetypes=arches,
-        proposal_text=body,
-    )
+    # 须吃 match_path：否则 ensure_spec_schema / 二次 attach 会丢掉运营台手改入口
+    path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
+    with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
+        schema = build_domain_schema(
+            spec.get("title") or "毕设系统",
+            domain,
+            archetype=archetype,
+            archetypes=arches,
+            proposal_text=body,
+        )
     schema = copy.deepcopy(schema)
     schema["capabilities"] = req
     schema["accept"] = decision["accept"]
@@ -369,14 +385,15 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.staff_posts import attach_staff_posts, roles_for_spec
 
     sch = out.get("schema") if isinstance(out.get("schema"), dict) else {}
-    out["schema"] = attach_staff_posts(
-        dict(sch),
-        domain,
-        archetype,
-        arches,
-        proposal_text=body,
-        title=str(spec.get("title") or ""),
-    )
+    with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
+        out["schema"] = attach_staff_posts(
+            dict(sch),
+            domain,
+            archetype,
+            arches,
+            proposal_text=body,
+            title=str(spec.get("title") or ""),
+        )
     dom_roles = list((DOMAINS.get(domain) or {}).get("roles") or [])
     out["roles"] = roles_for_spec(dom_roles, out["schema"])
     return out

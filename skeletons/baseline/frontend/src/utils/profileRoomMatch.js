@@ -72,3 +72,31 @@ export function filterArchiveByProfileRoom(items, extras = {}, opts = {}) {
     ),
   )
 }
+
+/**
+ * 本人件/本人课：档案 isbn/author/title 含登录手机或资料学号。
+ * strict=true（驿站）：无令牌→空列表；strict=false（成绩）：无匹配则回退全库演示。
+ */
+export function ownerTokenFromProfile(profile = {}, source = 'phone') {
+  const src = String(source || 'phone').trim() || 'phone'
+  if (src === 'phone') return String(profile?.phone || '').trim()
+  const extras = profile?.extras || {}
+  return String(extras[src] || profile?.[src] || '').trim()
+}
+
+export function archiveItemHasOwnerToken(item, token) {
+  const t = normRoomToken(token)
+  if (!t || t.length < 4) return false
+  const blob = normRoomToken(
+    `${item?.isbn || ''} ${item?.author || ''} ${item?.title || ''}`,
+  )
+  return blob.includes(t)
+}
+
+export function filterArchiveByOwnerToken(items, token, { strict = false } = {}) {
+  const t = normRoomToken(token)
+  if (!t || t.length < 4) return strict ? [] : items || []
+  const hits = (items || []).filter((it) => archiveItemHasOwnerToken(it, token))
+  if (strict) return hits
+  return hits.length ? hits : items || []
+}

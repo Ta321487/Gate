@@ -274,9 +274,7 @@ BUSINESS_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("多仓批次", "ERP/多仓进销存"),
     # 裸「批次管理」歧义大（食安/物资台账也写）；须与 ERP 同伴共现才算过重
     ("批次管理", "ERP/多仓进销存"),
-    # 各域常见吹大
-    ("智能排课", "智能排课"),
-    ("自动排课", "智能排课"),
+    # 各域常见吹大（智能排课见 SOFT_OVERREACH：接题双显不 reject）
     ("公海池", "外呼/公海池"),
     ("外呼中心", "外呼/公海池"),
     # 毕设级一对一私信已落地为 cap=dm（短轮询）；真 IM SDK / WebSocket 推送仍过重
@@ -307,6 +305,15 @@ _OVERREACH_NEED_COMPANION: dict[str, tuple[str, ...]] = {
     "批次管理": ("多仓", "进销存", "erp系统", "ERP", "WMS", "多组织库存", "采购入库"),
     "进销存": ("多仓", "erp系统", "ERP", "WMS", "财务一体化", "多组织库存", "多仓批次", "批次追溯"),
 }
+
+# 软超壳：写入本期不做 / 接题双显，但不触发 accept=reject（排课引擎等）
+SOFT_OVERREACH_SIGNALS: list[tuple[str, str]] = [
+    ("智能排课", "智能排课"),
+    ("自动排课", "智能排课"),
+    ("排课引擎", "智能排课"),
+    ("排课系统", "智能排课"),
+    ("教务排课", "智能排课"),
+]
 
 
 def implemented_capability_ids() -> set[str]:
@@ -368,6 +375,23 @@ def scan_out_of_scope(text: str) -> list[str]:
     return hits
 
 
+def scan_soft_out_of_mvp(text: str) -> list[str]:
+    """软超壳：进本期不做与接题双显，不 reject。"""
+    from app.services.proposal import strip_non_dev_sections
+
+    raw = strip_non_dev_sections(text or "")
+    focus = raw
+    try:
+        from app.bake.catalog import proposal_impl_sections_for_scope
+
+        focused = proposal_impl_sections_for_scope(text or "")
+        if focused and focused.strip():
+            focus = focused
+    except Exception:  # noqa: BLE001
+        pass
+    return _scan_signals(focus, SOFT_OVERREACH_SIGNALS, ignore_contrast=True)
+
+
 def _scan_oa_triple(text: str) -> list[str]:
     """开题同时承诺用章、用车、开具证明三条申请主路径 → reject。"""
     t = text or ""
@@ -390,6 +414,7 @@ def compose_out_of_mvp(
     - `DOMAINS[*].out_of_mvp`：行业壳常见边界，维护者随时改 domains.py
     - 开题有实质正文时：仅保留与题面相关的默认项（题面出现该词/片段即相关，含「不做X」）
     - 再并入 `scan_out_of_scope` 命中项（开题提及的超壳卖点）
+    - 再并入软超壳（排课等：双显不 reject）
     """
     from app.bake.domains import DOMAINS
 
@@ -414,6 +439,9 @@ def compose_out_of_mvp(
             _add(item)
 
     for sig in scanned_signals or []:
+        _add(str(sig))
+
+    for sig in scan_soft_out_of_mvp(proposal_text):
         _add(str(sig))
 
     return out

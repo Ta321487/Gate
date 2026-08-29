@@ -555,6 +555,9 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系/班级", required=True, on_register=True, max_length=64),
         _pf("gradeYear", "年级", on_register=True, max_length=16),
+        _pf("dormBuilding", "楼栋", required=True, on_register=True, max_length=32, placeholder="如 一号楼"),
+        _pf("dormRoom", "房间", required=True, on_register=True, max_length=16, placeholder="如 101"),
+        _pf("bedNo", "床位", max_length=8),
     ],
     "DOM-CHECKIN": [
         _pf("studentNo", "学号", required=True, on_register=True, max_length=32),
@@ -587,6 +590,7 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
     "DOM-CARPASS": [
         _pf("studentNo", "学号/工号", required=True, on_register=True, max_length=32),
         _pf("dept", "院系/部门", required=True, on_register=True, max_length=64),
+        _pf("plateNo", "车牌号", required=True, on_register=True, max_length=16, placeholder="如 粤B·12345"),
     ],
     "DOM-LISTING": [
         _pf("clientType", "客户类型", required=True, on_register=True, field_type="select",
