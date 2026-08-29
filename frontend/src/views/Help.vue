@@ -284,7 +284,7 @@ const sections = [
         bullets: [
           '拆解粒度：Island 文案 / 公告种子 / 实体与岗位称呼、E-R 中文、功能模块图、测试用例等各自为独立 Unit；每 Unit 生成后做校验，失败最多重试 1 次。',
           '并发设置：「大模型」页「填岛并发 Unit 数」（1～8，默认 3）；环境变量 GF_FILL_UNIT_CONCURRENCY 为冷启动默认值，页面保存后写入配置库，一键生成 step「业务配置填充」按此并发。',
-          '计划预览：项目详情「产物 / 对照」可点「填岛拆解计划」查看各 Unit（不调 LLM）；生成后工作区内 islands/unit_flow/plan.json 为同源产物。',
+          '计划预览：项目详情「产物 / 对照」可点「填岛拆解计划」查看各 Unit（只看不执行、不调 LLM）；实际填岛在一键生成 step「业务配置填充」；生成后工作区内 islands/unit_flow/plan.json 为同源产物。',
           '任务日志：生成中可看到 unit · start/done/failed 行；一键生成页会实时显示各 Unit 状态（SSE），断线后自动重连。',
           '过大并发可能触发厂商限流；与 token 预算、修复轮次上限同在「大模型」页配置。',
         ],

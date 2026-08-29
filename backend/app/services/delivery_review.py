@@ -46,7 +46,6 @@ def _empty_state() -> dict[str, Any]:
         "last_qa": None,
         "last_verify": None,
         "pre_generate_ack_at": None,
-        "fill_plan_ack_at": None,
         "first_pack_at": None,
         "first_pack_direct": None,
         "review_entered_at": None,
@@ -303,13 +302,6 @@ def ack_pre_generate(project: Project) -> dict[str, Any]:
     return st
 
 
-def ack_fill_plan(project: Project) -> dict[str, Any]:
-    st = get_review_state(project)
-    st["fill_plan_ack_at"] = _utc_now()
-    save_review_state(project, st)
-    return st
-
-
 def pre_generate_acked(project: Project) -> bool:
     st = get_review_state(project)
     return bool(st.get("pre_generate_ack_at"))
@@ -550,7 +542,6 @@ def build_review_payload(project: Project, workspace: Path | None = None) -> dic
             "review_entered_at": st.get("review_entered_at"),
             "repack_count": int(st.get("repack_count") or 0),
             "pre_generate_ack_at": st.get("pre_generate_ack_at"),
-            "fill_plan_ack_at": st.get("fill_plan_ack_at"),
         },
     }
 
