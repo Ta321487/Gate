@@ -1132,8 +1132,37 @@ button.filter-pill.on {
   100% { background-position: -100% 0; }
 }
 
+.help-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin: 4px 0 8px;
+  padding: 10px 0 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line-soft);
+}
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+}
+.help-toc-link {
+  font-size: 13px;
+  color: var(--teal);
+  text-decoration: none;
+}
+.help-toc-link:hover {
+  text-decoration: underline;
+}
 .help-section {
   margin-top: 22px;
+  /* 吸顶工具条高度，避免锚点标题被挡住 */
+  scroll-margin-top: 88px;
 }
 .help-section:first-of-type {
   margin-top: 4px;
