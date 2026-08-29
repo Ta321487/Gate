@@ -121,16 +121,50 @@
     <el-dialog v-model="visible" :title="verbs.apply || '提交'" width="520px">
       <el-form :model="form" label-width="88px" require-asterisk-position="right">
         <template v-if="applyFromList">
-          <el-form-item :label="archiveLabel" required>
-            <el-select v-model="form.itemId" filterable placeholder="请选择本人寝室场次" style="width:100%">
-              <el-option
-                v-for="it in archiveItems"
-                :key="it.id"
-                :label="it.author ? `${it.title}（${it.author}）` : it.title"
-                :value="it.id"
+          <!-- 驿站取件：取件码优先，档案下拉仅作兜底 -->
+          <template v-if="requireClaimCode">
+            <el-form-item :label="remarkLabel" :required="requireRemark">
+              <el-input
+                v-model="form.remark"
+                maxlength="64"
+                :placeholder="`请填写${remarkLabel}`"
+                @blur="matchClaimFromRemark"
+                @input="onClaimRemarkInput"
               />
-            </el-select>
-          </el-form-item>
+            </el-form-item>
+            <p v-if="claimMatchedLine" class="sub claim-match">已匹配：{{ claimMatchedLine }}</p>
+            <el-form-item :label="archiveLabel" required>
+              <el-select
+                v-model="form.itemId"
+                filterable
+                clearable
+                :placeholder="claimFilteredArchiveItems.length ? (normRoomToken(form.remark) ? '已匹配待取件，可改选' : '本人待取件，可改选') : '请先填写取件码或确认资料手机号'"
+                style="width:100%"
+              >
+                <el-option
+                  v-for="it in claimFilteredArchiveItems"
+                  :key="it.id"
+                  :label="claimOptionLabel(it)"
+                  :value="it.id"
+                />
+              </el-select>
+            </el-form-item>
+          </template>
+          <template v-else>
+            <el-form-item :label="archiveLabel" required>
+              <el-select v-model="form.itemId" filterable :placeholder="archiveSelectPlaceholder" style="width:100%">
+                <el-option
+                  v-for="it in archiveItems"
+                  :key="it.id"
+                  :label="it.author ? `${it.title}（${it.author}）` : it.title"
+                  :value="it.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item :label="remarkLabel" :required="requireRemark">
+              <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" :placeholder="`请填写${remarkLabel}`" />
+            </el-form-item>
+          </template>
           <el-form-item v-if="pickDateRange" label="起止日期" required>
             <el-date-picker
               v-model="form.period"
@@ -155,9 +189,6 @@
               placeholder="选填"
               style="width:100%"
             />
-          </el-form-item>
-          <el-form-item :label="remarkLabel" :required="requireRemark">
-            <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" :placeholder="`请填写${remarkLabel}`" />
           </el-form-item>
           <el-form-item v-if="requireAttach" label="附件" required>
             <div class="attach-row">
@@ -274,9 +305,12 @@ import {
   ticketStatusLabel,
 } from '../../utils/domainSchema.js'
 import {
+  filterArchiveByOwnerToken,
   filterArchiveByProfileRoom,
   matchSiteByBuilding,
   matchUnitByRoom,
+  normRoomToken,
+  ownerTokenFromProfile,
   profileSiteRoomFromExtras,
 } from '../../utils/profileRoomMatch.js'
 
@@ -289,6 +323,10 @@ const labels = computed(() => getSchema().labels || {})
 const applyVerb = computed(() => verbs.value.apply || '提交')
 const archiveMode = computed(() => (getSchema().capabilities || []).includes('archive'))
 const applyFromList = computed(() => !!ticket.applyFromList)
+const requireClaimCode = computed(() => !!ticket.requireClaimCode)
+const filterByOwnerToken = computed(() => !!ticket.filterByOwnerToken)
+const ownerTokenSource = computed(() => ticket.ownerTokenSource || 'phone')
+const ownerTokenStrict = computed(() => !!ticket.ownerTokenStrict)
 const matchProfileRoom = computed(() => !!ticket.matchProfileRoom)
 const matchProfileOpts = computed(() => ({
   buildingKey: ticket.matchProfileBuildingKey || 'dormBuilding',
@@ -306,6 +344,61 @@ const matchProfileDenyMessage = computed(
 const archiveLabel = computed(() => archive.label || '事项')
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const requireRemark = computed(() => !!ticket.requireRemark)
+const archiveSelectPlaceholder = computed(() => {
+  if (matchProfileRoom.value) return '请选择本人寝室场次'
+  if (requireClaimCode.value) return '凭取件码匹配待取件'
+  if (filterByOwnerToken.value) return '请选择本人相关项'
+  return `请选择${archiveLabel.value}`
+})
+const claimMatchedLine = ref('')
+const ownerArchiveItems = computed(() => archiveItems.value)
+const claimFilteredArchiveItems = computed(() => {
+  const pool = ownerArchiveItems.value
+  if (!requireClaimCode.value) return pool
+  const code = normRoomToken(form.remark)
+  // 未填取件码：展示本人件池（按手机筛过）；填码后再收窄
+  if (!code) return pool
+  return (pool || []).filter((it) => {
+    const isbn = normRoomToken(it?.isbn)
+    const title = normRoomToken(it?.title)
+    return isbn === code || title === code || isbn.includes(code) || title.includes(code)
+  })
+})
+
+function claimOptionLabel(it) {
+  if (!it) return ''
+  const title = it.title || ''
+  const author = it.author || ''
+  return author ? `${title}（${author}）` : title
+}
+
+function matchClaimFromRemark() {
+  if (!requireClaimCode.value) return
+  const code = normRoomToken(form.remark)
+  if (code.length < 4) {
+    claimMatchedLine.value = ''
+    return
+  }
+  const hits = (ownerArchiveItems.value || []).filter((it) => {
+    const isbn = normRoomToken(it?.isbn)
+    const title = normRoomToken(it?.title)
+    return isbn === code || title === code || isbn.includes(code) || title.includes(code)
+  })
+  if (hits.length === 1) {
+    form.itemId = hits[0].id
+    const t = hits[0].title || ''
+    const codeHint = hits[0].isbn ? String(hits[0].isbn).trim() : ''
+    claimMatchedLine.value = codeHint && codeHint !== t ? `${t} / ${codeHint}` : t
+  } else {
+    claimMatchedLine.value = ''
+  }
+}
+
+function onClaimRemarkInput() {
+  if (!requireClaimCode.value) return
+  if (normRoomToken(form.remark).length >= 4) matchClaimFromRemark()
+  else claimMatchedLine.value = ''
+}
 const pickDateRange = computed(() => !!ticket.pickDateRange)
 const showFollowCols = computed(() => ticketShowsFollowCols())
 const channelOptions = computed(() => followChannelOptions())
@@ -483,14 +576,17 @@ async function loadArchiveItems() {
   try {
     const res = await http.get('/api/archive', { params: { page: 1, size: 100 } })
     let list = res.data?.list || res.list || []
-    if (matchProfileRoom.value) {
-      let extras = {}
+    let profile = null
+    if (matchProfileRoom.value || filterByOwnerToken.value) {
       try {
         const me = await http.get('/api/profile')
-        extras = me.data?.extras || {}
+        profile = me.data || {}
       } catch {
-        extras = {}
+        profile = {}
       }
+    }
+    if (matchProfileRoom.value) {
+      const extras = profile?.extras || {}
       const opts = matchProfileOpts.value
       if (!(extras[opts.buildingKey] || '').trim() || !(extras[opts.roomKey] || '').trim()) {
         ElMessage.warning(matchProfileNeedMessage.value)
@@ -500,6 +596,23 @@ async function loadArchiveItems() {
       list = filterArchiveByProfileRoom(list, extras, opts)
       if (!list.length) {
         ElMessage.warning(matchProfileDenyMessage.value)
+      }
+    }
+    if (filterByOwnerToken.value) {
+      const token = ownerTokenFromProfile(profile || {}, ownerTokenSource.value)
+      const strict = ownerTokenStrict.value
+      if (strict && (!token || token.length < 4)) {
+        ElMessage.warning(
+          ownerTokenSource.value === 'phone'
+            ? '请先在个人资料填写手机号以查看本人件'
+            : '请先在个人资料填写学号以查看本人相关项',
+        )
+        archiveItems.value = []
+        return
+      }
+      list = filterArchiveByOwnerToken(list, token, { strict })
+      if (strict && !list.length) {
+        ElMessage.warning('暂无匹配到本人待取件，请核对手机号或取件码')
       }
     }
     archiveItems.value = list
@@ -568,6 +681,7 @@ async function openApply() {
     priority: '普通',
     contactPhone: '',
   })
+  claimMatchedLine.value = ''
   units.value = []
   if (applyFromList.value) {
     await loadArchiveItems()
@@ -735,6 +849,7 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .sub { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
+.sub.claim-match { margin: -4px 0 10px 88px; color: #0f766e; }
 .sub.sched { margin-top: 2px; color: #0f766e; }
 .sub.pickup-tip { margin-top: 6px; color: #b45309; }
 .sub a { color: #0369a1; }

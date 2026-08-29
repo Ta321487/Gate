@@ -96,13 +96,13 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '专业必修'), (2, '公共必修'), (3, '选修');
 INSERT IGNORE INTO course_item (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '数据结构', '张老师', 'CS2101 / 3学分', 1, 1, 'available'),
-(2, '大学英语', '李老师', 'EN1002 / 2学分', 2, 1, 'available'),
-(3, '软件工程导论', '赵老师', 'SE3001 / 3学分', 1, 1, 'available'),
-(4, '线性代数', '陈老师', 'MA1203 / 3学分', 2, 1, 'available'),
-(5, 'Python 程序设计', '周老师', 'CS1050 / 2学分', 3, 1, 'available');
+(1, '数据结构', '张老师', 'CS2101 / 3学分 / S20260002', 1, 1, 'available'),
+(2, '大学英语', '李老师', 'EN1002 / 2学分 / S20269999', 2, 1, 'available'),
+(3, '软件工程导论', '赵老师', 'SE3001 / 3学分 / S20260002', 1, 1, 'available'),
+(4, '线性代数', '陈老师', 'MA1203 / 3学分 / S20269999', 2, 1, 'available'),
+(5, 'Python 程序设计', '周老师', 'CS1050 / 2学分 / S20260002', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '成绩须知', '成绩更正与补考申请由教务审核；不对接学信网。', 'admin', '教务主管'
+SELECT '成绩须知', '请优先选择本人相关课程（演示库按学号标注）；成绩更正与补考由教务审核；不对接学信网。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='成绩须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '补考安排', '补考名单以教务公告为准，请按时提交申请。', 'admin', '教务主管'

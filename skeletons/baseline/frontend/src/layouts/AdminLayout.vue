@@ -12,7 +12,7 @@
     </el-aside>
     <el-container>
       <el-header class="wb-header">
-        <span class="wb-header-title">{{ title }}</span>
+        <span class="wb-header-title" :title="title">{{ title }}</span>
         <div class="wb-header-right">
           <MessageBell />
           <span>{{ displayName }} · {{ adminRoleLabel }}</span>

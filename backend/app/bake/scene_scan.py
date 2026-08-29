@@ -14,7 +14,36 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from contextvars import ContextVar, Token
+from typing import Any, Literal
+
+# 匹配确认手改：scene / entry 覆盖（由 match_path_axes 注入；扫词逻辑不复制）
+_PATH_OVERRIDE: ContextVar[dict[str, Any] | None] = ContextVar(
+    "match_path_override", default=None
+)
+
+
+def push_path_override(
+    *,
+    domain: str,
+    scene: str | None = None,
+    entry: str | None = None,
+) -> Token:
+    return _PATH_OVERRIDE.set(
+        {
+            "domain": domain or "",
+            "scene": (scene or "").strip() or None,
+            "entry": (entry or "").strip() or None,
+        }
+    )
+
+
+def reset_path_override(token: Token) -> None:
+    _PATH_OVERRIDE.reset(token)
+
+
+def _path_override() -> dict[str, Any] | None:
+    return _PATH_OVERRIDE.get()
 
 # 与历史 shells 导出名兼容（builders / profile 经本模块或 shells 再导出使用）
 CAMPUS_HINTS = ("学生", "班级", "班主任", "大学生", "校园", "学工", "高校", "学校", "校内")
@@ -331,6 +360,49 @@ INTERN_BIND_HINTS = (
     "定岗后交周报",
     "对号入岗",
     "实习岗绑定",
+)
+# 事件：学生/家长/员工本人填报打卡（填单优先）；未写则对象台账作业（网格员/班主任）
+EVENT_SELF_REPORT_HINTS = (
+    "家长代填",
+    "学生填报",
+    "学生打卡",
+    "学生端打卡",
+    "本人晨午检",
+    "自行打卡",
+    "学生健康打卡",
+    "家长填报",
+    "学生每日打卡",
+    "本人健康打卡",
+    "员工自行打卡",
+    "员工每日健康打卡",
+    "学生（或家长代填）",
+    "学生或家长",
+    # 校园晨午检毕设多为学生/家长填报（班主任台账题少写「晨午检」作主路径词）
+    "晨午检",
+    "晨检",
+    "午检",
+    "健康打卡",
+    "每日打卡",
+    "每日健康",
+    "防疫打卡",
+)
+# 床位：开题主写调宿/退宿 → 填单优先；纯选房/分床仍逛目录；选房+调宿混写偏填单
+BED_TRANSFER_HINTS = (
+    "调宿",
+    "退宿",
+    "调宿退宿",
+    "调宿申请",
+    "退宿申请",
+    "调换宿舍",
+)
+BED_SELECT_HINTS = (
+    "新生选房",
+    "在线选房",
+    "床位分配",
+    "分床",
+    "选房系统",
+    "床位选择",
+    "宿舍选房",
 )
 # 实验室准入：校园默认；厂区/安环走 enterprise
 LABSAFE_ENTERPRISE_HINTS = ("厂区", "安环", "企业实验室", "EHS准入", "产线实验室", "车间实验室")
@@ -1084,9 +1156,67 @@ def scene_intern_parts(title: str, body: str = "") -> Scene:
     return scene_intern(copy_scan_text(t, b))
 
 
-def intern_post_bound(title: str = "", proposal_text: str = "") -> bool:
+def intern_post_bound(
+    title: str = "",
+    proposal_text: str = "",
+    *,
+    respect_override: bool = True,
+) -> bool:
     """开题要求岗位与学生绑定 / 一人一岗时为 True（否则选已建档岗交周报）。"""
+    if respect_override:
+        ov = _path_override()
+        if (
+            ov
+            and ov.get("domain") == "DOM-INTERN"
+            and ov.get("entry") in {"post_bound", "select_post"}
+        ):
+            return ov["entry"] == "post_bound"
     return scan_has(copy_scan_text(title or "", proposal_text or ""), INTERN_BIND_HINTS)
+
+
+def event_self_report(
+    title: str = "",
+    proposal_text: str = "",
+    *,
+    respect_override: bool = True,
+) -> bool:
+    """开题主写学生/家长/员工本人打卡填报 → True（填单优先）；对象台账作业保持默认。"""
+    if respect_override:
+        ov = _path_override()
+        if (
+            ov
+            and ov.get("domain") == "DOM-EVENT"
+            and ov.get("entry") in {"self_report", "caseload"}
+        ):
+            return ov["entry"] == "self_report"
+    return scan_has(
+        copy_scan_text(title or "", proposal_text or ""), EVENT_SELF_REPORT_HINTS
+    )
+
+
+def bed_transfer_primary(
+    title: str = "",
+    proposal_text: str = "",
+    *,
+    respect_override: bool = True,
+) -> bool:
+    """开题写调宿/退宿 → True（填单优先）。
+
+    纯选房/分床（无调宿词）→ False 逛目录。
+    选房+调宿混写 → 仍 True（偏本人填单，目录仅作余量查阅）。
+    """
+    if respect_override:
+        ov = _path_override()
+        if (
+            ov
+            and ov.get("domain") == "DOM-BED"
+            and ov.get("entry") in {"transfer", "select_bed"}
+        ):
+            return ov["entry"] == "transfer"
+    t = copy_scan_text(title or "", proposal_text or "")
+    if scan_has(t, BED_TRANSFER_HINTS):
+        return True
+    return False
 
 
 def scene_labsafe(text: str) -> Scene:
@@ -1339,8 +1469,14 @@ def scene_for(
     domain: str,
     title: str = "",
     proposal_text: str = "",
+    *,
+    respect_override: bool = True,
 ) -> Scene:
     """域级场景 id：壳文案与 profileFields 必须读同一结果。"""
+    if respect_override:
+        ov = _path_override()
+        if ov and ov.get("domain") == domain and ov.get("scene"):
+            return ov["scene"]  # type: ignore[return-value]
     t = copy_scan_text(title, proposal_text)
     if domain == "DOM-CRM":
         return scene_crm_parts(title, proposal_text)

@@ -144,6 +144,7 @@ onMounted(() => {
   line-height: 1.25;
   letter-spacing: -0.03em;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 .lead {
   position: relative;

@@ -436,7 +436,7 @@ import {
   ticketFineLabel,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
-import { profileRoomMatches } from '../../utils/profileRoomMatch.js'
+import { profileRoomMatches, filterArchiveByOwnerToken, ownerTokenFromProfile } from '../../utils/profileRoomMatch.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -502,6 +502,9 @@ const matchProfileNeedMessage = computed(
 const matchProfileDenyMessage = computed(
   () => ticket.matchProfileDenyMessage || '只能对本寝室的查寝场次登记归寝',
 )
+const filterByOwnerToken = computed(() => !!ticket.filterByOwnerToken)
+const ownerTokenSource = computed(() => ticket.ownerTokenSource || 'phone')
+const ownerTokenStrict = computed(() => !!ticket.ownerTokenStrict)
 const needApplyDialog = computed(
   () =>
     richRemark.value
@@ -932,8 +935,19 @@ async function load() {
       tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
     },
   })
-  list.value = res.data.list
-  total.value = res.data.total
+  let rows = res.data.list || []
+  // 本人件/本人课：登录后按手机/学号软筛（访客仍看 teaser 全量）
+  if (filterByOwnerToken.value && !isGuest.value) {
+    try {
+      const me = await http.get('/api/profile')
+      const token = ownerTokenFromProfile(me.data || {}, ownerTokenSource.value)
+      rows = filterArchiveByOwnerToken(rows, token, { strict: ownerTokenStrict.value })
+    } catch {
+      if (ownerTokenStrict.value) rows = []
+    }
+  }
+  list.value = rows
+  total.value = filterByOwnerToken.value && !isGuest.value ? rows.length : res.data.total
 }
 
 async function loadFavIds() {

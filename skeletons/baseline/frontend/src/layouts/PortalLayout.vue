@@ -2,7 +2,7 @@
   <div class="portal" :data-has-stage="hasStage ? '1' : '0'">
     <header class="top">
       <div class="top-inner">
-        <div class="brand" @click="$router.push(homePath)">
+        <div class="brand" :title="title" @click="$router.push(homePath)">
           <span class="brand-mark" aria-hidden="true" />
           <span class="brand-text">{{ title }}</span>
         </div>
@@ -154,6 +154,7 @@ function logout() {
 .brand-text {
   font-family: var(--portal-font-display);
   font-weight: 700; font-size: 15px; letter-spacing: var(--portal-display-tracking, 0.02em);
+  min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 项多时整词换行到下一行，禁止挤成竖排、也不靠横滑藏菜单 */
@@ -186,6 +187,8 @@ function logout() {
   font-family: var(--portal-font-display);
   font-weight: 600;
   color: var(--portal-ink, #15202b);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .foot-tag { opacity: 0.92; }
 .sep { margin: 0 6px; opacity: 0.5; }

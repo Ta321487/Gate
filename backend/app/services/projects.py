@@ -711,14 +711,19 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         ):
             project.match_locked = True
 
+    path_fields_touched = (
+        getattr(body, "scene", None) is not None
+        or getattr(body, "entry", None) is not None
+    )
     if (
         body.archetype is not None
         or body.domain is not None
         or getattr(body, "persistence", None) is not None
         or getattr(body, "spring_security", None) is not None
+        or path_fields_touched
     ):
         if project.match_locked:
-            raise ValueError("骨架/领域/持久层/鉴权已锁定，请先解锁")
+            raise ValueError("骨架/领域/持久层/鉴权/身份入口已锁定，请先解锁")
         prev_arch, prev_dom = project.archetype, project.domain
         prev_pers = normalize_persistence(getattr(project, "persistence", None))
         prev_sec = normalize_spring_security(getattr(project, "spring_security", None))
@@ -745,12 +750,13 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             project.persistence = normalize_persistence(body.persistence)
         if getattr(body, "spring_security", None) is not None:
             project.spring_security = normalize_spring_security(body.spring_security)
-        # 改骨架/领域/持久层/鉴权后必须重新确认，避免绕过确认直接生成
+        # 改骨架/领域/持久层/鉴权/路径后必须重新确认，避免绕过确认直接生成
         changed = (
             (project.archetype, project.domain) != (prev_arch, prev_dom)
             or normalize_persistence(getattr(project, "persistence", None)) != prev_pers
             or normalize_spring_security(getattr(project, "spring_security", None))
             != prev_sec
+            or path_fields_touched
         )
         if changed and project.match_confirmed:
             project.match_confirmed = False
@@ -832,6 +838,35 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         match_meta["delivery_slug"] = slug
         match_meta["zip_name"] = zip_download_name(slug, project.id)
 
+    from app.bake.match_path_axes import resolve_match_path
+
+    proposal_blob = old_spec.get("proposal")
+    proposal_text = ""
+    if isinstance(proposal_blob, dict):
+        proposal_text = str(
+            proposal_blob.get("excerpt")
+            or proposal_blob.get("text")
+            or proposal_blob.get("summary")
+            or proposal_blob.get("background")
+            or ""
+        )
+    elif isinstance(proposal_blob, str):
+        proposal_text = proposal_blob
+    prev_path = old_spec.get("match_path") if isinstance(old_spec.get("match_path"), dict) else None
+    match_path = resolve_match_path(
+        project.domain,
+        project.title,
+        proposal_text or project.title,
+        scene=getattr(body, "scene", None) if not body.reset else None,
+        entry=getattr(body, "entry", None) if not body.reset else None,
+        prev=None if body.reset else prev_path,
+        clear_overrides=bool(body.reset),
+    )
+    if match_path.get("deviant"):
+        deviant = True
+        project.match_mode = "manual_override"
+        conf = 0.41
+
     project.spec = build_spec(
         title=project.title,
         archetype=project.archetype,
@@ -853,6 +888,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         portal_home_style=portal_home_override,
         persistence=getattr(project, "persistence", None) or "jdbc",
         spring_security=getattr(project, "spring_security", None),
+        match_path=match_path,
     )
     if match_meta.get("delivery_slug"):
         project.spec["delivery_slug"] = match_meta["delivery_slug"]
@@ -869,6 +905,12 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
     if body.confirm:
         if not body.ack:
             raise ValueError("请先勾选确认")
+        path_now = (project.spec or {}).get("match_path") if isinstance(project.spec, dict) else None
+        if isinstance(path_now, dict) and path_now.get("needs_path_ack"):
+            if not getattr(body, "ack_main_path", None):
+                raise ValueError(
+                    "开题未写清主路径入口，请解锁选择入口，或勾选「主路径已核对」后再确认"
+                )
         project.match_confirmed = True
         project.match_locked = True
         project.status = ProjectStatus.ready.value

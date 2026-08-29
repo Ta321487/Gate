@@ -390,6 +390,7 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   height: 56px !important;
   padding: 0 20px;
   background: color-mix(in srgb, var(--portal-surface, #fff) 92%, transparent);
@@ -398,6 +399,8 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
 }
 
 .workbench .wb-header-title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--portal-muted, #6b7c8a);

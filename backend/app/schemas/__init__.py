@@ -166,6 +166,17 @@ class MatchUpdate(BaseModel):
     spring_security: Optional[bool] = Field(
         default=None, description="是否启用 Spring Security 过滤器链"
     )
+    scene: Optional[str] = Field(
+        default=None, description="身份场景覆盖：campus|enterprise|community|…"
+    )
+    entry: Optional[str] = Field(
+        default=None,
+        description="主路径入口覆盖（随领域：如 self_report / post_bound / transfer）",
+    )
+    ack_main_path: Optional[bool] = Field(
+        default=None,
+        description="确认时勾选：主路径/入口已人工核对",
+    )
     theme: Optional[str] = Field(default=None, description="主题 ID")
     chrome: Optional[str] = Field(default=None, description="界面质感 ID")
     layout: Optional[str] = Field(default=None, description="门户布局壳 ID")

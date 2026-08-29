@@ -98,7 +98,12 @@ def evaluate_cross_path(
     多路径或 GENERIC 多路径 → 必须白名单且 defense_ready。
     具名域若 DOMAIN_CAPABILITIES 已覆盖该并集（如 HOTEL=TR）→ 放行。
     """
-    raw = list(archetypes) if not isinstance(archetypes, str) else archetypes
+    if archetypes is None:
+        raw: list[str] = []
+    elif isinstance(archetypes, str):
+        raw = [archetypes]
+    else:
+        raw = list(archetypes)
     arches = normalize_archetypes(raw, primary=primary)
     key = path_key_from_flags(*path_flags(arches))
     entry = lookup_cross_path(key)

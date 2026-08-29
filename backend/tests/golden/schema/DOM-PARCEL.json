@@ -63,12 +63,15 @@
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
+      "filterByOwnerToken": true,
       "issuePassCode": false,
       "key": "parcel_claim",
       "label": "取件单",
       "labelPlural": "取件",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "ownerTokenSource": "phone",
+      "ownerTokenStrict": true,
       "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
@@ -97,18 +100,19 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "校园驿站",
-    "authLead": "验证码登录；在「我的取件」凭取件码提交取件，到站由店员核销出库（≠跑腿代买）。",
+    "authLead": "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库（≠跑腿代买）。",
     "authPoints": [
       "验证码登录",
+      "本人件",
       "凭码取件",
       "店员核销"
     ],
     "messagesPageLead": "审核结果与系统通知。",
     "myTicketsEmpty": "还没有取件单，点击右上角凭码取件。",
-    "myTicketsPageLead": "在此凭取件码提交取件并跟踪核销；包裹查阅页仅作查询。",
+    "myTicketsPageLead": "先看本人待取件，再凭取件码提交并跟踪核销；包裹查阅页仅本人件。",
     "noticePageLead": "营业时间与催取通知，点击条目阅读全文。",
     "noticePageTitle": "驿站公告",
-    "registerRoleHint": "注册后可凭取件码办理取件",
+    "registerRoleHint": "注册手机号用于匹配本人待取件",
     "userHomePath": "/tickets"
   },
   "menus": {
@@ -153,7 +157,7 @@
       },
       {
         "key": "archive",
-        "label": "包裹查阅"
+        "label": "本人件"
       },
       {
         "key": "content",
@@ -167,12 +171,12 @@
   },
   "portalBanners": [
     {
-      "lead": "在「我的取件」填写取件码提交，到站核销出库。",
+      "lead": "在「我的取件」选本人件并填写取件码提交。",
       "title": "凭码取件"
     },
     {
-      "lead": "按运单与取件码查询待取包裹。",
-      "title": "包裹查阅"
+      "lead": "按登录手机号查看待取包裹（非全库商城）。",
+      "title": "本人件"
     },
     {
       "lead": "营业时间与逾期催取见公告。",
@@ -202,7 +206,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请凭取件码与手机号在「我的取件」提交；到站出示后由店员核销。包裹查阅页仅作查询。智能柜硬件不在本期。",
+    "noticeBody": "登录手机号匹配本人待取件；在「我的取件」凭取件码提交，到站出示后由店员核销。包裹查阅页仅展示本人件。智能柜硬件不在本期。",
     "noticeTitle": "取件须知"
   },
   "title": "测试课题",
