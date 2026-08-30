@@ -50,6 +50,10 @@
               <option value="generated">项目 · 已生成待启动</option>
               <option value="running">项目 · 运行中</option>
               <option value="failed">项目 · 质量检查失败</option>
+              <option value="ppt_ready">项目 · 可生成答辩 PPT</option>
+              <option value="ppt_generating">项目 · 答辩 PPT 生成中</option>
+              <option value="ppt_done">项目 · 答辩 PPT 已生成</option>
+              <option value="ppt_dirty">项目 · 答辩 PPT 业务脏</option>
             </select>
           </div>
           <button type="button" class="theme-toggle" id="theme-toggle" title="切换夜间模式">夜间</button>
@@ -550,6 +554,138 @@
                 </div>
               </div>
             </div>
+
+            <!-- 答辩 PPT：一键生成下半截（唯一开跑入口；程序流水线不含 PPT） -->
+            <div id="ppt-next-locked" class="panel mt-16" style="display:none">
+              <div class="panel-hd">
+                <h3>下一步：答辩 PPT</h3>
+                <span class="pill pill-neutral">未解锁</span>
+              </div>
+              <div class="panel-bd">
+                <p class="small muted" style="margin:0 0 12px">需：工程已生成 · 模块图 / E-R 可用 · bake 门禁 overall 通过。程序流水线不含 PPT 步骤。</p>
+                <button type="button" class="btn btn-primary is-disabled" disabled data-action="noop">生成答辩 PPT</button>
+              </div>
+            </div>
+
+            <div id="ppt-next-ready" class="panel mt-16" style="display:none">
+              <div class="panel-hd">
+                <h3>下一步：答辩 PPT</h3>
+                <span class="pill pill-green">可生成</span>
+              </div>
+              <div class="panel-bd">
+                <div class="ppt-evidence mb-12">
+                  <span class="pill pill-green">开题✓</span>
+                  <span class="pill pill-green">模块图✓</span>
+                  <span class="pill pill-green">E-R✓</span>
+                  <span class="pill pill-green">用例✓</span>
+                  <span class="pill pill-green">门禁 overall✓</span>
+                </div>
+                <div class="grid-3 mb-12">
+                  <div class="field">
+                    <label>主题包</label>
+                    <select id="ppt-theme">
+                      <option selected>scholar · 学术默认（按种子）</option>
+                      <option>ink · 墨蓝</option>
+                      <option>grove · 青松</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>版式族</label>
+                    <select id="ppt-layout-family">
+                      <option selected>band · 色带（按种子）</option>
+                      <option>center · 居中</option>
+                      <option>footer · 底栏</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>学院母版</label>
+                    <select id="ppt-master">
+                      <option selected>无 · 学术默认</option>
+                      <option>某学院统一母版（示意）</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="small muted mb-12">业务文案 ⊆ 开题∪实包；图嵌自产物。封面幻灯片固定生成；下列字段全部必填后方可开跑。</p>
+                <div class="parse-sec-hd">封面信息（全部必填 · 写入 cover 页）</div>
+                <div class="grid-2 mb-12" id="ppt-cover-fields">
+                  <div class="field">
+                    <label>学校 <span class="req">*</span></label>
+                    <input type="text" id="ppt-school" placeholder="例：XX 大学" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label>学院 <span class="req">*</span></label>
+                    <input type="text" id="ppt-college" placeholder="例：计算机学院" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label>班级 <span class="req">*</span></label>
+                    <input type="text" id="ppt-class" placeholder="例：软件 2201" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label>姓名 <span class="req">*</span></label>
+                    <input type="text" id="ppt-name" placeholder="学生姓名" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label>学号 <span class="req">*</span></label>
+                    <input type="text" id="ppt-sid" placeholder="学号" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label>指导教师 <span class="req">*</span></label>
+                    <input type="text" id="ppt-advisor" placeholder="导师姓名" autocomplete="off" />
+                  </div>
+                  <div class="field" style="grid-column:1 / -1">
+                    <label>校徽 <span class="req">*</span></label>
+                    <div class="row gap-sm" style="align-items:center">
+                      <input type="file" id="ppt-badge" accept="image/*" style="flex:1" />
+                      <span class="small muted" id="ppt-badge-hint">未上传</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="small muted mb-12" id="ppt-cover-hint">※ 缺任一项时「生成答辩 PPT」禁用</p>
+                <div class="row" style="justify-content:flex-end">
+                  <button type="button" class="btn btn-primary btn-lg is-disabled" id="btn-ppt-generate" data-action="ppt-generate" disabled>生成答辩 PPT</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="ppt-gen-running" style="display:none">
+              <div class="panel mb-16 mt-16">
+                <div class="panel-bd">
+                  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+                    <div style="font-weight:600">正在生成答辩 PPT…</div>
+                    <div class="small muted">任务 #<span id="ppt-job-id">87</span> · <span id="ppt-job-pct">60</span>%</div>
+                  </div>
+                  <div class="progress" style="height:8px"><i id="ppt-job-bar" style="width:60%"></i></div>
+                  <div class="row mt-12 gap-sm">
+                    <button type="button" class="btn btn-danger btn-sm" data-action="ppt-cancel">取消</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="goto-logs" data-log-side="job">日志</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-action="ppt-finish-demo">演示：跳到完成</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel mb-16">
+                <div class="panel-hd"><h3>流水线（仅 PPT）</h3><span class="pill pill-teal">独立短任务</span></div>
+                <div class="panel-bd">
+                  <ul class="step-list" id="ppt-live-steps">
+                    <li class="done"><span class="step-ico">✓</span><div><div>收集证据（开题 + 菜单/栈 + 模块图/E-R/用例）</div><div class="meta">确定性</div></div></li>
+                    <li class="run"><span class="step-ico">…</span><div><div>填页 Unit（LLM 只整形，校验锁源）</div><div class="meta">并发 Unit</div></div></li>
+                    <li><span class="step-ico">·</span><div><div>半自动采集界面截图</div><div class="meta">主路径关键屏</div></div></li>
+                    <li><span class="step-ico">·</span><div><div>瞎写 / 结构检查</div><div class="meta">反吹牛</div></div></li>
+                    <li><span class="step-ico">·</span><div><div>写 deck.json（嵌入图引用）</div><div class="meta">同源预览</div></div></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-hd"><h3>Unit</h3></div>
+                <div class="panel-bd">
+                  <ul class="ppt-unit-list" id="ppt-unit-list">
+                    <li><span class="mono">ppt.cover</span> <span class="pill pill-green">done</span></li>
+                    <li><span class="mono">ppt.modules</span> <span class="pill pill-green">done</span> <span class="small muted">← 嵌模块图</span></li>
+                    <li><span class="mono">ppt.er</span> <span class="pill pill-teal">generating</span> <span class="small muted">← 嵌 E-R</span></li>
+                    <li><span class="mono">ppt.demo</span> <span class="pill pill-neutral">queued</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Runtime -->
@@ -622,11 +758,29 @@
                 </div>
                 <div class="file-row" style="margin:0">
                   <span><strong>工程目录</strong><br /><span class="small muted mono">data/workspace/gf-20260717-001</span></span>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="copy-workspace">复制</button>
+                </div>
+                <div class="file-row" style="margin:0">
+                  <span><strong>填岛拆解计划</strong><br /><span class="small muted">各 Unit 预览</span></span>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="view-island-plan">查看</button>
                 </div>
                 <div class="file-row" style="margin:0">
                   <span><strong>生成配置</strong><br /><span class="small muted">匹配与生成参数</span></span>
                   <button type="button" class="btn btn-ghost btn-sm" data-action="view-spec">查看</button>
                 </div>
+                <div class="file-row ppt-artifact-row" id="ppt-artifact-row" style="margin:0;display:none">
+                  <span>
+                    <strong>答辩 PPT</strong>
+                    <span class="small muted" id="ppt-artifact-meta"> · 12 页 · scholar · band</span><br />
+                    <span class="small" id="ppt-artifact-status">状态：与工程一致</span>
+                  </span>
+                  <div class="row gap-sm" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="ppt-open-compare">打开对照</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="ppt-check">检查</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-ppt-export" data-action="ppt-export">导出 PPTX</button>
+                  </div>
+                </div>
+                <p class="small muted" id="ppt-artifact-note" style="display:none;margin:0;grid-column:1/-1">※ 开跑在「一键生成」下半截；PPTX 单独下载，不进学生 ZIP</p>
               </div>
             </div>
 
@@ -642,6 +796,7 @@
                   <button data-aview="api">学生端 API</button>
                   <button data-aview="review">交付复审</button>
                   <button data-aview="gates">质量检查</button>
+                  <button data-aview="ppt">答辩 PPT</button>
                 </div>
 
                 <div id="aview-db" class="stack">
@@ -834,6 +989,87 @@
                       <tr><td>协同过滤推荐</td><td><span class="pill pill-neutral">本期不做</span></td><td class="muted">匹配阶段已排除</td></tr>
                     </tbody>
                   </table>
+                </div>
+
+                <div id="aview-ppt" class="stack" style="display:none">
+                  <div class="banner warn mb-12" id="ppt-dirty-banner" style="display:none">
+                    <h4>工程已更新，业务内容可能不一致</h4>
+                    <p class="small muted">主题 / 版式可保留。导出前请先「按工程更新业务页」；脏态禁止导出 PPTX。</p>
+                    <div class="row mt-12 gap-sm">
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="ppt-diff">查看差异</button>
+                      <button type="button" class="btn btn-primary btn-sm" data-action="ppt-sync-biz">按工程更新业务页</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="ppt-dirty-later">稍后</button>
+                    </div>
+                  </div>
+                  <div class="row-between" style="align-items:flex-start;flex-wrap:wrap;gap:8px">
+                    <div class="row gap-sm" style="margin:0;flex-wrap:wrap">
+                      <select id="ppt-compare-theme" style="height:30px;border:1px solid var(--line);border-radius:6px;padding:0 8px" title="换皮不标脏">
+                        <option selected>scholar · 学术</option>
+                        <option>ink · 墨蓝</option>
+                        <option>grove · 青松</option>
+                      </select>
+                      <select id="ppt-compare-layout" style="height:30px;border:1px solid var(--line);border-radius:6px;padding:0 8px" title="换皮不标脏">
+                        <option selected>band · 色带</option>
+                        <option>center · 居中</option>
+                        <option>footer · 底栏</option>
+                      </select>
+                      <span class="small muted">非业务 · 换皮不标脏</span>
+                    </div>
+                    <div class="row gap-sm" style="margin:0;flex-wrap:wrap">
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="ppt-check">检查</button>
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="ppt-sync-biz">按工程更新业务页</button>
+                      <button type="button" class="btn btn-primary btn-sm" data-action="ppt-export">导出 PPTX</button>
+                    </div>
+                  </div>
+                  <div class="ppt-compare-grid">
+                    <div class="ppt-page-rail">
+                      <div class="parse-sec-hd">页</div>
+                      <button type="button" class="ppt-page-item active" data-ppt-page="0">1 · 封面</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="1">2 · 目录</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="2">3 · 背景与需求</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="3">4 · 技术选型</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="4">5 · 系统架构</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="5">6 · 功能模块</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="6">7 · E-R 图</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="7">8 · 实现与演示</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="8">9 · 测试</button>
+                      <button type="button" class="ppt-page-item" data-ppt-page="9">10 · 总结</button>
+                    </div>
+                    <div class="ppt-slide-stage">
+                      <div class="ppt-slide" id="ppt-slide-preview">
+                        <div class="ppt-slide-band"></div>
+                        <div class="ppt-slide-body" id="ppt-slide-body">
+                          <div class="ppt-slide-school" id="ppt-slide-school">XX 大学 · 计算机学院</div>
+                          <h2 id="ppt-slide-title">基于 Spring Boot 的图书借阅管理系统</h2>
+                          <p class="ppt-slide-meta" id="ppt-slide-meta">软件 2201 · 张三 · 2022001<br />指导教师：李老师</p>
+                        </div>
+                      </div>
+                      <p class="small muted mt-8" id="ppt-slide-hint">16:9 预览 · 点选要点可示意纠错（locked 块按工程更新时保留）</p>
+                      <div class="ppt-bullet-edit" id="ppt-bullet-edit" style="display:none">
+                        <div class="parse-sec-hd">要点（点改）</div>
+                        <ul class="ppt-bullets" id="ppt-bullets">
+                          <li contenteditable="true" data-locked="0">读者端：检索图书 → 申请借阅 → 查看进度</li>
+                          <li contenteditable="true" data-locked="0">管理端：审核申请 → 办理归还 → 公告</li>
+                          <li contenteditable="true" class="is-locked" data-locked="1">技术栈：Spring Boot + Vue 3 + MySQL <span class="pill pill-amber">locked</span></li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="ppt-side-pane">
+                      <div class="parse-sec-hd">证据 / 检查</div>
+                      <ul class="ppt-evidence-list">
+                        <li><span class="muted">来源</span> 开题 §3 + 菜单 Borrow</li>
+                        <li><span class="muted">图</span> 模块图 SVG · E-R SVG</li>
+                        <li><span class="muted">截图</span> 登录 / 申请 / 审核（主路径）</li>
+                        <li><span class="muted">指纹</span> <span id="ppt-fp-label">与工程一致</span></li>
+                      </ul>
+                      <div class="parse-sec-hd mt-12">本页</div>
+                      <div class="row gap-sm" style="margin:0;flex-wrap:wrap">
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="ppt-lock-bullet">锁定选中要点</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="ppt-recapture">重采当前预览页</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="ppt-refill-page">本页丢弃人工并重填</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1458,6 +1694,7 @@
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域与持久层等。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
+                  <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。产物行可检查与导出 PPTX（不进 ZIP）；对照子页「答辩 PPT」做预览纠错与换皮。业务变更会标脏，须「按工程更新」后方可导出。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
                   <li><strong>交付</strong><p>机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。</p></li>
                 </ol>
@@ -1697,6 +1934,27 @@
       <div class="modal-ft">
         <button type="button" class="btn btn-secondary btn-sm" data-action="close-proposal-diff">取消</button>
         <button type="button" class="btn btn-primary btn-sm" data-action="confirm-proposal-generate">确认并启动生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="ppt-check-mask">
+    <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="ppt-check-title">
+      <div class="modal-hd">
+        <span id="ppt-check-title">答辩 PPT 检查</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="close-ppt-check">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <ul class="ppt-check-list" id="ppt-check-list">
+          <li class="err">✕ 未 bake 技术 / 模块不在实包 / 业务指纹脏（示意：当前无 error）</li>
+          <li class="warn">⚠ 字数偏多（部分页）</li>
+          <li class="ok">✓ 封面字段齐全 · 主路径截图已嵌入</li>
+        </ul>
+        <p class="small muted mt-12">导出条件：无 error · bake 门禁仍过 · 业务指纹未脏。PPTX 不进学生 ZIP。</p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="close-ppt-check">回改</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-ppt-check-export" data-action="ppt-export">导出 PPTX</button>
       </div>
     </div>
   </div>

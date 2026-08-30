@@ -65,8 +65,12 @@
     let feOn = false;
     let currentLogSide = "job";
     let genTimer = null;
+    let pptTimer = null;
     let matchConfirmed = false;
     let matchUnlocked = false;
+    /** none | locked | ready | generating | done | dirty */
+    let pptPhase = "none";
+    let pptBadgeOk = false;
     /** 交付质量检查：未过则 zip 锁定 */
     let gatesPass = true;
     let reviewActive = false;
@@ -231,10 +235,229 @@
       document.querySelectorAll("#artifact-subtabs button").forEach((b) => {
         b.classList.toggle("active", b.dataset.aview === v);
       });
-      ["db", "thesis", "api", "review", "gates"].forEach((id) => {
+      ["db", "thesis", "api", "review", "gates", "ppt"].forEach((id) => {
         const el = document.getElementById("aview-" + id);
         if (el) el.style.display = id === v ? "flex" : "none";
       });
+    }
+
+    const PPT_PAGES = [
+      { title: "封面", body: "cover" },
+      { title: "目录", body: "toc" },
+      { title: "背景与需求", body: "bullets" },
+      { title: "技术选型", body: "bullets" },
+      { title: "系统架构", body: "bullets" },
+      { title: "功能模块", body: "modules" },
+      { title: "E-R 图", body: "er" },
+      { title: "实现与演示", body: "demo" },
+      { title: "测试", body: "bullets" },
+      { title: "总结与致谢", body: "summary" },
+    ];
+
+    function coverFieldsComplete() {
+      const ids = ["ppt-school", "ppt-college", "ppt-class", "ppt-name", "ppt-sid", "ppt-advisor"];
+      const texts = ids.every((id) => (document.getElementById(id)?.value || "").trim());
+      return texts && pptBadgeOk;
+    }
+
+    function syncPptGenerateBtn() {
+      const btn = document.getElementById("btn-ppt-generate");
+      const hint = document.getElementById("ppt-cover-hint");
+      const ok = coverFieldsComplete();
+      if (btn) {
+        btn.disabled = !ok;
+        btn.classList.toggle("is-disabled", !ok);
+      }
+      if (hint) {
+        hint.textContent = ok
+          ? "封面信息已齐 · 可生成（写入 cover 页）"
+          : "※ 缺任一项时「生成答辩 PPT」禁用";
+      }
+    }
+
+    function fillDemoCover() {
+      const map = {
+        "ppt-school": "XX 大学",
+        "ppt-college": "计算机学院",
+        "ppt-class": "软件 2201",
+        "ppt-name": "张三",
+        "ppt-sid": "2022001",
+        "ppt-advisor": "李老师",
+      };
+      Object.entries(map).forEach(([id, v]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = v;
+      });
+      pptBadgeOk = true;
+      const badgeHint = document.getElementById("ppt-badge-hint");
+      if (badgeHint) badgeHint.textContent = "已上传 · school-badge.png（演示）";
+      syncPptGenerateBtn();
+      syncPptSlideCover();
+    }
+
+    function syncPptSlideCover() {
+      const school = (document.getElementById("ppt-school")?.value || "XX 大学").trim();
+      const college = (document.getElementById("ppt-college")?.value || "计算机学院").trim();
+      const klass = (document.getElementById("ppt-class")?.value || "班级").trim();
+      const name = (document.getElementById("ppt-name")?.value || "姓名").trim();
+      const sid = (document.getElementById("ppt-sid")?.value || "学号").trim();
+      const advisor = (document.getElementById("ppt-advisor")?.value || "导师").trim();
+      const schoolEl = document.getElementById("ppt-slide-school");
+      const metaEl = document.getElementById("ppt-slide-meta");
+      if (schoolEl) schoolEl.textContent = school + " · " + college;
+      if (metaEl) metaEl.innerHTML = `${klass} · ${name} · ${sid}<br />指导教师：${advisor}`;
+    }
+
+    function renderPptPage(idx) {
+      const page = PPT_PAGES[idx] || PPT_PAGES[0];
+      document.querySelectorAll(".ppt-page-item").forEach((b) => {
+        b.classList.toggle("active", Number(b.dataset.pptPage) === idx);
+      });
+      const title = document.getElementById("ppt-slide-title");
+      const body = document.getElementById("ppt-slide-body");
+      const edit = document.getElementById("ppt-bullet-edit");
+      const slide = document.getElementById("ppt-slide-preview");
+      const hint = document.getElementById("ppt-slide-hint");
+      if (edit) edit.style.display = page.body === "bullets" || page.body === "demo" ? "block" : "none";
+      if (slide) slide.classList.toggle("is-modules", page.body === "modules" || page.body === "er");
+      if (page.body === "cover") {
+        if (title) title.textContent = "基于 Spring Boot 的图书借阅管理系统";
+        syncPptSlideCover();
+        if (hint) hint.textContent = "16:9 封面 · 身份字段全部写入 cover";
+      } else if (page.body === "modules") {
+        if (title) title.textContent = "功能模块结构";
+        if (hint) hint.textContent = "嵌产物模块图 SVG（示意）";
+      } else if (page.body === "er") {
+        if (title) title.textContent = "数据库 E-R 图";
+        if (hint) hint.textContent = "嵌产物 E-R SVG（示意）";
+      } else if (page.body === "demo") {
+        if (title) title.textContent = "实现与演示";
+        if (hint) hint.textContent = "主路径界面截图槽位 · 缺图默认禁导出";
+      } else {
+        if (title) title.textContent = page.title;
+        if (hint) hint.textContent = "16:9 预览 · 点选要点可示意纠错（locked 块按工程更新时保留）";
+      }
+      if (body && page.body !== "cover") {
+        /* keep structure; title/meta already updated */
+      }
+    }
+
+    function applyPptPhase(phase) {
+      pptPhase = phase || "none";
+      clearTimeout(pptTimer);
+      const locked = document.getElementById("ppt-next-locked");
+      const ready = document.getElementById("ppt-next-ready");
+      const running = document.getElementById("ppt-gen-running");
+      const row = document.getElementById("ppt-artifact-row");
+      const note = document.getElementById("ppt-artifact-note");
+      const dirty = document.getElementById("ppt-dirty-banner");
+      const status = document.getElementById("ppt-artifact-status");
+      const fp = document.getElementById("ppt-fp-label");
+      const exportBtn = document.getElementById("btn-ppt-export");
+      const checkExport = document.getElementById("btn-ppt-check-export");
+
+      [locked, ready, running].forEach((el) => { if (el) el.style.display = "none"; });
+
+      if (pptPhase === "locked") {
+        if (locked) locked.style.display = "block";
+      } else if (pptPhase === "ready") {
+        if (ready) ready.style.display = "block";
+        syncPptGenerateBtn();
+      } else if (pptPhase === "generating") {
+        if (running) running.style.display = "block";
+      }
+
+      const hasDeck = pptPhase === "done" || pptPhase === "dirty";
+      if (row) row.style.display = hasDeck ? "flex" : "none";
+      if (note) note.style.display = hasDeck ? "block" : "none";
+      if (dirty) dirty.style.display = pptPhase === "dirty" ? "block" : "none";
+
+      if (status) {
+        if (pptPhase === "dirty") {
+          status.innerHTML = '状态：<span style="color:var(--amber)">⚠ 业务可能不一致</span>';
+        } else if (hasDeck) {
+          status.textContent = "状态：与工程一致";
+        }
+      }
+      if (fp) fp.textContent = pptPhase === "dirty" ? "业务指纹脏 · 禁止导出" : "与工程一致";
+
+      const canExport = pptPhase === "done";
+      [exportBtn, checkExport].forEach((btn) => {
+        if (!btn) return;
+        btn.classList.toggle("is-disabled", !canExport);
+        btn.disabled = !canExport;
+      });
+    }
+
+    function startPptGenerate() {
+      if (!coverFieldsComplete()) {
+        toast("请补全封面信息（含校徽）");
+        return;
+      }
+      applyPptPhase("generating");
+      setProjectTab("generate");
+      // 程序成功面板可保留在背后；生成中以 PPT 流水线为主
+      document.getElementById("gen-idle").style.display = "none";
+      document.getElementById("gen-running").style.display = "none";
+      document.getElementById("gen-failed").style.display = "none";
+      document.getElementById("gen-regression").style.display = "none";
+      const ok = document.getElementById("gen-success");
+      if (ok) ok.style.display = "none";
+      setStatus("答辩 PPT 生成中", "pill-teal");
+      toast("答辩 PPT 任务 #87 已启动");
+      let w = 60;
+      const bar = document.getElementById("ppt-job-bar");
+      const pct = document.getElementById("ppt-job-pct");
+      if (bar) bar.style.width = w + "%";
+      if (pct) pct.textContent = String(w);
+      const tick = setInterval(() => {
+        w = Math.min(w + 12, 100);
+        if (bar) bar.style.width = w + "%";
+        if (pct) pct.textContent = String(w);
+      }, 350);
+      pptTimer = setTimeout(() => {
+        clearInterval(tick);
+        finishPptGenerate();
+      }, 1800);
+    }
+
+    function finishPptGenerate() {
+      clearTimeout(pptTimer);
+      applyPptPhase("done");
+      applyGenState("generated");
+      setStatus("已生成 · 质检通过", "pill-green");
+      setProjectTab("artifacts");
+      setArtifactView("ppt");
+      renderPptPage(0);
+      toast("答辩 PPT 已生成 · 可对照收口 / 导出 PPTX");
+    }
+
+    function openPptCheck() {
+      const list = document.getElementById("ppt-check-list");
+      if (list) {
+        if (pptPhase === "dirty") {
+          list.innerHTML = `
+            <li class="err">✕ 业务指纹脏 · 须先「按工程更新业务页」</li>
+            <li class="warn">⚠ 字数偏多（部分页）</li>
+            <li class="ok">✓ 封面字段齐全</li>`;
+        } else {
+          list.innerHTML = `
+            <li class="ok">✓ 无瞎写 / 模块均在实包</li>
+            <li class="warn">⚠ 字数偏多（部分页）</li>
+            <li class="ok">✓ 封面字段齐全 · 主路径截图已嵌入</li>`;
+        }
+      }
+      const btn = document.getElementById("btn-ppt-check-export");
+      if (btn) {
+        const can = pptPhase === "done";
+        btn.disabled = !can;
+        btn.classList.toggle("is-disabled", !can);
+      }
+      document.getElementById("ppt-check-mask")?.classList.add("show");
+    }
+
+    function closePptCheck() {
+      document.getElementById("ppt-check-mask")?.classList.remove("show");
     }
 
     function syncDeliveryHead(zipOk) {
@@ -413,29 +636,37 @@
             <div><div>${s.title}</div><div class="meta">${s.meta}</div></div>
           </li>
         `).join("");
+        if (pptPhase !== "generating") applyPptPhase("locked");
       } else if (state === "running") {
         ok.style.display = "block";
         document.getElementById("gen-success-title").textContent = "已生成 · 预览运行中";
         document.getElementById("gen-success-desc").textContent = "前后端已启动，可打开预览或下载交付包。";
         renderGates(true);
+        if (pptPhase === "none" || pptPhase === "locked") applyPptPhase("ready");
+        else applyPptPhase(pptPhase);
       } else if (state === "generated") {
         ok.style.display = "block";
         document.getElementById("gen-success-title").textContent = "生成完成 · 质量检查已通过 · 可下载";
         document.getElementById("gen-success-desc").textContent = "交付包已解锁。建议到「运行」预览后再交付。";
         renderGates(true);
+        if (pptPhase === "none" || pptPhase === "locked") applyPptPhase("ready");
+        else if (pptPhase !== "generating") applyPptPhase(pptPhase);
       } else if (state === "regression") {
         reg.style.display = "block";
         renderGates(false);
+        applyPptPhase("locked");
       } else if (state === "failed") {
         fail.style.display = "block";
         document.getElementById("fail-title").textContent = "质量检查未通过 · 暂不可下载";
         document.getElementById("fail-desc").textContent =
           "主流程或功能清单未通过时，暂不可下载交付包。";
         renderGates(false);
+        applyPptPhase("locked");
       } else {
         idle.style.display = "block";
         renderGates(false);
         setDisabled("btn-download", true);
+        applyPptPhase("locked");
       }
     }
 
@@ -558,6 +789,7 @@
 
     function openProject(id, demoOverride) {
       clearTimeout(genTimer);
+      clearTimeout(pptTimer);
       const p = projects.find((x) => x.id === id) || projects[0];
       currentProjectId = p.id;
       currentDeliveryMark = p.deliveryMark || "none";
@@ -571,14 +803,51 @@
       const state = demoOverride || p.status;
       matchConfirmed = state !== "needs_confirm";
       matchUnlocked = false;
+      pptBadgeOk = false;
       document.getElementById("sel-arch").value = RECOMMENDED.arch;
       document.getElementById("sel-dom").value = RECOMMENDED.dom;
       document.getElementById("match-ack").checked = matchConfirmed;
       document.getElementById("match-ack").disabled = false;
       document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
       setDisabled("btn-confirm", !matchConfirmed);
-      // download 由质量检查决定，先锁上
       setDisabled("btn-download", true);
+
+      const pptStates = ["ppt_ready", "ppt_generating", "ppt_done", "ppt_dirty"];
+      if (pptStates.includes(state)) {
+        matchConfirmed = true;
+        document.getElementById("match-ack").checked = true;
+        setDisabled("btn-confirm", true);
+        applyGenState("generated");
+        setRuntime(false);
+        if (state === "ppt_ready") {
+          applyPptPhase("ready");
+          fillDemoCover();
+          setProjectTab("generate");
+          setStatus("已生成 · 可生成答辩 PPT", "pill-green");
+        } else if (state === "ppt_generating") {
+          applyPptPhase("generating");
+          setProjectTab("generate");
+          document.getElementById("gen-success").style.display = "none";
+          setStatus("答辩 PPT 生成中", "pill-teal");
+        } else if (state === "ppt_done") {
+          applyPptPhase("done");
+          fillDemoCover();
+          setProjectTab("artifacts");
+          setArtifactView("ppt");
+          renderPptPage(0);
+          setStatus("已生成 · 答辩 PPT 就绪", "pill-green");
+        } else {
+          applyPptPhase("dirty");
+          fillDemoCover();
+          setProjectTab("artifacts");
+          setArtifactView("ppt");
+          renderPptPage(0);
+          setStatus("已生成 · PPT 业务脏", "pill-amber");
+        }
+        showView("project");
+        syncMatchFields(false);
+        return;
+      }
 
       if (state === "needs_confirm") setProjectTab("match");
       else if (state === "generating") setProjectTab("generate");
@@ -587,6 +856,7 @@
       else if (state === "generated") setProjectTab("runtime");
       else setProjectTab("generate");
 
+      pptPhase = "none";
       applyGenState(state === "needs_confirm" ? "idle" : state);
       setRuntime(state === "running");
       showView("project");
@@ -827,6 +1097,89 @@
         setStatus("已生成 · 质检通过", "pill-green");
         toast("质量检查已过 · 交付包已解锁");
         setProjectTab("artifacts");
+        return;
+      }
+      if (action === "ppt-generate") {
+        if (isDisabled(el)) {
+          toast("请补全封面信息（含校徽）");
+          return;
+        }
+        startPptGenerate();
+        return;
+      }
+      if (action === "ppt-cancel") {
+        clearTimeout(pptTimer);
+        applyPptPhase("ready");
+        applyGenState("generated");
+        setStatus("已生成 · 质检通过", "pill-green");
+        toast("答辩 PPT 任务已取消");
+        return;
+      }
+      if (action === "ppt-finish-demo") {
+        finishPptGenerate();
+        return;
+      }
+      if (action === "ppt-open-compare") {
+        setProjectTab("artifacts");
+        setArtifactView("ppt");
+        renderPptPage(0);
+        toast("已打开对照 · 答辩 PPT");
+        return;
+      }
+      if (action === "ppt-check") {
+        openPptCheck();
+        return;
+      }
+      if (action === "close-ppt-check") {
+        closePptCheck();
+        return;
+      }
+      if (action === "ppt-export") {
+        if (pptPhase === "dirty") {
+          toast("业务指纹脏 · 禁止导出，请先按工程更新");
+          openPptCheck();
+          return;
+        }
+        if (pptPhase !== "done") {
+          toast("尚无可用答辩 PPT 或检查未通过");
+          return;
+        }
+        closePptCheck();
+        toast("已导出答辩 PPTX（演示 · 不进 ZIP）");
+        return;
+      }
+      if (action === "ppt-sync-biz") {
+        applyPptPhase("done");
+        toast("已更新业务页 · 保留人工修改 1 处（locked）");
+        return;
+      }
+      if (action === "ppt-diff") {
+        openModal("业务差异（示意）", "菜单 Borrow 文案变更；E-R 实体中文名未变；主题/版式未计入指纹。");
+        return;
+      }
+      if (action === "ppt-dirty-later") {
+        document.getElementById("ppt-dirty-banner").style.display = "none";
+        toast("稍后处理 · 导出仍会拦截");
+        return;
+      }
+      if (action === "ppt-lock-bullet") {
+        toast("要点已标记 locked（按工程更新时跳过）");
+        return;
+      }
+      if (action === "ppt-recapture") {
+        toast("已标记重采当前预览页截图（演示）");
+        return;
+      }
+      if (action === "ppt-refill-page") {
+        toast("本页已丢弃人工修改并按工程重填（演示）");
+        return;
+      }
+      if (action === "copy-workspace") {
+        toast("已复制工程目录路径（演示）");
+        return;
+      }
+      if (action === "view-island-plan") {
+        openModal("填岛拆解计划", "unit.borrow_labels\nunit.notice_seed\nunit.book_categories\n（演示 · 不调 LLM）");
         return;
       }
       if (action === "demo-gate-fail") {
@@ -1257,8 +1610,18 @@
         closeModal();
         return;
       }
+      if (e.target.closest("#ppt-check-mask") === e.target) {
+        closePptCheck();
+        return;
+      }
       if (e.target.closest("#proposal-diff-mask") === e.target) {
         closeProposalDiffModal();
+        return;
+      }
+
+      const pptPageBtn = e.target.closest(".ppt-page-item");
+      if (pptPageBtn) {
+        renderPptPage(Number(pptPageBtn.dataset.pptPage) || 0);
         return;
       }
 
@@ -1312,6 +1675,22 @@
       if (v === "list") showView("home");
       else openProject("gf-20260717-001", v);
     });
+
+    ["ppt-school", "ppt-college", "ppt-class", "ppt-name", "ppt-sid", "ppt-advisor"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", () => {
+        syncPptGenerateBtn();
+        syncPptSlideCover();
+      });
+    });
+    document.getElementById("ppt-badge")?.addEventListener("change", (e) => {
+      const f = e.target.files?.[0];
+      pptBadgeOk = !!f;
+      const hint = document.getElementById("ppt-badge-hint");
+      if (hint) hint.textContent = f ? "已上传 · " + f.name : "未上传";
+      syncPptGenerateBtn();
+    });
+    document.getElementById("ppt-compare-theme")?.addEventListener("change", () => toast("主题已切换 · 换皮不标脏"));
+    document.getElementById("ppt-compare-layout")?.addEventListener("change", () => toast("版式族已切换 · 换皮不标脏"));
 
     document.getElementById("nav-toggle")?.addEventListener("click", (e) => {
       e.preventDefault();
@@ -1533,5 +1912,6 @@
     syncRuntimeUI();
     syncMatchFields(false);
     renderGates(false);
+    applyPptPhase("none");
     setArtifactView("db");
     renderUploadJobs();
