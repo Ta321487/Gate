@@ -1560,11 +1560,14 @@
       }
 
       if (e.target.closest("#nav-toggle")) {
+        e.preventDefault();
+        e.stopPropagation();
         toggleNav();
         return;
       }
 
       if (e.target.id === "nav-backdrop" || e.target.closest("#nav-backdrop")) {
+        e.preventDefault();
         closeNav();
         return;
       }
@@ -1691,15 +1694,6 @@
     });
     document.getElementById("ppt-compare-theme")?.addEventListener("change", () => toast("主题已切换 · 换皮不标脏"));
     document.getElementById("ppt-compare-layout")?.addEventListener("change", () => toast("版式族已切换 · 换皮不标脏"));
-
-    document.getElementById("nav-toggle")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleNav();
-    });
-
-    document.getElementById("nav-backdrop")?.addEventListener("click", () => {
-      closeNav();
-    });
 
     document.getElementById("theme-toggle").addEventListener("click", () => {
       const dark = document.documentElement.getAttribute("data-theme") === "dark";
