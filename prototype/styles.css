@@ -114,15 +114,19 @@
       flex-direction: column;
       justify-content: center;
       gap: 4px;
-      width: 36px;
-      height: 36px;
-      padding: 0 8px;
+      width: 40px;
+      height: 40px;
+      padding: 0 9px;
       margin: 0;
       border: 1px solid var(--line);
       border-radius: 6px;
       background: var(--surface);
       cursor: pointer;
       flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      position: relative;
+      z-index: 1;
     }
     .nav-toggle-bar {
       display: block;
@@ -1074,7 +1078,7 @@
       .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr 1fr; }
       .help-card.wide { grid-column: 1 / -1; }
       .ppt-compare-grid { grid-template-columns: 1fr; }
-      .nav-toggle { display: inline-flex; }
+      .nav-toggle { display: inline-flex; z-index: 60; }
       .nav-backdrop { display: block; }
       .nav-backdrop[hidden] { display: none; }
       .sidebar {
@@ -1091,7 +1095,10 @@
         box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
       }
       body.nav-lock { overflow: hidden; }
-      .topbar { padding: 0 12px; }
+      .topbar {
+        padding: 0 12px;
+        z-index: 55;
+      }
       .demo-label { display: none; }
       .demo-box select { max-width: min(42vw, 150px); }
       .tools input { width: min(160px, 40vw); }
