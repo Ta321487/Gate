@@ -1,9 +1,9 @@
 # 毕设答辩 PPT 生成模块（设计要点）
 
-> **状态**：设计讨论中（ASCII 已收），尚未落地实现。  
+> **状态**：设计已收口；运营端静态原型已挂入 `prototype/`（演示状态可选答辩 PPT 场景）。正式 bake / 任务尚未落地。  
 > **范围**：仅 **终期 / 毕业答辩 PPT**；不做开题答辩 PPT。  
 > **对标参考**：[yuyuanweb/ai-ppt-generator](https://github.com/yuyuanweb/ai-ppt-generator)（借流水线与数据模型，不整仓搬技术栈）。  
-> **关联**：交付主链路见 [`delivery-audit-rules.md`](./delivery-audit-rules.md)；场景轴 / 技术栈轴见 `.cursor/rules`。
+> **关联**：交付主链路见 [`delivery-audit-rules.md`](./delivery-audit-rules.md)；场景轴 / 技术栈轴见 `.cursor/rules`；UI 原型见 [`../prototype/README.md`](../prototype/README.md)。
 
 ---
 
@@ -424,3 +424,4 @@ flowchart TD
 | 2026-08-30 | 「真实数据」= 仿真业务种子，非生产隐私；账号/截图跟 bake 同源 |
 | 2026-08-30 | 澄清：PPT 覆盖工厂全域可 bake 域；「系统类」指叙事模板，不是只做部分 DOM |
 | 2026-08-30 | 封面：工作台录入；cover 页必有；身份字段+校徽全部必填才生成 |
+| 2026-08-30 | 运营端 `prototype/` 挂入答辩 PPT ASCII 对应交互原型（开跑/产物/对照/脏标） |
