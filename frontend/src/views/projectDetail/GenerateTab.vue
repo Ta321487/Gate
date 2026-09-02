@@ -213,10 +213,14 @@
           </div>
         </div>
       </div>
+
+  <!-- 答辩 PPT：一键生成下半截（唯一开跑入口；程序流水线不含 PPT） -->
+  <DefensePptLaunchPanel />
   </div>
 </template>
 
 <script setup>
+import DefensePptLaunchPanel from '../../components/defensePpt/DefensePptLaunchPanel.vue'
 import { bindPd } from './bindPd'
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,

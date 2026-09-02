@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, message, confirm } from '../../api'
 import { softThemeSwatch } from '../../softThemeSwatches.js'
+import { useDefensePpt } from '../../ppt/useDefensePpt.js'
 import {
   CHECKLIST_RESULT,
   JOB_STEP_LABELS,
@@ -1005,6 +1006,13 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     await refreshJob({ silent: lite })
     // schema / apis 只在产物 Tab 拉，避免生成轮询疯狂刷
     if (!lite && tab.value === 'artifacts') await loadArtifactView()
+    // 答辩 PPT 状态：非 lite 全量刷新；lite 时若正在生成则跟 poll
+    if (!lite) {
+      initPptSkinSeed()
+      await refreshPptStatus({ loadDeck: artifactView.value === 'ppt' })
+    } else if (pptPhase.value === 'generating') {
+      await refreshPptStatus()
+    }
   } catch (e) {
     if (lite) {
       pollFailStreak.value += 1
@@ -1153,6 +1161,7 @@ async function runApiSmoke() {
 async function loadArtifactView() {
   if (artifactView.value === 'api') await loadApis()
   else if (artifactView.value === 'db' || artifactView.value === 'thesis') await loadSchema()
+  else if (artifactView.value === 'ppt') await loadPptDeck()
   else {
     // 门禁数据已在项目上；顺带预热 schema
     await loadSchema()
@@ -1162,6 +1171,7 @@ async function loadArtifactView() {
 function onArtifactView(name) {
   if (name === 'api') loadApis()
   else if (name === 'db' || name === 'thesis') loadSchema()
+  else if (name === 'ppt') loadPptDeck()
 }
 
 function goArtifacts(view = 'db') {
@@ -1169,6 +1179,61 @@ function goArtifacts(view = 'db') {
   tab.value = 'artifacts'
   loadArtifactView()
 }
+
+const defensePpt = useDefensePpt({
+  p,
+  canDownload,
+  tab,
+  artifactView,
+  goArtifacts,
+})
+const {
+  pptStatus,
+  pptDeck,
+  pptJob,
+  pptLoading,
+  pptActing,
+  pptPageIndex,
+  pptCheckResult,
+  showPptCheck,
+  pptCover,
+  pptSkin,
+  pptPhase,
+  pptEvidence,
+  pptCoverComplete,
+  pptHasDeck,
+  pptBizDirty,
+  pptCanGenerate,
+  pptCanExport,
+  pptDeckSummary,
+  pptFingerprintHint,
+  pptMock,
+  pptDirtyBanner,
+  pptThemeOptions,
+  pptLayoutOptions,
+  pptMasterOptions,
+  pptCurrentPage,
+  refreshPptStatus,
+  stopPptPoll,
+  disposePpt,
+  savePptCover,
+  startPptGenerate,
+  cancelPptGenerate,
+  loadPptDeck,
+  patchPptPage,
+  savePptBullet,
+  togglePptBulletLock,
+  applyPptSkin,
+  syncPptBiz,
+  runPptCheck,
+  exportPptx,
+  capturePptScreenshot,
+  uploadPptScreenshot,
+  openPptCompare,
+  fillPptDemoCover,
+  markPptDirtyDemo,
+  initPptSkinSeed,
+} = defensePpt
 
 function isApiCollapsed(name) {
   return !!collapsedApis.value[name]
@@ -1922,6 +1987,8 @@ watch(
     if (!id || id === prev) return
     viewEpoch += 1
     stopPoll()
+    stopPptPoll()
+    disposePpt()
     p.value = null
     loadError.value = ''
     await reload()
@@ -1933,6 +2000,8 @@ onUnmounted(() => {
   viewEpoch += 1
   stopPoll()
   stopFillEvents()
+  stopPptPoll()
+  disposePpt()
   fillLiveSnap.value = null
   detailCrumb.value = ''
 })
@@ -1956,6 +2025,7 @@ onUnmounted(() => {
     apiSurface,
     apis,
     applyFillSnapshot,
+    applyPptSkin,
     archDomainDeviant,
     archOptions,
     artifactLoading,
@@ -1970,6 +2040,8 @@ onUnmounted(() => {
     canMarkReady,
     canUndoDelivery,
     cancelCurrent,
+    cancelPptGenerate,
+    capturePptScreenshot,
     catalog,
     checkCols,
     checkRows,
@@ -1991,6 +2063,7 @@ onUnmounted(() => {
     deliveryMark,
     deviant,
     displayConf,
+    disposePpt,
     domCascaderOptions,
     downloadAndDeliver,
     downloadBlockedReason,
@@ -2005,6 +2078,7 @@ onUnmounted(() => {
     erLoading,
     erMode,
     erSvgSource,
+    exportPptx,
     failedBannerTitle,
     fetchErSvg,
     fetchModSvg,
@@ -2018,6 +2092,7 @@ onUnmounted(() => {
     fillPlanHint,
     fillPlanLoading,
     fillPlanRows,
+    fillPptDemoCover,
     filteredApiGroups,
     filteredLog,
     form,
@@ -2029,6 +2104,7 @@ onUnmounted(() => {
     genSuccessBannerHint,
     genSuccessBannerTitle,
     goArtifacts,
+    initPptSkinSeed,
     isApiCollapsed,
     isTableCollapsed,
     jobActing,
@@ -2051,7 +2127,9 @@ onUnmounted(() => {
     logSide,
     logSides,
     logText,
+    loadPptDeck,
     markDelivery,
+    markPptDirtyDemo,
     matchAltsText,
     matchBusy,
     matchMeta,
@@ -2080,10 +2158,12 @@ onUnmounted(() => {
     openEr,
     openFillPlan,
     openModules,
+    openPptCompare,
     openPreview,
     openTestcases,
     p,
     parseMysqlType,
+    patchPptPage,
     passwordHashOptions,
     pathEntryDeviant,
     pathSceneDeviant,
@@ -2096,6 +2176,30 @@ onUnmounted(() => {
     pollSyncHint,
     pollTimer,
     portalHomeOptions,
+    pptActing,
+    pptBizDirty,
+    pptCanExport,
+    pptCanGenerate,
+    pptCheckResult,
+    pptCover,
+    pptCoverComplete,
+    pptCurrentPage,
+    pptDeck,
+    pptDeckSummary,
+    pptDirtyBanner,
+    pptEvidence,
+    pptFingerprintHint,
+    pptHasDeck,
+    pptJob,
+    pptLayoutOptions,
+    pptLoading,
+    pptMasterOptions,
+    pptMock,
+    pptPageIndex,
+    pptPhase,
+    pptSkin,
+    pptStatus,
+    pptThemeOptions,
     preGenBusy,
     preGenReady,
     preGenStackWarnings,
@@ -2105,6 +2209,7 @@ onUnmounted(() => {
     putErLabelPatch,
     recommendedArchesText,
     refreshJob,
+    refreshPptStatus,
     refreshRuntime,
     reload,
     reloadErSvg,
@@ -2133,11 +2238,14 @@ onUnmounted(() => {
     rtStartBlockedReason,
     runApiSmoke,
     runGenerateJob,
+    runPptCheck,
     runtimeCanStop,
     runtimeLogView,
     runtimeStatusLabel,
     runtimeStatusPill,
     runtimeTransient,
+    savePptBullet,
+    savePptCover,
     saveSoft,
     sceneOptions,
     schema,
@@ -2151,6 +2259,7 @@ onUnmounted(() => {
     showFillPlan,
     showJobSteps,
     showModules,
+    showPptCheck,
     showPreGenerate,
     showSoftBakePanel,
     showSpec,
@@ -2168,13 +2277,16 @@ onUnmounted(() => {
     specText,
     startFillEvents,
     startGenerate,
+    startPptGenerate,
     startPoll,
     statusLabel,
     statusPill,
     stepStatusLabel,
     stepStatusMark,
     stopFillEvents,
+    stopPptPoll,
     stopPoll,
+    syncPptBiz,
     tab,
     tableCopyText,
     tcColumns,
@@ -2186,6 +2298,7 @@ onUnmounted(() => {
     tcRows,
     themeOptions,
     toggleApi,
+    togglePptBulletLock,
     toggleTable,
     toggleUnlock,
     typeParenMode,
@@ -2193,6 +2306,7 @@ onUnmounted(() => {
     undoDelivery,
     undoDeliveryLabel,
     unlocked,
+    uploadPptScreenshot,
     viewActive,
     viewEpoch,
     warningText,
