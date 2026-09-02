@@ -634,10 +634,26 @@
                   </div>
                   <div class="field" style="grid-column:1 / -1">
                     <label>校徽 <span class="req">*</span></label>
-                    <div class="row gap-sm" style="align-items:center">
-                      <input type="file" id="ppt-badge" accept="image/*" style="flex:1" />
-                      <span class="small muted" id="ppt-badge-hint">未上传</span>
+                    <div class="ppt-badge-slot" id="ppt-badge-slot" tabindex="0" role="button" aria-label="粘贴或选择校徽">
+                      <div class="ppt-badge-preview" id="ppt-badge-preview" hidden>
+                        <img id="ppt-badge-img" alt="校徽预览" />
+                      </div>
+                      <div class="ppt-badge-empty" id="ppt-badge-empty">
+                        <div class="ppt-badge-empty-title">在此粘贴校徽</div>
+                        <div class="small muted">从 Word 选中复制后按 Ctrl+V；默认保持原样</div>
+                      </div>
                     </div>
+                    <div class="row gap-sm mt-8" style="align-items:center;flex-wrap:wrap">
+                      <label class="btn btn-secondary btn-sm" style="margin:0;cursor:pointer">
+                        选择图片
+                        <input type="file" id="ppt-badge" accept="image/*" hidden />
+                      </label>
+                      <button type="button" class="btn btn-secondary btn-sm" id="ppt-badge-knock" data-action="ppt-badge-knock" hidden>去掉白底</button>
+                      <button type="button" class="btn btn-ghost btn-sm" id="ppt-badge-restore" data-action="ppt-badge-restore" hidden>恢复原图</button>
+                      <button type="button" class="btn btn-ghost btn-sm" id="ppt-badge-clear" data-action="ppt-badge-clear" hidden>清除</button>
+                      <span class="small muted" id="ppt-badge-hint">未放入</span>
+                    </div>
+                    <p class="small muted" style="margin:6px 0 0">徽和字在一起时，「去掉白底」可能去不干净；不对就恢复或重贴紧一点的框选。</p>
                   </div>
                 </div>
                 <p class="small muted mb-12" id="ppt-cover-hint">※ 缺任一项时「生成答辩 PPT」禁用</p>
@@ -1694,7 +1710,7 @@
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
                   <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域与持久层等。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
-                  <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。产物行可检查与导出 PPTX（不进 ZIP）；对照子页「答辩 PPT」做预览纠错与换皮。业务变更会标脏，须「按工程更新」后方可导出。</p></li>
+                  <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。校徽从 Word 复制粘贴即可（默认原样；可选去掉白底，徽+字可能扣不干净）。产物行可检查与导出 PPTX（不进 ZIP）；对照子页做预览纠错与换皮。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
                   <li><strong>交付</strong><p>机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。</p></li>
                 </ol>
