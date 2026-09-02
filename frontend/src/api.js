@@ -139,6 +139,46 @@ export const api = {
   sampleProposalPacks: () => http.get('/tools/sample-proposal/packs'),
   sampleProposal: (body) =>
     http.post('/tools/sample-proposal', body || {}, { timeout: 180000 }),
+
+  // —— 答辩 PPT（终期；独立任务；PPTX 不进 ZIP）——
+  // 契约见 docs/defense-ppt-module.md；后端未就绪时 pptClient 降级 mock
+  getDefensePpt: (id) =>
+    http.get(`/projects/${id}/defense-ppt`, { silent: true }),
+  putDefensePptCover: (id, cover) =>
+    http.put(`/projects/${id}/defense-ppt/cover`, cover, { silent: true }),
+  generateDefensePpt: (id, body) =>
+    http.post(`/projects/${id}/defense-ppt/generate`, body || {}, {
+      silent: true,
+      timeout: 120000,
+    }),
+  getDefensePptJob: (id) =>
+    http.get(`/projects/${id}/defense-ppt/job`, { silent: true, ...POLL_OPTS }),
+  cancelDefensePpt: (id) =>
+    http.post(`/projects/${id}/defense-ppt/cancel`, null, { silent: true }),
+  getDefensePptDeck: (id) =>
+    http.get(`/projects/${id}/defense-ppt/deck`, { silent: true }),
+  patchDefensePptPage: (id, pageId, patch) =>
+    http.patch(`/projects/${id}/defense-ppt/deck/pages/${encodeURIComponent(pageId)}`, patch, {
+      silent: true,
+    }),
+  patchDefensePptSkin: (id, body) =>
+    http.patch(`/projects/${id}/defense-ppt/skin`, body || {}, { silent: true }),
+  syncDefensePptBiz: (id) =>
+    http.post(`/projects/${id}/defense-ppt/sync-biz`, null, { silent: true, timeout: 120000 }),
+  checkDefensePpt: (id) =>
+    http.post(`/projects/${id}/defense-ppt/check`, null, { silent: true }),
+  defensePptExportUrl: (id) => `/api/projects/${id}/defense-ppt/export`,
+  defensePptEventsUrl: (id) => `/api/projects/${id}/defense-ppt/events`,
+  captureDefensePptScreenshot: (id, body) =>
+    http.post(`/projects/${id}/defense-ppt/screenshots/capture-current`, body || {}, {
+      silent: true,
+      timeout: 120000,
+    }),
+  uploadDefensePptScreenshot: (id, body) =>
+    http.post(`/projects/${id}/defense-ppt/screenshots/upload`, body || {}, {
+      silent: true,
+      timeout: 120000,
+    }),
 }
 
 export default http

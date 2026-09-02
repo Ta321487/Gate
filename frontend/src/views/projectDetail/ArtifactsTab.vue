@@ -46,6 +46,7 @@
             <n-button text size="small" @click="showSpec = true">查看</n-button>
           </div>
         </div>
+        <DefensePptArtifactRow />
       </div>
     </div>
 
@@ -53,7 +54,7 @@
       <div class="panel-hd">
         <h3>对照视图</h3>
         <span class="small muted">
-          {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 交付复审 · 质量检查 · 仅运营端验收' }}
+          {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 交付复审 · 质量检查 · 答辩 PPT · 仅运营端验收' }}
         </span>
       </div>
       <div class="panel-bd" style="padding-top:4px">
@@ -528,6 +529,10 @@
               <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
             </div>
           </n-tab-pane>
+
+          <n-tab-pane name="ppt" tab="答辩 PPT">
+            <DefensePptComparePane />
+          </n-tab-pane>
         </n-tabs>
       </div>
     </div>
@@ -538,6 +543,8 @@
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import DeliveryReviewPane from '../../components/DeliveryReviewPane.vue'
+import DefensePptArtifactRow from '../../components/defensePpt/DefensePptArtifactRow.vue'
+import DefensePptComparePane from '../../components/defensePpt/DefensePptComparePane.vue'
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
