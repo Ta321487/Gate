@@ -1072,6 +1072,51 @@
     .ppt-check-list .err { color: var(--red); }
     .ppt-check-list .warn { color: var(--amber); }
     .ppt-check-list .ok { color: var(--green); }
+    .ppt-badge-slot {
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      min-height: 112px;
+      padding: 12px;
+      background:
+        linear-gradient(45deg, var(--line-soft) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--line-soft) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--line-soft) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--line-soft) 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-color: var(--surface);
+      cursor: text;
+      outline: none;
+    }
+    .ppt-badge-slot:focus,
+    .ppt-badge-slot.is-focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px var(--teal-soft);
+    }
+    .ppt-badge-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: 88px;
+      text-align: center;
+      pointer-events: none;
+    }
+    .ppt-badge-empty-title { font-weight: 600; font-size: 13px; color: var(--ink-2); }
+    .ppt-badge-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 88px;
+    }
+    .ppt-badge-preview[hidden],
+    .ppt-badge-empty[hidden] { display: none !important; }
+    .ppt-badge-preview img {
+      max-height: 88px;
+      max-width: 160px;
+      object-fit: contain;
+    }
     #ppt-check-mask.show, .modal-mask.show { display: flex; }
 
     @media (max-width: 900px) {

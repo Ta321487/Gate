@@ -71,6 +71,8 @@
     /** none | locked | ready | generating | done | dirty */
     let pptPhase = "none";
     let pptBadgeOk = false;
+    let pptBadgeOriginalUrl = "";
+    let pptBadgeCurrentUrl = "";
     /** 交付质量检查：未过则 zip 锁定 */
     let gatesPass = true;
     let reviewActive = false;
@@ -288,11 +290,99 @@
         const el = document.getElementById(id);
         if (el) el.value = v;
       });
-      pptBadgeOk = true;
-      const badgeHint = document.getElementById("ppt-badge-hint");
-      if (badgeHint) badgeHint.textContent = "已上传 · school-badge.png（演示）";
+      setPptBadgeFromDataUrl(
+        "data:image/svg+xml," + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><circle cx="48" cy="48" r="40" fill="none" stroke="#0b6e75" stroke-width="6"/><text x="48" y="54" text-anchor="middle" font-size="18" fill="#0b6e75" font-family="sans-serif">校</text></svg>'
+        ),
+        "演示粘贴 · 原样",
+        { asOriginal: true }
+      );
       syncPptGenerateBtn();
       syncPptSlideCover();
+    }
+
+    function clearPptBadge() {
+      pptBadgeOk = false;
+      pptBadgeOriginalUrl = "";
+      pptBadgeCurrentUrl = "";
+      const img = document.getElementById("ppt-badge-img");
+      const preview = document.getElementById("ppt-badge-preview");
+      const empty = document.getElementById("ppt-badge-empty");
+      const hint = document.getElementById("ppt-badge-hint");
+      const clearBtn = document.getElementById("ppt-badge-clear");
+      const knockBtn = document.getElementById("ppt-badge-knock");
+      const restoreBtn = document.getElementById("ppt-badge-restore");
+      const file = document.getElementById("ppt-badge");
+      if (img) img.removeAttribute("src");
+      if (preview) preview.hidden = true;
+      if (empty) empty.hidden = false;
+      if (hint) hint.textContent = "未放入";
+      if (clearBtn) clearBtn.hidden = true;
+      if (knockBtn) knockBtn.hidden = true;
+      if (restoreBtn) restoreBtn.hidden = true;
+      if (file) file.value = "";
+      syncPptGenerateBtn();
+    }
+
+    function setPptBadgeFromDataUrl(url, note, opts) {
+      const asOriginal = !opts || opts.asOriginal !== false;
+      pptBadgeOk = true;
+      pptBadgeCurrentUrl = url;
+      if (asOriginal) pptBadgeOriginalUrl = url;
+      const img = document.getElementById("ppt-badge-img");
+      const preview = document.getElementById("ppt-badge-preview");
+      const empty = document.getElementById("ppt-badge-empty");
+      const hint = document.getElementById("ppt-badge-hint");
+      const clearBtn = document.getElementById("ppt-badge-clear");
+      const knockBtn = document.getElementById("ppt-badge-knock");
+      const restoreBtn = document.getElementById("ppt-badge-restore");
+      if (img) img.src = url;
+      if (preview) preview.hidden = false;
+      if (empty) empty.hidden = true;
+      if (hint) hint.textContent = note || "已放入 · 原样";
+      if (clearBtn) clearBtn.hidden = false;
+      if (knockBtn) knockBtn.hidden = false;
+      if (restoreBtn) restoreBtn.hidden = pptBadgeCurrentUrl === pptBadgeOriginalUrl;
+      syncPptGenerateBtn();
+    }
+
+    /** 原型：近白像素变透明（可选；徽+字可能扣不干净） */
+    function knockNearWhiteToAlpha(sourceUrl, done) {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth || image.width;
+        canvas.height = image.naturalHeight || image.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx || !canvas.width) {
+          done(sourceUrl, false);
+          return;
+        }
+        ctx.drawImage(image, 0, 0);
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = frame.data;
+        let changed = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i] > 245 && d[i + 1] > 245 && d[i + 2] > 245 && d[i + 3] > 0) {
+            d[i + 3] = 0;
+            changed++;
+          }
+        }
+        if (changed) ctx.putImageData(frame, 0, 0);
+        done(canvas.toDataURL("image/png"), changed > 0);
+      };
+      image.onerror = () => done(sourceUrl, false);
+      image.src = sourceUrl;
+    }
+
+    function ingestPptBadgeBlob(blob, sourceLabel) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = String(reader.result || "");
+        setPptBadgeFromDataUrl(raw, (sourceLabel || "已放入") + " · 原样（可再去掉白底）", { asOriginal: true });
+        toast("校徽已放入 · 默认原样，需要再点「去掉白底」");
+      };
+      reader.readAsDataURL(blob);
     }
 
     function syncPptSlideCover() {
@@ -391,7 +481,7 @@
 
     function startPptGenerate() {
       if (!coverFieldsComplete()) {
-        toast("请补全封面信息（含校徽）");
+        toast("请补全封面信息（含校徽，可从 Word 粘贴）");
         return;
       }
       applyPptPhase("generating");
@@ -803,7 +893,7 @@
       const state = demoOverride || p.status;
       matchConfirmed = state !== "needs_confirm";
       matchUnlocked = false;
-      pptBadgeOk = false;
+      clearPptBadge();
       document.getElementById("sel-arch").value = RECOMMENDED.arch;
       document.getElementById("sel-dom").value = RECOMMENDED.dom;
       document.getElementById("match-ack").checked = matchConfirmed;
@@ -1099,9 +1189,39 @@
         setProjectTab("artifacts");
         return;
       }
+      if (action === "ppt-badge-clear") {
+        clearPptBadge();
+        toast("已清除校徽");
+        return;
+      }
+      if (action === "ppt-badge-knock") {
+        if (!pptBadgeOriginalUrl && !pptBadgeCurrentUrl) {
+          toast("请先粘贴校徽");
+          return;
+        }
+        const src = pptBadgeOriginalUrl || pptBadgeCurrentUrl;
+        knockNearWhiteToAlpha(src, (out, knocked) => {
+          setPptBadgeFromDataUrl(
+            out,
+            knocked ? "已去掉近白底 · 可恢复原图" : "几乎没有白底可去 · 可恢复原图",
+            { asOriginal: false }
+          );
+          toast(knocked ? "已试去白底 · 徽+字可能仍不干净，不对就恢复" : "没检测到明显白底");
+        });
+        return;
+      }
+      if (action === "ppt-badge-restore") {
+        if (!pptBadgeOriginalUrl) {
+          toast("没有可恢复的原图");
+          return;
+        }
+        setPptBadgeFromDataUrl(pptBadgeOriginalUrl, "已恢复原图", { asOriginal: true });
+        toast("已恢复粘贴原图");
+        return;
+      }
       if (action === "ppt-generate") {
         if (isDisabled(el)) {
-          toast("请补全封面信息（含校徽）");
+          toast("请补全封面信息（含校徽，可从 Word 粘贴）");
           return;
         }
         startPptGenerate();
@@ -1687,11 +1807,44 @@
     });
     document.getElementById("ppt-badge")?.addEventListener("change", (e) => {
       const f = e.target.files?.[0];
-      pptBadgeOk = !!f;
-      const hint = document.getElementById("ppt-badge-hint");
-      if (hint) hint.textContent = f ? "已上传 · " + f.name : "未上传";
-      syncPptGenerateBtn();
+      if (!f) {
+        clearPptBadge();
+        return;
+      }
+      ingestPptBadgeBlob(f, "已选择");
     });
+
+    const badgeSlot = document.getElementById("ppt-badge-slot");
+    badgeSlot?.addEventListener("click", () => badgeSlot.focus());
+    badgeSlot?.addEventListener("focus", () => badgeSlot.classList.add("is-focus"));
+    badgeSlot?.addEventListener("blur", () => badgeSlot.classList.remove("is-focus"));
+    badgeSlot?.addEventListener("paste", (e) => {
+      const items = [...(e.clipboardData?.items || [])];
+      const imgItem = items.find((it) => it.type && it.type.startsWith("image/"));
+      if (!imgItem) {
+        toast("剪贴板里没有图片 · 请在 Word 里选中校徽再复制");
+        return;
+      }
+      e.preventDefault();
+      const blob = imgItem.getAsFile();
+      if (blob) ingestPptBadgeBlob(blob, "已粘贴");
+    });
+    document.addEventListener("paste", (e) => {
+      if (pptPhase !== "ready") return;
+      if (document.activeElement && ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+      const items = [...(e.clipboardData?.items || [])];
+      const imgItem = items.find((it) => it.type && it.type.startsWith("image/"));
+      if (!imgItem) return;
+      const genTab = document.getElementById("tab-generate");
+      if (!genTab || !genTab.classList.contains("active")) return;
+      e.preventDefault();
+      const blob = imgItem.getAsFile();
+      if (blob) {
+        badgeSlot?.focus();
+        ingestPptBadgeBlob(blob, "已粘贴");
+      }
+    });
+
     document.getElementById("ppt-compare-theme")?.addEventListener("change", () => toast("主题已切换 · 换皮不标脏"));
     document.getElementById("ppt-compare-layout")?.addEventListener("change", () => toast("版式族已切换 · 换皮不标脏"));
 
