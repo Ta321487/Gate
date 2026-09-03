@@ -111,6 +111,7 @@ _CALL_STAGE_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("match_recommend", ("匹配推荐", "match recommend", "match_recommend")),
     ("parse_spec", ("摘要润色", "spec enrich", "parse_spec")),
     ("island_fill", ("业务配置填充", "业务填充", "island_fill", "island")),
+    ("defense_ppt", ("答辩 PPT", "答辩PPT", "defense_ppt", "ppt_page")),
     ("er_labels", ("E-R 中文补全", "ER中文", "er_labels")),
     ("module_labels", ("模块图命名", "module_labels")),
     ("testcase_labels", ("测试用例文案", "testcase_labels")),

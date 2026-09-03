@@ -183,6 +183,10 @@
           <n-switch v-model:value="form.island_fill" :disabled="stageLocked('island_fill')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
+          <div><strong>答辩 PPT 填页</strong><div class="small muted">与填岛同 Unit 流水线；只整形开题∪实包，不编造技术/模块</div></div>
+          <n-switch v-model:value="form.defense_ppt" :disabled="stageLocked('defense_ppt')" />
+        </div>
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>E-R 中文补全</strong><div class="small muted">把漏网英文表/列名补成中文展示，不改 SQL</div></div>
           <n-switch v-model:value="form.er_labels" :disabled="stageLocked('er_labels')" />
         </div>
@@ -412,7 +416,7 @@ import {
   statusPillNode,
 } from '../opsShared'
 
-const HEAVY_STAGES = ['auto_fix', 'island_fill', 'match_recommend', 'parse_spec']
+const HEAVY_STAGES = ['auto_fix', 'island_fill', 'defense_ppt', 'match_recommend', 'parse_spec']
 const LIGHT_STAGES = ['er_labels', 'module_labels', 'testcase_labels', 'qa_report']
 const ALL_STAGES = [...HEAVY_STAGES, ...LIGHT_STAGES]
 
@@ -449,6 +453,7 @@ const form = reactive({
   match_recommend: true,
   parse_spec: true,
   island_fill: true,
+  defense_ppt: true,
   er_labels: true,
   module_labels: true,
   testcase_labels: true,
@@ -544,6 +549,7 @@ const stageOptions = [
       { label: '匹配推荐', value: 'match_recommend' },
       { label: '摘要润色', value: 'parse_spec' },
       { label: '业务配置填充', value: 'island_fill' },
+      { label: '答辩 PPT 填页', value: 'defense_ppt' },
       { label: 'E-R 中文补全', value: 'er_labels' },
       { label: '模块图命名', value: 'module_labels' },
       { label: '测试用例文案', value: 'testcase_labels' },
@@ -1163,6 +1169,7 @@ async function load() {
     form.match_recommend = dsRes.match_recommend !== false
     form.parse_spec = dsRes.parse_spec
     form.island_fill = dsRes.island_fill
+    form.defense_ppt = dsRes.defense_ppt !== false
     form.er_labels = dsRes.er_labels !== false
     form.module_labels = dsRes.module_labels !== false
     form.testcase_labels = dsRes.testcase_labels !== false
@@ -1205,6 +1212,7 @@ async function save() {
         match_recommend: form.match_recommend,
         parse_spec: form.parse_spec,
         island_fill: form.island_fill,
+        defense_ppt: form.defense_ppt,
         er_labels: form.er_labels,
         module_labels: form.module_labels,
         testcase_labels: form.testcase_labels,
@@ -1224,6 +1232,7 @@ async function save() {
         match_recommend: form.match_recommend,
         parse_spec: form.parse_spec,
         island_fill: form.island_fill,
+        defense_ppt: form.defense_ppt,
         er_labels: form.er_labels,
         module_labels: form.module_labels,
         testcase_labels: form.testcase_labels,

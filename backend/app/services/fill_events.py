@@ -1,4 +1,4 @@
-"""填岛进度事件（进程内 SSE，无 Redis）。"""
+"""填岛进度事件（进程内 SSE，无 Redis）。答辩 PPT 复用同类 hub。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 _HEARTBEAT_SEC = 15
-_TERMINAL = frozenset({"fill_complete", "fill_failed"})
+_TERMINAL = frozenset({"fill_complete", "fill_failed", "ppt_complete", "ppt_failed"})
 
 
 def _empty_snapshot() -> dict[str, Any]:
@@ -23,17 +23,18 @@ def _empty_snapshot() -> dict[str, Any]:
 
 def _merge_event(snap: dict[str, Any], event: dict[str, Any]) -> None:
     t = str(event.get("type") or "")
-    if t == "fill_plan":
+    if t in ("fill_plan", "ppt_plan"):
         units: dict[str, dict[str, Any]] = {}
         for raw in event.get("units") or []:
             if not isinstance(raw, dict):
                 continue
-            uid = str(raw.get("id") or "")
+            uid = str(raw.get("id") or raw.get("key") or "")
             if not uid:
                 continue
             units[uid] = {
                 "id": uid,
-                "kind": str(raw.get("kind") or ""),
+                "kind": str(raw.get("kind") or raw.get("key") or ""),
+                "title": str(raw.get("title") or ""),
                 "budget_chars": int(raw.get("budget_chars") or 0),
                 "source_refs": list(raw.get("source_refs") or []),
                 "status": "pending",
@@ -46,13 +47,13 @@ def _merge_event(snap: dict[str, Any], event: dict[str, Any]) -> None:
         snap["phase"] = "running"
         return
 
-    if t == "fill_reset":
+    if t in ("fill_reset", "ppt_reset"):
         snap.clear()
         snap.update(_empty_snapshot())
         return
 
     if t == "unit_started":
-        uid = str(event.get("unit_id") or "")
+        uid = str(event.get("unit_id") or event.get("key") or "")
         if not uid:
             return
         u = snap["units"].setdefault(uid, {"id": uid, "status": "pending", "error": ""})
@@ -62,10 +63,12 @@ def _merge_event(snap: dict[str, Any], event: dict[str, Any]) -> None:
         u["status"] = "running"
         if event.get("kind"):
             u["kind"] = str(event.get("kind"))
+        if event.get("title"):
+            u["title"] = str(event.get("title"))
         return
 
     if t in ("unit_done", "unit_failed", "unit_skipped"):
-        uid = str(event.get("unit_id") or "")
+        uid = str(event.get("unit_id") or event.get("key") or "")
         if not uid:
             return
         u = snap["units"].setdefault(uid, {"id": uid, "error": ""})
@@ -85,12 +88,12 @@ def _merge_event(snap: dict[str, Any], event: dict[str, Any]) -> None:
                 snap["failed"] = int(snap.get("failed") or 0) + 1
         return
 
-    if t == "fill_complete":
+    if t in ("fill_complete", "ppt_complete"):
         snap["phase"] = "done"
         snap["running"] = 0
         return
 
-    if t == "fill_failed":
+    if t in ("fill_failed", "ppt_failed"):
         snap["phase"] = "failed"
         snap["running"] = 0
         if event.get("error"):
@@ -98,16 +101,24 @@ def _merge_event(snap: dict[str, Any], event: dict[str, Any]) -> None:
 
 
 class FillEventHub:
-    """单进程填岛进度：快照 + 订阅队列，供 SSE 首帧与断线恢复。"""
+    """单进程进度：快照 + 订阅队列，供 SSE 首帧与断线恢复。
+
+    channel 默认 fill；答辩 PPT 用 defense_ppt，键为 ``{channel}:{project_id}``。
+    """
 
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._snapshots: dict[str, dict[str, Any]] = {}
         self._queues: dict[str, list[asyncio.Queue[dict[str, Any] | None]]] = {}
 
-    def snapshot(self, project_id: str) -> dict[str, Any]:
+    @staticmethod
+    def _key(project_id: str, channel: str = "fill") -> str:
+        ch = (channel or "fill").strip() or "fill"
+        return f"{ch}:{project_id}"
+
+    def snapshot(self, project_id: str, *, channel: str = "fill") -> dict[str, Any]:
         base = _empty_snapshot()
-        raw = self._snapshots.get(project_id) or {}
+        raw = self._snapshots.get(self._key(project_id, channel)) or {}
         base.update({k: raw[k] for k in base if k in raw})
         units = raw.get("units")
         base["units"] = dict(units) if isinstance(units, dict) else {}
@@ -115,31 +126,38 @@ class FillEventHub:
             base["error"] = raw["error"]
         return base
 
-    async def reset(self, project_id: str) -> None:
+    async def reset(self, project_id: str, *, channel: str = "fill") -> None:
+        key = self._key(project_id, channel)
         async with self._lock:
-            self._snapshots[project_id] = _empty_snapshot()
-        await self._publish_snapshot(project_id)
+            self._snapshots[key] = _empty_snapshot()
+        await self._publish_snapshot(project_id, channel=channel)
 
-    async def handle(self, project_id: str, event: dict[str, Any]) -> None:
+    async def handle(
+        self, project_id: str, event: dict[str, Any], *, channel: str = "fill"
+    ) -> None:
+        key = self._key(project_id, channel)
         async with self._lock:
-            snap = self._snapshots.setdefault(project_id, _empty_snapshot())
+            snap = self._snapshots.setdefault(key, _empty_snapshot())
             _merge_event(snap, event)
-        await self._publish_snapshot(project_id)
+        await self._publish_snapshot(project_id, channel=channel)
 
-    async def _publish_snapshot(self, project_id: str) -> None:
-        payload = {"type": "snapshot", **self.snapshot(project_id)}
-        for q in list(self._queues.get(project_id, [])):
+    async def _publish_snapshot(self, project_id: str, *, channel: str = "fill") -> None:
+        payload = {"type": "snapshot", **self.snapshot(project_id, channel=channel)}
+        for q in list(self._queues.get(self._key(project_id, channel), [])):
             try:
                 q.put_nowait(payload)
             except asyncio.QueueFull:
                 pass
 
-    async def subscribe(self, project_id: str) -> AsyncGenerator[dict[str, Any], None]:
+    async def subscribe(
+        self, project_id: str, *, channel: str = "fill"
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        key = self._key(project_id, channel)
         q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue(maxsize=64)
         async with self._lock:
-            self._queues.setdefault(project_id, []).append(q)
+            self._queues.setdefault(key, []).append(q)
         try:
-            yield {"type": "snapshot", **self.snapshot(project_id)}
+            yield {"type": "snapshot", **self.snapshot(project_id, channel=channel)}
             while True:
                 try:
                     event = await asyncio.wait_for(q.get(), timeout=_HEARTBEAT_SEC)
@@ -155,9 +173,11 @@ class FillEventHub:
                     return
         finally:
             async with self._lock:
-                qs = self._queues.get(project_id, [])
+                qs = self._queues.get(key, [])
                 if q in qs:
                     qs.remove(q)
 
 
 fill_event_hub = FillEventHub()
+# 可接受：同文件第二实例；首选是 channel=defense_ppt 共用 fill_event_hub
+ppt_event_hub = fill_event_hub
