@@ -105,6 +105,13 @@
   justify-content: center;
 }
 .ppt-figure-slot.is-missing { border-color: var(--red); color: var(--red); }
+.ppt-figure-img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
 .ppt-bullets { list-style: disc; padding-left: 1.2em; margin: 8px 0 0; }
 .ppt-bullets li {
   margin: 6px 0;

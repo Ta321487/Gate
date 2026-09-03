@@ -32,7 +32,13 @@
           class="ppt-figure-slot"
           :class="{ 'is-missing': page.figure.missing }"
         >
-          <span v-if="page.figure.missing">{{ page.figure.hint || page.figure.label || '缺图' }}</span>
+          <img
+            v-if="figureSrc"
+            class="ppt-figure-img"
+            :src="figureSrc"
+            :alt="page.figure.label || '图示'"
+          />
+          <span v-else-if="page.figure.missing">{{ page.figure.hint || page.figure.label || '缺图' }}</span>
           <span v-else>{{ page.figure.label || '图示' }}</span>
         </div>
         <table v-if="page?.table" class="ppt-mini-table">
@@ -80,6 +86,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { api } from '../../api.js'
 
 const props = defineProps({
   page: { type: Object, default: null },
@@ -87,6 +94,7 @@ const props = defineProps({
   deckTitle: { type: String, default: '毕业设计答辩' },
   layoutFamily: { type: String, default: 'band' },
   editable: { type: Boolean, default: true },
+  projectId: { type: String, default: '' },
 })
 const emit = defineEmits(['save-bullet', 'toggle-lock'])
 
@@ -100,6 +108,23 @@ const slideClass = computed(() => {
     'is-center': fam === 'center',
     'is-footer': fam === 'footer',
   }
+})
+
+const figureSrc = computed(() => {
+  const fig = props.page?.figure
+  if (!fig || fig.missing) return ''
+  if (fig.url) return fig.url
+  if (fig.path && props.projectId) {
+    return `/api/projects/${props.projectId}/defense-ppt/figures/${fig.path}`
+  }
+  // 回退：直接用现网 modules/er SVG API（同源产物）
+  if (fig.project_svg === 'modules' && props.projectId) {
+    return api.modulesSvgUrl(props.projectId, { layout: 'biz' })
+  }
+  if (fig.project_svg === 'er' && props.projectId) {
+    return api.erSvgUrl(props.projectId, { mode: 'total' })
+  }
+  return ''
 })
 
 function shortId(id) {

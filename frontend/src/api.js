@@ -141,7 +141,7 @@ export const api = {
     http.post('/tools/sample-proposal', body || {}, { timeout: 180000 }),
 
   // —— 答辩 PPT（终期；独立任务；PPTX 不进 ZIP）——
-  // 契约见 docs/defense-ppt-module.md；后端未就绪时 pptClient 降级 mock
+  // 契约见 docs/defense-ppt-module.md / docs/defense-ppt-backend.md
   getDefensePpt: (id) =>
     http.get(`/projects/${id}/defense-ppt`, { silent: true }),
   putDefensePptCover: (id, cover) =>
