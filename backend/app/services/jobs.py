@@ -24,7 +24,7 @@ from app.llm.agents import (
 )
 from app.llm.unit_flow import format_fill_step_meta, run_fill_pipeline
 from app.llm.runtime import load_llm_runtime
-from app.models import Job, JobStatus, Project, ProjectStatus
+from app.models import Job, JobKind, JobStatus, Project, ProjectStatus
 from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
 from app.services.delivery_review import (
@@ -159,9 +159,9 @@ def evaluate_gates(project: Project, workspace: Path) -> dict[str, Any]:
     return evaluate_domain_gates(workspace, project.spec or {})
 
 
-# 工厂内部产物，不进学生交付 ZIP
+# 工厂内部产物，不进学生交付 ZIP（含 .factory/defense-ppt 旁路）
 _ZIP_EXCLUDE_NAMES = frozenset({"spec.json", "domain.schema.json"})
-_ZIP_EXCLUDE_DIRS = frozenset({"node_modules", "target", ".git", "islands", ".vite"})
+_ZIP_EXCLUDE_DIRS = frozenset({"node_modules", "target", ".git", "islands", ".vite", ".factory"})
 
 
 def pack_zip(workspace: Path, zip_path: Path) -> None:
@@ -209,10 +209,13 @@ async def fail_orphaned_jobs() -> int:
             job.error = "服务重启，任务中断 · 请从失败步骤重试"
             job.steps = _fail_running_step(job.steps, "服务重启中断")
             job.finished_at = datetime.now()
-            project = await db.get(Project, job.project_id)
-            if project and project.status == ProjectStatus.generating.value:
-                project.status = ProjectStatus.ready.value
-                project.zip_ready = False
+            kind = str(getattr(job, "kind", None) or JobKind.bake.value)
+            # 答辩 PPT 旁路不得动 project.status / zip_ready
+            if kind == JobKind.bake.value:
+                project = await db.get(Project, job.project_id)
+                if project and project.status == ProjectStatus.generating.value:
+                    project.status = ProjectStatus.ready.value
+                    project.zip_ready = False
             n += 1
         if n:
             await db.commit()
@@ -570,7 +573,7 @@ async def start_job(
     *,
     from_step: int = 0,
 ) -> Job:
-    # cancel previous running for same project
+    # 只取消同项目 bake 任务；答辩 PPT（kind=defense_ppt）互不干扰
     q = await db.execute(
         select(Job).where(
             Job.project_id == project.id,
@@ -578,6 +581,9 @@ async def start_job(
         )
     )
     for old in q.scalars().all():
+        kind = str(getattr(old, "kind", None) or JobKind.bake.value)
+        if kind != JobKind.bake.value:
+            continue
         old.status = JobStatus.cancelled.value
         t = _running.pop(old.id, None)
         if t:
@@ -597,10 +603,12 @@ async def start_job(
         from_step = 4
     job = Job(
         project_id=project.id,
+        kind=JobKind.bake.value,
         status=JobStatus.queued.value,
         step="queued" if from_step == 0 else f"resume:{STEP_DEFS[from_step][0]}",
         progress=0,
         steps=_default_steps(),
+        units=[],
     )
     db.add(job)
     project.status = ProjectStatus.generating.value
@@ -642,8 +650,20 @@ async def cancel_job(db: AsyncSession, job_id: int) -> bool:
     job.error = "已取消"
     job.steps = _fail_running_step(job.steps, "已取消")
     job.finished_at = datetime.now()
-    project = await db.get(Project, job.project_id)
-    if project and project.status == ProjectStatus.generating.value:
-        project.status = ProjectStatus.ready.value
+    kind = str(getattr(job, "kind", None) or JobKind.bake.value)
+    # 答辩 PPT 取消不得改 project.status
+    if kind == JobKind.bake.value:
+        project = await db.get(Project, job.project_id)
+        if project and project.status == ProjectStatus.generating.value:
+            project.status = ProjectStatus.ready.value
     await db.commit()
     return True
+
+
+def register_running_task(job_id: int, task: asyncio.Task) -> None:
+    """供旁路 runner（如答辩 PPT）登记内存 Task，便于 cancel。"""
+    _running[job_id] = task
+
+
+def pop_running_task(job_id: int) -> asyncio.Task | None:
+    return _running.pop(job_id, None)

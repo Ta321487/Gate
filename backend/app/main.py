@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html
 from fastapi.responses import HTMLResponse
 
-from app.api import jobs, projects, system
+from app.api import defense_ppt, jobs, projects, system
 from app.core.database import init_db
 
 
@@ -74,6 +74,7 @@ app.add_middleware(
 )
 
 app.include_router(projects.router)
+app.include_router(defense_ppt.router, prefix="/api/projects")
 app.include_router(jobs.router)
 app.include_router(system.router)
 

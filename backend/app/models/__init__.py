@@ -86,15 +86,24 @@ class Project(Base):
     )
 
 
+class JobKind(str, enum.Enum):
+    bake = "bake"
+    defense_ppt = "defense_ppt"
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[str] = mapped_column(String(64), index=True)
+    # bake = 一键生成；defense_ppt = 答辩 PPT（不得动 project.status / zip_ready）
+    kind: Mapped[str] = mapped_column(String(32), default=JobKind.bake.value)
     status: Mapped[str] = mapped_column(String(32), default=JobStatus.queued.value)
     step: Mapped[str] = mapped_column(String(64), default="queued")
     progress: Mapped[int] = mapped_column(Integer, default=0)
     steps: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # PPT 页级 Unit 进度（bake 可空）
+    units: Mapped[list[Any]] = mapped_column(JSON, default=list)
     error: Mapped[Optional[str]] = mapped_column(Text)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
