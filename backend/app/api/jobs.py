@@ -16,8 +16,13 @@ router = APIRouter(prefix="/api/jobs", tags=["任务"])
 
 @router.get("", response_model=list[JobOut], summary="任务列表")
 async def list_jobs(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Job).order_by(Job.id.desc()).limit(100))
-    jobs = list(result.scalars().all())
+    """仅列出程序生成（bake）任务；答辩 PPT 走 /defense-ppt/job。"""
+    result = await db.execute(select(Job).order_by(Job.id.desc()).limit(200))
+    jobs = [
+        j
+        for j in result.scalars().all()
+        if str(getattr(j, "kind", None) or "bake") == "bake"
+    ][:100]
     out = []
     for j in jobs:
         item = JobOut.model_validate(j)
@@ -40,9 +45,12 @@ async def purge_orphans(db: AsyncSession = Depends(get_db)):
 
 @router.post("/purge-finished", response_model=ApiOk, summary="清空历史任务")
 async def purge_finished(db: AsyncSession = Depends(get_db)):
-    """删除 success / failed / cancelled，不影响 queued / running。"""
+    """删除 bake 的 success / failed / cancelled；不影响进行中，也不清答辩 PPT 任务。"""
     result = await db.execute(
-        delete(Job).where(Job.status.in_(("success", "failed", "cancelled")))
+        delete(Job).where(
+            Job.status.in_(("success", "failed", "cancelled")),
+            Job.kind == "bake",
+        )
     )
     await db.commit()
     n = result.rowcount or 0

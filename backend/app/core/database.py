@@ -142,3 +142,41 @@ def _migrate_project_columns(sync_conn) -> None:
         )
     except Exception:  # noqa: BLE001
         pass
+
+    # jobs.kind / jobs.units（答辩 PPT 旁路任务）
+    job_cols: set[str] = set()
+    try:
+        if dialect == "sqlite":
+            rows = sync_conn.execute(text("PRAGMA table_info(jobs)")).fetchall()
+            job_cols = {r[1] for r in rows}
+        else:
+            rows = sync_conn.execute(
+                text(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='jobs'"
+                )
+            ).fetchall()
+            job_cols = {r[0] for r in rows}
+    except Exception:  # noqa: BLE001
+        job_cols = set()
+    if job_cols and "kind" not in job_cols:
+        try:
+            sync_conn.execute(
+                text("ALTER TABLE jobs ADD COLUMN kind VARCHAR(32) DEFAULT 'bake'")
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if job_cols and "units" not in job_cols:
+        try:
+            if dialect == "sqlite":
+                sync_conn.execute(text("ALTER TABLE jobs ADD COLUMN units JSON DEFAULT '[]'"))
+            else:
+                sync_conn.execute(text("ALTER TABLE jobs ADD COLUMN units JSON"))
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        sync_conn.execute(
+            text("UPDATE jobs SET kind = 'bake' WHERE kind IS NULL OR kind = ''")
+        )
+    except Exception:  # noqa: BLE001
+        pass

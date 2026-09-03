@@ -501,6 +501,13 @@ def finalize_pack(
     st["workspace_hash_at_pack"] = ws_hash
     st["last_pack_at"] = _utc_now()
     save_review_state(project, st)
+    # 有答辩 PPT 时：业务指纹变则标脏（保留 deck）
+    try:
+        from app.services.defense_ppt.fingerprint import mark_biz_dirty_if_changed
+
+        mark_biz_dirty_if_changed(project)
+    except Exception:  # noqa: BLE001
+        pass
     return {"workspace_hash": ws_hash, "zip_path": str(zip_path)}
 
 
