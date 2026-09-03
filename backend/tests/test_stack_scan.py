@@ -49,6 +49,21 @@ class TestStackScan(unittest.TestCase):
         self.assertFalse(r["spring_security"])
         self.assertNotIn("spring_security", r["addons"])
 
+    def test_ai_assistant_named(self) -> None:
+        r = scan_stack(
+            "农产品选购平台",
+            "核心特色：AI智能农产品导购，大模型问答与知识库匹配。",
+        )
+        self.assertTrue(r["ai_assistant"])
+        self.assertTrue(r["recommended_ai_assistant"])
+        self.assertTrue(r["addons"]["ai_assistant"]["deliverable"])
+        self.assertIn("AI助手", r["hits"])
+
+    def test_ai_assistant_default_off(self) -> None:
+        r = scan_stack("商城系统", "商品下单与评价。")
+        self.assertFalse(r["ai_assistant"])
+        self.assertNotIn("ai_assistant", r["addons"])
+
     def test_echarts_named_ok(self) -> None:
         r = scan_stack("系统", "工作台用 ECharts 做统计图。")
         self.assertTrue(r["addons"]["echarts"]["deliverable"])

@@ -1,0 +1,83 @@
+---
+description: 开题含 AI/大模型/智能客服导购时的接单与交付口径；跨域助手岛 DeepSeek；禁止冒充算法/真视觉
+alwaysApply: true
+---
+
+# 学生包 AI 助手交付契约（预防针）
+
+## 与现网关系
+
+- 工厂侧 DeepSeek/Gemini **只**服务匹配/填岛/论文图文/答辩 PPT 等运营链路，**禁止**把 `backend/app/llm/*` 或工厂 Key 打进学生 ZIP。
+- 学生包 AI：**已可 bake** — `addons.ai_assistant`（guestbook 式能力岛，baseline 常驻代码 + 开则挂 cap/SQL/菜单）。学生运行时经包内 `DeepSeekClient`（**Spring AI** `DeepSeekChatModel` + env `DEEPSEEK_API_KEY`）调用 DeepSeek；禁止另写第二套 LLM HTTP 客户端。
+- 场景轴见 `opening-scene.mdc`；技术栈轴见 `tech-stack-delivery.mdc`；本规则是 **AI 挂件轴**，三轴勿混。
+- AI **不是**新 `DOM-*`，**不是** `spine`/`persistence`，**不塞** `ARCH-*`；对标 `addons.spring_security` 的按需开关（实现形态对齐 guestbook，非 overlay 删文件）。
+
+## 硬原则
+
+1. **吃 A 拒 B**：主路径仍是业务系统、另挂智能客服/导购/助手/知识问答 → **A 类可接且跟开题开开关**；题眼是 RAG 平台、向量库工程、自训 CNN、病虫害识别模型、多 Agent 平台 → **B 类不支持**，禁止用聊天壳冒充整题已齐。
+2. **一个跨域岛**：农产导购 / 图书问答 / 宿舍助手 = **同一** `ai_assistant`；只换角色文案、知识种子、可选分类。禁止按行业复制多套 AI 实现。
+3. **开题为准、交付诚实**：禁止改开题删掉 AI。能 bake → 推荐开，实包 = README = 论文「系统实现」（写清 DeepSeek API + FAQ 回落 + 演示识图/浏览器 TTS）。拟选 ≠ 出包 → **双显**。
+4. **无生成路径不许开开关**：关 = 无 cap/无 SQL 种子/无菜单入口；开 = 真有可跑路径。
+5. **Key**：学生包环境变量自配；工厂运营 Key **禁止**打进 ZIP。无 Key → FAQ 回落仍须可演示。
+
+## 两类题（接单即判）
+
+| 类型 | 特征 | 口径 |
+|------|------|------|
+| **A 业务+AI 挂件** | Boot+Vue 业务壳 + 特色节写智能客服/导购/助手/大模型问答 | 接；开 `ai_assistant` |
+| **B AI 主产品** | 主交付是训练/RAG 工程/真视觉引擎/算法平台 | 标不支持；禁止 FAQ 冒充 |
+
+开题同时写「大模型问答 + 协同过滤」：**拆开**——问答走开助手；协同过滤 **不当已交**（规则 `recommend` 可交则论文写规则推荐）。
+
+## 交付边界（已落地）
+
+### 必交（开则）
+
+- 对话问答（Spring AI + DeepSeek；FAQ 与/或只读业务摘录；无命中/无关题固定提示，不自由发挥）
+- 只读接业务：`AiBizContext` 按意图词 + `Store.enabled()` 调用现有 Store（货架/订单/办理票/预约/公告/推荐/收藏/积分券/考试问卷投票/选座/时间银行/电子签/文库）；未开能力自动跳过；禁止另写 SQL、禁止下单改状态
+- 知识条目维护 + **按域/开题自动灌 FAQ 种子**（`resolve_ai_knowledge_skin`；分类名与货架/假别/工单类型同字）
+- 会话/消息、满意度、热门问答；咨询热度可进管理端统计
+
+### 同岛细项
+
+- **语音播报**：浏览器 `speechSynthesis`；禁止「自研语音模型」
+- **图片入口**：文件名/选品类映射演示（含图书/报修等常见词）；禁止 CNN/自研以图搜图
+- **用户入口**：门户右下角悬浮图标 + 对话弹窗（`AiAssistantFloat`）；管理端为知识库维护 + 统计，**不是**同款聊天窗
+
+### 明确不交
+
+深度学习、CNN、真以图搜图、协同过滤、矩阵分解、人脸、物联网真采集、完整企业 RAG、Agent 自动下单/派单（未宣布前当未交）
+
+### 与现网能力防撞
+
+| 现网 | 是什么 | 禁止冒充 |
+|------|--------|----------|
+| `recommend` | 规则猜你喜欢 | 大模型推荐 / 协同过滤 |
+| `search_assist` | 前缀联想/热搜 | 语义检索 |
+| `doclib` | 资料下载台账 | RAG / AI 知识库 |
+| `guestbook` / `dm` | 人工留言/私信 | AI 客服 |
+
+开题「知识库」：问答/FAQ → `ai_assistant`；资料下载 → `doclib`；两词都有 → 双挂分写。
+
+## 扫描与 Web
+
+- **推荐开**：智能客服/导购/助手/问答/答疑、大模型、ChatGPT、DeepSeek、知识库匹配/问答、语音播报、图片上传匹配、对话式推荐等（见 `stack_scan.AI_ASSISTANT_HINTS` / `features/ai_assistant`）。
+- **仍硬拒**：深度学习、CNN、以图搜图、协同过滤、矩阵分解、人脸等（`OUT_OF_SCOPE`）；大模型问答类 **已退出**整包拒收。
+- 控件在**匹配确认**，与 Security 同级；默认关；开题点名 → 推荐开；双显拟选/出包。
+- **禁止**进一键生成视觉区；禁止按「农产 AI / 图书 AI」拆多产品。
+
+## 禁止
+
+- 工厂填岛 LLM 与学生运行时 AI 混为一谈；拷贝 `app/llm` 进 ZIP。
+- 新建 `DOM-AI` / 按行业复制多套助手。
+- 把 AI 塞进 `spine`/`persistence`/`ARCH-*`。
+- 开开关后论文写自研大模型/CNN；关开关仍写已集成 DeepSeek / Spring AI。
+- 已用 Spring AI 时再写一套手写 HttpClient `/chat/completions`（重复逻辑）。
+- **FAQ 种子写死农产**，图书/宿舍等域仍灌水果粮油；须走 `resolve_ai_knowledge_skin`。
+- 把「答辩前手改知识库」当成正式交付路径（种子须 bake 出齐）。
+
+## 落地核对（改动时必跑）
+
+- `docs/ai-opening-delivery-map.md`：开题表述 ↔ 工厂产出主对照表（运营接单用）
+- `tests/test_ai_assistant_bake.py`：扫词推荐、关无 SQL 种子、开有表+DeepSeekClient+README FAQ；农产种子 vs 图书种子分测。
+- 至少电商域（如农产品开题 → `DOM-SHOP` + `ai_assistant`）bake 一轮冒烟。
