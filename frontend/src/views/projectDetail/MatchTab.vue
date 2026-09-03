@@ -45,6 +45,10 @@
               推荐鉴权：{{ securityLabel(p.recommended_spring_security) }}
               <span v-if="securityDeviant"> · 当前出包：{{ securityLabel(form.springSecurity) }}</span>
             </div>
+            <div class="rec-sub">
+              推荐 AI 助手：{{ aiAssistantLabel(p.recommended_ai_assistant) }}
+              <span v-if="aiAssistantDeviant"> · 当前出包：{{ aiAssistantLabel(form.aiAssistant) }}</span>
+            </div>
             <div class="rec-sub" v-if="matchPath.recommended_scene_label || matchPath.scene_label">
               推荐身份：{{ matchPath.recommended_scene_label || '—' }}
               <span v-if="pathSceneDeviant"> · 当前出包：{{ matchPath.scene_label }}</span>
@@ -63,12 +67,12 @@
             <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">本期不做：{{ p.spec.out_of_mvp.join('、') }}</div>
           </div>
           <div class="lock-row">
-            <span class="small muted">{{ unlocked ? '骨架 / 领域 / 身份入口 / 持久层 / 鉴权可调整' : '骨架 / 领域 / 身份入口 / 持久层 / 鉴权已锁定' }}</span>
+            <span class="small muted">{{ unlocked ? '骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整' : '骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手已锁定' }}</span>
             <div class="row">
               <n-button
                 size="small"
                 :loading="matchBusy"
-                :title="unlocked ? '锁定当前骨架·领域·持久层·鉴权；偏离推荐时可能无法锁定' : '解锁后可改骨架·领域·持久层·鉴权；改完须再确认'"
+                :title="unlocked ? '锁定当前匹配项；偏离推荐时可能无法锁定' : '解锁后可改匹配项；改完须再确认'"
                 @click="toggleUnlock"
               >{{ unlocked ? '重新锁定' : '解锁调整' }}</n-button>
               <n-button
@@ -147,6 +151,17 @@
               />
             </n-form-item>
           </div>
+          <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
+            <n-form-item label="AI 助手">
+              <n-select
+                v-model:value="form.aiAssistant"
+                :options="aiAssistantOptions"
+                :disabled="!unlocked || matchBusy"
+                :loading="matchBusy"
+                @update:value="onArchDomChange"
+              />
+            </n-form-item>
+          </div>
           <div class="confidence">
             <span class="small muted">置信度</span>
             <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : 'var(--amber)' }" /></div>
@@ -161,7 +176,7 @@
               当前与系统推荐不一致，请确认后再生成。
             </template>
             <template v-else>
-              骨架 / 领域 / 身份入口 / 持久层 / 鉴权可调整。如无把握，建议恢复推荐。
+              骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整。如无把握，建议恢复推荐。
             </template>
           </div>
         </div>
@@ -280,7 +295,8 @@ const {
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
-  securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
+  securityOn, securityOptions, aiAssistantDeviant, aiAssistantLabel, aiAssistantOn, aiAssistantOptions,
+  showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,

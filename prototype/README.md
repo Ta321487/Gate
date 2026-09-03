@@ -8,6 +8,18 @@
 | `styles.css` | 样式 |
 | `app.js` | 交互示意 |
 
+## 匹配确认 · 技术栈与按需开关
+
+与现网 `MatchTab` 对齐（控件在匹配确认，**不**进一键生成视觉区）：
+
+- **持久层**：`jdbc` / `mybatis` / `jpa`
+- **Spring Security**：关（默认）/ 开 · 过滤器链
+- **AI 助手**：关（默认）/ 开 · Spring AI + DeepSeek + FAQ  
+  解锁后可手改；与推荐不一致时左侧「推荐 · 当前出包」双显。  
+  演示状态下拉可选 **「AI 助手双显」** 看推荐开≠拟选关。
+
+正式口径见 `.cursor/rules/ai-assistant-delivery.mdc`、`docs/ai-opening-delivery-map.md`。
+
 ## 答辩 PPT（设计见 `docs/defense-ppt-module.md`）
 
 演示状态下拉可切换：
