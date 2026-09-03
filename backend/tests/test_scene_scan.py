@@ -316,6 +316,10 @@ class SceneScanContractTests(unittest.TestCase):
         flower = "基于 Spring Boot 与 Vue 的鲜花销售管理系统的设计与实现"
         polluted = "校园商城二手教材也可参考；花店接单与配送。"
         self.assertEqual(shop_product_kind(flower, polluted), "flowers")
+        self.assertEqual(
+            shop_product_kind("基于SpringBoot的农产品选购平台", ""),
+            "farm",
+        )
         self.assertEqual(scene_for("DOM-SHOP", flower, polluted), "commercial")
         schema = build_domain_schema(flower, "DOM-SHOP", proposal_text=polluted)
         self.assertEqual(schema["labels"].get("authEyebrow"), "花店商城")
