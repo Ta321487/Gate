@@ -589,7 +589,7 @@ POM = r'''<?xml version="1.0" encoding="UTF-8"?>
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.2.5</version>
+    <version>3.4.5</version>
   </parent>
   <groupId>com.thesis</groupId>
   <artifactId>thesis-app</artifactId>
