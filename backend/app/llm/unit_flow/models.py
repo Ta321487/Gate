@@ -18,6 +18,8 @@ class UnitKind(str, Enum):
     er_labels = "er_labels"
     module_labels = "module_labels"
     testcase_labels = "testcase_labels"
+    # 答辩 PPT 页级整形（挂同一 runner / Semaphore / 预算）
+    ppt_page = "ppt_page"
 
 
 class UnitStatus(str, Enum):

@@ -75,5 +75,35 @@ class FillEventsTest(unittest.TestCase):
         asyncio.run(run())
 
 
+    def test_hub_channel_isolation(self) -> None:
+        async def run() -> None:
+            hub = FillEventHub()
+            await hub.handle(
+                "p1",
+                {
+                    "type": "fill_plan",
+                    "total": 1,
+                    "units": [{"id": "u1", "kind": "er_labels", "budget_chars": 1, "source_refs": []}],
+                },
+                channel="fill",
+            )
+            await hub.handle(
+                "p1",
+                {
+                    "type": "ppt_plan",
+                    "total": 1,
+                    "units": [{"id": "ppt.cover", "title": "封面"}],
+                },
+                channel="defense_ppt",
+            )
+            self.assertEqual(hub.snapshot("p1", channel="fill")["units"]["u1"]["id"], "u1")
+            self.assertIn("ppt.cover", hub.snapshot("p1", channel="defense_ppt")["units"])
+            self.assertNotIn("ppt.cover", hub.snapshot("p1", channel="fill")["units"])
+
+        import asyncio
+
+        asyncio.run(run())
+
+
 if __name__ == "__main__":
     unittest.main()

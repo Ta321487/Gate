@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm.client import append_deepseek_log, budget_ok, record_call
 from app.llm.runtime import LlmRuntime
 from app.llm.unit_flow.executors import execute_unit_llm, repair_hints
-from app.llm.unit_flow.models import DeliveryPlan, FlowRunSummary, TaskUnit, UnitResult, UnitStatus
+from app.llm.unit_flow.models import DeliveryPlan, FlowRunSummary, TaskUnit, UnitKind, UnitResult, UnitStatus
 from app.llm.unit_flow.validators import validate_unit_patch
 
 EventCallback = Callable[[dict[str, Any]], Awaitable[None] | None]
@@ -38,10 +38,22 @@ async def run_single_unit(
     llm_enabled: bool,
 ) -> UnitResult:
     """单单元 micro-loop：最多 max_attempts 轮，带 issues 重试。"""
-    if not llm_enabled or not rt.configured:
+    # 封面/目录等确定性页：不调 LLM，直接交 payload.patch
+    if unit.kind == UnitKind.ppt_page and unit.payload.get("deterministic"):
+        patch = unit.payload.get("patch")
+        if isinstance(patch, dict):
+            return UnitResult(
+                unit.id,
+                UnitStatus.done,
+                patch=dict(patch),
+                attempts=0,
+                context=dict(unit.payload),
+            )
         return UnitResult(unit.id, UnitStatus.skipped, attempts=0)
 
-    if unit.id.startswith("island."):
+    if unit.id.startswith("ppt."):
+        stage = "defense_ppt"
+    elif unit.id.startswith("island."):
         stage = "island_fill"
     elif unit.id.startswith("er."):
         stage = "er_labels"
@@ -51,6 +63,30 @@ async def run_single_unit(
         stage = "testcase_labels"
     else:
         stage = "island_fill"
+
+    # 答辩 PPT：LLM 关/未配/预算尽 → 用确定性 fallback_patch（仍算 done，避免整页空白）
+    if unit.kind == UnitKind.ppt_page:
+        fallback = unit.payload.get("fallback_patch")
+        use_fallback = (
+            not llm_enabled
+            or not rt.configured
+            or not rt.stage_on(stage)
+            or not await budget_ok(db, project_id, rt)
+        )
+        if use_fallback:
+            if isinstance(fallback, dict):
+                return UnitResult(
+                    unit.id,
+                    UnitStatus.done,
+                    patch=dict(fallback),
+                    attempts=0,
+                    context=dict(unit.payload),
+                )
+            return UnitResult(unit.id, UnitStatus.skipped, attempts=0)
+
+    if not llm_enabled or not rt.configured:
+        return UnitResult(unit.id, UnitStatus.skipped, attempts=0)
+
     if not rt.stage_on(stage):
         return UnitResult(unit.id, UnitStatus.skipped, attempts=0)
 
@@ -93,6 +129,23 @@ async def run_single_unit(
             )
 
         last_error = detail if not patch else "; ".join(i.message for i in vr.errors[:3])
+        # PPT：校验失败且有 fallback 时，末轮兜底，避免整页空白
+        if (
+            unit.kind == UnitKind.ppt_page
+            and attempt + 1 >= unit.max_attempts
+            and isinstance(unit.payload.get("fallback_patch"), dict)
+        ):
+            append_deepseek_log(
+                project_id, f"unit {unit.id} fallback after fail · {last_error}"
+            )
+            return UnitResult(
+                unit.id,
+                UnitStatus.done,
+                patch=dict(unit.payload["fallback_patch"]),
+                tokens=total_tokens,
+                attempts=attempt + 1,
+                context=dict(unit.payload),
+            )
         repair_msgs = repair_hints([last_error] if last_error else ["输出无效"])
         append_deepseek_log(project_id, f"unit {unit.id} retry attempt={attempt + 1} · {last_error}")
 

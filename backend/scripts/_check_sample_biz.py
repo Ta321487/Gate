@@ -60,9 +60,11 @@ def _runtime() -> LlmRuntime:
         er_labels=False,
         module_labels=False,
         testcase_labels=False,
+        defense_ppt=False,
         auto_fix=False,
         qa_report=False,
         fix_rounds_max=1,
+        fill_unit_concurrency=3,
         project_token_budget=200_000,
         monthly_token_budget=2_000_000,
     )

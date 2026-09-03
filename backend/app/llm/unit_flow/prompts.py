@@ -147,6 +147,39 @@ def build_unit_messages(
             budget_chars=unit.budget_chars,
         )
         temp = 0.2
+    elif unit.kind == UnitKind.ppt_page:
+        role = str(unit.payload.get("role") or "bullets")
+        sys = (
+            "你是毕设港答辩 PPT 整形 Agent。只输出 JSON：\n"
+            '{"page_id":"...","title":"...","bullets":[{"id":"...","text":"...","source_refs":["..."]}],'
+            '"table":{"headers":["..."],"rows":[["..."]]}}\n'
+            "硬约束：\n"
+            "1) 只整形开题∪实包已有内容为答辩要点；禁止编造模块、中间件、技术名、未实现能力；\n"
+            "2) 技术名必须落在 allowlist.tech；菜单/能力表述须贴合 allowlist.menus；\n"
+            "3) bullets 只能使用 payload.bullet_ids 中的 id，条数与 id 对齐；每条 text≤72字；\n"
+            "4) table 仅当 role=table 时输出，行列贴合 payload.table_shape；否则省略 table；\n"
+            "5) source_refs 只能取自 payload.allowed_refs；page_id 必须等于 payload.page_id。"
+        )
+        user = prepare_unit_user_payload(
+            {
+                "domain": frozen.domain,
+                "title": frozen.title,
+                "persistence": frozen.persistence,
+                "spring_security": frozen.spring_security,
+                "page_id": unit.payload.get("page_id"),
+                "role": role,
+                "page_title": unit.payload.get("page_title"),
+                "bullet_ids": unit.payload.get("bullet_ids"),
+                "table_shape": unit.payload.get("table_shape"),
+                "allowlist": unit.payload.get("allowlist"),
+                "allowed_refs": unit.payload.get("allowed_refs"),
+                "evidence_snip": unit.payload.get("evidence_snip"),
+                "fallback_hint": unit.payload.get("fallback_hint"),
+                "proposal_excerpt": excerpt,
+            },
+            budget_chars=unit.budget_chars,
+        )
+        temp = 0.25
     else:
         raise ValueError(f"unknown unit kind: {unit.kind}")
 
