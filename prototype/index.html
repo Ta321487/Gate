@@ -46,6 +46,7 @@
             <select id="demo-state" aria-label="演示状态">
               <option value="list">列表 · 混合状态</option>
               <option value="needs_confirm">项目 · 待确认匹配</option>
+              <option value="match_ai_dual">项目 · AI 助手双显（推荐开≠拟选）</option>
               <option value="generating">项目 · 生成中</option>
               <option value="generated">项目 · 已生成待启动</option>
               <option value="running">项目 · 运行中</option>
@@ -170,13 +171,14 @@
 
             <div class="banner success mb-16" style="margin-bottom:14px">
               <h4 style="font-size:14px;margin-bottom:4px">推荐匹配已给出</h4>
-              <p class="small muted">确认后到「一键生成」调整视觉并开跑。如需调整骨架或领域，请先解锁。</p>
+              <p class="small muted">确认后到「一键生成」调整视觉并开跑。如需调整骨架、领域、持久层、鉴权或 AI 助手，请先解锁。</p>
             </div>
 
             <div class="banner warn mb-16" style="margin-bottom:14px">
               <h4 style="font-size:14px;margin-bottom:4px">匹配说明</h4>
               <ul class="warn-list">
-                <li>人脸识别等能力已标为「本期不做」，不影响主路径交付。</li>
+                <li>人脸识别、协同过滤等能力已标为「本期不做」，不影响主路径交付。</li>
+                <li>开题点名智能客服/导购/馆员问答时，匹配页会<strong>推荐开 AI 助手</strong>（与 Security 同级）；拟选≠出包须双显。</li>
               </ul>
             </div>
 
@@ -190,11 +192,15 @@
                   <div class="rec-box">
                     <div class="rec-title">系统推荐（置信度 0.86）</div>
                     <div class="rec-main" id="rec-label">ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书</div>
-                    <div class="rec-sub">命中：借阅 / 审核 / 图书 / 管理员 · 本期不做：人脸识别、协同过滤推荐</div>
+                    <div class="rec-sub" id="rec-hits">命中：借阅 / 审核 / 图书 / 管理员 · 本期不做：人脸识别、协同过滤推荐</div>
+                    <div class="rec-sub" id="rec-persistence">推荐持久层：JdbcTemplate</div>
+                    <div class="rec-sub" id="rec-security">推荐鉴权：Session（无过滤器链）</div>
+                    <div class="rec-sub" id="rec-ai">推荐 AI 助手：未启用</div>
+                    <div class="rec-sub" id="rec-stack-dual" style="display:none"></div>
                   </div>
 
                   <div class="lock-row">
-                    <span class="small muted">骨架 / 领域已锁定</span>
+                    <span class="small muted" id="match-lock-hint">骨架 / 领域 / 持久层 / 鉴权 / AI助手已锁定</span>
                     <div class="row gap-sm">
                       <button type="button" class="btn btn-secondary btn-sm" id="btn-unlock-match" data-action="toggle-override">解锁调整</button>
                       <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-match" data-action="reset-match" style="display:none">恢复推荐</button>
@@ -228,6 +234,29 @@
                         <option>DOM-GENERIC · 通用兜底</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div class="field locked" id="field-persistence" style="margin-top:10px">
+                    <label>持久层</label>
+                    <select id="sel-persistence">
+                      <option value="jdbc" selected>Spring JDBC（JdbcTemplate）</option>
+                      <option value="mybatis">MyBatis + PageHelper</option>
+                      <option value="jpa">Spring Data JPA（Hibernate）</option>
+                    </select>
+                  </div>
+                  <div class="field locked" id="field-security" style="margin-top:10px">
+                    <label>Spring Security</label>
+                    <select id="sel-security">
+                      <option value="off" selected>关 · 仅 Session + AdminAuth（默认）</option>
+                      <option value="on">开 · Spring Security 过滤器链</option>
+                    </select>
+                  </div>
+                  <div class="field locked" id="field-ai" style="margin-top:10px">
+                    <label>AI 助手</label>
+                    <select id="sel-ai">
+                      <option value="off" selected>关 · 不出 AI 助手岛（默认）</option>
+                      <option value="on">开 · Spring AI + DeepSeek + 知识库 FAQ</option>
+                    </select>
                   </div>
 
                   <div class="confidence">
@@ -313,7 +342,7 @@
               <label>
                 <input type="checkbox" id="match-ack" />
                 <span id="match-ack-text">
-                  已核对骨架、领域与本期范围，确认后开始生成。
+                  已核对骨架、领域、持久层、鉴权、AI 助手与本期范围，确认后开始生成。
                 </span>
               </label>
             </div>
@@ -1708,7 +1737,7 @@
               <div class="panel-bd help-body">
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
-                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域与持久层等。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。配色、布局等视觉选项在「一键生成」页调整。</p></li>
+                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域、持久层、Spring Security 与 AI 助手。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。开题推荐与当前出包不一致时双显。配色、布局等视觉选项在「一键生成」页调整，禁止把 AI/Security 塞进视觉区。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
                   <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。校徽从 Word 复制粘贴即可（默认原样；可选去掉白底，徽+字可能扣不干净）。产物行可检查与导出 PPTX（不进 ZIP）；对照子页做预览纠错与换皮。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
@@ -1832,6 +1861,8 @@
                   <div class="help-glossary-row"><dt>骨架</dt><dd>匹配页选定的能力路径（如 ARCH-FLOW）。决定主流程形态，不是 Spring Boot + Vue 等技术主线。</dd></div>
                   <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域（DOM-*）。决定文案、菜单与能力组合。</dd></div>
                   <div class="help-glossary-row"><dt>持久层</dt><dd>匹配确认中的数据访问实现：JdbcTemplate、MyBatis 或 Spring Data JPA。</dd></div>
+                  <div class="help-glossary-row"><dt>Spring Security</dt><dd>按需鉴权开关。开=过滤器链；关=仅 Session + AdminAuth。与持久层同级，不进一键生成视觉区。</dd></div>
+                  <div class="help-glossary-row"><dt>AI 助手</dt><dd>按需能力岛（跨域同一套）。开=学生包 Spring AI + DeepSeek + FAQ；关=无菜单/无 SQL 种子。开题点名智能客服/导购/馆员问答时推荐开；≠ RAG 平台/CNN 主产品。</dd></div>
                   <div class="help-glossary-row"><dt>开题措辞核对</dt><dd>生成前弹窗：开题功能行与 Spec 清单项名静态比对，不扫工程。</dd></div>
                   <div class="help-glossary-row"><dt>清单实装验收</dt><dd>生成后质量检查：扫描 workspace，核对清单项是否在 ZIP 中有对应实现。</dd></div>
                   <div class="help-glossary-row"><dt>交付复审</dt><dd>产物页运营流程：验圈冻结安全区、登记偏差、合卷同步 ZIP。不进学生交付包。</dd></div>

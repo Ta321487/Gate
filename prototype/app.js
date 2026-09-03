@@ -82,8 +82,23 @@
     const RECOMMENDED = {
       arch: "ARCH-FLOW · 审核流",
       dom: "DOM-LIBRARY · 图书",
+      persistence: "jdbc",
+      security: "off",
+      ai: "off",
       conf: 0.86,
     };
+
+    const PERSISTENCE_LABEL = {
+      jdbc: "JdbcTemplate",
+      mybatis: "MyBatis + PageHelper",
+      jpa: "Spring Data JPA",
+    };
+    function securityLabel(v) {
+      return v === "on" ? "Spring Security" : "Session（无过滤器链）";
+    }
+    function aiLabel(v) {
+      return v === "on" ? "AI 助手（Spring AI + DeepSeek）" : "未启用";
+    }
 
     function setDisabled(id, off) {
       const el = document.getElementById(id);
@@ -808,14 +823,88 @@
     function isDeviated() {
       const arch = document.getElementById("sel-arch").value;
       const dom = document.getElementById("sel-dom").value;
-      return arch !== RECOMMENDED.arch || dom !== RECOMMENDED.dom;
+      const persistence = document.getElementById("sel-persistence").value;
+      const security = document.getElementById("sel-security").value;
+      const ai = document.getElementById("sel-ai").value;
+      return (
+        arch !== RECOMMENDED.arch ||
+        dom !== RECOMMENDED.dom ||
+        persistence !== RECOMMENDED.persistence ||
+        security !== RECOMMENDED.security ||
+        ai !== RECOMMENDED.ai
+      );
+    }
+
+    function updateRecDualLines() {
+      const pers = document.getElementById("sel-persistence").value;
+      const sec = document.getElementById("sel-security").value;
+      const ai = document.getElementById("sel-ai").value;
+
+      const persEl = document.getElementById("rec-persistence");
+      const secEl = document.getElementById("rec-security");
+      const aiEl = document.getElementById("rec-ai");
+      const dualEl = document.getElementById("rec-stack-dual");
+
+      persEl.textContent =
+        "推荐持久层：" +
+        PERSISTENCE_LABEL[RECOMMENDED.persistence] +
+        (pers !== RECOMMENDED.persistence
+          ? " · 当前出包：" + PERSISTENCE_LABEL[pers]
+          : "");
+      secEl.textContent =
+        "推荐鉴权：" +
+        securityLabel(RECOMMENDED.security) +
+        (sec !== RECOMMENDED.security ? " · 当前出包：" + securityLabel(sec) : "");
+      aiEl.textContent =
+        "推荐 AI 助手：" +
+        aiLabel(RECOMMENDED.ai) +
+        (ai !== RECOMMENDED.ai ? " · 当前出包：" + aiLabel(ai) : "");
+
+      const dualParts = [];
+      if (pers !== RECOMMENDED.persistence) {
+        dualParts.push(
+          "持久层 · 推荐：" +
+            PERSISTENCE_LABEL[RECOMMENDED.persistence] +
+            " · 拟选：" +
+            PERSISTENCE_LABEL[pers]
+        );
+      }
+      if (sec !== RECOMMENDED.security) {
+        dualParts.push(
+          "Security · 开题推荐：" +
+            (RECOMMENDED.security === "on" ? "是" : "否") +
+            " · 拟选：" +
+            (sec === "on" ? "是" : "否")
+        );
+      }
+      if (ai !== RECOMMENDED.ai) {
+        dualParts.push(
+          "AI助手 · 开题推荐：" +
+            (RECOMMENDED.ai === "on" ? "开" : "关") +
+            " · 拟选：" +
+            (ai === "on" ? "开" : "关")
+        );
+      }
+      if (dualParts.length) {
+        dualEl.style.display = "";
+        dualEl.textContent = "拟选对照：" + dualParts.join("；");
+      } else {
+        dualEl.style.display = "none";
+        dualEl.textContent = "";
+      }
     }
 
     function updateMatchRiskUI(clearAck) {
       document.getElementById("field-arch").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-dom").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-persistence").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-security").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-ai").classList.toggle("locked", !matchUnlocked);
       document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁调整";
       document.getElementById("btn-reset-match").style.display = matchUnlocked || isDeviated() ? "inline-flex" : "none";
+      document.getElementById("match-lock-hint").textContent = matchUnlocked
+        ? "骨架 / 领域 / 持久层 / 鉴权 / AI助手可调整"
+        : "骨架 / 领域 / 持久层 / 鉴权 / AI助手已锁定";
 
       const pill = document.getElementById("match-mode-pill");
       const banner = document.getElementById("override-banner");
@@ -826,26 +915,31 @@
       document.getElementById("conf-fill").style.width = Math.round(conf * 100) + "%";
       document.getElementById("conf-fill").style.background = conf >= 0.75 ? "var(--green)" : "#d97706";
 
+      updateRecDualLines();
+
+      const scopeAck =
+        "已核对骨架、领域、持久层、鉴权、AI 助手与本期范围，确认后开始生成。";
+
       if (!matchUnlocked && !isDeviated()) {
         pill.className = "pill pill-green";
         pill.textContent = "已锁定推荐";
         banner.classList.remove("show", "danger");
-        ackText.textContent = "已核对骨架、领域与本期范围，确认后开始生成。";
+        ackText.textContent = scopeAck;
         btnConfirm.textContent = "确认并继续";
       } else if (matchUnlocked && !isDeviated()) {
         pill.className = "pill pill-amber";
         pill.textContent = "已解锁";
         banner.classList.add("show");
         banner.classList.remove("danger");
-        banner.textContent = "骨架 / 领域可调整。如无把握，建议恢复推荐。";
-        ackText.textContent = "已核对骨架、领域与本期范围，确认后开始生成。";
+        banner.textContent = "骨架 / 领域 / 持久层 / 鉴权 / AI助手可调整。如无把握，建议恢复推荐。";
+        ackText.textContent = scopeAck;
         btnConfirm.textContent = "确认并继续";
       } else {
         pill.className = "pill pill-red";
         pill.textContent = "已偏离推荐";
         banner.classList.add("show", "danger");
         banner.textContent = "当前与系统推荐不一致，请确认后再生成。";
-        ackText.textContent = "确认按当前骨架 / 领域生成。";
+        ackText.textContent = "确认按当前骨架 / 领域 / 持久层 / 鉴权 / AI 助手生成。";
         btnConfirm.textContent = "确认按当前选择继续";
       }
 
@@ -859,6 +953,9 @@
     function syncMatchFields(clearAck) {
       const arch = document.getElementById("sel-arch").value;
       const dom = document.getElementById("sel-dom").value;
+      const persistence = document.getElementById("sel-persistence").value;
+      const security = document.getElementById("sel-security").value;
+      const ai = document.getElementById("sel-ai").value;
       document.getElementById("proj-arch").textContent =
         arch.split(" · ")[0] + " · " + dom.split(" · ")[0];
       document.getElementById("rec-label").textContent =
@@ -867,6 +964,9 @@
   "title": "图书借阅管理系统",
   "archetype": "${arch.split(" · ")[0]}",
   "domain": "${dom.split(" · ")[0]}",
+  "persistence": "${persistence}",
+  "spring_security": ${security === "on"},
+  "ai_assistant": ${ai === "on"},
   "match_mode": "${isDeviated() ? "manual_override" : "recommended"}",
   "roles": ["reader", "admin"],
   "entities": ["Book", "Category", "Borrow", "Notice"],
@@ -896,6 +996,9 @@
       clearPptBadge();
       document.getElementById("sel-arch").value = RECOMMENDED.arch;
       document.getElementById("sel-dom").value = RECOMMENDED.dom;
+      document.getElementById("sel-persistence").value = RECOMMENDED.persistence;
+      document.getElementById("sel-security").value = RECOMMENDED.security;
+      document.getElementById("sel-ai").value = RECOMMENDED.ai;
       document.getElementById("match-ack").checked = matchConfirmed;
       document.getElementById("match-ack").disabled = false;
       document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
@@ -1030,6 +1133,9 @@
       if (action === "reset-match") {
         document.getElementById("sel-arch").value = RECOMMENDED.arch;
         document.getElementById("sel-dom").value = RECOMMENDED.dom;
+        document.getElementById("sel-persistence").value = RECOMMENDED.persistence;
+        document.getElementById("sel-security").value = RECOMMENDED.security;
+        document.getElementById("sel-ai").value = RECOMMENDED.ai;
         matchUnlocked = false;
         syncMatchFields(true);
         toast("已恢复系统推荐 · 骨架/领域已锁定");
@@ -1784,6 +1890,20 @@
       syncMatchFields(true);
       toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "领域已改回推荐值");
     });
+    function bindLockedMatchSelect(id, recommendedKey, lockedMsg, okMsg) {
+      document.getElementById(id).addEventListener("change", () => {
+        if (!matchUnlocked) {
+          document.getElementById(id).value = RECOMMENDED[recommendedKey];
+          toast(lockedMsg);
+          return;
+        }
+        syncMatchFields(true);
+        toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : okMsg);
+      });
+    }
+    bindLockedMatchSelect("sel-persistence", "persistence", "持久层已锁定 · 请先点「解锁调整」", "持久层已改回推荐值");
+    bindLockedMatchSelect("sel-security", "security", "鉴权已锁定 · 请先点「解锁调整」", "鉴权已改回推荐值");
+    bindLockedMatchSelect("sel-ai", "ai", "AI 助手已锁定 · 请先点「解锁调整」", "AI 助手已改回推荐值");
     document.getElementById("sel-theme")?.addEventListener("change", () => toast("行业配色已自动保存"));
     document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
     document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
@@ -1795,8 +1915,22 @@
 
     document.getElementById("demo-state").addEventListener("change", (e) => {
       const v = e.target.value;
-      if (v === "list") showView("home");
-      else openProject("gf-20260717-001", v);
+      if (v === "list") {
+        RECOMMENDED.ai = "off";
+        showView("home");
+        return;
+      }
+      if (v === "match_ai_dual") {
+        RECOMMENDED.ai = "on";
+        openProject("gf-20260717-001", "needs_confirm");
+        matchUnlocked = true;
+        document.getElementById("sel-ai").value = "off";
+        syncMatchFields(true);
+        toast("演示：开题推荐开 AI · 拟选关 → 双显");
+        return;
+      }
+      RECOMMENDED.ai = "off";
+      openProject("gf-20260717-001", v);
     });
 
     ["ppt-school", "ppt-college", "ppt-class", "ppt-name", "ppt-sid", "ppt-advisor"].forEach((id) => {

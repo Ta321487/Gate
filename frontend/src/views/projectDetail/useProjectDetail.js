@@ -45,6 +45,7 @@ const form = reactive({
   domain: '',
   persistence: 'jdbc',
   springSecurity: 'off',
+  aiAssistant: 'off',
   scene: 'campus',
   entry: '',
   theme: '',
@@ -337,6 +338,10 @@ const securityOptions = [
   { label: '关 · 仅 Session + AdminAuth（默认）', value: 'off' },
   { label: '开 · Spring Security 过滤器链', value: 'on' },
 ]
+const aiAssistantOptions = [
+  { label: '关 · 不出 AI 助手岛（默认）', value: 'off' },
+  { label: '开 · Spring AI + DeepSeek + 知识库 FAQ', value: 'on' },
+]
 function persistenceLabel(v) {
   if (v === 'mybatis') return 'MyBatis + PageHelper'
   if (v === 'jpa') return 'Spring Data JPA'
@@ -347,6 +352,13 @@ function securityLabel(v) {
   return on ? 'Spring Security' : 'Session（无过滤器链）'
 }
 function securityOn(v) {
+  return v === true || v === 'on' || v === 1
+}
+function aiAssistantLabel(v) {
+  const on = v === true || v === 'on' || v === 1
+  return on ? 'AI 助手（Spring AI + DeepSeek）' : '未启用'
+}
+function aiAssistantOn(v) {
   return v === true || v === 'on' || v === 1
 }
 const llmOptions = [
@@ -361,6 +373,10 @@ const persistenceDeviant = computed(() => {
 const securityDeviant = computed(() => {
   if (!p.value) return false
   return securityOn(form.springSecurity) !== securityOn(p.value.recommended_spring_security)
+})
+const aiAssistantDeviant = computed(() => {
+  if (!p.value) return false
+  return aiAssistantOn(form.aiAssistant) !== aiAssistantOn(p.value.recommended_ai_assistant)
 })
 const matchPath = computed(() => {
   const mp = p.value?.spec?.match_path
@@ -399,6 +415,7 @@ const deviant = computed(() => {
     archDomainDeviant.value
     || persistenceDeviant.value
     || securityDeviant.value
+    || aiAssistantDeviant.value
     || pathSceneDeviant.value
     || pathEntryDeviant.value
     || Boolean(matchPath.value.deviant)
@@ -453,6 +470,10 @@ const preGenTechDual = computed(() => {
   }
   if (stack.security_hint != null && stack.security_hint !== p.value.spring_security) {
     parts.push(`Security · 开题：${stack.security_hint ? '是' : '否'} · 拟选：${p.value.spring_security ? '是' : '否'}`)
+  }
+  const recAi = stack.recommended_ai_assistant
+  if (recAi != null && !!recAi !== !!p.value.ai_assistant) {
+    parts.push(`AI助手 · 开题推荐：${recAi ? '开' : '关'} · 拟选：${p.value.ai_assistant ? '开' : '关'}`)
   }
   return parts.join(' · ')
 })
@@ -987,6 +1008,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.domain = p.value.domain
       form.persistence = p.value.persistence || p.value.spec?.persistence || 'jdbc'
       form.springSecurity = securityOn(p.value.spring_security ?? p.value.spec?.spring_security) ? 'on' : 'off'
+      form.aiAssistant = aiAssistantOn(p.value.ai_assistant ?? p.value.spec?.ai_assistant) ? 'on' : 'off'
       form.scene = p.value.spec?.match_path?.scene || 'campus'
       form.entry = p.value.spec?.match_path?.entry || ''
       form.theme = p.value.theme
@@ -1557,6 +1579,7 @@ async function resetMatch() {
     form.domain = p.value.domain
     form.persistence = p.value.persistence || 'jdbc'
     form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
+    form.aiAssistant = aiAssistantOn(p.value.ai_assistant) ? 'on' : 'off'
     form.scene = p.value.spec?.match_path?.scene || 'campus'
     form.entry = p.value.spec?.match_path?.entry || ''
     form.theme = p.value.theme
@@ -1583,6 +1606,7 @@ async function onArchDomChange() {
       domain: form.domain,
       persistence: form.persistence,
       spring_security: securityOn(form.springSecurity),
+      ai_assistant: aiAssistantOn(form.aiAssistant),
     })
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
@@ -1591,6 +1615,7 @@ async function onArchDomChange() {
     form.portalHomeStyle = p.value.spec?.portal_home_style || form.portalHomeStyle
     form.persistence = p.value.persistence || form.persistence
     form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
+    form.aiAssistant = aiAssistantOn(p.value.ai_assistant) ? 'on' : 'off'
     form.scene = p.value.spec?.match_path?.scene || form.scene
     form.entry = p.value.spec?.match_path?.entry || ''
     ack.value = false
@@ -1600,6 +1625,7 @@ async function onArchDomChange() {
     form.domain = p.value.domain
     form.persistence = p.value.persistence || 'jdbc'
     form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
+    form.aiAssistant = aiAssistantOn(p.value.ai_assistant) ? 'on' : 'off'
     form.theme = p.value.theme
     form.chrome = p.value.spec?.chrome || form.chrome
     form.layout = p.value.spec?.layout || form.layout
@@ -2248,6 +2274,10 @@ onUnmounted(() => {
     securityLabel,
     securityOn,
     securityOptions,
+    aiAssistantDeviant,
+    aiAssistantLabel,
+    aiAssistantOn,
+    aiAssistantOptions,
     showDelete,
     showEr,
     showFillPlan,
