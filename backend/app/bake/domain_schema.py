@@ -218,13 +218,13 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                     proposal_text=prop_body,
                     title=title,
                 )
-    if not spec.get("accept"):
-        from app.bake.match_path_axes import match_path_override_scope
-
-        proposal_text = ""
+    prop_body = ""
+    if isinstance(spec.get("proposal_text"), str):
+        prop_body = spec["proposal_text"]
+    else:
         prop = spec.get("proposal")
         if isinstance(prop, dict):
-            proposal_text = str(
+            prop_body = str(
                 prop.get("excerpt")
                 or prop.get("text")
                 or prop.get("summary")
@@ -232,14 +232,23 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                 or ""
             )
         elif isinstance(prop, str):
-            proposal_text = prop
-        if not proposal_text:
-            proposal_text = title
+            prop_body = prop
+    if not prop_body:
+        prop_body = title
+
+    if not spec.get("accept"):
+        from app.bake.match_path_axes import match_path_override_scope
+
         path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
         with match_path_override_scope(
             domain, path.get("scene"), path.get("entry")
         ):
-            spec = attach_accept(spec, proposal_text)
+            spec = attach_accept(spec, prop_body)
+    else:
+        # accept 已定稿时 attach_accept 不再跑；仍须同步按需 AI 开关 → cap/SQL/菜单
+        from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
+
+        spec = apply_ai_assistant_to_spec(spec, prop_body)
     return spec
 
 
@@ -282,6 +291,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.stock_io import apply_stock_io_to_spec
     from app.bake.features.e_sign import apply_e_sign_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
+    from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
     from app.bake.features.loyalty import apply_loyalty_to_spec
     from app.bake.features.order_extras import apply_order_extras_to_spec
     from app.bake.features.proposal_caps import merge_proposal_capabilities
@@ -369,6 +379,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_stock_io_to_spec(out, body)
     out = apply_e_sign_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
+    out = apply_ai_assistant_to_spec(out, body)
     out = apply_dm_to_spec(out, body)
     out = apply_favorites_to_spec(out, body)
     out = apply_ux_to_spec(out, body)

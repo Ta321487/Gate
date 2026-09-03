@@ -83,11 +83,12 @@ def _patch_student_readme(
     java_package: str = "com.thesis",
     persistence: str = "jdbc",
     spring_security: bool = False,
+    ai_assistant: bool = False,
     schema_sql: str = "",
     spec: dict[str, Any] | None = None,
 ) -> None:
     """ZIP 根目录 README：写入课题名、库名、Java 包、持久层/鉴权与样例账号。"""
-    from app.bake.addons import security_readme_bits
+    from app.bake.addons import ai_assistant_readme_bits, security_readme_bits
     from app.bake.persistence import persistence_readme_bits
 
     path = dest / "README.md"
@@ -113,6 +114,7 @@ def _patch_student_readme(
     text = text.replace("${PERSISTENCE_FAQ}", faq)
     text = text.replace("${SECURITY_AUTH_LINE}", auth_line)
     text = text.replace("${SECURITY_FAQ}", sec_faq)
+    text = text.replace("${AI_ASSISTANT_FAQ}", ai_assistant_readme_bits(ai_assistant))
     path.write_text(text, encoding="utf-8")
 
 def _merge_tree(src: Path, dest: Path) -> None:
@@ -204,6 +206,7 @@ def domain_sql(
     )
     from app.bake.features.vote import VOTE_CAP
     from app.bake.features.guestbook import GUESTBOOK_CAP
+    from app.bake.features.ai_assistant import AI_ASSISTANT_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP
     from app.bake.features.order_extras import ORDER_REVIEW_CAP
@@ -223,6 +226,7 @@ def domain_sql(
         ensure_favorites_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
+        ensure_ai_assistant_sql,
         ensure_order_review_sql,
         ensure_shared_sql_columns,
         ensure_stock_io_sql,
@@ -344,6 +348,13 @@ def domain_sql(
     text = ensure_guestbook_sql(
         text,
         enabled=GUESTBOOK_CAP in caps,
+    )
+    text = ensure_ai_assistant_sql(
+        text,
+        enabled=AI_ASSISTANT_CAP in caps,
+        domain=domain or "",
+        title=title or "",
+        proposal_text=proposal_text or "",
     )
     text = ensure_dm_sql(
         text,

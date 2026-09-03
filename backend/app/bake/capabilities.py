@@ -69,6 +69,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信）",
     },
+    "ai_assistant": {
+        "label": "AI智能助手",
+        "status": "implemented",
+        "desc": "Spring AI + DeepSeek；FAQ + 只读接业务（商品/订单/借阅报修等现有 Store）；热门/满意度；演示级图片品类与浏览器播报",
+    },
     "dm": {
         "label": "一对一私信",
         "status": "implemented",
@@ -208,8 +213,7 @@ OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
     ("指纹", "生物识别"),
     ("深度学习", "模型训练/推理"),
     ("卷积神经网络", "模型训练/推理"),
-    ("大模型", "大模型问答"),
-    ("chatgpt", "大模型问答"),
+    # 大模型问答 / ChatGPT 作客服·导购 → 已可 bake（ai_assistant）；勿再整包拒
     ("以图搜图", "视觉检索"),
     ("协同过滤", "协同过滤推荐"),
     ("矩阵分解", "协同过滤推荐"),

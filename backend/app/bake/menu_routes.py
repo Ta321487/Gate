@@ -16,6 +16,7 @@ USER_MENU_PATHS: dict[str, str] = {
     "peer_tickets": "/peer-tickets",
     "content": "/notices",
     "guestbook": "/guestbook",
+    "ai_assistant": "/ai-assistant",
     "exam_papers": "/exam/papers",
     "exam_attempts": "/exam/attempts",
     "exam_practice": "/exam/practice",
@@ -55,6 +56,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "users": "/admin/users",
     "content": "/admin/notices",
     "guestbook": "/admin/guestbook",
+    "ai_knowledge": "/admin/ai-knowledge",
     "exam_questions": "/admin/exam/questions",
     "exam_papers": "/admin/exam/papers",
     "survey_forms": "/admin/survey/forms",
@@ -231,6 +233,8 @@ def effective_paths(
     # 能力叠加（与 with*Routes 对齐）
     if "guestbook" in cap_set:
         paths.update({"/guestbook", "/admin/guestbook"})
+    if "ai_assistant" in cap_set:
+        paths.update({"/ai-assistant", "/admin/ai-knowledge"})
     if "exam" in cap_set:
         paths.update(
             {

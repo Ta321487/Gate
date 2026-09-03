@@ -293,6 +293,56 @@ def merge_guestbook_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_AI_ASSISTANT_FILES = [
+    "backend/src/main/java/com/thesis/service/AiAssistantStore.java",
+    "backend/src/main/java/com/thesis/service/AiBizContext.java",
+    "backend/src/main/java/com/thesis/service/DeepSeekClient.java",
+    "backend/src/main/java/com/thesis/controller/AiAssistantController.java",
+    "frontend/src/views/AiAssistant.vue",
+    "frontend/src/views/admin/AiKnowledgeAdmin.vue",
+    "frontend/src/components/AiAssistantFloat.vue",
+    "frontend/src/layouts/PortalLayout.vue",
+    "frontend/src/layouts/AdminLayout.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_ai_assistant_gate(gate: dict, caps: list[str] | None) -> dict:
+    """叠加 AI 助手文件、路由与 flow_api。"""
+    caps = set(caps or [])
+    if "ai_assistant" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_AI_ASSISTANT_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "ai-assistant" not in have:
+        routes.append({"seg": "ai-assistant", "from_feature": "AI智能助手"})
+    if "admin/ai-knowledge" not in have:
+        routes.append({"seg": "admin/ai-knowledge", "from_feature": "AI智能助手"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["ai_assistant"] = {
+        "file": "AiAssistantController.java",
+        "need": ["/api/ai-assistant"],
+    }
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "ai_knowledge" not in super_menus:
+        if "content" in super_menus:
+            super_menus.insert(super_menus.index("content"), "ai_knowledge")
+        else:
+            super_menus.append("ai_knowledge")
+        inv["super_menus"] = super_menus
+        out["admin_invariants"] = inv
+    return out
+
+
 _GATE_EXAM_FILES = [
     "backend/src/main/java/com/thesis/service/ExamStore.java",
     "backend/src/main/java/com/thesis/controller/ExamController.java",

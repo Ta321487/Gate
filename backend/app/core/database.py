@@ -121,6 +121,26 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if "ai_assistant" not in cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE projects ADD COLUMN ai_assistant "
+                    "BOOLEAN DEFAULT 0"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if "recommended_ai_assistant" not in cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE projects ADD COLUMN recommended_ai_assistant "
+                    "BOOLEAN DEFAULT 0"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
     if "delivery_review" not in cols:
         try:
             if dialect == "sqlite":

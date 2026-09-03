@@ -375,7 +375,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
             files_ok = False
             missing = list(missing) + ["pom.xml → spring-boot-starter-data-jpa"]
 
-    from app.bake.addons import resolve_spring_security
+    from app.bake.addons import resolve_ai_assistant, resolve_spring_security
 
     if resolve_spring_security(spec):
         # 包名 remap 后按文件名认，不绑 com.thesis 路径
@@ -391,6 +391,23 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         if "spring-boot-starter-security" not in pom_txt:
             files_ok = False
             missing = list(missing) + ["pom.xml → spring-boot-starter-security"]
+
+    if resolve_ai_assistant(spec):
+        pom_txt = _read(workspace / "backend" / "pom.xml")
+        if "spring-ai-deepseek" not in pom_txt and "spring-ai-starter-model-deepseek" not in pom_txt:
+            files_ok = False
+            missing = list(missing) + ["pom.xml → spring-ai-deepseek"]
+        if "spring-ai-bom" not in pom_txt:
+            files_ok = False
+            missing = list(missing) + ["pom.xml → spring-ai-bom"]
+        has_ds = any(p.name == "DeepSeekClient.java" for p in be.rglob("*.java"))
+        if not has_ds:
+            files_ok = False
+            missing = list(missing) + ["DeepSeekClient.java"]
+        has_biz = any(p.name == "AiBizContext.java" for p in be.rglob("*.java"))
+        if not has_biz:
+            files_ok = False
+            missing = list(missing) + ["AiBizContext.java"]
 
     flow_api = gate.get("flow_api") or {}
     api_hits = _eval_flow_api(be, flow_api)

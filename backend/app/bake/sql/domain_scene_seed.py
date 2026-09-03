@@ -1340,23 +1340,53 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
 INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '日用收纳盒', '29.90', 'SKU-A01', 2, 29, 'available'),
-(2, '蓝牙耳机套装', '129.00', 'SKU-B02', 1, 40, 'available'),
-(3, '保温杯 500ml', '59.00', 'SKU-C03', 2, 20, 'available'),
-(4, '手机支架', '19.90', 'SKU-D04', 3, 50, 'available');
+(1, '热销爆款套装', '99.00', 'RT-HOT01', 1, 40, 'available'),
+(2, '日用收纳盒', '29.90', 'RT-DAY02', 2, 80, 'available'),
+(3, '通用配件包', '19.90', 'RT-ACC03', 3, 60, 'available'),
+(4, '家用小工具', '39.00', 'RT-DAY04', 2, 45, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
 (2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
-(3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
+(3, 'user', '王先生', '13800000002', '快递柜自提', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单请选择收货地址，无真支付。', 'admin', '商城主管'
+SELECT '商城开业', '欢迎下单；支付完成后可在订单页查看进度。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(1, 'user', 'pending', 99.00, '工作日送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '日用收纳盒', 29.90, 1);
+(1, 1, 1, '热销爆款套装', 99.00, 1);
+"""
+
+_SHOP_FARM = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '农产主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '买家甲', '13800000002',
+ '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '红富士苹果（5 斤）', '39.90', 'FR-AP01', 1, 50, 'available'),
+(2, '应季草莓盒装', '28.00', 'FR-ST02', 1, 35, 'available'),
+(3, '有机生菜', '8.50', 'VG-LT01', 2, 60, 'available'),
+(4, '五常大米 5kg', '68.00', 'GO-RI01', 3, 40, 'available');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '农产选购', '水果、蔬菜、粮油分类上架；下单后可在订单页查看进度。', 'admin', '农产主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='农产选购' OR title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '红富士苹果（5 斤）', 39.90, 1);
 """
 
 _SHOP_PRINT = """\
@@ -1555,6 +1585,7 @@ def apply_domain_scene_seed(
         seed = {
             "campus": _SHOP_CAMPUS,
             "print": _SHOP_PRINT,
+            "farm": _SHOP_FARM,
             "flowers": _SHOP_FLOWERS,
             "errand": _SHOP_ERRAND,
             "points": _SHOP_POINTS,
