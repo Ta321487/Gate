@@ -8,7 +8,6 @@
             <div style="font-weight:600">正在生成答辩 PPT…</div>
             <div class="small muted">
               任务 #{{ pptJob?.id || '—' }} · {{ pptJob?.progress || 0 }}%
-              <span v-if="pptMock" class="pill pill-neutral" style="margin-left:6px">mock</span>
             </div>
           </div>
           <div class="progress" style="height:8px">
@@ -234,7 +233,6 @@
         </p>
 
         <div class="row" style="justify-content:flex-end;gap:8px;flex-wrap:wrap">
-          <n-button v-if="pptMock" size="small" quaternary @click="fillPptDemoCover">填演示封面</n-button>
           <n-button
             type="primary"
             size="large"
@@ -342,7 +340,6 @@ const {
   tab,
   pptPhase,
   pptJob,
-  pptMock,
   pptActing,
   pptEvidence,
   pptSkin,
@@ -361,7 +358,6 @@ const {
   stepStatusLabel,
   cancelPptGenerate,
   startPptGenerate,
-  fillPptDemoCover,
   openPptCompare,
   runPptCheck,
   exportPptx,

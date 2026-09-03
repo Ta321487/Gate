@@ -10,7 +10,7 @@ import {
   PPT_MASTER_OPTIONS,
   seedThemeForProject,
 } from './deckDefaults.js'
-import { pptClient, pptClientSyncContext, isPptMockMode } from './pptClient.js'
+import { pptClient, pptClientSyncContext } from './pptClient.js'
 
 /**
  * @param {object} deps
@@ -99,7 +99,6 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
   const pptFingerprintHint = computed(() =>
     pptBizDirty.value ? '业务指纹脏 · 禁止导出' : '与工程一致',
   )
-  const pptMock = computed(() => isPptMockMode())
   const pptDirtyBanner = PPT_DIRTY_BANNER
   const pptThemeOptions = PPT_THEME_OPTIONS
   const pptLayoutOptions = PPT_LAYOUT_OPTIONS
@@ -189,7 +188,7 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     if (pptPollTimer) return
     pptPollTimer = setInterval(pollPptJob, 800)
     // 尝试 SSE（后端有则用；失败忽略，靠 poll）
-    if (!pptEs && p.value?.id && !isPptMockMode()) {
+    if (!pptEs && p.value?.id) {
       try {
         const es = new EventSource(pptClient.eventsUrl(p.value.id))
         pptEs = es
@@ -397,7 +396,7 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     try {
       await pptClient.captureScreenshot(p.value.id, { pageId })
       pptDeck.value = await pptClient.getDeck(p.value.id)
-      message.success('已采集当前页截图（mock/半自动）')
+      message.success(res?.ok ? '已采集截图' : (res?.figure?.hint || '采图未成功，请上传'))
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.message || '采集失败'
       message.error(typeof msg === 'string' ? msg : '采集失败')
@@ -423,22 +422,6 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
 
   function openPptCompare() {
     goArtifacts('ppt')
-  }
-
-  async function fillPptDemoCover() {
-    if (!p.value?.id) return
-    const st = await pptClient.fillDemoCover(p.value.id)
-    pptStatus.value = st
-    syncCoverFromStatus(st)
-    message.success('已填入演示封面（仅 mock）')
-  }
-
-  async function markPptDirtyDemo() {
-    if (!p.value?.id) return
-    const st = pptClient.markDirty(p.value.id)
-    pptStatus.value = st
-    if (pptDeck.value) pptDeck.value.biz_dirty = true
-    message.warning('已标脏（仅 mock 演示）')
   }
 
   function initPptSkinSeed() {
@@ -487,7 +470,6 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     pptCanExport,
     pptDeckSummary,
     pptFingerprintHint,
-    pptMock,
     pptDirtyBanner,
     pptThemeOptions,
     pptLayoutOptions,
@@ -510,8 +492,6 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     capturePptScreenshot,
     uploadPptScreenshot,
     openPptCompare,
-    fillPptDemoCover,
-    markPptDirtyDemo,
     initPptSkinSeed,
   }
 }

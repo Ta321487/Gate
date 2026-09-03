@@ -53,7 +53,7 @@ const DEMO_BADGE =
     '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><circle cx="48" cy="48" r="40" fill="none" stroke="#0b6e75" stroke-width="6"/><text x="48" y="54" text-anchor="middle" font-size="18" fill="#0b6e75" font-family="sans-serif">校</text></svg>',
   )
 
-/** 系统类终期默认大纲样例 deck（mock / 预览骨架） */
+/** 系统类终期默认大纲样例 deck（预览骨架） */
 export function buildSampleDeck({ title = '毕业设计答辩', cover = null, theme = 'scholar', layout_family = 'band', master = 'none' } = {}) {
   const c = { ...EMPTY_COVER(), ...(cover || {}) }
   if (!c.badge_data_url) c.badge_data_url = DEMO_BADGE

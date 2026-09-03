@@ -55,7 +55,6 @@
           >
             导出 PPTX
           </n-button>
-          <n-button v-if="pptMock" size="small" quaternary @click="markPptDirtyDemo">演示标脏</n-button>
         </div>
       </div>
 
@@ -79,6 +78,7 @@
             :cover="pptDeck?.cover || pptCover"
             :deck-title="pptDeck?.title || p?.title || '毕业设计答辩'"
             :layout-family="pptSkin.layout_family"
+            :project-id="p?.id || ''"
             @save-bullet="onSaveBullet"
             @toggle-lock="onToggleLock"
           />
@@ -152,7 +152,6 @@ const {
   pptCover,
   pptPageIndex,
   pptCurrentPage,
-  pptMock,
   pptCheckResult,
   showPptCheck,
   pptCanExport,
@@ -165,7 +164,6 @@ const {
   togglePptBulletLock,
   capturePptScreenshot,
   uploadPptScreenshot,
-  markPptDirtyDemo,
 } = bindPd()
 
 const dirtyDismissed = ref(false)
