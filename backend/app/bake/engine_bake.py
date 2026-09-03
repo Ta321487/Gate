@@ -252,6 +252,8 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         java_package=new_pkg,
         persistence=spec.get("persistence") or "jdbc",
         spring_security=bool(spec.get("spring_security")),
+        ai_assistant=bool(spec.get("ai_assistant"))
+        or "ai_assistant" in (spec.get("capabilities") or []),
         schema_sql=sql,
         spec=spec,
     )

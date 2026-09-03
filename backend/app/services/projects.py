@@ -26,7 +26,12 @@ from app.bake.catalog import (
 )
 from app.bake.naming import sanitize_delivery_slug, student_db_name, zip_download_name
 from app.bake.gates import evaluate_domain_gates
-from app.bake.stack_scan import normalize_persistence, normalize_spring_security, scan_stack
+from app.bake.stack_scan import (
+    normalize_ai_assistant,
+    normalize_persistence,
+    normalize_spring_security,
+    scan_stack,
+)
 from app.core.config import get_settings
 from app.models import Project, ProjectStatus
 from app.services.proposal import load_merged_proposal_text, summarize_proposal
@@ -568,10 +573,12 @@ async def create_from_uploads(
     stack = scan_stack(matched.title, match_body)
     persistence = normalize_persistence(stack.get("persistence"))
     spring_security = normalize_spring_security(stack.get("spring_security"))
+    ai_assistant = normalize_ai_assistant(stack.get("ai_assistant"))
     match_meta["stack"] = {
         "spine": stack.get("spine") or "spa",
         "recommended_persistence": persistence,
         "recommended_spring_security": spring_security,
+        "recommended_ai_assistant": ai_assistant,
         "hits": list(stack.get("hits") or []),
         "warnings": list(stack.get("warnings") or []),
         "addons": dict(stack.get("addons") or {}),
@@ -602,6 +609,7 @@ async def create_from_uploads(
         match_meta=match_meta,
         persistence=persistence,
         spring_security=spring_security,
+        ai_assistant=ai_assistant,
     )
     spec["delivery_slug"] = match_meta["delivery_slug"]
     spec["zip_name"] = match_meta["zip_name"]
@@ -652,11 +660,13 @@ async def create_from_uploads(
         recommended_domain=matched.domain,
         recommended_persistence=persistence,
         recommended_spring_security=spring_security,
+        recommended_ai_assistant=ai_assistant,
         confidence=matched.confidence,
         archetype=matched.archetype,
         domain=matched.domain,
         persistence=persistence,
         spring_security=spring_security,
+        ai_assistant=ai_assistant,
         theme=theme,
         llm_enabled=True,
         password_hash="none",
@@ -689,6 +699,9 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         project.spring_security = normalize_spring_security(
             getattr(project, "recommended_spring_security", None)
         )
+        project.ai_assistant = normalize_ai_assistant(
+            getattr(project, "recommended_ai_assistant", None)
+        )
         project.theme = pick_theme(
             project.domain, f"{project.title}|{project.domain}|theme"
         )
@@ -708,6 +721,10 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             == normalize_spring_security(
                 getattr(project, "recommended_spring_security", None)
             )
+            and normalize_ai_assistant(getattr(project, "ai_assistant", None))
+            == normalize_ai_assistant(
+                getattr(project, "recommended_ai_assistant", None)
+            )
         ):
             project.match_locked = True
 
@@ -720,13 +737,15 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         or body.domain is not None
         or getattr(body, "persistence", None) is not None
         or getattr(body, "spring_security", None) is not None
+        or getattr(body, "ai_assistant", None) is not None
         or path_fields_touched
     ):
         if project.match_locked:
-            raise ValueError("骨架/领域/持久层/鉴权/身份入口已锁定，请先解锁")
+            raise ValueError("骨架/领域/持久层/鉴权/AI助手/身份入口已锁定，请先解锁")
         prev_arch, prev_dom = project.archetype, project.domain
         prev_pers = normalize_persistence(getattr(project, "persistence", None))
         prev_sec = normalize_spring_security(getattr(project, "spring_security", None))
+        prev_ai = normalize_ai_assistant(getattr(project, "ai_assistant", None))
         if body.archetype:
             project.archetype = body.archetype
         if body.domain:
@@ -750,12 +769,15 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             project.persistence = normalize_persistence(body.persistence)
         if getattr(body, "spring_security", None) is not None:
             project.spring_security = normalize_spring_security(body.spring_security)
-        # 改骨架/领域/持久层/鉴权/路径后必须重新确认，避免绕过确认直接生成
+        if getattr(body, "ai_assistant", None) is not None:
+            project.ai_assistant = normalize_ai_assistant(body.ai_assistant)
+        # 改骨架/领域/持久层/鉴权/AI/路径后必须重新确认，避免绕过确认直接生成
         changed = (
             (project.archetype, project.domain) != (prev_arch, prev_dom)
             or normalize_persistence(getattr(project, "persistence", None)) != prev_pers
             or normalize_spring_security(getattr(project, "spring_security", None))
             != prev_sec
+            or normalize_ai_assistant(getattr(project, "ai_assistant", None)) != prev_ai
             or path_fields_touched
         )
         if changed and project.match_confirmed:
@@ -818,6 +840,10 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         or normalize_spring_security(getattr(project, "spring_security", None))
         != normalize_spring_security(
             getattr(project, "recommended_spring_security", None)
+        )
+        or normalize_ai_assistant(getattr(project, "ai_assistant", None))
+        != normalize_ai_assistant(
+            getattr(project, "recommended_ai_assistant", None)
         )
     )
     project.match_mode = "manual_override" if deviant else "recommended"
@@ -888,6 +914,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         portal_home_style=portal_home_override,
         persistence=getattr(project, "persistence", None) or "jdbc",
         spring_security=getattr(project, "spring_security", None),
+        ai_assistant=getattr(project, "ai_assistant", None),
         match_path=match_path,
     )
     if match_meta.get("delivery_slug"):

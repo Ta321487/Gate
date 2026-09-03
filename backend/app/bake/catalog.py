@@ -929,12 +929,14 @@ def build_spec(
     persistence: str | None = None,
     spine: str | None = None,
     spring_security: bool | None = None,
+    ai_assistant: bool | None = None,
     match_path: dict | None = None,
 ) -> dict:
     from app.bake.domain_schema import attach_accept, build_domain_schema
     from app.bake.match_path_axes import match_path_override_scope, resolve_match_path
     from app.bake.staff_posts import roles_for_spec
     from app.bake.stack_scan import (
+        normalize_ai_assistant,
         normalize_persistence,
         normalize_spine,
         normalize_spring_security,
@@ -946,6 +948,7 @@ def build_spec(
     persistence = normalize_persistence(persistence)
     spine = normalize_spine(spine)
     spring_security = normalize_spring_security(spring_security)
+    ai_assistant = normalize_ai_assistant(ai_assistant)
     seed = f"{title}|{domain}"
     auth_template = pick_auth_template(seed)
     auth_entry_mode = pick_auth_entry_mode(f"{seed}|entry")
@@ -1038,7 +1041,11 @@ def build_spec(
             )
         ),
         "spring_security": spring_security,
-        "addons": {"spring_security": spring_security},
+        "ai_assistant": ai_assistant,
+        "addons": {
+            "spring_security": spring_security,
+            "ai_assistant": ai_assistant,
+        },
         "match_mode": match_mode,
         "confidence": confidence,
         "hits": hits or [],

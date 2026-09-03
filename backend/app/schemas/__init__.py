@@ -16,6 +16,7 @@ class ProjectSummary(BaseModel):
     domain: str = Field(description="领域")
     persistence: str = Field(default="jdbc", description="持久层：jdbc | mybatis | jpa")
     spring_security: bool = Field(default=False, description="是否启用 Spring Security")
+    ai_assistant: bool = Field(default=False, description="是否启用 AI 助手岛")
     backend_running: bool = Field(description="后端预览是否在跑")
     frontend_running: bool = Field(description="前端预览是否在跑")
     backend_port: int = Field(description="后端端口")
@@ -50,6 +51,9 @@ class ProjectDetail(ProjectSummary):
     recommended_persistence: str = Field(default="jdbc", description="推荐持久层")
     recommended_spring_security: bool = Field(
         default=False, description="推荐是否启用 Spring Security"
+    )
+    recommended_ai_assistant: bool = Field(
+        default=False, description="推荐是否启用 AI 助手（DeepSeek + FAQ）"
     )
     confidence: float = Field(description="匹配置信度")
     theme: str = Field(description="主题")
@@ -165,6 +169,9 @@ class MatchUpdate(BaseModel):
     persistence: Optional[str] = Field(default=None, description="持久层 jdbc | mybatis | jpa")
     spring_security: Optional[bool] = Field(
         default=None, description="是否启用 Spring Security 过滤器链"
+    )
+    ai_assistant: Optional[bool] = Field(
+        default=None, description="是否启用 AI 助手岛（DeepSeek + 知识库 FAQ）"
     )
     scene: Optional[str] = Field(
         default=None, description="身份场景覆盖：campus|enterprise|community|…"

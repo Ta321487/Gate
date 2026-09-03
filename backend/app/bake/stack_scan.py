@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal  # Any：normalize_spring_security 入参
+from typing import Any, Literal  # Any：normalize_* 入参
 
 from app.bake.scene_scan import copy_scan_text, scan_has
 
@@ -54,11 +54,44 @@ UNDELIVERED_STACK_HINTS = (
 )
 SECURITY_HINTS = ("Spring Security", "spring-security", "SpringSecurity")
 ECHARTS_HINTS = ("ECharts", "echarts", "Echarts")
+# 与 features/ai_assistant 扫词对齐；点名且已可 bake → 推荐开
+AI_ASSISTANT_HINTS = (
+    "智能客服",
+    "智能导购",
+    "智能助手",
+    "智能问答",
+    "智能答疑",
+    "AI智能导购",
+    "AI智能客服",
+    "AI助手",
+    "大模型",
+    "ChatGPT",
+    "chatgpt",
+    "DeepSeek",
+    "deepseek",
+    "Spring AI",
+    "LangChain4j",
+    "LangChain",
+    "对话式商品推荐",
+    "知识库匹配",
+    "知识库问答",
+    "智能匹配知识库",
+    "检索增强",
+    "RAG",
+    "阅读助手",
+    "馆员问答",
+    "智能体",
+    "语音播报",
+    "多轮对话",
+    "农产品文字问答",
+    "图片上传匹配",
+)
 
 PERSISTENCE_MODES = frozenset({"jdbc", "mybatis", "jpa"})
 DEFAULT_PERSISTENCE: Persistence = "jdbc"
 DEFAULT_SPINE = "spa"
 DEFAULT_SPRING_SECURITY = False
+DEFAULT_AI_ASSISTANT = False
 
 
 def normalize_persistence(mode: str | None) -> Persistence:
@@ -88,6 +121,22 @@ def normalize_spring_security(flag: Any = None) -> bool:
     if s in ("0", "false", "no", "off", "n", ""):
         return False
     return DEFAULT_SPRING_SECURITY
+
+
+def normalize_ai_assistant(flag: Any = None) -> bool:
+    """AI 助手按需开关：开题点名推荐开；未写清默认关。"""
+    if flag is None:
+        return DEFAULT_AI_ASSISTANT
+    if isinstance(flag, bool):
+        return flag
+    if isinstance(flag, (int, float)):
+        return bool(flag)
+    s = str(flag).strip().lower()
+    if s in ("1", "true", "yes", "on", "y"):
+        return True
+    if s in ("0", "false", "no", "off", "n", ""):
+        return False
+    return DEFAULT_AI_ASSISTANT
 
 
 def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -144,12 +193,25 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
             "hint": "ECharts 已在基线常驻，论文/README 可写",
         }
 
+    want_ai = scan_has(text, AI_ASSISTANT_HINTS)
+    ai_assistant = want_ai
+    if want_ai:
+        hits.append("AI助手")
+        addons["ai_assistant"] = {
+            "named": True,
+            "deliverable": True,
+            "recommended": True,
+            "hint": "开题点名智能客服/导购/大模型问答，将启用 Spring AI + DeepSeek 助手岛（无 Key 回落 FAQ）",
+        }
+
     return {
         "spine": DEFAULT_SPINE,
         "persistence": persistence,
         "recommended_persistence": persistence,
         "spring_security": spring_security,
         "recommended_spring_security": spring_security,
+        "ai_assistant": ai_assistant,
+        "recommended_ai_assistant": ai_assistant,
         "hits": hits,
         "warnings": warnings,
         "addons": addons,

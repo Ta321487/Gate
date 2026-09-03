@@ -32,6 +32,7 @@ def merge_proposal_capabilities(
     from app.bake.features.e_sign import merge_e_sign_capabilities
     from app.bake.features.favorites import merge_favorites_capabilities
     from app.bake.features.guestbook import merge_guestbook_capabilities
+    from app.bake.features.ai_assistant import merge_ai_assistant_capabilities
     from app.bake.features.loyalty import merge_loyalty_capabilities
     from app.bake.features.order_extras import merge_order_extras_capabilities
     from app.bake.features.ux_scan import merge_ux_capabilities
@@ -55,6 +56,8 @@ def merge_proposal_capabilities(
         archetype=archetype,
         archetypes=archetypes,
     )
+    # 开关 force 在 apply_ai_assistant_to_spec；此处只靠开题扫词
+    req = merge_ai_assistant_capabilities(req, body, force=False)
     req = merge_dm_capabilities(req, body, domain=domain)
     req = merge_favorites_capabilities(req, body, domain=domain)
     req = merge_ux_capabilities(req, body)

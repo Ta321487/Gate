@@ -312,6 +312,67 @@ def ensure_guestbook_sql(sql: str, *, enabled: bool) -> str:
     return sql.rstrip() + "\n" + _GUESTBOOK_DDL
 
 
+_AI_KNOWLEDGE_DDL = """
+CREATE TABLE IF NOT EXISTS sys_ai_knowledge (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  category VARCHAR(64) NOT NULL DEFAULT '通用',
+  title VARCHAR(128) NOT NULL,
+  content VARCHAR(2000) NOT NULL,
+  keywords VARCHAR(255) DEFAULT '',
+  hit_count INT NOT NULL DEFAULT 0,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_ai_kb_cat (category, enabled),
+  KEY idx_ai_kb_hit (hit_count, id)
+);
+CREATE TABLE IF NOT EXISTS sys_ai_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  role VARCHAR(16) NOT NULL,
+  content VARCHAR(4000) NOT NULL,
+  source VARCHAR(32) DEFAULT 'faq',
+  category VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ai_msg_user (username, id)
+);
+CREATE TABLE IF NOT EXISTS sys_ai_feedback (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  message_id BIGINT NULL,
+  satisfied TINYINT NOT NULL,
+  comment VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ai_fb_user (username, id)
+);
+"""
+
+
+def ensure_ai_assistant_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    domain: str = "",
+    title: str = "",
+    proposal_text: str = "",
+) -> str:
+    """能力开启时幂等补 AI 表，并按域/开题灌演示 FAQ 种子。"""
+    if not enabled:
+        return sql
+    from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
+
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_ai_knowledge`?\b", out):
+        out = out.rstrip() + "\n" + _AI_KNOWLEDGE_DDL
+    if "INSERT INTO sys_ai_knowledge" not in out:
+        out = out.rstrip() + "\n" + build_ai_knowledge_seed_sql(
+            domain=domain,
+            title=title,
+            proposal_text=proposal_text,
+        )
+    return out
+
+
 _EXAM_WRONGBOOK_DDL = """
 CREATE TABLE IF NOT EXISTS exam_wrongbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

@@ -119,10 +119,22 @@ FOOD_RESTAURANT_TITLE_HINTS = ("餐厅", "外卖", "餐饮", "饭店", "美食",
 SHOP_CAMPUS_HINTS = ("校园", "校内", "学校", "高校")
 SHOP_PRINT_HINTS = ("文印", "打印店", "打印社", "复印", "装订")
 SHOP_FLOWER_HINTS = ("鲜花", "花店", "花束", "特产", "农资")
+SHOP_FARM_HINTS = ("农产品", "农产", "生鲜", "果蔬", "助农", "农贸")
 SHOP_ERRAND_HINTS = ("跑腿", "代买", "代购", "代取")
 SHOP_POINTS_HINTS = ("积分兑换", "积分商城", "积分兑换商城")
 # 商城：campus 二手成色档 + 行业货皮 + retail 兜底
 SHOP_RETAIL_TITLE_HINTS = ("销售", "商城", "电商", "网店", "店铺", "零售", "售卖", "购物")
+
+# 与 domain_scene_seed 各 _SHOP_* 种子 category.name 必须同字（AI FAQ 分类跟货架分类统一）
+SHOP_KIND_CATEGORIES: dict[str, tuple[str, str, str]] = {
+    "farm": ("水果", "蔬菜", "粮油"),
+    "retail": ("热销", "日用", "配件"),
+    "campus": ("教材教辅", "数码", "日用文创"),
+    "print": ("黑白打印", "彩印装订", "耗材"),
+    "flowers": ("鲜切花", "盆花绿植", "地方特产"),
+    "errand": ("代买餐饮", "代买日用", "代取快递"),
+    "points": ("文创兑换", "生活兑换", "虚拟权益"),
+}
 PARKING_COMMERCIAL_TITLE_HINTS = ("商场", "园区", "写字楼", "小区", "商业", "地下车库", "停车场")
 HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
 # 产品皮（样例开题 / builder 共用）：pet | vaccine | clinic
@@ -849,16 +861,18 @@ def scene_shop(text: str) -> Scene:
 
 
 def shop_product_kind(title: str, body: str = "") -> str:
-    """``print`` | ``flowers`` | ``errand`` | ``points`` | ``campus`` | ``retail``。
+    """``farm`` | ``print`` | ``flowers`` | ``errand`` | ``points`` | ``campus`` | ``retail``。
 
     行业货皮跟题名优先；校园二手成色仅 ``campus``；其余社会售卖 ``retail``。
     题名无校园口径时，正文「校园二手」对比句不得洗成 campus。
+    分类名见 ``SHOP_KIND_CATEGORIES``（与 SQL 种子、AI FAQ 同字）。
     """
     t = (title or "").strip()
     b = (body or "").strip()
     for hints, kind in (
         (SHOP_ERRAND_HINTS, "errand"),
         (SHOP_PRINT_HINTS, "print"),
+        (SHOP_FARM_HINTS, "farm"),
         (SHOP_FLOWER_HINTS, "flowers"),
         (SHOP_POINTS_HINTS, "points"),
         (SHOP_CAMPUS_HINTS, "campus"),
@@ -870,6 +884,7 @@ def shop_product_kind(title: str, body: str = "") -> str:
     for hints, kind in (
         (SHOP_ERRAND_HINTS, "errand"),
         (SHOP_PRINT_HINTS, "print"),
+        (SHOP_FARM_HINTS, "farm"),
         (SHOP_FLOWER_HINTS, "flowers"),
         (SHOP_POINTS_HINTS, "points"),
         (SHOP_CAMPUS_HINTS, "campus"),

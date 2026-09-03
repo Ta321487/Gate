@@ -342,6 +342,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 project.theme = normalize_theme(project.theme, project.domain)
                 if isinstance(project.spec, dict):
                     from app.bake.stack_scan import (
+                        normalize_ai_assistant,
                         normalize_persistence,
                         normalize_spring_security,
                     )
@@ -355,8 +356,14 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         if getattr(project, "spring_security", None) is not None
                         else project.spec.get("spring_security")
                     )
+                    ai = normalize_ai_assistant(
+                        getattr(project, "ai_assistant", None)
+                        if getattr(project, "ai_assistant", None) is not None
+                        else project.spec.get("ai_assistant")
+                    )
                     project.persistence = pers
                     project.spring_security = sec
+                    project.ai_assistant = ai
                     project.spec = ensure_spec_schema(
                         {
                             **project.spec,
@@ -364,9 +371,11 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                             "persistence": pers,
                             "spine": "spa",
                             "spring_security": sec,
+                            "ai_assistant": ai,
                             "addons": {
                                 **(project.spec.get("addons") or {}),
                                 "spring_security": sec,
+                                "ai_assistant": ai,
                             },
                         }
                     )

@@ -53,6 +53,8 @@ class Project(Base):
     # 按需：开题点名 Spring Security 时推荐开；默认关（仅 crypto）
     recommended_spring_security: Mapped[bool] = mapped_column(Boolean, default=False)
     spring_security: Mapped[bool] = mapped_column(Boolean, default=False)
+    recommended_ai_assistant: Mapped[bool] = mapped_column(Boolean, default=False)
+    ai_assistant: Mapped[bool] = mapped_column(Boolean, default=False)
     theme: Mapped[str] = mapped_column(String(64), default="gen-ink")
     llm_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # none | bcrypt | md5 | sha256 — 学生端密码存储策略，默认明文
