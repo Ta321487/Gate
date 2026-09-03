@@ -265,6 +265,8 @@ ${PERSISTENCE_FAQ}
 
 ${SECURITY_FAQ}
 
+${AI_ASSISTANT_FAQ}
+
 **Q：论文里数据库设计写什么？**  
 以 `sql/schema.sql` 中的表为准，画 ER 图、说明主键与主要业务流程表即可。
 

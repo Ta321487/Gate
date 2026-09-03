@@ -73,6 +73,8 @@ public class SecurityConfig {
                                 "/api/notices/**",
                                 "/api/archive/**",
                                 "/api/guestbook/**",
+                                "/api/ai-assistant/hot",
+                                "/api/ai-assistant/status",
                                 "/api/items/**",
                                 "/api/recommend/**",
                                 "/api/categories/**",

@@ -45,6 +45,7 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/users': 'users',
   '/admin/notices': 'content',
   '/admin/guestbook': 'guestbook',
+  '/admin/ai-knowledge': 'ai_knowledge',
   '/admin/exam/questions': 'exam_questions',
   '/admin/exam/papers': 'exam_papers',
   '/admin/survey/forms': 'survey_forms',
@@ -225,6 +226,33 @@ function withGuestbookRoutes(baseRoutes) {
     adminKids.splice(at, 0, {
       path: 'guestbook',
       component: () => import('../views/admin/GuestbookAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** AI 助手：对话页 + 管理端知识库 */
+function withAiAssistantRoutes(baseRoutes) {
+  if (!hasCap('ai_assistant')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'ai-assistant')) {
+    const noticeIdx = kids.findIndex((c) => c.path === 'notices')
+    const at = noticeIdx >= 0 ? noticeIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'ai-assistant',
+      component: () => import('../views/AiAssistant.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'ai-knowledge')) {
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = noticeIdx >= 0 ? noticeIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'ai-knowledge',
+      component: () => import('../views/admin/AiKnowledgeAdmin.vue'),
     })
   }
   return routes
@@ -871,7 +899,11 @@ function pickRoutes() {
                   withSeatSelectRoutes(
                     withTimebankRoutes(
                       withDoclibRoutes(
-                        withVoteRoutes(withSurveyRoutes(withExamRoutes(withGuestbookRoutes(routes)))),
+                        withVoteRoutes(
+                          withSurveyRoutes(
+                            withExamRoutes(withAiAssistantRoutes(withGuestbookRoutes(routes))),
+                          ),
+                        ),
                       ),
                     ),
                   ),

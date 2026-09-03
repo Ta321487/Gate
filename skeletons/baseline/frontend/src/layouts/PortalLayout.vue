@@ -39,6 +39,7 @@
         <span class="foot-tag">{{ footer.tagline }}</span>
       </div>
     </footer>
+    <AiAssistantFloat />
   </div>
 </template>
 
@@ -46,6 +47,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { APP_DELIVERED } from '../appDelivered.js'
+import AiAssistantFloat from '../components/AiAssistantFloat.vue'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
@@ -92,8 +94,10 @@ const hasStage = computed(() => {
 const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'guestbook', 'slots'])
 
 const nav = computed(() => {
-  // 资料留在右侧按钮，避免与顶栏重复
-  const menus = schemaMenus('user').filter((m) => m.key !== 'profile' && m.key !== 'home')
+  // 资料留在右侧按钮；AI 助手走右下角悬浮弹窗，避免顶栏再占一项
+  const menus = schemaMenus('user').filter(
+    (m) => m.key !== 'profile' && m.key !== 'home' && m.key !== 'ai_assistant',
+  )
   let list = menus
   if (!loggedIn.value && isGuestBrowseEnabled()) {
     list = menus.filter((m) => GUEST_MENU_KEYS.has(m.key))
