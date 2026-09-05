@@ -55,6 +55,7 @@ class SampleProposal:
     used_llm: bool = False
     digressions: list[str] | None = None
     l1_extras: list[str] | None = None
+    ai_feature: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +67,7 @@ class SampleProposal:
             "used_llm": self.used_llm,
             "digressions": list(self.digressions or []),
             "l1_extras": list(self.l1_extras or []),
+            "ai_feature": self.ai_feature,
         }
 
 
@@ -124,6 +126,91 @@ def _out_scope_phrase(digressions: list[str]) -> str:
     if len(digressions) == 1:
         return digressions[0]
     return "、".join(digressions[:-1]) + "与" + digressions[-1]
+
+
+# A 类 AI 挂件：写入「主要功能」（本期范围），勿放 digressions（那是明确不做）
+_AI_FEATURE_DEFAULT = (
+    "智能客服问答：对接大模型（如 DeepSeek）与知识库匹配，支持多轮对话记录、满意度反馈与热门问答；无 Key 时回落 FAQ。",
+)
+_AI_FEATURE_BY_DOMAIN: dict[str, tuple[str, ...]] = {
+    "DOM-SHOP": (
+        "智能导购与商品文字问答：对接大模型（如 DeepSeek）与知识库匹配；无 Key 时回落 FAQ；支持满意度与热门问答。",
+        "AI 智能客服：对话式商品推荐与知识库问答；可选浏览器语音播报与图片上传品类匹配演示。",
+    ),
+    "DOM-FOOD": (
+        "智能点餐助手与菜单问答：对接大模型答疑菜品与下单流程；无 Key 时回落 FAQ。",
+    ),
+    "DOM-LIBRARY": (
+        "智能馆员问答与知识库匹配：对接大模型答疑借阅规则与馆藏检索；无 Key 时回落 FAQ。",
+    ),
+    "DOM-DORM": (
+        "宿舍智能办事助手：报修与宿舍常见问题智能答疑，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-PROPERTY": (
+        "物业智能客服：报修进度与办事流程智能问答，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-IT": (
+        "IT 智能助手：报修与常见故障知识库问答，对接大模型；无 Key 时回落 FAQ。",
+    ),
+    "DOM-HOTEL": (
+        "客房智能客服：预订规则与房型问答，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-CARRENT": (
+        "租车智能客服：车型与租期规则问答，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-MEETING": (
+        "场地预约智能助手：时段规则与预约流程问答，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-DOCLIB": (
+        "制度问答智能助手：与文库下载台账并列——问答走知识库匹配与大模型，附件下载仍走文库模块。",
+    ),
+    "DOM-ACTIVITY": (
+        "活动报名智能答疑：名额与报名规则知识库问答，对接大模型；无 Key 时回落 FAQ。",
+    ),
+    "DOM-COURSE": (
+        "选课智能助手：公选课规则与课表问答，对接大模型与知识库；无 Key 时回落 FAQ。",
+    ),
+    "DOM-EXAM": (
+        "考试智能答疑：考试须知与题库规则知识库问答，对接大模型；无 Key 时回落 FAQ。",
+    ),
+    "DOM-CRM": (
+        "销售智能助手：客户跟进话术与产品知识库问答，对接大模型；无 Key 时回落 FAQ。",
+    ),
+}
+
+# 约 1/3 份测试开题带上 AI 挂件（pack 正文已点名则不再叠）
+_AI_FEATURE_CHANCE = 0.34
+
+
+def _features_blob_wants_ai(features: list[str]) -> bool:
+    from app.bake.stack_scan import AI_ASSISTANT_HINTS
+
+    blob = "".join(features or [])
+    return any(h in blob for h in AI_ASSISTANT_HINTS)
+
+
+def _pick_ai_feature(rng: random.Random, domain: str) -> str:
+    pool = _AI_FEATURE_BY_DOMAIN.get(domain) or _AI_FEATURE_DEFAULT
+    return rng.choice(list(pool))
+
+
+def maybe_inject_ai_feature(
+    rng: random.Random,
+    pack: dict[str, Any],
+    *,
+    force: bool | None = None,
+) -> str | None:
+    """按概率向 pack['features'] 追加一条 A 类 AI 功能句；返回写入的句子或 None。"""
+    features = list(pack.get("features") or [])
+    if _features_blob_wants_ai(features):
+        return None
+    want = bool(force) if force is not None else (rng.random() < _AI_FEATURE_CHANCE)
+    if not want:
+        return None
+    line = _pick_ai_feature(rng, str(pack.get("anchor_domain") or ""))
+    features.append(line)
+    pack["features"] = features
+    return line
 
 
 def _system_name_from_title(title: str) -> str | None:
@@ -284,6 +371,7 @@ def build_sample_proposal(
     pack = apply_title_variant_pack(pack, title)
     digressions = _sample_some(rng, list(pack.get("digressions") or []), 1, 2)
     l1 = _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
+    ai_line = maybe_inject_ai_feature(rng, pack)
 
     text = render_template(pack, digressions=digressions, l1_extras=l1, title=title)
 
@@ -295,6 +383,7 @@ def build_sample_proposal(
         text=text,
         digressions=digressions,
         l1_extras=l1,
+        ai_feature=ai_line,
     )
 
 

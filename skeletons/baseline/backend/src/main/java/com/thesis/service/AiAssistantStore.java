@@ -242,7 +242,7 @@ public class AiAssistantStore {
                     cat = String.valueOf(faq.get("category"));
                 }
                 answer = null;
-                source = bizExcerpt != null && !bizExcerpt.isBlank() ? "biz" : "faq";
+                source = faq != null ? "faq" : "biz";
                 if (DeepSeekClient.configured()) {
                     String title = (appTitle == null || appTitle.isBlank()) ? "本系统" : clip(appTitle, 80);
                     StringBuilder sys = new StringBuilder();
@@ -273,13 +273,14 @@ public class AiAssistantStore {
                         }
                     }
                 }
+                // 无 Key / LLM 失败：有 FAQ 则 FAQ 回落（契约）；勿让空货架 biz 抢答
                 if (answer == null || answer.isBlank()) {
-                    if (bizExcerpt != null && !bizExcerpt.isBlank()) {
-                        answer = bizExcerpt;
-                        source = "biz";
-                    } else {
+                    if (faq != null) {
                         answer = String.valueOf(faq.get("content"));
                         source = "faq";
+                    } else if (bizExcerpt != null && !bizExcerpt.isBlank()) {
+                        answer = bizExcerpt;
+                        source = "biz";
                     }
                 }
             }

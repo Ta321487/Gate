@@ -36,7 +36,8 @@ public final class AiBizContext {
         StringBuilder sb = new StringBuilder();
         try {
             // —— 货架 / 文库 ——
-            if (wantCatalog(q) || !hint.isBlank()) {
+            // 仅意图词触发；禁止「品类框有值就灌货架」——点 FAQ 热门会带分类，否则空货架顶掉无 Key 回落
+            if (wantCatalog(q)) {
                 if (DoclibStore.enabled() && DoclibStore.ready()
                         && containsAny(q, "资料", "文件", "下载", "课件", "制度", "文库", "模板")) {
                     appendDoclib(sb);
@@ -104,10 +105,16 @@ public final class AiBizContext {
     }
 
     private static boolean wantCatalog(String q) {
+        // 常识/保存/挑选类走 FAQ，不抢货架摘录
+        if (containsAny(q, "如何挑选", "怎么挑", "保存", "储存", "食用建议", "常识", "种植", "技巧")) {
+            if (!containsAny(q, "有什么", "有哪些", "库存", "在架", "上架", "买什么", "有哪")) {
+                return false;
+            }
+        }
         return containsAny(q,
                 "有什么", "有哪些", "库存", "分类", "商品", "图书", "菜品", "套餐", "面食", "饮品",
                 "选购", "买", "借什么", "在馆", "资料", "文件", "下载", "课件", "制度", "热销", "配件",
-                "水果", "蔬菜", "粮油", "教材", "数码", "条目", "上架");
+                "水果", "蔬菜", "粮油", "教材", "数码", "条目", "上架", "在架");
     }
 
     private static boolean wantOrder(String q) {
@@ -184,13 +191,11 @@ public final class AiBizContext {
         }
         if (cats == null || cats.isEmpty()) return;
 
-        sb.append("【分类】");
         List<String> names = new ArrayList<>();
         for (Map<String, Object> c : cats) {
             String n = str(c.get("name"));
             if (!n.isBlank()) names.add(n);
         }
-        sb.append(String.join("、", names)).append('\n');
 
         Long catId = resolveCategoryId(cats, categoryHint, question);
         String kw = extractKeyword(question, names);
@@ -206,10 +211,11 @@ public final class AiBizContext {
         }
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> list = page == null ? null : (List<Map<String, Object>>) page.get("list");
+        // 无在架条目时不写空货架摘录，避免无 Key 时顶掉 FAQ
         if (list == null || list.isEmpty()) {
-            sb.append("【条目】当前条件下暂无在架记录。\n");
             return;
         }
+        sb.append("【分类】").append(String.join("、", names)).append('\n');
         sb.append("【条目】\n");
         for (Map<String, Object> it : list) {
             sb.append("- ")

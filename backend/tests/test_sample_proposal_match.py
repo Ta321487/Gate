@@ -227,6 +227,45 @@ class SlimMatchDataTests(unittest.TestCase):
         got = match_text(sp.text)
         self.assertEqual(got.domain, "DOM-TOUR", f"hits={got.hits[:8]}")
 
+    def test_carrent_pack_exists_and_matches(self) -> None:
+        from app.bake.sample_proposal import build_sample_proposal, list_packs
+
+        self.assertTrue(any(p["id"] == "carrent" for p in list_packs()))
+        sp = build_sample_proposal(pack_id="carrent", seed=7)
+        self.assertEqual(sp.anchor_domain, "DOM-CARRENT")
+        got = match_text(sp.text)
+        self.assertEqual(got.domain, "DOM-CARRENT", f"hits={got.hits[:8]}")
+
+    def test_farm_shop_pack_recommends_ai_assistant(self) -> None:
+        from app.bake.sample_proposal import build_sample_proposal, list_packs
+        from app.bake.stack_scan import scan_stack
+
+        self.assertTrue(any(p["id"] == "farm-shop" for p in list_packs()))
+        sp = build_sample_proposal(pack_id="farm-shop", seed=1)
+        self.assertEqual(sp.anchor_domain, "DOM-SHOP")
+        self.assertIn("智能导购", sp.text)
+        self.assertIn("水果", sp.text)
+        got = match_text(sp.text)
+        self.assertEqual(got.domain, "DOM-SHOP", f"hits={got.hits[:8]}")
+        stack = scan_stack(sp.title, sp.text)
+        self.assertTrue(stack.get("ai_assistant"), "农产品专项包应推荐开 AI 助手")
+
+    def test_sample_proposal_can_inject_ai_feature(self) -> None:
+        from app.bake.proposal_packs import PACKS
+        from app.bake.sample_proposal import maybe_inject_ai_feature
+        from app.bake.stack_scan import scan_stack
+        import random
+
+        pack = dict(next(p for p in PACKS if p["id"] == "dorm"))
+        line = maybe_inject_ai_feature(random.Random(0), pack, force=True)
+        self.assertIsNotNone(line)
+        self.assertTrue(any("智能" in f for f in pack["features"]))
+        from app.bake.sample_proposal import render_template
+
+        text = render_template(pack, digressions=["人脸门禁"], l1_extras=[], title=pack["title"])
+        stack = scan_stack(pack["title"], text)
+        self.assertTrue(stack.get("ai_assistant"))
+
 
 if __name__ == "__main__":
     unittest.main()

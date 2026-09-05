@@ -104,6 +104,45 @@ class TestAiAssistantScan(unittest.TestCase):
             "generic",
         )
 
+    def test_farm_faq_pack_titles(self) -> None:
+        from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
+
+        sql = build_ai_knowledge_seed_sql("DOM-SHOP", _FARM_TITLE, _FARM_BODY)
+        self.assertIn("如何挑选新鲜农产品", sql)
+        self.assertIn("水果保存与食用建议", sql)
+        self.assertNotIn("热销", sql)
+
+    def test_all_ai_skins_have_conversational_hot_titles(self) -> None:
+        """各皮热门应为口语问句，禁止千篇一律「选购说明」。"""
+        from app.bake.features.ai_assistant import _AI_SEED_PACKS, _shop_pack
+
+        expected_snippets = {
+            "shop_farm": "如何挑选新鲜农产品",
+            "shop_retail": "热销商品怎么选",
+            "shop_campus": "教材教辅怎么买",
+            "shop_print": "黑白打印怎么下单",
+            "shop_flowers": "花束怎么选购",
+            "shop_errand": "代买餐饮怎么下单",
+            "shop_points": "积分怎么兑换文创",
+            "library_book": "续借与逾期怎么办",
+            "library_archive": "学籍档案如何查阅",
+            "library_drift": "漂流文学书怎么取阅",
+            "dorm": "水电报修怎么提交",
+            "attend": "如何提交事假",
+            "food": "如何点套餐",
+            "doclib": "如何下载制度文件",
+            "generic": "AI 助手能做什么",
+        }
+        for skin, snippet in expected_snippets.items():
+            rows = _AI_SEED_PACKS[skin]
+            self.assertEqual(len(rows), 4, skin)
+            titles = " ".join(r[1] for r in rows)
+            self.assertIn(snippet, titles, skin)
+            self.assertNotIn("选购说明", titles, skin)
+        # 动态皮与静态表一致
+        for kind in ("farm", "retail", "campus", "print", "flowers", "errand", "points"):
+            self.assertEqual(_shop_pack(kind), _AI_SEED_PACKS[f"shop_{kind}"])
+
     def test_attach_accept_force_on(self) -> None:
         spec = build_spec(
             title=_FARM_TITLE,
@@ -177,6 +216,11 @@ class TestAiAssistantBake(unittest.TestCase):
         self.assertIn("蔬菜", sql)
         self.assertIn("粮油", sql)
         self.assertIn("INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油')", sql)
+        self.assertIn("如何挑选新鲜农产品", sql)
+        self.assertIn("水果保存与食用建议", sql)
+        self.assertIn("叶菜与根茎保存常识", sql)
+        self.assertIn("粮油储存要点", sql)
+        self.assertIn("红富士苹果", sql)
         self.assertNotIn("毕设", sql)
         self.assertNotIn("毕业设计", sql)
         self.assertNotIn("演示环境", sql)
