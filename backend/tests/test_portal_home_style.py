@@ -1,4 +1,4 @@
-"""门户首页构图：内容域可抽 editorial；与登录版式同步。"""
+"""门户首页构图：内容域可抽 editorial；商城货架可选手选；与登录版式同步。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import unittest
 from app.bake.catalog import build_spec
 from app.bake.themes import (
     CONTENT_PORTAL_HOME_DOMAINS,
+    MALL_PORTAL_HOME_DOMAINS,
     normalize_portal_home_style,
     resolve_portal_home_style,
 )
@@ -71,6 +72,39 @@ class PortalHomeStyleTests(unittest.TestCase):
         )
         self.assertEqual(spec["portal_home_style"], "cards")
         self.assertEqual(spec["auth_template"], expected_auth)
+
+    def test_mall_shop_ok_other_clamped(self) -> None:
+        self.assertIn("DOM-SHOP", MALL_PORTAL_HOME_DOMAINS)
+        self.assertEqual(normalize_portal_home_style("mall"), "mall")
+        self.assertEqual(
+            resolve_portal_home_style("DOM-SHOP", "mall", "seed"),
+            "mall",
+        )
+        self.assertEqual(
+            resolve_portal_home_style("DOM-FOOD", "mall", "seed"),
+            "mall",
+        )
+        self.assertEqual(
+            resolve_portal_home_style("DOM-LIBRARY", "mall", "seed"),
+            "cards",
+        )
+        self.assertEqual(
+            resolve_portal_home_style("DOM-SHOP", None, "seed"),
+            "cards",
+        )
+        spec = build_spec(
+            "校园商城",
+            "ARCH-TRADE",
+            "DOM-SHOP",
+            "shop-coral",
+            False,
+            "recommended",
+            0.9,
+            portal_home_style="mall",
+        )
+        self.assertEqual(spec["portal_home_style"], "mall")
+        # mall 不强制登录版式
+        self.assertNotEqual(spec.get("auth_template"), "mall")
 
 
 if __name__ == "__main__":
