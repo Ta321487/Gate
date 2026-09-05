@@ -79,7 +79,7 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "papers_title": "安全教育考试",
         "papers_lead": "完成岗前/入职安全试卷；提交后自动判分。",
         "notice_title": "安全考试须知",
-        "notice_body": "请结合培训材料作答；本期无真人监考与证书打印。",
+        "notice_body": "请结合培训材料作答；客观题自动判分，主观题按关键词判分。",
     },
     "grad": {
         "auth_eyebrow": "结业测验",

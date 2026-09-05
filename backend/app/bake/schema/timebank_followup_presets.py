@@ -54,7 +54,7 @@ def build_timebank_followup_presets(
             "auth_points": ["验证码登录", "时长账户", "核销申请"],
             "register_hint": "注册后可存入时长并申请核销",
             "notice_title": "时间银行须知",
-            "notice_body": "存入即时入账；核销须审批且余额充足。无真支付兑现。",
+            "notice_body": "存入即时入账；核销须审批且余额充足。",
             "notice_page_title": "时间银行公告",
             "notice_page_lead": "规则与临时通知，点击条目阅读全文。",
             "my_tickets_label": "我的核销",

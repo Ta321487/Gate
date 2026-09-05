@@ -51,7 +51,7 @@ def build_bed_followup_presets(
             "auth_points": ["验证码登录", "床位目录", "选房/调宿申请"],
             "register_hint": "注册后可选房或申请调宿",
             "notice_title": "床位申请须知",
-            "notice_body": "选房通过后占用床位；调宿/退宿请写明原床位。本期无门锁对接。",
+            "notice_body": "选房通过后占用床位；调宿/退宿请写明原床位。",
             "notice_page_title": "宿管公告",
             "notice_page_lead": "分床与调宿通知，点击条目阅读全文。",
             "my_tickets_label": "我的床位申请",

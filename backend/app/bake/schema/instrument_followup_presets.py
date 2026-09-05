@@ -51,7 +51,7 @@ def build_instrument_followup_presets(
             "auth_points": ["验证码登录", "机时预约", "借用申请与审批"],
             "register_hint": "注册后可预约机时",
             "notice_title": "仪器机时须知",
-            "notice_body": "请先预约机时再上机；外带仪器须另提借用申请。本期无物联网联机计费。",
+            "notice_body": "请先预约机时再上机；外带仪器须另提借用申请。",
             "notice_page_title": "平台公告",
             "notice_page_lead": "上机须知与临时通知，点击条目阅读全文。",
             "my_tickets_label": "我的借用",

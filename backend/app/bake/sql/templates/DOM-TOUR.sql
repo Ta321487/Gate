@@ -100,11 +100,11 @@ INSERT IGNORE INTO category (id, name) VALUES
 INSERT IGNORE INTO tour_line (id, title, author, isbn, category_id, stock, status, stage, apply_deadline_at) VALUES
 (1, '周末古镇一日游', '计调甲', '含门票 / 往返大巴', 1, 28, 'available', '开放报名', '2026-10-11 18:00:00'),
 (2, '省内山水三日团', '计调乙', '含两晚住宿 / 导游', 2, 18, 'available', '开放报名', '2026-10-18 20:00:00'),
-(3, '跨省海岛五日游', '计调甲', '含机票参考价说明 / 无真支付', 3, 12, 'available', '开放报名', '2026-10-25 12:00:00'),
+(3, '跨省海岛五日游', '计调甲', '含机票参考价说明', 3, 12, 'available', '开放报名', '2026-10-25 12:00:00'),
 (4, '中学生研学两日营', '研学部', '含课程与保险说明', 4, 35, 'available', '开放报名', '2026-10-20 17:00:00'),
 (5, '亲子农场半日体验', '计调乙', '含采摘体验 / 亲子适合', 1, 20, 'available', '开放报名', '2026-10-12 12:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报名须知', '请如实填写出行人数与联系方式；余位有限，过报名截止将无法提交；取消报名将回补余位；本期无地图导航、OTA 同步与真支付。', 'admin', '计调主管'
+SELECT '报名须知', '请如实填写出行人数与联系方式；余位有限，过报名截止将无法提交；取消报名将回补余位。', 'admin', '计调主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周线路', '古镇一日游与山水三日团余位充足，欢迎报名。', 'admin', '计调主管'

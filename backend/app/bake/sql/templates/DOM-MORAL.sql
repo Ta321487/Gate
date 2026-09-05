@@ -100,5 +100,5 @@ INSERT IGNORE INTO moral_item (id, title, author, isbn, category_id, stock, stat
 (4, '志愿服务加分', '团委', '时长折算', 1, 1, 'available'),
 (5, '学术论文加分', '教务处', '公开见刊', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '加减分申请须知', '请如实填写说明与佐证；审批通过后计入台账。本期无学信网/银行对接。', 'admin', '学工主管'
+SELECT '加减分申请须知', '请如实填写说明与佐证；审批通过后计入台账。', 'admin', '学工主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='加减分申请须知');

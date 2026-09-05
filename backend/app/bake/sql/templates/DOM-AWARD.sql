@@ -100,5 +100,5 @@ INSERT IGNORE INTO award_item (id, title, author, isbn, category_id, stock, stat
 (4, '专利授权登记', '科研处', '证书扫描', 1, 1, 'available'),
 (5, '校级挑战杯', '团委', '获奖证书', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '成果登记须知', '请如实填写说明与佐证；审批通过后计入台账。本期无学信网/银行对接。', 'admin', '教务主管'
+SELECT '成果登记须知', '请如实填写说明与佐证；审批通过后计入台账。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='成果登记须知');

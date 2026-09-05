@@ -102,7 +102,7 @@ INSERT IGNORE INTO dating_profile (id, title, author, isbn, category_id, stock, 
 (4, '周周 · 30岁', '苏州', '稳定工作，期待认真交往', 1, 1, 'available'),
 (5, '乐乐 · 24岁', '上海', '兴趣交友，先做朋友', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '牵线须知', '请如实填写资料；红娘审核通过后可一对一私信沟通（本期无视频相亲）。', 'admin', '红娘主管'
+SELECT '牵线须知', '请如实填写资料；红娘审核通过后可一对一私信沟通。', 'admin', '红娘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='牵线须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周联谊', '同城与校园资料已更新，可发起牵线意向。', 'admin', '红娘主管'

@@ -100,5 +100,5 @@ INSERT IGNORE INTO cert_type (id, title, author, isbn, category_id, stock, statu
 (4, '实习证明', '就业办', '顶岗实习', 1, 1, 'available'),
 (5, '学历证明', '档案馆', '毕业档案核对', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '开具申请须知', '请如实填写用途与领取方式；审批通过后按须知领取。本期无电子签章平台对接。', 'admin', '综合主管'
+SELECT '开具申请须知', '请如实填写用途与领取方式；审批通过后按须知领取。', 'admin', '综合主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开具申请须知');

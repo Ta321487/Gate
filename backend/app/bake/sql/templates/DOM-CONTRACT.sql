@@ -97,5 +97,5 @@ INSERT IGNORE INTO contract_type (id, title, author, isbn, category_id, stock, s
 (2, '合作协议审核', '法务办', '对外合作', 2, 1, 'available'),
 (3, '服务合同审核', '法务办', '外包服务', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '合同审批须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '合同审批须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='合同审批须知');

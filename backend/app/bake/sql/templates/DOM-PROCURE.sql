@@ -97,5 +97,5 @@ INSERT IGNORE INTO procure_item (id, title, author, isbn, category_id, stock, st
 (2, '试剂耗材包', '实验中心', '按清单', 2, 1, 'available'),
 (3, '键鼠套装', '信息中心', '常用', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '采购申购须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '采购申购须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='采购申购须知');

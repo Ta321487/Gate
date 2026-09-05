@@ -104,5 +104,5 @@ INSERT IGNORE INTO survey_question (id, form_id, type, stem, options_json, sort_
 (5, 2, 'text', '最希望增加的服务？', '', 2, 1);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '问卷须知', '请如实填写；每人每卷限填一次。本期无跳题逻辑与 SPSS 导出。', 'admin', '平台主管'
+SELECT '问卷须知', '请如实填写；每人每卷限填一次。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='问卷须知');

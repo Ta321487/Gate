@@ -100,5 +100,5 @@ INSERT IGNORE INTO seal_item (id, title, author, isbn, category_id, stock, statu
 (4, '法人章用印', '院长办公室', '对外文书', 1, 1, 'available'),
 (5, '业务专用章', '教务处', '成绩证明盖章', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '用章申请须知', '请如实填写用章事由与文件名称；审批通过后方可办理用印。本期无硬件盖章对接。', 'admin', '行政主管'
+SELECT '用章申请须知', '请如实填写用章事由与文件名称；审批通过后方可办理用印。', 'admin', '行政主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='用章申请须知');

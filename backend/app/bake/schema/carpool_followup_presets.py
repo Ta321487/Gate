@@ -50,7 +50,7 @@ def build_carpool_followup_presets(
             "auth_points": ["验证码登录", "行程发布", "意向对接与车主确认"],
             "register_hint": "注册后可发布行程并提交同行意向",
             "notice_title": "拼车须知",
-            "notice_body": "请填写出发时间与地点备注；确认后占用余座；过出发时间自动下架不可对接。本期无地图导航与真支付分账。",
+            "notice_body": "请填写出发时间与地点备注；确认后占用余座；过出发时间自动下架不可对接。",
             "notice_page_title": "拼车公告",
             "notice_page_lead": "出行须知与临时通知，点击条目阅读全文。",
             "my_tickets_label": "我的意向",

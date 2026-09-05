@@ -92,7 +92,7 @@ INSERT IGNORE INTO trip_route (id, title, publisher_name, route_note, category_i
 (3, '周日下午 返乡方向', 'peer', '同方向可留言对接', 2, 4, 'available', 'peer', '2026-08-10 14:00:00');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '拼车须知', '发布行程时填写出发时间与地点备注；他人提交意向由车主确认或婉拒；过出发时间自动下架。本期无地图导航与真支付分账。', 'admin', '拼车主管'
+SELECT '拼车须知', '发布行程时填写出发时间与地点备注；他人提交意向由车主确认或婉拒；过出发时间自动下架。', 'admin', '拼车主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='拼车须知');
 
 CREATE TABLE IF NOT EXISTS `carpool_intent_progress` (

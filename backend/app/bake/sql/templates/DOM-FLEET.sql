@@ -100,5 +100,5 @@ INSERT IGNORE INTO fleet_vehicle (id, title, author, isbn, category_id, stock, s
 (4, '粤A·后勤04', '司机陈师傅', '皮卡物资', 1, 1, 'available'),
 (5, '粤A·备用05', '车队', '5座轿车', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '用车申请须知', '请如实填写用车事由、人数与目的地；审批通过后方可出车。本期无 GPS/真派单对接。', 'admin', '车队主管'
+SELECT '用车申请须知', '请如实填写用车事由、人数与目的地；审批通过后方可出车。', 'admin', '车队主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='用车申请须知');

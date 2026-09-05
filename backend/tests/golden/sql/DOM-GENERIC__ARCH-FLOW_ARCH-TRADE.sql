@@ -134,7 +134,7 @@ INSERT IGNORE INTO biz_item (id, title, price_yuan, sku, category_id, stock, sta
 (3, '示例对象丙', '责任人C', 'NO-003', 3, 8, 'available');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '使用须知', '支持申请审核与购物车订单（无真支付）。', 'admin', '系统管理员'
+SELECT '使用须知', '支持申请审核与购物车订单。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='使用须知');
 
 CREATE TABLE IF NOT EXISTS `biz_ticket_progress` (

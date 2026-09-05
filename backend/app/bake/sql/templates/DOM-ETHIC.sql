@@ -97,5 +97,5 @@ INSERT IGNORE INTO ethic_item (id, title, author, isbn, category_id, stock, stat
 (2, '开题报告审核', '研究生院', '开题材料', 2, 1, 'available'),
 (3, '答辩材料预审', '学院', 'PPT/论文稿', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '材料审核须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '材料审核须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='材料审核须知');

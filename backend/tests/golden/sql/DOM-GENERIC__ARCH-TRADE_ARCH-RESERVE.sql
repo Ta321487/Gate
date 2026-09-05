@@ -152,7 +152,7 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (6, 3, '2026-09-20 10:00:00', '2026-09-20 11:00:00', 3, 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '使用须知', '支持购物车订单与时段预约（无真支付）。', 'admin', '系统管理员'
+SELECT '使用须知', '支持购物车订单与时段预约。', 'admin', '系统管理员'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='使用须知');
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (

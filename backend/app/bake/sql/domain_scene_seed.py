@@ -195,7 +195,7 @@ INSERT IGNORE INTO lost_item (id, title, author, isbn, category_id, stock, statu
 (4, '棉被一套 D01', '捐赠站赵强', '单人被芯被套 / 已清洗', 1, 1, 'available'),
 (5, '科普读物礼包 E01', '捐赠站陈洁', '少儿读物 5 本', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '认领须知', '请如实填写用途与联系方式；审核通过后按通知到站领取，本期无物流寄送。', 'admin', '捐赠站主管'
+SELECT '认领须知', '请如实填写用途与联系方式；审核通过后按通知到站领取。', 'admin', '捐赠站主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='认领须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周物资', '衣物与学习用品名录已更新，欢迎申请认领。', 'admin', '捐赠站主管'
@@ -253,7 +253,7 @@ INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status
 (4, '园林日场参观', '文旅中心', '西门检票口', 1, 60, 'available', '2026-10-11 14:00:00', '2026-10-11 17:00:00', '2026-10-10 23:59:59'),
 (5, '戏剧社公演', '学生会', '小剧场', 2, 120, 'available', '2026-10-19 19:00:00', '2026-10-19 21:00:00', '2026-10-18 18:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '领票须知', '请如实填写联系方式；票额有限；本期无选座与真支付。', 'admin', '票务主管'
+SELECT '领票须知', '请如实填写联系方式；票额有限。', 'admin', '票务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='领票须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周场次', '古城夜游与校园音乐会已开放领票。', 'admin', '票务主管'
@@ -283,7 +283,7 @@ INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status
 (4, '实验室开放日下午场', '实验中心', '实验楼大厅', 2, 40, 'available', '2026-10-11 14:00:00', '2026-10-11 16:30:00', '2026-10-10 23:59:59'),
 (5, '公益健康咨询开放日', '校医院', '校医院一楼', 3, 60, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报名须知', '请如实填写资料；名额有限；本期无健康筛查建档引擎。', 'admin', '场次主管'
+SELECT '报名须知', '请如实填写资料；名额有限。', 'admin', '场次主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报名须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周场次', '无偿献血与实验室开放日已开放报名。', 'admin', '场次主管'
@@ -362,7 +362,7 @@ INSERT IGNORE INTO job_post (id, title, author, isbn, category_id, stock, status
 (4, '测试工程师', '质量部', '10-15k / 社招', 1, 1, 'available'),
 (5, '产品助理实习', '产品组', '面议 / 周报实习', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（本期无视频面试）。', 'admin', '招聘主管'
+SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试。', 'admin', '招聘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投递须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周岗位', '技术岗与职能岗已更新，请及时投递。', 'admin', '招聘主管'
@@ -459,7 +459,7 @@ INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, patient_n
 (1, 1, 'patient', 'confirmed', '', '钱女士', '首针', 'HPV九价第一针');
 UPDATE resource_slot SET booked = 1 WHERE id = 1;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '预约须知', '请按时到点接种；取消请提前释放号源。本期无冷链与真库存。', 'admin', '接种点主管'
+SELECT '预约须知', '请按时到点接种；取消请提前释放号源。', 'admin', '接种点主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='预约须知' OR title='挂号须知');
 """
 
@@ -1257,7 +1257,7 @@ INSERT IGNORE INTO tb_redeem (id, username, book_id, status, qty, remark, apply_
 (1, 'user', 3, 'pending', 2, '兑换作业辅导 2 小时', NOW());
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。无真支付兑现与跨校联盟。', 'admin', '时间银行主管'
+SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。', 'admin', '时间银行主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='时间银行须知');
 """
 
@@ -1320,7 +1320,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '李同学', '13800000002', '二食堂北门', '食堂', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址，无真支付。', 'admin', '食堂主管'
+SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址。', 'admin', '食堂主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='食堂点餐' OR title='点餐须知');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, taste_note) VALUES
 (1, 'user', 'pending', 18.00, '窗口A取餐', '李同学', '13800000002', '学生公寓 3 号楼 405', '堂食', '不辣');
@@ -1369,11 +1369,11 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '红富士苹果（5 斤）', '39.90', 'FR-AP01', 1, 50, 'available'),
-(2, '应季草莓盒装', '28.00', 'FR-ST02', 1, 35, 'available'),
-(3, '有机生菜', '8.50', 'VG-LT01', 2, 60, 'available'),
-(4, '五常大米 5kg', '68.00', 'GO-RI01', 3, 40, 'available');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note) VALUES
+(1, '红富士苹果（5 斤）', '39.90', 'FR-AP01', 1, 50, 'available', '脆甜多汁，产地直发，适合鲜食与礼盒。'),
+(2, '应季草莓盒装', '28.00', 'FR-ST02', 1, 35, 'available', '当季鲜摘，冷链发货，建议冷藏保存。'),
+(3, '有机生菜', '8.50', 'VG-LT01', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅；清洗后冷藏。'),
+(4, '五常大米 5kg', '68.00', 'GO-RI01', 3, 40, 'available', '东北五常产区，真空包装，常温阴凉存放。');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -1384,9 +1384,11 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '农产选购', '水果、蔬菜、粮油分类上架；下单后可在订单页查看进度。', 'admin', '农产主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='农产选购' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '红富士苹果（5 斤）', 39.90, 1);
+(1, 1, 1, '红富士苹果（5 斤）', 39.90, 1),
+(2, 2, 2, '应季草莓盒装', 28.00, 1);
 """
 
 _SHOP_PRINT = """\
@@ -1411,7 +1413,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王同学', '13800000002', '宿舍 3 号楼宿管台', '宿舍', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '文印须知', '下单后到店取件或约定配送；无真支付。', 'admin', '文印店长'
+SELECT '文印须知', '下单后到店取件或约定配送。', 'admin', '文印店长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='文印须知' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 25.00, '胶装蓝色封面，今晚取。', '王同学', '13800000002', '文印店前台自取', '到店自取');
@@ -1441,7 +1443,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '花店门店自提', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '花店须知', '鲜花与特产下单后由店员确认配送；无真支付。', 'admin', '花店主管'
+SELECT '花店须知', '鲜花与特产下单后由店员确认配送。', 'admin', '花店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='花店须知' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 68.00, '周六上午送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
@@ -1471,7 +1473,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王同学', '13800000002', '图书馆南门', '图书馆', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '跑腿须知', '代买代取下单后由跑腿员接单；非驿站取件核销系统；无真支付。', 'admin', '跑腿调度'
+SELECT '跑腿须知', '代买代取下单后由跑腿员接单送达；请填写送达地点与联系方式。', 'admin', '跑腿调度'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跑腿须知' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 22.00, '红烧肉套餐，少辣，送到 405。', '王同学', '13800000002', '学生公寓 3 号楼 405', '宿舍配送');
@@ -1501,7 +1503,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王同学', '13800000002', '东门驿站', '驿站', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '积分兑换须知', '兑换下单后由管理员确认发放；积分扣减以系统账户为准，无真支付。', 'admin', '积分商城主管'
+SELECT '积分兑换须知', '兑换下单后由管理员确认发放；积分扣减以系统账户为准。', 'admin', '积分商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='积分兑换须知' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 0.00, '兑换帆布袋，活动中心自提。', '王同学', '13800000002', '学生活动中心兑换点', '到店自提');
@@ -1532,7 +1534,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王同学', '13800000002', '东门驿站', '驿站', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点，无真支付。', 'admin', '商城主管'
+SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园商城' OR title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 35.00, '教材两本，宿舍自提。', '王同学', '13800000002', '学生公寓 3 号楼 405', '到店自提');

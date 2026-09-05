@@ -100,5 +100,5 @@ INSERT IGNORE INTO trip_matter (id, title, author, isbn, category_id, stock, sta
 (4, '周末加班', '部门', '调休或补贴', 1, 1, 'available'),
 (5, '驻场出差', '项目组', '一周以上', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '出差加班单须知', '请填写事由与起止日期；审批通过后按时销结。本期无 GPS 轨迹考勤。', 'admin', '人事主管'
+SELECT '出差加班单须知', '请填写事由与起止日期；审批通过后按时销结。', 'admin', '人事主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='出差加班单须知');

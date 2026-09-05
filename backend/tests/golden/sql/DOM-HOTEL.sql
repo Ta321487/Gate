@@ -152,7 +152,7 @@ INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservat
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '标准双床房', 268.00, 1);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '客房预订', '选择房型与入住时段预订；无真支付，预约成功生成订单。', 'admin', '酒店主管'
+SELECT '客房预订', '选择房型与入住时段预订；预约成功即生成订单，前台办理入住与离店。', 'admin', '酒店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='客房预订');
 
 -- staff posts (clerk / worker)
