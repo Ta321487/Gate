@@ -129,7 +129,7 @@
       :mask-closable="!sampleLoading"
     >
       <p class="small muted" style="margin:0 0 12px">
-        随机覆盖常见毕设方向，可选 DeepSeek / Gemini 润色（与「大模型」页启用链一致）。下载 txt 后拖到上方上传即可。
+        随机覆盖常见毕设方向，约三分之一会抽到智能客服/导购等 AI 挂件表述（可测匹配确认推荐开）；另有农产品电商等专项包。可选 DeepSeek / Gemini 润色（与「大模型」页启用链一致）。下载 txt 后拖到上方上传即可。
       </p>
       <div class="stack" style="gap:10px">
         <div class="row" style="gap:8px;flex-wrap:wrap">

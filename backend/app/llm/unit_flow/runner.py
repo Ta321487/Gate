@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import SessionLocal
 from app.llm.client import append_deepseek_log, budget_ok, record_call
 from app.llm.runtime import LlmRuntime
 from app.llm.unit_flow.executors import execute_unit_llm, repair_hints
@@ -177,29 +178,40 @@ async def run_plan_units(
     concurrency: int = 3,
     on_event: EventCallback | None = None,
 ) -> FlowRunSummary:
-    """并发执行 plan 内全部 unit（Semaphore 限流，对标 ai-ppt ARQ + Semaphore）。"""
+    """并发执行 plan 内全部 unit（Semaphore 限流，对标 ai-ppt ARQ + Semaphore）。
+
+    AsyncSession 不可跨协程并发使用。LLM 可并行，但 budget/record_call 与 on_event
+    若共用调用方 session 会踩 flush/commit。因此每单元开独立短会话记用量；
+    on_event 串行化，避免答辩 PPT 等回调里对父 session 并发 commit。
+    ``db`` 保留签名兼容；单元路径不再写入该 session。
+    """
+    _ = db
     base_schema = dict(spec.get("schema") or {})
     sem = asyncio.Semaphore(max(1, concurrency))
+    event_lock = asyncio.Lock()
     results: list[UnitResult] = []
+
+    async def _emit_safe(payload: dict[str, Any]) -> None:
+        async with event_lock:
+            await _emit(on_event, payload)
 
     async def _run_one(unit: TaskUnit) -> UnitResult:
         async with sem:
-            await _emit(
-                on_event,
+            await _emit_safe(
                 {"type": "unit_started", "unit_id": unit.id, "kind": unit.kind.value},
             )
-            res = await run_single_unit(
-                db,
-                rt,
-                plan,
-                unit,
-                project_id=project_id,
-                base_schema=base_schema,
-                llm_enabled=llm_enabled,
-            )
+            async with SessionLocal() as unit_db:
+                res = await run_single_unit(
+                    unit_db,
+                    rt,
+                    plan,
+                    unit,
+                    project_id=project_id,
+                    base_schema=base_schema,
+                    llm_enabled=llm_enabled,
+                )
             if res.status == UnitStatus.skipped:
-                await _emit(
-                    on_event,
+                await _emit_safe(
                     {
                         "type": "unit_skipped",
                         "unit_id": unit.id,
@@ -207,8 +219,7 @@ async def run_plan_units(
                     },
                 )
             elif res.status == UnitStatus.done:
-                await _emit(
-                    on_event,
+                await _emit_safe(
                     {
                         "type": "unit_done",
                         "unit_id": unit.id,
@@ -217,8 +228,7 @@ async def run_plan_units(
                     },
                 )
             else:
-                await _emit(
-                    on_event,
+                await _emit_safe(
                     {
                         "type": "unit_failed",
                         "unit_id": unit.id,

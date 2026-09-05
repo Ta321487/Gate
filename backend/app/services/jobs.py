@@ -147,7 +147,7 @@ def _append_log_sync(project_id: str, line: str) -> None:
     log_file = settings.logs_dir / project_id / "job.log"
     log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as f:
-        f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {line}\n")
+        f.write(f"[{datetime.now().strftime('%m-%d %H:%M:%S')}] {line}\n")
 
 
 async def append_log(project_id: str, line: str) -> None:
@@ -551,22 +551,40 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         except Exception as e:  # noqa: BLE001
             logger.exception("job failed")
             err = _short_error(e)
-            job.status = JobStatus.failed.value
-            job.error = err
-            job.steps = _fail_running_step(job.steps, err)
-            job.finished_at = datetime.now()
-            project.status = ProjectStatus.failed.value
-            project.zip_ready = False
-            project.delivery_mark = "none"
-            await db.commit()
-            await append_log(project.id, f"ERROR {err}")
+            project_id = project.id
+            try:
+                job.status = JobStatus.failed.value
+                job.error = err
+                job.steps = _fail_running_step(job.steps, err)
+                job.finished_at = datetime.now()
+                project.status = ProjectStatus.failed.value
+                project.zip_ready = False
+                project.delivery_mark = "none"
+                await db.commit()
+            except Exception:  # noqa: BLE001
+                # Session 可能已被并发 commit 污染；换新会话落失败态
+                logger.exception("job failed status commit failed; retry fresh session")
+                async with SessionLocal() as db2:
+                    job2 = await db2.get(Job, job_id)
+                    project2 = await db2.get(Project, project_id)
+                    if job2:
+                        job2.status = JobStatus.failed.value
+                        job2.error = err
+                        job2.steps = _fail_running_step(job2.steps, err)
+                        job2.finished_at = datetime.now()
+                    if project2:
+                        project2.status = ProjectStatus.failed.value
+                        project2.zip_ready = False
+                        project2.delivery_mark = "none"
+                    await db2.commit()
+            await append_log(project_id, f"ERROR {err}")
             try:
                 from app.services.fill_events import fill_event_hub
 
-                snap = fill_event_hub.snapshot(project.id)
+                snap = fill_event_hub.snapshot(project_id)
                 if snap.get("phase") == "running":
                     await fill_event_hub.handle(
-                        project.id,
+                        project_id,
                         {"type": "fill_failed", "error": err},
                     )
             except Exception:  # noqa: BLE001

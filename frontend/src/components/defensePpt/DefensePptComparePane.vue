@@ -6,7 +6,7 @@
       <div class="empty-hint">
         <div class="empty-title">还没有答辩 PPT</div>
         <div class="empty-desc">到「一键生成」填写封面信息后生成。此处只做预览、改稿与导出。</div>
-        <n-button size="small" class="mt-12" @click="tab = 'generate'">前往一键生成</n-button>
+        <n-button size="small" class="mt-12" @click="goGeneratePpt">前往一键生成</n-button>
       </div>
     </template>
 
@@ -155,6 +155,7 @@ const {
   pptCheckResult,
   showPptCheck,
   pptCanExport,
+  goGeneratePpt,
   loadPptDeck,
   applyPptSkin,
   syncPptBiz,

@@ -392,17 +392,22 @@ async def support_usage(
 
 
 async def budget_ok(db: AsyncSession, project_id: str, rt: LlmRuntime) -> bool:
-    used = await project_tokens_used(db, project_id)
-    if used >= rt.project_token_budget:
-        return False
-    monthly = await monthly_tokens_used(db)
-    if monthly >= rt.monthly_token_budget:
-        return False
-    return True
+    # 独立会话：unit_flow 并发 gather 时不可共用 Job 的 AsyncSession。
+    from app.core.database import SessionLocal
+
+    _ = db
+    async with SessionLocal() as session:
+        used = await project_tokens_used(session, project_id)
+        if used >= rt.project_token_budget:
+            return False
+        monthly = await monthly_tokens_used(session)
+        if monthly >= rt.monthly_token_budget:
+            return False
+        return True
 
 
 async def record_call(
-    db: AsyncSession,
+    db: AsyncSession | None,
     *,
     project_id: str | None,
     stage: str,
@@ -410,16 +415,24 @@ async def record_call(
     ok: bool,
     detail: str,
 ) -> None:
-    db.add(
-        LlmCall(
-            project_id=project_id,
-            stage=stage,
-            tokens=max(0, int(tokens)),
-            ok=ok,
-            detail=(detail or "")[:2000],
-        )
+    """写入 LLM 调用审计行。始终用短生命周期会话，勿复用调用方 Session。
+
+    unit_flow 对多个 unit ``asyncio.gather`` 并发；共用一个 AsyncSession
+    会在 flush/commit 交叉时触发 IllegalStateChangeError，并误提交 Job 事务。
+    """
+    from app.core.database import SessionLocal
+
+    _ = db
+    row = LlmCall(
+        project_id=project_id,
+        stage=stage,
+        tokens=max(0, int(tokens)),
+        ok=ok,
+        detail=(detail or "")[:2000],
     )
-    await db.commit()
+    async with SessionLocal() as session:
+        session.add(row)
+        await session.commit()
 
 
 def append_deepseek_log(project_id: str, line: str) -> None:
@@ -427,7 +440,7 @@ def append_deepseek_log(project_id: str, line: str) -> None:
     path = settings.logs_dir / project_id / "deepseek.log"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
-        f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {line}\n")
+        f.write(f"[{datetime.now().strftime('%m-%d %H:%M:%S')}] {line}\n")
 
 
 def extract_json(text: str) -> dict[str, Any] | None:

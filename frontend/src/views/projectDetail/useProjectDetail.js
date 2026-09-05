@@ -315,13 +315,18 @@ const typefaceOptions = computed(() => {
 const PORTAL_HOME_FALLBACK = [
   { label: '功能卡片首页', value: 'cards' },
   { label: '资讯侧栏首页', value: 'editorial' },
+  { label: '商城货架首页', value: 'mall' },
 ]
+const MALL_PORTAL_HOME_DOMAINS = new Set(['DOM-SHOP', 'DOM-FOOD'])
 const portalHomeOptions = computed(() => {
   const list = catalog.value.portal_home_styles || []
   const mapped = list
     .map((x) => ({ label: x.label || x.id, value: x.id }))
     .filter((x) => !!x.value)
-  return mapped.length ? mapped : PORTAL_HOME_FALLBACK
+  const base = mapped.length ? mapped : PORTAL_HOME_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  if (MALL_PORTAL_HOME_DOMAINS.has(dom)) return base
+  return base.filter((x) => x.value !== 'mall')
 })
 const passwordHashOptions = [
   { label: '明文', value: 'none' },
@@ -1180,22 +1185,6 @@ async function runApiSmoke() {
   }
 }
 
-async function loadArtifactView() {
-  if (artifactView.value === 'api') await loadApis()
-  else if (artifactView.value === 'db' || artifactView.value === 'thesis') await loadSchema()
-  else if (artifactView.value === 'ppt') await loadPptDeck()
-  else {
-    // 门禁数据已在项目上；顺带预热 schema
-    await loadSchema()
-  }
-}
-
-function onArtifactView(name) {
-  if (name === 'api') loadApis()
-  else if (name === 'db' || name === 'thesis') loadSchema()
-  else if (name === 'ppt') loadPptDeck()
-}
-
 function goArtifacts(view = 'db') {
   artifactView.value = view
   tab.value = 'artifacts'
@@ -1251,8 +1240,25 @@ const {
   capturePptScreenshot,
   uploadPptScreenshot,
   openPptCompare,
+  goGeneratePpt,
   initPptSkinSeed,
 } = defensePpt
+
+async function loadArtifactView() {
+  if (artifactView.value === 'api') await loadApis()
+  else if (artifactView.value === 'db' || artifactView.value === 'thesis') await loadSchema()
+  else if (artifactView.value === 'ppt') await loadPptDeck()
+  else {
+    // 门禁数据已在项目上；顺带预热 schema
+    await loadSchema()
+  }
+}
+
+function onArtifactView(name) {
+  if (name === 'api') loadApis()
+  else if (name === 'db' || name === 'thesis') loadSchema()
+  else if (name === 'ppt') loadPptDeck()
+}
 
 function isApiCollapsed(name) {
   return !!collapsedApis.value[name]
@@ -2180,6 +2186,7 @@ onUnmounted(() => {
     openFillPlan,
     openModules,
     openPptCompare,
+    goGeneratePpt,
     openPreview,
     openTestcases,
     p,
