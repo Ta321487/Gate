@@ -49,13 +49,16 @@
 
         <footer v-if="canChat" class="composer">
           <div class="tools">
-            <el-input
-              v-model="category"
-              size="small"
-              clearable
-              :placeholder="categoryPlaceholder"
-              maxlength="32"
-            />
+            <label class="cat-field">
+              <span class="cat-label">品类</span>
+              <el-input
+                v-model="category"
+                size="small"
+                clearable
+                :placeholder="categoryPlaceholder"
+                maxlength="32"
+              />
+            </label>
             <el-upload :show-file-list="false" :http-request="uploadAsk" accept="image/*">
               <el-button size="small">上传图片</el-button>
             </el-upload>
@@ -167,12 +170,15 @@ async function scrollBottom() {
   if (el) el.scrollTop = el.scrollHeight
 }
 
-function useHot(h) {
+async function useHot(h) {
+  // 不把 FAQ 分类写入品类框：避免误触发货架摘录、也不出现裸露「水果」字样
   draft.value = h.title || ''
-  category.value = h.category || ''
+  category.value = ''
   if (!canChat.value) {
     ElMessage.info('登录后即可发送')
+    return
   }
+  await ask()
 }
 
 async function ask() {
@@ -433,6 +439,27 @@ defineExpose({ openPanel })
   gap: 8px;
   margin-bottom: 8px;
   align-items: center;
+}
+.cat-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 10px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  border-radius: 8px;
+  background: var(--portal-bg, #f8fafc);
+}
+.cat-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--portal-muted, #64748b);
+}
+.cat-field :deep(.el-input__wrapper) {
+  box-shadow: none !important;
+  background: transparent;
+  padding-left: 0;
 }
 .send-row {
   display: flex;

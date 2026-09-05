@@ -93,5 +93,6 @@ async def create_sample_proposal(
         used_llm=used_llm,
         digressions=list(sample.digressions or []),
         l1_extras=list(sample.l1_extras or []),
+        ai_feature=sample.ai_feature,
     )
 
