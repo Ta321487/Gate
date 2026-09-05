@@ -131,7 +131,14 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         "reserve",
         "预约",
-        ("DOM-HOSPITAL", "DOM-PARKING", "DOM-MEETING", "DOM-SALON", "DOM-HOTEL"),
+        (
+            "DOM-HOSPITAL",
+            "DOM-PARKING",
+            "DOM-MEETING",
+            "DOM-SALON",
+            "DOM-HOTEL",
+            "DOM-CARRENT",
+        ),
     ),
     ("content", "内容/媒资/社区", ("DOM-MEDIA", "DOM-MUSIC", "DOM-FORUM", "DOM-BLOG")),
     ("fallback", "兜底", ("DOM-GENERIC",)),
@@ -216,6 +223,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-MEETING": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-SALON": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
+    "DOM-CARRENT": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
     # F 兜底
     "DOM-GENERIC": ["archive", "content", "org_users"],
     # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）

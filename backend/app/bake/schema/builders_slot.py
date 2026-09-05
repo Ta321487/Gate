@@ -18,8 +18,10 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     if campus:
         brow, lead = (
             "校园商城",
-            "验证码登录；浏览校园闲置、加入购物车并提交订单（无真支付）。",
+            "验证码登录；浏览校园闲置、加入购物车并提交订单。",
         )
+        notice_title = "商城须知"
+        notice_body = "下单后由管理员确认发货或自提。"
         fields = [
             {"key": "title", "label": "商品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
@@ -31,15 +33,30 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         ]
     else:
         brow_map = {
-            "print": ("文印下单", "验证码登录；选打印装订服务下单（无真支付）。"),
-            "flowers": ("花店商城", "验证码登录；浏览鲜花特产并下单配送（无真支付）。"),
-            "errand": ("跑腿代买", "验证码登录；下单代买代取，跑腿员接单（非驿站核销；无真支付）。"),
-            "points": ("积分兑换", "验证码登录；用积分兑换商品并提交订单（无真支付）。"),
+            "farm": ("助农商城", "验证码登录；浏览水果蔬菜粮油，加入购物车并提交订单。"),
+            "print": ("文印下单", "验证码登录；选打印装订服务下单。"),
+            "flowers": ("花店商城", "验证码登录；浏览鲜花特产并下单配送。"),
+            "errand": ("跑腿代买", "验证码登录；下单代买代取，由跑腿员接单送达。"),
+            "points": ("积分兑换", "验证码登录；用积分兑换商品并提交订单。"),
         }
         brow, lead = brow_map.get(
             pk,
-            ("在线商城", "验证码登录；浏览商品、加入购物车并提交订单（无真支付）。"),
+            ("在线商城", "验证码登录；浏览商品、加入购物车并提交订单。"),
         )
+        notice_body = {
+            "farm": "水果蔬菜粮油分类上架，下单后由管理员确认发货或自提。",
+            "print": "下单后到店取件或约定配送。",
+            "flowers": "下单后由店员确认配送。",
+            "errand": "代买代取由跑腿员接单送达；请填写送达地点与联系方式。",
+            "points": "兑换下单后由管理员确认发放。",
+        }.get(pk, "下单后由管理员确认发货或自提。")
+        notice_title = {
+            "farm": "农产选购须知",
+            "print": "文印须知",
+            "flowers": "花店须知",
+            "errand": "跑腿须知",
+            "points": "积分兑换须知",
+        }.get(pk, "商城须知")
         fields = [
             {"key": "title", "label": "商品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
@@ -69,8 +86,8 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         auth_lead=lead,
         auth_points=["验证码登录", "商品浏览", "购物车与订单"],
         register_hint="注册后可购物下单",
-        notice_title="商城须知",
-        notice_body="本期无真支付；下单后由管理员确认发货/自提。",
+        notice_title=notice_title,
+        notice_body=notice_body,
         notice_page_title="商城公告",
     )
 
@@ -81,10 +98,10 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     canteen = food_product_kind(title, proposal_text) == "canteen"
     if canteen:
         admin, sub, brow, win, notice = "食堂主管（总管）", "档口管理员", "食堂点餐", "窗口", "食堂公告"
-        body = "下单后到对应窗口取餐或按约定配送；无真支付。"
+        body = "下单后到对应窗口取餐或按约定配送。"
     else:
         admin, sub, brow, win, notice = "门店主管（总管）", "店员", "点餐外卖", "门店", "门店公告"
-        body = "支持堂食、自取或外卖配送；无真支付。"
+        body = "支持堂食、自取或外卖配送。"
     schema = order_shell_schema(
         title,
         domain="DOM-FOOD",
@@ -111,7 +128,7 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         my_orders_label="我的订单",
         orders_admin_label="订单管理",
         auth_eyebrow=brow,
-        auth_lead="验证码登录；选菜加入清单并下单（无真支付）。",
+        auth_lead="验证码登录；选菜加入清单并下单。",
         auth_points=["验证码登录", "菜品浏览", "下单"],
         register_hint="注册后可点餐",
         notice_title="点餐须知",
@@ -131,6 +148,10 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         "complete": "完成",
         "cancel": "取消",
     }
+    labels = dict(schema.get("labels") or {})
+    labels["orderFulfillColumnLabel"] = "配送"
+    labels["orderShipFieldLabel"] = "取餐码"
+    schema["labels"] = labels
     return schema
 
 
@@ -166,11 +187,11 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             my_orders_label="我的影票订单",
             orders_admin_label="订单管理",
             auth_eyebrow="影院选座",
-            auth_lead="验证码登录；选择场次进入座位图，确认后生成订单并占座（无真支付）。",
+            auth_lead="验证码登录；选择场次进入座位图，确认后生成订单并占座。",
             auth_points=["验证码登录", "场次选座", "影票订单"],
             register_hint="注册后可选座购票",
             notice_title="选座购票须知",
-            notice_body="本期无真支付与高并发锁座；场次含影厅类型、开场时间与座位排×列；过开场时间自动下架不可售。",
+            notice_body="场次含影厅类型、开场时间与座位排×列；选座确认后即时占座并生成订单；过开场时间自动下架不可售。",
             notice_page_title="影院公告",
             order_states={
                 "pending": "待取票",
@@ -185,7 +206,7 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
             {"title": "我的订单", "lead": "查看影票订单与座位备注。"},
             {"title": "影院公告", "lead": "排片与维护通知见公告栏。"},
-            {"title": "使用说明", "lead": "无真支付、无跨院线接口。"},
+            {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观影。"},
         ],
     )
     # 选座订单禁止商城「物流/发货」叙事（对齐 HOTEL stay）
@@ -214,6 +235,8 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     schema["entities"] = ents
     labels = dict(schema.get("labels") or {})
     labels["orderFulfillHint"] = "选座确认后生成订单并占座；柜台出票/确认观影，无物流发货。"
+    labels["orderShipFieldLabel"] = "影票凭证"
+    labels["orderFulfillColumnLabel"] = "选座备注"
     schema["labels"] = labels
     return schema
 
@@ -545,6 +568,73 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     schema["entities"]["reservation"]["stylistLabel"] = stylist_label
     return schema
 
+def _carrent_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    schema = slot_shell_schema(
+        title,
+        domain="DOM-CARRENT",
+        user_role_id="user",
+        user_label="租车人",
+        admin_label="门店主管（总管）",
+        subadmin_label="门店店员",
+        archive_key="vehicle",
+        archive_label="车型",
+        archive_plural="车型",
+        archive_fields=[
+            {"key": "title", "label": "车型", "type": "string"},
+            {"key": "author", "label": "日租金(元)", "type": "number", "format": "money"},
+            {"key": "isbn", "label": "说明", "type": "string"},
+            {"key": "category", "label": "分类", "type": "select"},
+            {"key": "stock", "label": "可租辆数", "type": "number"},
+        ],
+        archive_menu_admin="车型管理",
+        archive_menu_user="选车型",
+        users_menu="租车人管理",
+        my_resv_label="我的租约",
+        resv_admin_label="租约记录",
+        resv_label="租约",
+        auth_eyebrow="汽车租赁",
+        auth_lead="验证码登录；选择车型与租期下单，同步生成订单；门店办理取车/还车办结。",
+        auth_points=["验证码登录", "车型浏览", "按日租期与取还车"],
+        register_hint="注册后可在线租车",
+        notice_title="租车须知",
+        notice_body="下单成功即占车并生成订单；取车与还车由门店办结。",
+        notice_page_title="租车公告",
+        with_orders=True,
+        complete_verb="取车/还车",
+        completed_label="已还车",
+    )
+    order = dict((schema.get("entities") or {}).get("order") or {})
+    order.update(
+        {
+            "key": "order",
+            "label": "订单",
+            "labelPlural": "我的订单",
+            "fulfillMode": "rental",
+            "states": {
+                "pending": "待确认",
+                "confirmed": "待取车",
+                "shipped": "租赁中",
+                "completed": "已还车",
+                "cancelled": "已取消",
+            },
+            "verbs": {
+                "ship": "办理取车",
+                "complete": "办理还车",
+            },
+        }
+    )
+    ents = dict(schema.get("entities") or {})
+    ents["order"] = order
+    schema["entities"] = ents
+    labels = dict(schema.get("labels") or {})
+    labels["orderFulfillHint"] = "租车订单随租约生成；门店办理取车/还车，无物流发货。"
+    schema["labels"] = labels
+    resv_ent = schema["entities"]["reservation"]
+    resv_ent["guestNameLabel"] = "驾驶人"
+    resv_ent["guestCountLabel"] = "用车人数"
+    return schema
+
+
 def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import hotel_product_kind
 
@@ -595,7 +685,7 @@ def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         auth_points=["验证码登录", "房型浏览", "分时预订与入住离店"],
         register_hint=reg,
         notice_title=notice_t,
-        notice_body="本期无真支付；预约成功即占坑并生成订单；入住/离店由前台办结。",
+        notice_body="预约成功即占坑并生成订单；入住/离店由前台办结。",
         notice_page_title=notice_page,
         with_orders=True,
         complete_verb="入住/离店",

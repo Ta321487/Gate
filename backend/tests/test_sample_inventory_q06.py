@@ -37,21 +37,21 @@ class SampleInventoryQ06Tests(unittest.TestCase):
         files = list(root.glob("S-*.txt"))
         self.assertGreaterEqual(len(files), 51, f"got {len(files)}")
         ids = _ids_from_glob("S-*.txt", "S")
-        # 册内已知段：01-06, 10-25, 30-36, 40-50, 60-65, 70-74
+        # 册内已知段：01-06, 10-25, 30-37, 40-51, 60-65, 70-74
         expected = (
             set(range(1, 7))
             | set(range(10, 26))
-            | set(range(30, 37))
-            | set(range(40, 51))
+            | set(range(30, 38))
+            | set(range(40, 52))
             | set(range(60, 66))
             | set(range(70, 75))
         )
         self.assertEqual(ids, expected, f"missing={sorted(expected - ids)} extra={sorted(ids - expected)}")
 
     def test_p_preset_samples_complete(self) -> None:
-        """P-01～P-29、P-31 各 ≥1（P-30 为三联 reject，无独立样例）。"""
+        """P-01～P-29、P-31～P-32 各 ≥1（P-30 为三联 reject，无独立样例）。"""
         ids = _ids_from_glob("P-*.txt", "P")
-        expected = set(range(1, 30)) | {31}
+        expected = set(range(1, 30)) | {31, 32}
         self.assertEqual(ids, expected, f"missing={sorted(expected - ids)} extra={sorted(ids - expected)}")
 
     def test_c_capability_samples_or_p_cover(self) -> None:

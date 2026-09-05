@@ -87,6 +87,7 @@ DOMAIN_ENTITIES: dict[str, DomainEntity] = {
     "DOM-MEETING": DomainEntity("room", None, "item_id"),
     "DOM-SALON": DomainEntity("service", None, "item_id"),
     "DOM-HOTEL": DomainEntity("room_type", None, "item_id"),
+    "DOM-CARRENT": DomainEntity("vehicle", None, "item_id"),
     "DOM-DORM": DomainEntity(None, "repair", None, "standalone", standalone=True),
     "DOM-PROPERTY": DomainEntity(None, "ticket", None, "standalone", standalone=True),
     "DOM-IT": DomainEntity(None, "ticket", None, "standalone", standalone=True),

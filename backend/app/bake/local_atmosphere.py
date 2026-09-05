@@ -82,6 +82,7 @@ _DOMAIN_FAMILY: dict[str, str] = {
     "DOM-HOSPITAL": "care",
     "DOM-SALON": "care",
     "DOM-HOTEL": "hospitality",
+    "DOM-CARRENT": "transit",
     "DOM-MEETING": "hospitality",
     "DOM-PARKING": "transit",
     "DOM-IT": "tech",

@@ -52,6 +52,10 @@ RESERVATION_COLUMNS_BY_DOMAIN: dict[str, list[tuple[str, str]]] = {
         ("guest_name", "VARCHAR(32) DEFAULT ''"),
         ("guest_count", "INT DEFAULT 0"),
     ],
+    "DOM-CARRENT": [
+        ("guest_name", "VARCHAR(32) DEFAULT ''"),
+        ("guest_count", "INT DEFAULT 0"),
+    ],
     "DOM-SALON": [
         ("preferred_stylist", "VARCHAR(32) DEFAULT ''"),
         ("queue_no", "INT DEFAULT 0"),
@@ -155,6 +159,8 @@ def order_fulfill_columns_for(
     if d == "DOM-SHOP":
         return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
     if d == "DOM-HOTEL":
+        return list(ORDER_RESERVATION_LINK_COLUMNS)
+    if d == "DOM-CARRENT":
         return list(ORDER_RESERVATION_LINK_COLUMNS)
     if d == "DOM-GENERIC":
         cols = list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)

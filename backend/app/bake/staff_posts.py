@@ -135,6 +135,9 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _clerk("front", "前台", "slot_ops", "order_ops"),
         # 客房服务：默认不挂；开题写到才追加
     ],
+    "DOM-CARRENT": [
+        _clerk("front", "门店店员", "slot_ops", "order_ops"),
+    ],
     "DOM-MEDIA": [_clerk("editor", "运营编辑", "content_ops")],
     "DOM-MUSIC": [_clerk("editor", "运营编辑", "content_ops")],
     "DOM-FORUM": [_clerk("moderator", "版主", "ticket_ops")],
@@ -150,6 +153,7 @@ NO_APPOINT_FROM_USERS: frozenset[str] = frozenset({
     "DOM-MEETING",
     "DOM-SALON",
     "DOM-HOTEL",
+    "DOM-CARRENT",
     "DOM-SHOP",
     "DOM-FOOD",
     # 门户＝求职方 / 会员 / 实习生 / 取件人 / 报名者 / 借用人 / 申领人
@@ -583,6 +587,7 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-HOSPITAL": ("宠主", "接种人", "就诊人", "患者"),
     "DOM-LOST": ("失主", "认领人", "申请人"),
     "DOM-PARKING": ("车主",),
+    "DOM-CARRENT": ("租车人", "驾驶人"),
     "DOM-ATTEND": ("考勤对象", "员工"),
     "DOM-FUND": ("受助学生", "申请学生"),
     "DOM-SEAL": ("申请人", "办理人"),

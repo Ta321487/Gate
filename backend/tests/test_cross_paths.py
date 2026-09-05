@@ -215,7 +215,7 @@ def test_match_keeps_trade_and_reserve_union():
     from app.bake.catalog import match_text
 
     m = match_text(
-        "校园服务。主要功能：会议室分时预约；另设小卖部购物车下单；无真支付。"
+        "校园服务。主要功能：会议室分时预约；另设小卖部购物车下单。"
     )
     assert "ARCH-TRADE" in (m.archetypes or [])
     assert "ARCH-RESERVE" in (m.archetypes or [])

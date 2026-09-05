@@ -58,7 +58,10 @@ DOMAINS: dict = {
         "label": "用车申请",
         # 词表只做硬分流；长尾说法交给 match_recommend
         "keywords": ["用车申请", "公务用车", "派车申请", "车辆申请", "公车预约", "用车审批"],
-        "match_hint": "适用：公务用车选车申请与审批（台账级调度，无时段冲突引擎）。勿与车位预约、请假出差混淆。",
+        "match_hint": (
+            "适用：公务用车选车申请与审批（台账级调度，无时段冲突引擎）。"
+            "勿与车位预约、请假出差或四轮商业租车（DOM-CARRENT，按日取还）混淆。"
+        ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["本人申请填单（选事项） → 提交用车 → 审批完结"],

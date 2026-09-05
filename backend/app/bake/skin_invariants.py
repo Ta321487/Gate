@@ -42,6 +42,13 @@ def check_schema_skin_leaks(
         if "物流" in str(order):
             issues.append("DOM-HOTEL 订单文案不得含「物流」")
 
+    # 租车订单必须 rental，禁止物流皮
+    if "order_lines" in caps and dom == "DOM-CARRENT":
+        if order.get("fulfillMode") != "rental":
+            issues.append("DOM-CARRENT 订单 fulfillMode 须为 rental")
+        if "物流" in str(order):
+            issues.append("DOM-CARRENT 订单文案不得含「物流」")
+
     # 影院选座订单必须 cinema，禁止物流皮
     if "order_lines" in caps and dom == "DOM-CINEMA":
         if order.get("fulfillMode") != "cinema":

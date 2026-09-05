@@ -33,6 +33,7 @@ from app.bake.schema.domain_builders import (  # noqa: F401
     _grade_schema,
     _hospital_schema,
     _hotel_schema,
+    _carrent_schema,
     _intern_schema,
     _it_schema,
     _labsafe_schema,
@@ -96,6 +97,7 @@ SCHEMA_BUILDERS = {
     "DOM-PARKING": _parking_schema,
     "DOM-SALON": _salon_schema,
     "DOM-HOTEL": _hotel_schema,
+    "DOM-CARRENT": _carrent_schema,
 }
 
 for _m in OA_APPLY_META:

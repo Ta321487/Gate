@@ -22,7 +22,7 @@ DOMAINS: dict = {
         ],
         "match_hint": (
             "适用：行程档案发布、同行意向单审核对接（无地图/导航）。"
-            "勿与婚恋交友牵线、学习搭子组队互选、社团活动报名占名额、旅行社线路报名混淆。"
+            "勿与婚恋交友牵线、学习搭子组队互选、社团活动报名占名额、旅行社线路报名或四轮商业租车混淆。"
         ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],

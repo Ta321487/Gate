@@ -22,6 +22,7 @@ from app.bake.domains_catalog.carpool import DOMAINS as CARPOOL_DOMAINS
 from app.bake.domains_catalog.timebank import DOMAINS as TIMEBANK_DOMAINS
 from app.bake.domains_catalog.cinema import DOMAINS as CINEMA_DOMAINS
 from app.bake.domains_catalog.tour import DOMAINS as TOUR_DOMAINS
+from app.bake.domains_catalog.carrent import DOMAINS as CARRENT_DOMAINS
 from app.bake.domains_catalog.reserve import DOMAINS as RESERVE_DOMAINS
 from app.bake.domains_catalog.ticket import DOMAINS as TICKET_DOMAINS
 from app.bake.domains_catalog.trade import DOMAINS as TRADE_DOMAINS
@@ -49,5 +50,6 @@ CATALOG_DOMAINS: dict = {
     **TIMEBANK_DOMAINS,
     **CINEMA_DOMAINS,
     **TOUR_DOMAINS,
+    **CARRENT_DOMAINS,
     **FALLBACK_DOMAINS,
 }
