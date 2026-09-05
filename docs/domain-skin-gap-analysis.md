@@ -30,7 +30,7 @@
 | B 工单 | 独立报修单 | DORM / PROPERTY / IT | 报修受理完结 |
 | C 报名 | 档案 → 报名/认领 → 审（±名额） | ACTIVITY / LOST / COURSE | 占名额申请 |
 | D 交易 | 购物车下单 | SHOP / FOOD | 买/点餐 |
-| E 预约 | 时段占坑 | HOSPITAL / PARKING / MEETING / SALON / HOTEL | 约时间 |
+| E 预约 | 时段占坑 | HOSPITAL / PARKING / MEETING / SALON / HOTEL / CARRENT | 约时间 / 按日租 |
 | G 内容 | 浏览/播/帖/文 | MEDIA / MUSIC / FORUM / BLOG | 内容站 |
 | F/H | 兜底与真交叉 | GENERIC + X-BORROW-SHOP / X-BORROW-RESERVE / X-SHOP-RESERVE | 行业皮盖不住时降通用并保留路径 |
 
@@ -67,6 +67,7 @@
 | M-20 | 校园跑腿代买 = 驿站取件核销 | SHOP vs PARCEL | match_hint + `test_confusion_pairs` M-20a/b | 已齐 |
 | M-21 | 充电桩车位预约 = 车辆通行证备案 | PARKING vs CARPASS | match_hint + `test_confusion_pairs` M-21a/b | 已齐 |
 | M-22 | 点播课视频库 = 公选课选课；表白墙 = 院刊资讯 | MEDIA vs COURSE；FORUM vs BLOG | match_hint + `test_confusion_pairs` M-22a～d | 已齐 |
+| M-23 | 四轮商业租车 = 公务用车/客房/车位/器材借 | **DOM-CARRENT** vs FLEET/HOTEL/PARKING/EQUIP | match_hint + `test_carrent_p32` / M-23 | 已齐 |
 
 ---
 
@@ -206,6 +207,7 @@
 | P-29 | 合同审批（单级演示） | CRM / ATTEND | **DOM-CONTRACT**：合同类型 + 合同审批 | 登记 → 审 | 已齐 |
 | P-30 | 印章+用车+证明（OA 三联） | GENERIC 多单 | **禁止一题三引擎冒充**：`scan_out_of_scope` 命中三联 → reject；裁成 P-01～P-03 之一 | 单主路径可 bake | 已齐 |
 | P-31 | 旅行社线路/跟团报名 | ACTIVITY / HOTEL / GENERIC | **DOM-TOUR**：线路档案 + 报名占名额（`test_tour_p31`）；≠酒店≠校园活动≠拼车≠出差≠商城 | 浏览线路 → 报名 → 审 → 出团 | 已齐 |
+| P-32 | 四轮商业租车（神州/一嗨） | FLEET / HOTEL / PARKING / EQUIP | **DOM-CARRENT**：车型档案 + 按日租期 + 订单取还车（`test_carrent_p32`）；≠公务用车≠客房≠车位≠器材借；哈啰两轮不交 | 选车 → 选租期 → 下单 → 取还车 | 已齐 |
 
 ### 4.1 新预设交付清单（每个 `P-*`）
 

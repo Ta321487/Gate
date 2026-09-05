@@ -527,6 +527,7 @@ _DOMAIN_DEFAULT_ARCH: dict[str, str] = {
     "DOM-MEETING": "ARCH-RESERVE",
     "DOM-SALON": "ARCH-RESERVE",
     "DOM-HOTEL": "ARCH-RESERVE",
+    "DOM-CARRENT": "ARCH-RESERVE",
     "DOM-DORM": "ARCH-FLOW",
     "DOM-PROPERTY": "ARCH-FLOW",
     "DOM-IT": "ARCH-FLOW",
@@ -669,6 +670,7 @@ def reconcile_match(
             {
                 # 预约皮开题常写「审核/报名」对比词，勿逼降 GENERIC
                 "DOM-HOTEL",
+                "DOM-CARRENT",
                 "DOM-MEETING",
                 "DOM-PARKING",
                 "DOM-SALON",

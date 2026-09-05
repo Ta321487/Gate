@@ -1,0 +1,173 @@
+{
+  "capabilities": [
+    "archive",
+    "slot_reserve",
+    "order_lines",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "车型",
+          "type": "string"
+        },
+        {
+          "format": "money",
+          "key": "author",
+          "label": "日租金(元)",
+          "type": "number"
+        },
+        {
+          "key": "isbn",
+          "label": "说明",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可租辆数",
+          "type": "number"
+        }
+      ],
+      "key": "vehicle",
+      "label": "车型",
+      "labelPlural": "车型",
+      "stockDisplay": "hidden"
+    },
+    "order": {
+      "fulfillMode": "rental",
+      "key": "order",
+      "label": "订单",
+      "labelPlural": "我的订单",
+      "states": {
+        "cancelled": "已取消",
+        "completed": "已还车",
+        "confirmed": "待取车",
+        "pending": "待确认",
+        "shipped": "租赁中"
+      },
+      "verbs": {
+        "complete": "办理还车",
+        "ship": "办理取车"
+      }
+    },
+    "reservation": {
+      "completeVerb": "取车/还车",
+      "guestCountLabel": "用车人数",
+      "guestNameLabel": "驾驶人",
+      "key": "reservation",
+      "label": "租约",
+      "labelPlural": "我的租约",
+      "remarkLabel": "备注",
+      "requireConfirm": false,
+      "requireRemark": false,
+      "states": {
+        "cancelled": "已取消",
+        "completed": "已还车",
+        "confirmed": "已租约",
+        "pending": "待确认"
+      }
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "汽车租赁",
+    "authLead": "验证码登录；选择车型与租期下单，同步生成订单；门店办理取车/还车办结。",
+    "authPoints": [
+      "验证码登录",
+      "车型浏览",
+      "按日租期与取还车"
+    ],
+    "messagesPageLead": "预约提醒与系统通知。",
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "noticePageTitle": "租车公告",
+    "orderFulfillHint": "租车订单随租约生成；门店办理取车/还车，无物流发货。",
+    "recommendLatestHint": "最新发布",
+    "registerRoleHint": "注册后可在线租车"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "车型管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "租车人管理",
+        "superOnly": true
+      },
+      {
+        "key": "reservations",
+        "label": "租约记录"
+      },
+      {
+        "key": "orders",
+        "label": "预订订单"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "选车型"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的租约"
+      },
+      {
+        "key": "my_orders",
+        "label": "我的订单"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "门店主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "门店店员"
+    },
+    "user": {
+      "id": "user",
+      "label": "租车人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "下单成功即占车并生成订单；取车与还车由门店办结。",
+    "noticeTitle": "租车须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

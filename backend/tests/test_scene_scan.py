@@ -286,8 +286,10 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
-        # EXAM / EQUIP / ACTIVITY：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
-        product_copy_only = frozenset({"DOM-EXAM", "DOM-EQUIP", "DOM-ACTIVITY"})
+        # EXAM / EQUIP / ACTIVITY / BED：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
+        product_copy_only = frozenset(
+            {"DOM-EXAM", "DOM-EQUIP", "DOM-ACTIVITY", "DOM-BED"}
+        )
         self.assertEqual(_SCENE_COPY_DOMAINS - product_copy_only, covered)
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
@@ -331,6 +333,9 @@ class SceneScanContractTests(unittest.TestCase):
         self.assertIn("'pending'", sql)
         self.assertNotIn("基础款商品", sql)
         self.assertNotIn("校徽帆布袋", sql)
+        self.assertNotIn("食堂代买套餐", sql)
+        self.assertNotIn("红富士苹果", sql)
+        self.assertNotIn("日用收纳盒", sql)
         self.assertNotIn("condition_grade", sql)
         self.assertNotIn("成色", sql)
 
@@ -351,6 +356,9 @@ class SceneScanContractTests(unittest.TestCase):
             proposal_text="打印装订下单",
         )
         self.assertIn("胶装", print_sql)
+        self.assertNotIn("红富士苹果", print_sql)
+        self.assertNotIn("康乃馨", print_sql)
+        self.assertNotIn("日用收纳盒", print_sql)
         errand_sql = domain_sql(
             "DOM-SHOP",
             "t",
@@ -359,6 +367,9 @@ class SceneScanContractTests(unittest.TestCase):
         )
         self.assertIn("代买", errand_sql)
         self.assertNotIn("机械键盘", errand_sql)
+        self.assertNotIn("康乃馨", errand_sql)
+        self.assertNotIn("红富士苹果", errand_sql)
+        self.assertNotIn("日用收纳盒", errand_sql)
         campus = build_domain_schema(
             "校园二手商品交易系统",
             "DOM-SHOP",

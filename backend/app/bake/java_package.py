@@ -70,6 +70,7 @@ _DOMAIN_JAVA: dict[str, tuple[str, str, str]] = {
     "DOM-MEETING": ("com.campus.meeting", "MeetingApplication", "meeting-app"),
     "DOM-SALON": ("com.campus.salon", "SalonApplication", "salon-app"),
     "DOM-HOTEL": ("com.campus.hotel", "HotelApplication", "hotel-app"),
+    "DOM-CARRENT": ("com.campus.carrent", "CarrentApplication", "carrent-app"),
     "DOM-MEDIA": ("com.campus.media", "MediaApplication", "media-app"),
     "DOM-MUSIC": ("com.campus.music", "MusicApplication", "music-app"),
     "DOM-FORUM": ("com.campus.forum", "ForumApplication", "forum-app"),

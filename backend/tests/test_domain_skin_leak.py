@@ -73,6 +73,7 @@ _OPENINGS: dict[str, list[tuple[str, str]]] = {
     "DOM-MEETING": [("会议室预约", "预约人订会议室")],
     "DOM-SALON": [("美发预约", "顾客预约"), ("健身房预约", "会员预约")],
     "DOM-HOTEL": [("民宿预订", "住客预订")],
+    "DOM-CARRENT": [("汽车租赁", "租车人选车取还")],
     "DOM-MEDIA": [("影视点播", "用户点播"), ("校园媒资", "师生点播")],
     "DOM-MUSIC": [("在线音乐", "用户听歌"), ("校园音乐", "师生点播")],
     "DOM-FORUM": [("校园论坛", "师生发帖"), ("社区论坛", "居民发帖")],
@@ -182,12 +183,17 @@ class DomainSkinLeakRegressionTests(unittest.TestCase):
         ]
         self.assertEqual(
             set(with_orders),
-            {"DOM-SHOP", "DOM-FOOD", "DOM-HOTEL", "DOM-CINEMA"},
+            {"DOM-SHOP", "DOM-FOOD", "DOM-HOTEL", "DOM-CINEMA", "DOM-CARRENT"},
         )
         hotel = build_domain_schema("酒店", "DOM-HOTEL")
         self.assertEqual(
             ((hotel.get("entities") or {}).get("order") or {}).get("fulfillMode"),
             "stay",
+        )
+        carrent = build_domain_schema("汽车租赁", "DOM-CARRENT")
+        self.assertEqual(
+            ((carrent.get("entities") or {}).get("order") or {}).get("fulfillMode"),
+            "rental",
         )
         cinema = build_domain_schema("影院选座", "DOM-CINEMA")
         self.assertIn("seat_select", cinema.get("capabilities") or [])

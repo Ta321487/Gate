@@ -166,6 +166,31 @@ class ModuleDiagramTests(unittest.TestCase):
             "money",
         )
 
+    def test_carrent_merges_slot_and_order(self) -> None:
+        schema = self._schema("DOM-CARRENT")
+        model = module_model(schema, layout="biz")
+        branches = {c["id"]: c for c in model["root"]["children"]}
+        self.assertIn("biz:slot", branches)
+        self.assertNotIn("biz:order", branches)
+        labs = {c["label"] for c in branches["biz:slot"]["children"]}
+        self.assertTrue(labs & {"我的租约", "租约记录", "我的订单", "租车订单"})
+
+    def test_carrent_order_rental_fulfill_not_logistics(self) -> None:
+        """租车订单跟取车/还车，禁止商城物流叙事。"""
+        schema = self._schema("DOM-CARRENT")
+        order = (schema.get("entities") or {}).get("order") or {}
+        self.assertEqual(order.get("fulfillMode"), "rental")
+        self.assertEqual((order.get("verbs") or {}).get("ship"), "办理取车")
+        self.assertEqual((order.get("verbs") or {}).get("complete"), "办理还车")
+        self.assertEqual((order.get("states") or {}).get("shipped"), "租赁中")
+        self.assertEqual((order.get("states") or {}).get("completed"), "已还车")
+        self.assertEqual(
+            ((schema.get("entities") or {}).get("archive") or {})
+            .get("fields", [{}])[1]
+            .get("format"),
+            "money",
+        )
+
     def test_blog_favorite_instant_not_ticket_audit(self) -> None:
         schema = self._schema("DOM-BLOG")
         model = module_model(schema, layout="biz")

@@ -20,6 +20,7 @@
   "fund",
   "labsafe",
   "hotel",
+  "carrent",
   "media",
   "music",
   "forum",
@@ -69,5 +70,6 @@
   "cross-shop-reserve",
   "cross-food-repair",
   "cross-lib-seat",
-  "flowers-shop"
+  "flowers-shop",
+  "farm-shop"
 ]

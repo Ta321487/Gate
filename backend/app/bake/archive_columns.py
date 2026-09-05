@@ -268,6 +268,10 @@ ARCHIVE_COLUMN_SPEC: dict[str, tuple[ArchiveCol, ArchiveCol]] = {
         ("price_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
         ("room_note", "VARCHAR(128) DEFAULT ''"),
     ),
+    "DOM-CARRENT": (
+        ("price_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("vehicle_note", "VARCHAR(128) DEFAULT ''"),
+    ),
     "DOM-GENERIC": (
         ("subtitle", "VARCHAR(100)"),
         ("detail", "VARCHAR(255)"),

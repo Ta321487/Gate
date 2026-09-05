@@ -8,7 +8,10 @@ DOMAINS: dict = {
     "DOM-CARPASS": {
         "label": "车辆通行证",
         "keywords": ["车辆通行证", "临时车牌", "车牌备案", "车辆通行证申请", "临时通行证", "进校车辆备案", "校门通行证"],
-        "match_hint": ("适用：临时车辆通行证/车牌备案申请与审核，通过后可签发通行码。勿与车位预约（停车预约）或访客行人登记混淆。"),
+        "match_hint": (
+            "适用：临时车辆通行证/车牌备案申请与审核，通过后可签发通行码。"
+            "勿与车位预约（停车预约）、访客行人登记或四轮商业租车（DOM-CARRENT）混淆。"
+        ),
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
         "flows": ["本人备案填单（选区域） → 审"],

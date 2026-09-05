@@ -218,6 +218,24 @@ export function ticketStatusLabel(status, fallback = '') {
   return fallback || key
 }
 
+/** 订单状态码 → entities.order.states 文案（商城配送中 / 餐饮制作中等变词） */
+export function orderStatusLabel(status, fallback = '') {
+  if (status == null || status === '') return fallback || ''
+  const key = String(status)
+  const states = (getSchema()?.entities || {}).order?.states || {}
+  if (states[key]) return states[key]
+  return fallback || key
+}
+
+/** 预约状态码 → entities.reservation.states 文案 */
+export function reservationStatusLabel(status, fallback = '') {
+  if (status == null || status === '') return fallback || ''
+  const key = String(status)
+  const states = reservationCopy().states || {}
+  if (states[key]) return states[key]
+  return fallback || key
+}
+
 /**
  * 进度流水状态展示：优先 states；签到/领取/费用等用实体文案。
  */

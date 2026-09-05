@@ -420,6 +420,13 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
             options=["上午", "下午", "晚上"]),
         _pf("emergencyPhone", "紧急联系电话", max_length=20),
     ],
+    "DOM-CARRENT": [
+        _pf("driverName", "驾驶人", required=True, on_register=True, max_length=32),
+        _pf("licenseNo", "驾驶证号", required=True, on_register=True, max_length=32),
+        _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
+            options=["身份证", "护照", "其他"]),
+        _pf("phoneBackup", "备用电话", max_length=20),
+    ],
     "DOM-SEAL": [
 _pf("identityType", "身份", required=True, on_register=True, field_type="select",
     options=["教职工", "学生", "其他"]),

@@ -48,6 +48,7 @@ _POSITIVE: list[tuple[str, str, str]] = [
     ("M-22b", "公选课在线选课与学分名额", "DOM-COURSE"),
     ("M-22c", "校园表白墙树洞发帖回帖", "DOM-FORUM"),
     ("M-22d", "校园资讯院刊文章发布浏览", "DOM-BLOG"),
+    ("M-23", "汽车租赁与门店取车还车", "DOM-CARRENT"),
 ]
 
 # (id, 正句, 禁止落入的域)
@@ -96,6 +97,12 @@ _NEGATIVE: list[tuple[str, str, str]] = [
     ("M-22b", "公选课在线选课与学分名额", "DOM-MEDIA"),
     ("M-22c", "校园表白墙树洞发帖回帖", "DOM-BLOG"),
     ("M-22d", "校园资讯院刊文章发布浏览", "DOM-FORUM"),
+    ("M-23a", "汽车租赁与门店取车还车", "DOM-FLEET"),
+    ("M-23b", "汽车租赁与门店取车还车", "DOM-HOTEL"),
+    ("M-23c", "汽车租赁与门店取车还车", "DOM-PARKING"),
+    ("M-23d", "汽车租赁与门店取车还车", "DOM-EQUIP"),
+    ("M-08c", "宾馆客房预订管理系统", "DOM-CARRENT"),
+    ("M-21c", "充电桩与共享车位时段预约", "DOM-CARRENT"),
 ]
 
 

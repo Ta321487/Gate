@@ -1392,6 +1392,15 @@ def scene_tour_parts(title: str, body: str = "") -> Scene:
     return scene_tour(copy_scan_text(t, b))
 
 
+def scene_carrent(text: str) -> Scene:
+    """四轮商业租车门店身份。"""
+    return "commercial"
+
+
+def scene_carrent_parts(title: str, body: str = "") -> Scene:
+    return "commercial"
+
+
 def scene_timebank(text: str) -> Scene:
     """社区时间银行默认 community；开题写清校园志愿再 campus。"""
     if scan_has(text, COMMUNITY_HINTS):
@@ -1543,6 +1552,8 @@ def scene_for(
         return scene_forum_parts(title, proposal_text)
     if domain == "DOM-TOUR":
         return scene_tour_parts(title, proposal_text)
+    if domain == "DOM-CARRENT":
+        return scene_carrent_parts(title, proposal_text)
     if domain == "DOM-TIMEBANK":
         return scene_timebank_parts(title, proposal_text)
     if domain in {
