@@ -1,7 +1,71 @@
 <template>
   <div class="home" :data-home="homeStyle">
+    <!-- 商城货架：分类栏 + Banner + 新品 -->
+    <template v-if="homeStyle === 'mall'">
+      <div class="mall">
+        <section class="mall-hero" aria-label="分类与推荐">
+          <aside class="mall-cats" aria-label="商品分类">
+            <button
+              v-for="c in mallCategories"
+              :key="c.id"
+              type="button"
+              class="mall-cat"
+              @click="goCategory(c)"
+            >
+              <span>{{ c.name }}</span>
+              <span class="mall-cat-chev" aria-hidden="true">›</span>
+            </button>
+            <p v-if="!mallCategories.length" class="mall-cat-empty">暂无分类</p>
+          </aside>
+          <div
+            class="mall-banner"
+            role="img"
+            :aria-label="mallBannerTitle"
+            :style="mallBannerStyle"
+          >
+            <div v-if="!mallBannerSrc" class="mall-banner-fallback">
+              <p class="mall-banner-kicker">{{ appName }}</p>
+              <p class="mall-banner-lead">{{ lead }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="mall-new" aria-label="新品上架">
+          <div class="mall-new-hd">
+            <h2 class="mall-new-title">新品上架</h2>
+            <button type="button" class="more" @click="goArchive">查看更多 &gt;&gt;</button>
+          </div>
+          <div class="mall-grid">
+            <button
+              v-for="item in mallProducts"
+              :key="item.id"
+              type="button"
+              class="mall-card"
+              @click="goProduct(item)"
+            >
+              <div
+                class="mall-cover"
+                :style="item.cover ? { backgroundImage: `url('${item.cover}')` } : undefined"
+              >
+                <span v-if="!item.cover" class="mall-cover-letter">{{ item.letter }}</span>
+              </div>
+              <div class="mall-copy">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.lead }}</p>
+                <div class="mall-foot">
+                  <span class="mall-price">{{ item.price }}</span>
+                  <span class="mall-meta">{{ item.meta }}</span>
+                </div>
+              </div>
+            </button>
+          </div>
+          <div v-if="!mallProducts.length" class="mall-empty">暂无商品，可先浏览全部货架。</div>
+        </section>
+      </div>
+    </template>
+
     <!-- 功能卡片（默认） -->
-    <template v-if="homeStyle !== 'editorial'">
+    <template v-else-if="homeStyle !== 'editorial'">
       <section class="hero">
         <h1>{{ appName }}</h1>
         <p>{{ lead }}</p>
@@ -88,7 +152,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import { APP_DELIVERED } from '../../appDelivered.js'
-import { getSchema, schemaLabels, schemaMenus, ticketCopy } from '../../utils/domainSchema.js'
+import {
+  archiveCopy,
+  formatArchiveScalar,
+  getSchema,
+  schemaLabels,
+  schemaMenus,
+  ticketCopy,
+} from '../../utils/domainSchema.js'
 import { userMenuPath } from '../../utils/menuRoutes.js'
 import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/session.js'
 
@@ -107,7 +178,8 @@ const homeStyle = computed(() => {
   const s = (APP_DELIVERED?.portalHomeStyle || import.meta.env.VITE_PORTAL_HOME_STYLE || 'cards')
     .toString()
     .trim()
-  return s === 'editorial' ? 'editorial' : 'cards'
+  if (s === 'editorial' || s === 'mall') return s
+  return 'cards'
 })
 
 const FLAVOR_NEWS = {
@@ -169,8 +241,101 @@ async function loadNews() {
   }))
 }
 
+const mallCategories = ref([])
+const mallProducts = ref([])
+
+const mallBannerSrc = computed(() => banners.value[0]?.src || APP_DELIVERED?.authHero || '')
+const mallBannerTitle = computed(() => banners.value[0]?.title || appName)
+const mallBannerStyle = computed(() =>
+  mallBannerSrc.value ? { backgroundImage: `url('${mallBannerSrc.value}')` } : undefined,
+)
+
+function stripHtml(s) {
+  return String(s || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function mallPriceText(row) {
+  const fields = archiveCopy().fields || []
+  const authorField = fields.find((x) => x?.key === 'author') || {
+    key: 'author',
+    type: 'number',
+    format: 'money',
+  }
+  return formatArchiveScalar(authorField, row?.author, '¥ —')
+}
+
+function mallLeadText(row) {
+  const note = stripHtml(row?.sellerNote || row?.seller_note)
+  if (note) return note.slice(0, 48)
+  const raw = stripHtml(row?.isbn)
+  // 货号（如 FR-AP01）不作简介；优先分类名
+  if (raw && !/^[A-Z]{1,4}-?[A-Z0-9]+$/i.test(raw) && !/^SKU[-_]/i.test(raw)) {
+    return raw.slice(0, 48)
+  }
+  return row?.categoryName || '精选好物'
+}
+
+function mallMetaText(row) {
+  const stock = Number(row?.stock)
+  if (Number.isFinite(stock)) return `库存 ${stock}`
+  return row?.categoryName || ''
+}
+
+async function loadMall() {
+  try {
+    const catRes = await http.get('/api/categories')
+    const cats = catRes.data || catRes || []
+    mallCategories.value = (Array.isArray(cats) ? cats : []).slice(0, 12).map((c) => ({
+      id: c.id,
+      name: c.name || '分类',
+    }))
+  } catch {
+    mallCategories.value = []
+  }
+  try {
+    const res = await http.get('/api/archive', { params: { page: 1, size: 4 } })
+    const rows = res.data?.list || res.data?.items || res.data || []
+    const list = Array.isArray(rows) ? rows : []
+    mallProducts.value = list.slice(0, 4).map((row) => ({
+      id: row.id,
+      title: row.title || '未命名',
+      lead: mallLeadText(row),
+      price: mallPriceText(row),
+      meta: mallMetaText(row),
+      cover: row.coverUrl || '',
+      letter: String(row.title || '?').slice(0, 1),
+    }))
+  } catch {
+    mallProducts.value = []
+  }
+}
+
+function goArchive() {
+  router.push('/archive')
+}
+
+function goCategory(cat) {
+  if (!cat?.id) {
+    goArchive()
+    return
+  }
+  router.push({ path: '/archive', query: { categoryId: String(cat.id) } })
+}
+
+function goProduct(item) {
+  if (!item?.id) {
+    goArchive()
+    return
+  }
+  router.push({ path: '/archive', query: { highlight: String(item.id) } })
+}
+
 onMounted(() => {
   if (homeStyle.value === 'editorial') loadNews()
+  if (homeStyle.value === 'mall') loadMall()
 })
 
 const LEADS = {
@@ -311,6 +476,7 @@ function openNews(item) {
 <style scoped>
 .home { max-width: 920px; }
 .home[data-home='editorial'] { max-width: 1100px; }
+.home[data-home='mall'] { max-width: 1100px; }
 .hero { margin-bottom: 22px; }
 .hero h1 {
   margin: 0 0 8px;
@@ -526,5 +692,208 @@ function openNews(item) {
   .editorial { grid-template-columns: 1fr; }
   .claim { min-height: 220px; }
   .news-track { grid-template-columns: 1fr; }
+  .mall-hero { grid-template-columns: 1fr; }
+  .mall-cats { flex-direction: row; flex-wrap: wrap; max-height: none; }
+  .mall-cat { flex: 1 1 40%; }
+  .mall-banner { min-height: 180px; }
+  .mall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* —— 商城货架首页 —— */
+.mall { display: flex; flex-direction: column; gap: 22px; }
+.mall-hero {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--portal-line, #e5e7eb);
+  border-radius: var(--portal-radius, 10px);
+  overflow: hidden;
+  background: var(--portal-surface, #fff);
+}
+.mall-cats {
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--portal-ink, #1f2937) 88%, #000);
+  color: #f8fafc;
+  min-height: 280px;
+}
+.mall-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 11px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mall-cat:hover {
+  background: color-mix(in srgb, var(--portal-accent, #f97316) 28%, transparent);
+}
+.mall-cat-chev {
+  opacity: 0.55;
+  font-size: 14px;
+  line-height: 1;
+}
+.mall-cat-empty {
+  margin: auto;
+  padding: 16px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+.mall-banner {
+  min-height: 280px;
+  background:
+    var(--portal-cover, linear-gradient(135deg, #fb923c, #ea580c)) center / cover no-repeat;
+  position: relative;
+}
+.mall-banner-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 28px;
+  color: #fff;
+  background: linear-gradient(180deg, transparent 30%, rgba(0, 0, 0, 0.45));
+}
+.mall-banner-kicker {
+  margin: 0 0 6px;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 750;
+  font-family: var(--portal-font-display, var(--portal-font-ui));
+}
+.mall-banner-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 36em;
+  opacity: 0.92;
+}
+.mall-new-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mall-new-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 750;
+  color: var(--portal-ink, #15202b);
+  font-family: var(--portal-font-display, var(--portal-font-ui));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mall-new-title::before {
+  content: '';
+  width: 4px;
+  height: 1.05em;
+  border-radius: 2px;
+  background: var(--portal-accent, #ea580c);
+}
+.mall-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.mall-card {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border: 1px solid var(--portal-line, #e5e7eb);
+  background: var(--portal-surface, #fff);
+  border-radius: var(--portal-radius, 10px);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mall-card:hover {
+  border-color: color-mix(in srgb, var(--portal-accent, #ea580c) 45%, var(--portal-line, #e5e7eb));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--portal-accent, #ea580c) 12%, transparent);
+}
+.mall-cover {
+  aspect-ratio: 1.15 / 1;
+  background:
+    color-mix(in srgb, var(--portal-accent-soft, #ffedd5) 70%, #fff) center / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mall-cover-letter {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--portal-accent, #ea580c);
+  opacity: 0.55;
+}
+.mall-copy {
+  padding: 12px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+.mall-copy h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--portal-ink, #15202b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mall-copy > p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--portal-muted, #6b7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+.mall-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+.mall-price {
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--portal-accent, #ea580c);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mall-meta {
+  font-size: 11px;
+  color: var(--portal-muted, #9ca3af);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mall-empty {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--portal-muted, #6b7280);
+  font-size: 13px;
+  border: 1px dashed var(--portal-line, #e5e7eb);
+  border-radius: var(--portal-radius, 10px);
 }
 </style>

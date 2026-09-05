@@ -189,7 +189,7 @@ class MatchUpdate(BaseModel):
     layout: Optional[str] = Field(default=None, description="门户布局壳 ID")
     typeface: Optional[str] = Field(default=None, description="字体配对 ID")
     portal_home_style: Optional[str] = Field(
-        default=None, description="门户首页构图 cards | editorial"
+        default=None, description="门户首页构图 cards | editorial | mall"
     )
     llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
     password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
@@ -503,3 +503,6 @@ class SampleProposalResult(BaseModel):
     used_llm: bool = Field(description="是否经过 LLM 润色")
     digressions: list[str] = Field(default_factory=list, description="本期不做的跑偏项")
     l1_extras: list[str] = Field(default_factory=list, description="可选亮点")
+    ai_feature: Optional[str] = Field(
+        default=None, description="若随机写入了 A 类 AI 挂件功能句则返回该句"
+    )

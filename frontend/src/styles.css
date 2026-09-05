@@ -393,6 +393,28 @@ button.filter-pill.on {
   gap: var(--lsw-gap, 4px);
   align-items: start;
 }
+.layout-shell-wire .lsw-mall {
+  display: grid;
+  grid-template-columns: 0.55fr 1.45fr;
+  gap: var(--lsw-gap, 4px);
+  align-items: stretch;
+}
+.layout-shell-wire .lsw-mall-rail,
+.layout-shell-wire .lsw-mall-main {
+  display: grid;
+  gap: var(--lsw-gap, 4px);
+}
+.layout-shell-wire .lsw-mall-rail {
+  align-content: start;
+}
+.layout-shell-wire .lsw-mall-banner {
+  height: 22px;
+}
+.layout-shell-wire .lsw-mall-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--lsw-gap, 4px);
+}
 .layout-shell-wire .lsw-main,
 .layout-shell-wire .lsw-side {
   display: grid;

@@ -120,6 +120,24 @@
                         </div>
                       </div>
                     </template>
+                    <template v-else-if="(form.portalHomeStyle || 'cards') === 'mall'">
+                      <div class="lsw-mall">
+                        <div class="lsw-mall-rail">
+                          <span class="lsw-card" />
+                          <span class="lsw-card short" />
+                          <span class="lsw-card" />
+                        </div>
+                        <div class="lsw-mall-main">
+                          <span class="lsw-card lsw-mall-banner" />
+                          <div class="lsw-mall-grid">
+                            <span class="lsw-card" />
+                            <span class="lsw-card" />
+                            <span class="lsw-card" />
+                            <span class="lsw-card" />
+                          </div>
+                        </div>
+                      </div>
+                    </template>
                     <template v-else>
                       <div class="lsw-cards">
                         <span class="lsw-card" />
