@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 能力 order_lines：购物车 + 多明细订单（无真支付）。
+ * 能力 order_lines：购物车 + 多明细订单。
  */
 public final class OrderStore {
 

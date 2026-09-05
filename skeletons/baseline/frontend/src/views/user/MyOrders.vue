@@ -91,7 +91,11 @@ const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单'
 const states = computed(() => getSchema()?.entities?.order?.states || {})
 const isFood = computed(() => hasTrait('food'))
 const isStay = computed(
-  () => hasTrait('slotHotel') || getSchema()?.entities?.order?.fulfillMode === 'stay',
+  () =>
+    hasTrait('slotHotel')
+    || hasTrait('slotCarrent')
+    || getSchema()?.entities?.order?.fulfillMode === 'stay'
+    || getSchema()?.entities?.order?.fulfillMode === 'rental',
 )
 const isCinema = computed(
   () => hasTrait('seatSelect') || getSchema()?.entities?.order?.fulfillMode === 'cinema',

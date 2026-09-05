@@ -128,16 +128,29 @@ const states = computed(() => order.value.states || {})
 const userLabel = computed(() => roleLabel('user', '用户'))
 const isFood = computed(() => hasTrait('food'))
 const isStay = computed(
-  () => hasTrait('slotHotel') || order.value.fulfillMode === 'stay',
+  () =>
+    hasTrait('slotHotel')
+    || hasTrait('slotCarrent')
+    || order.value.fulfillMode === 'stay'
+    || order.value.fulfillMode === 'rental',
 )
 const isCinema = computed(
   () => hasTrait('seatSelect') || order.value.fulfillMode === 'cinema',
 )
 const showLoyaltyCols = computed(() => isPointsEnabled() || isSpendDiscountEnabled())
-const fulfillLabel = computed(() => (isFood.value ? '配送' : '收货信息'))
-const shipLabel = computed(() => (isFood.value ? '取餐码' : '物流单号'))
+const fulfillLabel = computed(() => {
+  const fromSchema = getSchema()?.labels?.orderFulfillColumnLabel
+  if (fromSchema) return fromSchema
+  return isFood.value ? '配送' : '收货信息'
+})
+const shipLabel = computed(() => {
+  const fromSchema = getSchema()?.labels?.orderShipFieldLabel
+  if (fromSchema) return fromSchema
+  return isFood.value ? '取餐码' : '物流单号'
+})
 const shipVerb = computed(() => {
   if (order.value.verbs?.ship) return order.value.verbs.ship
+  if (order.value.fulfillMode === 'rental' || hasTrait('slotCarrent')) return '办理取车'
   if (isStay.value) return '办理入住'
   if (isCinema.value) return '出票'
   return isFood.value ? '出餐' : '发货'

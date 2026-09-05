@@ -23,23 +23,23 @@
       <h3>待办</h3>
       <template v-if="caps.includes('order_lines')">
         <div class="todo-row">
-          <span>待确认{{ orderLabel }} {{ data.pendingOrders || 0 }}</span>
+          <span>{{ orderPendingLabel }} {{ data.pendingOrders || 0 }}</span>
           <el-button type="primary" link @click="$router.push('/admin/orders')">去处理</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('slot_reserve') && !caps.includes('ticket_flow')">
         <div class="todo-row">
-          <span>待办结{{ reservationLabel }} {{ data.confirmedReservations || 0 }}</span>
+          <span>{{ reservationTodoLabel }} {{ data.confirmedReservations || 0 }}</span>
           <el-button type="primary" link @click="$router.push('/admin/reservations')">去办结</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('ticket_flow')">
         <div class="todo-row">
-          <span>待受理 {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
+          <span>{{ ticketPendingLabel }} {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
           <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
         </div>
         <div v-if="!approveEndsFlow" class="todo-row">
-          <span>处理中 {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
+          <span>{{ ticketActiveLabel }} {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
           <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
         </div>
         <div v-if="!approveEndsFlow && Number(data.rejectedTickets) > 0" class="todo-row">
@@ -83,7 +83,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
-import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy, orderStatusLabel, reservationStatusLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const data = ref({})
@@ -100,10 +100,22 @@ const ticketUnit = computed(() => ticket.value.label || '单')
 const approveEndsFlow = computed(
   () => !!(ticket.value.approveEndsFlow || data.value.approveEndsFlow),
 )
-const rejectedLabel = computed(() => ticket.value.states?.rejected || '已驳回')
+const rejectedLabel = computed(() => ticketStatusLabel('rejected', '已驳回'))
 const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
 const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
+const orderPendingLabel = computed(() => orderStatusLabel('pending', `待确认${orderLabel.value}`))
+const orderConfirmedLabel = computed(() => orderStatusLabel('confirmed', '已确认'))
+const orderShippedLabel = computed(() => orderStatusLabel('shipped', '配送中'))
+const orderCompletedLabel = computed(() => orderStatusLabel('completed', '已完成'))
 const reservationLabel = computed(() => reservationCopy()?.label || '预约')
+const reservationTodoLabel = computed(() => {
+  const verb = reservationCopy()?.completeVerb || '办结'
+  return `待${verb}${reservationLabel.value}`
+})
+const ticketPendingLabel = computed(() => ticketStatusLabel('pending', '待受理'))
+const ticketActiveLabel = computed(() => ticketStatusLabel('active', '处理中'))
+const ticketDoneLabel = computed(() => ticketStatusLabel('completed', '已完成'))
+const ticketApprovedLabel = computed(() => ticketStatusLabel('approved', '已通过'))
 const archiveMenuLabel = computed(() => menuLabel('admin', 'archive', '内容'))
 /** 纯档案/收藏域无单据队列，勿链到不存在的 /admin/tickets */
 const hasTodo = computed(
@@ -135,24 +147,36 @@ const cards = computed(() => {
   const list = []
   if (caps.value.includes('order_lines')) {
     list.push(
-      { key: 'op', label: `待确认${orderLabel.value}`, value: data.value.pendingOrders ?? '—' },
-      { key: 'oc', label: '已确认', value: data.value.confirmedOrders ?? '—' },
-      { key: 'os', label: '履约中', value: data.value.shippedOrders ?? '—' },
-      { key: 'od', label: '已完成', value: data.value.completedOrders ?? '—' },
+      { key: 'op', label: orderPendingLabel.value, value: data.value.pendingOrders ?? '—' },
+      { key: 'oc', label: orderConfirmedLabel.value, value: data.value.confirmedOrders ?? '—' },
+      { key: 'os', label: orderShippedLabel.value, value: data.value.shippedOrders ?? '—' },
+      { key: 'od', label: orderCompletedLabel.value, value: data.value.completedOrders ?? '—' },
     )
   } else if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) {
     list.push(
-      { key: 'rp', label: `待确认${reservationLabel.value}`, value: data.value.pendingReservations ?? '—' },
-      { key: 'rc', label: `已确认${reservationLabel.value}`, value: data.value.confirmedReservations ?? '—' },
-      { key: 'rd', label: `已办结${reservationLabel.value}`, value: data.value.completedReservations ?? '—' },
+      {
+        key: 'rp',
+        label: reservationStatusLabel('pending', `待确认${reservationLabel.value}`),
+        value: data.value.pendingReservations ?? '—',
+      },
+      {
+        key: 'rc',
+        label: reservationStatusLabel('confirmed', `已确认${reservationLabel.value}`),
+        value: data.value.confirmedReservations ?? '—',
+      },
+      {
+        key: 'rd',
+        label: reservationStatusLabel('completed', `已办结${reservationLabel.value}`),
+        value: data.value.completedReservations ?? '—',
+      },
     )
   } else if (caps.value.includes('ticket_flow')) {
     list.push(
-      { key: 'pending', label: '待受理', value: data.value.pendingTickets ?? '—' },
+      { key: 'pending', label: ticketPendingLabel.value, value: data.value.pendingTickets ?? '—' },
     )
     if (!approveEndsFlow.value) {
-      list.push({ key: 'active', label: '处理中', value: data.value.activeTickets ?? '—' })
-      list.push({ key: 'done', label: '已完成', value: data.value.completedTickets ?? '—' })
+      list.push({ key: 'active', label: ticketActiveLabel.value, value: data.value.activeTickets ?? '—' })
+      list.push({ key: 'done', label: ticketDoneLabel.value, value: data.value.completedTickets ?? '—' })
       list.push({
         key: 'rejected',
         label: rejectedLabel.value,
@@ -161,14 +185,14 @@ const cards = computed(() => {
       })
     } else {
       list.push(
-        { key: 'approved', label: '已通过', value: data.value.approvedTickets ?? '—' },
+        { key: 'approved', label: ticketApprovedLabel.value, value: data.value.approvedTickets ?? '—' },
         {
           key: 'rejected',
           label: rejectedLabel.value,
           value: data.value.rejectedTickets ?? '—',
           to: '/admin/ticket-records?status=rejected',
         },
-        { key: 'done', label: '已处理', value: data.value.completedTickets ?? '—' },
+        { key: 'done', label: ticketStatusLabel('completed', '已处理'), value: data.value.completedTickets ?? '—' },
       )
     }
     if (showOverdue.value && Number(data.value.overdueBorrow) > 0) {

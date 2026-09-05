@@ -406,7 +406,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
@@ -445,6 +445,7 @@ import {
 } from '../../utils/session.js'
 
 const router = useRouter()
+const route = useRoute()
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const archive = archiveCopy()
 const ticket = ticketCopy()
@@ -1251,6 +1252,11 @@ async function submitApply() {
 }
 
 onMounted(async () => {
+  const qCat = route.query?.categoryId
+  if (qCat != null && String(qCat).trim() !== '') {
+    const n = Number(qCat)
+    categoryId.value = Number.isFinite(n) ? n : qCat
+  }
   await loadCats()
   await loadTags()
   await load()
@@ -1262,7 +1268,7 @@ onMounted(async () => {
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
-.search { display: flex; gap: 10px; flex-wrap: wrap; }
+.search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .hot { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .hot-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
 .hot-chip {

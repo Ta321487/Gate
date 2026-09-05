@@ -192,11 +192,15 @@ html[data-scheme="dark"] .el-menu {
   --el-menu-hover-text-color: var(--portal-ink, #e8eef2);
 }
 
-.el-button {
+/* 只约束实心默认尺寸按钮；link/text/small 跟 EP 自身高度，避免顶栏/表格操作行被撑高错位 */
+.el-button:not(.is-link):not(.is-text) {
   --el-border-radius: var(--portal-btn-radius);
   border-radius: var(--portal-btn-radius) !important;
   border-width: var(--portal-border-width);
   border-style: var(--portal-border-style, solid);
+}
+
+.el-button:not(.is-link):not(.is-text):not(.el-button--small) {
   min-height: var(--portal-control-h, 40px);
 }
 
@@ -297,7 +301,7 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   border-radius: 0 !important;
 }
 
-[data-chrome="dense"] .el-button {
+[data-chrome="dense"] .el-button:not(.is-link):not(.is-text):not(.el-button--small) {
   min-height: var(--portal-control-h, 32px);
   padding: 5px 12px;
 }
@@ -416,6 +420,13 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   font-size: 13px;
   color: var(--portal-muted, #5b6b76);
   flex-shrink: 0;
+}
+
+.workbench .wb-header-right .el-button.is-link,
+.workbench .wb-header-right .el-button.is-text {
+  height: auto;
+  min-height: 0;
+  padding: 4px 6px;
 }
 
 .workbench .wb-main {
