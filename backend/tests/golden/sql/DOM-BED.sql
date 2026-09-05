@@ -90,7 +90,7 @@ INSERT IGNORE INTO bed (id, title, building_name, layout_note, category_id, stoc
 (4, '3栋312-4', '3号楼', '下铺', 1, 1, 'available', '空闲'),
 (5, '调宿窗口', '宿管中心', '调宿/退宿事项（无实体床）', 3, 99, 'available', '开放');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '床位申请须知', '选房通过后占用床位库存；调宿/退宿请选择对应事项并写明原床位。本期无门锁对接。', 'admin', '宿管主管'
+SELECT '床位申请须知', '选房通过后占用床位库存；调宿/退宿请选择对应事项并写明原床位。', 'admin', '宿管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='床位申请须知');
 
 CREATE TABLE IF NOT EXISTS `bed_apply_progress` (

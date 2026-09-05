@@ -92,7 +92,7 @@ INSERT IGNORE INTO doctor (id, title, author, isbn, category_id, stock, status) 
 (2, '居住证办理窗口', '0', '居住证明 / 照片', 2, 1, 'available'),
 (3, '驾驶证业务窗口', '15.00', '工本费另计', 3, 1, 'available');
 {_SLOTS_C3}{_HOSP_RESV.format(name="钱办事", vtype="初办", note="社保卡补办")}INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '取号须知', '请按时到窗；过号请重新取号。本期无真政务专网对接。', 'admin', '大厅主管'
+SELECT '取号须知', '请按时到窗；过号请重新取号。', 'admin', '大厅主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='取号须知' OR title='挂号须知');
 """
 
@@ -244,7 +244,7 @@ INSERT IGNORE INTO space (id, title, author, isbn, category_id, stock, status) V
 (2, '快充桩 A-02', '2.00', '地上东侧 / 120kW', 1, 1, 'available'),
 (3, '慢充桩 B-08', '1.00', '地下二层 / 7kW', 2, 1, 'available');
 {_SLOTS_C1}{_PARK_RESV.format(plate="粤B88EV1")}INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '充电预约', '预约成功后请按时入位充电；取消后释放桩位时段。无真支付与硬件联控。', 'admin', '充电站主管'
+SELECT '充电预约', '预约成功后请按时入位充电；取消后释放桩位时段。', 'admin', '充电站主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='充电预约' OR title='车位预约');
 """
 
@@ -270,6 +270,6 @@ INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservat
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '山景双床客栈房', 198.00, 1);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '民宿预订', '选择房型与入住时段预订；无真支付，预约成功生成订单。', 'admin', '民宿老板'
+SELECT '民宿预订', '选择房型与入住时段预订；预约成功即生成订单，前台办理入住与离店。', 'admin', '民宿老板'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='民宿预订' OR title='客房预订');
 """

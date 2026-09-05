@@ -205,7 +205,7 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status)
 (3, '校徽帆布袋', '29.00', 'BAG-03', 3, 50, 'available'),
 (4, '无线鼠标', '89.00', 'MS-04', 1, 15, 'available');
 """
-    shop += notice("商城开业", "欢迎选购校园好物；演示下单无真支付。")
+    shop += notice("商城开业", "欢迎选购校园好物；下单请选择收货地址或到店自提。")
     (ROOT / "DOM-SHOP.sql").write_text(shop, encoding="utf-8")
 
     food = header("DOM-FOOD") + SYS_USER + item_table("dish") + order_tables() + SYS_MSG + SYS_NOTICE
@@ -221,7 +221,7 @@ INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VA
 (3, '豆浆油条', '8.00', '早餐档', 1, 100, 'available'),
 (4, '柠檬茶', '6.00', '饮品站', 3, 120, 'available');
 """
-    food += notice("食堂点餐", "下单后到窗口取餐；演示环境无真支付。")
+    food += notice("食堂点餐", "下单后到窗口取餐；外卖请选地址并填写口味备注。")
     (ROOT / "DOM-FOOD.sql").write_text(food, encoding="utf-8")
 
     write_slot_domain(
@@ -301,7 +301,7 @@ INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VA
 (3, '行政大床房', '488.00', '含早 / 景观', 2, 2, 'available');
 """,
         "客房预订",
-        "选择房型与入住时段预订；演示无真支付，预约成功生成订单。",
+        "选择房型与入住时段预订；预约成功即生成订单，前台办理入住与离店。",
         capacity=3,
         with_order=True,
     )

@@ -91,7 +91,7 @@ INSERT IGNORE INTO job_post (id, title, hire_dept, salary_note, category_id, sto
 (4, '测试工程师', '质量部', '7-10k / 校招', 1, 1, 'available'),
 (5, '产品助理实习', '产品组', '面议 / 周报实习', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试（本期无视频面试）。', 'admin', '招聘主管'
+SELECT '投递须知', '请如实填写经历；初筛通过后由 HR 预约面试。', 'admin', '招聘主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投递须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周岗位', '技术岗与实习岗已更新，请及时投递。', 'admin', '招聘主管'

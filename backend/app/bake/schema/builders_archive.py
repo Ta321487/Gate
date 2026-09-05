@@ -1140,8 +1140,8 @@ def _bed_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "auth_points": ["验证码登录", "调宿/退宿填单", "宿管审批"],
                 "register_hint": "注册时建议填写现楼栋与房间",
                 "notice_body": (
-                    "请在「我的床位申请」提交调宿/退宿并写明原床位；床位说明页可查阅余量。"
-                    "本期无门锁对接。"
+                    "请在「我的床位申请」提交调宿/退宿并写明原床位；床位说明页可查阅余量；"
+                    "审批通过后按宿管安排办理。"
                 ),
                 "apply_from_list": True,
                 "user_tickets_first": True,
@@ -1329,7 +1329,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         points = ["验证码登录", "场次检索", "领票报名与审核"]
         reg = "注册后可领票报名"
         notice_t = "领票须知"
-        notice = "请如实填写联系方式；票额有限；时段冲突或已截止将无法提交；本期无选座与真支付。"
+        notice = "请如实填写联系方式；票额有限；时段冲突或已截止将无法提交。"
         notice_page = "票务公告"
         menu_a, menu_u = "场次管理", "场次检索"
         banners = [
@@ -1349,7 +1349,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         points = ["验证码登录", "场次检索", "报名与审核"]
         reg = "注册后可报名献血与开放日场次"
         notice_t = "报名须知"
-        notice = "请如实填写资料与身体状况说明；名额有限；时段冲突或已截止将无法提交；本期无健康筛查建档引擎。"
+        notice = "请如实填写资料与身体状况说明；名额有限；时段冲突或已截止将无法提交。"
         notice_page = "场次公告"
         menu_a, menu_u = "场次管理", "场次检索"
         banners = [
@@ -1467,7 +1467,7 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         kind_opts, found_lab = ["可认领", "已预约领取"], "登记时间"
         brow, menu_u = "捐赠认领", "物资名录"
         lead = "验证码登录；浏览捐赠物资名录，提交认领申请，管理员审核后领取。"
-        notice = "请如实填写用途与联系方式；审核通过后按通知到站领取，本期无物流寄送。"
+        notice = "请如实填写用途与联系方式；审核通过后按通知到站领取。"
         notice_t, notice_page, return_v = "认领须知", "捐赠公告", "撤销认领"
         reg = "注册后可浏览物资并申请认领"
     elif sc == "community":

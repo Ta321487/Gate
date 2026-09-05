@@ -127,7 +127,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单请选择收货地址，无真支付。', 'admin', '商城主管'
+SELECT '商城开业', '欢迎选购；下单请选择收货地址或到店自提。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');

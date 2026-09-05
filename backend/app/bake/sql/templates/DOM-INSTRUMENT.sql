@@ -138,5 +138,5 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (8, 3, '2026-09-20 13:00:00', '2026-09-20 15:00:00', 1, 0),
 (9, 3, '2026-09-20 15:00:00', '2026-09-20 17:00:00', 1, 0);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '仪器机时须知', '请先预约机时再上机；外带仪器须另提借用申请。本期无物联网联机计费。', 'admin', '平台主管'
+SELECT '仪器机时须知', '请先预约机时再上机；外带仪器须另提借用申请。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='仪器机时须知');

@@ -383,7 +383,7 @@ def _survey_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
         "seeds": {
             "noticeTitle": "问卷须知",
-            "noticeBody": "请如实填写；每人每卷限填一次。本期无跳题逻辑与 SPSS 导出。",
+            "noticeBody": "请如实填写；每人每卷限填一次。",
         },
     }
     return _with_portal_banners(
@@ -519,7 +519,7 @@ def _vote_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
         "seeds": {
             "noticeTitle": "投票须知",
-            "noticeBody": "请公正投票；每人按活动限票数投给不同候选人。本期无刷票防护。",
+            "noticeBody": "请公正投票；每人按活动限票数投给不同候选人。",
         },
     }
     return _with_portal_banners(

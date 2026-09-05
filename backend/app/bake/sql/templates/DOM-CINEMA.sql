@@ -134,5 +134,5 @@ INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, sta
 (3, '学生特惠午场', '25', '2号厅', 3, 32, 'available', 4, 8, '2026-08-08 11:00:00');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '选座购票须知', '说明：选座确认后即时占座并生成订单；过开场时间自动下架不可售；无真支付与高并发锁座。', 'admin', '影院主管'
+SELECT '选座购票须知', '选座确认后即时占座并生成订单；过开场时间自动下架不可售。', 'admin', '影院主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选座购票须知');

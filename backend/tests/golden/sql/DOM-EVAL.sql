@@ -93,7 +93,7 @@ INSERT IGNORE INTO eval_course (id, title, lecturer_name, course_note, category_
 (4, '电路实验', '赵老师', '2025 秋 / 实验课', 1, 1, 'available'),
 (5, '形势与政策', '陈老师', '2025 秋 / 公共课', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '评教卷须知', '请如实按维度评分并填写评语；提交后即时入档。本期无学信网对接。', 'admin', '教务主管'
+SELECT '评教卷须知', '请如实按维度评分并填写评语；提交后即时入档。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='评教卷须知');
 
 CREATE TABLE IF NOT EXISTS `eval_sheet_progress` (

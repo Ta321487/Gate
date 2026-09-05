@@ -97,5 +97,5 @@ INSERT IGNORE INTO proj_item (id, title, author, isbn, category_id, stock, statu
 (2, '中期检查填报', '教务处', '进度材料', 2, 1, 'available'),
 (3, '结题验收材料', '教务处', '成果清单', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '项目申报须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '项目申报须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='项目申报须知');

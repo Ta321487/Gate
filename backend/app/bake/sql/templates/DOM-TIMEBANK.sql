@@ -125,5 +125,5 @@ INSERT IGNORE INTO tb_redeem (id, username, book_id, status, qty, remark, apply_
 (1, 'user', 3, 'pending', 2, '兑换作业辅导 2 小时', NOW());
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。无真支付兑现与跨校联盟。', 'admin', '时间银行主管'
+SELECT '时间银行须知', '存入即时入账；核销须审批且余额充足。', 'admin', '时间银行主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='时间银行须知');

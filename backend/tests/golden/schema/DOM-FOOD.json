@@ -68,7 +68,7 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "点餐外卖",
-    "authLead": "验证码登录；选菜加入清单并下单（演示无真支付）。",
+    "authLead": "验证码登录；选菜加入清单并下单。",
     "authPoints": [
       "验证码登录",
       "菜品浏览",
@@ -164,7 +164,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "支持堂食、自取或外卖配送演示；无真支付。",
+    "noticeBody": "支持堂食、自取或外卖配送。",
     "noticeTitle": "点餐须知"
   },
   "title": "测试课题",

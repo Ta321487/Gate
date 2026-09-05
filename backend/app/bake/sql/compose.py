@@ -107,15 +107,15 @@ def compose_generic_sql(
     if need_flow and need_trade and need_reserve:
         notice = "支持申请审核、购物车订单与时段预约。"
     elif need_flow and need_trade:
-        notice = "支持申请审核与购物车订单（无真支付）。"
+        notice = "支持申请审核与购物车订单。"
     elif need_flow and need_reserve:
         notice = "支持申请审核与时段预约。"
     elif need_trade and need_reserve:
-        notice = "支持购物车订单与时段预约（无真支付）。"
+        notice = "支持购物车订单与时段预约。"
     elif need_flow:
         notice = "请提交申请并等待审核；结果将写入站内消息。"
     elif need_trade:
-        notice = "本期支持购物车与多明细订单，无真支付。"
+        notice = "支持购物车与多明细订单；下单后请选择收货地址或到店自提。"
     elif need_reserve:
         notice = "选择资源与时段占坑预约；约满后不可再约。"
 

@@ -98,5 +98,5 @@ INSERT IGNORE INTO pass_zone (id, title, author, isbn, category_id, stock, statu
 (2, '西门通行区', '保卫处', '含夜间', 2, 1, 'available'),
 (3, '施工临时区', '后勤处', '限工程车', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '车辆通行证须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '车辆通行证须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='车辆通行证须知');

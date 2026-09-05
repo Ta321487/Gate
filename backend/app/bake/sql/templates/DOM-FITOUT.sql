@@ -100,5 +100,5 @@ INSERT IGNORE INTO fitout_site (id, title, author, isbn, category_id, stock, sta
 (4, '办公区隔断', '行政办', '周末施工', 1, 1, 'available'),
 (5, '地下车库划线', '物业', '临时围挡', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '装修备案须知', '请如实填写施工内容、工期与安全措施；备案通过后方可进场。本期无物联网门禁对接。', 'admin', '工程主管'
+SELECT '装修备案须知', '请如实填写施工内容、工期与安全措施；备案通过后方可进场。', 'admin', '工程主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='装修备案须知');

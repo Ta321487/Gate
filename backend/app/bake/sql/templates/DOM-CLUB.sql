@@ -97,5 +97,5 @@ INSERT IGNORE INTO club_item (id, title, author, isbn, category_id, stock, statu
 (2, '社团年度审核', '团委', '年度总结', 2, 1, 'available'),
 (3, '负责人变更备案', '团委', '交接材料', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '社团年审须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '社团年审须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社团年审须知');

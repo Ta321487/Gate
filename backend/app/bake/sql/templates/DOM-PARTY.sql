@@ -97,5 +97,5 @@ INSERT IGNORE INTO party_stage (id, title, author, isbn, category_id, stock, sta
 (2, '积极分子考察', '党组织', '思想汇报', 2, 1, 'available'),
 (3, '发展对象公示材料', '党组织', '公示附件', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '党员发展须知', '请如实填写说明；本期无外部系统对接。', 'admin', '业务主管'
+SELECT '党员发展须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='党员发展须知');

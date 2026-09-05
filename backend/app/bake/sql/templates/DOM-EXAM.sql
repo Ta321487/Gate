@@ -146,5 +146,5 @@ INSERT IGNORE INTO exam_paper_question (id, paper_id, question_id, sort_no) VALU
 (5, 2, 5, 1), (6, 2, 1, 2), (7, 2, 2, 3);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '考试须知', '请独立完成作答；客观题自动判分，主观题按关键词/正则自动判分。本期无人脸监考。', 'admin', '平台主管'
+SELECT '考试须知', '请独立完成作答；客观题自动判分，主观题按关键词/正则自动判分。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='考试须知');

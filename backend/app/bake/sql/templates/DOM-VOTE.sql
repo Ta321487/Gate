@@ -99,5 +99,5 @@ INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status
 (6, 2, '作品《志愿足迹》', '摄影集', 3, 'available');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '投票须知', '请公正投票；每人按活动限票数投给不同候选人。本期无刷票防护与短信验证。', 'admin', '平台主管'
+SELECT '投票须知', '请公正投票；每人按活动限票数投给不同候选人。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='投票须知');

@@ -100,5 +100,5 @@ INSERT IGNORE INTO credit_item (id, title, author, isbn, category_id, stock, sta
 (4, '社团骨干认定', '团委', '任期满一年', 1, 1, 'available'),
 (5, '社会实践认定', '学工处', '暑期实践', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '学分认定须知', '请如实填写说明与佐证；审批通过后计入台账。本期无学信网/银行对接。', 'admin', '学工主管'
+SELECT '学分认定须知', '请如实填写说明与佐证；审批通过后计入台账。', 'admin', '学工主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='学分认定须知');
