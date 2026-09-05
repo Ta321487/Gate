@@ -1,7 +1,7 @@
 /**
  * 答辩 PPT 状态机与操作（挂入 useProjectDetail）。
  */
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { message } from '../api.js'
 import { coverFieldsComplete, EMPTY_COVER, PPT_DIRTY_BANNER } from './types.js'
 import {
@@ -424,6 +424,22 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     goArtifacts('ppt')
   }
 
+  /** 切到一键生成并滚到答辩 PPT 开跑区 */
+  function goGeneratePpt() {
+    tab.value = 'generate'
+    const scroll = () => {
+      document.getElementById('defense-ppt-launch')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
+    nextTick(() => {
+      scroll()
+      // n-tabs animated 切页后布局再稳一点
+      setTimeout(scroll, 160)
+    })
+  }
+
   function initPptSkinSeed() {
     if (!p.value?.id) return
     const seed = seedThemeForProject(p.value.id)
@@ -492,6 +508,7 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     capturePptScreenshot,
     uploadPptScreenshot,
     openPptCompare,
+    goGeneratePpt,
     initPptSkinSeed,
   }
 }

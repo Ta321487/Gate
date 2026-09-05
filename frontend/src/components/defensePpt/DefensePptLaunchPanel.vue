@@ -1,5 +1,5 @@
 <template>
-  <div class="defense-ppt-launch">
+  <div id="defense-ppt-launch" class="defense-ppt-launch">
     <!-- 生成中 -->
     <template v-if="pptPhase === 'generating'">
       <div class="panel mb-16 mt-16">
