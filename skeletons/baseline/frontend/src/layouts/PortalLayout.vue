@@ -86,7 +86,8 @@ onUnmounted(() => offProfileDisplay?.())
 
 const displayName = computed(() => nickname.value || username.value)
 const hasStage = computed(() => {
-  if (String(APP_DELIVERED?.portalHomeStyle || '').trim() === 'editorial') return false
+  const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
+  if (style === 'editorial' || style === 'mall') return false
   const list = APP_DELIVERED?.portalBanners
   return Array.isArray(list) && list.some((x) => x && x.src)
 })
@@ -112,10 +113,11 @@ const nav = computed(() => {
     .filter((m) => m.to)
 })
 
-/** 品牌点击：资讯首页落 /home，其它壳走根 redirect */
-const homePath = computed(() =>
-  String(APP_DELIVERED?.portalHomeStyle || '').trim() === 'editorial' ? '/home' : '/',
-)
+/** 品牌点击：资讯/商城首页落 /home，其它壳走根 redirect */
+const homePath = computed(() => {
+  const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
+  return style === 'editorial' || style === 'mall' ? '/home' : '/'
+})
 
 function logout() {
   localStorage.clear()
@@ -172,6 +174,12 @@ function logout() {
 .nav a.router-link-active,
 .nav a:hover { color: var(--portal-ink, #15202b); background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent); }
 .user { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.user :deep(.el-button.is-link),
+.user :deep(.el-button.is-text) {
+  height: auto;
+  min-height: 0;
+  padding: 4px 6px;
+}
 .name { font-size: 13px; color: var(--portal-muted, #5b6b76); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .body { flex: 1; max-width: 1080px; width: 100%; margin: 0 auto; padding: 20px 20px 40px; box-sizing: border-box; }
 .foot {

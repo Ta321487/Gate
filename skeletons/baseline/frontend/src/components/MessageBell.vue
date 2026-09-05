@@ -111,8 +111,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.bell-badge { margin-right: 2px; }
-.bell-btn { font-size: 13px; padding: 0 4px; }
+.bell-badge { margin-right: 2px; display: inline-flex; align-items: center; }
+.bell-btn {
+  font-size: 13px;
+  line-height: 1;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 4px !important;
+}
 .bell-ico { font-size: 15px; line-height: 1; }
 .panel { margin: -4px 0; }
 .hd {

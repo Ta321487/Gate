@@ -36,7 +36,9 @@
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
       <p class="tip">时段 {{ pending?.startAt }} ~ {{ pending?.endAt }}</p>
-      <p v-if="slotHotel && priceText" class="tip price">房价 {{ priceText }}（无真支付，将写入订单金额）</p>
+      <p v-if="(slotHotel || slotCarrent) && priceText" class="tip price">
+        {{ slotCarrent ? '日租金' : '房价' }} {{ priceText }}（将计入订单金额）
+      </p>
       <el-form label-position="top">
         <el-form-item v-if="slotParking" label="车牌号" required>
           <el-input v-model="extra.plateNo" maxlength="16" placeholder="与资料一致" />
@@ -67,7 +69,7 @@
             <el-input-number v-model="extra.partySize" :min="1" :max="200" />
           </el-form-item>
         </template>
-        <template v-if="slotHotel">
+        <template v-if="slotHotel || slotCarrent">
           <el-form-item :label="guestLabel" required>
             <el-input v-model="extra.guestName" maxlength="32" />
           </el-form-item>
@@ -79,7 +81,7 @@
           <el-input v-model="extra.preferredStylist" maxlength="32" placeholder="选填" />
         </el-form-item>
         <el-form-item
-          v-if="requireRemark && !slotMeeting && !slotParking && !slotHospital && !slotHotel"
+          v-if="requireRemark && !slotMeeting && !slotParking && !slotHospital && !slotHotel && !slotCarrent"
           :label="remarkLabel"
           required
         >
@@ -116,6 +118,7 @@ const slotParking = computed(() => hasTrait('slotParking'))
 const slotHospital = computed(() => hasTrait('slotHospital'))
 const slotMeeting = computed(() => hasTrait('slotMeeting'))
 const slotHotel = computed(() => hasTrait('slotHotel'))
+const slotCarrent = computed(() => hasTrait('slotCarrent'))
 const slotSalon = computed(() => hasTrait('slotSalon'))
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
@@ -145,13 +148,14 @@ const visitTypeOptions = computed(() => {
 const visitTypeDefault = computed(() => resv.visitTypeDefault || visitTypeOptions.value[0]?.value || '初诊')
 const symptomLabel = computed(() => resv.symptomNoteLabel || '症状简述')
 const stylistLabel = computed(() => resv.stylistLabel || '偏好技师')
-const guestLabel = computed(() => resv.guestNameLabel || '入住人')
-const guestCountLabel = computed(() => resv.guestCountLabel || '入住人数')
+const guestLabel = computed(() => resv.guestNameLabel || (slotCarrent.value ? '驾驶人' : '入住人'))
+const guestCountLabel = computed(() => resv.guestCountLabel || (slotCarrent.value ? '用车人数' : '入住人数'))
 const structured = computed(() =>
   slotParking.value
   || slotHospital.value
   || slotMeeting.value
   || slotHotel.value
+  || slotCarrent.value
   || slotSalon.value
   || requireRemark.value)
 
@@ -240,7 +244,7 @@ async function submitReserve() {
     ElMessage.warning(`请填写${patientLabel.value}`)
     return
   }
-  if (slotHotel.value && !extra.guestName.trim()) {
+  if ((slotHotel.value || slotCarrent.value) && !extra.guestName.trim()) {
     ElMessage.warning(`请填写${guestLabel.value}`)
     return
   }
@@ -254,6 +258,7 @@ async function submitReserve() {
     && !slotParking.value
     && !slotHospital.value
     && !slotHotel.value
+    && !slotCarrent.value
     && !note
   ) {
     ElMessage.warning(`请填写${remarkLabel.value}`)

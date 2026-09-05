@@ -48,7 +48,7 @@
 
     <el-dialog v-model="checkoutVisible" :title="`提交${orderNoun}`" width="520px" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="履约方式" required>
+        <el-form-item :label="deliveryTypeLabel" required>
           <el-select v-model="form.deliveryType" style="width: 100%">
             <el-option v-for="opt in deliveryOptions" :key="opt" :label="opt" :value="opt" />
           </el-select>
@@ -185,6 +185,7 @@ const router = useRouter()
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const isFood = computed(() => hasTrait('food'))
+const deliveryTypeLabel = computed(() => (isFood.value ? '用餐方式' : '收货方式'))
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())

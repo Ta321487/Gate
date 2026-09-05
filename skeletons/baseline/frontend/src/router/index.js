@@ -183,7 +183,7 @@ function withPortalHub(baseRoutes) {
     const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
     const red = kids.find((c) => c.path === '' && c.redirect != null)
     if (red) {
-      if (style === 'editorial') {
+      if (style === 'editorial' || style === 'mall') {
         red.redirect = '/home'
       } else {
         const home = String(APP_DELIVERED?.schema?.labels?.userHomePath || '').trim()
