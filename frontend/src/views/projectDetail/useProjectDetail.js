@@ -691,9 +691,12 @@ const artifactsFrozen = computed(() => genState.value === 'running')
 const artifactsFrozenReason = '工程正在重新生成，完成后可再打开'
 const schemaErGapCount = computed(() => Number(schema.value?.er_gap_count || 0))
 
-/** 展示名仍含拉丁字母（与后端 looks_latin 对齐） */
+/** 展示名仍含拉丁字母（与后端 looks_latin 对齐；允许 AI/FAQ 等缩写混中文） */
+const _ALLOWED_TECH_ACRONYM_RE =
+  /(?<![A-Za-z])(?:AI|FAQ|API|ID|URL|OCR|TTS|SMS|QR|JWT|SQL|PPT|LLM|SSE)(?![A-Za-z])/gi
 function labelLooksLatin(text) {
-  return /[A-Za-z]/.test(String(text || ''))
+  const stripped = String(text || '').replace(_ALLOWED_TECH_ACRONYM_RE, '')
+  return /[A-Za-z]/.test(stripped)
 }
 
 async function putErLabelPatch(body) {
