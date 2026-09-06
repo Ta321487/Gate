@@ -77,7 +77,7 @@
 | 纯 RAG 知识库平台（B 类） | — | — | **不接**或整包拒 |
 
 **跨域原则**：只有一个 `ai_assistant` 岛；换域只换 **FAQ 种子 + 页面标题**，不复制 Java/Vue 工程。  
-**分类同字**：商城 FAQ 分类名 = `shop_product_kind` 货架分类（`SHOP_KIND_CATEGORIES`，如农产→水果/蔬菜/粮油）；请假→事假类/病假类；点餐→套餐/面食/饮品；报修→水电/公共设施/门禁。
+**分类同字**：商城 FAQ 分类名 = `shop_product_kind` / `shop_catalog_kind` 货架分类（`SHOP_KIND_CATEGORIES`：农产→水果/蔬菜/粮油；文印/鲜花/跑腿/积分等专皮；药店/美妆/汽配/宠物用品等长尾走 **`retail_*` 软皮**，与货架分类同字）。请假→事假类/病假类；点餐→套餐/面食/饮品；报修→水电/公共设施/门禁；其余域按 `resolve_ai_knowledge_skin` 粗档（图书借阅/档案/漂流、文库、通用等），非仅农产一套。
 
 ---
 
@@ -86,7 +86,7 @@
 | 层级 | 路径 / 对象 |
 |------|-------------|
 | 开关 | `spec.ai_assistant` / `addons.ai_assistant` / cap `ai_assistant` |
-| SQL | `sys_ai_knowledge` / `sys_ai_message` / `sys_ai_feedback` + **按域/开题自动灌 FAQ 种子**（农产/商城/图书/宿舍报修/请假/点餐/文库/通用） |
+| SQL | `sys_ai_knowledge` / `sys_ai_message` / `sys_ai_feedback` + **按域/开题/`product_kind`（含 `retail_*`）自动灌 FAQ 种子**（农产与零售软皮/图书/宿舍报修/请假/点餐/文库/通用等） |
 | 后端 | `AiAssistantController`, `AiAssistantStore`, `AiBizContext`（只读复用 Archive/Order/Ticket/Doclib）, `DeepSeekClient`（**Spring AI** `DeepSeekChatModel`） |
 | 前端 | `AiAssistantFloat.vue`（门户悬浮弹窗）、`AiAssistant.vue`（说明页）、`admin/AiKnowledgeAdmin.vue` |
 | 路由 | `/ai-assistant`（说明+打开弹窗）、`/admin/ai-knowledge`（`hasCap('ai_assistant')`） |
