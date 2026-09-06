@@ -27,3 +27,8 @@ skeletons/**/node_modules/
 # launcher-owned backend pid
 backend/.gate_backend.pid
 
+
+# local agent/scratch artifacts
+_tmp_*
+_tmp_codebin/
+**/_tmp_*
