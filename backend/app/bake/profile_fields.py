@@ -1253,6 +1253,8 @@ def _scene_specific(domain: str, title: str, proposal_text: str) -> list[dict[st
             return _LOST_ADOPT
         if scene == "donate":
             return _LOST_DONATE
+        if scene == "baggage":
+            return _LOST_COMMUNITY
         if scene == "community":
             return _LOST_COMMUNITY
         return None

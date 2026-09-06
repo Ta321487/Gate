@@ -322,6 +322,32 @@ class SceneScanContractTests(unittest.TestCase):
             shop_product_kind("基于SpringBoot的农产品选购平台", ""),
             "farm",
         )
+        # 题名泛电商、正文点名农产 → 仍须 farm，不得因「题名非空」早退成零售日用/配件
+        self.assertEqual(
+            shop_product_kind("电商与智能导购系统", "农产品水果蔬菜粮油选购与助农"),
+            "farm",
+        )
+        farm_body_sql = domain_sql(
+            "DOM-SHOP",
+            "t",
+            title="电商与智能导购系统",
+            proposal_text="农产品水果蔬菜粮油选购与助农",
+        )
+        self.assertIn("红富士", farm_body_sql)
+        self.assertNotIn("日用收纳盒", farm_body_sql)
+        # 裸「校园+药店」≠二手成色；农资≠花店康乃馨
+        self.assertEqual(shop_product_kind("校园药店药品零售管理系统", ""), "retail")
+        self.assertEqual(shop_product_kind("农资用品销售管理系统", ""), "retail")
+        self.assertEqual(shop_product_kind("地方特产销售管理系统", ""), "retail")
+        self.assertEqual(
+            shop_product_kind("校园二手闲置交易系统", ""),
+            "campus",
+        )
+        # 正文「校园二手」对比句不得洗成 campus
+        self.assertEqual(
+            shop_product_kind("数码配件在线销售系统", "校园二手可作对比。"),
+            "retail",
+        )
         self.assertEqual(scene_for("DOM-SHOP", flower, polluted), "commercial")
         schema = build_domain_schema(flower, "DOM-SHOP", proposal_text=polluted)
         self.assertEqual(schema["labels"].get("authEyebrow"), "花店商城")
@@ -417,6 +443,48 @@ class SceneScanContractTests(unittest.TestCase):
         )
         self.assertIn("窗口A", canteen_sql)
         self.assertIn("学生公寓", canteen_sql)
+        # 裸校园/高校 + 奶茶外卖 ≠ 食堂档口皮
+        self.assertEqual(
+            food_product_kind("校园奶茶点餐管理系统", "联名杯预售与门店核销"),
+            "restaurant",
+        )
+        self.assertEqual(
+            food_product_kind("高校餐饮外卖点餐系统", ""),
+            "restaurant",
+        )
+
+    def test_cross_domain_skin_overbroad_guards(self) -> None:
+        """其它域：勿因裸校园/开放日/学生词洗成错皮。"""
+        from app.bake.scene_scan import (
+            activity_product_kind,
+            forum_product_kind,
+            scene_for,
+            scene_tour_parts,
+        )
+
+        self.assertEqual(activity_product_kind("高校开放日报名系统", ""), "default")
+        self.assertEqual(
+            activity_product_kind("献血与开放日报名管理系统", ""),
+            "blood",
+        )
+        self.assertEqual(
+            scene_tour_parts("学生旅游线路报名系统", "周边跟团游"),
+            "enterprise",
+        )
+        self.assertEqual(
+            scene_tour_parts("高校研学线路报名系统", "学生研学"),
+            "campus",
+        )
+        self.assertEqual(
+            scene_for("DOM-MEDIA", "校园短视频点播系统", "娱乐短视频"),
+            "commercial",
+        )
+        self.assertEqual(
+            scene_for("DOM-MEDIA", "高校校园媒资点播系统", "教学片点播"),
+            "campus",
+        )
+        self.assertEqual(forum_product_kind("MOBA类游戏论坛交流系统", ""), "community")
+        self.assertEqual(forum_product_kind("高校校园论坛系统", ""), "campus")
 
     def test_parking_campus_vs_commercial_seed(self) -> None:
         """校园车位种子与资料页对齐；题名商场不被正文校园对比句洗档。"""
@@ -644,6 +712,10 @@ class SceneScanContractTests(unittest.TestCase):
             event_product_kind("社区健康监测", "社区网格员维护居民档案。"),
             "monitor",
         )
+        self.assertEqual(
+            event_product_kind("防返贫数字化辅助系统", "帮扶户建档走访上报。"),
+            "household",
+        )
         # 现网默认：监测皮不变
         mon = build_domain_schema(
             "社区健康监测",
@@ -653,6 +725,14 @@ class SceneScanContractTests(unittest.TestCase):
         self.assertEqual(mon["labels"].get("authEyebrow"), "社区公卫")
         self.assertEqual(mon["entities"]["archive"].get("label"), "对象")
         self.assertEqual(mon["roles"]["user"]["label"], "网格员")
+
+        house = build_domain_schema(
+            "防返贫数字化辅助系统",
+            "DOM-EVENT",
+            proposal_text="帮扶户建档走访上报。",
+        )
+        self.assertEqual(house["labels"].get("authEyebrow"), "防返贫监测")
+        self.assertEqual(house["entities"]["archive"].get("label"), "帮扶户")
 
         inc = build_domain_schema(
             "社区公共卫生事件应急上报系统",

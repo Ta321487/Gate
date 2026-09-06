@@ -51,11 +51,45 @@ class SlimMatchDataTests(unittest.TestCase):
             ("校园歌手大赛报名海选系统", "DOM-ACTIVITY"),
             ("新生军训分连报名系统", "DOM-ACTIVITY"),
             ("医护实训耗材库存预警与申领系统", "DOM-ASSET"),
+            # 网上真实冷门题硬分流回归（勿裸「交友」抢学习题；领养连写勿丢）
+            ("流浪动物救助和领养平台", "DOM-LOST"),
+            ("学习交友打卡平台", "DOM-MUTUAL-TEAM"),
+            ("宠物咖啡馆系统", "DOM-SALON"),
+            ("面向社区的洗衣店智能服务系统", "DOM-SALON"),
+            ("疫苗及注射管理系统", "DOM-HOSPITAL"),
+            ("社区自行车租赁管理系统", "DOM-EQUIP"),
+            ("防返贫数字化辅助系统", "DOM-EVENT"),
+            ("安顺学院献血管理系统", "DOM-ACTIVITY"),
+            ("校园防暴恐培训管理系统", "DOM-ACTIVITY"),
+            ("歌剧院票务报名管理系统", "DOM-ACTIVITY"),
+            ("外文学术期刊遴选服务平台", "DOM-PROCURE"),
+            ("航班行李挂失认领管理系统", "DOM-LOST"),
+            ("威客任务接单管理系统", "DOM-RECRUIT"),
         ]
         for title, want in cases:
             with self.subTest(title=title):
                 got = match_text(f"基于 Spring Boot 的{title}的设计与实现")
                 self.assertEqual(got.domain, want, f"hits={got.hits[:8]}")
+
+    def test_weird_titles_stay_generic_or_reject(self) -> None:
+        """无法诚实挂靠具名域的真实冷门题：保持 GENERIC；人脸硬拒。"""
+        from app.bake.capabilities import scan_out_of_scope
+
+        generic_titles = [
+            "蔬菜种植水肥一体化管理系统",
+        ]
+        for title in generic_titles:
+            with self.subTest(title=title):
+                got = match_text(f"基于 Spring Boot 的{title}的设计与实现")
+                self.assertEqual(got.domain, "DOM-GENERIC", f"hits={got.hits[:8]}")
+
+        face = match_text("基于 Spring Boot 的基于人脸识别的社区防疫管理系统的设计与实现")
+        self.assertEqual(face.domain, "DOM-GENERIC")
+        self.assertTrue(
+            any("人脸" in x for x in scan_out_of_scope(
+                "基于 Spring Boot 的基于人脸识别的社区防疫管理系统的设计与实现"
+            )),
+        )
 
     def test_hospital_pet_variant_overlay_in_sample(self) -> None:
         """宠物医院题名的样例开题正文不得仍写「门诊挂号」。"""
@@ -111,6 +145,24 @@ class SlimMatchDataTests(unittest.TestCase):
                 want = expect[path.name[:2]]
                 got = match_text(path.read_text(encoding="utf-8"), path.name)
                 self.assertEqual(got.domain, want, f"arch={got.archetype} hits={got.hits[:10]}")
+
+    def test_food_safety_title_not_hijacked_by_canteen_counter(self) -> None:
+        """题名食品安全/风险排查：正文食堂档口不得抬点餐再顶成 GENERIC。"""
+        text = (
+            "题目：餐饮食品安全风险排查与追溯管理系统\n"
+            "五、系统功能模块设计\n"
+            "5.1 从业人员健康晨检与异常上报\n"
+            "5.2 关联排查对象管理（档口、菜品）\n"
+            "5.3 学校食堂消杀物资台账\n"
+        )
+        got = match_text(text, "食安开题.txt")
+        self.assertEqual(
+            got.domain,
+            "DOM-EVENT",
+            f"arch={got.archetype} kw_dom={got.keyword_domain} hits={got.hits[:12]}",
+        )
+        self.assertNotEqual(got.domain, "DOM-FOOD")
+        self.assertNotEqual(got.domain, "DOM-GENERIC")
 
     def test_flower_shop_opening_not_hijacked_by_xitong_shixian(self) -> None:
         """「研究内容→系统实现」不得吞掉功能需求；鲜花开题应落商城皮。"""

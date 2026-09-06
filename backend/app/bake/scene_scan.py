@@ -76,6 +76,14 @@ EVENT_MONITOR_HINTS = (
     "体征监测",
     "复工监测",
 )
+EVENT_HOUSEHOLD_HINTS = (
+    "防返贫",
+    "帮扶对象",
+    "脱贫监测",
+    "帮扶走访",
+    "入户走访",
+    "监测帮扶",
+)
 EVENT_INCIDENT_HINTS = (
     "应急上报",
     "应急处置",
@@ -88,7 +96,7 @@ EVENT_INCIDENT_HINTS = (
     "应急管理",
     "隐患上报",
 )
-RECRUIT_CAMPUS_HINTS = ("校园", "校招", "高校", "毕业生", "大学生", "双选会", "就业")
+RECRUIT_CAMPUS_HINTS = ("校园", "校招", "高校", "毕业生", "大学生", "双选会", "就业办", "就业指导")
 RECRUIT_ENTERPRISE_HINTS = ("企业", "公司", "人事", "人力资源", "HR")
 DATING_CAMPUS_HINTS = ("校园", "高校", "大学生", "同学", "校内", "学工", "院系", "学校")
 CRM_ENTERPRISE_HINTS = ("业务员", "销售", "客户经理", "客户跟进", "中小企业", "线索", "意向客户")
@@ -111,14 +119,19 @@ MEETING_CAMPUS_NOUNS = (
 )
 LOST_ADOPT_HINTS = ("领养", "待领养", "领养站")
 LOST_DONATE_HINTS = ("捐赠物资", "物资认领", "捐赠认领", "捐赠名录")
+LOST_BAGGAGE_HINTS = ("行李挂失", "行李认领", "航班行李", "行李招领", "托运行李")
 IT_ENTERPRISE_HINTS = ("企业", "公司", "办公", "员工", "运维工单")
-FOOD_CAMPUS_HINTS = ("食堂", "校园", "档口", "学子", "高校", "学校")
-# 点餐只分两档：canteen（食堂/校内）| restaurant（社会餐饮，不按菜系开皮）
-FOOD_RESTAURANT_TITLE_HINTS = ("餐厅", "外卖", "餐饮", "饭店", "美食", "小吃", "快餐", "茶饮")
-# 商城 campus 须有校园口径；裸「二手」≠校园（社区二手走零售档，不按行业开皮）
+# 食堂皮须食堂/档口/饭堂；裸「校园奶茶/高校外卖」走 restaurant
+FOOD_CANTEEN_HINTS = ("食堂", "档口", "饭堂", "学子")
+FOOD_CAMPUS_HINTS = FOOD_CANTEEN_HINTS  # 兼容旧引用
+# 点餐只分两档：canteen | restaurant（不按菜系开皮）
+FOOD_RESTAURANT_TITLE_HINTS = ("餐厅", "外卖", "餐饮", "饭店", "美食", "小吃", "快餐", "茶饮", "奶茶")
+# 商城 campus = 校园口径 ∩ 二手/闲置（裸「校园药店/校园超市」不得洗成二手成色档）
 SHOP_CAMPUS_HINTS = ("校园", "校内", "学校", "高校")
+SHOP_SECONDHAND_HINTS = ("二手", "闲置", "跳蚤", "转卖")
 SHOP_PRINT_HINTS = ("文印", "打印店", "打印社", "复印", "装订")
-SHOP_FLOWER_HINTS = ("鲜花", "花店", "花束", "特产", "农资")
+# 鲜花/花店走花店皮；特产/农资社会零售走 retail（数据可改）
+SHOP_FLOWER_HINTS = ("鲜花", "花店", "花束")
 SHOP_FARM_HINTS = ("农产品", "农产", "生鲜", "果蔬", "助农", "农贸")
 SHOP_ERRAND_HINTS = ("跑腿", "代买", "代购", "代取")
 SHOP_POINTS_HINTS = ("积分兑换", "积分商城", "积分兑换商城")
@@ -135,6 +148,20 @@ SHOP_KIND_CATEGORIES: dict[str, tuple[str, str, str]] = {
     "errand": ("代买餐饮", "代买日用", "代取快递"),
     "points": ("文创兑换", "生活兑换", "虚拟权益"),
 }
+# 零售软皮：仍 shop_product_kind=retail（壳/能力不变），只换分类+SKU+FAQ，求一次 bake 贴题
+# (hints, niche_id, categories)
+SHOP_RETAIL_NICHE_RULES: list[tuple[tuple[str, ...], str, tuple[str, str, str]]] = [
+    (("药店", "药品", "药房", "医药"), "pharmacy", ("药品", "保健", "护理")),
+    (("宠物用品", "宠粮", "猫粮", "狗粮"), "pet", ("主粮", "零食", "洗护")),
+    (("汽配", "汽车配件", "车品"), "auto", ("保养件", "车饰", "工具")),
+    (("化妆品", "美妆", "护肤"), "beauty", ("护肤", "彩妆", "个护")),
+    (("超市", "便利店"), "market", ("食品", "百货", "零食")),
+    (("办公用品", "文具"), "office", ("文具", "耗材", "桌面")),
+    (("农资",), "agri", ("肥料", "农药", "农机件")),
+]
+for _hints, _nid, _cats in SHOP_RETAIL_NICHE_RULES:
+    SHOP_KIND_CATEGORIES[f"retail_{_nid}"] = _cats
+
 PARKING_COMMERCIAL_TITLE_HINTS = ("商场", "园区", "写字楼", "小区", "商业", "地下车库", "停车场")
 HOSPITAL_PET_HINTS = ("宠物", "宠医", "爱宠", "猫狗", "犬猫")
 # 产品皮（样例开题 / builder 共用）：pet | vaccine | clinic
@@ -432,15 +459,16 @@ CARPASS_ENTERPRISE_HINTS = (
 CARPASS_CAMPUS_HINTS = ("高校", "校园", "学校", "校门", "进校", "校内")
 # 物业：小区住户默认；校园物业/公寓走 campus
 PROPERTY_CAMPUS_HINTS = ("校园物业", "学生公寓", "高校物业", "宿舍物业", "校园报修", "学校物业")
-# 内容域：商业点播默认；校园媒资/院刊走 campus
+# 内容域：商业点播默认；须媒资/院刊/点播课等题眼，裸「校园短视频」不洗成教学片皮
 CONTENT_CAMPUS_HINTS = (
-    "校园",
-    "高校",
-    "学校",
+    "媒资",
+    "教学片",
+    "校史",
+    "校媒",
+    "曲库",
     "院系",
     "学院",
     "学工",
-    "大学生",
     "记者站",
     "广播稿",
     "广播台",
@@ -473,6 +501,8 @@ FORUM_COMMUNITY_HINTS = (
     "同城论坛",
     "贴吧",
     "邻里互助",
+    "游戏论坛",
+    "兴趣论坛",
 )
 
 Scene = Literal[
@@ -482,6 +512,7 @@ Scene = Literal[
     "commercial",
     "adopt",
     "donate",
+    "baggage",
     "institution",
     "default",
 ]
@@ -651,19 +682,26 @@ def scene_event_parts(title: str, body: str = "") -> Scene:
 
 
 def event_product_kind(title: str, body: str = "") -> str:
-    """仅 ``monitor`` | ``incident``。
+    """``monitor`` | ``incident`` | ``household``。
 
     - monitor：晨午检 / 健康监测 / 随访打卡（现网默认皮）
     - incident：应急上报 / 公共卫生事件（弱化每日打卡叙事）
+    - household：防返贫 / 帮扶对象建档走访上报
 
     题名优先；正文「晨午检」对比句不得把应急题洗成 monitor。
     """
     t = (title or "").strip()
     b = (body or "").strip()
+    if scan_has(t, EVENT_HOUSEHOLD_HINTS):
+        return "household"
     if scan_has(t, EVENT_MONITOR_HINTS):
         return "monitor"
     if scan_has(t, EVENT_INCIDENT_HINTS):
         return "incident"
+    if scan_has(b, EVENT_HOUSEHOLD_HINTS) and not scan_has(
+        b, EVENT_MONITOR_HINTS + EVENT_INCIDENT_HINTS
+    ):
+        return "household"
     if scan_has(b, EVENT_MONITOR_HINTS) and not scan_has(b, EVENT_INCIDENT_HINTS):
         return "monitor"
     if scan_has(b, EVENT_INCIDENT_HINTS):
@@ -786,6 +824,8 @@ def scene_lost(text: str) -> Scene:
         return "adopt"
     if any(k in text for k in LOST_DONATE_HINTS):
         return "donate"
+    if any(k in text for k in LOST_BAGGAGE_HINTS):
+        return "baggage"
     if is_campus_general(text):
         return "campus"
     return "community"
@@ -795,6 +835,8 @@ def scene_lost_parts(title: str, body: str = "") -> Scene:
     """题名优先：避免 scene「失物招领 / 宠物领养」把招领题洗成领养。"""
     t = (title or "").strip()
     b = (body or "").strip()
+    if scan_has(t, LOST_BAGGAGE_HINTS):
+        return "baggage"
     if scan_has(t, LOST_ADOPT_HINTS):
         return "adopt"
     if scan_has(t, LOST_DONATE_HINTS) or (
@@ -803,6 +845,8 @@ def scene_lost_parts(title: str, body: str = "") -> Scene:
         return "donate"
     if scan_has(t, ("失物", "招领", "寻物")):
         return "campus" if is_campus_general(t) else "community"
+    if scan_has(b, LOST_BAGGAGE_HINTS) and not scan_has(t, ("失物", "招领", "寻物", "领养", "捐赠")):
+        return "baggage"
     if scan_has(b, LOST_ADOPT_HINTS) and not scan_has(t, ("失物", "招领", "寻物", "校园", "高校")):
         return "adopt"
     if scan_has(b, LOST_DONATE_HINTS) and not scan_has(t, ("失物", "招领", "寻物", "领养")):
@@ -812,9 +856,9 @@ def scene_lost_parts(title: str, body: str = "") -> Scene:
 
 # 活动报名深皮：default | cert | ticket | blood | camp
 ACTIVITY_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
-    (("证书报考", "培训班", "四六级", "考证报名", "证书培训"), "cert"),
-    (("票务", "领票", "演出票", "景区票", "门票报名", "演出票务"), "ticket"),
-    (("献血", "开放日"), "blood"),
+    (("证书报考", "培训班", "四六级", "考证报名", "证书培训", "防暴恐", "反恐培训", "安全培训"), "cert"),
+    (("票务", "领票", "演出票", "景区票", "门票报名", "演出票务", "歌剧院", "歌剧", "剧场票"), "ticket"),
+    (("献血", "献血开放日", "无偿献血", "献血管理"), "blood"),
     (("研学报名", "夏令营", "赛事报名", "大赛报名", "研学夏令营"), "camp"),
 ]
 
@@ -834,15 +878,15 @@ def scene_food(text: str) -> Scene:
 def food_product_kind(title: str, body: str = "") -> str:
     """仅 ``canteen`` | ``restaurant``。
 
-    不按菜系/业态开皮；题名已写餐厅/外卖且无食堂口径时，正文「食堂档口」对比句不得洗成 canteen。
+    不按菜系/业态开皮；题名已写餐厅/外卖/奶茶且无食堂/档口时，正文「食堂档口」对比句不得洗成 canteen。
     """
     t = (title or "").strip()
     b = (body or "").strip()
-    if scan_has(t, FOOD_CAMPUS_HINTS):
+    if scan_has(t, FOOD_CANTEEN_HINTS):
         return "canteen"
     if scan_has(t, FOOD_RESTAURANT_TITLE_HINTS):
         return "restaurant"
-    if scan_has(b, FOOD_CAMPUS_HINTS):
+    if scan_has(b, FOOD_CANTEEN_HINTS):
         return "canteen"
     return "restaurant"
 
@@ -863,35 +907,61 @@ def scene_shop(text: str) -> Scene:
 def shop_product_kind(title: str, body: str = "") -> str:
     """``farm`` | ``print`` | ``flowers`` | ``errand`` | ``points`` | ``campus`` | ``retail``。
 
-    行业货皮跟题名优先；校园二手成色仅 ``campus``；其余社会售卖 ``retail``。
-    题名无校园口径时，正文「校园二手」对比句不得洗成 campus。
+    行业货皮跟题名优先；校园二手成色仅 ``campus``（须校园口径∩二手/闲置）；
+    其余社会售卖 ``retail``。
+    题名无校园二手口径时，正文「校园二手」对比句不得洗成 campus。
+    正文仍可定 farm/print/flowers 等行业皮（勿因题名非空就直接 retail）。
     分类名见 ``SHOP_KIND_CATEGORIES``（与 SQL 种子、AI FAQ 同字）。
     """
     t = (title or "").strip()
     b = (body or "").strip()
-    for hints, kind in (
+
+    def _is_campus(text: str) -> bool:
+        return scan_has(text, SHOP_CAMPUS_HINTS) and scan_has(text, SHOP_SECONDHAND_HINTS)
+
+    industry_rules = (
         (SHOP_ERRAND_HINTS, "errand"),
         (SHOP_PRINT_HINTS, "print"),
         (SHOP_FARM_HINTS, "farm"),
         (SHOP_FLOWER_HINTS, "flowers"),
         (SHOP_POINTS_HINTS, "points"),
-        (SHOP_CAMPUS_HINTS, "campus"),
-    ):
+    )
+    for hints, kind in industry_rules:
         if scan_has(t, hints):
             return kind
-    if t:
-        return "retail"
-    for hints, kind in (
-        (SHOP_ERRAND_HINTS, "errand"),
-        (SHOP_PRINT_HINTS, "print"),
-        (SHOP_FARM_HINTS, "farm"),
-        (SHOP_FLOWER_HINTS, "flowers"),
-        (SHOP_POINTS_HINTS, "points"),
-        (SHOP_CAMPUS_HINTS, "campus"),
-    ):
+    if _is_campus(t):
+        return "campus"
+    # 正文可定行业货皮；campus 只认题名（防开题对比句洗档）
+    for hints, kind in industry_rules:
         if scan_has(b, hints):
             return kind
     return "retail"
+
+
+def shop_retail_niche(title: str, body: str = "") -> str | None:
+    """社会零售下的软皮 id（pharmacy/pet/…）；非 retail 主皮时勿用。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    for hints, niche, _cats in SHOP_RETAIL_NICHE_RULES:
+        if scan_has(t, hints):
+            return niche
+    for hints, niche, _cats in SHOP_RETAIL_NICHE_RULES:
+        if scan_has(b, hints):
+            return niche
+    return None
+
+
+def shop_catalog_kind(title: str, body: str = "") -> str:
+    """SQL 种子 / AI FAQ 分类键。
+
+    专皮（farm/print/…）原样；retail 可细化为 ``retail_pharmacy`` 等，
+    壳与 ``shop_product_kind`` 仍为零售交易路径。
+    """
+    pk = shop_product_kind(title, body)
+    if pk != "retail":
+        return pk
+    niche = shop_retail_niche(title, body)
+    return f"retail_{niche}" if niche else "retail"
 
 
 def scene_shop_parts(title: str, body: str = "") -> Scene:
@@ -1066,8 +1136,32 @@ def hotel_product_kind(title: str, body: str = "") -> str:
 
 
 def lost_product_kind(title: str, body: str = "") -> str:
-    """失物 / 领养 / 捐赠认领：复用 ``scene_lost_parts``。"""
+    """失物 / 领养 / 捐赠认领 / 行李挂失：复用 ``scene_lost_parts``。"""
     return scene_lost_parts(title, body)
+
+
+PROCURE_JOURNAL_HINTS = ("期刊遴选", "学术期刊", "期刊荐购", "外文期刊", "期刊订阅遴选")
+RECRUIT_WITKEY_HINTS = ("威客任务", "威客", "悬赏任务", "任务悬赏", "接单任务")
+
+
+def procure_product_kind(title: str, body: str = "") -> str:
+    """``journal`` | ``default``。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, PROCURE_JOURNAL_HINTS) or scan_has(b, PROCURE_JOURNAL_HINTS):
+        return "journal"
+    return "default"
+
+
+def recruit_product_kind(title: str, body: str = "") -> str:
+    """``witkey`` | ``default``（场景 campus/enterprise 仍走 scene_recruit）。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, RECRUIT_WITKEY_HINTS) or (
+        scan_has(b, RECRUIT_WITKEY_HINTS) and not scan_has(t, ("校招", "校园招聘", "勤工助学"))
+    ):
+        return "witkey"
+    return "default"
 
 
 def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None:
@@ -1076,10 +1170,16 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return hospital_product_kind(title, body)
     if domain == "DOM-SALON":
         return salon_product_kind(title, body)
-    if domain == "DOM-LOST":
-        return lost_product_kind(title, body)
+    if domain == "DOM-EVENT":
+        return event_product_kind(title, body)
     if domain == "DOM-ACTIVITY":
         return activity_product_kind(title, body)
+    if domain == "DOM-LOST":
+        return lost_product_kind(title, body)
+    if domain == "DOM-PROCURE":
+        return procure_product_kind(title, body)
+    if domain == "DOM-RECRUIT":
+        return recruit_product_kind(title, body)
     if domain == "DOM-MEETING":
         return meeting_product_kind(title, body)
     if domain == "DOM-PARKING":
@@ -1098,8 +1198,6 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return shop_product_kind(title, body)
     if domain == "DOM-FOOD":
         return food_product_kind(title, body)
-    if domain == "DOM-EVENT":
-        return event_product_kind(title, body)
     if domain == "DOM-CRM":
         return crm_product_kind(title, body)
     if domain == "DOM-LIBRARY":
@@ -1338,20 +1436,20 @@ def forum_product_kind(title: str, body: str = "") -> str:
     kind = title_then_body_hit(title, body, FORUM_KIND_RULES)
     if kind:
         return str(kind)
-    if scene_forum_parts(title, body) == "community":
-        return "community"
-    return "campus"
+    if scene_forum_parts(title, body) == "campus":
+        return "campus"
+    return "community"
 
 
 def scene_forum(text: str) -> Scene:
-    """默认校园论坛；开题写清兴趣/小区社区且无校园口径时 community。"""
+    """默认兴趣/社区论坛；开题写清校园/高校口径再 campus。"""
     if is_campus_general(text) or scan_has(text, CONTENT_CAMPUS_HINTS):
         return "campus"
     if scan_has(text, FORUM_COMMUNITY_HINTS) or (
         scan_has(text, COMMUNITY_HINTS) and scan_has(text, ("论坛", "BBS", "发帖", "回帖", "贴吧"))
     ):
         return "community"
-    return "campus"
+    return "community"
 
 
 def scene_forum_parts(title: str, body: str = "") -> Scene:
@@ -1367,17 +1465,17 @@ def scene_forum_parts(title: str, body: str = "") -> Scene:
 
 
 _TOUR_CAMPUS_HINTS = (
-    "高校",
-    "校园",
     "研学旅行社",
     "学生研学",
+    "高校研学",
+    "研学线路",
     "暑期社会实践线路",
 )
 
 
 def scene_tour(text: str) -> Scene:
-    """默认旅行社企业档；开题写清高校研学线路再 campus。"""
-    if scan_has(text, _TOUR_CAMPUS_HINTS) or is_campus_general(text):
+    """默认旅行社企业档；开题写清研学线路再 campus（勿因「学生/校园」洗档）。"""
+    if scan_has(text, _TOUR_CAMPUS_HINTS):
         return "campus"
     return "enterprise"
 
@@ -1385,7 +1483,7 @@ def scene_tour(text: str) -> Scene:
 def scene_tour_parts(title: str, body: str = "") -> Scene:
     t = (title or "").strip()
     b = (body or "").strip()
-    if scan_has(t, _TOUR_CAMPUS_HINTS) or is_campus_general(t):
+    if scan_has(t, _TOUR_CAMPUS_HINTS):
         return "campus"
     if t:
         return "enterprise"

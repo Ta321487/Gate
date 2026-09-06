@@ -664,6 +664,8 @@ def reconcile_match(
                 "DOM-ACTIVITY",
                 "DOM-COURSE",
                 "DOM-ATTEND",
+                # 威客「接单」是投递初筛话术，勿抬购物车交易并集
+                "DOM-RECRUIT",
             }
         )
         _soft_flow_domains = frozenset(
@@ -861,6 +863,23 @@ def match_text(text: str, filename: str = "") -> MatchResult:
             dom_kw = "DOM-ACTIVITY"
             dom_conf = min(0.95, 0.45 + act[1] * 0.12)
             dom_hits = list(dict.fromkeys(list(dom_hits) + act[2] + [tip]))
+    # 食安排查：题名主写食品安全/风险排查时，正文「食堂/档口/菜品」勿抬点餐，
+    # 否则 FOOD 无 ticket_flow → 被 ARCH-FLOW 顶成 GENERIC（样例 08）。
+    if dom_kw == "DOM-FOOD" and any(
+        k in title for k in ("食品安全", "食安风险", "风险排查", "食安排查")
+    ):
+        ev = next(
+            (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-EVENT"),
+            None,
+        )
+        if ev is not None:
+            tip = (
+                "提示：题名主写食品安全/风险排查，主路径取事件上报"
+                "（勿因食堂/档口误落点餐）。"
+            )
+            dom_kw = "DOM-EVENT"
+            dom_conf = min(0.95, 0.45 + ev[1] * 0.12)
+            dom_hits = list(dict.fromkeys(list(ev[2]) + list(dom_hits) + [tip]))
     arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
     confidence = _confidence_after_reconcile(
         arch_conf,
