@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -84,6 +85,36 @@ class DefensePptEvidenceTest(unittest.TestCase):
             )
         )
         self.assertFalse(evidence_ready({"proposal": True, "modules": False}))
+
+    def test_has_modules_reads_root_tree(self) -> None:
+        """模块图 model 是 root/children，不是 groups/nodes/tree。"""
+        from app.services.defense_ppt.evidence import has_modules
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            (ws / "domain.schema.json").write_text(
+                json.dumps(
+                    {
+                        "labels": {"appName": "演示系统"},
+                        "capabilities": ["archive", "org_users"],
+                        "menus": {
+                            "user": [
+                                {"key": "archive", "label": "浏览档案"},
+                                {"key": "profile", "label": "个人中心"},
+                            ],
+                            "admin": [{"key": "users", "label": "用户管理"}],
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            (ws / "spec.json").write_text(
+                json.dumps({"title": "演示系统"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            p = _project(ws)
+            self.assertTrue(has_modules(p))
 
     def test_assemble_uses_delivery_block(self) -> None:
         with tempfile.TemporaryDirectory() as td:

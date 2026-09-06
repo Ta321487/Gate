@@ -39,8 +39,8 @@ def has_modules(project: Project) -> bool:
     ws = workspace_path(project)
     if not ws:
         return False
-    # 与 getModules / modules.svg 同源
-    from app.bake.schema.modules import load_module_model
+    # 与 getModules / modules.svg 同源：model 形如 { title, layout, root, capabilities }
+    from app.bake.schema.modules import iter_nodes, load_module_model
 
     try:
         model = load_module_model(ws)
@@ -48,8 +48,9 @@ def has_modules(project: Project) -> bool:
         return False
     if not model:
         return False
-    groups = model.get("groups") or model.get("nodes") or model.get("tree")
-    return bool(groups)
+    # root 自身不算；须有可画的子模块（与产物页能打开模块图同口径）
+    nodes = iter_nodes(model)
+    return len(nodes) > 1
 
 
 def has_er(project: Project) -> bool:
