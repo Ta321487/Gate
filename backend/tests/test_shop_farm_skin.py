@@ -44,5 +44,60 @@ class ShopFarmSkinTests(unittest.TestCase):
         self.assertNotIn("黑白打印", sql)
 
 
+class ShopRetailNicheTests(unittest.TestCase):
+    """零售软皮：一次 bake 分类/SKU/FAQ/eyebrow 贴题，能力仍为购物车商城。"""
+
+    def test_pharmacy_catalog_and_seed(self) -> None:
+        from app.bake.engine_sql import domain_sql
+        from app.bake.features.ai_assistant import (
+            build_ai_knowledge_seed_sql,
+            resolve_ai_knowledge_skin,
+        )
+        from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
+        from app.bake.schema.builders_slot import _shop_schema
+
+        title = "校园药店药品零售管理系统"
+        body = "OTC 药品与保健护理上架"
+        self.assertEqual(shop_product_kind(title, body), "retail")
+        self.assertEqual(shop_catalog_kind(title, body), "retail_pharmacy")
+        schema = _shop_schema(title, body)
+        self.assertEqual(schema["labels"]["authEyebrow"], "药店选购")
+        sql = domain_sql("DOM-SHOP", "t", title=title, proposal_text=body)
+        self.assertIn("药品", sql)
+        self.assertIn("感冒药", sql)
+        self.assertNotIn("日用收纳盒", sql)
+        self.assertNotIn("'配件'", sql)
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-SHOP", title, body),
+            "shop_retail_pharmacy",
+        )
+        faq = build_ai_knowledge_seed_sql("DOM-SHOP", title, body)
+        self.assertIn("药品", faq)
+        self.assertNotIn("配件缺货", faq)
+
+    def test_pet_and_auto_niches(self) -> None:
+        from app.bake.engine_sql import domain_sql
+        from app.bake.scene_scan import shop_catalog_kind
+
+        self.assertEqual(
+            shop_catalog_kind("宠物用品在线商城", "宠粮洗护"),
+            "retail_pet",
+        )
+        pet_sql = domain_sql(
+            "DOM-SHOP", "t", title="宠物用品在线商城", proposal_text="宠粮洗护"
+        )
+        self.assertIn("主粮", pet_sql)
+        self.assertIn("猫粮", pet_sql)
+        self.assertEqual(
+            shop_catalog_kind("汽车配件销售管理系统", ""),
+            "retail_auto",
+        )
+        auto_sql = domain_sql(
+            "DOM-SHOP", "t", title="汽车配件销售管理系统", proposal_text=""
+        )
+        self.assertIn("保养件", auto_sql)
+        self.assertIn("机油", auto_sql)
+
+
 if __name__ == "__main__":
     unittest.main()
