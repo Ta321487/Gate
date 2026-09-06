@@ -103,6 +103,161 @@ class TestAiAssistantScan(unittest.TestCase):
             resolve_ai_knowledge_skin("DOM-GENERIC", "综合系统", "公告与资料"),
             "generic",
         )
+        # 客房/租车/线路等须自有 FAQ 皮，禁止再挂商城购物车口吻
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-HOTEL", "宾馆客房预订", "入住离店"),
+            "hotel",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-TOUR", "旅行社线路报名", "出团确认"),
+            "tour",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-CARRENT", "汽车租赁管理", "取还车"),
+            "carrent",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-LISTING", "房源中介带看", "整租合租"),
+            "listing",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-CINEMA", "影院选座购票", "场次座位"),
+            "cinema",
+        )
+        for dom, title in (
+            ("DOM-HOTEL", "宾馆客房预订"),
+            ("DOM-TOUR", "旅行社线路报名"),
+            ("DOM-CARRENT", "汽车租赁管理"),
+        ):
+            skin = resolve_ai_knowledge_skin(dom, title, "")
+            self.assertFalse(skin.startswith("shop_"), f"{dom} -> {skin}")
+        # 报修簇与业务域各自成皮，勿再共用 dorm
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-PROPERTY", "物业报修", "楼栋水电"),
+            "property",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-IT", "校园网故障报修", "终端机房"),
+            "it",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-DORM", "宿舍报修", "水电门窗"),
+            "dorm",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-HOSPITAL", "医院挂号预约", "内科外科"),
+            "hospital",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-FOOD", "高校食堂点餐", "档口堂食"),
+            "food_canteen",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-FOOD", "奶茶点餐外卖", "门店自取"),
+            "food",
+        )
+        # S-75～S-81：深皮 FAQ 不得落 generic / 错邻域口吻
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-EVENT", "防返贫数字化辅助系统", "帮扶户建档走访上报"
+            ),
+            "event_household",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-ACTIVITY", "安顺学院献血管理系统", "献血场次报名"
+            ),
+            "activity_blood",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-ACTIVITY", "校园防暴恐培训管理系统", "防暴恐培训报名"
+            ),
+            "activity_security",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-ACTIVITY", "歌剧院票务报名管理系统", "歌剧院领票"
+            ),
+            "activity_ticket",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-PROCURE", "外文学术期刊遴选服务平台", "期刊遴选荐购"
+            ),
+            "procure_journal",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-LOST", "航班行李挂失认领管理系统", "行李挂失认领"
+            ),
+            "lost_baggage",
+        )
+        self.assertEqual(
+            resolve_ai_knowledge_skin(
+                "DOM-RECRUIT", "威客任务接单管理系统", "威客任务投递初筛"
+            ),
+            "recruit_witkey",
+        )
+
+    def test_s75_s81_faq_categories_match_sql_seed(self) -> None:
+        """FAQ 分类名须与深皮 SQL category.name 同字。"""
+        from app.bake.engine_sql import domain_sql
+        from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
+
+        cases = [
+            (
+                "DOM-EVENT",
+                "防返贫数字化辅助系统",
+                "帮扶户建档走访上报",
+                ("监测户", "边缘易致贫", "突发严重困难"),
+            ),
+            (
+                "DOM-ACTIVITY",
+                "安顺学院献血管理系统",
+                "献血场次报名",
+                ("献血场次", "校园开放日", "其它公益"),
+            ),
+            (
+                "DOM-ACTIVITY",
+                "校园防暴恐培训管理系统",
+                "防暴恐培训报名",
+                ("防暴恐培训", "应急疏散", "安全常识"),
+            ),
+            (
+                "DOM-ACTIVITY",
+                "歌剧院票务报名管理系统",
+                "歌剧院领票",
+                ("歌剧院场次", "演出场次", "景区场次"),
+            ),
+            (
+                "DOM-PROCURE",
+                "外文学术期刊遴选服务平台",
+                "期刊遴选荐购",
+                ("理工外刊", "社科外刊", "综合索引"),
+            ),
+            (
+                "DOM-LOST",
+                "航班行李挂失认领管理系统",
+                "行李挂失认领",
+                ("托运行李", "登机箱", "随身物品"),
+            ),
+            (
+                "DOM-RECRUIT",
+                "威客任务接单管理系统",
+                "威客任务投递初筛",
+                ("设计类", "开发类", "文案类"),
+            ),
+        ]
+        for domain, title, body, cats in cases:
+            with self.subTest(title=title):
+                sql_seed = domain_sql(domain, "t_ai", title=title, proposal_text=body)
+                faq = build_ai_knowledge_seed_sql(domain, title, body)
+                for cat in cats:
+                    self.assertIn(cat, sql_seed, f"sql missing {cat}")
+                    self.assertIn(cat, faq, f"faq missing {cat}")
+                self.assertNotIn("水果", faq)
+                self.assertNotIn("社团活动怎么报名", faq)
 
     def test_farm_faq_pack_titles(self) -> None:
         from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
@@ -128,9 +283,46 @@ class TestAiAssistantScan(unittest.TestCase):
             "library_archive": "学籍档案如何查阅",
             "library_drift": "漂流文学书怎么取阅",
             "dorm": "水电报修怎么提交",
+            "property": "物业水电报修怎么提",
+            "it": "上不了网怎么报",
+            "fitout": "室内装修怎么备案",
             "attend": "如何提交事假",
             "food": "如何点套餐",
+            "food_canteen": "食堂套餐怎么点",
             "doclib": "如何下载制度文件",
+            "hotel": "标准间怎么预订",
+            "tour": "周边游怎么报名",
+            "carrent": "经济型怎么租",
+            "listing": "整租房源怎么看",
+            "cinema": "普通厅怎么选座",
+            "hospital": "内科号怎么约",
+            "salon": "剪发怎么预约",
+            "meeting": "小型会议室怎么约",
+            "parking": "地上车位怎么约",
+            "activity": "社团活动怎么报名",
+            "activity_blood": "献血场次怎么报名",
+            "activity_ticket": "歌剧院怎么领票",
+            "activity_cert": "证书报考怎么报名",
+            "activity_security": "防暴恐培训怎么报名",
+            "activity_camp": "研学怎么报名",
+            "equip": "仪器怎么借",
+            "crm": "重点客户怎么跟进",
+            "recruit": "技术岗怎么投递",
+            "recruit_witkey": "设计类任务怎么接",
+            "parcel": "普通件怎么取",
+            "media": "电影怎么点播",
+            "music": "流行歌怎么试听",
+            "blog": "技术文章怎么发",
+            "forum": "学习帖怎么发",
+            "bed": "四人间怎么申请",
+            "event": "传染病线索怎么上报",
+            "event_household": "监测户怎么走访上报",
+            "lost": "证件遗失怎么登记",
+            "lost_baggage": "托运行李挂失怎么认领",
+            "lost_adopt": "怎么申请领养猫",
+            "lost_donate": "捐赠物资怎么认领",
+            "procure": "办公用品怎么申购",
+            "procure_journal": "理工外刊怎么荐购",
             "generic": "AI 助手能做什么",
         }
         for skin, snippet in expected_snippets.items():
