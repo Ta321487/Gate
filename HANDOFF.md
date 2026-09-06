@@ -118,11 +118,11 @@ Path B 的「全文答辩」= **专科/本科（含课设）开题里拟实现�
 
 按**能力组合**分组；同组共享同一套运行时，差别主要在 schema 文案/种子/菜单。组 **H** 为真交叉（两套玩法），见 G 节之后。
 
-换皮**全覆盖**清单（深皮 / 新预设 / 新能力，按 ID 待补，不做取舍）：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
+换皮**全覆盖**清单（深皮 / 新预设 / 新能力，状态与 §9 计数见册）：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
 
 **工厂主链路 / 交付审计**：材料→匹配→出包 → [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md)。  
-ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。  
-组审计进度（借用/占用）：**已收口**（2026-08-04）。组 A + CINEMA 共 47 域：H23 + 档案列契约工厂侧齐（`test_borrow_archive_label_align`）。下一组：报修 / 工单。
+ID 册：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)（§9：M/S/P/C 计数；深皮样例 `data/samples/深皮开题/` 含 S-01…S-81）。  
+组审计进度：**六组已收口**（借用/占用 2026-08-04；报修·报名·交易·预约·内容 2026-08-12）。详见 gap §10 与 [`delivery-audit-rules.md`](./docs/delivery-audit-rules.md) §3.4；下一组按清单另开。
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 

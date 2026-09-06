@@ -33,6 +33,7 @@ S-33-DOM-ACTIVITY-景区演出票务报名管理系统.txt  ->  DOM-ACTIVITY
 S-34-DOM-ACTIVITY-献血与开放日报名管理系统.txt  ->  DOM-ACTIVITY
 S-35-DOM-LOST-流浪动物领养申请管理系统.txt  ->  DOM-LOST
 S-36-DOM-LOST-捐赠物资认领管理系统.txt  ->  DOM-LOST
+S-37-DOM-COURSE-公选课在线选课管理系统.txt  ->  DOM-COURSE
 S-40-DOM-SALON-高校心理咨询预约管理系统.txt  ->  DOM-SALON
 S-41-DOM-SALON-驾校练车陪驾预约管理系统.txt  ->  DOM-SALON
 S-42-DOM-SALON-家政上门维修预约管理系统.txt  ->  DOM-SALON
@@ -44,6 +45,7 @@ S-47-DOM-HOSPITAL-宠物医院挂号预约管理系统.txt  ->  DOM-HOSPITAL
 S-48-DOM-MEETING-游泳馆球馆琴房场地预约系统.txt  ->  DOM-MEETING
 S-49-DOM-PARKING-充电桩与共享车位预约管理系统.txt  ->  DOM-PARKING
 S-50-DOM-HOSPITAL-医院探视预约管理系统.txt  ->  DOM-HOSPITAL
+S-51-DOM-HOTEL-乡村民宿客房预订管理系统.txt  ->  DOM-HOTEL
 S-60-DOM-SHOP-校园二手教材闲置交易系统.txt  ->  DOM-SHOP
 S-61-DOM-SHOP-文印打印店订单管理系统.txt  ->  DOM-SHOP
 S-62-DOM-SHOP-特产鲜花零售商城管理系统.txt  ->  DOM-SHOP
@@ -55,3 +57,10 @@ S-71-DOM-FORUM-校园表白墙树洞管理系统.txt  ->  DOM-FORUM
 S-72-DOM-BLOG-记者站广播稿件发布管理系统.txt  ->  DOM-BLOG
 S-73-DOM-MEDIA-点播课课程视频库管理系统.txt  ->  DOM-MEDIA
 S-74-DOM-MUSIC-曲库点歌台管理系统.txt  ->  DOM-MUSIC
+S-75-DOM-EVENT-防返贫数字化辅助系统.txt  ->  DOM-EVENT
+S-76-DOM-ACTIVITY-安顺学院献血管理系统.txt  ->  DOM-ACTIVITY
+S-77-DOM-ACTIVITY-校园防暴恐培训管理系统.txt  ->  DOM-ACTIVITY
+S-78-DOM-ACTIVITY-歌剧院票务报名管理系统.txt  ->  DOM-ACTIVITY
+S-79-DOM-PROCURE-外文学术期刊遴选服务平台.txt  ->  DOM-PROCURE
+S-80-DOM-LOST-航班行李挂失认领管理系统.txt  ->  DOM-LOST
+S-81-DOM-RECRUIT-威客任务接单管理系统.txt  ->  DOM-RECRUIT
