@@ -68,6 +68,30 @@ SELECT '本周排查', '请于周五前完成网格重点对象复核与异常�
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
 """
 
+_HOUSEHOLD_SEED = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '帮扶主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '监测员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '帮扶干部甲', '13800000002',
+ '{"realName":"周明","email":"zhou@demo.com","gender":"男","identityType":"帮扶干部","communityName":"向阳村","region":"一组网格"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '监测户'), (2, '边缘易致贫'), (3, '突发严重困难');
+INSERT IGNORE INTO event_case (id, title, author, isbn, category_id, stock, status, stage) VALUES
+(1, '张伟户', '帮扶干部李华', '向阳村 12号 / 务工收入波动待核查', 1, 1, 'available', '待核查'),
+(2, '王芳户', '帮扶干部王芳', '向阳村 8号 / 大病支出风险升高', 2, 1, 'available', '监测中'),
+(3, '刘敏户', '帮扶干部张敏', '向阳村 3号 / 住房安全隐患待排查', 3, 1, 'available', '帮扶中'),
+(4, '赵强户', '帮扶干部赵强', '向阳村 5号 / 产业帮扶已巩固', 1, 1, 'available', '已巩固'),
+(5, '陈洁户', '帮扶干部陈洁', '向阳村东组 / 子女就学支出待回访', 2, 1, 'available', '待核查');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '监测须知', '请如实登记入户走访与风险要素；异常请及时上报。本期不对接资金发放。', 'admin', '帮扶主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='监测须知');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '本周排查', '请于周五前完成监测户走访复核与异常线索上报。', 'admin', '帮扶主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周排查');
+"""
+
 _ENTERPRISE_SEED = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '企管主管', '13800000000', '{}', 1, 0, 1),
@@ -152,7 +176,9 @@ def apply_event_scene_seed(
 
     scene = scene_event_parts(title, proposal_text)
     kind = event_product_kind(title, proposal_text)
-    if scene == "institution":
+    if kind == "household":
+        seed = _HOUSEHOLD_SEED
+    elif scene == "institution":
         seed = _INSTITUTION_SEED
     elif scene == "community":
         seed = _COMMUNITY_INCIDENT_SEED if kind == "incident" else _COMMUNITY_SEED

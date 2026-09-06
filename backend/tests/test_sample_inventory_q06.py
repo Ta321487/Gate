@@ -31,20 +31,20 @@ def _ids_from_glob(pattern: str, prefix: str) -> set[int]:
 
 class SampleInventoryQ06Tests(unittest.TestCase):
     def test_s_skin_samples_complete(self) -> None:
-        """S-01～S-74 深皮样例（编号不连续，以深皮开题目录为准）。"""
+        """S-01～S-81 深皮样例（编号不连续，以深皮开题目录为准）。"""
         root = SAMPLES / "深皮开题"
         self.assertTrue(root.is_dir(), root)
         files = list(root.glob("S-*.txt"))
         self.assertGreaterEqual(len(files), 51, f"got {len(files)}")
         ids = _ids_from_glob("S-*.txt", "S")
-        # 册内已知段：01-06, 10-25, 30-37, 40-51, 60-65, 70-74
+        # 册内已知段：01-06, 10-25, 30-37, 40-51, 60-65, 70-81
         expected = (
             set(range(1, 7))
             | set(range(10, 26))
             | set(range(30, 38))
             | set(range(40, 52))
             | set(range(60, 66))
-            | set(range(70, 75))
+            | set(range(70, 82))
         )
         self.assertEqual(ids, expected, f"missing={sorted(expected - ids)} extra={sorted(ids - expected)}")
 

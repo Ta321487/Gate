@@ -15,7 +15,7 @@ SAMPLES = Path(__file__).resolve().parents[2] / "data" / "samples" / "深皮开�
 
 class DeepSkinSMatchTests(unittest.TestCase):
     def test_all_s_ids_hit_anchor_domain(self) -> None:
-        self.assertEqual(len(S_SKIN_CASES), 53)
+        self.assertEqual(len(S_SKIN_CASES), 60)
         for sid, phrase, want, title in S_SKIN_CASES:
             with self.subTest(id=sid, title=title):
                 text = f"基于 Spring Boot 的{title}的设计与实现。主要功能：{phrase}。"
@@ -78,6 +78,45 @@ class DeepSkinSMatchTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 got = match_text(f"基于 Spring Boot 的{phrase}系统的设计与实现")
                 self.assertEqual(got.domain, want, f"hits={got.hits[:8]}")
+
+    def test_s75_s81_skin_eyebrows(self) -> None:
+        """S-75～S-81：文案皮与种子不穿帮。"""
+        from app.bake.engine_sql import domain_sql
+        from app.bake.scene_scan import (
+            activity_product_kind,
+            event_product_kind,
+            procure_product_kind,
+            recruit_product_kind,
+            scene_lost_parts,
+        )
+
+        cases = [
+            ("防返贫数字化辅助系统", "DOM-EVENT", "帮扶户建档走访上报", "防返贫监测", "边缘易致贫"),
+            ("安顺学院献血管理系统", "DOM-ACTIVITY", "献血场次报名审核", "献血管理", "无偿献血"),
+            ("校园防暴恐培训管理系统", "DOM-ACTIVITY", "防暴恐安全培训报名", "防暴恐培训", "防暴恐"),
+            ("歌剧院票务报名管理系统", "DOM-ACTIVITY", "歌剧院演出领票", "歌剧票务", "茶花女"),
+            ("外文学术期刊遴选服务平台", "DOM-PROCURE", "期刊品目遴选荐购", "期刊遴选", "Nature"),
+            ("航班行李挂失认领管理系统", "DOM-LOST", "航班行李挂失认领", "行李挂失", "拉杆箱"),
+            ("威客任务接单管理系统", "DOM-RECRUIT", "威客任务发布投递初筛", "威客任务", "Logo"),
+        ]
+        for title, domain, body, brow, seed_needle in cases:
+            with self.subTest(title=title, needle=seed_needle):
+                schema = build_domain_schema(title, domain, proposal_text=body)
+                self.assertEqual((schema.get("labels") or {}).get("authEyebrow"), brow)
+                sql = domain_sql(domain, "t_skin", title=title, proposal_text=body)
+                self.assertIn(seed_needle, sql)
+                # 学生可见面禁止「演示」字样（H22）
+                self.assertNotIn("演示", sql)
+                if domain == "DOM-EVENT":
+                    self.assertEqual(event_product_kind(title, body), "household")
+                elif domain == "DOM-ACTIVITY":
+                    self.assertIn(activity_product_kind(title, body), {"blood", "cert", "ticket"})
+                elif domain == "DOM-PROCURE":
+                    self.assertEqual(procure_product_kind(title, body), "journal")
+                elif domain == "DOM-LOST":
+                    self.assertEqual(scene_lost_parts(title, body), "baggage")
+                elif domain == "DOM-RECRUIT":
+                    self.assertEqual(recruit_product_kind(title, body), "witkey")
 
     def test_event_keyword_budget_still_holds(self) -> None:
         kws = DOMAINS["DOM-EVENT"].get("keywords") or []

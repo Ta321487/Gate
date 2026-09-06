@@ -92,6 +92,15 @@ def test_reject_latin_in_patch():
     assert patched["tables"][0]["label"] == "t1"
 
 
+def test_looks_latin_allows_ai_faq_with_chinese():
+    assert not looks_latin("AI知识")
+    assert not looks_latin("FAQ条目")
+    assert not looks_latin("知识库")
+    assert looks_latin("Knowledge")
+    assert looks_latin("sys_user")
+    assert looks_latin("AIknowledge")
+
+
 def test_expand_user_roles_from_domain_json(tmp_path):
     """同一张 sys_user，总图按 roles JSON 拆成申领人 / 库管员，不再只显示「用户」。"""
     import json

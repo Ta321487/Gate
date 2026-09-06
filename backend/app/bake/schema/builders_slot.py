@@ -39,9 +39,21 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "errand": ("跑腿代买", "验证码登录；下单代买代取，由跑腿员接单送达。"),
             "points": ("积分兑换", "验证码登录；用积分兑换商品并提交订单。"),
         }
-        brow, lead = brow_map.get(
-            pk,
-            ("在线商城", "验证码登录；浏览商品、加入购物车并提交订单。"),
+        niche_brow = {
+            "pharmacy": ("药店选购", "验证码登录；浏览药品保健护理，加入购物车并提交订单。"),
+            "pet": ("宠物用品", "验证码登录；浏览主粮零食洗护，加入购物车并提交订单。"),
+            "auto": ("汽配商城", "验证码登录；浏览保养件车饰工具，加入购物车并提交订单。"),
+            "beauty": ("美妆选购", "验证码登录；浏览护肤彩妆个护，加入购物车并提交订单。"),
+            "market": ("超市选购", "验证码登录；浏览食品百货零食，加入购物车并提交订单。"),
+            "office": ("办公文具", "验证码登录；浏览文具耗材，加入购物车并提交订单。"),
+            "agri": ("农资选购", "验证码登录；浏览肥料农药农机件，加入购物车并提交订单。"),
+        }
+        from app.bake.scene_scan import shop_retail_niche
+
+        niche = shop_retail_niche(title, proposal_text) if pk == "retail" else None
+        brow, lead = brow_map.get(pk) or niche_brow.get(niche) or (
+            "在线商城",
+            "验证码登录；浏览商品、加入购物车并提交订单。",
         )
         notice_body = {
             "farm": "水果蔬菜粮油分类上架，下单后由管理员确认发货或自提。",
@@ -49,14 +61,30 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "flowers": "下单后由店员确认配送。",
             "errand": "代买代取由跑腿员接单送达；请填写送达地点与联系方式。",
             "points": "兑换下单后由管理员确认发放。",
-        }.get(pk, "下单后由管理员确认发货或自提。")
+        }.get(pk)
+        if notice_body is None and niche:
+            notice_body = "分类商品上架，下单后由管理员确认发货或自提。"
+        if notice_body is None:
+            notice_body = "下单后由管理员确认发货或自提。"
         notice_title = {
             "farm": "农产选购须知",
             "print": "文印须知",
             "flowers": "花店须知",
             "errand": "跑腿须知",
             "points": "积分兑换须知",
-        }.get(pk, "商城须知")
+        }.get(pk)
+        if notice_title is None and niche:
+            notice_title = {
+                "pharmacy": "药店选购须知",
+                "pet": "宠物用品须知",
+                "auto": "汽配选购须知",
+                "beauty": "美妆选购须知",
+                "market": "超市选购须知",
+                "office": "办公选购须知",
+                "agri": "农资选购须知",
+            }.get(niche, "商城须知")
+        if notice_title is None:
+            notice_title = "商城须知"
         fields = [
             {"key": "title", "label": "商品名", "type": "string"},
             {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},

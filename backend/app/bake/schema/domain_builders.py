@@ -23,6 +23,7 @@ from app.bake.schema.builders_archive import (  # noqa: F401
     _parcel_schema,
     _dating_schema,
     _recruit_schema,
+    _procure_schema,
 )
 from app.bake.schema.builders_content import (  # noqa: F401
     _blog_schema,
@@ -61,6 +62,7 @@ __all__ = [
     "_fund_schema",
     "_labsafe_schema",
     "_recruit_schema",
+    "_procure_schema",
     "_dating_schema",
     "_grade_schema",
     "_bed_schema",

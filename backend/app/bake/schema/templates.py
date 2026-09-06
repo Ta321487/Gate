@@ -46,6 +46,7 @@ from app.bake.schema.domain_builders import (  # noqa: F401
     _parking_schema,
     _property_schema,
     _recruit_schema,
+    _procure_schema,
     _salon_schema,
     _shop_schema,
     _cinema_schema,
@@ -118,7 +119,7 @@ SCHEMA_BUILDERS["DOM-VISITOR"] = followup_builder("DOM-VISITOR")
 
 SCHEMA_BUILDERS["DOM-CARPASS"] = followup_builder("DOM-CARPASS")
 SCHEMA_BUILDERS["DOM-LISTING"] = followup_builder("DOM-LISTING")
-SCHEMA_BUILDERS["DOM-PROCURE"] = followup_builder("DOM-PROCURE")
+SCHEMA_BUILDERS["DOM-PROCURE"] = _procure_schema
 SCHEMA_BUILDERS["DOM-CLUB"] = followup_builder("DOM-CLUB")
 SCHEMA_BUILDERS["DOM-PROJ"] = followup_builder("DOM-PROJ")
 SCHEMA_BUILDERS["DOM-ETHIC"] = followup_builder("DOM-ETHIC")

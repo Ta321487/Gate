@@ -500,6 +500,41 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         schema = followup_domain_schema(title, "DOM-EVENT", overrides=ov)
         return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
 
+    if kind == "household":
+        return _build(
+            {
+                "user_label": "帮扶干部",
+                "admin_label": "帮扶主管（总管）",
+                "subadmin_label": "监测员",
+                "archive_label": "帮扶户",
+                "archive_plural": "帮扶户",
+                "archive_fields": _std_archive_fields(
+                    "户主姓名",
+                    "责任网格",
+                    "住址/风险摘要",
+                    "帮扶阶段",
+                    ["待核查", "监测中", "帮扶中", "已巩固"],
+                    "风险分类",
+                    "可上报",
+                ),
+                "archive_menu_admin": "帮扶户档案",
+                "archive_menu_user": "帮扶户列表",
+                "auth_eyebrow": "防返贫监测",
+                "auth_lead": "验证码登录；维护帮扶户档案并走访上报，异常由监测员确认处置（无资金直发）。",
+                "auth_points": ["验证码登录", "帮扶户档案", "走访打卡", "异常上报"],
+                "notice_page_title": "帮扶公告",
+                "notice_title": "监测须知",
+                "notice_body": "请如实登记入户走访与风险要素；异常请及时上报。本期不对接资金发放与外部大数据风控。",
+                "banners": [
+                    {"title": "帮扶户档案", "lead": "按风险分类浏览帮扶对象，维护住址与摘要。"},
+                    {"title": "走访打卡", "lead": "入户走访或随访打卡，查看今日未走访。"},
+                    {"title": "异常上报", "lead": "返贫风险等线索提交上报，办结可追溯。"},
+                    {"title": "帮扶公告", "lead": "监测规范与通知见公告栏。"},
+                    {"title": "我的上报", "lead": "登录后查看上报进度与记录。"},
+                    {"title": "分类管理", "lead": "按风险分类筛选重点户。"},
+                ],
+            }
+        )
     if scene == "campus":
         return _build(
             {
@@ -982,11 +1017,50 @@ def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     return followup_domain_schema(title, "DOM-LABSAFE")
 
 def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """招聘：校园校招 vs 企业 HR（同 _food_schema 分支）。"""
-    from app.bake.schema.followup_presets import followup_domain_schema
-    from app.bake.scene_scan import scene_for
+    """招聘：校园校招 vs 企业 HR；威客任务皮叠在场景之上。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import recruit_product_kind, scene_for
 
     scene = scene_for("DOM-RECRUIT", title, proposal_text)
+    pk = recruit_product_kind(title, proposal_text)
+    if pk == "witkey":
+        return followup_domain_schema(
+            title,
+            "DOM-RECRUIT",
+            overrides={
+                "admin_label": "任务主管（总管）",
+                "subadmin_label": "审核专员",
+                "archive_label": "任务岗",
+                "archive_plural": "任务岗",
+                "archive_fields": _std_archive_fields(
+                    "任务标题",
+                    "发布方",
+                    "报酬说明/交付要求",
+                    "任务状态",
+                    ["开放", "暂停", "关闭"],
+                    "任务分类",
+                    "可投递",
+                ),
+                "archive_menu_admin": "任务管理",
+                "archive_menu_user": "任务大厅",
+                "auth_eyebrow": "威客任务",
+                "auth_lead": "验证码登录；浏览任务岗并投递接单申请，管理员初筛后反馈（无托管支付）。",
+                "auth_points": ["验证码登录", "任务浏览", "投递与初筛"],
+                "notice_page_title": "任务公告",
+                "notice_title": "接单须知",
+                "notice_body": "请如实填写接单说明；本期不做资金托管、担保交易与多级分润。",
+                "banners": [
+                    {"title": "任务大厅", "lead": "按类型浏览悬赏/威客任务与交付要求。"},
+                    {"title": "投递接单", "lead": "选择任务提交投递单，等待初筛。"},
+                    {"title": "任务公告", "lead": "任务节点与材料要求见公告。"},
+                    {"title": "我的投递", "lead": "跟踪初筛进度与结果。"},
+                    {"title": "分类检索", "lead": "设计/开发/文案等快速筛选。"},
+                ],
+            },
+        )
     if scene == "campus":
         return followup_domain_schema(
             title,
@@ -1027,6 +1101,67 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             },
         )
     return followup_domain_schema(title, "DOM-RECRUIT")
+
+
+def _procure_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """采购申购；期刊遴选皮换文案。"""
+    from app.bake.schema.followup_presets import (
+        _std_archive_fields,
+        followup_domain_schema,
+    )
+    from app.bake.scene_scan import procure_product_kind
+
+    if procure_product_kind(title, proposal_text) == "journal":
+        return followup_domain_schema(
+            title,
+            "DOM-PROCURE",
+            overrides={
+                "user_label": "荐购人",
+                "admin_label": "期刊主管（总管）",
+                "subadmin_label": "遴选专员",
+                "archive_label": "期刊品目",
+                "archive_plural": "期刊品目",
+                "archive_fields": _std_archive_fields(
+                    "期刊名称",
+                    "归口馆室",
+                    "ISSN/语种说明",
+                    "遴选状态",
+                    ["开放", "暂停", "关闭"],
+                    "期刊分类",
+                    "可荐购",
+                ),
+                "archive_menu_admin": "期刊品目",
+                "archive_menu_user": "期刊目录",
+                "ticket_label": "遴选单",
+                "ticket_plural": "遴选单",
+                "verbs": {
+                    "apply": "提交遴选",
+                    "approve": "通过",
+                    "reject": "驳回",
+                    "return": "完结",
+                    "remind": "催办",
+                },
+                "auth_eyebrow": "期刊遴选",
+                "auth_lead": "验证码登录；浏览期刊品目并提交遴选/荐购申请，管理员审批后完结。",
+                "auth_points": ["验证码登录", "期刊目录", "提交遴选与审批"],
+                "notice_title": "期刊遴选须知",
+                "notice_body": "请如实填写荐购理由；本期不做影响因子算法与外部数据库自动匹配。",
+                "my_tickets_label": "我的遴选",
+                "pending_label": "待审遴选",
+                "records_label": "遴选记录",
+                "remark_label": "荐购说明",
+                "contact_channel_label": "荐购类型",
+                "contact_channel_options": ["新订", "续订", "增订", "其他"],
+                "banners": [
+                    {"title": "期刊目录", "lead": "查阅可遴选/荐购期刊品目。"},
+                    {"title": "提交遴选", "lead": "填写荐购说明提交。"},
+                    {"title": "办理公告", "lead": "须知见公告栏。"},
+                    {"title": "我的遴选", "lead": "跟踪遴选审批进度。"},
+                    {"title": "分类检索", "lead": "按语种/学科筛选。"},
+                ],
+            },
+        )
+    return followup_domain_schema(title, "DOM-PROCURE")
 
 def _dating_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """婚恋交友：校园联谊 vs 社区相亲（默认社区）。"""
@@ -1302,10 +1437,10 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     if kind == "cert":
         arch_title, arch_author, arch_isbn = "报考/培训项目", "主办方/考点", "考点/说明"
         arch_noun, stock_lab = "报考项目", "剩余名额"
-        brow = "证书报考"
+        brow = "防暴恐培训" if any(x in (title or "") for x in ("防暴恐", "反恐")) else "证书报考"
         user, admin, sub = "报考人", "培训主管（总管）", "报名助理"
         apply_v, ticket_lab = "报名", "报名单"
-        lead = "验证码登录；浏览证书报考与培训班项目并报名；系统检测时段冲突与报名截止。"
+        lead = "验证码登录；浏览培训与证书报考项目并报名；系统检测时段冲突与报名截止。"
         points = ["验证码登录", "项目检索", "名额报名与审核"]
         reg = "注册后可报名培训班与证书报考"
         notice_t = "报考须知"
@@ -1313,7 +1448,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice_page = "培训公告"
         menu_a, menu_u = "项目管理", "项目检索"
         banners = [
-            {"title": "报考项目", "lead": "证书报考、培训班与四六级名额分类浏览。"},
+            {"title": "培训项目", "lead": "防暴恐/安全培训、证书报考与四六级名额分类浏览。"},
             {"title": "在线报名", "lead": "提交报名申请，审核通过后占名额。"},
             {"title": "培训公告", "lead": "考点变更与须知见公告栏。"},
             {"title": "我的报名", "lead": "登录后查看报考进度。"},
@@ -1322,10 +1457,10 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     elif kind == "ticket":
         arch_title, arch_author, arch_isbn = "场次/演出名称", "主办方", "场馆/须知"
         arch_noun, stock_lab = "场次", "剩余票额"
-        brow = "票务报名"
+        brow = "歌剧票务" if any(x in (title or "") for x in ("歌剧", "剧场")) else "票务报名"
         user, admin, sub = "观众", "票务主管（总管）", "票务助理"
         apply_v, ticket_lab = "领票报名", "领票单"
-        lead = "验证码登录；浏览景区/演出场次并领票报名；系统检测时段冲突与报名截止（非选座购票）。"
+        lead = "验证码登录；浏览演出/歌剧场次并领票报名；系统检测时段冲突与报名截止（非选座购票）。"
         points = ["验证码登录", "场次检索", "领票报名与审核"]
         reg = "注册后可领票报名"
         notice_t = "领票须知"
@@ -1333,7 +1468,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice_page = "票务公告"
         menu_a, menu_u = "场次管理", "场次检索"
         banners = [
-            {"title": "场次目录", "lead": "景区与演出场次分类浏览，在线领票。"},
+            {"title": "场次目录", "lead": "歌剧、演出与景区场次分类浏览，在线领票。"},
             {"title": "领票报名", "lead": "提交领票申请，审核通过后占票额。"},
             {"title": "票务公告", "lead": "场次变更与须知见公告栏。"},
             {"title": "我的领票", "lead": "登录后查看领票进度。"},
@@ -1342,18 +1477,18 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     elif kind == "blood":
         arch_title, arch_author, arch_isbn = "场次名称", "主办单位", "地点/注意事项"
         arch_noun, stock_lab = "场次", "剩余名额"
-        brow = "献血开放日"
+        brow = "献血管理"
         user, admin, sub = "报名者", "场次主管（总管）", "场次助理"
         apply_v, ticket_lab = "报名", "报名单"
-        lead = "验证码登录；浏览献血与开放日场次并报名；系统检测时段冲突与报名截止。"
+        lead = "验证码登录；浏览献血场次并报名；系统检测时段冲突与报名截止（非健康筛查建档）。"
         points = ["验证码登录", "场次检索", "报名与审核"]
-        reg = "注册后可报名献血与开放日场次"
+        reg = "注册后可报名献血场次"
         notice_t = "报名须知"
         notice = "请如实填写资料与身体状况说明；名额有限；时段冲突或已截止将无法提交。"
         notice_page = "场次公告"
         menu_a, menu_u = "场次管理", "场次检索"
         banners = [
-            {"title": "开放场次", "lead": "献血与开放日场次分类浏览。"},
+            {"title": "献血场次", "lead": "献血与开放日场次分类浏览。"},
             {"title": "在线报名", "lead": "提交报名申请，审核通过后占名额。"},
             {"title": "场次公告", "lead": "时间地点变更见公告栏。"},
             {"title": "我的报名", "lead": "登录后查看报名进度。"},
@@ -1470,6 +1605,16 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "请如实填写用途与联系方式；审核通过后按通知到站领取。"
         notice_t, notice_page, return_v = "认领须知", "捐赠公告", "撤销认领"
         reg = "注册后可浏览物资并申请认领"
+    elif sc == "baggage":
+        noun, remark, admin, sub = "行李启事", "认领说明", "行李服务主管（总管）", "行李专员"
+        user, verb = "旅客", "认领"
+        title_lab, author_lab, isbn_lab = "行李描述", "登记人", "航班/特征说明"
+        kind_opts, found_lab = ["挂失", "招领"], "登记时间"
+        brow, menu_u = "行李挂失", "行李检索"
+        lead = "验证码登录；浏览行李挂失/招领启事，提交认领申请，管理员审核后领取（无全航迹追踪）。"
+        notice = "认领时请提供有效身份与行李特征；审核通过后到服务台领取。本期不做 RFID/全链路追踪。"
+        notice_t, notice_page, return_v = "行李认领须知", "行李公告", "撤销认领"
+        reg = "注册后可浏览行李启事并申请认领"
     elif sc == "community":
         noun, remark, admin, sub = "启事", "认领说明", "社区招领主管（总管）", "招领管理员"
         user, verb = "居民", "认领"

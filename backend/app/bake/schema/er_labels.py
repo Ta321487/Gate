@@ -18,6 +18,11 @@ from app.bake.schema.er_zh import (  # noqa: F401
 )
 
 _LATIN_RE = re.compile(r"[A-Za-z]")
+# 中文短名里常见的技术缩写（AI知识 / FAQ条目）；剥掉后再查拉丁，避免自相矛盾
+_ALLOWED_TECH_ACRONYM_RE = re.compile(
+    r"(?<![A-Za-z])(?:AI|FAQ|API|ID|URL|OCR|TTS|SMS|QR|JWT|SQL|PPT|LLM|SSE)(?![A-Za-z])",
+    re.IGNORECASE,
+)
 _ER_LABELS_REL = Path("islands") / "er_labels.json"
 
 
@@ -641,8 +646,12 @@ def scrub_relation_labels(
 
 
 def looks_latin(text: str) -> bool:
-    """展示文案仍含拉丁字母（英文漏网）。"""
-    return bool(_LATIN_RE.search(text or ""))
+    """展示文案仍含拉丁字母（英文漏网）。
+
+    允许「AI知识」「FAQ条目」这类缩写+中文；整段英文 / Knowledge 仍算漏网。
+    """
+    stripped = _ALLOWED_TECH_ACRONYM_RE.sub("", text or "")
+    return bool(_LATIN_RE.search(stripped))
 
 
 def physical_table_name(name: str) -> str:

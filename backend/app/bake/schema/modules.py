@@ -114,7 +114,6 @@ _BIZ_CORES: dict[str, tuple[str, ...]] = {
     "cart": ("购物车", "购物"),
 }
 
-_LATIN_RE = re.compile(r"[A-Za-z]")
 _LABEL_NOISE = ("我的", "管理", "浏览", "待办", "办理", "时段", "催办", "字典")
 
 
@@ -136,7 +135,10 @@ def _text_w(s: str, px: float = 12.0) -> float:
 
 
 def looks_latin(text: str) -> bool:
-    return bool(_LATIN_RE.search(text or ""))
+    """与 er_labels.looks_latin 同口径：允许 AI/FAQ 等缩写混中文。"""
+    from app.bake.schema.er_labels import looks_latin as _er_looks_latin
+
+    return _er_looks_latin(text)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
