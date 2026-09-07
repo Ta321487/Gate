@@ -135,6 +135,18 @@ SHOP_FLOWER_HINTS = ("鲜花", "花店", "花束")
 SHOP_FARM_HINTS = ("农产品", "农产", "生鲜", "果蔬", "助农", "农贸")
 SHOP_ERRAND_HINTS = ("跑腿", "代买", "代购", "代取")
 SHOP_POINTS_HINTS = ("积分兑换", "积分商城", "积分兑换商城")
+# 多店（按需）：默认单店 SHOP 不命中；命中后才叠商品归属与店长岗
+SHOP_MARKETPLACE_HINTS = (
+    "商家入驻",
+    "多商家",
+    "多商户",
+    "商家管理",
+    "店铺入驻",
+    "入驻商家",
+    "商家注册",
+    "平台商家",
+    "入驻审核",
+)
 # 商城：campus 二手成色档 + 行业货皮 + retail 兜底
 SHOP_RETAIL_TITLE_HINTS = ("销售", "商城", "电商", "网店", "店铺", "零售", "售卖", "购物")
 
@@ -949,6 +961,12 @@ def shop_retail_niche(title: str, body: str = "") -> str | None:
         if scan_has(b, hints):
             return niche
     return None
+
+
+def scan_shop_marketplace(title: str, body: str = "") -> bool:
+    """开题要多商家/入驻平台时才开；默认单店 SHOP 保持原结构。"""
+    blob = f"{title or ''}\n{body or ''}"
+    return scan_has(blob, SHOP_MARKETPLACE_HINTS)
 
 
 def shop_catalog_kind(title: str, body: str = "") -> str:

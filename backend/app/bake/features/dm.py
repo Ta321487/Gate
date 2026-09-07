@@ -41,6 +41,12 @@ def dm_wanted(
     domain = domain or ""
     if domain in _DEFAULT_DOMAINS:
         return True
+    if domain == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        # 多店开题：客服通道默认挂 dm（短轮询，非 IM）
+        if scan_shop_marketplace(proposal_text, proposal_text):
+            return True
     return scan_dm(proposal_text)
 
 

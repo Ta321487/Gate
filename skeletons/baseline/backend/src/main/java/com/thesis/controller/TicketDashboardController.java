@@ -5,6 +5,7 @@ import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketStore;
+import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
@@ -57,12 +58,18 @@ public class TicketDashboardController {
         }
 
         if (OrderStore.enabled()) {
-            m.putAll(OrderStore.dashboard());
-            // 订单域优先用订单图；单据未启用时补趋势
-            Map<String, Object> oc = OrderStore.chartStats();
+            boolean mp = ArchiveStore.shopMarketplaceEnabled();
+            boolean superAdmin = AdminAuth.isSuperAdmin(session);
+            String uid = String.valueOf(session.getAttribute("username"));
+            String ownerFilter = (mp && !superAdmin) ? uid : null;
+            m.putAll(OrderStore.dashboard(ownerFilter));
+            Map<String, Object> oc = OrderStore.chartStats(ownerFilter);
             if (!TicketStore.enabled() || isEmptySeries(charts.get("statusSeries"))) {
                 charts.put("statusSeries", oc.get("statusSeries"));
                 charts.put("trendSeries", oc.get("trendSeries"));
+            }
+            if (oc.get("hotItemSeries") != null) {
+                charts.put("hotItemSeries", oc.get("hotItemSeries"));
             }
         }
         if (SlotStore.enabled()) {
@@ -80,6 +87,19 @@ public class TicketDashboardController {
         }
         if (ArchiveLogStore.enabled()) {
             m.put("missingCheckinToday", ArchiveLogStore.countMissingToday("checkin"));
+        }
+        if (ArchiveStore.shopMarketplaceEnabled()) {
+            boolean superAdmin = AdminAuth.isSuperAdmin(session);
+            String uid = String.valueOf(session.getAttribute("username"));
+            int warn = 10;
+            try {
+                // schema 默认 10；前端亦有 stockWarnBelow
+                Object w = m.get("stockWarnBelow");
+                if (w instanceof Number n) warn = n.intValue();
+            } catch (Exception ignored) {
+            }
+            m.put("lowStockCount", ArchiveStore.countLowStock(warn, superAdmin ? null : uid));
+            m.put("stockWarnBelow", warn);
         }
         m.put("charts", charts);
         return R.ok(m);

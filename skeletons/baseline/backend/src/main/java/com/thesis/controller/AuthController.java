@@ -27,6 +27,9 @@ public class AuthController {
     @Value("${thesis.local-dev.captcha-plain:false}")
     private boolean captchaPlain;
 
+    @Value("${thesis.shop-marketplace:false}")
+    private boolean shopMarketplace;
+
     /** 去掉 0/O、1/I/L 等易混字符 */
     private static final char[] CAPTCHA_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ".toCharArray();
 
@@ -143,12 +146,26 @@ public class AuthController {
         }
         try {
             Map<String, String> extras = extractExtras(body);
-            UserStore.Profile profile = UserStore.register(
-                    username, password, nickname, registerRole, phone, extras);
+            String accountType = str(body.get("accountType"));
+            if (accountType.isBlank()) accountType = str(body.get("registerAs"));
+            boolean asMerchant = "merchant".equalsIgnoreCase(accountType);
+            UserStore.Profile profile;
+            if (asMerchant) {
+                if (!shopMarketplace) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "当前不支持商家注册");
+                }
+                profile = UserStore.registerMerchant(username, password, nickname, phone, extras);
+            } else {
+                profile = UserStore.register(
+                        username, password, nickname, registerRole, phone, extras);
+            }
             session.removeAttribute("captcha");
             Map<String, Object> m = new HashMap<>(profile.toMap());
             m.put("needLogin", true);
+            if (asMerchant) m.put("pendingReview", true);
             return R.ok(m);
+        } catch (BizException e) {
+            throw e;
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {

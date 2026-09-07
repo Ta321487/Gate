@@ -13,9 +13,10 @@
         <template #default="{ row }">{{ row.reply || '—' }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" />
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openReply(row)">回复</el-button>
+          <el-button v-if="canDelete" link type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -48,8 +49,8 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 
 const list = ref([])
@@ -59,6 +60,7 @@ const total = ref(0)
 const visible = ref(false)
 const replyText = ref('')
 const current = reactive({ id: null, body: '' })
+const canDelete = computed(() => localStorage.getItem('superAdmin') === 'true')
 
 async function load() {
   const res = await http.get('/api/order-reviews', {
@@ -82,6 +84,13 @@ async function saveReply() {
   await http.post(`/api/order-reviews/${current.id}/reply`, { reply: replyText.value.trim() })
   ElMessage.success('已回复')
   visible.value = false
+  load()
+}
+
+async function remove(row) {
+  await ElMessageBox.confirm('确认删除该评价？', '删除')
+  await http.delete(`/api/order-reviews/${row.id}`)
+  ElMessage.success('已删除')
   load()
 }
 

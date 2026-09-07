@@ -29,6 +29,7 @@
     <div v-if="list.length" class="total">
       <template v-if="anyLoyalty">
         <div v-if="walletOn" class="loy-line">账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
+        <div v-if="demoPay" class="loy-line muted">支持支付宝 / 微信演示支付</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
@@ -141,12 +142,28 @@
         <el-form-item label="订单备注">
           <el-input v-model="form.remark" maxlength="200" placeholder="选填" />
         </el-form-item>
+        <el-form-item v-if="demoPay" label="支付方式" required>
+          <el-radio-group v-model="form.payChannel">
+            <el-radio value="alipay">支付宝</el-radio>
+            <el-radio value="wechat">微信支付</el-radio>
+          </el-radio-group>
+          <p class="tip muted">{{ demoPayHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="demoPay" label="支付密码" required>
+          <el-input
+            v-model="form.payPassword"
+            type="password"
+            show-password
+            maxlength="32"
+            placeholder="演示密码，任意不少于 4 位"
+          />
+        </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
-          <p v-if="walletOn">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
+          <p v-if="walletOn && !demoPay">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
-          <p v-if="walletOn && preview.balanceEnough === false" class="warn">余额不足，无法提交</p>
+          <p v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">余额不足，无法提交</p>
         </div>
       </el-form>
       <template #footer>
@@ -154,9 +171,9 @@
         <el-button
           type="primary"
           :loading="placing"
-          :disabled="walletOn && preview?.balanceEnough === false"
+          :disabled="!demoPay && walletOn && preview?.balanceEnough === false"
           @click="submitOrder"
-        >确认提交</el-button>
+        >{{ demoPay ? '确认支付并下单' : '确认提交' }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -188,6 +205,10 @@ const isFood = computed(() => hasTrait('food'))
 const deliveryTypeLabel = computed(() => (isFood.value ? '用餐方式' : '收货方式'))
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
+const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
+const demoPayHint = computed(
+  () => getSchema()?.labels?.demoPayHint || '演示支付：选择渠道并输入任意密码（非真实扣款）。',
+)
 const pointsOn = computed(() => isPointsEnabled())
 const discountOn = computed(() => isSpendDiscountEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
@@ -221,6 +242,8 @@ const form = reactive({
   tasteNote: '',
   remark: '',
   couponCode: '',
+  payChannel: 'alipay',
+  payPassword: '',
 })
 
 const totalYuan = computed(() =>
@@ -374,13 +397,22 @@ async function submitOrder() {
       return
     }
   }
-  if (walletOn.value && preview.value?.balanceEnough === false) {
+  if (demoPay.value) {
+    if (!form.payChannel) {
+      ElMessage.warning('请选择支付方式')
+      return
+    }
+    if (!form.payPassword || form.payPassword.trim().length < 4) {
+      ElMessage.warning('请输入支付密码（演示，至少 4 位）')
+      return
+    }
+  } else if (walletOn.value && preview.value?.balanceEnough === false) {
     ElMessage.warning(preview.value?.message || '账户余额不足')
     return
   }
   placing.value = true
   try {
-    await http.post('/api/orders', {
+    const payload = {
       deliveryType: form.deliveryType,
       addressId: form.addressId || undefined,
       receiverName: form.receiverName.trim(),
@@ -389,9 +421,15 @@ async function submitOrder() {
       tasteNote: form.tasteNote.trim(),
       remark: form.remark.trim(),
       couponCode: form.couponCode.trim() || undefined,
-    })
-    ElMessage.success('下单成功')
+    }
+    if (demoPay.value) {
+      payload.payChannel = form.payChannel
+      payload.payPassword = form.payPassword.trim()
+    }
+    await http.post('/api/orders', payload)
+    ElMessage.success(demoPay.value ? '支付成功，已下单' : '下单成功')
     checkoutVisible.value = false
+    form.payPassword = ''
     router.push('/orders')
   } finally {
     placing.value = false

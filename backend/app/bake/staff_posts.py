@@ -9,6 +9,10 @@ from typing import Any
 PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
     "ticket_ops": frozenset({"dashboard", "ticket_pending", "ticket_records", "deadline", "archive_logs"}),
     "order_ops": frozenset({"dashboard", "orders"}),
+    # 多店店长：自家商品 + 订单 + 留言（评价菜单由 order_review 挂载时再并入可见）
+    "merchant_ops": frozenset(
+        {"dashboard", "archive", "orders", "guestbook", "order_reviews", "content", "dm"}
+    ),
     "slot_ops": frozenset({"dashboard", "reservations"}),
     # 内容流编辑：维护档案与公告（无单据审核队列）
     "content_ops": frozenset({"dashboard", "archive", "content"}),
@@ -118,6 +122,7 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-SHOP": [
         _clerk("order_clerk", "订单管理员", "order_ops"),
         # 拣货员：默认不挂；开题写到才追加（见 _OPTIONAL_WORKERS）
+        # 多店店长：扫到商家入驻等才挂（见 staff_posts_for_domain）
     ],
     "DOM-FOOD": [
         # 默认社会餐饮「店员」；食堂档在 attach 里按 food_product_kind 改成档口店员
@@ -853,6 +858,15 @@ def staff_posts_for_domain(
     posts = [dict(p) for p in (STAFF_POSTS_BY_DOMAIN.get(domain) or []) if isinstance(p, dict)]
     have = {str(p.get("id")) for p in posts if p.get("id")}
     scan_blob = f"{title or ''}\n{proposal_text or ''}"
+    if domain == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        if scan_shop_marketplace(title, proposal_text):
+            # 多店：仅店长岗（平台超管管全局）；避免再叠 order_clerk 抢 subadmin
+            posts = [
+                _clerk("shop_merchant", "商家", "merchant_ops"),
+            ]
+            have = {str(p.get("id")) for p in posts if p.get("id")}
     for post, hints in _OPTIONAL_WORKERS.get(domain) or []:
         pid = str(post.get("id") or "")
         if not pid or pid in have:

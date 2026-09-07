@@ -35,6 +35,15 @@ public class OrderReviewController {
         return R.ok(OrderReviewStore.page(uid, page, size));
     }
 
+    @GetMapping("/by-item/{itemId}")
+    public R<?> byItem(
+            @PathVariable long itemId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        require();
+        return R.ok(OrderReviewStore.pageByItem(itemId, page, size));
+    }
+
     @GetMapping("/by-order/{orderId}")
     public R<?> byOrder(@PathVariable long orderId, HttpSession session) {
         require();
@@ -66,5 +75,13 @@ public class OrderReviewController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable long id, HttpSession session) {
+        require();
+        AdminAuth.requireSuperAdmin(session);
+        if (!OrderReviewStore.delete(id)) throw new BizException(ErrorCode.NOT_FOUND, "评价不存在");
+        return R.ok(null);
     }
 }

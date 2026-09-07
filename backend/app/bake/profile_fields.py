@@ -26,6 +26,7 @@ def _pf(
     format: str = "",
     required_when: dict[str, Any] | None = None,
     visible_when: dict[str, Any] | None = None,
+    for_roles: list[str] | None = None,
 ) -> dict[str, Any]:
     f: dict[str, Any] = {
         "key": key,
@@ -46,6 +47,8 @@ def _pf(
         f["requiredWhen"] = required_when
     if visible_when:
         f["visibleWhen"] = visible_when
+    if for_roles is not None:
+        f["forRoles"] = list(for_roles)
     return f
 
 
@@ -1343,6 +1346,40 @@ def profile_fields_for(
     for f in specific:
         if isinstance(f, dict):
             f.setdefault("forRoles", ["user"])
+    # 多店商家：店铺资料仅 staff（商家注册/资料）；买家仍只见收货字段
+    if domain == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        if scan_shop_marketplace(title, proposal_text):
+            specific.extend(
+                [
+                    _pf(
+                        "shopName",
+                        "店铺名称",
+                        required=True,
+                        on_register=True,
+                        max_length=64,
+                        for_roles=["staff"],
+                        placeholder="入驻店铺对外名称",
+                    ),
+                    _pf(
+                        "shopIntro",
+                        "店铺简介",
+                        on_register=True,
+                        max_length=200,
+                        for_roles=["staff"],
+                        placeholder="主营品类与服务说明",
+                    ),
+                    _pf(
+                        "shopPhone",
+                        "店铺电话",
+                        on_register=True,
+                        max_length=20,
+                        for_roles=["staff"],
+                        placeholder="选填",
+                    ),
+                ]
+            )
     return copy.deepcopy(COMMON_PROFILE_FIELDS) + specific
 
 

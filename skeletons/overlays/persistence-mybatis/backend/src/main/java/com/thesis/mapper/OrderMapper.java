@@ -73,6 +73,21 @@ public interface OrderMapper {
             @Param("username") String username,
             @Param("status") String status);
 
+    List<Map<String, Object>> selectOrdersOwnedByMerchant(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("ownerUsername") String ownerUsername,
+            @Param("status") String status);
+
+    @Select("SELECT COUNT(*) FROM `${lineTable}` l JOIN `${itemTable}` p ON p.id=l.item_id "
+            + "WHERE l.order_id=#{orderId} AND p.owner_username=#{ownerUsername}")
+    int countMerchantOwnedLines(
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("orderId") long orderId,
+            @Param("ownerUsername") String ownerUsername);
+
     List<Long> selectIdsByReservation(
             @Param("orderTable") String orderTable, @Param("reservationId") long reservationId);
 

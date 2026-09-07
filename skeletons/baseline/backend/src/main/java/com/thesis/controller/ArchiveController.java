@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,8 +32,14 @@ public class ArchiveController {
         boolean showDeleted = includeDeleted && admin && AdminAuth.isSuperAdmin(session);
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
-        Map<String, Object> data = ArchiveStore.pageItems(
-                keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s, !admin);
+        Map<String, Object> data;
+        if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+            String uid = AdminAuth.requireLogin(session);
+            data = ArchiveStore.pageItemsForMerchant(uid, keyword, categoryId, p, s);
+        } else {
+            data = ArchiveStore.pageItems(
+                    keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s, !admin);
+        }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);
     }
@@ -91,7 +98,7 @@ public class ArchiveController {
             String startAt = str(body.get("startAt"));
             if (!startAt.isBlank() && ArchiveStore.hasStartAt()) {
                 long id = ((Number) item.get("id")).longValue();
-                Map<String, Object> patch = new java.util.LinkedHashMap<>();
+                Map<String, Object> patch = new LinkedHashMap<>();
                 patch.put("startAt", startAt);
                 item = ArchiveStore.updateItem(id, patch);
             }
@@ -108,6 +115,12 @@ public class ArchiveController {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         Map<String, Object> item = admin ? ArchiveStore.getItemAdmin(id) : ArchiveStore.getItem(id);
         if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+            String uid = AdminAuth.requireLogin(session);
+            if (!uid.equals(str(item.get("ownerUsername")))) {
+                throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
+            }
+        }
         if (!admin) ArchiveStore.redactSensitiveForPublic(item);
         return R.ok(item);
     }
@@ -123,25 +136,49 @@ public class ArchiveController {
 
     @PostMapping
     public R<Map<String, Object>> create(@RequestBody Map<String, Object> body, HttpSession session) {
-        AdminAuth.requireSuperAdmin(session);
-        String title = str(body.get("title"));
+        Map<String, Object> payload = body == null ? new LinkedHashMap<>() : new LinkedHashMap<>(body);
+        if (ArchiveStore.shopMarketplaceEnabled()) {
+            AdminAuth.requireAdmin(session);
+            if (!AdminAuth.isSuperAdmin(session)) {
+                String uid = AdminAuth.requireLogin(session);
+                payload.put("ownerUsername", uid);
+                payload.put("status", "pending_review");
+            }
+        } else {
+            AdminAuth.requireSuperAdmin(session);
+        }
+        String title = str(payload.get("title"));
         if (title.isBlank()) throw new BizException(ErrorCode.BAD_REQUEST, "名称不能为空");
         return R.ok(ArchiveStore.addItem(
                 title,
-                str(body.get("author")),
-                str(body.get("isbn")),
-                body.get("categoryId") == null ? 1L : Long.parseLong(String.valueOf(body.get("categoryId"))),
-                body.get("stock") == null ? 1 : Integer.parseInt(String.valueOf(body.get("stock"))),
-                str(body.get("coverUrl")),
-                body
+                str(payload.get("author")),
+                str(payload.get("isbn")),
+                payload.get("categoryId") == null ? 1L : Long.parseLong(String.valueOf(payload.get("categoryId"))),
+                payload.get("stock") == null ? 1 : Integer.parseInt(String.valueOf(payload.get("stock"))),
+                str(payload.get("coverUrl")),
+                payload
         ));
     }
 
     @PutMapping("/{id:\\d+}")
     public R<Map<String, Object>> update(
             @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
-        AdminAuth.requireSuperAdmin(session);
-        Map<String, Object> updated = ArchiveStore.updateItem(id, body);
+        Map<String, Object> payload = body == null ? new LinkedHashMap<>() : new LinkedHashMap<>(body);
+        if (ArchiveStore.shopMarketplaceEnabled()) {
+            AdminAuth.requireAdmin(session);
+            if (!AdminAuth.isSuperAdmin(session)) {
+                String uid = AdminAuth.requireLogin(session);
+                Map<String, Object> existing = ArchiveStore.getItemAdmin(id);
+                if (existing == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+                if (!uid.equals(str(existing.get("ownerUsername")))) {
+                    throw new BizException(ErrorCode.FORBIDDEN, "只能修改本店商品");
+                }
+                payload.put("ownerUsername", uid);
+            }
+        } else {
+            AdminAuth.requireSuperAdmin(session);
+        }
+        Map<String, Object> updated = ArchiveStore.updateItem(id, payload);
         if (updated == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         return R.ok(updated);
     }
@@ -159,6 +196,18 @@ public class ArchiveController {
         if (!ArchiveStore.restoreItem(id)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在或未下架");
         Map<String, Object> item = ArchiveStore.getItemAdmin(id);
         return R.ok(item);
+    }
+
+    /** 多店：超管审核商家商品上架 */
+    @PostMapping("/{id:\\d+}/approve")
+    public R<Map<String, Object>> approve(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        if (!ArchiveStore.shopMarketplaceEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前非多店模式");
+        }
+        Map<String, Object> m = ArchiveStore.approveMarketplaceItem(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        return R.ok(m);
     }
 
     private static List<Long> parseTagIds(String raw) {
@@ -231,6 +280,7 @@ public class ArchiveController {
             case "releaseyear" -> "releaseYear";
             case "region" -> "region";
             case "summary" -> "summary";
+            case "harveston" -> "harvestOn";
             case "itemkind" -> "itemKind";
             case "foundat" -> "foundAt";
             case "coverurl" -> "coverUrl";

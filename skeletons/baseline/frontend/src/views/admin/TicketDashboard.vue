@@ -145,13 +145,28 @@ const configHint = computed(() => {
 
 const cards = computed(() => {
   const list = []
-  if (caps.value.includes('order_lines')) {
+    if (caps.value.includes('order_lines')) {
     list.push(
       { key: 'op', label: orderPendingLabel.value, value: data.value.pendingOrders ?? '—' },
       { key: 'oc', label: orderConfirmedLabel.value, value: data.value.confirmedOrders ?? '—' },
       { key: 'os', label: orderShippedLabel.value, value: data.value.shippedOrders ?? '—' },
       { key: 'od', label: orderCompletedLabel.value, value: data.value.completedOrders ?? '—' },
     )
+    if (data.value.salesTotalYuan != null) {
+      list.push({
+        key: 'sales',
+        label: '销售总额(已完成)',
+        value: `¥${Number(data.value.salesTotalYuan || 0).toFixed(2)}`,
+      })
+    }
+    if (data.value.lowStockCount != null) {
+      list.push({
+        key: 'low',
+        label: `库存预警(<${data.value.stockWarnBelow || 10})`,
+        value: data.value.lowStockCount,
+        to: '/admin/archive',
+      })
+    }
   } else if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) {
     list.push(
       {

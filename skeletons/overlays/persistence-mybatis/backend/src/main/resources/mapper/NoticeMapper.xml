@@ -14,4 +14,10 @@
     <select id="selectAllOrderByIdDesc" resultType="map">
         SELECT * FROM sys_notice ORDER BY id DESC
     </select>
+
+    <select id="selectApprovedOrderByIdDesc" resultType="map">
+        SELECT * FROM sys_notice
+        WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')
+        ORDER BY id DESC
+    </select>
 </mapper>

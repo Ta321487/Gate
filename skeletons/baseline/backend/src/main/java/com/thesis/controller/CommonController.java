@@ -24,12 +24,16 @@ public class CommonController {
     @Value("${thesis.register-role:user}")
     private String registerRole;
 
+    @Value("${thesis.shop-marketplace:false}")
+    private boolean shopMarketplace;
+
     @GetMapping("/meta")
     public R<Map<String, Object>> meta() {
         Map<String, Object> m = new HashMap<>();
         m.put("title", title);
         m.put("baseline", Arrays.asList("captcha", "upload", "page", "errorcode", "profile", "avatar", "register"));
         m.put("registerRole", registerRole);
+        m.put("shopMarketplace", shopMarketplace);
         return R.ok(m);
     }
 

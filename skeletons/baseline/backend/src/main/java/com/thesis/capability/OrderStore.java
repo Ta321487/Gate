@@ -51,6 +51,15 @@ public final class OrderStore {
         return enabled;
     }
 
+    /** 供评价等跨 Store 联表 */
+    public static String orderTable() {
+        return ORDER;
+    }
+
+    public static String lineTable() {
+        return LINE;
+    }
+
     private static JdbcTemplate db() {
         return JdbcSupport.jdbc();
     }
@@ -159,7 +168,7 @@ public final class OrderStore {
             String deliveryType,
             String tasteNote) {
         return placeOrder(
-                username, remark, addressId, receiverName, receiverPhone, addressLine, deliveryType, tasteNote, null);
+                username, remark, addressId, receiverName, receiverPhone, addressLine, deliveryType, tasteNote, null, null, null);
     }
 
     public static Map<String, Object> placeOrder(
@@ -172,12 +181,50 @@ public final class OrderStore {
             String deliveryType,
             String tasteNote,
             String couponCode) {
+        return placeOrder(
+                username,
+                remark,
+                addressId,
+                receiverName,
+                receiverPhone,
+                addressLine,
+                deliveryType,
+                tasteNote,
+                couponCode,
+                null,
+                null);
+    }
+
+    public static Map<String, Object> placeOrder(
+            String username,
+            String remark,
+            Long addressId,
+            String receiverName,
+            String receiverPhone,
+            String addressLine,
+            String deliveryType,
+            String tasteNote,
+            String couponCode,
+            String payChannel,
+            String payPassword) {
         requireEnabled();
         if (LoyaltyStore.anyEnabled()) {
             ensureLoyaltyColumns();
         }
         if (hasOrderColumn("refund_status")) {
             ensureRefundColumns();
+        }
+        boolean demoPay = ArchiveStore.shopMarketplaceEnabled();
+        String channel = payChannel == null ? "" : payChannel.trim().toLowerCase(Locale.ROOT);
+        if (demoPay) {
+            ensurePayChannelColumn();
+            if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
+                throw new IllegalArgumentException("请选择支付宝或微信支付（演示）");
+            }
+            String pw = payPassword == null ? "" : payPassword.trim();
+            if (pw.length() < 4) {
+                throw new IllegalArgumentException("请输入支付密码（演示，至少 4 位）");
+            }
         }
         List<Map<String, Object>> cart = listCart(username);
         if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
@@ -201,7 +248,8 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
+            // 多店演示支付走支付宝/微信假密码，不扣账户余额
+            if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
                         "账户余额不足，请联系管理员充值")));
@@ -236,6 +284,8 @@ public final class OrderStore {
                 rName = username;
             }
         }
+        // 多店演示支付成功后直接待发货；单店仍待确认
+        String initialStatus = demoPay ? "confirmed" : "pending";
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
@@ -245,13 +295,14 @@ public final class OrderStore {
         if (hasOrderColumn("address_line")) extraCols.put("address_line", fAddr);
         if (hasOrderColumn("delivery_type")) extraCols.put("delivery_type", fType);
         if (hasOrderColumn("taste_note")) extraCols.put("taste_note", fTaste);
+        if (demoPay && hasOrderColumn("pay_channel")) extraCols.put("pay_channel", channel);
         db().update(con -> {
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
             StringBuilder cols = new StringBuilder("username,status,total_yuan,remark");
             StringBuilder marks = new StringBuilder("?,?,?,?");
             List<Object> args = new ArrayList<>();
             args.add(username);
-            args.add("pending");
+            args.add(initialStatus);
             args.add(BigDecimal.valueOf(finalTotal).setScale(2, RoundingMode.HALF_UP));
             String noteOut = note;
             if (extraCols.isEmpty() && !fTaste.isBlank()) {
@@ -299,7 +350,13 @@ public final class OrderStore {
                 }
             }
             if (LoyaltyStore.anyEnabled()) {
-                Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
+                Map<String, Object> snap;
+                if (demoPay) {
+                    snap = LoyaltyStore.previewPrice(subtotal, username, coupon);
+                    snap.put("payBalanceYuan", 0.0);
+                } else {
+                    snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
+                }
                 applyLoyaltySnapshot(orderId, snap);
                 if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()) {
                     try {
@@ -458,6 +515,58 @@ public final class OrderStore {
         return out;
     }
 
+    /**
+     * 商家订单：明细商品归属本店（product/档案表 owner_username）。
+     */
+    public static Map<String, Object> pageOrdersOwnedByMerchant(
+            String ownerUsername, String status, int page, int size) {
+        requireEnabled();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) throw new IllegalArgumentException("未登录");
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String item = ArchiveStore.itemTable();
+        String ownClause = " EXISTS (SELECT 1 FROM " + LINE + " l JOIN " + item
+                + " p ON p.id=l.item_id WHERE l.order_id=" + ORDER + ".id AND p.owner_username=?)";
+        StringBuilder where = new StringBuilder(" WHERE ").append(ownClause);
+        List<Object> args = new ArrayList<>();
+        args.add(owner);
+        if (status != null && !status.isBlank()) {
+            where.append(" AND status=?");
+            args.add(status);
+        }
+        Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ORDER + where, Integer.class, args.toArray());
+        args.add(size);
+        args.add((page - 1) * size);
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM " + ORDER + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> {
+                    Map<String, Object> m = mapOrder(rs);
+                    m.put("lines", listLines(rs.getLong("id")));
+                    return m;
+                },
+                args.toArray());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", total == null ? 0 : total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /** 订单是否含本店商品明细。 */
+    public static boolean merchantOwnsOrder(String ownerUsername, long orderId) {
+        requireEnabled();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank() || orderId <= 0) return false;
+        String item = ArchiveStore.itemTable();
+        Integer n = db().queryForObject(
+                "SELECT COUNT(*) FROM " + LINE + " l JOIN " + item
+                        + " p ON p.id=l.item_id WHERE l.order_id=? AND p.owner_username=?",
+                Integer.class, orderId, owner);
+        return n != null && n > 0;
+    }
+
     /** 宾馆等：预约办结时把关联订单一并完成 */
     public static void completeByReservation(long reservationId) {
         advanceByReservation(reservationId, "complete");
@@ -542,8 +651,21 @@ public final class OrderStore {
         if ("confirm".equals(act) && "pending".equals(st)) next = "confirmed";
         // 发货/出餐须先确认，禁止 pending 跳步
         else if ("ship".equals(act) && "confirmed".equals(st)) next = "shipped";
-        // 完成必须先发货/出餐，禁止 pending/confirmed 跳步完结；售后中不可完成
-        else if ("complete".equals(act) && "shipped".equals(st)) {
+        else if ("transit".equals(act) && "shipped".equals(st) && ArchiveStore.shopMarketplaceEnabled()) {
+            next = "in_transit";
+        }
+        else if ("sign".equals(act)
+                && ("shipped".equals(st) || "in_transit".equals(st))
+                && ArchiveStore.shopMarketplaceEnabled()) {
+            next = "signed";
+        }
+        // 完成：单店 shipped→completed；多店 signed→completed（亦可商家从运输中办结）
+        else if ("complete".equals(act)) {
+            boolean mp = ArchiveStore.shopMarketplaceEnabled();
+            boolean ok = mp
+                    ? ("signed".equals(st) || "in_transit".equals(st) || "shipped".equals(st))
+                    : "shipped".equals(st);
+            if (!ok) throw new IllegalStateException("当前状态不可执行：" + act);
             if ("pending".equals(String.valueOf(m.getOrDefault("refundStatus", "")))) {
                 throw new IllegalStateException("售后处理中，不可完成订单");
             }
@@ -619,49 +741,157 @@ public final class OrderStore {
     }
 
     public static Map<String, Object> dashboard() {
+        return dashboard(null);
+    }
+
+    /** @param ownerUsername 多店商家：只统计本店订单；超管/单店传 null */
+    public static Map<String, Object> dashboard(String ownerUsername) {
         if (!enabled) return Map.of();
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("pendingOrders", countStatus("pending"));
-        m.put("confirmedOrders", countStatus("confirmed"));
-        m.put("shippedOrders", countStatus("shipped"));
-        m.put("completedOrders", countStatus("completed"));
+        m.put("pendingOrders", countStatus("pending", ownerUsername));
+        m.put("confirmedOrders", countStatus("confirmed", ownerUsername));
+        m.put("shippedOrders", countStatus("shipped", ownerUsername));
+        m.put("completedOrders", countStatus("completed", ownerUsername));
+        if (ArchiveStore.shopMarketplaceEnabled()) {
+            m.put("inTransitOrders", countStatus("in_transit", ownerUsername));
+            m.put("signedOrders", countStatus("signed", ownerUsername));
+            m.put("salesTotalYuan", sumCompletedSales(ownerUsername));
+        }
         return m;
     }
 
     public static Map<String, Object> chartStats() {
+        return chartStats(null);
+    }
+
+    public static Map<String, Object> chartStats(String ownerUsername) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("hotItemSeries", List.of());
         if (!enabled) return out;
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        boolean byOwner = !owner.isBlank() && ArchiveStore.hasOwnerUsername();
         try {
-            List<Map<String, Object>> status = db().query(
-                    "SELECT status AS name, COUNT(*) AS value FROM " + ORDER + " GROUP BY status",
-                    (rs, i) -> {
-                        Map<String, Object> row = new LinkedHashMap<>();
-                        row.put("name", rs.getString("name"));
-                        row.put("value", rs.getLong("value"));
-                        return row;
-                    });
-            out.put("statusSeries", status);
-            List<Map<String, Object>> trend = db().query(
-                    "SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + ORDER
-                            + " WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
-                            + " GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day",
-                    (rs, i) -> {
-                        Map<String, Object> row = new LinkedHashMap<>();
-                        row.put("day", rs.getString("day"));
-                        row.put("value", rs.getLong("value"));
-                        return row;
-                    });
-            out.put("trendSeries", trend);
+            if (!byOwner) {
+                List<Map<String, Object>> status = db().query(
+                        "SELECT status AS name, COUNT(*) AS value FROM " + ORDER + " GROUP BY status",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("statusSeries", status);
+                List<Map<String, Object>> trend = db().query(
+                        "SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + ORDER
+                                + " WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
+                                + " GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("day", rs.getString("day"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("trendSeries", trend);
+            } else {
+                String base = " FROM " + ORDER + " o"
+                        + " INNER JOIN " + LINE + " l ON l.order_id=o.id"
+                        + " INNER JOIN " + ArchiveStore.itemTable() + " p ON p.id=l.item_id AND p.owner_username=?";
+                List<Map<String, Object>> status = db().query(
+                        "SELECT o.status AS name, COUNT(DISTINCT o.id) AS value" + base + " GROUP BY o.status",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        },
+                        owner);
+                out.put("statusSeries", status);
+                List<Map<String, Object>> trend = db().query(
+                        "SELECT DATE_FORMAT(o.created_at,'%Y-%m-%d') AS day, COUNT(DISTINCT o.id) AS value" + base
+                                + " WHERE o.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
+                                + " GROUP BY DATE_FORMAT(o.created_at,'%Y-%m-%d') ORDER BY day",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("day", rs.getString("day"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        },
+                        owner);
+                out.put("trendSeries", trend);
+            }
+            if (ArchiveStore.shopMarketplaceEnabled() && LINE != null && !LINE.isBlank()) {
+                if (!byOwner) {
+                    List<Map<String, Object>> hot = db().query(
+                            "SELECT l.title AS name, SUM(l.qty) AS value FROM " + LINE + " l"
+                                    + " INNER JOIN " + ORDER + " o ON o.id=l.order_id AND o.status='completed'"
+                                    + " GROUP BY l.title ORDER BY value DESC LIMIT 8",
+                            (rs, i) -> {
+                                Map<String, Object> row = new LinkedHashMap<>();
+                                row.put("name", rs.getString("name"));
+                                row.put("value", rs.getLong("value"));
+                                return row;
+                            });
+                    out.put("hotItemSeries", hot);
+                } else {
+                    List<Map<String, Object>> hot = db().query(
+                            "SELECT l.title AS name, SUM(l.qty) AS value FROM " + LINE + " l"
+                                    + " INNER JOIN " + ORDER + " o ON o.id=l.order_id AND o.status='completed'"
+                                    + " INNER JOIN " + ArchiveStore.itemTable()
+                                    + " p ON p.id=l.item_id AND p.owner_username=?"
+                                    + " GROUP BY l.title ORDER BY value DESC LIMIT 8",
+                            (rs, i) -> {
+                                Map<String, Object> row = new LinkedHashMap<>();
+                                row.put("name", rs.getString("name"));
+                                row.put("value", rs.getLong("value"));
+                                return row;
+                            },
+                            owner);
+                    out.put("hotItemSeries", hot);
+                }
+            }
         } catch (Exception ignored) {
         }
         return out;
     }
 
-    private static long countStatus(String st) {
-        Long n = db().queryForObject("SELECT COUNT(*) FROM " + ORDER + " WHERE status=?", Long.class, st);
+    private static long countStatus(String st, String ownerUsername) {
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank() || !ArchiveStore.hasOwnerUsername()) {
+            Long n = db().queryForObject("SELECT COUNT(*) FROM " + ORDER + " WHERE status=?", Long.class, st);
+            return n == null ? 0 : n;
+        }
+        String sql = "SELECT COUNT(DISTINCT o.id) FROM " + ORDER + " o"
+                + " INNER JOIN " + LINE + " l ON l.order_id=o.id"
+                + " INNER JOIN " + ArchiveStore.itemTable() + " p ON p.id=l.item_id AND p.owner_username=?"
+                + " WHERE o.status=?";
+        Long n = db().queryForObject(sql, Long.class, owner, st);
         return n == null ? 0 : n;
+    }
+
+    private static double sumCompletedSales(String ownerUsername) {
+        try {
+            String owner = ownerUsername == null ? "" : ownerUsername.trim();
+            if (owner.isBlank() || !ArchiveStore.hasOwnerUsername()) {
+                Double n = db().queryForObject(
+                        "SELECT COALESCE(SUM(total_yuan),0) FROM " + ORDER + " WHERE status='completed'",
+                        Double.class);
+                return n == null ? 0 : round2(n);
+            }
+            Double n = db().queryForObject(
+                    "SELECT COALESCE(SUM(x.total_yuan),0) FROM ("
+                            + "SELECT DISTINCT o.id, o.total_yuan FROM " + ORDER + " o"
+                            + " INNER JOIN " + LINE + " l ON l.order_id=o.id"
+                            + " INNER JOIN " + ArchiveStore.itemTable() + " p ON p.id=l.item_id AND p.owner_username=?"
+                            + " WHERE o.status='completed'"
+                            + ") x",
+                    Double.class,
+                    owner);
+            return n == null ? 0 : round2(n);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static Map<String, Object> mapOrder(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -688,6 +918,7 @@ public final class OrderStore {
         m.put("refundStatus", safeStr(rs, "refund_status"));
         m.put("refundReason", safeStr(rs, "refund_reason"));
         m.put("refundAt", fmt(safeTs(rs, "refund_at")));
+        m.put("payChannel", safeStr(rs, "pay_channel"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
         String un = rs.getString("username");
@@ -767,6 +998,10 @@ public final class OrderStore {
         ensureOrderColumn("refund_at", "DATETIME NULL");
     }
 
+    private static void ensurePayChannelColumn() {
+        ensureOrderColumn("pay_channel", "VARCHAR(16) DEFAULT ''");
+    }
+
     private static void applyLoyaltySnapshot(long orderId, Map<String, Object> snap) {
         if (snap == null || orderId <= 0) return;
         double discount = toDouble(snap.get("discountYuan"));
@@ -809,8 +1044,8 @@ public final class OrderStore {
             throw new IllegalStateException("无权申请");
         }
         String st = String.valueOf(m.get("status"));
-        if (!"shipped".equals(st) && !"completed".equals(st)) {
-            throw new IllegalStateException("仅配送中/已完成订单可申请售后");
+        if (!"shipped".equals(st) && !"in_transit".equals(st) && !"signed".equals(st) && !"completed".equals(st)) {
+            throw new IllegalStateException("仅已发货及之后状态可申请售后");
         }
         String rs = String.valueOf(m.getOrDefault("refundStatus", ""));
         if ("pending".equals(rs) || "approved".equals(rs)) {

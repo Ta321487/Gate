@@ -101,7 +101,7 @@ import {
   showStaffLoginLink,
 } from '../utils/authEntry'
 import { APP_DELIVERED } from '../appDelivered.js'
-import { roleLabel, schemaLabels } from '../utils/domainSchema.js'
+import { roleLabel, schemaLabels, getSchema } from '../utils/domainSchema.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
 
 const props = defineProps({
@@ -115,6 +115,7 @@ const template = ref(pickAuthTemplate())
 const entryMode = pickAuthEntryMode()
 const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const showStaffLink = computed(() => showStaffLoginLink())
@@ -147,16 +148,23 @@ const showRolePicker = computed(() => {
 const needLoginAs = computed(() => entryMode !== 'unified')
 
 const heading = computed(() => {
-  if (entrySide.value === 'admin') return '管理端登录'
+  if (entrySide.value === 'admin') return marketplace.value ? '管理端登录' : '管理端登录'
   if (entrySide.value === 'staff') return '员工端登录'
   return '登录'
 })
 const sub = computed(() => {
-  if (entrySide.value === 'admin') return `使用总管或${subLabel.value}账号进入后台`
+  if (entrySide.value === 'admin') {
+    return marketplace.value
+      ? '平台管理员账号登录后台（无自助注册）'
+      : `使用总管或${subLabel.value}账号进入后台`
+  }
   if (entrySide.value === 'staff') return '使用岗位账号进入作业台'
-  return '使用已有账号进入系统'
+  return marketplace.value ? '买家或商家账号登录' : '使用已有账号进入系统'
 })
 const note = computed(() => {
+  if (marketplace.value && entrySide.value === 'admin') {
+    return '平台管理员由系统预制，不开放自助注册；商家入驻请走门户注册并等待审核。'
+  }
   if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份。'
   if (entryMode === 'split_entry' && entrySide.value === 'admin') {
     return `管理端仅接受总管/${subLabel.value}账号；岗位员工请走员工端，${userLabel.value}请走门户。`
@@ -167,10 +175,17 @@ const note = computed(() => {
   if (entryMode === 'split_entry') {
     return `门户仅接受${userLabel.value}；管理/员工请走对应入口。`
   }
+  if (marketplace.value) {
+    return '买家与商家可注册；平台管理员仅登录、不开放注册。'
+  }
   return '新用户可先注册再登录。'
 })
 const authLead = computed(() => {
-  if (entrySide.value === 'admin') return '管理端独立入口，按总管/子管理身份登录。'
+  if (entrySide.value === 'admin') {
+    return marketplace.value
+      ? '管理端仅登录：平台监管用户、商家、商品、订单与活动审核。'
+      : '管理端独立入口，按总管/子管理身份登录。'
+  }
   if (entrySide.value === 'staff') return '员工端独立入口，办理派送、维修等现场作业。'
   const raw = String(labels.authLead || '').trim()
   // 开题材料头 / 样例文件名 / 开题报告套话不得上登录页
@@ -182,7 +197,11 @@ const authLead = computed(() => {
   return raw || '验证码登录，开放注册；登录后可使用系统基础能力。'
 })
 const authPoints = computed(() => {
-  if (entrySide.value === 'admin') return ['身份校验', '总管/子管理分权', '验证码登录']
+  if (entrySide.value === 'admin') {
+    return marketplace.value
+      ? ['仅登录无注册', '用户/商家管理', '活动与售后审核']
+      : ['身份校验', '总管/子管理分权', '验证码登录']
+  }
   if (entrySide.value === 'staff') return ['岗位校验', '作业台', '验证码登录']
   if (Array.isArray(labels.authPoints) && labels.authPoints.length) return labels.authPoints
   return ['验证码登录', '开放注册', '个人资料与头像']
