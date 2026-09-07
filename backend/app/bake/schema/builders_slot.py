@@ -11,9 +11,10 @@ from app.bake.schema.shells import (
 
 def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """校园二手 / 行业货皮 / 社会零售：成色仅 campus；货名跟 scene seed。"""
-    from app.bake.scene_scan import shop_product_kind
+    from app.bake.scene_scan import scan_shop_marketplace, shop_product_kind
 
     pk = shop_product_kind(title, proposal_text)
+    marketplace = scan_shop_marketplace(title, proposal_text)
     campus = pk == "campus"
     if campus:
         brow, lead = (
@@ -85,27 +86,56 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             }.get(niche, "商城须知")
         if notice_title is None:
             notice_title = "商城须知"
-        fields = [
-            {"key": "title", "label": "商品名", "type": "string"},
-            {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
-            {"key": "isbn", "label": "货号", "type": "string"},
-            {"key": "sellerNote", "label": "商品说明", "type": "string"},
-            {"key": "category", "label": "分类", "type": "select"},
-            {"key": "stock", "label": "库存", "type": "number"},
-        ]
-    return order_shell_schema(
+        if pk == "farm":
+            # 农产开题常见：产地/采摘时间/规格/价格/简介/图片（封面）；
+            # 物理列仍走 author→price_yuan、isbn→sku；region/harvest_on 仅 farm 注入。
+            fields = [
+                {"key": "title", "label": "农产品名称", "type": "string"},
+                {"key": "author", "label": "价格", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "规格", "type": "string"},
+                {"key": "region", "label": "产地", "type": "string"},
+                {"key": "harvestOn", "label": "采摘时间", "type": "string"},
+                {"key": "sellerNote", "label": "简介", "type": "textarea"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "库存", "type": "number"},
+            ]
+        else:
+            fields = [
+                {"key": "title", "label": "商品名", "type": "string"},
+                {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "货号", "type": "string"},
+                {"key": "sellerNote", "label": "商品说明", "type": "string"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "库存", "type": "number"},
+            ]
+    sub_lab = "商家" if marketplace else ("店员" if pk == "farm" else "订单管理员")
+    admin_lab = (
+        "平台管理员（总管）"
+        if marketplace
+        else ("农产主管（总管）" if pk == "farm" else "商城主管（总管）")
+    )
+    arch_menu = "农产品管理" if pk == "farm" else "商品管理"
+    arch_browse = "农产品浏览" if pk == "farm" else "商品浏览"
+    arch_lab = "农产品" if pk == "farm" else "商品"
+    if marketplace:
+        brow = "多商家商城" if pk != "farm" else "多商家助农商城"
+        lead = (
+            "用户端购物、商家端入驻开店、管理端平台监管；"
+            "平台管理员由系统预制，不开放自助注册。"
+        )
+    schema = order_shell_schema(
         title,
         domain="DOM-SHOP",
         user_role_id="user",
         user_label="买家",
-        admin_label="商城主管（总管）",
-        subadmin_label="订单管理员",
+        admin_label=admin_lab,
+        subadmin_label=sub_lab,
         archive_key="product",
-        archive_label="商品",
-        archive_plural="商品",
+        archive_label=arch_lab,
+        archive_plural=arch_lab,
         archive_fields=fields,
-        archive_menu_admin="商品管理",
-        archive_menu_user="商品浏览",
+        archive_menu_admin=arch_menu,
+        archive_menu_user=arch_browse,
         users_menu="用户管理",
         cart_label="购物车",
         my_orders_label="我的订单",
@@ -116,8 +146,86 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         register_hint="注册后可购物下单",
         notice_title=notice_title,
         notice_body=notice_body,
-        notice_page_title="商城公告",
+        notice_page_title="商城公告" if pk != "farm" else "农产公告",
     )
+    if marketplace:
+        schema["shopMarketplace"] = True
+        hint = (
+            "仅开放买家与商家注册；平台管理员不开放自助注册。"
+            "商家须平台审核通过后方可登录店铺后台。"
+        )
+        schema["registerHint"] = hint
+        labels = schema.setdefault("labels", {})
+        labels["registerHint"] = hint
+        labels["registerRoleHint"] = hint
+        labels["authLead"] = lead
+        labels["authPoints"] = [
+            "用户 / 商家 / 管理三端",
+            "买家购物 · 商家入驻",
+            "管理端仅登录（无注册）",
+        ]
+        # 对照老师模块名：活动≈公告、数据分析≈工作台、分类/商品皮；售后挂订单管理
+        cat_lab = "农产品分类" if pk == "farm" else "商品分类"
+        for m in (schema.get("menus") or {}).get("admin") or []:
+            if not isinstance(m, dict):
+                continue
+            k = m.get("key")
+            if k == "dashboard":
+                m["label"] = "数据分析"
+            elif k == "content":
+                m["label"] = "活动管理"
+            elif k == "guestbook":
+                m["label"] = "留言反馈"
+            elif k == "category":
+                m["label"] = cat_lab
+            elif k == "users":
+                m["label"] = "用户管理"
+            elif k == "orders":
+                m["label"] = "订单管理"
+            # 商家可管自家商品、留言、订单、评价、活动送审；用户/分类仍超管
+            if k in ("archive", "guestbook", "orders", "order_reviews", "content"):
+                m["superOnly"] = False
+        for m in (schema.get("menus") or {}).get("user") or []:
+            if not isinstance(m, dict):
+                continue
+            k = m.get("key")
+            if k == "content":
+                m["label"] = "活动"
+            elif k == "guestbook":
+                m["label"] = "留言反馈"
+            elif k == "profile":
+                m["label"] = "个人中心"
+            elif k == "my_orders":
+                m["label"] = "我的订单"
+        labels["noticePageTitle"] = "活动公告" if pk != "farm" else "农产活动"
+        labels["guestbookPageTitle"] = "留言反馈"
+        labels["guestbookPageLead"] = (
+            "买家向平台留言；商家走商家端「留言反馈」与平台沟通（双通道，非即时通讯）。"
+        )
+        labels["dmPageTitle"] = "客服"
+        labels["dmPageLead"] = "与店铺客服一对一沟通（短轮询私信，非即时通讯）。"
+        labels["orderReviewPageTitle"] = "我的评价"
+        labels["orderReviewPageLead"] = "对已完成订单进行星级与文字评价。"
+        labels["usersAdminLead"] = "用户管理与商家审核分开展示；启用即审核通过。"
+        labels["ordersAdminLead"] = "含发货、物流与售后审核（申请售后在买家订单）。"
+        labels["demoPayHint"] = "演示支付：选择支付宝或微信并输入任意支付密码（非真实扣款）。"
+        labels["stockWarnHint"] = "库存低于预警值时高亮提示商家补货。"
+        schema["demoPay"] = True
+        schema["stockWarnBelow"] = 10
+        # 对照老师订单态：在现有状态机上扩展运输中/已签收
+        ent = (schema.get("entities") or {}).get("order")
+        if isinstance(ent, dict):
+            ent["states"] = {
+                "pending": "待付款",
+                "confirmed": "待发货",
+                "shipped": "已发货",
+                "in_transit": "运输中",
+                "signed": "已签收",
+                "completed": "已完成",
+                "cancelled": "已取消",
+            }
+    return schema
+
 
 def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """食堂 vs 社会餐饮：只分两档，不按菜系开皮。"""

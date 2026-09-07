@@ -2,14 +2,16 @@
   <div>
     <div class="toolbar">
       <el-radio-group v-model="scope" size="default" @change="load">
-        <el-radio-button value="users">{{ userLabel }}</el-radio-button>
-        <el-radio-button value="subadmins">{{ subLabel }}</el-radio-button>
-        <el-radio-button value="all">全部</el-radio-button>
+        <el-radio-button value="users">用户管理</el-radio-button>
+        <el-radio-button v-if="marketplace" value="merchants">商家管理</el-radio-button>
+        <el-radio-button v-else value="subadmins">{{ subLabel }}</el-radio-button>
+        <el-radio-button v-if="!marketplace" value="all">全部</el-radio-button>
       </el-radio-group>
       <el-input v-model="keyword" clearable placeholder="用户名 / 昵称 / 手机 / 资料" style="width:240px" @keyup.enter="load" />
       <el-button type="primary" @click="load">查询</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
+    <p v-if="marketplace && adminLead" class="page-lead">{{ adminLead }}</p>
     <el-table :data="list" stripe>
       <el-table-column prop="username" label="用户名" width="110" />
       <el-table-column label="姓名" width="100">
@@ -32,10 +34,10 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="enabled" label="状态" width="90">
+      <el-table-column prop="enabled" label="状态" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="row.enabled ? 'success' : 'info'" effect="plain">
-            {{ row.enabled ? '正常' : '已停用' }}
+            {{ statusLabel(row) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -50,7 +52,7 @@
           >充值</el-button>
           <el-button link type="warning" @click="resetPwd(row)">重置密码</el-button>
           <el-button link :type="row.enabled ? 'danger' : 'success'" @click="toggle(row)">
-            {{ row.enabled ? '停用' : '启用' }}
+            {{ enableActionLabel(row) }}
           </el-button>
           <el-button
             v-if="canAppointUser && !isSub(row) && scope === 'all'"
@@ -59,13 +61,13 @@
             @click="openAppoint(row)"
           >任命岗位</el-button>
           <el-button
-            v-else-if="canAppoint && isSub(row) && canRevokeRow(row)"
+            v-else-if="canAppoint && isSub(row) && canRevokeRow(row) && !marketplace"
             link
             type="danger"
             @click="revoke(row)"
           >撤销任命</el-button>
           <el-tooltip
-            v-else-if="canAppoint && isSub(row) && !canRevokeRow(row)"
+            v-else-if="canAppoint && isSub(row) && !canRevokeRow(row) && !marketplace"
             content="该岗位唯一账号，撤销后无法再任命门户用户顶替"
             placement="top"
           >
@@ -144,11 +146,15 @@ import {
   profileAudienceOf,
   profileFieldsForAudience,
   roleLabel,
+  schemaLabels,
 } from '../../utils/domainSchema.js'
 import { isProfileFieldRequired, isProfileFieldVisible } from '../../utils/profileValidate.js'
 import { findStaffPost, staffPostLabel, staffPosts } from '../../utils/staffPosts.js'
 
 const roles = computed(() => getSchema()?.roles || {})
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const labels = schemaLabels()
+const adminLead = computed(() => labels.usersAdminLead || '')
 const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const postOptions = computed(() => staffPosts())
@@ -158,10 +164,12 @@ const canAppoint = computed(() => postOptions.value.length > 0)
 const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
-/** 仅「用户」tab 摊业务档案列；子管理 / 全部与资料页一致不摊 */
-const adminCols = computed(() =>
-  profileAdminColumns(scope.value === 'users' ? 'user' : 'staff'),
-)
+/** 仅「用户」tab 摊业务档案列；商家 tab 摊店铺资料；子管理 / 全部与资料页一致不摊 */
+const adminCols = computed(() => {
+  if (scope.value === 'users') return profileAdminColumns('user')
+  if (scope.value === 'merchants') return profileAdminColumns('staff')
+  return profileAdminColumns('staff')
+})
 const editAudience = computed(() => profileAudienceOf(form))
 const allFields = computed(() => profileFieldsForAudience(editAudience.value))
 const visibleFields = computed(() =>
@@ -188,15 +196,37 @@ function canRevokeRow(row) {
   return !isSoleActiveStaff(row)
 }
 
+function isMerchant(row) {
+  return isSub(row) && (row.staffPost || '').toString() === 'shop_merchant'
+}
+
+function statusLabel(row) {
+  if (row.enabled) return '正常'
+  if (marketplace.value && isMerchant(row)) return '待审核'
+  return '已停用'
+}
+
+function enableActionLabel(row) {
+  if (row.enabled) return '停用'
+  if (marketplace.value && isMerchant(row)) return '审核通过'
+  return '启用'
+}
+
 async function toggle(row) {
   const next = !row.enabled
   if (!next && isSoleActiveStaff(row)) {
     ElMessage.warning(`该岗位唯一启用账号，停用后无法再任命${userLabel.value}顶替`)
     return
   }
-  await ElMessageBox.confirm(next ? '确认启用？' : '停用后将无法登录，确认？', '状态')
+  const tip =
+    next && marketplace.value && isMerchant(row)
+      ? '确认审核通过并启用该商家？'
+      : next
+        ? '确认启用？'
+        : '停用后将无法登录，确认？'
+  await ElMessageBox.confirm(tip, '状态')
   await http.put(`/api/admin/users/${row.username}`, { enabled: next })
-  ElMessage.success('已更新')
+  ElMessage.success(next && marketplace.value && isMerchant(row) ? '已审核通过' : '已更新')
   load()
 }
 
@@ -334,6 +364,7 @@ onMounted(load)
 
 <style scoped>
 .toolbar { margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.page-lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

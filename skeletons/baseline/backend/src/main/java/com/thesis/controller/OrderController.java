@@ -1,6 +1,7 @@
 package com.thesis.controller;
 
 import com.thesis.capability.AddressStore;
+import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
@@ -135,7 +136,9 @@ public class OrderController {
                     str(b.get("addressLine")),
                     str(b.get("deliveryType")),
                     str(b.get("tasteNote")),
-                    str(b.get("couponCode"))));
+                    str(b.get("couponCode")),
+                    str(b.get("payChannel")),
+                    str(b.get("payPassword"))));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -162,6 +165,7 @@ public class OrderController {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         try {
             if (admin && b.containsKey("pass")) {
+                requireMerchantOrderAccess(session, uid, id);
                 boolean pass = bool(b.get("pass"), true);
                 return R.ok(OrderStore.decideRefund(id, pass, str(b.get("note"))));
             }
@@ -180,6 +184,9 @@ public class OrderController {
         requireOrder();
         String uid = AdminAuth.requireLogin(session);
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+            return R.ok(OrderStore.pageOrdersOwnedByMerchant(uid, status, page, size));
+        }
         return R.ok(OrderStore.pageOrders(admin ? null : uid, status, page, size));
     }
 
@@ -193,6 +200,7 @@ public class OrderController {
         if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
         }
+        if (admin) requireMerchantOrderAccess(session, uid, id);
         return R.ok(m);
     }
 
@@ -211,13 +219,42 @@ public class OrderController {
             if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
                 throw new BizException(ErrorCode.FORBIDDEN, "无权取消");
             }
+            if (admin) requireMerchantOrderAccess(session, uid, id);
+        } else if (ArchiveStore.shopMarketplaceEnabled()
+                && ("sign".equalsIgnoreCase(action) || "receive".equalsIgnoreCase(action))) {
+            // 买家确认收货：签收 → 办结（状态机保留「已签收」再「已完成」）
+            if (!uid.equals(String.valueOf(m.get("username")))) {
+                throw new BizException(ErrorCode.FORBIDDEN, "无权确认收货");
+            }
+            try {
+                if ("receive".equalsIgnoreCase(action)) {
+                    String st = String.valueOf(m.get("status"));
+                    if ("shipped".equals(st) || "in_transit".equals(st)) {
+                        OrderStore.advance(id, "sign", body);
+                    }
+                    return R.ok(OrderStore.advance(id, "complete", body));
+                }
+                return R.ok(OrderStore.advance(id, action, body));
+            } catch (IllegalStateException e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+            }
         } else {
             AdminAuth.requireAdmin(session);
+            requireMerchantOrderAccess(session, uid, id);
         }
         try {
             return R.ok(OrderStore.advance(id, action, body));
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 多店：非超管商家须拥有订单中至少一行本店商品。 */
+    private static void requireMerchantOrderAccess(HttpSession session, String uid, long orderId) {
+        if (!ArchiveStore.shopMarketplaceEnabled()) return;
+        if (AdminAuth.isSuperAdmin(session)) return;
+        if (!OrderStore.merchantOwnsOrder(uid, orderId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作该订单");
         }
     }
 

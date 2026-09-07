@@ -1,15 +1,33 @@
 <template>
   <div>
+    <div v-if="marketplace && isSuper" class="toolbar">
+      <el-radio-group v-model="channel" size="default" @change="onChannel">
+        <el-radio-button value="user">用户留言</el-radio-button>
+        <el-radio-button value="merchant">商家留言</el-radio-button>
+      </el-radio-group>
+    </div>
+    <p v-if="marketplace && !isSuper" class="lead">向平台管理员留言反馈（与买家留言分通道）。</p>
+    <section v-if="marketplace && !isSuper" class="composer">
+      <el-input
+        v-model="draft"
+        type="textarea"
+        :rows="3"
+        maxlength="500"
+        show-word-limit
+        placeholder="写给平台管理员的说明或咨询…"
+      />
+      <el-button type="primary" :loading="posting" @click="submit">提交留言</el-button>
+    </section>
     <el-table :data="list" stripe>
-      <el-table-column prop="nickname" label="留言人" width="120">
+      <el-table-column prop="nickname" :label="nameCol" width="140">
         <template #default="{ row }">{{ row.nickname || row.username || '—' }}</template>
       </el-table-column>
       <el-table-column prop="body" label="内容" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="reply" label="回复" min-width="160" show-overflow-tooltip>
+      <el-table-column prop="reply" label="平台回复" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ row.reply || '—' }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" />
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column v-if="isSuper" label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openReply(row)">回复</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
@@ -45,10 +63,18 @@
 </template>
 
 <script setup>
-/** 留言管理：总管列表 / 回复 / 删除 */
-import { onMounted, reactive, ref } from 'vue'
+/** 留言管理：多店时用户/商家双通道；商家端仅向平台投稿 */
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema.js'
+
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const channel = ref('user')
+const nameCol = computed(() =>
+  marketplace.value && channel.value === 'merchant' ? '商家' : '留言人',
+)
 
 const list = ref([])
 const page = ref(1)
@@ -57,11 +83,38 @@ const total = ref(0)
 const visible = ref(false)
 const replyText = ref('')
 const current = reactive({ id: null, body: '' })
+const draft = ref('')
+const posting = ref(false)
+
+function onChannel() {
+  page.value = 1
+  load()
+}
 
 async function load() {
-  const res = await http.get('/api/guestbook', { params: { page: page.value, size: size.value } })
+  const params = { page: page.value, size: size.value }
+  if (marketplace.value && isSuper.value) params.channel = channel.value
+  const res = await http.get('/api/guestbook', { params })
   list.value = res.data?.list || []
   total.value = res.data?.total || 0
+}
+
+async function submit() {
+  const body = draft.value.trim()
+  if (!body) {
+    ElMessage.warning('请填写留言内容')
+    return
+  }
+  posting.value = true
+  try {
+    await http.post('/api/guestbook', { body })
+    ElMessage.success('已提交，等待平台回复')
+    draft.value = ''
+    page.value = 1
+    await load()
+  } finally {
+    posting.value = false
+  }
 }
 
 function openReply(row) {
@@ -92,6 +145,9 @@ onMounted(load)
 </script>
 
 <style scoped>
+.toolbar { margin-bottom: 12px; }
+.lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
+.composer { margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .quote {
   margin: 0 0 12px;
@@ -101,7 +157,5 @@ onMounted(load)
   border-radius: var(--portal-radius-sm, 4px);
   white-space: pre-wrap;
   line-height: 1.55;
-  font-size: 13px;
-  color: var(--portal-muted, #606266);
 }
 </style>

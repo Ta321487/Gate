@@ -306,21 +306,30 @@ def domain_sql(
         ticket_flags=flags,
     )
     user_publish = False
+    shop_marketplace = False
     try:
         from app.bake.schema.templates import SCHEMA_BUILDERS
 
         builder = SCHEMA_BUILDERS.get(domain or "")
         if builder:
-            arch = ((builder("thesis").get("entities") or {}).get("archive") or {})
+            built = builder(title or "thesis", proposal_text or "")
+            arch = ((built.get("entities") or {}).get("archive") or {})
             user_publish = bool(arch.get("userPublish"))
+            shop_marketplace = bool(built.get("shopMarketplace"))
     except Exception:
         user_publish = False
+        shop_marketplace = False
+    if not shop_marketplace and (domain or "") == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        shop_marketplace = scan_shop_marketplace(title or "", proposal_text or "")
     text = ensure_archive_flag_columns(
         text,
         item_table=resolved_item,
         allow_checkin=bool(flags.get("allowCheckin")),
         peer_accept=bool(flags.get("peerAccept")),
         user_publish=user_publish,
+        shop_marketplace=shop_marketplace,
         check_mutex=bool(flags.get("checkMutex")),
         apply_deadline=scan_apply_deadline(proposal_text or ""),
         schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),
@@ -349,6 +358,24 @@ def domain_sql(
         text,
         enabled=GUESTBOOK_CAP in caps,
     )
+    # 多店：留言表须有 channel（若仅靠后置 ensure 建表则补列）
+    if shop_marketplace and GUESTBOOK_CAP in caps:
+        if re.search(
+            r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\(",
+            text,
+            re.I,
+        ) and not re.search(
+            r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*\bchannel\b",
+            text,
+            re.I | re.S,
+        ):
+            text = re.sub(
+                r"(CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*?)(\n\s*created_at\b)",
+                r"\1\n  channel VARCHAR(16) DEFAULT 'user',\2",
+                text,
+                count=1,
+                flags=re.I | re.S,
+            )
     text = ensure_ai_assistant_sql(
         text,
         enabled=AI_ASSISTANT_CAP in caps,

@@ -36,12 +36,50 @@ class ShopFarmSkinTests(unittest.TestCase):
         self.assertIn("水果", sql)
         self.assertIn("脆甜多汁", sql)
         self.assertIn("seller_note", sql)
+        self.assertIn("region", sql)
+        self.assertIn("harvest_on", sql)
+        self.assertIn("山东烟台", sql)
+        self.assertIn("5 斤装", sql)
         self.assertIn("'shipped'", sql)
         self.assertNotIn("日用收纳盒", sql)
         self.assertNotIn("'热销'", sql)
         self.assertNotIn("康乃馨", sql)
         self.assertNotIn("食堂代买套餐", sql)
         self.assertNotIn("黑白打印", sql)
+
+    def test_farm_field_labels_match_opening_semantics(self) -> None:
+        schema = _shop_schema("XX农产品销售网站", "产地采摘时间规格价格简介")
+        fields = {
+            f["key"]: f["label"]
+            for f in schema["entities"]["archive"]["fields"]
+        }
+        self.assertEqual(fields["title"], "农产品名称")
+        self.assertEqual(fields["author"], "价格")
+        self.assertEqual(fields["isbn"], "规格")
+        self.assertEqual(fields["region"], "产地")
+        self.assertEqual(fields["harvestOn"], "采摘时间")
+        self.assertEqual(fields["sellerNote"], "简介")
+        self.assertEqual(schema["entities"]["archive"]["label"], "农产品")
+        self.assertEqual(schema["roles"]["admin"]["label"], "农产主管（总管）")
+
+    def test_retail_not_injected_farm_columns(self) -> None:
+        raw = _SHOP_SQL.read_text(encoding="utf-8")
+        sql = apply_domain_scene_seed(
+            "DOM-SHOP",
+            raw,
+            title="日用百货商城",
+            proposal_text="购物车下单",
+        )
+        # CREATE product 不得被农产列污染
+        m = __import__("re").search(
+            r"CREATE TABLE IF NOT EXISTS\s+product\s*\((.*?)\n\s*created_at\b",
+            sql,
+            __import__("re").I | __import__("re").S,
+        )
+        self.assertIsNotNone(m)
+        body = m.group(1)
+        self.assertNotIn("harvest_on", body)
+        self.assertNotIn("region VARCHAR", body)
 
 
 class ShopRetailNicheTests(unittest.TestCase):

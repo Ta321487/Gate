@@ -24,6 +24,13 @@
       <!-- 步骤 1：账号与安全（一屏装下） -->
       <div v-show="step === 1" class="pane">
         <div class="grid">
+          <label v-if="shopMarketplace" class="field wide">
+            <span class="lab">账号类型<i class="req" aria-hidden="true">*</i></span>
+            <el-select v-model="form.accountType" placeholder="请选择">
+              <el-option label="买家" value="buyer" />
+              <el-option label="商家" value="merchant" />
+            </el-select>
+          </label>
           <label class="field">
             <span class="lab">用户名<i class="req" aria-hidden="true">*</i></span>
             <el-input v-model="form.username" autocomplete="username" placeholder="字母 / 数字 / 下划线" />
@@ -99,7 +106,7 @@
 /**
  * 两步注册：账号安全 → 业务资料。避免一长页滚动（各领域共用基线）。
  */
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
@@ -125,24 +132,33 @@ const title = ref(
 const captchaImg = ref('')
 const loading = ref(false)
 const step = ref(1)
-const regFields = computed(() => profileFieldsOnRegister())
+const shopMarketplace = ref(false)
+const registerAudience = computed(() =>
+  shopMarketplace.value && form.accountType === 'merchant' ? 'staff' : 'user',
+)
+const regFields = computed(() => profileFieldsOnRegister(registerAudience.value))
 const hasProfileStep = computed(() => regFields.value.length > 0)
 const stepLead = computed(() =>
   labels.registerRoleHint || '分步填写，完善后即可登录；管理员不开放自助注册。',
 )
-const stepSub = computed(() =>
-  !hasProfileStep.value
-    ? `创建${userLabel.value}账号`
-    : step.value === 1
-      ? '第 1 步 · 账号与安全'
-      : `第 2 步 · ${userLabel.value}资料`,
-)
+const stepSub = computed(() => {
+  if (!hasProfileStep.value) {
+    return shopMarketplace.value && form.accountType === 'merchant'
+      ? '创建商家账号（待平台审核）'
+      : `创建${userLabel.value}账号`
+  }
+  if (step.value === 1) return '第 1 步 · 账号与安全'
+  return shopMarketplace.value && form.accountType === 'merchant'
+    ? '第 2 步 · 店铺资料'
+    : `第 2 步 · ${userLabel.value}资料`
+})
 const primaryLabel = computed(() => {
   if (hasProfileStep.value && step.value === 1) return '下一步'
   return '注册并去登录'
 })
 
 const form = reactive({
+  accountType: 'buyer',
   username: '',
   nickname: '',
   phone: '',
@@ -151,6 +167,14 @@ const form = reactive({
   captcha: '',
   extras: emptyProfileExtras(profileFieldsOnRegister()),
 })
+
+watch(
+  () => form.accountType,
+  () => {
+    form.extras = emptyProfileExtras(profileFieldsOnRegister(registerAudience.value))
+    if (step.value === 2 && !hasProfileStep.value) step.value = 1
+  },
+)
 
 const watermark = computed(() => {
   const brow = (labels.authEyebrow || '').trim()
@@ -219,7 +243,7 @@ async function onPrimary() {
   if (hasProfileStep.value && !validateProfile()) return
   loading.value = true
   try {
-    await http.post('/api/auth/register', {
+    const payload = {
       username: form.username,
       nickname: form.nickname,
       phone: form.phone,
@@ -227,8 +251,16 @@ async function onPrimary() {
       confirmPassword: form.confirmPassword,
       captcha: form.captcha,
       extras: form.extras,
-    })
-    ElMessage.success('注册成功，请登录')
+    }
+    if (shopMarketplace.value) {
+      payload.accountType = form.accountType === 'merchant' ? 'merchant' : 'buyer'
+    }
+    await http.post('/api/auth/register', payload)
+    if (shopMarketplace.value && form.accountType === 'merchant') {
+      ElMessage.success('已提交，待平台审核开通')
+    } else {
+      ElMessage.success('注册成功，请登录')
+    }
     router.push({ path: '/login', query: { u: form.username } })
   } catch {
     form.captcha = ''
@@ -244,8 +276,9 @@ onMounted(async () => {
     const meta = await http.get('/api/meta')
     const hasName = !!(labels.appName || APP_DELIVERED.title)
     if (!hasName && meta.data?.title) title.value = meta.data.title
+    shopMarketplace.value = !!meta.data?.shopMarketplace
   } catch { /* ignore */ }
-  Object.assign(form.extras, emptyProfileExtras(profileFieldsOnRegister()))
+  Object.assign(form.extras, emptyProfileExtras(profileFieldsOnRegister(registerAudience.value)))
   loadCaptcha()
 })
 </script>

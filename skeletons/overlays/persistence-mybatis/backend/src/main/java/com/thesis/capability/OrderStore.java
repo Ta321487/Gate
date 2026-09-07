@@ -57,6 +57,15 @@ public final class OrderStore {
         return enabled;
     }
 
+    /** 供评价等跨 Store 联表 */
+    public static String orderTable() {
+        return ORDER;
+    }
+
+    public static String lineTable() {
+        return LINE;
+    }
+
     private static String fmt(Object o) {
         if (o == null) return null;
         if (o instanceof Timestamp ts) return ts.toLocalDateTime().format(FMT);
@@ -163,7 +172,7 @@ public final class OrderStore {
             String deliveryType,
             String tasteNote) {
         return placeOrder(
-                username, remark, addressId, receiverName, receiverPhone, addressLine, deliveryType, tasteNote, null);
+                username, remark, addressId, receiverName, receiverPhone, addressLine, deliveryType, tasteNote, null, null, null);
     }
 
     public static Map<String, Object> placeOrder(
@@ -176,12 +185,50 @@ public final class OrderStore {
             String deliveryType,
             String tasteNote,
             String couponCode) {
+        return placeOrder(
+                username,
+                remark,
+                addressId,
+                receiverName,
+                receiverPhone,
+                addressLine,
+                deliveryType,
+                tasteNote,
+                couponCode,
+                null,
+                null);
+    }
+
+    public static Map<String, Object> placeOrder(
+            String username,
+            String remark,
+            Long addressId,
+            String receiverName,
+            String receiverPhone,
+            String addressLine,
+            String deliveryType,
+            String tasteNote,
+            String couponCode,
+            String payChannel,
+            String payPassword) {
         requireEnabled();
         if (LoyaltyStore.anyEnabled()) {
             ensureLoyaltyColumns();
         }
         if (hasOrderColumn("refund_status")) {
             ensureRefundColumns();
+        }
+        boolean demoPay = ArchiveStore.shopMarketplaceEnabled();
+        String channel = payChannel == null ? "" : payChannel.trim().toLowerCase(Locale.ROOT);
+        if (demoPay) {
+            ensurePayChannelColumn();
+            if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
+                throw new IllegalArgumentException("请选择支付宝或微信支付（演示）");
+            }
+            String pw = payPassword == null ? "" : payPassword.trim();
+            if (pw.length() < 4) {
+                throw new IllegalArgumentException("请输入支付密码（演示，至少 4 位）");
+            }
         }
         List<Map<String, Object>> cart = listCart(username);
         if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
@@ -205,7 +252,8 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
+            // 多店演示支付走支付宝/微信假密码，不扣账户余额
+            if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
                         "账户余额不足，请联系管理员充值")));
@@ -245,6 +293,7 @@ public final class OrderStore {
         if (hasOrderColumn("address_line")) extraCols.put("address_line", addr);
         if (hasOrderColumn("delivery_type")) extraCols.put("delivery_type", dtype);
         if (hasOrderColumn("taste_note")) extraCols.put("taste_note", taste);
+        if (demoPay && hasOrderColumn("pay_channel")) extraCols.put("pay_channel", channel);
         String noteOut = note;
         if (extraCols.isEmpty() && !taste.isBlank()) {
             noteOut = (noteOut.isBlank() ? "" : noteOut + "；") + "口味:" + taste;
@@ -257,7 +306,7 @@ public final class OrderStore {
         Map<String, Object> orderRow = new LinkedHashMap<>();
         orderRow.put("orderTable", ORDER);
         orderRow.put("username", username);
-        orderRow.put("status", "pending");
+        orderRow.put("status", demoPay ? "confirmed" : "pending");
         orderRow.put("totalYuan", BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP));
         orderRow.put("remark", noteOut);
         orderRow.put("extraCols", extraCols);
@@ -279,7 +328,13 @@ public final class OrderStore {
                 }
             }
             if (LoyaltyStore.anyEnabled()) {
-                Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
+                Map<String, Object> snap;
+                if (demoPay) {
+                    snap = LoyaltyStore.previewPrice(subtotal, username, coupon);
+                    snap.put("payBalanceYuan", 0.0);
+                } else {
+                    snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
+                }
                 applyLoyaltySnapshot(orderId, snap);
                 if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()) {
                     try {
@@ -412,6 +467,39 @@ public final class OrderStore {
         return out;
     }
 
+    public static Map<String, Object> pageOrdersOwnedByMerchant(
+            String ownerUsername, String status, int page, int size) {
+        requireEnabled();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) throw new IllegalArgumentException("未登录");
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String st = status == null || status.isBlank() ? null : status;
+        PageHelper.startPage(page, size);
+        List<Map<String, Object>> raw = mapper().selectOrdersOwnedByMerchant(
+                ORDER, LINE, ArchiveStore.itemTable(), owner, st);
+        PageInfo<Map<String, Object>> pi = new PageInfo<>(raw == null ? List.of() : raw);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : pi.getList()) {
+            Map<String, Object> m = shapeOrder(r);
+            m.put("lines", listLines(num(r.get("id"))));
+            list.add(m);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", pi.getTotal());
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    public static boolean merchantOwnsOrder(String ownerUsername, long orderId) {
+        requireEnabled();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank() || orderId <= 0) return false;
+        return mapper().countMerchantOwnedLines(LINE, ArchiveStore.itemTable(), orderId, owner) > 0;
+    }
+
     public static void completeByReservation(long reservationId) {
         advanceByReservation(reservationId, "complete");
     }
@@ -484,10 +572,23 @@ public final class OrderStore {
         String act = action == null ? "" : action.trim().toLowerCase(Locale.ROOT);
         String next;
         if ("confirm".equals(act) && "pending".equals(st)) next = "confirmed";
-        // 发货/出餐须先确认，禁止 pending 跳步（与基线一致）
+        // 发货/出餐须先确认，禁止 pending 跳步
         else if ("ship".equals(act) && "confirmed".equals(st)) next = "shipped";
-        // 完成必须先发货/出餐；售后中不可完成
-        else if ("complete".equals(act) && "shipped".equals(st)) {
+        else if ("transit".equals(act) && "shipped".equals(st) && ArchiveStore.shopMarketplaceEnabled()) {
+            next = "in_transit";
+        }
+        else if ("sign".equals(act)
+                && ("shipped".equals(st) || "in_transit".equals(st))
+                && ArchiveStore.shopMarketplaceEnabled()) {
+            next = "signed";
+        }
+        // 完成：单店 shipped→completed；多店 signed→completed（亦可商家从运输中办结）
+        else if ("complete".equals(act)) {
+            boolean mp = ArchiveStore.shopMarketplaceEnabled();
+            boolean ok = mp
+                    ? ("signed".equals(st) || "in_transit".equals(st) || "shipped".equals(st))
+                    : "shipped".equals(st);
+            if (!ok) throw new IllegalStateException("当前状态不可执行：" + act);
             if ("pending".equals(String.valueOf(m.getOrDefault("refundStatus", "")))) {
                 throw new IllegalStateException("售后处理中，不可完成订单");
             }
@@ -550,19 +651,38 @@ public final class OrderStore {
     }
 
     public static Map<String, Object> dashboard() {
+        return dashboard(null);
+    }
+
+    public static Map<String, Object> dashboard(String ownerUsername) {
         if (!enabled) return Map.of();
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("pendingOrders", mapper().countByStatus(ORDER, "pending"));
         m.put("confirmedOrders", mapper().countByStatus(ORDER, "confirmed"));
         m.put("shippedOrders", mapper().countByStatus(ORDER, "shipped"));
         m.put("completedOrders", mapper().countByStatus(ORDER, "completed"));
+        if (ArchiveStore.shopMarketplaceEnabled()) {
+            try {
+                m.put("inTransitOrders", mapper().countByStatus(ORDER, "in_transit"));
+                m.put("signedOrders", mapper().countByStatus(ORDER, "signed"));
+            } catch (Exception ignored) {
+                m.put("inTransitOrders", 0);
+                m.put("signedOrders", 0);
+            }
+            m.put("salesTotalYuan", 0.0);
+        }
         return m;
     }
 
     public static Map<String, Object> chartStats() {
+        return chartStats(null);
+    }
+
+    public static Map<String, Object> chartStats(String ownerUsername) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("hotItemSeries", List.of());
         if (!enabled) return out;
         try {
             List<Map<String, Object>> status = mapper().selectStatusSeries(ORDER);
@@ -598,6 +718,7 @@ public final class OrderStore {
         m.put("refundStatus", str(first(raw, "refundStatus", "refund_status")));
         m.put("refundReason", str(first(raw, "refundReason", "refund_reason")));
         m.put("refundAt", fmt(first(raw, "refundAt", "refund_at")));
+        m.put("payChannel", str(first(raw, "payChannel", "pay_channel")));
         m.put("createdAt", fmt(first(raw, "createdAt", "created_at")));
         m.put("updatedAt", fmt(first(raw, "updatedAt", "updated_at")));
         String un = str(raw.get("username"));
@@ -665,6 +786,10 @@ public final class OrderStore {
         ensureOrderColumn("refund_at", "DATETIME NULL");
     }
 
+    private static void ensurePayChannelColumn() {
+        ensureOrderColumn("pay_channel", "VARCHAR(16) DEFAULT ''");
+    }
+
     private static void applyLoyaltySnapshot(long orderId, Map<String, Object> snap) {
         if (snap == null || orderId <= 0) return;
         double discount = toDouble(snap.get("discountYuan"));
@@ -700,8 +825,8 @@ public final class OrderStore {
             throw new IllegalStateException("无权申请");
         }
         String st = String.valueOf(m.get("status"));
-        if (!"shipped".equals(st) && !"completed".equals(st)) {
-            throw new IllegalStateException("仅配送中/已完成订单可申请售后");
+        if (!"shipped".equals(st) && !"in_transit".equals(st) && !"signed".equals(st) && !"completed".equals(st)) {
+            throw new IllegalStateException("仅已发货及之后状态可申请售后");
         }
         String rs = String.valueOf(m.getOrDefault("refundStatus", ""));
         if ("pending".equals(rs) || "approved".equals(rs)) {

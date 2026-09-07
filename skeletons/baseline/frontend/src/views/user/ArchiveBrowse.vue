@@ -221,6 +221,18 @@
             @click="toggleFav(detail)"
           >{{ favIds.includes(detail.id) ? '已收藏' : '收藏' }}</el-button>
         </div>
+        <section v-if="reviewOn && detail.id" class="item-reviews">
+          <h4>用户评价</h4>
+          <div v-if="!itemReviews.length" class="muted">暂无评价</div>
+          <article v-for="rv in itemReviews" :key="rv.id" class="rv">
+            <div class="rv-hd">
+              <el-rate :model-value="rv.rating" disabled />
+              <span class="muted">{{ rv.displayName || rv.username || '用户' }} · {{ rv.createdAt }}</span>
+            </div>
+            <p>{{ rv.body || '（无文字）' }}</p>
+            <p v-if="rv.reply" class="rv-reply">商家回复：{{ rv.reply }}</p>
+          </article>
+        </section>
       </template>
     </el-drawer>
 
@@ -422,6 +434,7 @@ import {
   followChannelOptions,
   followChannelPlaceholder,
   hasTrait,
+  hasCap,
   getSchema,
   isArchiveLogEnabled,
   isBrowseHistoryEnabled,
@@ -811,6 +824,8 @@ const tags = ref([])
 const recRef = ref(null)
 const detailVisible = ref(false)
 const detail = ref(null)
+const itemReviews = ref([])
+const reviewOn = computed(() => hasCap('order_review'))
 const applyVisible = ref(false)
 const applyRow = ref(null)
 const applyRemark = ref('')
@@ -862,6 +877,7 @@ async function openDetail(row) {
   detailVisible.value = true
   threadList.value = []
   logList.value = []
+  itemReviews.value = []
   resetLogForm()
   if (!row?.id) return
   try {
@@ -874,6 +890,14 @@ async function openDetail(row) {
     try {
       await touchBrowseHistory(row.id)
     } catch { /* ignore */ }
+  }
+  if (reviewOn.value) {
+    try {
+      const rr = await http.get(`/api/order-reviews/by-item/${row.id}`, { params: { page: 1, size: 20 } })
+      itemReviews.value = rr.data?.list || []
+    } catch {
+      itemReviews.value = []
+    }
   }
 }
 
@@ -1335,6 +1359,12 @@ onMounted(async () => {
   margin-bottom: 12px; background: #e0f2fe;
 }
 .drawer-acts { margin-top: 24px; }
+.item-reviews { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.item-reviews h4 { margin: 0 0 10px; font-size: 15px; }
+.item-reviews .rv { margin-bottom: 12px; }
+.item-reviews .rv-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.item-reviews .rv p { margin: 0; line-height: 1.5; }
+.item-reviews .rv-reply { margin-top: 6px !important; color: var(--portal-muted, #64748b); font-size: 13px; }
 .thread { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .alog { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .alog-form { margin-bottom: 12px; }

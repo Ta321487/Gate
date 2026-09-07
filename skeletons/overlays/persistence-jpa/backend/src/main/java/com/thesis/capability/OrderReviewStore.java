@@ -100,6 +100,46 @@ public final class OrderReviewStore {
         return get(id);
     }
 
+    public static boolean delete(long id) {
+        require();
+        return db().update("DELETE FROM " + TABLE + " WHERE id=?", id) > 0;
+    }
+
+    /** 商品详情：按订单明细 item_id 汇总已完成订单的评价（公开只读）。 */
+    public static Map<String, Object> pageByItem(long itemId, int page, int size) {
+        require();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String orderTable = OrderStore.orderTable();
+        String lineTable = OrderStore.lineTable();
+        if (itemId <= 0 || orderTable == null || orderTable.isBlank() || lineTable == null || lineTable.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page);
+            empty.put("size", size);
+            return empty;
+        }
+        String joinSql =
+                " FROM " + TABLE + " r"
+                        + " INNER JOIN " + lineTable + " l ON l.order_id=r.order_id"
+                        + " INNER JOIN " + orderTable + " o ON o.id=r.order_id AND o.status='completed'"
+                        + " WHERE l.item_id=?";
+        Integer total = db().queryForObject("SELECT COUNT(DISTINCT r.id)" + joinSql, Integer.class, itemId);
+        List<Map<String, Object>> list = db().query(
+                "SELECT r.*" + joinSql + " GROUP BY r.id ORDER BY r.id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> map(rs),
+                itemId,
+                size,
+                (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list == null ? List.of() : list);
+        out.put("total", total == null ? 0 : total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
     public static Map<String, Object> getByOrder(long orderId) {
         if (!enabled) return null;
         List<Map<String, Object>> rows = db().query(

@@ -269,6 +269,45 @@ public class UserStore {
         return register(username, password, nickname, role, "", Map.of());
     }
 
+    /**
+     * 多店商家入驻：role=admin、非超管、岗位 shop_merchant、默认停用待审。
+     */
+    public static Profile registerMerchant(
+            String username,
+            String password,
+            String nickname,
+            String phone,
+            Map<String, String> extras) {
+        if (username == null || !username.matches("^[a-zA-Z0-9_]{3,32}$")) {
+            throw new IllegalArgumentException("用户名需为 3–32 位字母/数字/下划线");
+        }
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("密码至少 6 位");
+        }
+        if (get(username) != null) {
+            throw new IllegalStateException("用户名已存在");
+        }
+        String nick = nickname == null || nickname.isBlank() ? username : nickname.trim();
+        String ph = phone == null ? "" : phone.trim();
+        Map<String, String> ex = ProfileFields.filterExtras(extras);
+        ProfileFields.requireFilled(ph, ex, true, "staff");
+        String encoded = PasswordHashes.encode(password);
+        ensureStaffColumns();
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("username", username);
+        row.put("password", encoded);
+        row.put("nickname", nick);
+        row.put("phone", ph);
+        row.put("avatarUrl", "");
+        if (hasProfileJson()) {
+            row.put("profileJson", writeExtras(ex));
+            mapper().insertMerchantWithProfile(row);
+        } else {
+            mapper().insertMerchantPlain(row);
+        }
+        return get(username);
+    }
+
     public static List<Map<String, Object>> listByRole(String role, String keyword) {
         return listManaged(role, "users", keyword);
     }
@@ -289,10 +328,13 @@ public class UserStore {
                 .filter(p -> !p.superAdmin)
                 .filter(p -> {
                     boolean isSub = "admin".equals(p.role);
+                    boolean isMerchant = isSub && "shop_merchant".equals(
+                            p.staffPost == null ? "" : p.staffPost.trim());
                     boolean isUser = !isSub && (ur.equals(p.role) || "user".equals(p.role)
                             || "student".equals(p.role) || "reader".equals(p.role)
                             || "patient".equals(p.role));
-                    if ("subadmins".equals(sc)) return isSub;
+                    if ("merchants".equals(sc)) return isMerchant;
+                    if ("subadmins".equals(sc)) return isSub && !isMerchant;
                     if ("all".equals(sc)) return isSub || isUser;
                     return isUser;
                 })

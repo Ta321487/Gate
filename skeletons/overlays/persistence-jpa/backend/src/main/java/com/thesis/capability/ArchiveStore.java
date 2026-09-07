@@ -37,6 +37,7 @@ public final class ArchiveStore {
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
     private static boolean galleryEnabled = false;
+    private static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String itemTagFk = "post_id";
@@ -135,6 +136,14 @@ public final class ArchiveStore {
 
     public static boolean userPublishEnabled() {
         return userPublishEnabled;
+    }
+
+    public static void configureShopMarketplace(boolean enabled) {
+        shopMarketplaceEnabled = enabled;
+    }
+
+    public static boolean shopMarketplaceEnabled() {
+        return shopMarketplaceEnabled;
     }
 
     /** L1 标签：FORUM 的 tag + post_tag */
@@ -363,6 +372,15 @@ public final class ArchiveStore {
         Object startRaw = patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt");
         Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
         String status = availStatus(stock, startRaw, endRaw);
+        if (shopMarketplaceEnabled) {
+            if (patch.containsKey("status") && patch.get("status") != null) {
+                String st = String.valueOf(patch.get("status")).trim();
+                if (!st.isBlank()) status = st;
+            } else {
+                String cur = str(m.get("status")).trim();
+                if ("pending_review".equals(cur)) status = cur;
+            }
+        }
         db().update(
                 "UPDATE " + ITEM + " SET title=?, " + authorColumn() + "=?, " + isbnColumn()
                         + "=?, category_id=?, stock=?, status=?, cover_url=? WHERE id=?",
@@ -419,6 +437,7 @@ public final class ArchiveStore {
         patchOptInt(id, patch, "releaseYear", "release_year");
         patchOptStr(id, patch, "region", "region", 64);
         patchOptStr(id, patch, "summary", "summary", 512);
+        patchOptStr(id, patch, "harvestOn", "harvest_on", 32);
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
         if (patch.containsKey("foundAt")) {
             Timestamp ts = parseTs(patch.get("foundAt"));
@@ -487,6 +506,35 @@ public final class ArchiveStore {
         return db().update("UPDATE " + ITEM + " SET deleted_at=NULL WHERE id=?", id) > 0;
     }
 
+    /** 多店：超管将待审商品设为上架（有库存）或不可用（无库存）。 */
+    public static Map<String, Object> approveMarketplaceItem(long id) {
+        Map<String, Object> m = getItemRaw(id);
+        if (m == null) return null;
+        int stock = m.get("stock") instanceof Number n ? n.intValue() : 0;
+        String status = stock > 0 ? "available" : "unavailable";
+        db().update("UPDATE " + ITEM + " SET status=? WHERE id=?", status, id);
+        return getItemAdmin(id);
+    }
+
+    /** 库存预警：stock &lt; below；可选按店主过滤。 */
+    public static int countLowStock(int below, String ownerUsername) {
+        if (ITEM.isBlank() || below < 1) return 0;
+        try {
+            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM " + ITEM + " WHERE stock < ?");
+            List<Object> args = new ArrayList<>();
+            args.add(below);
+            if (hasDeletedAt()) sql.append(" AND deleted_at IS NULL");
+            if (ownerUsername != null && !ownerUsername.isBlank() && hasOwnerUsername()) {
+                sql.append(" AND owner_username=?");
+                args.add(ownerUsername.trim());
+            }
+            Integer n = db().queryForObject(sql.toString(), Integer.class, args.toArray());
+            return n == null ? 0 : n;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public static Map<String, Object> getItemRaw(long id) {
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + " WHERE id=?",
@@ -510,12 +558,12 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
-        return pageItems(keyword, categoryId, null, false, page, size, false);
+        return pageItems(keyword, categoryId, null, false, page, size, false, null);
     }
 
     public static Map<String, Object> pageItems(
             String keyword, Long categoryId, List<Long> tagIds, boolean includeDeleted, int page, int size) {
-        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, false);
+        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, false, null);
     }
 
     /**
@@ -529,6 +577,21 @@ public final class ArchiveStore {
             int page,
             int size,
             boolean openCatalogOnly) {
+        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, openCatalogOnly, null);
+    }
+
+    /**
+     * @param ownerUsernameFilter 非空且有 owner_username 列时按店主过滤；null/空白 = 不过滤
+     */
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly,
+            String ownerUsernameFilter) {
         expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
@@ -540,12 +603,17 @@ public final class ArchiveStore {
         if (openCatalogOnly && (hasStartAt() || hasEndAt())) {
             where.append(" AND status='available'");
             if (hasEndAt()) {
-                // 查寝窗等：结束前仍可浏览/登记
                 where.append(" AND (end_at IS NULL OR end_at > NOW())");
             } else {
-                // 仅出发/开场：开始后下架
                 where.append(" AND (start_at IS NULL OR start_at > NOW())");
             }
+        }
+        if (openCatalogOnly && shopMarketplaceEnabled) {
+            where.append(" AND status='available'");
+        }
+        if (ownerUsernameFilter != null && !ownerUsernameFilter.isBlank() && hasOwnerUsername()) {
+            where.append(" AND owner_username=?");
+            args.add(ownerUsernameFilter.trim());
         }
         if (categoryId != null && categoryId > 0) {
             where.append(" AND category_id=?");
@@ -580,6 +648,12 @@ public final class ArchiveStore {
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 商家后台：仅本店商品（含待审）。 */
+    public static Map<String, Object> pageItemsForMerchant(
+            String ownerUsername, String keyword, Long categoryId, int page, int size) {
+        return pageItems(keyword, categoryId, null, false, page, size, false, ownerUsername);
     }
 
     private static Map<String, Object> mapItemRow(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -646,6 +720,7 @@ public final class ArchiveStore {
         putOptInt(m, rs, "release_year", "releaseYear");
         putOptStr(m, rs, "region", "region");
         putOptStr(m, rs, "summary", "summary");
+        putOptStr(m, rs, "harvest_on", "harvestOn");
         putOptStr(m, rs, "item_kind", "itemKind");
         try {
             m.put("foundAt", fmt(rs.getTimestamp("found_at")));

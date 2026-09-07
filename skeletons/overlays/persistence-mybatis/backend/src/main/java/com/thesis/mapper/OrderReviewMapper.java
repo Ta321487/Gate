@@ -44,4 +44,19 @@ public interface OrderReviewMapper {
     List<Map<String, Object>> selectAllOrderByIdDesc();
 
     List<Map<String, Object>> selectByUsername(@Param("username") String username);
+
+    @Delete("DELETE FROM order_review WHERE id=#{id}")
+    int deleteById(@Param("id") long id);
+
+    int countByItem(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable,
+            @Param("itemId") long itemId);
+
+    List<Map<String, Object>> selectByItem(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable,
+            @Param("itemId") long itemId,
+            @Param("size") int size,
+            @Param("offset") int offset);
 }

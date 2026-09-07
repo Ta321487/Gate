@@ -76,6 +76,42 @@ public final class OrderReviewStore {
         return get(id);
     }
 
+    public static boolean delete(long id) {
+        require();
+        return mapper().deleteById(id) > 0;
+    }
+
+    /** 商品详情：按订单明细 item_id 汇总已完成订单的评价（公开只读）。 */
+    public static Map<String, Object> pageByItem(long itemId, int page, int size) {
+        require();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String orderTable = OrderStore.orderTable();
+        String lineTable = OrderStore.lineTable();
+        if (itemId <= 0 || orderTable == null || orderTable.isBlank() || lineTable == null || lineTable.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page);
+            empty.put("size", size);
+            return empty;
+        }
+        int total = mapper().countByItem(orderTable, lineTable, itemId);
+        List<Map<String, Object>> raw = mapper().selectByItem(orderTable, lineTable, itemId, size, (page - 1) * size);
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (raw != null) {
+            for (Map<String, Object> r : raw) {
+                list.add(shape(r));
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
     public static Map<String, Object> getByOrder(long orderId) {
         if (!enabled) return null;
         return shape(mapper().selectByOrderId(orderId));

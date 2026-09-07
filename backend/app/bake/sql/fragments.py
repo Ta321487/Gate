@@ -687,6 +687,7 @@ def ensure_archive_flag_columns(
     allow_checkin: bool = False,
     peer_accept: bool = False,
     user_publish: bool = False,
+    shop_marketplace: bool = False,
     check_mutex: bool = False,
     apply_deadline: bool = False,
     schedule: bool = False,
@@ -698,8 +699,8 @@ def ensure_archive_flag_columns(
     cols: list[tuple[str, str]] = []
     if allow_checkin:
         cols.extend(CHECKIN_CODE_COLUMNS)
-    # 互选确认人、门户发布归属均用 owner_username
-    if peer_accept or user_publish:
+    # 互选确认人、门户发布归属均用 owner_username；商城多店商品归属亦复用
+    if peer_accept or user_publish or shop_marketplace:
         cols.extend(OWNER_USERNAME_COLUMNS)
     if check_mutex:
         cols.extend(MUTEX_CODE_COLUMNS)

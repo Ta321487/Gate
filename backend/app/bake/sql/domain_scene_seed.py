@@ -1569,11 +1569,11 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note) VALUES
-(1, '红富士苹果（5 斤）', '39.90', 'FR-AP01', 1, 50, 'available', '脆甜多汁，产地直发，适合鲜食与礼盒。'),
-(2, '应季草莓盒装', '28.00', 'FR-ST02', 1, 35, 'available', '当季鲜摘，冷链发货，建议冷藏保存。'),
-(3, '有机生菜', '8.50', 'VG-LT01', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅；清洗后冷藏。'),
-(4, '五常大米 5kg', '68.00', 'GO-RI01', 3, 40, 'available', '东北五常产区，真空包装，常温阴凉存放。');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on) VALUES
+(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01'),
+(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03'),
+(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05'),
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -1587,8 +1587,8 @@ INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver
 (1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
 (2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '红富士苹果（5 斤）', 39.90, 1),
-(2, 2, 2, '应季草莓盒装', 28.00, 1);
+(1, 1, 1, '红富士苹果', 39.90, 1),
+(2, 2, 2, '应季草莓', 28.00, 1);
 """
 
 _SHOP_PRINT = """\
@@ -1765,6 +1765,213 @@ def _shop_sql_condition_grade(sql: str, *, campus: bool) -> str:
     )
 
 
+def _shop_sql_farm_attrs(sql: str, *, farm: bool) -> str:
+    """仅农产皮注入产地/采摘时间；其它商城皮剥掉，避免串列。"""
+    sql = re.sub(
+        r"\n\s*region\s+VARCHAR\([^)]+\)[^,\n]*,?",
+        "",
+        sql,
+        flags=re.I,
+    )
+    sql = re.sub(
+        r"\n\s*harvest_on\s+VARCHAR\([^)]+\)[^,\n]*,?",
+        "",
+        sql,
+        flags=re.I,
+    )
+    if not farm:
+        return sql
+    if not re.search(r"\bregion\b", sql, re.I):
+        sql = re.sub(
+            r"(CREATE TABLE IF NOT EXISTS\s+product\s*\([^;]*?)(\n\s*created_at\b)",
+            r"\1\n  region VARCHAR(64) DEFAULT '',\2",
+            sql,
+            count=1,
+            flags=re.I | re.S,
+        )
+    if not re.search(r"\bharvest_on\b", sql, re.I):
+        sql = re.sub(
+            r"(CREATE TABLE IF NOT EXISTS\s+product\s*\([^;]*?)(\n\s*created_at\b)",
+            r"\1\n  harvest_on VARCHAR(32) DEFAULT '',\2",
+            sql,
+            count=1,
+            flags=re.I | re.S,
+        )
+    return sql
+
+
+def _shop_sql_marketplace(sql: str, *, farm: bool = False) -> str:
+    """多店 DDL：公告待审列。owner_username 由 ensure_archive_flag_columns 注入。
+
+    默认单店模板不得残留这些列；仅 marketplace 开题才补。
+    """
+    _ = farm  # 农产列仍由 _shop_sql_farm_attrs 负责
+    sql = re.sub(
+        r"\n\s*audit_status\s+VARCHAR\([^)]+\)[^,\n]*,?",
+        "",
+        sql,
+        flags=re.I,
+    )
+    sql = re.sub(
+        r"\n\s*submitter_username\s+VARCHAR\([^)]+\)[^,\n]*,?",
+        "",
+        sql,
+        flags=re.I,
+    )
+    if not re.search(
+        r"CREATE TABLE IF NOT EXISTS\s+sys_notice\s*\([^;]*\baudit_status\b",
+        sql,
+        re.I | re.S,
+    ):
+        sql = re.sub(
+            r"(CREATE TABLE IF NOT EXISTS\s+sys_notice\s*\([^;]*?)(\n\s*created_at\b)",
+            r"\1\n  audit_status VARCHAR(32) DEFAULT 'approved',\n"
+            r"  submitter_username VARCHAR(64) DEFAULT '',\2",
+            sql,
+            count=1,
+            flags=re.I | re.S,
+        )
+    # 留言双通道：须在种子 INSERT 之前建表（ensure_guestbook 在更后才追加 DDL）
+    _gb_ddl = """
+CREATE TABLE IF NOT EXISTS sys_guestbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  reply VARCHAR(500) DEFAULT '',
+  reply_username VARCHAR(64) DEFAULT '',
+  replied_at DATETIME NULL,
+  channel VARCHAR(16) DEFAULT 'user',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_gb_created (id),
+  KEY idx_gb_user (username)
+);
+"""
+    if not re.search(
+        r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\(",
+        sql,
+        re.I,
+    ):
+        m = re.search(r"INSERT INTO sys_user\b", sql, re.I)
+        if m:
+            sql = sql[: m.start()] + _gb_ddl.strip() + "\n\n" + sql[m.start() :]
+        else:
+            sql = sql.rstrip() + "\n" + _gb_ddl
+    elif not re.search(
+        r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*\bchannel\b",
+        sql,
+        re.I | re.S,
+    ):
+        sql = re.sub(
+            r"(CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*?)(\n\s*created_at\b)",
+            r"\1\n  channel VARCHAR(16) DEFAULT 'user',\2",
+            sql,
+            count=1,
+            flags=re.I | re.S,
+        )
+    return sql
+
+
+# 多店种子：平台超管 + subadmin(店长甲，岗位由 append_staff 绑定) + merchant_b + 买家
+_SHOP_MP_FARM = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '烟台果园店', '13800000001',
+ '{"shopName":"烟台果园店","shopIntro":"胶东鲜果直供","shopPhone":"13800000001"}',
+ 0, 1, 1),
+('merchant_b', 'mer123', 'admin', '丹东莓园店', '13800000012',
+ '{"shopName":"丹东莓园店","shopIntro":"应季浆果","shopPhone":"13800000012"}',
+ 0, 1, 1),
+('user', 'user123', 'user', '买家甲', '13800000002',
+ '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
+ enabled=VALUES(enabled);
+
+UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin', super_admin=0
+WHERE username IN ('subadmin', 'merchant_b');
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, owner_username) VALUES
+(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01', 'subadmin'),
+(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03', 'merchant_b'),
+(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05', 'subadmin'),
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20', 'merchant_b');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '农产选购', '多店直供；下单后可在订单页查看进度。', 'admin', '平台管理员', 'approved', ''
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='农产选购' OR title='商城开业');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '金秋苹果促销', '烟台红富士满 2 件减 5 元（待平台审核）。', 'subadmin', '烟台果园店', 'pending', 'subadmin'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='金秋苹果促销');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '红富士苹果', 39.90, 1),
+(2, 2, 2, '应季草莓', 28.00, 1);
+
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'user', '买家甲', '请问草莓能否冷链配送？', 'user'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='user' AND body LIKE '请问草莓%');
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'subadmin', '烟台果园店', '申请上架金秋促销活动，请平台审核。', 'merchant'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin' AND body LIKE '申请上架金秋%');
+"""
+
+_SHOP_MP_RETAIL = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '日用优选店', '13800000001',
+ '{"shopName":"日用优选店","shopIntro":"百货日用","shopPhone":"13800000001"}',
+ 0, 1, 1),
+('merchant_b', 'mer123', 'admin', '数码配件店', '13800000012',
+ '{"shopName":"数码配件店","shopIntro":"手机周边","shopPhone":"13800000012"}',
+ 0, 1, 1),
+('user', 'user123', 'user', '买家甲', '13800000002',
+ '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
+ enabled=VALUES(enabled);
+
+UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin', super_admin=0
+WHERE username IN ('subadmin', 'merchant_b');
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, owner_username) VALUES
+(1, '日用收纳盒', '29.90', 'SKU-A01', 2, 29, 'available', '多格收纳', 'subadmin'),
+(2, '蓝牙耳机套装', '129.00', 'SKU-B02', 1, 40, 'available', '续航升级', 'merchant_b'),
+(3, '保温杯 500ml', '59.00', 'SKU-C03', 2, 20, 'available', '锁温不锈钢', 'subadmin'),
+(4, '手机支架', '19.90', 'SKU-D04', 3, 50, 'available', '桌面懒人支架', 'merchant_b');
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '商城开业', '多店入驻；下单后可在订单页查看进度。', 'admin', '平台管理员', 'approved', ''
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(1, 'user', 'pending', 29.90, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '日用收纳盒', 29.90, 1);
+
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'user', '买家甲', '收货地址能否修改？', 'user'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='user' AND body LIKE '收货地址%');
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'subadmin', '日用优选店', '申请参加平台百货周活动。', 'merchant'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin' AND body LIKE '申请参加平台百货%');
+"""
+
+
+
 def apply_domain_scene_seed(
     domain: str,
     sql: str,
@@ -1786,7 +1993,9 @@ def apply_domain_scene_seed(
         pk = shop_product_kind(title, proposal_text)
         ck = shop_catalog_kind(title, proposal_text)
         campus = pk == "campus"
+        farm = pk == "farm"
         sql = _shop_sql_condition_grade(sql, campus=campus)
+        sql = _shop_sql_farm_attrs(sql, farm=farm)
         seed = {
             "campus": _SHOP_CAMPUS,
             "print": _SHOP_PRINT,
@@ -1797,6 +2006,12 @@ def apply_domain_scene_seed(
         }.get(pk)
         if seed is None:
             seed = _shop_retail_seed_for(ck)
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        if scan_shop_marketplace(title, proposal_text):
+            sql = _shop_sql_marketplace(sql, farm=farm)
+            # 多店种子覆盖单店种子（含店长账号与商品归属）
+            seed = _SHOP_MP_FARM if farm else _SHOP_MP_RETAIL
     elif domain == "DOM-FOOD" and food_product_kind(title, proposal_text) == "canteen":
         seed = _FOOD_CANTEEN
     elif domain == "DOM-PARKING":

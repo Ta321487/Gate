@@ -45,13 +45,21 @@
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
         <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="showStock" :label="fieldLabel('stock', '库存')" width="100">
+      <el-table-column v-if="showStock" :label="fieldLabel('stock', '库存')" width="110">
         <template #default="{ row }">
           <template v-if="stockAsToggle">
             <el-tag v-if="Number(row.stock) > 0" size="small" type="success" effect="plain">是</el-tag>
             <el-tag v-else size="small" type="info">否</el-tag>
           </template>
-          <template v-else>{{ row.stock }}</template>
+          <template v-else>
+            <span :class="{ 'stock-warn': isLowStock(row) }">{{ row.stock }}</span>
+            <el-tag v-if="isLowStock(row)" size="small" type="danger" effect="plain" class="warn-tag">预警</el-tag>
+          </template>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="marketplace" label="上架" width="100">
+        <template #default="{ row }">
+          <el-tag size="small" :type="shelfTagType(row)" effect="plain">{{ shelfLabel(row) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column v-if="hasStartAt" prop="startAt" :label="fieldLabel('startAt', '开始时间')" width="170" />
@@ -73,9 +81,15 @@
           <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button
+            v-if="marketplace && isSuper && isPendingReview(row)"
+            link
+            type="success"
+            @click="approve(row)"
+          >审核上架</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>
           <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? softCopy.verb : '删除' }}</el-button>
         </template>
@@ -231,7 +245,36 @@ import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 
 const archive = archiveCopy()
-const softCopy = softDeleteCopy()
+const softCopyBase = softDeleteCopy()
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const softCopy = computed(() => {
+  if (!marketplace.value) return softCopyBase
+  return { ...softCopyBase, verb: '强制下架', off: '已强制下架', include: '含下架' }
+})
+const stockWarnBelow = computed(() => {
+  const n = Number(getSchema()?.stockWarnBelow)
+  return Number.isFinite(n) && n > 0 ? n : 10
+})
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+function isLowStock(row) {
+  if (!marketplace.value || !row || stockAsToggle.value) return false
+  return Number(row.stock) < stockWarnBelow.value
+}
+function isPendingReview(row) {
+  return String(row?.status || '') === 'pending_review'
+}
+function shelfLabel(row) {
+  const st = String(row?.status || '')
+  if (st === 'pending_review') return '待审核'
+  if (st === 'unavailable' || row?.deleted) return '已下架'
+  return '已上架'
+}
+function shelfTagType(row) {
+  const st = String(row?.status || '')
+  if (st === 'pending_review') return 'warning'
+  if (st === 'unavailable' || row?.deleted) return 'info'
+  return 'success'
+}
 const galleryOn = computed(() => isGalleryEnabled())
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
@@ -443,16 +486,23 @@ async function save() {
 }
 
 async function remove(row) {
-  const verb = softDelete.value ? softCopy.verb : '删除'
+  const verb = softDelete.value ? softCopy.value.verb : '删除'
   await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
   await http.delete(`/api/archive/${row.id}`)
-  ElMessage.success(softDelete.value ? `已${softCopy.verb}` : '已删除')
+  ElMessage.success(softDelete.value ? `已${softCopy.value.verb}` : '已删除')
   load()
 }
 
 async function restore(row) {
   await http.post(`/api/archive/${row.id}/restore`)
   ElMessage.success('已恢复')
+  load()
+}
+
+async function approve(row) {
+  await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, '商品审核')
+  await http.post(`/api/archive/${row.id}/approve`)
+  ElMessage.success('已审核上架')
   load()
 }
 
@@ -673,6 +723,8 @@ onMounted(async () => {
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.stock-warn { color: #b91c1c; font-weight: 700; margin-right: 4px; }
+.warn-tag { margin-left: 2px; }
 .muted { margin-left: 8px; color: var(--portal-muted, #909399); font-size: 12px; }
 .cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cover-preview {

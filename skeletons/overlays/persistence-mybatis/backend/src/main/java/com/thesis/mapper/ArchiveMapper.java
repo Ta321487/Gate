@@ -78,8 +78,10 @@ public interface ArchiveMapper {
             @Param("tagIds") List<Long> tagIds,
             @Param("itemTagTable") String itemTagTable,
             @Param("itemTagFk") String itemTagFk,
-            @Param("openCatalogOnly") boolean openCatalogOnly,
-            @Param("filterByEnd") boolean filterByEnd);
+            @Param("requireAvailable") boolean requireAvailable,
+            @Param("scheduleFilter") boolean scheduleFilter,
+            @Param("filterByEnd") boolean filterByEnd,
+            @Param("ownerUsername") String ownerUsername);
 
     @Update("UPDATE `${itemTable}` SET status='unavailable' "
             + "WHERE status='available' AND start_at IS NOT NULL AND start_at <= NOW()")
@@ -146,4 +148,10 @@ public interface ArchiveMapper {
 
     @Select("SELECT id FROM `${tagTable}` WHERE name=#{name} LIMIT 1")
     Long selectTagIdByName(@Param("tagTable") String tagTable, @Param("name") String name);
+
+    int countLowStock(
+            @Param("itemTable") String itemTable,
+            @Param("below") int below,
+            @Param("excludeDeleted") boolean excludeDeleted,
+            @Param("ownerUsername") String ownerUsername);
 }

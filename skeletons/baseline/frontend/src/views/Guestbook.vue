@@ -28,7 +28,7 @@
         </div>
         <p class="body">{{ n.body }}</p>
         <div v-if="n.reply" class="reply">
-          <span class="reply-tag">管理员回复</span>
+          <span class="reply-tag">{{ replyTag }}</span>
           <p>{{ n.reply }}</p>
           <time v-if="n.repliedAt">{{ n.repliedAt }}</time>
         </div>
@@ -55,14 +55,16 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import GuestLoginHint from '../components/GuestLoginHint.vue'
-import { schemaLabels } from '../utils/domainSchema.js'
+import { getSchema, schemaLabels } from '../utils/domainSchema.js'
 import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 
 const labels = computed(() => schemaLabels())
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const pageTitle = computed(() => labels.value.guestbookPageTitle || '留言板')
 const pageLead = computed(
   () => labels.value.guestbookPageLead || '欢迎留下建议或咨询；管理员可简短回复。',
 )
+const replyTag = computed(() => (marketplace.value ? '平台回复' : '管理员回复'))
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const canPost = computed(() => isLoggedIn())
 

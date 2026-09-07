@@ -14,6 +14,10 @@
         <div class="chart-title">{{ stockTitle }}</div>
         <div ref="stockEl" class="chart" />
       </div>
+      <div v-if="hotOpt" class="chart-box wide">
+        <div class="chart-title">热销商品</div>
+        <div ref="hotEl" class="chart" />
+      </div>
     </div>
   </section>
 </template>
@@ -37,9 +41,11 @@ const props = defineProps({
 const statusEl = ref(null)
 const trendEl = ref(null)
 const stockEl = ref(null)
+const hotEl = ref(null)
 let statusChart
 let trendChart
 let stockChart
+let hotChart
 
 const stateLabels = computed(() => {
   const schema = getSchema() || {}
@@ -205,7 +211,29 @@ const stockOpt = computed(() => {
   }
 })
 
-const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || stockOpt.value))
+const hotOpt = computed(() => {
+  const series = (props.charts?.hotItemSeries || []).filter((x) => x?.name)
+  if (!series.length) return null
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { left: 48, right: 16, top: 24, bottom: 48 },
+    xAxis: {
+      type: 'category',
+      data: series.map((x) => x.name),
+      axisLabel: { interval: 0, rotate: series.length > 4 ? 28 : 0 },
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+      {
+        type: 'bar',
+        data: series.map((x) => Number(x.value) || 0),
+        barMaxWidth: 36,
+      },
+    ],
+  }
+})
+
+const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || stockOpt.value || hotOpt.value))
 
 function render() {
   if (statusOpt.value && statusEl.value) {
@@ -229,12 +257,20 @@ function render() {
     stockChart.dispose()
     stockChart = null
   }
+  if (hotOpt.value && hotEl.value) {
+    if (!hotChart) hotChart = echarts.init(hotEl.value)
+    hotChart.setOption(withPortalChartTheme(hotOpt.value), true)
+  } else if (hotChart) {
+    hotChart.dispose()
+    hotChart = null
+  }
 }
 
 function onResize() {
   statusChart?.resize()
   trendChart?.resize()
   stockChart?.resize()
+  hotChart?.resize()
 }
 
 watch(
@@ -257,6 +293,7 @@ onBeforeUnmount(() => {
   statusChart?.dispose()
   trendChart?.dispose()
   stockChart?.dispose()
+  hotChart?.dispose()
 })
 </script>
 

@@ -300,6 +300,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
+    @Value("${thesis.shop-marketplace:false}")
+    private boolean shopMarketplace;
+
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
@@ -315,6 +318,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configureGallery(galleryEnabled);
+        ArchiveStore.configureShopMarketplace(shopMarketplace);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }

@@ -67,7 +67,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">{{ confirmVerb }}</el-button>
           <el-button
@@ -77,7 +77,19 @@
             @click="act(row, 'ship')"
           >{{ shipVerb }}</el-button>
           <el-button
-            v-if="row.status === 'shipped' && row.refundStatus !== 'pending'"
+            v-if="marketplace && row.status === 'shipped'"
+            link
+            type="primary"
+            @click="act(row, 'transit')"
+          >运输中</el-button>
+          <el-button
+            v-if="marketplace && (row.status === 'shipped' || row.status === 'in_transit')"
+            link
+            type="primary"
+            @click="act(row, 'sign')"
+          >已签收</el-button>
+          <el-button
+            v-if="canComplete(row)"
             link
             type="success"
             @click="act(row, 'complete')"
@@ -163,6 +175,14 @@ const completeVerb = computed(() => {
   if (order.value.verbs?.complete) return order.value.verbs.complete
   return '完成'
 })
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+function canComplete(row) {
+  if (!row || row.refundStatus === 'pending') return false
+  if (marketplace.value) {
+    return ['shipped', 'in_transit', 'signed'].includes(row.status)
+  }
+  return row.status === 'shipped'
+}
 const list = ref([])
 const total = ref(0)
 const page = ref(1)

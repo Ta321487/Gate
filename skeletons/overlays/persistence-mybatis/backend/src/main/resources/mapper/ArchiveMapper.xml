@@ -54,13 +54,14 @@
         SELECT * FROM `${itemTable}`
         <where>
             <if test="excludeDeleted">AND deleted_at IS NULL</if>
-            <if test="openCatalogOnly">
-                AND status='available'
+            <if test="requireAvailable">AND status='available'</if>
+            <if test="scheduleFilter">
                 <choose>
                     <when test="filterByEnd">AND (end_at IS NULL OR end_at &gt; NOW())</when>
                     <otherwise>AND (start_at IS NULL OR start_at &gt; NOW())</otherwise>
                 </choose>
             </if>
+            <if test="ownerUsername != null and ownerUsername != ''">AND owner_username=#{ownerUsername}</if>
             <if test="categoryId != null and categoryId &gt; 0">AND category_id=#{categoryId}</if>
             <if test="like != null and like != ''">
                 AND (title LIKE #{like} OR `${authorCol}` LIKE #{like} OR `${isbnCol}` LIKE #{like})
@@ -118,5 +119,12 @@
         JOIN `${itemTagTable}` it ON it.tag_id=t.id
         WHERE it.`${itemTagFk}`=#{itemId}
         ORDER BY t.id
+    </select>
+
+    <select id="countLowStock" resultType="int">
+        SELECT COUNT(*) FROM `${itemTable}`
+        WHERE stock &lt; #{below}
+        <if test="excludeDeleted">AND deleted_at IS NULL</if>
+        <if test="ownerUsername != null and ownerUsername != ''">AND owner_username=#{ownerUsername}</if>
     </select>
 </mapper>

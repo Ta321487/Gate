@@ -420,8 +420,8 @@ export function profileFieldsForAudience(audience = 'user') {
   return profileFields().filter((f) => profileFieldAllowsAudience(f, audience))
 }
 
-export function profileFieldsOnRegister() {
-  return profileFieldsForAudience('user').filter((f) => f && f.onRegister)
+export function profileFieldsOnRegister(audience = 'user') {
+  return profileFieldsForAudience(audience).filter((f) => f && f.onRegister)
 }
 
 /** 管理端表格扩展列（跳过姓名/手机等已单独展示的底座）；受众与资料页一致 */

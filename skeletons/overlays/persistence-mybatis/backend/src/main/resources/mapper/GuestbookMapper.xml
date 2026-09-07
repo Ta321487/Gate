@@ -5,7 +5,16 @@
     <select id="selectById" resultType="map">
         SELECT * FROM sys_guestbook WHERE id=#{id}
     </select>
-    <select id="selectAllOrderByIdDesc" resultType="map">
-        SELECT * FROM sys_guestbook ORDER BY id DESC
+    <select id="selectPage" resultType="map">
+        SELECT * FROM sys_guestbook
+        <where>
+            <if test="channel != null and channel != ''">
+                AND IFNULL(NULLIF(channel,''),'user')=#{channel}
+            </if>
+            <if test="onlyUsername != null and onlyUsername != ''">
+                AND username=#{onlyUsername}
+            </if>
+        </where>
+        ORDER BY id DESC
     </select>
 </mapper>

@@ -1,18 +1,31 @@
 <template>
   <div>
     <div class="toolbar">
-      <el-button type="primary" @click="openEdit()">新增公告</el-button>
+      <el-button type="primary" @click="openEdit()">{{ createLabel }}</el-button>
     </div>
     <el-table :data="list" stripe>
       <el-table-column prop="title" label="标题" min-width="160" />
       <el-table-column prop="publisherName" label="发送人" width="120" />
+      <el-table-column v-if="auditOn" label="审核" width="100">
+        <template #default="{ row }">
+          <el-tag size="small" :type="auditTagType(row)" effect="plain">
+            {{ auditLabel(row) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="createdAt" label="发布时间" width="170" />
       <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openView(row)">详情</el-button>
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
+          <el-button
+            v-if="canApprove && isPending(row)"
+            link
+            type="success"
+            @click="approve(row)"
+          >通过审核</el-button>
+          <el-button v-if="canEditRow(row)" link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="canEditRow(row)" link type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -26,7 +39,7 @@
         @current-change="load"
       />
     </div>
-    <el-dialog v-model="viewVisible" title="公告详情" width="560px">
+    <el-dialog v-model="viewVisible" title="详情" width="560px">
       <p class="view-meta">{{ viewRow.publisherName || '—' }} · {{ viewRow.createdAt || '—' }}</p>
       <h3 class="view-title">{{ viewRow.title }}</h3>
       <div class="view-body">{{ viewRow.content || '（无正文）' }}</div>
@@ -34,24 +47,25 @@
         <el-button type="primary" @click="viewVisible = false">关闭</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="visible" :title="form.id ? '编辑公告' : '新增公告'" width="560px">
+    <el-dialog v-model="visible" :title="form.id ? '编辑' : createLabel" width="560px">
       <el-form :model="form" label-width="72px" require-asterisk-position="right">
         <el-form-item label="标题" required><el-input v-model="form.title" maxlength="128" show-word-limit /></el-form-item>
         <el-form-item label="内容" required><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button type="primary" @click="save">{{ saveLabel }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-/** 基线公告管理 */
-import { onMounted, reactive, ref } from 'vue'
+/** 基线公告/活动管理；多店时商家提交待审，超管审核通过 */
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema.js'
 
 const list = ref([])
 const page = ref(1)
@@ -61,6 +75,42 @@ const visible = ref(false)
 const viewVisible = ref(false)
 const viewRow = reactive({ title: '', content: '', publisherName: '', createdAt: '' })
 const form = reactive({ id: null, title: '', content: '' })
+
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const auditOn = computed(() => marketplace.value)
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const canApprove = computed(() => auditOn.value && isSuper.value)
+const createLabel = computed(() => {
+  if (!marketplace.value) return '新增公告'
+  return isSuper.value ? '发布活动' : '提交活动审核'
+})
+const saveLabel = computed(() => {
+  if (marketplace.value && !isSuper.value && !form.id) return '提交审核'
+  return '保存'
+})
+
+function isPending(row) {
+  const as = String(row?.auditStatus || '').trim()
+  return as === 'pending'
+}
+
+function auditLabel(row) {
+  const as = String(row?.auditStatus || '').trim()
+  if (as === 'pending') return '待审核'
+  if (as === 'approved' || !as) return '已通过'
+  return as
+}
+
+function auditTagType(row) {
+  return isPending(row) ? 'warning' : 'success'
+}
+
+function canEditRow(row) {
+  if (!marketplace.value) return true
+  if (isSuper.value) return true
+  // 商家：仅可看自己待审条目的详情，编辑/删除留给超管（与后端一致）
+  return false
+}
 
 async function load() {
   const res = await http.get('/api/notices', { params: { page: page.value, size: size.value } })
@@ -91,8 +141,17 @@ async function save() {
   }
   if (form.id) await http.put(`/api/notices/${form.id}`, { title: form.title, content: form.content })
   else await http.post('/api/notices', { title: form.title, content: form.content })
-  ElMessage.success('已保存')
+  ElMessage.success(
+    marketplace.value && !isSuper.value && !form.id ? '已提交，待平台审核' : '已保存',
+  )
   visible.value = false
+  load()
+}
+
+async function approve(row) {
+  await ElMessageBox.confirm(`通过「${row.title}」的活动审核？`, '审核')
+  await http.post(`/api/notices/${row.id}/approve`)
+  ElMessage.success('已通过')
   load()
 }
 
@@ -108,8 +167,8 @@ onMounted(load)
 
 <style scoped>
 .toolbar { margin-bottom: 12px; }
-.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.view-meta { margin: 0 0 8px; color: #6b7c8a; font-size: 13px; }
-.view-title { margin: 0 0 14px; font-size: 18px; line-height: 1.35; }
-.view-body { white-space: pre-wrap; line-height: 1.7; font-size: 14px; }
+.pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+.view-meta { margin: 0 0 8px; color: var(--portal-muted, #909399); font-size: 13px; }
+.view-title { margin: 0 0 12px; font-size: 18px; }
+.view-body { white-space: pre-wrap; line-height: 1.6; }
 </style>

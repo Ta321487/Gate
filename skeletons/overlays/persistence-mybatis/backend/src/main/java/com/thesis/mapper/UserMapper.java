@@ -26,6 +26,19 @@ public interface UserMapper {
             + "VALUES (#{username},#{password},#{role},#{nickname},#{phone},#{avatarUrl},0,1,1)")
     int insertPlain(Map<String, Object> row);
 
+    /** 多店商家入驻：admin + shop_merchant，默认停用待审 */
+    @Insert("INSERT INTO sys_user (username,password,role,nickname,phone,avatar_url,profile_json,"
+            + "super_admin,profile_editable,enabled,staff_post,staff_kind) "
+            + "VALUES (#{username},#{password},'admin',#{nickname},#{phone},#{avatarUrl},#{profileJson},"
+            + "0,1,0,'shop_merchant','clerk')")
+    int insertMerchantWithProfile(Map<String, Object> row);
+
+    @Insert("INSERT INTO sys_user (username,password,role,nickname,phone,avatar_url,"
+            + "super_admin,profile_editable,enabled,staff_post,staff_kind) "
+            + "VALUES (#{username},#{password},'admin',#{nickname},#{phone},#{avatarUrl},"
+            + "0,1,0,'shop_merchant','clerk')")
+    int insertMerchantPlain(Map<String, Object> row);
+
     @Update("UPDATE sys_user SET nickname=#{nickname}, phone=#{phone}, enabled=#{enabled}, profile_json=#{profileJson} WHERE username=#{username}")
     int updateAdminWithProfile(Map<String, Object> row);
 

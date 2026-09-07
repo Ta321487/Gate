@@ -25,11 +25,23 @@ def scan_order_timeout(text: str) -> bool:
     return pattern_mentioned(text or "", _TIMEOUT_SIGNALS, ignore_contrast=True)
 
 
-def merge_order_extras_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:
+def merge_order_extras_capabilities(
+    caps: list[str],
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+    title: str = "",
+) -> list[str]:
     out = list(caps or [])
     if "order_lines" not in out:
         return [c for c in out if c != ORDER_REVIEW_CAP]
-    if scan_order_review(proposal_text) and ORDER_REVIEW_CAP not in out:
+    want_review = scan_order_review(proposal_text)
+    if not want_review and (domain or "") == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        # 多店三端开题默认挂评价（对照商家/管理「评价管理」）
+        want_review = scan_shop_marketplace(title, proposal_text)
+    if want_review and ORDER_REVIEW_CAP not in out:
         out.append(ORDER_REVIEW_CAP)
     return out
 

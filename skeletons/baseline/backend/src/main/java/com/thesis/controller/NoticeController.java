@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.ArchiveStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * 公告：所有人可读；增删改仅总管理员。
+ * 公告：所有人可读；增删改仅总管理员（多店时商家可提交待审）。
  */
 @RestController
 @RequestMapping("/api/notices")
@@ -26,28 +27,68 @@ public class NoticeController {
             HttpSession session) {
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
-        return R.ok(NoticeStore.page(p, s));
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        boolean approvedOnly = !admin;
+        return R.ok(NoticeStore.page(p, s, approvedOnly));
     }
 
     @GetMapping("/{id}")
-    public R<Map<String, Object>> detail(@PathVariable long id) {
+    public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         Map<String, Object> m = NoticeStore.get(id);
         if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && NoticeStore.hasAuditStatus()) {
+            String as = String.valueOf(m.getOrDefault("auditStatus", "")).trim();
+            if (!as.isEmpty() && !"approved".equals(as)) {
+                throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
+            }
+        }
         return R.ok(m);
     }
 
     @PostMapping
     public R<Map<String, Object>> create(@RequestBody Map<String, String> body, HttpSession session) {
-        AdminAuth.requireSuperAdmin(session);
         String title = body.getOrDefault("title", "");
         if (title.isBlank()) throw new BizException(ErrorCode.BAD_REQUEST, "标题不能为空");
         UserStore.Profile pub = publisher(session);
+        if (ArchiveStore.shopMarketplaceEnabled() && NoticeStore.hasAuditStatus()) {
+            AdminAuth.requireAdmin(session);
+            if (!AdminAuth.isSuperAdmin(session)) {
+                return R.ok(NoticeStore.add(
+                        title,
+                        body.getOrDefault("content", ""),
+                        pub.username,
+                        pub.nickname,
+                        "pending",
+                        pub.username));
+            }
+            return R.ok(NoticeStore.add(
+                    title,
+                    body.getOrDefault("content", ""),
+                    pub.username,
+                    pub.nickname,
+                    "approved",
+                    ""));
+        }
+        AdminAuth.requireSuperAdmin(session);
         return R.ok(NoticeStore.add(
                 title,
                 body.getOrDefault("content", ""),
                 pub.username,
                 pub.nickname
         ));
+    }
+
+    @PostMapping("/{id}/approve")
+    public R<Map<String, Object>> approve(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        try {
+            Map<String, Object> m = NoticeStore.approve(id);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
+            return R.ok(m);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")

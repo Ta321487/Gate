@@ -45,6 +45,12 @@
       <div class="acts">
         <el-button v-if="showTrace" size="small" @click="openTrace(row)">物流轨迹</el-button>
         <el-button
+          v-if="canReceive(row)"
+          size="small"
+          type="success"
+          @click="confirmReceive(row)"
+        >确认收货</el-button>
+        <el-button
           v-if="canRefund(row)"
           size="small"
           type="warning"
@@ -102,6 +108,7 @@ const isCinema = computed(
 )
 const showTrace = computed(() => !isStay.value && !isFood.value && !isCinema.value)
 const reviewOn = computed(() => hasCap('order_review'))
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -125,9 +132,14 @@ function hasShipInfo(row) {
 
 function canRefund(row) {
   if (!row) return false
-  if (!['shipped', 'completed'].includes(row.status)) return false
+  if (!['shipped', 'in_transit', 'signed', 'completed'].includes(row.status)) return false
   const rs = row.refundStatus || ''
   return !rs || rs === 'rejected'
+}
+
+function canReceive(row) {
+  if (!marketplace.value || !row) return false
+  return ['shipped', 'in_transit', 'signed'].includes(row.status) && row.refundStatus !== 'pending'
 }
 
 function canReview(row) {
@@ -167,6 +179,13 @@ async function cancel(row) {
   await ElMessageBox.confirm(`取消${orderNoun.value} #${row.id}？`, '取消')
   await http.post(`/api/orders/${row.id}/cancel`)
   ElMessage.success('已取消')
+  load()
+}
+
+async function confirmReceive(row) {
+  await ElMessageBox.confirm(`确认已收到${orderNoun.value} #${row.id}？`, '确认收货')
+  await http.post(`/api/orders/${row.id}/receive`)
+  ElMessage.success('已确认收货')
   load()
 }
 
