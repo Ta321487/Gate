@@ -2,6 +2,7 @@
 
 > **本文是 ID 册**（深皮 / 新预设 / 新能力与状态）。  
 > **工厂怎么干活 / 怎么审**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)（材料→匹配→出包）。  
+> **开题密功能对照**（常写模块→有/演示/不做）：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
 > 对照：`HANDOFF.md`、`domains_catalog/`、`scene_scan.py`。  
 > 文档日期：2026-09-07（§9 回写 M-23/S-75～81/P-31～32；P-01～P-08 复审已齐）。
 

@@ -677,6 +677,16 @@ def reconcile_match(
                 "DOM-PARKING",
                 "DOM-SALON",
                 "DOM-HOSPITAL",
+                # 商城/点餐：入驻审核、商品审核、售后审核是交易壳内附属，勿抬单据流逼通用壳
+                "DOM-SHOP",
+                "DOM-FOOD",
+            }
+        )
+        _soft_stock_domains = frozenset(
+            {
+                # 商城「库存预警」≠进销存工单壳；点餐同理
+                "DOM-SHOP",
+                "DOM-FOOD",
             }
         )
         if (
@@ -719,6 +729,17 @@ def reconcile_match(
             )
             if not arches:
                 arches = [_DOMAIN_DEFAULT_ARCH.get(dom) or "ARCH-RESERVE"]
+        if (
+            dom in _soft_stock_domains
+            and "ARCH-STOCK" in arches
+            and not domain_covers_archetype(dom, "ARCH-STOCK")
+        ):
+            arches = [a for a in arches if a != "ARCH-STOCK"]
+            notes.append(
+                f"提示：「{dom_label}」开题中的库存/预警按货架库存处理，不抬进销存工单壳。"
+            )
+            if not arches:
+                arches = [_DOMAIN_DEFAULT_ARCH.get(dom) or "ARCH-TRADE"]
         covered = [a for a in arches if domain_covers_archetype(dom, a)]
         if not covered:
             notes.append(

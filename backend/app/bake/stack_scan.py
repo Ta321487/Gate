@@ -141,7 +141,11 @@ def normalize_ai_assistant(flag: Any = None) -> bool:
 
 def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
     """扫题名+正文 → persistence / 按需开关推荐与偏差提示（不改开题）。"""
-    text = copy_scan_text(title, proposal_text)
+    from app.services.proposal import strip_non_dev_sections
+
+    # 与匹配同裁：参考文献里的「微信小程序」等勿当技术主线点名
+    body = strip_non_dev_sections(proposal_text or "")
+    text = copy_scan_text(title, body)
     warnings: list[str] = []
     hits: list[str] = []
 
