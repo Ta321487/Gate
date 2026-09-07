@@ -641,7 +641,6 @@ def reconcile_match(
                 "DOM-CHECKIN",
                 "DOM-CARPASS",
                 "DOM-CINEMA",
-                # 单据/报名皮开题常顺嘴写「预约」
                 "DOM-PROPERTY",
                 "DOM-DORM",
                 "DOM-IT",
@@ -652,6 +651,20 @@ def reconcile_match(
                 # 勿含 DOM-LIBRARY：借阅+座位预约是 Path B 真交叉，须降 GENERIC
                 "DOM-EQUIP",
                 "DOM-ASSET",
+                "DOM-LISTING",
+                "DOM-CLUB",
+                "DOM-EXAM",
+                "DOM-BLOG",
+                "DOM-MEDIA",
+                "DOM-FORUM",
+                "DOM-RECRUIT",
+                # 拼车「预约同行」≠会议室/车位预约壳
+                "DOM-CARPOOL",
+                "DOM-TIMEBANK",
+                "DOM-DATING",
+                "DOM-PARCEL",
+                "DOM-TOUR",
+                "DOM-MUSIC",
             }
         )
         _soft_trade_domains = frozenset(
@@ -666,6 +679,26 @@ def reconcile_match(
                 "DOM-ATTEND",
                 # 威客「接单」是投递初筛话术，勿抬购物车交易并集
                 "DOM-RECRUIT",
+                # 预约皮开题常写定金/支付：无 order_lines 的预约域勿逼降通用
+                "DOM-PARKING",
+                "DOM-MEETING",
+                "DOM-SALON",
+                "DOM-HOSPITAL",
+                "DOM-HOTEL",
+                "DOM-CARRENT",
+                "DOM-VISITOR",
+                "DOM-LISTING",
+                "DOM-CLUB",
+                "DOM-DATING",
+                "DOM-EXAM",
+                "DOM-BLOG",
+                "DOM-MEDIA",
+                "DOM-MUSIC",
+                "DOM-FORUM",
+                "DOM-CARPOOL",
+                "DOM-TIMEBANK",
+                "DOM-TOUR",
+                "DOM-PARCEL",
             }
         )
         _soft_flow_domains = frozenset(
@@ -680,13 +713,32 @@ def reconcile_match(
                 # 商城/点餐：入驻审核、商品审核、售后审核是交易壳内附属，勿抬单据流逼通用壳
                 "DOM-SHOP",
                 "DOM-FOOD",
+                "DOM-CINEMA",
+                # 内容/考试皮：审帖/审片/试卷发布审核 ≠ 报修工单壳
+                "DOM-BLOG",
+                "DOM-MEDIA",
+                "DOM-MUSIC",
+                "DOM-FORUM",
+                "DOM-EXAM",
+                "DOM-SURVEY",
+                "DOM-VOTE",
+                "DOM-DOCLIB",
+                # 拼车/文旅/驿站/房源：成行确认、出团审、核销、上架审 ≠ 报修工单壳
+                "DOM-CARPOOL",
+                "DOM-TOUR",
+                "DOM-PARCEL",
+                "DOM-TIMEBANK",
+                "DOM-LISTING",
             }
         )
         _soft_stock_domains = frozenset(
             {
-                # 商城「库存预警」≠进销存工单壳；点餐同理
+                # 商城「库存预警」≠进销存工单壳；点餐/影院余票同理
                 "DOM-SHOP",
                 "DOM-FOOD",
+                "DOM-CINEMA",
+                "DOM-HOTEL",
+                "DOM-CARRENT",
             }
         )
         if (
@@ -821,12 +873,24 @@ def proposal_impl_sections_for_scope(text: str) -> str:
     return "\n".join(parts).strip()
 
 
-def proposal_focus_for_match(text: str) -> str:
-    """抽取对开发有用的片段并加权：功能/实现段 + 模块行；去掉参考文献噪声。"""
+def proposal_focus_for_match(text: str, *, title: str | None = None) -> str:
+    """抽取对开发有用的片段并加权：功能/实现段 + 模块行；去掉参考文献噪声。
+
+    ``title``：匹配入口已解析的题名（含文件名回落）。必须写入焦点并加权，
+    否则「题名在文件名、正文不重复题名」时域词全丢，门面匹配会落到 GENERIC。
+    """
     raw, blocks, modules = _proposal_focus_parts(text)
     head = "\n".join(ln for ln in raw.splitlines()[:8] if ln.strip())
-    title = extract_title(raw)
-    parts = [title, head]
+    extracted = extract_title(raw)
+    use_title = (title or "").strip() or extracted
+    if use_title in ("", "未命名毕设项目"):
+        use_title = extracted
+    parts: list[str] = []
+    if use_title and use_title != "未命名毕设项目":
+        # 题名加权三次：民宿/影院/物业等主业词常只出现在题名
+        parts.extend([use_title, use_title, use_title])
+    if head:
+        parts.append(head)
     if blocks:
         focus = "\n".join(blocks)
         parts.extend([focus, focus])
@@ -861,7 +925,7 @@ def _confidence_after_reconcile(
 
 def match_text(text: str, filename: str = "") -> MatchResult:
     title = extract_title(text, fallback=filename.rsplit(".", 1)[0] or "未命名毕设项目")
-    scored = proposal_focus_for_match(text)
+    scored = proposal_focus_for_match(text, title=title)
     arch_hits_all: list[str] = []
     for _k, _s, local in _catalog_scores(scored, ARCHETYPES):
         arch_hits_all.extend(local)
@@ -871,6 +935,24 @@ def match_text(text: str, filename: str = "") -> MatchResult:
     dom_kw, dom_conf, dom_hits = score_catalog(
         scored, DOMAINS, fallback="DOM-GENERIC", title=title
     )
+    # 借阅+座位：题名双写时易被会议室/预约皮抢走；行业皮先落图书再 reconcile → 真交叉降通用
+    if (
+        any(k in title for k in ("图书", "借阅", "图书馆"))
+        and any(k in scored for k in ("座位预约", "研习室", "自习座位", "图书馆座位"))
+        and dom_kw in ("DOM-MEETING", "DOM-GENERIC", "DOM-HOTEL")
+    ):
+        lib = next(
+            (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-LIBRARY"),
+            None,
+        )
+        if lib is not None:
+            tip = (
+                "提示：题名含借阅且正文含座位预约，行业皮先取图书；"
+                "若行为并集盖不住将降通用壳（借阅+座位真交叉）。"
+            )
+            dom_kw = "DOM-LIBRARY"
+            dom_conf = min(0.95, 0.45 + lib[1] * 0.12)
+            dom_hits = list(dict.fromkeys(list(lib[2]) + list(dom_hits) + [tip]))
     # C-11：报名+投票复合 → 主路径 ACTIVITY（并挂 vote），勿落纯投票域
     from app.bake.features.vote import scan_vote_signup_composite
 
@@ -901,6 +983,30 @@ def match_text(text: str, filename: str = "") -> MatchResult:
             dom_kw = "DOM-EVENT"
             dom_conf = min(0.95, 0.45 + ev[1] * 0.12)
             dom_hits = list(dict.fromkeys(list(ev[2]) + list(dom_hits) + [tip]))
+    # 影院选座：正文「下单」易抬商城；题名含影院/选座购票时保影院皮
+    if dom_kw == "DOM-SHOP" and any(
+        k in title for k in ("影院", "电影票", "选座购票", "电影院", "观影")
+    ):
+        cin = next(
+            (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-CINEMA"),
+            None,
+        )
+        if cin is not None:
+            tip = "提示：题名主写影院选座购票，主路径取影院（勿因下单误落商城）。"
+            dom_kw = "DOM-CINEMA"
+            dom_conf = min(0.95, 0.45 + cin[1] * 0.12)
+            dom_hits = list(dict.fromkeys(list(cin[2]) + list(dom_hits) + [tip]))
+    # 社团管理：正文「活动报名」易抬 ACTIVITY；题名主写社团时保社团皮
+    if dom_kw == "DOM-ACTIVITY" and any(k in title for k in ("社团", "学生会社团")):
+        club = next(
+            (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-CLUB"),
+            None,
+        )
+        if club is not None:
+            tip = "提示：题名主写社团，主路径取社团管理（活动报名作附属）。"
+            dom_kw = "DOM-CLUB"
+            dom_conf = min(0.95, 0.45 + club[1] * 0.12)
+            dom_hits = list(dict.fromkeys(list(club[2]) + list(dom_hits) + [tip]))
     arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
     confidence = _confidence_after_reconcile(
         arch_conf,
