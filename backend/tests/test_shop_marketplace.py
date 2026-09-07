@@ -156,5 +156,36 @@ class ShopMarketplaceSqlTests(unittest.TestCase):
         )
 
 
+class ShopMarketplaceMatchTests(unittest.TestCase):
+    def test_agri_marketplace_keeps_shop_not_generic(self) -> None:
+        """多店农产开题：审核/库存预警旁路勿逼降通用壳。"""
+        from app.bake.catalog import match_text
+
+        text = """
+系统分为用户端、商家端和管理员端。用户：商品浏览、购物车、在线支付、订单、售后退货、留言、客服。
+商家：商家入驻注册、店铺信息、农产品上下架、库存预警、订单发货、售后审核、活动公告。
+管理员：用户管理、商家管理、商品审核与强制下架、售后最高权限、活动审核、留言分别与用户和商家沟通。
+九、主要参考文献
+[1] 基于微信小程序的某电商系统设计
+"""
+        got = match_text(text, "XX农产品销售网站的设计与实现")
+        self.assertEqual(got.domain, "DOM-SHOP", f"arch={got.archetypes} hits={got.hits[:12]}")
+        self.assertEqual(got.archetype, "ARCH-TRADE")
+        self.assertNotIn("ARCH-FLOW", got.archetypes or [])
+        self.assertNotIn("ARCH-STOCK", got.archetypes or [])
+
+    def test_wechat_mini_only_in_refs_not_stack_warning(self) -> None:
+        from app.bake.stack_scan import scan_stack
+
+        text = """
+实现农产品商城购物车下单与订单履约。
+九、主要参考文献
+[1] 基于微信小程序的农产品销售研究
+"""
+        stack = scan_stack("农产品销售网站", text)
+        warnings = " ".join(stack.get("warnings") or [])
+        self.assertNotIn("微信小程序", warnings)
+
+
 if __name__ == "__main__":
     unittest.main()

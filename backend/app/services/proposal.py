@@ -16,7 +16,7 @@ _BULLET = re.compile(r"^(\d+[\.、\)）]|[（(]\d+[)）]|[-•·▪])\s*")
 # 参考文献 / 进度 / 致谢：对开发匹配是噪声
 _NOISE_SECTION = re.compile(
     r"(?:^|\n)\s*(?:#{1,6}\s*)?(?:[七八九十百零〇\d]+[、．.]|[（(]?\d+[)）.、]|第[一二三四五六七八九十\d]+[章节部分])?\s*"
-    r"(?:参考文献|参考资料|主要参考资料|进度安排|研究进度|时间安排|致谢|附录)\b"
+    r"(?:主要参考文献|参考文献|参考资料|主要参考资料|进度安排|研究进度|时间安排|致谢|附录)\b"
 )
 _TITLE_EXPLICIT = re.compile(
     r"(?:题目|课题|课题名称|论文题目|毕业设计题目)\s*[：:\s]\s*(.+)$"
@@ -203,10 +203,15 @@ def strip_non_dev_sections(text: str) -> str:
     m = _NOISE_SECTION.search(raw)
     if not m:
         return raw
+    hit = m.group(0)
     # 文首即参考文献/进度 → 无业务正文
     if m.start() <= 40:
         return raw[: m.start()].rstrip()
-    # 命中点偏后半才裁切，避免正文误伤
+    # 参考文献/致谢/附录是硬噪声：短开题也裁，避免文献里的「微信小程序」误报技术点名
+    hard = any(k in hit for k in ("参考文献", "参考资料", "致谢", "附录"))
+    if hard:
+        return raw[: m.start()].rstrip()
+    # 进度等弱噪声：命中点偏后半才裁切，避免正文误伤
     if m.start() < max(200, len(raw) // 5):
         return raw
     return raw[: m.start()].rstrip()
