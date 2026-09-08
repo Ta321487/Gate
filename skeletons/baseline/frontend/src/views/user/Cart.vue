@@ -403,7 +403,7 @@ async function submitOrder() {
       return
     }
     if (!form.payPassword || form.payPassword.trim().length < 4) {
-      ElMessage.warning('请输入支付密码（演示，至少 4 位）')
+      ElMessage.warning('请输入支付密码（至少 4 位）')
       return
     }
   } else if (walletOn.value && preview.value?.balanceEnough === false) {

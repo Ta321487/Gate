@@ -219,11 +219,11 @@ public final class OrderStore {
         if (demoPay) {
             ensurePayChannelColumn();
             if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
-                throw new IllegalArgumentException("请选择支付宝或微信支付（演示）");
+                throw new IllegalArgumentException("请选择支付宝或微信支付");
             }
             String pw = payPassword == null ? "" : payPassword.trim();
             if (pw.length() < 4) {
-                throw new IllegalArgumentException("请输入支付密码（演示，至少 4 位）");
+                throw new IllegalArgumentException("请输入支付密码（至少 4 位）");
             }
         }
         List<Map<String, Object>> cart = listCart(username);
