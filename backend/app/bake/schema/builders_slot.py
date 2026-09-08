@@ -208,7 +208,10 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         labels["orderReviewPageLead"] = "对已完成订单进行星级与文字评价。"
         labels["usersAdminLead"] = "用户管理与商家审核分开展示；启用即审核通过。"
         labels["ordersAdminLead"] = "含发货、物流与售后审核（申请售后在买家订单）。"
-        labels["demoPayHint"] = "演示支付：选择支付宝或微信并输入任意支付密码（非真实扣款）。"
+        labels["demoPayHint"] = (
+            "在线支付：选择支付宝或微信并输入支付密码完成本单"
+            "（本系统内支付流程，不对接银行或微信/支付宝商户平台）。"
+        )
         labels["stockWarnHint"] = "库存低于预警值时高亮提示商家补货。"
         schema["demoPay"] = True
         schema["stockWarnBelow"] = 10
