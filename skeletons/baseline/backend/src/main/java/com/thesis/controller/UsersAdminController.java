@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.AuditLogStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
@@ -49,7 +50,10 @@ public class UsersAdminController {
             Map<String, String> extras = AuthController.extractExtras(body);
             if (extras.isEmpty() && !body.containsKey("extras")) extras = null;
             boolean protectLast = !allowAppointFromUsers;
-            return R.ok(UserStore.adminUpdate(username, nick, phone, enabled, extras, protectLast).toMap());
+            var updated = UserStore.adminUpdate(username, nick, phone, enabled, extras, protectLast);
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "user_update", "user", username, "更新用户资料或启用状态");
+            return R.ok(updated.toMap());
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -63,6 +67,8 @@ public class UsersAdminController {
         AdminAuth.requireSuperAdmin(session);
         try {
             UserStore.adminResetPassword(username, String.valueOf(body.getOrDefault("password", "")));
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "user_reset_password", "user", username, "重置密码");
             return R.ok(null);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
@@ -85,10 +91,15 @@ public class UsersAdminController {
             String staffKind = String.valueOf(b.getOrDefault("staffKind", b.getOrDefault("staff_kind", "")));
             if ("null".equals(staffPost)) staffPost = "";
             if ("null".equals(staffKind)) staffKind = "";
+            String op = AdminAuth.requireLogin(session);
+            Map<String, Object> row;
             if (staffPost.isBlank() && staffKind.isBlank()) {
-                return R.ok(UserStore.appointSubAdmin(username).toMap());
+                row = UserStore.appointSubAdmin(username).toMap();
+            } else {
+                row = UserStore.appointSubAdmin(username, staffPost, staffKind).toMap();
             }
-            return R.ok(UserStore.appointSubAdmin(username, staffPost, staffKind).toMap());
+            AuditLogStore.record(op, "user_appoint", "user", username, "任命岗位");
+            return R.ok(row);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -101,7 +112,10 @@ public class UsersAdminController {
         try {
             // 禁任命域：保护该岗最后一个账号，避免撤光后无法补岗
             boolean protectLast = !allowAppointFromUsers;
-            return R.ok(UserStore.revokeSubAdmin(username, userRole, protectLast).toMap());
+            var revoked = UserStore.revokeSubAdmin(username, userRole, protectLast);
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "user_revoke", "user", username, "撤销岗位");
+            return R.ok(revoked.toMap());
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

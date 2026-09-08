@@ -29,6 +29,26 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "到期、逾期、提醒、可选费用",
     },
+    "loan_renew": {
+        "label": "续借",
+        "status": "implemented",
+        "desc": "借出中单据延长应还日；次数上限；开题写到才挂（E-01）",
+    },
+    "waitlist": {
+        "label": "候补队列",
+        "status": "implemented",
+        "desc": "名额满可候补；取消/完结回补后按申请时间 FIFO 晋升待审；开题写到才挂（E-02）",
+    },
+    "post_like": {
+        "label": "点赞",
+        "status": "implemented",
+        "desc": "档案/帖子一人一赞开关与计数；开题写到才挂（E-03）",
+    },
+    "content_report": {
+        "label": "内容举报",
+        "status": "implemented",
+        "desc": "用户举报→管理处置（忽略/下架）；开题写到才挂（E-03）",
+    },
     "slot_reserve": {
         "label": "时段预约",
         "status": "implemented",
@@ -64,6 +84,16 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "公告/资讯",
     },
+    "message_template": {
+        "label": "站内消息模板",
+        "status": "implemented",
+        "desc": "审单等节点套模板发 sys_message；开题写到才挂（E-06）",
+    },
+    "audit_log": {
+        "label": "操作审计日志",
+        "status": "implemented",
+        "desc": "管理端关键写操作与登录记入 sys_audit_log；总管可查；开题写到才挂（E-04）",
+    },
     "guestbook": {
         "label": "访客留言",
         "status": "implemented",
@@ -88,6 +118,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "label": "优惠券",
         "status": "implemented",
         "desc": "券模板领取/我的券/下单核销/过期扫标（非真支付）",
+    },
+    "flash_price": {
+        "label": "限时购",
+        "status": "implemented",
+        "desc": "档案活动价窗口；窗内下单用活动价快照；开题写到才挂（E-05）",
     },
     "order_review": {
         "label": "订单评价",

@@ -1,0 +1,133 @@
+/**
+ * 毕设包全域显示加固：各 DOM 共用壳，列多/标签长/对话框高时仍可读、可横滑，避免撑破或裁切。
+ * 与 chrome / layout / theme 正交，不改业务逻辑。
+ */
+
+/* —— 工作台：侧栏长菜单 + 主区可横滑 —— */
+.workbench.el-container,
+.workbench > .el-container {
+  min-width: 0;
+}
+
+.workbench .wb-aside {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.workbench .wb-aside .el-menu-item {
+  height: auto !important;
+  min-height: 42px;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  align-items: center;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+[data-chrome="dense"] .workbench .wb-aside .el-menu-item {
+  height: auto !important;
+  min-height: 34px;
+  line-height: 1.3 !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.workbench .wb-main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.workbench .wb-header-right > span {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— 门户主区不撑破 —— */
+.portal > .body,
+.portal > .stage {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* —— 工具栏一律可换行 —— */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* —— 宽表：外层横滑，固定操作列仍可用 —— */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll > .el-table {
+  min-width: 640px;
+}
+
+/* 操作列多按钮时换行，避免挤成一条看不见 */
+.el-table .cell.table-ops,
+.el-table td .table-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: normal !important;
+  line-height: 1.25;
+}
+
+.el-table .cell {
+  word-break: break-word;
+}
+
+/* 侧标签表单：长中文标签可折行，不被 88/96px 裁半字 */
+.el-form:not(.el-form--label-top) .el-form-item__label {
+  white-space: normal !important;
+  line-height: 1.35 !important;
+  height: auto !important;
+  align-items: flex-start;
+  text-align: right;
+}
+
+.el-dialog__body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}
+
+.el-drawer__body {
+  overflow-x: hidden;
+}
+
+/* 卡片按钮行已有 flex-wrap；副字段过长时截断到两行 */
+.card .detail-line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* 选座厅：格栅可横滑，不撑破门户 */
+.seat-map-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.seat-map-scroll .grid {
+  width: max-content;
+  margin-left: auto;
+  margin-right: auto;
+  min-width: min(100%, max-content);
+}

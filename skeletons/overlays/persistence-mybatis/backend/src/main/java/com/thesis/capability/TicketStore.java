@@ -1352,17 +1352,27 @@ public final class TicketStore {
             String user = TicketSql.str(ticket.get("username"));
             if (user.isBlank()) return;
             String subject = subjectOf(ticket);
+            String noteText = note == null ? "" : note.trim();
+            String noteSuffix = noteText.isBlank() ? "" : ("：" + noteText);
             String title = pass ? "审核已通过" : "审核未通过";
             String body = pass
-                    ? ("「" + subject + "」已通过" + (note == null || note.isBlank() ? "" : "：" + note))
-                    : ("「" + subject + "」已驳回" + (note == null || note.isBlank() ? "" : "：" + note));
+                    ? ("「" + subject + "」已通过" + noteSuffix)
+                    : ("「" + subject + "」已驳回" + noteSuffix);
             if (pass && hasColumn("pickup_at") && !bizPickupPlace.isBlank()) {
                 body = body + "。请到「" + bizPickupPlace + "」领取，到场后由工作人员登记实发。";
             }
-            if (pass && passCode != null && !passCode.isBlank()) {
-                body = body + "。通行码：" + passCode + "（非真门禁，到访时出示即可）。";
+            String code = passCode == null ? "" : passCode.trim();
+            if (pass && !code.isBlank()) {
+                body = body + "。通行码：" + code + "（到访时出示即可，不对接闸机）。";
             }
-            MessageStore.send(user, title, body, "ticket", TicketSql.toLong(ticket.get("id")));
+            java.util.Map<String, String> vars = new java.util.LinkedHashMap<>();
+            vars.put("subject", subject);
+            vars.put("note", noteText);
+            vars.put("note_suffix", noteSuffix);
+            vars.put("passCode", code);
+            String tpl = pass ? "ticket_approved" : "ticket_rejected";
+            MessageStore.sendWithTemplate(
+                    user, tpl, vars, title, body, "ticket", TicketSql.toLong(ticket.get("id")));
         } catch (Exception ignored) {
             // 消息失败不影响主流程
         }

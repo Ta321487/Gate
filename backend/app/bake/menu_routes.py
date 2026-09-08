@@ -56,6 +56,9 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "users": "/admin/users",
     "content": "/admin/notices",
     "guestbook": "/admin/guestbook",
+    "content_reports": "/admin/content-reports",
+    "audit_logs": "/admin/audit-logs",
+    "message_templates": "/admin/message-templates",
     "ai_knowledge": "/admin/ai-knowledge",
     "exam_questions": "/admin/exam/questions",
     "exam_papers": "/admin/exam/papers",
@@ -233,6 +236,12 @@ def effective_paths(
     # 能力叠加（与 with*Routes 对齐）
     if "guestbook" in cap_set:
         paths.update({"/guestbook", "/admin/guestbook"})
+    if "content_report" in cap_set:
+        paths.add("/admin/content-reports")
+    if "audit_log" in cap_set:
+        paths.add("/admin/audit-logs")
+    if "message_template" in cap_set:
+        paths.add("/admin/message-templates")
     if "ai_assistant" in cap_set:
         paths.update({"/ai-assistant", "/admin/ai-knowledge"})
     if "exam" in cap_set:

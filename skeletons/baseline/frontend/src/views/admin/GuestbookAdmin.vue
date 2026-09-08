@@ -18,6 +18,7 @@
       />
       <el-button type="primary" :loading="posting" @click="submit">提交留言</el-button>
     </section>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="nickname" :label="nameCol" width="140">
         <template #default="{ row }">{{ row.nickname || row.username || '—' }}</template>
@@ -29,11 +30,14 @@
       <el-table-column prop="createdAt" label="时间" width="170" />
       <el-table-column v-if="isSuper" label="操作" width="160" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="primary" @click="openReply(row)">回复</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -145,7 +149,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; }
+.toolbar { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .composer { margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

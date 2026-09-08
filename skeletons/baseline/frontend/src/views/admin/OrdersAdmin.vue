@@ -7,6 +7,7 @@
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="80" />
       <el-table-column :label="userLabel" width="120">
@@ -61,14 +62,15 @@
           <span v-else>—</span>
         </template>
       </el-table-column>
-      <el-table-column label="明细" min-width="200">
+      <el-table-column label="明细" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
           {{ (row.lines || []).map((x) => `${x.title}×${x.qty}¥${Number((x.lineYuan ?? x.priceYuan * x.qty) || 0).toFixed(2)}`).join('；') }}
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />
-      <el-table-column label="操作" width="320" fixed="right">
+      <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">{{ confirmVerb }}</el-button>
           <el-button
             v-if="row.status === 'confirmed'"
@@ -112,9 +114,11 @@
             type="danger"
             @click="decideRefund(row, false)"
           >驳回售后</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -304,6 +308,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

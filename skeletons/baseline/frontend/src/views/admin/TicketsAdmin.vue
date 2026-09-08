@@ -6,9 +6,10 @@
     <div class="toolbar">
       <el-button type="primary" @click="load">刷新待办</el-button>
     </div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
-      <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" />
+      <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" show-overflow-tooltip />
       <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
       <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
@@ -51,8 +52,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="primary" @click="openProgress(row)">进度</el-button>
           <el-button
             link
@@ -61,10 +63,12 @@
             @click="openAudit(row, true)"
           >{{ passLabel(row) }}</el-button>
           <el-button link type="danger" @click="openAudit(row, false)">{{ verbs.reject || '驳回' }}</el-button>
+          </div>
         </template>
       </el-table-column>
       <template #empty>暂无待办</template>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -367,7 +371,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; }
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .audit-tip {
   margin: 0 0 14px;

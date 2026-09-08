@@ -12,6 +12,7 @@
       <el-button @click="load">刷新</el-button>
     </div>
     <p v-if="marketplace && adminLead" class="page-lead">{{ adminLead }}</p>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="username" label="用户名" width="110" />
       <el-table-column label="姓名" width="100">
@@ -41,8 +42,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="280" fixed="right">
+      <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button
             v-if="walletOn && !isSub(row)"
@@ -73,9 +75,11 @@
           >
             <el-button link type="info" disabled>撤销任命</el-button>
           </el-tooltip>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-dialog v-model="appointVisible" title="任命岗位" width="420px" destroy-on-close>
       <p class="appoint-tip">将「{{ appointTarget?.nickname || appointTarget?.username }}」任命为：</p>

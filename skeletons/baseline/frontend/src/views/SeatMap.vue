@@ -12,6 +12,7 @@
       </p>
     </section>
     <div class="screen">银幕</div>
+    <div class="seat-map-scroll">
     <div class="grid" :style="{ gridTemplateColumns: `repeat(${cols}, 2.2rem)` }">
       <button
         v-for="seat in seats"
@@ -24,6 +25,7 @@
       >
         {{ seat.seatCode }}
       </button>
+    </div>
     </div>
     <div class="legend muted">
       <span class="dot free" />空闲

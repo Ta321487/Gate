@@ -72,17 +72,9 @@ public final class OrderStore {
         return unitPriceOf(item);
     }
 
-    /** 档案单价：逻辑键 author（物理列常为 price_yuan）。 */
+    /** 档案单价：挂 flash_price 时窗内用活动价，否则 author/price_yuan。 */
     public static double unitPriceOf(Map<String, Object> item) {
-        if (item == null) return 0;
-        Object raw = item.get("author");
-        if (raw == null) raw = item.get("priceYuan");
-        if (raw == null) return 0;
-        try {
-            return Double.parseDouble(String.valueOf(raw).replace("¥", "").replace("￥", "").trim());
-        } catch (Exception e) {
-            return 0;
-        }
+        return ArchiveStore.effectiveUnitPrice(item);
     }
 
     public static List<Map<String, Object>> listCart(String username) {

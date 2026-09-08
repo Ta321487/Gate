@@ -8,9 +8,10 @@
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
       <el-button @click="openGenerate">生成时段</el-button>
     </div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
-      <el-table-column prop="itemTitle" :label="archiveLabel" min-width="140" />
+      <el-table-column prop="itemTitle" :label="archiveLabel" min-width="140" show-overflow-tooltip />
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -26,8 +27,9 @@
       <el-table-column label="详情" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ resvDetail(row) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" min-width="180" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button
             v-if="requireConfirm && row.status === 'pending'"
             link
@@ -46,9 +48,11 @@
             type="danger"
             @click="cancel(row)"
           >{{ row.status === 'pending' && requireConfirm ? '驳回' : '取消' }}</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"

@@ -29,6 +29,13 @@ class InstrumentC07Tests(unittest.TestCase):
         self.assertIn("instrument_slot", caps)
         self.assertIn("DOM-INSTRUMENT", FOLLOWUP_PRESETS)
         self.assertIn("DOM-INSTRUMENT", SCHEMA_BUILDERS)
+        from app.bake.staff_posts import STAFF_POSTS_BY_DOMAIN
+
+        packs = []
+        for p in STAFF_POSTS_BY_DOMAIN.get("DOM-INSTRUMENT") or []:
+            packs.extend(p.get("packs") or [])
+        self.assertIn("ticket_ops", packs)
+        self.assertIn("slot_ops", packs)
 
     def test_p19_match(self) -> None:
         title = "高校大型仪器借用与机时预约管理系统"

@@ -26,6 +26,7 @@
             编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
             <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
             <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
+            <template v-if="allowRenew && row.renewCount"> · 已续借 {{ row.renewCount }} 次</template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
             <template v-if="showPriorityCols && row.priority"> · {{ row.priority }}</template>
@@ -59,6 +60,13 @@
               size="small"
               @click="finish(row)"
             >{{ finishVerb }}</el-button>
+            <el-button
+              v-if="canRenew(row)"
+              type="success"
+              size="small"
+              plain
+              @click="renew(row)"
+            >{{ renewVerb }}</el-button>
             <el-button
               v-if="canCheckin(row)"
               type="success"
@@ -119,7 +127,7 @@
     </div>
 
     <el-dialog v-model="visible" :title="verbs.apply || '提交'" width="520px">
-      <el-form :model="form" label-width="88px" require-asterisk-position="right">
+      <el-form :model="form" label-position="top" require-asterisk-position="right">
         <template v-if="applyFromList">
           <!-- 驿站取件：取件码优先，档案下拉仅作兜底 -->
           <template v-if="requireClaimCode">
@@ -294,6 +302,7 @@ import {
   followChannelLabel,
   followChannelOptions,
   getSchema,
+  hasCap,
   hasTrait,
   nextFollowLabel,
   ticketCheckinLabel,
@@ -443,6 +452,12 @@ const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
+const allowRenew = computed(() => !!(ticket.allowRenew || hasCap('loan_renew')))
+const renewVerb = computed(() => verbs.value.renew || labels.value.renewVerb || '续借')
+const maxRenew = computed(() => {
+  const n = Number(ticket.maxRenew)
+  return Number.isFinite(n) && n > 0 ? n : 1
+})
 const passCodeLabel = computed(() => ticket.passCodeLabel || '通行码')
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
@@ -465,7 +480,8 @@ const finishVerb = computed(() => {
 })
 
 function canWithdraw(row) {
-  return !!row && (row.status === 'pending' || row.status === 'pending_mid' || row.status === 'pending_final')
+  return !!row && (row.status === 'pending' || row.status === 'pending_mid'
+    || row.status === 'pending_final' || row.status === 'waitlisted')
 }
 
 function canRate(row) {
@@ -489,6 +505,7 @@ function tagType(s) {
     pending: 'warning',
     pending_mid: 'info',
     pending_final: '',
+    waitlisted: 'warning',
     approved: 'success',
     rejected: 'danger',
     cancelled: 'info',
@@ -501,6 +518,14 @@ function canCheckin(row) {
   if (!allowCheckin.value || !row) return false
   if (row.status !== 'approved') return false
   return !row.checkedInAt
+}
+
+function canRenew(row) {
+  if (!allowRenew.value || !row) return false
+  if (row.status !== 'approved' && row.status !== 'overdue') return false
+  if (!row.dueAt) return false
+  const used = Number(row.renewCount) || 0
+  return used < maxRenew.value
 }
 
 function pickupPending(row) {
@@ -785,6 +810,17 @@ async function finish(row) {
   await ElMessageBox.confirm(`确认${verbs.value.return || '完结'}「${row.title}」？`, '确认')
   await http.post(`/api/tickets/${row.id}/complete`)
   ElMessage.success('已更新')
+  load()
+}
+
+async function renew(row) {
+  const used = Number(row.renewCount) || 0
+  await ElMessageBox.confirm(
+    `确认对「${row.title || ('编号 ' + row.id)}」${renewVerb.value}？当前已续 ${used}/${maxRenew.value} 次。`,
+    renewVerb.value,
+  )
+  await http.post(`/api/tickets/${row.id}/renew`)
+  ElMessage.success(labels.value.renewOkMessage || '续借成功，应还日已延长')
   load()
 }
 

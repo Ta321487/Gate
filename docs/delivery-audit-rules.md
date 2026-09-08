@@ -3,6 +3,7 @@
 > **版本**：v5.3（2026-09-08）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。  
 > **清单册**（待办 ID / 状态列）：[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
 > **开题密功能对照**（常写模块→落点/匹配注意）：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
+> **能力扩岛批次**（开题命中才挂 · 文档=实包 · 学生包禁「演示」）：[`capability-expansion-batch.md`](./capability-expansion-batch.md)。  
 > **能力与域表**：[`HANDOFF.md`](../HANDOFF.md)。
 
 ---

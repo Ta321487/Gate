@@ -64,22 +64,31 @@ def attach_seat_select_menus(schema: dict[str, Any]) -> None:
         {"key": "seat_shows", "label": "场次选座"},
         before_key="my_orders",
     )
-    # 影院主路径不走购物车/地址簿/留言（选座下单为主）
+    # 影院主路径：选座下单；不挂购物车/地址簿/留言；门户落地场次选座
     drop = {"cart", "addresses", "guestbook"}
     menus["user"] = [
         m for m in user if not (isinstance(m, dict) and m.get("key") in drop)
     ]
+    # 用户侧「场次目录」与选座列表重复：改成「浏览场次」仍可进档案页，主 CTA 已是选座
+    for m in menus["user"]:
+        if isinstance(m, dict) and m.get("key") == "archive":
+            m["label"] = m.get("label") or "浏览场次"
+            if m["label"] in ("场次目录", "档案", "商品"):
+                m["label"] = "浏览场次"
+            break
     admin = menus.setdefault("admin", [])
     menus["admin"] = [
         m for m in admin if not (isinstance(m, dict) and m.get("key") == "guestbook")
     ]
     labels = schema.setdefault("labels", {})
+    labels["userHomePath"] = "/seats/shows"
     labels.setdefault("seatShowsTitle", "场次选座")
     labels.setdefault(
         "seatShowsLead",
         "选择场次后进入座位图；可设影厅类型、开场时间与排×列；过开场自动下架；确认后占座生成订单（无真锁座）。",
     )
     labels.setdefault("seatMapTitle", "选座购票")
+    labels.setdefault("seatSelectCta", "选座")
     ents = schema.setdefault("entities", {})
     if "seat" not in ents:
         ents["seat"] = {

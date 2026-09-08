@@ -151,4 +151,179 @@ public class MessageStore {
                 "UPDATE sys_message SET read_at=? WHERE username=? AND read_at IS NULL",
                 Timestamp.valueOf(LocalDateTime.now()), username);
     }
+
+    private static boolean templateEnabled = false;
+    private static Boolean templateTableReady;
+
+    public static void configureTemplate(boolean on) {
+        templateEnabled = on;
+        templateTableReady = null;
+        if (templateEnabled) ensureTemplateTable();
+    }
+
+    public static boolean templateEnabled() {
+        return templateEnabled;
+    }
+
+    private static boolean templateReady() {
+        if (!templateEnabled) return false;
+        if (templateTableReady != null) return templateTableReady;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                            + "WHERE table_schema=DATABASE() AND table_name='sys_message_template'",
+                    Integer.class);
+            templateTableReady = n != null && n > 0;
+        } catch (Exception e) {
+            templateTableReady = false;
+        }
+        return templateTableReady;
+    }
+
+    private static void ensureTemplateTable() {
+        try {
+            db().execute(
+                    "CREATE TABLE IF NOT EXISTS sys_message_template ("
+                            + "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
+                            + "code VARCHAR(64) NOT NULL,"
+                            + "title VARCHAR(128) NOT NULL,"
+                            + "body VARCHAR(512) NOT NULL,"
+                            + "enabled TINYINT NOT NULL DEFAULT 1,"
+                            + "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                            + "UNIQUE KEY uk_msg_tpl_code (code)"
+                            + ")");
+            seedTemplate("ticket_approved", "审核已通过", "「{{subject}}」已通过{{note_suffix}}");
+            seedTemplate("ticket_rejected", "审核未通过", "「{{subject}}」已驳回{{note_suffix}}");
+        } catch (Exception ignored) {
+        }
+        templateTableReady = null;
+    }
+
+    private static void seedTemplate(String code, String title, String body) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM sys_message_template WHERE code=?", Integer.class, code);
+            if (n != null && n > 0) return;
+            db().update(
+                    "INSERT INTO sys_message_template (code,title,body,enabled) VALUES (?,?,?,1)",
+                    code, title, body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String renderPlaceholders(String raw, Map<String, String> vars) {
+        String out = raw == null ? "" : raw;
+        if (vars != null) {
+            for (Map.Entry<String, String> e : vars.entrySet()) {
+                String key = e.getKey() == null ? "" : e.getKey();
+                String val = e.getValue() == null ? "" : e.getValue();
+                out = out.replace("{{" + key + "}}", val);
+            }
+        }
+        // 未替换占位符清空，避免把 {{x}} 打进学生包
+        out = out.replaceAll("\\{\\{[a-zA-Z0-9_]+\\}\\}", "");
+        return out;
+    }
+
+    /**
+     * 有启用模板则套模板发送；否则用 fallback 文案。未挂 message_template 时等同 send(fallback)。
+     */
+    public static void sendWithTemplate(
+            String username,
+            String templateCode,
+            Map<String, String> vars,
+            String fallbackTitle,
+            String fallbackBody,
+            String refType,
+            Long refId) {
+        if (templateReady() && templateCode != null && !templateCode.isBlank()) {
+            try {
+                Map<String, Object> tpl = db().queryForObject(
+                        "SELECT title, body, enabled FROM sys_message_template WHERE code=?",
+                        (rs, i) -> {
+                            Map<String, Object> m = new LinkedHashMap<>();
+                            m.put("title", rs.getString("title"));
+                            m.put("body", rs.getString("body"));
+                            m.put("enabled", rs.getInt("enabled"));
+                            return m;
+                        },
+                        templateCode.trim());
+                if (tpl != null && ((Number) tpl.get("enabled")).intValue() == 1) {
+                    String title = renderPlaceholders(String.valueOf(tpl.get("title")), vars);
+                    String body = renderPlaceholders(String.valueOf(tpl.get("body")), vars);
+                    if (title.isBlank()) title = fallbackTitle;
+                    if (body.isBlank()) body = fallbackBody;
+                    send(username, title, body, refType, refId);
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        send(username, fallbackTitle, fallbackBody, refType, refId);
+    }
+
+    public static Map<String, Object> pageTemplates(int page, int size) {
+        if (!templateReady()) throw new IllegalStateException("消息模板功能暂不可用");
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        Integer total = db().queryForObject("SELECT COUNT(*) FROM sys_message_template", Integer.class);
+        List<Map<String, Object>> rows = db().query(
+                "SELECT * FROM sys_message_template ORDER BY id ASC LIMIT ? OFFSET ?",
+                (rs, i) -> mapTemplate(rs),
+                size, (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", rows == null ? List.of() : rows);
+        out.put("total", total == null ? 0 : total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    public static Map<String, Object> updateTemplate(long id, String title, String body, Boolean enabled) {
+        if (!templateReady()) throw new IllegalStateException("消息模板功能暂不可用");
+        Map<String, Object> cur;
+        try {
+            cur = db().queryForObject(
+                    "SELECT * FROM sys_message_template WHERE id=?",
+                    (rs, i) -> mapTemplate(rs),
+                    id);
+        } catch (Exception e) {
+            cur = null;
+        }
+        if (cur == null) throw new IllegalArgumentException("模板不存在");
+        String t = title == null ? String.valueOf(cur.get("title")) : title.trim();
+        String b = body == null ? String.valueOf(cur.get("body")) : body.trim();
+        if (t.isBlank()) throw new IllegalStateException("标题不能为空");
+        if (b.isBlank()) throw new IllegalStateException("正文不能为空");
+        if (t.length() > 128) t = t.substring(0, 128);
+        if (b.length() > 512) b = b.substring(0, 512);
+        int en = enabled == null
+                ? (Boolean.TRUE.equals(cur.get("enabled")) ? 1 : 0)
+                : (enabled ? 1 : 0);
+        db().update(
+                "UPDATE sys_message_template SET title=?, body=?, enabled=?, updated_at=NOW() WHERE id=?",
+                t, b, en, id);
+        return db().queryForObject(
+                "SELECT * FROM sys_message_template WHERE id=?",
+                (rs, i) -> mapTemplate(rs),
+                id);
+    }
+
+    private static Map<String, Object> mapTemplate(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", rs.getLong("id"));
+        m.put("code", rs.getString("code"));
+        m.put("title", rs.getString("title"));
+        m.put("body", rs.getString("body"));
+        m.put("enabled", rs.getInt("enabled") == 1);
+        Timestamp u = null;
+        try {
+            u = rs.getTimestamp("updated_at");
+        } catch (Exception ignored) {
+        }
+        m.put("updatedAt", fmt(u));
+        return m;
+    }
+
+
 }

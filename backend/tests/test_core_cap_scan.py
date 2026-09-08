@@ -33,6 +33,43 @@ class CoreCapScanTests(unittest.TestCase):
         self.assertTrue(scan_ticket_sla("提供超时未处理列表与处理时效考核。"))
         self.assertFalse(scan_ticket_sla("本期不实现超时未处理列表。"))
         self.assertFalse(scan_ticket_sla("支持逾期催还与逾期罚款。"))
+        # 密开题常只写「催办/催领」，须能挂 SLA
+        self.assertTrue(scan_ticket_sla("报修派单跟进催办完结。"))
+        self.assertTrue(scan_ticket_sla("包裹滞留催领与催取。"))
+
+    def test_property_bare_cuiban_mounts_deadline(self) -> None:
+        body = "业主报修，管理员派单，维修工跟进催办后完结评价。"
+        caps = list(DOMAIN_CAPABILITIES["DOM-PROPERTY"])
+        self.assertNotIn("deadline", caps)
+        from app.bake.features.proposal_caps import merge_proposal_capabilities
+
+        merged = merge_proposal_capabilities(caps, body, domain="DOM-PROPERTY")
+        self.assertIn("deadline", merged)
+
+    def test_parcel_cuiling_mounts_deadline_menu(self) -> None:
+        body = "驿站包裹入库取件核销，支持滞留催领。"
+        from app.bake.catalog import build_spec, match_text
+
+        r = match_text(body, "快递驿站管理系统")
+        self.assertEqual(r.domain, "DOM-PARCEL")
+        spec = build_spec(
+            title="快递驿站管理系统",
+            archetype=r.archetype,
+            domain=r.domain,
+            theme="parcel-orange",
+            llm_enabled=False,
+            match_mode="keyword",
+            confidence=0.9,
+            hits=list(r.hits or []),
+            archetypes=list(r.archetypes or []),
+            proposal={"text": body, "title": "快递驿站管理系统"},
+        )
+        self.assertIn("deadline", spec.get("capabilities") or [])
+        labels = (spec.get("schema") or {}).get("labels") or {}
+        self.assertEqual(labels.get("deadlineMenuLabel"), "催领")
+        ticket = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        self.assertTrue(ticket.get("slaDeadline"))
+        self.assertFalse(ticket.get("pickLoanPeriod"))
 
     def test_it_mounts_sla_deadline(self) -> None:
         body = "运维侧提供超时未处理列表，按处理时效催办。"

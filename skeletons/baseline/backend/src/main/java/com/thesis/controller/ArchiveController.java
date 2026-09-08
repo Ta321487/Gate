@@ -1,6 +1,7 @@
 package com.thesis.controller;
 
 import com.thesis.capability.ArchiveStore;
+import com.thesis.capability.AuditLogStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
@@ -180,6 +181,8 @@ public class ArchiveController {
         }
         Map<String, Object> updated = ArchiveStore.updateItem(id, payload);
         if (updated == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        String op = AdminAuth.requireLogin(session);
+        AuditLogStore.record(op, "archive_update", "archive", String.valueOf(id), "更新档案");
         return R.ok(updated);
     }
 
@@ -187,6 +190,8 @@ public class ArchiveController {
     public R<Void> delete(@PathVariable long id, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         if (!ArchiveStore.deleteItem(id)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        String op = AdminAuth.requireLogin(session);
+        AuditLogStore.record(op, "archive_delete", "archive", String.valueOf(id), "删除档案");
         return R.ok(null);
     }
 

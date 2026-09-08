@@ -122,7 +122,6 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "DOM-DOCLIB",
             "DOM-CARPOOL",
             "DOM-TIMEBANK",
-            "DOM-CINEMA",
         ),
     ),
     ("ticket", "报修/工单", ("DOM-DORM", "DOM-PROPERTY", "DOM-IT")),

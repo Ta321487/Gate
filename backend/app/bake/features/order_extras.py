@@ -1,13 +1,14 @@
-"""订单壳增强：评价（扫词）；超时关单（扫词 → yml 分钟数，默认 30）。"""
+"""订单壳增强：评价（扫词）；超时关单；限时购 flash_price（E-05，扫词开）。"""
 
 from __future__ import annotations
 
 import re
 from typing import Any
 
-from app.bake.proposal_lexicon import pattern_mentioned
+from app.bake.proposal_lexicon import keyword_mentioned, pattern_mentioned
 
 ORDER_REVIEW_CAP = "order_review"
+FLASH_PRICE_CAP = "flash_price"
 
 _REVIEW_SIGNALS = re.compile(
     r"订单评价|商品评价|评价功能|评价管理|售后评价|完成评价|星级评价|评论功能"
@@ -15,6 +16,7 @@ _REVIEW_SIGNALS = re.compile(
 _TIMEOUT_SIGNALS = re.compile(
     r"超时取消|支付超时|自动取消订单|未支付取消|订单超时|超时关单"
 )
+_FLASH_TERMS = ("限时购", "限时特价", "活动价", "秒杀")
 
 
 def scan_order_review(text: str) -> bool:
@@ -23,6 +25,11 @@ def scan_order_review(text: str) -> bool:
 
 def scan_order_timeout(text: str) -> bool:
     return pattern_mentioned(text or "", _TIMEOUT_SIGNALS, ignore_contrast=True)
+
+
+def scan_flash_price(text: str) -> bool:
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _FLASH_TERMS)
 
 
 def merge_order_extras_capabilities(
@@ -34,7 +41,7 @@ def merge_order_extras_capabilities(
 ) -> list[str]:
     out = list(caps or [])
     if "order_lines" not in out:
-        return [c for c in out if c != ORDER_REVIEW_CAP]
+        return [c for c in out if c not in (ORDER_REVIEW_CAP, FLASH_PRICE_CAP)]
     want_review = scan_order_review(proposal_text)
     if not want_review and (domain or "") == "DOM-SHOP":
         from app.bake.scene_scan import scan_shop_marketplace
@@ -43,6 +50,8 @@ def merge_order_extras_capabilities(
         want_review = scan_shop_marketplace(title, proposal_text)
     if want_review and ORDER_REVIEW_CAP not in out:
         out.append(ORDER_REVIEW_CAP)
+    if scan_flash_price(proposal_text) and FLASH_PRICE_CAP not in out:
+        out.append(FLASH_PRICE_CAP)
     return out
 
 
@@ -56,6 +65,33 @@ def order_timeout_minutes(proposal_text: str = "", caps: list[str] | None = None
     return 0
 
 
+def attach_flash_price_fields(schema: dict[str, Any]) -> None:
+    """档案字段：活动价 + 窗口；管理端走 extraFields，门户展示促销价。"""
+    ents = schema.setdefault("entities", {})
+    archive = ents.setdefault("archive", {})
+    if not isinstance(archive, dict):
+        return
+    fields = list(archive.get("fields") or [])
+    keys = {f.get("key") for f in fields if isinstance(f, dict)}
+    extras = [
+        {"key": "promoPrice", "label": "活动价(元)", "type": "number", "format": "money"},
+        {"key": "promoStart", "label": "活动开始", "type": "datetime"},
+        {"key": "promoEnd", "label": "活动结束", "type": "datetime"},
+    ]
+    for f in extras:
+        if f["key"] not in keys:
+            fields.append(f)
+            keys.add(f["key"])
+    archive["fields"] = fields
+    archive["flashPriceEnabled"] = True
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("flashPriceBadge", "活动价")
+    labels.setdefault(
+        "flashPriceHint",
+        "活动窗口内按下单时的活动价计入订单；窗外按原价。库存仍按单仓扣减。",
+    )
+
+
 def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeout_minutes: int = 0) -> None:
     caps = list(caps or [])
     labels = schema.setdefault("labels", {})
@@ -66,6 +102,9 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
     if timeout_minutes > 0:
         schema["orderTimeoutMinutes"] = int(timeout_minutes)
         labels.setdefault("orderTimeoutHint", f"待确认订单超过 {timeout_minutes} 分钟将自动取消")
+
+    if FLASH_PRICE_CAP in caps:
+        attach_flash_price_fields(schema)
 
     if ORDER_REVIEW_CAP not in caps:
         return
@@ -84,14 +123,19 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
 
 
 def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
-    caps = merge_order_extras_capabilities(list(spec.get("capabilities") or []), proposal_text)
+    caps = merge_order_extras_capabilities(
+        list(spec.get("capabilities") or []),
+        proposal_text,
+        domain=spec.get("domain"),
+        title=str(spec.get("title") or ""),
+    )
     timeout = order_timeout_minutes(proposal_text, caps)
     spec = {**spec, "capabilities": caps}
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
     attach_order_extras_schema(schema, caps, timeout_minutes=timeout)
-    # 券 / 评价 / 超时关单 gate 只在此处合并（loyalty 不再二次 merge）
-    if ORDER_REVIEW_CAP in caps or timeout > 0 or "coupon" in caps:
+    # 券 / 评价 / 超时关单 / 限时购 gate
+    if ORDER_REVIEW_CAP in caps or timeout > 0 or "coupon" in caps or FLASH_PRICE_CAP in caps:
         from app.bake.gate_contracts import merge_order_extras_gate
 
         gate = dict(spec.get("gate") or {})
@@ -102,6 +146,8 @@ def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") ->
             features.append({"name": "订单评价", "status": "module"})
         if timeout > 0 and "订单超时自动取消" not in names:
             features.append({"name": "订单超时自动取消", "status": "module"})
+        if FLASH_PRICE_CAP in caps and "限时购" not in names:
+            features.append({"name": "限时购", "status": "module"})
         spec["features"] = features
     spec["schema"] = schema
     return spec

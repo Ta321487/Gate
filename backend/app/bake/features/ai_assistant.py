@@ -475,9 +475,9 @@ _AI_SEED_PACKS: dict[str, list[tuple[str, str, str, str, int]]] = {
         ),
         _faq(
             "计算机",
-            "续借与逾期怎么办",
-            "临近到期可在「我的借阅」申请续借；逾期可能限制新借，请及时处理并关注催还通知。",
-            "续借,逾期,借阅,催还",
+            "逾期与催还怎么办",
+            "请关注催还通知并在期限内归还；逾期可能影响继续借阅。",
+            "逾期,借阅,催还,归还",
             6,
         ),
     ],
@@ -1093,9 +1093,9 @@ _AI_SEED_PACKS: dict[str, list[tuple[str, str, str, str, int]]] = {
         ),
         _faq(
             "测量仪器",
-            "如何续借或归还",
-            "在「我的借用」申请续借或登记归还；逾期可能限制新借，请关注催还通知。",
-            "续借,归还,逾期,借用",
+            "逾期与催还怎么办",
+            "请关注催还通知并在期限内归还；逾期可能影响继续借用。",
+            "逾期,归还,催还,借用",
             6,
         ),
     ],
@@ -2071,10 +2071,25 @@ def build_ai_knowledge_seed_sql(
     domain: str = "",
     title: str = "",
     proposal_text: str = "",
+    capabilities: list | None = None,
 ) -> str:
-    """生成幂等 INSERT 种子 SQL（4 条）。"""
+    """生成幂等 INSERT 种子 SQL（4 条）。挂 loan_renew 时把逾期条换成续借说明。"""
     skin = resolve_ai_knowledge_skin(domain, title, proposal_text)
-    rows = _AI_SEED_PACKS.get(skin) or _AI_SEED_PACKS["generic"]
+    rows = list(_AI_SEED_PACKS.get(skin) or _AI_SEED_PACKS["generic"])
+    caps = set(capabilities or [])
+    if "loan_renew" in caps and skin in ("library_book", "library_archive", "equip", "library"):
+        # 替换末条逾期说明为续借+逾期（与实包按钮一致）
+        renew_row = _faq(
+            rows[-1][0] if rows else "借阅",
+            "续借与逾期怎么办",
+            "临近到期可在「我的借阅」申请续借（受次数上限）；逾期请及时归还并关注催还通知。",
+            "续借,逾期,借阅,催还,归还",
+            6,
+        )
+        if rows:
+            rows = list(rows[:-1]) + [renew_row]
+        else:
+            rows = [renew_row]
     parts: list[str] = []
     for i, (cat, title_s, content, keywords, hit) in enumerate(rows):
         cond = (

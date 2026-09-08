@@ -39,6 +39,8 @@ def baseline_runtime_covers(
 # 主数据菜单 key（领域实体管理，总管专属）
 MASTER_MENU_KEYS = frozenset({"archive", "category", "lookup_site", "lookup_type"})
 REQUIRED_SUPER_MENU_KEYS = frozenset({"users", "content"})
+# 多商家商城：商品/活动对商家开放（builders_slot 显式 superOnly=false），不强制超管
+MARKETPLACE_MERCHANT_MENU_KEYS = frozenset({"archive", "content"})
 
 
 def build_domain_schema(
@@ -280,6 +282,8 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         or required_capabilities(domain, archetype, archetypes=arches)
     )
     from app.bake.features.archive_log import apply_archive_log_to_spec
+    from app.bake.features.audit_log import apply_audit_log_to_spec
+    from app.bake.features.message_template import apply_message_template_to_spec
     from app.bake.features.favorites import apply_favorites_to_spec
     from app.bake.features.dm import apply_dm_to_spec
     from app.bake.features.exam import apply_exam_to_spec
@@ -384,6 +388,8 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_favorites_to_spec(out, body)
     out = apply_ux_to_spec(out, body)
     out = apply_archive_log_to_spec(out, body)
+    out = apply_audit_log_to_spec(out, body)
+    out = apply_message_template_to_spec(out, body)
     out = apply_order_extras_to_spec(out, body)
     from app.bake.features.core_cap_scan import apply_core_caps_to_spec
     from app.bake.features.ticket_flow_opts import apply_ticket_flow_opts_to_spec
@@ -429,7 +435,8 @@ def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:
     if not isinstance(labels, dict) or not labels.get("appName"):
         errors.append("schema.labels.appName 必填")
 
-    # 全厂不变式：admin 菜单须含用户 + 公告 + ≥1 领域主数据（均应 superOnly）
+    # 全厂不变式：admin 菜单须含用户 + 公告 + ≥1 领域主数据（默认 superOnly；
+    # shopMarketplace 下 archive/content 对商家开放，见 MARKETPLACE_MERCHANT_MENU_KEYS）
     admin_menus = (schema.get("menus") or {}).get("admin") or []
     if isinstance(admin_menus, list) and admin_menus:
         keys = {
@@ -448,11 +455,14 @@ def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:
         # 有 ticket 业务流时禁止假 archive（无 archive 能力却挂 archive 菜单）
         if "ticket_flow" in caps and "archive" not in caps and "archive" in keys:
             errors.append("ticket 域禁止未实现的 archive 菜单")
+        marketplace = bool(schema.get("shopMarketplace"))
         for m in admin_menus:
             if not isinstance(m, dict):
                 continue
             k = m.get("key")
             if k in MASTER_MENU_KEYS or k in REQUIRED_SUPER_MENU_KEYS:
+                if marketplace and k in MARKETPLACE_MERCHANT_MENU_KEYS:
+                    continue
                 if m.get("superOnly") is not True:
                     errors.append(f"admin 菜单 {k} 必须 superOnly=true")
 
