@@ -41,6 +41,8 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/ticket-records': 'ticket_records',
   '/admin/overdue': 'deadline',
   '/admin/orders': 'orders',
+  '/admin/order-reviews': 'order_reviews',
+  '/admin/coupons': 'coupons',
   '/admin/reservations': 'reservations',
   '/admin/users': 'users',
   '/admin/notices': 'content',
@@ -54,6 +56,11 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/vote/results': 'vote_results',
   '/admin/doc/files': 'doc_files',
   '/admin/doc/logs': 'doc_logs',
+  '/admin/tb/accounts': 'tb_accounts',
+  '/admin/tb/ledger': 'tb_ledger_admin',
+  '/admin/stock/moves': 'stock_moves',
+  '/admin/stock/ledger': 'stock_ledger',
+  '/admin/e-sign': 'e_sign_admin',
   '/admin/archive-logs': 'archive_logs',
   '/admin/sites': 'lookup_site',
   '/admin/types': 'lookup_type',
@@ -78,7 +85,13 @@ function adminGuard(to, _from, next) {
   const allowed = clerkAllowedMenuKeys(currentStaffPost())
   if (allowed && localStorage.getItem('superAdmin') !== 'true') {
     const key = ADMIN_KEY_BY_PATH[to.path]
-    if (key && key !== 'profile' && key !== 'messages' && !allowed.has(key)) {
+    // 无 key 的 /admin/* 深链一律拒绝（缺省放行会被越权）
+    if (!key) {
+      if (to.path.startsWith('/admin/') && to.path !== '/admin' && to.path !== '/admin/') {
+        next('/admin/dashboard')
+        return
+      }
+    } else if (key !== 'profile' && key !== 'messages' && !allowed.has(key)) {
       next('/admin/dashboard')
       return
     }
@@ -226,6 +239,63 @@ function withGuestbookRoutes(baseRoutes) {
     adminKids.splice(at, 0, {
       path: 'guestbook',
       component: () => import('../views/admin/GuestbookAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+
+
+/** 站内消息模板：有 message_template 时挂管理端（总管） */
+function withMessageTemplateRoutes(baseRoutes) {
+  if (!hasCap('message_template')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'message-templates')) {
+    const auditIdx = adminKids.findIndex((c) => c.path === 'audit-logs')
+    const gbIdx = adminKids.findIndex((c) => c.path === 'guestbook')
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = auditIdx >= 0 ? auditIdx : gbIdx >= 0 ? gbIdx : noticeIdx >= 0 ? noticeIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'message-templates',
+      component: () => import('../views/admin/MessageTemplatesAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 操作审计日志：有 audit_log 时挂管理端（总管） */
+function withAuditLogRoutes(baseRoutes) {
+  if (!hasCap('audit_log')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'audit-logs')) {
+    const gbIdx = adminKids.findIndex((c) => c.path === 'guestbook')
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = gbIdx >= 0 ? gbIdx : noticeIdx >= 0 ? noticeIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'audit-logs',
+      component: () => import('../views/admin/AuditLogsAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 内容举报管理：有 content_report 时挂管理端 */
+function withContentReportRoutes(baseRoutes) {
+  if (!hasCap('content_report')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'content-reports')) {
+    const gbIdx = adminKids.findIndex((c) => c.path === 'guestbook')
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = gbIdx >= 0 ? gbIdx + 1 : noticeIdx >= 0 ? noticeIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'content-reports',
+      component: () => import('../views/admin/ContentReportsAdmin.vue'),
     })
   }
   return routes
@@ -433,13 +503,16 @@ function withStockIoRoutes(baseRoutes) {
   return routes
 }
 
-/** 影院选座：有 seat_select 能力时挂场次与座位图 */
+/** 影院选座：有 seat_select 能力时挂场次与座位图；剥掉购物车/地址簿孤儿路由 */
 function withSeatSelectRoutes(baseRoutes) {
   if (!hasCap('seat_select')) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
   if (kids) {
+    for (let i = kids.length - 1; i >= 0; i -= 1) {
+      if (kids[i].path === 'cart' || kids[i].path === 'addresses') kids.splice(i, 1)
+    }
     const add = (path, loader) => {
       if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
     }
@@ -901,7 +974,7 @@ function pickRoutes() {
                       withDoclibRoutes(
                         withVoteRoutes(
                           withSurveyRoutes(
-                            withExamRoutes(withAiAssistantRoutes(withGuestbookRoutes(routes))),
+                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withGuestbookRoutes(routes)))))),
                           ),
                         ),
                       ),

@@ -1,6 +1,7 @@
 package com.thesis.config;
 
 import com.thesis.capability.ArchiveLogStore;
+import com.thesis.capability.AuditLogStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
 import com.thesis.capability.CouponStore;
@@ -12,6 +13,7 @@ import com.thesis.capability.SlotStore;
 import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
+import com.thesis.service.MessageStore;
 import com.thesis.service.DoclibStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.SurveyStore;
@@ -236,6 +238,21 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.favorites-enabled:false}")
     private boolean favoritesEnabled;
 
+    @Value("${thesis.post-like-enabled:false}")
+    private boolean postLikeEnabled;
+
+    @Value("${thesis.content-report-enabled:false}")
+    private boolean contentReportEnabled;
+
+    @Value("${thesis.audit-log-enabled:false}")
+    private boolean auditLogEnabled;
+
+    @Value("${thesis.message-template-enabled:false}")
+    private boolean messageTemplateEnabled;
+
+    @Value("${thesis.audit-log-login-only:false}")
+    private boolean auditLogLoginOnly;
+
     @Value("${thesis.browse-history-enabled:false}")
     private boolean browseHistoryEnabled;
 
@@ -296,6 +313,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
+    @Value("${thesis.flash-price-enabled:false}")
+    private boolean flashPriceEnabled;
+
     @Value("${thesis.shop-marketplace:false}")
     private boolean shopMarketplace;
 
@@ -314,6 +334,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configureGallery(galleryEnabled);
+        ArchiveStore.configureFlashPrice(flashPriceEnabled);
         ArchiveStore.configureShopMarketplace(shopMarketplace);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
@@ -370,8 +391,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         }
         OrderReviewStore.configure(orderReviewEnabled);
         FavoriteStore.configure(favoritesEnabled);
+        FavoriteStore.configureLike(postLikeEnabled);
+        FavoriteStore.configureReport(contentReportEnabled);
         BrowseHistoryStore.configure(browseHistoryEnabled, 20);
         ArchiveLogStore.configure(archiveLogEnabled);
+        AuditLogStore.configure(auditLogEnabled, auditLogLoginOnly);
+        MessageStore.configureTemplate(messageTemplateEnabled);
         ExamStore.configure(
                 examEnabled,
                 examPracticeEnabled,

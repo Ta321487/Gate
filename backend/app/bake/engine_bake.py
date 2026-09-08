@@ -385,6 +385,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-allow-checkin", bool(ticket_ent.get("allowCheckin"))),
             ("ticket-peer-accept", bool(ticket_ent.get("peerAccept"))),
             ("ticket-issue-pass-code", bool(ticket_ent.get("issuePassCode"))),
+            ("ticket-allow-renew", bool(ticket_ent.get("allowRenew"))),
+            ("ticket-allow-waitlist", bool(ticket_ent.get("allowWaitlist"))),
             ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
             ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
@@ -425,6 +427,19 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             cat_limit_n = 0
         if cat_limit_n > 0:
             lines.append(f"  ticket-category-limit: {cat_limit_n}")
+        if ticket_ent.get("allowRenew"):
+            try:
+                max_renew = int(ticket_ent.get("maxRenew") or 1)
+            except (TypeError, ValueError):
+                max_renew = 1
+            max_renew = max(1, min(5, max_renew))
+            lines.append(f"  ticket-max-renew: {max_renew}")
+            try:
+                renew_days = int(ticket_ent.get("renewDays") or 0)
+            except (TypeError, ValueError):
+                renew_days = 0
+            if renew_days > 0:
+                lines.append(f"  ticket-renew-days: {renew_days}")
         from app.bake.ticket_rules import rules_for
 
         rules = rules_for(
@@ -547,6 +562,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  coupon-enabled: true")
     if "order_review" in caps:
         lines.append("  order-review-enabled: true")
+    if "flash_price" in caps:
+        lines.append("  flash-price-enabled: true")
     timeout = 0
     try:
         timeout = int((spec.get("schema") or {}).get("orderTimeoutMinutes") or 0)
@@ -556,6 +573,16 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  order-timeout-minutes: {timeout}")
     if "favorites" in caps:
         lines.append("  favorites-enabled: true")
+    if "post_like" in caps:
+        lines.append("  post-like-enabled: true")
+    if "content_report" in caps:
+        lines.append("  content-report-enabled: true")
+    if "audit_log" in caps:
+        lines.append("  audit-log-enabled: true")
+    if "message_template" in caps:
+        lines.append("  message-template-enabled: true")
+        if bool((spec.get("schema") or {}).get("auditLoginOnly")):
+            lines.append("  audit-log-login-only: true")
     if "browse_history" in caps:
         lines.append("  browse-history-enabled: true")
     if "archive_log" in caps:

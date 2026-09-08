@@ -11,7 +11,7 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
     "order_ops": frozenset({"dashboard", "orders"}),
     # 多店店长：自家商品 + 订单 + 留言（评价菜单由 order_review 挂载时再并入可见）
     "merchant_ops": frozenset(
-        {"dashboard", "archive", "orders", "guestbook", "order_reviews", "content", "dm"}
+        {"dashboard", "archive", "orders", "guestbook", "order_reviews", "content"}
     ),
     "slot_ops": frozenset({"dashboard", "reservations"}),
     # 内容流编辑：维护档案与公告（无单据审核队列）
@@ -98,7 +98,9 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-ETHIC": [_clerk("ethic_clerk", "审核秘书", "ticket_ops")],
     "DOM-PARTY": [_clerk("party_clerk", "组织员", "ticket_ops")],
     "DOM-CONTRACT": [_clerk("contract_clerk", "合同专员", "ticket_ops")],
-    "DOM-INSTRUMENT": [_clerk("instrument_clerk", "仪器管理员", "ticket_ops")],
+    "DOM-INSTRUMENT": [
+        _clerk("instrument_clerk", "仪器管理员", "ticket_ops", "slot_ops")
+    ],
     "DOM-EXAM": [_clerk("exam_clerk", "教务员", "exam_ops")],
     "DOM-SURVEY": [_clerk("survey_clerk", "调研员", "survey_ops")],
     "DOM-VOTE": [_clerk("vote_clerk", "评选员", "vote_ops")],

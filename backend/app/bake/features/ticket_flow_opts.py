@@ -16,6 +16,24 @@ from typing import Any
 from app.bake.proposal_lexicon import keyword_mentioned
 
 MULTI_APPROVE_CAP = "multi_approve"
+WAITLIST_CAP = "waitlist"
+
+# 候补仅挂名额报名/选课类域（开题写到才挂，无域默认）
+_WAITLIST_DOMAINS = frozenset({
+    "DOM-ACTIVITY",
+    "DOM-COURSE",
+    "DOM-TOUR",
+    "DOM-LOST",
+})
+
+_WAITLIST_TERMS = (
+    "候补",
+    "等位",
+    "等待队列",
+    "满员候补",
+    "候补队列",
+    "候补名单",
+)
 
 # —— 扫词（正向提及才算）——
 
@@ -97,6 +115,31 @@ def scan_require_attach(text: str) -> bool:
 def scan_apply_deadline(text: str) -> bool:
     raw = text or ""
     return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _APPLY_DEADLINE_TERMS)
+
+
+def scan_waitlist(text: str) -> bool:
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _WAITLIST_TERMS)
+
+
+def merge_waitlist_capabilities(
+    caps: list[str] | None,
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+) -> list[str]:
+    """候补：开题写到 + 名额域 + quota；只增不减。"""
+    out = list(caps or [])
+    if WAITLIST_CAP in out:
+        return out
+    if "ticket_flow" not in out or "quota" not in out:
+        return out
+    if (domain or "") not in _WAITLIST_DOMAINS:
+        return out
+    if not scan_waitlist(proposal_text or ""):
+        return out
+    out.append(WAITLIST_CAP)
+    return out
 
 
 def _apply_deadline_label(text: str) -> str:
@@ -191,11 +234,14 @@ def _ensure_apply_deadline_field(archive: dict[str, Any], label: str) -> None:
 def apply_ticket_flow_opts_to_schema(
     schema: dict[str, Any],
     proposal_text: str = "",
+    *,
+    capabilities: list[str] | None = None,
 ) -> None:
     """就地改 schema.entities.ticket / archive；只开不开。"""
     if not isinstance(schema, dict):
         return
     text = proposal_text or ""
+    caps = list(capabilities or schema.get("capabilities") or [])
     entities = schema.setdefault("entities", {})
     ticket = entities.get("ticket")
     if isinstance(ticket, dict):
@@ -206,6 +252,28 @@ def apply_ticket_flow_opts_to_schema(
             _ensure_pending_final(ticket)
         if scan_require_attach(text):
             ticket["requireAttach"] = True
+        if WAITLIST_CAP in caps:
+            ticket["allowWaitlist"] = True
+            states = ticket.get("states")
+            if isinstance(states, dict) and "waitlisted" not in states:
+                ordered: dict[str, str] = {}
+                for k, v in states.items():
+                    ordered[k] = v
+                    if k == "pending":
+                        ordered["waitlisted"] = "候补中"
+                if "waitlisted" not in ordered:
+                    ordered["waitlisted"] = "候补中"
+                ticket["states"] = ordered
+            labels = schema.setdefault("labels", {})
+            if isinstance(labels, dict):
+                labels.setdefault("waitlistVerb", "候补报名")
+                labels.setdefault("waitlistOkMessage", "名额已满，已加入候补队列")
+            verbs = schema.setdefault("verbs", {})
+            if isinstance(verbs, dict):
+                wlab = "候补报名"
+                if isinstance(labels, dict) and labels.get("waitlistVerb"):
+                    wlab = str(labels.get("waitlistVerb"))
+                verbs.setdefault("waitlist", wlab)
 
     archive = entities.get("archive")
     if isinstance(archive, dict) and scan_apply_deadline(text):
@@ -229,9 +297,12 @@ def apply_ticket_flow_opts_to_spec(
     """挂 features 文案；schema 开关由 apply_ticket_flow_opts_to_schema 完成。"""
     text = proposal_text or ""
     caps = merge_multi_approve_capabilities(list(spec.get("capabilities") or []), text)
+    caps = merge_waitlist_capabilities(
+        caps, text, domain=str(spec.get("domain") or "")
+    )
     schema = dict(spec.get("schema") or {})
-    apply_ticket_flow_opts_to_schema(schema, text)
     schema["capabilities"] = caps
+    apply_ticket_flow_opts_to_schema(schema, text, capabilities=caps)
     spec = {**spec, "capabilities": caps, "schema": schema}
 
     features = list(spec.get("features") or [])
@@ -258,6 +329,8 @@ def apply_ticket_flow_opts_to_spec(
         fields = archive.get("fields") or []
         if any(isinstance(f, dict) and f.get("key") == "applyDeadlineAt" for f in fields):
             _add_feat(_apply_deadline_label(text), "module")
+    if WAITLIST_CAP in caps and scan_waitlist(text):
+        _add_feat("候补", "flow")
 
     spec["features"] = features
     return spec

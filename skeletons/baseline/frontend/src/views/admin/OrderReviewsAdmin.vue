@@ -1,5 +1,6 @@
 <template>
   <div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="orderId" label="订单" width="90" />
       <el-table-column label="用户" width="120">
@@ -13,13 +14,16 @@
         <template #default="{ row }">{{ row.reply || '—' }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" />
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" min-width="140" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="primary" @click="openReply(row)">回复</el-button>
           <el-button v-if="canDelete" link type="danger" @click="remove(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"

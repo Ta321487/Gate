@@ -71,7 +71,30 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertIn("seat_shows", user_keys)
         self.assertIn("my_orders", user_keys)
         self.assertNotIn("cart", user_keys)
+        self.assertNotIn("addresses", user_keys)
         self.assertIn(SEAT_SELECT_CAP, spec.get("capabilities") or [])
+        labels = sch.get("labels") or {}
+        self.assertEqual(labels.get("userHomePath"), "/seats/shows")
+        self.assertEqual(labels.get("seatSelectCta"), "选座")
+
+    def test_cinema_only_in_trade_group(self) -> None:
+        from app.bake.domains import DOMAIN_GROUPS
+
+        groups = {g: set(members) for g, _l, members in DOMAIN_GROUPS}
+        self.assertIn("DOM-CINEMA", groups["trade"])
+        self.assertNotIn("DOM-CINEMA", groups.get("borrow", set()))
+
+    def test_runtime_archive_browse_seat_cta(self) -> None:
+        src = (BASELINE / "frontend/src/views/user/ArchiveBrowse.vue").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("isSeatSelectMode", src)
+        self.assertIn("/seats/map/", src)
+        self.assertIn("seat_select", src)
+        router = (BASELINE / "frontend/src/router/index.js").read_text(encoding="utf-8")
+        self.assertIn("path === 'cart' || kids[i].path === 'addresses'", router)
+        self.assertIn("'/admin/coupons': 'coupons'", router)
+        self.assertIn("'/admin/order-reviews': 'order_reviews'", router)
 
     def test_sql_yml_accept(self) -> None:
         sql = domain_sql(

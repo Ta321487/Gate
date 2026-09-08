@@ -361,8 +361,9 @@ def ensure_ai_assistant_sql(
     domain: str = "",
     title: str = "",
     proposal_text: str = "",
+    capabilities: list | None = None,
 ) -> str:
-    """能力开启时幂等补 AI 表，并按域/开题灌演示 FAQ 种子。"""
+    """能力开启时幂等补 AI 表，并按域/开题灌 FAQ 种子。"""
     if not enabled:
         return sql
     from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
@@ -375,6 +376,7 @@ def ensure_ai_assistant_sql(
             domain=domain,
             title=title,
             proposal_text=proposal_text,
+            capabilities=capabilities,
         )
     return out
 
@@ -576,6 +578,34 @@ CREATE TABLE IF NOT EXISTS user_favorite (
 );
 """
 
+_POST_LIKE_DDL = """
+CREATE TABLE IF NOT EXISTS user_post_like (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_like_user_item (username, item_id),
+  KEY idx_like_item (item_id)
+);
+"""
+
+_CONTENT_REPORT_DDL = """
+CREATE TABLE IF NOT EXISTS content_report (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) NOT NULL DEFAULT 'archive',
+  target_id BIGINT NOT NULL,
+  reason VARCHAR(512) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_creport_status (status, id),
+  KEY idx_creport_target (target_type, target_id)
+);
+"""
+
 
 def ensure_favorites_sql(sql: str, *, enabled: bool) -> str:
     """交易收藏表；未开启不注入。"""
@@ -585,6 +615,80 @@ def ensure_favorites_sql(sql: str, *, enabled: bool) -> str:
         return sql
     return sql.rstrip() + "\n" + _FAVORITE_DDL
 
+
+def ensure_post_like_sql(sql: str, *, enabled: bool, item_table: str | None = None) -> str:
+    """点赞表；开题挂 post_like 才注入。like_count 列由 FavoriteStore 运行时 ensure。"""
+    del item_table  # 列由运行时补，避免各 MySQL 版本 ALTER 方言差异
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_post_like`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _POST_LIKE_DDL
+
+
+def ensure_content_report_sql(sql: str, *, enabled: bool) -> str:
+    """内容举报表；开题挂 content_report 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?content_report`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _CONTENT_REPORT_DDL
+
+
+
+
+_MESSAGE_TEMPLATE_DDL = """
+CREATE TABLE IF NOT EXISTS sys_message_template (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  code VARCHAR(64) NOT NULL,
+  title VARCHAR(128) NOT NULL,
+  body VARCHAR(512) NOT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_msg_tpl_code (code)
+);
+"""
+
+_MESSAGE_TEMPLATE_SEED = """
+INSERT INTO sys_message_template (code, title, body, enabled)
+SELECT 'ticket_approved', '审核已通过', '「{{subject}}」已通过{{note_suffix}}', 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_approved');
+INSERT INTO sys_message_template (code, title, body, enabled)
+SELECT 'ticket_rejected', '审核未通过', '「{{subject}}」已驳回{{note_suffix}}', 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_rejected');
+"""
+
+
+def ensure_message_template_sql(sql: str, *, enabled: bool) -> str:
+    """消息模板表+种子；开题挂 message_template 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_message_template`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _MESSAGE_TEMPLATE_DDL + "\n" + _MESSAGE_TEMPLATE_SEED
+
+_AUDIT_LOG_DDL = """
+CREATE TABLE IF NOT EXISTS sys_audit_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) DEFAULT '',
+  target_id VARCHAR(64) DEFAULT '',
+  detail VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_audit_created (created_at, id),
+  KEY idx_audit_user (username)
+);
+"""
+
+
+def ensure_audit_log_sql(sql: str, *, enabled: bool) -> str:
+    """操作审计表；开题挂 audit_log 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_audit_log`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _AUDIT_LOG_DDL
 
 _BROWSE_HISTORY_DDL = """
 CREATE TABLE IF NOT EXISTS user_browse_history (
@@ -679,6 +783,31 @@ SCHEDULE_COLUMNS: list[tuple[str, str]] = [
     ("end_at", "DATETIME NULL"),
 ]
 
+
+
+FLASH_PRICE_COLUMNS: list[tuple[str, str]] = [
+    ("promo_price", "DECIMAL(10,2) NULL"),
+    ("promo_start", "DATETIME NULL"),
+    ("promo_end", "DATETIME NULL"),
+]
+
+
+def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """限时购列；开题挂 flash_price 才注入档案表。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, FLASH_PRICE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
 
 def ensure_archive_flag_columns(
     sql: str,
@@ -852,6 +981,8 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("contact_channel", "VARCHAR(32) DEFAULT ''"),
     ("next_follow_at", "DATETIME NULL"),
     ("checked_in_at", "DATETIME NULL"),
+    ("pass_code", "VARCHAR(32) DEFAULT ''"),
+    ("renew_count", "INT NOT NULL DEFAULT 0"),
     ("qty", "INT NOT NULL DEFAULT 1"),
     ("period_start", "DATETIME NULL"),
     ("period_end", "DATETIME NULL"),
@@ -937,6 +1068,8 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("checked_in_at")
     if f.get("issuePassCode"):
         names.append("pass_code")
+    if f.get("allowRenew"):
+        names.append("renew_count")
     if f.get("noShowAfterEnd") or f.get("fineLabel"):
         names.append("fine_status")
     # 去重保序

@@ -13,9 +13,10 @@
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
-      <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" />
+      <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
       <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
@@ -91,8 +92,9 @@
       <el-table-column v-if="allowRating" label="评价时间" width="170">
         <template #default="{ row }">{{ row.ratedAt || '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="info" @click="openProgress(row)">进度</el-button>
           <el-button
             v-if="canPickup(row)"
@@ -112,9 +114,11 @@
             type="primary"
             @click="finish(row)"
           >{{ verbs.return || '完成' }}</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"

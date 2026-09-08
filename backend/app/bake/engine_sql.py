@@ -196,7 +196,13 @@ def domain_sql(
     )
     from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
     from app.bake.features.dm import DM_CAP
-    from app.bake.features.favorites import FAVORITES_CAP
+    from app.bake.features.favorites import (
+        CONTENT_REPORT_CAP,
+        FAVORITES_CAP,
+        POST_LIKE_CAP,
+    )
+    from app.bake.features.audit_log import AUDIT_LOG_CAP
+    from app.bake.features.message_template import MESSAGE_TEMPLATE_CAP
     from app.bake.features.exam import (
         EXAM_CAP,
         apply_exam_skin_sql,
@@ -209,13 +215,14 @@ def domain_sql(
     from app.bake.features.ai_assistant import AI_ASSISTANT_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP
-    from app.bake.features.order_extras import ORDER_REVIEW_CAP
+    from app.bake.features.order_extras import FLASH_PRICE_CAP, ORDER_REVIEW_CAP
     from app.bake.features.loyalty import LOYALTY_CAPS
     from app.bake.features.proposal_caps import merge_proposal_capabilities
     from app.bake.archive_columns import apply_archive_semantic_columns
     from app.bake.ticket_columns import apply_ticket_shell_sql
     from app.bake.sql.fragments import (
         ensure_archive_flag_columns,
+        ensure_flash_price_columns,
         ensure_archive_log_sql,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
@@ -224,6 +231,10 @@ def domain_sql(
         ensure_exam_wrongbook_sql,
         ensure_vote_sql,
         ensure_favorites_sql,
+        ensure_post_like_sql,
+        ensure_content_report_sql,
+        ensure_audit_log_sql,
+        ensure_message_template_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
         ensure_ai_assistant_sql,
@@ -334,6 +345,11 @@ def domain_sql(
         apply_deadline=scan_apply_deadline(proposal_text or ""),
         schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),
     )
+    text = ensure_flash_price_columns(
+        text,
+        enabled=FLASH_PRICE_CAP in caps,
+        item_table=resolved_item,
+    )
     text = apply_archive_semantic_columns(
         text,
         domain=domain or "",
@@ -382,6 +398,7 @@ def domain_sql(
         domain=domain or "",
         title=title or "",
         proposal_text=proposal_text or "",
+        capabilities=list(caps or []),
     )
     text = ensure_dm_sql(
         text,
@@ -390,6 +407,23 @@ def domain_sql(
     text = ensure_favorites_sql(
         text,
         enabled=FAVORITES_CAP in caps,
+    )
+    text = ensure_post_like_sql(
+        text,
+        enabled=POST_LIKE_CAP in caps,
+        item_table=resolved_item,
+    )
+    text = ensure_content_report_sql(
+        text,
+        enabled=CONTENT_REPORT_CAP in caps,
+    )
+    text = ensure_audit_log_sql(
+        text,
+        enabled=AUDIT_LOG_CAP in caps,
+    )
+    text = ensure_message_template_sql(
+        text,
+        enabled=MESSAGE_TEMPLATE_CAP in caps,
     )
     text = ensure_browse_history_sql(
         text,

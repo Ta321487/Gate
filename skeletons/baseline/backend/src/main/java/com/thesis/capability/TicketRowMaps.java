@@ -49,6 +49,14 @@ final class TicketRowMaps {
         }
         m.put("checkedInAt", TicketSql.fmt(TicketSql.safeTs(rs, "checked_in_at")));
         m.put("passCode", TicketSql.safeStr(rs, "pass_code"));
+        int renewCount = 0;
+        try {
+            renewCount = rs.getInt("renew_count");
+            if (rs.wasNull()) renewCount = 0;
+        } catch (Exception ignored) {
+            renewCount = 0;
+        }
+        m.put("renewCount", renewCount);
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", TicketSql.safeStr(rs, "title"));

@@ -187,6 +187,14 @@ async def run_plan_units(
     """
     _ = db
     base_schema = dict(spec.get("schema") or {})
+    from app.bake.domain_schema import validate_schema
+
+    base_ok, base_errs = validate_schema(base_schema) if base_schema else (True, [])
+    if not base_ok:
+        append_deepseek_log(
+            project_id,
+            "unit_flow base schema invalid · " + "; ".join(base_errs[:3]),
+        )
     sem = asyncio.Semaphore(max(1, concurrency))
     event_lock = asyncio.Lock()
     results: list[UnitResult] = []
@@ -200,16 +208,26 @@ async def run_plan_units(
             await _emit_safe(
                 {"type": "unit_started", "unit_id": unit.id, "kind": unit.kind.value},
             )
-            async with SessionLocal() as unit_db:
-                res = await run_single_unit(
-                    unit_db,
-                    rt,
-                    plan,
-                    unit,
-                    project_id=project_id,
-                    base_schema=base_schema,
-                    llm_enabled=llm_enabled,
-                )
+            # 基座 schema 已坏时，island 单元无法靠改 labels 修好，跳过以免烧预算
+            if (
+                not base_ok
+                and unit.id.startswith("island.")
+                and any("菜单" in e for e in base_errs)
+            ):
+                err = "base schema: " + "; ".join(base_errs[:3])
+                append_deepseek_log(project_id, f"unit_flow {unit.id} skip · {err}")
+                res = UnitResult(unit.id, UnitStatus.skipped, error=err, attempts=0)
+            else:
+                async with SessionLocal() as unit_db:
+                    res = await run_single_unit(
+                        unit_db,
+                        rt,
+                        plan,
+                        unit,
+                        project_id=project_id,
+                        base_schema=base_schema,
+                        llm_enabled=llm_enabled,
+                    )
             if res.status == UnitStatus.skipped:
                 await _emit_safe(
                     {

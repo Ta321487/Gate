@@ -37,6 +37,98 @@ public final class ArchiveStore {
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
     private static boolean galleryEnabled = false;
+
+    private static boolean flashPriceEnabled = false;
+    private static Boolean hasPromoPrice;
+
+    public static void configureFlashPrice(boolean enabled) {
+        flashPriceEnabled = enabled;
+        hasPromoPrice = null;
+        if (flashPriceEnabled) {
+            ensurePromoColumns();
+        }
+    }
+
+    public static boolean flashPriceEnabled() {
+        return flashPriceEnabled;
+    }
+
+    private static void ensurePromoColumns() {
+        if (ITEM == null || ITEM.isBlank()) return;
+        for (String col : new String[] {"promo_price", "promo_start", "promo_end"}) {
+            try {
+                db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `" + col + "` "
+                        + ("promo_price".equals(col) ? "DECIMAL(10,2) NULL" : "DATETIME NULL"));
+            } catch (Exception ignored) {
+            }
+        }
+        hasPromoPrice = hasItemColumn("promo_price");
+    }
+
+    private static boolean hasPromoPrice() {
+        if (!flashPriceEnabled) return false;
+        if (hasPromoPrice == null) hasPromoPrice = hasItemColumn("promo_price");
+        return Boolean.TRUE.equals(hasPromoPrice);
+    }
+
+    private static double parseMoney(Object raw) {
+        if (raw == null) return 0;
+        try {
+            return Double.parseDouble(String.valueOf(raw).replace("¥", "").replace("￥", "").trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** 列表价（原价）：author / priceYuan。 */
+    public static double listUnitPrice(Map<String, Object> item) {
+        if (item == null) return 0;
+        double v = parseMoney(item.get("author"));
+        if (v > 0) return v;
+        return parseMoney(item.get("listPriceYuan"));
+    }
+
+    /** 窗内活动价，否则原价。未挂 flash_price 时等同 listUnitPrice。 */
+    public static double effectiveUnitPrice(Map<String, Object> item) {
+        double list = listUnitPrice(item);
+        if (!flashPriceEnabled || item == null) return list;
+        if (!isPromoActive(item)) return list;
+        double promo = parseMoney(item.get("promoPrice"));
+        return promo > 0 ? promo : list;
+    }
+
+    public static boolean isPromoActive(Map<String, Object> item) {
+        if (!flashPriceEnabled || item == null) return false;
+        double promo = parseMoney(item.get("promoPrice"));
+        if (promo <= 0) return false;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start = parseLocalDateTime(item.get("promoStart"));
+        LocalDateTime end = parseLocalDateTime(item.get("promoEnd"));
+        if (start != null && now.isBefore(start)) return false;
+        if (end != null && now.isAfter(end)) return false;
+        // 有活动价但未填窗口：视为长期活动价
+        return true;
+    }
+
+    private static LocalDateTime parseLocalDateTime(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof LocalDateTime ldt) return ldt;
+        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
+        String s = String.valueOf(raw).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
+        try {
+            if (s.length() == 10) return LocalDateTime.parse(s + "T00:00:00");
+            return LocalDateTime.parse(s.replace(" ", "T"));
+        } catch (Exception e) {
+            try {
+                return Timestamp.valueOf(s.length() == 16 ? s + ":00" : s).toLocalDateTime();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+
     private static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
@@ -443,6 +535,22 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "region", "region", 64);
         patchOptStr(id, patch, "summary", "summary", 512);
         patchOptStr(id, patch, "harvestOn", "harvest_on", 32);
+        if (flashPriceEnabled && hasPromoPrice()) {
+            if (patch.containsKey("promoPrice")) {
+                Object pr = patch.get("promoPrice");
+                if (pr == null || String.valueOf(pr).isBlank()) {
+                    db().update("UPDATE " + ITEM + " SET promo_price=NULL WHERE id=?", id);
+                } else {
+                    db().update("UPDATE " + ITEM + " SET promo_price=? WHERE id=?", parseMoney(pr), id);
+                }
+            }
+            if (patch.containsKey("promoStart")) {
+                db().update("UPDATE " + ITEM + " SET promo_start=? WHERE id=?", parseTs(patch.get("promoStart")), id);
+            }
+            if (patch.containsKey("promoEnd")) {
+                db().update("UPDATE " + ITEM + " SET promo_end=? WHERE id=?", parseTs(patch.get("promoEnd")), id);
+            }
+        }
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
         if (patch.containsKey("foundAt")) {
             Timestamp ts = parseTs(patch.get("foundAt"));
@@ -672,6 +780,31 @@ public final class ArchiveStore {
         m.put("categoryId", rs.getLong("category_id"));
         m.put("stock", rs.getInt("stock"));
         m.put("status", rs.getString("status"));
+        try {
+            m.put("likeCount", rs.getInt("like_count"));
+        } catch (Exception ignored) {
+            // 未挂 post_like 时无列
+        }
+        if (flashPriceEnabled && hasPromoPrice()) {
+            try {
+                double promo = rs.getDouble("promo_price");
+                if (!rs.wasNull()) m.put("promoPrice", promo);
+            } catch (Exception ignored) {
+            }
+            try {
+                m.put("promoStart", fmt(rs.getTimestamp("promo_start")));
+            } catch (Exception ignored) {
+            }
+            try {
+                m.put("promoEnd", fmt(rs.getTimestamp("promo_end")));
+            } catch (Exception ignored) {
+            }
+            double list = parseMoney(m.get("author"));
+            m.put("listPriceYuan", list);
+            boolean active = isPromoActive(m);
+            m.put("promoActive", active);
+            m.put("priceYuan", active ? effectiveUnitPrice(m) : list);
+        }
         m.put("coverUrl", rs.getString("cover_url"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         if (galleryEnabled && hasGalleryJson()) {

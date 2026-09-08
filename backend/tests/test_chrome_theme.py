@@ -209,6 +209,24 @@ def test_resolve_style_override_shared():
     )
 
 
+def test_thesis_display_css_loaded():
+    """全域显示加固：bake 进包后主入口须挂 thesis-display，防宽表/长菜单裁切。"""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "skeletons/baseline/frontend/src"
+    css = (root / "styles/thesis-display.css").read_text(encoding="utf-8")
+    main = (root / "main.js").read_text(encoding="utf-8")
+    assert "thesis-display.css" in main
+    for needle in (
+        ".table-scroll",
+        ".table-ops",
+        ".seat-map-scroll",
+        "wb-aside .el-menu-item",
+        "el-dialog__body",
+    ):
+        assert needle in css
+
+
 def test_build_spec_visual_overrides():
     from app.bake.catalog import build_spec
 

@@ -66,7 +66,14 @@ def validate_unit_patch(
                     merged = merge_schema(base_schema, sanitized)
                     ok, errs = validate_schema(merged)
                     if not ok:
-                        issues.extend(ValidationIssue("error", e) for e in errs[:3])
+                        # 填岛禁止改 menus；基座已有的菜单不变式失败不归咎本单元
+                        _base_ok, base_errs = validate_schema(base_schema)
+                        base_set = set(base_errs)
+                        new_errs = [e for e in errs if e not in base_set]
+                        if new_errs:
+                            issues.extend(
+                                ValidationIssue("error", e) for e in new_errs[:3]
+                            )
             except Exception as e:  # noqa: BLE001
                 issues.append(ValidationIssue("error", f"schema 合并失败: {e}"))
 

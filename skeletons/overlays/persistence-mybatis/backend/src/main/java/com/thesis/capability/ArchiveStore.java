@@ -36,6 +36,88 @@ public final class ArchiveStore {
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
     private static boolean galleryEnabled = false;
+
+    private static boolean flashPriceEnabled = false;
+    private static Boolean hasPromoPrice;
+
+    public static void configureFlashPrice(boolean enabled) {
+        flashPriceEnabled = enabled;
+        hasPromoPrice = null;
+        if (flashPriceEnabled) {
+            ensurePromoColumns();
+        }
+    }
+
+    public static boolean flashPriceEnabled() {
+        return flashPriceEnabled;
+    }
+
+    private static void ensurePromoColumns() {
+        // 列由 bake ensure_flash_price_columns 注入；此处仅探测
+        hasPromoPrice = hasItemColumn("promo_price");
+    }
+
+    private static boolean hasPromoPrice() {
+        if (!flashPriceEnabled) return false;
+        if (hasPromoPrice == null) hasPromoPrice = hasItemColumn("promo_price");
+        return Boolean.TRUE.equals(hasPromoPrice);
+    }
+
+    private static double parseMoney(Object raw) {
+        if (raw == null) return 0;
+        try {
+            return Double.parseDouble(String.valueOf(raw).replace("¥", "").replace("￥", "").trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public static double listUnitPrice(Map<String, Object> item) {
+        if (item == null) return 0;
+        double v = parseMoney(item.get("author"));
+        if (v > 0) return v;
+        return parseMoney(item.get("listPriceYuan"));
+    }
+
+    public static double effectiveUnitPrice(Map<String, Object> item) {
+        double list = listUnitPrice(item);
+        if (!flashPriceEnabled || item == null) return list;
+        if (!isPromoActive(item)) return list;
+        double promo = parseMoney(item.get("promoPrice"));
+        return promo > 0 ? promo : list;
+    }
+
+    public static boolean isPromoActive(Map<String, Object> item) {
+        if (!flashPriceEnabled || item == null) return false;
+        double promo = parseMoney(item.get("promoPrice"));
+        if (promo <= 0) return false;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start = parseLocalDt(item.get("promoStart"));
+        LocalDateTime end = parseLocalDt(item.get("promoEnd"));
+        if (start != null && now.isBefore(start)) return false;
+        if (end != null && now.isAfter(end)) return false;
+        return true;
+    }
+
+    private static LocalDateTime parseLocalDt(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof LocalDateTime ldt) return ldt;
+        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
+        String s = String.valueOf(raw).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
+        try {
+            if (s.length() == 10) return LocalDateTime.parse(s + "T00:00:00");
+            return LocalDateTime.parse(s.replace(" ", "T"));
+        } catch (Exception e) {
+            try {
+                return Timestamp.valueOf(s.length() == 16 ? s + ":00" : s).toLocalDateTime();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+
     private static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
@@ -430,6 +512,22 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "region", "region", 64);
         patchOptStr(id, patch, "summary", "summary", 512);
         patchOptStr(id, patch, "harvestOn", "harvest_on", 32);
+        if (flashPriceEnabled && hasPromoPrice()) {
+            if (patch.containsKey("promoPrice")) {
+                Object pr = patch.get("promoPrice");
+                if (pr == null || String.valueOf(pr).isBlank()) {
+                    mapper().updateItemColumn(ITEM, "promo_price", null, id);
+                } else {
+                    mapper().updateItemColumn(ITEM, "promo_price", parseMoney(pr), id);
+                }
+            }
+            if (patch.containsKey("promoStart")) {
+                mapper().updateItemColumn(ITEM, "promo_start", parseTs(patch.get("promoStart")), id);
+            }
+            if (patch.containsKey("promoEnd")) {
+                mapper().updateItemColumn(ITEM, "promo_end", parseTs(patch.get("promoEnd")), id);
+            }
+        }
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
         if (patch.containsKey("foundAt")) {
             Timestamp ts = parseTs(patch.get("foundAt"));
@@ -637,6 +735,17 @@ public final class ArchiveStore {
         m.put("categoryId", toLong(first(raw, "categoryId", "category_id")));
         m.put("stock", toInt(first(raw, "stock")));
         m.put("status", raw.get("status"));
+        if (flashPriceEnabled && hasPromoPrice()) {
+            Object pp = first(raw, "promoPrice", "promo_price");
+            if (pp != null) m.put("promoPrice", parseMoney(pp));
+            m.put("promoStart", fmt(first(raw, "promoStart", "promo_start")));
+            m.put("promoEnd", fmt(first(raw, "promoEnd", "promo_end")));
+            double list = parseMoney(m.get("author"));
+            m.put("listPriceYuan", list);
+            boolean active = isPromoActive(m);
+            m.put("promoActive", active);
+            m.put("priceYuan", active ? effectiveUnitPrice(m) : list);
+        }
         m.put("coverUrl", first(raw, "coverUrl", "cover_url"));
         m.put("createdAt", fmt(first(raw, "createdAt", "created_at")));
         if (galleryEnabled && hasGalleryJson()) {

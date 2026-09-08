@@ -26,7 +26,14 @@
           :placeholder="searchPlaceholder"
           @keyup.enter="load"
         />
-        <el-select v-model="categoryId" clearable :placeholder="fieldLabel('category', '分类')" size="large" style="width:140px" @change="load">
+        <el-select
+          v-model="categoryId"
+          clearable
+          :placeholder="fieldLabel('category', '分类')"
+          size="large"
+          class="search-cat"
+          @change="load"
+        >
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
         <el-select
@@ -83,11 +90,15 @@
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
+          <p v-if="flashOn && row.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span></p>
           <p
-            v-for="f in cardDetailFields"
+            v-for="f in cardPreviewFields"
             :key="f.key"
             class="detail-line muted"
           >{{ f.label }}：{{ formatFieldValue(row, f) }}</p>
+          <p v-if="cardDetailFields.length > cardPreviewFields.length" class="detail-line muted">
+            另有 {{ cardDetailFields.length - cardPreviewFields.length }} 项，见详情
+          </p>
           <p v-if="row.tagNames?.length" class="sched muted">{{ row.tagNames.join(' · ') }}</p>
           <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
@@ -115,15 +126,26 @@
               v-if="showPrimaryApply"
               size="small"
               type="primary"
-              :disabled="!isSlotMode && !stockOk(row)"
+              :disabled="!isSlotMode && !canApplyOrWait(row)"
               @click="onPrimary(row)"
-            >{{ primaryActionLabel }}</el-button>
+            >{{ applyActionLabel(row) }}</el-button>
             <el-button
               v-if="favOn && !isGuest"
               size="small"
               :type="favIds.includes(row.id) ? 'warning' : 'default'"
               @click="toggleFav(row)"
             >{{ favIds.includes(row.id) ? '已收藏' : '收藏' }}</el-button>
+            <el-button
+              v-if="likeOn && !isGuest"
+              size="small"
+              :type="likeIds.includes(row.id) ? 'warning' : 'default'"
+              @click="toggleLike(row)"
+            >{{ likeIds.includes(row.id) ? likedVerb : likeVerb }}{{ likeCountText(row) }}</el-button>
+            <el-button
+              v-if="reportOn && !isGuest"
+              size="small"
+              @click="openReport(row)"
+            >{{ reportVerb }}</el-button>
           </div>
         </div>
       </article>
@@ -153,6 +175,7 @@
         </div>
         <img v-else-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
+        <p v-if="flashOn && detail.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(detail.listPriceYuan ?? detail.author).toFixed(2) }}</span></p>
         <p
           v-for="f in cardDetailFields"
           :key="f.key"
@@ -169,6 +192,13 @@
             <p class="thread-meta">
               <span>{{ r.username || '用户' }}</span>
               <span class="muted">{{ r.approveAt || r.applyAt || '' }}</span>
+              <el-button
+                v-if="reportOn && !isGuest"
+                link
+                type="danger"
+                size="small"
+                @click="openReport(r, 'ticket')"
+              >{{ reportVerb }}</el-button>
             </p>
             <RichTextView v-if="r.remark" :html="r.remark" />
             <p v-else class="muted">（无内容）</p>
@@ -212,14 +242,23 @@
           <el-button
             v-if="showPrimaryApply"
             type="primary"
-            :disabled="!isSlotMode && !stockOk(detail)"
+            :disabled="!isSlotMode && !canApplyOrWait(detail)"
             @click="onPrimary(detail)"
-          >{{ primaryActionLabel }}</el-button>
+          >{{ applyActionLabel(detail) }}</el-button>
           <el-button
             v-if="favOn && !isGuest"
             :type="favIds.includes(detail.id) ? 'warning' : 'default'"
             @click="toggleFav(detail)"
           >{{ favIds.includes(detail.id) ? '已收藏' : '收藏' }}</el-button>
+          <el-button
+            v-if="likeOn && !isGuest"
+            :type="likeIds.includes(detail.id) ? 'warning' : 'default'"
+            @click="toggleLike(detail)"
+          >{{ likeIds.includes(detail.id) ? likedVerb : likeVerb }}{{ likeCountText(detail) }}</el-button>
+          <el-button
+            v-if="reportOn && !isGuest"
+            @click="openReport(detail)"
+          >{{ reportVerb }}</el-button>
         </div>
         <section v-if="reviewOn && detail.id" class="item-reviews">
           <h4>用户评价</h4>
@@ -235,6 +274,22 @@
         </section>
       </template>
     </el-drawer>
+
+    <el-dialog v-model="reportVisible" :title="reportVerb" width="440px" destroy-on-close>
+      <p class="apply-tip">举报「{{ reportTargetLabel }}」</p>
+      <el-input
+        v-model="reportReason"
+        type="textarea"
+        :rows="4"
+        maxlength="512"
+        show-word-limit
+        placeholder="请填写举报理由"
+      />
+      <template #footer>
+        <el-button @click="reportVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reportSubmitting" @click="submitReport">提交</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="applyVisible"
@@ -600,6 +655,8 @@ const cardDetailFields = computed(() => {
     return ['string', 'number', 'datetime', 'date', 'url', 'textarea', 'select'].includes(t)
   })
 })
+/** 列表卡片只露前几项，避免深皮字段把卡片撑破；抽屉仍用全量 */
+const cardPreviewFields = computed(() => cardDetailFields.value.slice(0, 4))
 
 const searchPlaceholder = computed(() => {
   const parts = [fieldLabel('title', '名称'), fieldLabel('author', '型号')]
@@ -630,7 +687,17 @@ const qtyMax = computed(() => {
 })
 const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasRecommend = computed(() => caps.value.includes('recommend'))
-const isOrderMode = computed(() => caps.value.includes('order_lines') && !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve'))
+/** 影院选座：有 seat_select / seatSelect 时主路径进座位图，禁止当商城加购 */
+const isSeatSelectMode = computed(
+  () => caps.value.includes('seat_select') || hasTrait('seatSelect'),
+)
+const isOrderMode = computed(
+  () =>
+    caps.value.includes('order_lines')
+    && !caps.value.includes('ticket_flow')
+    && !caps.value.includes('slot_reserve')
+    && !isSeatSelectMode.value,
+)
 const isSlotMode = computed(() => {
   if (!caps.value.includes('slot_reserve')) return false
   // C-07 仪器机时等：借+约并存时主按钮走约时段（traits.slotPrimary）
@@ -640,17 +707,43 @@ const isSlotMode = computed(() => {
 /** 即时收藏：交易域或内容流（无单据审核） */
 const favOn = computed(() => {
   if (!caps.value.includes('favorites')) return false
-  if (isOrderMode.value) return true
+  if (isOrderMode.value || isSeatSelectMode.value) return true
   return !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve')
 })
+const likeOn = computed(() => hasCap('post_like'))
+const flashOn = computed(() => hasCap('flash_price'))
+const flashBadge = computed(() => getSchema()?.labels?.flashPriceBadge || '活动价')
+const reportOn = computed(() => hasCap('content_report'))
+const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
+const likedVerb = computed(() => getSchema()?.labels?.likedVerb || '已赞')
+const reportVerb = computed(() => getSchema()?.labels?.reportVerb || '举报')
 const applyFromList = computed(() => !!ticket.applyFromList)
-/** 有单据/下单/预约时才显示主操作；applyFromList（请假/归寝）主路径在「我的*」，档案页仅查阅 */
+/** 有单据/下单/预约/选座时才显示主操作；applyFromList（请假/归寝）主路径在「我的*」，档案页仅查阅 */
 const showPrimaryApply = computed(
   () =>
     !applyFromList.value
-    && (isOrderMode.value || isSlotMode.value || caps.value.includes('ticket_flow')),
+    && (
+      isOrderMode.value
+      || isSeatSelectMode.value
+      || isSlotMode.value
+      || caps.value.includes('ticket_flow')
+    ),
 )
 const favIds = ref([])
+const likeIds = ref([])
+const reportVisible = ref(false)
+const reportRow = ref(null)
+const reportTargetType = ref('archive')
+const reportReason = ref('')
+const reportSubmitting = ref(false)
+const reportTargetLabel = computed(() => {
+  const row = reportRow.value
+  if (!row) return ''
+  if (reportTargetType.value === 'ticket') {
+    return `回复 #${row.id}${row.username ? ' · ' + row.username : ''}`
+  }
+  return row.title || `#${row.id}`
+})
 const searchAssist = computed(() => isSearchAssistEnabled())
 const hotKeywords = computed(() => searchHotKeywords())
 const galleryOn = computed(() => isGalleryEnabled())
@@ -726,12 +819,16 @@ const galleryUrls = computed(() => {
 })
 const resvVerb = computed(() => getSchema()?.entities?.reservation?.verbs?.apply || '预约')
 const primaryActionLabel = computed(() => {
+  if (isSeatSelectMode.value) {
+    return getSchema()?.labels?.seatSelectCta || '选座'
+  }
   if (isOrderMode.value) return `加入${cartLabel.value}`
   if (isSlotMode.value) return '选时段'
   if (!showPrimaryApply.value) return '收藏'
   return verbs.value.apply || '申请'
 })
 const actionHint = computed(() => {
+  if (isSeatSelectMode.value) return '进入座位图选座下单'
   if (isOrderMode.value) return `加入${cartLabel.value}并下单`
   if (isSlotMode.value) return `选择时段${resvVerb.value}`
   if (favOn.value && !showPrimaryApply.value) return '一键收藏感兴趣的内容'
@@ -770,6 +867,27 @@ function stockOk(row) {
   if (row.status === 'unavailable') return false
   return true
 }
+
+const allowWaitlist = computed(() => !!(ticket.allowWaitlist || hasCap('waitlist')))
+
+function canApplyOrWait(row) {
+  if (!row) return false
+  if (row.status === 'unavailable') return false
+  if (stockOk(row)) return true
+  return allowWaitlist.value
+}
+
+function applyActionLabel(row) {
+  if (allowWaitlist.value && row && !stockOk(row) && row.status !== 'unavailable') {
+    return verbs.value.waitlist || labelsWaitlistVerb.value || '候补报名'
+  }
+  return primaryActionLabel.value
+}
+
+const labelsWaitlistVerb = computed(() => {
+  const sch = getSchema() || {}
+  return (sch.labels && sch.labels.waitlistVerb) || ''
+})
 
 function stockText(row) {
   if (stockDisplay.value === 'toggle' || stockDisplay.value === 'available') {
@@ -988,6 +1106,72 @@ async function loadFavIds() {
   }
 }
 
+async function loadLikeIds() {
+  if (!likeOn.value || isGuest.value) {
+    likeIds.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/likes/ids')
+    likeIds.value = (res.data?.ids || []).map(Number)
+  } catch {
+    likeIds.value = []
+  }
+}
+
+function likeCountText(row) {
+  const n = Number(row?.likeCount)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  return ` ${n}`
+}
+
+async function toggleLike(row) {
+  if (!requireLogin(router)) return
+  const res = await http.post(`/api/likes/${row.id}/toggle`)
+  const on = !!res.data?.liked
+  if (on) {
+    if (!likeIds.value.includes(row.id)) likeIds.value = [...likeIds.value, row.id]
+    row.likeCount = Number(row.likeCount || 0) + 1
+    if (detail.value?.id === row.id) detail.value.likeCount = row.likeCount
+    ElMessage.success(likedVerb.value)
+  } else {
+    likeIds.value = likeIds.value.filter((x) => x !== row.id)
+    row.likeCount = Math.max(0, Number(row.likeCount || 0) - 1)
+    if (detail.value?.id === row.id) detail.value.likeCount = row.likeCount
+    ElMessage.success('已取消')
+  }
+}
+
+function openReport(row, targetType = 'archive') {
+  if (!requireLogin(router)) return
+  reportRow.value = row
+  reportTargetType.value = targetType === 'ticket' ? 'ticket' : 'archive'
+  reportReason.value = ''
+  reportVisible.value = true
+}
+
+async function submitReport() {
+  const reason = reportReason.value.trim()
+  if (!reason) {
+    ElMessage.warning('请填写举报理由')
+    return
+  }
+  reportSubmitting.value = true
+  try {
+    await http.post('/api/content-reports', {
+      targetType: reportTargetType.value,
+      targetId: reportRow.value?.id,
+      reason,
+    })
+    ElMessage.success('已提交举报，等待处理')
+    reportVisible.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '提交失败')
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
 async function toggleFav(row) {
   if (!requireLogin(router)) return
   const res = await toggleFavorite(row.id)
@@ -1003,6 +1187,10 @@ async function toggleFav(row) {
 
 async function onPrimary(row) {
   if (!requireLogin(router)) return
+  if (isSeatSelectMode.value) {
+    router.push(`/seats/map/${row.id}`)
+    return
+  }
   if (isOrderMode.value) {
     await upsertCart(row.id, 1)
     ElMessage.success(`已加入${cartLabel.value}`)
@@ -1259,10 +1447,16 @@ async function submitApply() {
       body.dims = dimsPayload
       if (allowAnonymousRating.value) body.anonymous = !!applyAnonymous.value
     }
-    await http.post('/api/tickets/apply', body)
-    const okMsg = checkinOnApply.value
-      ? '已签到'
-      : (autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核')
+    const { data } = await http.post('/api/tickets/apply', body)
+    const st = data?.status || data?.data?.status
+    let okMsg
+    if (st === 'waitlisted') {
+      okMsg = (getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列'
+    } else if (checkinOnApply.value) {
+      okMsg = '已签到'
+    } else {
+      okMsg = autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核'
+    }
     ElMessage.success(okMsg)
     applyVisible.value = false
     if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
@@ -1285,6 +1479,7 @@ onMounted(async () => {
   await loadTags()
   await load()
   await loadFavIds()
+  await loadLikeIds()
 })
 </script>
 
@@ -1293,6 +1488,9 @@ onMounted(async () => {
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.search-cat { width: min(180px, 100%); min-width: 120px; flex: 0 1 160px; }
+.search :deep(.el-input),
+.search :deep(.el-autocomplete) { flex: 1 1 180px; min-width: 160px; }
 .hot { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .hot-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
 .hot-chip {
@@ -1387,4 +1585,6 @@ onMounted(async () => {
 .rate-dims { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .rate-dim-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .rate-dim-lab { font-size: 13px; color: var(--portal-ink, #334155); min-width: 72px; }
+.promo { margin: 4px 0 0; color: var(--el-color-danger); font-size: 13px; }
+.promo-list { color: var(--portal-muted, #94a3b8); text-decoration: line-through; margin-left: 6px; font-size: 12px; }
 </style>

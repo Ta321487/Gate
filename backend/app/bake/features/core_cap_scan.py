@@ -17,6 +17,10 @@ from app.bake.proposal_lexicon import keyword_mentioned
 RECOMMEND_CAP = "recommend"
 TIME_CONFLICT_CAP = "time_conflict"
 DEADLINE_CAP = "deadline"
+LOAN_RENEW_CAP = "loan_renew"
+
+# 续借仅挂借还语义域（开题写到才挂，无域默认）
+_LOAN_RENEW_DOMAINS = frozenset({"DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"})
 
 _RECOMMEND_TERMS = (
     "猜你喜欢",
@@ -60,6 +64,7 @@ _LOAN_DEADLINE_TERMS = (
 )
 
 # 工单处理时效 / 超时列表（与借阅催还共用 deadline 能力）
+# 「催办/催领」为密开题高频；裸词即可挂，勿要求必须写「超时未处理」
 _TICKET_SLA_TERMS = (
     "超时未处理",
     "超时提醒",
@@ -69,6 +74,20 @@ _TICKET_SLA_TERMS = (
     "工单超时",
     "时效可统计",
     "超时列表",
+    "催办",
+    "催领",
+    "催取",
+    "滞留催领",
+    "催领提醒",
+)
+
+_LOAN_RENEW_TERMS = (
+    "续借",
+    "延长借期",
+    "借期延长",
+    "申请续借",
+    "续借功能",
+    "续借次数",
 )
 
 
@@ -92,6 +111,12 @@ def scan_ticket_sla(text: str) -> bool:
     """报修/工单处理超时列表。"""
     raw = text or ""
     return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _TICKET_SLA_TERMS)
+
+
+def scan_loan_renew(text: str) -> bool:
+    """借阅续借（延长应还日）。"""
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _LOAN_RENEW_TERMS)
 
 
 def merge_recommend_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:
@@ -128,6 +153,29 @@ def merge_loan_deadline_capabilities(caps: list[str], proposal_text: str = "") -
     return out
 
 
+def merge_loan_renew_capabilities(
+    caps: list[str],
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+) -> list[str]:
+    """续借：开题写到 + 借还域 + 已有 deadline/ticket；只增不减。"""
+    out = list(caps or [])
+    if LOAN_RENEW_CAP in out:
+        return out
+    if "ticket_flow" not in out:
+        return out
+    if (domain or "") not in _LOAN_RENEW_DOMAINS:
+        return out
+    if not scan_loan_renew(proposal_text or ""):
+        return out
+    # 续借依赖到期日；域默认常已有 deadline，扫词也可补上
+    if DEADLINE_CAP not in out:
+        out.append(DEADLINE_CAP)
+    out.append(LOAN_RENEW_CAP)
+    return out
+
+
 def enrich_loan_deadline_flags(
     flags: dict[str, Any] | None,
     proposal_text: str = "",
@@ -159,7 +207,12 @@ def _ensure_schedule_fields(archive: dict[str, Any]) -> None:
         fields.append({"key": "endAt", "label": "结束时间", "type": "datetime"})
 
 
-def attach_core_caps_schema(schema: dict[str, Any], caps: list[str]) -> None:
+def attach_core_caps_schema(
+    schema: dict[str, Any],
+    caps: list[str],
+    *,
+    spec_domain: str | None = None,
+) -> None:
     from app.bake.schema.menu_utils import ensure_menu
 
     caps = list(caps or [])
@@ -179,19 +232,23 @@ def attach_core_caps_schema(schema: dict[str, Any], caps: list[str]) -> None:
 
     if DEADLINE_CAP in caps:
         ticket = ents.get("ticket")
+        domain = str(spec_domain or schema.get("domain") or "")
+        parcelish = domain == "DOM-PARCEL"
         if isinstance(ticket, dict):
-            # 独立报修 SLA：不打开自选借期，只起算处理时限
-            if ticket.get("applicantCompleteOnly"):
+            if ticket.get("applicantCompleteOnly") or parcelish:
                 ticket["slaDeadline"] = True
                 ticket["pickLoanPeriod"] = False
-                ticket.setdefault("dueLabel", "处理时限")
+                ticket.setdefault("dueLabel", "催领时限" if parcelish else "处理时限")
             else:
                 ticket["pickLoanPeriod"] = True
-        menu_lab = labels.get("deadlineMenuLabel") or (
-            "超时未处理"
-            if isinstance(ticket, dict) and ticket.get("applicantCompleteOnly")
-            else "逾期催还"
-        )
+        if parcelish:
+            menu_lab = labels.get("deadlineMenuLabel") or "催领"
+        elif isinstance(ticket, dict) and (
+            ticket.get("applicantCompleteOnly") or ticket.get("slaDeadline")
+        ):
+            menu_lab = labels.get("deadlineMenuLabel") or "超时未处理"
+        else:
+            menu_lab = labels.get("deadlineMenuLabel") or "逾期催还"
         labels.setdefault("deadlineMenuLabel", menu_lab)
         ensure_menu(
             admin,
@@ -200,6 +257,30 @@ def attach_core_caps_schema(schema: dict[str, Any], caps: list[str]) -> None:
             before_key="content",
         )
 
+    if LOAN_RENEW_CAP in caps:
+        ticket = ents.get("ticket")
+        if not isinstance(ticket, dict):
+            ticket = {}
+            ents["ticket"] = ticket
+        ticket["allowRenew"] = True
+        try:
+            max_r = int(ticket.get("maxRenew") or 1)
+        except (TypeError, ValueError):
+            max_r = 1
+        ticket["maxRenew"] = max(1, min(5, max_r))
+        try:
+            renew_d = int(ticket.get("renewDays") or 0)
+        except (TypeError, ValueError):
+            renew_d = 0
+        if renew_d <= 0:
+            renew_d = 0  # 0 = 运行时跟 loanDays
+        ticket["renewDays"] = renew_d
+        labels.setdefault("renewVerb", "续借")
+        labels.setdefault("renewOkMessage", "续借成功，应还日已延长")
+        verbs = schema.setdefault("verbs", {})
+        if isinstance(verbs, dict):
+            verbs.setdefault("renew", labels.get("renewVerb") or "续借")
+
 
 def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
     """能力已在 merge_proposal_capabilities 合并；此处只补 schema 侧效应与 features 文案。"""
@@ -207,7 +288,7 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     caps = list(spec.get("capabilities") or [])
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
-    attach_core_caps_schema(schema, caps)
+    attach_core_caps_schema(schema, caps, spec_domain=str(spec.get("domain") or ""))
 
     features = list(spec.get("features") or [])
     names = {f.get("name") for f in features if isinstance(f, dict)}
@@ -225,7 +306,14 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     if DEADLINE_CAP in caps and scan_loan_deadline(text):
         _add("逾期催还")
     if DEADLINE_CAP in caps and scan_ticket_sla(text):
-        _add("超时未处理")
+        if str(spec.get("domain") or "") == "DOM-PARCEL" or any(
+            k in text for k in ("催领", "催取", "滞留催领")
+        ):
+            _add("催领")
+        else:
+            _add("超时未处理")
+    if LOAN_RENEW_CAP in caps and scan_loan_renew(text):
+        _add("续借")
 
     spec = {**spec, "capabilities": caps, "schema": schema, "features": features}
     return spec

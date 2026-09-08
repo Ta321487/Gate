@@ -6,6 +6,7 @@ import re
 import unittest
 from pathlib import Path
 
+from app.bake.domain_schema import validate_schema
 from app.bake.engine_sql import domain_sql
 from app.bake.scene_scan import scan_shop_marketplace
 from app.bake.schema.builders_slot import _shop_schema
@@ -57,6 +58,16 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         )
         self.assertIsNotNone(content)
         self.assertFalse(content.get("superOnly"))
+        archive = next(
+            (
+                m
+                for m in (schema.get("menus") or {}).get("admin") or []
+                if isinstance(m, dict) and m.get("key") == "archive"
+            ),
+            None,
+        )
+        self.assertIsNotNone(archive)
+        self.assertFalse(archive.get("superOnly"))
         users = next(
             (
                 m
@@ -67,6 +78,8 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         )
         self.assertTrue(users.get("superOnly"))
         self.assertEqual(users.get("label"), "用户管理")
+        ok, errs = validate_schema(schema)
+        self.assertTrue(ok, errs)
         dash = next(
             (
                 m

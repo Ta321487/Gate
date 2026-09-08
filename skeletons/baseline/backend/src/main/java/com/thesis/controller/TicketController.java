@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.AuditLogStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
@@ -168,7 +169,14 @@ public class TicketController {
                     ? ""
                     : String.valueOf(body.get("assigneeUsername")).trim();
             if ("null".equalsIgnoreCase(assignee)) assignee = "";
-            return R.ok(TicketStore.approve(id, pass, remark, uid, superAdmin, assignee));
+            Map<String, Object> approved = TicketStore.approve(id, pass, remark, uid, superAdmin, assignee);
+            AuditLogStore.record(
+                    uid,
+                    pass ? "ticket_approve" : "ticket_reject",
+                    "ticket",
+                    String.valueOf(id),
+                    pass ? "审核通过" : ("驳回：" + remark));
+            return R.ok(approved);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
@@ -359,6 +367,19 @@ public class TicketController {
         AdminAuth.requireAdmin(session);
         try {
             return R.ok(TicketStore.remind(id));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 申请人续借（须开题挂 loan_renew） */
+    @PostMapping("/{id}/renew")
+    public R<Map<String, Object>> renew(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.renew(id, uid));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

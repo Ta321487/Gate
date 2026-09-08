@@ -22,9 +22,10 @@
         <el-button type="warning">导入 CSV</el-button>
       </el-upload>
     </div>
+    <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column prop="title" :label="fieldLabel('title', '名称')" />
+      <el-table-column prop="title" :label="fieldLabel('title', '名称')" min-width="120" show-overflow-tooltip />
       <el-table-column :label="fieldLabel('author', '型号')" width="140">
         <template #default="{ row }">{{ formatAuthorCell(row.author) }}</template>
       </el-table-column>
@@ -81,8 +82,9 @@
           <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
+          <div class="table-ops">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button
             v-if="marketplace && isSuper && isPendingReview(row)"
@@ -92,9 +94,11 @@
           >审核上架</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>
           <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? softCopy.verb : '删除' }}</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -111,7 +115,7 @@
       :width="isbnRich ? '720px' : '480px'"
       destroy-on-close
     >
-      <el-form :model="form" label-width="96px" require-asterisk-position="right">
+      <el-form :model="form" label-position="top" require-asterisk-position="right">
         <el-form-item :label="fieldLabel('title', '名称')" required>
           <ArchiveFieldControl
             :field="fieldMeta('title')"

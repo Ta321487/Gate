@@ -6,7 +6,12 @@
         <span>员工作业台</span>
       </div>
       <el-menu :default-active="active" router class="wb-menu">
-        <el-menu-item v-for="item in menuItems" :key="item.index" :index="item.index">{{ item.label }}</el-menu-item>
+        <el-menu-item
+          v-for="item in menuItems"
+          :key="item.index"
+          :index="item.index"
+          :title="item.label"
+        >{{ item.label }}</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
