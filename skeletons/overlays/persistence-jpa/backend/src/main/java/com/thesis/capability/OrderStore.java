@@ -248,7 +248,7 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 多店演示支付走支付宝/微信假密码，不扣账户余额
+            // 多店在线支付：渠道+支付密码过账，不走账户余额扣款
             if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
@@ -284,7 +284,7 @@ public final class OrderStore {
                 rName = username;
             }
         }
-        // 多店演示支付成功后直接待发货；单店仍待确认
+        // 多店在线支付成功后进入待发货；单店仍待确认
         String initialStatus = demoPay ? "confirmed" : "pending";
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;

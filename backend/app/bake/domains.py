@@ -206,9 +206,9 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-TIMEBANK": ["archive", "ticket_flow", "content", "org_users", "timebank"],
     "DOM-CINEMA": ["archive", "order_lines", "quota", "content", "org_users", "seat_select"],
     # B 报修/工单
-    "DOM-DORM": ["ticket_flow", "content", "org_users"],
-    "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
-    "DOM-IT": ["ticket_flow", "content", "org_users"],
+    "DOM-DORM": ["ticket_flow", "content", "org_users", "deadline"],
+    "DOM-PROPERTY": ["ticket_flow", "content", "org_users", "deadline"],
+    "DOM-IT": ["ticket_flow", "content", "org_users", "deadline"],
     # C 报名/申请
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin"],
     "DOM-LOST": ["archive", "ticket_flow", "quota", "content", "org_users"],

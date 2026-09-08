@@ -223,11 +223,11 @@ public final class OrderStore {
         if (demoPay) {
             ensurePayChannelColumn();
             if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
-                throw new IllegalArgumentException("请选择支付宝或微信支付（演示）");
+                throw new IllegalArgumentException("请选择支付宝或微信支付");
             }
             String pw = payPassword == null ? "" : payPassword.trim();
             if (pw.length() < 4) {
-                throw new IllegalArgumentException("请输入支付密码（演示，至少 4 位）");
+                throw new IllegalArgumentException("请输入支付密码（至少 4 位）");
             }
         }
         List<Map<String, Object>> cart = listCart(username);
@@ -252,7 +252,7 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 多店演示支付走支付宝/微信假密码，不扣账户余额
+            // 多店在线支付：渠道+支付密码过账，不走账户余额扣款
             if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",

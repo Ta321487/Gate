@@ -29,7 +29,7 @@
     <div v-if="list.length" class="total">
       <template v-if="anyLoyalty">
         <div v-if="walletOn" class="loy-line">账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
-        <div v-if="demoPay" class="loy-line muted">支持支付宝 / 微信演示支付</div>
+        <div v-if="demoPay" class="loy-line muted">支持支付宝 / 微信在线支付</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
@@ -207,7 +207,7 @@ const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
-  () => getSchema()?.labels?.demoPayHint || '演示支付：选择渠道并输入任意密码（非真实扣款）。',
+  () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单（本系统内支付流程）。',
 )
 const pointsOn = computed(() => isPointsEnabled())
 const discountOn = computed(() => isSpendDiscountEnabled())
