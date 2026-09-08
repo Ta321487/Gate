@@ -228,6 +228,18 @@
             <p class="muted">最多 9 张；封面仍可单独设置。无封面时首张图集可作展示。</p>
           </div>
         </el-form-item>
+        <el-form-item v-if="roomEquipOn" :label="equipSectionTitle">
+          <el-select
+            v-model="form.equipmentNames"
+            multiple
+            filterable
+            clearable
+            placeholder="从设备字典勾选"
+            style="width: 100%"
+          >
+            <el-option v-for="n in equipOptions" :key="n" :label="n" :value="n" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -242,7 +254,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import ArchiveFieldControl from '../../components/ArchiveFieldControl.vue'
-import { archiveCopy, formatArchiveScalar, getSchema, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, formatArchiveScalar, getSchema, hasCap, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
 import { dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
@@ -280,6 +292,11 @@ function shelfTagType(row) {
   return 'success'
 }
 const galleryOn = computed(() => isGalleryEnabled())
+const roomEquipOn = computed(() => hasCap('room_equipment'))
+const equipSectionTitle = computed(
+  () => getSchema()?.labels?.roomEquipmentSectionTitle || '配套设备',
+)
+const equipOptions = ref([])
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
 const CORE_FIELD_KEYS = new Set([
@@ -381,6 +398,7 @@ const form = reactive({
   stock: 1,
   coverUrl: '',
   galleryImages: [],
+  equipmentNames: [],
   startAt: '',
   endAt: '',
   applyDeadlineAt: '',
@@ -417,6 +435,19 @@ async function loadTags() {
   }
 }
 
+async function loadEquipOptions() {
+  if (!roomEquipOn.value) {
+    equipOptions.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/equipment-dict/options')
+    equipOptions.value = res.data || res || []
+  } catch {
+    equipOptions.value = []
+  }
+}
+
 function genCheckin() {
   const n = Math.floor(1000 + Math.random() * 9000)
   form.checkinCode = `ACT${n}`
@@ -437,6 +468,7 @@ function openEdit(row) {
       stock: row.stock ?? 1,
       coverUrl: row.coverUrl || '',
       galleryImages: Array.isArray(row.galleryImages) ? [...row.galleryImages] : [],
+      equipmentNames: Array.isArray(row.equipmentNames) ? [...row.equipmentNames] : [],
       startAt: row.startAt || '',
       endAt: row.endAt || '',
       applyDeadlineAt: row.applyDeadlineAt || '',
@@ -455,6 +487,7 @@ function openEdit(row) {
       stock: 1,
       coverUrl: '',
       galleryImages: [],
+      equipmentNames: [],
       startAt: '',
       endAt: '',
       applyDeadlineAt: '',
@@ -720,6 +753,7 @@ async function onImport(opt) {
 onMounted(async () => {
   await loadCats()
   await loadTags()
+  await loadEquipOptions()
   await load()
 })
 </script>

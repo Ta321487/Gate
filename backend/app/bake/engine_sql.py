@@ -203,6 +203,10 @@ def domain_sql(
     )
     from app.bake.features.audit_log import AUDIT_LOG_CAP
     from app.bake.features.message_template import MESSAGE_TEMPLATE_CAP
+    from app.bake.features.staff_roster import STAFF_ROSTER_CAP
+    from app.bake.features.room_equipment import ROOM_EQUIPMENT_CAP
+    from app.bake.features.book_suggest import BOOK_SUGGEST_CAP
+    from app.bake.features.product_spec import PRODUCT_SPEC_CAP
     from app.bake.features.exam import (
         EXAM_CAP,
         apply_exam_skin_sql,
@@ -223,6 +227,7 @@ def domain_sql(
     from app.bake.sql.fragments import (
         ensure_archive_flag_columns,
         ensure_flash_price_columns,
+        ensure_product_spec_columns,
         ensure_archive_log_sql,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
@@ -235,6 +240,9 @@ def domain_sql(
         ensure_content_report_sql,
         ensure_audit_log_sql,
         ensure_message_template_sql,
+        ensure_staff_roster_sql,
+        ensure_room_equipment_sql,
+        ensure_book_suggest_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
         ensure_ai_assistant_sql,
@@ -356,6 +364,11 @@ def domain_sql(
         item_table=resolved_item,
         archetypes=arches_for_sql,
     )
+    text = ensure_product_spec_columns(
+        text,
+        enabled=PRODUCT_SPEC_CAP in caps,
+        item_table=resolved_item,
+    )
     text = ensure_ticket_progress_sql(text, resolved_ticket)
     if EXAM_CAP in caps:
         gate_ticket = scan_exam_gate_ticket(proposal_text or "", domain)
@@ -424,6 +437,19 @@ def domain_sql(
     text = ensure_message_template_sql(
         text,
         enabled=MESSAGE_TEMPLATE_CAP in caps,
+    )
+    text = ensure_staff_roster_sql(
+        text,
+        enabled=STAFF_ROSTER_CAP in caps,
+    )
+    text = ensure_room_equipment_sql(
+        text,
+        enabled=ROOM_EQUIPMENT_CAP in caps,
+        item_table=resolved_item,
+    )
+    text = ensure_book_suggest_sql(
+        text,
+        enabled=BOOK_SUGGEST_CAP in caps,
     )
     text = ensure_browse_history_sql(
         text,

@@ -4,6 +4,9 @@
       <h1>选择时段</h1>
       <p v-if="itemTitle">为「{{ itemTitle }}」{{ resvVerb }}可用时段（约满不可再约）。</p>
       <p v-else class="warn">请先从目录选择要{{ resvVerb }}的对象，再进入本页选时段。</p>
+      <p v-if="roomEquipOn && equipNames.length" class="equip-line">
+        {{ equipSectionTitle }}：{{ equipNames.join('、') }}
+      </p>
       <div class="tools">
         <el-date-picker
           v-model="day"
@@ -32,6 +35,7 @@
     </div>
     <div v-if="!itemId" class="empty">请先选择后再查看可{{ resvVerb }}时段。</div>
     <div v-else-if="!list.length" class="empty">该日暂无可{{ resvVerb }}时段，请换一天试试。</div>
+    <p v-if="rosterOn && onDutyHint" class="duty-hint">{{ onDutyHint }}</p>
     <GuestLoginHint />
 
     <el-dialog v-model="visible" :title="`确认${resvNoun}`" width="480px" destroy-on-close>
@@ -78,8 +82,36 @@
           </el-form-item>
         </template>
         <el-form-item v-if="slotSalon" :label="stylistLabel">
-          <el-input v-model="extra.preferredStylist" maxlength="32" placeholder="选填" />
+          <el-select
+            v-if="rosterOn"
+            v-model="extra.preferredStylist"
+            clearable
+            filterable
+            allow-create
+            default-first-option
+            placeholder="可选当日当班技师"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="p in onDutyPeople"
+              :key="p.username"
+              :label="onDutyOptionLabel(p)"
+              :value="p.nickname || p.username"
+            />
+          </el-select>
+          <el-input
+            v-else
+            v-model="extra.preferredStylist"
+            maxlength="32"
+            placeholder="选填"
+          />
         </el-form-item>
+        <p v-if="rosterOn && onDutyPeople.length" class="duty-list">
+          {{ onDutyLabel }}：
+          <span v-for="(p, i) in onDutyPeople" :key="p.username">
+            {{ i ? '、' : '' }}{{ p.nickname || p.username }}（{{ p.shiftLabel || '全天' }}）
+          </span>
+        </p>
         <el-form-item
           v-if="requireRemark && !slotMeeting && !slotParking && !slotHospital && !slotHotel && !slotCarrent"
           :label="remarkLabel"
@@ -102,7 +134,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
-import { hasTrait, personLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { getSchema, hasCap, hasTrait, personLabel, reservationCopy } from '../../utils/domainSchema.js'
 import { todayStr } from '../../utils/dates.js'
 import {
   guestTeaserLimit,
@@ -148,6 +180,22 @@ const visitTypeOptions = computed(() => {
 const visitTypeDefault = computed(() => resv.visitTypeDefault || visitTypeOptions.value[0]?.value || '初诊')
 const symptomLabel = computed(() => resv.symptomNoteLabel || '症状简述')
 const stylistLabel = computed(() => resv.stylistLabel || '偏好技师')
+const rosterOn = computed(() => hasCap('staff_roster'))
+const roomEquipOn = computed(() => hasCap('room_equipment'))
+const equipSectionTitle = computed(
+  () => getSchema()?.labels?.roomEquipmentSectionTitle || '配套设备',
+)
+const equipNames = ref([])
+const onDutyLabel = computed(() => getSchema()?.labels?.staffRosterOnDutyHint || '当日当班')
+const onDutyPeople = ref([])
+const onDutyHint = computed(() => {
+  if (!rosterOn.value || !day.value || !isLoggedIn()) return ''
+  if (!onDutyPeople.value.length) return `${day.value} 暂无排班记录`
+  const names = onDutyPeople.value
+    .map((p) => `${p.nickname || p.username}（${p.shiftLabel || '全天'}）`)
+    .join('、')
+  return `${day.value} ${onDutyLabel.value}：${names}`
+})
 const guestLabel = computed(() => resv.guestNameLabel || (slotCarrent.value ? '驾驶人' : '入住人'))
 const guestCountLabel = computed(() => resv.guestCountLabel || (slotCarrent.value ? '用车人数' : '入住人数'))
 const structured = computed(() =>
@@ -198,6 +246,46 @@ async function load() {
     }
   }
   list.value = isGuest.value ? rows.slice(0, guestTeaserLimit()) : rows
+  await loadOnDuty()
+  await loadEquip()
+}
+
+async function loadEquip() {
+  if (!roomEquipOn.value || !itemId.value) {
+    equipNames.value = []
+    return
+  }
+  try {
+    const res = await http.get(`/api/archive/${itemId.value}`)
+    const row = res.data || res || {}
+    const n = row.equipmentNames
+    equipNames.value = Array.isArray(n) ? n.filter(Boolean) : []
+  } catch {
+    equipNames.value = []
+  }
+}
+
+async function loadOnDuty() {
+  if (!rosterOn.value || !day.value) {
+    onDutyPeople.value = []
+    return
+  }
+  if (!isLoggedIn()) {
+    onDutyPeople.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/staff-roster/on-duty', { params: { date: day.value } })
+    onDutyPeople.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    onDutyPeople.value = []
+  }
+}
+
+function onDutyOptionLabel(p) {
+  const name = p.nickname || p.username
+  const shift = p.shiftLabel ? ` · ${p.shiftLabel}` : ''
+  return `${name}${shift}`
 }
 
 async function openReserve(s) {
@@ -230,6 +318,7 @@ async function openReserve(s) {
       if (!extra.guestName) extra.guestName = nick
     }
   } catch { /* ignore */ }
+  await loadOnDuty()
   visible.value = true
 }
 
@@ -295,6 +384,9 @@ onMounted(load)
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .hero p.warn { color: #b45309; }
+.equip-line { margin: 0 0 10px !important; font-size: 13px; color: #0f766e; }
+.duty-hint { margin: 8px 0 0; font-size: 13px; color: var(--portal-muted, #64748b); }
+.duty-list { margin: 0 0 8px; font-size: 12px; color: var(--el-text-color-secondary); }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid {
   display: grid;

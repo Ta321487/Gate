@@ -32,5 +32,5 @@
     "站内消息通知审核结果"
   ],
   "key_consistency": "借阅库存与座位时段库存分别占用，两套状态机不可混用。",
-  "key_scope": "开题易堆砌{out_scope}；本期只保证借阅与座位预约两条主路径可演示；大型仪器借+机时另见 DOM-INSTRUMENT。"
+  "key_scope": "开题易堆砌{out_scope}；本期只保证借阅与座位预约两条主路径可走通；大型仪器借+机时另见 DOM-INSTRUMENT。"
 }

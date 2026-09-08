@@ -284,6 +284,13 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.archive_log import apply_archive_log_to_spec
     from app.bake.features.audit_log import apply_audit_log_to_spec
     from app.bake.features.message_template import apply_message_template_to_spec
+    from app.bake.features.code_qr import apply_code_qr_to_spec
+    from app.bake.features.staff_roster import apply_staff_roster_to_spec
+    from app.bake.features.room_equipment import apply_room_equipment_to_spec
+    from app.bake.features.book_hold import apply_book_hold_to_spec
+    from app.bake.features.post_mute import apply_post_mute_to_spec
+    from app.bake.features.book_suggest import apply_book_suggest_to_spec
+    from app.bake.features.product_spec import apply_product_spec_to_spec
     from app.bake.features.favorites import apply_favorites_to_spec
     from app.bake.features.dm import apply_dm_to_spec
     from app.bake.features.exam import apply_exam_to_spec
@@ -293,6 +300,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.timebank import apply_timebank_to_spec
     from app.bake.features.seat_select import apply_seat_select_to_spec
     from app.bake.features.stock_io import apply_stock_io_to_spec
+    from app.bake.features.stock_scrap import apply_stock_scrap_to_spec
     from app.bake.features.e_sign import apply_e_sign_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
     from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
@@ -381,6 +389,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_timebank_to_spec(out, body)
     out = apply_seat_select_to_spec(out, body)
     out = apply_stock_io_to_spec(out, body)
+    out = apply_stock_scrap_to_spec(out, body)
     out = apply_e_sign_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
     out = apply_ai_assistant_to_spec(out, body)
@@ -390,6 +399,13 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_archive_log_to_spec(out, body)
     out = apply_audit_log_to_spec(out, body)
     out = apply_message_template_to_spec(out, body)
+    out = apply_code_qr_to_spec(out, body)
+    out = apply_staff_roster_to_spec(out, body)
+    out = apply_room_equipment_to_spec(out, body)
+    out = apply_book_hold_to_spec(out, body)
+    out = apply_post_mute_to_spec(out, body)
+    out = apply_book_suggest_to_spec(out, body)
+    out = apply_product_spec_to_spec(out, body)
     out = apply_order_extras_to_spec(out, body)
     from app.bake.features.core_cap_scan import apply_core_caps_to_spec
     from app.bake.features.ticket_flow_opts import apply_ticket_flow_opts_to_spec

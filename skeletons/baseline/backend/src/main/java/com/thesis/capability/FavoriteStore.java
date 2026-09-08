@@ -313,10 +313,16 @@ public final class FavoriteStore {
     }
 
     /**
-     * @param action ignore | takedown
+     * @param action ignore | takedown | takedown_mute（下架并禁言作者，需 post_mute）
+     * @param muteDays 禁言天数；takedown_mute 默认 7；&lt;=0 时不禁言
      */
     public static Map<String, Object> resolveReport(
             long reportId, String action, String handler, String handleNote) {
+        return resolveReport(reportId, action, handler, handleNote, 0);
+    }
+
+    public static Map<String, Object> resolveReport(
+            long reportId, String action, String handler, String handleNote, int muteDays) {
         requireReport();
         Map<String, Object> m = getReport(reportId);
         if (m == null) throw new IllegalArgumentException("举报不存在");
@@ -324,13 +330,14 @@ public final class FavoriteStore {
             throw new IllegalStateException("该举报已处理");
         }
         String act = action == null ? "" : action.trim();
-        if (!"ignore".equals(act) && !"takedown".equals(act)) {
-            throw new IllegalStateException("处理方式须为忽略或下架");
+        boolean withMute = "takedown_mute".equals(act);
+        if (!"ignore".equals(act) && !"takedown".equals(act) && !withMute) {
+            throw new IllegalStateException("处理方式须为忽略、下架或下架并禁言");
         }
         String note = handleNote == null ? "" : handleNote.trim();
         if (note.length() > 512) note = note.substring(0, 512);
         String newStatus = "ignore".equals(act) ? "ignored" : "takedown";
-        if ("takedown".equals(act)) {
+        if ("takedown".equals(act) || withMute) {
             String type = String.valueOf(m.get("targetType"));
             long tid = toLong(m.get("targetId"));
             if ("archive".equals(type)) {
@@ -341,6 +348,9 @@ public final class FavoriteStore {
             } else if ("ticket".equals(type)) {
                 TicketStore.hideForReport(tid, note.isBlank() ? "举报下架" : note);
             }
+            if (withMute) {
+                muteContentAuthor(type, tid, muteDays > 0 ? muteDays : 7, note);
+            }
         }
         db().update(
                 "UPDATE " + REPORT_TABLE
@@ -350,6 +360,35 @@ public final class FavoriteStore {
                 note,
                 reportId);
         return getReport(reportId);
+    }
+
+    /** 对举报对象作者设禁言（E-12 联动）。 */
+    private static void muteContentAuthor(String targetType, long targetId, int days, String note) {
+        if (!com.thesis.service.UserStore.postMuteEnabled()) {
+            throw new IllegalStateException("禁言功能暂不可用，请仅下架或先开启禁言能力");
+        }
+        String author = "";
+        if ("archive".equals(targetType)) {
+            Map<String, Object> item = ArchiveStore.getItemRaw(targetId);
+            if (item != null) {
+                Object ou = item.get("ownerUsername");
+                if (ou == null || String.valueOf(ou).isBlank()) {
+                    ou = item.get("author");
+                }
+                author = ou == null ? "" : String.valueOf(ou).trim();
+            }
+        } else if ("ticket".equals(targetType)) {
+            Map<String, Object> t = TicketStore.get(targetId);
+            if (t != null && t.get("username") != null) {
+                author = String.valueOf(t.get("username")).trim();
+            }
+        }
+        if (author.isBlank()) {
+            throw new IllegalStateException("无法定位内容作者，未能禁言");
+        }
+        String tip = note == null || note.isBlank() ? "举报处置禁言" : note;
+        Map<String, Object> muted = com.thesis.service.UserStore.setPostMuteDays(author, days);
+        muted.put("_muteNote", tip);
     }
 
     private static Map<String, Object> getReport(long id) {

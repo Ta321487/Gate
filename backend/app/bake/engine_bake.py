@@ -387,6 +387,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-issue-pass-code", bool(ticket_ent.get("issuePassCode"))),
             ("ticket-allow-renew", bool(ticket_ent.get("allowRenew"))),
             ("ticket-allow-waitlist", bool(ticket_ent.get("allowWaitlist"))),
+            ("ticket-allow-book-hold", bool(ticket_ent.get("allowBookHold"))),
             ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
             ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
@@ -440,6 +441,13 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
                 renew_days = 0
             if renew_days > 0:
                 lines.append(f"  ticket-renew-days: {renew_days}")
+        if ticket_ent.get("allowBookHold"):
+            try:
+                hold_hours = int(ticket_ent.get("holdHours") or 48)
+            except (TypeError, ValueError):
+                hold_hours = 48
+            hold_hours = max(1, min(168, hold_hours))
+            lines.append(f"  ticket-hold-hours: {hold_hours}")
         from app.bake.ticket_rules import rules_for
 
         rules = rules_for(
@@ -564,6 +572,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  order-review-enabled: true")
     if "flash_price" in caps:
         lines.append("  flash-price-enabled: true")
+    if "product_spec" in caps:
+        lines.append("  product-spec-enabled: true")
     timeout = 0
     try:
         timeout = int((spec.get("schema") or {}).get("orderTimeoutMinutes") or 0)
@@ -577,12 +587,20 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  post-like-enabled: true")
     if "content_report" in caps:
         lines.append("  content-report-enabled: true")
+    if "post_mute" in caps:
+        lines.append("  post-mute-enabled: true")
+    if "book_suggest" in caps:
+        lines.append("  book-suggest-enabled: true")
     if "audit_log" in caps:
         lines.append("  audit-log-enabled: true")
     if "message_template" in caps:
         lines.append("  message-template-enabled: true")
         if bool((spec.get("schema") or {}).get("auditLoginOnly")):
             lines.append("  audit-log-login-only: true")
+    if "staff_roster" in caps:
+        lines.append("  staff-roster-enabled: true")
+    if "room_equipment" in caps:
+        lines.append("  room-equipment-enabled: true")
     if "browse_history" in caps:
         lines.append("  browse-history-enabled: true")
     if "archive_log" in caps:
@@ -640,6 +658,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  seat-select-enabled: true")
     if "stock_io" in caps:
         lines.append("  stock-io-enabled: true")
+    if "stock_scrap" in caps:
+        lines.append("  stock-scrap-enabled: true")
+    if "stock_count" in caps:
+        lines.append("  stock-count-enabled: true")
     if "e_sign" in caps:
         lines.append("  e-sign-enabled: true")
 

@@ -265,6 +265,67 @@ function withMessageTemplateRoutes(baseRoutes) {
   return routes
 }
 
+/** 图书荐购：有 book_suggest 时挂门户与管理端 */
+function withBookSuggestRoutes(baseRoutes) {
+  if (!hasCap('book_suggest')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'book-suggest')) {
+    const ticketsIdx = kids.findIndex((c) => c.path === 'tickets')
+    const at = ticketsIdx >= 0 ? ticketsIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'book-suggest',
+      component: () => import('../views/user/BookSuggest.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'book-suggest')) {
+    const ticketsIdx = adminKids.findIndex((c) => c.path === 'tickets')
+    const at = ticketsIdx >= 0 ? ticketsIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'book-suggest',
+      component: () => import('../views/admin/BookSuggestAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 周排班：有 staff_roster 时挂管理端（总管） */
+function withStaffRosterRoutes(baseRoutes) {
+  if (!hasCap('staff_roster')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'staff-roster')) {
+    const usersIdx = adminKids.findIndex((c) => c.path === 'users')
+    const at = usersIdx >= 0 ? usersIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'staff-roster',
+      component: () => import('../views/admin/StaffRosterAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 会议室设备字典：有 room_equipment 时挂管理端（总管） */
+function withRoomEquipmentRoutes(baseRoutes) {
+  if (!hasCap('room_equipment')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'equipment-dict')) {
+    const archIdx = adminKids.findIndex((c) => c.path === 'archive')
+    const at = archIdx >= 0 ? archIdx : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'equipment-dict',
+      component: () => import('../views/admin/EquipmentDictAdmin.vue'),
+    })
+  }
+  return routes
+}
+
 /** 操作审计日志：有 audit_log 时挂管理端（总管） */
 function withAuditLogRoutes(baseRoutes) {
   if (!hasCap('audit_log')) return baseRoutes
@@ -974,7 +1035,7 @@ function pickRoutes() {
                       withDoclibRoutes(
                         withVoteRoutes(
                           withSurveyRoutes(
-                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withGuestbookRoutes(routes)))))),
+                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withGuestbookRoutes(routes))))))))),
                           ),
                         ),
                       ),

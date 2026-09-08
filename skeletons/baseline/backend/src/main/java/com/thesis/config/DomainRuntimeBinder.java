@@ -2,6 +2,9 @@ package com.thesis.config;
 
 import com.thesis.capability.ArchiveLogStore;
 import com.thesis.capability.AuditLogStore;
+import com.thesis.capability.StaffRosterStore;
+import com.thesis.capability.BookSuggestStore;
+import com.thesis.capability.EquipmentDictStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
 import com.thesis.capability.CouponStore;
@@ -167,6 +170,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-allow-waitlist:false}")
     private boolean ticketAllowWaitlist;
 
+    @Value("${thesis.ticket-allow-book-hold:false}")
+    private boolean ticketAllowBookHold;
+
+    @Value("${thesis.ticket-hold-hours:48}")
+    private int ticketHoldHours;
+
     @Value("${thesis.ticket-max-renew:1}")
     private int ticketMaxRenew;
 
@@ -260,11 +269,23 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.content-report-enabled:false}")
     private boolean contentReportEnabled;
 
+    @Value("${thesis.post-mute-enabled:false}")
+    private boolean postMuteEnabled;
+
+    @Value("${thesis.book-suggest-enabled:false}")
+    private boolean bookSuggestEnabled;
+
     @Value("${thesis.audit-log-enabled:false}")
     private boolean auditLogEnabled;
 
     @Value("${thesis.message-template-enabled:false}")
     private boolean messageTemplateEnabled;
+
+    @Value("${thesis.staff-roster-enabled:false}")
+    private boolean staffRosterEnabled;
+
+    @Value("${thesis.room-equipment-enabled:false}")
+    private boolean roomEquipmentEnabled;
 
     @Value("${thesis.audit-log-login-only:false}")
     private boolean auditLogLoginOnly;
@@ -322,6 +343,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.stock-io-enabled:false}")
     private boolean stockIoEnabled;
 
+    /** E-08 报废 */
+    @Value("${thesis.stock-scrap-enabled:false}")
+    private boolean stockScrapEnabled;
+
+    /** E-08 盘点 */
+    @Value("${thesis.stock-count-enabled:false}")
+    private boolean stockCountEnabled;
+
     /** C-18 本地签章 */
     @Value("${thesis.e-sign-enabled:false}")
     private boolean eSignEnabled;
@@ -331,6 +360,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.flash-price-enabled:false}")
     private boolean flashPriceEnabled;
+
+    @Value("${thesis.product-spec-enabled:false}")
+    private boolean productSpecEnabled;
 
     @Value("${thesis.shop-marketplace:false}")
     private boolean shopMarketplace;
@@ -350,7 +382,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configureGallery(galleryEnabled);
+        ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
+        ArchiveStore.configureProductSpec(productSpecEnabled);
         ArchiveStore.configureShopMarketplace(shopMarketplace);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
@@ -374,6 +408,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureIssuePassCode(ticketIssuePassCode);
             TicketStore.configureRenew(ticketAllowRenew, ticketMaxRenew, ticketRenewDays);
             TicketStore.configureWaitlist(ticketAllowWaitlist);
+            TicketStore.configureBookHold(ticketAllowBookHold, ticketHoldHours);
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureTimebankRedeem(timebankEnabled && timebankRedeemOnApprove);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
@@ -411,10 +446,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         FavoriteStore.configure(favoritesEnabled);
         FavoriteStore.configureLike(postLikeEnabled);
         FavoriteStore.configureReport(contentReportEnabled);
+        UserStore.configurePostMute(postMuteEnabled);
         BrowseHistoryStore.configure(browseHistoryEnabled, 20);
         ArchiveLogStore.configure(archiveLogEnabled);
         AuditLogStore.configure(auditLogEnabled, auditLogLoginOnly);
         MessageStore.configureTemplate(messageTemplateEnabled);
+        StaffRosterStore.configure(staffRosterEnabled);
+        BookSuggestStore.configure(bookSuggestEnabled);
+        EquipmentDictStore.configure(roomEquipmentEnabled);
         ExamStore.configure(
                 examEnabled,
                 examPracticeEnabled,
@@ -429,7 +468,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         DoclibStore.configure(doclibEnabled);
         TimebankStore.configure(timebankEnabled, timebankRedeemOnApprove);
         SeatStore.configure(seatSelectEnabled);
-        StockIoStore.configure(stockIoEnabled);
+        StockIoStore.configure(stockIoEnabled, stockScrapEnabled, stockCountEnabled);
         ESignStore.configure(eSignEnabled);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);

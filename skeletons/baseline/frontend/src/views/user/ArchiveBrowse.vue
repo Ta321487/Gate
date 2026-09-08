@@ -91,6 +91,7 @@
           <h3>{{ row.title }}</h3>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
           <p v-if="flashOn && row.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span></p>
+          <p v-if="productSpecOn && productSpecText(row)" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
           <p
             v-for="f in cardPreviewFields"
             :key="f.key"
@@ -118,7 +119,7 @@
               @click="play(row)"
             >播放</el-button>
             <el-button
-              v-if="bodyRich || galleryOn || browseOn || logOn"
+              v-if="bodyRich || galleryOn || browseOn || logOn || roomEquipOn"
               size="small"
               @click="openDetail(row)"
             >{{ bodyRich ? '阅读' : '详情' }}</el-button>
@@ -176,6 +177,8 @@
         <img v-else-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
         <p v-if="flashOn && detail.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(detail.listPriceYuan ?? detail.author).toFixed(2) }}</span></p>
+        <p v-if="productSpecOn && productSpecText(detail)" class="detail-line">{{ productSpecLabel }}：{{ productSpecText(detail) }}</p>
+
         <p
           v-for="f in cardDetailFields"
           :key="f.key"
@@ -183,6 +186,16 @@
         >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
         <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
         <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+        <div v-if="roomEquipOn && detailEquipNames.length" class="equip">
+          <p class="equip-title">{{ equipSectionTitle }}</p>
+          <el-tag
+            v-for="n in detailEquipNames"
+            :key="n"
+            size="small"
+            effect="plain"
+            class="equip-tag"
+          >{{ n }}</el-tag>
+        </div>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <div v-if="showThread" class="thread">
           <h4 class="thread-title">{{ threadTitle }}</h4>
@@ -646,6 +659,11 @@ const cardDetailFields = computed(() => {
     'title', 'author', 'category', 'stock', 'coverUrl',
     'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
   ])
+  // 挂 product_spec 时规格由独立行展示，避免与 schema 字段重复
+  if (productSpecOn.value) {
+    const src = getSchema()?.entities?.archive?.productSpecSource || 'specNote'
+    skip.add(src === 'isbn' ? 'isbn' : 'specNote')
+  }
   return fields.value.filter((f) => {
     if (!f?.key || skip.has(f.key)) return false
     if (f.type === 'hidden' || f.type === 'richtext') return false
@@ -712,6 +730,8 @@ const favOn = computed(() => {
 })
 const likeOn = computed(() => hasCap('post_like'))
 const flashOn = computed(() => hasCap('flash_price'))
+const productSpecOn = computed(() => hasCap('product_spec'))
+const productSpecLabel = computed(() => getSchema()?.labels?.productSpecLabel || '规格')
 const flashBadge = computed(() => getSchema()?.labels?.flashPriceBadge || '活动价')
 const reportOn = computed(() => hasCap('content_report'))
 const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
@@ -747,6 +767,15 @@ const reportTargetLabel = computed(() => {
 const searchAssist = computed(() => isSearchAssistEnabled())
 const hotKeywords = computed(() => searchHotKeywords())
 const galleryOn = computed(() => isGalleryEnabled())
+const roomEquipOn = computed(() => hasCap('room_equipment'))
+const equipSectionTitle = computed(
+  () => getSchema()?.labels?.roomEquipmentSectionTitle || '配套设备',
+)
+const detailEquipNames = computed(() => {
+  if (!roomEquipOn.value || !detail.value) return []
+  const n = detail.value.equipmentNames
+  return Array.isArray(n) ? n.filter(Boolean) : []
+})
 const browseOn = computed(() => isBrowseHistoryEnabled())
 const logOn = computed(() => isArchiveLogEnabled())
 const logEnt = computed(() => archiveLogCopy())
@@ -869,17 +898,23 @@ function stockOk(row) {
 }
 
 const allowWaitlist = computed(() => !!(ticket.allowWaitlist || hasCap('waitlist')))
+const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
 
 function canApplyOrWait(row) {
   if (!row) return false
   if (row.status === 'unavailable') return false
   if (stockOk(row)) return true
-  return allowWaitlist.value
+  return allowWaitlist.value || allowBookHold.value
 }
 
 function applyActionLabel(row) {
-  if (allowWaitlist.value && row && !stockOk(row) && row.status !== 'unavailable') {
-    return verbs.value.waitlist || labelsWaitlistVerb.value || '候补报名'
+  if (row && !stockOk(row) && row.status !== 'unavailable') {
+    if (allowBookHold.value) {
+      return verbs.value.bookHold || labelsBookHoldVerb.value || '预约'
+    }
+    if (allowWaitlist.value) {
+      return verbs.value.waitlist || labelsWaitlistVerb.value || '候补报名'
+    }
   }
   return primaryActionLabel.value
 }
@@ -887,6 +922,11 @@ function applyActionLabel(row) {
 const labelsWaitlistVerb = computed(() => {
   const sch = getSchema() || {}
   return (sch.labels && sch.labels.waitlistVerb) || ''
+})
+
+const labelsBookHoldVerb = computed(() => {
+  const sch = getSchema() || {}
+  return (sch.labels && sch.labels.bookHoldVerb) || ''
 })
 
 function stockText(row) {
@@ -1117,6 +1157,14 @@ async function loadLikeIds() {
   } catch {
     likeIds.value = []
   }
+}
+
+
+function productSpecText(row) {
+  if (!row) return ''
+  const src = getSchema()?.entities?.archive?.productSpecSource || 'specNote'
+  if (src === 'isbn') return String(row.isbn || '').trim()
+  return String(row.specNote || row.isbn || '').trim()
 }
 
 function likeCountText(row) {
@@ -1450,7 +1498,9 @@ async function submitApply() {
     const { data } = await http.post('/api/tickets/apply', body)
     const st = data?.status || data?.data?.status
     let okMsg
-    if (st === 'waitlisted') {
+    if (st === 'held') {
+      okMsg = (getSchema()?.labels?.bookHoldOkMessage) || '暂无库存，已加入预约队列'
+    } else if (st === 'waitlisted') {
       okMsg = (getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列'
     } else if (checkinOnApply.value) {
       okMsg = '已签到'
@@ -1546,6 +1596,9 @@ onMounted(async () => {
 .detail-line.muted { color: var(--portal-muted, #64748b) !important; }
 .sched { margin-top: 4px !important; color: #0f766e !important; }
 .sched.muted { color: var(--portal-muted, #94a3b8) !important; }
+.equip { margin: 10px 0 4px; }
+.equip-title { margin: 0 0 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
+.equip-tag { margin: 0 6px 6px 0; }
 .excerpt { margin-top: 8px; color: var(--portal-muted, #64748b); }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }

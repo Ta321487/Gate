@@ -60,7 +60,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "desc": "购物车 + 多明细订单（无真支付）",
     },
     "wallet": {
-        "label": "演示余额",
+        "label": "账户余额",
         "status": "implemented",
         "desc": "用户余额字段+流水；管理端可充值；下单扣减（非真支付）",
     },
@@ -72,7 +72,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "spend_discount": {
         "label": "满减",
         "status": "implemented",
-        "desc": "满 xx 元减 yy（演示优惠，写入订单快照）",
+        "desc": "满 xx 元减 yy（优惠写入订单快照；非第三方营销引擎）",
     },
     "member_tier": {
         "label": "会员成长",
@@ -124,6 +124,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "档案活动价窗口；窗内下单用活动价快照；开题写到才挂（E-05）",
     },
+    "product_spec": {
+        "label": "商品规格说明",
+        "status": "implemented",
+        "desc": "档案规格文案字段+详情展示+下单标题快照；开题写到才挂（E-14）；非 SKU 矩阵",
+    },
     "order_review": {
         "label": "订单评价",
         "status": "implemented",
@@ -140,9 +145,39 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "desc": "志愿提交后由档案确认人接受/婉拒，管理端可调剂（C-05；挂导师/选题/组队互选域）",
     },
     "pass_code": {
-        "label": "演示通行码",
+        "label": "通行码",
         "status": "implemented",
-        "desc": "审核通过签发演示通行码字符串（非真门禁/二维码硬件；C-09，挂 DOM-VISITOR / DOM-CARPASS）",
+        "desc": "审核通过签发通行码字符串（不对接闸机；C-09，挂 DOM-VISITOR / DOM-CARPASS）",
+    },
+    "code_qr": {
+        "label": "码二维码出示",
+        "status": "implemented",
+        "desc": "通行码/取件码前端二维码出示与打印；开题写到才挂（E-07）；不对接闸机",
+    },
+    "staff_roster": {
+        "label": "周排班",
+        "status": "implemented",
+        "desc": "员工按日班次维护；预约/派单可看当班；开题写到才挂（E-09）；非智能排课",
+    },
+    "room_equipment": {
+        "label": "会议室设备清单",
+        "status": "implemented",
+        "desc": "会议室档案勾选配套设备；详情/预约展示；字典可维护；开题写到才挂（E-10）；≠设备借用",
+    },
+    "book_hold": {
+        "label": "图书预约",
+        "status": "implemented",
+        "desc": "无库存可预约；还书后到书通知；限时确认借阅；开题写到才挂（E-11）；≠报名候补",
+    },
+    "book_suggest": {
+        "label": "图书荐购",
+        "status": "implemented",
+        "desc": "读者提交荐购→审核通过/驳回记台账；开题写到才挂（E-13）；≠PROCURE期刊遴选",
+    },
+    "post_mute": {
+        "label": "帖子禁言",
+        "status": "implemented",
+        "desc": "设禁言截止时间；期内不可发帖/回复；开题写到才挂（E-12）；≠整号停用",
     },
     "bed_occupy": {
         "label": "床位占用",
@@ -194,15 +229,25 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "管理端入库/出库登记+库存流水；复用档案 stock（C-17；挂 DOM-ASSET；单仓演示；≠多仓ERP≠RFID）",
     },
+    "stock_scrap": {
+        "label": "物资报废",
+        "status": "implemented",
+        "desc": "管理端报废登记扣库存并记 scrap 流水；开题写到才挂（E-08）；须配 stock_io；≠多仓调拨≠RFID",
+    },
+    "stock_count": {
+        "label": "库存盘点",
+        "status": "implemented",
+        "desc": "管理端录入实盘数调库存并记差额流水；开题写到才挂（E-08）；须配 stock_io；≠多仓≠RFID",
+    },
     "e_sign": {
-        "label": "本地签章演示",
+        "label": "本地签章",
         "status": "implemented",
         "desc": "上传签章图+勾选同意留痕（C-18；挂 DOM-INTERN 等；非 CA/第三方签平台）",
     },
     "rating_dims": {
         "label": "多维评分",
         "status": "implemented",
-        "desc": "单据完结后按维度打分+评语，可选匿名演示；综合分为维度均值（C-06，挂 DOM-EVAL 等）",
+        "desc": "单据完结后按维度打分+评语，可选匿名；综合分为维度均值（C-06，挂 DOM-EVAL 等）",
     },
     "search_assist": {
         "label": "搜索联想与热搜",
@@ -241,8 +286,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     },
 }
 
-# 技术 L3：全文扫描（研究现状里写到也降级，避免当已交付）
-# 注：轻量「猜你喜欢」已落地；协同过滤/深度推荐仍视为超范围卖点
+# 技术 L3 / 业务过重：只扫功能实现相关段；研究现状转述他人工作不当承诺
 OUT_OF_SCOPE_SIGNALS: list[tuple[str, str]] = [
     ("人脸", "生物识别/人脸"),
     ("指纹", "生物识别"),
@@ -385,29 +429,47 @@ def _scan_signals(
     return hits
 
 
-def scan_out_of_scope(text: str) -> list[str]:
-    """扫描开题里「拟交付」的超范围卖点。
+def _commitment_focus_for_scope(text: str) -> str:
+    """超范围拒收只看「题名 + 功能/实现段 + 模块行」，禁止退回全文。
 
-    真实开题常在研究现状 / 非本期写到人脸、真支付、ERP 等——那是划界，不是承诺。
-    因此只扫「拟实现/主要功能」等实现段（无章节时退回全文），并忽略否定与对比语境。
+    研究现状 / 背景里换写法、变词汇转述他人技术，不得当成本课题承诺。
+    题名仍扫：如「基于人脸识别的…」题眼硬拒。
     """
     from app.services.proposal import strip_non_dev_sections
 
     raw = strip_non_dev_sections(text or "")
-    focus = raw
     try:
-        from app.bake.catalog import proposal_impl_sections_for_scope
+        from app.bake.catalog import (
+            extract_title,
+            proposal_impl_sections_for_scope,
+            strip_research_status_sections,
+        )
 
-        focused = proposal_impl_sections_for_scope(text or "")
-        if focused and focused.strip():
-            focus = focused
+        title = extract_title(raw)
+        if title in ("", "未命名毕设项目"):
+            title = ""
+        impl = proposal_impl_sections_for_scope(text or "")
+        parts = [p for p in (title, impl) if (p or "").strip()]
+        focus = "\n".join(parts).strip()
+        return strip_research_status_sections(focus) if focus else ""
     except Exception:  # noqa: BLE001
-        pass
+        # 降级：宁可漏拒，勿用全文误伤文献转述
+        return ""
+
+
+def scan_out_of_scope(text: str) -> list[str]:
+    """扫描开题里「拟交付」的超范围卖点。
+
+    只扫题名 + 功能/实现段（含模块行）；不扫研究现状/全文。
+    并忽略否定、对比与文献转述语境（「等引入…[n]」等）。
+    """
+    focus = _commitment_focus_for_scope(text)
+    if not focus.strip():
+        return []
     hits = _scan_signals(focus, OUT_OF_SCOPE_SIGNALS, ignore_contrast=True)
     for label in _scan_signals(focus, BUSINESS_OVERREACH_SIGNALS, ignore_contrast=True):
         if label not in hits:
             hits.append(label)
-    # P-30：用章+用车+证明三联不得一题三引擎冒充
     for label in _scan_oa_triple(focus):
         if label not in hits:
             hits.append(label)
@@ -415,19 +477,10 @@ def scan_out_of_scope(text: str) -> list[str]:
 
 
 def scan_soft_out_of_mvp(text: str) -> list[str]:
-    """软超壳：进本期不做与接题双显，不 reject。"""
-    from app.services.proposal import strip_non_dev_sections
-
-    raw = strip_non_dev_sections(text or "")
-    focus = raw
-    try:
-        from app.bake.catalog import proposal_impl_sections_for_scope
-
-        focused = proposal_impl_sections_for_scope(text or "")
-        if focused and focused.strip():
-            focus = focused
-    except Exception:  # noqa: BLE001
-        pass
+    """软超壳：进本期不做与接题双显，不 reject。口径同 scan_out_of_scope。"""
+    focus = _commitment_focus_for_scope(text)
+    if not focus.strip():
+        return []
     return _scan_signals(focus, SOFT_OVERREACH_SIGNALS, ignore_contrast=True)
 
 
@@ -532,10 +585,11 @@ def resolve_accept(
             "required_capabilities": req,
             "missing_capabilities": [],
             "out_of_mvp_signals": oos,
-            "reason": "拟实现/主要功能段承诺了未落地能力（"
+            # 勿写「拟实现」——那是工厂扫描段别名，不是材料原文；标签亦可能 ≠ 原文用词
+            "reason": "开题材料命中未落地能力（"
             + "、".join(oos[:6])
             + ("…" if len(oos) > 6 else "")
-            + "）；请改开题承诺或先扩能力后再 full",
+            + "）；请从功能需求中去掉该承诺，或先扩能力后再 full",
         }
 
     from app.bake.cross_paths import evaluate_cross_path

@@ -121,7 +121,15 @@ public class FavoriteController {
         try {
             String action = body.get("action") == null ? "" : String.valueOf(body.get("action"));
             String note = body.get("note") == null ? "" : String.valueOf(body.get("note"));
-            return R.ok(FavoriteStore.resolveReport(id, action, op, note));
+            int muteDays = 0;
+            if (body.get("muteDays") != null && !String.valueOf(body.get("muteDays")).isBlank()) {
+                try {
+                    muteDays = Integer.parseInt(String.valueOf(body.get("muteDays")).trim());
+                } catch (Exception ignored) {
+                    muteDays = 0;
+                }
+            }
+            return R.ok(FavoriteStore.resolveReport(id, action, op, note, muteDays));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

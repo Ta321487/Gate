@@ -36,6 +36,15 @@ CONTRAST_TERMS = (
     r"不做成|勿做成|不要做成|不成[为做]|"
     r"常通过|仍需人工|信息分散"
 )
+# 文献转述：某人等引入/提出 X…[n] —— 不是本课题功能承诺
+LITERATURE_ATTR_TERMS = (
+    r"等人?(?:引入|提出|采用|设计|研究|构建|实现|开发|基于)|"
+    r"等(?:引入|提出|采用|设计|研究|构建)|"
+    r"(?:学者|文献|既有研究|已有研究|相关研究)(?:表明|指出|认为|多)|"
+    r"(?:例如|比如|如)[\u4e00-\u9fff]{0,12}(?:引入|提出|采用)"
+)
+# 角标引用：[1] / [12]（开题研究现状常见）
+CITATION_MARK_RE = re.compile(r"\[\d{1,3}\]")
 
 FEATURE_HEAD_RE = re.compile(rf"({FEATURE_HEAD_TERMS})")
 RESEARCH_WITH_IMPL_RE = re.compile(r"研究内容.{0,12}拟实现|拟实现.{0,12}功能")
@@ -43,6 +52,7 @@ OUT_HEAD_RE = re.compile(rf"({NEGATION_TERMS})")
 NEGATION_RE = re.compile(rf"(?:{NEGATION_TERMS})")
 RIGHT_NEGATION_RE = re.compile(rf"(?:{RIGHT_NEGATION_TERMS})")
 CONTRAST_RE = re.compile(rf"(?:{CONTRAST_TERMS})")
+LITERATURE_ATTR_RE = re.compile(rf"(?:{LITERATURE_ATTR_TERMS})")
 
 _CLAUSE_SEPS = ("。", "；", ";", "！", "!", "？", "?", "\n")
 
@@ -89,6 +99,16 @@ def keyword_mentioned(
     )
 
 
+def _literature_paraphrase(left: str, right: str) -> bool:
+    """研究现状转述他人工作（含角标引用）≠ 本课题拟交付承诺。"""
+    if LITERATURE_ATTR_RE.search(left) or LITERATURE_ATTR_RE.search(right):
+        return True
+    # 「…协同过滤…能力[2]」：同句右侧近邻角标
+    if CITATION_MARK_RE.search(right[:32]):
+        return True
+    return False
+
+
 def pattern_mentioned(
     text: str,
     pattern: re.Pattern[str] | re.Pattern[bytes],
@@ -99,6 +119,7 @@ def pattern_mentioned(
     """正则命中且同句无「不在本期/不做」等否定时才算正向提及。
 
     能力扫词应走本函数，避免开题「非本期：电子签/影院选座」误挂能力。
+    ignore_contrast=True 时一并忽略对比/展望与文献转述（含 [n] 角标）。
     """
     if not text or pattern is None:
         return False
@@ -107,13 +128,14 @@ def pattern_mentioned(
         chunk = _left_clause(text[left : m.start()])
         if NEGATION_RE.search(chunk):
             continue
-        if ignore_contrast and CONTRAST_RE.search(chunk):
-            continue
         right = _right_clause(text[m.end() : m.end() + window])
         if RIGHT_NEGATION_RE.search(right):
             continue
-        if ignore_contrast and CONTRAST_RE.search(right):
-            continue
+        if ignore_contrast:
+            if CONTRAST_RE.search(chunk) or CONTRAST_RE.search(right):
+                continue
+            if _literature_paraphrase(chunk, right):
+                continue
         return True
     return False
 

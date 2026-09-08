@@ -42,6 +42,9 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column v-if="muteOn" label="禁言至" width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ muteUntilLabel(row) }}</template>
+      </el-table-column>
       <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
           <div class="table-ops">
@@ -53,6 +56,12 @@
             @click="recharge(row)"
           >充值</el-button>
           <el-button link type="warning" @click="resetPwd(row)">重置密码</el-button>
+          <el-button
+            v-if="muteOn && !isSub(row)"
+            link
+            type="warning"
+            @click="openMute(row)"
+          >{{ muteActionLabel(row) }}</el-button>
           <el-button link :type="row.enabled ? 'danger' : 'success'" @click="toggle(row)">
             {{ enableActionLabel(row) }}
           </el-button>
@@ -145,6 +154,7 @@ import http from '../../api/http'
 import {
   emptyProfileExtras,
   getSchema,
+  hasCap,
   isWalletEnabled,
   profileAdminColumns,
   profileAudienceOf,
@@ -168,6 +178,7 @@ const canAppoint = computed(() => postOptions.value.length > 0)
 const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
+const muteOn = computed(() => hasCap('post_mute'))
 /** 仅「用户」tab 摊业务档案列；商家 tab 摊店铺资料；子管理 / 全部与资料页一致不摊 */
 const adminCols = computed(() => {
   if (scope.value === 'users') return profileAdminColumns('user')
@@ -312,6 +323,45 @@ async function resetPwd(row) {
   })
   await http.post(`/api/admin/users/${row.username}/reset-password`, { password: value })
   ElMessage.success('已重置，对方需用新密码重新登录')
+}
+
+function muteUntilLabel(row) {
+  const u = (row?.postMuteUntil || row?.extras?.postMuteUntil || '').toString().trim()
+  return u || '—'
+}
+
+function isMutedNow(row) {
+  const u = (row?.postMuteUntil || row?.extras?.postMuteUntil || '').toString().trim()
+  if (!u) return false
+  const end = Date.parse(u.replace(/-/g, '/'))
+  return Number.isFinite(end) && end > Date.now()
+}
+
+function muteActionLabel(row) {
+  return isMutedNow(row) ? '改禁言/解除' : '禁言'
+}
+
+async function openMute(row) {
+  const muted = isMutedNow(row)
+  const { value } = await ElMessageBox.prompt(
+    muted
+      ? `当前禁言至 ${muteUntilLabel(row)}。输入禁言天数（1～90），或输入 0 解除禁言。`
+      : '输入禁言天数（1～90）。禁言期内不可发帖或回复，不等于停用账号。',
+    labels.postMuteVerb || '禁言',
+    {
+      inputValue: muted ? '0' : '7',
+      inputPattern: /^(0|[1-9]\d?)$/,
+      inputErrorMessage: '请输入 0～90 的整数',
+    },
+  )
+  const days = Number(value)
+  if (days > 90) {
+    ElMessage.warning('最多 90 天')
+    return
+  }
+  await http.post(`/api/admin/users/${row.username}/post-mute`, { days })
+  ElMessage.success(days <= 0 ? '已解除禁言' : `已禁言 ${days} 天`)
+  load()
 }
 
 async function recharge(row) {

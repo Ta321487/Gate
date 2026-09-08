@@ -266,6 +266,7 @@ function statusText(s) {
 }
 
 function passLabel(row) {
+  if (row?.status === 'hold_ready') return '确认出借'
   if (!twoLevel.value || !row) return verbs.value.approve || '受理'
   if (row.status === 'pending_final') return '终审通过'
   if (threeLevel.value && row.status === 'pending_mid') return '复审通过'
@@ -283,6 +284,7 @@ function canPass(row) {
 /** 仅进入「处理中」的那一关展示派单 */
 function isFinalPass(row) {
   if (!row) return false
+  if (row.status === 'hold_ready') return true
   if (!twoLevel.value) return true
   return row.status === 'pending_final'
 }
@@ -290,7 +292,8 @@ function isFinalPass(row) {
 function dispatchLabel(t) {
   const name = t.nickname || t.username
   const post = t.staffPost ? ` · ${t.staffPost}` : ''
-  return `${name}${post}`
+  const duty = t.onDutyToday ? ' · 当日当班' : ''
+  return `${name}${post}${duty}`
 }
 
 async function loadDispatchTargets() {

@@ -465,6 +465,25 @@ def merge_seat_select_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+def merge_stock_scrap_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-08：报废/盘点挂载时断言 StockIoStore 与入出库管理页含 scrap/count。"""
+    caps = set(caps or [])
+    if "stock_scrap" not in caps and "stock_count" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/service/StockIoStore.java",
+        "backend/src/main/java/com/thesis/controller/StockIoController.java",
+        "frontend/src/views/admin/StockMovesAdmin.vue",
+        "frontend/src/views/admin/StockLedgerAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    return out
+
+
 def merge_stock_io_gate(gate: dict, caps: list[str] | None) -> dict:
     """叠加浅进销存文件、路由与 flow_api。"""
     caps = set(caps or [])
@@ -947,6 +966,217 @@ def merge_message_template_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+
+def merge_code_qr_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-07：二维码出示挂载时断言 MyTickets + CodeQr 组件。"""
+    caps = set(caps or [])
+    if "code_qr" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "frontend/src/components/CodeQrBlock.vue",
+        "frontend/src/views/user/MyTickets.vue",
+        "frontend/src/utils/codeQr.js",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    return out
+
+
+def merge_staff_roster_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-09：周排班挂载时断言管理端 + 预约/派单弱挂钩。"""
+    caps = set(caps or [])
+    if "staff_roster" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/StaffRosterStore.java",
+        "backend/src/main/java/com/thesis/controller/StaffRosterController.java",
+        "frontend/src/views/admin/StaffRosterAdmin.vue",
+        "frontend/src/views/user/SlotBook.vue",
+        "frontend/src/views/admin/TicketsAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+
+    routes = list(out.get("admin_routes") or [])
+    have = {str(r.get("seg") or "") for r in routes if isinstance(r, dict)}
+    if "staff-roster" not in have:
+        routes.append({"seg": "staff-roster", "from_feature": "排班"})
+    out["admin_routes"] = routes
+
+    flow = dict(out.get("flow_api") or {})
+    flow["staff_roster"] = {
+        "label": "排班",
+        "need": ["/api/admin/staff-roster", "/api/staff-roster/on-duty"],
+    }
+    out["flow_api"] = flow
+
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "staff_roster" not in super_menus:
+        if "users" in super_menus:
+            super_menus.insert(super_menus.index("users"), "staff_roster")
+        else:
+            super_menus.append("staff_roster")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_room_equipment_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-10：会议室设备清单挂载时断言字典管理 + 档案/预约展示面。"""
+    caps = set(caps or [])
+    if "room_equipment" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/EquipmentDictStore.java",
+        "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+        "backend/src/main/java/com/thesis/controller/EquipmentDictController.java",
+        "frontend/src/views/admin/EquipmentDictAdmin.vue",
+        "frontend/src/views/admin/ArchiveAdmin.vue",
+        "frontend/src/views/user/ArchiveBrowse.vue",
+        "frontend/src/views/user/SlotBook.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+
+    routes = list(out.get("admin_routes") or [])
+    have = {str(r.get("seg") or "") for r in routes if isinstance(r, dict)}
+    if "equipment-dict" not in have:
+        routes.append({"seg": "equipment-dict", "from_feature": "设备字典"})
+    out["admin_routes"] = routes
+
+    flow = dict(out.get("flow_api") or {})
+    flow["room_equipment"] = {
+        "file": "EquipmentDictController.java",
+        "label": "配套设备",
+        "need": ["/api/admin/equipment-dict", "/api/equipment-dict/options"],
+    }
+    out["flow_api"] = flow
+
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "equipment_dict" not in super_menus:
+        if "archive" in super_menus:
+            super_menus.insert(super_menus.index("archive"), "equipment_dict")
+        else:
+            super_menus.append("equipment_dict")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_book_hold_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-11：图书预约挂载时断言申请/确认借阅 API + 浏览/我的单据页。"""
+    caps = set(caps or [])
+    if "book_hold" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/TicketStore.java",
+        "backend/src/main/java/com/thesis/controller/TicketController.java",
+        "frontend/src/views/user/ArchiveBrowse.vue",
+        "frontend/src/views/user/MyTickets.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+
+    flow = dict(out.get("flow_api") or {})
+    flow["book_hold"] = {
+        "file": "TicketController.java",
+        "label": "图书预约",
+        "need": ["/api/tickets/apply", "/{id}/claim-hold"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+def merge_post_mute_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-12：禁言挂载时断言 UserStore/UsersAdmin/发帖拦截。"""
+    caps = set(caps or [])
+    if "post_mute" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/service/UserStore.java",
+        "backend/src/main/java/com/thesis/controller/UsersAdminController.java",
+        "backend/src/main/java/com/thesis/capability/TicketStore.java",
+        "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+        "frontend/src/views/admin/UsersAdmin.vue",
+        "frontend/src/views/admin/ContentReportsAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    flow = dict(out.get("flow_api") or {})
+    flow["post_mute"] = {
+        "file": "UsersAdminController.java",
+        "label": "帖子禁言",
+        "need": ["/api/admin/users", "post-mute"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+def merge_book_suggest_gate(gate: dict, caps: list[str] | None) -> dict:
+    """E-13：图书荐购挂载时断言 Store/API/门户与管理页。"""
+    caps = set(caps or [])
+    if "book_suggest" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/BookSuggestStore.java",
+        "backend/src/main/java/com/thesis/controller/BookSuggestController.java",
+        "frontend/src/views/user/BookSuggest.vue",
+        "frontend/src/views/admin/BookSuggestAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+
+    routes = list(out.get("admin_routes") or [])
+    have = {str(r.get("seg") or "") for r in routes if isinstance(r, dict)}
+    if "book-suggest" not in have:
+        routes.append({"seg": "book-suggest", "from_feature": "图书荐购"})
+    out["admin_routes"] = routes
+
+    user_routes = list(out.get("user_routes") or [])
+    uhave = {str(r.get("seg") or "") for r in user_routes if isinstance(r, dict)}
+    if "book-suggest" not in uhave:
+        user_routes.append({"seg": "book-suggest", "from_feature": "图书荐购"})
+    out["user_routes"] = user_routes
+
+    flow = dict(out.get("flow_api") or {})
+    flow["book_suggest"] = {
+        "label": "图书荐购",
+        "need": ["/api/book-suggest", "/api/admin/book-suggest"],
+    }
+    out["flow_api"] = flow
+
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "book_suggest" not in super_menus:
+        if "ticket_pending" in super_menus:
+            super_menus.insert(super_menus.index("ticket_pending"), "book_suggest")
+        else:
+            super_menus.append("book_suggest")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
 _GATE_ARCHIVE_FAVORITES_FILES = [
     "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
     "backend/src/main/java/com/thesis/capability/FavoriteStore.java",
@@ -1219,6 +1449,31 @@ def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minut
             "file": "OrderController.java",
             "need": ["/api/orders"],
         }
+    out["flow_api"] = flow
+    return out
+
+
+def merge_product_spec_gate(gate: dict, caps: list[str] | None) -> dict:
+    """商品规格说明：档案字段 + 下单快照；无独立菜单。"""
+    caps = set(caps or [])
+    if "product_spec" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+        "backend/src/main/java/com/thesis/capability/OrderStore.java",
+        "frontend/src/views/admin/ArchiveAdmin.vue",
+        "frontend/src/views/user/ArchiveBrowse.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    flow = dict(out.get("flow_api") or {})
+    flow["product_spec"] = {
+        "file": "ArchiveController.java",
+        "need": ["/api/archive"],
+    }
     out["flow_api"] = flow
     return out
 

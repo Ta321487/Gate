@@ -842,6 +842,39 @@ _FOCUS_TAIL_CUT = re.compile(
     r"预期成果|主要参考文献|参考文献|研究方法|系统测试|测试计划)"
 )
 
+# 研究现状 / 文献综述：转述他人工作，不作超范围承诺扫描
+_RESEARCH_STATUS_HEAD = re.compile(
+    r"(?:^|\n)\s*(?:[（(]?\d+(?:[.\-]\d+)*[)）.、.]?|[一二三四五六七八九十百]+[、．.]|"
+    r"[（(][一二三四五六七八九十\d]+[)）]|第[一二三四五六七八九十\d]+[章节部分])?\s*"
+    r"(?:国内外研究现状|研究现状简述|研究现状|研究综述|文献综述)"
+)
+_RESEARCH_STATUS_END = re.compile(
+    r"(?:^|\n)\s*(?:[（(]?\d+(?:[.\-]\d+)*[)）.、.]?|[一二三四五六七八九十百]+[、．.]|"
+    r"[（(][一二三四五六七八九十\d]+[)）]|第[一二三四五六七八九十\d]+[章节部分])?\s*"
+    r"(?:研究意义|研究内容|主要功能|功能需求|功能模块|功能清单|拟实现|"
+    r"关键问题|技术路线|主要参考文献|参考文献)"
+)
+
+
+def strip_research_status_sections(text: str) -> str:
+    """裁掉「国内外研究现状」等综述段，避免文献转述触发超范围拒收。"""
+    raw = text or ""
+    out: list[str] = []
+    pos = 0
+    while True:
+        m = _RESEARCH_STATUS_HEAD.search(raw, pos)
+        if not m:
+            out.append(raw[pos:])
+            break
+        out.append(raw[pos : m.start()])
+        rest = raw[m.end() :]
+        end_m = _RESEARCH_STATUS_END.search(rest)
+        if end_m:
+            pos = m.end() + end_m.start()
+        else:
+            break
+    return "".join(out).strip()
+
 
 def _trim_focus_block(block: str) -> str:
     m = _FOCUS_TAIL_CUT.search(block or "")
@@ -860,6 +893,20 @@ def _proposal_focus_parts(text: str) -> tuple[str, list[str], list[str]]:
         trimmed = _trim_focus_block(m.group(0))
         if trimmed:
             blocks.append(trimmed)
+    # 同行写法：「主要功能：购物车下单；微信支付…」（无换行段体）
+    for m in re.finditer(
+        rf"(?:^|\n)\s*(?:[（(]?\d+(?:[.\-]\d+)*[)）.、.]?|[一二三四五六七八九十百]+[、．.]|"
+        rf"[（(][一二三四五六七八九十\d]+[)）])?\s*"
+        rf"[^\n]*(?:{FEATURE_HEAD_TERMS})[^\n]{{0,400}}",
+        raw,
+        re.IGNORECASE,
+    ):
+        line = m.group(0).strip()
+        if not line:
+            continue
+        if any(line in b or b in line for b in blocks):
+            continue
+        blocks.append(line)
     modules = extract_module_lines(raw)
     return raw, blocks, modules
 

@@ -17,6 +17,13 @@ def merge_proposal_capabilities(
     from app.bake.features.archive_log import merge_archive_log_capabilities
     from app.bake.features.audit_log import merge_audit_log_capabilities
     from app.bake.features.message_template import merge_message_template_capabilities
+    from app.bake.features.code_qr import merge_code_qr_capabilities
+    from app.bake.features.staff_roster import merge_staff_roster_capabilities
+    from app.bake.features.room_equipment import merge_room_equipment_capabilities
+    from app.bake.features.book_hold import merge_book_hold_capabilities
+    from app.bake.features.post_mute import merge_post_mute_capabilities
+    from app.bake.features.book_suggest import merge_book_suggest_capabilities
+    from app.bake.features.product_spec import merge_product_spec_capabilities
     from app.bake.features.core_cap_scan import (
         merge_loan_deadline_capabilities,
         merge_loan_renew_capabilities,
@@ -32,7 +39,7 @@ def merge_proposal_capabilities(
     from app.bake.features.timebank import merge_timebank_capabilities
     from app.bake.features.seat_select import merge_seat_select_capabilities
     from app.bake.features.stock_io import merge_stock_io_capabilities
-    from app.bake.features.e_sign import merge_e_sign_capabilities
+    from app.bake.features.stock_scrap import merge_stock_scrap_capabilities
     from app.bake.features.e_sign import merge_e_sign_capabilities
     from app.bake.features.favorites import (
         merge_content_report_capabilities,
@@ -56,6 +63,7 @@ def merge_proposal_capabilities(
     req = merge_timebank_capabilities(req, body, domain=domain)
     req = merge_seat_select_capabilities(req, body, domain=domain)
     req = merge_stock_io_capabilities(req, body, domain=domain)
+    req = merge_stock_scrap_capabilities(req, body, domain=domain)
     req = merge_e_sign_capabilities(req, body, domain=domain)
     req = merge_guestbook_capabilities(
         req,
@@ -75,6 +83,13 @@ def merge_proposal_capabilities(
     req = merge_archive_log_capabilities(req, body, domain=domain)
     req = merge_audit_log_capabilities(req, body, domain=domain)
     req = merge_message_template_capabilities(req, body, domain=domain)
+    req = merge_code_qr_capabilities(req, body, domain=domain)
+    req = merge_staff_roster_capabilities(req, body, domain=domain)
+    req = merge_room_equipment_capabilities(req, body, domain=domain)
+    req = merge_book_hold_capabilities(req, body, domain=domain)
+    req = merge_post_mute_capabilities(req, body, domain=domain)
+    req = merge_book_suggest_capabilities(req, body, domain=domain)
+    req = merge_product_spec_capabilities(req, body, domain=domain)
     req = merge_recommend_capabilities(req, body)
     req = merge_time_conflict_capabilities(req, body)
     req = merge_loan_deadline_capabilities(req, body)

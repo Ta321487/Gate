@@ -1,6 +1,7 @@
 package com.thesis.controller;
 
 import com.thesis.capability.AuditLogStore;
+import com.thesis.capability.StaffRosterStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
@@ -23,11 +24,14 @@ public class TicketController {
     @Value("${thesis.register-role:user}")
     private String userRole;
 
-    /** 受理派单：可选处理人（子管/维修员等） */
+    /** 受理派单：可选处理人（子管/维修员等）；挂 staff_roster 时标注当日当班 */
     @GetMapping("/dispatch-targets")
     public R<List<Map<String, Object>>> dispatchTargets(HttpSession session) {
         AdminAuth.requireAdmin(session);
         List<Map<String, Object>> raw = com.thesis.service.UserStore.listManaged(userRole, "subadmins", null);
+        java.util.Set<String> onDuty = StaffRosterStore.enabled()
+                ? StaffRosterStore.onDutyUsernames(java.time.LocalDate.now().toString())
+                : java.util.Set.of();
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> row : raw) {
             if (row == null) continue;
@@ -37,6 +41,8 @@ public class TicketController {
             one.put("nickname", row.get("nickname"));
             one.put("staffPost", row.get("staffPost"));
             one.put("staffKind", row.get("staffKind"));
+            String un = row.get("username") == null ? "" : String.valueOf(row.get("username"));
+            one.put("onDutyToday", onDuty.contains(un));
             out.add(one);
         }
         return R.ok(out);
@@ -380,6 +386,19 @@ public class TicketController {
         String uid = requireLogin(session);
         try {
             return R.ok(TicketStore.renew(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 申请人确认借阅（须开题挂 book_hold；hold_ready → approved） */
+    @PostMapping("/{id}/claim-hold")
+    public R<Map<String, Object>> claimHold(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.claimHold(id, uid));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

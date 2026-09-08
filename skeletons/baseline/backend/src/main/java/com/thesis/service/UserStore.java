@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.ResultSet;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,7 +19,95 @@ import java.util.stream.Collectors;
 public class UserStore {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final DateTimeFormatter MUTE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Boolean staffColsReady;
+    private static boolean postMuteEnabled = false;
+
+    public static void configurePostMute(boolean on) {
+        postMuteEnabled = on;
+    }
+
+    public static boolean postMuteEnabled() {
+        return postMuteEnabled;
+    }
+
+    /** 禁言期内不可发帖/回复（能力关闭时直接放行）。 */
+    public static void assertNotPostMuted(String username) {
+        if (!postMuteEnabled) return;
+        String until = postMuteUntilOf(username);
+        if (until == null || until.isBlank()) return;
+        LocalDateTime end = parseMuteUntil(until);
+        if (end != null && LocalDateTime.now().isBefore(end)) {
+            throw new IllegalStateException("您已被禁言至 " + until + "，期间不可发帖或回复");
+        }
+    }
+
+    public static String postMuteUntilOf(String username) {
+        if (username == null || username.isBlank()) return "";
+        Profile p = get(username.trim());
+        if (p == null || p.extras == null) return "";
+        String v = p.extras.get("postMuteUntil");
+        return v == null ? "" : v.trim();
+    }
+
+    /**
+     * 设禁言截止；until 空白则解除。写入 profile_json，不经 ProfileFields 过滤。
+     * @return 更新后的档案 map（含 postMuteUntil）
+     */
+    public static Map<String, Object> setPostMuteUntil(String username, String untilRaw) {
+        if (!postMuteEnabled) {
+            throw new IllegalStateException("禁言功能暂不可用");
+        }
+        if (!hasProfileJson()) {
+            throw new IllegalStateException("当前库不支持禁言扩展字段");
+        }
+        Profile p = requireManaged(username);
+        Map<String, String> merged = new LinkedHashMap<>(p.extras == null ? Map.of() : p.extras);
+        String raw = untilRaw == null ? "" : untilRaw.trim();
+        if (raw.isBlank() || "null".equalsIgnoreCase(raw)) {
+            merged.remove("postMuteUntil");
+        } else {
+            LocalDateTime end = parseMuteUntil(raw);
+            if (end == null) {
+                throw new IllegalArgumentException("禁言截止时间格式无效，请使用 yyyy-MM-dd HH:mm:ss");
+            }
+            if (!end.isAfter(LocalDateTime.now())) {
+                throw new IllegalArgumentException("禁言截止须晚于当前时间");
+            }
+            merged.put("postMuteUntil", end.format(MUTE_FMT));
+        }
+        p.extras = merged;
+        db().update(
+                "UPDATE sys_user SET profile_json=? WHERE username=?",
+                writeExtras(merged), username.trim());
+        Profile updated = get(username.trim());
+        return updated == null ? Map.of() : updated.toMap();
+    }
+
+    /** 按天数设禁言（默认 7 天）；days&lt;=0 解除。 */
+    public static Map<String, Object> setPostMuteDays(String username, int days) {
+        if (days <= 0) {
+            return setPostMuteUntil(username, "");
+        }
+        LocalDateTime end = LocalDateTime.now().plusDays(days).withHour(23).withMinute(59).withSecond(59).withNano(0);
+        return setPostMuteUntil(username, end.format(MUTE_FMT));
+    }
+
+    private static LocalDateTime parseMuteUntil(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim().replace('T', ' ');
+        if (s.length() == 10) s = s + " 23:59:59";
+        if (s.length() > 19) s = s.substring(0, 19);
+        try {
+            return LocalDateTime.parse(s, MUTE_FMT);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
 
     public static class Profile {
         public String username;
@@ -48,6 +138,11 @@ public class UserStore {
             m.put("enabled", enabled);
             m.put("staffPost", staffPost == null ? "" : staffPost);
             m.put("staffKind", staffKind == null ? "" : staffKind);
+            String muteUntil = "";
+            if (extras != null && extras.get("postMuteUntil") != null) {
+                muteUntil = extras.get("postMuteUntil");
+            }
+            m.put("postMuteUntil", muteUntil == null ? "" : muteUntil);
             if (extras != null) {
                 for (Map.Entry<String, String> e : extras.entrySet()) {
                     m.putIfAbsent(e.getKey(), e.getValue());
