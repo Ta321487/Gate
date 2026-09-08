@@ -102,7 +102,7 @@ INSERT IGNORE INTO course_item (id, title, author, isbn, category_id, stock, sta
 (4, '线性代数', '陈老师', 'MA1203 / 3学分 / S20269999', 2, 1, 'available'),
 (5, 'Python 程序设计', '周老师', 'CS1050 / 2学分 / S20260002', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '成绩须知', '请优先选择本人相关课程（演示库按学号标注）；成绩更正与补考由教务审核；不对接学信网。', 'admin', '教务主管'
+SELECT '成绩须知', '请优先选择本人相关课程（预置课程按学号标注）；成绩更正与补考由教务审核；不对接学信网。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='成绩须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '补考安排', '补考名单以教务公告为准，请按时提交申请。', 'admin', '教务主管'

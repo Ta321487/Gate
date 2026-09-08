@@ -13,22 +13,39 @@ import java.util.*;
 
 /**
  * 浅进销存（C-17）：管理端入库/出库登记，即时调整档案 stock 并写流水。
+ * E-08：可选报废 scrap、盘点 count（开题扫词才开）。
  */
 public class StockIoStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static boolean enabled;
+    private static boolean scrapEnabled;
+    private static boolean countEnabled;
     private static Boolean tableReady;
 
     private StockIoStore() {}
 
     public static void configure(boolean on) {
+        configure(on, false, false);
+    }
+
+    public static void configure(boolean on, boolean scrap, boolean count) {
         enabled = on;
+        scrapEnabled = scrap;
+        countEnabled = count;
         tableReady = null;
     }
 
     public static boolean enabled() {
         return enabled;
+    }
+
+    public static boolean scrapEnabled() {
+        return enabled && scrapEnabled;
+    }
+
+    public static boolean countEnabled() {
+        return enabled && countEnabled;
     }
 
     private static JpaDb db() {
@@ -84,6 +101,27 @@ public class StockIoStore {
         return n;
     }
 
+    private static int nonNegQty(Object o) {
+        if (o == null || String.valueOf(o).isBlank()) {
+            throw new IllegalArgumentException("实盘数量无效");
+        }
+        int n;
+        if (o instanceof Number num) n = num.intValue();
+        else n = Integer.parseInt(String.valueOf(o).trim());
+        if (n < 0) throw new IllegalArgumentException("实盘数量不能为负");
+        if (n > 999999) throw new IllegalArgumentException("实盘数量过大");
+        return n;
+    }
+
+    private static int stockOf(Map<String, Object> item) {
+        Object s = item.get("stock");
+        if (s instanceof Number num) return num.intValue();
+        if (s != null && !String.valueOf(s).isBlank()) {
+            return Integer.parseInt(String.valueOf(s).trim());
+        }
+        return 0;
+    }
+
     private static Map<String, Object> pageOut(List<?> list, Integer total, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
@@ -111,7 +149,7 @@ public class StockIoStore {
         if (page < 1) page = 1;
         if (size < 1) size = 20;
         String mt = clip(moveType, 16).toLowerCase(Locale.ROOT);
-        boolean filter = "in".equals(mt) || "out".equals(mt);
+        boolean filter = "in".equals(mt) || "out".equals(mt) || "scrap".equals(mt) || "count".equals(mt);
         Integer total;
         List<Map<String, Object>> list;
         if (filter) {
@@ -135,14 +173,20 @@ public class StockIoStore {
     public static Map<String, Object> post(String moveType, long itemId, int qty, String remark, String operator) {
         require();
         String mt = clip(moveType, 16).toLowerCase(Locale.ROOT);
-        if (!"in".equals(mt) && !"out".equals(mt)) {
-            throw new IllegalArgumentException("类型须为入库(in)或出库(out)");
+        if (!"in".equals(mt) && !"out".equals(mt) && !"scrap".equals(mt)) {
+            throw new IllegalArgumentException("类型须为入库(in)、出库(out)或报废(scrap)");
+        }
+        if ("scrap".equals(mt) && !scrapEnabled) {
+            throw new IllegalStateException("未开通报废登记");
         }
         if (itemId <= 0) throw new IllegalArgumentException("请选择物资");
         int n = qty;
         String op = clip(operator, 64);
         if (op.isBlank()) throw new IllegalArgumentException("操作人无效");
         String note = clip(remark, 255);
+        if ("scrap".equals(mt) && note.isBlank()) {
+            throw new IllegalArgumentException("请填写报废原因");
+        }
 
         Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
         if (item == null) throw new IllegalStateException("物资不存在");
@@ -166,6 +210,46 @@ public class StockIoStore {
         return out;
     }
 
+    /** 盘点：把库存调整为实盘数，并记差额流水。 */
+    public static Map<String, Object> postCount(long itemId, int actualQty, String remark, String operator) {
+        require();
+        if (!countEnabled) throw new IllegalStateException("未开通盘点登记");
+        if (itemId <= 0) throw new IllegalArgumentException("请选择物资");
+        String op = clip(operator, 64);
+        if (op.isBlank()) throw new IllegalArgumentException("操作人无效");
+        int actual = actualQty;
+
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) throw new IllegalStateException("物资不存在");
+        String title = str(item.get("title"));
+        if (title.isBlank()) title = "物资#" + itemId;
+        int book = stockOf(item);
+        int delta = actual - book;
+        String note = clip(remark, 255);
+        String auto = "账存" + book + "→实盘" + actual + " 差额" + delta;
+        if (note.isBlank()) note = auto;
+        else note = clip(auto + "；" + note, 255);
+
+        if (delta != 0) {
+            ArchiveStore.adjustStock(itemId, delta);
+        }
+        db().update(
+                "INSERT INTO stock_move (move_type, item_id, item_title, qty, remark, operator) VALUES (?,?,?,?,?,?)",
+                "count", itemId, clip(title, 200), Math.abs(delta), note, op);
+        Long id = db().queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        List<Map<String, Object>> rows = db().query(
+                "SELECT * FROM stock_move WHERE id=?", (rs, i) -> mapRow(rs), id == null ? 0L : id);
+        Map<String, Object> out = rows.isEmpty() ? new LinkedHashMap<>() : new LinkedHashMap<>(rows.get(0));
+        Map<String, Object> after = ArchiveStore.getItemRaw(itemId);
+        if (after != null && after.get("stock") instanceof Number sn) {
+            out.put("stockAfter", sn.intValue());
+        }
+        out.put("stockBefore", book);
+        out.put("actualQty", actual);
+        out.put("delta", delta);
+        return out;
+    }
+
     public static Map<String, Object> postFromBody(Map<String, Object> body, String operator) {
         Map<String, Object> b = body == null ? Map.of() : body;
         String mt = str(b.get("moveType"));
@@ -176,6 +260,12 @@ public class StockIoStore {
         if (rawId instanceof Number num) itemId = num.longValue();
         else if (rawId != null && !String.valueOf(rawId).isBlank()) {
             itemId = Long.parseLong(String.valueOf(rawId).trim());
+        }
+        mt = clip(mt, 16).toLowerCase(Locale.ROOT);
+        if ("count".equals(mt)) {
+            Object rawActual = b.get("actualQty");
+            if (rawActual == null) rawActual = b.get("qty");
+            return postCount(itemId, nonNegQty(rawActual), str(b.get("remark")), operator);
         }
         return post(mt, itemId, qty(b.get("qty")), str(b.get("remark")), operator);
     }

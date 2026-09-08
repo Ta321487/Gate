@@ -637,6 +637,42 @@ def ensure_content_report_sql(sql: str, *, enabled: bool) -> str:
 
 
 
+_STAFF_ROSTER_DDL = """
+CREATE TABLE IF NOT EXISTS staff_roster (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  work_date DATE NOT NULL,
+  shift_label VARCHAR(64) NOT NULL DEFAULT '全天',
+  note VARCHAR(256) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_roster_user_day (username, work_date),
+  KEY idx_roster_date (work_date)
+);
+"""
+
+_STAFF_ROSTER_SEED = """
+INSERT INTO staff_roster (username, work_date, shift_label, note)
+SELECT 'subadmin', CURDATE(), '全天', '当日值班'
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=CURDATE()
+);
+INSERT INTO staff_roster (username, work_date, shift_label, note)
+SELECT 'subadmin', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '全天', '次日值班'
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+);
+"""
+
+
+def ensure_staff_roster_sql(sql: str, *, enabled: bool) -> str:
+    """周排班表+种子；开题挂 staff_roster 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?staff_roster`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _STAFF_ROSTER_DDL + "\n" + _STAFF_ROSTER_SEED
+
+
 _MESSAGE_TEMPLATE_DDL = """
 CREATE TABLE IF NOT EXISTS sys_message_template (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -666,6 +702,41 @@ def ensure_message_template_sql(sql: str, *, enabled: bool) -> str:
     if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_message_template`?\b", sql):
         return sql
     return sql.rstrip() + "\n" + _MESSAGE_TEMPLATE_DDL + "\n" + _MESSAGE_TEMPLATE_SEED
+
+
+_BOOK_SUGGEST_DDL = """
+CREATE TABLE IF NOT EXISTS book_suggest (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  isbn VARCHAR(32) DEFAULT '',
+  author VARCHAR(100) DEFAULT '',
+  reason VARCHAR(512) DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_bs_user (username, id),
+  KEY idx_bs_status (status, id)
+);
+"""
+
+_BOOK_SUGGEST_SEED = """
+INSERT INTO book_suggest (username, title, isbn, author, reason, status)
+SELECT 'user', '数据结构与算法分析', '9787111213826', 'Weiss', '课程参考书', 'pending'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM book_suggest WHERE username='user' AND title='数据结构与算法分析');
+"""
+
+
+def ensure_book_suggest_sql(sql: str, *, enabled: bool) -> str:
+    """图书荐购表+种子；开题挂 book_suggest 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?book_suggest`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _BOOK_SUGGEST_DDL + "\n" + _BOOK_SUGGEST_SEED
+
 
 _AUDIT_LOG_DDL = """
 CREATE TABLE IF NOT EXISTS sys_audit_log (
@@ -761,6 +832,64 @@ def ensure_gallery_sql(sql: str, *, enabled: bool, item_table: str | None) -> st
     return _CREATE_TABLE_RE.sub(repl, sql)
 
 
+ROOM_EQUIPMENT_COLUMNS: list[tuple[str, str]] = [
+    ("equipment_json", "TEXT NULL"),
+]
+
+_EQUIPMENT_DICT_DDL = """
+CREATE TABLE IF NOT EXISTS sys_equipment_dict (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_equip_name (name)
+);
+"""
+
+_EQUIPMENT_DICT_SEED = """
+INSERT INTO sys_equipment_dict (name, sort_order, enabled)
+SELECT '投影仪', 10, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='投影仪');
+INSERT INTO sys_equipment_dict (name, sort_order, enabled)
+SELECT '音响', 20, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='音响');
+INSERT INTO sys_equipment_dict (name, sort_order, enabled)
+SELECT '白板', 30, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='白板');
+INSERT INTO sys_equipment_dict (name, sort_order, enabled)
+SELECT '视频会议终端', 40, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='视频会议终端');
+INSERT INTO sys_equipment_dict (name, sort_order, enabled)
+SELECT '投屏线', 50, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='投屏线');
+"""
+
+
+def ensure_room_equipment_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """档案主表补 equipment_json + 设备字典；仅 room_equipment 开启时注入。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    out = sql
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def repl(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _inject_missing_columns(body, ROOM_EQUIPMENT_COLUMNS)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(repl, out)
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_equipment_dict`?\b", out):
+        out = out.rstrip() + "\n" + _EQUIPMENT_DICT_DDL + "\n" + _EQUIPMENT_DICT_SEED
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        seed_upd = (
+            f"\nUPDATE `{t}` SET equipment_json="
+            f"""'["投影仪","音响","白板"]' """
+            f"WHERE id=1 AND (equipment_json IS NULL OR equipment_json='' OR equipment_json='[]');\n"
+        )
+        if f"UPDATE `{t}` SET equipment_json=" not in out:
+            out = out.rstrip() + seed_upd
+    return out
+
+
 CHECKIN_CODE_COLUMNS: list[tuple[str, str]] = [
     ("checkin_code", "VARCHAR(16) NOT NULL DEFAULT ''"),
 ]
@@ -805,6 +934,29 @@ def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | Non
         if table.lower() != t.lower():
             return m.group(0)
         body = _inject_missing_columns(body, FLASH_PRICE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+
+PRODUCT_SPEC_COLUMNS: list[tuple[str, str]] = [
+    ("spec_note", "VARCHAR(128) DEFAULT ''"),
+]
+
+
+def ensure_product_spec_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """商品规格说明列；挂 product_spec 时注入（FOOD 语义列已是 spec_note 则跳过）。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, PRODUCT_SPEC_COLUMNS)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
@@ -983,6 +1135,7 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("checked_in_at", "DATETIME NULL"),
     ("pass_code", "VARCHAR(32) DEFAULT ''"),
     ("renew_count", "INT NOT NULL DEFAULT 0"),
+    ("hold_expire_at", "DATETIME NULL"),
     ("qty", "INT NOT NULL DEFAULT 1"),
     ("period_start", "DATETIME NULL"),
     ("period_end", "DATETIME NULL"),
@@ -1070,6 +1223,8 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("pass_code")
     if f.get("allowRenew"):
         names.append("renew_count")
+    if f.get("allowBookHold"):
+        names.append("hold_expire_at")
     if f.get("noShowAfterEnd") or f.get("fineLabel"):
         names.append("fine_status")
     # 去重保序

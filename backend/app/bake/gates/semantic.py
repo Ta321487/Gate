@@ -12,7 +12,10 @@ _STUDENT_SCAN_DIRS = (
     "frontend/src/components",
     "frontend/src/layouts",
 )
-_DEMO_VISIBLE = re.compile(r"[「『\"']演示[」』\"']|>演示<|演示数据|演示账号")
+_DEMO_VISIBLE = re.compile(
+    r"[「『\"']演示[」』\"']|>演示<|演示数据|演示账号|演示密码|演示余额|"
+    r"演示通行|本期演示|演示库|本地签章演示|演示支付|演示物流"
+)
 _SKIP_SCAN = frozenset({"node_modules", "target", ".git"})
 
 # 校园场景常见身份字段；企业/社区开题若仍出现则告警

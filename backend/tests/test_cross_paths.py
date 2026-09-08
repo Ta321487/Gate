@@ -134,6 +134,42 @@ def test_oos_rejects_not_degraded():
     assert d["out_of_mvp_signals"]
 
 
+def test_oos_ignores_literature_review_citation():
+    """研究现状 / 背景换写法转述 ≠ 功能承诺拒收；功能段真写才拒。"""
+    lit = """
+二、国内外研究现状
+在平台功能与用户体验层面，周旭东等引入协同过滤与数据统计机制，提升了农产品平台的商品匹配与辅助决策能力[2]；
+杨一达从大数据分析出发，对平台推荐与页面布局进行了研究[3]。
+三、主要功能
+1. 商品浏览与购物车下单
+2. 订单履约与售后
+"""
+    assert scan_out_of_scope(lit) == []
+    d = resolve_accept(
+        ["archive", "order_lines", "quota", "content", "org_users"],
+        lit,
+        has_domain_overlay=True,
+        has_baseline_runtime=True,
+        archetypes=["ARCH-TRADE"],
+        domain="DOM-SHOP",
+        primary_archetype="ARCH-TRADE",
+    )
+    assert d["accept"] == "full", d
+
+    # 无综述标题、论文常见换说法：仍不得因背景句拒收
+    paraphrase = """
+一、选题背景
+一些平台用协同过滤做猜你喜欢，也有系统基于矩阵分解做个性化。
+部分研究讨论人脸识别进馆。
+三、主要功能
+1. 商品浏览与购物车下单
+"""
+    assert scan_out_of_scope(paraphrase) == []
+
+    promised = "三、主要功能\n1. 基于协同过滤的商品推荐\n2. 购物车下单"
+    assert "协同过滤推荐" in scan_out_of_scope(promised)
+
+
 def test_library_roles_no_reader_user_dup():
     """单域图书：Spec 角色不得同时出现 reader 与 user（读者）。"""
     from app.bake.catalog import build_spec

@@ -120,4 +120,42 @@ public class UsersAdminController {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
+
+    /** E-12：设/解除帖子禁言截止时间（≠停用账号） */
+    @PostMapping("/{username}/post-mute")
+    public R<Map<String, Object>> postMute(
+            @PathVariable String username,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        if (!UserStore.postMuteEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "禁言功能暂不可用");
+        }
+        try {
+            Map<String, Object> b = body == null ? Map.of() : body;
+            String until = "";
+            if (b.get("until") != null) {
+                until = String.valueOf(b.get("until")).trim();
+            }
+            Object daysObj = b.get("days");
+            Map<String, Object> row;
+            if (daysObj != null && !String.valueOf(daysObj).isBlank()
+                    && (until.isBlank() || "null".equalsIgnoreCase(until))) {
+                int days = Integer.parseInt(String.valueOf(daysObj).trim());
+                row = UserStore.setPostMuteDays(username, days);
+            } else {
+                row = UserStore.setPostMuteUntil(username, until);
+            }
+            String op = AdminAuth.requireLogin(session);
+            String tip = row.get("postMuteUntil") == null || String.valueOf(row.get("postMuteUntil")).isBlank()
+                    ? "解除禁言"
+                    : "禁言至 " + row.get("postMuteUntil");
+            AuditLogStore.record(op, "user_post_mute", "user", username, tip);
+            return R.ok(row);
+        } catch (NumberFormatException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "禁言天数无效");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
 }

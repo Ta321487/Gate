@@ -105,7 +105,7 @@ public final class OrderStore {
         m.put("qty", qty);
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item != null) {
-            m.put("title", item.get("title"));
+            m.put("title", ArchiveStore.lineTitleWithSpec(item));
             m.put("priceYuan", priceOf(item));
             m.put("stock", item.get("stock"));
             m.put("coverUrl", item.get("coverUrl"));
@@ -313,7 +313,7 @@ public final class OrderStore {
                 int qty = ((Number) line.get("qty")).intValue();
                 Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
                 double price = priceOf(item);
-                mapper().insertLine(LINE, orderId, itemId, String.valueOf(item.get("title")), price, qty);
+                mapper().insertLine(LINE, orderId, itemId, ArchiveStore.lineTitleWithSpec(item), price, qty);
                 if (useQuota) {
                     ArchiveStore.adjustStock(itemId, -qty);
                     deducted.add(new long[] {itemId, qty});

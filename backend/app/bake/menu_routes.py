@@ -16,6 +16,7 @@ USER_MENU_PATHS: dict[str, str] = {
     "peer_tickets": "/peer-tickets",
     "content": "/notices",
     "guestbook": "/guestbook",
+    "book_suggest": "/book-suggest",
     "ai_assistant": "/ai-assistant",
     "exam_papers": "/exam/papers",
     "exam_attempts": "/exam/attempts",
@@ -59,6 +60,9 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "content_reports": "/admin/content-reports",
     "audit_logs": "/admin/audit-logs",
     "message_templates": "/admin/message-templates",
+    "staff_roster": "/admin/staff-roster",
+    "book_suggest": "/admin/book-suggest",
+    "equipment_dict": "/admin/equipment-dict",
     "ai_knowledge": "/admin/ai-knowledge",
     "exam_questions": "/admin/exam/questions",
     "exam_papers": "/admin/exam/papers",
@@ -242,6 +246,12 @@ def effective_paths(
         paths.add("/admin/audit-logs")
     if "message_template" in cap_set:
         paths.add("/admin/message-templates")
+    if "staff_roster" in cap_set:
+        paths.add("/admin/staff-roster")
+    if "book_suggest" in cap_set:
+        paths.update({"/book-suggest", "/admin/book-suggest"})
+    if "room_equipment" in cap_set:
+        paths.add("/admin/equipment-dict")
     if "ai_assistant" in cap_set:
         paths.update({"/ai-assistant", "/admin/ai-knowledge"})
     if "exam" in cap_set:

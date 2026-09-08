@@ -27,6 +27,9 @@
             <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
             <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="allowRenew && row.renewCount"> · 已续借 {{ row.renewCount }} 次</template>
+            <template v-if="row.holdExpireAt && (row.status === 'hold_ready' || row.status === 'held')">
+              · 取书截止 {{ row.holdExpireAt }}
+            </template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
             <template v-if="showPriorityCols && row.priority"> · {{ row.priority }}</template>
@@ -68,6 +71,12 @@
               @click="renew(row)"
             >{{ renewVerb }}</el-button>
             <el-button
+              v-if="canClaimHold(row)"
+              type="success"
+              size="small"
+              @click="claimHold(row)"
+            >{{ claimHoldVerb }}</el-button>
+            <el-button
               v-if="canCheckin(row)"
               type="success"
               size="small"
@@ -103,7 +112,8 @@
           </p>
           <p v-if="row.passCode" class="sub pass-code">
             {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
-            <span class="muted">（通行码，非真门禁）</span>
+            <span class="muted">（不对接闸机）</span>
+            <CodeQrBlock v-if="codeQrOn" :code="row.passCode" :label="passCodeLabel" />
           </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -291,6 +301,7 @@
 </template>
 
 <script setup>
+import CodeQrBlock from '../../components/CodeQrBlock.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
@@ -453,12 +464,15 @@ const requireAttach = computed(() => !!ticket.requireAttach)
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
 const allowRenew = computed(() => !!(ticket.allowRenew || hasCap('loan_renew')))
+const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
 const renewVerb = computed(() => verbs.value.renew || labels.value.renewVerb || '续借')
+const claimHoldVerb = computed(() => verbs.value.claimHold || labels.value.bookHoldClaimVerb || '确认借阅')
 const maxRenew = computed(() => {
   const n = Number(ticket.maxRenew)
   return Number.isFinite(n) && n > 0 ? n : 1
 })
 const passCodeLabel = computed(() => ticket.passCodeLabel || '通行码')
+const codeQrOn = computed(() => hasCap('code_qr'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
@@ -481,7 +495,8 @@ const finishVerb = computed(() => {
 
 function canWithdraw(row) {
   return !!row && (row.status === 'pending' || row.status === 'pending_mid'
-    || row.status === 'pending_final' || row.status === 'waitlisted')
+    || row.status === 'pending_final' || row.status === 'waitlisted'
+    || row.status === 'held' || row.status === 'hold_ready')
 }
 
 function canRate(row) {
@@ -506,6 +521,8 @@ function tagType(s) {
     pending_mid: 'info',
     pending_final: '',
     waitlisted: 'warning',
+    held: 'warning',
+    hold_ready: 'success',
     approved: 'success',
     rejected: 'danger',
     cancelled: 'info',
@@ -526,6 +543,10 @@ function canRenew(row) {
   if (!row.dueAt) return false
   const used = Number(row.renewCount) || 0
   return used < maxRenew.value
+}
+
+function canClaimHold(row) {
+  return !!(allowBookHold.value && row && row.status === 'hold_ready')
 }
 
 function pickupPending(row) {
@@ -821,6 +842,17 @@ async function renew(row) {
   )
   await http.post(`/api/tickets/${row.id}/renew`)
   ElMessage.success(labels.value.renewOkMessage || '续借成功，应还日已延长')
+  load()
+}
+
+async function claimHold(row) {
+  await ElMessageBox.confirm(
+    `确认借阅「${row.title || ('编号 ' + row.id)}」？`
+      + (row.holdExpireAt ? `取书截止 ${row.holdExpireAt}。` : ''),
+    claimHoldVerb.value,
+  )
+  await http.post(`/api/tickets/${row.id}/claim-hold`)
+  ElMessage.success(labels.value.bookHoldClaimOkMessage || '已确认借阅')
   load()
 }
 

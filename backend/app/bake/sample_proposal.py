@@ -135,7 +135,7 @@ _AI_FEATURE_DEFAULT = (
 _AI_FEATURE_BY_DOMAIN: dict[str, tuple[str, ...]] = {
     "DOM-SHOP": (
         "智能导购与商品文字问答：对接大模型（如 DeepSeek）与知识库匹配；无 Key 时回落 FAQ；支持满意度与热门问答。",
-        "AI 智能客服：对话式商品推荐与知识库问答；可选浏览器语音播报与图片上传品类匹配演示。",
+        "AI 智能客服：对话式商品推荐与知识库问答；可选浏览器语音播报与图片上传品类匹配。",
     ),
     "DOM-FOOD": (
         "智能点餐助手与菜单问答：对接大模型答疑菜品与下单流程；无 Key 时回落 FAQ。",
@@ -271,7 +271,7 @@ def render_template(
     )
     key_scope = pack.get("key_scope") or (
         f"开题调研阶段易涉及{out_scope}等扩展能力；"
-        f"本期以{main_path}主流程及必要基础数据为准，其余能力不作为答辩必演示项。"
+        f"本期以{main_path}主流程及必要基础数据为准，其余能力不作为答辩必交项。"
     )
     # 若 pack 自带 key_scope 模板含 {out_scope}
     key_scope = key_scope.format(out_scope=out_scope, main_path=main_path)
@@ -344,7 +344,7 @@ def render_template(
 
 1. {pack.get("system_name") or "业务管理系统"}软件一套（含源码与数据库脚本）。
 2. 毕业设计说明书一份。
-3. 系统演示环境及主要操作说明。
+3. 系统运行环境及主要操作说明。
 
 {_FOOTER}
 """

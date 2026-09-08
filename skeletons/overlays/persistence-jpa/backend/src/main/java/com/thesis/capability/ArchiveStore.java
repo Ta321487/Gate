@@ -34,12 +34,17 @@ public final class ArchiveStore {
     private static Boolean hasCheckinCode;
     private static Boolean hasOwnerUsername;
     private static Boolean hasGalleryJson;
+    private static Boolean hasEquipmentJson;
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
     private static boolean galleryEnabled = false;
+    private static boolean roomEquipmentEnabled = false;
 
     private static boolean flashPriceEnabled = false;
     private static Boolean hasPromoPrice;
+
+    private static boolean productSpecEnabled = false;
+    private static Boolean hasDedicatedSpecNote;
 
     public static void configureFlashPrice(boolean enabled) {
         flashPriceEnabled = enabled;
@@ -70,6 +75,58 @@ public final class ArchiveStore {
         if (hasPromoPrice == null) hasPromoPrice = hasItemColumn("promo_price");
         return Boolean.TRUE.equals(hasPromoPrice);
     }
+
+    public static void configureProductSpec(boolean enabled) {
+        productSpecEnabled = enabled;
+        hasDedicatedSpecNote = null;
+        if (productSpecEnabled) {
+            ensureDedicatedSpecNoteColumn();
+        }
+    }
+
+    public static boolean productSpecEnabled() {
+        return productSpecEnabled;
+    }
+
+    /** isbn 物理列已是 spec_note（如 FOOD）时不另开列；SHOP 货号场景才补 spec_note。 */
+    private static void ensureDedicatedSpecNoteColumn() {
+        if (ITEM == null || ITEM.isBlank()) return;
+        if ("spec_note".equalsIgnoreCase(isbnColumn())) return;
+        try {
+            db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `spec_note` VARCHAR(128) DEFAULT ''");
+        } catch (Exception ignored) {
+        }
+        hasDedicatedSpecNote = hasItemColumn("spec_note");
+    }
+
+    private static boolean usesDedicatedSpecNote() {
+        if (!productSpecEnabled) return false;
+        if ("spec_note".equalsIgnoreCase(isbnColumn())) return false;
+        if (hasDedicatedSpecNote == null) hasDedicatedSpecNote = hasItemColumn("spec_note");
+        return Boolean.TRUE.equals(hasDedicatedSpecNote);
+    }
+
+    /** 规格文案：专用列或 isbn（FOOD/农产规格）。 */
+    public static String productSpecText(Map<String, Object> item) {
+        if (!productSpecEnabled || item == null) return "";
+        if (usesDedicatedSpecNote()) {
+            return str(item.get("specNote")).trim();
+        }
+        return str(item.get("isbn")).trim();
+    }
+
+    /** 下单明细标题快照：有规格则追加「（规格）」。 */
+    public static String lineTitleWithSpec(Map<String, Object> item) {
+        String title = item == null ? "" : str(item.get("title")).trim();
+        if (title.isBlank()) title = "";
+        String spec = productSpecText(item);
+        if (spec.isBlank()) return title;
+        if (title.contains(spec)) return title;
+        String combined = title.isBlank() ? spec : (title + "（" + spec + "）");
+        if (combined.length() > 200) combined = combined.substring(0, 200);
+        return combined;
+    }
+
 
     private static double parseMoney(Object raw) {
         if (raw == null) return 0;
@@ -181,6 +238,7 @@ public final class ArchiveStore {
         hasCheckinCode = null;
         hasOwnerUsername = null;
         hasGalleryJson = null;
+        hasEquipmentJson = null;
         TAG = "";
         ITEM_TAG = "";
         COL_AUTHOR = "author";
@@ -211,6 +269,15 @@ public final class ArchiveStore {
 
     public static boolean galleryEnabled() {
         return galleryEnabled;
+    }
+
+    public static void configureRoomEquipment(boolean enabled) {
+        roomEquipmentEnabled = enabled;
+        if (enabled) ensureEquipmentColumn();
+    }
+
+    public static boolean roomEquipmentEnabled() {
+        return roomEquipmentEnabled;
     }
 
     public static void configureSoftDelete(boolean enabled) {
@@ -508,6 +575,11 @@ public final class ArchiveStore {
                     "UPDATE " + ITEM + " SET gallery_json=? WHERE id=?",
                     toGalleryJson(patch.get("galleryImages")), id);
         }
+        if (roomEquipmentEnabled && hasEquipmentJson() && patch.containsKey("equipmentNames")) {
+            db().update(
+                    "UPDATE " + ITEM + " SET equipment_json=? WHERE id=?",
+                    toEquipmentJson(patch.get("equipmentNames")), id);
+        }
         patchOptStr(id, patch, "publisher", "publisher", 100);
         patchOptStr(id, patch, "callNo", "call_no", 64);
         patchOptStr(id, patch, "conditionGrade", "condition_grade", 16);
@@ -545,6 +617,9 @@ public final class ArchiveStore {
             if (patch.containsKey("promoEnd")) {
                 db().update("UPDATE " + ITEM + " SET promo_end=? WHERE id=?", parseTs(patch.get("promoEnd")), id);
             }
+        }
+        if (usesDedicatedSpecNote() && patch.containsKey("specNote")) {
+            patchOptStr(id, patch, "specNote", "spec_note", 128);
         }
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
         if (patch.containsKey("foundAt")) {
@@ -793,6 +868,13 @@ public final class ArchiveStore {
         m.put("categoryId", rs.getLong("category_id"));
         m.put("stock", rs.getInt("stock"));
         m.put("status", rs.getString("status"));
+        if (usesDedicatedSpecNote()) {
+            try {
+                m.put("specNote", safeStr(rs, "spec_note"));
+            } catch (Exception ignored) {
+                m.put("specNote", "");
+            }
+        }
         m.put("coverUrl", rs.getString("cover_url"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         if (galleryEnabled && hasGalleryJson()) {
@@ -801,6 +883,14 @@ public final class ArchiveStore {
                 m.put("galleryImages", parseGallery(raw));
             } catch (Exception e) {
                 m.put("galleryImages", List.of());
+            }
+        }
+        if (roomEquipmentEnabled && hasEquipmentJson()) {
+            try {
+                String raw = rs.getString("equipment_json");
+                m.put("equipmentNames", parseEquipment(raw));
+            } catch (Exception e) {
+                m.put("equipmentNames", List.of());
             }
         }
         if (hasStartAt()) m.put("startAt", fmt(rs.getTimestamp("start_at")));
@@ -1070,6 +1160,21 @@ public final class ArchiveStore {
         }
     }
 
+    public static boolean hasEquipmentJson() {
+        if (hasEquipmentJson == null) hasEquipmentJson = hasItemColumn("equipment_json");
+        return hasEquipmentJson;
+    }
+
+    public static void ensureEquipmentColumn() {
+        if (hasEquipmentJson()) return;
+        try {
+            db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `equipment_json` TEXT NULL");
+            hasEquipmentJson = true;
+        } catch (Exception ignored) {
+            hasEquipmentJson = hasItemColumn("equipment_json");
+        }
+    }
+
     /** 标题前缀联想（搜索辅助）。 */
     public static List<Map<String, Object>> suggestTitles(String q, int limit) {
         if (limit < 1) limit = 8;
@@ -1116,6 +1221,46 @@ public final class ArchiveStore {
             return out;
         } catch (Exception e) {
             return List.of();
+        }
+    }
+
+    private static List<String> parseEquipment(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        try {
+            List<String> list = new ObjectMapper().readValue(raw, new TypeReference<>() {});
+            if (list == null) return List.of();
+            List<String> out = new ArrayList<>();
+            for (String s : list) {
+                if (s == null) continue;
+                String u = s.trim();
+                if (!u.isBlank()) out.add(u);
+                if (out.size() >= 20) break;
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static String toEquipmentJson(Object raw) {
+        List<String> names = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o == null) continue;
+                String u = String.valueOf(o).trim();
+                if (!u.isBlank()) names.add(u);
+                if (names.size() >= 20) break;
+            }
+        } else if (raw != null) {
+            String s = String.valueOf(raw).trim();
+            if (!s.isBlank()) {
+                names.addAll(parseEquipment(s.startsWith("[") ? s : "[]"));
+            }
+        }
+        try {
+            return new ObjectMapper().writeValueAsString(names);
+        } catch (Exception e) {
+            return "[]";
         }
     }
 

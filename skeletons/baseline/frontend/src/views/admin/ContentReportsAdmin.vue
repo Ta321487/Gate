@@ -21,11 +21,17 @@
           <template #default="{ row }">{{ statusLabel(row.status) }}</template>
         </el-table-column>
         <el-table-column prop="createdAt" label="提交时间" width="170" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <div v-if="row.status === 'pending'" class="table-ops">
               <el-button link type="primary" @click="resolve(row, 'ignore')">忽略</el-button>
               <el-button link type="danger" @click="resolve(row, 'takedown')">下架</el-button>
+              <el-button
+                v-if="muteOn"
+                link
+                type="warning"
+                @click="resolve(row, 'takedown_mute')"
+              >下架并禁言</el-button>
             </div>
             <span v-else class="muted">{{ row.handler || '—' }}</span>
           </template>
@@ -50,12 +56,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema } from '../../utils/domainSchema.js'
+import { getSchema, hasCap } from '../../utils/domainSchema.js'
 
 const labels = computed(() => getSchema()?.labels || {})
 const pageLead = computed(
   () => labels.value.contentReportsPageLead || '查看用户举报并处理（忽略或下架相关内容）。',
 )
+const muteOn = computed(() => hasCap('post_mute'))
 
 const list = ref([])
 const page = ref(1)
@@ -89,13 +96,19 @@ async function load() {
 }
 
 async function resolve(row, action) {
-  const tip = action === 'takedown' ? '确认下架该内容？' : '确认忽略该举报？'
+  const tip =
+    action === 'takedown_mute'
+      ? '确认下架该内容并对作者禁言 7 天？'
+      : action === 'takedown'
+        ? '确认下架该内容？'
+        : '确认忽略该举报？'
   await ElMessageBox.confirm(tip, '处理举报', { type: 'warning' })
-  await http.post(`/api/admin/content-reports/${row.id}/resolve`, {
-    action,
-    note: '',
-  })
-  ElMessage.success(action === 'takedown' ? '已下架' : '已忽略')
+  const body = { action, note: '' }
+  if (action === 'takedown_mute') body.muteDays = 7
+  await http.post(`/api/admin/content-reports/${row.id}/resolve`, body)
+  ElMessage.success(
+    action === 'takedown_mute' ? '已下架并禁言' : action === 'takedown' ? '已下架' : '已忽略',
+  )
   await load()
 }
 

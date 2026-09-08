@@ -57,6 +57,7 @@ final class TicketRowMaps {
             renewCount = 0;
         }
         m.put("renewCount", renewCount);
+        m.put("holdExpireAt", TicketSql.fmt(TicketSql.safeTs(rs, "hold_expire_at")));
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", TicketSql.safeStr(rs, "title"));

@@ -155,7 +155,7 @@
             type="password"
             show-password
             maxlength="32"
-            placeholder="演示密码，任意不少于 4 位"
+            placeholder="支付密码，任意不少于 4 位"
           />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">

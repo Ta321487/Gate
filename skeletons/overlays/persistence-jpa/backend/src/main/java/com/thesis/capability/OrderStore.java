@@ -92,7 +92,7 @@ public final class OrderStore {
         m.put("qty", qty);
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item != null) {
-            m.put("title", item.get("title"));
+            m.put("title", ArchiveStore.lineTitleWithSpec(item));
             m.put("priceYuan", priceOf(item));
             m.put("stock", item.get("stock"));
             m.put("coverUrl", item.get("coverUrl"));
@@ -335,7 +335,7 @@ public final class OrderStore {
                 double price = priceOf(item);
                 db().update(
                         "INSERT INTO " + LINE + " (order_id,item_id,title,price_yuan,qty) VALUES (?,?,?,?,?)",
-                        orderId, itemId, String.valueOf(item.get("title")), price, qty);
+                        orderId, itemId, ArchiveStore.lineTitleWithSpec(item), price, qty);
                 if (useQuota) {
                     ArchiveStore.adjustStock(itemId, -qty);
                     deducted.add(new long[] {itemId, qty});
