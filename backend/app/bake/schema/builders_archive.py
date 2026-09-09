@@ -524,7 +524,7 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "auth_points": ["验证码登录", "帮扶户档案", "走访打卡", "异常上报"],
                 "notice_page_title": "帮扶公告",
                 "notice_title": "监测须知",
-                "notice_body": "请如实登记入户走访与风险要素；异常请及时上报。本期不对接资金发放与外部大数据风控。",
+                "notice_body": "请如实登记入户走访与风险要素；异常请及时上报。",
                 "banners": [
                     {"title": "帮扶户档案", "lead": "按风险分类浏览帮扶对象，维护住址与摘要。"},
                     {"title": "走访打卡", "lead": "入户走访或随访打卡，查看今日未走访。"},
@@ -1051,7 +1051,7 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "auth_points": ["验证码登录", "任务浏览", "投递与初筛"],
                 "notice_page_title": "任务公告",
                 "notice_title": "接单须知",
-                "notice_body": "请如实填写接单说明；本期不做资金托管、担保交易与多级分润。",
+                "notice_body": "请如实填写接单说明；平台审核通过后按交付要求沟通。",
                 "banners": [
                     {"title": "任务大厅", "lead": "按类型浏览悬赏/威客任务与交付要求。"},
                     {"title": "投递接单", "lead": "选择任务提交投递单，等待初筛。"},
@@ -1145,7 +1145,7 @@ def _procure_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "auth_lead": "验证码登录；浏览期刊品目并提交遴选/荐购申请，管理员审批后完结。",
                 "auth_points": ["验证码登录", "期刊目录", "提交遴选与审批"],
                 "notice_title": "期刊遴选须知",
-                "notice_body": "请如实填写荐购理由；本期不做影响因子算法与外部数据库自动匹配。",
+                "notice_body": "请如实填写荐购理由；审核通过后纳入馆藏计划。",
                 "my_tickets_label": "我的遴选",
                 "pending_label": "待审遴选",
                 "records_label": "遴选记录",
@@ -1354,15 +1354,13 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "match_profile_need_message": "请先在个人资料填写实习单位与岗位名称",
                 "match_profile_deny_message": "只能对资料绑定的实习岗提交周报",
                 "auth_lead": (
-                    "验证码登录；资料确认实习单位与岗位后，在「我的周报」对本岗提交周报并审阅"
-                    "（≠投简历找岗、≠同时入职多家）。"
+                    "验证码登录；资料确认实习单位与岗位后，在「我的周报」对本岗提交周报并审阅。"
                 ),
                 "auth_points": ["验证码登录", "资料绑岗", "本人周报与审阅"],
                 "register_hint": "注册时填写实习单位与岗位名称",
                 "notice_body": (
                     "请先在个人资料填写实习单位与岗位名称，再在「我的周报」提交；"
                     "只能对绑定岗交周报。岗位说明页可查阅开放岗。"
-                    "CA/第三方电子签平台不在本期，本地签章见 e_sign。"
                 ),
                 "my_tickets_page_lead": (
                     "在此对资料绑定的实习岗提交周报并跟踪审阅；岗位说明页仅作查阅。"
@@ -1444,7 +1442,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         points = ["验证码登录", "项目检索", "名额报名与审核"]
         reg = "注册后可报名培训班与证书报考"
         notice_t = "报考须知"
-        notice = "请如实填写报考信息；名额有限；时段冲突或已截止将无法提交；本期不对接外部证书库。"
+        notice = "请如实填写报考信息；名额有限；时段冲突或已截止将无法提交。"
         notice_page = "培训公告"
         menu_a, menu_u = "项目管理", "项目检索"
         banners = [
@@ -1460,7 +1458,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         brow = "歌剧票务" if any(x in (title or "") for x in ("歌剧", "剧场")) else "票务报名"
         user, admin, sub = "观众", "票务主管（总管）", "票务助理"
         apply_v, ticket_lab = "领票报名", "领票单"
-        lead = "验证码登录；浏览演出/歌剧场次并领票报名；系统检测时段冲突与报名截止（非选座购票）。"
+        lead = "验证码登录；浏览演出/歌剧场次并领票报名；系统检测时段冲突与报名截止。"
         points = ["验证码登录", "场次检索", "领票报名与审核"]
         reg = "注册后可领票报名"
         notice_t = "领票须知"
@@ -1480,7 +1478,7 @@ def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         brow = "献血管理"
         user, admin, sub = "报名者", "场次主管（总管）", "场次助理"
         apply_v, ticket_lab = "报名", "报名单"
-        lead = "验证码登录；浏览献血场次并报名；系统检测时段冲突与报名截止（非健康筛查建档）。"
+        lead = "验证码登录；浏览献血场次并报名；系统检测时段冲突与报名截止。"
         points = ["验证码登录", "场次检索", "报名与审核"]
         reg = "注册后可报名献血场次"
         notice_t = "报名须知"
@@ -1612,7 +1610,7 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         kind_opts, found_lab = ["挂失", "招领"], "登记时间"
         brow, menu_u = "行李挂失", "行李检索"
         lead = "验证码登录；浏览行李挂失/招领启事，提交认领申请，管理员审核后领取（无全航迹追踪）。"
-        notice = "认领时请提供有效身份与行李特征；审核通过后到服务台领取。本期不做 RFID/全链路追踪。"
+        notice = "认领时请提供有效身份与行李特征；审核通过后到服务台领取。"
         notice_t, notice_page, return_v = "行李认领须知", "行李公告", "撤销认领"
         reg = "注册后可浏览行李启事并申请认领"
     elif sc == "community":

@@ -271,7 +271,7 @@ function passLabel(row) {
   if (row.status === 'pending_final') return '终审通过'
   if (threeLevel.value && row.status === 'pending_mid') return '复审通过'
   if (threeLevel.value && row.status === 'pending') return '初审通过'
-  // 二级首关：跟 bake verbs（报修「受理」、借阅「通过」）；shells 保留「待受理」勿写死初审
+  // 二级首关：跟 verbs 文案（报修「受理」、借阅「通过」）；勿写死「初审」
   return verbs.value.approve || '受理'
 }
 

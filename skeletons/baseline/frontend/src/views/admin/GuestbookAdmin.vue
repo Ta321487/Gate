@@ -6,7 +6,7 @@
         <el-radio-button value="merchant">商家留言</el-radio-button>
       </el-radio-group>
     </div>
-    <p v-if="marketplace && !isSuper" class="lead">向平台管理员留言反馈（与买家留言分通道）。</p>
+    <p v-if="marketplace && !isSuper" class="lead">向平台管理员留言，反馈店铺问题。</p>
     <section v-if="marketplace && !isSuper" class="composer">
       <el-input
         v-model="draft"
@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-/** 留言管理：多店时用户/商家双通道；商家端仅向平台投稿 */
+/** 留言管理：超管回复用户/商家留言；商家可向平台投稿 */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'

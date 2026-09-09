@@ -639,9 +639,22 @@ function runtimeTransient(st) {
 }
 /** 状态只在 pill；这里只展示真实日志，占位文案一律收成 — */
 function runtimeLogView(st, tail) {
-  if (st === 'stopped' || st === 'stopping') return '—'
+  if (st === 'stopping') return '—'
+  // 编译/启动失败后进程常已退出；若仍当 stopped 藏日志，工作台只剩「—」
+  if (st === 'stopped') {
+    if (tail && _runtimeLogLooksFailed(tail)) return _tailLines(tail, 24)
+    return '—'
+  }
   if (!tail || /^(后端|前端)?(启动|停止)中/.test(String(tail).trim())) return '—'
-  return _tailLines(tail, st === 'error' ? 12 : 8)
+  return _tailLines(tail, st === 'error' ? 24 : 8)
+}
+function _runtimeLogLooksFailed(tail) {
+  const t = String(tail)
+  return (
+    /BUILD FAILURE|COMPILATION ERROR|Failed to execute goal|ERROR (?:start|ensure)|APPLICATION FAILED TO START|npm ERR!|npm install FAILED|Could not resolve/.test(
+      t,
+    )
+  )
 }
 function _tailLines(tail, keep) {
   const lines = String(tail).split(/\r?\n/).filter((l) => l.trim())

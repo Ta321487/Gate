@@ -39,7 +39,7 @@ public final class OrderStore {
         enabled = !CART.isBlank() && !ORDER.isBlank() && !LINE.isBlank();
         useQuota = quota;
         AddressStore.resetCache();
-        // 履约列由 bake 按域写入 schema，禁止运行时补餐饮/物流超集
+        // 履约列随本系统 schema 建表，禁止运行时补餐饮/物流超集
     }
 
     public static void unbind() {
@@ -974,7 +974,7 @@ public final class OrderStore {
     }
 
     private static void ensureDeliveryColumns() {
-        // no-op：履约列由 bake 按域写入，禁止运行时补跨域超集
+        // no-op：履约列随本系统 schema 建表，禁止运行时补跨域超集
     }
 
     private static void ensureLoyaltyColumns() {

@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * 从 bake 写入的 domain-profile-fields.json 读取资料字段定义，供注册/资料校验。
+ * 从 domain-profile-fields.json 读取资料字段定义，供注册/资料校验。
  * 支持 requiredWhen / visibleWhen：按身份等条件动态必填。
  */
 public final class ProfileFields {

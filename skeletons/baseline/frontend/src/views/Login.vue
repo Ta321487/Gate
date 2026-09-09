@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-/** 基线登录：入口模式 / 身份控件由工厂交付固定 */
+/** 登录页：入口模式与身份控件读应用交付配置 */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -188,7 +188,7 @@ const authLead = computed(() => {
   }
   if (entrySide.value === 'staff') return '员工端独立入口，办理派送、维修等现场作业。'
   const raw = String(labels.authLead || '').trim()
-  // 开题材料头 / 样例文件名 / 开题报告套话不得上登录页
+  // 材料文件名 / 报告套话不得上登录页
   if (
     /【材料[:：]|开题报告|\d{1,2}-DOM-|DOM-[A-Z]{2,}|\.txt[】\]]|题目[:：]|毕业设计/.test(raw)
   ) {

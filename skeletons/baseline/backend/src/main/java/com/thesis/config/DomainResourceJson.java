@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
 
-/** bake 写入的 domain-*.json 读取（列映射等）。 */
+/** 读取 classpath 下 domain-*.json（列映射等）。 */
 public final class DomainResourceJson {
 
     private static final ObjectMapper JSON = new ObjectMapper();

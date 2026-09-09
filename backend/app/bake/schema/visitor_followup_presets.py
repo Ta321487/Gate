@@ -53,7 +53,7 @@ def build_visitor_followup_presets(
             "auth_points": ["验证码登录", "预约到访", "通行码"],
             "register_hint": "注册后可预约到访",
             "notice_title": "访客须知",
-            "notice_body": "请如实填写来访事由；通过后出示通行码。真门禁硬件不在本期。",
+            "notice_body": "请如实填写来访事由；通过后出示通行码。",
             "notice_page_title": "访客公告",
             "notice_page_lead": "到访安排与须知，点击条目阅读全文。",
             "my_tickets_label": "我的预约",

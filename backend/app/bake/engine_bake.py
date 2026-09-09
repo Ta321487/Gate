@@ -286,7 +286,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     return dest
 
 def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
-    """按本项目能力重写 thesis 段：只保留用到的键，去掉空开关与工厂话术。"""
+    """按本项目能力重写 thesis 段：只保留用到的键，去掉空开关。"""
     from app.bake.catalog import DOMAINS
     from app.bake.domains import DOMAIN_CAPABILITIES
     from app.bake.guest_cta import GUEST_TEASER_LIMIT, portal_guest_browse_enabled
@@ -358,9 +358,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             roles_w["allowAppointFromUsers"] = bool(appoint_ok)
             sch["roles"] = roles_w
             spec["schema"] = sch
-    lines.append(
-        "  # 是否允许把门户用户任命为岗位（服务对象域关闭，岗靠种子账号）"
-    )
+    lines.append("  # 是否允许从门户用户里任命岗位账号")
     lines.append(f"  allow-appoint-from-users: {'true' if appoint_ok else 'false'}")
 
     if enable_ticket:
@@ -480,7 +478,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             # yml 简单值；地点文案无冒号
             rule_lines.append(f"  ticket-pickup-place: {place}")
         if rule_lines:
-            lines.append("  # 业务参数（工厂 bake 写入；学生包无配置表）")
+            lines.append("  # 借阅/罚金等业务参数（无独立配置表时写在这里）")
             lines.extend(rule_lines)
         if ticket_ent.get("noShowAfterEnd") and ticket_ent.get("allowCheckin"):
             lines.append("  ticket-no-show-after-end: true")
@@ -583,6 +581,16 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  order-timeout-minutes: {timeout}")
     if "favorites" in caps:
         lines.append("  favorites-enabled: true")
+    if "dm" in caps:
+        sch = spec.get("schema") or {}
+        shop_cs = bool(sch.get("dmShopCs"))
+        if not shop_cs and str(sch.get("dmPeerMode") or "").strip().lower() == "merchant":
+            shop_cs = True
+        if shop_cs:
+            lines.append("  # 店铺客服：买家只能选入驻商家，商家端回复买家")
+        else:
+            lines.append("  # 私信：任意启用账号之间可发起会话")
+        lines.append(f"  dm-shop-cs: {'true' if shop_cs else 'false'}")
     if "post_like" in caps:
         lines.append("  post-like-enabled: true")
     if "content_report" in caps:
@@ -678,7 +686,13 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
 
     block = "\n".join(lines) + "\n"
     if re.search(r"(?m)^thesis:\s*$", text):
-        # 只替换 thesis 段（缩进行），保留其后的 mybatis / pagehelper 等顶层配置
+        # 段前注释统一成学生口吻；只替换 thesis 缩进行，保留其后 mybatis 等顶层配置
+        text = re.sub(
+            r"(?m)^(?:#.*\n)*thesis:\s*$",
+            "# 课题业务配置（按本系统启用的功能填写）\nthesis:",
+            text,
+            count=1,
+        )
         return re.sub(r"(?ms)^thesis:\s*\n(?:[ \t].*\n?)*", block, text, count=1)
     return text.rstrip() + "\n\n" + block
 

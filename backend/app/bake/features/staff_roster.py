@@ -51,7 +51,7 @@ def attach_staff_roster_menus(schema: dict[str, Any]) -> None:
     labels.setdefault("staffRosterPageTitle", "排班管理")
     labels.setdefault(
         "staffRosterPageLead",
-        "按员工与日期维护班次；预约页可查看当日当班人员（弱约束，非智能排课）。",
+        "按员工与日期维护班次；预约页可查看当日当班人员。",
     )
     labels.setdefault("staffRosterOnDutyHint", "当日当班")
     ents = schema.setdefault("entities", {})

@@ -23,7 +23,7 @@ public final class ArchiveStore {
 
     private static String CAT = "category";
     private static String ITEM = "book";
-    /** 逻辑键 author/isbn 对应的物理列（bake 写入 domain-archive-columns.json） */
+    /** 逻辑键 author/isbn 对应的物理列（见 domain-archive-columns.json） */
     private static String COL_AUTHOR = "author";
     private static String COL_ISBN = "isbn";
     private static Boolean hasStartAt;
@@ -190,7 +190,7 @@ public final class ArchiveStore {
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String itemTagFk = "post_id";
-    /** bake 注入：库存/名额等列名，供不足提示复用 */
+    /** 库存/名额等展示用列名，供不足提示复用 */
     private static String STOCK_LABEL = "库存";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -219,7 +219,7 @@ public final class ArchiveStore {
         return stockLabel() + "不足：「" + t + "」仅剩 " + remain;
     }
 
-    /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
+    /** 单据文案见 domain-ticket-copy.json；无单据域也会有 stockLabel */
     private static void loadStockLabelFromResource() {
         Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-copy.json");
         String lab = DomainResourceJson.str(root, "stockLabel", "");
@@ -707,7 +707,7 @@ public final class ArchiveStore {
 
     /** 库存预警：stock &lt; below；可选按店主过滤。 */
     public static int countLowStock(int below, String ownerUsername) {
-        if (!enabled() || below < 1) return 0;
+        if (ITEM.isBlank() || below < 1) return 0;
         try {
             StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM " + ITEM + " WHERE stock < ?");
             List<Object> args = new ArrayList<>();
@@ -1302,7 +1302,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** L1 互斥：缺列时补上（选课域 bake 后亦应有 SQL 列） */
+    /** 互斥码：缺列时补上（选课等场景 schema 也应带此列） */
     public static void ensureMutexColumn() {
         if (hasMutexCode()) return;
         try {

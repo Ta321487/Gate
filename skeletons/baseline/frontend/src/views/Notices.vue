@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-/** 基线公告：标题/导语来自 Domain Schema（bake/LLM 岛），禁止写死图书馆文案 */
+/** 公告：标题/导语来自 Domain Schema，勿写死某一行业文案 */
 import { computed, onMounted, ref } from 'vue'
 import http from '../api/http'
 import GuestLoginHint from '../components/GuestLoginHint.vue'

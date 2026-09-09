@@ -17,6 +17,63 @@ from tests.helpers.normalize import normalize_sql
 
 
 class DmCapabilityTests(unittest.TestCase):
+    def test_dm_peer_mode_follows_proposal(self) -> None:
+        from app.bake.features.dm import (
+            DM_PEER_ALL,
+            DM_PEER_MERCHANT,
+            resolve_dm_peer_mode,
+            scan_dm_merchant_peers,
+        )
+
+        self.assertTrue(scan_dm_merchant_peers("客服模块（与商家在线沟通）"))
+        self.assertTrue(scan_dm_merchant_peers("用户可与店铺客服一对一沟通"))
+        self.assertFalse(scan_dm_merchant_peers("多商家入驻与购物车下单，另有站内私信"))
+        self.assertEqual(
+            resolve_dm_peer_mode("客服模块（与商家在线沟通）", domain="DOM-SHOP"),
+            DM_PEER_MERCHANT,
+        )
+        self.assertEqual(
+            resolve_dm_peer_mode("多商家商城，支持用户私信", domain="DOM-SHOP"),
+            DM_PEER_ALL,
+        )
+        merchant_spec = apply_dm_to_spec(
+            {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order_lines", "dm"],
+                "entities": [],
+                "features": [],
+                "schema": {
+                    "shopMarketplace": True,
+                    "menus": {"admin": [], "user": []},
+                    "labels": {"dmPageTitle": "客服"},
+                },
+                "gate": {},
+            },
+            "客服模块（与商家在线沟通）",
+        )
+        self.assertTrue(merchant_spec["schema"].get("dmShopCs"))
+        self.assertNotIn("dmPeerMode", merchant_spec["schema"])
+        self.assertEqual(merchant_spec["schema"]["labels"].get("dmPageTitle"), "客服")
+        self.assertEqual(merchant_spec["schema"]["labels"].get("dmNewTitle"), "联系商家客服")
+        open_spec = apply_dm_to_spec(
+            {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order_lines", "dm"],
+                "entities": [],
+                "features": [],
+                "schema": {
+                    "shopMarketplace": True,
+                    "menus": {"admin": [], "user": []},
+                    "labels": {"dmPageTitle": "客服", "dmPageLead": "与店铺客服一对一沟通"},
+                },
+                "gate": {},
+            },
+            "多商家入驻，用户之间可站内私信",
+        )
+        self.assertFalse(open_spec["schema"].get("dmShopCs"))
+        self.assertEqual(open_spec["schema"]["labels"].get("dmPageTitle"), "私信")
+        self.assertEqual(open_spec["schema"]["labels"].get("dmNewTitle"), "新建私信")
+
     def test_scan_dm_keywords(self) -> None:
         self.assertTrue(scan_dm("支持用户实时私信与回帖审核"))
         self.assertTrue(scan_dm("会员之间可一对一私聊"))

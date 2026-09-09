@@ -173,18 +173,11 @@ def _write_factory_delivered(
     dom_meta = DOMAINS.get(domain) or {}
     guest_on = portal_guest_browse_enabled(domain, dom_meta)
     guest_cta = pick_guest_login_cta(domain, seed or dest.name or title)
-    # 便于页面用 schemaLabels 读取；开题材料头不得进学生端导语
-    from app.bake.domain_schema import _AUTH_LEAD_FALLBACK, ui_copy_polluted
+    # 便于页面用 schemaLabels 读取；工厂说明书腔不得进学生端
+    from app.bake.domain_schema import scrub_schema_student_copy
 
+    schema = scrub_schema_student_copy(dict(schema) if isinstance(schema, dict) else {})
     labels = dict(schema.get("labels") or {}) if isinstance(schema.get("labels"), dict) else {}
-    for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
-        raw = str(labels.get(key) or "")
-        if ui_copy_polluted(raw):
-            labels[key] = (
-                _AUTH_LEAD_FALLBACK
-                if key == "authLead"
-                else ""
-            )
     if guest_on and guest_cta:
         labels["guestLoginCta"] = guest_cta
     schema = {**schema, "labels": labels}
@@ -218,7 +211,7 @@ def _write_factory_delivered(
         legacy.unlink()
     delivered.write_text(
         "/**\n"
-        " * 课题交付配置（文案 / 菜单 / 能力）。由生成写入，一般无需手改。\n"
+        " * 课题交付配置（文案 / 菜单 / 能力）。按本课题生成，一般无需手改。\n"
         " */\n"
         f"export const APP_DELIVERED = {json.dumps(payload, ensure_ascii=False, indent=2)}\n",
         encoding="utf-8",

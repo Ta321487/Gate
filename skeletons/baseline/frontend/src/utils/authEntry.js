@@ -1,4 +1,4 @@
-/** 登录入口模式：优先工厂交付，其次 .env，交付后固定 */
+/** 登录入口模式：优先应用交付配置，其次 .env */
 
 import { APP_DELIVERED } from '../appDelivered.js'
 import { getSchema } from './domainSchema.js'

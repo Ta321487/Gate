@@ -171,7 +171,7 @@ INSERT IGNORE INTO lost_item (id, title, author, isbn, category_id, stock, statu
 (4, '银色登机箱', '旅客服务中心', 'HO7890 / 箱体有贴纸', 2, 1, 'available'),
 (5, '黑色公文包', '值机柜台', '内有文件夹 / 无锁', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '行李认领须知', '认领时请提供有效身份与行李特征；审核通过后到服务台领取。本期不做全航迹追踪。', 'admin', '行李服务主管'
+SELECT '行李认领须知', '认领时请提供有效身份与行李特征；审核通过后到服务台领取。', 'admin', '行李服务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='行李认领须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周公示', '托运行李与登机箱启事已更新，请及时认领。', 'admin', '行李服务主管'
@@ -251,7 +251,7 @@ INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status
 (4, '英语口语强化班', '外国语学院', '外语楼语音室', 2, 30, 'available', '2026-10-11 14:00:00', '2026-10-11 16:00:00', '2026-10-10 23:59:59'),
 (5, '普通话水平测试报名', '教务处', '图书馆报告厅', 1, 50, 'available', '2026-10-19 09:00:00', '2026-10-19 12:00:00', '2026-10-18 18:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '报考须知', '请如实填写报考信息；名额有限；本期不对接外部证书库。', 'admin', '培训主管'
+SELECT '报考须知', '请如实填写报考信息；名额有限。', 'admin', '培训主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='报考须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周开放', '四级报名与计算机二级培训班已开放，欢迎报名。', 'admin', '培训主管'
@@ -414,7 +414,7 @@ INSERT IGNORE INTO job_post (id, title, author, isbn, category_id, stock, status
 (4, '活动文案撰写', '运营组', '报酬说明 / 800 字内', 3, 5, 'available'),
 (5, '接口联调协助', '技术外包', '报酬说明 / 文档对接', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '接单须知', '请如实填写接单说明；本期不做资金托管与担保交易。', 'admin', '任务主管'
+SELECT '接单须知', '请如实填写接单说明；平台审核通过后按交付要求沟通。', 'admin', '任务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='接单须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周任务', '设计类与开发类任务已更新，可投递接单。', 'admin', '任务主管'
@@ -438,7 +438,7 @@ INSERT IGNORE INTO procure_item (id, title, author, isbn, category_id, stock, st
 (4, 'American Economic Review', '经济学', 'ISSN 0002-8282 / 英', 2, 1, 'available'),
 (5, 'Web of Science 核心合集说明', '综索', '数据库入口说明 / 非算法匹配', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '期刊遴选须知', '请如实填写荐购理由；本期不做影响因子算法与外部数据库自动匹配。', 'admin', '期刊主管'
+SELECT '期刊遴选须知', '请如实填写荐购理由；审核通过后纳入馆藏计划。', 'admin', '期刊主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='期刊遴选须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周开放', '理工外刊与社科外刊品目已更新，可提交遴选。', 'admin', '期刊主管'
@@ -465,7 +465,7 @@ INSERT IGNORE INTO activity (id, title, author, isbn, category_id, stock, status
 (4, '实验室危险处置培训', '实验室与设备处', '实验楼报告厅', 3, 60, 'available', '2026-10-16 09:00:00', '2026-10-16 11:00:00', '2026-10-15 18:00:00'),
 (5, '安保志愿者岗前培训', '保卫处', '保卫楼会议室', 1, 40, 'available', '2026-10-18 09:00:00', '2026-10-18 12:00:00', '2026-10-17 18:00:00');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '培训须知', '请按时到场；名额有限；开题可另挂结业考。本期不做实战演练装备对接。', 'admin', '培训主管'
+SELECT '培训须知', '请按时到场；名额有限；结业考核以当期公告为准。', 'admin', '培训主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='培训须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周开放', '防暴恐应急处置与疏散演练已开放报名。', 'admin', '培训主管'
@@ -678,7 +678,7 @@ SELECT '周报须知',
   'admin', '实习主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意（非 CA）。', 'admin', '实习主管'
+SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意。', 'admin', '实习主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='鉴定提醒');
 """
 
@@ -1831,7 +1831,7 @@ def _shop_sql_marketplace(sql: str, *, farm: bool = False) -> str:
             count=1,
             flags=re.I | re.S,
         )
-    # 留言双通道：须在种子 INSERT 之前建表（ensure_guestbook 在更后才追加 DDL）
+    # 多店留言表须在种子 INSERT 之前建好（ensure_guestbook 在更后才追加 DDL）
     _gb_ddl = """
 CREATE TABLE IF NOT EXISTS sys_guestbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2181,14 +2181,14 @@ def apply_domain_scene_seed(
             # 开题写绑岗：周报须知提示资料绑岗
             if "资料绑岗" not in sql:
                 sql = sql.replace(
-                    "开题要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。",
-                    "本开题要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗），仅可对本岗交周报。",
+                    "系统要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。",
+                    "本系统要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗），仅可对本岗交周报。",
                     1,
                 )
             if "资料绑岗" not in sql:
                 sql = sql.replace(
                     "「实习中」仅标关联岗。",
-                    "「实习中」仅标关联岗。本开题要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗）。",
+                    "「实习中」仅标关联岗。本系统要求岗位与学生绑定：请先在个人资料填写实习单位与岗位（资料绑岗）。",
                     1,
                 )
     return sql

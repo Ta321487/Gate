@@ -21,7 +21,7 @@ public class UsersAdminController {
     @Value("${thesis.register-role:user}")
     private String userRole;
 
-    /** 门户业务用户可否任命为岗位；缺省 false，须 yml/bake 显式打开 */
+    /** 门户业务用户可否任命为岗位；缺省 false，须 application.yml 显式打开 */
     @Value("${thesis.allow-appoint-from-users:false}")
     private boolean allowAppointFromUsers;
 

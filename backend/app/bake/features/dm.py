@@ -1,6 +1,8 @@
-"""一对一私信（dm）：用户↔用户短轮询私信，非站内信、非留言板、非 WebSocket。
+"""一对一私信（dm）：短轮询会话，非站内信、非留言板、非 WebSocket。
 
-默认挂 DOM-DATING；论坛等域开题写「私信/私聊」等再扫入（论坛样例常把实时私信当对比不做）。
+默认挂 DOM-DATING；论坛等域开题写「私信/私聊」等再扫入。
+商城：仅当开题写明「与商家/店铺客服」时，学生包按店铺客服选人（买家↔商家）；
+未写明则不擅自收窄。
 """
 
 from __future__ import annotations
@@ -12,20 +14,45 @@ from app.bake.proposal_lexicon import pattern_mentioned
 
 DM_CAP = "dm"
 
-# 开题常见写法；「WebSocket / 环信」等真实时通道仍走过重扫词，不进本能力
+DM_PEER_ALL = "all"
+DM_PEER_MERCHANT = "merchant"
+
 _DM_SIGNALS = re.compile(
     r"(?:实时|即时)?私信|一对一(?:私信|聊天|私聊)|私聊|在线聊天|站内聊天|private\s*chat|\bDM\b",
     re.IGNORECASE,
 )
 
+_DM_MERCHANT_PEER_SIGNALS = re.compile(
+    r"(?:与|跟|向)商家(?:在线)?(?:沟通|咨询|联系|聊天|私信)|"
+    r"商家(?:在线)?(?:客服|沟通|咨询)|"
+    r"店铺客服|店家客服|商家客服|"
+    r"客服(?:模块|功能)?[（(]?[^）)\n]{0,24}商家|"
+    r"联系(?:店铺|商家|店家)|"
+    r"在线(?:咨询|沟通)商家",
+    re.IGNORECASE,
+)
+
 _DEFAULT_DOMAINS = frozenset({"DOM-DATING"})
 
-# 能力落地后从「本期不做」里摘掉的壳默认名
 _DM_OOS_NAMES = frozenset({"实时私信", "即时私信", "一对一私信", "私信"})
 
 
 def scan_dm(text: str) -> bool:
     return pattern_mentioned(text or "", _DM_SIGNALS, ignore_contrast=True)
+
+
+def scan_dm_merchant_peers(text: str) -> bool:
+    return pattern_mentioned(text or "", _DM_MERCHANT_PEER_SIGNALS, ignore_contrast=True)
+
+
+def resolve_dm_peer_mode(
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+) -> str:
+    if scan_dm_merchant_peers(proposal_text):
+        return DM_PEER_MERCHANT
+    return DM_PEER_ALL
 
 
 def dm_wanted(
@@ -34,7 +61,6 @@ def dm_wanted(
     capabilities: list[str] | None = None,
     proposal_text: str = "",
 ) -> bool:
-    """是否应启用私信：显式能力 / 域默认 / 开题扫描。"""
     caps = list(capabilities or [])
     if DM_CAP in caps:
         return True
@@ -44,8 +70,9 @@ def dm_wanted(
     if domain == "DOM-SHOP":
         from app.bake.scene_scan import scan_shop_marketplace
 
-        # 多店开题：客服通道默认挂 dm（短轮询，非 IM）
         if scan_shop_marketplace(proposal_text, proposal_text):
+            return True
+        if scan_dm_merchant_peers(proposal_text):
             return True
     return scan_dm(proposal_text)
 
@@ -82,12 +109,13 @@ def _strip_dm_oos(spec: dict[str, Any]) -> None:
     spec["features"] = keep
 
 
-def attach_dm_menus(schema: dict[str, Any]) -> None:
+def attach_dm_menus(schema: dict[str, Any], *, peer_mode: str = DM_PEER_ALL) -> None:
     from app.bake.schema.menu_utils import ensure_menu
 
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
-    item = {"key": "dm", "label": "私信"}
+    merchant = peer_mode == DM_PEER_MERCHANT
+    item = {"key": "dm", "label": "客服" if merchant else "私信"}
     if not any(m.get("key") == "dm" for m in user):
         placed = False
         for before in ("messages", "profile", "content"):
@@ -97,19 +125,35 @@ def attach_dm_menus(schema: dict[str, Any]) -> None:
                 break
         if not placed:
             user.append(item)
+    else:
+        for m in user:
+            if isinstance(m, dict) and m.get("key") == "dm" and merchant:
+                m["label"] = "客服"
     labels = schema.setdefault("labels", {})
-    labels.setdefault("dmPageTitle", "私信")
-    labels.setdefault(
-        "dmPageLead",
-        "与其他用户一对一沟通；打开会话后自动刷新新消息（短轮询，非 WebSocket）。",
-    )
+    if merchant:
+        labels["dmPageTitle"] = "客服"
+        labels["dmPageLead"] = "与店铺商家一对一沟通，打开会话后自动刷新新消息。"
+        labels["dmNewTitle"] = "联系商家客服"
+        labels["dmPeerPlaceholder"] = "选择店铺商家"
+        labels["dmEmptyPeers"] = "暂无会话，点「新建」选店铺商家。"
+        labels["dmEmptyChat"] = "选择左侧会话，或新建联系商家。"
+    else:
+        labels["dmPageTitle"] = "私信"
+        labels["dmPageLead"] = "与其他用户一对一沟通，打开会话后自动刷新新消息。"
+        labels["dmNewTitle"] = "新建私信"
+        labels["dmPeerPlaceholder"] = "选择对方账号"
+        labels["dmEmptyPeers"] = "暂无会话，点「新建」选人开聊。"
+        labels["dmEmptyChat"] = "选择左侧会话，或新建私信。"
     ents = schema.setdefault("entities", {})
     if "dm" not in ents:
-        ents["dm"] = {"key": "dm", "label": "私信", "labelPlural": "私信"}
+        ents["dm"] = {
+            "key": "dm",
+            "label": "客服" if merchant else "私信",
+            "labelPlural": "客服" if merchant else "私信",
+        }
 
 
 def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
-    """合并 dm 能力、菜单、实体列表与 gate；落地后摘掉相关 out_of_mvp。"""
     domain = spec.get("domain")
     caps = merge_dm_capabilities(
         list(spec.get("capabilities") or []),
@@ -119,9 +163,13 @@ def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str,
     spec = {**spec, "capabilities": caps}
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
+    peer_mode = resolve_dm_peer_mode(proposal_text, domain=domain)
 
     if DM_CAP in caps:
-        attach_dm_menus(schema)
+        # 学生包只认业务布尔：店铺客服选人
+        schema["dmShopCs"] = peer_mode == DM_PEER_MERCHANT
+        schema.pop("dmPeerMode", None)
+        attach_dm_menus(schema, peer_mode=peer_mode)
         from app.bake.gate_contracts import merge_dm_gate
 
         gate = dict(spec.get("gate") or {})
@@ -131,8 +179,14 @@ def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str,
 
         features = list(spec.get("features") or [])
         names = {f.get("name") for f in features if isinstance(f, dict)}
-        if "一对一私信" not in names:
-            features.append({"name": "一对一私信", "status": "module"})
+        feat_name = "商家客服" if peer_mode == DM_PEER_MERCHANT else "一对一私信"
+        if (
+            feat_name not in names
+            and "一对一私信" not in names
+            and "商家客服" not in names
+            and "商家客服私信" not in names
+        ):
+            features.append({"name": feat_name, "status": "module"})
         spec["features"] = features
 
         ents = list(spec.get("entities") or [])
@@ -142,6 +196,9 @@ def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str,
             else:
                 ents.append("Dm")
             spec["entities"] = ents
+    else:
+        schema.pop("dmShopCs", None)
+        schema.pop("dmPeerMode", None)
 
     spec["schema"] = schema
     return spec

@@ -29,6 +29,8 @@ def build_unit_messages(
             "只改 payload.keys 列出的键；禁止改 menus/capabilities/路由/表结构。\n"
             "文案必须贴合领域，禁止其它领域错词（如宿舍系统勿写馆内/借阅）。"
             "authLead 禁止写入材料头/开题报告字样。"
+            "只写面向最终用户的产品句；禁止说明书口吻："
+            "双通道/分通道/双轨/非即时/短轮询/模拟支付/不对接/开题/bake/工厂/WebSocket。"
         )
         user = prepare_unit_user_payload(
             {
@@ -46,6 +48,9 @@ def build_unit_messages(
             "你是毕设港 Island Seed Agent。只输出 JSON："
             '{"seeds":{"noticeTitle":"...","noticeBody":"..."}}\n'
             "只改 payload.keys；公告正文须贴合领域已实现功能，禁止编造。"
+            "只写用户可读的产品公告；禁止双通道/双轨/非即时/短轮询/模拟支付/"
+            "不对接银行或微信支付宝/开题/bake/工厂等元说明。"
+            "支付请写「在线支付」，勿写「模拟支付」。"
         )
         user = prepare_unit_user_payload(
             {

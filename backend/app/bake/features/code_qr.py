@@ -59,7 +59,7 @@ def apply_code_qr_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
         labels.setdefault("codeQrPrintVerb", "打印")
         labels.setdefault(
             "codeQrHint",
-            "扫码可识别下方码文；用于出示核对，不对接闸机硬件。",
+            "扫码可识别下方码文，用于现场出示核对。",
         )
         from app.bake.gate_contracts import merge_code_qr_gate
 

@@ -1,8 +1,11 @@
-/* 字体配对：与配色/质感/布局正交。bake → VITE_TYPEFACE → data-typeface */
+/* 字体配对：与配色 / 质感 / 布局正交；由 VITE_TYPEFACE → data-typeface 选定
+ * clean=净白无衬线：display/ui 同属无衬线，避免标题落到 Songti
+ * Element Plus 跟 --portal-font-ui，避免表格/空态回落到浏览器默认字体
+ */
 
 :root,
 html[data-typeface="clean"] {
-  --portal-font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --portal-font-display: "Plus Jakarta Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --portal-font-ui: "Plus Jakarta Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --portal-font-tracking: 0.01em;
   --portal-display-tracking: -0.02em;
@@ -16,17 +19,39 @@ html[data-typeface="serif"] {
 }
 
 html[data-typeface="tech"] {
-  --portal-font-display: "DM Sans", "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", "PingFang SC", sans-serif;
+  --portal-font-display: "DM Sans", "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --portal-font-ui: "DM Sans", "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", "Microsoft YaHei", sans-serif;
   --portal-font-tracking: 0;
   --portal-display-tracking: -0.03em;
 }
 
 html[data-typeface="soft"] {
-  --portal-font-display: "Nunito Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --portal-font-display: "Nunito Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --portal-font-ui: "Nunito Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --portal-font-tracking: 0.015em;
   --portal-display-tracking: -0.015em;
+}
+
+html {
+  --el-font-family: var(--portal-font-ui);
+  font-family: var(--portal-font-ui);
+}
+
+body {
+  font-family: var(--portal-font-ui);
+  letter-spacing: var(--portal-font-tracking, 0);
+}
+
+/* 弹层挂到 body，须显式继承；否则 el-select 下拉会掉回系统宋体 */
+.el-overlay,
+.el-popper,
+.el-select-dropdown,
+.el-select-dropdown__item,
+.el-dialog,
+.el-message-box,
+.el-dropdown-menu,
+.el-picker__popper {
+  font-family: var(--portal-font-ui) !important;
 }
 
 html[data-typeface="serif"] .brand-text,

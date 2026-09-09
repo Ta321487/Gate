@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 能力 room_equipment：会议室配套设备字典；开题扫词才启用（E-10）。 */
+/** 能力 room_equipment：会议室配套设备字典；按课题需要启用。 */
 public final class EquipmentDictStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

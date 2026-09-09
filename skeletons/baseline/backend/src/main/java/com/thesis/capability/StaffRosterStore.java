@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** 能力 staff_roster：按员工+日期维护班次；开题扫词才启用（E-09）。 */
+/** 能力 staff_roster：按员工+日期维护班次；按课题需要启用。 */
 public final class StaffRosterStore {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");

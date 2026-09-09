@@ -101,5 +101,5 @@ INSERT IGNORE INTO tutor (id, title, author, isbn, category_id, stock, status, o
 (2, '李晓雯', '软件学院', '软件工程与系统架构 · 可带 1 人', 1, 1, 'available', 'peer'),
 (3, '陈志远', '数学学院', '应用统计与优化 · 可带 2 人', 2, 2, 'available', 'peer');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '导师双选须知', '提交志愿后由确认人接受或婉拒；管理端可调剂。智能推荐不在本期。', 'admin', '教务主管'
+SELECT '导师双选须知', '提交志愿后由确认人接受或婉拒；管理端可调剂。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='导师双选须知');

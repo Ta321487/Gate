@@ -25,11 +25,11 @@
             <div class="preview">{{ c.lastMessage?.body || '—' }}</div>
           </li>
         </ul>
-        <div v-else class="empty">暂无会话，点「新建」选人开聊。</div>
+        <div v-else class="empty">{{ emptyPeers }}</div>
       </aside>
 
       <section class="pane chat">
-        <div v-if="!peer" class="empty center">选择左侧会话，或新建私信。</div>
+        <div v-if="!peer" class="empty center">{{ emptyChat }}</div>
         <template v-else>
           <div class="chat-hd">
             <strong>{{ peerLabel }}</strong>
@@ -62,12 +62,13 @@
       </section>
     </div>
 
-    <el-dialog v-model="newOpen" title="新建私信" width="420px">
+    <el-dialog v-model="newOpen" :title="newDialogTitle" width="420px">
       <el-select
         v-model="newPeer"
         filterable
-        placeholder="选择对方账号"
+        :placeholder="peerPlaceholder"
         style="width: 100%"
+        popper-class="dm-peer-popper"
       >
         <el-option
           v-for="p in peerOptions"
@@ -93,9 +94,15 @@ import { schemaLabels } from '../../utils/domainSchema.js'
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.dmPageTitle || '私信')
 const pageLead = computed(
-  () =>
-    labels.value.dmPageLead ||
-    '与其他用户一对一沟通；打开会话后自动刷新新消息（短轮询，非 WebSocket）。',
+  () => labels.value.dmPageLead || '与其他用户一对一沟通，打开会话后自动刷新新消息。',
+)
+const newDialogTitle = computed(() => labels.value.dmNewTitle || '新建私信')
+const peerPlaceholder = computed(() => labels.value.dmPeerPlaceholder || '选择对方账号')
+const emptyPeers = computed(
+  () => labels.value.dmEmptyPeers || '暂无会话，点「新建」选人开聊。',
+)
+const emptyChat = computed(
+  () => labels.value.dmEmptyChat || '选择左侧会话，或新建私信。',
 )
 
 const me = computed(() => localStorage.getItem('username') || '')

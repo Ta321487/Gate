@@ -35,7 +35,7 @@
 
 <script setup>
 /**
- * 基线鉴权壳：版式由 bake 的 VITE_AUTH_TEMPLATE 固定；氛围图来自 appDelivered.authHero。
+ * 登录/注册壳：版式由 VITE_AUTH_TEMPLATE / 交付配置决定；氛围图来自 appDelivered.authHero。
  */
 import { computed, onMounted, ref } from 'vue'
 import { APP_DELIVERED } from '../appDelivered.js'

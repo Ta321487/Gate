@@ -15,7 +15,7 @@ import {
 } from '../utils/session.js'
 
 const props = defineProps({
-  /** 覆盖工厂文案（一般不用） */
+  /** 覆盖默认提示文案（一般不用） */
   label: { type: String, default: '' },
 })
 

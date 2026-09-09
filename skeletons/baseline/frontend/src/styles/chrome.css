@@ -1,5 +1,5 @@
-/* 界面质感：与配色正交。bake 写入 VITE_CHROME → data-chrome 落地
- * 阴影：主题只提供 --portal-shadow-color，chrome 决定 elevation 形态 */
+/* 界面质感：与配色正交；由 VITE_CHROME → data-chrome 选定
+ * 阴影：主题只提供 --portal-shadow-color，此处决定 elevation 形态 */
 
 :root,
 [data-chrome="soft"] {

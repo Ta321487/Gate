@@ -85,7 +85,7 @@ INSERT IGNORE INTO event_case (id, title, author, isbn, category_id, stock, stat
 (4, '赵强户', '帮扶干部赵强', '向阳村 5号 / 产业帮扶已巩固', 1, 1, 'available', '已巩固'),
 (5, '陈洁户', '帮扶干部陈洁', '向阳村东组 / 子女就学支出待回访', 2, 1, 'available', '待核查');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '监测须知', '请如实登记入户走访与风险要素；异常请及时上报。本期不对接资金发放。', 'admin', '帮扶主管'
+SELECT '监测须知', '请如实登记入户走访与风险要素；异常请及时上报。', 'admin', '帮扶主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='监测须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周排查', '请于周五前完成监测户走访复核与异常线索上报。', 'admin', '帮扶主管'

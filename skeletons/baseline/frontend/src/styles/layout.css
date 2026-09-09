@@ -1,4 +1,4 @@
-/* 门户壳：与配色/质感正交。bake 写入 VITE_LAYOUT → data-layout
+/* 门户壳：与配色/质感正交；由 VITE_LAYOUT → data-layout 选定
  * 仍用同一套 PortalLayout DOM，只改导航放置与内容宽度 */
 
 /* 菜单项整词不折字；顶栏项多用换行露全，不靠横滑裁切 */

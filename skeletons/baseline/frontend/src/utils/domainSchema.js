@@ -8,7 +8,7 @@ export function getDelivered() {
   return APP_DELIVERED || {}
 }
 
-/** 短皮肤 id（如 library / food），非工厂 DOM 编号 */
+/** 短皮肤 id（如 library / food） */
 export function getFlavor() {
   return getDelivered().flavor || 'generic'
 }
@@ -64,7 +64,7 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
 ])
 
 /**
- * 门户用户菜单：在 schema 基础上补「消息」入口。
+ * 门户用户菜单：在 schema 基础上按能力补入口（消息 / 收藏 / 客服 / 评价）。
  * 不灌「首页」枢纽——默认进业务页（档案/单据），避免落地只有两张卡片。
  * 管理端原样返回。
  */
@@ -75,14 +75,48 @@ export function schemaMenus(side = 'admin') {
 
   const list = raw.map((m) => ({ ...m }))
   const keys = new Set(list.map((m) => m.key))
-  if (!keys.has('messages')) {
-    const item = { key: 'messages', label: '消息' }
-    const pi = list.findIndex((m) => m.key === 'profile')
-    if (pi >= 0) list.splice(pi, 0, item)
-    else list.push(item)
-    keys.add('messages')
+  const caps = new Set(getSchema().capabilities || [])
+  const labs = schemaLabels()
+
+  function insertBefore(key, item, befores) {
+    if (keys.has(key)) return
+    let at = list.length
+    for (const b of befores) {
+      const i = list.findIndex((m) => m.key === b)
+      if (i >= 0) {
+        at = i
+        break
+      }
+    }
+    list.splice(at, 0, item)
+    keys.add(key)
   }
-  // 预约时段页须带资源 itemId（从目录点「选时段」进入），不单独挂顶栏入口，避免空号源+工厂口吻空态
+
+  if (!keys.has('messages')) {
+    insertBefore('messages', { key: 'messages', label: '消息' }, ['profile'])
+  }
+  if (caps.has('favorites')) {
+    insertBefore(
+      'favorites',
+      { key: 'favorites', label: labs.favoritesPageTitle || '我的收藏' },
+      ['cart', 'my_orders', 'profile'],
+    )
+  }
+  if (caps.has('dm')) {
+    insertBefore(
+      'dm',
+      { key: 'dm', label: labs.dmPageTitle || '私信' },
+      ['messages', 'guestbook', 'profile'],
+    )
+  }
+  if (caps.has('order_review')) {
+    insertBefore(
+      'order_reviews',
+      { key: 'order_reviews', label: labs.orderReviewPageTitle || '我的评价' },
+      ['my_orders', 'profile'],
+    )
+  }
+  // 预约时段页须带资源 itemId（从目录点「选时段」进入），不单独挂顶栏，避免空号源空态
   return list
 }
 
@@ -153,7 +187,7 @@ export function ticketCopy() {
 }
 
 /** 到期日文案：缺省用中性「到期日」，勿 fallback「应还」 */
-/** CRM 跟进 / EVENT 上报共用列：优先读工厂 schema，再按 flavor 兜底 */
+/** CRM 跟进 / EVENT 上报共用列：优先读 schema，再按 flavor 兜底 */
 export function followChannelLabel(fallback = '联系渠道') {
   const fromSchema = ticketCopy().contactChannelLabel
   if (fromSchema) return fromSchema
@@ -447,7 +481,7 @@ export function hasCap(id) {
   return (getSchema().capabilities || []).includes(id)
 }
 
-/** schema.loyalty 块（bake 注入） */
+/** schema.loyalty（积分/钱包等） */
 export function loyaltySchema() {
   const L = getSchema().loyalty
   return L && typeof L === 'object' ? L : {}

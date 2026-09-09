@@ -72,30 +72,38 @@ def _sanitize_island_patch(
     base_seeds: dict,
     base_roles: dict | None = None,
 ) -> dict[str, Any]:
+    from app.bake.domain_schema import factory_ui_polluted, ui_copy_polluted
+
     labels: dict[str, Any] = {}
     src_l = data.get("labels") if isinstance(data.get("labels"), dict) else data
     for k in _LABEL_KEYS:
         if k in src_l and src_l[k] is not None:
             v = src_l[k]
             if k == "authPoints" and isinstance(v, list):
-                labels[k] = [str(x)[:40] for x in v[:6]]
+                points = [str(x)[:40] for x in v[:6] if not factory_ui_polluted(str(x))]
+                if points:
+                    labels[k] = points
             else:
                 text = str(v)[:200]
-                if k == "authLead":
-                    from app.bake.domain_schema import ui_copy_polluted
-
-                    if ui_copy_polluted(text):
-                        continue
+                # 工厂说明书腔 / 开题材料头：丢弃，保留基座干净文案
+                if factory_ui_polluted(text) or (k == "authLead" and ui_copy_polluted(text)):
+                    continue
                 labels[k] = text
     if not labels.get("noticePageTitle") and base_labels.get("noticePageTitle"):
         labels["noticePageTitle"] = base_labels["noticePageTitle"]
     seeds: dict[str, Any] = {}
     src_s = data.get("seeds") if isinstance(data.get("seeds"), dict) else {}
     for k in _SEED_KEYS:
+        raw = None
         if k in src_s and src_s[k] is not None:
-            seeds[k] = str(src_s[k])[:500]
+            raw = str(src_s[k])[:500]
         elif k in data and isinstance(data.get(k), str):
-            seeds[k] = str(data[k])[:500]
+            raw = str(data[k])[:500]
+        if raw is None:
+            continue
+        if factory_ui_polluted(raw):
+            continue  # 勿用 LLM 脏公告盖掉产品句
+        seeds[k] = raw
     if not seeds.get("noticeTitle") and base_seeds.get("noticeTitle"):
         seeds["noticeTitle"] = base_seeds["noticeTitle"]
     entities_out: dict[str, Any] = {}

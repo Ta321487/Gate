@@ -73,7 +73,7 @@ def attach_e_sign_menus(schema: dict[str, Any]) -> None:
     labels.setdefault("eSignTitle", "鉴定签署")
     labels.setdefault(
         "eSignLead",
-        "上传签章图并勾选同意完成签署；非 CA、非法大大等第三方电子签平台。",
+        "上传签章图并勾选同意后完成签署。",
     )
     labels.setdefault("eSignAdminTitle", "签署记录")
     ents = schema.setdefault("entities", {})
