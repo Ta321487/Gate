@@ -73,8 +73,10 @@ export const api = {
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
   putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
-  getModules: (id, { layout = 'biz' } = {}) =>
-    http.get(`/projects/${id}/schema/modules`, { params: { layout } }),
+  getModules: (id, { layout = 'identity', expandDetails = false } = {}) =>
+    http.get(`/projects/${id}/schema/modules`, {
+      params: { layout, expand_details: expandDetails },
+    }),
   getTestcases: (id, { fields = 6 } = {}) =>
     http.get(`/projects/${id}/schema/testcases`, { params: { fields } }),
   testcasesMdUrl: (id, { fields = 6 } = {}) => {
@@ -90,8 +92,11 @@ export const api = {
     if (entity) q.set('entity', entity)
     return `/api/projects/${id}/schema/er.svg?${q}`
   },
-  modulesSvgUrl: (id, { layout = 'biz' } = {}) => {
-    const q = new URLSearchParams({ layout })
+  modulesSvgUrl: (id, { layout = 'identity', expandDetails = false } = {}) => {
+    const q = new URLSearchParams({
+      layout,
+      expand_details: expandDetails ? 'true' : 'false',
+    })
     return `/api/projects/${id}/schema/modules.svg?${q}`
   },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
@@ -112,6 +117,7 @@ export const api = {
   verifyDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/verify`),
   repackDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/repack`),
   runDeliveryQa: (id) => http.post(`/projects/${id}/delivery-review/qa`, null, { timeout: 180000 }),
+  scrubStudentCopy: (id) => http.post(`/projects/${id}/scrub-student-copy`, null, { timeout: 120000 }),
   addDeliveryFixNote: (id, text) => http.post(`/projects/${id}/delivery-review/notes`, { text }),
   resolveDeliveryFixNote: (id, noteId, done = true) =>
     http.patch(`/projects/${id}/delivery-review/notes/${noteId}`, { done }),

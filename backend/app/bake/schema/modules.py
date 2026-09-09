@@ -1,9 +1,10 @@
-"""从交付 schema 画论文功能模块图（与 E-R 同口径）。
+"""论文功能模块图（与 E-R 同口径）。
 
-真相来源：domain.schema.json 的 menus（唯一叶子来源）。
-spec features 是接题/门禁清单，不另画「其它功能」——避免与菜单重复。
-按业务拆：薄 key→家族归类；组是否出现、顺序、叶子文案都跟交付走。
-开题材料只辅助中文命名（module_labels 补丁），不发明模块。
+默认「按身份」：优先解析开题/任务书等材料里的「{身份}功能模块划分为…」；
+找不到再回落交付 roles + menus（界面小字提示，字不进 SVG）。
+「按业务」：menus 按业务家族归类（对照用）。
+细节开关：【】（）内子项默认不进图；展开后挂在一级模块下。
+身份名不写死：从材料解析；回落用 schema.roles 动态 label。
 """
 
 from __future__ import annotations
@@ -18,9 +19,31 @@ _MODULE_LABELS_REL = Path("islands") / "module_labels.json"
 # home / dashboard = 门户首页与管理端落地页，不是论文功能模块叶子
 _SKIP_MENU_KEYS = frozenset({"home", "dashboard"})
 
-# 论文常用：按业务拆（biz）；工厂对照：按端拆（side）
-MODULE_LAYOUTS = ("biz", "side")
-DEFAULT_MODULE_LAYOUT = "biz"
+# identity=按登录身份（默认）；biz=按业务；side 兼容旧参 → identity
+MODULE_LAYOUTS = ("identity", "biz")
+DEFAULT_MODULE_LAYOUT = "identity"
+
+_SCHEMA_LEAF_NOTE = "以下模块名由交付菜单推断，非开题原文，仅供参考"
+
+# 材料枚举：{身份}功能模块划分为：… / {身份}端主要包括：… 等
+_IDENTITY_SECTION_RE = re.compile(
+    r"(?P<label>"
+    r"[^\s：:，,。；;\n]{1,16}?"
+    r")"
+    r"(?:端)?"
+    r"(?:"
+    r"功能模块划分为|"
+    r"功能模块(?:主要)?(?:包括|包含|如下|为)|"
+    r"功能(?:主要)?(?:包括|包含|如下|划分为|为)|"
+    r"模块划分为|"
+    r"主要功能(?:模块)?(?:包括|包含|如下|为)"
+    r")"
+    r"[：:]\s*",
+)
+
+# 前台/后台是叙述口径，框上改成身份名（有 schema 则用 roles）
+_END_JARGON_USER = frozenset({"前台", "前台功能", "前台模块", "门户", "客户端", "顾客端"})
+_END_JARGON_ADMIN = frozenset({"后台", "后台功能", "后台管理", "后台模块", "管理端"})
 
 # 仅「key → 业务家族」薄归类；叶子文案 / 组是否出现 / 组顺序均来自交付 menus。
 # 未知 key 进 extra，不在这里发明中文名。
@@ -249,30 +272,270 @@ def _menu_nodes(menus: list[Any], *, side: str) -> list[dict]:
     return out
 
 
-def _branch_label(roles: dict[str, Any], side: str) -> str:
-    if side == "user":
-        role = roles.get("user") if isinstance(roles.get("user"), dict) else {}
-        lab = str(role.get("label") or "").strip()
-        if lab and not looks_latin(lab):
-            return f"{lab}端" if not lab.endswith("端") else lab
-        return "用户端"
-    role = roles.get("admin") if isinstance(roles.get("admin"), dict) else {}
+def _role_slot_label(roles: dict[str, Any], slot: str, fallback: str) -> str:
+    """交付 roles 槽位显示名 → 身份框短名（不去「端」以外的硬编码业务词）。"""
+    role = roles.get(slot) if isinstance(roles.get(slot), dict) else {}
     lab = str(role.get("label") or "").strip()
     if lab and not looks_latin(lab):
-        # 「商城主管（总管）」→ 管理端，避免过长
-        if "管" in lab or "管理员" in lab:
-            return "管理端"
-        return f"{lab}" if lab.endswith("端") else "管理端"
-    return "管理端"
+        lab = re.sub(r"[（(][^）)]*[）)]", "", lab).strip()
+        if lab.endswith("端"):
+            lab = lab[:-1]
+        # 过长岗位名收成身份：含「管理」→ 管理员
+        if len(lab) > 6 and ("管理" in lab or "主管" in lab or "总管" in lab):
+            return "管理员"
+        return lab or fallback
+    return fallback
+
+
+def _branch_label(roles: dict[str, Any], side: str) -> str:
+    """兼容旧按端命名；按身份回落改用 _identity_label_from_slot。"""
+    if side == "user":
+        return _role_slot_label(roles, "user", "用户")
+    return _role_slot_label(roles, "admin", "管理员")
+
+
+def _identity_label_from_slot(roles: dict[str, Any], slot: str) -> str:
+    if slot == "user":
+        return _role_slot_label(roles, "user", "用户")
+    if slot == "admin":
+        return _role_slot_label(roles, "admin", "管理员")
+    return _role_slot_label(roles, slot, slot)
 
 
 def normalize_module_layout(layout: str | None) -> str:
     raw = str(layout or DEFAULT_MODULE_LAYOUT).strip().lower()
+    if raw == "side":
+        return "identity"
     return raw if raw in MODULE_LAYOUTS else DEFAULT_MODULE_LAYOUT
 
 
+def _strip_identity_head(raw: str) -> str:
+    lab = (raw or "").strip()
+    lab = re.sub(r"^(?:本系统|系统的|系统|本)", "", lab)
+    for suf in ("功能模块", "功能", "模块", "端"):
+        if lab.endswith(suf) and len(lab) > len(suf):
+            lab = lab[: -len(suf)]
+    return lab.strip("的之 \t") or (raw or "").strip()
+
+
+def _remap_end_jargon(label: str, schema: dict[str, Any] | None) -> str:
+    """前台/后台不进身份框；映射到交付角色名或中性「用户/管理员」。"""
+    lab = (label or "").strip()
+    roles = schema.get("roles") if isinstance(schema, dict) and isinstance(schema.get("roles"), dict) else {}
+    if lab in _END_JARGON_USER or lab.endswith("前台"):
+        return _identity_label_from_slot(roles, "user")
+    if lab in _END_JARGON_ADMIN or lab.endswith("后台"):
+        return _identity_label_from_slot(roles, "admin")
+    return lab
+
+
+_BRACKET_OPEN = "【（("
+_BRACKET_CLOSE = "】）)"
+_BRACKET_PAIR = {"】": "【", "）": "（", ")": "("}
+
+
+def _split_detail_items(detail: str) -> list[str]:
+    """括号内顿号不切；顶层顿号/分号才切开。"""
+    text = (detail or "").strip().strip("，,。；;、")
+    if not text:
+        return []
+    out: list[str] = []
+    buf: list[str] = []
+    depth = 0
+
+    def flush() -> None:
+        nonlocal buf
+        p = "".join(buf).strip().strip("。．.")
+        buf = []
+        if p and p not in out:
+            out.append(p[:24])
+
+    for ch in text:
+        if ch in _BRACKET_OPEN:
+            depth += 1
+            buf.append(ch)
+            continue
+        if ch in _BRACKET_CLOSE and depth > 0:
+            depth -= 1
+            buf.append(ch)
+            continue
+        if depth == 0 and ch in "、；;，,\n":
+            flush()
+            continue
+        buf.append(ch)
+    flush()
+    return out
+
+
+def _peel_module_brackets(raw: str) -> tuple[str, list[str]]:
+    """深度配对剥【】（）()；嵌套括号不误切。半角/全角闭括号可混用。"""
+    text = (raw or "").strip().strip("，,。；;")
+    if not text:
+        return "", []
+    details: list[str] = []
+    name_chars: list[str] = []
+    i = 0
+    n = len(text)
+
+    def _closes(opener: str, ch: str) -> bool:
+        if opener == "【":
+            return ch == "】"
+        # （ 与 ( 互通
+        return ch in "）)"
+
+    while i < n:
+        ch = text[i]
+        if ch not in _BRACKET_OPEN:
+            name_chars.append(ch)
+            i += 1
+            continue
+        stack = [ch]
+        j = i + 1
+        while j < n and stack:
+            c = text[j]
+            if c in _BRACKET_OPEN:
+                stack.append(c)
+            elif _closes(stack[-1], c):
+                stack.pop()
+            elif c in _BRACKET_CLOSE and stack:
+                # 开题常写「（…)」混用；任意闭括号弹出一层
+                stack.pop()
+            j += 1
+        if not stack:
+            inner = text[i + 1 : j - 1]
+            details.extend(_split_detail_items(inner))
+            i = j
+        else:
+            name_chars.append(ch)
+            i += 1
+    name = "".join(name_chars).strip().strip("，,。；;")
+    return name, details
+
+
+_MAX_MODULE_LABEL_LEN = 18  # 一级模块名；更长多半是吃进了后文章节
+
+
+def _truncate_module_enum_body(body: str) -> str:
+    """枚举句在首个顶层句号结束；避免末段身份吞掉后文「2.1.2 文献研究法…」。"""
+    text = body or ""
+    if not text:
+        return ""
+    depth = 0
+    for i, ch in enumerate(text):
+        if ch in _BRACKET_OPEN:
+            depth += 1
+            continue
+        if ch in _BRACKET_CLOSE and depth > 0:
+            depth -= 1
+            continue
+        if depth != 0:
+            continue
+        if ch in "。．":
+            return text[:i]
+        # 无句号时：章节号 + 研究/章节 起头也截断
+        if ch.isdigit() and i + 2 < len(text) and text[i + 1] == ".":
+            j = i
+            while j < len(text) and (text[j].isdigit() or text[j] == "."):
+                j += 1
+            tail = text[j : j + 8]
+            if j > i + 1 and any(k in tail for k in ("研究", "章", "节", "方法", "技术")):
+                return text[:i]
+    m = re.search(r"(?:模块|管理|分析|购物车|申请售后)[）】)]?[。．]?(\d+\.\d+)", text)
+    if m:
+        return text[: m.start(1)]
+    return text
+
+
+def _split_top_modules(body: str) -> list[tuple[str, list[str]]]:
+    """一级模块名 + 括号细节；括号内不拆成并列一级。"""
+    text = re.sub(r"\s+", "", _truncate_module_enum_body(body or ""))
+    text = text.rstrip("。．.;；")
+    if not text:
+        return []
+    items: list[tuple[str, list[str]]] = []
+    buf: list[str] = []
+    depth = 0
+
+    def flush() -> None:
+        nonlocal buf
+        raw = "".join(buf).strip().strip("，,。；;")
+        buf = []
+        if not raw:
+            return
+        name, details = _peel_module_brackets(raw)
+        if not name:
+            return
+        # 过长名 = 枚举越界吃进正文，丢弃
+        if len(name) > _MAX_MODULE_LABEL_LEN:
+            return
+        items.append((name, details))
+
+    for ch in text:
+        if ch in _BRACKET_OPEN:
+            depth += 1
+            buf.append(ch)
+            continue
+        if ch in _BRACKET_CLOSE and depth > 0:
+            depth -= 1
+            buf.append(ch)
+            continue
+        if depth == 0 and ch in "、；;":
+            flush()
+            continue
+        buf.append(ch)
+    flush()
+    return items
+
+
+def parse_identity_modules(
+    text: str,
+    *,
+    schema: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """从材料正文抽「身份 → 一级模块」；身份名不写死业务词表。"""
+    raw = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if not raw.strip():
+        return []
+    # 换行常打断词，枚举段内去空白便于切分；匹配仍用去空白副本定位
+    flat = re.sub(r"[ \t]+", "", raw)
+    flat_one = re.sub(r"\n+", "", flat)
+    matches = list(_IDENTITY_SECTION_RE.finditer(flat_one))
+    if not matches:
+        return []
+
+    sections: list[dict[str, Any]] = []
+    seen_lab: set[str] = set()
+    for i, m in enumerate(matches):
+        head = _strip_identity_head(m.group("label") or "")
+        if not head or len(head) > 12:
+            continue
+        # 排除「系统功能模块划分为」这类无身份头
+        if head in ("系统", "本系统", "总体", "整体"):
+            continue
+        label = _remap_end_jargon(head, schema)
+        if not label or label in seen_lab:
+            continue
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(flat_one)
+        # 截到句号段末（下一段身份已由 matches 切开；末段另截后文）
+        body = _truncate_module_enum_body(flat_one[start:end])
+        mods = _split_top_modules(body)
+        if not mods:
+            continue
+        seen_lab.add(label)
+        sections.append(
+            {
+                "label": label,
+                "modules": [{"label": n, "details": d} for n, d in mods],
+            }
+        )
+    return sections
+
+
 def apply_proposal_hints(model: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
-    """用开题词微调一级分支称呼（不增删节点）。"""
+    """用开题词微调「按业务」一级分支称呼（不增删节点；不改按身份框名）。"""
+    if str(model.get("layout") or "") == "identity":
+        return model
     text = proposal_text or ""
     root = model.get("root") if isinstance(model.get("root"), dict) else {}
     roots = root.get("children") or []
@@ -282,20 +545,7 @@ def apply_proposal_hints(model: dict[str, Any], proposal_text: str = "") -> dict
         if not isinstance(r, dict):
             continue
         rid = str(r.get("id") or "")
-        if rid == "branch:user":
-            if re.search(r"前台|门户|顾客端|客户端", text):
-                r["label"] = "前台功能"
-            elif re.search(r"学生端|读者端|用户端", text):
-                r["label"] = "用户端"
-        elif rid == "branch:admin":
-            if re.search(r"后台管理|后台功能|管理端", text):
-                r["label"] = "后台管理"
-            elif re.search(r"管理员模块", text):
-                r["label"] = "管理员模块"
-        elif rid == "branch:extra":
-            if re.search(r"扩展功能|辅助功能", text):
-                r["label"] = "扩展功能"
-        elif rid == "biz:user":
+        if rid == "biz:user":
             if re.search(r"用户模块|注册登录", text):
                 r["label"] = "用户模块"
         elif rid == "biz:admin":
@@ -427,39 +677,152 @@ def _reorder_biz_ids(biz_ids: list[str]) -> list[str]:
 
 
 def _model_by_side(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
+    """兼容旧调用：等价于按身份的 schema 回落。"""
+    return _model_by_identity_from_schema(schema, title=title)
+
+
+def _module_leaf_nodes(
+    modules: list[dict[str, Any]],
+    *,
+    branch_id: str,
+    source: str,
+    expand_details: bool,
+) -> list[dict]:
+    out: list[dict] = []
+    for i, mod in enumerate(modules):
+        if not isinstance(mod, dict):
+            continue
+        lab = str(mod.get("label") or "").strip()
+        if not lab:
+            continue
+        mid = f"{branch_id}:m{i}"
+        details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
+        if expand_details and details:
+            kids = [
+                _node(f"{mid}:d{j}", d, source=f"{source}:detail")
+                for j, d in enumerate(details)
+            ]
+            for k in kids:
+                k["orient"] = "v"
+            node = _node(mid, lab, source=source, children=kids)
+            # 有子层时一级模块横排，细节竖排
+        else:
+            node = _node(mid, lab, source=source)
+            node["orient"] = "v"
+        out.append(node)
+    return out
+
+
+def _model_from_parsed_identities(
+    sections: list[dict[str, Any]],
+    *,
+    title: str,
+    expand_details: bool,
+    leaf_source: str,
+) -> dict[str, Any]:
+    roots: list[dict] = []
+    for i, sec in enumerate(sections):
+        lab = str(sec.get("label") or "").strip()
+        if not lab:
+            continue
+        bid = f"identity:{i}"
+        kids = _module_leaf_nodes(
+            list(sec.get("modules") or []),
+            branch_id=bid,
+            source=leaf_source,
+            expand_details=expand_details,
+        )
+        if not kids:
+            continue
+        roots.append(_node(bid, lab, source="identity", children=kids))
+    note = _SCHEMA_LEAF_NOTE if leaf_source == "schema" else ""
+    return {
+        "title": title,
+        "layout": "identity",
+        "leaf_source": leaf_source,
+        "leaf_source_note": note,
+        "expand_details": bool(expand_details),
+        "root": _node("root", title, source="system", children=roots),
+    }
+
+
+def _menu_as_identity_modules(menus: list[Any], *, side: str) -> list[dict[str, Any]]:
+    """menus → 一级模块；登录注册合成一项以贴近论文口径。"""
+    nodes = _menu_nodes(menus, side=side)
+    mods: list[dict[str, Any]] = []
+    if side == "user" and nodes:
+        mods.append({"label": "登录注册模块", "details": []})
+    elif side == "admin" and nodes:
+        mods.append({"label": "登录模块", "details": []})
+    for n in nodes:
+        lab = str(n.get("label") or "").strip()
+        if not lab:
+            continue
+        if not lab.endswith("模块") and lab not in ("购物车", "数据分析", "申请售后", "售后管理"):
+            lab = f"{lab}模块" if len(lab) <= 8 else lab
+        mods.append({"label": lab, "details": []})
+    return mods
+
+
+def _model_by_identity_from_schema(
+    schema: dict[str, Any],
+    *,
+    title: str,
+    expand_details: bool = False,
+) -> dict[str, Any]:
     roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
     menus = schema.get("menus") if isinstance(schema.get("menus"), dict) else {}
     caps = {str(c) for c in (schema.get("capabilities") or [])}
-    user_kids = _menu_nodes(menus.get("user") or [], side="user")
-    admin_kids = _menu_nodes(menus.get("admin") or [], side="admin")
-    has_user_surface = bool(user_kids) or "org_users" in caps
+    user_menus = menus.get("user") or []
+    admin_menus = menus.get("admin") or []
+    has_user = bool(user_menus) or "org_users" in caps
 
-    roots: list[dict] = []
-    if has_user_surface:
-        roots.append(
-            _node(
-                "branch:user",
-                _branch_label(roles, "user"),
-                source="branch",
-                children=_auth_nodes() + user_kids,
-            )
+    sections: list[dict[str, Any]] = []
+    if has_user:
+        sections.append(
+            {
+                "label": _identity_label_from_slot(roles, "user"),
+                "modules": _menu_as_identity_modules(user_menus, side="user"),
+            }
         )
-    if admin_kids:
-        roots.append(
-            _node(
-                "branch:admin",
-                _branch_label(roles, "admin"),
-                source="branch",
-                children=admin_kids,
-            )
+    if admin_menus:
+        sections.append(
+            {
+                "label": _identity_label_from_slot(roles, "admin"),
+                "modules": _menu_as_identity_modules(admin_menus, side="admin"),
+            }
         )
 
-    return {
-        "title": title,
-        "layout": "side",
-        "root": _node("root", title, source="system", children=roots),
-        "capabilities": list(schema.get("capabilities") or []),
-    }
+    model = _model_from_parsed_identities(
+        sections,
+        title=title,
+        expand_details=expand_details,
+        leaf_source="schema",
+    )
+    model["capabilities"] = list(schema.get("capabilities") or [])
+    return model
+
+
+def _model_by_identity(
+    schema: dict[str, Any],
+    *,
+    title: str,
+    proposal_text: str = "",
+    expand_details: bool = False,
+) -> dict[str, Any]:
+    sections = parse_identity_modules(proposal_text, schema=schema)
+    if sections:
+        model = _model_from_parsed_identities(
+            sections,
+            title=title,
+            expand_details=expand_details,
+            leaf_source="materials",
+        )
+        model["capabilities"] = list(schema.get("capabilities") or [])
+        return model
+    return _model_by_identity_from_schema(
+        schema, title=title, expand_details=expand_details
+    )
 
 
 def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
@@ -493,7 +856,6 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
         if not kids:
             continue
         group_lab = _infer_biz_label(biz_id, kids, schema)
-        # 单叶子且与组名相同 → 一级叶子（如「购物车」）
         if len(kids) == 1 and str(kids[0].get("label") or "") == group_lab:
             leaf = dict(kids[0])
             leaf["id"] = f"biz:{biz_id}"
@@ -505,6 +867,9 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
     return {
         "title": title,
         "layout": "biz",
+        "leaf_source": "schema",
+        "leaf_source_note": "",
+        "expand_details": False,
         "root": _node("root", title, source="system", children=roots),
         "capabilities": list(schema.get("capabilities") or []),
     }
@@ -516,6 +881,7 @@ def module_model(
     proposal_text: str = "",
     title_fallback: str = "管理系统",
     layout: str = DEFAULT_MODULE_LAYOUT,
+    expand_details: bool = False,
 ) -> dict[str, Any]:
     schema = schema if isinstance(schema, dict) else {}
     labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
@@ -525,8 +891,13 @@ def module_model(
         or title_fallback
     )
     layout_n = normalize_module_layout(layout)
-    if layout_n == "side":
-        model = _model_by_side(schema, title=title)
+    if layout_n == "identity":
+        model = _model_by_identity(
+            schema,
+            title=title,
+            proposal_text=proposal_text,
+            expand_details=expand_details,
+        )
     else:
         model = _model_by_biz(schema, title=title)
     return apply_proposal_hints(model, proposal_text)
@@ -538,6 +909,7 @@ def build_module_model(
     with_label_patch: bool = True,
     proposal_text: str = "",
     layout: str = DEFAULT_MODULE_LAYOUT,
+    expand_details: bool = False,
 ) -> dict[str, Any] | None:
     schema = _read_json(workspace / "domain.schema.json")
     if not schema:
@@ -549,6 +921,7 @@ def build_module_model(
         proposal_text=proposal_text,
         title_fallback=title_fb,
         layout=layout,
+        expand_details=expand_details,
     )
     if with_label_patch:
         model = apply_module_label_patch(model, load_module_label_patch(workspace))
@@ -560,12 +933,14 @@ def load_module_model(
     *,
     proposal_text: str = "",
     layout: str = DEFAULT_MODULE_LAYOUT,
+    expand_details: bool = False,
 ) -> dict[str, Any] | None:
     return build_module_model(
         workspace,
         with_label_patch=True,
         proposal_text=proposal_text,
         layout=layout,
+        expand_details=expand_details,
     )
 
 
@@ -648,18 +1023,32 @@ def apply_module_label_patch(model: dict[str, Any], patch: dict | None) -> dict[
 # —— SVG 树形功能模块图 ——
 
 _BOX_H = 34.0
+_VBOX_W = 30.0
 _GAP_X = 14.0
 _GAP_Y = 52.0
 _PAD = 28.0
 
 
-def _box_w(label: str) -> float:
+def _box_w(label: str, *, orient: str = "h") -> float:
+    if orient == "v":
+        return _VBOX_W
     return max(72.0, _text_w(label, 12) + 28)
+
+
+def _box_h(label: str, *, orient: str = "h") -> float:
+    if orient == "v":
+        n = max(1, len(label or ""))
+        return max(56.0, n * 14.0 + 20.0)
+    return _BOX_H
+
+
+def _node_orient(node: dict) -> str:
+    return "v" if str(node.get("orient") or "") == "v" else "h"
 
 
 def _subtree_width(node: dict) -> float:
     kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
-    self_w = _box_w(str(node.get("label") or ""))
+    self_w = _box_w(str(node.get("label") or ""), orient=_node_orient(node))
     if not kids:
         return self_w
     return max(self_w, sum(_subtree_width(c) for c in kids) + _GAP_X * (len(kids) - 1))
@@ -668,16 +1057,19 @@ def _subtree_width(node: dict) -> float:
 def _layout(node: dict, cx: float, top: float, positions: dict[str, dict]) -> None:
     label = str(node.get("label") or "")
     nid = str(node.get("id") or "")
-    w = _box_w(label)
+    orient = _node_orient(node)
+    w = _box_w(label, orient=orient)
+    h = _box_h(label, orient=orient)
     positions[nid] = {
         "id": nid,
         "label": label,
+        "orient": orient,
         "x": cx - w / 2,
         "y": top,
         "w": w,
-        "h": _BOX_H,
+        "h": h,
         "cx": cx,
-        "cy": top + _BOX_H / 2,
+        "cy": top + h / 2,
         "source": str(node.get("source") or ""),
     }
     kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
@@ -686,7 +1078,7 @@ def _layout(node: dict, cx: float, top: float, positions: dict[str, dict]) -> No
     widths = [_subtree_width(c) for c in kids]
     total = sum(widths) + _GAP_X * (len(kids) - 1)
     x = cx - total / 2
-    child_top = top + _BOX_H + _GAP_Y
+    child_top = top + h + _GAP_Y
     for c, cw in zip(kids, widths):
         child_cx = x + cw / 2
         _layout(c, child_cx, child_top, positions)
@@ -706,9 +1098,32 @@ def _edges(node: dict) -> list[tuple[str, str]]:
     return out
 
 
+def _vtext(label: str, cx: float, y0: float, h: float) -> str:
+    """竖排：逐字自上而下。"""
+    chars = list(label or "")
+    if not chars:
+        return ""
+    step = (h - 16.0) / max(1, len(chars))
+    start = y0 + 10.0 + step * 0.55
+    parts = []
+    for i, ch in enumerate(chars):
+        parts.append(
+            f'<text x="{_f(cx)}" y="{_f(start + i * step)}" text-anchor="middle" '
+            f'font-size="12" font-family="Microsoft YaHei, SimSun, serif" '
+            f'fill="#000">{_esc(ch)}</text>'
+        )
+    return "".join(parts)
+
+
 def render_module_svg(model: dict[str, Any] | None) -> str:
+    layout_tag = str((model or {}).get("layout") or "")
     if not model or not isinstance(model.get("root"), dict):
-        return _svg_wrap(320, 120, '<text x="24" y="64" fill="#000">暂无模块数据</text>')
+        return _svg_wrap(
+            320,
+            120,
+            '<text x="24" y="64" fill="#000">暂无模块数据</text>',
+            layout=layout_tag,
+        )
 
     root = model["root"]
     positions: dict[str, dict] = {}
@@ -740,14 +1155,20 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
     for p in positions.values():
         is_root = p["id"] == "root"
         sw = "1.5" if is_root else "1"
+        if p.get("orient") == "v":
+            text = _vtext(str(p["label"]), p["cx"], p["y"], p["h"])
+        else:
+            text = (
+                f'<text x="{_f(p["cx"])}" y="{_f(p["cy"] + 4)}" text-anchor="middle" '
+                f'font-size="12" font-family="Microsoft YaHei, SimSun, serif" '
+                f'fill="#000">{_esc(p["label"])}</text>'
+            )
         node_parts.append(
             f'<g class="mod-node er-node" data-id="{_esc(p["id"])}" data-kind="module" '
             f'transform="translate(0,0)">'
             f'<rect x="{_f(p["x"])}" y="{_f(p["y"])}" width="{_f(p["w"])}" height="{_f(p["h"])}" '
             f'rx="0" ry="0" fill="#fff" stroke="#000" stroke-width="{sw}"/>'
-            f'<text x="{_f(p["cx"])}" y="{_f(p["cy"] + 4)}" text-anchor="middle" '
-            f'font-size="12" font-family="Microsoft YaHei, SimSun, serif" '
-            f'fill="#000">{_esc(p["label"])}</text></g>'
+            f"{text}</g>"
         )
 
     inner = (
@@ -758,18 +1179,19 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
         + "".join(node_parts)
         + "</g>"
     )
-    return _svg_wrap(W, H, inner)
+    return _svg_wrap(W, H, inner, layout=layout_tag)
 
 
 def _f(n: float) -> str:
     return f"{n:.1f}"
 
 
-def _svg_wrap(w: int, h: int, inner: str) -> str:
+def _svg_wrap(w: int, h: int, inner: str, *, layout: str = "") -> str:
+    layout_attr = f' data-gf-layout="{_esc(layout)}"' if layout else ""
     return (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-        f'viewBox="0 0 {w} {h}" class="module-diagram">'
+        f'viewBox="0 0 {w} {h}" class="module-diagram"{layout_attr}>'
         f'<rect class="er-paper" width="100%" height="100%" fill="#fff"/>'
         f"{inner}</svg>\n"
     )

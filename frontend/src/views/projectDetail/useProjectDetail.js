@@ -214,7 +214,8 @@ const erMode = ref('total')
 const erEntity = ref('')
 const modSvgSource = ref('')
 const modLayoutKey = ref(0)
-const modulesLayout = ref('biz')
+const modulesLayout = ref('identity')
+const modulesExpandDetails = ref(false)
 const modulesMeta = ref(null)
 const tcFields = ref(6)
 const tcColumns = ref([])
@@ -876,11 +877,13 @@ const gateCols = [
 ]
 const gateRows = computed(() => {
   const g = p.value?.gates || {}
-  // 含 p3c/p3d/accept：否则 overall 被这些项卡住时 UI 看不见原因
-  const keys = ['p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3q', 'p3c', 'p3d', 'accept']
+  // 含 p3c/p3d/p3copy/accept：否则 overall 被这些项卡住时 UI 看不见原因
+  const keys = [
+    'p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3q', 'p3copy', 'p3c', 'p3d', 'accept',
+  ]
   const levels = {
     p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2',
-    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3q: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
+    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3q: 'P3', p3copy: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
   }
   return keys
     .filter((k) => g[k] != null)
@@ -892,6 +895,20 @@ const gateRows = computed(() => {
       desc: g[k]?.desc || '',
     }))
 })
+
+const copyGateHits = computed(() => {
+  const hits = p.value?.gates?.p3copy?.detail?.hits
+  if (!Array.isArray(hits)) return []
+  return hits
+    .filter((h) => h && typeof h === 'object')
+    .map((h) => ({
+      path: String(h.path || ''),
+      bad: String(h.bad || ''),
+      snippet: String(h.snippet || ''),
+    }))
+})
+/** 门禁未过就显示清洗入口（不只依赖 hits 列表；旧数据可能缺 detail） */
+const copyGateNeedsScrub = computed(() => p.value?.gates?.p3copy?.ok === false)
 const checkCols = [
   { title: '清单项', key: 'name' },
   {
@@ -1201,6 +1218,26 @@ async function runApiSmoke() {
   }
 }
 
+const copyScrubBusy = ref(false)
+async function scrubStudentCopy() {
+  if (!p.value?.id || copyScrubBusy.value || artifactsFrozen.value) return
+  copyScrubBusy.value = true
+  try {
+    const res = await api.scrubStudentCopy(p.value.id)
+    await load()
+    const ok = !!res?.data?.copy_ok
+    message.success(
+      ok
+        ? '工厂腔已清洗 · 请到交付复审验圈后合卷'
+        : (res?.message || '已尝试清洗 · 请看是否仍有命中'),
+    )
+  } catch (err) {
+    message.error(err?.response?.data?.detail || err?.message || '清洗失败')
+  } finally {
+    copyScrubBusy.value = false
+  }
+}
+
 function goArtifacts(view = 'db') {
   artifactView.value = view
   tab.value = 'artifacts'
@@ -1349,13 +1386,16 @@ const modulesOk = computed(() => !!modulesMeta.value?.root || !!schema.value)
 const modDownloadBase = computed(() => {
   const id = p.value?.id || 'modules'
   const title = modulesMeta.value?.title || '功能模块图'
-  const tag = modulesLayout.value === 'side' ? '按端' : '按业务'
+  const tag = modulesLayout.value === 'biz' ? '按业务' : '按身份'
   return `${id}-模块图-${tag}-${title}`
 })
 
 async function fetchModSvg() {
   if (!p.value) return ''
-  const url = `${api.modulesSvgUrl(p.value.id, { layout: modulesLayout.value })}&t=${Date.now()}`
+  const url = `${api.modulesSvgUrl(p.value.id, {
+    layout: modulesLayout.value,
+    expandDetails: modulesExpandDetails.value,
+  })}&t=${Date.now()}`
   const res = await fetch(url)
   if (!res.ok) throw new Error('modules svg')
   return await res.text()
@@ -1387,7 +1427,10 @@ async function openModules() {
   if (!p.value || modLoading.value || artifactsFrozen.value) return
   modLoading.value = true
   try {
-    modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
+    modulesMeta.value = await api.getModules(p.value.id, {
+      layout: modulesLayout.value,
+      expandDetails: modulesExpandDetails.value,
+    })
     modSvgSource.value = await fetchModSvg()
     modLayoutKey.value += 1
     showModules.value = true
@@ -1402,7 +1445,10 @@ async function reloadModSvg() {
   if (!p.value || modLoading.value) return
   modLoading.value = true
   try {
-    modulesMeta.value = await api.getModules(p.value.id, { layout: modulesLayout.value })
+    modulesMeta.value = await api.getModules(p.value.id, {
+      layout: modulesLayout.value,
+      expandDetails: modulesExpandDetails.value,
+    })
     modSvgSource.value = await fetchModSvg()
     modLayoutKey.value += 1
   } catch {
@@ -1413,7 +1459,12 @@ async function reloadModSvg() {
 }
 
 async function onModulesLayout(v) {
-  modulesLayout.value = v === 'side' ? 'side' : 'biz'
+  modulesLayout.value = v === 'biz' ? 'biz' : 'identity'
+  await reloadModSvg()
+}
+
+async function onModulesExpandDetails(v) {
+  modulesExpandDetails.value = !!v
   await reloadModSvg()
 }
 
@@ -2013,10 +2064,17 @@ function stopPoll() {
   stopFillEvents()
 }
 
-watch(tab, (v) => {
+watch(tab, async (v) => {
   if (v === 'logs') loadLog(logSide.value)
   if (v === 'runtime') refreshRuntime()
-  if (v === 'artifacts') loadArtifactView()
+  if (v === 'artifacts') {
+    // 从运行页回来时同步预览态；双端 healthy 则清掉过期的「请先启动」提示
+    await refreshRuntime()
+    if (rt.backend_status === 'healthy' && rt.frontend_status === 'healthy') {
+      apiSmokeFactoryHint.value = ''
+    }
+    loadArtifactView()
+  }
 })
 
 watch(artifactsFrozen, (frozen) => {
@@ -2144,6 +2202,10 @@ onUnmounted(() => {
     frontendAddr,
     gateCols,
     gateRows,
+    copyGateHits,
+    copyGateNeedsScrub,
+    copyScrubBusy,
+    scrubStudentCopy,
     genState,
     genSuccessBannerHint,
     genSuccessBannerTitle,
@@ -2186,6 +2248,7 @@ onUnmounted(() => {
     modLoading,
     modSvgSource,
     modulesLayout,
+    modulesExpandDetails,
     modulesMeta,
     modulesOk,
     narrativeDualText,
@@ -2196,6 +2259,7 @@ onUnmounted(() => {
     onErEntity,
     onErMode,
     onModulesLayout,
+    onModulesExpandDetails,
     onPathChange,
     onTcFields,
     openEr,

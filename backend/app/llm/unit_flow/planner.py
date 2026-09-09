@@ -171,9 +171,11 @@ def _plan_er_units(workspace: Path) -> list[TaskUnit]:
 
 def _plan_module_units(workspace: Path, proposal_text: str) -> list[TaskUnit]:
     fresh_biz = build_module_model(workspace, with_label_patch=False, proposal_text=proposal_text, layout="biz")
-    fresh_side = build_module_model(workspace, with_label_patch=False, proposal_text=proposal_text, layout="side")
+    fresh_id = build_module_model(
+        workspace, with_label_patch=False, proposal_text=proposal_text, layout="identity"
+    )
     gaps_by_id: dict[str, dict[str, str]] = {}
-    for m in (fresh_biz, fresh_side):
+    for m in (fresh_biz, fresh_id):
         if not m:
             continue
         for g in collect_module_label_gaps(m):

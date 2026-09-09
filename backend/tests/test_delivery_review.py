@@ -35,10 +35,25 @@ class DeliveryReviewTests(unittest.TestCase):
             {"name": "登录", "result": "done"},
             {"name": "报修", "result": "pending"},
             {"name": "真支付", "result": "out_of_mvp"},
+            {"name": "曾通过现挂", "result": "pending"},
         ]
-        zones = dr.partition_zones(checklist, [{"text": "a", "status": "open"}], ["登录"])
-        self.assertEqual(len(zones["safe_zone"]), 1)
-        self.assertEqual(len(zones["poison_zone"]), 1)
+        # frozen 不得把当前 pending 画进安全区
+        zones = dr.partition_zones(
+            checklist, [{"text": "a", "status": "open"}], ["登录", "曾通过现挂"]
+        )
+        safe_names = {x["name"] for x in zones["safe_zone"]}
+        poison_names = {x["name"] for x in zones["poison_zone"]}
+        self.assertEqual(safe_names, {"登录"})
+        self.assertEqual(poison_names, {"报修", "曾通过现挂"})
+
+    def test_verify_fail_reasons_lists_pending(self):
+        reasons = dr.verify_fail_reasons(
+            mono_ok=True,
+            zip_allowed=True,
+            poison_pending=[{"name": "商家入驻"}, {"name": "库存预警"}],
+            open_notes=[],
+        )
+        self.assertTrue(any("商家入驻" in r for r in reasons))
 
     def test_workspace_hash_stable(self):
         import tempfile
@@ -68,6 +83,33 @@ class DeliveryReviewTests(unittest.TestCase):
         ok, msg = dr.can_repack_after_verify(verify, review)
         self.assertFalse(ok)
         self.assertIn("偏差", msg)
+
+    def test_blocking_gates_listed(self):
+        gates = {
+            "overall": False,
+            "zip_allowed": False,
+            "p0a": {"ok": True, "label": "结构"},
+            "p3q": {"ok": False, "label": "交付质量摘要", "desc": "2 项 error"},
+        }
+        blocked = dr.blocking_gates(gates)
+        self.assertEqual(len(blocked), 1)
+        self.assertEqual(blocked[0]["key"], "p3q")
+        self.assertIn("质量摘要", blocked[0]["label"])
+
+    def test_can_repack_mentions_blocking_gate(self):
+        verify = {
+            "monotonic_ok": True,
+            "round_pass": False,
+            "gates": {
+                "p3q": {"ok": False, "label": "交付质量摘要", "desc": "error"},
+                "zip_allowed": False,
+            },
+            "round": {"pending_count": 0},
+        }
+        ok, msg = dr.can_repack_after_verify(verify, {})
+        self.assertFalse(ok)
+        self.assertIn("质量检查", msg)
+        self.assertIn("交付质量摘要", msg)
 
     def test_apply_qa_warn_blocks_when_enabled(self):
         gates = {"overall": True, "zip_allowed": True, "p0a": {"ok": True}}

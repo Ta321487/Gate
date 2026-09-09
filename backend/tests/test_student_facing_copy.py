@@ -132,6 +132,138 @@ class StudentFacingCopyTests(unittest.TestCase):
                     break
         self.assertEqual(offenders, [], msg="\n".join(offenders[:20]))
 
+    def test_refresh_polluted_vue_from_baseline(self) -> None:
+        """旧工作区 Vue 脏、现网骨架干净 → 覆写，不必重 bake。"""
+        import tempfile
+
+        from app.bake.domain_schema import refresh_polluted_vue_from_baseline
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            dirty = ws / "frontend" / "src" / "views" / "ESignMine.vue"
+            dirty.parent.mkdir(parents=True)
+            dirty.write_text(
+                '<p class="lead">上传签章图；非 CA、非法大大等第三方电子签平台。</p>\n',
+                encoding="utf-8",
+            )
+            sk = Path(td) / "sk" / "frontend" / "src" / "views" / "ESignMine.vue"
+            sk.parent.mkdir(parents=True)
+            sk.write_text(
+                "<p class=\"lead\">{{ eSignLead }}</p>\n",
+                encoding="utf-8",
+            )
+
+            class _S:
+                skeletons_dir = Path(td) / "sk_root"
+
+            # refresh 期望 skeletons_dir/baseline/frontend/src/...
+            base = Path(td) / "sk_root" / "baseline" / "frontend" / "src" / "views"
+            base.mkdir(parents=True)
+            (base / "ESignMine.vue").write_text(
+                "<p class=\"lead\">{{ eSignLead }}</p>\n",
+                encoding="utf-8",
+            )
+            with patch(
+                "app.core.config.get_settings",
+                return_value=type("S", (), {"skeletons_dir": Path(td) / "sk_root"})(),
+            ):
+                written = refresh_polluted_vue_from_baseline(ws)
+            self.assertEqual(written, ["frontend/src/views/ESignMine.vue"])
+            self.assertNotIn("非 CA", dirty.read_text(encoding="utf-8"))
+
+    def test_scrub_project_student_copy_rewrites_disk(self) -> None:
+        """出包后一键清洗：只编排 emit（内含 scrub），不另写清洗规则。"""
+        import json
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from app.services.student_copy import scrub_project_student_copy
+
+        dirty_lead = "买家向平台留言；商家走商家端「留言反馈」与平台沟通（双通道，非即时通讯）。"
+        schema = {
+            "version": 1,
+            "title": "测试店",
+            "capabilities": [],
+            "labels": {
+                "appName": "测试店",
+                "guestbookPageLead": dirty_lead,
+            },
+            "menus": {"admin": [], "portal": []},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            (ws / "domain.schema.json").write_text(
+                json.dumps(schema, ensure_ascii=False), encoding="utf-8"
+            )
+            proj = SimpleNamespace(
+                spec={"title": "测试店", "domain": "DOM-GENERIC", "schema": schema},
+                gates={},
+                checklist=[],
+                zip_path=str(ws / "out.zip"),
+                zip_ready=True,
+                workspace_path=str(ws),
+                status="generated",
+                delivery_mark="none",
+            )
+
+            def _fake_emit(workspace, spec):
+                # 与真实 emit 一致：调用同源 scrub 再落盘
+                cleaned = scrub_schema_student_copy(dict(spec.get("schema") or {}))
+                (workspace / "domain.schema.json").write_text(
+                    json.dumps(cleaned, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                return ["domain.schema.json"]
+
+            with (
+                patch(
+                    "app.services.student_copy.project_svc.workspace_or_reason",
+                    return_value=(ws, None),
+                ),
+                patch(
+                    "app.services.student_copy.emit_schema_to_workspace",
+                    side_effect=_fake_emit,
+                ),
+                patch(
+                    "app.services.student_copy.refresh_polluted_vue_from_baseline",
+                    return_value=[],
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.sync_checklist_from_workspace",
+                    side_effect=lambda p: setattr(
+                        p,
+                        "gates",
+                        {
+                            "p3copy": {
+                                "ok": True,
+                                "label": "学生可见文案无工厂腔",
+                                "desc": "ok",
+                                "detail": {"hits": []},
+                            },
+                            "overall": True,
+                            "zip_allowed": True,
+                        },
+                    )
+                    or True,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.gates_allow_delivery",
+                    return_value=True,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.delivery_block_reason",
+                    return_value=None,
+                ),
+            ):
+                out = scrub_project_student_copy(proj)
+
+            disk = json.loads((ws / "domain.schema.json").read_text(encoding="utf-8"))
+            self.assertNotIn("双通道", disk["labels"]["guestbookPageLead"])
+            self.assertTrue(out["copy_ok"])
+            self.assertFalse(proj.zip_ready)
+
 
 if __name__ == "__main__":
     unittest.main()

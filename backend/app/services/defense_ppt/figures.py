@@ -110,7 +110,7 @@ def figure_file(project: Project, rel: str):
 
 def project_figure_api_hint(project_id: str, kind: str) -> str:
     if kind == "modules":
-        return f"/api/projects/{quote(project_id)}/schema/modules.svg?layout=biz"
+        return f"/api/projects/{quote(project_id)}/schema/modules.svg?layout=identity"
     if kind == "er":
         return f"/api/projects/{quote(project_id)}/schema/er.svg?mode=total"
     return ""

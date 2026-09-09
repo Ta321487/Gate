@@ -471,3 +471,84 @@ def test_favorites_chain_toggles_item(tmp_path: Path):
     assert "favorites_list" in names
     assert next(s for s in out["main_flow"] if s["name"] == "favorites")["ok"] is True
     assert "flow_api_gap" not in names
+
+
+def test_shop_cart_path_style_and_demo_pay(tmp_path: Path):
+    """cart_mutate=path + 演示支付：须打 /api/cart/{id} 且下单带 payChannel。"""
+    inv = {"count": 0, "controller_count": 0, "endpoints": [], "surfaces": []}
+    seen: list[tuple[str, str, Any]] = []
+
+    class FakeResp:
+        def __init__(self, status_code: int, payload):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = ""
+
+        def json(self):
+            return self._payload
+
+    def fake_request(method, url, **kwargs):
+        u = str(url)
+        body = kwargs.get("json")
+        seen.append((method.upper(), u, body))
+        if "captcha" in u:
+            return FakeResp(200, {"code": 0, "data": {"code": "ABCD"}})
+        if "login" in u:
+            return FakeResp(200, {"code": 0, "data": {}})
+        if "/api/meta" in u:
+            return FakeResp(200, {"ok": True})
+        if "/api/archive" in u:
+            return FakeResp(200, {"code": 0, "data": {"list": [{"id": 9, "title": "果"}]}})
+        if u.rstrip("/").endswith("/api/cart"):
+            return FakeResp(405, {"code": 4001, "message": "Request method 'POST' is not supported"})
+        if "/api/cart/9" in u:
+            return FakeResp(200, {"code": 0, "data": {"ok": True}})
+        if u.endswith("/api/orders"):
+            ch = (body or {}).get("payChannel")
+            pw = (body or {}).get("payPassword")
+            if ch not in ("alipay", "wechat") or not pw or len(str(pw)) < 4:
+                return FakeResp(200, {"code": 4001, "message": "请选择支付宝或微信支付"})
+            return FakeResp(200, {"code": 0, "data": {"id": 1}})
+        return FakeResp(200, {"code": 0, "data": {}})
+
+    with (
+        patch("app.services.student_api_smoke.load_api_inventory", return_value=inv),
+        patch("httpx.Client") as Client,
+    ):
+        inst = MagicMock()
+        inst.request.side_effect = fake_request
+        inst.get.return_value = FakeResp(200, {"ok": True})
+        inst.__enter__ = MagicMock(return_value=inst)
+        inst.__exit__ = MagicMock(return_value=False)
+        Client.return_value = inst
+
+        out = run_student_api_smoke(
+            project_id="p-shop-style",
+            workspace=tmp_path,
+            spec={
+                "domain": "DOM-SHOP",
+                "api_style": {"item_ref": "path", "cart_mutate": "path"},
+                "schema": {"shopMarketplace": True, "demoPay": True},
+                "gate": {"flow_api": {"cart": {}, "place": {}}},
+            },
+            backend_url="http://127.0.0.1:18080",
+            frontend_url="http://127.0.0.1:15173",
+            backend_status="healthy",
+            frontend_status="healthy",
+        )
+
+    cart = next(s for s in out["main_flow"] if s["name"] == "cart")
+    place = next(s for s in out["main_flow"] if s["name"] == "place")
+    gate = next(s for s in out["main_flow"] if s["name"] == "gate_self_check")
+    assert cart["ok"] is True
+    assert place["ok"] is True
+    assert gate.get("skip") is True
+    assert any("/api/cart/9" in u for _, u, _ in seen)
+    assert not any(
+        m == "POST" and u.rstrip("/").endswith("/api/cart") for m, u, _ in seen
+    )
+    assert any(
+        (b or {}).get("payChannel") == "alipay" and (b or {}).get("payPassword") == "1234"
+        for m, u, b in seen
+        if u.endswith("/api/orders")
+    )

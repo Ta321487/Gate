@@ -3,9 +3,18 @@
     <div class="mod-toolbar row mb-12">
       <div class="mod-zoom-btns row">
         <n-radio-group v-model:value="layoutLocal" size="small" :disabled="loading" @update:value="onLayoutChange">
+          <n-radio-button value="identity">按身份</n-radio-button>
           <n-radio-button value="biz">按业务</n-radio-button>
-          <n-radio-button value="side">按端</n-radio-button>
         </n-radio-group>
+        <n-switch
+          size="small"
+          :value="expandLocal"
+          :disabled="loading || layoutLocal !== 'identity'"
+          @update:value="onExpandChange"
+        >
+          <template #checked>展开细节</template>
+          <template #unchecked>展开细节</template>
+        </n-switch>
         <n-button size="small" @click="zoomOut">缩小</n-button>
         <span class="mod-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
@@ -19,11 +28,15 @@
     <p class="small muted mod-hint mb-8">
       {{
         layoutLocal === 'biz'
-          ? '按业务拆：用户 / 业务对象 / 订单…（论文常用）'
-          : '按端拆：用户端与管理端菜单对照'
+          ? '按业务拆：业务对象 / 订单…（对照用）'
+          : '按身份拆：登录身份 → 一级功能模块（论文常用）；【】（）细节默认不进图'
       }}
-      ；与系统菜单一致，开题材料只辅助中文命名。
+      ；优先读开题等材料枚举。
     </p>
+    <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
+      界面选的是「按身份」，但图数据仍是「按业务」——请重启工厂后端后再点重新加载。
+    </p>
+    <p v-if="sourceNote" class="small muted mod-hint mb-8 mod-source-note">{{ sourceNote }}</p>
     <div
       ref="frameRef"
       class="mod-frame"
@@ -48,11 +61,15 @@ import { isDark } from '../theme'
 const props = defineProps({
   svgSource: { type: String, default: '' },
   downloadName: { type: String, default: 'modules' },
-  layout: { type: String, default: 'biz' },
+  layout: { type: String, default: 'identity' },
+  /** 接口返回的 layout，用于发现前后端不一致 */
+  resolvedLayout: { type: String, default: '' },
+  expandDetails: { type: Boolean, default: false },
+  sourceNote: { type: String, default: '' },
   loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['reload', 'update:layout'])
+const emit = defineEmits(['reload', 'update:layout', 'update:expandDetails'])
 
 const PNG_SCALE = 2.5
 const frameRef = ref(null)
@@ -62,7 +79,8 @@ const panX = ref(0)
 const panY = ref(0)
 const panning = ref(false)
 const busy = ref(false)
-const layoutLocal = ref(props.layout === 'side' ? 'side' : 'biz')
+const layoutLocal = ref(props.layout === 'biz' ? 'biz' : 'identity')
+const expandLocal = ref(!!props.expandDetails)
 let panLastX = 0
 let panLastY = 0
 
@@ -79,17 +97,35 @@ const fileBase = computed(
   () => String(props.downloadName || 'modules').replace(/\.(svg|png)$/i, '') || 'modules',
 )
 
+const layoutMismatch = computed(() => {
+  const want = layoutLocal.value === 'biz' ? 'biz' : 'identity'
+  const got = String(props.resolvedLayout || '').trim()
+  return want === 'identity' && got === 'biz'
+})
+
 watch(
   () => props.layout,
   (v) => {
-    layoutLocal.value = v === 'side' ? 'side' : 'biz'
+    layoutLocal.value = v === 'biz' ? 'biz' : 'identity'
+  },
+)
+
+watch(
+  () => props.expandDetails,
+  (v) => {
+    expandLocal.value = !!v
   },
 )
 
 function onLayoutChange(v) {
-  const next = v === 'side' ? 'side' : 'biz'
+  const next = v === 'biz' ? 'biz' : 'identity'
   layoutLocal.value = next
   emit('update:layout', next)
+}
+
+function onExpandChange(v) {
+  expandLocal.value = !!v
+  emit('update:expandDetails', !!v)
 }
 
 function clampScale(s) {
@@ -180,19 +216,20 @@ async function svgToCanvas() {
   const vb = svg.viewBox?.baseVal
   const w = vb?.width || Number(svg.getAttribute('width')) || 800
   const h = vb?.height || Number(svg.getAttribute('height')) || 600
+  clone.setAttribute('width', String(w))
+  clone.setAttribute('height', String(h))
   const xml = new XMLSerializer().serializeToString(clone)
-  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }))
   try {
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image()
-      i.onload = () => resolve(i)
-      i.onerror = reject
-      i.src = url
+    const img = new Image()
+    await new Promise((resolve, reject) => {
+      img.onload = resolve
+      img.onerror = reject
+      img.src = url
     })
     const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(w * PNG_SCALE))
-    canvas.height = Math.max(1, Math.round(h * PNG_SCALE))
+    canvas.width = Math.round(w * PNG_SCALE)
+    canvas.height = Math.round(h * PNG_SCALE)
     const ctx = canvas.getContext('2d')
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -204,40 +241,29 @@ async function svgToCanvas() {
 }
 
 async function copyPng() {
-  if (busy.value) return
   busy.value = true
   try {
     const canvas = await svgToCanvas()
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'))
-    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-      triggerDownload(blob, `${fileBase.value}.png`)
-      message.warning('当前环境不支持复制图片，已改为下载 PNG')
-      return
-    }
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      message.success('已复制图片，可在 Word 中粘贴')
-    } catch {
-      triggerDownload(blob, `${fileBase.value}.png`)
-      message.warning('复制失败，已改为下载 PNG')
-    }
-  } catch (e) {
-    message.error(e?.message || '复制失败')
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error('png')
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+    message.success('已复制图片')
+  } catch {
+    message.error('复制失败，可改下 PNG')
   } finally {
     busy.value = false
   }
 }
 
 async function downloadPng() {
-  if (busy.value) return
   busy.value = true
   try {
     const canvas = await svgToCanvas()
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'))
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error('png')
     triggerDownload(blob, `${fileBase.value}.png`)
-    message.success('已下载 PNG，可直接插入 Word')
-  } catch (e) {
-    message.error(e?.message || '下载失败')
+  } catch {
+    message.error('下载 PNG 失败')
   } finally {
     busy.value = false
   }
@@ -245,46 +271,59 @@ async function downloadPng() {
 
 function downloadSvg() {
   const raw = props.svgSource || ''
-  const blob = new Blob([raw], { type: 'image/svg+xml;charset=utf-8' })
-  triggerDownload(blob, `${fileBase.value}.svg`)
+  if (!raw) {
+    message.error('无矢量源')
+    return
+  }
+  triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
-
-defineExpose({ downloadSvg, downloadPng, copyPng, resetView })
 </script>
 
 <style scoped>
-.mod-toolbar {
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
+.mod-viewer {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
 }
-.mod-zoom-btns {
+.mod-toolbar {
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+.mod-zoom-btns {
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 .mod-zoom-label {
-  min-width: 48px;
+  min-width: 3.2em;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  color: var(--muted);
 }
 .mod-hint {
-  margin: 0;
+  line-height: 1.45;
+}
+.mod-source-note {
+  color: var(--n-text-color-3, #888);
+}
+.mod-warn {
+  color: #c45c26;
 }
 .mod-frame {
-  height: 72vh;
+  flex: 1;
+  min-height: 360px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--er-bg, #fafafa);
+  border: 1px solid var(--n-border-color);
+  border-radius: 6px;
+  background: #fff;
   cursor: grab;
   touch-action: none;
-  user-select: none;
 }
-.mod-frame.is-panning,
-.mod-frame:active {
+.mod-frame.is-panning {
   cursor: grabbing;
+}
+.mod-viewer.is-dark .mod-frame {
+  background: #111;
 }
 .mod-canvas {
   display: inline-block;
@@ -292,19 +331,5 @@ defineExpose({ downloadSvg, downloadPng, copyPng, resetView })
 }
 .mod-canvas :deep(svg) {
   display: block;
-  max-width: none;
-  height: auto;
-  overflow: visible;
-}
-/* 预览纸面透明，导出时仍是白底 */
-.mod-canvas :deep(.er-paper) {
-  fill: transparent !important;
-}
-/* 与 E-R 夜间一致：只反相图元，不整页大黑底 */
-.mod-viewer.is-dark .mod-frame {
-  background: #0f161e;
-}
-.mod-viewer.is-dark .mod-canvas {
-  filter: invert(1) hue-rotate(180deg);
 }
 </style>

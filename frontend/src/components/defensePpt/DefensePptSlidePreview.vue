@@ -119,7 +119,7 @@ const figureSrc = computed(() => {
   }
   // 回退：直接用现网 modules/er SVG API（同源产物）
   if (fig.project_svg === 'modules' && props.projectId) {
-    return api.modulesSvgUrl(props.projectId, { layout: 'biz' })
+    return api.modulesSvgUrl(props.projectId, { layout: 'identity' })
   }
   if (fig.project_svg === 'er' && props.projectId) {
     return api.erSvgUrl(props.projectId, { mode: 'total' })

@@ -37,6 +37,21 @@
             验圈
           </n-button>
         </span>
+        <span
+          v-if="showScrubCopy"
+          title="调用工厂 scrub（与出包同源），不必手改学生包"
+          class="btn-tip-wrap"
+        >
+          <n-button
+            size="small"
+            type="primary"
+            :disabled="disabled || !!busy || scrubBusy"
+            :loading="scrubBusy"
+            @click="onScrubCopy"
+          >
+            工厂清洗文案
+          </n-button>
+        </span>
         <span :title="repackTip" class="btn-tip-wrap">
           <n-button
             size="small"
@@ -92,6 +107,22 @@
       <ul class="reg-list">
         <li v-for="(r, i) in regressions" :key="i">{{ r.message }}</li>
       </ul>
+    </n-alert>
+    <n-alert
+      v-if="(blockingGates || []).length && !(regressions || []).length"
+      type="warning"
+      :bordered="false"
+      title="清单已收敛，但质量门禁未过"
+    >
+      毒区只列实装清单；页头「质检未过」通常卡在下面这些门禁（含交付质量摘要）。修复后再点验圈。
+      <ul class="reg-list">
+        <li v-for="g in blockingGates" :key="g.key || g.label">
+          {{ g.label }}<span v-if="g.desc" class="muted"> · {{ g.desc }}</span>
+        </li>
+      </ul>
+      <p v-if="showScrubCopy" class="small muted" style="margin:8px 0 0">
+        工厂腔未过时，用上方「工厂清洗文案」即可，不必手改学生包。
+      </p>
     </n-alert>
 
     <div class="review-grid">
@@ -188,6 +219,10 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   /** 可选：返回 Promise 的刷新函数；有则 await，避免 busy 过早清空导致连点 */
   reload: { type: Function, default: null },
+  /** 与质量检查同源：父级 scrubStudentCopy / copyGateNeedsScrub */
+  showScrubCopy: { type: Boolean, default: false },
+  scrubBusy: { type: Boolean, default: false },
+  scrubCopy: { type: Function, default: null },
 })
 
 const emit = defineEmits(['refresh'])
@@ -216,6 +251,10 @@ const review = computed(() => props.deliveryReview?.review || {})
 const zones = computed(() => props.deliveryReview?.zones || {})
 const safeZone = computed(() => zones.value.safe_zone || [])
 const poisonZone = computed(() => zones.value.poison_zone || [])
+const blockingGates = computed(() => {
+  const raw = props.deliveryReview?.blocking_gates
+  return Array.isArray(raw) ? raw.filter((x) => x && typeof x === 'object') : []
+})
 const fixNotes = computed(() => {
   const raw = review.value.fix_notes
   return Array.isArray(raw) ? [...raw].reverse() : []
@@ -261,7 +300,7 @@ const canRepack = computed(() => {
 })
 
 const tipStart = '开始对照开题收窄偏差；可验圈、登记偏差'
-const tipVerify = '本轮验收：通过项进安全区，未过留毒区'
+const tipVerify = '本轮验收：重跑门禁与质量摘要；通过项进安全区，清单未过留毒区，门禁未过会单独提示'
 const tipQa = '再跑一遍交付质检摘要（不替代门禁）'
 const tipClose = '结束本轮复审流程（不删已有登记）'
 const tipHandoff = '导出运营交接材料，不进学生 ZIP'
@@ -272,6 +311,14 @@ const repackTip = computed(() => {
   if (busy.value) return '请等待当前操作完成'
   if (regressions.value.length) return '存在安全区回退，请先处理后再合卷'
   if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再合卷`
+  if (blockingGates.value.length) {
+    const labels = blockingGates.value
+      .map((g) => (g && g.label) || '')
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('、')
+    return `质量门禁未过（${labels || '见上方提示'}）· 修复后再验圈合卷`
+  }
   const rounds = review.value.rounds || []
   const lastRound = rounds.length ? rounds[rounds.length - 1] : null
   if (!lastRound?.round_pass) return '请先完成验圈通过后再合卷'
@@ -316,19 +363,44 @@ async function onStart() {
   }
 }
 
+async function onScrubCopy() {
+  if (typeof props.scrubCopy === 'function') {
+    await props.scrubCopy()
+  }
+}
+
 async function onVerify() {
   if (busy.value || props.disabled) return
   busy.value = 'verify'
   localRegressions.value = []
   try {
-    const res = await api.verifyDeliveryReview(props.projectId)
-    localRegressions.value = res.regressions || []
-    if (res.monotonic_ok && res.round_pass) {
+    const raw = await api.verifyDeliveryReview(props.projectId)
+    // 兼容直接模型 / { data } 包裹
+    const res = raw && typeof raw === 'object' && raw.data && raw.monotonic_ok == null ? raw.data : raw
+    const payload = res && typeof res === 'object' ? res : {}
+    localRegressions.value = Array.isArray(payload.regressions) ? payload.regressions : []
+    const blocked = Array.isArray(payload.blocking_gates) ? payload.blocking_gates : []
+    const failReasons = Array.isArray(payload.fail_reasons) ? payload.fail_reasons.filter(Boolean) : []
+    if (payload.monotonic_ok && payload.round_pass) {
       message.success('验圈通过 · 可执行合卷')
-    } else if (!res.monotonic_ok) {
+    } else if (!payload.monotonic_ok) {
       message.warning('验圈未通过 · 存在安全区回退')
+    } else if (failReasons.length) {
+      message.warning(`验圈未通过 · ${failReasons.join('；')}`)
+    } else if (blocked.length) {
+      const labels = blocked
+        .map((g) => (g && g.label) || '')
+        .filter(Boolean)
+        .slice(0, 3)
+        .join('、')
+      message.warning(`验圈未通过 · 质量门禁未过${labels ? `（${labels}）` : ''}`)
     } else {
-      message.info('验圈完成 · 仍有待收敛项')
+      const pending = Array.isArray(payload.pending_names) ? payload.pending_names.filter(Boolean) : []
+      if (pending.length) {
+        message.warning(`验圈未通过 · 待收敛清单：${pending.slice(0, 4).join('、')}`)
+      } else {
+        message.warning('验圈未通过 · 请查看毒区与「质量检查」页')
+      }
     }
     await refreshAfter()
   } catch (e) {

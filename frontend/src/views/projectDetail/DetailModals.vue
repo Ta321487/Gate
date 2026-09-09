@@ -138,8 +138,12 @@
         :svg-source="modSvgSource"
         :download-name="modDownloadBase"
         :layout="modulesLayout"
+        :resolved-layout="modulesMeta?.layout || ''"
+        :expand-details="modulesExpandDetails"
+        :source-note="modulesMeta?.leaf_source_note || ''"
         :loading="modLoading"
         @update:layout="onModulesLayout"
+        @update:expand-details="onModulesExpandDetails"
         @reload="reloadModSvg"
       />
     </n-modal>
@@ -192,9 +196,9 @@ const {
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
-  matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
-  modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
+  matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
+  modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
+  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
   openPreview, openTestcases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,

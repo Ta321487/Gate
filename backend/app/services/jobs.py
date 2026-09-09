@@ -77,7 +77,7 @@ def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
     if isinstance(acc, dict) and acc.get("ok") is False:
         return _short_error(acc.get("desc") or acc.get("label") or "可接题边界未通过", limit=200)
     # 含 p3q（QA）/ p3s（语义）；漏列时 overall=False 会落到笼统「主流程或功能清单未通过」
-    for k in ("p3c", "p3d", "p3t", "p3q", "p3s", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
+    for k in ("p3c", "p3d", "p3t", "p3q", "p3copy", "p3s", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
         item = g.get(k)
         if not isinstance(item, dict) or item.get("ok") is not False:
             continue

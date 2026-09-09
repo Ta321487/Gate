@@ -93,6 +93,25 @@ def _flow_api(spec: dict[str, Any] | None) -> dict[str, Any]:
     return fa if isinstance(fa, dict) else {}
 
 
+def _api_style(spec: dict[str, Any] | None) -> dict[str, str]:
+    """与 bake 写入学生工程的 api_style 对齐（path/body）。"""
+    from app.bake.api_style import normalize_api_style
+
+    raw = (spec or {}).get("api_style") if isinstance(spec, dict) else None
+    return normalize_api_style(raw if isinstance(raw, dict) else None)
+
+
+def _demo_pay_required(spec: dict[str, Any] | None) -> bool:
+    schema = (spec or {}).get("schema") if isinstance((spec or {}).get("schema"), dict) else {}
+    if not isinstance(schema, dict):
+        return False
+    return bool(schema.get("demoPay") or schema.get("shopMarketplace"))
+
+
+def _ticket_flow_keys(fa: dict[str, Any]) -> bool:
+    return any(k in fa for k in ("apply", "approve", "return", "complete", "checkin"))
+
+
 def _ticket_mode(spec: dict[str, Any] | None, gate_mode: str | None = None) -> str:
     if gate_mode:
         return str(gate_mode).lower()
@@ -451,19 +470,33 @@ def _run_flow_api_business(
 
     # —— 下单壳 ——
     if "cart" in fa or "place" in fa:
+        style = _api_style(spec)
         if "cart" in fa:
             done.add("cart")
             if ctx.get("itemId") is not None:
-                main_flow.append(
-                    _http_step(
-                        portal,
-                        base,
-                        "cart",
-                        "POST",
-                        "/api/cart",
-                        json_body={"itemId": ctx["itemId"], "qty": 1},
+                item_id = ctx["itemId"]
+                if style.get("cart_mutate") == "path":
+                    main_flow.append(
+                        _http_step(
+                            portal,
+                            base,
+                            "cart",
+                            "POST",
+                            f"/api/cart/{item_id}",
+                            json_body={"qty": 1},
+                        )
                     )
-                )
+                else:
+                    main_flow.append(
+                        _http_step(
+                            portal,
+                            base,
+                            "cart",
+                            "POST",
+                            "/api/cart",
+                            json_body={"itemId": item_id, "qty": 1},
+                        )
+                    )
             else:
                 main_flow.append(
                     _step_result(
@@ -476,6 +509,14 @@ def _run_flow_api_business(
                 )
         if "place" in fa:
             done.add("place")
+            place_body: dict[str, Any] = {
+                "remark": "冒烟下单",
+                "deliveryType": "pickup",
+            }
+            if _demo_pay_required(spec):
+                # 与 Cart.vue 演示支付一致：渠道 + ≥4 位支付密码
+                place_body["payChannel"] = "alipay"
+                place_body["payPassword"] = "1234"
             main_flow.append(
                 _http_step(
                     portal,
@@ -483,7 +524,7 @@ def _run_flow_api_business(
                     "place",
                     "POST",
                     "/api/orders",
-                    json_body={"remark": "冒烟下单", "deliveryType": "pickup"},
+                    json_body=place_body,
                 )
             )
 
@@ -587,15 +628,28 @@ def _run_flow_api_business(
                 )
             )
         else:
-            main_flow.append(
-                _http_step(
-                    portal,
-                    base,
-                    "favorites",
-                    "POST",
-                    f"/api/favorites/{item_id}/toggle",
+            style = _api_style(spec)
+            if style.get("item_ref") == "body":
+                main_flow.append(
+                    _http_step(
+                        portal,
+                        base,
+                        "favorites",
+                        "POST",
+                        "/api/favorites/toggle",
+                        json_body={"itemId": item_id},
+                    )
                 )
-            )
+            else:
+                main_flow.append(
+                    _http_step(
+                        portal,
+                        base,
+                        "favorites",
+                        "POST",
+                        f"/api/favorites/{item_id}/toggle",
+                    )
+                )
             # 再打开「我的收藏」列表，对齐页面验收
             main_flow.append(
                 _http_step(
@@ -1052,43 +1106,55 @@ def run_student_api_smoke(
                 _warm_context(portal, base, ctx)
 
             ticket_mode = _ticket_mode(spec, None)
-            # gate 自检
-            t_g = time.perf_counter()
-            st_g, body_g, ferr_g = _request(
-                portal, "GET", urljoin(base, "/api/gate/ticket-main-path")
-            )
-            if ferr_g:
-                main_flow.append(
-                    {
-                        "name": "gate_self_check",
-                        "ok": False,
-                        "error_source": "factory",
-                        "detail": ferr_g,
-                        "ms": int((time.perf_counter() - t_g) * 1000),
-                    }
+            fa_preview = _flow_api(spec)
+            # gate 自检：仅单据主链域跑 ticket 自检；纯购物车/预约域跳过（否则误判学生失败）
+            if _ticket_flow_keys(fa_preview):
+                t_g = time.perf_counter()
+                st_g, body_g, ferr_g = _request(
+                    portal, "GET", urljoin(base, "/api/gate/ticket-main-path")
                 )
+                if ferr_g:
+                    main_flow.append(
+                        {
+                            "name": "gate_self_check",
+                            "ok": False,
+                            "error_source": "factory",
+                            "detail": ferr_g,
+                            "ms": int((time.perf_counter() - t_g) * 1000),
+                        }
+                    )
+                else:
+                    data_g = _r_data(body_g)
+                    gate_ok = False
+                    gate_detail = None
+                    if isinstance(data_g, dict):
+                        gate_ok = bool(data_g.get("ok"))
+                        if data_g.get("mode"):
+                            ticket_mode = _ticket_mode(spec, str(data_g.get("mode")))
+                        if not gate_ok:
+                            gate_detail = str(
+                                data_g.get("message") or "主路径未通过"
+                            )
+                    main_flow.append(
+                        {
+                            "name": "gate_self_check",
+                            "ok": gate_ok,
+                            "error_source": "student" if not gate_ok else None,
+                            "http_status": st_g,
+                            "detail": gate_detail,
+                            "student_body": body_g if not gate_ok else None,
+                            "ms": int((time.perf_counter() - t_g) * 1000),
+                        }
+                    )
             else:
-                data_g = _r_data(body_g)
-                gate_ok = False
-                gate_detail = None
-                if isinstance(data_g, dict):
-                    gate_ok = bool(data_g.get("ok"))
-                    if data_g.get("mode"):
-                        ticket_mode = _ticket_mode(spec, str(data_g.get("mode")))
-                    if not gate_ok:
-                        gate_detail = str(
-                            data_g.get("message") or "主路径未通过"
-                        )
                 main_flow.append(
-                    {
-                        "name": "gate_self_check",
-                        "ok": gate_ok,
-                        "error_source": "student" if not gate_ok else None,
-                        "http_status": st_g,
-                        "detail": gate_detail,
-                        "student_body": body_g if not gate_ok else None,
-                        "ms": int((time.perf_counter() - t_g) * 1000),
-                    }
+                    _step_result(
+                        "gate_self_check",
+                        ok=True,
+                        skip=True,
+                        error_source="skip",
+                        detail="本域主链非单据，跳过 ticket 自检",
+                    )
                 )
 
             # 全量 inventory

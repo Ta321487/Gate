@@ -1077,3 +1077,52 @@ def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]
         )
         written.append(f"islands/{name}")
     return written
+
+
+def text_has_factory_ui_forbidden(text: str) -> bool:
+    """原文是否含工厂禁词（门禁 / 覆写判定共用）。"""
+    if not text:
+        return False
+    for bad in FACTORY_UI_FORBIDDEN:
+        if bad in text:
+            return True
+    return factory_ui_polluted(text)
+
+
+def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
+    """工作区 Vue 仍脏、现网 baseline 已干净时，按相对路径覆写（不必整题重 bake）。
+
+    只动 frontend/src 下与 baseline 同路径且骨架侧已无禁词的文件。
+    """
+    from app.core.config import get_settings
+
+    sk_root = get_settings().skeletons_dir / "baseline" / "frontend" / "src"
+    fe = workspace / "frontend" / "src"
+    if not sk_root.is_dir() or not fe.is_dir():
+        return []
+    written: list[str] = []
+    for path in fe.rglob("*.vue"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if not text_has_factory_ui_forbidden(text):
+            continue
+        rel = path.relative_to(fe)
+        src = sk_root / rel
+        if not src.is_file():
+            continue
+        try:
+            clean = src.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if text_has_factory_ui_forbidden(clean):
+            # 骨架本身仍脏：应修骨架，勿用脏文件覆盖
+            continue
+        if clean == text:
+            continue
+        path.write_text(clean, encoding="utf-8")
+        written.append(
+            ("frontend/src/" + rel.as_posix()).replace("\\", "/")
+        )
+    return written
