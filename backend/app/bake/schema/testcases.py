@@ -285,7 +285,7 @@ _BLUEPRINTS: dict[str, Blueprint] = {
             "item": "发送与查看私信",
             "steps": ["进入「{label}」", "选择或新建会话对象", "发送一条私信", "另一账号打开会话查看"],
             "input": "私信正文",
-            "expected": "双方会话中可见互发消息（短轮询刷新）",
+            "expected": "双方会话中可见互发消息",
         }
     ],
     "favorites": [

@@ -12,16 +12,54 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 一对一私信（sys_dm_message）：MyBatis 实现；短轮询拉取。
+ * 站内一对一会话（sys_dm_message，MyBatis）。
+ * 前端定时拉取；不做第三方 IM。
+ * 店铺客服开启时：买家只联系入驻商家，商家只回复买家。
  */
 public class DmStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int BODY_MAX = 500;
     private static Boolean tableReady;
+    private static boolean shopCustomerService = false;
 
     private static DmMapper mapper() {
         return MybatisSupport.mapper(DmMapper.class);
+    }
+
+    public static void configureShopCustomerService(boolean enabled) {
+        shopCustomerService = enabled;
+    }
+
+    public static boolean shopCustomerService() {
+        return shopCustomerService;
+    }
+
+    private static boolean isMerchant(UserStore.Profile p) {
+        if (p == null || p.superAdmin) return false;
+        if (!"admin".equals(p.role)) return false;
+        String post = p.staffPost == null ? "" : p.staffPost.trim();
+        return "shop_merchant".equals(post);
+    }
+
+    private static boolean isBuyer(UserStore.Profile p) {
+        if (p == null || p.superAdmin) return false;
+        return !"admin".equals(p.role);
+    }
+
+    public static boolean canMessage(String from, String to) {
+        if (from == null || to == null) return false;
+        String f = from.trim();
+        String t = to.trim();
+        if (f.isBlank() || t.isBlank() || f.equals(t)) return false;
+        if (!shopCustomerService) return true;
+        UserStore.Profile a = UserStore.get(f);
+        UserStore.Profile b = UserStore.get(t);
+        if (a == null || b == null || !b.enabled) return false;
+        if (a.superAdmin || b.superAdmin) return true;
+        if (isBuyer(a) && isMerchant(b)) return true;
+        if (isMerchant(a) && isBuyer(b)) return true;
+        return false;
     }
 
     public static boolean ready() {
@@ -72,7 +110,19 @@ public class DmStore {
     public static List<Map<String, Object>> peers(String me, int limit) {
         if (!ready() || me == null || me.isBlank()) return List.of();
         int lim = limit < 1 ? 50 : Math.min(limit, 100);
-        return mapper().selectPeers(me.trim(), lim);
+        String u = me.trim();
+        if (!shopCustomerService) {
+            return mapper().selectPeers(u, lim);
+        }
+        UserStore.Profile self = UserStore.get(u);
+        if (self == null) return List.of();
+        if (self.superAdmin) {
+            return mapper().selectPeers(u, lim);
+        }
+        if (isMerchant(self)) {
+            return mapper().selectBuyerPeers(u, lim);
+        }
+        return mapper().selectMerchantPeers(u, lim);
     }
 
     public static List<Map<String, Object>> conversations(String me) {
@@ -122,6 +172,7 @@ public class DmStore {
         if (f.isBlank() || t.isBlank() || b.isBlank() || f.equals(t)) return null;
         Integer exists = mapper().userEnabled(t);
         if (exists == null || exists == 0) return null;
+        if (!canMessage(f, t)) return null;
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("fromUsername", f);
         row.put("toUsername", t);

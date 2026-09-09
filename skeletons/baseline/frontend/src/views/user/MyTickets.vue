@@ -112,7 +112,7 @@
           </p>
           <p v-if="row.passCode" class="sub pass-code">
             {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
-            <span class="muted">（不对接闸机）</span>
+            <span class="muted">到访时出示即可</span>
             <CodeQrBlock v-if="codeQrOn" :code="row.passCode" :label="passCodeLabel" />
           </p>
           <p v-if="row.attachUrl" class="sub">

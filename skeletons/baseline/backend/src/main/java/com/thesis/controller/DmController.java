@@ -68,7 +68,7 @@ public class DmController {
         }
         Map<String, Object> row = DmStore.send(uid, to, text);
         if (row == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "发送失败（对方不存在或不可发）");
+            throw new BizException(ErrorCode.BAD_REQUEST, "发送失败（对方不存在，或非客服可选对象）");
         }
         return R.ok(row);
     }

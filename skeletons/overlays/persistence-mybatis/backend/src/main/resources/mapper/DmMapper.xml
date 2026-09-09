@@ -11,6 +11,21 @@
         ORDER BY role DESC, id ASC
         LIMIT #{limit}
     </select>
+    <select id="selectMerchantPeers" resultType="map">
+        SELECT username, nickname, role FROM sys_user
+        WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
+          AND role='admin' AND IFNULL(super_admin,0)=0
+          AND IFNULL(staff_post,'')='shop_merchant'
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+    <select id="selectBuyerPeers" resultType="map">
+        SELECT username, nickname, role FROM sys_user
+        WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
+          AND role&lt;&gt;'admin'
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
     <select id="selectConversationPeers" resultType="map">
         SELECT peer_user AS peer, MAX(id) AS lastId FROM (
           SELECT CASE WHEN from_username=#{me} THEN to_username ELSE from_username END AS peer_user, id

@@ -429,6 +429,12 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         )
     dom_roles = list((DOMAINS.get(domain) or {}).get("roles") or [])
     out["roles"] = roles_for_spec(dom_roles, out["schema"])
+    # 收束：能力已开则用户菜单必有对应项（防壳文案重写 / 填岛漏挂）
+    from app.bake.schema.menu_utils import sync_user_menus_from_caps
+
+    sch_final = out.get("schema") if isinstance(out.get("schema"), dict) else {}
+    sync_user_menus_from_caps(sch_final)
+    out["schema"] = sch_final
     return out
 
 
@@ -545,8 +551,28 @@ def merge_schema(base: dict[str, Any], patch: dict[str, Any] | None) -> dict[str
     if isinstance(patch.get("menus"), dict):
         out.setdefault("menus", {})
         for side, items in patch["menus"].items():
-            if isinstance(items, list):
-                out["menus"][side] = items
+            if not isinstance(items, list):
+                continue
+            # 按 key 合并：禁止填岛整表替换把 favorites/dm/order_reviews 冲掉
+            base_list = list(out["menus"].get(side) or [])
+            by_key: dict[str, dict] = {}
+            order: list[str] = []
+            for m in base_list:
+                if not isinstance(m, dict) or not m.get("key"):
+                    continue
+                k = str(m["key"])
+                by_key[k] = dict(m)
+                order.append(k)
+            for m in items:
+                if not isinstance(m, dict) or not m.get("key"):
+                    continue
+                k = str(m["key"])
+                if k in by_key:
+                    by_key[k] = {**by_key[k], **m}
+                else:
+                    by_key[k] = dict(m)
+                    order.append(k)
+            out["menus"][side] = [by_key[k] for k in order if k in by_key]
     if isinstance(patch.get("entities"), dict):
         out.setdefault("entities", {})
         for ek, ev in patch["entities"].items():
@@ -574,6 +600,342 @@ _AUTH_LEAD_FALLBACK = "验证码登录，开放注册；登录后可使用系统
 # 开题合并正文 / 样例文件名不得上登录页与轮播
 _UI_COPY_DOM_ID_RE = re.compile(r"(?:^|[^\w-])DOM-[A-Z]{2,}(?:-|[^A-Z]|$)")
 _UI_COPY_SAMPLE_FILE_RE = re.compile(r"\d{1,2}-DOM-[A-Z]+")
+
+# 学生可见面禁止的工厂说明书腔（出包前全量扫）
+FACTORY_UI_FORBIDDEN: tuple[str, ...] = (
+    "双通道",
+    "分通道",
+    "双轨沟通",
+    "双轨",
+    "非即时通讯",
+    "非即时",
+    "短轮询",
+    "非 WebSocket",
+    "非WebSocket",
+    "非站内信",
+    "商家走商家端",
+    "商家端「留言",
+    "走商家端",
+    "由 bake",
+    "不含工厂",
+    "开题写明",
+    "开题写到",
+    "开题可",
+    "本开题",
+    "开题含",
+    "开题提及",
+    "材料命中",
+    "填岛",
+    "能力岛",
+    "本期不做",
+    "不在本期",
+    "本期不对接",
+    "本期不含",
+    "扫词开",
+    "不对接",
+    "不对接银行",
+    "不对接闸机",
+    "不对接学信网",
+    "不对接微信",
+    "不对接支付宝",
+    "第三方支付",
+    "商户平台",
+    "本系统内支付",
+    "本系统内支付流程",
+    "模拟支付",  # 学生端写「在线支付」
+    "无真支付",
+    "无真对象",
+    "占位 URL",
+    "占位URL",
+    "非真支付",
+    "非真机考",
+    "非真对象",
+    "非真锁座",
+    "非真门禁",
+    "非 CA",
+    "非CA",
+    "非法大大",
+    "非智能排课",
+    "弱约束",
+    "真门禁硬件",
+    "人脸/GPS",
+    "见 e_sign",
+    "本地签章见",
+)
+
+# 含禁词的括注整段去掉（保留主句）
+_FACTORY_PAREN_RE = re.compile(
+    r"[（(][^）)]*(?:"
+    + "|".join(re.escape(x) for x in (
+        "双通道",
+        "分通道",
+        "双轨",
+        "非即时",
+        "短轮询",
+        "WebSocket",
+        "非站内信",
+        "占位",
+        "无真",
+        "商户平台",
+        "第三方支付",
+        "本系统内",
+        "不对接",
+        "bake",
+        "开题",
+        "工厂",
+        "扫词",
+        "非真",
+        "非 CA",
+        "非CA",
+        "非法大大",
+        "非智能",
+        "弱约束",
+        "不在本期",
+        "本期不",
+        "真门禁",
+        "≠",
+        "e_sign",
+    ))
+    + r")[^）)]*[）)]"
+)
+
+_LABEL_FALLBACKS: dict[str, str] = {
+    "guestbookPageLead": "有问题可向平台留言，我们会尽快回复。",
+    "dmPageLead": "与其他用户一对一沟通，打开会话后自动刷新新消息。",
+    "dmNewTitle": "新建私信",
+    "dmPeerPlaceholder": "选择对方账号",
+    "dmEmptyPeers": "暂无会话，点「新建」选人开聊。",
+    "dmEmptyChat": "选择左侧会话，或新建私信。",
+    "demoPayHint": "在线支付：选择支付宝或微信并输入支付密码完成本单。",
+    "authLead": _AUTH_LEAD_FALLBACK,
+    "noticePageLead": "通知与须知，点击条目阅读全文。",
+    "messagesPageLead": "审核结果与系统通知。",
+    "orderReviewPageLead": "对已完成订单进行星级与文字评价。",
+    "eSignLead": "上传签章图并勾选同意后完成签署。",
+    "codeQrHint": "扫码可识别下方码文，用于现场出示核对。",
+    "docBrowseLead": "浏览开放资料，按权限下载；下载将记入台账。",
+    "staffRosterPageLead": "按员工与日期维护班次；预约页可查看当日当班人员。",
+}
+
+
+def factory_ui_polluted(text: str) -> bool:
+    """产品 UI / 种子文案是否混进工厂说明书口吻。"""
+    s = str(text or "")
+    if not s.strip():
+        return False
+    if ui_copy_polluted(s):
+        return True
+    for bad in FACTORY_UI_FORBIDDEN:
+        if bad in s:
+            return True
+    # DOM-* 域编号不得进学生可见句
+    if _UI_COPY_DOM_ID_RE.search(s) or "DOM-" in s:
+        return True
+    return False
+
+
+def scrub_factory_ui_text(text: str, *, fallback: str = "") -> str:
+    """去掉工厂括注；仍污染则回退到调用方给出的产品文案（勿拆分句硬凑）。"""
+    raw = str(text or "").strip()
+    if not raw:
+        return fallback
+    cleaned = _FACTORY_PAREN_RE.sub("", raw)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip(" ，,。.;；")
+    if cleaned != raw.strip():
+        # 只在剥掉括注后补句号，避免把短标题改成「客服。」
+        if cleaned and not cleaned.endswith(("。", "！", "？", ".", "!", "?")):
+            if any("\u4e00" <= c <= "\u9fff" for c in cleaned):
+                cleaned += "。"
+    if factory_ui_polluted(cleaned):
+        return fallback
+    return cleaned or fallback
+
+
+def find_factory_ui_hits(obj: Any, path: str = "") -> list[tuple[str, str, str]]:
+    """递归找出学生可见字符串中的工厂禁词命中：(path, bad, snippet)。"""
+    hits: list[tuple[str, str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            # 内部键不扫（能力码 / 表名等）
+            if k in (
+                "capabilities",
+                "runtime",
+                "gate",
+                "proposal_text",
+                "proposal",
+                "out_of_mvp",
+                "accept_reason",
+                "domain",
+                "archetype",
+                "archetypes",
+            ):
+                continue
+            hits.extend(find_factory_ui_hits(v, f"{path}.{k}" if path else str(k)))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            hits.extend(find_factory_ui_hits(v, f"{path}[{i}]"))
+    elif isinstance(obj, str):
+        s = obj.strip()
+        if not s:
+            return hits
+        for bad in FACTORY_UI_FORBIDDEN:
+            if bad in s:
+                hits.append((path or "(root)", bad, s[:120]))
+                break
+        else:
+            if _UI_COPY_DOM_ID_RE.search(s) or (
+                "DOM-" in s and not s.startswith("http")
+            ):
+                hits.append((path or "(root)", "DOM-*", s[:120]))
+    return hits
+
+
+def scrub_schema_student_copy(schema: dict[str, Any]) -> dict[str, Any]:
+    """出包前清洗 labels / seeds / 菜单文案等学生可见面。"""
+    if not isinstance(schema, dict):
+        return schema
+    out = dict(schema)
+    # 工厂键不进学生 schema 面
+    out.pop("dmPeerMode", None)
+
+    labels = dict(out.get("labels") or {})
+    shop_cs = bool(out.get("dmShopCs"))
+    for key, val in list(labels.items()):
+        fb = _LABEL_FALLBACKS.get(key, "")
+        if key == "dmPageLead" and shop_cs:
+            fb = "与店铺商家一对一沟通，打开会话后自动刷新新消息。"
+        if key == "dmNewTitle" and shop_cs:
+            fb = "联系商家客服"
+        if key == "dmPeerPlaceholder" and shop_cs:
+            fb = "选择店铺商家"
+        if key == "dmEmptyPeers" and shop_cs:
+            fb = "暂无会话，点「新建」选店铺商家。"
+        if key == "dmEmptyChat" and shop_cs:
+            fb = "选择左侧会话，或新建联系商家。"
+        if key == "guestbookPageLead" and shop_cs:
+            fb = "有问题可向平台留言，我们会尽快回复。"
+        if isinstance(val, str):
+            if factory_ui_polluted(val) or _FACTORY_PAREN_RE.search(val):
+                labels[key] = scrub_factory_ui_text(val, fallback=fb or "欢迎使用。")
+        elif isinstance(val, list):
+            new_list = []
+            changed = False
+            for item in val:
+                if isinstance(item, str) and factory_ui_polluted(item):
+                    new_list.append(scrub_factory_ui_text(item, fallback=""))
+                    changed = True
+                else:
+                    new_list.append(item)
+            if changed:
+                labels[key] = [x for x in new_list if x != ""]
+    out["labels"] = labels
+
+    seeds = dict(out.get("seeds") or {})
+    for key, val in list(seeds.items()):
+        if not isinstance(val, str):
+            continue
+        fb = "系统已就绪，欢迎使用。" if key == "noticeBody" else ""
+        if factory_ui_polluted(val):
+            seeds[key] = scrub_factory_ui_text(val, fallback=fb)
+    out["seeds"] = seeds
+
+    for surface_key in ("registerHint",):
+        raw = out.get(surface_key)
+        if isinstance(raw, str) and factory_ui_polluted(raw):
+            out[surface_key] = scrub_factory_ui_text(
+                raw, fallback="开放注册；管理员账号由系统维护。"
+            )
+
+    # auth / notice / homeCards 等嵌套文案
+    for surface_key in ("auth", "notice", "homeCards", "portal"):
+        raw = out.get(surface_key)
+        if isinstance(raw, str) and factory_ui_polluted(raw):
+            out[surface_key] = scrub_factory_ui_text(raw, fallback="")
+        elif isinstance(raw, dict):
+            nested = dict(raw)
+            changed = False
+            for nk, nv in list(nested.items()):
+                if isinstance(nv, str) and factory_ui_polluted(nv):
+                    nested[nk] = scrub_factory_ui_text(nv, fallback="")
+                    changed = True
+                elif isinstance(nv, list):
+                    nl = []
+                    lc = False
+                    for item in nv:
+                        if isinstance(item, str) and factory_ui_polluted(item):
+                            nl.append(scrub_factory_ui_text(item, fallback=""))
+                            lc = True
+                        elif isinstance(item, dict):
+                            im = dict(item)
+                            for ik in ("title", "lead", "label", "desc", "body", "text"):
+                                iv = im.get(ik)
+                                if isinstance(iv, str) and factory_ui_polluted(iv):
+                                    im[ik] = scrub_factory_ui_text(iv, fallback="")
+                                    lc = True
+                            nl.append(im)
+                        else:
+                            nl.append(item)
+                    if lc:
+                        nested[nk] = [x for x in nl if x != ""]
+                        changed = True
+            if changed:
+                out[surface_key] = nested
+        elif isinstance(raw, list):
+            nl = []
+            changed = False
+            for item in raw:
+                if isinstance(item, str) and factory_ui_polluted(item):
+                    nl.append(scrub_factory_ui_text(item, fallback=""))
+                    changed = True
+                elif isinstance(item, dict):
+                    im = dict(item)
+                    for ik in ("title", "lead", "label", "desc", "body", "text"):
+                        iv = im.get(ik)
+                        if isinstance(iv, str) and factory_ui_polluted(iv):
+                            im[ik] = scrub_factory_ui_text(iv, fallback="")
+                            changed = True
+                    nl.append(im)
+                else:
+                    nl.append(item)
+            if changed:
+                out[surface_key] = nl
+
+    ents = out.get("entities")
+    if isinstance(ents, dict):
+        ents_out: dict[str, Any] = {}
+        for ek, ev in ents.items():
+            if not isinstance(ev, dict):
+                ents_out[ek] = ev
+                continue
+            em = dict(ev)
+            for ik in ("label", "labelPlural", "lead", "hint"):
+                iv = em.get(ik)
+                if isinstance(iv, str) and factory_ui_polluted(iv):
+                    em[ik] = scrub_factory_ui_text(iv, fallback=str(em.get("key") or ek))
+            ents_out[ek] = em
+        out["entities"] = ents_out
+
+    menus = out.get("menus")
+    if isinstance(menus, dict):
+        menus_out: dict[str, Any] = {}
+        for role, items in menus.items():
+            if not isinstance(items, list):
+                menus_out[role] = items
+                continue
+            new_items = []
+            for m in items:
+                if not isinstance(m, dict):
+                    new_items.append(m)
+                    continue
+                mm = dict(m)
+                lab = mm.get("label")
+                if isinstance(lab, str) and factory_ui_polluted(lab):
+                    mm["label"] = scrub_factory_ui_text(lab, fallback=str(mm.get("key") or "菜单"))
+                new_items.append(mm)
+            menus_out[role] = new_items
+        out["menus"] = menus_out
+
+    return out
 
 
 def ui_copy_polluted(text: str) -> bool:
@@ -671,6 +1033,16 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
         labels["recommendLatestHint"] = "最新发布"
     if enabled and excerpt and excerpt != title and not seeds.get("noticeBody"):
         seeds["noticeBody"] = f"系统已就绪。{excerpt}"[:200]
+    # 开题摘录 / 既有种子不得把说明书腔带上公告
+    for sk, sv in list(seeds.items()):
+        if isinstance(sv, str) and factory_ui_polluted(sv):
+            fb = "系统已就绪，欢迎使用。" if sk == "noticeBody" else ""
+            seeds[sk] = scrub_factory_ui_text(sv, fallback=fb)
+    for lk, lv in list(labels.items()):
+        if isinstance(lv, str) and factory_ui_polluted(lv):
+            labels[lk] = scrub_factory_ui_text(
+                lv, fallback=_LABEL_FALLBACKS.get(lk, "欢迎使用。")
+            )
     return {
         "mode": "llm" if enabled else "deterministic",
         "labels": labels,
@@ -681,6 +1053,7 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
 
 def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]:
     """写入 domain.schema.json 与 islands 摘要，供 gate / 前端对照。"""
+    schema = scrub_schema_student_copy(schema)
     written: list[str] = []
     schema_path = workspace / "domain.schema.json"
     schema_path.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")

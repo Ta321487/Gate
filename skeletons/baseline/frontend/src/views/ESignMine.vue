@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2>鉴定签署</h2>
-    <p class="lead">上传签章图并勾选同意完成签署；非 CA、非法大大等第三方电子签平台。</p>
+    <p class="lead">{{ eSignLead }}</p>
     <el-form label-width="100px" class="form" @submit.prevent>
       <el-form-item label="签署标题" required>
         <el-input v-model="form.title" placeholder="如：实习鉴定确认" maxlength="200" />
@@ -53,9 +53,14 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { schemaLabels } from '../utils/domainSchema.js'
+
+const eSignLead = computed(
+  () => schemaLabels().eSignLead || '上传签章图并勾选同意后完成签署。',
+)
 
 const list = ref([])
 const total = ref(0)

@@ -133,7 +133,7 @@ const chartMode = computed(() => {
   return 'ticket'
 })
 
-/** bake 写入的借期/限额等，工作台只读展示 */
+/** 借期/限额等业务参数，工作台只读展示 */
 const configHint = computed(() => {
   const d = data.value || {}
   const parts = []

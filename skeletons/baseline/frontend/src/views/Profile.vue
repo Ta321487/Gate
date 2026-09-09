@@ -38,7 +38,7 @@
         <div v-if="tierOn"><span class="k">会员</span><strong>{{ loyalty.memberTierLabel || '—' }}</strong></div>
         <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>
       </div>
-      <p class="loy-hint">非真支付；余额由管理员充值，积分仅随订单完成赠送。</p>
+      <p class="loy-hint">余额由管理员充值，积分随订单完成赠送，可用于本站下单抵扣。</p>
     </section>
 
     <el-form

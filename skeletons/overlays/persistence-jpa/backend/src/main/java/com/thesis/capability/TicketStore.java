@@ -1510,7 +1510,7 @@ public final class TicketStore {
             }
             String code = passCode == null ? "" : passCode.trim();
             if (pass && !code.isBlank()) {
-                body = body + "。通行码：" + code + "（到访时出示即可，不对接闸机）。";
+                body = body + "。通行码：" + code + "（到访时出示即可）。";
             }
             java.util.Map<String, String> vars = new java.util.LinkedHashMap<>();
             vars.put("subject", subject);

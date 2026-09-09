@@ -101,5 +101,5 @@ INSERT IGNORE INTO thesis_topic (id, title, author, isbn, category_id, stock, st
 (2, '基于微服务的教务选课系统', '软件学院', '分布式与接口设计 · 可带 1 人', 1, 1, 'available', 'peer'),
 (3, '成绩数据分析与可视化大屏', '数学学院', '数据统计与可视化 · 可带 2 人', 2, 2, 'available', 'peer');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '选题双选须知', '提交志愿后由确认人接受或婉拒；管理端可调剂。智能推荐不在本期。', 'admin', '教务主管'
+SELECT '选题双选须知', '提交志愿后由确认人接受或婉拒；管理端可调剂。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选题双选须知');

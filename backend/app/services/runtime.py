@@ -232,6 +232,19 @@ def _log_has_fe_fatal(text: str) -> bool:
     return any(n in text for n in needles)
 
 
+def _log_has_be_fatal(text: str) -> bool:
+    """Maven/Spring 启动失败痕迹。-q 下未必有 BUILD FAILURE，须认 COMPILATION ERROR 等。"""
+    needles = (
+        "BUILD FAILURE",
+        "COMPILATION ERROR",
+        "Failed to execute goal",
+        "ERROR start backend",
+        "ERROR ensure DB",
+        "APPLICATION FAILED TO START",
+    )
+    return any(n in (text or "") for n in needles)
+
+
 def frontend_deps_ok(fe: Path) -> bool:
     return all((fe / rel).exists() for rel in _FE_REQUIRED_PKG_MARKERS)
 
@@ -633,11 +646,14 @@ def backend_status(project_id: str, port: int) -> str:
         or _http_ok(f"http://127.0.0.1:{port}/")
     ):
         return "healthy"
+    log = backend_log(project_id)
     if backend_running(project_id):
-        log = backend_log(project_id)
-        if "BUILD FAILURE" in log or "ERROR start backend" in log:
+        if _log_has_be_fatal(log):
             return "error"
         return "starting"
+    # Maven 编译失败后进程已退：须标 error，否则运行页把日志藏成「—」
+    if _log_has_be_fatal(log):
+        return "error"
     return "stopped"
 
 
@@ -647,11 +663,13 @@ def frontend_status(project_id: str, port: int) -> str:
         return "starting" if frontend_running(project_id) else "stopped"
     if _http_ok(f"http://127.0.0.1:{port}/"):
         return "healthy"
+    log = frontend_log(project_id)
     if frontend_running(project_id):
-        log = frontend_log(project_id)
         if _log_has_fe_fatal(log):
             return "error"
         return "starting"
+    if _log_has_fe_fatal(log):
+        return "error"
     return "stopped"
 
 

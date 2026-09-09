@@ -111,8 +111,19 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         self.assertIn("in_transit", states)
         self.assertIn("signed", states)
         self.assertEqual(schema.get("stockWarnBelow"), 10)
-        self.assertIn("双通道", (schema.get("labels") or {}).get("guestbookPageLead") or "")
-        self.assertEqual((schema.get("labels") or {}).get("dmPageTitle"), "客服")
+        self.assertEqual(
+            (schema.get("labels") or {}).get("guestbookPageLead"),
+            "有问题可向平台留言，我们会尽快回复。",
+        )
+        lead = (schema.get("labels") or {}).get("guestbookPageLead") or ""
+        for bad in ("双通道", "分通道", "商家端「留言反馈」", "非即时通讯", "开题", "bake"):
+            self.assertNotIn(bad, lead)
+        for key, val in (schema.get("labels") or {}).items():
+            if not isinstance(val, str):
+                continue
+            for bad in ("双通道", "分通道", "非即时通讯", "由 bake", "不含工厂", "DOM-"):
+                self.assertNotIn(bad, val, msg=f"labels.{key}")
+        # dm 文案由 apply_dm 按材料写入，不在 _shop_schema 里写死
 
     def test_single_farm_no_marketplace(self) -> None:
         schema = _shop_schema("农产品电商", "助农生鲜果蔬粮油")

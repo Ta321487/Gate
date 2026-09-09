@@ -82,5 +82,5 @@ INSERT IGNORE INTO doc_item (id, title, author, isbn, category_id, stock, status
   (3, '教职工内部制度汇编', '人事处', '仅管理人员可下载', 1, 1, 'available', '/uploads/staff-rules.pdf', 'staff');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '文库须知', '下载将记入台账；附件为占位 URL，无真对象存储签名与全文检索。', 'admin', '平台主管'
+SELECT '文库须知', '下载将记入台账；按权限开放附件下载。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='文库须知');

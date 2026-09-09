@@ -558,6 +558,9 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         and ("isSuperOnlyMenu" in schema_js or "SUPER_ONLY" in layout_src)
     )
 
+    copy_hits = _student_copy_hits(workspace, spec)
+    copy_ok = len(copy_hits) == 0
+
     results = {
         "p0a": {"ok": p0a, "label": "后端骨架"},
         "p0b": {"ok": p0b, "label": "前端骨架"},
@@ -604,13 +607,82 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
                 "master": master_detail,
             },
         },
+        "p3copy": {
+            "ok": copy_ok,
+            "label": "学生可见文案无工厂腔",
+            "desc": "干净"
+            if copy_ok
+            else f"发现 {len(copy_hits)} 处说明书口吻（双通道/开题/非真支付/不在本期等）",
+            "detail": {"hits": copy_hits[:12]},
+        },
         "checklist": checklist,
     }
     results["overall"] = all(
-        results[k]["ok"] for k in ("p0a", "p0b", "p1", "p2", "p3a", "p3b", "p3t", "p3d")
+        results[k]["ok"]
+        for k in ("p0a", "p0b", "p1", "p2", "p3a", "p3b", "p3t", "p3d", "p3copy")
     )
     results["zip_allowed"] = results["overall"]
     return results
+
+
+def _student_copy_hits(workspace: Path, spec: dict[str, Any]) -> list[dict[str, str]]:
+    """扫 schema / 交付 JS / 前端源码 / SQL 种子中的工厂说明书腔。
+
+    必须扫「未 scrub」的原文：先洗再查等于自欺，脏包会漏网。
+    """
+    from app.bake.domain_schema import FACTORY_UI_FORBIDDEN, find_factory_ui_hits
+
+    hits: list[dict[str, str]] = []
+    schema = dict(spec.get("schema") or {})
+    surfaces = {
+        "labels": schema.get("labels"),
+        "menus": schema.get("menus"),
+        "seeds": schema.get("seeds"),
+        "auth": schema.get("auth"),
+        "homeCards": schema.get("homeCards"),
+        "notice": schema.get("notice"),
+        "registerHint": schema.get("registerHint"),
+        "entities": schema.get("entities"),
+    }
+    for path, bad, snippet in find_factory_ui_hits(surfaces):
+        hits.append({"path": f"schema.{path}", "bad": bad, "snippet": snippet})
+
+    for rel in (
+        "frontend/src/appDelivered.js",
+        "frontend/public/domain.schema.json",
+        "domain.schema.json",
+        "schema.sql",
+        "backend/src/main/resources/schema.sql",
+        "sql/schema.sql",
+    ):
+        p = workspace / rel
+        if not p.is_file():
+            continue
+        text = _read(p)
+        for bad in FACTORY_UI_FORBIDDEN:
+            if bad in text:
+                # 取一行上下文
+                line = next((ln.strip() for ln in text.splitlines() if bad in ln), bad)
+                hits.append({"path": rel, "bad": bad, "snippet": line[:120]})
+                break
+
+    fe = workspace / "frontend" / "src"
+    if fe.is_dir():
+        # 只扫 Vue 展示文案；工具 JS 注释里的 ≠/DOM 不算产品文案
+        for p in fe.rglob("*.vue"):
+            text = _read(p)
+            for bad in FACTORY_UI_FORBIDDEN:
+                if bad in text:
+                    rel = str(p.relative_to(workspace)).replace("\\", "/")
+                    # Login 用开题/DOM 作污染过滤正则，不是展示句
+                    if p.name == "Login.vue" and (
+                        bad.startswith("开题") or bad.startswith("DOM") or "DOM-" in bad
+                    ):
+                        continue
+                    line = next((ln.strip() for ln in text.splitlines() if bad in ln), bad)
+                    hits.append({"path": rel, "bad": bad, "snippet": line[:120]})
+                    break
+    return hits
 
 
 def evaluate_generic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:

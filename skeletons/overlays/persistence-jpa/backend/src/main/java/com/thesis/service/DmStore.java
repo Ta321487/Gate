@@ -18,7 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 一对一私信（sys_dm_message）：用户↔用户；短轮询拉取，非站内信、非 WebSocket。
+ * 站内一对一会话（sys_dm_message）。
+ * 前端定时拉取新消息；不做第三方 IM。
  */
 public class DmStore {
 

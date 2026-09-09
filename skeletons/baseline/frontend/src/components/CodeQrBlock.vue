@@ -38,7 +38,7 @@ const labels = computed(() => getSchema()?.labels || {})
 const showVerb = computed(() => labels.value.codeQrShowVerb || '出示二维码')
 const printVerb = computed(() => labels.value.codeQrPrintVerb || '打印')
 const hint = computed(
-  () => labels.value.codeQrHint || '扫码可识别码文；用于出示核对，不对接闸机硬件。',
+  () => labels.value.codeQrHint || '扫码可识别码文，用于出示核对。',
 )
 
 const visible = ref(false)

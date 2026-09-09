@@ -380,7 +380,7 @@ public class TicketController {
         }
     }
 
-    /** 申请人续借（须开题挂 loan_renew） */
+    /** 申请人续借（须启用 loan_renew） */
     @PostMapping("/{id}/renew")
     public R<Map<String, Object>> renew(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);
@@ -393,7 +393,7 @@ public class TicketController {
         }
     }
 
-    /** 申请人确认借阅（须开题挂 book_hold；hold_ready → approved） */
+    /** 申请人确认借阅（须启用 book_hold；hold_ready → approved） */
     @PostMapping("/{id}/claim-hold")
     public R<Map<String, Object>> claimHold(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);

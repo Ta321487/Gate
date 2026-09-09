@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 工厂门禁探测：主路径自检 */
+/** 业务主路径自检（开发/演示用） */
 @RestController
 @RequestMapping("/api/gate")
 public class GateController {

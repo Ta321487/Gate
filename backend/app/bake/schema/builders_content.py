@@ -21,8 +21,8 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     if kind == "coursevod":
         noun, plural, author_lab, cat_lab = "课程视频", "课程库", "主讲教师", "课程类型"
         brow, user, admin = "点播课", "学员", "课程视频库主管（总管）"
-        lead = "验证码登录；浏览点播课视频、在线播放，收藏想看的课程（非选课占名额）。"
-        notice = "课程视频仅供学习点播；非选课占名额。请勿传播未授权内容。"
+        lead = "验证码登录；浏览点播课视频、在线播放，收藏想看的课程。"
+        notice = "课程视频仅供学习点播。请勿传播未授权内容。"
         banner_lead = "专业课、通识课、实验演示分类浏览，点击即可播放。"
         menu_u, fav_lead = "课程检索", "收藏想看的课程视频，方便回看。"
     elif kind == "campus":
@@ -90,8 +90,8 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     kind = music_product_kind(title, proposal_text)
     if kind == "karaoke":
         brow, user, admin = "点歌台", "听众", "点歌台主管（总管）"
-        lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲（非直播）。"
-        notice = "曲库供点歌试听；非直播连麦。请尊重版权。"
+        lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲。"
+        notice = "曲库供点歌试听。请尊重版权。"
         banner_lead = "热门点歌、校园原创、合唱分类浏览。"
         cat_lab = "歌单分区"
     elif kind == "campus":
@@ -451,7 +451,7 @@ def _doclib_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
         "seeds": {
             "noticeTitle": "文库须知",
-            "noticeBody": "下载将记入台账；附件为占位 URL，无真对象存储签名。",
+            "noticeBody": "下载将记入台账；按权限开放附件下载。",
         },
     }
     return _with_portal_banners(

@@ -32,20 +32,10 @@ from app.bake.engine_sql import _write
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:
     """把已合并的 schema 写入 islands / appDelivered / spec.json，并同步 thesis yml。"""
-    merged = dict(spec.get("schema") or {})
-    labels = dict(merged.get("labels") or {}) if isinstance(merged.get("labels"), dict) else {}
-    from app.bake.domain_schema import _AUTH_LEAD_FALLBACK, ui_copy_polluted
+    from app.bake.domain_schema import scrub_schema_student_copy
 
-    for key in ("authLead", "portalBannerWelcomeLead", "portalBannerLead"):
-        raw = str(labels.get(key) or "")
-        if ui_copy_polluted(raw):
-            labels[key] = (
-                _AUTH_LEAD_FALLBACK
-                if key == "authLead"
-                else ""
-            )
-    merged["labels"] = labels
-    spec["schema"] = merged
+    merged = scrub_schema_student_copy(dict(spec.get("schema") or {}))
+    spec = {**spec, "schema": merged}
     ok, errors = validate_schema(merged)
     if not ok:
         raise RuntimeError("schema 校验失败: " + "; ".join(errors))

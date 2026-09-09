@@ -174,7 +174,7 @@ const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const postOptions = computed(() => staffPosts())
 /** 有岗位表；撤销仍可用 */
 const canAppoint = computed(() => postOptions.value.length > 0)
-/** 是否允许把门户业务用户升岗；缺省按 false（须 bake 显式 true） */
+/** 是否允许把门户业务用户升岗；缺省 false（须 schema/yml 显式 true） */
 const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
@@ -366,7 +366,7 @@ async function openMute(row) {
 
 async function recharge(row) {
   const { value } = await ElMessageBox.prompt(
-    `为「${row.nickname || row.username}」充值账户余额（元，非真支付）`,
+    `为「${row.nickname || row.username}」充值账户余额（元）`,
     '账户余额充值',
     {
       inputValue: '100',

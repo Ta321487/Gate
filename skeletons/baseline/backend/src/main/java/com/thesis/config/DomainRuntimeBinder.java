@@ -17,6 +17,7 @@ import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
 import com.thesis.service.MessageStore;
+import com.thesis.service.DmStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.SurveyStore;
 import com.thesis.service.UserStore;
@@ -367,6 +368,10 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.shop-marketplace:false}")
     private boolean shopMarketplace;
 
+    /** 店铺客服选人 */
+    @Value("${thesis.dm-shop-cs:false}")
+    private boolean dmShopCs;
+
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
@@ -386,11 +391,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
         ArchiveStore.configureProductSpec(productSpecEnabled);
         ArchiveStore.configureShopMarketplace(shopMarketplace);
+        DmStore.configureShopCustomerService(dmShopCs);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }
         if (ticketAllowCheckin) {
-            // checkin_code 由 bake 写入档案表；此处不再 ALTER
+            // checkin_code 已随档案表 schema 建好；此处不再 ALTER
         }
         if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
             if ("standalone".equalsIgnoreCase(ticketMode)) {

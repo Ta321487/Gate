@@ -98,5 +98,5 @@ INSERT IGNORE INTO visit_zone (id, title, author, isbn, category_id, stock, stat
 (2, '行政楼接待室', '中区', '需提前预约', 2, 20, 'available'),
 (3, '信息楼机房区', '西区', '须院系陪同', 3, 10, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '访客须知', '预约通过后出示通行码；真门禁硬件不在本期。', 'admin', '门卫主管'
+SELECT '访客须知', '预约通过后出示通行码。', 'admin', '门卫主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='访客须知');

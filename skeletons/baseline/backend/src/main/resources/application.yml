@@ -27,7 +27,7 @@ management:
       exposure:
         include: health,info
 
-# thesis 段由 bake 按本项目能力重写（只保留用到的键；不含工厂 domain 编号）
+# 课题业务配置（按本系统启用的功能填写）
 thesis:
   title: ${PROJECT_TITLE}
   register-role: user

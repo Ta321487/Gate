@@ -84,7 +84,7 @@ def attach_doclib_menus(schema: dict[str, Any]) -> None:
     labels.setdefault("docBrowseTitle", "文库浏览")
     labels.setdefault(
         "docBrowseLead",
-        "浏览开放资料，按权限下载；下载将记入台账（非真对象存储签名）。",
+        "浏览开放资料，按权限下载；下载将记入台账。",
     )
     labels.setdefault("docMineTitle", "我的下载")
     ents = schema.setdefault("entities", {})

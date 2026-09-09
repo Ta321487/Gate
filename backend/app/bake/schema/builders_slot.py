@@ -120,8 +120,8 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     if marketplace:
         brow = "多商家商城" if pk != "farm" else "多商家助农商城"
         lead = (
-            "用户端购物、商家端入驻开店、管理端平台监管；"
-            "平台管理员由系统预制，不开放自助注册。"
+            "买家选购下单，商家入驻开店，平台统一监管；"
+            "平台管理员为系统预制账号，不开放自助注册。"
         )
     schema = order_shell_schema(
         title,
@@ -199,19 +199,12 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 m["label"] = "我的订单"
         labels["noticePageTitle"] = "活动公告" if pk != "farm" else "农产活动"
         labels["guestbookPageTitle"] = "留言反馈"
-        labels["guestbookPageLead"] = (
-            "买家向平台留言；商家走商家端「留言反馈」与平台沟通（双通道，非即时通讯）。"
-        )
-        labels["dmPageTitle"] = "客服"
-        labels["dmPageLead"] = "与店铺客服一对一沟通（短轮询私信，非即时通讯）。"
+        labels["guestbookPageLead"] = "有问题可向平台留言，我们会尽快回复。"
         labels["orderReviewPageTitle"] = "我的评价"
         labels["orderReviewPageLead"] = "对已完成订单进行星级与文字评价。"
-        labels["usersAdminLead"] = "用户管理与商家审核分开展示；启用即审核通过。"
-        labels["ordersAdminLead"] = "含发货、物流与售后审核（申请售后在买家订单）。"
-        labels["demoPayHint"] = (
-            "在线支付：选择支付宝或微信并输入支付密码完成本单"
-            "（本系统内支付流程，不对接银行或微信/支付宝商户平台）。"
-        )
+        labels["usersAdminLead"] = "管理买家账号，审核商家入驻申请。"
+        labels["ordersAdminLead"] = "处理发货、物流与售后申请。"
+        labels["demoPayHint"] = "在线支付：选择支付宝或微信并输入支付密码完成本单。"
         labels["stockWarnHint"] = "库存低于预警值时高亮提示商家补货。"
         schema["demoPay"] = True
         schema["stockWarnBelow"] = 10
@@ -227,6 +220,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "completed": "已完成",
                 "cancelled": "已取消",
             }
+        # 多店默认会再扫入 dm/favorites/order_review；此处先占位文案，菜单由 attach_accept 收束
     return schema
 
 

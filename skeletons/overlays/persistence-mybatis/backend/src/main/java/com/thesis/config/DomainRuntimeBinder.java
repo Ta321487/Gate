@@ -17,6 +17,7 @@ import com.thesis.capability.TicketLookupStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
 import com.thesis.service.MessageStore;
+import com.thesis.service.DmStore;
 import com.thesis.service.DoclibStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.SurveyStore;
@@ -342,6 +343,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.product-spec-enabled:false}")
     private boolean productSpecEnabled;
 
+    @Value("${thesis.dm-shop-cs:false}")
+    private boolean dmShopCs;
+
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
@@ -360,6 +364,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
         ArchiveStore.configureProductSpec(productSpecEnabled);
+        DmStore.configureShopCustomerService(dmShopCs);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }

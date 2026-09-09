@@ -15,7 +15,7 @@ final class TicketCopy {
     static String FINE_PAID_LABEL = "费用已结清";
     static String ARCHIVE_LABEL = "";
     static String APPLY_DEADLINE_LABEL = "报名截止";
-    /** bake 写入；空则运行时按动词兜底 */
+    /** 同档案互斥提示；空则运行时按动词兜底 */
     static String SIBLING_REJECT_TIP = "";
     /** C-06：维度 key → 显示名；空 = 单分评分 */
     static List<Map<String, String>> RATING_DIMS = List.of();
@@ -23,7 +23,7 @@ final class TicketCopy {
 
     private TicketCopy() {}
 
-    /** 读取 bake 写入的 domain-ticket-copy.json（states/verbs 文案）。 */
+    /** 读取 domain-ticket-copy.json（states/verbs 文案）。 */
     static void loadCopyFromResource() {
         Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-copy.json");
         if (root.isEmpty()) return;
@@ -94,7 +94,7 @@ final class TicketCopy {
         return ARCHIVE_LABEL.isBlank() ? "项目" : ARCHIVE_LABEL;
     }
 
-    /** 库存扣尽自动驳回文案；无 bake 配置时按申请动词兜底（与 bake/ticket_copy_text 同源规则）。 */
+    /** 库存扣尽自动驳回文案；未配置时按申请动词兜底。 */
     static String siblingRejectTip() {
         if (!SIBLING_REJECT_TIP.isBlank()) return SIBLING_REJECT_TIP;
         return fallbackSiblingRejectTip(archiveNoun(), verbLabel("apply", "申请"));

@@ -16,6 +16,10 @@ public interface DmMapper {
 
     List<Map<String, Object>> selectPeers(@Param("me") String me, @Param("limit") int limit);
 
+    List<Map<String, Object>> selectMerchantPeers(@Param("me") String me, @Param("limit") int limit);
+
+    List<Map<String, Object>> selectBuyerPeers(@Param("me") String me, @Param("limit") int limit);
+
     List<Map<String, Object>> selectConversationPeers(@Param("me") String me);
 
     List<Map<String, Object>> selectMessages(

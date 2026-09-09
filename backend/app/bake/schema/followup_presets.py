@@ -581,8 +581,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "archive_menu_user": "岗位说明",
         "auth_eyebrow": "实习周报",
         "auth_lead": (
-            "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅"
-            "（≠投简历找岗、≠同时入职多家）。"
+            "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅。"
         ),
         "auth_points": ["验证码登录", "本人周报填单", "审阅与完结"],
         "register_hint": "注册后可提交实习周报",
@@ -590,7 +589,6 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "notice_body": (
             "请按周填写工作与问题；在「我的周报」选已建档岗提交。"
             "「实习中」仅标在关联岗；岗位说明页可查阅开放岗。"
-            "CA/第三方电子签平台不在本期，本地签章见 e_sign。"
         ),
         "notice_page_title": "就业办公告",
         "notice_page_lead": "实习节点与周报要求，点击条目阅读全文。",
@@ -655,14 +653,14 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "archive_menu_user": "本人件",
         "auth_eyebrow": "校园驿站",
         "auth_lead": (
-            "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库（≠跑腿代买）。"
+            "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库。"
         ),
         "auth_points": ["验证码登录", "本人件", "凭码取件", "店员核销"],
         "register_hint": "注册手机号用于匹配本人待取件",
         "notice_title": "取件须知",
         "notice_body": (
             "登录手机号匹配本人待取件；在「我的取件」凭取件码提交，到站出示后由店员核销。"
-            "包裹查阅页仅展示本人件。智能柜硬件不在本期。"
+            "包裹查阅页仅展示本人件。"
         ),
         "notice_page_title": "驿站公告",
         "notice_page_lead": "营业时间与催取通知，点击条目阅读全文。",

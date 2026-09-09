@@ -944,7 +944,7 @@ function stockText(row) {
   return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : `暂无${stockCountLabel.value}`
 }
 
-/** 与 bake ticket_copy_text.stock_unavailable_label 同规则，无 schema 字段时兜底 */
+/** 库存不足文案：与 schema 库存标签同规则，无字段时兜底 */
 function stockUnavailableFrom(stockLabel) {
   const s = String(stockLabel || '可用').trim() || '可用'
   if (s.startsWith('可')) return `已${s.slice(1)}`

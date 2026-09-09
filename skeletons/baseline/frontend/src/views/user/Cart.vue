@@ -159,7 +159,7 @@
           />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
-          <p v-if="walletOn && !demoPay">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}（非真支付）</p>
+          <p v-if="walletOn && !demoPay">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}</p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
@@ -207,7 +207,7 @@ const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
-  () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单（本系统内支付流程）。',
+  () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单。',
 )
 const pointsOn = computed(() => isPointsEnabled())
 const discountOn = computed(() => isSpendDiscountEnabled())

@@ -43,7 +43,7 @@ INSERT IGNORE INTO media (id, title, author, isbn, category_id, stock, status) V
 (4, 'Python 入门第 3 讲', '赵老师', 'https://www.w3schools.com/html/mov_bbb.mp4', 1, 1, 'available'),
 (5, '大学写作通识精讲', '陈老师', 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '点播须知', '课程视频仅供学习点播；非选课占名额。请勿传播未授权内容。', 'admin', '课程视频库主管'
+SELECT '点播须知', '课程视频仅供学习点播。请勿传播未授权内容。', 'admin', '课程视频库主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点播须知' OR title='观影须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '专业课与实验演示已更新，欢迎收藏想看。', 'admin', '课程视频库主管'
@@ -67,7 +67,7 @@ INSERT IGNORE INTO track (id, title, author, isbn, category_id, stock, status) V
 (4, '毕业季点歌 · 同行', '点歌台曲库', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 1, 1, 'available'),
 (5, '运动会进行曲', '军乐队', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 3, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '点歌须知', '曲库供点歌试听；非直播连麦。请尊重版权。', 'admin', '点歌台主管'
+SELECT '点歌须知', '曲库供点歌试听。请尊重版权。', 'admin', '点歌台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点歌须知' OR title='试听须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '本周上新', '热门点歌与校园原创已更新，欢迎收藏喜欢。', 'admin', '点歌台主管'

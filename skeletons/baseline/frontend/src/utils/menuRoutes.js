@@ -1,6 +1,6 @@
 /**
- * 菜单 key → 路径（与 backend/app/bake/menu_routes.py 同表）。
- * PortalLayout / AdminLayout / PortalHome 共用，禁止再复制 MENU_TO。
+ * 菜单 key → 路径。
+ * PortalLayout / AdminLayout / PortalHome 共用，勿再复制一份路由表。
  */
 
 export const USER_MENU_PATHS = {

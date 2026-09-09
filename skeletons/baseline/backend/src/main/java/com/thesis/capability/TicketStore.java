@@ -28,7 +28,7 @@ public final class TicketStore {
     public static final double FINE_PER_DAY = 0.5;
     public static final int MAX_ACTIVE = 5;
 
-    /** bake 经 thesis.ticket-* 写入；学生包无配置表 */
+    /** 借期等：thesis.ticket-*；无独立配置表时写在 yml */
     private static int bizLoanDays = LOAN_DAYS;
     private static int bizMaxActive = MAX_ACTIVE;
     private static double bizFinePerDay = FINE_PER_DAY;
@@ -41,7 +41,7 @@ public final class TicketStore {
 
     static String TICKET = "borrow";
     static String PROGRESS = "";
-    /** archive 行外键物理列（bake：book_id / customer_id / activity_id …） */
+    /** 档案行外键物理列（如 book_id / customer_id / activity_id） */
     static String ITEM_FK = "book_id";
     static Mode MODE = Mode.ARCHIVE;
     static boolean enabled = false;
@@ -79,15 +79,15 @@ public final class TicketStore {
     static double noShowPenaltyYuan = 0;
     /** 申请时可自选到期日（写入 due_at；审批时沿用） */
     static boolean pickLoanPeriod = false;
-    /** 开题扫词：允许续借（延长 due_at） */
+    /** 允许续借（延长 due_at） */
     static boolean allowRenew = false;
     /** 单次借出最多续借次数 */
     static int maxRenew = 1;
     /** 每次续借延长天数；≤0 则跟 loanDays */
     static int renewDays = 0;
-    /** 开题扫词：名额满可候补（waitlisted） */
+    /** 名额满可候补（waitlisted） */
     static boolean allowWaitlist = false;
-    /** 开题扫词：无库存可图书预约（held → hold_ready） */
+    /** 无库存可预约到书（held → hold_ready） */
     static boolean allowBookHold = false;
     /** 到书后限时确认借阅小时数 */
     static int holdHours = 48;
@@ -137,7 +137,7 @@ public final class TicketStore {
         loadTicketColumnsFromResource();
     }
 
-    /** 报修等：无档案占用；deadline 可由开题 SLA（超时未处理）打开 */
+    /** 报修等：无档案占用；超时未处理 SLA 可打开 deadline */
     public static void bindStandalone(String ticketTable) {
         bindStandalone(ticketTable, false);
     }
@@ -169,7 +169,7 @@ public final class TicketStore {
         PROGRESS = TICKET == null || TICKET.isBlank() ? "" : TICKET + "_progress";
     }
 
-    /** 幂等建表：未 bake 进 schema 的旧库也能写出进度。 */
+    /** 幂等建表：缺进度表时也能写出流转记录。 */
     static void ensureProgressTable() {
         if (PROGRESS == null || PROGRESS.isBlank()) return;
         try {
@@ -212,11 +212,11 @@ public final class TicketStore {
         return threeLevelApprove;
     }
 
-    /** 自选借期 + 申请数量（设备/图书等开题常见；时间银行核销小时数可无库存） */
+    /** 自选借期 + 申请数量（设备/图书常见；时间银行核销小时数可无库存） */
     public static void configureLoanOptions(boolean pickPeriod, boolean qtyEnabled) {
         pickLoanPeriod = pickPeriod && useDeadline;
         allowQty = qtyEnabled && MODE == Mode.ARCHIVE && (useQuota || timebankRedeem);
-        // qty 列由 bake 按域/能力写入，禁止运行时 ALTER
+        // qty 列随本系统 schema 建表，禁止运行时 ALTER
     }
 
     /** C-14：审核通过扣减时长；须在 configureLoanOptions 前或后再调一次 refresh */
@@ -231,7 +231,7 @@ public final class TicketStore {
     public static void configureApplyExtras(boolean remarkRequired, boolean dateRange) {
         requireRemark = remarkRequired;
         pickDateRange = dateRange && MODE == Mode.ARCHIVE;
-        // period_* 列由 bake 写入
+        // period_* 列随本系统 schema 建表
     }
 
     /** 审核即收口：通过/驳回都算办结，不再把 approved 算作处理中 */
@@ -402,10 +402,10 @@ public final class TicketStore {
     public static void configureRules(boolean mutex, int catLimit) {
         checkMutex = mutex;
         categoryLimit = Math.max(0, catLimit);
-        // mutex_code 由 bake 写入档案表
+        // mutex_code 随档案表 schema 建表
     }
 
-    /** bake 灌入的借期/在途上限/逾期费/默认领取地（≤0 或空表示保持默认） */
+    /** 借期/在途上限/逾期费/默认领取地（≤0 或空表示保持默认） */
     public static void configureBizParams(int loanDays, int maxActive, double finePerDay, String pickupPlace) {
         if (loanDays > 0) bizLoanDays = Math.min(365, loanDays);
         if (maxActive > 0) bizMaxActive = Math.min(200, maxActive);
@@ -453,7 +453,7 @@ public final class TicketStore {
 
     public static void configureCheckin(boolean enabled) {
         allowCheckin = enabled;
-        // checked_in_at / 档案 checkin_code 由 bake 按能力写入
+        // checked_in_at / 档案 checkin_code 随能力写入 schema
     }
 
     public static void configurePeerAccept(boolean enabled) {
@@ -1144,17 +1144,17 @@ public final class TicketStore {
         }
     }
 
-    /** 默认借期（天）：bake 写入，缺省 LOAN_DAYS */
+    /** 默认借期（天）：thesis 配置，缺省 LOAN_DAYS */
     public static int loanDays() {
         return bizLoanDays;
     }
 
-    /** 每人在途单据上限：bake 写入，缺省 MAX_ACTIVE */
+    /** 每人在途单据上限：thesis 配置，缺省 MAX_ACTIVE */
     public static int maxActive() {
         return bizMaxActive;
     }
 
-    /** 逾期预估单价：bake 写入，缺省 FINE_PER_DAY */
+    /** 逾期预估单价：thesis 配置，缺省 FINE_PER_DAY */
     public static double finePerDay() {
         return bizFinePerDay;
     }
@@ -1261,7 +1261,7 @@ public final class TicketStore {
                     "待终审", "复审通过");
             return get(ticketId);
         }
-        // 二级：首关 → 待终审（不扣库存）；文案跟 bake verbs（报修「受理」等），勿写死「初审」
+        // 二级：首关 → 待终审（不扣库存）；文案跟 verbs（报修「受理」等），勿写死「初审」
         if (twoLevelApprove && !threeLevelApprove && first) {
             String approveV = TicketCopy.verbLabel("approve", "通过");
             String waitLab = TicketCopy.stateLabel("pending_final", "待终审");
@@ -1638,7 +1638,7 @@ public final class TicketStore {
             }
             String code = passCode == null ? "" : passCode.trim();
             if (pass && !code.isBlank()) {
-                body = body + "。通行码：" + code + "（到访时出示即可，不对接闸机）。";
+                body = body + "。通行码：" + code + "（到访时出示即可）。";
             }
             java.util.Map<String, String> vars = new java.util.LinkedHashMap<>();
             vars.put("subject", subject);
@@ -2030,7 +2030,7 @@ public final class TicketStore {
     }
 
     /**
-     * 续借：延长应还日。须开题挂 loan_renew；仅借出中/逾期可续，受 maxRenew 限制。
+     * 续借：延长应还日。须启用 loan_renew；仅借出中/逾期可续，受 maxRenew 限制。
      */
     public static Map<String, Object> renew(long ticketId, String username) {
         if (!allowRenew) throw new IllegalStateException("当前未开启续借");
@@ -2296,7 +2296,7 @@ public final class TicketStore {
     }
 
     static void ensureL1Columns() {
-        // no-op：单据扩展列由 bake 按域/能力写入，禁止运行时补 L1 超集
+        // no-op：单据扩展列随本系统 schema 建表，禁止运行时补审级超集
     }
 
     /** CRM 等：申请后补写可选列 */
