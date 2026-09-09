@@ -1,4 +1,4 @@
-﻿    const projects = [
+    const projects = [
       { id: "gf-20260717-001", name: "基于 Spring Boot 的图书借阅管理系统", arch: "ARCH-FLOW · DOM-LIBRARY", status: "needs_confirm", statusLabel: "待确认匹配", pill: "pill-amber", runtime: "—", running: false, updated: "刚刚", deliveryMark: "none", zipOk: false },
       { id: "gf-20260716-014", name: "宿舍报修管理系统", arch: "ARCH-FLOW · DOM-DORM", status: "generated", statusLabel: "已生成 · 质检通过", pill: "pill-green", runtime: "—", running: false, updated: "昨天 21:10", deliveryMark: "none", zipOk: true },
       { id: "gf-20260716-011", name: "校园二手交易平台", arch: "ARCH-TRADE · DOM-SHOP", status: "failed", statusLabel: "质量检查未过 · 暂不可下载", pill: "pill-red", runtime: "—", running: false, updated: "昨天 18:40", deliveryMark: "none", zipOk: false },
@@ -1551,7 +1551,7 @@
       if (action === "view-modules") {
         setProjectTab("artifacts");
         setArtifactView("thesis");
-        openModal("功能模块图", "演示：按交付菜单推导；可切换「按业务 / 按端」。\n节点：门户浏览 · 借阅申请 · 管理审核 · 公告 …");
+        openModal("功能模块图", "演示：优先读材料按身份枚举；可切换「按身份 / 按业务」。\n节点：用户 · 商家 · 管理员 …");
         return;
       }
       if (action === "view-testcases") {

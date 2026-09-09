@@ -232,7 +232,7 @@
             <div class="artifact-pane stack">
               <p v-if="artifactLoading" class="small muted">加载中…</p>
               <p class="small muted mb-8">
-                贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。均按交付菜单推导，不发明功能。
+                贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；测例按交付菜单推导，不发明功能。
               </p>
               <div class="thesis-cards">
                 <div class="thesis-card">
@@ -249,7 +249,7 @@
                       }}
                     </span>
                   </div>
-                  <p class="small muted">按业务 / 按端切换 · 黑白线框 · 复制 PNG 或下载矢量</p>
+                  <p class="small muted">按身份 / 按业务切换 · 可展开细节 · 黑白线框 · 复制 PNG 或下载矢量</p>
                   <n-button
                     size="small"
                     type="primary"
@@ -503,6 +503,9 @@
                 :delivery-review="p.delivery_review || {}"
                 :disabled="artifactsFrozen || !p.workspace_path"
                 :reload="load"
+                :show-scrub-copy="copyGateNeedsScrub"
+                :scrub-busy="copyScrubBusy"
+                :scrub-copy="scrubStudentCopy"
               />
             </div>
 
@@ -517,11 +520,37 @@
                     {{ canDownload ? '可下载' : '暂不可下载' }}
                   </span>
                 </div>
+                <n-button
+                  v-if="copyGateNeedsScrub"
+                  size="small"
+                  type="primary"
+                  :disabled="artifactsFrozen || !p.workspace_path"
+                  :loading="copyScrubBusy"
+                  @click="scrubStudentCopy"
+                >
+                  工厂清洗文案
+                </n-button>
               </div>
               <p class="small muted" style="margin:0">
                 机器质检未通过时不可下载。工程变更后请在「交付复审」验圈并合卷。人工履约标记在页头操作。
               </p>
               <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
+              <div v-if="copyGateNeedsScrub || copyGateHits.length" class="mt-12">
+                <div class="parse-sec-hd">工厂腔命中 · {{ copyGateHits.length || '—' }} 处</div>
+                <p class="small muted" style="margin:0 0 8px">
+                  点上方「工厂清洗文案」调用工厂 scrub（与出包同源）；不必手改学生包。洗完后到「交付复审」验圈并合卷。
+                </p>
+                <ul v-if="copyGateHits.length" class="zone-list" style="margin:0">
+                  <li v-for="(h, i) in copyGateHits" :key="i">
+                    <strong>{{ h.bad }}</strong>
+                    <span class="muted"> · {{ h.path }}</span>
+                    <div class="small muted" style="margin-top:2px">{{ h.snippet }}</div>
+                  </li>
+                </ul>
+                <p v-else class="small muted" style="margin:0">
+                  门禁未过但未带回命中明细时，仍可直接清洗后验圈。
+                </p>
+              </div>
               <div class="parse-sec-hd mt-12">清单实装验收</div>
               <p class="small muted" style="margin:0 0 8px">
                 扫描已生成工程，核对 Spec 清单各项是否在 ZIP 中有对应路由/实现（与生成前「措辞核对」不是同一检查）。
@@ -557,7 +586,7 @@ const {
   erLayoutKey, erLoading, erMode, erSvgSource, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
-  gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
+  copyGateHits, copyGateNeedsScrub, copyScrubBusy, scrubStudentCopy, gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,

@@ -768,10 +768,11 @@ async def download_er_svg(
 @router.get("/{project_id}/schema/modules", summary="功能模块树")
 async def get_modules(
     project_id: str,
-    layout: str = Query("biz", description="biz=按业务拆 · side=按端拆"),
+    layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
+    expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
     db: AsyncSession = Depends(get_db),
 ):
-    """菜单 + features 推导的功能模块树（供产物页 / 论文模块图）。"""
+    """按身份（材料优先）或按业务推导功能模块树。"""
     from app.bake.schema.modules import load_module_model, normalize_module_layout
     from app.services.proposal import load_merged_proposal_text
 
@@ -786,7 +787,10 @@ async def get_modules(
     except Exception:
         prop = ""
     model = load_module_model(
-        ws, proposal_text=prop, layout=normalize_module_layout(layout)
+        ws,
+        proposal_text=prop,
+        layout=normalize_module_layout(layout),
+        expand_details=expand_details,
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
@@ -796,7 +800,8 @@ async def get_modules(
 @router.get("/{project_id}/schema/modules.svg", summary="下载功能模块图 SVG")
 async def download_modules_svg(
     project_id: str,
-    layout: str = Query("biz", description="biz=按业务拆 · side=按端拆"),
+    layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
+    expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi.responses import Response
@@ -819,7 +824,12 @@ async def download_modules_svg(
     except Exception:
         prop = ""
     layout_n = normalize_module_layout(layout)
-    model = load_module_model(ws, proposal_text=prop, layout=layout_n)
+    model = load_module_model(
+        ws,
+        proposal_text=prop,
+        layout=layout_n,
+        expand_details=expand_details,
+    )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
     svg = render_module_svg(model)
@@ -1284,6 +1294,31 @@ async def run_delivery_qa(project_id: str, db: AsyncSession = Depends(get_db)):
         qa=qa,
         gates=p.gates or {},
         download_blocked_reason=project_svc.delivery_block_reason(p),
+    )
+
+
+@router.post("/{project_id}/scrub-student-copy", response_model=ApiOk, summary="清洗学生可见工厂腔")
+async def scrub_student_copy(project_id: str, db: AsyncSession = Depends(get_db)):
+    """复用 bake 同源 scrub，回写 schema / appDelivered；不手改业务源码。"""
+    from app.services.student_copy import scrub_project_student_copy
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if p.status == ProjectStatus.generating.value:
+        raise HTTPException(409, "生成中 · 请稍后再清洗文案")
+    try:
+        result = scrub_project_student_copy(p)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    project_svc.reset_delivery_mark(p)
+    await db.commit()
+    await db.refresh(p)
+    return ApiOk(
+        message="已清洗工厂腔 · 请验圈后合卷"
+        if result.get("copy_ok")
+        else "已尝试清洗 · 仍有残留（骨架侧也可能未干净，见命中路径）",
+        data=result,
     )
 
 

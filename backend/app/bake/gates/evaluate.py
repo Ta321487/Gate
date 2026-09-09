@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,19 @@ from app.bake.engine import TABLE_COUNT_MAX, TABLE_COUNT_MIN, count_create_table
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+
+
+_VUE_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
+_VUE_LINE_COMMENT_RE = re.compile(r"(?<!:)//.*?$", re.M)
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+
+
+def _strip_vue_comments(text: str) -> str:
+    """门禁扫展示文案时去掉注释，避免『由 bake』等实现注记误伤。"""
+    t = _VUE_BLOCK_COMMENT_RE.sub(" ", text)
+    t = _HTML_COMMENT_RE.sub(" ", t)
+    t = _VUE_LINE_COMMENT_RE.sub(" ", t)
+    return t
 
 
 def _has_files(workspace: Path, rels: list[str]) -> tuple[bool, list[str]]:
@@ -668,9 +682,10 @@ def _student_copy_hits(workspace: Path, spec: dict[str, Any]) -> list[dict[str, 
 
     fe = workspace / "frontend" / "src"
     if fe.is_dir():
-        # 只扫 Vue 展示文案；工具 JS 注释里的 ≠/DOM 不算产品文案
+        # 只扫 Vue 展示文案；注释里的实现注记不算产品文案
         for p in fe.rglob("*.vue"):
-            text = _read(p)
+            raw = _read(p)
+            text = _strip_vue_comments(raw)
             for bad in FACTORY_UI_FORBIDDEN:
                 if bad in text:
                     rel = str(p.relative_to(workspace)).replace("\\", "/")

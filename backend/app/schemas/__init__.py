@@ -111,6 +111,9 @@ class DeliveryReviewPanelOut(BaseModel):
 
     review: dict[str, Any] = Field(default_factory=dict)
     zones: dict[str, Any] = Field(default_factory=dict)
+    blocking_gates: list[dict[str, Any]] = Field(
+        default_factory=list, description="未过门禁（毒区不含此项）"
+    )
     workspace_hash: str = Field(default="")
     zip_stale: bool = Field(default=False)
     checklist: list[Any] = Field(default_factory=list)
@@ -129,6 +132,9 @@ class DeliveryVerifyOut(BaseModel):
     round_pass: bool = Field(default=False)
     open_notes_count: int = Field(default=0)
     zones: dict[str, Any] = Field(default_factory=dict)
+    blocking_gates: list[dict[str, Any]] = Field(default_factory=list)
+    fail_reasons: list[str] = Field(default_factory=list, description="验圈未过原因")
+    pending_names: list[str] = Field(default_factory=list, description="待收敛清单名")
     zip_stale: bool = Field(default=False)
     review: dict[str, Any] = Field(default_factory=dict)
     download_blocked_reason: Optional[str] = Field(default=None)

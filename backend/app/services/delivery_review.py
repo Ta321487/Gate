@@ -192,15 +192,19 @@ def partition_zones(
     fix_notes: list[Any],
     frozen_checklist: list[str],
 ) -> dict[str, Any]:
-    frozen = set(frozen_checklist or [])
+    """安全区 = 当前 result=done；毒区 = 当前未过。
+
+    frozen 只用于单调性，不得把「曾经过、现在挂」的项继续画进安全区，
+    否则界面全绿、验圈却报「仍有待收敛」。
+    """
+    _ = frozen_checklist  # 保留参数兼容旧调用
     safe: list[dict[str, Any]] = []
     poison: list[dict[str, Any]] = []
     for item in checklist or []:
         if not isinstance(item, dict):
             continue
-        name = str(item.get("name") or "")
         row = dict(item)
-        if item.get("result") == "done" or name in frozen:
+        if item.get("result") == "done":
             safe.append(row)
         elif item.get("result") != "out_of_mvp":
             poison.append(row)
@@ -209,6 +213,58 @@ def partition_zones(
         if isinstance(n, dict) and str(n.get("status") or "open") == "open"
     ]
     return {"safe_zone": safe, "poison_zone": poison, "open_notes": open_notes}
+
+
+def verify_fail_reasons(
+    *,
+    mono_ok: bool,
+    zip_allowed: bool,
+    poison_pending: list[Any],
+    open_notes: list[Any],
+    blocked_gates: list[dict[str, str]] | None = None,
+) -> list[str]:
+    """验圈未过的可读原因（给前端 toast / 面板）。"""
+    reasons: list[str] = []
+    if not mono_ok:
+        reasons.append("安全区回退")
+    if not zip_allowed:
+        blocked = blocked_gates or []
+        if blocked:
+            labels = "、".join(str(b.get("label") or b.get("key") or "") for b in blocked[:3] if b)
+            reasons.append(f"质量门禁未过（{labels}）" if labels else "质量门禁未过")
+        else:
+            reasons.append("质量门禁未过（打包未放行）")
+    if poison_pending:
+        names = [
+            str(x.get("name") or "").strip()
+            for x in poison_pending
+            if isinstance(x, dict) and str(x.get("name") or "").strip()
+        ]
+        head = "、".join(names[:4])
+        more = f" 等 {len(names)} 项" if len(names) > 4 else (f"（{head}）" if head else "")
+        if len(names) <= 4 and head:
+            reasons.append(f"待收敛清单：{head}")
+        else:
+            reasons.append(f"待收敛清单 {len(poison_pending)} 项{more}")
+    if open_notes:
+        reasons.append(f"未结案偏差 {len(open_notes)} 条")
+    return reasons
+
+
+
+def blocking_gates(gates: dict[str, Any] | None) -> list[dict[str, str]]:
+    """未过门禁（含交付质量摘要）——毒区只列 checklist，门禁失败须另露。"""
+    g = gates if isinstance(gates, dict) else {}
+    out: list[dict[str, str]] = []
+    for key, raw in g.items():
+        if key in ("overall", "zip_allowed", "checklist") or not isinstance(raw, dict):
+            continue
+        if raw.get("ok"):
+            continue
+        label = str(raw.get("label") or key).strip() or key
+        desc = str(raw.get("desc") or "").strip()
+        out.append({"key": str(key), "label": label, "desc": desc[:160]})
+    return out
 
 
 def apply_qa_to_gates(
@@ -274,6 +330,19 @@ def can_repack_after_verify(verify_result: dict[str, Any], review_state: dict[st
     if open_fix_notes(review_state):
         return False, "仍有未结案的复审偏差登记 · 请先处理或结案"
     if not verify_result.get("round_pass"):
+        gates_src = verify_result.get("gates")
+        if not isinstance(gates_src, dict):
+            lv = (review_state or {}).get("last_verify")
+            gates_src = lv.get("gates") if isinstance(lv, dict) else {}
+        blocked = blocking_gates(gates_src if isinstance(gates_src, dict) else {})
+        if blocked:
+            labels = "、".join(b["label"] for b in blocked[:3])
+            return False, f"质量检查未通过（{labels}）· 请先修复后再验圈合卷"
+        if int(verify_result.get("open_notes_count") or 0) or open_fix_notes(review_state):
+            return False, "仍有未结案的复审偏差登记 · 请先处理或结案"
+        pending = int((verify_result.get("round") or {}).get("pending_count") or 0)
+        if pending:
+            return False, "仍有待收敛清单项 · 请先验圈通过"
         return False, "仍有待收敛项或未通过质量检查 · 请先验圈通过"
     return True, ""
 
@@ -421,11 +490,31 @@ def verify_round(
         if isinstance(x, dict) and x.get("result") not in ("done", "out_of_mvp")
     ]
     open_notes = open_fix_notes(st)
+    blocked = blocking_gates(gates)
+    if not gates.get("zip_allowed") and not blocked:
+        blocked = [
+            {
+                "key": "zip_allowed",
+                "label": "交付打包",
+                "desc": "zip_allowed 未放行，请到「质量检查」页查看分项",
+            }
+        ]
     round_pass = (
         mono_ok
         and gates.get("zip_allowed")
         and not poison_pending
         and not open_notes
+    )
+    fail_reasons = (
+        []
+        if round_pass
+        else verify_fail_reasons(
+            mono_ok=mono_ok,
+            zip_allowed=bool(gates.get("zip_allowed")),
+            poison_pending=poison_pending,
+            open_notes=open_notes,
+            blocked_gates=blocked,
+        )
     )
 
     if mono_ok and gates.get("zip_allowed"):
@@ -476,6 +565,13 @@ def verify_round(
         "round_pass": round_pass,
         "open_notes_count": len(open_notes),
         "zones": zones,
+        "blocking_gates": blocked,
+        "fail_reasons": fail_reasons,
+        "pending_names": [
+            str(x.get("name") or "")
+            for x in poison_pending
+            if isinstance(x, dict) and x.get("name")
+        ],
         "zip_stale": is_zip_stale(project, workspace),
         "review": st,
     }
@@ -539,6 +635,7 @@ def build_review_payload(project: Project, workspace: Path | None = None) -> dic
     return {
         "review": st,
         "zones": zones,
+        "blocking_gates": blocking_gates(project.gates or {}),
         "workspace_hash": cur_hash,
         "zip_stale": stale,
         "checklist": checklist,
