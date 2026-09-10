@@ -77,6 +77,16 @@ export const api = {
     http.get(`/projects/${id}/schema/modules`, {
       params: { layout, expand_details: expandDetails },
     }),
+  getUsecases: (id, { actor = 'user' } = {}) =>
+    http.get(`/projects/${id}/schema/usecases`, { params: { actor } }),
+  usecasesSvgUrl: (id, { actor = 'user' } = {}) => {
+    const q = new URLSearchParams({ actor })
+    return `/api/projects/${id}/schema/usecases.svg?${q}`
+  },
+  usecasesMdjUrl: (id, { actor = 'user' } = {}) => {
+    const q = new URLSearchParams({ actor })
+    return `/api/projects/${id}/schema/usecases.mdj?${q}`
+  },
   getTestcases: (id, { fields = 6 } = {}) =>
     http.get(`/projects/${id}/schema/testcases`, { params: { fields } }),
   testcasesMdUrl: (id, { fields = 6 } = {}) => {

@@ -147,6 +147,29 @@
         @reload="reloadModSvg"
       />
     </n-modal>
+    <n-modal
+      v-model:show="showUsecases"
+      preset="card"
+      title="用例图"
+      style="width:min(1280px,96vw)"
+      content-style="max-height: min(88vh, 920px); overflow: auto;"
+    >
+      <UseCaseDiagramViewer
+        v-if="showUsecases"
+        :key="ucLayoutKey"
+        :svg-source="ucSvgSource"
+        :download-name="ucDownloadBase"
+        :actor="usecaseActor"
+        :actors="usecaseMeta?.actors || []"
+        :description="usecaseMeta?.description || ''"
+        :source-note="usecaseMeta?.source_note || ''"
+        :style-rules="usecaseMeta?.style?.rules_zh || []"
+        :mdj-url="ucMdjUrl"
+        :loading="ucLoading"
+        @update:actor="onUsecaseActor"
+        @reload="reloadUsecases"
+      />
+    </n-modal>
     <n-modal v-model:show="showTestcases" preset="card" title="软件测试用例" style="width:min(1280px,96vw)">
       <TestcaseViewer
         v-if="showTestcases"
@@ -171,6 +194,7 @@ import CopyIconButton from '../../components/CopyIconButton.vue'
 import ErDiagramViewer from '../../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../../components/TestcaseViewer.vue'
+import UseCaseDiagramViewer from '../../components/UseCaseDiagramViewer.vue'
 
 const preGenLinksOpen = ref(false)
 
@@ -198,22 +222,22 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openEr, openFillPlan, openModules,
+  openPreview, openTestcases, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
-  refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
+  refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
   securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
-  showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
+  showSoftBakePanel, showSpec, showTestcases, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
-  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
-  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
+  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucMdjUrl, ucSvgSource,
+  undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
 
 watch(showPreGenerate, (open) => {

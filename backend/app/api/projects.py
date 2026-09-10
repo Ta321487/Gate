@@ -845,6 +845,132 @@ async def download_modules_svg(
     )
 
 
+@router.get("/{project_id}/schema/usecases", summary="用例图模型")
+async def get_usecases(
+    project_id: str,
+    actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    db: AsyncSession = Depends(get_db),
+):
+    """按角色从交付 menus / 岗位 pack 归纳；含 include/extend；失败返回 400。"""
+    from app.bake.schema.usecases import list_usecase_actors, load_usecase_model, _normalize_actor_id
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    side = _normalize_actor_id(actor or "user")
+    schema_path = ws / "domain.schema.json"
+    if not schema_path.is_file():
+        raise HTTPException(404, "未找到 domain.schema.json")
+    try:
+        import json as _json
+
+        schema = _json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    actors = list_usecase_actors(schema if isinstance(schema, dict) else {})
+    if side not in {a["id"] for a in actors}:
+        raise HTTPException(400, f"当前工程无角色 {side}")
+    try:
+        model = load_usecase_model(ws, actor=side, proposal_text=prop)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    model = dict(model)
+    model["actors"] = actors
+    return model
+
+
+@router.get("/{project_id}/schema/usecases.svg", summary="下载用例图 SVG")
+async def download_usecases_svg(
+    project_id: str,
+    actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.usecases import _normalize_actor_id, load_usecase_model, render_usecase_svg
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    side = _normalize_actor_id(actor or "user")
+    try:
+        model = load_usecase_model(ws, actor=side, proposal_text=prop)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    svg = render_usecase_svg(model)
+    safe = side.replace(":", "-")
+    fname = f"{project_id}-usecases-{safe}.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/usecases.mdj", summary="下载用例图 StarUML .mdj")
+async def download_usecases_mdj(
+    project_id: str,
+    actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.usecases import _normalize_actor_id, export_staruml_mdj, load_usecase_model
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    side = _normalize_actor_id(actor or "user")
+    try:
+        model = load_usecase_model(ws, actor=side, proposal_text=prop)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    body = export_staruml_mdj(model)
+    safe = side.replace(":", "-")
+    fname = f"{project_id}-usecases-{safe}.mdj"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/json; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/schema/testcases", summary="论文测试用例表")
 async def get_testcases(
     project_id: str,
@@ -1315,8 +1441,8 @@ async def scrub_student_copy(project_id: str, db: AsyncSession = Depends(get_db)
     await db.commit()
     await db.refresh(p)
     return ApiOk(
-        message="已清洗工厂腔 · 请验圈后合卷"
-        if result.get("copy_ok")
+        message="已清洗学生可见文案 · 请验圈后合卷"
+        if result.get("copy_ok") and result.get("semantic_ok", True)
         else "已尝试清洗 · 仍有残留（骨架侧也可能未干净，见命中路径）",
         data=result,
     )

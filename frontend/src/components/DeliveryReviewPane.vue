@@ -121,7 +121,7 @@
         </li>
       </ul>
       <p v-if="showScrubCopy" class="small muted" style="margin:8px 0 0">
-        工厂腔未过时，用上方「工厂清洗文案」即可，不必手改学生包。
+        工厂腔或「演示」口吻未过时，用上方「工厂清洗文案」即可（会按现网骨架覆写脏 Vue），不必手改学生包。
       </p>
     </n-alert>
 

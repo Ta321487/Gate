@@ -232,7 +232,7 @@
             <div class="artifact-pane stack">
               <p v-if="artifactLoading" class="small muted">加载中…</p>
               <p class="small muted mb-8">
-                贴说明书用：功能模块图（系统设计）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；测例按交付菜单推导，不发明功能。
+                贴说明书用：功能模块图（系统设计）· 用例图（需求分析）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；用例图按角色走查交付菜单；测例按交付菜单推导，不发明功能。
               </p>
               <div class="thesis-cards">
                 <div class="thesis-card">
@@ -258,6 +258,30 @@
                     :title="artifactsFrozen ? artifactsFrozenReason : undefined"
                     @click="openModules"
                   >打开模块图</n-button>
+                </div>
+                <div class="thesis-card">
+                  <div class="thesis-card-hd">
+                    <strong>用例图</strong>
+                    <span
+                      class="pill"
+                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                    >
+                      {{
+                        artifactsFrozen
+                          ? '生成中'
+                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                      }}
+                    </span>
+                  </div>
+                  <p class="small muted">按角色（含岗位）· 一级 5 个 · include/extend · 预览 PNG/SVG · StarUML .mdj</p>
+                  <n-button
+                    size="small"
+                    type="primary"
+                    :disabled="!modulesOk || artifactsFrozen"
+                    :loading="ucLoading"
+                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                    @click="openUsecases"
+                  >打开用例图</n-button>
                 </div>
                 <div class="thesis-card">
                   <div class="thesis-card-hd">
@@ -593,7 +617,7 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
@@ -606,7 +630,7 @@ const {
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
-  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
+  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
 </script>
