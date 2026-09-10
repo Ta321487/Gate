@@ -48,7 +48,8 @@
       @pointercancel="onPointerUp"
       @pointerleave="onPointerUp"
     >
-      <div class="mod-canvas" :style="canvasStyle" v-html="svgHtml" />
+      <ContentLoading v-if="loading && !svgSource" :rows="1" block compact />
+      <div v-else class="mod-canvas" :style="canvasStyle" v-html="svgHtml" />
     </div>
   </div>
 </template>
@@ -57,6 +58,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
+import ContentLoading from './ContentLoading.vue'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },

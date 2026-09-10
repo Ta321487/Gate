@@ -53,7 +53,8 @@
       @pointercancel="onPointerUp"
       @pointerleave="onPointerUp"
     >
-      <div class="er-canvas" :style="canvasStyle" v-html="svgHtml" />
+      <ContentLoading v-if="loading && !svgSource" :rows="1" block compact />
+      <div v-else class="er-canvas" :style="canvasStyle" v-html="svgHtml" />
     </div>
   </div>
 </template>
@@ -62,6 +63,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
+import ContentLoading from './ContentLoading.vue'
 
 const props = defineProps({
   /** 后端初始 SVG（可含 xml 声明） */

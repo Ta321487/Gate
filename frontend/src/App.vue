@@ -55,13 +55,14 @@
               <span class="nav-toggle-bar" />
               <span class="nav-toggle-bar" />
             </button>
-            <div class="crumb">
+            <nav class="crumb" aria-label="面包屑">
               <template v-for="(c, i) in crumbs" :key="i">
-                <span v-if="i"> / </span>
-                <strong v-if="i === crumbs.length - 1">{{ c }}</strong>
-                <span v-else>{{ c }}</span>
+                <span v-if="i" class="crumb-sep"> / </span>
+                <strong v-if="i === crumbs.length - 1">{{ c.label }}</strong>
+                <router-link v-else-if="c.to" class="crumb-link" :to="c.to">{{ c.label }}</router-link>
+                <span v-else>{{ c.label }}</span>
               </template>
-            </div>
+            </nav>
           </div>
           <button
             type="button"
@@ -143,11 +144,13 @@ onUnmounted(() => {
 })
 
 const crumbs = computed(() => {
-  const base = ['毕设港']
-  if (route.name === 'project') return [...base, '项目', detailCrumb.value || '详情']
-  if (route.name === 'not-found' || route.name === 'error-500') {
-    return [...base, route.meta.crumb || '异常']
+  const root = { label: '毕设港', to: '/' }
+  if (route.name === 'project') {
+    return [root, { label: '项目', to: '/' }, { label: detailCrumb.value || '详情' }]
   }
-  return [...base, route.meta.crumb || '']
+  if (route.name === 'not-found' || route.name === 'error-500') {
+    return [root, { label: route.meta.crumb || '异常' }]
+  }
+  return [root, { label: route.meta.crumb || '' }]
 })
 </script>

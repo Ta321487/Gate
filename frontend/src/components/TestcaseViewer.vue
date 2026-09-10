@@ -18,6 +18,8 @@
       <span v-if="count">· 共 {{ count }} 条</span>
     </p>
     <div class="tc-frame">
+      <ContentLoading v-if="loading && !rows.length" :rows="4" compact />
+      <template v-else>
       <table class="tc-table">
         <thead>
           <tr>
@@ -31,6 +33,7 @@
         </tbody>
       </table>
       <p v-if="!rows.length" class="small muted" style="padding:16px">暂无测试用例</p>
+      </template>
     </div>
   </div>
 </template>
@@ -38,6 +41,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from '../api'
+import ContentLoading from './ContentLoading.vue'
 import { isDark } from '../theme'
 
 const props = defineProps({

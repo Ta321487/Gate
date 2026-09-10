@@ -1,6 +1,6 @@
 <template>
   <div class="artifact-pane stack defense-ppt-compare">
-    <p v-if="pptLoading" class="small muted">加载中…</p>
+    <ContentLoading v-if="pptLoading" :rows="4" compact />
 
     <template v-else-if="!pptHasDeck">
       <div class="empty-hint">
@@ -139,6 +139,7 @@ import { PPT_THEME_OPTIONS, PPT_LAYOUT_OPTIONS } from '../../ppt/deckDefaults.js
 import DefensePptDirtyBanner from './DefensePptDirtyBanner.vue'
 import DefensePptSlidePreview from './DefensePptSlidePreview.vue'
 import DefensePptCheckModal from './DefensePptCheckModal.vue'
+import ContentLoading from '../ContentLoading.vue'
 
 const {
   tab,
