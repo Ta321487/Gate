@@ -1075,12 +1075,27 @@ def ensure_coupon_lifecycle_sql(sql: str, *, enabled: bool) -> str:
     return out
 
 
+def _ensure_create_table_ddl(sql: str, *, table: str, ddl: str) -> str:
+    """幂等补 CREATE TABLE；种子若已 INSERT/UPDATE 该表，则插到首条引用之前。"""
+    if re.search(
+        rf"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?{re.escape(table)}`?\b",
+        sql,
+    ):
+        return sql
+    block = ddl if ddl.endswith("\n") else ddl + "\n"
+    m = re.search(
+        rf"(?i)(?:INSERT\s+(?:IGNORE\s+)?INTO|UPDATE|ALTER\s+TABLE|DELETE\s+FROM)\s+`?{re.escape(table)}`?\b",
+        sql,
+    )
+    if m:
+        return sql[: m.start()] + block + sql[m.start() :]
+    return sql.rstrip() + "\n" + block
+
+
 def ensure_order_review_sql(sql: str, *, enabled: bool) -> str:
     if not enabled:
         return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?order_review`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _ORDER_REVIEW_DDL
+    return _ensure_create_table_ddl(sql, table="order_review", ddl=_ORDER_REVIEW_DDL)
 
 
 _STOCK_IO_DDL = """

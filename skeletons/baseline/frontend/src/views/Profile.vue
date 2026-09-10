@@ -30,7 +30,8 @@
       </div>
     </section>
 
-    <section v-if="anyLoyalty && loyalty" class="card block loyalty">
+    <!-- 余额/积分/会员仅买家端；商家与管理岗资料页禁止出现充值 -->
+    <section v-if="showBuyerLoyalty && loyalty" class="card block loyalty">
       <h2 class="block-title">账户权益</h2>
       <div class="loy-grid">
         <div v-if="walletOn"><span class="k">账户余额</span><strong>¥{{ Number(loyalty.balanceYuan || 0).toFixed(2) }}</strong></div>
@@ -39,7 +40,7 @@
         <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>
       </div>
       <div v-if="walletOn" class="recharge-row">
-        <el-button type="primary" plain size="small" @click="openRecharge">模拟充值</el-button>
+        <el-button type="primary" plain size="small" @click="openRecharge">充值</el-button>
         <span class="loy-hint inline">可选 50 / 100 / 200 / 500 元档位</span>
       </div>
       <p class="loy-hint">
@@ -164,7 +165,7 @@
       </div>
     </el-form>
 
-    <el-dialog v-model="rechargeVisible" title="模拟充值" width="400px" destroy-on-close>
+    <el-dialog v-model="rechargeVisible" title="账户充值" width="400px" destroy-on-close>
       <p class="loy-hint">选择充值金额，即时到账。</p>
       <div class="recharge-tiers">
         <el-button
@@ -232,6 +233,8 @@ const bizSectionTitle = computed(() => {
   return `${userLabel.value}资料`
 })
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
+/** 仅终端买家展示钱包/积分；商家·管理岗不展示充值 */
+const showBuyerLoyalty = computed(() => anyLoyalty.value && audience.value === 'user')
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
@@ -313,7 +316,7 @@ async function load() {
     ...(data.extras || {}),
   }
   clearPasswords()
-  if (anyLoyalty.value) {
+  if (showBuyerLoyalty.value) {
     try {
       const loy = await http.get('/api/loyalty/me')
       loyalty.value = loy.data || null

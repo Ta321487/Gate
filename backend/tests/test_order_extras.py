@@ -98,6 +98,35 @@ class OrderExtrasTests(unittest.TestCase):
         self.assertIn("order_review", n)
         self.assertLessEqual(count_create_tables(with_r), 15)
 
+    def test_ensure_order_review_before_seed_insert(self) -> None:
+        """多店农产种子会 INSERT order_review；CREATE 必须在前，否则 ensure DB 1146。"""
+        seeded = (
+            "USE `agri_mall`;\n"
+            "INSERT IGNORE INTO order_review (id, order_id, username, rating, body, created_at) "
+            "VALUES (1, 2, 'user', 5, 'ok', NOW());\n"
+        )
+        out = ensure_order_review_sql(seeded, enabled=True)
+        create_at = out.lower().index("create table if not exists order_review")
+        insert_at = out.lower().index("insert ignore into order_review")
+        self.assertLess(create_at, insert_at)
+
+    def test_farm_marketplace_sql_create_review_before_insert(self) -> None:
+        farm = (
+            "农产品多商家入驻商城；用户下单、确认收货后可发表评价；"
+            "商家评价管理；管理员评价管理。"
+        )
+        sql = domain_sql(
+            "DOM-SHOP",
+            "agri_mall",
+            archetype="ARCH-TRADE",
+            title="农产品电商系统",
+            proposal_text=farm,
+        )
+        self.assertIn("INSERT IGNORE INTO order_review", sql)
+        create_at = sql.lower().index("create table if not exists order_review")
+        insert_at = sql.lower().index("insert ignore into order_review")
+        self.assertLess(create_at, insert_at)
+
     def test_loyalty_coupon_menus(self) -> None:
         spec = apply_loyalty_to_spec(
             {

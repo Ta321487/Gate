@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -37,13 +38,14 @@ class RuntimeStore:
 
 STORE = RuntimeStore()
 
-# 残缺 node_modules 的典型症状：目录在但关键包缺失
+# 残缺 node_modules 的典型症状：目录在但关键包缺失（快速探针）
 _FE_REQUIRED_PKG_MARKERS = (
     "node_modules/vue/package.json",
     "node_modules/element-plus/package.json",
     "node_modules/@element-plus/icons-vue/package.json",
     "node_modules/@ctrl/tinycolor/package.json",
     "node_modules/vite/package.json",
+    "node_modules/qrcode/package.json",
 )
 
 
@@ -245,8 +247,28 @@ def _log_has_be_fatal(text: str) -> bool:
     return any(n in (text or "") for n in needles)
 
 
+def _dep_pkg_marker(fe: Path, name: str) -> Path:
+    """package.json 依赖名 → node_modules 内 package.json（含 @scope/pkg）。"""
+    return fe / "node_modules" / Path(*str(name).split("/")) / "package.json"
+
+
 def frontend_deps_ok(fe: Path) -> bool:
-    return all((fe / rel).exists() for rel in _FE_REQUIRED_PKG_MARKERS)
+    """关键探针 + package.json 声明的依赖均须落地，避免旧共享缓存缺 qrcode 等仍 skip install。"""
+    if not all((fe / rel).exists() for rel in _FE_REQUIRED_PKG_MARKERS):
+        return False
+    pkg = fe / "package.json"
+    if not pkg.is_file():
+        return True
+    try:
+        data = json.loads(pkg.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    names: set[str] = set()
+    for key in ("dependencies", "devDependencies"):
+        block = data.get(key) or {}
+        if isinstance(block, dict):
+            names.update(str(n) for n in block)
+    return all(_dep_pkg_marker(fe, name).is_file() for name in names)
 
 
 def detach_frontend_deps(workspace: Path) -> None:
