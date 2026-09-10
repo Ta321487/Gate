@@ -21,7 +21,11 @@ from tests.helpers.normalize import normalize_sql
 class OrderExtrasTests(unittest.TestCase):
     def test_scan_review_and_timeout(self) -> None:
         self.assertTrue(scan_order_review("支持订单评价与星级评价"))
+        self.assertTrue(scan_order_review("点餐外卖，评价退单，支付留言"))
+        self.assertTrue(scan_order_review("用户评价与售后"))
+        self.assertTrue(scan_order_review("买家评价、订单评分"))
         self.assertFalse(scan_order_review("仅购物车与订单"))
+        self.assertFalse(scan_order_review("建立评价指标体系"))
         self.assertTrue(scan_order_timeout("未支付超时自动取消订单"))
         self.assertEqual(order_timeout_minutes("支付超时取消", ["order_lines"]), 30)
         self.assertEqual(order_timeout_minutes("", ["order_lines"]), 0)
@@ -33,6 +37,30 @@ class OrderExtrasTests(unittest.TestCase):
             ),
             15,
         )
+
+    def test_food_blank_opening_still_has_order_review(self) -> None:
+        out = attach_accept(
+            {
+                "domain": "DOM-FOOD",
+                "title": "校园食堂点餐",
+                "capabilities": list(
+                    c
+                    for c in (
+                        "archive",
+                        "order_lines",
+                        "quota",
+                        "content",
+                        "org_users",
+                        "guestbook",
+                    )
+                ),
+                "schema": {},
+            },
+            "食堂档口点餐与配送。",
+        )
+        self.assertIn(ORDER_REVIEW_CAP, out.get("capabilities") or [])
+        admin = ((out.get("schema") or {}).get("menus") or {}).get("admin") or []
+        self.assertTrue(any(m.get("key") == "order_reviews" for m in admin))
 
     def test_requires_order_lines(self) -> None:
         spec = apply_order_extras_to_spec(

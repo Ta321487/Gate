@@ -1,4 +1,4 @@
-"""能力扩岛 E-12：帖子禁言 post_mute（开题扫词才挂，无域默认）。"""
+"""能力扩岛 E-12：帖子禁言 post_mute（论坛行业默认；博客仍扫词）。"""
 
 from __future__ import annotations
 
@@ -20,9 +20,10 @@ BASELINE = ROOT / "skeletons" / "baseline"
 
 
 class PostMuteE12Tests(unittest.TestCase):
-    def test_capability_registered_no_domain_default(self) -> None:
+    def test_capability_registered_forum_default(self) -> None:
         self.assertEqual(CAPABILITIES[POST_MUTE_CAP]["status"], "implemented")
-        for dom in ("DOM-FORUM", "DOM-BLOG", "DOM-LIBRARY", "DOM-SHOP"):
+        self.assertIn(POST_MUTE_CAP, DOMAIN_CAPABILITIES.get("DOM-FORUM") or [])
+        for dom in ("DOM-BLOG", "DOM-LIBRARY", "DOM-SHOP"):
             self.assertNotIn(POST_MUTE_CAP, DOMAIN_CAPABILITIES.get(dom) or [], dom)
 
     def test_scan_terms(self) -> None:
@@ -31,20 +32,24 @@ class PostMuteE12Tests(unittest.TestCase):
         self.assertFalse(scan_post_mute("发帖回帖与点赞举报。"))
         self.assertFalse(scan_post_mute("停用账号与启用状态。"))
 
-    def test_merge_forum_blog_only_when_scanned(self) -> None:
-        base = list(DOMAIN_CAPABILITIES["DOM-FORUM"])
-        no = merge_post_mute_capabilities(base, "论坛发帖回帖审帖。", domain="DOM-FORUM")
-        self.assertNotIn(POST_MUTE_CAP, no)
-        yes = merge_post_mute_capabilities(
-            base, "论坛发帖回帖；支持禁言处罚。", domain="DOM-FORUM"
+    def test_merge_forum_default_blog_scan(self) -> None:
+        bare = ["archive", "ticket_flow", "content", "org_users"]
+        self.assertIn(
+            POST_MUTE_CAP,
+            merge_post_mute_capabilities(bare, "论坛发帖回帖审帖。", domain="DOM-FORUM"),
         )
-        self.assertIn(POST_MUTE_CAP, yes)
 
-        blog = list(DOMAIN_CAPABILITIES.get("DOM-BLOG") or DOMAIN_CAPABILITIES["DOM-FORUM"])
-        yes_blog = merge_post_mute_capabilities(
-            blog, "博客系统支持禁止发帖。", domain="DOM-BLOG"
+        blog = list(DOMAIN_CAPABILITIES.get("DOM-BLOG") or bare)
+        self.assertNotIn(
+            POST_MUTE_CAP,
+            merge_post_mute_capabilities(blog, "博客发帖回帖。", domain="DOM-BLOG"),
         )
-        self.assertIn(POST_MUTE_CAP, yes_blog)
+        self.assertIn(
+            POST_MUTE_CAP,
+            merge_post_mute_capabilities(
+                blog, "博客系统支持禁止发帖。", domain="DOM-BLOG"
+            ),
+        )
 
         lib = list(DOMAIN_CAPABILITIES["DOM-LIBRARY"])
         blocked = merge_post_mute_capabilities(lib, "禁言。", domain="DOM-LIBRARY")
@@ -60,7 +65,7 @@ class PostMuteE12Tests(unittest.TestCase):
             },
             "发帖回帖收藏私信。",
         )
-        self.assertNotIn(POST_MUTE_CAP, plain.get("capabilities") or [])
+        self.assertIn(POST_MUTE_CAP, plain.get("capabilities") or [])
 
         rich = attach_accept(
             {
@@ -79,7 +84,7 @@ class PostMuteE12Tests(unittest.TestCase):
         self.assertIn("post-mute-enabled: true", yml)
 
         plain_yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", plain)
-        self.assertNotIn("post-mute-enabled: true", plain_yml)
+        self.assertIn("post-mute-enabled: true", plain_yml)
 
     def test_baseline_sources_wired(self) -> None:
         user_store = (BASELINE / "backend/src/main/java/com/thesis/service/UserStore.java").read_text(

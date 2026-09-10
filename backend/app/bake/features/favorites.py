@@ -41,8 +41,9 @@ _PROFILE_SCAN_FAVORITE_DOMAINS = frozenset({"DOM-DATING"})
 
 # 点赞：论坛/博客/媒资（写到才挂）
 _LIKE_DOMAINS = frozenset({"DOM-FORUM", "DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC"})
-# 举报：论坛/交友（写到才挂）
+# 举报：论坛/交友/博客可挂；论坛行业默认
 _REPORT_DOMAINS = frozenset({"DOM-FORUM", "DOM-DATING", "DOM-BLOG"})
+_REPORT_DEFAULT_DOMAINS = frozenset({"DOM-FORUM"})
 
 
 def scan_favorites(text: str) -> bool:
@@ -139,7 +140,10 @@ def merge_content_report_capabilities(
         return out
     if (domain or "") not in _REPORT_DOMAINS:
         return out
-    if not scan_content_report(proposal_text or ""):
+    want = (domain or "") in _REPORT_DEFAULT_DOMAINS or scan_content_report(
+        proposal_text or ""
+    )
+    if not want:
         return out
     out.append(CONTENT_REPORT_CAP)
     return out

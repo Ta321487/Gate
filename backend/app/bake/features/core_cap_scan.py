@@ -19,7 +19,7 @@ TIME_CONFLICT_CAP = "time_conflict"
 DEADLINE_CAP = "deadline"
 LOAN_RENEW_CAP = "loan_renew"
 
-# 续借仅挂借还语义域（开题写到才挂，无域默认）
+# 借还行毕设默认续借（开题常只写借还催还、漏写续借）
 _LOAN_RENEW_DOMAINS = frozenset({"DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"})
 
 _RECOMMEND_TERMS = (
@@ -159,7 +159,7 @@ def merge_loan_renew_capabilities(
     *,
     domain: str | None = None,
 ) -> list[str]:
-    """续借：开题写到 + 借还域 + 已有 deadline/ticket；只增不减。"""
+    """续借：借还域行业默认；其它域仍须开题写到。只增不减。"""
     out = list(caps or [])
     if LOAN_RENEW_CAP in out:
         return out
@@ -167,9 +167,8 @@ def merge_loan_renew_capabilities(
         return out
     if (domain or "") not in _LOAN_RENEW_DOMAINS:
         return out
-    if not scan_loan_renew(proposal_text or ""):
-        return out
-    # 续借依赖到期日；域默认常已有 deadline，扫词也可补上
+    # 借还域默认挂；非默认路径不会进本集合
+    _ = proposal_text  # 保留签名；扫词仅用于论文/门禁文案侧
     if DEADLINE_CAP not in out:
         out.append(DEADLINE_CAP)
     out.append(LOAN_RENEW_CAP)
@@ -312,7 +311,7 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
             _add("催领")
         else:
             _add("超时未处理")
-    if LOAN_RENEW_CAP in caps and scan_loan_renew(text):
+    if LOAN_RENEW_CAP in caps:
         _add("续借")
 
     spec = {**spec, "capabilities": caps, "schema": schema, "features": features}

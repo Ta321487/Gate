@@ -1,4 +1,4 @@
-"""帖子禁言 post_mute：开题扫词才挂；无域默认。
+"""帖子禁言 post_mute：论坛行业默认；博客仍开题扫词。
 
 管理端设禁言截止时间；期内不可发帖/回复（≠ enabled=0 整号停用）。
 举报处置可一键禁言。禁言截止写入 sys_user.profile_json.postMuteUntil。
@@ -14,6 +14,7 @@ POST_MUTE_CAP = "post_mute"
 
 _TERMS = ("禁言", "禁止发帖", "禁言处罚", "禁言功能")
 _MUTE_DOMAINS = frozenset({"DOM-FORUM", "DOM-BLOG"})
+_MUTE_DEFAULT_DOMAINS = frozenset({"DOM-FORUM"})
 
 
 def scan_post_mute(text: str) -> bool:
@@ -32,7 +33,10 @@ def merge_post_mute_capabilities(
         return out
     if (domain or "") not in _MUTE_DOMAINS:
         return out
-    if not scan_post_mute(proposal_text or ""):
+    want = (domain or "") in _MUTE_DEFAULT_DOMAINS or scan_post_mute(
+        proposal_text or ""
+    )
+    if not want:
         return out
     out.append(POST_MUTE_CAP)
     return out

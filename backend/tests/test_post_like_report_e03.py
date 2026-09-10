@@ -1,4 +1,4 @@
-"""能力扩岛 E-03：点赞 post_like + 举报 content_report（开题扫词才挂）。"""
+"""能力扩岛 E-03：点赞 post_like（扫词）；举报 content_report（论坛行业默认）。"""
 
 from __future__ import annotations
 
@@ -25,10 +25,12 @@ BASELINE = ROOT / "skeletons" / "baseline"
 
 
 class PostLikeReportE03Tests(unittest.TestCase):
-    def test_capability_registered_no_domain_default(self) -> None:
+    def test_capability_registered(self) -> None:
         self.assertEqual(CAPABILITIES[POST_LIKE_CAP]["status"], "implemented")
         self.assertEqual(CAPABILITIES[CONTENT_REPORT_CAP]["status"], "implemented")
-        for dom in ("DOM-FORUM", "DOM-DATING", "DOM-BLOG"):
+        self.assertIn(CONTENT_REPORT_CAP, DOMAIN_CAPABILITIES.get("DOM-FORUM") or [])
+        self.assertNotIn(POST_LIKE_CAP, DOMAIN_CAPABILITIES.get("DOM-FORUM") or [])
+        for dom in ("DOM-DATING", "DOM-BLOG"):
             caps = DOMAIN_CAPABILITIES.get(dom) or []
             self.assertNotIn(POST_LIKE_CAP, caps, dom)
             self.assertNotIn(CONTENT_REPORT_CAP, caps, dom)
@@ -39,14 +41,19 @@ class PostLikeReportE03Tests(unittest.TestCase):
         self.assertTrue(scan_content_report("支持用户举报不良帖子。"))
         self.assertFalse(scan_content_report("论坛发帖回帖。"))
 
-    def test_merge_only_when_scanned(self) -> None:
-        base = list(DOMAIN_CAPABILITIES["DOM-FORUM"])
-        no = merge_post_like_capabilities(base, "发帖回帖审帖。", domain="DOM-FORUM")
+    def test_merge_like_scan_report_forum_default(self) -> None:
+        bare = ["archive", "ticket_flow", "content", "org_users"]
+        no = merge_post_like_capabilities(bare, "发帖回帖审帖。", domain="DOM-FORUM")
         self.assertNotIn(POST_LIKE_CAP, no)
         yes = merge_post_like_capabilities(
-            base, "发帖回帖；支持点赞。", domain="DOM-FORUM"
+            bare, "发帖回帖；支持点赞。", domain="DOM-FORUM"
         )
         self.assertIn(POST_LIKE_CAP, yes)
+
+        self.assertIn(
+            CONTENT_REPORT_CAP,
+            merge_content_report_capabilities(bare, "发帖回帖。", domain="DOM-FORUM"),
+        )
 
         dating = list(DOMAIN_CAPABILITIES["DOM-DATING"])
         no_r = merge_content_report_capabilities(
@@ -58,7 +65,6 @@ class PostLikeReportE03Tests(unittest.TestCase):
         )
         self.assertIn(CONTENT_REPORT_CAP, yes_r)
 
-        # 非允许域不挂
         lib = merge_post_like_capabilities(
             list(DOMAIN_CAPABILITIES["DOM-LIBRARY"]),
             "图书点赞？",
@@ -77,9 +83,9 @@ class PostLikeReportE03Tests(unittest.TestCase):
             "校园论坛发帖回帖审帖。",
         )
         self.assertNotIn(POST_LIKE_CAP, plain.get("capabilities") or [])
-        self.assertNotIn(CONTENT_REPORT_CAP, plain.get("capabilities") or [])
+        self.assertIn(CONTENT_REPORT_CAP, plain.get("capabilities") or [])
         menus0 = (plain.get("schema") or {}).get("menus", {}).get("admin") or []
-        self.assertFalse(any(m.get("key") == "content_reports" for m in menus0))
+        self.assertTrue(any(m.get("key") == "content_reports" for m in menus0))
 
         rich = attach_accept(
             {
@@ -140,9 +146,7 @@ class PostLikeReportE03Tests(unittest.TestCase):
         self.assertIn("withContentReportRoutes", rtext)
         self.assertIn("ContentReportsAdmin", rtext)
 
-
-
-    def test_unmounted_sql_has_no_like_report_tables(self) -> None:
+    def test_unmounted_like_sql_has_no_like_table(self) -> None:
         plain = attach_accept(
             {
                 "domain": "DOM-FORUM",
@@ -161,7 +165,7 @@ class PostLikeReportE03Tests(unittest.TestCase):
         )
         n = normalize_sql(sql)
         self.assertNotIn("user_post_like", n)
-        self.assertNotIn("content_report", n)
+        self.assertIn("content_report", n)
 
     def test_gate_merged_when_scanned(self) -> None:
         rich = attach_accept(
@@ -197,6 +201,7 @@ class PostLikeReportE03Tests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("openReport(r, 'ticket')", fe)
         self.assertIn("reportTargetType", fe)
+
 
 if __name__ == "__main__":
     unittest.main()

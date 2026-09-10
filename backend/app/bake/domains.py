@@ -147,8 +147,8 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 # 分组见 DOMAIN_GROUPS / HANDOFF「90% 毕设覆盖」
 DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # A 借用/占用
-    "DOM-LIBRARY": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend"],
-    "DOM-EQUIP": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend"],
+    "DOM-LIBRARY": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend", "loan_renew"],
+    "DOM-EQUIP": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend", "loan_renew"],
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users", "stock_io"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-EVENT": ["archive", "ticket_flow", "archive_log", "content", "org_users"],
@@ -196,6 +196,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
         "content",
         "org_users",
         "instrument_slot",
+        "loan_renew",
     ],
     "DOM-EXAM": ["archive", "exam", "content", "org_users"],
     "DOM-SURVEY": ["archive", "survey", "content", "org_users"],
@@ -209,27 +210,27 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-PROPERTY": ["ticket_flow", "content", "org_users", "deadline"],
     "DOM-IT": ["ticket_flow", "content", "org_users", "deadline"],
     # C 报名/申请
-    "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin"],
+    "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin", "waitlist"],
     "DOM-LOST": ["archive", "ticket_flow", "quota", "content", "org_users"],
-    "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict"],
+    "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "waitlist"],
     "DOM-TOUR": ["archive", "ticket_flow", "quota", "content", "org_users"],
     # D 交易（order_lines）
-    "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
-    "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users", "guestbook"],
+    "DOM-SHOP": ["archive", "order_lines", "quota", "content", "org_users", "guestbook", "order_review"],
+    "DOM-FOOD": ["archive", "order_lines", "quota", "content", "org_users", "guestbook", "order_review"],
     # E 预约（slot_reserve；资源走 archive）
     "DOM-HOSPITAL": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-PARKING": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-MEETING": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-SALON": ["archive", "slot_reserve", "content", "org_users"],
-    "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
-    "DOM-CARRENT": ["archive", "slot_reserve", "order_lines", "content", "org_users"],
+    "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users", "guestbook", "order_review"],
+    "DOM-CARRENT": ["archive", "slot_reserve", "order_lines", "content", "org_users", "guestbook", "order_review"],
     # F 兜底
     "DOM-GENERIC": ["archive", "content", "org_users"],
     # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
     "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     # 私信/猜你喜欢：论坛开题常作对比不做；开题点名再扫入（dating 仍默认 dm）
-    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "content_report", "post_mute"],
     "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
 }
 

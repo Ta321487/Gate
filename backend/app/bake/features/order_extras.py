@@ -10,8 +10,20 @@ from app.bake.proposal_lexicon import keyword_mentioned, pattern_mentioned
 ORDER_REVIEW_CAP = "order_review"
 FLASH_PRICE_CAP = "flash_price"
 
+# 交易行毕设默认就要能评（开题常漏写「评价」专名）；影院选座题不默认
+_REVIEW_DEFAULT_DOMAINS = frozenset({
+    "DOM-SHOP",
+    "DOM-FOOD",
+    "DOM-HOTEL",
+    "DOM-CARRENT",
+})
+
+# 开题常写「评价退单 / 用户评价」等，勿只认「订单评价」四字；禁裸「评价」（易撞指标体系）
 _REVIEW_SIGNALS = re.compile(
     r"订单评价|商品评价|评价功能|评价管理|评价模块|售后评价|完成评价|星级评价|评论功能"
+    r"|评价退单|用户评价|买家评价|客户评价|服务评价|餐品评价|外卖评价"
+    r"|订单评分|星级评分|对订单进行评价|评价与售后|商品评论|订单评论|评分评价"
+    r"|下单与评价|下单评价|支付与评价"
 )
 _TIMEOUT_SIGNALS = re.compile(
     r"超时取消|支付超时|自动取消订单|未支付取消|订单超时|超时关单"
@@ -42,11 +54,13 @@ def merge_order_extras_capabilities(
     out = list(caps or [])
     if "order_lines" not in out:
         return [c for c in out if c not in (ORDER_REVIEW_CAP, FLASH_PRICE_CAP)]
-    want_review = scan_order_review(proposal_text)
+    # 行业默认 > 开题扫词；多店扫词作补充（title 空时仍靠域默认）
+    want_review = (domain or "") in _REVIEW_DEFAULT_DOMAINS or scan_order_review(
+        proposal_text
+    )
     if not want_review and (domain or "") == "DOM-SHOP":
         from app.bake.scene_scan import scan_shop_marketplace
 
-        # 多店三端开题默认挂评价（对照商家/管理「评价管理」）
         want_review = scan_shop_marketplace(title, proposal_text)
     if want_review and ORDER_REVIEW_CAP not in out:
         out.append(ORDER_REVIEW_CAP)
