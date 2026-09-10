@@ -54,7 +54,7 @@
                 <p>{{ item.lead }}</p>
                 <div class="mall-foot">
                   <span class="mall-price">{{ item.price }}</span>
-                  <span class="mall-meta">{{ item.meta }}</span>
+                  <span class="mall-meta">{{ item.shop ? item.shop : item.meta }}</span>
                 </div>
               </div>
             </button>
@@ -305,6 +305,7 @@ async function loadMall() {
       lead: mallLeadText(row),
       price: mallPriceText(row),
       meta: mallMetaText(row),
+      shop: String(row.shopName || row.shop_name || '').trim(),
       cover: row.coverUrl || '',
       letter: String(row.title || '?').slice(0, 1),
     }))
@@ -320,6 +321,10 @@ function goArchive() {
 function goCategory(cat) {
   if (!cat?.id) {
     goArchive()
+    return
+  }
+  if (!loggedIn.value && guestBrowse.value) {
+    requireLogin(router)
     return
   }
   router.push({ path: '/archive', query: { categoryId: String(cat.id) } })

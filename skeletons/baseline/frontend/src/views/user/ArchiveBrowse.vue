@@ -32,7 +32,7 @@
           :placeholder="fieldLabel('category', '分类')"
           size="large"
           class="search-cat"
-          @change="load"
+          @change="onCategoryChange"
         >
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
@@ -46,7 +46,7 @@
           placeholder="标签（同时满足）"
           size="large"
           style="min-width:200px"
-          @change="load"
+          @change="onTagFilterChange"
         >
           <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
@@ -90,6 +90,7 @@
         <div class="meta">
           <h3>{{ row.title }}</h3>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
+          <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
           <p v-if="flashOn && row.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span></p>
           <p v-if="productSpecOn && productSpecText(row)" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
           <p
@@ -119,7 +120,7 @@
               @click="play(row)"
             >播放</el-button>
             <el-button
-              v-if="bodyRich || galleryOn || browseOn || logOn || roomEquipOn"
+              v-if="showDetailBtn"
               size="small"
               @click="openDetail(row)"
             >{{ bodyRich ? '阅读' : '详情' }}</el-button>
@@ -158,9 +159,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
     <GuestLoginHint />
@@ -176,6 +179,7 @@
         </div>
         <img v-else-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
+        <p v-if="marketplace && shopLabel(detail)" class="detail-line">店铺：{{ shopLabel(detail) }}</p>
         <p v-if="flashOn && detail.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(detail.listPriceYuan ?? detail.author).toFixed(2) }}</span></p>
         <p v-if="productSpecOn && productSpecText(detail)" class="detail-line">{{ productSpecLabel }}：{{ productSpecText(detail) }}</p>
 
@@ -984,6 +988,40 @@ const detailVisible = ref(false)
 const detail = ref(null)
 const itemReviews = ref([])
 const reviewOn = computed(() => hasCap('order_review'))
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+/** 评价/多店商品字段/正文图集等任一需要详情时给出入口 */
+const showDetailBtn = computed(
+  () =>
+    bodyRich.value
+    || galleryOn.value
+    || browseOn.value
+    || logOn.value
+    || roomEquipOn.value
+    || reviewOn.value
+    || marketplace.value,
+)
+function shopLabel(row) {
+  if (!row) return ''
+  return String(row.shopName || row.shop_name || '').trim()
+}
+function onCategoryChange() {
+  if (isGuest.value) {
+    categoryId.value = null
+    requireLogin(router)
+    return
+  }
+  page.value = 1
+  load()
+}
+function onTagFilterChange() {
+  if (isGuest.value) {
+    tagIds.value = []
+    requireLogin(router)
+    return
+  }
+  page.value = 1
+  load()
+}
 const applyVisible = ref(false)
 const applyRow = ref(null)
 const applyRemark = ref('')

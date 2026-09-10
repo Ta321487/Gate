@@ -14,6 +14,7 @@
         </div>
         <div class="meta">
           <h3>{{ row.title || '已下架' }}</h3>
+          <p v-if="shopLabel(row)" class="muted shop">店铺：{{ shopLabel(row) }}</p>
           <p class="muted">收藏于 {{ row.createdAt || '—' }}</p>
           <div class="row">
             <el-button
@@ -37,9 +38,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
   </div>
@@ -59,6 +62,12 @@ const pageLead = computed(
 )
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
 const canAddCart = computed(() => (getSchema().capabilities || []).includes('order_lines'))
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+
+function shopLabel(row) {
+  if (!marketplace.value || !row) return ''
+  return String(row.shopName || row.shop_name || '').trim()
+}
 
 const list = ref([])
 const total = ref(0)
@@ -111,6 +120,7 @@ onMounted(load)
 .meta { min-width: 0; flex: 1; }
 .meta h3 { margin: 0 0 4px; font-size: 15px; }
 .muted { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
+.shop { margin: 2px 0 0; color: color-mix(in srgb, var(--portal-accent, #0b6e75) 65%, var(--portal-muted, #94a3b8)); }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { margin-top: 24px; color: var(--portal-muted, #94a3b8); text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

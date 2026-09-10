@@ -48,6 +48,7 @@
             type="danger"
             @click="cancel(row)"
           >{{ row.status === 'pending' && requireConfirm ? '驳回' : '取消' }}</el-button>
+          <span v-if="!hasResvOps(row)" class="ops-empty">—</span>
           </div>
         </template>
       </el-table-column>
@@ -58,9 +59,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
 
@@ -146,6 +149,13 @@ const stylistShort = computed(() => {
   return raw || '技师'
 })
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
+function hasResvOps(row) {
+  if (!row) return false
+  if (requireConfirm.value && row.status === 'pending') return true
+  if (row.status === 'confirmed') return true
+  if (!requireConfirm.value && row.status === 'pending') return true
+  return false
+}
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -294,6 +304,7 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.ops-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 13px; padding: 0 4px; }
 .hint { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.5; }
 .preview {
   max-height: 220px; overflow: auto;

@@ -20,9 +20,11 @@
     <el-pagination
       class="pager"
       v-model:current-page="page"
-      layout="total, prev, pager, next"
+      layout="total, sizes, prev, pager, next"
+      :page-sizes="[10, 20, 50]"
       :total="total"
       @current-change="load"
+        @size-change="load"
     />
 
     <el-dialog v-model="visible" :title="form.id ? '编辑题目' : '新增题目'" width="560px">
