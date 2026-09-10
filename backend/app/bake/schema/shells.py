@@ -900,6 +900,8 @@ def slot_shell_schema(
     # 履约办结：confirmed → completed（入场/就诊/到店/入住离店）
     complete_verb: str = "办结",
     completed_label: str | None = None,
+    # 办结后用户可评（美业/医院等；酒店有订单评价时可不挂）
+    allow_rating: bool = False,
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
     noun = (resv_label or "预约").removesuffix("记录").strip() or "预约"
@@ -932,6 +934,7 @@ def slot_shell_schema(
         "requireRemark": bool(reserve_require_remark),
         "remarkLabel": reserve_remark_label or "备注",
         "requireConfirm": False,
+        "allowRating": bool(allow_rating),
     }
     entities: dict[str, Any] = {
         "archive": {

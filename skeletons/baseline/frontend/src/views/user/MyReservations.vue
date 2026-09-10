@@ -27,6 +27,7 @@
       <p v-if="row.remark && !row.plateNo && !row.patientName && !row.subject && !row.guestName" class="sub">备注：{{ row.remark }}</p>
       <p class="sub">申请于 {{ row.createdAt }}</p>
       <p v-if="row.entryAt" class="sub">办结于 {{ row.entryAt }}</p>
+      <p v-if="allowRating && row.rating" class="sub">评价：{{ row.rating }} 星<template v-if="row.ratingRemark"> · {{ row.ratingRemark }}</template></p>
       <div class="acts">
         <el-button
           v-if="row.status === 'pending' || row.status === 'confirmed'"
@@ -39,6 +40,12 @@
           size="small"
           @click="cancel(row)"
         >取消{{ resvNoun }}</el-button>
+        <el-button
+          v-if="canRate(row)"
+          size="small"
+          type="warning"
+          @click="openRate(row)"
+        >评价</el-button>
       </div>
     </article>
     <div v-if="!list.length" class="empty">暂无{{ resvNoun }}</div>
@@ -71,6 +78,29 @@
         <el-button type="primary" :loading="saving" :disabled="!newSlotId" @click="submitReschedule">确认改约</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="rateVisible" title="服务评价" width="440px" destroy-on-close>
+      <p v-if="rateTitle" class="dlg-tip">对「{{ rateTitle }}」评分</p>
+      <el-form label-width="72px">
+        <el-form-item label="评分" required>
+          <el-rate v-model="rateScore" :max="5" />
+        </el-form-item>
+        <el-form-item label="短评">
+          <el-input
+            v-model="rateRemark"
+            type="textarea"
+            :rows="2"
+            maxlength="200"
+            show-word-limit
+            placeholder="选填"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rateVisible = false">取消</el-button>
+        <el-button type="primary" :loading="rateSaving" @click="submitRate">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -88,6 +118,7 @@ const symptomLabel = computed(() => resv.symptomNoteLabel || '症状')
 const stylistLabel = computed(() => resv.stylistLabel || '偏好技师')
 const guestLabel = computed(() => resv.guestNameLabel || '入住人')
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
+const allowRating = computed(() => !!getSchema()?.entities?.reservation?.allowRating)
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -100,6 +131,19 @@ const currentId = ref(0)
 const currentSlotId = ref(0)
 const newSlotId = ref(null)
 const slotOptions = ref([])
+
+const rateVisible = ref(false)
+const rateSaving = ref(false)
+const rateId = ref(0)
+const rateTitle = ref('')
+const rateScore = ref(5)
+const rateRemark = ref('')
+
+function canRate(row) {
+  if (!allowRating.value || !row) return false
+  if (row.status !== 'completed') return false
+  return row.rating == null || row.rating === '' || row.rating === undefined
+}
 
 async function load() {
   const res = await http.get('/api/slots/reservations', {
@@ -146,6 +190,33 @@ async function submitReschedule() {
     load()
   } finally {
     saving.value = false
+  }
+}
+
+function openRate(row) {
+  rateId.value = row.id
+  rateTitle.value = row.itemTitle || row.title || `${resvNoun.value} #${row.id}`
+  rateScore.value = 5
+  rateRemark.value = ''
+  rateVisible.value = true
+}
+
+async function submitRate() {
+  if (!rateScore.value || rateScore.value < 1) {
+    ElMessage.warning('请选择 1～5 分')
+    return
+  }
+  rateSaving.value = true
+  try {
+    await http.post(`/api/slots/reservations/${rateId.value}/rate`, {
+      rating: rateScore.value,
+      remark: rateRemark.value,
+    })
+    ElMessage.success('感谢评价')
+    rateVisible.value = false
+    load()
+  } finally {
+    rateSaving.value = false
   }
 }
 

@@ -28,6 +28,8 @@ public final class SlotStore {
     private static boolean requireRemark = false;
     /** true：预约进 pending，管理端确认后才变 confirmed；false：占坑即确认 */
     private static boolean requireConfirm = false;
+    /** true：办结后用户可评星+短评 */
+    private static boolean allowRating = false;
 
     private SlotStore() {}
 
@@ -37,6 +39,7 @@ public final class SlotStore {
         enabled = !SLOT.isBlank() && !RESV.isBlank();
         requireRemark = false;
         requireConfirm = false;
+        allowRating = false;
     }
 
     public static void configureRemark(boolean required) {
@@ -47,14 +50,23 @@ public final class SlotStore {
         requireConfirm = required;
     }
 
+    public static void configureRating(boolean ratingEnabled) {
+        allowRating = ratingEnabled;
+    }
+
     public static boolean requireConfirm() {
         return requireConfirm;
+    }
+
+    public static boolean allowRating() {
+        return allowRating;
     }
 
     public static void unbind() {
         enabled = false;
         requireRemark = false;
         requireConfirm = false;
+        allowRating = false;
         SLOT = RESV = "";
     }
 
@@ -363,6 +375,36 @@ public final class SlotStore {
     }
 
     /**
+     * 办结后评分 1～5 + 短评；仅本人、仅 completed、仅一次。
+     */
+    public static Map<String, Object> rate(long resvId, String username, int rating, String ratingRemark) {
+        requireEnabled();
+        if (!allowRating) throw new IllegalStateException("当前未开启评价");
+        if (!hasResvColumn("rating")) throw new IllegalStateException("当前不支持评价");
+        Map<String, Object> m = getReservation(resvId);
+        if (m == null) throw new IllegalArgumentException("预约不存在");
+        if (!username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能评价本人的预约");
+        }
+        if (!"completed".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅办结后可评价");
+        }
+        Object existing = m.get("rating");
+        if (existing != null && !"null".equals(String.valueOf(existing)) && !"".equals(String.valueOf(existing))) {
+            throw new IllegalStateException("已评价过");
+        }
+        if (rating < 1 || rating > 5) throw new IllegalArgumentException("评分须为 1～5 星");
+        String remark = ratingRemark == null ? "" : ratingRemark.trim();
+        if (remark.length() > 200) remark = remark.substring(0, 200);
+        db().update(
+                "UPDATE " + RESV + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
+                rating,
+                remark,
+                resvId);
+        return getReservation(resvId);
+    }
+
+    /**
      * 改约：取消原时段占坑并预约新时段（同一用户；保留备注等扩展字段）。
      */
     public static Map<String, Object> reschedule(long resvId, long newSlotId, String username) {
@@ -541,6 +583,19 @@ public final class SlotStore {
             m.put("entryAt", fmt(ea));
         } catch (Exception ignored) {
             m.put("entryAt", null);
+        }
+        try {
+            int r = rs.getInt("rating");
+            m.put("rating", rs.wasNull() ? null : r);
+        } catch (Exception ignored) {
+            m.put("rating", null);
+        }
+        m.put("ratingRemark", safeStr(rs, "rating_remark"));
+        try {
+            Timestamp ra = rs.getTimestamp("rated_at");
+            m.put("ratedAt", fmt(ra));
+        } catch (Exception ignored) {
+            m.put("ratedAt", null);
         }
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         return m;

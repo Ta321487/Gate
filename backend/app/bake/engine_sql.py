@@ -161,6 +161,7 @@ def domain_sql(
     title: str = "",
     ticket_flags: dict | None = None,
     staff_posts: list | None = None,
+    reservation_flags: dict | None = None,
 ) -> str:
     """按领域加载 SQL；GENERIC 多主路径从已有模板拼装。"""
     if domain == "DOM-GENERIC":
@@ -272,6 +273,21 @@ def domain_sql(
         archetypes=arches_for_sql,
     )
     loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
+    # 预约评价开关：优先 bake 传入；否则回落域默认 schema
+    resv_flags: dict = {}
+    if isinstance(reservation_flags, dict) and reservation_flags:
+        resv_flags = reservation_flags
+    else:
+        try:
+            from app.bake.schema.templates import SCHEMA_BUILDERS
+
+            b = SCHEMA_BUILDERS.get(domain or "")
+            if b:
+                ent = ((b("thesis").get("entities") or {}).get("reservation") or {})
+                if isinstance(ent, dict):
+                    resv_flags = ent
+        except Exception:
+            pass
     # 有子管/岗位任命的域保留 staff 列；预约/订单履约列按域拆分；忠诚度按能力
     text = ensure_shared_sql_columns(
         text,
@@ -279,6 +295,7 @@ def domain_sql(
         archetypes=arches_for_sql,
         staff=True,
         loyalty=loyalty_on,
+        reservation_flags=resv_flags,
     )
     runtime = ((DOMAINS.get(domain) or {}).get("runtime") or {})
     resolved_ticket = ticket_table or runtime.get("ticket_table")
