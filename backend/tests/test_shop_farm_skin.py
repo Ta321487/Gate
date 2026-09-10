@@ -58,6 +58,8 @@ class ShopFarmSkinTests(unittest.TestCase):
         self.assertEqual(fields["isbn"], "规格")
         self.assertEqual(fields["region"], "产地")
         self.assertEqual(fields["harvestOn"], "采摘时间")
+        by_key = {f["key"]: f for f in schema["entities"]["archive"]["fields"]}
+        self.assertEqual(by_key["harvestOn"]["type"], "date")
         self.assertEqual(fields["sellerNote"], "简介")
         self.assertEqual(schema["entities"]["archive"]["label"], "农产品")
         self.assertEqual(schema["roles"]["admin"]["label"], "农产主管（总管）")

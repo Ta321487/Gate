@@ -36,7 +36,7 @@
         {
           "key": "foundAt",
           "label": "拾获时间",
-          "type": "datetime"
+          "type": "date"
         },
         {
           "key": "category",

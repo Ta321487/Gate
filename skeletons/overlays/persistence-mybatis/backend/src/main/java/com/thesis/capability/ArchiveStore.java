@@ -527,7 +527,9 @@ public final class ArchiveStore {
             mapper().updateItemColumn(ITEM, "end_at", ts, id);
         }
         if (hasApplyDeadline()) {
-            Timestamp ts = parseTs(patch.containsKey("applyDeadlineAt") ? patch.get("applyDeadlineAt") : m.get("applyDeadlineAt"));
+            Timestamp ts = parseTs(
+                    patch.containsKey("applyDeadlineAt") ? patch.get("applyDeadlineAt") : m.get("applyDeadlineAt"),
+                    true);
             mapper().updateItemColumn(ITEM, "apply_deadline_at", ts, id);
         }
         if (hasMutexCode()) {
@@ -1344,12 +1346,21 @@ public final class ArchiveStore {
     }
 
     private static Timestamp parseTs(Object o) {
+        return parseTs(o, false);
+    }
+
+    /** @param endOfDay 纯日期（YYYY-MM-DD）时取当日 23:59:59（报名截止） */
+    private static Timestamp parseTs(Object o, boolean endOfDay) {
         if (o == null) return null;
         String s = String.valueOf(o).trim();
         if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
         try {
             if (s.contains("T")) s = s.replace('T', ' ');
-            if (s.length() == 16) s = s + ":00";
+            if (s.length() == 10) {
+                s = s + (endOfDay ? " 23:59:59" : " 00:00:00");
+            } else if (s.length() == 16) {
+                s = s + ":00";
+            }
             return Timestamp.valueOf(LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), FMT));
         } catch (Exception e) {
             try {

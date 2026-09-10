@@ -44,3 +44,14 @@ export function dateTimePickerProps(field = {}) {
     disabledSeconds: disabledSecondsForStep(step),
   }
 }
+
+/** 纯日期字段（YYYY-MM-DD），如采摘日 */
+export function datePickerProps(field = {}) {
+  const label = String(field?.label || field?.key || '日期')
+  return {
+    type: 'date',
+    valueFormat: 'YYYY-MM-DD',
+    format: 'YYYY-MM-DD',
+    placeholder: `选择${label}`,
+  }
+}

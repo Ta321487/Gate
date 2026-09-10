@@ -223,13 +223,24 @@ def _ensure_three_level_states(ticket: dict[str, Any]) -> None:
     ticket["twoLevelApprove"] = True
 
 
-def _ensure_apply_deadline_field(archive: dict[str, Any], label: str) -> None:
+def _ensure_apply_deadline_field(
+    archive: dict[str, Any], label: str, proposal_text: str = ""
+) -> None:
+    from app.bake.features.temporal_field import calendar_field_type
+
     fields = archive.get("fields")
     if not isinstance(fields, list):
         fields = []
         archive["fields"] = fields
+    want = calendar_field_type(proposal_text)
     for f in fields:
         if isinstance(f, dict) and f.get("key") == "applyDeadlineAt":
+            f["label"] = label
+            f["type"] = want
+            if want == "datetime":
+                f.setdefault("timeStepMinutes", 30)
+            else:
+                f.pop("timeStepMinutes", None)
             return
     # 插在 stock / category 附近，避免甩在末尾难找
     insert_at = len(fields)
@@ -237,10 +248,10 @@ def _ensure_apply_deadline_field(archive: dict[str, Any], label: str) -> None:
         if isinstance(f, dict) and f.get("key") in ("stock", "status"):
             insert_at = i
             break
-    fields.insert(
-        insert_at,
-        {"key": "applyDeadlineAt", "label": label, "type": "datetime"},
-    )
+    row: dict[str, Any] = {"key": "applyDeadlineAt", "label": label, "type": want}
+    if want == "datetime":
+        row["timeStepMinutes"] = 30
+    fields.insert(insert_at, row)
 
 
 def apply_ticket_flow_opts_to_schema(
@@ -289,7 +300,11 @@ def apply_ticket_flow_opts_to_schema(
 
     archive = entities.get("archive")
     if isinstance(archive, dict) and scan_apply_deadline(text):
-        _ensure_apply_deadline_field(archive, _apply_deadline_label(text))
+        _ensure_apply_deadline_field(archive, _apply_deadline_label(text), text)
+
+    from app.bake.features.temporal_field import apply_soft_calendar_types
+
+    apply_soft_calendar_types(schema, text)
 
 
 def merge_multi_approve_capabilities(

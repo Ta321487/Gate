@@ -53,7 +53,7 @@
         {
           "key": "applyDeadlineAt",
           "label": "选课截止",
-          "type": "datetime"
+          "type": "date"
         },
         {
           "key": "credit",
