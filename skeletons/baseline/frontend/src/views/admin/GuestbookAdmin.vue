@@ -28,7 +28,7 @@
         <template #default="{ row }">{{ row.reply || '—' }}</template>
       </el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" />
-      <el-table-column v-if="isSuper" label="操作" width="160" fixed="right">
+      <el-table-column v-if="canModerate" label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <div class="table-ops">
           <el-button link type="primary" @click="openReply(row)">回复</el-button>
@@ -77,6 +77,8 @@ import { getSchema } from '../../utils/domainSchema.js'
 
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+/** 多店：仅平台总管回复；单店/非多店：办理岗有菜单即可回复（开题「回复留言」） */
+const canModerate = computed(() => isSuper.value || !marketplace.value)
 const channel = ref('user')
 const nameCol = computed(() =>
   marketplace.value && channel.value === 'merchant' ? '商家' : '留言人',

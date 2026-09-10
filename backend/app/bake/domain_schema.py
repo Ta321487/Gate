@@ -418,9 +418,12 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.staff_posts import attach_staff_posts, roles_for_spec
 
     sch = out.get("schema") if isinstance(out.get("schema"), dict) else {}
+    # 岗包按能力并菜单：须带上最终 capabilities
+    sch = dict(sch)
+    sch["capabilities"] = list(out.get("capabilities") or sch.get("capabilities") or [])
     with match_path_override_scope(domain, path.get("scene"), path.get("entry")):
         out["schema"] = attach_staff_posts(
-            dict(sch),
+            sch,
             domain,
             archetype,
             arches,
@@ -731,6 +734,11 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmPeerPlaceholder": "选择对方账号",
     "dmEmptyPeers": "暂无会话，点「新建」选人开聊。",
     "dmEmptyChat": "选择左侧会话，或新建私信。",
+    "dmMerchantPageLead": "回复买家咨询，打开会话后自动刷新新消息。",
+    "dmMerchantNewTitle": "联系买家",
+    "dmMerchantPeerPlaceholder": "选择买家账号",
+    "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
+    "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
     "demoPayHint": "在线支付：选择支付宝或微信并输入支付密码完成本单。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
@@ -846,6 +854,16 @@ def scrub_schema_student_copy(schema: dict[str, Any]) -> dict[str, Any]:
             fb = "暂无会话，点「新建」选店铺商家。"
         if key == "dmEmptyChat" and shop_cs:
             fb = "选择左侧会话，或新建联系商家。"
+        if key == "dmMerchantPageLead" and shop_cs:
+            fb = "回复买家咨询，打开会话后自动刷新新消息。"
+        if key == "dmMerchantNewTitle" and shop_cs:
+            fb = "联系买家"
+        if key == "dmMerchantPeerPlaceholder" and shop_cs:
+            fb = "选择买家账号"
+        if key == "dmMerchantEmptyPeers" and shop_cs:
+            fb = "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。"
+        if key == "dmMerchantEmptyChat" and shop_cs:
+            fb = "选择左侧会话，或新建联系买家。"
         if key == "guestbookPageLead" and shop_cs:
             fb = "有问题可向平台留言，我们会尽快回复。"
         if isinstance(val, str):

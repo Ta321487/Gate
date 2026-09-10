@@ -53,7 +53,7 @@ def attach_book_suggest_menus(schema: dict[str, Any]) -> None:
     ensure_menu(
         admin,
         "book_suggest",
-        {"key": "book_suggest", "label": "荐购审核", "superOnly": True},
+        {"key": "book_suggest", "label": "荐购审核", "superOnly": False},
         before_key="ticket_pending",
     )
     labels = schema.setdefault("labels", {})

@@ -44,7 +44,7 @@ def attach_staff_roster_menus(schema: dict[str, Any]) -> None:
     ensure_menu(
         admin,
         "staff_roster",
-        {"key": "staff_roster", "label": "排班管理", "superOnly": True},
+        {"key": "staff_roster", "label": "排班管理", "superOnly": False},
         before_key="users",
     )
     labels = schema.setdefault("labels", {})

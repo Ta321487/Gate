@@ -7,15 +7,44 @@ from typing import Any
 
 # 办理岗：裁剪 Admin 菜单 key
 PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
-    "ticket_ops": frozenset({"dashboard", "ticket_pending", "ticket_records", "deadline", "archive_logs"}),
-    "order_ops": frozenset({"dashboard", "orders"}),
-    # 多店店长：自家商品 + 订单 + 留言（评价菜单由 order_review 挂载时再并入可见）
-    "merchant_ops": frozenset(
-        {"dashboard", "archive", "orders", "guestbook", "order_reviews", "content"}
+    "ticket_ops": frozenset(
+        {
+            "dashboard",
+            "ticket_pending",
+            "ticket_records",
+            "deadline",
+            "archive_logs",
+            # 能力挂上后由 _enrich_clerk_pack_menus 再并；此处写底，避免空包漏项
+            "guestbook",
+            "content_reports",
+            "book_suggest",
+            "staff_roster",
+            "dm",
+            "stock_moves",
+            "stock_ledger",
+        }
     ),
-    "slot_ops": frozenset({"dashboard", "reservations"}),
+    "order_ops": frozenset(
+        {
+            "dashboard",
+            "orders",
+            "order_reviews",
+            "guestbook",
+            "coupons",
+            "dm",
+        }
+    ),
+    # 多店店长：自家商品 + 订单 + 留言 + 客服私信（评价菜单由 order_review 挂载时再并入可见）
+    "merchant_ops": frozenset(
+        {"dashboard", "archive", "orders", "guestbook", "order_reviews", "content", "dm", "coupons"}
+    ),
+    "slot_ops": frozenset(
+        {"dashboard", "reservations", "staff_roster", "order_reviews", "guestbook", "dm", "equipment_dict"}
+    ),
     # 内容流编辑：维护档案与公告（无单据审核队列）
-    "content_ops": frozenset({"dashboard", "archive", "content"}),
+    "content_ops": frozenset(
+        {"dashboard", "archive", "content", "guestbook", "content_reports", "dm"}
+    ),
     "exam_ops": frozenset(
         {"dashboard", "archive", "content", "exam_questions", "exam_papers"}
     ),
@@ -29,6 +58,25 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
         {"dashboard", "archive", "content", "doc_files", "doc_logs"}
     ),
 }
+
+# 管理端菜单 key → 办理岗包：有该菜单时并入包（开题写办理/回复/审核/禁言等动词时对称可见）
+_CLERK_MENU_PACK_AFFINITY: dict[str, frozenset[str]] = {
+    "order_reviews": frozenset({"order_ops", "merchant_ops", "slot_ops"}),
+    "guestbook": frozenset({"order_ops", "merchant_ops", "ticket_ops", "content_ops", "slot_ops"}),
+    "content_reports": frozenset({"ticket_ops", "content_ops"}),
+    "book_suggest": frozenset({"ticket_ops"}),
+    "staff_roster": frozenset({"slot_ops", "ticket_ops"}),
+    "coupons": frozenset({"order_ops", "merchant_ops"}),
+    "dm": frozenset({"merchant_ops", "ticket_ops", "order_ops", "content_ops", "slot_ops"}),
+    "archive_logs": frozenset({"ticket_ops"}),
+    "stock_moves": frozenset({"ticket_ops"}),
+    "stock_ledger": frozenset({"ticket_ops"}),
+    "equipment_dict": frozenset({"slot_ops"}),
+}
+
+# 并入办理岗后须放开的菜单（禁止再 superOnly 挡死一线）
+_CLERK_FORCE_OPEN_KEYS = frozenset(_CLERK_MENU_PACK_AFFINITY.keys()) | frozenset({"users"})
+
 
 # 作业岗：员工端页面 id（前端路由用）
 PACK_WORK_PAGES: dict[str, frozenset[str]] = {
@@ -952,6 +1000,104 @@ def validate_staff_posts(posts: list[dict[str, Any]]) -> list[str]:
     return errs
 
 
+def _admin_menu_keys(schema: dict[str, Any]) -> set[str]:
+    admin = (schema.get("menus") or {}).get("admin") or []
+    return {
+        str(m.get("key"))
+        for m in admin
+        if isinstance(m, dict) and m.get("key")
+    }
+
+
+def _schema_cap_set(schema: dict[str, Any]) -> set[str]:
+    caps = schema.get("capabilities")
+    if not isinstance(caps, list):
+        return set()
+    return {str(c) for c in caps if c}
+
+
+def enrich_clerk_pack_menus(
+    schema: dict[str, Any],
+    used_packs: set[str],
+) -> dict[str, list[str]]:
+    """按本包已挂管理菜单 + 能力，把办理岗包补全（评价/留言/举报/荐购/排班/券/私信…）。
+
+    只并「菜单确实存在」的 key，避免空链；禁言无举报台时给版主开放 users。
+    """
+    admin_keys = _admin_menu_keys(schema)
+    caps = _schema_cap_set(schema)
+    out: dict[str, set[str]] = {}
+    for pk in used_packs:
+        base = PACK_ADMIN_MENUS.get(pk)
+        if base is None:
+            continue
+        # 底包 ∩ 实际菜单（dashboard 始终保留）
+        kept = {k for k in base if k == "dashboard" or k in admin_keys}
+        if "dashboard" in base:
+            kept.add("dashboard")
+        out[pk] = kept
+
+    for menu_key, packs in _CLERK_MENU_PACK_AFFINITY.items():
+        if menu_key not in admin_keys:
+            continue
+        for pk in packs:
+            if pk in out:
+                out[pk].add(menu_key)
+
+    if "post_mute" in caps:
+        for pk in ("ticket_ops", "content_ops"):
+            if pk not in out:
+                continue
+            if "content_reports" in admin_keys:
+                out[pk].add("content_reports")
+            elif "users" in admin_keys:
+                out[pk].add("users")
+
+    return {k: sorted(v) for k, v in out.items()}
+
+
+def open_clerk_admin_menus(schema: dict[str, Any], pack_menus: dict[str, list[str]]) -> None:
+    """办理岗包已收录的菜单禁止再 superOnly，否则岗包放行也进不去。
+
+    全厂不变式：archive/category/users/content 默认须超管；
+    仅多店商家白名单（商品/活动）可放开。勿把 content_ops 的 archive 强行非超管。
+    """
+    from app.bake.domain_schema import (
+        MARKETPLACE_MERCHANT_MENU_KEYS,
+        MASTER_MENU_KEYS,
+        REQUIRED_SUPER_MENU_KEYS,
+    )
+
+    granted: set[str] = set()
+    for keys in pack_menus.values():
+        granted.update(keys)
+    if not granted:
+        return
+    protected = set(MASTER_MENU_KEYS) | set(REQUIRED_SUPER_MENU_KEYS)
+    marketplace = bool(schema.get("shopMarketplace"))
+    menus = schema.setdefault("menus", {})
+    admin = list(menus.get("admin") or [])
+    changed = False
+    for m in admin:
+        if not isinstance(m, dict):
+            continue
+        k = str(m.get("key") or "")
+        if k not in granted:
+            continue
+        if k in protected:
+            if marketplace and k in MARKETPLACE_MERCHANT_MENU_KEYS:
+                if m.get("superOnly") is not False:
+                    m["superOnly"] = False
+                    changed = True
+            continue
+        if m.get("superOnly") is not False:
+            m["superOnly"] = False
+            changed = True
+    if changed:
+        menus["admin"] = admin
+        schema["menus"] = menus
+
+
 def _restore_crm_pending_when_account_mgr(
     schema: dict[str, Any],
     clerks: list[dict[str, Any]],
@@ -1117,9 +1263,8 @@ def attach_staff_posts(
         for pk in p.get("packs") or []:
             if isinstance(pk, str) and pk.strip():
                 used_packs.add(pk.strip())
-    schema["staffPackMenus"] = {
-        k: sorted(v) for k, v in PACK_ADMIN_MENUS.items() if k in used_packs
-    }
+    schema["staffPackMenus"] = enrich_clerk_pack_menus(schema, used_packs)
+    open_clerk_admin_menus(schema, schema["staffPackMenus"])
     schema["staffPackPages"] = {
         k: sorted(v) for k, v in PACK_WORK_PAGES.items() if k in used_packs
     }
