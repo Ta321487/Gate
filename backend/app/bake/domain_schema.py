@@ -661,6 +661,31 @@ FACTORY_UI_FORBIDDEN: tuple[str, ...] = (
     "人脸/GPS",
     "见 e_sign",
     "本地签章见",
+    # 与 p3s 同源：学生可见「演示*」口吻（清洗按钮应能盖住，不只靠重 bake）
+    "演示密码",
+    "演示支付",
+    "演示数据",
+    "演示账号",
+    "演示余额",
+    "演示通行",
+    "本期演示",
+    "演示库",
+    "本地签章演示",
+    "演示物流",
+)
+
+# schema/种子字符串里演示口吻 → 产品表述（与 p3s 对齐）
+_DEMO_UI_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    ("演示密码", "支付密码"),
+    ("演示支付", "在线支付"),
+    ("演示数据", "业务数据"),
+    ("演示账号", "登录账号"),
+    ("演示余额", "账户余额"),
+    ("演示通行", "通行码"),
+    ("本期演示", "本期"),
+    ("演示库", "业务库"),
+    ("本地签章演示", "本地签章"),
+    ("演示物流", "物流信息"),
 )
 
 # 含禁词的括注整段去掉（保留主句）
@@ -719,7 +744,7 @@ _LABEL_FALLBACKS: dict[str, str] = {
 
 
 def factory_ui_polluted(text: str) -> bool:
-    """产品 UI / 种子文案是否混进工厂说明书口吻。"""
+    """产品 UI / 种子文案是否混进工厂说明书口吻或演示口吻。"""
     s = str(text or "")
     if not s.strip():
         return False
@@ -731,15 +756,24 @@ def factory_ui_polluted(text: str) -> bool:
     # DOM-* 域编号不得进学生可见句
     if _UI_COPY_DOM_ID_RE.search(s) or "DOM-" in s:
         return True
+    try:
+        from app.bake.gates.semantic import DEMO_VISIBLE_RE
+
+        if DEMO_VISIBLE_RE.search(s):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
     return False
 
 
 def scrub_factory_ui_text(text: str, *, fallback: str = "") -> str:
-    """去掉工厂括注；仍污染则回退到调用方给出的产品文案（勿拆分句硬凑）。"""
+    """去掉工厂括注与演示口吻；仍污染则回退到调用方给出的产品文案（勿拆分句硬凑）。"""
     raw = str(text or "").strip()
     if not raw:
         return fallback
     cleaned = _FACTORY_PAREN_RE.sub("", raw)
+    for old, new in _DEMO_UI_REPLACEMENTS:
+        cleaned = cleaned.replace(old, new)
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip(" ，,。.;；")
     if cleaned != raw.strip():
         # 只在剥掉括注后补句号，避免把短标题改成「客服。」
@@ -1080,19 +1114,26 @@ def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]
 
 
 def text_has_factory_ui_forbidden(text: str) -> bool:
-    """原文是否含工厂禁词（门禁 / 覆写判定共用）。"""
+    """原文是否含工厂禁词 / 演示口吻（门禁 / 覆写判定共用）。"""
     if not text:
         return False
     for bad in FACTORY_UI_FORBIDDEN:
         if bad in text:
             return True
+    try:
+        from app.bake.gates.semantic import DEMO_VISIBLE_RE
+
+        if DEMO_VISIBLE_RE.search(text):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
     return factory_ui_polluted(text)
 
 
 def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
-    """工作区 Vue 仍脏、现网 baseline 已干净时，按相对路径覆写（不必整题重 bake）。
+    """工作区 Vue 仍脏（工厂腔或演示口吻）、现网 baseline 已干净时，按相对路径覆写。
 
-    只动 frontend/src 下与 baseline 同路径且骨架侧已无禁词的文件。
+    不必整题重 bake。只动 frontend/src 下与 baseline 同路径且骨架侧已干净的文件。
     """
     from app.core.config import get_settings
 
