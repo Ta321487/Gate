@@ -189,7 +189,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="rechargeVisible" title="模拟充值" width="400px" destroy-on-close>
+    <el-dialog v-model="rechargeVisible" title="账户充值" width="400px" destroy-on-close>
       <p class="tip muted">选择充值金额，到账后可用于余额支付（在线支付下单不扣余额）。</p>
       <div class="recharge-tiers">
         <el-button

@@ -35,10 +35,13 @@ public class LoyaltyController {
         return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon));
     }
 
-    /** 用户端：模拟充值（固定档位） */
+    /** 买家端充值（固定档位）；商家/管理岗禁止自充 */
     @PostMapping("/api/loyalty/demo-recharge")
     public R<?> demoRecharge(@RequestBody Map<String, Object> body, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
+        if ("admin".equals(String.valueOf(session.getAttribute("role")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "商家与管理账号不可充值买家余额");
+        }
         if (!LoyaltyStore.isWalletEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "未开启账户余额");
         }
