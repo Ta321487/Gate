@@ -111,6 +111,8 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         self.assertIn("in_transit", states)
         self.assertIn("signed", states)
         self.assertEqual(schema.get("stockWarnBelow"), 10)
+        arch = (schema.get("entities") or {}).get("archive") or {}
+        self.assertTrue(arch.get("softDelete"), "多店商品须默认开上下架软删")
         self.assertEqual(
             (schema.get("labels") or {}).get("guestbookPageLead"),
             "有问题可向平台留言，我们会尽快回复。",
@@ -287,6 +289,13 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         profile = (root / "frontend/src/views/Profile.vue").read_text(encoding="utf-8")
         self.assertIn("bizSectionTitle", profile)
         self.assertIn("店铺资料", profile)
+        self.assertIn("showBuyerLoyalty", profile)
+        self.assertNotIn("模拟充值", profile)
+        loyalty_ctrl = (
+            root
+            / "backend/src/main/java/com/thesis/controller/LoyaltyController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("商家与管理账号不可充值", loyalty_ctrl)
         browse = (
             root / "frontend/src/views/user/ArchiveBrowse.vue"
         ).read_text(encoding="utf-8")
