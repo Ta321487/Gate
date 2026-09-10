@@ -52,6 +52,17 @@ def resolve_dm_peer_mode(
 ) -> str:
     if scan_dm_merchant_peers(proposal_text):
         return DM_PEER_MERCHANT
+    # 多店商城：开题写「客服」且未写用户互聊/站内私信 → 默认店铺客服
+    if (domain or "") == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        blob = proposal_text or ""
+        if scan_shop_marketplace("", blob) or scan_shop_marketplace(blob, blob):
+            if re.search(r"客服", blob) and not re.search(
+                r"用户(?:之间|互)?(?:私信|私聊|互聊)|站内私信|会员互聊",
+                blob,
+            ):
+                return DM_PEER_MERCHANT
     return DM_PEER_ALL
 
 

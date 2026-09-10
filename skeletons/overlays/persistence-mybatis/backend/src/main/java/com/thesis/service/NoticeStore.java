@@ -140,15 +140,21 @@ public class NoticeStore {
     }
 
     public static Map<String, Object> page(int page, int size) {
-        return page(page, size, false);
+        return page(page, size, false, null);
     }
 
     public static Map<String, Object> page(int page, int size, boolean approvedOnly) {
+        return page(page, size, approvedOnly, null);
+    }
+
+    public static Map<String, Object> page(int page, int size, boolean approvedOnly, String submitterOnly) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         PageHelper.startPage(page, size);
         List<Map<String, Object>> raw;
-        if (approvedOnly && hasAuditStatus()) {
+        if (submitterOnly != null && !submitterOnly.isBlank() && hasSubmitterUsername()) {
+            raw = mapper().selectBySubmitterOrderByIdDesc(submitterOnly.trim());
+        } else if (approvedOnly && hasAuditStatus()) {
             raw = mapper().selectApprovedOrderByIdDesc();
         } else {
             raw = mapper().selectAllOrderByIdDesc();

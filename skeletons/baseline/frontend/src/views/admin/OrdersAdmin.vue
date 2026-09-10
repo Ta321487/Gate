@@ -71,7 +71,12 @@
       <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
           <div class="table-ops">
-          <el-button v-if="row.status === 'pending'" link type="primary" @click="act(row, 'confirm')">{{ confirmVerb }}</el-button>
+          <el-button
+            v-if="!marketplace && row.status === 'pending'"
+            link
+            type="primary"
+            @click="act(row, 'confirm')"
+          >{{ confirmVerb }}</el-button>
           <el-button
             v-if="row.status === 'confirmed'"
             link
@@ -97,7 +102,7 @@
             @click="act(row, 'complete')"
           >{{ completeVerb }}</el-button>
           <el-button
-            v-if="row.status === 'pending' || row.status === 'confirmed'"
+            v-if="(!marketplace && row.status === 'pending') || row.status === 'confirmed'"
             link
             type="danger"
             @click="act(row, 'cancel')"
@@ -114,6 +119,8 @@
             type="danger"
             @click="decideRefund(row, false)"
           >驳回售后</el-button>
+          <span v-if="marketplace && row.status === 'pending'" class="ops-hint">待买家付款</span>
+          <span v-else-if="!hasOrderOps(row)" class="ops-empty">—</span>
           </div>
         </template>
       </el-table-column>
@@ -124,9 +131,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
   </div>
@@ -186,6 +195,15 @@ function canComplete(row) {
     return ['shipped', 'in_transit', 'signed'].includes(row.status)
   }
   return row.status === 'shipped'
+}
+function hasOrderOps(row) {
+  if (!row) return false
+  if (row.refundStatus === 'pending') return true
+  if (!marketplace.value && row.status === 'pending') return true
+  if (row.status === 'confirmed') return true
+  if (marketplace.value && ['shipped', 'in_transit', 'signed'].includes(row.status)) return true
+  if (!marketplace.value && row.status === 'shipped') return true
+  return false
 }
 const list = ref([])
 const total = ref(0)
@@ -310,4 +328,7 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.ops-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 13px; padding: 0 4px; }
+.ops-hint { color: var(--el-text-color-secondary, #909399); font-size: 12px; padding: 0 4px; }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 </style>

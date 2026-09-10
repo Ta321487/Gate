@@ -6,6 +6,9 @@
     <el-table :data="list" stripe>
       <el-table-column prop="title" label="标题" min-width="160" />
       <el-table-column prop="publisherName" label="发送人" width="120" />
+      <el-table-column v-if="auditOn" label="提交人" width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.submitterUsername || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="auditOn" label="审核" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="auditTagType(row)" effect="plain">
@@ -34,9 +37,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
     <el-dialog v-model="viewVisible" title="详情" width="560px">

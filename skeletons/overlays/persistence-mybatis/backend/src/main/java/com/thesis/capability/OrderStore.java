@@ -110,6 +110,8 @@ public final class OrderStore {
             m.put("stock", item.get("stock"));
             m.put("coverUrl", item.get("coverUrl"));
             m.put("categoryName", item.get("categoryName"));
+            if (item.get("shopName") != null) m.put("shopName", item.get("shopName"));
+            if (item.get("ownerUsername") != null) m.put("ownerUsername", item.get("ownerUsername"));
         } else {
             m.put("title", "");
             m.put("priceYuan", 0);
@@ -430,6 +432,16 @@ public final class OrderStore {
                 m.put("priceYuan", price);
                 m.put("qty", qty);
                 m.put("lineYuan", round2(price * qty));
+                if (ArchiveStore.shopMarketplaceEnabled()) {
+                    try {
+                        long itemId = num(first(r, "itemId", "item_id"));
+                        Map<String, Object> item = ArchiveStore.getItem(itemId);
+                        if (item != null && item.get("shopName") != null) {
+                            m.put("shopName", item.get("shopName"));
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
                 out.add(m);
             }
         }
@@ -529,6 +541,34 @@ public final class OrderStore {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    public static Map<String, Object> payOrder(long orderId, String username, String payChannel, String payPassword) {
+        requireEnabled();
+        if (!ArchiveStore.shopMarketplaceEnabled()) {
+            throw new IllegalStateException("当前未开启在线支付");
+        }
+        ensurePayChannelColumn();
+        Map<String, Object> m = getOrder(orderId);
+        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (!String.valueOf(m.get("username")).equals(username)) {
+            throw new IllegalStateException("无权支付该订单");
+        }
+        if (!"pending".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("订单不是待付款状态");
+        }
+        String channel = payChannel == null ? "" : payChannel.trim().toLowerCase(Locale.ROOT);
+        if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
+            throw new IllegalArgumentException("请选择支付宝或微信支付");
+        }
+        String pw = payPassword == null ? "" : payPassword.trim();
+        if (pw.length() < 4) {
+            throw new IllegalArgumentException("请输入支付密码（至少 4 位）");
+        }
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        int n = mapper().payPendingOrder(ORDER, orderId, "confirmed", channel, now);
+        if (n <= 0) throw new IllegalStateException("支付失败，请刷新后重试");
+        return getOrder(orderId);
     }
 
     public static Map<String, Object> advance(long orderId, String action) {

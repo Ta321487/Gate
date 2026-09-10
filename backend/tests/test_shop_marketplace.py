@@ -211,5 +211,113 @@ class ShopMarketplaceMatchTests(unittest.TestCase):
         self.assertNotIn("微信小程序", warnings)
 
 
+_FARM_OPENING = """
+用户功能模块划分为：登录注册模块、个人中心模块【个人信息（头像、昵称、联系方式、修改密码等）、收藏、收货地址】、商品模块【浏览搜索农产品、查看农产品详情（产地、采摘时间、商品规格、价格、简介、图片）、收藏、加入购物车、查看评价】、活动模块【查看促销信息、节日优惠等公告信息】、留言反馈模块（与管理员沟通)、客服模块（与商家在线沟通)、评价模块【查看其他用户对此商品的评价、确认收货后可发表评价】、购物车【商品数量增减、删除商品、价格计算、在线支付】、支付模块（可做到在线支付，选择支付宝、微信输入密码支付，假的就行）、订单模块【查看订单状态(待发货、已发货、已完成、已取消)】、申请售后【退货申请】。
+商家功能模块划分为：登录注册模块、个人中心模块【店铺信息编辑（店铺名称、简介、联系方式、修改密码)】、农产品管理模块、评价管理模块、订单管理模块(修改或查看订单状态(待付款、待发货、已发货、运输中、已签收、已完成、已取消)、发货操作等)、售后管理、客服模块（与用户在线沟通)、留言反馈模块、活动管理模块、数据分析。
+管理员功能模块划分为：登录、用户管理模块、商家管理模块、评价管理模块、售后管理模块、订单管理模块、农产品商品管理模块、留言反馈模块、农产品分类模块、活动管理模块。
+"""
+
+
+class ShopMarketplaceContractTests(unittest.TestCase):
+    """多店轴洞型合同：下一题同类开题应仍过，不靠人工再抠。"""
+
+    def test_farm_opening_dm_shop_cs_and_review(self) -> None:
+        from app.bake.domain_schema import attach_accept, build_domain_schema
+        from app.bake.features.order_extras import ORDER_REVIEW_CAP, scan_order_review
+
+        self.assertTrue(scan_order_review(_FARM_OPENING))
+        self.assertTrue(scan_order_review("评价模块"))
+        schema = build_domain_schema(
+            "农产品电商系统", "DOM-SHOP", proposal_text=_FARM_OPENING
+        )
+        self.assertTrue(schema.get("shopMarketplace"))
+        spec = attach_accept(
+            {
+                "title": "农产品电商系统",
+                "domain": "DOM-SHOP",
+                "archetype": "ARCH-TRADE",
+                "archetypes": ["ARCH-TRADE"],
+                "capabilities": list(schema.get("capabilities") or []),
+                "entities": [],
+                "features": [],
+                "schema": schema,
+            },
+            _FARM_OPENING,
+        )
+        caps = spec.get("capabilities") or []
+        self.assertIn("dm", caps)
+        self.assertIn(ORDER_REVIEW_CAP, caps)
+        self.assertTrue((spec.get("schema") or {}).get("dmShopCs"))
+        self.assertEqual(
+            (spec.get("schema") or {}).get("labels", {}).get("dmNewTitle"),
+            "联系商家客服",
+        )
+
+    def test_marketplace_seed_has_shippable_and_optional_pending(self) -> None:
+        sql = domain_sql(
+            "DOM-SHOP",
+            "t_shop_mp_farm",
+            title="农产品电商系统",
+            proposal_text=_FARM_OPENING,
+        )
+        self.assertIn("'confirmed'", sql)
+        self.assertRegex(sql, r"biz_order[\s\S]*?'confirmed'")
+        self.assertRegex(sql, r"biz_order[\s\S]*?'shipped'")
+        # 可发货演示单存在；待付款仅作兜底
+        self.assertIn("演示待付款", sql)
+
+    def test_student_pack_exposes_shop_name_and_pay(self) -> None:
+        root = Path(__file__).resolve().parents[2] / "skeletons" / "baseline"
+        archive = (
+            root
+            / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("resolveShopName", archive)
+        self.assertIn("shopName", archive)
+        orders = (
+            root / "frontend/src/views/user/MyOrders.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("去付款", orders)
+        self.assertIn("/pay", orders)
+        admin_orders = (
+            root / "frontend/src/views/admin/OrdersAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ops-empty", admin_orders)
+        self.assertIn("hasOrderOps", admin_orders)
+        profile = (root / "frontend/src/views/Profile.vue").read_text(encoding="utf-8")
+        self.assertIn("bizSectionTitle", profile)
+        self.assertIn("店铺资料", profile)
+        browse = (
+            root / "frontend/src/views/user/ArchiveBrowse.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("onCategoryChange", browse)
+        self.assertIn("showDetailBtn", browse)
+        archive_admin = (
+            root / "frontend/src/views/admin/ArchiveAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("shopName", archive_admin)
+        reviews_ctrl = (
+            root
+            / "backend/src/main/java/com/thesis/controller/OrderReviewController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("pageForMerchant", reviews_ctrl)
+        self.assertIn("merchantOwnsReview", reviews_ctrl)
+        reviews_store = (
+            root
+            / "backend/src/main/java/com/thesis/capability/OrderReviewStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("pageForMerchant", reviews_store)
+        self.assertIn("确认收货后方可评价", reviews_store)
+        favorites = (
+            root / "frontend/src/views/user/MyFavorites.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("shopLabel", favorites)
+        strip = (
+            root / "frontend/src/components/RecommendStrip.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("shopLabel", strip)
+        self.assertIn("待买家付款", admin_orders)
+
+
 if __name__ == "__main__":
     unittest.main()

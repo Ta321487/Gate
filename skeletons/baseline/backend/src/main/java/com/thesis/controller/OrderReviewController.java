@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderReviewStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
@@ -29,6 +30,10 @@ public class OrderReviewController {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         if (admin) {
             AdminAuth.requireAdmin(session);
+            if (ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+                String uid = AdminAuth.requireLogin(session);
+                return R.ok(OrderReviewStore.pageForMerchant(uid, page, size));
+            }
             return R.ok(OrderReviewStore.page(null, page, size));
         }
         String uid = AdminAuth.requireLogin(session);
@@ -69,6 +74,12 @@ public class OrderReviewController {
     public R<?> reply(@PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
         require();
         AdminAuth.requireAdmin(session);
+        if (ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+            String uid = AdminAuth.requireLogin(session);
+            if (!OrderReviewStore.merchantOwnsReview(uid, id)) {
+                throw new BizException(ErrorCode.FORBIDDEN, "无权回复该评价");
+            }
+        }
         String text = body == null || body.get("reply") == null ? "" : String.valueOf(body.get("reply"));
         try {
             return R.ok(OrderReviewStore.reply(id, text));

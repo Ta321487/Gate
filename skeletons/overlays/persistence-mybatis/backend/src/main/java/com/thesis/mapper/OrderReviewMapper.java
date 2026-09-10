@@ -59,4 +59,16 @@ public interface OrderReviewMapper {
             @Param("itemId") long itemId,
             @Param("size") int size,
             @Param("offset") int offset);
+
+    int countByMerchant(
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("owner") String owner);
+
+    List<Map<String, Object>> selectByMerchant(
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("owner") String owner,
+            @Param("size") int size,
+            @Param("offset") int offset);
 }

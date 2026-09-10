@@ -48,8 +48,9 @@ public final class OrderReviewStore {
         if (!username.equals(String.valueOf(order.get("username")))) {
             throw new IllegalStateException("无权评价");
         }
-        if (!"completed".equals(String.valueOf(order.get("status")))) {
-            throw new IllegalStateException("仅已完成订单可评价");
+        if (!"completed".equals(String.valueOf(order.get("status")))
+                && !"signed".equals(String.valueOf(order.get("status")))) {
+            throw new IllegalStateException("确认收货后方可评价");
         }
         if (mapper().countByOrderId(orderId) > 0) throw new IllegalStateException("该订单已评价");
         String text = body == null ? "" : body.trim();
@@ -129,7 +130,7 @@ public final class OrderReviewStore {
         PageInfo<Map<String, Object>> pi = new PageInfo<>(raw);
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> r : raw) {
-            list.add(shape(r));
+            list.add(enrichReview(shape(r)));
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
@@ -137,6 +138,85 @@ public final class OrderReviewStore {
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 多店商家：仅本店商品所在订单的评价。 */
+    public static Map<String, Object> pageForMerchant(String ownerUsername, int page, int size) {
+        require();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page);
+            empty.put("size", size);
+            return empty;
+        }
+        String lineTable = OrderStore.lineTable();
+        String itemTable = ArchiveStore.itemTable();
+        if (lineTable == null || lineTable.isBlank() || itemTable == null || itemTable.isBlank()
+                || !ArchiveStore.hasOwnerUsername()) {
+            return page(null, page, size);
+        }
+        int total = mapper().countByMerchant(lineTable, itemTable, owner);
+        List<Map<String, Object>> raw =
+                mapper().selectByMerchant(lineTable, itemTable, owner, size, (page - 1) * size);
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (raw != null) {
+            for (Map<String, Object> r : raw) {
+                list.add(enrichReview(shape(r)));
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    public static boolean merchantOwnsReview(String ownerUsername, long reviewId) {
+        Map<String, Object> cur = get(reviewId);
+        if (cur == null) return false;
+        long orderId = toLong(cur.get("orderId"));
+        return OrderStore.merchantOwnsOrder(ownerUsername, orderId);
+    }
+
+    private static Map<String, Object> enrichReview(Map<String, Object> m) {
+        if (m == null) return null;
+        try {
+            long orderId = toLong(m.get("orderId"));
+            if (orderId > 0) {
+                Map<String, Object> order = OrderStore.getOrder(orderId);
+                if (order != null && order.get("lines") instanceof List<?> lines && !lines.isEmpty()) {
+                    List<String> titles = new ArrayList<>();
+                    String shop = "";
+                    for (Object o : lines) {
+                        if (!(o instanceof Map<?, ?> line)) continue;
+                        Object t = line.get("title");
+                        if (t != null && !String.valueOf(t).isBlank()) titles.add(String.valueOf(t));
+                        if (shop.isBlank() && line.get("shopName") != null) {
+                            shop = String.valueOf(line.get("shopName")).trim();
+                        }
+                    }
+                    if (!titles.isEmpty()) m.put("itemTitles", String.join("；", titles));
+                    if (!shop.isBlank()) m.put("shopName", shop);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return m;
+    }
+
+    private static long toLong(Object o) {
+        if (o instanceof Number n) return n.longValue();
+        try {
+            return Long.parseLong(String.valueOf(o));
+        } catch (Exception e) {
+            return 0L;
+        }
     }
 
     private static Map<String, Object> get(long id) {

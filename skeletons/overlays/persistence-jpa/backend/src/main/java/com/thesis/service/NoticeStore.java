@@ -178,22 +178,37 @@ public class NoticeStore {
     }
 
     public static Map<String, Object> page(int page, int size) {
-        return page(page, size, false);
+        return page(page, size, false, null);
     }
 
     public static Map<String, Object> page(int page, int size, boolean approvedOnly) {
+        return page(page, size, approvedOnly, null);
+    }
+
+    public static Map<String, Object> page(int page, int size, boolean approvedOnly, String submitterOnly) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
-        String where = "";
+        StringBuilder where = new StringBuilder();
+        List<Object> args = new ArrayList<>();
         if (approvedOnly && hasAuditStatus()) {
-            where = " WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')";
+            where.append(" WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')");
         }
-        Integer total = db().queryForObject("SELECT COUNT(*) FROM sys_notice" + where, Integer.class);
+        if (submitterOnly != null && !submitterOnly.isBlank() && hasSubmitterUsername()) {
+            if (where.length() == 0) where.append(" WHERE ");
+            else where.append(" AND ");
+            where.append("submitter_username=?");
+            args.add(submitterOnly.trim());
+        }
+        Integer total = args.isEmpty()
+                ? db().queryForObject("SELECT COUNT(*) FROM sys_notice" + where, Integer.class)
+                : db().queryForObject("SELECT COUNT(*) FROM sys_notice" + where, Integer.class, args.toArray());
         int t = total == null ? 0 : total;
         int offset = (page - 1) * size;
+        args.add(size);
+        args.add(offset);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM sys_notice" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
-                (rs, i) -> row(rs), size, offset);
+                (rs, i) -> row(rs), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", t);

@@ -1910,11 +1910,17 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audi
 SELECT '金秋苹果促销', '烟台红富士满 2 件减 5 元（待平台审核）。', 'subadmin', '烟台果园店', 'pending', 'subadmin'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='金秋苹果促销');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(1, 'user', 'confirmed', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(2, 'user', 'completed', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(3, 'user', 'pending', 8.50, '演示待付款（可去付款）。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(4, 'user', 'shipped', 68.00, '大米已发出。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '红富士苹果', 39.90, 1),
-(2, 2, 2, '应季草莓', 28.00, 1);
+(2, 2, 2, '应季草莓', 28.00, 1),
+(3, 3, 3, '有机生菜', 8.50, 1),
+(4, 4, 4, '五常大米', 68.00, 1);
+INSERT IGNORE INTO order_review (id, order_id, username, rating, body, created_at) VALUES
+(1, 2, 'user', 5, '草莓很新鲜，冷链到位。', NOW());
 
 INSERT INTO sys_guestbook (username, nickname, body, channel)
 SELECT 'user', '买家甲', '请问草莓能否冷链配送？', 'user'
@@ -1958,9 +1964,13 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audi
 SELECT '商城开业', '多店入驻；下单后可在订单页查看进度。', 'admin', '平台管理员', 'approved', ''
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 29.90, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(1, 'user', 'confirmed', 29.90, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(2, 'user', 'shipped', 59.00, '保温杯已发出。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(3, 'user', 'pending', 19.90, '演示待付款。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '日用收纳盒', 29.90, 1);
+(1, 1, 1, '日用收纳盒', 29.90, 1),
+(2, 2, 3, '保温杯 500ml', 59.00, 1),
+(3, 3, 4, '手机支架', 19.90, 1);
 
 INSERT INTO sys_guestbook (username, nickname, body, channel)
 SELECT 'user', '买家甲', '收货地址能否修改？', 'user'

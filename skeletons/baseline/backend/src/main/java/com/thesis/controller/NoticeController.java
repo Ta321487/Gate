@@ -29,7 +29,14 @@ public class NoticeController {
         int s = GuestTeaser.clampSize(session, size);
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         boolean approvedOnly = !admin;
-        return R.ok(NoticeStore.page(p, s, approvedOnly));
+        String submitterOnly = null;
+        if (admin
+                && ArchiveStore.shopMarketplaceEnabled()
+                && NoticeStore.hasAuditStatus()
+                && !AdminAuth.isSuperAdmin(session)) {
+            submitterOnly = AdminAuth.requireLogin(session);
+        }
+        return R.ok(NoticeStore.page(p, s, approvedOnly, submitterOnly));
     }
 
     @GetMapping("/{id}")

@@ -36,6 +36,22 @@ class DmCapabilityTests(unittest.TestCase):
             resolve_dm_peer_mode("多商家商城，支持用户私信", domain="DOM-SHOP"),
             DM_PEER_ALL,
         )
+        # 多店 + 客服（未写用户互聊）→ 店铺客服
+        self.assertEqual(
+            resolve_dm_peer_mode(
+                "商家入驻多店商城，用户客服模块与订单发货",
+                domain="DOM-SHOP",
+            ),
+            DM_PEER_MERCHANT,
+        )
+        farm_opening = (
+            "留言反馈模块（与管理员沟通)、客服模块（与商家在线沟通)、评价模块。"
+            "商家：客服模块（与用户在线沟通)。管理员：商家管理模块。"
+        )
+        self.assertEqual(
+            resolve_dm_peer_mode(farm_opening, domain="DOM-SHOP"),
+            DM_PEER_MERCHANT,
+        )
         merchant_spec = apply_dm_to_spec(
             {
                 "domain": "DOM-SHOP",

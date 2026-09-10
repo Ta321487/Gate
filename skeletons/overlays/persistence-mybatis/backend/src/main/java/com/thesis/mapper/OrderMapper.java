@@ -103,6 +103,15 @@ public interface OrderMapper {
             @Param("status") String status,
             @Param("updatedAt") Timestamp updatedAt);
 
+    @Update("UPDATE `${orderTable}` SET status=#{status}, pay_channel=#{payChannel}, updated_at=#{updatedAt} "
+            + "WHERE id=#{id} AND status='pending'")
+    int payPendingOrder(
+            @Param("orderTable") String orderTable,
+            @Param("id") long id,
+            @Param("status") String status,
+            @Param("payChannel") String payChannel,
+            @Param("updatedAt") Timestamp updatedAt);
+
     @Select("SELECT COUNT(*) FROM `${orderTable}` WHERE status=#{status}")
     long countByStatus(@Param("orderTable") String orderTable, @Param("status") String status);
 
