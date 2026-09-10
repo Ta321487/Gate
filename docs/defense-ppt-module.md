@@ -1,9 +1,12 @@
 # 毕设答辩 PPT 生成模块（设计要点）
 
-> **状态**：设计已收口；运营端前端已挂入（`frontend/src/ppt/*`，后端未齐时可用 mock 演示）；后端实现指导见 [`defense-ppt-backend.md`](./defense-ppt-backend.md)。正式 bake/PPT 任务尚未落地。**后端全部完成后须移除 mock**（见该文档 §1.4）。  
+> **本文只负责**：终期答辩 PPT 的**产品设计**（目标、门闩、三层模型、对照收口）。  
+> **后端实现**：[`defense-ppt-backend.md`](./defense-ppt-backend.md)。  
+> **状态**：设计已收口；运营端前端已挂入（`frontend/src/ppt/*`，后端未齐时可用 mock）；正式 bake/PPT 任务尚未落地。**后端全部完成后须移除 mock**（见后端文 §1.4）。  
 > **范围**：仅 **终期 / 毕业答辩 PPT**；不做开题答辩 PPT。  
 > **对标参考**：[yuyuanweb/ai-ppt-generator](https://github.com/yuyuanweb/ai-ppt-generator)（借流水线与数据模型，不整仓搬技术栈）。  
-> **关联**：交付主链路见 [`delivery-audit-rules.md`](./delivery-audit-rules.md)；场景轴 / 技术栈轴见 `.cursor/rules`；UI 原型见 [`../prototype/README.md`](../prototype/README.md)。
+> **关联**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)；`.cursor/rules`；[`../prototype/README.md`](../prototype/README.md)。  
+> **索引**：[README.md](./README.md)。
 
 ---
 

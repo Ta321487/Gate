@@ -1,6 +1,7 @@
 # 开题 AI 表述 → 工厂产出对照表
 
-> **用途**：接单 / 匹配 / bake / 写 README·论文「系统实现」时查表。保证**开题怎么写、实包能交什么**一一对应。  
+> **本文只负责**：开题 AI 相关表述 ↔ 助手岛产出（接单 / 匹配 / bake / README·论文系统实现）。  
+> **索引**：[README.md](./README.md)。  
 > **全业务密功能**（非 AI）：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
 > **真源**：代码行为以本表「工厂产出」列为准；扫词以 `features/ai_assistant.py`、`stack_scan.py` 为准；硬拒以 `capabilities.py` → `OUT_OF_SCOPE_SIGNALS` 为准。
 
