@@ -93,6 +93,17 @@ export const api = {
     const q = new URLSearchParams({ fields: String(fields) })
     return `/api/projects/${id}/schema/testcases.md?${q}`
   },
+  getUsecaseDescriptions: (id, { count = 4, tableStart = '3.1' } = {}) =>
+    http.get(`/projects/${id}/schema/usecase-descriptions`, {
+      params: { count, table_start: tableStart },
+    }),
+  usecaseDescriptionsMdUrl: (id, { count = 4, tableStart = '3.1' } = {}) => {
+    const q = new URLSearchParams({
+      count: String(count),
+      table_start: String(tableStart),
+    })
+    return `/api/projects/${id}/schema/usecase-descriptions.md?${q}`
+  },
   getApis: (id) => http.get(`/projects/${id}/apis`),
   /** 学生端全量冒烟：静默全局 toast，由页面自绘工厂/学生错误 */
   smokeStudentApis: (id) =>

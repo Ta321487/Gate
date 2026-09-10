@@ -184,6 +184,19 @@
         @reload="reloadTestcases"
       />
     </n-modal>
+    <n-modal v-model:show="showUsecaseDescriptions" preset="card" title="用例描述表" style="width:min(960px,96vw)">
+      <UseCaseDescriptionViewer
+        v-if="showUsecaseDescriptions"
+        :intro="ucdIntro"
+        :source-note="ucdSourceNote"
+        :cases="ucdCases"
+        :markdown="ucdMarkdown"
+        :count="ucdCount"
+        :download-name="ucdDownloadBase"
+        :loading="ucdLoading"
+        @reload="reloadUsecaseDescriptions"
+      />
+    </n-modal>
   </div>
 </template>
 
@@ -194,6 +207,7 @@ import CopyIconButton from '../../components/CopyIconButton.vue'
 import ErDiagramViewer from '../../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../../components/TestcaseViewer.vue'
+import UseCaseDescriptionViewer from '../../components/UseCaseDescriptionViewer.vue'
 import UseCaseDiagramViewer from '../../components/UseCaseDiagramViewer.vue'
 
 const preGenLinksOpen = ref(false)
@@ -223,7 +237,7 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
@@ -232,12 +246,14 @@ const {
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
   securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
-  showSoftBakePanel, showSpec, showTestcases, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
+  showSoftBakePanel, showSpec, showTestcases, showUsecaseDescriptions, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucMdjUrl, ucSvgSource,
+  ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdSourceNote,
   undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
+  reloadUsecaseDescriptions,
 } = bindPd()
 
 watch(showPreGenerate, (open) => {
