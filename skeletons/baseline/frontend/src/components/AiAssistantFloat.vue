@@ -34,15 +34,20 @@
           <article
             v-for="n in list"
             :key="n.id"
-            class="bubble"
+            class="bubble-row"
             :class="n.role === 'assistant' ? 'bot' : 'me'"
           >
-            <p class="body">{{ n.content }}</p>
-            <div v-if="n.role === 'assistant'" class="actions">
-              <el-tag size="small" type="info">{{ n.source || 'faq' }}</el-tag>
-              <button type="button" class="link" @click="speak(n.content)">播报</button>
-              <button type="button" class="link ok" @click="feedback(n, true)">满意</button>
-              <button type="button" class="link" @click="feedback(n, false)">不满意</button>
+            <div class="av" :class="n.role === 'assistant' ? 'bot' : 'me'" aria-hidden="true">
+              {{ n.role === 'assistant' ? '助' : '我' }}
+            </div>
+            <div class="bubble" :class="n.role === 'assistant' ? 'bot' : 'me'">
+              <p class="body">{{ n.content }}</p>
+              <div v-if="n.role === 'assistant'" class="actions">
+                <el-tag size="small" type="info">{{ n.source || 'faq' }}</el-tag>
+                <button type="button" class="link" @click="speak(n.content)">播报</button>
+                <button type="button" class="link ok" @click="feedback(n, true)">满意</button>
+                <button type="button" class="link" @click="feedback(n, false)">不满意</button>
+              </div>
             </div>
           </article>
         </div>
@@ -386,8 +391,37 @@ defineExpose({ openPanel })
   text-align: center;
   padding: 24px 12px;
 }
+.bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 96%;
+  align-self: flex-start;
+}
+.bubble-row.me {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.av {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--portal-muted, #94a3b8);
+}
+.av.bot {
+  background: var(--portal-accent, #0b6e75);
+}
+.av.me {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #111);
+}
 .bubble {
-  max-width: 92%;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 12px;
   font-size: 13px;
@@ -396,11 +430,9 @@ defineExpose({ openPanel })
   border: 1px solid var(--portal-line, #e2e8f0);
 }
 .bubble.me {
-  align-self: flex-end;
   background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, #fff);
 }
 .bubble.bot {
-  align-self: flex-start;
   border-left: 3px solid var(--portal-accent, #0b6e75);
 }
 .body {

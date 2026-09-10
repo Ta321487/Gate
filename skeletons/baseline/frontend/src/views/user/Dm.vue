@@ -18,11 +18,16 @@
             :class="{ active: peer === c.peer }"
             @click="selectPeer(c.peer)"
           >
-            <div class="name">
-              {{ c.peerNickname || c.peer }}
-              <el-badge v-if="c.unread" :value="c.unread" :max="99" />
+            <el-avatar :size="40" :src="c.peerAvatarUrl || undefined" class="av">
+              {{ initialOf(c.peerNickname || c.peer) }}
+            </el-avatar>
+            <div class="meta">
+              <div class="name">
+                <span class="nick">{{ c.peerNickname || c.peer }}</span>
+                <el-badge v-if="c.unread" :value="c.unread" :max="99" />
+              </div>
+              <div class="preview">{{ c.lastMessage?.body || '—' }}</div>
             </div>
-            <div class="preview">{{ c.lastMessage?.body || '—' }}</div>
           </li>
         </ul>
         <div v-else class="empty">{{ emptyPeers }}</div>
@@ -32,30 +37,59 @@
         <div v-if="!peer" class="empty center">{{ emptyChat }}</div>
         <template v-else>
           <div class="chat-hd">
-            <strong>{{ peerLabel }}</strong>
+            <div class="peer-who">
+              <el-avatar :size="36" :src="peerAvatar || undefined">
+                {{ initialOf(peerLabel) }}
+              </el-avatar>
+              <strong>{{ peerLabel }}</strong>
+            </div>
             <span class="muted">约每 4 秒刷新</span>
           </div>
           <div ref="scroller" class="chat-body">
             <div
               v-for="m in messages"
               :key="m.id"
-              class="bubble"
+              class="row"
               :class="{ mine: m.fromUsername === me }"
             >
-              <div class="txt">{{ m.body }}</div>
-              <div class="tm">{{ m.createdAt }}</div>
+              <el-avatar
+                :size="32"
+                :src="avatarOf(m) || undefined"
+                class="row-av"
+              >
+                {{ initialOf(m.fromUsername === me ? meNick : peerLabel) }}
+              </el-avatar>
+              <div class="bubble" :class="{ mine: m.fromUsername === me }">
+                <div class="txt">{{ m.body }}</div>
+                <div class="tm">{{ m.createdAt }}</div>
+              </div>
             </div>
           </div>
           <div class="chat-ft">
-            <el-input
-              v-model="draft"
-              type="textarea"
-              :rows="2"
-              maxlength="500"
-              show-word-limit
-              placeholder="输入消息，Enter 发送（Shift+Enter 换行）"
-              @keydown.enter.exact.prevent="send"
-            />
+            <div class="composer">
+              <div class="emoji-bar" aria-label="常用表情">
+                <button
+                  v-for="e in emojiPreset"
+                  :key="e"
+                  type="button"
+                  class="emoji-btn"
+                  :title="e"
+                  @click="insertEmoji(e)"
+                >
+                  {{ e }}
+                </button>
+              </div>
+              <el-input
+                ref="draftInput"
+                v-model="draft"
+                type="textarea"
+                :rows="2"
+                maxlength="500"
+                show-word-limit
+                placeholder="输入消息，Enter 发送（Shift+Enter 换行）"
+                @keydown.enter.exact.prevent="send"
+              />
+            </div>
             <el-button type="primary" :loading="sending" @click="send">发送</el-button>
           </div>
         </template>
@@ -75,7 +109,14 @@
           :key="p.username"
           :label="`${p.nickname || p.username}（${p.username}）`"
           :value="p.username"
-        />
+        >
+          <span class="opt-row">
+            <el-avatar :size="24" :src="p.avatarUrl || undefined">
+              {{ initialOf(p.nickname || p.username) }}
+            </el-avatar>
+            <span>{{ p.nickname || p.username }}（{{ p.username }}）</span>
+          </span>
+        </el-option>
       </el-select>
       <template #footer>
         <el-button @click="newOpen = false">取消</el-button>
@@ -91,9 +132,14 @@ import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import { schemaLabels } from '../../utils/domainSchema.js'
 
+/** 常用表情条：毕设沉浸，非独立表情包工程 */
+const emojiPreset = [
+  '😀', '😁', '😊', '🥰', '😂', '😅', '👍', '🙏',
+  '❤️', '🔥', '✨', '🎉', '😢', '😮', '🤔', '👏',
+]
+
 const labels = computed(() => schemaLabels())
 const merchantDesk = computed(() => {
-  // 管理端办理岗：统一用「联系用户/买家」侧文案
   const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
   if (path.startsWith('/admin')) return true
   const role = localStorage.getItem('role') || ''
@@ -130,6 +176,10 @@ const emptyChat = computed(() => {
 })
 
 const me = computed(() => localStorage.getItem('username') || '')
+const meNick = computed(
+  () => localStorage.getItem('nickname') || localStorage.getItem('username') || '我',
+)
+const meAvatar = computed(() => localStorage.getItem('avatarUrl') || '')
 const conversations = ref([])
 const messages = ref([])
 const peer = ref('')
@@ -139,6 +189,7 @@ const newOpen = ref(false)
 const newPeer = ref('')
 const peerOptions = ref([])
 const scroller = ref(null)
+const draftInput = ref(null)
 let pollTimer = null
 let lastId = 0
 
@@ -148,6 +199,32 @@ const peerLabel = computed(() => {
   const opt = peerOptions.value.find((p) => p.username === peer.value)
   return opt?.nickname || peer.value
 })
+
+const peerAvatar = computed(() => {
+  const hit = conversations.value.find((c) => c.peer === peer.value)
+  if (hit?.peerAvatarUrl) return hit.peerAvatarUrl
+  const opt = peerOptions.value.find((p) => p.username === peer.value)
+  return opt?.avatarUrl || ''
+})
+
+function initialOf(name) {
+  const s = String(name || '?').trim()
+  return s ? s.slice(0, 1) : '?'
+}
+
+function avatarOf(m) {
+  if (!m) return ''
+  if (m.fromUsername === me.value) return meAvatar.value
+  return m.fromAvatarUrl || peerAvatar.value || ''
+}
+
+function insertEmoji(e) {
+  draft.value = `${draft.value || ''}${e}`
+  nextTick(() => {
+    const el = draftInput.value?.textarea || draftInput.value?.$el?.querySelector?.('textarea')
+    el?.focus?.()
+  })
+}
 
 async function loadConversations() {
   const res = await http.get('/api/dm/conversations')
@@ -256,7 +333,7 @@ onUnmounted(stopPoll)
 .hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
 .dm-shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: 12px;
   min-height: 480px;
 }
@@ -275,9 +352,23 @@ onUnmounted(stopPoll)
   padding: 12px 14px;
   border-bottom: 1px solid var(--portal-line, #e2e8f0);
 }
+.peer-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.peer-who strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .muted { color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .conv-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
 .conv-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   padding: 12px 14px;
   border-bottom: 1px solid var(--portal-line, #f1f5f9);
   cursor: pointer;
@@ -285,6 +376,8 @@ onUnmounted(stopPoll)
 .conv-list li:hover, .conv-list li.active {
   background: color-mix(in srgb, var(--portal-bg, #f8fafc) 65%, var(--portal-surface, #fff));
 }
+.conv-list .av { flex-shrink: 0; }
+.conv-list .meta { min-width: 0; flex: 1; }
 .conv-list .name {
   display: flex;
   align-items: center;
@@ -292,6 +385,11 @@ onUnmounted(stopPoll)
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
+}
+.conv-list .nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .conv-list .preview {
   margin-top: 4px;
@@ -309,12 +407,23 @@ onUnmounted(stopPoll)
   padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
 }
-.bubble {
-  max-width: 75%;
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 88%;
   align-self: flex-start;
+}
+.row.mine {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.row-av { flex-shrink: 0; }
+.bubble {
+  min-width: 0;
   background: var(--portal-surface, #fff);
   border: 1px solid var(--portal-line, #e2e8f0);
   border-radius: 12px;
@@ -322,7 +431,6 @@ onUnmounted(stopPoll)
   color: var(--portal-ink, #15202b);
 }
 .bubble.mine {
-  align-self: flex-end;
   background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, var(--portal-surface, #fff));
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #e2e8f0));
 }
@@ -335,6 +443,31 @@ onUnmounted(stopPoll)
   padding: 12px 14px;
   border-top: 1px solid var(--portal-line, #e2e8f0);
   align-items: end;
+}
+.composer { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.emoji-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.emoji-btn {
+  border: 0;
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 80%, var(--portal-surface, #fff));
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+.emoji-btn:hover {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, var(--portal-surface, #fff));
+}
+.opt-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 @media (max-width: 800px) {
   .dm-shell { grid-template-columns: 1fr; }

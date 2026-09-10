@@ -236,6 +236,16 @@
       min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .crumb strong { color: var(--ink); font-weight: 600; }
+    .crumb-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .crumb-link:hover {
+      color: var(--teal-deep);
+      text-decoration: underline;
+    }
+    .crumb-sep { color: var(--muted); }
     .topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .demo-box {
       display: flex; align-items: center; gap: 8px;
@@ -896,6 +906,7 @@
       background: #fef2f2;
       color: #991b1b;
     }
+    .path-weak { color: #b45309; font-weight: 500; }
     .rec-box {
       border: 1px solid var(--line);
       border-radius: 8px;

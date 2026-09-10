@@ -125,19 +125,19 @@ public class DmStore {
             if (self == null) return out;
             String sql;
             if (self.superAdmin) {
-                sql = "SELECT username, nickname, role FROM sys_user "
+                sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
                         + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
                         + "ORDER BY role DESC, id ASC LIMIT ?";
                 return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
             }
             if (isMerchant(self)) {
-                sql = "SELECT username, nickname, role FROM sys_user "
+                sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
                         + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
                         + "AND role<>'admin' "
                         + "ORDER BY id ASC LIMIT ?";
                 return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
             }
-            sql = "SELECT username, nickname, role FROM sys_user "
+            sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
                     + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
                     + "AND role='admin' AND IFNULL(super_admin,0)=0 "
                     + "AND IFNULL(staff_post,'')='shop_merchant' "
@@ -145,7 +145,7 @@ public class DmStore {
             return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
         }
         return db().query(
-                "SELECT username, nickname, role FROM sys_user "
+                "SELECT username, nickname, role, avatar_url FROM sys_user "
                         + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
                         + "ORDER BY role DESC, id ASC LIMIT ?",
                 (rs, i) -> mapPeer(rs),
@@ -158,6 +158,8 @@ public class DmStore {
         m.put("username", rs.getString("username"));
         m.put("nickname", rs.getString("nickname"));
         m.put("role", rs.getString("role"));
+        String av = rs.getString("avatar_url");
+        m.put("avatarUrl", av == null ? "" : av.trim());
         return m;
     }
 
@@ -186,14 +188,30 @@ public class DmStore {
                     "SELECT COUNT(*) FROM sys_dm_message WHERE to_username=? AND from_username=? AND read_at IS NULL",
                     Integer.class, u, peer);
             String nick = null;
+            String avatar = "";
             try {
-                nick = db().queryForObject(
-                        "SELECT nickname FROM sys_user WHERE username=?", String.class, peer);
+                List<Map<String, Object>> urow = db().query(
+                        "SELECT nickname, avatar_url FROM sys_user WHERE username=?",
+                        (rs, i) -> {
+                            Map<String, Object> x = new LinkedHashMap<>();
+                            x.put("nickname", rs.getString("nickname"));
+                            String av = rs.getString("avatar_url");
+                            x.put("avatarUrl", av == null ? "" : av.trim());
+                            return x;
+                        },
+                        peer);
+                if (!urow.isEmpty()) {
+                    Object n = urow.get(0).get("nickname");
+                    nick = n == null ? null : String.valueOf(n);
+                    Object a = urow.get(0).get("avatarUrl");
+                    avatar = a == null ? "" : String.valueOf(a);
+                }
             } catch (Exception ignored) {
             }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("peer", peer);
             row.put("peerNickname", nick == null || nick.isBlank() ? peer : nick);
+            row.put("peerAvatarUrl", avatar);
             row.put("unread", unread == null ? 0 : unread);
             row.put("lastMessage", last);
             out.add(row);
@@ -208,12 +226,27 @@ public class DmStore {
         String p = peer.trim();
         if (u.isBlank() || p.isBlank()) return out;
         long since = Math.max(0L, sinceId);
-        return db().query(
+        List<Map<String, Object>> list = db().query(
                 "SELECT * FROM sys_dm_message WHERE "
                         + "((from_username=? AND to_username=?) OR (from_username=? AND to_username=?)) "
                         + "AND id>? ORDER BY id ASC LIMIT 200",
                 (rs, i) -> row(rs),
                 u, p, p, u, since);
+        // 气泡头像：按发送方档案补全（会话量小，按用户缓存）
+        Map<String, String> avatarCache = new LinkedHashMap<>();
+        for (Map<String, Object> m : list) {
+            String from = String.valueOf(m.getOrDefault("fromUsername", ""));
+            if (!avatarCache.containsKey(from)) {
+                String av = "";
+                UserStore.Profile prof = UserStore.get(from);
+                if (prof != null && prof.avatarUrl != null) {
+                    av = prof.avatarUrl.trim();
+                }
+                avatarCache.put(from, av);
+            }
+            m.put("fromAvatarUrl", avatarCache.get(from));
+        }
+        return list;
     }
 
     public static Map<String, Object> send(String from, String to, String body) {

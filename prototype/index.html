@@ -38,7 +38,7 @@
             <span class="nav-toggle-bar"></span>
             <span class="nav-toggle-bar"></span>
           </button>
-          <div class="crumb" id="crumb"><strong>毕设港</strong> / 项目</div>
+          <div class="crumb" id="crumb" aria-label="面包屑"><strong>毕设港</strong><span class="crumb-sep"> / </span>项目</div>
         </div>
         <div class="topbar-right">
           <div class="demo-box">
@@ -47,6 +47,7 @@
               <option value="list">列表 · 混合状态</option>
               <option value="needs_confirm">项目 · 待确认匹配</option>
               <option value="match_ai_dual">项目 · AI 助手双显（推荐开≠拟选）</option>
+              <option value="match_path_weak">项目 · 主路径依据弱（须勾核对）</option>
               <option value="generating">项目 · 生成中</option>
               <option value="generated">项目 · 已生成待启动</option>
               <option value="running">项目 · 运行中</option>
@@ -171,7 +172,7 @@
 
             <div class="banner success mb-16" style="margin-bottom:14px">
               <h4 style="font-size:14px;margin-bottom:4px">推荐匹配已给出</h4>
-              <p class="small muted">确认后到「一键生成」调整视觉并开跑。如需调整骨架、领域、持久层、鉴权或 AI 助手，请先解锁。</p>
+              <p class="small muted">确认后到「一键生成」调整视觉并开跑。如需调整骨架、领域、身份场景、主路径入口、持久层、鉴权或 AI 助手，请先解锁。</p>
             </div>
 
             <div class="banner warn mb-16" style="margin-bottom:14px">
@@ -179,6 +180,7 @@
               <ul class="warn-list">
                 <li>人脸识别、协同过滤等能力已标为「本期不做」，不影响主路径交付。</li>
                 <li>开题点名智能客服/导购/馆员问答时，匹配页会<strong>推荐开 AI 助手</strong>（与 Security 同级）；拟选≠出包须双显。</li>
+                <li>身份场景与主路径入口（分叉域）跟开题「谁怎么用」；依据弱时须勾「主路径已核对」。</li>
               </ul>
             </div>
 
@@ -196,11 +198,13 @@
                     <div class="rec-sub" id="rec-persistence">推荐持久层：JdbcTemplate</div>
                     <div class="rec-sub" id="rec-security">推荐鉴权：Session（无过滤器链）</div>
                     <div class="rec-sub" id="rec-ai">推荐 AI 助手：未启用</div>
+                    <div class="rec-sub" id="rec-scene">推荐身份：校园</div>
+                    <div class="rec-sub" id="rec-entry" style="display:none">推荐入口：—</div>
                     <div class="rec-sub" id="rec-stack-dual" style="display:none"></div>
                   </div>
 
                   <div class="lock-row">
-                    <span class="small muted" id="match-lock-hint">骨架 / 领域 / 持久层 / 鉴权 / AI助手已锁定</span>
+                    <span class="small muted" id="match-lock-hint">骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手已锁定</span>
                     <div class="row gap-sm">
                       <button type="button" class="btn btn-secondary btn-sm" id="btn-unlock-match" data-action="toggle-override">解锁调整</button>
                       <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-match" data-action="reset-match" style="display:none">恢复推荐</button>
@@ -223,6 +227,9 @@
                       <label>领域</label>
                       <select id="sel-dom">
                         <option selected>DOM-LIBRARY · 图书</option>
+                        <option>DOM-EVENT · 事件上报</option>
+                        <option>DOM-INTERN · 实习周报</option>
+                        <option>DOM-BED · 床位调宿</option>
                         <option>DOM-EQUIP · 设备</option>
                         <option>DOM-DORM · 宿舍报修</option>
                         <option>DOM-ACTIVITY · 活动报名</option>
@@ -233,6 +240,21 @@
                         <option>DOM-MEDIA · 影视</option>
                         <option>DOM-GENERIC · 通用兜底</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div class="grid-2" style="margin-top:10px">
+                    <div class="field locked" id="field-scene">
+                      <label>身份场景</label>
+                      <select id="sel-scene">
+                        <option value="campus" selected>校园</option>
+                        <option value="enterprise">企业</option>
+                        <option value="community">社区</option>
+                      </select>
+                    </div>
+                    <div class="field locked" id="field-entry" style="display:none">
+                      <label>主路径入口</label>
+                      <select id="sel-entry"></select>
                     </div>
                   </div>
 
@@ -342,8 +364,12 @@
               <label>
                 <input type="checkbox" id="match-ack" />
                 <span id="match-ack-text">
-                  已核对骨架、领域、持久层、鉴权、AI 助手与本期范围，确认后开始生成。
+                  已核对骨架、领域、身份场景、主路径入口、持久层、鉴权、AI 助手与本期范围，确认后开始生成。
                 </span>
+              </label>
+              <label id="match-path-ack-wrap" style="display:none;margin-top:10px">
+                <input type="checkbox" id="match-path-ack" />
+                <span id="match-path-ack-text">主路径已核对：校园</span>
               </label>
             </div>
             <div class="row mt-16">
@@ -397,6 +423,14 @@
                         <option>serif · 书香衬线</option>
                         <option>tech · 理工无衬线</option>
                         <option>soft · 圆润人文</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>门户首页</label>
+                      <select id="sel-portal-home">
+                        <option value="cards" selected>cards · 卡片宫格</option>
+                        <option value="editorial">editorial · 编辑向长页</option>
+                        <option value="mall">mall · 商城货架（零售域）</option>
                       </select>
                     </div>
                     <div class="field">
@@ -1737,7 +1771,7 @@
               <div class="panel-bd help-body">
                 <ol class="help-steps">
                   <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
-                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域、持久层、Spring Security 与 AI 助手。确认无误后锁定匹配；如需调整，须先解锁再修改并重新确认。开题推荐与当前出包不一致时双显。配色、布局等视觉选项在「一键生成」页调整，禁止把 AI/Security 塞进视觉区。</p></li>
+                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域、<strong>身份场景</strong>、<strong>主路径入口</strong>（分叉域：晨午检自报/绑岗/调宿等）、持久层，以及按需开关（Spring Security、AI 助手）。开题未写清「谁怎么用」时须勾选「主路径已核对」或解锁手改后再确认。开题推荐与当前出包不一致时双显（持久层 / Security / AI / 身份入口）。配色、布局、门户首页等视觉选项在「一键生成」页调整；禁止把 AI/Security/持久层塞进视觉区。</p></li>
                   <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
                   <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。校徽从 Word 复制粘贴即可（默认原样；可选去掉白底，徽+字可能扣不干净）。产物行可检查与导出 PPTX（不进 ZIP）；对照子页做预览纠错与换皮。</p></li>
                   <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
@@ -1786,6 +1820,43 @@
                 <p>启动生成前弹出，将开题功能行与 Spec checklist 做静态对照（不调大模型），减少包后返工。</p>
                 <ul>
                   <li>已对照 / 措辞弱匹配 / 开题未落入 checklist 三类结果；不阻断生成，但强烈建议匹配确认阶段已选对领域。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>AI 助手（按需开关）</h3><span class="pill pill-teal">AI</span></div>
+              <div class="panel-bd help-body">
+                <p>学生包智能客服/导购挂件：匹配确认与 Spring Security 同级开关；默认关，开题点名则推荐开。不是新领域，不塞进骨架/持久层/一键生成视觉区。详细对照见仓库 <span class="mono">docs/ai-opening-delivery-map.md</span>。</p>
+                <ul>
+                  <li>接 A 拒 B：主路径仍是商城/借阅/报修等业务、特色节写智能客服/导购/助手/大模型问答 → 接并开开关；题眼是 RAG 平台/向量库工程/自训 CNN/多 Agent 平台 → 标不支持，禁止用聊天壳冒充整题已齐。</li>
+                  <li>一个跨域岛：农产导购、图书问答、宿舍助手 = 同一 <span class="mono">ai_assistant</span>；只换 FAQ 种子与页面标题。</li>
+                  <li>出包能力（开则）：门户右下角悬浮对话；Spring AI + DeepSeek（学生自配 <span class="mono">DEEPSEEK_API_KEY</span>）；无 Key 回落知识表/业务摘要；管理端 AI 知识库 + 统计。</li>
+                  <li>只读接业务：按意图调用本包已开 Store；不下单、不改状态。语音播报用浏览器 Web Speech；图片入口按品类/文件名匹配——禁止写成自研语音模型或 CNN。</li>
+                  <li>拟选≠出包须双显。关开关则无 cap、无 SQL 种子、无菜单入口。工厂「大模型」页只服务运营填岛，与学生包运行时 AI 不是同一条链路。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>领域易混（先问清再确认）</h3><span class="pill pill-teal">防坑</span></div>
+              <div class="panel-bd help-body">
+                <p>匹配确认前先分清客户原话落在哪条主路径；成对易混须双侧成立。完整清单见 <span class="mono">docs/domain-skin-gap-analysis.md</span> §2。</p>
+                <ul>
+                  <li>实习：交周报（INTERN）≠ 投简历找岗（RECRUIT）；开题写一人一岗 → 资料绑岗入口。</li>
+                  <li>考勤：请假销假 ≠ 健康打卡/晨午检（事件自报入口）；人脸/GPS 硬件不在本期。</li>
+                  <li>宿舍：报修工单 ≠ 床位选房/调宿（BED 入口分叉）；宾馆客房 ≠ 会议室预约+小卖部。</li>
+                  <li>知识库：问答/FAQ → AI 助手；资料下载 → 文库 doclib；两词都有则双挂。</li>
+                  <li>真交叉须开题写清两套玩法（借+二手 / 借+约 / 下单+预约）；智慧校园 N 合一 / OA 三联拒绝冒充。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel">
+              <div class="panel-hd"><h3>硬边界（不接）</h3><span class="pill pill-teal">边界</span></div>
+              <div class="panel-bd help-body">
+                <p>下列不纳入换皮全覆盖，继续拒绝或标超出演示范围：</p>
+                <ul>
+                  <li>人脸 / 指纹 / 闸机；GPS 轨迹考勤；真微信支付/支付宝；小程序/原生 App。</li>
+                  <li>物联网真采集；疾控/医保/银行直连；智慧校园 N 合一 / 三主路径以上。</li>
+                  <li>AI 主产品：RAG/向量库工程、自训 CNN、协同过滤当主交付——禁止 FAQ 聊天壳冒充（业务旁挂问答仍可走开助手）。</li>
                 </ul>
               </div>
             </article>
@@ -1858,11 +1929,14 @@
               <div class="panel-hd"><h3>术语说明</h3><span class="pill pill-teal">词典</span></div>
               <div class="panel-bd help-body">
                 <dl class="help-glossary">
-                  <div class="help-glossary-row"><dt>骨架</dt><dd>匹配页选定的能力路径（如 ARCH-FLOW）。决定主流程形态，不是 Spring Boot + Vue 等技术主线。</dd></div>
-                  <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域（DOM-*）。决定文案、菜单与能力组合。</dd></div>
-                  <div class="help-glossary-row"><dt>持久层</dt><dd>匹配确认中的数据访问实现：JdbcTemplate、MyBatis 或 Spring Data JPA。</dd></div>
-                  <div class="help-glossary-row"><dt>Spring Security</dt><dd>按需鉴权开关。开=过滤器链；关=仅 Session + AdminAuth。与持久层同级，不进一键生成视觉区。</dd></div>
-                  <div class="help-glossary-row"><dt>AI 助手</dt><dd>按需能力岛（跨域同一套）。开=学生包 Spring AI + DeepSeek + FAQ；关=无菜单/无 SQL 种子。开题点名智能客服/导购/馆员问答时推荐开；≠ RAG 平台/CNN 主产品。</dd></div>
+                  <div class="help-glossary-row"><dt>骨架</dt><dd>匹配页选定的能力路径（如 ARCH-FLOW）。决定主流程形态，不是 Spring Boot + Vue 或 SSR 等技术主线。</dd></div>
+                  <div class="help-glossary-row"><dt>领域</dt><dd>题目所属业务域（DOM-*）。决定文案、菜单与能力组合；合成壳不是行业域。</dd></div>
+                  <div class="help-glossary-row"><dt>身份场景</dt><dd>校园 / 企业 / 社区等身份档，决定资料字段与壳文案。匹配确认可解锁手改；扫题只推荐。</dd></div>
+                  <div class="help-glossary-row"><dt>主路径入口</dt><dd>同域「谁怎么用」分叉（本人打卡 vs 对象台账、绑岗 vs 选岗、调宿 vs 选房）。仅 EVENT / INTERN / BED 等域有选项。</dd></div>
+                  <div class="help-glossary-row"><dt>持久层</dt><dd>JdbcTemplate、MyBatis（绑 PageHelper）或 Spring Data JPA。只换实现与说明书措辞，不换业务能力；不进一键生成视觉区。</dd></div>
+                  <div class="help-glossary-row"><dt>Spring Security</dt><dd>按需鉴权开关。开=过滤器链；关=仅 Session + AdminAuth。与持久层同级，不进视觉区。</dd></div>
+                  <div class="help-glossary-row"><dt>AI 助手</dt><dd>按需能力岛（跨域同一套）。开=Spring AI + DeepSeek + FAQ；关=无菜单/无 SQL 种子。≠ RAG/CNN 主产品。</dd></div>
+                  <div class="help-glossary-row"><dt>门户首页</dt><dd>一键生成视觉选项：卡片宫格 / 编辑向长页 / 商城货架（零售域）。与匹配轴无关。</dd></div>
                   <div class="help-glossary-row"><dt>开题措辞核对</dt><dd>生成前弹窗：开题功能行与 Spec 清单项名静态比对，不扫工程。</dd></div>
                   <div class="help-glossary-row"><dt>清单实装验收</dt><dd>生成后质量检查：扫描 workspace，核对清单项是否在 ZIP 中有对应实现。</dd></div>
                   <div class="help-glossary-row"><dt>交付复审</dt><dd>产物页运营流程：验圈冻结安全区、登记偏差、合卷同步 ZIP。不进学生交付包。</dd></div>
@@ -1870,6 +1944,7 @@
                   <div class="help-glossary-row"><dt>安全区 / 毒区</dt><dd>复审中已冻结通过项 / 尚未收敛待处理项。</dd></div>
                   <div class="help-glossary-row"><dt>填岛拆解</dt><dd>业务配置填充的执行方式：先根据工程与开题生成 DeliveryPlan，再按 Unit 并发调用大模型。</dd></div>
                   <div class="help-glossary-row"><dt>质量检查</dt><dd>交付前的自动验收项集合。含语义门禁与交付质量摘要。关键项未通过时暂不可下载。</dd></div>
+                  <div class="help-glossary-row"><dt>答辩 PPT</dt><dd>bake 通过后在「一键生成」下半截开跑；产物可检查/导出 PPTX，不进 ZIP。</dd></div>
                   <div class="help-glossary-row"><dt>预览</dt><dd>在端口池内临时启动前后端做快速验收；不作为生产部署。</dd></div>
                 </dl>
               </div>

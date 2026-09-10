@@ -46,4 +46,7 @@ public interface DmMapper {
 
     @Select("SELECT nickname FROM sys_user WHERE username=#{username}")
     String nicknameOf(@Param("username") String username);
+
+    @Select("SELECT IFNULL(avatar_url,'') FROM sys_user WHERE username=#{username}")
+    String avatarUrlOf(@Param("username") String username);
 }

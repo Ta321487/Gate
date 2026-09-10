@@ -8,17 +8,28 @@
 | `styles.css` | 样式 |
 | `app.js` | 交互示意 |
 
-## 匹配确认 · 技术栈与按需开关
+## 匹配确认（对齐现网 `MatchTab`）
 
-与现网 `MatchTab` 对齐（控件在匹配确认，**不**进一键生成视觉区）：
+控件在匹配确认，**不**进一键生成视觉区：
 
-- **持久层**：`jdbc` / `mybatis` / `jpa`
+- **身份场景**：校园 / 企业 / 社区（资料字段与壳文案）
+- **主路径入口**：仅分叉域出现（`DOM-EVENT` / `DOM-INTERN` / `DOM-BED`）；开题依据弱时须勾「主路径已核对」
+- **持久层**：`jdbc` / `mybatis`（绑 PageHelper）/ `jpa`
 - **Spring Security**：关（默认）/ 开 · 过滤器链
-- **AI 助手**：关（默认）/ 开 · Spring AI + DeepSeek + FAQ  
-  解锁后可手改；与推荐不一致时左侧「推荐 · 当前出包」双显。  
-  演示状态下拉可选 **「AI 助手双显」** 看推荐开≠拟选关。
+- **AI 助手**：关（默认）/ 开 · Spring AI + DeepSeek + FAQ
 
-正式口径见 `.cursor/rules/ai-assistant-delivery.mdc`、`docs/ai-opening-delivery-map.md`。
+解锁后可手改；与推荐不一致时左侧「推荐 · 当前出包」双显。
+
+演示状态下拉：
+
+- **AI 助手双显** — 推荐开 ≠ 拟选关
+- **主路径依据弱** — 事件上报域 + 必勾「主路径已核对」
+
+正式口径见 `.cursor/rules/ai-assistant-delivery.mdc`、`docs/ai-opening-delivery-map.md`、`opening-scene.mdc`。
+
+## 一键生成 · 视觉区
+
+配色 / 质感 / 布局 / 字体 / **门户首页** / 智能填充 / 密码策略。技术栈与 AI/Security **不在此区**。
 
 ## 答辩 PPT（设计见 `docs/defense-ppt-module.md`）
 
