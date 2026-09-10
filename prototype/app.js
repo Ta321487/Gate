@@ -85,7 +85,10 @@
       persistence: "jdbc",
       security: "off",
       ai: "off",
+      scene: "campus",
+      entry: "",
       conf: 0.86,
+      entryWeak: false,
     };
 
     const PERSISTENCE_LABEL = {
@@ -93,11 +96,46 @@
       mybatis: "MyBatis + PageHelper",
       jpa: "Spring Data JPA",
     };
+    const SCENE_LABEL = {
+      campus: "校园",
+      enterprise: "企业",
+      community: "社区",
+    };
+    const ENTRY_OPTIONS_BY_DOMAIN = {
+      "DOM-EVENT": [
+        { id: "caseload", label: "对象台账作业（网格/班主任录入）" },
+        { id: "self_report", label: "本人打卡填单（晨午检/自报）" },
+      ],
+      "DOM-INTERN": [
+        { id: "select_post", label: "选已建档岗交周报" },
+        { id: "post_bound", label: "资料绑定岗位后填报" },
+      ],
+      "DOM-BED": [
+        { id: "select_bed", label: "浏览床位选房" },
+        { id: "transfer", label: "调宿/退宿填单优先" },
+      ],
+    };
     function securityLabel(v) {
       return v === "on" ? "Spring Security" : "Session（无过滤器链）";
     }
     function aiLabel(v) {
       return v === "on" ? "AI 助手（Spring AI + DeepSeek）" : "未启用";
+    }
+    function sceneLabel(v) {
+      return SCENE_LABEL[v] || v || "—";
+    }
+    function domainCode(domValue) {
+      return String(domValue || "").split(" · ")[0];
+    }
+    function entryOptionsForDom(domValue) {
+      return ENTRY_OPTIONS_BY_DOMAIN[domainCode(domValue)] || [];
+    }
+    function entryLabel(entryId, domValue) {
+      const hit = entryOptionsForDom(domValue).find((x) => x.id === entryId);
+      return hit ? hit.label : entryId || "—";
+    }
+    function needsPathAck() {
+      return !!RECOMMENDED.entryWeak || entryOptionsForDom(document.getElementById("sel-dom")?.value).length > 0;
     }
 
     function setDisabled(id, off) {
@@ -130,9 +168,24 @@
     }
 
     function setCrumb(parts) {
-      document.getElementById("crumb").innerHTML = parts.map((p, i) =>
-        i === parts.length - 1 ? `<strong>${p}</strong>` : p
-      ).join(" / ");
+      const el = document.getElementById("crumb");
+      if (!el) return;
+      el.innerHTML = parts
+        .map((p, i) => {
+          const last = i === parts.length - 1;
+          const label = typeof p === "string" ? p : p.label;
+          const to = typeof p === "string" ? null : p.to || null;
+          const sep = i ? '<span class="crumb-sep"> / </span>' : "";
+          if (last) return sep + `<strong>${label}</strong>`;
+          if (to) {
+            return (
+              sep +
+              `<a href="#" class="crumb-link" data-action="crumb-nav" data-view="${to}">${label}</a>`
+            );
+          }
+          return sep + label;
+        })
+        .join("");
     }
 
     function showView(name) {
@@ -143,16 +196,22 @@
       const navKey = name === "project" ? "home" : name;
       const nav = document.querySelector(`.nav-item[data-nav="${navKey}"]`);
       if (nav) nav.classList.add("active");
+      const title =
+        document.getElementById("proj-title")?.textContent?.trim() || "详情";
       const crumbs = {
-        home: ["毕设港", "项目"],
-        jobs: ["毕设港", "任务队列"],
-        help: ["毕设港", "帮助文档"],
-        llm: ["毕设港", "大模型"],
-        unsplash: ["毕设港", "Unsplash"],
-        system: ["毕设港", "运行环境"],
-        project: ["毕设港", "项目", "详情"],
+        home: [{ label: "毕设港", to: "home" }, { label: "项目" }],
+        jobs: [{ label: "毕设港", to: "home" }, { label: "任务队列" }],
+        help: [{ label: "毕设港", to: "home" }, { label: "帮助文档" }],
+        llm: [{ label: "毕设港", to: "home" }, { label: "大模型" }],
+        unsplash: [{ label: "毕设港", to: "home" }, { label: "Unsplash" }],
+        system: [{ label: "毕设港", to: "home" }, { label: "运行环境" }],
+        project: [
+          { label: "毕设港", to: "home" },
+          { label: "项目", to: "home" },
+          { label: title },
+        ],
       };
-      setCrumb(crumbs[name] || ["毕设港"]);
+      setCrumb(crumbs[name] || [{ label: "毕设港", to: "home" }]);
       closeNav();
     }
 
@@ -826,23 +885,63 @@
       const persistence = document.getElementById("sel-persistence").value;
       const security = document.getElementById("sel-security").value;
       const ai = document.getElementById("sel-ai").value;
+      const scene = document.getElementById("sel-scene").value;
+      const entrySel = document.getElementById("sel-entry");
+      const entry = entrySel && entrySel.options.length ? entrySel.value : "";
+      const entryDev =
+        entryOptionsForDom(dom).length > 0 &&
+        (RECOMMENDED.entry || "") !== (entry || "");
       return (
         arch !== RECOMMENDED.arch ||
         dom !== RECOMMENDED.dom ||
         persistence !== RECOMMENDED.persistence ||
         security !== RECOMMENDED.security ||
-        ai !== RECOMMENDED.ai
+        ai !== RECOMMENDED.ai ||
+        scene !== RECOMMENDED.scene ||
+        entryDev
       );
+    }
+
+    function syncEntrySelect(preserveValue) {
+      const dom = document.getElementById("sel-dom").value;
+      const opts = entryOptionsForDom(dom);
+      const field = document.getElementById("field-entry");
+      const sel = document.getElementById("sel-entry");
+      const prev = preserveValue != null ? preserveValue : sel.value;
+      sel.innerHTML = "";
+      if (!opts.length) {
+        field.style.display = "none";
+        return;
+      }
+      field.style.display = "";
+      opts.forEach((o) => {
+        const op = document.createElement("option");
+        op.value = o.id;
+        op.textContent = o.label;
+        sel.appendChild(op);
+      });
+      const prefer =
+        (prev && opts.some((o) => o.id === prev) && prev) ||
+        (RECOMMENDED.entry && opts.some((o) => o.id === RECOMMENDED.entry) && RECOMMENDED.entry) ||
+        opts[0].id;
+      sel.value = prefer;
     }
 
     function updateRecDualLines() {
       const pers = document.getElementById("sel-persistence").value;
       const sec = document.getElementById("sel-security").value;
       const ai = document.getElementById("sel-ai").value;
+      const scene = document.getElementById("sel-scene").value;
+      const dom = document.getElementById("sel-dom").value;
+      const entrySel = document.getElementById("sel-entry");
+      const entry = entrySel && entrySel.options.length ? entrySel.value : "";
+      const entryOpts = entryOptionsForDom(dom);
 
       const persEl = document.getElementById("rec-persistence");
       const secEl = document.getElementById("rec-security");
       const aiEl = document.getElementById("rec-ai");
+      const sceneEl = document.getElementById("rec-scene");
+      const entryEl = document.getElementById("rec-entry");
       const dualEl = document.getElementById("rec-stack-dual");
 
       persEl.textContent =
@@ -859,6 +958,26 @@
         "推荐 AI 助手：" +
         aiLabel(RECOMMENDED.ai) +
         (ai !== RECOMMENDED.ai ? " · 当前出包：" + aiLabel(ai) : "");
+      sceneEl.textContent =
+        "推荐身份：" +
+        sceneLabel(RECOMMENDED.scene) +
+        (scene !== RECOMMENDED.scene ? " · 当前出包：" + sceneLabel(scene) : "");
+
+      if (entryOpts.length) {
+        entryEl.style.display = "";
+        const recEntry = RECOMMENDED.entry || entryOpts[0].id;
+        const entryChanged = entry !== recEntry;
+        entryEl.innerHTML =
+          "推荐入口：" +
+          entryLabel(recEntry, dom) +
+          (entryChanged ? " · 当前出包：" + entryLabel(entry, dom) : "") +
+          (RECOMMENDED.entryWeak && !entryChanged
+            ? ' <span class="path-weak">· 依据弱，请人工核</span>'
+            : "");
+      } else {
+        entryEl.style.display = "none";
+        entryEl.textContent = "";
+      }
 
       const dualParts = [];
       if (pers !== RECOMMENDED.persistence) {
@@ -885,6 +1004,22 @@
             (ai === "on" ? "开" : "关")
         );
       }
+      if (scene !== RECOMMENDED.scene) {
+        dualParts.push(
+          "身份 · 推荐：" + sceneLabel(RECOMMENDED.scene) + " · 拟选：" + sceneLabel(scene)
+        );
+      }
+      if (entryOpts.length) {
+        const recEntry = RECOMMENDED.entry || entryOpts[0].id;
+        if (entry !== recEntry) {
+          dualParts.push(
+            "入口 · 推荐：" +
+              entryLabel(recEntry, dom) +
+              " · 拟选：" +
+              entryLabel(entry, dom)
+          );
+        }
+      }
       if (dualParts.length) {
         dualEl.style.display = "";
         dualEl.textContent = "拟选对照：" + dualParts.join("；");
@@ -894,17 +1029,48 @@
       }
     }
 
+    function updatePathAckUI() {
+      const wrap = document.getElementById("match-path-ack-wrap");
+      const text = document.getElementById("match-path-ack-text");
+      const scene = document.getElementById("sel-scene").value;
+      const dom = document.getElementById("sel-dom").value;
+      const entrySel = document.getElementById("sel-entry");
+      const entry = entrySel && entrySel.options.length ? entrySel.value : "";
+      const show = needsPathAck();
+      wrap.style.display = show ? "block" : "none";
+      if (!show) {
+        document.getElementById("match-path-ack").checked = false;
+        return;
+      }
+      let label = "主路径已核对：" + sceneLabel(scene);
+      if (entry) label += " · " + entryLabel(entry, dom);
+      if (RECOMMENDED.entryWeak) {
+        label += ' <span class="path-weak">（开题依据弱，必勾）</span>';
+      }
+      text.innerHTML = label;
+    }
+
+    function refreshConfirmEnabled() {
+      const ack = document.getElementById("match-ack").checked;
+      const pathAck = document.getElementById("match-path-ack").checked;
+      const pathOk = !RECOMMENDED.entryWeak || pathAck;
+      const confirmed = matchConfirmed;
+      setDisabled("btn-confirm", confirmed || !ack || !pathOk);
+    }
+
     function updateMatchRiskUI(clearAck) {
       document.getElementById("field-arch").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-dom").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-scene").classList.toggle("locked", !matchUnlocked);
+      document.getElementById("field-entry").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-persistence").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-security").classList.toggle("locked", !matchUnlocked);
       document.getElementById("field-ai").classList.toggle("locked", !matchUnlocked);
       document.getElementById("btn-unlock-match").textContent = matchUnlocked ? "重新锁定" : "解锁调整";
       document.getElementById("btn-reset-match").style.display = matchUnlocked || isDeviated() ? "inline-flex" : "none";
       document.getElementById("match-lock-hint").textContent = matchUnlocked
-        ? "骨架 / 领域 / 持久层 / 鉴权 / AI助手可调整"
-        : "骨架 / 领域 / 持久层 / 鉴权 / AI助手已锁定";
+        ? "骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整"
+        : "骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手已锁定";
 
       const pill = document.getElementById("match-mode-pill");
       const banner = document.getElementById("override-banner");
@@ -916,11 +1082,20 @@
       document.getElementById("conf-fill").style.background = conf >= 0.75 ? "var(--green)" : "#d97706";
 
       updateRecDualLines();
+      updatePathAckUI();
 
       const scopeAck =
-        "已核对骨架、领域、持久层、鉴权、AI 助手与本期范围，确认后开始生成。";
+        "已核对骨架、领域、身份场景、主路径入口、持久层、鉴权、AI 助手与本期范围，确认后开始生成。";
 
-      if (!matchUnlocked && !isDeviated()) {
+      if (RECOMMENDED.entryWeak) {
+        pill.className = "pill pill-amber";
+        pill.textContent = matchUnlocked ? "已解锁 · 依据弱" : "依据弱 · 须核对";
+        banner.classList.add("show", "danger");
+        banner.textContent =
+          "开题未写清「谁怎么用」：请解锁选择主路径入口，或确认时勾选「主路径已核对」。";
+        ackText.textContent = scopeAck;
+        btnConfirm.textContent = "确认并继续";
+      } else if (!matchUnlocked && !isDeviated()) {
         pill.className = "pill pill-green";
         pill.textContent = "已锁定推荐";
         banner.classList.remove("show", "danger");
@@ -931,7 +1106,7 @@
         pill.textContent = "已解锁";
         banner.classList.add("show");
         banner.classList.remove("danger");
-        banner.textContent = "骨架 / 领域 / 持久层 / 鉴权 / AI助手可调整。如无把握，建议恢复推荐。";
+        banner.textContent = "骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整。如无把握，建议恢复推荐。";
         ackText.textContent = scopeAck;
         btnConfirm.textContent = "确认并继续";
       } else {
@@ -939,27 +1114,32 @@
         pill.textContent = "已偏离推荐";
         banner.classList.add("show", "danger");
         banner.textContent = "当前与系统推荐不一致，请确认后再生成。";
-        ackText.textContent = "确认按当前骨架 / 领域 / 持久层 / 鉴权 / AI 助手生成。";
+        ackText.textContent = "确认按当前骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI 助手生成。";
         btnConfirm.textContent = "确认按当前选择继续";
       }
 
       if (clearAck) {
         document.getElementById("match-ack").checked = false;
+        document.getElementById("match-path-ack").checked = false;
         document.getElementById("match-gate").classList.remove("ok");
-        setDisabled("btn-confirm", true);
       }
+      refreshConfirmEnabled();
     }
 
     function syncMatchFields(clearAck) {
+      syncEntrySelect();
       const arch = document.getElementById("sel-arch").value;
       const dom = document.getElementById("sel-dom").value;
       const persistence = document.getElementById("sel-persistence").value;
       const security = document.getElementById("sel-security").value;
       const ai = document.getElementById("sel-ai").value;
+      const scene = document.getElementById("sel-scene").value;
+      const entrySel = document.getElementById("sel-entry");
+      const entry = entrySel && entrySel.options.length ? entrySel.value : "";
       document.getElementById("proj-arch").textContent =
         arch.split(" · ")[0] + " · " + dom.split(" · ")[0];
       document.getElementById("rec-label").textContent =
-        "ARCH-FLOW · 审核流  ×  DOM-LIBRARY · 图书";
+        RECOMMENDED.arch + "  ×  " + RECOMMENDED.dom;
       document.getElementById("spec-preview").textContent = `{
   "title": "图书借阅管理系统",
   "archetype": "${arch.split(" · ")[0]}",
@@ -967,6 +1147,7 @@
   "persistence": "${persistence}",
   "spring_security": ${security === "on"},
   "ai_assistant": ${ai === "on"},
+  "match_path": { "scene": "${scene}", "entry": "${entry}" },
   "match_mode": "${isDeviated() ? "manual_override" : "recommended"}",
   "roles": ["reader", "admin"],
   "entities": ["Book", "Category", "Borrow", "Notice"],
@@ -975,6 +1156,28 @@
   "out_of_mvp": ["人脸识别", "协同过滤推荐"]
 }`;
       updateMatchRiskUI(!!clearAck);
+    }
+
+    function resetRecommendedBaseline() {
+      RECOMMENDED.arch = "ARCH-FLOW · 审核流";
+      RECOMMENDED.dom = "DOM-LIBRARY · 图书";
+      RECOMMENDED.persistence = "jdbc";
+      RECOMMENDED.security = "off";
+      RECOMMENDED.ai = "off";
+      RECOMMENDED.scene = "campus";
+      RECOMMENDED.entry = "";
+      RECOMMENDED.conf = 0.86;
+      RECOMMENDED.entryWeak = false;
+    }
+
+    function applyRecommendedToSelects() {
+      document.getElementById("sel-arch").value = RECOMMENDED.arch;
+      document.getElementById("sel-dom").value = RECOMMENDED.dom;
+      document.getElementById("sel-persistence").value = RECOMMENDED.persistence;
+      document.getElementById("sel-security").value = RECOMMENDED.security;
+      document.getElementById("sel-ai").value = RECOMMENDED.ai;
+      document.getElementById("sel-scene").value = RECOMMENDED.scene;
+      syncEntrySelect(RECOMMENDED.entry || undefined);
     }
 
     function openProject(id, demoOverride) {
@@ -994,21 +1197,20 @@
       matchConfirmed = state !== "needs_confirm";
       matchUnlocked = false;
       clearPptBadge();
-      document.getElementById("sel-arch").value = RECOMMENDED.arch;
-      document.getElementById("sel-dom").value = RECOMMENDED.dom;
-      document.getElementById("sel-persistence").value = RECOMMENDED.persistence;
-      document.getElementById("sel-security").value = RECOMMENDED.security;
-      document.getElementById("sel-ai").value = RECOMMENDED.ai;
+      applyRecommendedToSelects();
       document.getElementById("match-ack").checked = matchConfirmed;
       document.getElementById("match-ack").disabled = false;
+      document.getElementById("match-path-ack").checked = matchConfirmed && !RECOMMENDED.entryWeak;
       document.getElementById("match-gate").classList.toggle("ok", matchConfirmed);
-      setDisabled("btn-confirm", !matchConfirmed);
       setDisabled("btn-download", true);
+      syncMatchFields(false);
+      refreshConfirmEnabled();
 
       const pptStates = ["ppt_ready", "ppt_generating", "ppt_done", "ppt_dirty"];
       if (pptStates.includes(state)) {
         matchConfirmed = true;
         document.getElementById("match-ack").checked = true;
+        document.getElementById("match-path-ack").checked = true;
         setDisabled("btn-confirm", true);
         applyGenState("generated");
         setRuntime(false);
@@ -1085,6 +1287,12 @@
     function handleAction(action, el, e) {
       if (!action) return;
 
+      if (action === "crumb-nav") {
+        if (e) e.preventDefault();
+        const view = el.dataset.view || "home";
+        showView(view);
+        return;
+      }
       if (action === "open-project") {
         openProject(el.dataset.id || el.closest("[data-id]")?.dataset.id);
         return;
@@ -1116,7 +1324,7 @@
       }
       if (action === "toggle-override") {
         if (!matchUnlocked) {
-          if (!confirm("解锁后可改骨架/领域。改错会生成另一套系统。确认解锁？")) return;
+          if (!confirm("解锁后可改骨架/领域/身份入口。改错会生成另一套系统。确认解锁？")) return;
           matchUnlocked = true;
           toast("已解锁 · 请谨慎修改");
         } else {
@@ -1131,22 +1339,20 @@
         return;
       }
       if (action === "reset-match") {
-        document.getElementById("sel-arch").value = RECOMMENDED.arch;
-        document.getElementById("sel-dom").value = RECOMMENDED.dom;
-        document.getElementById("sel-persistence").value = RECOMMENDED.persistence;
-        document.getElementById("sel-security").value = RECOMMENDED.security;
-        document.getElementById("sel-ai").value = RECOMMENDED.ai;
+        applyRecommendedToSelects();
         matchUnlocked = false;
         syncMatchFields(true);
-        toast("已恢复系统推荐 · 骨架/领域已锁定");
+        toast("已恢复系统推荐 · 骨架/领域/身份入口已锁定");
         return;
       }
       if (action === "confirm-match") {
         if (isDisabled(el)) {
-          toast("请先勾选确认");
+          toast(RECOMMENDED.entryWeak && !document.getElementById("match-path-ack").checked
+            ? "请勾选「主路径已核对」"
+            : "请先勾选确认");
           return;
         }
-        if (isDeviated() && !confirm("当前已偏离系统推荐。确认仍要用这套骨架/领域生成？")) {
+        if (isDeviated() && !confirm("当前已偏离系统推荐。确认仍要用这套骨架/领域/身份入口生成？")) {
           return;
         }
         const deviant = isDeviated();
@@ -1862,9 +2068,13 @@
     });
 
     document.getElementById("match-ack").addEventListener("change", (e) => {
-      setDisabled("btn-confirm", !e.target.checked);
       document.getElementById("match-gate").classList.toggle("ok", e.target.checked);
+      refreshConfirmEnabled();
       if (e.target.checked) toast("已勾选 · 可确认匹配");
+    });
+    document.getElementById("match-path-ack").addEventListener("change", () => {
+      refreshConfirmEnabled();
+      if (document.getElementById("match-path-ack").checked) toast("主路径已核对");
     });
 
     document.getElementById("list-search").addEventListener("input", (e) => {
@@ -1887,6 +2097,12 @@
         toast("领域已锁定 · 请先点「解锁调整」");
         return;
       }
+      // 切换领域时同步入口轴可见性；推荐入口跟推荐域走（演示）
+      const code = domainCode(document.getElementById("sel-dom").value);
+      const opts = ENTRY_OPTIONS_BY_DOMAIN[code] || [];
+      if (opts.length && !opts.some((o) => o.id === RECOMMENDED.entry)) {
+        // 手改领域时入口以选项首项为当前值，不改 RECOMMENDED（偏离由 isDeviated 判定）
+      }
       syncMatchFields(true);
       toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "领域已改回推荐值");
     });
@@ -1894,6 +2110,7 @@
       document.getElementById(id).addEventListener("change", () => {
         if (!matchUnlocked) {
           document.getElementById(id).value = RECOMMENDED[recommendedKey];
+          if (id === "sel-entry") syncEntrySelect(RECOMMENDED.entry || undefined);
           toast(lockedMsg);
           return;
         }
@@ -1904,9 +2121,12 @@
     bindLockedMatchSelect("sel-persistence", "persistence", "持久层已锁定 · 请先点「解锁调整」", "持久层已改回推荐值");
     bindLockedMatchSelect("sel-security", "security", "鉴权已锁定 · 请先点「解锁调整」", "鉴权已改回推荐值");
     bindLockedMatchSelect("sel-ai", "ai", "AI 助手已锁定 · 请先点「解锁调整」", "AI 助手已改回推荐值");
+    bindLockedMatchSelect("sel-scene", "scene", "身份场景已锁定 · 请先点「解锁调整」", "身份场景已改回推荐值");
+    bindLockedMatchSelect("sel-entry", "entry", "主路径入口已锁定 · 请先点「解锁调整」", "主路径入口已改回推荐值");
     document.getElementById("sel-theme")?.addEventListener("change", () => toast("行业配色已自动保存"));
     document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
     document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
+    document.getElementById("sel-portal-home")?.addEventListener("change", () => toast("门户首页已自动保存"));
     document.getElementById("usage-presence")?.addEventListener("change", (e) => {
       applyUsagePresence(e.target.value || "alive");
     });
@@ -1916,11 +2136,12 @@
     document.getElementById("demo-state").addEventListener("change", (e) => {
       const v = e.target.value;
       if (v === "list") {
-        RECOMMENDED.ai = "off";
+        resetRecommendedBaseline();
         showView("home");
         return;
       }
       if (v === "match_ai_dual") {
+        resetRecommendedBaseline();
         RECOMMENDED.ai = "on";
         openProject("gf-20260717-001", "needs_confirm");
         matchUnlocked = true;
@@ -1929,7 +2150,17 @@
         toast("演示：开题推荐开 AI · 拟选关 → 双显");
         return;
       }
-      RECOMMENDED.ai = "off";
+      if (v === "match_path_weak") {
+        resetRecommendedBaseline();
+        RECOMMENDED.arch = "ARCH-FLOW · 审核流";
+        RECOMMENDED.dom = "DOM-EVENT · 事件上报";
+        RECOMMENDED.entry = "caseload";
+        RECOMMENDED.entryWeak = true;
+        openProject("gf-20260717-001", "needs_confirm");
+        toast("演示：晨午检/事件域 · 开题依据弱，须勾「主路径已核对」");
+        return;
+      }
+      resetRecommendedBaseline();
       openProject("gf-20260717-001", v);
     });
 

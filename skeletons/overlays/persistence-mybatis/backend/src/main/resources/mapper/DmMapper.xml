@@ -6,13 +6,13 @@
         SELECT * FROM sys_dm_message WHERE id=#{id}
     </select>
     <select id="selectPeers" resultType="map">
-        SELECT username, nickname, role FROM sys_user
+        SELECT username, nickname, role, IFNULL(avatar_url,'') AS avatarUrl FROM sys_user
         WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
         ORDER BY role DESC, id ASC
         LIMIT #{limit}
     </select>
     <select id="selectMerchantPeers" resultType="map">
-        SELECT username, nickname, role FROM sys_user
+        SELECT username, nickname, role, IFNULL(avatar_url,'') AS avatarUrl FROM sys_user
         WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
           AND role='admin' AND IFNULL(super_admin,0)=0
           AND IFNULL(staff_post,'')='shop_merchant'
@@ -20,7 +20,7 @@
         LIMIT #{limit}
     </select>
     <select id="selectBuyerPeers" resultType="map">
-        SELECT username, nickname, role FROM sys_user
+        SELECT username, nickname, role, IFNULL(avatar_url,'') AS avatarUrl FROM sys_user
         WHERE username&lt;&gt;#{me} AND (enabled IS NULL OR enabled=1)
           AND role&lt;&gt;'admin'
         ORDER BY id ASC
