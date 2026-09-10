@@ -24,6 +24,7 @@
           </div>
           <div class="tile-meta">
             <h3 :title="row.title">{{ row.title }}</h3>
+            <p v-if="shopLabel(row)" class="shop">店铺：{{ shopLabel(row) }}</p>
             <p>{{ row.categoryName || '未分类' }}</p>
             <button type="button" class="tile-cta" @click.stop="emit('apply', row)">
               {{ applyLabel }}
@@ -39,7 +40,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../api/http'
-import { schemaLabels } from '../utils/domainSchema.js'
+import { schemaLabels, getSchema } from '../utils/domainSchema.js'
 
 const props = defineProps({
   applyLabel: { type: String, default: '申请' },
@@ -54,10 +55,16 @@ const router = useRouter()
 const list = ref([])
 const mode = ref('cold')
 const labels = schemaLabels()
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 
 const title = computed(
   () => labels.recommendSectionTitle || labels.recommendTitle || '猜你喜欢',
 )
+
+function shopLabel(row) {
+  if (!marketplace.value || !row) return ''
+  return String(row.shopName || row.shop_name || '').trim()
+}
 
 const modeLabel = computed(() => {
   if (mode.value === 'personalized') return '为你精选'
@@ -246,6 +253,9 @@ defineExpose({ reload: load })
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tile-meta .shop {
+  color: color-mix(in srgb, var(--portal-accent, #0b6e75) 65%, var(--portal-muted, #64748b));
 }
 .tile-cta {
   margin-top: 8px;

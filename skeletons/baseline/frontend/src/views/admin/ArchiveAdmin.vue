@@ -39,6 +39,9 @@
         <template #default="{ row }">{{ isbnPlain(row.isbn) }}</template>
       </el-table-column>
       <el-table-column prop="categoryName" :label="fieldLabel('category', '分类')" width="100" />
+      <el-table-column v-if="marketplace" label="店铺" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.shopName || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="hasMutex" prop="mutexCode" :label="fieldLabel('mutexCode', '互斥码')" width="110" />
       <el-table-column v-if="hasCheckin" prop="checkinCode" :label="fieldLabel('checkinCode', '签到码')" width="120">
         <template #default="{ row }">{{ row.checkinCode || '—' }}</template>
@@ -104,9 +107,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
     <el-dialog
