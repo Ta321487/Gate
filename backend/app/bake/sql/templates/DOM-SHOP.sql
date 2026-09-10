@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS product (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   seller_note VARCHAR(255) DEFAULT '',
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

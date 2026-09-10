@@ -94,7 +94,8 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "author", "label": "价格", "type": "number", "format": "money"},
                 {"key": "isbn", "label": "规格", "type": "string"},
                 {"key": "region", "label": "产地", "type": "string"},
-                {"key": "harvestOn", "label": "采摘时间", "type": "string"},
+                # 产品属性日：默认 date；开题强调时分时由 temporal_field 升 datetime
+                {"key": "harvestOn", "label": "采摘时间", "type": "date"},
                 {"key": "sellerNote", "label": "简介", "type": "textarea"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "库存", "type": "number"},
@@ -147,6 +148,8 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice_title=notice_title,
         notice_body=notice_body,
         notice_page_title="商城公告" if pk != "farm" else "农产公告",
+        # 域默认：商品上下架（软删可恢复）；开题未写也做，勿当扫词才挂
+        soft_delete=True,
     )
     if marketplace:
         schema["shopMarketplace"] = True
@@ -274,6 +277,7 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "completed": "已完成",
             "cancelled": "已取消",
         },
+        soft_delete=True,
     )
     schema["entities"]["order"]["verbs"] = {
         "confirm": "接单",

@@ -161,6 +161,14 @@
             :stock-as-toggle="stockAsToggle"
           />
         </el-form-item>
+        <el-form-item v-if="softDelete" :label="shelfFormLabel">
+          <el-switch
+            v-model="form.onShelf"
+            inline-prompt
+            :active-text="softCopy.on"
+            :inactive-text="softCopy.off"
+          />
+        </el-form-item>
         <el-form-item v-if="hasMutex" :label="fieldLabel('mutexCode', '互斥码')">
           <el-input v-model="form.mutexCode" maxlength="32" :placeholder="`相同互斥码的${label}不可同选，可留空`" />
         </el-form-item>
@@ -197,7 +205,7 @@
               style="width:100%"
             />
           </el-form-item>
-          <p class="dt-hint">选日期后，点击面板<strong>上方时间</strong>再调时分；有步长时按格点选。</p>
+          <p v-if="scheduleNeedsClock" class="dt-hint">选日期后，点击面板<strong>上方时间</strong>再调时分；有步长时按格点选。</p>
         </template>
         <el-form-item
           v-for="f in extraFields"
@@ -260,7 +268,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import ArchiveFieldControl from '../../components/ArchiveFieldControl.vue'
 import { archiveCopy, formatArchiveScalar, getSchema, hasCap, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
-import { dateTimePickerProps } from '../../utils/dateTimeField.js'
+import { datePickerProps, dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
@@ -272,6 +280,9 @@ const softCopy = computed(() => {
   if (!marketplace.value) return softCopyBase
   return { ...softCopyBase, verb: '强制下架', off: '已强制下架', include: '含下架' }
 })
+const shelfFormLabel = computed(() =>
+  String(softCopy.value.verb || '').includes('下架') ? '上架状态' : '启用状态',
+)
 const stockWarnBelow = computed(() => {
   const n = Number(getSchema()?.stockWarnBelow)
   return Number.isFinite(n) && n > 0 ? n : 10
@@ -331,6 +342,11 @@ const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' 
 const hasStartAt = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasEndAt = computed(() => fields.value.some((x) => x.key === 'endAt'))
 const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
+const scheduleNeedsClock = computed(() =>
+  ['startAt', 'endAt', 'applyDeadlineAt'].some(
+    (key) => fieldType(key) === 'datetime' && fields.value.some((x) => x.key === key),
+  ),
+)
 const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
 const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCode'))
 const softDelete = computed(() => !!archive.softDelete)
@@ -372,7 +388,17 @@ const searchPlaceholder = computed(() => {
   return `搜索${parts.join(' / ')}`
 })
 function pickerProps(key) {
-  return dateTimePickerProps(fieldMeta(key))
+  const meta = fieldMeta(key)
+  if (meta.type === 'date') return datePickerProps(meta)
+  return dateTimePickerProps(meta)
+}
+
+/** 纯日期字段：API 若带回时分，截成 YYYY-MM-DD 喂给 date picker */
+function calendarFormValue(key, raw) {
+  if (raw == null || raw === '') return ''
+  const s = String(raw).trim()
+  if (fieldType(key) === 'date' && s.length >= 10) return s.slice(0, 10)
+  return s
 }
 
 function formatAuthorCell(v) {
@@ -401,6 +427,8 @@ const form = reactive({
   isbn: '',
   categoryId: null,
   stock: 1,
+  onShelf: true,
+  _wasDeleted: false,
   coverUrl: '',
   galleryImages: [],
   equipmentNames: [],
@@ -461,7 +489,8 @@ function genCheckin() {
 function openEdit(row) {
   const extras = {}
   for (const f of extraFields.value) {
-    extras[f.key] = row?.[f.key] ?? extraDefault(f)
+    const raw = row?.[f.key] ?? extraDefault(f)
+    extras[f.key] = f.type === 'date' && raw ? String(raw).slice(0, 10) : raw
   }
   if (row) {
     Object.assign(form, {
@@ -471,12 +500,14 @@ function openEdit(row) {
       isbn: row.isbn || '',
       categoryId: row.categoryId,
       stock: row.stock ?? 1,
+      onShelf: !row.deleted,
+      _wasDeleted: !!row.deleted,
       coverUrl: row.coverUrl || '',
       galleryImages: Array.isArray(row.galleryImages) ? [...row.galleryImages] : [],
       equipmentNames: Array.isArray(row.equipmentNames) ? [...row.equipmentNames] : [],
-      startAt: row.startAt || '',
-      endAt: row.endAt || '',
-      applyDeadlineAt: row.applyDeadlineAt || '',
+      startAt: calendarFormValue('startAt', row.startAt || ''),
+      endAt: calendarFormValue('endAt', row.endAt || ''),
+      applyDeadlineAt: calendarFormValue('applyDeadlineAt', row.applyDeadlineAt || ''),
       mutexCode: row.mutexCode || '',
       checkinCode: row.checkinCode || '',
       tagIds: [...(row.tagIds || [])],
@@ -490,6 +521,8 @@ function openEdit(row) {
       isbn: '',
       categoryId: categories.value[0]?.id || null,
       stock: 1,
+      onShelf: true,
+      _wasDeleted: false,
       coverUrl: '',
       galleryImages: [],
       equipmentNames: [],
@@ -519,9 +552,21 @@ async function save() {
     return
   }
   const payload = { ...form }
+  delete payload.onShelf
+  delete payload._wasDeleted
   if (isbnRich.value) payload.isbn = sanitizeHtml(form.isbn || '')
+  let id = form.id
   if (form.id) await http.put(`/api/archive/${form.id}`, payload)
-  else await http.post('/api/archive', payload)
+  else {
+    const created = await http.post('/api/archive', payload)
+    id = created?.id ?? created?.data?.id ?? null
+  }
+  if (softDelete.value && id) {
+    const wantOn = !!form.onShelf
+    const wasOff = !!form._wasDeleted
+    if (wantOn && wasOff) await http.post(`/api/archive/${id}/restore`)
+    else if (!wantOn && !wasOff) await http.delete(`/api/archive/${id}`)
+  }
   ElMessage.success('已保存')
   visible.value = false
   load()
@@ -622,6 +667,7 @@ function sampleForCol(col) {
   if (col.type === 'boolean' || col.type === 'switch') return '1'
   if (col.type === 'number') return '1'
   if (col.type === 'datetime') return '2026-07-21 09:00'
+  if (col.type === 'date') return '2026-07-21'
   if (col.type === 'url') return 'https://example.com'
   if (col.type === 'textarea') return '示例说明'
   if (col.type === 'select' && Array.isArray(col.options) && col.options.length) {

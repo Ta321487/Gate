@@ -797,6 +797,7 @@ def order_shell_schema(
     notice_body: str,
     notice_page_title: str,
     order_states: dict[str, str] | None = None,
+    soft_delete: bool = False,
 ) -> dict[str, Any]:
     app = product_name_from_title(title)
     states = order_states or {
@@ -822,6 +823,7 @@ def order_shell_schema(
                 "labelPlural": archive_plural,
                 "fields": archive_fields,
                 "stockDisplay": "count",
+                "softDelete": soft_delete,
             },
             "order": {
                 "key": "order",

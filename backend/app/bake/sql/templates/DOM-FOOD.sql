@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS dish (
   cover_url VARCHAR(255),
   spicy_level VARCHAR(16) DEFAULT '不辣',
   is_vegetarian TINYINT DEFAULT 0,
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
