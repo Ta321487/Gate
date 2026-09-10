@@ -30,8 +30,7 @@ def build_tour_followup_presets(
                 {
                     "key": "applyDeadlineAt",
                     "label": "报名截止",
-                    "type": "datetime",
-                    "timeStepMinutes": 30,
+                    "type": "date",
                 },
             ],
             "stock_display": "number",

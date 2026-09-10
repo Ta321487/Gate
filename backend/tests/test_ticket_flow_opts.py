@@ -98,6 +98,7 @@ class TicketFlowOptsScanTests(unittest.TestCase):
         fields = {f.get("key"): f for f in (arch.get("fields") or []) if isinstance(f, dict)}
         self.assertIn("applyDeadlineAt", fields)
         self.assertEqual(fields["applyDeadlineAt"].get("label"), "申报截止")
+        self.assertEqual(fields["applyDeadlineAt"].get("type"), "date")
         feat_names = {
             str(f.get("name"))
             for f in (spec.get("features") or [])

@@ -43,7 +43,14 @@ final class TicketAsserts {
         Object raw = item.get("applyDeadlineAt");
         if (raw == null || String.valueOf(raw).isBlank()) return;
         try {
-            LocalDateTime deadline = LocalDateTime.parse(String.valueOf(raw).substring(0, 19), TicketSql.FMT);
+            String s = String.valueOf(raw).trim();
+            if (s.contains("T")) s = s.replace('T', ' ');
+            LocalDateTime deadline;
+            if (s.length() == 10) {
+                deadline = LocalDateTime.parse(s + "T23:59:59");
+            } else {
+                deadline = LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), TicketSql.FMT);
+            }
             if (LocalDateTime.now().isAfter(deadline)) {
                 throw new IllegalStateException("已过" + TicketCopy.APPLY_DEADLINE_LABEL + "时间");
             }

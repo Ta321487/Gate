@@ -72,7 +72,7 @@ def build_domain_schema(
     schema = attach_profile_fields(
         schema, domain, title=title, proposal_text=proposal_text
     )
-    return attach_staff_posts(
+    schema = attach_staff_posts(
         schema,
         domain,
         archetype,
@@ -80,6 +80,10 @@ def build_domain_schema(
         proposal_text=proposal_text,
         title=title,
     )
+    from app.bake.features.temporal_field import apply_soft_calendar_types
+
+    apply_soft_calendar_types(schema, proposal_text)
+    return schema
 
 
 def required_capabilities(
@@ -1105,6 +1109,10 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
 
 def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]:
     """写入 domain.schema.json 与 islands 摘要，供 gate / 前端对照。"""
+    from app.bake.schema.menu_utils import sync_user_menus_from_caps
+
+    if isinstance(schema, dict):
+        sync_user_menus_from_caps(schema)
     schema = scrub_schema_student_copy(schema)
     written: list[str] = []
     schema_path = workspace / "domain.schema.json"

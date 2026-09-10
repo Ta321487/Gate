@@ -55,8 +55,7 @@
         {
           "key": "applyDeadlineAt",
           "label": "报名截止",
-          "timeStepMinutes": 30,
-          "type": "datetime"
+          "type": "date"
         },
         {
           "key": "serviceHours",

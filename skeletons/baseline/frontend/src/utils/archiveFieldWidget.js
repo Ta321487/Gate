@@ -1,7 +1,7 @@
 /**
  * 档案字段 → 表单控件。禁止一律文本框：看 type，再看语义兜底。
  *
- * 返回值：switch | select | datetime | number | money | url | textarea | richtext | text | hidden
+ * 返回值：switch | select | datetime | date | number | money | url | textarea | richtext | text | hidden
  */
 import { isArchiveMoneyField } from './domainSchema.js'
 
@@ -23,6 +23,7 @@ export function archiveFieldWidget(field, ctx = {}) {
   if (type === 'number' && BOOL_LABEL_RE.test(label)) return 'switch'
   if (type === 'select') return 'select'
   if (type === 'datetime') return 'datetime'
+  if (type === 'date') return 'date'
   if (type === 'url') return 'url'
   if (type === 'textarea') return 'textarea'
   if (type === 'richtext' || (ctx.bodyField && key === ctx.bodyField)) return 'richtext'
