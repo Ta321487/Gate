@@ -195,7 +195,7 @@ def _plan_module_units(workspace: Path, proposal_text: str) -> list[TaskUnit]:
                 if isinstance(c, dict):
                     _walk(c, acc)
 
-        for m in (fresh_biz, fresh_side):
+        for m in (fresh_biz, fresh_id):
             if isinstance(m, dict) and isinstance(m.get("root"), dict):
                 _walk(m["root"], flat)
         branch = [x for x in flat if x.get("source") in ("branch", "system") and x.get("id")]
