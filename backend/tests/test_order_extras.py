@@ -25,6 +25,14 @@ class OrderExtrasTests(unittest.TestCase):
         self.assertTrue(scan_order_timeout("未支付超时自动取消订单"))
         self.assertEqual(order_timeout_minutes("支付超时取消", ["order_lines"]), 30)
         self.assertEqual(order_timeout_minutes("", ["order_lines"]), 0)
+        self.assertEqual(
+            order_timeout_minutes(
+                "",
+                ["order_lines"],
+                schema={"demoPay": True, "shopMarketplace": True},
+            ),
+            15,
+        )
 
     def test_requires_order_lines(self) -> None:
         spec = apply_order_extras_to_spec(

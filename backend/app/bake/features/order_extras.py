@@ -11,7 +11,7 @@ ORDER_REVIEW_CAP = "order_review"
 FLASH_PRICE_CAP = "flash_price"
 
 _REVIEW_SIGNALS = re.compile(
-    r"订单评价|商品评价|评价功能|评价管理|售后评价|完成评价|星级评价|评论功能"
+    r"订单评价|商品评价|评价功能|评价管理|评价模块|售后评价|完成评价|星级评价|评论功能"
 )
 _TIMEOUT_SIGNALS = re.compile(
     r"超时取消|支付超时|自动取消订单|未支付取消|订单超时|超时关单"
@@ -55,13 +55,32 @@ def merge_order_extras_capabilities(
     return out
 
 
-def order_timeout_minutes(proposal_text: str = "", caps: list[str] | None = None) -> int:
-    """材料写超时关单 → 30 分钟；否则 0（关）。"""
+def order_timeout_minutes(
+    proposal_text: str = "",
+    caps: list[str] | None = None,
+    *,
+    domain: str | None = None,
+    title: str = "",
+    schema: dict[str, Any] | None = None,
+) -> int:
+    """支付/待付款超时关单分钟数；0=关。
+
+    - 开题写超时关单 → 30
+    - 多店在线支付 / demoPay → 默认 15（待付款倒计时）
+    """
     caps = list(caps or [])
     if "order_lines" not in caps:
         return 0
     if scan_order_timeout(proposal_text):
         return 30
+    sch = schema if isinstance(schema, dict) else {}
+    if sch.get("demoPay") or sch.get("shopMarketplace"):
+        return 15
+    if (domain or "") == "DOM-SHOP":
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        if scan_shop_marketplace(title, proposal_text):
+            return 15
     return 0
 
 
@@ -101,7 +120,15 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
 
     if timeout_minutes > 0:
         schema["orderTimeoutMinutes"] = int(timeout_minutes)
-        labels.setdefault("orderTimeoutHint", f"待确认订单超过 {timeout_minutes} 分钟将自动取消")
+        if schema.get("demoPay") or schema.get("shopMarketplace"):
+            labels["orderTimeoutHint"] = (
+                f"待付款订单超过 {timeout_minutes} 分钟将自动取消，请尽快支付"
+            )
+        else:
+            labels.setdefault(
+                "orderTimeoutHint",
+                f"待确认订单超过 {timeout_minutes} 分钟将自动取消",
+            )
 
     if FLASH_PRICE_CAP in caps:
         attach_flash_price_fields(schema)
@@ -129,9 +156,15 @@ def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") ->
         domain=spec.get("domain"),
         title=str(spec.get("title") or ""),
     )
-    timeout = order_timeout_minutes(proposal_text, caps)
-    spec = {**spec, "capabilities": caps}
     schema = dict(spec.get("schema") or {})
+    timeout = order_timeout_minutes(
+        proposal_text,
+        caps,
+        domain=str(spec.get("domain") or ""),
+        title=str(spec.get("title") or ""),
+        schema=schema,
+    )
+    spec = {**spec, "capabilities": caps}
     schema["capabilities"] = caps
     attach_order_extras_schema(schema, caps, timeout_minutes=timeout)
     # 券 / 评价 / 超时关单 / 限时购 gate

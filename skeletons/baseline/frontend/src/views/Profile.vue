@@ -4,7 +4,7 @@
 
     <section class="hero">
       <h1>个人资料</h1>
-      <p>维护基本信息与{{ userLabel }}资料；改密后需用新密码重新登录。</p>
+      <p>维护基本信息与{{ bizSectionTitle }}；改密后需用新密码重新登录。</p>
     </section>
 
     <p v-if="!form.profileEditable" class="locked">顶级管理员不提供个人资料修改。</p>
@@ -38,7 +38,14 @@
         <div v-if="tierOn"><span class="k">会员</span><strong>{{ loyalty.memberTierLabel || '—' }}</strong></div>
         <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>
       </div>
-      <p class="loy-hint">余额由管理员充值，积分随订单完成赠送，可用于本站下单抵扣。</p>
+      <div v-if="walletOn" class="recharge-row">
+        <el-button type="primary" plain size="small" @click="openRecharge">模拟充值</el-button>
+        <span class="loy-hint inline">可选 50 / 100 / 200 / 500 元档位</span>
+      </div>
+      <p class="loy-hint">
+        <template v-if="walletOn">余额可在此充值；</template>
+        积分随订单完成赠送，可用于本站下单抵扣。
+      </p>
     </section>
 
     <el-form
@@ -87,7 +94,7 @@
       </section>
 
       <section v-if="bizFields.length" class="card block">
-        <h2 class="block-title">{{ userLabel }}资料</h2>
+        <h2 class="block-title">{{ bizSectionTitle }}</h2>
         <div class="grid">
           <el-form-item
             v-for="f in bizFields"
@@ -156,6 +163,22 @@
         <el-button type="primary" size="large" :loading="saving" @click="save">保存修改</el-button>
       </div>
     </el-form>
+
+    <el-dialog v-model="rechargeVisible" title="模拟充值" width="400px" destroy-on-close>
+      <p class="loy-hint">选择充值金额，即时到账。</p>
+      <div class="recharge-tiers">
+        <el-button
+          v-for="amt in rechargeTiers"
+          :key="amt"
+          :type="rechargeAmount === amt ? 'primary' : 'default'"
+          @click="rechargeAmount = amt"
+        >¥{{ amt }}</el-button>
+      </div>
+      <template #footer>
+        <el-button @click="rechargeVisible = false">取消</el-button>
+        <el-button type="primary" :loading="recharging" @click="doRecharge">确认充值</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -172,6 +195,7 @@ import {
   isWalletEnabled,
   profileAudienceOf,
   profileFieldsForAudience,
+  getSchema,
   roleLabel,
 } from '../utils/domainSchema.js'
 import {
@@ -189,12 +213,29 @@ const WIDE_KEYS = new Set([
 const router = useRouter()
 const saving = ref(false)
 const loyalty = ref(null)
+const rechargeVisible = ref(false)
+const recharging = ref(false)
+const rechargeTiers = [50, 100, 200, 500]
+const rechargeAmount = ref(100)
 const userLabel = computed(() => roleLabel('user', '用户'))
+const audience = computed(() => profileAudienceOf())
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+/** staff 业务区按岗位/店铺；勿把商家套成「买家资料」 */
+const bizSectionTitle = computed(() => {
+  if (audience.value === 'staff') {
+    if (marketplace.value || bizFields.value.some((f) => f?.key === 'shopName')) {
+      return '店铺资料'
+    }
+    const staffLab = roleLabel('subadmin', '') || roleLabel('admin', '管理')
+    return `${staffLab}资料`
+  }
+  return `${userLabel.value}资料`
+})
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
-const allFields = computed(() => profileFieldsForAudience(profileAudienceOf()))
+const allFields = computed(() => profileFieldsForAudience(audience.value))
 const basicFields = computed(() => allFields.value.filter((f) => BASIC_KEYS.has(f.key) || f.storage === 'phone'))
 const bizFields = computed(() =>
   allFields.value.filter(
@@ -240,6 +281,23 @@ function clearPasswords() {
 function goBack() {
   if (window.history.length > 1) router.back()
   else router.push('/')
+}
+
+function openRecharge() {
+  rechargeAmount.value = 100
+  rechargeVisible.value = true
+}
+
+async function doRecharge() {
+  recharging.value = true
+  try {
+    const res = await http.post('/api/loyalty/demo-recharge', { amount: rechargeAmount.value })
+    loyalty.value = res.data || loyalty.value
+    ElMessage.success(`已充值 ¥${Number(rechargeAmount.value).toFixed(0)}`)
+    rechargeVisible.value = false
+  } finally {
+    recharging.value = false
+  }
 }
 
 async function load() {
@@ -462,6 +520,23 @@ onMounted(load)
   margin: 12px 0 0;
   font-size: 12px;
   color: var(--portal-muted, #6b7c8a);
+}
+.loy-hint.inline {
+  margin: 0 0 0 10px;
+  display: inline;
+}
+.recharge-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.recharge-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 .block-title {
   display: flex;

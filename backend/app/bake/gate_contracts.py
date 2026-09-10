@@ -1490,7 +1490,10 @@ def merge_loyalty_gate(gate: dict, caps: list[str] | None) -> dict:
             files.append(f)
     out["files"] = files
     flow = dict(out.get("flow_api") or {})
-    flow["loyalty"] = {"file": "LoyaltyController.java", "need": ["/api/loyalty"]}
+    need = ["/api/loyalty"]
+    if "wallet" in caps:
+        need.append("/api/loyalty/demo-recharge")
+    flow["loyalty"] = {"file": "LoyaltyController.java", "need": need}
     out["flow_api"] = flow
     return out
 

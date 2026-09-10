@@ -1,4 +1,8 @@
-"""交易域忠诚度能力：余额 / 积分 / 满减 / 会员成长 / 券码（均为开关，默认不硬塞）。"""
+"""交易域忠诚度能力：余额 / 积分 / 满减 / 会员成长 / 券码。
+
+有 order_lines 的交易壳默认挂 wallet（有钱必有账户余额 + 模拟充值）；
+其它忠诚度项仍按开题扫词附加。
+"""
 
 from __future__ import annotations
 
@@ -7,9 +11,9 @@ from typing import Any
 
 LOYALTY_CAPS = ("wallet", "points", "spend_discount", "member_tier", "coupon")
 
-# 开题关键词 → 能力（仅在已有 order_lines 时附加）
+# 开题关键词 → 能力（仅在已有 order_lines 时附加；wallet 另见默认挂载）
 _LOYALTY_SIGNALS: list[tuple[str, list[str]]] = [
-    (r"余额|充值|校园卡|一卡通|电子钱包|预存", ["wallet"]),
+    (r"余额|充值|校园卡|一卡通|电子钱包|预存|钱包", ["wallet"]),
     (r"积分(?!登录)|会员积分|签到积分|消费积分|积分兑换", ["points"]),
     (r"满减|满\s*\d+\s*减|优惠门槛|满额优惠", ["spend_discount"]),
     (r"会员等级|会员成长|成长值|银卡|金卡|会员折扣|会员价", ["member_tier"]),
@@ -81,13 +85,17 @@ def merge_loyalty_capabilities(
     force: list[str] | None = None,
 ) -> list[str]:
     """
-    在已有 order_lines 时，按开题附加忠诚度能力。
+    在已有 order_lines 时：默认挂 wallet；再按开题附加其它忠诚度能力。
     无 order_lines 则剥掉误带的忠诚度能力。
     """
     out = list(caps or [])
     has_order = "order_lines" in out
     if not has_order:
         return [c for c in out if c not in LOYALTY_CAPS]
+
+    # 有下单付钱 → 默认账户余额（模拟充值），不单靠开题扫到「钱包」才开
+    if "wallet" not in out:
+        out.append("wallet")
 
     add = list(force or [])
     add.extend(scan_loyalty_caps(proposal_text))
@@ -176,7 +184,7 @@ def apply_loyalty_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
     features = list(spec.get("features") or [])
     names = {f.get("name") for f in features if isinstance(f, dict)}
     label_map = {
-        "wallet": "账户余额（管理端充值）",
+        "wallet": "账户余额（模拟充值）",
         "points": "积分（下单赠送，不可充值）",
         "spend_discount": "满减优惠",
         "member_tier": "会员成长等级",

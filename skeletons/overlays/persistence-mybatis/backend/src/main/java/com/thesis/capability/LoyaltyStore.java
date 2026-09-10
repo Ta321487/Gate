@@ -244,6 +244,25 @@ public final class LoyaltyStore {
         return adjustWallet(username, amount, "recharge", "admin", null, operator == null ? "" : operator);
     }
 
+    /** 用户端模拟充值：固定档位，写入流水 */
+    private static final double[] DEMO_RECHARGE_TIERS = {50, 100, 200, 500};
+
+    public static Map<String, Object> demoRecharge(String username, double amount) {
+        if (!walletEnabled) throw new IllegalStateException("未开启账户余额");
+        if (username == null || username.isBlank()) throw new IllegalArgumentException("未登录");
+        double amt = round2(amount);
+        boolean ok = false;
+        for (double t : DEMO_RECHARGE_TIERS) {
+            if (Math.abs(t - amt) < 1e-6) {
+                ok = true;
+                break;
+            }
+        }
+        if (!ok) throw new IllegalArgumentException("请选择 50 / 100 / 200 / 500 元档位充值");
+        ensureSchema();
+        return adjustWallet(username, amt, "demo_recharge", "self", null, username);
+    }
+
     public static Map<String, Object> previewPrice(double subtotal, String username) {
         return previewPrice(subtotal, username, null);
     }
