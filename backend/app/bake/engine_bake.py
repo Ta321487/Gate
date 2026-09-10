@@ -114,6 +114,9 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
             title=str(spec.get("title") or ""),
             ticket_flags=((spec.get("schema") or {}).get("entities") or {}).get("ticket"),
             staff_posts=staff_posts_pre,
+            reservation_flags=((spec.get("schema") or {}).get("entities") or {}).get(
+                "reservation"
+            ),
         )
         assert_table_budget(sql, domain)
 
@@ -698,6 +701,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append("  slot-require-remark: true")
         if resv_ent.get("requireConfirm"):
             lines.append("  slot-require-confirm: true")
+        if resv_ent.get("allowRating"):
+            lines.append("  slot-allow-rating: true")
 
     block = "\n".join(lines) + "\n"
     if re.search(r"(?m)^thesis:\s*$", text):

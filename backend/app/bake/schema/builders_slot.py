@@ -544,6 +544,7 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         reserve_remark_label=remark,
         complete_verb=f"{done}完成",
         completed_label=f"已{done}",
+        allow_rating=True,
     )
     resv_ent = schema["entities"]["reservation"]
     resv_ent["patientNameLabel"] = remark
@@ -697,6 +698,7 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice_page_title=notice_page,
         complete_verb=f"{place}完成",
         completed_label="已完成",
+        allow_rating=True,
     )
     schema["entities"]["reservation"]["stylistLabel"] = stylist_label
     return schema
@@ -735,6 +737,7 @@ def _carrent_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         with_orders=True,
         complete_verb="取车/还车",
         completed_label="已还车",
+        allow_rating=True,
     )
     order = dict((schema.get("entities") or {}).get("order") or {})
     order.update(
@@ -823,6 +826,7 @@ def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         with_orders=True,
         complete_verb="入住/离店",
         completed_label="已离店",
+        allow_rating=True,
     )
     # 订单跟入住离店，禁止复用商城「物流/发货」叙事
     order = dict((schema.get("entities") or {}).get("order") or {})

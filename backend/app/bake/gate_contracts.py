@@ -1567,6 +1567,8 @@ def gate_slot_shell(
         "flow_api": {
             "reserve": {"file": "SlotController.java", "need": ["/reserve", "reserve"]},
             "cancel": {"file": "SlotController.java", "need": ["/cancel", "cancel"]},
+            "complete": {"file": "SlotController.java", "need": ["/complete", "complete"]},
+            "rate": {"file": "SlotController.java", "need": ["/rate", "rate"]},
         },
         "admin_invariants": {
             "require_super_auth": True,

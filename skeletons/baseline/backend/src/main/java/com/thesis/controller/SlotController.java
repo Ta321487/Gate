@@ -92,6 +92,33 @@ public class SlotController {
         }
     }
 
+    /** 办结后服务评价：1～5 星 + 短评 */
+    @PostMapping("/reservations/{id}/rate")
+    public R<?> rate(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        requireSlot();
+        String uid = AdminAuth.requireLogin(session);
+        int rating = 0;
+        Object ratingRaw = body.get("rating");
+        if (ratingRaw != null && !String.valueOf(ratingRaw).isBlank()
+                && !"null".equalsIgnoreCase(String.valueOf(ratingRaw))) {
+            try {
+                rating = Integer.parseInt(String.valueOf(ratingRaw));
+            } catch (Exception e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "请选择 1～5 分");
+            }
+        }
+        String note = body.get("remark") == null
+                ? (body.get("ratingRemark") == null ? "" : String.valueOf(body.get("ratingRemark")))
+                : String.valueOf(body.get("remark"));
+        note = note == null ? "" : note.trim();
+        try {
+            return R.ok(SlotStore.rate(id, uid, rating, note));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping("/reservations")
     public R<?> page(
             @RequestParam(defaultValue = "1") int page,

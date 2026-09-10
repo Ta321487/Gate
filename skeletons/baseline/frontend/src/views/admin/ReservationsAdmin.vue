@@ -24,6 +24,12 @@
       <el-table-column prop="entryAt" label="办结时间" width="170">
         <template #default="{ row }">{{ row.entryAt || '—' }}</template>
       </el-table-column>
+      <el-table-column v-if="allowRating" label="评分" width="90">
+        <template #default="{ row }">{{ row.rating != null && row.rating !== '' ? `${row.rating} 星` : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowRating" label="短评" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.ratingRemark || '—' }}</template>
+      </el-table-column>
       <el-table-column label="详情" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ resvDetail(row) }}</template>
       </el-table-column>
@@ -149,6 +155,7 @@ const stylistShort = computed(() => {
   return raw || '技师'
 })
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
+const allowRating = computed(() => !!getSchema()?.entities?.reservation?.allowRating)
 function hasResvOps(row) {
   if (!row) return false
   if (requireConfirm.value && row.status === 'pending') return true

@@ -171,6 +171,15 @@ def order_fulfill_columns_for(
     return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
 
 
+# 预约办结评价列（由 schema.entities.reservation.allowRating 注入，不进域固有超集）
+RESERVATION_RATING_COLUMNS: list[tuple[str, str]] = [
+    ("rating", "INT NULL"),
+    ("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''"),
+    ("rated_at", "DATETIME NULL"),
+]
+_RESERVATION_RATING_NAMES = {n.lower() for n, _ in RESERVATION_RATING_COLUMNS}
+
+
 def ensure_shared_sql_columns(
     sql: str,
     *,
@@ -178,6 +187,7 @@ def ensure_shared_sql_columns(
     archetypes: list[str] | None = None,
     staff: bool = True,
     loyalty: bool = False,
+    reservation_flags: dict | None = None,
 ) -> str:
     """对 reservation / 订单表 / sys_user 补齐共享列。
 
@@ -185,6 +195,12 @@ def ensure_shared_sql_columns(
     """
     resv_cols = list(RESERVATION_COLUMNS_BY_DOMAIN.get(domain or "", []))
     resv_allow = {n.lower() for n, _ in resv_cols}
+    # 评价列：开则注入并加入 allow，关则从 known 剔除（避免脏列残留）
+    rf = reservation_flags if isinstance(reservation_flags, dict) else {}
+    if rf.get("allowRating"):
+        resv_cols = list(resv_cols) + list(RESERVATION_RATING_COLUMNS)
+        resv_allow |= _RESERVATION_RATING_NAMES
+    known_resv = _RESERVATION_EXTRA_NAMES | _RESERVATION_RATING_NAMES
     order_fulfill = order_fulfill_columns_for(domain, archetypes)
     order_allow = {n.lower() for n, _ in order_fulfill} | {
         n.lower() for n, _ in ORDER_REFUND_COLUMNS
@@ -197,7 +213,7 @@ def ensure_shared_sql_columns(
         t = table.lower()
         if t == "reservation":
             body = _prune_columns(
-                body, allow=resv_allow, known=_RESERVATION_EXTRA_NAMES
+                body, allow=resv_allow, known=known_resv
             )
             if resv_cols:
                 body = _inject_missing_columns(body, resv_cols)
