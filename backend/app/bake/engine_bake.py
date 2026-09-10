@@ -162,6 +162,21 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
             proposal_text=proposal_for_sql,
             frontend_src=dest / "frontend" / "src",
         )
+        # 论文用例图必有：生成期即校验，禁止缺图/坏关系（画法跟客户样式 / spec.usecase_style）
+        from app.bake.schema.usecases import list_usecase_actors, usecase_model
+        from app.bake.schema.usecase_style import resolve_usecase_style
+
+        _sch = schema if isinstance(schema, dict) else {}
+        _uc_style = resolve_usecase_style(spec=spec if isinstance(spec, dict) else None)
+        for _a in list_usecase_actors(_sch):
+            usecase_model(
+                _sch,
+                actor=_a["id"],
+                proposal_text=proposal_for_sql,
+                title_fallback=str(title or "管理系统"),
+                style=_uc_style,
+                spec=spec if isinstance(spec, dict) else None,
+            )
     _write(dest / "sql" / "schema.sql", sql)
 
     app_name = (

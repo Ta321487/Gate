@@ -187,9 +187,11 @@ const fillPlanHint = computed(() => {
 })
 const showEr = ref(false)
 const showModules = ref(false)
+const showUsecases = ref(false)
 const showTestcases = ref(false)
 const erLoading = ref(false)
 const modLoading = ref(false)
+const ucLoading = ref(false)
 const tcLoading = ref(false)
 const matchBusy = ref(false)
 const softSaving = ref(false)
@@ -217,6 +219,10 @@ const modLayoutKey = ref(0)
 const modulesLayout = ref('identity')
 const modulesExpandDetails = ref(false)
 const modulesMeta = ref(null)
+const ucSvgSource = ref('')
+const ucLayoutKey = ref(0)
+const usecaseActor = ref('user')
+const usecaseMeta = ref(null)
 const tcFields = ref(6)
 const tcColumns = ref([])
 const tcRows = ref([])
@@ -908,7 +914,13 @@ const copyGateHits = computed(() => {
     }))
 })
 /** 门禁未过就显示清洗入口（不只依赖 hits 列表；旧数据可能缺 detail） */
-const copyGateNeedsScrub = computed(() => p.value?.gates?.p3copy?.ok === false)
+const copyGateNeedsScrub = computed(() => {
+  const g = p.value?.gates || {}
+  if (g.p3copy?.ok === false) return true
+  // 演示口吻同属学生可见脏文案，清洗按钮应露出
+  if (g.p3s?.ok === false && (g.p3s?.detail?.demo_hits || []).length) return true
+  return false
+})
 const checkCols = [
   { title: '清单项', key: 'name' },
   {
@@ -1225,10 +1237,11 @@ async function scrubStudentCopy() {
   try {
     const res = await api.scrubStudentCopy(p.value.id)
     await load()
-    const ok = !!res?.data?.copy_ok
+    const data = res?.data || {}
+    const ok = !!data.copy_ok && data.semantic_ok !== false
     message.success(
       ok
-        ? '工厂腔已清洗 · 请到交付复审验圈后合卷'
+        ? '学生可见文案已清洗 · 请到交付复审验圈后合卷'
         : (res?.message || '已尝试清洗 · 请看是否仍有命中'),
     )
   } catch (err) {
@@ -1466,6 +1479,69 @@ async function onModulesLayout(v) {
 async function onModulesExpandDetails(v) {
   modulesExpandDetails.value = !!v
   await reloadModSvg()
+}
+
+const ucDownloadBase = computed(() => {
+  const id = p.value?.id || 'uc'
+  const title = usecaseMeta.value?.title || schema.value?.title || '用例图'
+  const actorLab =
+    (usecaseMeta.value?.actors || []).find((a) => a.id === usecaseActor.value)?.label ||
+    usecaseActor.value
+  return `${id}-用例图-${actorLab}-${title}`
+})
+
+const ucMdjUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.usecasesMdjUrl(p.value.id, { actor: usecaseActor.value })
+})
+
+async function fetchUcSvg() {
+  if (!p.value) return ''
+  const url = `${api.usecasesSvgUrl(p.value.id, {
+    actor: usecaseActor.value,
+  })}&t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('usecases svg')
+  return await res.text()
+}
+
+async function openUsecases() {
+  if (!p.value || ucLoading.value || artifactsFrozen.value) return
+  ucLoading.value = true
+  try {
+    usecaseMeta.value = await api.getUsecases(p.value.id, { actor: usecaseActor.value })
+    const actors = usecaseMeta.value?.actors || []
+    if (actors.length && !actors.some((a) => a.id === usecaseActor.value)) {
+      usecaseActor.value = actors[0].id
+      usecaseMeta.value = await api.getUsecases(p.value.id, { actor: usecaseActor.value })
+    }
+    ucSvgSource.value = await fetchUcSvg()
+    ucLayoutKey.value += 1
+    showUsecases.value = true
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '无法加载用例图')
+  } finally {
+    ucLoading.value = false
+  }
+}
+
+async function reloadUsecases() {
+  if (!p.value || ucLoading.value) return
+  ucLoading.value = true
+  try {
+    usecaseMeta.value = await api.getUsecases(p.value.id, { actor: usecaseActor.value })
+    ucSvgSource.value = await fetchUcSvg()
+    ucLayoutKey.value += 1
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '无法重新加载用例图')
+  } finally {
+    ucLoading.value = false
+  }
+}
+
+async function onUsecaseActor(v) {
+  usecaseActor.value = String(v || 'user')
+  await reloadUsecases()
 }
 
 const tcDownloadBase = computed(() => {
@@ -2081,6 +2157,7 @@ watch(artifactsFrozen, (frozen) => {
   if (!frozen) return
   showEr.value = false
   showModules.value = false
+  showUsecases.value = false
   showTestcases.value = false
 })
 
@@ -2258,10 +2335,11 @@ onUnmounted(() => {
     onDelete,
     onErEntity,
     onErMode,
-    onModulesLayout,
     onModulesExpandDetails,
+    onModulesLayout,
     onPathChange,
     onTcFields,
+    onUsecaseActor,
     openEr,
     openFillPlan,
     openModules,
@@ -2269,6 +2347,7 @@ onUnmounted(() => {
     goGeneratePpt,
     openPreview,
     openTestcases,
+    openUsecases,
     p,
     parseMysqlType,
     patchPptPage,
@@ -2322,6 +2401,7 @@ onUnmounted(() => {
     reloadErSvg,
     reloadModSvg,
     reloadTestcases,
+    reloadUsecases,
     resetMatch,
     retryCurrent,
     roleSpecText,
@@ -2375,6 +2455,7 @@ onUnmounted(() => {
     showSoftBakePanel,
     showSpec,
     showTestcases,
+    showUsecases,
     smokeDetailFromAxios,
     smokeDetailText,
     smokePillClass,
@@ -2414,10 +2495,17 @@ onUnmounted(() => {
     toggleUnlock,
     typeParenMode,
     typefaceOptions,
+    ucDownloadBase,
+    ucLayoutKey,
+    ucLoading,
+    ucMdjUrl,
+    ucSvgSource,
     undoDelivery,
     undoDeliveryLabel,
     unlocked,
     uploadPptScreenshot,
+    usecaseActor,
+    usecaseMeta,
     viewActive,
     viewEpoch,
     warningText,
