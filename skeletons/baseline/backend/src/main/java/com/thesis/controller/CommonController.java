@@ -63,7 +63,7 @@ public class CommonController {
     public R<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "文件为空");
         Path dir = UploadStorage.root();
-        String name = System.currentTimeMillis() + "_" + Objects.requireNonNull(file.getOriginalFilename());
+        String name = UploadStorage.safeStoredName(file.getOriginalFilename());
         Path dest = dir.resolve(name);
         Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
         Map<String, String> m = new HashMap<>();

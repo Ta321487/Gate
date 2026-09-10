@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -103,7 +102,7 @@ public class ProfileController {
             throw new BizException(ErrorCode.BAD_REQUEST, "仅支持图片");
         }
         Path dir = UploadStorage.avatars();
-        String name = p.username + "_" + System.currentTimeMillis() + "_" + Objects.requireNonNull(file.getOriginalFilename());
+        String name = UploadStorage.safeStoredName(file.getOriginalFilename());
         Path dest = dir.resolve(name);
         Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
         p.avatarUrl = "/uploads/avatars/" + name;
