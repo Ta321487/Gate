@@ -1,4 +1,4 @@
-"""能力扩岛 E-01：续借 loan_renew（开题扫词才挂，无域默认）。"""
+"""能力扩岛 E-01：续借 loan_renew（借还域行业默认）。"""
 
 from __future__ import annotations
 
@@ -25,25 +25,26 @@ class LoanRenewE01Tests(unittest.TestCase):
     def test_capability_registered(self) -> None:
         self.assertIn(LOAN_RENEW_CAP, CAPABILITIES)
         self.assertEqual(CAPABILITIES[LOAN_RENEW_CAP]["status"], "implemented")
-        # 禁止域默认硬塞
-        self.assertNotIn(LOAN_RENEW_CAP, DOMAIN_CAPABILITIES.get("DOM-LIBRARY") or [])
-        self.assertNotIn(LOAN_RENEW_CAP, DOMAIN_CAPABILITIES.get("DOM-EQUIP") or [])
+        # 借还行行业默认
+        self.assertIn(LOAN_RENEW_CAP, DOMAIN_CAPABILITIES.get("DOM-LIBRARY") or [])
+        self.assertIn(LOAN_RENEW_CAP, DOMAIN_CAPABILITIES.get("DOM-EQUIP") or [])
 
     def test_scan_terms(self) -> None:
         self.assertTrue(scan_loan_renew("支持续借与逾期催还。"))
         self.assertTrue(scan_loan_renew("读者可申请续借延长借期。"))
         self.assertFalse(scan_loan_renew("借阅归还与催还。"))
 
-    def test_merge_only_when_scanned_on_loan_domain(self) -> None:
-        base = list(DOMAIN_CAPABILITIES["DOM-LIBRARY"])
-        no = merge_loan_renew_capabilities(base, "借阅归还催还。", domain="DOM-LIBRARY")
-        self.assertNotIn(LOAN_RENEW_CAP, no)
+    def test_merge_loan_domain_default(self) -> None:
+        # 手写缺省能力时，借还域仍应默认补上
+        bare = ["archive", "ticket_flow", "quota", "deadline", "content", "org_users"]
+        got = merge_loan_renew_capabilities(bare, "借阅归还催还。", domain="DOM-LIBRARY")
+        self.assertIn(LOAN_RENEW_CAP, got)
+        self.assertIn("deadline", got)
 
         yes = merge_loan_renew_capabilities(
-            base, "借阅归还；支持续借与逾期催还。", domain="DOM-LIBRARY"
+            bare, "借阅归还；支持续借与逾期催还。", domain="DOM-LIBRARY"
         )
         self.assertIn(LOAN_RENEW_CAP, yes)
-        self.assertIn("deadline", yes)
 
         # 非借还域即使写续借也不挂
         shop = merge_loan_renew_capabilities(
@@ -63,9 +64,9 @@ class LoanRenewE01Tests(unittest.TestCase):
             },
             "图书借阅、归还与催还。",
         )
-        self.assertNotIn(LOAN_RENEW_CAP, plain.get("capabilities") or [])
+        self.assertIn(LOAN_RENEW_CAP, plain.get("capabilities") or [])
         ticket = (plain.get("schema") or {}).get("entities", {}).get("ticket") or {}
-        self.assertFalse(bool(ticket.get("allowRenew")))
+        self.assertTrue(bool(ticket.get("allowRenew")))
 
         with_renew = attach_accept(
             {
@@ -98,11 +99,15 @@ class LoanRenewE01Tests(unittest.TestCase):
         self.assertIn("renew_count", sql)
 
     def test_no_renew_column_without_cap(self) -> None:
+        # 显式剥掉续借能力时，SQL 不应带 renew_count
+        caps = [c for c in DOMAIN_CAPABILITIES["DOM-LIBRARY"] if c != LOAN_RENEW_CAP]
         sql = domain_sql(
             "DOM-LIBRARY",
             "t_book",
             title="图书借阅",
             proposal_text="借阅归还催还",
+            capabilities=caps,
+            ticket_flags={"allowRenew": False},
         )
         self.assertNotIn("renew_count", sql)
 

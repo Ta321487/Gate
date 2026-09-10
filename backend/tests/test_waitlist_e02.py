@@ -1,4 +1,4 @@
-"""能力扩岛 E-02：候补 waitlist（开题扫词才挂，无域默认）。"""
+"""能力扩岛 E-02：候补 waitlist（活动/选课行业默认；旅拍等仍扫词）。"""
 
 from __future__ import annotations
 
@@ -24,31 +24,38 @@ class WaitlistE02Tests(unittest.TestCase):
     def test_capability_registered(self) -> None:
         self.assertIn(WAITLIST_CAP, CAPABILITIES)
         self.assertEqual(CAPABILITIES[WAITLIST_CAP]["status"], "implemented")
-        for dom in ("DOM-ACTIVITY", "DOM-COURSE", "DOM-TOUR", "DOM-LOST"):
+        self.assertIn(WAITLIST_CAP, DOMAIN_CAPABILITIES.get("DOM-ACTIVITY") or [])
+        self.assertIn(WAITLIST_CAP, DOMAIN_CAPABILITIES.get("DOM-COURSE") or [])
+        for dom in ("DOM-TOUR", "DOM-LOST"):
             self.assertNotIn(WAITLIST_CAP, DOMAIN_CAPABILITIES.get(dom) or [])
 
     def test_scan_terms(self) -> None:
         self.assertTrue(scan_waitlist("名额满可候补报名。"))
         self.assertTrue(scan_waitlist("支持满员候补与等位。"))
+        self.assertTrue(scan_waitlist("报名已满可排队。"))
         self.assertFalse(scan_waitlist("活动报名审核与签到。"))
 
-    def test_merge_only_when_scanned_on_quota_domain(self) -> None:
-        base = list(DOMAIN_CAPABILITIES["DOM-ACTIVITY"])
-        self.assertIn("quota", base)
-        no = merge_waitlist_capabilities(base, "活动报名审核签到。", domain="DOM-ACTIVITY")
-        self.assertNotIn(WAITLIST_CAP, no)
-
-        yes = merge_waitlist_capabilities(
-            base, "社团活动报名，支持满员候补。", domain="DOM-ACTIVITY"
+    def test_merge_activity_course_default_tour_scan(self) -> None:
+        bare = ["archive", "ticket_flow", "quota", "content", "org_users"]
+        self.assertIn(
+            WAITLIST_CAP,
+            merge_waitlist_capabilities(bare, "活动报名审核签到。", domain="DOM-ACTIVITY"),
         )
-        self.assertIn(WAITLIST_CAP, yes)
-
-        course = merge_waitlist_capabilities(
-            list(DOMAIN_CAPABILITIES["DOM-COURSE"]),
-            "公选课选课，满员可候补。",
-            domain="DOM-COURSE",
+        self.assertIn(
+            WAITLIST_CAP,
+            merge_waitlist_capabilities(bare, "公选课选课。", domain="DOM-COURSE"),
         )
-        self.assertIn(WAITLIST_CAP, course)
+
+        # 旅拍仍须扫到
+        tour = list(DOMAIN_CAPABILITIES["DOM-TOUR"])
+        self.assertNotIn(
+            WAITLIST_CAP,
+            merge_waitlist_capabilities(tour, "研学线路报名审核。", domain="DOM-TOUR"),
+        )
+        self.assertIn(
+            WAITLIST_CAP,
+            merge_waitlist_capabilities(tour, "研学满员可候补。", domain="DOM-TOUR"),
+        )
 
         # 非名额报名域即使写候补也不挂
         lib = merge_waitlist_capabilities(
@@ -68,9 +75,9 @@ class WaitlistE02Tests(unittest.TestCase):
             },
             "活动发布、报名、审核、签到。",
         )
-        self.assertNotIn(WAITLIST_CAP, plain.get("capabilities") or [])
+        self.assertIn(WAITLIST_CAP, plain.get("capabilities") or [])
         ticket = (plain.get("schema") or {}).get("entities", {}).get("ticket") or {}
-        self.assertFalse(bool(ticket.get("allowWaitlist")))
+        self.assertTrue(bool(ticket.get("allowWaitlist")))
 
         with_wl = attach_accept(
             {

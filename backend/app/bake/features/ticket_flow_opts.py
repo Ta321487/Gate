@@ -18,7 +18,7 @@ from app.bake.proposal_lexicon import keyword_mentioned
 MULTI_APPROVE_CAP = "multi_approve"
 WAITLIST_CAP = "waitlist"
 
-# 候补仅挂名额报名/选课类域（开题写到才挂，无域默认）
+# 候补可挂名额报名/选课类域；活动/选课另见行业默认
 _WAITLIST_DOMAINS = frozenset({
     "DOM-ACTIVITY",
     "DOM-COURSE",
@@ -33,7 +33,16 @@ _WAITLIST_TERMS = (
     "满员候补",
     "候补队列",
     "候补名单",
+    "满员",
+    "额满",
+    "名额已满",
+    "报名已满",
+    "选课已满",
+    "人数已满",
 )
+
+# 活动/选课行默认候补（开题常只写名额报名、漏写候补）
+_WAITLIST_DEFAULT_DOMAINS = frozenset({"DOM-ACTIVITY", "DOM-COURSE"})
 
 # —— 扫词（正向提及才算）——
 
@@ -128,7 +137,7 @@ def merge_waitlist_capabilities(
     *,
     domain: str | None = None,
 ) -> list[str]:
-    """候补：开题写到 + 名额域 + quota；只增不减。"""
+    """候补：活动/选课行业默认；旅拍等仍须开题写到或扫到满员。只增不减。"""
     out = list(caps or [])
     if WAITLIST_CAP in out:
         return out
@@ -136,7 +145,10 @@ def merge_waitlist_capabilities(
         return out
     if (domain or "") not in _WAITLIST_DOMAINS:
         return out
-    if not scan_waitlist(proposal_text or ""):
+    want = (domain or "") in _WAITLIST_DEFAULT_DOMAINS or scan_waitlist(
+        proposal_text or ""
+    )
+    if not want:
         return out
     out.append(WAITLIST_CAP)
     return out
@@ -329,7 +341,7 @@ def apply_ticket_flow_opts_to_spec(
         fields = archive.get("fields") or []
         if any(isinstance(f, dict) and f.get("key") == "applyDeadlineAt" for f in fields):
             _add_feat(_apply_deadline_label(text), "module")
-    if WAITLIST_CAP in caps and scan_waitlist(text):
+    if WAITLIST_CAP in caps:
         _add_feat("候补", "flow")
 
     spec["features"] = features
