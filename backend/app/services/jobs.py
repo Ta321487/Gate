@@ -594,6 +594,20 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
 _running: dict[int, asyncio.Task] = {}
 
 
+def resolve_bake_from_step(project: Project, from_step: int = 0) -> int:
+    """解析 bake 起点。
+
+    一键生成 / 重新生成（from_step=0）必须整段跑（含 copy_bake）。
+    禁止因「已有工作区 / 已生成」偷偷跳到门禁步——否则基线修洞后 ZIP 仍是旧工程。
+    仅显式续跑（retry 传入 >0）才可跳过前序步骤；复审中仍由 forbid_full_rebake 拦截。
+    """
+    step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
+    resolved = forbid_full_rebake(project, step)
+    if resolved is None:
+        raise ValueError("交付复审进行中 · 不可重跑生成，请使用验圈/合卷")
+    return int(resolved)
+
+
 async def start_job(
     db: AsyncSession,
     project: Project,
@@ -616,18 +630,7 @@ async def start_job(
         if t:
             t.cancel()
 
-    from_step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
-    resolved = forbid_full_rebake(project, from_step)
-    if resolved is None:
-        raise ValueError("交付复审进行中 · 不可重跑生成，请使用验圈/合卷")
-    from_step = resolved
-    if (
-        from_step == 0
-        and project.workspace_path
-        and Path(project.workspace_path).exists()
-        and project.status in (ProjectStatus.generated.value, ProjectStatus.running.value)
-    ):
-        from_step = 4
+    from_step = resolve_bake_from_step(project, from_step)
     job = Job(
         project_id=project.id,
         kind=JobKind.bake.value,
