@@ -59,13 +59,13 @@ def attach_stock_io_menus(schema: dict[str, Any]) -> None:
     ensure_menu(
         admin,
         "stock_moves",
-        {"key": "stock_moves", "label": "入出库登记", "superOnly": True},
+        {"key": "stock_moves", "label": "入出库登记", "superOnly": False},
         before_key="content",
     )
     ensure_menu(
         admin,
         "stock_ledger",
-        {"key": "stock_ledger", "label": "库存流水", "superOnly": True},
+        {"key": "stock_ledger", "label": "库存流水", "superOnly": False},
         before_key="content",
     )
     labels = schema.setdefault("labels", {})

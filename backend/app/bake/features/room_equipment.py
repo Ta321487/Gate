@@ -51,7 +51,7 @@ def attach_room_equipment_menus(schema: dict[str, Any]) -> None:
     ensure_menu(
         admin,
         "equipment_dict",
-        {"key": "equipment_dict", "label": "设备字典", "superOnly": True},
+        {"key": "equipment_dict", "label": "设备字典", "superOnly": False},
         before_key="archive",
     )
     labels = schema.setdefault("labels", {})

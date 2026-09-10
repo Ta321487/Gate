@@ -87,7 +87,7 @@ def attach_guestbook_menus(schema: dict[str, Any]) -> None:
     ensure_menu(
         admin,
         "guestbook",
-        {"key": "guestbook", "label": "留言管理", "superOnly": True},
+        {"key": "guestbook", "label": "留言管理", "superOnly": False},
         before_key="content",
     )
     ensure_menu(
