@@ -94,7 +94,11 @@ const menuItems = computed(() => {
   let items = raw.filter((m) => superAdmin || !m.superOnly)
   if (!superAdmin) {
     const allowed = clerkAllowedMenuKeys(staffPost)
-    if (allowed) items = items.filter((m) => allowed.has(m.key) || m.key === 'messages')
+    if (allowed) {
+      items = items.filter(
+        (m) => allowed.has(m.key) || m.key === 'messages' || m.key === 'dm',
+      )
+    }
   }
   if (!items.some((m) => m.key === 'messages')) {
     const dashAt = items.findIndex((m) => m.key === 'dashboard')

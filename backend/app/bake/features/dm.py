@@ -125,6 +125,7 @@ def attach_dm_menus(schema: dict[str, Any], *, peer_mode: str = DM_PEER_ALL) -> 
 
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
+    admin = menus.setdefault("admin", [])
     merchant = peer_mode == DM_PEER_MERCHANT
     item = {"key": "dm", "label": "客服" if merchant else "私信"}
     if not any(m.get("key") == "dm" for m in user):
@@ -140,6 +141,26 @@ def attach_dm_menus(schema: dict[str, Any], *, peer_mode: str = DM_PEER_ALL) -> 
         for m in user:
             if isinstance(m, dict) and m.get("key") == "dm" and merchant:
                 m["label"] = "客服"
+    # 管理端：办理岗也要有入口（店铺客服 / 红娘 / 版主私信等，文案随 peer_mode）
+    admin_item = {
+        "key": "dm",
+        "label": "客服" if merchant else "私信",
+        "superOnly": False,
+    }
+    if not any(isinstance(m, dict) and m.get("key") == "dm" for m in admin):
+        placed = False
+        for before in ("guestbook", "orders", "order_reviews", "content", "users"):
+            if any(isinstance(m, dict) and m.get("key") == before for m in admin):
+                ensure_menu(admin, "dm", admin_item, before_key=before)
+                placed = True
+                break
+        if not placed:
+            admin.append(admin_item)
+    else:
+        for m in admin:
+            if isinstance(m, dict) and m.get("key") == "dm":
+                m["label"] = "客服" if merchant else "私信"
+                m["superOnly"] = False
     labels = schema.setdefault("labels", {})
     if merchant:
         labels["dmPageTitle"] = "客服"
@@ -148,6 +169,11 @@ def attach_dm_menus(schema: dict[str, Any], *, peer_mode: str = DM_PEER_ALL) -> 
         labels["dmPeerPlaceholder"] = "选择店铺商家"
         labels["dmEmptyPeers"] = "暂无会话，点「新建」选店铺商家。"
         labels["dmEmptyChat"] = "选择左侧会话，或新建联系商家。"
+        labels["dmMerchantPageLead"] = "回复买家咨询，打开会话后自动刷新新消息。"
+        labels["dmMerchantNewTitle"] = "联系买家"
+        labels["dmMerchantPeerPlaceholder"] = "选择买家账号"
+        labels["dmMerchantEmptyPeers"] = "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。"
+        labels["dmMerchantEmptyChat"] = "选择左侧会话，或新建联系买家。"
     else:
         labels["dmPageTitle"] = "私信"
         labels["dmPageLead"] = "与其他用户一对一沟通，打开会话后自动刷新新消息。"
@@ -155,6 +181,11 @@ def attach_dm_menus(schema: dict[str, Any], *, peer_mode: str = DM_PEER_ALL) -> 
         labels["dmPeerPlaceholder"] = "选择对方账号"
         labels["dmEmptyPeers"] = "暂无会话，点「新建」选人开聊。"
         labels["dmEmptyChat"] = "选择左侧会话，或新建私信。"
+        labels["dmMerchantPageLead"] = "与用户一对一沟通，打开会话后自动刷新新消息。"
+        labels["dmMerchantNewTitle"] = "联系用户"
+        labels["dmMerchantPeerPlaceholder"] = "选择用户账号"
+        labels["dmMerchantEmptyPeers"] = "暂无会话，点「新建」选用户开聊。"
+        labels["dmMerchantEmptyChat"] = "选择左侧会话，或新建联系用户。"
     ents = schema.setdefault("entities", {})
     if "dm" not in ents:
         ents["dm"] = {
