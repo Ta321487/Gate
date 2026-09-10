@@ -1,10 +1,12 @@
 # 工厂交付与审计（Agent 依据）
 
+> **本文只负责**：怎么审交付（主链路、红灯、老板小卡）。  
 > **版本**：v5.3（2026-09-08）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。  
+> **索引**：[README.md](./README.md)。  
 > **清单册**（待办 ID / 状态列）：[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
-> **开题密功能对照**（常写模块→落点/匹配注意）：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
-> **能力扩岛批次**（开题命中才挂 · 文档=实包 · 学生包禁「演示」）：[`capability-expansion-batch.md`](./capability-expansion-batch.md)。  
-> **能力与域表**：[`HANDOFF.md`](../HANDOFF.md)。
+> **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
+> **能力 / 领域表**：[`capabilities.md`](./capabilities.md) · [`domains.md`](./domains.md)。  
+> **交接**：[../HANDOFF.md](../HANDOFF.md)。
 
 ---
 
@@ -101,7 +103,7 @@
 
 | 组 | 状态（2026-08-12） |
 |----|-------------------|
-| **借用 / 占用**（HANDOFF 组 A + 收口簇 CINEMA，47 域） | **已收口**（H23 + 档案列契约；详见清单册进度节） |
+| **借用 / 占用**（[domains.md](./domains.md) 组 A + 收口簇 CINEMA，47 域） | **已收口**（H23 + 档案列契约；详见清单册进度节） |
 | **报修 / 工单**（DORM / PROPERTY / IT） | **已收口**（H20 容量域皮、pending 种子、易混 M-17/18、S-21～25；详见清单册） |
 | **报名**（ACTIVITY / LOST / COURSE / TOUR …） | **已收口**（TOUR 截止/满员、档案列皮、M-19、S-30～37；详见清单册） |
 | **交易**（SHOP / FOOD …） | **已收口**（pending 订单、行业货皮、M-20、S-60～65；详见清单册） |
@@ -128,7 +130,7 @@
 
 落得准（抽检即可）：新题正句→新域；旧题仍旧域；主路径匹配→bake→可点；「我的」与列表范围一致。
 
-**硬边界（期望拒）**：人脸/真支付/小程序原生/物联网真开锁/道闸抬杆·车牌识别硬件/GPS 轨迹考勤/银行医保疾控直连/三主路径以上智慧校园等——见 HANDOFF / `OUT_OF_SCOPE_SIGNALS`。诚实说法用不含「演示」的措辞（如「非真支付」「本期无银行打款」「非真门禁」）。
+**硬边界（期望拒）**：人脸/真支付/小程序原生/物联网真开锁/道闸抬杆·车牌识别硬件/GPS 轨迹考勤/银行医保疾控直连/三主路径以上智慧校园等——见 [`difficulty-tiers.md`](./difficulty-tiers.md) / `OUT_OF_SCOPE_SIGNALS`。诚实说法用不含「演示」的措辞（如「非真支付」「本期无银行打款」「非真门禁」）。
 
 ---
 
@@ -140,7 +142,7 @@
 | 申请/跟进皮 | `schema/*_presets.py`、builders |
 | 场景身份 | `scene_scan.py`、`profile_fields`、种子 SQL |
 | 匹配长尾 | `match_recommend`（勿另开域专扫） |
-| 能力 / 门禁 | capabilities、基线 Store、gate |
+| 能力 / 门禁 | `capabilities.py`、基线 Store、gate；文档同步 [`capabilities.md`](./capabilities.md) |
 | 清单状态 | `domain-skin-gap-analysis.md` |
 
 伤旧或落不准 → **不得**标已齐。

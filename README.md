@@ -90,23 +90,19 @@ npm run dev
 
 ## 能力与领域
 
-薄领域 = catalog + schema + SQL + 皮肤；共用能力运行时（档案 / 单据流 / 占用 / 到期 / 公告 / 组织用户 / 轻量推荐）。组 A～G + GENERIC 兜底均可 bake；Path B 三条真交叉可 full（详见 [`HANDOFF.md`](./HANDOFF.md)）。换皮全覆盖 ID 册与进度：[`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md)。
+薄领域 = catalog + schema + SQL + 皮肤；共用能力运行时。组 **A～G** + GENERIC 均可 bake；Path B 三条真交叉可 full。
 
-| 组 | 已可 bake（示例） |
+| 查什么 | 文档 |
 |---|---|
-| A 借用/跟进 | 图书、设备、物资领用（含浅进销存）、CRM、事件上报、请假、资助、实验室准入、招聘、成绩、实习（含本地签章）、快递驿站、仪器机时 |
-| B 报修 | 宿舍 / 物业 / IT 工单 |
-| C 报名/申请 | 活动报名、失物招领、选课；OA 用章/用车/证明等单路径；学工评教/综测/床位/查寝；互选双选 |
-| D 交易 | 商城/二手、食堂点餐；影院选座 |
-| E 预约 | 挂号、车位、会议室/座位、美发/健身、客房 |
-| F 兜底 | `DOM-GENERIC`（按 ARCH 绑壳；盖不住则降通用） |
-| G 内容 | 影视、音乐、论坛、博客；考试/问卷/投票/文库 |
-| H 交叉 | 借用+下单 / 借用+预约 / 下单+预约（白名单内 `accept=full`） |
+| 领域组 A–H、交叉白名单 | [`docs/domains.md`](./docs/domains.md) |
+| 能力 cap 矩阵 | [`docs/capabilities.md`](./docs/capabilities.md) |
+| L0–L3 / 接题边界细则 | [`docs/difficulty-tiers.md`](./docs/difficulty-tiers.md) |
+| 库表预算 / 角色不变式 | [`docs/invariants.md`](./docs/invariants.md) |
+| 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
+| 专题全索引 | [`docs/README.md`](./docs/README.md) |
+| 新对话交接 | [`HANDOFF.md`](./HANDOFF.md) |
 
-接题边界：专科/本科·课设演示级；硕博 / 真实全流程 / 未就绪交叉 → reject。
-
-硬约束：库表数量 **6–15**；任意领域须具备总管主数据 CRUD、用户管理、公告；子管仅业务流。
-
+接题边界：专科/本科·课设演示级；硕博 / 真实全流程 / 未就绪交叉 → reject。  
 刻意不接：人脸、协同过滤、物联网、真支付、小程序/原生 App、大数据作业等。
 
 ## 样例开题
@@ -172,7 +168,8 @@ data/
 scripts/                 Windows 启动 / 校验 bat
 prototype/               运营端原型（见 prototype/README.md）
 docker-compose.yml       仅 MySQL
-HANDOFF.md               能力矩阵与领域覆盖（开发交接）
+HANDOFF.md               新对话交接（主线 / 边界摘要 / 开场白）
+docs/                    专题文档（一文一事；见 docs/README.md）
 ```
 
 ## 设计原则
@@ -182,4 +179,4 @@ HANDOFF.md               能力矩阵与领域覆盖（开发交接）
 - **门禁即发货闸**：功能点清单 + 主路径未通过，ZIP 不放行  
 - **薄领域优先**：新题优先加 schema / SQL / 皮肤，不新开厚代码包  
 
-更细的能力矩阵与待办见 [`HANDOFF.md`](./HANDOFF.md)。
+专题与交接入口：[`docs/README.md`](./docs/README.md) · [`HANDOFF.md`](./HANDOFF.md)。

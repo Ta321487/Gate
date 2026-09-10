@@ -1,7 +1,10 @@
 # 开题密功能 → 工厂交付对照表
 
-> **用途**：接单 / 匹配 / bake：开题功能表有多密、工厂落哪、**能不能出包**。  
-> **搭配**：[`delivery-audit-rules.md`](./delivery-audit-rules.md) · [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) · [`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · [`capability-expansion-batch.md`](./capability-expansion-batch.md) · [`HANDOFF.md`](../HANDOFF.md)。  
+> **本文只负责**：开题功能表有多密、工厂落哪、能不能出包（非 AI）。  
+> **索引**：[README.md](./README.md)。  
+> **搭配**：[`delivery-audit-rules.md`](./delivery-audit-rules.md) · [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) · [`capabilities.md`](./capabilities.md) · [`domains.md`](./domains.md)。  
+> **AI 挂件轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md)。  
+> **扩岛批次档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md)。  
 > **覆盖**：全 **68** 域模块枚举。活表。  
 > **口径**：本表描述的是**毕设场景下可交付的业务系统**（能注册、能走主流程、能答辩），不是「演示玩具」。禁止用「演示级」打发已实现能力。
 

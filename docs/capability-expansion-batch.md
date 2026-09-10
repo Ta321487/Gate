@@ -1,8 +1,10 @@
-# 能力扩岛批次（开题命中才挂 · 文档=实包 · 学生包禁「演示」）
+# 能力扩岛批次（已收口档案）
 
-> **状态**：规划定稿，实现按本文推进；中断后续写以本文 ID 为准。  
-> **日期**：2026-09-08。  
-> **搭配**：[`delivery-audit-rules.md`](./delivery-audit-rules.md) · [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) · [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) · [`HANDOFF.md`](../HANDOFF.md)。
+> **本文只负责**：E-01～E-14 扩岛批次的历史规格与验收勾选（**勿当当前主线**）。  
+> **状态**：§1 全部 ID **已齐**（含 DOC-FIX / COPY / MAP）。新能力请另开批次或直接改 `capabilities.py` + [`capabilities.md`](./capabilities.md)。  
+> **活口径去哪查**：挂载/扫词 → [`capabilities.md`](./capabilities.md)；审交付 → [`delivery-audit-rules.md`](./delivery-audit-rules.md)；密功能落点 → [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)；ID 册 → [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
+> **索引**：[README.md](./README.md) · **交接**：[../HANDOFF.md](../HANDOFF.md)。  
+> **日期**：定稿 2026-09-08；收口回写至 2026-09-09。
 
 ---
 
@@ -30,7 +32,7 @@
 
 | 允许（工厂内部） | 禁止进学生包 |
 |------------------|--------------|
-| 工厂 docs、`HANDOFF`、`capabilities` 内部 desc、注释、测试名 | README、菜单、按钮、页面文案、须知、种子公告正文、论文「系统实现」、学生可见 FAQ 正文 |
+| 工厂 docs、`capabilities.md`、`capabilities` 内部 desc、注释、测试名 | README、菜单、按钮、页面文案、须知、种子公告正文、论文「系统实现」、学生可见 FAQ 正文 |
 | 门禁扫「演示」字样（既有 `semantic` 红灯 H22） | 「演示级」「演示码」「演示余额」「本期演示」「非真××演示」等打发语 |
 
 **学生包诚实替代措辞**（写进 README / FAQ 时用）：
@@ -158,7 +160,7 @@
 | 13 | **E-13** | 图书荐购（读者提交→审） | 扫词开 | LIBRARY（≠ PROCURE 期刊遴选） | **已齐** |
 | 14 | **E-14** | 商品规格说明字段加固（非 SKU 矩阵） | 扫词开 | SHOP / FOOD（材料写规格） | **已齐** |
 | 15 | **COPY** | 学生包「演示」措辞清扫 | — | README / FAQ / schema | **已齐** |
-| 16 | **MAP** | 回写密功能表 + HANDOFF + 本册 §7 | — | 文档 | **已齐** |
+| 16 | **MAP** | 回写密功能表 + capabilities.md + 本册 §7 | — | 文档 | **已齐** |
 
 **推荐编码顺序**：DOC-FIX → E-01 → E-02 → E-03 → E-13 → E-11 → E-08 → E-14 → E-04 → E-05 → E-06 → E-07 → E-09 → E-10 → E-12 → COPY → MAP。  
 可并行：E-04/E-06；E-07；E-09/E-10；E-14（偏字段）。
@@ -356,7 +358,7 @@
 | 层 | 路径 |
 |----|------|
 | **写前检索** | 先 Grep 既有 Store/API/Vue/`features`/`capabilities`；能复用则**改原文件**（§0.4b）；禁止新建 Compat/V2 旁挂 |
-| cap 注册 | `backend/app/bake/capabilities.py` + `HANDOFF.md` 能力表 |
+| cap 注册 | `backend/app/bake/capabilities.py` + [`capabilities.md`](./capabilities.md) |
 | 扫词挂载 | `backend/app/bake/features/<id>.py`（新建）或并入既有 soft scan；`DOMAIN_CAPABILITIES` **不**默认塞本批 |
 | schema / 文案 | `schema/builders_*.py`、`shells.py`；学生可见字符串禁「演示」 |
 | SQL | `sql/fragments.py` / 域模板；**扫词才注入表**（表预算）；优先 ALTER/复用列 |
@@ -380,7 +382,7 @@
 | `wallet` / 支付文案 | 「演示余额」→「账户余额」；说明不对接微信支付宝 |
 | AI FAQ 种子 | 去掉「本期演示」；续借等条仅 `loan_renew` 挂载时注入 |
 | schema notice / hero / 须知 | 禁止「演示数据」「演示账号」作学生可见标题（账号说明用「预置账号」或 README「初始账号」） |
-| 工厂内部 | `capabilities` 的 `desc`、HANDOFF、本 docs **可以**保留实现边界说明，但 bake 进 ZIP 的字段必须过 H22 |
+| 工厂内部 | `capabilities` 的 `desc`、本档案与 `capabilities.md` **可以**保留实现边界说明，但 bake 进 ZIP 的字段必须过 H22 |
 
 门禁：扩展或复跑 `semantic`「演示」扫描；本批结束后学生 ZIP 抽检 0 命中业务文案（注释/工厂 docs 豁免维持）。
 
@@ -403,7 +405,7 @@
 
 ## 7. 进度回写（实现时改）
 
-| ID | 代码 | 测试 | 密功能表 | HANDOFF | 学生包文案 | 状态 |
+| ID | 代码 | 测试 | 密功能表 | capabilities.md | 学生包文案 | 状态 |
 |----|------|------|----------|---------|------------|------|
 | DOC-FIX | — | — | ☑ | ☑ | — | **已齐** |
 | E-01 | ☑ | ☑ | ☑ | ☑ | ☑ | **已齐** |
@@ -425,22 +427,13 @@
 
 ---
 
-## 8. 中断续写提示（给后续 Agent）
+## 8. 档案说明（给后续 Agent）
 
-```
-继续 graduate_factory_v3 能力扩岛。
-必读：docs/capability-expansion-batch.md
-口径：
-1) 材料命中才挂；未提保持域默认
-2) 除 out_of_mvp/§0.4 硬边界外，DOC-FIX 超前项必须落地（禁止只改文档删功能）
-3) 不影响现有结构：只做加法；未挂 cap 时行为与改前一致；禁止拆壳/借重构；§0.5 一票否决
-4) 学生包前后端必须一致：同挂同显/同隐；禁止单端空壳；§0.6 一票否决
-5) 一逻辑一写法：写前搜现网，有则改原文件，禁止新建 Compat/V2/Adapter 旁挂；§0.4b
-6) 功能禁止薄实现：挂则闭环（表/校验/FE/BE/测试），禁止占位半截；§0.7
-7) 学生 ZIP 禁「演示」业务措辞；文档=实包
-从 §7 第一个未齐 ID 继续；做完一项勾选并改状态为已齐。
-不要开新 DOM；不要把本批做成域默认硬塞；不要为兼容另建文件；不要薄实现。
-```
+本批 **已全部收口**，勿再按「从第一个未齐 ID 继续」开干。
+
+- 查现网 cap / 挂载口径 → [`capabilities.md`](./capabilities.md)  
+- 新扩岛需求 → **另开**新批次文档或直接按 audit 纪律落地，并回写密功能表 + `capabilities.md`  
+- 本文 §0 硬口径仍可作参考（扫词开、文档=实包、禁「演示」、禁双轨/薄实现），活规则以 audit / capabilities 专题为准
 
 ---
 
@@ -465,4 +458,5 @@
 | 2026-09-09 | E-11 `book_hold` 闭环落地（扫词+held/hold_ready+到书站内信+限时确认借阅+测试）；≠ waitlist |
 | 2026-09-09 | E-12 `post_mute` 闭环落地（扫词+profile_json 禁言截止+发帖/回帖拦截+用户管理/举报一键禁言+测试） |
 | 2026-09-09 | E-13 `book_suggest` 闭环落地（扫词+轻表审单+门户/管理路由+测试；≠PROCURE） |
-| 2026-09-09 | E-14 product_spec 闭环；COPY H22 清扫学生可见「演示」；MAP 回写 §1/§7/密功能表/HANDOFF |
+| 2026-09-09 | E-14 product_spec 闭环；COPY H22 清扫学生可见「演示」；MAP 回写 §1/§7/密功能表/能力表 |
+| 2026-09-10 | 叙事收口：本文改为**已收口档案**；活 cap 表迁至 `capabilities.md`；§8 不再作续写工单 |

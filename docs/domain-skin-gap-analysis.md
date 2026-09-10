@@ -1,9 +1,11 @@
 # 领域换皮全覆盖清单（工厂）
 
-> **本文是 ID 册**（深皮 / 新预设 / 新能力与状态）。  
+> **本文只负责**：换皮 / 新预设 / 新能力的 **ID 册**与状态列。  
 > **工厂怎么干活 / 怎么审**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)（材料→匹配→出包）。  
-> **开题密功能对照**（常写模块→有/演示/不做）：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
-> 对照：`HANDOFF.md`、`domains_catalog/`、`scene_scan.py`。  
+> **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
+> **领域组表**：[`domains.md`](./domains.md)。  
+> 对照：`domains_catalog/`、`scene_scan.py`；交接见 [../HANDOFF.md](../HANDOFF.md)。  
+> **索引**：[README.md](./README.md)。  
 > 文档日期：2026-09-07（§9 回写 M-23/S-75～81/P-31～32；P-01～P-08 复审已齐）。
 
 ---
@@ -286,7 +288,7 @@
 | Q-02 | 匹配页双显 | 多 ARCH 并集；拟选叙事/关键词 ≠ 推荐时双显；手改骨架领域 vs 出包 | 已齐 |
 | Q-03 | 运营帮助文档 | §2 易混 + 清单索引卡挂 Help（深皮/预设/能力/交叉样例路径） | 已齐 |
 | Q-04 | QA agent 词表 | `_SYS` 诚实口径 + `_honesty_findings`：硬边界不得写成已支持；错域实体词 warn | 已齐 |
-| Q-05 | HANDOFF / README | 能力组表与样例目录同步；链到 gap 清单 §9 | 已齐 |
+| Q-05 | domains.md / README | 能力组表与样例目录同步；链到 gap 清单 §9 | 已齐 |
 | Q-06 | 域开题样例库 | S/P/C 库存断言（`test_sample_inventory_q06`；C-05～C-10 由挂载 P 覆盖） | 已齐 |
 ---
 

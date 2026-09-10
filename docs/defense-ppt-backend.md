@@ -1,9 +1,11 @@
 # 答辩 PPT：后端实现指导
 
-> **状态**：前端运营端已落地（`frontend/src/ppt/*` + 挂载点）；本文件是后端对接与实现口径。  
-> **产品设计**：见 [`defense-ppt-module.md`](./defense-ppt-module.md)（勿与本文重复拍板；冲突以产品设计为准，契约字段以本文 + 现网前端为准）。  
+> **本文只负责**：答辩 PPT 的**后端对接与实现口径**（Job/SSE/证据组装/API）。  
+> **产品设计**：[`defense-ppt-module.md`](./defense-ppt-module.md)（勿与本文重复拍板；冲突以产品设计为准，契约字段以本文 + 现网前端为准）。  
+> **状态**：前端运营端已落地（`frontend/src/ppt/*`）；后端按本文落地。  
 > **前端契约真源**：[`frontend/src/api.js`](../frontend/src/api.js)（`defense-ppt*`）、[`frontend/src/ppt/types.js`](../frontend/src/ppt/types.js)、[`frontend/src/ppt/pptClient.js`](../frontend/src/ppt/pptClient.js)。  
-> **联调**：后端未齐前可用 `VITE_PPT_MOCK=1` / 404 降级演示；**后端全部完成后必须移除 mock**（见 §1.4）。
+> **联调**：后端未齐前可用 `VITE_PPT_MOCK=1` / 404 降级；**后端全部完成后必须移除 mock**（见 §1.4）。  
+> **索引**：[README.md](./README.md)。
 
 ---
 
