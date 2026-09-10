@@ -346,6 +346,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.dm-shop-cs:false}")
     private boolean dmShopCs;
 
+    @Value("${thesis.shop-marketplace:false}")
+    private boolean shopMarketplace;
+
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
@@ -364,6 +367,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
         ArchiveStore.configureProductSpec(productSpecEnabled);
+        ArchiveStore.configureShopMarketplace(shopMarketplace);
         DmStore.configureShopCustomerService(dmShopCs);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);

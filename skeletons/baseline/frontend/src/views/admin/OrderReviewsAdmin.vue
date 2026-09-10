@@ -3,6 +3,12 @@
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="orderId" label="订单" width="90" />
+      <el-table-column prop="itemTitles" label="商品" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.itemTitles || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="marketplace" prop="shopName" label="店铺" width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.shopName || '—' }}</template>
+      </el-table-column>
       <el-table-column label="用户" width="120">
         <template #default="{ row }">{{ row.displayName || row.username || '—' }}</template>
       </el-table-column>
@@ -29,9 +35,11 @@
         v-model:current-page="page"
         v-model:page-size="size"
         background
-        layout="total, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
+        :page-sizes="[10, 20, 50]"
         :total="total"
         @current-change="load"
+        @size-change="load"
       />
     </div>
     <el-dialog v-model="visible" title="回复评价" width="520px">
@@ -56,6 +64,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema.js'
 
 const list = ref([])
 const page = ref(1)
@@ -65,6 +74,7 @@ const visible = ref(false)
 const replyText = ref('')
 const current = reactive({ id: null, body: '' })
 const canDelete = computed(() => localStorage.getItem('superAdmin') === 'true')
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 
 async function load() {
   const res = await http.get('/api/order-reviews', {

@@ -946,6 +946,12 @@ public final class ArchiveStore {
         }
         m.put("categoryName", name == null ? "" : name);
         m.put("deleted", isSoftDeleted(m));
+        if (shopMarketplaceEnabled && hasOwnerUsername()) {
+            String owner = str(b.get("ownerUsername"));
+            if (!owner.isBlank()) {
+                m.put("shopName", resolveShopName(owner));
+            }
+        }
         if (tagsEnabled()) {
             long id = toLong(b.get("id"));
             List<Map<String, Object>> tagsRaw = mapper().selectItemTags(TAG, ITEM_TAG, itemTagFk, id);
@@ -969,6 +975,21 @@ public final class ArchiveStore {
             m.put("tags", tags);
         }
         return m;
+    }
+
+    private static String resolveShopName(String ownerUsername) {
+        try {
+            com.thesis.service.UserStore.Profile p = com.thesis.service.UserStore.get(ownerUsername);
+            if (p == null) return ownerUsername;
+            if (p.extras != null) {
+                String shop = p.extras.get("shopName");
+                if (shop != null && !shop.isBlank()) return shop.trim();
+            }
+            if (p.nickname != null && !p.nickname.isBlank()) return p.nickname.trim();
+            return ownerUsername;
+        } catch (Exception e) {
+            return ownerUsername;
+        }
     }
 
     /** 门户/推荐等非管理端：去掉签到码等口令字段。 */

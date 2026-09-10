@@ -19,7 +19,6 @@
         SELECT COUNT(DISTINCT r.id)
         FROM order_review r
         INNER JOIN `${lineTable}` l ON l.order_id=r.order_id
-        INNER JOIN `${orderTable}` o ON o.id=r.order_id AND o.status='completed'
         WHERE l.item_id=#{itemId}
     </select>
 
@@ -28,8 +27,25 @@
                r.replied_at AS repliedAt, r.created_at AS createdAt
         FROM order_review r
         INNER JOIN `${lineTable}` l ON l.order_id=r.order_id
-        INNER JOIN `${orderTable}` o ON o.id=r.order_id AND o.status='completed'
         WHERE l.item_id=#{itemId}
+        GROUP BY r.id
+        ORDER BY r.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countByMerchant" resultType="int">
+        SELECT COUNT(DISTINCT r.id)
+        FROM order_review r
+        INNER JOIN `${lineTable}` l ON l.order_id=r.order_id
+        INNER JOIN `${itemTable}` i ON i.id=l.item_id AND i.owner_username=#{owner}
+    </select>
+
+    <select id="selectByMerchant" resultType="map">
+        SELECT r.id, r.order_id AS orderId, r.username, r.rating, r.body, r.reply,
+               r.replied_at AS repliedAt, r.created_at AS createdAt
+        FROM order_review r
+        INNER JOIN `${lineTable}` l ON l.order_id=r.order_id
+        INNER JOIN `${itemTable}` i ON i.id=l.item_id AND i.owner_username=#{owner}
         GROUP BY r.id
         ORDER BY r.id DESC
         LIMIT #{size} OFFSET #{offset}

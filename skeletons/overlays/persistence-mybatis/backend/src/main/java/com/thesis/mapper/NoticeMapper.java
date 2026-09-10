@@ -16,6 +16,8 @@ public interface NoticeMapper {
 
     List<Map<String, Object>> selectApprovedOrderByIdDesc();
 
+    List<Map<String, Object>> selectBySubmitterOrderByIdDesc(@Param("submitter") String submitter);
+
     @Select("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()"
             + " AND TABLE_NAME='sys_notice' AND COLUMN_NAME=#{col}")
     int countColumn(@Param("col") String col);

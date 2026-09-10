@@ -62,8 +62,9 @@ public final class OrderReviewStore {
         if (!username.equals(String.valueOf(order.get("username")))) {
             throw new IllegalStateException("无权评价");
         }
-        if (!"completed".equals(String.valueOf(order.get("status")))) {
-            throw new IllegalStateException("仅已完成订单可评价");
+        if (!"completed".equals(String.valueOf(order.get("status")))
+                && !"signed".equals(String.valueOf(order.get("status")))) {
+            throw new IllegalStateException("确认收货后方可评价");
         }
         Integer n = db().queryForObject(
                 "SELECT COUNT(*) FROM " + TABLE + " WHERE order_id=?", Integer.class, orderId);
@@ -105,14 +106,13 @@ public final class OrderReviewStore {
         return db().update("DELETE FROM " + TABLE + " WHERE id=?", id) > 0;
     }
 
-    /** 商品详情：按订单明细 item_id 汇总已完成订单的评价（公开只读）。 */
+    /** 商品详情：按订单明细 item_id 汇总评价（公开只读）。 */
     public static Map<String, Object> pageByItem(long itemId, int page, int size) {
         require();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
-        String orderTable = OrderStore.orderTable();
         String lineTable = OrderStore.lineTable();
-        if (itemId <= 0 || orderTable == null || orderTable.isBlank() || lineTable == null || lineTable.isBlank()) {
+        if (itemId <= 0 || lineTable == null || lineTable.isBlank()) {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("list", List.of());
             empty.put("total", 0);
@@ -123,7 +123,6 @@ public final class OrderReviewStore {
         String joinSql =
                 " FROM " + TABLE + " r"
                         + " INNER JOIN " + lineTable + " l ON l.order_id=r.order_id"
-                        + " INNER JOIN " + orderTable + " o ON o.id=r.order_id AND o.status='completed'"
                         + " WHERE l.item_id=?";
         Integer total = db().queryForObject("SELECT COUNT(DISTINCT r.id)" + joinSql, Integer.class, itemId);
         List<Map<String, Object>> list = db().query(
@@ -160,7 +159,7 @@ public final class OrderReviewStore {
         args.add((page - 1) * size);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + TABLE + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
-                (rs, i) -> map(rs),
+                (rs, i) -> enrichReview(map(rs)),
                 args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list == null ? List.of() : list);
@@ -168,6 +167,89 @@ public final class OrderReviewStore {
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 多店商家：仅本店商品所在订单的评价。 */
+    public static Map<String, Object> pageForMerchant(String ownerUsername, int page, int size) {
+        require();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page);
+            empty.put("size", size);
+            return empty;
+        }
+        String lineTable = OrderStore.lineTable();
+        String itemTable = ArchiveStore.itemTable();
+        if (lineTable == null || lineTable.isBlank() || itemTable == null || itemTable.isBlank()
+                || !ArchiveStore.hasOwnerUsername()) {
+            return page(null, page, size);
+        }
+        String join =
+                " FROM " + TABLE + " r"
+                        + " INNER JOIN " + lineTable + " l ON l.order_id=r.order_id"
+                        + " INNER JOIN " + itemTable + " i ON i.id=l.item_id AND i.owner_username=?"
+                        + " ";
+        Integer total = db().queryForObject(
+                "SELECT COUNT(DISTINCT r.id)" + join, Integer.class, owner);
+        List<Map<String, Object>> list = db().query(
+                "SELECT r.*" + join + " GROUP BY r.id ORDER BY r.id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> enrichReview(map(rs)),
+                owner,
+                size,
+                (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list == null ? List.of() : list);
+        out.put("total", total == null ? 0 : total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    public static boolean merchantOwnsReview(String ownerUsername, long reviewId) {
+        Map<String, Object> cur = get(reviewId);
+        if (cur == null) return false;
+        long orderId = toLong(cur.get("orderId"));
+        return OrderStore.merchantOwnsOrder(ownerUsername, orderId);
+    }
+
+    private static Map<String, Object> enrichReview(Map<String, Object> m) {
+        if (m == null) return null;
+        try {
+            long orderId = toLong(m.get("orderId"));
+            if (orderId > 0) {
+                Map<String, Object> order = OrderStore.getOrder(orderId);
+                if (order != null && order.get("lines") instanceof List<?> lines && !lines.isEmpty()) {
+                    List<String> titles = new ArrayList<>();
+                    String shop = "";
+                    for (Object o : lines) {
+                        if (!(o instanceof Map<?, ?> line)) continue;
+                        Object t = line.get("title");
+                        if (t != null && !String.valueOf(t).isBlank()) titles.add(String.valueOf(t));
+                        if (shop.isBlank() && line.get("shopName") != null) {
+                            shop = String.valueOf(line.get("shopName")).trim();
+                        }
+                    }
+                    if (!titles.isEmpty()) m.put("itemTitles", String.join("；", titles));
+                    if (!shop.isBlank()) m.put("shopName", shop);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return m;
+    }
+
+    private static long toLong(Object o) {
+        if (o instanceof Number n) return n.longValue();
+        try {
+            return Long.parseLong(String.valueOf(o));
+        } catch (Exception e) {
+            return 0L;
+        }
     }
 
     private static Map<String, Object> get(long id) {

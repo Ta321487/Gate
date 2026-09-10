@@ -20,4 +20,10 @@
         WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')
         ORDER BY id DESC
     </select>
+
+    <select id="selectBySubmitterOrderByIdDesc" resultType="map">
+        SELECT * FROM sys_notice
+        WHERE submitter_username = #{submitter}
+        ORDER BY id DESC
+    </select>
 </mapper>

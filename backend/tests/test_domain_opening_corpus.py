@@ -229,6 +229,34 @@ class DomainOpeningCorpusTests(unittest.TestCase):
                 f"{want} 测试表缺少流转类用例痕迹",
             )
 
+        # 用例图（论文交付物骨架 · 必有）
+        from app.bake.schema.usecases import (
+            list_usecase_actors,
+            render_usecase_svg,
+            usecase_model,
+        )
+
+        actors = list_usecase_actors(schema)
+        self.assertTrue(actors, f"{want} 无用例图角色")
+        for a in actors:
+            uc = usecase_model(schema, actor=a["id"], proposal_text=text, title_fallback=s["title"])
+            self.assertEqual(len(uc["level1"]), 5, f"{want}/{a['id']} 一级用例数")
+            svg = render_usecase_svg(uc)
+            self.assertIn("ellipse", svg)
+            self.assertTrue(
+                "<<include>>" in svg
+                or "<<extend>>" in svg
+                or "&lt;&lt;include&gt;&gt;" in svg
+                or "&lt;&lt;extend&gt;&gt;" in svg,
+                f"{want}/{a['id']} SVG 缺关系标注",
+            )
+            uc_blob = json.dumps(uc, ensure_ascii=False)
+            self.assertTrue(
+                any(k in schema_blob or k in uc_blob for k in kws)
+                or any(k in uc_blob for k in ("登录", "管理", "查看")),
+                f"{want} 用例图未见行业词或通用操作",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

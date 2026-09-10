@@ -144,6 +144,21 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/api/orders/{id}/pay")
+    public R<?> pay(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.payOrder(id, uid, str(b.get("payChannel")), str(b.get("payPassword"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping("/api/orders/{id}/trace")
     public R<?> trace(@PathVariable long id, HttpSession session) {
         requireOrder();
