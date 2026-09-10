@@ -81,6 +81,7 @@ export const ADMIN_MENU_PATHS = {
   orders: '/admin/orders',
   order_reviews: '/admin/order-reviews',
   reservations: '/admin/reservations',
+  dm: '/admin/dm',
 }
 
 export function userMenuPath(key) {

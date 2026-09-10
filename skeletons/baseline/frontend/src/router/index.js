@@ -42,6 +42,7 @@ const ADMIN_KEY_BY_PATH = {
   '/admin/overdue': 'deadline',
   '/admin/orders': 'orders',
   '/admin/order-reviews': 'order_reviews',
+  '/admin/dm': 'dm',
   '/admin/coupons': 'coupons',
   '/admin/reservations': 'reservations',
   '/admin/users': 'users',
@@ -91,7 +92,7 @@ function adminGuard(to, _from, next) {
         next('/admin/dashboard')
         return
       }
-    } else if (key !== 'profile' && key !== 'messages' && !allowed.has(key)) {
+    } else if (key !== 'profile' && key !== 'messages' && key !== 'dm' && !allowed.has(key)) {
       next('/admin/dashboard')
       return
     }
@@ -638,7 +639,7 @@ function withFavoritesRoutes(baseRoutes) {
   return routes
 }
 
-/** 一对一私信：有 dm 能力时挂门户入口 */
+/** 一对一私信：有 dm 能力时挂门户 + 管理端（办理岗回复） */
 function withDmRoutes(baseRoutes) {
   if (!hasCap('dm')) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -648,6 +649,17 @@ function withDmRoutes(baseRoutes) {
     const msgIdx = kids.findIndex((c) => c.path === 'messages')
     const at = msgIdx >= 0 ? msgIdx : kids.length
     kids.splice(at, 0, {
+      path: 'dm',
+      component: () => import('../views/user/Dm.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'dm')) {
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const ordersIdx = adminKids.findIndex((c) => c.path === 'orders')
+    const at = noticeIdx >= 0 ? noticeIdx : ordersIdx >= 0 ? ordersIdx : adminKids.length
+    adminKids.splice(at, 0, {
       path: 'dm',
       component: () => import('../views/user/Dm.vue'),
     })

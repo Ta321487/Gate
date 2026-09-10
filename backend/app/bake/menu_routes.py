@@ -87,6 +87,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "orders": "/admin/orders",
     "order_reviews": "/admin/order-reviews",
     "reservations": "/admin/reservations",
+    "dm": "/admin/dm",
 }
 
 # 壳基线路由（镜像 router/index.js pickRoutes 主干；不含登录等）
@@ -311,7 +312,7 @@ def effective_paths(
     if "favorites" in cap_set:
         paths.add("/favorites")
     if "dm" in cap_set:
-        paths.add("/dm")
+        paths.update({"/dm", "/admin/dm"})
     if "browse_history" in cap_set:
         paths.add("/browse-history")
     if "coupon" in cap_set:

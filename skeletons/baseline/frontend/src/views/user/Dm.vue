@@ -92,18 +92,42 @@ import http from '../../api/http'
 import { schemaLabels } from '../../utils/domainSchema.js'
 
 const labels = computed(() => schemaLabels())
+const merchantDesk = computed(() => {
+  // 管理端办理岗：统一用「联系用户/买家」侧文案
+  const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+  if (path.startsWith('/admin')) return true
+  const role = localStorage.getItem('role') || ''
+  const post = (localStorage.getItem('staffPost') || '').trim()
+  return role === 'admin' && !!post
+})
 const pageTitle = computed(() => labels.value.dmPageTitle || '私信')
-const pageLead = computed(
-  () => labels.value.dmPageLead || '与其他用户一对一沟通，打开会话后自动刷新新消息。',
-)
-const newDialogTitle = computed(() => labels.value.dmNewTitle || '新建私信')
-const peerPlaceholder = computed(() => labels.value.dmPeerPlaceholder || '选择对方账号')
-const emptyPeers = computed(
-  () => labels.value.dmEmptyPeers || '暂无会话，点「新建」选人开聊。',
-)
-const emptyChat = computed(
-  () => labels.value.dmEmptyChat || '选择左侧会话，或新建私信。',
-)
+const pageLead = computed(() => {
+  if (merchantDesk.value) {
+    return labels.value.dmMerchantPageLead || '回复买家咨询，打开会话后自动刷新新消息。'
+  }
+  return labels.value.dmPageLead || '与其他用户一对一沟通，打开会话后自动刷新新消息。'
+})
+const newDialogTitle = computed(() => {
+  if (merchantDesk.value) return labels.value.dmMerchantNewTitle || '联系买家'
+  return labels.value.dmNewTitle || '新建私信'
+})
+const peerPlaceholder = computed(() => {
+  if (merchantDesk.value) return labels.value.dmMerchantPeerPlaceholder || '选择买家账号'
+  return labels.value.dmPeerPlaceholder || '选择对方账号'
+})
+const emptyPeers = computed(() => {
+  if (merchantDesk.value) {
+    return labels.value.dmMerchantEmptyPeers
+      || '暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。'
+  }
+  return labels.value.dmEmptyPeers || '暂无会话，点「新建」选人开聊。'
+})
+const emptyChat = computed(() => {
+  if (merchantDesk.value) {
+    return labels.value.dmMerchantEmptyChat || '选择左侧会话，或新建联系买家。'
+  }
+  return labels.value.dmEmptyChat || '选择左侧会话，或新建私信。'
+})
 
 const me = computed(() => localStorage.getItem('username') || '')
 const conversations = ref([])

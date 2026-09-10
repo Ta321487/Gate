@@ -71,6 +71,15 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertNotIn("dmPeerMode", merchant_spec["schema"])
         self.assertEqual(merchant_spec["schema"]["labels"].get("dmPageTitle"), "客服")
         self.assertEqual(merchant_spec["schema"]["labels"].get("dmNewTitle"), "联系商家客服")
+        admin_menus = (merchant_spec["schema"].get("menus") or {}).get("admin") or []
+        dm_admin = next((m for m in admin_menus if isinstance(m, dict) and m.get("key") == "dm"), None)
+        self.assertIsNotNone(dm_admin, "商家客服须挂管理端菜单")
+        self.assertEqual(dm_admin.get("label"), "客服")
+        self.assertFalse(dm_admin.get("superOnly"))
+        self.assertIn("dmMerchantPageLead", merchant_spec["schema"].get("labels") or {})
+        from app.bake.staff_posts import PACK_ADMIN_MENUS
+
+        self.assertIn("dm", PACK_ADMIN_MENUS["merchant_ops"])
         open_spec = apply_dm_to_spec(
             {
                 "domain": "DOM-SHOP",
@@ -89,6 +98,10 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertFalse(open_spec["schema"].get("dmShopCs"))
         self.assertEqual(open_spec["schema"]["labels"].get("dmPageTitle"), "私信")
         self.assertEqual(open_spec["schema"]["labels"].get("dmNewTitle"), "新建私信")
+        open_admin = (open_spec["schema"].get("menus") or {}).get("admin") or []
+        open_dm = next((m for m in open_admin if isinstance(m, dict) and m.get("key") == "dm"), None)
+        self.assertIsNotNone(open_dm, "非店铺客服也须挂管理端私信入口")
+        self.assertEqual(open_dm.get("label"), "私信")
 
     def test_scan_dm_keywords(self) -> None:
         self.assertTrue(scan_dm("支持用户实时私信与回帖审核"))
