@@ -64,19 +64,18 @@ export const SUPER_ONLY_FALLBACK_KEYS = new Set([
 ])
 
 /**
- * 门户用户菜单：在 schema 基础上按能力补入口（消息 / 收藏 / 客服 / 评价）。
- * 不灌「首页」枢纽——默认进业务页（档案/单据），避免落地只有两张卡片。
- * 管理端原样返回。
+ * 按端取菜单：在 schema 基础上按能力补入口（消息 / 收藏 / 客服 / 评价）。
+ * 用户端不灌「首页」枢纽——默认进业务页（档案/单据），避免落地只有两张卡片。
+ * 管理端同样按能力补 dm / 评价，避免填岛冲掉后店长看不到客服。
  */
 export function schemaMenus(side = 'admin') {
   const menus = getSchema().menus || {}
   const raw = menus[side] || []
-  if (side !== 'user') return raw
-
   const list = raw.map((m) => ({ ...m }))
   const keys = new Set(list.map((m) => m.key))
   const caps = new Set(getSchema().capabilities || [])
   const labs = schemaLabels()
+  const shopCs = !!(getSchema().dmShopCs || getSchema().shopMarketplace)
 
   function insertBefore(key, item, befores) {
     if (keys.has(key)) return
@@ -92,31 +91,55 @@ export function schemaMenus(side = 'admin') {
     keys.add(key)
   }
 
-  if (!keys.has('messages')) {
-    insertBefore('messages', { key: 'messages', label: '消息' }, ['profile'])
+  if (side === 'user') {
+    if (!keys.has('messages')) {
+      insertBefore('messages', { key: 'messages', label: '消息' }, ['profile'])
+    }
+    if (caps.has('favorites')) {
+      insertBefore(
+        'favorites',
+        { key: 'favorites', label: labs.favoritesPageTitle || '我的收藏' },
+        ['cart', 'my_orders', 'profile'],
+      )
+    }
+    if (caps.has('dm')) {
+      insertBefore(
+        'dm',
+        { key: 'dm', label: labs.dmPageTitle || (shopCs ? '客服' : '私信') },
+        ['messages', 'guestbook', 'profile'],
+      )
+    }
+    if (caps.has('order_review')) {
+      insertBefore(
+        'order_reviews',
+        { key: 'order_reviews', label: labs.orderReviewPageTitle || '我的评价' },
+        ['my_orders', 'profile'],
+      )
+    }
+    // 预约时段页须带资源 itemId（从目录点「选时段」进入），不单独挂顶栏，避免空号源空态
+    return list
   }
-  if (caps.has('favorites')) {
-    insertBefore(
-      'favorites',
-      { key: 'favorites', label: labs.favoritesPageTitle || '我的收藏' },
-      ['cart', 'my_orders', 'profile'],
-    )
+
+  if (side === 'admin') {
+    if (caps.has('dm')) {
+      insertBefore(
+        'dm',
+        {
+          key: 'dm',
+          label: labs.dmPageTitle || (shopCs ? '客服' : '私信'),
+          superOnly: false,
+        },
+        ['guestbook', 'orders', 'order_reviews', 'content'],
+      )
+    }
+    if (caps.has('order_review')) {
+      insertBefore(
+        'order_reviews',
+        { key: 'order_reviews', label: '评价管理', superOnly: false },
+        ['orders'],
+      )
+    }
   }
-  if (caps.has('dm')) {
-    insertBefore(
-      'dm',
-      { key: 'dm', label: labs.dmPageTitle || '私信' },
-      ['messages', 'guestbook', 'profile'],
-    )
-  }
-  if (caps.has('order_review')) {
-    insertBefore(
-      'order_reviews',
-      { key: 'order_reviews', label: labs.orderReviewPageTitle || '我的评价' },
-      ['my_orders', 'profile'],
-    )
-  }
-  // 预约时段页须带资源 itemId（从目录点「选时段」进入），不单独挂顶栏，避免空号源空态
   return list
 }
 
@@ -374,6 +397,10 @@ export function formatArchiveScalar(field, value, empty = '—') {
     }
     if (isArchiveMoneyField(f)) return `¥${n.toFixed(2)}`
     return String(n)
+  }
+  if (type === 'date') {
+    const s = String(value).trim()
+    return s.length >= 10 ? s.slice(0, 10) : s
   }
   return String(value)
 }

@@ -26,7 +26,12 @@ def test_sync_user_menus_from_caps_shop():
     assert "dm" in keys
     assert "order_reviews" in keys
     assert "guestbook" in keys
-    assert "order_reviews" in [m["key"] for m in schema["menus"]["admin"]]
+    admin_keys = [m["key"] for m in schema["menus"]["admin"]]
+    assert "order_reviews" in admin_keys
+    assert "dm" in admin_keys
+    dm_admin = next(m for m in schema["menus"]["admin"] if m["key"] == "dm")
+    assert dm_admin.get("superOnly") is False
+    assert dm_admin.get("label") == "客服"
 
 
 def test_gallery_scan_opening_product_images():
