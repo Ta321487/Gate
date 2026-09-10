@@ -17,8 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 能力 order_lines：购物车 + 多明细订单（无真支付）。
- */
+ * 能力 order_lines：购物车 + 多明细订单（无真支付）�? */
 public final class OrderStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -57,7 +56,7 @@ public final class OrderStore {
         return enabled;
     }
 
-    /** 供评价等跨 Store 联表 */
+    /** 供评价等�?Store 联表 */
     public static String orderTable() {
         return ORDER;
     }
@@ -78,7 +77,7 @@ public final class OrderStore {
         return unitPriceOf(item);
     }
 
-    /** 档案单价：挂 flash_price 时窗内用活动价，否则 author/price_yuan。 */
+    /** 档案单价：挂 flash_price 时窗内用活动价，否则 author/price_yuan�?*/
     public static double unitPriceOf(Map<String, Object> item) {
         return ArchiveStore.effectiveUnitPrice(item);
     }
@@ -131,7 +130,7 @@ public final class OrderStore {
             return out;
         }
         Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
-        if (item == null) throw new IllegalArgumentException("商品不存在");
+        if (item == null) throw new IllegalArgumentException("商品不存�?);
         if (mapper().countCartItem(CART, username, itemId) > 0) {
             mapper().updateCartQty(CART, username, itemId, qty);
         } else {
@@ -225,7 +224,7 @@ public final class OrderStore {
             }
         }
         List<Map<String, Object>> cart = listCart(username);
-        if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
+        if (cart.isEmpty()) throw new IllegalStateException("购物车为�?);
         double total = 0;
         for (Map<String, Object> line : cart) {
             int qty = ((Number) line.get("qty")).intValue();
@@ -246,11 +245,10 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 多店在线支付：渠道+支付密码过账，不走账户余额扣款
-            if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
+            // 多店在线支付：渠�?支付密码过账，不走账户余额扣�?            if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
-                        "账户余额不足，请联系管理员充值")));
+                        "账户余额不足，请联系管理员充�?)));
             }
             if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()
                     && priceSnap.get("couponCode") == null
@@ -266,14 +264,14 @@ public final class OrderStore {
         String addr = addressLine == null ? "" : addressLine.trim();
         if (addressId != null && addressId > 0 && AddressStore.available()) {
             Map<String, Object> a = AddressStore.get(addressId, username);
-            if (a == null) throw new IllegalArgumentException("收货地址不存在");
+            if (a == null) throw new IllegalArgumentException("收货地址不存�?);
             if (rName.isBlank()) rName = String.valueOf(a.getOrDefault("contactName", ""));
             if (rPhone.isBlank()) rPhone = String.valueOf(a.getOrDefault("phone", ""));
             if (addr.isBlank()) addr = String.valueOf(a.getOrDefault("addressLine", ""));
         }
         if (hasOrderColumn("receiver_name")) {
-            boolean needAddr = dtype.isBlank() || dtype.contains("配送") || dtype.contains("快递")
-                    || "配送到家".equals(dtype);
+            boolean needAddr = dtype.isBlank() || dtype.contains("配�?) || dtype.contains("快�?)
+                    || "配送到�?.equals(dtype);
             if (needAddr && (rName.isBlank() || rPhone.isBlank() || addr.isBlank())) {
                 throw new IllegalArgumentException("请选择或填写收货人、手机与地址");
             }
@@ -290,10 +288,10 @@ public final class OrderStore {
         if (demoPay && hasOrderColumn("pay_channel")) extraCols.put("pay_channel", channel);
         String noteOut = note;
         if (extraCols.isEmpty() && !taste.isBlank()) {
-            noteOut = (noteOut.isBlank() ? "" : noteOut + "；") + "口味:" + taste;
+            noteOut = (noteOut.isBlank() ? "" : noteOut + "�?) + "口味:" + taste;
         }
         if (extraCols.isEmpty() && !addr.isBlank()) {
-            noteOut = (noteOut.isBlank() ? "" : noteOut + "；")
+            noteOut = (noteOut.isBlank() ? "" : noteOut + "�?)
                     + "地址:" + rName + " " + rPhone + " " + addr;
         }
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
@@ -370,7 +368,7 @@ public final class OrderStore {
         try {
             MessageStore.notifyAdmins(
                     "新订单待确认",
-                    UserStore.displayName(username) + " 下单 ¥" + round2(subtotal) + "，请确认处理。",
+                    UserStore.displayName(username) + " 下单 ¥" + round2(subtotal) + "，请确认处理�?,
                     "order",
                     orderId);
         } catch (Exception ignored) {
@@ -475,7 +473,7 @@ public final class OrderStore {
             String ownerUsername, String status, int page, int size) {
         requireEnabled();
         String owner = ownerUsername == null ? "" : ownerUsername.trim();
-        if (owner.isBlank()) throw new IllegalArgumentException("未登录");
+        if (owner.isBlank()) throw new IllegalArgumentException("未登�?);
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         String st = status == null || status.isBlank() ? null : status;
@@ -546,16 +544,16 @@ public final class OrderStore {
     public static Map<String, Object> payOrder(long orderId, String username, String payChannel, String payPassword) {
         requireEnabled();
         if (!ArchiveStore.shopMarketplaceEnabled()) {
-            throw new IllegalStateException("当前未开启在线支付");
+            throw new IllegalStateException("当前未开启在线支�?);
         }
         ensurePayChannelColumn();
         Map<String, Object> m = getOrder(orderId);
-        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (m == null) throw new IllegalArgumentException("订单不存�?);
         if (!String.valueOf(m.get("username")).equals(username)) {
-            throw new IllegalStateException("无权支付该订单");
+            throw new IllegalStateException("无权支付该订�?);
         }
         if (!"pending".equals(String.valueOf(m.get("status")))) {
-            throw new IllegalStateException("订单不是待付款状态");
+            throw new IllegalStateException("订单不是待付款状�?);
         }
         String channel = payChannel == null ? "" : payChannel.trim().toLowerCase(Locale.ROOT);
         if (!"alipay".equals(channel) && !"wechat".equals(channel)) {
@@ -567,7 +565,7 @@ public final class OrderStore {
         }
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         int n = mapper().payPendingOrder(ORDER, orderId, "confirmed", channel, now);
-        if (n <= 0) throw new IllegalStateException("支付失败，请刷新后重试");
+        if (n <= 0) throw new IllegalStateException("支付失败，请刷新后重�?);
         return getOrder(orderId);
     }
 
@@ -599,12 +597,12 @@ public final class OrderStore {
     public static Map<String, Object> advance(long orderId, String action, Map<String, Object> opts) {
         requireEnabled();
         Map<String, Object> m = getOrder(orderId);
-        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (m == null) throw new IllegalArgumentException("订单不存�?);
         String st = String.valueOf(m.get("status"));
         String act = action == null ? "" : action.trim().toLowerCase(Locale.ROOT);
         String next;
         if ("confirm".equals(act) && "pending".equals(st)) next = "confirmed";
-        // 发货/出餐须先确认，禁止 pending 跳步
+        // 发货/出餐须先确认，禁�?pending 跳步
         else if ("ship".equals(act) && "confirmed".equals(st)) next = "shipped";
         else if ("transit".equals(act) && "shipped".equals(st) && ArchiveStore.shopMarketplaceEnabled()) {
             next = "in_transit";
@@ -614,7 +612,7 @@ public final class OrderStore {
                 && ArchiveStore.shopMarketplaceEnabled()) {
             next = "signed";
         }
-        // 完成：单店 shipped→completed；多店 signed→completed（亦可商家从运输中办结）
+        // 完成：单�?shipped→completed；多�?signed→completed（亦可商家从运输中办结）
         else if ("complete".equals(act)) {
             boolean mp = ArchiveStore.shopMarketplaceEnabled();
             boolean ok = mp
@@ -852,7 +850,7 @@ public final class OrderStore {
         requireEnabled();
         ensureRefundColumns();
         Map<String, Object> m = getOrder(orderId);
-        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (m == null) throw new IllegalArgumentException("订单不存�?);
         if (!username.equals(String.valueOf(m.get("username")))) {
             throw new IllegalStateException("无权申请");
         }
@@ -865,13 +863,13 @@ public final class OrderStore {
             throw new IllegalStateException("已有售后申请");
         }
         String why = reason == null ? "" : reason.trim();
-        if (why.isBlank()) throw new IllegalStateException("请填写售后原因");
+        if (why.isBlank()) throw new IllegalStateException("请填写售后原�?);
         if (why.length() > 255) why = why.substring(0, 255);
         mapper().requestRefund(ORDER, orderId, why, Timestamp.valueOf(LocalDateTime.now()));
         try {
             MessageStore.notifyAdmins(
-                    "售后待处理",
-                    UserStore.displayName(username) + " 申请订单 #" + orderId + " 售后：" + why,
+                    "售后待处�?,
+                    UserStore.displayName(username) + " 申请订单 #" + orderId + " 售后�? + why,
                     "order",
                     orderId);
         } catch (Exception ignored) {
@@ -883,19 +881,19 @@ public final class OrderStore {
         requireEnabled();
         ensureRefundColumns();
         Map<String, Object> m = getOrder(orderId);
-        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (m == null) throw new IllegalArgumentException("订单不存�?);
         if (!"pending".equals(String.valueOf(m.getOrDefault("refundStatus", "")))) {
-            throw new IllegalStateException("当前无待审售后");
+            throw new IllegalStateException("当前无待审售�?);
         }
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         if (!pass) {
-            String tip = note == null || note.isBlank() ? "售后已驳回" : note.trim();
+            String tip = note == null || note.isBlank() ? "售后已驳�? : note.trim();
             mapper().rejectRefund(ORDER, orderId, tip, now, now);
             try {
                 MessageStore.send(
                         String.valueOf(m.get("username")),
-                        "售后已驳回",
-                        "订单 #" + orderId + "：" + tip,
+                        "售后已驳�?,
+                        "订单 #" + orderId + "�? + tip,
                         "order",
                         orderId);
             } catch (Exception ignored) {
@@ -933,7 +931,7 @@ public final class OrderStore {
             MessageStore.send(
                     String.valueOf(m.get("username")),
                     "售后已通过",
-                    "订单 #" + orderId + " 已退款办结。",
+                    "订单 #" + orderId + " 已退款办结�?,
                     "order",
                     orderId);
         } catch (Exception ignored) {
@@ -944,12 +942,12 @@ public final class OrderStore {
     public static List<Map<String, Object>> logisticsTrace(long orderId) {
         requireEnabled();
         Map<String, Object> m = getOrder(orderId);
-        if (m == null) throw new IllegalArgumentException("订单不存在");
+        if (m == null) throw new IllegalArgumentException("订单不存�?);
         List<Map<String, Object>> nodes = new ArrayList<>();
-        nodes.add(traceNode(m.get("createdAt"), "已下单", "商家待确认"));
+        nodes.add(traceNode(m.get("createdAt"), "已下�?, "商家待确�?));
         String st = String.valueOf(m.get("status"));
         if (!"pending".equals(st) && !"cancelled".equals(st)) {
-            nodes.add(traceNode(m.get("updatedAt"), "商家已确认", "备货中"));
+            nodes.add(traceNode(m.get("updatedAt"), "商家已确�?, "备货�?));
         }
         boolean inTransit = "shipped".equals(st) || "completed".equals(st);
         if (inTransit) {
@@ -959,29 +957,29 @@ public final class OrderStore {
             boolean pickup = dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提");
             if (pickup) {
                 String code = String.valueOf(m.getOrDefault("pickupCode", ""));
-                String tip = code.isBlank() || "null".equals(code) ? "请到店领取" : ("取餐码 " + code);
-                nodes.add(traceNode(shipAt, "已出餐", tip));
-                nodes.add(traceNode(shipAt, "待取餐", "请尽快到店领取"));
+                String tip = code.isBlank() || "null".equals(code) ? "请到店领�? : ("取餐�?" + code);
+                nodes.add(traceNode(shipAt, "已出�?, tip));
+                nodes.add(traceNode(shipAt, "待取�?, "请尽快到店领�?));
             } else {
-                String tip = track.isBlank() || "null".equals(track) ? "已交接承运" : ("运单 " + track);
-                nodes.add(traceNode(shipAt, "已发货", tip));
-                nodes.add(traceNode(shipAt, "运输中", "快件运输途中"));
-                nodes.add(traceNode(shipAt, "派送中", "快递员正在派送"));
+                String tip = track.isBlank() || "null".equals(track) ? "已交接承�? : ("运单 " + track);
+                nodes.add(traceNode(shipAt, "已发�?, tip));
+                nodes.add(traceNode(shipAt, "运输�?, "快件运输途中"));
+                nodes.add(traceNode(shipAt, "派送中", "快递员正在派�?));
             }
         }
         if ("completed".equals(st)) {
-            nodes.add(traceNode(m.get("updatedAt"), "已签收/完成", "订单完结"));
+            nodes.add(traceNode(m.get("updatedAt"), "已签�?完成", "订单完结"));
         }
         if ("cancelled".equals(st)) {
-            nodes.add(traceNode(m.get("updatedAt"), "已取消", "订单关闭"));
+            nodes.add(traceNode(m.get("updatedAt"), "已取�?, "订单关闭"));
         }
         String rs = String.valueOf(m.getOrDefault("refundStatus", ""));
         if ("pending".equals(rs)) {
-            nodes.add(traceNode(m.get("updatedAt"), "售后申请中", String.valueOf(m.getOrDefault("refundReason", ""))));
+            nodes.add(traceNode(m.get("updatedAt"), "售后申请�?, String.valueOf(m.getOrDefault("refundReason", ""))));
         } else if ("approved".equals(rs)) {
-            nodes.add(traceNode(m.get("refundAt"), "售后已通过", "已退款办结"));
+            nodes.add(traceNode(m.get("refundAt"), "售后已通过", "已退款办�?));
         } else if ("rejected".equals(rs)) {
-            nodes.add(traceNode(m.get("refundAt"), "售后已驳回", String.valueOf(m.getOrDefault("refundReason", ""))));
+            nodes.add(traceNode(m.get("refundAt"), "售后已驳�?, String.valueOf(m.getOrDefault("refundReason", ""))));
         }
         return nodes;
     }
