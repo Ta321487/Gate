@@ -267,8 +267,8 @@
               :row-props="usageRowProps"
               @update:sorter="onUsageSorter"
             />
-            <div v-else-if="usageLoading" class="skel-stack" style="padding:8px 0">
-              <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
+            <div v-else-if="usageLoading">
+              <ContentLoading :rows="4" compact />
             </div>
             <div v-else class="empty-hint">
               <div class="empty-title">无匹配项目</div>
@@ -319,8 +319,8 @@
               size="small"
               :row-props="supportRowProps"
             />
-            <div v-else-if="supportLoading" class="skel-stack" style="padding:8px 0">
-              <div v-for="i in 2" :key="i" class="skel skel-row-bar" />
+            <div v-else-if="supportLoading">
+              <ContentLoading :rows="2" compact />
             </div>
             <div v-else class="empty-hint">
               <div class="empty-title">暂无系统支持调用</div>
@@ -375,8 +375,8 @@
           size="small"
           :row-key="(r) => r.id"
         />
-        <div v-else-if="callsLoading" class="skel-stack" style="padding:8px 0">
-          <div v-for="i in 4" :key="i" class="skel skel-row-bar" />
+        <div v-else-if="callsLoading">
+          <ContentLoading :rows="4" compact />
         </div>
         <div v-else class="empty-hint">
           <div class="empty-title">无匹配调用</div>
@@ -406,6 +406,7 @@ import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { NButton } from 'naive-ui'
 import { api, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import ContentLoading from '../components/ContentLoading.vue'
 import UsageCharts from '../components/UsageCharts.vue'
 import { blendYuanPer1M, pricierProvider } from '../llmPricing'
 import {

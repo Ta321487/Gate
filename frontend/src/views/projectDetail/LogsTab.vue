@@ -9,11 +9,13 @@
       </div>
       <n-button size="small" :loading="logLoading" @click="loadLog(logSide)">刷新</n-button>
     </div>
-    <pre class="log-viewer">{{ filteredLog }}</pre>
+    <ContentLoading v-if="logLoading && !logText" :rows="6" compact />
+    <pre v-else class="log-viewer" :class="{ 'log-viewer-refreshing': logLoading }">{{ filteredLog }}</pre>
   </div>
 </template>
 
 <script setup>
+import ContentLoading from '../../components/ContentLoading.vue'
 import { bindPd } from './bindPd'
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
@@ -51,3 +53,10 @@ const {
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
 </script>
+
+<style scoped>
+.log-viewer-refreshing {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+</style>
