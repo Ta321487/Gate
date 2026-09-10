@@ -61,13 +61,14 @@
         <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
           <n-tab-pane name="db" tab="数据库">
             <div class="artifact-pane stack">
-              <p v-if="artifactLoading" class="small muted">加载中…</p>
+              <ContentLoading v-if="artifactLoading && !schema" :rows="4" compact />
+              <template v-else>
               <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
                 <div class="small">
                   <span class="muted">库名</span> · <span class="mono">{{ p.db_name || '—' }}</span>
                   <CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" />
                   <span class="pill" :class="schema ? 'pill-green' : 'pill-neutral'" style="margin-left:8px">
-                    {{ schema ? '已解析' : (p.workspace_path ? (artifactLoading ? '加载中' : '暂无表结构') : '未生成') }}
+                    {{ schema ? '已解析' : (p.workspace_path ? '暂无表结构' : '未生成') }}
                   </span>
                 </div>
                 <div class="row" style="margin:0;gap:8px">
@@ -224,15 +225,17 @@
                 </div>
               </template>
               <p v-else class="small muted">生成工作区后可查看表结构与 E-R 图。</p>
+              </template>
             </div>
 
           </n-tab-pane>
 
           <n-tab-pane name="thesis" tab="论文材料">
             <div class="artifact-pane stack">
-              <p v-if="artifactLoading" class="small muted">加载中…</p>
+              <ContentLoading v-if="artifactLoading" :rows="2" compact block />
+              <template v-else>
               <p class="small muted mb-8">
-                贴说明书用：功能模块图（系统设计）· 用例图（需求分析）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；用例图按角色走查交付菜单；测例按交付菜单推导，不发明功能。
+                贴说明书用：功能模块图（系统设计）· 用例图 / 用例描述表（需求分析）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
               <div class="thesis-cards">
                 <div class="thesis-card">
@@ -285,6 +288,30 @@
                 </div>
                 <div class="thesis-card">
                   <div class="thesis-card-hd">
+                    <strong>用例描述表</strong>
+                    <span
+                      class="pill"
+                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                    >
+                      {{
+                        artifactsFrozen
+                          ? '生成中'
+                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                      }}
+                    </span>
+                  </div>
+                  <p class="small muted">默认 4 个主路径 · 对照交付菜单操作 · 复制可贴 Word</p>
+                  <n-button
+                    size="small"
+                    type="primary"
+                    :disabled="!modulesOk || artifactsFrozen"
+                    :loading="ucdLoading"
+                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                    @click="openUsecaseDescriptions"
+                  >打开用例描述</n-button>
+                </div>
+                <div class="thesis-card">
+                  <div class="thesis-card-hd">
                     <strong>软件测试用例</strong>
                     <span
                       class="pill"
@@ -308,13 +335,15 @@
                   >打开测试用例</n-button>
                 </div>
               </div>
+              </template>
             </div>
 
           </n-tab-pane>
 
           <n-tab-pane name="api" tab="学生端 API">
             <div class="artifact-pane stack">
-              <p v-if="artifactLoading" class="small muted">加载中…</p>
+              <ContentLoading v-if="artifactLoading && !apis" :rows="4" compact />
+              <template v-else>
               <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
                 <div class="small">
                   <template v-if="apis">
@@ -324,7 +353,7 @@
                       主流程 {{ apis.flow_marked }}
                     </span>
                   </template>
-                  <span v-else class="pill pill-neutral">{{ p.workspace_path ? (artifactLoading ? '加载中' : '暂无接口清单') : '未生成' }}</span>
+                  <span v-else class="pill pill-neutral">{{ p.workspace_path ? '暂无接口清单' : '未生成' }}</span>
                 </div>
                 <div class="row" style="margin:0;gap:8px">
                   <span
@@ -516,6 +545,7 @@
               </template>
               <p v-else-if="apis" class="small muted">无匹配接口，试试清空筛选。</p>
               <p v-else class="small muted">生成完成后可在此对照学生端接口清单。</p>
+              </template>
             </div>
 
           </n-tab-pane>
@@ -595,6 +625,7 @@
 <script setup>
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
+import ContentLoading from '../../components/ContentLoading.vue'
 import DeliveryReviewPane from '../../components/DeliveryReviewPane.vue'
 import DefensePptArtifactRow from '../../components/defensePpt/DefensePptArtifactRow.vue'
 import DefensePptComparePane from '../../components/defensePpt/DefensePptComparePane.vue'
@@ -617,7 +648,7 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
@@ -630,7 +661,7 @@ const {
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
-  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, undoDelivery, undoDeliveryLabel,
+  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
 </script>

@@ -189,10 +189,12 @@ const showEr = ref(false)
 const showModules = ref(false)
 const showUsecases = ref(false)
 const showTestcases = ref(false)
+const showUsecaseDescriptions = ref(false)
 const erLoading = ref(false)
 const modLoading = ref(false)
 const ucLoading = ref(false)
 const tcLoading = ref(false)
+const ucdLoading = ref(false)
 const matchBusy = ref(false)
 const softSaving = ref(false)
 const jobActing = ref('')
@@ -228,6 +230,11 @@ const tcColumns = ref([])
 const tcRows = ref([])
 const tcMarkdown = ref('')
 const tcCount = ref(0)
+const ucdIntro = ref('')
+const ucdSourceNote = ref('')
+const ucdCases = ref([])
+const ucdMarkdown = ref('')
+const ucdCount = ref(0)
 let pollTimer = null
 let fillEventSource = null
 
@@ -1550,6 +1557,12 @@ const tcDownloadBase = computed(() => {
   return `${id}-测试用例-${tcFields.value}字段-${title}`
 })
 
+const ucdDownloadBase = computed(() => {
+  const id = p.value?.id || 'ucd'
+  const title = modulesMeta.value?.title || schema.value?.title || '用例描述'
+  return `${id}-用例描述表-${title}`
+})
+
 async function reloadTestcases() {
   if (!p.value || tcLoading.value) return
   tcLoading.value = true
@@ -1579,6 +1592,31 @@ async function onTcFields(v) {
   const n = Number(v)
   tcFields.value = [5, 6, 7, 8, 9].includes(n) ? n : 6
   await reloadTestcases()
+}
+
+async function reloadUsecaseDescriptions() {
+  if (!p.value || ucdLoading.value) return
+  ucdLoading.value = true
+  try {
+    const data = await api.getUsecaseDescriptions(p.value.id, { count: 4, tableStart: '3.1' })
+    ucdIntro.value = data.intro || ''
+    ucdSourceNote.value = data.source_note || ''
+    ucdCases.value = data.cases || []
+    ucdMarkdown.value = data.markdown || ''
+    ucdCount.value = data.count || 0
+  } catch {
+    message.error('无法加载用例描述表')
+  } finally {
+    ucdLoading.value = false
+  }
+}
+
+async function openUsecaseDescriptions() {
+  if (!p.value || ucdLoading.value || artifactsFrozen.value) return
+  await reloadUsecaseDescriptions()
+  if (ucdCases.value.length || ucdMarkdown.value) {
+    showUsecaseDescriptions.value = true
+  }
 }
 
 async function openEr() {
@@ -2159,6 +2197,7 @@ watch(artifactsFrozen, (frozen) => {
   showModules.value = false
   showUsecases.value = false
   showTestcases.value = false
+  showUsecaseDescriptions.value = false
 })
 
 watch(
@@ -2347,6 +2386,7 @@ onUnmounted(() => {
     goGeneratePpt,
     openPreview,
     openTestcases,
+    openUsecaseDescriptions,
     openUsecases,
     p,
     parseMysqlType,
@@ -2401,6 +2441,7 @@ onUnmounted(() => {
     reloadErSvg,
     reloadModSvg,
     reloadTestcases,
+    reloadUsecaseDescriptions,
     reloadUsecases,
     resetMatch,
     retryCurrent,
@@ -2455,6 +2496,7 @@ onUnmounted(() => {
     showSoftBakePanel,
     showSpec,
     showTestcases,
+    showUsecaseDescriptions,
     showUsecases,
     smokeDetailFromAxios,
     smokeDetailText,
@@ -2500,6 +2542,13 @@ onUnmounted(() => {
     ucLoading,
     ucMdjUrl,
     ucSvgSource,
+    ucdCases,
+    ucdCount,
+    ucdDownloadBase,
+    ucdIntro,
+    ucdLoading,
+    ucdMarkdown,
+    ucdSourceNote,
     undoDelivery,
     undoDeliveryLabel,
     unlocked,

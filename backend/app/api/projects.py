@@ -971,6 +971,88 @@ async def download_usecases_mdj(
     )
 
 
+@router.get("/{project_id}/schema/usecase-descriptions", summary="论文用例描述表")
+async def get_usecase_descriptions(
+    project_id: str,
+    count: int = Query(4, description="阐述用例数 1～8，默认 4"),
+    table_start: str = Query("3.1", description="首张表号，如 3.1"),
+    db: AsyncSession = Depends(get_db),
+):
+    """由交付 menus + 开题正文选用；事件流对照已交付菜单，不发明功能。"""
+    from app.bake.schema.usecase_descriptions import (
+        load_usecase_description_model,
+        normalize_desc_count,
+        normalize_table_start,
+    )
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    model = load_usecase_description_model(
+        ws,
+        proposal_text=prop,
+        count=normalize_desc_count(count),
+        table_start=normalize_table_start(table_start),
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/usecase-descriptions.md", summary="下载用例描述 Markdown")
+async def download_usecase_descriptions_md(
+    project_id: str,
+    count: int = Query(4, description="阐述用例数 1～8，默认 4"),
+    table_start: str = Query("3.1", description="首张表号，如 3.1"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.usecase_descriptions import (
+        load_usecase_description_model,
+        normalize_desc_count,
+        normalize_table_start,
+    )
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    model = load_usecase_description_model(
+        ws,
+        proposal_text=prop,
+        count=normalize_desc_count(count),
+        table_start=normalize_table_start(table_start),
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    body = str(model.get("markdown") or "")
+    fname = f"{project_id}-usecase-descriptions.md"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/schema/testcases", summary="论文测试用例表")
 async def get_testcases(
     project_id: str,
