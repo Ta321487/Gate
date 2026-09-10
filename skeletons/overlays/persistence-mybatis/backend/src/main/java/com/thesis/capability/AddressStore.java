@@ -77,6 +77,9 @@ public final class AddressStore {
         if (name.isBlank() || ph.isBlank() || addr.isBlank()) {
             throw new IllegalArgumentException("请填写联系人、手机与详细地址");
         }
+        if (findDuplicate(username, name, ph, addr, 0) != null) {
+            throw new IllegalArgumentException("地址簿中已有相同收货信息（联系人、手机与地址一致）");
+        }
         String tg = tag == null || tag.isBlank() ? "默认" : tag.trim();
         if (asDefault) clearDefault(username);
         else if (list(username).isEmpty()) asDefault = true;
@@ -104,6 +107,9 @@ public final class AddressStore {
         if (name.isBlank() || ph.isBlank() || addr.isBlank()) {
             throw new IllegalArgumentException("请填写联系人、手机与详细地址");
         }
+        if (findDuplicate(username, name, ph, addr, id) != null) {
+            throw new IllegalArgumentException("地址簿中已有相同收货信息（联系人、手机与地址一致）");
+        }
         boolean def = asDefault == null ? Boolean.TRUE.equals(cur.get("isDefault")) : asDefault;
         if (def) clearDefault(username);
         Map<String, Object> row = new LinkedHashMap<>();
@@ -121,6 +127,21 @@ public final class AddressStore {
     public static boolean delete(long id, String username) {
         requireTable();
         return mapper().delete(id, username) > 0;
+    }
+
+    /** 同用户下联系人+手机+详细地址完全一致视为重复（标签不同也算重复）。 */
+    private static Map<String, Object> findDuplicate(
+            String username, String contactName, String phone, String addressLine, long excludeId) {
+        for (Map<String, Object> row : list(username)) {
+            long rid = row.get("id") instanceof Number n ? n.longValue() : 0L;
+            if (excludeId > 0 && rid == excludeId) continue;
+            if (contactName.equals(nz(String.valueOf(row.get("contactName"))))
+                    && phone.equals(nz(String.valueOf(row.get("phone"))))
+                    && addressLine.equals(nz(String.valueOf(row.get("addressLine"))))) {
+                return row;
+            }
+        }
+        return null;
     }
 
     private static void clearDefault(String username) {
