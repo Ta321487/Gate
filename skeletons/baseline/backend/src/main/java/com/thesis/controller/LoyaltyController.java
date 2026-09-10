@@ -35,6 +35,21 @@ public class LoyaltyController {
         return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon));
     }
 
+    /** 用户端：模拟充值（固定档位） */
+    @PostMapping("/api/loyalty/demo-recharge")
+    public R<?> demoRecharge(@RequestBody Map<String, Object> body, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        if (!LoyaltyStore.isWalletEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "未开启账户余额");
+        }
+        double amount = toDouble(body == null ? null : body.get("amount"));
+        try {
+            return R.ok(LoyaltyStore.demoRecharge(uid, amount));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     /** 管理端：仅账户余额可充值；积分不可充值 */
     @PostMapping("/api/admin/loyalty/recharge")
     public R<?> recharge(@RequestBody Map<String, Object> body, HttpSession session) {

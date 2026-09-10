@@ -13,6 +13,9 @@
 
     <el-table :data="list" stripe empty-text="购物车为空，去浏览加购吧">
       <el-table-column prop="title" label="名称" min-width="160" />
+      <el-table-column v-if="marketplace" label="店铺" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.shopName || '—' }}</template>
+      </el-table-column>
       <el-table-column prop="priceYuan" label="单价" width="100" />
       <el-table-column label="数量" width="140">
         <template #default="{ row }">
@@ -28,7 +31,10 @@
     </el-table>
     <div v-if="list.length" class="total">
       <template v-if="anyLoyalty">
-        <div v-if="walletOn" class="loy-line">账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}</div>
+        <div v-if="walletOn" class="loy-line">
+          账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}
+          <el-button link type="primary" class="recharge-link" @click="openRecharge">充值</el-button>
+        </div>
         <div v-if="demoPay" class="loy-line muted">支持支付宝 / 微信在线支付</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
@@ -43,7 +49,10 @@
           券 {{ preview.couponCode }} −¥{{ Number(preview.couponOffYuan).toFixed(2) }}
         </div>
         <div class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
-        <div v-if="walletOn && preview.balanceEnough === false" class="warn">账户余额不足，请联系管理员充值</div>
+        <div v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">
+          账户余额不足，请先充值
+          <el-button link type="primary" @click="openRecharge">去充值</el-button>
+        </div>
       </template>
     </div>
 
@@ -159,11 +168,14 @@
           />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
-          <p v-if="walletOn && !demoPay">账户余额 ¥{{ Number(preview.balanceYuan || 0).toFixed(2) }}</p>
+          <p v-if="walletOn">
+            账户余额 ¥{{ Number(preview.balanceYuan || account.balanceYuan || 0).toFixed(2) }}
+            <el-button link type="primary" @click="openRecharge">充值</el-button>
+          </p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
-          <p v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">余额不足，无法提交</p>
+          <p v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">余额不足，请先充值后再提交</p>
         </div>
       </el-form>
       <template #footer>
@@ -174,6 +186,22 @@
           :disabled="!demoPay && walletOn && preview?.balanceEnough === false"
           @click="submitOrder"
         >{{ demoPay ? '确认支付并下单' : '确认提交' }}</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="rechargeVisible" title="模拟充值" width="400px" destroy-on-close>
+      <p class="tip muted">选择充值金额，到账后可用于余额支付（在线支付下单不扣余额）。</p>
+      <div class="recharge-tiers">
+        <el-button
+          v-for="amt in rechargeTiers"
+          :key="amt"
+          :type="rechargeAmount === amt ? 'primary' : 'default'"
+          @click="rechargeAmount = amt"
+        >¥{{ amt }}</el-button>
+      </div>
+      <template #footer>
+        <el-button @click="rechargeVisible = false">取消</el-button>
+        <el-button type="primary" :loading="recharging" :disabled="!rechargeAmount" @click="doRecharge">确认充值</el-button>
       </template>
     </el-dialog>
   </div>
@@ -206,6 +234,7 @@ const deliveryTypeLabel = computed(() => (isFood.value ? '用餐方式' : '收�
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
+const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
   () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单。',
 )
@@ -229,6 +258,10 @@ const list = ref([])
 const addresses = ref([])
 const placing = ref(false)
 const checkoutVisible = ref(false)
+const rechargeVisible = ref(false)
+const recharging = ref(false)
+const rechargeTiers = [50, 100, 200, 500]
+const rechargeAmount = ref(100)
 const account = ref({})
 const preview = ref(null)
 const form = reactive({
@@ -263,6 +296,28 @@ async function loadLoyalty() {
     account.value = {}
   }
   await refreshPreview()
+}
+
+function openRecharge() {
+  rechargeAmount.value = 100
+  rechargeVisible.value = true
+}
+
+async function doRecharge() {
+  if (!rechargeAmount.value) {
+    ElMessage.warning('请选择充值金额')
+    return
+  }
+  recharging.value = true
+  try {
+    const res = await http.post('/api/loyalty/demo-recharge', { amount: rechargeAmount.value })
+    account.value = res.data || account.value
+    ElMessage.success(`已充值 ¥${Number(rechargeAmount.value).toFixed(0)}`)
+    rechargeVisible.value = false
+    await refreshPreview()
+  } finally {
+    recharging.value = false
+  }
 }
 
 async function refreshPreview() {
@@ -375,11 +430,26 @@ async function saveAsAddress() {
     ElMessage.warning('请先填写收货人、手机与地址')
     return
   }
+  const name = form.receiverName.trim()
+  const phone = form.receiverPhone.trim()
+  const line = form.addressLine.trim()
+  const existed = addresses.value.find(
+    (a) =>
+      String(a.contactName || '').trim() === name
+      && String(a.phone || '').trim() === phone
+      && String(a.addressLine || '').trim() === line,
+  )
+  if (existed) {
+    form.addressId = existed.id
+    onPickAddress(existed.id)
+    ElMessage.warning('地址簿中已有相同收货信息')
+    return
+  }
   const asDefault = form.saveAsDefault || !addresses.value.length
   const res = await http.post('/api/addresses', {
-    contactName: form.receiverName.trim(),
-    phone: form.receiverPhone.trim(),
-    addressLine: form.addressLine.trim(),
+    contactName: name,
+    phone,
+    addressLine: line,
     tag: normalizeAddressTag(form.tag),
     isDefault: asDefault,
   })
@@ -447,6 +517,8 @@ onMounted(load)
 .total { margin-top: 14px; text-align: right; font-weight: 700; font-size: 16px; }
 .loy-line { font-weight: 500; font-size: 13px; color: var(--portal-muted, #475569); margin-bottom: 4px; }
 .loy-line.muted { color: var(--portal-muted, #64748b); }
+.recharge-link { margin-left: 6px; vertical-align: baseline; }
+.recharge-tiers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .payable { margin-top: 4px; color: #0f766e; }
 .warn { color: #b91c1c; font-size: 13px; font-weight: 600; margin-top: 4px; }
 .checkout-loy {
