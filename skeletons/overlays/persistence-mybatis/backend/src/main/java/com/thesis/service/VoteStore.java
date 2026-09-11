@@ -1,6 +1,7 @@
 package com.thesis.service;
 
 import com.thesis.config.MybatisSupport;
+import com.thesis.mapper.SchemaMapper;
 import com.thesis.mapper.VoteMapper;
 
 import java.sql.Timestamp;
@@ -12,11 +13,17 @@ public class VoteStore {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static boolean enabled;
     private static Boolean tableReady;
+    private static Boolean hasAvatarUrl;
 
     private VoteStore() {}
     private static VoteMapper mapper() { return MybatisSupport.mapper(VoteMapper.class); }
+    private static SchemaMapper schema() { return MybatisSupport.mapper(SchemaMapper.class); }
 
-    public static void configure(boolean on) { enabled = on; tableReady = null; }
+    public static void configure(boolean on) {
+        enabled = on;
+        tableReady = null;
+        hasAvatarUrl = null;
+    }
     public static boolean enabled() { return enabled; }
 
     public static boolean ready() {
@@ -30,6 +37,44 @@ public class VoteStore {
     }
 
     private static void require() { if (!ready()) throw new IllegalStateException("投票功能暂不可用"); }
+
+    private static synchronized void ensureAvatarUrlColumn() {
+        if (hasAvatarUrl != null) return;
+        try {
+            Integer n = schema().countColumn("vote_candidate", "avatar_url");
+            if (n != null && n > 0) {
+                hasAvatarUrl = true;
+                return;
+            }
+            schema().executeDdl("ALTER TABLE vote_candidate ADD COLUMN avatar_url VARCHAR(255) DEFAULT ''");
+            hasAvatarUrl = true;
+        } catch (Exception e) {
+            try {
+                Integer n = schema().countColumn("vote_candidate", "avatar_url");
+                hasAvatarUrl = n != null && n > 0;
+            } catch (Exception ignored) {
+                hasAvatarUrl = false;
+            }
+        }
+    }
+
+    public static boolean hasAvatarUrl() {
+        if (!ready()) return false;
+        ensureAvatarUrlColumn();
+        return hasAvatarUrl != null && hasAvatarUrl;
+    }
+
+    private static void fillAvatar(List<Map<String, Object>> rows) {
+        if (rows == null) return;
+        for (Map<String, Object> m : rows) {
+            if (!m.containsKey("avatarUrl") || m.get("avatarUrl") == null) {
+                m.put("avatarUrl", "");
+            } else {
+                m.put("avatarUrl", str(m.get("avatarUrl")));
+            }
+        }
+    }
+
     private static String fmt(Object o) {
         if (o == null) return null;
         if (o instanceof Timestamp ts) return ts.toLocalDateTime().format(FMT);
@@ -75,33 +120,54 @@ public class VoteStore {
     }
     public static List<Map<String, Object>> listCandidates(long campaignId) {
         require();
-        List<Map<String, Object>> list = mapper().listCandidates(campaignId);
+        ensureAvatarUrlColumn();
+        List<Map<String, Object>> list = hasAvatarUrl()
+                ? mapper().listCandidatesWithAvatar(campaignId)
+                : mapper().listCandidates(campaignId);
         normalizeTimes(list, "createdAt");
+        fillAvatar(list);
         return list;
     }
     public static Map<String, Object> pageCandidatesAdmin(long campaignId, int page, int size) {
         require();
+        ensureAvatarUrlColumn();
         int p = Math.max(1, page); int s = Math.min(100, Math.max(1, size));
         Integer total = mapper().countCandidates(campaignId);
-        List<Map<String, Object>> list = mapper().pageCandidates(campaignId, s, (p - 1) * s);
+        List<Map<String, Object>> list = hasAvatarUrl()
+                ? mapper().pageCandidatesWithAvatar(campaignId, s, (p - 1) * s)
+                : mapper().pageCandidates(campaignId, s, (p - 1) * s);
         normalizeTimes(list, "createdAt");
+        fillAvatar(list);
         return pageOut(list, total, p, s);
     }
     public static Map<String, Object> createCandidate(Map<String, Object> body) {
         require();
+        ensureAvatarUrlColumn();
         Long campaignId = toLong(body.get("campaignId"));
         if (campaignId == null) throw new IllegalArgumentException("缺少评选活动");
         if (getCampaign(campaignId) == null) throw new IllegalArgumentException("评选活动不存在");
         String name = clip(str(body.get("name")), 128);
         if (name.isBlank()) throw new IllegalArgumentException("候选人姓名不能为空");
+        String avatarUrl = clip(str(body.get("avatarUrl") != null ? body.get("avatarUrl") : body.get("avatar_url")), 255);
+        if (!avatarUrl.isBlank() && !hasAvatarUrl()) {
+            throw new IllegalStateException("系统未配置候选人头像字段，无法保存");
+        }
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("campaignId", campaignId);
         row.put("name", name);
         row.put("intro", clip(str(body.get("intro")), 1000));
         row.put("sortNo", toInt(body.get("sortNo"), 0));
-        mapper().insertCandidate(row);
+        if (hasAvatarUrl()) {
+            row.put("avatarUrl", avatarUrl);
+            mapper().insertCandidateWithAvatar(row);
+        } else {
+            mapper().insertCandidate(row);
+        }
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("id", row.get("id")); out.put("campaignId", campaignId); out.put("name", name);
+        out.put("id", row.get("id"));
+        out.put("campaignId", campaignId);
+        out.put("name", name);
+        out.put("avatarUrl", avatarUrl);
         return out;
     }
     public static boolean deleteCandidate(long id) {
@@ -134,7 +200,15 @@ public class VoteStore {
         out.put("maxVotes", maxVotes); out.put("usedVotes", already + uniq.size());
         return out;
     }
-    public static List<Map<String, Object>> results(long campaignId) { require(); return mapper().results(campaignId); }
+    public static List<Map<String, Object>> results(long campaignId) {
+        require();
+        ensureAvatarUrlColumn();
+        List<Map<String, Object>> list = hasAvatarUrl()
+                ? mapper().resultsWithAvatar(campaignId)
+                : mapper().results(campaignId);
+        fillAvatar(list);
+        return list;
+    }
     public static Map<String, Object> pageMine(String username, int page, int size) {
         require();
         int p = Math.max(1, page); int s = Math.min(100, Math.max(1, size));

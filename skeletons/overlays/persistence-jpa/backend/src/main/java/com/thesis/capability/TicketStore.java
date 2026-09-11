@@ -170,7 +170,8 @@ public final class TicketStore {
                             + "remark VARCHAR(255) DEFAULT '',"
                             + "created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
                             + "KEY idx_progress_ticket (ticket_id, id))");
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("无法创建审核进度表", e);
         }
     }
 
@@ -542,8 +543,23 @@ public final class TicketStore {
         TicketAsserts.assertCategoryLimit(username, item);
         TicketAsserts.assertUnderActiveLimit(username);
         String attach = TicketAsserts.normalizeAttach(attachUrl);
+        if (requireAttach && !hasColumn("attach_url")) {
+            throw new IllegalStateException("系统未配置附件字段，无法提交带附件的申请");
+        }
+        if (!attach.isBlank() && !hasColumn("attach_url")) {
+            throw new IllegalStateException("系统未配置附件字段，无法保存附件");
+        }
         LocalDateTime due = resolveRequestedDue(dueAt);
         LocalDateTime[] period = resolvePeriod(periodStart, periodEnd);
+        if (allowQty && !hasColumn("qty")) {
+            throw new IllegalStateException("系统未配置数量字段，无法提交带数量的申请");
+        }
+        if (due != null && !hasColumn("due_at")) {
+            throw new IllegalStateException("系统未配置应还日字段，无法保存到期日期");
+        }
+        if (period != null && (!hasColumn("period_start") || !hasColumn("period_end"))) {
+            throw new IllegalStateException("系统未配置请假区间字段，无法保存起止日期");
+        }
         if (!allowMultiTicket) {
             Integer dup = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TICKET
@@ -561,8 +577,8 @@ public final class TicketStore {
         KeyHolder kh = new GeneratedKeyHolder();
         final boolean withAttach = hasColumn("attach_url");
         final boolean withQty = hasColumn("qty");
-        final boolean withDue = due != null && hasColumn("due_at");
-        final boolean withPeriod = period != null && hasColumn("period_start") && hasColumn("period_end");
+        final boolean withDue = due != null;
+        final boolean withPeriod = period != null;
         final String attachFinal = attach;
         final int qtyFinal = nQty;
         final Timestamp dueTs = withDue ? Timestamp.valueOf(due) : null;
@@ -675,11 +691,14 @@ public final class TicketStore {
 
     private static int rowQty(Map<String, Object> m) {
         Object q = m.get("qty");
+        if (q == null) return 1;
+        String s = String.valueOf(q).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return 1;
         if (q instanceof Number n) return Math.max(1, n.intValue());
         try {
-            return Math.max(1, Integer.parseInt(String.valueOf(q)));
+            return Math.max(1, Integer.parseInt(s));
         } catch (Exception e) {
-            return 1;
+            throw new IllegalStateException("单据数量无效", e);
         }
     }
 
@@ -722,6 +741,12 @@ public final class TicketStore {
         if (t.isBlank()) throw new IllegalArgumentException("请填写标题");
         TicketAsserts.assertUnderActiveLimit(username);
         String attach = TicketAsserts.normalizeAttach(attachUrl);
+        if (requireAttach && !hasColumn("attach_url")) {
+            throw new IllegalStateException("系统未配置附件字段，无法提交带附件的申请");
+        }
+        if (!attach.isBlank() && !hasColumn("attach_url")) {
+            throw new IllegalStateException("系统未配置附件字段，无法保存附件");
+        }
 
         long tid = typeId == null ? 0L : typeId;
         long rid = roomId == null ? 0L : roomId;
@@ -796,6 +821,14 @@ public final class TicketStore {
         if (id <= 0) return;
         boolean hasP = hasColumn("priority");
         boolean hasC = hasColumn("contact_phone");
+        boolean wantP = priority != null && !priority.isBlank();
+        boolean wantC = contactPhone != null && !contactPhone.isBlank();
+        if (wantP && !hasP) {
+            throw new IllegalStateException("系统未配置优先级字段，无法保存");
+        }
+        if (wantC && !hasC) {
+            throw new IllegalStateException("系统未配置联系电话字段，无法保存");
+        }
         if (!hasP && !hasC) return;
         String p = priority == null || priority.isBlank() ? "普通" : priority.trim();
         if (p.length() > 16) p = p.substring(0, 16);
@@ -945,16 +978,17 @@ public final class TicketStore {
     public static Map<String, Object> markPickup(long ticketId, String place, Integer actualQty, String operator) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!hasColumn("pickup_at")) {
+            throw new IllegalStateException("系统未配置领取时间字段，无法登记领取");
+        }
         String st = String.valueOf(m.get("status"));
         // 仅进行中单据可登记；退库后库存已回补，再登记会乱账
         if (!"approved".equals(st) && !"overdue".equals(st)) {
             throw new IllegalStateException("仅已通过/进行中单据可登记领取");
         }
-        if (hasColumn("pickup_at")) {
-            String prev = TicketSql.str(m.get("pickupAt"));
-            if (!prev.isBlank()) {
-                throw new IllegalStateException("该单已登记领取，不可重复操作");
-            }
+        String prev = TicketSql.str(m.get("pickupAt"));
+        if (!prev.isBlank()) {
+            throw new IllegalStateException("该单已登记领取，不可重复操作");
         }
         String loc = place == null ? "" : place.trim();
         if (loc.isBlank()) loc = bizPickupPlace;
@@ -963,6 +997,12 @@ public final class TicketStore {
         }
         if (loc.length() > 128) {
             throw new IllegalStateException("领取地点过长");
+        }
+        if (allowQty && !hasColumn("actual_qty")) {
+            throw new IllegalStateException("系统未配置实发数量字段，无法登记领取");
+        }
+        if (!loc.isBlank() && !hasColumn("pickup_place")) {
+            throw new IllegalStateException("系统未配置领取地点字段，无法登记领取");
         }
 
         int applied = rowQty(m);
@@ -992,18 +1032,16 @@ public final class TicketStore {
             qtyToWrite = actualQty;
         }
 
-        if (hasColumn("pickup_at")) {
-            if (hasColumn("actual_qty") && qtyToWrite != null) {
-                TicketSql.db().update(
-                        "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=?, actual_qty=? WHERE id=?",
-                        loc, qtyToWrite, ticketId);
-            } else if (hasColumn("pickup_place")) {
-                TicketSql.db().update(
-                        "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=? WHERE id=?",
-                        loc, ticketId);
-            } else {
-                TicketSql.db().update("UPDATE " + TICKET + " SET pickup_at=NOW() WHERE id=?", ticketId);
-            }
+        if (hasColumn("actual_qty") && qtyToWrite != null) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=?, actual_qty=? WHERE id=?",
+                    loc, qtyToWrite, ticketId);
+        } else if (hasColumn("pickup_place")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET pickup_at=NOW(), pickup_place=? WHERE id=?",
+                    loc, ticketId);
+        } else {
+            TicketSql.db().update("UPDATE " + TICKET + " SET pickup_at=NOW() WHERE id=?", ticketId);
         }
         String tip = "领取登记：" + loc;
         if (qtyToWrite != null) tip = tip + "，实发 " + qtyToWrite;
@@ -1033,8 +1071,8 @@ public final class TicketStore {
 
     static void appendProgress(long ticketId, String status, String operator, String remark) {
         if (ticketId <= 0) return;
-        ensureProgressTable();
         if (PROGRESS == null || PROGRESS.isBlank()) return;
+        ensureProgressTable();
         try {
             TicketProgressOps.insertProgressRow(
                     ticketId,
@@ -1042,7 +1080,8 @@ public final class TicketStore {
                     operator,
                     remark,
                     Timestamp.valueOf(LocalDateTime.now()));
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("审核进度写入失败", e);
         }
     }
 
@@ -1146,6 +1185,9 @@ public final class TicketStore {
         }
 
         // 终审通过或单级通过 → approved（扣库存 / 时间银行扣时长）
+        if (useDeadline && !hasColumn("due_at")) {
+            throw new IllegalStateException("系统未配置应还日字段，无法审批通过");
+        }
         if (timebankRedeem) {
             TimebankStore.debitForTicketApprove(m);
         }
@@ -1167,8 +1209,10 @@ public final class TicketStore {
             if (requested != null && !String.valueOf(requested).isBlank()) {
                 try {
                     dueAt = TicketSql.parseDateTimeFlexible(String.valueOf(requested).trim());
-                } catch (Exception ignored) {
-                    // 保留默认借期
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new IllegalStateException("应还日期无效", e);
                 }
             }
             String handler = !dispatchTo.isBlank() ? dispatchTo : op;
@@ -1180,10 +1224,8 @@ public final class TicketStore {
                 args.add(Timestamp.valueOf(approveAt));
                 args.add(note);
                 args.add(handler);
-                if (hasColumn("due_at")) {
-                    sql.append(", due_at=?");
-                    args.add(Timestamp.valueOf(dueAt));
-                }
+                sql.append(", due_at=?");
+                args.add(Timestamp.valueOf(dueAt));
                 if (hasColumn("fine_yuan")) {
                     sql.append(", fine_yuan=0");
                 }
@@ -1199,10 +1241,8 @@ public final class TicketStore {
                 List<Object> args = new ArrayList<>();
                 args.add(Timestamp.valueOf(approveAt));
                 args.add(note);
-                if (hasColumn("due_at")) {
-                    sql.append(", due_at=?");
-                    args.add(Timestamp.valueOf(dueAt));
-                }
+                sql.append(", due_at=?");
+                args.add(Timestamp.valueOf(dueAt));
                 if (hasColumn("fine_yuan")) {
                     sql.append(", fine_yuan=0");
                 }
@@ -1213,7 +1253,7 @@ public final class TicketStore {
                 args.add(ticketId);
                 TicketSql.db().update(sql.toString(), args.toArray());
             }
-        } else if (useDeadline && hasColumn("due_at")) {
+        } else if (useDeadline) {
             LocalDateTime approveAt = LocalDateTime.now();
             LocalDateTime dueAt = approveAt.plusDays(loanDays());
             String handler = !dispatchTo.isBlank() ? dispatchTo : op;
@@ -1303,22 +1343,30 @@ public final class TicketStore {
     }
 
 
-    /** C-09：通过后签发通行码（字符串；非硬件门禁）。 */
+    /** C-09：通过后签发通行码（字符串；不对接闸机硬件）。失败须抛错，禁止静默无码。 */
     private static String issuePassCodeIfNeeded(long ticketId) {
-        if (!issuePassCode || !hasColumn("pass_code") || ticketId <= 0) return "";
-        try {
-            Map<String, Object> cur = get(ticketId);
-            if (cur != null) {
-                String prev = TicketSql.str(cur.get("passCode"));
-                if (!prev.isBlank()) return prev;
-            }
-            String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
-            TicketSql.db().update("UPDATE " + TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
-            appendProgress(ticketId, "pass_code", "system", "通行码 " + code);
-            return code;
-        } catch (Exception ignored) {
-            return "";
+        if (!issuePassCode || ticketId <= 0) return "";
+        if (!hasColumn("pass_code")) {
+            throw new IllegalStateException("系统未配置通行码字段，无法签发");
         }
+        Map<String, Object> cur = get(ticketId);
+        if (cur != null) {
+            String prev = TicketSql.str(cur.get("passCode"));
+            if (!prev.isBlank()) return prev;
+        }
+        String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        try {
+            int n = TicketSql.db().update("UPDATE " + TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
+            if (n <= 0) {
+                throw new IllegalStateException("通行码签发失败，请重试");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("通行码签发失败，请重试", e);
+        }
+        appendProgress(ticketId, "pass_code", "system", "通行码 " + code);
+        return code;
     }
 
     /**
@@ -1341,7 +1389,7 @@ public final class TicketStore {
                     itemId,
                     approvedTicketId);
         } catch (Exception e) {
-            return 0;
+            throw new IllegalStateException("库存耗尽后查询同档待审失败", e);
         }
         if (ids == null || ids.isEmpty()) return 0;
         int rejected = 0;
@@ -1360,7 +1408,8 @@ public final class TicketStore {
                     notifyTicketResult(sibling, false, reason);
                 }
                 appendProgress(sid, "rejected", "system", reason);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalStateException("库存耗尽后驳回同档待审失败", e);
             }
         }
         return rejected;
@@ -1436,6 +1485,9 @@ public final class TicketStore {
         String note = ratingRemark == null ? "" : ratingRemark.trim();
         if (note.length() > 255) note = note.substring(0, 255);
         boolean anon = anonymous && TicketCopy.ALLOW_ANONYMOUS_RATING;
+        if (dimDefs != null && !dimDefs.isEmpty() && !hasColumn("rating_dims_json")) {
+            throw new IllegalStateException("系统未配置多维评分字段，无法提交评分");
+        }
         if (hasColumn("rating_dims_json")) {
             TicketSql.db().update(
                     "UPDATE " + TICKET
@@ -1816,6 +1868,17 @@ public final class TicketStore {
     /** CRM 等：申请后补写可选列 */
     public static void patchTicketExtras(long ticketId, Map<String, Object> body) {
         if (ticketId <= 0 || body == null || body.isEmpty()) return;
+        if (body.containsKey("contactChannel") && !hasColumn("contact_channel")) {
+            throw new IllegalStateException("系统未配置联系渠道字段");
+        }
+        if (body.containsKey("nextFollowAt") && !hasColumn("next_follow_at")) {
+            throw new IllegalStateException("系统未配置下次跟进字段");
+        }
+        if ((body.containsKey("fineYuan") || body.containsKey("amountYuan"))
+                && !useDeadline
+                && !hasColumn("fine_yuan")) {
+            throw new IllegalStateException("系统未配置金额字段");
+        }
         if (hasColumn("contact_channel") && body.containsKey("contactChannel")) {
             String ch = TicketSql.str(body.get("contactChannel")).trim();
             if (ch.length() > 32) ch = ch.substring(0, 32);
@@ -1827,11 +1890,24 @@ public final class TicketStore {
             if (raw != null && !String.valueOf(raw).isBlank()) {
                 try {
                     ts = Timestamp.valueOf(TicketSql.parseDateTimeFlexible(String.valueOf(raw).trim(), false));
-                } catch (Exception ignored) {
-                    ts = null;
+                } catch (RuntimeException e) {
+                    throw e instanceof IllegalStateException
+                            ? e
+                            : new IllegalStateException("下次跟进时间无效", e);
+                } catch (Exception e) {
+                    throw new IllegalStateException("下次跟进时间无效", e);
                 }
             }
             TicketSql.db().update("UPDATE " + TICKET + " SET next_follow_at=? WHERE id=?", ts, ticketId);
+        }
+        // 报销等：提交时写入金额（复用 fine_yuan；借阅罚金/SLA 到期不计此路径）
+        if (hasColumn("fine_yuan") && !useDeadline
+                && (body.containsKey("fineYuan") || body.containsKey("amountYuan"))) {
+            Object raw = body.containsKey("fineYuan") ? body.get("fineYuan") : body.get("amountYuan");
+            double amt = TicketSql.toDouble(raw);
+            if (amt < 0) amt = 0;
+            if (amt > 99999999) amt = 99999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET fine_yuan=? WHERE id=?", amt, ticketId);
         }
     }
 

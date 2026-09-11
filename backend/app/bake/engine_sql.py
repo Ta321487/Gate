@@ -246,6 +246,8 @@ def domain_sql(
         ensure_book_suggest_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
+        ensure_soft_delete_columns,
+        ensure_notice_pinned_column,
         ensure_ai_assistant_sql,
         ensure_order_review_sql,
         ensure_shared_sql_columns,
@@ -343,6 +345,7 @@ def domain_sql(
     )
     user_publish = False
     shop_marketplace = False
+    soft_delete = False
     try:
         from app.bake.schema.templates import SCHEMA_BUILDERS
 
@@ -351,10 +354,12 @@ def domain_sql(
             built = builder(title or "thesis", proposal_text or "")
             arch = ((built.get("entities") or {}).get("archive") or {})
             user_publish = bool(arch.get("userPublish"))
+            soft_delete = bool(arch.get("softDelete"))
             shop_marketplace = bool(built.get("shopMarketplace"))
     except Exception:
         user_publish = False
         shop_marketplace = False
+        soft_delete = False
     if not shop_marketplace and (domain or "") == "DOM-SHOP":
         from app.bake.scene_scan import scan_shop_marketplace
 
@@ -369,6 +374,11 @@ def domain_sql(
         check_mutex=bool(flags.get("checkMutex")),
         apply_deadline=scan_apply_deadline(proposal_text or ""),
         schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),
+    )
+    text = ensure_soft_delete_columns(
+        text,
+        enabled=soft_delete,
+        item_table=resolved_item,
     )
     text = ensure_flash_price_columns(
         text,
@@ -403,25 +413,9 @@ def domain_sql(
     text = ensure_guestbook_sql(
         text,
         enabled=GUESTBOOK_CAP in caps,
+        with_channel=shop_marketplace and GUESTBOOK_CAP in caps,
     )
-    # 多店：留言表须有 channel（若仅靠后置 ensure 建表则补列）
-    if shop_marketplace and GUESTBOOK_CAP in caps:
-        if re.search(
-            r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\(",
-            text,
-            re.I,
-        ) and not re.search(
-            r"CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*\bchannel\b",
-            text,
-            re.I | re.S,
-        ):
-            text = re.sub(
-                r"(CREATE TABLE IF NOT EXISTS\s+sys_guestbook\s*\([^;]*?)(\n\s*created_at\b)",
-                r"\1\n  channel VARCHAR(16) DEFAULT 'user',\2",
-                text,
-                count=1,
-                flags=re.I | re.S,
-            )
+    text = ensure_notice_pinned_column(text)
     text = ensure_ai_assistant_sql(
         text,
         enabled=AI_ASSISTANT_CAP in caps,

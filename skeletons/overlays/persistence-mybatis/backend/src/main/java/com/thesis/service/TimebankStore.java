@@ -206,14 +206,12 @@ public class TimebankStore {
         if (u.isBlank()) throw new IllegalStateException("核销单据缺少申请人");
         BigDecimal h;
         Object qty = ticket.get("qty");
-        if (qty instanceof Number n && n.doubleValue() > 0) {
+        if (qty == null || String.valueOf(qty).isBlank() || "null".equalsIgnoreCase(String.valueOf(qty))) {
+            h = BigDecimal.ONE;
+        } else if (qty instanceof Number n && n.doubleValue() > 0) {
             h = BigDecimal.valueOf(n.doubleValue()).setScale(2, RoundingMode.HALF_UP);
         } else {
-            try {
-                h = hours(qty);
-            } catch (Exception e) {
-                h = BigDecimal.ONE;
-            }
+            h = hours(qty);
         }
         long ticketId = 0L;
         Object id = ticket.get("id");

@@ -101,12 +101,44 @@ public class NoticeController {
     @PutMapping("/{id}")
     public R<Map<String, Object>> update(
             @PathVariable long id,
-            @RequestBody Map<String, String> body,
+            @RequestBody Map<String, Object> body,
             HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
-        Map<String, Object> m = NoticeStore.update(id, body.get("title"), body.get("content"));
+        String title = body.get("title") == null ? null : String.valueOf(body.get("title"));
+        String content = body.get("content") == null ? null : String.valueOf(body.get("content"));
+        Boolean pinned = null;
+        if (body.containsKey("pinned")) {
+            Object p = body.get("pinned");
+            if (p instanceof Boolean b) pinned = b;
+            else if (p != null) {
+                String s = String.valueOf(p).trim();
+                pinned = "1".equals(s) || "true".equalsIgnoreCase(s);
+            }
+        }
+        Map<String, Object> m = NoticeStore.update(id, title, content, pinned);
         if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
         return R.ok(m);
+    }
+
+    @PostMapping("/{id}/pin")
+    public R<Map<String, Object>> pin(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        boolean on = true;
+        if (body != null && body.containsKey("pinned")) {
+            Object p = body.get("pinned");
+            if (p instanceof Boolean b) on = b;
+            else on = !"0".equals(String.valueOf(p)) && !"false".equalsIgnoreCase(String.valueOf(p));
+        }
+        try {
+            Map<String, Object> m = NoticeStore.setPinned(id, on);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
+            return R.ok(m);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")

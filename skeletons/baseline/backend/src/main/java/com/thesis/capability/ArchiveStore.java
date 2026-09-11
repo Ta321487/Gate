@@ -128,26 +128,57 @@ public final class ArchiveStore {
     }
 
 
-    private static double parseMoney(Object raw) {
-        if (raw == null) return 0;
+    /** null=非空但无法解析；0=空/缺省。 */
+    private static Double tryParseMoney(Object raw) {
+        if (raw == null) return 0.0;
+        String s = String.valueOf(raw).replace("¥", "").replace("￥", "").trim();
+        if (s.isBlank()) return 0.0;
         try {
-            return Double.parseDouble(String.valueOf(raw).replace("¥", "").replace("￥", "").trim());
+            return Double.parseDouble(s);
         } catch (Exception e) {
-            return 0;
+            return null;
         }
     }
 
-    /** 列表价（原价）：author / priceYuan。 */
-    public static double listUnitPrice(Map<String, Object> item) {
-        if (item == null) return 0;
-        double v = parseMoney(item.get("author"));
-        if (v > 0) return v;
-        return parseMoney(item.get("listPriceYuan"));
+    /** 写库/成交：非空且不可解析则硬失败；空或显式 0 允许。 */
+    private static double parseMoney(Object raw) {
+        Double v = tryParseMoney(raw);
+        if (v == null) {
+            throw new IllegalArgumentException("价格无效，请填写数字金额");
+        }
+        return v;
     }
 
-    /** 窗内活动价，否则原价。未挂 flash_price 时等同 listUnitPrice。 */
+    /** 列表展示：脏价格当 0，不抛错。 */
+    private static double parseMoneySoft(Object raw) {
+        Double v = tryParseMoney(raw);
+        return v == null ? 0 : v;
+    }
+
+    /** 列表价（原价）：author / priceYuan。浏览用软解析（author 可能是书名作者）。 */
+    public static double listUnitPrice(Map<String, Object> item) {
+        return listUnitPrice(item, false);
+    }
+
+    private static double listUnitPrice(Map<String, Object> item, boolean strict) {
+        if (item == null) return 0;
+        Double v = tryParseMoney(item.get("author"));
+        if (v == null) {
+            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
+            v = 0.0;
+        }
+        if (v > 0) return v;
+        Double list = tryParseMoney(item.get("listPriceYuan"));
+        if (list == null) {
+            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
+            return 0;
+        }
+        return list;
+    }
+
+    /** 窗内活动价，否则原价。未挂 flash_price 时等同 listUnitPrice。下单路径严格校验。 */
     public static double effectiveUnitPrice(Map<String, Object> item) {
-        double list = listUnitPrice(item);
+        double list = listUnitPrice(item, true);
         if (!flashPriceEnabled || item == null) return list;
         if (!isPromoActive(item)) return list;
         double promo = parseMoney(item.get("promoPrice"));
@@ -156,7 +187,7 @@ public final class ArchiveStore {
 
     public static boolean isPromoActive(Map<String, Object> item) {
         if (!flashPriceEnabled || item == null) return false;
-        double promo = parseMoney(item.get("promoPrice"));
+        double promo = parseMoneySoft(item.get("promoPrice"));
         if (promo <= 0) return false;
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime start = parseLocalDateTime(item.get("promoStart"));
@@ -575,12 +606,18 @@ public final class ArchiveStore {
             if (code.length() > 16) code = code.substring(0, 16);
             db().update("UPDATE " + ITEM + " SET checkin_code=? WHERE id=?", code, id);
         }
-        if (galleryEnabled && hasGalleryJson() && patch.containsKey("galleryImages")) {
+        if (galleryEnabled && patch.containsKey("galleryImages")) {
+            if (!hasGalleryJson()) {
+                throw new IllegalStateException("系统未配置图集字段，无法保存");
+            }
             db().update(
                     "UPDATE " + ITEM + " SET gallery_json=? WHERE id=?",
                     toGalleryJson(patch.get("galleryImages")), id);
         }
-        if (roomEquipmentEnabled && hasEquipmentJson() && patch.containsKey("equipmentNames")) {
+        if (roomEquipmentEnabled && patch.containsKey("equipmentNames")) {
+            if (!hasEquipmentJson()) {
+                throw new IllegalStateException("系统未配置配套设施字段，无法保存");
+            }
             db().update(
                     "UPDATE " + ITEM + " SET equipment_json=? WHERE id=?",
                     toEquipmentJson(patch.get("equipmentNames")), id);
@@ -610,7 +647,11 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "region", "region", 64);
         patchOptStr(id, patch, "summary", "summary", 512);
         patchOptStr(id, patch, "harvestOn", "harvest_on", 32);
-        if (flashPriceEnabled && hasPromoPrice()) {
+        if (flashPriceEnabled && (patch.containsKey("promoPrice")
+                || patch.containsKey("promoStart") || patch.containsKey("promoEnd"))) {
+            if (!hasPromoPrice()) {
+                throw new IllegalStateException("系统未配置秒杀价字段，无法保存");
+            }
             if (patch.containsKey("promoPrice")) {
                 Object pr = patch.get("promoPrice");
                 if (pr == null || String.valueOf(pr).isBlank()) {
@@ -631,10 +672,14 @@ public final class ArchiveStore {
         }
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
         if (patch.containsKey("foundAt")) {
+            if (!hasItemColumn("found_at")) {
+                throw new IllegalStateException("系统未配置该字段");
+            }
             Timestamp ts = parseTs(patch.get("foundAt"));
             try {
                 db().update("UPDATE " + ITEM + " SET found_at=? WHERE id=?", ts, id);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalStateException("保存字段失败: foundAt", e);
             }
         }
         if (patch.containsKey("tagIds") && tagsEnabled()) {
@@ -643,7 +688,10 @@ public final class ArchiveStore {
         if (patch.containsKey("seatRows") || patch.containsKey("seatCols")) {
             try {
                 com.thesis.service.SeatStore.syncLayout(id);
-            } catch (Exception ignored) {
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IllegalStateException("同步选座布局失败", e);
             }
         }
         return getItemAdmin(id);
@@ -651,36 +699,53 @@ public final class ArchiveStore {
 
     private static void patchOptStr(long id, Map<String, Object> patch, String key, String col, int max) {
         if (!patch.containsKey(key)) return;
+        if (!hasItemColumn(col)) {
+            throw new IllegalStateException("系统未配置该字段");
+        }
         String v = str(patch.get(key)).trim();
         if (max > 0 && v.length() > max) v = v.substring(0, max);
         try {
             db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", v, id);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("保存字段失败: " + key, e);
         }
     }
 
     private static void patchOptInt(long id, Map<String, Object> patch, String key, String col) {
         if (!patch.containsKey(key)) return;
+        if (!hasItemColumn(col)) {
+            throw new IllegalStateException("系统未配置该字段");
+        }
         try {
             db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", toInt(patch.get(key)), id);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("保存字段失败: " + key, e);
         }
     }
 
     private static void patchOptNum(long id, Map<String, Object> patch, String key, String col) {
         if (!patch.containsKey(key)) return;
+        if (!hasItemColumn(col)) {
+            throw new IllegalStateException("系统未配置该字段");
+        }
         try {
             double v = 0;
             Object raw = patch.get(key);
             if (raw instanceof Number n) v = n.doubleValue();
             else if (raw != null && !String.valueOf(raw).isBlank()) v = Double.parseDouble(String.valueOf(raw).trim());
             db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", v, id);
-        } catch (Exception ignored) {
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("保存字段失败: " + key, e);
         }
     }
 
     public static boolean deleteItem(long id) {
-        if (softDeleteEnabled && hasDeletedAt()) {
+        if (softDeleteEnabled) {
+            if (!hasDeletedAt()) {
+                throw new IllegalStateException("系统未配置下架字段，无法软删除");
+            }
             return db().update("UPDATE " + ITEM + " SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL", id) > 0;
         }
         if (tagsEnabled()) {
@@ -877,11 +942,16 @@ public final class ArchiveStore {
                 m.put("promoEnd", fmt(rs.getTimestamp("promo_end")));
             } catch (Exception ignored) {
             }
-            double list = parseMoney(m.get("author"));
+            double list = parseMoneySoft(m.get("author"));
             m.put("listPriceYuan", list);
             boolean active = isPromoActive(m);
             m.put("promoActive", active);
-            m.put("priceYuan", active ? effectiveUnitPrice(m) : list);
+            if (active) {
+                double promo = parseMoneySoft(m.get("promoPrice"));
+                m.put("priceYuan", promo > 0 ? promo : list);
+            } else {
+                m.put("priceYuan", list);
+            }
         }
         if (usesDedicatedSpecNote()) {
             try {
@@ -1140,7 +1210,8 @@ public final class ArchiveStore {
                 LocalDateTime t = LocalDateTime.parse(sa, FMT);
                 return !t.isAfter(LocalDateTime.now());
             } catch (Exception ignored) {
-                return false;
+                // 脏时间：视为已过，标为不可用
+                return true;
             }
         }
     }
@@ -1430,7 +1501,7 @@ public final class ArchiveStore {
             try {
                 return Timestamp.valueOf(s.substring(0, Math.min(19, s.length())));
             } catch (Exception e2) {
-                return null;
+                throw new IllegalStateException("时间格式无效", e2);
             }
         }
     }
@@ -1476,8 +1547,10 @@ public final class ArchiveStore {
             } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "开放报名", itemId);
             }
-        } catch (Exception ignored) {
-            // 无 stage 列或写失败时忽略，stock/status 已更新
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("同步档案阶段失败", e);
         }
     }
 
@@ -1492,8 +1565,10 @@ public final class ArchiveStore {
             } else if ("开放报名".equals(stage) && stock > 0) {
                 db().update("UPDATE " + ITEM + " SET status='available' WHERE id=?", id);
             }
-        } catch (Exception ignored) {
-            // ignore
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("同步报名状态失败", e);
         }
     }
 

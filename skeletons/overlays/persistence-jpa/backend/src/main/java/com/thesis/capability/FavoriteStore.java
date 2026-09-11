@@ -214,14 +214,17 @@ public final class FavoriteStore {
     }
 
     private static void bumpLikeCount(long itemId, int delta) {
+        if (!likeEnabled) return;
         String item = ArchiveStore.itemTable();
-        if (item == null || item.isBlank()) return;
+        if (item == null || item.isBlank()) {
+            throw new IllegalStateException("系统未配置对象表，无法更新点赞热度");
+        }
         try {
             db().update(
                     "UPDATE `" + item + "` SET like_count = GREATEST(0, COALESCE(like_count,0) + ?) WHERE id=?",
                     delta, itemId);
-        } catch (Exception ignored) {
-            // 无 like_count 列时忽略计数
+        } catch (Exception e) {
+            throw new IllegalStateException("系统未配置点赞计数字段，无法更新热度", e);
         }
     }
 

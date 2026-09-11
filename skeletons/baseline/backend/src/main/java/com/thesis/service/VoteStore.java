@@ -20,12 +20,14 @@ public class VoteStore {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static boolean enabled;
     private static Boolean tableReady;
+    private static Boolean hasAvatarUrl;
 
     private VoteStore() {}
 
     public static void configure(boolean on) {
         enabled = on;
         tableReady = null;
+        hasAvatarUrl = null;
     }
 
     public static boolean enabled() {
@@ -53,6 +55,51 @@ public class VoteStore {
 
     private static void require() {
         if (!ready()) throw new IllegalStateException("投票功能暂不可用");
+    }
+
+    private static synchronized void ensureAvatarUrlColumn() {
+        if (hasAvatarUrl != null) return;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()"
+                            + " AND TABLE_NAME='vote_candidate' AND COLUMN_NAME='avatar_url'",
+                    Integer.class);
+            if (n != null && n > 0) {
+                hasAvatarUrl = true;
+                return;
+            }
+            db().execute("ALTER TABLE vote_candidate ADD COLUMN avatar_url VARCHAR(255) DEFAULT ''");
+            hasAvatarUrl = true;
+        } catch (Exception e) {
+            try {
+                Integer n = db().queryForObject(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()"
+                                + " AND TABLE_NAME='vote_candidate' AND COLUMN_NAME='avatar_url'",
+                        Integer.class);
+                hasAvatarUrl = n != null && n > 0;
+            } catch (Exception ignored) {
+                hasAvatarUrl = false;
+            }
+        }
+    }
+
+    public static boolean hasAvatarUrl() {
+        if (!ready()) return false;
+        ensureAvatarUrlColumn();
+        return hasAvatarUrl != null && hasAvatarUrl;
+    }
+
+    private static void putAvatar(Map<String, Object> m, java.sql.ResultSet rs) throws java.sql.SQLException {
+        if (!hasAvatarUrl()) {
+            m.put("avatarUrl", "");
+            return;
+        }
+        try {
+            String av = rs.getString("avatar_url");
+            m.put("avatarUrl", av == null ? "" : av.trim());
+        } catch (Exception e) {
+            m.put("avatarUrl", "");
+        }
     }
 
     private static String fmt(Object o) {
@@ -136,8 +183,12 @@ public class VoteStore {
 
     public static List<Map<String, Object>> listCandidates(long campaignId) {
         require();
+        ensureAvatarUrlColumn();
+        String cols = hasAvatarUrl()
+                ? "id, campaign_id, name, intro, sort_no, status, avatar_url, created_at "
+                : "id, campaign_id, name, intro, sort_no, status, created_at ";
         return db().query(
-                "SELECT id, campaign_id, name, intro, sort_no, status, created_at "
+                "SELECT " + cols
                         + "FROM vote_candidate WHERE campaign_id=? AND status='available' ORDER BY sort_no, id",
                 (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
@@ -147,6 +198,7 @@ public class VoteStore {
                     m.put("intro", rs.getString("intro"));
                     m.put("sortNo", rs.getInt("sort_no"));
                     m.put("status", rs.getString("status"));
+                    putAvatar(m, rs);
                     m.put("createdAt", fmt(rs.getTimestamp("created_at")));
                     return m;
                 },
@@ -155,12 +207,16 @@ public class VoteStore {
 
     public static Map<String, Object> pageCandidatesAdmin(long campaignId, int page, int size) {
         require();
+        ensureAvatarUrlColumn();
         int p = Math.max(1, page);
         int s = Math.min(100, Math.max(1, size));
         Integer total = db().queryForObject(
                 "SELECT COUNT(*) FROM vote_candidate WHERE campaign_id=?", Integer.class, campaignId);
+        String cols = hasAvatarUrl()
+                ? "id, campaign_id, name, intro, sort_no, status, avatar_url, created_at "
+                : "id, campaign_id, name, intro, sort_no, status, created_at ";
         List<Map<String, Object>> list = db().query(
-                "SELECT id, campaign_id, name, intro, sort_no, status, created_at "
+                "SELECT " + cols
                         + "FROM vote_candidate WHERE campaign_id=? ORDER BY sort_no, id LIMIT ? OFFSET ?",
                 (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
@@ -170,6 +226,7 @@ public class VoteStore {
                     m.put("intro", rs.getString("intro"));
                     m.put("sortNo", rs.getInt("sort_no"));
                     m.put("status", rs.getString("status"));
+                    putAvatar(m, rs);
                     m.put("createdAt", fmt(rs.getTimestamp("created_at")));
                     return m;
                 },
@@ -179,6 +236,7 @@ public class VoteStore {
 
     public static Map<String, Object> createCandidate(Map<String, Object> body) {
         require();
+        ensureAvatarUrlColumn();
         Long campaignId = toLong(body.get("campaignId"));
         if (campaignId == null) throw new IllegalArgumentException("缺少评选活动");
         if (getCampaign(campaignId) == null) throw new IllegalArgumentException("评选活动不存在");
@@ -186,16 +244,33 @@ public class VoteStore {
         if (name.isBlank()) throw new IllegalArgumentException("候选人姓名不能为空");
         String intro = clip(str(body.get("intro")), 1000);
         int sortNo = toInt(body.get("sortNo"), 0);
+        String avatarUrl = clip(str(body.get("avatarUrl") != null ? body.get("avatarUrl") : body.get("avatar_url")), 255);
+        if (!avatarUrl.isBlank() && !hasAvatarUrl()) {
+            throw new IllegalStateException("系统未配置候选人头像字段，无法保存");
+        }
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
-            PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO vote_candidate(campaign_id, name, intro, sort_no, status) VALUES(?,?,?,?,?)",
-                    Statement.RETURN_GENERATED_KEYS);
-            ps.setLong(1, campaignId);
-            ps.setString(2, name);
-            ps.setString(3, intro);
-            ps.setInt(4, sortNo);
-            ps.setString(5, "available");
+            PreparedStatement ps;
+            if (hasAvatarUrl()) {
+                ps = con.prepareStatement(
+                        "INSERT INTO vote_candidate(campaign_id, name, intro, sort_no, status, avatar_url) VALUES(?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setLong(1, campaignId);
+                ps.setString(2, name);
+                ps.setString(3, intro);
+                ps.setInt(4, sortNo);
+                ps.setString(5, "available");
+                ps.setString(6, avatarUrl);
+            } else {
+                ps = con.prepareStatement(
+                        "INSERT INTO vote_candidate(campaign_id, name, intro, sort_no, status) VALUES(?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setLong(1, campaignId);
+                ps.setString(2, name);
+                ps.setString(3, intro);
+                ps.setInt(4, sortNo);
+                ps.setString(5, "available");
+            }
             return ps;
         }, kh);
         Number key = kh.getKey();
@@ -203,6 +278,7 @@ public class VoteStore {
         out.put("id", key == null ? null : key.longValue());
         out.put("campaignId", campaignId);
         out.put("name", name);
+        out.put("avatarUrl", avatarUrl);
         return out;
     }
 
@@ -261,9 +337,11 @@ public class VoteStore {
 
     public static List<Map<String, Object>> results(long campaignId) {
         require();
+        ensureAvatarUrlColumn();
+        String avCol = hasAvatarUrl() ? ", c.avatar_url " : " ";
         return db().query(
-                "SELECT c.id, c.name, c.intro, c.sort_no, "
-                        + "COALESCE((SELECT COUNT(*) FROM vote_ballot b WHERE b.candidate_id=c.id),0) AS votes "
+                "SELECT c.id, c.name, c.intro, c.sort_no" + avCol
+                        + ", COALESCE((SELECT COUNT(*) FROM vote_ballot b WHERE b.candidate_id=c.id),0) AS votes "
                         + "FROM vote_candidate c WHERE c.campaign_id=? ORDER BY votes DESC, c.sort_no, c.id",
                 (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
@@ -271,6 +349,7 @@ public class VoteStore {
                     m.put("name", rs.getString("name"));
                     m.put("intro", rs.getString("intro"));
                     m.put("sortNo", rs.getInt("sort_no"));
+                    putAvatar(m, rs);
                     m.put("votes", rs.getInt("votes"));
                     return m;
                 },

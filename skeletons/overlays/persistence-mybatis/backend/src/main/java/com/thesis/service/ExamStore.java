@@ -73,7 +73,7 @@ public class ExamStore {
         try {
             gates = mapper().countGatePapers();
         } catch (Exception e) {
-            return;
+            throw new IllegalStateException("系统未配置准入考试字段，无法校验是否已通过考试", e);
         }
         if (gates == null || gates == 0) return;
         List<Map<String, Object>> rows = mapper().listGateAttempts(username);
@@ -534,9 +534,10 @@ public class ExamStore {
             mapper().insertAnswer(attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), ok, sc);
             if (wrongbookEnabled && ok == 0) {
                 Integer has = mapper().countWrongbookTable();
-                if (has != null && has > 0) {
-                    mapper().upsertWrongbook(username, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX));
+                if (has == null || has == 0) {
+                    throw new IllegalStateException("错题本表未就绪");
                 }
+                mapper().upsertWrongbook(username, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX));
             }
         }
         mapper().submitAttempt(attemptId, got, total, timedOut);

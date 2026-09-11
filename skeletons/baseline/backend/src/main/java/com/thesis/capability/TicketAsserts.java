@@ -55,8 +55,8 @@ final class TicketAsserts {
             }
         } catch (IllegalStateException e) {
             throw e;
-        } catch (Exception ignored) {
-            // 解析失败则不拦截
+        } catch (Exception e) {
+            throw new IllegalStateException("报名/申请截止时间无效", e);
         }
     }
 
@@ -112,10 +112,12 @@ final class TicketAsserts {
         Object cid = item.get("categoryId");
         if (cid instanceof Number n) categoryId = n.longValue();
         else {
+            String raw = TicketSql.str(cid).trim();
+            if (raw.isBlank() || "null".equalsIgnoreCase(raw)) return;
             try {
-                categoryId = Long.parseLong(TicketSql.str(cid));
-            } catch (Exception ignored) {
-                return;
+                categoryId = Long.parseLong(raw);
+            } catch (Exception e) {
+                throw new IllegalStateException("分类无效，无法校验门数上限", e);
             }
         }
         if (categoryId <= 0) return;
@@ -146,7 +148,7 @@ final class TicketAsserts {
             newStart = LocalDateTime.parse(String.valueOf(ns).substring(0, 19), TicketSql.FMT);
             newEnd = LocalDateTime.parse(String.valueOf(ne).substring(0, 19), TicketSql.FMT);
         } catch (Exception e) {
-            return;
+            throw new IllegalStateException("时段时间无效，无法校验冲突", e);
         }
         if (!newEnd.isAfter(newStart)) {
             throw new IllegalStateException("时段配置无效：结束时间须晚于开始时间");

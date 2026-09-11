@@ -27,6 +27,8 @@ public final class SlotStore {
     private static boolean requireRemark = false;
     /** true：预约进 pending，管理端确认后才变 confirmed；false：占坑即确认 */
     private static boolean requireConfirm = false;
+    /** true：办结后用户可评星+短评 */
+    private static boolean allowRating = false;
 
     private SlotStore() {}
 
@@ -44,6 +46,7 @@ public final class SlotStore {
         enabled = !SLOT.isBlank() && !RESV.isBlank();
         requireRemark = false;
         requireConfirm = false;
+        allowRating = false;
     }
 
     public static void configureRemark(boolean required) {
@@ -54,14 +57,23 @@ public final class SlotStore {
         requireConfirm = required;
     }
 
+    public static void configureRating(boolean ratingEnabled) {
+        allowRating = ratingEnabled;
+    }
+
     public static boolean requireConfirm() {
         return requireConfirm;
+    }
+
+    public static boolean allowRating() {
+        return allowRating;
     }
 
     public static void unbind() {
         enabled = false;
         requireRemark = false;
         requireConfirm = false;
+        allowRating = false;
         SLOT = RESV = "";
     }
 
@@ -162,6 +174,16 @@ public final class SlotStore {
         if (requireRemark && noteFilled.isBlank()) {
             throw new IllegalStateException("请填写备注后再预约");
         }
+        requireResvColIfPresent("plate_no", "车牌号", !plate.isBlank());
+        requireResvColIfPresent("patient_name", "就诊人", !patient.isBlank());
+        requireResvColIfPresent("visit_type", "就诊类型", !visit.isBlank());
+        requireResvColIfPresent("symptom_note", "症状说明", !symptom.isBlank());
+        requireResvColIfPresent("subject", "主题", !subject.isBlank());
+        requireResvColIfPresent("party_size", "人数", party > 0);
+        requireResvColIfPresent("guest_name", "客人姓名", !guest.isBlank());
+        requireResvColIfPresent("guest_count", "客人人数", guestCount > 0);
+        requireResvColIfPresent("preferred_stylist", "指定技师", !stylist.isBlank());
+        requireResvColIfPresent("queue_no", "排队号", queue > 0);
         final String noteFinal = noteFilled.length() > 255 ? noteFilled.substring(0, 255) : noteFilled;
         final String initialStatus = requireConfirm ? "pending" : "confirmed";
 
@@ -288,10 +310,7 @@ public final class SlotStore {
         } else {
             mapper().updateResvStatus(RESV, resvId, "completed");
         }
-        try {
-            OrderStore.completeByReservation(resvId);
-        } catch (Exception ignored) {
-        }
+        OrderStore.completeByReservation(resvId);
         try {
             String user = String.valueOf(m.get("username"));
             MessageStore.send(
@@ -319,10 +338,33 @@ public final class SlotStore {
         }
         mapper().updateResvStatus(RESV, resvId, "cancelled");
         mapper().releaseBooked(SLOT, ((Number) m.get("slotId")).longValue());
-        try {
-            OrderStore.cancelByReservation(resvId);
-        } catch (Exception ignored) {
+        OrderStore.cancelByReservation(resvId);
+        return getReservation(resvId);
+    }
+
+    /**
+     * 办结后评分 1～5 + 短评；仅本人、仅 completed、仅一次。
+     */
+    public static Map<String, Object> rate(long resvId, String username, int rating, String ratingRemark) {
+        requireEnabled();
+        if (!allowRating) throw new IllegalStateException("当前未开启评价");
+        if (!hasResvColumn("rating")) throw new IllegalStateException("当前不支持评价");
+        Map<String, Object> m = getReservation(resvId);
+        if (m == null) throw new IllegalArgumentException("预约不存在");
+        if (!username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能评价本人的预约");
         }
+        if (!"completed".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅办结后可评价");
+        }
+        Object existing = m.get("rating");
+        if (existing != null && !"null".equals(String.valueOf(existing)) && !"".equals(String.valueOf(existing))) {
+            throw new IllegalStateException("已评价过");
+        }
+        if (rating < 1 || rating > 5) throw new IllegalArgumentException("评分须为 1～5 星");
+        String remark = ratingRemark == null ? "" : ratingRemark.trim();
+        if (remark.length() > 200) remark = remark.substring(0, 200);
+        mapper().rateReservation(RESV, resvId, rating, remark);
         return getReservation(resvId);
     }
 
@@ -433,7 +475,8 @@ public final class SlotStore {
             try {
                 return !LocalDateTime.parse(sa, FMT).isAfter(LocalDateTime.now());
             } catch (Exception ignored) {
-                return false;
+                // 脏 start_at：视为已过，禁止再约
+                return true;
             }
         }
     }
@@ -466,6 +509,14 @@ public final class SlotStore {
         m.put("preferredStylist", str(first(raw, "preferredStylist", "preferred_stylist")));
         m.put("queueNo", toInt(first(raw, "queueNo", "queue_no")));
         m.put("entryAt", fmt(first(raw, "entryAt", "entry_at")));
+        Object rating = first(raw, "rating");
+        if (rating == null || "".equals(String.valueOf(rating)) || "null".equalsIgnoreCase(String.valueOf(rating))) {
+            m.put("rating", null);
+        } else {
+            m.put("rating", toInt(rating));
+        }
+        m.put("ratingRemark", str(first(raw, "ratingRemark", "rating_remark")));
+        m.put("ratedAt", fmt(first(raw, "ratedAt", "rated_at")));
         m.put("createdAt", fmt(first(raw, "createdAt", "created_at")));
         return m;
     }
@@ -488,6 +539,13 @@ public final class SlotStore {
             return Integer.parseInt(String.valueOf(o).trim());
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    private static void requireResvColIfPresent(String col, String label, boolean present) {
+        if (!present) return;
+        if (!hasResvColumn(col)) {
+            throw new IllegalStateException("系统未配置「" + label + "」字段，无法保存预约信息");
         }
     }
 

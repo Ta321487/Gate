@@ -19,7 +19,7 @@ import java.util.*;
 
 /**
  * 优惠券完整生命周期：券模板领取 → 我的券 → 下单核销 → 过期扫标。
- * 仍兼容下单直接填码（未领取的模板码）。
+ * 下单仅核销用户已领取且未用的券，不可直接填模板码绕过领取配额。
  */
 public final class CouponStore {
 
@@ -272,7 +272,7 @@ public final class CouponStore {
         return out;
     }
 
-    /** 下单算价：优先用户已领券码；否则匹配可领模板码。 */
+    /** 下单算价：仅匹配用户已领取且未用的券。 */
     public static Map<String, Object> matchForCheckout(String username, String code, double amountYuan) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", false);
@@ -281,28 +281,28 @@ public final class CouponStore {
         if (!enabled || code == null || code.isBlank()) return out;
         expireSweep();
         String want = code.trim().toUpperCase(Locale.ROOT);
-        // 1) 我的未用券
-        if (username != null && !username.isBlank()) {
-            List<Map<String, Object>> mine = db().query(
-                    "SELECT u.id AS user_coupon_id, p.* FROM " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
-                            + "WHERE u.username=? AND u.status='unused' AND UPPER(p.code)=?",
-                    (rs, i) -> {
-                        Map<String, Object> m = mapPromo(rs);
-                        m.put("userCouponId", rs.getLong("user_coupon_id"));
-                        return m;
-                    },
-                    username, want);
-            if (mine != null && !mine.isEmpty()) {
-                return applyPromoHit(out, mine.get(0), amountYuan);
-            }
+        if (username == null || username.isBlank()) {
+            out.put("message", "请先登录后使用优惠券");
+            return out;
         }
-        // 2) 模板码（未领取也可演示核销）
-        List<Map<String, Object>> promos = db().query(
-                "SELECT * FROM " + PROMO + " WHERE status='active' AND UPPER(code)=?",
-                (rs, i) -> mapPromo(rs),
-                want);
-        if (promos != null && !promos.isEmpty()) {
-            return applyPromoHit(out, promos.get(0), amountYuan);
+        List<Map<String, Object>> mine = db().query(
+                "SELECT u.id AS user_coupon_id, p.* FROM " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
+                        + "WHERE u.username=? AND u.status='unused' AND UPPER(p.code)=?",
+                (rs, i) -> {
+                    Map<String, Object> m = mapPromo(rs);
+                    m.put("userCouponId", rs.getLong("user_coupon_id"));
+                    return m;
+                },
+                username, want);
+        if (mine != null && !mine.isEmpty()) {
+            return applyPromoHit(out, mine.get(0), amountYuan);
+        }
+        Integer tpl = db().queryForObject(
+                "SELECT COUNT(*) FROM " + PROMO + " WHERE status='active' AND UPPER(code)=?",
+                Integer.class, want);
+        if (tpl != null && tpl > 0) {
+            out.put("message", "请先领取该券后再下单使用");
+            return out;
         }
         out.put("message", "券码无效");
         return out;
@@ -331,17 +331,25 @@ public final class CouponStore {
     public static void markUsed(String username, String code, long orderId) {
         if (!enabled || username == null || code == null || code.isBlank()) return;
         String want = code.trim().toUpperCase(Locale.ROOT);
+        List<Long> ids;
         try {
-            List<Long> ids = db().query(
+            ids = db().query(
                     "SELECT u.id FROM " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
                             + "WHERE u.username=? AND u.status='unused' AND UPPER(p.code)=? LIMIT 1",
                     (rs, i) -> rs.getLong(1),
                     username, want);
-            if (ids == null || ids.isEmpty()) return;
+        } catch (Exception e) {
+            throw new IllegalStateException("核销失败", e);
+        }
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalStateException("券未领取或已使用，无法核销");
+        }
+        try {
             db().update(
                     "UPDATE " + MINE + " SET status='used', used_at=?, order_id=? WHERE id=?",
                     Timestamp.valueOf(LocalDateTime.now()), orderId, ids.get(0));
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("核销失败", e);
         }
     }
 
@@ -353,7 +361,8 @@ public final class CouponStore {
                     "UPDATE " + MINE + " SET status='unused', used_at=NULL, order_id=NULL "
                             + "WHERE order_id=? AND status='used'",
                     orderId);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("回退失败", e);
         }
     }
 
@@ -448,12 +457,12 @@ public final class CouponStore {
         if (o == null) return null;
         if (o instanceof Timestamp t) return t;
         String s = String.valueOf(o).trim();
-        if (s.isBlank() || "null".equals(s)) return null;
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
         try {
             if (s.length() == 10) s = s + " 23:59:59";
             return Timestamp.valueOf(s.replace('T', ' ').substring(0, Math.min(19, s.length())));
         } catch (Exception e) {
-            return null;
+            throw new IllegalStateException("过期时间格式无效", e);
         }
     }
 }

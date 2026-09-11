@@ -9,7 +9,7 @@ import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；非真支付）。
+ * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；不对接微信支付宝商户）。
  * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
@@ -361,6 +361,37 @@ public final class LoyaltyStore {
         Map<String, Object> snap = new LinkedHashMap<>(preview);
         snap.put("payBalanceYuan", walletEnabled ? payable : 0.0);
         snap.put("discountYuan", discount);
+        return snap;
+    }
+
+    /**
+     * 待付款补缴：按订单已算好的应付扣余额（不再重算满减/券）。
+     * 选支付宝/微信只是收银台形态，不对接商户 SDK；有钱包时余额仍须扣。
+     */
+    public static Map<String, Object> captureOrderPay(String username, double payableYuan, long orderId) {
+        ensureSchema();
+        double pay = round2(Math.max(0, payableYuan));
+        Map<String, Object> snap = new LinkedHashMap<>();
+        snap.put("payableYuan", pay);
+        snap.put("discountYuan", 0.0);
+        snap.put("couponCode", "");
+        if (walletEnabled) {
+            double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
+            if (bal + 1e-9 < pay) {
+                throw new IllegalStateException(
+                        "账户余额不足，请先在个人中心或购物车充值（当前 ¥"
+                                + round2(bal)
+                                + "，需 ¥"
+                                + pay
+                                + "）");
+            }
+            if (pay > 0) {
+                adjustWallet(username, -pay, "order_pay", "order", orderId, username);
+            }
+            snap.put("payBalanceYuan", pay);
+        } else {
+            snap.put("payBalanceYuan", 0.0);
+        }
         return snap;
     }
 

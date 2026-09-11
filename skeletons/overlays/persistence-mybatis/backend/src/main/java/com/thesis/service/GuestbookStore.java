@@ -121,8 +121,12 @@ public class GuestbookStore {
         row.put("username", username == null ? "" : username);
         row.put("nickname", nick);
         row.put("body", b);
+        String ch = normChannel(channel);
+        if ("merchant".equals(ch) && !hasChannel()) {
+            throw new IllegalStateException("系统未配置留言通道字段，无法保存");
+        }
         if (hasChannel()) {
-            row.put("channel", normChannel(channel));
+            row.put("channel", ch);
             mapper().insertWithChannel(row);
         } else {
             mapper().insert(row);
