@@ -60,7 +60,7 @@
 | **R-21** | P2 | `OrderStore.placeOrder`（三套） | 收货部分列有、部分丢且不回流 remark | 配送信息丢失 | 含键缺列硬失败 | **已齐** |
 | **R-22** | P2 | `OrderStore.advance` 发货（三套） | 填了单号缺列仍改 status | 单号假保存 | 含键缺列硬失败 | **已齐** |
 | **R-23** | P2 | `ArchiveStore.deleteItem`（三套） | soft-delete 开缺列走物理删 | 「下架」变真删 | 缺列硬失败 | **已齐** |
-| **R-24** | P2 | `NoticeStore.update(..., pinned)`（baseline） | 缺 pinned 仍改正文忽略置顶 | 置顶假保存 | 含 pinned 意图缺列硬失败 | **已齐** |
+| **R-24** | P2 | `NoticeStore.update(..., pinned)`（三套） | 缺 pinned 仍改正文忽略置顶；overlays 曾无置顶 API | 置顶假保存 / 切 persistence 编译断 | 含 pinned 意图缺列硬失败；overlays 对齐 | **已齐** |
 | **R-26** | P2 | `UserStore` register/saveProfile/adminUpdate（三套） | 非空 extras 缺 `profile_json` 仍成功 | 身份扩展校验过不落库 | 含非空 extras 缺列硬失败 | **已齐** |
 | **R-27** | P2 | `GuestbookStore.add`（三套） | 非默认 channel 缺列仍插入 | 多店通道不可分 | merchant 缺列硬失败 | **已齐** |
 
@@ -73,8 +73,7 @@
 **未升格（残差说明，勿开单）**  
 - `TicketStore.approve` 对 `assignee_username`：缺列则不绑定但仍通过——域模板几乎都有该列，风险低于已收口项。  
 - 前端支付密码 / README 形态校验、demoPay「不对接 SDK 仍扣余额」——已收口诚实说明。  
-- MessageStore / DDL ensure / 读侧缺列映射——按口径不算。  
-- overlays `NoticeStore` 无 `pinned` 入参 API——R-24 仅 baseline。
+- MessageStore / DDL ensure / 读侧缺列映射——按口径不算。
 
 ---
 
@@ -89,7 +88,7 @@
 | ArchiveStore | 图集等缺列硬失败；**软删缺列硬失败（R-23）**；成交单价硬解析 |
 | UserStore / ArchiveLogStore | extras / payload 序列化失败抛错；**非空 extras 须 profile_json（R-26）** |
 | VoteStore | 三套 avatar；有值缺列硬失败 |
-| NoticeStore / GuestbookStore | **置顶 / merchant channel 硬失败（R-24/R-27）** |
+| NoticeStore / GuestbookStore | **置顶三套对齐 + 含键硬失败（R-24）**；merchant channel（R-27） |
 | Recommend / AiAssistant | 只读回落 FAQ |
 
 ---
@@ -117,3 +116,4 @@
 | 2026-09-11 | 收口 R2 P1：R-17～R-20、R-25 |
 | 2026-09-11 | 收口 R2 P2：R-21～R-24、R-26～R-27（三套同源；R-24 仅 baseline） |
 | 2026-09-11 | 工厂侧沿 `fragments.ensure_*` 补列：vote `avatar_url`、softDelete→`deleted_at`、notice `pinned`、guestbook `channel` 收编 inject（不再平行 regex） |
+| 2026-09-11 | R-24 overlays：jpa/mybatis `NoticeStore` 对齐置顶 API（update/setPinned/读侧排序） |

@@ -15,15 +15,31 @@
         SELECT * FROM sys_notice ORDER BY id DESC
     </select>
 
+    <select id="selectAllOrderByPinnedDesc" resultType="map">
+        SELECT * FROM sys_notice ORDER BY pinned DESC, id DESC
+    </select>
+
     <select id="selectApprovedOrderByIdDesc" resultType="map">
         SELECT * FROM sys_notice
         WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')
         ORDER BY id DESC
     </select>
 
+    <select id="selectApprovedOrderByPinnedDesc" resultType="map">
+        SELECT * FROM sys_notice
+        WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')
+        ORDER BY pinned DESC, id DESC
+    </select>
+
     <select id="selectBySubmitterOrderByIdDesc" resultType="map">
         SELECT * FROM sys_notice
         WHERE submitter_username = #{submitter}
         ORDER BY id DESC
+    </select>
+
+    <select id="selectBySubmitterOrderByPinnedDesc" resultType="map">
+        SELECT * FROM sys_notice
+        WHERE submitter_username = #{submitter}
+        ORDER BY pinned DESC, id DESC
     </select>
 </mapper>

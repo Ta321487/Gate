@@ -32,6 +32,9 @@ public class NoticeEntity {
     @Column(name = "publisher_name")
     private String publisherName;
 
+    @Column(name = "pinned", nullable = false)
+    private boolean pinned;
+
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", insertable = false, updatable = false)
     private Date createdAt;
@@ -50,6 +53,8 @@ public class NoticeEntity {
     public void setPublisherUsername(String publisherUsername) { this.publisherUsername = publisherUsername; }
     public String getPublisherName() { return publisherName; }
     public void setPublisherName(String publisherName) { this.publisherName = publisherName; }
+    public boolean isPinned() { return pinned; }
+    public void setPinned(boolean pinned) { this.pinned = pinned; }
     public Date getCreatedAt() { return createdAt; }
     public Date getUpdatedAt() { return updatedAt; }
 }
