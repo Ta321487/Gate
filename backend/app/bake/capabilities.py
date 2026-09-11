@@ -57,12 +57,12 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "order_lines": {
         "label": "多明细履约",
         "status": "implemented",
-        "desc": "购物车 + 多明细订单（无真支付）",
+        "desc": "购物车 + 多明细订单（系统内余额/渠道密码；不对接商户 SDK）",
     },
     "wallet": {
         "label": "账户余额",
         "status": "implemented",
-        "desc": "用户余额字段+流水；管理端可充值；下单扣减（非真支付）",
+        "desc": "用户余额字段+流水；管理端可充值；下单扣减与退款回补（不对接微信支付宝商户）",
     },
     "points": {
         "label": "积分",
@@ -102,7 +102,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "ai_assistant": {
         "label": "AI智能助手",
         "status": "implemented",
-        "desc": "Spring AI + DeepSeek；FAQ + 只读接业务（商品/订单/借阅报修等现有 Store）；热门/满意度；演示级图片品类与浏览器播报",
+        "desc": "Spring AI + DeepSeek；FAQ + 只读接业务（商品/订单/借阅报修等现有 Store）；热门/满意度；图片按文件名/品类映射（非 CNN）与浏览器播报",
     },
     "dm": {
         "label": "一对一私信",
@@ -117,7 +117,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "coupon": {
         "label": "优惠券",
         "status": "implemented",
-        "desc": "券模板领取/我的券/下单核销/过期扫标（非真支付）",
+        "desc": "券模板领取/我的券/下单核销/过期扫标（抵扣账户应付；不对接商户 SDK）",
     },
     "flash_price": {
         "label": "限时购",
@@ -217,7 +217,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "seat_select": {
         "label": "影院选座购票",
         "status": "implemented",
-        "desc": "场次座位图占座+订单（C-15；挂 DOM-CINEMA；演示级，无真锁座高并发；≠点播≠场地预约）",
+        "desc": "场次座位图占座+订单（C-15；挂 DOM-CINEMA；毕设级占座，无高并发锁座；≠点播≠场地预约）",
     },
     "multi_approve": {
         "label": "多级会签（≤3级）",

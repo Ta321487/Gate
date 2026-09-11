@@ -15,7 +15,7 @@ _STUDENT_SCAN_DIRS = (
 # 与 domain_schema 清洗 / refresh 共用：演示口吻也算学生可见脏文案
 DEMO_VISIBLE_RE = re.compile(
     r"[「『\"']演示[」』\"']|>演示<|演示数据|演示账号|演示密码|演示余额|"
-    r"演示通行|本期演示|演示库|本地签章演示|演示支付|演示物流"
+    r"演示通行|本期演示|演示库|本地签章演示|演示支付|演示物流|演示收银台"
 )
 _DEMO_VISIBLE = DEMO_VISIBLE_RE
 _SKIP_SCAN = frozenset({"node_modules", "target", ".git"})

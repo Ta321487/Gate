@@ -266,7 +266,8 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         self.assertRegex(sql, r"biz_order[\s\S]*?'confirmed'")
         self.assertRegex(sql, r"biz_order[\s\S]*?'shipped'")
         # 可发货演示单存在；待付款仅作兜底
-        self.assertIn("演示待付款", sql)
+        self.assertIn("待付款（可去付款）", sql)
+        self.assertNotIn("演示待付款", sql)
 
     def test_student_pack_exposes_shop_name_and_pay(self) -> None:
         root = Path(__file__).resolve().parents[2] / "skeletons" / "baseline"

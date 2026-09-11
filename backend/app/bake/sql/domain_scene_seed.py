@@ -1912,7 +1912,7 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='金秋苹果�
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'confirmed', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
 (2, 'user', 'completed', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(3, 'user', 'pending', 8.50, '演示待付款（可去付款）。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
+(3, 'user', 'pending', 8.50, '待付款（可去付款）。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
 (4, 'user', 'shipped', 68.00, '大米已发出。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '红富士苹果', 39.90, 1),
@@ -1966,7 +1966,7 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业')
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
 (1, 'user', 'confirmed', 29.90, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
 (2, 'user', 'shipped', 59.00, '保温杯已发出。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(3, 'user', 'pending', 19.90, '演示待付款。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(3, 'user', 'pending', 19.90, '待付款。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '日用收纳盒', 29.90, 1),
 (2, 2, 3, '保温杯 500ml', 59.00, 1),

@@ -179,7 +179,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             base = Path(td) / "sk_root" / "baseline" / "frontend" / "src" / "views" / "user"
             base.mkdir(parents=True)
             (base / "MyOrders.vue").write_text(
-                '<el-input placeholder="支付密码，任意不少于 4 位" />\n',
+                '<el-input placeholder="请输入支付密码（至少 4 位）" />\n',
                 encoding="utf-8",
             )
             with patch(
