@@ -66,17 +66,22 @@ class SlotServiceRatingTests(unittest.TestCase):
         self.assertIn("/reservations/{id}/rate", ctrl)
         self.assertIn("SlotStore.rate", ctrl)
 
-        binder = (
-            BASELINE / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
-        ).read_text(encoding="utf-8")
-        self.assertIn("slot-allow-rating", binder)
-        self.assertIn("configureRating", binder)
+        for label, root in (
+            ("baseline", BASELINE),
+            ("mybatis", ROOT / "skeletons" / "overlays" / "persistence-mybatis"),
+            ("jpa", ROOT / "skeletons" / "overlays" / "persistence-jpa"),
+        ):
+            binder = (
+                root / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("slot-allow-rating", binder, label)
+            self.assertIn("configureRating", binder, label)
 
-        store = (
-            BASELINE / "backend/src/main/java/com/thesis/capability/SlotStore.java"
-        ).read_text(encoding="utf-8")
-        self.assertIn("configureRating", store)
-        self.assertIn("public static Map<String, Object> rate(", store)
+            store = (
+                root / "backend/src/main/java/com/thesis/capability/SlotStore.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("configureRating", store, label)
+            self.assertIn("public static Map<String, Object> rate(", store, label)
 
         mine = (BASELINE / "frontend/src/views/user/MyReservations.vue").read_text(
             encoding="utf-8"

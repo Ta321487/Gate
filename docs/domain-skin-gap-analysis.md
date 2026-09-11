@@ -244,19 +244,19 @@
 | C-03 | 问卷调研 / 简易量表 | EVENT out_of_mvp | **DOM-SURVEY** + `survey`：问卷配置、填写、回收列表、选项计数统计（`test_survey_c03`） | 已齐 |
 | C-04 | 投票评选（十佳、选票） | ACTIVITY 仅报名 | **DOM-VOTE** + `vote`：候选档案、一票/限票、结果公示（`test_vote_c04`）；投票+报名复合仍见 C-11 | 已齐 |
 | C-05 | 互选确认引擎（双选） | 无 | `mutual_select`/`peerAccept`：档案确认人接受/婉拒 + 管理调剂；供 P-09～P-11 | 已齐 |
-| C-06 | 评分评价引擎（评教） | 无 | 维度分 + 评语 + 是否匿名演示；供 P-14 | 已齐 |
+| C-06 | 评分评价引擎（评教） | 无 | 维度分 + 评语 + 是否匿名；供 P-14 | 已齐 |
 | C-07 | 仪器机时（借+约一体） | 交叉话术不稳 | **DOM-INSTRUMENT** + `instrument_slot`：archive+ticket_flow+slot_reserve；门禁并集；主 CTA 约机时 | 已齐 |
 | C-08 | 床位分配（库存床位） | DORM 仅报修 | 床位库存/占用状态 + 申请单；供 P-20/P-21（`DOM-BED`+`bed_occupy`/`quota`；stock 扣至 0 同步 stage=已分配） | 已齐 |
-| C-09 | 访客通行码（演示码） | 无硬件 | `pass_code`/`issuePassCode`：审过签发演示通行码字符串；供 P-17 | 已齐 |
+| C-09 | 访客通行码 | 无硬件 | `pass_code`/`issuePassCode`：审过签发通行码字符串；供 P-17 | 已齐 |
 | C-10 | 打卡签到（口令/列表，非人脸 GPS） | ACTIVITY 部分有 | 通用 `checkin` 能力挂 ACTIVITY/CHECKIN；CHECKIN=`autoApprove=false` 登记→审→口令；结束未签记缺勤/爽约（`test_checkin_c10`） | 已齐 |
 | C-11 | 投票+报名复合 | — | ACTIVITY 开题同时写报名+投票 → 挂 `vote` + 注入选票表（`test_vote_signup_c11`）；纯投票仍 DOM-VOTE | 已齐 |
-| C-12 | 简易知识库/文库下载台账 | BLOG / LIBRARY | **DOM-DOCLIB** + `doclib`：资料附件、演示权限、下载台账（`test_doclib_c12`）；≠借阅≠博客 | 已齐 |
+| C-12 | 简易知识库/文库下载台账 | BLOG / LIBRARY | **DOM-DOCLIB** + `doclib`：资料附件、权限、下载台账（`test_doclib_c12`）；≠借阅≠博客 | 已齐 |
 | C-13 | 拼车/结伴信息对接 | DATING / ACTIVITY | **DOM-CARPOOL**：用户发行程 + 同行意向 + 车主确认（`test_carpool_c13`）；≠婚恋≠搭子≠报名；无地图 | 已齐 |
 | C-14 | 时间银行/志愿时长账户 | ACTIVITY | **DOM-TIMEBANK** + `timebank`：账户余额、流水加减、核销审核扣减（`test_timebank_c14`）；≠劳动认定≠活动报名 | 已齐 |
 | C-15 | 选座购票（影院级） | MEDIA out_of_mvp | **DOM-CINEMA** + `seat_select`：场次座位图占座+订单（`test_cinema_c15`）；≠点播≠场地预约≠报名领票 | 已齐 |
-| C-16 | 多级会签（≤3 级演示） | 单级审 | **`multi_approve`**：固定 pending→pending_mid→pending_final→approved（`test_multi_approve_c16`）；开题写三级才挂；≠任意流程图 | 已齐 |
-| C-17 | 进销存浅演示（入出存） | ASSET 仅申领 | **`stock_io`** 挂 DOM-ASSET：入库/出库登记+流水，复用 `stock`（`test_stock_io_c17`）；RFID/多仓ERP 仍硬边界 | 已齐 |
-| C-18 | 电子签演示（本地签章图） | INTERN 三方签 out | **`e_sign`** 挂 DOM-INTERN：上传签章图+勾选同意留痕（`test_e_sign_c18`）；CA/法大大仍硬边界 | 已齐 |
+| C-16 | 多级会签（≤3 级） | 单级审 | **`multi_approve`**：固定 pending→pending_mid→pending_final→approved（`test_multi_approve_c16`）；开题写三级才挂；≠任意流程图 | 已齐 |
+| C-17 | 进销存浅层（入出存） | ASSET 仅申领 | **`stock_io`** 挂 DOM-ASSET：入库/出库登记+流水，复用 `stock`（`test_stock_io_c17`）；RFID/多仓ERP 仍硬边界 | 已齐 |
+| C-18 | 电子签（本地签章图） | INTERN 三方签 out | **`e_sign`** 挂 DOM-INTERN：上传签章图+勾选同意留痕（`test_e_sign_c18`）；CA/法大大仍硬边界 | 已齐 |
 
 ### 5.1 新能力交付清单（每个 `C-*`）
 
@@ -299,7 +299,7 @@
 | 边界 | 说明 |
 |------|------|
 | 人脸 / 指纹 / 闸机硬件 | L3 |
-| 真微信支付 / 支付宝对接 | L3；演示支付可留 |
+| 真微信支付 / 支付宝对接 | L3；系统内余额+渠道密码可留（不对接商户 SDK） |
 | 小程序 / iOS / Android 原生 | L3 |
 | 物联网传感器 / 真门禁开锁 | L3 |
 | GPS 轨迹考勤 / 社区矫正定位 | L3 |
@@ -308,7 +308,7 @@
 | 智慧校园 N 合一 / 三主路径以上 | 现网 Path B 拒绝 |
 | 硕博真实全流程业务系统 | 接题边界 |
 
-演示级替代已在 §5（如 C-09 演示码、C-18 签章图、C-17 浅库存），不得用硬边界当借口推迟 §3～§5。
+系统内替代已在 §5（如 C-09 通行码、C-18 签章图、C-17 浅库存），不得用硬边界当借口推迟 §3～§5。
 
 ---
 

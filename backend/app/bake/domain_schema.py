@@ -743,7 +743,7 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmMerchantPeerPlaceholder": "选择买家账号",
     "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
     "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
-    "demoPayHint": "在线支付：选择支付宝或微信并输入支付密码完成本单。",
+    "demoPayHint": "选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "messagesPageLead": "审核结果与系统通知。",

@@ -22,7 +22,11 @@ class CopyH22Tests(unittest.TestCase):
     def test_cart_pay_password_placeholder(self) -> None:
         cart = (BASELINE / "frontend/src/views/user/Cart.vue").read_text(encoding="utf-8")
         self.assertNotIn("演示密码", cart)
-        self.assertIn("支付密码，任意不少于 4 位", cart)
+        self.assertNotIn("演示收银台", cart)
+        self.assertNotIn("演示支付", cart)
+        self.assertIn("请输入支付密码（至少 4 位）", cart)
+        self.assertNotIn("任意", cart)
+        self.assertIn("仍扣", cart)
 
     def test_grade_notice_no_demo_lib(self) -> None:
         sql = (
@@ -41,6 +45,7 @@ class CopyH22Tests(unittest.TestCase):
             "本地签章演示",
             "演示支付",
             "演示物流",
+            "演示收银台",
             "演示数据",
             "演示账号",
         ):
