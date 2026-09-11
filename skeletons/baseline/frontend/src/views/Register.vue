@@ -63,7 +63,13 @@
             <span class="lab">验证码<i class="req" aria-hidden="true">*</i></span>
             <div class="captcha-row">
               <el-input v-model="form.captcha" placeholder="验证码" maxlength="4" />
-              <button type="button" class="captcha-btn" title="点击刷新" @click="loadCaptcha">
+              <button
+                type="button"
+                class="captcha-btn"
+                :class="{ spinning: captchaSpin }"
+                title="点击刷新"
+                @click="loadCaptcha"
+              >
                 <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
                 <span v-else>加载中</span>
               </button>
@@ -130,6 +136,7 @@ const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
 const captchaImg = ref('')
+const captchaSpin = ref(false)
 const loading = ref(false)
 const step = ref(1)
 const shopMarketplace = ref(false)
@@ -184,8 +191,13 @@ const watermark = computed(() => {
 })
 
 async function loadCaptcha() {
-  const res = await http.get('/api/auth/captcha')
-  captchaImg.value = res.data.image
+  captchaSpin.value = true
+  try {
+    const res = await http.get('/api/auth/captcha')
+    captchaImg.value = res.data.image
+  } finally {
+    setTimeout(() => { captchaSpin.value = false }, 280)
+  }
 }
 
 function goStep(n) {
@@ -377,6 +389,11 @@ onMounted(async () => {
   height: 30px;
   object-fit: cover;
   display: block;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.captcha-btn.spinning img {
+  transform: rotate(12deg) scale(0.92);
+  opacity: 0.55;
 }
 .actions {
   display: flex;

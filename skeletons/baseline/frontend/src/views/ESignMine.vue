@@ -23,6 +23,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" :loading="saving" @click="submit">提交签署</el-button>
+        <span v-if="justSigned" class="sign-ok"><span class="tick">✓</span>签署完成</span>
       </el-form-item>
     </el-form>
 
@@ -67,6 +68,7 @@ const total = ref(0)
 const page = ref(1)
 const size = 10
 const saving = ref(false)
+const justSigned = ref(false)
 const form = reactive({
   title: '实习鉴定确认',
   ticketId: 0,
@@ -103,6 +105,8 @@ async function submit() {
       agreed: form.agreed,
     })
     ElMessage.success('签署已留痕')
+    justSigned.value = true
+    setTimeout(() => { justSigned.value = false }, 3200)
     form.signImageUrl = ''
     form.agreed = false
     form.remark = ''

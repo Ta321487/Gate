@@ -27,6 +27,17 @@
       <div class="who">
         <div class="nick">{{ displayName }}</div>
         <div class="uid">@{{ form.username }}</div>
+        <div v-if="form.profileEditable" class="complete">
+          <div class="complete-row">
+            <span>资料完善度</span>
+            <strong>{{ profileCompletePct }}%</strong>
+          </div>
+          <el-progress :percentage="profileCompletePct" :stroke-width="8" :show-text="false" />
+          <p v-if="profileMissingLabels.length" class="complete-hint">
+            待完善：{{ profileMissingLabels.slice(0, 4).join('、') }}
+            <template v-if="profileMissingLabels.length > 4">等</template>
+          </p>
+        </div>
       </div>
     </section>
 
@@ -38,6 +49,29 @@
         <div v-if="pointsOn"><span class="k">积分</span><strong>{{ loyalty.points || 0 }}</strong></div>
         <div v-if="tierOn"><span class="k">会员</span><strong>{{ loyalty.memberTierLabel || '—' }}</strong></div>
         <div v-if="tierOn"><span class="k">累计消费</span><strong>¥{{ Number(loyalty.spendTotalYuan || 0).toFixed(2) }}</strong></div>
+      </div>
+      <div
+        v-if="tierOn"
+        class="tier-bar"
+        :class="`tone-${memberTierTone(loyalty.memberTierLabel || loyalty.memberTier)}`"
+        :title="loyalty.memberTierLabel || ''"
+      >
+        <i :style="{ width: tierBarWidth }" />
+      </div>
+      <div v-if="pointsOn && pointsLedger.length" class="points-mini">
+        <div class="points-mini-hd">
+          <span>积分流水</span>
+          <el-button link type="primary" size="small" @click="loadPointsLedger">刷新</el-button>
+        </div>
+        <ul>
+          <li v-for="row in pointsLedger" :key="row.id">
+            <span :class="{ plus: Number(row.delta) > 0, minus: Number(row.delta) < 0 }">
+              {{ Number(row.delta) > 0 ? '+' : '' }}{{ row.delta }}
+            </span>
+            <span class="reason">{{ row.reason || row.kind || '—' }}</span>
+            <time>{{ row.createdAt || '' }}</time>
+          </li>
+        </ul>
       </div>
       <div v-if="walletOn" class="recharge-row">
         <el-button type="primary" plain size="small" @click="openRecharge">充值</el-button>
@@ -205,6 +239,7 @@ import {
   isProfileFieldVisible,
 } from '../utils/profileValidate.js'
 import { clearAuthStorage, loginPathForRole, syncProfileDisplay } from '../utils/session.js'
+import { memberTierTone } from '../utils/statusTone.js'
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
@@ -214,6 +249,7 @@ const WIDE_KEYS = new Set([
 const router = useRouter()
 const saving = ref(false)
 const loyalty = ref(null)
+const pointsLedger = ref([])
 const rechargeVisible = ref(false)
 const recharging = ref(false)
 const rechargeTiers = [50, 100, 200, 500]
@@ -262,6 +298,46 @@ const displayName = computed(() =>
   form.extras?.realName || form.nickname || form.username || '未设置姓名',
 )
 
+const profileChecklist = computed(() => {
+  const items = []
+  items.push({
+    label: '昵称',
+    ok: !!String(form.nickname || '').trim(),
+  })
+  items.push({
+    label: '头像',
+    ok: !!String(form.avatarUrl || '').trim(),
+  })
+  for (const f of allFields.value) {
+    if (!isProfileFieldVisible(f, form.extras)) continue
+    if (!f.required && !isProfileFieldRequired(f, form.extras)) continue
+    let ok = false
+    if (f.storage === 'phone') ok = !!String(form.phone || '').trim()
+    else ok = !!String(form.extras?.[f.key] || '').trim()
+    items.push({ label: f.label || f.key, ok })
+  }
+  return items
+})
+
+const profileCompletePct = computed(() => {
+  const items = profileChecklist.value
+  if (!items.length) return 100
+  const ok = items.filter((x) => x.ok).length
+  return Math.round((ok / items.length) * 100)
+})
+
+const profileMissingLabels = computed(() =>
+  profileChecklist.value.filter((x) => !x.ok).map((x) => x.label),
+)
+
+const tierBarWidth = computed(() => {
+  const tone = memberTierTone(loyalty.value?.memberTierLabel || loyalty.value?.memberTier)
+  if (tone === 'ok') return '100%'
+  if (tone === 'progress') return '72%'
+  if (tone === 'warn') return '48%'
+  return '28%'
+})
+
 function isWideField(f) {
   return !!(f && (WIDE_KEYS.has(f.key) || (f.maxLength && f.maxLength >= 100)))
 }
@@ -303,6 +379,21 @@ async function doRecharge() {
   }
 }
 
+async function loadPointsLedger() {
+  if (!pointsOn.value || !showBuyerLoyalty.value) {
+    pointsLedger.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/loyalty/ledger', { params: { limit: 8 } })
+    const raw = res.data || []
+    const rows = Array.isArray(raw) ? raw : []
+    pointsLedger.value = rows.filter((x) => String(x.kind || '') === 'points').slice(0, 5)
+  } catch {
+    pointsLedger.value = []
+  }
+}
+
 async function load() {
   const res = await http.get('/api/profile')
   const data = res.data || {}
@@ -320,11 +411,14 @@ async function load() {
     try {
       const loy = await http.get('/api/loyalty/me')
       loyalty.value = loy.data || null
+      await loadPointsLedger()
     } catch {
       loyalty.value = null
+      pointsLedger.value = []
     }
   } else {
     loyalty.value = null
+    pointsLedger.value = []
   }
 }
 
@@ -504,6 +598,22 @@ onMounted(load)
   font-size: 13px;
   color: var(--portal-muted, #6b7c8a);
 }
+.complete {
+  margin-top: 12px;
+  max-width: 280px;
+}
+.complete-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--portal-muted, #64748b);
+  margin-bottom: 4px;
+}
+.complete-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #b45309;
+}
 .loy-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -528,6 +638,40 @@ onMounted(load)
   margin: 0 0 0 10px;
   display: inline;
 }
+.points-mini {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--portal-line, #e2e8f0);
+}
+.points-mini-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.points-mini ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.points-mini li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0;
+  color: var(--portal-muted, #64748b);
+}
+.points-mini .plus { color: #059669; font-weight: 600; }
+.points-mini .minus { color: #dc2626; font-weight: 600; }
+.points-mini .reason {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.points-mini time { color: var(--portal-muted, #94a3b8); }
 .recharge-row {
   margin-top: 12px;
   display: flex;

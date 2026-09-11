@@ -35,8 +35,10 @@
     <p v-if="countOn && form.moveType === 'count'" class="hint">{{ countHint }}</p>
     <el-table :data="list" stripe>
       <el-table-column prop="createdAt" label="时间" width="180" />
-      <el-table-column prop="moveType" label="类型" width="80">
-        <template #default="{ row }">{{ typeLabel(row.moveType) }}</template>
+      <el-table-column prop="moveType" label="类型" width="100">
+        <template #default="{ row }">
+          <StatusChip :tone="stockMoveTone(row.moveType)" :label="typeLabel(row.moveType)" />
+        </template>
       </el-table-column>
       <el-table-column prop="itemId" label="物资ID" width="90" />
       <el-table-column prop="itemTitle" label="物资" min-width="140" />
@@ -60,7 +62,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import StatusChip from '../../components/StatusChip.vue'
 import { getSchema, hasCap } from '../../utils/domainSchema.js'
+import { stockMoveTone } from '../../utils/statusTone.js'
 
 const scrapOn = computed(() => hasCap('stock_scrap'))
 const countOn = computed(() => hasCap('stock_count'))

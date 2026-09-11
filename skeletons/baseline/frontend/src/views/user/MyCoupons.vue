@@ -25,7 +25,9 @@
         </p>
         <el-button size="small" type="primary" @click="claim(row)">领取</el-button>
       </article>
-      <div v-if="!templates.length" class="empty">暂无可领券</div>
+      <div v-if="!templates.length">
+        <EmptyHint title="暂无可领券" desc="有新券时会出现在这里。" mark="券" />
+      </div>
     </template>
 
     <template v-else>
@@ -35,7 +37,7 @@
         <el-radio-button label="used">已使用</el-radio-button>
         <el-radio-button label="expired">已过期</el-radio-button>
       </el-radio-group>
-      <article v-for="row in list" :key="row.id" class="card">
+      <article v-for="row in list" :key="row.id" class="card coupon-card">
         <div class="hd">
           <strong>{{ row.label || row.code }}</strong>
           <el-tag size="small" effect="plain">{{ statusLabel(row.status) }}</el-tag>
@@ -43,10 +45,15 @@
         <p class="sub">
           {{ row.code }} · 满 ¥{{ Number(row.minYuan || 0).toFixed(0) }} 减 ¥{{ Number(row.offYuan || 0).toFixed(0) }}
           <template v-if="row.expireAt"> · 至 {{ row.expireAt }}</template>
+          <span
+            v-if="row.status === 'unused' && couponCountdownText(row)"
+            class="flash-cd"
+            :class="{ 'cd-urgent': isUrgentCountdown(couponSecondsLeft(row), 86400) }"
+          > · {{ couponCountdownText(row) }}</span>
         </p>
         <p v-if="row.usedAt" class="sub">使用于 {{ row.usedAt }}<template v-if="row.orderId"> · 订单 #{{ row.orderId }}</template></p>
       </article>
-      <div v-if="!list.length" class="empty">暂无优惠券</div>
+      <EmptyHint v-if="!list.length" title="暂无优惠券" desc="可先到「可领取」页领一张。" mark="券" />
       <div class="pager">
         <el-pagination
           v-model:current-page="page"
@@ -66,8 +73,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
 import { schemaLabels } from '../../utils/domainSchema.js'
+import {
+  formatCountdownClock,
+  isUrgentCountdown,
+  secondsUntil,
+  useNowTick,
+} from '../../utils/useCountdown.js'
 
+const { nowMs } = useNowTick()
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.couponsPageTitle || '优惠券')
 const pageLead = computed(
@@ -84,6 +99,19 @@ const status = ref('')
 
 function statusLabel(st) {
   return ({ unused: '未使用', used: '已使用', expired: '已过期' }[st] || st)
+}
+
+function couponSecondsLeft(row) {
+  if (!row?.expireAt) return null
+  return secondsUntil(row.expireAt, nowMs.value)
+}
+
+function couponCountdownText(row) {
+  const sec = couponSecondsLeft(row)
+  if (sec == null) return ''
+  if (sec <= 0) return '已过期'
+  if (sec < 86400) return `剩 ${formatCountdownClock(sec)}`
+  return `剩 ${Math.ceil(sec / 86400)} 天`
 }
 
 async function loadTemplates() {
@@ -132,8 +160,15 @@ onMounted(() => {
   padding: var(--portal-pad, 14px) 16px;
   margin-bottom: var(--portal-gap, 12px);
 }
+.coupon-card {
+  border-left: 4px dashed color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #e2e8f0));
+  background:
+    radial-gradient(circle at left center, transparent 6px, var(--portal-surface, #fff) 7px) left / 14px 100% no-repeat,
+    var(--portal-surface, #fff);
+}
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .sub { margin: 6px 0 10px; color: var(--portal-muted, #64748b); font-size: 12px; }
+.flash-cd { font-weight: 600; color: #b45309; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

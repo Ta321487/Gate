@@ -6,6 +6,13 @@
         <el-option v-for="f in forms" :key="f.id" :label="f.title" :value="f.id" />
       </el-select>
     </div>
+    <div v-if="formId" class="recycle card block">
+      <div class="recycle-hd">
+        <span>已回收 {{ responses.length }} 份</span>
+        <span class="muted">目标 {{ recycleGoal }} 份</span>
+      </div>
+      <el-progress :percentage="recyclePct" :stroke-width="10" />
+    </div>
     <el-table :data="responses" stripe class="mb">
       <el-table-column prop="username" label="填写人" width="140" />
       <el-table-column prop="submittedAt" label="提交时间" />
@@ -21,13 +28,22 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
 
 const forms = ref([])
 const formId = ref(null)
 const responses = ref([])
 const stats = ref([])
+
+const recycleGoal = computed(() => {
+  const f = forms.value.find((x) => x.id === formId.value)
+  const n = Number(f?.targetCount || f?.goalCount || f?.stock || 0)
+  return Number.isFinite(n) && n > 0 ? n : 20
+})
+const recyclePct = computed(() =>
+  Math.min(100, Math.round((responses.value.length / recycleGoal.value) * 100)),
+)
 
 async function loadForms() {
   const res = await http.get('/api/survey/forms')
@@ -56,4 +72,10 @@ onMounted(loadForms)
 .mb { margin-bottom: 1rem; }
 .block { padding: 1rem; margin-bottom: 0.75rem; }
 .muted { color: var(--el-text-color-secondary); }
+.recycle-hd {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
 </style>

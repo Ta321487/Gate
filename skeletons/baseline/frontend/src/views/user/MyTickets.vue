@@ -18,7 +18,12 @@
     </section>
 
     <div class="list">
-      <article v-for="row in list" :key="row.id" class="card">
+      <article
+        v-for="row in list"
+        :key="row.id"
+        class="card"
+        :class="{ 'imm-overdue': row.status === 'overdue' }"
+      >
         <div class="mark">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
@@ -29,6 +34,11 @@
             <template v-if="allowRenew && row.renewCount"> · 已续借 {{ row.renewCount }} 次</template>
             <template v-if="row.holdExpireAt && (row.status === 'hold_ready' || row.status === 'held')">
               · 取书截止 {{ row.holdExpireAt }}
+              <span
+                v-if="holdCountdownText(row)"
+                class="hold-cd"
+                :class="{ 'cd-urgent': isUrgentCountdown(holdSecondsLeft(row), 3600) }"
+              >（{{ holdCountdownText(row) }}）</span>
             </template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
@@ -47,8 +57,18 @@
             <template v-else>{{ row.remark }}</template>
           </div>
           <div class="row">
+            <StatusChip :tone="ticketTone(row.status)" compact />
             <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row) }}</el-tag>
-            <span v-if="row.status === 'overdue' && row.remindMsg" class="rated">{{ row.remindMsg }}</span>
+            <ImmSteps
+              v-if="multiApproveOn && isMultiApproveStatus(row.status)"
+              :steps="multiApproveSteps(row.status)"
+              aria-label="审批进度"
+            />
+            <template v-if="row.status === 'waitlisted'">
+              <span v-if="row.waitlistRank || row.waitlistPos || row.queueNo" class="rated">
+                候补第 {{ row.waitlistRank || row.waitlistPos || row.queueNo }} 位
+              </span>
+            </template>
             <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
             <el-button
               v-if="canWithdraw(row)"
@@ -112,6 +132,7 @@
           </p>
           <p v-if="row.passCode" class="sub pass-code">
             {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
+            <el-button link type="primary" size="small" @click="copyPass(row.passCode)">复制</el-button>
             <span class="muted">到访时出示即可</span>
             <CodeQrBlock v-if="codeQrOn" :code="row.passCode" :label="passCodeLabel" />
           </p>
@@ -304,6 +325,8 @@
 
 <script setup>
 import CodeQrBlock from '../../components/CodeQrBlock.vue'
+import ImmSteps from '../../components/ImmSteps.vue'
+import StatusChip from '../../components/StatusChip.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
@@ -335,8 +358,21 @@ import {
   ownerTokenFromProfile,
   profileSiteRoomFromExtras,
 } from '../../utils/profileRoomMatch.js'
+import {
+  formatCountdownClock,
+  isUrgentCountdown,
+  secondsUntil,
+  useNowTick,
+} from '../../utils/useCountdown.js'
+import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/statusTone.js'
 
+const { nowMs } = useNowTick()
 const ticket = ticketCopy()
+const multiApproveOn = computed(() => hasCap('multi_approve'))
+
+function isMultiApproveStatus(st) {
+  return ['pending', 'pending_mid', 'pending_final', 'approved'].includes(st)
+}
 const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
@@ -518,19 +554,30 @@ function statusText(rowOrStatus) {
   return ticketStatusLabel(s, states.value[s] || s)
 }
 function tagType(s) {
-  return ({
-    pending: 'warning',
-    pending_mid: 'info',
-    pending_final: '',
-    waitlisted: 'warning',
-    held: 'warning',
-    hold_ready: 'success',
-    approved: 'success',
-    rejected: 'danger',
-    cancelled: 'info',
-    returned: 'info',
-    overdue: 'danger',
-  })[s] || 'info'
+  return ticketTagType(s)
+}
+
+function holdSecondsLeft(row) {
+  if (!row?.holdExpireAt) return null
+  return secondsUntil(row.holdExpireAt, nowMs.value)
+}
+
+function holdCountdownText(row) {
+  const sec = holdSecondsLeft(row)
+  if (sec == null) return ''
+  if (sec <= 0) return '已过期'
+  return `剩 ${formatCountdownClock(sec)}`
+}
+
+async function copyPass(code) {
+  const text = String(code || '').trim()
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制')
+  } catch {
+    ElMessage.info(text)
+  }
 }
 
 function canCheckin(row) {
@@ -842,8 +889,13 @@ async function renew(row) {
     `确认对「${row.title || ('编号 ' + row.id)}」${renewVerb.value}？当前已续 ${used}/${maxRenew.value} 次。`,
     renewVerb.value,
   )
-  await http.post(`/api/tickets/${row.id}/renew`)
-  ElMessage.success(labels.value.renewOkMessage || '续借成功，应还日已延长')
+  const res = await http.post(`/api/tickets/${row.id}/renew`)
+  const due = res.data?.dueAt || res.data?.data?.dueAt
+  ElMessage.success(
+    due
+      ? `续借成功，新应还日 ${due}`
+      : (labels.value.renewOkMessage || '续借成功，应还日已延长'),
+  )
   load()
 }
 
@@ -878,7 +930,7 @@ async function submitCheckin() {
   checkinLoading.value = true
   try {
     await http.post(`/api/tickets/${checkinRow.value.id}/checkin`, { code: checkinCode.value.trim() })
-    ElMessage.success('签到成功')
+    ElMessage.success({ message: '签到成功 ✓', duration: 2000 })
     checkinVisible.value = false
     load()
   } finally {

@@ -31,7 +31,8 @@
             v-for="ev in eventsAt(d.key, slot)"
             :key="ev.id"
             type="button"
-            class="ev"
+            class="ev week-ev"
+            :class="`tone-${ticketTone(ev.status)}`"
             @click="open(ev)"
           >{{ ev.title }}</button>
         </div>
@@ -54,6 +55,7 @@
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
 import { ticketCopy } from '../../utils/domainSchema.js'
+import { ticketTone } from '../../utils/statusTone.js'
 
 const ticket = ticketCopy()
 const title = computed(() => ticket.weekCalendarLabel || '我的日程')

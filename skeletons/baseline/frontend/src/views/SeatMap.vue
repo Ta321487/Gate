@@ -66,9 +66,9 @@ const total = computed(() => {
 })
 
 function seatClass(seat) {
-  if (picked.value.includes(seat.seatCode)) return 'pick'
-  if (seat.status === 'sold') return 'sold'
-  return 'free'
+  if (picked.value.includes(seat.seatCode)) return 'seat-cell pick picked'
+  if (seat.status === 'sold') return 'seat-cell sold'
+  return 'seat-cell free'
 }
 
 function toggle(seat) {
@@ -147,7 +147,18 @@ onMounted(load)
   padding: 0;
 }
 .seat.free:hover { border-color: var(--el-color-primary); }
-.seat.pick { background: var(--el-color-primary); color: #fff; border-color: var(--el-color-primary); }
+.seat.pick {
+  background: var(--el-color-primary);
+  color: #fff;
+  border-color: var(--el-color-primary);
+  animation: seat-pick-pop 0.28s ease;
+  transform: scale(1.06);
+}
+@keyframes seat-pick-pop {
+  0% { transform: scale(0.86); }
+  70% { transform: scale(1.12); }
+  100% { transform: scale(1.06); }
+}
 .seat.sold { background: var(--el-fill-color-dark); color: var(--el-text-color-placeholder); cursor: not-allowed; }
 .legend { display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem; align-items: center; }
 .dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; }

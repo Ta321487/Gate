@@ -13,18 +13,29 @@
       </el-select>
     </section>
 
-    <article v-for="row in list" :key="row.id" class="card">
+    <PageSkeleton v-if="loading" variant="list" :rows="4" />
+    <template v-else>
+    <article
+      v-for="row in list"
+      :key="row.id"
+      class="card"
+    >
       <div class="hd">
-        <strong>{{ orderNoun }} #{{ row.id }}</strong>
+        <strong class="hd-title">
+          <StatusChip :tone="orderTone(row.status)" compact />
+          {{ orderNoun }} #{{ row.id }}
+        </strong>
         <el-tag size="small" effect="plain">{{ displayStatus(row) }}</el-tag>
       </div>
+      <ImmSteps v-if="row.status !== 'cancelled'" :steps="orderProgressSteps(row.status, { marketplace })" />
       <p class="sub">
-        {{ row.createdAt }} · 合计 ¥{{ row.totalYuan }}
+        <span :title="row.createdAt || ''">{{ formatRelative(row.createdAt) }}</span>
+        · 合计 ¥{{ row.totalYuan }}
         <template v-if="Number(row.discountYuan) > 0"> · 优惠 ¥{{ row.discountYuan }}</template>
         <template v-if="row.couponCode"> · 券 {{ row.couponCode }}</template>
         <template v-if="Number(row.pointsEarned) > 0"> · 获积分 {{ row.pointsEarned }}</template>
       </p>
-      <p v-if="payCountdownText(row)" class="pay-cd" :class="{ urgent: paySecondsLeft(row) <= 60 }">
+      <p v-if="payCountdownText(row)" class="pay-cd" :class="{ urgent: isUrgentCountdown(paySecondsLeft(row)) }">
         {{ payCountdownText(row) }}
       </p>
       <p v-if="row.refundStatus" class="sub refund">
@@ -43,7 +54,10 @@
           <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
           <template v-if="isFood && row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
           <template v-if="!isFood && row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
-          <template v-if="isFood && row.pickupCode"><br />取餐码：{{ row.pickupCode }}</template>
+          <template v-if="isFood && row.pickupCode">
+            <br />取餐码：{{ row.pickupCode }}
+            <CodeQrBlock :code="row.pickupCode" label="取餐码" />
+          </template>
           <template v-if="row.remark"><br />备注：{{ row.remark }}</template>
         </template>
       </p>
@@ -81,7 +95,14 @@
         >取消</el-button>
       </div>
     </article>
-    <div v-if="!list.length" class="empty">暂无{{ orderNoun }}</div>
+    <EmptyHint
+      v-if="!list.length"
+      :title="`暂无${orderNoun}`"
+      desc="去逛逛，把心仪商品加进购物车吧。"
+      mark="单"
+      cta-label="去浏览"
+      @cta="$router.push('/archive')"
+    />
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -94,6 +115,7 @@
         @size-change="load"
       />
     </div>
+    </template>
 
     <OrderTraceDialog v-model="traceVisible" :order-id="traceOrderId" />
 
@@ -112,7 +134,7 @@
             type="password"
             show-password
             maxlength="32"
-            placeholder="支付密码，任意不少于 4 位"
+            placeholder="请输入支付密码（至少 4 位）"
           />
         </el-form-item>
       </el-form>
@@ -125,11 +147,25 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
+import CodeQrBlock from '../../components/CodeQrBlock.vue'
+import ImmSteps from '../../components/ImmSteps.vue'
 import OrderTraceDialog from '../../components/OrderTraceDialog.vue'
+import PageSkeleton from '../../components/PageSkeleton.vue'
+import StatusChip from '../../components/StatusChip.vue'
+import { formatRelative } from '../../utils/dates.js'
 import { hasCap, hasTrait, getSchema, menuLabel } from '../../utils/domainSchema.js'
+import {
+  deadlineFromCreated,
+  formatCountdownClock,
+  isUrgentCountdown,
+  secondsUntil,
+  useNowTick,
+} from '../../utils/useCountdown.js'
+import { orderProgressSteps, orderTone } from '../../utils/statusTone.js'
 
 const label = menuLabel('user', 'my_orders', '我的订单')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
@@ -150,7 +186,9 @@ const reviewOn = computed(() => hasCap('order_review'))
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPay = computed(() => !!getSchema()?.demoPay || marketplace.value)
 const demoPayHint = computed(
-  () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单。',
+  () =>
+    getSchema()?.labels?.demoPayHint
+    || '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。',
 )
 const timeoutMinutes = computed(() => {
   const n = Number(getSchema()?.orderTimeoutMinutes || 0)
@@ -159,8 +197,8 @@ const timeoutMinutes = computed(() => {
 const timeoutHint = computed(
   () => getSchema()?.labels?.orderTimeoutHint || '',
 )
-const nowMs = ref(Date.now())
-let tickTimer = null
+const { nowMs } = useNowTick()
+const loading = ref(false)
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -209,28 +247,18 @@ function refundLabel(st) {
   return ({ pending: '待审核', approved: '已通过', rejected: '已驳回' }[st] || st)
 }
 
-function parseCreatedAt(raw) {
-  if (!raw) return null
-  const s = String(raw).trim().replace('T', ' ').replace(/-/g, '/')
-  const t = Date.parse(s)
-  return Number.isFinite(t) ? t : null
-}
-
 function paySecondsLeft(row) {
   if (!row || row.status !== 'pending' || !timeoutMinutes.value) return null
-  const created = parseCreatedAt(row.createdAt)
-  if (created == null) return null
-  const deadline = created + timeoutMinutes.value * 60 * 1000
-  return Math.max(0, Math.floor((deadline - nowMs.value) / 1000))
+  const deadline = deadlineFromCreated(row.createdAt, timeoutMinutes.value)
+  if (deadline == null) return null
+  return secondsUntil(deadline, nowMs.value)
 }
 
 function payCountdownText(row) {
   const sec = paySecondsLeft(row)
   if (sec == null) return ''
   if (sec <= 0) return timeoutHint.value || '支付已超时，订单将自动取消'
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  const clock = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  const clock = formatCountdownClock(sec)
   return demoPay.value || marketplace.value
     ? `请在 ${clock} 内完成支付`
     : `请在 ${clock} 内确认，超时将自动取消`
@@ -292,12 +320,17 @@ async function loadReviewsHint(orders) {
 }
 
 async function load() {
-  const res = await http.get('/api/orders', {
-    params: { page: page.value, size: size.value, status: status.value || undefined },
-  })
-  list.value = res.data?.list || []
-  total.value = res.data?.total || 0
-  await loadReviewsHint(list.value)
+  loading.value = true
+  try {
+    const res = await http.get('/api/orders', {
+      params: { page: page.value, size: size.value, status: status.value || undefined },
+    })
+    list.value = res.data?.list || []
+    total.value = res.data?.total || 0
+    await loadReviewsHint(list.value)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function cancel(row) {
@@ -384,12 +417,6 @@ async function submitReview(row) {
 
 onMounted(() => {
   load()
-  tickTimer = setInterval(() => {
-    nowMs.value = Date.now()
-  }, 1000)
-})
-onUnmounted(() => {
-  if (tickTimer) clearInterval(tickTimer)
 })
 </script>
 
@@ -406,6 +433,7 @@ onUnmounted(() => {
   margin-bottom: var(--portal-gap, 12px);
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.hd-title { display: inline-flex; align-items: center; gap: 8px; }
 .sub { margin: 6px 0; color: var(--portal-muted, #64748b); font-size: 12px; }
 .sub.refund { color: #b45309; }
 .pay-cd { margin: 0 0 6px; color: #b45309; font-size: 13px; font-weight: 600; }

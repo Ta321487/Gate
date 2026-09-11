@@ -59,7 +59,15 @@
               </div>
             </button>
           </div>
-          <div v-if="!mallProducts.length" class="mall-empty">暂无商品，可先浏览全部货架。</div>
+          <div v-if="!mallProducts.length" class="mall-empty">
+            <EmptyHint
+              title="暂无商品"
+              desc="货架还空着，去逛逛全部目录吧。"
+              mark="购"
+              cta-label="去逛逛"
+              @cta="goArchive"
+            />
+          </div>
         </section>
       </div>
     </template>
@@ -113,7 +121,15 @@
                 <p>{{ item.lead }}</p>
               </div>
             </button>
-            <div v-if="!newsItems.length" class="news-empty">暂无资讯，可先浏览目录或公告。</div>
+            <div v-if="!newsItems.length" class="news-empty">
+              <EmptyHint
+                title="暂无资讯"
+                desc="可先浏览目录或公告。"
+                mark="讯"
+                cta-label="去逛逛"
+                @cta="goArchive"
+              />
+            </div>
           </div>
           <div class="quick" aria-label="快捷入口">
             <button
@@ -151,6 +167,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
 import { APP_DELIVERED } from '../../appDelivered.js'
 import {
   archiveCopy,

@@ -32,7 +32,14 @@
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无收藏，去浏览加一加吧。</div>
+    <EmptyHint
+      v-if="!list.length"
+      title="暂无收藏"
+      desc="去浏览加一加吧。"
+      mark="藏"
+      cta-label="去浏览"
+      @cta="$router.push('/archive')"
+    />
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -52,6 +59,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
 import { toggleFavorite, upsertCart } from '../../utils/apiCalls.js'
 import { getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
 

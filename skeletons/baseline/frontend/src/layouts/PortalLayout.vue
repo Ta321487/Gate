@@ -11,6 +11,7 @@
         </nav>
         <div class="user">
           <template v-if="loggedIn">
+            <CartBadge />
             <MessageBell />
             <el-avatar v-if="avatarUrl" :size="28" :src="avatarUrl" />
             <span class="name">{{ displayName }}</span>
@@ -48,6 +49,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { APP_DELIVERED } from '../appDelivered.js'
 import AiAssistantFloat from '../components/AiAssistantFloat.vue'
+import CartBadge from '../components/CartBadge.vue'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'

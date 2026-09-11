@@ -1,15 +1,45 @@
 <template>
   <div>
     <section class="hero">
-      <h1>答题中</h1>
-      <p v-if="attempt">试卷 #{{ attempt.paperId }} · {{ attempt.mode === 'practice' ? '练习' : '考试' }}</p>
+      <div class="hero-row">
+        <div>
+          <h1>答题中</h1>
+          <p v-if="attempt">
+            试卷 #{{ attempt.paperId }} · {{ attempt.mode === 'practice' ? '练习' : '考试' }}
+          </p>
+        </div>
+        <div
+          v-if="showTimer"
+          class="exam-cd"
+          :class="{ 'cd-urgent': isUrgentCountdown(remainSec, 120) }"
+        >
+          剩余 {{ formatCountdownClock(remainSec) }}
+        </div>
+      </div>
     </section>
     <div v-if="submitted" class="card result">
       <h2>得分 {{ result.score }} / {{ result.totalScore }}</h2>
       <el-button type="primary" @click="$router.push('/exam/attempts')">查看成绩</el-button>
     </div>
     <div v-else class="list">
-      <article v-for="(q, idx) in questions" :key="q.id" class="card item">
+      <div class="answer-sheet" aria-label="答题卡">
+        <button
+          v-for="(q, idx) in questions"
+          :key="q.id"
+          type="button"
+          class="q-dot"
+          :class="{ filled: isAnswered(q), current: focusIdx === idx }"
+          @click="scrollTo(idx)"
+        >
+          {{ idx + 1 }}
+        </button>
+      </div>
+      <article
+        v-for="(q, idx) in questions"
+        :key="q.id"
+        :ref="(el) => setQRef(idx, el)"
+        class="card item"
+      >
         <div class="stem">{{ idx + 1 }}. [{{ typeLabel(q.type) }}] {{ q.stem }}（{{ q.score }}分）</div>
         <div v-if="q.type === 'single' || q.type === 'judge'" class="opts">
           <el-radio-group v-model="answers[q.id]">
@@ -33,20 +63,47 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { parseDateMs } from '../utils/dates.js'
+import {
+  formatCountdownClock,
+  isUrgentCountdown,
+  secondsUntil,
+  useNowTick,
+} from '../utils/useCountdown.js'
 
 const route = useRoute()
 const router = useRouter()
 const questions = ref([])
 const attempt = ref(null)
+const durationMin = ref(0)
 const answers = reactive({})
 const multi = reactive({})
 const posting = ref(false)
 const submitted = ref(false)
 const result = ref({})
+const focusIdx = ref(0)
+const qRefs = ref([])
+const { nowMs } = useNowTick()
+
+const deadlineMs = computed(() => {
+  if (!attempt.value?.startedAt || !durationMin.value) return null
+  const start = parseDateMs(attempt.value.startedAt)
+  if (start == null) return null
+  return start + durationMin.value * 60 * 1000
+})
+
+const remainSec = computed(() => {
+  if (deadlineMs.value == null) return null
+  return secondsUntil(deadlineMs.value, nowMs.value)
+})
+
+const showTimer = computed(
+  () => !submitted.value && attempt.value?.mode !== 'practice' && remainSec.value != null,
+)
 
 function typeLabel(t) {
   return ({ single: '单选', multi: '多选', judge: '判断', subjective: '主观' }[t] || t)
@@ -71,11 +128,34 @@ function displayOpt(opt, type) {
   return type === 'judge' ? opt : opt
 }
 
+function isAnswered(q) {
+  if (q.type === 'multi') return (multi[q.id] || []).length > 0
+  return String(answers[q.id] || '').trim().length > 0
+}
+
+function setQRef(idx, el) {
+  if (el) qRefs.value[idx] = el
+}
+
+function scrollTo(idx) {
+  focusIdx.value = idx
+  const el = qRefs.value[idx]
+  if (el?.$el) el.$el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  else if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 async function load() {
   const id = route.params.id
   const res = await http.get(`/api/exam/attempts/${id}/questions`)
-  questions.value = res.data?.data || res.data || []
-  attempt.value = { id, paperId: questions.value[0]?.paperId, mode: 'exam' }
+  const payload = res.data?.data || res.data || {}
+  if (Array.isArray(payload)) {
+    questions.value = payload
+    attempt.value = { id, paperId: payload[0]?.paperId, mode: 'exam' }
+  } else {
+    questions.value = payload.questions || []
+    attempt.value = payload.attempt || { id, paperId: questions.value[0]?.paperId, mode: 'exam' }
+    durationMin.value = Number(payload.durationMin) || 0
+  }
   for (const q of questions.value) {
     if (q.type === 'multi') multi[q.id] = []
     else answers[q.id] = ''
@@ -106,6 +186,15 @@ onMounted(load)
 
 <style scoped>
 .hero { margin-bottom: 1rem; }
+.hero-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.exam-cd {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--portal-accent, #0b6e75);
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent);
+}
 .list { display: grid; gap: 0.85rem; }
 .item { padding: 1rem; }
 .stem { margin-bottom: 0.65rem; font-weight: 600; }

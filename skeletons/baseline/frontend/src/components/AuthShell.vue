@@ -97,6 +97,26 @@ onMounted(() => {
       color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, var(--portal-surface, #fff)) 100%
     );
 }
+.auth[data-hero='0'] {
+  background:
+    radial-gradient(1000px 480px at 12% -12%, color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, transparent), transparent 58%),
+    radial-gradient(720px 400px at 92% 108%, color-mix(in srgb, var(--portal-brand, #08545a) 16%, transparent), transparent 52%),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-bg, #eef3f5)) 0%,
+      var(--portal-bg, #eef3f5) 42%,
+      color-mix(in srgb, var(--portal-surface, #fff) 70%, var(--portal-bg, #eef3f5)) 100%
+    );
+}
+.auth[data-hero='0'] .brand {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 88%, #000) 0%,
+      var(--portal-brand, #08545a) 55%,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 55%, var(--portal-brand, #08545a)) 100%
+    );
+}
 
 .stage {
   width: min(920px, 100%);

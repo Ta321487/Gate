@@ -8,12 +8,20 @@
       <el-option v-for="c in campaigns" :key="c.id" :label="c.title" :value="c.id" />
     </el-select>
     <div class="toolbar" v-if="campaignId">
-      <el-input v-model="draft.name" placeholder="姓名" style="width: 160px" />
-      <el-input v-model="draft.intro" placeholder="简介" style="width: 240px" />
+      <el-input v-model="draft.name" placeholder="姓名" style="width: 140px" />
+      <el-input v-model="draft.intro" placeholder="简介" style="width: 200px" />
+      <el-input v-model="draft.avatarUrl" placeholder="头像 URL（可选）" style="width: 220px" />
       <el-input-number v-model="draft.sortNo" :min="0" />
       <el-button type="primary" @click="create">新增</el-button>
     </div>
     <el-table :data="list" stripe style="margin-top: 1rem">
+      <el-table-column label="头像" width="72">
+        <template #default="{ row }">
+          <el-avatar :size="36" :src="row.avatarUrl || undefined">
+            {{ String(row.name || '?').slice(0, 1) }}
+          </el-avatar>
+        </template>
+      </el-table-column>
       <el-table-column prop="name" label="姓名" />
       <el-table-column prop="intro" label="简介" />
       <el-table-column prop="sortNo" label="排序" width="80" />
@@ -34,7 +42,7 @@ import http from '../../api/http'
 const campaigns = ref([])
 const campaignId = ref(null)
 const list = ref([])
-const draft = reactive({ name: '', intro: '', sortNo: 0 })
+const draft = reactive({ name: '', intro: '', sortNo: 0, avatarUrl: '' })
 
 async function loadCampaigns() {
   const res = await http.get('/api/vote/campaigns')
@@ -58,6 +66,7 @@ async function create() {
   ElMessage.success('已新增')
   draft.name = ''
   draft.intro = ''
+  draft.avatarUrl = ''
   await loadCands()
 }
 

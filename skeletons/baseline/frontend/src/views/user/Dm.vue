@@ -61,7 +61,7 @@
               </el-avatar>
               <div class="bubble" :class="{ mine: m.fromUsername === me }">
                 <div class="txt">{{ m.body }}</div>
-                <div class="tm">{{ m.createdAt }}</div>
+                <div class="tm" :title="m.createdAt || ''">{{ formatRelative(m.createdAt) }}</div>
               </div>
             </div>
           </div>
@@ -130,6 +130,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { formatRelative } from '../../utils/dates.js'
 import { schemaLabels } from '../../utils/domainSchema.js'
 
 /** 常用表情条：毕设沉浸，非独立表情包工程 */

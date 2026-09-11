@@ -8,13 +8,16 @@
         {{ equipSectionTitle }}：{{ equipNames.join('、') }}
       </p>
       <div class="tools">
-        <el-date-picker
-          v-model="day"
-          type="date"
-          value-format="YYYY-MM-DD"
-          :disabled="!itemId"
-          @change="load"
-        />
+        <div class="day-wrap" :class="{ 'has-duty': rosterOn && onDutyPeople.length }">
+          <el-date-picker
+            v-model="day"
+            type="date"
+            value-format="YYYY-MM-DD"
+            :disabled="!itemId"
+            @change="load"
+          />
+          <i v-if="rosterOn && onDutyPeople.length" class="duty-dot" title="当日有当班" />
+        </div>
         <el-button type="primary" :disabled="!itemId" @click="load">查询</el-button>
         <el-button link @click="$router.push('/archive')">{{ itemId ? '返回浏览' : '去选择' }}</el-button>
       </div>
@@ -25,6 +28,7 @@
         v-for="s in list"
         :key="s.id"
         class="slot"
+        :class="`tone-${slotFillTone(s.remain, s.capacity)}`"
         :disabled="s.remain <= 0"
         @click="openReserve(s)"
       >
@@ -136,6 +140,7 @@ import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
 import { getSchema, hasCap, hasTrait, personLabel, reservationCopy } from '../../utils/domainSchema.js'
 import { todayStr } from '../../utils/dates.js'
+import { slotFillTone } from '../../utils/statusTone.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -387,6 +392,18 @@ onMounted(load)
 .equip-line { margin: 0 0 10px !important; font-size: 13px; color: #0f766e; }
 .duty-hint { margin: 8px 0 0; font-size: 13px; color: var(--portal-muted, #64748b); }
 .duty-list { margin: 0 0 8px; font-size: 12px; color: var(--el-text-color-secondary); }
+.day-wrap { position: relative; display: inline-flex; align-items: center; }
+.duty-dot {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #059669;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #059669 25%, transparent);
+  pointer-events: none;
+}
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid {
   display: grid;

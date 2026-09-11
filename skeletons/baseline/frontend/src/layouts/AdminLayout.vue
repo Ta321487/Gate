@@ -11,7 +11,22 @@
           :key="item.index"
           :index="item.index"
           :title="item.label"
-        >{{ item.label }}</el-menu-item>
+        >
+          <span>{{ item.label }}</span>
+          <el-badge
+            v-if="item.key === 'ticket_pending' && pendingTickets > 0"
+            :value="pendingTickets"
+            :max="99"
+            class="menu-badge"
+          />
+          <el-badge
+            v-else-if="(item.key === 'archive_logs' || item.key === 'archive_log') && missingCheckin > 0"
+            :value="missingCheckin"
+            :max="99"
+            class="menu-badge"
+            type="danger"
+          />
+        </el-menu-item>
         <el-menu-item v-if="profileEditable" index="/admin/profile">个人资料</el-menu-item>
       </el-menu>
     </el-aside>
@@ -34,6 +49,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import http from '../api/http'
 import MessageBell from '../components/MessageBell.vue'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { getSchema, isSuperOnlyMenu, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
@@ -57,14 +73,34 @@ const superAdmin = localStorage.getItem('superAdmin') === 'true'
 const staffPost = currentStaffPost()
 const displayName = computed(() => nickname.value || username)
 const active = computed(() => route.path)
+const pendingTickets = ref(0)
+const missingCheckin = ref(0)
 
 let offProfileDisplay
+let dashTimer = null
+
+async function refreshPending() {
+  try {
+    const res = await http.get('/api/admin/dashboard')
+    pendingTickets.value = Number(res.data?.pendingTickets || 0)
+    missingCheckin.value = Number(res.data?.missingCheckinToday || 0)
+  } catch {
+    pendingTickets.value = 0
+    missingCheckin.value = 0
+  }
+}
+
 onMounted(() => {
   offProfileDisplay = onProfileDisplayChange(({ nickname: n }) => {
     nickname.value = n || ''
   })
+  refreshPending()
+  dashTimer = setInterval(refreshPending, 60000)
 })
-onUnmounted(() => offProfileDisplay?.())
+onUnmounted(() => {
+  offProfileDisplay?.()
+  if (dashTimer) clearInterval(dashTimer)
+})
 
 const adminRoleLabel = computed(() => {
   const roles = getSchema()?.roles || {}
@@ -120,4 +156,12 @@ function logout() {
 
 <style scoped>
 .layout { min-height: 100vh; }
+.menu-badge {
+  margin-left: 8px;
+}
+.wb-menu :deep(.el-menu-item) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 </style>

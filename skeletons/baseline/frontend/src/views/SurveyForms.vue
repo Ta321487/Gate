@@ -11,13 +11,16 @@
         <el-button type="primary" @click="$router.push(`/survey/fill/${f.id}`)">去填写</el-button>
       </article>
     </div>
-    <div v-if="!list.length" class="empty">暂无开放问卷。</div>
+    <div v-if="!list.length">
+      <EmptyHint title="暂无开放问卷" desc="有已发布问卷时会出现在这里。" mark="卷" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../api/http'
+import EmptyHint from '../components/EmptyHint.vue'
 import { getSchema } from '../utils/domainSchema'
 
 const list = ref([])

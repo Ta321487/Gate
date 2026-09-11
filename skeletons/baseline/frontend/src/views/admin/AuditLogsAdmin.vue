@@ -28,8 +28,10 @@
         <el-table-column prop="id" label="编号" width="80" />
         <el-table-column prop="createdAt" label="时间" width="170" />
         <el-table-column prop="username" label="操作者" width="120" />
-        <el-table-column label="动作" width="120">
-          <template #default="{ row }">{{ actionLabel(row.action) }}</template>
+        <el-table-column label="动作" width="140">
+          <template #default="{ row }">
+            <StatusChip :tone="auditActionTone(row.action)" :label="actionLabel(row.action)" />
+          </template>
         </el-table-column>
         <el-table-column label="对象" width="160">
           <template #default="{ row }">{{ targetLabel(row) }}</template>
@@ -56,7 +58,9 @@
 /** 操作审计日志：总管只读查询（E-04） */
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
+import StatusChip from '../../components/StatusChip.vue'
 import { getSchema } from '../../utils/domainSchema.js'
+import { auditActionTone } from '../../utils/statusTone.js'
 
 const labels = computed(() => getSchema()?.labels || {})
 const pageLead = computed(
