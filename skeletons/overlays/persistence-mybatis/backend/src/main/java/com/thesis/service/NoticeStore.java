@@ -4,6 +4,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.NoticeMapper;
+import com.thesis.mapper.SchemaMapper;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -18,9 +19,14 @@ public class NoticeStore {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Boolean hasAuditStatus;
     private static Boolean hasSubmitterUsername;
+    private static Boolean hasPinned;
 
     private static NoticeMapper mapper() {
         return MybatisSupport.mapper(NoticeMapper.class);
+    }
+
+    private static SchemaMapper schema() {
+        return MybatisSupport.mapper(SchemaMapper.class);
     }
 
     private static String fmt(Object o) {
@@ -52,6 +58,14 @@ public class NoticeStore {
         m.put("publisherName", col(raw, "publisherName", "publisher_name"));
         m.put("createdAt", fmt(col(raw, "createdAt", "created_at")));
         m.put("updatedAt", fmt(col(raw, "updatedAt", "updated_at")));
+        if (hasPinned()) {
+            Object p = col(raw, "pinned", "pinned");
+            if (p instanceof Number n) m.put("pinned", n.intValue() > 0);
+            else if (p instanceof Boolean b) m.put("pinned", b);
+            else m.put("pinned", p != null && !"0".equals(String.valueOf(p)) && !String.valueOf(p).isBlank());
+        } else {
+            m.put("pinned", false);
+        }
         if (hasAuditStatus()) {
             Object as = col(raw, "auditStatus", "audit_status");
             m.put("auditStatus", as == null ? "" : String.valueOf(as));
@@ -71,6 +85,26 @@ public class NoticeStore {
     public static boolean hasSubmitterUsername() {
         if (hasSubmitterUsername == null) hasSubmitterUsername = mapper().countColumn("submitter_username") > 0;
         return hasSubmitterUsername;
+    }
+
+    /** bake 已 ensure pinned；旧库兜底 ALTER。 */
+    public static boolean hasPinned() {
+        ensurePinnedColumn();
+        return hasPinned != null && hasPinned;
+    }
+
+    private static synchronized void ensurePinnedColumn() {
+        if (hasPinned != null) return;
+        if (mapper().countColumn("pinned") > 0) {
+            hasPinned = true;
+            return;
+        }
+        try {
+            schema().executeDdl("ALTER TABLE sys_notice ADD COLUMN pinned TINYINT NOT NULL DEFAULT 0");
+            hasPinned = true;
+        } catch (Exception e) {
+            hasPinned = mapper().countColumn("pinned") > 0;
+        }
     }
 
     public static Map<String, Object> add(String title, String content, String publisherUsername, String publisherName) {
@@ -119,11 +153,33 @@ public class NoticeStore {
     }
 
     public static Map<String, Object> update(long id, String title, String content) {
+        return update(id, title, content, null);
+    }
+
+    /**
+     * @param pinned null=不改置顶；true/false=写入 pinned（须有 pinned 列）
+     */
+    public static Map<String, Object> update(long id, String title, String content, Boolean pinned) {
         Map<String, Object> m = get(id);
         if (m == null) return null;
         String t = title != null ? title : String.valueOf(m.get("title"));
         String c = content != null ? content : String.valueOf(m.get("content"));
-        mapper().update(id, t, c);
+        if (pinned != null && !hasPinned()) {
+            throw new IllegalStateException("当前公告不支持置顶");
+        }
+        if (pinned != null) {
+            mapper().updateWithPinned(id, t, c, pinned ? 1 : 0);
+        } else {
+            mapper().update(id, t, c);
+        }
+        return get(id);
+    }
+
+    public static Map<String, Object> setPinned(long id, boolean pinned) {
+        if (!hasPinned()) throw new IllegalStateException("当前公告不支持置顶");
+        Map<String, Object> m = get(id);
+        if (m == null) return null;
+        mapper().setPinned(id, pinned ? 1 : 0);
         return get(id);
     }
 
@@ -150,14 +206,21 @@ public class NoticeStore {
     public static Map<String, Object> page(int page, int size, boolean approvedOnly, String submitterOnly) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
+        boolean pin = hasPinned();
         PageHelper.startPage(page, size);
         List<Map<String, Object>> raw;
         if (submitterOnly != null && !submitterOnly.isBlank() && hasSubmitterUsername()) {
-            raw = mapper().selectBySubmitterOrderByIdDesc(submitterOnly.trim());
+            raw = pin
+                    ? mapper().selectBySubmitterOrderByPinnedDesc(submitterOnly.trim())
+                    : mapper().selectBySubmitterOrderByIdDesc(submitterOnly.trim());
         } else if (approvedOnly && hasAuditStatus()) {
-            raw = mapper().selectApprovedOrderByIdDesc();
+            raw = pin
+                    ? mapper().selectApprovedOrderByPinnedDesc()
+                    : mapper().selectApprovedOrderByIdDesc();
         } else {
-            raw = mapper().selectAllOrderByIdDesc();
+            raw = pin
+                    ? mapper().selectAllOrderByPinnedDesc()
+                    : mapper().selectAllOrderByIdDesc();
         }
         PageInfo<Map<String, Object>> pi = new PageInfo<>(raw);
         List<Map<String, Object>> list = new ArrayList<>();

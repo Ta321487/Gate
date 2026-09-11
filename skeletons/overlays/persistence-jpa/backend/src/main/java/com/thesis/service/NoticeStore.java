@@ -20,6 +20,7 @@ public class NoticeStore {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Boolean hasAuditStatus;
     private static Boolean hasSubmitterUsername;
+    private static Boolean hasPinned;
 
     private static JpaDb db() {
         return JpaSupport.db();
@@ -42,6 +43,15 @@ public class NoticeStore {
         m.put("publisherName", rs.getString("publisher_name"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
+        if (hasPinned()) {
+            try {
+                m.put("pinned", rs.getInt("pinned") > 0);
+            } catch (Exception ignored) {
+                m.put("pinned", false);
+            }
+        } else {
+            m.put("pinned", false);
+        }
         if (hasAuditStatus()) {
             try {
                 String as = rs.getString("audit_status");
@@ -69,6 +79,26 @@ public class NoticeStore {
     public static boolean hasSubmitterUsername() {
         if (hasSubmitterUsername == null) hasSubmitterUsername = hasNoticeColumn("submitter_username");
         return hasSubmitterUsername;
+    }
+
+    /** bake 已 ensure pinned；旧库兜底 ALTER。 */
+    public static boolean hasPinned() {
+        ensurePinnedColumn();
+        return hasPinned != null && hasPinned;
+    }
+
+    private static synchronized void ensurePinnedColumn() {
+        if (hasPinned != null) return;
+        if (hasNoticeColumn("pinned")) {
+            hasPinned = true;
+            return;
+        }
+        try {
+            db().execute("ALTER TABLE sys_notice ADD COLUMN pinned TINYINT NOT NULL DEFAULT 0");
+            hasPinned = true;
+        } catch (Exception e) {
+            hasPinned = hasNoticeColumn("pinned");
+        }
     }
 
     private static boolean hasNoticeColumn(String col) {
@@ -153,13 +183,37 @@ public class NoticeStore {
     }
 
     public static Map<String, Object> update(long id, String title, String content) {
+        return update(id, title, content, null);
+    }
+
+    /**
+     * @param pinned null=不改置顶；true/false=写入 pinned（须有 pinned 列）
+     */
+    public static Map<String, Object> update(long id, String title, String content, Boolean pinned) {
         Map<String, Object> m = get(id);
         if (m == null) return null;
         String t = title != null ? title : String.valueOf(m.get("title"));
         String c = content != null ? content : String.valueOf(m.get("content"));
-        db().update(
-                "UPDATE sys_notice SET title=?, content=?, updated_at=NOW() WHERE id=?",
-                t, c, id);
+        if (pinned != null && !hasPinned()) {
+            throw new IllegalStateException("当前公告不支持置顶");
+        }
+        if (pinned != null) {
+            db().update(
+                    "UPDATE sys_notice SET title=?, content=?, pinned=?, updated_at=NOW() WHERE id=?",
+                    t, c, pinned ? 1 : 0, id);
+        } else {
+            db().update(
+                    "UPDATE sys_notice SET title=?, content=?, updated_at=NOW() WHERE id=?",
+                    t, c, id);
+        }
+        return get(id);
+    }
+
+    public static Map<String, Object> setPinned(long id, boolean pinned) {
+        if (!hasPinned()) throw new IllegalStateException("当前公告不支持置顶");
+        Map<String, Object> m = get(id);
+        if (m == null) return null;
+        db().update("UPDATE sys_notice SET pinned=?, updated_at=NOW() WHERE id=?", pinned ? 1 : 0, id);
         return get(id);
     }
 
@@ -206,8 +260,11 @@ public class NoticeStore {
         int offset = (page - 1) * size;
         args.add(size);
         args.add(offset);
+        String order = hasPinned()
+                ? " ORDER BY pinned DESC, id DESC LIMIT ? OFFSET ?"
+                : " ORDER BY id DESC LIMIT ? OFFSET ?";
         List<Map<String, Object>> list = db().query(
-                "SELECT * FROM sys_notice" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM sys_notice" + where + order,
                 (rs, i) -> row(rs), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);

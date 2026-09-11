@@ -14,9 +14,15 @@ public interface NoticeMapper {
 
     List<Map<String, Object>> selectAllOrderByIdDesc();
 
+    List<Map<String, Object>> selectAllOrderByPinnedDesc();
+
     List<Map<String, Object>> selectApprovedOrderByIdDesc();
 
+    List<Map<String, Object>> selectApprovedOrderByPinnedDesc();
+
     List<Map<String, Object>> selectBySubmitterOrderByIdDesc(@Param("submitter") String submitter);
+
+    List<Map<String, Object>> selectBySubmitterOrderByPinnedDesc(@Param("submitter") String submitter);
 
     @Select("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()"
             + " AND TABLE_NAME='sys_notice' AND COLUMN_NAME=#{col}")
@@ -42,6 +48,16 @@ public interface NoticeMapper {
 
     @Update("UPDATE sys_notice SET title=#{title}, content=#{content}, updated_at=NOW() WHERE id=#{id}")
     int update(@Param("id") long id, @Param("title") String title, @Param("content") String content);
+
+    @Update("UPDATE sys_notice SET title=#{title}, content=#{content}, pinned=#{pinned}, updated_at=NOW() WHERE id=#{id}")
+    int updateWithPinned(
+            @Param("id") long id,
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("pinned") int pinned);
+
+    @Update("UPDATE sys_notice SET pinned=#{pinned}, updated_at=NOW() WHERE id=#{id}")
+    int setPinned(@Param("id") long id, @Param("pinned") int pinned);
 
     @Update("UPDATE sys_notice SET audit_status='approved', updated_at=NOW() WHERE id=#{id}")
     int approve(@Param("id") long id);
