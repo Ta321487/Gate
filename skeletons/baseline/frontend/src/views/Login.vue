@@ -47,7 +47,13 @@
         <span class="lab">验证码<i class="req" aria-hidden="true">*</i></span>
         <div class="captcha-row">
           <el-input v-model="form.captcha" size="large" placeholder="验证码" maxlength="4" />
-          <button type="button" class="captcha-btn" title="点击刷新" @click="loadCaptcha">
+          <button
+            type="button"
+            class="captcha-btn"
+            :class="{ spinning: captchaSpin }"
+            title="点击刷新"
+            @click="loadCaptcha"
+          >
             <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
             <span v-else>加载中</span>
           </button>
@@ -208,6 +214,7 @@ const authPoints = computed(() => {
 })
 
 const captchaImg = ref('')
+const captchaSpin = ref(false)
 const loading = ref(false)
 const form = reactive({ username: '', password: '', captcha: '', loginAs: '' })
 
@@ -247,8 +254,13 @@ function defaultLoginAs() {
 }
 
 async function loadCaptcha() {
-  const res = await http.get('/api/auth/captcha')
-  captchaImg.value = res.data.image
+  captchaSpin.value = true
+  try {
+    const res = await http.get('/api/auth/captcha')
+    captchaImg.value = res.data.image
+  } finally {
+    setTimeout(() => { captchaSpin.value = false }, 280)
+  }
 }
 
 async function onLogin() {
@@ -402,6 +414,11 @@ onMounted(async () => {
   height: 40px;
   object-fit: cover;
   display: block;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.captcha-btn.spinning img {
+  transform: rotate(12deg) scale(0.92);
+  opacity: 0.55;
 }
 .submit {
   margin-top: 8px;

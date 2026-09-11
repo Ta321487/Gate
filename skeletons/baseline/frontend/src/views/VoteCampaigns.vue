@@ -13,13 +13,16 @@
         <el-button type="primary" @click="$router.push(`/vote/cast/${c.id}`)">去投票</el-button>
       </article>
     </div>
-    <div v-if="!list.length" class="empty">暂无开放评选。</div>
+    <div v-if="!list.length">
+      <EmptyHint title="暂无开放评选" desc="有活动时会出现在这里。" mark="票" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../api/http'
+import EmptyHint from '../components/EmptyHint.vue'
 import { getSchema } from '../utils/domainSchema'
 
 const list = ref([])

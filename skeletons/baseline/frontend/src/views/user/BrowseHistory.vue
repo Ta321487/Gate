@@ -17,7 +17,7 @@
         </div>
         <div class="meta">
           <h3>{{ row.title || '已下架' }}</h3>
-          <p class="muted">浏览于 {{ row.viewedAt || '—' }}</p>
+          <p class="muted" :title="row.viewedAt || ''">浏览于 {{ formatRelative(row.viewedAt) }}</p>
           <el-button size="small" type="primary" @click="$router.push({ path: '/archive', query: { highlight: row.id } })">
             查看
           </el-button>
@@ -25,7 +25,7 @@
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无浏览记录。</div>
+    <EmptyHint v-if="!list.length" title="暂无浏览记录" desc="去逛逛，足迹会出现在这里。" mark="迹" cta-label="去浏览" @cta="$router.push('/archive')" />
     <div class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -45,6 +45,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
+import { formatRelative } from '../../utils/dates.js'
 import { schemaLabels } from '../../utils/domainSchema.js'
 
 const labels = computed(() => schemaLabels())

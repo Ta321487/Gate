@@ -14,7 +14,7 @@
         :key="s.key"
         @click="s.to && $router.push(s.to)"
       >
-        <div class="num">{{ s.value }}</div>
+        <div class="num imm-count">{{ s.value }}</div>
         <div class="label">{{ s.label }}</div>
       </div>
     </div>
@@ -272,6 +272,13 @@ onMounted(load)
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-line, #e4eaf0));
 }
 .num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.imm-count {
+  animation: imm-count-in 0.45s ease;
+}
+@keyframes imm-count-in {
+  from { opacity: 0.35; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
 .label { margin-top: 4px; font-size: 12px; color: var(--portal-muted, #8a9aa6); }
 .card {
   background: var(--portal-surface, #fff);

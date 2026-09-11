@@ -6,6 +6,7 @@
     </section>
     <div class="list">
       <article v-for="d in list" :key="d.id" class="card item">
+        <span class="file-mark" aria-hidden="true">{{ fileTypeMark(d.fileUrl || d.title) }}</span>
         <div>
           <strong>{{ d.title }}</strong>
           <div class="muted">{{ d.author || '—' }} · 权限 {{ levelLabel(d.accessLevel) }}</div>
@@ -14,7 +15,9 @@
         <el-button type="primary" :loading="busyId === d.id" @click="dl(d)">下载</el-button>
       </article>
     </div>
-    <div v-if="!list.length" class="empty">暂无开放资料。</div>
+    <div v-if="!list.length">
+      <EmptyHint title="暂无开放资料" desc="有开放文件时会出现在这里。" mark="档" />
+    </div>
   </div>
 </template>
 
@@ -22,7 +25,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import EmptyHint from '../components/EmptyHint.vue'
 import { getSchema } from '../utils/domainSchema'
+import { fileTypeMark } from '../utils/statusTone.js'
 
 const list = ref([])
 const busyId = ref(null)

@@ -13,7 +13,7 @@
         :timestamp="p.createdAt"
         placement="top"
       >
-        <strong>{{ progressStatusLabel(p.status) }}</strong>
+        <strong><span class="progress-mark" aria-hidden="true">{{ progressNodeMark(p.status) }}</span>{{ progressStatusLabel(p.status) }}</strong>
         <span v-if="p.operator"> · {{ p.operator }}</span>
         <div v-if="showRemark(p)" class="note">{{ p.remark }}</div>
       </el-timeline-item>
@@ -26,6 +26,7 @@
 import { ref, watch } from 'vue'
 import http from '../api/http'
 import { ticketCopy, ticketProgressStatusLabel } from '../utils/domainSchema.js'
+import { progressNodeMark } from '../utils/statusTone.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

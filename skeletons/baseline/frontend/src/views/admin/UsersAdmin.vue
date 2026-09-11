@@ -14,6 +14,13 @@
     <p v-if="marketplace && adminLead" class="page-lead">{{ adminLead }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
+      <el-table-column label="" width="56">
+        <template #default="{ row }">
+          <el-avatar :size="32" :src="row.avatarUrl || undefined">
+            {{ String(row.nickname || row.username || '?').slice(0, 1) }}
+          </el-avatar>
+        </template>
+      </el-table-column>
       <el-table-column prop="username" label="用户名" width="110" />
       <el-table-column label="姓名" width="100">
         <template #default="{ row }">{{ extraOf(row, 'realName') || row.nickname || '—' }}</template>

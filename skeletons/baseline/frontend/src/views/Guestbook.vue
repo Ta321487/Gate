@@ -23,19 +23,29 @@
     <div class="list">
       <article v-for="n in list" :key="n.id" class="card item">
         <div class="meta">
-          <strong>{{ n.nickname || n.username || '用户' }}</strong>
-          <time>{{ n.createdAt || '—' }}</time>
+          <div class="who">
+            <el-avatar :size="36" :src="n.avatarUrl || undefined">
+              {{ initialOf(n.nickname || n.username) }}
+            </el-avatar>
+            <strong>{{ n.nickname || n.username || '用户' }}</strong>
+          </div>
+          <time :title="n.createdAt || ''">{{ formatRelative(n.createdAt) }}</time>
         </div>
         <p class="body">{{ n.body }}</p>
         <div v-if="n.reply" class="reply">
           <span class="reply-tag">{{ replyTag }}</span>
           <p>{{ n.reply }}</p>
-          <time v-if="n.repliedAt">{{ n.repliedAt }}</time>
+          <time v-if="n.repliedAt" :title="n.repliedAt">{{ formatRelative(n.repliedAt) }}</time>
         </div>
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无留言，欢迎抢沙发。</div>
+    <EmptyHint
+      v-if="!list.length"
+      title="暂无留言"
+      desc="欢迎抢沙发，留下建议或咨询。"
+      mark="言"
+    />
     <div v-if="!isGuest" class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -57,6 +67,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import GuestLoginHint from '../components/GuestLoginHint.vue'
+import EmptyHint from '../components/EmptyHint.vue'
+import { formatRelative } from '../utils/dates.js'
 import { getSchema, schemaLabels } from '../utils/domainSchema.js'
 import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 
@@ -105,6 +117,11 @@ async function submit() {
 }
 
 onMounted(load)
+
+function initialOf(name) {
+  const s = String(name || '?').trim()
+  return s ? s.slice(0, 1) : '?'
+}
 </script>
 
 <style scoped>
@@ -153,9 +170,16 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: center;
   font-size: 13px;
   color: var(--portal-muted, #64748b);
   margin-bottom: 8px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 .meta strong {
   color: var(--portal-ink, #15202b);

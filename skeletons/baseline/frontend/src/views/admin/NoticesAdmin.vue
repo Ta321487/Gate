@@ -16,6 +16,18 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="置顶" width="90">
+        <template #default="{ row }">
+          <el-switch
+            v-if="canEditRow(row)"
+            :model-value="!!row.pinned"
+            size="small"
+            @change="(v) => togglePin(row, v)"
+          />
+          <el-tag v-else-if="row.pinned" size="small" type="warning" effect="plain">置顶</el-tag>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="createdAt" label="发布时间" width="170" />
       <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
       <el-table-column label="操作" width="220" fixed="right">
@@ -56,6 +68,9 @@
       <el-form :model="form" label-width="72px" require-asterisk-position="right">
         <el-form-item label="标题" required><el-input v-model="form.title" maxlength="128" show-word-limit /></el-form-item>
         <el-form-item label="内容" required><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item v-if="form.id || isSuper" label="置顶">
+          <el-switch v-model="form.pinned" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -79,7 +94,7 @@ const total = ref(0)
 const visible = ref(false)
 const viewVisible = ref(false)
 const viewRow = reactive({ title: '', content: '', publisherName: '', createdAt: '' })
-const form = reactive({ id: null, title: '', content: '' })
+const form = reactive({ id: null, title: '', content: '', pinned: false })
 
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const auditOn = computed(() => marketplace.value)
@@ -134,9 +149,15 @@ function openView(row) {
 }
 
 function openEdit(row) {
-  if (row) Object.assign(form, { id: row.id, title: row.title, content: row.content })
-  else Object.assign(form, { id: null, title: '', content: '' })
+  if (row) Object.assign(form, { id: row.id, title: row.title, content: row.content, pinned: !!row.pinned })
+  else Object.assign(form, { id: null, title: '', content: '', pinned: false })
   visible.value = true
+}
+
+async function togglePin(row, on) {
+  await http.post(`/api/notices/${row.id}/pin`, { pinned: !!on })
+  ElMessage.success(on ? '已置顶' : '已取消置顶')
+  load()
 }
 
 async function save() {
@@ -144,8 +165,19 @@ async function save() {
     ElMessage.warning('请填写标题')
     return
   }
-  if (form.id) await http.put(`/api/notices/${form.id}`, { title: form.title, content: form.content })
-  else await http.post('/api/notices', { title: form.title, content: form.content })
+  if (form.id) {
+    await http.put(`/api/notices/${form.id}`, {
+      title: form.title,
+      content: form.content,
+      pinned: !!form.pinned,
+    })
+  } else {
+    const res = await http.post('/api/notices', { title: form.title, content: form.content })
+    const id = res.data?.id
+    if (id && form.pinned) {
+      await http.post(`/api/notices/${id}/pin`, { pinned: true })
+    }
+  }
   ElMessage.success(
     marketplace.value && !isSuper.value && !form.id ? '已提交，待平台审核' : '已保存',
   )
@@ -173,6 +205,7 @@ onMounted(load)
 <style scoped>
 .toolbar { margin-bottom: 12px; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+.muted { color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .view-meta { margin: 0 0 8px; color: var(--portal-muted, #909399); font-size: 13px; }
 .view-title { margin: 0 0 12px; font-size: 18px; }
 .view-body { white-space: pre-wrap; line-height: 1.6; }

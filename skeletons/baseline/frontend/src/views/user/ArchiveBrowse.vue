@@ -65,7 +65,7 @@
           type="button"
           class="hot-chip"
           @click="applyHot(w)"
-        >{{ w }}</button>
+        >{{ w }}<span v-if="i < 3" class="hot-fire" aria-hidden="true">火</span></button>
       </div>
     </section>
 
@@ -82,7 +82,12 @@
       <span class="list-hd-hint">检索与筛选结果</span>
     </div>
     <div class="grid">
-      <article v-for="row in list" :key="row.id" class="card">
+      <article
+        v-for="row in list"
+        :key="row.id"
+        class="card imm-lift"
+        :class="{ 'reported-dim': reportedIds.has(row.id) }"
+      >
         <div class="cover">
           <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
           <template v-else>{{ (row.title || '?').slice(0, 1) }}</template>
@@ -91,7 +96,15 @@
           <h3>{{ row.title }}</h3>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
-          <p v-if="flashOn && row.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span></p>
+          <p v-if="flashOn && row.promoActive" class="promo">
+            {{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }}
+            <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span>
+            <span
+              v-if="flashCountdownText(row)"
+              class="flash-cd"
+              :class="{ 'cd-urgent': isUrgentCountdown(flashSecondsLeft(row), 300) }"
+            > · {{ flashCountdownText(row) }}</span>
+          </p>
           <p v-if="productSpecOn && productSpecText(row)" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
           <p
             v-for="f in cardPreviewFields"
@@ -108,9 +121,10 @@
           <div class="row">
             <el-tag
               v-if="stockDisplay !== 'hidden'"
-              :type="stockOk(row) ? 'success' : 'info'"
+              :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
               size="small"
               effect="plain"
+              :class="{ 'stock-tight': stockTight(row) }"
             >
               {{ stockText(row) }}
             </el-tag>
@@ -135,25 +149,36 @@
               v-if="favOn && !isGuest"
               size="small"
               :type="favIds.includes(row.id) ? 'warning' : 'default'"
+              :class="{ 'like-pulse': favPulseId === row.id }"
               @click="toggleFav(row)"
             >{{ favIds.includes(row.id) ? '已收藏' : '收藏' }}</el-button>
             <el-button
               v-if="likeOn && !isGuest"
               size="small"
               :type="likeIds.includes(row.id) ? 'warning' : 'default'"
+              :class="{ 'like-pulse': likePulseId === row.id }"
               @click="toggleLike(row)"
-            >{{ likeIds.includes(row.id) ? likedVerb : likeVerb }}{{ likeCountText(row) }}</el-button>
+            >
+              {{ likeIds.includes(row.id) ? likedVerb : likeVerb }}{{ likeCountText(row) }}
+              <StatusChip v-if="Number(row.likeCount) > 0" tone="warn" compact />
+            </el-button>
             <el-button
               v-if="reportOn && !isGuest"
               size="small"
+              :disabled="reportedIds.has(row.id)"
               @click="openReport(row)"
-            >{{ reportVerb }}</el-button>
+            >{{ reportedIds.has(row.id) ? '已举报' : reportVerb }}</el-button>
           </div>
         </div>
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无记录，换个关键词试试。</div>
+    <EmptyHint
+      v-if="!list.length"
+      title="暂无记录"
+      desc="换个关键词试试，或去看看推荐。"
+      mark="览"
+    />
     <div v-if="!isGuest" class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -173,23 +198,59 @@
         <div v-if="galleryUrls.length" class="gallery">
           <el-carousel height="220px" indicator-position="outside">
             <el-carousel-item v-for="(u, i) in galleryUrls" :key="i">
-              <img :src="u" class="detail-cover" alt="" />
+              <el-image
+                :src="u"
+                class="detail-cover"
+                fit="cover"
+                :preview-src-list="galleryUrls"
+                :initial-index="i"
+                preview-teleported
+              />
             </el-carousel-item>
           </el-carousel>
         </div>
-        <img v-else-if="detail.coverUrl" :src="detail.coverUrl" class="detail-cover" alt="" />
+        <el-image
+          v-else-if="detail.coverUrl"
+          :src="detail.coverUrl"
+          class="detail-cover"
+          fit="cover"
+          :preview-src-list="[detail.coverUrl]"
+          preview-teleported
+        />
         <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
         <p v-if="marketplace && shopLabel(detail)" class="detail-line">店铺：{{ shopLabel(detail) }}</p>
-        <p v-if="flashOn && detail.promoActive" class="promo">{{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }} <span class="promo-list">原价 ¥{{ Number(detail.listPriceYuan ?? detail.author).toFixed(2) }}</span></p>
-        <p v-if="productSpecOn && productSpecText(detail)" class="detail-line">{{ productSpecLabel }}：{{ productSpecText(detail) }}</p>
-
-        <p
-          v-for="f in cardDetailFields"
-          :key="f.key"
-          class="detail-line"
-        >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
-        <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
-        <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+        <p v-if="flashOn && detail.promoActive" class="promo">
+          {{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }}
+          <span class="promo-list">原价 ¥{{ Number(detail.listPriceYuan ?? detail.author).toFixed(2) }}</span>
+          <span
+            v-if="flashCountdownText(detail)"
+            class="flash-cd"
+            :class="{ 'cd-urgent': isUrgentCountdown(flashSecondsLeft(detail), 300) }"
+          > · {{ flashCountdownText(detail) }}</span>
+        </p>
+        <el-tabs v-if="productSpecOn && productSpecText(detail)" class="detail-tabs">
+          <el-tab-pane label="详情" name="detail">
+            <p
+              v-for="f in cardDetailFields"
+              :key="f.key"
+              class="detail-line"
+            >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
+            <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
+            <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+          </el-tab-pane>
+          <el-tab-pane :label="productSpecLabel" name="spec">
+            <p class="detail-line">{{ productSpecText(detail) }}</p>
+          </el-tab-pane>
+        </el-tabs>
+        <template v-else>
+          <p
+            v-for="f in cardDetailFields"
+            :key="f.key"
+            class="detail-line"
+          >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
+          <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
+          <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+        </template>
         <div v-if="roomEquipOn && detailEquipNames.length" class="equip">
           <p class="equip-title">{{ equipSectionTitle }}</p>
           <el-tag
@@ -198,7 +259,10 @@
             size="small"
             effect="plain"
             class="equip-tag"
-          >{{ n }}</el-tag>
+          >
+            <span class="equip-ico" aria-hidden="true">{{ equipmentMark(n) }}</span>
+            {{ n }}
+          </el-tag>
         </div>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <div v-if="showThread" class="thread">
@@ -316,6 +380,7 @@
     >
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
       <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
+      <p v-if="conflictTip" class="apply-tip conflict-tip">{{ conflictTip }}</p>
       <el-form label-position="top">
         <el-form-item v-if="allowQty" :label="qtyLabel" required>
           <el-input-number
@@ -489,12 +554,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
+import EmptyHint from '../../components/EmptyHint.vue'
 import RecommendStrip from '../../components/RecommendStrip.vue'
+import StatusChip from '../../components/StatusChip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
@@ -522,6 +589,13 @@ import {
 } from '../../utils/domainSchema.js'
 import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
 import { profileRoomMatches, filterArchiveByOwnerToken, ownerTokenFromProfile } from '../../utils/profileRoomMatch.js'
+import {
+  formatCountdownClock,
+  isUrgentCountdown,
+  secondsUntil,
+  useNowTick,
+} from '../../utils/useCountdown.js'
+import { equipmentMark } from '../../utils/equipmentMark.js'
 import {
   guestTeaserLimit,
   isGuestBrowseEnabled,
@@ -737,6 +811,19 @@ const flashOn = computed(() => hasCap('flash_price'))
 const productSpecOn = computed(() => hasCap('product_spec'))
 const productSpecLabel = computed(() => getSchema()?.labels?.productSpecLabel || '规格')
 const flashBadge = computed(() => getSchema()?.labels?.flashPriceBadge || '活动价')
+const { nowMs } = useNowTick()
+
+function flashSecondsLeft(row) {
+  if (!row?.promoActive || !row.promoEnd) return null
+  return secondsUntil(row.promoEnd, nowMs.value)
+}
+
+function flashCountdownText(row) {
+  const sec = flashSecondsLeft(row)
+  if (sec == null) return ''
+  if (sec <= 0) return '已结束'
+  return `剩 ${formatCountdownClock(sec)}`
+}
 const reportOn = computed(() => hasCap('content_report'))
 const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
 const likedVerb = computed(() => getSchema()?.labels?.likedVerb || '已赞')
@@ -755,6 +842,9 @@ const showPrimaryApply = computed(
 )
 const favIds = ref([])
 const likeIds = ref([])
+const reportedIds = ref(new Set())
+const favPulseId = ref(null)
+const likePulseId = ref(null)
 const reportVisible = ref(false)
 const reportRow = ref(null)
 const reportTargetType = ref('archive')
@@ -901,6 +991,11 @@ function stockOk(row) {
   return true
 }
 
+function stockTight(row) {
+  const n = Number(row?.stock)
+  return Number.isFinite(n) && n > 0 && n <= 3
+}
+
 const allowWaitlist = computed(() => !!(ticket.allowWaitlist || hasCap('waitlist')))
 const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
 
@@ -939,12 +1034,14 @@ function stockText(row) {
     if (!stockOk(row)) {
       return archive.stockUnavailableLabel || stockUnavailableFrom(ok)
     }
-    if (stockDisplay.value === 'toggle') return ok
+    if (stockDisplay.value === 'toggle') return stockTight(row) ? `${ok}·紧张` : ok
     const n = Number(row.stock)
-    // available：同款多件登记在一条时展示余量
-    if (Number.isFinite(n) && n > 1) return `${ok} · 余 ${n}`
+    if (Number.isFinite(n) && n > 1) {
+      return stockTight(row) ? `${ok} · 仅余 ${n}` : `${ok} · 余 ${n}`
+    }
     return ok
   }
+  if (stockTight(row)) return `${stockCountLabel.value}仅余 ${row.stock}`
   return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : `暂无${stockCountLabel.value}`
 }
 
@@ -1036,6 +1133,7 @@ const applyCheckinCode = ref('')
 const applyAnonymous = ref(false)
 const applyDimScores = reactive({})
 const applyLoading = ref(false)
+const conflictTip = ref('')
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishAuthor = ref('')
@@ -1215,6 +1313,8 @@ async function toggleLike(row) {
   if (!requireLogin(router)) return
   const res = await http.post(`/api/likes/${row.id}/toggle`)
   const on = !!res.data?.liked
+  likePulseId.value = row.id
+  setTimeout(() => { if (likePulseId.value === row.id) likePulseId.value = null }, 360)
   if (on) {
     if (!likeIds.value.includes(row.id)) likeIds.value = [...likeIds.value, row.id]
     row.likeCount = Number(row.likeCount || 0) + 1
@@ -1250,6 +1350,11 @@ async function submitReport() {
       reason,
     })
     ElMessage.success('已提交举报，等待处理')
+    if (reportTargetType.value === 'archive' && reportRow.value?.id != null) {
+      const next = new Set(reportedIds.value)
+      next.add(Number(reportRow.value.id))
+      reportedIds.value = next
+    }
     reportVisible.value = false
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || e?.message || '提交失败')
@@ -1262,6 +1367,8 @@ async function toggleFav(row) {
   if (!requireLogin(router)) return
   const res = await toggleFavorite(row.id)
   const on = !!res.data?.favorited
+  favPulseId.value = row.id
+  setTimeout(() => { if (favPulseId.value === row.id) favPulseId.value = null }, 360)
   if (on) {
     if (!favIds.value.includes(row.id)) favIds.value = [...favIds.value, row.id]
     ElMessage.success('已收藏')
@@ -1381,6 +1488,13 @@ async function submitPublish() {
     publishVisible.value = false
     await load()
     recRef.value?.reload?.()
+  } catch (e) {
+    const msg = String(e?.message || e?.response?.data?.message || '')
+    if (/禁言/.test(msg)) {
+      /* http 拦截器已提示「禁言至…」 */
+    } else if (msg && !e?.code) {
+      ElMessage.error(msg)
+    }
   } finally {
     publishLoading.value = false
   }
@@ -1410,6 +1524,7 @@ async function apply(row) {
     }
   }
   applyRow.value = row
+  conflictTip.value = ''
   applyRemark.value = ''
   applyAttachUrl.value = ''
   applyQty.value = 1
@@ -1539,7 +1654,10 @@ async function submitApply() {
     if (st === 'held') {
       okMsg = (getSchema()?.labels?.bookHoldOkMessage) || '暂无库存，已加入预约队列'
     } else if (st === 'waitlisted') {
-      okMsg = (getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列'
+      const rank = data?.waitlistRank || data?.waitlistPos || data?.queueNo
+      okMsg = rank
+        ? `名额已满，已加入候补（约第 ${rank} 位）`
+        : ((getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列')
     } else if (checkinOnApply.value) {
       okMsg = '已签到'
     } else {
@@ -1552,6 +1670,12 @@ async function submitApply() {
     }
     if (!richRemark.value) detailVisible.value = false
     recRef.value?.reload?.()
+  } catch (e) {
+    const msg = String(e?.message || e?.response?.data?.message || '')
+    if (/冲突|时段重叠|时间冲突/.test(msg)) {
+      conflictTip.value = msg.includes('冲突') ? msg : `时段冲突：${msg}`
+      ElMessage.warning(conflictTip.value)
+    }
   } finally {
     applyLoading.value = false
   }
@@ -1568,7 +1692,31 @@ onMounted(async () => {
   await load()
   await loadFavIds()
   await loadLikeIds()
+  await openHighlightFromRoute()
 })
+
+watch(
+  () => [route.query?.highlight, route.query?.categoryId],
+  async ([hl, cat], [prevHl, prevCat]) => {
+    if (cat !== prevCat && cat != null && String(cat).trim() !== '') {
+      const n = Number(cat)
+      categoryId.value = Number.isFinite(n) ? n : cat
+      await load()
+    }
+    if (hl !== prevHl) await openHighlightFromRoute()
+  },
+)
+
+/** 门户新品 / 足迹等带 ?highlight=id 进入时打开详情，避免只落到「全部列表」 */
+async function openHighlightFromRoute() {
+  const raw = route.query?.highlight
+  if (raw == null || String(raw).trim() === '') return
+  const id = Number(raw)
+  if (!Number.isFinite(id) || id <= 0) return
+  let row = list.value.find((x) => Number(x.id) === id)
+  if (!row) row = { id }
+  await openDetail(row)
+}
 </script>
 
 <style scoped>
@@ -1637,6 +1785,19 @@ onMounted(async () => {
 .equip { margin: 10px 0 4px; }
 .equip-title { margin: 0 0 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
 .equip-tag { margin: 0 6px 6px 0; }
+.equip-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--portal-accent, #0b6e75);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
+  vertical-align: middle;
+}
 .excerpt { margin-top: 8px; color: var(--portal-muted, #64748b); }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
@@ -1671,6 +1832,13 @@ onMounted(async () => {
 }
 .apply-tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
 .apply-tip.muted { color: var(--portal-muted, #64748b); }
+.apply-tip.conflict-tip {
+  color: #b91c1c;
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+  border-left: 3px solid #dc2626;
+  padding: 8px 10px;
+  border-radius: 0 8px 8px 0;
+}
 .attach-row { display: flex; gap: 12px; align-items: center; }
 .attach-row a { font-size: 13px; color: #0369a1; }
 .rate-dims { display: flex; flex-direction: column; gap: 8px; width: 100%; }
@@ -1678,4 +1846,7 @@ onMounted(async () => {
 .rate-dim-lab { font-size: 13px; color: var(--portal-ink, #334155); min-width: 72px; }
 .promo { margin: 4px 0 0; color: var(--el-color-danger); font-size: 13px; }
 .promo-list { color: var(--portal-muted, #94a3b8); text-decoration: line-through; margin-left: 6px; font-size: 12px; }
+.flash-cd { font-weight: 600; text-decoration: none; color: inherit; }
+.gallery .detail-cover :deep(img),
+.detail-cover :deep(img) { width: 100%; height: 100%; object-fit: cover; }
 </style>

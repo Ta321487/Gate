@@ -95,6 +95,7 @@
       :aria-expanded="open ? 'true' : 'false'"
       @click="toggle"
     >
+      <span v-if="!open && fabUnread" class="fab-dot" aria-label="有新回复" />
       <span class="fab-ico" aria-hidden="true">{{ open ? '×' : 'AI' }}</span>
     </button>
   </div>
@@ -126,6 +127,7 @@ const emptyHint = computed(() =>
 const canChat = computed(() => isLoggedIn())
 
 const open = ref(false)
+const fabUnread = ref(false)
 const hot = ref([])
 const list = ref([])
 const draft = ref('')
@@ -136,11 +138,20 @@ const scrollEl = ref(null)
 
 function toggle() {
   open.value = !open.value
+  if (open.value) fabUnread.value = false
 }
 
 function openPanel() {
   open.value = true
+  fabUnread.value = false
 }
+
+watch(open, (v) => {
+  if (v) fabUnread.value = false
+  else if (list.value.length && list.value[list.value.length - 1]?.role === 'assistant') {
+    fabUnread.value = true
+  }
+})
 
 async function loadHot() {
   try {
@@ -280,6 +291,7 @@ defineExpose({ openPanel })
   pointer-events: auto;
 }
 .fab {
+  position: relative;
   width: 52px;
   height: 52px;
   border: none;
@@ -295,6 +307,16 @@ defineExpose({ openPanel })
     color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, #0a3d42)
   );
   box-shadow: 0 8px 24px color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, transparent);
+}
+.fab-dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px #fff;
 }
 .fab.active {
   background: var(--portal-ink, #15202b);

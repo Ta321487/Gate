@@ -10,8 +10,8 @@
       </div>
     </section>
 
-    <div v-if="loading" class="empty">加载中…</div>
-    <div v-else-if="!list.length" class="empty">暂无消息。</div>
+    <PageSkeleton v-if="loading" variant="list" :rows="5" />
+    <EmptyHint v-else-if="!list.length" title="暂无消息" desc="审核结果与系统通知会出现在这里。" mark="信" />
     <ul v-else class="list">
       <li
         v-for="m in list"
@@ -19,9 +19,12 @@
         :class="{ unread: !m.read }"
         @click="openMsg(m)"
       >
-        <div class="t">{{ m.title }}</div>
-        <div class="b">{{ m.body }}</div>
-        <div class="tm">{{ m.createdAt || '—' }}</div>
+        <span class="msg-kind" aria-hidden="true">{{ messageKindMark(m.refType) }}</span>
+        <div class="body">
+          <div class="t">{{ m.title }}</div>
+          <div class="b">{{ m.body }}</div>
+          <div class="tm" :title="m.createdAt || ''">{{ formatRelative(m.createdAt) }}</div>
+        </div>
       </li>
     </ul>
 
@@ -46,8 +49,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import EmptyHint from '../../components/EmptyHint.vue'
+import PageSkeleton from '../../components/PageSkeleton.vue'
+import { formatRelative } from '../../utils/dates.js'
 import { schemaLabels, ticketCopy } from '../../utils/domainSchema.js'
 import { messageAdminTarget } from '../../utils/messages.js'
+import { messageKindMark } from '../../utils/statusTone.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -150,11 +157,15 @@ onMounted(load)
   padding: 12px 14px;
   background: var(--portal-surface, #fff);
   cursor: pointer;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
 }
 .list li.unread {
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #d5dde3));
   background: var(--portal-accent-soft, #d7eef0);
 }
+.body { min-width: 0; flex: 1; }
 .t { font-weight: 650; font-size: 14px; margin-bottom: 4px; }
 .b {
   font-size: 13px;

@@ -35,7 +35,7 @@
           账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}
           <el-button link type="primary" class="recharge-link" @click="openRecharge">充值</el-button>
         </div>
-        <div v-if="demoPay" class="loy-line muted">支持支付宝 / 微信在线支付</div>
+        <div v-if="demoPay" class="loy-line muted">支付宝 / 微信在线支付（不对接商户 SDK，仍扣账户余额）</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
@@ -49,11 +49,12 @@
           券 {{ preview.couponCode }} −¥{{ Number(preview.couponOffYuan).toFixed(2) }}
         </div>
         <div class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
-        <div v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">
-          账户余额不足，请先充值
-          <el-button link type="primary" @click="openRecharge">去充值</el-button>
-        </div>
       </template>
+      <div v-else-if="preview && walletOn" class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</div>
+      <div v-if="walletOn && preview && preview.balanceEnough === false" class="warn">
+        账户余额不足，请先充值
+        <el-button link type="primary" @click="openRecharge">去充值</el-button>
+      </div>
     </div>
 
     <el-dialog v-model="checkoutVisible" :title="`提交${orderNoun}`" width="520px" destroy-on-close>
@@ -128,7 +129,7 @@
             allow-create
             clearable
             default-first-option
-            placeholder="选择已领券或输入券码"
+            placeholder="选择已领券或输入已领券码"
             style="width: 100%"
             @change="refreshPreview"
           >
@@ -164,7 +165,7 @@
             type="password"
             show-password
             maxlength="32"
-            placeholder="支付密码，任意不少于 4 位"
+            placeholder="请输入支付密码（至少 4 位）"
           />
         </el-form-item>
         <div v-if="anyLoyalty && preview" class="checkout-loy">
@@ -175,7 +176,7 @@
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
           <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
-          <p v-if="walletOn && !demoPay && preview.balanceEnough === false" class="warn">余额不足，请先充值后再提交</p>
+          <p v-if="walletOn && preview.balanceEnough === false" class="warn">余额不足，请先充值后再提交</p>
         </div>
       </el-form>
       <template #footer>
@@ -183,14 +184,14 @@
         <el-button
           type="primary"
           :loading="placing"
-          :disabled="!demoPay && walletOn && preview?.balanceEnough === false"
+          :disabled="walletOn && preview?.balanceEnough === false"
           @click="submitOrder"
         >{{ demoPay ? '确认支付并下单' : '确认提交' }}</el-button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="rechargeVisible" title="账户充值" width="400px" destroy-on-close>
-      <p class="tip muted">选择充值金额，到账后可用于余额支付（在线支付下单不扣余额）。</p>
+      <p class="tip muted">选择充值金额，到账后用于下单扣款（在线支付不对接微信/支付宝商户，仍扣本账户余额）。</p>
       <div class="recharge-tiers">
         <el-button
           v-for="amt in rechargeTiers"
@@ -236,7 +237,9 @@ const walletOn = computed(() => isWalletEnabled())
 const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
-  () => getSchema()?.labels?.demoPayHint || '在线支付：选择渠道并输入支付密码完成本单。',
+  () =>
+    getSchema()?.labels?.demoPayHint
+    || '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。',
 )
 const pointsOn = computed(() => isPointsEnabled())
 const discountOn = computed(() => isSpendDiscountEnabled())
@@ -476,7 +479,8 @@ async function submitOrder() {
       ElMessage.warning('请输入支付密码（至少 4 位）')
       return
     }
-  } else if (walletOn.value && preview.value?.balanceEnough === false) {
+  }
+  if (walletOn.value && preview.value?.balanceEnough === false) {
     ElMessage.warning(preview.value?.message || '账户余额不足')
     return
   }

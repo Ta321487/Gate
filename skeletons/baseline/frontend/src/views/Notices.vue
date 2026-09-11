@@ -5,18 +5,24 @@
       <p>{{ pageLead }}</p>
     </section>
 
-    <div class="list">
+    <PageSkeleton v-if="loading" variant="list" :rows="4" />
+    <div v-else class="list">
       <article
         v-for="n in list"
         :key="n.id"
         class="card"
+        :class="{ pinned: !!n.pinned }"
         role="button"
         tabindex="0"
         @click="$router.push(`/notices/${n.id}`)"
         @keyup.enter="$router.push(`/notices/${n.id}`)"
       >
         <div class="main">
-          <h3>{{ n.title }}</h3>
+          <h3>
+            <el-tag v-if="n.pinned" size="small" type="warning" effect="plain" class="pin-tag">置顶</el-tag>
+            <el-tag v-else-if="isFresh(n)" size="small" type="danger" effect="plain" class="pin-tag">新</el-tag>
+            {{ n.title }}
+          </h3>
           <p class="excerpt">{{ excerpt(n.content) }}</p>
         </div>
         <div class="aside">
@@ -26,7 +32,7 @@
       </article>
     </div>
 
-    <div v-if="!list.length" class="empty">暂无公告。</div>
+    <EmptyHint v-if="!loading && !list.length" title="暂无公告" desc="有通知时会出现在这里。" mark="告" />
     <div v-if="!isGuest" class="pager">
       <el-pagination
         v-model:current-page="page"
@@ -47,7 +53,10 @@
 /** 公告：标题/导语来自 Domain Schema，勿写死某一行业文案 */
 import { computed, onMounted, ref } from 'vue'
 import http from '../api/http'
+import EmptyHint from '../components/EmptyHint.vue'
 import GuestLoginHint from '../components/GuestLoginHint.vue'
+import PageSkeleton from '../components/PageSkeleton.vue'
+import { parseDateMs } from '../utils/dates.js'
 import { schemaLabels } from '../utils/domainSchema.js'
 import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/session.js'
 
@@ -60,6 +69,7 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
+const loading = ref(false)
 
 function excerpt(text, n = 88) {
   const s = (text || '').replace(/\s+/g, ' ').trim()
@@ -67,13 +77,26 @@ function excerpt(text, n = 88) {
   return s.slice(0, n) + '…'
 }
 
+/** 未置顶时：48 小时内发布标「新」 */
+function isFresh(n) {
+  if (n?.pinned) return false
+  const t = parseDateMs(n?.createdAt)
+  if (t == null) return false
+  return Date.now() - t < 48 * 3600 * 1000
+}
+
 async function load() {
-  const pageSize = isGuest.value ? guestTeaserLimit() : size.value
-  const res = await http.get('/api/notices', {
-    params: { page: isGuest.value ? 1 : page.value, size: pageSize },
-  })
-  list.value = res.data.list
-  total.value = res.data.total
+  loading.value = true
+  try {
+    const pageSize = isGuest.value ? guestTeaserLimit() : size.value
+    const res = await http.get('/api/notices', {
+      params: { page: isGuest.value ? 1 : page.value, size: pageSize },
+    })
+    list.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(load)
@@ -121,6 +144,11 @@ onMounted(load)
   border-left-color: var(--portal-accent, #0b6e75);
   transform: translateX(2px);
 }
+.card.pinned {
+  border-left-color: #d97706;
+  background: color-mix(in srgb, #d97706 6%, var(--portal-surface, #fff));
+}
+.pin-tag { margin-right: 6px; vertical-align: middle; }
 .main h3 {
   margin: 0 0 6px;
   font-size: 16px;

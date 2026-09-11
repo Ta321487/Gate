@@ -39,8 +39,12 @@
         <el-table-column prop="title" label="书名" min-width="160" show-overflow-tooltip />
         <el-table-column prop="isbn" label="ISBN" width="130" show-overflow-tooltip />
         <el-table-column prop="author" label="作者" width="120" show-overflow-tooltip />
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">{{ statusLabel(row.status) }}</template>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag size="small" :type="suggestStatusTagType(row.status)" effect="plain">
+              {{ statusLabel(row.status) }}
+            </el-tag>
+          </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="提交时间" width="170" />
         <el-table-column prop="handleNote" label="审核说明" min-width="140" show-overflow-tooltip />
@@ -65,10 +69,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import http from '../api/http'
-import GuestLoginHint from '../components/GuestLoginHint.vue'
-import { getSchema } from '../utils/domainSchema.js'
-import { isLoggedIn } from '../utils/session.js'
+import http from '../../api/http'
+import GuestLoginHint from '../../components/GuestLoginHint.vue'
+import { getSchema } from '../../utils/domainSchema.js'
+import { suggestStatusTagType } from '../../utils/statusTone.js'
+import { isLoggedIn } from '../../utils/session.js'
 
 const labels = computed(() => getSchema()?.labels || {})
 const pageTitle = computed(() => labels.value.bookSuggestPageTitle || '图书荐购')

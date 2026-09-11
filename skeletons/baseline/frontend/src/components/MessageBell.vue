@@ -24,9 +24,12 @@
           :class="{ unread: !m.read }"
           @click="openMsg(m)"
         >
-          <div class="t">{{ m.title }}</div>
-          <div class="b">{{ m.body }}</div>
-          <div class="tm">{{ m.createdAt }}</div>
+          <span class="msg-kind" aria-hidden="true">{{ messageKindMark(m.refType) }}</span>
+          <div class="body">
+            <div class="t">{{ m.title }}</div>
+            <div class="b">{{ m.body }}</div>
+            <div class="tm" :title="m.createdAt || ''">{{ formatRelative(m.createdAt) }}</div>
+          </div>
         </li>
       </ul>
     </div>
@@ -38,7 +41,9 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { formatRelative } from '../utils/dates.js'
 import { messageAdminTarget, messageInboxPath } from '../utils/messages.js'
+import { messageKindMark } from '../utils/statusTone.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,9 +138,13 @@ onUnmounted(() => {
   border-top: var(--portal-border-width, 1px) solid var(--portal-line, #f1f5f9);
   cursor: pointer;
   border-radius: var(--portal-radius-sm, 6px);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 }
 .list li:hover { background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-surface, #f8fafc)); }
 .list li.unread { background: var(--portal-accent-soft, #f0fdfa); }
+.body { min-width: 0; flex: 1; }
 .t { font-size: 13px; font-weight: 600; color: var(--portal-ink, #0f172a); }
 .b {
   margin-top: 4px; font-size: 12px; color: var(--portal-muted, #64748b);

@@ -5,9 +5,13 @@
       <p>{{ lead }}</p>
     </section>
     <div class="card bal">
-      <div class="muted">当前余额</div>
-      <strong class="num">{{ balance }}</strong>
-      <span class="muted">小时</span>
+      <div class="ring" :style="{ '--pct': ringPct }">
+        <div class="ring-inner">
+          <div class="muted">当前余额</div>
+          <strong class="num">{{ balance }}</strong>
+          <span class="muted">小时</span>
+        </div>
+      </div>
     </div>
     <el-card class="earn" shadow="never">
       <template #header>登记存入时长</template>
@@ -54,6 +58,13 @@ const hours = ref(1)
 const reason = ref('')
 const busy = ref(false)
 
+/** 相对演示目标的环形进度（目标至少 40 小时，随余额抬升） */
+const ringPct = computed(() => {
+  const n = Number(balance.value) || 0
+  const goal = Math.max(40, Math.ceil(n / 40) * 40 || 40)
+  return `${Math.min(100, Math.round((n / goal) * 100))}%`
+})
+
 async function load() {
   const [acc, svc] = await Promise.all([
     http.get('/api/timebank/account'),
@@ -92,8 +103,25 @@ onMounted(load)
 
 <style scoped>
 .hero { margin-bottom: 1rem; }
-.bal { padding: 1rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: baseline; gap: 0.5rem; }
-.num { font-size: 2rem; }
-.muted { color: var(--el-text-color-secondary); }
+.bal {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+}
+.ring {
+  --pct: 0%;
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(closest-side, var(--portal-surface, #fff) 72%, transparent 73% 100%),
+    conic-gradient(var(--portal-accent, #0b6e75) var(--pct), color-mix(in srgb, var(--portal-line, #e2e8f0) 85%, transparent) 0);
+}
+.ring-inner { text-align: center; }
+.num { display: block; font-size: 2rem; line-height: 1.1; margin: 4px 0; }
+.muted { color: var(--el-text-color-secondary); font-size: 13px; }
 .earn { max-width: 520px; }
 </style>
