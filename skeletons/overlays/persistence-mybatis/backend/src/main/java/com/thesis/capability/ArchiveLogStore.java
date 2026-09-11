@@ -61,10 +61,11 @@ public final class ArchiveLogStore {
         }
         String type = (logType == null || logType.isBlank()) ? "checkin" : logType.trim();
         LocalDate day = logDate == null ? LocalDate.now() : logDate;
-        String payloadJson = "{}";
+        String payloadJson;
         try {
             payloadJson = JSON.writeValueAsString(payload == null ? Map.of() : payload);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("日志内容无法保存", e);
         }
         String rem = remark == null ? "" : remark.trim();
         if (rem.length() > 500) rem = rem.substring(0, 500);

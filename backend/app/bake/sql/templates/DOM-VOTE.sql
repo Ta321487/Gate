@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS vote_candidate (
   intro VARCHAR(1000) DEFAULT '',
   sort_no INT NOT NULL DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
+  avatar_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_vote_cand_camp (campaign_id)
 );

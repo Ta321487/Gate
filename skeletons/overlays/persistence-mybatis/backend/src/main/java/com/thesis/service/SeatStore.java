@@ -132,12 +132,19 @@ public class SeatStore {
 
     public static void syncLayout(long showId) {
         if (!enabled || showId <= 0) return;
-        if (!ready()) return;
+        if (!ready()) {
+            throw new IllegalStateException("选座功能暂不可用，无法同步布局");
+        }
         try {
             Map<String, Object> show = getShow(showId);
-            if (show == null) return;
+            if (show == null) {
+                throw new IllegalStateException("场次不存在，无法同步选座布局");
+            }
             ensureSeatMap(showId, show);
-        } catch (Exception ignored) {
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("同步选座布局失败", e);
         }
     }
 
@@ -164,7 +171,8 @@ public class SeatStore {
                 LocalDateTime t = LocalDateTime.parse(sa, FMT);
                 return !t.isAfter(LocalDateTime.now());
             } catch (Exception ignored) {
-                return false;
+                // 脏 start_at：视为已过，禁止选座
+                return true;
             }
         }
     }
@@ -207,10 +215,14 @@ public class SeatStore {
     }
 
     private static double priceOf(Map<String, Object> show) {
+        Object raw = show.get("author");
+        if (raw == null) return 0;
+        String s = String.valueOf(raw).replace("¥", "").replace("￥", "").trim();
+        if (s.isBlank()) return 0;
         try {
-            return Double.parseDouble(str(show.get("author")).replace("¥", "").replace("￥", ""));
+            return Double.parseDouble(s);
         } catch (Exception e) {
-            return 0;
+            throw new IllegalArgumentException("票价无效，请填写数字金额");
         }
     }
 
@@ -248,12 +260,19 @@ public class SeatStore {
                 u, showId, str(show.get("title")), unit, codes.size(), seatRemark);
         if (order == null) throw new IllegalStateException("下单失败");
         long orderId = order.get("id") instanceof Number n ? n.longValue() : 0L;
-        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-        for (String code : codes) {
-            int n = mapper().sellSeat(showId, code, u, orderId, now);
-            if (n == 0) throw new IllegalStateException("座位 " + code + " 已被占用");
+        boolean stockAdjusted = false;
+        try {
+            Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+            for (String code : codes) {
+                int n = mapper().sellSeat(showId, code, u, orderId, now);
+                if (n == 0) throw new IllegalStateException("座位 " + code + " 已被占用");
+            }
+            ArchiveStore.adjustStock(showId, -codes.size());
+            stockAdjusted = true;
+        } catch (RuntimeException ex) {
+            rollbackFailedPurchase(orderId, showId, codes.size(), stockAdjusted);
+            throw ex;
         }
-        ArchiveStore.adjustStock(showId, -codes.size());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("order", order);
         out.put("seats", codes);
@@ -261,12 +280,38 @@ public class SeatStore {
         return out;
     }
 
+    private static void rollbackFailedPurchase(
+            long orderId, long showId, int qty, boolean stockAdjusted) {
+        RuntimeException first = null;
+        try {
+            releaseByOrder(orderId);
+        } catch (RuntimeException e) {
+            first = e;
+        }
+        if (stockAdjusted) {
+            try {
+                ArchiveStore.adjustStock(showId, qty);
+            } catch (RuntimeException e) {
+                if (first == null) first = e;
+                else first.addSuppressed(e);
+            }
+        }
+        try {
+            OrderStore.abortPendingPurchase(orderId);
+        } catch (RuntimeException e) {
+            if (first == null) first = e;
+            else first.addSuppressed(e);
+        }
+        if (first != null) throw first;
+    }
+
     public static void releaseByOrder(long orderId) {
         if (!enabled || orderId <= 0) return;
         if (!ready()) return;
         try {
             mapper().releaseByOrder(orderId);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("释放座位失败，请重试", e);
         }
     }
 }

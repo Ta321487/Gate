@@ -13,10 +13,13 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 门户留言板（sys_guestbook）：用户发表；管理端删除/简短回复。
@@ -122,6 +125,9 @@ public class GuestbookStore {
         if (b.isBlank()) return null;
         String nick = clip(nickname == null || nickname.isBlank() ? username : nickname, 64);
         String ch = normChannel(channel);
+        if ("merchant".equals(ch) && !hasChannel()) {
+            throw new IllegalStateException("系统未配置留言通道字段，无法保存");
+        }
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps;
@@ -203,10 +209,52 @@ public class GuestbookStore {
                 "SELECT * FROM sys_guestbook" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> row(rs),
                 listArgs.toArray());
+        attachAvatars(list);
         out.put("list", list);
         out.put("total", t);
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 留言人头像：按 username 批量挂 avatarUrl（与私信表面一致，不改表） */
+    private static void attachAvatars(List<Map<String, Object>> list) {
+        if (list == null || list.isEmpty()) return;
+        Set<String> names = new HashSet<>();
+        for (Map<String, Object> m : list) {
+            Object u = m.get("username");
+            if (u != null) {
+                String s = String.valueOf(u).trim();
+                if (!s.isEmpty()) names.add(s);
+            }
+        }
+        if (names.isEmpty()) {
+            for (Map<String, Object> m : list) m.put("avatarUrl", "");
+            return;
+        }
+        Map<String, String> avatars = new HashMap<>();
+        try {
+            StringBuilder in = new StringBuilder();
+            List<Object> args = new ArrayList<>();
+            for (String n : names) {
+                if (in.length() > 0) in.append(',');
+                in.append('?');
+                args.add(n);
+            }
+            db().query(
+                    "SELECT username, avatar_url FROM sys_user WHERE username IN (" + in + ")",
+                    (rs, i) -> {
+                        String av = rs.getString("avatar_url");
+                        avatars.put(rs.getString("username"), av == null ? "" : av.trim());
+                        return null;
+                    },
+                    args.toArray());
+        } catch (Exception ignored) {
+            /* 表缺列时静默 */
+        }
+        for (Map<String, Object> m : list) {
+            String u = m.get("username") == null ? "" : String.valueOf(m.get("username")).trim();
+            m.put("avatarUrl", avatars.getOrDefault(u, ""));
+        }
     }
 }

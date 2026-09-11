@@ -111,7 +111,15 @@ public class UserStore {
         try {
             return JSON.writeValueAsString(extras == null ? Map.of() : extras);
         } catch (Exception e) {
-            return "{}";
+            throw new IllegalStateException("扩展资料无法保存", e);
+        }
+    }
+
+    private static void requireProfileJsonIfExtras(Map<String, String> extras) {
+        if (extras == null || extras.isEmpty()) return;
+        boolean any = extras.values().stream().anyMatch(v -> v != null && !v.isBlank());
+        if (any && !hasProfileJson()) {
+            throw new IllegalStateException("系统未配置扩展资料字段，无法保存");
         }
     }
 
@@ -243,6 +251,7 @@ public class UserStore {
         String ph = phone == null ? "" : phone.trim();
         Map<String, String> ex = ProfileFields.filterExtras(extras);
         ProfileFields.requireFilled(ph, ex, true);
+        requireProfileJsonIfExtras(ex);
         String encoded = PasswordHashes.encode(password);
         ensureStaffColumns();
         if (hasProfileJson()) {
@@ -286,6 +295,7 @@ public class UserStore {
         String ph = phone == null ? "" : phone.trim();
         Map<String, String> ex = ProfileFields.filterExtras(extras);
         ProfileFields.requireFilled(ph, ex, true, "staff");
+        requireProfileJsonIfExtras(ex);
         String encoded = PasswordHashes.encode(password);
         ensureStaffColumns();
         if (hasProfileJson()) {
@@ -378,6 +388,7 @@ public class UserStore {
             merged.putAll(ProfileFields.filterExtras(extras));
             p.extras = merged;
         }
+        requireProfileJsonIfExtras(p.extras);
         if (hasProfileJson()) {
             db().update(
                     "UPDATE sys_user SET nickname=?, phone=?, enabled=?, profile_json=? WHERE username=?",
@@ -510,6 +521,7 @@ public class UserStore {
     public static void saveProfile(Profile p) {
         String audience = isStaffAccount(p) ? "staff" : "user";
         ProfileFields.requireFilled(p.phone, p.extras, false, audience);
+        requireProfileJsonIfExtras(p.extras);
         if (hasProfileJson()) {
             db().update(
                     "UPDATE sys_user SET nickname=?, phone=?, avatar_url=?, password=?, profile_json=? WHERE username=?",

@@ -325,13 +325,34 @@ WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
 """
 
 
-def ensure_guestbook_sql(sql: str, *, enabled: bool) -> str:
-    """能力开启时幂等补留言表；未开启不注入（控表预算）。"""
+GUESTBOOK_CHANNEL_COLUMNS: list[tuple[str, str]] = [
+    ("channel", "VARCHAR(16) DEFAULT 'user'"),
+]
+
+
+def ensure_guestbook_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    with_channel: bool = False,
+) -> str:
+    """能力开启时幂等补留言表；多店再补 channel 列（走 inject，勿平行 regex）。"""
     if not enabled:
         return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _GUESTBOOK_DDL
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", out):
+        out = out.rstrip() + "\n" + _GUESTBOOK_DDL
+    if not with_channel:
+        return out
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "sys_guestbook":
+            return m.group(0)
+        body = _inject_missing_columns(body, GUESTBOOK_CHANNEL_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, out)
 
 
 _AI_KNOWLEDGE_DDL = """
@@ -514,6 +535,7 @@ CREATE TABLE IF NOT EXISTS vote_candidate (
   intro VARCHAR(1000) DEFAULT '',
   sort_no INT NOT NULL DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
+  avatar_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_vote_cand_camp (campaign_id)
 );
@@ -539,13 +561,27 @@ INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status
 """
 
 
+VOTE_CANDIDATE_COLUMNS: list[tuple[str, str]] = [
+    ("avatar_url", "VARCHAR(255) DEFAULT ''"),
+]
+
+
 def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
-    """vote 能力开启时幂等补评选表；ACTIVITY 复合再补演示种子。"""
+    """vote 能力开启时幂等补评选表；表已存在时仍补 avatar_url（DOM-VOTE 模板曾漏列）。"""
     if not enabled:
         return sql
     out = sql
     if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
         out = out.rstrip() + "\n" + _VOTE_CORE_DDL
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_candidate":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_CANDIDATE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, out)
     if seed_activity and "活动优秀个人评选" not in out:
         out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
     return out
@@ -823,6 +859,56 @@ def ensure_archive_log_sql(sql: str, *, enabled: bool) -> str:
     if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?archive_log`?\b", sql):
         return sql
     return sql.rstrip() + "\n" + _ARCHIVE_LOG_DDL
+
+
+SOFT_DELETE_COLUMNS: list[tuple[str, str]] = [
+    ("deleted_at", "DATETIME NULL"),
+]
+
+
+def ensure_soft_delete_columns(
+    sql: str,
+    *,
+    enabled: bool,
+    item_table: str | None,
+) -> str:
+    """archive.softDelete 开时档案主表须有 deleted_at（与 yml archive-soft-delete 对齐）。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, SOFT_DELETE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+
+NOTICE_PINNED_COLUMNS: list[tuple[str, str]] = [
+    ("pinned", "TINYINT NOT NULL DEFAULT 0"),
+]
+
+
+def ensure_notice_pinned_column(sql: str, *, enabled: bool = True) -> str:
+    """公告表幂等补 pinned，避免依赖学生包运行时 ALTER。"""
+    if not enabled:
+        return sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_notice`?\b", sql):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "sys_notice":
+            return m.group(0)
+        body = _inject_missing_columns(body, NOTICE_PINNED_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
 
 
 GALLERY_COLUMNS: list[tuple[str, str]] = [

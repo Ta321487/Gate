@@ -246,8 +246,8 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 多店在线支付：渠道+支付密码过账，不走账户余额扣款
-            if (!demoPay && LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
+            // 在线支付仍扣账户余额；不对接微信/支付宝商户 SDK ≠ 免余额
+            if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
                         "账户余额不足，请先在个人中心或购物车充值")));
@@ -280,6 +280,14 @@ public final class OrderStore {
             if (!needAddr && rName.isBlank()) {
                 rName = username;
             }
+        }
+        requireOrderColIfPresent("receiver_name", "收货人", !rName.isBlank());
+        requireOrderColIfPresent("receiver_phone", "收货电话", !rPhone.isBlank());
+        requireOrderColIfPresent("address_line", "收货地址", !addr.isBlank());
+        requireOrderColIfPresent("delivery_type", "配送方式", !dtype.isBlank());
+        requireOrderColIfPresent("taste_note", "口味备注", !taste.isBlank());
+        if (demoPay && channel != null && !channel.isBlank()) {
+            requireOrderColIfPresent("pay_channel", "支付渠道", true);
         }
         LinkedHashMap<String, Object> extraCols = new LinkedHashMap<>();
         if (hasOrderColumn("receiver_name")) extraCols.put("receiver_name", rName);
@@ -322,19 +330,11 @@ public final class OrderStore {
                 }
             }
             if (LoyaltyStore.anyEnabled()) {
-                Map<String, Object> snap;
-                if (demoPay) {
-                    snap = LoyaltyStore.previewPrice(subtotal, username, coupon);
-                    snap.put("payBalanceYuan", 0.0);
-                } else {
-                    snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
-                }
+                // 渠道+密码仅为收银台形态校验（长度≥4，不验登录密码哈希）；有钱包时一律 settle 扣余额
+                Map<String, Object> snap = LoyaltyStore.settleOnPlace(username, subtotal, orderId, coupon);
                 applyLoyaltySnapshot(orderId, snap);
                 if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()) {
-                    try {
-                        CouponStore.markUsed(username, coupon, orderId);
-                    } catch (Exception ignored) {
-                    }
+                    CouponStore.markUsed(username, coupon, orderId);
                 }
             }
         } catch (RuntimeException ex) {
@@ -387,8 +387,11 @@ public final class OrderStore {
             String username, long itemId, String title, double priceYuan, int qty, String remark, Long reservationId) {
         if (!enabled) return null;
         if (qty < 1) qty = 1;
+        if (reservationId != null && reservationId > 0 && !hasOrderColumn("reservation_id")) {
+            throw new IllegalStateException("系统未配置预约订单联动字段，无法下单");
+        }
         int q = qty;
-        boolean withResv = reservationId != null && reservationId > 0 && hasOrderColumn("reservation_id");
+        boolean withResv = reservationId != null && reservationId > 0;
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         double total = round2(priceYuan * q);
         Map<String, Object> orderRow = new LinkedHashMap<>();
@@ -405,7 +408,57 @@ public final class OrderStore {
         mapper().insertOrder(orderRow);
         long orderId = orderRow.get("id") == null ? 0L : ((Number) orderRow.get("id")).longValue();
         mapper().insertLine(LINE, orderId, itemId, title == null ? "" : title, priceYuan, q);
+        if (LoyaltyStore.anyEnabled()) {
+            Map<String, Object> snap = null;
+            try {
+                ensureLoyaltyColumns();
+                snap = LoyaltyStore.settleOnPlace(username, total, orderId, null);
+                applyLoyaltySnapshot(orderId, snap);
+            } catch (RuntimeException ex) {
+                try {
+                    double paid = snap != null ? toDouble(snap.get("payBalanceYuan")) : 0;
+                    if (paid <= 1e-9) {
+                        Map<String, Object> m = getOrder(orderId);
+                        if (m != null) paid = toDouble(m.get("payBalanceYuan"));
+                    }
+                    if (paid > 1e-9) {
+                        LoyaltyStore.refundOrderPay(username, orderId, paid);
+                    }
+                } catch (Exception ignored) {
+                }
+                try {
+                    mapper().deleteLines(LINE, orderId);
+                    mapper().deleteOrder(ORDER, orderId);
+                } catch (Exception ignored) {
+                }
+                throw ex;
+            }
+        }
         return getOrder(orderId);
+    }
+
+    /**
+     * 选座等「先下单再履约」失败时关单：退余额、释放券，不回补库存（库存由调用方按是否已扣处理）。
+     * 与 advance(cancel) 不同，避免尚未扣库存时误 +stock。
+     */
+    public static void abortPendingPurchase(long orderId) {
+        if (!enabled || orderId <= 0) return;
+        Map<String, Object> m = getOrder(orderId);
+        if (m == null) return;
+        String st = String.valueOf(m.get("status"));
+        if (!"pending".equals(st) && !"confirmed".equals(st)) return;
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        mapper().updateOrderStatus(ORDER, orderId, "cancelled", now);
+        if (LoyaltyStore.anyEnabled()) {
+            double paid = toDouble(m.get("payBalanceYuan"));
+            String uname = String.valueOf(m.get("username"));
+            if (paid > 1e-9) {
+                LoyaltyStore.refundOrderPay(uname, orderId, paid);
+            }
+            if (LoyaltyStore.isCouponEnabled()) {
+                CouponStore.releaseByOrder(orderId);
+            }
+        }
     }
 
     public static Map<String, Object> getOrder(long id) {
@@ -518,28 +571,25 @@ public final class OrderStore {
         if (ids == null) return;
         for (Long id : ids) {
             if (id == null) continue;
-            try {
-                String act = action;
-                if ("cancel".equals(action)) {
-                    Map<String, Object> m = getOrder(id);
-                    if (m != null && "shipped".equals(String.valueOf(m.get("status")))) {
-                        act = "complete";
-                    }
+            String act = action;
+            if ("cancel".equals(action)) {
+                Map<String, Object> m = getOrder(id);
+                if (m != null && "shipped".equals(String.valueOf(m.get("status")))) {
+                    act = "complete";
                 }
-                // 办结关联订单：须先确认再履约，再完成（与基线一致）
-                if ("complete".equals(act)) {
-                    Map<String, Object> m = getOrder(id);
-                    String st = m == null ? "" : String.valueOf(m.get("status"));
-                    if ("pending".equals(st)) {
-                        advance(id, "confirm", null);
-                        advance(id, "ship", null);
-                    } else if ("confirmed".equals(st)) {
-                        advance(id, "ship", null);
-                    }
-                }
-                advance(id, act, null);
-            } catch (Exception ignored) {
             }
+            // 办结关联订单：须先确认再履约，再完成（与基线一致）
+            if ("complete".equals(act)) {
+                Map<String, Object> m = getOrder(id);
+                String st = m == null ? "" : String.valueOf(m.get("status"));
+                if ("pending".equals(st)) {
+                    advance(id, "confirm", null);
+                    advance(id, "ship", null);
+                } else if ("confirmed".equals(st)) {
+                    advance(id, "ship", null);
+                }
+            }
+            advance(id, act, null);
         }
     }
 
@@ -564,6 +614,29 @@ public final class OrderStore {
         String pw = payPassword == null ? "" : payPassword.trim();
         if (pw.length() < 4) {
             throw new IllegalArgumentException("请输入支付密码（至少 4 位）");
+        }
+        if (LoyaltyStore.isWalletEnabled()) {
+            ensureLoyaltyColumns();
+            double already = toDouble(m.get("payBalanceYuan"));
+            if (already <= 1e-9) {
+                double pay = round2(toDouble(m.get("totalYuan")));
+                LoyaltyStore.captureOrderPay(username, pay, orderId);
+                if (hasOrderColumn("pay_balance_yuan")) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("orderTable", ORDER);
+                    row.put("id", orderId);
+                    row.put("totalYuan", BigDecimal.valueOf(toDouble(m.get("totalYuan"))).setScale(2, RoundingMode.HALF_UP));
+                    row.put("discountYuan", BigDecimal.valueOf(toDouble(m.get("discountYuan"))).setScale(2, RoundingMode.HALF_UP));
+                    row.put("payBalanceYuan", BigDecimal.valueOf(pay).setScale(2, RoundingMode.HALF_UP));
+                    row.put("updatedAt", Timestamp.valueOf(LocalDateTime.now()));
+                    if (hasOrderColumn("coupon_code")) {
+                        row.put("couponCode", String.valueOf(m.getOrDefault("couponCode", "")));
+                        mapper().applyLoyaltyWithCoupon(row);
+                    } else {
+                        mapper().applyLoyaltyPlain(row);
+                    }
+                }
+            }
         }
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         int n = mapper().payPendingOrder(ORDER, orderId, "confirmed", channel, now);
@@ -629,12 +702,22 @@ public final class OrderStore {
         else if ("cancel".equals(act) && ("pending".equals(st) || "confirmed".equals(st))) next = "cancelled";
         else throw new IllegalStateException("当前状态不可执行：" + act);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        String tracking = "";
+        String pickup = "";
+        if ("shipped".equals(next)) {
+            tracking = opts == null ? "" : String.valueOf(opts.getOrDefault("trackingNo", "")).trim();
+            pickup = opts == null ? "" : String.valueOf(opts.getOrDefault("pickupCode", "")).trim();
+            if (!tracking.isBlank() && !hasOrderColumn("tracking_no")) {
+                throw new IllegalStateException("系统未配置物流单号字段，无法保存");
+            }
+            if (!pickup.isBlank() && !hasOrderColumn("pickup_code")) {
+                throw new IllegalStateException("系统未配置取货码字段，无法保存");
+            }
+        }
         if ("shipped".equals(next)
                 && (hasOrderColumn("tracking_no")
                 || hasOrderColumn("pickup_code")
                 || hasOrderColumn("shipped_at"))) {
-            String tracking = opts == null ? "" : String.valueOf(opts.getOrDefault("trackingNo", "")).trim();
-            String pickup = opts == null ? "" : String.valueOf(opts.getOrDefault("pickupCode", "")).trim();
             if (pickup.isBlank() && hasOrderColumn("pickup_code")) {
                 String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
                 if (dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提")) {
@@ -796,6 +879,13 @@ public final class OrderStore {
         }
     }
 
+    private static void requireOrderColIfPresent(String col, String label, boolean present) {
+        if (!present) return;
+        if (!hasOrderColumn(col)) {
+            throw new IllegalStateException("系统未配置「" + label + "」字段，无法保存");
+        }
+    }
+
     private static boolean hasOrderColumn(String col) {
         try {
             Integer n = schema().countColumn(ORDER, col);
@@ -828,23 +918,30 @@ public final class OrderStore {
         double payBal = toDouble(snap.get("payBalanceYuan"));
         double payable = toDouble(snap.get("payableYuan"));
         String coupon = String.valueOf(snap.getOrDefault("couponCode", ""));
-        try {
-            if (hasOrderColumn("discount_yuan") && hasOrderColumn("pay_balance_yuan")) {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("orderTable", ORDER);
-                row.put("id", orderId);
-                row.put("totalYuan", BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP));
-                row.put("discountYuan", BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP));
-                row.put("payBalanceYuan", BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP));
-                row.put("updatedAt", Timestamp.valueOf(LocalDateTime.now()));
-                if (hasOrderColumn("coupon_code")) {
-                    row.put("couponCode", coupon == null || "null".equals(coupon) ? "" : coupon);
-                    mapper().applyLoyaltyWithCoupon(row);
-                } else {
-                    mapper().applyLoyaltyPlain(row);
-                }
+        if (!(hasOrderColumn("discount_yuan") && hasOrderColumn("pay_balance_yuan"))) {
+            if (payBal > 1e-9) {
+                throw new IllegalStateException("订单缺少余额字段，无法记扣款");
             }
-        } catch (Exception ignored) {
+            return;
+        }
+        try {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("orderTable", ORDER);
+            row.put("id", orderId);
+            row.put("totalYuan", BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP));
+            row.put("discountYuan", BigDecimal.valueOf(discount).setScale(2, RoundingMode.HALF_UP));
+            row.put("payBalanceYuan", BigDecimal.valueOf(payBal).setScale(2, RoundingMode.HALF_UP));
+            row.put("updatedAt", Timestamp.valueOf(LocalDateTime.now()));
+            if (hasOrderColumn("coupon_code")) {
+                row.put("couponCode", coupon == null || "null".equals(coupon) ? "" : coupon);
+                mapper().applyLoyaltyWithCoupon(row);
+            } else {
+                mapper().applyLoyaltyPlain(row);
+            }
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("订单支付快照写入失败", e);
         }
     }
 
@@ -951,8 +1048,11 @@ public final class OrderStore {
         if (!"pending".equals(st) && !"cancelled".equals(st)) {
             nodes.add(traceNode(m.get("updatedAt"), "商家已确认", "备货中"));
         }
-        boolean inTransit = "shipped".equals(st) || "completed".equals(st);
-        if (inTransit) {
+        boolean shipPhase = "shipped".equals(st)
+                || "in_transit".equals(st)
+                || "signed".equals(st)
+                || "completed".equals(st);
+        if (shipPhase) {
             Object shipAt = m.get("shippedAt") != null ? m.get("shippedAt") : m.get("updatedAt");
             String track = String.valueOf(m.getOrDefault("trackingNo", ""));
             String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
@@ -969,7 +1069,9 @@ public final class OrderStore {
                 nodes.add(traceNode(shipAt, "派送中", "快递员正在派送"));
             }
         }
-        if ("completed".equals(st)) {
+        if ("signed".equals(st)) {
+            nodes.add(traceNode(m.get("updatedAt"), "已签收", "买家已签收"));
+        } else if ("completed".equals(st)) {
             nodes.add(traceNode(m.get("updatedAt"), "已签收/完成", "订单完结"));
         }
         if ("cancelled".equals(st)) {

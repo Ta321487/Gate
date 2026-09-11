@@ -182,6 +182,16 @@ public final class SlotStore {
         if (requireRemark && noteFilled.isBlank()) {
             throw new IllegalStateException("请填写备注后再预约");
         }
+        requireResvColIfPresent("plate_no", "车牌号", !plate.isBlank());
+        requireResvColIfPresent("patient_name", "就诊人", !patient.isBlank());
+        requireResvColIfPresent("visit_type", "就诊类型", !visit.isBlank());
+        requireResvColIfPresent("symptom_note", "症状说明", !symptom.isBlank());
+        requireResvColIfPresent("subject", "主题", !subject.isBlank());
+        requireResvColIfPresent("party_size", "人数", party > 0);
+        requireResvColIfPresent("guest_name", "入住姓名", !guest.isBlank());
+        requireResvColIfPresent("guest_count", "入住人数", guestCount > 0);
+        requireResvColIfPresent("preferred_stylist", "指定技师", !stylist.isBlank());
+        requireResvColIfPresent("queue_no", "排队号", queue > 0);
         final String noteFinal = noteFilled.length() > 255 ? noteFilled.substring(0, 255) : noteFilled;
         final String initialStatus = requireConfirm ? "pending" : "confirmed";
 
@@ -334,10 +344,7 @@ public final class SlotStore {
         } else {
             db().update("UPDATE " + RESV + " SET status='completed' WHERE id=?", resvId);
         }
-        try {
-            OrderStore.completeByReservation(resvId);
-        } catch (Exception ignored) {
-        }
+        OrderStore.completeByReservation(resvId);
         try {
             String user = String.valueOf(m.get("username"));
             MessageStore.send(
@@ -367,10 +374,7 @@ public final class SlotStore {
         db().update(
                 "UPDATE " + SLOT + " SET booked=GREATEST(booked-1,0) WHERE id=?",
                 ((Number) m.get("slotId")).longValue());
-        try {
-            OrderStore.cancelByReservation(resvId);
-        } catch (Exception ignored) {
-        }
+        OrderStore.cancelByReservation(resvId);
         return getReservation(resvId);
     }
 
@@ -546,7 +550,8 @@ public final class SlotStore {
             try {
                 return !LocalDateTime.parse(sa, FMT).isAfter(LocalDateTime.now());
             } catch (Exception ignored) {
-                return false;
+                // 脏 start_at：视为已过，禁止再约
+                return true;
             }
         }
     }
@@ -629,6 +634,13 @@ public final class SlotStore {
             return Integer.parseInt(String.valueOf(o).trim());
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    private static void requireResvColIfPresent(String col, String label, boolean present) {
+        if (!present) return;
+        if (!hasResvColumn(col)) {
+            throw new IllegalStateException("系统未配置「" + label + "」字段，无法保存预约信息");
         }
     }
 

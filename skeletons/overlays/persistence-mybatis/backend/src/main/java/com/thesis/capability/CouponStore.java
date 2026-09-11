@@ -15,7 +15,7 @@ import java.util.*;
 
 /**
  * 优惠券完整生命周期：券模板领取 → 我的券 → 下单核销 → 过期扫标。
- * 仍兼容下单直接填码（未领取的模板码）。
+ * 下单仅核销用户已领取且未用的券，不可直接填模板码绕过领取配额。
  */
 public final class CouponStore {
 
@@ -209,7 +209,7 @@ public final class CouponStore {
         return out;
     }
 
-    /** 下单算价：优先用户已领券码；否则匹配可领模板码。 */
+    /** 下单算价：仅匹配用户已领取且未用的券。 */
     public static Map<String, Object> matchForCheckout(String username, String code, double amountYuan) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", false);
@@ -218,19 +218,22 @@ public final class CouponStore {
         if (!enabled || code == null || code.isBlank()) return out;
         expireSweep();
         String want = code.trim().toUpperCase(Locale.ROOT);
-        if (username != null && !username.isBlank()) {
-            List<Map<String, Object>> mine = mapper().selectUnusedMineByCode(username, want);
-            if (mine != null && !mine.isEmpty()) {
-                Map<String, Object> hit = shapePromo(mine.get(0));
-                Object ucid = mine.get(0).get("userCouponId");
-                if (ucid == null) ucid = mine.get(0).get("user_coupon_id");
-                if (ucid != null) hit.put("userCouponId", ucid);
-                return applyPromoHit(out, hit, amountYuan);
-            }
+        if (username == null || username.isBlank()) {
+            out.put("message", "请先登录后使用优惠券");
+            return out;
+        }
+        List<Map<String, Object>> mine = mapper().selectUnusedMineByCode(username, want);
+        if (mine != null && !mine.isEmpty()) {
+            Map<String, Object> hit = shapePromo(mine.get(0));
+            Object ucid = mine.get(0).get("userCouponId");
+            if (ucid == null) ucid = mine.get(0).get("user_coupon_id");
+            if (ucid != null) hit.put("userCouponId", ucid);
+            return applyPromoHit(out, hit, amountYuan);
         }
         List<Map<String, Object>> promos = mapper().selectActivePromoByCode(want);
         if (promos != null && !promos.isEmpty()) {
-            return applyPromoHit(out, shapePromo(promos.get(0)), amountYuan);
+            out.put("message", "请先领取该券后再下单使用");
+            return out;
         }
         out.put("message", "券码无效");
         return out;
@@ -259,11 +262,19 @@ public final class CouponStore {
     public static void markUsed(String username, String code, long orderId) {
         if (!enabled || username == null || code == null || code.isBlank()) return;
         String want = code.trim().toUpperCase(Locale.ROOT);
+        Long id;
         try {
-            Long id = mapper().selectUnusedMineIdByCode(username, want);
-            if (id == null) return;
+            id = mapper().selectUnusedMineIdByCode(username, want);
+        } catch (Exception e) {
+            throw new IllegalStateException("核销失败", e);
+        }
+        if (id == null) {
+            throw new IllegalStateException("券未领取或已使用，无法核销");
+        }
+        try {
             mapper().markMineUsed(id, Timestamp.valueOf(LocalDateTime.now()), orderId);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("核销失败", e);
         }
     }
 
@@ -272,7 +283,8 @@ public final class CouponStore {
         if (!enabled || orderId <= 0) return;
         try {
             mapper().releaseByOrder(orderId);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            throw new IllegalStateException("回退失败", e);
         }
     }
 
@@ -383,12 +395,12 @@ public final class CouponStore {
         if (o == null) return null;
         if (o instanceof Timestamp t) return t;
         String s = String.valueOf(o).trim();
-        if (s.isBlank() || "null".equals(s)) return null;
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
         try {
             if (s.length() == 10) s = s + " 23:59:59";
             return Timestamp.valueOf(s.replace('T', ' ').substring(0, Math.min(19, s.length())));
         } catch (Exception e) {
-            return null;
+            throw new IllegalStateException("过期时间格式无效", e);
         }
     }
 }

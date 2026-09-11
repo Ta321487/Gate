@@ -181,7 +181,7 @@ public class ExamController {
     }
 
     @GetMapping("/attempts/{attemptId}/questions")
-    public R<List<Map<String, Object>>> attemptQuestions(
+    public R<Map<String, Object>> attemptQuestions(
             @PathVariable long attemptId, HttpSession session) {
         requireExam();
         String uid = AdminAuth.requireLogin(session);
@@ -189,7 +189,20 @@ public class ExamController {
             Map<String, Object> attempt = ExamStore.getAttempt(attemptId);
             if (attempt == null) throw new BizException(ErrorCode.NOT_FOUND, "答卷不存在");
             boolean submitted = "submitted".equals(String.valueOf(attempt.get("status")));
-            return R.ok(ExamStore.listAttemptQuestions(attemptId, uid, submitted));
+            List<Map<String, Object>> questions = ExamStore.listAttemptQuestions(attemptId, uid, submitted);
+            Map<String, Object> out = new java.util.LinkedHashMap<>();
+            out.put("attempt", attempt);
+            out.put("questions", questions);
+            int durationMin = 0;
+            Object paperId = attempt.get("paperId");
+            if (paperId != null) {
+                Map<String, Object> paper = ExamStore.getPaper(((Number) paperId).longValue());
+                if (paper != null && paper.get("durationMin") != null) {
+                    durationMin = ((Number) paper.get("durationMin")).intValue();
+                }
+            }
+            out.put("durationMin", durationMin);
+            return R.ok(out);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

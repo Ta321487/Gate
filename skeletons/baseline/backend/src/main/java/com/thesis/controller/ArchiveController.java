@@ -76,11 +76,14 @@ public class ArchiveController {
         String content = str(body.get("isbn"));
         if (content.isBlank()) content = str(body.get("body"));
         long categoryId = 1L;
-        if (body.get("categoryId") != null) {
+        if (body.get("categoryId") != null && !String.valueOf(body.get("categoryId")).isBlank()) {
             try {
-                categoryId = Long.parseLong(String.valueOf(body.get("categoryId")));
-            } catch (Exception ignored) {
-                categoryId = 1L;
+                categoryId = Long.parseLong(String.valueOf(body.get("categoryId")).trim());
+            } catch (Exception e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "分类无效");
+            }
+            if (categoryId <= 0) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "分类无效");
             }
         }
         String author = str(body.get("author"));
@@ -88,8 +91,11 @@ public class ArchiveController {
         if (body.get("stock") != null && !String.valueOf(body.get("stock")).isBlank()) {
             try {
                 stock = Integer.parseInt(String.valueOf(body.get("stock")).trim());
-            } catch (Exception ignored) {
-                stock = null;
+            } catch (Exception e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "数量无效");
+            }
+            if (stock < 0) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "数量无效");
             }
         }
         try {

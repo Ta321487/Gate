@@ -121,6 +121,10 @@ public interface TicketMapper {
             @Param("id") long id,
             @Param("nextFollowAt") Timestamp nextFollowAt);
 
+    @Update("UPDATE `${ticketTable}` SET fine_yuan=#{fineYuan} WHERE id=#{id}")
+    int updateFineYuan(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("fineYuan") double fineYuan);
+
     int updateFinePersist(Map<String, Object> row);
 
     @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE status IN ('pending','pending_mid','pending_final')")

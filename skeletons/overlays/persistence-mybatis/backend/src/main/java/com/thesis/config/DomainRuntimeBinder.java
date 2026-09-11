@@ -221,6 +221,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.slot-require-confirm:false}")
     private boolean slotRequireConfirm;
 
+    @Value("${thesis.slot-allow-rating:false}")
+    private boolean slotAllowRating;
+
     @Value("${thesis.wallet-enabled:false}")
     private boolean walletEnabled;
 
@@ -432,6 +435,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         AuditLogStore.configure(auditLogEnabled, auditLogLoginOnly);
         MessageStore.configureTemplate(messageTemplateEnabled);
         StaffRosterStore.configure(staffRosterEnabled);
+        BookSuggestStore.configure(bookSuggestEnabled);
         EquipmentDictStore.configure(roomEquipmentEnabled);
         ExamStore.configure(
                 examEnabled,
@@ -453,6 +457,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);
             SlotStore.configureConfirm(slotRequireConfirm);
+            SlotStore.configureRating(slotAllowRating);
         } else {
             SlotStore.unbind();
         }

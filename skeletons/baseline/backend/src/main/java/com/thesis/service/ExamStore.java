@@ -116,7 +116,9 @@ public class ExamStore {
     /** C-02：申请前须通过 gate_ticket=1 的已发布试卷（pass_score 为百分制，默认 60）。 */
     public static void assertTicketGatePassed(String username) {
         if (!requireBeforeTicket || !ready()) return;
-        if (!hasGateCols()) return;
+        if (!hasGateCols()) {
+            throw new IllegalStateException("系统未配置准入考试字段，无法校验是否已通过考试");
+        }
         Integer gates = db().queryForObject(
                 "SELECT COUNT(*) FROM exam_paper WHERE status='published' AND gate_ticket=1",
                 Integer.class);
@@ -883,26 +885,25 @@ public class ExamStore {
     // --- wrongbook ---
 
     private static void upsertWrongbook(String username, long questionId, long paperId, long attemptId) {
-        try {
-            Integer n = db().queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.tables "
-                            + "WHERE table_schema=DATABASE() AND table_name='exam_wrongbook'",
-                    Integer.class);
-            if (n == null || n == 0) return;
-            Integer exists = db().queryForObject(
-                    "SELECT COUNT(*) FROM exam_wrongbook WHERE username=? AND question_id=?",
-                    Integer.class, username, questionId);
-            if (exists != null && exists > 0) {
-                db().update(
-                        "UPDATE exam_wrongbook SET paper_id=?, attempt_id=? "
-                                + "WHERE username=? AND question_id=?",
-                        paperId, attemptId, username, questionId);
-            } else {
-                db().update(
-                        "INSERT INTO exam_wrongbook (username,question_id,paper_id,attempt_id) VALUES (?,?,?,?)",
-                        username, questionId, paperId, attemptId);
-            }
-        } catch (Exception ignored) {
+        Integer n = db().queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                        + "WHERE table_schema=DATABASE() AND table_name='exam_wrongbook'",
+                Integer.class);
+        if (n == null || n == 0) {
+            throw new IllegalStateException("错题本表未就绪");
+        }
+        Integer exists = db().queryForObject(
+                "SELECT COUNT(*) FROM exam_wrongbook WHERE username=? AND question_id=?",
+                Integer.class, username, questionId);
+        if (exists != null && exists > 0) {
+            db().update(
+                    "UPDATE exam_wrongbook SET paper_id=?, attempt_id=? "
+                            + "WHERE username=? AND question_id=?",
+                    paperId, attemptId, username, questionId);
+        } else {
+            db().update(
+                    "INSERT INTO exam_wrongbook (username,question_id,paper_id,attempt_id) VALUES (?,?,?,?)",
+                    username, questionId, paperId, attemptId);
         }
     }
 

@@ -122,6 +122,9 @@ public class GuestbookStore {
         if (b.isBlank()) return null;
         String nick = clip(nickname == null || nickname.isBlank() ? username : nickname, 64);
         String ch = normChannel(channel);
+        if ("merchant".equals(ch) && !hasChannel()) {
+            throw new IllegalStateException("系统未配置留言通道字段，无法保存");
+        }
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps;

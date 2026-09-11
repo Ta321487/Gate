@@ -56,8 +56,8 @@ final class TicketAsserts {
             }
         } catch (IllegalStateException e) {
             throw e;
-        } catch (Exception ignored) {
-            // 解析失败则不拦截
+        } catch (Exception e) {
+            throw new IllegalStateException("报名/申请截止时间无效", e);
         }
     }
 
@@ -67,6 +67,17 @@ final class TicketAsserts {
         String st = String.valueOf(item.get("status"));
         if ("unavailable".equals(st)) {
             throw new IllegalStateException("该对象已下架或不可申请");
+        }
+        // 线路报名等：档案 stage 已关闭时禁止再报（与 status 双保险）
+        Object stageObj = item.get("stage");
+        if (stageObj != null) {
+            String stage = String.valueOf(stageObj).trim();
+            if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
+                throw new IllegalStateException(
+                        "满员".equals(stage) ? "该线路已满员，不可再报名"
+                                : ("已出团".equals(stage) ? "该线路已出团，不可再报名"
+                                : "该线路已下架，不可再报名"));
+            }
         }
         if (!ArchiveStore.hasStartAt() && !ArchiveStore.hasEndAt()) return;
         if (ArchiveStore.isScheduleClosed(item)) {
@@ -101,10 +112,12 @@ final class TicketAsserts {
         Object cid = item.get("categoryId");
         if (cid instanceof Number n) categoryId = n.longValue();
         else {
+            String raw = TicketSql.str(cid).trim();
+            if (raw.isBlank() || "null".equalsIgnoreCase(raw)) return;
             try {
-                categoryId = Long.parseLong(TicketSql.str(cid));
-            } catch (Exception ignored) {
-                return;
+                categoryId = Long.parseLong(raw);
+            } catch (Exception e) {
+                throw new IllegalStateException("分类无效，无法校验门数上限", e);
             }
         }
         if (categoryId <= 0) return;
@@ -135,7 +148,7 @@ final class TicketAsserts {
             newStart = LocalDateTime.parse(String.valueOf(ns).substring(0, 19), TicketSql.FMT);
             newEnd = LocalDateTime.parse(String.valueOf(ne).substring(0, 19), TicketSql.FMT);
         } catch (Exception e) {
-            return;
+            throw new IllegalStateException("时段时间无效，无法校验冲突", e);
         }
         if (!newEnd.isAfter(newStart)) {
             throw new IllegalStateException("时段配置无效：结束时间须晚于开始时间");
@@ -151,10 +164,11 @@ final class TicketAsserts {
         for (Map<String, Object> row : occupied) {
             Object startObj = first(row, "start_at", "startAt");
             Object endObj = first(row, "end_at", "endAt");
-            if (startObj == null || endObj == null) continue;
+            if (startObj == null || endObj == null) {
+                throw new IllegalStateException("已有单据时段缺失，无法校验冲突");
+            }
             LocalDateTime oldStart = toLdt(startObj);
             LocalDateTime oldEnd = toLdt(endObj);
-            if (oldStart == null || oldEnd == null) continue;
             if (newStart.isBefore(oldEnd) && oldStart.isBefore(newEnd)) {
                 throw new IllegalStateException(
                         "时间冲突：与「" + first(row, "title") + "」（"
@@ -176,8 +190,9 @@ final class TicketAsserts {
         try {
             String s = String.valueOf(o);
             if (s.length() >= 19) return LocalDateTime.parse(s.substring(0, 19), TicketSql.FMT);
-        } catch (Exception ignored) {
+            return LocalDateTime.parse(s, TicketSql.FMT);
+        } catch (Exception e) {
+            throw new IllegalStateException("已有单据时段无效，无法校验冲突", e);
         }
-        return null;
     }
 }

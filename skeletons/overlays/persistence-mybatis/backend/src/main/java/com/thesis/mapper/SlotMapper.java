@@ -56,6 +56,13 @@ public interface SlotMapper {
     @Update("UPDATE `${resvTable}` SET status='completed', entry_at=NOW() WHERE id=#{id}")
     int completeWithEntry(@Param("resvTable") String resvTable, @Param("id") long id);
 
+    @Update("UPDATE `${resvTable}` SET rating=#{rating}, rating_remark=#{remark}, rated_at=NOW() WHERE id=#{id}")
+    int rateReservation(
+            @Param("resvTable") String resvTable,
+            @Param("id") long id,
+            @Param("rating") int rating,
+            @Param("remark") String remark);
+
     Map<String, Object> selectResvById(@Param("resvTable") String resvTable, @Param("id") long id);
 
     List<Map<String, Object>> selectReservations(
