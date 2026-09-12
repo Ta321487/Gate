@@ -22,6 +22,10 @@ from app.llm.agents_match import (  # noqa: F401
 )
 from app.llm.agents_qa import run_qa_agent  # noqa: F401
 from app.llm.agents_sample import run_sample_proposal_agent  # noqa: F401
+from app.llm.agents_usecase import (  # noqa: F401
+    polish_usecase_description,
+    polish_usecase_model_safe,
+)
 from app.llm.unit_flow import run_fill_pipeline  # noqa: F401
 
 __all__ = [
@@ -37,4 +41,6 @@ __all__ = [
     "run_fix_agent",
     "run_qa_agent",
     "run_sample_proposal_agent",
+    "polish_usecase_description",
+    "polish_usecase_model_safe",
 ]

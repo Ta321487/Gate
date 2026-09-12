@@ -77,6 +77,8 @@ export const api = {
     http.get(`/projects/${id}/schema/modules`, {
       params: { layout, expand_details: expandDetails },
     }),
+  getArchitecture: (id) => http.get(`/projects/${id}/schema/architecture`),
+  architectureSvgUrl: (id) => `/api/projects/${id}/schema/architecture.svg`,
   getUsecases: (id, { actor = 'user' } = {}) =>
     http.get(`/projects/${id}/schema/usecases`, { params: { actor } }),
   usecasesSvgUrl: (id, { actor = 'user' } = {}) => {

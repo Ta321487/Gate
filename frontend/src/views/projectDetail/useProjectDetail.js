@@ -221,6 +221,11 @@ const modLayoutKey = ref(0)
 const modulesLayout = ref('identity')
 const modulesExpandDetails = ref(false)
 const modulesMeta = ref(null)
+const showArchitecture = ref(false)
+const archLoading = ref(false)
+const archSvgSource = ref('')
+const archLayoutKey = ref(0)
+const archMeta = ref(null)
 const ucSvgSource = ref('')
 const ucLayoutKey = ref(0)
 const usecaseActor = ref('user')
@@ -1488,6 +1493,49 @@ async function onModulesExpandDetails(v) {
   await reloadModSvg()
 }
 
+const archDownloadBase = computed(() => {
+  const id = p.value?.id || 'arch'
+  const title = archMeta.value?.figure_title || archMeta.value?.title || '系统逻辑架构图'
+  return `${id}-逻辑架构图-${title}`
+})
+
+async function fetchArchSvg() {
+  if (!p.value) return ''
+  const url = `${api.architectureSvgUrl(p.value.id)}?t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('architecture svg')
+  return await res.text()
+}
+
+async function openArchitecture() {
+  if (!p.value || archLoading.value || artifactsFrozen.value) return
+  archLoading.value = true
+  try {
+    archMeta.value = await api.getArchitecture(p.value.id)
+    archSvgSource.value = await fetchArchSvg()
+    archLayoutKey.value += 1
+    showArchitecture.value = true
+  } catch {
+    message.error('无法加载系统逻辑架构图')
+  } finally {
+    archLoading.value = false
+  }
+}
+
+async function reloadArchSvg() {
+  if (!p.value || archLoading.value) return
+  archLoading.value = true
+  try {
+    archMeta.value = await api.getArchitecture(p.value.id)
+    archSvgSource.value = await fetchArchSvg()
+    archLayoutKey.value += 1
+  } catch {
+    message.error('无法重新加载架构图')
+  } finally {
+    archLoading.value = false
+  }
+}
+
 const ucDownloadBase = computed(() => {
   const id = p.value?.id || 'uc'
   const title = usecaseMeta.value?.title || schema.value?.title || '用例图'
@@ -2195,6 +2243,7 @@ watch(artifactsFrozen, (frozen) => {
   if (!frozen) return
   showEr.value = false
   showModules.value = false
+  showArchitecture.value = false
   showUsecases.value = false
   showTestcases.value = false
   showUsecaseDescriptions.value = false
@@ -2234,6 +2283,11 @@ onUnmounted(() => {
     _tailLines,
     ack,
     ackMainPath,
+    archDownloadBase,
+    archLayoutKey,
+    archLoading,
+    archMeta,
+    archSvgSource,
     alreadyBaked,
     apiCopyText,
     apiGroupCopyText,
@@ -2379,6 +2433,7 @@ onUnmounted(() => {
     onPathChange,
     onTcFields,
     onUsecaseActor,
+    openArchitecture,
     openEr,
     openFillPlan,
     openModules,
@@ -2438,6 +2493,7 @@ onUnmounted(() => {
     refreshPptStatus,
     refreshRuntime,
     reload,
+    reloadArchSvg,
     reloadErSvg,
     reloadModSvg,
     reloadTestcases,
@@ -2490,6 +2546,7 @@ onUnmounted(() => {
     showEr,
     showFillPlan,
     showJobSteps,
+    showArchitecture,
     showModules,
     showPptCheck,
     showPreGenerate,

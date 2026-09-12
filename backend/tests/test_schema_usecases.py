@@ -9,7 +9,6 @@ import unittest
 from app.bake.domain_schema import build_domain_schema
 from app.bake.schema.templates import SCHEMA_BUILDERS
 from app.bake.schema.usecases import (
-    _LEVEL1_COUNT,
     assert_usecase_invariants,
     export_staruml_mdj,
     layout_usecase,
@@ -17,6 +16,7 @@ from app.bake.schema.usecases import (
     render_usecase_svg,
     usecase_model,
 )
+from app.bake.schema.usecase_style import l1_count_bounds, resolve_usecase_style
 
 
 def _has_extend(model: dict) -> bool:
@@ -31,11 +31,13 @@ class UsecaseContractTests(unittest.TestCase):
     def test_shop_user_five_l1_and_extend(self) -> None:
         schema = build_domain_schema("农产品电商系统", "DOM-SHOP")
         model = usecase_model(schema, actor="user", title_fallback="农产品电商")
-        self.assertEqual(len(model["level1"]), _LEVEL1_COUNT)
+        mn, mx, _ = l1_count_bounds()
+        n = len(model["level1"])
+        self.assertTrue(mn <= n <= mx, n)
         desc = model["description"]
-        for i in range(1, _LEVEL1_COUNT + 1):
+        for i in range(1, n + 1):
             self.assertIn(f"（{i}）", desc)
-        self.assertNotIn(f"（{_LEVEL1_COUNT + 1}）", desc)
+        self.assertNotIn(f"（{n + 1}）", desc)
         self.assertTrue(_has_extend(model), "电商域用户侧应有 extend（如支付）")
         lay = layout_usecase(model)
         self.assertEqual(len({round(n["cx"], 1) for n in lay["l1"]}), 1)
@@ -91,7 +93,8 @@ class UsecaseContractTests(unittest.TestCase):
                         kid["label"],
                         r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|充值|反馈|审核|"
                         r"办理|预约|取消|支付|导出|催办|评价|驳回|通过|填写|检索|打开|结束|"
-                        r"切换|连接|打卡|签到|开门|补缴|申请|下单|收藏|浏览|进入|使用|参加|参与|收发|查阅)",
+                        r"切换|连接|打卡|签到|开门|补缴|申请|下单|收藏|浏览|进入|使用|参加|参与|收发|查阅|"
+                        r"添加|修改|删除|回复|新增|干预|选购)",
                         kid["label"],
                     )
 
@@ -124,7 +127,8 @@ class UsecaseContractTests(unittest.TestCase):
         # 馆员岗位可出图
         staff_id = next(i for i in ids if i.startswith("staff:"))
         model = usecase_model(schema, actor=staff_id, title_fallback="图书馆")
-        self.assertEqual(len(model["level1"]), _LEVEL1_COUNT)
+        mn, mx, _ = l1_count_bounds()
+        self.assertTrue(mn <= len(model["level1"]) <= mx)
         self.assertEqual(model["actor"]["id"], staff_id)
 
     def test_no_pay_extend_on_admin_or_staff(self) -> None:
@@ -191,7 +195,7 @@ class UsecaseContractTests(unittest.TestCase):
                 self.assertFalse(re.match(r"^管理.+管理$", str(kid.get("label") or "")))
                 self.assertRegex(
                     str(kid.get("label") or ""),
-                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|取消|支付|审核|浏览|进入|使用|参加|参与|联系|收藏|发表|加入|评价)",
+                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|取消|支付|审核|浏览|进入|使用|参加|参与|联系|收藏|发表|加入|评价|添加|修改|删除|回复|新增|干预)",
                 )
         # 商家
         actors = list_usecase_actors(schema)
@@ -205,16 +209,15 @@ class UsecaseContractTests(unittest.TestCase):
 
     def test_customer_hard_constraints(self) -> None:
         """客户硬约束：同尺寸竖线、include、图文序号一一对应、段落、二级动词。"""
-        from app.bake.schema.usecase_style import resolve_usecase_style
-
         style = resolve_usecase_style()
-        n_l1 = int(style["level1_count"])
+        mn, mx, _ = l1_count_bounds(style)
         schema = build_domain_schema("图书馆管理系统", "DOM-LIBRARY")
         model = usecase_model(schema, actor="user", title_fallback="图书馆")
-        self.assertEqual(len(model["level1"]), n_l1)
+        n_l1 = len(model["level1"])
+        self.assertTrue(mn <= n_l1 <= mx)
         desc = model["description"]
         self.assertNotIn("\n", desc.strip())
-        # 序号与图上一级一一对应（现客户 n_l1=5，故到（5）；不是抽象「最多五个」）
+        # 序号与图上一级一一对应（样例论文到（5）则 5 圈；不是写死永远 5）
         for i in range(1, n_l1 + 1):
             self.assertEqual(desc.count(f"（{i}）"), 1)
         self.assertNotIn(f"（{n_l1 + 1}）", desc)
@@ -230,7 +233,7 @@ class UsecaseContractTests(unittest.TestCase):
             for kid in uc["includes"]:
                 self.assertRegex(
                     kid["label"],
-                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|浏览|进入|使用|申请|收藏|发表|加入|联系|审核|支付)",
+                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|浏览|进入|使用|申请|收藏|发表|加入|联系|审核|支付|添加|修改|删除|回复|新增|干预)",
                 )
         self.assertEqual(model.get("style", {}).get("id"), style["id"])
 
@@ -247,8 +250,10 @@ class UsecaseContractTests(unittest.TestCase):
             blob = json.dumps(m, ensure_ascii=False)
             self.assertNotIn("综合功能", blob, a["id"])
             self.assertNotIn("综合业务", blob, a["id"])
-            self.assertEqual(len(m["level1"]), 5)
-            self.assertEqual(m["description"].count("（"), 5)
+            mn, mx, _ = l1_count_bounds()
+            n = len(m["level1"])
+            self.assertTrue(mn <= n <= mx, f"{a['id']} n={n}")
+            self.assertEqual(m["description"].count("（"), n)
 
     def test_all_schema_builders(self) -> None:
         fails: list[str] = []

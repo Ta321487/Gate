@@ -235,104 +235,51 @@
               <ContentLoading v-if="artifactLoading" :rows="2" compact block />
               <template v-else>
               <p class="small muted mb-8">
-                贴说明书用：功能模块图（系统设计）· 用例图 / 用例描述表（需求分析）· 软件测试用例（系统测试）。模块图优先读开题等材料按身份枚举；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
+                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图优先读开题等材料按身份枚举；架构图按交付角色画 B/S 分层；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
-              <div class="thesis-cards">
-                <div class="thesis-card">
-                  <div class="thesis-card-hd">
-                    <strong>功能模块图</strong>
-                    <span
-                      class="pill"
-                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
-                    >
-                      {{
-                        artifactsFrozen
-                          ? '生成中'
-                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
-                      }}
-                    </span>
+              <div class="thesis-groups">
+                <div v-for="g in thesisGroups" :key="g.id" class="thesis-group">
+                  <div
+                    class="thesis-group-hd"
+                    role="button"
+                    tabindex="0"
+                    @click="toggleThesisGroup(g.id)"
+                    @keyup.enter="toggleThesisGroup(g.id)"
+                  >
+                    <div class="thesis-group-title">
+                      <span class="thesis-group-caret" aria-hidden="true">{{ isThesisGroupOpen(g.id) ? '▾' : '▸' }}</span>
+                      <span>{{ g.title }}</span>
+                      <span class="thesis-group-count">{{ g.cards.length }} 项</span>
+                    </div>
                   </div>
-                  <p class="small muted">按身份 / 按业务切换 · 可展开细节 · 黑白线框 · 复制 PNG 或下载矢量</p>
-                  <n-button
-                    size="small"
-                    type="primary"
-                    :disabled="!modulesOk || artifactsFrozen"
-                    :loading="modLoading"
-                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
-                    @click="openModules"
-                  >打开模块图</n-button>
-                </div>
-                <div class="thesis-card">
-                  <div class="thesis-card-hd">
-                    <strong>用例图</strong>
-                    <span
-                      class="pill"
-                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
-                    >
-                      {{
-                        artifactsFrozen
-                          ? '生成中'
-                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
-                      }}
-                    </span>
+                  <div v-show="isThesisGroupOpen(g.id)" class="thesis-group-bd">
+                    <div class="thesis-cards">
+                      <div v-for="card in g.cards" :key="card.id" class="thesis-card">
+                        <div class="thesis-card-hd">
+                          <strong>{{ card.title }}</strong>
+                          <span
+                            class="pill"
+                            :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                          >
+                            {{
+                              artifactsFrozen
+                                ? '生成中'
+                                : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                            }}
+                          </span>
+                        </div>
+                        <p class="small muted thesis-card-desc" :title="card.desc">{{ card.desc }}</p>
+                        <n-button
+                          size="small"
+                          type="primary"
+                          :disabled="!modulesOk || artifactsFrozen"
+                          :loading="card.loading"
+                          :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                          @click="card.open"
+                        >{{ card.action }}</n-button>
+                      </div>
+                    </div>
                   </div>
-                  <p class="small muted">按角色（含岗位）· 一级 5 个 · include/extend · 预览 PNG/SVG · StarUML .mdj</p>
-                  <n-button
-                    size="small"
-                    type="primary"
-                    :disabled="!modulesOk || artifactsFrozen"
-                    :loading="ucLoading"
-                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
-                    @click="openUsecases"
-                  >打开用例图</n-button>
-                </div>
-                <div class="thesis-card">
-                  <div class="thesis-card-hd">
-                    <strong>用例描述表</strong>
-                    <span
-                      class="pill"
-                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
-                    >
-                      {{
-                        artifactsFrozen
-                          ? '生成中'
-                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
-                      }}
-                    </span>
-                  </div>
-                  <p class="small muted">默认 4 个主路径 · 对照交付菜单操作 · 复制可贴 Word</p>
-                  <n-button
-                    size="small"
-                    type="primary"
-                    :disabled="!modulesOk || artifactsFrozen"
-                    :loading="ucdLoading"
-                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
-                    @click="openUsecaseDescriptions"
-                  >打开用例描述</n-button>
-                </div>
-                <div class="thesis-card">
-                  <div class="thesis-card-hd">
-                    <strong>软件测试用例</strong>
-                    <span
-                      class="pill"
-                      :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
-                    >
-                      {{
-                        artifactsFrozen
-                          ? '生成中'
-                          : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
-                      }}
-                    </span>
-                  </div>
-                  <p class="small muted">5～9 字段模板可选（默认 6）· 复制表格 / Markdown</p>
-                  <n-button
-                    size="small"
-                    type="primary"
-                    :disabled="!modulesOk || artifactsFrozen"
-                    :loading="tcLoading"
-                    :title="artifactsFrozen ? artifactsFrozenReason : undefined"
-                    @click="openTestcases"
-                  >打开测试用例</n-button>
                 </div>
               </div>
               </template>
@@ -623,12 +570,41 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ContentLoading from '../../components/ContentLoading.vue'
 import DeliveryReviewPane from '../../components/DeliveryReviewPane.vue'
 import DefensePptArtifactRow from '../../components/defensePpt/DefensePptArtifactRow.vue'
 import DefensePptComparePane from '../../components/defensePpt/DefensePptComparePane.vue'
+
+const THESIS_GROUP_KEY = 'gf.thesisGroupsOpen'
+const thesisOpen = ref({ design: true, analysis: false, test: false })
+try {
+  const raw = localStorage.getItem(THESIS_GROUP_KEY)
+  if (raw) {
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      thesisOpen.value = { ...thesisOpen.value, ...parsed }
+    }
+  }
+} catch {
+  /* ignore */
+}
+
+function isThesisGroupOpen(id) {
+  return !!thesisOpen.value[id]
+}
+
+function toggleThesisGroup(id) {
+  thesisOpen.value = { ...thesisOpen.value, [id]: !thesisOpen.value[id] }
+  try {
+    localStorage.setItem(THESIS_GROUP_KEY, JSON.stringify(thesisOpen.value))
+  } catch {
+    /* ignore */
+  }
+}
+
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
@@ -647,7 +623,7 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
+  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
@@ -662,6 +638,67 @@ const {
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
-  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
+  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading,
 } = bindPd()
+
+const thesisGroups = computed(() => [
+  {
+    id: 'design',
+    title: '系统设计',
+    cards: [
+      {
+        id: 'modules',
+        title: '功能模块图',
+        desc: '按身份 / 按业务切换 · 可展开细节 · 黑白线框 · 复制 PNG 或下载矢量',
+        action: '打开模块图',
+        loading: modLoading.value,
+        open: openModules,
+      },
+      {
+        id: 'architecture',
+        title: '系统逻辑架构图',
+        desc: '角色 → 界面 → Vue → SpringBoot → MySQL · HTTPS · 复制 PNG / 下载 SVG',
+        action: '打开架构图',
+        loading: archLoading.value,
+        open: openArchitecture,
+      },
+    ],
+  },
+  {
+    id: 'analysis',
+    title: '需求分析',
+    cards: [
+      {
+        id: 'usecases',
+        title: '用例图',
+        desc: '按角色（含岗位）· 序号对齐一级圈数 · include/extend · 预览 PNG/SVG · StarUML .mdj',
+        action: '打开用例图',
+        loading: ucLoading.value,
+        open: openUsecases,
+      },
+      {
+        id: 'usecase-desc',
+        title: '用例描述表',
+        desc: '默认 4 个主路径 · 对照交付菜单操作 · 复制可贴 Word',
+        action: '打开用例描述',
+        loading: ucdLoading.value,
+        open: openUsecaseDescriptions,
+      },
+    ],
+  },
+  {
+    id: 'test',
+    title: '系统测试',
+    cards: [
+      {
+        id: 'testcases',
+        title: '软件测试用例',
+        desc: '5～9 字段模板可选（默认 6）· 复制表格 / Markdown',
+        action: '打开测试用例',
+        loading: tcLoading.value,
+        open: openTestcases,
+      },
+    ],
+  },
+])
 </script>
