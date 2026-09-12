@@ -15,7 +15,6 @@ from app.bake.domain_schema import (
 )
 
 _REPO = Path(__file__).resolve().parents[2]
-_SKELETON_FE = _REPO / "skeletons" / "baseline" / "frontend" / "src"
 
 
 def _walk_strings(obj, path: str = "") -> list[tuple[str, str]]:
@@ -68,6 +67,24 @@ class StudentFacingCopyTests(unittest.TestCase):
         self.assertNotIn("双通道", lead)
         self.assertNotIn("分通道", lead)
 
+    def test_ensure_spec_schema_scrubs_shop_demo_pay_hint(self) -> None:
+        """场景皮域重编壳不得把 builders 脏句带进评测用 schema。"""
+        from app.bake.domain_schema import ensure_spec_schema
+
+        spec = ensure_spec_schema(
+            {
+                "domain": "DOM-SHOP",
+                "title": "多商家电商平台",
+                "archetype": "ARCH-TRADE",
+                "accept": "full",
+                "proposal_text": "多商家入驻与在线支付",
+                "schema": {"labels": {"appName": "店"}, "capabilities": []},
+            }
+        )
+        hint = ((spec.get("schema") or {}).get("labels") or {}).get("demoPayHint") or ""
+        self.assertNotIn("不对接", hint)
+        self.assertFalse(factory_ui_polluted(hint))
+
     def test_scrub_strips_legacy_factory_leads(self) -> None:
         dirty = {
             "dmShopCs": True,
@@ -118,19 +135,65 @@ class StudentFacingCopyTests(unittest.TestCase):
             "与店铺客服一对一沟通。",
         )
 
-    def test_skeleton_vue_has_no_factory_meta(self) -> None:
-        """基线前端硬编码也不准带说明书腔（scrub 扫不到骨架）。"""
-        self.assertTrue(_SKELETON_FE.is_dir(), msg=str(_SKELETON_FE))
-        offenders: list[str] = []
-        for p in _SKELETON_FE.rglob("*.vue"):
-            text = p.read_text(encoding="utf-8", errors="ignore")
-            for bad in FACTORY_UI_FORBIDDEN:
-                if bad in text:
-                    if p.name == "Login.vue" and bad.startswith("开题"):
-                        continue
-                    offenders.append(f"{p.relative_to(_SKELETON_FE)}: {bad}")
-                    break
-        self.assertEqual(offenders, [], msg="\n".join(offenders[:20]))
+    def test_skeleton_vue_may_keep_factory_notes(self) -> None:
+        """骨架可脏（学生看不见源仓）；清洗必须能把同文案洗净。"""
+        from app.bake.domain_schema import scrub_vue_source_student_copy, text_has_factory_ui_forbidden
+
+        dirty = (
+            '<div v-if="demoPay" class="loy-line muted">'
+            "支付宝 / 微信在线支付（不对接商户 SDK，仍扣账户余额）</div>\n"
+            "|| '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。',\n"
+        )
+        self.assertTrue(text_has_factory_ui_forbidden(dirty))
+        clean = scrub_vue_source_student_copy(dirty)
+        self.assertFalse(text_has_factory_ui_forbidden(clean), msg=clean)
+        self.assertNotIn("不对接", clean)
+        self.assertIn("支付宝 / 微信在线支付", clean)
+
+    def test_scrub_preserves_login_script_filter(self) -> None:
+        """不得把 Login 里 if ( /开题|DOM-/ ) 当成括注删掉。"""
+        from app.bake.domain_schema import scrub_vue_source_student_copy
+
+        src = (_REPO / "skeletons" / "baseline" / "frontend" / "src" / "views" / "Login.vue").read_text(
+            encoding="utf-8"
+        )
+        out = scrub_vue_source_student_copy(src)
+        self.assertIn("开题报告", out)
+        self.assertIn(".test(raw)", out)
+        self.assertNotIn("if \n  )", out)
+        self.assertRegex(out, r"if\s*\(\s*\n?\s*/【材料")
+
+    def test_refresh_vue_scrubs_when_baseline_also_dirty(self) -> None:
+        """骨架与工作区同脏时，点清洗须就地 scrub，不能 skip。"""
+        import tempfile
+        from unittest.mock import patch
+
+        from app.bake.domain_schema import (
+            refresh_polluted_vue_from_baseline,
+            text_has_factory_ui_forbidden,
+        )
+
+        dirty = (
+            '<div v-if="demoPay">支付宝 / 微信在线支付（不对接商户 SDK，仍扣账户余额）</div>\n'
+            "const x = '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。'\n"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            vue = ws / "frontend" / "src" / "views" / "user" / "Cart.vue"
+            vue.parent.mkdir(parents=True)
+            vue.write_text(dirty, encoding="utf-8")
+            base = Path(td) / "sk_root" / "baseline" / "frontend" / "src" / "views" / "user"
+            base.mkdir(parents=True)
+            (base / "Cart.vue").write_text(dirty, encoding="utf-8")
+            with patch(
+                "app.core.config.get_settings",
+                return_value=type("S", (), {"skeletons_dir": Path(td) / "sk_root"})(),
+            ):
+                written = refresh_polluted_vue_from_baseline(ws)
+            self.assertEqual(written, ["frontend/src/views/user/Cart.vue"])
+            out = vue.read_text(encoding="utf-8")
+            self.assertFalse(text_has_factory_ui_forbidden(out), msg=out)
+            self.assertNotIn("不对接", out)
 
     def test_refresh_polluted_vue_from_baseline(self) -> None:
         """旧工作区 Vue 脏、现网骨架干净 → 覆写，不必重 bake。"""
@@ -197,6 +260,38 @@ class StudentFacingCopyTests(unittest.TestCase):
             scrub_factory_ui_text("演示密码，至少 4 位", fallback="支付密码"),
             "支付密码，至少 4 位。",
         )
+
+    def test_write_schema_artifacts_syncs_public_copy(self) -> None:
+        """根 schema 洗净时必须同步 public 副本，否则 p3copy 仍红。"""
+        import json
+        import tempfile
+
+        from app.bake.domain_schema import write_schema_artifacts
+        from app.bake.gates.evaluate import _student_copy_hits
+
+        dirty = "选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。"
+        schema = {
+            "version": 1,
+            "title": "测试店",
+            "labels": {"demoPayHint": dirty, "appName": "测试店"},
+            "menus": {"admin": [], "portal": [], "user": []},
+            "capabilities": [],
+            "entities": {},
+            "seeds": {},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            pub = ws / "frontend" / "public" / "domain.schema.json"
+            pub.parent.mkdir(parents=True)
+            pub.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
+            written = write_schema_artifacts(ws, schema)
+            self.assertIn("frontend/public/domain.schema.json", written)
+            pub_text = pub.read_text(encoding="utf-8")
+            self.assertNotIn("不对接", pub_text)
+            root = json.loads((ws / "domain.schema.json").read_text(encoding="utf-8"))
+            hits = _student_copy_hits(ws, {"schema": root})
+            self.assertEqual(hits, [], msg=str(hits))
+
     def test_scrub_project_student_copy_rewrites_disk(self) -> None:
         """出包后一键清洗：只编排 emit（内含 scrub），不另写清洗规则。"""
         import json
@@ -256,22 +351,8 @@ class StudentFacingCopyTests(unittest.TestCase):
                     return_value=[],
                 ),
                 patch(
-                    "app.services.student_copy.project_svc.sync_checklist_from_workspace",
-                    side_effect=lambda p: setattr(
-                        p,
-                        "gates",
-                        {
-                            "p3copy": {
-                                "ok": True,
-                                "label": "学生可见文案无工厂腔",
-                                "desc": "ok",
-                                "detail": {"hits": []},
-                            },
-                            "overall": True,
-                            "zip_allowed": True,
-                        },
-                    )
-                    or True,
+                    "app.services.student_copy.project_svc.touch_json_fields",
+                    return_value=None,
                 ),
                 patch(
                     "app.services.student_copy.project_svc.gates_allow_delivery",
@@ -282,7 +363,7 @@ class StudentFacingCopyTests(unittest.TestCase):
                     return_value=None,
                 ),
                 patch(
-                    "app.bake.gates.evaluate.evaluate_domain_gates",
+                    "app.services.student_copy.evaluate_domain_gates",
                     return_value={
                         "p3copy": {
                             "ok": True,
@@ -293,6 +374,7 @@ class StudentFacingCopyTests(unittest.TestCase):
                         "p3s": {"ok": True, "label": "语义", "desc": "ok", "detail": {}},
                         "overall": True,
                         "zip_allowed": True,
+                        "checklist": [],
                     },
                 ),
             ):

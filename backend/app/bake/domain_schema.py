@@ -255,6 +255,9 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
         from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
 
         spec = apply_ai_assistant_to_spec(spec, prop_body)
+    # 学生可见文案：builders 可含工厂注记，出评测/交付前必须洗净，避免 ensure 重编壳又灌脏
+    if isinstance(spec.get("schema"), dict):
+        spec["schema"] = scrub_schema_student_copy(dict(spec["schema"]))
     return spec
 
 
@@ -743,7 +746,8 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmMerchantPeerPlaceholder": "选择买家账号",
     "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
     "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
-    "demoPayHint": "选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。",
+    # 清洗回退句必须干净（骨架/builders 可脏；学生包点「洗文案」靠此落净）
+    "demoPayHint": "选择支付宝或微信并输入支付密码完成本单。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "messagesPageLead": "审核结果与系统通知。",
@@ -1114,10 +1118,19 @@ def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]
     if isinstance(schema, dict):
         sync_user_menus_from_caps(schema)
     schema = scrub_schema_student_copy(schema)
+    blob = json.dumps(schema, ensure_ascii=False, indent=2)
     written: list[str] = []
     schema_path = workspace / "domain.schema.json"
-    schema_path.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
+    schema_path.write_text(blob, encoding="utf-8")
     written.append("domain.schema.json")
+
+    # 门禁 p3copy 会扫 public 副本；emit/洗文案必须同步，否则根已净、public 仍脏
+    public_dir = workspace / "frontend" / "public"
+    public_schema = public_dir / "domain.schema.json"
+    if public_schema.is_file() or public_dir.is_dir():
+        public_dir.mkdir(parents=True, exist_ok=True)
+        public_schema.write_text(blob, encoding="utf-8")
+        written.append("frontend/public/domain.schema.json")
 
     islands = workspace / "islands"
     islands.mkdir(exist_ok=True)
@@ -1156,16 +1169,83 @@ def text_has_factory_ui_forbidden(text: str) -> bool:
     return factory_ui_polluted(text)
 
 
-def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
-    """工作区 Vue 仍脏（工厂腔或演示口吻）、现网 baseline 已干净时，按相对路径覆写。
+def _split_vue_sfc(text: str) -> tuple[str, str, str]:
+    """粗分 template / script / 其余，避免 scrub 误伤脚本逻辑。"""
+    m = re.search(
+        r"(<script\b[^>]*>)(.*?)(</script>)",
+        text,
+        flags=re.I | re.S,
+    )
+    if not m:
+        return text, "", ""
+    head = text[: m.start()]
+    script = m.group(1) + m.group(2) + m.group(3)
+    tail = text[m.end() :]
+    return head, script, tail
 
-    不必整题重 bake。只动 frontend/src 下与 baseline 同路径且骨架侧已干净的文件。
+
+def _scrub_vue_template_chunk(chunk: str) -> str:
+    """只洗模板可见文案：括注 + 演示口吻；不做全文删禁词。"""
+    cleaned = _FACTORY_PAREN_RE.sub("", chunk)
+    for old, new in _DEMO_UI_REPLACEMENTS:
+        cleaned = cleaned.replace(old, new)
+    return cleaned
+
+
+def _scrub_vue_script_strings(script: str) -> str:
+    """脚本里只洗引号字符串，禁止用 ASCII () 括注规则吞掉 if ( /开题|DOM-/ ) 这类逻辑。"""
+
+    def _scrub_lit(m: re.Match[str]) -> str:
+        quote, body = m.group(1), m.group(2)
+        if not text_has_factory_ui_forbidden(body) and not _FACTORY_PAREN_RE.search(body):
+            return m.group(0)
+        # 字面量内可用完整 scrub；空则剥括注，勿删整段代码
+        lit = scrub_factory_ui_text(body, fallback="")
+        if not lit and body.strip():
+            lit = _FACTORY_PAREN_RE.sub("", body)
+            for old, new in _DEMO_UI_REPLACEMENTS:
+                lit = lit.replace(old, new)
+            lit = re.sub(r"[ \t]{2,}", " ", lit).strip(" ，,;；")
+        if not lit:
+            lit = body  # 宁可不洗字面量，也不要掏空
+        return f"{quote}{lit}{quote}"
+
+    return re.sub(r"(['\"])([^'\"\\]*(?:\\.[^'\"\\]*)*)\1", _scrub_lit, script)
+
+
+def scrub_vue_source_student_copy(text: str) -> str:
+    """就地清洗 Vue：模板可见面 + 脚本字符串；不改脚本结构。
+
+    骨架允许保留说明书腔；点「工厂洗文案」须洗净学生可见句，且不得弄崩 Login 等逻辑。
     """
+    raw = str(text or "")
+    if not raw:
+        return raw
+    head, script, tail = _split_vue_sfc(raw)
+    # 无 script 时整文件当模板洗
+    if not script:
+        if not text_has_factory_ui_forbidden(raw):
+            return raw
+        return _scrub_vue_template_chunk(raw)
+
+    new_head = _scrub_vue_template_chunk(head) if text_has_factory_ui_forbidden(head) else head
+    new_script = _scrub_vue_script_strings(script)
+    new_tail = _scrub_vue_template_chunk(tail) if text_has_factory_ui_forbidden(tail) else tail
+    return new_head + new_script + new_tail
+
+
+def _vue_template_polluted(text: str) -> bool:
+    head, _script, tail = _split_vue_sfc(text)
+    return text_has_factory_ui_forbidden(head + tail)
+
+
+def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
+    """优先：工作区模板脏且 baseline 模板已净 → 覆写；否则就地 scrub（不伤脚本）。"""
     from app.core.config import get_settings
 
     sk_root = get_settings().skeletons_dir / "baseline" / "frontend" / "src"
     fe = workspace / "frontend" / "src"
-    if not sk_root.is_dir() or not fe.is_dir():
+    if not fe.is_dir():
         return []
     written: list[str] = []
     for path in fe.rglob("*.vue"):
@@ -1173,23 +1253,30 @@ def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
             text = path.read_text(encoding="utf-8")
         except OSError:
             continue
-        if not text_has_factory_ui_forbidden(text):
+        scrubbed = scrub_vue_source_student_copy(text)
+        template_dirty = _vue_template_polluted(text)
+        if not template_dirty and scrubbed == text:
             continue
         rel = path.relative_to(fe)
-        src = sk_root / rel
-        if not src.is_file():
+        src = sk_root / rel if sk_root.is_dir() else None
+        replaced = False
+        if src is not None and src.is_file():
+            try:
+                clean = src.read_text(encoding="utf-8")
+            except OSError:
+                clean = ""
+            if clean and not _vue_template_polluted(clean) and clean != text:
+                # baseline 模板面干净即可覆写（脚本可含 DOM-/开题 过滤）
+                path.write_text(clean, encoding="utf-8")
+                written.append(
+                    ("frontend/src/" + rel.as_posix()).replace("\\", "/")
+                )
+                replaced = True
+        if replaced:
             continue
-        try:
-            clean = src.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        if text_has_factory_ui_forbidden(clean):
-            # 骨架本身仍脏：应修骨架，勿用脏文件覆盖
-            continue
-        if clean == text:
-            continue
-        path.write_text(clean, encoding="utf-8")
-        written.append(
-            ("frontend/src/" + rel.as_posix()).replace("\\", "/")
-        )
+        if scrubbed != text:
+            path.write_text(scrubbed, encoding="utf-8")
+            written.append(
+                ("frontend/src/" + rel.as_posix()).replace("\\", "/")
+            )
     return written

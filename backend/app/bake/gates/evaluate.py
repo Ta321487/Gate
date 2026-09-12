@@ -642,12 +642,22 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
 def _student_copy_hits(workspace: Path, spec: dict[str, Any]) -> list[dict[str, str]]:
     """扫 schema / 交付 JS / 前端源码 / SQL 种子中的工厂说明书腔。
 
-    必须扫「未 scrub」的原文：先洗再查等于自欺，脏包会漏网。
+    schema 面优先用工作区 domain.schema.json（学生实盘）；避免 ensure_spec_schema
+    重编壳把已洗净的 labels 又换成 builders 脏句，导致「洗文案」门禁永远红。
     """
     from app.bake.domain_schema import FACTORY_UI_FORBIDDEN, find_factory_ui_hits
+    import json
 
     hits: list[dict[str, str]] = []
     schema = dict(spec.get("schema") or {})
+    disk = workspace / "domain.schema.json"
+    if disk.is_file():
+        try:
+            loaded = json.loads(disk.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict) and loaded:
+                schema = loaded
+        except Exception:  # noqa: BLE001
+            pass
     surfaces = {
         "labels": schema.get("labels"),
         "menus": schema.get("menus"),
