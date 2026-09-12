@@ -77,6 +77,10 @@
         </template>
       </template>
       <template v-else>
+        <template v-if="showBackHome">
+          <router-link to="/home">{{ backHomeLabel }}</router-link>
+          <span class="sep">·</span>
+        </template>
         <span>还没有账号？</span>
         <router-link to="/register">立即注册</router-link>
         <template v-if="entryMode === 'split_entry'">
@@ -109,6 +113,7 @@ import {
 import { APP_DELIVERED } from '../appDelivered.js'
 import { roleLabel, schemaLabels, getSchema } from '../utils/domainSchema.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
+import { isGuestBrowseEnabled } from '../utils/session.js'
 
 const props = defineProps({
   /** portal | admin | staff */
@@ -125,6 +130,10 @@ const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const showStaffLink = computed(() => showStaffLoginLink())
+const showBackHome = computed(() => isGuestBrowseEnabled())
+const backHomeLabel = computed(
+  () => String(labels.loginBackHome || labels.backHomeLabel || '返回首页').trim() || '返回首页',
+)
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )

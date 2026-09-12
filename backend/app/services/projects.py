@@ -25,6 +25,8 @@ from app.bake.catalog import (
     themes_for_domain,
 )
 from app.bake.naming import sanitize_delivery_slug, student_db_name, zip_download_name
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.bake.gates import evaluate_domain_gates
 from app.bake.stack_scan import (
     normalize_ai_assistant,
@@ -77,6 +79,16 @@ DELIVERY_MARKS = frozenset({"none", "ready", "delivered"})
 def normalize_delivery_mark(raw: str | None) -> str:
     m = str(raw or "none").strip().lower()
     return m if m in DELIVERY_MARKS else "none"
+
+
+def touch_json_fields(project: Project, *fields: str) -> None:
+    """JSON 列整对象替换后必须 flag，否则 commit 可能写不进库（洗文案后 gates 仍脏就是这类）。"""
+    for name in fields:
+        if hasattr(project, name):
+            try:
+                flag_modified(project, name)
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def reset_delivery_mark(project: Project) -> bool:
@@ -498,6 +510,7 @@ def sync_checklist_from_workspace(project: Project) -> bool:
         return False
     project.checklist = new_checklist
     project.gates = new_gates
+    touch_json_fields(project, "checklist", "gates")
     return True
 
 

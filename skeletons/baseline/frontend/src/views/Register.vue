@@ -102,6 +102,10 @@
       </div>
     </form>
     <template #footer>
+      <template v-if="showBackHome">
+        <router-link to="/home">{{ backHomeLabel }}</router-link>
+        <span class="sep">·</span>
+      </template>
       <span>已有账号？</span>
       <router-link to="/login">返回登录</router-link>
     </template>
@@ -120,6 +124,7 @@ import AuthShell from '../components/AuthShell.vue'
 import ProfileFieldInputs from '../components/ProfileFieldInputs.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
 import { APP_DELIVERED } from '../appDelivered.js'
+import { isGuestBrowseEnabled } from '../utils/session.js'
 import {
   emptyProfileExtras,
   profileFieldsOnRegister,
@@ -131,6 +136,10 @@ import { validateProfileFormats, isProfileFieldRequired, isProfileFieldVisible }
 const router = useRouter()
 const template = ref(pickAuthTemplate())
 const labels = schemaLabels()
+const showBackHome = computed(() => isGuestBrowseEnabled())
+const backHomeLabel = computed(
+  () => String(labels.loginBackHome || labels.backHomeLabel || '返回首页').trim() || '返回首页',
+)
 const userLabel = computed(() => roleLabel('user', '用户'))
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
@@ -414,4 +423,5 @@ onMounted(async () => {
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
 }
+.sep { margin: 0 6px; color: var(--portal-muted, #8a9aa6); }
 </style>
