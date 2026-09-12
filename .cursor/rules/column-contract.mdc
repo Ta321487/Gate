@@ -1,0 +1,21 @@
+---
+description: 主链路·bake：能力开了须有列与菜单；缺列先 ensure；保证出包可演示不假成功
+globs: backend/app/bake/**,skeletons/**
+alwaysApply: false
+---
+
+# 列契约（主链路·bake/骨架）
+
+保证匹配挂上的能力，bake 进 ZIP 后真能走通。思想：`docs/soft-fail-scan.md`。
+
+## DO
+
+1. 能力/开关开 → SQL 有列、菜单有入口；jdbc/mybatis/jpa 同源。
+2. 缺列先补现有 `ensure_*` / `inject_missing_columns`，再谈 Store 硬失败。
+3. UI 已露出且用户填了的字段必须能落库；补测，不只擦当面包。
+
+## DON'T
+
+- 无列仍 200；解析失败当 0；extras 失败写 `"{}"`。
+- 另起平行补列系统；只改一套 Store。
+- 硬失败文案当给学生的产品说明（保险丝响了 = 修工厂生成）。
