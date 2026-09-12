@@ -1,7 +1,10 @@
 <template>
   <div class="help-page">
     <h1 class="page-title">帮助文档</h1>
-    <p class="page-desc">本说明面向运营人员，介绍毕设港工作台的标准使用流程、交付条件与常用术语。</p>
+    <p class="page-desc">
+      本说明面向运营人员：标准流程、交付条件与术语。卡壳时先看
+      <a href="#help-card-四痛点">运营诊断 · 四痛点</a>。
+    </p>
 
     <div class="help-toolbar">
       <n-input
@@ -37,6 +40,7 @@
       <div class="help-cards" :class="sec.grid || ''">
         <article
           v-for="card in sec.cards"
+          :id="cardAnchor(card)"
           :key="card.title"
           class="help-card panel"
           :class="{ wide: card.wide }"
@@ -51,18 +55,33 @@
               <li v-for="(step, i) in card.steps" :key="i">
                 <strong>{{ step.title }}</strong>
                 <p>{{ step.body }}</p>
+                <p v-if="step.page" class="help-step-page muted">页面：{{ step.page }}</p>
               </li>
             </ol>
+            <div v-if="card.table?.rows?.length" class="help-table-wrap">
+              <table class="help-table">
+                <thead>
+                  <tr>
+                    <th v-for="h in card.table.headers" :key="h">{{ h }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ri) in card.table.rows" :key="ri">
+                    <td v-for="(cell, ci) in row" :key="ci">{{ cell }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <ul v-if="card.bullets?.length">
               <li v-for="(b, i) in card.bullets" :key="i">{{ b }}</li>
             </ul>
             <p v-if="card.links?.length" class="help-links">
               <a
                 v-for="l in card.links"
-                :key="l.href"
-                :href="l.href"
-                target="_blank"
-                rel="noopener"
+                :key="l.href || l.hash || l.label"
+                :href="l.href || l.hash"
+                :target="l.href && !l.hash ? '_blank' : undefined"
+                :rel="l.href && !l.hash ? 'noopener' : undefined"
               >{{ l.label }}</a>
             </p>
             <dl v-if="card.terms?.length" class="help-glossary">
@@ -79,9 +98,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { NEmpty, NInput } from 'naive-ui'
 
+const route = useRoute()
 const query = ref('')
 const qNorm = computed(() => String(query.value || '').trim().toLowerCase())
 
@@ -89,11 +110,35 @@ function sectionId(title) {
   return `help-sec-${String(title || '').replace(/\s+/g, '-')}`
 }
 
+function cardAnchor(card) {
+  const slug = card.anchor || card.title || ''
+  return `help-card-${String(slug).replace(/\s+/g, '-')}`
+}
+
+function scrollToHash(raw) {
+  const id = String(raw || '').replace(/^#/, '')
+  if (!id) return
+  nextTick(() => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+onMounted(() => scrollToHash(route.hash || window.location.hash))
+watch(
+  () => route.hash,
+  (h) => scrollToHash(h),
+)
+
 function cardBlob(card, { withTerms = true } = {}) {
-  const parts = [card.title, card.tag, card.lead]
-  for (const s of card.steps || []) parts.push(s.title, s.body)
+  const parts = [card.title, card.tag, card.lead, card.anchor]
+  for (const s of card.steps || []) parts.push(s.title, s.body, s.page)
   for (const b of card.bullets || []) parts.push(b)
   for (const l of card.links || []) parts.push(l.label)
+  for (const h of card.table?.headers || []) parts.push(h)
+  for (const row of card.table?.rows || []) {
+    for (const cell of row) parts.push(cell)
+  }
   if (withTerms) {
     for (const t of card.terms || []) parts.push(t.name, t.def)
   }
@@ -156,42 +201,159 @@ const sections = [
     ],
   },
   {
+    title: '运营诊断',
+    cards: [
+      {
+        title: '四痛点 → 先看哪',
+        tag: '索引',
+        anchor: '四痛点',
+        wide: true,
+        lead: '日常卡壳时按痛点跳转；本页只做人话指路，不替代门禁与验圈。',
+        bullets: [
+          '怎么用 → 下方「五步主路径」；项目内页：匹配确认 → 一键生成 → 运行 → 产物/对照 → 交付复审。',
+          '最常爆炸 → 「最常爆炸处置」卡；项目内先看匹配双显 / 质量检查毒区 / 任务日志 / 交付复审合卷。',
+          '感觉不对又说不清 → 产物「交付复审」里的老板小卡 12 条 + 毒区 / 验圈 / 质量摘要并排。',
+          '开题写得笼统 / 弱匹配多 → 「开题笼统时仍要写对」：老师已确认的开题是合同，写不对先查工厂理解与匹配，禁止甩锅给材料。',
+        ],
+        links: [
+          { hash: '#help-card-五步主路径', label: '五步主路径' },
+          { hash: '#help-card-最常爆炸处置', label: '最常爆炸' },
+          { hash: '#help-card-开题笼统时仍要写对', label: '开题笼统仍要写对' },
+          { hash: '#help-card-交付复审', label: '交付复审说明' },
+        ],
+      },
+      {
+        title: '五步主路径',
+        tag: '怎么用',
+        anchor: '五步主路径',
+        wide: true,
+        lead: '从建项到可下包：每步只做一件事。细节见「流程与交付」各卡。',
+        steps: [
+          {
+            title: '1 · 上传建项',
+            page: '项目',
+            body: '上传开题/任务书等，确认分堆后再创建。多课题勿硬并一堆。',
+          },
+          {
+            title: '2 · 匹配确认',
+            page: '项目详情 → 匹配确认',
+            body: '核领域、身份、主路径、持久层、Security、AI；有双显先看清拟选≠出包。开题依据弱须勾主路径已核对——核对的是工厂是否理解对，不是给甩锅留退路。',
+          },
+          {
+            title: '3 · 一键生成',
+            page: '项目详情 → 一键生成',
+            body: '调视觉选项后启动；弹窗做开题措辞核对（不扫工程）。生成后看质量检查实装。',
+          },
+          {
+            title: '4 · 运行预览',
+            page: '项目详情 → 运行',
+            body: '启前后端点主路径：提交→审→完结是否真能走。',
+          },
+          {
+            title: '5 · 产物与复审',
+            page: '项目详情 → 产物/对照',
+            body: '对库表/论文图/质量检查；工程改过则交付复审验圈后合卷，再下 ZIP。',
+          },
+        ],
+        links: [
+          { hash: '#help-card-标准作业流程', label: '标准作业流程（细）' },
+          { hash: '#help-card-上传与分堆', label: '上传与分堆' },
+          { hash: '#help-card-生成前-开题措辞核对', label: '开题措辞核对' },
+        ],
+      },
+      {
+        title: '最常爆炸处置',
+        tag: '防炸',
+        anchor: '最常爆炸处置',
+        wide: true,
+        lead: '炸了先点哪、怎么收。老师已确认的开题是合同；禁止改开题迁就工厂，也禁止甩锅给「材料薄」。',
+        table: {
+          headers: ['症状', '先看', '处置'],
+          rows: [
+            ['域摇摆 / 易混', '匹配确认双显', '按题名+正文核主路径与域；理解不清就解锁核清，不改开题'],
+            ['门禁红 / 不能下包', '产物 → 质量检查毒区', '空壳优先；修 bake/皮/开关对齐后再验'],
+            ['生成中编译挂', '日志 + Fix Agent', '允许 schema 重放；勿手改学生业务当常态'],
+            ['开了 AI/Security 包里没有', '匹配确认双显', '开关与 bake 对齐，或标不支持；关则勿写已集成'],
+            ['预览 OK 但 ZIP 旧', '交付复审', '验圈通过后合卷'],
+            ['「演示」字样 / 场景穿帮', '质量检查语义门禁', '洗学生可见面；身份跟 scene_scan'],
+            ['措辞弱匹配多 / 出包像模具', '措辞核对 + 匹配确认', '见「开题笼统时仍要写对」——先查工厂是否写对老师确认的主路径'],
+          ],
+        },
+        links: [
+          { hash: '#help-card-开题笼统时仍要写对', label: '开题笼统仍要写对' },
+          { hash: '#help-card-交付复审', label: '交付复审' },
+          { hash: '#help-card-质量检查与交付', label: '质量检查' },
+        ],
+      },
+      {
+        title: '开题笼统时仍要写对',
+        tag: '理解',
+        anchor: '开题笼统时仍要写对',
+        wide: true,
+        lead: '开题措辞笼统、万能句多，不等于可以甩锅。「老师 / 客户已确认的开题」是合同：工厂写不出来，默认是匹配理解或 bake 不到位，不是材料的错。',
+        bullets: [
+          '禁止改开题迁就工厂；也禁止用「材料薄 / 套话」给错包开脱。',
+          '弱匹配 / 依据弱 = 提醒运营更仔细核：题名、正文、谁对谁做什么、完结态——把主路径确认对，再生成。',
+          '出包像模具、主路径不对、皮穿帮：对照开题修域 / 主路径入口 / 域皮 / 种子；登记偏差写清「工厂理解偏差」，不要写「材料不行」。',
+          '仅当开题明确只要更窄主路径、且未宣称高级能力时，才可记「材料未要求」——不是「材料差所以交差」。',
+          '硬边界（人脸/真支付/物联网等）该拒就拒并诚实双显；能 bake 的主路径必须写到可答辩。',
+        ],
+        links: [
+          { hash: '#help-card-生成前-开题措辞核对', label: '开题措辞核对' },
+          { hash: '#help-card-领域易混（先问清再确认）', label: '领域易混' },
+        ],
+      },
+    ],
+  },
+  {
     title: '流程与交付',
     cards: [
       {
         title: '标准作业流程',
         tag: '流程',
+        anchor: '标准作业流程',
         wide: true,
+        lead: '与「运营诊断 → 五步主路径」同一条链；此处展开细则。',
         steps: [
           {
             title: '创建项目',
+            page: '项目',
             body: '在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。',
           },
           {
             title: '匹配确认',
+            page: '匹配确认',
             body: '在「匹配确认」页核验推荐骨架、领域、身份场景、主路径入口（如有分叉：晨午检自报/绑岗/调宿等）、持久层，以及按需开关（Spring Security、AI 助手）。开题未写清「谁怎么用」时须勾选「主路径已核对」或解锁手改后再确认。开题推荐与当前出包不一致时双显（持久层 / Security / AI / 身份入口）。配色、布局、门户首页等视觉选项在「一键生成」页调整；技术栈与 AI 开关不要放进视觉区。',
           },
           {
             title: '一键生成',
+            page: '一键生成',
             body: '匹配确认后，在「一键生成」页调整视觉与生成选项（配色、质感、布局、字体、门户首页、智能填充、密码策略；即时保存），再启动生成。启动前会弹出「开题措辞核对」，对照开题功能行与工厂清单项名（不扫工程）。生成完成后在「质量检查」看「清单实装验收」，确认 ZIP 内真有对应实现。生成完成后可同页改选项并「按当前选项重新生成」。进度可在「任务队列」与项目详情中查看；业务配置填充会拆成多个 Unit 并发执行，详情见「大模型与填岛拆解」。',
           },
           {
             title: '答辩 PPT（后置）',
+            page: '一键生成',
             body: '程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。产物可检查与导出 PPTX（不进 ZIP）；对照子页做预览纠错。业务脏时须「按工程更新业务页」后再导出。',
           },
           {
             title: '预览与验收',
+            page: '运行 · 产物/对照',
             body: '于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库（表结构 / E-R）、论文材料（模块图 / 用例图 / 用例描述表 / 测试用例）、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷，确保 ZIP 与 workspace 一致。',
           },
           {
             title: '交付',
+            page: '列表履约 / 详情',
             body: '机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。',
           },
+        ],
+        links: [
+          { hash: '#help-card-五步主路径', label: '五步主路径（短）' },
         ],
       },
       {
         title: '上传与分堆',
         tag: '上传',
+        anchor: '上传与分堆',
         wide: true,
         lead: '上传后先分堆、再确认创建。上限与「直接选文件」相同：只计展开后的 PDF / Word / TXT 份数。',
         bullets: [
@@ -208,6 +370,7 @@ const sections = [
       {
         title: '质量检查与交付',
         tag: '交付',
+        anchor: '质量检查与交付',
         wide: true,
         lead: '机器质检通过只代表可下载。关键项未通过时不可下载。人工审核后可在列表或详情直接标「已发出」；需要暂存待发再用「已审待发」。工程变更后须先验圈再合卷。',
         bullets: [
@@ -220,32 +383,40 @@ const sections = [
       {
         title: '交付复审',
         tag: '复审',
+        anchor: '交付复审',
         wide: true,
-        lead: '「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。',
+        lead: '「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。感觉不对时用同页老板小卡 12 条对着勾，并对照毒区 / 质量摘要。',
         bullets: [
           '首包直发：首次打包未进入复审时，质检通过即可下载；工程改动后 ZIP 可能过期，须验圈并合卷。',
           '进入复审：主动开启后，每轮「验圈」冻结已通过的门禁与 checklist 项到安全区；未通过项留在毒区待收敛。',
           '验圈：检查单调性（安全区不得回退）并刷新质量摘要；有回退或 open 偏差登记时不可合卷。',
           '合卷：验圈通过后重新打包 ZIP，使交付包与当前 workspace 一致。',
-          '偏差登记：记录与开题或材料不一致之处（仅运营可见）；待结案项须处理或结案后再合卷。',
+          '偏差登记：记录工厂与开题不一致之处（仅运营可见）；写「工厂理解偏差」，禁止甩锅「材料薄」。待结案项须处理后再合卷。',
+          '老板小卡：运营自检 12 条 +「理解偏差」；机器全绿仍可能写错老师已确认的主路径——对着开题核，修工厂。',
           '导出交接包：供线下交接或留档，不含于学生交付物。',
           '按钮悬停有一句操作说明；合卷不可用时悬停可见原因。',
+        ],
+        links: [
+          { hash: '#help-card-四痛点', label: '四痛点索引' },
         ],
       },
       {
         title: '生成前 · 开题措辞核对',
         tag: '生成前',
+        anchor: '生成前-开题措辞核对',
         wide: true,
         lead: '启动生成前弹出：开题功能行 ↔ Spec 清单项名的静态措辞对照（不调大模型、不扫 workspace）。',
         bullets: [
           '与「质量检查 → 清单实装验收」不是同一功能；措辞绿了不代表包内已实装。',
           '顶部覆盖比例（如 8/8 已覆盖）一眼判断能否放心生成；不阻断生成。',
           '已对照 / 措辞弱匹配 / 措辞待核 / 工厂实现模块：见弹窗分区说明。',
+          '弱匹配 / 待核偏多：对照开题核域与主路径是否理解对；老师已确认的内容写不出来，责任在工厂。',
         ],
       },
       {
         title: 'AI 助手（按需开关）',
         tag: 'AI',
+        anchor: 'AI助手',
         wide: true,
         lead: '学生包智能客服/导购挂件：匹配确认与 Spring Security 同级开关；默认关，开题点名则推荐开。不是新领域，不塞进骨架/持久层/一键生成视觉区。详细对照见仓库 docs/ai-opening-delivery-map.md。',
         bullets: [
@@ -261,6 +432,7 @@ const sections = [
       {
         title: '质量检查 · 清单实装验收',
         tag: '包后',
+        anchor: '清单实装验收',
         wide: true,
         lead: '生成完成后，在项目详情「产物 → 质量检查」扫描 workspace/ZIP，核对清单各项是否真有路由与实现。',
         bullets: [
@@ -317,6 +489,7 @@ const sections = [
       {
         title: '领域易混（先问清再确认）',
         tag: '防坑',
+        anchor: '领域易混（先问清再确认）',
         wide: true,
         lead: '匹配确认前先分清客户原话落在哪条主路径；下列成对易混须双侧成立，禁止只显一侧。完整清单见仓库 docs/domain-skin-gap-analysis.md §2。',
         bullets: [
@@ -461,6 +634,8 @@ const sections = [
           { name: '合卷', def: '验圈通过后重新打包 ZIP，使交付包与当前工程目录一致。' },
           { name: '安全区', def: '交付复审中已冻结并通过的门禁与 checklist 项；验圈时不得回退。' },
           { name: '毒区', def: '交付复审中尚未收敛、待处理的门禁或 checklist 项。' },
+          { name: '老板小卡', def: '交付复审旁运营自检 12 条（空壳/旧题/状态机等）+ 理解偏差项；勾选仅本机保存，对照毒区与质量摘要。' },
+          { name: '理解偏差', def: '老师已确认的开题是合同；工厂域/主路径/皮写不对时默认是匹配或 bake 理解问题，禁止甩锅开题套话。' },
           { name: '交付包锁定', def: '因质量检查未过或工程与验收规则不一致，系统禁用压缩包下载的状态。' },
           { name: '预览', def: '在端口池内临时启动前后端做快速验收；不作为生产部署。' },
           { name: '端口池', def: '预留给预览的端口区间，用于限制同时运行的预览实例数量。' },

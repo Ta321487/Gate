@@ -125,6 +125,80 @@
       </p>
     </n-alert>
 
+    <div class="diag-grid">
+      <div class="review-panel boss-card-panel">
+        <div class="parse-sec-hd row-between" style="align-items:center">
+          <span>老板小卡 · 感觉不对时对着勾</span>
+          <n-button text size="tiny" :disabled="disabled" @click="resetBossChecks">清空勾选</n-button>
+        </div>
+        <p class="small muted" style="margin:6px 0 8px">
+          勾选仅保存在本机浏览器，对照右侧毒区 / 验圈 / 质量摘要。机器全绿仍可能理解错——对着开题核。
+          <router-link to="/help#help-card-四痛点">帮助 · 四痛点</router-link>
+        </p>
+        <div class="boss-check-list">
+          <n-checkbox
+            v-for="item in bossItems"
+            :key="item.key"
+            :checked="!!bossChecks[item.key]"
+            :disabled="disabled"
+            style="display:flex;align-items:flex-start;margin:0 0 8px"
+            @update:checked="(v) => setBossCheck(item.key, v)"
+          >
+            <span class="boss-check-label">{{ item.label }}</span>
+          </n-checkbox>
+        </div>
+        <n-alert
+          v-if="understandGapHint"
+          type="warning"
+          :bordered="false"
+          style="margin-top:8px"
+          title="机器绿 ≠ 写对了"
+        >
+          已勾「理解偏差」且毒区/挡包门禁为空：对照开题核域、主路径、皮与种子，修工厂；登记偏差写「工厂理解偏差」，禁止甩锅「材料薄」。
+        </n-alert>
+      </div>
+      <div class="review-panel diag-side-panel">
+        <div class="parse-sec-hd">机器毒区 · 验圈 / QA</div>
+        <div class="diag-side-block">
+          <div class="small" style="font-weight:600;margin-bottom:4px">待收敛 · 毒区（{{ poisonZone.length }}）</div>
+          <n-empty v-if="!poisonZone.length" description="暂无待处理清单项" size="small" />
+          <ul v-else class="zone-list">
+            <li v-for="item in poisonZone" :key="'p-' + item.name">{{ item.name }}</li>
+          </ul>
+        </div>
+        <div class="diag-side-block">
+          <div class="small" style="font-weight:600;margin-bottom:4px">挡包门禁（{{ blockingGates.length }}）</div>
+          <n-empty v-if="!blockingGates.length" description="无未过门禁" size="small" />
+          <ul v-else class="zone-list">
+            <li v-for="g in blockingGates" :key="'g-' + (g.key || g.label)">
+              {{ g.label }}<span v-if="g.desc" class="muted"> · {{ g.desc }}</span>
+            </li>
+          </ul>
+        </div>
+        <div class="diag-side-block">
+          <div class="small" style="font-weight:600;margin-bottom:4px">最近验圈</div>
+          <p v-if="lastVerifySummary" class="small" style="margin:0">{{ lastVerifySummary }}</p>
+          <p v-else class="small muted" style="margin:0">尚未验圈</p>
+        </div>
+        <div class="diag-side-block">
+          <div class="small row-between" style="font-weight:600;margin-bottom:4px;align-items:center">
+            <span>质量摘要（QA）</span>
+            <n-button text size="tiny" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
+              重跑
+            </n-button>
+          </div>
+          <p v-if="lastQa?.summary" class="small" style="margin:0 0 6px">{{ lastQa.summary }}</p>
+          <p v-else class="small muted" style="margin:0">尚无摘要 · 可点验圈或「质量摘要」</p>
+          <ul v-if="lastQaFindings.length" class="zone-list">
+            <li v-for="(f, i) in lastQaFindings" :key="'qa-' + i">
+              <span class="pill" :class="qaLevelPill(f.level)">{{ f.level || 'info' }}</span>
+              {{ f.msg }}<span v-if="f.where" class="muted"> · {{ f.where }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div class="review-grid">
       <div class="review-panel">
         <div class="parse-sec-hd">安全区 · 已通过</div>
@@ -193,7 +267,7 @@
         v-model:value="noteText"
         type="textarea"
         :autosize="{ minRows: 2, maxRows: 4 }"
-        placeholder="登记与开题或材料不一致之处（仅运营可见，不进学生交付包）"
+        placeholder="登记工厂与开题不一致之处（写「工厂理解偏差」；禁止甩锅材料薄。仅运营可见）"
         :disabled="disabled || !!busy"
       />
       <n-button size="small" type="primary" :disabled="disabled || !noteText.trim() || !!busy" @click="onAddNote">
@@ -209,8 +283,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { NAlert, NButton, NDataTable, NEmpty, NInput } from 'naive-ui'
+import { computed, ref, watch } from 'vue'
+import { NAlert, NButton, NCheckbox, NDataTable, NEmpty, NInput } from 'naive-ui'
 import { api, message } from '../api'
 
 const props = defineProps({
@@ -231,6 +305,63 @@ const busy = ref('')
 const noteText = ref('')
 const localRegressions = ref([])
 const showDoneNotes = ref(false)
+
+const BOSS_ITEMS = [
+  { key: 'shell', label: '1. 有没有空壳（宣称有、缺表/API/状态机）？' },
+  { key: 'regress', label: '2. 旧题（图书/宿舍/实习等）回归红了吗？' },
+  { key: 'fsm', label: '3. 状态机对且准吗（集合/转移/角色/文案）？' },
+  { key: 'fields', label: '4. 字段可见含义像本题吗（有无壳字段穿帮）？' },
+  { key: 'flow', label: '5. 客户会不会看错主流程（「我的」/种子/按钮诱导）？' },
+  { key: 'steal', label: '6. 新域有没有抢走旧题匹配？' },
+  { key: 'demo', label: '7. 学生可见面有没有「演示」字样？' },
+  { key: 'rewrite', label: '8. 开题有没有被改来迁就工厂？' },
+  { key: 'reject', label: '9. 该 reject 的硬边界还拒不拒？' },
+  { key: 'thesis', label: '10. 论文图（ER/模块/用例）跟实包一致吗？' },
+  { key: 'skin', label: '11. 皮肤/布局选项进包生效了吗？' },
+  { key: 'scene', label: '12. 登录氛围与门户轮播分套、身份跟场景吗？' },
+  { key: 'understand_gap', label: '理解偏差：老师已确认的主路径/域，工厂写对了吗？（禁止甩锅开题套话）' },
+]
+
+const bossItems = BOSS_ITEMS
+const bossChecks = ref({})
+
+function bossStorageKey(id) {
+  return `gf-boss-card:${id || ''}`
+}
+
+function loadBossChecks(id) {
+  try {
+    const raw = localStorage.getItem(bossStorageKey(id))
+    const parsed = raw ? JSON.parse(raw) : {}
+    bossChecks.value = parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    bossChecks.value = {}
+  }
+}
+
+function persistBossChecks() {
+  try {
+    localStorage.setItem(bossStorageKey(props.projectId), JSON.stringify(bossChecks.value || {}))
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function setBossCheck(key, checked) {
+  bossChecks.value = { ...bossChecks.value, [key]: !!checked }
+  persistBossChecks()
+}
+
+function resetBossChecks() {
+  bossChecks.value = {}
+  persistBossChecks()
+}
+
+watch(
+  () => props.projectId,
+  (id) => loadBossChecks(id),
+  { immediate: true },
+)
 
 async function refreshAfter() {
   if (typeof props.reload === 'function') {
@@ -273,6 +404,55 @@ const regressions = computed(() => {
   if (localRegressions.value.length) return localRegressions.value
   return Array.isArray(last) ? last : []
 })
+
+const lastQa = computed(() => {
+  const qa = review.value.last_qa
+  return qa && typeof qa === 'object' ? qa : null
+})
+
+const lastQaFindings = computed(() => {
+  const raw = lastQa.value?.findings
+  if (!Array.isArray(raw)) return []
+  return raw.slice(0, 8)
+})
+
+const lastVerifySummary = computed(() => {
+  const last = review.value.last_verify
+  if (!last || typeof last !== 'object') {
+    const rounds = review.value.rounds || []
+    const r = rounds.length ? rounds[rounds.length - 1] : null
+    if (!r) return ''
+    const parts = [
+      `第 ${r.round || '—'} 轮`,
+      r.round_pass ? '通过' : '未过',
+      r.monotonic_ok === false ? '单调性回退' : null,
+      r.gates_ok ? '门禁过' : '门禁未过',
+      typeof r.pending_count === 'number' ? `待收敛 ${r.pending_count}` : null,
+      r.at ? formatAt(r.at) : null,
+    ].filter(Boolean)
+    return parts.join(' · ')
+  }
+  const parts = [
+    last.round_pass ? '通过' : '未过',
+    last.monotonic_ok === false ? '单调性回退' : null,
+    Array.isArray(last.regressions) && last.regressions.length
+      ? `回退 ${last.regressions.length} 条`
+      : null,
+  ].filter(Boolean)
+  return parts.join(' · ') || '已有验圈记录'
+})
+
+const understandGapHint = computed(() => {
+  if (!bossChecks.value.understand_gap) return false
+  return !poisonZone.value.length && !blockingGates.value.length
+})
+
+function qaLevelPill(level) {
+  const l = String(level || '').toLowerCase()
+  if (l === 'error') return 'pill-rose'
+  if (l === 'warn' || l === 'warning') return 'pill-amber'
+  return 'pill-neutral'
+}
 
 const statusLabel = computed(() => {
   const s = review.value.status || 'idle'
@@ -484,13 +664,15 @@ async function onResolveNote(noteId, done) {
 </script>
 
 <style scoped>
-.delivery-review .review-grid {
+.delivery-review .review-grid,
+.delivery-review .diag-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 @media (max-width: 720px) {
-  .delivery-review .review-grid {
+  .delivery-review .review-grid,
+  .delivery-review .diag-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -499,6 +681,24 @@ async function onResolveNote(noteId, done) {
   border-radius: 8px;
   padding: 10px 12px;
   min-height: 120px;
+}
+.boss-check-list {
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.boss-check-label {
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.diag-side-block {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+}
+.diag-side-block:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 .zone-list {
   margin: 8px 0 0;
@@ -559,16 +759,18 @@ async function onResolveNote(noteId, done) {
 }
 .review-note-row {
   display: flex;
-  flex-direction: column;
   gap: 8px;
-  margin-top: 4px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.review-note-row .n-input {
+  flex: 1;
 }
 .reg-list {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   padding-left: 18px;
 }
-.pill-amber {
-  background: #fff7e6;
-  color: #ad6800;
+.btn-tip-wrap {
+  display: inline-flex;
 }
 </style>
