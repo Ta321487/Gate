@@ -261,6 +261,10 @@ class DeepSeekSettings(BaseModel):
     deepseek_enabled: bool = Field(default=True, description="是否启用 DeepSeek")
     gemini_enabled: bool = Field(default=False, description="是否启用 Gemini")
     preferred: str = Field(default="deepseek", description="双开时优先厂商")
+    model_options: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="设置页可选模型（id/label）；换官方名时以后端目录为准",
+    )
 
 
 class DeepSeekUpdate(BaseModel):

@@ -21,6 +21,11 @@ from app.llm.client import (
     project_usage_rows,
     support_usage,
 )
+from app.llm.model_catalog import (
+    DEEPSEEK_DEFAULT_MODEL,
+    deepseek_model_options_payload,
+    resolve_deepseek_model,
+)
 from app.llm.runtime import DEFAULT_DS, get_llm_flags, set_llm_flags
 from app.models import LlmCall, Project, ProjectStatus, SettingRow
 from app.schemas import (
@@ -68,7 +73,7 @@ def _hydrate_ds_settings(s, cfg: dict) -> None:
     if cfg.get("base_url"):
         s.deepseek_base_url = str(cfg["base_url"])
     if cfg.get("model"):
-        s.deepseek_model = str(cfg["model"])
+        s.deepseek_model = resolve_deepseek_model(str(cfg["model"]))
     if "project_token_budget" in cfg:
         s.project_token_budget = int(cfg["project_token_budget"])
     if "monthly_token_budget" in cfg:
@@ -95,7 +100,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
     flags = await get_llm_flags(db)
     return DeepSeekSettings(
         base_url=str(cfg.get("base_url") or s.deepseek_base_url),
-        model=str(cfg.get("model") or s.deepseek_model),
+        model=resolve_deepseek_model(str(cfg.get("model") or s.deepseek_model or DEEPSEEK_DEFAULT_MODEL)),
         thinking=bool(cfg.get("thinking", True)),
         key_configured=bool(s.deepseek_api_key),
         key_masked=mask_key(s.deepseek_api_key, env_name="DEEPSEEK_API_KEY", hint_prefix="sk-"),
@@ -119,6 +124,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         deepseek_enabled=flags["deepseek_enabled"],
         gemini_enabled=flags["gemini_enabled"],
         preferred=flags["preferred"],
+        model_options=deepseek_model_options_payload(),
     )
 
 
@@ -149,8 +155,8 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         cfg["base_url"] = data["base_url"]
         s.deepseek_base_url = data["base_url"]
     if "model" in data:
-        cfg["model"] = data["model"]
-        s.deepseek_model = data["model"]
+        cfg["model"] = resolve_deepseek_model(str(data["model"]))
+        s.deepseek_model = cfg["model"]
     if "project_token_budget" in data:
         s.project_token_budget = data["project_token_budget"]
         cfg["project_token_budget"] = data["project_token_budget"]

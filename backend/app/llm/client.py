@@ -13,18 +13,13 @@ from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.llm.model_catalog import DEEPSEEK_DEFAULT_MODEL, resolve_deepseek_model
 from app.llm.runtime import LlmRuntime, ProviderEndpoint
 from app.models import LlmCall, Project
 
 logger = logging.getLogger("gf.llm")
 
 _JSON_BLOCK = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.I)
-
-# 2026-07-24 起 deepseek-chat / deepseek-reasoner 停用；reasoner 语义用 thinking 开关表达
-_LEGACY_MODELS = {
-    "deepseek-chat": "deepseek-v4-flash",
-    "deepseek-reasoner": "deepseek-v4-flash",
-}
 
 
 @dataclass
@@ -45,8 +40,7 @@ def resolve_model(model: str, *, provider: str = "deepseek") -> str:
     m = (model or "").strip()
     if provider == "gemini":
         return m or "gemini-2.5-flash"
-    m = m or "deepseek-v4-flash"
-    return _LEGACY_MODELS.get(m, m)
+    return resolve_deepseek_model(m or DEEPSEEK_DEFAULT_MODEL)
 
 
 def format_usage_detail(res: ChatResult, note: str = "") -> str:

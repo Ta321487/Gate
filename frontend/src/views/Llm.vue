@@ -447,7 +447,7 @@ const gm = reactive({
 })
 const form = reactive({
   ds_base_url: '',
-  ds_model: 'deepseek-v4-flash',
+  ds_model: 'deepseek-flash',
   gm_base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
   gm_model: 'gemini-2.5-flash',
   thinking: true,
@@ -523,10 +523,10 @@ const preferredOptions = [
   { label: '优先 DeepSeek，失败再 Gemini', value: 'deepseek' },
   { label: '优先 Gemini，失败再 DeepSeek', value: 'gemini' },
 ]
-const dsModelOptions = [
-  { label: 'deepseek-v4-flash · 日常 / 省钱', value: 'deepseek-v4-flash' },
-  { label: 'deepseek-v4-pro · 难任务 / 质量', value: 'deepseek-v4-pro' },
-]
+const dsModelOptions = ref([
+  { label: 'deepseek-flash · V4.1 Flash（日常 / 官方现行）', value: 'deepseek-flash' },
+  { label: 'deepseek-v4-pro · 旧 Pro 名（官方正路由到 Flash）', value: 'deepseek-v4-pro' },
+])
 const gmModelOptions = [
   { label: 'gemini-2.5-flash · 日常 / 省钱', value: 'gemini-2.5-flash' },
   { label: 'gemini-2.5-pro · 难任务 / 质量', value: 'gemini-2.5-pro' },
@@ -1000,8 +1000,15 @@ async function loadBalance() {
 }
 
 function migrateModel(m) {
-  if (m === 'deepseek-chat' || m === 'deepseek-reasoner') return 'deepseek-v4-flash'
-  return m || 'deepseek-v4-flash'
+  const aliases = {
+    'deepseek-chat': 'deepseek-flash',
+    'deepseek-reasoner': 'deepseek-flash',
+    'deepseek-v4-flash': 'deepseek-flash',
+    'deepseek-v4-flash-vision-exp': 'deepseek-flash',
+    'deepseek-v4.1-flash': 'deepseek-flash',
+  }
+  if (!m) return 'deepseek-flash'
+  return aliases[m] || m
 }
 
 async function loadProjectLifetimeTokens() {
@@ -1164,6 +1171,12 @@ async function load() {
     })
     form.ds_base_url = dsRes.base_url
     form.ds_model = migrateModel(dsRes.model)
+    if (Array.isArray(dsRes.model_options) && dsRes.model_options.length) {
+      dsModelOptions.value = dsRes.model_options.map((o) => ({
+        label: o.label || o.id,
+        value: o.id,
+      }))
+    }
     form.thinking = dsRes.thinking
     form.gm_base_url = gmRes.base_url
     form.gm_model = gmRes.model || 'gemini-2.5-flash'
