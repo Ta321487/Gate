@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.llm.model_catalog import resolve_deepseek_model
 from app.models import SettingRow
 
 DEFAULT_DS = {
@@ -194,7 +195,7 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
     if cfg.get("base_url"):
         s.deepseek_base_url = str(cfg["base_url"])
     if cfg.get("model"):
-        s.deepseek_model = str(cfg["model"])
+        s.deepseek_model = resolve_deepseek_model(str(cfg["model"]))
     if "project_token_budget" in cfg:
         s.project_token_budget = int(cfg["project_token_budget"])
     if "monthly_token_budget" in cfg:
@@ -217,7 +218,7 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
             name="deepseek",
             api_key=s.deepseek_api_key or "",
             base_url=str(cfg.get("base_url") or s.deepseek_base_url),
-            model=str(cfg.get("model") or s.deepseek_model),
+            model=resolve_deepseek_model(str(cfg.get("model") or s.deepseek_model)),
             thinking=bool(cfg.get("thinking", True)),
         ),
         gemini=ProviderEndpoint(

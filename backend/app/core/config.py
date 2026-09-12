@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     deepseek_api_key: str = Field(default="", alias="DEEPSEEK_API_KEY")
     deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
-    deepseek_model: str = Field(default="deepseek-v4-flash", alias="DEEPSEEK_MODEL")
+    deepseek_model: str = Field(default="deepseek-flash", alias="DEEPSEEK_MODEL")
 
     # Gemini（OpenAI 兼容端点）；与 DeepSeek 并存，由 LLM_PROVIDER / 设置页切换
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")

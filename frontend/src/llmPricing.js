@@ -18,8 +18,10 @@ export const OUTPUT_WEIGHT = 0.3
  * @type {Record<string, ModelPrice>}
  */
 export const MODEL_PRICES = {
+  'deepseek-flash': { currency: 'CNY', inputPer1M: 1, outputPer1M: 2 },
+  // 旧名：计价与 Flash 对齐（官方正把 Pro 路由到 Flash）
   'deepseek-v4-flash': { currency: 'CNY', inputPer1M: 1, outputPer1M: 2 },
-  'deepseek-v4-pro': { currency: 'CNY', inputPer1M: 3, outputPer1M: 6 },
+  'deepseek-v4-pro': { currency: 'CNY', inputPer1M: 1, outputPer1M: 2 },
   'gemini-2.5-flash': { currency: 'USD', inputPer1M: 0.3, outputPer1M: 2.5 },
   'gemini-2.5-pro': { currency: 'USD', inputPer1M: 1.25, outputPer1M: 10 },
   'gemini-2.0-flash': { currency: 'USD', inputPer1M: 0.1, outputPer1M: 0.4 },
