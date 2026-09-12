@@ -18,6 +18,27 @@
         <li v-for="(w, i) in matchWarnings" :key="i">{{ warningText(w) }}</li>
       </ul>
     </div>
+    <n-alert
+      class="material-weak-tip"
+      :type="materialWeakHint ? 'warning' : 'default'"
+      :bordered="false"
+      title="开题措辞笼统 / 匹配依据弱时"
+      style="margin:12px 0"
+    >
+      <p class="small" style="margin:0 0 6px">
+        {{ materialWeakHint
+          ? '出现「依据弱 / 主路径必勾」：说明工厂对主路径把握不稳——对照题名与正文把域和入口核清，不要当成「材料不行所以交差」。'
+          : '功能行即使偏万能句，老师已确认的开题仍是合同；出包不对默认是匹配/理解/bake 问题。' }}
+      </p>
+      <ul class="warn-list" style="margin:0">
+        <li>核清：谁提交、谁审、完结态；勾「主路径已核对」表示工厂理解对了，不是甩锅凭证。</li>
+        <li>禁止改开题迁就工厂；禁止用「材料薄」给错包开脱。</li>
+        <li>
+          说明见
+          <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>。
+        </li>
+      </ul>
+    </n-alert>
     <div class="grid-2">
       <div class="panel">
         <div class="panel-hd">
@@ -266,6 +287,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 const {
@@ -304,4 +326,9 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
+
+const materialWeakHint = computed(() => {
+  const path = matchPath.value || {}
+  return Boolean(path.entry_weak || path.needs_path_ack)
+})
 </script>

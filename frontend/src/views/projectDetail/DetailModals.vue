@@ -28,6 +28,21 @@
       <p class="small muted" style="margin-top:0;margin-bottom:8px">
         核对开题主流程是否由已选领域覆盖；下方为措辞对照，不阻断生成。
       </p>
+      <n-alert
+        type="warning"
+        :bordered="false"
+        title="弱匹配多 ≠ 可以甩锅给开题"
+        style="margin-bottom:10px"
+      >
+        <p class="small" style="margin:0 0 4px">
+          {{ preGenMaterialWeak
+            ? '弱匹配或待核偏多：对照开题核域与主路径是否理解对；老师已确认的内容写不出来，责任在工厂。'
+            : '措辞笼统时更要核清主路径再生成；禁止改开题，也禁止用「材料薄」给错包开脱。' }}
+        </p>
+        <p class="small muted" style="margin:0">
+          <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>
+        </p>
+      </n-alert>
       <div
         v-if="proposalDiff"
         class="pre-gen-status"
@@ -147,6 +162,17 @@
         @reload="reloadModSvg"
       />
     </n-modal>
+    <n-modal v-model:show="showArchitecture" preset="card" title="系统逻辑架构图" style="width:min(960px,96vw)">
+      <ArchitectureDiagramViewer
+        v-if="showArchitecture"
+        :key="archLayoutKey"
+        :svg-source="archSvgSource"
+        :download-name="archDownloadBase"
+        :source-note="archMeta?.source_note || ''"
+        :loading="archLoading"
+        @reload="reloadArchSvg"
+      />
+    </n-modal>
     <n-modal
       v-model:show="showUsecases"
       preset="card"
@@ -201,9 +227,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
+import ArchitectureDiagramViewer from '../../components/ArchitectureDiagramViewer.vue'
 import ErDiagramViewer from '../../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../../components/TestcaseViewer.vue'
@@ -236,16 +263,16 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openEr, openFillPlan, openModules,
+  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
-  refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
+  refreshJob, refreshRuntime, reload, reloadArchSvg, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
-  securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
+  securityOn, securityOptions, showArchitecture, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, showUsecaseDescriptions, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
@@ -253,8 +280,18 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucMdjUrl, ucSvgSource,
   ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdSourceNote,
   undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
-  reloadUsecaseDescriptions,
+  reloadUsecaseDescriptions, archDownloadBase, archLayoutKey, archLoading, archMeta, archSvgSource,
 } = bindPd()
+
+const preGenMaterialWeak = computed(() => {
+  const d = proposalDiff.value
+  if (!d) return false
+  const weak = (d.review_proposal?.length || 0) + (d.unmatched_proposal?.length || 0)
+  const matched = d.matched?.length || 0
+  if (d.needs_review) return true
+  if (weak === 0) return false
+  return weak >= matched || weak >= 3
+})
 
 watch(showPreGenerate, (open) => {
   if (!open) return
