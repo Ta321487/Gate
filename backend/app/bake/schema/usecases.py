@@ -6,11 +6,12 @@
 画法硬约束按客户样式卡死（见 usecase_style.py，默认可切换）：
 1. 椭圆同尺寸；一/二级圆心各自共一条竖线
 2. 一级↔二级虚线箭头 + <<include>>（条件扩展可用 <<extend>>，UML 方向）
-3. 描述若写序号，须与图中一级用例一一对应（几个一级就几个序号；现客户一级固定 5）
-4. 描述为段落形式
-5. 全部二级用例动词开头
+3. 描述若写序号，须与图中一级用例一一对应（段落到（n）则一级圈为 n；不是写死 5）
+4. 描述为段落形式；须引用图上全部一级/二级用例名；禁止空壳「完成相关操作」与凑数「确认×」
+5. 全部二级用例动词开头；二级不得与一级同名
 禁止菜单外 key；管理端/岗位不得挂「进行支付」。
-一级名禁止「综合功能/综合业务」空壳：合并时保留主业务名。
+一级名禁止「综合功能/综合业务」空壳：合并时保留主业务名；开题模块优先保留独立一级。
+描述可经 LLM 润色目的语（见 agents_usecase），但圈名与序号以确定性模型为准。
 明年换校：在 USECASE_STYLE_PROFILES 增 profile，或在 spec.usecase_style 指定。
 """
 
@@ -31,6 +32,7 @@ from app.bake.schema.modules import (
     parse_identity_modules,
 )
 from app.bake.schema.usecase_style import (
+    l1_count_bounds,
     resolve_usecase_style,
     style_public_view,
 )
@@ -38,7 +40,9 @@ from app.bake.staff_posts import PACK_ADMIN_MENUS, PACK_WORK_PAGES
 
 # 几何/数量默认取自当前客户样式（断言与布局以此为准）
 _STYLE = resolve_usecase_style()
-_LEVEL1_COUNT = int(_STYLE["level1_count"])
+_L1_MIN, _L1_MAX, _L1_PREFERRED = l1_count_bounds(_STYLE)
+# 兼容旧测试：preferred 作软默认，不再表示「必须恰好 N」
+_LEVEL1_COUNT = _L1_PREFERRED
 _UC_W = float(_STYLE["ellipse_w"])
 _UC_H = float(_STYLE["ellipse_h"])
 
@@ -58,8 +62,15 @@ _WORK_PAGE_LABEL: dict[str, str] = {
 _VERB_PREFIX_RE = re.compile(
     r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|充值|反馈|审核|"
     r"办理|预约|取消|支付|导出|催办|评价|驳回|通过|填写|检索|打开|结束|"
-    r"切换|连接|打卡|签到|开门|补缴|申请|下单|收藏|浏览|进入|使用|参加|参与|收发|查阅|联系|发表|加入)"
+    r"切换|连接|打卡|签到|开门|补缴|申请|下单|收藏|浏览|进入|使用|参加|参与|收发|查阅|联系|发表|加入|"
+    r"添加|修改|删除|回复|新增|干预|选购)"
 )
+
+# 开题细节里常见的「动作尾巴」，作名词干时要剥掉
+_ACTION_TAIL_RE = re.compile(
+    r"(新增|添加|编辑|修改|删除|审核|发货|上下架|操作|预警|状态)$"
+)
+_MATERIAL_FILLER_RE = re.compile(r"(操作)?等$")
 
 _EXTEND_KEY_HINTS = frozenset(
     {
@@ -77,9 +88,14 @@ _MAT_AFFINITY: tuple[tuple[str, ...], ...] = (
     ("个人中心", "个人信息", "店铺信息", "修改密码", "头像"),
     ("商品", "农产品", "浏览", "库存"),
     ("购物车", "支付", "订单", "售后", "退货"),
-    ("留言", "客服", "评价", "沟通"),
+    ("留言", "客服", "沟通"),
+    ("评价",),
     ("活动", "公告", "促销", "资讯"),
-    ("用户管理", "商家管理", "分类", "数据分析", "审核"),
+    # 用户/商家/分类分属不同域，禁止同组硬并（否则出现「管理分类」吞用户）
+    ("用户管理", "用户"),
+    ("商家管理", "商家", "商户"),
+    ("分类", "类目"),
+    ("数据分析", "统计", "报表"),
 )
 
 # menus 回落合并优先级：越靠后越先被并入
@@ -193,15 +209,22 @@ def ensure_verb_prefix(label: str, *, default_verb: str = "进行") -> str:
 
 
 def _dedupe_verb_noun_tail(lab: str, verb: str = "") -> str:
-    """去掉「管理xxx管理」「查看xxx查看」叠字。"""
+    """去掉「管理xxx管理」「查看xxx查看」叠字，以及「管理添加/管理编辑」类叠动词。"""
     s = lab or ""
-    for v in (verb, "管理", "查看", "提交", "办理", "确认"):
+    for v in (verb, "管理", "查看", "提交", "办理", "确认", "编辑", "添加", "新增", "修改"):
         if not v or len(s) <= len(v) * 2:
             continue
         if s.startswith(v) and s.endswith(v):
             mid = s[len(v) : -len(v)]
             if mid:
                 return f"{v}{mid}"
+    # 「管理添加促销信息」「管理编辑店铺」→ 去掉外层管理，保留内层动作
+    m = re.match(
+        r"^管理(新增|添加|编辑|修改|删除|审核|查看|回复|办理|上下架)(.+)$",
+        s,
+    )
+    if m:
+        return f"{m.group(1)}{m.group(2)}"
     return s
 
 
@@ -467,9 +490,7 @@ def _l1_label_for_biz(biz: str, items: list[dict[str, Any]], side: str) -> str:
             if leaf and not looks_latin(leaf):
                 if side == "admin":
                     return ensure_verb_prefix(leaf, default_verb="管理")
-                return ensure_verb_prefix(
-                    leaf, default_verb="进行" if root in ("slot", "ticket") else "查看"
-                )
+                return _user_l1_from_leaf(leaf, root)
         # 多叶同桶：用模板业务名（如管理订单），勿用首叶「留言」带飞
         return base if _VERB_PREFIX_RE.match(base) else ensure_verb_prefix(
             base, default_verb="管理" if side == "admin" else "查看"
@@ -567,8 +588,458 @@ def _merge_buckets(
     return cur
 
 
-_SPLIT_STAGE_VERBS_USER = ("查看", "选择", "确认", "提交", "浏览")
+# 阶段拆分禁止用空壳「确认」；须是可落在同一菜单上的真实动作语义
+_SPLIT_STAGE_VERBS_USER = ("查看", "选择", "提交", "浏览", "办理")
 _SPLIT_STAGE_VERBS_ADMIN = ("查看", "管理", "审核", "编辑", "导出")
+
+
+def _strip_leading_verb(lab: str) -> str:
+    s = re.sub(r"\s+", "", str(lab or "").strip())
+    m = _VERB_PREFIX_RE.match(s)
+    if not m:
+        return s
+    rest = s[m.end() :]
+    # 整词既是动词又是业务名（预约/评价/收藏/登录…）时保留，禁止掏空成「业务」
+    if not rest:
+        return s
+    return rest
+
+
+def _noun_stem(lab: str) -> str:
+    """去掉动词前缀与常见后缀/动作尾，得到业务名词干。"""
+    s = _strip_module_word(lab)
+    # 「评价管理」「用户管理」：先去尾「管理」，避免「评价」被当成动词前缀掏空
+    if s.endswith("管理") and len(s) > 2:
+        head = s[:-2]
+        if head and head not in ("查看", "进行", "编辑"):
+            s = head
+    raw_keep = s
+    stem = _strip_leading_verb(s)
+    for _ in range(3):
+        m = _ACTION_TAIL_RE.search(stem)
+        if not m or len(stem) <= len(m.group(1)):
+            break
+        stem = stem[: -len(m.group(1))]
+    for suf in ("功能", "管理", "列表", "中心", "信息", "记录", "模块", "浏览", "检索", "查询"):
+        if stem.endswith(suf) and len(stem) > len(suf):
+            stem = stem[: -len(suf)]
+            break
+    stem = stem.replace("我的", "") or stem
+    if not stem or stem in ("管理", "查看", "进行", "编辑", "办理"):
+        # 回落业务名本身（预约/评价），勿统一成「业务」
+        if raw_keep and raw_keep not in ("管理", "查看", "进行", "编辑", "办理"):
+            return raw_keep
+        return "业务"
+    return stem
+
+
+def _scrub_material_seed(seed: str) -> str:
+    """开题括号细节清洗：去权限腔/CRUD/等，收束以及/或。"""
+    s = re.sub(r"\s+", "", str(seed or "").strip())
+    if not s:
+        return ""
+    s = s.split("（")[0].split("(")[0].strip()
+    s = _MATERIAL_FILLER_RE.sub("", s)
+    # 权限/属性腔 → 不是用例动作
+    s = re.sub(r"拥有最高权限|最高权限|全局", "", s)
+    s = re.sub(r"增删改查|增删改|CRUD", "", s)
+    s = s.replace("分别", "")
+    # 「长期或短期座位预约」→ 整段预约语义，勿被「或」拆碎
+    if re.search(r"(长期|短期).{0,8}预约", s) or re.search(r"座位预约", s):
+        s = "座位预约"
+    # 「库存以及库存预警」→ 取更具体的后段
+    elif "以及" in s or re.search(r"(?<!以)及(?!其)", s):
+        parts = [p for p in re.split(r"以及|(?<!以)及(?!其)", s) if p]
+        if len(parts) >= 2:
+            s = max(parts, key=lambda p: (len(p), p))
+    # 「修改或查看订单状态」→ 优先「动词+宾语」完整段
+    if "或" in s and "预约" not in s:
+        parts = [p for p in s.split("或") if p]
+        if len(parts) >= 2:
+            scored: list[tuple[int, int, str]] = []
+            for p in parts:
+                has_verb = bool(_VERB_PREFIX_RE.match(p))
+                has_obj = len(_strip_leading_verb(p)) >= 2 and _strip_leading_verb(p) != p
+                rank = 0 if has_verb and has_obj else (1 if has_verb else 2)
+                scored.append((rank, -len(p), p))
+            scored.sort()
+            s = scored[0][2]
+    return s.strip("的之与和，,") or ""
+
+
+def _polish_usecase_label(lab: str) -> str:
+    """二级/细节标签终洗：禁 CRUD 堆砌、禁权限腔残留。"""
+    s = re.sub(r"\s+", "", str(lab or "").strip())
+    if not s:
+        return s
+    s = re.sub(r"拥有最高权限|最高权限|全局", "", s)
+    s = re.sub(r"增删改查|增删改|CRUD", "", s)
+    s = s.replace("分别", "")
+    s = _dedupe_verb_noun_tail(s)
+    if not s or s in ("管理", "查看", "进行"):
+        return "管理业务"
+    # 「管理商品信息」已够，勿再叠「信息信息」
+    s = s.replace("信息信息", "信息")
+    return s
+
+
+def _infer_biz_from_module_name(name: str) -> str:
+    n = _strip_module_word(name)
+    if any(t in n for t in ("个人", "店铺", "中心", "资料")):
+        return "profile"
+    if any(t in n for t in ("订单", "购物车", "发货")):
+        return "order"
+    if any(t in n for t in ("公告", "活动", "资讯", "促销")):
+        return "content"
+    if any(t in n for t in ("客服", "沟通")):
+        return "dm"
+    if any(t in n for t in ("评价",)):
+        return "extra"
+    if any(t in n for t in ("用户",)):
+        return "user"
+    if any(t in n for t in ("农产品", "商品", "图书", "档案")):
+        return "archive"
+    if any(t in n for t in ("售后", "工单", "借阅", "申请")):
+        return "ticket"
+    if any(t in n for t in ("预约", "挂号", "选座")):
+        return "slot"
+    return "extra"
+
+
+def _as_view_if_noun_phrase(s: str) -> str | None:
+    """「预约记录」「评价信息」等：前缀碰巧是动词，实为名词短语 → 查看…"""
+    m = _VERB_PREFIX_RE.match(s)
+    if not m:
+        return None
+    rest = s[m.end() :]
+    if not rest:
+        return None
+    if s.startswith(
+        (
+            "查看",
+            "浏览",
+            "管理",
+            "编辑",
+            "提交",
+            "填写",
+            "进行",
+            "办理",
+            "添加",
+            "修改",
+            "删除",
+            "新增",
+            "选购",
+            "回复",
+            "审核",
+            "导出",
+        )
+    ):
+        return None
+    if rest in ("记录", "信息", "通知", "列表", "详情", "消息", "动态", "内容") or rest.endswith(
+        ("记录", "通知", "列表", "消息")
+    ):
+        return f"查看{s}"
+    return None
+
+
+def _label_from_material_seed(seed: str, *, side: str, parent: str = "") -> str:
+    """开题细节 → 可读的二级用例名（禁止权限腔/CRUD 堆砌/叠动词）。"""
+    raw_seed = str(seed or "")
+    s = _scrub_material_seed(seed)
+    parent_stem = _noun_stem(parent) if parent else "业务"
+    parent_blob = parent or ""
+
+    # 洗空后的权限-only 细节：按父模块落成真正动作
+    if not s:
+        if "订单" in parent_blob or "订单" in raw_seed:
+            return "干预订单状态"
+        if any(t in parent_blob for t in ("商品", "农产品")):
+            return "管理商品信息"
+        return "查看详情" if side == "user" else "管理业务"
+
+    if "沟通" in s or (s.startswith("与") and "商家" in s):
+        return "联系用户与商家"
+    if "审核" in s and any(t in s + parent_blob for t in ("商品", "图片", "内容", "农产品")):
+        # 「最高权限审核商品内容与图片」→ 审核商品内容与图片
+        tail = re.sub(r"^.*?审核", "审核", s)
+        if not tail.startswith("审核"):
+            tail = f"审核{s}"
+        return _polish_usecase_label(tail)
+    if s in ("权限", "信息") or s.endswith("权限"):
+        if "订单" in parent_blob:
+            return "干预订单状态"
+        return f"管理{parent_stem}" if parent_stem != "业务" else "管理业务"
+
+    # 名词短语误命中动词前缀（预约记录）须先改写
+    nounish = _as_view_if_noun_phrase(s)
+    if nounish:
+        return _polish_usecase_label(nounish)
+
+    # 已是动宾
+    if _VERB_PREFIX_RE.match(s):
+        return _polish_usecase_label(_dedupe_verb_noun_tail(s))
+
+    # 纯动作词 / 常见开题动宾碎片
+    if s in ("上下架",):
+        return "办理上下架"
+    if s in ("发货", "发货操作"):
+        return "办理发货"
+    if "库存" in s:
+        return "查看库存预警" if "预警" in s else "查看库存"
+    if "支付" in s or "扫码支付" in s:
+        return "进行支付"
+    if s.endswith("充值") or s == "充值" or "余额充值" in s:
+        return "进行充值"
+    if "补缴" in s:
+        return "进行补缴"
+    if s.startswith("选购") or "选购" in s:
+        stem = s.replace("选购", "", 1) if s.startswith("选购") else re.sub(r"^.*选购", "", s)
+        stem = stem or "套餐"
+        return _polish_usecase_label(f"选购{stem}")
+    if "座位预约" in s or (s.endswith("预约") and "预约" in parent_blob):
+        return "进行预约"
+    if s.endswith("预约") and len(s) > 2:
+        return _polish_usecase_label(f"进行{s}" if not s.startswith("进行") else s)
+
+    # 「名词+动作」倒装：农产品商品新增 / 信息编辑 / 退货审核 / 店铺信息编辑
+    m = re.match(
+        r"^(.+?)(新增|添加|编辑|修改|删除|审核|发货|上下架)$",
+        s,
+    )
+    if m:
+        noun, act = m.group(1), m.group(2)
+        noun = noun.replace("商品商品", "商品")
+        if act == "上下架":
+            return "办理上下架"
+        if act == "发货":
+            return "办理发货"
+        if act in ("新增", "添加"):
+            if noun.endswith("商品") and len(noun) > 2:
+                noun = noun[:-2] or noun
+            noun = noun or parent_stem
+            return _polish_usecase_label(f"{act}{noun}")
+        if act == "编辑":
+            if not noun or noun in ("信息",) or noun.endswith("信息"):
+                stem = parent_stem if parent_stem != "业务" else _noun_stem(noun) or "信息"
+                if stem.endswith("信息"):
+                    return _polish_usecase_label(f"编辑{stem}")
+                return _polish_usecase_label(f"编辑{stem}信息")
+            return _polish_usecase_label(f"编辑{noun}")
+        if act == "审核":
+            return _polish_usecase_label(f"审核{noun}" if noun else "审核申请")
+        if act == "修改":
+            return _polish_usecase_label(f"修改{noun}" if noun else "修改信息")
+        if act == "删除":
+            return _polish_usecase_label(f"删除{noun}" if noun else "删除记录")
+
+    if "回复" in s and "评价" in s:
+        return "回复用户评价"
+    if "评价" in s:
+        return "管理评价" if side != "user" else "查看评价"
+    # 「商品信息」类名词：管理端写管理×，勿再拼 CRUD
+    if any(t in s for t in ("商品信息", "商品", "农产品")) and side != "user":
+        stem = _noun_stem(s) or "商品"
+        return _polish_usecase_label(f"管理{stem}信息" if "信息" not in stem else f"管理{stem}")
+
+    default_verb = "管理" if side == "admin" else "查看"
+    return _polish_usecase_label(ensure_verb_prefix(s, default_verb=default_verb))
+
+
+def _user_l1_from_leaf(leaf: str, root: str) -> str:
+    """用户端一级名：避免「查看图书检索」类叠义，优先动宾清楚。"""
+    raw = _strip_module_word(leaf)
+    if not raw:
+        tpl = _BIZ_L1_TEMPLATE.get(root)
+        return tpl if tpl and _VERB_PREFIX_RE.match(tpl) else "查看其它业务"
+    if _VERB_PREFIX_RE.match(raw):
+        return _dedupe_verb_noun_tail(raw)
+    if raw.endswith("检索") and len(raw) > 2:
+        return f"检索{raw[:-2]}"
+    if raw.endswith("查询") and len(raw) > 2:
+        return f"查询{raw[:-2]}"
+    if "选医生" in raw or (raw.startswith("选") and "医" in raw):
+        return "选择医生"
+    if raw.endswith("浏览") and len(raw) > 2:
+        return f"浏览{raw[:-2]}"
+    if any(t in raw for t in ("公告", "资讯", "通知")):
+        return "查看公告"
+    if any(t in raw for t in ("个人", "资料", "中心", "画像")):
+        return "查看个人资料"
+    if raw.startswith("我的"):
+        return f"查看{raw}"
+    if root in ("slot", "ticket") or any(t in raw for t in ("预约", "借阅", "申请", "挂号")):
+        return ensure_verb_prefix(raw, default_verb="进行")
+    if root in _BIZ_L1_TEMPLATE and root not in ("extra", "auth", "user"):
+        tpl = _BIZ_L1_TEMPLATE[root]
+        if _VERB_PREFIX_RE.match(tpl) or tpl in ("登录注册", "登录系统"):
+            # 单叶且叶子比模板更贴菜单时，用叶子动宾
+            if len(raw) >= 2 and raw not in tpl:
+                return ensure_verb_prefix(
+                    raw, default_verb="进行" if root in ("slot", "ticket") else "查看"
+                )
+            return tpl if _VERB_PREFIX_RE.match(tpl) else ensure_verb_prefix(tpl, default_verb="查看")
+    return ensure_verb_prefix(raw, default_verb="查看")
+
+
+def _semantic_l2_pair(
+    *,
+    side: str,
+    lab_raw: str,
+    key: str,
+    biz: str,
+) -> tuple[str, str]:
+    """单菜单桶的两个 include：有语义、互异、不与空壳「确认」凑数。"""
+    stem = _noun_stem(lab_raw)
+    blob = f"{lab_raw}|{key}|{biz}"
+    if side != "user":
+        if biz == "profile" or any(t in blob for t in ("个人", "店铺", "中心", "资料")):
+            return ("查看资料信息", "编辑店铺资料")
+        if any(t in blob for t in ("数据", "分析", "统计")):
+            return ("查看统计报表", "导出分析数据")
+        if biz == "dm" or any(t in blob for t in ("客服", "沟通")):
+            return ("查看客服会话", "回复用户消息")
+        if "评价" in blob or stem in ("评价",):
+            return ("查看评价列表", "管理评价")
+        if biz == "slot" or "预约" in blob or stem in ("预约",):
+            return ("查看预约列表", "办理预约")
+        if any(t in blob for t in ("content", "公告", "资讯", "活动")):
+            return ("查看公告列表", "编辑公告")
+        if any(t in blob for t in ("user", "读者", "用户")) and "dashboard" not in key:
+            return ("查看用户列表", "编辑用户信息")
+        if stem in ("管理", "业务"):
+            stem = _noun_stem(lab_raw) if _noun_stem(lab_raw) not in ("管理", "业务") else "业务"
+        return (f"查看{stem}列表", f"编辑{stem}信息")
+
+    if biz == "content" or any(t in blob for t in ("content", "公告", "资讯", "通知")):
+        return ("浏览公告列表", "查看公告详情")
+    if biz == "profile" or key == "profile" or any(t in blob for t in ("个人", "资料", "中心")):
+        return ("浏览资料信息", "编辑个人资料")
+    if any(t in blob for t in ("选医生", "医生")):
+        return ("浏览医生列表", "查看医生详情")
+    if biz == "archive" or "检索" in lab_raw or "查询" in lab_raw or "lookup" in key:
+        noun = stem or "资料"
+        return (f"浏览{noun}列表", f"查看{noun}详情")
+    if biz == "ticket" or any(t in blob for t in ("借阅", "申请", "工单")):
+        if "借阅" in blob:
+            return ("查看借阅列表", "查看借阅详情")
+        noun = stem or "申请"
+        return (f"查看{noun}列表", f"查看{noun}详情")
+    if biz == "slot" or any(t in blob for t in ("预约", "挂号", "选座")):
+        noun = stem if stem not in ("业务", "") else "预约"
+        return (f"查看{noun}列表", f"提交{noun}")
+    if biz in ("order", "cart") or any(t in blob for t in ("订单", "购物车")):
+        return ("查看订单列表", "查看订单详情")
+    if "评价" in blob or stem == "评价":
+        return ("查看评价列表", "发表评价")
+    if "收藏" in blob:
+        return ("查看收藏列表", "管理收藏")
+    if "留言" in blob:
+        return ("查看留言列表", "填写留言内容")
+    if any(t in blob for t in ("商品", "农产品", "图书")):
+        return (f"浏览{stem}列表", f"查看{stem}详情")
+    return (f"查看{stem}列表", f"查看{stem}详情")
+
+
+def _mint_distinct_l2(l1_label: str, used: set[str]) -> str:
+    stem = _noun_stem(l1_label)
+    s = str(l1_label or "")
+    preferred: tuple[str, ...] = ()
+    if "登录" in s and "注册" not in s:
+        preferred = ("提交登录信息", "填写账号密码")
+    elif "注册" in s:
+        preferred = ("填写注册信息", "提交注册申请")
+    for cand in preferred + (
+        f"查看{stem}详情",
+        f"浏览{stem}列表",
+        f"编辑{stem}信息",
+        f"提交{stem}",
+        f"办理{stem}",
+        f"管理{stem}",
+    ):
+        lab = cand if _VERB_PREFIX_RE.match(cand) else ensure_verb_prefix(cand, default_verb="查看")
+        if lab not in used and lab != l1_label:
+            return lab
+    return ensure_verb_prefix(f"{stem}补充", default_verb="查看")
+
+
+def _finalize_includes(l1_label: str, kids: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """禁止 L2 与 L1 同名、禁止桶内 L2 互撞；必要时改写标签（不改 menu_keys）。"""
+    used: set[str] = {str(l1_label or "").strip()}
+    out: list[dict[str, Any]] = []
+    for kid in kids:
+        if not isinstance(kid, dict):
+            continue
+        row = dict(kid)
+        lab = str(row.get("label") or "").strip()
+        nounish = _as_view_if_noun_phrase(lab)
+        if nounish:
+            lab = nounish
+        if not lab or lab in used:
+            lab = _mint_distinct_l2(l1_label, used)
+        if not _VERB_PREFIX_RE.match(lab):
+            lab = ensure_verb_prefix(lab, default_verb="查看")
+        if lab in used or lab == l1_label:
+            lab = _mint_distinct_l2(l1_label, used)
+        lab = _polish_usecase_label(lab)
+        if not lab or lab in used or lab == l1_label:
+            lab = _mint_distinct_l2(l1_label, used)
+        row["label"] = lab
+        used.add(lab)
+        out.append(row)
+    return out
+
+
+def _purpose_clause(lab: str) -> str:
+    """一级用例的目的短句（接在「可通过「L1」」之后，不再写空壳「完成相关操作」）。"""
+    s = str(lab or "").strip()
+    if s in ("登录注册",) or ("登录" in s and "注册" in s):
+        return "完成身份认证"
+    if s in ("登录系统", "进行登录", "登录") or (s.endswith("登录") and "注册" not in s):
+        return "完成系统登录"
+    if "注册" in s and "登录" not in s:
+        return "完成账号注册"
+    if s.startswith("进入"):
+        return "进入系统开展后续管理"
+    if any(t in s for t in ("个人", "资料", "中心", "店铺")):
+        return "维护账号与资料信息"
+    if s.startswith("管理") or s.startswith("办理"):
+        stem = _noun_stem(s)
+        return f"完成{stem}管理"
+    if any(t in s for t in ("图书", "馆藏")) and any(t in s for t in ("检索", "查询", "浏览")):
+        return "查询馆藏信息"
+    if any(t in s for t in ("检索", "查询", "浏览")) and not any(
+        t in s for t in ("公告", "个人", "资料")
+    ):
+        return "查询业务资料"
+    if "借阅" in s:
+        return "办理借阅业务"
+    if any(t in s for t in ("预约", "挂号", "申请")):
+        return "办理相关业务"
+    if any(t in s for t in ("公告", "资讯", "通知")):
+        return "了解最新通知"
+    if any(t in s for t in ("订单", "购物车", "支付")):
+        return "完成交易相关操作"
+    if any(t in s for t in ("评价", "留言", "收藏")):
+        return "完成互动反馈"
+    if "选择" in s or "选医" in s:
+        return "选择业务对象"
+    if any(t in s for t in ("数据", "分析", "统计")):
+        return "查看经营数据"
+    stem = _noun_stem(s)
+    return f"完成{stem}相关业务"
+
+
+def _join_usecase_quotes(names: list[str]) -> str:
+    """「A」与「B」；三项及以上用顿号，末项用与。"""
+    cleaned = [str(n).strip() for n in names if str(n).strip()]
+    if not cleaned:
+        return ""
+    if len(cleaned) == 1:
+        return f"「{cleaned[0]}」"
+    if len(cleaned) == 2:
+        return f"「{cleaned[0]}」与「{cleaned[1]}」"
+    head = "、".join(f"「{n}」" for n in cleaned[:-1])
+    return f"{head}与「{cleaned[-1]}」"
 
 
 def _split_buckets(
@@ -653,21 +1124,36 @@ def _split_buckets(
     return cur
 
 
+def _normalize_l1_buckets(
+    buckets: list[tuple[str, list[dict[str, Any]]]],
+    *,
+    side: str,
+    style: dict[str, Any] | None = None,
+) -> list[tuple[str, list[dict[str, Any]]]]:
+    """菜单回落：一级个数落在 [min,max]；已在区间内则不硬凑 preferred。"""
+    mn, mx, pref = l1_count_bounds(style)
+    cur = list(buckets)
+    if len(cur) > mx:
+        cur = _merge_buckets(cur, target=mx)
+    if len(cur) < mn:
+        cur = _split_buckets(cur, target=mn, side=side)
+    # 仍少于 min：再朝 preferred 拆（可读性）
+    if len(cur) < mn:
+        cur = _split_buckets(cur, target=pref, side=side)
+    if not (mn <= len(cur) <= mx):
+        raise ValueError(
+            f"usecase:{side}: 一级用例个数须在 {mn}–{mx}（当前 {len(cur)}）"
+        )
+    return cur
+
+
 def _normalize_five(
     buckets: list[tuple[str, list[dict[str, Any]]]],
     *,
     side: str,
 ) -> list[tuple[str, list[dict[str, Any]]]]:
-    cur = list(buckets)
-    if len(cur) > _LEVEL1_COUNT:
-        cur = _merge_buckets(cur, target=_LEVEL1_COUNT)
-    if len(cur) < _LEVEL1_COUNT:
-        cur = _split_buckets(cur, target=_LEVEL1_COUNT, side=side)
-    if len(cur) != _LEVEL1_COUNT:
-        raise ValueError(
-            f"usecase:{side}: 无法归一为 {_LEVEL1_COUNT} 个一级用例（当前 {len(cur)}）"
-        )
-    return cur
+    """兼容旧名：等价于 _normalize_l1_buckets。"""
+    return _normalize_l1_buckets(buckets, side=side)
 
 
 def _build_l2_for_bucket(
@@ -679,33 +1165,23 @@ def _build_l2_for_bucket(
 ) -> list[dict[str, Any]]:
     includes: list[dict[str, Any]] = []
 
-    # 认证拆分后的一级：每个只要一个二级
+    # 认证拆分后的一级：L2 须与 L1 异名（L1 多为「进行登录/进行注册」）
     if items and items[0].get("_auth_part"):
         part = str(items[0].get("_auth_part") or "")
         label_map = {
-            "login": "进行登录",
-            "register": "进行注册",
+            "login": "提交登录信息",
+            "register": "填写注册信息",
             "enter": "进入管理系统",
         }
         includes.append(
             {
                 "id": f"{l1_id}:{part or 'auth'}",
-                "label": label_map.get(part, "进行登录"),
+                "label": label_map.get(part, "提交登录信息"),
                 "relation": "include",
                 "menu_keys": [],
                 "source": "auth",
             }
         )
-        # 管理端进入系统时可挂 dashboard
-        if part == "enter" and side == "admin":
-            return includes
-        if part == "login" and side == "admin":
-            return includes
-        if part in ("login", "register"):
-            # 再挂一个同源固定子步，满足「每 L1 至少一个 L2」已满足；补第二步避免过瘦
-            alt = "进行注册" if part == "login" else "进行登录"
-            # 用户端登录一级只含登录，注册一级只含注册（不交叉发明）
-            return includes
         return includes
 
     if biz == "auth" or (items and items[0].get("biz") == "auth" and not items[0].get("_auth_part")):
@@ -713,7 +1189,7 @@ def _build_l2_for_bucket(
             includes.append(
                 {
                     "id": f"{l1_id}:login",
-                    "label": "进行登录",
+                    "label": "登录",
                     "relation": "include",
                     "menu_keys": [],
                     "source": "auth",
@@ -722,7 +1198,7 @@ def _build_l2_for_bucket(
             includes.append(
                 {
                     "id": f"{l1_id}:register",
-                    "label": "进行注册",
+                    "label": "注册",
                     "relation": "include",
                     "menu_keys": [],
                     "source": "auth",
@@ -732,7 +1208,7 @@ def _build_l2_for_bucket(
             includes.append(
                 {
                     "id": f"{l1_id}:login",
-                    "label": "进行登录",
+                    "label": "登录",
                     "relation": "include",
                     "menu_keys": [],
                     "source": "auth",
@@ -740,7 +1216,7 @@ def _build_l2_for_bucket(
             )
         return includes
 
-    # 拆分叶：用 _verb
+    # 拆分叶：用 _verb（单独占一级时允许仅 1 个 include，禁止再挂空壳「确认」）
     if len(items) == 1 and items[0].get("_split"):
         it = items[0]
         verb = str(it.get("_verb") or "查看")
@@ -761,6 +1237,42 @@ def _build_l2_for_bucket(
     if not items:
         raise ValueError(f"usecase: 空桶 {biz}")
 
+    # 单菜单桶：一对有语义的 include，禁止「查看X + 确认X」
+    if len(items) == 1:
+        it = items[0]
+        key = str(it.get("key") or "")
+        lab_raw = str(it.get("label") or key or "功能")
+        a, b = _semantic_l2_pair(side=side, lab_raw=lab_raw, key=key, biz=biz)
+        includes.append(
+            {
+                "id": f"{l1_id}:0",
+                "label": a,
+                "relation": "include",
+                "menu_keys": [key] if key else [],
+                "source": f"menu:{side}",
+            }
+        )
+        includes.append(
+            {
+                "id": f"{l1_id}:1",
+                "label": b,
+                "relation": "include",
+                "menu_keys": [key] if key else [],
+                "source": f"menu:{side}",
+            }
+        )
+        if _should_attach_pay_extend(side=side, items=items):
+            includes.append(
+                {
+                    "id": f"{l1_id}:pay",
+                    "label": "进行支付",
+                    "relation": "extend",
+                    "menu_keys": [key] if key else [],
+                    "source": f"menu:{side}",
+                }
+            )
+        return includes
+
     for idx, it in enumerate(items):
         key = str(it.get("key") or "")
         lab_raw = str(it.get("label") or key or "功能")
@@ -777,8 +1289,6 @@ def _build_l2_for_bucket(
             }
         )
 
-    # 仅用户端、下单/预约主桶：挂「进行支付」扩展（管理端/商家/馆员绝不挂支付）
-    # 即使已有其它 extend（如评价），支付仍可并列挂上
     if _should_attach_pay_extend(side=side, items=items) and not any(
         x.get("label") == "进行支付" for x in includes
     ):
@@ -793,43 +1303,29 @@ def _build_l2_for_bucket(
             }
         )
 
-    if len(items) == 1 and len(includes) == 1 and includes[0]["relation"] == "include":
-        it = items[0]
-        key = str(it.get("key") or "")
-        lab_raw = str(it.get("label") or "功能")
-        includes.append(
-            {
-                "id": f"{l1_id}:confirm",
-                "label": ensure_verb_prefix(lab_raw, default_verb="确认"),
-                "relation": "include",
-                "menu_keys": [key] if key else [],
-                "source": f"menu:{side}",
-            }
-        )
-
     if not includes:
         raise ValueError(f"usecase: L1 {biz} 无二级用例")
     return includes
 
 
 def _description_paragraph(actor: str, level1: list[dict[str, Any]]) -> str:
-    """客户要求：段落形式；若写序号则与一级个数严格一致。"""
+    """客户要求：段落形式；序号与一级个数严格一致；引用图上真实 L1/L2 名。"""
     parts: list[str] = []
     for i, uc in enumerate(level1, start=1):
         lab = str(uc.get("label") or "")
-        kids = uc.get("includes") or []
-        if kids:
-            rel_bits = []
-            for k in kids:
-                if not isinstance(k, dict):
-                    continue
-                tag = "包含" if k.get("relation") == "include" else "扩展"
-                rel_bits.append(f"{tag}「{k.get('label')}」")
-            detail = "，".join(rel_bits)
-            parts.append(f"（{i}）{actor}可通过「{lab}」完成相关操作，其中{detail}。")
-        else:
-            parts.append(f"（{i}）{actor}可通过「{lab}」完成相关操作。")
-    # 段落：单行连贯，不用换行拆成列表
+        kids = [k for k in (uc.get("includes") or []) if isinstance(k, dict)]
+        includes = [k for k in kids if k.get("relation") == "include"]
+        extends = [k for k in kids if k.get("relation") == "extend"]
+        purpose = _purpose_clause(lab)
+        bit = f"（{i}）{actor}可通过「{lab}」{purpose}"
+        if includes:
+            names = [str(k.get("label") or "") for k in includes]
+            bit += f"，其中包含{_join_usecase_quotes(names)}"
+        if extends:
+            enames = [str(k.get("label") or "") for k in extends]
+            bit += f"，并可扩展{_join_usecase_quotes(enames)}"
+        bit += "。"
+        parts.append(bit)
     return "".join(parts)
 
 
@@ -888,15 +1384,21 @@ def _mat_label_priority(name: str) -> int:
 
 
 def _mat_pick_keep_label(a: str, b: str) -> str:
-    """合并后一级名：跟优先级更高的那块，绝不改成综合业务。"""
+    """合并后一级名：跟优先级更高的那块，绝不改成综合业务；分类不吞用户/商品。"""
+    sa, sb = _strip_module_word(a), _strip_module_word(b)
+    weak = ("分类", "类目", "数据分析")
+    strong = ("用户", "商家", "商户", "商品", "农产品", "订单", "售后", "评价", "活动")
+    if any(t in sa for t in weak) and any(t in sb for t in strong):
+        return sb or sa
+    if any(t in sb for t in weak) and any(t in sa for t in strong):
+        return sa or sb
     pa, pb = _mat_label_priority(a), _mat_label_priority(b)
     if pb < pa:
-        return _strip_module_word(b) or b
+        return sb or b
     if pa < pb:
-        return _strip_module_word(a) or a
-    # 同级：更短、更像业务核的优先
-    sa, sb = _strip_module_word(a), _strip_module_word(b)
-    if len(sb) < len(sa):
+        return sa or a
+    # 同级：保留更具体（更长）的业务名，避免「分类」吞「用户管理」
+    if len(sb) > len(sa):
         return sb or sa
     return sa or sb
 
@@ -908,7 +1410,7 @@ def _l1_label_from_material(name: str, *, side: str) -> str:
     if raw in ("登录注册", "登录", "注册") or ("登录" in raw and "注册" in raw):
         return "登录注册" if side == "user" else "登录系统"
     if raw in ("注册",) and side == "user":
-        return "进行注册"
+        return "注册"
     # 历史兜底名若仍流入，按主业务语义拆掉（断言也会拦）
     if any(t in raw for t in ("综合业务", "综合功能")):
         return "管理订单" if side == "admin" else "查看订单"
@@ -992,8 +1494,10 @@ def _normalize_material_modules(
     modules: list[dict[str, Any]],
     *,
     side: str,
+    style: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """开题一级模块 → 恰好 5 个（保留开题名，合并时带上 details）。"""
+    """开题一级模块 → 落在 [min,max]；区间内原样保留，禁止为凑 preferred 吞掉业务名。"""
+    mn, mx, _pref = l1_count_bounds(style)
     cur: list[dict[str, Any]] = []
     for m in modules:
         if not isinstance(m, dict):
@@ -1005,20 +1509,49 @@ def _normalize_material_modules(
         cur.append({"label": name, "details": details, "merged_from": [name]})
 
     guard = 0
-    while len(cur) > _LEVEL1_COUNT and guard < 40:
+    # 仅当超出 max 才合并；优先并亲和组（客服+留言），避免农产品并进订单
+    while len(cur) > mx and guard < 40:
         guard += 1
-        # 合并亲和最高的一对（非登录优先被并）
         best = None
         for i in range(len(cur)):
             for j in range(i + 1, len(cur)):
                 aff = _mat_affinity(cur[i]["label"], cur[j]["label"])
-                # 登录类尽量不吞别人
                 pen = 0
                 if any(t in cur[i]["label"] for t in ("登录", "注册")) or any(
                     t in cur[j]["label"] for t in ("登录", "注册")
                 ):
                     pen = 3
-                key = (aff + pen, -len(cur[i]["details"]) - len(cur[j]["details"]), i, j)
+                # 跨业务主桶额外惩罚：用户/商家/分类/商品互不吞并
+                cross_pen = 0
+                labs = cur[i]["label"] + cur[j]["label"]
+                buckets_hit = [
+                    any(t in labs for t in ("用户",)),
+                    any(t in labs for t in ("商家", "商户")),
+                    any(t in labs for t in ("分类", "类目")),
+                    any(t in labs for t in ("农产品", "商品", "图书")),
+                    any(t in labs for t in ("订单",)),
+                    any(t in labs for t in ("售后", "退货")),
+                    any(t in labs for t in ("客服", "留言", "沟通")),
+                    any(t in labs for t in ("活动", "公告")),
+                    any(t in labs for t in ("数据", "分析")),
+                    any(t in labs for t in ("评价",)),
+                ]
+                if sum(1 for x in buckets_hit if x) >= 2:
+                    cross_pen = 5
+                elif aff >= 5 and any(t in labs for t in ("个人", "中心", "店铺")) and any(
+                    t in labs for t in ("农产品", "商品", "订单", "活动", "数据", "评价")
+                ):
+                    cross_pen = 5
+                elif aff >= 5 and any(t in labs for t in ("农产品", "商品", "图书")) and any(
+                    t in labs for t in ("订单", "售后", "活动", "数据", "用户", "商家")
+                ):
+                    cross_pen = 4
+                key = (
+                    aff + pen + cross_pen,
+                    -len(cur[i]["details"]) - len(cur[j]["details"]),
+                    i,
+                    j,
+                )
                 if best is None or key < best[0]:
                     best = (key, aff, i, j)
         if not best:
@@ -1050,13 +1583,12 @@ def _normalize_material_modules(
         cur = [x for k, x in enumerate(cur) if k not in (i, j)]
         cur.insert(min(i, j), keep)
 
-    while len(cur) < _LEVEL1_COUNT and guard < 80:
+    # 仅当少于 min 才拆；不要为了凑到 preferred=5 而拆碎
+    while len(cur) < mn and guard < 80:
         guard += 1
-        # 拆 details 最多的
         multi = [(i, len(m.get("details") or [])) for i, m in enumerate(cur)]
         multi = [x for x in multi if x[1] > 0]
         if not multi:
-            # 拆 merged_from
             multi2 = [
                 (i, len(m.get("merged_from") or []))
                 for i, m in enumerate(cur)
@@ -1081,8 +1613,10 @@ def _normalize_material_modules(
             {"label": _strip_module_word(leaf)[:12] or leaf, "details": [], "merged_from": [leaf]},
         )
 
-    if len(cur) != _LEVEL1_COUNT:
-        raise ValueError(f"usecase:materials: 无法归一为 {_LEVEL1_COUNT} 个一级（{len(cur)}）")
+    if not (mn <= len(cur) <= mx):
+        raise ValueError(
+            f"usecase:materials: 一级个数须在 {mn}–{mx}（当前 {len(cur)}）"
+        )
     return cur
 
 
@@ -1144,22 +1678,22 @@ def _l2_from_material_module(
         if side == "user":
             if "注册" in name and "登录" in name:
                 kids.append(
-                    {"id": f"{l1_id}:login", "label": "进行登录", "relation": "include", "menu_keys": [], "source": "auth"}
+                    {"id": f"{l1_id}:login", "label": "登录", "relation": "include", "menu_keys": [], "source": "auth"}
                 )
                 kids.append(
-                    {"id": f"{l1_id}:register", "label": "进行注册", "relation": "include", "menu_keys": [], "source": "auth"}
+                    {"id": f"{l1_id}:register", "label": "注册", "relation": "include", "menu_keys": [], "source": "auth"}
                 )
             elif "注册" in name:
                 kids.append(
-                    {"id": f"{l1_id}:register", "label": "进行注册", "relation": "include", "menu_keys": [], "source": "auth"}
+                    {"id": f"{l1_id}:register", "label": "注册", "relation": "include", "menu_keys": [], "source": "auth"}
                 )
             else:
                 kids.append(
-                    {"id": f"{l1_id}:login", "label": "进行登录", "relation": "include", "menu_keys": [], "source": "auth"}
+                    {"id": f"{l1_id}:login", "label": "登录", "relation": "include", "menu_keys": [], "source": "auth"}
                 )
         else:
             kids.append(
-                {"id": f"{l1_id}:login", "label": "进行登录", "relation": "include", "menu_keys": [], "source": "auth"}
+                {"id": f"{l1_id}:login", "label": "登录", "relation": "include", "menu_keys": [], "source": "auth"}
             )
             # dashboard 在 _side_menu_items 会被 skip，这里按 admin 菜单原文判断
             has_dash = any(str(it.get("key") or "") == "dashboard" for it in menu_items)
@@ -1170,7 +1704,8 @@ def _l2_from_material_module(
                     {
                         "id": f"{l1_id}:dash",
                         "label": "查看工作台",
-                        "relation": "include",
+                        # 登录后可进可不进工作台 → extend，非必含 include
+                        "relation": "extend",
                         "menu_keys": ["dashboard"],
                         "source": "menu:admin",
                     }
@@ -1180,50 +1715,53 @@ def _l2_from_material_module(
     # details / 被合并模块名 → L2
     seeds: list[str] = []
     for d in details:
-        # 括号细节可能很长，截短
-        piece = d.split("（")[0].split("(")[0].strip()
+        piece = _scrub_material_seed(d)
         if piece and piece not in seeds:
             seeds.append(piece)
     for m in merged:
         if m != name and m not in seeds:
-            seeds.append(_strip_module_word(m))
+            mm = _strip_module_word(m)
+            if mm and mm not in seeds:
+                seeds.append(mm)
 
     if not seeds:
         seeds = [_strip_module_word(name)]
 
     for idx, seed in enumerate(seeds[:6]):
-        seed = _strip_module_word(seed)
+        seed_raw = seed
+        seed = _scrub_material_seed(seed) or _strip_module_word(seed)
+        if not seed and not seed_raw:
+            continue
+        # 支付细节 → 用户侧挂 extend，不丢开题
+        if any(t in (seed or seed_raw) for t in ("支付", "在线支付", "扫码支付")):
+            if side == "user" and not any(k.get("label") == "进行支付" for k in kids):
+                kids.append(
+                    {
+                        "id": f"{l1_id}:pay{idx}",
+                        "label": "进行支付",
+                        "relation": "extend",
+                        "menu_keys": _menu_keys_matching(seed_raw + name, menu_items)[:1],
+                        "source": "materials",
+                    }
+                )
+            continue
         if not seed:
             continue
-        verb = "管理" if side == "admin" else "查看"
-        if any(t in seed for t in ("支付",)):
-            continue
-        if any(t in seed for t in ("新增", "编辑", "上下架", "发货", "审核", "删除")):
-            lab = ensure_verb_prefix(seed, default_verb="进行" if side == "user" else "管理")
-        elif any(t in seed for t in ("浏览", "搜索")):
-            stem = seed.replace("浏览", "").replace("搜索", "").strip() or seed
-            lab = f"浏览{stem}" if not stem.startswith("浏览") else stem
-            lab = ensure_verb_prefix(lab, default_verb="浏览")
-        elif seed.endswith("管理") and not seed.startswith("管理"):
-            lab = ensure_verb_prefix(seed, default_verb="管理")
-        elif any(t in seed for t in ("收藏",)):
-            lab = "管理收藏" if side == "admin" else "进行收藏"
-        elif seed in ("评价",) or (seed.endswith("评价") and len(seed) <= 4):
-            lab = "发表评价" if side == "user" else "管理评价"
-        elif "加入购物车" in seed:
-            lab = "加入购物车"
-            if not _VERB_PREFIX_RE.match(lab):
-                lab = "进行加购"
-        else:
-            lab = ensure_verb_prefix(seed, default_verb=verb)
+        lab = _label_from_material_seed(seed, side=side, parent=name)
         if lab.startswith("确认") and "浏览" in lab:
             lab = f"查看{lab[2:].replace('浏览', '')}" or "查看详情"
         if not _VERB_PREFIX_RE.match(lab):
-            lab = ensure_verb_prefix(lab, default_verb=verb)
+            lab = ensure_verb_prefix(
+                lab, default_verb="管理" if side == "admin" else "查看"
+            )
+        lab = _polish_usecase_label(_dedupe_verb_noun_tail(lab))
         keys = _menu_keys_matching(seed + name, menu_items)
         rel = "include"
-        if side == "user" and any(t in seed for t in ("评价", "取消", "售后申请")):
+        if lab == "进行支付":
             rel = "extend"
+        elif side == "user" and any(t in seed for t in ("评价", "取消", "售后申请")):
+            if not any(t in name for t in ("评价", "售后")):
+                rel = "extend"
         kids.append(
             {
                 "id": f"{l1_id}:{idx}",
@@ -1234,11 +1772,14 @@ def _l2_from_material_module(
             }
         )
 
-    # 用户：仅当一级模块名本身属购物/支付/订单时挂支付扩展（细节里「加入购物车」不算）
-    blob_mods = name + " ".join(merged)
-    if side == "user" and any(t in blob_mods for t in ("购物车", "支付", "订单")):
+    # 用户：仅当本模块名或细节明确写支付/下单/预约主路径时挂支付扩展
+    # （禁止因「预约记录」等字样误挂到通知桶）
+    pay_hint = any(t in name for t in ("购物车", "支付", "订单", "预约")) or any(
+        ("支付" in d) or ("扫码" in d) for d in details
+    )
+    if side == "user" and pay_hint:
         if not any(k.get("label") == "进行支付" for k in kids):
-            pay_keys = _menu_keys_matching(blob_mods, menu_items) or [
+            pay_keys = _menu_keys_matching(name + " ".join(details), menu_items) or [
                 str(it["key"])
                 for it in menu_items
                 if it.get("key") in ("cart", "my_orders", "orders")
@@ -1264,6 +1805,52 @@ def _l2_from_material_module(
                 "source": "materials",
             }
         )
+    # 每个一级至少一条 include（校规虚线 <<include>>）
+    if not any(k.get("relation") == "include" for k in kids):
+        kids[0]["relation"] = "include"
+    if len([k for k in kids if k.get("relation") == "include"]) == 1:
+        only = next(k for k in kids if k.get("relation") == "include")
+        key0 = ""
+        mks = only.get("menu_keys") or []
+        if mks:
+            key0 = str(mks[0] or "")
+        cur_lab = str(only.get("label") or "")
+        used = {cur_lab, name}
+        # 材料已给出清楚动宾：只补第二步，禁止整段换成泛化「查看业务列表」
+        specific = bool(
+            cur_lab
+            and _VERB_PREFIX_RE.match(cur_lab)
+            and "业务" not in cur_lab
+            and not re.match(r"^查看.+列表$", cur_lab)
+        )
+        if specific:
+            second = _mint_distinct_l2(name or cur_lab, used)
+            kids.append(
+                {
+                    "id": f"{l1_id}:detail",
+                    "label": second,
+                    "relation": "include",
+                    "menu_keys": list(mks),
+                    "source": str(only.get("source") or "materials"),
+                }
+            )
+        else:
+            a, b = _semantic_l2_pair(
+                side=side,
+                lab_raw=name or cur_lab,
+                key=key0,
+                biz=_infer_biz_from_module_name(name),
+            )
+            only["label"] = a
+            kids.append(
+                {
+                    "id": f"{l1_id}:detail",
+                    "label": b,
+                    "relation": "include",
+                    "menu_keys": list(mks),
+                    "source": str(only.get("source") or "materials"),
+                }
+            )
     return kids
 
 
@@ -1273,8 +1860,11 @@ def _level1_from_materials(
     side: str,
     actor_id: str,
     menu_items: list[dict[str, Any]],
+    style: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    mods = _normalize_material_modules(list(section.get("modules") or []), side=side)
+    mods = _normalize_material_modules(
+        list(section.get("modules") or []), side=side, style=style
+    )
     level1: list[dict[str, Any]] = []
     for i, mod in enumerate(mods):
         l1_id = f"{actor_id}:uc{i+1}".replace(":", "_")
@@ -1283,6 +1873,7 @@ def _level1_from_materials(
         if label == "进行支付":
             label = "管理购物车" if side == "user" else "管理订单"
         kids = _l2_from_material_module(mod, side=side, l1_id=l1_id, menu_items=menu_items)
+        kids = _finalize_includes(label, kids)
         keys: list[str] = []
         for k in kids:
             keys.extend(k.get("menu_keys") or [])
@@ -1369,7 +1960,11 @@ def usecase_model(
             sec = _match_section_for_actor(sections, actor_id=aid, actor_lab=actor_lab)
             if sec and (sec.get("modules") or []):
                 level1 = _level1_from_materials(
-                    sec, side=side_verb, actor_id=aid, menu_items=items
+                    sec,
+                    side=side_verb,
+                    actor_id=aid,
+                    menu_items=items,
+                    style=st,
                 )
                 source_note = (
                     f"一级对齐开题「{sec.get('label')}」功能模块枚举；"
@@ -1404,7 +1999,7 @@ def usecase_model(
     else:
         raise ValueError(f"usecase:{aid}: 跳过门户后无业务菜单，无法归纳用例")
 
-    buckets = _normalize_five(buckets, side=side_verb)
+    buckets = _normalize_l1_buckets(buckets, side=side_verb, style=st)
 
     level1 = []
     for i, (biz, b_items) in enumerate(buckets):
@@ -1452,7 +2047,7 @@ def usecase_model(
                     {
                         "id": f"{l1_id}:dash",
                         "label": "查看工作台",
-                        "relation": "include",
+                        "relation": "extend",
                         "menu_keys": ["dashboard"],
                         "source": "menu:admin",
                     }
@@ -1461,7 +2056,7 @@ def usecase_model(
             kids = [
                 {
                     "id": f"{l1_id}:login",
-                    "label": "进行登录",
+                    "label": "登录",
                     "relation": "include",
                     "menu_keys": [],
                     "source": "auth",
@@ -1480,7 +2075,7 @@ def usecase_model(
                     {
                         "id": f"{l1_id}:dash",
                         "label": "查看工作台",
-                        "relation": "include",
+                        "relation": "extend",
                         "menu_keys": ["dashboard"],
                         "source": "menu:admin",
                     }
@@ -1497,6 +2092,7 @@ def usecase_model(
                 )
         if not kids:
             raise ValueError(f"usecase: {label} 缺少二级用例")
+        kids = _finalize_includes(label, kids)
         level1.append(
             {
                 "id": l1_id,
@@ -1602,7 +2198,11 @@ def layout_usecase(model: dict[str, Any]) -> dict[str, Any]:
 
     actor_cy = (_PAD_Y + _UC_H / 2 + y - _ROW_GAP) / 2 if level1 else 100.0
     if l1_nodes:
-        actor_cy = sum(n["cy"] for n in l1_nodes) / len(l1_nodes)
+        # 略低于一级圆心均值，减少 Actor→上部模块连线交叉
+        ys = [float(n["cy"]) for n in l1_nodes]
+        mean_y = sum(ys) / len(ys)
+        span = max(ys) - min(ys) if len(ys) > 1 else 0.0
+        actor_cy = mean_y + span * 0.18
 
     assoc = [{"kind": "assoc", "from": "actor", "to": n["id"]} for n in l1_nodes]
     height = max(y + _PAD_Y, actor_cy + 80, 320)
@@ -1867,13 +2467,16 @@ def assert_usecase_invariants(
 ) -> None:
     """强制校验客户画法；不满足直接抛错，禁止出残图。"""
     st = style or resolve_usecase_style()
-    n_l1 = int(st.get("level1_count") or _LEVEL1_COUNT)
+    mn, mx, _pref = l1_count_bounds(st)
     if not isinstance(model, dict):
         raise ValueError("usecase: 模型为空")
     side = actor or str((model.get("actor") or {}).get("id") or "")
     level1 = model.get("level1")
-    if not isinstance(level1, list) or len(level1) != n_l1:
-        raise ValueError(f"usecase: 一级用例须为 {n_l1} 个，实际 {len(level1) if isinstance(level1, list) else None}")
+    if not isinstance(level1, list) or not level1:
+        raise ValueError("usecase: 缺少一级用例")
+    n_l1 = len(level1)
+    if n_l1 < mn or n_l1 > mx:
+        raise ValueError(f"usecase: 一级用例个数须在 {mn}–{mx}，实际 {n_l1}")
 
     # 约束3+4：段落描述 + 序号与图中一级用例一一对应（几个一级就几个序号）
     desc = str(model.get("description") or "")
@@ -1892,6 +2495,20 @@ def assert_usecase_invariants(
             raise ValueError(
                 f"usecase: 描述序号超出图中一级用例个数（图有 {n_l1} 个一级，不得出现（{n_l1 + 1}））"
             )
+        if "完成相关操作" in desc:
+            raise ValueError("usecase: 描述禁止空壳「完成相关操作」")
+        for uc in level1:
+            if not isinstance(uc, dict):
+                continue
+            ulab = str(uc.get("label") or "")
+            if ulab and f"「{ulab}」" not in desc:
+                raise ValueError(f"usecase: 描述未引用一级用例「{ulab}」")
+            for kid in uc.get("includes") or []:
+                if not isinstance(kid, dict):
+                    continue
+                klab = str(kid.get("label") or "")
+                if klab and f"「{klab}」" not in desc:
+                    raise ValueError(f"usecase: 描述未引用二级用例「{klab}」")
 
     allowed_keys: set[str] = set()
     if isinstance(schema, dict):
@@ -1951,6 +2568,25 @@ def assert_usecase_invariants(
                 raise ValueError(f"usecase: 二级用例须动词开头: {klab}")
             if re.match(r"^管理.+管理$", klab) or re.match(r"^查看.+查看$", klab):
                 raise ValueError(f"usecase: 标签叠字 {klab}")
+            if "等" in klab:
+                raise ValueError(f"usecase: 二级禁止残留开题语气词 {klab}")
+            if any(t in klab for t in ("增删改查", "最高权限", "拥有最高权限")):
+                raise ValueError(f"usecase: 二级禁止权限腔/CRUD 堆砌 {klab}")
+            if re.match(r"^管理(新增|添加|编辑|修改|删除|审核|查看|回复|办理)", klab):
+                raise ValueError(f"usecase: 二级禁止叠动词 {klab}")
+            if re.search(r"编辑.+编辑", klab) or re.search(r"查看.+编辑列表", klab):
+                raise ValueError(f"usecase: 二级名词干未清洗 {klab}")
+            if klab in ("查看管理列表", "编辑管理信息"):
+                raise ValueError(f"usecase: 二级名词干退化 {klab}")
+            if klab == lab:
+                raise ValueError(f"usecase: 二级不得与一级同名 {klab}")
+            if klab.startswith("确认") and any(
+                isinstance(x, dict)
+                and str(x.get("label") or "").startswith("查看")
+                and _noun_stem(str(x.get("label") or "")) == _noun_stem(klab)
+                for x in kids
+            ):
+                raise ValueError(f"usecase: 禁止凑数二级 {klab}")
             rel = kid.get("relation")
             if rel not in ("include", "extend"):
                 raise ValueError(f"usecase: 非法 relation {rel}")

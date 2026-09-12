@@ -1,53 +1,24 @@
 <template>
-  <div class="uc-viewer" :class="{ 'is-dark': isDark }">
-    <div class="uc-toolbar row mb-12">
-      <div class="uc-zoom-btns row">
-        <n-radio-group
-          v-if="actorOptions.length"
-          :value="actorLocal"
-          size="small"
-          :disabled="loading"
-          @update:value="onActorChange"
-        >
-          <n-radio-button v-for="a in actorOptions" :key="a.id" :value="a.id">
-            {{ a.label }}
-          </n-radio-button>
-        </n-radio-group>
+  <div class="arch-viewer" :class="{ 'is-dark': isDark }">
+    <div class="arch-toolbar row mb-12">
+      <div class="arch-zoom-btns row">
         <n-button size="small" @click="zoomOut">缩小</n-button>
-        <span class="uc-zoom-label">{{ Math.round(scale * 100) }}%</span>
+        <span class="arch-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
         <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
         <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
         <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
         <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
-        <n-button size="small" quaternary :loading="mdjBusy" @click="downloadMdj">下载 StarUML (.mdj)</n-button>
       </div>
     </div>
-    <p class="small muted uc-hint mb-8">
-      <template v-if="styleRules.length">
-        客户画法 ·
-        <span v-for="(r, i) in styleRules" :key="i">
-          {{ i + 1 }}.{{ r }}{{ i < styleRules.length - 1 ? '；' : '' }}
-        </span>
-      </template>
-      <template v-else>
-        按角色走查（含岗位）· 序号与一级圈数对齐 · 虚线
-        <code>&lt;&lt;include&gt;&gt;</code> /
-        <code>&lt;&lt;extend&gt;&gt;</code>
-        · 二级动词开头 · 可导出 StarUML
-      </template>
+    <p class="small muted arch-hint mb-8">
+      B/S 分层：角色 → 界面 → Vue → SpringBoot → MySQL；界面与前端之间标注 HTTPS / 发起请求。白底黑框线稿，可贴「系统设计」章节。
     </p>
-    <p v-if="sourceNote" class="small muted uc-hint mb-8">{{ sourceNote }}</p>
-    <div v-if="description" class="uc-desc mb-8">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
-        <p class="small uc-desc-text">{{ description }}</p>
-        <n-button size="tiny" quaternary @click="copyDesc">复制描述</n-button>
-      </div>
-    </div>
+    <p v-if="sourceNote" class="small muted arch-hint mb-8">{{ sourceNote }}</p>
     <div
       ref="frameRef"
-      class="uc-frame"
+      class="arch-frame"
       :class="{ 'is-panning': panning }"
       @wheel.prevent="onWheel"
       @pointerdown="onPointerDown"
@@ -57,7 +28,7 @@
       @pointerleave="onPointerUp"
     >
       <ContentLoading v-if="loading && !svgSource" :rows="1" block compact />
-      <div v-else class="uc-canvas" :style="canvasStyle" v-html="svgHtml" />
+      <div v-else class="arch-canvas" :style="canvasStyle" v-html="svgHtml" />
     </div>
   </div>
 </template>
@@ -70,17 +41,12 @@ import ContentLoading from './ContentLoading.vue'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
-  downloadName: { type: String, default: 'usecases' },
-  actor: { type: String, default: 'user' },
-  actors: { type: Array, default: () => [] },
-  description: { type: String, default: '' },
+  downloadName: { type: String, default: 'architecture' },
   sourceNote: { type: String, default: '' },
-  styleRules: { type: Array, default: () => [] },
-  mdjUrl: { type: String, default: '' },
   loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['reload', 'update:actor'])
+defineEmits(['reload'])
 
 const PNG_SCALE = 2.5
 const frameRef = ref(null)
@@ -90,8 +56,6 @@ const panX = ref(0)
 const panY = ref(0)
 const panning = ref(false)
 const busy = ref(false)
-const mdjBusy = ref(false)
-const actorLocal = ref(String(props.actor || 'user'))
 let panLastX = 0
 let panLastY = 0
 
@@ -105,41 +69,22 @@ const canvasStyle = computed(() => ({
 }))
 
 const fileBase = computed(
-  () => String(props.downloadName || 'usecases').replace(/\.(svg|png|mdj)$/i, '') || 'usecases',
+  () => String(props.downloadName || 'architecture').replace(/\.(svg|png)$/i, '') || 'architecture',
 )
-
-const actorOptions = computed(() => {
-  const list = Array.isArray(props.actors) ? props.actors : []
-  if (list.length) return list.map((a) => ({ id: a.id, label: a.label || a.id }))
-  return [
-    { id: 'user', label: '用户' },
-    { id: 'admin', label: '管理员' },
-  ]
-})
 
 watch(
-  () => props.actor,
-  (v) => {
-    actorLocal.value = String(v || 'user')
+  () => props.svgSource,
+  async (raw) => {
+    const text = String(raw || '')
+    svgHtml.value = text.replace(/<\?xml[^?]*\?>/i, '').trim()
+    await nextTick()
+    fitToFrame()
   },
+  { immediate: true },
 )
-
-function onActorChange(v) {
-  const next = String(v || 'user')
-  actorLocal.value = next
-  emit('update:actor', next)
-}
-
-function clampScale(s) {
-  return Math.min(SCALE_MAX, Math.max(SCALE_MIN, s))
-}
 
 function getSvg() {
   return frameRef.value?.querySelector('svg') || null
-}
-
-function parseSvg(raw) {
-  return (raw || '').replace(/^<\?xml[^>]*>\s*/i, '')
 }
 
 function fitToFrame() {
@@ -149,30 +94,20 @@ function fitToFrame() {
   const vb = svg.viewBox?.baseVal
   const sw = vb?.width || Number(svg.getAttribute('width')) || 800
   const sh = vb?.height || Number(svg.getAttribute('height')) || 600
-  const fw = frame.clientWidth || 800
-  const fh = frame.clientHeight || 480
-  const s = clampScale(Math.min(fw / sw, fh / sh) * 0.92)
-  scale.value = s
-  panX.value = (fw - sw * s) / 2
-  panY.value = (fh - sh * s) / 2
+  const fw = frame.clientWidth - 24
+  const fh = frame.clientHeight - 24
+  if (fw <= 0 || fh <= 0 || sw <= 0 || sh <= 0) return
+  const s = Math.min(fw / sw, fh / sh, 1.2)
+  scale.value = Math.max(SCALE_MIN, Math.min(SCALE_MAX, s))
+  panX.value = Math.max(0, (fw - sw * scale.value) / 2)
+  panY.value = 12
 }
-
-function loadSource(raw) {
-  svgHtml.value = parseSvg(raw)
-  nextTick(() => fitToFrame())
-}
-
-watch(
-  () => props.svgSource,
-  (v) => loadSource(v),
-  { immediate: true },
-)
 
 function zoomIn() {
-  scale.value = clampScale(scale.value + SCALE_STEP)
+  scale.value = Math.min(SCALE_MAX, scale.value + SCALE_STEP)
 }
 function zoomOut() {
-  scale.value = clampScale(scale.value - SCALE_STEP)
+  scale.value = Math.max(SCALE_MIN, scale.value - SCALE_STEP)
 }
 function resetView() {
   fitToFrame()
@@ -180,7 +115,7 @@ function resetView() {
 
 function onWheel(e) {
   const delta = e.deltaY > 0 ? -SCALE_STEP : SCALE_STEP
-  scale.value = clampScale(scale.value + delta)
+  scale.value = Math.min(SCALE_MAX, Math.max(SCALE_MIN, scale.value + delta))
 }
 
 function onPointerDown(e) {
@@ -188,7 +123,7 @@ function onPointerDown(e) {
   panning.value = true
   panLastX = e.clientX
   panLastY = e.clientY
-  frameRef.value?.setPointerCapture?.(e.pointerId)
+  e.currentTarget?.setPointerCapture?.(e.pointerId)
 }
 
 function onPointerMove(e) {
@@ -279,109 +214,52 @@ function downloadSvg() {
   }
   triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
-
-async function downloadMdj() {
-  const url = props.mdjUrl
-  if (!url) {
-    message.error('无 StarUML 下载地址')
-    return
-  }
-  mdjBusy.value = true
-  try {
-    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    if (!res.ok) throw new Error('mdj')
-    const text = await res.text()
-    triggerDownload(new Blob([text], { type: 'application/json;charset=utf-8' }), `${fileBase.value}.mdj`)
-  } catch {
-    message.error('下载 .mdj 失败')
-  } finally {
-    mdjBusy.value = false
-  }
-}
-
-async function copyDesc() {
-  try {
-    await navigator.clipboard.writeText(props.description || '')
-    message.success('已复制描述')
-  } catch {
-    message.error('复制描述失败')
-  }
-}
 </script>
 
 <style scoped>
-.uc-viewer {
+.arch-viewer {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  max-height: min(86vh, 900px);
+  min-height: 420px;
 }
-.uc-toolbar {
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  flex-shrink: 0;
-}
-.uc-zoom-btns {
+.arch-toolbar {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.uc-zoom-label {
-  min-width: 3.2em;
+.arch-zoom-btns {
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.arch-zoom-label {
+  min-width: 48px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--muted);
 }
-.uc-hint {
-  line-height: 1.45;
-  flex-shrink: 0;
-}
-.uc-desc {
-  padding: 10px 12px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 6px;
-  background: var(--n-color-embedded, #fafafa);
-  flex-shrink: 0;
-  max-height: 7.5em;
-  overflow: auto;
-}
-.uc-desc-text {
-  margin: 0;
-  line-height: 1.65;
-  white-space: pre-wrap;
-}
-.uc-frame {
-  /* 与 E-R 图同口径：固定视口，避免 SVG 固有高度把弹窗撑开 */
-  position: relative;
-  height: 52vh;
-  min-height: 320px;
-  flex: 0 0 auto;
+.arch-hint { line-height: 1.5; }
+.arch-frame {
+  flex: 1;
+  min-height: 360px;
+  max-height: min(70vh, 720px);
   overflow: hidden;
-  border: 1px solid var(--n-border-color);
+  border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
   cursor: grab;
-  touch-action: none;
+  position: relative;
 }
-.uc-frame.is-panning {
-  cursor: grabbing;
+.arch-frame.is-panning { cursor: grabbing; }
+.arch-viewer.is-dark .arch-frame {
+  background: #f7f7f7;
 }
-.uc-viewer.is-dark .uc-frame {
-  background: #111;
-}
-.uc-viewer.is-dark .uc-desc {
-  background: rgba(255, 255, 255, 0.04);
-}
-.uc-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
+.arch-canvas {
   display: inline-block;
   will-change: transform;
-  transform-origin: 0 0;
 }
-.uc-canvas :deep(svg) {
+.arch-canvas :deep(svg) {
   display: block;
-  max-width: none;
 }
 </style>

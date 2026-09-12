@@ -828,23 +828,86 @@ button.filter-pill.on {
 .artifact-pane { padding: 8px 0 4px; }
 .thesis-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .thesis-cards {
+    grid-template-columns: 1fr;
+  }
+}
+.thesis-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.thesis-group {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.thesis-group-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--surface-2);
+}
+.thesis-group-hd:hover {
+  background: color-mix(in srgb, var(--teal) 6%, var(--surface-2));
+}
+.thesis-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.thesis-group-caret {
+  color: var(--muted);
+  font-size: 12px;
+  width: 1em;
+}
+.thesis-group-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.thesis-group-bd {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line-soft);
 }
 .thesis-card {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface-2);
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  min-width: 0;
 }
 .thesis-card-hd {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.thesis-card-hd strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.thesis-card-desc {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  line-height: 1.4;
 }
 .thesis-card .n-button { align-self: flex-start; }
 .api-surface-bar { flex-wrap: wrap; }
@@ -1261,6 +1324,30 @@ button.filter-pill.on {
   display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; font-size: 12px;
 }
 .help-steps > li > p { margin: 0; font-size: 12px; }
+.help-step-page { margin: 6px 0 0 !important; font-size: 11px !important; }
+.help-table-wrap {
+  margin: 0 0 12px;
+  overflow-x: auto;
+}
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.help-table th,
+.help-table td {
+  border: 1px solid var(--line-soft);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.help-table th {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
 .help-glossary {
   margin: 0;
   display: grid;

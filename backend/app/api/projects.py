@@ -845,10 +845,57 @@ async def download_modules_svg(
     )
 
 
+@router.get("/{project_id}/schema/architecture", summary="系统逻辑架构图模型")
+async def get_architecture(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """B/S 分层架构图模型；角色取自交付门户/岗位。"""
+    from app.bake.schema.architecture import load_architecture_model
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = load_architecture_model(ws, title_fallback=p.title or "管理系统")
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/architecture.svg", summary="下载系统逻辑架构图 SVG")
+async def download_architecture_svg(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.architecture import load_architecture_model, render_architecture_svg
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = load_architecture_model(ws, title_fallback=p.title or "管理系统")
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    svg = render_architecture_svg(model)
+    fname = f"{project_id}-architecture.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/schema/usecases", summary="用例图模型")
 async def get_usecases(
     project_id: str,
     actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    polish: bool = Query(False, description="可选：LLM 润色描述目的语（失败回退规则稿）"),
     db: AsyncSession = Depends(get_db),
 ):
     """按角色从交付 menus / 岗位 pack 归纳；含 include/extend；失败返回 400。"""
@@ -885,6 +932,19 @@ async def get_usecases(
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
     model = dict(model)
+    if polish:
+        from app.llm.agents_usecase import polish_usecase_model_safe
+        from app.llm.runtime import load_llm_runtime
+
+        rt = await load_llm_runtime(db)
+        model = await polish_usecase_model_safe(
+            db,
+            rt,
+            project_id=project_id,
+            model=model,
+            schema=schema if isinstance(schema, dict) else None,
+            title=str(model.get("title") or p.title or ""),
+        )
     model["actors"] = actors
     return model
 
@@ -1525,7 +1585,7 @@ async def scrub_student_copy(project_id: str, db: AsyncSession = Depends(get_db)
     return ApiOk(
         message="已清洗学生可见文案 · 请验圈后合卷"
         if result.get("copy_ok") and result.get("semantic_ok", True)
-        else "已尝试清洗 · 仍有残留（骨架侧也可能未干净，见命中路径）",
+        else "已尝试清洗 · 仍有残留（见命中路径；请确认后端已加载最新 scrub）",
         data=result,
     )
 
