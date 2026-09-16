@@ -223,6 +223,16 @@ const modulesExpandDetails = ref(false)
 const modulesMeta = ref(null)
 const showArchitecture = ref(false)
 const archLoading = ref(false)
+const showClasses = ref(false)
+const classLoading = ref(false)
+const classSvgSource = ref('')
+const classMeta = ref(null)
+const classLayoutKey = ref(0)
+const classDisplayMode = ref('sample')
+const classDisplayModes = computed(() => classMeta.value?.display_modes || [
+  { id: 'sample', label: '论文示例（精简方法）' },
+  { id: 'full', label: '代码全量' },
+])
 const archSvgSource = ref('')
 const archLayoutKey = ref(0)
 const archMeta = ref(null)
@@ -1536,6 +1546,115 @@ async function reloadArchSvg() {
   }
 }
 
+const classDownloadBase = computed(() => {
+  const id = p.value?.id || 'classes'
+  const title = classMeta.value?.figure_title || classMeta.value?.title || '系统类图'
+  return `${id}-类图-${title}`
+})
+
+const classEvidenceNote = computed(() => {
+  const ev = classMeta.value?.evidence
+  if (!ev) return ''
+  const n = ev.table_count ?? (classMeta.value?.classes || []).length
+  const r = ev.assoc_drawn ?? ev.relation_count ?? (classMeta.value?.associations || []).length
+  const total = ev.assoc_total ?? r
+  const matched = (ev.entity_keys_matched || []).length
+  const miss = ev.entity_keys_missing_in_sql || []
+  const ja = ev.classes_attrs_from_java ?? 0
+  const jm = ev.classes_methods_from_java ?? 0
+  const algo = ev.layout_algo ? ` · 布局 ${ev.layout_algo}` : ''
+  const oo = ev.oo_relations_added ?? 0
+  const dep = ev.dependency_relations_added ?? 0
+  let s = `共 ${n} 个类 · 关系 ${r}`
+  if (total !== r) s += `/${total}（零交叉少画 ${total - r}）`
+  else s += ` 条`
+  if (oo || dep) s += `（含继承/实现 ${oo} · 依赖 ${dep}）`
+  s += `${algo} · Java 属性 ${ja} / 方法 ${jm}`
+  if (matched) s += ` · 开题实体 key 已对照 ${matched} 个`
+  if (miss.length) s += ` · 未在 SQL 找到：${miss.join('、')}`
+  return s
+})
+
+async function fetchClassSvg() {
+  if (!p.value) return ''
+  const url = `${api.classesSvgUrl(p.value.id, { display: classDisplayMode.value })}&t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('classes svg')
+  return await res.text()
+}
+
+async function openClasses() {
+  if (!p.value || classLoading.value || artifactsFrozen.value) return
+  classLoading.value = true
+  try {
+    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    classSvgSource.value = await fetchClassSvg()
+    classLayoutKey.value += 1
+    showClasses.value = true
+  } catch {
+    message.error('无法加载系统类图')
+  } finally {
+    classLoading.value = false
+  }
+}
+
+async function reloadClassSvg() {
+  if (!p.value || classLoading.value) return
+  classLoading.value = true
+  try {
+    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    classSvgSource.value = await fetchClassSvg()
+    classLayoutKey.value += 1
+  } catch {
+    message.error('无法重新加载类图')
+  } finally {
+    classLoading.value = false
+  }
+}
+
+async function onClassDisplayMode(mode) {
+  const next = mode === 'full' ? 'full' : 'sample'
+  if (next === classDisplayMode.value) return
+  classDisplayMode.value = next
+  await reloadClassSvg()
+}
+
+async function saveClassLayout(layout) {
+  if (!p.value || !layout || typeof layout !== 'object' || classLoading.value) return
+  classLoading.value = true
+  try {
+    // 落盘后回拉 SVG（不 remount，保留缩放/平移）；后端按新坐标零交叉重选折线
+    await api.putClassesLayout(p.value.id, {
+      layout,
+      reset: false,
+      display_mode: classDisplayMode.value,
+    })
+    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    classSvgSource.value = await fetchClassSvg()
+  } catch {
+    /* api 拦截器已提示 */
+  } finally {
+    classLoading.value = false
+  }
+}
+
+async function resetClassLayout() {
+  if (!p.value || classLoading.value) return
+  classLoading.value = true
+  try {
+    await api.putClassesLayout(p.value.id, { layout: {}, reset: true })
+    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    classSvgSource.value = await fetchClassSvg()
+    classLayoutKey.value += 1
+    message.success('已恢复自动排版')
+  } catch {
+    message.error('无法复位类图布局')
+  } finally {
+    classLoading.value = false
+  }
+}
+
+
 const ucDownloadBase = computed(() => {
   const id = p.value?.id || 'uc'
   const title = usecaseMeta.value?.title || schema.value?.title || '用例图'
@@ -2244,6 +2363,7 @@ watch(artifactsFrozen, (frozen) => {
   showEr.value = false
   showModules.value = false
   showArchitecture.value = false
+  showClasses.value = false
   showUsecases.value = false
   showTestcases.value = false
   showUsecaseDescriptions.value = false
@@ -2288,6 +2408,14 @@ onUnmounted(() => {
     archLoading,
     archMeta,
     archSvgSource,
+    classDownloadBase,
+    classEvidenceNote,
+    classLayoutKey,
+    classLoading,
+    classMeta,
+    classSvgSource,
+    classDisplayMode,
+    classDisplayModes,
     alreadyBaked,
     apiCopyText,
     apiGroupCopyText,
@@ -2434,6 +2562,7 @@ onUnmounted(() => {
     onTcFields,
     onUsecaseActor,
     openArchitecture,
+    openClasses,
     openEr,
     openFillPlan,
     openModules,
@@ -2494,6 +2623,10 @@ onUnmounted(() => {
     refreshRuntime,
     reload,
     reloadArchSvg,
+    reloadClassSvg,
+    onClassDisplayMode,
+    saveClassLayout,
+    resetClassLayout,
     reloadErSvg,
     reloadModSvg,
     reloadTestcases,
@@ -2547,6 +2680,7 @@ onUnmounted(() => {
     showFillPlan,
     showJobSteps,
     showArchitecture,
+    showClasses,
     showModules,
     showPptCheck,
     showPreGenerate,

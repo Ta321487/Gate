@@ -13,7 +13,7 @@
 - **现状样板**：GENERIC CRUD 6 / FLOW·RESERVE 7 / TRADE（含 guestbook）约 8～9 · SHOP/FOOD（guestbook+favorites）约 **12** · 多数薄域 8~9 · 图书/报修壳 9 · 论坛约 13 · **顶格 15**（券表/评价/足迹等按开题叠加）
 - 论坛含：`sys_message` + 原业务/平台表
 - 报修薄壳：楼栋/房间/类型/单据/进度/附件 + 用户/公告/消息
-- 论文 **E-R** 按交付 SQL 如实画（优先全环 / 内点直线零交叉，必要时环外折线；实现拆为 `schema/er_model.py` / `er_labels.py`+`er_zh.py` / `er_svg.py`）；**功能模块图** 按交付 menus 如实画（开题只辅助中文命名）；默认 **按业务拆**，工厂可切换 **按端拆**；**用例描述表** 按交付 menus + 开题正文选用默认 4 个主路径（事件流对照实包菜单操作，禁止发明未交付功能；实现 `schema/usecase_descriptions.py`）；**软件测试用例表** 按交付 menus/roles 推导（5～9 列可选，默认 6），可选 LLM 只润色已有行文案，不增删用例、不发明功能
+- 论文 **E-R** 按交付 SQL 如实画（优先全环 / 内点直线零交叉，必要时环外折线；实现拆为 `schema/er_model.py` / `er_labels.py`+`er_zh.py` / `er_svg.py`）；**功能模块图** 按交付 menus 如实画（开题只辅助中文命名）；默认 **按业务拆**，工厂可切换 **按端拆**；**系统类图** 按交付 `sql/schema.sql` 表/外键 + bake 包 Java（*Store 行映射与方法签名，可见性 +/#/-）如实画三栏 UML；外键推关联·聚合·组合，extends/implements 推继承·实现，类型引用推依赖；默认 `sample` 精简真实方法且禁止无代码填空，可切 `full`（含 private-）；**自动排版零交叉必须**（竞赛 + 挪框开槽；少画边可拖开后重算补回）；**人工拖拽**：松手存坐标并回拉重选折线、不挪其它框；实现 `schema/class_model.py` + `class_layout.py` + `class_svg.py` + `class_code.py`（`classes.py` 门面））；**用例描述表** 按交付 menus + 开题正文选用默认 4 个主路径（事件流对照实包菜单操作，禁止发明未交付功能；实现 `schema/usecase_descriptions.py`）；**软件测试用例表** 按交付 menus/roles 推导（5～9 列可选，默认 6），可选 LLM 只润色已有行文案，不增删用例、不发明功能
 
 ## 学生端持久化（已完成）
 

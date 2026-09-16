@@ -79,6 +79,13 @@ export const api = {
     }),
   getArchitecture: (id) => http.get(`/projects/${id}/schema/architecture`),
   architectureSvgUrl: (id) => `/api/projects/${id}/schema/architecture.svg`,
+  getClasses: (id, { display = 'sample' } = {}) =>
+    http.get(`/projects/${id}/schema/classes`, { params: { display } }),
+  classesSvgUrl: (id, { display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ display })
+    return `/api/projects/${id}/schema/classes.svg?${q}`
+  },
+  putClassesLayout: (id, body) => http.put(`/projects/${id}/schema/classes-layout`, body),
   getUsecases: (id, { actor = 'user' } = {}) =>
     http.get(`/projects/${id}/schema/usecases`, { params: { actor } }),
   usecasesSvgUrl: (id, { actor = 'user' } = {}) => {
