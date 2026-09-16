@@ -167,6 +167,24 @@ class ErLabelsUpdate(BaseModel):
     relations: dict[str, str] = Field(default_factory=dict, description="联系名 → 中文联系名")
 
 
+class ClassLayoutUpdate(BaseModel):
+    """人工拖拽类图框位置（islands/class_layout.json）。
+
+    reset=true 清除并恢复自动排版。保存后客户端须重拉 classes 与 classes.svg，
+    服务端按新坐标零交叉重选折线（不挪其它框）。
+    """
+
+    model_config = ConfigDict(title="类图布局补丁")
+
+    layout: dict[str, dict[str, float]] = Field(
+        default_factory=dict, description="类 id → {x,y[,w,h]}"
+    )
+    reset: bool = Field(default=False, description="清除已存布局，恢复自动排版")
+    display_mode: Optional[str] = Field(
+        default=None, description="落盘时的显示规则 sample|full（切规则时才收紧间距）"
+    )
+
+
 class MatchUpdate(BaseModel):
     model_config = ConfigDict(title="匹配更新")
 

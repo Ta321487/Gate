@@ -235,7 +235,7 @@
               <ContentLoading v-if="artifactLoading" :rows="2" compact block />
               <template v-else>
               <p class="small muted mb-8">
-                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图优先读开题等材料按身份枚举；架构图按交付角色画 B/S 分层；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
+                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图优先读开题等材料按身份枚举；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
               <div class="thesis-groups">
                 <div v-for="g in thesisGroups" :key="g.id" class="thesis-group">
@@ -623,7 +623,7 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openEr, openFillPlan, openModules,
+  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
@@ -638,7 +638,7 @@ const {
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
-  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading,
+  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading,
 } = bindPd()
 
 const thesisGroups = computed(() => [
@@ -661,6 +661,14 @@ const thesisGroups = computed(() => [
         action: '打开架构图',
         loading: archLoading.value,
         open: openArchitecture,
+      },
+      {
+        id: 'classes',
+        title: '系统类图',
+        desc: '三栏 UML（+/-/#）· 关联/依赖/继承/实现/聚合/组合 · 零交叉 · 成员取自 Java · 可拖拽导出',
+        action: '打开类图',
+        loading: classLoading.value,
+        open: openClasses,
       },
     ],
   },

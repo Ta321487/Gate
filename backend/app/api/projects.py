@@ -17,6 +17,7 @@ from app.core.database import get_db
 from app.models import Job, Project, ProjectStatus
 from app.schemas import (
     ApiOk,
+    ClassLayoutUpdate,
     DeliveryMarkUpdate,
     DeliveryQaOut,
     DeliveryReviewPanelOut,
@@ -889,6 +890,108 @@ async def download_architecture_svg(
             "Content-Disposition": f'inline; filename="{fname}"',
         },
     )
+
+
+@router.get("/{project_id}/schema/classes", summary="系统类图模型")
+async def get_classes(
+    project_id: str,
+    display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    db: AsyncSession = Depends(get_db),
+):
+    """系统类图模型（论文交付默认 display=sample）。
+
+    类框来自 schema.sql 表；属性/方法优先 bake 包 Java（可见性 +/#/-）；
+    关系：外键→关联/聚合/组合，extends/implements→继承/实现，类型引用→依赖；
+    自动排版零交叉。sample=精简真实方法；full=代码全量含 private。
+    """
+    from app.bake.schema.classes import load_class_model
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = load_class_model(
+        ws,
+        title_fallback=p.title or "管理系统",
+        display_mode=display,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    return model
+
+
+@router.get("/{project_id}/schema/classes.svg", summary="下载系统类图 SVG")
+async def download_classes_svg(
+    project_id: str,
+    display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.classes import load_class_model, render_class_svg
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = load_class_model(
+        ws,
+        title_fallback=p.title or "管理系统",
+        display_mode=display,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    svg = render_class_svg(model)
+    fname = f"{project_id}-classes.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.put("/{project_id}/schema/classes-layout", summary="保存/复位系统类图布局")
+async def put_classes_layout(
+    project_id: str,
+    body: ClassLayoutUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """保存/复位类图框坐标（islands/class_layout.json）。
+
+    本接口只落盘坐标，不挪其它框、不在此做整图精炼。
+    客户端保存后应重拉 GET classes + classes.svg：服务端按人工坐标
+    零交叉重选折线（可补回少画的边），仍不挪未拖动的框。
+    """
+    from app.bake.schema.classes import (
+        clear_class_layout_patch,
+        save_class_layout_patch,
+    )
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if p.status == ProjectStatus.generating.value:
+        raise HTTPException(400, "工程正在生成，请稍后再改布局")
+    ws = _workspace_or_400(p)
+    if body.reset:
+        clear_class_layout_patch(ws)
+        return {"ok": True, "reset": True, "message": "已清除人工布局，将恢复自动排版"}
+    if not body.layout:
+        raise HTTPException(400, "layout 为空")
+    saved = save_class_layout_patch(
+        ws, body.layout, display_mode=body.display_mode
+    )
+    return {
+        "ok": True,
+        "reset": False,
+        "count": len(saved.get("layout") or {}),
+        # 挪框精炼在 GET 重载时做；本接口仅落盘
+        "layout_nudged": False,
+        "message": "类图布局已保存；请重拉模型与 SVG 以按新坐标零交叉重选折线",
+    }
 
 
 @router.get("/{project_id}/schema/usecases", summary="用例图模型")
