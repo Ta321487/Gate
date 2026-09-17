@@ -297,10 +297,30 @@ class SlimMatchDataTests(unittest.TestCase):
         self.assertEqual(sp.anchor_domain, "DOM-SHOP")
         self.assertIn("智能导购", sp.text)
         self.assertIn("水果", sp.text)
+        self.assertIn("功能模块划分", sp.text)
+        self.assertIn("商家功能模块划分", sp.text)
+        self.assertIn("模拟支付", sp.text)
         got = match_text(sp.text)
         self.assertEqual(got.domain, "DOM-SHOP", f"hits={got.hits[:8]}")
         stack = scan_stack(sp.title, sp.text)
         self.assertTrue(stack.get("ai_assistant"), "农产品专项包应推荐开 AI 助手")
+
+    def test_role_modules_thick_across_packs(self) -> None:
+        """各选题包生成稿应按角色写出模块树，而不是扁平短列表。"""
+        from app.bake.proposal_packs import PACKS
+        from app.bake.proposal_role_modules import resolve_role_modules
+        from app.bake.sample_proposal import build_sample_proposal
+
+        thin = []
+        for pack in PACKS:
+            tree = resolve_role_modules(pack)
+            self.assertGreaterEqual(len(tree), 2, pack["id"])
+            mod_count = sum(len(r.get("modules") or []) for r in tree)
+            self.assertGreaterEqual(mod_count, 6, pack["id"])
+            sp = build_sample_proposal(pack_id=pack["id"], seed=1)
+            if "功能模块划分" not in sp.text:
+                thin.append(pack["id"])
+        self.assertEqual(thin, [], f"未写出角色模块树: {thin}")
 
     def test_sample_proposal_can_inject_ai_feature(self) -> None:
         from app.bake.proposal_packs import PACKS
@@ -317,6 +337,70 @@ class SlimMatchDataTests(unittest.TestCase):
         text = render_template(pack, digressions=["人脸门禁"], l1_extras=[], title=pack["title"])
         stack = scan_stack(pack["title"], text)
         self.assertTrue(stack.get("ai_assistant"))
+
+    def test_c_tier_ticket_packs_have_distinct_flow_copy(self) -> None:
+        """C 档票单学工须写出状态/材料/办结专写，而不是同一句申请树换皮。"""
+        from app.bake.sample_proposal import build_sample_proposal
+
+        expects = {
+            "fund": ("公示", "发放", "证明材料"),
+            "seal": ("用印", "台账", "事由"),
+            "cert": ("开具", "领取", "证明类型"),
+            "expense": ("发票", "付款登记", "费用"),
+            "fleet": ("派车", "归还", "行程"),
+            "bed": ("调宿", "床位", "楼栋"),
+            "proj": ("立项", "中期", "结题"),
+            "party": ("转正", "发展阶段"),
+        }
+        for pid, needles in expects.items():
+            with self.subTest(pack_id=pid):
+                sp = build_sample_proposal(pack_id=pid, seed=1)
+                self.assertIn("功能模块划分", sp.text)
+                for n in needles:
+                    self.assertIn(n, sp.text, f"{pid} missing {n}")
+                # 不再是笼统「名额与类型配置」一句打发
+                self.assertNotIn("名额与类型配置模块", sp.text)
+
+    def test_pressure_mode_hits_scan_and_keeps_anchor(self) -> None:
+        """压力档：扫词开触发词须命中，且不得把锚域打成 GENERIC。"""
+        from app.bake.catalog import match_text
+        from app.bake.proposal_pressure import (
+            expected_scan_checks,
+            pressure_leaves_for,
+        )
+        from app.bake.sample_proposal import build_sample_proposal
+
+        cases = [
+            "library",
+            "dorm",
+            "activity",
+            "forum",
+            "meeting",
+            "asset",
+            "shop",
+            "food",
+            "parcel",
+        ]
+        for pid in cases:
+            with self.subTest(pack_id=pid):
+                sp = build_sample_proposal(pack_id=pid, seed=1, pressure=True)
+                self.assertTrue(sp.pressure)
+                self.assertIn("材料命中能力模块", sp.text)
+                got = match_text(sp.text, sp.filename)
+                self.assertEqual(
+                    got.domain,
+                    sp.anchor_domain,
+                    f"pressure match failed: {got.domain} warn={got.match_warnings}",
+                )
+                leaves = pressure_leaves_for(sp.anchor_domain)
+                self.assertTrue(leaves, pid)
+                for key, phrase in leaves:
+                    self.assertIn(phrase, sp.text, f"{pid} missing phrase {phrase}")
+                for key, checker in expected_scan_checks(sp.anchor_domain):
+                    self.assertTrue(
+                        checker(sp.text),
+                        f"{pid} scan miss for {key}",
+                    )
 
 
 if __name__ == "__main__":

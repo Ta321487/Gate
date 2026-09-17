@@ -68,6 +68,7 @@ async def create_sample_proposal(
             domain=body.domain,
             seed=body.seed,
             pack_id=body.pack_id,
+            pressure=bool(body.pressure),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -94,5 +95,6 @@ async def create_sample_proposal(
         digressions=list(sample.digressions or []),
         l1_extras=list(sample.l1_extras or []),
         ai_feature=sample.ai_feature,
+        pressure=bool(sample.pressure),
     )
 
