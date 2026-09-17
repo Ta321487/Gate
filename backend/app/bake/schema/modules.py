@@ -1,10 +1,11 @@
 """论文功能模块图（与 E-R 同口径）。
 
-默认「按身份」：优先解析开题/任务书等材料里的「{身份}功能模块划分为…」；
-找不到再回落交付 roles + menus（界面小字提示，字不进 SVG）。
+默认「按身份」：按交付 roles 分枝、menus 出叶子；开题「{身份}功能模块划分为…」
+只辅助身份框名与叶子中文命名，**未交付的开题模块一律丢掉**（禁止图上有、包里无）。
+无开题枚举时回落 menus（界面小字提示，字不进 SVG）。
 「按业务」：menus 按业务家族归类（对照用）。
 细节开关：【】（）内子项默认不进图；展开后挂在一级模块下。
-身份名不写死：从材料解析；回落用 schema.roles 动态 label。
+身份名不写死：材料命中则用材料称呼；否则用 schema.roles 动态 label。
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ MODULE_LAYOUTS = ("identity", "biz")
 DEFAULT_MODULE_LAYOUT = "identity"
 
 _SCHEMA_LEAF_NOTE = "以下模块名由交付菜单推断，非开题原文，仅供参考"
+_ALIGNED_LEAF_NOTE = "已按交付菜单过滤开题枚举；未交付模块不进图"
 
 # 材料枚举：{身份}功能模块划分为：… / {身份}端主要包括：… 等
 _IDENTITY_SECTION_RE = re.compile(
@@ -713,6 +715,186 @@ def _module_leaf_nodes(
     return out
 
 
+def _side_menu_items(menus: list[Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in menus or []:
+        if not isinstance(raw, dict):
+            continue
+        key = str(raw.get("key") or "").strip()
+        if not key or key in _SKIP_MENU_KEYS or key in seen:
+            continue
+        seen.add(key)
+        out.append(raw)
+    return out
+
+
+def _menu_keys_for_module_text(text: str, menu_items: list[dict[str, Any]]) -> list[str]:
+    """开题模块名/细节 → 交付 menu key；无命中则该模块不进按身份图。"""
+    blob = text or ""
+    hits: list[str] = []
+    for it in menu_items:
+        lab = str(it.get("label") or "")
+        key = str(it.get("key") or "")
+        if not key:
+            continue
+        stem = (
+            lab.replace("管理", "")
+            .replace("我的", "")
+            .replace("浏览", "")
+            .replace("记录", "")
+        )
+        if stem and len(stem) >= 2 and stem in blob:
+            hits.append(key)
+        elif lab and lab in blob:
+            hits.append(key)
+        elif key == "cart" and "购物车" in blob:
+            hits.append(key)
+        elif key in ("orders", "my_orders") and "订单" in blob:
+            hits.append(key)
+        elif key == "guestbook" and any(t in blob for t in ("留言", "反馈")):
+            hits.append(key)
+        elif key == "item_comments" and "评论" in blob and "留言" not in blob:
+            hits.append(key)
+        elif key == "content" and any(t in blob for t in ("活动", "公告", "促销", "资讯")):
+            hits.append(key)
+        elif key in ("archive", "my_archive") and any(
+            t in blob for t in ("商品", "农产品", "档案", "视频", "文章", "曲目", "图书")
+        ):
+            hits.append(key)
+        elif key == "profile" and any(t in blob for t in ("个人", "资料", "中心")):
+            hits.append(key)
+        elif key == "addresses" and "地址" in blob:
+            hits.append(key)
+        elif key == "favorites" and "收藏" in blob:
+            hits.append(key)
+        elif key == "category" and "分类" in blob:
+            hits.append(key)
+        elif key == "users" and "用户" in blob:
+            hits.append(key)
+        elif key == "dm" and any(t in blob for t in ("客服", "私信", "在线沟通")):
+            hits.append(key)
+        elif key in ("order_reviews",) and "评价" in blob:
+            hits.append(key)
+        elif key.startswith("ticket") and any(
+            t in blob for t in ("售后", "报修", "申请", "工单", "审批")
+        ):
+            hits.append(key)
+        elif key in ("slots", "my_reservations", "reservations") and any(
+            t in blob for t in ("预约", "预订", "挂号")
+        ):
+            hits.append(key)
+    out: list[str] = []
+    seen: set[str] = set()
+    for k in hits:
+        if k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
+def _is_auth_module_label(lab: str) -> bool:
+    return any(t in (lab or "") for t in ("登录", "注册"))
+
+
+def _score_identity_section(sec_lab: str, *, slot: str, role_lab: str) -> int:
+    """材料身份段 → 交付 user/admin 槽；无分则不挂该枝（如未交付的「商家」）。"""
+    s = (sec_lab or "").strip()
+    if not s:
+        return 0
+    sc = 0
+    rl = (role_lab or "").strip()
+    if rl and (rl in s or s in rl):
+        sc += 10
+    if slot == "user" and any(
+        t in s for t in ("用户", "买家", "读者", "学生", "住客", "顾客", "会员", "患者")
+    ):
+        sc += 8
+    if slot == "admin" and any(t in s for t in ("管理员", "平台", "总管", "馆长", "主管")):
+        sc += 8
+    # 商家/馆员等非 user/admin 槽：本图仅两枝，故意打低分以免误挂
+    if any(t in s for t in ("商家", "商户", "店家", "馆员", "骑手")):
+        sc -= 20
+    if slot == "user" and any(t in s for t in ("管理", "后台")):
+        sc -= 6
+    if slot == "admin" and any(t in s for t in ("用户", "买家", "学生")) and "管理" not in s:
+        sc -= 6
+    return sc
+
+
+def _pick_material_section(
+    sections: list[dict[str, Any]],
+    *,
+    slot: str,
+    role_lab: str,
+    used: set[int],
+) -> dict[str, Any] | None:
+    ranked: list[tuple[int, int, dict[str, Any]]] = []
+    for i, sec in enumerate(sections):
+        if i in used:
+            continue
+        sc = _score_identity_section(str(sec.get("label") or ""), slot=slot, role_lab=role_lab)
+        if sc > 0:
+            ranked.append((sc, i, sec))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    _sc, idx, sec = ranked[0]
+    used.add(idx)
+    return sec
+
+
+def _format_menu_module_label(lab: str) -> str:
+    lab = (lab or "").strip()
+    if not lab:
+        return lab
+    if not lab.endswith("模块") and lab not in ("购物车", "数据分析", "申请售后", "售后管理"):
+        return f"{lab}模块" if len(lab) <= 8 else lab
+    return lab
+
+
+def _align_material_modules_to_menus(
+    material_mods: list[dict[str, Any]],
+    *,
+    side: str,
+    menus: list[Any],
+) -> list[dict[str, Any]]:
+    """开题一级模块 ∩ 交付 menus；命名跟开题，缺的用菜单补上。"""
+    menu_items = _side_menu_items(menus)
+    covered: set[str] = set()
+    out: list[dict[str, Any]] = []
+
+    for mod in material_mods:
+        if not isinstance(mod, dict):
+            continue
+        lab = str(mod.get("label") or "").strip()
+        if not lab:
+            continue
+        details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
+        if _is_auth_module_label(lab):
+            out.append({"label": lab, "details": details})
+            continue
+        # 只按一级模块名对齐交付；细节里的「商品/订单」等词不得把评价/支付等幽灵挂进来
+        keys = _menu_keys_for_module_text(lab, menu_items)
+        if not keys:
+            continue
+        covered.update(keys)
+        out.append({"label": lab, "details": details})
+
+    if side == "user" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
+        out.insert(0, {"label": "登录注册模块", "details": []})
+    elif side == "admin" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
+        out.insert(0, {"label": "登录模块", "details": []})
+
+    for raw in menu_items:
+        key = str(raw.get("key") or "").strip()
+        if not key or key in covered:
+            continue
+        covered.add(key)
+        out.append({"label": _format_menu_module_label(_menu_label(raw)), "details": []})
+    return out
+
+
 def _model_from_parsed_identities(
     sections: list[dict[str, Any]],
     *,
@@ -735,7 +917,12 @@ def _model_from_parsed_identities(
         if not kids:
             continue
         roots.append(_node(bid, lab, source="identity", children=kids))
-    note = _SCHEMA_LEAF_NOTE if leaf_source == "schema" else ""
+    if leaf_source == "schema":
+        note = _SCHEMA_LEAF_NOTE
+    elif leaf_source == "materials":
+        note = _ALIGNED_LEAF_NOTE
+    else:
+        note = ""
     return {
         "title": title,
         "layout": "identity",
@@ -758,9 +945,7 @@ def _menu_as_identity_modules(menus: list[Any], *, side: str) -> list[dict[str, 
         lab = str(n.get("label") or "").strip()
         if not lab:
             continue
-        if not lab.endswith("模块") and lab not in ("购物车", "数据分析", "申请售后", "售后管理"):
-            lab = f"{lab}模块" if len(lab) <= 8 else lab
-        mods.append({"label": lab, "details": []})
+        mods.append({"label": _format_menu_module_label(lab), "details": []})
     return mods
 
 
@@ -810,19 +995,83 @@ def _model_by_identity(
     proposal_text: str = "",
     expand_details: bool = False,
 ) -> dict[str, Any]:
-    sections = parse_identity_modules(proposal_text, schema=schema)
-    if sections:
-        model = _model_from_parsed_identities(
-            sections,
-            title=title,
-            expand_details=expand_details,
-            leaf_source="materials",
-        )
-        model["capabilities"] = list(schema.get("capabilities") or [])
-        return model
-    return _model_by_identity_from_schema(
+    """按身份：交付 menus 为真源；开题枚举只辅助命名，未交付模块丢弃。"""
+    base = _model_by_identity_from_schema(
         schema, title=title, expand_details=expand_details
     )
+    sections = parse_identity_modules(proposal_text, schema=schema)
+    if not sections:
+        return base
+
+    roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+    menus = schema.get("menus") if isinstance(schema.get("menus"), dict) else {}
+    caps = {str(c) for c in (schema.get("capabilities") or [])}
+    user_menus = menus.get("user") or []
+    admin_menus = menus.get("admin") or []
+    has_user = bool(user_menus) or "org_users" in caps
+
+    used: set[int] = set()
+    aligned: list[dict[str, Any]] = []
+
+    if has_user:
+        role_lab = _identity_label_from_slot(roles, "user")
+        sec = _pick_material_section(
+            sections, slot="user", role_lab=role_lab, used=used
+        )
+        if sec:
+            aligned.append(
+                {
+                    "label": str(sec.get("label") or role_lab).strip() or role_lab,
+                    "modules": _align_material_modules_to_menus(
+                        list(sec.get("modules") or []),
+                        side="user",
+                        menus=user_menus,
+                    ),
+                }
+            )
+        else:
+            aligned.append(
+                {
+                    "label": role_lab,
+                    "modules": _menu_as_identity_modules(user_menus, side="user"),
+                }
+            )
+
+    if admin_menus:
+        role_lab = _identity_label_from_slot(roles, "admin")
+        sec = _pick_material_section(
+            sections, slot="admin", role_lab=role_lab, used=used
+        )
+        if sec:
+            aligned.append(
+                {
+                    "label": str(sec.get("label") or role_lab).strip() or role_lab,
+                    "modules": _align_material_modules_to_menus(
+                        list(sec.get("modules") or []),
+                        side="admin",
+                        menus=admin_menus,
+                    ),
+                }
+            )
+        else:
+            aligned.append(
+                {
+                    "label": role_lab,
+                    "modules": _menu_as_identity_modules(admin_menus, side="admin"),
+                }
+            )
+
+    if not aligned:
+        return base
+
+    model = _model_from_parsed_identities(
+        aligned,
+        title=title,
+        expand_details=expand_details,
+        leaf_source="materials",
+    )
+    model["capabilities"] = list(schema.get("capabilities") or [])
+    return model
 
 
 def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
