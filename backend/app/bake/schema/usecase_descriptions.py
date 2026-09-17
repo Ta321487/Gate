@@ -125,15 +125,77 @@ def _ticket_stem(label: str) -> str:
     return label.replace("我的", "").replace("申请", "").strip() or label
 
 
+def _clean_role_lab(lab: str) -> str:
+    lab = re.sub(r"[（(][^）)]*[）)]", "", str(lab or "")).strip()
+    return lab
+
+
+def _post_pack_menu_keys(post: dict[str, Any]) -> set[str]:
+    from app.bake.staff_posts import PACK_ADMIN_MENUS
+
+    allowed: set[str] = set()
+    for pk in post.get("packs") or []:
+        if isinstance(pk, str) and pk.strip() in PACK_ADMIN_MENUS:
+            allowed |= set(PACK_ADMIN_MENUS[pk.strip()])
+    return allowed
+
+
+def _resolve_case_actor(
+    schema: dict[str, Any],
+    *,
+    side: str,
+    menu_key: str = "",
+    menu_item: dict[str, Any] | None = None,
+) -> str:
+    """候选执行者（全领域通用，不绑某一业务场景）：
+
+    - user 菜单 → roles.user.label
+    - admin 菜单且 superOnly → roles.admin.label
+    - admin 菜单被某 staff_post 的 pack 覆盖 → 该岗位 label
+    - 否则若 subadmin 挂了 staffPostId 且称呼不同于 admin → subadmin.label
+    - 否则 → roles.admin.label
+    """
+    if side == "user":
+        return _clean_role_lab(_role_label(schema, "user")) or "用户"
+
+    item = menu_item if isinstance(menu_item, dict) else {}
+    if bool(item.get("superOnly")):
+        return _clean_role_lab(_role_label(schema, "admin")) or "管理员"
+
+    roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+    posts = roles.get("staff_posts") if isinstance(roles.get("staff_posts"), list) else []
+    key = str(menu_key or "").strip()
+    for p in posts:
+        if not isinstance(p, dict):
+            continue
+        if key and key in _post_pack_menu_keys(p):
+            lab = _clean_role_lab(str(p.get("label") or "").strip())
+            if lab:
+                return lab
+
+    sub = roles.get("subadmin") if isinstance(roles.get("subadmin"), dict) else {}
+    sub_lab = _clean_role_lab(str(sub.get("label") or "").strip())
+    admin_lab = _clean_role_lab(_role_label(schema, "admin"))
+    post_id = str(sub.get("staffPostId") or sub.get("staff_post") or "").strip()
+    if post_id and sub_lab and sub_lab != admin_lab:
+        return sub_lab
+
+    return admin_lab or "管理员"
+
+
 def _ctx_for(
     schema: dict[str, Any],
     *,
     side: str,
     label: str,
+    menu_key: str = "",
+    menu_item: dict[str, Any] | None = None,
 ) -> dict[str, str]:
-    user = _role_label(schema, "user")
-    admin = _role_label(schema, "admin")
-    actor = user if side == "user" else admin
+    user = _clean_role_lab(_role_label(schema, "user"))
+    admin = _clean_role_lab(_role_label(schema, "admin"))
+    actor = _resolve_case_actor(
+        schema, side=side, menu_key=menu_key, menu_item=menu_item
+    )
     entity = _entity_label(schema)
     return {
         "user": user,
@@ -416,13 +478,35 @@ def _flow_spec(kind: str) -> dict[str, Any]:
             ],
         },
         "order_reviews": {
-            "name": "{actor}评价订单",
+            # 兼容旧 kind；用户端发表评价
+            "name": "{actor}发表评价",
             "summary": "{actor}在「{label}」或订单详情中提交评价。",
             "flow": [
                 "{actor}登录成功后进入「{label}」或可评价订单详情",
                 "系统展示评价表单",
                 "{actor}填写评分与评价并提交",
                 "系统保存评价信息",
+            ],
+        },
+        "order_reviews_user": {
+            "name": "{actor}发表评价",
+            "summary": "{actor}确认收货后在「{label}」中发表评价。",
+            "flow": [
+                "{actor}登录成功后进入「{label}」或可评价订单详情",
+                "系统展示评价表单",
+                "{actor}填写评分与评价并提交",
+                "系统保存评价信息",
+            ],
+        },
+        "order_reviews_admin": {
+            "name": "{actor}管理评价",
+            "summary": "{actor}在「{label}」中查看、回复或处理评价。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统转至评价列表界面",
+                "{actor}打开一条评价查看详情",
+                "{actor}按页面提供的操作回复或处理",
+                "系统更新评价状态，列表展示最新结果",
             ],
         },
         "week_calendar": {
@@ -536,6 +620,13 @@ def _score_candidate(
     return score
 
 
+def _case_kind(key: str, side: str) -> str:
+    """用例描述/序列图用 kind；评价按端拆开，避免管理端也叫「评价订单」。"""
+    if key == "order_reviews":
+        return "order_reviews_user" if side == "user" else "order_reviews_admin"
+    return _kind(key, side)
+
+
 def _build_case(
     *,
     schema: dict[str, Any],
@@ -544,8 +635,15 @@ def _build_case(
     key: str,
     label: str,
     source: str,
+    menu_item: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    ctx = _ctx_for(schema, side=side, label=label)
+    ctx = _ctx_for(
+        schema,
+        side=side,
+        label=label,
+        menu_key=key,
+        menu_item=menu_item,
+    )
     spec = _flow_spec(kind)
     name = _fmt(str(spec["name"]), ctx)
     summary = _fmt(str(spec["summary"]), ctx)
@@ -629,7 +727,7 @@ def build_usecase_description_candidates(
                 continue
             seen.add(pair)
             label = _menu_label(raw)
-            kind = _kind(key, side)
+            kind = _case_kind(key, side)
             case = _build_case(
                 schema=schema,
                 kind=kind,
@@ -637,6 +735,7 @@ def build_usecase_description_candidates(
                 key=key,
                 label=label,
                 source=source_base,
+                menu_item=raw,
             )
             case["score"] = _score_candidate(
                 kind=kind,
