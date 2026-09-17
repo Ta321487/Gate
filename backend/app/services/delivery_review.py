@@ -253,7 +253,10 @@ def verify_fail_reasons(
 
 
 def blocking_gates(gates: dict[str, Any] | None) -> list[dict[str, str]]:
-    """未过门禁（含交付质量摘要）——毒区只列 checklist，门禁失败须另露。"""
+    """未过门禁（含交付质量摘要）——毒区只列 checklist，门禁失败须另露。
+
+    zip_allowed 未放行且无分项失败时，补一条「交付打包」占位，与验圈返回口径一致。
+    """
     g = gates if isinstance(gates, dict) else {}
     out: list[dict[str, str]] = []
     for key, raw in g.items():
@@ -264,7 +267,35 @@ def blocking_gates(gates: dict[str, Any] | None) -> list[dict[str, str]]:
         label = str(raw.get("label") or key).strip() or key
         desc = str(raw.get("desc") or "").strip()
         out.append({"key": str(key), "label": label, "desc": desc[:160]})
+    if not out and not g.get("zip_allowed"):
+        out.append(
+            {
+                "key": "zip_allowed",
+                "label": "交付打包",
+                "desc": "zip_allowed 未放行，请到「质量检查」页查看分项",
+            }
+        )
     return out
+
+
+def last_round_pass(st: dict[str, Any] | None) -> bool:
+    """最近一轮验圈是否通过（优先 rounds，其次 last_verify.round_pass）。"""
+    raw = st if isinstance(st, dict) else {}
+    rounds = raw.get("rounds") or []
+    if rounds and isinstance(rounds[-1], dict):
+        return bool(rounds[-1].get("round_pass"))
+    last = raw.get("last_verify")
+    if isinstance(last, dict) and isinstance(last.get("round_pass"), bool):
+        return bool(last.get("round_pass"))
+    return False
+
+
+def review_allows_zip_promote(project: Project) -> bool:
+    """复审进行中须验圈通过才可升 zip_ready；idle/closed 不拦截（保持旧 sync 口径）。"""
+    st = get_review_state(project)
+    if st.get("status") != "active":
+        return True
+    return last_round_pass(st)
 
 
 def apply_qa_to_gates(
@@ -491,14 +522,6 @@ def verify_round(
     ]
     open_notes = open_fix_notes(st)
     blocked = blocking_gates(gates)
-    if not gates.get("zip_allowed") and not blocked:
-        blocked = [
-            {
-                "key": "zip_allowed",
-                "label": "交付打包",
-                "desc": "zip_allowed 未放行，请到「质量检查」页查看分项",
-            }
-        ]
     round_pass = (
         mono_ok
         and gates.get("zip_allowed")
@@ -537,17 +560,25 @@ def verify_round(
         "open_notes_count": len(open_notes),
         "workspace_hash": ws_hash,
         "round_pass": round_pass,
+        "fail_reasons": fail_reasons,
     }
     rounds = list(st.get("rounds") or [])
     rounds.append(round_rec)
     st["rounds"] = rounds[-30:]
     st["last_verify"] = {
         "at": round_rec["at"],
+        "round": st["round"],
         "checklist": checklist,
         "gates": {k: v for k, v in gates.items() if k != "checklist"},
         "monotonic_ok": mono_ok,
         "regressions": regressions,
         "workspace_hash": ws_hash,
+        "round_pass": round_pass,
+        "gates_ok": bool(gates.get("overall")),
+        "zip_allowed": bool(gates.get("zip_allowed")),
+        "pending_count": len(poison_pending),
+        "open_notes_count": len(open_notes),
+        "fail_reasons": fail_reasons,
     }
     save_review_state(project, st)
 

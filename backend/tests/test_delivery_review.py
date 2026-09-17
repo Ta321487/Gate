@@ -96,6 +96,33 @@ class DeliveryReviewTests(unittest.TestCase):
         self.assertEqual(blocked[0]["key"], "p3q")
         self.assertIn("质量摘要", blocked[0]["label"])
 
+    def test_blocking_gates_synthetic_when_zip_denied_without_items(self):
+        gates = {"overall": False, "zip_allowed": False, "p0a": {"ok": True, "label": "结构"}}
+        blocked = dr.blocking_gates(gates)
+        self.assertEqual(len(blocked), 1)
+        self.assertEqual(blocked[0]["key"], "zip_allowed")
+        self.assertIn("交付打包", blocked[0]["label"])
+
+    def test_last_round_pass_prefers_rounds(self):
+        st = {
+            "rounds": [{"round_pass": False}, {"round_pass": True}],
+            "last_verify": {"round_pass": False},
+        }
+        self.assertTrue(dr.last_round_pass(st))
+        self.assertFalse(dr.last_round_pass({"status": "active"}))
+
+    def test_review_allows_zip_promote(self):
+        idle = SimpleNamespace(delivery_review={"status": "idle"})
+        self.assertTrue(dr.review_allows_zip_promote(idle))
+        active_fail = SimpleNamespace(
+            delivery_review={"status": "active", "rounds": [{"round_pass": False}]}
+        )
+        self.assertFalse(dr.review_allows_zip_promote(active_fail))
+        active_ok = SimpleNamespace(
+            delivery_review={"status": "active", "rounds": [{"round_pass": True}]}
+        )
+        self.assertTrue(dr.review_allows_zip_promote(active_ok))
+
     def test_can_repack_mentions_blocking_gate(self):
         verify = {
             "monotonic_ok": True,
@@ -121,6 +148,45 @@ class DeliveryReviewTests(unittest.TestCase):
         dr.apply_qa_to_gates(gates, qa, warn_blocks=True)
         self.assertFalse(gates["p3q"]["ok"])
         self.assertFalse(gates["zip_allowed"])
+
+    def test_verify_round_persists_round_pass_on_last_verify(self):
+        """最近验圈读 last_verify.round_pass；缺字段前端会误显示「未过」。"""
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td) / "ws"
+            ws.mkdir()
+            p = SimpleNamespace(
+                spec={},
+                gates={},
+                checklist=[],
+                delivery_review={"status": "active", "round": 0, "rounds": [], "fix_notes": []},
+            )
+
+            def _fake_gates(_workspace, _spec):
+                return {
+                    "overall": True,
+                    "zip_allowed": True,
+                    "p0a": {"ok": True, "label": "结构"},
+                    "checklist": [{"name": "登录", "result": "done"}],
+                }
+
+            with patch.object(dr, "evaluate_workspace_gates", side_effect=_fake_gates):
+                with patch.object(dr, "workspace_delivery_hash", return_value="hash"):
+                    result = dr.verify_round(p, ws)
+
+            self.assertTrue(result["round_pass"])
+            last = (p.delivery_review or {}).get("last_verify") or {}
+            self.assertIn("round_pass", last)
+            self.assertTrue(last["round_pass"])
+            self.assertEqual(last.get("pending_count"), 0)
+            self.assertTrue(last.get("gates_ok"))
+            self.assertEqual(last.get("round"), 1)
+            rounds = (p.delivery_review or {}).get("rounds") or []
+            self.assertTrue(rounds)
+            self.assertEqual(rounds[-1].get("fail_reasons"), [])
+            self.assertTrue(rounds[-1].get("round_pass"))
 
     def test_forbid_full_rebake_active_review(self):
         p = SimpleNamespace(delivery_review={"status": "active"})

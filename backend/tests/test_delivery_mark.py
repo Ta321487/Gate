@@ -197,3 +197,128 @@ def test_sync_clears_stale_zip_ready_when_gates_fail(tmp_path):
     assert project_svc.sync_checklist_from_workspace(p) is True
     assert p.zip_ready is False
     assert p.delivery_mark == "none"
+
+
+def test_sync_reapplies_last_qa_to_gates(tmp_path):
+    """刷新详情不得冲掉验圈写入的 p3q / zip_allowed。"""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=False,
+        gates={"overall": True, "zip_allowed": True},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={
+            "status": "active",
+            "rounds": [],
+            "last_qa": {
+                "ok": False,
+                "summary": "1 项 error",
+                "findings": [{"level": "error", "msg": "工厂腔", "where": "x"}],
+            },
+        },
+    )
+    fake_gates = {
+        "overall": True,
+        "zip_allowed": True,
+        "p0a": {"ok": True, "label": "结构"},
+        "checklist": [{"name": "登录", "result": "done"}],
+    }
+    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+        with patch("app.services.delivery_review.is_zip_stale", return_value=False):
+            assert project_svc.sync_checklist_from_workspace(p) is True
+    assert p.gates.get("p3q", {}).get("ok") is False
+    assert p.gates.get("zip_allowed") is False
+    assert p.zip_ready is False
+
+
+def test_sync_does_not_promote_zip_during_active_review_without_pass(tmp_path):
+    """进入复审清掉 zip_ready 后，刷新不得擅自升回。"""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=False,
+        gates={},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"status": "active", "rounds": [], "last_qa": None},
+    )
+    fake_gates = {
+        "overall": True,
+        "zip_allowed": True,
+        "p0a": {"ok": True, "label": "结构"},
+        "checklist": [],
+    }
+    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+        with patch("app.services.delivery_review.is_zip_stale", return_value=False):
+            project_svc.sync_checklist_from_workspace(p)
+    assert p.zip_ready is False
+
+
+def test_sync_promotes_zip_when_idle_and_gates_ok(tmp_path):
+    """未进复审时保持旧口径：门禁过 + ZIP 在盘可升 zip_ready。"""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=False,
+        gates={},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"status": "idle"},
+    )
+    fake_gates = {
+        "overall": True,
+        "zip_allowed": True,
+        "p0a": {"ok": True, "label": "结构"},
+        "checklist": [],
+    }
+    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+        with patch("app.services.delivery_review.is_zip_stale", return_value=False):
+            assert project_svc.sync_checklist_from_workspace(p) is True
+    assert p.zip_ready is True
+
+
+def test_sync_promotes_zip_after_active_round_pass(tmp_path):
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=False,
+        gates={},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"status": "active", "rounds": [{"round_pass": True}]},
+    )
+    fake_gates = {
+        "overall": True,
+        "zip_allowed": True,
+        "p0a": {"ok": True, "label": "结构"},
+        "checklist": [],
+    }
+    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+        with patch("app.services.delivery_review.is_zip_stale", return_value=False):
+            assert project_svc.sync_checklist_from_workspace(p) is True
+    assert p.zip_ready is True
