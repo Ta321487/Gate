@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.thesis.mapper.ItemCommentMapper">
+    <select id="selectById" resultType="map">
+        SELECT * FROM item_comment WHERE id=#{id}
+    </select>
+    <select id="selectByItem" resultType="map">
+        SELECT * FROM item_comment WHERE item_id=#{itemId} ORDER BY id DESC
+    </select>
+    <select id="selectAdmin" resultType="map">
+        SELECT * FROM item_comment
+        <where>
+            <if test="itemId != null and itemId &gt; 0">
+                AND item_id=#{itemId}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+</mapper>

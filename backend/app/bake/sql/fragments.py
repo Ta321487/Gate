@@ -355,6 +355,29 @@ def ensure_guestbook_sql(
     return _CREATE_TABLE_RE.sub(repl, out)
 
 
+_ITEM_COMMENT_DDL = """
+CREATE TABLE IF NOT EXISTS item_comment (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ic_item (item_id, id),
+  KEY idx_ic_user (username)
+);
+"""
+
+
+def ensure_item_comment_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补档案条下评论表（≠ sys_guestbook）。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?item_comment`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _ITEM_COMMENT_DDL
+
+
 _AI_KNOWLEDGE_DDL = """
 CREATE TABLE IF NOT EXISTS sys_ai_knowledge (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

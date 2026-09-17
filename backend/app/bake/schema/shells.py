@@ -128,6 +128,8 @@ def _my_archive_page_lead(domain: str, archive_label: str) -> str:
         return f"本人发布的{noun}即时可见；过出发自动下架后仍可在此查看状态。"
     if d == "DOM-FORUM":
         return f"本人发布的{noun}即时可见；站长下架后仍可在此查看状态。"
+    if d in ("DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC"):
+        return f"本人投稿的{noun}即时可见；管理员下架后仍可在此查看状态。"
     return f"本人发布的{noun}即时可见；管理员收回后仍可在此查看状态。"
 
 
@@ -536,8 +538,9 @@ def archive_favorites_schema(
     soft_delete: bool = True,
     tag_filter: bool = False,
     recommend_latest_hint: str | None = None,
+    user_publish: bool = False,
 ) -> dict[str, Any]:
-    """内容流薄壳：档案浏览 + 即时收藏（无单据/审核）。"""
+    """内容流薄壳：档案浏览 + 即时收藏（无单据/审核）；可选用户投稿即时上架。"""
     from app.bake.features.favorites import attach_favorites_menus
 
     app = product_name_from_title(title)
@@ -550,6 +553,8 @@ def archive_favorites_schema(
         "softDelete": soft_delete,
         "tagFilter": tag_filter,
     }
+    if user_publish:
+        archive_entity["userPublish"] = True
     if play_url_field:
         archive_entity["playUrlField"] = play_url_field
     if body_field:
@@ -581,6 +586,49 @@ def archive_favorites_schema(
     if "recommend" in caps:
         fav_labels["recommendSectionTitle"] = "猜你喜欢"
         fav_labels["recommendLatestHint"] = recommend_latest_hint
+    if user_publish:
+        fav_labels["myArchivePageTitle"] = f"我的{archive_label}"
+        fav_labels["myArchivePageLead"] = _my_archive_page_lead(domain, archive_label)
+        d = (domain or "").strip().upper()
+        if d == "DOM-BLOG":
+            fav_labels["publishCtaLabel"] = "投稿"
+            fav_labels["publishDialogTitle"] = f"投稿{archive_label}"
+            fav_labels["publishSubmitLabel"] = "提交投稿"
+            fav_labels["publishTip"] = (
+                "投稿后即时可见，无需预审；违规可由管理员下架（soft-delete）。"
+            )
+        elif d == "DOM-MEDIA":
+            fav_labels["publishCtaLabel"] = "上传投稿"
+            fav_labels["publishDialogTitle"] = f"上传{archive_label}"
+            fav_labels["publishSubmitLabel"] = "提交"
+            fav_labels["publishTip"] = (
+                "上传后即时可见；请填写可播放链接。违规可由管理员下架。"
+            )
+        elif d == "DOM-MUSIC":
+            fav_labels["publishCtaLabel"] = "上传曲目"
+            fav_labels["publishDialogTitle"] = f"上传{archive_label}"
+            fav_labels["publishSubmitLabel"] = "提交"
+            fav_labels["publishTip"] = (
+                "上传后即时可见；请填写试听链接。违规可由管理员下架。"
+            )
+        else:
+            fav_labels["publishCtaLabel"] = f"发布{archive_label}"
+            fav_labels["publishDialogTitle"] = f"发布{archive_label}"
+            fav_labels["publishSubmitLabel"] = "发布"
+            fav_labels["publishTip"] = (
+                f"发布后即时可见；违规可由管理员下架。"
+            )
+    user_menus: list[dict[str, Any]] = [
+        {"key": "archive", "label": archive_menu_user},
+    ]
+    if user_publish:
+        user_menus.append({"key": "my_archive", "label": f"我的{archive_label}"})
+    user_menus.extend(
+        [
+            {"key": "content", "label": "公告"},
+            {"key": "profile", "label": "个人资料"},
+        ]
+    )
     schema: dict[str, Any] = {
         "version": 1,
         "title": title,
@@ -601,11 +649,7 @@ def archive_favorites_schema(
                 {"key": "users", "label": users_menu, "superOnly": True},
                 {"key": "content", "label": "公告管理", "superOnly": True},
             ],
-            "user": [
-                {"key": "archive", "label": archive_menu_user},
-                {"key": "content", "label": "公告"},
-                {"key": "profile", "label": "个人资料"},
-            ],
+            "user": user_menus,
         },
         "labels": fav_labels,
         "seeds": {

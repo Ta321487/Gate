@@ -47,6 +47,7 @@ def merge_proposal_capabilities(
         merge_post_like_capabilities,
     )
     from app.bake.features.guestbook import merge_guestbook_capabilities
+    from app.bake.features.item_comment import merge_item_comment_capabilities
     from app.bake.features.ai_assistant import merge_ai_assistant_capabilities
     from app.bake.features.loyalty import merge_loyalty_capabilities
     from app.bake.features.order_extras import merge_order_extras_capabilities
@@ -72,6 +73,7 @@ def merge_proposal_capabilities(
         archetype=archetype,
         archetypes=archetypes,
     )
+    req = merge_item_comment_capabilities(req, body, domain=domain)
     # 开关 force 在 apply_ai_assistant_to_spec；此处只靠开题扫词
     req = merge_ai_assistant_capabilities(req, body, force=False)
     req = merge_dm_capabilities(req, body, domain=domain)

@@ -310,6 +310,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.stock_scrap import apply_stock_scrap_to_spec
     from app.bake.features.e_sign import apply_e_sign_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
+    from app.bake.features.item_comment import apply_item_comment_to_spec
     from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
     from app.bake.features.loyalty import apply_loyalty_to_spec
     from app.bake.features.order_extras import apply_order_extras_to_spec
@@ -399,6 +400,10 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_stock_scrap_to_spec(out, body)
     out = apply_e_sign_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
+    out = apply_item_comment_to_spec(out, body)
+    from app.bake.features.user_publish import apply_user_publish_gate_to_spec
+
+    out = apply_user_publish_gate_to_spec(out)
     out = apply_ai_assistant_to_spec(out, body)
     out = apply_dm_to_spec(out, body)
     out = apply_favorites_to_spec(out, body)

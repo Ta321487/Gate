@@ -1,0 +1,165 @@
+package com.thesis.service;
+
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.KeyHolder;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 档案条下评论（item_comment）：挂在影音/曲目/文章下；≠ 门户留言 guestbook。
+ */
+public class ItemCommentStore {
+
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int BODY_MAX = 500;
+    private static Boolean tableReady;
+
+    private static JpaDb db() {
+        return JpaSupport.db();
+    }
+
+    public static boolean ready() {
+        if (tableReady != null) return tableReady;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                            + "WHERE table_schema=DATABASE() AND table_name='item_comment'",
+                    Integer.class);
+            tableReady = n != null && n > 0;
+        } catch (Exception e) {
+            tableReady = false;
+        }
+        return tableReady;
+    }
+
+    public static void resetReadyCache() {
+        tableReady = null;
+    }
+
+    private static String fmt(Object o) {
+        if (o == null) return null;
+        if (o instanceof Timestamp ts) return ts.toLocalDateTime().format(FMT);
+        if (o instanceof LocalDateTime ldt) return ldt.format(FMT);
+        String s = String.valueOf(o);
+        return s.isBlank() ? null : s;
+    }
+
+    private static String clip(String s, int max) {
+        if (s == null) return "";
+        String t = s.trim();
+        return t.length() <= max ? t : t.substring(0, max);
+    }
+
+    private static Map<String, Object> row(ResultSet rs) throws SQLException {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", rs.getLong("id"));
+        m.put("itemId", rs.getLong("item_id"));
+        m.put("username", rs.getString("username"));
+        m.put("nickname", rs.getString("nickname"));
+        m.put("body", rs.getString("body"));
+        m.put("createdAt", fmt(rs.getTimestamp("created_at")));
+        return m;
+    }
+
+    public static Map<String, Object> get(long id) {
+        if (!ready()) return null;
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM item_comment WHERE id=?", (rs, i) -> row(rs), id);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    public static Map<String, Object> add(long itemId, String username, String nickname, String body) {
+        if (!ready() || itemId <= 0) return null;
+        String b = clip(body, BODY_MAX);
+        if (b.isBlank()) return null;
+        String nick = clip(nickname == null || nickname.isBlank() ? username : nickname, 64);
+        KeyHolder kh = new GeneratedKeyHolder();
+        db().update(con -> {
+            PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO item_comment (item_id,username,nickname,body) VALUES (?,?,?,?)",
+                    Statement.RETURN_GENERATED_KEYS);
+            ps.setLong(1, itemId);
+            ps.setString(2, username == null ? "" : username);
+            ps.setString(3, nick);
+            ps.setString(4, b);
+            return ps;
+        }, kh);
+        Number key = kh.getKey();
+        return get(key == null ? 0L : key.longValue());
+    }
+
+    public static boolean delete(long id) {
+        if (!ready()) return false;
+        return db().update("DELETE FROM item_comment WHERE id=?", id) > 0;
+    }
+
+    public static Map<String, Object> pageByItem(long itemId, int page, int size) {
+        Map<String, Object> out = emptyPage(page, size);
+        if (!ready() || itemId <= 0) return out;
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM item_comment WHERE item_id=?", Integer.class, itemId);
+        int t = total == null ? 0 : total;
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM item_comment WHERE item_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> row(rs),
+                itemId, size, offset);
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    public static Map<String, Object> pageAdmin(int page, int size, Long itemId) {
+        Map<String, Object> out = emptyPage(page, size);
+        if (!ready()) return out;
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        List<Object> args = new ArrayList<>();
+        if (itemId != null && itemId > 0) {
+            where.append(" AND item_id=?");
+            args.add(itemId);
+        }
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM item_comment" + where, Integer.class, args.toArray());
+        int t = total == null ? 0 : total;
+        int offset = (page - 1) * size;
+        List<Object> listArgs = new ArrayList<>(args);
+        listArgs.add(size);
+        listArgs.add(offset);
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM item_comment" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> row(rs),
+                listArgs.toArray());
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    private static Map<String, Object> emptyPage(int page, int size) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", List.of());
+        out.put("total", 0);
+        out.put("page", page < 1 ? 1 : page);
+        out.put("size", size < 1 ? 10 : size);
+        return out;
+    }
+}

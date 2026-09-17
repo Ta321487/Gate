@@ -97,7 +97,12 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "guestbook": {
         "label": "访客留言",
         "status": "implemented",
-        "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信）",
+        "desc": "门户留言；用户发表，管理端列表/删除/简短回复（非论坛、非公告、非站内信、非条下评论）",
+    },
+    "item_comment": {
+        "label": "条下评论",
+        "status": "implemented",
+        "desc": "档案详情下发表/列表评论；管理端删除（≠guestbook留言≠论坛回帖≠订单评价）",
     },
     "ai_assistant": {
         "label": "AI智能助手",

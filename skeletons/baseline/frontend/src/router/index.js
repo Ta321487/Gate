@@ -245,6 +245,24 @@ function withGuestbookRoutes(baseRoutes) {
   return routes
 }
 
+/** 条下评论管理：有 item_comment 时挂管理端入口（详情区在 ArchiveBrowse） */
+function withItemCommentRoutes(baseRoutes) {
+  if (!hasCap('item_comment')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'item-comments')) {
+    const gbIdx = adminKids.findIndex((c) => c.path === 'guestbook')
+    const noticeIdx = adminKids.findIndex((c) => c.path === 'notices')
+    const at = gbIdx >= 0 ? gbIdx : (noticeIdx >= 0 ? noticeIdx : adminKids.length)
+    adminKids.splice(at, 0, {
+      path: 'item-comments',
+      component: () => import('../views/admin/ItemCommentAdmin.vue'),
+    })
+  }
+  return routes
+}
+
 
 
 /** 站内消息模板：有 message_template 时挂管理端（总管） */
@@ -1047,7 +1065,7 @@ function pickRoutes() {
                       withDoclibRoutes(
                         withVoteRoutes(
                           withSurveyRoutes(
-                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withGuestbookRoutes(routes))))))))),
+                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withItemCommentRoutes(withGuestbookRoutes(routes)))))))))),
                           ),
                         ),
                       ),

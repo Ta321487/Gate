@@ -217,6 +217,7 @@ def domain_sql(
     )
     from app.bake.features.vote import VOTE_CAP
     from app.bake.features.guestbook import GUESTBOOK_CAP
+    from app.bake.features.item_comment import ITEM_COMMENT_CAP
     from app.bake.features.ai_assistant import AI_ASSISTANT_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP
@@ -246,6 +247,7 @@ def domain_sql(
         ensure_book_suggest_sql,
         ensure_gallery_sql,
         ensure_guestbook_sql,
+        ensure_item_comment_sql,
         ensure_soft_delete_columns,
         ensure_notice_pinned_column,
         ensure_ai_assistant_sql,
@@ -415,6 +417,7 @@ def domain_sql(
         enabled=GUESTBOOK_CAP in caps,
         with_channel=shop_marketplace and GUESTBOOK_CAP in caps,
     )
+    text = ensure_item_comment_sql(text, enabled=ITEM_COMMENT_CAP in caps)
     text = ensure_notice_pinned_column(text)
     text = ensure_ai_assistant_sql(
         text,

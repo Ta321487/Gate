@@ -353,6 +353,34 @@
             <p v-if="rv.reply" class="rv-reply">商家回复：{{ rv.reply }}</p>
           </article>
         </section>
+        <section v-if="itemCommentOn && detail.id" class="item-comments">
+          <h4>{{ itemCommentTitle }}</h4>
+          <div v-if="!isGuest" class="ic-compose">
+            <el-input
+              v-model="itemCommentDraft"
+              type="textarea"
+              :rows="2"
+              maxlength="500"
+              show-word-limit
+              placeholder="写下你的评论…"
+            />
+            <el-button
+              type="primary"
+              size="small"
+              :loading="itemCommentSubmitting"
+              @click="submitItemComment"
+            >{{ itemCommentSubmitLabel }}</el-button>
+          </div>
+          <div v-else class="muted">登录后可发表评论</div>
+          <div v-if="itemCommentLoading" class="muted">加载中…</div>
+          <div v-else-if="!itemComments.length" class="muted">{{ itemCommentEmpty }}</div>
+          <article v-for="c in itemComments" :key="c.id" class="ic">
+            <p class="ic-meta">
+              <span>{{ c.nickname || c.username || '用户' }} · {{ c.createdAt }}</span>
+            </p>
+            <p>{{ c.body || '（无文字）' }}</p>
+          </article>
+        </section>
       </template>
     </el-drawer>
 
@@ -698,16 +726,22 @@ const publishShowStartAt = computed(
   () => userPublish.value && !publishUsesRichBody.value && hasSchedule.value,
 )
 const publishDialogTitle = computed(() => {
+  const custom = getSchema()?.labels?.publishDialogTitle
+  if (custom) return custom
   if (publishUsesRichBody.value) return '发帖'
   if (publishShowStock.value) return `发布${archive.label || '行程'}`
   return `登记${archive.label || '内容'}`
 })
 const publishCtaLabel = computed(() => {
+  const custom = getSchema()?.labels?.publishCtaLabel
+  if (custom) return custom
   if (publishUsesRichBody.value) return '发帖'
   if (publishShowStock.value) return `发布${archive.label || '行程'}`
   return `登记${archive.label || '内容'}`
 })
 const publishSubmitLabel = computed(() => {
+  const custom = getSchema()?.labels?.publishSubmitLabel
+  if (custom) return custom
   if (publishUsesRichBody.value) return '发布'
   if (publishShowStock.value) return '发布'
   return '保存'
@@ -720,6 +754,8 @@ const publishIsbnPlaceholder = computed(() => {
   return `请填写${lab}`
 })
 const publishTip = computed(() => {
+  const custom = getSchema()?.labels?.publishTip
+  if (custom) return custom
   if (publishUsesRichBody.value) return '发布后即时可见，无需审核；违规可由管理员下架。'
   if (publishShowStock.value) return '行程发布后即时可见；他人提交意向后由你确认或婉拒。'
   return `登记后即时入档，可在「我的${archive.label || '内容'}」中查看；随后可提交跟进。`
@@ -1085,6 +1121,20 @@ const detailVisible = ref(false)
 const detail = ref(null)
 const itemReviews = ref([])
 const reviewOn = computed(() => hasCap('order_review'))
+const itemCommentOn = computed(() => hasCap('item_comment'))
+const itemComments = ref([])
+const itemCommentLoading = ref(false)
+const itemCommentDraft = ref('')
+const itemCommentSubmitting = ref(false)
+const itemCommentTitle = computed(
+  () => getSchema()?.labels?.itemCommentSectionTitle || '用户评论',
+)
+const itemCommentSubmitLabel = computed(
+  () => getSchema()?.labels?.itemCommentSubmitLabel || '发表评论',
+)
+const itemCommentEmpty = computed(
+  () => getSchema()?.labels?.itemCommentEmpty || '暂无评论',
+)
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 /** 评价/多店商品字段/正文图集等任一需要详情时给出入口 */
 const showDetailBtn = computed(
@@ -1095,6 +1145,7 @@ const showDetailBtn = computed(
     || logOn.value
     || roomEquipOn.value
     || reviewOn.value
+    || itemCommentOn.value
     || marketplace.value,
 )
 function shopLabel(row) {
@@ -1172,6 +1223,8 @@ async function openDetail(row) {
   threadList.value = []
   logList.value = []
   itemReviews.value = []
+  itemComments.value = []
+  itemCommentDraft.value = ''
   resetLogForm()
   if (!row?.id) return
   try {
@@ -1192,6 +1245,48 @@ async function openDetail(row) {
     } catch {
       itemReviews.value = []
     }
+  }
+  if (itemCommentOn.value) {
+    await loadItemComments(row.id)
+  }
+}
+
+async function loadItemComments(itemId) {
+  if (!itemCommentOn.value || !itemId) {
+    itemComments.value = []
+    return
+  }
+  itemCommentLoading.value = true
+  try {
+    const res = await http.get(`/api/item-comments/by-item/${itemId}`, { params: { page: 1, size: 50 } })
+    itemComments.value = res.data?.list || []
+  } catch {
+    itemComments.value = []
+  } finally {
+    itemCommentLoading.value = false
+  }
+}
+
+async function submitItemComment() {
+  if (!itemCommentOn.value || isGuest.value || !detail.value?.id) {
+    requireLogin(router)
+    return
+  }
+  const text = String(itemCommentDraft.value || '').trim()
+  if (!text) {
+    ElMessage.warning('请填写评论内容')
+    return
+  }
+  itemCommentSubmitting.value = true
+  try {
+    await http.post('/api/item-comments', { itemId: detail.value.id, body: text })
+    itemCommentDraft.value = ''
+    ElMessage.success('已发表')
+    await loadItemComments(detail.value.id)
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '发表失败')
+  } finally {
+    itemCommentSubmitting.value = false
   }
 }
 
@@ -1815,6 +1910,12 @@ async function openHighlightFromRoute() {
 .item-reviews .rv-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
 .item-reviews .rv p { margin: 0; line-height: 1.5; }
 .item-reviews .rv-reply { margin-top: 6px !important; color: var(--portal-muted, #64748b); font-size: 13px; }
+.item-comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.item-comments h4 { margin: 0 0 10px; font-size: 15px; }
+.item-comments .ic-compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.item-comments .ic { margin-bottom: 12px; }
+.item-comments .ic-meta { margin: 0 0 4px; font-size: 13px; color: var(--portal-muted, #64748b); }
+.item-comments .ic p { margin: 0; line-height: 1.5; }
 .thread { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .alog { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .alog-form { margin-bottom: 12px; }
