@@ -225,6 +225,13 @@ const showArchitecture = ref(false)
 const archLoading = ref(false)
 const showClasses = ref(false)
 const classLoading = ref(false)
+const showSequences = ref(false)
+const seqLoading = ref(false)
+const seqSvgSource = ref('')
+const seqMeta = ref(null)
+const seqLayoutKey = ref(0)
+const seqIndex = ref(0)
+const seqSelectedIds = ref([])
 const classSvgSource = ref('')
 const classMeta = ref(null)
 const classLayoutKey = ref(0)
@@ -1546,6 +1553,88 @@ async function reloadArchSvg() {
   }
 }
 
+const seqDownloadBase = computed(() => {
+  const id = p.value?.id || 'seq'
+  const d = seqMeta.value?.diagrams?.[seqIndex.value]
+  const title = d?.figure_title || seqMeta.value?.figure_title || '系统序列图'
+  return `${id}-序列图-${title}`
+})
+
+async function fetchSeqSvg() {
+  if (!p.value) return ''
+  const ids = seqSelectedIds.value?.length === 3 ? seqSelectedIds.value : undefined
+  const url = `${api.sequencesSvgUrl(p.value.id, { index: seqIndex.value, ids })}&t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('sequence svg')
+  return await res.text()
+}
+
+async function loadSequences(ids) {
+  if (!p.value) return
+  const body = await api.getSequences(p.value.id, { ids })
+  seqMeta.value = body
+  seqSelectedIds.value = Array.isArray(body?.selected) ? [...body.selected] : []
+  if (seqIndex.value >= (body?.diagrams?.length || 0)) seqIndex.value = 0
+  seqSvgSource.value = await fetchSeqSvg()
+  seqLayoutKey.value += 1
+}
+
+async function openSequences() {
+  if (!p.value || seqLoading.value || artifactsFrozen.value) return
+  seqLoading.value = true
+  try {
+    await loadSequences(seqSelectedIds.value.length === 3 ? seqSelectedIds.value : undefined)
+    showSequences.value = true
+  } catch {
+    message.error('无法加载系统序列图')
+  } finally {
+    seqLoading.value = false
+  }
+}
+
+async function reloadSeqSvg() {
+  if (!p.value || seqLoading.value) return
+  seqLoading.value = true
+  try {
+    await loadSequences(seqSelectedIds.value.length === 3 ? seqSelectedIds.value : undefined)
+  } catch {
+    message.error('无法重新加载序列图')
+  } finally {
+    seqLoading.value = false
+  }
+}
+
+async function onSeqApplySelection(ids) {
+  if (!Array.isArray(ids) || ids.length !== 3) {
+    message.warning('请恰好勾选 3 个交付功能')
+    return
+  }
+  seqLoading.value = true
+  try {
+    seqIndex.value = 0
+    await loadSequences(ids)
+  } catch (e) {
+    message.error(e?.response?.data?.detail || '无法按所选功能生成序列图')
+  } finally {
+    seqLoading.value = false
+  }
+}
+
+async function onSeqDiagramIndex(i) {
+  const n = Number(i) || 0
+  if (n === seqIndex.value) return
+  seqIndex.value = n
+  seqLoading.value = true
+  try {
+    seqSvgSource.value = await fetchSeqSvg()
+    seqLayoutKey.value += 1
+  } catch {
+    message.error('无法切换序列图')
+  } finally {
+    seqLoading.value = false
+  }
+}
+
 const classDownloadBase = computed(() => {
   const id = p.value?.id || 'classes'
   const title = classMeta.value?.figure_title || classMeta.value?.title || '系统类图'
@@ -2363,6 +2452,7 @@ watch(artifactsFrozen, (frozen) => {
   showEr.value = false
   showModules.value = false
   showArchitecture.value = false
+  showSequences.value = false
   showClasses.value = false
   showUsecases.value = false
   showTestcases.value = false
@@ -2562,6 +2652,9 @@ onUnmounted(() => {
     onTcFields,
     onUsecaseActor,
     openArchitecture,
+    openSequences,
+    onSeqApplySelection,
+    onSeqDiagramIndex,
     openClasses,
     openEr,
     openFillPlan,
@@ -2623,6 +2716,7 @@ onUnmounted(() => {
     refreshRuntime,
     reload,
     reloadArchSvg,
+    reloadSeqSvg,
     reloadClassSvg,
     onClassDisplayMode,
     saveClassLayout,
@@ -2680,6 +2774,14 @@ onUnmounted(() => {
     showFillPlan,
     showJobSteps,
     showArchitecture,
+    showSequences,
+    seqDownloadBase,
+    seqIndex,
+    seqLayoutKey,
+    seqLoading,
+    seqMeta,
+    seqSelectedIds,
+    seqSvgSource,
     showClasses,
     showModules,
     showPptCheck,

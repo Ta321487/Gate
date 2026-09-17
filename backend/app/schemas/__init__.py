@@ -518,6 +518,10 @@ class SampleProposalRequest(BaseModel):
     pack_id: Optional[str] = Field(default=None, description="指定选题包 ID")
     seed: Optional[int] = Field(default=None, description="随机种子")
     use_llm: bool = Field(default=True, description="是否用 DeepSeek/Gemini 润色")
+    pressure: bool = Field(
+        default=False,
+        description="真单压力档：写入本域扫词开触发词，便于空窗模拟真开题挂载",
+    )
 
 
 class SampleProposalResult(BaseModel):
@@ -534,3 +538,4 @@ class SampleProposalResult(BaseModel):
     ai_feature: Optional[str] = Field(
         default=None, description="若随机写入了 A 类 AI 挂件功能句则返回该句"
     )
+    pressure: bool = Field(default=False, description="是否真单压力档")
