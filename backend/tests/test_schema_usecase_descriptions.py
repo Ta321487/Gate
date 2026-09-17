@@ -127,6 +127,39 @@ class UsecaseDescriptionTests(unittest.TestCase):
         self.assertEqual(len(picked), 2)
         self.assertEqual({p["name"] for p in picked}, {"A", "B"})
 
+    def test_actor_follows_staff_post_pack_not_admin_label(self) -> None:
+        """管理端菜单若落在某 staff_post pack 内，执行者用岗位 label，不用总管称呼。"""
+        schema = {
+            "title": "测试系统",
+            "roles": {
+                "user": {"id": "user", "label": "读者"},
+                "admin": {"id": "admin", "label": "馆长（总管）"},
+                "subadmin": {
+                    "id": "subadmin",
+                    "label": "馆员",
+                    "staffPostId": "lib_clerk",
+                },
+                "staff_posts": [
+                    {"id": "lib_clerk", "label": "馆员", "packs": ["ticket_ops"]},
+                ],
+            },
+            "menus": {
+                "user": [{"key": "my_tickets", "label": "我的申请"}],
+                "admin": [
+                    {"key": "ticket_pending", "label": "待办审核"},
+                    {"key": "users", "label": "用户管理", "superOnly": True},
+                ],
+            },
+            "capabilities": ["org_users"],
+            "entities": {"archive": {"label": "图书"}},
+        }
+        cands = build_usecase_description_candidates(schema)
+        by = {(c["side"], c["menu_key"]): c for c in cands}
+        self.assertEqual(by[("user", "my_tickets")]["actor"], "读者")
+        self.assertEqual(by[("admin", "ticket_pending")]["actor"], "馆员")
+        self.assertNotIn("馆长", by[("admin", "ticket_pending")]["name"])
+        self.assertEqual(by[("admin", "users")]["actor"], "馆长")
+
 
 if __name__ == "__main__":
     unittest.main()
