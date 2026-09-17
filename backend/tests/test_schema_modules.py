@@ -1,4 +1,4 @@
-"""功能模块图：默认按身份（材料优先）；按业务保留；细节可展开。"""
+"""功能模块图：默认按身份（开题命名 ∩ 交付 menus）；按业务保留；细节可展开。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from app.bake.schema.modules import (
+    _ALIGNED_LEAF_NOTE,
     _SCHEMA_LEAF_NOTE,
     apply_proposal_hints,
     module_model,
@@ -139,16 +140,28 @@ class ModuleDiagramTests(unittest.TestCase):
         )
         self.assertEqual(model["layout"], "identity")
         self.assertEqual(model["leaf_source"], "materials")
-        self.assertEqual(model["leaf_source_note"], "")
+        self.assertEqual(model["leaf_source_note"], _ALIGNED_LEAF_NOTE)
         branches = {c["label"]: c for c in model["root"]["children"]}
         self.assertIn("用户", branches)
-        self.assertIn("商家", branches)
         self.assertIn("管理员", branches)
+        # 未交付商家角色 → 整枝丢掉，禁止图上有包里无
+        self.assertNotIn("商家", branches)
         user_labs = [c["label"] for c in branches["用户"]["children"]]
         self.assertIn("商品模块", user_labs)
+        self.assertIn("购物车", user_labs)
+        self.assertIn("订单模块", user_labs)
+        # 开题有、交付无 → 不进图
+        self.assertNotIn("支付模块", user_labs)
+        self.assertNotIn("申请售后", user_labs)
+        self.assertNotIn("评价模块", user_labs)
+        self.assertNotIn("客服模块", user_labs)
+        blob = " ".join(self._walk_labels(model))
+        self.assertNotIn("区块链", blob)
         # 默认不展开细节
         goods = next(c for c in branches["用户"]["children"] if c["label"] == "商品模块")
         self.assertNotIn("children", goods)
+        svg = render_module_svg(model)
+        self.assertNotIn(_ALIGNED_LEAF_NOTE, svg)
 
     def test_expand_details(self) -> None:
         schema = self._shop_schema()
