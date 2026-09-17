@@ -1,6 +1,7 @@
-"""测试开题生成：TopicPack 选题 + 九段正式腔模板。
+"""测试开题生成：TopicPack 选题 + 九段正式腔模板（主要功能按角色模块树展开）。
 
 不读 DOMAINS 原文当唯一真理；pack 独立维护以覆盖常见本科/专科 Web 毕设。
+角色模块树见 proposal_role_modules（对齐 opening-feature-delivery-map）。
 可选 LLM 润色见 app.llm.agents.run_sample_proposal_agent。
 HTTP：POST /tools/sample-proposal；CLI：
 
@@ -19,6 +20,13 @@ from pathlib import Path
 from typing import Any
 
 from app.bake.proposal_packs import PACKS
+from app.bake.proposal_pressure import inject_pressure_into_tree
+from app.bake.proposal_role_modules import (
+    flatten_role_module_text,
+    render_role_modules_block,
+    resolve_role_modules,
+    roles_para_from_tree,
+)
 
 _HEADER = """本科毕业设计（论文）开题报告
 
@@ -56,6 +64,7 @@ class SampleProposal:
     digressions: list[str] | None = None
     l1_extras: list[str] | None = None
     ai_feature: str | None = None
+    pressure: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -68,6 +77,7 @@ class SampleProposal:
             "digressions": list(self.digressions or []),
             "l1_extras": list(self.l1_extras or []),
             "ai_feature": self.ai_feature,
+            "pressure": self.pressure,
         }
 
 
@@ -118,6 +128,17 @@ def _features_block(features: list[str], l1: list[str]) -> str:
     for j, extra in enumerate(l1, 1):
         lines.append(f"{n + j}. 若进度允许，可补充{extra}。")
     return "\n".join(lines)
+
+
+def _ai_lines_from_features(features: list[str]) -> list[str]:
+    from app.bake.stack_scan import AI_ASSISTANT_HINTS
+
+    out: list[str] = []
+    for f in features or []:
+        s = str(f).strip()
+        if s and any(h in s for h in AI_ASSISTANT_HINTS):
+            out.append(s)
+    return out
 
 
 def _out_scope_phrase(digressions: list[str]) -> str:
@@ -182,10 +203,15 @@ _AI_FEATURE_BY_DOMAIN: dict[str, tuple[str, ...]] = {
 _AI_FEATURE_CHANCE = 0.34
 
 
-def _features_blob_wants_ai(features: list[str]) -> bool:
+def _features_blob_wants_ai(features: list[str], pack: dict[str, Any] | None = None) -> bool:
     from app.bake.stack_scan import AI_ASSISTANT_HINTS
 
     blob = "".join(features or [])
+    if pack is not None:
+        try:
+            blob += flatten_role_module_text(resolve_role_modules(pack))
+        except Exception:  # noqa: BLE001
+            pass
     return any(h in blob for h in AI_ASSISTANT_HINTS)
 
 
@@ -202,7 +228,7 @@ def maybe_inject_ai_feature(
 ) -> str | None:
     """按概率向 pack['features'] 追加一条 A 类 AI 功能句；返回写入的句子或 None。"""
     features = list(pack.get("features") or [])
-    if _features_blob_wants_ai(features):
+    if _features_blob_wants_ai(features, pack):
         return None
     want = bool(force) if force is not None else (rng.random() < _AI_FEATURE_CHANCE)
     if not want:
@@ -248,6 +274,7 @@ def render_template(
     l1_extras: list[str],
     title: str | None = None,
     when: datetime | None = None,
+    pressure: bool = False,
 ) -> str:
     when = when or datetime.now()
     title = title or pack["title"]
@@ -256,25 +283,43 @@ def render_template(
     admin = pack.get("admin_role") or "管理人员"
     out_scope = _out_scope_phrase(digressions)
     features = list(pack.get("features") or [])
-    feat_block = _features_block(features, l1_extras)
+    role_tree = resolve_role_modules(pack)
+    if pressure:
+        role_tree = inject_pressure_into_tree(
+            role_tree, str(pack.get("anchor_domain") or "")
+        )
+    ai_from_feats = _ai_lines_from_features(features)
+    ai_line = (ai_from_feats[0] if ai_from_feats else None)
+    if role_tree:
+        feat_block = render_role_modules_block(
+            role_tree, l1_extras=l1_extras, ai_line=ai_line
+        )
+        roles_para = roles_para_from_tree(role_tree, pack)
+    else:
+        feat_block = _features_block(features, l1_extras)
+        roles_para = pack.get("roles_para") or (
+            f"系统面向{user}与{admin}。"
+            f"{user}可注册登录、维护个人资料、办理主业务并查看本人记录与公告；"
+            f"管理侧负责基础数据维护、业务审核或办理、用户与公告管理。"
+            f"总管与业务岗位职责在详细设计中划分。"
+        )
     main_path = pack.get("main_path") or "主业务办理"
     focus = pack.get("focus") or main_path
     problem = pack["problem"]
     value = pack["value"]
     commercial = pack["commercial_ref"]
     research_focus = pack.get("research_focus") or f"围绕{focus}"
-    roles_para = pack.get("roles_para") or (
-        f"系统面向{user}与{admin}。"
-        f"{user}可注册登录、维护个人资料、办理主业务并查看本人记录与公告；"
-        f"管理侧负责基础数据维护、业务审核或办理、用户与公告管理。"
-        f"总管与业务岗位职责在详细设计中划分。"
-    )
     key_scope = pack.get("key_scope") or (
         f"开题调研阶段易涉及{out_scope}等扩展能力；"
         f"本期以{main_path}主流程及必要基础数据为准，其余能力不作为答辩必交项。"
     )
     # 若 pack 自带 key_scope 模板含 {out_scope}
     key_scope = key_scope.format(out_scope=out_scope, main_path=main_path)
+    role_focus = (
+        "各角色功能边界与主路径状态流转"
+        if role_tree and len(role_tree) >= 2
+        else "用户端与管理端的功能边界"
+    )
 
     body = f"""{_HEADER.format(title=title, year=when.year, month=when.month)}
 
@@ -312,7 +357,7 @@ def render_template(
 
 （三）研究重点
 
-{research_focus}，以及用户端与管理端的功能边界，形成从办理到记录查询的基本业务过程。
+{research_focus}，以及{role_focus}，形成从办理到记录查询的基本业务过程。
 
 
 五、关键问题与解决思路
@@ -356,6 +401,7 @@ def build_sample_proposal(
     domain: str | None = None,
     seed: int | None = None,
     pack_id: str | None = None,
+    pressure: bool = False,
 ) -> SampleProposal:
     rng = random.Random(seed)
     if pack_id:
@@ -370,10 +416,17 @@ def build_sample_proposal(
     title = rng.choice(titles) if titles else pack["title"]
     pack = apply_title_variant_pack(pack, title)
     digressions = _sample_some(rng, list(pack.get("digressions") or []), 1, 2)
-    l1 = _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
+    # 压力档：不再叠「若进度允许」淡化句，扫词叶子已写入拟实现
+    l1 = [] if pressure else _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
     ai_line = maybe_inject_ai_feature(rng, pack)
 
-    text = render_template(pack, digressions=digressions, l1_extras=l1, title=title)
+    text = render_template(
+        pack,
+        digressions=digressions,
+        l1_extras=l1,
+        title=title,
+        pressure=pressure,
+    )
 
     return SampleProposal(
         pack_id=pack["id"],
@@ -384,6 +437,7 @@ def build_sample_proposal(
         digressions=digressions,
         l1_extras=l1,
         ai_feature=ai_line,
+        pressure=pressure,
     )
 
 
@@ -422,6 +476,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pack", dest="pack_id", help="指定选题包 id")
     ap.add_argument("--seed", type=int, help="随机种子")
     ap.add_argument("--no-llm", action="store_true", help="不调用 DeepSeek/Gemini")
+    ap.add_argument(
+        "--pressure",
+        action="store_true",
+        help="真单压力档：写入本域扫词开触发词",
+    )
     ap.add_argument("--list", action="store_true", help="列出选题包")
     ap.add_argument("--check-match", action="store_true", help="打印 match_text（不改文）")
     ap.add_argument("--out", type=Path, help="输出文件路径")
@@ -435,7 +494,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         sample = build_sample_proposal(
-            domain=args.domain, seed=args.seed, pack_id=args.pack_id
+            domain=args.domain,
+            seed=args.seed,
+            pack_id=args.pack_id,
+            pressure=bool(args.pressure),
         )
     except ValueError as e:
         print(e, file=sys.stderr)
@@ -448,6 +510,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"pack={sample.pack_id} domain={sample.anchor_domain}")
     print(f"title={sample.title}")
     print(f"used_llm={used_llm}")
+    print(f"pressure={sample.pressure}")
     if sample.digressions:
         print(f"digressions={sample.digressions}")
     if sample.l1_extras:
