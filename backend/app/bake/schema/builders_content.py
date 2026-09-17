@@ -15,9 +15,11 @@ from app.bake.schema.shells import (
 
 def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影视点播：商业默认；校园媒资 / 点播课分档。"""
+    from app.bake.features.user_publish import scan_user_publish
     from app.bake.scene_scan import media_product_kind
 
     kind = media_product_kind(title, proposal_text)
+    user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-MEDIA")
     if kind == "coursevod":
         noun, plural, author_lab, cat_lab = "课程视频", "课程库", "主讲教师", "课程类型"
         brow, user, admin = "点播课", "学员", "课程视频库主管（总管）"
@@ -39,6 +41,8 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "片源仅供学习使用；请文明观影，勿传播未授权内容。"
         banner_lead = "电影、电视剧、综艺分类浏览，点击即可播放。"
         menu_u, fav_lead = "片单检索", "收藏想看的影视综，方便下次回看。"
+    if user_publish:
+        lead = lead.rstrip("。") + "；开题点名投稿时可上传片源链接。"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -63,8 +67,9 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             users_menu="用户管理",
             auth_eyebrow=brow,
             auth_lead=lead,
-            auth_points=["验证码登录", f"{'课程' if kind == 'coursevod' else '片单'}检索与播放", "收藏想看"],
-            register_hint="注册后可浏览并收藏",
+            auth_points=["验证码登录", f"{'课程' if kind == 'coursevod' else '片单'}检索与播放", "收藏想看"]
+            + (["上传投稿"] if user_publish else []),
+            register_hint="注册后可浏览并收藏" + ("、投稿" if user_publish else ""),
             notice_title="点播须知" if kind == "coursevod" else "观影须知",
             notice_body=notice,
             notice_page_title="平台公告",
@@ -73,6 +78,7 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             play_url_field="isbn",
             stock_display="toggle",
             soft_delete=True,
+            user_publish=user_publish,
         ),
         [
             {"title": "热播片单" if kind != "coursevod" else "热门课程", "lead": banner_lead},
@@ -85,9 +91,11 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """在线音乐：商业默认；校园曲库 / 点歌台分档。"""
+    from app.bake.features.user_publish import scan_user_publish
     from app.bake.scene_scan import music_product_kind
 
     kind = music_product_kind(title, proposal_text)
+    user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-MUSIC")
     if kind == "karaoke":
         brow, user, admin = "点歌台", "听众", "点歌台主管（总管）"
         lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲。"
@@ -106,6 +114,8 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "曲源仅供学习使用；请尊重版权，勿传播未授权内容。"
         banner_lead = "流行、摇滚等曲风分类浏览。"
         cat_lab = "曲风"
+    if user_publish:
+        lead = lead.rstrip("。") + "；开题点名时可上传曲目链接。"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -130,8 +140,9 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             users_menu="用户管理",
             auth_eyebrow=brow,
             auth_lead=lead,
-            auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"],
-            register_hint="注册后可浏览曲库并收藏",
+            auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"]
+            + (["上传曲目"] if user_publish else []),
+            register_hint="注册后可浏览曲库并收藏" + ("、上传" if user_publish else ""),
             notice_title="点歌须知" if kind == "karaoke" else "试听须知",
             notice_body=notice,
             notice_page_title="平台公告",
@@ -140,6 +151,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             play_url_field="isbn",
             stock_display="toggle",
             soft_delete=True,
+            user_publish=user_publish,
         ),
         [
             {"title": "热门曲目" if kind == "karaoke" else "热播歌单", "lead": banner_lead},
@@ -263,9 +275,11 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     上架/下架走 softDelete（shelfCopy：在架/已下架），不再叠一层 stock 开关，
     避免「可阅读/已阅读」与软删文案打架、看起来像资讯 CMS。
     """
+    from app.bake.features.user_publish import scan_user_publish
     from app.bake.scene_scan import blog_product_kind
 
     kind = blog_product_kind(title, proposal_text)
+    user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-BLOG")
     if kind == "press":
         brow, user, admin = "记者站稿件", "读者", "记者站主编（总管）"
         lead = "验证码登录；按分类阅读广播稿与图文报道，收藏喜欢的稿件（由编辑上架发布）。"
@@ -284,6 +298,9 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         notice = "文章仅供学习使用；转载请注明出处。内容由主编维护发布。"
         banner_lead = "技术、随笔、教程分类浏览富文本正文。"
         cat_lab, article_lab = "分类", "文章"
+    if user_publish:
+        lead = lead.rstrip("。") + "；开题点名投稿时可自行发布文稿。"
+        notice = notice.rstrip("。") + "；用户投稿即时可见，违规由管理员下架。"
     return _with_portal_banners(
         archive_favorites_schema(
             title,
@@ -308,9 +325,11 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             users_menu="用户管理",
             auth_eyebrow=brow,
             auth_lead=lead,
-            auth_points=["验证码登录", f"{article_lab}检索与阅读", "收藏订阅"],
-            register_hint=f"注册后可浏览{article_lab}并收藏",
-            notice_title="投稿须知" if kind == "press" else "阅读须知",
+            auth_points=["验证码登录", f"{article_lab}检索与阅读", "收藏订阅"]
+            + (["在线投稿"] if user_publish else []),
+            register_hint=f"注册后可浏览{article_lab}并收藏"
+            + ("、投稿" if user_publish else ""),
+            notice_title="投稿须知" if kind == "press" or user_publish else "阅读须知",
             notice_body=notice,
             notice_page_title="站点公告",
             notice_page_lead="上新与征稿通知，点击条目阅读全文。",
@@ -318,6 +337,7 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             body_field="isbn",
             stock_display="hidden",
             soft_delete=True,
+            user_publish=user_publish,
         ),
         [
             {"title": f"最新{article_lab}", "lead": banner_lead},

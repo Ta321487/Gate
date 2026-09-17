@@ -38,7 +38,8 @@
 
 | 能力 | 状态 | 含义 | 挂载口径 |
 |------|------|------|----------|
-| `guestbook` | ✅ | 门户留言；总管删与简短回复（≠ 公告 ≠ 论坛） | 域默认 SHOP/FOOD/GENERIC·TRADE；否则开题写「留言」才挂 |
+| `guestbook` | ✅ | 门户留言；总管删与简短回复（≠ 公告 ≠ 论坛 ≠ **条下评论**） | 域默认 SHOP/FOOD/GENERIC·TRADE 及 MEDIA/MUSIC/BLOG；否则开题写「留言」才挂 |
+| `item_comment` | ✅ | 档案详情下发表/列表评论；管理端删除 | **开题写「评论/影评/曲评…」才挂**；仅 MEDIA/MUSIC/BLOG；≠guestbook ≠论坛回帖 ≠订单评价 |
 | `favorites` | ✅ | 收藏夹：收藏/取消，再加购 | 域默认 SHOP/FOOD；否则开题写「收藏」才挂 |
 | `post_like` | ✅ | 档案/帖一人一赞开关与计数 | **开题写「点赞」才挂**（E-03）；FORUM/BLOG/MEDIA/MUSIC；无域默认 |
 | `content_report` | ✅ | 用户举报→管理忽略/下架 | **开题写「举报」才挂**（E-03）；FORUM/DATING/BLOG；无域默认 |

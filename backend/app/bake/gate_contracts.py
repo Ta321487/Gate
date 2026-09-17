@@ -293,6 +293,40 @@ def merge_guestbook_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+_GATE_ITEM_COMMENT_FILES = [
+    "backend/src/main/java/com/thesis/service/ItemCommentStore.java",
+    "backend/src/main/java/com/thesis/controller/ItemCommentController.java",
+    "frontend/src/views/user/ArchiveBrowse.vue",
+    "frontend/src/views/admin/ItemCommentAdmin.vue",
+    "frontend/src/router/index.js",
+]
+
+
+def merge_item_comment_gate(gate: dict, caps: list[str] | None) -> dict:
+    """条下评论：详情抽屉 + 管理端删评 + API。"""
+    caps = set(caps or [])
+    if "item_comment" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_ITEM_COMMENT_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "admin/item-comments" not in have:
+        routes.append({"seg": "admin/item-comments", "from_feature": "条下评论"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["item_comment"] = {
+        "file": "ItemCommentController.java",
+        "need": ["/api/item-comments"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
 _GATE_AI_ASSISTANT_FILES = [
     "backend/src/main/java/com/thesis/service/AiAssistantStore.java",
     "backend/src/main/java/com/thesis/service/AiBizContext.java",
@@ -1267,8 +1301,10 @@ def gate_archive_favorites(
     category_feature: str = "分类管理",
     dashboard_feature: str = "管理端工作台",
     notice_feature: str = "公告管理",
+    user_publish: bool = False,
+    publish_feature: str = "用户投稿",
 ) -> dict:
-    """内容流：档案浏览 + 即时收藏（无单据审核）。"""
+    """内容流：档案浏览 + 即时收藏（无单据审核）；可选用户投稿。"""
     routes = [
         {"seg": "archive", "from_feature": archive_feature},
         {"seg": "favorites", "from_feature": favorites_feature},
@@ -1282,12 +1318,21 @@ def gate_archive_favorites(
         {"seg": "profile", "from_baseline": "profile"},
         {"seg": "register", "from_baseline": "register"},
     ]
+    files = list(_GATE_ARCHIVE_FAVORITES_FILES)
+    flow_api: dict = {
+        "favorites": {"file": "FavoriteController.java", "need": ["/api/favorites"]},
+    }
+    if user_publish:
+        routes.insert(1, {"seg": "my-archive", "from_feature": publish_feature})
+        files.append("frontend/src/views/user/MyArchive.vue")
+        flow_api["publish"] = {
+            "file": "ArchiveController.java",
+            "need": ["/api/archive/publish"],
+        }
     return {
         "routes": routes,
-        "files": list(_GATE_ARCHIVE_FAVORITES_FILES),
-        "flow_api": {
-            "favorites": {"file": "FavoriteController.java", "need": ["/api/favorites"]},
-        },
+        "files": files,
+        "flow_api": flow_api,
         "admin_invariants": {
             "require_super_auth": True,
             "master_kind": "archive",
@@ -1295,6 +1340,40 @@ def gate_archive_favorites(
             "super_menus": ["users", "content", "archive", "category"],
         },
     }
+
+
+def merge_user_publish_gate(
+    gate: dict,
+    *,
+    enabled: bool,
+    publish_feature: str = "用户投稿",
+) -> dict:
+    """扫词开 userPublish 后叠加 my-archive 与 publish API（内容壳 favorites 门禁）。"""
+    if not enabled:
+        return gate
+    out = dict(gate or {})
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "my-archive" not in have:
+        routes.insert(0, {"seg": "my-archive", "from_feature": publish_feature})
+    out["routes"] = routes
+    files = list(out.get("files") or [])
+    for f in (
+        "frontend/src/views/user/MyArchive.vue",
+        "frontend/src/views/user/ArchiveBrowse.vue",
+        "backend/src/main/java/com/thesis/controller/ArchiveController.java",
+        "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    flow = dict(out.get("flow_api") or {})
+    flow["publish"] = {
+        "file": "ArchiveController.java",
+        "need": ["/api/archive/publish"],
+    }
+    out["flow_api"] = flow
+    return out
 
 
 _GATE_UX_FILES = [

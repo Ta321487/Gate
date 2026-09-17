@@ -63,12 +63,16 @@ def check_schema_skin_leaks(
             if "志愿" in val or "互选" in val:
                 issues.append(f"DOM-CARPOOL {key} 仍含志愿/互选皮: {val!r}")
 
-    # 论坛默认不得挂私信/推荐
+    # 论坛：默认不挂私信/推荐；开题点名（扫词命中）才允许
     if dom == "DOM-FORUM":
-        if "dm" in caps:
-            issues.append("DOM-FORUM 默认不得挂 dm（开题点名另议，默认壳禁止）")
-        if "recommend" in caps:
-            issues.append("DOM-FORUM 默认不得挂 recommend")
+        from app.bake.features.core_cap_scan import scan_recommend
+        from app.bake.features.dm import scan_dm
+
+        blob = f"{title or ''}\n{proposal_text or ''}"
+        if "dm" in caps and not scan_dm(blob):
+            issues.append("DOM-FORUM 未写私信/私聊却挂了 dm")
+        if "recommend" in caps and not scan_recommend(blob):
+            issues.append("DOM-FORUM 未写推荐却挂了 recommend")
 
     # 应急上报皮不得仍是「提交打卡」
     if dom == "DOM-EVENT" and (title or proposal_text):
