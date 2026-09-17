@@ -79,6 +79,15 @@ export const api = {
     }),
   getArchitecture: (id) => http.get(`/projects/${id}/schema/architecture`),
   architectureSvgUrl: (id) => `/api/projects/${id}/schema/architecture.svg`,
+  getSequences: (id, { ids } = {}) =>
+    http.get(`/projects/${id}/schema/sequences`, {
+      params: ids?.length ? { ids: ids.join(',') } : {},
+    }),
+  sequencesSvgUrl: (id, { index = 0, ids } = {}) => {
+    const q = new URLSearchParams({ index: String(index) })
+    if (ids?.length) q.set('ids', ids.join(','))
+    return `/api/projects/${id}/schema/sequences.svg?${q}`
+  },
   getClasses: (id, { display = 'sample' } = {}) =>
     http.get(`/projects/${id}/schema/classes`, { params: { display } }),
   classesSvgUrl: (id, { display = 'sample' } = {}) => {

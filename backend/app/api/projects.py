@@ -892,6 +892,92 @@ async def download_architecture_svg(
     )
 
 
+@router.get("/{project_id}/schema/sequences", summary="系统序列图模型")
+async def get_sequences(
+    project_id: str,
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔；省略则默认核心三选"),
+    db: AsyncSession = Depends(get_db),
+):
+    """固定 3 张核心功能序列图；角色与文案取自 bake 交付，可勾选功能。"""
+    from app.bake.schema.sequence import load_sequence_model, parse_selection_ids
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = load_sequence_model(
+            ws,
+            proposal_text=prop,
+            selection=selection,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/sequences.svg", summary="下载系统序列图 SVG")
+async def download_sequences_svg(
+    project_id: str,
+    index: int = Query(0, ge=0, le=2, description="第几张序列图 0..2"),
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.sequence import (
+        load_sequence_model,
+        parse_selection_ids,
+        render_sequence_svg,
+    )
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = load_sequence_model(
+            ws,
+            proposal_text=prop,
+            selection=selection,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    diagrams = model.get("diagrams") or []
+    if index >= len(diagrams):
+        raise HTTPException(404, "序列图索引超出范围")
+    svg = render_sequence_svg(diagrams[index])
+    fname = f"{project_id}-sequence-{index}.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
 @router.get("/{project_id}/schema/classes", summary="系统类图模型")
 async def get_classes(
     project_id: str,
@@ -1573,7 +1659,13 @@ async def resolve_delivery_fix_note(
 async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.llm.agents import run_qa_agent
     from app.llm.runtime import load_llm_runtime
-    from app.services.delivery_review import get_review_state, save_review_state, verify_round
+    from app.services.delivery_review import (
+        get_review_state,
+        is_zip_stale,
+        open_fix_notes,
+        save_review_state,
+        verify_round,
+    )
 
     p = await db.get(Project, project_id)
     if not p:
@@ -1596,11 +1688,20 @@ async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get
     except Exception as qe:  # noqa: BLE001
         logger.debug("verify QA skip · %s", qe)
     result = verify_round(p, ws)
-    downloadable = project_svc.gates_allow_delivery(p.gates) and not project_svc.delivery_block_reason(p)
-    p.zip_ready = bool(downloadable and p.zip_path and Path(str(p.zip_path)).exists())
+    # 勿经 delivery_block_reason 反推：它自身依赖 zip_ready，会形成「永远升不上去」
+    zip_exists = bool(p.zip_path and Path(str(p.zip_path)).exists())
+    st = get_review_state(p)
+    ready = (
+        bool(result.get("round_pass"))
+        and bool(result.get("monotonic_ok"))
+        and project_svc.gates_allow_delivery(p.gates)
+        and zip_exists
+        and not is_zip_stale(p, ws)
+        and not open_fix_notes(st)
+    )
     if not result.get("monotonic_ok"):
         project_svc.reset_delivery_mark(p)
-        p.zip_ready = False
+    p.zip_ready = ready
     await db.commit()
     await db.refresh(p)
     result["download_blocked_reason"] = project_svc.delivery_block_reason(p)

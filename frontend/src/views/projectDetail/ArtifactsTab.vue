@@ -235,7 +235,7 @@
               <ContentLoading v-if="artifactLoading" :rows="2" compact block />
               <template v-else>
               <p class="small muted mb-8">
-                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图优先读开题等材料按身份枚举；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
+                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图 / 系统序列图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图按身份时以交付菜单为叶子真源，开题「功能模块划分为」只辅助命名（未交付模块不进图）；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；序列图固定 3 张核心功能（可勾选），四槽位与六条画法，文案取自 bake；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
               <div class="thesis-groups">
                 <div v-for="g in thesisGroups" :key="g.id" class="thesis-group">
@@ -623,7 +623,7 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openEr, openFillPlan, openModules,
+  onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openSequences, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
@@ -638,7 +638,7 @@ const {
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
-  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading,
+  unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading, seqLoading,
 } = bindPd()
 
 const thesisGroups = computed(() => [
@@ -669,6 +669,14 @@ const thesisGroups = computed(() => [
         action: '打开类图',
         loading: classLoading.value,
         open: openClasses,
+      },
+      {
+        id: 'sequences',
+        title: '系统序列图',
+        desc: '固定 3 张 · 勾选交付功能 · 角色/页面/控制器/数据库 · 实线() / 虚线无() · bake 文案',
+        action: '打开序列图',
+        loading: seqLoading.value,
+        open: openSequences,
       },
     ],
   },

@@ -173,6 +173,23 @@
         @reload="reloadArchSvg"
       />
     </n-modal>
+    <n-modal v-model:show="showSequences" preset="card" title="系统序列图" style="width:min(1100px,96vw)">
+      <SequenceDiagramViewer
+        v-if="showSequences"
+        :key="seqLayoutKey"
+        :svg-source="seqSvgSource"
+        :download-name="seqDownloadBase"
+        :source-note="seqMeta?.source_note || ''"
+        :loading="seqLoading"
+        :candidates="seqMeta?.candidates || []"
+        :selected-ids="seqSelectedIds"
+        :diagrams="seqMeta?.diagrams || []"
+        :diagram-index="seqIndex"
+        @reload="reloadSeqSvg"
+        @apply-selection="onSeqApplySelection"
+        @update:diagram-index="onSeqDiagramIndex"
+      />
+    </n-modal>
     <n-modal v-model:show="showClasses" preset="card" title="系统类图" style="width:min(1280px,96vw)">
       <ClassDiagramViewer
         v-if="showClasses"
@@ -247,6 +264,7 @@ import { computed, ref, watch } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ArchitectureDiagramViewer from '../../components/ArchitectureDiagramViewer.vue'
+import SequenceDiagramViewer from '../../components/SequenceDiagramViewer.vue'
 import ClassDiagramViewer from '../../components/ClassDiagramViewer.vue'
 import ErDiagramViewer from '../../components/ErDiagramViewer.vue'
 import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
@@ -281,15 +299,15 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openClasses, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openUsecaseDescriptions, openUsecases, openSequences, onSeqApplySelection, onSeqDiagramIndex, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
-  refreshJob, refreshRuntime, reload, reloadArchSvg, reloadClassSvg, saveClassLayout, resetClassLayout, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
+  refreshJob, refreshRuntime, reload, reloadArchSvg, reloadSeqSvg, reloadClassSvg, saveClassLayout, resetClassLayout, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
-  securityOn, securityOptions, showArchitecture, showClasses, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
+  securityOn, securityOptions, showArchitecture, showSequences, showClasses, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, showUsecaseDescriptions, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
@@ -298,6 +316,7 @@ const {
   ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdSourceNote,
   undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
   reloadUsecaseDescriptions, archDownloadBase, archLayoutKey, archLoading, archMeta, archSvgSource,
+  seqDownloadBase, seqIndex, seqLayoutKey, seqLoading, seqMeta, seqSelectedIds, seqSvgSource,
   classDownloadBase, classEvidenceNote, classLayoutKey, classLoading, classMeta, classSvgSource,
   classDisplayMode, classDisplayModes, onClassDisplayMode,
 } = bindPd()
