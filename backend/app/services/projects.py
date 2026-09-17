@@ -478,7 +478,11 @@ def _clear_stale_zip_ready(project: Project) -> bool:
 
 
 def sync_checklist_from_workspace(project: Project) -> bool:
-    """工作区存在则重算 checklist / gates；缺失时仍收敛陈旧 zip_ready。"""
+    """工作区存在则重算 checklist / gates；缺失时仍收敛陈旧 zip_ready。
+
+    若交付复审存有 last_qa，重挂到 gates（与验圈同口径），避免刷新后 p3q/挡包消失。
+    复审进行中且尚未验圈通过时，只降不升 zip_ready（保留进入复审/跑 QA 的锁包意图）。
+    """
     if not project.workspace_path:
         return _clear_stale_zip_ready(project)
     ws = Path(project.workspace_path)
@@ -488,18 +492,29 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
     if generating:
         return _clear_stale_zip_ready(project)
+    from app.services.delivery_review import (
+        apply_qa_to_gates,
+        get_review_state,
+        is_zip_stale,
+        review_allows_zip_promote,
+    )
+
     gates = evaluate_domain_gates(ws, project.spec or {})
+    st = get_review_state(project)
+    last_qa = st.get("last_qa")
+    if isinstance(last_qa, dict) and last_qa:
+        apply_qa_to_gates(gates, last_qa)
     new_checklist = gates.get("checklist") or []
     new_gates = {k: v for k, v in gates.items() if k != "checklist"}
     downloadable = gates_allow_delivery(new_gates)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
-    from app.services.delivery_review import is_zip_stale
 
     if downloadable and zip_exists and is_zip_stale(project, ws):
         downloadable = False
+    can_promote = review_allows_zip_promote(project)
     # 门禁回退时关掉 zip_ready，并清掉人工已审待发/已发出
     zip_changed = False
-    if downloadable and zip_exists and not project.zip_ready:
+    if downloadable and zip_exists and not project.zip_ready and can_promote:
         project.zip_ready = True
         zip_changed = True
     elif (not downloadable or not zip_exists) and project.zip_ready:

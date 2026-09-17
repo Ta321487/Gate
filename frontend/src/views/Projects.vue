@@ -129,7 +129,7 @@
       :mask-closable="!sampleLoading"
     >
       <p class="small muted" style="margin:0 0 12px">
-        随机覆盖常见毕设方向，约三分之一会抽到智能客服/导购等 AI 挂件表述（可测匹配确认推荐开）；另有农产品电商等专项包。可选 DeepSeek / Gemini 润色（与「大模型」页启用链一致）。下载 txt 后拖到上方上传即可。
+        随机覆盖常见毕设方向；厚稿按角色写模块。勾选「真单压力」会写入本域扫词开触发词（候补/续借/排班等），便于空窗模拟真开题挂载。约三分之一会抽到 AI 挂件表述。可选 LLM 润色。下载 txt 后拖到上方上传即可。
       </p>
       <div class="stack" style="gap:10px">
         <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -148,12 +148,17 @@
             <n-switch v-model:value="sampleUseLlm" :disabled="sampleLoading" />
             LLM 润色（DeepSeek / Gemini）
           </label>
+          <label class="row small" style="gap:8px;align-items:center">
+            <n-switch v-model:value="samplePressure" :disabled="sampleLoading" />
+            真单压力（扫词开写全）
+          </label>
         </div>
         <div v-if="sampleResult" class="panel" style="margin:0">
           <div class="panel-bd stack" style="gap:8px;padding:12px">
             <div class="small">
               <strong>{{ sampleResult.title }}</strong>
               <span class="muted"> · {{ sampleResult.anchor_domain }} · {{ sampleResult.pack_id }}</span>
+              <span v-if="sampleResult.pressure" class="pill pill-amber" style="margin-left:6px">压力档</span>
               <span v-if="sampleResult.used_llm" class="pill pill-teal" style="margin-left:6px">已润色</span>
               <span v-else class="pill pill-neutral" style="margin-left:6px">模板</span>
             </div>
@@ -705,6 +710,7 @@ async function downloadAndDeliverRow(row) {
 const sampleOpen = ref(false)
 const sampleLoading = ref(false)
 const sampleUseLlm = ref(true)
+const samplePressure = ref(false)
 const sampleDomain = ref(null)
 const sampleResult = ref(null)
 const sampleDomainOptions = computed(() => domainCascaderOptions(catalog.value))
@@ -727,6 +733,7 @@ async function generateSample() {
     sampleResult.value = await api.sampleProposal({
       domain: sampleDomain.value || undefined,
       use_llm: sampleUseLlm.value,
+      pressure: samplePressure.value,
     })
   } catch {
     /* api interceptor 已提示 */

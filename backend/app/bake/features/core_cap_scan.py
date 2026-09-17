@@ -242,19 +242,30 @@ def attach_core_caps_schema(
                 ticket["pickLoanPeriod"] = True
         if parcelish:
             menu_lab = labels.get("deadlineMenuLabel") or "催领"
+            labels.setdefault("deadlineMenuLabel", menu_lab)
+            ensure_menu(
+                admin,
+                "deadline",
+                {"key": "deadline", "label": labels.get("deadlineMenuLabel") or menu_lab},
+                before_key="content",
+            )
         elif isinstance(ticket, dict) and (
             ticket.get("applicantCompleteOnly") or ticket.get("slaDeadline")
         ):
-            menu_lab = labels.get("deadlineMenuLabel") or "超时未处理"
+            # 报修/工单 SLA：处理时限列在工单列表，不挂借还壳的 /admin/overdue（ticket 壳无该路由）
+            labels.setdefault(
+                "deadlineMenuLabel",
+                labels.get("deadlineMenuLabel") or "超时未处理",
+            )
         else:
             menu_lab = labels.get("deadlineMenuLabel") or "逾期催还"
-        labels.setdefault("deadlineMenuLabel", menu_lab)
-        ensure_menu(
-            admin,
-            "deadline",
-            {"key": "deadline", "label": labels.get("deadlineMenuLabel") or menu_lab},
-            before_key="content",
-        )
+            labels.setdefault("deadlineMenuLabel", menu_lab)
+            ensure_menu(
+                admin,
+                "deadline",
+                {"key": "deadline", "label": labels.get("deadlineMenuLabel") or menu_lab},
+                before_key="content",
+            )
 
     if LOAN_RENEW_CAP in caps:
         ticket = ents.get("ticket")

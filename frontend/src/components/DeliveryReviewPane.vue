@@ -417,27 +417,54 @@ const lastQaFindings = computed(() => {
 })
 
 const lastVerifySummary = computed(() => {
+  const roundsList = review.value.rounds || []
+  const lastRound = roundsList.length ? roundsList[roundsList.length - 1] : null
   const last = review.value.last_verify
-  if (!last || typeof last !== 'object') {
-    const rounds = review.value.rounds || []
-    const r = rounds.length ? rounds[rounds.length - 1] : null
-    if (!r) return ''
-    const parts = [
-      `第 ${r.round || '—'} 轮`,
-      r.round_pass ? '通过' : '未过',
-      r.monotonic_ok === false ? '单调性回退' : null,
-      r.gates_ok ? '门禁过' : '门禁未过',
-      typeof r.pending_count === 'number' ? `待收敛 ${r.pending_count}` : null,
-      r.at ? formatAt(r.at) : null,
-    ].filter(Boolean)
-    return parts.join(' · ')
-  }
+  // last_verify 旧数据可能缺 round_pass；以最近一轮记录为准
+  const src =
+    last && typeof last === 'object'
+      ? {
+          ...lastRound,
+          ...last,
+          round_pass:
+            typeof last.round_pass === 'boolean'
+              ? last.round_pass
+              : lastRound?.round_pass,
+          gates_ok:
+            typeof last.gates_ok === 'boolean' ? last.gates_ok : lastRound?.gates_ok,
+          pending_count:
+            typeof last.pending_count === 'number'
+              ? last.pending_count
+              : lastRound?.pending_count,
+          open_notes_count:
+            typeof last.open_notes_count === 'number'
+              ? last.open_notes_count
+              : lastRound?.open_notes_count,
+          round: lastRound?.round ?? last.round,
+          at: last.at || lastRound?.at,
+        }
+      : lastRound
+  if (!src) return ''
   const parts = [
-    last.round_pass ? '通过' : '未过',
-    last.monotonic_ok === false ? '单调性回退' : null,
-    Array.isArray(last.regressions) && last.regressions.length
-      ? `回退 ${last.regressions.length} 条`
+    src.round != null ? `第 ${src.round} 轮` : null,
+    src.round_pass ? '通过' : '未过',
+    src.monotonic_ok === false ? '单调性回退' : null,
+    Array.isArray(src.regressions) && src.regressions.length
+      ? `回退 ${src.regressions.length} 条`
       : null,
+    src.gates_ok === false
+      ? '门禁未过'
+      : src.gates_ok
+        ? '门禁过'
+        : null,
+    typeof src.pending_count === 'number' ? `待收敛 ${src.pending_count}` : null,
+    typeof src.open_notes_count === 'number' && src.open_notes_count > 0
+      ? `未结案 ${src.open_notes_count}`
+      : null,
+    Array.isArray(src.fail_reasons) && src.fail_reasons.length && !src.round_pass
+      ? src.fail_reasons[0]
+      : null,
+    src.at ? formatAt(src.at) : null,
   ].filter(Boolean)
   return parts.join(' · ') || '已有验圈记录'
 })
@@ -519,6 +546,12 @@ const roundCols = [
     render: (r) => (r.monotonic_ok ? '通过' : '回退'),
   },
   { title: '门禁', key: 'gates_ok', width: 72, render: (r) => (r.gates_ok ? '通过' : '未过') },
+  {
+    title: '本轮',
+    key: 'round_pass',
+    width: 72,
+    render: (r) => (r.round_pass ? '通过' : '未过'),
+  },
   { title: '待收敛', key: 'pending_count', width: 72 },
   {
     title: '时间',
