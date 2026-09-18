@@ -134,6 +134,19 @@ def test_oos_rejects_not_degraded():
     assert d["out_of_mvp_signals"]
 
 
+def test_oos_demo_pay_colloquial_not_real_settlement():
+    """开题口语「假的就行 / 模拟支付」≠ 微信支付宝商户清算承诺。"""
+    colloquial = (
+        "主要功能：支付模块（选择支付宝、微信输入密码支付，假的就行）、购物车下单。"
+    )
+    assert "真实第三方支付" not in scan_out_of_scope(colloquial)
+    sim = "主要功能：在线支付（支付宝或微信渠道+支付密码，模拟支付）。"
+    assert "真实第三方支付" not in scan_out_of_scope(sim)
+    # 真对接仍拒
+    real = "主要功能：对接微信支付与支付宝商户清算。"
+    assert "真实第三方支付" in scan_out_of_scope(real)
+
+
 def test_oos_ignores_literature_review_citation():
     """研究现状 / 背景换写法转述 ≠ 功能承诺拒收；功能段真写才拒。"""
     lit = """
