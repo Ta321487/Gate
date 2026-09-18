@@ -314,17 +314,27 @@ def apply_qa_to_gates(
     err_n = len([f for f in findings if f.get("level") == "error"])
     warn_n = len([f for f in findings if f.get("level") == "warn"])
     ok = bool(qa.get("ok")) and err_n == 0 and (not warn_blocks or warn_n == 0)
-    desc = str(qa.get("summary") or "")[:240]
-    if not desc:
-        if ok:
-            desc = "无 error 级问题" + ("" if not warn_n else f" · {warn_n} 项 warn（未挡包）")
-        else:
-            parts = []
-            if err_n:
-                parts.append(f"{err_n} 项 error")
-            if warn_blocks and warn_n:
-                parts.append(f"{warn_n} 项 warn")
-            desc = " · ".join(parts) or "质量摘要未通过"
+    summary = str(qa.get("summary") or "").strip()
+    desc = summary[:240]
+    if not ok:
+        # FAIL 时优先露 findings，避免正面 summary 造成「自洽却 GATE FAIL」错觉
+        parts: list[str] = []
+        if err_n:
+            parts.append(f"{err_n} 项 error")
+        if warn_blocks and warn_n:
+            parts.append(f"{warn_n} 项 warn")
+        first = next((f for f in findings if f.get("level") == "error"), None)
+        if first is None and warn_blocks:
+            first = next((f for f in findings if f.get("level") == "warn"), None)
+        tip = str((first or {}).get("msg") or "").strip()
+        head = " · ".join(parts)
+        if tip:
+            desc = f"{head} · {tip}" if head else tip
+        elif head:
+            desc = f"{head} · {summary}" if summary else head
+        desc = desc[:240]
+    elif not desc:
+        desc = "无 error 级问题" + ("" if not warn_n else f" · {warn_n} 项 warn（未挡包）")
     gates["p3q"] = {
         "ok": ok,
         "label": "交付质量摘要",

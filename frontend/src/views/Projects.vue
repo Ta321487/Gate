@@ -284,7 +284,14 @@
             </div>
             <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
           </div>
-          <n-data-table :columns="columns" :data="list" :row-key="r => r.id" :bordered="false" size="small">
+          <n-data-table
+            :columns="columns"
+            :data="list"
+            :row-key="r => r.id"
+            :bordered="false"
+            size="small"
+            :loading="loading"
+          >
             <template #empty>
               <div class="empty-hint">
                 <div class="empty-title">暂无项目</div>
@@ -884,26 +891,50 @@ function formatK(n) {
 }
 
 function setFilter(f) {
+  if (filter.value === f) return
   filter.value = f
-  load()
+  load({ listOnly: true })
 }
 
-const onSearch = debounce(() => load(), 300)
+const onSearch = debounce(() => load({ listOnly: true }), 300)
 
-async function load() {
+/** 列表请求序号：连点筛选时只采纳最后一次响应，避免旧结果回写 */
+let loadSeq = 0
+
+/**
+ * @param {{ listOnly?: boolean }} [opts]
+ * listOnly：仅拉项目列表（筛选/搜索），跳过 stats·目录·待确认分堆恢复，减轻等待感
+ */
+async function load(opts = {}) {
+  const listOnly = !!opts.listOnly
+  const seq = ++loadSeq
+  loading.value = true
   try {
-    const [s, items, cat] = await Promise.all([
-      api.stats(),
-      api.listProjects({ filter: filter.value, q: q.value || undefined }),
-      getCatalog(),
-    ])
-    Object.assign(stats, s)
-    list.value = items
-    catalog.value = cat
+    if (listOnly) {
+      const items = await api.listProjects({
+        filter: filter.value,
+        q: q.value || undefined,
+      })
+      if (seq !== loadSeq) return
+      list.value = items
+    } else {
+      const [s, items, cat] = await Promise.all([
+        api.stats(),
+        api.listProjects({ filter: filter.value, q: q.value || undefined }),
+        getCatalog(),
+      ])
+      if (seq !== loadSeq) return
+      Object.assign(stats, s)
+      list.value = items
+      catalog.value = cat
+      await restorePendingPlans()
+    }
   } finally {
-    booted.value = true
+    if (seq === loadSeq) {
+      loading.value = false
+      booted.value = true
+    }
   }
-  await restorePendingPlans()
 }
 
 /** 从磁盘方案恢复待确认队列（刷新不丢；已待确认匹配 / 空堆由后端滤掉） */
@@ -961,13 +992,7 @@ async function discardPlanOnServer(planId) {
 }
 
 async function refresh() {
-  if (loading.value) return
-  loading.value = true
-  try {
-    await load()
-  } finally {
-    loading.value = false
-  }
+  await load()
 }
 
 function jobPhaseLabel(job) {
