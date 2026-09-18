@@ -37,6 +37,8 @@ public final class ArchiveStore {
     private static Boolean hasEquipmentJson;
     private static boolean softDeleteEnabled = false;
     private static boolean userPublishEnabled = false;
+    /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
+    private static boolean publishReviewEnabled = false;
     private static boolean galleryEnabled = false;
     private static boolean roomEquipmentEnabled = false;
 
@@ -328,6 +330,14 @@ public final class ArchiveStore {
         return userPublishEnabled;
     }
 
+    public static void configurePublishReview(boolean enabled) {
+        publishReviewEnabled = enabled;
+    }
+
+    public static boolean publishReviewEnabled() {
+        return publishReviewEnabled;
+    }
+
     public static void configureShopMarketplace(boolean enabled) {
         shopMarketplaceEnabled = enabled;
     }
@@ -480,7 +490,10 @@ public final class ArchiveStore {
         if (extra != null && id > 0) {
             updateItem(id, extra);
         }
-        return getItem(id);
+        Map<String, Object> visible = getItem(id);
+        if (visible != null) return visible;
+        if (publishReviewEnabled) return getItemAdmin(id);
+        return null;
     }
 
     /**
@@ -516,6 +529,9 @@ public final class ArchiveStore {
         }
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("ownerUsername", uid);
+        if (publishReviewEnabled) {
+            extra.put("status", "pending_review");
+        }
         return addItem(t, author, content, cat, stock, "", extra);
     }
 
@@ -562,13 +578,13 @@ public final class ArchiveStore {
         Object startRaw = patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt");
         Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
         String status = availStatus(stock, startRaw, endRaw);
-        if (shopMarketplaceEnabled) {
+        if (shopMarketplaceEnabled || publishReviewEnabled) {
             if (patch.containsKey("status") && patch.get("status") != null) {
                 String st = String.valueOf(patch.get("status")).trim();
                 if (!st.isBlank()) status = st;
             } else {
                 String cur = str(m.get("status")).trim();
-                if ("pending_review".equals(cur)) status = cur;
+                if ("pending_review".equals(cur) || "rejected".equals(cur)) status = cur;
             }
         }
         db().update(
@@ -761,13 +777,21 @@ public final class ArchiveStore {
         return db().update("UPDATE " + ITEM + " SET deleted_at=NULL WHERE id=?", id) > 0;
     }
 
-    /** 多店：超管将待审商品设为上架（有库存）或不可用（无库存）。 */
+    /** 多店商品 / 投稿先审：超管将待审设为上架（有库存）或不可用（无库存）。 */
     public static Map<String, Object> approveMarketplaceItem(long id) {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
         int stock = m.get("stock") instanceof Number n ? n.intValue() : 0;
         String status = stock > 0 ? "available" : "unavailable";
         db().update("UPDATE " + ITEM + " SET status=? WHERE id=?", status, id);
+        return getItemAdmin(id);
+    }
+
+    /** 多店商品 / 投稿先审：超管驳回，不进公开目录。 */
+    public static Map<String, Object> rejectPublishItem(long id) {
+        Map<String, Object> m = getItemRaw(id);
+        if (m == null) return null;
+        db().update("UPDATE " + ITEM + " SET status='rejected' WHERE id=?", id);
         return getItemAdmin(id);
     }
 
@@ -803,6 +827,10 @@ public final class ArchiveStore {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
         if (isSoftDeleted(m)) return null;
+        if (publishReviewEnabled) {
+            String st = str(m.get("status")).trim();
+            if ("pending_review".equals(st) || "rejected".equals(st)) return null;
+        }
         return enrichItem(m);
     }
 
@@ -864,6 +892,9 @@ public final class ArchiveStore {
             }
         }
         if (openCatalogOnly && shopMarketplaceEnabled) {
+            where.append(" AND status='available'");
+        }
+        if (openCatalogOnly && publishReviewEnabled) {
             where.append(" AND status='available'");
         }
         if (ownerUsernameFilter != null && !ownerUsernameFilter.isBlank() && hasOwnerUsername()) {
@@ -1286,6 +1317,9 @@ public final class ArchiveStore {
         args.add(prefix + "%");
         if (hasDeletedAt() && softDeleteEnabled) {
             where += " AND deleted_at IS NULL";
+        }
+        if (publishReviewEnabled || shopMarketplaceEnabled) {
+            where += " AND status='available'";
         }
         args.add(limit);
         try {

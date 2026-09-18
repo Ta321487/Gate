@@ -19,6 +19,7 @@
             <template v-if="row.createdAt"> · {{ row.createdAt }}</template>
           </p>
           <p v-if="row.deletedAt" class="warn">已下架 · {{ row.deletedAt }}</p>
+          <p v-else-if="statusText(row)" class="warn">{{ statusText(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <p v-else-if="row.isbn" class="excerpt plain">{{ row.isbn }}</p>
           <div class="row">
@@ -49,6 +50,7 @@
           {{ detail.categoryName || '未分类' }}
         </p>
         <p v-if="detail.deletedAt" class="warn">已下架 · {{ detail.deletedAt }}</p>
+        <p v-else-if="statusText(detail)" class="warn">{{ statusText(detail) }}</p>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <p v-else class="plain-body">{{ detail.isbn || '—' }}</p>
       </template>
@@ -82,6 +84,13 @@ const pageLead = computed(
 const emptyText = computed(() =>
   bodyRich.value ? '暂无发布记录，去检索页发一篇吧。' : `暂无记录，去检索页登记一条吧。`,
 )
+
+function statusText(row) {
+  const st = String(row?.status || '')
+  if (st === 'pending_review') return '待审核'
+  if (st === 'rejected') return '已驳回'
+  return ''
+}
 
 const list = ref([])
 const total = ref(0)

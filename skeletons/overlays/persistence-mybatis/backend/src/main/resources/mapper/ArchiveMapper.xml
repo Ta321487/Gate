@@ -86,6 +86,7 @@
         SELECT id, title, cover_url FROM `${itemTable}`
         WHERE title LIKE #{prefix}
         <if test="excludeDeleted">AND deleted_at IS NULL</if>
+        <if test="requireAvailable">AND status='available'</if>
         ORDER BY id DESC
         LIMIT #{limit}
     </select>

@@ -100,6 +100,7 @@ public interface ArchiveMapper {
             @Param("itemTable") String itemTable,
             @Param("prefix") String prefix,
             @Param("excludeDeleted") boolean excludeDeleted,
+            @Param("requireAvailable") boolean requireAvailable,
             @Param("limit") int limit);
 
     @Update("UPDATE `${itemTable}` SET stock=stock+#{delta}, status=IF(stock>0,'available','unavailable') "

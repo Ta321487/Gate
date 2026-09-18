@@ -61,7 +61,7 @@
           </template>
         </template>
       </el-table-column>
-      <el-table-column v-if="marketplace" label="上架" width="100">
+      <el-table-column v-if="marketplace || publishReview" label="上架" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="shelfTagType(row)" effect="plain">{{ shelfLabel(row) }}</el-tag>
         </template>
@@ -79,7 +79,7 @@
       >
         <template #default="{ row }">{{ formatArchiveScalar(f, row[f.key]) }}</template>
       </el-table-column>
-      <el-table-column v-if="softDelete" label="状态" width="80">
+      <el-table-column v-if="softDelete && !publishReview" label="状态" width="80">
         <template #default="{ row }">
           <el-tag v-if="row.deleted" size="small" type="info">{{ softCopy.off }}</el-tag>
           <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
@@ -90,11 +90,17 @@
           <div class="table-ops">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button
-            v-if="marketplace && isSuper && isPendingReview(row)"
+            v-if="canReviewPublish && isSuper && isPendingReview(row)"
             link
             type="success"
             @click="approve(row)"
           >审核上架</el-button>
+          <el-button
+            v-if="canReviewPublish && isSuper && isPendingReview(row)"
+            link
+            type="warning"
+            @click="reject(row)"
+          >驳回</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>
           <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? softCopy.verb : '删除' }}</el-button>
           </div>
@@ -276,6 +282,8 @@ import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
 const archive = archiveCopy()
 const softCopyBase = softDeleteCopy()
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const publishReview = computed(() => !!archive.publishReview)
+const canReviewPublish = computed(() => marketplace.value || publishReview.value)
 const softCopy = computed(() => {
   if (!marketplace.value) return softCopyBase
   return { ...softCopyBase, verb: '强制下架', off: '已强制下架', include: '含下架' }
@@ -298,12 +306,14 @@ function isPendingReview(row) {
 function shelfLabel(row) {
   const st = String(row?.status || '')
   if (st === 'pending_review') return '待审核'
+  if (st === 'rejected') return '已驳回'
   if (st === 'unavailable' || row?.deleted) return '已下架'
   return '已上架'
 }
 function shelfTagType(row) {
   const st = String(row?.status || '')
   if (st === 'pending_review') return 'warning'
+  if (st === 'rejected') return 'danger'
   if (st === 'unavailable' || row?.deleted) return 'info'
   return 'success'
 }
@@ -587,9 +597,16 @@ async function restore(row) {
 }
 
 async function approve(row) {
-  await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, '商品审核')
+  await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, publishReview.value ? '投稿审核' : '商品审核')
   await http.post(`/api/archive/${row.id}/approve`)
   ElMessage.success('已审核上架')
+  load()
+}
+
+async function reject(row) {
+  await ElMessageBox.confirm(`驳回「${row.title}」？驳回后不公开展示。`, publishReview.value ? '投稿审核' : '商品审核')
+  await http.post(`/api/archive/${row.id}/reject`)
+  ElMessage.success('已驳回')
   load()
 }
 

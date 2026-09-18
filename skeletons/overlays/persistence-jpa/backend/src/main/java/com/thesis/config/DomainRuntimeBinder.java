@@ -143,6 +143,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.archive-user-publish:false}")
     private boolean archiveUserPublish;
 
+    @Value("${thesis.archive-publish-review:false}")
+    private boolean archivePublishReview;
+
     @Value("${thesis.archive-tag-table:}")
     private String archiveTagTable;
 
@@ -366,6 +369,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.bind(archiveCategoryTable, archiveItemTable);
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         ArchiveStore.configureUserPublish(archiveUserPublish);
+        ArchiveStore.configurePublishReview(archivePublishReview);
         ArchiveStore.configureGallery(galleryEnabled);
         ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);

@@ -520,6 +520,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append("  archive-soft-delete: true")
         if archive_ent.get("userPublish"):
             lines.append("  archive-user-publish: true")
+        if archive_ent.get("publishReview"):
+            lines.append("  archive-publish-review: true")
         if (spec.get("schema") or {}).get("shopMarketplace"):
             lines.append("  shop-marketplace: true")
         tag = runtime.get("archive_tag_table")
