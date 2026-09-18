@@ -56,7 +56,8 @@ def _copy_scan_text(title: str, proposal_text: str = "") -> str:
     return copy_scan_text(title, proposal_text)
 
 
-# 题名/开题双扫的壳构建器（其余 builder 仍只收 title）
+# 题名/开题双扫的壳构建器。具名域一律经 build_domain_schema 传入 proposal_text；
+# 本集合保留给 scene 文案扫描测试与旧引用，与 SCHEMA_BUILDERS 对齐扩满。
 _SCENE_COPY_DOMAINS = frozenset({
     "DOM-ATTEND",
     "DOM-FOOD",
@@ -86,6 +87,18 @@ _SCENE_COPY_DOMAINS = frozenset({
     "DOM-BLOG",
     "DOM-FORUM",
     "DOM-EXAM",
+    # 原白名单外：双扫收口后一并纳入
+    "DOM-LIBRARY",
+    "DOM-DORM",
+    "DOM-COURSE",
+    "DOM-CINEMA",
+    "DOM-HOTEL",
+    "DOM-CARRENT",
+    "DOM-PROCURE",
+    "DOM-TOUR",
+    "DOM-SURVEY",
+    "DOM-VOTE",
+    "DOM-DOCLIB",
 })
 
 from app.bake.scene_scan import (  # noqa: E402

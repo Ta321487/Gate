@@ -68,7 +68,7 @@
     "favoritesPageLead": "收藏喜欢的歌曲，方便下次回听。",
     "favoritesPageTitle": "我的收藏",
     "messagesPageLead": "系统通知。",
-    "noticePageLead": "上新歌单、维护窗口与试听须知，点击条目阅读全文。",
+    "noticePageLead": "曲库上新、维护窗口与试听须知，点击条目阅读全文。",
     "noticePageTitle": "平台公告",
     "recommendLatestHint": "最新上架",
     "recommendSectionTitle": "猜你喜欢",
@@ -122,11 +122,11 @@
   },
   "portalBanners": [
     {
-      "lead": "流行、摇滚、民谣等分类浏览，点击即可试听。",
-      "title": "热门曲库"
+      "lead": "流行、摇滚等曲风分类浏览。",
+      "title": "热门曲目"
     },
     {
-      "lead": "喜欢的歌曲一键收藏，方便下次回听。",
+      "lead": "感兴趣的歌曲一键收藏，方便下次回听。",
       "title": "收藏喜欢"
     },
     {
@@ -138,7 +138,7 @@
       "title": "猜你喜欢"
     },
     {
-      "lead": "按曲风快速找到想听的歌。",
+      "lead": "按分区快速找到想听的歌。",
       "title": "曲风浏览"
     }
   ],
@@ -157,7 +157,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "曲源仅供学习演示；请尊重版权，勿传播未授权内容。",
+    "noticeBody": "曲源仅供学习使用；请尊重版权，勿传播未授权内容。",
     "noticeTitle": "试听须知"
   },
   "title": "测试课题",

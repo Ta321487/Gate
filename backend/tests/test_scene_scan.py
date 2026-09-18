@@ -286,14 +286,14 @@ class SceneScanContractTests(unittest.TestCase):
             ("DOM-FORUM", "小区兴趣社区论坛", "邻里互助发帖回帖", "community"),
         ]
         covered = {c[0] for c in cases}
-        # EXAM / EQUIP / ACTIVITY / BED：SCENE_COPY 仅为吃 proposal_text 换产品皮，scene 仍 default
-        product_copy_only = frozenset(
-            {"DOM-EXAM", "DOM-EQUIP", "DOM-ACTIVITY", "DOM-BED"}
-        )
-        self.assertEqual(_SCENE_COPY_DOMAINS - product_copy_only, covered)
+        # EXAM / EQUIP / ACTIVITY / BED 及后扩的双扫域：吃 proposal_text，scene 可仍 default
+        # 本测只锁「有 scene 分档」的子集，不再要求与 _SCENE_COPY_DOMAINS 全集相等
         for domain, title, body, want in cases:
             with self.subTest(domain=domain):
                 self.assertEqual(scene_for(domain, title, body), want)
+                self.assertIn(domain, _SCENE_COPY_DOMAINS)
+        for dom in ("DOM-EXAM", "DOM-EQUIP", "DOM-ACTIVITY", "DOM-BED", "DOM-HOTEL", "DOM-PROCURE"):
+            self.assertIn(dom, _SCENE_COPY_DOMAINS)
 
     def test_followup_audit_scene_hints(self) -> None:
         """跟进簇审计挡点：S-13 企业周报；高校课堂请假题落 campus。"""

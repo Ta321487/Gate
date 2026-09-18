@@ -6,7 +6,9 @@ from typing import Any
 
 from app.bake.schema.shells import standalone_ticket_schema
 
-def _dorm_schema(title: str) -> dict[str, Any]:
+def _dorm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """宿舍报修；proposal_text 预留给场景/身份双扫（与全域入口一致）。"""
+    _ = proposal_text
     return standalone_ticket_schema(
         title,
         domain="DOM-DORM",

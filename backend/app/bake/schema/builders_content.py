@@ -15,11 +15,12 @@ from app.bake.schema.shells import (
 
 def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影视点播：商业默认；校园媒资 / 点播课分档。"""
-    from app.bake.features.user_publish import scan_user_publish
+    from app.bake.features.user_publish import scan_publish_review, scan_user_publish
     from app.bake.scene_scan import media_product_kind
 
     kind = media_product_kind(title, proposal_text)
-    user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-MEDIA")
+    blob = f"{title}\n{proposal_text}"
+    user_publish = scan_user_publish(blob, domain="DOM-MEDIA") or scan_publish_review(blob)
     if kind == "coursevod":
         noun, plural, author_lab, cat_lab = "课程视频", "课程库", "主讲教师", "课程类型"
         brow, user, admin = "点播课", "学员", "课程视频库主管（总管）"
@@ -101,7 +102,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲。"
         notice = "曲库供点歌试听。请尊重版权。"
         banner_lead = "热门点歌、校园原创、合唱分类浏览。"
-        cat_lab = "歌单分区"
+        cat_lab = "点歌分区"
     elif kind == "campus":
         brow, user, admin = "校园曲库", "师生", "曲库主管（总管）"
         lead = "验证码登录；浏览校园曲库、在线试听，收藏喜欢的歌曲。"
@@ -146,7 +147,8 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             notice_title="点歌须知" if kind == "karaoke" else "试听须知",
             notice_body=notice,
             notice_page_title="平台公告",
-            notice_page_lead="上新歌单、维护窗口与试听须知，点击条目阅读全文。",
+            # 勿写「歌单」：开题常把独立歌单/协作编辑标非本期，营销「歌单」易被 QA 当成范围冲突
+            notice_page_lead="曲库上新、维护窗口与试听须知，点击条目阅读全文。",
             favorites_page_lead="收藏喜欢的歌曲，方便下次回听。",
             play_url_field="isbn",
             stock_display="toggle",
@@ -154,7 +156,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             user_publish=user_publish,
         ),
         [
-            {"title": "热门曲目" if kind == "karaoke" else "热播歌单", "lead": banner_lead},
+            {"title": "热门曲目", "lead": banner_lead},
             {"title": "收藏喜欢", "lead": "感兴趣的歌曲一键收藏，方便下次回听。"},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据听歌偏好推荐曲目。"},
@@ -275,11 +277,12 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     上架/下架走 softDelete（shelfCopy：在架/已下架），不再叠一层 stock 开关，
     避免「可阅读/已阅读」与软删文案打架、看起来像资讯 CMS。
     """
-    from app.bake.features.user_publish import scan_user_publish
+    from app.bake.features.user_publish import scan_publish_review, scan_user_publish
     from app.bake.scene_scan import blog_product_kind
 
     kind = blog_product_kind(title, proposal_text)
-    user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-BLOG")
+    blob = f"{title}\n{proposal_text}"
+    user_publish = scan_user_publish(blob, domain="DOM-BLOG") or scan_publish_review(blob)
     if kind == "press":
         brow, user, admin = "记者站稿件", "读者", "记者站主编（总管）"
         lead = "验证码登录；按分类阅读广播稿与图文报道，收藏喜欢的稿件（由编辑上架发布）。"
