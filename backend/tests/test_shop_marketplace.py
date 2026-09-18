@@ -38,10 +38,19 @@ class ShopMarketplaceScanTests(unittest.TestCase):
     def test_scan_on(self) -> None:
         self.assertTrue(scan_shop_marketplace("多商家入驻电商", "支持商家入驻与店铺审核"))
         self.assertTrue(scan_shop_marketplace("", "平台商家注册与入驻审核"))
+        # 近年开题口语
+        self.assertTrue(scan_shop_marketplace("农产品电商", "用户端、商家端、管理员端三端"))
+        self.assertTrue(scan_shop_marketplace("", "卖家中心维护商品与订单发货"))
+        self.assertTrue(scan_shop_marketplace("校园二手平台", "支持店铺管理与入驻平台审核"))
+        self.assertTrue(scan_shop_marketplace("", "B2B2C 多店商城，第三方商家开店入驻"))
 
     def test_scan_off(self) -> None:
         self.assertFalse(scan_shop_marketplace("农产品电商", "助农生鲜果蔬粮油选购"))
         self.assertFalse(scan_shop_marketplace("日用百货商城", "购物车下单配送"))
+        # 单店常见说法不误伤
+        self.assertFalse(scan_shop_marketplace("网上商城", "用户端与管理员端双端，购物车下单"))
+        self.assertFalse(scan_shop_marketplace("B2C 零售商城", "商品浏览购物车支付订单"))
+        self.assertFalse(scan_shop_marketplace("水果店铺", "本店上架与库存管理"))
 
 
 class ShopMarketplaceSchemaTests(unittest.TestCase):
@@ -224,11 +233,14 @@ class ShopMarketplaceContractTests(unittest.TestCase):
     """多店轴洞型合同：下一题同类开题应仍过，不靠人工再抠。"""
 
     def test_farm_opening_dm_shop_cs_and_review(self) -> None:
+        from app.bake.capabilities import scan_out_of_scope
         from app.bake.domain_schema import attach_accept, build_domain_schema
         from app.bake.features.order_extras import ORDER_REVIEW_CAP, scan_order_review
 
         self.assertTrue(scan_order_review(_FARM_OPENING))
         self.assertTrue(scan_order_review("评价模块"))
+        # 「支付宝/微信…假的就行」= 口语假支付，不得当成真清算超壳拒收
+        self.assertNotIn("真实第三方支付", scan_out_of_scope(_FARM_OPENING))
         schema = build_domain_schema(
             "农产品电商系统", "DOM-SHOP", proposal_text=_FARM_OPENING
         )
@@ -246,6 +258,8 @@ class ShopMarketplaceContractTests(unittest.TestCase):
             },
             _FARM_OPENING,
         )
+        self.assertEqual(spec.get("accept"), "full", spec.get("accept_reason"))
+        self.assertTrue((spec.get("schema") or {}).get("demoPay"))
         caps = spec.get("capabilities") or []
         self.assertIn("dm", caps)
         self.assertIn(ORDER_REVIEW_CAP, caps)

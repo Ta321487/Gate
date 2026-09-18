@@ -6,6 +6,7 @@ import unittest
 
 from app.bake.capabilities import resolve_accept, scan_out_of_scope
 from app.bake.domain_schema import attach_accept
+from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine import count_create_tables, domain_sql
 from app.bake.features.dm import (
     DM_CAP,
@@ -13,6 +14,7 @@ from app.bake.features.dm import (
     merge_dm_capabilities,
     scan_dm,
 )
+from app.bake.features.opening_align import scan_opening_delivery_gaps
 from tests.helpers.normalize import normalize_sql
 
 
@@ -108,6 +110,54 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertTrue(scan_dm("会员之间可一对一私聊"))
         self.assertTrue(scan_dm("即时私信功能"))
         self.assertFalse(scan_dm("仅公告与跟帖，无其它互动"))
+
+    def test_single_shop_kefu_hangs_platform_cs(self) -> None:
+        """单店只写客服模块 → 挂 dm，文案为平台客服，不收窄商家选人。"""
+        from app.bake.features.dm import (
+            DM_PEER_ALL,
+            resolve_dm_peer_mode,
+            scan_trade_customer_service,
+        )
+
+        text = "日用百货商城：商品浏览、购物车下单、客服模块、订单售后。"
+        self.assertTrue(scan_trade_customer_service(text))
+        self.assertFalse(scan_trade_customer_service("接入 DeepSeek 智能客服问答"))
+        self.assertTrue(
+            scan_trade_customer_service("智能客服与客服模块并存，用户可人工咨询")
+        )
+        caps = merge_dm_capabilities(
+            ["archive", "order_lines", "content", "org_users"],
+            text,
+            domain="DOM-SHOP",
+        )
+        self.assertIn(DM_CAP, caps)
+        self.assertEqual(resolve_dm_peer_mode(text, domain="DOM-SHOP"), DM_PEER_ALL)
+
+        spec = attach_accept(
+            {
+                "title": "日用百货商城",
+                "domain": "DOM-SHOP",
+                "archetype": "ARCH-TRADE",
+                "archetypes": ["ARCH-TRADE"],
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+            },
+            text,
+        )
+        self.assertIn(DM_CAP, spec["capabilities"])
+        self.assertEqual(spec.get("accept"), "full", spec.get("accept_reason"))
+        self.assertFalse(spec["schema"].get("dmShopCs"))
+        self.assertEqual(spec["schema"]["labels"].get("dmPageTitle"), "客服")
+        self.assertEqual(spec["schema"]["labels"].get("dmNewTitle"), "联系客服")
+        gaps = scan_opening_delivery_gaps(spec, text)
+        self.assertFalse(any("客服" in g for g in gaps), gaps)
+
+    def test_food_kefu_also_hangs_dm(self) -> None:
+        caps = merge_dm_capabilities(
+            ["archive", "order_lines", "content"],
+            "外卖点餐，用户可联系客服模块咨询出餐进度。",
+            domain="DOM-FOOD",
+        )
+        self.assertIn(DM_CAP, caps)
 
     def test_dating_default_dm_forum_opt_in(self) -> None:
         dating = merge_dm_capabilities(

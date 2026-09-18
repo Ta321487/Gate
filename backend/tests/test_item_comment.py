@@ -30,6 +30,8 @@ class ItemCommentTests(unittest.TestCase):
     def test_scan_comment_not_guestbook(self) -> None:
         self.assertTrue(scan_item_comment("支持用户评论与收藏。"))
         self.assertTrue(scan_item_comment("片下评论区可发表影评。"))
+        self.assertTrue(scan_item_comment("视频详情页下方可互动点评。"))
+        self.assertTrue(scan_item_comment("文章底部开放读后评论。"))
         self.assertFalse(scan_item_comment("仅浏览播放与收藏。"))
         self.assertTrue(scan_guestbook("门户留言板与管理员回复。"))
         self.assertFalse(scan_item_comment("门户留言板与管理员回复。"))
