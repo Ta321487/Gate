@@ -31,7 +31,9 @@ _SYS = (
     "工厂口径（勿误报）：\n"
     "1) entities 槽位常见为 archive/ticket/reservation/order/category；"
     "menus.admin 含 category 且 entityKeys 含 category → 不算缺口；"
-    "staffPackMenus 只含本域岗位已挂 pack，勿把未列出的 pack/菜单名当成实体。\n"
+    "staffPackMenus 只含本域岗位已挂 pack，勿把未列出的 pack/菜单名当成实体；"
+    "menuKeys 未含 my_tickets/cart/orders 时，勿审 MyTickets/Cart/MyOrders 等未挂路由骨架页"
+    "（baseline 会保留文件供 Vite 静态分析，不代表本期交付页）。\n"
     "2) traits.followUp（或旧包 traits.crm）表示跟进表单能力（渠道/下次复核），"
     "是跨域 UI 特征，不是「必须等于 CRM 行业域」；勿因 flavor/题名不含 CRM 而报错。\n"
     "3) NoticeDetail 正文小标题允许 labels.noticeBodyHeading 或中性「正文」。\n"
@@ -130,12 +132,31 @@ def _delivered_skin(workspace: Path) -> dict[str, Any]:
     return out
 
 
+# 仅当菜单挂载时才喂 QA 摘录（archive 壳仍可能磁盘保留这些 baseline 文件）
+_QA_MENU_GATED_FILES: dict[str, frozenset[str]] = {
+    "frontend/src/views/user/MyTickets.vue": frozenset({"my_tickets", "tickets"}),
+}
+
+
+def _qa_file_relevant(rel: str, menu_flat: set[str]) -> bool:
+    need = _QA_MENU_GATED_FILES.get(rel)
+    if not need:
+        return True
+    return bool(need & menu_flat)
+
+
 def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
     """只采集上下文，不做领域词硬编码判定。"""
     schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    menus = schema.get("menus") or {}
+    menu_keys = _menu_keys(menus)
+    menu_flat = {k for keys in menu_keys.values() for k in keys}
+
     files: dict[str, Any] = {}
     missing: list[str] = []
     for rel in _QA_FILES:
+        if not _qa_file_relevant(rel, menu_flat):
+            continue
         path = workspace / rel
         if not path.exists():
             missing.append(rel)
@@ -153,7 +174,6 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         for k, v in entities_raw.items()
         if isinstance(v, dict)
     }
-    menus = schema.get("menus") or {}
     skin = _delivered_skin(workspace)
     traits = skin.get("traits") if isinstance(skin.get("traits"), dict) else {}
     if not traits and isinstance(spec.get("traits"), dict):
@@ -168,7 +188,7 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         "labels": schema.get("labels") or {},
         "seeds": schema.get("seeds") or {},
         "menus": menus,
-        "menuKeys": _menu_keys(menus),
+        "menuKeys": menu_keys,
         "entities": entities,
         "entityKeys": sorted(entities.keys()),
         "capabilities": list(schema.get("capabilities") or []),
@@ -352,9 +372,10 @@ def _normalize_findings(raw: Any) -> list[dict[str, str]]:
     return [f for f in out if f["msg"]]
 
 
-def _is_noise_finding(msg: str, ctx: dict[str, Any]) -> bool:
+def _is_noise_finding(msg: str, ctx: dict[str, Any], *, where: str = "") -> bool:
     """滤掉与结构化真相矛盾的 LLM 臆造（全厂规则，不绑单一域）。"""
     text = msg or ""
+    loc = f"{text}\n{where or ''}"
     entity_keys = set(ctx.get("entityKeys") or [])
     menu_flat = {k for keys in (ctx.get("menuKeys") or {}).values() for k in keys}
     pack_menus = ctx.get("staffPackMenus") or {}
@@ -387,6 +408,18 @@ def _is_noise_finding(msg: str, ctx: dict[str, Any]) -> bool:
         ):
             return True
 
+    # 未挂菜单的票务/购物骨架页：baseline 残留文案不挡 archive 等壳
+    # where 常带路径而 msg 只写「文件内…」，须合并判断
+    if re.search(r"MyTickets\.vue|my_tickets", loc, re.I):
+        if "my_tickets" not in menu_flat and "tickets" not in menu_flat:
+            return True
+    if re.search(r"Cart\.vue|(?<![\w.])/cart\b|\bcart\b", loc, re.I) and "cart" not in menu_flat:
+        if re.search(r"残留|错域|未路由|未挂|不该|工厂|不对接", loc):
+            return True
+    if re.search(r"MyOrders\.vue|my_orders", loc, re.I) and "orders" not in menu_flat:
+        if re.search(r"残留|错域|未路由|未挂|不该|工厂|不对接", loc):
+            return True
+
     # 详情页已用动态正文小标题
     notice = (ctx.get("files") or {}).get("frontend/src/views/NoticeDetail.vue") or ""
     if "公告正文" in text and ("bodyHeading" in notice or ">公告正文<" not in notice):
@@ -401,7 +434,7 @@ def _filter_findings(findings: list[dict[str, str]], ctx: dict[str, Any]) -> lis
         if f.get("level") == "info":
             kept.append(f)
             continue
-        if _is_noise_finding(str(f.get("msg") or ""), ctx):
+        if _is_noise_finding(str(f.get("msg") or ""), ctx, where=str(f.get("where") or "")):
             continue
         kept.append(f)
     return kept
@@ -506,7 +539,10 @@ async def run_qa_agent(
         )
     elif ok and warn_n == 0:
         # 模型摘要可能仍写着旧误报；过滤后无问题则改写
-        if re.search(r"不一致|写死|无关|未使用|未定义", summary):
+        if re.search(
+            r"不一致|写死|无关|未使用|未定义|残留|不建议|需修正|MyTickets|错域",
+            summary,
+        ):
             summary = "LLM QA 未发现明显问题"
     report = {
         "domain": ctx.get("domain"),

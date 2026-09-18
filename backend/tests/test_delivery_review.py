@@ -148,6 +148,27 @@ class DeliveryReviewTests(unittest.TestCase):
         dr.apply_qa_to_gates(gates, qa, warn_blocks=True)
         self.assertFalse(gates["p3q"]["ok"])
         self.assertFalse(gates["zip_allowed"])
+        self.assertIn("1 项 warn", gates["p3q"]["desc"])
+        self.assertIn("措辞", gates["p3q"]["desc"])
+
+    def test_apply_qa_fail_desc_prefers_finding_over_positive_summary(self):
+        gates = {"overall": True, "zip_allowed": True}
+        qa = {
+            "ok": False,
+            "summary": "结构化字段层面音乐域基本自洽：entityKeys 对齐",
+            "findings": [
+                {
+                    "level": "error",
+                    "msg": "MyTickets.vue 图书馆残留",
+                    "where": "frontend/src/views/user/MyTickets.vue",
+                }
+            ],
+        }
+        dr.apply_qa_to_gates(gates, qa, warn_blocks=True)
+        self.assertFalse(gates["p3q"]["ok"])
+        self.assertIn("1 项 error", gates["p3q"]["desc"])
+        self.assertIn("MyTickets", gates["p3q"]["desc"])
+        self.assertNotIn("基本自洽", gates["p3q"]["desc"])
 
     def test_verify_round_persists_round_pass_on_last_verify(self):
         """最近验圈读 last_verify.round_pass；缺字段前端会误显示「未过」。"""

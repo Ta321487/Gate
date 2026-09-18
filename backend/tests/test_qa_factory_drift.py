@@ -125,6 +125,46 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         self.assertEqual(len(kept), 1)
         self.assertIn("借阅须知", kept[0]["msg"])
 
+        # 未挂 my_tickets 时，MyTickets 图书馆残留属噪声（archive 壳）
+        archive_ctx = {
+            **ctx,
+            "entityKeys": ["archive", "category", "favorites"],
+            "menuKeys": {
+                "admin": ["dashboard", "archive", "category"],
+                "user": ["archive", "favorites"],
+            },
+            "staffPackMenus": {},
+            "traits": {},
+        }
+        self.assertTrue(
+            _is_noise_finding(
+                "检测到图书馆域残留模板：MyTickets.vue 内写死已续借",
+                archive_ctx,
+            )
+        )
+        # where 带路径、msg 不提文件名（真实 LLM 输出）
+        self.assertTrue(
+            _is_noise_finding(
+                "检测到图书馆域残留模板：文件内写死已续借",
+                archive_ctx,
+                where="frontend/src/views/user/MyTickets.vue",
+            )
+        )
+        ticket_ctx = {
+            **archive_ctx,
+            "menuKeys": {
+                "admin": ["dashboard", "tickets"],
+                "user": ["my_tickets"],
+            },
+        }
+        self.assertFalse(
+            _is_noise_finding(
+                "检测到图书馆域残留模板：文件内写死已续借",
+                ticket_ctx,
+                where="frontend/src/views/user/MyTickets.vue",
+            )
+        )
+
         # 预约域本身有 reservation 时，勿滤掉真实问题
         slot_ctx = {
             **ctx,
@@ -134,6 +174,36 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
             "traits": {},
         }
         self.assertFalse(_is_noise_finding("reservation 状态文案与开题不符", slot_ctx))
+
+    def test_qa_skips_my_tickets_excerpt_when_unmounted(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from app.llm.agents_qa import _collect_qa_context
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "frontend" / "src" / "views" / "user").mkdir(parents=True)
+            (root / "frontend" / "src" / "views" / "user" / "MyTickets.vue").write_text(
+                "已续借", encoding="utf-8"
+            )
+            (root / "frontend" / "src" / "views" / "NoticeDetail.vue").write_text(
+                "<h2>{{ bodyHeading }}</h2>", encoding="utf-8"
+            )
+            spec = {
+                "domain": "DOM-MUSIC",
+                "schema": {
+                    "menus": {"user": [{"key": "archive"}], "admin": [{"key": "archive"}]},
+                    "entities": {"archive": {"label": "歌曲"}},
+                    "labels": {"appName": "曲库"},
+                },
+            }
+            ctx = _collect_qa_context(root, spec)
+            self.assertNotIn("frontend/src/views/user/MyTickets.vue", ctx["files"])
+
+            spec["schema"]["menus"]["user"].append({"key": "my_tickets"})
+            ctx2 = _collect_qa_context(root, spec)
+            self.assertIn("frontend/src/views/user/MyTickets.vue", ctx2["files"])
 
     def test_honesty_hard_boundary_as_supported(self) -> None:
         from app.llm.agents_qa import _honesty_findings
