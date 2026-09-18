@@ -6,8 +6,21 @@
           <span class="brand-mark" aria-hidden="true" />
           <span class="brand-text">{{ title }}</span>
         </div>
-        <nav class="nav">
-          <router-link v-for="item in nav" :key="item.to" :to="item.to">{{ item.label }}</router-link>
+        <nav class="nav" :class="{ 'nav--split': navMore.length }">
+          <router-link v-for="item in navPrimary" :key="item.to" :to="item.to">{{ item.label }}</router-link>
+          <el-dropdown v-if="navMore.length" trigger="click" class="nav-more" popper-class="portal-nav-more">
+            <span class="nav-more-trigger" :class="{ 'is-active': moreActive }">更多</span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-for="item in navMore"
+                  :key="item.to"
+                  :class="{ 'is-active': navItemActive(route.path, item.to) }"
+                  @click="router.push(item.to)"
+                >{{ item.label }}</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </nav>
         <div class="user">
           <template v-if="loggedIn">
@@ -55,6 +68,7 @@ import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
 import { menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 import { userMenuPath } from '../utils/menuRoutes.js'
+import { navItemActive, splitPortalNav } from '../utils/navOverflow.js'
 import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
 
 const router = useRouter()
@@ -115,6 +129,13 @@ const nav = computed(() => {
     .filter((m) => m.to)
 })
 
+const navSplit = computed(() => splitPortalNav(nav.value))
+const navPrimary = computed(() => navSplit.value.primary)
+const navMore = computed(() => navSplit.value.more)
+const moreActive = computed(() =>
+  navMore.value.some((item) => navItemActive(route.path, item.to)),
+)
+
 /** 品牌点击：资讯/商城首页落 /home，其它壳走根 redirect */
 const homePath = computed(() => {
   const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
@@ -165,16 +186,25 @@ function logout() {
   min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 项多时整词换行到下一行，禁止挤成竖排、也不靠横滑藏菜单 */
-.nav { display: flex; gap: 4px; flex: 1 1 280px; flex-wrap: wrap; min-width: 0; }
-.nav a {
+/* 短菜单可换行露全；超过 6 项由「更多」收纳，顶栏保持单行 */
+.nav { display: flex; gap: 4px; flex: 1 1 280px; flex-wrap: wrap; align-items: center; min-width: 0; }
+.nav.nav--split { flex-wrap: nowrap; }
+.nav a,
+.nav-more-trigger {
   padding: 6px 12px; border-radius: var(--portal-radius-sm, 8px); font-size: 13px; font-weight: 500;
   color: var(--portal-muted, #5b6b76); text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .nav a.router-link-active,
-.nav a:hover { color: var(--portal-ink, #15202b); background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent); }
+.nav a:hover,
+.nav-more-trigger.is-active,
+.nav-more-trigger:hover {
+  color: var(--portal-ink, #15202b);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+}
+.nav-more { flex-shrink: 0; }
+.nav-more-trigger { cursor: pointer; outline: none; user-select: none; }
 .user { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .user :deep(.el-button.is-link),
 .user :deep(.el-button.is-text) {

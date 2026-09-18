@@ -335,6 +335,10 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
 }
 
 .workbench .wb-aside {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
   background: var(--portal-surface, #fff);
   border-right: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
   box-shadow: var(--portal-shadow, none);
@@ -344,6 +348,7 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
   padding: 18px 16px;
   font-weight: 700;
   font-size: 15px;
@@ -362,6 +367,19 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
     var(--portal-accent, #0b6e75),
     color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-brand, #08545a))
   );
+}
+
+.workbench .wb-menu-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.workbench .wb-aside--dense .el-menu-item {
+  height: 36px;
+  line-height: 36px;
+  margin: 1px 8px;
 }
 
 .workbench .wb-aside .el-menu {
