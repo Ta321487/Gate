@@ -121,6 +121,16 @@ public class ArchiveController {
     public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         Map<String, Object> item = admin ? ArchiveStore.getItemAdmin(id) : ArchiveStore.getItem(id);
+        // 本人待审/驳回：公开目录不可见，但「我的」详情仍可看
+        if (item == null && !admin && ArchiveStore.publishReviewEnabled()) {
+            Object uidAttr = session.getAttribute("uid");
+            String uid = uidAttr == null ? "" : uidAttr.toString().trim();
+            Map<String, Object> raw = ArchiveStore.getItemAdmin(id);
+            if (raw != null && !uid.isBlank()
+                    && (uid.equals(str(raw.get("ownerUsername"))) || uid.equals(str(raw.get("author"))))) {
+                item = raw;
+            }
+        }
         if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
             String uid = AdminAuth.requireLogin(session);
@@ -209,15 +219,31 @@ public class ArchiveController {
         return R.ok(item);
     }
 
-    /** 多店：超管审核商家商品上架 */
+    /** 多店 / 投稿先审：超管审核上架 */
     @PostMapping("/{id:\\d+}/approve")
     public R<Map<String, Object>> approve(@PathVariable long id, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
-        if (!ArchiveStore.shopMarketplaceEnabled()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "当前非多店模式");
+        if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
         }
         Map<String, Object> m = ArchiveStore.approveMarketplaceItem(id);
         if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        String op = AdminAuth.requireLogin(session);
+        AuditLogStore.record(op, "archive_approve", "archive", String.valueOf(id), "审核上架");
+        return R.ok(m);
+    }
+
+    /** 多店 / 投稿先审：超管驳回 */
+    @PostMapping("/{id:\\d+}/reject")
+    public R<Map<String, Object>> reject(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
+        }
+        Map<String, Object> m = ArchiveStore.rejectPublishItem(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        String op = AdminAuth.requireLogin(session);
+        AuditLogStore.record(op, "archive_reject", "archive", String.valueOf(id), "审核驳回");
         return R.ok(m);
     }
 

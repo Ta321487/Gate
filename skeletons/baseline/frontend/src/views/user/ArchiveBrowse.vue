@@ -1579,7 +1579,14 @@ async function submitPublish() {
     if (publishShowStock.value) body.stock = Number(publishStock.value) || 1
     if (publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
     await http.post('/api/archive/publish', body)
-    ElMessage.success(publishUsesRichBody.value || publishShowStock.value ? '已发布' : '已登记')
+    const review = !!archive.publishReview
+    ElMessage.success(
+      review
+        ? '已提交审核，通过后公开展示'
+        : publishUsesRichBody.value || publishShowStock.value
+          ? '已发布'
+          : '已登记',
+    )
     publishVisible.value = false
     await load()
     recRef.value?.reload?.()
