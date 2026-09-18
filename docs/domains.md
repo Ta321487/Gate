@@ -17,7 +17,7 @@
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users |
+| **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew** |
 | **DOM-EQUIP** | 设备借用、器材、实验室物资 | 同上 |
 | **DOM-ASSET** | 固定资产领用、耗材申领、物资台账、浅进销存 | archive + ticket_flow + quota + content + org_users + **stock_io**（无 deadline；与 EQUIP 设备借用区分；≠ 采购申购） |
 | **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
@@ -56,7 +56,7 @@
 | **DOM-ETHIC** | 伦理审查、开题答辩材料 | archive + ticket_flow + content + org_users |
 | **DOM-PARTY** | 党员发展、入党阶段材料 | archive + ticket_flow + content + org_users |
 | **DOM-CONTRACT** | 合同登记、单级审批 | archive + ticket_flow + content + org_users |
-| **DOM-INSTRUMENT** | 大型仪器借用 + 机时预约 | archive + ticket_flow + **slot_reserve** + quota + deadline + content + org_users + **instrument_slot** |
+| **DOM-INSTRUMENT** | 大型仪器借用 + 机时预约 | archive + ticket_flow + **slot_reserve** + quota + deadline + content + org_users + **instrument_slot** + **loan_renew** |
 | **DOM-EXAM** | 在线考试、题库、组卷、结业考、党建/驾校/安全答题皮 | archive + **exam** + content + org_users（无单据；刷题/解析/限时/次数/排行/错题本开题按需） |
 | **DOM-SURVEY** | 问卷调查、满意度调研、简易量表（非评教/非考试） | archive + **survey** + content + org_users（无单据；配置/填写/回收统计） |
 | **DOM-VOTE** | 投票评选、十佳选票、结果公示（非报名） | archive + **vote** + content + org_users（无单据；候选人/限票/计票） |
@@ -76,17 +76,17 @@
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** + **checkin**；开题写报名+投票 → 另挂 **vote**（C-11） |
+| **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** + **checkin** + **waitlist**；开题写报名+投票 → 另挂 **vote**（C-11） |
 | **DOM-LOST** | 失物招领；宠物领养（认领壳换皮） | archive + ticket_flow + **quota** + content + org_users |
-| **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict**（+ L1 互斥/分类限额） |
+| **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict** + **waitlist**（+ L1 互斥/分类限额） |
 | **DOM-TOUR** | 旅行社线路、跟团游报名、出团确认 | archive + ticket_flow + **quota** + content + org_users（线路 `tour_line`、报名 `tour_signup`；≠酒店≠校园活动≠拼车≠出差） |
 
 ### D. 交易 / 点餐（`order_lines` 已开）
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-SHOP** | 商城、二手、购物车、订单 | archive + order_lines + quota + content + org_users + **guestbook** + **favorites**（开题可再扫 coupon / loyalty / order_review / 联想·足迹·多图） |
-| **DOM-FOOD** | 食堂、点餐、外卖档口 | 同上 |
+| **DOM-SHOP** | 商城、二手、购物车、订单 | archive + order_lines + quota + content + org_users + **guestbook** + **favorites** + **order_review**（开题可再扫 coupon / loyalty / 联想·足迹·多图；多商家扫词开） |
+| **DOM-FOOD** | 食堂、点餐、外卖档口 | 同上（骑手岗开题扫词开） |
 | **DOM-CINEMA** | 影院选座购票、座位图占座 | archive + order_lines + quota + content + org_users + **seat_select**（场次 `cinema_show`、座位 `cinema_seat`；无购物车主路径） |
 
 交易答辩口径：下单 → 管理确认/发货 → 用户看物流轨迹 → 完成；可选领券核销、售后、收藏再加购、评价。影院为选座确认后即时占座生成订单。
@@ -99,7 +99,8 @@
 | **DOM-PARKING** | 车位预约 | archive + slot_reserve + content + org_users |
 | **DOM-MEETING** | 会议室 / 球馆 / 自习室 / 座位占坑预约 | archive + slot_reserve + content + org_users |
 | **DOM-SALON** | 美发美容 / 健身私教服务预约 | archive + slot_reserve + content + org_users |
-| **DOM-HOTEL** | 宾馆客房 | archive + slot_reserve + order_lines + content + org_users |
+| **DOM-HOTEL** | 宾馆客房 | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review** |
+| **DOM-CARRENT** | 汽车租赁 | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review** |
 
 预约答辩口径：选时段占坑 →（可选确认）→ 管理端履约办结 / 用户取消或改约。状态含 `completed`（入场/就诊/到店/入住离店等文案随 schema）。
 
@@ -128,10 +129,10 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-MEDIA** | 影视、电影、电视剧、综艺、视频点播、在线视频、片库 | archive + **favorites** + content + org_users + recommend |
+| **DOM-MEDIA** | 影视、电影、电视剧、综艺、视频点播、在线视频、片库 | archive + **favorites** + content + org_users + recommend + guestbook |
 | **DOM-MUSIC** | 音乐、歌曲、歌单、在线音乐、音乐播放器、听歌 | 同上 |
-| **DOM-FORUM** | 论坛、BBS、贴吧、社区帖子、板块 | archive + ticket_flow + content + org_users + recommend |
-| **DOM-BLOG** | 博客、个人博客、文章系统、资讯发布、CMS | archive + favorites + content + org_users + recommend |
+| **DOM-FORUM** | 论坛、BBS、贴吧、社区帖子、板块 | archive + ticket_flow + content + org_users + **content_report** + **post_mute**（**recommend / dm / favorites 开题扫词开**） |
+| **DOM-BLOG** | 博客、个人博客、文章系统、资讯发布、CMS | archive + favorites + content + org_users + recommend + guestbook |
 
 **媒资（MEDIA/MUSIC）**：播放为外链 / HTML5（`isbn` 映射播放链接）；收藏走即时 `favorites`（`user_favorite`），**无审核单据**。影院选座购票走 **DOM-CINEMA**；不接直播、转码 CDN。
 
@@ -146,7 +147,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | **回复 / 楼层（FORUM）** | `ticket_flow`（`reply`） | 挂主帖；`remark`=富文本；`allow_multi_ticket` 可多次跟帖 |
 | 收藏 / 订阅（BLOG） | `favorites`（`user_favorite`） | 读者一键收藏，无编辑确认 |
 | 站内公告 | `content` | 与帖文分离，勿混用 |
-| 猜你喜欢 | `recommend` | 分类偏好 + 热度 + 上新 |
+| 猜你喜欢 | `recommend` | MEDIA/MUSIC/BLOG 默认；FORUM 开题点名再挂 |
 
 **富文本（在范围内）**：基线 `RichTextEditor` / `RichTextView`（粗斜体、列表、链接；前端消毒）。主帖/文章与论坛回复走富文本；**不是**多人协同编辑。
 
@@ -154,7 +155,7 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 **刻意不接（reject / out_of_mvp）**：WebSocket/IM SDK 实时推送、富文本协同编辑、人脸、协同过滤/深度推荐、物联网、真支付、小程序/安卓原生、大数据作业等（见 `OUT_OF_SCOPE_SIGNALS`）。毕设级一对一私信已落地为 `dm`（短轮询）。域目录 `out_of_mvp` 只是壳默认示意，可改 `domains_catalog/` 各条目；项目交付清单由 `compose_out_of_mvp`（相关默认项 ∪ 开题扫词）合成。
 
-轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / FORUM / BLOG；**不是**协同过滤。
+轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / BLOG；**FORUM 不默认**（开题写「猜你喜欢/推荐模块」才扫入）；**不是**协同过滤。
 
 ### H. 真交叉（专科/本科·课设常见；Path B 已可 full）
 

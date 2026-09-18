@@ -12,7 +12,7 @@
 | 口径 | 含义 |
 |------|------|
 | **域默认** | 该域 bake 时直接带上（如 SHOP 带 `favorites`） |
-| **开题写到才挂** | 材料里找到对应描述才写入 caps；**没有就保持原样**（如联想 / 足迹 / 多图 / 订单评价） |
+| **开题写到才挂** | 材料里找到对应描述才写入 caps；**没有就保持原样**（如联想 / 足迹 / 多图 / 限时购） |
 | **壳附带** | 有订单壳或预约壳即有，不单独占 cap（售后、物流轨迹、改约、办结） |
 | **扫词写配置** | 开题写到 → 写 yml/开关，仍无独立 cap（如超时关单分钟数） |
 | **schema 开关** | 二级审批 / 互斥 / 签到 / 软删 / 周历等 → 见 [difficulty-tiers.md](./difficulty-tiers.md) L1，不另开 cap |
@@ -27,12 +27,12 @@
 | `ticket_flow` | ✅ | 提交→审/受理→完结；我的与待办 | 借阅、报修、报名… |
 | `quota` | ✅ | 库存 / 名额占用与归还 | 借阅、选课、设备… |
 | `deadline` | ✅ | 到期、逾期、催办、可选费用 | 借阅、租赁… |
-| `loan_renew` | ✅ | 借出中/逾期单据延长应还日；次数上限 | **开题写「续借」才挂**（E-01）；LIBRARY/EQUIP/INSTRUMENT；无域默认 |
-| `waitlist` | ✅ | 名额满可候补；完结/回补后 FIFO 晋升待审 | **开题写「候补」才挂**（E-02）；ACTIVITY/COURSE/TOUR/LOST（须 ticket+quota）；无域默认 |
+| `loan_renew` | ✅ | 借出中/逾期单据延长应还日；次数上限 | **域默认** LIBRARY / EQUIP / INSTRUMENT（E-01）；其它借还壳开题写「续借」才挂 |
+| `waitlist` | ✅ | 名额满可候补；完结/回补后 FIFO 晋升待审 | **域默认** ACTIVITY / COURSE（E-02）；TOUR / LOST 等须 ticket+quota 且开题写「候补」才挂 |
 | `time_conflict` | ✅ | 起止时段相交 + 报名截止 | 选课、活动报名… |
 | `slot_reserve` | ✅ | 资源时段占坑、取消与履约办结 | 挂号、车位、会议室、美发、客房 |
 | `order_lines` | ✅ | 购物车 + 多明细订单（系统内余额/渠道密码；不对接商户 SDK） | 商城、点餐、客房 |
-| `recommend` | ✅ | 猜你喜欢（分类偏好 + 热度 + 上新；非协同过滤） | 内容壳 / 档案浏览常见 |
+| `recommend` | ✅ | 猜你喜欢（分类偏好 + 热度 + 上新；非协同过滤） | 域默认 LIBRARY / EQUIP / MEDIA / MUSIC / BLOG 等；**FORUM 不默认**（开题写「猜你喜欢/推荐」才挂） |
 
 ### 交易附加（须已有 `order_lines`）
 
@@ -40,7 +40,7 @@
 |------|------|------|----------|
 | `guestbook` | ✅ | 门户留言；总管删与简短回复（≠ 公告 ≠ 论坛 ≠ **条下评论**） | 域默认 SHOP/FOOD/GENERIC·TRADE 及 MEDIA/MUSIC/BLOG；否则开题写「留言」才挂 |
 | `item_comment` | ✅ | 档案详情下发表/列表评论；管理端删除 | **开题写「评论/影评/曲评…」才挂**；仅 MEDIA/MUSIC/BLOG；≠guestbook ≠论坛回帖 ≠订单评价 |
-| `favorites` | ✅ | 收藏夹：收藏/取消，再加购 | 域默认 SHOP/FOOD；否则开题写「收藏」才挂 |
+| `favorites` | ✅ | 收藏夹：收藏/取消，再加购 | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；否则开题写「收藏」才挂 |
 | `post_like` | ✅ | 档案/帖一人一赞开关与计数 | **开题写「点赞」才挂**（E-03）；FORUM/BLOG/MEDIA/MUSIC；无域默认 |
 | `content_report` | ✅ | 用户举报→管理忽略/下架 | **开题写「举报」才挂**（E-03）；FORUM/DATING/BLOG；无域默认 |
 | `audit_log` | ✅ | 管理端关键写/登录记入 sys_audit_log；总管可查 | **开题写「操作/审计/登录日志」才挂**（E-04）；无域默认；仅登录日志则 loginOnly |
@@ -52,7 +52,7 @@
 | `points` | ✅ | 消费积分入账（不可充值） | 开题写到才挂 |
 | `spend_discount` | ✅ | 满减算价（与券取更优） | 开题写到才挂 |
 | `member_tier` | ✅ | 会员成长等级折扣 | 开题写到才挂 |
-| `order_review` | ✅ | 完成单星级+文字；管理端回复 | 开题写到才挂（无域默认） |
+| `order_review` | ✅ | 完成单星级+文字；管理端回复 | **域默认** SHOP / FOOD / HOTEL / CARRENT；其它订单壳开题写「订单评价/商品评价」才挂 |
 | `rating_dims` | ✅ | 单据多维评分+评语+可选匿名（综合分=均值） | 域默认 DOM-EVAL（C-06） |
 | `bed_occupy` | ✅ | 床位档案库存占用 + 选房/调宿申请 | 域默认 DOM-BED（C-08；复用 quota） |
 | `checkin` | ✅ | 口令签到；结束未签可记爽约/缺勤 | 域默认 DOM-ACTIVITY、DOM-CHECKIN（C-10） |

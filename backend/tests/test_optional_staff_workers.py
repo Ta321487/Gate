@@ -28,6 +28,26 @@ def test_food_rider_via_waimai_peisong():
     ]
 
 
+def test_food_rider_via_colloquial_ops():
+    """近年开题口语：配送管理 / 物流配送 / 外卖小哥 / 外送 / 骑手模块。"""
+    assert _ids("DOM-FOOD", "点餐下单后由配送管理岗完成送餐。") == [
+        "counter",
+        "rider",
+    ]
+    assert _ids("DOM-FOOD", "支持物流配送与档口接单。") == ["counter", "rider"]
+    assert _ids("DOM-FOOD", "外卖小哥接单后送到宿舍。") == ["counter", "rider"]
+    assert _ids("DOM-FOOD", "用户端、配送端与管理员端三端。") == [
+        "counter",
+        "rider",
+    ]
+    assert _ids("DOM-FOOD", "食堂点餐支持外送，外送员送到宿舍楼下。") == [
+        "counter",
+        "rider",
+    ]
+    assert _ids("DOM-FOOD", "系统含骑手模块与档口接单。") == ["counter", "rider"]
+    assert _ids("DOM-FOOD", "开通校园配送与宿舍配送。") == ["counter", "rider"]
+
+
 def test_food_no_rider_when_oos_only():
     text = (
         "主要功能：点餐下单、档口接单与取餐。\n"
@@ -38,8 +58,11 @@ def test_food_no_rider_when_oos_only():
 
 
 def test_food_weak_peisong_alone_no_rider():
-    """反向边界：光杆「配送服务」太泛，不挂骑手。"""
+    """反向边界：光杆「配送服务」/裸「配送」/仅取餐太泛，不挂骑手。"""
     assert _ids("DOM-FOOD", "本系统提供配送服务。") == ["counter"]
+    assert _ids("DOM-FOOD", "订单状态含待配送与已完成。") == ["counter"]
+    assert _ids("DOM-FOOD", "食堂档口点餐与取餐核销，不做外卖。") == ["counter"]
+    assert _ids("DOM-FOOD", "堂食点餐，不做外送。") == ["counter"]
 
 
 def test_shop_default_no_picker():

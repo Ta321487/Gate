@@ -27,6 +27,15 @@ _COMMENT_TERMS = (
     "书评",
     "评论模块",
     "评论管理",
+    "详情评论",
+    "下方评论",
+    "底部评论",
+    "视频评论",
+    "文章评论",
+    "观影评论",
+    "读后评论",
+    "在线点评",
+    "互动点评",
 )
 
 _ALLOW_DOMAINS = frozenset({"DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"})
