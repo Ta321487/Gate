@@ -1,34 +1,36 @@
 <template>
   <el-container class="layout workbench">
-    <el-aside width="208px" class="wb-aside">
+    <el-aside width="208px" class="wb-aside" :class="{ 'wb-aside--dense': asideDense }">
       <div class="wb-brand">
         <span class="wb-brand-mark" aria-hidden="true" />
         <span>管理后台</span>
       </div>
-      <el-menu :default-active="active" router class="wb-menu">
-        <el-menu-item
-          v-for="item in menuItems"
-          :key="item.index"
-          :index="item.index"
-          :title="item.label"
-        >
-          <span>{{ item.label }}</span>
-          <el-badge
-            v-if="item.key === 'ticket_pending' && pendingTickets > 0"
-            :value="pendingTickets"
-            :max="99"
-            class="menu-badge"
-          />
-          <el-badge
-            v-else-if="(item.key === 'archive_logs' || item.key === 'archive_log') && missingCheckin > 0"
-            :value="missingCheckin"
-            :max="99"
-            class="menu-badge"
-            type="danger"
-          />
-        </el-menu-item>
-        <el-menu-item v-if="profileEditable" index="/admin/profile">个人资料</el-menu-item>
-      </el-menu>
+      <div class="wb-menu-scroll">
+        <el-menu :default-active="active" router class="wb-menu">
+          <el-menu-item
+            v-for="item in menuItems"
+            :key="item.index"
+            :index="item.index"
+            :title="item.label"
+          >
+            <span>{{ item.label }}</span>
+            <el-badge
+              v-if="item.key === 'ticket_pending' && pendingTickets > 0"
+              :value="pendingTickets"
+              :max="99"
+              class="menu-badge"
+            />
+            <el-badge
+              v-else-if="(item.key === 'archive_logs' || item.key === 'archive_log') && missingCheckin > 0"
+              :value="missingCheckin"
+              :max="99"
+              class="menu-badge"
+              type="danger"
+            />
+          </el-menu-item>
+          <el-menu-item v-if="profileEditable" index="/admin/profile">个人资料</el-menu-item>
+        </el-menu>
+      </div>
     </el-aside>
     <el-container>
       <el-header class="wb-header">
@@ -60,6 +62,7 @@ import {
   staffPostLabel,
 } from '../utils/staffPosts.js'
 import { adminMenuPath } from '../utils/menuRoutes.js'
+import { adminAsideDense } from '../utils/navOverflow.js'
 import { onProfileDisplayChange } from '../utils/session.js'
 
 const route = useRoute()
@@ -147,6 +150,10 @@ const menuItems = computed(() => {
   }
   return items
 })
+
+const asideDense = computed(() =>
+  adminAsideDense(menuItems.value.length + (profileEditable ? 1 : 0)),
+)
 
 function logout() {
   localStorage.clear()

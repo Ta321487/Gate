@@ -5,14 +5,16 @@
         <span class="wb-brand-mark" aria-hidden="true" />
         <span>员工作业台</span>
       </div>
-      <el-menu :default-active="active" router class="wb-menu">
-        <el-menu-item
-          v-for="item in menuItems"
-          :key="item.index"
-          :index="item.index"
-          :title="item.label"
-        >{{ item.label }}</el-menu-item>
-      </el-menu>
+      <div class="wb-menu-scroll">
+        <el-menu :default-active="active" router class="wb-menu">
+          <el-menu-item
+            v-for="item in menuItems"
+            :key="item.index"
+            :index="item.index"
+            :title="item.label"
+          >{{ item.label }}</el-menu-item>
+        </el-menu>
+      </div>
     </el-aside>
     <el-container>
       <el-header class="wb-header">
