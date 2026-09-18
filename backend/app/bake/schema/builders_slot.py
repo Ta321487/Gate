@@ -100,12 +100,65 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "库存", "type": "number"},
             ]
+        elif pk == "print":
+            fields = [
+                {"key": "title", "label": "服务项目", "type": "string"},
+                {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "装订规格", "type": "string"},
+                {"key": "sellerNote", "label": "工艺说明", "type": "textarea"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "可接单量", "type": "number"},
+            ]
+        elif pk == "flowers":
+            fields = [
+                {"key": "title", "label": "花材名称", "type": "string"},
+                {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "花束规格", "type": "string"},
+                {"key": "sellerNote", "label": "配送说明", "type": "textarea"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "库存", "type": "number"},
+            ]
+        elif pk == "errand":
+            fields = [
+                {"key": "title", "label": "代买项目", "type": "string"},
+                {"key": "author", "label": "服务费(元)", "type": "number", "format": "money"},
+                {"key": "isbn", "label": "服务范围", "type": "string"},
+                {"key": "sellerNote", "label": "代买说明", "type": "textarea"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "可接单", "type": "number"},
+            ]
+        elif pk == "points":
+            fields = [
+                {"key": "title", "label": "兑换商品", "type": "string"},
+                {"key": "author", "label": "积分价", "type": "number"},
+                {"key": "isbn", "label": "兑换货号", "type": "string"},
+                {"key": "sellerNote", "label": "兑换说明", "type": "textarea"},
+                {"key": "category", "label": "分类", "type": "select"},
+                {"key": "stock", "label": "库存", "type": "number"},
+            ]
         else:
+            # retail / 默认：软皮用说明字段签名，避免与农产/二手撞列名观感
+            note_lab = {
+                "pharmacy": "用药说明",
+                "pet": "适用说明",
+                "auto": "适配车型",
+                "beauty": "功效说明",
+                "market": "商品说明",
+                "office": "规格说明",
+                "agri": "施用说明",
+            }.get(niche or "", "商品说明")
+            sku_lab = {
+                "pharmacy": "国药准字/货号",
+                "pet": "规格货号",
+                "auto": "配件号",
+                "beauty": "规格",
+                "agri": "规格含量",
+            }.get(niche or "", "货号")
             fields = [
                 {"key": "title", "label": "商品名", "type": "string"},
                 {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
-                {"key": "isbn", "label": "货号", "type": "string"},
-                {"key": "sellerNote", "label": "商品说明", "type": "string"},
+                {"key": "isbn", "label": sku_lab, "type": "string"},
+                {"key": "sellerNote", "label": note_lab, "type": "string"},
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "库存", "type": "number"},
             ]

@@ -1692,7 +1692,9 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         approve_ends_flow=True,
     )
 
-def _course_schema(title: str) -> dict[str, Any]:
+def _course_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
+    """公选课选课；proposal_text 预留给场景双扫。"""
+    _ = proposal_text
     return _with_portal_banners(
         archive_ticket_schema(
             title,

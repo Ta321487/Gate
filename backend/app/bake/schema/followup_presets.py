@@ -789,6 +789,7 @@ def followup_domain_schema(
     domain: str,
     *,
     overrides: dict[str, Any] | None = None,
+    proposal_text: str = "",
 ) -> dict[str, Any]:
     """按 FOLLOWUP_PRESETS 组装 archive_ticket + 门户轮播。
 
@@ -824,16 +825,16 @@ def followup_domain_schema(
     # 双角色域（STAFF_POSTS 空）不落子管，与 bake 侧 attach_staff_posts 一致
     from app.bake.staff_posts import staff_posts_for_domain
 
-    if not staff_posts_for_domain(domain, title=title, proposal_text=""):
+    if not staff_posts_for_domain(domain, title=title, proposal_text=proposal_text or ""):
         roles = dict(schema.get("roles") or {})
         roles.pop("subadmin", None)
         schema["roles"] = roles
     return schema
 
 
-def followup_builder(domain: str) -> Callable[[str], dict[str, Any]]:
-    def _build(title: str) -> dict[str, Any]:
-        return followup_domain_schema(title, domain)
+def followup_builder(domain: str) -> Callable[..., dict[str, Any]]:
+    def _build(title: str, proposal_text: str = "") -> dict[str, Any]:
+        return followup_domain_schema(title, domain, proposal_text=proposal_text)
 
     _build.__doc__ = str(FOLLOWUP_PRESETS[domain].get("doc") or "")
     _build.__name__ = f"_{domain.split('-', 1)[-1].lower()}_schema"

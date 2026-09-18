@@ -61,11 +61,10 @@ def build_domain_schema(
         )
     builder = SCHEMA_BUILDERS.get(domain, lambda t: generic_schema(t, domain))
     if domain in SCHEMA_BUILDERS:
-        from app.bake.schema.templates import _SCENE_COPY_DOMAINS
-
-        if domain in _SCENE_COPY_DOMAINS or domain == "DOM-LIBRARY":
+        # 全域双扫：题名+正文一律传入；旧 builder 无该参则回退
+        try:
             schema = builder(title, proposal_text=proposal_text)
-        else:
+        except TypeError:
             schema = builder(title)
     else:
         schema = generic_schema(title, domain)
@@ -185,10 +184,8 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
             elif isinstance(prop, str):
                 prop_body = prop
         from app.bake.match_path_axes import match_path_override_scope
-        from app.bake.schema.shells import _SCENE_COPY_DOMAINS
 
-        # 场景/产品皮域必须按开题重编壳：否则匹配期旧 schema 会卡住
-        # （例：EVENT 种子已是应急事件标题，列表仍显示「对象姓名/提交打卡」）
+        # 具名域一律按开题重编壳（题名+正文双扫）；通用壳仍走 stale 分支
         # 须带 match_path 覆盖：否则生成前重编会丢掉运营台手改的身份/入口
         path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
         stale_or_missing = (
@@ -197,7 +194,7 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
         with match_path_override_scope(
             domain, path.get("scene"), path.get("entry")
         ):
-            if stale_or_missing or domain in _SCENE_COPY_DOMAINS:
+            if stale_or_missing or domain in SCHEMA_BUILDERS:
                 spec["schema"] = build_domain_schema(
                     title,
                     domain,
@@ -450,6 +447,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     sch_final = out.get("schema") if isinstance(out.get("schema"), dict) else {}
     sync_user_menus_from_caps(sch_final)
     out["schema"] = sch_final
+    from app.bake.features.opening_align import apply_opening_align_to_spec
+
+    out = apply_opening_align_to_spec(out, body)
     return out
 
 

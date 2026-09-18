@@ -235,6 +235,7 @@ def expected_scan_checks(domain: str) -> list[tuple[str, Callable[[str], bool]]]
         scan_two_level,
     )
     from app.bake.scene_scan import scan_shop_marketplace
+    from app.bake.staff_posts import food_wants_rider
 
     mapping: dict[str, Callable[[str], bool]] = {
         "loan_renew": scan_loan_renew,
@@ -250,7 +251,7 @@ def expected_scan_checks(domain: str) -> list[tuple[str, Callable[[str], bool]]]
         "favorites": scan_favorites,
         "dm": lambda t: scan_dm(t) or scan_dm_merchant_peers(t),
         "marketplace": lambda t: scan_shop_marketplace("", t) or scan_shop_marketplace(t, t),
-        "rider": lambda t: ("配送员" in (t or "")) or ("骑手" in (t or "")),
+        "rider": food_wants_rider,
         "post_like": scan_post_like,
         "content_report": scan_content_report,
         "post_mute": scan_post_mute,

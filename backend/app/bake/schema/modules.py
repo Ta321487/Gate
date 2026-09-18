@@ -798,7 +798,7 @@ def _is_auth_module_label(lab: str) -> bool:
 
 
 def _score_identity_section(sec_lab: str, *, slot: str, role_lab: str) -> int:
-    """材料身份段 → 交付 user/admin 槽；无分则不挂该枝（如未交付的「商家」）。"""
+    """材料身份段 → 交付 user/admin/staff 槽；未交付岗位不得挂枝。"""
     s = (sec_lab or "").strip()
     if not s:
         return 0
@@ -812,14 +812,52 @@ def _score_identity_section(sec_lab: str, *, slot: str, role_lab: str) -> int:
         sc += 8
     if slot == "admin" and any(t in s for t in ("管理员", "平台", "总管", "馆长", "主管")):
         sc += 8
-    # 商家/馆员等非 user/admin 槽：本图仅两枝，故意打低分以免误挂
-    if any(t in s for t in ("商家", "商户", "店家", "馆员", "骑手")):
+    if slot == "staff" and any(
+        t in s for t in ("商家", "商户", "店家", "馆员", "骑手", "店员", "前台", "楼管")
+    ):
+        sc += 8
+    # 商家/馆员等非 user/admin 槽：挂 user/admin 时打低分，避免误占总管枝
+    if slot in ("user", "admin") and any(
+        t in s for t in ("商家", "商户", "店家", "馆员", "骑手")
+    ):
         sc -= 20
     if slot == "user" and any(t in s for t in ("管理", "后台")):
         sc -= 6
     if slot == "admin" and any(t in s for t in ("用户", "买家", "学生")) and "管理" not in s:
         sc -= 6
     return sc
+
+
+def _delivered_staff_posts(schema: dict[str, Any]) -> list[dict[str, Any]]:
+    roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+    posts = roles.get("staff_posts")
+    if not isinstance(posts, list):
+        return []
+    return [p for p in posts if isinstance(p, dict) and p.get("id")]
+
+
+def _staff_menu_items(schema: dict[str, Any], post: dict[str, Any]) -> list[dict[str, Any]]:
+    """岗位可见管理菜单：非 superOnly ∩ 岗位 pack。"""
+    from app.bake.staff_posts import PACK_ADMIN_MENUS
+
+    packs = post.get("packs") if isinstance(post.get("packs"), list) else []
+    allowed: set[str] = set()
+    for pk in packs:
+        base = PACK_ADMIN_MENUS.get(str(pk))
+        if base:
+            allowed |= set(base)
+    admin = (schema.get("menus") or {}).get("admin") or []
+    out: list[dict[str, Any]] = []
+    for m in admin:
+        if not isinstance(m, dict) or not m.get("key"):
+            continue
+        if m.get("superOnly"):
+            continue
+        key = str(m.get("key"))
+        if allowed and key not in allowed and key != "messages":
+            continue
+        out.append(m)
+    return out
 
 
 def _pick_material_section(
@@ -1060,6 +1098,30 @@ def _model_by_identity(
                     "modules": _menu_as_identity_modules(admin_menus, side="admin"),
                 }
             )
+
+    # 已交付岗位 + 材料有对应身份段 → 第三枝（禁止图上有包里无；未交付仍丢）
+    for post in _delivered_staff_posts(schema):
+        post_lab = str(post.get("label") or post.get("id") or "").strip()
+        if not post_lab:
+            continue
+        staff_menus = _staff_menu_items(schema, post)
+        if not staff_menus:
+            continue
+        sec = _pick_material_section(
+            sections, slot="staff", role_lab=post_lab, used=used
+        )
+        if not sec:
+            continue
+        aligned.append(
+            {
+                "label": str(sec.get("label") or post_lab).strip() or post_lab,
+                "modules": _align_material_modules_to_menus(
+                    list(sec.get("modules") or []),
+                    side="admin",
+                    menus=staff_menus,
+                ),
+            }
+        )
 
     if not aligned:
         return base

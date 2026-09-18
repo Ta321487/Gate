@@ -144,7 +144,7 @@ class ModuleDiagramTests(unittest.TestCase):
         branches = {c["label"]: c for c in model["root"]["children"]}
         self.assertIn("用户", branches)
         self.assertIn("管理员", branches)
-        # 未交付商家角色 → 整枝丢掉，禁止图上有包里无
+        # 单店未交付商家角色 → 整枝丢掉，禁止图上有包里无
         self.assertNotIn("商家", branches)
         user_labs = [c["label"] for c in branches["用户"]["children"]]
         self.assertIn("商品模块", user_labs)
@@ -162,6 +162,25 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertNotIn("children", goods)
         svg = render_module_svg(model)
         self.assertNotIn(_ALIGNED_LEAF_NOTE, svg)
+
+    def test_marketplace_materials_draw_merchant_branch(self) -> None:
+        """多店已交付商家岗 + 开题有商家段 → 模块图画第三枝。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        schema = build_domain_schema(
+            "农产品电商系统",
+            "DOM-SHOP",
+            proposal_text=_SHOP_ENUM,
+        )
+        self.assertTrue(schema.get("shopMarketplace"))
+        model = module_model(schema, proposal_text=_SHOP_ENUM, layout="identity")
+        branches = {c["label"]: c for c in model["root"]["children"]}
+        self.assertIn("商家", branches)
+        merch_labs = [c["label"] for c in branches["商家"]["children"]]
+        self.assertTrue(merch_labs)
+        self.assertTrue(
+            any("管理" in x or "订单" in x or "农产品" in x or "商品" in x for x in merch_labs)
+        )
 
     def test_expand_details(self) -> None:
         schema = self._shop_schema()
