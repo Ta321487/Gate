@@ -100,13 +100,48 @@ public interface ExamMapper {
             @Param("isCorrect") int isCorrect,
             @Param("score") int score);
 
-    @Update("UPDATE exam_attempt SET status='submitted', score=#{score}, total_score=#{totalScore}, "
+    @Update("UPDATE exam_attempt SET status=#{status}, score=#{score}, total_score=#{totalScore}, "
             + "submitted_at=NOW(), timed_out=#{timedOut} WHERE id=#{id}")
     int submitAttempt(
             @Param("id") long id,
+            @Param("status") String status,
             @Param("score") int score,
             @Param("totalScore") int totalScore,
             @Param("timedOut") int timedOut);
+
+    @Select("SELECT a.id, a.paper_id AS paperId, a.username, a.submitted_at AS submittedAt, p.title AS paperTitle "
+            + "FROM exam_attempt a JOIN exam_paper p ON p.id=a.paper_id "
+            + "WHERE a.status='reviewing' ORDER BY a.id ASC")
+    List<Map<String, Object>> listReviewing();
+
+    @Select("SELECT q.id AS questionId, q.type, q.stem, q.answer_key AS answerKey, q.score AS maxScore, "
+            + "ea.answer_text AS userAnswer, ea.is_correct AS isCorrect, ea.score AS earnedScore "
+            + "FROM exam_paper_question pq "
+            + "JOIN exam_question q ON q.id=pq.question_id "
+            + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
+            + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
+            + "WHERE a.id=#{attemptId} ORDER BY pq.sort_no, pq.id")
+    List<Map<String, Object>> listReviewAnswers(@Param("attemptId") long attemptId);
+
+    @Select("SELECT type, score FROM exam_question WHERE id=#{id}")
+    List<Map<String, Object>> selectQuestionScore(@Param("id") long id);
+
+    @Update("UPDATE exam_answer SET score=#{score}, is_correct=#{isCorrect} "
+            + "WHERE attempt_id=#{attemptId} AND question_id=#{questionId} AND is_correct=-1")
+    int markAnswer(
+            @Param("attemptId") long attemptId,
+            @Param("questionId") long questionId,
+            @Param("score") int score,
+            @Param("isCorrect") int isCorrect);
+
+    @Select("SELECT COUNT(*) FROM exam_answer WHERE attempt_id=#{attemptId} AND is_correct=-1")
+    Integer countPending(@Param("attemptId") long attemptId);
+
+    @Select("SELECT COALESCE(SUM(score),0) FROM exam_answer WHERE attempt_id=#{attemptId}")
+    Integer sumScores(@Param("attemptId") long attemptId);
+
+    @Update("UPDATE exam_attempt SET status='submitted', score=#{score} WHERE id=#{id}")
+    int publishScore(@Param("id") long id, @Param("score") int score);
 
     int countMyAttempts(@Param("username") String username);
 

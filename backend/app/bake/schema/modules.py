@@ -67,6 +67,7 @@ _EXAM_KEYS = frozenset(
         "exam_rank",
         "exam_wrongbook",
         "exam_questions",
+        "exam_mark",
     }
 )
 _SURVEY_KEYS = frozenset(

@@ -67,6 +67,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "ai_knowledge": "/admin/ai-knowledge",
     "exam_questions": "/admin/exam/questions",
     "exam_papers": "/admin/exam/papers",
+    "exam_mark": "/admin/exam/mark",
     "survey_forms": "/admin/survey/forms",
     "survey_stats": "/admin/survey/stats",
     "vote_candidates": "/admin/vote/candidates",

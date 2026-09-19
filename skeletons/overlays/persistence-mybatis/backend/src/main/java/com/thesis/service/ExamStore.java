@@ -7,17 +7,15 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 /**
- * 在线考试（C-01 / MyBatis）：题库、组卷、作答、自动判分。
+ * 在线考试（C-01 / MyBatis）：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
  */
 public class ExamStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final int REGEX_MAX = 200;
     private static final int SUBJECTIVE_ANSWER_MAX = 2000;
+    static final int PENDING_MARK = -1;
 
     private static boolean enabled;
     private static boolean practiceEnabled;
@@ -462,25 +460,6 @@ public class ExamStore {
             }
             return ks.equals(as) ? 1 : 0;
         }
-        if ("subjective".equals(t)) {
-            String ans = clip(a, SUBJECTIVE_ANSWER_MAX).toLowerCase(Locale.ROOT);
-            if (k.toLowerCase(Locale.ROOT).startsWith("re:")) {
-                String pat = k.substring(3).trim();
-                if (pat.length() > REGEX_MAX) return 0;
-                try {
-                    return Pattern.compile(pat, Pattern.CASE_INSENSITIVE).matcher(ans).find() ? 1 : 0;
-                } catch (PatternSyntaxException e) {
-                    return 0;
-                }
-            }
-            String norm = k.replace("|", ",");
-            for (String p : norm.split("[,，]")) {
-                String x = p.trim().toLowerCase(Locale.ROOT);
-                if (x.isEmpty()) continue;
-                if (!ans.contains(x)) return 0;
-            }
-            return 1;
-        }
         return 0;
     }
 
@@ -522,13 +501,20 @@ public class ExamStore {
         mapper().deleteAnswers(attemptId);
         int total = 0;
         int got = 0;
+        boolean pendingSubjective = false;
         for (Map<String, Object> raw : qs) {
             Map<String, Object> q = mapQuestion(raw, true);
             long qid = toLong(q.get("id"));
             int full = toInt(q.get("score"), 0);
             total += full;
             String userAns = ansMap.getOrDefault(qid, "");
-            int ok = scoreAnswer(str(q.get("type")), str(q.get("answerKey")), userAns);
+            String qType = str(q.get("type"));
+            if ("subjective".equals(qType)) {
+                pendingSubjective = true;
+                mapper().insertAnswer(attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), PENDING_MARK, 0);
+                continue;
+            }
+            int ok = scoreAnswer(qType, str(q.get("answerKey")), userAns);
             int sc = ok == 1 ? full : 0;
             got += sc;
             mapper().insertAnswer(attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), ok, sc);
@@ -540,10 +526,86 @@ public class ExamStore {
                 mapper().upsertWrongbook(username, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX));
             }
         }
-        mapper().submitAttempt(attemptId, got, total, timedOut);
+        mapper().submitAttempt(
+                attemptId,
+                pendingSubjective ? "reviewing" : "submitted",
+                pendingSubjective ? 0 : got,
+                total,
+                timedOut);
         Map<String, Object> out = getAttempt(attemptId);
         out.put("questions", listAttemptQuestions(attemptId, username, true));
         return out;
+    }
+
+    public static List<Map<String, Object>> listReviewQueue() {
+        require();
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : mapper().listReviewing()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", toLong(col(r, "id")));
+            m.put("paperId", toLong(col(r, "paperId", "paper_id")));
+            m.put("username", str(col(r, "username")));
+            m.put("paperTitle", str(col(r, "paperTitle", "paper_title")));
+            m.put("submittedAt", fmt(col(r, "submittedAt", "submitted_at")));
+            list.add(m);
+        }
+        return list;
+    }
+
+    public static List<Map<String, Object>> reviewDetail(long attemptId) {
+        require();
+        if (getAttempt(attemptId) == null) throw new IllegalArgumentException("答卷不存在");
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : mapper().listReviewAnswers(attemptId)) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            String type = str(col(r, "type"));
+            int markFlag = toInt(col(r, "isCorrect", "is_correct"), 0);
+            boolean pending = "subjective".equals(type) && markFlag == PENDING_MARK;
+            m.put("questionId", toLong(col(r, "questionId", "question_id")));
+            m.put("type", type);
+            m.put("stem", str(col(r, "stem")));
+            m.put("answerKey", str(col(r, "answerKey", "answer_key")));
+            m.put("maxScore", toInt(col(r, "maxScore", "score"), 0));
+            m.put("userAnswer", str(col(r, "userAnswer", "answer_text")));
+            m.put("pending", pending);
+            m.put("earnedScore", pending ? null : toInt(col(r, "earnedScore", "score"), 0));
+            list.add(m);
+        }
+        return list;
+    }
+
+    public static Map<String, Object> markSubjective(long attemptId, long questionId, int score) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        if (!"reviewing".equals(str(attempt.get("status")))) {
+            throw new IllegalStateException("该答卷不在待阅");
+        }
+        List<Map<String, Object>> qs = mapper().selectQuestionScore(questionId);
+        if (qs == null || qs.isEmpty()) throw new IllegalArgumentException("题目不存在");
+        Map<String, Object> q = qs.get(0);
+        if (!"subjective".equals(str(col(q, "type")))) {
+            throw new IllegalArgumentException("只能给主观题打分");
+        }
+        int maxScore = toInt(col(q, "score"), 0);
+        if (score < 0 || score > maxScore) {
+            throw new IllegalArgumentException("分数须在 0 到 " + maxScore + " 之间");
+        }
+        int ok = (maxScore > 0 && score >= maxScore) ? 1 : 0;
+        int n = mapper().markAnswer(attemptId, questionId, score, ok);
+        if (n == 0) throw new IllegalStateException("该题已阅或不在本卷");
+        if (wrongbookEnabled && ok == 0) {
+            Integer has = mapper().countWrongbookTable();
+            if (has != null && has > 0) {
+                mapper().upsertWrongbook(str(attempt.get("username")), questionId, "");
+            }
+        }
+        Integer pending = mapper().countPending(attemptId);
+        if (pending == null || pending == 0) {
+            Integer sum = mapper().sumScores(attemptId);
+            mapper().publishScore(attemptId, sum == null ? 0 : sum);
+        }
+        return getAttempt(attemptId);
     }
 
     public static Map<String, Object> pageMyAttempts(String username, int page, int size) {

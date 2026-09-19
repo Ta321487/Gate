@@ -31,7 +31,7 @@ const list = ref([])
 const labels = computed(() => getSchema().labels || {})
 const pageTitle = computed(() => labels.value.examPapersTitle || '在线考试')
 const pageLead = computed(
-  () => labels.value.examPapersLead || '选择已发布试卷开考；提交后自动判分。',
+  () => labels.value.examPapersLead || '选择已发布试卷开考；客观题交卷自动判分，主观题由教师阅卷。',
 )
 
 async function load() {

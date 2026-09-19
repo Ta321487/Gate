@@ -18,7 +18,11 @@
       </div>
     </section>
     <div v-if="submitted" class="card result">
-      <h2>得分 {{ result.score }} / {{ result.totalScore }}</h2>
+      <template v-if="result.status === 'reviewing'">
+        <h2>已交卷，主观题待教师阅卷</h2>
+        <p>客观题已自动判分。总分在全部主观题阅完后公布。</p>
+      </template>
+      <h2 v-else>得分 {{ result.score }} / {{ result.totalScore }}</h2>
       <el-button type="primary" @click="$router.push('/exam/attempts')">查看成绩</el-button>
     </div>
     <div v-else class="list">

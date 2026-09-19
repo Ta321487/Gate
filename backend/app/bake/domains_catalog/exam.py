@@ -29,12 +29,12 @@ DOMAINS: dict = {
             "课程结业测验",
         ],
         "match_hint": (
-            "适用：在线考试/题库组卷/刷题与自动判分（客观+主观自动判分）。"
+            "适用：在线考试/题库组卷/刷题与自动判分（客观题匹配，主观题教师阅卷）。"
             "勿与论坛跟帖、网上评教、实验室准入申请单（无题库主路径）混淆。"
         ),
         "entities": ["Archive", "Category", "Exam", "Notice"],
         "roles": ["user", "admin", "subadmin"],
-        "flows": ["录题 → 组卷发布 → 开考作答 → 自动判分 → 查成绩"],
+        "flows": ["录题 → 组卷发布 → 开考作答 → 客观题自动判分 → 主观题教师阅卷 → 查成绩"],
         "features": [
             {"name": "登录", "status": "baseline"},
             {"name": "个人资料与头像", "status": "baseline"},
