@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-09-19T14:39:02Z",
+  "updated_at": "2026-09-19T18:28:12Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -58,10 +58,9 @@
       "normalized_sha256": "80548fe86ca78a1000be6f153f3d0cb2a562036f9f3dd0d92cad97574a5bb87e"
     },
     ".gitignore": {
-      "role": "index",
-      "sha256": "30ccabc9938d58e9d78454f71f5ee3a9cc8310a587f151e6689a2ac733d92a95",
-      "size": 507,
-      "normalized_sha256": "7b9ae421081de863f7d5310d840db59980007b9180727e4e6c985a0c6951dab6"
+      "sha256": "c90ade28c2c381aa8ff1fbcd02121b6d048a53bccc80833ff3a9ddb4d77d4985",
+      "size": 572,
+      "normalized_sha256": "c90ade28c2c381aa8ff1fbcd02121b6d048a53bccc80833ff3a9ddb4d77d4985"
     },
     ".mcp.json": {
       "sha256": "eb97434cb184e6db479224384820dd7bad612f08a83382fd7fba4a5b098d365f",
@@ -81,15 +80,19 @@
       "normalized_sha256": "160925d80b66f2e182556014e8e3e5ebf658fd029a7df8fa144ee100cbc91c76"
     },
     "README.md": {
-      "role": "index",
-      "sha256": "398463904519134086191bbd0a5fb27eeeecb804a30df20770ad433fe2be42ba",
-      "size": 8305,
-      "normalized_sha256": "398463904519134086191bbd0a5fb27eeeecb804a30df20770ad433fe2be42ba"
+      "sha256": "48844d5ab52672f13656cf41ca6aa06ad00a10db7ad1665952ecf15dc6b14bf4",
+      "size": 9991,
+      "normalized_sha256": "48844d5ab52672f13656cf41ca6aa06ad00a10db7ad1665952ecf15dc6b14bf4"
     },
     "aoci.code.txt": {
-      "sha256": "e7e4a55c64fc8f2ef0b1a702f369b9b18a73b7c7a160b3d99cc747444e0fad19",
-      "size": 137997,
-      "normalized_sha256": "e7e4a55c64fc8f2ef0b1a702f369b9b18a73b7c7a160b3d99cc747444e0fad19"
+      "sha256": "d5dd47400bf388d20b44503cecf4e0302026333ce1126353d8866d42d90ce2fd",
+      "size": 139302,
+      "normalized_sha256": "d5dd47400bf388d20b44503cecf4e0302026333ce1126353d8866d42d90ce2fd"
+    },
+    "aoci.database.txt": {
+      "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
+      "size": 838,
+      "normalized_sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -99,9 +102,9 @@
     },
     "aoci.txt": {
       "role": "index",
-      "sha256": "e50fa0c49ba15aa64a1d186b7d490019e4fb7174904b15be18b34b77e8d675c9",
-      "size": 308,
-      "normalized_sha256": "e50fa0c49ba15aa64a1d186b7d490019e4fb7174904b15be18b34b77e8d675c9"
+      "sha256": "305f8f980751fffc8bfd71eafbdfb4e605ff6bba0f5cfbe60def5eb55cd1b67d",
+      "size": 414,
+      "normalized_sha256": "305f8f980751fffc8bfd71eafbdfb4e605ff6bba0f5cfbe60def5eb55cd1b67d"
     },
     "backend/.env.example": {
       "role": "index",
@@ -5268,16 +5271,20 @@
       "normalized_sha256": "e6e96023a91e59ec63aa7ef07295121b06223b2b4057d63e899121dce8b8b673"
     },
     "scripts/README.md": {
-      "role": "index",
-      "sha256": "d0cc5d58e29f706a689e0a4b617899f0c344f8475eaab5aaaefa4db62c22b2c9",
-      "size": 2816,
-      "normalized_sha256": "d0cc5d58e29f706a689e0a4b617899f0c344f8475eaab5aaaefa4db62c22b2c9"
+      "sha256": "062d8c1493c1162e8f0ba587da0f1ceb92ebff6bde3e073daf53b481770c921d",
+      "size": 4055,
+      "normalized_sha256": "062d8c1493c1162e8f0ba587da0f1ceb92ebff6bde3e073daf53b481770c921d"
     },
     "scripts/_backend-procs.ps1": {
       "role": "index",
       "sha256": "301d058c3b9dd347dfe476d30185fa7984fa040b7e43156f058102509efefe5f",
       "size": 11454,
       "normalized_sha256": "301d058c3b9dd347dfe476d30185fa7984fa040b7e43156f058102509efefe5f"
+    },
+    "scripts/aoci-git-shim/git-shim.cs": {
+      "sha256": "47ba8e041993d23c43676302040d0ca7cf8d5393132cb30394fb9ff43f68a323",
+      "size": 4328,
+      "normalized_sha256": "3be899631fb67d9fc4b99978d1df637f5af38b8357b4e21dd81f8f618bdb9c18"
     },
     "scripts/kill-dup-backend.bat": {
       "role": "index",
@@ -5309,6 +5316,21 @@
       "size": 2804,
       "normalized_sha256": "9d23da800407809c76b6583c58fdb0351090d9c7c38ade2a36b8508491d7f104"
     },
+    "scripts/start-aoci-ui.bat": {
+      "sha256": "8692fdf84cb662d27a5ca884bf9f10ec7c91a6d24d46840b21345afbb07edf88",
+      "size": 124,
+      "normalized_sha256": "8692fdf84cb662d27a5ca884bf9f10ec7c91a6d24d46840b21345afbb07edf88"
+    },
+    "scripts/start-aoci-ui.ps1": {
+      "sha256": "85bb9d64d0d8d81aa2a74000f24fae95597d446a235e783b3e9470fca3d6b6fc",
+      "size": 1458,
+      "normalized_sha256": "78fb50a81dbad5ad448a9d46a401958a48f71f32d180e7c44a86606c67346de2"
+    },
+    "scripts/start-aoci-ui.vbs": {
+      "sha256": "6edc3b9a1863dce929a810b3585bd1fd207cff9c3fafdbfb0dc3d77ecfb9eabd",
+      "size": 274,
+      "normalized_sha256": "6edc3b9a1863dce929a810b3585bd1fd207cff9c3fafdbfb0dc3d77ecfb9eabd"
+    },
     "scripts/start-backend.bat": {
       "role": "index",
       "sha256": "4fd19a16ee1adc86db82901b9ea3eb22a686a5a9c621e8c5be318c3449e937c7",
@@ -5326,6 +5348,21 @@
       "sha256": "7112797f68332e62f8d98447c538095abd886c27f16c47b547b3a127914d3598",
       "size": 444,
       "normalized_sha256": "7112797f68332e62f8d98447c538095abd886c27f16c47b547b3a127914d3598"
+    },
+    "scripts/stop-aoci-ui.bat": {
+      "sha256": "343e4f6f363c92e3ccdba1cd03a18daf47308d3e15c95f0619c6f1e9450f1814",
+      "size": 52,
+      "normalized_sha256": "343e4f6f363c92e3ccdba1cd03a18daf47308d3e15c95f0619c6f1e9450f1814"
+    },
+    "scripts/stop-aoci-ui.ps1": {
+      "sha256": "40ea8477593751ed500956b0c36d1e1c8697e6a60d8d88284174ce8bff6d662c",
+      "size": 774,
+      "normalized_sha256": "f7fc6d89da3a8054cd559ce9e8e33ea2b61e414885f825f9b0dc6581178e6c53"
+    },
+    "scripts/stop-aoci-ui.vbs": {
+      "sha256": "b80997faf4c57a45c316ff2e5be11534e9a791be10624462f7c729854bbc99d8",
+      "size": 273,
+      "normalized_sha256": "b80997faf4c57a45c316ff2e5be11534e9a791be10624462f7c729854bbc99d8"
     },
     "scripts/stop-backend.bat": {
       "role": "index",
@@ -8389,5 +8426,38 @@
       ]
     },
     "apply_authorization_mode": "auto"
+  },
+  "database_cognition": {
+    "version": "database-cognition-binding/v1",
+    "entries": [
+      {
+        "object_ref": "database://factory/graduate_factory/jobs",
+        "source_id": "factory",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "379211934fbd2451671dba34888823494852be75d486535cab4fef5b19bf0d61",
+        "entry_sha256": "73e86c175a2e7f2be695918d586a2a3e657ec1e2072f119d1182e52a692188d8"
+      },
+      {
+        "object_ref": "database://factory/graduate_factory/llm_calls",
+        "source_id": "factory",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "fd73d4403cd6e7870626fb1fb53cbf046f8c9a636a6af870bf14c352dd7bd54b",
+        "entry_sha256": "9f86ec9e1041ec854c1eb654800e50ab3e8848fe2002caa4b7520f3e52739066"
+      },
+      {
+        "object_ref": "database://factory/graduate_factory/projects",
+        "source_id": "factory",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "45b58e314a49b465e728903f44b8a431699b06e481572851009222f1fe8323b9",
+        "entry_sha256": "54023e44a0af0919938ac1561973690ba98078a50abe7531b5687f4cfe42c1bd"
+      },
+      {
+        "object_ref": "database://factory/graduate_factory/settings",
+        "source_id": "factory",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a026b553f7ca6ef77ed70ac349ef105272a65258cb501322225e518bc6d5456d",
+        "entry_sha256": "91a15ce4104a370360f4269b25f90e2386a84e6c4c36f2d1a0f922211d41b2df"
+      }
+    ]
   }
 }

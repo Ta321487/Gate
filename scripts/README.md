@@ -14,6 +14,10 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 | `kill-dup-backend.bat` | 清理重复 uvicorn（默认保留最新；`/all` 全杀） |
 | `verify-bats.bat` | 检查 bat 是否误存为 UTF-8 BOM / 含中文 |
 | `setup-cn-mirrors.ps1` | 国内镜像一键配置（pip / npm / Maven / Docker，**用户级**） |
+| `start-aoci-ui.vbs` | **推荐** 启动本仓库 AOCI 面板（无窗口） |
+| `stop-aoci-ui.vbs` | 停止本仓库已登记的 AOCI 面板 |
+
+对应的 `.bat` 只转给同名 `.vbs`，`.ps1` 才真正调 `aoci.exe`。不要直接跑 `aoci ui`。
 
 ## 控制台键位（高频优先）
 
@@ -47,6 +51,7 @@ scripts\launcher.bat stop
 | 类型 | 编码 | 内容 |
 |------|------|------|
 | `.bat` | **纯 ASCII**，无 BOM | `@echo off`、`if`、`call` 等 |
+| `.vbs` | **纯 ASCII** | 隐藏窗口拉起对应 `.ps1` |
 | `.ps1` | **UTF-8 with BOM** | 中文菜单、进程检测、Docker 等 |
 
 **不要把中文写进 `.bat`。** cmd 默认 GBK；若 bat 带 UTF-8 BOM，会出现 `错缀echo`、`f not exist` 等乱执行。
@@ -63,6 +68,23 @@ scripts\verify-bats.bat
 - 菜单 `1` / `2` / `3` / `4`：在同窗 **新标签** 里跑服务（不是再弹一堆独立窗口）。
 - 直接双击 `start-backend.bat` / `start-frontend.bat`：仍是 **独立窗口**（不变）。
 - 强制旧行为：启动前设环境变量 `GF_LAUNCH_STYLE=window`。
+
+## AOCI 面板
+
+双击 `start-aoci-ui.vbs` / `stop-aoci-ui.vbs`。脚本把仓库根解析为 `scripts` 的上一级，并在启动前把 `scripts\aoci-git-shim` 放到 `PATH` 最前。
+
+| 文件 | 作用 |
+|------|------|
+| `start-aoci-ui.vbs` | 隐藏窗口拉起 `start-aoci-ui.ps1` |
+| `start-aoci-ui.ps1` | `aoci ui --detach`，打开打印出的本机地址 |
+| `stop-aoci-ui.ps1` | `aoci ui --stop` |
+| `aoci-git-shim\git.exe` | 无控制台转发本机 git；`ls-files --others --ignored` 直接返回空 |
+
+Windows 上每次拉起 `Git\cmd\git.exe` 都会闪空白控制台。面板会反复扫忽略文件，所以必须走这套包装。
+
+已有面板在跑时，`--detach` **复用旧进程**，不会换上这次的 `PATH`。再闪就先 `stop-aoci-ui.vbs`，再 `start-aoci-ui.vbs`。
+
+`aoci-git-shim\git-shim.cs` 是包装源码；改完需用 `csc /target:winexe` 重编 `git.exe`。日常启动不用编译。
 
 ## Compose 数据库
 
