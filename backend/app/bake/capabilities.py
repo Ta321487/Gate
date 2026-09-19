@@ -197,7 +197,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "exam": {
         "label": "在线考试",
         "status": "implemented",
-        "desc": "题库/组卷/作答/自动判分；刷题·解析·限时·次数·排行·错题本按需（C-01；挂 DOM-EXAM）",
+        "desc": "题库/组卷/作答；客观题交卷匹配，主观题教师阅卷；刷题·解析·限时·次数·排行·错题本按需（C-01；挂 DOM-EXAM）",
     },
     "survey": {
         "label": "简易问卷",
@@ -248,6 +248,31 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "label": "本地签章",
         "status": "implemented",
         "desc": "上传签章图+勾选同意留痕（C-18；挂 DOM-INTERN 等；非 CA/第三方签平台）",
+    },
+    "balance_ledger": {
+        "label": "额度台账",
+        "status": "implemented",
+        "desc": "账户+流水+科目；审批扣减；余额不足拒绝（借用族薄域加厚；仿 stock_io/timebank；两端可见）",
+    },
+    "occupy_span": {
+        "label": "时段占用",
+        "status": "implemented",
+        "desc": "占用明细+复用 time_conflict；单据起止相交拒绝；只读周历（两端可见；≠新日历引擎）",
+    },
+    "material_check": {
+        "label": "材料清单",
+        "status": "implemented",
+        "desc": "必传材料清单+提交勾选；缺件拒绝；复用 requireAttach（两端：总管维护清单、用户上传）",
+    },
+    "claim_proof": {
+        "label": "认领凭证核验",
+        "status": "implemented",
+        "desc": "认领须提交凭证→核验→通过；挂 DOM-LOST，防点一下办结（两端：用户交凭证、管理核验）",
+    },
+    "lost_clue": {
+        "label": "路人线索留言",
+        "status": "implemented",
+        "desc": "启事下线索/询问；user_id 可空，游客填称呼即可，不建路人账号（挂 DOM-LOST）",
     },
     "rating_dims": {
         "label": "多维评分",

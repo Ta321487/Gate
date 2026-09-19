@@ -1,4 +1,4 @@
-"""开题扫词 → 已有积木：recommend / time_conflict / deadline（借阅逾期）。
+"""开题扫词 → 已有积木：recommend / time_conflict / occupy_span / deadline（借阅逾期）。
 
 硬约束
 ------
@@ -6,18 +6,31 @@
 - **开题写了才往没有的域上挂**；否定/对比不计（keyword_mentioned）。
 - **借阅逾期 ≠ 申报截止**：本模块的 ``deadline`` 是到期催还/罚金壳；
   申报/报名窗口见 ``ticket_flow_opts.scan_apply_deadline``，勿在此重复扫「报名截止」类词。
+- **occupy_span**：占用明细表 + 复用 time_conflict 算法；不新造冲突引擎。
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from app.bake.proposal_lexicon import keyword_mentioned
+from app.bake.proposal_lexicon import keyword_mentioned, pattern_mentioned
 
 RECOMMEND_CAP = "recommend"
 TIME_CONFLICT_CAP = "time_conflict"
+OCCUPY_SPAN_CAP = "occupy_span"
 DEADLINE_CAP = "deadline"
 LOAN_RENEW_CAP = "loan_renew"
+
+# 时段占用默认域（明细表 + time_conflict）
+SPAN_DOMAINS: frozenset[str] = frozenset({
+    "DOM-ATTEND",
+    "DOM-FLEET",
+    "DOM-TRIP",
+    "DOM-FITOUT",
+    "DOM-PROMO",
+    "DOM-ACAD",
+})
 
 # 借还行毕设默认续借（开题常只写借还催还、漏写续借）
 _LOAN_RENEW_DOMAINS = frozenset({"DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"})
@@ -326,4 +339,130 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         _add("续借")
 
     spec = {**spec, "capabilities": caps, "schema": schema, "features": features}
+    return spec
+
+
+_SPAN_SIGNALS = re.compile(
+    r"时段冲突|时间冲突|占用日历|占用明细|请假时段|用车时段|出差时段|"
+    r"不可重叠|时段占用|日期区间冲突"
+)
+
+
+def scan_occupy_span(text: str) -> bool:
+    return pattern_mentioned(text or "", _SPAN_SIGNALS, ignore_contrast=True)
+
+
+def occupy_span_wanted(
+    *,
+    domain: str | None,
+    capabilities: list[str] | None = None,
+    proposal_text: str = "",
+) -> bool:
+    caps = list(capabilities or [])
+    if OCCUPY_SPAN_CAP in caps:
+        return True
+    if (domain or "") in SPAN_DOMAINS:
+        return True
+    return scan_occupy_span(proposal_text)
+
+
+def merge_occupy_span_capabilities(
+    caps: list[str],
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+    force: bool = False,
+) -> list[str]:
+    out = list(caps or [])
+    want = force or occupy_span_wanted(
+        domain=domain,
+        capabilities=out,
+        proposal_text=proposal_text,
+    )
+    if want and OCCUPY_SPAN_CAP not in out:
+        out.append(OCCUPY_SPAN_CAP)
+    if OCCUPY_SPAN_CAP in out and TIME_CONFLICT_CAP not in out:
+        out.append(TIME_CONFLICT_CAP)
+    return out
+
+
+def attach_occupy_span_menus(schema: dict[str, Any]) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
+    menus = schema.setdefault("menus", {})
+    admin = menus.setdefault("admin", [])
+    user = menus.setdefault("user", [])
+    ensure_menu(
+        admin,
+        "occupy_admin",
+        {"key": "occupy_admin", "label": "占用明细", "superOnly": False},
+        before_key="content",
+    )
+    ensure_menu(
+        user,
+        "occupy_mine",
+        {"key": "occupy_mine", "label": "我的占用"},
+        before_key="content",
+    )
+    ensure_menu(
+        user,
+        "week_calendar",
+        {"key": "week_calendar", "label": "我的日程"},
+        before_key="content",
+    )
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("occupyMineTitle", "我的占用")
+    labels.setdefault(
+        "occupyMineLead",
+        "查看本人已占用的起止时段；与已有占用相交时不可再提交。",
+    )
+    labels.setdefault("occupyAdminTitle", "占用明细")
+    ticket = schema.setdefault("entities", {}).setdefault("ticket", {})
+    if isinstance(ticket, dict):
+        ticket["pickDateRange"] = True
+        ticket["weekCalendar"] = True
+        ticket.setdefault("weekCalendarLabel", "我的日程")
+        ticket["writeOccupyOnApply"] = True
+    ents = schema.setdefault("entities", {})
+    if "occupy_span" not in ents:
+        ents["occupy_span"] = {
+            "key": "occupy_span",
+            "label": "占用",
+            "labelPlural": "占用明细",
+        }
+
+
+def apply_occupy_span_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
+    domain = spec.get("domain")
+    caps = merge_occupy_span_capabilities(
+        list(spec.get("capabilities") or []),
+        proposal_text,
+        domain=domain,
+    )
+    spec = {**spec, "capabilities": caps}
+    schema = dict(spec.get("schema") or {})
+    schema["capabilities"] = caps
+
+    if OCCUPY_SPAN_CAP in caps:
+        attach_occupy_span_menus(schema)
+        from app.bake.gate_contracts import merge_occupy_span_gate
+
+        gate = dict(spec.get("gate") or {})
+        spec["gate"] = merge_occupy_span_gate(gate, caps)
+
+        features = list(spec.get("features") or [])
+        names = {f.get("name") for f in features if isinstance(f, dict)}
+        if "时段占用与冲突检测" not in names:
+            features.append({"name": "时段占用与冲突检测", "status": "flow"})
+        spec["features"] = features
+
+        ents = list(spec.get("entities") or [])
+        if "OccupySpan" not in ents:
+            if "Notice" in ents:
+                ents.insert(ents.index("Notice"), "OccupySpan")
+            else:
+                ents.append("OccupySpan")
+            spec["entities"] = ents
+
+    spec["schema"] = schema
     return spec

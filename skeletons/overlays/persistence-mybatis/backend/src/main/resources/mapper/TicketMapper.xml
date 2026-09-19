@@ -75,7 +75,7 @@
                 </choose>
             </if>
             <if test="statusTodo">
-                AND status IN ('pending','pending_mid','pending_final')
+                AND status IN ('pending','pending_mid','pending_final','verifying')
             </if>
             <if test="statusExact != null and statusExact != ''">
                 AND status=#{statusExact}

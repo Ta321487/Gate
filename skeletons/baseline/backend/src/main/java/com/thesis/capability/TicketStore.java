@@ -1,8 +1,11 @@
 package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
+import com.thesis.service.BalanceLedgerStore;
+import com.thesis.service.ClaimProofStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.MessageStore;
+import com.thesis.service.OccupySpanStore;
 import com.thesis.service.TimebankStore;
 import com.thesis.service.UserStore;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -57,6 +60,8 @@ public final class TicketStore {
     static boolean threeLevelApprove = false;
     /** L1：申请须上传附件 */
     static boolean requireAttach = false;
+    /** 失物认领：须提交凭证并核验后才可审批 */
+    static boolean requireClaimProof = false;
     /** L1：完结后可评分 */
     static boolean allowRating = false;
     /** 报修等：完结须由申请人确认，管理端不可代点完成 */
@@ -191,6 +196,32 @@ public final class TicketStore {
         twoLevelApprove = twoLevel || threeLevelApprove;
         requireAttach = attachRequired;
         allowRating = ratingEnabled;
+    }
+
+    public static void configureRequireClaimProof(boolean enabled) {
+        requireClaimProof = enabled;
+    }
+
+    public static boolean isRequireClaimProof() {
+        return requireClaimProof;
+    }
+
+    /** 用户已交凭证 → 待核验 */
+    public static void markVerifying(long ticketId, String operator) {
+        if (ticketId <= 0) return;
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET status='verifying' WHERE id=? AND status IN ('pending','verifying')",
+                ticketId);
+        appendProgress(ticketId, "verifying", operator == null ? "" : operator, "已提交认领凭证，等待核验");
+    }
+
+    /** 凭证驳回后回到待交凭证 */
+    public static void markPendingForProof(long ticketId, String operator) {
+        if (ticketId <= 0) return;
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='verifying'",
+                ticketId);
+        appendProgress(ticketId, "pending", operator == null ? "" : operator, "凭证未通过，请重新提交");
     }
 
     public static void configureApplicantCompleteOnly(boolean enabled) {
@@ -633,6 +664,9 @@ public final class TicketStore {
         if (period != null && (!hasColumn("period_start") || !hasColumn("period_end"))) {
             throw new IllegalStateException("系统未配置请假区间字段，无法保存起止日期");
         }
+        if (OccupySpanStore.enabled() && period != null) {
+            OccupySpanStore.assertNoOverlap(username, itemId, period[0], period[1]);
+        }
         if (!allowMultiTicket) {
             Integer dup = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TICKET
@@ -743,6 +777,9 @@ public final class TicketStore {
             String subj = subjectOf(get(id));
             notifyAdminsNewTicket(id, username, subj);
             notifyPeerOwnerNewTicket(id, itemId, username, subj);
+        }
+        if (period != null && OccupySpanStore.enabled()) {
+            OccupySpanStore.record(username, itemId, id, subjectOf(get(id)), period[0], period[1]);
         }
         return get(id);
     }
@@ -1229,10 +1266,21 @@ public final class TicketStore {
         if (m == null) throw new IllegalArgumentException("单据不存在");
         String st = String.valueOf(m.get("status"));
         boolean first = "pending".equals(st);
+        boolean verifying = "verifying".equals(st);
         boolean midStage = "pending_mid".equals(st);
         boolean finalStage = "pending_final".equals(st);
         boolean holdReady = "hold_ready".equals(st);
-        if (!first && !midStage && !finalStage && !holdReady) {
+        if (requireClaimProof && first && pass) {
+            throw new IllegalStateException("请先提交并核验认领凭证");
+        }
+        if (requireClaimProof && verifying && pass) {
+            ClaimProofStore.assertPassed(ticketId);
+            first = true; // 核验通过后按初审路径办结
+        }
+        if (!first && !midStage && !finalStage && !holdReady && !verifying) {
+            throw new IllegalStateException("仅待审核或待取书单据可审批");
+        }
+        if (verifying && !requireClaimProof) {
             throw new IllegalStateException("仅待审核或待取书单据可审批");
         }
         if (twoLevelApprove && finalStage && pass && !superAdmin) {
@@ -1322,6 +1370,7 @@ public final class TicketStore {
         if (timebankRedeem) {
             TimebankStore.debitForTicketApprove(m);
         }
+        BalanceLedgerStore.debitForTicketApprove(m);
         long approvedItemId = 0L;
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
@@ -1738,7 +1787,8 @@ public final class TicketStore {
         String st = String.valueOf(m.get("status"));
         if (!"pending".equals(st) && !"pending_mid".equals(st)
                 && !"pending_final".equals(st) && !"waitlisted".equals(st)
-                && !"held".equals(st) && !"hold_ready".equals(st)) {
+                && !"held".equals(st) && !"hold_ready".equals(st)
+                && !"verifying".equals(st)) {
             throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
         }
         long itemId = TicketSql.toLong(m.get("bookId"));
@@ -2233,7 +2283,7 @@ public final class TicketStore {
         }
         if (status != null && !status.isBlank()) {
             if ("todo".equals(status)) {
-                where.append(" AND status IN ('pending','pending_mid','pending_final','hold_ready')");
+                where.append(" AND status IN ('pending','pending_mid','pending_final','hold_ready','verifying')");
             } else {
                 where.append(" AND status=?");
                 args.add(status);

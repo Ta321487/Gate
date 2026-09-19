@@ -265,6 +265,39 @@
           </el-tag>
         </div>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
+        <div v-if="lostClueOn" class="thread">
+          <h4 class="thread-title">线索留言</h4>
+          <el-form label-position="top" class="alog-form" @submit.prevent>
+            <el-form-item v-if="isGuest" label="称呼" required>
+              <el-input v-model="clueForm.guestName" maxlength="32" placeholder="游客称呼" />
+            </el-form-item>
+            <el-form-item v-if="isGuest" label="联系方式">
+              <el-input v-model="clueForm.guestContact" maxlength="64" placeholder="选填" />
+            </el-form-item>
+            <el-form-item label="类型">
+              <el-radio-group v-model="clueForm.type">
+                <el-radio value="clue">线索</el-radio>
+                <el-radio value="ask">询问</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="内容" required>
+              <el-input v-model="clueForm.content" type="textarea" :rows="2" maxlength="500" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="clueSubmitting" @click="submitClue">发表</el-button>
+            </el-form-item>
+          </el-form>
+          <div v-if="clueLoading" class="thread-empty muted">加载中…</div>
+          <div v-else-if="!clueList.length" class="thread-empty muted">暂无线索</div>
+          <article v-for="r in clueList" :key="r.id" class="thread-item">
+            <p class="thread-meta">
+              <span>{{ r.userId || r.guestName || '路人' }}</span>
+              <el-tag size="small" effect="plain">{{ r.type === 'ask' ? '询问' : '线索' }}</el-tag>
+              <span class="muted">{{ r.createdAt || '' }}</span>
+            </p>
+            <p>{{ r.content }}</p>
+          </article>
+        </div>
         <div v-if="showThread" class="thread">
           <h4 class="thread-title">{{ threadTitle }}</h4>
           <div v-if="threadLoading" class="thread-empty muted">加载中…</div>
@@ -510,6 +543,7 @@
             <a v-if="applyAttachUrl" :href="applyAttachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
           </div>
         </el-form-item>
+        <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
       </el-form>
       <p v-if="!needApplyDialog" class="apply-tip muted">
         {{ autoApprove ? '确认后立即生效。' : '确认后提交，等待审核。' }}
@@ -592,6 +626,7 @@ import RecommendStrip from '../../components/RecommendStrip.vue'
 import StatusChip from '../../components/StatusChip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
+import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
@@ -654,6 +689,8 @@ const bodyRich = computed(() => {
 const richRemark = computed(() => !!ticket.richRemark)
 const autoApprove = computed(() => !!ticket.autoApprove)
 const requireAttach = computed(() => !!ticket.requireAttach)
+const requireMaterial = computed(() => !!ticket.requireMaterialChecklist)
+const matRef = ref(null)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const dueLabel = computed(() => ticketDueLabel('到期日'))
@@ -1122,6 +1159,11 @@ const detail = ref(null)
 const itemReviews = ref([])
 const reviewOn = computed(() => hasCap('order_review'))
 const itemCommentOn = computed(() => hasCap('item_comment'))
+const lostClueOn = computed(() => hasCap('lost_clue'))
+const clueList = ref([])
+const clueLoading = ref(false)
+const clueSubmitting = ref(false)
+const clueForm = reactive({ guestName: '', guestContact: '', type: 'clue', content: '' })
 const itemComments = ref([])
 const itemCommentLoading = ref(false)
 const itemCommentDraft = ref('')
@@ -1225,6 +1267,11 @@ async function openDetail(row) {
   itemReviews.value = []
   itemComments.value = []
   itemCommentDraft.value = ''
+  clueList.value = []
+  clueForm.guestName = ''
+  clueForm.guestContact = ''
+  clueForm.type = 'clue'
+  clueForm.content = ''
   resetLogForm()
   if (!row?.id) return
   try {
@@ -1248,6 +1295,53 @@ async function openDetail(row) {
   }
   if (itemCommentOn.value) {
     await loadItemComments(row.id)
+  }
+  if (lostClueOn.value) {
+    await loadClues(row.id)
+  }
+}
+
+async function loadClues(itemId) {
+  if (!lostClueOn.value || !itemId) {
+    clueList.value = []
+    return
+  }
+  clueLoading.value = true
+  try {
+    const res = await http.get('/api/lost/message', { params: { lostItemId: itemId } })
+    clueList.value = res.data || []
+  } catch {
+    clueList.value = []
+  } finally {
+    clueLoading.value = false
+  }
+}
+
+async function submitClue() {
+  if (!detail.value?.id) return
+  const content = (clueForm.content || '').trim()
+  if (!content) {
+    ElMessage.warning('请填写留言内容')
+    return
+  }
+  if (isGuest.value && !(clueForm.guestName || '').trim()) {
+    ElMessage.warning('游客请填写称呼')
+    return
+  }
+  clueSubmitting.value = true
+  try {
+    await http.post('/api/lost/message', {
+      lostItemId: detail.value.id,
+      guestName: clueForm.guestName,
+      guestContact: clueForm.guestContact,
+      content,
+      type: clueForm.type || 'clue',
+    })
+    ElMessage.success('已发表')
+    clueForm.content = ''
+    await loadClues(detail.value.id)
+  } finally {
+    clueSubmitting.value = false
   }
 }
 
@@ -1680,6 +1774,13 @@ async function submitApply() {
     ElMessage.warning('请上传证明附件')
     return
   }
+  if (requireMaterial.value) {
+    const miss = matRef.value?.missingTitle?.() || ''
+    if (miss) {
+      ElMessage.warning(`请上传必传材料：${miss}`)
+      return
+    }
+  }
   if (pickLoanPeriod.value && !applyDueAt.value) {
     ElMessage.warning(`请选择${dueLabel.value}`)
     return
@@ -1734,6 +1835,7 @@ async function submitApply() {
       remark,
       attachUrl: applyAttachUrl.value || undefined,
     }
+    if (requireMaterial.value && matRef.value) body.materials = matRef.value.payload()
     if (allowQty.value) body.qty = Number(applyQty.value) || 1
     if (pickLoanPeriod.value) body.dueAt = applyDueAt.value
     if (collectAmount.value) body.fineYuan = Number(applyAmount.value)

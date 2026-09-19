@@ -692,6 +692,19 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  stock-count-enabled: true")
     if "e_sign" in caps:
         lines.append("  e-sign-enabled: true")
+    if "balance_ledger" in caps:
+        lines.append("  balance-ledger-enabled: true")
+        lines.append("  balance-ledger-debit-on-approve: true")
+    if domain == "DOM-GRADE":
+        lines.append("  grade-scores-enabled: true")
+    if "occupy_span" in caps:
+        lines.append("  occupy-span-enabled: true")
+    if "material_check" in caps:
+        lines.append("  material-check-enabled: true")
+    if "claim_proof" in caps:
+        lines.append("  claim-proof-enabled: true")
+    if "lost_clue" in caps:
+        lines.append("  lost-clue-enabled: true")
 
     if "slot_reserve" in caps:
         st = runtime.get("slot_table") or "resource_slot"

@@ -388,6 +388,7 @@ _GATE_EXAM_FILES = [
     "frontend/src/views/ExamWrongbook.vue",
     "frontend/src/views/admin/ExamQuestionsAdmin.vue",
     "frontend/src/views/admin/ExamPapersAdmin.vue",
+    "frontend/src/views/admin/ExamMarkAdmin.vue",
     "frontend/src/layouts/PortalLayout.vue",
     "frontend/src/layouts/AdminLayout.vue",
     "frontend/src/router/index.js",
@@ -552,6 +553,186 @@ def merge_stock_io_gate(gate: dict, caps: list[str] | None) -> dict:
     inv["super_menus"] = super_menus
     out["admin_invariants"] = inv
     return out
+
+
+_GATE_BALANCE_LEDGER_FILES = (
+    "backend/src/main/java/com/thesis/service/BalanceLedgerStore.java",
+    "backend/src/main/java/com/thesis/controller/BalanceLedgerController.java",
+    "frontend/src/views/BalanceMine.vue",
+    "frontend/src/views/BalanceLedgerMine.vue",
+    "frontend/src/views/admin/BalanceAccountsAdmin.vue",
+    "frontend/src/views/admin/BalanceLedgerAdmin.vue",
+)
+
+
+def merge_balance_ledger_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "balance_ledger" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_BALANCE_LEDGER_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("balance/mine", "额度台账与扣减"),
+        ("balance/ledger", "额度台账与扣减"),
+        ("admin/balance/accounts", "额度台账与扣减"),
+        ("admin/balance/ledger", "额度台账与扣减"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["balance_ledger"] = {
+        "file": "BalanceLedgerController.java",
+        "need": ["/api/balance"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+_GATE_OCCUPY_SPAN_FILES = (
+    "backend/src/main/java/com/thesis/service/OccupySpanStore.java",
+    "backend/src/main/java/com/thesis/controller/OccupySpanController.java",
+    "frontend/src/views/OccupyMine.vue",
+    "frontend/src/views/admin/OccupyAdmin.vue",
+)
+
+
+def merge_occupy_span_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "occupy_span" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_OCCUPY_SPAN_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    for seg, feat in (
+        ("occupy/mine", "时段占用与冲突检测"),
+        ("admin/occupy", "时段占用与冲突检测"),
+    ):
+        if seg not in have:
+            routes.append({"seg": seg, "from_feature": feat})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["occupy_span"] = {
+        "file": "OccupySpanController.java",
+        "need": ["/api/occupy"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+_GATE_MATERIAL_CHECK_FILES = (
+    "backend/src/main/java/com/thesis/service/MaterialCheckStore.java",
+    "backend/src/main/java/com/thesis/controller/MaterialCheckController.java",
+    "frontend/src/views/admin/MaterialChecklistAdmin.vue",
+    "frontend/src/components/MaterialChecklistFields.vue",
+)
+
+
+def merge_material_check_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "material_check" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_MATERIAL_CHECK_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "admin/material/checklist" not in have:
+        routes.append(
+            {"seg": "admin/material/checklist", "from_feature": "材料清单与缺件核验"}
+        )
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["material_check"] = {
+        "file": "MaterialCheckController.java",
+        "need": ["/api/material"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+_GATE_LOSTFOUND_FILES = (
+    "backend/src/main/java/com/thesis/service/ClaimProofStore.java",
+    "backend/src/main/java/com/thesis/controller/ClaimProofController.java",
+    "backend/src/main/java/com/thesis/service/LostMessageStore.java",
+    "backend/src/main/java/com/thesis/controller/LostMessageController.java",
+    "frontend/src/views/admin/LostCluesAdmin.vue",
+    "frontend/src/components/ClaimProofFields.vue",
+)
+
+
+def merge_lostfound_gate(gate: dict, caps: list[str] | None) -> dict:
+    caps = set(caps or [])
+    if "claim_proof" not in caps and "lost_clue" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in _GATE_LOSTFOUND_FILES:
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("routes") or [])
+    have = {r.get("seg") for r in routes if isinstance(r, dict)}
+    if "lost_clue" in caps and "admin/lost/clues" not in have:
+        routes.append({"seg": "admin/lost/clues", "from_feature": "路人线索"})
+    out["routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    if "claim_proof" in caps:
+        flow["claim_proof"] = {
+            "file": "ClaimProofController.java",
+            "need": ["/api/lost/proof"],
+        }
+    if "lost_clue" in caps:
+        flow["lost_clue"] = {
+            "file": "LostMessageController.java",
+            "need": ["/api/lost/message"],
+        }
+    out["flow_api"] = flow
+    return out
+
+
+def dual_surface_menu_keys(cap: str) -> tuple[frozenset[str], frozenset[str]]:
+    """返回 (admin_keys, user_keys)；空集表示该侧允许走主路径控件而非独立菜单。"""
+    if cap == "balance_ledger":
+        return (
+            frozenset({"balance_accounts", "balance_ledger_admin"}),
+            frozenset({"balance_mine", "balance_ledger_mine"}),
+        )
+    if cap == "occupy_span":
+        return (
+            frozenset({"occupy_admin", "ticket_pending", "ticket_records"}),
+            frozenset({"occupy_mine", "my_tickets", "week_calendar"}),
+        )
+    if cap == "material_check":
+        return (
+            frozenset({"material_checklist", "ticket_pending"}),
+            frozenset({"my_tickets"}),  # 申请弹窗清单为主路径
+        )
+    if cap == "claim_proof":
+        return (
+            frozenset({"ticket_pending", "ticket_records"}),
+            frozenset({"my_tickets"}),
+        )
+    if cap == "lost_clue":
+        return (
+            frozenset({"lost_clues"}),
+            frozenset({"archive"}),  # 启事详情留线索为主路径
+        )
+    return frozenset(), frozenset()
 
 
 def merge_timebank_gate(gate: dict, caps: list[str] | None) -> dict:
@@ -780,6 +961,7 @@ def merge_exam_gate(gate: dict, caps: list[str] | None) -> dict:
         ("exam/wrongbook", "在线作答与判分"),
         ("admin/exam/questions", "题库与组卷"),
         ("admin/exam/papers", "题库与组卷"),
+        ("admin/exam/mark", "在线作答与判分"),
     ):
         if seg not in have:
             routes.append({"seg": seg, "from_feature": feat})

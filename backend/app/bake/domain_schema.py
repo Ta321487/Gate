@@ -306,6 +306,10 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.stock_io import apply_stock_io_to_spec
     from app.bake.features.stock_scrap import apply_stock_scrap_to_spec
     from app.bake.features.e_sign import apply_e_sign_to_spec
+    from app.bake.features.core_cap_scan import apply_occupy_span_to_spec
+    from app.bake.features.timebank import apply_balance_ledger_to_spec
+    from app.bake.features.ticket_flow_opts import apply_material_check_to_spec
+    from app.bake.features.lostfound import apply_lostfound_to_spec
     from app.bake.features.guestbook import apply_guestbook_to_spec
     from app.bake.features.item_comment import apply_item_comment_to_spec
     from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
@@ -396,6 +400,10 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_stock_io_to_spec(out, body)
     out = apply_stock_scrap_to_spec(out, body)
     out = apply_e_sign_to_spec(out, body)
+    out = apply_balance_ledger_to_spec(out, body)
+    out = apply_occupy_span_to_spec(out, body)
+    out = apply_material_check_to_spec(out, body)
+    out = apply_lostfound_to_spec(out, body)
     out = apply_guestbook_to_spec(out, body)
     out = apply_item_comment_to_spec(out, body)
     from app.bake.features.user_publish import apply_user_publish_gate_to_spec

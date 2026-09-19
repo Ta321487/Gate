@@ -29,6 +29,8 @@ from app.bake.domain_schema import (
 TABLE_COUNT_MIN = 6
 # 含 L0 平台表 sys_message；论坛等顶格域可达 15
 TABLE_COUNT_MAX = 15
+# 借用/占用族（DOMAIN_GROUPS borrow）：薄壳 6～7 张不够答辩，族内下限 10
+BORROW_TABLE_MIN = 10
 
 # GENERIC 壳：bake/sql/DOM-GENERIC*.sql；具名域：sql_domain_templates（唯一路径，无散文件）
 _SQL_DIR = Path(__file__).resolve().parent / "sql"
@@ -37,11 +39,21 @@ _FALLBACK_SQL = "DOM-GENERIC.sql"
 def count_create_tables(sql: str) -> int:
     return len(re.findall(r"(?i)create\s+table\b", sql))
 
+
+def table_budget_bounds(domain: str) -> tuple[int, int]:
+    """全厂 6～15；借用/占用族成员 10～15。"""
+    from app.bake.domains import is_borrow_family_domain
+
+    lo = BORROW_TABLE_MIN if is_borrow_family_domain(domain) else TABLE_COUNT_MIN
+    return lo, TABLE_COUNT_MAX
+
+
 def assert_table_budget(sql: str, domain: str) -> None:
     n = count_create_tables(sql)
-    if not (TABLE_COUNT_MIN <= n <= TABLE_COUNT_MAX):
+    lo, hi = table_budget_bounds(domain)
+    if not (lo <= n <= hi):
         raise ValueError(
-            f"{domain} schema 表数量={n}，必须在 {TABLE_COUNT_MIN}~{TABLE_COUNT_MAX} 之间"
+            f"{domain} schema 表数量={n}，必须在 {lo}~{hi} 之间"
         )
 
 def _write(path: Path, content: str) -> None:
@@ -255,12 +267,24 @@ def domain_sql(
         ensure_shared_sql_columns,
         ensure_stock_io_sql,
         ensure_e_sign_sql,
+        ensure_balance_ledger_sql,
+        ensure_occupy_span_sql,
+        ensure_material_check_sql,
+        ensure_borrow_structural_sql,
         ensure_ticket_extra_sql,
         ensure_ticket_progress_sql,
         resolve_ticket_flags,
     )
     from app.bake.features.stock_io import STOCK_IO_CAP
     from app.bake.features.e_sign import E_SIGN_CAP
+    from app.bake.features.core_cap_scan import OCCUPY_SPAN_CAP
+    from app.bake.features.timebank import BALANCE_LEDGER_CAP
+    from app.bake.features.ticket_flow_opts import MATERIAL_CHECK_CAP
+    from app.bake.features.lostfound import (
+        CLAIM_PROOF_CAP,
+        LOST_CLUE_CAP,
+        ensure_lostfound_sql,
+    )
     from app.bake.staff_posts import append_staff_seed_sql
 
     arches_for_sql = list(
@@ -493,6 +517,29 @@ def domain_sql(
     text = ensure_e_sign_sql(
         text,
         enabled=E_SIGN_CAP in caps,
+    )
+    text = ensure_balance_ledger_sql(
+        text,
+        enabled=BALANCE_LEDGER_CAP in caps,
+        domain=domain or "",
+    )
+    text = ensure_occupy_span_sql(
+        text,
+        enabled=OCCUPY_SPAN_CAP in caps,
+    )
+    text = ensure_material_check_sql(
+        text,
+        enabled=MATERIAL_CHECK_CAP in caps,
+    )
+    text = ensure_lostfound_sql(
+        text,
+        claim_proof=CLAIM_PROOF_CAP in caps,
+        lost_clue=LOST_CLUE_CAP in caps,
+    )
+    text = ensure_borrow_structural_sql(
+        text,
+        domain=domain or "",
+        capabilities=list(caps or []),
     )
     text = append_staff_seed_sql(
         text,

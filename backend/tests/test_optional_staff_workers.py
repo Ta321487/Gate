@@ -180,6 +180,19 @@ def test_crm_dual_when_opening_says_no_audit():
     assert _ids("DOM-CRM", text) == []
 
 
+def test_content_domains_default_dual_role_no_editor():
+    """媒资/曲库/博客：开题未写编辑岗或权限划分时不挂空转子管。"""
+    for domain in ("DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"):
+        assert _ids(domain) == []
+        assert _ids(domain, "听众试听收藏，内容管理员维护曲库。") == []
+
+
+def test_content_editor_when_opening_names_post_or_acl():
+    assert _ids("DOM-MUSIC", "听众与曲库主管；另设运营编辑维护上新。") == ["editor"]
+    assert _ids("DOM-MEDIA", "三角色：观众、总管、内容编辑。") == ["editor"]
+    assert _ids("DOM-BLOG", "读者与站长；岗位权限划分给编辑岗。") == ["editor"]
+
+
 def test_crm_clerk_from_typical_opening_wording():
     """样例开题写「主管审核」也应挂第三角。"""
     text = "客户跟进记录提交；主管审核跟进并标记完结。"

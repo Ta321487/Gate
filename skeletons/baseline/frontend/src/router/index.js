@@ -7,7 +7,7 @@ import Notices from '../views/Notices.vue'
 import NoticeDetail from '../views/NoticeDetail.vue'
 import NoticesAdmin from '../views/admin/NoticesAdmin.vue'
 import { APP_DELIVERED } from '../appDelivered.js'
-import { hasTrait, getSchema, superOnlyAdminPaths } from '../utils/domainSchema.js'
+import { hasTrait, getSchema } from '../utils/domainSchema.js'
 
 /** 收货地址簿：仅带 addressBook 特征的交易壳，勿挂到酒店预约等 */
 function domainNeedsAddressBook() {
@@ -15,7 +15,7 @@ function domainNeedsAddressBook() {
 }
 import { adminLoginPath, isSplitEntry, staffLoginPath } from '../utils/authEntry.js'
 import {
-  clerkAllowedMenuKeys,
+  canOpenAdminPath,
   currentStaffPost,
   homePathAfterLogin,
   isWorkerSession,
@@ -34,42 +34,6 @@ function portalGuard(_to, _from, next) {
   }))
 }
 
-const ADMIN_KEY_BY_PATH = {
-  '/admin/dashboard': 'dashboard',
-  '/admin/messages': 'messages',
-  '/admin/tickets': 'ticket_pending',
-  '/admin/ticket-records': 'ticket_records',
-  '/admin/overdue': 'deadline',
-  '/admin/orders': 'orders',
-  '/admin/order-reviews': 'order_reviews',
-  '/admin/dm': 'dm',
-  '/admin/coupons': 'coupons',
-  '/admin/reservations': 'reservations',
-  '/admin/users': 'users',
-  '/admin/notices': 'content',
-  '/admin/guestbook': 'guestbook',
-  '/admin/ai-knowledge': 'ai_knowledge',
-  '/admin/exam/questions': 'exam_questions',
-  '/admin/exam/papers': 'exam_papers',
-  '/admin/survey/forms': 'survey_forms',
-  '/admin/survey/stats': 'survey_stats',
-  '/admin/vote/candidates': 'vote_candidates',
-  '/admin/vote/results': 'vote_results',
-  '/admin/doc/files': 'doc_files',
-  '/admin/doc/logs': 'doc_logs',
-  '/admin/tb/accounts': 'tb_accounts',
-  '/admin/tb/ledger': 'tb_ledger_admin',
-  '/admin/stock/moves': 'stock_moves',
-  '/admin/stock/ledger': 'stock_ledger',
-  '/admin/e-sign': 'e_sign_admin',
-  '/admin/archive-logs': 'archive_logs',
-  '/admin/sites': 'lookup_site',
-  '/admin/types': 'lookup_type',
-  '/admin/archive': 'archive',
-  '/admin/categories': 'category',
-  '/admin/profile': 'profile',
-}
-
 function adminGuard(to, _from, next) {
   if (localStorage.getItem('role') !== 'admin') {
     next('/')
@@ -79,23 +43,14 @@ function adminGuard(to, _from, next) {
     next('/staff')
     return
   }
-  if (superOnlyAdminPaths().has(to.path) && localStorage.getItem('superAdmin') !== 'true') {
-    next('/admin/dashboard')
+  const path = String(to.path || '').split('?')[0]
+  if (path === '/admin' || path === '/admin/') {
+    next()
     return
   }
-  const allowed = clerkAllowedMenuKeys(currentStaffPost())
-  if (allowed && localStorage.getItem('superAdmin') !== 'true') {
-    const key = ADMIN_KEY_BY_PATH[to.path]
-    // 无 key 的 /admin/* 深链一律拒绝（缺省放行会被越权）
-    if (!key) {
-      if (to.path.startsWith('/admin/') && to.path !== '/admin' && to.path !== '/admin/') {
-        next('/admin/dashboard')
-        return
-      }
-    } else if (key !== 'profile' && key !== 'messages' && key !== 'dm' && !allowed.has(key)) {
-      next('/admin/dashboard')
-      return
-    }
+  if (!canOpenAdminPath(path)) {
+    next('/admin/dashboard')
+    return
   }
   next()
 }
@@ -583,6 +538,43 @@ function withStockIoRoutes(baseRoutes) {
   return routes
 }
 
+/** 借用族加厚：额度 / 占用 / 材料清单。有对应能力才挂路由。 */
+function withBorrowThickenRoutes(baseRoutes) {
+  const needLedger = hasCap('balance_ledger')
+  const needOccupy = hasCap('occupy_span')
+  const needMaterial = hasCap('material_check')
+  const needLostClue = hasCap('lost_clue')
+  if (!needLedger && !needOccupy && !needMaterial && !needLostClue) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids) {
+    const add = (path, loader) => {
+      if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+    }
+    if (needLedger) {
+      add('balance/mine', () => import('../views/BalanceMine.vue'))
+      add('balance/ledger', () => import('../views/BalanceLedgerMine.vue'))
+    }
+    if (needOccupy) add('occupy/mine', () => import('../views/OccupyMine.vue'))
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    const addAdmin = (path, loader) => {
+      if (!adminKids.some((c) => c.path === path)) adminKids.push({ path, component: loader })
+    }
+    if (needLedger) {
+      addAdmin('balance/accounts', () => import('../views/admin/BalanceAccountsAdmin.vue'))
+      addAdmin('balance/ledger', () => import('../views/admin/BalanceLedgerAdmin.vue'))
+    }
+    if (needOccupy) addAdmin('occupy', () => import('../views/admin/OccupyAdmin.vue'))
+    if (needMaterial) addAdmin('material/checklist', () => import('../views/admin/MaterialChecklistAdmin.vue'))
+    if (hasCap('lost_clue')) addAdmin('lost/clues', () => import('../views/admin/LostCluesAdmin.vue'))
+  }
+  return routes
+}
+
 /** 影院选座：有 seat_select 能力时挂场次与座位图；剥掉购物车/地址簿孤儿路由 */
 function withSeatSelectRoutes(baseRoutes) {
   if (!hasCap('seat_select')) return baseRoutes
@@ -636,6 +628,35 @@ function withExamRoutes(baseRoutes) {
         component: () => import('../views/admin/ExamPapersAdmin.vue'),
       })
     }
+    if (!adminKids.some((c) => c.path === 'exam/mark')) {
+      adminKids.push({
+        path: 'exam/mark',
+        component: () => import('../views/admin/ExamMarkAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 教务成绩：登记、课内名次、CSV。仅 DOM-GRADE schema 打开。 */
+function withGradeScoreRoutes(baseRoutes) {
+  if (!getSchema().gradeScores) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'grade/scores')) {
+    kids.push({
+      path: 'grade/scores',
+      component: () => import('../views/GradeScoresMine.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'grade/scores')) {
+    adminKids.push({
+      path: 'grade/scores',
+      component: () => import('../views/admin/GradeScoresAdmin.vue'),
+    })
   }
   return routes
 }
@@ -1060,16 +1081,18 @@ function pickRoutes() {
               withDmRoutes(
               withESignRoutes(
                 withStockIoRoutes(
+                  withBorrowThickenRoutes(
                   withSeatSelectRoutes(
                     withTimebankRoutes(
                       withDoclibRoutes(
                         withVoteRoutes(
                           withSurveyRoutes(
-                            withExamRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withItemCommentRoutes(withGuestbookRoutes(routes)))))))))),
+                            withExamRoutes(withGradeScoreRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withItemCommentRoutes(withGuestbookRoutes(routes))))))))))),
                           ),
                         ),
                       ),
                     ),
+                  ),
                   ),
                 ),
               ),

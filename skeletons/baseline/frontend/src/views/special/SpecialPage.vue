@@ -44,6 +44,7 @@ import { useRouter } from 'vue-router'
 import SpecialMotif from '../../components/SpecialMotif.vue'
 import { specialPageCopy } from '../../utils/domainFlavor.js'
 import { getDelivered } from '../../utils/domainSchema.js'
+import { homePathAfterLogin } from '../../utils/staffPosts.js'
 
 const props = defineProps({
   /** @type {'404'|'500'|'loading'} */
@@ -57,8 +58,15 @@ const canBack = computed(() => typeof window !== 'undefined' && window.history.l
 
 function goHome() {
   const role = localStorage.getItem('role')
-  if (role === 'admin') router.push('/admin/dashboard')
-  else if (localStorage.getItem('token')) router.push('/')
+  if (role === 'admin') {
+    router.push(homePathAfterLogin({
+      role: 'admin',
+      superAdmin: localStorage.getItem('superAdmin') === 'true',
+      staffKind: localStorage.getItem('staffKind') || '',
+    }))
+    return
+  }
+  if (localStorage.getItem('token')) router.push('/')
   else router.push('/login')
 }
 

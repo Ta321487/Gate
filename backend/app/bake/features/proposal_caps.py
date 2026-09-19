@@ -41,6 +41,14 @@ def merge_proposal_capabilities(
     from app.bake.features.stock_io import merge_stock_io_capabilities
     from app.bake.features.stock_scrap import merge_stock_scrap_capabilities
     from app.bake.features.e_sign import merge_e_sign_capabilities
+    from app.bake.features.core_cap_scan import merge_occupy_span_capabilities
+    from app.bake.features.timebank import merge_balance_ledger_capabilities
+    from app.bake.features.ticket_flow_opts import (
+        MULTI_APPROVE_CAP,
+        MULTI_APPROVE_DEFAULT_DOMAINS,
+        merge_material_check_capabilities,
+    )
+    from app.bake.features.lostfound import merge_lostfound_capabilities
     from app.bake.features.favorites import (
         merge_content_report_capabilities,
         merge_favorites_capabilities,
@@ -66,6 +74,12 @@ def merge_proposal_capabilities(
     req = merge_stock_io_capabilities(req, body, domain=domain)
     req = merge_stock_scrap_capabilities(req, body, domain=domain)
     req = merge_e_sign_capabilities(req, body, domain=domain)
+    req = merge_balance_ledger_capabilities(req, body, domain=domain)
+    req = merge_occupy_span_capabilities(req, body, domain=domain)
+    req = merge_material_check_capabilities(req, body, domain=domain)
+    req = merge_lostfound_capabilities(req, body, domain=domain)
+    if (domain or "") in MULTI_APPROVE_DEFAULT_DOMAINS and MULTI_APPROVE_CAP not in req:
+        req.append(MULTI_APPROVE_CAP)
     req = merge_guestbook_capabilities(
         req,
         body,

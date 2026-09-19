@@ -57,6 +57,12 @@
           <div class="table-ops">
           <el-button link type="primary" @click="openProgress(row)">进度</el-button>
           <el-button
+            v-if="requireClaimProof && row.status === 'verifying'"
+            link
+            type="warning"
+            @click="openProofVerify(row)"
+          >核验凭证</el-button>
+          <el-button
             link
             type="success"
             :disabled="!canPass(row)"
@@ -155,6 +161,30 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="proofDlg.visible" title="核验认领凭证" width="520px" destroy-on-close>
+      <el-table :data="proofDlg.list" stripe size="small">
+        <el-table-column prop="proofType" label="类型" width="90">
+          <template #default="{ row }">
+            {{ ({ photo: '照片', desc: '描述', receipt: '购买凭证' })[row.proofType] || row.proofType }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="proofContent" label="内容" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="verifyStatus" label="状态" width="90" />
+        <el-table-column label="操作" width="140">
+          <template #default="{ row }">
+            <template v-if="row.verifyStatus === 'pending'">
+              <el-button link type="success" @click="verifyProof(row, true)">通过</el-button>
+              <el-button link type="danger" @click="verifyProof(row, false)">驳回</el-button>
+            </template>
+            <span v-else class="muted">已处理</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="proofDlg.visible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
   </div>
 </template>
@@ -169,6 +199,7 @@ import {
   archiveCopy,
   followChannelLabel,
   getSchema,
+  hasCap,
   menuLabel,
   nextFollowLabel,
   personLabel,
@@ -189,6 +220,7 @@ const states = computed(() => ticket.states || {})
 const ticketNoun = computed(() => ticket.label || '申请')
 const richRemark = computed(() => !!ticket.richRemark)
 const requireRemark = computed(() => !!ticket.requireRemark)
+const requireClaimProof = computed(() => !!ticket.requireClaimProof || hasCap('claim_proof'))
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const twoLevel = computed(() => !!ticket.twoLevelApprove || !!ticket.threeLevelApprove)
 const threeLevel = computed(() => !!ticket.threeLevelApprove)
@@ -258,17 +290,24 @@ const audit = reactive({
 
 const progressVisible = ref(false)
 const progressId = ref(null)
+const proofDlg = reactive({ visible: false, list: [], claimId: 0 })
 
 function statusText(s) {
   return (
     states.value[s]
-    || ({ pending: '待初审', pending_mid: '待复审', pending_final: '待终审' }[s])
+    || ({
+      pending: '待交凭证',
+      verifying: '待核验',
+      pending_mid: '待复审',
+      pending_final: '待终审',
+    }[s])
     || s
   )
 }
 
 function passLabel(row) {
   if (row?.status === 'hold_ready') return '确认出借'
+  if (row?.status === 'verifying') return verbs.value.approve || '受理'
   if (!twoLevel.value || !row) return verbs.value.approve || '受理'
   if (row.status === 'pending_final') return '终审通过'
   if (threeLevel.value && row.status === 'pending_mid') return '复审通过'
@@ -278,6 +317,7 @@ function passLabel(row) {
 }
 
 function canPass(row) {
+  if (requireClaimProof.value && row?.status === 'pending') return false
   if (!twoLevel.value) return true
   if (row?.status === 'pending_final') return superAdmin
   return true
@@ -316,6 +356,10 @@ async function load() {
 }
 
 function openAudit(row, pass) {
+  if (pass && requireClaimProof.value && row.status === 'pending') {
+    ElMessage.warning('请先等待用户提交认领凭证')
+    return
+  }
   if (pass && !canPass(row)) {
     ElMessage.warning('终审通过需总管操作')
     return
@@ -328,6 +372,21 @@ function openAudit(row, pass) {
   if (pass && showDispatch.value && isFinalPass(row)) {
     loadDispatchTargets()
   }
+}
+
+async function openProofVerify(row) {
+  proofDlg.claimId = row.id
+  proofDlg.visible = true
+  const res = await http.get('/api/lost/proof', { params: { claimId: row.id } })
+  proofDlg.list = res.data || []
+}
+
+async function verifyProof(row, pass) {
+  await http.post(`/api/lost/proof/${row.id}/verify`, { pass })
+  ElMessage.success(pass ? '凭证已通过，可继续受理' : '凭证已驳回，用户可重交')
+  const res = await http.get('/api/lost/proof', { params: { claimId: proofDlg.claimId } })
+  proofDlg.list = res.data || []
+  load()
 }
 
 function resetAudit() {

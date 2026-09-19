@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
+import com.thesis.service.ClaimProofStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.MessageStore;
 import com.thesis.service.TimebankStore;
@@ -57,6 +58,8 @@ public final class TicketStore {
     static boolean threeLevelApprove = false;
     /** L1：申请须上传附件 */
     static boolean requireAttach = false;
+    /** 失物认领：须提交凭证并核验后才可审批 */
+    static boolean requireClaimProof = false;
     /** L1：完结后可评分 */
     static boolean allowRating = false;
     /** 报修等：完结须由申请人确认，管理端不可代点完成 */
@@ -179,6 +182,30 @@ public final class TicketStore {
         twoLevelApprove = twoLevel || threeLevelApprove;
         requireAttach = attachRequired;
         allowRating = ratingEnabled;
+    }
+
+    public static void configureRequireClaimProof(boolean enabled) {
+        requireClaimProof = enabled;
+    }
+
+    public static boolean isRequireClaimProof() {
+        return requireClaimProof;
+    }
+
+    public static void markVerifying(long ticketId, String operator) {
+        if (ticketId <= 0) return;
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET status='verifying' WHERE id=? AND status IN ('pending','verifying')",
+                ticketId);
+        appendProgress(ticketId, "verifying", operator == null ? "" : operator, "已提交认领凭证，等待核验");
+    }
+
+    public static void markPendingForProof(long ticketId, String operator) {
+        if (ticketId <= 0) return;
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='verifying'",
+                ticketId);
+        appendProgress(ticketId, "pending", operator == null ? "" : operator, "凭证未通过，请重新提交");
     }
 
     public static void configureApplicantCompleteOnly(boolean enabled) {
@@ -1128,9 +1155,19 @@ public final class TicketStore {
         if (m == null) throw new IllegalArgumentException("单据不存在");
         String st = String.valueOf(m.get("status"));
         boolean first = "pending".equals(st);
+        boolean verifying = "verifying".equals(st);
         boolean midStage = "pending_mid".equals(st);
         boolean finalStage = "pending_final".equals(st);
-        if (!first && !midStage && !finalStage) throw new IllegalStateException("仅待审核单据可审批");
+        if (requireClaimProof && first && pass) {
+            throw new IllegalStateException("请先提交并核验认领凭证");
+        }
+        if (requireClaimProof && verifying && pass) {
+            ClaimProofStore.assertPassed(ticketId);
+            first = true;
+        }
+        if (!first && !midStage && !finalStage && !(verifying && requireClaimProof)) {
+            throw new IllegalStateException("仅待审核单据可审批");
+        }
         if (twoLevelApprove && finalStage && pass && !superAdmin) {
             throw new IllegalStateException("终审通过需总管操作");
         }
@@ -1604,7 +1641,8 @@ public final class TicketStore {
             throw new IllegalStateException("只能撤销自己的申请");
         }
         String st = String.valueOf(m.get("status"));
-        if (!"pending".equals(st) && !"pending_mid".equals(st) && !"pending_final".equals(st)) {
+        if (!"pending".equals(st) && !"pending_mid".equals(st) && !"pending_final".equals(st)
+                && !"verifying".equals(st)) {
             throw new IllegalStateException("仅待审核申请可撤销");
         }
         TicketSql.db().update(
@@ -1764,7 +1802,7 @@ public final class TicketStore {
         }
         if (status != null && !status.isBlank()) {
             if ("todo".equals(status)) {
-                where.append(" AND status IN ('pending','pending_mid','pending_final')");
+                where.append(" AND status IN ('pending','pending_mid','pending_final','verifying')");
             } else {
                 where.append(" AND status=?");
                 args.add(status);
