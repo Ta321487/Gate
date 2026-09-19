@@ -6,9 +6,14 @@
     <el-table :data="list" stripe>
       <el-table-column prop="paperId" label="试卷" width="90" />
       <el-table-column prop="mode" label="模式" width="90" />
-      <el-table-column prop="status" label="状态" width="100" />
-      <el-table-column label="得分" width="120">
-        <template #default="{ row }">{{ row.score }} / {{ row.totalScore }}</template>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">{{ statusText(row.status) }}</template>
+      </el-table-column>
+      <el-table-column label="得分" width="140">
+        <template #default="{ row }">
+          <span v-if="row.status === 'reviewing'">待阅卷</span>
+          <span v-else>{{ row.score }} / {{ row.totalScore }}</span>
+        </template>
       </el-table-column>
       <el-table-column prop="submittedAt" label="交卷时间" />
     </el-table>
@@ -35,6 +40,10 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const title = computed(() => (getSchema().labels || {}).examAttemptsTitle || '我的成绩')
+
+function statusText(s) {
+  return { in_progress: '答题中', submitted: '已出分', reviewing: '待阅卷' }[s] || s
+}
 
 async function load() {
   const res = await http.get('/api/exam/attempts/mine', { params: { page: page.value, size: size.value } })

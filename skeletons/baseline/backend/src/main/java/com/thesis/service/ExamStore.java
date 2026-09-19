@@ -14,17 +14,15 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-
 /**
- * 在线考试（C-01）：题库、组卷、作答、自动判分。
+ * 在线考试（C-01）：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
  */
 public class ExamStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final int REGEX_MAX = 200;
     private static final int SUBJECTIVE_ANSWER_MAX = 2000;
+    /** 主观题尚未阅卷。is_correct 其余值为 0/1。 */
+    static final int PENDING_MARK = -1;
 
     private static boolean enabled;
     private static boolean practiceEnabled;
@@ -551,6 +549,7 @@ public class ExamStore {
         m.put("mode", rs.getString("mode"));
         m.put("status", rs.getString("status"));
         m.put("score", rs.getObject("score"));
+        m.put("totalScore", rs.getObject("total_score"));
         m.put("startedAt", fmt(rs.getTimestamp("started_at")));
         m.put("submittedAt", fmt(rs.getTimestamp("submitted_at")));
         return m;
@@ -629,8 +628,10 @@ public class ExamStore {
         Map<String, Object> attempt = getAttempt(attemptId);
         if (attempt == null) throw new IllegalArgumentException("答卷不存在");
         if (!username.equals(attempt.get("username"))) throw new IllegalStateException("无权访问");
-        boolean submitted = "submitted".equals(String.valueOf(attempt.get("status")));
-        if (!submitted && !afterSubmit) {
+        String attemptStatus = String.valueOf(attempt.get("status"));
+        boolean closed = "submitted".equals(attemptStatus) || "reviewing".equals(attemptStatus);
+        boolean reveal = "submitted".equals(attemptStatus);
+        if (!closed && !afterSubmit) {
             // take: no answer key / explain
             return db().query(
                     "SELECT q.id, q.subject_id, q.type, q.stem, q.options_json, q.score, pq.sort_no "
@@ -660,12 +661,15 @@ public class ExamStore {
                         + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
                         + "WHERE a.id=? ORDER BY pq.sort_no, pq.id",
                 (rs, i) -> {
-                    Map<String, Object> m = mapQuestion(rs, true);
+                    Map<String, Object> m = mapQuestion(rs, reveal);
                     m.put("sortNo", rs.getInt("sort_no"));
                     m.put("userAnswer", rs.getString("answer_text"));
-                    m.put("correct", rs.getObject("is_correct"));
-                    m.put("earnedScore", rs.getObject("earned_score"));
-                    if (explainEnabled && submitted) {
+                    Object marked = rs.getObject("is_correct");
+                    int markFlag = marked == null ? 0 : ((Number) marked).intValue();
+                    m.put("pendingMark", markFlag == PENDING_MARK);
+                    m.put("correct", markFlag == PENDING_MARK ? null : marked);
+                    m.put("earnedScore", markFlag == PENDING_MARK ? null : rs.getObject("earned_score"));
+                    if (explainEnabled && reveal) {
                         m.put("explainText", rs.getString("explain_text"));
                     }
                     return m;
@@ -724,15 +728,26 @@ public class ExamStore {
                 },
                 paperId);
 
-        int totalScore = 0;
+        int objectiveScore = 0;
+        int paperTotal = 0;
+        boolean pendingSubjective = false;
         db().update("DELETE FROM exam_answer WHERE attempt_id=?", attemptId);
         for (Map<String, Object> q : questions) {
             long qid = ((Number) q.get("id")).longValue();
             String userAns = answerMap.getOrDefault(qid, "");
             int maxScore = ((Number) q.get("score")).intValue();
-            int earned = scoreAnswer(String.valueOf(q.get("type")), String.valueOf(q.get("answerKey")), userAns, maxScore);
+            paperTotal += maxScore;
+            String qType = String.valueOf(q.get("type"));
+            if ("subjective".equals(qType)) {
+                pendingSubjective = true;
+                db().update(
+                        "INSERT INTO exam_answer (attempt_id,question_id,answer_text,is_correct,score) VALUES (?,?,?,?,?)",
+                        attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), PENDING_MARK, 0);
+                continue;
+            }
+            int earned = scoreAnswer(qType, String.valueOf(q.get("answerKey")), userAns, maxScore);
             boolean correct = earned == maxScore && maxScore > 0;
-            totalScore += earned;
+            objectiveScore += earned;
             db().update(
                     "INSERT INTO exam_answer (attempt_id,question_id,answer_text,is_correct,score) VALUES (?,?,?,?,?)",
                     attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), correct ? 1 : 0, earned);
@@ -741,14 +756,110 @@ public class ExamStore {
             }
         }
 
+        String nextStatus = pendingSubjective ? "reviewing" : "submitted";
+        int publishedScore = pendingSubjective ? 0 : objectiveScore;
         db().update(
-                "UPDATE exam_attempt SET status='submitted', score=?, submitted_at=? WHERE id=?",
-                totalScore, Timestamp.valueOf(LocalDateTime.now()), attemptId);
+                "UPDATE exam_attempt SET status=?, score=?, total_score=?, submitted_at=? WHERE id=?",
+                nextStatus, publishedScore, paperTotal, Timestamp.valueOf(LocalDateTime.now()), attemptId);
 
         Map<String, Object> out = new LinkedHashMap<>(getAttempt(attemptId));
         out.put("timedOut", timedOut);
         out.put("questions", listAttemptQuestions(attemptId, username, true));
         return out;
+    }
+
+    public static List<Map<String, Object>> listReviewQueue() {
+        require();
+        return db().query(
+                "SELECT a.id, a.paper_id, a.username, a.submitted_at, p.title AS paper_title "
+                        + "FROM exam_attempt a JOIN exam_paper p ON p.id=a.paper_id "
+                        + "WHERE a.status='reviewing' ORDER BY a.id ASC",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("paperId", rs.getLong("paper_id"));
+                    m.put("username", rs.getString("username"));
+                    m.put("paperTitle", rs.getString("paper_title"));
+                    m.put("submittedAt", fmt(rs.getTimestamp("submitted_at")));
+                    return m;
+                });
+    }
+
+    public static List<Map<String, Object>> reviewDetail(long attemptId) {
+        require();
+        if (getAttempt(attemptId) == null) throw new IllegalArgumentException("答卷不存在");
+        return db().query(
+                "SELECT q.id, q.type, q.stem, q.answer_key, q.score, ea.answer_text, ea.is_correct, ea.score AS earned "
+                        + "FROM exam_paper_question pq "
+                        + "JOIN exam_question q ON q.id=pq.question_id "
+                        + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
+                        + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
+                        + "WHERE a.id=? ORDER BY pq.sort_no, pq.id",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    String type = rs.getString("type");
+                    Object markObj = rs.getObject("is_correct");
+                    int markFlag = markObj == null ? 0 : ((Number) markObj).intValue();
+                    m.put("questionId", rs.getLong("id"));
+                    m.put("type", type);
+                    m.put("stem", rs.getString("stem"));
+                    m.put("answerKey", rs.getString("answer_key"));
+                    m.put("maxScore", rs.getInt("score"));
+                    m.put("userAnswer", rs.getString("answer_text"));
+                    boolean pending = "subjective".equals(type) && markFlag == PENDING_MARK;
+                    m.put("pending", pending);
+                    m.put("earnedScore", pending ? null : rs.getObject("earned"));
+                    return m;
+                },
+                attemptId);
+    }
+
+    public static Map<String, Object> markSubjective(long attemptId, long questionId, int score) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        String st = String.valueOf(attempt.get("status"));
+        if (!"reviewing".equals(st)) {
+            throw new IllegalStateException("该答卷不在待阅");
+        }
+        List<Map<String, Object>> qs = db().query(
+                "SELECT type, score FROM exam_question WHERE id=?",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("type", rs.getString("type"));
+                    m.put("score", rs.getInt("score"));
+                    return m;
+                },
+                questionId);
+        if (qs.isEmpty()) throw new IllegalArgumentException("题目不存在");
+        if (!"subjective".equals(String.valueOf(qs.get(0).get("type")))) {
+            throw new IllegalArgumentException("只能给主观题打分");
+        }
+        int maxScore = ((Number) qs.get(0).get("score")).intValue();
+        if (score < 0 || score > maxScore) {
+            throw new IllegalArgumentException("分数须在 0 到 " + maxScore + " 之间");
+        }
+        int ok = (maxScore > 0 && score >= maxScore) ? 1 : 0;
+        int n = db().update(
+                "UPDATE exam_answer SET score=?, is_correct=? WHERE attempt_id=? AND question_id=? AND is_correct=?",
+                score, ok, attemptId, questionId, PENDING_MARK);
+        if (n == 0) throw new IllegalStateException("该题已阅或不在本卷");
+        if (wrongbookEnabled && ok == 0) {
+            long paperId = ((Number) attempt.get("paperId")).longValue();
+            upsertWrongbook(String.valueOf(attempt.get("username")), questionId, paperId, attemptId);
+        }
+        Integer pending = db().queryForObject(
+                "SELECT COUNT(*) FROM exam_answer WHERE attempt_id=? AND is_correct=?",
+                Integer.class, attemptId, PENDING_MARK);
+        if (pending == null || pending == 0) {
+            Integer sum = db().queryForObject(
+                    "SELECT COALESCE(SUM(score),0) FROM exam_answer WHERE attempt_id=?",
+                    Integer.class, attemptId);
+            db().update(
+                    "UPDATE exam_attempt SET status='submitted', score=? WHERE id=?",
+                    sum == null ? 0 : sum, attemptId);
+        }
+        return getAttempt(attemptId);
     }
 
     static int scoreAnswer(String type, String answerKey, String userAnswer, int maxScore) {
@@ -766,29 +877,6 @@ public class ExamStore {
                 Set<String> expected = splitMulti(key);
                 Set<String> actual = splitMulti(ua);
                 return expected.equals(actual) ? maxScore : 0;
-            }
-            case "subjective" -> {
-                String clipped = clip(ua, SUBJECTIVE_ANSWER_MAX);
-                if (key.startsWith("re:")) {
-                    String pattern = key.substring(3);
-                    if (pattern.length() > REGEX_MAX) pattern = pattern.substring(0, REGEX_MAX);
-                    try {
-                        Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-                        return p.matcher(clipped).find() ? maxScore : 0;
-                    } catch (PatternSyntaxException e) {
-                        return 0;
-                    }
-                }
-                String lower = clipped.toLowerCase(Locale.ROOT);
-                String[] kws = key.split("[|,]");
-                boolean any = false;
-                for (String kw : kws) {
-                    String k = kw.trim().toLowerCase(Locale.ROOT);
-                    if (k.isEmpty()) continue;
-                    any = true;
-                    if (!lower.contains(k)) return 0;
-                }
-                return any ? maxScore : 0;
             }
             default -> {
                 return 0;

@@ -47,9 +47,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "考试科目",
         "papers_title": "在线考试",
-        "papers_lead": "选择已发布试卷开考；提交后自动判分。",
+        "papers_lead": "选择已发布试卷开考；客观题交卷自动判分，主观题由教师阅卷。",
         "notice_title": "考试须知",
-        "notice_body": "请独立完成作答；客观题自动判分，主观题按关键词/正则自动判分。",
+        "notice_body": "请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。",
     },
     "party": {
         "auth_eyebrow": "党建答题",
@@ -59,7 +59,7 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "papers_title": "党建答题",
         "papers_lead": "选择专题试卷作答；提交后查看成绩。",
         "notice_title": "答题须知",
-        "notice_body": "请认真学习后作答；本期为自动判分，非真机考监考。",
+        "notice_body": "请认真学习后作答；客观题自动判分，主观题由教师阅卷。非真机考监考。",
     },
     "drive": {
         "auth_eyebrow": "理论题库",
@@ -67,9 +67,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "题库科目",
         "papers_title": "理论考试",
-        "papers_lead": "选择已发布试卷模拟作答；提交后自动判分。",
+        "papers_lead": "选择已发布试卷模拟作答；客观题交卷自动判分，主观题由教师阅卷。",
         "notice_title": "理论考试须知",
-        "notice_body": "题库非官方题库；客观题自动判分，主观题按关键词匹配。",
+        "notice_body": "题库非官方题库；客观题自动判分，主观题由教师阅卷。",
     },
     "safety": {
         "auth_eyebrow": "安全考试",
@@ -77,9 +77,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "培训科目",
         "papers_title": "安全教育考试",
-        "papers_lead": "完成岗前/入职安全试卷；提交后自动判分。",
+        "papers_lead": "完成岗前/入职安全试卷；客观题交卷自动判分，主观题由教师阅卷。",
         "notice_title": "安全考试须知",
-        "notice_body": "请结合培训材料作答；客观题自动判分，主观题按关键词判分。",
+        "notice_body": "请结合培训材料作答；客观题自动判分，主观题由教师阅卷。",
     },
     "grad": {
         "auth_eyebrow": "结业测验",
@@ -87,9 +87,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "课程科目",
         "archive_menu_user": "课程科目",
         "papers_title": "结业测验",
-        "papers_lead": "选择课程试卷完成测验；提交后自动判分。",
+        "papers_lead": "选择课程试卷完成测验；客观题交卷自动判分，主观题由教师阅卷。",
         "notice_title": "测验须知",
-        "notice_body": "请在规定时限内完成；客观题自动判分，主观题按关键词匹配。",
+        "notice_body": "请在规定时限内完成；客观题自动判分，主观题由教师阅卷。",
     },
 }
 
@@ -205,6 +205,12 @@ def attach_exam_menus(schema: dict[str, Any], *, opts: dict[str, bool] | None = 
         admin,
         "exam_papers",
         {"key": "exam_papers", "label": "试卷管理", "superOnly": True},
+        before_key="content",
+    )
+    ensure_menu(
+        admin,
+        "exam_mark",
+        {"key": "exam_mark", "label": "主观题阅卷"},
         before_key="content",
     )
     ensure_menu(

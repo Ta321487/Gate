@@ -604,7 +604,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         "labels": {
             "appName": app,
             "authEyebrow": "在线考试",
-            "authLead": "验证码登录；浏览考试科目，参加已发布试卷并自动判分。",
+            "authLead": "验证码登录；浏览考试科目，参加已发布试卷。客观题交卷自动判分，主观题由教师阅卷。",
             "authPoints": ["验证码登录", "题库与组卷", "在线作答与判分"],
             "registerRoleHint": "注册后可参加已发布考试",
             "noticePageTitle": "考试公告",
@@ -613,7 +613,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
         "seeds": {
             "noticeTitle": "考试须知",
-            "noticeBody": "请独立完成作答；客观题自动判分，主观题按关键词/正则自动判分。",
+            "noticeBody": "请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。",
         },
         "examSkin": skin,
     }
@@ -621,7 +621,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         schema,
         [
             {"title": "考试科目", "lead": "按分类浏览开放科目与说明。"},
-            {"title": "在线作答", "lead": "选择已发布试卷开考，提交后自动判分。"},
+            {"title": "在线作答", "lead": "选择已发布试卷开考；客观题自动判分，主观题待教师阅卷。"},
             {"title": "成绩查阅", "lead": "查看本人历史成绩与得分明细。"},
             {"title": "考试公告", "lead": "安排与须知见公告栏。"},
         ],

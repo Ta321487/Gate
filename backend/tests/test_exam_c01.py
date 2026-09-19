@@ -79,6 +79,7 @@ class ExamC01Tests(unittest.TestCase):
         self.assertIn("exam_wrongbook", user_keys2)
         self.assertIn("exam_rank", user_keys2)
         self.assertIn("exam_questions", admin_keys)
+        self.assertIn("exam_mark", admin_keys)
         self.assertIn(EXAM_CAP, spec.get("capabilities") or [])
 
     def test_opts_and_skin(self) -> None:
@@ -153,6 +154,17 @@ class ExamC01Tests(unittest.TestCase):
         self.assertIn("answer_key", store)
         # 开考取题路径不得默认带出答案键
         self.assertIn("take: no answer key", store)
+        self.assertIn("PENDING_MARK", store)
+        self.assertNotIn('startsWith("re:")', store)
+        mark = (BASELINE / "frontend/src/views/admin/ExamMarkAdmin.vue").read_text(encoding="utf-8")
+        self.assertIn("主观题阅卷", mark)
+        for rel in (
+            "overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/ExamStore.java",
+            "overlays/persistence-jpa/backend/src/main/java/com/thesis/service/ExamStore.java",
+        ):
+            text = (ROOT / "skeletons" / rel).read_text(encoding="utf-8")
+            self.assertIn("PENDING_MARK", text, msg=rel)
+            self.assertNotIn('startsWith("re:")', text, msg=rel)
 
     def test_samples(self) -> None:
         for name in (

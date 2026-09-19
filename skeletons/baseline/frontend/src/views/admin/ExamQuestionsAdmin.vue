@@ -44,7 +44,7 @@
           <el-input v-model="form.optionsJson" type="textarea" :rows="2" placeholder='["A选项","B选项"]' />
         </el-form-item>
         <el-form-item label="答案">
-          <el-input v-model="form.answerKey" placeholder="单选如 A；多选如 A,B；主观关键词用 | 分隔" />
+          <el-input v-model="form.answerKey" placeholder="单选如 A；多选如 A,B；主观填参考答案，不参与自动判分" />
         </el-form-item>
         <el-form-item label="分值">
           <el-input-number v-model="form.score" :min="1" :max="100" />

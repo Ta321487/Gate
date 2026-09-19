@@ -188,8 +188,9 @@ public class ExamController {
         try {
             Map<String, Object> attempt = ExamStore.getAttempt(attemptId);
             if (attempt == null) throw new BizException(ErrorCode.NOT_FOUND, "答卷不存在");
-            boolean submitted = "submitted".equals(String.valueOf(attempt.get("status")));
-            List<Map<String, Object>> questions = ExamStore.listAttemptQuestions(attemptId, uid, submitted);
+            String st = String.valueOf(attempt.get("status"));
+            boolean closed = "submitted".equals(st) || "reviewing".equals(st);
+            List<Map<String, Object>> questions = ExamStore.listAttemptQuestions(attemptId, uid, closed);
             Map<String, Object> out = new java.util.LinkedHashMap<>();
             out.put("attempt", attempt);
             out.put("questions", questions);
@@ -238,6 +239,47 @@ public class ExamController {
         requireExam();
         String uid = AdminAuth.requireLogin(session);
         return R.ok(ExamStore.pageMyAttempts(uid, page, size));
+    }
+
+    @GetMapping("/admin/review")
+    public R<List<Map<String, Object>>> reviewQueue(HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        return R.ok(ExamStore.listReviewQueue());
+    }
+
+    @GetMapping("/admin/review/{attemptId}")
+    public R<List<Map<String, Object>>> reviewDetail(@PathVariable long attemptId, HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(ExamStore.reviewDetail(attemptId));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    @PostMapping("/admin/review/{attemptId}/mark")
+    public R<Map<String, Object>> mark(
+            @PathVariable long attemptId,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        Object qid = body == null ? null : (body.get("questionId") != null ? body.get("questionId") : body.get("question_id"));
+        Object sc = body == null ? null : body.get("score");
+        if (qid == null || sc == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请填写题目与分数");
+        }
+        try {
+            long questionId = Long.parseLong(String.valueOf(qid));
+            int score = Integer.parseInt(String.valueOf(sc));
+            return R.ok(ExamStore.markSubjective(attemptId, questionId, score));
+        } catch (NumberFormatException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "题目或分数格式不对");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @GetMapping("/papers/{paperId}/rank")
