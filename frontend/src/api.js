@@ -88,6 +88,15 @@ export const api = {
     if (ids?.length) q.set('ids', ids.join(','))
     return `/api/projects/${id}/schema/sequences.svg?${q}`
   },
+  getActivities: (id, { ids } = {}) =>
+    http.get(`/projects/${id}/schema/activities`, {
+      params: ids?.length ? { ids: ids.join(',') } : {},
+    }),
+  activitiesSvgUrl: (id, { index = 0, ids } = {}) => {
+    const q = new URLSearchParams({ index: String(index) })
+    if (ids?.length) q.set('ids', ids.join(','))
+    return `/api/projects/${id}/schema/activities.svg?${q}`
+  },
   getClasses: (id, { display = 'sample' } = {}) =>
     http.get(`/projects/${id}/schema/classes`, { params: { display } }),
   classesSvgUrl: (id, { display = 'sample' } = {}) => {

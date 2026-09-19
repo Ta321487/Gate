@@ -72,6 +72,7 @@ def _workspace_or_400(p: Project) -> Path:
 
 @router.get("/stats", response_model=StatsOut, summary="项目统计")
 async def project_stats(db: AsyncSession = Depends(get_db)):
+    # 不抢 reconcile_lock：只读计数，扫盘只在列表
     return StatsOut(**(await project_svc.stats(db)))
 
 
@@ -103,83 +104,86 @@ async def list_projects(
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
-    items = list(result.scalars().all())
-    if q:
-        items = [p for p in items if q in p.title or q in p.id]
-    # 先纠正运行态与门禁/zip_ready，再按筛选过滤（避免须进详情才刷新）
-    dirty = False
-    for p in items:
-        if project_svc.sync_checklist_from_workspace(p):
-            dirty = True
-        _, _, changed = project_svc.sync_project_runtime(p)
-        if changed:
-            dirty = True
-    if filter == "active":
-        # 「运行中」= 预览进程在跑（与列表「运行」列一致）
-        items = [
-            p
-            for p in items
-            if p.status == "running" or p.backend_running or p.frontend_running
-        ]
-    elif filter == "generating":
-        items = [p for p in items if p.status == "generating"]
-    elif filter == "done":
-        # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
-        items = [
-            p
-            for p in items
-            if p.status in ("generated", "running") and project_svc.is_zip_downloadable(p)
-        ]
-    elif filter == "pending":
-        # 待审 = 质检可下、尚未人工标记（履约 backlog）
-        items = [
-            p
-            for p in items
-            if p.status in ("generated", "running")
-            and project_svc.is_zip_downloadable(p)
-            and project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
-            == "none"
-        ]
-    elif filter == "ready":
-        items = [
-            p
-            for p in items
-            if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "ready"
-        ]
-    elif filter == "delivered":
-        items = [
-            p
-            for p in items
-            if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
-            == "delivered"
-        ]
-    elif filter == "fail":
-        # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
-        items = [
-            p
-            for p in items
-            if p.status == "failed"
-            or (
-                p.status in ("generated", "running")
-                and not project_svc.is_zip_downloadable(p)
-            )
-        ]
-    # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
-    summaries = []
-    from app.services.delivery_review import review_status_of
-
-    for p in items:
-        s = ProjectSummary.model_validate(p)
-        s.delivery_mark = project_svc.normalize_delivery_mark(
-            getattr(p, "delivery_mark", None)
+    async with project_svc.reconcile_lock:
+        result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
+        items = list(result.scalars().all())
+        if q:
+            items = [p for p in items if q in p.title or q in p.id]
+        # 读完即放开 SQLite，再纠正运行态与门禁（避免与其它读请求互相等锁）
+        await project_svc.release_read_transaction(db)
+        listening: set[int] | None = None
+        if any(p.backend_port or p.frontend_port for p in items):
+            listening = await asyncio.to_thread(rt.listening_tcp_ports)
+        # 扫盘/廉价运行态收敛放到线程池，避免堵 /upload/plans 等
+        dirty = await asyncio.to_thread(
+            project_svc.reconcile_list_items, items, listening=listening
         )
-        s.download_blocked_reason = project_svc.delivery_block_reason(p)
-        s.review_status = review_status_of(p)
-        summaries.append(s)
-    if dirty:
-        await db.commit()
-    return summaries
+        if filter == "active":
+            # 「运行中」= 预览进程在跑（与列表「运行」列一致）
+            items = [
+                p
+                for p in items
+                if p.status == "running" or p.backend_running or p.frontend_running
+            ]
+        elif filter == "generating":
+            items = [p for p in items if p.status == "generating"]
+        elif filter == "done":
+            # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
+            items = [
+                p
+                for p in items
+                if p.status in ("generated", "running") and project_svc.is_zip_downloadable(p)
+            ]
+        elif filter == "pending":
+            # 待审 = 质检可下、尚未人工标记（履约 backlog）
+            items = [
+                p
+                for p in items
+                if p.status in ("generated", "running")
+                and project_svc.is_zip_downloadable(p)
+                and project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
+                == "none"
+            ]
+        elif filter == "ready":
+            items = [
+                p
+                for p in items
+                if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
+                == "ready"
+            ]
+        elif filter == "delivered":
+            items = [
+                p
+                for p in items
+                if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
+                == "delivered"
+            ]
+        elif filter == "fail":
+            # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
+            items = [
+                p
+                for p in items
+                if p.status == "failed"
+                or (
+                    p.status in ("generated", "running")
+                    and not project_svc.is_zip_downloadable(p)
+                )
+            ]
+        # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
+        summaries = []
+        from app.services.delivery_review import review_status_of
+
+        for p in items:
+            s = ProjectSummary.model_validate(p)
+            s.delivery_mark = project_svc.normalize_delivery_mark(
+                getattr(p, "delivery_mark", None)
+            )
+            s.download_blocked_reason = project_svc.delivery_block_reason(p)
+            s.review_status = review_status_of(p)
+            summaries.append(s)
+        if dirty:
+            await db.commit()
+        return summaries
 
 
 @router.post("/upload", response_model=ProjectDetail, summary="上传开题/任务书等材料")
@@ -882,6 +886,92 @@ async def download_architecture_svg(
         raise HTTPException(404, "未找到 domain.schema.json")
     svg = render_architecture_svg(model)
     fname = f"{project_id}-architecture.svg"
+    return Response(
+        content=svg.encode("utf-8"),
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/activities", summary="系统活动图模型")
+async def get_activities(
+    project_id: str,
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔；省略则默认核心三选"),
+    db: AsyncSession = Depends(get_db),
+):
+    """固定 3 张核心功能活动图；与序列图同源候选/文案；三泳道用户/系统/数据库。"""
+    from app.bake.schema.activity import load_activity_model, parse_selection_ids
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = load_activity_model(
+            ws,
+            proposal_text=prop,
+            selection=selection,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    return model
+
+
+@router.get("/{project_id}/schema/activities.svg", summary="下载系统活动图 SVG")
+async def download_activities_svg(
+    project_id: str,
+    index: int = Query(0, ge=0, le=2, description="第几张活动图 0..2"),
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.activity import (
+        load_activity_model,
+        parse_selection_ids,
+        render_activity_svg,
+    )
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = load_activity_model(
+            ws,
+            proposal_text=prop,
+            selection=selection,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    diagrams = model.get("diagrams") or []
+    if index >= len(diagrams):
+        raise HTTPException(404, "活动图索引超出范围")
+    svg = render_activity_svg(diagrams[index])
+    fname = f"{project_id}-activity-{index}.svg"
     return Response(
         content=svg.encode("utf-8"),
         media_type="image/svg+xml; charset=utf-8",

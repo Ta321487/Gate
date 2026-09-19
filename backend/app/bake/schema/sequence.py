@@ -393,6 +393,84 @@ def _scan_vue_buttons(
     return hits
 
 
+# 仅浏览、默认不画写路径的 kind（与 _build_business_phase.need_write 黑名单对齐）
+BROWSE_SEQUENCE_KINDS = frozenset(
+    {
+        "archive_user",
+        "content_user",
+        "messages",
+        "my_orders",
+        "ticket_records",
+        "favorites",
+        "browse_history",
+    }
+)
+
+
+def _ent_label(entities: dict[str, Any], key: str) -> str:
+    e = entities.get(key)
+    if isinstance(e, dict):
+        return str(e.get("label") or "").strip()
+    return ""
+
+
+def _feature_entity(schema: dict[str, Any], *, kind: str, menu_label: str = "") -> str:
+    """按功能 kind 解析本图应用的业务实体中文名，禁止无脑用全局 archive 串台。
+
+    例：favorites → 收藏；my_tickets → 报名单/借阅单；archive_* 才用影片/图书等。
+    """
+    entities = schema.get("entities") if isinstance(schema.get("entities"), dict) else {}
+    menu_label = str(menu_label or "").strip()
+    archive = _entity_label(schema)
+
+    if kind.startswith("auth_"):
+        return ""
+
+    if "order" in kind or kind in ("cart", "my_orders", "orders"):
+        if kind == "cart":
+            return _ent_label(entities, "cart") or "购物车"
+        return _ent_label(entities, "order") or menu_label or archive
+
+    if "reserve" in kind or kind == "reservations":
+        return _ent_label(entities, "reservation") or menu_label or archive
+
+    if kind in ("my_tickets", "ticket_pending", "ticket_records") or "ticket" in kind:
+        return _ent_label(entities, "ticket") or menu_label or archive
+
+    if kind == "favorites":
+        return _ent_label(entities, "favorites") or "收藏"
+
+    if kind in ("content_user", "content_admin"):
+        return _ent_label(entities, "content") or "公告"
+
+    if kind == "messages":
+        return "消息"
+
+    if kind in ("guestbook_user", "guestbook_admin"):
+        return _ent_label(entities, "guestbook") or "留言"
+
+    if kind == "addresses":
+        return "地址"
+
+    if kind == "profile":
+        return "资料"
+
+    if kind == "users":
+        return "用户"
+
+    if kind == "category":
+        return _ent_label(entities, "category") or "分类"
+
+    if kind == "dm":
+        return "私信"
+
+    if "archive" in kind:
+        return archive
+
+    # 未知 kind：优先菜单名，最后才 archive（避免收藏类功能落到片单/点播）
+    return menu_label or archive
+
+
 def _pick_controller(
     controllers: list[dict[str, Any]],
     *,
@@ -410,27 +488,40 @@ def _pick_controller(
         "order" if "order" in kind or "cart" in kind else "",
         "reserv" if "reserve" in kind else "",
         "ticket" if "ticket" in kind else "",
+        "favorite" if kind == "favorites" else "",
         "user" if kind == "users" else "",
         "product" if "archive" in kind else "",
         "archive" if "archive" in kind else "",
+        "notice" if "content" in kind else "",
+        "message" if kind == "messages" else "",
     ]
     keys = [k for k in keys if k]
+    file_hints = [h.lower() for h in (_VUE_FILE_HINTS.get(kind) or ()) if h]
 
     def score(c: dict[str, Any]) -> int:
         blob = (c["class"] + c.get("src_lower", "")).lower()
+        cname = str(c.get("class") or "").lower()
         s = 0
         for k in keys:
             if k and k in blob:
                 s += 10
+        for h in file_hints:
+            if h and h in cname:
+                s += 18
+            if h and h in blob:
+                s += 8
         if entity and entity in c.get("src_lower", ""):
             s += 5
-        if kind.startswith("auth_") and "auth" in c["class"].lower():
+        if kind.startswith("auth_") and "auth" in cname:
             s += 20
         return s
 
     ranked = sorted(controllers, key=lambda c: (-score(c), c["class"]))
     best = ranked[0]
-    return best if score(best) > 0 or kind.startswith("auth_") else ranked[0]
+    # 零分禁止回落到无关 Controller（曾导致收藏图吃到 ArchiveController）
+    if score(best) <= 0 and not kind.startswith("auth_"):
+        return None
+    return best
 
 
 def _collapse_dup_zh(text: str) -> str:
@@ -692,15 +783,7 @@ def _build_business_phase(
     )
 
     # 写路径（有写操作或非纯浏览 kind）
-    need_write = bool(writes) or kind not in (
-        "archive_user",
-        "content_user",
-        "messages",
-        "my_orders",
-        "ticket_records",
-        "favorites",
-        "browse_history",
-    )
+    need_write = bool(writes) or kind not in BROWSE_SEQUENCE_KINDS
     if need_write:
         # 自调用优先用本功能菜单/实体措辞，不用跨页按钮
         pick = _pick_vue_btn(
@@ -807,15 +890,7 @@ def build_diagram_messages(
     side = str(case.get("side") or "user")
     menu_label = str(case.get("label") or "").strip()
     actor = _short_role(str(case.get("actor") or _role_label(schema, side)), side=side)
-    entity = _entity_label(schema)
-    # 订单/预约等优先用实体细分
-    entities = schema.get("entities") if isinstance(schema.get("entities"), dict) else {}
-    if "order" in kind or kind in ("cart", "my_orders", "orders"):
-        od = entities.get("order") if isinstance(entities.get("order"), dict) else {}
-        entity = str(od.get("label") or "").strip() or entity
-    if "reserve" in kind:
-        res = entities.get("reservation") if isinstance(entities.get("reservation"), dict) else {}
-        entity = str(res.get("label") or "").strip() or entity
+    entity = _feature_entity(schema, kind=kind, menu_label=menu_label)
 
     controllers = _scan_controllers(workspace) if workspace else []
     vue_btns = (
