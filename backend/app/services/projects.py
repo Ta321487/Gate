@@ -418,15 +418,32 @@ async def ensure_project_ports(db: AsyncSession, project: Project) -> tuple[int,
     return be, fe
 
 
-def sync_project_runtime(project: Project) -> tuple[str, str, bool]:
+def sync_project_runtime(
+    project: Project,
+    *,
+    listening: set[int] | None = None,
+    probe_http: bool = True,
+) -> tuple[str, str, bool]:
     """按真实可服务态纠正 running 标记与项目 status；两侧皆停时还端口。
 
     返回 (backend_status, frontend_status, dirty)。
+    listening：调用方已探测过的 LISTENING 端口；传入后两侧皆停时不再逐项 netstat。
+    probe_http：False 时只看进程表/LISTENING（列表页用，避免逐项 HTTP 拖死事件循环）。
     """
-    be_st = rt.backend_status(project.id, project.backend_port)
-    fe_st = rt.frontend_status(project.id, project.frontend_port)
-    be = be_st in ("starting", "healthy")
-    fe = fe_st in ("starting", "healthy")
+    if probe_http:
+        be_st = rt.backend_status(project.id, project.backend_port)
+        fe_st = rt.frontend_status(project.id, project.frontend_port)
+        be = be_st in ("starting", "healthy")
+        fe = fe_st in ("starting", "healthy")
+    else:
+        be = rt.side_active(
+            project.id, project.backend_port, "backend", listening=listening
+        )
+        fe = rt.side_active(
+            project.id, project.frontend_port, "frontend", listening=listening
+        )
+        be_st = "healthy" if be else "stopped"
+        fe_st = "healthy" if fe else "stopped"
     dirty = False
     if project.backend_running != be or project.frontend_running != fe:
         project.backend_running = be
@@ -443,9 +460,9 @@ def sync_project_runtime(project: Project) -> tuple[str, str, bool]:
         project.status = ProjectStatus.generated.value
         dirty = True
     if not be and not fe and (project.backend_port or project.frontend_port):
-        listening = rt.listening_tcp_ports()
-        be_listen = bool(project.backend_port and project.backend_port in listening)
-        fe_listen = bool(project.frontend_port and project.frontend_port in listening)
+        ports = listening if listening is not None else rt.listening_tcp_ports()
+        be_listen = bool(project.backend_port and project.backend_port in ports)
+        fe_listen = bool(project.frontend_port and project.frontend_port in ports)
         if not be_listen and not fe_listen:
             project.backend_port = 0
             project.frontend_port = 0
@@ -527,6 +544,55 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     project.gates = new_gates
     touch_json_fields(project, "checklist", "gates")
     return True
+
+
+# 列表页会同时打 /stats 和 /projects。两边都重扫工作区时占着 SQLite 读锁再写回，
+# 互相等 busy，同页的 /upload/plans 也被事件循环堵住（并行实测约 5s+）。
+# 短 TTL：生成任务自己会写 gates；这只挡住刷新连打，详情页仍当场重扫。
+# /stats 只读库计数，不扫盘；扫盘只在 /projects 且放到线程池，避免堵事件循环。
+_CHECKLIST_LIST_TTL_SEC = 20.0
+_checklist_list_at: dict[str, float] = {}
+reconcile_lock = asyncio.Lock()
+
+
+def reset_checklist_list_cache() -> None:
+    _checklist_list_at.clear()
+
+
+async def release_read_transaction(db: AsyncSession) -> None:
+    """结束当前只读事务，避免随后的磁盘扫描占着 SQLite 读锁。"""
+    await db.commit()
+
+
+def sync_checklist_for_list(project: Project) -> bool:
+    """列表：TTL 内不重扫工作区。生成中仍走廉价收敛（只降 zip_ready）。"""
+    generating = project.status == ProjectStatus.generating.value
+    if not generating:
+        seen = _checklist_list_at.get(project.id)
+        if seen is not None and (time.monotonic() - seen) < _CHECKLIST_LIST_TTL_SEC:
+            return False
+    changed = sync_checklist_from_workspace(project)
+    if generating:
+        _checklist_list_at.pop(project.id, None)
+    else:
+        _checklist_list_at[project.id] = time.monotonic()
+    return changed
+
+
+def reconcile_list_items(
+    items: list[Project], *, listening: set[int] | None = None
+) -> bool:
+    """列表页批量收敛 checklist/运行态（供 to_thread，勿在持 SQLite 事务时调用）。"""
+    dirty = False
+    for p in items:
+        if sync_checklist_for_list(p):
+            dirty = True
+        _, _, changed = sync_project_runtime(
+            p, listening=listening, probe_http=False
+        )
+        if changed:
+            dirty = True
+    return dirty
 
 
 async def create_from_upload(
@@ -976,15 +1042,10 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
 
 
 async def stats(db: AsyncSession) -> dict:
-    # 先收敛 zip_ready，再计数（与列表筛选同源，避免待审虚高）
+    # 只读库计数，不扫工作区。zip_ready / delivery_mark 由 /projects 列表收敛；
+    # 同页并行时两边都扫盘会堵事件循环，且曾占着 SQLite 读锁互相 busy 数秒。
     result = await db.execute(select(Project))
     items = list(result.scalars().all())
-    dirty = False
-    for p in items:
-        if sync_checklist_from_workspace(p):
-            dirty = True
-    if dirty:
-        await db.commit()
 
     total = len(items)
     generating = sum(
