@@ -232,6 +232,13 @@ const seqMeta = ref(null)
 const seqLayoutKey = ref(0)
 const seqIndex = ref(0)
 const seqSelectedIds = ref([])
+const showActivities = ref(false)
+const actLoading = ref(false)
+const actSvgSource = ref('')
+const actMeta = ref(null)
+const actLayoutKey = ref(0)
+const actIndex = ref(0)
+const actSelectedIds = ref([])
 const classSvgSource = ref('')
 const classMeta = ref(null)
 const classLayoutKey = ref(0)
@@ -1635,6 +1642,95 @@ async function onSeqDiagramIndex(i) {
   }
 }
 
+const actDownloadBase = computed(() => {
+  const id = p.value?.id || 'act'
+  const d = actMeta.value?.diagrams?.[actIndex.value]
+  const title = d?.figure_title || actMeta.value?.figure_title || '系统活动图'
+  return `${id}-活动图-${title}`
+})
+
+async function fetchActSvg() {
+  if (!p.value) return ''
+  const ids = actSelectedIds.value?.length === 3 ? actSelectedIds.value : undefined
+  const url = `${api.activitiesSvgUrl(p.value.id, { index: actIndex.value, ids })}&t=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('activity svg')
+  return await res.text()
+}
+
+async function loadActivities(ids) {
+  if (!p.value) return
+  const body = await api.getActivities(p.value.id, { ids })
+  actMeta.value = body
+  actSelectedIds.value = Array.isArray(body?.selected) ? [...body.selected] : []
+  if (actIndex.value >= (body?.diagrams?.length || 0)) actIndex.value = 0
+  actSvgSource.value = await fetchActSvg()
+  actLayoutKey.value += 1
+}
+
+async function openActivities() {
+  if (!p.value || actLoading.value || artifactsFrozen.value) return
+  actLoading.value = true
+  try {
+    // 默认与序列图同选；未开过序列图则走服务端默认三选
+    const prefer =
+      actSelectedIds.value.length === 3
+        ? actSelectedIds.value
+        : seqSelectedIds.value.length === 3
+          ? seqSelectedIds.value
+          : undefined
+    await loadActivities(prefer)
+    showActivities.value = true
+  } catch {
+    message.error('无法加载系统活动图')
+  } finally {
+    actLoading.value = false
+  }
+}
+
+async function reloadActSvg() {
+  if (!p.value || actLoading.value) return
+  actLoading.value = true
+  try {
+    await loadActivities(actSelectedIds.value.length === 3 ? actSelectedIds.value : undefined)
+  } catch {
+    message.error('无法重新加载活动图')
+  } finally {
+    actLoading.value = false
+  }
+}
+
+async function onActApplySelection(ids) {
+  if (!Array.isArray(ids) || ids.length !== 3) {
+    message.warning('请恰好勾选 3 个交付功能')
+    return
+  }
+  actLoading.value = true
+  try {
+    actIndex.value = 0
+    await loadActivities(ids)
+  } catch (e) {
+    message.error(e?.response?.data?.detail || '无法按所选功能生成活动图')
+  } finally {
+    actLoading.value = false
+  }
+}
+
+async function onActDiagramIndex(i) {
+  const n = Number(i) || 0
+  if (n === actIndex.value) return
+  actIndex.value = n
+  actLoading.value = true
+  try {
+    actSvgSource.value = await fetchActSvg()
+    actLayoutKey.value += 1
+  } catch {
+    message.error('无法切换活动图')
+  } finally {
+    actLoading.value = false
+  }
+}
+
 const classDownloadBase = computed(() => {
   const id = p.value?.id || 'classes'
   const title = classMeta.value?.figure_title || classMeta.value?.title || '系统类图'
@@ -2453,6 +2549,7 @@ watch(artifactsFrozen, (frozen) => {
   showModules.value = false
   showArchitecture.value = false
   showSequences.value = false
+  showActivities.value = false
   showClasses.value = false
   showUsecases.value = false
   showTestcases.value = false
@@ -2655,6 +2752,9 @@ onUnmounted(() => {
     openSequences,
     onSeqApplySelection,
     onSeqDiagramIndex,
+    openActivities,
+    onActApplySelection,
+    onActDiagramIndex,
     openClasses,
     openEr,
     openFillPlan,
@@ -2782,6 +2882,15 @@ onUnmounted(() => {
     seqMeta,
     seqSelectedIds,
     seqSvgSource,
+    showActivities,
+    actDownloadBase,
+    actIndex,
+    actLayoutKey,
+    actLoading,
+    actMeta,
+    actSelectedIds,
+    actSvgSource,
+    reloadActSvg,
     showClasses,
     showModules,
     showPptCheck,
