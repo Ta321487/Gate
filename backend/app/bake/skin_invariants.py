@@ -100,14 +100,18 @@ def check_frontend_skin_leaks(frontend_src: Path) -> list[str]:
     if not frontend_src.is_dir():
         return issues
     pat = re.compile(r"['\"]DOM-[A-Z]{2,}")
+    # 管理端消息页曾把「申请 + 订单 + 预约」写成全站兜底，无单据域（如曲库）也会串题
+    bleed = "待受理申请、新订单/预约"
     for path in frontend_src.rglob("*"):
         if path.suffix not in {".vue", ".js", ".ts"}:
             continue
+        text = path.read_text(encoding="utf-8")
+        if bleed in text:
+            issues.append(f"前端禁止写死跨域消息导语（{bleed}）: {path.name}")
         rel = path.as_posix()
         if rel.endswith("/views/Login.vue") or rel.endswith("\\views\\Login.vue"):
             # 登录页清洗开题材料污染，允许匹配 DOM- 字样
             continue
-        text = path.read_text(encoding="utf-8")
         if pat.search(text):
             issues.append(f"前端业务分支禁止硬编码 DOM-*: {path.name}")
     return issues
