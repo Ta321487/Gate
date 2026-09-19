@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -210,6 +211,17 @@ def _popen(cmd: list[str], *, cwd: Path, log_f, env: Optional[dict] = None) -> s
         creationflags=_creationflags(),
         shell=use_shell,
     )
+
+
+def _tcp_open(port: int, timeout: float = 0.05) -> bool:
+    """端口未监听时立刻失败，避免对死端口做 HTTP 探测（每次最多 0.35s × 多条 URL）。"""
+    if not port:
+        return False
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def _http_ok(url: str, timeout: float = 0.35) -> bool:
@@ -662,7 +674,7 @@ def backend_status(project_id: str, port: int) -> str:
     """stopped | starting | healthy | error —— 以端口可服务为准（不依赖进程表是否丢过）。"""
     if not port:
         return "starting" if backend_running(project_id) else "stopped"
-    if (
+    if _tcp_open(port) and (
         _http_ok(f"http://127.0.0.1:{port}/actuator/health")
         or _http_ok(f"http://127.0.0.1:{port}/api/meta")
         or _http_ok(f"http://127.0.0.1:{port}/")
@@ -683,7 +695,7 @@ def frontend_status(project_id: str, port: int) -> str:
     """stopped | starting | healthy | error"""
     if not port:
         return "starting" if frontend_running(project_id) else "stopped"
-    if _http_ok(f"http://127.0.0.1:{port}/"):
+    if _tcp_open(port) and _http_ok(f"http://127.0.0.1:{port}/"):
         return "healthy"
     log = frontend_log(project_id)
     if frontend_running(project_id):
