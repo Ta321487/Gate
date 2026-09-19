@@ -1,6 +1,38 @@
 /** 岗位：子管理(clerk) / 业务员工(worker) */
 
-import { getSchema } from './domainSchema.js'
+import { getSchema, superOnlyAdminPaths } from './domainSchema.js'
+import { ADMIN_MENU_PATHS } from './menuRoutes.js'
+
+const ADMIN_KEY_BY_PATH = Object.fromEntries(
+  Object.entries(ADMIN_MENU_PATHS).map(([key, path]) => [path, key]),
+)
+ADMIN_KEY_BY_PATH['/admin/profile'] = 'profile'
+
+/**
+ * 与路由 adminGuard 同一套：子管点不到总管菜单时返回 false，避免先跳再被弹回。
+ * @param {string} path
+ */
+export function canOpenAdminPath(path) {
+  const p = String(path || '').split('?')[0]
+  if (!p.startsWith('/admin')) return false
+  if (localStorage.getItem('role') !== 'admin') return false
+  if (localStorage.getItem('superAdmin') === 'true') return true
+  if (isWorkerSession()) return false
+  if (superOnlyAdminPaths().has(p)) return false
+  const allowed = clerkAllowedMenuKeys(currentStaffPost())
+  if (!allowed) return true
+  const key = ADMIN_KEY_BY_PATH[p]
+  if (!key) return false
+  if (key === 'profile' || key === 'messages' || key === 'dm') return true
+  return allowed.has(key)
+}
+
+/** 可进才返回原 path（可带 query），否则 ''——工作台/铃铛 CTA 共用 */
+export function adminNavPath(path) {
+  const raw = String(path || '')
+  const base = raw.split('?')[0]
+  return canOpenAdminPath(base) ? raw : ''
+}
 
 export function staffPosts() {
   const posts = getSchema()?.roles?.staff_posts

@@ -143,6 +143,17 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("fallback", "兜底", ("DOM-GENERIC",)),
 )
 
+
+def is_borrow_family_domain(domain: str | None) -> bool:
+    d = (domain or "").strip()
+    if not d:
+        return False
+    for gid, _label, members in DOMAIN_GROUPS:
+        if gid == "borrow":
+            return d in members
+    return False
+
+
 # domain → 默认所需能力（题目无关的积木组合）
 # 分组见 DOMAIN_GROUPS / HANDOFF「90% 毕设覆盖」
 DOMAIN_CAPABILITIES: dict[str, list[str]] = {
@@ -152,27 +163,27 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users", "stock_io"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-EVENT": ["archive", "ticket_flow", "archive_log", "content", "org_users"],
-    "DOM-ATTEND": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-FUND": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-LABSAFE": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-RECRUIT": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-ATTEND": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-FUND": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
+    "DOM-LABSAFE": ["archive", "ticket_flow", "content", "org_users", "material_check"],
+    "DOM-RECRUIT": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-DATING": ["archive", "ticket_flow", "content", "org_users", "dm"],
     "DOM-GRADE": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-INTERN": ["archive", "ticket_flow", "content", "org_users", "e_sign"],
     "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users"],
-    "DOM-SEAL": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-FLEET": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-CERT": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-PROMO": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-FITOUT": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-ACAD": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-TRIP": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-EXPENSE": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-CREDIT": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-LABOR": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-SEAL": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
+    "DOM-FLEET": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-CERT": ["archive", "ticket_flow", "content", "org_users", "material_check"],
+    "DOM-PROMO": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-FITOUT": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-ACAD": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-TRIP": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-EXPENSE": ["archive", "ticket_flow", "content", "org_users", "balance_ledger", "multi_approve"],
+    "DOM-CREDIT": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
+    "DOM-LABOR": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-EVAL": ["archive", "ticket_flow", "content", "org_users", "rating_dims"],
-    "DOM-MORAL": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-AWARD": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-MORAL": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
+    "DOM-AWARD": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-BED": ["archive", "ticket_flow", "quota", "content", "org_users", "bed_occupy"],
     "DOM-CHECKIN": ["archive", "ticket_flow", "quota", "content", "org_users", "checkin"],
     "DOM-MUTUAL-TUTOR": ["archive", "ticket_flow", "quota", "content", "org_users", "mutual_select"],
@@ -182,11 +193,11 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-CARPASS": ["archive", "ticket_flow", "quota", "content", "org_users", "pass_code"],
     "DOM-LISTING": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-PROCURE": ["archive", "ticket_flow", "quota", "content", "org_users"],
-    "DOM-CLUB": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-PROJ": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-ETHIC": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-PARTY": ["archive", "ticket_flow", "content", "org_users"],
-    "DOM-CONTRACT": ["archive", "ticket_flow", "content", "org_users"],
+    "DOM-CLUB": ["archive", "ticket_flow", "content", "org_users", "material_check"],
+    "DOM-PROJ": ["archive", "ticket_flow", "content", "org_users", "material_check", "multi_approve"],
+    "DOM-ETHIC": ["archive", "ticket_flow", "content", "org_users", "material_check", "multi_approve"],
+    "DOM-PARTY": ["archive", "ticket_flow", "content", "org_users", "material_check"],
+    "DOM-CONTRACT": ["archive", "ticket_flow", "content", "org_users", "material_check", "multi_approve"],
     "DOM-INSTRUMENT": [
         "archive",
         "ticket_flow",
@@ -211,7 +222,15 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-IT": ["ticket_flow", "content", "org_users", "deadline"],
     # C 报名/申请
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin", "waitlist"],
-    "DOM-LOST": ["archive", "ticket_flow", "quota", "content", "org_users"],
+    "DOM-LOST": [
+        "archive",
+        "ticket_flow",
+        "quota",
+        "content",
+        "org_users",
+        "claim_proof",
+        "lost_clue",
+    ],
     "DOM-COURSE": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "waitlist"],
     "DOM-TOUR": ["archive", "ticket_flow", "quota", "content", "org_users"],
     # D 交易（order_lines）

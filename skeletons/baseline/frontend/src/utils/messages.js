@@ -2,6 +2,8 @@
  * 站内消息导航：铃铛 / 消息页共用，避免两处各写一份 refType 映射。
  */
 
+import { canOpenAdminPath, workerAllowedPages, currentStaffPost } from './staffPosts.js'
+
 /** 当前壳下的收件箱路径 */
 export function messageInboxPath(pathname = '') {
   if (String(pathname).startsWith('/admin')) return '/admin/messages'
@@ -20,8 +22,22 @@ export function messageAdminTarget(msg, pathname = '', opts = {}) {
   const path = String(pathname || '')
   if (!path.startsWith('/admin') && !path.startsWith('/staff')) return null
   const t = msg?.refType
-  if (t === 'ticket') return '/admin/tickets'
-  if (t === 'order') return '/admin/orders'
-  if (t === 'reservation') return '/admin/reservations'
+  if (path.startsWith('/staff')) {
+    const pages = workerAllowedPages(currentStaffPost())
+    let leaf = null
+    if (t === 'ticket' && pages.includes('tickets')) leaf = 'tickets'
+    else if (t === 'order' && pages.includes('orders')) leaf = 'orders'
+    else if (t === 'reservation' && pages.includes('slots')) leaf = 'slots'
+    if (leaf) return `/staff/${leaf}`
+    return opts.fallback ? '/staff/messages' : null
+  }
+  let target = null
+  if (t === 'ticket') target = '/admin/tickets'
+  else if (t === 'order') target = '/admin/orders'
+  else if (t === 'reservation') target = '/admin/reservations'
+  if (target && !canOpenAdminPath(target)) {
+    return opts.fallback ? '/admin/messages' : null
+  }
+  if (target) return target
   return opts.fallback ? '/admin/messages' : null
 }

@@ -11,7 +11,7 @@
     </section>
 
     <PageSkeleton v-if="loading" variant="list" :rows="5" />
-    <EmptyHint v-else-if="!list.length" title="暂无消息" desc="审核结果与系统通知会出现在这里。" mark="信" />
+    <EmptyHint v-else-if="!list.length" title="暂无消息" :desc="emptyDesc" mark="信" />
     <ul v-else class="list">
       <li
         v-for="m in list"
@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-/** 基线消息：导语来自 Domain Schema，避免写死「催还」等借用域词 */
+/** 基线消息：用户端与管理端导语都读 Domain Schema，禁止写死订单/预约/申请等借用域词 */
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -60,16 +60,18 @@ const route = useRoute()
 const router = useRouter()
 const labels = computed(() => schemaLabels())
 const pageLead = computed(() => {
-  if (route.path.startsWith('/admin')) {
-    return '待受理申请、新订单/预约等管理通知。'
-  }
   const lead = labels.value.messagesPageLead
   if (lead) return lead
   const ticket = ticketCopy()
   const remind = ticket.verbs?.remind
   if (remind && remind !== '提醒') return `审核结果、${remind}提醒与系统通知。`
   if (ticket.allowCheckin) return '审核结果、活动提醒与系统通知。'
-  return '审核结果与系统通知。'
+  if (ticket.key || ticket.label) return '审核结果与系统通知。'
+  return '系统通知。'
+})
+const emptyDesc = computed(() => {
+  const lead = String(pageLead.value || '系统通知').replace(/。$/, '')
+  return `${lead}会出现在这里。`
 })
 
 const loading = ref(false)

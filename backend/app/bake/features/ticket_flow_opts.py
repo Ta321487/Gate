@@ -1,4 +1,4 @@
-"""开题扫词 → 单据流程选项（两级/三级审 / 必传附件 / 申报截止）。
+"""开题扫词 → 单据流程选项（两级/三级审 / 必传附件 / 材料清单 / 申报截止）。
 
 硬约束
 ------
@@ -7,13 +7,15 @@
 - **截止 ≠ 借阅逾期**：本模块的「截止」是档案 ``applyDeadlineAt``（申报/报名窗口）；
   借阅 ``deadline`` / 罚金壳见 ``core_cap_scan.scan_loan_deadline``，勿在此重复扫词。
 - **三级（C-16）**：固定 pending→pending_mid→pending_final→approved；非任意流程图。
+- **material_check**：清单项 + requireAttach；缺件拒绝，不新开附件引擎。
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from app.bake.proposal_lexicon import keyword_mentioned
+from app.bake.proposal_lexicon import keyword_mentioned, pattern_mentioned
 
 MULTI_APPROVE_CAP = "multi_approve"
 WAITLIST_CAP = "waitlist"
@@ -360,4 +362,133 @@ def apply_ticket_flow_opts_to_spec(
         _add_feat("候补", "flow")
 
     spec["features"] = features
+    return spec
+
+
+# —— 材料清单（借用族）：挂在本文件，复用 requireAttach ——
+
+MATERIAL_CHECK_CAP = "material_check"
+
+MATERIAL_DOMAINS: frozenset[str] = frozenset({
+    "DOM-CLUB",
+    "DOM-PROJ",
+    "DOM-ETHIC",
+    "DOM-PARTY",
+    "DOM-CERT",
+    "DOM-CONTRACT",
+    "DOM-LABSAFE",
+})
+
+MULTI_APPROVE_DEFAULT_DOMAINS: frozenset[str] = frozenset({
+    "DOM-EXPENSE",
+    "DOM-CONTRACT",
+    "DOM-ETHIC",
+    "DOM-PROJ",
+})
+
+_MATERIAL_SIGNALS = re.compile(
+    r"材料清单|附件清单|必传材料|材料核验|缺件|提交材料|证明材料清单|"
+    r"年审材料|申报材料|培训证明材料"
+)
+
+
+def scan_material_check(text: str) -> bool:
+    return pattern_mentioned(text or "", _MATERIAL_SIGNALS, ignore_contrast=True)
+
+
+def material_check_wanted(
+    *,
+    domain: str | None,
+    capabilities: list[str] | None = None,
+    proposal_text: str = "",
+) -> bool:
+    caps = list(capabilities or [])
+    if MATERIAL_CHECK_CAP in caps:
+        return True
+    if (domain or "") in MATERIAL_DOMAINS:
+        return True
+    return scan_material_check(proposal_text)
+
+
+def merge_material_check_capabilities(
+    caps: list[str],
+    proposal_text: str = "",
+    *,
+    domain: str | None = None,
+    force: bool = False,
+) -> list[str]:
+    out = list(caps or [])
+    want = force or material_check_wanted(
+        domain=domain,
+        capabilities=out,
+        proposal_text=proposal_text,
+    )
+    if want and MATERIAL_CHECK_CAP not in out:
+        out.append(MATERIAL_CHECK_CAP)
+    return out
+
+
+def attach_material_check_menus(schema: dict[str, Any]) -> None:
+    from app.bake.schema.menu_utils import ensure_menu
+
+    menus = schema.setdefault("menus", {})
+    admin = menus.setdefault("admin", [])
+    ensure_menu(
+        admin,
+        "material_checklist",
+        {"key": "material_checklist", "label": "材料清单", "superOnly": True},
+        before_key="content",
+    )
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("materialChecklistTitle", "材料清单")
+    labels.setdefault(
+        "materialChecklistLead",
+        "维护必传材料项；申请人须按清单上传，缺件不可提交。",
+    )
+    ticket = schema.setdefault("entities", {}).setdefault("ticket", {})
+    if isinstance(ticket, dict):
+        ticket["requireAttach"] = True
+        ticket["requireMaterialChecklist"] = True
+    ents = schema.setdefault("entities", {})
+    if "material_check" not in ents:
+        ents["material_check"] = {
+            "key": "material_check",
+            "label": "材料",
+            "labelPlural": "材料清单",
+        }
+
+
+def apply_material_check_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
+    domain = spec.get("domain")
+    caps = merge_material_check_capabilities(
+        list(spec.get("capabilities") or []),
+        proposal_text,
+        domain=domain,
+    )
+    spec = {**spec, "capabilities": caps}
+    schema = dict(spec.get("schema") or {})
+    schema["capabilities"] = caps
+
+    if MATERIAL_CHECK_CAP in caps:
+        attach_material_check_menus(schema)
+        from app.bake.gate_contracts import merge_material_check_gate
+
+        gate = dict(spec.get("gate") or {})
+        spec["gate"] = merge_material_check_gate(gate, caps)
+
+        features = list(spec.get("features") or [])
+        names = {f.get("name") for f in features if isinstance(f, dict)}
+        if "材料清单与缺件核验" not in names:
+            features.append({"name": "材料清单与缺件核验", "status": "flow"})
+        spec["features"] = features
+
+        ents = list(spec.get("entities") or [])
+        if "MaterialCheck" not in ents:
+            if "Notice" in ents:
+                ents.insert(ents.index("Notice"), "MaterialCheck")
+            else:
+                ents.append("MaterialCheck")
+            spec["entities"] = ents
+
+    spec["schema"] = schema
     return spec

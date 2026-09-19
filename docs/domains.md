@@ -15,6 +15,8 @@
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 
+出包表数 **10～15**（全厂下限仍是 6）。薄审单默认挂额度台账 / 时段占用 / 材料清单之一：管理端能管，用户端能看见。挂上的能力走现有 `ensure_*` 与基线 Store，不另起引擎。
+
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew** |
@@ -22,26 +24,26 @@
 | **DOM-ASSET** | 固定资产领用、耗材申领、物资台账、浅进销存 | archive + ticket_flow + quota + content + org_users + **stock_io**（无 deadline；与 EQUIP 设备借用区分；≠ 采购申购） |
 | **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
 | **DOM-EVENT** | 事件上报、公卫/院感、晨检随访、健康监测、隐患上报 | archive + ticket_flow + **archive_log** + content + org_users（档案 `event_case`、单据 `event_report`、记录 `archive_log`） |
-| **DOM-ATTEND** | 考勤请假、请销假、假勤台账 | archive + ticket_flow + content + org_users（人员 `staff_person`、请假 `leave_req`） |
-| **DOM-FUND** | 资助、奖学金、助学金、困难补助申请 | archive + ticket_flow + content + org_users（项目 `fund_program`、申请 `fund_apply`） |
-| **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users（实验室 `lab_room`、准入 `access_apply`）；开题写准入考试 → 另挂 **exam**（先考后申） |
-| **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users（岗位 `job_post`、投递 `job_apply`） |
-| **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`）；我的成绩申请填单优先；演示库按学号软筛本人课（无匹配回退开放课） |
+| **DOM-ATTEND** | 考勤请假、请销假、假勤台账 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（人员 `staff_person`、请假 `leave_req`） |
+| **DOM-FUND** | 资助、奖学金、助学金、困难补助申请 | archive + ticket_flow + content + org_users + **balance_ledger**（项目 `fund_program`、申请 `fund_apply`） |
+| **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users + **material_check**（实验室 `lab_room`、准入 `access_apply`）；开题写准入考试 → 另挂 **exam**（先考后申） |
+| **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users + **balance_ledger**（岗位 `job_post`、投递 `job_apply`） |
+| **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`）；我的成绩申请填单优先；演示库按学号软筛本人课（无匹配回退开放课）；`grade_score` 域默认登记、课内名次、CSV 导出 |
 | **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA）；默认我的周报填单选岗；开题绑岗→资料 `internOrg`/`internPost` + matchProfileRoom |
 | **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users（包裹 `parcel`、取件 `parcel_claim`）；我的取件 + 手机号本人件硬筛 + 凭码 |
-| **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users（事项 `seal_item`、申请 `seal_apply`） |
-| **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
-| **DOM-CERT** | 开具证明、在读/在职/成绩单证明 | archive + ticket_flow + content + org_users（类型 `cert_type`、申请 `cert_apply`） |
-| **DOM-PROMO** | 横幅/海报/户外宣传审批 | archive + ticket_flow + content + org_users（事项 `promo_matter`、审批 `promo_apply`） |
-| **DOM-FITOUT** | 装修备案、进场施工 | archive + ticket_flow + content + org_users（区域 `fitout_site`、备案 `fitout_apply`） |
-| **DOM-ACAD** | 学籍异动、转专业、缓考/休复学 | archive + ticket_flow + content + org_users（事项 `acad_matter`、申请 `acad_apply`） |
-| **DOM-TRIP** | 出差、加班审批 | archive + ticket_flow + content + org_users（事项 `trip_matter`、单 `trip_apply`） |
-| **DOM-EXPENSE** | 经费报销、差旅报销（演示级） | archive + ticket_flow + content + org_users（项目 `expense_project`、报销 `expense_apply`） |
-| **DOM-CREDIT** | 第二课堂、素拓学分认定 | archive + ticket_flow + content + org_users（项目 `credit_item`、认定 `credit_apply`） |
-| **DOM-LABOR** | 劳动教育、志愿时长认定 | archive + ticket_flow + content + org_users（项目 `labor_item`、认定 `labor_apply`） |
+| **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users + **balance_ledger**（事项 `seal_item`、申请 `seal_apply`） |
+| **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
+| **DOM-CERT** | 开具证明、在读/在职/成绩单证明 | archive + ticket_flow + content + org_users + **material_check**（类型 `cert_type`、申请 `cert_apply`） |
+| **DOM-PROMO** | 横幅/海报/户外宣传审批 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（事项 `promo_matter`、审批 `promo_apply`） |
+| **DOM-FITOUT** | 装修备案、进场施工 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（区域 `fitout_site`、备案 `fitout_apply`） |
+| **DOM-ACAD** | 学籍异动、转专业、缓考/休复学 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（事项 `acad_matter`、申请 `acad_apply`） |
+| **DOM-TRIP** | 出差、加班审批 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（事项 `trip_matter`、单 `trip_apply`） |
+| **DOM-EXPENSE** | 经费报销、差旅报销（演示级） | archive + ticket_flow + content + org_users + **balance_ledger** + **multi_approve**（项目 `expense_project`、报销 `expense_apply`） |
+| **DOM-CREDIT** | 第二课堂、素拓学分认定 | archive + ticket_flow + content + org_users + **balance_ledger**（项目 `credit_item`、认定 `credit_apply`） |
+| **DOM-LABOR** | 劳动教育、志愿时长认定 | archive + ticket_flow + content + org_users + **balance_ledger**（项目 `labor_item`、认定 `labor_apply`） |
 | **DOM-EVAL** | 网上评教、教学评价（多维+评语+可选匿名） | archive + ticket_flow + content + org_users + **rating_dims**（课程 `eval_course`、评教卷 `eval_sheet`） |
-| **DOM-MORAL** | 综测、德育分加减分申报 | archive + ticket_flow + content + org_users（指标 `moral_item`、申请 `moral_apply`） |
-| **DOM-AWARD** | 创新学分、竞赛获奖登记 | archive + ticket_flow + content + org_users（类型 `award_item`、登记 `award_apply`） |
+| **DOM-MORAL** | 综测、德育分加减分申报 | archive + ticket_flow + content + org_users + **balance_ledger**（指标 `moral_item`、申请 `moral_apply`） |
+| **DOM-AWARD** | 创新学分、竞赛获奖登记 | archive + ticket_flow + content + org_users + **balance_ledger**（类型 `award_item`、登记 `award_apply`） |
 | **DOM-BED** | 床位分配、选房、调宿/退宿 | archive + ticket_flow + **quota** + content + org_users + **bed_occupy**（床位 `bed`、申请 `bed_apply`） |
 | **DOM-CHECKIN** | 查寝、本人寝室归寝登记审核、口令签到、缺勤 | archive + ticket_flow + **quota** + content + org_users + **checkin**（资料绑楼栋/房间 + `matchProfileRoom`；寝室 `dorm_room`、登记 `checkin_apply`；主路径「我的归寝」；非直签） |
 | **DOM-MUTUAL-TUTOR** | 导师双选 | archive + ticket_flow + **quota** + content + org_users + **mutual_select** |
@@ -51,11 +53,11 @@
 | **DOM-CARPASS** | 车辆通行证、临时车牌备案 | archive + ticket_flow + **quota** + content + org_users + **pass_code** |
 | **DOM-LISTING** | 房源挂牌、带看意向跟进 | archive + ticket_flow + content + org_users |
 | **DOM-PROCURE** | 采购申购、物资申购单 | archive + ticket_flow + **quota** + content + org_users |
-| **DOM-CLUB** | 社团注册、年审材料 | archive + ticket_flow + content + org_users |
-| **DOM-PROJ** | 大创/项目申报、中期检查 | archive + ticket_flow + content + org_users |
-| **DOM-ETHIC** | 伦理审查、开题答辩材料 | archive + ticket_flow + content + org_users |
-| **DOM-PARTY** | 党员发展、入党阶段材料 | archive + ticket_flow + content + org_users |
-| **DOM-CONTRACT** | 合同登记、单级审批 | archive + ticket_flow + content + org_users |
+| **DOM-CLUB** | 社团注册、年审材料 | archive + ticket_flow + content + org_users + **material_check** |
+| **DOM-PROJ** | 大创/项目申报、中期检查 | archive + ticket_flow + content + org_users + **material_check** + **multi_approve** |
+| **DOM-ETHIC** | 伦理审查、开题答辩材料 | archive + ticket_flow + content + org_users + **material_check** + **multi_approve** |
+| **DOM-PARTY** | 党员发展、入党阶段材料 | archive + ticket_flow + content + org_users + **material_check** |
+| **DOM-CONTRACT** | 合同登记、审批 | archive + ticket_flow + content + org_users + **material_check** + **multi_approve** |
 | **DOM-INSTRUMENT** | 大型仪器借用 + 机时预约 | archive + ticket_flow + **slot_reserve** + quota + deadline + content + org_users + **instrument_slot** + **loan_renew** |
 | **DOM-EXAM** | 在线考试、题库、组卷、结业考、党建/驾校/安全答题皮 | archive + **exam** + content + org_users（无单据；刷题/解析/限时/次数/排行/错题本开题按需） |
 | **DOM-SURVEY** | 问卷调查、满意度调研、简易量表（非评教/非考试） | archive + **survey** + content + org_users（无单据；配置/填写/回收统计） |
@@ -77,7 +79,7 @@
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-ACTIVITY** | 社团活动、志愿活动报名 | archive + ticket_flow + quota + content + org_users + **time_conflict** + **checkin** + **waitlist**；开题写报名+投票 → 另挂 **vote**（C-11） |
-| **DOM-LOST** | 失物招领；宠物领养（认领壳换皮） | archive + ticket_flow + **quota** + content + org_users |
+| **DOM-LOST** | 失物招领；宠物领养（认领壳换皮） | archive + ticket_flow + **quota** + content + org_users + **claim_proof** + **lost_clue** |
 | **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict** + **waitlist**（+ L1 互斥/分类限额） |
 | **DOM-TOUR** | 旅行社线路、跟团游报名、出团确认 | archive + ticket_flow + **quota** + content + org_users（线路 `tour_line`、报名 `tour_signup`；≠酒店≠校园活动≠拼车≠出差） |
 

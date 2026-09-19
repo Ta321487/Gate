@@ -74,7 +74,11 @@
       </el-table>
       <template #footer>
         <el-button @click="missingVisible = false">关闭</el-button>
-        <el-button type="primary" @click="$router.push('/admin/archive')">去档案</el-button>
+        <el-button
+          v-if="canOpenArchive"
+          type="primary"
+          @click="$router.push('/admin/archive')"
+        >去档案</el-button>
       </template>
     </el-dialog>
   </div>
@@ -84,10 +88,12 @@
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
 import { getSchema } from '../../utils/domainSchema.js'
+import { canOpenAdminPath } from '../../utils/staffPosts.js'
 
 const labels = computed(() => getSchema()?.labels || {})
 const logEnt = computed(() => getSchema()?.entities?.archiveLog || {})
 const pageTitle = computed(() => labels.value.archiveLogPageTitle || logEnt.value.labelPlural || '监测记录')
+const canOpenArchive = computed(() => canOpenAdminPath('/admin/archive'))
 const pageLead = computed(
   () => labels.value.archiveLogPageLead || '按对象查看监测记录；可筛选今日未登记。',
 )

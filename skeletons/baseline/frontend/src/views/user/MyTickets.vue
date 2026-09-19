@@ -78,6 +78,12 @@
               @click="withdraw(row)"
             >撤销</el-button>
             <el-button
+              v-if="canSubmitProof(row)"
+              type="warning"
+              size="small"
+              @click="openProof(row)"
+            >提交凭证</el-button>
+            <el-button
               v-if="canFinish(row)"
               type="primary"
               size="small"
@@ -243,6 +249,7 @@
               <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
             </div>
           </el-form-item>
+          <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
         </template>
         <template v-else>
           <el-form-item label="标题" required>
@@ -295,6 +302,7 @@
               <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
             </div>
           </el-form-item>
+          <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
         </template>
       </el-form>
       <template #footer>
@@ -319,6 +327,15 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="proofDlg.visible" title="提交认领凭证" width="480px" destroy-on-close>
+      <p class="rate-tip" v-if="proofDlg.row">对「{{ proofDlg.row.title || ('编号 ' + proofDlg.row.id) }}」提交凭证后进入待核验</p>
+      <ClaimProofFields ref="proofRef" />
+      <template #footer>
+        <el-button @click="proofDlg.visible = false">取消</el-button>
+        <el-button type="primary" :loading="proofDlg.loading" @click="submitProof">提交凭证</el-button>
+      </template>
+    </el-dialog>
+
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
   </div>
 </template>
@@ -333,6 +350,8 @@ import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketRateDialog from '../../components/TicketRateDialog.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
+import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
+import ClaimProofFields from '../../components/ClaimProofFields.vue'
 import {
   archiveCopy,
   followChannelLabel,
@@ -499,6 +518,11 @@ const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
 const richRemark = computed(() => !!ticket.richRemark)
 const requireAttach = computed(() => !!ticket.requireAttach)
+const requireMaterial = computed(() => !!ticket.requireMaterialChecklist)
+const requireClaimProof = computed(() => !!ticket.requireClaimProof || hasCap('claim_proof'))
+const matRef = ref(null)
+const proofRef = ref(null)
+const proofDlg = reactive({ visible: false, row: null, loading: false })
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
 const allowRenew = computed(() => !!(ticket.allowRenew || hasCap('loan_renew')))
@@ -534,7 +558,42 @@ const finishVerb = computed(() => {
 function canWithdraw(row) {
   return !!row && (row.status === 'pending' || row.status === 'pending_mid'
     || row.status === 'pending_final' || row.status === 'waitlisted'
-    || row.status === 'held' || row.status === 'hold_ready')
+    || row.status === 'held' || row.status === 'hold_ready'
+    || row.status === 'verifying')
+}
+
+function canSubmitProof(row) {
+  return !!requireClaimProof.value && !!row
+    && (row.status === 'pending' || row.status === 'verifying')
+}
+
+function openProof(row) {
+  proofDlg.row = row
+  proofDlg.visible = true
+  proofDlg.loading = false
+  if (proofRef.value) proofRef.value.reset()
+}
+
+async function submitProof() {
+  if (!proofDlg.row) return
+  const p = proofRef.value?.payload?.() || {}
+  if (!p.proofContent) {
+    ElMessage.warning('请填写凭证内容')
+    return
+  }
+  proofDlg.loading = true
+  try {
+    await http.post('/api/lost/proof', {
+      claimId: proofDlg.row.id,
+      proofType: p.proofType,
+      proofContent: p.proofContent,
+    })
+    ElMessage.success('凭证已提交，等待核验')
+    proofDlg.visible = false
+    await load()
+  } finally {
+    proofDlg.loading = false
+  }
 }
 
 function canRate(row) {
@@ -810,10 +869,20 @@ async function submit() {
       ElMessage.warning('请上传附件')
       return
     }
+    if (requireMaterial.value) {
+      const miss = matRef.value?.missingTitle?.() || ''
+      if (miss) {
+        ElMessage.warning(`请上传必传材料：${miss}`)
+        return
+      }
+    }
     const body = {
       itemId: form.itemId,
       remark: (form.remark || '').trim(),
       attachUrl: form.attachUrl || undefined,
+    }
+    if (requireMaterial.value && matRef.value) {
+      body.materials = matRef.value.payload()
     }
     if (pickDateRange.value && Array.isArray(form.period)) {
       body.periodStart = form.period[0]
@@ -854,7 +923,14 @@ async function submit() {
     ElMessage.warning('请上传附件')
     return
   }
-  await http.post('/api/tickets/apply', {
+  if (requireMaterial.value) {
+    const miss = matRef.value?.missingTitle?.() || ''
+    if (miss) {
+      ElMessage.warning(`请上传必传材料：${miss}`)
+      return
+    }
+  }
+  const body = {
     title: form.title,
     remark: form.remark,
     location: form.location,
@@ -863,7 +939,9 @@ async function submit() {
     attachUrl: form.attachUrl || undefined,
     priority: showPriorityCols.value ? form.priority : undefined,
     contactPhone: showPriorityCols.value ? (form.contactPhone || undefined) : undefined,
-  })
+  }
+  if (requireMaterial.value && matRef.value) body.materials = matRef.value.payload()
+  await http.post('/api/tickets/apply', body)
   ElMessage.success('已提交')
   visible.value = false
   load()

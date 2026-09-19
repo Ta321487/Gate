@@ -12,7 +12,7 @@
         :class="{ clickable: !!s.to }"
         v-for="s in cards"
         :key="s.key"
-        @click="s.to && $router.push(s.to)"
+        @click="s.to && go(s.to)"
       >
         <div class="num imm-count">{{ s.value }}</div>
         <div class="label">{{ s.label }}</div>
@@ -24,47 +24,85 @@
       <template v-if="caps.includes('order_lines')">
         <div class="todo-row">
           <span>{{ orderPendingLabel }} {{ data.pendingOrders || 0 }}</span>
-          <el-button type="primary" link @click="$router.push('/admin/orders')">去处理</el-button>
+          <el-button
+            v-if="nav('/admin/orders')"
+            type="primary"
+            link
+            @click="go(nav('/admin/orders'))"
+          >去处理</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('slot_reserve') && !caps.includes('ticket_flow')">
         <div class="todo-row">
           <span>{{ reservationTodoLabel }} {{ data.confirmedReservations || 0 }}</span>
-          <el-button type="primary" link @click="$router.push('/admin/reservations')">去办结</el-button>
+          <el-button
+            v-if="nav('/admin/reservations')"
+            type="primary"
+            link
+            @click="go(nav('/admin/reservations'))"
+          >去办结</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('ticket_flow')">
         <div class="todo-row">
           <span>{{ ticketPendingLabel }} {{ data.pendingTickets || 0 }} {{ ticketUnit }}</span>
-          <el-button type="primary" link @click="$router.push('/admin/tickets')">去受理</el-button>
+          <el-button
+            v-if="nav('/admin/tickets')"
+            type="primary"
+            link
+            @click="go(nav('/admin/tickets'))"
+          >去受理</el-button>
         </div>
         <div v-if="!approveEndsFlow" class="todo-row">
           <span>{{ ticketActiveLabel }} {{ data.activeTickets || 0 }} {{ ticketUnit }}</span>
-          <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
+          <el-button
+            v-if="nav('/admin/ticket-records')"
+            link
+            @click="go(nav('/admin/ticket-records'))"
+          >看记录</el-button>
         </div>
         <div v-if="!approveEndsFlow && Number(data.rejectedTickets) > 0" class="todo-row">
           <span>{{ rejectedLabel }} {{ data.rejectedTickets || 0 }} {{ ticketUnit }}</span>
-          <el-button link @click="$router.push({ path: '/admin/ticket-records', query: { status: 'rejected' } })">看记录</el-button>
+          <el-button
+            v-if="nav('/admin/ticket-records')"
+            link
+            @click="go(nav('/admin/ticket-records?status=rejected'))"
+          >看记录</el-button>
         </div>
         <template v-else-if="approveEndsFlow">
           <div class="todo-row">
             <span>已通过 {{ data.approvedTickets || 0 }} · {{ rejectedLabel }} {{ data.rejectedTickets || 0 }}</span>
-            <el-button link @click="$router.push('/admin/ticket-records')">看记录</el-button>
+            <el-button
+              v-if="nav('/admin/ticket-records')"
+              link
+              @click="go(nav('/admin/ticket-records'))"
+            >看记录</el-button>
           </div>
         </template>
         <div v-if="ticket.allowRating" class="todo-row">
           <span>已评价 {{ data.ratedCount || 0 }} {{ ticketUnit }} · 均分 {{ data.avgRating ?? '—' }}</span>
-          <el-button link @click="$router.push('/admin/ticket-records?rated=1')">看评价</el-button>
+          <el-button
+            v-if="nav('/admin/ticket-records')"
+            link
+            @click="go(nav('/admin/ticket-records?rated=1'))"
+          >看评价</el-button>
         </div>
         <div v-if="showOverdue" class="todo-row">
           <span>逾期 {{ data.overdueBorrow || 0 }} {{ ticketUnit }}</span>
-          <el-button link @click="$router.push('/admin/overdue')">去{{ remindVerb }}</el-button>
+          <el-button
+            v-if="nav('/admin/overdue')"
+            link
+            @click="go(nav('/admin/overdue'))"
+          >去{{ remindVerb }}</el-button>
         </div>
       </template>
       <template v-else-if="caps.includes('favorites')">
-        <div class="todo-row">
+        <div v-if="nav('/admin/archive')" class="todo-row">
           <span>{{ archiveMenuLabel }}内容维护与读者收藏（无受理队列）</span>
-          <el-button type="primary" link @click="$router.push('/admin/archive')">去管理</el-button>
+          <el-button type="primary" link @click="go(nav('/admin/archive'))">去管理</el-button>
+        </div>
+        <div v-else class="todo-row">
+          <span>{{ archiveMenuLabel }}由总管维护；本岗无管理入口</span>
         </div>
       </template>
       <div
@@ -72,7 +110,12 @@
         class="todo-row"
       >
         <span>{{ missingCheckinLabel }} {{ data.missingCheckinToday || 0 }}</span>
-        <el-button type="primary" link @click="$router.push('/admin/archive-logs')">去查看</el-button>
+        <el-button
+          v-if="nav('/admin/archive-logs')"
+          type="primary"
+          link
+          @click="go(nav('/admin/archive-logs'))"
+        >去查看</el-button>
       </div>
     </section>
 
@@ -82,14 +125,24 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy, orderStatusLabel, reservationStatusLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
+import { adminNavPath } from '../../utils/staffPosts.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 
+const router = useRouter()
 const data = ref({})
 const adminLabel = computed(() => roleLabel('admin', '管理'))
 const userLabel = computed(() => roleLabel('user', '用户'))
 const caps = computed(() => getSchema()?.capabilities || [])
+/** 当前账号可进才返回路径，否则 ''（禁止工作台怂恿越权） */
+function nav(path) {
+  return adminNavPath(path)
+}
+function go(path) {
+  if (path) router.push(path)
+}
 const missingCheckinLabel = computed(
   () => getSchema()?.labels?.archiveLogMissingTitle || '今日未登记',
 )
@@ -143,6 +196,10 @@ const configHint = computed(() => {
   return parts.length ? `业务参数：${parts.join(' · ')}` : ''
 })
 
+function withNav(path) {
+  return adminNavPath(String(path).split('?')[0]) ? { to: path } : {}
+}
+
 const cards = computed(() => {
   const list = []
     if (caps.value.includes('order_lines')) {
@@ -164,7 +221,7 @@ const cards = computed(() => {
         key: 'low',
         label: `库存预警(<${data.value.stockWarnBelow || 10})`,
         value: data.value.lowStockCount,
-        to: '/admin/archive',
+        ...withNav('/admin/archive'),
       })
     }
   } else if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) {
@@ -196,7 +253,7 @@ const cards = computed(() => {
         key: 'rejected',
         label: rejectedLabel.value,
         value: data.value.rejectedTickets ?? '—',
-        to: '/admin/ticket-records?status=rejected',
+        ...withNav('/admin/ticket-records?status=rejected'),
       })
     } else {
       list.push(
@@ -205,7 +262,7 @@ const cards = computed(() => {
           key: 'rejected',
           label: rejectedLabel.value,
           value: data.value.rejectedTickets ?? '—',
-          to: '/admin/ticket-records?status=rejected',
+          ...withNav('/admin/ticket-records?status=rejected'),
         },
         { key: 'done', label: ticketStatusLabel('completed', '已处理'), value: data.value.completedTickets ?? '—' },
       )
@@ -221,7 +278,7 @@ const cards = computed(() => {
       key: 'avg',
       label: `均分${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
       value: data.value.avgRating,
-      to: '/admin/ticket-records?rated=1',
+      ...(withNav('/admin/ticket-records?rated=1')),
     })
   }
   if (showArchive.value) {
@@ -232,7 +289,7 @@ const cards = computed(() => {
       key: 'missingCheckin',
       label: getSchema()?.labels?.archiveLogMissingTitle || '今日未登记',
       value: data.value.missingCheckinToday ?? '—',
-      to: '/admin/archive-logs',
+      ...withNav('/admin/archive-logs'),
     })
   }
   return list

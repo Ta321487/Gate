@@ -22,6 +22,9 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
             "dm",
             "stock_moves",
             "stock_ledger",
+            "balance_accounts",
+            "balance_ledger_admin",
+            "occupy_admin",
         }
     ),
     "order_ops": frozenset(
@@ -41,21 +44,22 @@ PACK_ADMIN_MENUS: dict[str, frozenset[str]] = {
     "slot_ops": frozenset(
         {"dashboard", "reservations", "staff_roster", "order_reviews", "guestbook", "dm", "equipment_dict"}
     ),
-    # 内容流编辑：维护档案与公告（无单据审核队列）
+    # 内容流编辑：留言/举报/私信；archive 仅 DOM-EVAL 评教员维护课程时由 open_clerk 放开
     "content_ops": frozenset(
-        {"dashboard", "archive", "content", "guestbook", "content_reports", "dm"}
+        {"dashboard", "archive", "guestbook", "content_reports", "dm"}
     ),
+    # 勿声明 content：公告管理永属总管，空头 key 会误导岗包
     "exam_ops": frozenset(
-        {"dashboard", "archive", "content", "exam_questions", "exam_papers"}
+        {"dashboard", "exam_questions", "exam_papers"}
     ),
     "survey_ops": frozenset(
-        {"dashboard", "archive", "content", "survey_forms", "survey_stats"}
+        {"dashboard", "survey_forms", "survey_stats"}
     ),
     "vote_ops": frozenset(
-        {"dashboard", "archive", "content", "vote_candidates", "vote_results"}
+        {"dashboard", "vote_candidates", "vote_results"}
     ),
     "doclib_ops": frozenset(
-        {"dashboard", "archive", "content", "doc_files", "doc_logs"}
+        {"dashboard", "doc_files", "doc_logs"}
     ),
 }
 
@@ -132,8 +136,8 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-MORAL": [_clerk("moral_clerk", "综测专员", "ticket_ops")],
     "DOM-AWARD": [_clerk("award_clerk", "成果专员", "ticket_ops")],
     "DOM-BED": [_clerk("bed_clerk", "宿管员", "ticket_ops")],
-    # 查寝：归寝登记待审；查寝员审单 + 维护寝室/签到码
-    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "ticket_ops", "content_ops")],
+    # 查寝：归寝登记待审；寝室档案仍总管（勿挂空头 content_ops）
+    "DOM-CHECKIN": [_clerk("checkin_clerk", "查寝员", "ticket_ops")],
     "DOM-MUTUAL-TUTOR": [_clerk("tutor_clerk", "导师秘书", "ticket_ops")],
     "DOM-MUTUAL-TOPIC": [_clerk("topic_clerk", "选题秘书", "ticket_ops")],
     "DOM-MUTUAL-TEAM": [_clerk("team_clerk", "组队协调员", "ticket_ops")],
@@ -193,10 +197,10 @@ STAFF_POSTS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
     "DOM-CARRENT": [
         _clerk("front", "门店店员", "slot_ops", "order_ops"),
     ],
-    "DOM-MEDIA": [_clerk("editor", "运营编辑", "content_ops")],
-    "DOM-MUSIC": [_clerk("editor", "运营编辑", "content_ops")],
+    "DOM-MEDIA": [],  # 默认双角色；开题写编辑岗/权限划分才挂 content_ops
+    "DOM-MUSIC": [],
     "DOM-FORUM": [_clerk("moderator", "版主", "ticket_ops")],
-    "DOM-BLOG": [_clerk("editor", "编辑", "content_ops")],
+    "DOM-BLOG": [],
     "DOM-GENERIC": [_clerk("clerk", "业务办理员", "ticket_ops")],
 }
 
@@ -400,7 +404,7 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
     ],
 }
 
-# CRM/EVAL：默认双角色；开题出现「要第三角」的流程信号才挂办理岗（不靠猜岗名全表）
+# CRM/EVAL/内容流：默认双角色；开题出现「要第三角」或点名办理岗/权限划分才挂
 _OPTIONAL_FLOW_CLERKS: dict[str, dict[str, Any]] = {
     "DOM-CRM": {
         "post": _clerk("account_mgr", "客户经理", "ticket_ops"),
@@ -470,6 +474,73 @@ _OPTIONAL_FLOW_CLERKS: dict[str, dict[str, Any]] = {
             "提交即完结",
             "提交即生效",
         ),
+    },
+    # 媒资/曲库/博客：听众|读者 + 总管即可；写运营编辑/权限划分才挂第三角
+    "DOM-MEDIA": {
+        "post": _clerk("editor", "运营编辑", "content_ops"),
+        "yes": (
+            "三角色",
+            "三种角色",
+            "三类角色",
+            "三个角色",
+            "子管理员",
+            "子管理端",
+            "子管理",
+            "运营编辑",
+            "内容编辑",
+            "编辑岗",
+            "编辑人员",
+            "权限划分",
+            "权限配置",
+            "岗位权限",
+            "角色权限",
+            "菜单权限",
+        ),
+        "no": ("双角色", "两种角色", "两类角色"),
+    },
+    "DOM-MUSIC": {
+        "post": _clerk("editor", "运营编辑", "content_ops"),
+        "yes": (
+            "三角色",
+            "三种角色",
+            "三类角色",
+            "三个角色",
+            "子管理员",
+            "子管理端",
+            "子管理",
+            "运营编辑",
+            "内容编辑",
+            "编辑岗",
+            "编辑人员",
+            "权限划分",
+            "权限配置",
+            "岗位权限",
+            "角色权限",
+            "菜单权限",
+        ),
+        "no": ("双角色", "两种角色", "两类角色"),
+    },
+    "DOM-BLOG": {
+        "post": _clerk("editor", "编辑", "content_ops"),
+        "yes": (
+            "三角色",
+            "三种角色",
+            "三类角色",
+            "三个角色",
+            "子管理员",
+            "子管理端",
+            "子管理",
+            "运营编辑",
+            "内容编辑",
+            "编辑岗",
+            "编辑人员",
+            "权限划分",
+            "权限配置",
+            "岗位权限",
+            "角色权限",
+            "菜单权限",
+        ),
+        "no": ("双角色", "两种角色", "两类角色"),
     },
 }
 
@@ -655,7 +726,7 @@ _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "claim_clerk": ("招领管理员", "失物管理员", "领养专员", "领养管理员"),
     "course_clerk": ("选课管理员", "教务员"),
     "booking_clerk": ("预约管理员", "预约办理员"),
-    "editor": ("运营编辑", "内容编辑", "编辑"),
+    "editor": ("运营编辑", "内容编辑", "编辑岗", "编辑人员"),
     "moderator": ("版主", "论坛管理员"),
     "clerk": ("业务办理员", "经办员", "业务员"),
 }
@@ -1087,7 +1158,9 @@ def open_clerk_admin_menus(schema: dict[str, Any], pack_menus: dict[str, list[st
     """办理岗包已收录的菜单禁止再 superOnly，否则岗包放行也进不去。
 
     全厂不变式：archive/category/users/content 默认须超管；
-    仅多店商家白名单（商品/活动）可放开。勿把 content_ops 的 archive 强行非超管。
+    仅多店商家白名单（商品/活动）可放开。
+    DOM-EVAL 评教员 content_ops 可维护课程档案（开题「维护评教课程目录」）。
+    其余 content_ops 不得强行打开 archive。
     """
     from app.bake.domain_schema import (
         MARKETPLACE_MERCHANT_MENU_KEYS,
@@ -1102,6 +1175,8 @@ def open_clerk_admin_menus(schema: dict[str, Any], pack_menus: dict[str, list[st
         return
     protected = set(MASTER_MENU_KEYS) | set(REQUIRED_SUPER_MENU_KEYS)
     marketplace = bool(schema.get("shopMarketplace"))
+    dom = str(schema.get("domain") or "").strip().upper()
+    eval_archive = dom == "DOM-EVAL" and "archive" in granted
     menus = schema.setdefault("menus", {})
     admin = list(menus.get("admin") or [])
     changed = False
@@ -1116,6 +1191,10 @@ def open_clerk_admin_menus(schema: dict[str, Any], pack_menus: dict[str, list[st
                 if m.get("superOnly") is not False:
                     m["superOnly"] = False
                     changed = True
+            elif eval_archive and k == "archive":
+                if m.get("superOnly") is not False:
+                    m["superOnly"] = False
+                    changed = True
             continue
         if m.get("superOnly") is not False:
             m["superOnly"] = False
@@ -1123,6 +1202,77 @@ def open_clerk_admin_menus(schema: dict[str, Any], pack_menus: dict[str, list[st
     if changed:
         menus["admin"] = admin
         schema["menus"] = menus
+
+
+def _clerk_reachable_menu_keys(
+    schema: dict[str, Any],
+    packs: list[str] | tuple[str, ...] | None,
+) -> set[str]:
+    """办理岗实际进得去的管理菜单（排除 dashboard 与仍 superOnly 的项）。"""
+    pack_menus = schema.get("staffPackMenus") if isinstance(schema.get("staffPackMenus"), dict) else {}
+    granted: set[str] = set()
+    for pk in packs or []:
+        for k in pack_menus.get(pk) or []:
+            if isinstance(k, str) and k.strip():
+                granted.add(k.strip())
+    admin = (schema.get("menus") or {}).get("admin") or []
+    by_key = {
+        str(m.get("key")): m
+        for m in admin
+        if isinstance(m, dict) and m.get("key")
+    }
+    out: set[str] = set()
+    for k in granted:
+        if k in {"dashboard", "messages", "profile"}:
+            continue
+        m = by_key.get(k)
+        if not m:
+            continue
+        if m.get("superOnly") is True:
+            continue
+        out.add(k)
+    return out
+
+
+def _prune_empty_clerks(schema: dict[str, Any]) -> None:
+    """去掉「包里有、菜单全是总管」的空转子管，避免第三角只有工作台。"""
+    roles = dict(schema.get("roles") or {})
+    posts = list(roles.get("staff_posts") or [])
+    if not posts:
+        return
+    kept: list[dict[str, Any]] = []
+    for p in posts:
+        if not isinstance(p, dict):
+            continue
+        if p.get("kind") != "clerk":
+            kept.append(p)
+            continue
+        if _clerk_reachable_menu_keys(schema, p.get("packs") or []):
+            kept.append(p)
+    if len(kept) == len(posts):
+        return
+    clerks = [p for p in kept if p.get("kind") == "clerk"]
+    roles["staff_posts"] = kept
+    if clerks:
+        first = clerks[0]
+        roles["subadmin"] = {
+            "id": "subadmin",
+            "label": str(first.get("label") or "经办员"),
+            "staffPostId": first.get("id"),
+        }
+    else:
+        roles.pop("subadmin", None)
+    schema["roles"] = roles
+    used_packs: set[str] = set()
+    for p in kept:
+        for pk in p.get("packs") or []:
+            if isinstance(pk, str) and pk.strip():
+                used_packs.add(pk.strip())
+    schema["staffPackMenus"] = enrich_clerk_pack_menus(schema, used_packs)
+    open_clerk_admin_menus(schema, schema["staffPackMenus"])
+    schema["staffPackPages"] = {
+        k: sorted(v) for k, v in PACK_WORK_PAGES.items() if k in used_packs
+    }
 
 
 def _restore_crm_pending_when_account_mgr(
@@ -1191,6 +1341,7 @@ def attach_staff_posts(
         proposal_text=proposal_text,
         title=title,
     )
+    schema["domain"] = domain
     merged_posts: list[dict[str, Any]] = []
     for p in posts:
         row = dict(p)
@@ -1295,6 +1446,7 @@ def attach_staff_posts(
     schema["staffPackPages"] = {
         k: sorted(v) for k, v in PACK_WORK_PAGES.items() if k in used_packs
     }
+    _prune_empty_clerks(schema)
     _ensure_category_entity(schema)
     return schema
 
@@ -1367,7 +1519,13 @@ def append_staff_seed_sql(
     clerks = [p for p in use_posts if p.get("kind") == "clerk"]
     workers = [p for p in use_posts if p.get("kind") == "worker"]
     if not clerks and not workers:
-        return sql
+        # 双角色：场景种子常残留 subadmin，关掉避免空岗登录怂恿越权
+        disable = (
+            "\n-- dual-role: disable orphan subadmin seed\n"
+            "UPDATE sys_user SET enabled=0, staff_post='', staff_kind='' "
+            "WHERE username='subadmin' AND IFNULL(super_admin,0)=0;\n"
+        )
+        return sql.rstrip() + disable
     lines = [
         "",
         "-- staff posts (clerk / worker)",

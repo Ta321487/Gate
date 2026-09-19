@@ -7,6 +7,7 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.service.MaterialCheckStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -82,6 +83,7 @@ public class TicketController {
             if (claimCode.isBlank()) claimCode = str(body.get("claimCode"));
             TicketStore.assertClaimCodeIfRequired(itemId, claimCode.isBlank() ? remark : claimCode);
             TicketStore.assertMatchProfileRoomIfRequired(uid, itemId);
+            MaterialCheckStore.assertSubmitted(body.get("materials"));
             Map<String, Object> created = TicketStore.apply(
                     uid,
                     itemId,
@@ -92,6 +94,7 @@ public class TicketController {
                     periodStart.isBlank() ? null : periodStart,
                     periodEnd.isBlank() ? null : periodEnd);
             long tid = created.get("id") instanceof Number n ? n.longValue() : 0L;
+            MaterialCheckStore.saveTicketMaterials(tid, body.get("materials"));
             TicketStore.patchTicketExtras(tid, body);
             try {
                 created = finishApplyExtras(tid, uid, body, created);

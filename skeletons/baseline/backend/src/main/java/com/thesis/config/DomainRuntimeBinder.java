@@ -22,8 +22,14 @@ import com.thesis.service.ExamStore;
 import com.thesis.service.SurveyStore;
 import com.thesis.service.UserStore;
 import com.thesis.service.VoteStore;
+import com.thesis.service.BalanceLedgerStore;
+import com.thesis.service.GradeScoreStore;
 import com.thesis.service.DoclibStore;
 import com.thesis.service.ESignStore;
+import com.thesis.service.MaterialCheckStore;
+import com.thesis.service.ClaimProofStore;
+import com.thesis.service.LostMessageStore;
+import com.thesis.service.OccupySpanStore;
 import com.thesis.service.SeatStore;
 import com.thesis.service.StockIoStore;
 import com.thesis.service.TimebankStore;
@@ -362,6 +368,27 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.e-sign-enabled:false}")
     private boolean eSignEnabled;
 
+    @Value("${thesis.balance-ledger-enabled:false}")
+    private boolean balanceLedgerEnabled;
+
+    @Value("${thesis.balance-ledger-debit-on-approve:false}")
+    private boolean balanceLedgerDebitOnApprove;
+
+    @Value("${thesis.grade-scores-enabled:false}")
+    private boolean gradeScoresEnabled;
+
+    @Value("${thesis.occupy-span-enabled:false}")
+    private boolean occupySpanEnabled;
+
+    @Value("${thesis.material-check-enabled:false}")
+    private boolean materialCheckEnabled;
+
+    @Value("${thesis.claim-proof-enabled:false}")
+    private boolean claimProofEnabled;
+
+    @Value("${thesis.lost-clue-enabled:false}")
+    private boolean lostClueEnabled;
+
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
@@ -483,6 +510,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         SeatStore.configure(seatSelectEnabled);
         StockIoStore.configure(stockIoEnabled, stockScrapEnabled, stockCountEnabled);
         ESignStore.configure(eSignEnabled);
+        BalanceLedgerStore.configure(balanceLedgerEnabled, balanceLedgerDebitOnApprove);
+        GradeScoreStore.configure(gradeScoresEnabled);
+        OccupySpanStore.configure(occupySpanEnabled);
+        MaterialCheckStore.configure(materialCheckEnabled);
+        ClaimProofStore.configure(claimProofEnabled);
+        LostMessageStore.configure(lostClueEnabled);
         if (slotTable != null && !slotTable.isBlank()) {
             SlotStore.bind(slotTable, reservationTable);
             SlotStore.configureRemark(slotRequireRemark);

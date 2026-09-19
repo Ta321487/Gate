@@ -829,6 +829,23 @@ def followup_domain_schema(
         roles = dict(schema.get("roles") or {})
         roles.pop("subadmin", None)
         schema["roles"] = roles
+    if domain == "DOM-GRADE":
+        from app.bake.schema.menu_utils import ensure_menu
+
+        menus = schema.setdefault("menus", {})
+        ensure_menu(
+            menus.setdefault("user", []),
+            "grade_scores_mine",
+            {"key": "grade_scores_mine", "label": "成绩查询"},
+            before_key="content",
+        )
+        ensure_menu(
+            menus.setdefault("admin", []),
+            "grade_scores_admin",
+            {"key": "grade_scores_admin", "label": "成绩登记"},
+            before_key="content",
+        )
+        schema["gradeScores"] = True
     return schema
 
 
