@@ -32,3 +32,6 @@ backend/.gate_backend.pid
 _tmp_*
 _tmp_codebin/
 **/_tmp_*
+
+# AOCI host binding uses a machine-local absolute path
+.mcp.json
