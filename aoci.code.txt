@@ -1,0 +1,1402 @@
+#AOCI-CODE-VOLUME: 1
+
+===D:/graduate_factory_v3/===
+.gitattributes[FC5T]: F:强制文本检出为 LF，避免 Windows autocrlf 把整树标成与 AOCI baseline 不一致 | R:- | A:- | S:AOCI baseline 按原始字节比对，换行被改写会整树变 stale
+.gitignore[FC4T]: F:排除虚拟环境、依赖、数据库、上传缓存和本地临时文件，不让它们进入 Git | R:- | A:- | S:data 下 uploads、workspace、logs、cache 忽略内容但保留 .gitkeep
+AGENTS.md[SG8S]: F:向 Agent 声明 AOCI 认知合同：索引语义由模型按证据写，维护走 Guide 与 aoci_maintain | R:- | A:- | S:不得用路径或文件名推导 Entry 语义；压缩恢复后不得把旧索引摘要当成当前认知
+HANDOFF.md[SG8T]: F:给新对话交接毕设港主线、接题硬边界和开场口径 | R:code:README.md,code:docs/domains.md,code:docs/capabilities.md | A:- | S:禁止参考或迁移 graduate_factory 与 graduate_factory_v2
+README.md[SG8S]: F:说明毕设港如何把开题材料加工成可答辩 Web 系统，并给出运营端启动方式 | R:- | A:GET /api/health | S:LLM 只填白名单业务岛，不写业务 Java 或 Vue；门禁未过禁止下载 ZIP
+docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
+.mcp.json[EC5T]: F:把本仓库 AOCI 以 stdio 接到 Cursor，调用本机 aoci.exe | R:- | A:- | S:不含密钥，只绑定当前仓库
+
+===D:/graduate_factory_v3/.cursor/rules/===
+00-factory-core.mdc[SG8T]: F:规定材料匹配到域与能力岛后 bake 出可答辩 ZIP，且实包、README 与论文实现一致 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:禁止改开题迁就模板，禁止缺表或缺状态机仍宣称已交
+ai-assistant-delivery.mdc[SA7T]: F:把 AI 限定为按需能力岛：业务壳问答可开，RAG 或视觉主产品不支持 | R:- | A:- | S:工厂 Key 与 app/llm 不得进学生 ZIP
+column-contract.mdc[SD7T]: F:要求能力开关打开后 SQL 有列、菜单有入口，缺列先补 ensure，禁止无列仍返回成功 | R:- | A:- | S:-
+cross-domain-fix.mdc[SG7T]: F:规定开题翻车先修共享 bake 与门禁，禁止只改当前学生包 | R:- | A:- | S:-
+delivery-audit.mdc[SQ7T]: F:规定交付审计必须出总表、红灯、旧题回归和老板小卡，审计轮默认只出报告 | R:- | A:- | S:-
+opening-scene.mdc[SG7T]: F:规定壳文案、资料字段和岗位名只扫题名与开题正文，场景轴不替代领域匹配 | R:- | A:- | S:-
+tech-stack-delivery.mdc[SV7T]: F:规定出包默认 Boot、Vue3、Element、MySQL 与 jdbc，开题写了 mybatis、jpa 或 Security 才跟 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/.github/workflows/===
+pages.yml[OV5T]: F:在 main 上 prototype 变更时把原型目录部署到 GitHub Pages | R:- | A:workflow_dispatch；push main 且路径含 prototype 或本文件 | S:-
+
+===D:/graduate_factory_v3/backend/===
+.env.example[FC6T]: F:列出工厂元库、学生库、端口池和模型端点的环境变量样例 | R:- | A:- | S:DeepSeek Key 只走环境变量，禁止写入配置文件
+_audit_activity_crossdomain.py[TQ6M]: F:一次性核对黄金 DOM 活动图与时序图用词是否串域 | R:code:backend/app/bake/schema/activity.py,code:backend/app/bake/schema/sequence.py | A:- | S:-
+requirements.txt[DC5T]: F:声明后端 Python 依赖 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/===
+__init__.py[CG1T]: F:标记 app 为 Python 包，本身不提供运行逻辑 | R:- | A:- | S:-
+main.py[EB7S]: F:���� FastAPI Ӧ�ã����� API ·������������ | R:code:backend/app/api/__init__.py | A:/api | S:-
+
+===D:/graduate_factory_v3/backend/app/api/===
+__init__.py[EG5T]: F:汇总答辩 PPT、任务、项目和系统路由模块供应用挂载 | R:code:backend/app/api/defense_ppt.py,code:backend/app/api/jobs.py,code:backend/app/api/projects.py | A:- | S:-
+defense_ppt.py[EB7M]: F:提供项目答辩 PPT 的封面、生成、皮肤、截图与导出接口 | R:- | A:/api/projects/{id}/defense-ppt/* | S:-
+jobs.py[EB7S]: F:提供 bake 任务列表、清理失效任务、清空已结束任务以及取消和恢复 | R:code:backend/app/services/jobs.py | A:GET /api/jobs；POST /api/jobs/purge-orphans；POST /api/jobs/purge-finished | S:列表只含 kind 为 bake；清空历史不动进行中任务和答辩 PPT 任务
+projects.py[EB9L]: F:提供项目上传、匹配确认、生成、预览、门禁和 ZIP 交付的运营 API | R:code:backend/app/services/projects.py,code:backend/app/services/runtime.py,code:backend/app/services/jobs.py | A:/api/projects | S:上传材料展开后最多 8 份，与前端 MAX_UPLOAD_MATERIALS 一致
+system.py[EB7S]: F:聚合系统配置、LLM 用量、运行环境与样例开题工具的运营 API | R:code:backend/app/api/system_router.py | A:/api | S:-
+system_deepseek.py[EC6T]: F:把 DeepSeek 端点、token 预算和填岛并发数水合进系统配置 | R:code:backend/app/api/system.py | A:- | S:-
+system_gemini.py[EC6T]: F:把 Gemini 端点配置水合进系统设置，与 DeepSeek 并存 | R:code:backend/app/api/system.py | A:- | S:-
+system_info.py[ER6S]: F:探测 JDK、工具版本、已用端口、工厂库与学生 MySQL 是否可用 | R:code:backend/app/api/system.py | A:- | S:-
+system_router.py[EG5T]: F:提供系统子模块共享的 APIRouter，避免循环导入 | R:code:backend/app/api/system.py | A:/api | S:-
+system_tools.py[EB5T]: F:承担系统工具类接口，由 system 聚合挂载 | R:code:backend/app/api/system.py | A:- | S:-
+system_unsplash.py[EI5T]: F:承担 Unsplash 氛围图相关系统接口，由 system 聚合挂载 | R:code:backend/app/api/system.py | A:- | S:-
+system_usage.py[EO6S]: F:按时间与阶段查询 LLM 用量，供系统页展示 | R:code:backend/app/api/system.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/bake/===
+__init__.py[CG1T]: F:标记 bake 为 Python 包，本身不提供生成逻辑 | R:- | A:- | S:-
+addons.py[DB7S]: F:按开题开关叠 Spring Security 与 AI 助手层，与持久化方式正交 | R:- | A:- | S:开了 Security 或 AI 助手必须真有叠层与 README 说明，不能只写已集成
+api_inventory.py[DA6M]: F:从学生工作区 Controller 静态扫描 REST 映射，供工厂产物页对照 | R:- | A:- | S:-
+api_style.py[DB6L]: F:按种子为整题选一种 API 传参风格，并写入学生工作区 | R:- | A:- | S:同一题只能有一种传参风格，不能按接口混用
+archetype_shells.py[DB7L]: F:未命中具名域时按 ARCH 原型绑定运行时壳、菜单与门禁 | R:code:backend/app/bake/cross_paths.py | A:- | S:ARCH 只是壳，不能当作领域 spine
+archive_columns.py[DD6M]: F:按域把档案主表 author 与 isbn 物理列换成语义列，API 仍用逻辑键 | R:- | A:- | S:-
+archive_seed_guard.py[DQ6T]: F:硬检查档案演示种子能否被单据流域套用 | R:- | A:- | S:-
+auth_hero.py[DU5M]: F:按领域与主题拉登录氛围图到学生包 frontend/public/auth-hero.jpg | R:- | A:- | S:无 Key 或外网失败时改用本地色板生成，不能让登录页缺图
+capabilities.py[DB8L]: F:定义与题型无关的运行时能力积木，并扫描开题是否超出可接范围 | R:- | A:- | S:硕博课题与真实业务全流程必须拒收，不能降级交半成品
+catalog.py[DB8L]: F:把开题正文匹配到骨架与领域，并汇总成 build_spec | R:code:backend/app/bake/domains.py | A:- | S:匹配失败回落关键词，不能改开题迁就目录
+cross_paths.py[DB8M]: F:白名单判定借用、下单、预约交叉是否能按全文答辩交付 | R:code:backend/app/bake/archetype_shells.py | A:- | S:做不到的交叉必须拒收，禁止 degraded 交半成品
+deep_skin_s.py[DB6S]: F:把深皮题型说法验收表映射到挂靠域 | R:- | A:- | S:-
+domain_entities.py[DD7S]: F:统一主实体名词，供菜单、数据表和论文小节同源引用 | R:code:backend/app/bake/domains.py | A:- | S:-
+domain_registry.py[DB8S]: F:按 domain 注册匹配、schema builder 与 SQL 模板映射 | R:code:backend/app/bake/domains.py | A:- | S:-
+domain_schema.py[DB8M]: F:装配、合并并校验 Domain Schema，再落到模板与 profile_fields | R:code:backend/app/bake/domain_registry.py | A:- | S:-
+domain_skin.py[DU7S]: F:把学生端可见文案与皮肤按 DOM 域回写到出包 | R:code:backend/app/bake/domains.py | A:- | S:禁止邻域文案泄漏
+domains.py[DB9M]: F:汇总 ARCHETYPES、DOMAIN_CAPABILITIES 与 DOMAINS，并衔接 gate_contracts | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+engine.py[DB8T]: F:再导出 bake_project 与 SQL 岛填充入口供调用方统一引用 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_islands.py | A:- | S:-
+engine_bake.py[DB9L]: F:执行骨架复制、领域叠加与学生工作区确定性 bake | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_resources.py,code:backend/app/bake/domain_schema.py | A:- | S:-
+engine_islands.py[DB7T]: F:把合并 schema 写入工作区并驱动 LLM 填业务岛 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_bake.py | A:- | S:-
+engine_resources.py[DB7M]: F:向学生包写入资料字段、单据列与交付清单等资源文件 | R:code:backend/app/bake/engine_sql.py | A:- | S:-
+engine_sql.py[DB8L]: F:装载域 SQL 模板并门禁交付表数量预算 | R:code:backend/app/bake/domains.py | A:- | S:全厂表数 6–15；借用族下限 10
+gate_contracts.py[DQ8L]: F:定义薄领域门禁文件清单与 gate 工厂供域目录引用 | R:code:backend/app/bake/domains.py | A:- | S:本文件是契约工厂，非 gates 评测包
+guest_cta.py[DU6M]: F:按域文案池与题号稳定抽取门户游客 CTA | R:- | A:- | S:-
+identity_align.py[DQ7M]: F:断言门户种子与资料页身份字段对齐 | R:- | A:- | S:只断言不改扫词与 builder；企业档禁止校园专用键
+java_package.py[DB6M]: F:按领域重写学生包 Java 包名避免全是 com.thesis | R:- | A:- | S:-
+local_atmosphere.py[DU6L]: F:无网时按主题色与域族本地生成登录氛围 JPEG | R:- | A:- | S:Unsplash 优先，本模块仅最终兜底
+match_path_axes.py[DB7M]: F:为匹配确认页汇总身份场景与主路径可手改选项 | R:code:backend/app/bake/scene_scan.py | A:- | S:扫描仍走 scene_scan，本模块只列选项与当前出包
+menu_routes.py[DB8L]: F:定义菜单 key 到路径与有效路由以防导航 404 | R:- | A:- | S:须与骨架 menuRoutes.js 同表双侧同步
+mutual_meta.py[DB6T]: F:提供导师选题组队等互选预设元数据 | R:code:backend/app/bake/oa_apply_p.py | A:- | S:-
+naming.py[DB6S]: F:生成 ZIP 学生库与 Maven 的 ASCII 交付短名 | R:- | A:- | S:-
+oa_apply_meta.py[DB6T]: F:提供用章用车开证等 OA 申请域元数据 | R:code:backend/app/bake/oa_apply_p.py | A:- | S:-
+oa_apply_p.py[DB6T]: F:列出 OA 申请与互选预设案例元组 | R:code:backend/app/bake/oa_apply_meta.py,code:backend/app/bake/mutual_meta.py | A:- | S:-
+persistence.py[DB7S]: F:按开题把 mybatis 或 jpa 持久化叠层并入学生包 | R:- | A:- | S:复用 merge_tree，不另起管线
+portal_banners.py[DU6L]: F:为学生门户生成与登录页分套的轮播图资产 | R:- | A:- | S:与 auth-hero 分套资产
+profile_fields.py[DB7L]: F:按领域与场景提供注册资料页字段映射 | R:code:backend/app/bake/scene_scan.py | A:- | S:身份须跟开题场景；禁止写死冲突的校内学号教职工
+proposal_lexicon.py[DB8S]: F:提供开题解析共用词表与否定对比匹配工具 | R:- | A:- | S:唯一来源，提示词勿再抄长规则
+proposal_packs.py[DB7T]: F:装载常见本科选题包 JSON 供样例与覆盖优先匹配 | R:code:backend/app/bake/proposal_packs_data/_order.json | A:- | S:覆盖优先不完全等于 DOMAINS 原文
+proposal_pressure.py[DB6S]: F:扫描开题中的单据压力与难度信号，写成可演示约束 | R:- | A:- | S:-
+proposal_role_modules.py[DB6S]: F:按开题多角色模块信号装配相关能力皮 | R:- | A:- | S:-
+sample_proposal.py[DB7S]: F:按 TopicPack 生成样例开题，供无材料演示与匹配冒烟 | R:- | A:- | S:-
+scene_scan.py[DB8S]: F:从题名与开题正文扫描校园企业社区场景，驱动壳文案与资料字段 | R:- | A:- | S:场景轴不得替代 DOM 域匹配
+seed_dates.py[DB4T]: F:提供离线预览用的种子日期整体平移工具 | R:- | A:- | S:正式交付勿在 bake 时写死今天；运行时由 SeedCalendarAligner 平移
+skin_invariants.py[DQ6S]: F:断言已知错皮与怪交互模式，命中则出包拦截 | R:- | A:- | S:只断言不改扫词；踩坑须同步测试防回潮
+stack_scan.py[CG6M]: F:从开题正文扫描 jdbc/mybatis/jpa 等技术栈偏好 | R:code:backend/app/bake/scene_scan.py | A:- | S:不驱动场景或 ARCH-*
+staff_posts.py[DB7L]: F:按域配置 clerk/worker 岗位菜单与权限包 | R:code:backend/app/bake/menu_routes.py | A:- | S:-
+stuwork_meta.py[FC5T]: F:声明学工预设域 P-12～P-16 元数据 | R:code:backend/app/bake/stuwork_p.py | A:- | S:-
+stuwork_p.py[FC5T]: F:导出学工床位查寝预设开题用例元组 | R:code:backend/app/bake/stuwork_meta.py | A:- | S:-
+tail_meta.py[FC5T]: F:声明长尾预设域 P-18/P-23～P-29 元数据 | R:code:backend/app/bake/tail_p.py | A:- | S:-
+tail_p.py[DB6T]: F:列出长尾预设验收案例元组 | R:code:backend/app/bake/tail_meta.py | A:- | S:-
+themes.py[DB7M]: F:按域挑选并规范化主题登录版式质感与门户壳 | R:code:backend/app/bake/domains.py | A:- | S:-
+ticket_columns.py[DB6S]: F:按域裁剪单据借阅壳列并映射档案外键名 | R:code:backend/app/bake/domain_entities.py,code:backend/app/bake/sql/ddl_edit.py | A:- | S:-
+ticket_copy_text.py[DB5T]: F:生成单据库存扣尽与不可用等提示文案 | R:- | A:- | S:-
+ticket_rules.py[DB6T]: F:按域提供单据业务参数供 bake 写入学生包 | R:- | A:- | S:学生交付物无 sys_config；本表是工厂写参唯一来源
+
+===D:/graduate_factory_v3/backend/app/bake/domains_catalog/===
+__init__.py[DB7T]: F:合并各域目录包为统一 DOMAINS 目录 | R:code:backend/app/bake/domains.py | A:- | S:-
+apply.py[DB6S]: F:定义 ACTIVITY、LOST、COURSE 等报名类域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+bed.py[DB6S]: F:定义床位分配域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+borrow.py[DB7M]: F:定义借用类域目录皮，覆盖图书、设备、资产等多种挂靠 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+carpool.py[DB6S]: F:定义拼车或约车域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+carrent.py[DB6S]: F:定义租车或一站式用车域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+checkin.py[DB6S]: F:定义考勤或活动签到域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+cinema.py[DB6S]: F:定义影院选座购票域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+content.py[DB6S]: F:定义 MEDIA、MUSIC、FORUM、BLOG 等内容域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+doclib.py[DB6S]: F:定义文档知识库或题库后台域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+exam.py[DB7S]: F:定义在线考试或题库域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+fallback.py[DB6S]: F:定义 GENERIC 兜底域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+instrument.py[DB6S]: F:定义仪器预约时段域目录皮，组合 archive、ticket 与 slot | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+mutual.py[DB6S]: F:定义互选双选域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+oa.py[DB6S]: F:定义 OA 审批与请假域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
+reserve.py[DB6M]: F:定义挂号停车会议沙龙酒店等预约类域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+stuwork.py[DB6M]: F:定义第二课堂劳动评教德育评奖等学工域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+survey.py[DB6T]: F:定义简易问卷调研域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+tail.py[DB6L]: F:定义车辆通行证挂牌采购社团等长尾域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+ticket.py[DB6S]: F:定义宿舍物业与 IT 报修工单域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+timebank.py[DB6T]: F:定义时间银行志愿时长账户域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+tour.py[DB6T]: F:定义旅行社线路报名域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+trade.py[DB6S]: F:定义商城与点餐交易域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+visitor.py[DB6T]: F:定义访客登记预约域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+vote.py[DB6T]: F:定义投票评选域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/bake/features/===
+__init__.py[CG1T]: F:标记可选能力 merge 包，本身不提供逻辑 | R:- | A:- | S:-
+ai_assistant.py[DA8L]: F:扫描并合并 AI 助手岛能力，生成对话知识与满意度相关 bake | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:工厂 Key 与 app/llm 不得进学生 ZIP；≠ RAG 主产品
+archive_log.py[DB6S]: F:扫描并合并档案打卡随访记录能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:DOM-EVENT 默认挂；其它域须开题写到才挂
+audit_log.py[DO6S]: F:扫描并合并操作审计与登录日志能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅扫登录日志时 loginOnly 只记登录
+book_hold.py[DB6S]: F:扫描并合并图书预约到书通知能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅 DOM-LIBRARY 且已有 ticket_flow 与 quota 才挂
+book_suggest.py[DB6S]: F:扫描并合并图书荐购审核能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:通过只记台账不自动建档；勿与期刊遴选 PROCURE 混淆
+code_qr.py[DB6T]: F:扫描并合并通行码取件码二维码出示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅前端出示已有码字符串，不对接闸机
+core_cap_scan.py[DB7L]: F:扫描开题并把推荐冲突占用逾期等核心积木挂入能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:只增不减；deadline 是借阅逾期催还，非报名截止
+dm.py[DB6M]: F:扫描并合并一对一私信短轮询能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:默认 DOM-DATING；纯智能客服走 AI 岛不挂私信
+doclib.py[DB6S]: F:扫描并合并简易文库附件与下载台账能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+e_sign.py[DB6S]: F:扫描并合并本地签章图与勾选同意能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:非 CA 电子签章
+exam.py[DB7M]: F:扫描并合并在线考试题库组卷作答与判分能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:opts 与 exam_skin 仅开题写到才开；不新开 DOM
+favorites.py[DB6M]: F:扫描并合并收藏点赞与内容举报处置能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:post_like 与 content_report 同文件扩展禁止旁挂
+guestbook.py[DB6S]: F:扫描并合并门户留言板能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:与公告站内信论坛跟帖分离；论坛域不挂
+item_comment.py[DB6S]: F:扫描并合并影音曲目文章详情下评论能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅 MEDIA/MUSIC/BLOG；与 guestbook 跟帖评价分离
+lostfound.py[DB6S]: F:为失物招领加厚认领凭证核验与路人线索 | R:- | A:- | S:仅 DOM-LOST 默认挂，不扫进邻域
+loyalty.py[DB6S]: F:扫描并合并余额积分满减会员与券码忠诚度能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:交易壳默认 wallet；其它忠诚项须开题扫词
+message_template.py[DB6T]: F:扫描并合并站内消息模板能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:学生包写站内消息不写演示短信
+opening_align.py[DQ7S]: F:核对开题模块枚举与实包能力，禁止能交却静默薄包 | R:- | A:- | S:工厂能交却未挂必须阻断
+order_extras.py[DB6S]: F:扫描并合并订单评价超时关单与限时价能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+post_mute.py[DB6T]: F:扫描并合并论坛帖子禁言能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:禁言≠整号停用；论坛默认博客须扫词
+product_spec.py[DB6S]: F:扫描并合并商品规格说明文案能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:不做色码矩阵独立库存，禁止冒充完整 SKU
+proposal_caps.py[DB8S]: F:汇总开题扫描能力并集供 attach 与 domain_sql 共用 | R:- | A:- | S:避免 schema 与 SQL 双轨漂移
+room_equipment.py[DB6T]: F:扫描并合并会议室设备清单能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:≠ 设备借用 DOM-EQUIP
+seat_select.py[DB6S]: F:扫描并合并影院场次选座购票能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+staff_roster.py[DB6T]: F:扫描并合并按员日期周排班展示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:不做智能排课与考勤硬件
+stock_io.py[DB6S]: F:扫描并合并浅进销存入库出库与库存流水能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+stock_scrap.py[DB6S]: F:扫描并合并浅报废盘点并复用库存流水 | R:code:backend/app/bake/features/stock_io.py | A:- | S:挂报废时一并挂 stock_io；不做多仓调拨
+survey.py[DB6S]: F:扫描并合并简易问卷配置填写与回收计数能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+temporal_field.py[DB6S]: F:按开题决定档案日历字段用 date 还是 datetime | R:- | A:- | S:默认只有日期；须开题强调时分才升 datetime
+ticket_flow_opts.py[DB7L]: F:扫描并合并两级三级审附件清单与申报截止单据选项 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:只增不减；申报截止≠借阅逾期；三级审固定状态链
+timebank.py[DB6M]: F:扫描并合并时间银行时长账户流水与核销能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+user_publish.py[DB6S]: F:扫描内容壳用户投稿上传与先审后发路径 | R:- | A:- | S:非独立 cap；MUSIC 须点名用户上传才开
+ux_scan.py[DB6S]: F:扫描并合并搜索辅助浏览历史与画廊三项 UX 能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:无域默认，开题未写则保持原样
+vote.py[DB6S]: F:扫描并合并投票评选候选限票与结果公示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:活动兼投票见 C-11 勿用本域顶替报名
+
+===D:/graduate_factory_v3/backend/app/bake/gates/===
+__init__.py[DQ6T]: F:导出领域门禁评测入口 evaluate_domain_gates | R:code:backend/app/bake/gates/evaluate.py | A:- | S:-
+evaluate.py[DQ8L]: F:按 Spec.gate 契约评测学生工作区是否齐备 | R:code:backend/app/bake/gates/feature_keywords.py,code:backend/app/bake/gates/keys.py | A:- | S:全 DOM 共用，不绑某一域
+feature_keywords.py[DQ7L]: F:提供开题措辞核对与包后门禁共享的能力触发词表 | R:code:backend/app/bake/gates/evaluate.py | A:- | S:文本层与实装层词表必须同源防漂移
+keys.py[DQ6T]: F:定义门禁单调键与核心键常量 | R:- | A:- | S:-
+semantic.py[DQ7S]: F:检查学生可见面与场景身份等交付语义门禁 | R:- | A:- | S:补 checklist 启发式盲区
+
+===D:/graduate_factory_v3/backend/app/bake/proposal_packs_data/===
+_order.json[FC5T]: F:声明选题包 JSON 加载顺序 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+acad.json[FC5T]: F:提供学籍异动选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+activity.json[FC5T]: F:提供活动报名选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+asset.json[FC5T]: F:提供物资领用选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+attend.json[FC5T]: F:提供考勤请假选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+award.json[FC5T]: F:提供成果登记选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+bed.json[FC5T]: F:提供床位分配选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+blog.json[FC5T]: F:提供博客选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+carpass.json[FC5T]: F:提供车辆通行证选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+carpool.json[FC5T]: F:提供拼车约车选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+carrent.json[FC5T]: F:提供租车选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cert.json[FC5T]: F:提供开具证明选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+checkin.json[FC5T]: F:提供考勤签到选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cinema.json[FC5T]: F:提供影院选座选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+club.json[FC5T]: F:提供社团管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+contract.json[FC5T]: F:提供合同备案选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+course.json[FC5T]: F:提供选课占名额选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+credit.json[FC5T]: F:提供第二课堂认定选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+crm.json[FC5T]: F:提供客户关系选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cross-food-repair.json[FC5T]: F:提供点餐与报修交叉选题包样例开题 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cross-lib-seat.json[FC5T]: F:提供图书与座位交叉选题包样例开题 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cross-lib-shop.json[FC5T]: F:提供图书与商城交叉选题包样例开题 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+cross-shop-reserve.json[FC5T]: F:提供商城与预约交叉选题包样例开题 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+dating.json[FC5T]: F:提供交友互选选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+doclib.json[FC5T]: F:提供文档文库选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+dorm.json[FC5T]: F:提供宿舍报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+equip.json[FC5T]: F:提供设备借用选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+ethic.json[FC5T]: F:提供伦理审查选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+eval.json[FC5T]: F:提供网上评教选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+event_report.json[FC5T]: F:提供事件上报选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+exam.json[FC5T]: F:提供在线考试选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+expense.json[FC5T]: F:提供经费报销选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+farm-shop.json[FC5T]: F:提供农资特产商城选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+fitout.json[FC5T]: F:提供装修备案选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+fleet.json[FC5T]: F:提供用车申请选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+flowers-shop.json[FC5T]: F:提供鲜花零售商城选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+food.json[FC5T]: F:提供食堂点餐选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+forum.json[FC5T]: F:提供论坛社区选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+fund.json[FC5T]: F:提供经费项目选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+grade.json[FC5T]: F:提供成绩管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+hospital.json[FC5T]: F:提供医院挂号选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+hotel.json[FC5T]: F:提供酒店客房预订选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+instrument.json[FC5T]: F:提供仪器预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+intern.json[FC5T]: F:提供实习管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+it.json[FC5T]: F:提供 IT 报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+labor.json[FC5T]: F:提供劳动时长认定选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+labsafe.json[FC5T]: F:提供实验室安全选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+library.json[FC5T]: F:提供图书借阅选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+listing.json[FC5T]: F:提供挂牌信息选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+lost.json[FC5T]: F:提供失物招领选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+media.json[FC5T]: F:提供影音内容选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+meeting.json[FC5T]: F:提供会议室预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+moral.json[FC5T]: F:提供德育测评选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+music.json[FC5T]: F:提供曲库点播选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+mutual-team.json[FC5T]: F:提供组队互选选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+mutual-topic.json[FC5T]: F:提供选题双选选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+mutual-tutor.json[FC5T]: F:提供导师双选选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+parcel.json[FC5T]: F:提供快递驿站选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+parking.json[FC5T]: F:提供车位预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+party.json[FC5T]: F:提供党建党务选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+procure.json[FC5T]: F:提供采购挂牌选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+proj.json[FC5T]: F:提供项目管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+promo.json[FC5T]: F:提供宣传审批选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+property.json[FC5T]: F:提供物业报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+recruit.json[FC5T]: F:提供招聘报名选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+salon.json[FC5T]: F:提供美业沙龙预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+seal.json[FC5T]: F:提供用章申请选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+shop.json[FC5T]: F:提供商城交易选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+survey.json[FC5T]: F:提供问卷调研选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+timebank.json[FC5T]: F:提供时间银行域开题样例包，供匹配与演示种子选用 | R:- | A:- | S:-
+tour.json[FC5T]: F:提供旅游域开题样例包，供匹配与演示种子选用 | R:- | A:- | S:-
+trip.json[FC5T]: F:提供出行域开题样例包，供匹配与演示种子选用 | R:- | A:- | S:-
+visitor.json[FC5T]: F:提供访客域开题样例包，供匹配与演示种子选用 | R:- | A:- | S:-
+vote.json[FC5T]: F:提供投票域开题样例包，供匹配与演示种子选用 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/bake/schema/===
+__init__.py[DB7T]: F:导出 Schema 模板、ER 与菜单装配入口 | R:- | A:- | S:-
+_oa_presets_generated.py[DB5S]: F:存放 OA 域生成的 followup 预设数据 | R:- | A:- | S:-
+_stuwork_presets_generated.py[DB5S]: F:存放学工域生成的 followup 预设数据 | R:- | A:- | S:-
+activity.py[DB7S]: F:生成论文用系统活动图，固定用户系统数据库三泳道 | R:- | A:- | S:-
+architecture.py[DB7S]: F:生成论文用 B/S 分层系统逻辑架构图 | R:- | A:- | S:-
+bed_followup_presets.py[DB5T]: F:提供床位分配域的 followup 预设 | R:- | A:- | S:-
+builders_archive.py[DB7M]: F:构建档案与 followup 菜单及字段 schema | R:- | A:- | S:-
+builders_content.py[DB7M]: F:构建内容、媒体与论坛类菜单及字段 schema | R:- | A:- | S:-
+builders_slot.py[DB7M]: F:构建时段与预约类菜单及字段 schema | R:- | A:- | S:-
+builders_ticket.py[DB7M]: F:构建校园、物业、IT 等工单流域菜单及字段 schema | R:- | A:- | S:-
+carpool_followup_presets.py[DB5T]: F:提供拼车约车域的 followup 预设 | R:- | A:- | S:-
+checkin_followup_presets.py[DB6T]: F:构建查寝签到域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:禁止目录里随便选一间寝室，须 matchProfileRoom 本寝约束
+class_code.py[DB7M]: F:从 bake 包 Java Store 与 Controller 抽取类图属性方法与 OO 关系 | R:code:backend/app/bake/schema/class_model.py | A:- | S:无代码命中时由调用方回退 SQL 列，禁止臆造 getList/add/del/edit
+class_layout.py[DB7M]: F:为零交叉类图计算摆框选边与正交折线 | R:code:backend/app/bake/schema/class_model.py | A:- | S:-
+class_model.py[DB8L]: F:从 schema.sql 与 Java 组装论文 UML 类图模型 | R:code:backend/app/bake/schema/class_code.py,code:backend/app/bake/schema/er_model.py | A:- | S:表与 FK 来自 SQL，属性方法来自 Java，禁止臆造
+class_svg.py[DB7M]: F:将类图模型渲染为 UML 类框与关联 SVG | R:code:backend/app/bake/schema/class_layout.py,code:backend/app/bake/schema/class_model.py | A:- | S:-
+classes.py[DB5T]: F:再导出类图模型布局与 SVG 入口以保持原 import 路径 | R:code:backend/app/bake/schema/class_model.py,code:backend/app/bake/schema/class_layout.py,code:backend/app/bake/schema/class_svg.py | A:- | S:-
+deep_skin_overrides.py[DB6T]: F:按 product_kind 覆盖 followup 与工单深皮文案包 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:只换皮不换引擎
+domain_builders.py[DB5T]: F:再导出各具名域 Domain Schema builder 供统一调用 | R:code:backend/app/bake/schema/builders_archive.py,code:backend/app/bake/schema/builders_slot.py,code:backend/app/bake/schema/builders_content.py,code:backend/app/bake/schema/builders_ticket.py | A:- | S:-
+er.py[DB5T]: F:再导出 E-R 模型标签与 SVG 入口以保持原 import 路径 | R:code:backend/app/bake/schema/er_model.py,code:backend/app/bake/schema/er_labels.py,code:backend/app/bake/schema/er_svg.py | A:- | S:-
+er_labels.py[DB7M]: F:拼装 E-R 中文标签角色展开与 LLM 补丁读写 | R:code:backend/app/bake/schema/er_zh.py | A:- | S:-
+er_model.py[DB7M]: F:从 schema.sql 解析表与外键并组装 E-R 模型 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:-
+er_svg.py[DB7M]: F:为零交叉陈氏 E-R 图计算布局并渲染 SVG | R:code:backend/app/bake/schema/er_model.py | A:- | S:-
+er_zh.py[FC6T]: F:提供 E-R 骨架表与公共列的中文词表兜底 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:领域表名优先从 domain.schema.json 取
+followup_presets.py[DB8L]: F:汇总档案加跟进单族域的参数化 FOLLOWUP_PRESETS | R:code:backend/app/bake/schema/oa_followup_presets.py,code:backend/app/bake/schema/mutual_followup_presets.py | A:- | S:避免 templates 七份近同构复制
+form_first_entry.py[DB6T]: F:把预设改成填单优先入口并收束档案目录文案 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:禁止另写一套菜单排序或 Store 分支
+instrument_followup_presets.py[DB6T]: F:构建仪器机时域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
+menu_utils.py[DB6T]: F:幂等插入菜单项并按已开能力回补用户与管理端入口 | R:code:backend/app/bake/schema/shells.py | A:- | S:能力已开则菜单必须在，防填岛漏挂
+modules.py[DB8L]: F:按交付角色与菜单生成论文功能模块图 | R:- | A:- | S:未交付的开题模块一律丢掉，禁止图上有包里无
+mutual_followup_presets.py[DB6T]: F:构建导师选题组队互选域的 FOLLOWUP_PRESETS | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
+oa_followup_presets.py[DB7M]: F:构建用章出差等 OA 申请域的 FOLLOWUP_PRESETS | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:各选题方向字段动词分立，勿八域同文案
+sequence.py[DB9L]: F:按交付 schema 与 Controller 生成固定三张论文系统序列图 SVG | R:code:backend/app/bake/schema/usecase_descriptions.py,code:backend/app/bake/schema/testcases.py | A:- | S:禁止 kind 中文句库与示例自习室题材
+shells.py[DB9L]: F:提供档案单订单预约独立工单与收藏等通用 schema 壳构造器 | R:code:backend/app/bake/domains.py | A:- | S:-
+stuwork_followup_presets.py[DB7M]: F:构建学工预设域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
+tail_followup_presets.py[DB7L]: F:构建长尾预设域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
+templates.py[DB6S]: F:登记各 DOM 的 Domain Schema builder 入口表 | R:code:backend/app/bake/schema/domain_builders.py,code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/schema/shells.py | A:- | S:-
+testcases.py[DB8L]: F:从交付 menus 推导论文软件测试用例表 | R:code:backend/app/bake/schema/modules.py | A:- | S:禁止发明菜单外功能
+timebank_followup_presets.py[DB5T]: F:构建时间银行域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/schema/form_first_entry.py | A:- | S:-
+tour_followup_presets.py[DB5T]: F:构建旅行社线路报名域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
+usecase_descriptions.py[DB8L]: F:从交付 schema 与开题选四张论文用例描述表 | R:code:backend/app/bake/schema/modules.py | A:- | S:不足四个有多少交多少，绝不凑假用例
+usecase_style.py[DB5T]: F:提供用例图客户画法 profile 供按校切换 | R:code:backend/app/bake/schema/usecases.py | A:- | S:勿把客户硬约束写死进业务归桶
+usecases.py[DB9L]: F:按开题模块与交付菜单生成论文用例图模型与 SVG | R:code:backend/app/bake/schema/usecase_style.py,code:backend/app/bake/schema/modules.py | A:- | S:圈名与序号以确定性模型为准；二级须动词开头
+visitor_followup_presets.py[DB5T]: F:构建访客登记域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/schema/form_first_entry.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/bake/sql/===
+DOM-GENERIC-FLOW.sql[FC5T]: F:提供 GENERIC 流程库存内容架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
+DOM-GENERIC-RESERVE.sql[FC5T]: F:提供 GENERIC 预约架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
+DOM-GENERIC-TRADE.sql[FC5S]: F:提供 GENERIC 交易架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
+DOM-GENERIC.sql[FC5T]: F:提供 GENERIC 档案 CRUD 架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
+__init__.py[CG1T]: F:标记 sql 为模板加载与拼装包 | R:- | A:- | S:-
+compose.py[DB6S]: F:从已有 GENERIC SQL 模板拼装多主路径 schema | R:code:backend/app/bake/sql/DOM-GENERIC.sql,code:backend/app/bake/sql/DOM-GENERIC-FLOW.sql | A:- | S:避免复制整份 DDL
+content_scene_overlays.py[DD6S]: F:按内容域叠加场景种子皮，覆盖博客、影音、音乐台与论坛 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
+ddl_edit.py[DP7S]: F:改写 SQL DDL 文本，支持建表补列改名与 INSERT 列清单同步 | R:- | A:- | S:-
+demo_schedule_repair.py[DD6S]: F:修复演示库日程，对齐日历并下架已过期场次 | R:- | A:- | S:-
+domain_scene_seed.py[DD6S]: F:按开题场景替换演示种子文案，不改表结构 | R:- | A:- | S:只改标题、地点、备注等文案，不得改列结构
+domain_templates.py[DP7S]: F:按域加载 templates 目录下 DOM-*.sql 模板 | R:code:backend/app/bake/sql/templates/DOM-ACAD.sql | A:- | S:-
+event_scene_seed.py[DD6S]: F:为 DOM-EVENT 按场景替换演示种子文案 | R:- | A:- | S:只改文案不改表结构
+fragments.py[DP7M]: F:提供可复用 SQL 片段，bake 时按需注入以免 DOM 模板漏列 | R:- | A:- | S:-
+reserve_scene_overlays.py[DD6S]: F:为医院、美发、会议室、停车等预约域叠加场景种子皮 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/bake/sql/templates/===
+DOM-ACAD.sql[DP6M]: F:提供学业域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-ACTIVITY.sql[DP6M]: F:提供活动报名域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-ASSET.sql[DP6M]: F:提供资产管理域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-ATTEND.sql[DP6M]: F:提供考勤域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-AWARD.sql[DP6M]: F:提供评奖评优域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-BED.sql[DP6M]: F:提供床位分配域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-BLOG.sql[DP6M]: F:提供博客内容域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CARPASS.sql[DP6M]: F:提供车辆通行证域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CARPOOL.sql[DP6M]: F:提供拼车域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CARRENT.sql[DP6M]: F:提供租车域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CERT.sql[DP6M]: F:提供证书办理域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CHECKIN.sql[DP6M]: F:提供签到域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CINEMA.sql[DP6S]: F:提供影院选座购票域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CLUB.sql[DP6S]: F:提供学生社团注册年审域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CONTRACT.sql[DP6S]: F:提供合同登记审批域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-COURSE.sql[DP6S]: F:提供公选课选课域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CREDIT.sql[DP6S]: F:提供第二课堂学分认定域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CRM.sql[DP6S]: F:提供客户跟进管理域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-DATING.sql[DP6S]: F:提供交友匹配域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-DOCLIB.sql[DP6S]: F:提供制度文库下载台账域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-DORM.sql[DP6S]: F:提供宿舍报修域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-EQUIP.sql[DP6S]: F:提供器材借用域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-ETHIC.sql[DP6S]: F:提供开题答辩与伦理审查域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-EVAL.sql[DP6S]: F:提供学生网上评教域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-EVENT.sql[DP6S]: F:提供随访打卡事件域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-EXAM.sql[DP6S]: F:提供在线考试题库域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-EXPENSE.sql[DP6S]: F:提供经费报销审批域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-FITOUT.sql[DP6S]: F:提供装修进场备案审批域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-FLEET.sql[DP6S]: F:提供公务用车申请审批域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-FOOD.sql[DP6S]: F:提供食堂档口点餐域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-FORUM.sql[DP6S]: F:提供论坛发帖回帖域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-FUND.sql[DP6S]: F:提供学生资助奖学金申请域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-GRADE.sql[FC5S]: F:提供 DOM-GRADE 成绩课程与申报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-HOSPITAL.sql[FC5S]: F:提供 DOM-HOSPITAL 医生时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-HOTEL.sql[FC5S]: F:提供 DOM-HOTEL 房型预约购物订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-INSTRUMENT.sql[FC5S]: F:提供 DOM-INSTRUMENT 仪器借用与时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-INTERN.sql[FC5S]: F:提供 DOM-INTERN 实习岗位与周报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-IT.sql[FC5S]: F:提供 DOM-IT 园区终端与故障工单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-LABOR.sql[FC5T]: F:提供 DOM-LABOR 用工项与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-LABSAFE.sql[FC5T]: F:提供 DOM-LABSAFE 实验室准入申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-LIBRARY.sql[FC5S]: F:提供 DOM-LIBRARY 图书借阅收藏 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-LISTING.sql[FC5T]: F:提供 DOM-LISTING 挂牌与关注 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-LOST.sql[FC5S]: F:提供 DOM-LOST 失物与认领 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MEDIA.sql[FC5T]: F:提供 DOM-MEDIA 媒资点播档案 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MEETING.sql[FC5S]: F:提供 DOM-MEETING 会议室时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MORAL.sql[FC5T]: F:提供 DOM-MORAL 德育项与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MUSIC.sql[FC5T]: F:提供 DOM-MUSIC 曲目点播档案 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MUTUAL-TEAM.sql[FC5T]: F:提供 DOM-MUTUAL-TEAM 组队资料与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MUTUAL-TOPIC.sql[FC5T]: F:提供 DOM-MUTUAL-TOPIC 课题与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MUTUAL-TUTOR.sql[FC5T]: F:提供 DOM-MUTUAL-TUTOR 导师与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PARCEL.sql[FC5S]: F:提供 DOM-PARCEL 包裹与领取 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PARKING.sql[FC5S]: F:提供 DOM-PARKING 车位时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PARTY.sql[FC5S]: F:提供 DOM-PARTY 党员发展阶段与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PROCURE.sql[FC5S]: F:提供 DOM-PROCURE 采购物资与申购 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PROJ.sql[FC5S]: F:提供 DOM-PROJ 大创项目与申报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PROMO.sql[FC5S]: F:提供 DOM-PROMO 宣传物料与审批 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PROPERTY.sql[FC5S]: F:提供 DOM-PROPERTY 物业报修工单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-RECRUIT.sql[FC5S]: F:提供 DOM-RECRUIT 招聘岗位与投递 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-SALON.sql[FC5S]: F:提供 DOM-SALON 服务项目时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-SEAL.sql[FC5S]: F:提供 DOM-SEAL 印章类型与用章申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-SHOP.sql[FC5S]: F:提供 DOM-SHOP 商品购物车与订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-SURVEY.sql[FC5S]: F:提供 DOM-SURVEY 问卷表单与作答 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-TIMEBANK.sql[FC5S]: F:提供 DOM-TIMEBANK 时长账户与流水 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-TOUR.sql[FC5S]: F:提供 DOM-TOUR 线路报名与订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-TRIP.sql[FC5S]: F:提供 DOM-TRIP 出差类型与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-VISITOR.sql[FC5S]: F:提供 DOM-VISITOR 访客登记与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-VOTE.sql[FC5S]: F:提供 DOM-VOTE 评选活动与选票 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/core/===
+__init__.py[CB4T]: F:占位工厂核心包 | R:- | A:- | S:-
+config.py[CB7S]: F:定义工厂路径端口数据库与 LLM 等 Settings | R:- | A:- | S:-
+database.py[CB7S]: F:创建异步 SQLAlchemy 引擎会话与建表迁移 | R:code:backend/app/core/config.py | A:- | S:SQLite 须 WAL 与加长 busy_timeout
+
+===D:/graduate_factory_v3/backend/app/llm/===
+__init__.py[LB5T]: F:再导出 LlmRuntime 供窄 Agent 调用 | R:code:backend/app/llm/runtime.py | A:- | S:禁止生成业务源码
+agents.py[LB6T]: F:聚合匹配 Spec 填岛修复质检等窄 Agent 入口 | R:code:backend/app/llm/agents_match.py,code:backend/app/llm/unit_flow.py | A:- | S:-
+agents_common.py[LB6S]: F:提供窄 Agent 共用标签种子与提案文本工具 | R:code:backend/app/bake/catalog.py | A:- | S:不生成业务 Java/Vue
+agents_fix.py[LB7S]: F:运行修复诊断窄 Agent | R:code:backend/app/llm/agents_common.py | A:- | S:-
+agents_island.py[LB6S]: F:校验填岛角色岗位标签补丁禁止增删 id | R:code:backend/app/llm/agents_common.py | A:- | S:只允许改已有角色中文 label
+agents_match.py[LB7M]: F:运行匹配推荐 Spec 润色与上传聚类窄 Agent | R:code:backend/app/bake/catalog.py | A:- | S:-
+agents_qa.py[LB8M]: F:审查交付文案菜单种子一致性的 QA Agent | R:code:backend/app/llm/client.py | A:- | S:禁止改代码；error 仅用于误导答辩或明显错域
+agents_sample.py[LB6S]: F:运行样例开题提案窄 Agent | R:code:backend/app/llm/agents_common.py | A:- | S:-
+agents_usecase.py[LB7S]: F:润色用例图目的语并校验书名号不变 | R:code:backend/app/bake/schema/usecases.py,code:backend/app/llm/client.py | A:- | S:无 Key 或校验失败回退确定性草稿；不进学生 ZIP
+client.py[LB8M]: F:调用 DeepSeek/Gemini 聊天并记账用量 | R:code:backend/app/core/config.py,code:backend/app/llm/runtime.py | A:- | S:-
+model_catalog.py[LB5T]: F:维护 DeepSeek/Gemini 模型目录与旧名别名 | R:- | A:- | S:-
+runtime.py[LB7M]: F:从设置加载 LLM 运行时开关与提供方端点 | R:code:backend/app/core/config.py,code:backend/app/llm/model_catalog.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/llm/unit_flow/===
+__init__.py[DB6T]: F:�������ˮ�� Plan/Unit/Merge �Ĺ������ڣ�ȡ���ɵ�����ǩ Agent | R:code:backend/app/llm/unit_flow/orchestrator.py | A:- | S:-
+context_budget.py[DB5S]: F:�ü�� Unit ���ı�������Ԥ�㣬���� PPT ����׼������ | R:- | A:- | S:-
+executors.py[DB6T]: F:�� TaskUnit ���� LLM ִ�в������޸���ʾ | R:code:backend/app/llm/client.py | A:- | S:-
+merge.py[DB7M]: F:�Ѹ� Unit patch �ϲ��� workspace ��У�� schema | R:code:backend/app/bake/domain_schema.py | A:- | S:-
+models.py[DB6M]: F:���� DeliveryPlan �� TaskUnit �������ģ�� | R:- | A:- | S:-
+orchestrator.py[DB8S]: F:�������ˮ�ߣ��ƻ������� Unit���ϲ��벽��Ԫ���� | R:code:backend/app/llm/unit_flow/runner.py | A:- | S:-
+planner.py[DB7M]: F:�� workspace �� spec ȷ�������� DeliveryPlan������ LLM | R:- | A:- | S:-
+prompts.py[DB6M]: F:����� Unit ��Ψһ LLM ��ʾ����Դ | R:code:backend/app/llm/unit_flow/context_budget.py | A:- | S:-
+runner.py[DB7M]: F:�� TaskUnit ΢ѭ����prepare��generate��check��repair | R:code:backend/app/llm/unit_flow/validators.py | A:- | S:-
+validators.py[DB6M]: F:У�� Unit ��������ϴ ER/ģ��/������ǩ���� | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/models/===
+__init__.py[DB6S]: F:���幤���� SQLAlchemy ��Ŀ����ҵ�� ORM ģ�� | R:code:backend/app/core/database.py | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/schemas/===
+__init__.py[DB6L]: F:���幤�� API �� Pydantic ��������Ӧģ�� | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/services/===
+__init__.py[DB4T]: F:ռλ services ����ʼ�� | R:- | A:- | S:-
+delivery_review.py[DB7L]: F:做交付验收闭环：门槛、可用性、漂移与运营附件 | R:- | A:- | S:不进学生 ZIP
+fill_events.py[DB6M]: F:推送填岛进度 SSE 事件，答辩 PPT 复用同 hub | R:- | A:- | S:-
+jobs.py[DB8L]: F:编排主 bake Job，LLM 失败也尽量交付 | R:code:backend/app/bake/engine.py | A:- | S:-
+projects.py[DB8L]: F:管理项目生命周期、工作区与交付产物路径 | R:- | A:- | S:-
+proposal.py[DB7L]: F:解析与合并开题文本供匹配与 bake 使用 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
+proposal_diff.py[DB6M]: F:对照开题功能清单与 Spec checklist，确定性不调 LLM | R:code:backend/app/services/proposal_match.py | A:- | S:-
+proposal_match.py[DB7S]: F:把开题行匹配到域与能力岛 | R:- | A:- | S:-
+runtime.py[DB6L]: F:管理学生端运行时进程启停与端口 | R:- | A:- | S:-
+student_api_smoke.py[DB6L]: F:对学生端 API 做冒烟探测 | R:- | A:- | S:-
+student_copy.py[DB5S]: F:生成学生端文案与交付说明片段 | R:- | A:- | S:-
+student_db.py[DB6M]: F:准备与校验学生端演示数据库 | R:- | A:- | S:-
+upload_cluster.py[DB6L]: F:多材料上传：剔除非毕设 + 按课题聚类（规则 + 可选 LLM 结构输出）。 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/app/services/defense_ppt/===
+__init__.py[DB4T]: F:�������� PPT ����Ŀ¼���� | R:- | A:- | S:-
+check.py[DB6M]: F:�������� PPT �Ƿ��ɵ�����ͳһ Job �뵼���ż� | R:code:backend/app/services/defense_ppt/deck_io.py | A:- | S:-
+cover.py[DB5T]: F:�淶������ PPT �����ֶ� | R:- | A:- | S:-
+deck_io.py[DB6M]: F:��д���� PPT �� deck.json | R:- | A:- | S:-
+evidence.py[DB6M]: F:ֻ��װ������ PPT ֤�ݰ�����ֹ��ɨ�� | R:code:backend/app/services/proposal.py | A:- | S:-
+export_pptx.py[DB7M]: F:�� python-pptx �������� PPTX ��ѧ�� ZIP | R:code:backend/app/services/defense_ppt/check.py | A:- | S:-
+figures.py[DB6S]: F:把模块图与 ER SVG 嵌进答辩 PPT figures 目录 | R:- | A:- | S:-
+fingerprint.py[DB6M]: F:计算业务指纹以检测答辩 PPT 是否因 bake 变脏 | R:- | A:- | S:-
+job_fill.py[DB7M]: F:按页填充答辩 PPT，复用 unit_flow 并合并 patch | R:code:backend/app/llm/unit_flow/orchestrator.py | A:- | S:-
+job_runner.py[DB8M]: F:编排答辩 PPT Job 启停与填页，禁止改 bake 主状态 | R:code:backend/app/services/defense_ppt/job_fill.py | A:- | S:不得改 project.status 或 zip_ready
+planner.py[DB7M]: F:为答辩 PPT 生成按页 TaskUnit 计划 | R:code:backend/app/llm/unit_flow/models.py | A:- | S:-
+screenshots.py[DB6M]: F:管理答辩 PPT 截图占位与上传替换 | R:- | A:- | S:-
+status.py[DB5S]: F:汇总答辩 PPT Job 的 phase 与状态摘要 | R:- | A:- | S:-
+sync_biz.py[DB6S]: F:同步业务页到答辩 PPT，跳过已锁定页 | R:- | A:- | S:-
+themes.py[DB5S]: F:提供答辩 PPT 主题与封面默认值 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/backend/scripts/===
+_accept_ai_farm.py[TS5S]: F:One-shot acceptance for gf-accept-ai-farm bake. | R:- | A:- | S:-
+_audit_pack_diff.py[TS5T]: F:Audit pack-only proposal diff. | R:- | A:- | S:-
+_audit_proposal_diff.py[TS5T]: F:Audit proposal diff coverage across packs and corpus. | R:- | A:- | S:-
+_check_sample_biz.py[TS5M]: F:开题样例 → match → build_spec 业务皮校验；可选 Island LLM 润色角色。 | R:- | A:- | S:-
+_fix_engine_headers.py[TS5T]: F:'): end = t.find(' | R:- | A:- | S:-
+_split_large_modules.py[TS5M]: F:Batch-split large bake modules. Run from backend/. | R:- | A:- | S:-
+_split_remaining.py[TS5L]: F:Split proposal_packs / themes.css / er_labels / agents / eng | R:- | A:- | S:-
+_split_themes_css.py[TS5T]: F:Split themes.css by section comments. | R:- | A:- | S:-
+run_unit_flow.py[TS5S]: F:CLI：填岛拆解流水线（与 Job step 2 同实现）。 示例： cd backend python scripts | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/===
+00-目录说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/01_five_domains/===
+图书借阅开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+客户跟进开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+宿舍报修开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+车位预约开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+食堂点餐开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/02_same_thesis/===
+宿舍报修功能清单.txt[FC5T]: F:提供功能清单样例文本 | R:- | A:- | S:-
+宿舍报修开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/03_mixed_3_projects/===
+宿舍报修功能清单.txt[FC5T]: F:提供功能清单样例文本 | R:- | A:- | S:-
+宿舍报修开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+车位预约开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+食堂点餐功能清单.txt[FC5T]: F:提供功能清单样例文本 | R:- | A:- | S:-
+食堂点餐开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/04_same_domain_diff_impl/===
+二手图书交易开题.txt[FC5T]: F:提供开题样例文本 | R:- | A:- | S:-
+图书借阅开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/05_with_noise/===
+个人简历.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+开会纪要.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+物业报修开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/upload_cluster_demo/===
+说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/交叉预设开题/===
+00-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+X-01-食堂点餐与宿舍报修系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+X-02-图书借阅与座位预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+X-03-会议室预约与小卖部订单系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+X-03-到店预约与套餐商城系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/域开题样例近五年/===
+00-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+01-DOM-LIBRARY-高校图书借阅管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+02-DOM-EQUIP-实验室器材借用管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+03-DOM-ASSET-高校固定资产与耗材申领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+04-DOM-CRM-中小企业客户跟进管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+05-DOM-EVENT-校园传染病防控晨午检管理系统.txt[FC5S]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+06-DOM-ATTEND-学生请假销假管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+07-DOM-RECRUIT-高校校园招聘岗位投递管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+08-DOM-GRADE-教务成绩查询与补考申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+09-DOM-INTERN-顶岗实习岗位与周报审阅系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+10-DOM-PARCEL-校园快递驿站取件管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+11-DOM-DORM-学生宿舍报修管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+12-DOM-PROPERTY-智慧社区物业报修管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+13-DOM-IT-校园网故障报修与 IT 运维工单系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+14-DOM-ACTIVITY-社团志愿活动报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+15-DOM-LOST-校园失物招领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+16-DOM-COURSE-公选课在线选课管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+17-DOM-SHOP-校园二手商品交易管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+18-DOM-FOOD-高校食堂档口点餐管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+19-DOM-HOSPITAL-校医院门诊挂号预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+20-DOM-PARKING-校园停车场车位预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+21-DOM-MEETING-高校会议室与球馆场地预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+22-DOM-SALON-美发门店服务预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+23-DOM-HOTEL-乡村民宿客房预订管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+24-DOM-MEDIA-校园影视资源点播管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+25-DOM-MUSIC-在线音乐曲库与歌单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+26-DOM-FORUM-校园论坛发帖回帖管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+27-DOM-BLOG-个人博客资讯发布管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+28-DOM-FUND-高校学生资助奖学金申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+29-DOM-LABSAFE-实验室安全准入管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+30-DOM-MEETING-图书馆座位预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+31-DOM-SALON-健身房私教预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+32-DOM-HOSPITAL-宠物医院挂号预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+33-DOM-HOSPITAL-HPV疫苗预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+34-DOM-LOST-宠物领养管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+99-DOM-GENERIC-实验室试剂基础信息台账系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/学工预设开题/===
+00-床位查寝骨架-P20-P22.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+P-12-DOM-CREDIT-高校第二课堂学分认定管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-13-DOM-LABOR-高校劳动教育与志愿时长认定系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-14-DOM-EVAL-高校学生网上评教管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-15-DOM-MORAL-高校综合测评与德育分申报系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-16-DOM-AWARD-高校创新学分与竞赛获奖登记系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-20-DOM-BED-高校宿舍床位分配与调宿管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-21-DOM-BED-学生宿舍调宿退宿申请审批系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-22-DOM-CHECKIN-高校宿舍查寝归寝签到管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/开题报告/===
+00-选题目录与选用说明.txt[FC4S]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+01-社区公共卫生事件应急管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+02-医院感染防控管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+03-基层慢性病随访健康管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+04-应急物资仓储调度管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+05-智慧社区网格化人员管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+06-校园传染病防控晨午检管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+07-养老机构健康监测照护管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+08-餐饮食品安全风险排查追溯管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+09-企业员工健康监测复工管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+10-疾控流调协查风险管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+11-宠物医院病患随访隔离观察管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+12-献血者健康筛查招募管理系统-开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/快速试传/===
+_weak_仅参考文献.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+simple.txt[FC5S]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+simple_markdown表格格式.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+simple_任务书格式.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+仓储物资申领开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+图书借阅与二手交叉开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+图书借阅开题.txt[FC5T]: F:提供开题样例文本 | R:- | A:- | S:-
+失物招领开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+开题报告.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+校医院挂号开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+校园影视资源点播系统开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+校园论坛开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+活动报名开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+物业报修开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+物资领用开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+设备借用开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+选课系统开题.txt[FC5S]: F:提供开题样例文本 | R:- | A:- | S:-
+鲜花销售管理系统开题报告.txt[FC5M]: F:提供开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/深皮开题/===
+00-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+S-01-DOM-LIBRARY-高校档案馆卷宗借阅管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-02-DOM-EQUIP-校园共享雨伞与充电宝租借管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-03-DOM-EQUIP-校园演出服装道具租借管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-04-DOM-ASSET-实验室试剂与耗材申领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-05-DOM-ASSET-企业办公用品与劳保领用管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-06-DOM-LIBRARY-校园图书漂流借阅管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-10-DOM-CRM-高校学工家访谈心谈话记录系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-11-DOM-EVENT-社区网格员走访打卡台账管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-12-DOM-EVENT-消防设备巡检打卡管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-13-DOM-INTERN-企业员工周报与工时填报管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-14-DOM-CRM-法律援助案件跟进管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-15-DOM-CRM-校企合作单位库跟进管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-16-DOM-EVENT-慢病家庭医生随访管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-17-DOM-RECRUIT-高校勤工助学岗申请投递系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-18-DOM-RECRUIT-企业社会招聘与内部竞聘系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-19-DOM-GRADE-企业内训成绩与岗位认证管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-20-DOM-FUND-高校助学贷款与困难认定申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-21-DOM-PROPERTY-社区物业投诉建议工单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-22-DOM-IT-设备维保工单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-23-DOM-IT-客服售后工单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-24-DOM-IT-校园网邮箱账号报修工单系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-25-DOM-PROPERTY-市政路灯井盖报修管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-30-DOM-ACTIVITY-讲座志愿社团活动报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-31-DOM-ACTIVITY-证书报考与培训班报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-32-DOM-ACTIVITY-研学夏令营赛事报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-33-DOM-ACTIVITY-景区演出票务报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-34-DOM-ACTIVITY-献血与开放日报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-35-DOM-LOST-流浪动物领养申请管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-36-DOM-LOST-捐赠物资认领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-37-DOM-COURSE-公选课在线选课管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-40-DOM-SALON-高校心理咨询预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-41-DOM-SALON-驾校练车陪驾预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-42-DOM-SALON-家政上门维修预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-43-DOM-SALON-家教技能辅导预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-44-DOM-MEETING-博物馆展览参观预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-45-DOM-HOSPITAL-政务窗口取号预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-46-DOM-HOSPITAL-入职体检与疫苗预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-47-DOM-HOSPITAL-宠物医院挂号预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-48-DOM-MEETING-游泳馆球馆琴房场地预约系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-49-DOM-PARKING-充电桩与共享车位预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-50-DOM-HOSPITAL-医院探视预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-51-DOM-HOTEL-乡村民宿客房预订管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-60-DOM-SHOP-校园二手教材闲置交易系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-61-DOM-SHOP-文印打印店订单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-62-DOM-SHOP-特产鲜花零售商城管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-63-DOM-SHOP-积分兑换商城管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-64-DOM-FOOD-奶茶档口食堂点餐管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-65-DOM-SHOP-校园跑腿代买订单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-70-DOM-BLOG-校园资讯院刊发布管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-71-DOM-FORUM-校园表白墙树洞管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-72-DOM-BLOG-记者站广播稿件发布管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-73-DOM-MEDIA-点播课课程视频库管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-74-DOM-MUSIC-曲库点歌台管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-75-DOM-EVENT-防返贫数字化辅助系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-76-DOM-ACTIVITY-安顺学院献血管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-77-DOM-ACTIVITY-校园防暴恐培训管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-78-DOM-ACTIVITY-歌剧院票务报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-79-DOM-PROCURE-外文学术期刊遴选服务平台.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-80-DOM-LOST-航班行李挂失认领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+S-81-DOM-RECRUIT-威客任务接单管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/申请预设开题/===
+00-互选骨架-P09-P11.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+P-01-DOM-SEAL-学校行政印章使用申请审批系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-02-DOM-FLEET-公务用车申请审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-03-DOM-CERT-在读成绩单在职证明开具申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-04-DOM-PROMO-横幅海报户外宣传审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-05-DOM-FITOUT-装修进场施工备案审批系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-06-DOM-ACAD-学籍异动转专业缓考申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-07-DOM-TRIP-出差加班申请审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-08-DOM-EXPENSE-经费报销申请审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-09-DOM-MUTUAL-TUTOR-研究生导师双向选择志愿与确认系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-10-DOM-MUTUAL-TOPIC-毕业论文选题双选志愿与确认系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-11-DOM-MUTUAL-TEAM-竞赛组队学习搭子意向匹配系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-17-DOM-VISITOR-高校访客登记与临时门禁申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-19-DOM-INSTRUMENT-高校大型仪器借用与机时预约管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/能力预设开题/===
+00-C01-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C03-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C04-C11-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C12-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C13-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C14-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C15-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C16-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C17-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+00-C18-说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
+C-01-DOM-EXAM-党建党史专题答题系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-01-DOM-EXAM-驾校科目一理论题库系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-01-DOM-EXAM-高校在线考试与题库管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-02-DOM-LABSAFE-实验室安全准入考试与申请.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-03-DOM-SURVEY-高校学生满意度问卷调查系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-04-DOM-VOTE-高校校园十佳大学生投票评选系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-11-DOM-ACTIVITY-社团活动报名与优秀个人投票评选.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-12-DOM-DOCLIB-高校制度文件文库下载台账管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-13-DOM-CARPOOL-高校校园拼车行程与同行意向对接系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-14-DOM-TIMEBANK-社区时间银行志愿时长账户存取核销系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-15-DOM-CINEMA-影院选座购票管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-16-DOM-SEAL-三级审批用章申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-17-DOM-ASSET-仓储物资入库出库库存台账系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+C-18-DOM-INTERN-实习周报与鉴定签署系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/data/samples/长尾预设开题/===
+P-18-DOM-CARPASS-高校临时车辆通行证备案管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-23-DOM-LISTING-房源挂牌与带看跟进管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-24-DOM-PROCURE-单位物资采购申购审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-25-DOM-CLUB-学生社团注册与年审管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-26-DOM-PROJ-大学生创新创业项目申报与中期检查系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-27-DOM-ETHIC-开题答辩与伦理审查材料审核系统.txt[FC5T]: F:提供开题样例文本 | R:- | A:- | S:-
+P-28-DOM-PARTY-党员发展对象阶段材料管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-29-DOM-CONTRACT-单位合同登记与单级审批管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-31-DOM-TOUR-旅行社线路报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+P-32-DOM-CARRENT-汽车租赁管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/docs/===
+README.md[SG6T]: F:记录README相关交付约定与说明 | R:- | A:- | S:-
+ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
+ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
+capabilities.md[SG6S]: F:记录capabilities相关交付约定与说明 | R:- | A:- | S:-
+capability-expansion-batch.md[SG6M]: F:记录capability expansion batch相关交付约定与说明 | R:- | A:- | S:-
+defense-ppt-backend.md[SG6M]: F:记录defense ppt backend相关交付约定与说明 | R:- | A:- | S:-
+defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说明 | R:- | A:- | S:-
+delivery-audit-rules.md[SG6S]: F:记录delivery audit rules相关交付约定与说明 | R:- | A:- | S:-
+difficulty-tiers.md[SG6S]: F:记录difficulty tiers相关交付约定与说明 | R:- | A:- | S:-
+domain-skin-gap-analysis.md[SG6M]: F:记录domain skin gap analysis相关交付约定与说明 | R:- | A:- | S:-
+domains.md[SG6S]: F:记录domains相关交付约定与说明 | R:- | A:- | S:-
+immersion-corners.md[SG6M]: F:记录immersion corners相关交付约定与说明 | R:- | A:- | S:-
+invariants.md[SG6T]: F:记录invariants相关交付约定与说明 | R:- | A:- | S:-
+opening-feature-delivery-map.md[SG6S]: F:记录opening feature delivery map相关交付约定与说明 | R:- | A:- | S:-
+soft-fail-scan.md[SG6S]: F:记录soft fail scan相关交付约定与说明 | R:- | A:- | S:-
+tech-stack-delivery.md[SG6T]: F:记录tech stack delivery相关交付约定与说明 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/===
+.gitignore[DB5T]: F:仓库文件 .gitignore | R:- | A:- | S:-
+README.md[DB5T]: F:仓库文件 README | R:- | A:- | S:-
+index.html[DB5T]: F:仓库文件 index | R:- | A:- | S:-
+package-lock.json[DC4L]: F:配置数据 package-lock | R:- | A:- | S:-
+package.json[DC4T]: F:配置数据 package | R:- | A:- | S:-
+vite.config.js[FB5T]: F:前端脚本 vite.config | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/.vscode/===
+extensions.json[DC4T]: F:配置数据 extensions | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/public/===
+favicon.svg[DB5T]: F:仓库文件 favicon | R:- | A:- | S:-
+icons.svg[DB5T]: F:仓库文件 icons | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/===
+App.vue[FB5S]: F:Vue 组件 App | R:- | A:- | S:-
+api.js[FB5M]: F:前端脚本 api | R:- | A:- | S:-
+llmPricing.js[FB5T]: F:前端脚本 llmPricing | R:- | A:- | S:-
+main.js[FB5T]: F:前端脚本 main | R:- | A:- | S:-
+opsShared.js[FB5M]: F:前端脚本 opsShared | R:- | A:- | S:-
+router.js[FB5T]: F:前端脚本 router | R:- | A:- | S:-
+softThemeSwatches.js[FB5L]: F:前端脚本 softThemeSwatches | R:- | A:- | S:-
+styles.css[FS5L]: F:样式表 styles | R:- | A:- | S:-
+theme.js[FB5S]: F:前端脚本 theme | R:- | A:- | S:-
+ui.js[FB5S]: F:前端脚本 ui | R:- | A:- | S:-
+uploadMaterials.js[FB5M]: F:前端脚本 uploadMaterials | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/assets/===
+vite.svg[DB5T]: F:仓库文件 vite | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/components/===
+ActivityDiagramViewer.vue[FB5M]: F:前端组件 ActivityDiagramViewer | R:- | A:- | S:-
+ArchitectureDiagramViewer.vue[FB5M]: F:前端组件 ArchitectureDiagramViewer | R:- | A:- | S:-
+ClassDiagramViewer.vue[FB5L]: F:前端组件 ClassDiagramViewer | R:- | A:- | S:-
+ContentLoading.vue[FB5T]: F:前端组件 ContentLoading | R:- | A:- | S:-
+CopyIconButton.vue[FB5S]: F:前端组件 CopyIconButton | R:- | A:- | S:-
+DeliveryReviewPane.vue[FB5L]: F:前端组件 DeliveryReviewPane | R:- | A:- | S:-
+ErDiagramViewer.vue[FB5L]: F:前端组件 ErDiagramViewer | R:- | A:- | S:-
+ModuleDiagramViewer.vue[FB5M]: F:前端组件 ModuleDiagramViewer | R:- | A:- | S:-
+PageSkeleton.vue[FB5T]: F:前端组件 PageSkeleton | R:- | A:- | S:-
+SequenceDiagramViewer.vue[FB5M]: F:前端组件 SequenceDiagramViewer | R:- | A:- | S:-
+TestcaseViewer.vue[FB5M]: F:前端组件 TestcaseViewer | R:- | A:- | S:-
+UsageCharts.vue[FB5S]: F:前端组件 UsageCharts | R:- | A:- | S:-
+UseCaseDescriptionViewer.vue[FB5M]: F:前端组件 UseCaseDescriptionViewer | R:- | A:- | S:-
+UseCaseDiagramViewer.vue[FB5M]: F:前端组件 UseCaseDiagramViewer | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/components/defensePpt/===
+DefensePptArtifactRow.vue[FB5T]: F:前端组件 DefensePptArtifactRow | R:- | A:- | S:-
+DefensePptBadgeSlot.vue[FB5S]: F:前端组件 DefensePptBadgeSlot | R:- | A:- | S:-
+DefensePptCheckModal.vue[FB5T]: F:前端组件 DefensePptCheckModal | R:- | A:- | S:-
+DefensePptComparePane.vue[FB5M]: F:前端组件 DefensePptComparePane | R:- | A:- | S:-
+DefensePptCoverFields.vue[FB5T]: F:前端组件 DefensePptCoverFields | R:- | A:- | S:-
+DefensePptDirtyBanner.vue[FB5T]: F:前端组件 DefensePptDirtyBanner | R:- | A:- | S:-
+DefensePptLaunchPanel.vue[FB5M]: F:前端组件 DefensePptLaunchPanel | R:- | A:- | S:-
+DefensePptSlidePreview.vue[FB5S]: F:前端组件 DefensePptSlidePreview | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/ppt/===
+badgeKnockout.js[FB5T]: F:前端脚本 badgeKnockout | R:- | A:- | S:-
+deckDefaults.js[FB5M]: F:前端脚本 deckDefaults | R:- | A:- | S:-
+pptClient.js[FB5T]: F:前端脚本 pptClient | R:- | A:- | S:-
+styles.css[FS5M]: F:样式表 styles | R:- | A:- | S:-
+types.js[FB5S]: F:前端脚本 types | R:- | A:- | S:-
+useDefensePpt.js[FB5M]: F:前端脚本 useDefensePpt | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/views/===
+ErrorPage.vue[FB6S]: F:工厂前端页面 ErrorPage | R:- | A:- | S:-
+Help.vue[FB6L]: F:工厂前端页面 Help | R:- | A:- | S:-
+Jobs.vue[FB6M]: F:工厂前端页面 Jobs | R:- | A:- | S:-
+Llm.vue[FB6L]: F:工厂前端页面 Llm | R:- | A:- | S:-
+ProjectDetail.vue[FB6S]: F:工厂前端页面 ProjectDetail | R:- | A:- | S:-
+Projects.vue[FB6L]: F:工厂前端页面 Projects | R:- | A:- | S:-
+System.vue[FB6S]: F:工厂前端页面 System | R:- | A:- | S:-
+Unsplash.vue[FB6S]: F:工厂前端页面 Unsplash | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/frontend/src/views/projectDetail/===
+ArtifactsTab.vue[FB6L]: F:工厂前端页面 ArtifactsTab | R:- | A:- | S:-
+DetailModals.vue[FB6M]: F:工厂前端页面 DetailModals | R:- | A:- | S:-
+GenerateTab.vue[FB6M]: F:工厂前端页面 GenerateTab | R:- | A:- | S:-
+LogsTab.vue[FB6T]: F:工厂前端页面 LogsTab | R:- | A:- | S:-
+MatchTab.vue[FB6M]: F:工厂前端页面 MatchTab | R:- | A:- | S:-
+RuntimeTab.vue[FB6S]: F:工厂前端页面 RuntimeTab | R:- | A:- | S:-
+bindPd.js[FB5T]: F:前端脚本 bindPd | R:- | A:- | S:-
+context.js[FB5T]: F:前端脚本 context | R:- | A:- | S:-
+useProjectDetail.js[FB5L]: F:前端脚本 useProjectDetail | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/prototype/===
+README.md[DB5T]: F:仓库文件 README | R:- | A:- | S:-
+app.js[DB5L]: F:仓库文件 app | R:- | A:- | S:-
+index.html[DB5L]: F:仓库文件 index | R:- | A:- | S:-
+styles.css[FS5L]: F:样式表 styles | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/scripts/===
+README.md[DB5T]: F:仓库文件 README | R:- | A:- | S:-
+_backend-procs.ps1[TS5M]: F:运维脚本 _backend-procs | R:- | A:- | S:-
+kill-dup-backend.bat[TS5T]: F:运维脚本 kill-dup-backend | R:- | A:- | S:-
+kill-dup-backend.ps1[TS5T]: F:运维脚本 kill-dup-backend | R:- | A:- | S:-
+launcher.bat[TS5T]: F:运维脚本 launcher | R:- | A:- | S:-
+launcher.ps1[TS5M]: F:运维脚本 launcher | R:- | A:- | S:-
+setup-cn-mirrors.ps1[TS5T]: F:运维脚本 setup-cn-mirrors | R:- | A:- | S:-
+start-backend.bat[TS5T]: F:运维脚本 start-backend | R:- | A:- | S:-
+start-backend.ps1[TS5T]: F:运维脚本 start-backend | R:- | A:- | S:-
+start-frontend.bat[TS5T]: F:运维脚本 start-frontend | R:- | A:- | S:-
+stop-backend.bat[TS5T]: F:运维脚本 stop-backend | R:- | A:- | S:-
+stop-frontend.bat[TS5T]: F:运维脚本 stop-frontend | R:- | A:- | S:-
+stop-frontend.ps1[TS5T]: F:运维脚本 stop-frontend | R:- | A:- | S:-
+verify-bats.bat[TS5T]: F:运维脚本 verify-bats | R:- | A:- | S:-
+verify-bats.ps1[TS5T]: F:运维脚本 verify-bats | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/===
+README.md[DB5M]: F:仓库文件 README | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/===
+pom.xml[DC5T]: F:声明学生端 Maven 依赖 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/===
+ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/capability/===
+AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveStore.java[DB6L]: F:实现能力岛 ArchiveStore 的数据访问与业务操作 | R:- | A:- | S:-
+AuditLogStore.java[DB6S]: F:实现能力岛 AuditLogStore 的数据访问与业务操作 | R:- | A:- | S:-
+BookSuggestStore.java[DB6M]: F:实现能力岛 BookSuggestStore 的数据访问与业务操作 | R:- | A:- | S:-
+BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
+CouponStore.java[DB6M]: F:实现能力岛 CouponStore 的数据访问与业务操作 | R:- | A:- | S:-
+EquipmentDictStore.java[DB6S]: F:实现能力岛 EquipmentDictStore 的数据访问与业务操作 | R:- | A:- | S:-
+FavoriteStore.java[DB6M]: F:实现能力岛 FavoriteStore 的数据访问与业务操作 | R:- | A:- | S:-
+LoyaltyStore.java[DB6M]: F:实现能力岛 LoyaltyStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderReviewStore.java[DB6M]: F:实现能力岛 OrderReviewStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderStore.java[DB6L]: F:实现能力岛 OrderStore 的数据访问与业务操作 | R:- | A:- | S:-
+RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
+SlotStore.java[DB6L]: F:实现能力岛 SlotStore 的数据访问与业务操作 | R:- | A:- | S:-
+StaffRosterStore.java[DB6M]: F:实现能力岛 StaffRosterStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketAsserts.java[DB6S]: F:实现能力岛 TicketAsserts 的数据访问与业务操作 | R:- | A:- | S:-
+TicketCopy.java[DB6S]: F:实现能力岛 TicketCopy 的数据访问与业务操作 | R:- | A:- | S:-
+TicketLookupStore.java[DB6M]: F:实现能力岛 TicketLookupStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketProgressOps.java[DB6S]: F:实现能力岛 TicketProgressOps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketRowMaps.java[DB6S]: F:实现能力岛 TicketRowMaps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketSql.java[DB6S]: F:实现能力岛 TicketSql 的数据访问与业务操作 | R:- | A:- | S:-
+TicketStatusOps.java[DB6S]: F:实现能力岛 TicketStatusOps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketStore.java[DB6L]: F:实现能力岛 TicketStore 的数据访问与业务操作 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/common/===
+AdminAuth.java[DB5T]: F:提供学生端公共工具 AdminAuth | R:- | A:- | S:-
+BizException.java[DB5T]: F:提供学生端公共工具 BizException | R:- | A:- | S:-
+ErrorCode.java[DB5T]: F:提供学生端公共工具 ErrorCode | R:- | A:- | S:-
+GlobalExceptionHandler.java[DB5T]: F:提供学生端公共工具 GlobalExceptionHandler | R:- | A:- | S:-
+GuestTeaser.java[DB5T]: F:提供学生端公共工具 GuestTeaser | R:- | A:- | S:-
+PasswordHashes.java[DB5S]: F:提供学生端公共工具 PasswordHashes | R:- | A:- | S:-
+R.java[DB5T]: F:提供学生端公共工具 R | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/config/===
+DemoScheduleJobs.java[EB6T]: F:配置学生端运行时 DemoScheduleJobs | R:- | A:- | S:-
+DomainResourceJson.java[EB6T]: F:配置学生端运行时 DomainResourceJson | R:- | A:- | S:-
+DomainRuntimeBinder.java[EB6M]: F:配置学生端运行时 DomainRuntimeBinder | R:- | A:- | S:-
+JdbcSupport.java[EB6T]: F:配置学生端运行时 JdbcSupport | R:- | A:- | S:-
+SeedCalendarAligner.java[EB6S]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
+UploadInlineFilter.java[EB6T]: F:配置学生端运行时 UploadInlineFilter | R:- | A:- | S:-
+UploadStorage.java[EB6T]: F:配置学生端运行时 UploadStorage | R:- | A:- | S:-
+WebConfig.java[EB6T]: F:配置学生端运行时 WebConfig | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/controller/===
+AdminArchiveLogController.java[EB6T]: F:提供学生端 AdminArchiveLog HTTP 接口 | R:- | A:/api | S:-
+AiAssistantController.java[EB6S]: F:提供学生端 AiAssistant HTTP 接口 | R:- | A:/api | S:-
+ArchiveController.java[EB6M]: F:提供学生端 Archive HTTP 接口 | R:- | A:/api | S:-
+ArchiveLogController.java[EB6T]: F:提供学生端 ArchiveLog HTTP 接口 | R:- | A:/api | S:-
+AuditLogController.java[EB6T]: F:提供学生端 AuditLog HTTP 接口 | R:- | A:/api | S:-
+AuthController.java[EB6M]: F:提供学生端 Auth HTTP 接口 | R:- | A:/api | S:-
+BalanceLedgerController.java[EB6T]: F:提供学生端 BalanceLedger HTTP 接口 | R:- | A:/api | S:-
+BookSuggestController.java[EB6S]: F:提供学生端 BookSuggest HTTP 接口 | R:- | A:/api | S:-
+BrowseHistoryController.java[EB6T]: F:提供学生端 BrowseHistory HTTP 接口 | R:- | A:/api | S:-
+CategoryController.java[EB6T]: F:提供学生端 Category HTTP 接口 | R:- | A:/api | S:-
+ClaimProofController.java[EB6T]: F:提供学生端 ClaimProof HTTP 接口 | R:- | A:/api | S:-
+CommonController.java[EB6T]: F:提供学生端 Common HTTP 接口 | R:- | A:/api | S:-
+CouponController.java[EB6S]: F:提供学生端 Coupon HTTP 接口 | R:- | A:/api | S:-
+DmController.java[EB6S]: F:提供学生端 Dm HTTP 接口 | R:- | A:/api | S:-
+DoclibController.java[EB6S]: F:提供学生端 Doclib HTTP 接口 | R:- | A:/api | S:-
+ESignController.java[EB6T]: F:提供学生端 ESign HTTP 接口 | R:- | A:/api | S:-
+EquipmentDictController.java[EB6S]: F:提供学生端 EquipmentDict HTTP 接口 | R:- | A:/api | S:-
+ExamController.java[EB6M]: F:提供学生端 Exam HTTP 接口 | R:- | A:/api | S:-
+FavoriteController.java[EB6S]: F:提供学生端 Favorite HTTP 接口 | R:- | A:/api | S:-
+GateController.java[EB6T]: F:提供学生端 Gate HTTP 接口 | R:- | A:/api | S:-
+GradeScoreController.java[EB6S]: F:提供学生端 GradeScore HTTP 接口 | R:- | A:/api | S:-
+GuestbookController.java[EB6S]: F:提供学生端 Guestbook HTTP 接口 | R:- | A:/api | S:-
+ItemCommentController.java[EB6S]: F:提供学生端 ItemComment HTTP 接口 | R:- | A:/api | S:-
+LookupAdminController.java[EB6S]: F:提供学生端 LookupAdmin HTTP 接口 | R:- | A:/api | S:-
+LookupController.java[EB6T]: F:提供学生端 Lookup HTTP 接口 | R:- | A:/api | S:-
+LostMessageController.java[EB6T]: F:提供学生端 LostMessage HTTP 接口 | R:- | A:/api | S:-
+LoyaltyController.java[EB6S]: F:提供学生端 Loyalty HTTP 接口 | R:- | A:/api | S:-
+MaterialCheckController.java[EB6T]: F:提供学生端 MaterialCheck HTTP 接口 | R:- | A:/api | S:-
+MessageController.java[EB6T]: F:提供学生端 Message HTTP 接口 | R:- | A:/api | S:-
+MessageTemplateController.java[EB6T]: F:提供学生端 MessageTemplate HTTP 接口 | R:- | A:/api | S:-
+NoticeController.java[EB6S]: F:提供学生端 Notice HTTP 接口 | R:- | A:/api | S:-
+OccupySpanController.java[EB6T]: F:提供学生端 OccupySpan HTTP 接口 | R:- | A:/api | S:-
+OrderController.java[EB6M]: F:提供学生端 Order HTTP 接口 | R:- | A:/api | S:-
+OrderReviewController.java[EB6S]: F:提供学生端 OrderReview HTTP 接口 | R:- | A:/api | S:-
+ProfileController.java[EB6S]: F:提供学生端 Profile HTTP 接口 | R:- | A:/api | S:-
+RecommendController.java[EB6T]: F:提供学生端 Recommend HTTP 接口 | R:- | A:/api | S:-
+SeatController.java[EB6T]: F:提供学生端 Seat HTTP 接口 | R:- | A:/api | S:-
+SlotController.java[EB6S]: F:提供学生端 Slot HTTP 接口 | R:- | A:/api | S:-
+StaffRosterController.java[EB6S]: F:提供学生端 StaffRoster HTTP 接口 | R:- | A:/api | S:-
+StockIoController.java[EB6T]: F:提供学生端 StockIo HTTP 接口 | R:- | A:/api | S:-
+SurveyController.java[EB6S]: F:提供学生端 Survey HTTP 接口 | R:- | A:/api | S:-
+TagController.java[EB6T]: F:提供学生端 Tag HTTP 接口 | R:- | A:/api | S:-
+TicketController.java[EB6M]: F:提供学生端 Ticket HTTP 接口 | R:- | A:/api | S:-
+TicketDashboardController.java[EB6S]: F:提供学生端 TicketDashboard HTTP 接口 | R:- | A:/api | S:-
+TimebankController.java[EB6S]: F:提供学生端 Timebank HTTP 接口 | R:- | A:/api | S:-
+UsersAdminController.java[EB6S]: F:提供学生端 UsersAdmin HTTP 接口 | R:- | A:/api | S:-
+VoteController.java[EB6S]: F:提供学生端 Vote HTTP 接口 | R:- | A:/api | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/service/===
+AiAssistantStore.java[DB6M]: F:实现学生端 AiAssistantStore 服务逻辑 | R:- | A:- | S:-
+AiBizContext.java[DB6M]: F:实现学生端 AiBizContext 服务逻辑 | R:- | A:- | S:-
+BalanceLedgerStore.java[DB6M]: F:实现学生端 BalanceLedgerStore 服务逻辑 | R:- | A:- | S:-
+ClaimProofStore.java[DB6S]: F:实现学生端 ClaimProofStore 服务逻辑 | R:- | A:- | S:-
+DeepSeekClient.java[DB6S]: F:实现学生端 DeepSeekClient 服务逻辑 | R:- | A:- | S:-
+DmStore.java[DB6M]: F:实现学生端 DmStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB6M]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
+ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
+GradeScoreStore.java[DB6S]: F:实现学生端 GradeScoreStore 服务逻辑 | R:- | A:- | S:-
+GuestbookStore.java[DB6M]: F:实现学生端 GuestbookStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+LostMessageStore.java[DB6S]: F:实现学生端 LostMessageStore 服务逻辑 | R:- | A:- | S:-
+MaterialCheckStore.java[DB6S]: F:实现学生端 MaterialCheckStore 服务逻辑 | R:- | A:- | S:-
+MessageStore.java[DB6M]: F:实现学生端 MessageStore 服务逻辑 | R:- | A:- | S:-
+NoticeStore.java[DB6M]: F:实现学生端 NoticeStore 服务逻辑 | R:- | A:- | S:-
+OccupySpanStore.java[DB6S]: F:实现学生端 OccupySpanStore 服务逻辑 | R:- | A:- | S:-
+ProfileFields.java[DB6S]: F:实现学生端 ProfileFields 服务逻辑 | R:- | A:- | S:-
+SeatStore.java[DB6M]: F:实现学生端 SeatStore 服务逻辑 | R:- | A:- | S:-
+StockIoStore.java[DB6M]: F:实现学生端 StockIoStore 服务逻辑 | R:- | A:- | S:-
+SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
+TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
+UserStore.java[DB6L]: F:实现学生端 UserStore 服务逻辑 | R:- | A:- | S:-
+VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/resources/===
+application.yml[EC5T]: F:运行配置 application | R:- | A:- | S:-
+domain-archive-columns.json[DC5T]: F:域资源配置 domain-archive-columns | R:- | A:- | S:-
+domain-profile-fields.json[DC5T]: F:域资源配置 domain-profile-fields | R:- | A:- | S:-
+domain-ticket-columns.json[DC5T]: F:域资源配置 domain-ticket-columns | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/===
+index.html[DB5T]: F:仓库文件 index | R:- | A:- | S:-
+package-lock.json[DC4L]: F:配置数据 package-lock | R:- | A:- | S:-
+package.json[DC4T]: F:配置数据 package | R:- | A:- | S:-
+vite.config.js[FB5T]: F:前端脚本 vite.config | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/===
+App.vue[FB5T]: F:Vue 组件 App | R:- | A:- | S:-
+appDelivered.js[FB5T]: F:前端脚本 appDelivered | R:- | A:- | S:-
+main.js[FB5T]: F:前端脚本 main | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/api/===
+http.js[FB5T]: F:前端脚本 http | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/components/===
+AiAssistantFloat.vue[FB5M]: F:前端组件 AiAssistantFloat | R:- | A:- | S:-
+ArchiveFieldControl.vue[FB5S]: F:前端组件 ArchiveFieldControl | R:- | A:- | S:-
+AuthShell.vue[FB5L]: F:前端组件 AuthShell | R:- | A:- | S:-
+CartBadge.vue[FB5T]: F:前端组件 CartBadge | R:- | A:- | S:-
+ClaimProofFields.vue[FB5T]: F:前端组件 ClaimProofFields | R:- | A:- | S:-
+CodeQrBlock.vue[FB5S]: F:前端组件 CodeQrBlock | R:- | A:- | S:-
+DashboardCharts.vue[FB5M]: F:前端组件 DashboardCharts | R:- | A:- | S:-
+EmptyHint.vue[FB5T]: F:前端组件 EmptyHint | R:- | A:- | S:-
+EntityDetailLayout.vue[FB5M]: F:前端组件 EntityDetailLayout | R:- | A:- | S:-
+GuestLoginHint.vue[FB5T]: F:前端组件 GuestLoginHint | R:- | A:- | S:-
+ImmSteps.vue[FB5T]: F:前端组件 ImmSteps | R:- | A:- | S:-
+MaterialChecklistFields.vue[FB5T]: F:前端组件 MaterialChecklistFields | R:- | A:- | S:-
+MessageBell.vue[FB5S]: F:前端组件 MessageBell | R:- | A:- | S:-
+OrderTraceDialog.vue[FB5T]: F:前端组件 OrderTraceDialog | R:- | A:- | S:-
+PageSkeleton.vue[FB5S]: F:前端组件 PageSkeleton | R:- | A:- | S:-
+PortalCarousel.vue[FB5M]: F:前端组件 PortalCarousel | R:- | A:- | S:-
+ProfileFieldInputs.vue[FB5S]: F:前端组件 ProfileFieldInputs | R:- | A:- | S:-
+RecommendStrip.vue[FB5M]: F:前端组件 RecommendStrip | R:- | A:- | S:-
+RichTextEditor.vue[FB5S]: F:前端组件 RichTextEditor | R:- | A:- | S:-
+RichTextView.vue[FB5T]: F:前端组件 RichTextView | R:- | A:- | S:-
+SpecialMotif.vue[FB5S]: F:前端组件 SpecialMotif | R:- | A:- | S:-
+StatusChip.vue[FB5T]: F:前端组件 StatusChip | R:- | A:- | S:-
+TicketProgressDialog.vue[FB5S]: F:前端组件 TicketProgressDialog | R:- | A:- | S:-
+TicketRateDialog.vue[FB5S]: F:前端组件 TicketRateDialog | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/layouts/===
+AdminLayout.vue[FB5S]: F:布局壳 AdminLayout | R:- | A:- | S:-
+PortalLayout.vue[FB5M]: F:布局壳 PortalLayout | R:- | A:- | S:-
+WorkLayout.vue[FB5T]: F:布局壳 WorkLayout | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/router/===
+index.js[FB5L]: F:前端脚本 index | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/styles/===
+chrome.css[FS5M]: F:样式表 chrome | R:- | A:- | S:-
+immersion.css[FS5S]: F:样式表 immersion | R:- | A:- | S:-
+layout.css[FS5M]: F:样式表 layout | R:- | A:- | S:-
+themes.css[FS5M]: F:样式表 themes | R:- | A:- | S:-
+thesis-display.css[FS5S]: F:样式表 thesis-display | R:- | A:- | S:-
+type.css[FS5T]: F:样式表 type | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/styles/themes/===
+acad.css[FS4T]: F:域主题样式 acad | R:- | A:- | S:-
+act.css[FS4T]: F:域主题样式 act | R:- | A:- | S:-
+asset.css[FS4T]: F:域主题样式 asset | R:- | A:- | S:-
+attend.css[FS4T]: F:域主题样式 attend | R:- | A:- | S:-
+award.css[FS4T]: F:域主题样式 award | R:- | A:- | S:-
+bed.css[FS4T]: F:域主题样式 bed | R:- | A:- | S:-
+blog.css[FS4T]: F:域主题样式 blog | R:- | A:- | S:-
+carpass.css[FS4T]: F:域主题样式 carpass | R:- | A:- | S:-
+carpool.css[FS4T]: F:域主题样式 carpool | R:- | A:- | S:-
+carrent.css[FS4T]: F:域主题样式 carrent | R:- | A:- | S:-
+cert.css[FS4T]: F:域主题样式 cert | R:- | A:- | S:-
+checkin.css[FS4T]: F:域主题样式 checkin | R:- | A:- | S:-
+cinema.css[FS4T]: F:域主题样式 cinema | R:- | A:- | S:-
+club.css[FS4T]: F:域主题样式 club | R:- | A:- | S:-
+contract.css[FS4T]: F:域主题样式 contract | R:- | A:- | S:-
+course.css[FS4T]: F:域主题样式 course | R:- | A:- | S:-
+credit.css[FS4T]: F:域主题样式 credit | R:- | A:- | S:-
+crm.css[FS4T]: F:域主题样式 crm | R:- | A:- | S:-
+dating.css[FS4T]: F:域主题样式 dating | R:- | A:- | S:-
+doclib.css[FS4T]: F:域主题样式 doclib | R:- | A:- | S:-
+dorm.css[FS4S]: F:域主题样式 dorm | R:- | A:- | S:-
+equip.css[FS4T]: F:域主题样式 equip | R:- | A:- | S:-
+ethic.css[FS4T]: F:域主题样式 ethic | R:- | A:- | S:-
+eval.css[FS4T]: F:域主题样式 eval | R:- | A:- | S:-
+event.css[FS4T]: F:域主题样式 event | R:- | A:- | S:-
+exam.css[FS4T]: F:域主题样式 exam | R:- | A:- | S:-
+expense.css[FS4T]: F:域主题样式 expense | R:- | A:- | S:-
+fitout.css[FS4T]: F:域主题样式 fitout | R:- | A:- | S:-
+fleet.css[FS4T]: F:域主题样式 fleet | R:- | A:- | S:-
+food.css[FS4S]: F:域主题样式 food | R:- | A:- | S:-
+forum.css[FS4T]: F:域主题样式 forum | R:- | A:- | S:-
+fund.css[FS4T]: F:域主题样式 fund | R:- | A:- | S:-
+gen.css[FS4T]: F:域主题样式 gen | R:- | A:- | S:-
+grade.css[FS4T]: F:域主题样式 grade | R:- | A:- | S:-
+hosp.css[FS4S]: F:域主题样式 hosp | R:- | A:- | S:-
+hotel.css[FS4T]: F:域主题样式 hotel | R:- | A:- | S:-
+instrument.css[FS4T]: F:域主题样式 instrument | R:- | A:- | S:-
+intern.css[FS4T]: F:域主题样式 intern | R:- | A:- | S:-
+it.css[FS4T]: F:域主题样式 it | R:- | A:- | S:-
+labor.css[FS4T]: F:域主题样式 labor | R:- | A:- | S:-
+labsafe.css[FS4T]: F:域主题样式 labsafe | R:- | A:- | S:-
+listing.css[FS4T]: F:域主题样式 listing | R:- | A:- | S:-
+lost.css[FS4T]: F:域主题样式 lost | R:- | A:- | S:-
+media.css[FS4T]: F:域主题样式 media | R:- | A:- | S:-
+meet.css[FS4T]: F:域主题样式 meet | R:- | A:- | S:-
+moral.css[FS4T]: F:域主题样式 moral | R:- | A:- | S:-
+music.css[FS4T]: F:域主题样式 music | R:- | A:- | S:-
+parcel.css[FS4T]: F:域主题样式 parcel | R:- | A:- | S:-
+park.css[FS4S]: F:域主题样式 park | R:- | A:- | S:-
+party.css[FS4T]: F:域主题样式 party | R:- | A:- | S:-
+procure.css[FS4T]: F:域主题样式 procure | R:- | A:- | S:-
+proj.css[FS4T]: F:域主题样式 proj | R:- | A:- | S:-
+promo.css[FS4T]: F:域主题样式 promo | R:- | A:- | S:-
+prop.css[FS4T]: F:域主题样式 prop | R:- | A:- | S:-
+recruit.css[FS4T]: F:域主题样式 recruit | R:- | A:- | S:-
+salon.css[FS4T]: F:域主题样式 salon | R:- | A:- | S:-
+seal.css[FS4T]: F:域主题样式 seal | R:- | A:- | S:-
+shop.css[FS4S]: F:域主题样式 shop | R:- | A:- | S:-
+survey.css[FS4T]: F:域主题样式 survey | R:- | A:- | S:-
+team.css[FS4T]: F:域主题样式 team | R:- | A:- | S:-
+timebank.css[FS4T]: F:域主题样式 timebank | R:- | A:- | S:-
+topic.css[FS4T]: F:域主题样式 topic | R:- | A:- | S:-
+tour.css[FS4T]: F:域主题样式 tour | R:- | A:- | S:-
+trip.css[FS4T]: F:域主题样式 trip | R:- | A:- | S:-
+tutor.css[FS4T]: F:域主题样式 tutor | R:- | A:- | S:-
+visitor.css[FS4T]: F:域主题样式 visitor | R:- | A:- | S:-
+vote.css[FS4T]: F:域主题样式 vote | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/utils/===
+addressTags.js[FB5T]: F:前端脚本 addressTags | R:- | A:- | S:-
+apiCalls.js[FB5T]: F:前端脚本 apiCalls | R:- | A:- | S:-
+archiveFieldWidget.js[FB5T]: F:前端脚本 archiveFieldWidget | R:- | A:- | S:-
+authEntry.js[FB5S]: F:前端脚本 authEntry | R:- | A:- | S:-
+authTemplates.js[FB5T]: F:前端脚本 authTemplates | R:- | A:- | S:-
+codeQr.js[FB5T]: F:前端脚本 codeQr | R:- | A:- | S:-
+csvDownload.js[FB5T]: F:前端脚本 csvDownload | R:- | A:- | S:-
+dateTimeField.js[FB5T]: F:前端脚本 dateTimeField | R:- | A:- | S:-
+dates.js[FB5T]: F:前端脚本 dates | R:- | A:- | S:-
+domainFlavor.js[FB5M]: F:前端脚本 domainFlavor | R:- | A:- | S:-
+domainSchema.js[FB5M]: F:前端脚本 domainSchema | R:- | A:- | S:-
+equipmentMark.js[FB5T]: F:前端脚本 equipmentMark | R:- | A:- | S:-
+menuRoutes.js[FB5S]: F:前端脚本 menuRoutes | R:- | A:- | S:-
+messages.js[FB5T]: F:前端脚本 messages | R:- | A:- | S:-
+navOverflow.js[FB5T]: F:前端脚本 navOverflow | R:- | A:- | S:-
+profileRoomMatch.js[FB5S]: F:前端脚本 profileRoomMatch | R:- | A:- | S:-
+profileValidate.js[FB5T]: F:前端脚本 profileValidate | R:- | A:- | S:-
+richHtml.js[FB5T]: F:前端脚本 richHtml | R:- | A:- | S:-
+session.js[FB5M]: F:前端脚本 session | R:- | A:- | S:-
+staffPosts.js[FB5S]: F:前端脚本 staffPosts | R:- | A:- | S:-
+statusTone.js[FB5S]: F:前端脚本 statusTone | R:- | A:- | S:-
+themeScheme.js[FB5T]: F:前端脚本 themeScheme | R:- | A:- | S:-
+useCountdown.js[FB5T]: F:前端脚本 useCountdown | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/===
+AiAssistant.vue[FB6S]: F:工厂前端页面 AiAssistant | R:- | A:- | S:-
+BalanceLedgerMine.vue[FB6T]: F:工厂前端页面 BalanceLedgerMine | R:- | A:- | S:-
+BalanceMine.vue[FB6T]: F:工厂前端页面 BalanceMine | R:- | A:- | S:-
+DocBrowse.vue[FB6T]: F:工厂前端页面 DocBrowse | R:- | A:- | S:-
+DocMine.vue[FB6T]: F:工厂前端页面 DocMine | R:- | A:- | S:-
+ESignMine.vue[FB6S]: F:工厂前端页面 ESignMine | R:- | A:- | S:-
+ExamAttempts.vue[FB6T]: F:工厂前端页面 ExamAttempts | R:- | A:- | S:-
+ExamPapers.vue[FB6T]: F:工厂前端页面 ExamPapers | R:- | A:- | S:-
+ExamPractice.vue[FB6T]: F:工厂前端页面 ExamPractice | R:- | A:- | S:-
+ExamRank.vue[FB6T]: F:工厂前端页面 ExamRank | R:- | A:- | S:-
+ExamTake.vue[FB6M]: F:工厂前端页面 ExamTake | R:- | A:- | S:-
+ExamWrongbook.vue[FB6T]: F:工厂前端页面 ExamWrongbook | R:- | A:- | S:-
+GradeScoresMine.vue[FB6T]: F:工厂前端页面 GradeScoresMine | R:- | A:- | S:-
+Guestbook.vue[FB6M]: F:工厂前端页面 Guestbook | R:- | A:- | S:-
+Home.vue[FB6S]: F:工厂前端页面 Home | R:- | A:- | S:-
+Login.vue[FB6M]: F:工厂前端页面 Login | R:- | A:- | S:-
+NoticeDetail.vue[FB6S]: F:工厂前端页面 NoticeDetail | R:- | A:- | S:-
+Notices.vue[FB6S]: F:工厂前端页面 Notices | R:- | A:- | S:-
+OccupyMine.vue[FB6T]: F:工厂前端页面 OccupyMine | R:- | A:- | S:-
+Profile.vue[FB6L]: F:工厂前端页面 Profile | R:- | A:- | S:-
+Register.vue[FB6M]: F:工厂前端页面 Register | R:- | A:- | S:-
+SeatMap.vue[FB6S]: F:工厂前端页面 SeatMap | R:- | A:- | S:-
+SeatShows.vue[FB6T]: F:工厂前端页面 SeatShows | R:- | A:- | S:-
+SurveyFill.vue[FB6S]: F:工厂前端页面 SurveyFill | R:- | A:- | S:-
+SurveyForms.vue[FB6T]: F:工厂前端页面 SurveyForms | R:- | A:- | S:-
+SurveyMine.vue[FB6T]: F:工厂前端页面 SurveyMine | R:- | A:- | S:-
+TimebankAccount.vue[FB6S]: F:工厂前端页面 TimebankAccount | R:- | A:- | S:-
+TimebankLedger.vue[FB6T]: F:工厂前端页面 TimebankLedger | R:- | A:- | S:-
+VoteCampaigns.vue[FB6T]: F:工厂前端页面 VoteCampaigns | R:- | A:- | S:-
+VoteCast.vue[FB6S]: F:工厂前端页面 VoteCast | R:- | A:- | S:-
+VoteMine.vue[FB6T]: F:工厂前端页面 VoteMine | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/admin/===
+AiKnowledgeAdmin.vue[FB6S]: F:管理端页面 AiKnowledgeAdmin | R:- | A:- | S:-
+ArchiveAdmin.vue[FB6L]: F:管理端页面 ArchiveAdmin | R:- | A:- | S:-
+ArchiveLogsAdmin.vue[FB6S]: F:管理端页面 ArchiveLogsAdmin | R:- | A:- | S:-
+AuditLogsAdmin.vue[FB6S]: F:管理端页面 AuditLogsAdmin | R:- | A:- | S:-
+BalanceAccountsAdmin.vue[FB6T]: F:管理端页面 BalanceAccountsAdmin | R:- | A:- | S:-
+BalanceLedgerAdmin.vue[FB6T]: F:管理端页面 BalanceLedgerAdmin | R:- | A:- | S:-
+BookSuggestAdmin.vue[FB6S]: F:管理端页面 BookSuggestAdmin | R:- | A:- | S:-
+CategoriesAdmin.vue[FB6S]: F:管理端页面 CategoriesAdmin | R:- | A:- | S:-
+ContentReportsAdmin.vue[FB6S]: F:管理端页面 ContentReportsAdmin | R:- | A:- | S:-
+CouponsAdmin.vue[FB6S]: F:管理端页面 CouponsAdmin | R:- | A:- | S:-
+DocFilesAdmin.vue[FB6T]: F:管理端页面 DocFilesAdmin | R:- | A:- | S:-
+DocLogsAdmin.vue[FB6T]: F:管理端页面 DocLogsAdmin | R:- | A:- | S:-
+ESignAdmin.vue[FB6T]: F:管理端页面 ESignAdmin | R:- | A:- | S:-
+EquipmentDictAdmin.vue[FB6S]: F:管理端页面 EquipmentDictAdmin | R:- | A:- | S:-
+ExamMarkAdmin.vue[FB6S]: F:管理端页面 ExamMarkAdmin | R:- | A:- | S:-
+ExamPapersAdmin.vue[FB6S]: F:管理端页面 ExamPapersAdmin | R:- | A:- | S:-
+ExamQuestionsAdmin.vue[FB6S]: F:管理端页面 ExamQuestionsAdmin | R:- | A:- | S:-
+GradeScoresAdmin.vue[FB6S]: F:管理端页面 GradeScoresAdmin | R:- | A:- | S:-
+GuestbookAdmin.vue[FB6S]: F:管理端页面 GuestbookAdmin | R:- | A:- | S:-
+ItemCommentAdmin.vue[FB6S]: F:管理端页面 ItemCommentAdmin | R:- | A:- | S:-
+LookupSitesAdmin.vue[FB6S]: F:管理端页面 LookupSitesAdmin | R:- | A:- | S:-
+LookupTypesAdmin.vue[FB6S]: F:管理端页面 LookupTypesAdmin | R:- | A:- | S:-
+LostCluesAdmin.vue[FB6T]: F:管理端页面 LostCluesAdmin | R:- | A:- | S:-
+MaterialChecklistAdmin.vue[FB6T]: F:管理端页面 MaterialChecklistAdmin | R:- | A:- | S:-
+MessageTemplatesAdmin.vue[FB6S]: F:管理端页面 MessageTemplatesAdmin | R:- | A:- | S:-
+NoticesAdmin.vue[FB6M]: F:管理端页面 NoticesAdmin | R:- | A:- | S:-
+OccupyAdmin.vue[FB6T]: F:管理端页面 OccupyAdmin | R:- | A:- | S:-
+OrderReviewsAdmin.vue[FB6S]: F:管理端页面 OrderReviewsAdmin | R:- | A:- | S:-
+OrdersAdmin.vue[FB6M]: F:管理端页面 OrdersAdmin | R:- | A:- | S:-
+OverdueAdmin.vue[FB6S]: F:管理端页面 OverdueAdmin | R:- | A:- | S:-
+ReservationsAdmin.vue[FB6M]: F:管理端页面 ReservationsAdmin | R:- | A:- | S:-
+StaffRosterAdmin.vue[FB6M]: F:管理端页面 StaffRosterAdmin | R:- | A:- | S:-
+StockLedgerAdmin.vue[FB6T]: F:管理端页面 StockLedgerAdmin | R:- | A:- | S:-
+StockMovesAdmin.vue[FB6S]: F:管理端页面 StockMovesAdmin | R:- | A:- | S:-
+SurveyFormsAdmin.vue[FB6S]: F:管理端页面 SurveyFormsAdmin | R:- | A:- | S:-
+SurveyStatsAdmin.vue[FB6S]: F:管理端页面 SurveyStatsAdmin | R:- | A:- | S:-
+TicketDashboard.vue[FB6M]: F:管理端页面 TicketDashboard | R:- | A:- | S:-
+TicketRecordsAdmin.vue[FB6M]: F:管理端页面 TicketRecordsAdmin | R:- | A:- | S:-
+TicketsAdmin.vue[FB6M]: F:管理端页面 TicketsAdmin | R:- | A:- | S:-
+TimebankAccountsAdmin.vue[FB6T]: F:管理端页面 TimebankAccountsAdmin | R:- | A:- | S:-
+TimebankLedgerAdmin.vue[FB6T]: F:管理端页面 TimebankLedgerAdmin | R:- | A:- | S:-
+UsersAdmin.vue[FB6M]: F:管理端页面 UsersAdmin | R:- | A:- | S:-
+VoteCandidatesAdmin.vue[FB6S]: F:管理端页面 VoteCandidatesAdmin | R:- | A:- | S:-
+VoteResultsAdmin.vue[FB6T]: F:管理端页面 VoteResultsAdmin | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/special/===
+SpecialPage.vue[FB6M]: F:工厂前端页面 SpecialPage | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/staff/===
+StaffOrders.vue[FB6T]: F:门户页面 StaffOrders | R:- | A:- | S:-
+StaffSlots.vue[FB6T]: F:门户页面 StaffSlots | R:- | A:- | S:-
+StaffTickets.vue[FB6T]: F:门户页面 StaffTickets | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/user/===
+Addresses.vue[FB6S]: F:门户页面 Addresses | R:- | A:- | S:-
+ArchiveBrowse.vue[FB6L]: F:门户页面 ArchiveBrowse | R:- | A:- | S:-
+BookSuggest.vue[FB6S]: F:门户页面 BookSuggest | R:- | A:- | S:-
+BrowseHistory.vue[FB6S]: F:门户页面 BrowseHistory | R:- | A:- | S:-
+Cart.vue[FB6M]: F:门户页面 Cart | R:- | A:- | S:-
+Dm.vue[FB6M]: F:门户页面 Dm | R:- | A:- | S:-
+Messages.vue[FB6S]: F:门户页面 Messages | R:- | A:- | S:-
+MyArchive.vue[FB6S]: F:门户页面 MyArchive | R:- | A:- | S:-
+MyCoupons.vue[FB6S]: F:门户页面 MyCoupons | R:- | A:- | S:-
+MyFavorites.vue[FB6S]: F:门户页面 MyFavorites | R:- | A:- | S:-
+MyOrderReviews.vue[FB6S]: F:门户页面 MyOrderReviews | R:- | A:- | S:-
+MyOrders.vue[FB6M]: F:门户页面 MyOrders | R:- | A:- | S:-
+MyReservations.vue[FB6M]: F:门户页面 MyReservations | R:- | A:- | S:-
+MyTickets.vue[FB6L]: F:门户页面 MyTickets | R:- | A:- | S:-
+PeerTickets.vue[FB6S]: F:门户页面 PeerTickets | R:- | A:- | S:-
+PortalHome.vue[FB6L]: F:门户页面 PortalHome | R:- | A:- | S:-
+SlotBook.vue[FB6M]: F:门户页面 SlotBook | R:- | A:- | S:-
+WeekCalendar.vue[FB6M]: F:门户页面 WeekCalendar | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/baseline/sql/===
+schema.sql[DB5T]: F:仓库文件 schema | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/addon-spring-security/backend/src/main/java/com/thesis/config/===
+SecurityConfig.java[EB6S]: F:配置学生端运行时 SecurityConfig | R:- | A:- | S:-
+SessionAuthFilter.java[EB6T]: F:配置学生端运行时 SessionAuthFilter | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/===
+pom.xml[DC5T]: F:声明学生端 Maven 依赖 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/===
+ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/===
+AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveStore.java[DB6L]: F:实现能力岛 ArchiveStore 的数据访问与业务操作 | R:- | A:- | S:-
+BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
+CouponStore.java[DB6M]: F:实现能力岛 CouponStore 的数据访问与业务操作 | R:- | A:- | S:-
+FavoriteStore.java[DB6M]: F:实现能力岛 FavoriteStore 的数据访问与业务操作 | R:- | A:- | S:-
+LoyaltyStore.java[DB6M]: F:实现能力岛 LoyaltyStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderReviewStore.java[DB6M]: F:实现能力岛 OrderReviewStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderStore.java[DB6L]: F:实现能力岛 OrderStore 的数据访问与业务操作 | R:- | A:- | S:-
+RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
+SlotStore.java[DB6L]: F:实现能力岛 SlotStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketLookupStore.java[DB6M]: F:实现能力岛 TicketLookupStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketSql.java[DB6S]: F:实现能力岛 TicketSql 的数据访问与业务操作 | R:- | A:- | S:-
+TicketStore.java[DB6L]: F:实现能力岛 TicketStore 的数据访问与业务操作 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/===
+DemoScheduleJobs.java[EB6T]: F:配置学生端运行时 DemoScheduleJobs | R:- | A:- | S:-
+DomainRuntimeBinder.java[EB6M]: F:配置学生端运行时 DomainRuntimeBinder | R:- | A:- | S:-
+GeneratedKeyHolder.java[EB6T]: F:配置学生端运行时 GeneratedKeyHolder | R:- | A:- | S:-
+JpaDb.java[EB6S]: F:配置学生端运行时 JpaDb | R:- | A:- | S:-
+JpaSupport.java[EB6T]: F:配置学生端运行时 JpaSupport | R:- | A:- | S:-
+KeyHolder.java[EB6T]: F:配置学生端运行时 KeyHolder | R:- | A:- | S:-
+SeedCalendarAligner.java[EB6S]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
+SqlPreparedStatementCreator.java[EB6T]: F:配置学生端运行时 SqlPreparedStatementCreator | R:- | A:- | S:-
+SqlResultSetExtractor.java[EB6T]: F:配置学生端运行时 SqlResultSetExtractor | R:- | A:- | S:-
+SqlRowMapper.java[EB6T]: F:配置学生端运行时 SqlRowMapper | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/entity/===
+NoticeEntity.java[DB5T]: F:定义 JPA NoticeEntity | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/repository/===
+NoticeRepository.java[DB5T]: F:定义 JPA NoticeRepository | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/===
+DmStore.java[DB6S]: F:实现学生端 DmStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB6M]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
+ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
+GradeScoreStore.java[DB6S]: F:实现学生端 GradeScoreStore 服务逻辑 | R:- | A:- | S:-
+GuestbookStore.java[DB6M]: F:实现学生端 GuestbookStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+MessageStore.java[DB6S]: F:实现学生端 MessageStore 服务逻辑 | R:- | A:- | S:-
+NoticeStore.java[DB6M]: F:实现学生端 NoticeStore 服务逻辑 | R:- | A:- | S:-
+SeatStore.java[DB6M]: F:实现学生端 SeatStore 服务逻辑 | R:- | A:- | S:-
+StockIoStore.java[DB6M]: F:实现学生端 StockIoStore 服务逻辑 | R:- | A:- | S:-
+SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
+TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
+UserStore.java[DB6M]: F:实现学生端 UserStore 服务逻辑 | R:- | A:- | S:-
+VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/===
+pom.xml[DC5S]: F:声明学生端 Maven 依赖 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/===
+ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/===
+AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
+ArchiveStore.java[DB6L]: F:实现能力岛 ArchiveStore 的数据访问与业务操作 | R:- | A:- | S:-
+BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
+CouponStore.java[DB6M]: F:实现能力岛 CouponStore 的数据访问与业务操作 | R:- | A:- | S:-
+FavoriteStore.java[DB6M]: F:实现能力岛 FavoriteStore 的数据访问与业务操作 | R:- | A:- | S:-
+LoyaltyStore.java[DB6M]: F:实现能力岛 LoyaltyStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderReviewStore.java[DB6M]: F:实现能力岛 OrderReviewStore 的数据访问与业务操作 | R:- | A:- | S:-
+OrderStore.java[DB6L]: F:实现能力岛 OrderStore 的数据访问与业务操作 | R:- | A:- | S:-
+RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
+SlotStore.java[DB6M]: F:实现能力岛 SlotStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketAsserts.java[DB6S]: F:实现能力岛 TicketAsserts 的数据访问与业务操作 | R:- | A:- | S:-
+TicketLookupStore.java[DB6M]: F:实现能力岛 TicketLookupStore 的数据访问与业务操作 | R:- | A:- | S:-
+TicketProgressOps.java[DB6S]: F:实现能力岛 TicketProgressOps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketRowMaps.java[DB6S]: F:实现能力岛 TicketRowMaps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketSql.java[DB6S]: F:实现能力岛 TicketSql 的数据访问与业务操作 | R:- | A:- | S:-
+TicketStatusOps.java[DB6S]: F:实现能力岛 TicketStatusOps 的数据访问与业务操作 | R:- | A:- | S:-
+TicketStore.java[DB6L]: F:实现能力岛 TicketStore 的数据访问与业务操作 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/===
+DomainRuntimeBinder.java[EB6M]: F:配置学生端运行时 DomainRuntimeBinder | R:- | A:- | S:-
+MybatisSupport.java[EB6T]: F:配置学生端运行时 MybatisSupport | R:- | A:- | S:-
+SeedCalendarAligner.java[EB6T]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/===
+AddressMapper.java[DB5T]: F:声明 MyBatis Mapper AddressMapper | R:- | A:- | S:-
+ArchiveLogMapper.java[DB5T]: F:声明 MyBatis Mapper ArchiveLogMapper | R:- | A:- | S:-
+ArchiveMapper.java[DB5S]: F:声明 MyBatis Mapper ArchiveMapper | R:- | A:- | S:-
+BrowseHistoryMapper.java[DB5T]: F:声明 MyBatis Mapper BrowseHistoryMapper | R:- | A:- | S:-
+CouponMapper.java[DB5S]: F:声明 MyBatis Mapper CouponMapper | R:- | A:- | S:-
+DmMapper.java[DB5T]: F:声明 MyBatis Mapper DmMapper | R:- | A:- | S:-
+DoclibMapper.java[DB5T]: F:声明 MyBatis Mapper DoclibMapper | R:- | A:- | S:-
+ESignMapper.java[DB5T]: F:声明 MyBatis Mapper ESignMapper | R:- | A:- | S:-
+ExamMapper.java[DB5S]: F:声明 MyBatis Mapper ExamMapper | R:- | A:- | S:-
+FavoriteMapper.java[DB5S]: F:声明 MyBatis Mapper FavoriteMapper | R:- | A:- | S:-
+GradeScoreMapper.java[DB5S]: F:声明 MyBatis Mapper GradeScoreMapper | R:- | A:- | S:-
+GuestbookMapper.java[DB5T]: F:声明 MyBatis Mapper GuestbookMapper | R:- | A:- | S:-
+ItemCommentMapper.java[DB5T]: F:声明 MyBatis Mapper ItemCommentMapper | R:- | A:- | S:-
+LoyaltyMapper.java[DB5T]: F:声明 MyBatis Mapper LoyaltyMapper | R:- | A:- | S:-
+MessageMapper.java[DB5T]: F:声明 MyBatis Mapper MessageMapper | R:- | A:- | S:-
+NoticeMapper.java[DB5T]: F:声明 MyBatis Mapper NoticeMapper | R:- | A:- | S:-
+OrderMapper.java[DB5S]: F:声明 MyBatis Mapper OrderMapper | R:- | A:- | S:-
+OrderReviewMapper.java[DB5T]: F:声明 MyBatis Mapper OrderReviewMapper | R:- | A:- | S:-
+RecommendMapper.java[DB5T]: F:声明 MyBatis Mapper RecommendMapper | R:- | A:- | S:-
+SchemaMapper.java[DB5T]: F:声明 MyBatis Mapper SchemaMapper | R:- | A:- | S:-
+SeatMapper.java[DB5T]: F:声明 MyBatis Mapper SeatMapper | R:- | A:- | S:-
+SlotMapper.java[DB5T]: F:声明 MyBatis Mapper SlotMapper | R:- | A:- | S:-
+StockIoMapper.java[DB5T]: F:声明 MyBatis Mapper StockIoMapper | R:- | A:- | S:-
+SurveyMapper.java[DB5T]: F:声明 MyBatis Mapper SurveyMapper | R:- | A:- | S:-
+TicketLookupMapper.java[DB5S]: F:声明 MyBatis Mapper TicketLookupMapper | R:- | A:- | S:-
+TicketMapper.java[DB5S]: F:声明 MyBatis Mapper TicketMapper | R:- | A:- | S:-
+TimebankMapper.java[DB5T]: F:声明 MyBatis Mapper TimebankMapper | R:- | A:- | S:-
+UserMapper.java[DB5T]: F:声明 MyBatis Mapper UserMapper | R:- | A:- | S:-
+VoteMapper.java[DB5T]: F:声明 MyBatis Mapper VoteMapper | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/===
+DmStore.java[DB6S]: F:实现学生端 DmStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB6S]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
+ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
+GradeScoreStore.java[DB6S]: F:实现学生端 GradeScoreStore 服务逻辑 | R:- | A:- | S:-
+GuestbookStore.java[DB6S]: F:实现学生端 GuestbookStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+MessageStore.java[DB6S]: F:实现学生端 MessageStore 服务逻辑 | R:- | A:- | S:-
+NoticeStore.java[DB6M]: F:实现学生端 NoticeStore 服务逻辑 | R:- | A:- | S:-
+SeatStore.java[DB6M]: F:实现学生端 SeatStore 服务逻辑 | R:- | A:- | S:-
+StockIoStore.java[DB6M]: F:实现学生端 StockIoStore 服务逻辑 | R:- | A:- | S:-
+SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
+TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
+UserStore.java[DB6M]: F:实现学生端 UserStore 服务逻辑 | R:- | A:- | S:-
+VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/===
+AddressMapper.xml[DP5T]: F:MyBatis SQL 映射 AddressMapper | R:- | A:- | S:-
+ArchiveLogMapper.xml[DP5T]: F:MyBatis SQL 映射 ArchiveLogMapper | R:- | A:- | S:-
+ArchiveMapper.xml[DP5S]: F:MyBatis SQL 映射 ArchiveMapper | R:- | A:- | S:-
+BrowseHistoryMapper.xml[DP5T]: F:MyBatis SQL 映射 BrowseHistoryMapper | R:- | A:- | S:-
+CouponMapper.xml[DP5T]: F:MyBatis SQL 映射 CouponMapper | R:- | A:- | S:-
+DmMapper.xml[DP5T]: F:MyBatis SQL 映射 DmMapper | R:- | A:- | S:-
+ExamMapper.xml[DP5S]: F:MyBatis SQL 映射 ExamMapper | R:- | A:- | S:-
+FavoriteMapper.xml[DP5T]: F:MyBatis SQL 映射 FavoriteMapper | R:- | A:- | S:-
+GuestbookMapper.xml[DP5T]: F:MyBatis SQL 映射 GuestbookMapper | R:- | A:- | S:-
+ItemCommentMapper.xml[DP5T]: F:MyBatis SQL 映射 ItemCommentMapper | R:- | A:- | S:-
+LoyaltyMapper.xml[DP5T]: F:MyBatis SQL 映射 LoyaltyMapper | R:- | A:- | S:-
+MessageMapper.xml[DP5T]: F:MyBatis SQL 映射 MessageMapper | R:- | A:- | S:-
+NoticeMapper.xml[DP5T]: F:MyBatis SQL 映射 NoticeMapper | R:- | A:- | S:-
+OrderMapper.xml[DP5S]: F:MyBatis SQL 映射 OrderMapper | R:- | A:- | S:-
+OrderReviewMapper.xml[DP5T]: F:MyBatis SQL 映射 OrderReviewMapper | R:- | A:- | S:-
+RecommendMapper.xml[DP5T]: F:MyBatis SQL 映射 RecommendMapper | R:- | A:- | S:-
+SchemaMapper.xml[DP5T]: F:MyBatis SQL 映射 SchemaMapper | R:- | A:- | S:-
+SlotMapper.xml[DP5T]: F:MyBatis SQL 映射 SlotMapper | R:- | A:- | S:-
+TicketLookupMapper.xml[DP5T]: F:MyBatis SQL 映射 TicketLookupMapper | R:- | A:- | S:-
+TicketMapper.xml[DP5M]: F:MyBatis SQL 映射 TicketMapper | R:- | A:- | S:-
+UserMapper.xml[DP5T]: F:MyBatis SQL 映射 UserMapper | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/tools/===
+gen_mutual_domains.py[TS5M]: F:生成 C-05 / P-09～P-11 互选域目录、SQL、followup preset。 | R:- | A:- | S:-
+gen_new_domain_test_openings.py[TS5L]: F:Generate full-format opening reports into existing P/C sampl | R:- | A:- | S:-
+gen_oa_apply_domains.py[TS5M]: F:生成泳道 C · P-01～P-08 具名申请域（archive+ticket 跟进壳）。 用法（仓库根）：python | R:- | A:- | S:-
+gen_persistence_jpa_overlay.py[TS5L]: F:从 baseline JDBC Store 生成 persistence-jpa 叠层（不改 baseline / my | R:- | A:- | S:-
+gen_stuwork_domains.py[TS5M]: F:生成泳道 D · P-12～P-16 学工预设域（archive+ticket）。 用法（仓库根）：python too | R:- | A:- | S:-
+gen_tail_domains.py[TS5M]: F:生成长尾预设 P-18、P-23～P-29（archive+ticket）。 用法（仓库根）：python tools/ | R:- | A:- | S:-
+sync_pass_code_overlays.py[TS5S]: F:同步 C-09 issuePassCode 到 mybatis/jpa overlays。 | R:- | A:- | S:-
+sync_peer_accept_overlays.py[TS5M]: F:把 baseline 的 peerAccept 能力同步到 mybatis/jpa TicketStore / Doma | R:- | A:- | S:-
+wire_bed_domain.py[TS5M]: F:接线 DOM-BED（C-08 / P-20 / P-21）。 | R:- | A:- | S:-
+wire_checkin_domain.py[TS5M]: F:接线 DOM-CHECKIN（C-10 / P-22）并挂 checkin 能力到 ACTIVITY。 | R:- | A:- | S:-
+wire_mutual_domains.py[TS5M]: F:接线 DOM-MUTUAL-*（C-05 / P-09～P-11）。先跑 gen_mutual_domains.py。 | R:- | A:- | S:-
+wire_oa_apply_domains.py[TS5M]: F:把 P-01～P-08 OA 申请域接到现网登记点（在 gen_oa_apply_domains.py 之后运行）。 | R:- | A:- | S:-
+wire_stuwork_domains.py[TS5M]: F:把 P-12～P-16 学工域接到现网（在 gen_stuwork_domains.py 之后）。 | R:- | A:- | S:-
+wire_tail_domains.py[TS5M]: F:接线长尾预设 P-18、P-23～P-29（先跑 gen_tail_domains.py）。 | R:- | A:- | S:-
+wire_visitor_domain.py[TS5M]: F:接线 DOM-VISITOR（C-09 / P-17）。 | R:- | A:- | S:-
