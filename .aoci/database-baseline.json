@@ -1,0 +1,77 @@
+{
+  "version": "database-evidence-baseline/v1",
+  "sources": [
+    {
+      "source_id": "factory",
+      "engine": "mysql",
+      "database": "graduate_factory",
+      "namespaces": [
+        "graduate_factory"
+      ],
+      "include_namespaces": [],
+      "exclude_namespaces": [],
+      "include_tables": [],
+      "exclude_tables": [],
+      "case_semantics": {
+        "identifier_case": "server_lower_case_table_names",
+        "lower_case_table_names": 1
+      },
+      "evidence_version": "database-evidence/v1",
+      "source_snapshot_sha256": "ecde0de956eff57f2afa231f2f8d9859f0af26776fcf4ceddd0c10faf293cfac",
+      "tables": [
+        {
+          "object_ref": "database://factory/graduate_factory/jobs",
+          "table_evidence_sha256": "379211934fbd2451671dba34888823494852be75d486535cab4fef5b19bf0d61",
+          "component_hashes": {
+            "columns": "afb84634d2e18d69b3b44d07d3f872f65a7eeab4ec9c0af4005bb5ea88dd2096",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "0c3f8bbf11ce4f2d3fc6217dbaed935867ce4b24716ef8b4582bd7c7c7d1340d",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://factory/graduate_factory/llm_calls",
+          "table_evidence_sha256": "fd73d4403cd6e7870626fb1fb53cbf046f8c9a636a6af870bf14c352dd7bd54b",
+          "component_hashes": {
+            "columns": "ef04d01d69a98799c4b20a93a37261cadc36d88c888c7b793091efb9d710064d",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "689fd64ec5298547aefb39a704481b1edee39aa243a6638a99517bcde33ec15b",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://factory/graduate_factory/projects",
+          "table_evidence_sha256": "45b58e314a49b465e728903f44b8a431699b06e481572851009222f1fe8323b9",
+          "component_hashes": {
+            "columns": "335eec6d49cb7efa09c893b05a56804fb2e7fbd0c9d83972c18a557a2596f832",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "3d8099a61fc8b2cc0d52735bec24e73086a3376ed7438b10b158c366c434763a",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://factory/graduate_factory/settings",
+          "table_evidence_sha256": "a026b553f7ca6ef77ed70ac349ef105272a65258cb501322225e518bc6d5456d",
+          "component_hashes": {
+            "columns": "1109d3b75cbcd270738deaa004b1ed19e07747b0009b6b145a7d1db6d09bea5f",
+            "primary_key": "5d238ea6ea220bcaf057e682ad3a5f6a48b62847c6beadfd2ea1094608670242",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "994d101758afc7c58ad304a6c0c3a8a5c57a29400b9c386c14358b8b2a3259be",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        }
+      ]
+    }
+  ]
+}

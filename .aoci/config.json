@@ -130,6 +130,20 @@
   "automation": {
     "mode": "auto"
   },
+  "database_sources": [
+    {
+      "source_id": "factory",
+      "engine": "mysql",
+      "database": "graduate_factory",
+      "namespaces": [
+        "graduate_factory"
+      ],
+      "credential_env": "AOCI_MYSQL_URL",
+      "connect_timeout_seconds": 10,
+      "query_timeout_seconds": 30,
+      "enabled": true
+    }
+  ],
   "ai": {
     "enabled": false,
     "provider": "openai-compatible",

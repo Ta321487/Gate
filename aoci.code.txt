@@ -2,12 +2,11 @@
 
 ===D:/graduate_factory_v3/===
 .gitattributes[FC5T]: F:强制文本检出为 LF，避免 Windows autocrlf 把整树标成与 AOCI baseline 不一致 | R:- | A:- | S:AOCI baseline 按原始字节比对，换行被改写会整树变 stale
-.gitignore[FC4T]: F:排除虚拟环境、依赖、数据库、上传缓存和本地临时文件，不让它们进入 Git | R:- | A:- | S:data 下 uploads、workspace、logs、cache 忽略内容但保留 .gitkeep
+.gitignore[FC4T]: F:排除虚拟环境、依赖、数据库、上传缓存、本地临时与机器本地 MCP 绑定，不让它们进入 Git | R:- | A:- | S:data 下 uploads、workspace、logs、cache 忽略内容但保留 .gitkeep；.mcp.json 因含本机绝对路径而忽略
 AGENTS.md[SG8S]: F:向 Agent 声明 AOCI 认知合同：索引语义由模型按证据写，维护走 Guide 与 aoci_maintain | R:- | A:- | S:不得用路径或文件名推导 Entry 语义；压缩恢复后不得把旧索引摘要当成当前认知
 HANDOFF.md[SG8T]: F:给新对话交接毕设港主线、接题硬边界和开场口径 | R:code:README.md,code:docs/domains.md,code:docs/capabilities.md | A:- | S:禁止参考或迁移 graduate_factory 与 graduate_factory_v2
-README.md[SG8S]: F:说明毕设港如何把开题材料加工成可答辩 Web 系统，并给出运营端启动方式 | R:- | A:GET /api/health | S:LLM 只填白名单业务岛，不写业务 Java 或 Vue；门禁未过禁止下载 ZIP
+README.md[SG8S]: F:说明如何把开题加工成可答辩 Web 系统，以及运营端怎么启动 | R:code:scripts/README.md,code:docs/tech-stack-delivery.md | A:GET /api/health | S:默认 jdbc；mybatis、jpa、Security 仅开题写了且能 bake 才进包。答辩 PPT 是独立 Job，不进 ZIP
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
-.mcp.json[EC5T]: F:把本仓库 AOCI 以 stdio 接到 Cursor，调用本机 aoci.exe | R:- | A:- | S:不含密钥，只绑定当前仓库
 
 ===D:/graduate_factory_v3/.cursor/rules/===
 00-factory-core.mdc[SG8T]: F:规定材料匹配到域与能力岛后 bake 出可答辩 ZIP，且实包、README 与论文实现一致 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:禁止改开题迁就模板，禁止缺表或缺状态机仍宣称已交
@@ -811,7 +810,7 @@ index.html[DB5L]: F:仓库文件 index | R:- | A:- | S:-
 styles.css[FS5L]: F:样式表 styles | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/scripts/===
-README.md[DB5T]: F:仓库文件 README | R:- | A:- | S:-
+README.md[SV5S]: F:说明 Windows 启停脚本，以及 AOCI 面板必须经 vbs 启动 | R:code:scripts/start-aoci-ui.ps1,code:scripts/start-aoci-ui.vbs | A:start-aoci-ui.vbs | S:已有面板在跑时再启动不会换 PATH，闪窗需先 stop 再 start
 _backend-procs.ps1[TS5M]: F:运维脚本 _backend-procs | R:- | A:- | S:-
 kill-dup-backend.bat[TS5T]: F:运维脚本 kill-dup-backend | R:- | A:- | S:-
 kill-dup-backend.ps1[TS5T]: F:运维脚本 kill-dup-backend | R:- | A:- | S:-
@@ -826,6 +825,12 @@ stop-frontend.bat[TS5T]: F:运维脚本 stop-frontend | R:- | A:- | S:-
 stop-frontend.ps1[TS5T]: F:运维脚本 stop-frontend | R:- | A:- | S:-
 verify-bats.bat[TS5T]: F:运维脚本 verify-bats | R:- | A:- | S:-
 verify-bats.ps1[TS5T]: F:运维脚本 verify-bats | R:- | A:- | S:-
+start-aoci-ui.bat[OV2T]: F:把双击转到 vbs，避免 bat 自己闪控制台 | R:code:scripts/start-aoci-ui.vbs | A:- | S:-
+start-aoci-ui.ps1[OO5T]: F:在本仓库启动 AOCI 面板并把静默 git 包装放到 PATH 最前 | R:code:scripts/aoci-git-shim/git-shim.cs,code:scripts/start-aoci-ui.vbs | A:aoci ui --detach | S:已有面板在跑时 --detach 会复用旧进程，不会换上本次 PATH
+start-aoci-ui.vbs[OV3T]: F:无窗口拉起启动脚本 | R:code:scripts/start-aoci-ui.ps1 | A:- | S:-
+stop-aoci-ui.bat[OV2T]: F:把双击转到停止用 vbs | R:code:scripts/stop-aoci-ui.vbs | A:- | S:-
+stop-aoci-ui.ps1[OO4T]: F:停止本仓库已登记的 AOCI 面板 | R:code:scripts/stop-aoci-ui.vbs | A:aoci ui --stop | S:-
+stop-aoci-ui.vbs[OV3T]: F:无窗口拉起停止脚本 | R:code:scripts/stop-aoci-ui.ps1 | A:- | S:-
 
 ===D:/graduate_factory_v3/skeletons/baseline/===
 README.md[DB5M]: F:仓库文件 README | R:- | A:- | S:-
@@ -1400,3 +1405,6 @@ wire_oa_apply_domains.py[TS5M]: F:把 P-01～P-08 OA 申请域接到现网登记
 wire_stuwork_domains.py[TS5M]: F:把 P-12～P-16 学工域接到现网（在 gen_stuwork_domains.py 之后）。 | R:- | A:- | S:-
 wire_tail_domains.py[TS5M]: F:接线长尾预设 P-18、P-23～P-29（先跑 gen_tail_domains.py）。 | R:- | A:- | S:-
 wire_visitor_domain.py[TS5M]: F:接线 DOM-VISITOR（C-09 / P-17）。 | R:- | A:- | S:-
+
+===D:/graduate_factory_v3/scripts/aoci-git-shim/===
+git-shim.cs[XO4S]: F:无窗口转发本机 git，并跳过忽略文件全量列举 | R:code:scripts/start-aoci-ui.ps1 | A:AOCI_REAL_GIT | S:ls-files 同时带 --others 与 --ignored 时直接成功返回空，不反映真实忽略树

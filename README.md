@@ -12,20 +12,30 @@
 
 | 端 | 技术 |
 |---|---|
-| 运营后端 | FastAPI + SQLAlchemy + SQLite（开发默认）/ MySQL |
+| 运营后端 | FastAPI + SQLAlchemy；不配库时 SQLite，`.env.example` 指向 MySQL |
 | 运营前端 | Vue 3 + Naive UI + Vite |
-| 学生产出 | Spring Boot 3.2（Java 17）+ Vue 3 + Element Plus（`zh-cn`）+ MySQL |
+| 学生产出 | Spring Boot 3.2（Java 17）+ Vue 3 + Element Plus（`zh-cn`）+ MySQL。默认 `jdbc`；开题写了且能 bake 时跟 `mybatis` / `jpa` / Spring Security |
 
 ## 环境要求
 
 - Python 3.11+
 - Node.js 18+
 - JDK 17、Maven（学生项目构建 / 运营端预览）
-- MySQL 8（学生库必用；工厂元库可选 SQLite）
+- MySQL 8（学生库必用；工厂元库可用本机 MySQL 或 SQLite）
 
 ## 快速启动
 
-### 1. 可选：启动 MySQL
+Windows 日常用控制台菜单（前后端同窗标签页）：
+
+```bat
+scripts\launcher.bat
+```
+
+键位、编码约定、AOCI 面板见 [`scripts/README.md`](./scripts/README.md)。下面是手动步骤。
+
+### 1. MySQL
+
+学生项目库必开。工厂元库二选一：本机已有的 MySQL，或：
 
 ```bash
 docker compose up -d
@@ -51,8 +61,9 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 说明：
 
-- 不配 `GF_DATABASE_URL` 时，代码默认使用 `data/factory.db`（SQLite）
-- 复制 `.env.example` 后默认指向 MySQL；若暂不用 Docker，请改回 SQLite 或先 `docker compose up -d`
+- 不配 `GF_DATABASE_URL` 时，代码默认 `data/factory.db`（SQLite）
+- 复制 `.env.example` 后默认指向 Docker 里的 `gf` / `graduate_factory`。本机已有 MySQL 时，改成自己的 root 或用户，不必先起 Docker
+- 学生库与工厂元库分开：`GF_STUDENT_MYSQL_*`。示例默认 `root` / `root123`，请改成本机密码
 - DeepSeek Key 仅环境变量：`DEEPSEEK_API_KEY`（可写 `.env`，界面只读掩码；无 Key 也可 bake，业务岛走确定性填充）
 - 可选 Gemini：`GEMINI_API_KEY`；与 DeepSeek 可分别启用或双开（优先一家，失败自动换另一家）
 - 默认仅开 DeepSeek（`LLM_PROVIDER` / 运营台开关）
@@ -75,7 +86,7 @@ npm run dev
 ## 产品流程
 
 1. **上传材料**（开题 / 任务书 / 功能清单等，PDF / Word / TXT，可多选）→ 自动建项并推荐骨架 × 领域  
-2. **匹配确认**（默认可锁定推荐；解锁后可改选）  
+2. **匹配确认**（默认可锁定推荐；解锁后可改选）。场景身份跟开题（`scene_scan`）；技术栈拟选与实包不一致时双显，不能交则标不支持  
 3. **生成 Job**（六步）  
    - `parse_merge`：解析 / 合并 Spec  
    - `copy_bake`：复制 `skeletons/baseline` + 领域 SQL / schema  
@@ -84,7 +95,10 @@ npm run dev
    - `gate_e2e`：门禁；不过则不打包  
    - `pack`：打 ZIP（排除 `node_modules` / `target` 等）  
 4. **运营端预览**：在端口池内起停学生前后端（后端 `9100–9120`，前端 `9200–9220`）  
-5. **下载 ZIP**：仅 `zip_ready` 且门禁整体通过时开放  
+5. **下载 ZIP**：仅 `zip_ready` 且门禁整体通过时开放。人工履约标记 `delivery_mark` 与机器质检分开  
+6. **答辩 PPT**（可选，独立 Job）：bake 通过之后另跑，`.pptx` 不打进学生 ZIP  
+
+按需能力（开了必须在实包里真有）：Spring Security、AI 助手岛（业务壳上的问答；RAG / 多 Agent 主产品不接）。工厂 Key 不进学生 ZIP。
 
 运营端页面：项目、任务队列、帮助文档、大模型、Unsplash、运行环境。运营端本身无登录鉴权。
 
@@ -96,6 +110,10 @@ npm run dev
 |---|---|
 | 领域组 A–H、交叉白名单 | [`docs/domains.md`](./docs/domains.md) |
 | 能力 cap 矩阵 | [`docs/capabilities.md`](./docs/capabilities.md) |
+| 技术栈 / 持久层 / Security | [`docs/tech-stack-delivery.md`](./docs/tech-stack-delivery.md) |
+| AI 助手岛 | [`docs/ai-assistant-delivery.md`](./docs/ai-assistant-delivery.md) |
+| 答辩 PPT | [`docs/defense-ppt-module.md`](./docs/defense-ppt-module.md) |
+| 怎么审交付 | [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md) |
 | L0–L3 / 接题边界细则 | [`docs/difficulty-tiers.md`](./docs/difficulty-tiers.md) |
 | 库表预算 / 角色不变式 | [`docs/invariants.md`](./docs/invariants.md) |
 | 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
@@ -141,7 +159,7 @@ npm run dev
 | `GF_HOST` / `GF_PORT` | 工厂 API 监听（服务器用 `0.0.0.0`） |
 | `GF_PUBLIC_HOST` | 预览/复制地址用的对外 IP 或域名；非本机时学生进程自动绑 `0.0.0.0` |
 | `GF_BIND_HOST` | 可选；强制学生前后端监听地址 |
-| `GF_STUDENT_MYSQL_*` | 学生库连接（默认 `root` / `root123` @ `3306`） |
+| `GF_STUDENT_MYSQL_*` | 学生库连接（与工厂元库分离；示例 `root` / `root123` @ `3306`，改成你的本机密码） |
 | `UNSPLASH_ACCESS_KEY` | 可选；登录氛围图与门户轮播。外网失败时按 `themes.css` 色板本地生成 |
 
 完整示例：`backend/.env.example`。
@@ -155,19 +173,22 @@ backend/                 运营 API（bake / gates / llm / jobs）
     domains_catalog/     薄域条目（borrow / ticket / apply / trade / reserve / content / fallback）
     proposal_packs.py    选题包加载器；正文 proposal_packs_data/*.json
     engine*.py           bake 入口 + sql / bake / resources / islands 分册
+    scene_scan.py        开题场景 / 资料页身份（唯一真源）
     schema/              shells / builders_* / followup_presets / er_* …
     sql/templates/       具名域 DOM-*.sql；compose 拼 GENERIC
   app/llm/agents*.py     窄 Agent（match / island / labels / fix / qa / sample）
+  app/services/defense_ppt/  答辩 PPT Job（不改 project.status / zip_ready）
   app/api/system*.py     DeepSeek / Gemini / 用量 / 运行环境 / 样例开题
   tests/                 单测；helpers/；tools/
 frontend/                运营端 UI
-skeletons/baseline/      学生骨架（styles/themes/*.css 按域配色）
+skeletons/baseline/      学生骨架（jdbc 默认；styles/themes/*.css 按域配色）
+skeletons/overlays/      mybatis / jpa / Security 等已落地叠加层
 data/
   samples/               样例开题（见上）
   uploads/ · workspace/  上传落盘 · 每题工作区与 ZIP
-scripts/                 Windows 启动 / 校验 bat
+scripts/                 Windows 启停；说明见 scripts/README.md
 prototype/               运营端原型（见 prototype/README.md）
-docker-compose.yml       仅 MySQL
+docker-compose.yml       可选 MySQL（无本机库时用）
 HANDOFF.md               新对话交接（主线 / 边界摘要 / 开场白）
 docs/                    专题文档（一文一事；见 docs/README.md）
 ```

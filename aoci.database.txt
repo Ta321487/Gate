@@ -1,0 +1,7 @@
+#AOCI-DATABASE-VOLUME: 1
+
+===factory/graduate_factory/database://factory/graduate_factory/===
+jobs[TW7S]: F:记录 bake 与答辩 PPT 等异步任务的进度与结果 | R:database://factory/graduate_factory/projects | A:id,project_id,kind | S:kind=defense_ppt 时不得改写对应 project 的 status 或 zip_ready
+llm_calls[LO6S]: F:审计大模型调用的阶段、token 与成败 | R:database://factory/graduate_factory/projects | A:id,project_id,stage | S:-
+projects[EB8M]: F:保存毕业设计工厂每个选题的匹配、生成与交付主状态 | R:database://factory/graduate_factory/jobs,database://factory/graduate_factory/llm_calls | A:id | S:delivery_mark 与 zip_ready 分离，人工履约不得用机器质检字段冒充已发货
+settings[KC5T]: F:以键值 JSON 存放工厂运营级开关与配置 | R:- | A:key | S:-
