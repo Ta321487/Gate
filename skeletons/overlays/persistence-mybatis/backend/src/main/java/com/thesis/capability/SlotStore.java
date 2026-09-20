@@ -8,6 +8,7 @@ import com.thesis.mapper.SlotMapper;
 import com.thesis.service.MessageStore;
 import com.thesis.service.UserStore;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -141,12 +142,39 @@ public final class SlotStore {
     public static Map<String, Object> reserve(
             String username, long slotId, String remark, Map<String, Object> extras) {
         requireEnabled();
-        Map<String, Object> slot = getSlot(slotId);
+        Map<String, Object> early = extras == null ? Map.of() : extras;
+        boolean rangeHeld = false;
+        long stayItemId = 0L;
+        String stayFromHeld = str(early.get("stayFrom"));
+        String stayToHeld = str(early.get("stayTo"));
+        Map<String, Object> slot;
+        if (BoardingStore.enabled()) {
+            BoardingStore.assertStay(early);
+            if (slotId > 0) {
+                Map<String, Object> picked = getSlot(slotId);
+                if (picked != null && picked.get("itemId") instanceof Number pickedItem) {
+                    stayItemId = pickedItem.longValue();
+                }
+            }
+            slotId = BoardingStore.holdFrom(early, stayItemId);
+            rangeHeld = true;
+            slot = getSlot(slotId);
+            if (slot != null && slot.get("itemId") instanceof Number heldItem) {
+                stayItemId = heldItem.longValue();
+            }
+        } else {
+            slot = getSlot(slotId);
+        }
         if (slot == null) throw new IllegalArgumentException("时段不存在");
-        if (isPastSlot(slot)) throw new IllegalStateException("该时段已过，不可预约");
-        int capacity = ((Number) slot.get("capacity")).intValue();
-        int booked = ((Number) slot.get("booked")).intValue();
-        if (booked >= capacity) throw new IllegalStateException("该时段已约满");
+        if (isPastSlot(slot)) {
+            if (rangeHeld) BoardingStore.releaseRange(stayItemId, stayFromHeld, stayToHeld);
+            throw new IllegalStateException("该时段已过，不可预约");
+        }
+        if (!rangeHeld) {
+            int capacity = ((Number) slot.get("capacity")).intValue();
+            int booked = ((Number) slot.get("booked")).intValue();
+            if (booked >= capacity) throw new IllegalStateException("该时段已约满");
+        }
         if (mapper().countActiveResv(RESV, username, slotId) > 0) {
             throw new IllegalStateException("您已预约该时段");
         }
@@ -183,11 +211,17 @@ public final class SlotStore {
         requireResvColIfPresent("guest_name", "客人姓名", !guest.isBlank());
         requireResvColIfPresent("guest_count", "客人人数", guestCount > 0);
         requireResvColIfPresent("preferred_stylist", "指定技师", !stylist.isBlank());
+        String careIds = BoardingStore.careIds(ex);
+        requireResvColIfPresent("stay_from", "入住日期", !stayFromHeld.isBlank());
+        requireResvColIfPresent("stay_to", "离店日期", !stayToHeld.isBlank());
+        requireResvColIfPresent("care_ids", "特殊要求", !careIds.isBlank());
         requireResvColIfPresent("queue_no", "排队号", queue > 0);
         final String noteFinal = noteFilled.length() > 255 ? noteFilled.substring(0, 255) : noteFilled;
         final String initialStatus = requireConfirm ? "pending" : "confirmed";
 
-        if (mapper().bumpBooked(SLOT, slotId) == 0) throw new IllegalStateException("该时段已约满");
+        ShootStore.assertBook(ex);
+        LessonStore.assertRemain(username);
+        if (!rangeHeld && mapper().bumpBooked(SLOT, slotId) == 0) throw new IllegalStateException("该时段已约满");
         LinkedHashMap<String, Object> extraCols = new LinkedHashMap<>();
         if (hasResvColumn("plate_no")) extraCols.put("plate_no", plate);
         if (hasResvColumn("patient_name")) extraCols.put("patient_name", patient);
@@ -198,6 +232,9 @@ public final class SlotStore {
         if (hasResvColumn("guest_name")) extraCols.put("guest_name", guest);
         if (hasResvColumn("guest_count")) extraCols.put("guest_count", guestCount);
         if (hasResvColumn("preferred_stylist")) extraCols.put("preferred_stylist", stylist);
+        if (hasResvColumn("stay_from")) extraCols.put("stay_from", stayFromHeld);
+        if (hasResvColumn("stay_to")) extraCols.put("stay_to", stayToHeld);
+        if (hasResvColumn("care_ids")) extraCols.put("care_ids", careIds);
         if (hasResvColumn("queue_no")) {
             extraCols.put("queue_no", queue > 0 ? queue : (int) (slotId % 1000) + 1);
         }
@@ -213,27 +250,46 @@ public final class SlotStore {
             row.put("createdAt", Timestamp.valueOf(LocalDateTime.now()));
             mapper().insertReservation(row);
             resvId = row.get("id") == null ? 0L : ((Number) row.get("id")).longValue();
+            ShootStore.attach(resvId, ex);
+            try {
+                LessonStore.spend(username, resvId);
+            } catch (RuntimeException lessonEx) {
+                try {
+                    mapper().deleteReservation(RESV, resvId);
+                } catch (Exception ignored) {
+                }
+                throw lessonEx;
+            }
         } catch (RuntimeException e) {
-            mapper().releaseBooked(SLOT, slotId);
+            if (rangeHeld) BoardingStore.releaseRange(stayItemId, stayFromHeld, stayToHeld);
+            else mapper().releaseBooked(SLOT, slotId);
             throw e;
         }
         if (OrderStore.enabled()) {
             long itemId = ((Number) slot.get("itemId")).longValue();
             Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
             String title = item == null ? "预约" : String.valueOf(item.get("title"));
-            double price = 0;
-            if (item != null) {
-                price = OrderStore.unitPriceOf(item);
+            double price;
+            if (BoardingStore.enabled() && item != null) {
+                int days = BoardingStore.dayCount(str(ex.get("stayFrom")), str(ex.get("stayTo")));
+                price = BoardingStore.stayYuan(
+                        BigDecimal.valueOf(OrderStore.unitPriceOf(item)), days).doubleValue();
+            } else if (ShootStore.enabled()) {
+                price = ShootStore.bundlePrice(ex);
+            } else {
+                price = item == null ? 0 : OrderStore.unitPriceOf(item);
             }
             String body = title + " · " + slot.get("startAt") + " ~ " + slot.get("endAt");
             try {
                 OrderStore.placeSimple(username, itemId, body, price, 1, "reservation:" + resvId, resvId);
             } catch (RuntimeException e) {
                 try {
+                    LessonStore.refund(resvId);
                     mapper().deleteReservation(RESV, resvId);
                 } catch (Exception ignored) {
                 }
-                mapper().releaseBooked(SLOT, slotId);
+                if (rangeHeld) BoardingStore.releaseRange(stayItemId, stayFromHeld, stayToHeld);
+                else mapper().releaseBooked(SLOT, slotId);
                 throw e;
             }
         }
@@ -337,7 +393,10 @@ public final class SlotStore {
             throw new IllegalStateException("当前状态不可取消");
         }
         mapper().updateResvStatus(RESV, resvId, "cancelled");
-        mapper().releaseBooked(SLOT, ((Number) m.get("slotId")).longValue());
+        if (!isPastSlot(m)) LessonStore.refund(resvId);
+        if (!BoardingStore.releaseStay(RESV, SLOT, resvId)) {
+            mapper().releaseBooked(SLOT, ((Number) m.get("slotId")).longValue());
+        }
         OrderStore.cancelByReservation(resvId);
         return getReservation(resvId);
     }

@@ -94,6 +94,9 @@
         </div>
         <div class="meta">
           <h3>{{ row.title }}</h3>
+          <p v-if="isBlindBox(row)" class="sub">盲盒 · {{ blindBoxLine(row) }}</p>
+          <p v-if="purchaseGateOn && Number(row.needPermit) === 1" class="sub">需审核后才能购买</p>
+          <p v-if="purchaseGateOn && Number(row.monthLimit) > 0" class="sub">每人每月限购 {{ row.monthLimit }} 件</p>
           <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
           <p v-if="flashOn && row.promoActive" class="promo">
@@ -677,6 +680,36 @@ const nextAtLabel = computed(() => nextFollowLabel())
 const channelPlaceholder = computed(() => followChannelPlaceholder())
 const channelOptions = computed(() => followChannelOptions())
 const caps = computed(() => getSchema().capabilities || [])
+const purchaseGateOn = computed(() => caps.value.includes('purchase_gate'))
+const blindBoxOn = computed(() => caps.value.includes('blind_box'))
+const boxIds = ref(new Set())
+const boxInfo = ref(new Map())
+const prizeIds = ref(new Set())
+function isBlindBox(row) {
+  return boxIds.value.has(Number(row?.id))
+}
+function blindBoxLine(row) {
+  const info = boxInfo.value.get(Number(row?.id))
+  return info?.text || '付款后开盒，奖品以开出结果为准'
+}
+async function loadBlindBoxes() {
+  if (!blindBoxOn.value) return
+  try {
+    const [boxes, prizes] = await Promise.all([
+      http.get('/api/blind-boxes/boxes'),
+      http.get('/api/blind-boxes/prizes'),
+    ])
+    const map = new Map()
+    for (const x of boxes.data || []) map.set(Number(x.id), x)
+    boxInfo.value = map
+    boxIds.value = new Set(map.keys())
+    prizeIds.value = new Set((prizes.data || []).map((x) => Number(x.id)))
+  } catch {
+    boxInfo.value = new Map()
+    boxIds.value = new Set()
+    prizeIds.value = new Set()
+  }
+}
 const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '对象')
 const fields = computed(() => archive.fields || [])
@@ -1454,6 +1487,9 @@ async function load() {
       if (ownerTokenStrict.value) rows = []
     }
   }
+  if (blindBoxOn.value && prizeIds.value.size) {
+    rows = rows.filter((r) => !prizeIds.value.has(Number(r.id)))
+  }
   list.value = rows
   total.value = filterByOwnerToken.value && !isGuest.value ? rows.length : res.data.total
 }
@@ -1574,6 +1610,14 @@ async function onPrimary(row) {
     return
   }
   if (isOrderMode.value) {
+    if (hasCap('purchase_gate') && Number(row.needPermit) === 1) {
+      const chk = await http.get('/api/purchase-permits/check', { params: { itemId: row.id, qty: 1 } })
+      if (!chk.data?.approved) {
+        ElMessage.warning(chk.data?.message || '需审核通过后才能购买')
+        router.push({ path: '/permits', query: { itemId: String(row.id) } })
+        return
+      }
+    }
     await upsertCart(row.id, 1)
     ElMessage.success(`已加入${cartLabel.value}`)
     return
@@ -1891,6 +1935,7 @@ onMounted(async () => {
     const n = Number(qCat)
     categoryId.value = Number.isFinite(n) ? n : qCat
   }
+  await loadBlindBoxes()
   await loadCats()
   await loadTags()
   await load()

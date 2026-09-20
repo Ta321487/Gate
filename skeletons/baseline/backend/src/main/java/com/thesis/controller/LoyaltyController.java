@@ -32,7 +32,15 @@ public class LoyaltyController {
         String uid = AdminAuth.requireLogin(session);
         double subtotal = toDouble(body == null ? null : body.get("subtotalYuan"));
         String coupon = str(body == null ? null : body.get("couponCode"));
-        return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon));
+        Integer offsetPts = null;
+        if (body != null && body.get("offsetPoints") != null && !str(body.get("offsetPoints")).isBlank()) {
+            try {
+                offsetPts = Integer.parseInt(str(body.get("offsetPoints")));
+            } catch (Exception ignored) {
+                offsetPts = 0;
+            }
+        }
+        return R.ok(LoyaltyStore.previewPrice(subtotal, uid, coupon, offsetPts));
     }
 
     /** 买家端充值（固定档位）；商家/管理岗禁止自充 */
@@ -73,8 +81,39 @@ public class LoyaltyController {
         }
     }
 
+    /** 管理端：给买家加积分（开题写了管理充积分时开放） */
+    @PostMapping("/api/admin/loyalty/credit-points")
+    public R<?> creditPoints(@RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        if (!LoyaltyStore.isPointsEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "未开启积分");
+        }
+        String username = str(body == null ? null : body.get("username"));
+        if (username.isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请指定用户名");
+        }
+        int points = toInt(body == null ? null : body.get("points"));
+        String remark = str(body == null ? null : body.get("remark"));
+        String operator = String.valueOf(session.getAttribute("username"));
+        try {
+            return R.ok(LoyaltyStore.adminCreditPoints(username, points, operator, remark));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     private static String str(Object o) {
         return o == null ? "" : String.valueOf(o).trim();
+    }
+
+    private static int toInt(Object o) {
+        if (o == null) return 0;
+        if (o instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(o).trim());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static double toDouble(Object o) {

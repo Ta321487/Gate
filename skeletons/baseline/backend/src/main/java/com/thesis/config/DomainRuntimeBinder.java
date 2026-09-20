@@ -8,7 +8,20 @@ import com.thesis.capability.EquipmentDictStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
 import com.thesis.capability.CouponStore;
+import com.thesis.capability.ConsignStore;
+import com.thesis.capability.WeighSaleStore;
+import com.thesis.capability.ShootStore;
+import com.thesis.capability.BoardingStore;
+import com.thesis.capability.BuybackStore;
+import com.thesis.capability.DigitalGoodsStore;
+import com.thesis.capability.RentalBondStore;
+import com.thesis.capability.LessonStore;
+import com.thesis.capability.DeliveryWindowStore;
+import com.thesis.capability.BlindBoxStore;
+import com.thesis.capability.GroupBuyStore;
+import com.thesis.capability.PurchaseGateStore;
 import com.thesis.capability.FavoriteStore;
+import com.thesis.capability.LineCustomStore;
 import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderReviewStore;
 import com.thesis.capability.OrderStore;
@@ -273,6 +286,51 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.order-review-enabled:false}")
     private boolean orderReviewEnabled;
 
+    @Value("${thesis.line-custom-enabled:false}")
+    private boolean lineCustomEnabled;
+
+    @Value("${thesis.line-custom-place-confirmed:false}")
+    private boolean lineCustomPlaceConfirmed;
+
+    @Value("${thesis.delivery-window-enabled:false}")
+    private boolean deliveryWindowEnabled;
+
+    @Value("${thesis.purchase-gate-enabled:false}")
+    private boolean purchaseGateEnabled;
+
+    @Value("${thesis.group-buy-enabled:false}")
+    private boolean groupBuyEnabled;
+
+    @Value("${thesis.blind-box-enabled:false}")
+    private boolean blindBoxEnabled;
+
+    @Value("${thesis.consign-enabled:false}")
+    private boolean consignEnabled;
+
+    @Value("${thesis.weigh-sale-enabled:false}")
+    private boolean weighSaleEnabled;
+
+    @Value("${thesis.shoot-enabled:false}")
+    private boolean shootEnabled;
+
+    @Value("${thesis.boarding-enabled:false}")
+    private boolean boardingEnabled;
+
+    @Value("${thesis.buyback-enabled:false}")
+    private boolean buybackEnabled;
+
+    @Value("${thesis.lesson-pack-enabled:false}")
+    private boolean lessonPackEnabled;
+
+    @Value("${thesis.rental-bond-enabled:false}")
+    private boolean rentalBondEnabled;
+
+    @Value("${thesis.digital-goods-enabled:false}")
+    private boolean digitalGoodsEnabled;
+
+    @Value("${thesis.no-casual-refund:false}")
+    private boolean noCasualRefund;
+
     @Value("${thesis.favorites-enabled:false}")
     private boolean favoritesEnabled;
 
@@ -408,6 +466,30 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
 
+    @Value("${thesis.points-pay-enabled:false}")
+    private boolean pointsPayEnabled;
+
+    @Value("${thesis.points-offset-enabled:false}")
+    private boolean pointsOffsetEnabled;
+
+    @Value("${thesis.points-checkin-enabled:false}")
+    private boolean pointsCheckInEnabled;
+
+    @Value("${thesis.points-checkin-amount:10}")
+    private int pointsCheckInAmount;
+
+    @Value("${thesis.points-expire-enabled:false}")
+    private boolean pointsExpireEnabled;
+
+    @Value("${thesis.points-expire-period:year}")
+    private String pointsExpirePeriod;
+
+    @Value("${thesis.points-expire-scope:all}")
+    private String pointsExpireScope;
+
+    @Value("${thesis.member-tier-basis:spend}")
+    private String memberTierBasis;
+
     @Value("${thesis.spend-discount-threshold-yuan:100}")
     private double spendDiscountThresholdYuan;
 
@@ -476,6 +558,15 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsEarnPerYuan,
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
+        LoyaltyStore.configurePointsModes(
+                pointsPayEnabled,
+                pointsOffsetEnabled,
+                pointsCheckInEnabled,
+                pointsCheckInAmount,
+                pointsExpireEnabled,
+                pointsExpirePeriod,
+                pointsExpireScope,
+                memberTierBasis);
         CouponStore.configure(couponEnabled);
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
@@ -483,6 +574,20 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             OrderStore.unbind();
         }
         OrderReviewStore.configure(orderReviewEnabled);
+        OrderStore.configureLineCustom(lineCustomEnabled, lineCustomPlaceConfirmed, noCasualRefund);
+        LineCustomStore.configure(lineCustomEnabled);
+        DeliveryWindowStore.configure(deliveryWindowEnabled);
+        PurchaseGateStore.configure(purchaseGateEnabled);
+        GroupBuyStore.configure(groupBuyEnabled);
+        BlindBoxStore.configure(blindBoxEnabled);
+        ConsignStore.configure(consignEnabled);
+        WeighSaleStore.configure(weighSaleEnabled);
+        ShootStore.configure(shootEnabled);
+        BoardingStore.configure(boardingEnabled);
+        BuybackStore.configure(buybackEnabled);
+        LessonStore.configure(lessonPackEnabled);
+        RentalBondStore.configure(rentalBondEnabled);
+        DigitalGoodsStore.configure(digitalGoodsEnabled);
         FavoriteStore.configure(favoritesEnabled);
         FavoriteStore.configureLike(postLikeEnabled);
         FavoriteStore.configureReport(contentReportEnabled);

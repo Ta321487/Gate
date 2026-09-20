@@ -386,3 +386,56 @@ def test_manual_col_on_role_entity_maps_to_sys_user(tmp_path):
     result2 = apply_manual_er_labels(tmp_path, {"tables": {"sys_user:user": "报修学生"}})
     role2 = next(t for t in result2["model"]["tables"] if t["name"] == "sys_user:user")
     assert role2["label"] == "报修学生"
+
+
+def test_new_trade_tables_chinese_and_linked():
+    """新交易表进论文 E-R：中文名，且外键连到真实父表。"""
+    from pathlib import Path
+
+    from app.bake.sql.fragments import (
+        ensure_blind_box_sql,
+        ensure_consign_sql,
+        ensure_delivery_window_sql,
+        ensure_group_buy_sql,
+        ensure_order_line_custom_columns,
+        ensure_purchase_gate_sql,
+    )
+
+    shop = (
+        Path(__file__).resolve().parents[1] / "app/bake/sql/templates/DOM-SHOP.sql"
+    ).read_text(encoding="utf-8")
+    sql = ensure_order_line_custom_columns(shop, enabled=True, with_spec=True)
+    sql = ensure_delivery_window_sql(sql, enabled=True)
+    sql = ensure_purchase_gate_sql(sql, enabled=True, item_table="product")
+    sql = ensure_group_buy_sql(sql, enabled=True)
+    sql = ensure_blind_box_sql(sql, enabled=True, item_table="product")
+    sql = ensure_consign_sql(sql, enabled=True, item_table="product")
+    model = schema_model(sql, fk_aliases={"archive": "product", "item": "product"})
+    by = {t["name"]: t for t in model["tables"]}
+    assert by["blind_pool"]["label"] == "盲盒奖池"
+    assert by["group_campaign"]["label"] == "拼团"
+    assert by["delivery_slot"]["label"] == "配送时段"
+    assert by["purchase_permit"]["label"] == "购买审核"
+    assert by["line_spec_option"]["label"] == "规格选项"
+    assert by["consign_item"]["label"] == "寄卖"
+    assert by["order_line"]["label"] == "订单明细"
+    assert by["cart_line"]["label"] == "购物车"
+    assert by["user_address"]["label"] == "收货地址"
+    assert by["biz_order"]["label"] == "订单"
+    pool_fk = {c["name"]: c["fk_table"] for c in by["blind_pool"]["columns"] if c.get("fk")}
+    assert pool_fk["box_id"] == "product"
+    assert pool_fk["prize_id"] == "product"
+    member_fk = {c["name"]: c["fk_table"] for c in by["group_member"]["columns"] if c.get("fk")}
+    assert member_fk["campaign_id"] == "group_campaign"
+    assert member_fk["order_id"] == "biz_order"
+    order_fk = {c["name"]: c["fk_table"] for c in by["biz_order"]["columns"] if c.get("fk")}
+    assert order_fk["slot_id"] == "delivery_slot"
+    ledger_fk = {c["name"]: c["fk_table"] for c in by["consign_ledger"]["columns"] if c.get("fk")}
+    assert ledger_fk["consign_id"] == "consign_item"
+    gaps = collect_english_gaps(model)
+    bad = [t["name"] for t in gaps["tables"] if t["name"] in by and t["name"] in {
+        "blind_pool", "blind_pity", "group_campaign", "group_member",
+        "delivery_slot", "price_span", "purchase_permit", "line_spec_option",
+        "consign_item", "consign_ledger",
+    }]
+    assert bad == []

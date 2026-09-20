@@ -224,6 +224,7 @@ const requireClaimProof = computed(() => !!ticket.requireClaimProof || hasCap('c
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const twoLevel = computed(() => !!ticket.twoLevelApprove || !!ticket.threeLevelApprove)
 const threeLevel = computed(() => !!ticket.threeLevelApprove)
+const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
 const allowQty = computed(() => !!ticket.allowQty)
 const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const slaDeadline = computed(() => !!ticket.slaDeadline)
@@ -306,7 +307,7 @@ function statusText(s) {
 }
 
 function passLabel(row) {
-  if (row?.status === 'hold_ready') return '确认出借'
+  if (allowBookHold.value && row?.status === 'hold_ready') return '确认出借'
   if (row?.status === 'verifying') return verbs.value.approve || '受理'
   if (!twoLevel.value || !row) return verbs.value.approve || '受理'
   if (row.status === 'pending_final') return '终审通过'
@@ -326,7 +327,7 @@ function canPass(row) {
 /** 仅进入「处理中」的那一关展示派单 */
 function isFinalPass(row) {
   if (!row) return false
-  if (row.status === 'hold_ready') return true
+  if (allowBookHold.value && row.status === 'hold_ready') return true
   if (!twoLevel.value) return true
   return row.status === 'pending_final'
 }

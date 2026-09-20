@@ -8,7 +8,20 @@ import com.thesis.capability.EquipmentDictStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
 import com.thesis.capability.CouponStore;
+import com.thesis.capability.ConsignStore;
+import com.thesis.capability.WeighSaleStore;
+import com.thesis.capability.ShootStore;
+import com.thesis.capability.BoardingStore;
+import com.thesis.capability.BuybackStore;
+import com.thesis.capability.DigitalGoodsStore;
+import com.thesis.capability.RentalBondStore;
+import com.thesis.capability.LessonStore;
+import com.thesis.capability.DeliveryWindowStore;
+import com.thesis.capability.BlindBoxStore;
+import com.thesis.capability.GroupBuyStore;
+import com.thesis.capability.PurchaseGateStore;
 import com.thesis.capability.FavoriteStore;
+import com.thesis.capability.LineCustomStore;
 import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderReviewStore;
 import com.thesis.capability.OrderStore;
@@ -18,21 +31,21 @@ import com.thesis.capability.TicketStore;
 import com.thesis.common.PasswordHashes;
 import com.thesis.service.MessageStore;
 import com.thesis.service.DmStore;
-import com.thesis.service.DoclibStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.SurveyStore;
-import com.thesis.service.SeatStore;
-import com.thesis.service.ESignStore;
-import com.thesis.service.StockIoStore;
+import com.thesis.service.UserStore;
+import com.thesis.service.VoteStore;
 import com.thesis.service.BalanceLedgerStore;
 import com.thesis.service.GradeScoreStore;
-import com.thesis.service.OccupySpanStore;
+import com.thesis.service.DoclibStore;
+import com.thesis.service.ESignStore;
 import com.thesis.service.MaterialCheckStore;
 import com.thesis.service.ClaimProofStore;
 import com.thesis.service.LostMessageStore;
+import com.thesis.service.OccupySpanStore;
+import com.thesis.service.SeatStore;
+import com.thesis.service.StockIoStore;
 import com.thesis.service.TimebankStore;
-import com.thesis.service.UserStore;
-import com.thesis.service.VoteStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -41,7 +54,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 按 thesis.* 配置绑定能力运行时（薄领域无专用 Store）。
- * 用 ApplicationRunner：保证 JpaSupport 已注入后再 ensureStaffColumns。
+ * 用 ApplicationRunner：保证 JdbcSupport 已注入后再 ensureStaffColumns。
  */
 @Component
 @Order(0)
@@ -85,6 +98,10 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.lookup-type-label:类型}")
     private String lookupTypeLabel;
+
+    /** 空串 = 管理端不展示单元容量列 */
+    @Value("${thesis.lookup-unit-capacity-label:容量}")
+    private String lookupUnitCapacityLabel;
 
     @Value("${thesis.use-quota:true}")
     private boolean useQuota;
@@ -170,6 +187,24 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-issue-pass-code:false}")
     private boolean ticketIssuePassCode;
 
+    @Value("${thesis.ticket-allow-renew:false}")
+    private boolean ticketAllowRenew;
+
+    @Value("${thesis.ticket-allow-waitlist:false}")
+    private boolean ticketAllowWaitlist;
+
+    @Value("${thesis.ticket-allow-book-hold:false}")
+    private boolean ticketAllowBookHold;
+
+    @Value("${thesis.ticket-hold-hours:48}")
+    private int ticketHoldHours;
+
+    @Value("${thesis.ticket-max-renew:1}")
+    private int ticketMaxRenew;
+
+    @Value("${thesis.ticket-renew-days:0}")
+    private int ticketRenewDays;
+
     @Value("${thesis.ticket-no-show-after-end:false}")
     private boolean ticketNoShowAfterEnd;
 
@@ -251,6 +286,51 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.order-review-enabled:false}")
     private boolean orderReviewEnabled;
 
+    @Value("${thesis.line-custom-enabled:false}")
+    private boolean lineCustomEnabled;
+
+    @Value("${thesis.line-custom-place-confirmed:false}")
+    private boolean lineCustomPlaceConfirmed;
+
+    @Value("${thesis.delivery-window-enabled:false}")
+    private boolean deliveryWindowEnabled;
+
+    @Value("${thesis.purchase-gate-enabled:false}")
+    private boolean purchaseGateEnabled;
+
+    @Value("${thesis.group-buy-enabled:false}")
+    private boolean groupBuyEnabled;
+
+    @Value("${thesis.blind-box-enabled:false}")
+    private boolean blindBoxEnabled;
+
+    @Value("${thesis.consign-enabled:false}")
+    private boolean consignEnabled;
+
+    @Value("${thesis.weigh-sale-enabled:false}")
+    private boolean weighSaleEnabled;
+
+    @Value("${thesis.shoot-enabled:false}")
+    private boolean shootEnabled;
+
+    @Value("${thesis.boarding-enabled:false}")
+    private boolean boardingEnabled;
+
+    @Value("${thesis.buyback-enabled:false}")
+    private boolean buybackEnabled;
+
+    @Value("${thesis.lesson-pack-enabled:false}")
+    private boolean lessonPackEnabled;
+
+    @Value("${thesis.rental-bond-enabled:false}")
+    private boolean rentalBondEnabled;
+
+    @Value("${thesis.digital-goods-enabled:false}")
+    private boolean digitalGoodsEnabled;
+
+    @Value("${thesis.no-casual-refund:false}")
+    private boolean noCasualRefund;
+
     @Value("${thesis.favorites-enabled:false}")
     private boolean favoritesEnabled;
 
@@ -274,6 +354,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.staff-roster-enabled:false}")
     private boolean staffRosterEnabled;
+
+    @Value("${thesis.room-equipment-enabled:false}")
+    private boolean roomEquipmentEnabled;
 
     @Value("${thesis.audit-log-login-only:false}")
     private boolean auditLogLoginOnly;
@@ -367,9 +450,6 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
-    @Value("${thesis.room-equipment-enabled:false}")
-    private boolean roomEquipmentEnabled;
-
     @Value("${thesis.flash-price-enabled:false}")
     private boolean flashPriceEnabled;
 
@@ -379,11 +459,36 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.shop-marketplace:false}")
     private boolean shopMarketplace;
 
+    /** 店铺客服选人 */
     @Value("${thesis.dm-shop-cs:false}")
     private boolean dmShopCs;
 
     @Value("${thesis.points-earn-per-yuan:1}")
     private int pointsEarnPerYuan;
+
+    @Value("${thesis.points-pay-enabled:false}")
+    private boolean pointsPayEnabled;
+
+    @Value("${thesis.points-offset-enabled:false}")
+    private boolean pointsOffsetEnabled;
+
+    @Value("${thesis.points-checkin-enabled:false}")
+    private boolean pointsCheckInEnabled;
+
+    @Value("${thesis.points-checkin-amount:10}")
+    private int pointsCheckInAmount;
+
+    @Value("${thesis.points-expire-enabled:false}")
+    private boolean pointsExpireEnabled;
+
+    @Value("${thesis.points-expire-period:year}")
+    private String pointsExpirePeriod;
+
+    @Value("${thesis.points-expire-scope:all}")
+    private String pointsExpireScope;
+
+    @Value("${thesis.member-tier-basis:spend}")
+    private String memberTierBasis;
 
     @Value("${thesis.spend-discount-threshold-yuan:100}")
     private double spendDiscountThresholdYuan;
@@ -407,7 +512,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
         }
         if (ticketAllowCheckin) {
-            // checkin_code 由 bake 写入档案表；此处不再 ALTER
+            // checkin_code 已随档案表 schema 建好；此处不再 ALTER
         }
         if (enableTicket && ticketTable != null && !ticketTable.isBlank()) {
             if ("standalone".equalsIgnoreCase(ticketMode)) {
@@ -423,6 +528,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureCheckin(ticketAllowCheckin);
             TicketStore.configurePeerAccept(ticketPeerAccept);
             TicketStore.configureIssuePassCode(ticketIssuePassCode);
+            TicketStore.configureRenew(ticketAllowRenew, ticketMaxRenew, ticketRenewDays);
+            TicketStore.configureWaitlist(ticketAllowWaitlist);
+            TicketStore.configureBookHold(ticketAllowBookHold, ticketHoldHours);
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureTimebankRedeem(timebankEnabled && timebankRedeemOnApprove);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
@@ -430,7 +538,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureApproveEndsFlow(ticketApproveEndsFlow);
             TicketStore.configureAutoApprove(ticketAutoApprove);
             TicketStore.configureRequireClaimCode(ticketRequireClaimCode);
-                        TicketStore.configureMatchProfileRoom(
+            TicketStore.configureMatchProfileRoom(
                     ticketMatchProfileRoom,
                     ticketMatchProfileBuildingKey,
                     ticketMatchProfileRoomKey,
@@ -450,6 +558,15 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsEarnPerYuan,
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
+        LoyaltyStore.configurePointsModes(
+                pointsPayEnabled,
+                pointsOffsetEnabled,
+                pointsCheckInEnabled,
+                pointsCheckInAmount,
+                pointsExpireEnabled,
+                pointsExpirePeriod,
+                pointsExpireScope,
+                memberTierBasis);
         CouponStore.configure(couponEnabled);
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
@@ -457,6 +574,20 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             OrderStore.unbind();
         }
         OrderReviewStore.configure(orderReviewEnabled);
+        OrderStore.configureLineCustom(lineCustomEnabled, lineCustomPlaceConfirmed, noCasualRefund);
+        LineCustomStore.configure(lineCustomEnabled);
+        DeliveryWindowStore.configure(deliveryWindowEnabled);
+        PurchaseGateStore.configure(purchaseGateEnabled);
+        GroupBuyStore.configure(groupBuyEnabled);
+        BlindBoxStore.configure(blindBoxEnabled);
+        ConsignStore.configure(consignEnabled);
+        WeighSaleStore.configure(weighSaleEnabled);
+        ShootStore.configure(shootEnabled);
+        BoardingStore.configure(boardingEnabled);
+        BuybackStore.configure(buybackEnabled);
+        LessonStore.configure(lessonPackEnabled);
+        RentalBondStore.configure(rentalBondEnabled);
+        DigitalGoodsStore.configure(digitalGoodsEnabled);
         FavoriteStore.configure(favoritesEnabled);
         FavoriteStore.configureLike(postLikeEnabled);
         FavoriteStore.configureReport(contentReportEnabled);
@@ -505,7 +636,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 lookupTypeTable,
                 lookupSiteLabel,
                 lookupUnitLabel,
-                lookupTypeLabel);
+                lookupTypeLabel,
+                lookupUnitCapacityLabel);
         UserStore.ensureStaffColumns();
     }
 }

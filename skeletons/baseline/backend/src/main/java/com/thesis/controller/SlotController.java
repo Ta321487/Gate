@@ -34,7 +34,11 @@ public class SlotController {
     public R<?> reserve(@RequestBody Map<String, Object> body, HttpSession session) {
         requireSlot();
         String uid = AdminAuth.requireLogin(session);
-        long slotId = Long.parseLong(String.valueOf(body.get("slotId")));
+        long slotId = 0L;
+        Object rawSlot = body.get("slotId");
+        if (rawSlot != null && !String.valueOf(rawSlot).isBlank() && !"null".equals(String.valueOf(rawSlot))) {
+            slotId = Long.parseLong(String.valueOf(rawSlot));
+        }
         String remark = String.valueOf(body.getOrDefault("remark", ""));
         try {
             return R.ok(SlotStore.reserve(uid, slotId, remark, body));

@@ -54,9 +54,42 @@ _USER_KEYS = frozenset({"profile", "messages"})
 _ARCHIVE_KEYS = frozenset({"archive", "browse_history", "my_archive", "archive_logs"})
 _FAVORITE_KEYS = frozenset({"favorites"})
 _CART_KEYS = frozenset({"cart"})
-_ORDER_KEYS = frozenset({"my_orders", "orders", "addresses", "coupons", "order_reviews"})
-_TICKET_KEYS = frozenset({"my_tickets", "ticket_pending", "ticket_records", "week_calendar"})
-_SLOT_KEYS = frozenset({"slots", "my_reservations", "reservations"})
+_ORDER_KEYS = frozenset({
+    "my_orders",
+    "orders",
+    "addresses",
+    "coupons",
+    "order_reviews",
+    "blind_pools",
+    "group_campaigns",
+    "delivery_slots",
+    "price_spans",
+    "purchase_permits",
+    "my_permits",
+    "line_specs",
+    "consigns",
+    "my_consigns",
+    "loss_claims",
+    "my_loss",
+})
+_TICKET_KEYS = frozenset({
+    "my_tickets",
+    "ticket_pending",
+    "ticket_records",
+    "week_calendar",
+    "lost_clues",
+})
+_SLOT_KEYS = frozenset({
+    "slots",
+    "my_reservations",
+    "reservations",
+    "care_options",
+    "stay_logs",
+    "my_stay",
+    "shoot_bundles",
+    "shoot_files",
+    "my_shots",
+})
 _CONTENT_KEYS = frozenset({"content"})
 _GUESTBOOK_KEYS = frozenset({"guestbook"})
 _EXAM_KEYS = frozenset(

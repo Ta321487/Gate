@@ -32,7 +32,7 @@
             <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
             <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="allowRenew && row.renewCount"> · 已续借 {{ row.renewCount }} 次</template>
-            <template v-if="row.holdExpireAt && (row.status === 'hold_ready' || row.status === 'held')">
+            <template v-if="allowBookHold && row.holdExpireAt && (row.status === 'hold_ready' || row.status === 'held')">
               · 取书截止 {{ row.holdExpireAt }}
               <span
                 v-if="holdCountdownText(row)"
@@ -556,10 +556,11 @@ const finishVerb = computed(() => {
 })
 
 function canWithdraw(row) {
-  return !!row && (row.status === 'pending' || row.status === 'pending_mid'
+  if (!row) return false
+  if (row.status === 'pending' || row.status === 'pending_mid'
     || row.status === 'pending_final' || row.status === 'waitlisted'
-    || row.status === 'held' || row.status === 'hold_ready'
-    || row.status === 'verifying')
+    || row.status === 'verifying') return true
+  return !!(allowBookHold.value && (row.status === 'held' || row.status === 'hold_ready'))
 }
 
 function canSubmitProof(row) {

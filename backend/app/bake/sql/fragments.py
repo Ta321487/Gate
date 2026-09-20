@@ -1086,6 +1086,704 @@ def ensure_product_spec_columns(sql: str, *, enabled: bool, item_table: str | No
 
     return _CREATE_TABLE_RE.sub(repl, sql)
 
+
+ORDER_LINE_CUSTOM_COLUMNS: list[tuple[str, str]] = [
+    ("custom_text", "VARCHAR(200) DEFAULT ''"),
+    ("spec_choice", "VARCHAR(120) DEFAULT ''"),
+    ("attach_url", "VARCHAR(255) DEFAULT ''"),
+]
+
+
+def ensure_order_line_custom_columns(sql: str, *, enabled: bool, with_spec: bool = False) -> str:
+    """订单明细快照列。未开则不加。有规格时再加选项表，刻字仍是手填。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "order_line":
+            return m.group(0)
+        body = _inject_missing_columns(body, ORDER_LINE_CUSTOM_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if not with_spec:
+        return out
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?line_spec_option`?\b", out):
+        return out
+    ddl = """\
+CREATE TABLE IF NOT EXISTS line_spec_option (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  label VARCHAR(64) NOT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  sort_no INT NOT NULL DEFAULT 0
+);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 1, '宋体', 1, 10 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=1);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 2, '红色', 1, 20 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=2);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 3, '大号', 1, 30 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=3);
+"""
+    return out.rstrip() + "\n" + ddl
+
+
+ORDER_WINDOW_COLUMNS: list[tuple[str, str]] = [
+    ("fulfill_mode", "VARCHAR(16) DEFAULT ''"),
+    ("delivery_on", "DATE NULL"),
+    ("slot_id", "BIGINT NULL"),
+    ("slot_label", "VARCHAR(64) DEFAULT ''"),
+    ("price_rate", "DECIMAL(6,2) NOT NULL DEFAULT 1.00"),
+]
+
+_DELIVERY_WINDOW_DDL = """
+CREATE TABLE IF NOT EXISTS delivery_slot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  label VARCHAR(64) NOT NULL,
+  start_hm VARCHAR(8) NOT NULL DEFAULT '',
+  end_hm VARCHAR(8) NOT NULL DEFAULT '',
+  capacity INT NOT NULL DEFAULT 1,
+  fulfill_mode VARCHAR(16) NOT NULL DEFAULT 'preorder',
+  cutoff_hm VARCHAR(8) NOT NULL DEFAULT '',
+  enabled TINYINT NOT NULL DEFAULT 1,
+  sort_no INT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS price_span (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  date_from DATE NOT NULL,
+  date_to DATE NOT NULL,
+  rate DECIMAL(6,2) NOT NULL DEFAULT 1.00,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+_DELIVERY_WINDOW_SEED = """
+INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
+SELECT 1, '上午档', '09:00', '12:00', 8, 'same_day', '11:00', 1, 10 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=1);
+INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
+SELECT 2, '下午档', '14:00', '18:00', 8, 'preorder', '', 1, 20 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=2);
+INSERT INTO price_span (id, name, date_from, date_to, rate, enabled)
+SELECT 1, '情人节', '2026-02-10', '2026-02-14', 1.50, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM price_span WHERE id=1);
+UPDATE biz_order
+SET fulfill_mode='preorder', delivery_on='2026-09-26', slot_id=2, slot_label='下午档', price_rate=1.00
+WHERE id=1 AND (slot_id IS NULL OR slot_id=0);
+"""
+
+
+def ensure_delivery_window_sql(sql: str, *, enabled: bool) -> str:
+    """配送时段表、节日加价表、订单头快照列。未开不加。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "biz_order":
+            return m.group(0)
+        body = _inject_missing_columns(body, ORDER_WINDOW_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?delivery_slot`?\b", out):
+        out = out.rstrip() + "\n" + _DELIVERY_WINDOW_DDL + "\n" + _DELIVERY_WINDOW_SEED
+    return out
+
+
+PRODUCT_GATE_COLUMNS: list[tuple[str, str]] = [
+    ("need_permit", "TINYINT NOT NULL DEFAULT 0"),
+    ("month_limit", "INT NOT NULL DEFAULT 0"),
+]
+
+_PURCHASE_GATE_DDL = """\
+CREATE TABLE IF NOT EXISTS purchase_permit (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NULL,
+  category_id BIGINT NULL,
+  image_url VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  reviewer VARCHAR(64) DEFAULT '',
+  reject_reason VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME NULL,
+  KEY idx_permit_user_item (username, item_id),
+  KEY idx_permit_user_cat (username, category_id)
+);
+"""
+
+
+def ensure_purchase_gate_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """购买审核表与商品上的开关、月限。未开不加列。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, PRODUCT_GATE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?purchase_permit`?\b", out):
+        return out
+    seed = (
+        f"UPDATE {t} SET need_permit=1, month_limit=2 WHERE id=1;\n"
+        f"UPDATE {t} SET need_permit=0, month_limit=0 WHERE id=2;\n"
+        "INSERT INTO purchase_permit (username, item_id, image_url, status)\n"
+        "SELECT 'user', 1, '/uploads/seed-permit.png', 'pending' FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM purchase_permit WHERE username='user' AND item_id=1 AND status='pending');\n"
+    )
+    return out.rstrip() + "\n" + _PURCHASE_GATE_DDL + "\n" + seed
+
+
+_GROUP_BUY_DDL = """\
+CREATE TABLE IF NOT EXISTS group_campaign (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  target_size INT NOT NULL,
+  deadline DATETIME NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'open',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_group_item (item_id, status)
+);
+CREATE TABLE IF NOT EXISTS group_member (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  UNIQUE KEY uk_group_user (campaign_id, username),
+  KEY idx_group_order (order_id)
+);
+"""
+
+_GROUP_BUY_SEED = """\
+INSERT INTO group_campaign (item_id, target_size, deadline, status)
+SELECT 1, 3, DATE_ADD(NOW(), INTERVAL 2 DAY), 'open' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE item_id=1 AND status='open');
+INSERT INTO group_member (campaign_id, order_id, username)
+SELECT c.id, 1, 'demo_joiner' FROM group_campaign c
+WHERE c.item_id=1 AND c.status='open'
+AND NOT EXISTS (SELECT 1 FROM group_member m WHERE m.campaign_id=c.id AND m.username='demo_joiner')
+LIMIT 1;
+INSERT INTO group_campaign (item_id, target_size, deadline, status)
+SELECT 2, 3, DATE_SUB(NOW(), INTERVAL 1 DAY), 'failed' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE status='failed');
+"""
+
+
+def ensure_group_buy_sql(sql: str, *, enabled: bool) -> str:
+    """拼团两张表。未开不加，活动报名和拼车也不会走到这里。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?group_campaign`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _GROUP_BUY_DDL + "\n" + _GROUP_BUY_SEED
+
+
+PRODUCT_PITY_COLUMNS: list[tuple[str, str]] = [
+    ("pity_n", "INT NOT NULL DEFAULT 0"),
+]
+
+ORDER_LINE_DRAW_COLUMNS: list[tuple[str, str]] = [
+    ("draw_title", "VARCHAR(500) NOT NULL DEFAULT ''"),
+    ("draw_hidden", "TINYINT NOT NULL DEFAULT 0"),
+]
+
+_BLIND_BOX_DDL = """\
+CREATE TABLE IF NOT EXISTS blind_pool (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  box_id BIGINT NOT NULL,
+  prize_id BIGINT NOT NULL,
+  weight INT NOT NULL,
+  hidden TINYINT NOT NULL DEFAULT 0,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  UNIQUE KEY uk_box_prize (box_id, prize_id)
+);
+CREATE TABLE IF NOT EXISTS blind_pity (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  box_id BIGINT NOT NULL,
+  draws INT NOT NULL DEFAULT 0,
+  hidden_got TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_user_box (username, box_id)
+);
+"""
+
+
+def ensure_blind_box_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """盲盒奖池、保底计数、盒子上的保底次数。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        low = table.lower()
+        if low == t.lower():
+            body = _inject_missing_columns(body, PRODUCT_PITY_COLUMNS)
+        elif low == "order_line":
+            body = _inject_missing_columns(body, ORDER_LINE_DRAW_COLUMNS)
+        else:
+            return m.group(0)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?blind_pool`?\b", out):
+        return out
+    seed = (
+        f"UPDATE {t} SET pity_n=3 WHERE id=1;\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 2, 70, 0, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=2);\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 3, 25, 0, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=3);\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 4, 5, 1, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=4);\n"
+    )
+    return out.rstrip() + "\n" + _BLIND_BOX_DDL + "\n" + seed
+
+
+_CONSIGN_DDL = """
+CREATE TABLE IF NOT EXISTS consign_item (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL DEFAULT '',
+  expect_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  condition_note VARCHAR(64) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  reject_reason VARCHAR(255) NOT NULL DEFAULT '',
+  product_id BIGINT NULL,
+  fee_rate DECIMAL(6,4) NOT NULL DEFAULT 0.1000,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS consign_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  consign_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  gross_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  fee_rate DECIMAL(6,4) NOT NULL DEFAULT 0,
+  payout_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  withdraw_status VARCHAR(16) NOT NULL DEFAULT 'ready',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_consign_order (consign_id, order_id)
+);
+"""
+
+
+def ensure_consign_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """寄卖单、成交账。未开不加。成色列不在这里注入。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?consign_item`?\b", sql):
+        return sql
+    seed = f"""INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, fee_rate)
+SELECT 9, '', '', 0, '', 'rate', 0.1000 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE status='rate');
+INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, fee_rate)
+SELECT 1, 'user', '耳机', 80.00, '九成新', 'pending', 0.1000 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=1);
+INSERT IGNORE INTO {t} (id, title, author, isbn, category_id, stock, status) VALUES
+(5, '台灯', '45.00', 'CS-05', 2, 1, 'available');
+INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, product_id, fee_rate)
+SELECT 2, 'user', '台灯', 45.00, '八成新', 'on_sale', 5, 0.1000 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=2);
+INSERT IGNORE INTO {t} (id, title, author, isbn, category_id, stock, status) VALUES
+(6, '键盘', '100.00', 'CS-06', 2, 0, 'unavailable');
+INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, product_id, fee_rate)
+SELECT 3, 'user', '键盘', 100.00, '九成新', 'sold', 6, 0.1000 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=3);
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+(2, 'user', 'completed', 100.00, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(2, 2, 6, '键盘', 100.00, 1);
+INSERT INTO consign_ledger (id, consign_id, order_id, username, gross_yuan, fee_rate, payout_yuan, withdraw_status)
+SELECT 1, 3, 2, 'user', 100.00, 0.1000, 90.00, 'ready' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consign_ledger WHERE id=1);
+"""
+    return sql.rstrip() + "\n" + _CONSIGN_DDL + "\n" + seed
+
+
+PRODUCT_WEIGH_COLUMNS: list[tuple[str, str]] = [
+    ("sell_by_weight", "TINYINT NOT NULL DEFAULT 0"),
+    ("weight_unit", "VARCHAR(8) NOT NULL DEFAULT ''"),
+]
+
+ORDER_LINE_WEIGHT_COLUMNS: list[tuple[str, str]] = [
+    ("weight_qty", "DECIMAL(10,3) NULL"),
+]
+
+_WEIGH_SALE_DDL = """
+CREATE TABLE IF NOT EXISTS loss_policy (
+  id BIGINT PRIMARY KEY,
+  enabled TINYINT NOT NULL DEFAULT 0,
+  cap_yuan DECIMAL(10,2) NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS loss_claim (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  order_id BIGINT NOT NULL,
+  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  paid_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_weigh_sale_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """重量列、次日达时段、损耗赔付。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        low = table.lower()
+        if low == t.lower():
+            body = _inject_missing_columns(body, PRODUCT_WEIGH_COLUMNS)
+        elif low == "order_line":
+            body = _inject_missing_columns(body, ORDER_LINE_WEIGHT_COLUMNS)
+        elif low == "sys_user":
+            body = _inject_missing_columns(body, [("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")])
+        else:
+            return m.group(0)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?loss_policy`?\b", out):
+        return out
+    seed = f"""UPDATE {t} SET sell_by_weight=1, weight_unit='斤' WHERE id=1;
+INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
+SELECT 3, '次日达', '09:00', '18:00', 20, 'next_day', '', 1, 30 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=3);
+INSERT INTO loss_policy (id, enabled, cap_yuan)
+SELECT 1, 1, 20.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM loss_policy WHERE id=1);
+"""
+    return out.rstrip() + "\n" + _WEIGH_SALE_DDL + "\n" + seed
+
+
+_SHOOT_DDL = """
+CREATE TABLE IF NOT EXISTS service_bundle (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  price_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  detail VARCHAR(255) NOT NULL DEFAULT '',
+  enabled TINYINT NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS deliverable (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reservation_id BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL DEFAULT '',
+  delivered TINYINT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_shoot_sql(sql: str, *, enabled: bool) -> str:
+    """套餐与交片。未开不加。摄影师占用仍用 resource_slot。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "reservation":
+            return m.group(0)
+        body = _inject_missing_columns(
+            body,
+            [
+                ("bundle_id", "BIGINT NULL"),
+                ("bundle_yuan", "DECIMAL(10,2) NULL"),
+            ],
+        )
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?service_bundle`?\b", out):
+        return out
+    seed = """INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
+SELECT 1, '证件照', 199.00, '含精修 2 张', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=1);
+INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
+SELECT 2, '写真', 599.00, '含精修 8 张', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=2);
+INSERT INTO deliverable (id, reservation_id, file_url, delivered)
+SELECT 1, 1, '/files/photo-1.jpg', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=1);
+INSERT INTO deliverable (id, reservation_id, file_url, delivered)
+SELECT 2, 2, '/files/photo-2.jpg', 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=2);
+"""
+    return out.rstrip() + "\n" + _SHOOT_DDL + "\n" + seed
+
+
+_BOARDING_DDL = """
+CREATE TABLE IF NOT EXISTS stay_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reservation_id BIGINT NULL,
+  option_name VARCHAR(64) DEFAULT '',
+  enabled TINYINT DEFAULT 1,
+  day_key DATE NULL,
+  note VARCHAR(255) DEFAULT '',
+  photo_url VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_boarding_sql(sql: str, *, enabled: bool) -> str:
+    """寄养日期与日志。未开不加。特殊要求与每日记录共用 stay_log。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "reservation":
+            return m.group(0)
+        body = _inject_missing_columns(
+            body,
+            [
+                ("stay_from", "DATE NULL"),
+                ("stay_to", "DATE NULL"),
+                ("care_ids", "VARCHAR(128) NULL"),
+            ],
+        )
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stay_log`?\b", out):
+        return out
+    seed = """INSERT INTO stay_log (id, option_name, enabled)
+SELECT 1, '喂药', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=1);
+INSERT INTO stay_log (id, option_name, enabled)
+SELECT 2, '遛弯', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=2);
+INSERT INTO stay_log (id, reservation_id, day_key, note, photo_url)
+SELECT 3, 1, '2026-09-21', '已喂食，精神好', '/files/pet-1.jpg' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=3);
+"""
+    return out.rstrip() + "\n" + _BOARDING_DDL + "\n" + seed
+
+
+ORDER_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
+    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("rent_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("late_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("deposit_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+    ("damage_note", "VARCHAR(255) DEFAULT ''"),
+    ("damage_deduct_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+]
+
+VEHICLE_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
+    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("rent_stage", "VARCHAR(16) NOT NULL DEFAULT 'available'"),
+]
+
+
+def ensure_rental_bond_sql(sql: str, *, enabled: bool, item_table: str | None = "vehicle") -> str:
+    """订单三笔钱 + 验损列；档案押金与可租/已租/维修。未开不加。"""
+    if not enabled:
+        return sql
+
+    def order_repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "biz_order":
+            return m.group(0)
+        body = _inject_missing_columns(body, ORDER_RENTAL_BOND_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(order_repl, sql)
+    t = (item_table or "vehicle").strip()
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def item_repl(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _inject_missing_columns(body, VEHICLE_RENTAL_BOND_COLUMNS)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(item_repl, out)
+        seed = (
+            f"UPDATE {t} SET deposit_yuan=500.00, rent_stage='available' WHERE id=1 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
+            f"UPDATE {t} SET deposit_yuan=800.00, rent_stage='available' WHERE id=2 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
+            "UPDATE biz_order SET deposit_yuan=500.00, rent_yuan=total_yuan, deposit_status='held' "
+            "WHERE id=1 AND (deposit_status IS NULL OR deposit_status='');\n"
+        )
+        out = out.rstrip() + "\n" + seed
+    return out
+
+
+_DIGITAL_GOODS_DDL = """
+CREATE TABLE IF NOT EXISTS digital_code (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NULL,
+  code_value VARCHAR(128) NOT NULL DEFAULT '',
+  link_url VARCHAR(255) NOT NULL DEFAULT '',
+  kind VARCHAR(16) NOT NULL DEFAULT 'code',
+  used_order_id BIGINT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS digital_delivery (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  item_id BIGINT NULL,
+  kind VARCHAR(16) NOT NULL DEFAULT 'code',
+  code_value VARCHAR(128) NOT NULL DEFAULT '',
+  link_url VARCHAR(255) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_digital_order (order_id)
+);
+"""
+
+PRODUCT_DIGITAL_COLUMNS: list[tuple[str, str]] = [
+    ("digital_kind", "VARCHAR(16) NOT NULL DEFAULT 'code'"),
+]
+
+
+def ensure_digital_goods_sql(sql: str, *, enabled: bool, item_table: str | None = "product") -> str:
+    """数字码池与订单交付快照。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "product").strip()
+    out = sql
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def repl(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _inject_missing_columns(body, PRODUCT_DIGITAL_COLUMNS)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(repl, out)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?digital_delivery`?\b", out):
+        return out
+    seed = f"""UPDATE {t} SET digital_kind='code' WHERE id=1;
+UPDATE {t} SET digital_kind='link' WHERE id=2;
+INSERT INTO digital_code (id, item_id, code_value, kind, enabled)
+SELECT 1, 1, 'DEMO-ACTIVATE-1001', 'code', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=1);
+INSERT INTO digital_code (id, item_id, code_value, link_url, kind, enabled)
+SELECT 2, 2, '', '/files/ebook-demo.pdf', 'link', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=2);
+"""
+    return out.rstrip() + "\n" + _DIGITAL_GOODS_DDL + "\n" + seed
+
+
+_BUYBACK_DDL = """
+CREATE TABLE IF NOT EXISTS buyback_slot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  enabled TINYINT DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS buyback_order (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  book_title VARCHAR(200) NOT NULL,
+  condition_note VARCHAR(255) DEFAULT '',
+  slot_id BIGINT NULL,
+  quote_yuan DECIMAL(10,2) NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  product_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_buyback_sql(sql: str, *, enabled: bool) -> str:
+    """回收单与上门时段。未开不加。上架仍用商品表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?buyback_order`?\b", sql):
+        return sql
+    grade_col = ", condition_grade" if re.search(r"\bcondition_grade\b", sql, re.I) else ""
+    grade_val = ", '八成新'" if grade_col else ""
+    seed = f"""INSERT INTO buyback_slot (id, name, enabled)
+SELECT 1, '上午上门', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=1);
+INSERT INTO buyback_slot (id, name, enabled)
+SELECT 2, '下午上门', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=2);
+INSERT INTO product (id, title, author, isbn, category_id, stock, status{grade_col})
+SELECT 9, '操作系统', '28.00', 'BOOK-OS', 1, 1, 'available'{grade_val} FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM product WHERE id=9);
+INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, status)
+SELECT 1, 'user', '线性代数', '有笔记', 1, 'pending' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=1);
+INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, quote_yuan, status, product_id)
+SELECT 2, 'user', '操作系统', '书页干净', 2, 28.00, 'listed', 9 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=2);
+"""
+    return sql.rstrip() + "\n" + _BUYBACK_DDL + "\n" + seed
+
+
+_LESSON_PACK_DDL = """
+CREATE TABLE IF NOT EXISTS lesson_pack (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  sessions INT NOT NULL,
+  price_yuan DECIMAL(10,2) NOT NULL,
+  valid_days INT NOT NULL,
+  enabled TINYINT DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS lesson_wallet (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  total_sessions INT DEFAULT 0,
+  remain_sessions INT DEFAULT 0,
+  expire_at DATE NULL,
+  reservation_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_lesson_pack_sql(sql: str, *, enabled: bool) -> str:
+    """课时包与剩余节数。未开不加。约课仍用 reservation。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?lesson_pack`?\b", sql):
+        return sql
+    seed = """INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
+SELECT 1, '体验包', 4, 199.00, 30, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=1);
+INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
+SELECT 2, '季度包', 12, 499.00, 90, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=2);
+INSERT INTO lesson_wallet (id, username, total_sessions, remain_sessions, expire_at)
+SELECT 1, 'user', 4, 3, '2026-12-31' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=1);
+INSERT INTO lesson_wallet (id, username, reservation_id, total_sessions, remain_sessions)
+SELECT 2, 'user', 1, 0, 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=2);
+"""
+    return sql.rstrip() + "\n" + _LESSON_PACK_DDL + "\n" + seed
+
+
 def ensure_archive_flag_columns(
     sql: str,
     *,

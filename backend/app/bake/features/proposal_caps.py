@@ -106,6 +106,45 @@ def merge_proposal_capabilities(
     req = merge_post_mute_capabilities(req, body, domain=domain)
     req = merge_book_suggest_capabilities(req, body, domain=domain)
     req = merge_product_spec_capabilities(req, body, domain=domain)
+    from app.bake.features.line_custom import merge_line_custom_capabilities
+
+    req = merge_line_custom_capabilities(req, body, domain=domain)
+    from app.bake.features.delivery_window import merge_delivery_window_capabilities
+
+    req = merge_delivery_window_capabilities(req, body, domain=domain)
+    from app.bake.features.purchase_gate import merge_purchase_gate_capabilities
+
+    req = merge_purchase_gate_capabilities(req, body, domain=domain)
+    from app.bake.features.group_buy import merge_group_buy_capabilities
+
+    req = merge_group_buy_capabilities(req, body, domain=domain)
+    from app.bake.features.blind_box import merge_blind_box_capabilities
+
+    req = merge_blind_box_capabilities(req, body, domain=domain)
+    from app.bake.features.consign import merge_consign_capabilities
+
+    req = merge_consign_capabilities(req, body, domain=domain)
+    from app.bake.features.weigh_sale import merge_weigh_sale_capabilities
+
+    req = merge_weigh_sale_capabilities(req, body, domain=domain)
+    from app.bake.features.shoot import merge_shoot_capabilities
+
+    req = merge_shoot_capabilities(req, body, domain=domain)
+    from app.bake.features.boarding import merge_boarding_capabilities
+
+    req = merge_boarding_capabilities(req, body, domain=domain)
+    from app.bake.features.buyback import merge_buyback_capabilities
+
+    req = merge_buyback_capabilities(req, body, domain=domain)
+    from app.bake.features.lesson_pack import merge_lesson_pack_capabilities
+
+    req = merge_lesson_pack_capabilities(req, body, domain=domain)
+    from app.bake.features.rental_bond import merge_rental_bond_capabilities
+
+    req = merge_rental_bond_capabilities(req, body, domain=domain)
+    from app.bake.features.digital_goods import merge_digital_goods_capabilities
+
+    req = merge_digital_goods_capabilities(req, body, domain=domain)
     req = merge_recommend_capabilities(req, body)
     req = merge_time_conflict_capabilities(req, body)
     req = merge_loan_deadline_capabilities(req, body)

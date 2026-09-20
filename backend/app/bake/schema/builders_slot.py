@@ -16,6 +16,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     pk = shop_product_kind(title, proposal_text)
     marketplace = scan_shop_marketplace(title, proposal_text)
     campus = pk == "campus"
+    niche = None
     if campus:
         brow, lead = (
             "校园商城",
@@ -146,6 +147,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "market": "商品说明",
                 "office": "规格说明",
                 "agri": "施用说明",
+                "gift": "可定制说明",
             }.get(niche or "", "商品说明")
             sku_lab = {
                 "pharmacy": "国药准字/货号",
@@ -155,7 +157,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "agri": "规格含量",
             }.get(niche or "", "货号")
             fields = [
-                {"key": "title", "label": "商品名", "type": "string"},
+                {"key": "title", "label": "礼品名称" if niche == "gift" else "商品名", "type": "string"},
                 {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
                 {"key": "isbn", "label": sku_lab, "type": "string"},
                 {"key": "sellerNote", "label": note_lab, "type": "string"},
@@ -171,6 +173,16 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     arch_menu = "农产品管理" if pk == "farm" else "商品管理"
     arch_browse = "农产品浏览" if pk == "farm" else "商品浏览"
     arch_lab = "农产品" if pk == "farm" else "商品"
+    if niche == "gift" and not marketplace:
+        admin_lab = "礼品店主管（总管）"
+        sub_lab = "制作员"
+        brow = "定制礼品"
+        lead = "验证码登录；选择礼品，填写刻字或上传图片后下单，制作完成再发货。"
+        notice_title = "定制须知"
+        notice_body = "下单请填写刻字、字体颜色尺寸，并可上传图片。提交后进入待制作，制作完成再发货。"
+        arch_menu = "礼品管理"
+        arch_browse = "礼品浏览"
+        arch_lab = "礼品"
     if marketplace:
         brow = "多商家商城" if pk != "farm" else "多商家助农商城"
         lead = (
@@ -915,5 +927,16 @@ def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     resv_ent = schema["entities"]["reservation"]
     resv_ent["guestNameLabel"] = "入住人"
     resv_ent["guestCountLabel"] = "入住人数"
+    if hotel_product_kind(title, proposal_text) == "boarding":
+        for field in (schema["entities"].get("archive") or {}).get("fields") or []:
+            if field.get("key") == "title":
+                field["label"] = "寄养位"
+            elif field.get("key") == "author":
+                field["label"] = "日价(元)"
+            elif field.get("key") == "stock":
+                field["label"] = "可寄养数"
+        resv_ent["guestNameLabel"] = "宠物名"
+        labels["orderFulfillHint"] = "金额按日价乘以天数。前台办理入住和离店。"
+        schema["labels"] = labels
     return schema
 

@@ -1,8 +1,8 @@
 package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
-import com.thesis.config.JpaSupport;
-import com.thesis.config.JpaDb;
+import com.thesis.config.JdbcSupport;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,6 +20,15 @@ public final class LoyaltyStore {
     private static boolean memberTierEnabled;
     private static boolean couponEnabled;
     private static int pointsEarnPerYuan = 1;
+    private static boolean pointsPayEnabled;
+    private static boolean pointsOffsetEnabled;
+    private static boolean pointsCheckInEnabled;
+    private static int pointsCheckInAmount = 10;
+    private static boolean pointsExpireEnabled;
+    private static String pointsExpirePeriod = "year";
+    private static String pointsExpireScope = "all";
+    private static String memberTierBasis = "spend";
+    private static final ThreadLocal<Integer> OFFSET_POINTS = new ThreadLocal<>();
     private static double spendThresholdYuan = 100;
     private static double spendOffYuan = 10;
     private static List<Map<String, Object>> memberTiers = List.of();
@@ -61,6 +70,34 @@ public final class LoyaltyStore {
         }
     }
 
+    public static void configurePointsModes(
+            boolean pay,
+            boolean offset,
+            boolean checkIn,
+            int checkInAmount,
+            boolean expire,
+            String period,
+            String scope,
+            String tierBasis) {
+        pointsPayEnabled = pay;
+        pointsOffsetEnabled = offset;
+        pointsCheckInEnabled = checkIn;
+        pointsCheckInAmount = Math.max(1, checkInAmount);
+        pointsExpireEnabled = expire;
+        pointsExpirePeriod = period == null || period.isBlank() ? "year" : period;
+        pointsExpireScope = scope == null || scope.isBlank() ? "all" : scope;
+        memberTierBasis = tierBasis == null || tierBasis.isBlank() ? "spend" : tierBasis;
+    }
+
+    public static void beginOffset(Integer points) {
+        if (points == null || points <= 0) OFFSET_POINTS.remove();
+        else OFFSET_POINTS.set(points);
+    }
+
+    public static void endOffset() {
+        OFFSET_POINTS.remove();
+    }
+
     public static boolean anyEnabled() {
         return walletEnabled || pointsEnabled || spendDiscountEnabled || memberTierEnabled || couponEnabled;
     }
@@ -77,8 +114,8 @@ public final class LoyaltyStore {
         return pointsEnabled;
     }
 
-    private static JpaDb db() {
-        return JpaSupport.db();
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     private static void loadTiersFromResource() {
@@ -182,11 +219,23 @@ public final class LoyaltyStore {
 
     public static Map<String, Object> getAccount(String username) {
         if (anyEnabled()) ensureSchema();
+        if (username != null && !username.isBlank()) {
+            try {
+                sweepExpire(username);
+            } catch (Exception ignored) {
+            }
+        }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("walletEnabled", walletEnabled);
         m.put("pointsEnabled", pointsEnabled);
-        m.put("spendDiscountEnabled", spendDiscountEnabled);
+        m.put("pointsPayEnabled", pointsPayEnabled);
+        m.put("pointsOffsetEnabled", pointsOffsetEnabled);
+        m.put("pointsCheckInEnabled", pointsCheckInEnabled);
+        m.put("pointsCheckInAmount", pointsCheckInAmount);
+        m.put("pointsExpireEnabled", pointsExpireEnabled);
         m.put("memberTierEnabled", memberTierEnabled);
+        m.put("memberTierBasis", memberTierBasis);
+        m.put("spendDiscountEnabled", spendDiscountEnabled);
         m.put("couponEnabled", couponEnabled);
         if (couponEnabled) {
             try {
@@ -278,10 +327,15 @@ public final class LoyaltyStore {
     }
 
     public static Map<String, Object> previewPrice(double subtotal, String username) {
-        return previewPrice(subtotal, username, null);
+        return previewPrice(subtotal, username, null, null);
     }
 
     public static Map<String, Object> previewPrice(double subtotal, String username, String couponCode) {
+        return previewPrice(subtotal, username, couponCode, null);
+    }
+
+    public static Map<String, Object> previewPrice(
+            double subtotal, String username, String couponCode, Integer offsetPointsAsk) {
         Map<String, Object> out = new LinkedHashMap<>();
         double sub = round2(Math.max(0, subtotal));
         out.put("subtotalYuan", sub);
@@ -319,15 +373,33 @@ public final class LoyaltyStore {
         out.put("couponEnabled", couponEnabled);
         out.put("discountYuan", round2(discount));
         double payable = round2(Math.max(0, afterTier - discount));
-        out.put("payableYuan", payable);
 
         Map<String, Object> acc = getAccount(username == null ? "" : username);
         out.put("balanceYuan", acc.get("balanceYuan"));
         out.put("points", acc.get("points"));
+        out.put("pointsPayEnabled", pointsPayEnabled);
+        out.put("pointsOffsetEnabled", pointsOffsetEnabled);
         out.put("walletEnabled", walletEnabled);
-        boolean enough = !walletEnabled || ((Number) acc.get("balanceYuan")).doubleValue() + 1e-9 >= payable;
+
+        double offsetYuan = 0;
+        int offsetPts = 0;
+        // 预览只认显式传入的抵扣分；下单路径由 settleOnPlace 读 ThreadLocal
+        if (pointsOffsetEnabled && offsetPointsAsk != null && offsetPointsAsk > 0 && payable > 0) {
+            int have = ((Number) acc.get("points")).intValue();
+            int use = Math.min(offsetPointsAsk, have);
+            double cap = payable * 0.5;
+            offsetYuan = Math.min(use / 100.0, cap);
+            offsetPts = (int) Math.floor(offsetYuan * 100);
+            payable = round2(Math.max(0, payable - offsetYuan));
+        }
+        out.put("pointsOffsetYuan", round2(offsetYuan));
+        out.put("pointsOffset", offsetPts);
+        out.put("payableYuan", payable);
+
+        boolean enough = !walletEnabled || pointsPayEnabled
+                || ((Number) acc.get("balanceYuan")).doubleValue() + 1e-9 >= payable;
         out.put("balanceEnough", enough);
-        if (walletEnabled && !enough) {
+        if (walletEnabled && !pointsPayEnabled && !enough) {
             out.put(
                     "message",
                     "账户余额不足，请先在个人中心或购物车充值（当前 ¥"
@@ -349,6 +421,33 @@ public final class LoyaltyStore {
         Map<String, Object> preview = previewPrice(subtotal, username, couponCode);
         double payable = ((Number) preview.get("payableYuan")).doubleValue();
         double discount = ((Number) preview.get("discountYuan")).doubleValue();
+        if (pointsPayEnabled) {
+            int need = (int) Math.ceil(Math.max(0, payable));
+            int have = ((Number) getAccount(username).get("points")).intValue();
+            if (have < need) {
+                throw new IllegalStateException("积分不足（当前 " + have + "，需 " + need + "）");
+            }
+            if (need > 0) debitPoints(username, need, "兑换扣减", "order", orderId);
+            Map<String, Object> snap = new LinkedHashMap<>(preview);
+            snap.put("payBalanceYuan", 0.0);
+            snap.put("pointsPaid", need);
+            snap.put("discountYuan", discount);
+            return snap;
+        }
+        int offsetPts = 0;
+        double offsetYuan = 0;
+        Integer asked = OFFSET_POINTS.get();
+        if (pointsOffsetEnabled && asked != null && asked > 0 && payable > 0) {
+            int have = ((Number) getAccount(username).get("points")).intValue();
+            int use = Math.min(asked, have);
+            double cap = payable * 0.5;
+            offsetYuan = Math.min(use / 100.0, cap);
+            offsetPts = (int) Math.floor(offsetYuan * 100);
+            if (offsetPts > 0) {
+                debitPoints(username, offsetPts, "购物抵扣 −" + offsetPts, "order", orderId);
+                payable = round2(payable - offsetYuan);
+            }
+        }
         if (walletEnabled) {
             double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
             if (bal + 1e-9 < payable) {
@@ -360,6 +459,7 @@ public final class LoyaltyStore {
         }
         Map<String, Object> snap = new LinkedHashMap<>(preview);
         snap.put("payBalanceYuan", walletEnabled ? payable : 0.0);
+        snap.put("pointsPaid", offsetPts);
         snap.put("discountYuan", discount);
         return snap;
     }
@@ -395,31 +495,39 @@ public final class LoyaltyStore {
         return snap;
     }
 
-    /** 订单完成后：赠积分、累计消费、升级 */
+    /** 订单完成后：赠积分、累计消费、升级（积分兑换模式不赠分） */
     public static void onOrderCompleted(String username, long orderId, double payYuan) {
         if (!pointsEnabled && !memberTierEnabled) return;
         ensureSchema();
         double pay = round2(Math.max(0, payYuan));
         int earned = 0;
-        if (pointsEnabled && pointsEarnPerYuan > 0 && pay > 0) {
+        // 纯积分兑换不另赠分，避免循环刷分
+        if (pointsEnabled && !pointsPayEnabled && pointsEarnPerYuan > 0 && pay > 0) {
             earned = (int) Math.floor(pay) * pointsEarnPerYuan;
             if (earned > 0) {
-                creditPoints(username, earned, "order_earn", "order", orderId);
+                creditPoints(username, earned, "购物赠分 +" + earned, "order", orderId);
             }
         }
-        if (memberTierEnabled && pay > 0) {
-            db().update(
-                    "UPDATE sys_user SET spend_total_yuan=IFNULL(spend_total_yuan,0)+? WHERE username=?",
-                    pay,
-                    username);
+        if (memberTierEnabled) {
+            if (!"points".equals(memberTierBasis) && pay > 0) {
+                db().update(
+                        "UPDATE sys_user SET spend_total_yuan=IFNULL(spend_total_yuan,0)+? WHERE username=?",
+                        pay,
+                        username);
+            }
             Map<String, Object> acc = getAccount(username);
-            double spend = ((Number) acc.get("spendTotalYuan")).doubleValue();
-            String next = resolveTierId(spend);
+            String next;
+            if ("points".equals(memberTierBasis)) {
+                double pts = ((Number) acc.get("points")).doubleValue();
+                next = resolveTierId(pts);
+            } else {
+                double spend = ((Number) acc.get("spendTotalYuan")).doubleValue();
+                next = resolveTierId(spend);
+            }
             db().update("UPDATE sys_user SET member_tier=? WHERE username=?", next, username);
         }
         if (earned > 0) {
             try {
-                // 回写订单赠分（列可能不存在则忽略）
                 db().update("UPDATE biz_order SET points_earned=? WHERE id=?", earned, orderId);
             } catch (Exception ignored) {
             }
@@ -565,5 +673,94 @@ public final class LoyaltyStore {
 
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    /** 管理端给买家充积分。 */
+    public static Map<String, Object> adminCreditPoints(String username, int amount) {
+        return adminCreditPoints(username, amount, "", "");
+    }
+
+    public static Map<String, Object> adminCreditPoints(
+            String username, int amount, String operator, String remark) {
+        if (!pointsEnabled) throw new IllegalStateException("未开启积分");
+        if (username == null || username.isBlank()) throw new IllegalArgumentException("请选择用户");
+        if (amount <= 0) throw new IllegalArgumentException("请填写积分");
+        String reason = (remark == null || remark.isBlank())
+                ? ("会员充值 +" + amount)
+                : remark.trim();
+        creditPoints(username, amount, reason, "admin", null);
+        if (memberTierEnabled && "points".equals(memberTierBasis)) {
+            Map<String, Object> acc = getAccount(username);
+            double pts = ((Number) acc.get("points")).doubleValue();
+            String next = resolveTierId(pts);
+            db().update("UPDATE sys_user SET member_tier=? WHERE username=?", next, username);
+        }
+        return getAccount(username);
+    }
+
+    /** 当天首次登录入账。原因含具体分值。 */
+    public static void checkInOnLogin(String username) {
+        if (!pointsEnabled || !pointsCheckInEnabled) return;
+        if (username == null || username.isBlank()) return;
+        ensureSchema();
+        String day = java.time.LocalDate.now().toString();
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM user_ledger WHERE username=? AND reason LIKE '每日登录奖励%' AND DATE(created_at)=?",
+                    Integer.class, username, day);
+            if (n != null && n > 0) return;
+        } catch (Exception e) {
+            return;
+        }
+        creditPoints(username, pointsCheckInAmount, "每日登录奖励 +" + pointsCheckInAmount, "login", null);
+    }
+
+    /** 访问账户时按周期清零。 */
+    public static void sweepExpire(String username) {
+        if (!pointsEnabled || !pointsExpireEnabled || username == null || username.isBlank()) return;
+        ensureSchema();
+        ensureUserCol("points_expire_key", "VARCHAR(16) DEFAULT ''");
+        java.time.LocalDate today = java.time.LocalDate.now();
+        String key = "year".equals(pointsExpirePeriod)
+                ? String.valueOf(today.getYear())
+                : today.getYear() + "-" + today.getMonthValue();
+        String prev;
+        try {
+            prev = db().queryForObject(
+                    "SELECT points_expire_key FROM sys_user WHERE username=?", String.class, username);
+        } catch (Exception e) {
+            return;
+        }
+        if (key.equals(prev == null ? "" : prev)) return;
+        if (prev == null || prev.isBlank()) {
+            db().update("UPDATE sys_user SET points_expire_key=? WHERE username=?", key, username);
+            return;
+        }
+        int have = 0;
+        try {
+            Integer p = db().queryForObject(
+                    "SELECT IFNULL(points,0) FROM sys_user WHERE username=?", Integer.class, username);
+            have = p == null ? 0 : p;
+        } catch (Exception e) {
+            return;
+        }
+        int cut = have;
+        if ("period_earn".equals(pointsExpireScope)) {
+            cut = Math.min(have, periodEarn(username, prev));
+        }
+        if (cut > 0) debitPoints(username, cut, "过期清零", "expire", null);
+        db().update("UPDATE sys_user SET points_expire_key=? WHERE username=?", key, username);
+    }
+
+    private static int periodEarn(String username, String key) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COALESCE(SUM(delta),0) FROM user_ledger WHERE username=? AND kind='points' AND delta>0"
+                            + " AND DATE_FORMAT(created_at, '%Y-%c')=? ",
+                    Integer.class, username, key.replace("-0", "-"));
+            return n == null ? 0 : Math.max(0, n);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

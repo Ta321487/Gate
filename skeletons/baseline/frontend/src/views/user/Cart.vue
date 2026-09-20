@@ -57,12 +57,49 @@
       </div>
     </div>
 
-    <el-dialog v-model="checkoutVisible" :title="`提交${orderNoun}`" width="520px" destroy-on-close>
+    <el-dialog v-model="checkoutVisible" :title="`提交${orderNoun}`" :width="lineCustom ? '640px' : '520px'" destroy-on-close>
       <el-form label-position="top">
         <el-form-item :label="deliveryTypeLabel" required>
           <el-select v-model="form.deliveryType" style="width: 100%">
             <el-option v-for="opt in deliveryOptions" :key="opt" :label="opt" :value="opt" />
           </el-select>
+        </el-form-item>
+        <template v-if="deliveryWindow">
+          <el-form-item label="配送日期" required>
+            <el-date-picker
+              v-model="form.deliveryOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="选择日期"
+              style="width: 100%"
+              @change="loadWindow"
+            />
+          </el-form-item>
+          <el-form-item label="配送时段" required>
+            <el-radio-group v-model="form.slotId" class="slot-list">
+              <el-radio
+                v-for="s in windowSlots"
+                :key="s.id"
+                :value="s.id"
+                :disabled="s.full"
+              >
+                {{ s.label }} {{ s.startHm }}-{{ s.endHm }}
+                · {{ s.fulfillMode === 'same_day' ? '当日达' : '预订' }}
+                · 余 {{ s.remain }}
+              </el-radio>
+            </el-radio-group>
+            <p v-if="!windowSlots.length" class="tip muted">这一天没有可送时段，请换一个日期。</p>
+            <p v-if="Number(windowRate) > 1" class="tip">{{ windowPriceName || '节日' }}加价 ×{{ Number(windowRate).toFixed(2) }}，计入本单。</p>
+          </el-form-item>
+        </template>
+        <el-form-item v-if="groupBuy" label="拼团">
+          <el-radio-group v-model="form.campaignId" class="slot-list">
+            <el-radio :value="null">不参团</el-radio>
+            <el-radio v-for="g in groupOpens" :key="g.id" :value="g.id">
+              {{ g.verb }} · {{ g.title || '商品' }} · {{ g.joined }}/{{ g.targetSize }} · 截止 {{ g.deadline }}
+            </el-radio>
+          </el-radio-group>
+          <p v-if="!groupOpens.length" class="tip muted">暂时没有可以参加的团。</p>
         </el-form-item>
         <template v-if="needAddress">
           <el-form-item label="收货地址" required>
@@ -122,6 +159,35 @@
             :placeholder="tastePlaceholder"
           />
         </el-form-item>
+        <template v-if="lineCustom">
+          <p class="tip muted">{{ customHint }}</p>
+          <div v-for="row in list" :key="row.itemId" class="custom-block">
+            <p class="custom-title">{{ row.title }}</p>
+            <el-form-item :label="customTextLabel" required>
+              <el-input v-model="extraOf(row).customText" maxlength="200" placeholder="如：姓名、纪念日" />
+            </el-form-item>
+            <el-form-item v-if="customSpecLabel" :label="customSpecLabel" required>
+              <el-select v-model="extraOf(row).specChoice" filterable placeholder="请选择" style="width: 100%">
+                <el-option v-for="opt in specOptions" :key="opt.id" :label="opt.label" :value="opt.label" />
+              </el-select>
+              <p v-if="!specOptions.length" class="tip muted">暂无可选规格。</p>
+            </el-form-item>
+            <el-form-item v-if="customImageLabel" :label="customImageLabel" required>
+              <el-upload :show-file-list="false" accept="image/*" :http-request="(opt) => onCustomImage(row, opt)">
+                <el-button size="small">{{ extraOf(row).attachUrl ? '重新上传' : '上传图片' }}</el-button>
+              </el-upload>
+              <a v-if="extraOf(row).attachUrl" class="link" :href="extraOf(row).attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+            </el-form-item>
+          </div>
+        </template>
+        <template v-if="weighSale && weightRows.length">
+          <div v-for="row in weightRows" :key="'w-' + row.itemId" class="custom-block">
+            <p class="custom-title">{{ row.title }}</p>
+            <el-form-item :label="`重量（${row.weightUnit || '斤'}）`" required>
+              <el-input-number v-model="extraOf(row).weightQty" :min="0.01" :step="0.1" :precision="2" />
+            </el-form-item>
+          </div>
+        </template>
         <el-form-item v-if="couponOn" label="优惠券">
           <el-select
             v-model="form.couponCode"
@@ -175,7 +241,26 @@
           </p>
           <p v-if="Number(preview.discountYuan) > 0">满减 −¥{{ Number(preview.discountYuan).toFixed(2) }}</p>
           <p v-if="Number(preview.couponOffYuan) > 0">券抵扣 −¥{{ Number(preview.couponOffYuan).toFixed(2) }}</p>
-          <p class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
+          <template v-if="pointsOffsetOn">
+            <p>可用积分 {{ Number(account.points || 0) }}</p>
+            <el-form-item label="抵扣积分">
+              <el-input-number
+                v-model="form.offsetPoints"
+                :min="0"
+                :max="Math.max(0, Number(account.points || 0))"
+                :step="100"
+                controls-position="right"
+              />
+              <span class="tip muted">100 积分抵 ¥1，最多抵应付一半</span>
+            </el-form-item>
+            <p v-if="Number(preview.pointsOffsetYuan) > 0">
+              积分抵扣 −¥{{ Number(preview.pointsOffsetYuan).toFixed(2) }}
+            </p>
+          </template>
+          <p v-if="pointsPayOn" class="payable">
+            本单需 {{ Math.ceil(Number(preview.payableYuan || totalYuan)) }} 积分兑换
+          </p>
+          <p v-else class="payable">应付 ¥{{ Number(preview.payableYuan || totalYuan).toFixed(2) }}</p>
           <p v-if="walletOn && preview.balanceEnough === false" class="warn">余额不足，请先充值后再提交</p>
         </div>
       </el-form>
@@ -218,11 +303,13 @@ import {
   anyLoyaltyEnabled,
   hasTrait,
   getSchema,
+  hasCap,
   isCouponEnabled,
   isMemberTierEnabled,
   isPointsEnabled,
   isSpendDiscountEnabled,
   isWalletEnabled,
+  loyaltySchema,
   menuLabel,
 } from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
@@ -242,11 +329,31 @@ const demoPayHint = computed(
     || '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。',
 )
 const pointsOn = computed(() => isPointsEnabled())
+const pointsPayOn = computed(() => !!account.value.pointsPayEnabled || !!loyaltySchema()?.points?.payEnabled)
+const pointsOffsetOn = computed(
+  () => !!account.value.pointsOffsetEnabled || !!loyaltySchema()?.points?.offsetEnabled,
+)
 const discountOn = computed(() => isSpendDiscountEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
 const couponOn = computed(() => isCouponEnabled())
 const mineCoupons = ref([])
-const tagOptions = computed(() => addressTagOptions())
+const lineCustom = computed(() => hasCap('line_custom'))
+const weighSale = computed(() => hasCap('weigh_sale'))
+const weightRows = computed(() => list.value.filter((row) => Number(row.sellByWeight) === 1))
+const deliveryWindow = computed(() => hasCap('delivery_window'))
+const groupBuy = computed(() => hasCap('group_buy'))
+const groupOpens = ref([])
+const specOptions = ref([])
+const windowSlots = ref([])
+const windowRate = ref(1)
+const windowPriceName = ref('')
+const customTextLabel = computed(() => getSchema()?.labels?.lineCustomTextLabel || '定制文字')
+const customSpecLabel = computed(() => getSchema()?.labels?.lineCustomSpecLabel || '')
+const customImageLabel = computed(() => getSchema()?.labels?.lineCustomImageLabel || '')
+const customHint = computed(
+  () => getSchema()?.labels?.lineCustomHint || '填写后会记在本订单上。',
+)
+const lineExtraMap = reactive({})
 const deliveryOptions = computed(() =>
   isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],
 )
@@ -278,8 +385,12 @@ const form = reactive({
   tasteNote: '',
   remark: '',
   couponCode: '',
+  offsetPoints: 0,
   payChannel: 'alipay',
   payPassword: '',
+  deliveryOn: '',
+  slotId: null,
+  campaignId: null,
 })
 
 const totalYuan = computed(() =>
@@ -332,6 +443,7 @@ async function refreshPreview() {
     const res = await http.post('/api/loyalty/preview', {
       subtotalYuan: Number(totalYuan.value),
       couponCode: form.couponCode?.trim() || undefined,
+      offsetPoints: pointsOffsetOn.value ? Number(form.offsetPoints || 0) : undefined,
     })
     preview.value = res.data || null
   } catch {
@@ -348,6 +460,13 @@ async function load() {
 watch(totalYuan, () => {
   if (anyLoyalty.value) refreshPreview()
 })
+
+watch(
+  () => form.offsetPoints,
+  () => {
+    if (pointsOffsetOn.value) refreshPreview()
+  },
+)
 
 async function loadAddresses() {
   try {
@@ -395,6 +514,7 @@ async function openCheckout() {
   form.tasteNote = ''
   form.remark = ''
   form.couponCode = ''
+  form.offsetPoints = 0
   await loadAddresses()
   await loadMineCoupons()
   await loadLoyalty()
@@ -417,6 +537,15 @@ async function openCheckout() {
     onPickAddress(def.id)
   }
   checkoutVisible.value = true
+  if (groupBuy.value) {
+    const res = await http.get('/api/group-buys/open')
+    groupOpens.value = res.data || []
+    form.campaignId = null
+  }
+  if (customSpecLabel.value) {
+    const res = await http.get('/api/line-specs/options')
+    specOptions.value = res.data || []
+  }
 }
 
 function onPickAddress(id) {
@@ -463,7 +592,70 @@ async function saveAsAddress() {
   }
 }
 
+function extraOf(row) {
+  const id = String(row?.itemId)
+  if (!lineExtraMap[id]) lineExtraMap[id] = { customText: '', specChoice: '', attachUrl: '', weightQty: null }
+  return lineExtraMap[id]
+}
+
+async function onCustomImage(row, opt) {
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  extraOf(row).attachUrl = res.data?.url || ''
+  ElMessage.success('图片已上传')
+}
+
+async function loadWindow() {
+  if (!deliveryWindow.value || !form.deliveryOn) {
+    windowSlots.value = []
+    windowRate.value = 1
+    windowPriceName.value = ''
+    return
+  }
+  const res = await http.get('/api/delivery-windows/options', { params: { day: form.deliveryOn } })
+  windowSlots.value = res.data?.slots || []
+  windowRate.value = Number(res.data?.priceRate || 1)
+  windowPriceName.value = res.data?.priceName || ''
+  if (!windowSlots.value.some((s) => s.id === form.slotId && !s.full)) form.slotId = null
+}
+
 async function submitOrder() {
+  if (deliveryWindow.value) {
+    if (!form.deliveryOn) {
+      ElMessage.warning('请选择配送日期')
+      return
+    }
+    if (!form.slotId) {
+      ElMessage.warning('请选择配送时段')
+      return
+    }
+  }
+  if (lineCustom.value) {
+    for (const row of list.value) {
+      const ex = extraOf(row)
+      if (!String(ex.customText || '').trim()) {
+        ElMessage.warning(`请填写「${row.title}」的${customTextLabel.value}`)
+        return
+      }
+      if (customSpecLabel.value && !String(ex.specChoice || '').trim()) {
+        ElMessage.warning(`请选择「${row.title}」的${customSpecLabel.value}`)
+        return
+      }
+      if (customImageLabel.value && !ex.attachUrl) {
+        ElMessage.warning(`请上传「${row.title}」的${customImageLabel.value}`)
+        return
+      }
+    }
+  }
+  if (weighSale.value) {
+    for (const row of weightRows.value) {
+      if (!(Number(extraOf(row).weightQty) > 0)) {
+        ElMessage.warning(`请填写「${row.title}」的重量`)
+        return
+      }
+    }
+  }
   if (needAddress.value) {
     if (!form.receiverName?.trim() || !form.receiverPhone?.trim() || !form.addressLine?.trim()) {
       ElMessage.warning('请填写收货人、手机与详细地址')
@@ -495,6 +687,19 @@ async function submitOrder() {
       tasteNote: form.tasteNote.trim(),
       remark: form.remark.trim(),
       couponCode: form.couponCode.trim() || undefined,
+      offsetPoints: pointsOffsetOn.value && form.offsetPoints > 0 ? form.offsetPoints : undefined,
+      deliveryOn: deliveryWindow.value ? form.deliveryOn : undefined,
+      slotId: deliveryWindow.value ? form.slotId : undefined,
+      campaignId: groupBuy.value ? form.campaignId : undefined,
+      lineExtras: lineCustom.value || weighSale.value
+        ? list.value.map((row) => ({
+          itemId: row.itemId,
+          customText: extraOf(row).customText.trim(),
+          specChoice: extraOf(row).specChoice.trim(),
+          attachUrl: extraOf(row).attachUrl,
+          weightQty: extraOf(row).weightQty,
+        }))
+        : undefined,
     }
     if (demoPay.value) {
       payload.payChannel = form.payChannel

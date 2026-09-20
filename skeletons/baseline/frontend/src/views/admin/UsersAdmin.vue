@@ -62,6 +62,12 @@
             type="success"
             @click="recharge(row)"
           >充值</el-button>
+          <el-button
+            v-if="pointsOn && !isSub(row)"
+            link
+            type="success"
+            @click="creditPoints(row)"
+          >加积分</el-button>
           <el-button link type="warning" @click="resetPwd(row)">重置密码</el-button>
           <el-button
             v-if="muteOn && !isSub(row)"
@@ -163,6 +169,7 @@ import {
   getSchema,
   hasCap,
   isWalletEnabled,
+  isPointsEnabled,
   profileAdminColumns,
   profileAudienceOf,
   profileFieldsForAudience,
@@ -185,6 +192,7 @@ const canAppoint = computed(() => postOptions.value.length > 0)
 const allowAppointFromUsers = computed(() => roles.value.allowAppointFromUsers === true)
 const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.value)
 const walletOn = computed(() => isWalletEnabled())
+const pointsOn = computed(() => isPointsEnabled())
 const muteOn = computed(() => hasCap('post_mute'))
 /** 仅「用户」tab 摊业务档案列；商家 tab 摊店铺资料；子管理 / 全部与资料页一致不摊 */
 const adminCols = computed(() => {
@@ -388,6 +396,25 @@ async function recharge(row) {
   }
   await http.post('/api/admin/loyalty/recharge', { username: row.username, amount })
   ElMessage.success(`已充值 ¥${amount.toFixed(2)}`)
+}
+
+async function creditPoints(row) {
+  const { value } = await ElMessageBox.prompt(
+    `为「${row.nickname || row.username}」增加积分`,
+    '加积分',
+    {
+      inputValue: '100',
+      inputPattern: /^[1-9]\d*$/,
+      inputErrorMessage: '请输入正整数',
+    },
+  )
+  const points = Number(value)
+  if (!(points > 0)) {
+    ElMessage.warning('积分须大于 0')
+    return
+  }
+  await http.post('/api/admin/loyalty/credit-points', { username: row.username, points })
+  ElMessage.success(`已加 ${points} 积分`)
 }
 
 function openAppoint(row) {

@@ -113,7 +113,7 @@ def attach_lostfound_schema(schema: dict[str, Any], caps: list[str]) -> None:
             ],
         }
         lead = str(labels.get("authLead") or "")
-        extra = "认领须提交凭证，核验通过后管理员才能办结。"
+        extra = "提交认领只填说明；进入待交凭证后补交凭证，核验通过管理员才能办结。凭证未通过退回待交凭证，可重交。"
         if extra not in lead:
             labels["authLead"] = (lead + extra).strip()
 

@@ -424,6 +424,45 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_book_suggest_to_spec(out, body)
     out = apply_product_spec_to_spec(out, body)
     out = apply_order_extras_to_spec(out, body)
+    from app.bake.features.line_custom import apply_line_custom_to_spec
+
+    out = apply_line_custom_to_spec(out, body)
+    from app.bake.features.delivery_window import apply_delivery_window_to_spec
+
+    out = apply_delivery_window_to_spec(out, body)
+    from app.bake.features.purchase_gate import apply_purchase_gate_to_spec
+
+    out = apply_purchase_gate_to_spec(out, body)
+    from app.bake.features.group_buy import apply_group_buy_to_spec
+
+    out = apply_group_buy_to_spec(out, body)
+    from app.bake.features.blind_box import apply_blind_box_to_spec
+
+    out = apply_blind_box_to_spec(out, body)
+    from app.bake.features.consign import apply_consign_to_spec
+
+    out = apply_consign_to_spec(out, body)
+    from app.bake.features.weigh_sale import apply_weigh_sale_to_spec
+
+    out = apply_weigh_sale_to_spec(out, body)
+    from app.bake.features.shoot import apply_shoot_to_spec
+
+    out = apply_shoot_to_spec(out, body)
+    from app.bake.features.boarding import apply_boarding_to_spec
+
+    out = apply_boarding_to_spec(out, body)
+    from app.bake.features.buyback import apply_buyback_to_spec
+
+    out = apply_buyback_to_spec(out, body)
+    from app.bake.features.lesson_pack import apply_lesson_pack_to_spec
+
+    out = apply_lesson_pack_to_spec(out, body)
+    from app.bake.features.rental_bond import apply_rental_bond_to_spec
+
+    out = apply_rental_bond_to_spec(out, body)
+    from app.bake.features.digital_goods import apply_digital_goods_to_spec
+
+    out = apply_digital_goods_to_spec(out, body)
     from app.bake.features.core_cap_scan import apply_core_caps_to_spec
     from app.bake.features.ticket_flow_opts import apply_ticket_flow_opts_to_spec
 

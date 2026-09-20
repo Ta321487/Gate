@@ -58,6 +58,19 @@ public interface OrderMapper {
             @Param("priceYuan") double priceYuan,
             @Param("qty") int qty);
 
+    @Insert("INSERT INTO `${lineTable}` (order_id,item_id,title,price_yuan,qty,custom_text,spec_choice,attach_url) "
+            + "VALUES (#{orderId},#{itemId},#{title},#{priceYuan},#{qty},#{customText},#{specChoice},#{attachUrl})")
+    int insertLineCustom(
+            @Param("lineTable") String lineTable,
+            @Param("orderId") long orderId,
+            @Param("itemId") long itemId,
+            @Param("title") String title,
+            @Param("priceYuan") double priceYuan,
+            @Param("qty") int qty,
+            @Param("customText") String customText,
+            @Param("specChoice") String specChoice,
+            @Param("attachUrl") String attachUrl);
+
     @Delete("DELETE FROM `${lineTable}` WHERE order_id=#{orderId}")
     int deleteLines(@Param("lineTable") String lineTable, @Param("orderId") long orderId);
 

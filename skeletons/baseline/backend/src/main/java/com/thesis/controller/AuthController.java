@@ -1,6 +1,7 @@
 package com.thesis.controller;
 
 import com.thesis.capability.AuditLogStore;
+import com.thesis.capability.LoyaltyStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
@@ -91,6 +92,11 @@ public class AuthController {
         session.setAttribute("staffKind", profile.staffKind == null ? "" : profile.staffKind);
         session.removeAttribute("captcha");
         AuditLogStore.record(profile.username, "login", "session", "", "登录成功");
+        try {
+            LoyaltyStore.checkInOnLogin(profile.username);
+            LoyaltyStore.sweepExpire(profile.username);
+        } catch (Exception ignored) {
+        }
         Map<String, Object> m = new HashMap<>(profile.toMap());
         m.put("token", session.getId());
         return R.ok(m);

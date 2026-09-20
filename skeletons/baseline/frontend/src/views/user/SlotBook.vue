@@ -8,7 +8,7 @@
         {{ equipSectionTitle }}：{{ equipNames.join('、') }}
       </p>
       <div class="tools">
-        <div class="day-wrap" :class="{ 'has-duty': rosterOn && onDutyPeople.length }">
+        <div v-if="!boarding" class="day-wrap" :class="{ 'has-duty': rosterOn && onDutyPeople.length }">
           <el-date-picker
             v-model="day"
             type="date"
@@ -18,12 +18,21 @@
           />
           <i v-if="rosterOn && onDutyPeople.length" class="duty-dot" title="当日有当班" />
         </div>
-        <el-button type="primary" :disabled="!itemId" @click="load">查询</el-button>
+        <el-select
+          v-if="shoot"
+          :model-value="itemId || null"
+          placeholder="请选择摄影师"
+          style="width: 180px"
+          @change="pickPhotographer"
+        >
+          <el-option v-for="p in photographers" :key="p.id" :label="p.title" :value="p.id" />
+        </el-select>
+        <el-button v-if="!boarding" type="primary" :disabled="!itemId" @click="load">查询</el-button>
         <el-button link @click="$router.push('/archive')">{{ itemId ? '返回浏览' : '去选择' }}</el-button>
       </div>
     </section>
 
-    <div class="grid">
+    <div v-if="!boarding" class="grid">
       <button
         v-for="s in list"
         :key="s.id"
@@ -37,8 +46,30 @@
         <div class="r">剩余 {{ s.remain }} / {{ s.capacity }}</div>
       </button>
     </div>
-    <div v-if="!itemId" class="empty">请先选择后再查看可{{ resvVerb }}时段。</div>
-    <div v-else-if="!list.length" class="empty">该日暂无可{{ resvVerb }}时段，请换一天试试。</div>
+    <div v-if="!boarding && !itemId" class="empty">请先选择后再查看可{{ resvVerb }}时段。</div>
+    <div v-else-if="!boarding && !list.length" class="empty">该日暂无可{{ resvVerb }}时段，请换一天试试。</div>
+    <section v-if="boarding" class="boarding">
+      <p v-if="!itemId" class="empty">请先选择寄养位。</p>
+      <el-form v-else label-position="top">
+        <el-form-item label="入住日期" required>
+          <el-date-picker v-model="stayFrom" type="date" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item label="离店日期" required>
+          <el-date-picker v-model="stayTo" type="date" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item :label="guestLabel" required>
+          <el-input v-model="petName" maxlength="32" />
+        </el-form-item>
+        <el-form-item label="特殊要求">
+          <el-checkbox-group v-model="careIds">
+            <el-checkbox v-for="c in cares" :key="c.id" :label="c.id">{{ c.name }}</el-checkbox>
+          </el-checkbox-group>
+          <p v-if="!cares.length" class="tip">暂无可选要求。</p>
+        </el-form-item>
+        <p v-if="stayTotal" class="tip">金额 {{ stayTotal }} 元（日价 × {{ stayDays }} 天）</p>
+        <el-button type="primary" :loading="loading" @click="submitStay">确认{{ resvNoun }}</el-button>
+      </el-form>
+    </section>
     <p v-if="rosterOn && onDutyHint" class="duty-hint">{{ onDutyHint }}</p>
     <GuestLoginHint />
 
@@ -85,7 +116,14 @@
             <el-input-number v-model="extra.guestCount" :min="1" :max="20" />
           </el-form-item>
         </template>
-        <el-form-item v-if="slotSalon" :label="stylistLabel">
+        <el-form-item v-if="shoot" label="套餐" required>
+          <el-select v-model="bundleId" placeholder="请选择" style="width: 100%">
+            <el-option v-for="b in bundles" :key="b.id" :label="`${b.name}  ${b.priceYuan} 元`" :value="b.id" />
+          </el-select>
+          <p v-if="!bundles.length" class="tip">暂无可选套餐。</p>
+          <p v-else-if="bundlePrice" class="tip">套餐金额 {{ bundlePrice }} 元</p>
+        </el-form-item>
+        <el-form-item v-if="slotSalon && !shoot" :label="stylistLabel">
           <el-select
             v-if="rosterOn"
             v-model="extra.preferredStylist"
@@ -157,6 +195,20 @@ const slotMeeting = computed(() => hasTrait('slotMeeting'))
 const slotHotel = computed(() => hasTrait('slotHotel'))
 const slotCarrent = computed(() => hasTrait('slotCarrent'))
 const slotSalon = computed(() => hasTrait('slotSalon'))
+const shoot = computed(() => hasCap('shoot'))
+const boarding = computed(() => hasCap('boarding'))
+const stayFrom = ref('')
+const stayTo = ref('')
+const petName = ref('')
+const cares = ref([])
+const careIds = ref([])
+const photographers = ref([])
+const bundles = ref([])
+const bundleId = ref(null)
+const bundlePrice = computed(() => {
+  const row = bundles.value.find((b) => b.id === bundleId.value)
+  return row ? row.priceYuan : ''
+})
 const itemId = computed(() => Number(route.query.itemId || 0))
 const itemTitle = computed(() => String(route.query.title || ''))
 const priceText = computed(() => {
@@ -165,6 +217,23 @@ const priceText = computed(() => {
   const n = Number(String(raw).replace(/[¥￥,\s]/g, ''))
   if (!Number.isFinite(n)) return ''
   return `¥${n.toFixed(2)}`
+})
+const unitPrice = computed(() => {
+  const raw = route.query.price
+  if (raw == null || raw === '') return 0
+  const n = Number(String(raw).replace(/[¥￥,\s]/g, ''))
+  return Number.isFinite(n) ? n : 0
+})
+const stayDays = computed(() => {
+  if (!stayFrom.value || !stayTo.value) return 0
+  const a = new Date(`${stayFrom.value}T00:00:00`)
+  const b = new Date(`${stayTo.value}T00:00:00`)
+  const n = Math.round((b.getTime() - a.getTime()) / 86400000)
+  return n > 0 ? n : 0
+})
+const stayTotal = computed(() => {
+  if (!stayDays.value || !unitPrice.value) return ''
+  return (unitPrice.value * stayDays.value).toFixed(2)
 })
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
@@ -358,6 +427,10 @@ async function submitReserve() {
     ElMessage.warning(`请填写${remarkLabel.value}`)
     return
   }
+  if (shoot.value && !bundleId.value) {
+    ElMessage.warning('请选择套餐')
+    return
+  }
   loading.value = true
   try {
     await http.post('/api/slots/reserve', {
@@ -372,6 +445,7 @@ async function submitReserve() {
       guestName: extra.guestName || undefined,
       guestCount: extra.guestCount || undefined,
       preferredStylist: extra.preferredStylist || undefined,
+      bundleId: shoot.value ? bundleId.value : undefined,
     })
     ElMessage.success(requireConfirm.value ? `已提交，等待确认` : `${resvNoun.value}成功`)
     visible.value = false
@@ -381,7 +455,60 @@ async function submitReserve() {
   }
 }
 
-onMounted(load)
+function pickPhotographer(id) {
+  const row = photographers.value.find((p) => p.id === id)
+  router.replace({ path: route.path, query: { ...route.query, itemId: id, title: row?.title || '' } })
+}
+
+async function loadShoot() {
+  if (!shoot.value) return
+  const people = await http.get('/api/shoot/photographers')
+  photographers.value = people.data || []
+  const packs = await http.get('/api/shoot/bundles')
+  bundles.value = packs.data || []
+}
+
+async function loadCares() {
+  if (!boarding.value) return
+  const res = await http.get('/api/boarding/cares')
+  cares.value = res.data || []
+}
+
+async function submitStay() {
+  if (!requireLogin(router)) return
+  if (!itemId.value) {
+    ElMessage.warning('请先选择寄养位')
+    return
+  }
+  if (!stayFrom.value || !stayTo.value || stayDays.value < 1) {
+    ElMessage.warning('离店须晚于入住')
+    return
+  }
+  if (!petName.value.trim()) {
+    ElMessage.warning(`请填写${guestLabel.value}`)
+    return
+  }
+  loading.value = true
+  try {
+    await http.post('/api/slots/reserve', {
+      itemId: itemId.value,
+      stayFrom: stayFrom.value,
+      stayTo: stayTo.value,
+      guestName: petName.value.trim(),
+      careIds: careIds.value,
+    })
+    ElMessage.success(`${resvNoun.value}成功`)
+    router.push('/reservations')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  load()
+  loadShoot()
+  loadCares()
+})
 </script>
 
 <style scoped>

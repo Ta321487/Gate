@@ -164,6 +164,63 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
                 where="frontend/src/views/user/MyTickets.vue",
             )
         )
+        # 状态不在 schema、摘录里又包在 allow* 开关里 → 任一域都不当错域
+        gated = {
+            **ticket_ctx,
+            "entities": {
+                "ticket": {
+                    "states": {
+                        "pending": "待审",
+                        "approved": "通过",
+                        "rejected": "已驳回",
+                    }
+                }
+            },
+            "files": {
+                "frontend/src/views/user/MyTickets.vue": (
+                    '<template v-if="allowBookHold && row.status === \'hold_ready\'">'
+                    "取书截止"
+                ),
+            },
+        }
+        self.assertTrue(
+            _is_noise_finding(
+                "页面残留未定义状态 hold_ready",
+                gated,
+                where="frontend/src/views/user/MyTickets.vue",
+            )
+        )
+        listed = {
+            **gated,
+            "entities": {
+                "ticket": {
+                    "states": {
+                        "pending": "待审",
+                        "hold_ready": "待取书",
+                    }
+                }
+            },
+        }
+        self.assertFalse(
+            _is_noise_finding(
+                "页面残留未定义状态 hold_ready",
+                listed,
+                where="frontend/src/views/user/MyTickets.vue",
+            )
+        )
+        ungated = {
+            **gated,
+            "files": {
+                "frontend/src/views/user/MyTickets.vue": "row.status === 'hold_ready'",
+            },
+        }
+        self.assertFalse(
+            _is_noise_finding(
+                "页面残留未定义状态 hold_ready",
+                ungated,
+                where="frontend/src/views/user/MyTickets.vue",
+            )
+        )
 
         # 预约域本身有 reservation 时，勿滤掉真实问题
         slot_ctx = {

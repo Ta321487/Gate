@@ -79,7 +79,7 @@
       </div>
       <p class="loy-hint">
         <template v-if="walletOn">余额可在此充值；</template>
-        积分随订单完成赠送，可用于本站下单抵扣。
+        {{ pointsHint }}
       </p>
     </section>
 
@@ -228,6 +228,7 @@ import {
   isMemberTierEnabled,
   isPointsEnabled,
   isWalletEnabled,
+  loyaltySchema,
   profileAudienceOf,
   profileFieldsForAudience,
   getSchema,
@@ -274,6 +275,20 @@ const showBuyerLoyalty = computed(() => anyLoyalty.value && audience.value === '
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const tierOn = computed(() => isMemberTierEnabled())
+const pointsHint = computed(() => {
+  const pts = loyalty.value || {}
+  const sch = loyaltySchema()?.points || {}
+  const pay = !!pts.pointsPayEnabled || !!sch.payEnabled
+  const offset = !!pts.pointsOffsetEnabled || !!sch.offsetEnabled
+  const checkIn = !!pts.pointsCheckInEnabled || !!sch.checkInEnabled
+  const n = Number(pts.pointsCheckInAmount || sch.checkInPoints || 10)
+  const bits = []
+  if (pay) bits.push('本站商品可用积分兑换')
+  else if (offset) bits.push('下单时可选用积分抵扣部分货款')
+  else bits.push('积分随订单完成赠送')
+  if (checkIn) bits.push(`每天首次登录可获得 ${n} 积分`)
+  return bits.join('；') + '。'
+})
 const allFields = computed(() => profileFieldsForAudience(audience.value))
 const basicFields = computed(() => allFields.value.filter((f) => BASIC_KEYS.has(f.key) || f.storage === 'phone'))
 const bizFields = computed(() =>

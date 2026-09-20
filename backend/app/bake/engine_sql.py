@@ -220,6 +220,27 @@ def domain_sql(
     from app.bake.features.room_equipment import ROOM_EQUIPMENT_CAP
     from app.bake.features.book_suggest import BOOK_SUGGEST_CAP
     from app.bake.features.product_spec import PRODUCT_SPEC_CAP
+    from app.bake.features.line_custom import (
+        LINE_CUSTOM_CAP,
+        line_custom_wants_spec,
+        merge_line_custom_capabilities,
+    )
+    from app.bake.features.delivery_window import (
+        DELIVERY_WINDOW_CAP,
+        merge_delivery_window_capabilities,
+    )
+    from app.bake.features.purchase_gate import (
+        PURCHASE_GATE_CAP,
+        merge_purchase_gate_capabilities,
+    )
+    from app.bake.features.group_buy import (
+        GROUP_BUY_CAP,
+        merge_group_buy_capabilities,
+    )
+    from app.bake.features.blind_box import (
+        BLIND_BOX_CAP,
+        merge_blind_box_capabilities,
+    )
     from app.bake.features.exam import (
         EXAM_CAP,
         apply_exam_skin_sql,
@@ -242,6 +263,19 @@ def domain_sql(
         ensure_archive_flag_columns,
         ensure_flash_price_columns,
         ensure_product_spec_columns,
+        ensure_order_line_custom_columns,
+        ensure_delivery_window_sql,
+        ensure_purchase_gate_sql,
+        ensure_group_buy_sql,
+        ensure_blind_box_sql,
+        ensure_consign_sql,
+        ensure_weigh_sale_sql,
+        ensure_shoot_sql,
+        ensure_boarding_sql,
+        ensure_buyback_sql,
+        ensure_lesson_pack_sql,
+        ensure_rental_bond_sql,
+        ensure_digital_goods_sql,
         ensure_archive_log_sql,
         ensure_browse_history_sql,
         ensure_coupon_lifecycle_sql,
@@ -420,6 +454,148 @@ def domain_sql(
     text = ensure_product_spec_columns(
         text,
         enabled=PRODUCT_SPEC_CAP in caps,
+        item_table=resolved_item,
+    )
+    caps = merge_line_custom_capabilities(
+        caps,
+        f"{title or ''}\n{proposal_text or ''}",
+        domain=domain,
+    )
+    text = ensure_order_line_custom_columns(
+        text,
+        enabled=LINE_CUSTOM_CAP in caps,
+        with_spec=line_custom_wants_spec(proposal_text or "", title or ""),
+    )
+    caps = merge_delivery_window_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_delivery_window_sql(
+        text,
+        enabled=DELIVERY_WINDOW_CAP in caps,
+    )
+    caps = merge_purchase_gate_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_purchase_gate_sql(
+        text,
+        enabled=PURCHASE_GATE_CAP in caps,
+        item_table=resolved_item,
+    )
+    caps = merge_group_buy_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_group_buy_sql(
+        text,
+        enabled=GROUP_BUY_CAP in caps,
+    )
+    caps = merge_blind_box_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_blind_box_sql(
+        text,
+        enabled=BLIND_BOX_CAP in caps,
+        item_table=resolved_item,
+    )
+    from app.bake.features.consign import CONSIGN_CAP, merge_consign_capabilities
+
+    caps = merge_consign_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_consign_sql(
+        text,
+        enabled=CONSIGN_CAP in caps,
+        item_table=resolved_item,
+    )
+    from app.bake.features.weigh_sale import WEIGH_SALE_CAP, merge_weigh_sale_capabilities
+
+    caps = merge_weigh_sale_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    if WEIGH_SALE_CAP in caps:
+        text = ensure_delivery_window_sql(text, enabled=True)
+    text = ensure_weigh_sale_sql(
+        text,
+        enabled=WEIGH_SALE_CAP in caps,
+        item_table=resolved_item,
+    )
+    from app.bake.features.shoot import SHOOT_CAP, merge_shoot_capabilities
+
+    caps = merge_shoot_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_shoot_sql(text, enabled=SHOOT_CAP in caps)
+    from app.bake.features.boarding import BOARDING_CAP, merge_boarding_capabilities
+
+    caps = merge_boarding_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_boarding_sql(text, enabled=BOARDING_CAP in caps)
+    from app.bake.features.buyback import BUYBACK_CAP, merge_buyback_capabilities
+
+    caps = merge_buyback_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_buyback_sql(text, enabled=BUYBACK_CAP in caps)
+    from app.bake.features.lesson_pack import LESSON_PACK_CAP, merge_lesson_pack_capabilities
+
+    caps = merge_lesson_pack_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_lesson_pack_sql(text, enabled=LESSON_PACK_CAP in caps)
+    from app.bake.features.rental_bond import RENTAL_BOND_CAP, merge_rental_bond_capabilities
+
+    caps = merge_rental_bond_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_rental_bond_sql(
+        text,
+        enabled=RENTAL_BOND_CAP in caps,
+        item_table=resolved_item or "vehicle",
+    )
+    from app.bake.features.digital_goods import DIGITAL_GOODS_CAP, merge_digital_goods_capabilities
+
+    caps = merge_digital_goods_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_digital_goods_sql(
+        text,
+        enabled=DIGITAL_GOODS_CAP in caps,
         item_table=resolved_item,
     )
     text = ensure_ticket_progress_sql(text, resolved_ticket)

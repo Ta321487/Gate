@@ -609,6 +609,14 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "callNo", "call_no", 64);
         patchOptStr(id, patch, "conditionGrade", "condition_grade", 16);
         patchOptStr(id, patch, "sellerNote", "seller_note", 255);
+        patchOptInt(id, patch, "needPermit", "need_permit");
+        patchOptInt(id, patch, "monthLimit", "month_limit");
+        patchOptInt(id, patch, "pityN", "pity_n");
+        patchOptNum(id, patch, "depositYuan", "deposit_yuan");
+        patchOptStr(id, patch, "rentStage", "rent_stage", 16);
+        patchOptStr(id, patch, "digitalKind", "digital_kind", 16);
+        patchOptInt(id, patch, "sellByWeight", "sell_by_weight");
+        patchOptStr(id, patch, "weightUnit", "weight_unit", 8);
         patchOptStr(id, patch, "spicyLevel", "spicy_level", 16);
         patchOptInt(id, patch, "isVegetarian", "is_vegetarian");
         patchOptInt(id, patch, "requiresTraining", "requires_training");
@@ -948,6 +956,11 @@ public final class ArchiveStore {
         putOptStr(m, raw, "call_no", "callNo");
         putOptStr(m, raw, "condition_grade", "conditionGrade");
         putOptStr(m, raw, "seller_note", "sellerNote");
+        putOptInt(m, raw, "need_permit", "needPermit");
+        putOptInt(m, raw, "month_limit", "monthLimit");
+        putOptInt(m, raw, "pity_n", "pityN");
+        putOptInt(m, raw, "sell_by_weight", "sellByWeight");
+        putOptStr(m, raw, "weight_unit", "weightUnit");
         putOptStr(m, raw, "spicy_level", "spicyLevel");
         putOptInt(m, raw, "is_vegetarian", "isVegetarian");
         putOptInt(m, raw, "requires_training", "requiresTraining");

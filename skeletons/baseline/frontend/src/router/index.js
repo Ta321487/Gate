@@ -1072,7 +1072,7 @@ function pickRoutes() {
   else if (useSlotShell()) routes = withPortalHub(slotRoutes)
   else if (useArchiveOnlyShell()) routes = withPortalHub(archiveOnlyRoutes)
   else routes = baselineRoutes
-  return withMyArchiveRoutes(
+  return withDigitalRoutes(withRentalBondRoutes(withLessonRoutes(withBuybackRoutes(withBoardingRoutes(withShootRoutes(withWeighRoutes(withConsignRoutes(withLineSpecRoutes(withBlindBoxRoutes(withGroupBuyRoutes(withPurchaseGateRoutes(withDeliveryWindowRoutes(withMyArchiveRoutes(
     withOrderReviewRoutes(
       withCouponRoutes(
         withArchiveLogRoutes(
@@ -1102,7 +1102,154 @@ function pickRoutes() {
         ),
       ),
     ),
-  )
+  ))))))))))))))
+}
+
+function withLessonRoutes(baseRoutes) {
+  if (!hasCap('lesson_pack')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'lessons', () => import('../views/user/MyLessons.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'lesson-packs', () => import('../views/admin/LessonPacksAdmin.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'lesson-uses', () => import('../views/admin/LessonUsesAdmin.vue'))
+  return routes
+}
+
+function withBuybackRoutes(baseRoutes) {
+  if (!hasCap('buyback')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'buybacks', () => import('../views/user/MyBuybacks.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'buybacks', () => import('../views/admin/BuybacksAdmin.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'buyback-slots', () => import('../views/admin/BuybackSlotsAdmin.vue'))
+  return routes
+}
+
+function withRentalBondRoutes(baseRoutes) {
+  if (!hasCap('rental_bond')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/admin')?.children, 'rental-inspect', () => import('../views/admin/RentalInspectAdmin.vue'))
+  return routes
+}
+
+function withDigitalRoutes(baseRoutes) {
+  if (!hasCap('digital_goods')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'digital', () => import('../views/user/MyDigital.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'digital-codes', () => import('../views/admin/DigitalCodesAdmin.vue'))
+  return routes
+}
+
+function withBoardingRoutes(baseRoutes) {
+  if (!hasCap('boarding')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'stay', () => import('../views/user/MyStay.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'care-options', () => import('../views/admin/CareOptionsAdmin.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'stay-logs', () => import('../views/admin/StayLogsAdmin.vue'))
+  return routes
+}
+
+function withShootRoutes(baseRoutes) {
+  if (!hasCap('shoot')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'shots', () => import('../views/user/MyShots.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'shoot-bundles', () => import('../views/admin/ShootBundlesAdmin.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'shoot-files', () => import('../views/admin/ShootFilesAdmin.vue'))
+  return routes
+}
+
+function withWeighRoutes(baseRoutes) {
+  if (!hasCap('weigh_sale')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'loss', () => import('../views/user/MyLoss.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'loss', () => import('../views/admin/LossAdmin.vue'))
+  return routes
+}
+
+function withConsignRoutes(baseRoutes) {
+  if (!hasCap('consign')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'consigns', () => import('../views/user/MyConsigns.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'consigns', () => import('../views/admin/ConsignsAdmin.vue'))
+  return routes
+}
+
+function withLineSpecRoutes(baseRoutes) {
+  if (!hasCap('line_custom')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const adminKids = routes.find((r) => r.path === '/admin')?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'line-specs')) {
+    adminKids.push({ path: 'line-specs', component: () => import('../views/admin/LineSpecsAdmin.vue') })
+  }
+  return routes
+}
+
+function withBlindBoxRoutes(baseRoutes) {
+  if (!hasCap('blind_box')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const adminKids = routes.find((r) => r.path === '/admin')?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'blind-boxes')) {
+    adminKids.push({ path: 'blind-boxes', component: () => import('../views/admin/BlindPoolsAdmin.vue') })
+  }
+  return routes
+}
+
+function withGroupBuyRoutes(baseRoutes) {
+  if (!hasCap('group_buy')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const adminKids = routes.find((r) => r.path === '/admin')?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'group-buys')) {
+    adminKids.push({ path: 'group-buys', component: () => import('../views/admin/GroupCampaignsAdmin.vue') })
+  }
+  return routes
+}
+
+function withPurchaseGateRoutes(baseRoutes) {
+  if (!hasCap('purchase_gate')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  add(routes.find((r) => r.path === '/')?.children, 'permits', () => import('../views/user/MyPermits.vue'))
+  add(routes.find((r) => r.path === '/admin')?.children, 'purchase-permits', () => import('../views/admin/PermitsAdmin.vue'))
+  return routes
+}
+
+function withDeliveryWindowRoutes(baseRoutes) {
+  if (!hasCap('delivery_window')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    const add = (path, loader) => {
+      if (!adminKids.some((c) => c.path === path)) adminKids.push({ path, component: loader })
+    }
+    add('delivery/slots', () => import('../views/admin/DeliverySlotsAdmin.vue'))
+    add('delivery/spans', () => import('../views/admin/PriceSpansAdmin.vue'))
+  }
+  return routes
 }
 
 const specialRoutes = [

@@ -29,6 +29,9 @@ public final class OrderStore {
     private static String LINE = "";
     private static boolean enabled = false;
     private static boolean useQuota = true;
+    private static boolean lineCustom = false;
+    private static boolean lineCustomPlaceConfirmed = false;
+    private static boolean noCasualRefund = false;
 
     private OrderStore() {}
 
@@ -49,6 +52,12 @@ public final class OrderStore {
 
     public static boolean enabled() {
         return enabled;
+    }
+
+    public static void configureLineCustom(boolean on, boolean placeConfirmed, boolean noCasual) {
+        lineCustom = on;
+        lineCustomPlaceConfirmed = on && placeConfirmed;
+        noCasualRefund = noCasual;
     }
 
     /** 供评价等跨 Store 联表 */
@@ -94,6 +103,8 @@ public final class OrderStore {
         if (item != null) {
             m.put("title", ArchiveStore.lineTitleWithSpec(item));
             m.put("priceYuan", priceOf(item));
+            m.put("sellByWeight", item.get("sellByWeight"));
+            m.put("weightUnit", item.get("weightUnit"));
             m.put("stock", item.get("stock"));
             m.put("coverUrl", item.get("coverUrl"));
             m.put("categoryName", item.get("categoryName"));
@@ -119,6 +130,10 @@ public final class OrderStore {
         }
         Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
         if (item == null) throw new IllegalArgumentException("商品不存在");
+        PurchaseGateStore.assertCanBuy(username, itemId, qty);
+        BlindBoxStore.assertPurchasable(itemId);
+        ConsignStore.assertOnSale(itemId);
+        BuybackStore.assertListed(itemId);
         Integer exist = db().queryForObject(
                 "SELECT COUNT(*) FROM " + CART + " WHERE username=? AND item_id=?",
                 Integer.class, username, itemId);
@@ -201,7 +216,29 @@ public final class OrderStore {
             String couponCode,
             String payChannel,
             String payPassword) {
+        return placeOrder(
+                username, remark, addressId, receiverName, receiverPhone, addressLine,
+                deliveryType, tasteNote, couponCode, payChannel, payPassword, null, null, null, null);
+    }
+
+    public static Map<String, Object> placeOrder(
+            String username,
+            String remark,
+            Long addressId,
+            String receiverName,
+            String receiverPhone,
+            String addressLine,
+            String deliveryType,
+            String tasteNote,
+            String couponCode,
+            String payChannel,
+            String payPassword,
+            List<Map<String, Object>> lineExtras,
+            String deliveryOn,
+            Long slotId,
+            Long campaignId) {
         requireEnabled();
+        if (GroupBuyStore.enabled()) GroupBuyStore.sweep();
         if (LoyaltyStore.anyEnabled()) {
             ensureLoyaltyColumns();
         }
@@ -222,6 +259,13 @@ public final class OrderStore {
         }
         List<Map<String, Object>> cart = listCart(username);
         if (cart.isEmpty()) throw new IllegalStateException("购物车为空");
+        if (campaignId != null && campaignId > 0) {
+            java.util.ArrayList<Long> ids = new java.util.ArrayList<>();
+            for (Map<String, Object> line : cart) {
+                ids.add(((Number) line.get("itemId")).longValue());
+            }
+            GroupBuyStore.assertJoin(campaignId, username, ids);
+        }
         double total = 0;
         for (Map<String, Object> line : cart) {
             int qty = ((Number) line.get("qty")).intValue();
@@ -233,9 +277,21 @@ public final class OrderStore {
                 throw new IllegalStateException(ArchiveStore.stockShortageTitled(
                         String.valueOf(item.get("title")), stock));
             }
-            total += priceOf(item) * qty;
+            PurchaseGateStore.assertCanBuy(username, itemId, qty);
+            BlindBoxStore.assertPurchasable(itemId);
+            ConsignStore.assertOnSale(itemId);
+        BuybackStore.assertListed(itemId);
+            Map<String, Object> priced = WeighSaleStore.priceLine(item, qty, extraForItem(lineExtras, itemId));
+            total += ((Number) priced.get("lineYuan")).doubleValue();
         }
         double subtotal = round2(total);
+        Map<String, Object> windowSnap = null;
+        if (DeliveryWindowStore.enabled()) {
+            windowSnap = DeliveryWindowStore.quote(slotId == null ? 0L : slotId, deliveryOn);
+            double rate = windowSnap.get("priceRate") instanceof Number n ? n.doubleValue() : 1;
+            if (rate < 1) rate = 1;
+            subtotal = round2(subtotal * rate);
+        }
         String coupon = couponCode == null ? "" : couponCode.trim();
         Map<String, Object> priceSnap = null;
         double payable = subtotal;
@@ -279,7 +335,8 @@ public final class OrderStore {
             }
         }
         // 多店在线支付成功后进入待发货；单店仍待确认
-        String initialStatus = demoPay ? "confirmed" : "pending";
+        String initialStatus = (demoPay || lineCustomPlaceConfirmed) ? "confirmed" : "pending";
+        if (campaignId != null && campaignId > 0) initialStatus = "grouping";
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
@@ -298,6 +355,18 @@ public final class OrderStore {
         if (hasOrderColumn("delivery_type")) extraCols.put("delivery_type", fType);
         if (hasOrderColumn("taste_note")) extraCols.put("taste_note", fTaste);
         if (demoPay && hasOrderColumn("pay_channel")) extraCols.put("pay_channel", channel);
+        if (windowSnap != null) {
+            requireOrderColIfPresent("delivery_on", "配送日期", true);
+            requireOrderColIfPresent("slot_id", "配送时段", true);
+            requireOrderColIfPresent("fulfill_mode", "履约方式", true);
+            requireOrderColIfPresent("slot_label", "时段", true);
+            requireOrderColIfPresent("price_rate", "节日倍率", true);
+            if (hasOrderColumn("delivery_on")) extraCols.put("delivery_on", windowSnap.get("deliveryOn"));
+            if (hasOrderColumn("slot_id")) extraCols.put("slot_id", windowSnap.get("slotId"));
+            if (hasOrderColumn("fulfill_mode")) extraCols.put("fulfill_mode", windowSnap.get("fulfillMode"));
+            if (hasOrderColumn("slot_label")) extraCols.put("slot_label", windowSnap.get("slotLabel"));
+            if (hasOrderColumn("price_rate")) extraCols.put("price_rate", windowSnap.get("priceRate"));
+        }
         db().update(con -> {
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
             StringBuilder cols = new StringBuilder("username,status,total_yuan,remark");
@@ -342,14 +411,22 @@ public final class OrderStore {
                 long itemId = ((Number) line.get("itemId")).longValue();
                 int qty = ((Number) line.get("qty")).intValue();
                 Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
-                double price = priceOf(item);
-                db().update(
-                        "INSERT INTO " + LINE + " (order_id,item_id,title,price_yuan,qty) VALUES (?,?,?,?,?)",
-                        orderId, itemId, ArchiveStore.lineTitleWithSpec(item), price, qty);
+                Map<String, Object> extra = extraForItem(lineExtras, itemId);
+                Map<String, Object> priced = WeighSaleStore.priceLine(item, qty, extra);
+                int lineQty = ((Number) priced.get("qty")).intValue();
+                insertOrderLine(
+                        orderId,
+                        itemId,
+                        ArchiveStore.lineTitleWithSpec(item),
+                        ((Number) priced.get("unit")).doubleValue(),
+                        lineQty,
+                        extra);
+                WeighSaleStore.saveWeight(orderId, itemId, priced.get("weight"));
                 if (useQuota) {
-                    ArchiveStore.adjustStock(itemId, -qty);
-                    deducted.add(new long[] {itemId, qty});
+                    ArchiveStore.adjustStock(itemId, -lineQty);
+                    deducted.add(new long[] {itemId, lineQty});
                 }
+                ConsignStore.markSold(itemId);
             }
             if (LoyaltyStore.anyEnabled()) {
                 // 渠道+密码仅为收银台形态校验（长度≥4，不验登录密码哈希）；有钱包时一律 settle 扣余额
@@ -357,6 +434,24 @@ public final class OrderStore {
                 applyLoyaltySnapshot(orderId, snap);
                 if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()) {
                     CouponStore.markUsed(username, coupon, orderId);
+                }
+            }
+            if (campaignId != null && campaignId > 0) {
+                GroupBuyStore.join(username, orderId, campaignId);
+            }
+            if (BlindBoxStore.enabled()) {
+                for (Map<String, Object> line : cart) {
+                    long boxId = ((Number) line.get("itemId")).longValue();
+                    int boxQty = ((Number) line.get("qty")).intValue();
+                    if (boxQty <= 0 || !BlindBoxStore.isBox(boxId)) continue;
+                    List<Map<String, Object>> prizes = BlindBoxStore.drawAll(username, orderId, boxId, boxQty);
+                    if (useQuota) {
+                        for (Map<String, Object> prize : prizes) {
+                            long prizeId = ((Number) prize.get("itemId")).longValue();
+                            ArchiveStore.adjustStock(prizeId, -1);
+                            deducted.add(new long[] {prizeId, 1});
+                        }
+                    }
                 }
             }
         } catch (RuntimeException ex) {
@@ -396,6 +491,9 @@ public final class OrderStore {
                     "order",
                     orderId);
         } catch (Exception ignored) {
+        }
+        if (DigitalGoodsStore.enabled()) {
+            DigitalGoodsStore.deliverOnPay(orderId);
         }
         return getOrder(orderId);
     }
@@ -464,6 +562,12 @@ public final class OrderStore {
                 throw ex;
             }
         }
+        if (RentalBondStore.enabled()) {
+            RentalBondStore.onOrderPlaced(orderId, itemId, total);
+        }
+        if (DigitalGoodsStore.enabled()) {
+            DigitalGoodsStore.deliverOnPay(orderId);
+        }
         return getOrder(orderId);
     }
 
@@ -516,6 +620,13 @@ public final class OrderStore {
                     m.put("priceYuan", rs.getDouble("price_yuan"));
                     m.put("qty", rs.getInt("qty"));
                     m.put("lineYuan", round2(rs.getDouble("price_yuan") * rs.getInt("qty")));
+                    m.put("customText", safeStr(rs, "custom_text"));
+                    m.put("specChoice", safeStr(rs, "spec_choice"));
+                    m.put("attachUrl", safeStr(rs, "attach_url"));
+                    m.put("drawTitle", safeStr(rs, "draw_title"));
+                    if (!String.valueOf(m.get("drawTitle")).isBlank() && BlindBoxStore.enabled()) {
+                        m.put("pityText", BlindBoxStore.pityText(orderId, itemId));
+                    }
                     if (ArchiveStore.shopMarketplaceEnabled()) {
                         try {
                             Map<String, Object> item = ArchiveStore.getItem(itemId);
@@ -532,6 +643,7 @@ public final class OrderStore {
 
     public static Map<String, Object> pageOrders(String username, String status, int page, int size) {
         requireEnabled();
+        if (GroupBuyStore.enabled()) GroupBuyStore.sweep();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         StringBuilder where = new StringBuilder(" WHERE 1=1");
@@ -758,6 +870,7 @@ public final class OrderStore {
             next = "completed";
         }
         else if ("cancel".equals(act) && ("pending".equals(st) || "confirmed".equals(st))) next = "cancelled";
+        else if ("ship".equals(act) && "grouping".equals(st)) throw new IllegalStateException("未成团不能发货");
         else throw new IllegalStateException("当前状态不可执行：" + act);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         String tracking = "";
@@ -815,6 +928,7 @@ public final class OrderStore {
         }
         if ("cancelled".equals(next)) {
             SeatStore.releaseByOrder(orderId);
+            ConsignStore.release(orderId, listLines(orderId));
         }
         if ("cancelled".equals(next) && LoyaltyStore.anyEnabled()) {
             double paid = toDouble(m.get("payBalanceYuan"));
@@ -827,11 +941,20 @@ public final class OrderStore {
                 CouponStore.releaseByOrder(orderId);
             }
         }
+        if ("shipped".equals(next) && RentalBondStore.enabled()) {
+            RentalBondStore.onShipped(orderId);
+        }
+        if ("completed".equals(next) && RentalBondStore.enabled()) {
+            RentalBondStore.onCompleted(orderId);
+        }
         if ("completed".equals(next) && LoyaltyStore.anyEnabled()) {
             String uname = String.valueOf(m.get("username"));
             double pay = toDouble(m.get("payBalanceYuan"));
             if (pay <= 0) pay = toDouble(m.get("totalYuan"));
             LoyaltyStore.onOrderCompleted(uname, orderId, pay);
+        }
+        if ("completed".equals(next)) {
+            ConsignStore.settle(orderId, listLines(orderId));
         }
         return getOrder(orderId);
     }
@@ -1015,6 +1138,18 @@ public final class OrderStore {
         m.put("refundReason", safeStr(rs, "refund_reason"));
         m.put("refundAt", fmt(safeTs(rs, "refund_at")));
         m.put("payChannel", safeStr(rs, "pay_channel"));
+        m.put("fulfillMode", safeStr(rs, "fulfill_mode"));
+        m.put("deliveryOn", safeStr(rs, "delivery_on"));
+        m.put("slotLabel", safeStr(rs, "slot_label"));
+        long slotId = safeLong(rs, "slot_id");
+        if (slotId > 0) m.put("slotId", slotId);
+        m.put("priceRate", safeDouble(rs, "price_rate"));
+        m.put("depositYuan", safeDouble(rs, "deposit_yuan"));
+        m.put("rentYuan", safeDouble(rs, "rent_yuan"));
+        m.put("lateFeeYuan", safeDouble(rs, "late_fee_yuan"));
+        m.put("depositStatus", safeStr(rs, "deposit_status"));
+        m.put("damageNote", safeStr(rs, "damage_note"));
+        m.put("damageDeductYuan", safeDouble(rs, "damage_deduct_yuan"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("updatedAt", fmt(rs.getTimestamp("updated_at")));
         String un = rs.getString("username");
@@ -1071,6 +1206,96 @@ public final class OrderStore {
         if (!hasOrderColumn(col)) {
             throw new IllegalStateException("系统未配置「" + label + "」字段，无法保存");
         }
+    }
+
+    private static boolean hasLineColumn(String col) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?",
+                    Integer.class, LINE, col);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static Map<String, Object> extraForItem(List<Map<String, Object>> lineExtras, long itemId) {
+        if (lineExtras == null) return Map.of();
+        for (Map<String, Object> row : lineExtras) {
+            if (row == null) continue;
+            Object id = row.get("itemId");
+            if (id == null) id = row.get("item_id");
+            long n = 0;
+            if (id instanceof Number num) n = num.longValue();
+            else if (id != null) {
+                try {
+                    n = Long.parseLong(String.valueOf(id).trim());
+                } catch (NumberFormatException ignored) {
+                    n = 0;
+                }
+            }
+            if (n == itemId) return row;
+        }
+        return Map.of();
+    }
+
+    private static String extraStr(Map<String, Object> extra, String... keys) {
+        if (extra == null) return "";
+        for (String key : keys) {
+            Object v = extra.get(key);
+            if (v == null) continue;
+            String s = String.valueOf(v).trim();
+            if (!s.isBlank() && !"null".equals(s)) return s;
+        }
+        return "";
+    }
+
+    private static void insertOrderLine(
+            long orderId,
+            long itemId,
+            String title,
+            double price,
+            int qty,
+            Map<String, Object> extra) {
+        String customText = extraStr(extra, "customText", "custom_text");
+        String specChoice = extraStr(extra, "specChoice", "spec_choice");
+        String attachUrl = extraStr(extra, "attachUrl", "attach_url");
+        if (customText.length() > 200) customText = customText.substring(0, 200);
+        if (specChoice.length() > 120) specChoice = specChoice.substring(0, 120);
+        if (attachUrl.length() > 255) attachUrl = attachUrl.substring(0, 255);
+        boolean any = !customText.isBlank() || !specChoice.isBlank() || !attachUrl.isBlank();
+        if (lineCustom && customText.isBlank()) {
+            throw new IllegalArgumentException("请填写定制内容");
+        }
+        if ((lineCustom || any) && !hasLineColumn("custom_text")) {
+            throw new IllegalStateException("系统未配置定制内容字段，无法保存");
+        }
+        if (!specChoice.isBlank() && !hasLineColumn("spec_choice")) {
+            throw new IllegalStateException("系统未配置规格选项字段，无法保存");
+        }
+        if (!specChoice.isBlank()) {
+            LineCustomStore.assertKnown(specChoice);
+        }
+        if (!attachUrl.isBlank() && !hasLineColumn("attach_url")) {
+            throw new IllegalStateException("系统未配置定制图片字段，无法保存");
+        }
+        if (hasLineColumn("custom_text")) {
+            db().update(
+                    "INSERT INTO " + LINE
+                            + " (order_id,item_id,title,price_yuan,qty,custom_text,spec_choice,attach_url) VALUES (?,?,?,?,?,?,?,?)",
+                    orderId, itemId, title, price, qty, customText, specChoice, attachUrl);
+        } else {
+            db().update(
+                    "INSERT INTO " + LINE + " (order_id,item_id,title,price_yuan,qty) VALUES (?,?,?,?,?)",
+                    orderId, itemId, title, price, qty);
+        }
+    }
+
+    private static boolean casualRefundReason(String why) {
+        String s = why == null ? "" : why.trim();
+        if (s.isBlank()) return true;
+        return s.contains("无理由") || s.contains("不想要") || s.contains("不喜欢")
+                || s.contains("拍错") || s.contains("买错");
     }
 
     private static boolean hasOrderColumn(String col) {
@@ -1164,6 +1389,9 @@ public final class OrderStore {
         String why = reason == null ? "" : reason.trim();
         if (why.isBlank()) throw new IllegalStateException("请填写售后原因");
         if (why.length() > 255) why = why.substring(0, 255);
+        if (noCasualRefund && casualRefundReason(why)) {
+            throw new IllegalStateException("不支持无理由退货，请填写质量问题等具体原因");
+        }
         db().update(
                 "UPDATE " + ORDER + " SET refund_status='pending', refund_reason=?, updated_at=? WHERE id=?",
                 why, Timestamp.valueOf(LocalDateTime.now()), orderId);
@@ -1235,6 +1463,7 @@ public final class OrderStore {
                         + " SET status='cancelled', refund_status='approved', refund_at=?, updated_at=? WHERE id=?",
                 now, now, orderId);
         SeatStore.releaseByOrder(orderId);
+        ConsignStore.release(orderId, listLines(orderId));
         try {
             MessageStore.send(
                     String.valueOf(m.get("username")),

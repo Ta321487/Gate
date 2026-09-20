@@ -20,6 +20,7 @@ const TICKET_TONE = {
 
 const ORDER_TONE = {
   pending: 'pending',
+  grouping: 'warn',
   confirmed: 'progress',
   shipped: 'progress',
   in_transit: 'progress',
@@ -72,18 +73,31 @@ export function slotFillTone(remain, capacity) {
  */
 export function orderProgressSteps(status, opts = {}) {
   const marketplace = !!opts.marketplace
-  const steps = marketplace
+  const states = opts.states || {}
+  const steps = opts.lineCustom
     ? [
-        { key: 'pending', label: '待付款' },
-        { key: 'confirmed', label: '待发货' },
-        { key: 'shipped', label: '已发货' },
-        { key: 'completed', label: '完成' },
+        { key: 'confirmed', label: states.confirmed || '待制作' },
+        { key: 'shipped', label: states.shipped || '已发货' },
+        { key: 'completed', label: states.completed || '已完成' },
+      ]
+    : marketplace
+    ? [
+        { key: 'pending', label: states.pending || '待付款' },
+        { key: 'confirmed', label: states.confirmed || '待发货' },
+        { key: 'shipped', label: states.shipped || '已发货' },
+        { key: 'completed', label: states.completed || '完成' },
       ]
     : [
-        { key: 'pending', label: '待确认' },
-        { key: 'confirmed', label: '已确认' },
-        { key: 'completed', label: '完成' },
+        { key: 'pending', label: states.pending || '待确认' },
+        { key: 'confirmed', label: states.confirmed || '已确认' },
+        { key: 'completed', label: states.completed || '完成' },
       ]
+  if (states.grouping && !steps.some((s) => s.key === 'grouping')) {
+    const at = steps.findIndex((s) => s.key === 'pending')
+    const node = { key: 'grouping', label: states.grouping }
+    if (at >= 0) steps.splice(at + 1, 0, node)
+    else steps.unshift(node)
+  }
   const st = String(status || '')
   if (st === 'cancelled') {
     return steps.map((s) => ({ ...s, state: 'todo' }))

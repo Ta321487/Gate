@@ -190,6 +190,7 @@ SHOP_RETAIL_NICHE_RULES: list[tuple[tuple[str, ...], str, tuple[str, str, str]]]
     (("超市", "便利店"), "market", ("食品", "百货", "零食")),
     (("办公用品", "文具"), "office", ("文具", "耗材", "桌面")),
     (("农资",), "agri", ("肥料", "农药", "农机件")),
+    (("定制礼品", "礼品定制", "刻字"), "gift", ("杯壶刻字", "服饰印制", "相册抱枕")),
 ]
 for _hints, _nid, _cats in SHOP_RETAIL_NICHE_RULES:
     SHOP_KIND_CATEGORIES[f"retail_{_nid}"] = _cats
@@ -205,6 +206,7 @@ HOSPITAL_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("医院", "门诊", "挂号", "校医"), "clinic"),
 ]
 SALON_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("约拍", "摄影师", "写真"), "photo"),
     (("健身", "私教", "瑜伽", "游泳私教", "器械课", "团课"), "fitness"),
     (("心理咨询", "心理辅导", "咨询预约"), "counsel"),
     (("驾校", "练车", "陪驾"), "drive"),
@@ -1168,6 +1170,8 @@ def hotel_product_kind(title: str, body: str = "") -> str:
     """宾馆 / 民宿：与 ``_hotel_schema``、民宿叠层同一扫词。"""
     t = (title or "").strip()
     b = (body or "").strip()
+    if scan_has(t, ("寄养",)) or scan_has(b, ("寄养",)):
+        return "boarding"
     if scan_has(t, HOTEL_HOMESTAY_HINTS) or scan_has(b, HOTEL_HOMESTAY_HINTS):
         return "homestay"
     return "hotel"

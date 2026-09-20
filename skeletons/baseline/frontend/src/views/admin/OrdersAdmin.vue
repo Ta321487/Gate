@@ -29,6 +29,28 @@
       <el-table-column v-if="isFood" label="口味" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.tasteNote || '—' }}</template>
       </el-table-column>
+      <el-table-column v-if="deliveryWindow" label="配送时段" min-width="160">
+        <template #default="{ row }">
+          <span v-if="row.slotLabel">{{ row.deliveryOn }} {{ row.slotLabel }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="lineCustom" label="定制内容" min-width="220">
+        <template #default="{ row }">
+          <div v-for="ln in row.lines || []" :key="ln.id">
+            {{ ln.title }}：{{ ln.customText || '—' }}
+            <span v-if="ln.specChoice"> / {{ ln.specChoice }}</span>
+            <a v-if="ln.attachUrl" :href="ln.attachUrl" target="_blank" rel="noopener noreferrer">图片</a>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="blindBox" label="抽中" min-width="160">
+        <template #default="{ row }">
+          <div v-for="ln in row.lines || []" :key="ln.id">
+            <span v-if="ln.drawTitle">{{ ln.title }}：{{ ln.drawTitle }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column v-if="!isStay && !isCinema" :label="shipLabel" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <template v-if="isFood">
@@ -145,13 +167,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { hasTrait, getSchema, isPointsEnabled, isSpendDiscountEnabled, personLabel, roleLabel } from '../../utils/domainSchema.js'
+import { hasTrait, hasCap, getSchema, isPointsEnabled, isSpendDiscountEnabled, personLabel, roleLabel } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
 const userLabel = computed(() => roleLabel('user', '用户'))
 const isFood = computed(() => hasTrait('food'))
+const lineCustom = computed(() => hasCap('line_custom'))
+const deliveryWindow = computed(() => hasCap('delivery_window'))
+const blindBox = computed(() => hasCap('blind_box'))
 const isStay = computed(
   () =>
     hasTrait('slotHotel')

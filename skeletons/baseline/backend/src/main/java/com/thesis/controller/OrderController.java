@@ -2,6 +2,7 @@ package com.thesis.controller;
 
 import com.thesis.capability.AddressStore;
 import com.thesis.capability.ArchiveStore;
+import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
@@ -10,6 +11,8 @@ import com.thesis.common.R;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -126,7 +129,16 @@ public class OrderController {
         Long addressId = b.get("addressId") == null || str(b.get("addressId")).isBlank()
                 ? null
                 : toLong(b.get("addressId"));
+        Integer offsetPts = null;
+        if (b.get("offsetPoints") != null && !str(b.get("offsetPoints")).isBlank()) {
+            try {
+                offsetPts = Integer.parseInt(str(b.get("offsetPoints")));
+            } catch (Exception ignored) {
+                offsetPts = 0;
+            }
+        }
         try {
+            LoyaltyStore.beginOffset(offsetPts);
             return R.ok(OrderStore.placeOrder(
                     uid,
                     remark,
@@ -138,9 +150,15 @@ public class OrderController {
                     str(b.get("tasteNote")),
                     str(b.get("couponCode")),
                     str(b.get("payChannel")),
-                    str(b.get("payPassword"))));
+                    str(b.get("payPassword")),
+                    lineExtras(b),
+                    str(b.get("deliveryOn")),
+                    b.get("slotId") == null || str(b.get("slotId")).isBlank() ? null : toLong(b.get("slotId")),
+                    b.get("campaignId") == null || str(b.get("campaignId")).isBlank() ? null : toLong(b.get("campaignId"))));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } finally {
+            LoyaltyStore.endOffset();
         }
     }
 
@@ -271,6 +289,19 @@ public class OrderController {
         if (!OrderStore.merchantOwnsOrder(uid, orderId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权操作该订单");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> lineExtras(Map<String, Object> body) {
+        Object raw = body.get("lineExtras");
+        if (!(raw instanceof List<?> list)) return null;
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object o : list) {
+            if (o instanceof Map<?, ?> map) {
+                out.add((Map<String, Object>) map);
+            }
+        }
+        return out;
     }
 
     private static long toLong(Object o) {

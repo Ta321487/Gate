@@ -1685,7 +1685,9 @@ def _lost_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         records_label=f"{verb}记录",
         with_deadline=False,
         stock_display="available",
-        require_attach=True,
+        # 认领凭证是提交后的独立步骤（待交凭证→待核验）。提交时再强制附件会和该状态打架。
+        # 开题写明「上传附件」时，ticket_flow_opts 仍会扫词打开。
+        require_attach=False,
         allow_rating=True,
         require_remark=True,
         remark_label=remark,

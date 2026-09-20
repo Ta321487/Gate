@@ -605,6 +605,33 @@ SELECT '健身预约', '请选择课程与时段到馆；迟到可能需改约�
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='健身预约' OR title='服务预约');
 """
 
+_SALON_PHOTO = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '门店主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '前台', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '预约人甲', '13800000002',
+ '{"realName":"周女士","email":"zhou@demo.com","gender":"女"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '人像');
+INSERT IGNORE INTO service (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '林可', '0', '人像', 1, 1, 'available'),
+(2, '周宁', '0', '人像', 1, 1, 'available');
+INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booked) VALUES
+(1, 1, '2026-09-21 10:00:00', '2026-09-21 11:00:00', 1, 0),
+(2, 1, '2026-09-21 14:00:00', '2026-09-21 15:00:00', 1, 0),
+(3, 2, '2026-09-21 10:00:00', '2026-09-21 11:00:00', 1, 0),
+(4, 2, '2026-09-21 14:00:00', '2026-09-21 15:00:00', 1, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark) VALUES
+(1, 1, 'user', 'confirmed', ''),
+(2, 3, 'user', 'confirmed', '');
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 3);
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '约拍预约', '请选择摄影师、套餐和时段。', 'admin', '门店主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='约拍预约' OR title='服务预约');
+"""
+
 _FUND_ENTERPRISE = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '福利主管', '13800000000', '{}', 1, 0, 1),
@@ -1510,6 +1537,12 @@ _SHOP_RETAIL_NICHE_SKUS: dict[str, list[tuple[str, str, str, int]]] = {
         ("农用手套", "18.00", "AG-03", 3),
         ("种子套装", "22.00", "AG-04", 1),
     ],
+    "gift": [
+        ("刻字马克杯", "39.00", "GF-01", 1),
+        ("定制T恤", "69.00", "GF-02", 2),
+        ("定制相册", "88.00", "GF-03", 3),
+        ("定制抱枕", "59.00", "GF-04", 3),
+    ],
 }
 
 
@@ -1525,16 +1558,37 @@ def _shop_retail_seed_for(catalog_kind: str) -> str:
     if not skus:
         return _SHOP_RETAIL
     a, b, c = cats
+    admin_name = "礼品店主管" if niche == "gift" else "商城主管"
+    sub_name = "制作员" if niche == "gift" else "订单管理员"
+    notice_title = "定制须知" if niche == "gift" else "商城开业"
+    notice_body = (
+        "下单请填写刻字或上传图片；制作完成后再发货。"
+        if niche == "gift"
+        else "欢迎选购；下单后可在订单页查看进度。"
+    )
     cat_sql = f"(1, '{a}'), (2, '{b}'), (3, '{c}')"
     prod_lines = ",\n".join(
         f"({i}, '{title}', '{price}', '{sku}', {cid}, {50 + i * 5}, 'available')"
         for i, (title, price, sku, cid) in enumerate(skus, start=1)
     )
     first_title, first_price, _sku, _cid = skus[0]
+    order_status = "confirmed" if niche == "gift" else "pending"
+    order_remark = "刻字：张三；宋体 / 红色 / 大号" if niche == "gift" else "请确认后发货。"
+    if niche == "gift":
+        line_sql = (
+            "INSERT IGNORE INTO order_line "
+            "(id, order_id, item_id, title, price_yuan, qty, custom_text, spec_choice) VALUES\n"
+            f"(1, 1, 1, '{first_title}', {first_price}, 1, '张三', '宋体 / 红色 / 大号');"
+        )
+    else:
+        line_sql = (
+            "INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES\n"
+            f"(1, 1, 1, '{first_title}', {first_price}, 1);"
+        )
     return f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '商城主管', '13800000000', '{{}}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{{}}', 0, 1, 1),
+('admin', 'admin123', 'admin', '{admin_name}', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '{sub_name}', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
  '{{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}}',
  0, 1, 1)
@@ -1550,12 +1604,11 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单后可在订单页查看进度。', 'admin', '商城主管'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
+SELECT '{notice_title}', '{notice_body}', 'admin', '{admin_name}'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{notice_title}');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', {first_price}, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '{first_title}', {first_price}, 1);
+(1, 'user', '{order_status}', {first_price}, '{order_remark}', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+{line_sql}
 """
 
 
@@ -1982,6 +2035,40 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin
 
 
 
+_HOTEL_BOARDING = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '寄养主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '前台', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '寄养人甲', '13800000002',
+ '{"realName":"周女士","email":"zhou@demo.com","gender":"女"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '小型'), (2, '大型');
+INSERT IGNORE INTO room_type (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '小单间', '80.00', '适合小型犬猫', 1, 1, 'available'),
+(2, '大单间', '120.00', '适合中大型', 2, 2, 'available');
+INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booked) VALUES
+(1, 1, '2026-09-21 12:00:00', '2026-09-21 18:00:00', 1, 1),
+(2, 1, '2026-09-22 12:00:00', '2026-09-22 18:00:00', 1, 1),
+(3, 1, '2026-09-23 12:00:00', '2026-09-23 18:00:00', 1, 1),
+(4, 1, '2026-09-24 12:00:00', '2026-09-24 18:00:00', 1, 0),
+(5, 2, '2026-09-21 12:00:00', '2026-09-21 18:00:00', 2, 0),
+(6, 2, '2026-09-22 12:00:00', '2026-09-22 18:00:00', 2, 0),
+(7, 2, '2026-09-23 12:00:00', '2026-09-23 18:00:00', 2, 0),
+(8, 2, '2026-09-24 12:00:00', '2026-09-24 18:00:00', 2, 0);
+INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, guest_name, guest_count, stay_from, stay_to, care_ids) VALUES
+(1, 1, 'user', 'confirmed', '', '豆豆', 1, '2026-09-21', '2026-09-24', '1');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id) VALUES
+(1, 'user', 'confirmed', 240.00, 'reservation:1', 1);
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+(1, 1, 1, '小单间', 80.00, 3);
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '寄养预约', '选择寄养位和日期。金额按天数计算。', 'admin', '寄养主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='寄养预约' OR title='客房预订');
+"""
+
+
 def apply_domain_scene_seed(
     domain: str,
     sql: str,
@@ -2029,6 +2116,8 @@ def apply_domain_scene_seed(
             seed = _rsv.PARKING_CHARGE
         elif scene == "campus":
             seed = _PARKING_CAMPUS
+    elif domain == "DOM-HOTEL" and hotel_product_kind(title, proposal_text) == "boarding":
+        seed = _HOTEL_BOARDING
     elif domain == "DOM-HOTEL" and hotel_product_kind(title, proposal_text) == "homestay":
         seed = _rsv.HOTEL_HOMESTAY
     elif domain == "DOM-ATTEND" and scene == "campus":
@@ -2078,6 +2167,8 @@ def apply_domain_scene_seed(
         sk = salon_product_kind(title, proposal_text)
         if sk == "fitness":
             seed = _SALON_FITNESS
+        elif sk == "photo":
+            seed = _SALON_PHOTO
         elif sk == "counsel":
             seed = _rsv.SALON_COUNSEL
         elif sk == "drive":

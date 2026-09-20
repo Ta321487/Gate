@@ -160,6 +160,53 @@ class UsecaseDescriptionTests(unittest.TestCase):
         self.assertNotIn("馆长", by[("admin", "ticket_pending")]["name"])
         self.assertEqual(by[("admin", "users")]["actor"], "馆长")
 
+    def test_trade_cap_flows_not_generic_open(self) -> None:
+        schema = {
+            "roles": {"user": {"label": "买家"}, "admin": {"label": "店员"}},
+            "menus": {
+                "user": [
+                    {"key": "archive", "label": "商品"},
+                    {"key": "cart", "label": "购物车"},
+                    {"key": "my_orders", "label": "我的订单"},
+                ],
+                "admin": [
+                    {"key": "orders", "label": "订单"},
+                    {"key": "blind_pools", "label": "盲盒奖池"},
+                ],
+            },
+            "capabilities": ["order_lines"],
+            "entities": {"archive": {"label": "商品"}},
+            "blindBox": True,
+        }
+        cands = build_usecase_description_candidates(
+            schema, proposal_text="本系统支持盲盒购买，开出后扣库存。"
+        )
+        by = {(c["side"], c["menu_key"]): c for c in cands}
+        box = by[("admin", "blind_pools")]
+        self.assertEqual(box["kind"], "blind_pools")
+        self.assertIn("奖品", box["summary"])
+        self.assertNotIn("完成页面主操作", "".join(box["flow"]))
+        order = by[("user", "my_orders")]
+        self.assertTrue(any("盒子" in step for step in order["flow"]))
+        picked = select_usecase_descriptions(cands, count=3)
+        keys = {f"{c['side']}::{c['menu_key']}" for c in picked}
+        self.assertIn("admin::blind_pools", keys)
+
+    def test_claim_proof_and_make_notes_on_main_path(self) -> None:
+        schema = {
+            "roles": {"user": {"label": "买家"}, "admin": {"label": "店员"}},
+            "menus": {
+                "user": [{"key": "my_orders", "label": "我的订单"}, {"key": "my_tickets", "label": "我的认领"}],
+                "admin": [{"key": "orders", "label": "订单"}, {"key": "ticket_pending", "label": "认领审核"}],
+            },
+            "lineCustomPlaceConfirmed": True,
+            "entities": {"ticket": {"label": "认领", "requireClaimProof": True}},
+        }
+        cands = build_usecase_description_candidates(schema)
+        by = {(c["side"], c["menu_key"]): c for c in cands}
+        self.assertTrue(any("待制作" in step for step in by[("user", "my_orders")]["flow"]))
+        self.assertTrue(any("待交凭证" in step for step in by[("user", "my_tickets")]["flow"]))
+
 
 if __name__ == "__main__":
     unittest.main()

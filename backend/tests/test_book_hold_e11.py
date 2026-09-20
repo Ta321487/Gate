@@ -134,6 +134,8 @@ class BookHoldE11Tests(unittest.TestCase):
         )
         self.assertIn("claim-hold", mine)
         self.assertIn("canClaimHold", mine)
+        self.assertIn("allowBookHold && row.holdExpireAt", mine)
+        self.assertNotIn("@cap:", mine)
 
 
 if __name__ == "__main__":

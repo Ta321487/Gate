@@ -1043,6 +1043,21 @@ def match_text(text: str, filename: str = "") -> MatchResult:
             dom_kw = "DOM-CINEMA"
             dom_conf = min(0.95, 0.45 + cin[1] * 0.12)
             dom_hits = list(dict.fromkeys(list(cin[2]) + list(dom_hits) + [tip]))
+    from app.bake.features.buyback import recycle_opening
+
+    if recycle_opening(scored, title) and dom_kw in ("DOM-LIBRARY", "DOM-GENERIC", "DOM-DOCLIB"):
+        tip = "提示：题面含旧书回收、估价或上门回收，主路径取商城上架，不取图书借阅。"
+        dom_kw = "DOM-SHOP"
+        dom_conf = max(dom_conf, 0.72)
+        dom_hits = list(dict.fromkeys(list(dom_hits) + [tip]))
+    # 商业租赁（衣服/设备/租赁商城）带押金租金：主路径取租约，勿因「商城」落买断
+    if dom_kw in ("DOM-SHOP", "DOM-EQUIP", "DOM-GENERIC") and any(
+        k in f"{title}\n{scored}" for k in ("服装租赁", "租衣服", "设备租赁", "租设备", "租赁商城")
+    ) and any(k in f"{title}\n{scored}" for k in ("押金", "租金", "验损")):
+        tip = "提示：题面是商业租赁（押金/租金），主路径取租约取还，不取买断商城或借用审批。"
+        dom_kw = "DOM-CARRENT"
+        dom_conf = max(dom_conf, 0.74)
+        dom_hits = list(dict.fromkeys(list(dom_hits) + [tip]))
     # 社团管理：正文「活动报名」易抬 ACTIVITY；题名主写社团时保社团皮
     if dom_kw == "DOM-ACTIVITY" and any(k in title for k in ("社团", "学生会社团")):
         club = next(

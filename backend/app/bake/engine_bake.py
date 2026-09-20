@@ -572,6 +572,21 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             epy = 1
         if epy > 0:
             lines.append(f"  points-earn-per-yuan: {epy}")
+        if pts.get("payEnabled"):
+            lines.append("  points-pay-enabled: true")
+        if pts.get("offsetEnabled"):
+            lines.append("  points-offset-enabled: true")
+        if pts.get("checkInEnabled"):
+            lines.append("  points-checkin-enabled: true")
+            try:
+                cip = int(pts.get("checkInPoints") or 10)
+            except (TypeError, ValueError):
+                cip = 10
+            lines.append(f"  points-checkin-amount: {cip}")
+        if pts.get("expireEnabled"):
+            lines.append("  points-expire-enabled: true")
+            lines.append(f"  points-expire-period: {pts.get('expirePeriod') or 'year'}")
+            lines.append(f"  points-expire-scope: {pts.get('expireScope') or 'all'}")
     if "spend_discount" in caps:
         lines.append("  spend-discount-enabled: true")
         sd = loyalty.get("spendDiscount") if isinstance(loyalty.get("spendDiscount"), dict) else {}
@@ -584,6 +599,9 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  spend-discount-off-yuan: {off:g}")
     if "member_tier" in caps:
         lines.append("  member-tier-enabled: true")
+        mt = loyalty.get("memberTiers") if isinstance(loyalty.get("memberTiers"), dict) else {}
+        basis = mt.get("basis") or "spend"
+        lines.append(f"  member-tier-basis: {basis}")
     if "coupon" in caps:
         lines.append("  coupon-enabled: true")
     if "order_review" in caps:
@@ -592,6 +610,36 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  flash-price-enabled: true")
     if "product_spec" in caps:
         lines.append("  product-spec-enabled: true")
+    if "line_custom" in caps:
+        lines.append("  line-custom-enabled: true")
+        if (spec.get("schema") or {}).get("lineCustomPlaceConfirmed"):
+            lines.append("  line-custom-place-confirmed: true")
+    if "delivery_window" in caps:
+        lines.append("  delivery-window-enabled: true")
+    if "purchase_gate" in caps:
+        lines.append("  purchase-gate-enabled: true")
+    if "group_buy" in caps:
+        lines.append("  group-buy-enabled: true")
+    if "blind_box" in caps:
+        lines.append("  blind-box-enabled: true")
+    if "consign" in caps:
+        lines.append("  consign-enabled: true")
+    if "weigh_sale" in caps:
+        lines.append("  weigh-sale-enabled: true")
+    if "shoot" in caps:
+        lines.append("  shoot-enabled: true")
+    if "boarding" in caps:
+        lines.append("  boarding-enabled: true")
+    if "buyback" in caps:
+        lines.append("  buyback-enabled: true")
+    if "lesson_pack" in caps:
+        lines.append("  lesson-pack-enabled: true")
+    if "rental_bond" in caps:
+        lines.append("  rental-bond-enabled: true")
+    if "digital_goods" in caps:
+        lines.append("  digital-goods-enabled: true")
+    if (spec.get("schema") or {}).get("noCasualRefund") or "digital_goods" in caps:
+        lines.append("  no-casual-refund: true")
     timeout = 0
     try:
         timeout = int((spec.get("schema") or {}).get("orderTimeoutMinutes") or 0)

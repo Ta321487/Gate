@@ -168,6 +168,19 @@ def apply_loyalty_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
                     merged[k] = v
                 merged["enabled"] = base[key].get("enabled", False)
                 base[key] = merged
+    title = str(spec.get("title") or "")
+    base = enrich_points_modes(base, proposal_text or "", title=title)
+    if (base.get("points") or {}).get("enabled") and "points" not in caps:
+        caps.append("points")
+        spec = {**spec, "capabilities": caps}
+    base = enrich_member_tiers(
+        base,
+        proposal_text or "",
+        title=title,
+        domain=str(spec.get("domain") or ""),
+        seed=spec.get("seed"),
+        points_on="points" in caps,
+    )
     schema["loyalty"] = base
     schema["capabilities"] = caps
     if "coupon" in caps:
@@ -185,7 +198,7 @@ def apply_loyalty_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
     names = {f.get("name") for f in features if isinstance(f, dict)}
     label_map = {
         "wallet": "账户余额（模拟充值）",
-        "points": "积分（下单赠送，不可充值）",
+        "points": "积分（赠分 / 兑换 / 抵扣；写到才开登录涨分与过期）",
         "spend_discount": "满减优惠",
         "member_tier": "会员成长等级",
         "coupon": "优惠券（领取·我的券·核销）",
@@ -195,3 +208,157 @@ def apply_loyalty_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
             features.append({"name": label_map[c], "status": "module"})
     spec["features"] = features
     return spec
+
+
+_PAY_TERMS = ("积分兑换", "积分商城", "用积分兑换")
+_OFFSET_TERMS = ("积分抵扣", "积分抵现", "积分当钱花", "购物抵扣")
+_CHECKIN_TERMS = ("签到积分", "每日签到", "登录送积分", "签到领积分", "登录积分", "登录送", "每日登录")
+_EXPIRE_HINTS = ("积分有效期", "积分过期", "过期清零", "月底清", "年底清", "积分清零", "清本月", "清本年度")
+
+_TIER_PACKS = (
+    ("青铜", "白银", "黄金", "铂金", "钻石"),
+    ("普通会员", "银卡", "金卡", "白金", "钻石", "黑卡", "至尊"),
+    ("一星", "二星", "三星", "四星", "五星"),
+)
+
+_NAMED_TIERS = (
+    "青铜", "白银", "黄金", "铂金", "钻石",
+    "普通会员", "银卡", "金卡", "白金", "黑卡", "至尊",
+    "一星", "二星", "三星", "四星", "五星",
+)
+
+
+def _hit_any(text: str, terms: tuple[str, ...]) -> bool:
+    from app.bake.proposal_lexicon import keyword_mentioned
+
+    return any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in terms)
+
+
+def points_pay_mode(text: str, title: str = "") -> str:
+    blob = f"{title or ''}\n{text or ''}"
+    if _hit_any(blob, _PAY_TERMS) or "积分兑换商城" in blob:
+        return "pay"
+    if _hit_any(blob, _OFFSET_TERMS) or ("抵扣" in blob and "积分" in blob):
+        return "offset"
+    return "earn"
+
+
+def checkin_points(text: str, title: str = "") -> int | None:
+    import re
+
+    blob = f"{title or ''}\n{text or ''}"
+    if not _hit_any(blob, _CHECKIN_TERMS):
+        return None
+    m = re.search(r"(?:每天|每日|登录送|签到)\s*(\d+)\s*分", blob)
+    if m:
+        return max(1, int(m.group(1)))
+    return 10
+
+
+def expire_rule(text: str, title: str = "") -> tuple[str, str] | None:
+    blob = f"{title or ''}\n{text or ''}"
+    if not any(k in blob for k in _EXPIRE_HINTS):
+        return None
+    if any(k in blob for k in ("清本月", "本月获得", "当月积分")):
+        return "month", "period_earn"
+    if any(k in blob for k in ("清本年度", "本年获得")):
+        return "year", "period_earn"
+    if any(k in blob for k in ("月底", "月末", "每月清零")):
+        return "month", "all"
+    return "year", "all"
+
+
+def enrich_points_modes(loyalty: dict[str, Any], text: str, *, title: str = "") -> dict[str, Any]:
+    out = dict(loyalty)
+    pts = dict(out.get("points") or {})
+    mode = points_pay_mode(text, title)
+    checkin = checkin_points(text, title)
+    expire = expire_rule(text, title)
+    if mode == "pay":
+        pts["enabled"] = True
+        pts["payEnabled"] = True
+        pts["offsetEnabled"] = False
+    elif mode == "offset":
+        pts["enabled"] = True
+        pts["payEnabled"] = False
+        pts["offsetEnabled"] = True
+        pts["pointsPerYuan"] = 100
+        pts["offsetCapRate"] = 0.5
+    else:
+        pts["payEnabled"] = False
+        pts["offsetEnabled"] = False
+    if checkin is not None:
+        pts["enabled"] = True
+        pts["checkInEnabled"] = True
+        pts["checkInPoints"] = checkin
+    else:
+        pts["checkInEnabled"] = False
+        pts["checkInPoints"] = 0
+    if expire is not None:
+        pts["enabled"] = True
+        pts["expireEnabled"] = True
+        pts["expirePeriod"] = expire[0]
+        pts["expireScope"] = expire[1]
+    else:
+        pts["expireEnabled"] = False
+        pts["expirePeriod"] = ""
+        pts["expireScope"] = ""
+    out["points"] = pts
+    return out
+
+
+def enrich_member_tiers(
+    loyalty: dict[str, Any],
+    text: str,
+    *,
+    title: str,
+    domain: str,
+    seed: Any = None,
+    points_on: bool = False,
+) -> dict[str, Any]:
+    out = dict(loyalty)
+    block = dict(out.get("memberTiers") or {})
+    if not block.get("enabled"):
+        return out
+    blob = f"{title}\n{text}"
+    found = [name for name in _NAMED_TIERS if name in blob]
+    found.sort(key=lambda n: blob.find(n))
+    labels: list[str] = []
+    for name in found:
+        if any(name != other and name in other for other in found):
+            continue
+        labels.append(name)
+    digest = f"{title}|{domain}|{seed}"
+    pick = abs(hash(digest))
+    if len(labels) < 2:
+        labels = list(_TIER_PACKS[pick % len(_TIER_PACKS)])
+    basis = "spend"
+    if any(k in blob for k in ("积分升级", "成长值", "满一定积分", "累计积分")):
+        basis = "points"
+    elif points_on and "会员成长" in blob:
+        basis = "points"
+    if basis == "points":
+        ladders = (
+            (0, 100, 300, 800, 2000, 5000, 12000),
+            (0, 50, 200, 600, 1500, 4000, 9000),
+            (0, 80, 240, 700, 1800, 4500, 10000),
+        )
+        steps = ladders[pick % len(ladders)]
+    else:
+        base_steps = (0, 200, 500, 1200, 3000, 8000, 20000)
+        factor = 1 + (pick % 3) * 0.15
+        steps = tuple(0 if i == 0 else int(n * factor) for i, n in enumerate(base_steps))
+    tiers = []
+    for i, label in enumerate(labels):
+        tiers.append(
+            {
+                "id": f"t{i}",
+                "label": label,
+                "minSpend": int(steps[min(i, len(steps) - 1)]),
+                "discountRate": round(max(0.8, 1 - i * 0.02), 2),
+            }
+        )
+    block["tiers"] = tiers
+    block["basis"] = basis
+    out["memberTiers"] = block
+    return out

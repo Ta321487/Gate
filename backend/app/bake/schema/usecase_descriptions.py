@@ -60,6 +60,16 @@ _KIND_PRIORITY: dict[str, int] = {
     "addresses": 38,
     "lookup": 36,
     "open": 20,
+    "blind_pools": 36,
+    "group_campaigns": 36,
+    "delivery_slots": 36,
+    "price_spans": 36,
+    "purchase_permits": 36,
+    "my_permits": 36,
+    "line_specs": 36,
+    "lost_clues": 36,
+    "consigns": 36,
+    "my_consigns": 36,
 }
 
 
@@ -549,6 +559,106 @@ def _flow_spec(kind: str) -> dict[str, Any]:
                 "系统保存或展示与操作一致的结果",
             ],
         },
+        "blind_pools": {
+            "name": "{actor}维护盲盒奖池",
+            "summary": "{actor}在「{label}」中配置奖品、权重和隐藏款。买家买的是盒子，开出后才扣奖品库存。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示盲盒奖池",
+                "{actor}填写奖品、权重和是否隐藏款并保存",
+                "系统保存奖池；之后按该盲盒的保底次数计算",
+            ],
+        },
+        "group_campaigns": {
+            "name": "{actor}维护拼团",
+            "summary": "{actor}在「{label}」中设置成团人数和截止时间。人齐后才能发货，过期未齐则取消并退回余额。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示拼团列表",
+                "{actor}填写商品、成团人数和截止时间并保存",
+                "系统保存后，未截止的团可以开团或参团",
+            ],
+        },
+        "delivery_slots": {
+            "name": "{actor}维护配送时段",
+            "summary": "{actor}在「{label}」中维护时段和余量。结算时只能选仍有余量的时段。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示配送时段",
+                "{actor}填写起止时刻、余量，以及当日达或预订，并保存",
+                "系统保存后，结算页按这份名单选择",
+            ],
+        },
+        "price_spans": {
+            "name": "{actor}维护节日加价",
+            "summary": "{actor}在「{label}」中设置日期区间和倍率。下单当日命中则计入本单。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示节日加价",
+                "{actor}填写起止日期和倍率并保存",
+                "系统按下单当日规则把加价计入订单",
+            ],
+        },
+        "purchase_permits": {
+            "name": "{actor}审核购买申请",
+            "summary": "{actor}在「{label}」中通过或驳回购买资料。通过后才能加购和下单。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示待审申请",
+                "{actor}打开一条申请，执行通过或驳回",
+                "系统更新审核结果；驳回需填写原因",
+            ],
+        },
+        "my_permits": {
+            "name": "{actor}提交购买审核",
+            "summary": "{actor}在「{label}」中上传资料。通过前不能加购和下单。",
+            "flow": [
+                "{actor}登录成功后进入系统，点击「{label}」",
+                "系统展示购买审核表单",
+                "{actor}上传资料并提交",
+                "系统保存为待审，通过前不能加购和下单",
+            ],
+        },
+        "line_specs": {
+            "name": "{actor}维护规格选项",
+            "summary": "{actor}在「{label}」中维护可选规格。下单时从这份名单里选，刻字另记在订单上。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示规格选项",
+                "{actor}新增或停用一项并保存",
+                "系统保存后，结算页按这份名单选择",
+            ],
+        },
+        "lost_clues": {
+            "name": "{actor}查看线索留言",
+            "summary": "{actor}在「{label}」中查看路人留下的线索。游客不必注册。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示线索留言",
+                "{actor}打开一条留言查看内容",
+                "系统展示称呼、联系方式和线索内容",
+            ],
+        },
+        "consigns": {
+            "name": "{actor}质检寄卖",
+            "summary": "{actor}在「{label}」中质检。通过后才上架，订单完成后按当时抽成记账。",
+            "flow": [
+                "{actor}登录成功后进入管理端，点击「{label}」",
+                "系统展示待质检寄卖",
+                "{actor}执行通过上架或驳回",
+                "系统更新状态；通过后该物品才可购买",
+            ],
+        },
+        "my_consigns": {
+            "name": "{actor}提交寄卖",
+            "summary": "{actor}在「{label}」中提交物品。质检通过后才可购买，完成后可申请提现。",
+            "flow": [
+                "{actor}登录成功后进入系统，点击「{label}」",
+                "系统展示寄卖表单",
+                "{actor}填写名称、期望价和成色并提交",
+                "系统保存为待质检",
+            ],
+        },
         "open": {
             "name": "{actor}使用{label}",
             "summary": "{actor}打开「{label}」并完成页面主操作。",
@@ -593,6 +703,24 @@ def _proposal_hit_terms(proposal_text: str, schema: dict[str, Any]) -> set[str]:
     entity = _entity_label(schema)
     if entity and len(entity) >= 2 and entity in prop:
         terms.add(entity)
+    for word in (
+        "盲盒",
+        "拼团",
+        "成团",
+        "配送时段",
+        "送达时段",
+        "节日加价",
+        "节日涨价",
+        "限购",
+        "购买审核",
+        "寄卖",
+        "寄售",
+        "刻字",
+        "规格",
+        "线索",
+    ):
+        if word in prop:
+            terms.add(word)
     return terms
 
 
@@ -627,6 +755,33 @@ def _case_kind(key: str, side: str) -> str:
     return _kind(key, side)
 
 
+def _trade_flow_notes(schema: dict[str, Any], kind: str) -> list[str]:
+    """主路径被选进论文时，补上已挂能力的规则，不另造菜单。"""
+    notes: list[str] = []
+    if kind == "cart" and schema.get("deliveryWindow"):
+        notes.append("结算时选择配送日期和仍有余量的时段，节日加价按下单当日计入本单")
+    if kind == "cart" and schema.get("purchaseGate"):
+        notes.append("需审核的商品要先通过，才能加购和下单")
+    if kind == "cart" and schema.get("lineCustom"):
+        notes.append("定制文字和所选规格记在本单明细上")
+    if kind in ("orders", "my_orders") and schema.get("blindBox"):
+        notes.append("若买的是盲盒，付款买的是盒子，开出奖品后才扣奖品库存")
+    if kind in ("orders", "my_orders") and schema.get("groupBuy"):
+        notes.append("拼团订单为待成团，人齐后才能发货，过期未齐则取消并退回余额")
+    if kind in ("orders", "my_orders") and schema.get("consign"):
+        notes.append("寄卖商品质检通过后才可购买，完成后按当时抽成记账")
+    if kind in ("orders", "my_orders") and schema.get("lineCustomPlaceConfirmed"):
+        notes.append("下单后为待制作，制作完成再发货")
+    ticket = (schema.get("entities") or {}).get("ticket") if isinstance(schema.get("entities"), dict) else None
+    if (
+        kind in ("my_tickets", "ticket_pending")
+        and isinstance(ticket, dict)
+        and ticket.get("requireClaimProof")
+    ):
+        notes.append("认领先填说明，进入待交凭证后补交凭证，核验通过才能办结")
+    return notes
+
+
 def _build_case(
     *,
     schema: dict[str, Any],
@@ -648,6 +803,7 @@ def _build_case(
     name = _fmt(str(spec["name"]), ctx)
     summary = _fmt(str(spec["summary"]), ctx)
     flow = [_fmt(str(step), ctx) for step in (spec.get("flow") or [])]
+    flow.extend(_trade_flow_notes(schema, kind))
     return {
         "name": name,
         "actor": ctx["actor"],

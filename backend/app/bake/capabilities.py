@@ -134,6 +134,71 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "档案规格文案字段+详情展示+下单标题快照；开题写到才挂（E-14）；非 SKU 矩阵",
     },
+    "line_custom": {
+        "label": "订单明细快照",
+        "status": "implemented",
+        "desc": "下单时把文字/选项/图片记入订单明细，不回写商品；开题写到才挂；非礼品专表",
+    },
+    "delivery_window": {
+        "label": "配送时段",
+        "status": "implemented",
+        "desc": "管理端维护时段容量与节日加价；结算从列表选择。当日达/预订互斥，满员与截单拒绝。开题写到才挂",
+    },
+    "purchase_gate": {
+        "label": "购买审核",
+        "status": "implemented",
+        "desc": "商品可要求先审再买，并可按人按月限购。管理端改商品上的开关和额度。不是医院处方开药",
+    },
+    "group_buy": {
+        "label": "拼团",
+        "status": "implemented",
+        "desc": "管理端维护可拼商品、人数和截止时间；用户开团或参团。人齐才可发货，过期未齐退款。不是活动报名或拼车",
+    },
+    "blind_box": {
+        "label": "盲盒",
+        "status": "implemented",
+        "desc": "付款买盒子，抽中后才扣奖品库存。管理端维护奖池、权重和保底次数。不是活动抽奖或影院选座",
+    },
+    "consign": {
+        "label": "寄卖",
+        "status": "implemented",
+        "desc": "同一用户提交寄卖，质检通过后才上架。订单完成按抽成入账，提现需确认。不是多商家入驻",
+    },
+    "weigh_sale": {
+        "label": "按重量",
+        "status": "implemented",
+        "desc": "按重量计价，次日达只能选明天。损耗赔付由店员设上限，通过后退回余额。不是整单退货",
+    },
+    "shoot": {
+        "label": "约拍",
+        "status": "implemented",
+        "desc": "选摄影师和套餐预约时段。同一人同一时段不能约两次。交片后才能看文件。不是选座或点播",
+    },
+    "boarding": {
+        "label": "寄养",
+        "status": "implemented",
+        "desc": "按日价乘以天数入住。重叠日期用现有占用，满了不能再约。不是挂号、领养或到店咖啡",
+    },
+    "buyback": {
+        "label": "旧书回收",
+        "status": "implemented",
+        "desc": "估价后同意才上门。入库后再上架，上架前不能购买。不是图书借阅",
+    },
+    "lesson_pack": {
+        "label": "课时包",
+        "status": "implemented",
+        "desc": "购买课时包后约课扣 1 节。未开始前取消退回，已上课不能退。不是时间银行或选课",
+    },
+    "rental_bond": {
+        "label": "租赁押金验损",
+        "status": "implemented",
+        "desc": "押金、租金、逾期费分记；还车验损后退押。档案可租/已租/维修中。挂租约订单，不是设备借用",
+    },
+    "digital_goods": {
+        "label": "数字商品履约",
+        "status": "implemented",
+        "desc": "付款即交付激活码或下载链接，跳过发货。数字单默认不支持无理由退。开题写到才挂",
+    },
     "order_review": {
         "label": "订单评价",
         "status": "implemented",

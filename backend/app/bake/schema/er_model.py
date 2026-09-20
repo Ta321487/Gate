@@ -132,10 +132,25 @@ def _infer_fk_by_name(
                 candidates: list[str] = []
                 if base in aliases:
                     candidates.append(aliases[base])
-                if c.name in ("book_id", "item_id") and archive:
+                if c.name in ("book_id", "item_id", "box_id", "prize_id") and archive:
                     candidates.append(archive)
                 if c.name == "slot_id" and "resource_slot" in names:
                     candidates.append("resource_slot")
+                elif c.name == "slot_id" and "delivery_slot" in names:
+                    candidates.append("delivery_slot")
+                if c.name == "campaign_id":
+                    if t.name.startswith("group") and "group_campaign" in names:
+                        candidates.append("group_campaign")
+                    elif t.name.startswith("vote") and "vote_campaign" in names:
+                        candidates.append("vote_campaign")
+                    elif "group_campaign" in names:
+                        candidates.append("group_campaign")
+                    elif "vote_campaign" in names:
+                        candidates.append("vote_campaign")
+                if c.name == "consign_id" and "consign_item" in names:
+                    candidates.append("consign_item")
+                if c.name == "bundle_id" and "service_bundle" in names:
+                    candidates.append("service_bundle")
                 # 单据进度 / 上传附件：ticket_id → 父单据表
                 if c.name == "ticket_id" and len(t.name) > 8:
                     if t.name.endswith("_progress"):
@@ -143,6 +158,8 @@ def _infer_fk_by_name(
                     elif t.name.endswith("_attach"):
                         candidates.append(t.name[: -len("_attach")])
                 candidates.extend([base, f"sys_{base}", f"{base}s"])
+                if base == "order" and "biz_order" in names:
+                    candidates.append("biz_order")
                 seen_cand: set[str] = set()
                 for cand in candidates:
                     if not cand or cand in seen_cand:

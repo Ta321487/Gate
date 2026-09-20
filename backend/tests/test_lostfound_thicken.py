@@ -17,7 +17,10 @@ def test_lostfound_caps_and_sql_tables():
     assert LOST_CLUE_CAP in caps
     ticket = (spec.get("schema") or {}).get("entities", {}).get("ticket") or {}
     assert ticket.get("requireClaimProof") is True
-    assert "verifying" in (ticket.get("states") or {})
+    assert ticket.get("requireAttach") is not True
+    states = ticket.get("states") or {}
+    assert states.get("pending") == "待交凭证"
+    assert "verifying" in states
 
     sql = domain_sql(
         domain="DOM-LOST",

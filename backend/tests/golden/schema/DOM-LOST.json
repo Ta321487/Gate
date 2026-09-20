@@ -73,7 +73,7 @@
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "认领说明",
-      "requireAttach": true,
+      "requireAttach": false,
       "requireRemark": true,
       "states": {
         "approved": "已认领",

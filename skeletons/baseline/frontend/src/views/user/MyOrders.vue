@@ -27,7 +27,7 @@
         </strong>
         <el-tag size="small" effect="plain">{{ displayStatus(row) }}</el-tag>
       </div>
-      <ImmSteps v-if="row.status !== 'cancelled'" :steps="orderProgressSteps(row.status, { marketplace })" />
+      <ImmSteps v-if="row.status !== 'cancelled'" :steps="orderProgressSteps(row.status, { marketplace, lineCustom, states: rawStates })" />
       <p class="sub">
         <span :title="row.createdAt || ''">{{ formatRelative(row.createdAt) }}</span>
         · 合计 ¥{{ row.totalYuan }}
@@ -52,6 +52,7 @@
             {{ row.receiverName }} {{ row.receiverPhone }}
           </template>
           <template v-if="row.addressLine"> · {{ row.addressLine }}</template>
+          <template v-if="row.slotLabel"><br />{{ row.deliveryOn }} {{ row.slotLabel }}<template v-if="Number(row.priceRate) > 1"> · 节日 ×{{ Number(row.priceRate).toFixed(2) }}</template></template>
           <template v-if="isFood && row.tasteNote"><br />口味：{{ row.tasteNote }}</template>
           <template v-if="!isFood && row.trackingNo"><br />物流单号：{{ row.trackingNo }}</template>
           <template v-if="isFood && row.pickupCode">
@@ -64,6 +65,12 @@
       <ul class="lines">
         <li v-for="ln in row.lines || []" :key="ln.id">
           {{ ln.title }} × {{ ln.qty }}（¥{{ Number(ln.lineYuan || 0).toFixed(2) }}）
+          <template v-if="ln.customText"> · {{ customTextLabel }}：{{ ln.customText }}</template>
+          <template v-if="ln.drawTitle"> · 抽中：{{ ln.drawTitle }}<template v-if="ln.pityText">（{{ ln.pityText }}）</template></template>
+          <template v-if="ln.specChoice"> · {{ ln.specChoice }}</template>
+          <template v-if="ln.attachUrl">
+            · <a :href="ln.attachUrl" target="_blank" rel="noopener noreferrer">图片</a>
+          </template>
           <template v-if="marketplace && lineShop(ln)"> · {{ lineShop(ln) }}</template>
         </li>
       </ul>
@@ -170,6 +177,9 @@ import { orderProgressSteps, orderTone } from '../../utils/statusTone.js'
 const label = menuLabel('user', 'my_orders', '我的订单')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const rawStates = computed(() => getSchema()?.entities?.order?.states || {})
+const lineCustom = computed(() => hasCap('line_custom'))
+const customTextLabel = computed(() => getSchema()?.labels?.lineCustomTextLabel || '定制内容')
+const noCasualRefund = computed(() => !!getSchema()?.noCasualRefund)
 const isFood = computed(() => hasTrait('food'))
 const isStay = computed(
   () =>
@@ -384,9 +394,19 @@ async function submitPay() {
 }
 
 async function requestRefund(row) {
-  const { value } = await ElMessageBox.prompt('请填写售后原因', '申请售后', {
-    inputPlaceholder: '如：商品破损、少件、口味不符…',
-    inputValidator: (v) => (String(v || '').trim() ? true : '请填写原因'),
+  const hint = getSchema()?.labels?.refundPolicyHint || ''
+  const { value } = await ElMessageBox.prompt(hint || '请填写售后原因', '申请售后', {
+    inputPlaceholder: noCasualRefund.value
+      ? '如：破损、印错、少件。不支持无理由退货'
+      : '如：商品破损、少件、口味不符…',
+    inputValidator: (v) => {
+      const s = String(v || '').trim()
+      if (!s) return '请填写原因'
+      if (noCasualRefund.value && /无理由|不想要|不喜欢|拍错|买错/.test(s)) {
+        return '不支持无理由退货'
+      }
+      return true
+    },
   }).catch(() => ({ value: null }))
   if (value == null) return
   await http.post(`/api/orders/${row.id}/refund`, { reason: String(value).trim() })

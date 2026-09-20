@@ -33,7 +33,8 @@ _SYS = (
     "menus.admin 含 category 且 entityKeys 含 category → 不算缺口；"
     "staffPackMenus 只含本域岗位已挂 pack，勿把未列出的 pack/菜单名当成实体；"
     "menuKeys 未含 my_tickets/cart/orders 时，勿审 MyTickets/Cart/MyOrders 等未挂路由骨架页"
-    "（baseline 会保留文件供 Vite 静态分析，不代表本期交付页）。\n"
+    "（baseline 会保留文件供 Vite 静态分析，不代表本期交付页）。"
+    "实体 states 里没有的状态，若摘录里只出现在 allow* 或 hasCap 开关分支中，不是本期文案，勿报错域残留。\n"
     "2) traits.followUp（或旧包 traits.crm）表示跟进表单能力（渠道/下次复核），"
     "是跨域 UI 特征，不是「必须等于 CRM 行业域」；勿因 flavor/题名不含 CRM 而报错。\n"
     "3) NoticeDetail 正文小标题允许 labels.noticeBodyHeading 或中性「正文」。\n"
@@ -372,6 +373,43 @@ def _normalize_findings(raw: Any) -> list[dict[str, str]]:
     return [f for f in out if f["msg"]]
 
 
+def _switch_hides_absent_states(msg: str, ctx: dict[str, Any], where: str = "") -> bool:
+    """状态不在实体 states 里，且摘录中只出现在 allow* / hasCap 分支 → 开关未开，不是错域。"""
+    if not re.search(r"残留|错域|写死|未定义", msg or ""):
+        return False
+    known: set[str] = set()
+    for ent in (ctx.get("entities") or {}).values():
+        if isinstance(ent, dict) and isinstance(ent.get("states"), dict):
+            known.update(str(k) for k in ent["states"])
+    cited = set(re.findall(r"\b([a-z][a-z0-9]*_[a-z0-9_]+)\b", msg or ""))
+    absent = {tok for tok in cited if tok not in known}
+    if not absent:
+        return False
+    files = ctx.get("files") or {}
+    chunks: list[str] = []
+    for rel, body in files.items():
+        if not isinstance(body, str) or not body:
+            continue
+        if (where and (rel in where or where.endswith(rel) or rel.endswith(where))) or any(
+            tok in body for tok in absent
+        ):
+            chunks.append(body)
+    if not chunks:
+        return False
+    lines = "\n".join(chunks).splitlines()
+    checked = False
+    for tok in absent:
+        hits = [i for i, line in enumerate(lines) if tok in line]
+        if not hits:
+            continue
+        checked = True
+        for i in hits:
+            window = "\n".join(lines[max(0, i - 6) : i + 1])
+            if not re.search(r"\ballow[A-Z][A-Za-z0-9]*\b|hasCap\s*\(", window):
+                return False
+    return checked
+
+
 def _is_noise_finding(msg: str, ctx: dict[str, Any], *, where: str = "") -> bool:
     """滤掉与结构化真相矛盾的 LLM 臆造（全厂规则，不绑单一域）。"""
     text = msg or ""
@@ -423,6 +461,9 @@ def _is_noise_finding(msg: str, ctx: dict[str, Any], *, where: str = "") -> bool
     # 详情页已用动态正文小标题
     notice = (ctx.get("files") or {}).get("frontend/src/views/NoticeDetail.vue") or ""
     if "公告正文" in text and ("bodyHeading" in notice or ">公告正文<" not in notice):
+        return True
+
+    if _switch_hides_absent_states(text, ctx, where):
         return True
 
     return False

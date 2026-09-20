@@ -487,7 +487,23 @@ def _rel_zh_from_via(via: str, right: str = "", left: str = "") -> str:
         return "属于"
     # 时段：档案→名额是排班；名额→预约单才是预约
     if via == "slot_id":
-        return "预约"
+        return "配送" if left == "delivery_slot" else "预约"
+    if via == "box_id":
+        return "开盒"
+    if via == "prize_id":
+        return "奖品"
+    if via == "campaign_id" and left == "group_campaign":
+        return "参团"
+    if via == "campaign_id" and left == "vote_campaign":
+        return "参加"
+    if via == "consign_id":
+        return "入账"
+    if via == "bundle_id":
+        return "选套餐"
+    if via == "reservation_id" and right == "deliverable":
+        return "交片"
+    if via == "reservation_id" and right == "stay_log":
+        return "日志"
     if right == "resource_slot" or (via == "item_id" and "slot" in right):
         return "排班"
     if via == "building_id":
