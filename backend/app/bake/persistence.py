@@ -84,8 +84,13 @@ def purge_jdbc_persistence(dest: Path) -> None:
         for path in java_root.rglob("*.java"):
             text = path.read_text(encoding="utf-8")
             if "JdbcSupport" in text and "对标原 JdbcSupport" not in text and "保证 MybatisSupport" not in text:
-                # 允许注释提及旧名；禁止仍引用类
-                if "import com.thesis.config.JdbcSupport" in text or "JdbcSupport.jdbc" in text:
+                # 允许注释提及旧名；禁止仍引用类（含误写的 get / getJdbcTemplate）
+                if (
+                    "import com.thesis.config.JdbcSupport" in text
+                    or "JdbcSupport.jdbc" in text
+                    or "JdbcSupport.get(" in text
+                    or "JdbcSupport.getJdbcTemplate" in text
+                ):
                     bad.append(str(path.relative_to(dest)).replace("\\", "/"))
             if "import org.springframework.jdbc.core.JdbcTemplate" in text:
                 bad.append(str(path.relative_to(dest)).replace("\\", "/"))
@@ -123,6 +128,8 @@ def purge_non_jpa_persistence(dest: Path) -> None:
         for path in java_root.rglob("*.java"):
             text = path.read_text(encoding="utf-8")
             if "import com.thesis.config.JdbcSupport" in text or "JdbcSupport.jdbc" in text:
+                bad.append(str(path.relative_to(dest)).replace("\\", "/"))
+            if "JdbcSupport.get(" in text or "JdbcSupport.getJdbcTemplate" in text:
                 bad.append(str(path.relative_to(dest)).replace("\\", "/"))
             if "import org.springframework.jdbc.core.JdbcTemplate" in text:
                 bad.append(str(path.relative_to(dest)).replace("\\", "/"))

@@ -30,6 +30,9 @@ REPLACEMENTS = [
     ),
     ("import com.thesis.config.JdbcSupport;\n", "import com.thesis.config.JpaSupport;\n"),
     ("JdbcSupport.jdbc()", "JpaSupport.db()"),
+    # 误写兜底：个别 Store 曾用 get()/getJdbcTemplate()，生成时一并改掉
+    ("JdbcSupport.getJdbcTemplate()", "JpaSupport.db()"),
+    ("JdbcSupport.get()", "JpaSupport.db()"),
     ("JdbcTemplate", "JpaDb"),
     ("RowMapper<", "SqlRowMapper<"),
     ("保证 JdbcSupport", "保证 JpaSupport"),
