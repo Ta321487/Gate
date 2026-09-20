@@ -35,7 +35,7 @@
           账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}
           <el-button link type="primary" class="recharge-link" @click="openRecharge">充值</el-button>
         </div>
-        <div v-if="demoPay" class="loy-line muted">支付宝 / 微信在线支付（不对接商户 SDK，仍扣账户余额）</div>
+        <div v-if="demoPay" class="loy-line muted">支付宝 / 微信在线支付</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>
@@ -276,7 +276,7 @@
     </el-dialog>
 
     <el-dialog v-model="rechargeVisible" title="账户充值" width="400px" destroy-on-close>
-      <p class="tip muted">选择充值金额，到账后用于下单扣款（在线支付不对接微信/支付宝商户，仍扣本账户余额）。</p>
+      <p class="tip muted">选择充值金额，到账后用于下单扣款。</p>
       <div class="recharge-tiers">
         <el-button
           v-for="amt in rechargeTiers"
@@ -315,6 +315,7 @@ import {
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
 
 const router = useRouter()
+const tagOptions = computed(() => addressTagOptions())
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const isFood = computed(() => hasTrait('food'))
@@ -326,7 +327,7 @@ const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
   () =>
     getSchema()?.labels?.demoPayHint
-    || '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。',
+    || '选择支付宝或微信并输入支付密码完成本单。',
 )
 const pointsOn = computed(() => isPointsEnabled())
 const pointsPayOn = computed(() => !!account.value.pointsPayEnabled || !!loyaltySchema()?.points?.payEnabled)

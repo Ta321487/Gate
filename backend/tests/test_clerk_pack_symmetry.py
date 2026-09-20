@@ -98,6 +98,40 @@ class ClerkPackSymmetryTests(unittest.TestCase):
         self.assertIsNotNone(dm)
         self.assertFalse(dm.get("superOnly"))
 
+    def test_marketplace_merchant_sees_order_reviews(self) -> None:
+        """多店商家岗包须含评价管理，开题写独立模块时侧栏可进。"""
+        out = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "农产品电商平台",
+                "capabilities": [
+                    "archive",
+                    "order_lines",
+                    "quota",
+                    "content",
+                    "org_users",
+                    "guestbook",
+                    "wallet",
+                    "dm",
+                    "favorites",
+                    "order_review",
+                ],
+                "schema": {"shopMarketplace": True},
+            },
+            "多商家入驻，农产品销售，评价管理，在线支付",
+        )
+        packs = (out.get("schema") or {}).get("staffPackMenus") or {}
+        merchant = set(packs.get("merchant_ops") or [])
+        self.assertIn("order_reviews", merchant)
+        self.assertIn("orders", merchant)
+        admin = (out.get("schema") or {}).get("menus", {}).get("admin") or []
+        rev = next(
+            (m for m in admin if isinstance(m, dict) and m.get("key") == "order_reviews"),
+            None,
+        )
+        self.assertIsNotNone(rev)
+        self.assertFalse(rev.get("superOnly"))
+
     def test_enrich_only_keeps_existing_menus(self) -> None:
         schema = {
             "capabilities": ["order_review", "guestbook"],

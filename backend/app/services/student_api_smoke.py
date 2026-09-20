@@ -130,9 +130,9 @@ def _apply_json(
 ) -> dict[str, Any] | None:
     if ticket_mode == "standalone":
         body: dict[str, Any] = {
-            "title": "冒烟报修",
-            "location": "测试地点",
-            "remark": "冒烟申请",
+            "title": "空调不制冷",
+            "location": "3 号楼 201",
+            "remark": "请尽快安排检修",
         }
         if ctx.get("typeId") is not None:
             body["typeId"] = ctx["typeId"]
@@ -145,7 +145,7 @@ def _apply_json(
     body = {
         "itemId": item_id,
         "bookId": item_id,
-        "remark": "冒烟申请",
+        "remark": "请按约定时间办理",
     }
     start = date.today() + timedelta(days=1)
     end = start + timedelta(days=2)
@@ -361,7 +361,7 @@ def _run_flow_api_business(
                         "approve",
                         "POST",
                         f"/api/tickets/{ticket_id}/approve",
-                        json_body={"pass": True, "remark": "冒烟通过"},
+                        json_body={"pass": True, "remark": "审核通过"},
                     )
                 )
 
@@ -460,9 +460,9 @@ def _run_flow_api_business(
                 "POST",
                 "/api/archive/publish",
                 json_body={
-                    "title": "冒烟发帖",
-                    "body": "冒烟正文",
-                    "isbn": "冒烟正文",
+                    "title": "周末骑行约伴",
+                    "body": "本周六上午校园环线骑行，欢迎报名。",
+                    "isbn": "本周六上午校园环线骑行，欢迎报名。",
                     "categoryId": 1,
                 },
             )
@@ -510,7 +510,7 @@ def _run_flow_api_business(
         if "place" in fa:
             done.add("place")
             place_body: dict[str, Any] = {
-                "remark": "冒烟下单",
+                "remark": "请按默认地址配送",
                 "deliveryType": "pickup",
             }
             if _demo_pay_required(spec):
@@ -562,7 +562,7 @@ def _run_flow_api_business(
                 "reserve",
                 "POST",
                 "/api/slots/reserve",
-                json_body={"slotId": slot_id, "remark": "冒烟预约"},
+                json_body={"slotId": slot_id, "remark": "请预留靠窗位置"},
             )
             main_flow.append(step_r)
             if "cancel" in fa:
@@ -833,7 +833,7 @@ def _probe_endpoint(
         mode = _ticket_mode(spec)
         body_json = _apply_json(ctx, spec, ticket_mode=mode) or {}
     elif method == "POST" and "/approve" in filled:
-        body_json = {"pass": True, "remark": "冒烟通过"}
+        body_json = {"pass": True, "remark": "审核通过"}
     elif method == "POST" and "/checkin" in filled:
         body_json = {"code": str(ctx.get("checkinCode") or ctx.get("checkin_code") or "")}
 

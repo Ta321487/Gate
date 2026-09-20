@@ -135,7 +135,7 @@ const menuItems = computed(() => {
     const allowed = clerkAllowedMenuKeys(staffPost)
     if (allowed) {
       items = items.filter(
-        (m) => allowed.has(m.key) || m.key === 'messages' || m.key === 'dm',
+        (m) => allowed.has(m.key) || m.key === 'messages' || m.key === 'dm' || m.key === 'order_reviews',
       )
     }
   }

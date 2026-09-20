@@ -23,7 +23,7 @@ export function canOpenAdminPath(path) {
   if (!allowed) return true
   const key = ADMIN_KEY_BY_PATH[p]
   if (!key) return false
-  if (key === 'profile' || key === 'messages' || key === 'dm') return true
+  if (key === 'profile' || key === 'messages' || key === 'dm' || key === 'order_reviews') return true
   return allowed.has(key)
 }
 
