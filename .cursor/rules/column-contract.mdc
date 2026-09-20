@@ -1,6 +1,6 @@
 ---
-description: 主链路·bake：能力开了须有列与菜单；缺列先 ensure；保证出包可演示不假成功
-globs: backend/app/bake/**,skeletons/**
+description: 
+globs: backend/app/bake/**, skeletons/**
 alwaysApply: false
 ---
 
