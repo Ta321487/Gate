@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
+  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points INT NOT NULL DEFAULT 0,
+  member_tier VARCHAR(32) DEFAULT '',
+  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS category (
@@ -41,7 +45,8 @@ CREATE TABLE IF NOT EXISTS resource_slot (
   start_at DATETIME NOT NULL,
   end_at DATETIME NOT NULL,
   capacity INT NOT NULL DEFAULT 1,
-  booked INT NOT NULL DEFAULT 0
+  booked INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_item_start (item_id, start_at)
 );
 
 CREATE TABLE IF NOT EXISTS reservation (
@@ -52,6 +57,9 @@ CREATE TABLE IF NOT EXISTS reservation (
   remark VARCHAR(255) DEFAULT '',
   guest_name VARCHAR(32) DEFAULT '',
   guest_count INT DEFAULT 0,
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -82,6 +90,10 @@ CREATE TABLE IF NOT EXISTS biz_order (
   total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   remark VARCHAR(255) DEFAULT '',
   reservation_id BIGINT NULL,
+  discount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  pay_balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points_earned INT NOT NULL DEFAULT 0,
+  coupon_code VARCHAR(32) DEFAULT '',
   refund_status VARCHAR(16) DEFAULT '',
   refund_reason VARCHAR(255) DEFAULT '',
   refund_at DATETIME NULL,
@@ -115,6 +127,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -154,6 +167,46 @@ INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VA
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '客房预订', '选择房型与入住时段预订；预约成功即生成订单，前台办理入住与离店。', 'admin', '酒店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='客房预订');
+
+CREATE TABLE IF NOT EXISTS user_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  delta DECIMAL(12,2) NOT NULL,
+  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(64) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  operator VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ledger_user (username, id)
+);
+
+CREATE TABLE IF NOT EXISTS sys_guestbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  reply VARCHAR(500) DEFAULT '',
+  reply_username VARCHAR(64) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_gb_created (id),
+  KEY idx_gb_user (username)
+);
+
+CREATE TABLE IF NOT EXISTS order_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  rating INT NOT NULL,
+  body VARCHAR(500) DEFAULT '',
+  reply VARCHAR(500) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_review (order_id),
+  KEY idx_review_user (username, id)
+);
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

@@ -88,6 +88,7 @@ const staffRoutes = {
     { path: 'tickets', component: () => import('../views/staff/StaffTickets.vue') },
     { path: 'orders', component: () => import('../views/staff/StaffOrders.vue') },
     { path: 'slots', component: () => import('../views/staff/StaffSlots.vue') },
+    { path: 'clean', component: () => import('../views/staff/StaffClean.vue') },
   ],
   beforeEnter: staffGuard,
 }
@@ -1072,37 +1073,50 @@ function pickRoutes() {
   else if (useSlotShell()) routes = withPortalHub(slotRoutes)
   else if (useArchiveOnlyShell()) routes = withPortalHub(archiveOnlyRoutes)
   else routes = baselineRoutes
-  return withDigitalRoutes(withRentalBondRoutes(withLessonRoutes(withBuybackRoutes(withBoardingRoutes(withShootRoutes(withWeighRoutes(withConsignRoutes(withLineSpecRoutes(withBlindBoxRoutes(withGroupBuyRoutes(withPurchaseGateRoutes(withDeliveryWindowRoutes(withMyArchiveRoutes(
-    withOrderReviewRoutes(
-      withCouponRoutes(
-        withArchiveLogRoutes(
-          withBrowseHistoryRoutes(
-            withFavoritesRoutes(
-              withDmRoutes(
-              withESignRoutes(
-                withStockIoRoutes(
-                  withBorrowThickenRoutes(
-                  withSeatSelectRoutes(
-                    withTimebankRoutes(
-                      withDoclibRoutes(
-                        withVoteRoutes(
-                          withSurveyRoutes(
-                            withExamRoutes(withGradeScoreRoutes(withAiAssistantRoutes(withContentReportRoutes(withBookSuggestRoutes(withRoomEquipmentRoutes(withStaffRosterRoutes(withMessageTemplateRoutes(withAuditLogRoutes(withItemCommentRoutes(withGuestbookRoutes(routes))))))))))),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  ),
-                ),
-              ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  ))))))))))))))
+  // 能力补路由：用 reduce 串联，避免再嵌套括号漏加/多加导致 vite/esbuild 直接炸
+  const enrichers = [
+    withGuestbookRoutes,
+    withItemCommentRoutes,
+    withAuditLogRoutes,
+    withMessageTemplateRoutes,
+    withStaffRosterRoutes,
+    withRoomEquipmentRoutes,
+    withBookSuggestRoutes,
+    withContentReportRoutes,
+    withAiAssistantRoutes,
+    withGradeScoreRoutes,
+    withExamRoutes,
+    withSurveyRoutes,
+    withVoteRoutes,
+    withDoclibRoutes,
+    withTimebankRoutes,
+    withSeatSelectRoutes,
+    withBorrowThickenRoutes,
+    withStockIoRoutes,
+    withESignRoutes,
+    withDmRoutes,
+    withFavoritesRoutes,
+    withBrowseHistoryRoutes,
+    withArchiveLogRoutes,
+    withCouponRoutes,
+    withOrderReviewRoutes,
+    withMyArchiveRoutes,
+    withDeliveryWindowRoutes,
+    withPurchaseGateRoutes,
+    withGroupBuyRoutes,
+    withBlindBoxRoutes,
+    withLineSpecRoutes,
+    withConsignRoutes,
+    withWeighRoutes,
+    withShootRoutes,
+    withBoardingRoutes,
+    withBuybackRoutes,
+    withLessonRoutes,
+    withRentalBondRoutes,
+    withHotelPmsRoutes,
+    withDigitalRoutes,
+  ]
+  return enrichers.reduce((acc, fn) => fn(acc), routes)
 }
 
 function withLessonRoutes(baseRoutes) {
@@ -1136,6 +1150,28 @@ function withRentalBondRoutes(baseRoutes) {
     if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
   }
   add(routes.find((r) => r.path === '/admin')?.children, 'rental-inspect', () => import('../views/admin/RentalInspectAdmin.vue'))
+  return routes
+}
+
+function withHotelPmsRoutes(baseRoutes) {
+  if (!hasCap('room_board') && !hasCap('front_desk') && !hasCap('housekeeping')) {
+    return baseRoutes
+  }
+  const routes = cloneRoutes(baseRoutes)
+  const add = (kids, path, loader) => {
+    if (kids && !kids.some((c) => c.path === path)) kids.push({ path, component: loader })
+  }
+  const adminKids = routes.find((r) => r.path === '/admin')?.children
+  if (hasCap('room_board')) {
+    add(adminKids, 'room-board', () => import('../views/admin/RoomBoardAdmin.vue'))
+  }
+  if (hasCap('front_desk')) {
+    add(adminKids, 'front-checkin', () => import('../views/admin/FrontCheckinAdmin.vue'))
+    add(adminKids, 'front-checkout', () => import('../views/admin/FrontCheckoutAdmin.vue'))
+  }
+  if (hasCap('housekeeping')) {
+    add(adminKids, 'clean-tasks', () => import('../views/admin/CleanTasksAdmin.vue'))
+  }
   return routes
 }
 

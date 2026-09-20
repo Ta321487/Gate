@@ -118,7 +118,7 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
                 "reservation"
             ),
         )
-        assert_table_budget(sql, domain)
+        assert_table_budget(sql, domain, caps=list(spec.get("capabilities") or []))
 
         from app.bake.archive_seed_guard import assert_archive_demo_seed
 
@@ -301,6 +301,21 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     )
 
     # 保留 Home.vue：Vite 会静态分析同文件内所有 import()，删掉会导致报修壳也编译失败
+
+    # 论文图默认视图预热落盘：打开 = 读 islands/diagram_cache
+    try:
+        from app.bake.schema.diagram_pack import warm_default_diagrams
+
+        warm_default_diagrams(
+            dest,
+            title_fallback=str(spec.get("title") or title or "管理系统"),
+            proposal_text="",
+        )
+    except Exception as e:
+        import logging
+
+        logging.getLogger("app.bake").warning("diagram warm skipped: %s", e)
+
     return dest
 
 def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
@@ -630,6 +645,12 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  shoot-enabled: true")
     if "boarding" in caps:
         lines.append("  boarding-enabled: true")
+    if "room_board" in caps:
+        lines.append("  room-board-enabled: true")
+    if "front_desk" in caps:
+        lines.append("  front-desk-enabled: true")
+    if "housekeeping" in caps:
+        lines.append("  housekeeping-enabled: true")
     if "buyback" in caps:
         lines.append("  buyback-enabled: true")
     if "lesson_pack" in caps:

@@ -76,6 +76,10 @@ _CLERK_MENU_PACK_AFFINITY: dict[str, frozenset[str]] = {
     "stock_moves": frozenset({"ticket_ops"}),
     "stock_ledger": frozenset({"ticket_ops"}),
     "equipment_dict": frozenset({"slot_ops"}),
+    "room_board": frozenset({"slot_ops", "order_ops"}),
+    "front_checkin": frozenset({"slot_ops", "order_ops"}),
+    "front_checkout": frozenset({"slot_ops", "order_ops"}),
+    "clean_tasks": frozenset({"slot_ops"}),
 }
 
 # 并入办理岗后须放开的菜单（禁止再 superOnly 挡死一线）
@@ -87,6 +91,7 @@ PACK_WORK_PAGES: dict[str, frozenset[str]] = {
     "ticket_work": frozenset({"tickets"}),
     "order_work": frozenset({"orders"}),
     "slot_work": frozenset({"slots"}),
+    "room_clean_work": frozenset({"clean"}),
 }
 
 CLERK_PACKS = frozenset(PACK_ADMIN_MENUS)
@@ -1358,6 +1363,21 @@ def attach_staff_posts(
         ):
             row["label"] = old_lab
         merged_posts.append(row)
+    # PMS 清洁岛：有 housekeeping cap 则必有清洁岗，且作业页为清洁任务（非通用时段）
+    if domain == "DOM-HOTEL" and "housekeeping" in _schema_cap_set(schema):
+        have_hk = False
+        for row in merged_posts:
+            if str(row.get("id") or "") == "housekeeping":
+                row["packs"] = ["room_clean_work"]
+                have_hk = True
+                break
+        if not have_hk:
+            for post, _hints in _OPTIONAL_WORKERS.get("DOM-HOTEL") or []:
+                if str(post.get("id") or "") == "housekeeping":
+                    row = dict(post)
+                    row["packs"] = ["room_clean_work"]
+                    merged_posts.append(row)
+                    break
     for e in validate_staff_posts(merged_posts):
         raise ValueError(f"{domain}: {e}")
     roles = dict(prev_roles)

@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS resource_slot (
   start_at DATETIME NOT NULL,
   end_at DATETIME NOT NULL,
   capacity INT NOT NULL DEFAULT 1,
-  booked INT NOT NULL DEFAULT 0
+  booked INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_item_start (item_id, start_at)
 );
 
 CREATE TABLE IF NOT EXISTS reservation (

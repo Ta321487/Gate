@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS resource_slot (
   start_at DATETIME NOT NULL,
   end_at DATETIME NOT NULL,
   capacity INT NOT NULL DEFAULT 1,
-  booked INT NOT NULL DEFAULT 0
+  booked INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_item_start (item_id, start_at)
 );
 
 CREATE TABLE IF NOT EXISTS reservation (
@@ -53,6 +54,9 @@ CREATE TABLE IF NOT EXISTS reservation (
   remark VARCHAR(255) DEFAULT '',
   preferred_stylist VARCHAR(32) DEFAULT '',
   queue_no INT DEFAULT 0,
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -73,6 +77,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

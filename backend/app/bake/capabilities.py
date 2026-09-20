@@ -179,6 +179,21 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "按日价乘以天数入住。重叠日期用现有占用，满了不能再约。不是挂号、领养或到店咖啡",
     },
+    "room_board": {
+        "label": "房态板",
+        "status": "implemented",
+        "desc": "按房间实例看空房/已订/入住中/待打扫/维修。开题写房态或酒店管理才挂；民宿寄养不挂",
+    },
+    "front_desk": {
+        "label": "前台登记退房",
+        "status": "implemented",
+        "desc": "入住登记、押金、消费挂账与退房结算；依赖房态板。不是活动口令签到",
+    },
+    "housekeeping": {
+        "label": "酒店清洁任务",
+        "status": "implemented",
+        "desc": "待打扫房间列表，完成后回空房；依赖房态板。不是健身房场馆保洁",
+    },
     "buyback": {
         "label": "旧书回收",
         "status": "implemented",

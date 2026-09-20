@@ -12,18 +12,22 @@ from app.bake.engine_islands import (  # noqa: F401
     sync_workspace_thesis_yml,
 )
 from app.bake.engine_sql import (  # noqa: F401
+    TABLE_COUNT_HARD,
     TABLE_COUNT_MAX,
     TABLE_COUNT_MIN,
     assert_table_budget,
     count_create_tables,
     domain_sql,
+    evaluate_table_budget,
 )
 
 __all__ = [
     "TABLE_COUNT_MIN",
     "TABLE_COUNT_MAX",
+    "TABLE_COUNT_HARD",
     "count_create_tables",
     "assert_table_budget",
+    "evaluate_table_budget",
     "domain_sql",
     "bake_project",
     "emit_schema_to_workspace",

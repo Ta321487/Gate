@@ -4,7 +4,9 @@
     "slot_reserve",
     "order_lines",
     "content",
-    "org_users"
+    "org_users",
+    "guestbook",
+    "order_review"
   ],
   "entities": {
     "archive": {
@@ -59,7 +61,10 @@
       }
     },
     "reservation": {
+      "allowRating": true,
       "completeVerb": "入住/离店",
+      "guestCountLabel": "入住人数",
+      "guestNameLabel": "入住人",
       "key": "reservation",
       "label": "预订",
       "labelPlural": "我的预订",
@@ -76,7 +81,7 @@
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "客房预订",
+    "authEyebrow": "客房预约",
     "authLead": "验证码登录；选择房型与入住时段预订，同步生成订单；前台可办理入住/离店办结。",
     "authPoints": [
       "验证码登录",

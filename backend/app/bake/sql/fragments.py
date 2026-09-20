@@ -1587,6 +1587,101 @@ WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=3);
     return out.rstrip() + "\n" + _BOARDING_DDL + "\n" + seed
 
 
+_ROOM_BOARD_DDL = """
+CREATE TABLE IF NOT EXISTS room_instance (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  room_type_id BIGINT NOT NULL,
+  room_no VARCHAR(32) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT '空房',
+  order_id BIGINT NULL,
+  checkin_id BIGINT NULL,
+  note VARCHAR(255) DEFAULT '',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS room_status_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  room_id BIGINT NOT NULL,
+  old_status VARCHAR(16) DEFAULT '',
+  new_status VARCHAR(16) NOT NULL DEFAULT '',
+  operator_username VARCHAR(64) DEFAULT '',
+  note VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+_FRONT_DESK_DDL = """
+CREATE TABLE IF NOT EXISTS checkin (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NULL,
+  reservation_id BIGINT NULL,
+  room_id BIGINT NULL,
+  guest_name VARCHAR(64) DEFAULT '',
+  id_no VARCHAR(64) DEFAULT '',
+  deposit_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status VARCHAR(16) NOT NULL DEFAULT 'checked_in',
+  checked_in_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS checkout (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  checkin_id BIGINT NOT NULL,
+  order_id BIGINT NULL,
+  room_id BIGINT NULL,
+  settle_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  deposit_back_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) DEFAULT '',
+  checked_out_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS consumption (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  checkin_id BIGINT NOT NULL,
+  order_id BIGINT NULL,
+  title VARCHAR(128) NOT NULL DEFAULT '',
+  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def ensure_room_board_sql(sql: str, *, enabled: bool) -> str:
+    """房间实例 + 房态日志。未开不加。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?room_instance`?\b", sql):
+        return sql
+    seed = """INSERT INTO room_instance (id, room_type_id, room_no, status)
+SELECT 1, 1, '101', '空房' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=1);
+INSERT INTO room_instance (id, room_type_id, room_no, status)
+SELECT 2, 1, '102', '空房' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=2);
+INSERT INTO room_instance (id, room_type_id, room_no, status)
+SELECT 3, 2, '201', '待打扫' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=3);
+INSERT INTO room_status_log (id, room_id, old_status, new_status, operator_username, note)
+SELECT 1, 3, '入住中', '待打扫', 'admin', '退房后待打扫' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM room_status_log WHERE id=1);
+"""
+    return sql.rstrip() + "\n" + _ROOM_BOARD_DDL + "\n" + seed
+
+
+def ensure_front_desk_sql(sql: str, *, enabled: bool) -> str:
+    """入住登记 / 退房结算 / 消费挂账。未开不加。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?checkin`?\b", sql):
+        return sql
+    seed = """INSERT INTO checkin (id, order_id, room_id, guest_name, id_no, deposit_yuan, status, checked_in_at)
+SELECT 1, 1, 1, '张三', '110101199001011234', 200.00, 'checked_in', '2026-09-20 14:00:00' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM checkin WHERE id=1);
+INSERT INTO consumption (id, checkin_id, order_id, title, amount_yuan)
+SELECT 1, 1, 1, '迷你吧', 36.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consumption WHERE id=1);
+"""
+    return sql.rstrip() + "\n" + _FRONT_DESK_DDL + "\n" + seed
+
+
 ORDER_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
     ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
     ("rent_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),

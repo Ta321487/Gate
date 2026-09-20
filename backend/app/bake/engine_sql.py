@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 from app.core.config import get_settings
 from app.bake.catalog import (
@@ -27,10 +31,63 @@ from app.bake.domain_schema import (
 
 # 答辩/开题常见硬约束：交付库表不宜过少或灌水过多
 TABLE_COUNT_MIN = 6
-# 含 L0 平台表 sys_message；论坛等顶格域可达 15
+# 舒适区上沿。超过只警告，不拦出包（含 L0 平台表 sys_message）
 TABLE_COUNT_MAX = 15
+# 超过此数打回。选题必需业务表不计入这一档（见 ESSENTIAL_CAP_TABLES）
+TABLE_COUNT_HARD = 18
 # 借用/占用族（DOMAIN_GROUPS borrow）：薄壳 6～7 张不够答辩，族内下限 10
 BORROW_TABLE_MIN = 10
+
+# 开题扫入后才会有的业务表。缺了论文主路径或答辩场景会变浅，故不计入「超过 18 打回」。
+# 已写进该域 DOMAIN_CAPABILITIES 的默认能力不算：那是域壳本身，仍占预算。
+ESSENTIAL_CAP_TABLES: dict[str, frozenset[str]] = {
+    "wallet": frozenset({"user_ledger"}),
+    "coupon": frozenset({"promo_coupon", "user_coupon"}),
+    "guestbook": frozenset({"sys_guestbook"}),
+    "dm": frozenset({"sys_dm_message"}),
+    "item_comment": frozenset({"item_comment"}),
+    "ai_assistant": frozenset({"sys_ai_knowledge", "sys_ai_message", "sys_ai_feedback"}),
+    "exam": frozenset({
+        "exam_question", "exam_paper", "exam_paper_question",
+        "exam_attempt", "exam_answer", "exam_wrongbook",
+    }),
+    "vote": frozenset({"vote_campaign", "vote_candidate", "vote_ballot"}),
+    "favorites": frozenset({"user_favorite"}),
+    "post_like": frozenset({"user_post_like"}),
+    "content_report": frozenset({"content_report"}),
+    "staff_roster": frozenset({"staff_roster"}),
+    "message_template": frozenset({"sys_message_template"}),
+    "book_suggest": frozenset({"book_suggest"}),
+    "audit_log": frozenset({"sys_audit_log"}),
+    "browse_history": frozenset({"user_browse_history"}),
+    "archive_log": frozenset({"archive_log"}),
+    "room_equipment": frozenset({"sys_equipment_dict"}),
+    "line_custom": frozenset({"line_spec_option"}),
+    "delivery_window": frozenset({"delivery_slot", "price_span"}),
+    "purchase_gate": frozenset({"purchase_permit"}),
+    "group_buy": frozenset({"group_campaign", "group_member"}),
+    "blind_box": frozenset({"blind_pool", "blind_pity"}),
+    "consign": frozenset({"consign_item", "consign_ledger"}),
+    "weigh_sale": frozenset({"loss_policy", "loss_claim"}),
+    "shoot": frozenset({"service_bundle", "deliverable"}),
+    "boarding": frozenset({"stay_log"}),
+    "room_board": frozenset({"room_instance", "room_status_log"}),
+    "front_desk": frozenset({"checkin", "checkout", "consumption"}),
+    "digital_goods": frozenset({"digital_code", "digital_delivery"}),
+    "buyback": frozenset({"buyback_slot", "buyback_order"}),
+    "lesson_pack": frozenset({"lesson_pack", "lesson_wallet"}),
+    "order_review": frozenset({"order_review"}),
+    "stock_io": frozenset({"stock_move"}),
+    "e_sign": frozenset({"e_sign_record"}),
+    "balance_ledger": frozenset({"balance_subject", "balance_account", "balance_ledger"}),
+    "occupy_span": frozenset({"resource_occupy", "occupy_block", "occupy_day_stat"}),
+    "material_check": frozenset({"material_checklist", "ticket_material", "material_template"}),
+    "loan_renew": frozenset({"renew_log", "fine_record"}),
+}
+
+_CREATE_TABLE_NAME = re.compile(
+    r"(?i)create\s+table(?:\s+if\s+not\s+exists)?\s+`?([A-Za-z_][A-Za-z0-9_]*)`?"
+)
 
 # GENERIC 壳：bake/sql/DOM-GENERIC*.sql；具名域：sql_domain_templates（唯一路径，无散文件）
 _SQL_DIR = Path(__file__).resolve().parent / "sql"
@@ -40,21 +97,137 @@ def count_create_tables(sql: str) -> int:
     return len(re.findall(r"(?i)create\s+table\b", sql))
 
 
-def table_budget_bounds(domain: str) -> tuple[int, int]:
-    """全厂 6～15；借用/占用族成员 10～15。"""
+def list_create_table_names(sql: str) -> list[str]:
+    """按出现顺序返回 CREATE TABLE 名（小写）。"""
+    return [m.group(1).lower() for m in _CREATE_TABLE_NAME.finditer(sql or "")]
+
+
+def table_budget_floor(domain: str) -> int:
     from app.bake.domains import is_borrow_family_domain
 
-    lo = BORROW_TABLE_MIN if is_borrow_family_domain(domain) else TABLE_COUNT_MIN
-    return lo, TABLE_COUNT_MAX
+    return BORROW_TABLE_MIN if is_borrow_family_domain(domain) else TABLE_COUNT_MIN
 
 
-def assert_table_budget(sql: str, domain: str) -> None:
-    n = count_create_tables(sql)
-    lo, hi = table_budget_bounds(domain)
-    if not (lo <= n <= hi):
-        raise ValueError(
-            f"{domain} schema 表数量={n}，必须在 {lo}~{hi} 之间"
+def table_budget_bounds(
+    domain: str, caps: list[str] | None = None
+) -> tuple[int, int]:
+    """舒适区上下限：全厂 6～15；借用/占用族 10～15。
+
+    ``caps`` 保留兼容调用方；硬顶与选题例外见 ``evaluate_table_budget``。
+    """
+    del caps  # 硬顶/例外不再用 caps 抬高舒适区
+    return table_budget_floor(domain), TABLE_COUNT_MAX
+
+
+def _domain_default_caps(domain: str) -> set[str]:
+    from app.bake.domains import DOMAIN_CAPABILITIES
+
+    return {str(c) for c in (DOMAIN_CAPABILITIES.get(domain or "") or [])}
+
+
+def essential_scanned_tables(
+    domain: str, caps: list[str] | None, sql: str
+) -> frozenset[str]:
+    """开题扫入（非域默认）能力对应、且 SQL 里确实存在的表名。"""
+    present = set(list_create_table_names(sql))
+    defaults = _domain_default_caps(domain)
+    out: set[str] = set()
+    for cap in caps or []:
+        c = str(cap)
+        if c in defaults:
+            continue
+        for t in ESSENTIAL_CAP_TABLES.get(c, ()):
+            if t.lower() in present:
+                out.add(t.lower())
+    return frozenset(out)
+
+
+@dataclass(frozen=True)
+class TableBudgetResult:
+    count: int
+    floor: int
+    soft_max: int
+    hard_max: int
+    charged: int
+    essential_tables: tuple[str, ...]
+    ok: bool
+    warn: bool
+    message: str
+
+
+def evaluate_table_budget(
+    sql: str, domain: str, caps: list[str] | None = None
+) -> TableBudgetResult:
+    """表预算：低于下限打回；超过 soft_max 警告；超过 hard_max 打回。
+
+    选题扫入的必需业务表不计入 hard 档（仍计 soft 警告）。
+    """
+    names = list_create_table_names(sql)
+    n = len(names)
+    lo = table_budget_floor(domain)
+    soft = TABLE_COUNT_MAX
+    hard = TABLE_COUNT_HARD
+    essential = essential_scanned_tables(domain, caps, sql)
+    charged = max(0, n - len(essential))
+
+    if n < lo:
+        return TableBudgetResult(
+            count=n,
+            floor=lo,
+            soft_max=soft,
+            hard_max=hard,
+            charged=charged,
+            essential_tables=tuple(sorted(essential)),
+            ok=False,
+            warn=False,
+            message=f"{domain} schema 表数量={n}，低于下限 {lo}",
         )
+    if charged > hard:
+        ess = "、".join(sorted(essential)) or "无"
+        return TableBudgetResult(
+            count=n,
+            floor=lo,
+            soft_max=soft,
+            hard_max=hard,
+            charged=charged,
+            essential_tables=tuple(sorted(essential)),
+            ok=False,
+            warn=False,
+            message=(
+                f"{domain} schema 表数量={n}（计费 {charged}，"
+                f"选题必需表 {ess}），超过硬顶 {hard}"
+            ),
+        )
+    warn = n > soft
+    if warn:
+        ess = "、".join(sorted(essential))
+        tip = f"；选题必需表 {ess} 未计入硬顶" if ess else ""
+        msg = f"当前 {n} 张，超过舒适区 {soft}{tip}"
+    else:
+        msg = f"当前 {n} 张"
+    return TableBudgetResult(
+        count=n,
+        floor=lo,
+        soft_max=soft,
+        hard_max=hard,
+        charged=charged,
+        essential_tables=tuple(sorted(essential)),
+        ok=True,
+        warn=warn,
+        message=msg,
+    )
+
+
+def assert_table_budget(
+    sql: str, domain: str, caps: list[str] | None = None
+) -> TableBudgetResult:
+    """硬失败抛 ValueError；超过舒适区只打日志警告。"""
+    result = evaluate_table_budget(sql, domain, caps)
+    if not result.ok:
+        raise ValueError(result.message)
+    if result.warn:
+        log.warning("%s", result.message)
+    return result
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -272,6 +445,8 @@ def domain_sql(
         ensure_weigh_sale_sql,
         ensure_shoot_sql,
         ensure_boarding_sql,
+        ensure_room_board_sql,
+        ensure_front_desk_sql,
         ensure_buyback_sql,
         ensure_lesson_pack_sql,
         ensure_rental_bond_sql,
@@ -333,6 +508,7 @@ def domain_sql(
         domain=domain,
         archetype=archetype,
         archetypes=arches_for_sql,
+        title=title or "",
     )
     loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
     # 预约评价开关：优先 bake 传入；否则回落域默认 schema
@@ -554,6 +730,35 @@ def domain_sql(
         title=title or "",
     )
     text = ensure_boarding_sql(text, enabled=BOARDING_CAP in caps)
+    from app.bake.features.room_board import ROOM_BOARD_CAP, merge_room_board_capabilities
+
+    caps = merge_room_board_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    from app.bake.features.front_desk import FRONT_DESK_CAP, merge_front_desk_capabilities
+
+    caps = merge_front_desk_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    from app.bake.features.housekeeping_cap import (
+        HOUSEKEEPING_CAP,
+        merge_housekeeping_capabilities,
+    )
+
+    caps = merge_housekeeping_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_room_board_sql(text, enabled=ROOM_BOARD_CAP in caps)
+    text = ensure_front_desk_sql(text, enabled=FRONT_DESK_CAP in caps)
     from app.bake.features.buyback import BUYBACK_CAP, merge_buyback_capabilities
 
     caps = merge_buyback_capabilities(

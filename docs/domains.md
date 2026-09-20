@@ -101,7 +101,7 @@
 | **DOM-PARKING** | 车位预约 | archive + slot_reserve + content + org_users |
 | **DOM-MEETING** | 会议室 / 球馆 / 自习室 / 座位占坑预约 | archive + slot_reserve + content + org_users |
 | **DOM-SALON** | 美发美容 / 健身私教服务预约 | archive + slot_reserve + content + org_users |
-| **DOM-HOTEL** | 宾馆客房 | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review** |
+| **DOM-HOTEL** | 客房预约（宾馆/民宿） | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review**；可选扫词开 **boarding** / **room_board** / **front_desk** / **housekeeping**（PMS；民宿寄养不开 PMS） |
 | **DOM-CARRENT** | 汽车租赁 | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review** |
 
 预约答辩口径：选时段占坑 →（可选确认）→ 管理端履约办结 / 用户取消或改约。状态含 `completed`（入场/就诊/到店/入住离店等文案随 schema）。

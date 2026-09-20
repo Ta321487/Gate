@@ -62,6 +62,7 @@ const menuItems = computed(() => {
     tickets: { index: '/staff/tickets', label: '工单作业' },
     orders: { index: '/staff/orders', label: `${orderLab}作业` },
     slots: { index: '/staff/slots', label: `${resvLab}作业` },
+    clean: { index: '/staff/clean', label: '清洁任务' },
   }
   const pages = workerAllowedPages(postId)
   const items = pages.map((p) => meta[p]).filter(Boolean)

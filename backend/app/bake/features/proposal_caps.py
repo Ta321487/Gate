@@ -12,6 +12,7 @@ def merge_proposal_capabilities(
     domain: str | None = None,
     archetype: str | None = None,
     archetypes: list[str] | None = None,
+    title: str = "",
 ) -> list[str]:
     """按开题正文合并可选能力（忠诚度 / 留言 / 私信 / 收藏 / UX / 评价 / 打卡 / 推荐·冲突·逾期）。"""
     from app.bake.features.archive_log import merge_archive_log_capabilities
@@ -133,6 +134,15 @@ def merge_proposal_capabilities(
     from app.bake.features.boarding import merge_boarding_capabilities
 
     req = merge_boarding_capabilities(req, body, domain=domain)
+    from app.bake.features.room_board import merge_room_board_capabilities
+
+    req = merge_room_board_capabilities(req, body, domain=domain, title=title)
+    from app.bake.features.front_desk import merge_front_desk_capabilities
+
+    req = merge_front_desk_capabilities(req, body, domain=domain, title=title)
+    from app.bake.features.housekeeping_cap import merge_housekeeping_capabilities
+
+    req = merge_housekeeping_capabilities(req, body, domain=domain, title=title)
     from app.bake.features.buyback import merge_buyback_capabilities
 
     req = merge_buyback_capabilities(req, body, domain=domain)
