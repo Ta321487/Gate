@@ -231,6 +231,23 @@ class DomainSkinLeakRegressionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             assert_skin_invariants(schema, domain="DOM-HOTEL", title="酒店")
 
+    def test_marketplace_blocks_reserve_message_lead(self) -> None:
+        """多店商城 messagesPageLead 不得串预约/待受理申请。"""
+        from app.bake.schema.builders_slot import _shop_schema
+
+        schema = _shop_schema("多商家电商", "商家入驻与店铺管理")
+        self.assertTrue(schema.get("shopMarketplace"))
+        issues = check_schema_skin_leaks(schema, domain="DOM-SHOP", title="多商家电商")
+        self.assertEqual(issues, [], issues)
+        bad = dict(schema)
+        labels = dict(bad.get("labels") or {})
+        labels["messagesPageLead"] = "待受理申请、新订单/预约等管理通知。"
+        labels.pop("guestbookGuestCta", None)
+        bad["labels"] = labels
+        issues2 = check_schema_skin_leaks(bad, domain="DOM-SHOP", title="多商家电商")
+        self.assertTrue(any("messagesPageLead" in i for i in issues2), issues2)
+        self.assertTrue(any("guestbookGuestCta" in i for i in issues2), issues2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -98,12 +98,13 @@ export const api = {
     return `/api/projects/${id}/schema/activities.svg?${q}`
   },
   getClasses: (id, { display = 'sample' } = {}) =>
-    http.get(`/projects/${id}/schema/classes`, { params: { display } }),
+    http.get(`/projects/${id}/schema/classes`, { params: { display }, timeout: 120000 }),
   classesSvgUrl: (id, { display = 'sample' } = {}) => {
     const q = new URLSearchParams({ display })
     return `/api/projects/${id}/schema/classes.svg?${q}`
   },
-  putClassesLayout: (id, body) => http.put(`/projects/${id}/schema/classes-layout`, body),
+  putClassesLayout: (id, body) =>
+    http.put(`/projects/${id}/schema/classes-layout`, body, { timeout: 120000 }),
   getUsecases: (id, { actor = 'user' } = {}) =>
     http.get(`/projects/${id}/schema/usecases`, { params: { actor } }),
   usecasesSvgUrl: (id, { actor = 'user' } = {}) => {

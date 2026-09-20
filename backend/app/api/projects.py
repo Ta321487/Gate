@@ -777,8 +777,8 @@ async def get_modules(
     expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
     db: AsyncSession = Depends(get_db),
 ):
-    """按身份（材料优先）或按业务推导功能模块树。"""
-    from app.bake.schema.modules import load_module_model, normalize_module_layout
+    """按身份（材料优先）或按业务推导功能模块树；响应含 ``svg``（单请求）。"""
+    from app.bake.schema.diagram_pack import pack_modules
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -791,11 +791,11 @@ async def get_modules(
             prop = load_merged_proposal_text(p.source_path) or ""
     except Exception:
         prop = ""
-    model = load_module_model(
+    model = pack_modules(
         ws,
-        proposal_text=prop,
-        layout=normalize_module_layout(layout),
+        layout=layout,
         expand_details=expand_details,
+        proposal_text=prop,
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
@@ -811,11 +811,8 @@ async def download_modules_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.modules import (
-        load_module_model,
-        normalize_module_layout,
-        render_module_svg,
-    )
+    from app.bake.schema.diagram_pack import pack_modules
+    from app.bake.schema.modules import normalize_module_layout
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -829,16 +826,15 @@ async def download_modules_svg(
     except Exception:
         prop = ""
     layout_n = normalize_module_layout(layout)
-    model = load_module_model(
+    model = pack_modules(
         ws,
-        proposal_text=prop,
         layout=layout_n,
         expand_details=expand_details,
+        proposal_text=prop,
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
-    svg = render_module_svg(model)
-    # Content-Disposition 必须是 latin-1；中文名仅给前端下载时自行命名
+    svg = str(model.get("svg") or "")
     fname = f"{project_id}-modules-{layout_n}.svg"
     return Response(
         content=svg.encode("utf-8"),
@@ -855,14 +851,14 @@ async def get_architecture(
     project_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """B/S 分层架构图模型；角色取自交付门户/岗位。"""
-    from app.bake.schema.architecture import load_architecture_model
+    """B/S 分层架构图模型；角色取自交付门户/岗位；响应含 ``svg``。"""
+    from app.bake.schema.diagram_pack import pack_architecture
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = load_architecture_model(ws, title_fallback=p.title or "管理系统")
+    model = pack_architecture(ws, title_fallback=p.title or "管理系统")
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
     return model
@@ -875,16 +871,16 @@ async def download_architecture_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.architecture import load_architecture_model, render_architecture_svg
+    from app.bake.schema.diagram_pack import pack_architecture
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = load_architecture_model(ws, title_fallback=p.title or "管理系统")
+    model = pack_architecture(ws, title_fallback=p.title or "管理系统")
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
-    svg = render_architecture_svg(model)
+    svg = str(model.get("svg") or "")
     fname = f"{project_id}-architecture.svg"
     return Response(
         content=svg.encode("utf-8"),
@@ -902,8 +898,9 @@ async def get_activities(
     ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔；省略则默认核心三选"),
     db: AsyncSession = Depends(get_db),
 ):
-    """固定 3 张核心功能活动图；与序列图同源候选/文案；三泳道用户/系统/数据库。"""
-    from app.bake.schema.activity import load_activity_model, parse_selection_ids
+    """固定 3 张核心功能活动图；每张 diagram 含 ``svg``（单请求）。"""
+    from app.bake.schema.activity import parse_selection_ids
+    from app.bake.schema.diagram_pack import pack_activities
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -917,10 +914,10 @@ async def get_activities(
         prop = ""
     try:
         selection = parse_selection_ids(ids)
-        model = load_activity_model(
+        model = pack_activities(
             ws,
-            proposal_text=prop,
             selection=selection,
+            proposal_text=prop,
             title_fallback=p.title or "管理系统",
         )
     except ValueError as e:
@@ -939,11 +936,8 @@ async def download_activities_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.activity import (
-        load_activity_model,
-        parse_selection_ids,
-        render_activity_svg,
-    )
+    from app.bake.schema.activity import parse_selection_ids
+    from app.bake.schema.diagram_pack import pack_activities
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -957,10 +951,10 @@ async def download_activities_svg(
         prop = ""
     try:
         selection = parse_selection_ids(ids)
-        model = load_activity_model(
+        model = pack_activities(
             ws,
-            proposal_text=prop,
             selection=selection,
+            proposal_text=prop,
             title_fallback=p.title or "管理系统",
         )
     except ValueError as e:
@@ -970,7 +964,7 @@ async def download_activities_svg(
     diagrams = model.get("diagrams") or []
     if index >= len(diagrams):
         raise HTTPException(404, "活动图索引超出范围")
-    svg = render_activity_svg(diagrams[index])
+    svg = str((diagrams[index] or {}).get("svg") or model.get("svg") or "")
     fname = f"{project_id}-activity-{index}.svg"
     return Response(
         content=svg.encode("utf-8"),
@@ -988,8 +982,9 @@ async def get_sequences(
     ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔；省略则默认核心三选"),
     db: AsyncSession = Depends(get_db),
 ):
-    """固定 3 张核心功能序列图；角色与文案取自 bake 交付，可勾选功能。"""
-    from app.bake.schema.sequence import load_sequence_model, parse_selection_ids
+    """固定 3 张核心功能序列图；每张 diagram 含 ``svg``（单请求）。"""
+    from app.bake.schema.diagram_pack import pack_sequences
+    from app.bake.schema.sequence import parse_selection_ids
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -1003,10 +998,10 @@ async def get_sequences(
         prop = ""
     try:
         selection = parse_selection_ids(ids)
-        model = load_sequence_model(
+        model = pack_sequences(
             ws,
-            proposal_text=prop,
             selection=selection,
+            proposal_text=prop,
             title_fallback=p.title or "管理系统",
         )
     except ValueError as e:
@@ -1025,11 +1020,8 @@ async def download_sequences_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.sequence import (
-        load_sequence_model,
-        parse_selection_ids,
-        render_sequence_svg,
-    )
+    from app.bake.schema.diagram_pack import pack_sequences
+    from app.bake.schema.sequence import parse_selection_ids
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -1043,10 +1035,10 @@ async def download_sequences_svg(
         prop = ""
     try:
         selection = parse_selection_ids(ids)
-        model = load_sequence_model(
+        model = pack_sequences(
             ws,
-            proposal_text=prop,
             selection=selection,
+            proposal_text=prop,
             title_fallback=p.title or "管理系统",
         )
     except ValueError as e:
@@ -1056,7 +1048,7 @@ async def download_sequences_svg(
     diagrams = model.get("diagrams") or []
     if index >= len(diagrams):
         raise HTTPException(404, "序列图索引超出范围")
-    svg = render_sequence_svg(diagrams[index])
+    svg = str((diagrams[index] or {}).get("svg") or model.get("svg") or "")
     fname = f"{project_id}-sequence-{index}.svg"
     return Response(
         content=svg.encode("utf-8"),
@@ -1076,20 +1068,19 @@ async def get_classes(
 ):
     """系统类图模型（论文交付默认 display=sample）。
 
-    类框来自 schema.sql 表；属性/方法优先 bake 包 Java（可见性 +/#/-）；
-    关系：外键→关联/聚合/组合，extends/implements→继承/实现，类型引用→依赖；
-    自动排版零交叉。sample=精简真实方法；full=代码全量含 private。
+    一次返回 model + svg（字段 ``svg``），避免前端连打 model/svg 双请求。
+    优先读 bake 预热/打开落盘的 ``islands/diagram_cache``。
     """
-    from app.bake.schema.classes import load_class_model
+    from app.bake.schema.diagram_pack import pack_classes
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = load_class_model(
+    model = pack_classes(
         ws,
+        display=display,
         title_fallback=p.title or "管理系统",
-        display_mode=display,
     )
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
@@ -1104,20 +1095,20 @@ async def download_classes_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.classes import load_class_model, render_class_svg
+    from app.bake.schema.diagram_pack import pack_classes
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = load_class_model(
+    model = pack_classes(
         ws,
+        display=display,
         title_fallback=p.title or "管理系统",
-        display_mode=display,
     )
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
-    svg = render_class_svg(model)
+    svg = str(model.get("svg") or "")
     fname = f"{project_id}-classes.svg"
     return Response(
         content=svg.encode("utf-8"),
@@ -1138,13 +1129,14 @@ async def put_classes_layout(
     """保存/复位类图框坐标（islands/class_layout.json）。
 
     本接口只落盘坐标，不挪其它框、不在此做整图精炼。
-    客户端保存后应重拉 GET classes + classes.svg：服务端按人工坐标
+    客户端保存后应重拉 GET classes：服务端按人工坐标
     零交叉重选折线（可补回少画的边），仍不挪未拖动的框。
     """
     from app.bake.schema.classes import (
         clear_class_layout_patch,
         save_class_layout_patch,
     )
+    from app.bake.schema.diagram_cache import invalidate as invalidate_diagram_cache
 
     p = await db.get(Project, project_id)
     if not p:
@@ -1154,12 +1146,14 @@ async def put_classes_layout(
     ws = _workspace_or_400(p)
     if body.reset:
         clear_class_layout_patch(ws)
+        invalidate_diagram_cache(ws, "classes")
         return {"ok": True, "reset": True, "message": "已清除人工布局，将恢复自动排版"}
     if not body.layout:
         raise HTTPException(400, "layout 为空")
     saved = save_class_layout_patch(
         ws, body.layout, display_mode=body.display_mode
     )
+    invalidate_diagram_cache(ws, "classes")
     return {
         "ok": True,
         "reset": False,
@@ -1177,8 +1171,9 @@ async def get_usecases(
     polish: bool = Query(False, description="可选：LLM 润色描述目的语（失败回退规则稿）"),
     db: AsyncSession = Depends(get_db),
 ):
-    """按角色从交付 menus / 岗位 pack 归纳；含 include/extend；失败返回 400。"""
-    from app.bake.schema.usecases import list_usecase_actors, load_usecase_model, _normalize_actor_id
+    """按角色从交付 menus / 岗位 pack 归纳；响应含 ``svg``（单请求）。"""
+    from app.bake.schema.diagram_pack import pack_usecases
+    from app.bake.schema.usecases import list_usecase_actors, _normalize_actor_id, render_usecase_svg
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -1205,7 +1200,10 @@ async def get_usecases(
     if side not in {a["id"] for a in actors}:
         raise HTTPException(400, f"当前工程无角色 {side}")
     try:
-        model = load_usecase_model(ws, actor=side, proposal_text=prop)
+        # 默认视图走缓存；polish 开时在缓存稿上再润色并重渲 svg（不写 polish 缓存）
+        model = pack_usecases(
+            ws, actor=side, proposal_text=prop, polish=False
+        )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     if not model:
@@ -1224,6 +1222,9 @@ async def get_usecases(
             schema=schema if isinstance(schema, dict) else None,
             title=str(model.get("title") or p.title or ""),
         )
+        model = dict(model)
+        model["svg"] = render_usecase_svg(model)
+        model["diagram_cache"] = "bypass_polish"
     model["actors"] = actors
     return model
 
@@ -1236,7 +1237,8 @@ async def download_usecases_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.usecases import _normalize_actor_id, load_usecase_model, render_usecase_svg
+    from app.bake.schema.diagram_pack import pack_usecases
+    from app.bake.schema.usecases import _normalize_actor_id
     from app.services.proposal import load_merged_proposal_text
 
     p = await db.get(Project, project_id)
@@ -1251,12 +1253,12 @@ async def download_usecases_svg(
         prop = ""
     side = _normalize_actor_id(actor or "user")
     try:
-        model = load_usecase_model(ws, actor=side, proposal_text=prop)
+        model = pack_usecases(ws, actor=side, proposal_text=prop, polish=False)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
-    svg = render_usecase_svg(model)
+    svg = str(model.get("svg") or "")
     safe = side.replace(":", "-")
     fname = f"{project_id}-usecases-{safe}.svg"
     return Response(

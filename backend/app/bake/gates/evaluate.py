@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.bake.engine import TABLE_COUNT_MAX, TABLE_COUNT_MIN, count_create_tables
+from app.bake.engine import TABLE_COUNT_HARD, TABLE_COUNT_MAX, TABLE_COUNT_MIN, count_create_tables
+from app.bake.engine_sql import evaluate_table_budget
 
 
 def _read(path: Path) -> str:
@@ -325,7 +326,7 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
             "p3b": {"ok": False, "label": "Spec / 路由一致"},
             "p3t": {
                 "ok": False,
-                "label": f"表数量 {TABLE_COUNT_MIN}~{TABLE_COUNT_MAX}",
+                "label": f"表数量 ≥{TABLE_COUNT_MIN}，舒适区≤{TABLE_COUNT_MAX}，硬顶≤{TABLE_COUNT_HARD}",
                 "desc": "Spec 缺少 gate 契约",
             },
             "checklist": [],
@@ -488,7 +489,17 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     p3b = (workspace / "spec.json").exists() and bool(spec.get("archetype"))
     sql_text = _read(workspace / "sql" / "schema.sql")
     table_n = count_create_tables(sql_text)
-    p3t_ok = TABLE_COUNT_MIN <= table_n <= TABLE_COUNT_MAX
+    budget = evaluate_table_budget(
+        sql_text,
+        str(spec.get("domain") or ""),
+        list(spec.get("capabilities") or []),
+    )
+    _lo, _soft = budget.floor, budget.soft_max
+    p3t_ok = budget.ok
+    p3t_desc = budget.message if sql_text else "缺少 schema.sql"
+    if not sql_text:
+        p3t_ok = False
+        p3t_desc = "缺少 schema.sql"
 
     # 全厂：总管门禁与主数据 Admin 不得在 bake 中丢失
     admin_inv = gate.get("admin_invariants") or {}
@@ -599,8 +610,16 @@ def evaluate_contract_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
         "p3b": {"ok": p3b, "label": "Spec / 契约一致"},
         "p3t": {
             "ok": p3t_ok,
-            "label": f"表数量 {TABLE_COUNT_MIN}~{TABLE_COUNT_MAX}",
-            "desc": f"当前 {table_n} 张" if sql_text else "缺少 schema.sql",
+            "warn": bool(budget.warn) if sql_text else False,
+            "label": (
+                f"表数量 ≥{_lo}，舒适区≤{_soft}，硬顶≤{budget.hard_max}"
+            ),
+            "desc": p3t_desc,
+            "detail": {
+                "count": table_n,
+                "charged": budget.charged if sql_text else 0,
+                "essential_tables": list(budget.essential_tables) if sql_text else [],
+            },
         },
         "p3d": {
             "ok": admin_boundary_ok,
@@ -735,7 +754,7 @@ def evaluate_generic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, A
         "p3b": {"ok": (workspace / "spec.json").exists(), "label": "Spec 存在"},
         "p3t": {
             "ok": False,
-            "label": f"表数量 {TABLE_COUNT_MIN}~{TABLE_COUNT_MAX}",
+            "label": f"表数量 ≥{TABLE_COUNT_MIN}，舒适区≤{TABLE_COUNT_MAX}，硬顶≤{TABLE_COUNT_HARD}",
             "desc": "领域未做实",
         },
         "checklist": checklist,

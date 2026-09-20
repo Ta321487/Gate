@@ -327,6 +327,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         domain=domain,
         archetype=archetype,
         archetypes=arches,
+        title=str(spec.get("title") or ""),
     )
     decision = resolve_accept(
         req,
@@ -451,6 +452,15 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.boarding import apply_boarding_to_spec
 
     out = apply_boarding_to_spec(out, body)
+    from app.bake.features.room_board import apply_room_board_to_spec
+
+    out = apply_room_board_to_spec(out, body)
+    from app.bake.features.front_desk import apply_front_desk_to_spec
+
+    out = apply_front_desk_to_spec(out, body)
+    from app.bake.features.housekeeping_cap import apply_housekeeping_to_spec
+
+    out = apply_housekeeping_to_spec(out, body)
     from app.bake.features.buyback import apply_buyback_to_spec
 
     out = apply_buyback_to_spec(out, body)

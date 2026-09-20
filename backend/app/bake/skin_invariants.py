@@ -89,6 +89,20 @@ def check_schema_skin_leaks(
         if not isinstance(ap, bool):
             issues.append("有 staff_posts 时 allowAppointFromUsers 须为 bool")
 
+    # 多店商城：消息导语禁止「预约/待受理申请」串台；游客 CTA 分页面
+    if schema.get("shopMarketplace"):
+        lead = str(labels.get("messagesPageLead") or "")
+        if "预约" in lead or "待受理申请" in lead:
+            issues.append(f"shopMarketplace messagesPageLead 串台: {lead!r}")
+        gcta = str(labels.get("guestLoginCta") or "")
+        # 总 CTA 可以是商品目录；留言/公告须另有页级 CTA，避免满站「解锁商品目录」
+        if not str(labels.get("guestbookGuestCta") or "").strip():
+            issues.append("shopMarketplace 缺 guestbookGuestCta")
+        if not str(labels.get("noticeGuestCta") or "").strip():
+            issues.append("shopMarketplace 缺 noticeGuestCta")
+        if gcta and "留言" in gcta:
+            issues.append("guestLoginCta 勿写成留言专用（应用 guestbookGuestCta）")
+
     return issues
 
 

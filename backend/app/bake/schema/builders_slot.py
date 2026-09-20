@@ -268,6 +268,9 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         labels["noticePageTitle"] = "活动公告" if pk != "farm" else "农产活动"
         labels["guestbookPageTitle"] = "留言反馈"
         labels["guestbookPageLead"] = "有问题可向平台留言，我们会尽快回复。"
+        labels["guestbookGuestCta"] = "登录后发表留言"
+        labels["noticeGuestCta"] = "登录后查看更多活动"
+        labels["messagesPageLead"] = "新订单、售后与系统通知。"
         labels["orderReviewPageTitle"] = "我的评价"
         labels["orderReviewPageLead"] = "对已完成订单进行星级与文字评价。"
         labels["usersAdminLead"] = "管理买家账号，审核商家入驻申请。"
@@ -855,7 +858,7 @@ def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         reg = "注册后可预订民宿客房"
     else:
         brow, admin, notice_t, notice_page = (
-            "客房预订",
+            "客房预约",
             "酒店主管（总管）",
             "入住须知",
             "酒店公告",

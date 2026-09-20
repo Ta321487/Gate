@@ -1142,7 +1142,15 @@ button.filter-pill.on {
 .step-rail > li.run .step-title { color: var(--teal-deep); }
 .step-rail > li.fail .step-title { color: var(--red); }
 .step-rail > li.done .step-title { color: var(--ink-2); }
-.step-rail .meta { color: var(--muted); font-size: 12px; margin-top: 3px; line-height: 1.4; }
+.step-rail .meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.banner.fail p { overflow-wrap: anywhere; }
 @keyframes step-pulse {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 0%, transparent); }
   50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 18%, transparent); }

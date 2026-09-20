@@ -913,7 +913,10 @@ const gateCols = [
     title: '结果',
     key: 'ok',
     width: 100,
-    render: (r) => statusPillNode(r.ok ? '通过' : '未通过', r.ok ? 'pill-green' : 'pill-red'),
+    render: (r) => {
+      if (r.ok && r.warn) return statusPillNode('警告', 'pill-amber')
+      return statusPillNode(r.ok ? '通过' : '未通过', r.ok ? 'pill-green' : 'pill-red')
+    },
   },
   { title: '说明', key: 'desc' },
 ]
@@ -934,6 +937,7 @@ const gateRows = computed(() => {
       level: levels[k] || 'P3',
       label: g[k]?.label || k,
       ok: !!g[k]?.ok,
+      warn: !!g[k]?.warn,
       desc: g[k]?.desc || '',
     }))
 })
@@ -1439,15 +1443,16 @@ const modDownloadBase = computed(() => {
   return `${id}-模块图-${tag}-${title}`
 })
 
+function svgFromPack(body, index = 0) {
+  if (!body || typeof body !== 'object') return ''
+  const diagrams = body.diagrams
+  if (Array.isArray(diagrams) && diagrams[index]?.svg) return String(diagrams[index].svg)
+  if (body.svg) return String(body.svg)
+  return ''
+}
+
 async function fetchModSvg() {
-  if (!p.value) return ''
-  const url = `${api.modulesSvgUrl(p.value.id, {
-    layout: modulesLayout.value,
-    expandDetails: modulesExpandDetails.value,
-  })}&t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('modules svg')
-  return await res.text()
+  return svgFromPack(modulesMeta.value)
 }
 
 async function openFillPlan() {
@@ -1480,7 +1485,7 @@ async function openModules() {
       layout: modulesLayout.value,
       expandDetails: modulesExpandDetails.value,
     })
-    modSvgSource.value = await fetchModSvg()
+    modSvgSource.value = svgFromPack(modulesMeta.value)
     modLayoutKey.value += 1
     showModules.value = true
   } catch {
@@ -1498,7 +1503,7 @@ async function reloadModSvg() {
       layout: modulesLayout.value,
       expandDetails: modulesExpandDetails.value,
     })
-    modSvgSource.value = await fetchModSvg()
+    modSvgSource.value = svgFromPack(modulesMeta.value)
     modLayoutKey.value += 1
   } catch {
     message.error('无法重新加载模块图')
@@ -1524,11 +1529,7 @@ const archDownloadBase = computed(() => {
 })
 
 async function fetchArchSvg() {
-  if (!p.value) return ''
-  const url = `${api.architectureSvgUrl(p.value.id)}?t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('architecture svg')
-  return await res.text()
+  return svgFromPack(archMeta.value)
 }
 
 async function openArchitecture() {
@@ -1536,7 +1537,7 @@ async function openArchitecture() {
   archLoading.value = true
   try {
     archMeta.value = await api.getArchitecture(p.value.id)
-    archSvgSource.value = await fetchArchSvg()
+    archSvgSource.value = svgFromPack(archMeta.value)
     archLayoutKey.value += 1
     showArchitecture.value = true
   } catch {
@@ -1551,7 +1552,7 @@ async function reloadArchSvg() {
   archLoading.value = true
   try {
     archMeta.value = await api.getArchitecture(p.value.id)
-    archSvgSource.value = await fetchArchSvg()
+    archSvgSource.value = svgFromPack(archMeta.value)
     archLayoutKey.value += 1
   } catch {
     message.error('无法重新加载架构图')
@@ -1568,12 +1569,7 @@ const seqDownloadBase = computed(() => {
 })
 
 async function fetchSeqSvg() {
-  if (!p.value) return ''
-  const ids = seqSelectedIds.value?.length === 3 ? seqSelectedIds.value : undefined
-  const url = `${api.sequencesSvgUrl(p.value.id, { index: seqIndex.value, ids })}&t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('sequence svg')
-  return await res.text()
+  return svgFromPack(seqMeta.value, seqIndex.value)
 }
 
 async function loadSequences(ids) {
@@ -1582,7 +1578,7 @@ async function loadSequences(ids) {
   seqMeta.value = body
   seqSelectedIds.value = Array.isArray(body?.selected) ? [...body.selected] : []
   if (seqIndex.value >= (body?.diagrams?.length || 0)) seqIndex.value = 0
-  seqSvgSource.value = await fetchSeqSvg()
+  seqSvgSource.value = svgFromPack(body, seqIndex.value)
   seqLayoutKey.value += 1
 }
 
@@ -1631,15 +1627,8 @@ async function onSeqDiagramIndex(i) {
   const n = Number(i) || 0
   if (n === seqIndex.value) return
   seqIndex.value = n
-  seqLoading.value = true
-  try {
-    seqSvgSource.value = await fetchSeqSvg()
-    seqLayoutKey.value += 1
-  } catch {
-    message.error('无法切换序列图')
-  } finally {
-    seqLoading.value = false
-  }
+  seqSvgSource.value = svgFromPack(seqMeta.value, n)
+  seqLayoutKey.value += 1
 }
 
 const actDownloadBase = computed(() => {
@@ -1650,12 +1639,7 @@ const actDownloadBase = computed(() => {
 })
 
 async function fetchActSvg() {
-  if (!p.value) return ''
-  const ids = actSelectedIds.value?.length === 3 ? actSelectedIds.value : undefined
-  const url = `${api.activitiesSvgUrl(p.value.id, { index: actIndex.value, ids })}&t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('activity svg')
-  return await res.text()
+  return svgFromPack(actMeta.value, actIndex.value)
 }
 
 async function loadActivities(ids) {
@@ -1664,7 +1648,7 @@ async function loadActivities(ids) {
   actMeta.value = body
   actSelectedIds.value = Array.isArray(body?.selected) ? [...body.selected] : []
   if (actIndex.value >= (body?.diagrams?.length || 0)) actIndex.value = 0
-  actSvgSource.value = await fetchActSvg()
+  actSvgSource.value = svgFromPack(body, actIndex.value)
   actLayoutKey.value += 1
 }
 
@@ -1720,15 +1704,8 @@ async function onActDiagramIndex(i) {
   const n = Number(i) || 0
   if (n === actIndex.value) return
   actIndex.value = n
-  actLoading.value = true
-  try {
-    actSvgSource.value = await fetchActSvg()
-    actLayoutKey.value += 1
-  } catch {
-    message.error('无法切换活动图')
-  } finally {
-    actLoading.value = false
-  }
+  actSvgSource.value = svgFromPack(actMeta.value, n)
+  actLayoutKey.value += 1
 }
 
 const classDownloadBase = computed(() => {
@@ -1760,20 +1737,12 @@ const classEvidenceNote = computed(() => {
   return s
 })
 
-async function fetchClassSvg() {
-  if (!p.value) return ''
-  const url = `${api.classesSvgUrl(p.value.id, { display: classDisplayMode.value })}&t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('classes svg')
-  return await res.text()
-}
-
 async function openClasses() {
   if (!p.value || classLoading.value || artifactsFrozen.value) return
   classLoading.value = true
   try {
     classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
-    classSvgSource.value = await fetchClassSvg()
+    classSvgSource.value = svgFromPack(classMeta.value)
     classLayoutKey.value += 1
     showClasses.value = true
   } catch {
@@ -1788,7 +1757,7 @@ async function reloadClassSvg() {
   classLoading.value = true
   try {
     classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
-    classSvgSource.value = await fetchClassSvg()
+    classSvgSource.value = svgFromPack(classMeta.value)
     classLayoutKey.value += 1
   } catch {
     message.error('无法重新加载类图')
@@ -1815,7 +1784,7 @@ async function saveClassLayout(layout) {
       display_mode: classDisplayMode.value,
     })
     classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
-    classSvgSource.value = await fetchClassSvg()
+    classSvgSource.value = svgFromPack(classMeta.value)
   } catch {
     /* api 拦截器已提示 */
   } finally {
@@ -1829,7 +1798,7 @@ async function resetClassLayout() {
   try {
     await api.putClassesLayout(p.value.id, { layout: {}, reset: true })
     classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
-    classSvgSource.value = await fetchClassSvg()
+    classSvgSource.value = svgFromPack(classMeta.value)
     classLayoutKey.value += 1
     message.success('已恢复自动排版')
   } catch {
@@ -1855,13 +1824,7 @@ const ucMdjUrl = computed(() => {
 })
 
 async function fetchUcSvg() {
-  if (!p.value) return ''
-  const url = `${api.usecasesSvgUrl(p.value.id, {
-    actor: usecaseActor.value,
-  })}&t=${Date.now()}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('usecases svg')
-  return await res.text()
+  return svgFromPack(usecaseMeta.value)
 }
 
 async function openUsecases() {
@@ -1874,7 +1837,7 @@ async function openUsecases() {
       usecaseActor.value = actors[0].id
       usecaseMeta.value = await api.getUsecases(p.value.id, { actor: usecaseActor.value })
     }
-    ucSvgSource.value = await fetchUcSvg()
+    ucSvgSource.value = svgFromPack(usecaseMeta.value)
     ucLayoutKey.value += 1
     showUsecases.value = true
   } catch (e) {
@@ -1889,7 +1852,7 @@ async function reloadUsecases() {
   ucLoading.value = true
   try {
     usecaseMeta.value = await api.getUsecases(p.value.id, { actor: usecaseActor.value })
-    ucSvgSource.value = await fetchUcSvg()
+    ucSvgSource.value = svgFromPack(usecaseMeta.value)
     ucLayoutKey.value += 1
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '无法重新加载用例图')

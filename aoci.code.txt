@@ -7,7 +7,6 @@ AGENTS.md[SG8S]: F:向 Agent 声明 AOCI 认知合同：索引语义由模型按
 HANDOFF.md[SG8T]: F:给新对话交接毕设港主线、接题硬边界和开场口径 | R:code:README.md,code:docs/domains.md,code:docs/capabilities.md | A:- | S:禁止参考或迁移 graduate_factory 与 graduate_factory_v2
 README.md[SG8S]: F:说明如何把开题加工成可答辩 Web 系统，以及运营端怎么启动 | R:code:scripts/README.md,code:docs/tech-stack-delivery.md | A:GET /api/health | S:默认 jdbc；mybatis、jpa、Security 仅开题写了且能 bake 才进包。答辩 PPT 是独立 Job，不进 ZIP
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
-cursor_.md[XG3S]: F:导出 Cursor 会话纪要，备忘能力岛落地进度 | R:- | A:- | S:非正式产品源码，勿当 bake 契约
 
 ===D:/graduate_factory_v3/.cursor/rules/===
 00-factory-core.mdc[SG8T]: F:规定材料匹配到域与能力岛后 bake 出可答辩 ZIP，且实包、README 与论文实现一致 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:禁止改开题迁就模板，禁止缺表或缺状态机仍宣称已交
@@ -57,20 +56,20 @@ archetype_shells.py[DB7L]: F:未命中具名域时按 ARCH 原型绑定运行时
 archive_columns.py[DD6M]: F:按域把档案主表 author 与 isbn 物理列换成语义列，API 仍用逻辑键 | R:- | A:- | S:-
 archive_seed_guard.py[DQ6T]: F:硬检查档案演示种子能否被单据流域套用 | R:- | A:- | S:-
 auth_hero.py[DU5M]: F:按领域与主题拉登录氛围图到学生包 frontend/public/auth-hero.jpg | R:- | A:- | S:无 Key 或外网失败时改用本地色板生成，不能让登录页缺图
-capabilities.py[DB8L]: F:定义与题型无关的运行时能力积木，并扫描开题是否超出可接范围 | R:code:backend/app/bake/features/rental_bond.py,code:backend/app/bake/features/digital_goods.py,code:docs/capabilities.md | A:- | S:硕博课题与真实业务全流程必须拒收，不能降级交半成品；rental_bond/digital_goods 已登记 implemented
+capabilities.py[DB8L]: F:定义与题型无关的运行时能力积木，并扫描开题是否超出可接范围 | R:code:backend/app/bake/features/room_board.py,code:backend/app/bake/features/front_desk.py,code:backend/app/bake/features/housekeeping_cap.py,code:docs/capabilities.md | A:- | S:硕博课题与真实业务全流程必须拒收；rental_bond/digital_goods 与 hotel PMS 三岛 room_board/front_desk/housekeeping 已登记 implemented
 catalog.py[DB8L]: F:把开题正文匹配到骨架与领域，并汇总成 build_spec | R:code:backend/app/bake/domains.py,code:backend/app/bake/domains_catalog/carrent.py | A:- | S:匹配失败回落关键词，不能改开题迁就目录；服装/设备租赁关键词分流 DOM-CARRENT 勿误 DOM-SHOP
 cross_paths.py[DB8M]: F:白名单判定借用、下单、预约交叉是否能按全文答辩交付 | R:code:backend/app/bake/archetype_shells.py | A:- | S:做不到的交叉必须拒收，禁止 degraded 交半成品
 deep_skin_s.py[DB6S]: F:把深皮题型说法验收表映射到挂靠域 | R:- | A:- | S:-
 domain_entities.py[DD7S]: F:统一主实体名词，供菜单、数据表和论文小节同源引用 | R:code:backend/app/bake/domains.py | A:- | S:-
 domain_registry.py[DB8S]: F:按 domain 注册匹配、schema builder 与 SQL 模板映射 | R:code:backend/app/bake/domains.py | A:- | S:-
-domain_schema.py[DB8L]: F:装配、合并并校验 Domain Schema，再落到模板与 profile_fields | R:code:backend/app/bake/domain_registry.py,code:backend/app/bake/capabilities.py,code:backend/app/bake/features/loyalty.py | A:- | S:学生可见 schema 文案须 scrub 工厂腔
+domain_schema.py[DB8L]: F:装配、合并并校验 Domain Schema，再落到模板与 profile_fields | R:code:backend/app/bake/domain_registry.py,code:backend/app/bake/capabilities.py,code:backend/app/bake/features/room_board.py,code:backend/app/bake/features/front_desk.py,code:backend/app/bake/features/housekeeping_cap.py | A:- | S:学生可见 schema 文案须 scrub 工厂腔；PMS 三岛经 apply_*_to_spec 挂载
 domain_skin.py[DU7S]: F:把学生端可见文案与皮肤按 DOM 域回写到出包 | R:code:backend/app/bake/domains.py | A:- | S:禁止邻域文案泄漏
 domains.py[DB9M]: F:汇总 ARCHETYPES、DOMAIN_CAPABILITIES 与 DOMAINS，并衔接 gate_contracts | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 engine.py[DB8T]: F:再导出 bake_project 与 SQL 岛填充入口供调用方统一引用 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_islands.py | A:- | S:-
-engine_bake.py[DB9L]: F:执行骨架复制、领域叠加与学生工作区确定性 bake，并写 thesis yml 运行时开关 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_resources.py,code:backend/app/bake/domain_schema.py | A:- | S:points-pay/offset/checkin/expire 与 member-tier-basis 仅当 loyalty schema 开时写入 yml
+engine_bake.py[DB9L]: F:执行骨架复制、领域叠加与学生工作区确定性 bake，并写 thesis yml 运行时开关 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_resources.py,code:backend/app/bake/domain_schema.py | A:- | S:points-pay/offset/checkin/expire 与 member-tier-basis 仅 loyalty 开时写入；room-board/front-desk/housekeeping-enabled 仅对应 cap 在 caps 时写入
 engine_islands.py[DB7T]: F:把合并 schema 写入工作区并驱动 LLM 填业务岛 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_bake.py | A:- | S:-
 engine_resources.py[DB7M]: F:向学生包写入资料字段、单据列与交付清单等资源文件 | R:code:backend/app/bake/engine_sql.py | A:- | S:-
-engine_sql.py[DB8L]: F:装载域 SQL 模板并门禁交付表数量预算，按 cap 调用 ensure 片段 | R:code:backend/app/bake/domains.py,code:backend/app/bake/sql/fragments.py | A:- | S:全厂表数 6–15；借用族下限 10
+engine_sql.py[DB8L]: F:装载域 SQL 模板并门禁交付表数量预算，按 cap 调用 ensure 片段 | R:code:backend/app/bake/domains.py,code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/room_board.py,code:backend/app/bake/features/front_desk.py,code:backend/app/bake/features/housekeeping_cap.py | A:- | S:全厂表数 6–15；借用族下限 10；DOM-HOTEL 且 caps 含 PMS 三岛时上限 HOTEL_PMS_TABLE_MAX=20
 gate_contracts.py[DQ8L]: F:定义薄领域门禁文件清单与 gate 工厂供域目录引用 | R:code:backend/app/bake/domains.py | A:- | S:本文件是契约工厂，非 gates 评测包
 guest_cta.py[DU6M]: F:按域文案池与题号稳定抽取门户游客 CTA | R:- | A:- | S:-
 identity_align.py[DQ7M]: F:断言门户种子与资料页身份字段对齐 | R:- | A:- | S:只断言不改扫词与 builder；企业档禁止校园专用键
@@ -94,7 +93,7 @@ scene_scan.py[DB8L]: F:从题名与开题正文扫描校园企业社区场景，
 seed_dates.py[DB4T]: F:提供离线预览用的种子日期整体平移工具 | R:- | A:- | S:正式交付勿在 bake 时写死今天；运行时由 SeedCalendarAligner 平移
 skin_invariants.py[DQ6S]: F:断言已知错皮与怪交互模式，命中则出包拦截 | R:- | A:- | S:只断言不改扫词；踩坑须同步测试防回潮
 stack_scan.py[CG6M]: F:从开题正文扫描 jdbc/mybatis/jpa 等技术栈偏好 | R:code:backend/app/bake/scene_scan.py | A:- | S:不驱动场景或 ARCH-*
-staff_posts.py[DB7L]: F:按域配置 clerk/worker 岗位菜单与权限包 | R:code:backend/app/bake/menu_routes.py | A:- | S:-
+staff_posts.py[DB7L]: F:按域配置 clerk/worker 岗位菜单与权限包 | R:code:backend/app/bake/menu_routes.py,code:backend/app/bake/features/housekeeping_cap.py | A:- | S:DOM-HOTEL 且 caps 含 housekeeping 时强制清洁岗，作业页为清洁任务而非通用时段
 stuwork_meta.py[FC5T]: F:声明学工预设域 P-12～P-16 元数据 | R:code:backend/app/bake/stuwork_p.py | A:- | S:-
 stuwork_p.py[FC5T]: F:导出学工床位查寝预设开题用例元组 | R:code:backend/app/bake/stuwork_meta.py | A:- | S:-
 tail_meta.py[FC5T]: F:声明长尾预设域 P-18/P-23～P-29 元数据 | R:code:backend/app/bake/tail_p.py | A:- | S:-
@@ -120,7 +119,7 @@ fallback.py[DB6S]: F:定义 GENERIC 兜底域目录皮 | R:code:backend/app/bake
 instrument.py[DB6S]: F:定义仪器预约时段域目录皮，组合 archive、ticket 与 slot | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
 mutual.py[DB6S]: F:定义互选双选域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
 oa.py[DB6S]: F:定义 OA 审批与请假域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py | A:- | S:-
-reserve.py[DB6M]: F:定义挂号停车会议沙龙酒店等预约类域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:寄养挂酒店、约拍与课时包挂沙龙，勿拆新域
+reserve.py[DB6M]: F:定义挂号停车会议沙龙酒店等预约类域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:DOM-HOTEL目录label为客房预约；寄养挂酒店、约拍与课时包挂沙龙，勿拆新域
 stuwork.py[DB6M]: F:定义第二课堂劳动评教德育评奖等学工域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 survey.py[DB6T]: F:定义简易问卷调研域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 tail.py[DB6L]: F:定义车辆通行证挂牌采购社团等长尾域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
@@ -154,7 +153,7 @@ opening_align.py[DQ7S]: F:核对开题模块枚举与实包能力，禁止能交
 order_extras.py[DB6S]: F:扫描并合并订单评价超时关单与限时价能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 post_mute.py[DB6T]: F:扫描并合并论坛帖子禁言能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:禁言≠整号停用；论坛默认博客须扫词
 product_spec.py[DB6S]: F:扫描并合并商品规格说明文案能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:不做色码矩阵独立库存，禁止冒充完整 SKU
-proposal_caps.py[DB8S]: F:汇总开题扫描能力并集供 attach 与 domain_sql 共用 | R:code:backend/app/bake/features/rental_bond.py,code:backend/app/bake/features/digital_goods.py | A:- | S:避免 schema 与 SQL 双轨漂移
+proposal_caps.py[DB8S]: F:汇总开题扫描能力并集供 attach 与 domain_sql 共用 | R:code:backend/app/bake/features/rental_bond.py,code:backend/app/bake/features/digital_goods.py,code:backend/app/bake/features/room_board.py,code:backend/app/bake/features/front_desk.py,code:backend/app/bake/features/housekeeping_cap.py | A:- | S:避免 schema 与 SQL 双轨漂移；PMS 三岛与押金数字商品同走 merge 链
 room_equipment.py[DB6T]: F:扫描并合并会议室设备清单能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:≠ 设备借用 DOM-EQUIP
 seat_select.py[DB6S]: F:扫描并合并影院场次选座购票能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 staff_roster.py[DB6T]: F:扫描并合并按员日期周排班展示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:不做智能排课与考勤硬件
@@ -180,10 +179,13 @@ shoot.py[DB6T]: F:扫描并合并约拍摄影师套餐与交片能力 | R:code:b
 weigh_sale.py[DB6S]: F:扫描并合并按重量售卖次日达与损耗赔付能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:须已有 order_lines；行金额按单价乘重量；生鲜皮不加重量列
 digital_goods.py[DB7S]: F:扫描数字商品开题并挂 fulfillMode=digital、交付表与菜单 | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/proposal_caps.py | A:- | S:开题写到才挂；普通日用商城不开；数字单拦无理由退
 rental_bond.py[DB7S]: F:扫描租赁押金验损开题并挂三笔钱字段、验损菜单与租约皮 | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/domains_catalog/carrent.py | A:- | S:挂 CARRENT 租约；≠设备借用；服装/器材仅换皮
+front_desk.py[DB8S]: F:扫词挂酒店前台登记退房结算，注入菜单与 order 入住退房履约文案 | R:code:backend/app/bake/features/room_board.py | A:- | S:cap id 为 front_desk 勿撞口令签到 checkin；依赖 room_board；仅 DOM-HOTEL 且非民宿寄养
+housekeeping_cap.py[DB7T]: F:扫词挂酒店客房清洁任务菜单并强制依赖房态板 | R:code:backend/app/bake/features/room_board.py | A:- | S:裸「清洁工」不够开岛；复用 room_status_log 不另建任务表
+room_board.py[DB8T]: F:扫词挂酒店房态板，并提供 PMS 域门禁与前台清洁依赖注入 | R:code:backend/app/bake/features/front_desk.py,code:backend/app/bake/features/housekeeping_cap.py | A:- | S:仅 DOM-HOTEL 且 hotel_product_kind 非民宿寄养；伞扫「酒店管理」三岛同开
 
 ===D:/graduate_factory_v3/backend/app/bake/gates/===
 __init__.py[DQ6T]: F:导出领域门禁评测入口 evaluate_domain_gates | R:code:backend/app/bake/gates/evaluate.py | A:- | S:-
-evaluate.py[DQ8L]: F:按 Spec.gate 契约评测学生工作区是否齐备 | R:code:backend/app/bake/gates/feature_keywords.py,code:backend/app/bake/gates/keys.py | A:- | S:全 DOM 共用，不绑某一域
+evaluate.py[DQ8L]: F:按 Spec.gate 契约评测学生工作区是否齐备 | R:code:backend/app/bake/gates/feature_keywords.py,code:backend/app/bake/gates/keys.py,code:backend/app/bake/engine_sql.py | A:- | S:全 DOM 共用；表预算上下限取自 table_budget_bounds，PMS 挂载时可能放宽至 20
 feature_keywords.py[DQ7L]: F:提供开题措辞核对与包后门禁共享的能力触发词表 | R:code:backend/app/bake/gates/evaluate.py | A:- | S:文本层与实装层词表必须同源防漂移
 keys.py[DQ6T]: F:定义门禁单调键与核心键常量 | R:- | A:- | S:-
 semantic.py[DQ7S]: F:检查学生可见面与场景身份等交付语义门禁 | R:- | A:- | S:补 checklist 启发式盲区
@@ -273,7 +275,7 @@ architecture.py[DB7S]: F:生成论文用 B/S 分层系统逻辑架构图 | R:- |
 bed_followup_presets.py[DB5T]: F:提供床位分配域的 followup 预设 | R:- | A:- | S:-
 builders_archive.py[DB7L]: F:构建档案与 followup 菜单及字段 schema | R:- | A:- | S:-
 builders_content.py[DB7M]: F:构建内容、媒体与论坛类菜单及字段 schema | R:- | A:- | S:-
-builders_slot.py[DB7L]: F:构建时段与预约类菜单及字段 schema | R:- | A:- | S:-
+builders_slot.py[DB7L]: F:构建时段与预约类菜单及字段 schema | R:- | A:- | S:酒店默认壳眉题客房预约；民宿皮仍用民宿预订
 builders_ticket.py[DB7M]: F:构建校园、物业、IT 等工单流域菜单及字段 schema | R:- | A:- | S:-
 carpool_followup_presets.py[DB5T]: F:提供拼车约车域的 followup 预设 | R:- | A:- | S:-
 checkin_followup_presets.py[DB6T]: F:构建查寝签到域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:禁止目录里随便选一间寝室，须 matchProfileRoom 本寝约束
@@ -288,7 +290,7 @@ er.py[DB5T]: F:再导出 E-R 模型标签与 SVG 入口以保持原 import 路�
 er_labels.py[DB7L]: F:拼装 E-R 中文标签角色展开与 LLM 补丁读写 | R:code:backend/app/bake/schema/er_zh.py | A:- | S:-
 er_model.py[DB7M]: F:从 schema.sql 解析表与外键并组装 E-R 模型 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:-
 er_svg.py[DB7M]: F:为零交叉陈氏 E-R 图计算布局并渲染 SVG | R:code:backend/app/bake/schema/er_model.py | A:- | S:-
-er_zh.py[FC6M]: F:提供 E-R 骨架表与公共列的中文词表兜底 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:领域表名优先从 domain.schema.json 取
+er_zh.py[FC6M]: F:提供 E-R 骨架表与公共列的中文词表兜底 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:领域表名优先从 domain.schema.json 取；PMS 表 room_instance/checkin/checkout/consumption 有中文兜底
 followup_presets.py[DB8L]: F:汇总档案加跟进单族域的参数化 FOLLOWUP_PRESETS | R:code:backend/app/bake/schema/oa_followup_presets.py,code:backend/app/bake/schema/mutual_followup_presets.py | A:- | S:避免 templates 七份近同构复制
 form_first_entry.py[DB6T]: F:把预设改成填单优先入口并收束档案目录文案 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:禁止另写一套菜单排序或 Store 分支
 instrument_followup_presets.py[DB6T]: F:构建仪器机时域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
@@ -311,7 +313,7 @@ visitor_followup_presets.py[DB5T]: F:构建访客登记域的 FOLLOWUP_PRESETS �
 
 ===D:/graduate_factory_v3/backend/app/bake/sql/===
 DOM-GENERIC-FLOW.sql[FC5T]: F:提供 GENERIC 流程库存内容架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
-DOM-GENERIC-RESERVE.sql[FC5T]: F:提供 GENERIC 预约架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
+DOM-GENERIC-RESERVE.sql[FC5T]: F:提供 GENERIC 预约架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:resource_slot 含 uk_item_start(item_id,start_at)
 DOM-GENERIC-TRADE.sql[FC5S]: F:提供 GENERIC 交易架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
 DOM-GENERIC.sql[FC5T]: F:提供 GENERIC 档案 CRUD 架构的 SQL 骨架模板 | R:code:backend/app/bake/sql/compose.py | A:- | S:-
 __init__.py[CG1T]: F:标记 sql 为模板加载与拼装包 | R:- | A:- | S:-
@@ -322,7 +324,7 @@ demo_schedule_repair.py[DD6S]: F:修复演示库日程，对齐日历并下架�
 domain_scene_seed.py[DD6L]: F:按开题场景替换演示种子文案，不改表结构 | R:- | A:- | S:只改标题、地点、备注等文案，不得改列结构
 domain_templates.py[DP7S]: F:按域加载 templates 目录下 DOM-*.sql 模板 | R:code:backend/app/bake/sql/templates/DOM-ACAD.sql | A:- | S:-
 event_scene_seed.py[DD6S]: F:为 DOM-EVENT 按场景替换演示种子文案 | R:- | A:- | S:只改文案不改表结构
-fragments.py[DP7L]: F:按能力开关调用 ensure 注入可复用 SQL，避免 DOM 模板漏列 | R:code:backend/app/bake/features/rental_bond.py,code:backend/app/bake/features/digital_goods.py | A:- | S:能力正文不在此堆长，归 features
+fragments.py[DP7L]: F:按能力开关调用 ensure 注入可复用 SQL，避免 DOM 模板漏列 | R:code:backend/app/bake/features/rental_bond.py,code:backend/app/bake/features/digital_goods.py,code:backend/app/bake/features/room_board.py,code:backend/app/bake/features/front_desk.py | A:- | S:能力正文不在此堆长；ensure_room_board_sql/ensure_front_desk_sql 仅扫词开才注入
 reserve_scene_overlays.py[DD6S]: F:为医院、美发、会议室、停车等预约域叠加场景种子皮 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
 
 ===D:/graduate_factory_v3/backend/app/bake/sql/templates/===
@@ -335,7 +337,7 @@ DOM-BED.sql[DP6M]: F:提供床位分配域建表与演示种子 SQL 模板 | R:c
 DOM-BLOG.sql[DP6M]: F:提供博客内容域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-CARPASS.sql[DP6M]: F:提供车辆通行证域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-CARPOOL.sql[DP6M]: F:提供拼车域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-CARRENT.sql[DP6M]: F:提供租车域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-CARRENT.sql[DP6M]: F:提供租车域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
 DOM-CERT.sql[DP6M]: F:提供证书办理域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-CHECKIN.sql[DP6M]: F:提供签到域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-CINEMA.sql[DP6S]: F:提供影院选座购票域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
@@ -359,9 +361,9 @@ DOM-FOOD.sql[DP6S]: F:提供食堂档口点餐域建表与演示种子 SQL 模�
 DOM-FORUM.sql[DP6S]: F:提供论坛发帖回帖域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-FUND.sql[DP6S]: F:提供学生资助奖学金申请域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-GRADE.sql[FC5S]: F:提供 DOM-GRADE 成绩课程与申报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-HOSPITAL.sql[FC5S]: F:提供 DOM-HOSPITAL 医生时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-HOTEL.sql[FC5S]: F:提供 DOM-HOTEL 房型预约购物订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-INSTRUMENT.sql[FC5S]: F:提供 DOM-INSTRUMENT 仪器借用与时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-HOSPITAL.sql[FC5S]: F:提供 DOM-HOSPITAL 医生时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
+DOM-HOTEL.sql[FC5S]: F:提供 DOM-HOTEL 房型预约购物订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
+DOM-INSTRUMENT.sql[FC5S]: F:提供 DOM-INSTRUMENT 仪器借用与时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
 DOM-INTERN.sql[FC5S]: F:提供 DOM-INTERN 实习岗位与周报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-IT.sql[FC5S]: F:提供 DOM-IT 园区终端与故障工单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-LABOR.sql[FC5T]: F:提供 DOM-LABOR 用工项与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
@@ -370,21 +372,21 @@ DOM-LIBRARY.sql[FC5S]: F:提供 DOM-LIBRARY 图书借阅收藏 SQL 骨架 | R:co
 DOM-LISTING.sql[FC5T]: F:提供 DOM-LISTING 挂牌与关注 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-LOST.sql[FC5S]: F:提供 DOM-LOST 失物与认领 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MEDIA.sql[FC5T]: F:提供 DOM-MEDIA 媒资点播档案 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-MEETING.sql[FC5S]: F:提供 DOM-MEETING 会议室时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-MEETING.sql[FC5S]: F:提供 DOM-MEETING 会议室时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
 DOM-MORAL.sql[FC5T]: F:提供 DOM-MORAL 德育项与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MUSIC.sql[FC5T]: F:提供 DOM-MUSIC 曲目点播档案 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MUTUAL-TEAM.sql[FC5T]: F:提供 DOM-MUTUAL-TEAM 组队资料与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MUTUAL-TOPIC.sql[FC5T]: F:提供 DOM-MUTUAL-TOPIC 课题与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MUTUAL-TUTOR.sql[FC5T]: F:提供 DOM-MUTUAL-TUTOR 导师与意愿 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-PARCEL.sql[FC5S]: F:提供 DOM-PARCEL 包裹与领取 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-PARKING.sql[FC5S]: F:提供 DOM-PARKING 车位时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-PARKING.sql[FC5S]: F:提供 DOM-PARKING 车位时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
 DOM-PARTY.sql[FC5S]: F:提供 DOM-PARTY 党员发展阶段与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-PROCURE.sql[FC5S]: F:提供 DOM-PROCURE 采购物资与申购 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-PROJ.sql[FC5S]: F:提供 DOM-PROJ 大创项目与申报 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-PROMO.sql[FC5S]: F:提供 DOM-PROMO 宣传物料与审批 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-PROPERTY.sql[FC5S]: F:提供 DOM-PROPERTY 物业报修工单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-RECRUIT.sql[FC5S]: F:提供 DOM-RECRUIT 招聘岗位与投递 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-SALON.sql[FC5S]: F:提供 DOM-SALON 服务项目时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
+DOM-SALON.sql[FC5S]: F:提供 DOM-SALON 服务项目时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
 DOM-SEAL.sql[FC5S]: F:提供 DOM-SEAL 印章类型与用章申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-SHOP.sql[FC5S]: F:提供 DOM-SHOP 商品购物车与订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-SURVEY.sql[FC5S]: F:提供 DOM-SURVEY 问卷表单与作答 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
@@ -721,19 +723,20 @@ P-32-DOM-CARRENT-汽车租赁管理系统.txt[FC5T]: F:提供匹配与演示用�
 README.md[SG6T]: F:记录README相关交付约定与说明 | R:- | A:- | S:-
 ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
 ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
-capabilities.md[SG7S]: F:登记已实现能力岛 cap id 与交付边界说明 | R:code:backend/app/bake/capabilities.py | A:- | S:名单以 capabilities.py 为准，本文只做人读索引；含 rental_bond/digital_goods/积分三态
+capabilities.md[SG7T]: F:登记已实现能力岛 cap id 与交付边界说明 | R:code:backend/app/bake/capabilities.py | A:- | S:名单以 capabilities.py 为准；含 rental_bond/digital_goods/积分三态与 hotel PMS 三岛
 capability-expansion-batch.md[SG6M]: F:记录capability expansion batch相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-backend.md[SG6M]: F:记录defense ppt backend相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说明 | R:- | A:- | S:-
 delivery-audit-rules.md[SG6S]: F:记录delivery audit rules相关交付约定与说明 | R:- | A:- | S:-
 difficulty-tiers.md[SG6S]: F:记录difficulty tiers相关交付约定与说明 | R:- | A:- | S:-
 domain-skin-gap-analysis.md[SG6M]: F:记录domain skin gap analysis相关交付约定与说明 | R:- | A:- | S:-
-domains.md[SG6S]: F:记录domains相关交付约定与说明 | R:- | A:- | S:-
+domains.md[SG6S]: F:记录具名域覆盖与能力组合交付约定 | R:code:docs/capabilities.md | A:- | S:DOM-HOTEL 行含可选 boarding 与 PMS 三 cap；民宿寄养不开 PMS
 immersion-corners.md[SG6M]: F:记录immersion corners相关交付约定与说明 | R:- | A:- | S:-
-invariants.md[SG6T]: F:记录invariants相关交付约定与说明 | R:- | A:- | S:-
-opening-feature-delivery-map.md[SG7S]: F:对照开题功能词与能否交付及落地方式 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:SHOP/CARRENT 行须反映数字商品、积分窄扫与租赁押金扫词开
+invariants.md[SG7T]: F:记录库表预算与岗位四槽位等硬约束 | R:code:backend/app/bake/engine_sql.py,code:docs/staff-posts-cross-domain.md | A:- | S:DOM-HOTEL 挂 PMS 时表上限破例至 20；未挂仍守 6–15
+opening-feature-delivery-map.md[SG7S]: F:对照开题功能词与能否交付及落地方式 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:SHOP/CARRENT 行反映数字商品与租赁押金；HOTEL 行含房态/前台/清洁扫词开与 PMS 表预算破例至 20
 soft-fail-scan.md[SG6S]: F:记录soft fail scan相关交付约定与说明 | R:- | A:- | S:-
 tech-stack-delivery.md[SG6T]: F:记录tech stack delivery相关交付约定与说明 | R:- | A:- | S:-
+staff-posts-cross-domain.md[SG6T]: F:梳理跨域同名岗位与界面红黄绿审计表 | R:code:docs/invariants.md,code:backend/app/bake/staff_posts.py | A:- | S:仅梳理不改它域代码；沿用 invariants 四槽位口径禁止另写一套
 
 ===D:/graduate_factory_v3/frontend/===
 .gitignore[DB5T]: F:仓库文件 .gitignore | R:- | A:- | S:-
@@ -802,7 +805,7 @@ useDefensePpt.js[FB5M]: F:前端脚本 useDefensePpt | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/frontend/src/views/===
 ErrorPage.vue[FB6S]: F:工厂前端页面 ErrorPage | R:- | A:- | S:-
-Help.vue[FB6L]: F:工厂前端页面 Help | R:- | A:- | S:-
+Help.vue[FB6L]: F:工厂前端帮助页：域边界与易混题对照 | R:- | A:- | S:-
 Jobs.vue[FB6M]: F:工厂前端页面 Jobs | R:- | A:- | S:-
 Llm.vue[FB6L]: F:工厂前端页面 Llm | R:- | A:- | S:-
 ProjectDetail.vue[FB6S]: F:工厂前端页面 ProjectDetail | R:- | A:- | S:-
@@ -896,6 +899,8 @@ ShootStore.java[DB6M]: F:实现约拍套餐与交片台账 | R:- | A:- | S:时�
 WeighSaleStore.java[DB6M]: F:实现按重计价损耗赔付与次日达校验 | R:- | A:- | S:次日达复用配送时段
 DigitalGoodsStore.java[DB7M]: F:付款后写入激活码或下载链接，标记 fulfill_mode=digital | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:须 configure 开启才生效；池空时可生成演示码，不得假成功写库失败
 RentalBondStore.java[DB7M]: F:下单记押金租金，还车验损后退押并更新可租/维修 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:须 configure 开启；验损扣款不超过押金；维修写 rent_stage
+FrontDeskStore.java[DB7S]: F:办理前台入住登记、消费挂账与退房结算 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RoomBoardStore.java | A:- | S:仅 front_desk 启用后可调用；退房后房间改待打扫
+RoomBoardStore.java[DB7S]: F:维护房间实例状态与房态日志，并列出待打扫房间 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FrontDeskStore.java | A:- | S:五态限空房/已订/入住中/待打扫/维修；未配置则拒操作
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/common/===
 AdminAuth.java[DB5T]: F:提供学生端公共工具 AdminAuth | R:- | A:- | S:-
@@ -909,7 +914,7 @@ R.java[DB5T]: F:提供学生端公共工具 R | R:- | A:- | S:-
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/config/===
 DemoScheduleJobs.java[EB6T]: F:配置学生端运行时 DemoScheduleJobs | R:- | A:- | S:-
 DomainResourceJson.java[EB6T]: F:配置学生端运行时 DomainResourceJson | R:- | A:- | S:-
-DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定运行时能力与专属 Store，含积分模式与租赁数字开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RentalBondStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/DigitalGoodsStore.java | A:- | S:作 ApplicationRunner，须在 JdbcSupport 注入后 ensureStaffColumns
+DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定运行时能力与专属 Store，含积分模式与租赁数字及酒店 PMS 开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RoomBoardStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FrontDeskStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:- | S:作 ApplicationRunner，须在 JdbcSupport 注入后 ensureStaffColumns；room-board/front-desk 由 yml 开关配置
 JdbcSupport.java[EB6T]: F:配置学生端运行时 JdbcSupport | R:- | A:- | S:-
 SeedCalendarAligner.java[EB6S]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
 UploadInlineFilter.java[EB6T]: F:配置学生端运行时 UploadInlineFilter | R:- | A:- | S:-
@@ -977,6 +982,7 @@ ShootController.java[EB6T]: F:提供学生端摄影套餐与成片文件 HTTP �
 WeighSaleController.java[EB6T]: F:提供学生端称重售卖索赔与审核 HTTP 接口 | R:- | A:/api/weigh | S:-
 DigitalGoodsController.java[EB6S]: F:暴露买家数字交付物与管理端激活码维护 HTTP 接口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/DigitalGoodsStore.java | A:/api | S:-
 RentalBondController.java[EB6S]: F:暴露还车验损与待验列表等租赁押金 HTTP 接口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RentalBondStore.java | A:/api | S:-
+HotelPmsController.java[EB7S]: F:暴露酒店 PMS 房态、清洁、入住退房与消费挂账 API | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RoomBoardStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FrontDeskStore.java | A:- | S:路径 /api/hotel-pms；未开对应 Store 则拒操作
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/service/===
 AiAssistantStore.java[DB6M]: F:实现学生端 AiAssistantStore 服务逻辑 | R:- | A:- | S:-
@@ -1053,10 +1059,10 @@ TicketRateDialog.vue[FB5S]: F:前端组件 TicketRateDialog | R:- | A:- | S:-
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/layouts/===
 AdminLayout.vue[FB5S]: F:布局壳 AdminLayout | R:- | A:- | S:-
 PortalLayout.vue[FB5M]: F:布局壳 PortalLayout | R:- | A:- | S:-
-WorkLayout.vue[FB5T]: F:布局壳 WorkLayout | R:- | A:- | S:-
+WorkLayout.vue[FB5T]: F:店员工作台布局，映射岗位作业页含清洁任务 | R:- | A:- | S:housekeeping 岗 index 为 /staff/clean
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/router/===
-index.js[FB5L]: F:注册学生包 Vue 路由含数字交付与租赁验损等能力页 | R:code:skeletons/baseline/frontend/src/utils/menuRoutes.js | A:- | S:-
+index.js[FB5L]: F:注册学生包 Vue 路由，含酒店 PMS 管理与清洁作业页 | R:code:skeletons/baseline/frontend/src/utils/menuRoutes.js | A:- | S:room_board/front_desk/housekeeping 按 cap 动态挂 admin 子路由
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/styles/===
 chrome.css[FS5M]: F:样式表 chrome | R:- | A:- | S:-
@@ -1148,7 +1154,7 @@ dates.js[FB5T]: F:前端脚本 dates | R:- | A:- | S:-
 domainFlavor.js[FB5M]: F:前端脚本 domainFlavor | R:- | A:- | S:-
 domainSchema.js[FB5M]: F:前端脚本 domainSchema | R:- | A:- | S:-
 equipmentMark.js[FB5T]: F:前端脚本 equipmentMark | R:- | A:- | S:-
-menuRoutes.js[FB5S]: F:静态映射用户与管理菜单 key 到路由 | R:code:skeletons/baseline/frontend/src/router/index.js | A:- | S:PortalLayout 只认已登记 key
+menuRoutes.js[FB5S]: F:静态映射用户与管理菜单 key 到路由 | R:code:skeletons/baseline/frontend/src/router/index.js | A:- | S:含 room_board/front_checkin/front_checkout/clean_tasks
 messages.js[FB5T]: F:前端脚本 messages | R:- | A:- | S:-
 navOverflow.js[FB5T]: F:前端脚本 navOverflow | R:- | A:- | S:-
 profileRoomMatch.js[FB5S]: F:前端脚本 profileRoomMatch | R:- | A:- | S:-
@@ -1256,6 +1262,10 @@ ShootFilesAdmin.vue[FB6T]: F:管理端登记约拍交片文件 | R:- | A:- | S:-
 StayLogsAdmin.vue[FB6T]: F:管理端维护寄养日志 | R:- | A:- | S:-
 DigitalCodesAdmin.vue[FB5S]: F:管理端维护数字商品激活码与下载链接池 | R:- | A:- | S:-
 RentalInspectAdmin.vue[FB5S]: F:管理端对待验租单做验损扣押金与维修标记 | R:- | A:- | S:-
+CleanTasksAdmin.vue[AU6T]: F:管理端列出待打扫房间并确认清洁完成 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/HotelPmsController.java | A:- | S:调 /api/hotel-pms/clean-tasks 与 clean-done
+FrontCheckinAdmin.vue[AU6T]: F:前台为住客办理入住登记与押金收取 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/HotelPmsController.java | A:- | S:调 pending checkin 与 /checkin
+FrontCheckoutAdmin.vue[AU6T]: F:前台办理退房结算并可挂账消费 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/HotelPmsController.java | A:- | S:调 checkout/pending、consumption 与 checkout
+RoomBoardAdmin.vue[AU6S]: F:房态板查看与改房间五态 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/HotelPmsController.java | A:- | S:调 /rooms 与 status；文案跟 schema labels
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/special/===
 SpecialPage.vue[FB6M]: F:工厂前端页面 SpecialPage | R:- | A:- | S:-
@@ -1264,6 +1274,7 @@ SpecialPage.vue[FB6M]: F:工厂前端页面 SpecialPage | R:- | A:- | S:-
 StaffOrders.vue[FB6T]: F:门户页面 StaffOrders | R:- | A:- | S:-
 StaffSlots.vue[FB6T]: F:门户页面 StaffSlots | R:- | A:- | S:-
 StaffTickets.vue[FB6T]: F:门户页面 StaffTickets | R:- | A:- | S:-
+StaffClean.vue[AU5T]: F:店员清洁岗作业页，复用管理端清洁任务组件 | R:code:skeletons/baseline/frontend/src/views/admin/CleanTasksAdmin.vue | A:- | S:不另写清洁逻辑，内嵌 CleanTasksAdmin
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/user/===
 Addresses.vue[FB6S]: F:门户页面 Addresses | R:- | A:- | S:-
@@ -1334,10 +1345,12 @@ ShootStore.java[DB6M]: F:以 JPA 实现约拍套餐与交片台账 | R:code:skel
 WeighSaleStore.java[DB6M]: F:以 JPA 实现按重计价损耗赔付与次日达校验 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/WeighSaleStore.java | A:- | S:次日达复用配送时段
 DigitalGoodsStore.java[DB7M]: F:JPA 叠层数字履约 Store，语义对齐 baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/DigitalGoodsStore.java | A:- | S:jdbc 定规则，jpa 只换写法
 RentalBondStore.java[DB7M]: F:JPA 叠层租赁押金验损 Store，语义对齐 baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RentalBondStore.java | A:- | S:jdbc 定规则，jpa 只换写法
+FrontDeskStore.java[DB7M]: F:JPA 叠层前台入住登记、挂账与退房结算 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FrontDeskStore.java | A:- | S:与 baseline 同源覆盖；仅 front_desk 启用后可调用
+RoomBoardStore.java[DB7S]: F:JPA 叠层维护房态与待打扫列表 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RoomBoardStore.java | A:- | S:与 baseline 同源覆盖；未配置则拒操作
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/===
 DemoScheduleJobs.java[EB6T]: F:配置学生端运行时 DemoScheduleJobs | R:- | A:- | S:-
-DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定 JPA 运行时能力与专属 Store，含积分模式 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同步 configurePointsModes
+DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定 JPA 运行时能力与专属 Store，含酒店 PMS 开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同步 room-board/front-desk/housekeeping-enabled
 GeneratedKeyHolder.java[EB6T]: F:配置学生端运行时 GeneratedKeyHolder | R:- | A:- | S:-
 JpaDb.java[EB6S]: F:配置学生端运行时 JpaDb | R:- | A:- | S:-
 JpaSupport.java[EB6T]: F:配置学生端运行时 JpaSupport | R:- | A:- | S:-
@@ -1408,9 +1421,11 @@ ShootStore.java[DB6S]: F:以 MyBatis 实现约拍套餐与交片台账 | R:code:
 WeighSaleStore.java[DB6M]: F:以 MyBatis 实现按重计价损耗赔付与次日达校验 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/WeighSaleStore.java | A:- | S:次日达复用配送时段
 DigitalGoodsStore.java[DB7M]: F:MyBatis 叠层数字履约 Store，语义对齐 baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/DigitalGoodsStore.java | A:- | S:jdbc 定规则，mybatis 只换写法
 RentalBondStore.java[DB7M]: F:MyBatis 叠层租赁押金验损 Store，语义对齐 baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RentalBondStore.java | A:- | S:jdbc 定规则，mybatis 只换写法
+FrontDeskStore.java[DB7M]: F:MyBatis 叠层前台入住登记、挂账与退房结算 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FrontDeskStore.java | A:- | S:与 baseline 同源覆盖；仅 front_desk 启用后可调用
+RoomBoardStore.java[DB7S]: F:MyBatis 叠层维护房态与待打扫列表 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/RoomBoardStore.java | A:- | S:与 baseline 同源覆盖；未配置则拒操作
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/===
-DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定 MyBatis 运行时能力与专属 Store，含积分模式 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同步 configurePointsModes
+DomainRuntimeBinder.java[EB7L]: F:按 thesis 配置绑定 MyBatis 运行时能力与专属 Store，含酒店 PMS 开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同步 room-board/front-desk/housekeeping-enabled
 MybatisSupport.java[EB6T]: F:配置学生端运行时 MybatisSupport | R:- | A:- | S:-
 SeedCalendarAligner.java[EB6T]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
 

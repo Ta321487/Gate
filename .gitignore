@@ -35,3 +35,12 @@ _tmp_codebin/
 
 # AOCI host binding uses a machine-local absolute path
 .mcp.json
+
+# playwright-mcp
+.playwright-mcp
+
+# local sqlite sidecars / browser-review screenshots
+data/factory.db-shm
+data/factory.db-wal
+review-*.png
+review2-*.png

@@ -32,6 +32,7 @@
           :row-key="rowKey"
           :expanded-row-keys="expandedKeys"
           :bordered="false"
+          :scroll-x="1080"
           size="small"
           @update:expanded-row-keys="onExpandedKeys"
         >
@@ -173,21 +174,22 @@ const columns = [
   {
     title: '项目',
     key: 'project_title',
+    minWidth: 280,
     render: (r) => {
       if (r.isGroup) {
-        return h('div', { style: 'min-width:180px' }, [
-          h('div', { style: 'font-weight:600;line-height:1.35' }, r.project_title),
+        return h('div', { class: 'job-project' }, [
+          h('div', { class: 'job-title' }, r.project_title),
           h('div', { class: 'small muted', style: 'margin-top:4px' }, `共 ${r.children.length} 条`),
         ])
       }
       const title = r.project_title || '（无标题）'
       const when = r.started_at || r.created_at
       const whenText = when ? new Date(when).toLocaleString() : ''
-      return h('div', { style: 'min-width:180px' }, [
-        h('div', { style: 'font-weight:600;line-height:1.35' }, title),
-        h('div', { class: 'small muted mono', style: 'margin-top:4px' }, r.project_id || '—'),
+      return h('div', { class: 'job-project' }, [
+        h('div', { class: 'job-title' }, title),
+        h('div', { class: 'small muted mono job-sub', style: 'margin-top:4px' }, r.project_id || '—'),
         whenText
-          ? h('div', { class: 'small muted', style: 'margin-top:2px' }, `开始 ${whenText}`)
+          ? h('div', { class: 'small muted job-sub', style: 'margin-top:2px' }, `开始 ${whenText}`)
           : null,
       ])
     },
@@ -207,9 +209,9 @@ const columns = [
       const m = JOB_STATUS[r.status] || { label: r.status, pill: 'pill-neutral' }
       const pill = statusPillNode(m.label, m.pill)
       if (r.error && (r.status === 'failed' || r.status === 'cancelled')) {
-        return h('div', { title: r.error }, [
+        return h('div', [
           pill,
-          h('div', { class: 'small muted', style: 'margin-top:4px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, r.error),
+          h('div', { class: 'small muted job-err' }, r.error),
         ])
       }
       return pill
@@ -372,4 +374,12 @@ onUnmounted(() => clearInterval(timer))
   padding: 0 !important;
   overflow: auto;
 }
+.job-project { min-width: 240px; }
+.job-title, .job-sub, .job-err {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.job-title { font-weight: 600; }
+.job-err { margin-top: 4px; max-width: 420px; }
 </style>
