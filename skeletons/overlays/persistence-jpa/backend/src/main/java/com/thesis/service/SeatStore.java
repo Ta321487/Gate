@@ -2,8 +2,8 @@ package com.thesis.service;
 
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.OrderStore;
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.JpaDb;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,8 +39,8 @@ public class SeatStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     public static boolean ready() {
@@ -366,6 +366,7 @@ public class SeatStore {
         return out;
     }
 
+    /** 占座/扣库存失败：释放座位、退余额关单；库存仅在已扣时回补（勿走 advance 以免误加库存）。 */
     private static void rollbackFailedPurchase(
             long orderId, long showId, int qty, boolean stockAdjusted) {
         RuntimeException first = null;

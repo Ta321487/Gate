@@ -52,7 +52,7 @@ import http from '../../api/http'
 import EmptyHint from '../../components/EmptyHint.vue'
 import PageSkeleton from '../../components/PageSkeleton.vue'
 import { formatRelative } from '../../utils/dates.js'
-import { schemaLabels, ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, schemaLabels, ticketCopy } from '../../utils/domainSchema.js'
 import { messageAdminTarget } from '../../utils/messages.js'
 import { messageKindMark } from '../../utils/statusTone.js'
 
@@ -60,7 +60,11 @@ const route = useRoute()
 const router = useRouter()
 const labels = computed(() => schemaLabels())
 const pageLead = computed(() => {
-  const lead = labels.value.messagesPageLead
+  let lead = String(labels.value.messagesPageLead || '').trim()
+  // 多店商城不得残留「预约」串台；管理端也走本页
+  if (getSchema()?.shopMarketplace && (!lead || /预约|待受理申请/.test(lead))) {
+    return '新订单、售后与系统通知。'
+  }
   if (lead) return lead
   const ticket = ticketCopy()
   const remind = ticket.verbs?.remind

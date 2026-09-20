@@ -583,12 +583,15 @@ public final class ArchiveStore {
         Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
         String status = availStatus(stock, startRaw, endRaw);
         if (shopMarketplaceEnabled || publishReviewEnabled) {
-            if (patch.containsKey("status") && patch.get("status") != null) {
+            String cur = str(m.get("status")).trim();
+            // 待审/驳回只能走 approve/reject，禁止 update 改写为 available 进公开目录
+            if ("pending_review".equals(cur) || "rejected".equals(cur)) {
+                status = cur;
+            } else if (patch.containsKey("status") && patch.get("status") != null) {
                 String st = String.valueOf(patch.get("status")).trim();
-                if (!st.isBlank()) status = st;
-            } else {
-                String cur = str(m.get("status")).trim();
-                if ("pending_review".equals(cur) || "rejected".equals(cur)) status = cur;
+                if (!st.isBlank() && !"pending_review".equals(st) && !"rejected".equals(st)) {
+                    status = st;
+                }
             }
         }
         db().update(
@@ -791,6 +794,10 @@ public final class ArchiveStore {
     public static Map<String, Object> approveMarketplaceItem(long id) {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
+        String cur = str(m.get("status")).trim();
+        if (!"pending_review".equals(cur)) {
+            throw new IllegalStateException("仅待审核条目可通过审核上架");
+        }
         int stock = m.get("stock") instanceof Number n ? n.intValue() : 0;
         String status = stock > 0 ? "available" : "unavailable";
         db().update("UPDATE " + ITEM + " SET status=? WHERE id=?", status, id);
@@ -801,6 +808,10 @@ public final class ArchiveStore {
     public static Map<String, Object> rejectPublishItem(long id) {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
+        String cur = str(m.get("status")).trim();
+        if (!"pending_review".equals(cur)) {
+            throw new IllegalStateException("仅待审核条目可驳回");
+        }
         db().update("UPDATE " + ITEM + " SET status='rejected' WHERE id=?", id);
         return getItemAdmin(id);
     }
@@ -1609,6 +1620,10 @@ public final class ArchiveStore {
     private static void syncSignupStageAvailability(long id, int stock) {
         Map<String, Object> book = getItemRaw(id);
         if (book == null || !book.containsKey("stage")) return;
+        String audit = str(book.get("status")).trim();
+        if ("pending_review".equals(audit) || "rejected".equals(audit)) {
+            return;
+        }
         String stage = str(book.get("stage")).trim();
         try {
             if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
@@ -1624,9 +1639,28 @@ public final class ArchiveStore {
     }
 
     public static long countItems() {
+        return countItems(null);
+    }
+
+    /** @param ownerUsername 多店商家只计本店商品；超管/单店传 null */
+    public static long countItems(String ownerUsername) {
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        boolean byOwner = !owner.isBlank() && hasOwnerUsername();
         if (softDeleteEnabled && hasDeletedAt()) {
+            if (byOwner) {
+                Long n = db().queryForObject(
+                        "SELECT COUNT(*) FROM " + ITEM + " WHERE deleted_at IS NULL AND owner_username=?",
+                        Long.class,
+                        owner);
+                return n == null ? 0 : n;
+            }
             Long n = db().queryForObject(
                     "SELECT COUNT(*) FROM " + ITEM + " WHERE deleted_at IS NULL", Long.class);
+            return n == null ? 0 : n;
+        }
+        if (byOwner) {
+            Long n = db().queryForObject(
+                    "SELECT COUNT(*) FROM " + ITEM + " WHERE owner_username=?", Long.class, owner);
             return n == null ? 0 : n;
         }
         Long n = db().queryForObject("SELECT COUNT(*) FROM " + ITEM, Long.class);

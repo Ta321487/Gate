@@ -204,7 +204,7 @@ public final class TicketStore {
 
     public static void markVerifying(long ticketId, String operator) {
         if (ticketId <= 0) return;
-        TicketSql.db().update(
+        MybatisSupport.db().update(
                 "UPDATE " + TICKET + " SET status='verifying' WHERE id=? AND status IN ('pending','verifying')",
                 ticketId);
         appendProgress(ticketId, "verifying", operator == null ? "" : operator, "已提交认领凭证，等待核验");
@@ -212,7 +212,7 @@ public final class TicketStore {
 
     public static void markPendingForProof(long ticketId, String operator) {
         if (ticketId <= 0) return;
-        TicketSql.db().update(
+        MybatisSupport.db().update(
                 "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='verifying'",
                 ticketId);
         appendProgress(ticketId, "pending", operator == null ? "" : operator, "凭证未通过，请重新提交");
@@ -340,7 +340,7 @@ public final class TicketStore {
         if (ticketId <= 0) return;
         try {
             if (hasColumn("id")) {
-                TicketSql.db().update("DELETE FROM " + TICKET + " WHERE id=?", ticketId);
+                MybatisSupport.db().update("DELETE FROM " + TICKET + " WHERE id=?", ticketId);
             }
         } catch (Exception ignored) {
             // 回滚失败不掩盖主错误

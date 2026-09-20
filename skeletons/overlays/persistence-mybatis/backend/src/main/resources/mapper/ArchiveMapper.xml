@@ -96,6 +96,12 @@
         <if test="excludeDeleted">WHERE deleted_at IS NULL</if>
     </select>
 
+    <select id="countItemsOwned" resultType="long">
+        SELECT COUNT(*) FROM `${itemTable}`
+        WHERE owner_username=#{ownerUsername}
+        <if test="excludeDeleted">AND deleted_at IS NULL</if>
+    </select>
+
     <select id="sumStock" resultType="long">
         SELECT COALESCE(SUM(stock),0) FROM `${itemTable}`
         <if test="excludeDeleted">WHERE deleted_at IS NULL</if>

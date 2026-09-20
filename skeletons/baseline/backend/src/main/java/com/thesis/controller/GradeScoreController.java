@@ -58,12 +58,16 @@ public class GradeScoreController {
         if (raw == null || String.valueOf(raw).isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请填写分数");
         }
+        BigDecimal score;
         try {
-            return R.ok(GradeScoreStore.save(username, courseId, termId, new BigDecimal(String.valueOf(raw).trim())));
-        } catch (IllegalArgumentException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+            score = new BigDecimal(String.valueOf(raw).trim());
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "分数格式不正确");
+        }
+        try {
+            return R.ok(GradeScoreStore.save(username, courseId, termId, score));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
 

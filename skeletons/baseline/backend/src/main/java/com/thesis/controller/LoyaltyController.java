@@ -73,7 +73,7 @@ public class LoyaltyController {
             throw new BizException(ErrorCode.BAD_REQUEST, "请指定用户名");
         }
         double amount = toDouble(body.get("amount"));
-        String operator = String.valueOf(session.getAttribute("username"));
+        String operator = AdminAuth.requireLogin(session);
         try {
             return R.ok(LoyaltyStore.adminRecharge(username, amount, operator));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -94,7 +94,7 @@ public class LoyaltyController {
         }
         int points = toInt(body == null ? null : body.get("points"));
         String remark = str(body == null ? null : body.get("remark"));
-        String operator = String.valueOf(session.getAttribute("username"));
+        String operator = AdminAuth.requireLogin(session);
         try {
             return R.ok(LoyaltyStore.adminCreditPoints(username, points, operator, remark));
         } catch (IllegalArgumentException | IllegalStateException e) {

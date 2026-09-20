@@ -128,6 +128,27 @@ public interface OrderMapper {
     @Select("SELECT COUNT(*) FROM `${orderTable}` WHERE status=#{status}")
     long countByStatus(@Param("orderTable") String orderTable, @Param("status") String status);
 
+    @Select("SELECT COUNT(*) FROM `${orderTable}` o WHERE o.status=#{status} AND EXISTS ("
+            + "SELECT 1 FROM `${lineTable}` l JOIN `${itemTable}` p ON p.id=l.item_id "
+            + "WHERE l.order_id=o.id AND p.owner_username=#{ownerUsername})")
+    long countByStatusOwned(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("status") String status,
+            @Param("ownerUsername") String ownerUsername);
+
+    @Select("SELECT COALESCE(SUM(x.total_yuan),0) FROM ("
+            + "SELECT DISTINCT o.id, o.total_yuan FROM `${orderTable}` o "
+            + "INNER JOIN `${lineTable}` l ON l.order_id=o.id "
+            + "INNER JOIN `${itemTable}` p ON p.id=l.item_id AND p.owner_username=#{ownerUsername} "
+            + "WHERE o.status='completed') x")
+    double sumCompletedSalesOwned(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable,
+            @Param("itemTable") String itemTable,
+            @Param("ownerUsername") String ownerUsername);
+
     List<Map<String, Object>> selectStatusSeries(@Param("orderTable") String orderTable);
 
     List<Map<String, Object>> selectTrendSeries(@Param("orderTable") String orderTable);

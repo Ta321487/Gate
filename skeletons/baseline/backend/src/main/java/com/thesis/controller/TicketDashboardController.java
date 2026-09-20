@@ -60,7 +60,8 @@ public class TicketDashboardController {
         if (OrderStore.enabled()) {
             boolean mp = ArchiveStore.shopMarketplaceEnabled();
             boolean superAdmin = AdminAuth.isSuperAdmin(session);
-            String uid = String.valueOf(session.getAttribute("username"));
+            // 会话登录名在 uid（AuthController），没有 username 属性
+            String uid = AdminAuth.requireLogin(session);
             String ownerFilter = (mp && !superAdmin) ? uid : null;
             m.putAll(OrderStore.dashboard(ownerFilter));
             Map<String, Object> oc = OrderStore.chartStats(ownerFilter);
@@ -90,7 +91,7 @@ public class TicketDashboardController {
         }
         if (ArchiveStore.shopMarketplaceEnabled()) {
             boolean superAdmin = AdminAuth.isSuperAdmin(session);
-            String uid = String.valueOf(session.getAttribute("username"));
+            String uid = AdminAuth.requireLogin(session);
             int warn = 10;
             try {
                 // schema 默认 10；前端亦有 stockWarnBelow
@@ -100,6 +101,10 @@ public class TicketDashboardController {
             }
             m.put("lowStockCount", ArchiveStore.countLowStock(warn, superAdmin ? null : uid));
             m.put("stockWarnBelow", warn);
+            // 商家工作台商品数须按店主过滤，禁止显示全站 bookTotal
+            if (!superAdmin) {
+                m.put("bookTotal", ArchiveStore.countItems(uid));
+            }
         }
         m.put("charts", charts);
         return R.ok(m);

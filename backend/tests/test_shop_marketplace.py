@@ -57,6 +57,11 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
     def test_marketplace_schema_flag(self) -> None:
         schema = _shop_schema("多商家电商平台", "商家入驻与店铺管理")
         self.assertTrue(schema.get("shopMarketplace"))
+        labels = schema.get("labels") or {}
+        self.assertEqual(labels.get("messagesPageLead"), "新订单、售后与系统通知。")
+        self.assertNotIn("预约", str(labels.get("messagesPageLead") or ""))
+        self.assertEqual(labels.get("guestbookGuestCta"), "登录后发表留言")
+        self.assertEqual(labels.get("noticeGuestCta"), "登录后查看更多活动")
         content = next(
             (
                 m
@@ -341,6 +346,54 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("shopLabel", strip)
         self.assertIn("待买家付款", admin_orders)
+
+    def test_pending_content_blocks_display_actions(self) -> None:
+        """待审不得置顶/用上下架冒充审核；后端须硬闸。"""
+        root = Path(__file__).resolve().parents[2] / "skeletons" / "baseline"
+        notice = (
+            root / "backend/src/main/java/com/thesis/service/NoticeStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("assertCanPinForDisplay", notice)
+        self.assertIn("待审核通过后才能置顶", notice)
+        notices_admin = (
+            root / "frontend/src/views/admin/NoticesAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("canPinRow", notices_admin)
+        self.assertIn("待审核通过后才能置顶", notices_admin)
+        archive = (
+            root
+            / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("仅待审核条目可通过审核上架", archive)
+        self.assertIn('禁止 update 改写为 available', archive)
+        self.assertIn('pending_review".equals(audit)', archive)
+        archive_admin = (
+            root / "frontend/src/views/admin/ArchiveAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("!isPendingReview(form)", archive_admin)
+        ctrl = (
+            root
+            / "backend/src/main/java/com/thesis/controller/ArchiveController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn('payload.remove("status")', ctrl)
+        for overlay in ("persistence-jpa", "persistence-mybatis"):
+            o_notice = (
+                Path(__file__).resolve().parents[2]
+                / "skeletons"
+                / "overlays"
+                / overlay
+                / "backend/src/main/java/com/thesis/service/NoticeStore.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("assertCanPinForDisplay", o_notice, msg=overlay)
+            o_arch = (
+                Path(__file__).resolve().parents[2]
+                / "skeletons"
+                / "overlays"
+                / overlay
+                / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("仅待审核条目可通过审核上架", o_arch, msg=overlay)
+            self.assertIn("pending_review\".equals(audit)", o_arch, msg=overlay)
 
 
 if __name__ == "__main__":

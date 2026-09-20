@@ -115,9 +115,13 @@ public class NoticeController {
                 pinned = "1".equals(s) || "true".equalsIgnoreCase(s);
             }
         }
-        Map<String, Object> m = NoticeStore.update(id, title, content, pinned);
-        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
-        return R.ok(m);
+        try {
+            Map<String, Object> m = NoticeStore.update(id, title, content, pinned);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "公告不存在");
+            return R.ok(m);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/pin")

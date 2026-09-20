@@ -376,8 +376,9 @@ public final class OrderStore {
         Map<String, Object> orderRow = new LinkedHashMap<>();
         orderRow.put("orderTable", ORDER);
         orderRow.put("username", username);
-        String placed = (demoPay || lineCustomPlaceConfirmed) ? "confirmed" : "pending";
-        if (campaignId != null && campaignId > 0) placed = "grouping";
+        final String placed = (campaignId != null && campaignId > 0)
+                ? "grouping"
+                : ((demoPay || lineCustomPlaceConfirmed) ? "confirmed" : "pending");
         orderRow.put("status", placed);
         orderRow.put("totalYuan", BigDecimal.valueOf(payable).setScale(2, RoundingMode.HALF_UP));
         orderRow.put("remark", noteOut);
@@ -892,6 +893,30 @@ public final class OrderStore {
     public static Map<String, Object> dashboard(String ownerUsername) {
         if (!enabled) return Map.of();
         Map<String, Object> m = new LinkedHashMap<>();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        boolean byOwner = !owner.isBlank() && ArchiveStore.hasOwnerUsername();
+        if (byOwner) {
+            String item = ArchiveStore.itemTable();
+            m.put("pendingOrders", mapper().countByStatusOwned(ORDER, LINE, item, "pending", owner));
+            m.put("confirmedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "confirmed", owner));
+            m.put("shippedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "shipped", owner));
+            m.put("completedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "completed", owner));
+            if (ArchiveStore.shopMarketplaceEnabled()) {
+                try {
+                    m.put("inTransitOrders", mapper().countByStatusOwned(ORDER, LINE, item, "in_transit", owner));
+                    m.put("signedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "signed", owner));
+                } catch (Exception ignored) {
+                    m.put("inTransitOrders", 0);
+                    m.put("signedOrders", 0);
+                }
+                try {
+                    m.put("salesTotalYuan", mapper().sumCompletedSalesOwned(ORDER, LINE, item, owner));
+                } catch (Exception e) {
+                    m.put("salesTotalYuan", 0.0);
+                }
+            }
+            return m;
+        }
         m.put("pendingOrders", mapper().countByStatus(ORDER, "pending"));
         m.put("confirmedOrders", mapper().countByStatus(ORDER, "confirmed"));
         m.put("shippedOrders", mapper().countByStatus(ORDER, "shipped"));

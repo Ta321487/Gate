@@ -1,7 +1,7 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.JpaDb;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -194,7 +194,7 @@ public final class DigitalGoodsStore {
         }
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.getJdbcTemplate();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 }

@@ -45,7 +45,7 @@
         @size-change="load"
       />
     </div>
-    <GuestLoginHint />
+    <GuestLoginHint :label="guestCta" />
   </div>
 </template>
 
@@ -63,6 +63,10 @@ import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/ses
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.noticePageTitle || '公告')
 const pageLead = computed(() => labels.value.noticePageLead || '通知与须知，点击条目阅读全文。')
+/** 勿复用「解锁商品目录」类总 CTA：本页是通知/活动 */
+const guestCta = computed(
+  () => labels.value.noticeGuestCta || '登录后查看更多通知',
+)
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 
 const list = ref([])

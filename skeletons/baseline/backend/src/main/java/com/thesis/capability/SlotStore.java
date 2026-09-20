@@ -251,13 +251,15 @@ public final class SlotStore {
         if (hasResvColumn("queue_no")) {
             extraCols.put("queue_no", queue > 0 ? queue : (int) (slotId % 1000) + 1);
         }
+        // boarding 可能改写 slotId；lambda 只能捕获 effectively-final
+        final long slotIdFinal = slotId;
         try {
             db().update(con -> {
                 StringBuilder cols = new StringBuilder(
                         "slot_id,username,status,remark");
                 StringBuilder marks = new StringBuilder("?,?,?,?");
                 List<Object> args = new ArrayList<>();
-                args.add(slotId);
+                args.add(slotIdFinal);
                 args.add(username);
                 args.add(initialStatus);
                 args.add(noteFinal);

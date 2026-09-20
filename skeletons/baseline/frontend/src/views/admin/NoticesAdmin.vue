@@ -19,12 +19,12 @@
       <el-table-column label="置顶" width="90">
         <template #default="{ row }">
           <el-switch
-            v-if="canEditRow(row)"
+            v-if="canPinRow(row)"
             :model-value="!!row.pinned"
             size="small"
             @change="(v) => togglePin(row, v)"
           />
-          <el-tag v-else-if="row.pinned" size="small" type="warning" effect="plain">置顶</el-tag>
+          <el-tag v-else-if="row.pinned && !isPending(row)" size="small" type="warning" effect="plain">置顶</el-tag>
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
@@ -68,9 +68,10 @@
       <el-form :model="form" label-width="72px" require-asterisk-position="right">
         <el-form-item label="标题" required><el-input v-model="form.title" maxlength="128" show-word-limit /></el-form-item>
         <el-form-item label="内容" required><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
-        <el-form-item v-if="form.id || isSuper" label="置顶">
+        <el-form-item v-if="showPinInForm" label="置顶">
           <el-switch v-model="form.pinned" />
         </el-form-item>
+        <p v-else-if="auditOn && form.id && isPending(form)" class="form-hint">待审核通过后才能置顶。</p>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -94,7 +95,7 @@ const total = ref(0)
 const visible = ref(false)
 const viewVisible = ref(false)
 const viewRow = reactive({ title: '', content: '', publisherName: '', createdAt: '' })
-const form = reactive({ id: null, title: '', content: '', pinned: false })
+const form = reactive({ id: null, title: '', content: '', pinned: false, auditStatus: '' })
 
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const auditOn = computed(() => marketplace.value)
@@ -132,6 +133,21 @@ function canEditRow(row) {
   return false
 }
 
+/** 置顶=公开展示强化；待审不得开开关（与 NoticeStore.assertCanPinForDisplay 一致） */
+function canPinRow(row) {
+  if (!canEditRow(row)) return false
+  if (!auditOn.value) return true
+  return !isPending(row)
+}
+
+const showPinInForm = computed(() => {
+  if (!(form.id || isSuper.value)) return false
+  if (!auditOn.value) return true
+  // 新建：超管直发即已通过，可勾置顶；编辑待审：不展示开关
+  if (!form.id) return isSuper.value
+  return !isPending(form)
+})
+
 async function load() {
   const res = await http.get('/api/notices', { params: { page: page.value, size: size.value } })
   list.value = res.data.list
@@ -149,12 +165,26 @@ function openView(row) {
 }
 
 function openEdit(row) {
-  if (row) Object.assign(form, { id: row.id, title: row.title, content: row.content, pinned: !!row.pinned })
-  else Object.assign(form, { id: null, title: '', content: '', pinned: false })
+  if (row) {
+    Object.assign(form, {
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      pinned: !!row.pinned,
+      auditStatus: row.auditStatus || '',
+    })
+  } else {
+    Object.assign(form, { id: null, title: '', content: '', pinned: false, auditStatus: '' })
+  }
   visible.value = true
 }
 
 async function togglePin(row, on) {
+  if (on && !canPinRow(row)) {
+    ElMessage.warning('待审核通过后才能置顶')
+    load()
+    return
+  }
   await http.post(`/api/notices/${row.id}/pin`, { pinned: !!on })
   ElMessage.success(on ? '已置顶' : '已取消置顶')
   load()
@@ -206,6 +236,7 @@ onMounted(load)
 .toolbar { margin-bottom: 12px; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
 .muted { color: var(--portal-muted, #94a3b8); font-size: 12px; }
+.form-hint { margin: 6px 0 0; color: var(--portal-muted, #909399); font-size: 12px; line-height: 1.4; }
 .view-meta { margin: 0 0 8px; color: var(--portal-muted, #909399); font-size: 13px; }
 .view-title { margin: 0 0 12px; font-size: 18px; }
 .view-body { white-space: pre-wrap; line-height: 1.6; }

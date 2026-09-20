@@ -35,9 +35,8 @@ public class GuestbookController {
         boolean mp = ArchiveStore.shopMarketplaceEnabled() && GuestbookStore.hasChannel();
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         boolean superAdmin = AdminAuth.isSuperAdmin(session);
-        String uid = session.getAttribute("username") == null
-                ? ""
-                : String.valueOf(session.getAttribute("username"));
+        Object uidAttr = session.getAttribute("uid");
+        String uid = uidAttr == null ? "" : String.valueOf(uidAttr);
         if (mp) {
             if (superAdmin) {
                 // 平台：按通道筛选；未传 channel 时默认用户留言

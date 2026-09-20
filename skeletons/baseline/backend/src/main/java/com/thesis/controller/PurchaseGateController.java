@@ -69,7 +69,8 @@ public class PurchaseGateController {
     @PostMapping("/review")
     public R<?> review(@RequestBody(required = false) Map<String, Object> body, HttpSession session) {
         require();
-        String uid = AdminAuth.requireAdmin(session);
+        AdminAuth.requireAdmin(session);
+        String uid = AdminAuth.requireLogin(session);
         try {
             return R.ok(PurchaseGateStore.review(uid, body));
         } catch (IllegalArgumentException | IllegalStateException e) {

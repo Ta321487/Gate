@@ -334,9 +334,10 @@ public final class OrderStore {
                 rName = username;
             }
         }
-        // 多店在线支付成功后进入待发货；单店仍待确认
-        String initialStatus = (demoPay || lineCustomPlaceConfirmed) ? "confirmed" : "pending";
-        if (campaignId != null && campaignId > 0) initialStatus = "grouping";
+        // 多店在线支付成功后进入待发货；单店仍待确认；成团单为 grouping（须一次算完，供下方 lambda 捕获）
+        final String initialStatus = (campaignId != null && campaignId > 0)
+                ? "grouping"
+                : ((demoPay || lineCustomPlaceConfirmed) ? "confirmed" : "pending");
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
@@ -1081,11 +1082,10 @@ public final class OrderStore {
             Long n = db().queryForObject("SELECT COUNT(*) FROM " + ORDER + " WHERE status=?", Long.class, st);
             return n == null ? 0 : n;
         }
-        String sql = "SELECT COUNT(DISTINCT o.id) FROM " + ORDER + " o"
-                + " INNER JOIN " + LINE + " l ON l.order_id=o.id"
-                + " INNER JOIN " + ArchiveStore.itemTable() + " p ON p.id=l.item_id AND p.owner_username=?"
-                + " WHERE o.status=?";
-        Long n = db().queryForObject(sql, Long.class, owner, st);
+        String sql = "SELECT COUNT(*) FROM " + ORDER + " o WHERE o.status=?"
+                + " AND EXISTS (SELECT 1 FROM " + LINE + " l JOIN " + ArchiveStore.itemTable()
+                + " p ON p.id=l.item_id WHERE l.order_id=o.id AND p.owner_username=?)";
+        Long n = db().queryForObject(sql, Long.class, st, owner);
         return n == null ? 0 : n;
     }
 

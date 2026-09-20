@@ -191,6 +191,8 @@ public class ArchiveController {
                     throw new BizException(ErrorCode.FORBIDDEN, "只能修改本店商品");
                 }
                 payload.put("ownerUsername", uid);
+                // 商家改商品不得自改审核态；公开上架只走 approve
+                payload.remove("status");
             }
         } else {
             AdminAuth.requireSuperAdmin(session);
@@ -226,11 +228,15 @@ public class ArchiveController {
         if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
         }
-        Map<String, Object> m = ArchiveStore.approveMarketplaceItem(id);
-        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
-        String op = AdminAuth.requireLogin(session);
-        AuditLogStore.record(op, "archive_approve", "archive", String.valueOf(id), "审核上架");
-        return R.ok(m);
+        try {
+            Map<String, Object> m = ArchiveStore.approveMarketplaceItem(id);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "archive_approve", "archive", String.valueOf(id), "审核上架");
+            return R.ok(m);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     /** 多店 / 投稿先审：超管驳回 */
@@ -240,11 +246,15 @@ public class ArchiveController {
         if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
         }
-        Map<String, Object> m = ArchiveStore.rejectPublishItem(id);
-        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
-        String op = AdminAuth.requireLogin(session);
-        AuditLogStore.record(op, "archive_reject", "archive", String.valueOf(id), "审核驳回");
-        return R.ok(m);
+        try {
+            Map<String, Object> m = ArchiveStore.rejectPublishItem(id);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "archive_reject", "archive", String.valueOf(id), "审核驳回");
+            return R.ok(m);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     private static List<Long> parseTagIds(String raw) {

@@ -128,12 +128,19 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy, orderStatusLabel, reservationStatusLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
-import { adminNavPath } from '../../utils/staffPosts.js'
+import { adminNavPath, currentStaffPost, staffPostLabel } from '../../utils/staffPosts.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 
 const router = useRouter()
 const data = ref({})
-const adminLabel = computed(() => roleLabel('admin', '管理'))
+/** 跟顶栏一致：总管用 admin 皮；商家/子管用本岗名，禁止工作台写死「总管概览」 */
+const adminLabel = computed(() => {
+  const roles = getSchema()?.roles || {}
+  if (localStorage.getItem('superAdmin') === 'true') {
+    return roles.admin?.label || roleLabel('admin', '管理')
+  }
+  return staffPostLabel(currentStaffPost(), roles.subadmin?.label || roleLabel('subadmin', '经办'))
+})
 const userLabel = computed(() => roleLabel('user', '用户'))
 const caps = computed(() => getSchema()?.capabilities || [])
 /** 当前账号可进才返回路径，否则 ''（禁止工作台怂恿越权） */

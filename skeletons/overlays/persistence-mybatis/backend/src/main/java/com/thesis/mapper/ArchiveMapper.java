@@ -118,6 +118,11 @@ public interface ArchiveMapper {
     long countItems(
             @Param("itemTable") String itemTable, @Param("excludeDeleted") boolean excludeDeleted);
 
+    long countItemsOwned(
+            @Param("itemTable") String itemTable,
+            @Param("excludeDeleted") boolean excludeDeleted,
+            @Param("ownerUsername") String ownerUsername);
+
     long sumStock(
             @Param("itemTable") String itemTable, @Param("excludeDeleted") boolean excludeDeleted);
 

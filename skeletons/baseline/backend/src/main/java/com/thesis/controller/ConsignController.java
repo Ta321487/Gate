@@ -21,9 +21,7 @@ public class ConsignController {
     }
 
     private static String username(HttpSession session) {
-        AdminAuth.requireLogin(session);
-        Object user = session.getAttribute("username");
-        return user == null ? "" : String.valueOf(user);
+        return AdminAuth.requireLogin(session);
     }
 
     @GetMapping("/mine")

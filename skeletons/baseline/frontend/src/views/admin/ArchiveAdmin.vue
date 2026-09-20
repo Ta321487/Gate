@@ -167,7 +167,7 @@
             :stock-as-toggle="stockAsToggle"
           />
         </el-form-item>
-        <el-form-item v-if="softDelete" :label="shelfFormLabel">
+        <el-form-item v-if="softDelete && !isPendingReview(form)" :label="shelfFormLabel">
           <el-switch
             v-model="form.onShelf"
             inline-prompt
@@ -175,6 +175,9 @@
             :inactive-text="softCopy.off"
           />
         </el-form-item>
+        <p v-else-if="softDelete && canReviewPublish && isPendingReview(form)" class="form-hint">
+          待审核条目请用列表上的「审核上架」，不要用上下架开关。
+        </p>
         <el-form-item v-if="hasMutex" :label="fieldLabel('mutexCode', '互斥码')">
           <el-input v-model="form.mutexCode" maxlength="32" :placeholder="`相同互斥码的${label}不可同选，可留空`" />
         </el-form-item>
@@ -437,6 +440,7 @@ const form = reactive({
   isbn: '',
   categoryId: null,
   stock: 1,
+  status: '',
   onShelf: true,
   _wasDeleted: false,
   coverUrl: '',
@@ -510,6 +514,7 @@ function openEdit(row) {
       isbn: row.isbn || '',
       categoryId: row.categoryId,
       stock: row.stock ?? 1,
+      status: row.status || '',
       onShelf: !row.deleted,
       _wasDeleted: !!row.deleted,
       coverUrl: row.coverUrl || '',
@@ -531,6 +536,7 @@ function openEdit(row) {
       isbn: '',
       categoryId: categories.value[0]?.id || null,
       stock: 1,
+      status: '',
       onShelf: true,
       _wasDeleted: false,
       coverUrl: '',
@@ -571,7 +577,7 @@ async function save() {
     const created = await http.post('/api/archive', payload)
     id = created?.id ?? created?.data?.id ?? null
   }
-  if (softDelete.value && id) {
+  if (softDelete.value && id && !isPendingReview(form)) {
     const wantOn = !!form.onShelf
     const wasOff = !!form._wasDeleted
     if (wantOn && wasOff) await http.post(`/api/archive/${id}/restore`)
@@ -832,6 +838,7 @@ onMounted(async () => {
 .stock-warn { color: #b91c1c; font-weight: 700; margin-right: 4px; }
 .warn-tag { margin-left: 2px; }
 .muted { margin-left: 8px; color: var(--portal-muted, #909399); font-size: 12px; }
+.form-hint { margin: 6px 0 0; color: var(--portal-muted, #909399); font-size: 12px; line-height: 1.4; }
 .cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cover-preview {
   width: 96px; height: 96px; object-fit: cover;

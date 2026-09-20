@@ -23,9 +23,7 @@ public class BlindBoxController {
     @GetMapping("/boxes")
     public R<?> boxes(HttpSession session) {
         require();
-        AdminAuth.requireLogin(session);
-        Object user = session.getAttribute("username");
-        String username = user == null ? "" : String.valueOf(user);
+        String username = AdminAuth.requireLogin(session);
         try {
             return R.ok(BlindBoxStore.boxes(username));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -47,9 +45,7 @@ public class BlindBoxController {
     @GetMapping("/progress")
     public R<?> progress(@RequestParam(defaultValue = "0") long itemId, HttpSession session) {
         require();
-        AdminAuth.requireLogin(session);
-        Object user = session.getAttribute("username");
-        String username = user == null ? "" : String.valueOf(user);
+        String username = AdminAuth.requireLogin(session);
         try {
             return R.ok(BlindBoxStore.progress(username, itemId));
         } catch (IllegalArgumentException | IllegalStateException e) {

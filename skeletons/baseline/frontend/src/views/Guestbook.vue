@@ -18,7 +18,7 @@
         <el-button type="primary" :loading="posting" @click="submit">发表留言</el-button>
       </div>
     </section>
-    <GuestLoginHint v-else />
+    <GuestLoginHint v-else :label="guestCta" />
 
     <div class="list">
       <article v-for="n in list" :key="n.id" class="card item">
@@ -77,6 +77,10 @@ const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const pageTitle = computed(() => labels.value.guestbookPageTitle || '留言板')
 const pageLead = computed(
   () => labels.value.guestbookPageLead || '欢迎留下建议或咨询；管理员可简短回复。',
+)
+/** 勿复用「解锁商品目录」类总 CTA：本页动作是留言 */
+const guestCta = computed(
+  () => labels.value.guestbookGuestCta || '登录后发表留言',
 )
 const replyTag = computed(() => (marketplace.value ? '平台回复' : '管理员回复'))
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())

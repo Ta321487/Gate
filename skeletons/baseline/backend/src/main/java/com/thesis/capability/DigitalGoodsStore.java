@@ -195,6 +195,6 @@ public final class DigitalGoodsStore {
     }
 
     private static JdbcTemplate db() {
-        return JdbcSupport.getJdbcTemplate();
+        return JdbcSupport.jdbc();
     }
 }

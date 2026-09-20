@@ -21,9 +21,7 @@ public class WeighSaleController {
     }
 
     private static String username(HttpSession session) {
-        AdminAuth.requireLogin(session);
-        Object user = session.getAttribute("username");
-        return user == null ? "" : String.valueOf(user);
+        return AdminAuth.requireLogin(session);
     }
 
     private static long idOf(Map<String, Object> body) {

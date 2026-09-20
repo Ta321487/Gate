@@ -1,7 +1,7 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.MybatisSupport;
+import com.thesis.config.MbSql;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -210,7 +210,7 @@ public final class RentalBondStore {
         }
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.getJdbcTemplate();
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 }

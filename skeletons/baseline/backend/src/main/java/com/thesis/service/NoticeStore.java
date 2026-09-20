@@ -198,6 +198,9 @@ public class NoticeStore {
         if (pinned != null && !hasPinned()) {
             throw new IllegalStateException("当前公告不支持置顶");
         }
+        if (Boolean.TRUE.equals(pinned)) {
+            assertCanPinForDisplay(m);
+        }
         if (pinned != null) {
             db().update(
                     "UPDATE sys_notice SET title=?, content=?, pinned=?, updated_at=NOW() WHERE id=?",
@@ -214,8 +217,20 @@ public class NoticeStore {
         if (!hasPinned()) throw new IllegalStateException("当前公告不支持置顶");
         Map<String, Object> m = get(id);
         if (m == null) return null;
+        // 置顶是公开展示强化：待审/驳回不得置顶（取消置顶仍允许）
+        if (pinned) {
+            assertCanPinForDisplay(m);
+        }
         db().update("UPDATE sys_notice SET pinned=?, updated_at=NOW() WHERE id=?", pinned ? 1 : 0, id);
         return get(id);
+    }
+
+    /** 有审核列时，仅已通过（或历史空状态）可置顶。 */
+    private static void assertCanPinForDisplay(Map<String, Object> m) {
+        if (!hasAuditStatus()) return;
+        String as = String.valueOf(m.getOrDefault("auditStatus", "")).trim();
+        if (as.isEmpty() || "approved".equals(as)) return;
+        throw new IllegalStateException("待审核通过后才能置顶");
     }
 
     public static Map<String, Object> approve(long id) {
