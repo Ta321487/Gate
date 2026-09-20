@@ -207,6 +207,26 @@ class UsecaseContractTests(unittest.TestCase):
             for kid in uc["includes"]:
                 self.assertNotEqual(kid.get("label"), "进行支付")
 
+    def test_l2_drops_proposal_etc(self) -> None:
+        """开题「节日优惠等公告信息」不得原样进二级，否则质检当开题语气词并挡住下载。"""
+        from app.bake.schema.usecases import _label_from_material_seed
+
+        lab = _label_from_material_seed("节日优惠等公告信息", side="user", parent="活动模块")
+        self.assertNotIn("等", lab)
+        self.assertTrue(lab.startswith("查看"))
+        self.assertIn("公告", lab)
+        opening = (
+            "用户功能模块划分为：登录注册模块、个人中心模块【个人信息、收藏、收货地址】、"
+            "商品模块【浏览搜索农产品、加入购物车】、活动模块【查看促销信息、节日优惠等公告信息】、"
+            "留言反馈模块、客服模块、评价模块、购物车【在线支付】、支付模块、订单模块、申请售后。"
+        )
+        schema = build_domain_schema("农产品电商系统", "DOM-SHOP", proposal_text=opening)
+        model = usecase_model(schema, actor="user", proposal_text=opening, title_fallback="电商")
+        for uc in model["level1"]:
+            for kid in uc.get("includes") or []:
+                self.assertNotIn("等", str(kid.get("label") or ""), kid)
+        assert_usecase_invariants(model, schema=schema, actor="user")
+
     def test_customer_hard_constraints(self) -> None:
         """客户硬约束：同尺寸竖线、include、图文序号一一对应、段落、二级动词。"""
         style = resolve_usecase_style()

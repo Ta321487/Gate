@@ -633,6 +633,21 @@ def _noun_stem(lab: str) -> str:
     return stem
 
 
+def _drop_proposal_etc(s: str) -> str:
+    """开题「举例等类别」去掉语气词「等」。不碰等待/等级/等于。"""
+    s = re.sub(r"等$", "", s)
+    m = re.search(r"等(?![待级于额同价])", s)
+    if not m:
+        return s
+    head, tail = s[: m.start()], s[m.end() :]
+    if not tail:
+        return head
+    verb_m = _VERB_PREFIX_RE.match(head)
+    if verb_m and not _VERB_PREFIX_RE.match(tail):
+        return verb_m.group(0) + tail
+    return tail
+
+
 def _scrub_material_seed(seed: str) -> str:
     """开题括号细节清洗：去权限腔/CRUD/等，收束以及/或。"""
     s = re.sub(r"\s+", "", str(seed or "").strip())
@@ -664,6 +679,7 @@ def _scrub_material_seed(seed: str) -> str:
                 scored.append((rank, -len(p), p))
             scored.sort()
             s = scored[0][2]
+    s = _drop_proposal_etc(s)
     return s.strip("的之与和，,") or ""
 
 
@@ -675,6 +691,7 @@ def _polish_usecase_label(lab: str) -> str:
     s = re.sub(r"拥有最高权限|最高权限|全局", "", s)
     s = re.sub(r"增删改查|增删改|CRUD", "", s)
     s = s.replace("分别", "")
+    s = _drop_proposal_etc(s)
     s = _dedupe_verb_noun_tail(s)
     if not s or s in ("管理", "查看", "进行"):
         return "管理业务"

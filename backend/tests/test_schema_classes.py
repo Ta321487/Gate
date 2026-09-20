@@ -882,6 +882,67 @@ class ClassDiagramTests(unittest.TestCase):
                 f"path cuts endpoint box: {frm}->{to} {pts}",
             )
 
+    def test_attach_layout_dense_graph_finishes_under_budget(self) -> None:
+        """稠密关系不得拖死打开接口（axios 默认 60s；预算约 12s）。"""
+        import time
+
+        from app.bake.schema.classes import _paths_conflict, attach_layout
+
+        n = 12
+        classes = [
+            {
+                "id": f"c{i}",
+                "name": f"C{i}",
+                "attributes": [{"display": f"+ f{j}: String"} for j in range(3)],
+                "methods": [{"display": "+ page() : Map"}],
+            }
+            for i in range(n)
+        ]
+        assocs = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                if ((i * 31 + j * 17) % 100) < 45:
+                    assocs.append(
+                        {
+                            "from": f"c{i}",
+                            "to": f"c{j}",
+                            "kind": "association",
+                        }
+                    )
+        self.assertGreaterEqual(len(assocs), 20)
+        model = {
+            "title": "perf",
+            "classes": classes,
+            "associations": list(assocs),
+            "evidence": {},
+        }
+        t0 = time.perf_counter()
+        attach_layout(model)
+        dt = time.perf_counter() - t0
+        self.assertLess(dt, 20.0, f"attach_layout too slow: {dt:.2f}s edges={len(assocs)}")
+        paths = model.get("_assoc_paths") or []
+        for i in range(len(paths)):
+            for j in range(i + 1, len(paths)):
+                self.assertFalse(_paths_conflict(paths[i], paths[j]))
+        self.assertGreaterEqual(len(model.get("associations") or []), n - 1)
+
+    def test_auto_layout_persisted_for_fast_reopen(self) -> None:
+        """首次自动排版写 islands/class_layout.json，二次打开跳过竞赛。"""
+        from app.bake.schema.classes import load_class_layout_patch, load_class_model
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sql").mkdir()
+            (root / "sql" / "schema.sql").write_text(_MINI_SQL, encoding="utf-8")
+            m1 = load_class_model(root, display_mode="sample")
+            assert m1 is not None
+            patch = load_class_layout_patch(root)
+            self.assertTrue(patch, "auto layout should persist")
+            self.assertTrue(m1.get("layout_auto_persisted") or patch)
+            m2 = load_class_model(root, display_mode="sample")
+            assert m2 is not None
+            self.assertTrue(m2.get("layout_manual") or m2.get("layout"))
+
 
 if __name__ == "__main__":
     unittest.main()

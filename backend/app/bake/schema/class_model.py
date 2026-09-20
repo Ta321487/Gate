@@ -880,23 +880,39 @@ def build_class_model(
     patch, saved_mode = load_class_layout_bundle(workspace)
     # 仅当落盘显示规则与当前不同时收紧间距（切 sample/full）；同规则保持拖拽坐标
     compact = bool(saved_mode) and saved_mode != normalize_class_display_mode(display_mode)
+    auto_layout_fresh = False
     if patch and not compact:
-        # 快路径：已有人工坐标时跳过 hub/tree 竞赛，只算框高 + 零交叉选边/挪框
+        # 快路径：已有落盘坐标时跳过 hub/tree 竞赛，只算框高 + 零交叉选边
         _sized_layout_stub(model)
         if apply_class_layout_patch(model, patch, compact=False):
             _apply_manual_zero_cross(model, max_rounds=8)
         else:
             attach_layout(model)
+            auto_layout_fresh = True
     else:
         attach_layout(model)
         if apply_class_layout_patch(model, patch, compact=compact):
             _apply_manual_zero_cross(model, max_rounds=8)
+        else:
+            auto_layout_fresh = True
+
+    # 首次自动排版落盘：下次打开走快路径，避免重复竞赛拖死接口
+    if auto_layout_fresh and isinstance(model.get("layout"), dict) and model["layout"]:
+        try:
+            save_class_layout_patch(
+                workspace,
+                model["layout"],
+                display_mode=normalize_class_display_mode(display_mode),
+            )
+            model["layout_auto_persisted"] = True
+        except OSError:
+            pass
     return model
 
 
 _CLASS_MODEL_CACHE: dict[str, tuple[tuple[Any, ...], dict[str, Any]]] = {}
 # 改选边/路由算法时递增，避免短缓存继续吐旧 omitted
-_CLASS_ROUTE_VER = 3
+_CLASS_ROUTE_VER = 4
 
 
 def _class_model_fingerprint(

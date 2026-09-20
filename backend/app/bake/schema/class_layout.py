@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from typing import Any
 
 from app.bake.schema.class_model import (
@@ -13,6 +14,14 @@ from app.bake.schema.class_model import (
     _f,
     _normalize_rel_kind,
 )
+
+# 打开类图接口有 axios 60s 上限；稠密依赖边时旧选边/挪框会拖死。
+# 预算内尽量画满，超时则少画进 omitted（仍保证已画边零交叉）。
+_ATTACH_BUDGET_SEC = 12.0
+_SELECT_BUDGET_SEC = 3.5
+_NUDGE_BUDGET_SEC = 5.0
+_RECOVER_LANE_SOFT = 10
+_RECOVER_LANE_HARD = 16
 
 def _pad_positions(
     pos: dict[str, tuple[float, float, float, float]],
@@ -34,6 +43,8 @@ def _trial_zero_crossing(
     all_a: list[dict[str, Any]],
     pos: dict[str, tuple[float, float, float, float]],
     parents: dict[str, str],
+    *,
+    deadline: float | None = None,
 ) -> tuple[int, float, dict[str, Any]]:
     """在给定摆框下跑零交叉选边，返回 (已画条数, 总路径长, 局部 model 字段)。"""
     trial: dict[str, Any] = {
@@ -46,7 +57,7 @@ def _trial_zero_crossing(
     }
     pos_p = _pad_positions(pos)
     if pos_p:
-        _select_crossing_free_assocs(trial, pos_p)
+        _select_crossing_free_assocs(trial, pos_p, deadline=deadline)
     drawn = trial.get("associations") or []
     paths = trial.get("_assoc_paths") or []
     n = len(drawn)
@@ -61,23 +72,31 @@ def _nudge_layout_for_zero_cross(
     parents: dict[str, str] | None = None,
     *,
     pinned: set[str] | None = None,
-    max_rounds: int = 24,
+    max_rounds: int = 8,
+    deadline: float | None = None,
 ) -> tuple[dict[str, tuple[float, float, float, float]], dict[str, Any]]:
     """为零交叉主动挪框：在固定拓扑下微调/拉开类框，尽量画满全部关联。
 
     人类零交叉靠的是挪框开槽，不是硬画交叉线。此处对「当前画不上的边」做
     端点推开、垂直让槽、整体膨胀；每步后 _separate_boxes 防叠。
-    候选故意收紧：每轮全量试路径很贵，优先短位移 + 早停。
+    候选故意收紧：每轮全量试路径很贵，优先短位移 + 早停 + 墙钟预算。
     """
     parents = {str(k): str(v) for k, v in (parents or {}).items()}
     pinned = {str(x) for x in (pinned or set())}
     n_total = len(all_a)
+    nudge_deadline = deadline
+    if nudge_deadline is None:
+        nudge_deadline = time.monotonic() + _NUDGE_BUDGET_SEC
     if not pos or n_total == 0:
-        n, plen, trial = _trial_zero_crossing(all_a, pos, parents)
+        n, plen, trial = _trial_zero_crossing(
+            all_a, pos, parents, deadline=nudge_deadline
+        )
         return trial.get("_pos") or pos, trial
 
     cur = dict(pos)
-    best_n, best_plen, best_trial = _trial_zero_crossing(all_a, cur, parents)
+    best_n, best_plen, best_trial = _trial_zero_crossing(
+        all_a, cur, parents, deadline=nudge_deadline
+    )
     best_pos = best_trial.get("_pos") or _pad_positions(cur)
     if best_n >= n_total:
         return best_pos, best_trial
@@ -116,10 +135,12 @@ def _nudge_layout_for_zero_cross(
     def _score(
         trial_pos: dict[str, tuple[float, float, float, float]],
     ) -> tuple[int, float, dict[str, Any]]:
-        return _trial_zero_crossing(all_a, trial_pos, parents)
+        return _trial_zero_crossing(
+            all_a, trial_pos, parents, deadline=nudge_deadline
+        )
 
     for _round in range(max_rounds):
-        if best_n >= n_total:
+        if best_n >= n_total or time.monotonic() >= nudge_deadline:
             break
         omitted = [
             a
@@ -145,8 +166,8 @@ def _nudge_layout_for_zero_cross(
                 if deltas:
                     candidates.append(deltas)
 
-        # 2) 针对漏边：端点互推 / 定向挪 / 垂直让槽
-        for a in omitted[:4]:
+        # 2) 针对漏边：端点互推 / 定向挪 / 垂直让槽（漏边与位移候选都收紧）
+        for a in omitted[:2]:
             u, v = str(a.get("from")), str(a.get("to"))
             if u not in best_pos or v not in best_pos:
                 continue
@@ -175,7 +196,7 @@ def _nudge_layout_for_zero_cross(
                 for tid in (u, v):
                     if not _movable(tid):
                         continue
-                    for ddx, ddy in dirs:
+                    for ddx, ddy in dirs[:4]:
                         candidates.append({tid: (ddx * step, ddy * step)})
 
             lo_x, hi_x = sorted((ucx, vcx))
@@ -193,7 +214,9 @@ def _nudge_layout_for_zero_cross(
 
         improved = False
         # 每候选都要跑一遍选边，上限压紧以免拖死接口
-        for deltas in candidates[:32]:
+        for deltas in candidates[:16]:
+            if time.monotonic() >= nudge_deadline:
+                break
             trial_pos = _apply_delta(best_pos, deltas)
             n, plen, trial = _score(trial_pos)
             key = (n, -plen)
@@ -242,6 +265,7 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
     assoc_mode 参数保留兼容，一律按零交叉处理（全关联凑线已取消）。
     """
     del assoc_mode  # 兼容旧调用；产品口径只有零交叉
+    deadline = time.monotonic() + _ATTACH_BUDGET_SEC
     all_a = [a for a in (model.get("associations") or []) if isinstance(a, dict)]
     model["associations_all"] = all_a
     model["associations"] = list(all_a)
@@ -289,7 +313,12 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
     for name, pos, parents in layout_cands:
         if not pos:
             continue
-        n_draw, plen, trial = _trial_zero_crossing(all_a, pos, parents)
+        if time.monotonic() >= deadline:
+            break
+        trial_deadline = min(deadline, time.monotonic() + _SELECT_BUDGET_SEC)
+        n_draw, plen, trial = _trial_zero_crossing(
+            all_a, pos, parents, deadline=trial_deadline
+        )
         key = (n_draw, -plen)
         if best_key is None or key > best_key:
             best_key = key
@@ -309,9 +338,18 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
         return model
 
     # 竞赛后再挪框开槽，尽量把漏边补回来（仍保证零交叉）
-    if n_total and len(best_trial.get("associations") or []) < n_total:
+    # 缺边很少或已画大半时挪框性价比低；挪框再单独给短预算，避免顶满 12s
+    remain = deadline - time.monotonic()
+    drawn_n = len(best_trial.get("associations") or [])
+    missing = n_total - drawn_n
+    if n_total and missing >= 3 and remain > 1.0:
+        nudge_deadline = min(deadline, time.monotonic() + min(2.5, remain))
         nudged_pos, nudged_trial = _nudge_layout_for_zero_cross(
-            best_pos, all_a, best_parents
+            best_pos,
+            all_a,
+            best_parents,
+            deadline=nudge_deadline,
+            max_rounds=4,
         )
         n2 = len(nudged_trial.get("associations") or [])
         plen2 = sum(
@@ -338,6 +376,8 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
     )
     if "+nudge" in best_name and isinstance(ev, dict):
         ev["layout_nudged"] = True
+    if isinstance(ev, dict) and time.monotonic() >= deadline - 0.05:
+        ev["layout_budget_hit"] = True
     _refresh_assoc_note(model)
     return model
 
@@ -378,7 +418,11 @@ def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> N
     model["tree_parents"] = {
         str(k): str(v) for k, v in (model.get("tree_parents") or {}).items()
     }
-    _select_crossing_free_assocs(model, _pad_positions(pos))
+    _select_crossing_free_assocs(
+        model,
+        _pad_positions(pos),
+        deadline=time.monotonic() + _SELECT_BUDGET_SEC,
+    )
     # 选边可能 pad 平移了障碍坐标；把 layout 与路径对齐
     # _select 不改 pos；pad 仅在 trial 内。这里用原 pos 写回。
     use_pos = _pad_positions(pos)
@@ -1275,8 +1319,12 @@ def _route_nocross_candidate(
     lane: int,
     n_lanes: int,
     parents: dict[str, str] | None = None,
+    strict_lane: bool = False,
 ) -> list[tuple[float, float]] | None:
-    """树边 / 外绕 / 独占外框；找到第一条合法路径即返回（避免海量候选扫描）。"""
+    """树边 / 外绕 / 独占外框；找到第一条合法路径即返回（避免海量候选扫描）。
+
+    strict_lane=True：调用方已在扫车道时只试本车道（±0），避免 recover 二次笛卡尔积。
+    """
     parents = parents or {}
     ignore = {frm, to}
     box_from = pos.get(frm)
@@ -1297,11 +1345,20 @@ def _route_nocross_candidate(
         if ok(pts):
             return _dedupe_path_pts(pts)
 
-    # 先普通外绕（便宜）：本车道及邻近；再兜底扫低车道（避免调用方只传高 lane 漏掉可用槽）
-    lane_try = list(range(lane, lane + min(6, max(3, n_lanes))))
-    for low in range(0, min(8, max(lane, 1))):
-        if low not in lane_try:
-            lane_try.append(low)
+    if strict_lane:
+        lane_try = [lane]
+        outer_lanes = [lane]
+    else:
+        # 首轮选边：本车道及邻近 + 少量低车道兜底（不再扫到 n_lanes 全宽）
+        lane_try = list(range(lane, lane + min(3, max(2, n_lanes))))
+        for low in range(0, min(4, max(lane, 1))):
+            if low not in lane_try:
+                lane_try.append(low)
+        outer_lanes = list(range(lane, lane + min(4, max(3, n_lanes))))
+        for low in range(0, min(3, max(lane, 1))):
+            if low not in outer_lanes:
+                outer_lanes.append(low)
+
     for use_lane in lane_try:
         pts = ortho_path(
             *pos[frm],
@@ -1317,13 +1374,9 @@ def _route_nocross_candidate(
         if ok(pts):
             return _dedupe_path_pts(pts)
 
-    # 再独占外框（较贵）：本层 + 低层兜底；候选已按长度排序
-    outer_lanes = list(range(lane, lane + min(14, max(6, n_lanes + 4))))
-    for low in range(0, min(10, max(lane, 1))):
-        if low not in outer_lanes:
-            outer_lanes.append(low)
+    # 独占外框（较贵）：每车道只试最短若干条
     for use_lane in outer_lanes:
-        for pts in _exclusive_outer_paths(frm, to, pos, obstacles, use_lane):
+        for pts in _exclusive_outer_paths(frm, to, pos, obstacles, use_lane)[:8]:
             if ok(pts):
                 return _dedupe_path_pts(pts)
     return None
@@ -1385,6 +1438,8 @@ def _purge_crossing_paths(
 def _select_crossing_free_assocs(
     model: dict[str, Any],
     pos: dict[str, tuple[float, float, float, float]],
+    *,
+    deadline: float | None = None,
 ) -> None:
     """摆好框后：先连通生成树，再尽量外绕补边；画不上的进 omitted。"""
     all_a = [a for a in (model.get("associations_all") or []) if isinstance(a, dict)]
@@ -1393,6 +1448,9 @@ def _select_crossing_free_assocs(
         model["associations_omitted"] = []
         model["_assoc_paths"] = []
         return
+    select_deadline = deadline
+    if select_deadline is None:
+        select_deadline = time.monotonic() + _SELECT_BUDGET_SEC
     nodes = list(pos.keys())
     deg, _ = _graph_deg_nbrs(
         nodes,
@@ -1414,13 +1472,15 @@ def _select_crossing_free_assocs(
     forest_set = {(a, b) if a < b else (b, a) for a, b in forest}
 
     obstacles = [(tid, x, y, w, h) for tid, (x, y, w, h) in pos.items()]
-    n_lanes = max(1, len(ranked))
+    n_lanes = max(1, min(len(ranked), _RECOVER_LANE_HARD))
     drawn: list[dict[str, Any]] = []
     paths: list[list[tuple[float, float]]] = []
     drawn_undir: set[tuple[str, str]] = set()
     parents = {str(k): str(v) for k, v in (model.get("tree_parents") or {}).items()}
 
-    def try_add(a: dict[str, Any], force_lane: int) -> bool:
+    def try_add(
+        a: dict[str, Any], force_lane: int, *, strict_lane: bool = False
+    ) -> bool:
         frm, to = str(a.get("from")), str(a.get("to"))
         if frm not in pos or to not in pos or frm == to:
             return False
@@ -1436,6 +1496,7 @@ def _select_crossing_free_assocs(
             lane=force_lane,
             n_lanes=max(n_lanes, force_lane + 1),
             parents=parents,
+            strict_lane=strict_lane,
         )
         if pts is None:
             return False
@@ -1449,45 +1510,54 @@ def _select_crossing_free_assocs(
         return (u, v) if u < v else (v, u)
 
     def _recover_pending(start_lanes: list[int]) -> None:
-        """漏边补画：必须从低车道起试。只抬高车道会跳过仍可用的外框槽。"""
+        """漏边补画：按车道扫；strict_lane 避免与路由内部再笛卡尔积。"""
         pending = [a for a in ranked if _undir_key(a) not in drawn_undir]
         for lane0 in start_lanes:
-            if not pending:
+            if not pending or time.monotonic() >= select_deadline:
                 break
             still: list[dict[str, Any]] = []
-            for a in pending:
-                if try_add(a, lane0):
+            for idx, a in enumerate(pending):
+                if time.monotonic() >= select_deadline:
+                    still.extend(pending[idx:])
+                    break
+                if try_add(a, lane0, strict_lane=True):
                     continue
                 still.append(a)
-            pending = still
+            pending = [x for x in still if _undir_key(x) not in drawn_undir]
 
     lane_i = 0
     for a in ranked:
+        if time.monotonic() >= select_deadline:
+            break
         key = _undir_key(a)
         if key not in forest_set:
             continue
-        if try_add(a, lane_i):
+        if try_add(a, lane_i, strict_lane=False):
             lane_i += 1
 
     for a in ranked:
+        if time.monotonic() >= select_deadline:
+            break
         if _undir_key(a) in drawn_undir:
             continue
-        if try_add(a, lane_i):
+        if try_add(a, lane_i, strict_lane=False):
             lane_i += 1
 
-    # 先扫 0..N 低车道，再扫更高外框层（人工挤局时高车道常全灭、低车道仍通）
-    _recover_pending(list(range(0, max(16, n_lanes + 4))))
-    _recover_pending(list(range(16, 36)))
+    soft = min(_RECOVER_LANE_SOFT, max(6, n_lanes))
+    hard = min(_RECOVER_LANE_HARD, max(soft + 4, n_lanes))
+    _recover_pending(list(range(0, soft)))
+    if time.monotonic() < select_deadline:
+        _recover_pending(list(range(soft, hard)))
 
     drawn, paths = _purge_crossing_paths(drawn, paths)
-    # 保险丝丢掉冲突边后腾出槽，再补一轮
     drawn_undir = {
         (str(a.get("from")), str(a.get("to")))
         if str(a.get("from")) < str(a.get("to"))
         else (str(a.get("to")), str(a.get("from")))
         for a in drawn
     }
-    _recover_pending(list(range(0, max(20, n_lanes + 6))))
+    if time.monotonic() < select_deadline:
+        _recover_pending(list(range(0, soft)))
     drawn, paths = _purge_crossing_paths(drawn, paths)
 
     drawn_ids = {id(a) for a in drawn}
@@ -1500,6 +1570,8 @@ def _select_crossing_free_assocs(
         ev["assoc_drawn"] = len(drawn)
         ev["assoc_omitted"] = len(omitted)
         ev["zero_crossing"] = True
+        if time.monotonic() >= select_deadline - 0.05:
+            ev["select_budget_hit"] = True
 
 
 def _layout_classes(model: dict[str, Any]) -> dict[str, tuple[float, float, float, float]]:
