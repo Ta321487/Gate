@@ -155,11 +155,14 @@
                         <span class="zh-edit-wrap">
                           <input
                             class="zh-edit col-zh"
-                            :class="{ 'zh-gap': labelLooksLatin(c.label || c.name) }"
+                            :class="{
+                              'zh-gap': !c.page_missing && labelLooksLatin(c.label || c.name),
+                              'zh-unbound': c.page_missing,
+                            }"
                             :value="c.label || ''"
-                            :placeholder="c.name"
+                            :placeholder="c.page_missing ? '页面上没有这一列' : c.name"
                             :disabled="artifactsFrozen || erLabelSaving"
-                            :title="artifactsFrozen ? artifactsFrozenReason : '改中文属性名'"
+                            :title="c.page_missing ? '页面上没有这一列' : (artifactsFrozen ? artifactsFrozenReason : '改中文属性名')"
                             @keydown.enter.prevent="($event) => commitColZh(t, c, $event.target)"
                           />
                           <button
@@ -175,6 +178,7 @@
                               <path fill="currentColor" d="M9.55 17.6 4.9 12.95l1.4-1.4 3.25 3.25 7.15-7.15 1.4 1.4z" />
                             </svg>
                           </button>
+                          <span v-if="c.page_missing" class="zh-unbound-note">页面上没有这一列</span>
                         </span>
                         <template v-if="typeParenMode">
                           <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>

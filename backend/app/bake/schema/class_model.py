@@ -846,6 +846,11 @@ def build_class_model(
     ]
 
     er_like = {"tables": tables, "relations": rels}
+    from app.bake.schema.page_columns import apply_page_column_labels, page_column_index
+
+    er_like = apply_page_column_labels(
+        er_like, page_column_index(workspace, model=er_like), czh=czh
+    )
     patch = load_er_label_patch(workspace)
     er_like = apply_er_label_patch(er_like, patch)
 

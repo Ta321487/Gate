@@ -512,9 +512,14 @@ def _rel_zh_from_via(via: str, right: str = "", left: str = "") -> str:
         return "涉及"
     if right.endswith("_log") or via.endswith("_log"):
         return "记录"
-    if right.endswith("_favorite"):
-        # 用户侧收藏；档案侧是被收录
-        return "收藏" if via == "username" else "收录"
+    if via.endswith("_favorite") or right.endswith("_favorite"):
+        return "收藏"
+    if via in ("cart_line",) or (via.endswith("_line") and "cart" in via):
+        return "关联"
+    if via in ("order_line",) or (via.endswith("_line") and "order" in via):
+        return "包含"
+    if via.endswith("_member"):
+        return "参加"
     # 仅账户主体 username：按子表语义；operator 等不要走进这里
     if via == "username":
         by_child = {
@@ -695,6 +700,9 @@ def collect_english_gaps(model: dict) -> dict[str, list[dict[str, str]]]:
                 continue
             cname = str(c.get("name") or "")
             clab = str(c.get("label") or cname)
+            # 页面上没有这一列：留着英文，不送给补全去猜
+            if c.get("page_missing"):
+                continue
             if looks_latin(clab):
                 columns.append({"table": tname, "name": cname, "label": clab})
     for r in model.get("relations") or []:
