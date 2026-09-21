@@ -72,7 +72,13 @@ export const api = {
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
+  getEr: (id, { mode = 'total', entity } = {}) =>
+    http.get(`/projects/${id}/schema/er`, {
+      params: { mode, ...(entity ? { entity } : {}) },
+      timeout: 120000,
+    }),
   putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
+  putErView: (id, body) => http.put(`/projects/${id}/schema/er-view`, body),
   getModules: (id, { layout = 'identity', expandDetails = false } = {}) =>
     http.get(`/projects/${id}/schema/modules`, {
       params: { layout, expand_details: expandDetails },

@@ -4,7 +4,7 @@
       <div class="er-zoom-btns row">
         <n-radio-group v-model:value="modeLocal" size="small" :disabled="loading" @update:value="onModeChange">
           <n-radio-button value="total">总图</n-radio-button>
-          <n-radio-button value="part">分图</n-radio-button>
+          <n-radio-button value="part">实体属性图</n-radio-button>
         </n-radio-group>
         <n-select
           v-if="modeLocal === 'part'"
@@ -14,14 +14,22 @@
           :loading="loading"
           :disabled="loading"
           placeholder="选择实体"
-          style="width:140px"
+          style="width:160px"
           @update:value="onEntityChange"
         />
+        <n-button
+          v-if="modeLocal === 'part'"
+          size="small"
+          secondary
+          :loading="loading"
+          @click="$emit('export-all-parts')"
+        >导出全部属性图</n-button>
         <n-button size="small" @click="zoomOut">缩小</n-button>
         <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" :loading="loading" @click="$emit('reload')">重置布局</n-button>
+        <n-button size="small" :loading="loading" @click="onResetLayout">重置布局</n-button>
+        <n-button size="small" :type="showGrid ? 'primary' : 'default'" secondary @click="showGrid = !showGrid">网格</n-button>
         <n-select
           v-model:value="strokePreset"
           size="small"
@@ -38,8 +46,8 @@
     <p class="small muted er-hint mb-8">
       {{
         modeLocal === 'total'
-          ? '总图：实体 + 联系 + 基数（不含属性）'
-          : '分图：单个实体 + 全部属性（按实体各导出一张）'
+          ? '概念 E-R：实体 + 动词联系 + 基数（不含属性；中间表已画成 N:M）'
+          : '实体属性图：仅自身属性（不含外键）；按概念实体各导出一张'
       }}
     </p>
     <div
@@ -54,13 +62,28 @@
       @pointerleave="onPointerUp"
     >
       <ContentLoading v-if="loading && !svgSource" :rows="1" block compact />
-      <div v-else class="er-canvas" :style="canvasStyle" v-html="svgHtml" />
+      <div v-else class="er-canvas" :style="canvasStyle">
+        <svg
+          v-if="showGrid"
+          class="er-grid"
+          :style="{ width: paperW + 'px', height: paperH + 'px' }"
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern id="er-grid-pat" width="10" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#c5c5c5" stroke-width="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#er-grid-pat)" />
+        </svg>
+        <div class="er-svg-host" v-html="svgHtml" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
@@ -80,7 +103,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['reload', 'update:mode', 'update:entity'])
+const emit = defineEmits(['reload', 'update:mode', 'update:entity', 'export-all-parts', 'save-view', 'reset-layout'])
 
 const PNG_SCALE = 2.5
 
@@ -99,12 +122,17 @@ const panY = ref(0)
 const panning = ref(false)
 const dragNode = ref(null)
 const strokePreset = ref('normal')
+const showGrid = ref(true)
+const paperW = ref(800)
+const paperH = ref(600)
+const GRID = 10
 const busy = ref(false)
 const modeLocal = ref(props.mode === 'part' ? 'part' : 'total')
 const entityLocal = ref(props.entity || '')
 
 /** nodeId -> { dx, dy } 相对初始坐标的位移 */
 const offsets = new Map()
+const relGrab = new Map()
 
 let panLastX = 0
 let panLastY = 0
@@ -112,6 +140,21 @@ let dragLastX = 0
 let dragLastY = 0
 /** 拖实体时跟随的 attr 节点 */
 let dragFollowers = []
+let dragPins = []
+let dragCards = []
+let dragNodeEls = new Map()
+let dragRelEls = []
+let dragFrame = 0
+let pendingDX = 0
+let pendingDY = 0
+let grabX = 0
+let grabY = 0
+let grabOrigin = null
+let dragMoved = false
+let viewDirty = false
+let lastPinRel = ''
+let loadedMode = props.mode === 'part' ? 'part' : 'total'
+let loadedEntity = props.entity || ''
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 4
@@ -139,6 +182,33 @@ watch(
   },
 )
 
+function onResetLayout() {
+  viewDirty = false
+  emit('reset-layout')
+}
+
+function seedOffsetsFromDom(svg) {
+  offsets.clear()
+  svg.querySelectorAll('.er-node').forEach((g) => {
+    const id = g.getAttribute('data-id')
+    const tr = g.getAttribute('transform') || ''
+    const m = /translate\(\s*([-\d.]+)(?:[,\s]+)([-\d.]+)\s*\)/.exec(tr)
+    if (id && m) offsets.set(id, { dx: Number(m[1]) || 0, dy: Number(m[2]) || 0 })
+  })
+}
+
+function syncPaperSize() {
+  const svg = getSvg()
+  if (!svg) return
+  const { w, h } = svgSize(svg)
+  paperW.value = w
+  paperH.value = h
+}
+
+function snapGrid(v) {
+  return Math.round(v / GRID) * GRID
+}
+
 function onModeChange(v) {
   emit('update:mode', v)
 }
@@ -151,7 +221,7 @@ function clampScale(s) {
 }
 
 function getSvg() {
-  return frameRef.value?.querySelector('svg') || null
+  return frameRef.value?.querySelector('svg:not(.er-grid)') || null
 }
 
 function parseSvg(raw) {
@@ -167,7 +237,6 @@ function applyOffsetsToDom() {
     if (o.dx || o.dy) g.setAttribute('transform', `translate(${o.dx},${o.dy})`)
     else g.removeAttribute('transform')
   })
-  refreshAllEdges(svg)
 }
 
 function snapshotBaseStrokes(svg) {
@@ -191,16 +260,33 @@ function applyStrokePreset() {
 }
 
 function loadSource(raw) {
+  loadedMode = props.mode === 'part' ? 'part' : 'total'
+  loadedEntity = props.entity || ''
   offsets.clear()
+  relGrab.clear()
   dragNode.value = null
   dragFollowers = []
   svgHtml.value = parseSvg(raw)
   nextTick(() => {
     const svg = getSvg()
     if (!svg) return
+    seedOffsetsFromDom(svg)
     svg.querySelectorAll('.er-node').forEach((g) => {
       g.style.cursor = 'move'
       g.style.pointerEvents = 'all'
+    })
+    svg.querySelectorAll('.er-node[data-kind="rel"]').forEach((g) => {
+      if (g.querySelector('.er-hit')) return
+      const hw = (Number(g.getAttribute('data-hw')) || 36) + 14
+      const hh = (Number(g.getAttribute('data-hh')) || 22) + 10
+      const cx = Number(g.getAttribute('data-cx')) || 0
+      const cy = Number(g.getAttribute('data-cy')) || 0
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
+      hit.setAttribute('class', 'er-hit')
+      hit.setAttribute('fill', 'transparent')
+      hit.setAttribute('stroke', 'none')
+      hit.setAttribute('points', `${cx},${cy - hh} ${cx + hw},${cy} ${cx},${cy + hh} ${cx - hw},${cy}`)
+      g.insertBefore(hit, g.firstChild)
     })
     // 连线不抢事件，便于点到节点
     svg.querySelectorAll('.er-edge, .er-card').forEach((el) => {
@@ -212,6 +298,8 @@ function loadSource(raw) {
       bg.style.pointerEvents = 'none'
     }
     applyStrokePreset()
+    rememberRelGrab(svg)
+    syncPaperSize()
     fitToFrame()
   })
 }
@@ -270,54 +358,161 @@ function shapeEdge(center, towardX, towardY) {
   return { x: cx + dx * t, y: cy + dy * t }
 }
 
-function cardPos(a, b, t = 0.35) {
-  const px = a.x * (1 - t) + b.x * t
-  const py = a.y * (1 - t) + b.y * t
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const L = Math.hypot(dx, dy) || 1
-  return { x: px - (dy / L) * 12, y: py + (dx / L) * 12 }
+function nodeById(svg, id) {
+  if (!svg || !id) return null
+  return svg.querySelector(`.er-node[data-id="${CSS.escape(id)}"]`)
 }
 
-function refreshEdge(line, byId) {
-  const fromId = line.getAttribute('data-from')
-  const toId = line.getAttribute('data-to')
-  const a = byId.get(fromId)
-  const b = byId.get(toId)
-  if (!a || !b) return null
-  const p0 = shapeEdge(a, b.x, b.y)
-  const p1 = shapeEdge(b, a.x, a.y)
-  line.setAttribute('x1', p0.x.toFixed(1))
-  line.setAttribute('y1', p0.y.toFixed(1))
-  line.setAttribute('x2', p1.x.toFixed(1))
-  line.setAttribute('y2', p1.y.toFixed(1))
-  return { p0, p1, fromId, toId }
-}
-
-function refreshAllEdges(svg) {
+function indexNodes(svg) {
   const byId = new Map()
   svg.querySelectorAll('.er-node').forEach((g) => {
     const c = nodeCenter(g)
     byId.set(c.id, c)
   })
-  const edgeEnds = new Map()
+  return byId
+}
+
+/** 端点是否贴在该节点边上（折线中间点不算）。 */
+function pinNode(x, y, fromId, toId, byId) {
+  let best = null
+  let bestD = 14
+  for (const id of [fromId, toId]) {
+    const n = byId.get(id)
+    if (!n) continue
+    const edge = shapeEdge(n, x, y)
+    const d = Math.hypot(edge.x - x, edge.y - y)
+    if (d < bestD) {
+      bestD = d
+      best = id
+    }
+  }
+  return best
+}
+
+/** 菱形相对两端实体中点的偏移，拖实体时保持这个错开。 */
+function rememberRelGrab(svg) {
+  relGrab.clear()
+  if (!svg) return
+  const byId = indexNodes(svg)
+  svg.querySelectorAll('.er-node[data-kind="rel"]').forEach((g) => {
+    const left = g.getAttribute('data-left')
+    const right = g.getAttribute('data-right')
+    const id = g.getAttribute('data-id')
+    const a = byId.get(left)
+    const b = byId.get(right)
+    const c = byId.get(id)
+    if (!a || !b || !c || !id) return
+    relGrab.set(id, {
+      dx: c.x - (a.x + b.x) / 2,
+      dy: c.y - (a.y + b.y) / 2,
+    })
+  })
+}
+
+function syncRelGrab(svg, relId) {
+  const g = nodeById(svg, relId)
+  if (!g) return
+  const left = g.getAttribute('data-left')
+  const right = g.getAttribute('data-right')
+  const a = nodeById(svg, left)
+  const b = nodeById(svg, right)
+  if (!a || !b) return
+  const ca = nodeCenter(a)
+  const cb = nodeCenter(b)
+  const c = nodeCenter(g)
+  relGrab.set(relId, {
+    dx: c.x - (ca.x + cb.x) / 2,
+    dy: c.y - (ca.y + cb.y) / 2,
+  })
+}
+
+/** 实体挪了之后，相连菱形落到新中点（加上按下时记下的错开）。 */
+function diamondDeltas(svg, oldBy, entityDelta, relNodes) {
+  const out = new Map()
+  const list = relNodes || svg.querySelectorAll('.er-node[data-kind="rel"]')
+  list.forEach((g) => {
+    const left = g.getAttribute('data-left')
+    const right = g.getAttribute('data-right')
+    const rid = g.getAttribute('data-id')
+    if (!left || !right || !rid) return
+    const dl = entityDelta.get(left) || { ddx: 0, ddy: 0 }
+    const dr = entityDelta.get(right) || { ddx: 0, ddy: 0 }
+    if (!dl.ddx && !dl.ddy && !dr.ddx && !dr.ddy) return
+    const a = oldBy.get(left)
+    const b = oldBy.get(right)
+    const rel = oldBy.get(rid)
+    if (!a || !b || !rel) return
+    const grab = relGrab.get(rid) || { dx: 0, dy: 0 }
+    const nx = (a.x + dl.ddx + b.x + dr.ddx) / 2 + grab.dx
+    const ny = (a.y + dl.ddy + b.y + dr.ddy) / 2 + grab.dy
+    out.set(rid, { ddx: nx - rel.x, ddy: ny - rel.y })
+  })
+  return out
+}
+
+/** 只移动贴在被挪节点上的端点，折线中间点保持原路径。 */
+function shiftEndpoints(svg, oldBy, delta) {
+  const movedPts = []
   svg.querySelectorAll('line.er-edge').forEach((line) => {
-    const ends = refreshEdge(line, byId)
-    if (!ends) return
-    const key = `${ends.fromId}|${ends.toId}`
-    const key2 = `${ends.toId}|${ends.fromId}`
-    edgeEnds.set(key, ends)
-    edgeEnds.set(key2, { p0: ends.p1, p1: ends.p0, fromId: ends.toId, toId: ends.fromId })
+    const fromId = line.getAttribute('data-from')
+    const toId = line.getAttribute('data-to')
+    for (const [attrX, attrY] of [['x1', 'y1'], ['x2', 'y2']]) {
+      const x = Number(line.getAttribute(attrX))
+      const y = Number(line.getAttribute(attrY))
+      const nid = pinNode(x, y, fromId, toId, oldBy)
+      if (!nid || !delta.has(nid)) continue
+      const d = delta.get(nid)
+      line.setAttribute(attrX, (x + d.ddx).toFixed(1))
+      line.setAttribute(attrY, (y + d.ddy).toFixed(1))
+      movedPts.push({ x, y, ddx: d.ddx, ddy: d.ddy })
+    }
   })
   svg.querySelectorAll('text.er-card').forEach((txt) => {
-    const fromId = txt.getAttribute('data-from')
-    const toId = txt.getAttribute('data-to')
-    const ends = edgeEnds.get(`${fromId}|${toId}`)
-    if (!ends) return
-    // 基数靠近实体侧：from 是实体，to 是 rel
-    const pos = cardPos(ends.p0, ends.p1, 0.35)
-    txt.setAttribute('x', pos.x.toFixed(1))
-    txt.setAttribute('y', pos.y.toFixed(1))
+    const x = Number(txt.getAttribute('x'))
+    const y = Number(txt.getAttribute('y'))
+    let best = null
+    let bestD = 40
+    for (const p of movedPts) {
+      const dist = Math.hypot(p.x - x, p.y - y)
+      if (dist < bestD) {
+        bestD = dist
+        best = p
+      }
+    }
+    if (!best) return
+    txt.setAttribute('x', (x + best.ddx).toFixed(1))
+    txt.setAttribute('y', (y + best.ddy).toFixed(1))
+  })
+}
+
+function applyDelta(svg, delta) {
+  if (!svg || !delta.size) return
+  const oldBy = indexNodes(svg)
+  shiftEndpoints(svg, oldBy, delta)
+  for (const [id, d] of delta) {
+    if (!d.ddx && !d.ddy) continue
+    bumpOffset(id, d.ddx, d.ddy)
+    const g = nodeById(svg, id)
+    if (g) setNodeTransform(g, id)
+  }
+}
+
+function translateFigure(svg, dx, dy) {
+  if (!svg || (!dx && !dy)) return
+  svg.querySelectorAll('.er-node').forEach((g) => {
+    const id = g.getAttribute('data-id')
+    bumpOffset(id, dx, dy)
+    setNodeTransform(g, id)
+  })
+  svg.querySelectorAll('line.er-edge').forEach((line) => {
+    for (const [attrX, attrY] of [['x1', 'y1'], ['x2', 'y2']]) {
+      line.setAttribute(attrX, (Number(line.getAttribute(attrX)) + dx).toFixed(1))
+      line.setAttribute(attrY, (Number(line.getAttribute(attrY)) + dy).toFixed(1))
+    }
+  })
+  svg.querySelectorAll('text.er-card').forEach((txt) => {
+    txt.setAttribute('x', (Number(txt.getAttribute('x')) + dx).toFixed(1))
+    txt.setAttribute('y', (Number(txt.getAttribute('y')) + dy).toFixed(1))
   })
 }
 
@@ -354,7 +549,8 @@ function nodeExtent(g) {
 function clampNodesToCanvas(svg, w, h) {
   const xMax = w - CANVAS_PAD
   const yMax = h - CANVAS_PAD
-  let changed = false
+  const oldBy = indexNodes(svg)
+  const delta = new Map()
   svg.querySelectorAll('.er-node').forEach((g) => {
     const e = nodeExtent(g)
     let ddx = 0
@@ -365,11 +561,19 @@ function clampNodesToCanvas(svg, w, h) {
     else if (e.maxY > yMax) ddy = yMax - e.maxY
     if (!ddx && !ddy) return
     const id = g.getAttribute('data-id')
-    bumpOffset(id, ddx, ddy)
-    setNodeTransform(g, id)
-    changed = true
+    if (g.getAttribute('data-kind') === 'rel') return
+    delta.set(id, { ddx, ddy })
   })
-  if (changed) refreshAllEdges(svg)
+  if (!delta.size) return
+  const entDelta = new Map()
+  for (const [id, d] of delta) {
+    const g = nodeById(svg, id)
+    if (g && g.getAttribute('data-kind') === 'entity') entDelta.set(id, d)
+  }
+  for (const [id, d] of diamondDeltas(svg, oldBy, entDelta)) {
+    delta.set(id, d)
+  }
+  applyDelta(svg, delta)
 }
 
 /** 四向扩画布，但有上限；到顶后卡住，不再无限变大 */
@@ -399,14 +603,9 @@ function expandCanvasToFit(svg) {
   }
 
   if (shiftX || shiftY) {
-    svg.querySelectorAll('.er-node').forEach((g) => {
-      const id = g.getAttribute('data-id')
-      bumpOffset(id, shiftX, shiftY)
-      setNodeTransform(g, id)
-    })
+    translateFigure(svg, shiftX, shiftY)
     maxX += shiftX
     maxY += shiftY
-    refreshAllEdges(svg)
   }
 
   const { w, h } = svgSize(svg)
@@ -418,6 +617,7 @@ function expandCanvasToFit(svg) {
     svg.setAttribute('viewBox', `0 0 ${nw} ${nh}`)
   }
   clampNodesToCanvas(svg, nw, nh)
+  syncPaperSize()
 }
 
 /** 拖到预览窗口边缘时跟手平移（右/下也适用，不只是左上） */
@@ -458,6 +658,11 @@ function onPointerDown(e) {
     dragLastX = e.clientX
     dragLastY = e.clientY
     dragFollowers = []
+    pendingDX = 0
+    pendingDY = 0
+    grabX = 0
+    grabY = 0
+    grabOrigin = nodeCenter(node)
     const kind = node.getAttribute('data-kind')
     const id = node.getAttribute('data-id')
     if (kind === 'entity') {
@@ -466,6 +671,8 @@ function onPointerDown(e) {
         if (g.getAttribute('data-parent') === id) dragFollowers.push(g)
       })
     }
+    captureDragBindings(getSvg(), id, kind)
+    dragMoved = false
     node.classList.add('er-node-active')
     e.currentTarget.setPointerCapture?.(e.pointerId)
     e.stopPropagation()
@@ -477,24 +684,138 @@ function onPointerDown(e) {
   e.currentTarget.setPointerCapture?.(e.pointerId)
 }
 
+function captureDragBindings(svg, rootId, kind) {
+  dragPins = []
+  dragCards = []
+  dragNodeEls = new Map()
+  dragRelEls = []
+  if (!svg || !rootId) return
+  const involved = new Set([rootId])
+  svg.querySelectorAll('.er-node').forEach((g) => {
+    const id = g.getAttribute('data-id')
+    if (id) dragNodeEls.set(id, g)
+  })
+  if (kind === 'entity') {
+    for (const g of dragFollowers) {
+      const fid = g.getAttribute('data-id')
+      if (fid) involved.add(fid)
+    }
+    svg.querySelectorAll('.er-node[data-kind="rel"]').forEach((g) => {
+      const rid = g.getAttribute('data-id')
+      if (!rid) return
+      dragRelEls.push(g)
+      const left = g.getAttribute('data-left')
+      const right = g.getAttribute('data-right')
+      if (left === rootId || right === rootId) involved.add(rid)
+    })
+  }
+  const byId = indexNodes(svg)
+  const seeds = []
+  svg.querySelectorAll('line.er-edge').forEach((line) => {
+    const fromId = line.getAttribute('data-from')
+    const toId = line.getAttribute('data-to')
+    for (const [attrX, attrY] of [['x1', 'y1'], ['x2', 'y2']]) {
+      const x = Number(line.getAttribute(attrX))
+      const y = Number(line.getAttribute(attrY))
+      const nid = pinNode(x, y, fromId, toId, byId)
+      if (!nid || !involved.has(nid)) continue
+      dragPins.push({ line, attrX, attrY, nodeId: nid, x, y })
+      seeds.push({ x, y, nodeId: nid })
+    }
+  })
+  svg.querySelectorAll('text.er-card').forEach((txt) => {
+    const x = Number(txt.getAttribute('x'))
+    const y = Number(txt.getAttribute('y'))
+    let best = null
+    let bestD = 40
+    for (const p of seeds) {
+      const dist = Math.hypot(p.x - x, p.y - y)
+      if (dist < bestD) {
+        bestD = dist
+        best = p
+      }
+    }
+    if (best) dragCards.push({ el: txt, nodeId: best.nodeId, x, y })
+  })
+}
+
+function centersFromCache() {
+  const byId = new Map()
+  for (const [id, g] of dragNodeEls) byId.set(id, nodeCenter(g))
+  return byId
+}
+
+function applyDragDelta(delta) {
+  for (const pin of dragPins) {
+    const d = delta.get(pin.nodeId)
+    if (!d || (!d.ddx && !d.ddy)) continue
+    pin.x += d.ddx
+    pin.y += d.ddy
+    pin.line.setAttribute(pin.attrX, pin.x.toFixed(1))
+    pin.line.setAttribute(pin.attrY, pin.y.toFixed(1))
+  }
+  for (const card of dragCards) {
+    const d = delta.get(card.nodeId)
+    if (!d || (!d.ddx && !d.ddy)) continue
+    card.x += d.ddx
+    card.y += d.ddy
+    card.el.setAttribute('x', card.x.toFixed(1))
+    card.el.setAttribute('y', card.y.toFixed(1))
+  }
+  for (const [id, d] of delta) {
+    if (!d.ddx && !d.ddy) continue
+    bumpOffset(id, d.ddx, d.ddy)
+    const g = dragNodeEls.get(id)
+    if (g) setNodeTransform(g, id)
+  }
+}
+
+function flushDragFrame() {
+  dragFrame = 0
+  const node = dragNode.value
+  const svg = getSvg()
+  let ddx = pendingDX
+  let ddy = pendingDY
+  pendingDX = 0
+  pendingDY = 0
+  if (!node || !svg) return
+  grabX += ddx
+  grabY += ddy
+  if (showGrid.value && grabOrigin) {
+    const c = nodeCenter(node)
+    ddx = snapGrid(grabOrigin.x + grabX) - c.x
+    ddy = snapGrid(grabOrigin.y + grabY) - c.y
+  }
+  if (!ddx && !ddy) return
+  const id = node.getAttribute('data-id')
+  const kind = node.getAttribute('data-kind')
+  const oldBy = centersFromCache()
+  const delta = new Map()
+  delta.set(id, { ddx, ddy })
+  if (kind === 'entity') {
+    for (const g of dragFollowers) {
+      const fid = g.getAttribute('data-id')
+      if (fid) delta.set(fid, { ddx, ddy })
+    }
+    for (const [rid, d] of diamondDeltas(svg, oldBy, new Map([[id, { ddx, ddy }]]), dragRelEls)) {
+      delta.set(rid, d)
+    }
+  }
+  applyDragDelta(delta)
+  dragMoved = true
+  if (kind === 'rel') syncRelGrab(svg, id)
+}
+
 function onPointerMove(e) {
   if (dragNode.value) {
     const ddx = (e.clientX - dragLastX) / scale.value
     const ddy = (e.clientY - dragLastY) / scale.value
     dragLastX = e.clientX
     dragLastY = e.clientY
-    const id = dragNode.value.getAttribute('data-id')
-    bumpOffset(id, ddx, ddy)
-    setNodeTransform(dragNode.value, id)
-    for (const g of dragFollowers) {
-      const fid = g.getAttribute('data-id')
-      bumpOffset(fid, ddx, ddy)
-      setNodeTransform(g, fid)
-    }
-    const svg = getSvg()
-    if (svg) {
-      refreshAllEdges(svg)
-      expandCanvasToFit(svg)
+    if (ddx || ddy) {
+      pendingDX += ddx
+      pendingDY += ddy
+      if (!dragFrame) dragFrame = requestAnimationFrame(flushDragFrame)
     }
     autoPanWhileDrag(e.clientX, e.clientY)
     return
@@ -506,13 +827,306 @@ function onPointerMove(e) {
   panLastY = e.clientY
 }
 
+function orient2(ax, ay, bx, by, cx, cy) {
+  return (by - ay) * (cx - bx) - (bx - ax) * (cy - by)
+}
+
+function segsCross(a, b) {
+  const [ax, ay, bx, by] = a
+  const [cx, cy, dx, dy] = b
+  const key = (x, y) => `${x.toFixed(1)},${y.toFixed(1)}`
+  const pa = new Set([key(ax, ay), key(bx, by)])
+  if (pa.has(key(cx, cy)) || pa.has(key(dx, dy))) return false
+  const o1 = orient2(ax, ay, bx, by, cx, cy)
+  const o2 = orient2(ax, ay, bx, by, dx, dy)
+  const o3 = orient2(cx, cy, dx, dy, ax, ay)
+  const o4 = orient2(cx, cy, dx, dy, bx, by)
+  return o1 * o2 < 0 && o3 * o4 < 0
+}
+
+function pointInNode(n, x, y) {
+  const shape = n.g.getAttribute('data-shape') || 'rect'
+  const pad = 3
+  if (shape === 'ellipse') {
+    const rx = (Number(n.g.getAttribute('data-rx')) || 28) + pad
+    const ry = (Number(n.g.getAttribute('data-ry')) || 14) + pad
+    const nx = (x - n.x) / rx
+    const ny = (y - n.y) / ry
+    return nx * nx + ny * ny < 1
+  }
+  const hw = (Number(n.g.getAttribute('data-hw')) || 40) + pad
+  const hh = (Number(n.g.getAttribute('data-hh')) || 22) + pad
+  if (shape === 'diamond') {
+    return Math.abs(x - n.x) / hw + Math.abs(y - n.y) / hh < 1
+  }
+  return Math.abs(x - n.x) < hw && Math.abs(y - n.y) < hh
+}
+
+function segHitsNode(n, seg) {
+  const [x1, y1, x2, y2] = seg
+  for (let i = 1; i < 8; i += 1) {
+    const t = i / 8
+    if (pointInNode(n, x1 + (x2 - x1) * t, y1 + (y2 - y1) * t)) return true
+  }
+  return false
+}
+
+function relEnds(svg, g) {
+  const leftAttr = g.getAttribute('data-left')
+  const rightAttr = g.getAttribute('data-right')
+  if (leftAttr && rightAttr) return [leftAttr, rightAttr]
+  const relId = g.getAttribute('data-id')
+  const ends = []
+  svg.querySelectorAll('line.er-edge').forEach((line) => {
+    const f = line.getAttribute('data-from')
+    const t = line.getAttribute('data-to')
+    const other = f === relId ? t : t === relId ? f : null
+    if (other && String(other).startsWith('entity:') && !ends.includes(other)) ends.push(other)
+  })
+  if (ends.length >= 2) return [ends[0], ends[1]]
+  return [leftAttr, rightAttr]
+}
+
+function relLineGroups(svg, leftId, rightId, relId) {
+  const left = []
+  const right = []
+  svg.querySelectorAll('line.er-edge').forEach((line) => {
+    const f = line.getAttribute('data-from')
+    const t = line.getAttribute('data-to')
+    const hit = (a, b) => (f === a && t === b) || (f === b && t === a)
+    if (hit(leftId, relId)) left.push(line)
+    else if (hit(rightId, relId)) right.push(line)
+  })
+  return { left, right }
+}
+
+function readSeg(line) {
+  return [
+    Number(line.getAttribute('x1')),
+    Number(line.getAttribute('y1')),
+    Number(line.getAttribute('x2')),
+    Number(line.getAttribute('y2')),
+  ]
+}
+
+function otherSegs(svg, relId, leftId, rightId) {
+  const segs = []
+  svg.querySelectorAll('line.er-edge').forEach((line) => {
+    const f = line.getAttribute('data-from')
+    const t = line.getAttribute('data-to')
+    const mine = (f === leftId && t === relId) || (f === relId && t === leftId)
+      || (f === rightId && t === relId) || (f === relId && t === rightId)
+    if (mine) return
+    if (String(f).startsWith('attr:') || String(t).startsWith('attr:')) return
+    segs.push(readSeg(line))
+  })
+  return segs
+}
+
+function writeRelSegment(lines, fromId, toId, x1, y1, x2, y2) {
+  if (!lines.length) return
+  const keep = lines[0]
+  for (const extra of lines.slice(1)) extra.remove()
+  keep.setAttribute('data-from', fromId)
+  keep.setAttribute('data-to', toId)
+  keep.setAttribute('x1', x1.toFixed(1))
+  keep.setAttribute('y1', y1.toFixed(1))
+  keep.setAttribute('x2', x2.toFixed(1))
+  keep.setAttribute('y2', y2.toFixed(1))
+}
+
+function placeCard(svg, fromId, toId, ax, ay, bx, by) {
+  svg.querySelectorAll('text.er-card').forEach((txt) => {
+    const f = txt.getAttribute('data-from')
+    const t = txt.getAttribute('data-to')
+    if (!((f === fromId && t === toId) || (f === toId && t === fromId))) return
+    const px = ax * 0.65 + bx * 0.35
+    const py = ay * 0.65 + by * 0.35
+    const dx = bx - ax
+    const dy = by - ay
+    const L = Math.hypot(dx, dy) || 1
+    txt.setAttribute('data-from', fromId)
+    txt.setAttribute('data-to', toId)
+    txt.setAttribute('x', (px - (dy / L) * 12).toFixed(1))
+    txt.setAttribute('y', (py + (dx / L) * 12).toFixed(1))
+  })
+}
+
+function setNodeCenter(g, x, y) {
+  const id = g.getAttribute('data-id')
+  const bx = Number(g.getAttribute('data-cx')) || 0
+  const by = Number(g.getAttribute('data-cy')) || 0
+  offsets.set(id, { dx: x - bx, dy: y - by })
+  setNodeTransform(g, id)
+}
+
+function routeAt(a, b, rel, cx, cy) {
+  const ghost = { ...rel, x: cx, y: cy }
+  const pA = shapeEdge(a, cx, cy)
+  const pR1 = shapeEdge(ghost, a.x, a.y)
+  const pR2 = shapeEdge(ghost, b.x, b.y)
+  const pB = shapeEdge(b, cx, cy)
+  return {
+    pA,
+    pR1,
+    pR2,
+    pB,
+    segs: [
+      [pA.x, pA.y, pR1.x, pR1.y],
+      [pR2.x, pR2.y, pB.x, pB.y],
+    ],
+  }
+}
+
+function scoreRoute(route, cx, cy, midX, midY, obstacles, frozen) {
+  let pen = Math.hypot(cx - midX, cy - midY) * 0.01
+  if (obstacles.some((o) => pointInNode(o, cx, cy))) pen += 100
+  for (const seg of route.segs) {
+    for (const o of obstacles) {
+      if (segHitsNode(o, seg)) pen += 100
+    }
+    for (const f of frozen) {
+      if (segsCross(seg, f)) pen += 100
+    }
+  }
+  return pen
+}
+
+function commitRoute(svg, g, relId, leftId, rightId, a, b, cx, cy, route) {
+  const midX = (a.x + b.x) / 2
+  const midY = (a.y + b.y) / 2
+  setNodeCenter(g, cx, cy)
+  relGrab.set(relId, { dx: cx - midX, dy: cy - midY })
+  const groups = relLineGroups(svg, leftId, rightId, relId)
+  const removed = groups.left.length > 1 || groups.right.length > 1
+  writeRelSegment(groups.left, leftId, relId, route.pA.x, route.pA.y, route.pR1.x, route.pR1.y)
+  writeRelSegment(groups.right, relId, rightId, route.pR2.x, route.pR2.y, route.pB.x, route.pB.y)
+  placeCard(svg, leftId, relId, route.pA.x, route.pA.y, route.pR1.x, route.pR1.y)
+  placeCard(svg, rightId, relId, route.pB.x, route.pB.y, route.pR2.x, route.pR2.y)
+  return removed
+}
+
+/** 松手后：实体不动。刚拖过的那颗菱形留在松手处，其余联系再避开交叉。 */
+function rerouteAllRelations(svg, pinRelId = '') {
+  const usable = []
+  svg.querySelectorAll('.er-node[data-kind="rel"]').forEach((g) => {
+    const [leftId, rightId] = relEnds(svg, g)
+    const relId = g.getAttribute('data-id')
+    if (leftId && rightId && relId) usable.push({ g, relId, leftId, rightId })
+  })
+  if (!usable.length) return
+  const byId = indexNodes(svg)
+  const lineNodes = [...svg.querySelectorAll('line.er-edge')]
+  const offsetsTry = [0, 48, -48, 96, -96, 144, -144, 208, -208, 288, -288, 400, -400]
+
+  function liveLines() {
+    return lineNodes.filter((line) => line.isConnected)
+  }
+
+  function frozenFor(item) {
+    const segs = []
+    for (const line of liveLines()) {
+      const f = line.getAttribute('data-from')
+      const t = line.getAttribute('data-to')
+      const mine = (f === item.leftId && t === item.relId) || (f === item.relId && t === item.leftId)
+        || (f === item.rightId && t === item.relId) || (f === item.relId && t === item.rightId)
+      if (mine || String(f).startsWith('attr:') || String(t).startsWith('attr:')) continue
+      segs.push(readSeg(line))
+    }
+    return segs
+  }
+
+  function collapseAt(item, rel) {
+    const route = routeAt(byId.get(item.leftId), byId.get(item.rightId), rel, rel.x, rel.y)
+    return commitRoute(svg, item.g, item.relId, item.leftId, item.rightId, byId.get(item.leftId), byId.get(item.rightId), rel.x, rel.y, route)
+  }
+
+  for (const item of usable) {
+    const rel = byId.get(item.relId)
+    const a = byId.get(item.leftId)
+    const b = byId.get(item.rightId)
+    if (!rel || !a || !b) continue
+    collapseAt(item, rel)
+  }
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    let dirty = false
+    for (const item of usable) {
+      if (item.relId === pinRelId) continue
+      const a = byId.get(item.leftId)
+      const b = byId.get(item.rightId)
+      const rel = byId.get(item.relId)
+      if (!a || !b || !rel) continue
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const L = Math.hypot(dx, dy) || 1
+      const nx = -dy / L
+      const ny = dx / L
+      const midX = (a.x + b.x) / 2
+      const midY = (a.y + b.y) / 2
+      const obstacles = []
+      for (const n of byId.values()) {
+        if (n.id !== item.leftId && n.id !== item.rightId && n.id !== item.relId) obstacles.push(n)
+      }
+      const frozen = frozenFor(item)
+      const candidates = [{ x: rel.x, y: rel.y }]
+      for (const off of offsetsTry) candidates.push({ x: midX + nx * off, y: midY + ny * off })
+      let best = null
+      for (const cand of candidates) {
+        const route = routeAt(a, b, rel, cand.x, cand.y)
+        const pen = scoreRoute(route, cand.x, cand.y, midX, midY, obstacles, frozen)
+        if (!best || pen < best.pen) best = { pen, x: cand.x, y: cand.y, route }
+        if (pen < 1) break
+      }
+      if (!best) continue
+      if (Math.hypot(best.x - rel.x, best.y - rel.y) <= 0.8) continue
+      dirty = true
+      rel.x = best.x
+      rel.y = best.y
+      commitRoute(svg, item.g, item.relId, item.leftId, item.rightId, a, b, best.x, best.y, best.route)
+    }
+    if (!dirty) break
+  }
+}
+
+function commitView() {
+  const svg = getSvg()
+  if (!svg || !viewDirty) return
+  rerouteAllRelations(svg, lastPinRel)
+  expandCanvasToFit(svg)
+  viewDirty = false
+  lastPinRel = ''
+  emit('save-view', {
+    mode: loadedMode,
+    entity: loadedMode === 'part' ? loadedEntity : '',
+    svg: serializeSvg(),
+  })
+}
+
 function onPointerUp(e) {
+  if (e.type === 'pointerleave' && frameRef.value?.hasPointerCapture?.(e.pointerId)) return
+  if (dragFrame) {
+    cancelAnimationFrame(dragFrame)
+    dragFrame = 0
+    flushDragFrame()
+  }
   if (dragNode.value) {
+    const kind = dragNode.value.getAttribute('data-kind')
+    const movedId = dragNode.value.getAttribute('data-id')
+    const moved = dragMoved
     dragNode.value.classList.remove('er-node-active')
     dragNode.value = null
     dragFollowers = []
-    const svg = getSvg()
-    if (svg) expandCanvasToFit(svg)
+    dragPins = []
+    dragCards = []
+    dragRelEls = []
+    dragNodeEls = new Map()
+    if (moved) {
+      viewDirty = true
+      lastPinRel = kind === 'rel' ? (movedId || '') : ''
+      commitView()
+    }
+    dragMoved = false
   }
   panning.value = false
   try {
@@ -521,6 +1135,15 @@ function onPointerUp(e) {
     /* ignore */
   }
 }
+
+onBeforeUnmount(() => {
+  if (dragFrame) {
+    cancelAnimationFrame(dragFrame)
+    dragFrame = 0
+    flushDragFrame()
+  }
+  commitView()
+})
 
 function onWheel(e) {
   const frame = frameRef.value
@@ -574,6 +1197,7 @@ function serializeSvg() {
   applyOffsetsToDom()
   applyStrokePreset()
   const clone = svg.cloneNode(true)
+  clone.querySelectorAll('.er-hit').forEach((el) => el.remove())
   clone.querySelectorAll('.er-node-active').forEach((el) => el.classList.remove('er-node-active'))
   clone.querySelectorAll('[style]').forEach((el) => el.removeAttribute('style'))
   clone.querySelectorAll('[data-base-sw]').forEach((el) => el.removeAttribute('data-base-sw'))
@@ -735,9 +1359,24 @@ defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 }
 .er-canvas {
   display: inline-block;
+  position: relative;
   will-change: transform;
 }
-.er-canvas :deep(svg) {
+.er-grid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.er-svg-host {
+  position: relative;
+  z-index: 1;
+}
+.er-svg-host :deep(svg) {
+  display: block;
+}
+.er-canvas :deep(.er-svg-host svg) {
   display: block;
   max-width: none;
   height: auto;

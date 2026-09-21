@@ -23,6 +23,7 @@ from app.schemas import (
     DeliveryReviewPanelOut,
     DeliveryVerifyOut,
     ErLabelsUpdate,
+    ErViewUpdate,
     FixNoteCreate,
     FixNoteResolve,
     MatchUpdate,
@@ -73,7 +74,20 @@ def _workspace_or_400(p: Project) -> Path:
 @router.get("/stats", response_model=StatsOut, summary="项目统计")
 async def project_stats(db: AsyncSession = Depends(get_db)):
     # 不抢 reconcile_lock：只读计数，扫盘只在列表
-    return StatsOut(**(await project_svc.stats(db)))
+    from app.core.database import begin_sql_count, end_sql_count
+
+    t0 = time.perf_counter()
+    bucket = begin_sql_count()
+    try:
+        out = StatsOut(**(await project_svc.stats(db)))
+    finally:
+        n = end_sql_count(bucket)
+        logger.info(
+            "timing route=stats ms=%.1f db_queries=%s",
+            (time.perf_counter() - t0) * 1000.0,
+            n,
+        )
+    return out
 
 
 @router.post(
@@ -104,86 +118,119 @@ async def list_projects(
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    async with project_svc.reconcile_lock:
-        result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
-        items = list(result.scalars().all())
-        if q:
-            items = [p for p in items if q in p.title or q in p.id]
-        # 读完即放开 SQLite，再纠正运行态与门禁（避免与其它读请求互相等锁）
-        await project_svc.release_read_transaction(db)
-        listening: set[int] | None = None
-        if any(p.backend_port or p.frontend_port for p in items):
-            listening = await asyncio.to_thread(rt.listening_tcp_ports)
-        # 扫盘/廉价运行态收敛放到线程池，避免堵 /upload/plans 等
-        dirty = await asyncio.to_thread(
-            project_svc.reconcile_list_items, items, listening=listening
-        )
-        if filter == "active":
-            # 「运行中」= 预览进程在跑（与列表「运行」列一致）
-            items = [
-                p
-                for p in items
-                if p.status == "running" or p.backend_running or p.frontend_running
-            ]
-        elif filter == "generating":
-            items = [p for p in items if p.status == "generating"]
-        elif filter == "done":
-            # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
-            items = [
-                p
-                for p in items
-                if p.status in ("generated", "running") and project_svc.is_zip_downloadable(p)
-            ]
-        elif filter == "pending":
-            # 待审 = 质检可下、尚未人工标记（履约 backlog）
-            items = [
-                p
-                for p in items
-                if p.status in ("generated", "running")
-                and project_svc.is_zip_downloadable(p)
-                and project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
-                == "none"
-            ]
-        elif filter == "ready":
-            items = [
-                p
-                for p in items
-                if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
-                == "ready"
-            ]
-        elif filter == "delivered":
-            items = [
-                p
-                for p in items
-                if project_svc.normalize_delivery_mark(getattr(p, "delivery_mark", None))
-                == "delivered"
-            ]
-        elif filter == "fail":
-            # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
-            items = [
-                p
-                for p in items
-                if p.status == "failed"
-                or (
-                    p.status in ("generated", "running")
-                    and not project_svc.is_zip_downloadable(p)
-                )
-            ]
-        # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
-        summaries = []
-        from app.services.delivery_review import review_status_of
+    from app.core.database import begin_sql_count, end_sql_count
 
-        for p in items:
-            s = ProjectSummary.model_validate(p)
-            s.delivery_mark = project_svc.normalize_delivery_mark(
-                getattr(p, "delivery_mark", None)
+    t0 = time.perf_counter()
+    bucket = begin_sql_count()
+    phase: dict[str, float] = {}
+    items: list = []
+    try:
+        async with project_svc.reconcile_lock:
+            t_sel = time.perf_counter()
+            result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
+            items = list(result.scalars().all())
+            phase["select_ms"] = (time.perf_counter() - t_sel) * 1000.0
+            if q:
+                items = [p for p in items if q in p.title or q in p.id]
+            # 读完即放开 SQLite，再纠正运行态与门禁（避免与其它读请求互相等锁）
+            await project_svc.release_read_transaction(db)
+            listening: set[int] | None = None
+            t_listen = time.perf_counter()
+            if any(p.backend_port or p.frontend_port for p in items):
+                listening = await asyncio.to_thread(rt.listening_tcp_ports)
+            phase["listen_ms"] = (time.perf_counter() - t_listen) * 1000.0
+            # 扫盘/廉价运行态收敛放到线程池，避免堵 /upload/plans 等
+            t_rec = time.perf_counter()
+            dirty = await asyncio.to_thread(
+                project_svc.reconcile_list_items, items, listening=listening
             )
-            s.download_blocked_reason = project_svc.delivery_block_reason(p)
-            s.review_status = review_status_of(p)
-            summaries.append(s)
-        if dirty:
-            await db.commit()
-        return summaries
+            phase["reconcile_ms"] = (time.perf_counter() - t_rec) * 1000.0
+            if filter == "active":
+                # 「运行中」= 预览进程在跑（与列表「运行」列一致）
+                items = [
+                    p
+                    for p in items
+                    if p.status == "running" or p.backend_running or p.frontend_running
+                ]
+            elif filter == "generating":
+                items = [p for p in items if p.status == "generating"]
+            elif filter == "done":
+                # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
+                items = [
+                    p
+                    for p in items
+                    if p.status in ("generated", "running")
+                    and project_svc.is_zip_downloadable(p)
+                ]
+            elif filter == "pending":
+                # 待审 = 质检可下、尚未人工标记（履约 backlog）
+                items = [
+                    p
+                    for p in items
+                    if p.status in ("generated", "running")
+                    and project_svc.is_zip_downloadable(p)
+                    and project_svc.normalize_delivery_mark(
+                        getattr(p, "delivery_mark", None)
+                    )
+                    == "none"
+                ]
+            elif filter == "ready":
+                items = [
+                    p
+                    for p in items
+                    if project_svc.normalize_delivery_mark(
+                        getattr(p, "delivery_mark", None)
+                    )
+                    == "ready"
+                ]
+            elif filter == "delivered":
+                items = [
+                    p
+                    for p in items
+                    if project_svc.normalize_delivery_mark(
+                        getattr(p, "delivery_mark", None)
+                    )
+                    == "delivered"
+                ]
+            elif filter == "fail":
+                # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
+                items = [
+                    p
+                    for p in items
+                    if p.status == "failed"
+                    or (
+                        p.status in ("generated", "running")
+                        and not project_svc.is_zip_downloadable(p)
+                    )
+                ]
+            # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
+            summaries = []
+            from app.services.delivery_review import review_status_of
+
+            for p in items:
+                s = ProjectSummary.model_validate(p)
+                s.delivery_mark = project_svc.normalize_delivery_mark(
+                    getattr(p, "delivery_mark", None)
+                )
+                s.download_blocked_reason = project_svc.delivery_block_reason(p)
+                s.review_status = review_status_of(p)
+                summaries.append(s)
+            if dirty:
+                await db.commit()
+            return summaries
+    finally:
+        n = end_sql_count(bucket)
+        logger.info(
+            "timing route=projects filter=%s ms=%.1f db_queries=%s items=%s "
+            "select_ms=%.1f listen_ms=%.1f reconcile_ms=%.1f",
+            filter,
+            (time.perf_counter() - t0) * 1000.0,
+            n,
+            len(items),
+            phase.get("select_ms", -1),
+            phase.get("listen_ms", -1),
+            phase.get("reconcile_ms", -1),
+        )
 
 
 @router.post("/upload", response_model=ProjectDetail, summary="上传开题/任务书等材料")
@@ -632,6 +679,57 @@ async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/{project_id}/schema/er", summary="E-R 图模型+SVG")
+async def get_er(
+    project_id: str,
+    mode: str = Query("total", description="total=总图 part=分图"),
+    entity: str | None = Query(None, description="分图实体表名"),
+    db: AsyncSession = Depends(get_db),
+):
+    """一次返回表结构 meta + ``svg``；优先读 ``islands/diagram_cache``。"""
+    from app.bake.schema.diagram_pack import pack_er
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_er(ws, mode=mode, entity=entity)
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    return {
+        "db_name": p.db_name,
+        "path": "sql/schema.sql",
+        **model,
+    }
+
+
+@router.put("/{project_id}/schema/er-view", summary="保存/复位人工 E-R 图")
+async def put_er_view(
+    project_id: str,
+    body: ErViewUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """把当前 E-R 图落盘。表结构变了再打开会回到自动排版。"""
+    from app.bake.schema.er_view import clear_user_svg, save_user_svg
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    if p.status == ProjectStatus.generating.value:
+        raise HTTPException(400, "工程正在生成，请稍后再改图")
+    ws = _workspace_or_400(p)
+    mode = "part" if (body.mode or "").strip().lower() == "part" else "total"
+    entity = (body.entity or "").strip() or None
+    if body.reset:
+        clear_user_svg(ws, mode, entity)
+        return {"ok": True, "reset": True, "message": "已恢复自动排版"}
+    try:
+        saved = save_user_svg(ws, mode, entity, body.svg)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, "reset": False, **saved}
+
+
 @router.put("/{project_id}/schema/er-labels", summary="人工补 E-R 中文名")
 async def put_er_labels(
     project_id: str,
@@ -639,6 +737,7 @@ async def put_er_labels(
     db: AsyncSession = Depends(get_db),
 ):
     """只改展示中文名（islands/er_labels.json），不改 schema.sql / 学生工程标识符。"""
+    from app.bake.schema.diagram_cache import invalidate as invalidate_diagram_cache
     from app.bake.schema.er import apply_manual_er_labels
 
     p = await db.get(Project, project_id)
@@ -660,6 +759,7 @@ async def put_er_labels(
         raise HTTPException(404, "未找到 sql/schema.sql") from None
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
+    invalidate_diagram_cache(ws, "er")
     model = result["model"]
     return {
         "db_name": p.db_name,
@@ -742,23 +842,18 @@ async def download_er_svg(
 ):
     from fastapi.responses import Response
 
-    from app.bake.schema.er import load_schema_model, render_er_svg
+    from app.bake.schema.diagram_pack import pack_er
 
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = load_schema_model(ws)
+    model = pack_er(ws, mode=mode, entity=entity)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
-    m = (mode or "total").strip().lower()
-    if m not in ("total", "part"):
-        m = "total"
-    ent = (entity or "").strip() or None
-    if m == "part" and not ent:
-        tables = model.get("tables") or []
-        ent = str((tables[0] or {}).get("name") or "") if tables else None
-    svg = render_er_svg(model, mode=m, entity=ent)
+    m = str(model.get("er_mode") or mode or "total").strip().lower()
+    ent = model.get("er_entity") or entity
+    svg = str(model.get("svg") or "")
     suffix = f"part-{(ent or 'entity')}" if m == "part" else "total"
     return Response(
         content=svg.encode("utf-8"),

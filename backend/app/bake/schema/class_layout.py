@@ -17,11 +17,11 @@ from app.bake.schema.class_model import (
 
 # 打开类图接口有 axios 60s 上限；稠密依赖边时旧选边/挪框会拖死。
 # 预算内尽量画满，超时则少画进 omitted（仍保证已画边零交叉）。
-_ATTACH_BUDGET_SEC = 12.0
-_SELECT_BUDGET_SEC = 3.5
-_NUDGE_BUDGET_SEC = 5.0
-_RECOVER_LANE_SOFT = 10
-_RECOVER_LANE_HARD = 16
+_ATTACH_BUDGET_SEC = 5.0
+_SELECT_BUDGET_SEC = 2.0
+_NUDGE_BUDGET_SEC = 2.0
+_RECOVER_LANE_SOFT = 8
+_RECOVER_LANE_HARD = 12
 
 def _pad_positions(
     pos: dict[str, tuple[float, float, float, float]],

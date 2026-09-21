@@ -1028,14 +1028,15 @@ function tableCopyText(t) {
     : `表 ${t.name}`
   const paren = typeParenMode.value
   const rows = paren
-    ? [['字段名', '中文名', '数据类型']]
-    : [['字段名', '中文名', '类型', '长度']]
+    ? [['字段名', '中文名', '数据类型', '外键']]
+    : [['字段名', '中文名', '类型', '长度', '外键']]
   for (const c of t.columns || []) {
     const { base, len, full } = parseMysqlType(c.type)
+    const fkMark = c.fk ? '是' : ''
     if (paren) {
-      rows.push([c.name || '', c.label || c.name || '', full])
+      rows.push([c.name || '', c.label || c.name || '', full, fkMark])
     } else {
-      rows.push([c.name || '', c.label || c.name || '', base, len])
+      rows.push([c.name || '', c.label || c.name || '', base, len, fkMark])
     }
   }
   const body = rows.map((cols) => cols.join('\t')).join('\n')
@@ -1408,20 +1409,105 @@ const apiCopyText = computed(() => {
 })
 
 async function fetchErSvg() {
-  if (!p.value) return ''
-  const params = { mode: erMode.value }
-  if (erMode.value === 'part' && erEntity.value) params.entity = erEntity.value
-  const res = await fetch(`${api.erSvgUrl(p.value.id, params)}&t=${Date.now()}`)
-  if (!res.ok) throw new Error('er svg')
-  return await res.text()
+  return svgFromPack(schema.value)
 }
 
-const erEntityOptions = computed(() =>
-  (schema.value?.tables || []).map((t) => ({
-    value: t.name,
-    label: t.label && t.label !== t.name ? `${t.label}（${t.name}）` : t.name,
-  })),
-)
+async function loadErPack() {
+  if (!p.value) return
+  const params = { mode: erMode.value }
+  if (erMode.value === 'part' && erEntity.value) params.entity = erEntity.value
+  const body = await api.getEr(p.value.id, params)
+  // 合并表清单，供分图实体下拉；保留 svg 在 schema 上供 svgFromPack
+  schema.value = {
+    ...(schema.value || {}),
+    ...body,
+    tables: body.tables || schema.value?.tables || [],
+    conceptual_entities: body.conceptual_entities || schema.value?.conceptual_entities || [],
+  }
+  if (erMode.value === 'part' && !erEntity.value) {
+    const opts = erEntityOptions.value
+    if (opts.length) erEntity.value = opts[0].value
+  }
+  erSvgSource.value = svgFromPack(body)
+}
+
+async function openEr() {
+  if (!p.value || erLoading.value || artifactsFrozen.value) return
+  if (!erEntity.value) {
+    const opts = erEntityOptions.value
+    if (opts.length) erEntity.value = opts[0].value
+  }
+  erLoading.value = true
+  try {
+    await loadErPack()
+    erLayoutKey.value += 1
+    showEr.value = true
+  } catch {
+    message.error('无法加载 E-R 图')
+  } finally {
+    erLoading.value = false
+  }
+}
+
+async function saveErView(payload) {
+  if (!p.value || !payload?.svg) return
+  const mode = payload.mode === 'part' ? 'part' : 'total'
+  const entity = mode === 'part' ? (payload.entity || '') : ''
+  try {
+    await api.putErView(p.value.id, { mode, entity, svg: payload.svg, reset: false })
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
+async function resetErLayout() {
+  if (!p.value || erLoading.value) return
+  erLoading.value = true
+  try {
+    const mode = erMode.value === 'part' ? 'part' : 'total'
+    const entity = mode === 'part' ? (erEntity.value || '') : ''
+    await api.putErView(p.value.id, { mode, entity, svg: '', reset: true })
+    await loadErPack()
+    erLayoutKey.value += 1
+    message.success('已恢复自动排版')
+  } catch {
+    message.error('无法恢复自动排版')
+  } finally {
+    erLoading.value = false
+  }
+}
+
+async function reloadErSvg() {
+  if (!p.value || erLoading.value) return
+  erLoading.value = true
+  try {
+    await loadErPack()
+    erLayoutKey.value += 1
+  } catch {
+    message.error('无法重新加载 E-R 图')
+  } finally {
+    erLoading.value = false
+  }
+}
+
+const erEntityOptions = computed(() => {
+  const tables = schema.value?.tables || []
+  const conceptual = schema.value?.conceptual_entities
+  const allow = Array.isArray(conceptual) && conceptual.length
+    ? new Set(conceptual.map(String))
+    : null
+  return tables
+    .filter((t) => {
+      if (!t?.name) return false
+      if (t.assoc_link || t.role_of) return false
+      if (allow && !allow.has(t.name)) return false
+      return true
+    })
+    .map((t) => ({
+      value: t.name,
+      label: t.label && t.label !== t.name ? `${t.label}（${t.name}）` : t.name,
+    }))
+})
 
 const erDownloadBase = computed(() => {
   const id = p.value?.id || 'er'
@@ -1429,9 +1515,9 @@ const erDownloadBase = computed(() => {
     const ent = erEntity.value || 'entity'
     const lab = (schema.value?.tables || []).find((t) => t.name === ent)?.label
     const tag = lab && lab !== ent ? lab : ent
-    return `${id}-er-分图-${tag}`
+    return `${id}-er-实体属性-${tag}`
   }
-  return `${id}-er-总图`
+  return `${id}-er-概念总图`
 })
 
 const modulesOk = computed(() => !!modulesMeta.value?.root || !!schema.value)
@@ -1934,40 +2020,11 @@ async function openUsecaseDescriptions() {
   }
 }
 
-async function openEr() {
-  if (!p.value || erLoading.value || artifactsFrozen.value) return
-  if (!erEntity.value && schema.value?.tables?.length) {
-    erEntity.value = schema.value.tables[0].name
-  }
-  erLoading.value = true
-  try {
-    erSvgSource.value = await fetchErSvg()
-    erLayoutKey.value += 1
-    showEr.value = true
-  } catch {
-    message.error('无法加载 E-R 图')
-  } finally {
-    erLoading.value = false
-  }
-}
-
-async function reloadErSvg() {
-  if (!p.value || erLoading.value) return
-  erLoading.value = true
-  try {
-    erSvgSource.value = await fetchErSvg()
-    erLayoutKey.value += 1
-  } catch {
-    message.error('无法重新加载 E-R 图')
-  } finally {
-    erLoading.value = false
-  }
-}
-
 async function onErMode(v) {
   erMode.value = v === 'part' ? 'part' : 'total'
-  if (erMode.value === 'part' && !erEntity.value && schema.value?.tables?.length) {
-    erEntity.value = schema.value.tables[0].name
+  if (erMode.value === 'part' && !erEntity.value) {
+    const opts = erEntityOptions.value
+    if (opts.length) erEntity.value = opts[0].value
   }
   await reloadErSvg()
 }
@@ -1975,6 +2032,39 @@ async function onErMode(v) {
 async function onErEntity(v) {
   erEntity.value = v || ''
   if (erMode.value === 'part') await reloadErSvg()
+}
+
+/** 按概念实体逐张拉分图并触发浏览器下载（依赖 bake 预热缓存则快） */
+async function exportAllErParts() {
+  if (!p.value || erLoading.value) return
+  const opts = erEntityOptions.value
+  if (!opts.length) {
+    message.warning('没有可导出的概念实体')
+    return
+  }
+  erLoading.value = true
+  let ok = 0
+  try {
+    for (const opt of opts) {
+      const body = await api.getEr(p.value.id, { mode: 'part', entity: opt.value })
+      const svg = svgFromPack(body)
+      if (!svg) continue
+      const lab = opt.label || opt.value
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${p.value.id || 'er'}-实体属性-${lab}.svg`
+      a.click()
+      URL.revokeObjectURL(url)
+      ok += 1
+    }
+    message.success(ok ? `已导出 ${ok} 张实体属性图` : '未能导出')
+  } catch {
+    message.error('批量导出实体属性图失败')
+  } finally {
+    erLoading.value = false
+  }
 }
 
 async function refreshJob({ silent = false } = {}) {
@@ -2706,6 +2796,7 @@ onUnmounted(() => {
     onDelete,
     onErEntity,
     onErMode,
+    exportAllErParts,
     onModulesExpandDetails,
     onModulesLayout,
     onPathChange,
@@ -2785,6 +2876,8 @@ onUnmounted(() => {
     saveClassLayout,
     resetClassLayout,
     reloadErSvg,
+    saveErView,
+    resetErLayout,
     reloadModSvg,
     reloadTestcases,
     reloadUsecaseDescriptions,

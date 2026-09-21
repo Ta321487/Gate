@@ -143,7 +143,10 @@
         :loading="erLoading"
         @update:mode="onErMode"
         @update:entity="onErEntity"
+        @save-view="saveErView"
+        @reset-layout="resetErLayout"
         @reload="reloadErSvg"
+        @export-all-parts="exportAllErParts"
       />
     </n-modal>
     <n-modal v-model:show="showModules" preset="card" title="功能模块图" style="width:min(1280px,96vw)">
@@ -307,7 +310,7 @@ const {
   commitTableZh, confirmDelete, confirmHint, confirmMatch, confirmPreGenerate, currentJob, deleteBlocked,
   deleteBlockedReason, deleting, deliveryBusy, deliveryMark, deviant, displayConf, domCascaderOptions, downloadAndDeliver,
   downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erEntity, erEntityOptions, erLabelSaving,
-  erLayoutKey, erLoading, erMode, erSvgSource, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
+  erLayoutKey, erLoading, erMode, erSvgSource, exportAllErParts, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
   gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
@@ -320,7 +323,7 @@ const {
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, openSequences, onSeqApplySelection, onSeqDiagramIndex, openActivities, onActApplySelection, onActDiagramIndex, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
-  refreshJob, refreshRuntime, reload, reloadArchSvg, reloadSeqSvg, reloadActSvg, reloadClassSvg, saveClassLayout, resetClassLayout, reloadErSvg, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
+  refreshJob, refreshRuntime, reload, reloadArchSvg, reloadSeqSvg, reloadActSvg, reloadClassSvg, saveClassLayout, resetClassLayout, reloadErSvg, saveErView, resetErLayout, reloadModSvg, reloadTestcases, reloadUsecases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,

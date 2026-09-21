@@ -167,6 +167,17 @@ class ErLabelsUpdate(BaseModel):
     relations: dict[str, str] = Field(default_factory=dict, description="联系名 → 中文联系名")
 
 
+class ErViewUpdate(BaseModel):
+    """人工拖过的 E-R 图（islands/er_view）。reset 后恢复自动排版。"""
+
+    model_config = ConfigDict(title="E-R 图人工视图")
+
+    mode: str = Field(default="total", description="total | part")
+    entity: Optional[str] = Field(default=None, description="分图实体表名")
+    svg: str = Field(default="", description="当前图，不含网格")
+    reset: bool = Field(default=False, description="丢掉这张人工图，恢复自动排版")
+
+
 class ClassLayoutUpdate(BaseModel):
     """人工拖拽类图框位置（islands/class_layout.json）。
 

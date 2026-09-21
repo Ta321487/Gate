@@ -20,6 +20,88 @@ def _prop_tag(proposal_text: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
+def pack_er(
+    workspace: Path,
+    *,
+    mode: str = "total",
+    entity: str | None = None,
+    force: bool = False,
+) -> dict[str, Any] | None:
+    """E-R 总图/分图：一次返回 model + svg；按 mode/entity 缓存。"""
+    from app.bake.schema.er import (
+        collect_english_gaps,
+        count_er_gaps,
+        load_schema_model,
+        render_er_svg,
+    )
+
+    mode_n = (mode or "total").strip().lower()
+    if mode_n not in ("total", "part"):
+        mode_n = "total"
+    ent = (entity or "").strip() or None
+    params: dict[str, Any] = {"mode": mode_n}
+    if mode_n == "part":
+        params["entity"] = ent or ""
+
+    def build() -> tuple[dict[str, Any], dict[str, float]]:
+        t0 = time.perf_counter()
+        model = load_schema_model(workspace)
+        if not model:
+            raise FileNotFoundError("er: no schema.sql")
+        model_ms = (time.perf_counter() - t0) * 1000.0
+        conceptual = [
+            str(x)
+            for x in (model.get("conceptual_entities") or [])
+            if str(x).strip()
+        ]
+        use_ent = ent
+        if mode_n == "part" and not use_ent:
+            use_ent = conceptual[0] if conceptual else None
+            if not use_ent:
+                tables = [
+                    t
+                    for t in (model.get("tables") or [])
+                    if isinstance(t, dict)
+                    and t.get("name")
+                    and not t.get("assoc_link")
+                    and not t.get("role_of")
+                ]
+                use_ent = str((tables[0] or {}).get("name") or "") if tables else None
+        t1 = time.perf_counter()
+        # E-R 排版在 render 内完成，记入 layout_ms
+        svg = render_er_svg(model, mode=mode_n, entity=use_ent)
+        layout_svg_ms = (time.perf_counter() - t1) * 1000.0
+        packed = dict(model)
+        packed["svg"] = svg
+        packed["er_mode"] = mode_n
+        packed["er_entity"] = use_ent
+        packed["conceptual_entities"] = conceptual
+        packed["er_gap_count"] = count_er_gaps(collect_english_gaps(model))
+        return packed, {
+            "model_ms": model_ms,
+            "layout_ms": layout_svg_ms * 0.85,
+            "svg_ms": layout_svg_ms * 0.15,
+        }
+
+    try:
+        model = dcache.get_or_build(workspace, "er", params, build, force=force)
+    except FileNotFoundError:
+        return None
+    if not model:
+        return None
+    from app.bake.schema.er_view import load_user_svg
+
+    use_ent = ent if mode_n == "part" else None
+    if mode_n == "part" and not use_ent:
+        use_ent = str(model.get("er_entity") or "") or None
+    saved = load_user_svg(workspace, mode_n, use_ent)
+    if saved:
+        model = dict(model)
+        model["svg"] = saved
+        model["er_view"] = "user"
+    return model
+
+
 def _strip_internal(model: dict[str, Any]) -> dict[str, Any]:
     """缓存/响应前去掉仅排版内部字段（体积大且前端不用）。"""
     out = dict(model)
@@ -320,6 +402,29 @@ def warm_default_diagrams(
             summary["items"][name] = {"ok": False, "reason": str(e)[:200]}
             summary["ok"] = False
 
+    _one(
+        "er",
+        lambda: pack_er(ws, mode="total", force=True),
+    )
+    # 每个概念实体一张实体属性图（无外键），避免答辩前逐个点开
+    try:
+        from app.bake.schema.er import load_schema_model
+
+        _m = load_schema_model(ws)
+        _ents = [
+            str(x)
+            for x in ((_m or {}).get("conceptual_entities") or [])
+            if str(x).strip()
+        ]
+        for _ent in _ents:
+            _one(
+                f"er_part:{_ent}",
+                lambda e=_ent: pack_er(ws, mode="part", entity=e, force=True),
+            )
+    except Exception as e:
+        logger.warning("warm er parts list failed: %s", e)
+        summary["items"]["er_parts"] = {"ok": False, "reason": str(e)[:200]}
+        summary["ok"] = False
     _one(
         "modules",
         lambda: pack_modules(

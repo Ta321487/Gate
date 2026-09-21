@@ -4,11 +4,23 @@ from __future__ import annotations
 
 import math
 import random
+import time
 from collections import defaultdict
 from itertools import permutations
 
 ENTITY_HH = 22
 ATTR_RH = 14
+
+# 打开接口首算要快：总预算封顶；环序粗搜只占一小部分，双页候选评分必须跑完。
+_LAYOUT_BUDGET_SEC = 2.5
+_ORDER_SHARE = 0.25  # 总预算里给「压环交叉」的比例，其余留给 book 候选评分
+_REFINE_ROUNDS = 12
+_REFINE_ROUNDS_LIGHT = 3
+_ORDER_RANDOM_SEEDS = 8
+_BOOK_RANDOM_SEEDS = 20
+_HUB_TRY_LIMIT = 3
+_PERM_N_MAX = 7  # 原 8→7! =5040 仍可；8 实体用启发式
+_OUTER_NEST_GAP = 56.0  # 环外弧层距（含菱形外伸），避免邻层折线几何交叉
 
 
 def _esc(s: str) -> str:
@@ -157,7 +169,12 @@ def _dfs_order(names: list[str], edges: list[tuple[str, str]], start: str) -> li
     return order
 
 
-def _refine_order_relocate(order: list[str], edges: list[tuple[str, str]]) -> list[str]:
+def _refine_order_relocate(
+    order: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    deadline: float | None = None,
+) -> list[str]:
     """顶点重插局部搜索，压低环上交叉。"""
     order = list(order)
     n = len(order)
@@ -165,7 +182,9 @@ def _refine_order_relocate(order: list[str], edges: list[tuple[str, str]]) -> li
         return order
     improved = True
     rounds = 0
-    while improved and rounds < 60:
+    while improved and rounds < _REFINE_ROUNDS:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         improved = False
         rounds += 1
         cur = _circular_crossings(order, edges)
@@ -188,17 +207,25 @@ def _refine_order_relocate(order: list[str], edges: list[tuple[str, str]]) -> li
     return order
 
 
-def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) -> list[str]:
+def _order_minimize_crossings(
+    names: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    deadline: float | None = None,
+) -> list[str]:
     """多起点 + 重插，尽量把环上交叉压到 0（可外平面时）。"""
     names = list(names)
     n = len(names)
     if n <= 2:
         return names
     seeds: list[list[str]] = [list(names), list(reversed(names))]
-    for start in names:
+    # 度数高的当 DFS 起点更易出好环序；不必每个点都扫一遍
+    deg = _degree_map(names, edges)
+    starts = sorted(names, key=lambda x: (-deg.get(x, 0), x))[: min(4, n)]
+    for start in starts:
         seeds.append(_dfs_order(names, edges, start))
-    # 小图穷举旋转代表（固定首点）；n<=8 → 7! =5040
-    if n <= 8:
+    # 小图穷举旋转代表（固定首点）；n<=7 → 6! =720
+    if n <= _PERM_N_MAX:
         base = names[0]
         rest = names[1:]
         best_o = list(names)
@@ -206,6 +233,8 @@ def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) ->
         if best == 0:
             return best_o
         for perm in permutations(rest):
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             order = [base, *perm]
             c = _circular_crossings(order, edges)
             if c < best:
@@ -216,7 +245,7 @@ def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) ->
         return best_o
 
     rng = random.Random(0xE12)
-    for _ in range(48):
+    for _ in range(_ORDER_RANDOM_SEEDS):
         s = list(names)
         rng.shuffle(s)
         seeds.append(s)
@@ -224,7 +253,9 @@ def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) ->
     best_o = list(names)
     best = _circular_crossings(best_o, edges)
     for seed in seeds:
-        order = _refine_order_relocate(seed, edges)
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        order = _refine_order_relocate(seed, edges, deadline=deadline)
         c = _circular_crossings(order, edges)
         if c < best:
             best = c
@@ -235,9 +266,15 @@ def _order_minimize_crossings(names: list[str], edges: list[tuple[str, str]]) ->
 
 
 def _two_page_partition(
-    order: list[str], edges: list[tuple[str, str]]
+    order: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    force: bool = False,
 ) -> tuple[bool, set[tuple[str, str]], set[tuple[str, str]]]:
-    """把无向边分成环内/环外两页，同页内弦不交叉。"""
+    """把无向边分成环内/环外两页，同页内弦不交叉。
+
+    force=True：放不下的边一律进外页（保证总能出图，且内页零交叉）。
+    """
     pos = {name: i for i, name in enumerate(order)}
     n = len(order)
     pairs = [e for e in _undirected_pairs(edges) if e[0] in pos and e[1] in pos]
@@ -257,51 +294,140 @@ def _two_page_partition(
         if all(not _pair_crosses_on_order(order, e, f) for f in outer):
             outer.append(e)
             continue
+        if force:
+            outer.append(e)
+            continue
         return False, set(), set()
     return True, set(inner), set(outer)
 
 
 def _book_embedding(
-    names: list[str], edges: list[tuple[str, str]]
+    names: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    deadline: float | None = None,
 ) -> tuple[list[str], set[tuple[str, str]], set[tuple[str, str]]]:
-    """求环序 + 双页划分，优先无外页、其次外页尽量少。"""
+    """求环序 + 双页划分，优先无外页、其次外页尽量少。
+
+    旧实现把整段预算耗在压环交叉上，双页评分几乎跑不到 → 外页偏多、几何易交叉。
+    现拆成：短时粗环序 + 大量轻量候选按外页数评分 + 剩余时间精炼优胜者。
+    """
     names = list(names)
     if len(names) <= 1:
         return names, set(), set()
 
-    candidates: list[list[str]] = []
-    primary = _order_minimize_crossings(names, edges)
-    candidates.append(primary)
-    for start in names:
-        candidates.append(_refine_order_relocate(_dfs_order(names, edges, start), edges))
+    now = time.monotonic()
+    order_deadline = deadline
+    if deadline is not None:
+        remain = max(0.0, deadline - now)
+        order_deadline = now + remain * _ORDER_SHARE
+
+    primary = _order_minimize_crossings(names, edges, deadline=order_deadline)
+
+    # 先堆大量「未精炼」候选：双页评分 O(E²) 很便宜，重插才贵
+    candidates: list[list[str]] = [primary]
+    deg = _degree_map(names, edges)
+    for start in sorted(names, key=lambda x: (-deg.get(x, 0), x))[: min(8, len(names))]:
+        candidates.append(_dfs_order(names, edges, start))
     rng = random.Random(0xB00C)
-    for _ in range(24):
+    for _ in range(_BOOK_RANDOM_SEEDS):
         s = list(names)
         rng.shuffle(s)
-        candidates.append(_refine_order_relocate(s, edges))
+        candidates.append(s)
 
     best: tuple[int, int, list[str], set[tuple[str, str]], set[tuple[str, str]]] | None = None
     seen_ord: set[tuple[str, ...]] = set()
-    for order in candidates:
+
+    def _consider(order: list[str]) -> bool:
+        """更新 best；若已零外页零环交叉返回 True（可早停）。"""
+        nonlocal best
         key = tuple(order)
         if key in seen_ord:
-            continue
+            return False
         seen_ord.add(key)
         ok, inner, outer = _two_page_partition(order, edges)
         if not ok:
-            continue
+            return False
         score = (len(outer), _circular_crossings(order, edges))
         if best is None or score < (best[0], best[1]):
             best = (score[0], score[1], order, inner, outer)
-            if score == (0, 0):
+            return score == (0, 0)
+        return False
+
+    for order in candidates:
+        if _consider(order):
+            return best[2], best[3], best[4]  # type: ignore[index]
+
+    # 剩余时间：浅精炼 + 邻域扰动，继续压外页数
+    if best is not None and (deadline is None or time.monotonic() < deadline):
+        refined = _refine_order_relocate_limited(
+            list(best[2]), edges, rounds=_REFINE_ROUNDS_LIGHT, deadline=deadline
+        )
+        if _consider(refined):
+            return best[2], best[3], best[4]
+        full = _refine_order_relocate(list(best[2]), edges, deadline=deadline)
+        if _consider(full):
+            return best[2], best[3], best[4]
+        rng2 = random.Random(0xB0B0)
+        for _ in range(8):
+            if deadline is not None and time.monotonic() >= deadline:
                 break
+            s = list(best[2])
+            if len(s) >= 4:
+                i, j = rng2.randrange(len(s)), rng2.randrange(len(s))
+                s[i], s[j] = s[j], s[i]
+            s = _refine_order_relocate_limited(
+                s, edges, rounds=_REFINE_ROUNDS_LIGHT, deadline=deadline
+            )
+            if _consider(s):
+                return best[2], best[3], best[4]
+
     if best is not None:
         return best[2], best[3], best[4]
 
-    # 极端兜底：全放内页（可能仍有交叉，但保持旧行为可画）
+    # 兜底：强制双页（放不下的进外页），禁止「全内页带交叉」
     order = primary
-    pairs = set(_undirected_pairs(edges))
-    return order, pairs, set()
+    _ok, inner, outer = _two_page_partition(order, edges, force=True)
+    return order, inner, outer
+
+
+def _refine_order_relocate_limited(
+    order: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    rounds: int,
+    deadline: float | None = None,
+) -> list[str]:
+    """浅重插：与 _refine_order_relocate 相同，但轮数上限独立。"""
+    order = list(order)
+    n = len(order)
+    if n <= 2:
+        return order
+    improved = True
+    done = 0
+    while improved and done < rounds:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        improved = False
+        done += 1
+        cur = _circular_crossings(order, edges)
+        if cur == 0:
+            return order
+        for i in range(n):
+            for j in range(n):
+                if i == j:
+                    continue
+                node = order.pop(i)
+                order.insert(j, node)
+                c = _circular_crossings(order, edges)
+                if c < cur:
+                    improved = True
+                    break
+                order.pop(j)
+                order.insert(i, node)
+            if improved:
+                break
+    return order
 
 
 def _orient3(
@@ -375,17 +501,21 @@ def _try_hub_layout(
     cx: float,
     cy: float,
     ring_r: float,
+    *,
+    deadline: float | None = None,
 ) -> tuple[list[str], dict[str, tuple[float, float]]] | None:
     """尝试 1 个内点 + 其余环排，全直线且几何零交叉（你拖拽能修好的那种）。"""
     if len(names) < 4:
         return None
     deg = _degree_map(names, edges)
-    # 度数高的优先；同度保持稳定顺序
-    hubs = sorted(names, key=lambda n: (-deg[n], n))
+    # 度数高的优先；同度保持稳定顺序；只试前几名，避免每 hub 再跑一遍环序搜索
+    hubs = sorted(names, key=lambda n: (-deg[n], n))[:_HUB_TRY_LIMIT]
     for hub in hubs:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         rest = [n for n in names if n != hub]
         rest_edges = [(a, b) for a, b in edges if a != hub and b != hub]
-        rest_order = _order_minimize_crossings(rest, rest_edges)
+        rest_order = _order_minimize_crossings(rest, rest_edges, deadline=deadline)
         if _circular_crossings(rest_order, rest_edges) > 0:
             # 环上仍交叉则该 hub 无望（外环本身画不平）
             continue
@@ -411,12 +541,13 @@ def _layout_entities(
     if len(names) == 1:
         return names, {names[0]: (cx, cy)}, set()
 
-    order, _inner, outer = _book_embedding(names, edges)
+    deadline = time.monotonic() + _LAYOUT_BUDGET_SEC
+    order, _inner, outer = _book_embedding(names, edges, deadline=deadline)
     if not outer:
         return order, _circle_positions(order, cx, cy, ring_r), set()
 
     # 环上不得不交叉时：优先把一点放进环内（论文图更干净，也接近手动拖拽结果）
-    hubbed = _try_hub_layout(names, edges, cx, cy, ring_r)
+    hubbed = _try_hub_layout(names, edges, cx, cy, ring_r, deadline=deadline)
     if hubbed is not None:
         return hubbed[0], hubbed[1], set()
 
@@ -443,6 +574,20 @@ def _ang_norm(a: float) -> float:
     return a
 
 
+def _outward_rect_port(
+    ex: float,
+    ey: float,
+    ring_cx: float,
+    ring_cy: float,
+    hw: float,
+    hh: float,
+) -> tuple[tuple[float, float], float]:
+    """实体朝环外的矩形接驳点 + 方位角（沿圆心→实体射线）。"""
+    ang = math.atan2(ey - ring_cy, ex - ring_cx)
+    far = (ex + math.cos(ang) * 1000.0, ey + math.sin(ang) * 1000.0)
+    return _rect_edge(ex, ey, far[0], far[1], hw, hh), ang
+
+
 def _outer_arc_polyline(
     lp: tuple[float, float],
     rp: tuple[float, float],
@@ -450,19 +595,28 @@ def _outer_arc_polyline(
     cy: float,
     ring_r: float,
     nest: int,
+    *,
+    inset1: float = 0.0,
+    inset2: float = 0.0,
 ) -> tuple[list[tuple[float, float]], tuple[float, float]]:
     """环外弧折点 + 菱形位置。
 
     折点落在足够大的同心圆上，相邻圆心角 ≤ π/8，使弦也在实体环外侧。
+    inset1/inset2：端点沿弧向内收一点，避免同实体更高 nest 的径向穿过本层弧端点。
     """
     a1 = math.atan2(lp[1] - cy, lp[0] - cx)
     a2 = math.atan2(rp[1] - cy, rp[0] - cx)
     da = _ang_norm(a2 - a1)
+    if abs(da) > 1e-9:
+        sgn = 1.0 if da > 0 else -1.0
+        a1 = a1 + sgn * inset1
+        a2 = a2 - sgn * inset2
+        da = _ang_norm(a2 - a1)
     step = math.pi / 8
     n_steps = max(2, int(math.ceil(abs(da) / step)))
     half = abs(da) / n_steps / 2.0
     cos_h = math.cos(half) if half < math.pi / 2 else 0.2
-    r_out = (ring_r + 44.0) / max(cos_h, 0.35) + 18.0 + nest * 30.0
+    r_out = (ring_r + 44.0) / max(cos_h, 0.35) + 18.0 + nest * _OUTER_NEST_GAP
 
     arc: list[tuple[float, float]] = []
     for i in range(n_steps + 1):
@@ -470,9 +624,10 @@ def _outer_arc_polyline(
         a = a1 + da * t
         arc.append((cx + r_out * math.cos(a), cy + r_out * math.sin(a)))
     mid_a = a1 + da / 2.0
+    # 菱形略外于本层弧；层距 _OUTER_NEST_GAP 须大于此外伸，避免穿邻层
     diamond = (
-        cx + (r_out + 22.0) * math.cos(mid_a),
-        cy + (r_out + 22.0) * math.sin(mid_a),
+        cx + (r_out + 18.0) * math.cos(mid_a),
+        cy + (r_out + 18.0) * math.sin(mid_a),
     )
     return arc, diamond
 
@@ -486,8 +641,8 @@ def render_er_svg(
 ) -> str:
     """陈氏 E-R 线框图。
 
-    mode=total：总图（实体 + 联系 + 基数，不含属性，贴合论文总 E-R）。
-    mode=part：分图（单个实体 + 全部属性，不含联系）。
+    mode=total：概念 E-R（实体 + 联系 + 基数，不含属性；中间表已塌成 N:M）。
+    mode=part：实体属性图（单个概念实体 + 自身属性，无外键、无联系）。
     图内不放标题/图例（图注写 Word）。
     """
     _ = title
@@ -502,13 +657,35 @@ def render_er_svg(
 
     show_attrs = mode == "part"
     if mode == "part":
-        ent_name = (entity or "").strip() or str(tables[0].get("name") or "")
+        # 分图默认落到第一个概念实体（跳过中间表与角色拆分逻辑实体）
+        conceptual = [
+            str(t.get("name") or "")
+            for t in tables
+            if isinstance(t, dict)
+            and not t.get("assoc_link")
+            and not t.get("role_of")
+            and t.get("name")
+        ]
+        if not conceptual:
+            conceptual = [
+                str(t.get("name") or "")
+                for t in tables
+                if isinstance(t, dict) and t.get("name") and not t.get("assoc_link")
+            ]
+        ent_name = (entity or "").strip() or (conceptual[0] if conceptual else "")
         tables = [t for t in tables if t.get("name") == ent_name]
         if not tables:
             return _svg_wrap(480, 200, '<text x="24" y="100" font-size="14">未找到该实体</text>')
+        if tables[0].get("assoc_link"):
+            return _svg_wrap(
+                480,
+                200,
+                '<text x="24" y="100" font-size="14">中间表不绘制实体属性图</text>',
+            )
         relations = []
     else:
-        # 总图：去掉无联系的悬空实体（如纯配置表），让图成连通业务网
+        # 总图：排除 M:N 中间表矩形；去掉无联系的悬空实体
+        tables = [t for t in tables if isinstance(t, dict) and not t.get("assoc_link")]
         linked: set[str] = set()
         for r in relations:
             if isinstance(r, dict):
@@ -537,8 +714,11 @@ def render_er_svg(
     def _attrs_for(t: dict) -> list:
         if not show_attrs:
             return []
-        # 分图用全列；总图不画属性
-        return list(t.get("columns") or [])
+        # 实体属性图：自身属性（去外键）；优先 own_columns
+        own = t.get("own_columns")
+        if isinstance(own, list) and own:
+            return list(own)
+        return [c for c in (t.get("columns") or []) if isinstance(c, dict) and not c.get("fk")]
 
     clouds = {
         t["name"]: (
@@ -561,24 +741,21 @@ def render_er_svg(
         if n >= 4:
             ring_r = max(ring_r, pair_need / (2 * math.sin(math.pi / max(n - 1, 2))))
 
-    # 先按可能走环外预留边距；若改用内点直线则 outer 为空，多留无妨
-    _, _, outer_hint = _book_embedding(names, edges)
+    # 只排一次：先在原点排，再按外页垫算画布并平移（禁止 book_embedding 跑两遍）
+    order, entity_pos, outer_pairs = _layout_entities(names, edges, 0.0, 0.0, ring_r)
     outer_nest_pad = 0.0
-    if outer_hint and n > 1:
-        outer_nest_pad = ring_r * 0.65 + 100.0 + max(0, len(outer_hint) - 1) * 32.0
+    if outer_pairs and n > 1:
+        outer_nest_pad = ring_r * 0.65 + 100.0 + max(0, len(outer_pairs) - 1) * _OUTER_NEST_GAP
 
-    pad = (56.0 if not show_attrs else 72.0) + (12.0 if outer_hint else 0.0)
+    pad = (56.0 if not show_attrs else 72.0) + (12.0 if outer_pairs else 0.0)
     content_r = ring_r + max_cloud + outer_nest_pad
     w = int(2 * content_r + 2 * pad)
     h = int(2 * content_r + 2 * pad)
     w, h = max(w, 360), max(h, 280)
     cx, cy = w / 2.0, h / 2.0
-
-    order, entity_pos, outer_pairs = _layout_entities(names, edges, cx, cy, ring_r)
+    if entity_pos:
+        entity_pos = {k: (x + cx, y + cy) for k, (x, y) in entity_pos.items()}
     ordered_tables = [by_name[nm] for nm in order if nm in by_name]
-    # 内点布局成功则无需环外垫
-    if not outer_pairs:
-        outer_nest_pad = 0.0
 
     # 同对联系计数，便于垂线错开
     pair_keys: list[tuple[str, str]] = []
@@ -590,7 +767,7 @@ def render_er_svg(
         pair_totals[pk] = pair_totals.get(pk, 0) + 1
     pair_seen: dict[tuple[str, str], int] = {}
 
-    # 外页边按跨度排序，决定环外嵌套层级
+    # 外页边按跨度排序分配唯一层号（同深度也错开半径，避免共享端点弧叠穿）
     pos_idx = {name: i for i, name in enumerate(order)}
 
     def _span_of(pk: tuple[str, str]) -> int:
@@ -600,8 +777,23 @@ def render_er_svg(
         d = abs(i - j)
         return min(d, n - d) if n else d
 
-    outer_sorted = sorted(outer_pairs, key=_span_of)
+    outer_sorted = sorted(outer_pairs, key=lambda e: (_span_of(e), e))
     outer_nest: dict[tuple[str, str], int] = {e: i for i, e in enumerate(outer_sorted)}
+
+    # 同实体多条外页：较低 nest 的弧端点沿弧内收，给较高 nest 径向让路
+    outer_fan: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for e in outer_sorted:
+        if e not in outer_fan[e[0]]:
+            outer_fan[e[0]].append(e)
+        if e not in outer_fan[e[1]]:
+            outer_fan[e[1]].append(e)
+
+    def _need_inset(ent: str, pk: tuple[str, str]) -> bool:
+        group = outer_fan.get(ent) or []
+        if len(group) <= 1:
+            return False
+        my_nest = outer_nest.get(pk, 0)
+        return any(outer_nest.get(o, 0) > my_nest for o in group if o != pk)
 
     edge_parts: list[str] = []
     node_parts: list[str] = []
@@ -638,14 +830,18 @@ def render_er_svg(
 
         if use_outer:
             nest = outer_nest.get(pk, 0)
-            arc_pts, (mx, my) = _outer_arc_polyline(lp, rp, cx, cy, ring_r, nest)
+            inset1 = 0.10 if _need_inset(r["left"], pk) else 0.0
+            inset2 = 0.10 if _need_inset(r["right"], pk) else 0.0
+            arc_pts, (mx, my) = _outer_arc_polyline(
+                lp, rp, cx, cy, ring_r, nest, inset1=inset1, inset2=inset2
+            )
+            # 同对多联系：只平移菱形，不平移弧端点
             if pair_totals[pk] > 1:
                 ox, oy = _pair_offset(arc_pts[0], arc_pts[-1], pi, pair_totals[pk])
                 mx += ox
                 my += oy
-                arc_pts = [(p[0] + ox * 0.2, p[1] + oy * 0.2) for p in arc_pts]
-            e1 = _rect_edge(lp[0], lp[1], arc_pts[0][0], arc_pts[0][1], hw1, ENTITY_HH)
-            e2 = _rect_edge(rp[0], rp[1], arc_pts[-1][0], arc_pts[-1][1], hw2, ENTITY_HH)
+            e1, _a1 = _outward_rect_port(lp[0], lp[1], cx, cy, hw1, ENTITY_HH)
+            e2, _a2 = _outward_rect_port(rp[0], rp[1], cx, cy, hw2, ENTITY_HH)
             mid = len(arc_pts) // 2
             left_chain = [e1, *arc_pts[: mid + 1]]
             d1 = _diamond_edge(mx, my, dw, dh, left_chain[-1][0], left_chain[-1][1])
@@ -700,6 +896,7 @@ def render_er_svg(
         )
         node_parts.append(
             f'<g class="er-node" data-kind="rel" data-id="{_esc(rel_id)}" data-shape="diamond" '
+            f'data-left="{_esc(left_id)}" data-right="{_esc(right_id)}" '
             f'data-cx="{mx:.1f}" data-cy="{my:.1f}" data-hw="{dw:.1f}" data-hh="{dh:.1f}">'
             f'<polygon points="{diamond}" fill="#fff" stroke="#000" stroke-width="1.2"/>'
             f'<text x="{mx:.1f}" y="{my + 4:.1f}" text-anchor="middle" '
@@ -764,17 +961,7 @@ def render_er_svg(
                     f'<line x1="{ax - tw / 2:.1f}" y1="{ay + 8:.1f}" '
                     f'x2="{ax + tw / 2:.1f}" y2="{ay + 8:.1f}" stroke="#000" stroke-width="1"/>'
                 )
-            elif col.get("fk"):
-                wave = []
-                x0 = ax - tw / 2
-                steps = max(4, int(tw / 6))
-                for si in range(steps + 1):
-                    wx = x0 + tw * si / steps
-                    wy = ay + 8 + (2 if si % 2 else -2)
-                    wave.append(f"{wx:.1f},{wy:.1f}")
-                deco = (
-                    f'<polyline points="{" ".join(wave)}" fill="none" stroke="#000" stroke-width="1"/>'
-                )
+            # 实体属性图不含外键，不再画 FK 波浪线
             node_parts.append(
                 f'<g class="er-node" data-kind="attr" data-id="{_esc(attr_id)}" '
                 f'data-parent="{_esc(ent_id)}" data-shape="ellipse" '
