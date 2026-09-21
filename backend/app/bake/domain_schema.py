@@ -461,6 +461,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.housekeeping_cap import apply_housekeeping_to_spec
 
     out = apply_housekeeping_to_spec(out, body)
+    from app.bake.features.venue_clean import apply_venue_clean_to_spec
+
+    out = apply_venue_clean_to_spec(out, body)
     from app.bake.features.buyback import apply_buyback_to_spec
 
     out = apply_buyback_to_spec(out, body)

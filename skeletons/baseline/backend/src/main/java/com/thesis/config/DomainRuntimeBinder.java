@@ -14,6 +14,7 @@ import com.thesis.capability.ShootStore;
 import com.thesis.capability.BoardingStore;
 import com.thesis.capability.RoomBoardStore;
 import com.thesis.capability.FrontDeskStore;
+import com.thesis.capability.VenueCleanStore;
 import com.thesis.capability.BuybackStore;
 import com.thesis.capability.DigitalGoodsStore;
 import com.thesis.capability.RentalBondStore;
@@ -327,6 +328,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.housekeeping-enabled:false}")
     private boolean housekeepingEnabled;
 
+    @Value("${thesis.venue-clean-enabled:false}")
+    private boolean venueCleanEnabled;
+
     @Value("${thesis.buyback-enabled:false}")
     private boolean buybackEnabled;
 
@@ -597,6 +601,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         BoardingStore.configure(boardingEnabled);
         RoomBoardStore.configure(roomBoardEnabled);
         FrontDeskStore.configure(frontDeskEnabled);
+        VenueCleanStore.configure(venueCleanEnabled);
         BuybackStore.configure(buybackEnabled);
         LessonStore.configure(lessonPackEnabled);
         RentalBondStore.configure(rentalBondEnabled);

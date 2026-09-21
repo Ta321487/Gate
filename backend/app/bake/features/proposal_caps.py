@@ -143,6 +143,9 @@ def merge_proposal_capabilities(
     from app.bake.features.housekeeping_cap import merge_housekeeping_capabilities
 
     req = merge_housekeeping_capabilities(req, body, domain=domain, title=title)
+    from app.bake.features.venue_clean import merge_venue_clean_capabilities
+
+    req = merge_venue_clean_capabilities(req, body, domain=domain, title=title)
     from app.bake.features.buyback import merge_buyback_capabilities
 
     req = merge_buyback_capabilities(req, body, domain=domain)

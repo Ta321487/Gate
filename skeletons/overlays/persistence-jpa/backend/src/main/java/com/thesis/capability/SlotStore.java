@@ -409,6 +409,14 @@ public final class SlotStore {
         }
         OrderStore.completeByReservation(resvId);
         try {
+            Object itemId = m.get("itemId");
+            if (itemId != null) {
+                long iid = Long.parseLong(String.valueOf(itemId));
+                VenueCleanStore.markDirtyAfterReservation(iid);
+            }
+        } catch (Exception ignored) {
+        }
+        try {
             String user = String.valueOf(m.get("username"));
             MessageStore.send(
                     user,

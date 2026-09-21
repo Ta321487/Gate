@@ -79,7 +79,7 @@ _CLERK_MENU_PACK_AFFINITY: dict[str, frozenset[str]] = {
     "room_board": frozenset({"slot_ops", "order_ops"}),
     "front_checkin": frozenset({"slot_ops", "order_ops"}),
     "front_checkout": frozenset({"slot_ops", "order_ops"}),
-    "clean_tasks": frozenset({"slot_ops"}),
+    "clean_tasks": frozenset({"slot_ops", "ticket_ops"}),
 }
 
 # 并入办理岗后须放开的菜单（禁止再 superOnly 挡死一线）
@@ -92,6 +92,7 @@ PACK_WORK_PAGES: dict[str, frozenset[str]] = {
     "order_work": frozenset({"orders"}),
     "slot_work": frozenset({"slots"}),
     "room_clean_work": frozenset({"clean"}),
+    "venue_clean_work": frozenset({"clean"}),
 }
 
 CLERK_PACKS = frozenset(PACK_ADMIN_MENUS)
@@ -320,6 +321,31 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
                 "健身教练",
             ),
         ),
+        (
+            _worker("venue_cleaner", "场馆保洁", "venue_clean_work"),
+            (
+                "保洁任务",
+                "清洁管理",
+                "场馆保洁",
+                "场地清洁",
+                "场地保洁",
+                "驻场保洁",
+                "清洁信息管理",
+            ),
+        ),
+    ],
+    "DOM-MEETING": [
+        (
+            _worker("venue_cleaner", "场馆保洁", "venue_clean_work"),
+            (
+                "保洁任务",
+                "清洁管理",
+                "场馆保洁",
+                "场地清洁",
+                "会议室清洁",
+                "清洁信息管理",
+            ),
+        ),
     ],
     "DOM-HOTEL": [
         (
@@ -364,6 +390,18 @@ _OPTIONAL_WORKERS: dict[str, list[tuple[dict[str, Any], tuple[str, ...]]]] = {
                 "报修派工",
                 "派单",
                 "派工",
+            ),
+        ),
+        (
+            _worker("venue_cleaner", "场馆保洁", "venue_clean_work"),
+            (
+                "保洁任务",
+                "清洁管理",
+                "场馆保洁",
+                "场地清洁",
+                "场地保洁",
+                "驻场保洁",
+                "清洁信息管理",
             ),
         ),
     ],
@@ -1378,6 +1416,18 @@ def attach_staff_posts(
                     row["packs"] = ["room_clean_work"]
                     merged_posts.append(row)
                     break
+    # 场馆保洁：有 venue_clean 则必有 venue_cleaner + venue_clean_work
+    if domain in ("DOM-SALON", "DOM-MEETING", "DOM-PROPERTY") and "venue_clean" in _schema_cap_set(
+        schema
+    ):
+        have_vc = False
+        for row in merged_posts:
+            if str(row.get("id") or "") == "venue_cleaner":
+                row["packs"] = ["venue_clean_work"]
+                have_vc = True
+                break
+        if not have_vc:
+            merged_posts.append(_worker("venue_cleaner", "场馆保洁", "venue_clean_work"))
     for e in validate_staff_posts(merged_posts):
         raise ValueError(f"{domain}: {e}")
     roles = dict(prev_roles)

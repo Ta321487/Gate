@@ -447,6 +447,7 @@ def domain_sql(
         ensure_boarding_sql,
         ensure_room_board_sql,
         ensure_front_desk_sql,
+        ensure_venue_clean_sql,
         ensure_buyback_sql,
         ensure_lesson_pack_sql,
         ensure_rental_bond_sql,
@@ -759,6 +760,22 @@ def domain_sql(
     )
     text = ensure_room_board_sql(text, enabled=ROOM_BOARD_CAP in caps)
     text = ensure_front_desk_sql(text, enabled=FRONT_DESK_CAP in caps)
+    from app.bake.features.venue_clean import (
+        VENUE_CLEAN_CAP,
+        merge_venue_clean_capabilities,
+    )
+
+    caps = merge_venue_clean_capabilities(
+        caps,
+        proposal_text or "",
+        domain=domain,
+        title=title or "",
+    )
+    text = ensure_venue_clean_sql(
+        text,
+        enabled=VENUE_CLEAN_CAP in caps,
+        item_table=resolved_item,
+    )
     from app.bake.features.buyback import BUYBACK_CAP, merge_buyback_capabilities
 
     caps = merge_buyback_capabilities(

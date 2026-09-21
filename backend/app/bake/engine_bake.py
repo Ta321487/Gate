@@ -651,6 +651,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  front-desk-enabled: true")
     if "housekeeping" in caps:
         lines.append("  housekeeping-enabled: true")
+    if "venue_clean" in caps:
+        lines.append("  venue-clean-enabled: true")
     if "buyback" in caps:
         lines.append("  buyback-enabled: true")
     if "lesson_pack" in caps:

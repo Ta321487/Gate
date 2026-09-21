@@ -1154,7 +1154,12 @@ function withRentalBondRoutes(baseRoutes) {
 }
 
 function withHotelPmsRoutes(baseRoutes) {
-  if (!hasCap('room_board') && !hasCap('front_desk') && !hasCap('housekeeping')) {
+  if (
+    !hasCap('room_board')
+    && !hasCap('front_desk')
+    && !hasCap('housekeeping')
+    && !hasCap('venue_clean')
+  ) {
     return baseRoutes
   }
   const routes = cloneRoutes(baseRoutes)
@@ -1169,7 +1174,7 @@ function withHotelPmsRoutes(baseRoutes) {
     add(adminKids, 'front-checkin', () => import('../views/admin/FrontCheckinAdmin.vue'))
     add(adminKids, 'front-checkout', () => import('../views/admin/FrontCheckoutAdmin.vue'))
   }
-  if (hasCap('housekeeping')) {
+  if (hasCap('housekeeping') || hasCap('venue_clean')) {
     add(adminKids, 'clean-tasks', () => import('../views/admin/CleanTasksAdmin.vue'))
   }
   return routes

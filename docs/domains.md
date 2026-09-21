@@ -71,7 +71,7 @@
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-DORM** | 宿舍报修、水电、寝室 | ticket_flow + content + org_users（±archive）；报修表单按资料楼栋/房间预填 lookup |
-| **DOM-PROPERTY** | 物业报修、社区维修 | 同上（house* / 校园皮 dorm*） |
+| **DOM-PROPERTY** | 物业报修、社区维修 | 同上（house* / 校园皮 dorm*）；可选窄扫 **venue_clean** |
 | **DOM-IT** | 校园网报修、IT 运维工单 | 同上 |
 
 ### C. 报名 / 申请流（能力齐）
@@ -99,8 +99,8 @@
 |---------|----------------|----------|
 | **DOM-HOSPITAL** | 挂号、门诊预约、宠物医院挂号、疫苗/HPV 接种预约 | archive + slot_reserve + content + org_users |
 | **DOM-PARKING** | 车位预约 | archive + slot_reserve + content + org_users |
-| **DOM-MEETING** | 会议室 / 球馆 / 自习室 / 座位占坑预约 | archive + slot_reserve + content + org_users |
-| **DOM-SALON** | 美发美容 / 健身私教服务预约 | archive + slot_reserve + content + org_users |
+| **DOM-MEETING** | 会议室 / 球馆 / 自习室 / 座位占坑预约 | archive + slot_reserve + content + org_users；可选窄扫 **venue_clean**（写满保洁任务才挂） |
+| **DOM-SALON** | 美发美容 / 健身私教服务预约 | archive + slot_reserve + content + org_users；可选窄扫 **venue_clean**（裸清洁工不挂） |
 | **DOM-HOTEL** | 客房预约（宾馆/民宿） | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review**；可选扫词开 **boarding** / **room_board** / **front_desk** / **housekeeping**（PMS；民宿寄养不开 PMS） |
 | **DOM-CARRENT** | 汽车租赁 | archive + slot_reserve + order_lines + content + org_users + **guestbook** + **order_review** |
 

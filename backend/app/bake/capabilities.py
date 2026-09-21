@@ -194,6 +194,11 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "待打扫房间列表，完成后回空房；依赖房态板。不是健身房场馆保洁",
     },
+    "venue_clean": {
+        "label": "场馆保洁任务",
+        "status": "implemented",
+        "desc": "场地/会议室待清洁列表→完成；开题写保洁任务/清洁管理才挂。裸清洁工不够；≠酒店房态",
+    },
     "buyback": {
         "label": "旧书回收",
         "status": "implemented",

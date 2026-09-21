@@ -144,6 +144,9 @@ def test_gym_cleaner_does_not_open_hotel_pms() -> None:
     assert ROOM_BOARD_CAP not in caps
     assert FRONT_DESK_CAP not in caps
     assert HOUSEKEEPING_CAP not in caps
+    from app.bake.features.venue_clean import VENUE_CLEAN_CAP
+
+    assert VENUE_CLEAN_CAP not in caps
     sql = domain_sql("DOM-SALON", "t_salon", title=title, proposal_text=body)
     assert "room_instance" not in sql
 

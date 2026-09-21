@@ -1644,6 +1644,29 @@ CREATE TABLE IF NOT EXISTS consumption (
 """
 
 
+_VENUE_CLEAN_COLUMNS = (
+    ("clean_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+)
+
+
+def ensure_venue_clean_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """档案/场地表补 clean_status。未开不加列；不新建表。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, _VENUE_CLEAN_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+
 def ensure_room_board_sql(sql: str, *, enabled: bool) -> str:
     """房间实例 + 房态日志。未开不加。"""
     if not enabled:
