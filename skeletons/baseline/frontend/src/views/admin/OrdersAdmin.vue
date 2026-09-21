@@ -86,7 +86,7 @@
       </el-table-column>
       <el-table-column label="明细" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ (row.lines || []).map((x) => `${x.title}×${x.qty}¥${Number((x.lineYuan ?? x.priceYuan * x.qty) || 0).toFixed(2)}`).join('；') }}
+          {{ formatOrderLines(row.lines) }}
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="下单时间" width="170" />
@@ -205,6 +205,16 @@ const shipVerb = computed(() => {
   if (isCinema.value) return '出票'
   return isFood.value ? '出餐' : '发货'
 })
+
+function formatOrderLine(x) {
+  const yuan = Number((x.lineYuan ?? x.priceYuan * x.qty) || 0).toFixed(2)
+  return `${x.title} × ${x.qty}（¥${yuan}）`
+}
+
+function formatOrderLines(lines) {
+  return (lines || []).map(formatOrderLine).join('；')
+}
+
 const confirmVerb = computed(() => {
   if (order.value.verbs?.confirm) return order.value.verbs.confirm
   return isFood.value ? '接单' : '确认'
@@ -318,7 +328,7 @@ async function exportCsv() {
         Number(row.discountYuan) > 0 ? row.discountYuan : '',
         Number(row.pointsEarned) > 0 ? row.pointsEarned : '',
         (row.lines || [])
-          .map((x) => `${x.title}×${x.qty}¥${Number(x.lineYuan ?? 0).toFixed(2)}`)
+          .map((x) => formatOrderLine(x))
           .join('；'),
         row.createdAt,
       ]
@@ -335,7 +345,7 @@ async function exportCsv() {
       row.remark || '',
       Number(row.discountYuan) > 0 ? row.discountYuan : '',
       Number(row.pointsEarned) > 0 ? row.pointsEarned : '',
-      (row.lines || []).map((x) => `${x.title}×${x.qty}`).join('；'),
+      (row.lines || []).map((x) => formatOrderLine(x)).join('；'),
       row.createdAt,
     ]
     if (isFood.value) {
