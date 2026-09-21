@@ -55,7 +55,9 @@
       <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
           <div class="table-ops">
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button link type="primary" @click="openEdit(row)">
+            {{ isPendingMerchant(row) ? '审核' : '编辑' }}
+          </el-button>
           <el-button
             v-if="walletOn && !isSub(row)"
             link
@@ -119,22 +121,25 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="visible" :title="'编辑' + (isSub(form) ? identityLabel(form) : userLabel)" width="640px" destroy-on-close>
+    <el-dialog v-model="visible" :title="dialogTitle" width="640px" destroy-on-close>
       <el-form :model="form" label-position="top" require-asterisk-position="right" class="edit-form">
         <div class="grid">
           <el-form-item label="用户名"><el-input :model-value="form.username" disabled /></el-form-item>
-          <el-form-item label="昵称"><el-input v-model="form.nickname" maxlength="32" /></el-form-item>
+          <el-form-item label="昵称">
+            <el-input v-model="form.nickname" maxlength="32" :disabled="auditMode" />
+          </el-form-item>
           <el-form-item
             v-for="f in visibleFields"
             :key="f.key"
             :label="f.label"
-            :required="isProfileFieldRequired(f, form.extras)"
+            :required="!auditMode && isProfileFieldRequired(f, form.extras)"
           >
             <el-select
               v-if="f.type === 'select' && f.storage !== 'phone'"
               v-model="form.extras[f.key]"
               clearable
               style="width: 100%"
+              :disabled="auditMode"
               @change="onIdentityMaybe(f)"
             >
               <el-option v-for="opt in f.options || []" :key="opt" :label="opt" :value="opt" />
@@ -143,18 +148,21 @@
               v-else-if="f.storage === 'phone'"
               v-model="form.phone"
               maxlength="20"
+              :disabled="auditMode"
             />
             <el-input
               v-else
               v-model="form.extras[f.key]"
               :maxlength="f.maxLength || 64"
+              :disabled="auditMode"
             />
           </el-form-item>
         </div>
       </el-form>
       <template #footer>
-        <el-button @click="visible = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button @click="visible = false">{{ auditMode ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="auditMode" type="success" @click="approveFromDialog">审核通过</el-button>
+        <el-button v-else type="primary" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -230,6 +238,10 @@ function isMerchant(row) {
   return isSub(row) && (row.staffPost || '').toString() === 'shop_merchant'
 }
 
+function isPendingMerchant(row) {
+  return marketplace.value && isMerchant(row) && !row.enabled
+}
+
 function statusLabel(row) {
   if (row.enabled) return '正常'
   if (marketplace.value && isMerchant(row)) return '待审核'
@@ -260,6 +272,12 @@ async function toggle(row) {
   load()
 }
 
+async function approveFromDialog() {
+  const row = { username: form.username, enabled: false, staffPost: form.staffPost, role: form.role, superAdmin: form.superAdmin }
+  await toggle(row)
+  visible.value = false
+}
+
 function onIdentityMaybe(f) {
   const drivers = new Set(['identityType', 'readerType', 'ownerType', 'deliveryType', 'pickupType'])
   if (!drivers.has(f?.key)) return
@@ -281,6 +299,13 @@ const form = reactive({
   superAdmin: false,
   staffPost: '',
   extras: emptyProfileExtras(),
+})
+
+const auditMode = computed(() => isPendingMerchant(form))
+
+const dialogTitle = computed(() => {
+  if (auditMode.value) return '审核商家入驻'
+  return '编辑' + (isSub(form) ? identityLabel(form) : userLabel.value)
 })
 
 function isSub(row) {

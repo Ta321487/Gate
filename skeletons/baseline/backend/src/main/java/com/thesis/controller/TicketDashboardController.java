@@ -82,7 +82,11 @@ public class TicketDashboardController {
             }
         }
         try {
-            charts.put("stockSeries", ArchiveStore.stockByCategory(8));
+            String stockOwner = null;
+            if (ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+                stockOwner = AdminAuth.requireLogin(session);
+            }
+            charts.put("stockSeries", ArchiveStore.stockByCategory(8, stockOwner));
         } catch (Exception ignored) {
             charts.put("stockSeries", List.of());
         }

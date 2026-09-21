@@ -1484,23 +1484,33 @@ public final class OrderStore {
         List<Map<String, Object>> nodes = new ArrayList<>();
         nodes.add(traceNode(m.get("createdAt"), "已下单", "商家待确认"));
         String st = String.valueOf(m.get("status"));
-        if (!"pending".equals(st) && !"cancelled".equals(st)) {
-            nodes.add(traceNode(m.get("updatedAt"), "商家已确认", "备货中"));
-        }
         boolean shipPhase = "shipped".equals(st)
                 || "in_transit".equals(st)
                 || "signed".equals(st)
                 || "completed".equals(st);
+        Object shipAt = shipPhase
+                ? (m.get("shippedAt") != null ? m.get("shippedAt") : m.get("updatedAt"))
+                : null;
+        if (!"pending".equals(st) && !"cancelled".equals(st)) {
+            // 发货后 updatedAt 常被刷新到 shippedAt 之后，确认节点改用稳定时刻避免时间倒序
+            nodes.add(traceNode(confirmTraceAt(m, shipAt), "商家已确认", "备货中"));
+        }
         if (shipPhase) {
-            Object shipAt = m.get("shippedAt") != null ? m.get("shippedAt") : m.get("updatedAt");
             String track = String.valueOf(m.getOrDefault("trackingNo", ""));
             String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
             boolean pickup = dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提");
             if (pickup) {
+                boolean foodStyle = pickupFoodStyle(dtype);
                 String code = String.valueOf(m.getOrDefault("pickupCode", ""));
-                String tip = code.isBlank() || "null".equals(code) ? "请到店领取" : ("取餐码 " + code);
-                nodes.add(traceNode(shipAt, "已出餐", tip));
-                nodes.add(traceNode(shipAt, "待取餐", "请尽快到店领取"));
+                if (foodStyle) {
+                    String tip = code.isBlank() || "null".equals(code) ? "请到店领取" : ("取餐码 " + code);
+                    nodes.add(traceNode(shipAt, "已出餐", tip));
+                    nodes.add(traceNode(shipAt, "待取餐", "请尽快到店领取"));
+                } else {
+                    String tip = code.isBlank() || "null".equals(code) ? "请到店领取" : ("取货码 " + code);
+                    nodes.add(traceNode(shipAt, "已备货", tip));
+                    nodes.add(traceNode(shipAt, "待自提", "请尽快到店领取"));
+                }
             } else {
                 String tip = track.isBlank() || "null".equals(track) ? "已交接承运" : ("运单 " + track);
                 nodes.add(traceNode(shipAt, "已发货", tip));
@@ -1525,6 +1535,36 @@ public final class OrderStore {
             nodes.add(traceNode(m.get("refundAt"), "售后已驳回", String.valueOf(m.getOrDefault("refundReason", ""))));
         }
         return nodes;
+    }
+
+    /** 确认节点时间：有发货时刻时避免用晚于发货的 updatedAt。 */
+    private static Object confirmTraceAt(Map<String, Object> m, Object shipAt) {
+        Object updated = m.get("updatedAt");
+        Object created = m.get("createdAt");
+        if (shipAt == null || isBlankTraceAt(shipAt)) {
+            return updated != null ? updated : created;
+        }
+        if (!isBlankTraceAt(updated) && String.valueOf(updated).compareTo(String.valueOf(shipAt)) <= 0) {
+            return updated;
+        }
+        if (!isBlankTraceAt(created) && String.valueOf(created).compareTo(String.valueOf(shipAt)) <= 0) {
+            return created;
+        }
+        return shipAt;
+    }
+
+    /** 堂食/纯自取走餐饮词；商城自提等多店场景走备货/取货。 */
+    private static boolean pickupFoodStyle(String dtype) {
+        String d = dtype == null ? "" : dtype.trim();
+        if (d.contains("堂食")) return true;
+        if (ArchiveStore.shopMarketplaceEnabled()) return false;
+        return "自取".equals(d);
+    }
+
+    private static boolean isBlankTraceAt(Object at) {
+        if (at == null) return true;
+        String s = String.valueOf(at).trim();
+        return s.isEmpty() || "null".equals(s);
     }
 
     private static Map<String, Object> traceNode(Object at, String title, String detail) {

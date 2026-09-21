@@ -1593,9 +1593,17 @@ public final class ArchiveStore {
 
     /** 分类库存柱状图：名称 + 库存合计。 */
     public static List<Map<String, Object>> stockByCategory(int limit) {
+        return stockByCategory(limit, null);
+    }
+
+    /** @param ownerUsername 非空且有 owner_username 列时只合计该店主商品 */
+    public static List<Map<String, Object>> stockByCategory(int limit, String ownerUsername) {
         int lim = Math.max(1, Math.min(limit, 20));
         try {
-            List<Map<String, Object>> raw = mapper().stockByCategory(CAT, ITEM, lim);
+            String owner = (ownerUsername != null && !ownerUsername.isBlank() && hasOwnerUsername())
+                    ? ownerUsername.trim()
+                    : null;
+            List<Map<String, Object>> raw = mapper().stockByCategory(CAT, ITEM, lim, owner);
             List<Map<String, Object>> out = new ArrayList<>();
             if (raw == null) return out;
             for (Map<String, Object> r : raw) {

@@ -129,7 +129,8 @@ public interface ArchiveMapper {
     List<Map<String, Object>> stockByCategory(
             @Param("catTable") String catTable,
             @Param("itemTable") String itemTable,
-            @Param("limit") int limit);
+            @Param("limit") int limit,
+            @Param("ownerUsername") String ownerUsername);
 
     List<Map<String, Object>> selectTags(@Param("tagTable") String tagTable);
 

@@ -396,5 +396,77 @@ class ShopMarketplaceContractTests(unittest.TestCase):
             self.assertIn("pending_review\".equals(audit)", o_arch, msg=overlay)
 
 
+class ShopMarketplaceUxGuardTests(unittest.TestCase):
+    """多店答辩面：轨迹文案、库存按店、入驻审核态、明细可读、上架列不双真相。"""
+
+    @property
+    def root(self) -> Path:
+        return Path(__file__).resolve().parents[2] / "skeletons" / "baseline"
+
+    def test_logistics_trace_pickup_not_food_wording(self) -> None:
+        order = (
+            self.root
+            / "backend/src/main/java/com/thesis/capability/OrderStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("confirmTraceAt", order)
+        self.assertIn("pickupFoodStyle", order)
+        self.assertIn("已备货", order)
+        self.assertIn("待自提", order)
+        self.assertIn("取货码", order)
+        # 餐饮词仍保留给堂食分支，但不得在无条件自提里写死
+        self.assertIn('nodes.add(traceNode(shipAt, "已出餐", tip))', order)
+        for overlay in ("persistence-jpa", "persistence-mybatis"):
+            o = (
+                Path(__file__).resolve().parents[2]
+                / "skeletons"
+                / "overlays"
+                / overlay
+                / "backend/src/main/java/com/thesis/capability/OrderStore.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("confirmTraceAt", o, msg=overlay)
+            self.assertIn("已备货", o, msg=overlay)
+
+    def test_stock_by_category_owner_filter(self) -> None:
+        archive = (
+            self.root
+            / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("stockByCategory(int limit, String ownerUsername)", archive)
+        self.assertIn("AND i.owner_username=?", archive)
+        dash = (
+            self.root
+            / "backend/src/main/java/com/thesis/controller/TicketDashboardController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("stockByCategory(8, stockOwner)", dash)
+        self.assertIn("stockOwner", dash)
+
+    def test_users_admin_pending_merchant_audit_mode(self) -> None:
+        users = (
+            self.root / "frontend/src/views/admin/UsersAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("审核商家入驻", users)
+        self.assertIn("isPendingMerchant", users)
+        self.assertIn("auditMode", users)
+        self.assertIn("approveFromDialog", users)
+        self.assertIn("审核通过", users)
+
+    def test_orders_admin_line_spacing(self) -> None:
+        orders = (
+            self.root / "frontend/src/views/admin/OrdersAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("formatOrderLine", orders)
+        self.assertIn("（¥${yuan}）", orders)
+        self.assertNotIn("${x.title}×${x.qty}¥", orders)
+
+    def test_archive_admin_shelf_status_not_duplicated(self) -> None:
+        archive_admin = (
+            self.root / "frontend/src/views/admin/ArchiveAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("showShelfCol", archive_admin)
+        self.assertIn("softDelete && !publishReview && !showShelfCol", archive_admin)
+        self.assertIn("是否在售", archive_admin)
+        self.assertIn("shelfSwitchOn", archive_admin)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -61,7 +61,7 @@
           </template>
         </template>
       </el-table-column>
-      <el-table-column v-if="marketplace || publishReview" label="上架" width="100">
+      <el-table-column v-if="showShelfCol" label="上架" width="100">
         <template #default="{ row }">
           <el-tag size="small" :type="shelfTagType(row)" effect="plain">{{ shelfLabel(row) }}</el-tag>
         </template>
@@ -79,7 +79,7 @@
       >
         <template #default="{ row }">{{ formatArchiveScalar(f, row[f.key]) }}</template>
       </el-table-column>
-      <el-table-column v-if="softDelete && !publishReview" label="状态" width="80">
+      <el-table-column v-if="softDelete && !publishReview && !showShelfCol" label="状态" width="80">
         <template #default="{ row }">
           <el-tag v-if="row.deleted" size="small" type="info">{{ softCopy.off }}</el-tag>
           <el-tag v-else size="small" type="success" effect="plain">{{ softCopy.on }}</el-tag>
@@ -171,8 +171,8 @@
           <el-switch
             v-model="form.onShelf"
             inline-prompt
-            :active-text="softCopy.on"
-            :inactive-text="softCopy.off"
+            :active-text="shelfSwitchOn"
+            :inactive-text="shelfSwitchOff"
           />
         </el-form-item>
         <p v-else-if="softDelete && canReviewPublish && isPendingReview(form)" class="form-hint">
@@ -291,9 +291,14 @@ const softCopy = computed(() => {
   if (!marketplace.value) return softCopyBase
   return { ...softCopyBase, verb: '强制下架', off: '已强制下架', include: '含下架' }
 })
-const shelfFormLabel = computed(() =>
-  String(softCopy.value.verb || '').includes('下架') ? '上架状态' : '启用状态',
-)
+/** 列表已有「上架」列时不再并列 softDelete「状态」，避免两套真相 */
+const showShelfCol = computed(() => marketplace.value || publishReview.value)
+const shelfFormLabel = computed(() => {
+  if (marketplace.value) return '是否在售'
+  return String(softCopy.value.verb || '').includes('下架') ? '上架状态' : '启用状态'
+})
+const shelfSwitchOn = computed(() => (marketplace.value ? '在售' : softCopy.value.on))
+const shelfSwitchOff = computed(() => (marketplace.value ? '已下架' : softCopy.value.off))
 const stockWarnBelow = computed(() => {
   const n = Number(getSchema()?.stockWarnBelow)
   return Number.isFinite(n) && n > 0 ? n : 10

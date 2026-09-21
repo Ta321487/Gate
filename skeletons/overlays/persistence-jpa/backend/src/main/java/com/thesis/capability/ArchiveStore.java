@@ -1674,12 +1674,31 @@ public final class ArchiveStore {
 
     /** 分类库存柱状图：名称 + 库存合计。 */
     public static List<Map<String, Object>> stockByCategory(int limit) {
+        return stockByCategory(limit, null);
+    }
+
+    /** @param ownerUsername 非空且有 owner_username 列时只合计该店主商品 */
+    public static List<Map<String, Object>> stockByCategory(int limit, String ownerUsername) {
         int lim = Math.max(1, Math.min(limit, 20));
         try {
+            boolean byOwner = ownerUsername != null && !ownerUsername.isBlank() && hasOwnerUsername();
+            String sql = "SELECT c.name AS name, COALESCE(SUM(i.stock),0) AS value FROM " + CAT + " c"
+                    + " LEFT JOIN " + ITEM + " i ON i.category_id=c.id"
+                    + (byOwner ? " AND i.owner_username=?" : "")
+                    + " GROUP BY c.id, c.name ORDER BY value DESC LIMIT " + lim;
+            if (byOwner) {
+                return db().query(
+                        sql,
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        },
+                        ownerUsername.trim());
+            }
             return db().query(
-                    "SELECT c.name AS name, COALESCE(SUM(i.stock),0) AS value FROM " + CAT + " c"
-                            + " LEFT JOIN " + ITEM + " i ON i.category_id=c.id"
-                            + " GROUP BY c.id, c.name ORDER BY value DESC LIMIT " + lim,
+                    sql,
                     (rs, i) -> {
                         Map<String, Object> row = new LinkedHashMap<>();
                         row.put("name", rs.getString("name"));
