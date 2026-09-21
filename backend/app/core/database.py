@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import logging
+import time
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import event
@@ -5,6 +9,28 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import get_settings
+
+# 请求内 SQL 计数：可变 list bucket，避免 Cursor 在工作线程执行时 ContextVar 丢失。
+_sql_count_buckets: list[list[int]] = []
+
+
+def begin_sql_count() -> list[int]:
+    bucket = [0]
+    _sql_count_buckets.append(bucket)
+    return bucket
+
+
+def end_sql_count(bucket: list[int]) -> int:
+    try:
+        _sql_count_buckets.remove(bucket)
+    except ValueError:
+        pass
+    return int(bucket[0])
+
+
+_sql_log = logging.getLogger("gf.sql")
+# 超过该毫秒打 WARNING；日常可调 GF_SQL_SLOW_MS（见下方 settings 读取）
+_SLOW_SQL_MS = 50.0
 
 
 class Base(DeclarativeBase):
@@ -25,6 +51,34 @@ if _is_sqlite:
 
 engine = create_async_engine(url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+try:
+    _SLOW_SQL_MS = float(getattr(settings, "gf_sql_slow_ms", 50.0) or 50.0)
+except Exception:  # noqa: BLE001
+    _SLOW_SQL_MS = 50.0
+
+
+@event.listens_for(engine.sync_engine, "before_cursor_execute")
+def _sql_before_cursor_execute(  # noqa: ANN001
+    conn, cursor, statement, parameters, context, executemany
+) -> None:
+    conn.info["gf_sql_t0"] = time.perf_counter()
+
+
+@event.listens_for(engine.sync_engine, "after_cursor_execute")
+def _sql_after_cursor_execute(  # noqa: ANN001
+    conn, cursor, statement, parameters, context, executemany
+) -> None:
+    t0 = conn.info.pop("gf_sql_t0", None)
+    ms = (time.perf_counter() - t0) * 1000.0 if t0 is not None else 0.0
+    if _sql_count_buckets:
+        _sql_count_buckets[-1][0] += 1
+    if ms >= _SLOW_SQL_MS:
+        stmt = " ".join(str(statement).split())
+        if len(stmt) > 240:
+            stmt = stmt[:240] + "…"
+        _sql_log.warning("slow_sql ms=%.1f %s", ms, stmt)
+
 
 if _is_sqlite:
 

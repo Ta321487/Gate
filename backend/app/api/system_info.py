@@ -237,6 +237,11 @@ async def free_ports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/catalog", tags=["系统"], summary="骨架与领域目录")
 async def catalog():
+    import logging
+    import time
+
+    log = logging.getLogger(__name__)
+    t0 = time.perf_counter()
     from app.bake.catalog import (
         ARCHETYPES,
         CHROME_STYLES,
@@ -249,6 +254,7 @@ async def catalog():
     )
     from app.bake.api_style import CART_MUTATE_STYLES, ITEM_REF_STYLES
 
+    t_imp = (time.perf_counter() - t0) * 1000.0
     domain_group_of = {
         dom_id: group_id
         for group_id, _label, members in DOMAIN_GROUPS
@@ -265,7 +271,7 @@ async def catalog():
             "group": domain_group_of.get(dom_id),
         }
 
-    return {
+    payload = {
         "archetypes": [
             {"id": k, "label": f"{k} · {v['label']}"} for k, v in ARCHETYPES.items()
         ],
@@ -287,4 +293,10 @@ async def catalog():
             "cart_mutate": list(CART_MUTATE_STYLES),
         },
     }
+    log.info(
+        "timing route=catalog ms=%.1f import_ms=%.1f db_queries=0",
+        (time.perf_counter() - t0) * 1000.0,
+        t_imp,
+    )
+    return payload
 

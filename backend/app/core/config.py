@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     fix_rounds_max: int = 5
     gf_fill_unit_concurrency: int = Field(default=3, alias="GF_FILL_UNIT_CONCURRENCY")
     gf_qa_warn_blocks_pack: bool = Field(default=True, alias="GF_QA_WARN_BLOCKS_PACK")
+    # SQL 慢查询日志阈值（毫秒）；logger=gf.sql
+    gf_sql_slow_ms: float = Field(default=50.0, alias="GF_SQL_SLOW_MS")
 
     @property
     def database_url(self) -> str:
