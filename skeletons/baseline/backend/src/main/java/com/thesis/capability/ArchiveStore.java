@@ -40,6 +40,9 @@ public final class ArchiveStore {
     /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
     private static boolean publishReviewEnabled = false;
     private static boolean galleryEnabled = false;
+    private static boolean detailAttrsEnabled = false;
+    private static List<String> detailAttrKeys = List.of();
+    private static Boolean hasDetailJson;
     private static boolean roomEquipmentEnabled = false;
 
     private static boolean flashPriceEnabled = false;
@@ -222,6 +225,9 @@ public final class ArchiveStore {
     private static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
+    private static String ITEM_CAT = "";
+    private static boolean multiCategoryEnabled = false;
+    private static Boolean hasDimensionCol = null;
     private static String itemTagFk = "post_id";
     /** 库存/名额等展示用列名，供不足提示复用 */
     private static String STOCK_LABEL = "库存";
@@ -274,6 +280,8 @@ public final class ArchiveStore {
         hasEquipmentJson = null;
         TAG = "";
         ITEM_TAG = "";
+        ITEM_CAT = "";
+        hasDimensionCol = null;
         COL_AUTHOR = "author";
         COL_ISBN = "isbn";
         loadStockLabelFromResource();
@@ -298,6 +306,12 @@ public final class ArchiveStore {
     public static void configureGallery(boolean enabled) {
         galleryEnabled = enabled;
         if (enabled) ensureGalleryColumn();
+    }
+
+    public static void configureDetailAttrs(boolean enabled, String keysCsv) {
+        detailAttrsEnabled = enabled;
+        detailAttrKeys = parseDetailKeys(keysCsv);
+        if (detailAttrsEnabled && !detailAttrKeys.isEmpty()) ensureDetailColumn();
     }
 
     public static boolean galleryEnabled() {
@@ -359,6 +373,28 @@ public final class ArchiveStore {
         return TAG != null && !TAG.isBlank() && ITEM_TAG != null && !ITEM_TAG.isBlank();
     }
 
+    /** 多维分类：商品-分类关联表（如 product_category） */
+    public static void bindItemCategories(String table) {
+        ITEM_CAT = table == null ? "" : table.trim();
+    }
+
+    public static void configureMultiCategory(boolean enabled) {
+        multiCategoryEnabled = enabled;
+    }
+
+    public static boolean multiCategoryEnabled() {
+        return multiCategoryEnabled;
+    }
+
+    private static boolean multiCategoryActive() {
+        return multiCategoryEnabled && ITEM_CAT != null && !ITEM_CAT.isBlank();
+    }
+
+    public static boolean hasDimensionColumn() {
+        if (hasDimensionCol == null) hasDimensionCol = hasCategoryColumn("dimension");
+        return hasDimensionCol;
+    }
+
     public static String categoryTable() {
         return CAT;
     }
@@ -392,15 +428,25 @@ public final class ArchiveStore {
     }
 
     public static long addCategory(String name) {
+        return addCategory(name, null);
+    }
+
+    public static long addCategory(String name, String dimension) {
         String n = name == null ? "" : name.trim();
         if (n.isBlank()) throw new IllegalArgumentException("分类名不能为空");
         Integer dup = db().queryForObject("SELECT COUNT(*) FROM " + CAT + " WHERE name=?", Integer.class, n);
         if (dup != null && dup > 0) throw new IllegalStateException("分类名已存在");
+        String dim = dimension == null ? "" : dimension.trim();
+        boolean withDim = multiCategoryActive() && hasDimensionColumn() && !dim.isBlank();
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO " + CAT + " (name) VALUES (?)", Statement.RETURN_GENERATED_KEYS);
+                    withDim
+                            ? "INSERT INTO " + CAT + " (name, dimension) VALUES (?,?)"
+                            : "INSERT INTO " + CAT + " (name) VALUES (?)",
+                    Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, n);
+            if (withDim) ps.setString(2, dim);
             return ps;
         }, kh);
         Number key = kh.getKey();
@@ -408,15 +454,28 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> createCategory(String name) {
-        long id = addCategory(name);
+        return createCategory(name, null);
+    }
+
+    public static Map<String, Object> createCategory(String name, String dimension) {
+        long id = addCategory(name, dimension);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", name.trim());
         m.put("bookCount", 0);
+        m.put("itemCount", 0);
+        String dim = dimension == null ? "" : dimension.trim();
+        if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
+            m.put("dimension", dim);
+        }
         return m;
     }
 
     public static Map<String, Object> updateCategory(long id, String name) {
+        return updateCategory(id, name, null);
+    }
+
+    public static Map<String, Object> updateCategory(long id, String name, String dimension) {
         Integer exists = db().queryForObject("SELECT COUNT(*) FROM " + CAT + " WHERE id=?", Integer.class, id);
         if (exists == null || exists == 0) throw new IllegalArgumentException("分类不存在");
         String n = name == null ? "" : name.trim();
@@ -424,21 +483,35 @@ public final class ArchiveStore {
         Integer dup = db().queryForObject(
                 "SELECT COUNT(*) FROM " + CAT + " WHERE name=? AND id<>?", Integer.class, n, id);
         if (dup != null && dup > 0) throw new IllegalStateException("分类名已存在");
-        db().update("UPDATE " + CAT + " SET name=? WHERE id=?", n, id);
+        String dim = dimension == null ? "" : dimension.trim();
+        if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
+            db().update("UPDATE " + CAT + " SET name=?, dimension=? WHERE id=?", n, dim, id);
+        } else {
+            db().update("UPDATE " + CAT + " SET name=? WHERE id=?", n, id);
+        }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", n);
+        if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
+            m.put("dimension", dim);
+        }
         return m;
     }
 
     public static void deleteCategory(long id) {
         Integer exists = db().queryForObject("SELECT COUNT(*) FROM " + CAT + " WHERE id=?", Integer.class, id);
         if (exists == null || exists == 0) throw new IllegalArgumentException("分类不存在");
-        Integer used = db().queryForObject(
-                softDeleteEnabled && hasDeletedAt()
-                        ? "SELECT COUNT(*) FROM " + ITEM + " WHERE category_id=? AND deleted_at IS NULL"
-                        : "SELECT COUNT(*) FROM " + ITEM + " WHERE category_id=?",
-                Integer.class, id);
+        Integer used;
+        if (multiCategoryActive()) {
+            used = db().queryForObject(
+                    "SELECT COUNT(*) FROM " + ITEM_CAT + " WHERE category_id=?", Integer.class, id);
+        } else {
+            used = db().queryForObject(
+                    softDeleteEnabled && hasDeletedAt()
+                            ? "SELECT COUNT(*) FROM " + ITEM + " WHERE category_id=? AND deleted_at IS NULL"
+                            : "SELECT COUNT(*) FROM " + ITEM + " WHERE category_id=?",
+                    Integer.class, id);
+        }
         if (used != null && used > 0) {
             throw new IllegalStateException("该分类下仍有 " + used + " 条记录，无法删除");
         }
@@ -446,16 +519,32 @@ public final class ArchiveStore {
     }
 
     public static List<Map<String, Object>> listCategories() {
-        String cntSql = softDeleteEnabled && hasDeletedAt()
-                ? "(SELECT COUNT(*) FROM " + ITEM + " b WHERE b.category_id=c.id AND b.deleted_at IS NULL)"
-                : "(SELECT COUNT(*) FROM " + ITEM + " b WHERE b.category_id=c.id)";
+        String cntSql;
+        if (multiCategoryActive()) {
+            cntSql = softDeleteEnabled && hasDeletedAt()
+                    ? "(SELECT COUNT(DISTINCT ic.item_id) FROM " + ITEM_CAT + " ic JOIN " + ITEM
+                            + " b ON b.id=ic.item_id WHERE ic.category_id=c.id AND b.deleted_at IS NULL)"
+                    : "(SELECT COUNT(DISTINCT ic.item_id) FROM " + ITEM_CAT
+                            + " ic WHERE ic.category_id=c.id)";
+        } else {
+            cntSql = softDeleteEnabled && hasDeletedAt()
+                    ? "(SELECT COUNT(*) FROM " + ITEM + " b WHERE b.category_id=c.id AND b.deleted_at IS NULL)"
+                    : "(SELECT COUNT(*) FROM " + ITEM + " b WHERE b.category_id=c.id)";
+        }
+        String dimSel = multiCategoryActive() && hasDimensionColumn() ? ", c.dimension" : "";
         return db().query(
-                "SELECT c.id, c.name, " + cntSql + " AS item_count "
+                "SELECT c.id, c.name" + dimSel + ", " + cntSql + " AS item_count "
                         + "FROM " + CAT + " c ORDER BY c.id",
                 (rs, i) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("id", rs.getLong("id"));
                     row.put("name", rs.getString("name"));
+                    if (multiCategoryActive() && hasDimensionColumn()) {
+                        try {
+                            row.put("dimension", rs.getString("dimension"));
+                        } catch (Exception ignored) {
+                        }
+                    }
                     long cnt = rs.getLong("item_count");
                     row.put("bookCount", cnt);
                     row.put("itemCount", cnt);
@@ -578,6 +667,11 @@ public final class ArchiveStore {
                 ? String.valueOf(patch.get("coverUrl")) : String.valueOf(m.get("coverUrl"));
         long categoryId = patch.get("categoryId") != null
                 ? toLong(patch.get("categoryId")) : toLong(m.get("categoryId"));
+        if (patch.containsKey("categoryIds") && multiCategoryActive()) {
+            List<Long> catIds = parseIdList(patch.get("categoryIds"));
+            syncItemCategories(id, catIds);
+            categoryId = catIds.isEmpty() ? 0L : catIds.get(0);
+        }
         int stock = patch.get("stock") != null ? toInt(patch.get("stock")) : toInt(m.get("stock"));
         Object startRaw = patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt");
         Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
@@ -634,6 +728,7 @@ public final class ArchiveStore {
                     "UPDATE " + ITEM + " SET gallery_json=? WHERE id=?",
                     toGalleryJson(patch.get("galleryImages")), id);
         }
+        writeDetailAttrs(id, patch, m);
         if (roomEquipmentEnabled && patch.containsKey("equipmentNames")) {
             if (!hasEquipmentJson()) {
                 throw new IllegalStateException("系统未配置配套设施字段，无法保存");
@@ -782,6 +877,12 @@ public final class ArchiveStore {
             } catch (Exception ignored) {
             }
         }
+        if (multiCategoryActive()) {
+            try {
+                db().update("DELETE FROM " + ITEM_CAT + " WHERE item_id=?", id);
+            } catch (Exception ignored) {
+            }
+        }
         return db().update("DELETE FROM " + ITEM + " WHERE id=?", id) > 0;
     }
 
@@ -862,12 +963,12 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
-        return pageItems(keyword, categoryId, null, false, page, size, false, null);
+        return pageItems(keyword, categoryId, null, null, false, page, size, false, null);
     }
 
     public static Map<String, Object> pageItems(
             String keyword, Long categoryId, List<Long> tagIds, boolean includeDeleted, int page, int size) {
-        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, false, null);
+        return pageItems(keyword, categoryId, null, tagIds, includeDeleted, page, size, false, null);
     }
 
     /**
@@ -881,7 +982,20 @@ public final class ArchiveStore {
             int page,
             int size,
             boolean openCatalogOnly) {
-        return pageItems(keyword, categoryId, tagIds, includeDeleted, page, size, openCatalogOnly, null);
+        return pageItems(keyword, categoryId, null, tagIds, includeDeleted, page, size, openCatalogOnly, null);
+    }
+
+    /** 多维分类筛选：categoryIds 非空时走关联表；未开岛时忽略 categoryIds。 */
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> categoryIds,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly) {
+        return pageItems(keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size, openCatalogOnly, null);
     }
 
     /**
@@ -890,6 +1004,7 @@ public final class ArchiveStore {
     public static Map<String, Object> pageItems(
             String keyword,
             Long categoryId,
+            List<Long> categoryIds,
             List<Long> tagIds,
             boolean includeDeleted,
             int page,
@@ -924,7 +1039,21 @@ public final class ArchiveStore {
             where.append(" AND owner_username=?");
             args.add(ownerUsernameFilter.trim());
         }
-        if (categoryId != null && categoryId > 0) {
+        if (multiCategoryActive()) {
+            List<Long> cids = categoryIds;
+            if ((cids == null || cids.isEmpty()) && categoryId != null && categoryId > 0) {
+                cids = List.of(categoryId);
+            }
+            if (cids != null) {
+                for (Long cid : cids) {
+                    if (cid == null || cid <= 0) continue;
+                    where.append(" AND EXISTS (SELECT 1 FROM ").append(ITEM_CAT)
+                            .append(" ic WHERE ic.item_id=").append(ITEM)
+                            .append(".id AND ic.category_id=?)");
+                    args.add(cid);
+                }
+            }
+        } else if (categoryId != null && categoryId > 0) {
             where.append(" AND category_id=?");
             args.add(categoryId);
         }
@@ -962,7 +1091,7 @@ public final class ArchiveStore {
     /** 商家后台：仅本店商品（含待审）。 */
     public static Map<String, Object> pageItemsForMerchant(
             String ownerUsername, String keyword, Long categoryId, int page, int size) {
-        return pageItems(keyword, categoryId, null, false, page, size, false, ownerUsername);
+        return pageItems(keyword, categoryId, null, null, false, page, size, false, ownerUsername);
     }
 
     private static Map<String, Object> mapItemRow(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -1021,6 +1150,7 @@ public final class ArchiveStore {
                 m.put("galleryImages", List.of());
             }
         }
+        putDetailAttrs(m, rs);
         if (roomEquipmentEnabled && hasEquipmentJson()) {
             try {
                 String raw = rs.getString("equipment_json");
@@ -1127,10 +1257,44 @@ public final class ArchiveStore {
 
     private static Map<String, Object> enrichItem(Map<String, Object> b) {
         Map<String, Object> m = new LinkedHashMap<>(b);
-        long cid = toLong(b.get("categoryId"));
-        List<String> names = db().query(
-                "SELECT name FROM " + CAT + " WHERE id=?", (rs, i) -> rs.getString(1), cid);
-        m.put("categoryName", names.isEmpty() ? "" : names.get(0));
+        if (multiCategoryActive()) {
+            long id = toLong(b.get("id"));
+            String dimSel = hasDimensionColumn() ? ", c.dimension" : "";
+            List<Map<String, Object>> cats = db().query(
+                    "SELECT c.id, c.name" + dimSel + " FROM " + CAT + " c JOIN " + ITEM_CAT
+                            + " ic ON ic.category_id=c.id WHERE ic.item_id=? ORDER BY c.id",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("id", rs.getLong("id"));
+                        row.put("name", rs.getString("name"));
+                        if (hasDimensionColumn()) {
+                            try {
+                                row.put("dimension", rs.getString("dimension"));
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        return row;
+                    },
+                    id);
+            List<Long> ids = new ArrayList<>();
+            List<String> names = new ArrayList<>();
+            for (Map<String, Object> c : cats) {
+                ids.add(toLong(c.get("id")));
+                names.add(str(c.get("name")));
+            }
+            m.put("categoryIds", ids);
+            m.put("categoryNames", names);
+            m.put("categories", cats);
+            m.put("categoryName", String.join("、", names));
+            if (!ids.isEmpty()) {
+                m.put("categoryId", ids.get(0));
+            }
+        } else {
+            long cid = toLong(b.get("categoryId"));
+            List<String> names = db().query(
+                    "SELECT name FROM " + CAT + " WHERE id=?", (rs, i) -> rs.getString(1), cid);
+            m.put("categoryName", names.isEmpty() ? "" : names.get(0));
+        }
         m.put("deleted", isSoftDeleted(m));
         if (shopMarketplaceEnabled && hasOwnerUsername()) {
             String owner = str(b.get("ownerUsername"));
@@ -1327,6 +1491,76 @@ public final class ArchiveStore {
         }
     }
 
+    public static boolean hasDetailJson() {
+        if (hasDetailJson == null) hasDetailJson = hasItemColumn("detail_json");
+        return hasDetailJson;
+    }
+
+    public static void ensureDetailColumn() {
+        if (hasDetailJson()) return;
+        try {
+            db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `detail_json` TEXT NULL");
+            hasDetailJson = true;
+        } catch (Exception ignored) {
+            hasDetailJson = hasItemColumn("detail_json");
+        }
+    }
+
+    private static List<String> parseDetailKeys(String keysCsv) {
+        if (keysCsv == null || keysCsv.isBlank()) return List.of();
+        List<String> keys = new ArrayList<>();
+        for (String part : keysCsv.split(",")) {
+            String key = part == null ? "" : part.trim();
+            if (key.matches("[A-Za-z][A-Za-z0-9]{0,31}") && !keys.contains(key)) keys.add(key);
+        }
+        return List.copyOf(keys);
+    }
+
+    private static void writeDetailAttrs(long id, Map<String, Object> patch, Map<String, Object> current) {
+        if (!detailAttrsEnabled || detailAttrKeys.isEmpty() || patch == null) return;
+        boolean hit = false;
+        for (String key : detailAttrKeys) {
+            if (patch.containsKey(key)) {
+                hit = true;
+                break;
+            }
+        }
+        if (!hit) return;
+        if (!hasDetailJson()) {
+            throw new IllegalStateException("系统未配置详情属性字段，无法保存");
+        }
+        Map<String, String> bag = new LinkedHashMap<>();
+        for (String key : detailAttrKeys) {
+            Object prev = current == null ? null : current.get(key);
+            if (prev != null) bag.put(key, String.valueOf(prev));
+            if (!patch.containsKey(key) || patch.get(key) == null) continue;
+            String value = String.valueOf(patch.get(key)).trim();
+            if (value.length() > 80) value = value.substring(0, 80);
+            bag.put(key, value);
+        }
+        try {
+            db().update(
+                    "UPDATE " + ITEM + " SET detail_json=? WHERE id=?",
+                    new ObjectMapper().writeValueAsString(bag), id);
+        } catch (Exception e) {
+            throw new IllegalStateException("详情属性保存失败");
+        }
+    }
+
+    private static void putDetailAttrs(Map<String, Object> row, java.sql.ResultSet rs) {
+        if (!detailAttrsEnabled || detailAttrKeys.isEmpty() || !hasDetailJson()) return;
+        try {
+            String raw = rs.getString("detail_json");
+            if (raw == null || raw.isBlank()) return;
+            Map<String, Object> bag = new ObjectMapper().readValue(raw, new TypeReference<>() {});
+            for (String key : detailAttrKeys) {
+                Object value = bag.get(key);
+                if (value != null) row.put(key, String.valueOf(value));
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     public static boolean hasEquipmentJson() {
         if (hasEquipmentJson == null) hasEquipmentJson = hasItemColumn("equipment_json");
         return hasEquipmentJson;
@@ -1505,6 +1739,29 @@ public final class ArchiveStore {
     @SuppressWarnings("unchecked")
     private static void syncItemTags(long itemId, Object raw) {
         if (!tagsEnabled()) return;
+        syncJunctionIds(itemId, parseIdList(raw), ITEM_TAG, itemTagFk, "tag_id");
+    }
+
+    private static void syncItemCategories(long itemId, Object raw) {
+        if (!multiCategoryActive()) return;
+        syncJunctionIds(itemId, parseIdList(raw), ITEM_CAT, "item_id", "category_id");
+    }
+
+    private static void syncJunctionIds(
+            long itemId, List<Long> ids, String junction, String itemFk, String catFk) {
+        db().update("DELETE FROM " + junction + " WHERE " + itemFk + "=?", itemId);
+        for (Long cid : ids) {
+            try {
+                db().update(
+                        "INSERT INTO " + junction + " (" + itemFk + ", " + catFk + ") VALUES (?,?)",
+                        itemId, cid);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Long> parseIdList(Object raw) {
         List<Long> ids = new ArrayList<>();
         if (raw instanceof List<?> list) {
             for (Object o : list) {
@@ -1520,14 +1777,17 @@ public final class ArchiveStore {
                 }
             }
         }
-        db().update("DELETE FROM " + ITEM_TAG + " WHERE " + itemTagFk + "=?", itemId);
-        for (Long tid : ids) {
-            try {
-                db().update(
-                        "INSERT INTO " + ITEM_TAG + " (" + itemTagFk + ", tag_id) VALUES (?,?)",
-                        itemId, tid);
-            } catch (Exception ignored) {
-            }
+        return ids;
+    }
+
+    private static boolean hasCategoryColumn(String col) {
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?",
+                    Integer.class, CAT, col);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
         }
     }
 

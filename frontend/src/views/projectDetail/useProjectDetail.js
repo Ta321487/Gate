@@ -2396,7 +2396,13 @@ function downloadZip() {
     if (p.value?.status !== 'generating') goArtifacts('gates')
     return
   }
-  window.open(api.downloadUrl(p.value.id), '_blank')
+  const a = document.createElement('a')
+  a.href = api.downloadUrl(p.value.id)
+  a.target = '_self'
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 async function markDelivery(mark) {

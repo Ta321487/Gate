@@ -25,7 +25,7 @@ public class CategoryController {
     public R<Map<String, Object>> create(@RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         try {
-            return R.ok(ArchiveStore.createCategory(str(body.get("name"))));
+            return R.ok(ArchiveStore.createCategory(str(body.get("name")), str(body.get("dimension"))));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
@@ -38,7 +38,7 @@ public class CategoryController {
             @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         try {
-            return R.ok(ArchiveStore.updateCategory(id, str(body.get("name"))));
+            return R.ok(ArchiveStore.updateCategory(id, str(body.get("name")), str(body.get("dimension"))));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

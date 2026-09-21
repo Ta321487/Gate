@@ -178,6 +178,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.archive-item-tag-table:}")
     private String archiveItemTagTable;
 
+    @Value("${thesis.multi-category-enabled:false}")
+    private boolean multiCategoryEnabled;
+
+    @Value("${thesis.archive-item-category-table:}")
+    private String archiveItemCategoryTable;
+
     @Value("${thesis.ticket-week-calendar:false}")
     private boolean ticketWeekCalendar;
 
@@ -465,6 +471,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
+    @Value("${thesis.detail-attrs-enabled:false}")
+    private boolean detailAttrsEnabled;
+
+    @Value("${thesis.detail-attr-keys:}")
+    private String detailAttrKeys;
+
     @Value("${thesis.flash-price-enabled:false}")
     private boolean flashPriceEnabled;
 
@@ -518,6 +530,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configurePublishReview(archivePublishReview);
         ArchiveStore.configureGallery(galleryEnabled);
+        ArchiveStore.configureDetailAttrs(detailAttrsEnabled, detailAttrKeys);
         ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
         ArchiveStore.configureProductSpec(productSpecEnabled);
@@ -525,6 +538,10 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         DmStore.configureShopCustomerService(dmShopCs);
         if (archiveTagTable != null && !archiveTagTable.isBlank()) {
             ArchiveStore.bindTags(archiveTagTable, archiveItemTagTable);
+        }
+        ArchiveStore.configureMultiCategory(multiCategoryEnabled);
+        if (archiveItemCategoryTable != null && !archiveItemCategoryTable.isBlank()) {
+            ArchiveStore.bindItemCategories(archiveItemCategoryTable);
         }
         if (ticketAllowCheckin) {
             // checkin_code 已随档案表 schema 建好；此处不再 ALTER

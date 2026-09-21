@@ -35,7 +35,7 @@ TABLE_COUNT_MIN = 6
 TABLE_COUNT_MAX = 15
 # 超过此数打回。选题必需业务表不计入这一档（见 ESSENTIAL_CAP_TABLES）
 TABLE_COUNT_HARD = 18
-# 借用/占用族（DOMAIN_GROUPS borrow）：薄壳 6～7 张不够答辩，族内下限 10
+# 借用族（BORROW_FAMILY_DOMAINS，与级联展示分组无关）：薄壳 6～7 张不够答辩，族内下限 10
 BORROW_TABLE_MIN = 10
 
 # 开题扫入后才会有的业务表。缺了论文主路径或答辩场景会变浅，故不计入「超过 18 打回」。
@@ -393,6 +393,13 @@ def domain_sql(
     from app.bake.features.room_equipment import ROOM_EQUIPMENT_CAP
     from app.bake.features.book_suggest import BOOK_SUGGEST_CAP
     from app.bake.features.product_spec import PRODUCT_SPEC_CAP
+    from app.bake.features.multi_category import (
+        MULTI_CATEGORY_CAP,
+        multi_category_axis_seed_sql,
+        parse_category_axes,
+    )
+    from app.bake.features.detail_attrs import DETAIL_ATTRS_CAP
+    from app.bake.features.product_tags import PRODUCT_TAGS_CAP
     from app.bake.features.line_custom import (
         LINE_CUSTOM_CAP,
         line_custom_wants_spec,
@@ -436,6 +443,8 @@ def domain_sql(
         ensure_archive_flag_columns,
         ensure_flash_price_columns,
         ensure_product_spec_columns,
+        ensure_multi_category_sql,
+        ensure_product_tags_sql,
         ensure_order_line_custom_columns,
         ensure_delivery_window_sql,
         ensure_purchase_gate_sql,
@@ -468,6 +477,7 @@ def domain_sql(
         ensure_room_equipment_sql,
         ensure_book_suggest_sql,
         ensure_gallery_sql,
+        ensure_detail_attrs_sql,
         ensure_guestbook_sql,
         ensure_item_comment_sql,
         ensure_soft_delete_columns,
@@ -632,6 +642,24 @@ def domain_sql(
         text,
         enabled=PRODUCT_SPEC_CAP in caps,
         item_table=resolved_item,
+    )
+    axis_seed = ""
+    if MULTI_CATEGORY_CAP in caps:
+        axis_seed = multi_category_axis_seed_sql(
+            parse_category_axes(proposal_text or "", title or ""),
+            resolved_item or "product",
+            "product_category",
+        )
+    text = ensure_multi_category_sql(
+        text,
+        enabled=MULTI_CATEGORY_CAP in caps,
+        item_table=resolved_item,
+        junction_table="product_category",
+        axis_seed_sql=axis_seed,
+    )
+    text = ensure_product_tags_sql(
+        text,
+        enabled=PRODUCT_TAGS_CAP in caps,
     )
     caps = merge_line_custom_capabilities(
         caps,
@@ -898,6 +926,11 @@ def domain_sql(
     text = ensure_gallery_sql(
         text,
         enabled=GALLERY_CAP in caps,
+        item_table=resolved_item,
+    )
+    text = ensure_detail_attrs_sql(
+        text,
+        enabled=DETAIL_ATTRS_CAP in caps,
         item_table=resolved_item,
     )
     text = ensure_coupon_lifecycle_sql(

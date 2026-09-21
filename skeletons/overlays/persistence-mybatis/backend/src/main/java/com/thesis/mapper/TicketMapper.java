@@ -39,7 +39,7 @@ public interface TicketMapper {
             @Param("itemId") long itemId);
 
     @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE username=#{username} AND `${itemFk}`=#{itemId} "
-            + "AND status IN ('pending','pending_mid','pending_final','approved','overdue')")
+            + "AND status IN ('pending','pending_mid','pending_final','approved','overdue','waitlisted','held','hold_ready')")
     int countActiveDup(
             @Param("ticketTable") String ticketTable,
             @Param("itemFk") String itemFk,

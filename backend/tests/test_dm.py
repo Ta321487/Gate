@@ -111,6 +111,16 @@ class DmCapabilityTests(unittest.TestCase):
         self.assertTrue(scan_dm("即时私信功能"))
         self.assertFalse(scan_dm("仅公告与跟帖，无其它互动"))
 
+    def test_single_shop_admin_dialogue_hangs_dm(self) -> None:
+        from app.bake.features.dm import DM_PEER_ALL, resolve_dm_peer_mode
+
+        text = "留言反馈模块（与管理员沟通）。管理员可与用户沟通。"
+        caps = merge_dm_capabilities(
+            list(DOMAIN_CAPABILITIES["DOM-SHOP"]), text, domain="DOM-SHOP"
+        )
+        self.assertIn(DM_CAP, caps)
+        self.assertEqual(resolve_dm_peer_mode(text, domain="DOM-SHOP"), DM_PEER_ALL)
+
     def test_single_shop_kefu_hangs_platform_cs(self) -> None:
         """单店只写客服模块 → 挂 dm，文案为平台客服，不收窄商家选人。"""
         from app.bake.features.dm import (

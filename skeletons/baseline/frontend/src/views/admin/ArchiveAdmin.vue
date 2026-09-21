@@ -38,7 +38,13 @@
       >
         <template #default="{ row }">{{ isbnPlain(row.isbn) }}</template>
       </el-table-column>
-      <el-table-column prop="categoryName" :label="fieldLabel('category', '分类')" width="100" />
+      <el-table-column :label="fieldLabel(multiCategory ? 'categoryIds' : 'category', '分类')" min-width="120">
+        <template #default="{ row }">
+          {{
+            (row.categoryNames?.length ? row.categoryNames.join('、') : row.categoryName) || '—'
+          }}
+        </template>
+      </el-table-column>
       <el-table-column v-if="marketplace" label="店铺" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.shopName || '—' }}</template>
       </el-table-column>
@@ -147,13 +153,31 @@
             :body-field="archive.bodyField || ''"
           />
         </el-form-item>
-        <el-form-item :label="fieldLabel('category', '分类')" required>
+        <el-form-item :label="fieldLabel(multiCategory ? 'categoryIds' : 'category', '分类')" required>
           <el-select
+            v-if="!multiCategory"
             v-model="form.categoryId"
             style="width:100%"
             :placeholder="`请选择${fieldLabel('category', '分类')}`"
           >
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+          <el-select
+            v-else
+            v-model="form.categoryIds"
+            multiple
+            filterable
+            clearable
+            style="width:100%"
+            :placeholder="`请选择${fieldLabel('categoryIds', '分类')}`"
+          >
+            <el-option-group
+              v-for="g in categoriesByDimension"
+              :key="g.dimension || '未分组'"
+              :label="g.dimension || '未分组'"
+            >
+              <el-option v-for="c in g.items" :key="c.id" :label="c.name" :value="c.id" />
+            </el-option-group>
           </el-select>
         </el-form-item>
         <el-form-item
@@ -369,6 +393,16 @@ const hasMutex = computed(() => fields.value.some((x) => x.key === 'mutexCode'))
 const hasCheckin = computed(() => fields.value.some((x) => x.key === 'checkinCode'))
 const softDelete = computed(() => !!archive.softDelete)
 const tagFilter = computed(() => !!archive.tagFilter)
+const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_category'))
+const categoriesByDimension = computed(() => {
+  const groups = new Map()
+  for (const c of categories.value || []) {
+    const dim = (c.dimension || '').trim() || '未分组'
+    if (!groups.has(dim)) groups.set(dim, [])
+    groups.get(dim).push(c)
+  }
+  return [...groups.entries()].map(([dimension, items]) => ({ dimension, items }))
+})
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
 /** count：库存数字；available：可认领等余量；toggle：可读/可点播等开关；hidden：不展示 */
 const stockAsToggle = computed(() => {
@@ -444,6 +478,7 @@ const form = reactive({
   author: '',
   isbn: '',
   categoryId: null,
+  categoryIds: [],
   stock: 1,
   status: '',
   onShelf: true,
@@ -518,6 +553,7 @@ function openEdit(row) {
       author: row.author || '',
       isbn: row.isbn || '',
       categoryId: row.categoryId,
+      categoryIds: [...(row.categoryIds || [])],
       stock: row.stock ?? 1,
       status: row.status || '',
       onShelf: !row.deleted,
@@ -540,6 +576,7 @@ function openEdit(row) {
       author: '',
       isbn: '',
       categoryId: categories.value[0]?.id || null,
+      categoryIds: [],
       stock: 1,
       status: '',
       onShelf: true,
@@ -564,6 +601,15 @@ async function save() {
     ElMessage.warning('请填写名称')
     return
   }
+  if (multiCategory.value) {
+    if (!form.categoryIds?.length) {
+      ElMessage.warning(`请选择${fieldLabel('categoryIds', '分类')}`)
+      return
+    }
+  } else if (!form.categoryId) {
+    ElMessage.warning(`请选择${fieldLabel('category', '分类')}`)
+    return
+  }
   if (hasStartAt.value && !form.startAt) {
     ElMessage.warning(`请填写${fieldLabel('startAt', '开始时间')}`)
     return
@@ -573,6 +619,11 @@ async function save() {
     return
   }
   const payload = { ...form }
+  if (multiCategory.value) {
+    payload.categoryId = form.categoryIds[0] || null
+  } else {
+    delete payload.categoryIds
+  }
   delete payload.onShelf
   delete payload._wasDeleted
   if (isbnRich.value) payload.isbn = sanitizeHtml(form.isbn || '')

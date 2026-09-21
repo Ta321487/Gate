@@ -96,3 +96,42 @@ def test_jpa_overlay_stores_use_jpa_support() -> None:
         assert "JpaSupport.db()" in text, name
         assert "JdbcSupport" not in text or "对标原 JdbcSupport" in text
         assert "import com.thesis.config.JdbcSupport" not in text
+
+
+# baseline 后加的能力开关 API，mybatis/jpa 叠层必须同源，否则首次 bake 非 jdbc 栈编译失败
+_OVERLAY_API_MARKERS = (
+    ("capability/TicketStore.java", "configureRenew("),
+    ("capability/TicketStore.java", "configureWaitlist("),
+    ("capability/TicketStore.java", "configureBookHold("),
+    ("capability/TicketStore.java", "hideForReport("),
+    ("capability/TicketStore.java", "claimHold("),
+    ("capability/TicketStore.java", " Map<String, Object> renew("),
+    ("service/MessageStore.java", "configureTemplate("),
+    ("service/MessageStore.java", "templateEnabled()"),
+    ("service/MessageStore.java", "sendWithTemplate("),
+    ("service/MessageStore.java", "pageTemplates("),
+    ("service/MessageStore.java", "updateTemplate("),
+    ("service/UserStore.java", "configurePostMute("),
+    ("service/UserStore.java", "postMuteEnabled()"),
+    ("service/UserStore.java", "setPostMuteUntil("),
+    ("service/UserStore.java", "setPostMuteDays("),
+    ("capability/TicketLookupStore.java", "unitCapacityLabel"),
+)
+
+
+def test_overlay_stores_share_baseline_capability_apis() -> None:
+    missing: list[str] = []
+    for root, label in ((MB_JAVA, "mybatis"), (JPA_JAVA, "jpa")):
+        for rel, marker in _OVERLAY_API_MARKERS:
+            path = root / "com/thesis" / rel
+            text = path.read_text(encoding="utf-8")
+            if marker not in text:
+                missing.append(f"{label}:{rel}: {marker}")
+    for root, label, db_name in (
+        (MB_JAVA, "mybatis", "MbSql.java"),
+        (JPA_JAVA, "jpa", "JpaDb.java"),
+    ):
+        text = (root / "com/thesis/config" / db_name).read_text(encoding="utf-8")
+        if "queryForObject(String sql, SqlRowMapper" not in text:
+            missing.append(f"{label}:{db_name}: queryForObject(SqlRowMapper)")
+    assert not missing, "叠层 Store API 相对 baseline 漂移:\n" + "\n".join(missing)

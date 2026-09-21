@@ -625,6 +625,10 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  flash-price-enabled: true")
     if "product_spec" in caps:
         lines.append("  product-spec-enabled: true")
+    if "multi_category" in caps:
+        lines.append("  multi-category-enabled: true")
+        junc = runtime.get("archive_item_category_table") or "product_category"
+        lines.append(f"  archive-item-category-table: {junc}")
     if "line_custom" in caps:
         lines.append("  line-custom-enabled: true")
         if (spec.get("schema") or {}).get("lineCustomPlaceConfirmed"):
@@ -706,6 +710,13 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  archive-log-enabled: true")
     if "gallery" in caps:
         lines.append("  gallery-enabled: true")
+    if "detail_attrs" in caps:
+        lines.append("  detail-attrs-enabled: true")
+        keys = (spec.get("schema") or {}).get("detailAttrKeys") or []
+        if isinstance(keys, list) and keys:
+            safe = [str(k) for k in keys if re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,31}", str(k))]
+            if safe:
+                lines.append("  detail-attr-keys: " + ",".join(safe))
     if "search_assist" in caps:
         lines.append("  search-assist-enabled: true")
     if "exam" in caps:

@@ -127,3 +127,20 @@ def test_supported_return_and_plain_shop_stay_off() -> None:
     assert create is not None
     assert "custom_text" not in create.group(1)
     assert "刻字马克杯" not in sql
+
+
+def test_plain_shop_metadata_word_custom_is_not_product_custom() -> None:
+    """研究现状里的「定制化程度有限 / 可定制电商系统」是系统语义，不是商品定制，不得挂 line_custom。"""
+    body = (
+        "用户浏览商品、加入购物车、下单结算，管理员管理商品与订单。"
+        "垂直健身用品电商平台多依托 Shopify、WooCommerce 等建站工具搭建，定制化程度有限。"
+        "面向单店经营者的轻量级、可定制电商系统较少。"
+    )
+    spec = _schema(
+        "DOM-SHOP",
+        "基于 Spring Boot 与 Vue 的健身用品电商平台的设计与实现",
+        body,
+    )
+    assert "order_lines" in (spec.get("capabilities") or [])
+    assert LINE_CUSTOM_CAP not in (spec.get("capabilities") or [])
+    assert spec["schema"].get("lineCustom") is not True

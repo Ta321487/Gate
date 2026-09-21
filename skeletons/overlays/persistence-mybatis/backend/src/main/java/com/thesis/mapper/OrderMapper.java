@@ -149,9 +149,18 @@ public interface OrderMapper {
             @Param("itemTable") String itemTable,
             @Param("ownerUsername") String ownerUsername);
 
+    @Select("SELECT COALESCE(SUM(total_yuan),0) FROM `${orderTable}` WHERE status='completed'")
+    double sumCompletedSales(@Param("orderTable") String orderTable);
+
     List<Map<String, Object>> selectStatusSeries(@Param("orderTable") String orderTable);
 
     List<Map<String, Object>> selectTrendSeries(@Param("orderTable") String orderTable);
+
+    List<Map<String, Object>> selectMonthSeries(@Param("orderTable") String orderTable);
+
+    List<Map<String, Object>> selectHotSeries(
+            @Param("orderTable") String orderTable,
+            @Param("lineTable") String lineTable);
 
     int applyLoyaltyWithCoupon(Map<String, Object> row);
 

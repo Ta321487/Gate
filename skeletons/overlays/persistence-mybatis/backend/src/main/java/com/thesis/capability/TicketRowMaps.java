@@ -55,6 +55,18 @@ final class TicketRowMaps {
             m.put("displayUsername", "匿名同学");
         }
         m.put("checkedInAt", fmt(first(raw, "checkedInAt", "checked_in_at")));
+        m.put("passCode", str(first(raw, "passCode", "pass_code")));
+        int renewCount = 0;
+        Object rc = first(raw, "renewCount", "renew_count");
+        if (rc != null && !"".equals(String.valueOf(rc))) {
+            try {
+                renewCount = (int) num(rc);
+            } catch (Exception ignored) {
+                renewCount = 0;
+            }
+        }
+        m.put("renewCount", renewCount);
+        m.put("holdExpireAt", fmt(first(raw, "holdExpireAt", "hold_expire_at")));
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", str(first(raw, "title")));

@@ -44,3 +44,5 @@ data/factory.db-shm
 data/factory.db-wal
 review-*.png
 review2-*.png
+
+.pytest_cache/

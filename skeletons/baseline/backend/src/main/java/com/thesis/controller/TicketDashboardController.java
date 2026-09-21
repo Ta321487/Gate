@@ -36,6 +36,7 @@ public class TicketDashboardController {
         Map<String, Object> charts = new LinkedHashMap<>();
         charts.put("statusSeries", List.of());
         charts.put("trendSeries", List.of());
+        charts.put("monthSeries", List.of());
         charts.put("stockSeries", List.of());
 
         if (TicketStore.enabled()) {
@@ -68,6 +69,7 @@ public class TicketDashboardController {
             if (!TicketStore.enabled() || isEmptySeries(charts.get("statusSeries"))) {
                 charts.put("statusSeries", oc.get("statusSeries"));
                 charts.put("trendSeries", oc.get("trendSeries"));
+                charts.put("monthSeries", oc.get("monthSeries"));
             }
             if (oc.get("hotItemSeries") != null) {
                 charts.put("hotItemSeries", oc.get("hotItemSeries"));

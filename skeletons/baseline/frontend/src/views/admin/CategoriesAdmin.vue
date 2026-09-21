@@ -7,6 +7,7 @@
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" :label="`${catLabel}名`" min-width="160" />
+      <el-table-column v-if="multiCategory" prop="dimension" label="维度" width="120" />
       <el-table-column prop="itemCount" :label="`${label}数`" width="100" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -21,6 +22,11 @@
         <el-form-item label="名称" required>
           <el-input v-model="form.name" maxlength="32" show-word-limit :placeholder="`${catLabel}名称`" />
         </el-form-item>
+        <el-form-item v-if="multiCategory" label="维度" required>
+          <el-select v-model="form.dimension" filterable allow-create default-first-option placeholder="如用途、材质" style="width:100%">
+            <el-option v-for="d in dimensionOptions" :key="d" :label="d" :value="d" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -34,18 +40,28 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { archiveCopy } from '../../utils/domainSchema.js'
+import { archiveCopy, hasCap } from '../../utils/domainSchema.js'
 
 const archive = archiveCopy()
 const label = computed(() => archive.label || '对象')
+const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_category'))
 const catLabel = computed(() => {
-  const f = (archive.fields || []).find((x) => x && x.key === 'category')
+  const f = (archive.fields || []).find((x) => x && (x.key === 'category' || x.key === 'categoryIds'))
   return f?.label || '分类'
 })
 
 const list = ref([])
 const visible = ref(false)
-const form = reactive({ id: null, name: '' })
+const form = reactive({ id: null, name: '', dimension: '' })
+const dimensionOptions = computed(() => {
+  const set = new Set()
+  for (const row of list.value || []) {
+    const d = (row.dimension || '').trim()
+    if (d) set.add(d)
+  }
+  ;['品类', '用途', '材质', '品牌', '目标'].forEach((d) => set.add(d))
+  return [...set]
+})
 
 async function load() {
   const res = await http.get('/api/categories')
@@ -53,8 +69,8 @@ async function load() {
 }
 
 function openEdit(row) {
-  if (row) Object.assign(form, { id: row.id, name: row.name })
-  else Object.assign(form, { id: null, name: '' })
+  if (row) Object.assign(form, { id: row.id, name: row.name, dimension: row.dimension || '' })
+  else Object.assign(form, { id: null, name: '', dimension: dimensionOptions.value[0] || '品类' })
   visible.value = true
 }
 
@@ -63,8 +79,14 @@ async function save() {
     ElMessage.warning(`请填写${catLabel.value}名`)
     return
   }
-  if (form.id) await http.put(`/api/categories/${form.id}`, { name: form.name })
-  else await http.post('/api/categories', { name: form.name })
+  if (multiCategory.value && !form.dimension?.trim()) {
+    ElMessage.warning('请填写维度')
+    return
+  }
+  const body = { name: form.name }
+  if (multiCategory.value) body.dimension = form.dimension
+  if (form.id) await http.put(`/api/categories/${form.id}`, body)
+  else await http.post('/api/categories', body)
   ElMessage.success('已保存')
   visible.value = false
   load()
@@ -86,5 +108,5 @@ onMounted(load)
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; display: flex; gap: 8px; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
 </style>

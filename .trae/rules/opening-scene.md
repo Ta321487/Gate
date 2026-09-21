@@ -1,0 +1,22 @@
+---
+description: 开题场景：壳文案/身份跟开题，只走 scene_scan，不替代 DOM 匹配
+alwaysApply: true
+---
+# 开题场景（主链路·材料侧）
+
+场景轴服务「材料 → 匹配」：壳文案、注册/资料身份跟开题，**不**替代领域匹配。
+
+## DO
+
+1. 壳文案、`profileFields`、岗位名 → 扫「题名 + 开题正文」。
+2. 校园/企业/社区 **只**走 `backend/app/bake/scene_scan.py`。
+3. 开题未写清 → 域默认（builder / `PROFILE_FIELDS_BY_DOMAIN`），不臆造开题。
+4. 业务角色优先于背景装饰；壳与资料页同一 `scene`。
+5. 改场景：只改 `scene_scan.py` + 补场景测试。
+
+## DON'T
+
+- 改开题迁就工厂模板。
+- 在 shells / profile 另写一套场景 hint。
+- 用场景轴代替 `DOM-*` 匹配或技术栈选择。
+

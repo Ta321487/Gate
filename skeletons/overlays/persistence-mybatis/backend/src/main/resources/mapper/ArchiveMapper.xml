@@ -4,17 +4,42 @@
 <mapper namespace="com.thesis.mapper.ArchiveMapper">
 
     <insert id="insertCategory" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO `${catTable}` (name) VALUES (#{name})
+        INSERT INTO `${catTable}`
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            name,
+            <if test="dimension != null and dimension != ''">dimension,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{name},
+            <if test="dimension != null and dimension != ''">#{dimension},</if>
+        </trim>
     </insert>
 
     <select id="selectCategories" resultType="map">
-        SELECT c.id, c.name,
+        SELECT c.id, c.name<if test="includeDimension">, c.dimension</if>,
         <choose>
-            <when test="excludeDeleted">
-                (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id AND b.deleted_at IS NULL)
+            <when test="multiCategory">
+                <choose>
+                    <when test="excludeDeleted">
+                        (SELECT COUNT(DISTINCT ic.item_id) FROM `${itemCatTable}` ic
+                        JOIN `${itemTable}` b ON b.id=ic.item_id
+                        WHERE ic.category_id=c.id AND b.deleted_at IS NULL)
+                    </when>
+                    <otherwise>
+                        (SELECT COUNT(DISTINCT ic.item_id) FROM `${itemCatTable}` ic
+                        WHERE ic.category_id=c.id)
+                    </otherwise>
+                </choose>
             </when>
             <otherwise>
-                (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id)
+                <choose>
+                    <when test="excludeDeleted">
+                        (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id AND b.deleted_at IS NULL)
+                    </when>
+                    <otherwise>
+                        (SELECT COUNT(*) FROM `${itemTable}` b WHERE b.category_id=c.id)
+                    </otherwise>
+                </choose>
             </otherwise>
         </choose>
         AS item_count
@@ -62,7 +87,19 @@
                 </choose>
             </if>
             <if test="ownerUsername != null and ownerUsername != ''">AND owner_username=#{ownerUsername}</if>
-            <if test="categoryId != null and categoryId &gt; 0">AND category_id=#{categoryId}</if>
+            <if test="multiCategoryFilter">
+                <if test="categoryIds != null and categoryIds.size() &gt; 0">
+                    <foreach collection="categoryIds" item="cid">
+                        AND EXISTS (
+                            SELECT 1 FROM `${itemCatTable}` ic
+                            WHERE ic.item_id=`${itemTable}`.id AND ic.category_id=#{cid}
+                        )
+                    </foreach>
+                </if>
+            </if>
+            <if test="!multiCategoryFilter">
+                <if test="categoryId != null and categoryId &gt; 0">AND category_id=#{categoryId}</if>
+            </if>
             <if test="like != null and like != ''">
                 AND (title LIKE #{like} OR `${authorCol}` LIKE #{like} OR `${isbnCol}` LIKE #{like})
             </if>
@@ -127,6 +164,15 @@
         JOIN `${itemTagTable}` it ON it.tag_id=t.id
         WHERE it.`${itemTagFk}`=#{itemId}
         ORDER BY t.id
+    </select>
+
+    <select id="selectItemCategories" resultType="map">
+        SELECT c.id, c.name
+        <if test="includeDimension">, c.dimension</if>
+        FROM `${catTable}` c
+        JOIN `${itemCatTable}` ic ON ic.category_id=c.id
+        WHERE ic.item_id=#{itemId}
+        ORDER BY c.id
     </select>
 
     <select id="countLowStock" resultType="int">

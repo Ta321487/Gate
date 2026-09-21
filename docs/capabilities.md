@@ -17,6 +17,28 @@
 | **扫词写配置** | 开题写到 → 写 yml/开关，仍无独立 cap（如超时关单分钟数） |
 | **schema 开关** | 二级审批 / 互斥 / 签到 / 软删 / 周历等 → 见 [difficulty-tiers.md](./difficulty-tiers.md) L1，不另开 cap |
 
+### 开岛三处挂载契约
+
+新 cap **必须同时**出现在以下三处（漏一处即双轨漏接；由 `test_capability_island_audit.py` 对账）：
+
+1. `proposal_caps` 的 `merge_*`（经 `merge_proposal_capabilities` 调用）
+2. `attach_accept` 的 `apply_*`（经 `domain_schema.attach_accept` 调用）
+3. `engine_sql`（与 attach 共用 hub 后再 `ensure_*` / 分支；禁止只改一侧）
+
+另须同批：`capabilities.py` 注册 + 本表同一 id。
+
+### Hub 例外（`HUB_BYPASS_MODULES`）
+
+故意不走 `proposal_caps.merge_*` 的 `features/` 模块须登记白名单；新增例外必须 PR 说明「为何不能进 hub / 为何不是 cap」，白名单旁注释 + 本表同步。
+
+| 模块 | 理由 |
+|------|------|
+| `user_publish` | schema 开关 `archive.userPublish`，非独立 cap |
+| `temporal_field` | 日期控件精度（date/datetime），非 cap |
+| `opening_align` | 开题模块对账闸，只 `apply`，不开新 cap |
+
+源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
+
 ### 壳与主路径
 
 | 能力 | 状态 | 含义 | 解锁的典型题 |
@@ -39,6 +61,8 @@
 | 能力 | 状态 | 含义 | 挂载口径 |
 |------|------|------|----------|
 | `guestbook` | ✅ | 门户留言；总管删与简短回复（≠ 公告 ≠ 论坛 ≠ **条下评论**） | 域默认 SHOP/FOOD/GENERIC·TRADE 及 MEDIA/MUSIC/BLOG；否则开题写「留言」才挂 |
+| `dm` | ✅ | 站内一对一私信（短轮询；不对接 IM SDK） | **开题写「私信/客服/在线沟通」才挂**；交易写「客服」或「与管理员/用户沟通」即挂；≠ guestbook |
+| `ai_assistant` | ✅ | 业务壳上的客服/导购/助手问答（Spring AI + DeepSeek；无 Key → FAQ） | **开题写「智能客服/导购/大模型问答」才挂**；≠ RAG/CNN 主产品；见 [ai-assistant-delivery.md](./ai-assistant-delivery.md) |
 | `item_comment` | ✅ | 档案详情下发表/列表评论；管理端删除 | **开题写「评论/影评/曲评…」才挂**；仅 MEDIA/MUSIC/BLOG；≠guestbook ≠论坛回帖 ≠订单评价 |
 | `favorites` | ✅ | 收藏夹：收藏/取消，再加购 | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；否则开题写「收藏」才挂 |
 | `post_like` | ✅ | 档案/帖一人一赞开关与计数 | **开题写「点赞」才挂**（E-03）；FORUM/BLOG/MEDIA/MUSIC；无域默认 |
@@ -46,8 +70,11 @@
 | `audit_log` | ✅ | 管理端关键写/登录记入 sys_audit_log；总管可查 | **开题写「操作/审计/登录日志」才挂**（E-04）；无域默认；仅登录日志则 loginOnly |
 | `message_template` | ✅ | 审单通过/驳回套模板发站内消息 | **开题写「消息/通知/站内信模板」才挂**（E-06）；无域默认；非短信邮件 |
 | `coupon` | ✅ | 券模板领取 → 我的券 → 下单核销 → 过期扫标 | 开题写到才挂 |
-| `flash_price` | ✅ | 档案活动价窗口；窗内下单快照活动价 | **开题写「限时购/活动价/秒杀」才挂**（E-05）；无域默认；非秒杀引擎 |
+| `flash_price` | ✅ | 档案活动价窗口；窗内下单快照活动价 | **开题写「限时购/活动价/秒杀/促销信息/节日优惠」才挂**（E-05）；无域默认；非秒杀引擎 |
 | `product_spec` | ✅ | 档案规格说明；详情展示；下单明细标题可带规格快照 | **开题写「规格/规格参数」才挂**（E-14）；SHOP/FOOD+订单壳；非色码矩阵 SKU |
+| `multi_category` | ✅ | 分类带维度；条目多分类关联表；浏览按维筛选 | **开题写两组以上分类维度、双维度，或两组「按某维：选项」才挂**；仅 DOM-SHOP；开岛后不以 `category_id` 为分类来源；未开仍单 FK |
+| `product_tags` | ✅ | 商品标签多选筛选与详情展示（`tag`+`product_tag`） | **开题写明「标签」才挂**；仅 DOM-SHOP；包邮/热门等不作单独触发；≠论坛默认标签 |
+| `detail_attrs` | ✅ | 详情括号里点名的品牌、材质等独立字段，写入 `detail_json` | **开题写「详情（品牌、材质…）」才挂**；价格/简介/图片/规格不重复加；仅 DOM-SHOP / DOM-FOOD |
 | `line_custom` | ✅ | 下单把文字/选项/图片记入订单明细快照，不回写商品；`confirmed` 文案可作「待制作」；定制单拦无理由退 | **开题写「刻字/定制/待制作」才挂**；SHOP/FOOD+订单壳；非礼品专表 |
 | `delivery_window` | ✅ | 管理端维护配送时段容量与节日加价；结算选日期+时段；当日达/预订互斥；满员与截单拒绝 | **开题写「配送时段/当日达/预订配送」才挂**；SHOP/FOOD；≠ 场地预约 `resource_slot` |
 | `purchase_gate` | ✅ | 商品可要求先审再买；按人按月限购 | **开题写「处方/审方/限购」才挂**；SHOP；≠ 医院开处方 |

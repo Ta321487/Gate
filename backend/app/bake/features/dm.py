@@ -24,6 +24,11 @@ _DM_SIGNALS = re.compile(
     re.IGNORECASE,
 )
 
+# 留言模块里写「与管理员/用户沟通」：交易壳要一对一会话，不只留言板回复
+_ADMIN_CHAT_SIGNALS = re.compile(
+    r"与管理员沟通|和管理员沟通|向管理员沟通|与用户沟通|和用户沟通"
+)
+
 _DM_MERCHANT_PEER_SIGNALS = re.compile(
     r"(?:与|跟|向)商家(?:在线)?(?:沟通|咨询|联系|聊天|私信)|"
     r"商家(?:在线)?(?:客服|沟通|咨询)|"
@@ -55,6 +60,11 @@ def scan_dm(text: str) -> bool:
 
 def scan_dm_merchant_peers(text: str) -> bool:
     return pattern_mentioned(text or "", _DM_MERCHANT_PEER_SIGNALS, ignore_contrast=True)
+
+
+def scan_admin_dialogue(text: str) -> bool:
+    """留言里点名和总管或用户沟通，交易壳挂一对一会话。"""
+    return pattern_mentioned(text or "", _ADMIN_CHAT_SIGNALS, ignore_contrast=True)
 
 
 def scan_trade_customer_service(text: str) -> bool:
@@ -99,6 +109,8 @@ def want_dm_cs_labels(
         return True
     if (domain or "") in _TRADE_CS_DOMAINS and scan_trade_customer_service(proposal_text):
         return not _user_peer_chat_mentioned(proposal_text)
+    if (domain or "") in _TRADE_CS_DOMAINS and scan_admin_dialogue(proposal_text):
+        return not _user_peer_chat_mentioned(proposal_text)
     return False
 
 
@@ -122,6 +134,8 @@ def dm_wanted(
         if scan_dm_merchant_peers(proposal_text):
             return True
         if scan_trade_customer_service(proposal_text):
+            return True
+        if scan_admin_dialogue(proposal_text):
             return True
     return scan_dm(proposal_text)
 

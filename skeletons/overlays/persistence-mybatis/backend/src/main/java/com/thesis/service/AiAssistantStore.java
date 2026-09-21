@@ -2,8 +2,8 @@ package com.thesis.service;
 
 import com.thesis.config.MybatisSupport;
 import com.thesis.config.MbSql;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

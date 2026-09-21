@@ -4,6 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+# features 模块故意不走本 hub 的 merge_*（非 cap / 非扫词开岛）。
+# 新增例外须走 PR 写清理由，并同步 docs/capabilities.md 例外表；审计测强制对账。
+HUB_BYPASS_MODULES: frozenset[str] = frozenset(
+    {
+        "user_publish",  # schema 开关 archive.userPublish，非独立 cap
+        "temporal_field",  # 日期控件精度（date/datetime），非 cap
+        "opening_align",  # 开题对账闸，只 apply，不开新 cap
+    }
+)
+
 
 def merge_proposal_capabilities(
     caps: list[str] | None,
@@ -25,6 +35,8 @@ def merge_proposal_capabilities(
     from app.bake.features.post_mute import merge_post_mute_capabilities
     from app.bake.features.book_suggest import merge_book_suggest_capabilities
     from app.bake.features.product_spec import merge_product_spec_capabilities
+    from app.bake.features.multi_category import merge_multi_category_capabilities
+    from app.bake.features.product_tags import merge_product_tags_capabilities
     from app.bake.features.core_cap_scan import (
         merge_loan_deadline_capabilities,
         merge_loan_renew_capabilities,
@@ -107,6 +119,11 @@ def merge_proposal_capabilities(
     req = merge_post_mute_capabilities(req, body, domain=domain)
     req = merge_book_suggest_capabilities(req, body, domain=domain)
     req = merge_product_spec_capabilities(req, body, domain=domain)
+    req = merge_multi_category_capabilities(req, body, domain=domain, title=title)
+    req = merge_product_tags_capabilities(req, body, domain=domain, title=title)
+    from app.bake.features.detail_attrs import merge_detail_attrs_capabilities
+
+    req = merge_detail_attrs_capabilities(req, f"{title}\n{body}", domain=domain)
     from app.bake.features.line_custom import merge_line_custom_capabilities
 
     req = merge_line_custom_capabilities(req, body, domain=domain)

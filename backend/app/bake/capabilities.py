@@ -127,12 +127,27 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "flash_price": {
         "label": "限时购",
         "status": "implemented",
-        "desc": "档案活动价窗口；窗内下单用活动价快照；开题写到才挂（E-05）",
+        "desc": "档案活动价窗口；窗内下单用活动价快照；开题写限时购/活动价/秒杀/促销信息/节日优惠才挂（E-05）",
     },
     "product_spec": {
         "label": "商品规格说明",
         "status": "implemented",
         "desc": "档案规格文案字段+详情展示+下单标题快照；开题写到才挂（E-14）；非 SKU 矩阵",
+    },
+    "multi_category": {
+        "label": "多维分类",
+        "status": "implemented",
+        "desc": "分类带维度 + 条目多分类关联；开题写两组分类维度、双维度，或两组「按某维：选项」才挂；仅 DOM-SHOP；开岛后不以 category_id 为分类来源",
+    },
+    "product_tags": {
+        "label": "商品标签",
+        "status": "implemented",
+        "desc": "tag + product_tag 多选筛选与详情展示；开题写明「标签」才挂；仅 DOM-SHOP；≠论坛默认标签",
+    },
+    "detail_attrs": {
+        "label": "商品详情属性",
+        "status": "implemented",
+        "desc": "详情括号里点名的品牌、材质等独立字段，写入 detail_json；价格简介图片不重复加；仅 DOM-SHOP/DOM-FOOD",
     },
     "line_custom": {
         "label": "订单明细快照",

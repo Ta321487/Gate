@@ -5,16 +5,13 @@ from __future__ import annotations
 import unittest
 
 from app.bake.domain_schema import attach_accept
-from app.bake.domains import DOMAIN_CAPABILITIES, DOMAIN_GROUPS, DOMAINS
+from app.bake.domains import BORROW_FAMILY_DOMAINS, DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_sql import count_create_tables, domain_sql, table_budget_bounds
 from app.bake.gate_contracts import dual_surface_menu_keys
 
 
 def _borrow_ids() -> list[str]:
-    for gid, _label, members in DOMAIN_GROUPS:
-        if gid == "borrow":
-            return list(members)
-    return []
+    return sorted(BORROW_FAMILY_DOMAINS)
 
 
 class BorrowFamilyThickenTests(unittest.TestCase):

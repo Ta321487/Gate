@@ -10,6 +10,10 @@
         <div class="chart-title">近 7 日趋势</div>
         <div ref="trendEl" class="chart" />
       </div>
+      <div v-if="monthOpt" class="chart-box">
+        <div class="chart-title">近 6 个月销量</div>
+        <div ref="monthEl" class="chart" />
+      </div>
       <div v-if="stockOpt" class="chart-box wide">
         <div class="chart-title">{{ stockTitle }}</div>
         <div ref="stockEl" class="chart" />
@@ -40,10 +44,12 @@ const props = defineProps({
 
 const statusEl = ref(null)
 const trendEl = ref(null)
+const monthEl = ref(null)
 const stockEl = ref(null)
 const hotEl = ref(null)
 let statusChart
 let trendChart
+let monthChart
 let stockChart
 let hotChart
 
@@ -146,6 +152,21 @@ function fillTrend(raw) {
   return days
 }
 
+function fillMonth(raw) {
+  const map = {}
+  for (const r of raw || []) {
+    if (r?.month) map[r.month] = Number(r.value) || 0
+  }
+  const months = []
+  const now = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    months.push({ month: key, value: map[key] || 0 })
+  }
+  return months
+}
+
 const statusOpt = computed(() => {
   const series = (props.charts?.statusSeries || []).filter((x) => Number(x.value) > 0)
   if (!series.length) return null
@@ -184,6 +205,28 @@ const trendOpt = computed(() => {
         smooth: true,
         areaStyle: { opacity: 0.12 },
         data: filled.map((x) => x.value),
+      },
+    ],
+  }
+})
+
+const monthOpt = computed(() => {
+  const filled = fillMonth(props.charts?.monthSeries)
+  const hasData = filled.some((x) => x.value > 0) || (props.charts?.monthSeries || []).length > 0
+  if (!hasData) return null
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 16, top: 24, bottom: 28 },
+    xAxis: {
+      type: 'category',
+      data: filled.map((x) => x.month),
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+      {
+        type: 'bar',
+        data: filled.map((x) => x.value),
+        barMaxWidth: 28,
       },
     ],
   }
@@ -233,7 +276,7 @@ const hotOpt = computed(() => {
   }
 })
 
-const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || stockOpt.value || hotOpt.value))
+const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || monthOpt.value || stockOpt.value || hotOpt.value))
 
 function render() {
   if (statusOpt.value && statusEl.value) {
@@ -249,6 +292,13 @@ function render() {
   } else if (trendChart) {
     trendChart.dispose()
     trendChart = null
+  }
+  if (monthOpt.value && monthEl.value) {
+    if (!monthChart) monthChart = echarts.init(monthEl.value)
+    monthChart.setOption(withPortalChartTheme(monthOpt.value), true)
+  } else if (monthChart) {
+    monthChart.dispose()
+    monthChart = null
   }
   if (stockOpt.value && stockEl.value) {
     if (!stockChart) stockChart = echarts.init(stockEl.value)
@@ -269,6 +319,7 @@ function render() {
 function onResize() {
   statusChart?.resize()
   trendChart?.resize()
+  monthChart?.resize()
   stockChart?.resize()
   hotChart?.resize()
 }
@@ -292,6 +343,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   statusChart?.dispose()
   trendChart?.dispose()
+  monthChart?.dispose()
   stockChart?.dispose()
   hotChart?.dispose()
 })

@@ -27,6 +27,7 @@
           @keyup.enter="load"
         />
         <el-select
+          v-if="!multiCategory"
           v-model="categoryId"
           clearable
           :placeholder="fieldLabel('category', '分类')"
@@ -35,6 +36,27 @@
           @change="onCategoryChange"
         >
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+        </el-select>
+        <el-select
+          v-else
+          v-model="categoryIds"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
+          :placeholder="fieldLabel('categoryIds', fieldLabel('category', '分类'))"
+          size="large"
+          class="search-cat"
+          style="min-width:220px"
+          @change="onMultiCategoryChange"
+        >
+          <el-option-group
+            v-for="g in categoriesByDimension"
+            :key="g.dimension || '未分组'"
+            :label="g.dimension || '未分组'"
+          >
+            <el-option v-for="c in g.items" :key="c.id" :label="c.name" :value="c.id" />
+          </el-option-group>
         </el-select>
         <el-select
           v-if="tagFilter"
@@ -97,7 +119,13 @@
           <p v-if="isBlindBox(row)" class="sub">盲盒 · {{ blindBoxLine(row) }}</p>
           <p v-if="purchaseGateOn && Number(row.needPermit) === 1" class="sub">需审核后才能购买</p>
           <p v-if="purchaseGateOn && Number(row.monthLimit) > 0" class="sub">每人每月限购 {{ row.monthLimit }} 件</p>
-          <p>{{ formatAuthor(row.author) }} · {{ row.categoryName || '未分类' }}</p>
+          <p>
+            {{ formatAuthor(row.author) }} ·
+            {{
+              (row.categoryNames?.length ? row.categoryNames.join(' · ') : row.categoryName)
+                || '未分类'
+            }}
+          </p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
           <p v-if="flashOn && row.promoActive" class="promo">
             {{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }}
@@ -220,7 +248,16 @@
           :preview-src-list="[detail.coverUrl]"
           preview-teleported
         />
-        <p class="sub">{{ formatAuthor(detail.author) }} · {{ detail.categoryName || '未分类' }}</p>
+        <p class="sub">
+          {{ formatAuthor(detail.author) }} ·
+          {{
+            (detail.categoryNames?.length ? detail.categoryNames.join(' · ') : detail.categoryName)
+              || '未分类'
+          }}
+        </p>
+        <p v-if="tagFilter && detail.tagNames?.length" class="detail-line">
+          标签：{{ detail.tagNames.join(' · ') }}
+        </p>
         <p v-if="marketplace && shopLabel(detail)" class="detail-line">店铺：{{ shopLabel(detail) }}</p>
         <p v-if="flashOn && detail.promoActive" class="promo">
           {{ flashBadge }} ¥{{ Number(detail.promoPrice).toFixed(2) }}
@@ -779,6 +816,7 @@ const needApplyDialog = computed(
 const checkMutex = computed(() => !!ticket.checkMutex)
 const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
 const tagFilter = computed(() => !!archive.tagFilter)
+const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_category'))
 const userPublish = computed(() => !!archive.userPublish)
 /** 论坛类：isbn 富文本；CRM/拼车等：纯文本业务表单 */
 const publishUsesRichBody = computed(() => bodyRich.value)
@@ -1183,9 +1221,19 @@ const page = ref(1)
 const size = ref(9)
 const keyword = ref('')
 const categoryId = ref(null)
+const categoryIds = ref([])
 const categories = ref([])
 const tagIds = ref([])
 const tags = ref([])
+const categoriesByDimension = computed(() => {
+  const groups = new Map()
+  for (const c of categories.value || []) {
+    const dim = (c.dimension || '').trim() || '未分组'
+    if (!groups.has(dim)) groups.set(dim, [])
+    groups.get(dim).push(c)
+  }
+  return [...groups.entries()].map(([dimension, items]) => ({ dimension, items }))
+})
 const recRef = ref(null)
 const detailVisible = ref(false)
 const detail = ref(null)
@@ -1230,6 +1278,15 @@ function shopLabel(row) {
 function onCategoryChange() {
   if (isGuest.value) {
     categoryId.value = null
+    requireLogin(router)
+    return
+  }
+  page.value = 1
+  load()
+}
+function onMultiCategoryChange() {
+  if (isGuest.value) {
+    categoryIds.value = []
     requireLogin(router)
     return
   }
@@ -1472,7 +1529,11 @@ async function load() {
       page: isGuest.value ? 1 : page.value,
       size: pageSize,
       keyword: keyword.value || undefined,
-      categoryId: categoryId.value || undefined,
+      categoryId: multiCategory.value ? undefined : (categoryId.value || undefined),
+      categoryIds:
+        multiCategory.value && categoryIds.value?.length
+          ? categoryIds.value.join(',')
+          : undefined,
       tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
     },
   })

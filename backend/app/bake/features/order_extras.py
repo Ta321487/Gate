@@ -28,7 +28,7 @@ _REVIEW_SIGNALS = re.compile(
 _TIMEOUT_SIGNALS = re.compile(
     r"超时取消|支付超时|自动取消订单|未支付取消|订单超时|超时关单"
 )
-_FLASH_TERMS = ("限时购", "限时特价", "活动价", "秒杀")
+_FLASH_TERMS = ("限时购", "限时特价", "活动价", "秒杀", "促销信息", "节日优惠")
 
 
 def scan_order_review(text: str) -> bool:

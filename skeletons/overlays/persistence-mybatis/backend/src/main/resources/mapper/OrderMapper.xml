@@ -50,6 +50,16 @@
         ORDER BY id DESC
     </select>
 
+    <select id="selectOrdersOwnedByMerchant" resultType="map">
+        SELECT o.* FROM `${orderTable}` o
+        <where>
+            EXISTS (SELECT 1 FROM `${lineTable}` l JOIN `${itemTable}` p ON p.id=l.item_id
+                    WHERE l.order_id=o.id AND p.owner_username=#{ownerUsername})
+            <if test="status != null and status != ''">AND o.status=#{status}</if>
+        </where>
+        ORDER BY o.id DESC
+    </select>
+
     <select id="selectIdsByReservation" resultType="long">
         SELECT id FROM `${orderTable}`
         WHERE reservation_id=#{reservationId} AND status IN ('pending','confirmed','shipped')
@@ -77,6 +87,18 @@
         SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM `${orderTable}`
         WHERE created_at &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
         GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day
+    </select>
+
+    <select id="selectMonthSeries" resultType="map">
+        SELECT DATE_FORMAT(created_at,'%Y-%m') AS month, COUNT(*) AS value FROM `${orderTable}`
+        WHERE created_at &gt;= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 5 MONTH)
+        GROUP BY DATE_FORMAT(created_at,'%Y-%m') ORDER BY month
+    </select>
+
+    <select id="selectHotSeries" resultType="map">
+        SELECT l.title AS name, SUM(l.qty) AS value FROM `${lineTable}` l
+        INNER JOIN `${orderTable}` o ON o.id=l.order_id AND o.status='completed'
+        GROUP BY l.title ORDER BY value DESC LIMIT 8
     </select>
 
     <update id="applyLoyaltyWithCoupon">

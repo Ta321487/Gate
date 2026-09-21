@@ -86,6 +86,14 @@ public final class MbSql {
         }
     }
 
+    public <T> T queryForObject(String sql, SqlRowMapper<T> mapper, Object... args) {
+        List<T> list = query(sql, mapper, args);
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T queryForObject(String sql, Class<T> type, Object... args) {
         try (Connection c = dataSource.getConnection();

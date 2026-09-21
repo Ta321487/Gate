@@ -69,7 +69,61 @@ ARCHETYPES = {
 }
 
 
-# 领域分组（级联选择一级；与 DOMAIN_CAPABILITIES 注释分组一致）
+# 出包厚度用的借用族。与下面级联展示分组分开：挪菜单不得改这张名单。
+BORROW_FAMILY_DOMAINS: frozenset[str] = frozenset(
+    {
+        "DOM-LIBRARY",
+        "DOM-EQUIP",
+        "DOM-ASSET",
+        "DOM-CRM",
+        "DOM-EVENT",
+        "DOM-ATTEND",
+        "DOM-FUND",
+        "DOM-LABSAFE",
+        "DOM-RECRUIT",
+        "DOM-DATING",
+        "DOM-GRADE",
+        "DOM-INTERN",
+        "DOM-PARCEL",
+        "DOM-SEAL",
+        "DOM-FLEET",
+        "DOM-CERT",
+        "DOM-PROMO",
+        "DOM-FITOUT",
+        "DOM-ACAD",
+        "DOM-TRIP",
+        "DOM-EXPENSE",
+        "DOM-CREDIT",
+        "DOM-LABOR",
+        "DOM-EVAL",
+        "DOM-MORAL",
+        "DOM-AWARD",
+        "DOM-BED",
+        "DOM-CHECKIN",
+        "DOM-MUTUAL-TUTOR",
+        "DOM-MUTUAL-TOPIC",
+        "DOM-MUTUAL-TEAM",
+        "DOM-VISITOR",
+        "DOM-CARPASS",
+        "DOM-LISTING",
+        "DOM-PROCURE",
+        "DOM-CLUB",
+        "DOM-PROJ",
+        "DOM-ETHIC",
+        "DOM-PARTY",
+        "DOM-CONTRACT",
+        "DOM-INSTRUMENT",
+        "DOM-EXAM",
+        "DOM-SURVEY",
+        "DOM-VOTE",
+        "DOM-DOCLIB",
+        "DOM-CARPOOL",
+        "DOM-TIMEBANK",
+    }
+)
+
+
+# 控制台级联（只决定怎么找域）。选中值仍是 DOM-*，开题与出包按域走。
 DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         "borrow",
@@ -78,16 +132,31 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "DOM-LIBRARY",
             "DOM-EQUIP",
             "DOM-ASSET",
+            "DOM-PARCEL",
+            "DOM-BED",
+        ),
+    ),
+    (
+        "follow",
+        "跟进",
+        (
             "DOM-CRM",
             "DOM-EVENT",
             "DOM-ATTEND",
             "DOM-FUND",
-            "DOM-LABSAFE",
             "DOM-RECRUIT",
-            "DOM-DATING",
             "DOM-GRADE",
             "DOM-INTERN",
-            "DOM-PARCEL",
+            "DOM-LISTING",
+        ),
+    ),
+    ("ticket", "报修/工单", ("DOM-DORM", "DOM-PROPERTY", "DOM-IT")),
+    ("apply", "报名/申请", ("DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE", "DOM-TOUR")),
+    (
+        "approve",
+        "审批/填报",
+        (
+            "DOM-LABSAFE",
             "DOM-SEAL",
             "DOM-FLEET",
             "DOM-CERT",
@@ -101,31 +170,17 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "DOM-EVAL",
             "DOM-MORAL",
             "DOM-AWARD",
-            "DOM-BED",
-            "DOM-CHECKIN",
-            "DOM-MUTUAL-TUTOR",
-            "DOM-MUTUAL-TOPIC",
-            "DOM-MUTUAL-TEAM",
-            "DOM-VISITOR",
-            "DOM-CARPASS",
-            "DOM-LISTING",
             "DOM-PROCURE",
             "DOM-CLUB",
             "DOM-PROJ",
             "DOM-ETHIC",
             "DOM-PARTY",
             "DOM-CONTRACT",
-            "DOM-INSTRUMENT",
-            "DOM-EXAM",
-            "DOM-SURVEY",
-            "DOM-VOTE",
-            "DOM-DOCLIB",
-            "DOM-CARPOOL",
-            "DOM-TIMEBANK",
+            "DOM-CARPASS",
+            "DOM-VISITOR",
+            "DOM-CHECKIN",
         ),
     ),
-    ("ticket", "报修/工单", ("DOM-DORM", "DOM-PROPERTY", "DOM-IT")),
-    ("apply", "报名/申请", ("DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE", "DOM-TOUR")),
     ("trade", "交易", ("DOM-SHOP", "DOM-FOOD", "DOM-CINEMA")),
     (
         "reserve",
@@ -137,25 +192,40 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
             "DOM-SALON",
             "DOM-HOTEL",
             "DOM-CARRENT",
+            "DOM-INSTRUMENT",
         ),
     ),
-    ("content", "内容/媒资/社区", ("DOM-MEDIA", "DOM-MUSIC", "DOM-FORUM", "DOM-BLOG")),
+    (
+        "content",
+        "内容/媒资/社区",
+        ("DOM-MEDIA", "DOM-MUSIC", "DOM-FORUM", "DOM-BLOG", "DOM-DOCLIB"),
+    ),
+    (
+        "interact",
+        "互动/匹配",
+        (
+            "DOM-DATING",
+            "DOM-MUTUAL-TUTOR",
+            "DOM-MUTUAL-TOPIC",
+            "DOM-MUTUAL-TEAM",
+            "DOM-CARPOOL",
+            "DOM-TIMEBANK",
+            "DOM-EXAM",
+            "DOM-SURVEY",
+            "DOM-VOTE",
+        ),
+    ),
     ("fallback", "兜底", ("DOM-GENERIC",)),
 )
 
 
 def is_borrow_family_domain(domain: str | None) -> bool:
     d = (domain or "").strip()
-    if not d:
-        return False
-    for gid, _label, members in DOMAIN_GROUPS:
-        if gid == "borrow":
-            return d in members
-    return False
+    return bool(d) and d in BORROW_FAMILY_DOMAINS
 
 
 # domain → 默认所需能力（题目无关的积木组合）
-# 分组见 DOMAIN_GROUPS / HANDOFF「90% 毕设覆盖」
+# 级联展示见 DOMAIN_GROUPS；出包表数下限见 BORROW_FAMILY_DOMAINS
 DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # A 借用/占用
     "DOM-LIBRARY": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend", "loan_renew"],

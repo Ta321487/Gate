@@ -690,7 +690,13 @@ function downloadRowZip(row) {
     message.error(row?.download_blocked_reason || '质量检查未通过 · 暂不可下载')
     return
   }
-  window.open(api.downloadUrl(row.id), '_blank')
+  const a = document.createElement('a')
+  a.href = api.downloadUrl(row.id)
+  a.target = '_self'
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 async function markRowDelivery(row, mark) {

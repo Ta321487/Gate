@@ -295,6 +295,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.post_mute import apply_post_mute_to_spec
     from app.bake.features.book_suggest import apply_book_suggest_to_spec
     from app.bake.features.product_spec import apply_product_spec_to_spec
+    from app.bake.features.multi_category import apply_multi_category_to_spec
+    from app.bake.features.product_tags import apply_product_tags_to_spec
+    from app.bake.features.detail_attrs import apply_detail_attrs_to_spec
     from app.bake.features.favorites import apply_favorites_to_spec
     from app.bake.features.dm import apply_dm_to_spec
     from app.bake.features.exam import apply_exam_to_spec
@@ -424,6 +427,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_post_mute_to_spec(out, body)
     out = apply_book_suggest_to_spec(out, body)
     out = apply_product_spec_to_spec(out, body)
+    out = apply_multi_category_to_spec(out, body)
+    out = apply_product_tags_to_spec(out, body)
+    out = apply_detail_attrs_to_spec(out, body)
     out = apply_order_extras_to_spec(out, body)
     from app.bake.features.line_custom import apply_line_custom_to_spec
 
@@ -812,7 +818,7 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
     "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
     # 清洗回退句必须干净（骨架/builders 可脏；学生包点「洗文案」靠此落净）
-    "demoPayHint": "选择支付宝或微信并输入支付密码完成本单。",
+    "demoPayHint": "选择支付宝或微信，确认后从账户余额扣款。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "messagesPageLead": "审核结果与系统通知。",

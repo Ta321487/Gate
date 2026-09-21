@@ -41,9 +41,13 @@ public final class AddressStore {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", raw.get("id"));
         m.put("username", raw.get("username"));
-        m.put("contactName", raw.get("contactName"));
+        Object name = raw.get("contactName");
+        if (name == null) name = raw.get("contact_name");
+        m.put("contactName", name);
         m.put("phone", raw.get("phone"));
-        m.put("addressLine", raw.get("addressLine"));
+        Object line = raw.get("addressLine");
+        if (line == null) line = raw.get("address_line");
+        m.put("addressLine", line);
         m.put("tag", raw.get("tag"));
         Object def = raw.get("isDefault");
         if (def == null) def = raw.get("is_default");

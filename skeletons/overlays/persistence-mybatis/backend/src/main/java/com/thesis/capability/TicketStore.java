@@ -75,6 +75,18 @@ public final class TicketStore {
     static boolean peerAccept = false;
     /** C-09：审核通过签发通行码（非真门禁） */
     static boolean issuePassCode = false;
+    /** 允许续借（延长 due_at） */
+    static boolean allowRenew = false;
+    /** 单次借出最多续借次数 */
+    static int maxRenew = 1;
+    /** 每次续借延长天数；≤0 则跟 loanDays */
+    static int renewDays = 0;
+    /** 名额满可候补（waitlisted） */
+    static boolean allowWaitlist = false;
+    /** 无库存可预约到书（held → hold_ready） */
+    static boolean allowBookHold = false;
+    /** 到书后限时确认借阅小时数 */
+    static int holdHours = 48;
     /** C-14：核销审批通过时扣减时长账户 */
     static boolean timebankRedeem = false;
     /** 活动结束未签到 → 爽约（复用 overdue 状态） */
@@ -490,6 +502,43 @@ public final class TicketStore {
         return issuePassCode;
     }
 
+    public static void configureRenew(boolean enabled, int maxTimes, int days) {
+        allowRenew = enabled;
+        maxRenew = Math.max(1, Math.min(5, maxTimes <= 0 ? 1 : maxTimes));
+        renewDays = Math.max(0, days);
+        if (allowRenew) {
+            ensureColumn("renew_count", "INT NOT NULL DEFAULT 0");
+        }
+    }
+
+    public static void configureWaitlist(boolean enabled) {
+        allowWaitlist = enabled;
+    }
+
+    public static void configureBookHold(boolean enabled, int hours) {
+        allowBookHold = enabled;
+        holdHours = Math.max(1, Math.min(168, hours <= 0 ? 48 : hours));
+        if (allowBookHold) {
+            ensureColumn("hold_expire_at", "DATETIME NULL");
+        }
+    }
+
+    public static boolean isAllowRenew() {
+        return allowRenew;
+    }
+
+    public static boolean isAllowBookHold() {
+        return allowBookHold;
+    }
+
+    public static int holdHours() {
+        return holdHours;
+    }
+
+    public static int maxRenew() {
+        return maxRenew;
+    }
+
     public static void configureNoShow(boolean afterEnd, double penaltyYuan) {
         noShowAfterEnd = afterEnd && allowCheckin;
         noShowPenaltyYuan = Math.max(0, penaltyYuan);
@@ -567,18 +616,34 @@ public final class TicketStore {
         if (MODE != Mode.ARCHIVE) {
             throw new IllegalStateException("当前为独立工单模式，请使用 applyStandalone");
         }
+        UserStore.assertNotPostMuted(username);
         ExamStore.assertTicketGatePassed(username);
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
         int nQty = resolveQty(qty, stock);
-        if (useQuota && stock < nQty) throw new IllegalStateException(ArchiveStore.stockShortage(stock));
+        boolean asWaitlist = false;
+        boolean asBookHold = false;
+        if (useQuota && stock < nQty) {
+            if (allowBookHold) {
+                if (!hasColumn("hold_expire_at")) {
+                    throw new IllegalStateException("系统未配置到书过期字段，无法预约到书");
+                }
+                asBookHold = true;
+            } else if (allowWaitlist) {
+                asWaitlist = true;
+            } else {
+                throw new IllegalStateException(ArchiveStore.stockShortage(stock));
+            }
+        }
         TicketAsserts.assertItemOpen(item);
         TicketAsserts.assertApplyDeadline(item);
-        TicketAsserts.assertNoTimeConflict(username, itemId, item);
-        TicketAsserts.assertNoMutexConflict(username, itemId, item);
-        TicketAsserts.assertCategoryLimit(username, item);
-        TicketAsserts.assertUnderActiveLimit(username);
+        if (!asWaitlist && !asBookHold) {
+            TicketAsserts.assertNoTimeConflict(username, itemId, item);
+            TicketAsserts.assertNoMutexConflict(username, itemId, item);
+            TicketAsserts.assertCategoryLimit(username, item);
+            TicketAsserts.assertUnderActiveLimit(username);
+        }
         String attach = TicketAsserts.normalizeAttach(attachUrl);
         if (requireAttach && !hasColumn("attach_url")) {
             throw new IllegalStateException("系统未配置附件字段，无法提交带附件的申请");
@@ -611,8 +676,10 @@ public final class TicketStore {
         final boolean withQty = hasColumn("qty");
         final boolean withDue = due != null;
         final boolean withPeriod = period != null;
-        final String initialStatus = autoApprove ? "approved" : "pending";
-        final boolean withApproveAt = autoApprove && hasColumn("approve_at");
+        final String initialStatus = asBookHold
+                ? "held"
+                : (asWaitlist ? "waitlisted" : (autoApprove ? "approved" : "pending"));
+        final boolean withApproveAt = !asWaitlist && !asBookHold && autoApprove && hasColumn("approve_at");
         Map<String, Object> ins = new LinkedHashMap<>();
         ins.put("ticketTable", TICKET);
         ins.put("itemFk", itemFkColumn());
@@ -636,7 +703,29 @@ public final class TicketStore {
         }
         mapper().insertArchive(ins);
         long id = TicketSql.toLong(ins.get("id"));
-        if (autoApprove) {
+        if (asBookHold) {
+            appendProgress(id, "held", username, "用户预约到书");
+            try {
+                MessageStore.send(
+                        username,
+                        "预约已登记",
+                        "「" + subjectOf(get(id)) + "」已预约到书，有书时将通知您确认借阅。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+            }
+        } else if (asWaitlist) {
+            appendProgress(id, "waitlisted", username, "用户候补排队");
+            try {
+                MessageStore.send(
+                        username,
+                        "已加入候补",
+                        "「" + subjectOf(get(id)) + "」名额已满，已为您排队候补。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+            }
+        } else if (autoApprove) {
             appendProgress(id, "approved", username, "用户提交（即时生效）");
         } else {
             appendProgress(id, "pending", username, "用户提交");
@@ -975,6 +1064,8 @@ public final class TicketStore {
                 long itemId = TicketSql.toLong(m.get("bookId"));
                 if (itemId > 0 && ArchiveStore.getItemRaw(itemId) != null) {
                     ArchiveStore.adjustStock(itemId, applied - actualQty);
+                    tryPromoteWaitlist(itemId);
+                    tryPromoteBookHold(itemId);
                 }
             }
         } else if (actualQty != null && hasColumn("actual_qty")) {
@@ -1083,6 +1174,7 @@ public final class TicketStore {
         boolean verifying = "verifying".equals(st);
         boolean midStage = "pending_mid".equals(st);
         boolean finalStage = "pending_final".equals(st);
+        boolean holdReady = "hold_ready".equals(st);
         if (requireClaimProof && first && pass) {
             throw new IllegalStateException("请先提交并核验认领凭证");
         }
@@ -1090,8 +1182,8 @@ public final class TicketStore {
             ClaimProofStore.assertPassed(ticketId);
             first = true;
         }
-        if (!first && !midStage && !finalStage && !(verifying && requireClaimProof)) {
-            throw new IllegalStateException("仅待审核单据可审批");
+        if (!first && !midStage && !finalStage && !holdReady && !(verifying && requireClaimProof)) {
+            throw new IllegalStateException("仅待审核或待取书单据可审批");
         }
         if (twoLevelApprove && finalStage && pass && !superAdmin) {
             throw new IllegalStateException("终审通过需总管操作");
@@ -1107,6 +1199,30 @@ public final class TicketStore {
             Object prev = m.get("remark");
             note = prev == null ? "" : String.valueOf(prev);
         }
+
+        // 到书待取：通过=确认借出（库存已在晋升时预扣）；驳回=回补并顺延
+        if (holdReady) {
+            long itemId = TicketSql.toLong(m.get("bookId"));
+            int nQty = rowQty(m);
+            if (!pass) {
+                if (MODE == Mode.ARCHIVE && useQuota && itemId > 0
+                        && ArchiveStore.getItemRaw(itemId) != null) {
+                    ArchiveStore.adjustStock(itemId, nQty);
+                }
+                MybatisSupport.db().update(
+                        "UPDATE " + TICKET + " SET status='rejected', remark=?"
+                                + (hasColumn("hold_expire_at") ? ", hold_expire_at=NULL" : "")
+                                + " WHERE id=?",
+                        note, ticketId);
+                appendProgress(ticketId, "rejected", op,
+                        note.isBlank() ? "驳回待取书预约" : note);
+                notifyTicketResult(m, false, note);
+                if (itemId > 0) tryPromoteBookHold(itemId);
+                return get(ticketId);
+            }
+            return finalizeHoldReadyApprove(ticketId, m, note, op, dispatchTo, bind);
+        }
+
 
         if (!pass) {
             Map<String, Object> row = new LinkedHashMap<>();
@@ -1488,7 +1604,8 @@ public final class TicketStore {
     }
 
     /**
-     * 申请人撤销待审单据（pending / pending_mid / pending_final）。未扣库存，无需回补。
+     * 申请人撤销待审单据（pending / pending_mid / pending_final / waitlisted / held / hold_ready）。
+     * held 未扣库存；hold_ready 须回补预扣库存。
      */
     public static Map<String, Object> withdraw(long ticketId, String username) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
@@ -1498,14 +1615,271 @@ public final class TicketStore {
             throw new IllegalStateException("只能撤销自己的申请");
         }
         String st = String.valueOf(m.get("status"));
-        if (!"pending".equals(st) && !"pending_mid".equals(st) && !"pending_final".equals(st)
+        if (!"pending".equals(st) && !"pending_mid".equals(st)
+                && !"pending_final".equals(st) && !"waitlisted".equals(st)
+                && !"held".equals(st) && !"hold_ready".equals(st)
                 && !"verifying".equals(st)) {
-            throw new IllegalStateException("仅待审核申请可撤销");
+            throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
         }
-        mapper().updateStatus(TICKET, "cancelled", ticketId);
-        appendProgress(ticketId, "cancelled", username, "用户撤销申请");
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if ("hold_ready".equals(st) && MODE == Mode.ARCHIVE && useQuota && itemId > 0
+                && ArchiveStore.getItemRaw(itemId) != null) {
+            ArchiveStore.adjustStock(itemId, rowQty(m));
+        }
+        MybatisSupport.db().update(
+                "UPDATE " + TICKET + " SET status='cancelled'"
+                        + (hasColumn("hold_expire_at") ? ", hold_expire_at=NULL" : "")
+                        + " WHERE id=?",
+                ticketId);
+        String progNote = "held".equals(st) ? "用户取消预约"
+                : ("hold_ready".equals(st) ? "用户放弃取书"
+                : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请"));
+        appendProgress(ticketId, "cancelled", username, progNote);
+        if ("hold_ready".equals(st) && itemId > 0) {
+            tryPromoteBookHold(itemId);
+        }
         return get(ticketId);
     }
+
+
+    /**
+     * 名额回补后：按申请时间 FIFO 将最早候补单升为待审（不直接扣库存，审过才占名额）。
+     */
+    static void tryPromoteWaitlist(long itemId) {
+        if (!allowWaitlist || MODE != Mode.ARCHIVE || !useQuota || itemId <= 0) {
+            return;
+        }
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) return;
+        int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
+        if (stock <= 0) return;
+        Long wid = null;
+        try {
+            wid = MybatisSupport.db().queryForObject(
+                    "SELECT id FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status='waitlisted'"
+                            + " ORDER BY apply_at ASC, id ASC LIMIT 1",
+                    Long.class, itemId);
+        } catch (Exception ignored) {
+            return;
+        }
+        if (wid == null || wid <= 0) return;
+        Map<String, Object> w = TicketRowMaps.load(wid);
+        if (w == null) return;
+        int need = rowQty(w);
+        if (stock < need) return;
+        int n = MybatisSupport.db().update(
+                "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='waitlisted'",
+                wid);
+        if (n <= 0) return;
+        appendProgress(wid, "pending", "system", "候补晋升：名额空出，转为待审");
+        try {
+            String user = TicketSql.str(w.get("username"));
+            if (!user.isBlank()) {
+                MessageStore.send(
+                        user,
+                        "候补已晋升",
+                        "「" + subjectOf(w) + "」已有名额，候补已转为待审，请等待审核。",
+                        "ticket",
+                        wid);
+            }
+            notifyAdminsNewTicket(wid, user, subjectOf(get(wid)));
+        } catch (Exception ignored) {
+            // 通知失败不影响晋升
+        }
+    }
+
+    /**
+     * 还书入库后：FIFO 将最早预约单升为待取书并预扣库存；发到书站内信。
+     */
+    static void tryPromoteBookHold(long itemId) {
+        if (!allowBookHold || MODE != Mode.ARCHIVE || !useQuota || itemId <= 0) {
+            return;
+        }
+        if (!hasColumn("hold_expire_at")) {
+            // 能力开了却缺过期列：禁止晋升成永不超时的 hold_ready
+            return;
+        }
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) return;
+        int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
+        if (stock <= 0) return;
+        Long hid = null;
+        try {
+            hid = MybatisSupport.db().queryForObject(
+                    "SELECT id FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status='held'"
+                            + " ORDER BY apply_at ASC, id ASC LIMIT 1",
+                    Long.class, itemId);
+        } catch (Exception ignored) {
+            return;
+        }
+        if (hid == null || hid <= 0) return;
+        Map<String, Object> h = TicketRowMaps.load(hid);
+        if (h == null) return;
+        int need = rowQty(h);
+        if (stock < need) return;
+        ArchiveStore.adjustStock(itemId, -need);
+        LocalDateTime expireAt = LocalDateTime.now().plusHours(holdHours);
+        int n = MybatisSupport.db().update(
+                "UPDATE " + TICKET + " SET status='hold_ready', hold_expire_at=? WHERE id=? AND status='held'",
+                Timestamp.valueOf(expireAt), hid);
+        if (n <= 0) {
+            ArchiveStore.adjustStock(itemId, need);
+            return;
+        }
+        appendProgress(hid, "hold_ready", "system",
+                "到书通知：请于 " + TicketSql.fmt(Timestamp.valueOf(expireAt)) + " 前确认借阅");
+        try {
+            String user = TicketSql.str(h.get("username"));
+            if (!user.isBlank()) {
+                MessageStore.send(
+                        user,
+                        "到书通知",
+                        "「" + subjectOf(h) + "」已到馆，请在 "
+                                + TicketSql.fmt(Timestamp.valueOf(expireAt))
+                                + " 前确认借阅；逾期将取消并顺延下一位。",
+                        "ticket",
+                        hid);
+            }
+        } catch (Exception ignored) {
+            // 通知失败不影响晋升
+        }
+    }
+
+    /** 超时未确认的待取书：取消、回补库存；顺延在调用方统一触发。 */
+    static void expireBookHolds() {
+        if (!allowBookHold || !hasColumn("hold_expire_at")) return;
+        List<Long> ids;
+        try {
+            ids = MybatisSupport.db().query(
+                    "SELECT id FROM " + TICKET
+                            + " WHERE status='hold_ready' AND hold_expire_at IS NOT NULL"
+                            + " AND hold_expire_at < NOW()",
+                    (rs, i) -> rs.getLong("id"));
+        } catch (Exception e) {
+            return;
+        }
+        java.util.LinkedHashSet<Long> promoteItems = new java.util.LinkedHashSet<>();
+        for (Long id : ids) {
+            if (id == null || id <= 0) continue;
+            Map<String, Object> m = TicketRowMaps.load(id);
+            if (m == null || !"hold_ready".equals(String.valueOf(m.get("status")))) continue;
+            long itemId = TicketSql.toLong(m.get("bookId"));
+            int n = MybatisSupport.db().update(
+                    "UPDATE " + TICKET + " SET status='cancelled', hold_expire_at=NULL"
+                            + " WHERE id=? AND status='hold_ready'",
+                    id);
+            if (n <= 0) continue;
+            if (MODE == Mode.ARCHIVE && useQuota && itemId > 0
+                    && ArchiveStore.getItemRaw(itemId) != null) {
+                ArchiveStore.adjustStock(itemId, rowQty(m));
+            }
+            appendProgress(id, "cancelled", "system", "预约取书超时自动取消");
+            try {
+                String user = TicketSql.str(m.get("username"));
+                if (!user.isBlank()) {
+                    MessageStore.send(
+                            user,
+                            "预约已超时",
+                            "「" + subjectOf(m) + "」取书时限已过，预约已取消。",
+                            "ticket",
+                            id);
+                }
+            } catch (Exception ignored) {
+            }
+            if (itemId > 0) promoteItems.add(itemId);
+        }
+        for (Long itemId : promoteItems) {
+            tryPromoteBookHold(itemId);
+        }
+    }
+
+    /**
+     * 申请人确认借阅（hold_ready → approved）；库存已在到书晋升时预扣。
+     */
+    public static Map<String, Object> claimHold(long ticketId, String username) {
+        if (!allowBookHold) throw new IllegalStateException("当前未开启图书预约");
+        expireBookHolds();
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (username == null || username.isBlank()
+                || !username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能确认本人的预约");
+        }
+        if (!"hold_ready".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅待取书状态可确认借阅");
+        }
+        return finalizeHoldReadyApprove(ticketId, m, "用户确认借阅", username, "", false);
+    }
+
+    /** hold_ready 通过：写 approved / due_at，不二次扣库存。 */
+    private static Map<String, Object> finalizeHoldReadyApprove(
+            long ticketId,
+            Map<String, Object> m,
+            String note,
+            String op,
+            String dispatchTo,
+            boolean bind) {
+        if (useDeadline && !hasColumn("due_at")) {
+            throw new IllegalStateException("系统未配置应还日字段，无法审批通过");
+        }
+        LocalDateTime approveAt = LocalDateTime.now();
+        LocalDateTime dueAt = approveAt.plusDays(loanDays());
+        Object requested = m.get("dueAt");
+        if (requested != null && !String.valueOf(requested).isBlank()) {
+            try {
+                dueAt = TicketSql.parseDateTimeFlexible(String.valueOf(requested).trim());
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IllegalStateException("应还日期无效", e);
+            }
+        }
+        String handler = !dispatchTo.isBlank() ? dispatchTo : op;
+        boolean bindHandler = bind && !handler.isBlank() && hasColumn("assignee_username");
+        StringBuilder sql = new StringBuilder(
+                "UPDATE " + TICKET + " SET status='approved', approve_at=?, remark=?");
+        List<Object> args = new ArrayList<>();
+        args.add(Timestamp.valueOf(approveAt));
+        args.add(note == null ? "" : note);
+        if (bindHandler) {
+            sql.append(", assignee_username=?");
+            args.add(handler);
+        }
+        if (useDeadline) {
+            sql.append(", due_at=?");
+            args.add(Timestamp.valueOf(dueAt));
+        }
+        if (hasColumn("fine_yuan")) {
+            sql.append(", fine_yuan=0");
+        }
+        if (hasColumn("remind_msg")) {
+            sql.append(", remind_msg=''");
+        }
+        if (hasColumn("hold_expire_at")) {
+            sql.append(", hold_expire_at=NULL");
+        }
+        sql.append(" WHERE id=? AND status='hold_ready'");
+        args.add(ticketId);
+        int n = MybatisSupport.db().update(sql.toString(), args.toArray());
+        if (n <= 0) throw new IllegalStateException("确认借阅失败，状态已变更");
+        String passCode = issuePassCodeIfNeeded(ticketId);
+        notifyTicketResult(m, true, note == null ? "" : note, passCode);
+        appendProgress(ticketId, "approved", op,
+                note == null || note.isBlank() ? "确认借阅" : note);
+        long approvedItemId = TicketSql.toLong(m.get("bookId"));
+        int autoRejected = 0;
+        if (approvedItemId > 0) {
+            autoRejected = rejectSiblingsWhenStockGone(approvedItemId, ticketId);
+        }
+        Map<String, Object> out = get(ticketId);
+        if (out != null && autoRejected > 0) {
+            out.put("autoRejectedSiblings", autoRejected);
+        }
+        return out;
+    }
+
 
     public static Map<String, Object> complete(long ticketId) {
         return complete(ticketId, null, true);
@@ -1544,6 +1918,8 @@ public final class TicketStore {
                     restore = n.intValue();
                 }
                 ArchiveStore.adjustStock(itemId, restore);
+                tryPromoteWaitlist(itemId);
+                tryPromoteBookHold(itemId);
             }
         }
         String remind = "";
@@ -1590,6 +1966,88 @@ public final class TicketStore {
         return get(ticketId);
     }
 
+    /**
+     * 续借：延长应还日。须启用 loan_renew；仅借出中/逾期可续，受 maxRenew 限制。
+     */
+    public static Map<String, Object> renew(long ticketId, String username) {
+        if (!allowRenew) throw new IllegalStateException("当前未开启续借");
+        if (!useDeadline || !hasColumn("due_at")) {
+            throw new IllegalStateException("当前单据无应还日，无法续借");
+        }
+        if (!hasColumn("renew_count")) {
+            throw new IllegalStateException("系统未配置续借次数字段，无法续借");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String owner = TicketSql.str(m.get("username"));
+        if (username == null || username.isBlank() || !username.equals(owner)) {
+            throw new IllegalStateException("只能续借本人的单据");
+        }
+        TicketStatusOps.refreshOverdue(m);
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue").contains(st)) {
+            throw new IllegalStateException("仅借出中或逾期可续借");
+        }
+        int used = 0;
+        Object rc = m.get("renewCount");
+        if (rc instanceof Number) used = ((Number) rc).intValue();
+        else if (rc != null && !String.valueOf(rc).isBlank()) {
+            try {
+                used = Integer.parseInt(String.valueOf(rc).trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("续借次数数据异常，无法续借", e);
+            }
+        }
+        if (used >= maxRenew) {
+            throw new IllegalStateException("已达续借次数上限（" + maxRenew + " 次）");
+        }
+        LocalDateTime due = null;
+        Object dueObj = m.get("dueAt");
+        if (dueObj instanceof LocalDateTime) {
+            due = (LocalDateTime) dueObj;
+        } else if (dueObj != null && !String.valueOf(dueObj).isBlank()) {
+            due = TicketSql.parseDateTimeFlexible(String.valueOf(dueObj).trim());
+        }
+        if (due == null) {
+            due = LocalDateTime.now();
+        }
+        // 已过期则从当前时间起算，避免续到过去
+        LocalDateTime base = due.isBefore(LocalDateTime.now()) ? LocalDateTime.now() : due;
+        int days = renewDays > 0 ? renewDays : loanDays();
+        LocalDateTime newDue = base.plusDays(days);
+        int nextCount = used + 1;
+        StringBuilder sql = new StringBuilder(
+                "UPDATE " + TICKET + " SET due_at=?, status='approved', renew_count=?");
+        List<Object> args = new ArrayList<>();
+        args.add(Timestamp.valueOf(newDue));
+        args.add(nextCount);
+        if (hasColumn("fine_yuan")) {
+            sql.append(", fine_yuan=0");
+        }
+        if (hasColumn("remind_msg")) {
+            sql.append(", remind_msg=''");
+        }
+        sql.append(" WHERE id=?");
+        args.add(ticketId);
+        MybatisSupport.db().update(sql.toString(), args.toArray());
+        appendProgress(
+                ticketId, "approved", username, "续借第" + nextCount + "次，应还日延至 " + TicketSql.fmt(newDue));
+        try {
+            String title = TicketSql.str(m.get("title"));
+            if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+            if (title.isBlank()) title = "单据#" + ticketId;
+            MessageStore.send(
+                    owner,
+                    "续借成功",
+                    "「" + title + "」已续借，新应还日：" + TicketSql.fmt(newDue) + "（第 " + nextCount + "/" + maxRenew + " 次）",
+                    "ticket",
+                    ticketId);
+        } catch (Exception ignored) {
+        }
+        return get(ticketId);
+    }
+
+
     public static Map<String, Object> page(String username, String status, int page, int size) {
         return page(username, status, page, size, null, true, null);
     }
@@ -1613,6 +2071,7 @@ public final class TicketStore {
             String adminUid,
             boolean superAdmin,
             Boolean ratedOnly) {
+        expireBookHolds();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         if (useDeadline) {
@@ -1668,6 +2127,31 @@ public final class TicketStore {
         out.put("size", size);
         return out;
     }
+
+    /**
+     * 内容举报下架：将回帖/单据标为 rejected，从前台楼层消失。
+     * 待审走驳回；已通过直接改状态（不走审批状态机）。
+     */
+    public static void hideForReport(long ticketId, String note) {
+        if (!enabled || ticketId <= 0) return;
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        String reason = note == null || note.isBlank() ? "举报下架" : note.trim();
+        if ("pending".equals(st) || "pending_mid".equals(st) || "pending_final".equals(st)) {
+            approve(ticketId, false, reason);
+            return;
+        }
+        if ("approved".equals(st)) {
+            MybatisSupport.db().update(
+                    "UPDATE " + TICKET + " SET status='rejected', approve_at=NOW(), remark=? WHERE id=?",
+                    reason, ticketId);
+            appendProgress(ticketId, "rejected", "system", reason);
+            return;
+        }
+        appendProgress(ticketId, st, "system", "举报已记录：" + reason);
+    }
+
 
     /**
      * 公开楼层：某档案下已通过的单据（论坛回复等），访客可读。

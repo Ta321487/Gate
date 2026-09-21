@@ -26,6 +26,7 @@ public class ArchiveController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String categoryIds,
             @RequestParam(required = false) String tagIds,
             @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
             HttpSession session) {
@@ -39,7 +40,7 @@ public class ArchiveController {
             data = ArchiveStore.pageItemsForMerchant(uid, keyword, categoryId, p, s);
         } else {
             data = ArchiveStore.pageItems(
-                    keyword, categoryId, parseTagIds(tagIds), showDeleted, p, s, !admin);
+                    keyword, categoryId, parseTagIds(categoryIds), parseTagIds(tagIds), showDeleted, p, s, !admin);
         }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);

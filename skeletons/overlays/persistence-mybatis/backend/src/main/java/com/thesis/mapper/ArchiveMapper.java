@@ -24,13 +24,23 @@ public interface ArchiveMapper {
     int updateCategory(
             @Param("catTable") String catTable, @Param("id") long id, @Param("name") String name);
 
+    @Update("UPDATE `${catTable}` SET name=#{name}, dimension=#{dimension} WHERE id=#{id}")
+    int updateCategoryWithDimension(
+            @Param("catTable") String catTable,
+            @Param("id") long id,
+            @Param("name") String name,
+            @Param("dimension") String dimension);
+
     @Delete("DELETE FROM `${catTable}` WHERE id=#{id}")
     int deleteCategory(@Param("catTable") String catTable, @Param("id") long id);
 
     List<Map<String, Object>> selectCategories(
             @Param("catTable") String catTable,
             @Param("itemTable") String itemTable,
-            @Param("excludeDeleted") boolean excludeDeleted);
+            @Param("excludeDeleted") boolean excludeDeleted,
+            @Param("multiCategory") boolean multiCategory,
+            @Param("itemCatTable") String itemCatTable,
+            @Param("includeDimension") boolean includeDimension);
 
     @Select("SELECT name FROM `${catTable}` WHERE id=#{id}")
     String selectCategoryName(@Param("catTable") String catTable, @Param("id") long id);
@@ -45,6 +55,10 @@ public interface ArchiveMapper {
             @Param("itemTable") String itemTable,
             @Param("categoryId") long categoryId,
             @Param("excludeDeleted") boolean excludeDeleted);
+
+    @Select("SELECT COUNT(*) FROM `${itemCatTable}` WHERE category_id=#{categoryId}")
+    int countJunctionByCategory(
+            @Param("itemCatTable") String itemCatTable, @Param("categoryId") long categoryId);
 
     int insertItem(Map<String, Object> row);
 
@@ -74,6 +88,9 @@ public interface ArchiveMapper {
             @Param("isbnCol") String isbnCol,
             @Param("excludeDeleted") boolean excludeDeleted,
             @Param("categoryId") Long categoryId,
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("multiCategoryFilter") boolean multiCategoryFilter,
+            @Param("itemCatTable") String itemCatTable,
             @Param("like") String like,
             @Param("tagIds") List<Long> tagIds,
             @Param("itemTagTable") String itemTagTable,
@@ -139,6 +156,21 @@ public interface ArchiveMapper {
             @Param("itemTagTable") String itemTagTable,
             @Param("itemTagFk") String itemTagFk,
             @Param("itemId") long itemId);
+
+    List<Map<String, Object>> selectItemCategories(
+            @Param("catTable") String catTable,
+            @Param("itemCatTable") String itemCatTable,
+            @Param("includeDimension") boolean includeDimension,
+            @Param("itemId") long itemId);
+
+    @Delete("DELETE FROM `${itemCatTable}` WHERE item_id=#{itemId}")
+    int deleteItemCategories(@Param("itemCatTable") String itemCatTable, @Param("itemId") long itemId);
+
+    @Insert("INSERT INTO `${itemCatTable}` (item_id, category_id) VALUES (#{itemId}, #{categoryId})")
+    int insertItemCategory(
+            @Param("itemCatTable") String itemCatTable,
+            @Param("itemId") long itemId,
+            @Param("categoryId") long categoryId);
 
     @Delete("DELETE FROM `${itemTagTable}` WHERE `${itemTagFk}`=#{itemId}")
     int deleteItemTags(

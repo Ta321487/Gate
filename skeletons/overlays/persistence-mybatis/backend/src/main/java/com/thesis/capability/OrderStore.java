@@ -901,6 +901,11 @@ public final class OrderStore {
             m.put("confirmedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "confirmed", owner));
             m.put("shippedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "shipped", owner));
             m.put("completedOrders", mapper().countByStatusOwned(ORDER, LINE, item, "completed", owner));
+            try {
+                m.put("salesTotalYuan", mapper().sumCompletedSalesOwned(ORDER, LINE, item, owner));
+            } catch (Exception e) {
+                m.put("salesTotalYuan", 0.0);
+            }
             if (ArchiveStore.shopMarketplaceEnabled()) {
                 try {
                     m.put("inTransitOrders", mapper().countByStatusOwned(ORDER, LINE, item, "in_transit", owner));
@@ -909,11 +914,6 @@ public final class OrderStore {
                     m.put("inTransitOrders", 0);
                     m.put("signedOrders", 0);
                 }
-                try {
-                    m.put("salesTotalYuan", mapper().sumCompletedSalesOwned(ORDER, LINE, item, owner));
-                } catch (Exception e) {
-                    m.put("salesTotalYuan", 0.0);
-                }
             }
             return m;
         }
@@ -921,6 +921,11 @@ public final class OrderStore {
         m.put("confirmedOrders", mapper().countByStatus(ORDER, "confirmed"));
         m.put("shippedOrders", mapper().countByStatus(ORDER, "shipped"));
         m.put("completedOrders", mapper().countByStatus(ORDER, "completed"));
+        try {
+            m.put("salesTotalYuan", mapper().sumCompletedSales(ORDER));
+        } catch (Exception e) {
+            m.put("salesTotalYuan", 0.0);
+        }
         if (ArchiveStore.shopMarketplaceEnabled()) {
             try {
                 m.put("inTransitOrders", mapper().countByStatus(ORDER, "in_transit"));
@@ -929,7 +934,6 @@ public final class OrderStore {
                 m.put("inTransitOrders", 0);
                 m.put("signedOrders", 0);
             }
-            m.put("salesTotalYuan", 0.0);
         }
         return m;
     }
@@ -942,6 +946,7 @@ public final class OrderStore {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("monthSeries", List.of());
         out.put("hotItemSeries", List.of());
         if (!enabled) return out;
         try {
@@ -949,6 +954,12 @@ public final class OrderStore {
             out.put("statusSeries", status == null ? List.of() : status);
             List<Map<String, Object>> trend = mapper().selectTrendSeries(ORDER);
             out.put("trendSeries", trend == null ? List.of() : trend);
+            List<Map<String, Object>> months = mapper().selectMonthSeries(ORDER);
+            out.put("monthSeries", months == null ? List.of() : months);
+            if (LINE != null && !LINE.isBlank()) {
+                List<Map<String, Object>> hot = mapper().selectHotSeries(ORDER, LINE);
+                out.put("hotItemSeries", hot == null ? List.of() : hot);
+            }
         } catch (Exception ignored) {
         }
         return out;

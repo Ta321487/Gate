@@ -198,7 +198,7 @@ const demoPay = computed(() => !!getSchema()?.demoPay || marketplace.value)
 const demoPayHint = computed(
   () =>
     getSchema()?.labels?.demoPayHint
-    || '选择支付宝或微信并输入支付密码完成本单。',
+    || '选择支付宝或微信，确认后从账户余额扣款。',
 )
 const timeoutMinutes = computed(() => {
   const n = Number(getSchema()?.orderTimeoutMinutes || 0)

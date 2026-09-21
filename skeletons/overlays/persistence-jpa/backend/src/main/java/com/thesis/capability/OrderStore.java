@@ -972,10 +972,10 @@ public final class OrderStore {
         m.put("confirmedOrders", countStatus("confirmed", ownerUsername));
         m.put("shippedOrders", countStatus("shipped", ownerUsername));
         m.put("completedOrders", countStatus("completed", ownerUsername));
+        m.put("salesTotalYuan", sumCompletedSales(ownerUsername));
         if (ArchiveStore.shopMarketplaceEnabled()) {
             m.put("inTransitOrders", countStatus("in_transit", ownerUsername));
             m.put("signedOrders", countStatus("signed", ownerUsername));
-            m.put("salesTotalYuan", sumCompletedSales(ownerUsername));
         }
         return m;
     }
@@ -988,6 +988,7 @@ public final class OrderStore {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("monthSeries", List.of());
         out.put("hotItemSeries", List.of());
         if (!enabled) return out;
         String owner = ownerUsername == null ? "" : ownerUsername.trim();
@@ -1014,6 +1015,16 @@ public final class OrderStore {
                             return row;
                         });
                 out.put("trendSeries", trend);
+                out.put("monthSeries", db().query(
+                        "SELECT DATE_FORMAT(created_at,'%Y-%m') AS month, COUNT(*) AS value FROM " + ORDER
+                                + " WHERE created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 5 MONTH)"
+                                + " GROUP BY DATE_FORMAT(created_at,'%Y-%m') ORDER BY month",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("month", rs.getString("month"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        }));
             } else {
                 String base = " FROM " + ORDER + " o"
                         + " INNER JOIN " + LINE + " l ON l.order_id=o.id"
@@ -1040,8 +1051,19 @@ public final class OrderStore {
                         },
                         owner);
                 out.put("trendSeries", trend);
+                out.put("monthSeries", db().query(
+                        "SELECT DATE_FORMAT(o.created_at,'%Y-%m') AS month, COUNT(DISTINCT o.id) AS value" + base
+                                + " WHERE o.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 5 MONTH)"
+                                + " GROUP BY DATE_FORMAT(o.created_at,'%Y-%m') ORDER BY month",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("month", rs.getString("month"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        },
+                        owner));
             }
-            if (ArchiveStore.shopMarketplaceEnabled() && LINE != null && !LINE.isBlank()) {
+            if (LINE != null && !LINE.isBlank()) {
                 if (!byOwner) {
                     List<Map<String, Object>> hot = db().query(
                             "SELECT l.title AS name, SUM(l.qty) AS value FROM " + LINE + " l"
