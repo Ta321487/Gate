@@ -67,7 +67,7 @@ import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
 import { menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
-import { userMenuPath } from '../utils/menuRoutes.js'
+import { portalBrandHomePath, userMenuPath } from '../utils/menuRoutes.js'
 import { navItemActive, splitPortalNav } from '../utils/navOverflow.js'
 import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
 
@@ -136,11 +136,8 @@ const moreActive = computed(() =>
   navMore.value.some((item) => navItemActive(route.path, item.to)),
 )
 
-/** 品牌点击：资讯/商城首页落 /home，其它壳走根 redirect */
-const homePath = computed(() => {
-  const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
-  return style === 'editorial' || style === 'mall' ? '/home' : '/'
-})
+/** 品牌点击：与登录「返回首页」、初启动同一路径 */
+const homePath = computed(() => portalBrandHomePath())
 
 function logout() {
   localStorage.clear()

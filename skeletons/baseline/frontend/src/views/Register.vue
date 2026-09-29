@@ -103,7 +103,7 @@
     </form>
     <template #footer>
       <template v-if="showBackHome">
-        <router-link to="/home">{{ backHomeLabel }}</router-link>
+        <router-link :to="backHomePath">{{ backHomeLabel }}</router-link>
         <span class="sep">·</span>
       </template>
       <span>已有账号？</span>
@@ -124,6 +124,7 @@ import AuthShell from '../components/AuthShell.vue'
 import ProfileFieldInputs from '../components/ProfileFieldInputs.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
 import { APP_DELIVERED } from '../appDelivered.js'
+import { portalBrandHomePath } from '../utils/menuRoutes.js'
 import { isGuestBrowseEnabled } from '../utils/session.js'
 import {
   emptyProfileExtras,
@@ -137,6 +138,7 @@ const router = useRouter()
 const template = ref(pickAuthTemplate())
 const labels = schemaLabels()
 const showBackHome = computed(() => isGuestBrowseEnabled())
+const backHomePath = computed(() => portalBrandHomePath())
 const backHomeLabel = computed(
   () => String(labels.loginBackHome || labels.backHomeLabel || '返回首页').trim() || '返回首页',
 )

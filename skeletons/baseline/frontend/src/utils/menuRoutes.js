@@ -3,6 +3,17 @@
  * PortalLayout / AdminLayout / PortalHome 共用，勿再复制一份路由表。
  */
 
+import { APP_DELIVERED } from '../appDelivered.js'
+
+/**
+ * 门户「首页」路径：与顶栏品牌点击、初启动根 redirect 一致。
+ * 资讯/商城壳落 /home；其余壳走 /（再按域 redirect 到业务首页）。
+ */
+export function portalBrandHomePath() {
+  const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
+  return style === 'editorial' || style === 'mall' ? '/home' : '/'
+}
+
 export const USER_MENU_PATHS = {
   home: '/home',
   archive: '/archive',

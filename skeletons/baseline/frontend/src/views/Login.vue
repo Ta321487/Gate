@@ -78,7 +78,7 @@
       </template>
       <template v-else>
         <template v-if="showBackHome">
-          <router-link to="/home">{{ backHomeLabel }}</router-link>
+          <router-link :to="backHomePath">{{ backHomeLabel }}</router-link>
           <span class="sep">·</span>
         </template>
         <span>还没有账号？</span>
@@ -112,6 +112,7 @@ import {
 } from '../utils/authEntry'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { roleLabel, schemaLabels, getSchema } from '../utils/domainSchema.js'
+import { portalBrandHomePath } from '../utils/menuRoutes.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
 import { isGuestBrowseEnabled } from '../utils/session.js'
 
@@ -131,6 +132,7 @@ const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const showStaffLink = computed(() => showStaffLoginLink())
 const showBackHome = computed(() => isGuestBrowseEnabled())
+const backHomePath = computed(() => portalBrandHomePath())
 const backHomeLabel = computed(
   () => String(labels.loginBackHome || labels.backHomeLabel || '返回首页').trim() || '返回首页',
 )
