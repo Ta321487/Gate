@@ -438,14 +438,21 @@ def sync_project_runtime(
     *,
     listening: set[int] | None = None,
     probe_http: bool = True,
+    statuses: tuple[str, str] | None = None,
 ) -> tuple[str, str, bool]:
     """按真实可服务态纠正 running 标记与项目 status；两侧皆停时还端口。
 
     返回 (backend_status, frontend_status, dirty)。
     listening：调用方已探测过的 LISTENING 端口；传入后两侧皆停时不再逐项 netstat。
     probe_http：False 时只看进程表/LISTENING（列表页用，避免逐项 HTTP 拖死事件循环）。
+    statuses：调用方在线程里已探好的 (backend_status, frontend_status)；传入即跳过探测
+    （批量启停用，整批阻塞探测都不落在事件循环里）。
     """
-    if probe_http:
+    if statuses is not None:
+        be_st, fe_st = statuses
+        be = be_st in ("starting", "healthy")
+        fe = fe_st in ("starting", "healthy")
+    elif probe_http:
         be_st = rt.backend_status(project.id, project.backend_port)
         fe_st = rt.frontend_status(project.id, project.frontend_port)
         be = be_st in ("starting", "healthy")

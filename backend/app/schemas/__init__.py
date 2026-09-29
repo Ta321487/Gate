@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -461,6 +461,23 @@ class ApiOk(BaseModel):
     ok: bool = Field(default=True, description="是否成功")
     message: str = Field(default="", description="说明")
     data: Any = Field(default=None, description="附加数据")
+
+
+class RuntimeBatchIn(BaseModel):
+    """批量预览启停请求体。"""
+
+    model_config = ConfigDict(title="批量预览启停")
+
+    action: Literal["start", "stop", "restart"] = Field(
+        description="批量动作；start 对运行中的项目等价重启（start_backend/start_frontend 内部先停）"
+    )
+    ids: list[str] = Field(
+        default_factory=list,
+        description="目标项目 id；为空时仅 stop 生效（=全部运行中），启动类动作必须显式选择",
+    )
+    side: Literal["all", "backend", "frontend"] = Field(
+        default="all", description="作用侧：整预览 / 仅后端 / 仅前端"
+    )
 
 
 class UploadClusterFile(BaseModel):

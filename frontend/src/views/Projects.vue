@@ -268,7 +268,28 @@
       <div class="panel">
         <div class="panel-hd">
           <h3>项目列表</h3>
-          <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
+          <div class="row" style="margin:0;gap:8px">
+            <n-button
+              size="small"
+              :loading="batchBusy"
+              :disabled="!selectedIds.length"
+              @click="batchAction('start')"
+            >启动所选</n-button>
+            <n-button
+              size="small"
+              :loading="batchBusy"
+              :disabled="!selectedIds.length"
+              @click="batchAction('stop')"
+            >关闭所选</n-button>
+            <n-button
+              size="small"
+              :type="activeCount ? 'primary' : 'default'"
+              :loading="batchBusy"
+              :disabled="!activeCount"
+              @click="stopAllRunning"
+            >关闭全部运行中</n-button>
+            <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
+          </div>
         </div>
         <div class="panel-bd" style="padding-top:12px">
           <div class="row mb-12" style="justify-content:space-between">
@@ -284,13 +305,29 @@
             </div>
             <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
           </div>
+          <n-alert
+            v-if="batchResult"
+            class="mb-12"
+            :type="batchResult.type"
+            closable
+            @close="batchResult = null"
+          >
+            <div class="small">{{ batchResult.text }}</div>
+            <div
+              v-if="batchResult.items?.length"
+              class="small muted"
+              style="margin-top:4px"
+            >{{ batchResult.items.map((i) => `${i.title || i.id}：${i.reason}`).join('；') }}</div>
+          </n-alert>
           <n-data-table
             :columns="columns"
             :data="list"
             :row-key="r => r.id"
+            :checked-row-keys="checkedRowKeys"
             :bordered="false"
             size="small"
             :loading="loading"
+            @update:checked-row-keys="onCheckedRowKeys"
           >
             <template #empty>
               <div class="empty-hint">
@@ -310,7 +347,7 @@
 import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
-import { api, message } from '../api'
+import { api, confirm, message } from '../api'
 import { collectUploadMaterials, MAX_UPLOAD_MATERIALS } from '../uploadMaterials'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
@@ -684,6 +721,21 @@ const stats = reactive({
   monthly_budget: 1000000,
 })
 const deliveryBusyId = ref('')
+/** 表格多选（selection 列）的 row-key 集合；批量启停以此为准 */
+const checkedRowKeys = ref([])
+const batchBusy = ref(false)
+const batchResult = ref(null)
+const selectedIds = computed(() => checkedRowKeys.value.map((k) => String(k)))
+const activeCount = computed(
+  () =>
+    list.value.filter(
+      (r) => r.backend_running || r.frontend_running || r.status === 'running',
+    ).length,
+)
+
+function onCheckedRowKeys(keys) {
+  checkedRowKeys.value = keys || []
+}
 
 function downloadRowZip(row) {
   if (!projectIsDownloadable(row)) {
@@ -769,6 +821,8 @@ function downloadSample() {
 }
 
 const columns = [
+  // 多选列：行跳转只绑在「项目」列的 render 上，故复选框不会误触跳转
+  { type: 'selection' },
   {
     title: '项目',
     key: 'title',
@@ -995,6 +1049,64 @@ async function discardPlanOnServer(planId) {
   } catch {
     // 已不存在则忽略
   }
+}
+
+function batchNotice(res) {
+  const d = res?.data || {}
+  const bad = (Array.isArray(d.items) ? d.items : []).filter((i) => !i.ok)
+  return {
+    type: bad.length ? 'warning' : 'info',
+    text: res?.message || '已完成',
+    items: bad.slice(0, 8),
+  }
+}
+
+/** 批量启停统一入口：确认 → 调用 → 结果条 → 只刷列表（运行态由后台对账收敛） */
+async function runBatch(payload, { label, hint }) {
+  if (batchBusy.value) return false
+  const ok = await confirm(hint, { title: `${label}预览`, positiveText: label })
+  if (!ok) return false
+  batchBusy.value = true
+  try {
+    const res = await api.runtimeBatch(payload)
+    batchResult.value = batchNotice(res)
+    message.success(res?.message || `${label}完成`)
+    checkedRowKeys.value = []
+    await load({ listOnly: true })
+    return true
+  } catch {
+    /* api interceptor 已提示 */
+    return false
+  } finally {
+    batchBusy.value = false
+  }
+}
+
+async function batchAction(action) {
+  const ids = selectedIds.value
+  if (!ids.length) return
+  const isStart = action === 'start'
+  await runBatch(
+    { action, ids, side: 'all' },
+    {
+      label: isStart ? '启动' : '关闭',
+      hint: isStart
+        ? `将启动所选 ${ids.length} 个项目的前后端预览。\n「启动」对已在运行的项目等于重启，会中断当前预览；超出并发额度或内存不足的项目不会启动（见结果条）。`
+        : `将关闭所选 ${ids.length} 个项目的预览（后端 + 前端进程）。\n运行中的预览会立即中断，端口释放后可再启动。`,
+    },
+  )
+}
+
+async function stopAllRunning() {
+  const n = activeCount.value
+  if (!n) return
+  await runBatch(
+    { action: 'stop', side: 'all' },
+    {
+      label: '关闭',
+      hint: `将关闭当前列表里 ${n} 个运行中的预览（后端 + 前端进程）。\n运行中的预览会立即中断；确认继续？`,
+    },
+  )
 }
 
 async function refresh() {

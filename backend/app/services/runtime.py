@@ -141,6 +141,50 @@ def listening_tcp_ports() -> set[int]:
     return ports
 
 
+def listening_ports_with_pids() -> dict[int, set[int]]:
+    """一次 netstat 的 port→pids 快照（批量停止复用，避免逐端口重复探测）。"""
+    if sys.platform == "win32":
+        return _listening_ports_win()
+    out: dict[int, set[int]] = {}
+    for port in listening_tcp_ports():
+        out[port] = set(_pids_on_port(port))
+    return out
+
+
+def available_memory_mb() -> int | None:
+    """可用物理内存 MB（批量启动前预检用）；探测失败返回 None。"""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            class _MemStatusEx(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            st = _MemStatusEx()
+            st.dwLength = ctypes.sizeof(_MemStatusEx)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
+                return int(st.ullAvailPhys // (1024 * 1024))
+        except Exception:  # noqa: BLE001
+            return None
+        return None
+    try:
+        pages = int(os.sysconf("SC_AVPHYS_PAGES"))
+        size = int(os.sysconf("SC_PAGE_SIZE"))
+        return pages * size // (1024 * 1024)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _pids_on_port(port: int) -> list[int]:
     """查出占用端口的 PID（工厂重启后 STORE 会丢，必须按端口杀）。"""
     if sys.platform == "win32":
@@ -162,8 +206,9 @@ def _pids_on_port(port: int) -> list[int]:
     return sorted(pids)
 
 
-def _kill_port(port: int) -> None:
-    for pid in _pids_on_port(port):
+def _kill_port(port: int, pids: list[int] | None = None) -> None:
+    """按端口清孤儿进程；pids 非 None 时复用整批 netstat 快照（空列表=该端口已没人监听）。"""
+    for pid in _pids_on_port(port) if pids is None else pids:
         try:
             if sys.platform == "win32":
                 subprocess.run(
@@ -435,6 +480,8 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
     log_f.flush()
 
     env = os.environ.copy()
+    # Maven 启动器 JVM 只负责等子进程，默认堆可达 ~378 MB/预览；限堆避免白占
+    env.setdefault("MAVEN_OPTS", "-Xmx192m")
     if db_name:
         from app.services.student_db import datasource_env
 
@@ -477,9 +524,15 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
                 "-q",
                 "spring-boot:run",
                 f"-Dspring-boot.run.arguments={' '.join(args)}",
+                # 应用 JVM 限堆；必须保留 -XX:TieredStopAtLevel=1（不加会显著拖慢启动）
+                (
+                    "-Dspring-boot.run.jvmArguments="
+                    "-Xmx320m -XX:MaxMetaspaceSize=192m -XX:TieredStopAtLevel=1"
+                ),
             ]
             log_f.write(
                 f"cmd: {cmd[0]} spring-boot:run port={port} address={bind} captcha-plain=on\n"
+                f"jvm: -Xmx320m -XX:MaxMetaspaceSize=192m · MAVEN_OPTS={env.get('MAVEN_OPTS')}\n"
             )
             log_f.flush()
             p = _popen(cmd, cwd=be, log_f=log_f, env=env)
@@ -621,21 +674,42 @@ HTTPServer(('{bind}', {port}), H).serve_forever()
     return _tail(log_path)
 
 
-def stop_backend(project_id: str, port: int | None = None) -> None:
+def _port_pids(
+    port: int, listening_pids: dict[int, set[int]] | None
+) -> list[int] | None:
+    """None = 让 _kill_port 现探；[] = 快照里该端口无人监听，直接跳过。"""
+    if listening_pids is None:
+        return None
+    return sorted(listening_pids.get(port, ()))
+
+
+def stop_backend(
+    project_id: str,
+    port: int | None = None,
+    *,
+    listening_pids: dict[int, set[int]] | None = None,
+) -> None:
+    """停后端：STORE 句柄（taskkill /T）+ 按记录端口清孤儿；批量时复用同一快照。"""
     h = STORE.backends.pop(project_id, None)
     if h:
         _kill(h)
     if port is not None:
-        _kill_port(port)
+        _kill_port(port, _port_pids(port, listening_pids))
     _mark_log_stopped(project_id, "backend")
 
 
-def stop_frontend(project_id: str, port: int | None = None) -> None:
+def stop_frontend(
+    project_id: str,
+    port: int | None = None,
+    *,
+    listening_pids: dict[int, set[int]] | None = None,
+) -> None:
+    """停前端：STORE 句柄（taskkill /T）+ 按记录端口清孤儿；批量时复用同一快照。"""
     h = STORE.frontends.pop(project_id, None)
     if h:
         _kill(h)
     if port is not None:
-        _kill_port(port)
+        _kill_port(port, _port_pids(port, listening_pids))
     _mark_log_stopped(project_id, "frontend")
 
 

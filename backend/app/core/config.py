@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     gf_sql_slow_ms: float = Field(default=50.0, alias="GF_SQL_SLOW_MS")
     # 运行态/checklist 后台投影间隔（秒）；<=0 关闭。列表 GET 只读库。
     gf_runtime_reconcile_sec: float = Field(default=5.0, alias="GF_RUNTIME_RECONCILE_SEC")
+    # 预览并发上限（内存闸门）：批量启动只启动到额度，其余返回 deferred，不硬起
+    gf_preview_max_running: int = Field(default=3, alias="GF_PREVIEW_MAX_RUNNING")
+    # 批量启动相邻项目错峰间隔（秒）：首次 mvn 编译很吃 CPU/磁盘
+    gf_preview_start_stagger_sec: float = Field(
+        default=4.0, alias="GF_PREVIEW_START_STAGGER_SEC"
+    )
 
     @property
     def database_url(self) -> str:

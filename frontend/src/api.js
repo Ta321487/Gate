@@ -156,6 +156,8 @@ export const api = {
   },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),
+  /** 批量预览启停；action=start 对运行中的项目等价重启（服务端串行错峰，可能较久） */
+  runtimeBatch: (body) => http.post('/projects/runtime/batch', body, { timeout: 600000 }),
   logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),
   logsPoll: (id, side) => http.get(`/projects/${id}/logs/${side}`, POLL_OPTS),
   listJobs: (opts) => http.get('/jobs', opts),

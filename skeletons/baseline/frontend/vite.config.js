@@ -13,6 +13,8 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
+    // 端口被占时直接失败（Vite 默认静默 +1，会让 DB 记录端口与真实监听漂移，停止/清理漏杀）
+    strictPort: true,
     proxy: {
       '/api': { target: proxyTarget, changeOrigin: true },
       '/uploads': { target: proxyTarget, changeOrigin: true },

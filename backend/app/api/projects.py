@@ -30,6 +30,7 @@ from app.schemas import (
     ProjectDetail,
     ProjectSummary,
     ProposalDiffOut,
+    RuntimeBatchIn,
     RuntimeState,
     StatsOut,
     UploadConfirmIn,
@@ -1551,6 +1552,257 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
         frontend_log_tail=rt.frontend_log(project_id),
         preview_allowed=preview_blocked is None,
         preview_blocked_reason=preview_blocked,
+    )
+
+
+def _project_brief(p: Project) -> dict:
+    return {"id": p.id, "title": p.title}
+
+
+async def _batch_stop(
+    db: AsyncSession,
+    targets: list[Project],
+    side: str,
+    items: list[dict],
+) -> dict:
+    """批量停止（双证据）：STORE 句柄 taskkill /T + 现探 LISTENING 端口。
+
+    整批只做一次 netstat 快照（避免逐端口重复探测）；收敛用停止后的新快照
+    （probe_http=False），全部阻塞动作都在 to_thread 里，不冻结事件循环。
+    """
+    snap = await asyncio.to_thread(rt.listening_ports_with_pids)
+    listening = set(snap)
+    plan: list[tuple[Project, bool, bool]] = []
+    for p in targets:
+        be_on = rt.side_active(p.id, p.backend_port or None, "backend", listening)
+        fe_on = rt.side_active(p.id, p.frontend_port or None, "frontend", listening)
+        touch_be = side in ("all", "backend") and be_on
+        touch_fe = side in ("all", "frontend") and fe_on
+        if not touch_be and not touch_fe:
+            items.append(
+                {**_project_brief(p), "action": "stop", "ok": False, "reason": "未在运行"}
+            )
+            continue
+        plan.append((p, touch_be, touch_fe))
+        items.append({**_project_brief(p), "action": "stop", "ok": True, "reason": ""})
+
+    def _kill_them() -> None:
+        for p, touch_be, touch_fe in plan:
+            if touch_be:
+                rt.stop_backend(p.id, p.backend_port or None, listening_pids=snap)
+            if touch_fe:
+                rt.stop_frontend(p.id, p.frontend_port or None, listening_pids=snap)
+        if plan:
+            # 等端口/句柄释放，避免随后收敛读到 kill 之前的 LISTENING
+            time.sleep(0.6)
+
+    if plan:
+        await asyncio.to_thread(_kill_them)
+    after = await asyncio.to_thread(rt.listening_tcp_ports)
+    still = 0
+    for p, _be, _fe in plan:
+        if rt.side_active(p.id, p.backend_port or None, "backend", after) or rt.side_active(
+            p.id, p.frontend_port or None, "frontend", after
+        ):
+            still += 1
+    for p, _be, _fe in plan:
+        project_svc.sync_project_runtime(p, listening=after, probe_http=False)
+    await db.commit()
+    return {"stopped": len(plan), "still_running": still}
+
+
+async def _batch_start(
+    db: AsyncSession,
+    targets: list[Project],
+    action: str,
+    side: str,
+    items: list[dict],
+) -> dict:
+    """批量启动/重启：两道闸门 + 并发额度 + 可用内存预检 + 相邻错峰。
+
+    start_backend/start_frontend 内部先 stop，故 start 对运行中的项目等价「重启」。
+    """
+    settings = get_settings()
+    result = await db.execute(select(Project))
+    all_projects = list(result.scalars().all())
+
+    def _running_count() -> int:
+        listening = rt.listening_tcp_ports()
+        return sum(
+            1
+            for q in all_projects
+            if rt.side_active(q.id, q.backend_port or None, "backend", listening)
+            or rt.side_active(q.id, q.frontend_port or None, "frontend", listening)
+        )
+
+    running, avail = await asyncio.gather(
+        asyncio.to_thread(_running_count), asyncio.to_thread(rt.available_memory_mb)
+    )
+    budget = max(0, settings.gf_preview_max_running - running)
+    # 单预览实测 ≈1.1 GB（含 Maven 启动器 JVM）；可用内存不够时不硬起
+    mem_cap = None if avail is None else max(0, avail // 1100)
+    allow = budget if mem_cap is None else min(budget, mem_cap)
+
+    todo: list[Project] = []
+    for p in targets:
+        blocked = project_svc.preview_start_block_reason(p)
+        if blocked:
+            items.append(
+                {**_project_brief(p), "action": action, "ok": False, "reason": blocked}
+            )
+            continue
+        if len(todo) >= allow:
+            if mem_cap is not None and mem_cap < budget:
+                reason = f"可用内存不足（空闲约 {avail} MB，单预览约 1.1 GB）"
+            else:
+                reason = (
+                    f"并发额度已满（上限 {settings.gf_preview_max_running}，"
+                    f"当前已运行 {running}）"
+                )
+            items.append(
+                {
+                    **_project_brief(p),
+                    "action": action,
+                    "ok": False,
+                    "reason": reason,
+                    "deferred": True,
+                }
+            )
+            continue
+        try:
+            await project_svc.ensure_project_ports(db, p)
+        except RuntimeError as e:
+            items.append(
+                {**_project_brief(p), "action": action, "ok": False, "reason": str(e)}
+            )
+            continue
+        items.append({**_project_brief(p), "action": action, "ok": True, "reason": ""})
+        todo.append(p)
+
+    stagger = max(0.0, settings.gf_preview_start_stagger_sec)
+
+    def _start_them() -> tuple[dict[str, str], dict[str, tuple[str, str]]]:
+        errs: dict[str, str] = {}
+        statuses: dict[str, tuple[str, str]] = {}
+        for i, p in enumerate(todo):
+            if i and stagger:
+                time.sleep(stagger)
+            ws = project_svc.resolve_workspace_dir(p)
+            try:
+                if side in ("all", "backend"):
+                    rt.start_backend(p.id, ws, p.backend_port, p.db_name or "")
+                if side in ("all", "frontend"):
+                    rt.start_frontend(p.id, ws, p.frontend_port, p.backend_port)
+            except Exception as e:  # noqa: BLE001
+                errs[p.id] = str(e)
+                continue
+            statuses[p.id] = (
+                rt.backend_status(p.id, p.backend_port),
+                rt.frontend_status(p.id, p.frontend_port),
+            )
+        return errs, statuses
+
+    if todo:
+        errs, statuses = await asyncio.to_thread(_start_them)
+    else:
+        errs, statuses = {}, {}
+    for p in todo:
+        if p.id in errs:
+            for it in items:
+                if it["id"] == p.id and it["action"] == action:
+                    it["ok"] = False
+                    it["reason"] = errs[p.id][:200]
+            continue
+        st = statuses.get(p.id)
+        if st:
+            project_svc.sync_project_runtime(p, statuses=st)
+    await db.commit()
+    return {"failed": len(errs), "available_memory_mb": avail}
+
+
+@router.post("/runtime/batch", response_model=ApiOk, summary="批量预览启停")
+async def runtime_batch(body: RuntimeBatchIn, db: AsyncSession = Depends(get_db)):
+    """批量启停预览；整批阻塞动作全部跑在 to_thread，工厂 API 不冻结。
+
+    - action=stop：双证据清理（STORE 句柄 taskkill /T + 现探 LISTENING），未在跑的项目跳过；
+      未传 ids 时作用域 =「运行中」口径 + 真实占用探测。
+    - action=start / restart：须显式选择项目；逐项过 preview_start_block_reason 与
+      并发额度 / 可用内存闸门，超出额度的项目返回 deferred（不硬起）。
+      注意 start 对运行中的项目等价重启（start_backend/start_frontend 内部先停）。
+    """
+    action, side = body.action, body.side
+    ids = [i for i in (body.ids or []) if i]
+    if action in ("start", "restart") and not ids:
+        raise HTTPException(400, "批量启动需要先选择项目")
+
+    result = await db.execute(select(Project))
+    all_projects = list(result.scalars().all())
+    by_id = {p.id: p for p in all_projects}
+    items: list[dict] = []
+    if ids:
+        targets = [by_id[i] for i in ids if i in by_id]
+        for i in ids:
+            if i not in by_id:
+                items.append(
+                    {
+                        "id": i,
+                        "title": "",
+                        "action": action,
+                        "ok": False,
+                        "reason": "项目不存在",
+                    }
+                )
+    else:
+        # 「运行中」口径（列表 filter=active）+ 端口仍被占用：库内标记漂移时也不漏
+        targets = [
+            p
+            for p in all_projects
+            if p.status == ProjectStatus.running.value
+            or p.backend_running
+            or p.frontend_running
+            or p.backend_port
+            or p.frontend_port
+        ]
+
+    if not targets and not items:
+        return ApiOk(
+            message="当前没有运行中的预览" if action == "stop" else "没有可执行的项目",
+            data={
+                "action": action,
+                "side": side,
+                "total": 0,
+                "done": 0,
+                "skipped": 0,
+                "items": [],
+            },
+        )
+
+    if action == "stop":
+        stats = await _batch_stop(db, targets, side, items)
+    else:
+        stats = await _batch_start(db, targets, action, side, items)
+
+    done = sum(1 for it in items if it.get("ok"))
+    skipped = len(items) - done
+    head = "已关闭" if action == "stop" else ("已重启" if action == "restart" else "已启动")
+    message = f"{head} {done} 个项目"
+    if action == "stop" and stats.get("still_running"):
+        message += f"；{stats['still_running']} 个仍占用端口（可稍后重试）"
+    if skipped:
+        message += f"；跳过 {skipped} 个（见明细）"
+    if action != "stop" and stats.get("available_memory_mb") is not None:
+        message += f" · 空闲内存约 {stats['available_memory_mb']} MB"
+    return ApiOk(
+        message=message,
+        data={
+            "action": action,
+            "side": side,
+            "total": len(items),
+            "done": done,
+            "skipped": skipped,
+            "items": items,
+            **stats,
+        },
     )
 
 

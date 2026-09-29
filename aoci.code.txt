@@ -38,7 +38,7 @@ main.py[EB7S]: F:组装 FastAPI 应用，挂载 API 路由并管理 lifespan | R
 __init__.py[EG5T]: F:汇总答辩 PPT、任务、项目和系统路由模块供应用挂载 | R:code:backend/app/api/defense_ppt.py,code:backend/app/api/jobs.py,code:backend/app/api/projects.py | A:- | S:-
 defense_ppt.py[EB7M]: F:提供项目答辩 PPT 的封面、生成、皮肤、截图与导出接口 | R:- | A:/api/projects/{id}/defense-ppt/* | S:-
 jobs.py[EB7S]: F:提供 bake 任务列表、清理失效任务、清空已结束任务以及取消和恢复 | R:code:backend/app/services/jobs.py | A:GET /api/jobs；POST /api/jobs/purge-orphans；POST /api/jobs/purge-finished | S:列表只含 kind 为 bake；清空历史不动进行中任务和答辩 PPT 任务
-projects.py[EB9L]: F:提供项目上传、匹配确认、生成、预览、门禁和 ZIP 交付的运营 API | R:code:backend/app/services/projects.py,code:backend/app/services/runtime.py,code:backend/app/services/runtime_reconcile.py,code:backend/app/services/jobs.py | A:/api/projects | S:列表与 /stats 只读库投影；运行态/checklist 由 runtime_reconcile 后台收敛；启停与详情仍当场 sync；上传材料展开后最多 8 份
+projects.py[EB9L]: F:提供项目上传、匹配确认、生成、预览启停（单项目与批量）、门禁和 ZIP 交付的运营 API | R:code:backend/app/services/projects.py,code:backend/app/services/runtime.py,code:backend/app/services/runtime_reconcile.py,code:backend/app/services/jobs.py,code:frontend/src/api.js | A:/api/projects | S:列表与 /stats 的 done/pending/fail 过滤和 download_blocked_reason 走 verify_stale=False（只读 TTL 投影缓存，冷缓存按未过期，不遍历工作区），详情/下载/verify 仍现场核验 is_zip_stale；运行态与 checklist 由 runtime_reconcile 后台收敛；单项目启停仍在事件循环内同步跑；上传材料展开后最多 8 份；/runtime/batch 与 /{id}/runtime/{side}/{action} 并存，批量 start 必须显式传 ids，stop 不传 ids 时作用域=运行中口径∪端口仍被占用，整批 asyncio.to_thread 并用一次 netstat 快照做双证据清理
 system.py[EB7S]: F:聚合系统配置、LLM 用量、运行环境与样例开题工具的运营 API | R:code:backend/app/api/system_router.py | A:/api | S:-
 system_deepseek.py[EC6T]: F:把 DeepSeek 端点、token 预算和填岛并发数水合进系统配置 | R:code:backend/app/api/system.py | A:- | S:-
 system_gemini.py[EC6T]: F:把 Gemini 端点配置水合进系统设置，与 DeepSeek 并存 | R:code:backend/app/api/system.py | A:- | S:-
@@ -411,7 +411,7 @@ DOM-VOTE.sql[FC5S]: F:提供 DOM-VOTE 评选活动与选票 SQL 骨架 | R:code:
 
 ===D:/graduate_factory_v3/backend/app/core/===
 __init__.py[CB4T]: F:占位工厂核心包 | R:- | A:- | S:-
-config.py[CB7S]: F:定义工厂路径、端口、数据库、LLM 与运行态对账间隔等 Settings | R:- | A:- | S:API Key 只读环境变量；get_settings 有 lru_cache；GF_RUNTIME_RECONCILE_SEC 控制后台对账
+config.py[CB7S]: F:定义工厂路径、端口、数据库、LLM、运行态对账间隔与预览并发额度等 Settings | R:- | A:- | S:API Key 只读环境变量；get_settings 有 lru_cache；GF_RUNTIME_RECONCILE_SEC 控制后台对账；GF_PREVIEW_MAX_RUNNING（默认 3）与 GF_PREVIEW_START_STAGGER_SEC（默认 4.0 秒）只被批量启停端点消费
 database.py[CB7M]: F:创建异步 SQLAlchemy 引擎、会话与建表迁移 | R:code:backend/app/core/config.py | A:- | S:SQLite 须 WAL 且 busy_timeout=60000；请求内 SQL 计数用 list bucket，不用 ContextVar
 
 ===D:/graduate_factory_v3/backend/app/llm/===
@@ -444,18 +444,18 @@ validators.py[DB6M]: F:У�� Unit ��������ϴ ER/ģ��/��
 __init__.py[DB6S]: F:���幤���� SQLAlchemy ��Ŀ����ҵ�� ORM ģ�� | R:code:backend/app/core/database.py | A:- | S:-
 
 ===D:/graduate_factory_v3/backend/app/schemas/===
-__init__.py[DB6L]: F:定义工厂 API 的 Pydantic 请求与响应模型 | R:- | A:- | S:-
+__init__.py[DB6L]: F:定义工厂 API 的 Pydantic 请求与响应模型（含批量预览启停 RuntimeBatchIn） | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/backend/app/services/===
 __init__.py[DB4T]: F:ռλ services ����ʼ�� | R:- | A:- | S:-
-delivery_review.py[DB7L]: F:做交付验收闭环：门槛、可用性、漂移与运营附件 | R:- | A:- | S:不进学生 ZIP
+delivery_review.py[DB7L]: F:做交付验收闭环：门槛、可用性、漂移与运营附件；提供 is_zip_stale 现场核验与 TTL 投影缓存 | R:code:backend/app/services/projects.py,code:backend/app/api/projects.py | A:- | S:TTL 投影缓存命中才可信：compute=False 冷缓存不遍历工作区且按未过期返回；仅后台线程与写路径现场核验；下载/详情不放行过期包；合卷后 prime 未过期；不进学生 ZIP
 fill_events.py[DB6M]: F:推送填岛进度 SSE 事件，答辩 PPT 复用同 hub | R:- | A:- | S:-
 jobs.py[DB8L]: F:编排主 bake Job，LLM 失败也尽量交付 | R:code:backend/app/bake/engine.py | A:- | S:-
-projects.py[DB8L]: F:管理项目生命周期、工作区与交付产物路径，并提供列表投影对账原语 | R:code:backend/app/services/runtime.py,code:backend/app/services/runtime_reconcile.py | A:- | S:reconcile_lock 互斥写投影；列表路径只读；delivery_block_reason 对 workspace_path 用防御式读取（测试桩为 SimpleNamespace）
+projects.py[DB8L]: F:管理项目生命周期、工作区与交付产物路径，并提供列表投影与运行时收敛原语 | R:code:backend/app/services/runtime.py,code:backend/app/services/runtime_reconcile.py,code:backend/app/api/projects.py | A:- | S:reconcile_lock 互斥写投影；delivery_block_reason/is_zip_downloadable 的 verify_stale=False 只读 TTL 投影缓存（冷缓存算未过期，不遍历工作区），默认现场核验；reconcile_list_items 唯一预热点，只能后台线程调用；workspace_path 防御式读取；sync_project_runtime 可用 statuses=(后端态,前端态) 复用调用方已探好的状态，避免事件循环打 HTTP
 proposal.py[DB7L]: F:解析与合并开题文本供匹配与 bake 使用 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 proposal_diff.py[DB6M]: F:对照开题功能清单与 Spec checklist，确定性不调 LLM | R:code:backend/app/services/proposal_match.py | A:- | S:-
 proposal_match.py[DB7S]: F:把开题行匹配到域与能力岛 | R:- | A:- | S:-
-runtime.py[DB6L]: F:管理学生端运行时进程启停与端口 | R:- | A:- | S:-
+runtime.py[DB6L]: F:管理学生端预览前后端进程启停、端口探测与批量清理快照 | R:code:backend/app/services/projects.py,code:backend/app/api/projects.py | A:- | S:listening_ports_with_pids 一次 netstat 供整批复用；stop_backend/stop_frontend 的 listening_pids 非 None 时只信快照，空列表=该端口无人监听；mvn 启动限堆且必须保留 -XX:TieredStopAtLevel=1
 student_api_smoke.py[DB6L]: F:对学生端已启动预览做全量 API 冒烟，不启停进程 | R:code:backend/app/bake/api_inventory.py | A:- | S:同项目冒烟互斥；未启动抛 FactorySmokeError，由 API 层转 409
 student_copy.py[DB5S]: F:生成学生端文案与交付说明片段 | R:- | A:- | S:-
 student_db.py[DB6M]: F:准备与校验学生端演示数据库 | R:- | A:- | S:-
@@ -735,7 +735,7 @@ P-31-DOM-TOUR-旅行社线路报名管理系统.txt[FC5T]: F:提供匹配与演�
 P-32-DOM-CARRENT-汽车租赁管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/docs/===
-README.md[SG6T]: F:记录README相关交付约定与说明 | R:- | A:- | S:-
+README.md[SG6T]: F:维护文档库专题导航，按「一文一事」把每个专题指向唯一文件并标注阅读时机 | R:code:HANDOFF.md,code:README.md | A:- | S:每个专题只承载一种叙事；新专题须同时补本索引与阅读时机；根 README 与 HANDOFF 的分工不在此重述
 ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
 ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
 capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与交付边界 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/features/book_lost.py,code:backend/app/bake/features/parcel_shelf.py | A:- | S:新 cap 须进 proposal_caps、attach_accept 与 engine_sql；book_lost/parcel_shelf 域默认，parcel_ship 开题才挂
@@ -753,6 +753,7 @@ soft-fail-scan.md[SG6S]: F:记录soft fail scan相关交付约定与说明 | R:-
 tech-stack-delivery.md[SG6T]: F:记录tech stack delivery相关交付约定与说明 | R:- | A:- | S:-
 staff-posts-cross-domain.md[SG6T]: F:梳理跨域同名岗位与界面红黄绿审计表 | R:code:docs/invariants.md,code:backend/app/bake/staff_posts.py | A:- | S:仅梳理不改它域代码；同词可跨域，但禁止用显示名直接开别域能力岛
 surface-lexicon-design.md[SG7M]: F:定义话术层设计方案：slot 单源、全域 choke point、跨域门禁与载体口径，含 §0 硬性要求 | R:code:docs/delivery-audit-rules.md,code:backend/app/bake/ticket_copy_text.py,code:backend/app/bake/domain_vocab.py | A:- | S:A/B/B2/C 同批交付；门禁必须 error 级、数据驱动、覆盖全部域；验收须 74 域包全量脚本，不接受抽样
+preview-capacity-and-batch-ops.md[SG7M]: F:预览运行态实测与容量治理：记录 7 预览并发卡死的五条结构性根因、前端端口记录漂移与 npm 壳残留两个缺陷、内存预算与 P0-P2 分期；并复核启停链路落点（列表页当前无启停控件，启停只在项目详情运行页，批量启停为待新增） | R:code:backend/app/services/runtime.py,code:backend/app/api/projects.py,code:backend/app/services/projects.py,code:frontend/src/views/projectDetail/RuntimeTab.vue,code:frontend/src/views/Projects.vue,code:skeletons/baseline/frontend/vite.config.js | A:- | S:容量按提交内存而非工作集计（换页时工作集会被裁到数十 MB 而低估真实占用）；单预览前后端全起约 1.1GB/6 进程，其中 Maven 启动器 JVM 约 378MB 可省；本文只测不改
 
 ===D:/graduate_factory_v3/frontend/===
 .gitignore[DB5T]: F:仓库文件 .gitignore | R:- | A:- | S:-
@@ -771,7 +772,7 @@ icons.svg[DB5T]: F:仓库文件 icons | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/frontend/src/===
 App.vue[FB5S]: F:Vue 组件 App | R:- | A:- | S:-
-api.js[EU6M]: F:封装工厂控制台的 HTTP 调用并统一错误提示 | R:code:backend/app/api/projects.py | A:/api | S:轮询请求带 silent 且 8 秒超时，避免后端重载时全局报错刷屏；上传超时 300 秒
+api.js[EU6M]: F:封装工厂控制台的 HTTP 调用并统一错误提示（含批量预览启停） | R:code:backend/app/api/projects.py | A:/api | S:轮询请求带 silent 且 8 秒超时，避免后端重载时全局报错刷屏；上传超时 300 秒；runtimeBatch 超时 600 秒（服务端串行错峰）
 llmPricing.js[FB5T]: F:前端脚本 llmPricing | R:- | A:- | S:-
 main.js[FB5T]: F:前端脚本 main | R:- | A:- | S:-
 opsShared.js[FB5M]: F:前端脚本 opsShared | R:- | A:- | S:-
@@ -825,7 +826,7 @@ Help.vue[FB6L]: F:工厂前端帮助页：面向运营的流程、交付条件�
 Jobs.vue[FB6M]: F:展示生成任务队列，并支持取消、清空历史与清理失效项目残留 | R:code:frontend/src/api.js | A:- | S:清空历史只动已结束任务；清理失效项目会删本机工程与日志
 Llm.vue[FB6L]: F:工厂前端页面 Llm | R:- | A:- | S:-
 ProjectDetail.vue[FB6S]: F:工厂前端页面 ProjectDetail | R:- | A:- | S:-
-Projects.vue[FB6L]: F:工厂项目列表页：检索、状态、ZIP 下载与生成测试开题入口 | R:code:frontend/src/api.js | A:- | S:ZIP 下载用同页 a 点击；测试开题说明须区分默认随机抽扫词叶子与「真单压力」写全
+Projects.vue[FB6L]: F:工厂项目列表页：检索、状态、运行中预览批量启停、ZIP 下载与生成测试开题入口 | R:code:frontend/src/api.js | A:- | S:ZIP 下载用同页 a 点击；测试开题说明须区分默认随机抽词与真单压力；多选靠 row-key=id 不会误触行跳转；关闭全部运行中不传 ids，启动所选对运行中即重启
 System.vue[FB6S]: F:工厂前端页面 System | R:- | A:- | S:-
 Unsplash.vue[FB6S]: F:工厂前端页面 Unsplash | R:- | A:- | S:-
 
@@ -1048,7 +1049,7 @@ domain-ticket-columns.json[DC5T]: F:域资源配置 domain-ticket-columns | R:- 
 index.html[DB5T]: F:仓库文件 index | R:- | A:- | S:-
 package-lock.json[DC4L]: F:配置数据 package-lock | R:- | A:- | S:-
 package.json[DC4T]: F:配置数据 package | R:- | A:- | S:-
-vite.config.js[FB5T]: F:前端脚本 vite.config | R:- | A:- | S:-
+vite.config.js[FB5T]: F:学生前端模板的 Vite 配置：缓存目录、dev 主机/端口与 /api 代理 | R:- | A:- | S:strictPort 必须为 true：端口被占直接失败，避免 Vite 静默 +1 导致 DB 记录端口与真实监听漂移、停止时漏杀
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/===
 App.vue[FB5T]: F:Vue 组件 App | R:- | A:- | S:-
