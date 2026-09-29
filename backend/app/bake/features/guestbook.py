@@ -14,7 +14,8 @@ from app.bake.proposal_lexicon import pattern_mentioned
 GUESTBOOK_CAP = "guestbook"
 
 _GUESTBOOK_SIGNALS = re.compile(
-    r"留言(?:功能|管理|板|反馈)?|访客留言|在线留言|guestbook|留言板"
+    r"留言(?:功能|管理|板|反馈)?|访客留言|在线留言|guestbook|留言板|"
+    r"意见反馈|用户反馈|在线反馈|门户留言|意见箱"
 )
 
 # 论坛已有跟帖，勿再叠留言表（表预算也顶格）

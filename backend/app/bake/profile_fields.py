@@ -83,9 +83,9 @@ PROFILE_FIELDS_BY_DOMAIN: dict[str, list[dict[str, Any]]] = {
         _pf("readerType", "读者类型", required=True, on_register=True, field_type="select",
             options=["本科生", "研究生", "教职工", "校外"]),
         # 校外读者通常无校内借书证，不可与院系一样对全员必填
-        _pf("cardNo", "借书证号", required=True, on_register=True, max_length=32,
+        _pf("cardNo", "读者证号/一卡通号", required=True, on_register=True, max_length=32,
             required_when=_LIBRARY_CAMPUS, visible_when=_LIBRARY_CAMPUS,
-            placeholder="校内读者填写借书证号"),
+            placeholder="校内读者填写读者证号或一卡通号"),
         _pf("dept", "院系/单位", required=True, on_register=True, max_length=64,
             required_when=_LIBRARY_CAMPUS, visible_when=_LIBRARY_CAMPUS,
             placeholder="所在院系或单位"),

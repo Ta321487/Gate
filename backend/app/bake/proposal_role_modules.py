@@ -27,14 +27,15 @@ def _role(title: str, modules: list[Module]) -> RoleTree:
     return {"title": title, "modules": modules}
 
 
-def _fmt(text: str, ctx: dict[str, str]) -> str:
+def _fmt(text: str, ctx: dict[str, Any]) -> str:
+    str_ctx = {k: v for k, v in ctx.items() if isinstance(v, str)}
     try:
-        return text.format(**ctx)
+        return text.format(**str_ctx)
     except (KeyError, ValueError):
         return text
 
 
-def _fmt_modules(modules: list[Module], ctx: dict[str, str]) -> list[Module]:
+def _fmt_modules(modules: list[Module], ctx: dict[str, Any]) -> list[Module]:
     return [(_fmt(n, ctx), _fmt(d, ctx)) for n, d in modules]
 
 
@@ -256,44 +257,66 @@ def _food_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _repair_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     worker = ctx.get("worker", "维修人员")
-    return [
-        _role(
-            f"{user}功能模块划分",
-            [
-                _auth_profile(),
-                _m(
-                    "报修申请模块",
-                    "选择分类/位置提交报修，上传图片说明，查看进度与催办提醒",
-                ),
-                _m("我的工单模块", "查询待受理/处理中/已完成记录；完成后可评价"),
-                _m("公告查阅模块", "查看报修须知与公告"),
-                _m("留言反馈模块", "与管理员沟通"),
-            ],
+    caps = {str(c) for c in (ctx.get("capabilities") or []) if c}
+    # 无 caps 时按「样例开题可扫中」写满；有 caps 时按实包裁剪，避免假宣称
+    want_guestbook = (not caps) or ("guestbook" in caps)
+    want_roster = (not caps) or ("staff_roster" in caps)
+    want_worker = bool(ctx.get("has_worker")) if "has_worker" in ctx else True
+    want_deadline = (not caps) or ("deadline" in caps)
+
+    user_mods = [
+        _auth_profile(),
+        _m(
+            "报修申请模块",
+            "选择分类/位置提交报修，上传图片说明，查看进度"
+            + ("与催办提醒" if want_deadline else ""),
         ),
-        _role(
-            f"{worker}功能模块划分",
-            [
-                _m("登录模块", "登录与修改密码"),
-                _m("工单接单模块", "查看派单、接单跟进、填写处理结果直至完结"),
-                _m("排班查看模块", "查看维修排班（材料写到则启用）"),
-            ],
-        ),
-        _role(
-            f"{admin}功能模块划分",
-            [
-                _m("登录模块", "登录与修改密码"),
-                _m(
-                    "报修管理模块",
-                    "派单、跟进、催办、完结或驳回；查看评价",
-                ),
-                _m("基础数据模块", "楼栋/位置/报修类型等主数据维护"),
-                _m("排班管理模块", f"维护{worker}排班（材料写到则启用）"),
-                _m("用户管理模块", "用户查询与启用停用"),
-                _m("公告与留言模块", "发布公告；回复留言"),
-                _m("数据统计模块", "工单量、时效与分类统计"),
-            ],
-        ),
+        _m("我的工单模块", "查询待受理/处理中/已完成记录；完成后可评价"),
+        _m("公告查阅模块", "查看报修须知与公告"),
     ]
+    if want_guestbook:
+        user_mods.append(_m("留言反馈模块", "与管理员沟通；意见反馈与在线留言"))
+
+    roles: list[RoleTree] = [
+        _role(f"{user}功能模块划分", user_mods),
+    ]
+    if want_worker:
+        worker_mods = [
+            _m("登录模块", "登录与修改密码"),
+            _m("工单接单模块", "查看派单、接单跟进、填写处理结果直至完结"),
+        ]
+        if want_roster:
+            worker_mods.append(_m("排班查看模块", "查看维修排班与值班表"))
+        roles.append(_role(f"{worker}功能模块划分", worker_mods))
+
+    admin_mods = [
+        _m("登录模块", "登录与修改密码"),
+        _m(
+            "报修管理模块",
+            "派单、跟进、"
+            + ("催办、" if want_deadline else "")
+            + "完结或驳回；查看评价",
+        ),
+        _m("基础数据模块", "楼栋/位置/报修类型等主数据维护"),
+    ]
+    if want_roster:
+        admin_mods.append(_m("排班管理模块", f"维护{worker}维修排班与值班表"))
+    admin_mods.extend(
+        [
+            _m("用户管理模块", "用户查询与启用停用"),
+            _m(
+                "公告与留言模块" if want_guestbook else "公告管理模块",
+                "发布公告" + ("；回复留言与意见反馈" if want_guestbook else ""),
+            ),
+            _m(
+                "数据统计模块",
+                "工单量、时效与分类统计"
+                + ("；超时未处理列表" if want_deadline else ""),
+            ),
+        ]
+    )
+    roles.append(_role(f"{admin}功能模块划分", admin_mods))
+    return roles
 
 
 def _library_tree(ctx: dict[str, str]) -> list[RoleTree]:
@@ -1572,7 +1595,7 @@ _DOMAIN_BUILDERS: dict[str, Any] = {
 }
 
 
-def build_ctx(pack: dict[str, Any]) -> dict[str, str]:
+def build_ctx(pack: dict[str, Any]) -> dict[str, Any]:
     domain = str(pack.get("anchor_domain") or "")
     user = str(pack.get("user_role") or "用户")
     admin = str(pack.get("admin_role") or "管理人员")
@@ -1598,6 +1621,14 @@ def build_ctx(pack: dict[str, Any]) -> dict[str, str]:
             worker = "现场岗位"
     if not goods:
         goods = "商品"
+    caps_raw = pack.get("capabilities")
+    caps: list[str] = []
+    if isinstance(caps_raw, (list, tuple, set)):
+        caps = [str(c) for c in caps_raw if c]
+    has_worker = pack.get("has_worker")
+    if has_worker is None:
+        # 样例开题默认写出维修岗（正文含派单/接单，bake 可扫中）；显式 False 才裁掉
+        has_worker = domain in {"DOM-DORM", "DOM-PROPERTY", "DOM-IT"}
     return {
         "user": user,
         "admin": admin,
@@ -1605,6 +1636,8 @@ def build_ctx(pack: dict[str, Any]) -> dict[str, str]:
         "worker": worker,
         "goods": goods,
         "peer": peer,
+        "capabilities": caps,
+        "has_worker": bool(has_worker),
     }
 
 

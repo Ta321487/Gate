@@ -182,6 +182,12 @@ GATE_NAME_TRIGGERS = (
     "报修类型",
     "故障类型",
     "工作台",
+    "报废",
+    "盘点",
+    "出入库",
+    "入出库",
+    "申购转领用",
+    "一键入库",
     "设备",
     "图书",
     "物资",
@@ -568,6 +574,14 @@ def feature_hints(feature_name: str) -> set[str]:
         hints.update({"文档", "上传", "下载", "查阅", "台账"})
     if "退库" in name or "回补" in name or "申领" in name:
         hints.update({"退库", "回补", "申领", "出库", "库存"})
+    if "报废" in name:
+        hints.update({"报废", "报废审批", "报废申请", "报废单", "物资报废", "审批报废"})
+    if "盘点" in name and "RFID" not in name:
+        hints.update({"盘点", "库存盘点", "实盘", "盲盘", "盘点锁定"})
+    if "出入库" in name or "入出库" in name:
+        hints.update({"出入库", "入出库", "入库", "出库", "库存流水", "进销存"})
+    if "申购转领用" in name or ("申购" in name and ("入库" in name or "领用" in name)):
+        hints.update({"申购", "转领用", "一键入库", "申购单号", "申购转入", "领用衔接"})
     if "科室" in name or "号源" in name or "挂号" in name:
         hints.update({"科室", "号源", "挂号", "按科室", "医生", "排班"})
     if "入库" in name or "在库" in name:

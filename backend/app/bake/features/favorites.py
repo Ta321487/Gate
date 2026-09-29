@@ -2,6 +2,7 @@
 
 - 交易域（SHOP/FOOD 默认；其它 order_lines 开题写到才挂）：收藏后可再加购
 - 内容流（MEDIA/MUSIC/BLOG）：即时收藏，不走单据/审核
+- 报名/申请组与婚恋：开题写「收藏」才挂（活动/课程/线路/启事/心仪对象）
 
 E-03 同文件扩展（禁止旁挂）：
 - post_like：帖/档案点赞（开题扫词）
@@ -20,7 +21,8 @@ POST_LIKE_CAP = "post_like"
 CONTENT_REPORT_CAP = "content_report"
 
 _FAVORITES_SIGNALS = re.compile(
-    r"收藏夹|我的收藏|商品收藏|加入收藏|收藏功能|wishlist|favorite"
+    r"收藏夹|我的收藏|商品收藏|加入收藏|收藏功能|wishlist|favorite|"
+    r"收藏活动|收藏线路|收藏课程|活动收藏|线路收藏|课程收藏|收藏启事"
 )
 
 _LIKE_TERMS = ("点赞", "点个赞", "帖子点赞", "一键点赞", "点赞功能")
@@ -36,8 +38,16 @@ _REPORT_TERMS = (
 _DEFAULT_TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD"})
 # 内容流默认即时收藏；不含 FORUM（回帖仍走 ticket 审核）
 _CONTENT_FAVORITE_DOMAINS = frozenset({"DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"})
-# 资料型：开题写「收藏」才挂（婚恋心仪对象等），默认不挂
-_PROFILE_SCAN_FAVORITE_DOMAINS = frozenset({"DOM-DATING"})
+# 档案浏览型：开题写「收藏」才挂（婚恋心仪、活动/选课/线路/启事），默认不挂
+_PROFILE_SCAN_FAVORITE_DOMAINS = frozenset(
+    {
+        "DOM-DATING",
+        "DOM-ACTIVITY",
+        "DOM-COURSE",
+        "DOM-TOUR",
+        "DOM-LOST",
+    }
+)
 
 # 点赞：论坛/博客/媒资（写到才挂）
 _LIKE_DOMAINS = frozenset({"DOM-FORUM", "DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC"})

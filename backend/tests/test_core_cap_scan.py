@@ -40,11 +40,40 @@ class CoreCapScanTests(unittest.TestCase):
     def test_property_bare_cuiban_mounts_deadline(self) -> None:
         body = "业主报修，管理员派单，维修工跟进催办后完结评价。"
         caps = list(DOMAIN_CAPABILITIES["DOM-PROPERTY"])
-        self.assertNotIn("deadline", caps)
+        self.assertIn("deadline", caps)
         from app.bake.features.proposal_caps import merge_proposal_capabilities
 
         merged = merge_proposal_capabilities(caps, body, domain="DOM-PROPERTY")
         self.assertIn("deadline", merged)
+
+    def test_repair_domains_default_deadline_empty_proposal(self) -> None:
+        """宿舍/物业/IT：空开题也带 deadline，并落 slaDeadline。"""
+        for dom in ("DOM-DORM", "DOM-PROPERTY", "DOM-IT"):
+            with self.subTest(domain=dom):
+                caps = list(DOMAIN_CAPABILITIES[dom])
+                self.assertIn("deadline", caps)
+                spec = attach_accept(
+                    {
+                        "domain": dom,
+                        "title": "报修系统",
+                        "capabilities": caps,
+                        "features": [],
+                    },
+                    "提交报修并受理。",
+                )
+                self.assertIn("deadline", spec.get("capabilities") or [])
+                ticket = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+                self.assertTrue(ticket.get("slaDeadline"))
+                self.assertFalse(ticket.get("pickLoanPeriod"))
+                feats = {
+                    f.get("name") for f in (spec.get("features") or []) if isinstance(f, dict)
+                }
+                self.assertIn("超时未处理", feats)
+
+    def test_ticket_sla_synonyms_scan(self) -> None:
+        self.assertTrue(scan_ticket_sla("按处理时限催促办理。"))
+        self.assertTrue(scan_ticket_sla("支持时效考核与限时处理。"))
+        self.assertTrue(scan_ticket_sla("逾期未处理工单提醒。"))
 
     def test_parcel_cuiling_mounts_deadline_menu(self) -> None:
         body = "驿站包裹入库取件核销，支持滞留催领。"
@@ -74,7 +103,7 @@ class CoreCapScanTests(unittest.TestCase):
     def test_it_mounts_sla_deadline(self) -> None:
         body = "运维侧提供超时未处理列表，按处理时效催办。"
         caps = list(DOMAIN_CAPABILITIES["DOM-IT"])
-        self.assertNotIn("deadline", caps)
+        self.assertIn("deadline", caps)
         spec = attach_accept(
             {
                 "domain": "DOM-IT",

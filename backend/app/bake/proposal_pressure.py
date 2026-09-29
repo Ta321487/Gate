@@ -50,12 +50,16 @@ _PRESSURE_LEAVES: dict[str, list[PressureLeaf]] = {
     # —— 报修 ——
     "DOM-DORM": [
         ("staff_roster", "维修排班"),
+        ("guestbook", "意见反馈与在线留言"),
     ],
     "DOM-PROPERTY": [
         ("staff_roster", "维修排班"),
+        ("guestbook", "意见反馈与在线留言"),
+        ("venue_clean", "场馆保洁任务"),
     ],
     "DOM-IT": [
         ("staff_roster", "维修排班"),
+        ("guestbook", "意见反馈与在线留言"),
     ],
     # —— 报名/申请 ——
     "DOM-ACTIVITY": [

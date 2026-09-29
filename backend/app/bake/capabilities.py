@@ -352,7 +352,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "stock_scrap": {
         "label": "物资报废",
         "status": "implemented",
-        "desc": "管理端报废登记扣库存并记 scrap 流水；开题写到才挂（E-08）；须配 stock_io；≠多仓调拨≠RFID",
+        "desc": "报废申请单 pending→approved/rejected，通过后扣库存并记 scrap 流水；开题写到才挂（E-08）；须配 stock_io；≠多仓调拨≠RFID",
     },
     "stock_count": {
         "label": "库存盘点",

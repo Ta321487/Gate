@@ -12,7 +12,18 @@ from app.bake.proposal_lexicon import keyword_mentioned
 
 STAFF_ROSTER_CAP = "staff_roster"
 
-_TERMS = ("排班", "周排班", "值班表", "技师排班", "维修排班", "员工排班")
+_TERMS = (
+    "排班",
+    "周排班",
+    "值班表",
+    "技师排班",
+    "维修排班",
+    "员工排班",
+    "维修值班",
+    "运维排班",
+    "班次表",
+    "轮班表",
+)
 
 
 def scan_staff_roster(text: str) -> bool:

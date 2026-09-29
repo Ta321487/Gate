@@ -516,6 +516,17 @@ def merge_stock_scrap_gate(gate: dict, caps: list[str] | None) -> dict:
         if f not in files:
             files.append(f)
     out["files"] = files
+    if "stock_scrap" in caps:
+        flow = dict(out.get("flow_api") or {})
+        stock = dict(flow.get("stock_io") or {"file": "StockIoController.java", "need": ["/api/stock-io"]})
+        need = list(stock.get("need") or [])
+        for path in ("/api/stock-io", "/api/stock-io/scrap-requests"):
+            if path not in need:
+                need.append(path)
+        stock["need"] = need
+        stock.setdefault("file", "StockIoController.java")
+        flow["stock_io"] = stock
+        out["flow_api"] = flow
     return out
 
 

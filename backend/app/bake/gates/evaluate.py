@@ -278,6 +278,18 @@ def _checklist_feature_ok(
         return (be / "controller" / "TicketDashboardController.java").exists() and (
             fe / "views" / "admin" / "TicketDashboard.vue"
         ).exists()
+    # 报废/出入库/申购入库：须先于「物资」档案浏览分支，避免误判为 ArchiveBrowse
+    if "报废" in name or "盘点" in name or "出入库" in name or "入出库" in name:
+        store_ok = (be / "service" / "StockIoStore.java").exists()
+        page_ok = (fe / "views" / "admin" / "StockMovesAdmin.vue").exists()
+        ctrl = _read(be / "controller" / "StockIoController.java")
+        api_ok = "/api/stock-io" in ctrl
+        if "报废" in name and "审批" in name:
+            api_ok = api_ok and "scrap-requests" in ctrl
+        return store_ok and page_ok and api_ok
+    if "申购转领用" in name or ("一键入库" in name and "申购" in name):
+        ts = _read(be / "capability" / "TicketStore.java")
+        return "transferApprovedToStockIn" in ts or "confirmProcureTransfer" in ts
     if any(k in name for k in ("设备", "图书", "物资", "菜品", "商品", "号源", "车位", "场地")) or (
         "检索" in name and "archive" in ((spec.get("schema") or {}).get("capabilities") or [])
     ):

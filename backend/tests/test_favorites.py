@@ -38,6 +38,27 @@ class FavoritesCapabilityTests(unittest.TestCase):
         )
         self.assertNotIn(FAVORITES_CAP, caps)
 
+    def test_apply_group_scan_favorites(self) -> None:
+        for domain in ("DOM-ACTIVITY", "DOM-COURSE", "DOM-TOUR", "DOM-LOST"):
+            with self.subTest(domain=domain):
+                hit = merge_favorites_capabilities(
+                    ["archive", "ticket_flow", "quota", "content"],
+                    "支持收藏活动与我的收藏",
+                    domain=domain,
+                )
+                self.assertIn(FAVORITES_CAP, hit, domain)
+                miss = merge_favorites_capabilities(
+                    ["archive", "ticket_flow", "quota", "content"],
+                    "仅报名与审核",
+                    domain=domain,
+                )
+                self.assertNotIn(FAVORITES_CAP, miss, domain)
+
+    def test_scan_favorites_apply_keywords(self) -> None:
+        self.assertTrue(scan_favorites("支持收藏线路与我的收藏"))
+        self.assertTrue(scan_favorites("课程收藏功能"))
+        self.assertFalse(scan_favorites("仅购物车与订单"))
+
     def test_content_domains_default_favorites(self) -> None:
         for domain in ("DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"):
             caps = merge_favorites_capabilities(

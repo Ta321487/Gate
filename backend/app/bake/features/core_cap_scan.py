@@ -78,12 +78,20 @@ _LOAN_DEADLINE_TERMS = (
 
 # 工单处理时效 / 超时列表（与借阅催还共用 deadline 能力）
 # 「催办/催领」为密开题高频；裸词即可挂，勿要求必须写「超时未处理」
+# 报修三域已域默认 deadline；下列词仍供其它壳扫入，并保证常见开题措辞命中
 _TICKET_SLA_TERMS = (
     "超时未处理",
     "超时提醒",
     "处理时效",
+    "处理时限",
+    "限时处理",
+    "超时催办",
+    "催促办理",
+    "催促处理",
+    "逾期未处理",
     "超时工单",
     "考核时效",
+    "时效考核",
     "工单超时",
     "时效可统计",
     "超时列表",
@@ -102,6 +110,27 @@ _LOAN_RENEW_TERMS = (
     "续借功能",
     "续借次数",
 )
+
+# 超期达 N 次限制再借（资格冻结）；开题写到才挂，无域默认
+_OVERDUE_FREEZE_TERMS = (
+    "限制再借",
+    "禁止再借",
+    "不可再借",
+    "资格冻结",
+    "借阅资格冻结",
+    "超期冻结",
+    "逾期冻结",
+    "信誉冻结",
+    "多次超期",
+    "多次逾期",
+    "超期次数",
+    "逾期次数",
+    "逾期达",
+    "超期达",
+)
+
+# 借还壳即将到期站内提醒默认天数（应还日前 N 天）
+_DEFAULT_DUE_SOON_DAYS = 3
 
 
 def scan_recommend(text: str) -> bool:
@@ -130,6 +159,12 @@ def scan_loan_renew(text: str) -> bool:
     """借阅续借（延长应还日）。"""
     raw = text or ""
     return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _LOAN_RENEW_TERMS)
+
+
+def scan_overdue_freeze(text: str) -> bool:
+    """超期达 N 次限制再借 / 资格冻结。"""
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _OVERDUE_FREEZE_TERMS)
 
 
 def merge_recommend_capabilities(caps: list[str], proposal_text: str = "") -> list[str]:
@@ -253,6 +288,13 @@ def attach_core_caps_schema(
                 ticket.setdefault("dueLabel", "催领时限" if parcelish else "处理时限")
             else:
                 ticket["pickLoanPeriod"] = True
+                # 借还壳：应还日前 N 天站内提前催还（域默认；SLA/催领壳不开）
+                try:
+                    soon = int(ticket.get("dueSoonDays") or 0)
+                except (TypeError, ValueError):
+                    soon = 0
+                if soon <= 0:
+                    ticket["dueSoonDays"] = _DEFAULT_DUE_SOON_DAYS
         if parcelish:
             menu_lab = labels.get("deadlineMenuLabel") or "催领"
             labels.setdefault("deadlineMenuLabel", menu_lab)
@@ -305,6 +347,38 @@ def attach_core_caps_schema(
             verbs.setdefault("renew", labels.get("renewVerb") or "续借")
 
 
+def enrich_overdue_freeze_flags(
+    schema: dict[str, Any],
+    proposal_text: str = "",
+    *,
+    capabilities: list[str] | None = None,
+) -> None:
+    """开题写「限制再借/资格冻结」才挂；须已有借还 deadline（非 SLA）。只增不减。"""
+    caps = list(capabilities or schema.get("capabilities") or [])
+    if DEADLINE_CAP not in caps:
+        return
+    if not scan_overdue_freeze(proposal_text or ""):
+        return
+    ents = schema.setdefault("entities", {})
+    ticket = ents.get("ticket")
+    if not isinstance(ticket, dict):
+        ticket = {}
+        ents["ticket"] = ticket
+    if ticket.get("slaDeadline") or ticket.get("applicantCompleteOnly"):
+        return
+    try:
+        n = int(ticket.get("maxOverdueTimes") or 0)
+    except (TypeError, ValueError):
+        n = 0
+    if n <= 0:
+        ticket["maxOverdueTimes"] = 3
+    labels = schema.setdefault("labels", {})
+    labels.setdefault(
+        "overdueFreezeHint",
+        "超期达上限后暂不可再借，请先处理逾期单据。",
+    )
+
+
 def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
     """能力已在 merge_proposal_capabilities 合并；此处只补 schema 侧效应与 features 文案。"""
     text = proposal_text or ""
@@ -312,6 +386,7 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
     attach_core_caps_schema(schema, caps, spec_domain=str(spec.get("domain") or ""))
+    enrich_overdue_freeze_flags(schema, text, capabilities=caps)
 
     features = list(spec.get("features") or [])
     names = {f.get("name") for f in features if isinstance(f, dict)}
@@ -328,7 +403,19 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         _add("时间冲突检测")
     if DEADLINE_CAP in caps and scan_loan_deadline(text):
         _add("逾期催还")
-    if DEADLINE_CAP in caps and scan_ticket_sla(text):
+    ticket_ent = (schema.get("entities") or {}).get("ticket") or {}
+    repair_sla = bool(
+        isinstance(ticket_ent, dict)
+        and (ticket_ent.get("applicantCompleteOnly") or ticket_ent.get("slaDeadline"))
+    )
+    if DEADLINE_CAP in caps and (
+        scan_ticket_sla(text)
+        or (
+            repair_sla
+            and str(spec.get("domain") or "")
+            in ("DOM-DORM", "DOM-PROPERTY", "DOM-IT", "DOM-PARCEL")
+        )
+    ):
         if str(spec.get("domain") or "") == "DOM-PARCEL" or any(
             k in text for k in ("催领", "催取", "滞留催领")
         ):
@@ -337,6 +424,18 @@ def apply_core_caps_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
             _add("超时未处理")
     if LOAN_RENEW_CAP in caps:
         _add("续借")
+    if isinstance(ticket_ent, dict) and int(ticket_ent.get("maxOverdueTimes") or 0) > 0:
+        _add("超期限制再借")
+    if (
+        isinstance(ticket_ent, dict)
+        and int(ticket_ent.get("dueSoonDays") or 0) > 0
+        and not ticket_ent.get("slaDeadline")
+        and not ticket_ent.get("applicantCompleteOnly")
+    ):
+        # 借还壳域默认提前催还；不因扫词重复刷名
+        if "即将到期提醒" not in names and DEADLINE_CAP in caps:
+            features.append({"name": "即将到期提醒", "status": "flow"})
+            names.add("即将到期提醒")
 
     spec = {**spec, "capabilities": caps, "schema": schema, "features": features}
     return spec

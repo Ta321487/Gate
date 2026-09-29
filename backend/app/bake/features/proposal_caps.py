@@ -11,6 +11,7 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "user_publish",  # schema 开关 archive.userPublish，非独立 cap
         "temporal_field",  # 日期控件精度（date/datetime），非 cap
         "opening_align",  # 开题对账闸，只 apply，不开新 cap
+        "borrow_thicken",  # 借用组浅加厚（字段/文案/校验），非独立 cap
     }
 )
 
