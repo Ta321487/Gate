@@ -114,6 +114,12 @@
             type="primary"
             @click="finish(row)"
           >{{ verbs.return || '完成' }}</el-button>
+          <el-button
+            v-if="canCompensate(row)"
+            link
+            type="warning"
+            @click="doCompensate(row)"
+          >{{ compensateVerb }}</el-button>
           </div>
         </template>
       </el-table-column>
@@ -145,6 +151,8 @@ import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
 import {
   archiveCopy,
   followChannelLabel,
+  getSchema,
+  hasCap,
   hasTrait,
   nextFollowLabel,
   personLabel,
@@ -165,6 +173,7 @@ import { downloadCsv } from '../../utils/csvDownload.js'
 const route = useRoute()
 const ticket = ticketCopy()
 const archive = archiveCopy()
+const labels = computed(() => getSchema()?.labels || {})
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 function statusLabel(row) {
@@ -231,6 +240,25 @@ function canFinish(row) {
   const asg = row.assigneeUsername
   if (!asg) return true
   return asg === myUid
+}
+
+const allowBookLost = computed(() => !!(ticket.allowBookLost || hasCap('book_lost')))
+const compensateVerb = computed(
+  () => ticket.verbs?.compensate || labels.value.bookCompensateVerb || '登记赔偿完成',
+)
+
+function canCompensate(row) {
+  return !!allowBookLost.value && !!row && row.status === 'lost'
+}
+
+async function doCompensate(row) {
+  await ElMessageBox.confirm(
+    `确认「${row.title || ('编号 ' + row.id)}」赔偿已完成？`,
+    compensateVerb.value,
+  )
+  await http.post(`/api/tickets/${row.id}/compensate`)
+  ElMessage.success(labels.value.bookCompensateOkMessage || '赔偿已登记完成')
+  load()
 }
 
 function archiveFieldLabel(key, fallback) {

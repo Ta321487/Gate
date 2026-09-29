@@ -257,7 +257,7 @@ def _equip_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         {"title": f"我的{loan_word}", "lead": "登录后查看审核进度与归还期限。"},
         {"title": f"{menu}公告", "lead": "停用检修与临时安排见公告栏。"},
     ]
-    return _with_portal_banners(
+    out = _with_portal_banners(
         archive_ticket_schema(
             title,
             domain="DOM-EQUIP",
@@ -272,6 +272,12 @@ def _equip_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "title", "label": title_lab, "type": "string"},
                 {"key": "author", "label": author_lab, "type": "string"},
                 {"key": "isbn", "label": isbn_lab, "type": "string"},
+                {
+                    "key": "stage",
+                    "label": "设备状态",
+                    "type": "select",
+                    "options": ["在库", "借出", "维修中", "下架"],
+                },
                 {"key": "category", "label": "分类", "type": "select"},
                 {"key": "stock", "label": "可借数量", "type": "number"},
                 {"key": "requiresTraining", "label": train_lab, "type": "boolean"},
@@ -313,6 +319,13 @@ def _equip_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         ),
         banners,
     )
+    # 归还验图：域默认强制上传归还照片
+    ticket = (out.get("entities") or {}).get("ticket")
+    if isinstance(ticket, dict):
+        ticket["requireReturnAttach"] = True
+        labels = out.setdefault("labels", {})
+        labels.setdefault("returnAttachHint", "归还时请上传设备外观/配件照片，便于验收。")
+    return out
 
 def _asset_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """固定资产 / 耗材申领：高校物资 vs 企业仓储（同 _food_schema 分支）。"""
@@ -417,7 +430,7 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     kind = crm_product_kind(title, proposal_text)
     pack = crm_kind_overrides(kind, _std_archive_fields)
     if pack:
-        return followup_domain_schema(title, "DOM-CRM", overrides=pack)
+        return followup_domain_schema(title, "DOM-CRM", overrides=pack, proposal_text=proposal_text)
     if scene_crm_parts(title, proposal_text) == "campus":
         return followup_domain_schema(
             title,
@@ -441,36 +454,42 @@ def _crm_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "auth_points": ["验证码登录", "客户档案", "跟进记录"],
                 "notice_page_title": "团队公告",
                 "banners": [
-                    {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+                    {"title": "客户档案", "lead": "按{category_axis}浏览{entity_plural}，维护联系人与备注。"},
                     {"title": "登记客户", "lead": "登录后可登记名下客户，即时可见。"},
                     {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
                     {"title": "团队公告", "lead": "跟进规范与通知见公告栏。"},
                     {"title": "我的跟进", "lead": "登录后查看跟进进度。"},
-                    {"title": "分级管理", "lead": "按客户分级筛选。"},
+                    {"title": "{category_axis}管理", "lead": "按{category_axis}筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-CRM")
+    return followup_domain_schema(title, "DOM-CRM", proposal_text=proposal_text)
 
 def _event_self_report_overrides() -> dict[str, Any]:
+    """本人填单优先皮：单据名词一律走 ``{ticket_noun}`` 槽位。
+
+    开题写「打卡/晨午检」才出「打卡」，否则跟本域单据名词（默认「上报」）；
+    禁止在此写死「打卡」——那正是「上报域空状态写还没有打卡记录」的诱因。
+    """
     return {
-        "doc": "事件上报：本人打卡/填报（我的打卡填单，档案页作说明；非网格员对象台账）。",
-        "archive_menu_user": "打卡说明",
+        "doc": "事件上报：本人{ticket_noun}/填报（我的{ticket_noun}填单，档案页作说明；非网格员对象台账）。",
+        "archive_menu_user": "{ticket_noun}说明",
         "auth_lead": (
-            "验证码登录；在「我的打卡」选择事项提交本人晨午检或健康填报，异常可转处置。"
+            "验证码登录；在「我的{ticket_noun}」选择事项提交本人晨午检或健康填报，异常可转处置。"
         ),
-        "auth_points": ["验证码登录", "本人打卡填报", "异常上报"],
-        "register_hint": "注册后可提交本人打卡",
-        "my_tickets_label": "我的打卡",
+        "auth_points": ["验证码登录", "本人{ticket_noun}填报", "异常上报"],
+        "register_hint": "注册后可提交本人{ticket_noun}",
+        "my_tickets_label": "我的{ticket_noun}",
         "apply_from_list": True,
         "user_tickets_first": True,
         "my_tickets_page_lead": (
-            "在此提交本人打卡或上报并跟踪进度；说明页仅作查阅。"
+            "在此提交本人{ticket_noun}或上报并跟踪进度；说明页仅作查阅。"
         ),
-        "my_tickets_empty": "还没有打卡记录，点击右上角提交。",
+        "my_tickets_empty": "还没有{ticket_noun}记录，点击右上角提交。",
         "banners": [
-            {"title": "本人打卡", "lead": "在「我的打卡」选事项填报，等待确认。"},
-            {"title": "打卡说明", "lead": "查阅开放事项与须知（不作对象台账作业）。"},
+            {"title": "本人{ticket_noun}", "lead": "在「我的{ticket_noun}」选事项填报，等待确认。"},
+            {"title": "{ticket_noun}说明", "lead": "查阅开放事项与须知（不作对象台账作业）。"},
             {"title": "异常上报", "lead": "异常线索可转上报处置。"},
             {"title": "公告须知", "lead": "规范与通知见公告栏。"},
             {"title": "进度跟踪", "lead": "查看确认与办结结果。"},
@@ -497,7 +516,7 @@ def _event_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         ov = dict(base_overrides)
         if event_self_report(title, proposal_text):
             ov.update(_event_self_report_overrides())
-        schema = followup_domain_schema(title, "DOM-EVENT", overrides=ov)
+        schema = followup_domain_schema(title, "DOM-EVENT", overrides=ov, proposal_text=proposal_text)
         return _event_apply_incident_skin(schema, scene) if kind == "incident" else schema
 
     if kind == "household":
@@ -895,6 +914,7 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类查阅", "lead": "假种说明可按分类筛选查阅。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
     return followup_domain_schema(
         title,
@@ -921,6 +941,7 @@ def _attend_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"title": "分类查阅", "lead": "假种说明可按分类筛选查阅。"},
             ],
         },
+        proposal_text=proposal_text,
     )
 
 def _fund_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -970,8 +991,9 @@ def _fund_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "节日慰问/困难补助/培训补贴快速筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-FUND")
+    return followup_domain_schema(title, "DOM-FUND", proposal_text=proposal_text)
 
 def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """实验室准入：校园默认；厂区/安环走 enterprise。"""
@@ -1013,8 +1035,9 @@ def _labsafe_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "化学/机房/金工等快速定位。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-LABSAFE")
+    return followup_domain_schema(title, "DOM-LABSAFE", proposal_text=proposal_text)
 
 def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """招聘：校园校招 vs 企业 HR；威客任务皮叠在场景之上。"""
@@ -1060,6 +1083,7 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "设计/开发/文案等快速筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
     if scene == "campus":
         return followup_domain_schema(
@@ -1080,6 +1104,7 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "技术/职能/实习快速筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
     if scene == "enterprise":
         return followup_domain_schema(
@@ -1099,8 +1124,9 @@ def _recruit_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "技术/职能/实习快速筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-RECRUIT")
+    return followup_domain_schema(title, "DOM-RECRUIT", proposal_text=proposal_text)
 
 
 def _procure_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -1160,8 +1186,9 @@ def _procure_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "按语种/学科筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-PROCURE")
+    return followup_domain_schema(title, "DOM-PROCURE", proposal_text=proposal_text)
 
 def _dating_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """婚恋交友：校园联谊 vs 社区相亲（默认社区）。"""
@@ -1189,8 +1216,9 @@ def _dating_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类检索", "lead": "按院系/年级等快速筛选。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-DATING")
+    return followup_domain_schema(title, "DOM-DATING", proposal_text=proposal_text)
 
 def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """教务成绩默认；内训/培训考核走 enterprise。"""
@@ -1231,7 +1259,7 @@ def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "notice_title": "成绩须知",
                 "notice_body": (
                     "请选择本人相关培训课提交补考或更正并说明理由；"
-                    "培训课说明页仅作查阅。不对接外部证书库。"
+                    "培训课说明页仅作查阅。"
                 ),
                 "notice_page_title": "培训公告",
                 "pending_label": "成绩审核",
@@ -1253,8 +1281,9 @@ def _grade_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类查阅", "lead": "必修/选修快速定位。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-GRADE")
+    return followup_domain_schema(title, "DOM-GRADE", proposal_text=proposal_text)
 
 
 def _bed_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -1292,8 +1321,9 @@ def _bed_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "分类查阅", "lead": "按房型筛选说明。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-BED")
+    return followup_domain_schema(title, "DOM-BED", proposal_text=proposal_text)
 
 
 def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -1375,8 +1405,8 @@ def _intern_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             }
         )
     if overrides:
-        return followup_domain_schema(title, "DOM-INTERN", overrides=overrides)
-    return followup_domain_schema(title, "DOM-INTERN")
+        return followup_domain_schema(title, "DOM-INTERN", overrides=overrides, proposal_text=proposal_text)
+    return followup_domain_schema(title, "DOM-INTERN", proposal_text=proposal_text)
 
 def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """驿站：校园 vs 社区代收点（同 _food_schema 分支）。"""
@@ -1405,8 +1435,9 @@ def _parcel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                     {"title": "件型查阅", "lead": "普通/生鲜/大件快速定位。"},
                 ],
             },
+            proposal_text=proposal_text,
         )
-    return followup_domain_schema(title, "DOM-PARCEL")
+    return followup_domain_schema(title, "DOM-PARCEL", proposal_text=proposal_text)
 
 def _activity_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import activity_product_kind

@@ -86,7 +86,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "contact_channel_placeholder": "电话/微信/到访等",
         "next_follow_label": "下次跟进",
         "banners": [
-            {"title": "客户档案", "lead": "按分级浏览客户，维护联系人与备注。"},
+            {"title": "客户档案", "lead": "按{category_axis}浏览{entity_plural}，维护联系人与备注。"},
             {"title": "登记客户", "lead": "登录后可登记名下客户，即时可见。"},
             {"title": "客户跟进", "lead": "提交跟进记录即时生效，办结后可追溯。"},
             {"title": "销售公告", "lead": "跟进规范与活动通知见公告栏。"},
@@ -366,15 +366,17 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "ticket_plural": "投递",
         "verbs": {
             "apply": "投递简历",
-            "approve": "初筛通过",
+            # 两级审两关共用 approve 文案（与 shell/TicketsAdmin 既有约定一致），语义差异交给 states
+            "approve": "通过",
             "reject": "不合适",
             "return": "结束流程",
             "remind": "催办",
         },
         "states": {
             "pending": "待初筛",
-            "approved": "初筛通过",
-            "rejected": "未通过",
+            "pending_final": "待面试",
+            "approved": "已录用",
+            "rejected": "已淘汰",
             "returned": "已结束",
             "overdue": "已失效",
         },
@@ -385,7 +387,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "auth_points": ["验证码登录", "职位浏览", "投递与初筛"],
         "register_hint": "注册后可投递岗位",
         "notice_title": "投递须知",
-        "notice_body": "请如实填写经历；本期不含视频面试。",
+        "notice_body": "请如实填写经历；面试安排以 HR 通知为准。",
         "notice_page_title": "招聘公告",
         "notice_page_lead": "岗位更新与投递规范，点击条目阅读全文。",
         "my_tickets_label": "我的投递",
@@ -393,10 +395,13 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "投递记录",
         "remark_label": "简历摘要/说明",
         "auto_approve": False,
+        # P1：投递必传附件（简历/证明材料），复用既有 attach_url
+        "require_attach": True,
         "contact_channel_label": "投递渠道",
         "contact_channel_options": ["网申", "现场", "内推", "其他"],
         "contact_channel_placeholder": "网申/现场/内推等",
-        "next_follow_label": "期望到岗",
+        "next_follow_label": "期望面试时间",
+        "two_level_approve": True,
         "banners": [
             {"title": "职位浏览", "lead": "按类型查看在招岗位与任职要求。"},
             {"title": "投递简历", "lead": "选择岗位提交投递单，等待 HR 初筛。"},
@@ -446,7 +451,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "auth_points": ["验证码登录", "资料浏览", "牵线与审核"],
         "register_hint": "注册后可浏览资料并发起牵线",
         "notice_title": "牵线须知",
-        "notice_body": "请如实填写资料；可通过一对一私信沟通；本期不含视频相亲。",
+        "notice_body": "请如实填写资料；可通过一对一私信沟通，线下见面自行安排。",
         "notice_page_title": "交友公告",
         "notice_page_lead": "活动节点与牵线规范，点击条目阅读全文。",
         "my_tickets_label": "我的牵线",
@@ -511,7 +516,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "notice_title": "成绩须知",
         "notice_body": (
             "请选择本人相关课程（预置课程按学号标注本人课；无匹配时开放课可选）。"
-            "请在「我的成绩申请」选课提交补考或更正并说明理由；课程说明页仅作查阅。不对接学信网。"
+            "请在「我的成绩申请」选课提交补考或更正并说明理由；课程说明页仅作查阅。"
         ),
         "notice_page_title": "教务公告",
         "notice_page_lead": "补考安排与成绩说明，点击条目阅读全文。",
@@ -597,6 +602,13 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
         "records_label": "周报记录",
         "remark_label": "本周工作内容",
         "auto_approve": False,
+        # P1：导师周报打分（总分 100，三维；键同理复用既有评分弹窗）
+        "allow_rating": True,
+        "rating_dims": [
+            {"key": "content", "label": "内容完整"},
+            {"key": "quality", "label": "工作质量"},
+            {"key": "ontime", "label": "按时提交"},
+        ],
         "apply_from_list": True,
         "user_tickets_first": True,
         "my_tickets_page_lead": (
@@ -628,7 +640,7 @@ FOLLOWUP_PRESETS: dict[str, dict[str, Any]] = {
             "站点",
             "取件码/柜号",
             "包裹状态",
-            ["待取", "已预约", "已取出", "逾期"],
+            ["待取", "已预约", "已取出", "逾期", "损坏", "误领", "拒收"],
             "件型",
             "可取件",
         ),
@@ -804,6 +816,42 @@ def followup_domain_schema(
     preset = copy.deepcopy(preset)
     if overrides:
         preset.update(overrides)
+    # 页面级话术槽位：按「本域自有话术」定允许集，再填 {slot} 占位符（全域 choke point）
+    from app.bake.ticket_copy_text import (
+        _TICKET_SHELL_PRESET_KEYS,
+        fill_slots,
+        normalize_slot_words,
+        page_copy_texts,
+        resolve_slots,
+    )
+
+    lex = resolve_slots(
+        preset,
+        domain=domain,
+        proposal_text=proposal_text or "",
+        # 允许集取「本域默认话术 + 本题覆盖话术」：覆盖皮（如事件本人填单）常把域词
+        # 换成 {slot} 占位符，只读覆盖皮会让本域允许集变空。
+        allowed_texts=page_copy_texts(preset) + page_copy_texts(FOLLOWUP_PRESETS.get(domain) or {}),
+    )
+    # 单据壳文案统一到解析后的单据名词（同一 slot 单一来源，禁止两处各写各的）
+    for key in _TICKET_SHELL_PRESET_KEYS:
+        val = preset.get(key)
+        if isinstance(val, str):
+            preset[key] = normalize_slot_words(val, "ticket_noun", lex["ticket_noun"])
+    # 分类轴与实体字段同源：解析值写回 archive_fields，分类菜单随字段自动跟随
+    for field in preset.get("archive_fields") or []:
+        if isinstance(field, dict) and field.get("key") == "category":
+            field["label"] = lex["category_axis"]
+    # 门户轮播里的分类轴话术同源（「分类检索」→「费用类别检索」）
+    for banner in preset.get("banners") or []:
+        if not isinstance(banner, dict):
+            continue
+        for bk in ("title", "lead"):
+            if isinstance(banner.get(bk), str):
+                banner[bk] = normalize_slot_words(
+                    banner[bk], "category_axis", lex["category_axis"]
+                )
+    fill_slots(preset, lex)
     banners = list(preset.get("banners") or [])
     post_key = preset.get("postprocess")
     kw: dict[str, Any] = {
@@ -820,6 +868,8 @@ def followup_domain_schema(
             continue
         kw[k] = v
     schema = _with_portal_banners(archive_ticket_schema(title, **kw), banners)
+    # 话术槽位随 schema 落包：门禁/前端/后续文案共用同一份解析结果
+    schema["lex"] = dict(lex)
     if post_key:
         schema = _POSTPROCESS[post_key](schema)
     # 双角色域（STAFF_POSTS 空）不落子管，与 bake 侧 attach_staff_posts 一致
@@ -846,6 +896,88 @@ def followup_domain_schema(
             before_key="content",
         )
         schema["gradeScores"] = True
+    if domain == "DOM-ATTEND":
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("leaveDaysLabel", "请假天数")
+        labels.setdefault("leaveDaysLead", "按起止日期自动计算（含首尾）")
+    if domain == "DOM-EVENT":
+        # P1 事件派单：暂不做「域默认 slaDeadline」——门禁 test_domain_column_forbid
+        # 契约要求事件域默认不得出现 due_at（借阅/到期壳）。要开派单，二选一：
+        #   a) 扫词轨：开题写到「处理时限」才开（走既有 deadline 能力扫词）；
+        #   b) 改契约：允许事件域带 due_at 并同步该测试。
+        # 事件等级（select 低/中/高）——物理列 level 由 DOM-EVENT 模板提供
+        arch = (schema.get("entities") or {}).get("archive")
+        if isinstance(arch, dict):
+            fields = arch.get("fields")
+            if isinstance(fields, list) and not any(
+                isinstance(f, dict) and f.get("key") == "level" for f in fields
+            ):
+                fields.append(
+                    {
+                        "key": "level",
+                        "label": "事件等级",
+                        "type": "select",
+                        "options": ["低", "中", "高"],
+                    }
+                )
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("deadlineLabel", "处理时限")
+        labels.setdefault("assigneeLabel", "处理人")
+        labels.setdefault("levelLabel", "事件等级")
+    if domain == "DOM-INTERN":
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("weekNoLabel", "周次")
+        labels.setdefault("weekNoLead", "按实习第几周填写，从 1 起编")
+    if domain == "DOM-RECRUIT":
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("interviewPlaceLabel", "面试地点")
+        labels.setdefault("interviewPlaceLead", "线下或到岗面试地点；不做视频面试")
+    if domain == "DOM-FUND":
+        from app.bake.schema.menu_utils import ensure_menu
+
+        menus = schema.setdefault("menus", {})
+        ensure_menu(
+            menus.setdefault("user", []),
+            "fund_publicity_mine",
+            {"key": "fund_publicity_mine", "label": "公示查阅"},
+            before_key="content",
+        )
+        ensure_menu(
+            menus.setdefault("admin", []),
+            "fund_publicity_admin",
+            {"key": "fund_publicity_admin", "label": "公示登记"},
+            before_key="content",
+        )
+        ensure_menu(
+            menus.setdefault("admin", []),
+            "fund_disburse_admin",
+            {"key": "fund_disburse_admin", "label": "发放登记"},
+            before_key="content",
+        )
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("fundPublicityTitle", "公示登记")
+        labels.setdefault("fundPublicityLead", "申请通过后登记公示期；公示结束可标记结束。")
+        labels.setdefault("fundDisburseTitle", "发放登记")
+        labels.setdefault("fundDisburseLead", "按已通过的申请登记发放金额与日期；台账只记事实。")
+        labels.setdefault("fundPublicityMineTitle", "公示查阅")
+        labels.setdefault("fundPublicityMineLead", "查看本人申请项目的公示状态与公示期。")
+        schema["fundIsland"] = True
+    if domain == "DOM-LISTING":
+        from app.bake.schema.menu_utils import ensure_menu
+
+        menus = schema.setdefault("menus", {})
+        ensure_menu(
+            menus.setdefault("admin", []),
+            "listing_deal_admin",
+            {"key": "listing_deal_admin", "label": "成交登记"},
+            before_key="content",
+        )
+        labels = schema.setdefault("labels", {})
+        labels.setdefault("listingDealTitle", "成交登记")
+        labels.setdefault(
+            "listingDealLead", "带看跟进办结后登记成交价与成交日；台账只记成交事实，不接管支付。"
+        )
+        schema["listingDeal"] = True
     return schema
 
 

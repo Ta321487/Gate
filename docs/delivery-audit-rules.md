@@ -127,8 +127,21 @@
 | H01/H19 | ER/模块图/用例跟交付 SQL 与 menus |
 | H12 | 禁止 degraded 装全文；未挂能力不得宣称 |
 | H13/H14 | theme/chrome/layout/typeface 生效；登录图 ≠ 门户 banner |
+| H24 | **话术层单一口径**：分类轴 / 单据名词只从一处解析（bake 期 `schema["lex"]`，见 [`surface-lexicon-design.md`](./surface-lexicon-design.md)）；同一 slot 在实体、分类菜单、门户轮播、空状态必须逐字一致；其它域招牌词不得进本域可见文案；域外字段（数量/到期/罚金/在借保留）渲染必须落在 `allow*` 开关分支内。三条均为 `error` 级，由 `delivery_review` 的「交付质量摘要」拦包（`app/bake/domain_vocab.py`） |
 
 落得准（抽检即可）：新题正句→新域；旧题仍旧域；主路径匹配→bake→可点；「我的」与列表范围一致。
+
+### 4.1 载体口径（2026-09-27 定，判据见 `backend/tests/test_copy_carrier_contract.py`）
+
+同一句「边界话」放对载体，放错即红；三条各有一条测试钉着：
+
+| 载体 | 允许/必须说什么 | 判据 |
+|------|----------------|------|
+| 学生/管理端页面（产物 schema labels/轮播/菜单/种子 + baseline 前端） | **只描述本系统动作**；不写硬件否定句、不写工厂说明书腔（`FACTORY_UI_FORBIDDEN`） | 全量扫 → 命中即红 |
+| 工厂侧（`capabilities.py` desc、`features/*.py` docstring、审计/答辩口径、README「本期不做」） | **必须写**划界语（推荐措辞：「不对接闸机硬件」） | 缺失即红 |
+| 同一句话的多个载体（如 `codeQrHint`） | **逐字同措辞**（schema 默认 == 标签回退 == 前端兜底） | 不一致即红 |
+
+> 例：「闸机」是开题材料的**排除项**（材料自己写「闸机抬杆不在本期」），而「不对接闸机」是**工厂的诚实口径**——它属于工厂侧，不属于学生页面；页面只说「扫码可识别下方码文，用于现场出示核对。」
 
 **硬边界（期望拒）**：人脸/真支付/小程序原生/物联网真开锁/道闸抬杆·车牌识别硬件/GPS 轨迹考勤/银行医保疾控直连/三主路径以上智慧校园等——见 [`difficulty-tiers.md`](./difficulty-tiers.md) / `OUT_OF_SCOPE_SIGNALS`。诚实说法用不含「演示」的措辞（如「不对接微信支付宝商户」「本期无银行打款」「不对接闸机硬件」）。
 
@@ -140,6 +153,8 @@
 |------|----------|
 | 域 / 关键词 / hint | `domains_catalog/*.py` |
 | 申请/跟进皮 | `schema/*_presets.py`、builders |
+| 页面话术（分类轴/单据名词/空状态） | `bake/ticket_copy_text.py`（槽位解析）+ `schema/followup_presets.py`（全域 choke point）；新皮只用 `{category_axis}` / `{ticket_noun}` 占位符，勿写死域词 |
+| 跨域词 / 口径门禁 | `bake/domain_vocab.py`（专属名词表 + 三条 error 规则） |
 | 场景身份 | `scene_scan.py`、`profile_fields`、种子 SQL |
 | 匹配长尾 | `match_recommend`（勿另开域专扫） |
 | 能力 / 门禁 | `capabilities.py`、基线 Store、gate；文档同步 [`capabilities.md`](./capabilities.md) |

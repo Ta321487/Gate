@@ -29,8 +29,8 @@
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
             编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
-            <template v-if="row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
-            <template v-if="row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
+            <template v-if="allowQty && row.qty && row.qty > 1"> · 数量 {{ row.qty }}</template>
+            <template v-if="showDueCols && row.dueAt"> · {{ dueLabel }} {{ row.dueAt }}</template>
             <template v-if="allowRenew && row.renewCount"> · 已续借 {{ row.renewCount }} 次</template>
             <template v-if="allowBookHold && row.holdExpireAt && (row.status === 'hold_ready' || row.status === 'held')">
               · 取书截止 {{ row.holdExpireAt }}
@@ -47,8 +47,11 @@
           <p v-if="row.startAt || row.endAt" class="sub sched">
             {{ row.periodStart || row.periodEnd ? '起止' : '时段' }}
             {{ row.startAt || '—' }} ~ {{ row.endAt || '—' }}
+            <template v-if="row.leaveDays"> · {{ leaveDaysLabel }} {{ row.leaveDays }} 天</template>
+            <template v-if="row.weekNo"> · {{ weekNoLabel }} {{ row.weekNo }}</template>
           </p>
           <p v-if="showPriorityCols && row.contactPhone" class="sub">电话 {{ row.contactPhone }}</p>
+          <p v-if="row.interviewPlace" class="sub">{{ interviewPlaceLabel }}：{{ row.interviewPlace }}</p>
           <div v-if="row.remark" class="tip">
             <template v-if="row.status === 'rejected'">驳回原因：</template>
             <template v-else-if="richRemark">内容：</template>
@@ -90,6 +93,13 @@
               @click="finish(row)"
             >{{ finishVerb }}</el-button>
             <el-button
+              v-if="canReportLost(row)"
+              type="danger"
+              size="small"
+              plain
+              @click="reportLost(row)"
+            >{{ lostVerb }}</el-button>
+            <el-button
               v-if="canRenew(row)"
               type="success"
               size="small"
@@ -123,12 +133,12 @@
             v-if="pickupPending(row)"
             class="sub pickup-tip"
           >已出库待领取：请查看站内消息中的领取地点，到场后由工作人员登记实发。</p>
-          <p v-if="row.pickupAt" class="sub">
+          <p v-if="showPickup && row.pickupAt" class="sub">
             已领取 {{ row.pickupPlace || '' }}
-            <template v-if="row.actualQty != null"> · 实发 {{ row.actualQty }}</template>
+            <template v-if="allowQty && row.actualQty != null"> · 实发 {{ row.actualQty }}</template>
             · {{ row.pickupAt }}
           </p>
-          <p v-if="row.fineYuan > 0" class="sub">
+          <p v-if="showFineCols && row.fineYuan > 0" class="sub">
             {{ fineLabel }} ¥{{ row.fineYuan }}
             <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已结清' : row.fineStatus }}</template>
           </p>
@@ -164,6 +174,20 @@
         @size-change="load"
       />
     </div>
+
+    <el-dialog v-model="returnDlg.visible" :title="finishVerb" width="440px">
+      <p class="sub">{{ labels.returnAttachHint || '归还时请上传设备外观/配件照片，便于验收。' }}</p>
+      <div class="attach-row">
+        <el-upload :show-file-list="false" accept="image/*" :http-request="onReturnUpload">
+          <el-button size="small">{{ returnDlg.attachUrl ? '重新上传' : '上传照片' }}</el-button>
+        </el-upload>
+        <a v-if="returnDlg.attachUrl" :href="returnDlg.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
+      </div>
+      <template #footer>
+        <el-button @click="returnDlg.visible = false">取消</el-button>
+        <el-button type="primary" :loading="returnDlg.loading" @click="confirmReturn">确认归还</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="visible" :title="verbs.apply || '提交'" width="520px">
       <el-form :model="form" label-position="top" require-asterisk-position="right">
@@ -222,6 +246,13 @@
               end-placeholder="结束"
               style="width:100%"
             />
+          </el-form-item>
+          <el-form-item v-if="weekNoOn" :label="weekNoLabel" required>
+            <el-input-number v-model="form.weekNo" :min="1" :max="60" />
+            <span class="sub">{{ weekNoLead }}</span>
+          </el-form-item>
+          <el-form-item v-if="interviewPlaceOn" :label="interviewPlaceLabel">
+            <el-input v-model="form.interviewPlace" :placeholder="interviewPlaceLead" />
           </el-form-item>
           <el-form-item v-if="showFollowCols" :label="channelLabel">
             <el-select v-model="form.contactChannel" clearable :placeholder="channelPlaceholder" style="width:100%">
@@ -388,6 +419,16 @@ import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/status
 const { nowMs } = useNowTick()
 const ticket = ticketCopy()
 const multiApproveOn = computed(() => hasCap('multi_approve'))
+/** 请假天数等域内文案读 schema.labels，勿在页面写死 */
+const leaveDaysLabel = computed(() => getSchema()?.labels?.leaveDaysLabel || '请假天数')
+/** 周报周次：仅开启了 weekNoLabel 的域显示（DOM-INTERN） */
+const weekNoOn = computed(() => !!getSchema()?.labels?.weekNoLabel)
+const weekNoLabel = computed(() => getSchema()?.labels?.weekNoLabel || '周次')
+const weekNoLead = computed(() => getSchema()?.labels?.weekNoLead || '')
+/** 招聘：面试地点（仅开启 interviewPlaceLabel 的域显示） */
+const interviewPlaceOn = computed(() => !!getSchema()?.labels?.interviewPlaceLabel)
+const interviewPlaceLabel = computed(() => getSchema()?.labels?.interviewPlaceLabel || '面试地点')
+const interviewPlaceLead = computed(() => getSchema()?.labels?.interviewPlaceLead || '')
 
 function isMultiApproveStatus(st) {
   return ['pending', 'pending_mid', 'pending_final', 'approved'].includes(st)
@@ -523,11 +564,21 @@ const requireClaimProof = computed(() => !!ticket.requireClaimProof || hasCap('c
 const matRef = ref(null)
 const proofRef = ref(null)
 const proofDlg = reactive({ visible: false, row: null, loading: false })
+const returnDlg = reactive({ visible: false, row: null, attachUrl: '', loading: false })
 const allowRating = computed(() => !!ticket.allowRating)
 const allowCheckin = computed(() => !!ticket.allowCheckin)
 const allowRenew = computed(() => !!(ticket.allowRenew || hasCap('loan_renew')))
 const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
+const allowBookLost = computed(() => !!(ticket.allowBookLost || hasCap('book_lost')))
+// 域外字段必须走 allow* 开关分支：未开的域不得渲染数量/到期/罚金列（1014/12/6 同族）
+const allowQty = computed(() => !!ticket.allowQty)
+const showDueCols = computed(
+  () => !!(ticket.pickLoanPeriod || ticket.dueLabel || allowRenew.value || allowBookHold.value),
+)
+const showFineCols = computed(() => !!(ticket.fineLabel || ticket.dueLabel || allowRenew.value))
+const requireReturnAttach = computed(() => !!ticket.requireReturnAttach)
 const renewVerb = computed(() => verbs.value.renew || labels.value.renewVerb || '续借')
+const lostVerb = computed(() => verbs.value.reportLost || labels.value.bookLostVerb || '申报丢失')
 const claimHoldVerb = computed(() => verbs.value.claimHold || labels.value.bookHoldClaimVerb || '确认借阅')
 const maxRenew = computed(() => {
   const n = Number(ticket.maxRenew)
@@ -547,6 +598,11 @@ function canFinish(row) {
   if (allowCheckin.value && row.status === 'approved' && states.value.returned === '已签到') {
     return false
   }
+  return row.status === 'approved' || row.status === 'overdue'
+}
+
+function canReportLost(row) {
+  if (!allowBookLost.value || !row) return false
   return row.status === 'approved' || row.status === 'overdue'
 }
 
@@ -691,6 +747,8 @@ const form = reactive({
   period: null,
   contactChannel: '',
   nextFollowAt: '',
+  weekNo: null,
+  interviewPlace: '',
   priority: '普通',
   contactPhone: '',
 })
@@ -862,6 +920,10 @@ async function submit() {
         return
       }
     }
+    if (weekNoOn.value && !form.weekNo) {
+      ElMessage.warning(`请填写${weekNoLabel.value}`)
+      return
+    }
     if (requireRemark.value && !(form.remark || '').trim()) {
       ElMessage.warning(`请填写${remarkLabel.value}`)
       return
@@ -888,6 +950,12 @@ async function submit() {
     if (pickDateRange.value && Array.isArray(form.period)) {
       body.periodStart = form.period[0]
       body.periodEnd = form.period[1]
+    }
+    if (weekNoOn.value && form.weekNo) {
+      body.weekNo = form.weekNo
+    }
+    if (interviewPlaceOn.value && (form.interviewPlace || '').trim()) {
+      body.interviewPlace = form.interviewPlace.trim()
     }
     if (showFollowCols.value) {
       if (form.contactChannel) body.contactChannel = form.contactChannel
@@ -956,9 +1024,50 @@ async function withdraw(row) {
 }
 
 async function finish(row) {
+  if (requireReturnAttach.value) {
+    returnDlg.row = row
+    returnDlg.attachUrl = ''
+    returnDlg.visible = true
+    return
+  }
   await ElMessageBox.confirm(`确认${verbs.value.return || '完结'}「${row.title}」？`, '确认')
-  await http.post(`/api/tickets/${row.id}/complete`)
+  await http.post(`/api/tickets/${row.id}/complete`, {})
   ElMessage.success('已更新')
+  load()
+}
+
+async function onReturnUpload(opt) {
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  returnDlg.attachUrl = res.data?.url || res.data?.data?.url || ''
+  if (!returnDlg.attachUrl) ElMessage.warning('上传失败')
+}
+
+async function confirmReturn() {
+  if (!returnDlg.row) return
+  if (!returnDlg.attachUrl) {
+    ElMessage.warning('请上传归还照片')
+    return
+  }
+  returnDlg.loading = true
+  try {
+    await http.post(`/api/tickets/${returnDlg.row.id}/complete`, { attachUrl: returnDlg.attachUrl })
+    ElMessage.success('已更新')
+    returnDlg.visible = false
+    load()
+  } finally {
+    returnDlg.loading = false
+  }
+}
+
+async function reportLost(row) {
+  await ElMessageBox.confirm(
+    `确认对「${row.title || ('编号 ' + row.id)}」申报丢失？库存不回补，请按馆规办理赔偿。`,
+    lostVerb.value,
+  )
+  await http.post(`/api/tickets/${row.id}/report-lost`)
+  ElMessage.success(labels.value.bookLostOkMessage || '已登记丢失申报')
   load()
 }
 

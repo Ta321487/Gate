@@ -12,6 +12,15 @@ from app.bake.proposal_lexicon import keyword_mentioned
 
 CODE_QR_CAP = "code_qr"
 
+# 学生可见面 hint 的正规措辞：页面/标签回退/前端兜底三载体必须同句
+# （划界语「不对接闸机」只留在工厂侧描述，见 docs/delivery-audit-rules.md）
+CODE_QR_HINT_DEFAULT = "扫码可识别下方码文，用于现场出示核对。"
+
+
+def code_qr_hint_default() -> str:
+    """学生可见面 hint 正规措辞（载体同源判据用它）。"""
+    return CODE_QR_HINT_DEFAULT
+
 _TERMS = (
     "二维码",
     "扫码出示",
@@ -59,7 +68,7 @@ def apply_code_qr_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
         labels.setdefault("codeQrPrintVerb", "打印")
         labels.setdefault(
             "codeQrHint",
-            "扫码可识别下方码文，用于现场出示核对。",
+            CODE_QR_HINT_DEFAULT,
         )
         from app.bake.gate_contracts import merge_code_qr_gate
 

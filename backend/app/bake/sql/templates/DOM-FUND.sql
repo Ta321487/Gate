@@ -105,5 +105,5 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '资助须知', '请按通知提交申请材料；审批通过后留意发放进度。', 'admin', '资助主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='资助须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本学期资助', '本学期奖助学金申报已开放，请在截止日前完成材料提交。', 'admin', '资助主管'
+SELECT '本学期资助', '本学期奖助学金申请已开放，请在截止日前完成材料提交。', 'admin', '资助主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本学期资助');

@@ -180,7 +180,19 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
     if not traits and isinstance(spec.get("traits"), dict):
         traits = dict(spec["traits"])
 
+    # 种子公告在 SQL 里（不进 schema）：留给话术层第四条判据（公告与实体口径一致性）
+    seed_parts: list[str] = []
+    sql_dir = workspace / "sql"
+    if sql_dir.is_dir():
+        for path in sorted(sql_dir.glob("*.sql")):
+            try:
+                seed_parts.append(path.read_text(encoding="utf-8", errors="ignore"))
+            except OSError:
+                continue
+    seed_sql = "\n".join(seed_parts)[:400_000]
+
     return {
+        "schema": schema,
         "domain": spec.get("domain"),
         "title": spec.get("title"),
         "accept": spec.get("accept"),
@@ -200,6 +212,7 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         "domainLabel": skin.get("domainLabel") or "",
         "missing_files": missing,
         "files": files,
+        "seed_sql": seed_sql,
     }
 
 
@@ -327,7 +340,24 @@ def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
     findings.extend(_honesty_findings(ctx))
+    findings.extend(_lexicon_findings(ctx))
     return findings
+
+
+def _lexicon_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """C 批 error 级：跨域专属名词 / 同 slot 口径分叉 / 域外字段缺 allow* 分支。"""
+    schema = ctx.get("schema")
+    if not isinstance(schema, dict) or not schema:
+        return []
+    from app.bake.domain_vocab import lexicon_findings
+
+    return lexicon_findings(
+        schema,
+        domain=str(ctx.get("domain") or ""),
+        files=ctx.get("files") or {},
+        title=str(ctx.get("title") or ""),
+        seed_sql=str(ctx.get("seed_sql") or ""),
+    )
 
 
 def _fallback_qa(ctx: dict[str, Any]) -> dict[str, Any]:

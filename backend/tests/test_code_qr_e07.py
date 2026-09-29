@@ -78,7 +78,38 @@ class CodeQrE07Tests(unittest.TestCase):
         text = my.read_text(encoding="utf-8")
         self.assertIn("CodeQrBlock", text)
         self.assertIn("code_qr", text)
-        self.assertIn("不对接闸机", text)
+        # 载体口径：学生可见面只描述本系统动作，不写硬件否定句（划界语留给工厂侧）
+        self.assertNotIn("不对接闸机", text)
+
+    def test_carrier_contract_for_hardware_scope(self) -> None:
+        """载体口径：页面不写硬件否定句；工厂侧必须保有划界语。"""
+        from tests.test_copy_carrier_contract import visible_copy_text
+
+        hero = visible_copy_text(
+            (BASELINE / "frontend/src/views/user/MyTickets.vue").read_text(encoding="utf-8")
+        )
+        block = visible_copy_text(
+            (BASELINE / "frontend/src/components/CodeQrBlock.vue").read_text(encoding="utf-8")
+        )
+        for page_src in (hero, block):
+            for word in ("不对接闸机", "闸机联动", "人脸识别", "指纹闸机"):
+                self.assertNotIn(word, page_src)
+        # 工厂侧（能力表 desc + 功能模块 docstring）必须说清「不做硬件」
+        caps_src = (ROOT / "backend/app/bake/capabilities.py").read_text(encoding="utf-8")
+        self.assertIn("不对接闸机", caps_src)
+        module = __import__("app.bake.features.code_qr", fromlist=["code_qr"])
+        self.assertIn("不对接闸机", module.__doc__ or "")
+
+    def test_code_qr_hint_same_text_on_every_carrier(self) -> None:
+        """同一条 hint 三个载体必须同措辞（schema 默认 / 标签回退 / 前端兜底）。"""
+        from app.bake.domain_schema import _LABEL_FALLBACKS
+        from app.bake.features.code_qr import code_qr_hint_default
+
+        expected = code_qr_hint_default()
+        self.assertEqual(_LABEL_FALLBACKS["codeQrHint"], expected)
+        block = (BASELINE / "frontend/src/components/CodeQrBlock.vue").read_text(encoding="utf-8")
+        self.assertIn(expected, block)
+        self.assertNotIn("演示", expected)
 
 
 if __name__ == "__main__":

@@ -38,7 +38,9 @@ const labels = computed(() => getSchema()?.labels || {})
 const showVerb = computed(() => labels.value.codeQrShowVerb || '出示二维码')
 const printVerb = computed(() => labels.value.codeQrPrintVerb || '打印')
 const hint = computed(
-  () => labels.value.codeQrHint || '扫码可识别码文，用于出示核对。',
+  // 与 schema labels.codeQrHint（features/code_qr.py）逐字同源：页面只描述本系统动作，
+  // 不写「不对接闸机」这类硬件否定句（见 docs/delivery-audit-rules.md 载体口径）
+  () => labels.value.codeQrHint || '扫码可识别下方码文，用于现场出示核对。',
 )
 
 const visible = ref(false)

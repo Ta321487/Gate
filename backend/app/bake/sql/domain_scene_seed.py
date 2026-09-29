@@ -673,7 +673,7 @@ INSERT IGNORE INTO course_item (id, title, author, isbn, category_id, stock, sta
 (4, '数据报表入门', '陈讲师', 'DATA-04 / 6 学时', 3, 1, 'available'),
 (5, '新员工入职营', '王讲师', 'ONB-00 / 必过', 1, 1, 'available');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '成绩须知', '成绩更正与补考申请由培训专员审核；不对接外部证书库。', 'admin', '培训主管'
+SELECT '成绩须知', '成绩更正与补考申请由培训专员审核。', 'admin', '培训主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='成绩须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '补考安排', '补考名单以培训公告为准，请按时提交申请。', 'admin', '培训主管'
@@ -918,7 +918,7 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '租借须知', '请按需申请、按时归还；逾期将登记催还。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='租借须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '开放时间', '工作日 8:30–17:30 办理领用与归还。', 'admin', '后勤主管'
+SELECT '开放时间', '工作日 8:30–17:30 办理借用与归还。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开放时间');
 """
 
@@ -1102,7 +1102,7 @@ _EQUIP_GEAR = _equip_kind_seed(
     ),
     notice="借用须知",
     notice2_title="开放时间",
-    notice2_body="工作日 8:30–17:30 办理领用与归还。",
+    notice2_body="工作日 8:30–17:30 办理借用与归还。",
 )
 
 _EQUIP_SEEDS = {
