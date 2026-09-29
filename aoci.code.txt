@@ -282,7 +282,7 @@ _stuwork_presets_generated.py[DB5S]: F:存放学工域生成的 followup 预设�
 activity.py[DB7S]: F:生成论文用系统活动图，固定用户系统数据库三泳道 | R:- | A:- | S:-
 architecture.py[DB7S]: F:生成论文用 B/S 分层系统逻辑架构图 | R:- | A:- | S:-
 bed_followup_presets.py[DB5T]: F:提供床位分配域的 followup 预设 | R:- | A:- | S:-
-builders_archive.py[DB7L]: F:构建档案与 followup 菜单及字段 schema，并承载域与场景 override、页面话术槽位占位符 | R:code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/ticket_copy_text.py | A:- | S:EQUIP 档案 stage 含维修中且 ticket.requireReturnAttach；归还验图文案落 labels.returnAttachHint；页面文案用 {category_axis}/{ticket_noun} 占位符，勿写死域词；内联调用须回传 proposal_text
+builders_archive.py[DB7L]: F:构建档案与 followup 菜单及字段 schema，并承载域与场景 override、页面话术槽位占位符；内联装配经 followup_domain_schema 时必须回传 proposal_text，否则槽位解析拿不到开题词 | R:code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/ticket_copy_text.py | A:- | S:EQUIP 档案 stage 含维修中，域默认 ticket.requireReturnAttach=True 且归还验图落 labels.returnAttachHint；轮播用 {category_axis}/{entity_plural}（事件皮用 {ticket_noun}），勿写死域词
 builders_content.py[DB7M]: F:构建内容、媒体与论坛类菜单及字段 schema | R:- | A:- | S:-
 builders_slot.py[DB7L]: F:构建交易与预约类域的菜单及字段 schema | R:code:backend/app/bake/schema/shells.py | A:- | S:酒店默认壳眉题客房预约；民宿皮仍用民宿预订；demoPayHint 等 labels 在此写入 schema 并覆盖前端默认文案
 builders_ticket.py[DB7M]: F:构建校园、物业、IT 等工单流域菜单及字段 schema | R:- | A:- | S:-
@@ -300,7 +300,7 @@ er_labels.py[DB7L]: F:拼装 E-R 中文标签、角色展开与补丁读写 | R:
 er_model.py[DB7L]: F:从 schema.sql 解析表与外键并组装 E-R 模型 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:纯 M:N 中间表在总图塌成菱形，不进实体属性图；UNIQUE 外键是 1:1
 er_svg.py[DB7L]: F:为零交叉陈氏 E-R 图计算布局并渲染 SVG | R:code:backend/app/bake/schema/er_model.py | A:- | S:布局总预算 2.5 秒；超过 7 个实体不做全排列
 er_zh.py[FC6M]: F:提供 E-R 骨架表与公共列的中文词表兜底 | R:code:backend/app/bake/schema/er_labels.py | A:- | S:领域表名优先从 domain.schema.json 取；PMS 表 room_instance/checkin/checkout/consumption 有中文兜底
-followup_presets.py[DB7L]: F:按域参数化装配「档案+跟进单」族 schema、门户文案与话术槽位 schema["lex"] | R:code:backend/app/bake/schema/shells.py,code:backend/app/bake/staff_posts.py,code:backend/app/bake/ticket_copy_text.py | A:- | S:preset 键直接作 archive_ticket_schema 的 kwargs，未知键会 TypeError；lex 按「开题簇词→域默认→兑底」写回分类轴与轮播，单据壳文案归一到解析值；前端勿写死域词
+followup_presets.py[DB7L]: F:按域 preset 装配「档案+跟进单」族 schema、门户文案与话术槽位，并挂域专属标签、菜单与能力开关（allow_rating/require_attach/two_level_approve/fundIsland/listingDeal） | R:code:backend/app/bake/schema/shells.py,code:backend/app/bake/staff_posts.py,code:backend/app/bake/ticket_copy_text.py | A:- | S:preset 键直接作 archive_ticket_schema 的 kwargs，未知键会 TypeError；schema["lex"] 是槽位解析结果，单据壳文案、分类轴与轮播按同源写回；前端勿写死域词
 form_first_entry.py[DB6T]: F:把预设改成填单优先入口并收束档案目录文案 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:禁止另写一套菜单排序或 Store 分支
 instrument_followup_presets.py[DB6T]: F:构建仪器机时域的 FOLLOWUP_PRESETS 文案与字段 | R:code:backend/app/bake/schema/followup_presets.py | A:- | S:-
 menu_utils.py[DB6T]: F:幂等插入菜单项并按已开能力回补用户与管理端入口 | R:code:backend/app/bake/schema/shells.py | A:- | S:能力已开则菜单必须在，防填岛漏挂
@@ -334,10 +334,10 @@ compose.py[DB6S]: F:从已有 GENERIC SQL 模板拼装多主路径 schema | R:co
 content_scene_overlays.py[DD6S]: F:按内容域叠加场景种子皮，覆盖博客、影音、音乐台与论坛 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
 ddl_edit.py[DP7S]: F:改写 SQL DDL 文本，支持建表补列改名与 INSERT 列清单同步 | R:- | A:- | S:-
 demo_schedule_repair.py[DD6S]: F:修复演示库日程，对齐日历并下架已过期场次 | R:- | A:- | S:-
-domain_scene_seed.py[DD6L]: F:按开题场景替换演示种子文案与公告正文，不改表结构 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:只改标题、地点、备注等文案，不得改列结构；种子公告正文的苹源是 sql/templates/DOM-*.sql 资产，本文件的同名句子在另一条路径上，改口径时两处都要查
+domain_scene_seed.py[DD6L]: F:按开题场景替换演示种子文案与公告正文，不改表结构 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:只改标题、地点、备注等文案，不得改列结构；种子公告正文的源头是 sql/templates/DOM-*.sql 资产，本文件的同名句子在另一条路径上，改口径时两处都要查
 domain_templates.py[DP7S]: F:按域加载 templates 目录下 DOM-*.sql 模板 | R:code:backend/app/bake/sql/templates/DOM-ACAD.sql | A:- | S:-
 event_scene_seed.py[DD6S]: F:为 DOM-EVENT 按场景替换演示种子文案 | R:- | A:- | S:只改文案不改表结构
-fragments.py[DB8L]: F:集中各能力岛与域的结构 DDL 片段及单据扩展列全集，按域与开关拼进出包 SQL | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/ticket_columns.py | A:- | S:TICKET_DOMAIN_COLUMNS 是域固有列、TICKET_OPTIONAL_COLUMNS 是全集；grade_extra/fund_extra/listing_deal 随域无条件追加；新块凭哨兵表幂等
+fragments.py[DB8L]: F:集中各能力岛与域的结构 DDL 片段及单据扩展列全集，按域与开关拼进出包 SQL；借用族结构表按域下限无条件补齐 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/ticket_columns.py | A:- | S:TICKET_DOMAIN_COLUMNS 是域固有列、TICKET_OPTIONAL_COLUMNS 是全集；grade_extra/fund_extra/listing_deal 随域无条件追加；LIBRARY/EQUIP/INSTRUMENT 必补 renew_log、LIBRARY/EQUIP 必补 fine_record（不吃 caps，BORROW_TABLE_MIN=10）；新块凭哨兵表幂等
 reserve_scene_overlays.py[DD6S]: F:为医院、美发、会议室、停车等预约域叠加场景种子皮 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
 
 ===D:/graduate_factory_v3/backend/app/bake/sql/templates/===
@@ -406,7 +406,7 @@ DOM-SURVEY.sql[FC5S]: F:提供 DOM-SURVEY 问卷表单与作答 SQL 骨架 | R:c
 DOM-TIMEBANK.sql[FC5S]: F:提供 DOM-TIMEBANK 时长账户与流水 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-TOUR.sql[FC5S]: F:提供 DOM-TOUR 线路报名与订单 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-TRIP.sql[FC5S]: F:提供 DOM-TRIP 出差类型与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-VISITOR.sql[FC5S]: F:提供 DOM-VISITOR 访客登记与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:公告「访客须知」写「申请通过后出示通行码」（与实体访客申请一致，勿写「预约通过后」）
+DOM-VISITOR.sql[FC5S]: F:提供 DOM-VISITOR 访客登记与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:公告「访客须知」正文写「访客申请通过后出示通行码」，勿回写成「预约通过后」（与实体访客申请口径一致）
 DOM-VOTE.sql[FC5S]: F:提供 DOM-VOTE 评选活动与选票 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 
 ===D:/graduate_factory_v3/backend/app/core/===
