@@ -1,4 +1,4 @@
-"""多维分类 multi_category：开题写两组以上分类维度才挂；仅 DOM-SHOP。
+"""多维分类 multi_category：开题写两组以上分类维度才挂；DOM-SHOP / FOOD / CINEMA。
 
 开岛后分类走 item↔category 关联表；category_id 列可留，运行时不当分类来源。
 未开岛：保持单 FK category_id，不改表形态。
@@ -13,7 +13,7 @@ from app.bake.proposal_lexicon import keyword_mentioned
 
 MULTI_CATEGORY_CAP = "multi_category"
 
-_SHOP_DOMAINS = frozenset({"DOM-SHOP"})
+_MULTI_CATEGORY_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 
 # 明确「多维 / 多条件」话术。「双维度」与「多维分类」同级，不要求再写「按…分类」。
 _MULTI_TERMS = (
@@ -21,6 +21,8 @@ _MULTI_TERMS = (
     "多维分类",
     "按维度分类",
     "多维度分类",
+    "按多个维度",
+    "多个维度分类",
     "双维度",
     "两个维度",
     "两维分类",
@@ -48,12 +50,19 @@ _AXIS_TERMS = (
 # 「按…分类」出现两次以上
 _BY_CLASSIFY_RE = re.compile(r"按[\u4e00-\u9fffA-Za-z0-9]{1,12}分类")
 
+# 「按口味和荤素分类」「按类型和评分分类」——一句里两个维
+_AND_CLASSIFY_RE = re.compile(
+    r"按([\u4e00-\u9fffA-Za-z0-9]{1,12})(?:和|与|及)([\u4e00-\u9fffA-Za-z0-9]{1,12})分类"
+)
+
 
 def scan_multi_category(text: str, title: str = "") -> bool:
     blob = f"{title or ''}\n{text or ''}"
     if not blob.strip():
         return False
     if any(keyword_mentioned(blob, kw, ignore_contrast=True) for kw in _MULTI_TERMS):
+        return True
+    if _AND_CLASSIFY_RE.search(blob):
         return True
     axes = sum(1 for kw in _AXIS_TERMS if keyword_mentioned(blob, kw, ignore_contrast=True))
     if axes >= 2:
@@ -70,7 +79,10 @@ def _clean_axis_token(text: str) -> str:
 
 
 def parse_category_axes(text: str, title: str = "") -> list[tuple[str, list[str]]]:
-    """从「按某维：甲/乙/丙」抽出维度名和取值，供分类种子换掉默认「热销/日用」。"""
+    """从「按某维：甲/乙/丙」抽出维度名和取值，供分类种子换掉默认「热销/日用」。
+
+    「按口味和荤素分类」无取值时，每维用维名自身占位，保证至少两维种子。
+    """
     blob = f"{title or ''}\n{text or ''}"
     axes: list[tuple[str, list[str]]] = []
     seen: set[str] = set()
@@ -91,6 +103,18 @@ def parse_category_axes(text: str, title: str = "") -> list[tuple[str, list[str]
         axes.append((dim, names[:8]))
         if len(axes) >= 4:
             break
+    if len(axes) < 2:
+        for match in _AND_CLASSIFY_RE.finditer(blob):
+            for raw in (match.group(1), match.group(2)):
+                dim = _clean_axis_token(raw)
+                if not dim or dim in seen:
+                    continue
+                seen.add(dim)
+                axes.append((dim, [dim]))
+                if len(axes) >= 4:
+                    break
+            if len(axes) >= 2:
+                break
     return axes
 
 
@@ -150,7 +174,7 @@ def merge_multi_category_capabilities(
     out = list(caps or [])
     if MULTI_CATEGORY_CAP in out:
         return out
-    if (domain or "") not in _SHOP_DOMAINS:
+    if (domain or "") not in _MULTI_CATEGORY_DOMAINS:
         return out
     if "archive" not in out:
         return out

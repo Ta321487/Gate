@@ -32,6 +32,9 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertTrue(scan_flash_price("限时特价窗口。"))
         self.assertTrue(scan_flash_price("开题写秒杀（时段特价）。"))
         self.assertTrue(scan_flash_price("活动模块查看促销信息、节日优惠。"))
+        self.assertTrue(scan_flash_price("菜品限时折扣"))
+        self.assertTrue(scan_flash_price("早鸟票与场次特价"))
+        self.assertTrue(scan_flash_price("第二份半价、今日特价、折扣价"))
         self.assertFalse(scan_flash_price("购物车下单与库存扣减。"))
 
     def test_merge_only_when_scanned_on_order_domain(self) -> None:

@@ -240,7 +240,24 @@ class DomainOpeningCorpusTests(unittest.TestCase):
         self.assertTrue(actors, f"{want} 无用例图角色")
         for a in actors:
             uc = usecase_model(schema, actor=a["id"], proposal_text=text, title_fallback=s["title"])
-            self.assertEqual(len(uc["level1"]), 5, f"{want}/{a['id']} 一级用例数")
+            # 客户样式是「跟材料对齐」而非写死 5：个数须落在 [level1_min, level1_max]
+            # （见 usecase_style / usecase_model._normalize_l1_buckets）
+            uc_style = uc.get("style") or {}
+            l1_min = int(uc_style.get("level1_min") or 1)
+            l1_max = int(uc_style.get("level1_max") or 99)
+            l1_count = len(uc["level1"])
+            self.assertTrue(
+                l1_min <= l1_count <= l1_max,
+                f"{want}/{a['id']} 一级用例数 {l1_count} 不在样式区间 [{l1_min},{l1_max}]",
+            )
+            # 图上文字写了序号时，序号个数须与一级用例个数严格一致（客户硬约束）
+            numbered = re.findall(r"（(\d+)）", str(uc.get("description") or ""))
+            if numbered:
+                self.assertEqual(
+                    len(numbered),
+                    l1_count,
+                    f"{want}/{a['id']} 描述序号 {len(numbered)} 与一级用例 {l1_count} 不一致",
+                )
             svg = render_usecase_svg(uc)
             self.assertIn("ellipse", svg)
             self.assertTrue(

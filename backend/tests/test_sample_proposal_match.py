@@ -402,6 +402,68 @@ class SlimMatchDataTests(unittest.TestCase):
                         f"{pid} scan miss for {key}",
                     )
 
+    def test_default_samples_different_optional_caps(self) -> None:
+        """默认生成：同 pack 不同 seed 应抽到不一样的扫词叶子（矩阵内）。"""
+        from app.bake.proposal_pressure import pressure_leaves_for
+        from app.bake.sample_proposal import build_sample_proposal
+
+        pack_id = "library"
+        domain = "DOM-LIBRARY"
+        pool = {k for k, _ in pressure_leaves_for(domain)}
+        self.assertGreaterEqual(len(pool), 2)
+        seen: set[frozenset[str]] = set()
+        for seed in range(1, 12):
+            sp = build_sample_proposal(pack_id=pack_id, seed=seed, pressure=False)
+            caps = frozenset(sp.pressure_caps or [])
+            self.assertTrue(caps, f"seed={seed} empty caps")
+            self.assertTrue(caps <= pool, f"seed={seed} out of range {caps - pool}")
+            self.assertIn("材料命中能力模块", sp.text)
+            seen.add(caps)
+        self.assertGreaterEqual(
+            len(seen), 2, f"expected variety across seeds, got {seen}"
+        )
+
+    def test_borrow_packs_write_domain_default_copy(self) -> None:
+        """借用族开题须写出域默认能力（丢失赔偿/归还验图/货架/色块等）。"""
+        from app.bake.sample_proposal import build_sample_proposal
+
+        cases = {
+            "library": ("丢失申报", "续借", "热门"),
+            "equip": ("维修中", "外观", "续借"),
+            "parcel": ("货架", "损坏", "取件"),
+            "asset": ("出入库", "库存"),
+            "bed": ("色块", "床位"),
+        }
+        for pid, needles in cases.items():
+            with self.subTest(pack_id=pid):
+                sp = build_sample_proposal(pack_id=pid, seed=3, pressure=False)
+                for n in needles:
+                    self.assertIn(n, sp.text, f"{pid} missing {n}")
+
+    def test_pressure_matrix_covers_named_domains_with_packs(self) -> None:
+        """有选题包的具名域，凡对照表收了扫词开叶子的，矩阵非空。"""
+        from app.bake.proposal_packs import PACKS
+        from app.bake.proposal_pressure import pressure_leaves_for
+
+        # 至少这些域必须有可刷叶子（否则「随机刷不一样」无意义）
+        must = {
+            "DOM-LIBRARY",
+            "DOM-EQUIP",
+            "DOM-ASSET",
+            "DOM-PARCEL",
+            "DOM-SHOP",
+            "DOM-FOOD",
+            "DOM-FORUM",
+            "DOM-DORM",
+            "DOM-HOTEL",
+            "DOM-SEAL",
+        }
+        pack_domains = {p["anchor_domain"] for p in PACKS}
+        for d in must:
+            with self.subTest(domain=d):
+                self.assertIn(d, pack_domains)
+                self.assertTrue(pressure_leaves_for(d), d)
+
 
 if __name__ == "__main__":
     unittest.main()

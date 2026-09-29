@@ -147,18 +147,46 @@ class SamplePackBakeSmokeTests(unittest.TestCase):
         scene = scene_for(domain, title, text)
 
         if domain == "DOM-SHOP":
+            from app.bake.scene_scan import scan_shop_marketplace
+
             pk = shop_product_kind(title, text)
             keys = _archive_keys(schema)
-            if pk == "retail":
+            marketplace = scan_shop_marketplace(title, text)
+            if pk == "campus":
+                self.assertIn("conditionGrade", keys)
+                self.assertIn("condition_grade", sql)
+                self.assertEqual(
+                    brow,
+                    "多商家商城" if marketplace else "校园商城",
+                    f"pk={pk} marketplace={marketplace} brow={brow!r}",
+                )
+            elif pk == "retail":
                 self.assertNotIn("conditionGrade", keys)
                 self.assertNotIn("condition_grade", sql)
                 self.assertNotIn("成色", sql)
                 self.assertNotIn("校徽帆布袋", sql)
-                self.assertEqual(brow, "在线商城")
+                self.assertEqual(
+                    brow, "多商家商城" if marketplace else "在线商城"
+                )
             else:
-                self.assertIn("conditionGrade", keys)
-                self.assertIn("condition_grade", sql)
-                self.assertEqual(brow, "校园商城")
+                # farm / flowers / print / errand / points：行业货皮，无二手成色
+                self.assertNotIn("conditionGrade", keys)
+                self.assertNotIn("condition_grade", sql)
+                if marketplace:
+                    self.assertEqual(
+                        brow,
+                        "多商家助农商城" if pk == "farm" else "多商家商城",
+                    )
+                else:
+                    expected_brow = {
+                        "farm": "助农商城",
+                        "flowers": "花店商城",
+                        "print": "文印下单",
+                        "errand": "跑腿代买",
+                        "points": "积分兑换",
+                    }.get(pk)
+                    if expected_brow:
+                        self.assertEqual(brow, expected_brow)
 
         if domain == "DOM-FOOD":
             pk = food_product_kind(title, text)

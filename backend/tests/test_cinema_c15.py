@@ -93,8 +93,14 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertIn("seat_select", src)
         router = (BASELINE / "frontend/src/router/index.js").read_text(encoding="utf-8")
         self.assertIn("path === 'cart' || kids[i].path === 'addresses'", router)
-        self.assertIn("'/admin/coupons': 'coupons'", router)
-        self.assertIn("'/admin/order-reviews': 'order_reviews'", router)
+        # key→path 映射已迁到 utils/menuRoutes.js（router 只按能力挂路由子项）
+        menu_routes = (BASELINE / "frontend/src/utils/menuRoutes.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("coupons: '/admin/coupons'", menu_routes)
+        self.assertIn("order_reviews: '/admin/order-reviews'", menu_routes)
+        self.assertIn("path: 'coupons'", router)
+        self.assertIn("views/admin/CouponsAdmin.vue", router)
 
     def test_sql_yml_accept(self) -> None:
         sql = domain_sql(

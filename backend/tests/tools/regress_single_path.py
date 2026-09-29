@@ -24,7 +24,8 @@ CASES = [
     ("基于SpringBoot的后勤报修管理系统的设计与实现", "DOM-GENERIC", {"ARCH-FLOW"}),
     ("基于SpringBoot的跳蚤市场交易平台的设计与实现", "DOM-GENERIC", {"ARCH-TRADE"}),
     ("基于SpringBoot的学生管理系统的设计与实现", "DOM-GENERIC", {"ARCH-CRUD"}),
-    ("基于SSM的图书馆座位预约管理系统的设计与实现", "DOM-GENERIC", {"ARCH-RESERVE"}),
+    # 图书馆座位预约 = 时段预约皮；「借阅+座位」真交叉需标题另有借阅行为（见 catalog 判定）
+    ("基于SSM的图书馆座位预约管理系统的设计与实现", "DOM-MEETING", {"ARCH-RESERVE"}),
 ]
 
 

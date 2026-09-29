@@ -419,6 +419,8 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-allow-renew", bool(ticket_ent.get("allowRenew"))),
             ("ticket-allow-waitlist", bool(ticket_ent.get("allowWaitlist"))),
             ("ticket-allow-book-hold", bool(ticket_ent.get("allowBookHold"))),
+            ("ticket-allow-book-lost", bool(ticket_ent.get("allowBookLost"))),
+            ("ticket-require-return-attach", bool(ticket_ent.get("requireReturnAttach"))),
             ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
             ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
             ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
@@ -694,12 +696,20 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  post-mute-enabled: true")
     if "book_suggest" in caps:
         lines.append("  book-suggest-enabled: true")
+    if "parcel_shelf" in caps:
+        lines.append("  parcel-shelf-enabled: true")
+    if "parcel_ship" in caps:
+        lines.append("  parcel-ship-enabled: true")
+    if "book_lost" in caps:
+        # allowBookLost 亦由 schema.ticket 写入 ticket-allow-book-lost
+        pass
     if "audit_log" in caps:
         lines.append("  audit-log-enabled: true")
-    if "message_template" in caps:
-        lines.append("  message-template-enabled: true")
+        # 仅写登录日志时补 login-only（此处必须在 audit_log 分支内，勿嵌进别的能力）
         if bool((spec.get("schema") or {}).get("auditLoginOnly")):
             lines.append("  audit-log-login-only: true")
+    if "message_template" in caps:
+        lines.append("  message-template-enabled: true")
     if "staff_roster" in caps:
         lines.append("  staff-roster-enabled: true")
     if "room_equipment" in caps:
@@ -714,9 +724,27 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  detail-attrs-enabled: true")
         keys = (spec.get("schema") or {}).get("detailAttrKeys") or []
         if isinstance(keys, list) and keys:
-            safe = [str(k) for k in keys if re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,31}", str(k))]
-            if safe:
-                lines.append("  detail-attr-keys: " + ",".join(safe))
+            type_by_key: dict[str, str] = {}
+            for field in (
+                ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+            ).get("fields") or []:
+                if not isinstance(field, dict):
+                    continue
+                fk = str(field.get("key") or "")
+                if fk:
+                    type_by_key[fk] = str(field.get("type") or "string")
+            parts: list[str] = []
+            for raw in keys:
+                k = str(raw)
+                if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,31}", k):
+                    continue
+                ft = type_by_key.get(k, "string")
+                if ft in ("number", "date"):
+                    parts.append(f"{k}:{ft}")
+                else:
+                    parts.append(k)
+            if parts:
+                lines.append("  detail-attr-keys: " + ",".join(parts))
     if "search_assist" in caps:
         lines.append("  search-assist-enabled: true")
     if "exam" in caps:

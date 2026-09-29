@@ -32,8 +32,11 @@ def merge_proposal_capabilities(
     from app.bake.features.staff_roster import merge_staff_roster_capabilities
     from app.bake.features.room_equipment import merge_room_equipment_capabilities
     from app.bake.features.book_hold import merge_book_hold_capabilities
+    from app.bake.features.book_lost import merge_book_lost_capabilities
     from app.bake.features.post_mute import merge_post_mute_capabilities
     from app.bake.features.book_suggest import merge_book_suggest_capabilities
+    from app.bake.features.parcel_shelf import merge_parcel_shelf_capabilities
+    from app.bake.features.parcel_ship import merge_parcel_ship_capabilities
     from app.bake.features.product_spec import merge_product_spec_capabilities
     from app.bake.features.multi_category import merge_multi_category_capabilities
     from app.bake.features.product_tags import merge_product_tags_capabilities
@@ -116,6 +119,9 @@ def merge_proposal_capabilities(
     req = merge_staff_roster_capabilities(req, body, domain=domain)
     req = merge_room_equipment_capabilities(req, body, domain=domain)
     req = merge_book_hold_capabilities(req, body, domain=domain)
+    req = merge_book_lost_capabilities(req, body, domain=domain)
+    req = merge_parcel_shelf_capabilities(req, body, domain=domain)
+    req = merge_parcel_ship_capabilities(req, body, domain=domain)
     req = merge_post_mute_capabilities(req, body, domain=domain)
     req = merge_book_suggest_capabilities(req, body, domain=domain)
     req = merge_product_spec_capabilities(req, body, domain=domain)

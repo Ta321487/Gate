@@ -19,18 +19,18 @@
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew** |
-| **DOM-EQUIP** | 设备借用、器材、实验室物资 | 同上 |
+| **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew** + **book_lost** |
+| **DOM-EQUIP** | 设备借用、器材、实验室物资 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew**（归还验图 + 档案「维修中」为域皮） |
 | **DOM-ASSET** | 固定资产领用、耗材申领、物资台账、浅进销存 | archive + ticket_flow + quota + content + org_users + **stock_io**（无 deadline；与 EQUIP 设备借用区分；≠ 采购申购） |
 | **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
 | **DOM-EVENT** | 事件上报、公卫/院感、晨检随访、健康监测、隐患上报 | archive + ticket_flow + **archive_log** + content + org_users（档案 `event_case`、单据 `event_report`、记录 `archive_log`） |
 | **DOM-ATTEND** | 考勤请假、请销假、假勤台账 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（人员 `staff_person`、请假 `leave_req`） |
-| **DOM-FUND** | 资助、奖学金、助学金、困难补助申请 | archive + ticket_flow + content + org_users + **balance_ledger**（项目 `fund_program`、申请 `fund_apply`） |
+| **DOM-FUND** | 资助、奖学金、助学金、困难补助申请 | archive + ticket_flow + content + org_users + **balance_ledger**（项目 `fund_program`、申请 `fund_apply`）；申请通过后可登记**公示**（`fund_publicity`）与**发放台账**（`fund_disburse`），表默认随域出，不扩申请单状态机 |
 | **DOM-LABSAFE** | 实验室安全准入、入室许可、安全培训证明 | archive + ticket_flow + content + org_users + **material_check**（实验室 `lab_room`、准入 `access_apply`）；开题写准入考试 → 另挂 **exam**（先考后申） |
 | **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users + **balance_ledger**（岗位 `job_post`、投递 `job_apply`） |
-| **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`）；我的成绩申请填单优先；演示库按学号软筛本人课（无匹配回退开放课）；`grade_score` 域默认登记、课内名次、CSV 导出 |
+| **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`）；我的成绩申请填单优先；演示库按学号软筛本人课（无匹配回退开放课）；`grade_score` 域默认登记、课内名次、CSV 导入导出、改分留痕（含删除留痕）、分布与及格率 |
 | **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA）；默认我的周报填单选岗；开题绑岗→资料 `internOrg`/`internPost` + matchProfileRoom |
-| **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users（包裹 `parcel`、取件 `parcel_claim`）；我的取件 + 手机号本人件硬筛 + 凭码 |
+| **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users + **parcel_shelf**（包裹 `parcel`、取件 `parcel_claim`）；我的取件 + 手机号本人件硬筛 + 凭码；开题写「寄件」另挂 **parcel_ship** |
 | **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users + **balance_ledger**（事项 `seal_item`、申请 `seal_apply`） |
 | **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
 | **DOM-CERT** | 开具证明、在读/在职/成绩单证明 | archive + ticket_flow + content + org_users + **material_check**（类型 `cert_type`、申请 `cert_apply`） |

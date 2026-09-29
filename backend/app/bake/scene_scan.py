@@ -985,10 +985,31 @@ def shop_retail_niche(title: str, body: str = "") -> str | None:
     return None
 
 
+def _shop_marketplace_focus(body: str) -> str:
+    """多店判定的正文域：与 accept 侧共用 ``capabilities.proposal_body_scope``。"""
+    raw = (body or "").strip()
+    if not raw:
+        return ""
+    try:
+        from app.bake.capabilities import proposal_body_scope
+
+        return proposal_body_scope(raw)
+    except Exception:  # noqa: BLE001
+        return raw
+
+
 def scan_shop_marketplace(title: str, body: str = "") -> bool:
-    """开题要多商家/入驻平台时才开；默认单店 SHOP 保持原结构。"""
-    blob = f"{title or ''}\n{body or ''}"
-    return scan_has(blob, SHOP_MARKETPLACE_HINTS)
+    """开题要多商家/入驻平台时才开；默认单店 SHOP 保持原结构。
+
+    只看「承诺」：题名 + 功能/实现段。研究现状/背景里的对比句
+    （如「综合平台面向多商家入驻…不适合单店」）不是本课题承诺；
+    同一分句含否定（「不做商家入驻」）也不计。
+    """
+    from app.bake.proposal_lexicon import hints_mentioned
+
+    if hints_mentioned(title or "", SHOP_MARKETPLACE_HINTS):
+        return True
+    return hints_mentioned(_shop_marketplace_focus(body), SHOP_MARKETPLACE_HINTS)
 
 
 def shop_catalog_kind(title: str, body: str = "") -> str:

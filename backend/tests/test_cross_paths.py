@@ -4,6 +4,7 @@ import re
 
 from app.bake.capabilities import resolve_accept, scan_out_of_scope
 from app.bake.cross_paths import evaluate_cross_path, path_key_from_archetypes
+from app.bake.proposal_lexicon import settlement_mode
 
 
 def test_path_key_singles_and_pairs():
@@ -145,6 +146,30 @@ def test_oos_demo_pay_colloquial_not_real_settlement():
     # 真对接仍拒
     real = "主要功能：对接微信支付与支付宝商户清算。"
     assert "真实第三方支付" in scan_out_of_scope(real)
+
+
+def test_settlement_boundary_dimension():
+    """结算边界是维度判定：看渠道附近语境，不靠材料写「模拟」二字。"""
+    bare = "主要功能：支付模块（在线支付，支持选择支付宝、微信等支付方式完成支付）。"
+    assert settlement_mode(bare) == "in_system"
+    assert "真实第三方支付" not in scan_out_of_scope(bare)
+
+    in_system = (
+        "主要功能：支付模块（选择支付宝、微信渠道并输入支付密码，扣减系统内账户余额）。"
+    )
+    assert settlement_mode(in_system) == "in_system"
+    assert "真实第三方支付" not in scan_out_of_scope(in_system)
+
+    negated = (
+        "主要功能：在线支付（选择支付宝、微信并输入支付密码）；"
+        "不对接第三方商户清算。"
+    )
+    assert settlement_mode(negated) == "in_system"
+    assert "真实第三方支付" not in scan_out_of_scope(negated)
+
+    external = "主要功能：支付模块（对接微信支付与支付宝商户清算，平台与商家分账）。"
+    assert settlement_mode(external) == "external"
+    assert "真实第三方支付" in scan_out_of_scope(external)
 
 
 def test_oos_ignores_literature_review_citation():
@@ -640,8 +665,16 @@ def test_cross_sql_seeds_all_clerks():
     sql = domain_sql(
         "DOM-GENERIC", "t", archetypes=["ARCH-FLOW", "ARCH-TRADE"]
     )
-    assert "staff_post='clerk'" in sql
-    assert "VALUES ('order_clerk'" in sql
+    assert "staff_post=VALUES(staff_post)" in sql
+    # 种子已改为 upsert 形态：首岗绑 subadmin、其余岗各一演示账号
+    posts = re.findall(
+        r"INSERT INTO sys_user \(username, password, role, nickname, phone, profile_json, "
+        r"super_admin, profile_editable, enabled, staff_post, staff_kind\) VALUES \(([^)]*)\)",
+        sql,
+    )
+    assert len(posts) >= 2, sql[-400:]
+    assert "'clerk'" in posts[0], posts[0]
+    assert "'order_clerk'" in posts[1], posts[1]
     assert "rider" not in sql
 
 

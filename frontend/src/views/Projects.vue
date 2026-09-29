@@ -129,7 +129,7 @@
       :mask-closable="!sampleLoading"
     >
       <p class="small muted" style="margin:0 0 12px">
-        随机覆盖常见毕设方向；厚稿按角色写模块。勾选「真单压力」会写入本域扫词开触发词（候补/续借/排班等），便于空窗模拟真开题挂载。约三分之一会抽到 AI 挂件表述。可选 LLM 润色。下载 txt 后拖到上方上传即可。
+        随机覆盖常见毕设方向；厚稿按角色写模块。每次生成会从该域「扫词开」能力矩阵里随机抽几项写入（功能有差异但不出范围）；勾选「真单压力」则写全本域扫词开触发词，便于空窗模拟真开题挂载。约三分之一会抽到 AI 挂件表述。可选 LLM 润色。下载 txt 后拖到上方上传即可。
       </p>
       <div class="stack" style="gap:10px">
         <div class="row" style="gap:8px;flex-wrap:wrap">

@@ -92,6 +92,16 @@ def _delivered(kind: str, *, spec: dict[str, Any], schema: dict[str, Any]) -> bo
     return True
 
 
+def _align_scope(text: str) -> str:
+    """开题对齐的正文域：复用 ``capabilities.proposal_body_scope``（同一口径，别再各写一套）。"""
+    try:
+        from app.bake.capabilities import proposal_body_scope
+
+        return proposal_body_scope(text)
+    except Exception:  # noqa: BLE001
+        return text or ""
+
+
 def _rule_mentioned(
     terms: tuple[str, ...],
     kind: str,
@@ -112,9 +122,11 @@ def _rule_mentioned(
         # 非交易：客服模块 / 私信信号；纯智能客服不计入
         return scan_trade_customer_service(raw) or scan_dm(raw)
     if kind == "marketplace":
+        # 与 scene_scan.SHOP_MARKETPLACE_HINTS 同口径：承诺段 + 语境裁定；
+        # 勿再退回裸子串扫全文（现状综述会误伤单店题）。
         from app.bake.scene_scan import scan_shop_marketplace
 
-        return scan_shop_marketplace("", raw) or any(t in raw for t in terms)
+        return scan_shop_marketplace("", raw)
     if kind == "item_comment":
         from app.bake.features.item_comment import scan_item_comment
 
@@ -141,6 +153,8 @@ def scan_opening_delivery_gaps(
     raw = proposal_text or ""
     if len(raw.strip()) < 20:
         return []
+    # 现状/背景综述不算承诺：只对其余段落判「开题点名」
+    scope = _align_scope(raw)
     domain = str(spec.get("domain") or "")
     if domain in _TRADE_ALIGN_DOMAINS:
         rules = list(_ALIGN_RULES)
@@ -158,7 +172,7 @@ def scan_opening_delivery_gaps(
     schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
     gaps: list[str] = []
     for terms, label, kind in rules:
-        if not _rule_mentioned(terms, kind, raw, domain=domain):
+        if not _rule_mentioned(terms, kind, scope, domain=domain):
             continue
         if _delivered(kind, spec=spec, schema=schema):
             continue

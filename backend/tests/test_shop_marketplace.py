@@ -468,5 +468,102 @@ class ShopMarketplaceUxGuardTests(unittest.TestCase):
         self.assertIn("shelfSwitchOn", archive_admin)
 
 
+class ShopMarketplaceCommitmentScopeTests(unittest.TestCase):
+    """单店/多店只看「承诺段」：研究现状里的对比句不算本课题承诺。"""
+
+    _RESEARCH_STATUS_LINE = (
+        "国内电商平台发展成熟。但综合平台面向全品类，健身用品仅作为其中一个子类；"
+        "同时，综合平台面向多商家入驻，系统复杂度高，不适合作为单店经营者的轻量级解决方案。"
+    )
+
+    def _opening(self, feature_block: str) -> str:
+        return (
+            "一、课题名称\n"
+            "基于 Spring Boot 与 Vue 的健身用品电商平台的设计与实现\n"
+            "二、选题背景与意义\n"
+            "健身用品消费需求持续增长，线上购买成为主要渠道之一。\n"
+            "三、国内外研究现状\n"
+            f"{self._RESEARCH_STATUS_LINE}\n"
+            "四、研究内容与主要功能\n"
+            "本系统采用前后端分离架构，分为用户端和管理员端两个角色。\n"
+            f"{feature_block}\n"
+        )
+
+    def test_research_status_contrast_not_commitment(self) -> None:
+        """单店承诺 + 现状里的「多商家入驻」对比句 → 仍按单店。"""
+        text = self._opening(
+            "4.1 用户功能模块\n（1）登录注册模块 用户注册、登录、退出。\n"
+            "（2）商品模块 浏览搜索健身用品、加入购物车、查看评价。\n"
+            "4.2 管理员功能模块\n（1）登录模块 管理员登录。\n"
+            "（2）健身用品商品管理模块 全局商品信息增删改查。"
+        )
+        self.assertFalse(
+            scan_shop_marketplace("健身用品电商平台", text),
+            "研究现状里的对比句不得当成本课题承诺",
+        )
+
+    def test_commit_section_merchant_module_opens_marketplace(self) -> None:
+        """功能段真的点名商家功能模块 → 开多店。"""
+        text = self._opening(
+            "4.1 用户功能模块\n（1）登录注册模块。\n"
+            "4.2 商家功能模块划分为：登录注册模块、个人中心模块（店铺信息编辑）、健身用品管理模块。\n"
+            "4.3 管理员功能模块\n（1）商家管理模块 审核商家入驻。"
+        )
+        self.assertTrue(scan_shop_marketplace("健身用品电商平台", text))
+
+    def test_negated_commitment_is_not_marketplace(self) -> None:
+        """功能段写「不做商家入驻」不算承诺。"""
+        self.assertFalse(
+            scan_shop_marketplace(
+                "", "主要功能：商品浏览、购物车下单；本系统不做商家入驻与店铺管理。"
+            )
+        )
+
+    def test_opening_align_ignores_research_status_mention(self) -> None:
+        """开题缺口闸同样不看现状综述：单店材料不得被判缺「多商家入驻」。"""
+        from app.bake.domain_schema import build_domain_schema
+        from app.bake.features.opening_align import scan_opening_delivery_gaps
+
+        single = self._opening(
+            "4.1 用户功能模块\n（1）登录注册模块 用户注册、登录、退出。\n"
+            "（2）商品模块 浏览搜索健身用品、加入购物车、查看评价。\n"
+            "4.2 管理员功能模块\n（1）登录模块 管理员登录。"
+        )
+        schema = build_domain_schema("健身用品电商平台", "DOM-SHOP", proposal_text=single)
+        gaps = scan_opening_delivery_gaps(
+            {
+                "domain": "DOM-SHOP",
+                "title": "健身用品电商平台",
+                "capabilities": list(schema.get("capabilities") or []),
+                "schema": schema,
+            },
+            single,
+        )
+        self.assertNotIn("开题写了「多商家入驻」但实包未挂", gaps)
+
+    def test_opening_align_still_sees_commit_section_merchant(self) -> None:
+        """功能段真点名商家模块 → 缺口闸不再报缺，且实包确实开了多店。"""
+        from app.bake.domain_schema import build_domain_schema
+        from app.bake.features.opening_align import scan_opening_delivery_gaps
+
+        multi = self._opening(
+            "4.1 用户功能模块\n（1）登录注册模块。\n"
+            "4.2 商家功能模块划分为：登录注册模块、个人中心模块（店铺信息编辑）、健身用品管理模块。\n"
+            "4.3 管理员功能模块\n（1）商家管理模块 审核商家入驻。"
+        )
+        schema = build_domain_schema("健身用品电商平台", "DOM-SHOP", proposal_text=multi)
+        self.assertTrue(schema.get("shopMarketplace"))
+        gaps = scan_opening_delivery_gaps(
+            {
+                "domain": "DOM-SHOP",
+                "title": "健身用品电商平台",
+                "capabilities": list(schema.get("capabilities") or []),
+                "schema": schema,
+            },
+            multi,
+        )
+        self.assertNotIn("开题写了「多商家入驻」但实包未挂", gaps)
+
+
 if __name__ == "__main__":
     unittest.main()

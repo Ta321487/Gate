@@ -106,11 +106,13 @@ def run_case(title: str, text: str, db_prefix: str) -> dict:
     n = normalize_sql(sql)
     print(f"\n[SQL] product_category 表: {'product_category' in n}")
     print(f"[SQL] dimension 列: {'dimension' in n}")
-    print(f"[SQL] detail_json 列: {'detail_json' in n}")
+    detail_cols_ok = ("brand" in n) and ("material" in n) and ("weight" in n) and ("size" in n)
+    print(f"[SQL] 详情属性真列 brand/material/weight/size: {detail_cols_ok}")
+    print(f"[SQL] 不含 detail_json: {'detail_json' not in n}")
     print(f"[SQL] promo_price/promo_start/promo_end: {('promo_price' in n) and ('promo_start' in n) and ('promo_end' in n)}")
     result["sql_product_category"] = "product_category" in n
     result["sql_dimension"] = "dimension" in n
-    result["sql_detail_json"] = "detail_json" in n
+    result["sql_detail_cols"] = detail_cols_ok and ("detail_json" not in n)
     result["sql_promo_cols"] = ("promo_price" in n) and ("promo_start" in n) and ("promo_end" in n)
 
     # 解析出的维度种子（验证两个维度以上）
@@ -129,7 +131,11 @@ def run_case(title: str, text: str, db_prefix: str) -> dict:
     binder = (baseline / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java").read_text(encoding="utf-8")
 
     month_in_dashboard = "近 6 个月销量" in dashboard and "monthSeries" in dashboard
-    detail_json_in_store = "detail_json" in archive_store or "detailJson" in archive_store or "detailAttrKeys" in archive_store or "detailAttrsEnabled" in archive_store
+    detail_attrs_in_store = (
+        "ensureDetailAttrColumns" in archive_store
+        or "detailAttrColumn" in archive_store
+        or "detailAttrKeys" in archive_store
+    )
     multi_cat_in_store = "configureMultiCategory" in archive_store and "bindItemCategories" in archive_store
     promo_price_in_order = "effectiveUnitPrice" in order_store or "ArchiveStore.effectiveUnitPrice" in order_store or "promoPrice" in order_store
     multi_cat_in_cats_admin = "dimension" in cats_admin and "multiCategory" in cats_admin
@@ -140,7 +146,7 @@ def run_case(title: str, text: str, db_prefix: str) -> dict:
     binder_flash = "flash-price-enabled" in binder
 
     print(f"\n[骨架] 月销量图(工作台): {month_in_dashboard}")
-    print(f"[骨架] ArchiveStore detail_json: {detail_json_in_store}")
+    print(f"[骨架] ArchiveStore 详情属性按列: {detail_attrs_in_store}")
     print(f"[骨架] ArchiveStore multiCategory: {multi_cat_in_store}")
     print(f"[骨架] OrderStore 活动价结算: {promo_price_in_order}")
     print(f"[骨架] CategoriesAdmin 多维度: {multi_cat_in_cats_admin}")
@@ -149,7 +155,7 @@ def run_case(title: str, text: str, db_prefix: str) -> dict:
     print(f"[骨架] DomainRuntimeBinder multi/detail/flash: {binder_multi}/{binder_detail}/{binder_flash}")
 
     result["skeleton_month_chart"] = month_in_dashboard
-    result["skeleton_detail_json_store"] = detail_json_in_store
+    result["skeleton_detail_attrs_store"] = detail_attrs_in_store
     result["skeleton_multi_cat_store"] = multi_cat_in_store
     result["skeleton_promo_price_order"] = promo_price_in_order
     result["skeleton_cats_admin_multi"] = multi_cat_in_cats_admin
@@ -195,8 +201,8 @@ def print_summary(title: str, r: dict) -> None:
     # 详情属性
     add("详情属性-能力岛挂入", r["detail_attrs_cap"])
     add("详情属性-品牌/材质/重量/尺寸都有label", r["detail_attrs_labels_ok"])
-    add("详情属性-SQL含detail_json列", r["sql_detail_json"])
-    add("详情属性-骨架Store支持detail_json", r["skeleton_detail_json_store"])
+    add("详情属性-SQL含真列且无detail_json", r["sql_detail_cols"])
+    add("详情属性-骨架Store按列读写", r["skeleton_detail_attrs_store"])
     add("详情属性-骨架Browse支持展示", r["skeleton_browse_detail"])
     add("详情属性-binder开关", r["skeleton_binder_detail"])
 

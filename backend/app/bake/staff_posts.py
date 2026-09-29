@@ -1278,10 +1278,18 @@ def _clerk_reachable_menu_keys(
 
 
 def _prune_empty_clerks(schema: dict[str, Any]) -> None:
-    """去掉「包里有、菜单全是总管」的空转子管，避免第三角只有工作台。"""
+    """去掉「包里有、菜单全是总管」的空转子管，避免第三角只有工作台。
+
+    裸 schema（既无 menus 也无 capabilities，如重绑/单测）无从判断可达性，
+    一律保留：否则会把 Island 既有岗位与子管标签一起剪掉。
+    """
     roles = dict(schema.get("roles") or {})
     posts = list(roles.get("staff_posts") or [])
     if not posts:
+        return
+    menus = schema.get("menus") or {}
+    has_menu_basis = bool((menus.get("user") or []) or (menus.get("admin") or []))
+    if not has_menu_basis and not _schema_cap_set(schema):
         return
     kept: list[dict[str, Any]] = []
     for p in posts:

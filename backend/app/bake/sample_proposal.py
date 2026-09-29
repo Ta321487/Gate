@@ -20,7 +20,10 @@ from pathlib import Path
 from typing import Any
 
 from app.bake.proposal_packs import PACKS
-from app.bake.proposal_pressure import inject_pressure_into_tree
+from app.bake.proposal_pressure import (
+    inject_pressure_into_tree,
+    sample_pressure_leaves,
+)
 from app.bake.proposal_role_modules import (
     flatten_role_module_text,
     render_role_modules_block,
@@ -65,6 +68,7 @@ class SampleProposal:
     l1_extras: list[str] | None = None
     ai_feature: str | None = None
     pressure: bool = False
+    pressure_caps: list[str] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +82,7 @@ class SampleProposal:
             "l1_extras": list(self.l1_extras or []),
             "ai_feature": self.ai_feature,
             "pressure": self.pressure,
+            "pressure_caps": list(self.pressure_caps or []),
         }
 
 
@@ -275,6 +280,7 @@ def render_template(
     title: str | None = None,
     when: datetime | None = None,
     pressure: bool = False,
+    pressure_leaves: list[tuple[str, str]] | None = None,
 ) -> str:
     when = when or datetime.now()
     title = title or pack["title"]
@@ -284,10 +290,14 @@ def render_template(
     out_scope = _out_scope_phrase(digressions)
     features = list(pack.get("features") or [])
     role_tree = resolve_role_modules(pack)
-    if pressure:
+    domain = str(pack.get("anchor_domain") or "")
+    # 默认随机抽样 / 压力档全开：都写入「材料命中能力」模块
+    if pressure_leaves is not None:
         role_tree = inject_pressure_into_tree(
-            role_tree, str(pack.get("anchor_domain") or "")
+            role_tree, domain, leaves=pressure_leaves
         )
+    elif pressure:
+        role_tree = inject_pressure_into_tree(role_tree, domain)
     ai_from_feats = _ai_lines_from_features(features)
     ai_line = (ai_from_feats[0] if ai_from_feats else None)
     if role_tree:
@@ -419,6 +429,9 @@ def build_sample_proposal(
     # 压力档：不再叠「若进度允许」淡化句，扫词叶子已写入拟实现
     l1 = [] if pressure else _sample_some(rng, list(pack.get("l1_optional") or []), 0, 2)
     ai_line = maybe_inject_ai_feature(rng, pack)
+    leaves = sample_pressure_leaves(
+        str(pack.get("anchor_domain") or ""), rng, pressure=pressure
+    )
 
     text = render_template(
         pack,
@@ -426,6 +439,7 @@ def build_sample_proposal(
         l1_extras=l1,
         title=title,
         pressure=pressure,
+        pressure_leaves=leaves,
     )
 
     return SampleProposal(
@@ -438,6 +452,7 @@ def build_sample_proposal(
         l1_extras=l1,
         ai_feature=ai_line,
         pressure=pressure,
+        pressure_caps=[k for k, _ in leaves],
     )
 
 
@@ -511,6 +526,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"title={sample.title}")
     print(f"used_llm={used_llm}")
     print(f"pressure={sample.pressure}")
+    if sample.pressure_caps:
+        print(f"pressure_caps={sample.pressure_caps}")
     if sample.digressions:
         print(f"digressions={sample.digressions}")
     if sample.l1_extras:

@@ -60,6 +60,28 @@ CONTRAST_RE = re.compile(rf"(?:{CONTRAST_TERMS})")
 LITERATURE_ATTR_RE = re.compile(rf"(?:{LITERATURE_ATTR_TERMS})")
 
 _CLAUSE_SEPS = ("。", "；", ";", "！", "!", "？", "?", "\n")
+# 右侧否定只在同一分句内生效：逗号后另起一题（如「设置申报截止日期，逾期不可申请」）
+# 的「不可」否定的是别的动作，不是前面的能力，故不计。
+_RIGHT_CLAUSE_SEPS = ("，", ",", "、")
+# 但只豁免「逾期/过期…不可…」这类「截止后动作」否定；其余跨逗号否定仍照旧生效。
+_POST_DEADLINE_HEAD_RE = re.compile(r"逾期|过期|超期|到期|过时")
+# 「报名截止后不可再报」是截止本身的后果表述（不是否定该功能），且常在无逗号时出现：
+# 时间/承接连接词紧贴否定词时同样豁免。
+_POST_ACTION_HEAD_RE = re.compile(r"(?:后|之后|以后|则|即|起)$")
+
+
+def _right_negated(raw: str) -> bool:
+    """右侧窗口是否真的否定了前面的能力（「逾期不可申请」「截止后不可再报」不算否定能力）。"""
+    for m in RIGHT_NEGATION_RE.finditer(raw):
+        head = raw[max(0, m.start() - 8) : m.start()]
+        if _POST_ACTION_HEAD_RE.search(head):
+            continue
+        if any(sep in raw[: m.start()] for sep in _RIGHT_CLAUSE_SEPS) and (
+            _POST_DEADLINE_HEAD_RE.search(head)
+        ):
+            continue
+        return True
+    return False
 
 
 def _left_clause(text: str) -> str:
@@ -134,7 +156,7 @@ def pattern_mentioned(
         if NEGATION_RE.search(chunk):
             continue
         right = _right_clause(text[m.end() : m.end() + window])
-        if RIGHT_NEGATION_RE.search(right):
+        if _right_negated(right):
             continue
         if ignore_contrast:
             if CONTRAST_RE.search(chunk) or CONTRAST_RE.search(right):
@@ -164,3 +186,78 @@ def dedupe_out_scope_vs_features(
         if len(outs) >= limit:
             break
     return outs
+
+
+def hints_mentioned(
+    text: str,
+    hints: tuple[str, ...],
+    *,
+    window: int = 48,
+    ignore_contrast: bool = True,
+) -> bool:
+    """任一 hint 在正文里「正向提及」（否定/对比/文献转述语境不计）。
+
+    场景 / 口径扫描一律走本函数；不要退回裸子串 ``any(k in text)``，
+    否则开题里的对比句与「不做 X」会被当成承诺。
+    """
+    for hint in hints or ():
+        if keyword_mentioned(text, hint, window=window, ignore_contrast=ignore_contrast):
+            return True
+    return False
+
+
+# --- 结算边界（维度判定，不是逐功能词）----------------------------------------
+# 工厂口径：毕设交付「系统内支付」（选渠道 + 支付密码 + 扣账户余额）；
+# 只有材料**承诺对外资金清算**（商户 / 支付接口 / 分账 / 真实扣款）才超范围。
+# 判据看「渠道词附近的语境」，不为每个同义写法补一条否定词。
+SETTLEMENT_CHANNEL_RE = re.compile(
+    r"支付宝|微信支付|微信\s*支付|银联|财付通|第三方支付|支付接口|支付平台|银行卡支付"
+)
+# 渠道附近出现「对外清算」证据 → settlement=external
+SETTLEMENT_EXTERNAL_NEAR_RE = re.compile(
+    r"对接|接入|调用|开通|申请.{0,6}接口|商户|清算|分账|真实扣款|真实支付|"
+    r"支付接口|SDK|回调|对账|结算|打款|直连|聚合支付|收款码"
+)
+# 渠道附近出现「系统内记账」证据 → settlement=in_system
+SETTLEMENT_IN_SYSTEM_NEAR_RE = re.compile(
+    r"系统内|账户余额|余额|扣减|模拟|假(?:的|支付)|虚拟|演示|不接入|不对接|"
+    r"不用真|无真|非真|密码即可|输密码即可|本地|账号内"
+)
+# 无渠道词时的直接证据（「本系统采用模拟支付」「不对接第三方商户清算」等）
+SETTLEMENT_IN_SYSTEM_DIRECT_RE = re.compile(
+    r"模拟支付|假的就行|假的即可|假支付|虚拟支付|系统内支付|系统内扣款|系统内余额|"
+    r"不接入第三方|不对接第三方|不对接微信|不对接支付宝|不对接商户|无真支付|非真支付"
+)
+
+
+def settlement_mode(text: str, *, window: int = 64) -> str:
+    """材料承诺的结算边界：``external`` / ``in_system`` / ``unknown``。
+
+    - 只看渠道词附近的语境，不要求材料写「模拟」二字：
+      选支付宝/微信 + 支付密码 / 账户余额 = ``in_system``；
+      对接商户 / 支付接口 / 分账 / 清算 = ``external``。
+    - 否定语境（「不对接微信支付商户」）不算对外承诺。
+    - accept / 超范围判定共用；新增同义写法请改本维度，不要逐条加否定词。
+    """
+    t = (text or "").strip()
+    if not t:
+        return "unknown"
+    external = False
+    in_system = False
+    for m in SETTLEMENT_CHANNEL_RE.finditer(t):
+        left = _left_clause(t[max(0, m.start() - window) : m.start()])
+        right = _right_clause(t[m.end() : m.end() + window])
+        near = f"{left}{right}"
+        negated = bool(NEGATION_RE.search(left) or RIGHT_NEGATION_RE.search(right))
+        if not negated and SETTLEMENT_EXTERNAL_NEAR_RE.search(near):
+            external = True
+        if negated or SETTLEMENT_IN_SYSTEM_NEAR_RE.search(near):
+            in_system = True
+    if external:
+        return "external"
+    if in_system or SETTLEMENT_IN_SYSTEM_DIRECT_RE.search(t):
+        return "in_system"
+    if SETTLEMENT_CHANNEL_RE.search(t):
+        # 只点名渠道、未承诺对外清算 → 演示级系统内支付（demoPay 口径）
+        return "in_system"
+    return "unknown"

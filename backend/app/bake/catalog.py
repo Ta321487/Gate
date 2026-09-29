@@ -605,10 +605,26 @@ def domain_covers_archetypes(domain: str, archetypes: list[str]) -> bool:
     return all(domain_covers_archetype(domain, a) for a in archetypes)
 
 
+# 工厂交叉预设样例头部会声明「交叉路径：X-…（ARCH-FLOW + ARCH-TRADE）」。
+# 该声明属于开题正文：行业皮软旁路（点餐不抬单据等）不得吞掉声明的第二主路径。
+_DECLARED_CROSS_RE = re.compile(r"交叉路径[：:][^\n]*")
+_ARCH_TOKEN_RE = re.compile(r"ARCH-[A-Z]+")
+
+
+def declared_cross_archetypes(text: str) -> set[str]:
+    """开题显式声明交叉路径时返回声明的行为并集；无声明返回空集。"""
+    out: set[str] = set()
+    for line in _DECLARED_CROSS_RE.findall(text or ""):
+        out.update(_ARCH_TOKEN_RE.findall(line))
+    return out
+
+
 def reconcile_match(
     archetype: str,
     domain: str,
     archetypes: list[str] | None = None,
+    *,
+    proposal_text: str = "",
 ) -> tuple[str, str, list[str], list[str]]:
     """行为优先：多 ARCH 并集。
 
@@ -622,6 +638,12 @@ def reconcile_match(
         arches = ["ARCH-CRUD"]
     dom = domain if domain in DOMAINS else "DOM-GENERIC"
     dom_label = (DOMAINS.get(dom) or {}).get("label") or dom
+    declared = declared_cross_archetypes(proposal_text)
+    # 开题声明交叉路径（工厂 X-0x 样例）：行业皮盖不住声明的行为时，
+    # 不做「对比/附属」软裁剪，交给下方「丢硬路径 → GENERIC」按真交叉处理。
+    declares_cross = bool(declared) and not domain_covers_archetypes(dom, sorted(declared))
+    if declares_cross:
+        notes.append("提示：开题声明交叉路径，按声明行为并集出包（行业皮不吞第二主路径）。")
 
     if arches == ["ARCH-CRUD"]:
         promoted = _DOMAIN_DEFAULT_ARCH.get(dom)
@@ -745,6 +767,7 @@ def reconcile_match(
             dom in _soft_reserve_domains
             and "ARCH-RESERVE" in arches
             and not domain_covers_archetype(dom, "ARCH-RESERVE")
+            and not declares_cross
         ):
             arches = [a for a in arches if a != "ARCH-RESERVE"]
             if dom == "DOM-CINEMA":
@@ -763,6 +786,7 @@ def reconcile_match(
             dom in _soft_trade_domains
             and "ARCH-TRADE" in arches
             and not domain_covers_archetype(dom, "ARCH-TRADE")
+            and not declares_cross
         ):
             arches = [a for a in arches if a != "ARCH-TRADE"]
             notes.append(
@@ -774,6 +798,7 @@ def reconcile_match(
             dom in _soft_flow_domains
             and "ARCH-FLOW" in arches
             and not domain_covers_archetype(dom, "ARCH-FLOW")
+            and not declares_cross
         ):
             arches = [a for a in arches if a != "ARCH-FLOW"]
             notes.append(
@@ -785,6 +810,7 @@ def reconcile_match(
             dom in _soft_stock_domains
             and "ARCH-STOCK" in arches
             and not domain_covers_archetype(dom, "ARCH-STOCK")
+            and not declares_cross
         ):
             arches = [a for a in arches if a != "ARCH-STOCK"]
             notes.append(
@@ -983,8 +1009,15 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         scored, DOMAINS, fallback="DOM-GENERIC", title=title
     )
     # 借阅+座位：题名双写时易被会议室/预约皮抢走；行业皮先落图书再 reconcile → 真交叉降通用
+    # 「图书馆」只是地点词，必须有真实借阅行为（借阅/借还/借书/还书/续借）才算交叉；
+    # 否则「图书馆座位预约」应落 DOM-MEETING（座位时段预约）。
+    _borrow_words = ("借阅", "借还", "借书", "还书", "续借")
+    _has_borrow = any(k in title for k in _borrow_words) or any(
+        k in scored for k in _borrow_words
+    )
     if (
-        any(k in title for k in ("图书", "借阅", "图书馆"))
+        _has_borrow
+        and any(k in title for k in ("图书", "借阅", "图书馆"))
         and any(k in scored for k in ("座位预约", "研习室", "自习座位", "图书馆座位"))
         and dom_kw in ("DOM-MEETING", "DOM-GENERIC", "DOM-HOTEL")
     ):
@@ -1069,7 +1102,9 @@ def match_text(text: str, filename: str = "") -> MatchResult:
             dom_kw = "DOM-CLUB"
             dom_conf = min(0.95, 0.45 + club[1] * 0.12)
             dom_hits = list(dict.fromkeys(list(club[2]) + list(dom_hits) + [tip]))
-    arch, dom, arches, recon_notes = reconcile_match(kw_primary, dom_kw, arches)
+    arch, dom, arches, recon_notes = reconcile_match(
+        kw_primary, dom_kw, arches, proposal_text=text
+    )
     confidence = _confidence_after_reconcile(
         arch_conf,
         dom_conf,

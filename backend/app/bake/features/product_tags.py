@@ -1,4 +1,4 @@
-"""商品标签 product_tags：开题写明「标签」才挂；仅 DOM-SHOP。
+"""商品标签 product_tags：开题写明「标签」才挂；DOM-SHOP / FOOD / CINEMA。
 
 推广论坛 tag + 关联表模式；不靠「包邮/热门/新品」等模糊词单独开岛。
 论坛域已有标签，本岛不挂、不另起第二套表。
@@ -12,7 +12,7 @@ from app.bake.proposal_lexicon import keyword_mentioned
 
 PRODUCT_TAGS_CAP = "product_tags"
 
-_SHOP_DOMAINS = frozenset({"DOM-SHOP"})
+_PRODUCT_TAGS_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 # 必须点名标签；包邮/热门/新品只作种子候选词，不作挂载触发
 _TAG_ANCHORS = (
     "标签",
@@ -20,6 +20,8 @@ _TAG_ANCHORS = (
     "多标签",
     "标签筛选",
     "标签云",
+    "菜品标签",
+    "影片标签",
 )
 
 
@@ -43,7 +45,7 @@ def merge_product_tags_capabilities(
     # 论坛已有标签 runtime，禁止再挂本岛
     if (domain or "") == "DOM-FORUM":
         return out
-    if (domain or "") not in _SHOP_DOMAINS:
+    if (domain or "") not in _PRODUCT_TAGS_DOMAINS:
         return out
     if "archive" not in out:
         return out
