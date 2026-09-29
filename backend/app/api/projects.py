@@ -143,11 +143,12 @@ async def list_projects(
             items = [p for p in items if p.status == "generating"]
         elif filter == "done":
             # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
+            # verify_stale=False：只读后台投影缓存，不现场遍历工作区（列表是高频只读投影）
             items = [
                 p
                 for p in items
                 if p.status in ("generated", "running")
-                and project_svc.is_zip_downloadable(p)
+                and project_svc.is_zip_downloadable(p, verify_stale=False)
             ]
         elif filter == "pending":
             # 待审 = 质检可下、尚未人工标记（履约 backlog）
@@ -155,7 +156,7 @@ async def list_projects(
                 p
                 for p in items
                 if p.status in ("generated", "running")
-                and project_svc.is_zip_downloadable(p)
+                and project_svc.is_zip_downloadable(p, verify_stale=False)
                 and project_svc.normalize_delivery_mark(
                     getattr(p, "delivery_mark", None)
                 )
@@ -187,7 +188,7 @@ async def list_projects(
                 if p.status == "failed"
                 or (
                     p.status in ("generated", "running")
-                    and not project_svc.is_zip_downloadable(p)
+                    and not project_svc.is_zip_downloadable(p, verify_stale=False)
                 )
             ]
         summaries = []
@@ -198,7 +199,9 @@ async def list_projects(
             s.delivery_mark = project_svc.normalize_delivery_mark(
                 getattr(p, "delivery_mark", None)
             )
-            s.download_blocked_reason = project_svc.delivery_block_reason(p)
+            s.download_blocked_reason = project_svc.delivery_block_reason(
+                p, verify_stale=False
+            )
             s.review_status = review_status_of(p)
             summaries.append(s)
         return summaries

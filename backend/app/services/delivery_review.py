@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -118,6 +119,55 @@ def is_zip_stale(project: Project, workspace: Path | None = None) -> bool:
     if not ws.is_dir():
         return False
     return workspace_delivery_hash(ws) != packed
+
+
+# 「合卷后工程是否变更」要遍历工作区（单个项目约 1.4 万文件 / 近 70ms），
+# 列表与 /stats 每次 GET 都现场重算会把事件循环堵住近 1 秒（首页白等的主因）。
+# 因此：后台对账线程负责重算并写缓存，请求投影只读缓存（TTL 与列表 checklist
+# 投影同量级）；下载/详情等写路径仍走 is_zip_stale 现场核验。
+_ZIP_STALE_TTL_SEC = 20.0
+_zip_stale_cache: dict[str, tuple[float, bool]] = {}
+
+
+def reset_zip_stale_cache() -> None:
+    """清空过期投影缓存（测试隔离；工作区整体重建后也可主动清）。"""
+    _zip_stale_cache.clear()
+
+
+def _zip_stale_cache_key(project: Project) -> str:
+    pid = str(getattr(project, "id", "") or "")
+    if pid:
+        return pid
+    return f"ws:{getattr(project, 'workspace_path', '') or ''}"
+
+
+def prime_zip_stale(project: Project, stale: bool) -> None:
+    """已知结论时直接写缓存（合卷后必然未过期，用刚算出的指纹口径）。"""
+    _zip_stale_cache[_zip_stale_cache_key(project)] = (time.monotonic(), bool(stale))
+
+
+def refresh_zip_stale(project: Project, workspace: Path | None = None) -> bool:
+    """重算并写缓存；只应在后台线程等非请求路径调用（会遍历工作区）。"""
+    stale = is_zip_stale(project, workspace)
+    prime_zip_stale(project, stale)
+    return stale
+
+
+def is_zip_stale_cached(
+    project: Project, workspace: Path | None = None, *, compute: bool = True
+) -> bool:
+    """TTL 缓存版 is_zip_stale。
+
+    compute=False 供列表 / 统计等高频只读投影：只读缓存，未命中按「未过期」返回
+    （与「尚未合卷」同口径；下载与详情仍会现场核验，不会放行过期包）。
+    """
+    key = _zip_stale_cache_key(project)
+    hit = _zip_stale_cache.get(key)
+    if hit is not None and (time.monotonic() - hit[0]) < _ZIP_STALE_TTL_SEC:
+        return hit[1]
+    if not compute:
+        return False
+    return refresh_zip_stale(project, workspace)
 
 
 def checklist_done_names(checklist: list[Any]) -> list[str]:
@@ -638,6 +688,9 @@ def finalize_pack(
     st["workspace_hash_at_pack"] = ws_hash
     st["last_pack_at"] = _utc_now()
     save_review_state(project, st)
+    # 刚打完包，指纹就是当前工程：过期投影立即置为 False，
+    # 免得列表投影在 TTL 内沿用旧结论挡住 zip_ready 升位。
+    prime_zip_stale(project, False)
     # 有答辩 PPT 时：业务指纹变则标脏（保留 deck）
     try:
         from app.services.defense_ppt.fingerprint import mark_biz_dirty_if_changed

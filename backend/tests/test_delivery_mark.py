@@ -296,6 +296,86 @@ def test_sync_promotes_zip_when_idle_and_gates_ok(tmp_path):
     assert p.zip_ready is True
 
 
+def test_delivery_block_reason_projection_skips_workspace_scan(tmp_path):
+    """只读投影（verify_stale=False）不扫工作区；写路径仍现场拦下过期包。"""
+    from app.services import delivery_review as dr
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "App.vue").write_text("<template>x</template>", encoding="utf-8")
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        id="p-projection",
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=True,
+        gates={"overall": True, "zip_allowed": True},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"workspace_hash_at_pack": "stale-hash"},
+    )
+    dr.reset_zip_stale_cache()
+    # 冷投影：未命中按「未过期」返回，且完全不遍历工作区（列表/统计口径）
+    with patch("app.services.delivery_review.workspace_delivery_hash") as scan:
+        assert project_svc.delivery_block_reason(p, verify_stale=False) is None
+        assert project_svc.is_zip_downloadable(p, verify_stale=False) is True
+        scan.assert_not_called()
+    # 写路径（下载/标记交付）默认现场核验，仍会拦下过期包
+    with patch(
+        "app.services.delivery_review.workspace_delivery_hash", return_value="changed"
+    ):
+        assert project_svc.delivery_block_reason(p) == project_svc.MSG_DOWNLOAD_ZIP_STALE
+
+
+def test_reconcile_scans_workspace_once_per_project(tmp_path):
+    """后台对账里 checklist 投影与过期投影共用一次工作区遍历（首页变慢的主因）。"""
+    from app.services import delivery_review as dr
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    zip_file = tmp_path / "demo.zip"
+    zip_file.write_bytes(b"PK")
+    p = SimpleNamespace(
+        id="p-share",
+        status="generated",
+        workspace_path=str(ws),
+        zip_ready=True,
+        gates={"overall": True, "zip_allowed": True},
+        zip_path=str(zip_file),
+        delivery_mark="none",
+        checklist=[],
+        spec={},
+        delivery_review={"workspace_hash_at_pack": "packed"},
+    )
+    dr.reset_zip_stale_cache()
+    project_svc.reset_checklist_list_cache()
+    fake_gates = {
+        "overall": True,
+        "zip_allowed": True,
+        "p0a": {"ok": True, "label": "结构"},
+        "checklist": [{"name": "登录", "result": "done"}],
+    }
+    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+        with patch(
+            "app.services.projects.sync_project_runtime",
+            return_value=("stopped", "stopped", False),
+        ):
+            with patch(
+                "app.services.delivery_review.workspace_delivery_hash",
+                return_value="packed",
+            ) as scan:
+                project_svc.reconcile_list_items([p])
+    assert scan.call_count == 1
+    assert p.zip_ready is True
+    # 对账已写好投影：随后只读路径不再扫盘
+    with patch("app.services.delivery_review.workspace_delivery_hash") as scan:
+        assert project_svc.delivery_block_reason(p, verify_stale=False) is None
+        scan.assert_not_called()
+
+
 def test_sync_promotes_zip_after_active_round_pass(tmp_path):
     ws = tmp_path / "ws"
     ws.mkdir()

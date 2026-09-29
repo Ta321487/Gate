@@ -152,11 +152,20 @@ def workspace_or_reason(project: Project) -> tuple[Path | None, str | None]:
     return ws, None
 
 
-def delivery_block_reason(project: Project) -> str | None:
-    """None = 可下载 ZIP。唯一文案来源（列表/详情 API 下发，前端勿再抄一份）。"""
+def delivery_block_reason(project: Project, *, verify_stale: bool = True) -> str | None:
+    """None = 可下载 ZIP。唯一文案来源（列表/详情 API 下发，前端勿再抄一份）。
+
+    verify_stale=False 供列表 / /stats 等高频只读投影：过期判定只读后台投影缓存，
+    不现场遍历工作区（单项目约 1.4 万文件）；下载/详情等写路径保持现场核验。
+    """
     if project.status == ProjectStatus.generating.value:
         return MSG_DOWNLOAD_GENERATING
-    from app.services.delivery_review import get_review_state, is_zip_stale, open_fix_notes
+    from app.services.delivery_review import (
+        get_review_state,
+        is_zip_stale,
+        is_zip_stale_cached,
+        open_fix_notes,
+    )
 
     st = get_review_state(project)
     last_verify = st.get("last_verify") if isinstance(st.get("last_verify"), dict) else {}
@@ -164,8 +173,14 @@ def delivery_block_reason(project: Project) -> str | None:
         return MSG_DOWNLOAD_REVIEW_REGRESSION
     if st.get("status") == "active" and open_fix_notes(st):
         return MSG_DOWNLOAD_OPEN_FIX_NOTES
-    if getattr(project, "workspace_path", "") and is_zip_stale(project):
-        return MSG_DOWNLOAD_ZIP_STALE
+    if getattr(project, "workspace_path", ""):
+        stale = (
+            is_zip_stale(project)
+            if verify_stale
+            else is_zip_stale_cached(project, compute=False)
+        )
+        if stale:
+            return MSG_DOWNLOAD_ZIP_STALE
     zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
     if zip_ok and zip_exists:
@@ -177,9 +192,9 @@ def delivery_block_reason(project: Project) -> str | None:
     return MSG_DOWNLOAD_GATES
 
 
-def is_zip_downloadable(project: Project) -> bool:
+def is_zip_downloadable(project: Project, *, verify_stale: bool = True) -> bool:
     """与 delivery_block_reason 同源：True = 机器质检可下。"""
-    return delivery_block_reason(project) is None
+    return delivery_block_reason(project, verify_stale=verify_stale) is None
 
 
 def preview_start_block_reason(project: Project) -> str | None:
@@ -512,7 +527,7 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     from app.services.delivery_review import (
         apply_qa_to_gates,
         get_review_state,
-        is_zip_stale,
+        is_zip_stale_cached,
         review_allows_zip_promote,
     )
 
@@ -526,7 +541,8 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     downloadable = gates_allow_delivery(new_gates)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
 
-    if downloadable and zip_exists and is_zip_stale(project, ws):
+    # 过期判定与列表投影共用 TTL 缓存：一次对账只遍历一次工作区（合卷时已置 False）
+    if downloadable and zip_exists and is_zip_stale_cached(project, ws):
         downloadable = False
     can_promote = review_allows_zip_promote(project)
     # 门禁回退时关掉 zip_ready，并清掉人工已审待发/已发出
@@ -582,6 +598,8 @@ def reconcile_list_items(
     items: list[Project], *, listening: set[int] | None = None
 ) -> bool:
     """批量收敛 checklist/运行态（后台投影；供 to_thread，勿在持读事务时调用）。"""
+    from app.services.delivery_review import is_zip_stale_cached
+
     dirty = False
     for p in items:
         if sync_checklist_for_list(p):
@@ -591,6 +609,10 @@ def reconcile_list_items(
         )
         if changed:
             dirty = True
+        # 「合卷后工程是否变更」要在后台线程里重算好，列表/统计只读缓存；
+        # 生成中的项目跳过 checklist 扫描，这里也要补一次，否则列表没有投影值。
+        if getattr(p, "workspace_path", ""):
+            is_zip_stale_cached(p)
     return dirty
 
 
@@ -1041,8 +1063,9 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
 
 
 async def stats(db: AsyncSession) -> dict:
-    # 只读库计数，不扫工作区。zip_ready / delivery_mark 由 /projects 列表收敛；
-    # 同页并行时两边都扫盘会堵事件循环，且曾占着 SQLite 读锁互相 busy 数秒。
+    # 只读库计数 + 只读投影缓存，不扫工作区。zip_ready / delivery_mark 由 /projects 列表收敛；
+    # 同页并行时两边都扫盘会堵事件循环（每个项目要遍历约 1.4 万文件），
+    # 且曾占着 SQLite 读锁互相 busy 数秒。过期判定由后台对账线程投影。
     result = await db.execute(select(Project))
     items = list(result.scalars().all())
 
@@ -1061,7 +1084,7 @@ async def stats(db: AsyncSession) -> dict:
         for p in items
         if p.status
         in (ProjectStatus.generated.value, ProjectStatus.running.value)
-        and is_zip_downloadable(p)
+        and is_zip_downloadable(p, verify_stale=False)
         and normalize_delivery_mark(getattr(p, "delivery_mark", None)) == "none"
     )
     delivery_ready = sum(

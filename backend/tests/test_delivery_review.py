@@ -226,5 +226,74 @@ class DeliveryReviewTests(unittest.TestCase):
         self.assertIsNone(dr.require_pre_generate_ack(p))
 
 
+class ZipStaleProjectionCacheTests(unittest.TestCase):
+    """过期投影 TTL 缓存：读路径不扫盘，重算只在后台/写路径发生。"""
+
+    def setUp(self):
+        dr.reset_zip_stale_cache()
+
+    def tearDown(self):
+        dr.reset_zip_stale_cache()
+
+    def _project(self, ws):
+        return SimpleNamespace(
+            id="p-proj",
+            workspace_path=str(ws),
+            delivery_review={"workspace_hash_at_pack": "packed"},
+        )
+
+    def test_read_only_miss_never_scans(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td) / "ws"
+            ws.mkdir()
+            p = self._project(ws)
+            with patch.object(dr, "workspace_delivery_hash") as scan:
+                self.assertFalse(dr.is_zip_stale_cached(p, compute=False))
+                scan.assert_not_called()
+
+    def test_compute_writes_cache_then_reads_hit(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td) / "ws"
+            ws.mkdir()
+            p = self._project(ws)
+            with patch.object(dr, "workspace_delivery_hash", return_value="changed"):
+                self.assertTrue(dr.is_zip_stale_cached(p))
+            with patch.object(dr, "workspace_delivery_hash") as scan:
+                self.assertTrue(dr.is_zip_stale_cached(p))
+                self.assertTrue(dr.is_zip_stale_cached(p, compute=False))
+                scan.assert_not_called()
+
+    def test_prime_overrides_ttl_window(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td) / "ws"
+            ws.mkdir()
+            p = self._project(ws)
+            dr.prime_zip_stale(p, False)
+            self.assertFalse(dr.is_zip_stale_cached(p, compute=False))
+            self.assertFalse(dr.is_zip_stale_cached(p))
+
+    def test_expired_entry_recomputes(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td) / "ws"
+            ws.mkdir()
+            p = self._project(ws)
+            dr.prime_zip_stale(p, False)
+            with patch.object(dr, "_ZIP_STALE_TTL_SEC", 0.0):
+                with patch.object(dr, "workspace_delivery_hash", return_value="changed") as scan:
+                    self.assertTrue(dr.is_zip_stale_cached(p))
+                    scan.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
