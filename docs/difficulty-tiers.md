@@ -1,6 +1,7 @@
 # 开题难度分层（L0–L3）
 
-> **本文只负责**：可写 / 可加价 / 仍不接的分层，以及开题怎么写建议。
+> **本文只负责**：可写 / 可加价 / 仍不接的分层，以及开题怎么写建议。  
+> **不负责**：cap 挂载域清单（[`capabilities.md`](./capabilities.md)）；开题密功能全表（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
@@ -43,7 +44,7 @@
 | **二级审批** | 初审→终审 | ★★ | 已落地：`pending→pending_final→approved`；终审需总管；DORM/PROPERTY/IT 默认开 |
 | **互斥规则** | 两门课不能同选 | ★★ | 已落地：档案 `mutex_code`；同码进行中不可并存；COURSE 默认开 |
 | **分类限额** | 每类最多选 N 门 | ★★ | 已落地：`ticket.categoryLimit`；COURSE 默认每类 1 门 |
-| **评分评价** | 满意度 1～5 分 | ★★ | 已落地：`TicketRateDialog` + `POST /rate`；工作台均分；ACTIVITY/LOST 默认开 |
+| **评分评价** | 满意度 1～5 分 | ★★ | 已落地：`TicketRateDialog` + `POST /rate`；工作台均分；**ACTIVITY/LOST/TOUR** 默认开（单据评价，≠交易 `order_review`） |
 | **强制附件** | 认领须上传证明 | ★ | 已落地：`requireAttach` + 上传；LOST 默认开 |
 | **周历视图** | 周视图看课表 | ★★ | 已落地：只读 `WeekCalendar`；COURSE/ACTIVITY 默认开 |
 | **软件签到码** | 活动口令签到 | ★★ | 已落地：`checkin_code` + `POST /checkin`；ACTIVITY 默认开 |
@@ -51,7 +52,7 @@
 | **软删除** | 下架可恢复 | ★ | 已落地：`deleted_at`；LIBRARY/EQUIP/MEDIA/MUSIC/BLOG/FORUM/ASSET/**SHOP/FOOD** 默认开 |
 | **ECharts 统计** | 工作台图表 | ★ | ✅ 已在 L0；勿扩成自定义报表 |
 | **CSV 导入** | 批量录入主数据 | ★ | ✅ 已在 L0（仅档案；模板+校验） |
-| **商品收藏** | 收藏夹 / wishlist | ★ | 已落地：`favorites` + `FavoriteStore` + `/favorites`；默认 SHOP/FOOD；开题扫「收藏」可挂其它 `order_lines` 域 |
+| **收藏** | 收藏夹 / wishlist | ★ | 已落地：`favorites`；**挂载域列表见 [`capabilities.md`](./capabilities.md)**，本文不重复 |
 | **优惠券** | 领取 / 我的券 / 核销 | ★★ | 已落地：`coupon`；`promo_coupon`+`user_coupon`；领券中心→Cart 选码→核销→定时过期；未领亦可填模板码；与满减取更优 |
 | **订单评价** | 星级+文字 / 商家回复 | ★★ | 已落地：`order_review`；**材料命中才挂**；完成单可评；管理端回复 |
 | **超时关单** | 待确认自动取消 | ★ | 已落地：**无独立 cap**；扫「超时取消」→ yml 30 分钟 + `DemoScheduleJobs` |

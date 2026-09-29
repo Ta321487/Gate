@@ -1,6 +1,7 @@
 # 能力积木（cap 矩阵）
 
-> **本文只负责**：接题可认的 cap id、挂载口径与壳/附加能力表；对齐 `capabilities.py`。
+> **本文只负责**：接题可认的 **cap id**、挂载口径（域默认 / 开题才挂 / 壳附带）与壳/附加能力表；对齐 `capabilities.py`。  
+> **不负责**：按域罗列开题密功能与待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；DOM 分组（[`domains.md`](./domains.md)）。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
@@ -48,8 +49,8 @@
 | `archive` | ✅ | 分类 + 业务对象 CRUD / 检索 / 详情 | 图书、设备、商品、菜品、片单… |
 | `ticket_flow` | ✅ | 提交→审/受理→完结；我的与待办 | 借阅、报修、报名… |
 | `quota` | ✅ | 库存 / 名额占用与归还 | 借阅、选课、设备… |
-| `deadline` | ✅ | 到期、逾期、催办、可选费用 | 借阅、租赁… |
-| `loan_renew` | ✅ | 借出中/逾期单据延长应还日；次数上限 | **域默认** LIBRARY / EQUIP / INSTRUMENT（E-01）；其它借还壳开题写「续借」才挂 |
+| `deadline` | ✅ | 到期、逾期、催办、可选费用；报修三域与 **PARCEL** 为**处理时限/催领**（域默认）；借还壳另有 **应还日前 N 天站内提前催还**（`dueSoonDays` 域默认） | 借阅、租赁、宿舍/物业/IT 报修、驿站催领… |
+| `loan_renew` | ✅ | 借出中/逾期单据延长应还日；**次数上限** `maxRenew` | **域默认** LIBRARY / EQUIP / INSTRUMENT（E-01）；其它借还壳开题写「续借」才挂 |
 | `waitlist` | ✅ | 名额满可候补；完结/回补后 FIFO 晋升待审 | **域默认** ACTIVITY / COURSE（E-02）；TOUR / LOST 等须 ticket+quota 且开题写「候补」才挂 |
 | `time_conflict` | ✅ | 起止时段相交 + 报名截止 | 选课、活动报名… |
 | `slot_reserve` | ✅ | 资源时段占坑、取消与履约办结 | 挂号、车位、会议室、美发、客房 |
@@ -64,7 +65,7 @@
 | `dm` | ✅ | 站内一对一私信（短轮询；不对接 IM SDK） | **开题写「私信/客服/在线沟通」才挂**；交易写「客服」或「与管理员/用户沟通」即挂；≠ guestbook |
 | `ai_assistant` | ✅ | 业务壳上的客服/导购/助手问答（Spring AI + DeepSeek；无 Key → FAQ） | **开题写「智能客服/导购/大模型问答」才挂**；≠ RAG/CNN 主产品；见 [ai-assistant-delivery.md](./ai-assistant-delivery.md) |
 | `item_comment` | ✅ | 档案详情下发表/列表评论；管理端删除 | **开题写「评论/影评/曲评…」才挂**；仅 MEDIA/MUSIC/BLOG；≠guestbook ≠论坛回帖 ≠订单评价 |
-| `favorites` | ✅ | 收藏夹：收藏/取消，再加购 | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；否则开题写「收藏」才挂 |
+| `favorites` | ✅ | 收藏夹：收藏/取消；交易域可再加购 | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；**开题写到才挂**：ACTIVITY / COURSE / TOUR / LOST / DATING，以及其它已有 `order_lines` 的壳 |
 | `post_like` | ✅ | 档案/帖一人一赞开关与计数 | **开题写「点赞」才挂**（E-03）；FORUM/BLOG/MEDIA/MUSIC；无域默认 |
 | `content_report` | ✅ | 用户举报→管理忽略/下架 | **开题写「举报」才挂**（E-03）；FORUM/DATING/BLOG；无域默认 |
 | `audit_log` | ✅ | 管理端关键写/登录记入 sys_audit_log；总管可查 | **开题写「操作/审计/登录日志」才挂**（E-04）；无域默认；仅登录日志则 loginOnly |

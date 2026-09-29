@@ -1,6 +1,7 @@
 # 领域换皮全覆盖清单（工厂）
 
 > **本文只负责**：换皮 / 新预设 / 新能力的 **ID 册**与状态列。  
+> **不负责**：开题密功能全表与待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；怎么审（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
 > **工厂怎么干活 / 怎么审**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)（材料→匹配→出包）。  
 > **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
 > **领域组表**：[`domains.md`](./domains.md)。  
@@ -394,7 +395,8 @@
 
 ### 交付审计进度（报名组）
 
-> **组结论（2026-08-12）**：**已收口**。`DOM-ACTIVITY` / `DOM-LOST` / `DOM-COURSE` / `DOM-TOUR`（深皮 S-30～37、P-31）：审计黄灯已清。  
+> **组结论（2026-08-12）**：**换皮/匹配已收口**。`DOM-ACTIVITY` / `DOM-LOST` / `DOM-COURSE` / `DOM-TOUR`（深皮 S-30～37、P-31）。  
+> 功能库存与待补**不在本册**，见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.3。  
 > **下一组（当时）**：交易 → 已于同日收口，见下节。
 
 | 批次 | 项 | 结论 | 日期 |

@@ -1,26 +1,30 @@
 # 领域清单（组 A–H）
 
-> **本文只负责**：薄域 DOM 分组、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
+> **本文只负责**：薄域 DOM 分组、各域**默认**能力组合、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
+> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
 
-薄配置，不是厚代码包。按**能力组合**分组；同组共享同一套运行时，差别主要在 schema 文案/种子/菜单。组 **H** 为真交叉（两套玩法）。
+**薄**指：不另起厚代码包；同组共运行时，差别主要在 schema 文案/种子/菜单。  
+**不**表示功能库存可以空——开题可碰项以密功能对照表为准。组 **H** 为真交叉（两套玩法）。
 
 | 相关专题 | 链接 |
 |----------|------|
 | 能力组合含义 | [`capabilities.md`](./capabilities.md) |
+| 开题密功能对照 | [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) |
 | 换皮 ID 册 / 组审进度 | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
 | 怎么审交付 | [`delivery-audit-rules.md`](./delivery-audit-rules.md) |
 
 ### A. 借用 / 占用流（能力齐，可先薄落地）
 
-出包表数 **10～15**（全厂下限仍是 6）。薄审单默认挂额度台账 / 时段占用 / 材料清单之一：管理端能管，用户端能看见。挂上的能力走现有 `ensure_*` 与基线 Store，不另起引擎。
+出包表数 **10～15**（全厂下限仍是 6）。薄审单默认挂额度台账 / 时段占用 / 材料清单之一：管理端能管，用户端能看见。挂上的能力走现有 `ensure_*` 与基线 Store，不另起引擎。  
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.1（级联「借用/占用」；跟进类见 §1.2，审批填报见 §1.5）。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
 | **DOM-LIBRARY** | 图书、图书馆、借阅、读者 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew** + **book_lost** |
-| **DOM-EQUIP** | 设备借用、器材、实验室物资 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew**（归还验图 + 档案「维修中」为域皮） |
+| **DOM-EQUIP** | 设备借用、器材、实验室物资 | archive + ticket_flow + quota + deadline + content + org_users + **recommend** + **loan_renew**（归还验图 + **用途必填** + 档案「维修中」为域皮） |
 | **DOM-ASSET** | 固定资产领用、耗材申领、物资台账、浅进销存 | archive + ticket_flow + quota + content + org_users + **stock_io**（无 deadline；与 EQUIP 设备借用区分；≠ 采购申购） |
 | **DOM-CRM** | 客户关系、客户跟进、销售线索 | archive + ticket_flow + content + org_users（轻量跟进单；不接公海/外呼） |
 | **DOM-EVENT** | 事件上报、公卫/院感、晨检随访、健康监测、隐患上报 | archive + ticket_flow + **archive_log** + content + org_users（档案 `event_case`、单据 `event_report`、记录 `archive_log`） |
@@ -30,7 +34,7 @@
 | **DOM-RECRUIT** | 校园招聘、岗位发布、简历投递 | archive + ticket_flow + content + org_users + **balance_ledger**（岗位 `job_post`、投递 `job_apply`） |
 | **DOM-GRADE** | 教务成绩、补考/成绩更正申请 | archive + ticket_flow + content + org_users（课程 `course_item`、申请 `grade_apply`）；我的成绩申请填单优先；演示库按学号软筛本人课（无匹配回退开放课）；`grade_score` 域默认登记、课内名次、CSV 导入导出、改分留痕（含删除留痕）、分布与及格率 |
 | **DOM-INTERN** | 实习岗位、实习周报审阅、鉴定本地签章 | archive + ticket_flow + content + org_users + **e_sign**（实习岗 `intern_post`、周报 `week_report`；≠ CA）；默认我的周报填单选岗；开题绑岗→资料 `internOrg`/`internPost` + matchProfileRoom |
-| **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + content + org_users + **parcel_shelf**（包裹 `parcel`、取件 `parcel_claim`）；我的取件 + 手机号本人件硬筛 + 凭码；开题写「寄件」另挂 **parcel_ship** |
+| **DOM-PARCEL** | 校园快递驿站、取件核销 | archive + ticket_flow + quota + **deadline** + content + org_users + **parcel_shelf**（包裹 `parcel`、取件 `parcel_claim`）；催领域默认；我的取件 + 手机号本人件硬筛 + 凭码；开题写「寄件」另挂 **parcel_ship** |
 | **DOM-SEAL** | 用章、印章申请、公章使用 | archive + ticket_flow + content + org_users + **balance_ledger**（事项 `seal_item`、申请 `seal_apply`） |
 | **DOM-FLEET** | 用车申请、公务用车、派车 | archive + ticket_flow + content + org_users + **occupy_span** + **time_conflict**（车辆 `fleet_vehicle`、申请 `fleet_apply`） |
 | **DOM-CERT** | 开具证明、在读/在职/成绩单证明 | archive + ticket_flow + content + org_users + **material_check**（类型 `cert_type`、申请 `cert_apply`） |
@@ -68,9 +72,11 @@
 
 ### B. 报修 / 工单流（能力齐）
 
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.3。
+
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
-| **DOM-DORM** | 宿舍报修、水电、寝室 | ticket_flow + content + org_users（±archive）；报修表单按资料楼栋/房间预填 lookup |
+| **DOM-DORM** | 宿舍报修、水电、寝室 | ticket_flow + **deadline** + content + org_users；报修表单按资料楼栋/房间预填 lookup |
 | **DOM-PROPERTY** | 物业报修、社区维修 | 同上（house* / 校园皮 dorm*）；可选窄扫 **venue_clean** |
 | **DOM-IT** | 校园网报修、IT 运维工单 | 同上 |
 
@@ -83,7 +89,11 @@
 | **DOM-COURSE** | 选课、公选课（名额） | archive + ticket_flow + quota + content + org_users + **time_conflict** + **waitlist**（+ L1 互斥/分类限额） |
 | **DOM-TOUR** | 旅行社线路、跟团游报名、出团确认 | archive + ticket_flow + **quota** + content + org_users（线路 `tour_line`、报名 `tour_signup`；≠酒店≠校园活动≠拼车≠出差） |
 
+密功能 / 扫词岛 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.4。
+
 ### D. 交易 / 点餐（`order_lines` 已开）
+
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.6。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
@@ -94,6 +104,8 @@
 交易答辩口径：下单 → 管理确认/发货 → 用户看物流轨迹 → 完成；可选领券核销、售后、收藏再加购、评价。影院为选座确认后即时占座生成订单。
 
 ### E. 预约流（`slot_reserve` 已开）
+
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.7（含 INSTRUMENT）。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|
@@ -107,6 +119,8 @@
 预约答辩口径：选时段占坑 →（可选确认）→ 管理端履约办结 / 用户取消或改约。状态含 `completed`（入场/就诊/到店/入住离店等文案随 schema）。
 
 ### F. 兜底
+
+密功能见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.10。
 
 | 领域 ID | 覆盖 | 能力 |
 |---------|------|------|
@@ -128,6 +142,8 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
 
 ### G. 内容 / 媒资 / 社区（能力齐，可薄落地）
+
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.8；互动/匹配类（婚恋/双选/考试等）见 §1.9。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|

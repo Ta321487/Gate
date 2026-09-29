@@ -1,6 +1,7 @@
 # 工厂交付与审计（Agent 依据）
 
 > **本文只负责**：怎么审交付（主链路、红灯、老板小卡）。  
+> **不负责**：换皮 ID 进度（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；密功能是否待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）。  
 > **版本**：v5.3（2026-09-08）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。  
 > **索引**：[README.md](./README.md)。  
 > **清单册**（待办 ID / 状态列）：[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
@@ -103,13 +104,15 @@
 
 | 组 | 状态（2026-08-12） |
 |----|-------------------|
-| **借用 / 占用**（[domains.md](./domains.md) 组 A + 收口簇 CINEMA，47 域） | **已收口**（H23 + 档案列契约；详见清单册进度节） |
-| **报修 / 工单**（DORM / PROPERTY / IT） | **已收口**（H20 容量域皮、pending 种子、易混 M-17/18、S-21～25；详见清单册） |
-| **报名**（ACTIVITY / LOST / COURSE / TOUR …） | **已收口**（TOUR 截止/满员、档案列皮、M-19、S-30～37；详见清单册） |
-| **交易**（SHOP / FOOD …） | **已收口**（pending 订单、行业货皮、M-20、S-60～65；详见清单册） |
-| **预约**（MEETING / HOSPITAL / SALON / PARKING / HOTEL …） | **已收口**（行业种子+预约行、H20 表单皮、M-21、S-40～51；详见清单册） |
-| **内容**（BLOG / FORUM / MEDIA / MUSIC …） | **已收口**（行业种子、表白墙、M-22、S-70～74；详见清单册） |
-| 其它 / … | 内容组已收口；下一组按清单另开 |
+| **借用 / 占用**（级联借用组；清单册含 A 族大段） | **换皮/主路径已收口**。密功能待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.1 |
+| **跟进**（CRM / EVENT / ATTEND …） | 换皮随 A 族收口。密功能待补见密功能表 §1.2 |
+| **报修 / 工单**（DORM / PROPERTY / IT） | **换皮/主路径已收口**。待补见密功能表 §1.3 |
+| **报名**（ACTIVITY / LOST / COURSE / TOUR …） | **换皮/主路径已收口**。待补见密功能表 §1.4 |
+| **审批 / 填报**（SEAL / CERT / …） | 换皮随 A 族收口。待补见密功能表 §1.5 |
+| **交易**（SHOP / FOOD / CINEMA） | **换皮/主路径已收口**。待补见密功能表 §1.6 |
+| **预约**（MEETING / HOSPITAL / … / INSTRUMENT） | **换皮/主路径已收口**。待补见密功能表 §1.7 |
+| **内容 / 互动**（BLOG / FORUM / … / EXAM …） | **换皮/主路径已收口**。待补见密功能表 §1.8～§1.9 |
+| 其它 / … | 兜底 GENERIC 见 §1.10；下一组按清单另开 |
 
 
 ---

@@ -11,8 +11,8 @@
 
 | 文档 | 何时读 |
 |------|--------|
-| [capabilities.md](./capabilities.md) | 查 cap id、挂载口径（域默认 / 开题才挂 / 壳附带） |
-| [domains.md](./domains.md) | 查 `DOM-*` 分组 A–H、GENERIC/ARCH、Path B 真交叉 |
+| [capabilities.md](./capabilities.md) | 查 **cap id** 与挂载口径（域默认 / 开题才挂 / 壳附带） |
+| [domains.md](./domains.md) | 查 `DOM-*` 分组与**域默认**能力组合、GENERIC/ARCH、Path B |
 | [difficulty-tiers.md](./difficulty-tiers.md) | 开题可写到哪一层（L0–L3）、加价边界 |
 | [invariants.md](./invariants.md) | 库表 6–15、总管/子管/员工槽位、学生端持久化 |
 
@@ -21,8 +21,8 @@
 | 文档 | 何时读 |
 |------|--------|
 | [delivery-audit-rules.md](./delivery-audit-rules.md) | **怎么审**交付：主链路、红灯、老板小卡 |
-| [domain-skin-gap-analysis.md](./domain-skin-gap-analysis.md) | 换皮 **ID 册**与进度（M/S/P/C） |
-| [opening-feature-delivery-map.md](./opening-feature-delivery-map.md) | 开题密功能 → 工厂落点（非 AI） |
+| [domain-skin-gap-analysis.md](./domain-skin-gap-analysis.md) | 换皮 **ID 册**与进度（M/S/P/C）；不论功能库存 |
+| [opening-feature-delivery-map.md](./opening-feature-delivery-map.md) | 开题密功能 → 落点（已实现/扫词开/**待补**/不支持） |
 | [ai-opening-delivery-map.md](./ai-opening-delivery-map.md) | 开题 AI 表述 → 助手岛产出 |
 | [capability-expansion-batch.md](./capability-expansion-batch.md) | **已收口档案**：E-01～E-14 扩岛批次（勿当当前主线） |
 
