@@ -109,6 +109,24 @@
             @click="doFinePaid(row)"
           >{{ finePaidLabel }}</el-button>
           <el-button
+            v-if="canFineWaive(row)"
+            link
+            type="info"
+            @click="doFineWaive(row)"
+          >{{ fineWaiveLabel }}</el-button>
+          <el-button
+            v-if="canConfirmProcure(row)"
+            link
+            type="primary"
+            @click="doConfirmProcure(row)"
+          >{{ confirmProcureLabel }}</el-button>
+          <el-button
+            v-if="canToStockIn(row)"
+            link
+            type="success"
+            @click="doToStockIn(row)"
+          >{{ toStockInLabel }}</el-button>
+          <el-button
             v-if="canFinish(row)"
             link
             type="primary"
@@ -212,6 +230,14 @@ const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
 const dueLabel = computed(() => ticketDueLabel())
 const fineLabel = computed(() => ticketFineLabel())
 const finePaidLabel = computed(() => ticketFinePaidLabel())
+const allowFineWaive = computed(() => !!ticket.allowFineWaive)
+const fineWaiveLabel = computed(() => labels.value.fineWaiveLabel || '罚款减免')
+const allowProcureRef = computed(() => !!ticket.allowProcureRef)
+const confirmProcureLabel = computed(
+  () => labels.value.confirmProcureTransferLabel || '确认申购转入',
+)
+const procureToStockIn = computed(() => !!ticket.procureToStockIn)
+const toStockInLabel = computed(() => labels.value.toStockInLabel || '一键入库')
 const userLabel = computed(() => roleLabel('user', '申请人'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
@@ -261,6 +287,45 @@ async function doCompensate(row) {
   load()
 }
 
+function canConfirmProcure(row) {
+  return !!allowProcureRef.value && !!row && String(row.procureRefNo || '').trim()
+}
+
+async function doConfirmProcure(row) {
+  await ElMessageBox.confirm(
+    `确认申购单号「${row.procureRefNo}」已转入本领用单？`,
+    confirmProcureLabel.value,
+  )
+  try {
+    await http.post(`/api/tickets/${row.id}/confirm-procure-transfer`)
+    ElMessage.success('已确认申购转入')
+    load()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  }
+}
+
+function canToStockIn(row) {
+  if (!procureToStockIn.value || !row) return false
+  return row.status === 'approved' || row.status === 'returned' || row.status === 'completed'
+}
+
+async function doToStockIn(row) {
+  await ElMessageBox.confirm(
+    `将申购单「${row.title || row.id}」明细一键转入库存？`,
+    toStockInLabel.value,
+  )
+  try {
+    const res = await http.post(`/api/tickets/${row.id}/to-stock-in`)
+    const data = res.data?.data || res.data || {}
+    const n = data.stockIn?.count ?? data.count
+    ElMessage.success(n != null ? `已入库 ${n} 行` : '已入库')
+    load()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '入库失败')
+  }
+}
+
 function archiveFieldLabel(key, fallback) {
   const f = (archive.fields || []).find((x) => x.key === key)
   return f?.label || fallback
@@ -298,7 +363,14 @@ function canPickup(row) {
 function canFinePaid(row) {
   if (!showFine.value || !row) return false
   if (!(Number(row.fineYuan) > 0)) return false
-  if (row.fineStatus === 'paid') return false
+  if (row.fineStatus === 'paid' || row.fineStatus === 'waived') return false
+  return ['approved', 'overdue', 'returned'].includes(row.status)
+}
+
+function canFineWaive(row) {
+  if (!allowFineWaive.value || !showFine.value || !row) return false
+  if (row.fineStatus === 'paid' || row.fineStatus === 'waived') return false
+  if (!(Number(row.fineYuan) > 0) && row.status !== 'overdue') return false
   return ['approved', 'overdue', 'returned'].includes(row.status)
 }
 
@@ -396,6 +468,18 @@ async function doFinePaid(row) {
   await ElMessageBox.confirm(`确认「${row.title || row.id}」${finePaidLabel.value}？`, finePaidLabel.value)
   await http.post(`/api/tickets/${row.id}/fine-paid`)
   ElMessage.success(`已标记${finePaidLabel.value}`)
+  load()
+}
+
+async function doFineWaive(row) {
+  const { value } = await ElMessageBox.prompt('请填写减免原因', fineWaiveLabel.value, {
+    confirmButtonText: '确认减免',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '请填写原因',
+  })
+  await http.post(`/api/tickets/${row.id}/fine-waive`, { reason: value })
+  ElMessage.success('已登记罚款减免')
   load()
 }
 

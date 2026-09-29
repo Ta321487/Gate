@@ -484,6 +484,7 @@ def domain_sql(
         ensure_book_suggest_sql,
         ensure_parcel_ship_sql,
         ensure_gallery_sql,
+        ensure_borrow_archive_columns,
         ensure_detail_attrs_sql,
         ensure_guestbook_sql,
         ensure_item_comment_sql,
@@ -493,6 +494,7 @@ def domain_sql(
         ensure_order_review_sql,
         ensure_shared_sql_columns,
         ensure_stock_io_sql,
+        ensure_scrap_request_sql,
         ensure_e_sign_sql,
         ensure_balance_ledger_sql,
         ensure_occupy_span_sql,
@@ -503,6 +505,7 @@ def domain_sql(
         resolve_ticket_flags,
     )
     from app.bake.features.stock_io import STOCK_IO_CAP
+    from app.bake.features.stock_scrap import STOCK_SCRAP_CAP
     from app.bake.features.e_sign import E_SIGN_CAP
     from app.bake.features.core_cap_scan import OCCUPY_SPAN_CAP
     from app.bake.features.timebank import BALANCE_LEDGER_CAP
@@ -939,6 +942,11 @@ def domain_sql(
         enabled=GALLERY_CAP in caps,
         item_table=resolved_item,
     )
+    text = ensure_borrow_archive_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+    )
     detail_fields: list[dict[str, str]] = []
     if DETAIL_ATTRS_CAP in caps:
         detail_fields = [
@@ -965,6 +973,10 @@ def domain_sql(
     text = ensure_stock_io_sql(
         text,
         enabled=STOCK_IO_CAP in caps,
+    )
+    text = ensure_scrap_request_sql(
+        text,
+        enabled=STOCK_SCRAP_CAP in caps,
     )
     text = ensure_e_sign_sql(
         text,

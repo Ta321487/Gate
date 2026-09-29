@@ -54,11 +54,14 @@ const schema = getSchema()
 const ticket = schema.entities?.ticket || {}
 const labels = computed(() => schema.labels || {})
 const states = computed(() => ticket.states || {})
+const peerConfirmMode = computed(() => !!ticket.requirePeerConfirm && !ticket.peerAccept)
 const pageTitle = computed(() => labels.value.peerInboxTitle || '待我确认')
-const pageLead = computed(
-  () => labels.value.peerInboxLead || '他人向你发起的志愿，确认后即互选成功；也可婉拒。',
+const pageLead = computed(() =>
+  peerConfirmMode.value
+    ? (labels.value.peerInboxLead || '他人发起的调宿/互换意向，确认后宿管才可审核；也可婉拒。')
+    : (labels.value.peerInboxLead || '他人向你发起的志愿，确认后即互选成功；也可婉拒。'),
 )
-const emptyText = computed(() => labels.value.peerInboxEmpty || '暂无待确认志愿')
+const emptyText = computed(() => labels.value.peerInboxEmpty || '暂无待确认事项')
 
 const list = ref([])
 const total = ref(0)
@@ -70,7 +73,8 @@ function statusText(s) {
 }
 
 async function load() {
-  const res = await http.get('/api/tickets/peer-inbox', { params: { page: page.value, size: size.value } })
+  const url = peerConfirmMode.value ? '/api/tickets/peer-confirm-inbox' : '/api/tickets/peer-inbox'
+  const res = await http.get(url, { params: { page: page.value, size: size.value } })
   const data = res.data || res
   list.value = data.list || []
   total.value = data.total || 0
@@ -78,9 +82,9 @@ async function load() {
 
 async function respond(row, pass) {
   let remark = ''
-  const rejectTitle = labels.value.peerRejectDialogTitle || '婉拒志愿'
-  const confirmTitle = labels.value.peerConfirmDialogTitle || '确认互选'
-  const confirmMsg = labels.value.peerConfirmDialogMessage || '确认接受该志愿？'
+  const rejectTitle = labels.value.peerRejectDialogTitle || '婉拒'
+  const confirmTitle = labels.value.peerConfirmDialogTitle || '确认'
+  const confirmMsg = labels.value.peerConfirmDialogMessage || (peerConfirmMode.value ? '确认同意该调宿/互换意向？' : '确认接受该志愿？')
   if (!pass) {
     const { value } = await ElMessageBox.prompt('请填写婉拒原因', rejectTitle, {
       confirmButtonText: '确认婉拒',
@@ -92,7 +96,10 @@ async function respond(row, pass) {
   } else {
     await ElMessageBox.confirm(confirmMsg, confirmTitle, { type: 'success' })
   }
-  await http.post(`/api/tickets/${row.id}/peer-respond`, { pass, remark })
+  const path = peerConfirmMode.value
+    ? `/api/tickets/${row.id}/peer-confirm`
+    : `/api/tickets/${row.id}/peer-respond`
+  await http.post(path, { pass, remark })
   ElMessage.success(pass ? '已确认' : '已婉拒')
   await load()
 }

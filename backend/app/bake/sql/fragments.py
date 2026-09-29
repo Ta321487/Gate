@@ -973,6 +973,57 @@ GALLERY_COLUMNS: list[tuple[str, str]] = [
     ("gallery_json", "TEXT NULL"),
 ]
 
+# 借用组浅档案列（馆藏/货架/批次/床位约束等）
+BORROW_ARCHIVE_COLUMNS: list[tuple[str, str]] = [
+    ("holding_loc", "VARCHAR(128) DEFAULT ''"),
+    ("campus_zone", "VARCHAR(64) DEFAULT ''"),
+    ("shelf_no", "VARCHAR(64) DEFAULT ''"),
+    ("batch_no", "VARCHAR(64) DEFAULT ''"),
+    ("expire_on", "VARCHAR(32) DEFAULT ''"),
+    ("supplier_contact", "VARCHAR(64) DEFAULT ''"),
+    ("allowed_gender", "VARCHAR(16) DEFAULT ''"),
+    ("allowed_grades", "VARCHAR(64) DEFAULT ''"),
+    ("maintain_due", "VARCHAR(32) DEFAULT ''"),
+    ("loan_org", "VARCHAR(128) DEFAULT ''"),
+    ("clc_code", "VARCHAR(32) DEFAULT ''"),
+    ("calib_cert_url", "VARCHAR(255) DEFAULT ''"),
+    ("calib_due", "VARCHAR(32) DEFAULT ''"),
+    ("repair_ticket_no", "VARCHAR(64) DEFAULT ''"),
+    ("slot_status", "VARCHAR(16) DEFAULT ''"),
+    ("building_zone", "VARCHAR(64) DEFAULT ''"),
+]
+
+_BORROW_ARCHIVE_DOMAINS = frozenset({
+    "DOM-LIBRARY",
+    "DOM-EQUIP",
+    "DOM-ASSET",
+    "DOM-PARCEL",
+    "DOM-BED",
+})
+
+
+def ensure_borrow_archive_columns(
+    sql: str,
+    *,
+    domain: str | None,
+    item_table: str | None,
+) -> str:
+    """借用/占用组档案浅字段注入（只增不减）。"""
+    if (domain or "") not in _BORROW_ARCHIVE_DOMAINS:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, BORROW_ARCHIVE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
 
 def ensure_detail_attrs_sql(
     sql: str,
@@ -2210,6 +2261,34 @@ def ensure_stock_io_sql(sql: str, *, enabled: bool) -> str:
     return sql.rstrip() + "\n" + _STOCK_IO_DDL
 
 
+_SCRAP_REQUEST_DDL = """
+CREATE TABLE IF NOT EXISTS scrap_request (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  item_title VARCHAR(200) DEFAULT '',
+  qty INT NOT NULL,
+  reason VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  applicant VARCHAR(64) NOT NULL DEFAULT '',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_scrap_req_status (status, id),
+  KEY idx_scrap_req_item (item_id, id)
+);
+"""
+
+
+def ensure_scrap_request_sql(sql: str, *, enabled: bool) -> str:
+    """报废审批单表：开 stock_scrap 且走审批流时注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?scrap_request`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _SCRAP_REQUEST_DDL
+
+
 _E_SIGN_DDL = """
 CREATE TABLE IF NOT EXISTS e_sign_record (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2994,6 +3073,23 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("leave_days", "INT NULL"),
     ("week_no", "INT NULL"),
     ("interview_place", "VARCHAR(128) DEFAULT ''"),
+    ("proxy_name", "VARCHAR(64) DEFAULT ''"),
+    ("proxy_phone", "VARCHAR(20) DEFAULT ''"),
+    ("exception_reason", "VARCHAR(128) DEFAULT ''"),
+    ("damage_claim_note", "VARCHAR(255) DEFAULT ''"),
+    ("deposit_yuan", "DECIMAL(10,2) NULL"),
+    ("notice_ack", "TINYINT NOT NULL DEFAULT 0"),
+    ("due_soon_notified_at", "DATETIME NULL"),
+    ("ever_overdue", "TINYINT NOT NULL DEFAULT 0"),
+    ("project_no", "VARCHAR(64) DEFAULT ''"),
+    ("procure_ref_no", "VARCHAR(64) DEFAULT ''"),
+    ("dual_reviewer_a", "VARCHAR(64) DEFAULT ''"),
+    ("dual_reviewer_b", "VARCHAR(64) DEFAULT ''"),
+    ("ship_fee_yuan", "DECIMAL(10,2) NULL"),
+    ("utility_note", "VARCHAR(255) DEFAULT ''"),
+    ("insurance_ack", "TINYINT NOT NULL DEFAULT 0"),
+    ("peer_username", "VARCHAR(64) DEFAULT ''"),
+    ("peer_ack", "TINYINT NOT NULL DEFAULT 0"),
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
@@ -3001,9 +3097,9 @@ _TICKET_COL_DDL = {n.lower(): ddl for n, ddl in TICKET_OPTIONAL_COLUMNS}
 
 # 域固有业务列（不含 attach/rating 等能力开关列）
 TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
-    "DOM-LIBRARY": ["fine_status"],
-    "DOM-EQUIP": ["fine_status"],
-    "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty"],
+    "DOM-LIBRARY": ["fine_status", "due_soon_notified_at", "ever_overdue"],
+    "DOM-EQUIP": ["fine_status", "deposit_yuan", "notice_ack", "due_soon_notified_at", "ever_overdue", "insurance_ack"],
+    "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty", "project_no", "procure_ref_no", "dual_reviewer_a", "dual_reviewer_b"],
     "DOM-CRM": ["contact_channel", "next_follow_at"],
     "DOM-ATTEND": ["contact_channel", "next_follow_at", "leave_days"],
     "DOM-FUND": ["contact_channel", "next_follow_at"],
@@ -3028,7 +3124,15 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     ],
     "DOM-MORAL": ["contact_channel", "next_follow_at"],
     "DOM-AWARD": ["contact_channel", "next_follow_at"],
-    "DOM-BED": ["contact_channel", "next_follow_at"],
+    "DOM-BED": [
+        "contact_channel",
+        "next_follow_at",
+        "notice_ack",
+        "deposit_yuan",
+        "utility_note",
+        "peer_username",
+        "peer_ack",
+    ],
     "DOM-CHECKIN": ["contact_channel", "next_follow_at"],
     "DOM-MUTUAL-TUTOR": ["contact_channel", "next_follow_at"],
     "DOM-MUTUAL-TOPIC": ["contact_channel", "next_follow_at"],
@@ -3051,7 +3155,17 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-PROPERTY": ["priority", "contact_phone"],
     "DOM-IT": ["priority", "contact_phone"],
     "DOM-LOST": ["fine_status", "pickup_at", "pickup_place"],
-    "DOM-PARCEL": ["fine_status", "pickup_at", "pickup_place"],
+    "DOM-PARCEL": [
+        "fine_status",
+        "pickup_at",
+        "pickup_place",
+        "proxy_name",
+        "proxy_phone",
+        "exception_reason",
+        "damage_claim_note",
+        "notice_ack",
+        "ship_fee_yuan",
+    ],
     "DOM-ACTIVITY": [],
     "DOM-COURSE": [],
     "DOM-FORUM": [],
@@ -3082,6 +3196,32 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("hold_expire_at")
     if f.get("noShowAfterEnd") or f.get("fineLabel"):
         names.append("fine_status")
+    if f.get("allowProxyPickup"):
+        names.extend(["proxy_name", "proxy_phone"])
+    if f.get("allowExceptionClose"):
+        names.extend(["exception_reason", "damage_claim_note"])
+    if f.get("allowDeposit"):
+        names.append("deposit_yuan")
+    if f.get("requireNoticeAck"):
+        names.append("notice_ack")
+    if f.get("requireInsuranceAck"):
+        names.append("insurance_ack")
+    if f.get("allowProjectNo"):
+        names.append("project_no")
+    if f.get("allowProcureRef"):
+        names.append("procure_ref_no")
+    if f.get("allowDualReview"):
+        names.extend(["dual_reviewer_a", "dual_reviewer_b"])
+    if f.get("allowShipFee"):
+        names.append("ship_fee_yuan")
+    if f.get("allowUtilityNote"):
+        names.append("utility_note")
+    if f.get("requirePeerConfirm"):
+        names.extend(["peer_username", "peer_ack"])
+    if int(f.get("dueSoonDays") or 0) > 0:
+        names.append("due_soon_notified_at")
+    if int(f.get("maxOverdueTimes") or 0) > 0:
+        names.append("ever_overdue")
     # 去重保序
     seen: set[str] = set()
     out: list[str] = []

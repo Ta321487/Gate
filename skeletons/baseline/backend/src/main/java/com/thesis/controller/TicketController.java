@@ -83,6 +83,9 @@ public class TicketController {
             if (claimCode.isBlank()) claimCode = str(body.get("claimCode"));
             TicketStore.assertClaimCodeIfRequired(itemId, claimCode.isBlank() ? remark : claimCode);
             TicketStore.assertMatchProfileRoomIfRequired(uid, itemId);
+            TicketStore.assertBedConstraintIfRequired(uid, itemId);
+            TicketStore.assertCalibDueIfRequired(itemId);
+            TicketStore.assertAckFlagsIfRequired(body);
             MaterialCheckStore.assertSubmitted(body.get("materials"));
             Map<String, Object> created = TicketStore.apply(
                     uid,
@@ -266,6 +269,81 @@ public class TicketController {
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
+    }
+
+    @PostMapping("/{id}/fine-waive")
+    public R<?> fineWaive(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        String reason = str(b.get("reason"));
+        if (reason.isBlank()) reason = str(b.get("remark"));
+        try {
+            return R.ok(TicketStore.markFineWaived(id, uid, reason));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/confirm-procure-transfer")
+    public R<?> confirmProcureTransfer(@PathVariable long id, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(TicketStore.confirmProcureTransfer(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/to-stock-in")
+    public R<?> toStockIn(@PathVariable long id, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        try {
+            Map<String, Object> out = TicketStore.transferApprovedToStockIn(id, uid);
+            AuditLogStore.record(uid, "ticket_to_stock_in", "ticket", String.valueOf(id), "申购一键入库");
+            return R.ok(out);
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/peer-confirm")
+    public R<?> peerConfirmTicket(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        boolean pass = !Boolean.FALSE.equals(b.get("pass"))
+                && !"false".equalsIgnoreCase(String.valueOf(b.get("pass")));
+        String remark = str(b.get("remark"));
+        try {
+            return R.ok(TicketStore.peerConfirm(id, uid, pass, remark));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/peer-confirm-inbox")
+    public R<?> peerConfirmInbox(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        return R.ok(TicketStore.pagePeerConfirmInbox(uid, page, size));
     }
 
     @PostMapping("/{id}/checkin")

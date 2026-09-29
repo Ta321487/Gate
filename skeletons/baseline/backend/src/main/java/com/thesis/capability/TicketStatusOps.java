@@ -35,7 +35,10 @@ final class TicketStatusOps {
     /** 列表/详情时推进逾期或爽约状态 */
     static void touchTicketStatus(Map<String, Object> m) {
         if (m == null) return;
-        if (TicketStore.useDeadline) refreshOverdue(m);
+        if (TicketStore.useDeadline) {
+            refreshOverdue(m);
+            maybeNotifyDueSoon(m);
+        }
         if (TicketStore.noShowAfterEnd) refreshNoShow(m);
     }
 
@@ -50,7 +53,58 @@ final class TicketStatusOps {
             m.put("status", "overdue");
             applyFineAndRemind(m, false);
             persistFine(m);
+            markEverOverdue(m);
         }
+    }
+
+    /** 应还日前 N 天站内提前催还（每单一回）。 */
+    static void maybeNotifyDueSoon(Map<String, Object> m) {
+        if (TicketStore.dueSoonDays <= 0) return;
+        if (!"approved".equals(String.valueOf(m.get("status")))) return;
+        if (!TicketStore.hasColumn("due_soon_notified_at")) return;
+        Object notified = m.get("dueSoonNotifiedAt");
+        if (notified != null && !String.valueOf(notified).isBlank()) return;
+        Object due = m.get("dueAt");
+        if (due == null || String.valueOf(due).isBlank()) return;
+        LocalDateTime dueAt;
+        try {
+            dueAt = LocalDateTime.parse(String.valueOf(due), TicketSql.FMT);
+        } catch (Exception e) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(dueAt)) return;
+        long daysLeft = ChronoUnit.DAYS.between(now.toLocalDate(), dueAt.toLocalDate());
+        if (daysLeft > TicketStore.dueSoonDays) return;
+        String owner = TicketSql.str(m.get("username"));
+        if (owner.isBlank()) return;
+        long id = TicketSql.toLong(m.get("id"));
+        String title = TicketSql.str(m.get("title"));
+        if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+        if (title.isBlank()) title = "单据#" + id;
+        String body = "「" + title + "」将于 " + TicketSql.fmt(dueAt) + " 到期，请按时归还。";
+        try {
+            com.thesis.service.MessageStore.send(owner, "即将到期提醒", body, "ticket", id);
+        } catch (Exception ignored) {
+        }
+        Timestamp ts = Timestamp.valueOf(now);
+        TicketSql.db().update(
+                "UPDATE " + TicketStore.TICKET + " SET due_soon_notified_at=? WHERE id=?",
+                ts,
+                id);
+        m.put("dueSoonNotifiedAt", TicketSql.fmt(now));
+    }
+
+    static void markEverOverdue(Map<String, Object> m) {
+        if (TicketStore.maxOverdueTimes <= 0) return;
+        if (!TicketStore.hasColumn("ever_overdue")) return;
+        Object flag = m.get("everOverdue");
+        if (flag instanceof Number n && n.intValue() == 1) return;
+        if ("1".equals(String.valueOf(flag))) return;
+        long id = TicketSql.toLong(m.get("id"));
+        if (id <= 0) return;
+        TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET ever_overdue=1 WHERE id=?", id);
+        m.put("everOverdue", 1);
     }
 
     /**

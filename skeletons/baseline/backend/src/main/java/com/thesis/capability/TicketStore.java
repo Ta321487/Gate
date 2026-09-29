@@ -90,6 +90,10 @@ public final class TicketStore {
     static int maxRenew = 1;
     /** 每次续借延长天数；≤0 则跟 loanDays */
     static int renewDays = 0;
+    /** 应还日前 N 天站内提前催还；≤0 关闭 */
+    static int dueSoonDays = 0;
+    /** 历史超期达 N 次限制再借；≤0 关闭 */
+    static int maxOverdueTimes = 0;
     /** 名额满可候补（waitlisted） */
     static boolean allowWaitlist = false;
     /** 无库存可预约到书（held → hold_ready） */
@@ -340,6 +344,150 @@ public final class TicketStore {
         return matchProfileRoom;
     }
 
+    /** 驿站代取 */
+    static boolean allowProxyPickup = false;
+    /** 床位性别/年级约束 */
+    static boolean bedConstraint = false;
+    static String bedConstraintNeedMessage = "请先在个人资料填写性别与年级。";
+    static String bedConstraintDenyMessage = "该床位限对应性别或年级，请改选其他床位或完善个人资料。";
+    /** 到件/通过后站内信通知申请人 */
+    static boolean arrivalNotify = false;
+    /** 申请须勾选须知 */
+    static boolean requireNoticeAck = false;
+    /** 设备押金可选登记 */
+    static boolean allowDeposit = false;
+    /** 异常件/破损理赔字段 */
+    static boolean allowExceptionClose = false;
+    /** 申请须勾选培训合格 */
+    static boolean requireTrainingAck = false;
+    /** 申请须勾选保险声明 */
+    static boolean requireInsuranceAck = false;
+    /** 校准证书过期禁止借用 */
+    static boolean blockIfCalibExpired = false;
+    /** 课题号 / 双人复核 / 运费 / 水电备注 */
+    static boolean allowProjectNo = false;
+    /** 领用单关联申购单号 */
+    static boolean allowProcureRef = false;
+    /** 申购通过后可一键入库 */
+    static boolean procureToStockIn = false;
+    static boolean allowDualReview = false;
+    static boolean allowShipFee = false;
+    static boolean allowUtilityNote = false;
+    /** 预约取消次数上限；≤0 不限 */
+    static int maxCancelHolds = 0;
+    /** 超期自动提示转赔付（站内文案，不强制改终态） */
+    static boolean overdueAutoCompensate = false;
+    /** 逾期罚款可减免登记 */
+    static boolean allowFineWaive = false;
+    /** 续借时若该册仍有他人预约则拒绝 */
+    static boolean renewBlockIfHeld = false;
+    /** 调宿等：须对方确认后才可审过 */
+    static boolean requirePeerConfirm = false;
+    /** 弃件须双人确认字段齐全 */
+    static boolean requireAbandonDual = false;
+
+    public static void configureProxyPickup(boolean enabled) {
+        allowProxyPickup = enabled;
+    }
+
+    public static void configureBedConstraint(boolean enabled, String needMessage, String denyMessage) {
+        bedConstraint = enabled;
+        if (needMessage != null && !needMessage.isBlank()) {
+            bedConstraintNeedMessage = needMessage.trim();
+        }
+        if (denyMessage != null && !denyMessage.isBlank()) {
+            bedConstraintDenyMessage = denyMessage.trim();
+        }
+    }
+
+    public static void configureArrivalNotify(boolean enabled) {
+        arrivalNotify = enabled;
+    }
+
+    public static void configureNoticeAck(boolean enabled) {
+        requireNoticeAck = enabled;
+    }
+
+    public static void configureDeposit(boolean enabled) {
+        allowDeposit = enabled;
+    }
+
+    public static void configureExceptionClose(boolean enabled) {
+        allowExceptionClose = enabled;
+    }
+
+    public static void configureTrainingAck(boolean enabled) {
+        requireTrainingAck = enabled;
+    }
+
+    public static void configureInsuranceAck(boolean enabled) {
+        requireInsuranceAck = enabled;
+    }
+
+    public static void configureCalibBlock(boolean enabled) {
+        blockIfCalibExpired = enabled;
+    }
+
+    public static void configureProjectNo(boolean enabled) {
+        allowProjectNo = enabled;
+    }
+
+    public static void configureProcureRef(boolean enabled) {
+        allowProcureRef = enabled;
+    }
+
+    public static void configureProcureToStockIn(boolean enabled) {
+        procureToStockIn = enabled;
+    }
+
+    public static boolean procureToStockInEnabled() {
+        return procureToStockIn;
+    }
+
+    public static void configureDualReview(boolean enabled) {
+        allowDualReview = enabled;
+    }
+
+    public static void configureShipFee(boolean enabled) {
+        allowShipFee = enabled;
+    }
+
+    public static void configureUtilityNote(boolean enabled) {
+        allowUtilityNote = enabled;
+    }
+
+    public static void configureMaxCancelHolds(int max) {
+        maxCancelHolds = Math.max(0, Math.min(20, max));
+    }
+
+    public static void configureOverdueAutoCompensate(boolean enabled) {
+        overdueAutoCompensate = enabled;
+    }
+
+    public static void configureFineWaive(boolean enabled) {
+        allowFineWaive = enabled;
+    }
+
+    public static void configureRenewBlockIfHeld(boolean enabled) {
+        renewBlockIfHeld = enabled;
+    }
+
+    public static void configurePeerConfirm(boolean enabled) {
+        requirePeerConfirm = enabled;
+    }
+
+    public static void configureAbandonDual(boolean enabled) {
+        requireAbandonDual = enabled;
+    }
+
+    public static boolean isAllowFineWaive() {
+        return allowFineWaive;
+    }
+
+    public static boolean isRequirePeerConfirm() {
+        return requirePeerConfirm;
+    }
+
     /** 评教等：提交即评分且配置了维度时，申请必须带 dims */
     public static boolean ratingDimsRequiredOnApply() {
         return autoApprove && allowRating
@@ -408,6 +556,82 @@ public final class TicketStore {
         if (!profileRoomMatches(building, room, author, title, matchProfileLooseBuilding)) {
             throw new IllegalStateException(matchProfileDenyMessage);
         }
+    }
+
+    /** bedConstraint：档案限性别/年级 vs 个人资料 */
+    public static void assertBedConstraintIfRequired(String username, long itemId) {
+        if (!bedConstraint) return;
+        com.thesis.service.UserStore.Profile p = com.thesis.service.UserStore.get(username);
+        if (p == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        String gender = p.extras == null ? "" : TicketSql.str(p.extras.get("gender")).trim();
+        String grade = p.extras == null ? "" : TicketSql.str(p.extras.get("grade")).trim();
+        if (gender.isBlank() && grade.isBlank()) {
+            throw new IllegalStateException(bedConstraintNeedMessage);
+        }
+        Map<String, Object> item = ArchiveStore.getItem(itemId);
+        if (item == null) throw new IllegalArgumentException("对象不存在");
+        String allowedGender = TicketSql.str(item.get("allowedGender")).trim();
+        String allowedGrades = TicketSql.str(item.get("allowedGrades")).trim();
+        if (!allowedGender.isBlank()
+                && !"不限".equals(allowedGender)
+                && !gender.isBlank()
+                && !allowedGender.equals(gender)) {
+            throw new IllegalStateException(bedConstraintDenyMessage);
+        }
+        if (!allowedGrades.isBlank() && !grade.isBlank()) {
+            boolean ok = false;
+            for (String part : allowedGrades.split("[,，、\\s]+")) {
+                if (part != null && !part.isBlank() && part.trim().equals(grade)) {
+                    ok = true;
+                    break;
+                }
+            }
+            if (!ok) {
+                throw new IllegalStateException(bedConstraintDenyMessage);
+            }
+        }
+    }
+
+    /** 须知勾选 / 培训勾选 / 保险勾选：申请体校验 */
+    public static void assertAckFlagsIfRequired(Map<String, Object> body) {
+        if (body == null) body = Map.of();
+        if (requireNoticeAck && !truthy(body.get("noticeAck"))) {
+            throw new IllegalStateException("请先阅读并勾选须知");
+        }
+        if (requireTrainingAck && !truthy(body.get("trainingAck"))) {
+            throw new IllegalStateException("请确认已完成相关培训");
+        }
+        if (requireInsuranceAck && !truthy(body.get("insuranceAck"))) {
+            throw new IllegalStateException("请先阅读并勾选保险声明");
+        }
+    }
+
+    /** 校准证书过期停借 */
+    public static void assertCalibDueIfRequired(long itemId) {
+        if (!blockIfCalibExpired) return;
+        Map<String, Object> item = ArchiveStore.getItem(itemId);
+        if (item == null) throw new IllegalArgumentException("对象不存在");
+        String due = TicketSql.str(item.get("calibDue")).trim();
+        if (due.isBlank()) return;
+        try {
+            java.time.LocalDate d = java.time.LocalDate.parse(due.substring(0, Math.min(10, due.length())));
+            if (d.isBefore(java.time.LocalDate.now())) {
+                throw new IllegalStateException("该设备校准证书已过期，暂不可借用");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception ignored) {
+            // 日期格式异常时不拦截，避免误伤
+        }
+    }
+
+    private static boolean truthy(Object v) {
+        if (v == null) return false;
+        if (v instanceof Boolean b) return b;
+        String s = String.valueOf(v).trim();
+        return "1".equals(s) || "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s);
     }
 
     /** 与前端 profileRoomMatch 同规则，勿分叉 */
@@ -515,6 +739,28 @@ public final class TicketStore {
         if (allowRenew) {
             ensureColumn("renew_count", "INT NOT NULL DEFAULT 0");
         }
+    }
+
+    public static void configureDueSoon(int days) {
+        dueSoonDays = Math.max(0, Math.min(14, days));
+        if (dueSoonDays > 0) {
+            ensureColumn("due_soon_notified_at", "DATETIME NULL");
+        }
+    }
+
+    public static void configureMaxOverdueTimes(int times) {
+        maxOverdueTimes = Math.max(0, Math.min(20, times));
+        if (maxOverdueTimes > 0) {
+            ensureColumn("ever_overdue", "TINYINT NOT NULL DEFAULT 0");
+        }
+    }
+
+    public static int dueSoonDays() {
+        return dueSoonDays;
+    }
+
+    public static int maxOverdueTimes() {
+        return maxOverdueTimes;
     }
 
     public static void configureWaitlist(boolean enabled) {
@@ -690,6 +936,7 @@ public final class TicketStore {
         if (OccupySpanStore.enabled() && period != null) {
             OccupySpanStore.assertNoOverlap(username, itemId, period[0], period[1]);
         }
+        assertNotOverdueFrozen(username);
         if (!allowMultiTicket) {
             Integer dup = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TICKET
@@ -1241,6 +1488,32 @@ public final class TicketStore {
         return get(ticketId);
     }
 
+    /** 逾期罚款减免（开题挂 allowFineWaive） */
+    public static Map<String, Object> markFineWaived(long ticketId, String operator, String reason) {
+        if (!allowFineWaive) throw new IllegalStateException("当前未开启罚款减免");
+        if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持逾期费用登记");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue", "returned").contains(st)) {
+            throw new IllegalStateException("当前状态不可登记罚款减免");
+        }
+        if ("paid".equals(String.valueOf(m.getOrDefault("fineStatus", "")))
+                || "waived".equals(String.valueOf(m.getOrDefault("fineStatus", "")))) {
+            throw new IllegalStateException("费用已结清或已减免");
+        }
+        String note = reason == null ? "" : reason.trim();
+        if (note.length() > 200) note = note.substring(0, 200);
+        if (hasColumn("fine_yuan")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET fine_status='waived', fine_yuan=0 WHERE id=?", ticketId);
+        } else {
+            TicketSql.db().update("UPDATE " + TICKET + " SET fine_status='waived' WHERE id=?", ticketId);
+        }
+        appendProgress(ticketId, "fine_waived", operator, note.isBlank() ? "罚款已减免" : ("罚款减免：" + note));
+        return get(ticketId);
+    }
+
     static void appendProgress(long ticketId, String status, String operator, String remark) {
         if (ticketId <= 0) return;
         if (PROGRESS == null || PROGRESS.isBlank()) return;
@@ -1319,6 +1592,15 @@ public final class TicketStore {
         }
         if (twoLevelApprove && finalStage && pass && !superAdmin) {
             throw new IllegalStateException("终审通过需总管操作");
+        }
+        if (pass && requirePeerConfirm && hasColumn("peer_ack")) {
+            Object rawAck = m.get("peerAck");
+            boolean acked = Boolean.TRUE.equals(rawAck)
+                    || "1".equals(String.valueOf(rawAck))
+                    || "true".equalsIgnoreCase(String.valueOf(rawAck));
+            if (!acked) {
+                throw new IllegalStateException("对方尚未确认，暂不可审核通过");
+            }
         }
         String op = operator == null ? "" : operator.trim();
         String dispatchTo = assigneeUsername == null ? "" : assigneeUsername.trim();
@@ -1509,6 +1791,7 @@ public final class TicketStore {
         }
         String passCode = issuePassCodeIfNeeded(ticketId);
         notifyTicketResult(m, true, note, passCode);
+        notifyArrivalIfNeeded(m);
         appendProgress(ticketId, "approved", op, note.isBlank()
                 ? TicketCopy.stateLabel("approved", TicketCopy.verbLabel("approve", "审核通过")) : note);
         // 库存扣尽：同对象其它待审自动驳回（失物一件一主；图书最后一本等同）
@@ -1792,6 +2075,20 @@ public final class TicketStore {
     }
 
     /** 领取登记后通知申请人地点与实发数量 */
+    /** 驿站等到件：审核通过后站内信提醒申请人可取件 */
+    private static void notifyArrivalIfNeeded(Map<String, Object> ticket) {
+        if (!arrivalNotify || ticket == null) return;
+        String user = TicketSql.str(ticket.get("username")).trim();
+        if (user.isBlank()) return;
+        String subj = subjectOf(ticket);
+        String body = "「" + subj + "」已到站/可办理，请尽快取件或按指引办理。";
+        try {
+            MessageStore.send(user, "到件通知", body, "ticket", TicketSql.toLong(ticket.get("id")));
+        } catch (Exception ignored) {
+            // 站内信失败不影响审核
+        }
+    }
+
     private static void notifyPickup(Map<String, Object> ticket, String place, Integer actualQty) {
         try {
             String user = TicketSql.str(ticket.get("username"));
@@ -1824,6 +2121,14 @@ public final class TicketStore {
                 && !"held".equals(st) && !"hold_ready".equals(st)
                 && !"verifying".equals(st)) {
             throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
+        }
+        if (maxCancelHolds > 0 && ("held".equals(st) || "hold_ready".equals(st) || "waitlisted".equals(st))) {
+            Integer n = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND status='cancelled'",
+                    Integer.class, username);
+            if (n != null && n >= maxCancelHolds) {
+                throw new IllegalStateException("预约/候补取消次数已达上限，暂不可再取消");
+            }
         }
         long itemId = TicketSql.toLong(m.get("bookId"));
         if ("hold_ready".equals(st) && MODE == Mode.ARCHIVE && useQuota && itemId > 0
@@ -2212,6 +2517,7 @@ public final class TicketStore {
         m.put("status", "overdue");
         TicketStatusOps.applyFineAndRemind(m, false);
         TicketStatusOps.persistFine(m);
+        TicketStatusOps.markEverOverdue(m);
         return get(ticketId);
     }
 
@@ -2226,7 +2532,41 @@ public final class TicketStore {
         }
         TicketStatusOps.applyFineAndRemind(m, true);
         TicketStatusOps.persistFine(m);
+        try {
+            String owner = TicketSql.str(m.get("username"));
+            if (!owner.isBlank()) {
+                String title = TicketSql.str(m.get("title"));
+                if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+                if (title.isBlank()) title = "单据#" + ticketId;
+                String dueLab = "应还日";
+                Object due = m.get("dueAt");
+                String dueTxt = due == null ? "" : String.valueOf(due);
+                String body = "【催办】「" + title + "」请尽快处理"
+                        + (dueTxt.isBlank() ? "。" : "，" + dueLab + "：" + dueTxt + "。");
+                Object fine = m.get("fineYuan");
+                if (fine instanceof Number n && n.doubleValue() > 0) {
+                    body += "预估费用 " + n.doubleValue() + " 元。";
+                }
+                MessageStore.send(owner, "催办提醒", body, "ticket", ticketId);
+            }
+        } catch (Exception ignored) {
+        }
         return get(ticketId);
+    }
+
+    /** 超期达上限则拒绝新申请（开题挂 maxOverdueTimes 时）。 */
+    static void assertNotOverdueFrozen(String username) {
+        if (maxOverdueTimes <= 0 || username == null || username.isBlank()) return;
+        if (!hasColumn("ever_overdue")) return;
+        Integer n = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND ever_overdue=1",
+                Integer.class,
+                username.trim());
+        int used = n == null ? 0 : n;
+        if (used >= maxOverdueTimes) {
+            throw new IllegalStateException(
+                    "超期已达 " + maxOverdueTimes + " 次，暂不可再借，请先处理逾期单据");
+        }
     }
 
     /**
@@ -2263,6 +2603,18 @@ public final class TicketStore {
         }
         if (used >= maxRenew) {
             throw new IllegalStateException("已达续借次数上限（" + maxRenew + " 次）");
+        }
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+        if (renewBlockIfHeld && itemId > 0) {
+            Integer holds = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status IN ('held','hold_ready')"
+                            + " AND username<>?",
+                    Integer.class, itemId, username);
+            if (holds != null && holds > 0) {
+                throw new IllegalStateException("该书另有读者预约，暂不可续借");
+            }
         }
         LocalDateTime due = null;
         Object dueObj = m.get("dueAt");
@@ -2566,6 +2918,254 @@ public final class TicketStore {
             if (amt > 99999999) amt = 99999999;
             TicketSql.db().update("UPDATE " + TICKET + " SET fine_yuan=? WHERE id=?", amt, ticketId);
         }
+        if (allowProxyPickup || body.containsKey("proxyName") || body.containsKey("proxyPhone")) {
+            if (body.containsKey("proxyName") || body.containsKey("proxyPhone")) {
+                if (!hasColumn("proxy_name") || !hasColumn("proxy_phone")) {
+                    throw new IllegalStateException("系统未配置代取人字段");
+                }
+                String pn = TicketSql.str(body.get("proxyName")).trim();
+                String pp = TicketSql.str(body.get("proxyPhone")).trim();
+                if (pn.length() > 64) pn = pn.substring(0, 64);
+                if (pp.length() > 20) pp = pp.substring(0, 20);
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET proxy_name=?, proxy_phone=? WHERE id=?", pn, pp, ticketId);
+            }
+        }
+        if (body.containsKey("noticeAck") && hasColumn("notice_ack")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET notice_ack=? WHERE id=?",
+                    truthy(body.get("noticeAck")) ? 1 : 0,
+                    ticketId);
+        }
+        if ((allowDeposit || body.containsKey("depositYuan")) && body.containsKey("depositYuan")) {
+            if (!hasColumn("deposit_yuan")) {
+                throw new IllegalStateException("系统未配置押金字段");
+            }
+            double dep = TicketSql.toDouble(body.get("depositYuan"));
+            if (dep < 0) dep = 0;
+            if (dep > 999999) dep = 999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET deposit_yuan=? WHERE id=?", dep, ticketId);
+        }
+        if (allowExceptionClose || body.containsKey("exceptionReason") || body.containsKey("damageClaimNote")) {
+            if (body.containsKey("exceptionReason") && hasColumn("exception_reason")) {
+                String er = TicketSql.str(body.get("exceptionReason")).trim();
+                if (er.length() > 128) er = er.substring(0, 128);
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET exception_reason=? WHERE id=?", er, ticketId);
+            }
+            if (body.containsKey("damageClaimNote") && hasColumn("damage_claim_note")) {
+                String dn = TicketSql.str(body.get("damageClaimNote")).trim();
+                if (dn.length() > 255) dn = dn.substring(0, 255);
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET damage_claim_note=? WHERE id=?", dn, ticketId);
+            }
+        }
+        if (body.containsKey("insuranceAck") && hasColumn("insurance_ack")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET insurance_ack=? WHERE id=?",
+                    truthy(body.get("insuranceAck")) ? 1 : 0,
+                    ticketId);
+        }
+        if ((allowProjectNo || body.containsKey("projectNo")) && body.containsKey("projectNo") && hasColumn("project_no")) {
+            String pn = TicketSql.str(body.get("projectNo")).trim();
+            if (pn.length() > 64) pn = pn.substring(0, 64);
+            TicketSql.db().update("UPDATE " + TICKET + " SET project_no=? WHERE id=?", pn, ticketId);
+        }
+        if ((allowProcureRef || body.containsKey("procureRefNo")) && body.containsKey("procureRefNo")
+                && hasColumn("procure_ref_no")) {
+            String pr = TicketSql.str(body.get("procureRefNo")).trim();
+            if (pr.length() > 64) pr = pr.substring(0, 64);
+            TicketSql.db().update("UPDATE " + TICKET + " SET procure_ref_no=? WHERE id=?", pr, ticketId);
+        }
+        if (allowDualReview || body.containsKey("dualReviewerA") || body.containsKey("dualReviewerB")) {
+            if (body.containsKey("dualReviewerA") && hasColumn("dual_reviewer_a")) {
+                String a = TicketSql.str(body.get("dualReviewerA")).trim();
+                if (a.length() > 64) a = a.substring(0, 64);
+                TicketSql.db().update("UPDATE " + TICKET + " SET dual_reviewer_a=? WHERE id=?", a, ticketId);
+            }
+            if (body.containsKey("dualReviewerB") && hasColumn("dual_reviewer_b")) {
+                String b = TicketSql.str(body.get("dualReviewerB")).trim();
+                if (b.length() > 64) b = b.substring(0, 64);
+                TicketSql.db().update("UPDATE " + TICKET + " SET dual_reviewer_b=? WHERE id=?", b, ticketId);
+            }
+        }
+        if ((allowShipFee || body.containsKey("shipFeeYuan")) && body.containsKey("shipFeeYuan") && hasColumn("ship_fee_yuan")) {
+            double fee = TicketSql.toDouble(body.get("shipFeeYuan"));
+            if (fee < 0) fee = 0;
+            if (fee > 999999) fee = 999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET ship_fee_yuan=? WHERE id=?", fee, ticketId);
+        }
+        if ((allowUtilityNote || body.containsKey("utilityNote")) && body.containsKey("utilityNote") && hasColumn("utility_note")) {
+            String un = TicketSql.str(body.get("utilityNote")).trim();
+            if (un.length() > 255) un = un.substring(0, 255);
+            TicketSql.db().update("UPDATE " + TICKET + " SET utility_note=? WHERE id=?", un, ticketId);
+        }
+        if (requirePeerConfirm || body.containsKey("peerUsername")) {
+            if (body.containsKey("peerUsername") && hasColumn("peer_username")) {
+                String pu = TicketSql.str(body.get("peerUsername")).trim();
+                if (pu.length() > 64) pu = pu.substring(0, 64);
+                if (requirePeerConfirm && pu.isBlank()) {
+                    throw new IllegalStateException("请填写对方学号或用户名");
+                }
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET peer_username=?, peer_ack=0 WHERE id=?", pu, ticketId);
+            }
+        }
+        if (requireAbandonDual && allowDualReview) {
+            String a = TicketSql.str(body.get("dualReviewerA")).trim();
+            String b = TicketSql.str(body.get("dualReviewerB")).trim();
+            if (a.isBlank() || b.isBlank()) {
+                throw new IllegalStateException("弃件须两名确认人签字");
+            }
+            if (a.equalsIgnoreCase(b)) {
+                throw new IllegalStateException("弃件确认人不能为同一人");
+            }
+        }
+    }
+
+    /** 调宿等：对方确认后宿管才可审过 */
+    /** ASSET：确认领用单已关联申购单号（浅衔接，不跨库）。 */
+    public static Map<String, Object> confirmProcureTransfer(long ticketId, String operator) {
+        if (!allowProcureRef) throw new IllegalStateException("未开通申购单号衔接");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!hasColumn("procure_ref_no")) throw new IllegalStateException("系统未配置申购单号字段");
+        String ref = TicketSql.str(m.get("procureRefNo")).trim();
+        if (ref.isBlank()) throw new IllegalStateException("请先填写申购单号");
+        String op = operator == null ? "" : operator.trim();
+        appendProgress(ticketId, String.valueOf(m.get("status")), op, "已确认申购单号「" + ref + "」转入领用");
+        return get(ticketId);
+    }
+
+    private static void tryEnsureProcureLine(long ticketId, Map<String, Object> m) {
+        try {
+            Integer n = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                            + "WHERE table_schema=DATABASE() AND table_name='procure_line'",
+                    Integer.class);
+            if (n == null || n <= 0) return;
+            Integer cnt = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM procure_line WHERE ticket_id=?", Integer.class, ticketId);
+            if (cnt != null && cnt > 0) return;
+            String title = TicketSql.str(m.get("itemTitle"));
+            if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+            if (title.isBlank()) title = TicketSql.str(m.get("title"));
+            if (title.isBlank()) title = "申购物资#" + ticketId;
+            if (title.length() > 200) title = title.substring(0, 200);
+            int q = rowQty(m);
+            if (q <= 0) q = 1;
+            TicketSql.db().update(
+                    "INSERT INTO procure_line (ticket_id, item_title, qty, unit_price) VALUES (?,?,?,0)",
+                    ticketId, title, q);
+        } catch (Exception ignored) {
+            // 无表或列差异时由 StockIoStore 兜底
+        }
+    }
+
+    /** PROCURE：审过单据按明细一键入库。 */
+    public static Map<String, Object> transferApprovedToStockIn(long ticketId, String operator) {
+        if (!procureToStockIn) throw new IllegalStateException("未开通申购一键入库");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st) && !"returned".equals(st) && !"completed".equals(st)) {
+            throw new IllegalStateException("仅已通过的申购单可一键入库");
+        }
+        String op = operator == null ? "" : operator.trim();
+        // 无明细时用单据标题兜底写入一行，便于演示
+        tryEnsureProcureLine(ticketId, m);
+        Map<String, Object> result = com.thesis.service.StockIoStore.receiveFromProcureTicket(ticketId, op);
+        appendProgress(ticketId, st, op, "申购明细已一键入库（" + result.get("count") + " 行）");
+        Map<String, Object> out = new LinkedHashMap<>(get(ticketId));
+        out.put("stockIn", result);
+        return out;
+    }
+
+    public static Map<String, Object> peerConfirm(long ticketId, String username, boolean pass, String remark) {
+        if (!requirePeerConfirm) throw new IllegalStateException("当前未开启双方确认");
+        if (!hasColumn("peer_username") || !hasColumn("peer_ack")) {
+            throw new IllegalStateException("系统未配置双方确认字段");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!"pending".equals(String.valueOf(m.get("status")))
+                && !"pending_mid".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅待审单据可确认");
+        }
+        String expect = TicketSql.str(m.get("peerUsername")).trim();
+        String uid = username == null ? "" : username.trim();
+        if (expect.isBlank() || !expect.equalsIgnoreCase(uid)) {
+            throw new IllegalStateException("仅指定对方可确认");
+        }
+        String note = remark == null ? "" : remark.trim();
+        if (!pass && note.isBlank()) {
+            throw new IllegalStateException("请填写婉拒原因");
+        }
+        if (pass) {
+            TicketSql.db().update("UPDATE " + TICKET + " SET peer_ack=1 WHERE id=?", ticketId);
+            appendProgress(ticketId, "peer_confirm", uid, note.isBlank() ? "对方已确认" : note);
+            try {
+                String owner = TicketSql.str(m.get("username"));
+                if (!owner.isBlank()) {
+                    MessageStore.send(
+                            owner,
+                            "对方已确认",
+                            "「" + subjectOf(m) + "」对方已确认，请等待宿管审核。",
+                            "ticket",
+                            ticketId);
+                }
+            } catch (Exception ignored) {
+            }
+        } else {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET status='rejected', remark=?, peer_ack=0 WHERE id=?",
+                    note, ticketId);
+            appendProgress(ticketId, "peer_reject", uid, note);
+            try {
+                String owner = TicketSql.str(m.get("username"));
+                if (!owner.isBlank()) {
+                    MessageStore.send(
+                            owner,
+                            "对方已婉拒",
+                            "「" + subjectOf(m) + "」对方婉拒：" + note,
+                            "ticket",
+                            ticketId);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return get(ticketId);
+    }
+
+    /** 待我确认：peer_username=我 且待审 */
+    public static Map<String, Object> pagePeerConfirmInbox(String username, int page, int size) {
+        Map<String, Object> empty = new LinkedHashMap<>();
+        empty.put("list", List.of());
+        empty.put("total", 0);
+        empty.put("page", Math.max(1, page));
+        empty.put("size", Math.max(1, size));
+        if (!requirePeerConfirm || !hasColumn("peer_username") || username == null || username.isBlank()) {
+            return empty;
+        }
+        if (page < 1) page = 1;
+        if (size < 1) size = 20;
+        Integer total = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TICKET
+                        + " WHERE peer_username=? AND peer_ack=0 AND status IN ('pending','pending_mid')",
+                Integer.class, username.trim());
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = TicketSql.db().query(
+                "SELECT * FROM " + TICKET
+                        + " WHERE peer_username=? AND peer_ack=0 AND status IN ('pending','pending_mid')"
+                        + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
+                username.trim(), size, (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list == null ? List.of() : list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
     }
 
     static void ensureColumn(String col, String ddlType) {

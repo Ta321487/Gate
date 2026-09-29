@@ -430,6 +430,26 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-require-claim-code", bool(ticket_ent.get("requireClaimCode"))),
             ("ticket-match-profile-room", bool(ticket_ent.get("matchProfileRoom"))),
             ("ticket-applicant-complete-only", bool(ticket_ent.get("applicantCompleteOnly"))),
+            ("ticket-allow-proxy-pickup", bool(ticket_ent.get("allowProxyPickup"))),
+            ("ticket-bed-constraint", bool(ticket_ent.get("bedConstraint"))),
+            ("ticket-arrival-notify", bool(ticket_ent.get("arrivalNotify"))),
+            ("ticket-require-notice-ack", bool(ticket_ent.get("requireNoticeAck"))),
+            ("ticket-allow-deposit", bool(ticket_ent.get("allowDeposit"))),
+            ("ticket-allow-exception-close", bool(ticket_ent.get("allowExceptionClose"))),
+            ("ticket-require-training-ack", bool(ticket_ent.get("requireTrainingAck"))),
+            ("ticket-require-insurance-ack", bool(ticket_ent.get("requireInsuranceAck"))),
+            ("ticket-block-if-calib-expired", bool(ticket_ent.get("blockIfCalibExpired"))),
+            ("ticket-allow-project-no", bool(ticket_ent.get("allowProjectNo"))),
+            ("ticket-allow-procure-ref", bool(ticket_ent.get("allowProcureRef"))),
+            ("ticket-procure-to-stock-in", bool(ticket_ent.get("procureToStockIn"))),
+            ("ticket-allow-dual-review", bool(ticket_ent.get("allowDualReview"))),
+            ("ticket-allow-ship-fee", bool(ticket_ent.get("allowShipFee"))),
+            ("ticket-allow-utility-note", bool(ticket_ent.get("allowUtilityNote"))),
+            ("ticket-overdue-auto-compensate", bool(ticket_ent.get("overdueAutoCompensate"))),
+            ("ticket-allow-fine-waive", bool(ticket_ent.get("allowFineWaive"))),
+            ("ticket-renew-block-if-held", bool(ticket_ent.get("renewBlockIfHeld"))),
+            ("ticket-require-peer-confirm", bool(ticket_ent.get("requirePeerConfirm"))),
+            ("ticket-require-abandon-dual", bool(ticket_ent.get("requireAbandonDual"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
         if on_flags:
@@ -455,6 +475,19 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
                         lines.append(f"  {yml_key}: {val}")
             if ticket_ent.get("matchProfileLooseBuilding"):
                 lines.append("  ticket-match-profile-loose-building: true")
+        if ticket_ent.get("bedConstraint"):
+            labels = (spec.get("schema") or {}).get("labels") or {}
+            for yml_key, lab_key in (
+                ("ticket-bed-constraint-need-message", "bedConstraintNeedMessage"),
+                ("ticket-bed-constraint-deny-message", "bedConstraintDenyMessage"),
+            ):
+                val = str(labels.get(lab_key) or "").strip()
+                if val:
+                    if ":" in val or "#" in val or val.startswith(("*", "&", "!", "[", "{")):
+                        safe = val.replace("\\", "\\\\").replace('"', '\\"')
+                        lines.append(f'  {yml_key}: "{safe}"')
+                    else:
+                        lines.append(f"  {yml_key}: {val}")
         try:
             cat_limit_n = int(ticket_ent.get("categoryLimit") or 0)
         except (TypeError, ValueError):
@@ -474,6 +507,24 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
                 renew_days = 0
             if renew_days > 0:
                 lines.append(f"  ticket-renew-days: {renew_days}")
+        try:
+            due_soon = int(ticket_ent.get("dueSoonDays") or 0)
+        except (TypeError, ValueError):
+            due_soon = 0
+        if due_soon > 0 and not ticket_ent.get("slaDeadline") and not ticket_ent.get("applicantCompleteOnly"):
+            lines.append(f"  ticket-due-soon-days: {max(1, min(14, due_soon))}")
+        try:
+            max_od = int(ticket_ent.get("maxOverdueTimes") or 0)
+        except (TypeError, ValueError):
+            max_od = 0
+        if max_od > 0:
+            lines.append(f"  ticket-max-overdue-times: {max(1, min(20, max_od))}")
+        try:
+            max_cancel = int(ticket_ent.get("maxCancelHolds") or 0)
+        except (TypeError, ValueError):
+            max_cancel = 0
+        if max_cancel > 0:
+            lines.append(f"  ticket-max-cancel-holds: {max(1, min(20, max_cancel))}")
         if ticket_ent.get("allowBookHold"):
             try:
                 hold_hours = int(ticket_ent.get("holdHours") or 48)
@@ -541,6 +592,14 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             lines.append("  archive-publish-review: true")
         if (spec.get("schema") or {}).get("shopMarketplace"):
             lines.append("  shop-marketplace: true")
+        schema_root = spec.get("schema") or {}
+        if schema_root.get("stockWarnNotify"):
+            lines.append("  stock-warn-notify: true")
+            try:
+                warn_below = int(schema_root.get("stockWarnBelow") or 10)
+            except (TypeError, ValueError):
+                warn_below = 10
+            lines.append(f"  stock-warn-below: {max(1, min(999, warn_below))}")
         tag = runtime.get("archive_tag_table")
         item_tag = runtime.get("archive_item_tag_table")
         if tag and item_tag:
@@ -798,8 +857,19 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  stock-io-enabled: true")
     if "stock_scrap" in caps:
         lines.append("  stock-scrap-enabled: true")
+        scrap_opts = (spec.get("schema") or {}).get("stockScrapOpts") or {}
+        if isinstance(scrap_opts, dict) and scrap_opts.get("approveFlow"):
+            lines.append("  stock-scrap-approve-flow: true")
     if "stock_count" in caps:
         lines.append("  stock-count-enabled: true")
+        opts = (spec.get("schema") or {}).get("stockCountOpts") or {}
+        if isinstance(opts, dict):
+            if opts.get("countLock"):
+                lines.append("  stock-count-lock: true")
+            if opts.get("blindCount"):
+                lines.append("  stock-blind-count: true")
+            if opts.get("requireDiffReason"):
+                lines.append("  stock-require-diff-reason: true")
     if "e_sign" in caps:
         lines.append("  e-sign-enabled: true")
     if "balance_ledger" in caps:

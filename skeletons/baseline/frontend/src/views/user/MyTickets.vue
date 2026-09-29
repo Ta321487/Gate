@@ -233,9 +233,71 @@
               </el-select>
             </el-form-item>
             <el-form-item :label="remarkLabel" :required="requireRemark">
-              <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" :placeholder="`请填写${remarkLabel}`" />
+              <el-select
+                v-if="remarkOptions.length"
+                v-model="form.remark"
+                filterable
+                allow-create
+                default-first-option
+                :placeholder="`请选择或填写${remarkLabel}`"
+                style="width:100%"
+              >
+                <el-option v-for="opt in remarkOptions" :key="opt" :label="opt" :value="opt" />
+              </el-select>
+              <el-input
+                v-else
+                v-model="form.remark"
+                type="textarea"
+                :rows="3"
+                maxlength="400"
+                :placeholder="`请填写${remarkLabel}`"
+              />
             </el-form-item>
           </template>
+          <el-form-item v-if="allowProxyPickup" :label="proxyNameLabel">
+            <el-input v-model="form.proxyName" maxlength="64" :placeholder="`选填${proxyNameLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowProxyPickup" :label="proxyPhoneLabel">
+            <el-input v-model="form.proxyPhone" maxlength="20" :placeholder="`选填${proxyPhoneLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowDeposit" :label="depositLabel">
+            <el-input-number v-model="form.depositYuan" :min="0" :max="999999" :precision="2" />
+          </el-form-item>
+          <el-form-item v-if="requireNoticeAck">
+            <el-checkbox v-model="form.noticeAck">{{ noticeAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="requireTrainingAck">
+            <el-checkbox v-model="form.trainingAck">我已完成相关培训</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="requireInsuranceAck">
+            <el-checkbox v-model="form.insuranceAck">{{ insuranceAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="allowProjectNo" :label="projectNoLabel">
+            <el-input v-model="form.projectNo" maxlength="64" :placeholder="`选填${projectNoLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowProcureRef" :label="procureRefLabel">
+            <el-input v-model="form.procureRefNo" maxlength="64" :placeholder="`选填${procureRefLabel}`" />
+          </el-form-item>
+          <p v-if="allowProcureRef && procureToAssetHint" class="hint-inline">{{ procureToAssetHint }}</p>
+          <el-form-item v-if="allowDualReview" :label="dualReviewerALabel">
+            <el-input v-model="form.dualReviewerA" maxlength="64" />
+          </el-form-item>
+          <el-form-item v-if="allowDualReview" :label="dualReviewerBLabel">
+            <el-input v-model="form.dualReviewerB" maxlength="64" />
+          </el-form-item>
+          <el-form-item v-if="allowShipFee" :label="shipFeeLabel">
+            <el-input-number v-model="form.shipFeeYuan" :min="0" :max="999999" :precision="2" />
+          </el-form-item>
+          <el-form-item v-if="allowUtilityNote" :label="utilityNoteLabel">
+            <el-input v-model="form.utilityNote" type="textarea" :rows="2" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="requirePeerConfirm" :label="peerUsernameLabel" required>
+            <el-input v-model="form.peerUsername" maxlength="64" :placeholder="`请填写${peerUsernameLabel}`" />
+          </el-form-item>
+          <p v-if="peerConfirmHint" class="sub">{{ peerConfirmHint }}</p>
+          <p v-if="closedLoanHint" class="sub">{{ closedLoanHint }}</p>
+          <p v-if="offHoursPickupHint" class="sub">{{ offHoursPickupHint }}</p>
+          <p v-if="bedReleaseHint" class="sub">{{ bedReleaseHint }}</p>
           <el-form-item v-if="pickDateRange" label="起止日期" required>
             <el-date-picker
               v-model="form.period"
@@ -462,8 +524,42 @@ const matchProfileDenyMessage = computed(
 const archiveLabel = computed(() => archive.label || '事项')
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
 const requireRemark = computed(() => !!ticket.requireRemark)
+const remarkOptions = computed(() => {
+  const opts = ticket.remarkOptions
+  return Array.isArray(opts) ? opts.filter((x) => typeof x === 'string' && x.trim()) : []
+})
+const allowProxyPickup = computed(() => !!ticket.allowProxyPickup)
+const proxyNameLabel = computed(() => labels.value.proxyNameLabel || '代取人姓名')
+const proxyPhoneLabel = computed(() => labels.value.proxyPhoneLabel || '代取人手机')
+const allowDeposit = computed(() => !!ticket.allowDeposit)
+const depositLabel = computed(() => labels.value.depositLabel || '借用押金（元）')
+const requireNoticeAck = computed(() => !!ticket.requireNoticeAck)
+const noticeAckLabel = computed(() => labels.value.noticeAckLabel || '我已阅读并同意相关须知')
+const requireTrainingAck = computed(() => !!ticket.requireTrainingAck)
+const requireInsuranceAck = computed(() => !!ticket.requireInsuranceAck)
+const insuranceAckLabel = computed(() => labels.value.insuranceAckLabel || '我已阅读设备借用保险声明')
+const allowProjectNo = computed(() => !!ticket.allowProjectNo)
+const projectNoLabel = computed(() => labels.value.projectNoLabel || '课题号')
+const allowProcureRef = computed(() => !!ticket.allowProcureRef)
+const procureRefLabel = computed(() => labels.value.procureRefLabel || '申购单号')
+const procureToAssetHint = computed(() => labels.value.procureToAssetHint || '')
+const allowDualReview = computed(() => !!ticket.allowDualReview)
+const dualReviewerALabel = computed(() => labels.value.dualReviewerALabel || '复核人甲')
+const dualReviewerBLabel = computed(() => labels.value.dualReviewerBLabel || '复核人乙')
+const allowShipFee = computed(() => !!ticket.allowShipFee)
+const shipFeeLabel = computed(() => labels.value.shipFeeLabel || '寄件运费（元）')
+const allowUtilityNote = computed(() => !!ticket.allowUtilityNote)
+const utilityNoteLabel = computed(() => labels.value.utilityNoteLabel || '退宿水电清算备注')
+const requirePeerConfirm = computed(() => !!ticket.requirePeerConfirm)
+const peerUsernameLabel = computed(() => labels.value.peerUsernameLabel || '对方学号/用户名')
+const peerConfirmHint = computed(() => labels.value.peerConfirmHint || '')
+const bedConstraint = computed(() => !!ticket.bedConstraint)
+const closedLoanHint = computed(() => labels.value.closedLoanHint || '')
+const offHoursPickupHint = computed(() => labels.value.offHoursPickupHint || '')
+const bedReleaseHint = computed(() => labels.value.bedReleaseHint || '')
 const archiveSelectPlaceholder = computed(() => {
   if (matchProfileRoom.value) return '请选择本人寝室场次'
+  if (bedConstraint.value) return '请选择符合本人性别与年级的床位'
   if (requireClaimCode.value) return '凭取件码匹配待取件'
   if (filterByOwnerToken.value) return '请选择本人相关项'
   return `请选择${archiveLabel.value}`
@@ -751,6 +847,19 @@ const form = reactive({
   interviewPlace: '',
   priority: '普通',
   contactPhone: '',
+  proxyName: '',
+  proxyPhone: '',
+  depositYuan: null,
+  noticeAck: false,
+  trainingAck: false,
+  insuranceAck: false,
+  projectNo: '',
+  procureRefNo: '',
+  dualReviewerA: '',
+  dualReviewerB: '',
+  shipFeeYuan: null,
+  utilityNote: '',
+  peerUsername: '',
 })
 
 const rateVisible = ref(false)
@@ -893,6 +1002,19 @@ async function openApply() {
     nextFollowAt: '',
     priority: '普通',
     contactPhone: '',
+    proxyName: '',
+    proxyPhone: '',
+    depositYuan: null,
+    noticeAck: false,
+    trainingAck: false,
+    insuranceAck: false,
+    projectNo: '',
+    procureRefNo: '',
+    dualReviewerA: '',
+    dualReviewerB: '',
+    shipFeeYuan: null,
+    utilityNote: '',
+    peerUsername: '',
   })
   claimMatchedLine.value = ''
   units.value = []
@@ -928,6 +1050,22 @@ async function submit() {
       ElMessage.warning(`请填写${remarkLabel.value}`)
       return
     }
+    if (requireNoticeAck.value && !form.noticeAck) {
+      ElMessage.warning(noticeAckLabel.value || '请先勾选须知')
+      return
+    }
+    if (requireTrainingAck.value && !form.trainingAck) {
+      ElMessage.warning('请确认已完成相关培训')
+      return
+    }
+    if (requireInsuranceAck.value && !form.insuranceAck) {
+      ElMessage.warning(insuranceAckLabel.value || '请先勾选保险声明')
+      return
+    }
+    if (requirePeerConfirm.value && !(form.peerUsername || '').trim()) {
+      ElMessage.warning(`请填写${peerUsernameLabel.value}`)
+      return
+    }
     if (requireAttach.value && !form.attachUrl) {
       ElMessage.warning('请上传附件')
       return
@@ -961,6 +1099,31 @@ async function submit() {
       if (form.contactChannel) body.contactChannel = form.contactChannel
       if (form.nextFollowAt) body.nextFollowAt = form.nextFollowAt
     }
+    if (allowProxyPickup.value) {
+      if ((form.proxyName || '').trim()) body.proxyName = form.proxyName.trim()
+      if ((form.proxyPhone || '').trim()) body.proxyPhone = form.proxyPhone.trim()
+    }
+    if (allowDeposit.value && form.depositYuan != null && form.depositYuan !== '') {
+      body.depositYuan = form.depositYuan
+    }
+    if (requireNoticeAck.value) body.noticeAck = !!form.noticeAck
+    if (requireTrainingAck.value) body.trainingAck = !!form.trainingAck
+    if (requireInsuranceAck.value) body.insuranceAck = !!form.insuranceAck
+    if (allowProjectNo.value && (form.projectNo || '').trim()) body.projectNo = form.projectNo.trim()
+    if (allowProcureRef.value && (form.procureRefNo || '').trim()) {
+      body.procureRefNo = form.procureRefNo.trim()
+    }
+    if (allowDualReview.value) {
+      if ((form.dualReviewerA || '').trim()) body.dualReviewerA = form.dualReviewerA.trim()
+      if ((form.dualReviewerB || '').trim()) body.dualReviewerB = form.dualReviewerB.trim()
+    }
+    if (allowShipFee.value && form.shipFeeYuan != null && form.shipFeeYuan !== '') {
+      body.shipFeeYuan = form.shipFeeYuan
+    }
+    if (allowUtilityNote.value && (form.utilityNote || '').trim()) {
+      body.utilityNote = form.utilityNote.trim()
+    }
+    if (requirePeerConfirm.value) body.peerUsername = (form.peerUsername || '').trim()
     await http.post('/api/tickets/apply', body)
     ElMessage.success('已提交，等待审核')
     visible.value = false
@@ -1142,6 +1305,7 @@ onMounted(async () => {
 .hero-row { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
+.hint-inline { margin: -4px 0 12px; color: var(--portal-muted, #64748b); font-size: 12px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
 .card {

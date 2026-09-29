@@ -67,6 +67,14 @@ final class TicketRowMaps {
         }
         m.put("renewCount", renewCount);
         m.put("holdExpireAt", fmt(first(raw, "holdExpireAt", "hold_expire_at")));
+        m.put("dueSoonNotifiedAt", fmt(first(raw, "dueSoonNotifiedAt", "due_soon_notified_at")));
+        int everOverdue = 0;
+        Object eo = first(raw, "everOverdue", "ever_overdue");
+        if (eo instanceof Number) everOverdue = ((Number) eo).intValue();
+        else if (eo != null && !String.valueOf(eo).isBlank()) {
+            try { everOverdue = Integer.parseInt(String.valueOf(eo).trim()); } catch (Exception ignored) {}
+        }
+        m.put("everOverdue", everOverdue);
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", str(first(raw, "title")));
@@ -156,6 +164,35 @@ final class TicketRowMaps {
             String place = String.valueOf(rawPlace).trim();
             if (!place.isEmpty()) m.put("interviewPlace", place);
         }
+        String pn = str(first(raw, "proxyName", "proxy_name"));
+        if (!pn.isBlank()) m.put("proxyName", pn);
+        String pp = str(first(raw, "proxyPhone", "proxy_phone"));
+        if (!pp.isBlank()) m.put("proxyPhone", pp);
+        String er = str(first(raw, "exceptionReason", "exception_reason"));
+        if (!er.isBlank()) m.put("exceptionReason", er);
+        String dn = str(first(raw, "damageClaimNote", "damage_claim_note"));
+        if (!dn.isBlank()) m.put("damageClaimNote", dn);
+        Object depObj = first(raw, "depositYuan", "deposit_yuan");
+        if (depObj != null) {
+            double dep = toDouble(depObj);
+            if (dep > 0) m.put("depositYuan", dep);
+        }
+        Object ackObj = first(raw, "noticeAck", "notice_ack");
+        if (ackObj != null) {
+            String a = String.valueOf(ackObj);
+            m.put("noticeAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        String peer = str(first(raw, "peerUsername", "peer_username"));
+        if (!peer.isBlank()) m.put("peerUsername", peer);
+        Object peerAckObj = first(raw, "peerAck", "peer_ack");
+        if (peerAckObj != null) {
+            String a = String.valueOf(peerAckObj);
+            m.put("peerAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        String pno = str(first(raw, "projectNo", "project_no"));
+        if (!pno.isBlank()) m.put("projectNo", pno);
+        String pref = str(first(raw, "procureRefNo", "procure_ref_no"));
+        if (!pref.isBlank()) m.put("procureRefNo", pref);
         return m;
     }
 

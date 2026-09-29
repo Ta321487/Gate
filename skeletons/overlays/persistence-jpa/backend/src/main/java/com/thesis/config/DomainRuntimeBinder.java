@@ -222,6 +222,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-renew-days:0}")
     private int ticketRenewDays;
 
+    @Value("${thesis.ticket-due-soon-days:0}")
+    private int ticketDueSoonDays;
+
+    @Value("${thesis.ticket-max-overdue-times:0}")
+    private int ticketMaxOverdueTimes;
+
     @Value("${thesis.ticket-no-show-after-end:false}")
     private boolean ticketNoShowAfterEnd;
 
@@ -275,6 +281,75 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.ticket-applicant-complete-only:false}")
     private boolean ticketApplicantCompleteOnly;
+
+    @Value("${thesis.ticket-allow-proxy-pickup:false}")
+    private boolean ticketAllowProxyPickup;
+
+    @Value("${thesis.ticket-bed-constraint:false}")
+    private boolean ticketBedConstraint;
+
+    @Value("${thesis.ticket-bed-constraint-need-message:}")
+    private String ticketBedConstraintNeedMessage;
+
+    @Value("${thesis.ticket-bed-constraint-deny-message:}")
+    private String ticketBedConstraintDenyMessage;
+
+    @Value("${thesis.ticket-arrival-notify:false}")
+    private boolean ticketArrivalNotify;
+
+    @Value("${thesis.ticket-require-notice-ack:false}")
+    private boolean ticketRequireNoticeAck;
+
+    @Value("${thesis.ticket-allow-deposit:false}")
+    private boolean ticketAllowDeposit;
+
+    @Value("${thesis.ticket-allow-exception-close:false}")
+    private boolean ticketAllowExceptionClose;
+
+    @Value("${thesis.ticket-require-training-ack:false}")
+    private boolean ticketRequireTrainingAck;
+
+    @Value("${thesis.ticket-require-insurance-ack:false}")
+    private boolean ticketRequireInsuranceAck;
+
+    @Value("${thesis.ticket-block-if-calib-expired:false}")
+    private boolean ticketBlockIfCalibExpired;
+
+    @Value("${thesis.ticket-allow-project-no:false}")
+    private boolean ticketAllowProjectNo;
+
+    @Value("${thesis.ticket-allow-procure-ref:false}")
+    private boolean ticketAllowProcureRef;
+
+    @Value("${thesis.ticket-procure-to-stock-in:false}")
+    private boolean ticketProcureToStockIn;
+
+    @Value("${thesis.ticket-allow-dual-review:false}")
+    private boolean ticketAllowDualReview;
+
+    @Value("${thesis.ticket-allow-ship-fee:false}")
+    private boolean ticketAllowShipFee;
+
+    @Value("${thesis.ticket-allow-utility-note:false}")
+    private boolean ticketAllowUtilityNote;
+
+    @Value("${thesis.ticket-max-cancel-holds:0}")
+    private int ticketMaxCancelHolds;
+
+    @Value("${thesis.ticket-overdue-auto-compensate:false}")
+    private boolean ticketOverdueAutoCompensate;
+
+    @Value("${thesis.ticket-allow-fine-waive:false}")
+    private boolean ticketAllowFineWaive;
+
+    @Value("${thesis.ticket-renew-block-if-held:false}")
+    private boolean ticketRenewBlockIfHeld;
+
+    @Value("${thesis.ticket-require-peer-confirm:false}")
+    private boolean ticketRequirePeerConfirm;
+
+    @Value("${thesis.ticket-require-abandon-dual:false}")
+    private boolean ticketRequireAbandonDual;
 
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
@@ -457,6 +532,18 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.stock-count-enabled:false}")
     private boolean stockCountEnabled;
 
+    @Value("${thesis.stock-count-lock:false}")
+    private boolean stockCountLock;
+
+    @Value("${thesis.stock-blind-count:false}")
+    private boolean stockBlindCount;
+
+    @Value("${thesis.stock-require-diff-reason:false}")
+    private boolean stockRequireDiffReason;
+
+    @Value("${thesis.stock-scrap-approve-flow:false}")
+    private boolean stockScrapApproveFlow;
+
     /** C-18 本地签章 */
     @Value("${thesis.e-sign-enabled:false}")
     private boolean eSignEnabled;
@@ -484,6 +571,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
+
+    @Value("${thesis.stock-warn-notify:false}")
+    private boolean stockWarnNotify;
+
+    @Value("${thesis.stock-warn-below:10}")
+    private int stockWarnBelow;
 
     @Value("${thesis.detail-attrs-enabled:false}")
     private boolean detailAttrsEnabled;
@@ -544,6 +637,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configurePublishReview(archivePublishReview);
         ArchiveStore.configureGallery(galleryEnabled);
+        ArchiveStore.configureStockWarn(stockWarnNotify, stockWarnBelow);
         ArchiveStore.configureDetailAttrs(detailAttrsEnabled, detailAttrKeys);
         ArchiveStore.configureRoomEquipment(roomEquipmentEnabled);
         ArchiveStore.configureFlashPrice(flashPriceEnabled);
@@ -575,6 +669,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configurePeerAccept(ticketPeerAccept);
             TicketStore.configureIssuePassCode(ticketIssuePassCode);
             TicketStore.configureRenew(ticketAllowRenew, ticketMaxRenew, ticketRenewDays);
+            TicketStore.configureDueSoon(ticketDueSoonDays);
+            TicketStore.configureMaxOverdueTimes(ticketMaxOverdueTimes);
             TicketStore.configureWaitlist(ticketAllowWaitlist);
             TicketStore.configureBookHold(ticketAllowBookHold, ticketHoldHours);
             TicketStore.configureBookLost(ticketAllowBookLost);
@@ -596,6 +692,30 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                     ticketMatchProfileNeedMessage,
                     ticketMatchProfileDenyMessage);
             TicketStore.configureApplicantCompleteOnly(ticketApplicantCompleteOnly);
+            TicketStore.configureProxyPickup(ticketAllowProxyPickup);
+            TicketStore.configureBedConstraint(
+                    ticketBedConstraint,
+                    ticketBedConstraintNeedMessage,
+                    ticketBedConstraintDenyMessage);
+            TicketStore.configureArrivalNotify(ticketArrivalNotify);
+            TicketStore.configureNoticeAck(ticketRequireNoticeAck);
+            TicketStore.configureDeposit(ticketAllowDeposit);
+            TicketStore.configureExceptionClose(ticketAllowExceptionClose);
+            TicketStore.configureTrainingAck(ticketRequireTrainingAck);
+            TicketStore.configureInsuranceAck(ticketRequireInsuranceAck);
+            TicketStore.configureCalibBlock(ticketBlockIfCalibExpired);
+            TicketStore.configureProjectNo(ticketAllowProjectNo);
+            TicketStore.configureProcureRef(ticketAllowProcureRef);
+            TicketStore.configureProcureToStockIn(ticketProcureToStockIn);
+            TicketStore.configureDualReview(ticketAllowDualReview);
+            TicketStore.configureShipFee(ticketAllowShipFee);
+            TicketStore.configureUtilityNote(ticketAllowUtilityNote);
+            TicketStore.configureMaxCancelHolds(ticketMaxCancelHolds);
+            TicketStore.configureOverdueAutoCompensate(ticketOverdueAutoCompensate);
+            TicketStore.configureFineWaive(ticketAllowFineWaive);
+            TicketStore.configureRenewBlockIfHeld(ticketRenewBlockIfHeld);
+            TicketStore.configurePeerConfirm(ticketRequirePeerConfirm);
+            TicketStore.configureAbandonDual(ticketRequireAbandonDual);
         }
         LoyaltyStore.configure(
                 walletEnabled,
@@ -666,7 +786,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         DoclibStore.configure(doclibEnabled);
         TimebankStore.configure(timebankEnabled, timebankRedeemOnApprove);
         SeatStore.configure(seatSelectEnabled);
-        StockIoStore.configure(stockIoEnabled, stockScrapEnabled, stockCountEnabled);
+        StockIoStore.configure(
+                stockIoEnabled,
+                stockScrapEnabled,
+                stockCountEnabled,
+                stockCountLock,
+                stockBlindCount,
+                stockRequireDiffReason,
+                stockScrapApproveFlow);
         ESignStore.configure(eSignEnabled);
         BalanceLedgerStore.configure(balanceLedgerEnabled, balanceLedgerDebitOnApprove);
         GradeScoreStore.configure(gradeScoresEnabled);

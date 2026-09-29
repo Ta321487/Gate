@@ -58,6 +58,15 @@ final class TicketRowMaps {
         }
         m.put("renewCount", renewCount);
         m.put("holdExpireAt", TicketSql.fmt(TicketSql.safeTs(rs, "hold_expire_at")));
+        m.put("dueSoonNotifiedAt", TicketSql.fmt(TicketSql.safeTs(rs, "due_soon_notified_at")));
+        int everOverdue = 0;
+        try {
+            everOverdue = rs.getInt("ever_overdue");
+            if (rs.wasNull()) everOverdue = 0;
+        } catch (Exception ignored) {
+            everOverdue = 0;
+        }
+        m.put("everOverdue", everOverdue);
 
         if (TicketStore.mode() == TicketStore.Mode.STANDALONE) {
             m.put("title", TicketSql.safeStr(rs, "title"));
@@ -157,6 +166,56 @@ final class TicketRowMaps {
             }
         } catch (Exception ignored) {
             // 旧库无 interview_place 列：不展示面试地点
+        }
+        try {
+            String pn = TicketSql.safeStr(rs, "proxy_name");
+            if (pn != null && !pn.isBlank()) m.put("proxyName", pn);
+        } catch (Exception ignored) {
+        }
+        try {
+            String pp = TicketSql.safeStr(rs, "proxy_phone");
+            if (pp != null && !pp.isBlank()) m.put("proxyPhone", pp);
+        } catch (Exception ignored) {
+        }
+        try {
+            String er = TicketSql.safeStr(rs, "exception_reason");
+            if (er != null && !er.isBlank()) m.put("exceptionReason", er);
+        } catch (Exception ignored) {
+        }
+        try {
+            String dn = TicketSql.safeStr(rs, "damage_claim_note");
+            if (dn != null && !dn.isBlank()) m.put("damageClaimNote", dn);
+        } catch (Exception ignored) {
+        }
+        try {
+            double dep = TicketSql.safeDouble(rs, "deposit_yuan");
+            if (dep > 0) m.put("depositYuan", dep);
+        } catch (Exception ignored) {
+        }
+        try {
+            int ack = rs.getInt("notice_ack");
+            if (!rs.wasNull()) m.put("noticeAck", ack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            String peer = TicketSql.safeStr(rs, "peer_username");
+            if (peer != null && !peer.isBlank()) m.put("peerUsername", peer);
+        } catch (Exception ignored) {
+        }
+        try {
+            int pack = rs.getInt("peer_ack");
+            if (!rs.wasNull()) m.put("peerAck", pack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            String pno = TicketSql.safeStr(rs, "project_no");
+            if (pno != null && !pno.isBlank()) m.put("projectNo", pno);
+        } catch (Exception ignored) {
+        }
+        try {
+            String pref = TicketSql.safeStr(rs, "procure_ref_no");
+            if (pref != null && !pref.isBlank()) m.put("procureRefNo", pref);
+        } catch (Exception ignored) {
         }
         return m;
     }
