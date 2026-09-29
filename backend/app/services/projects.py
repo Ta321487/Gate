@@ -164,7 +164,7 @@ def delivery_block_reason(project: Project) -> str | None:
         return MSG_DOWNLOAD_REVIEW_REGRESSION
     if st.get("status") == "active" and open_fix_notes(st):
         return MSG_DOWNLOAD_OPEN_FIX_NOTES
-    if project.workspace_path and is_zip_stale(project):
+    if getattr(project, "workspace_path", "") and is_zip_stale(project):
         return MSG_DOWNLOAD_ZIP_STALE
     zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
@@ -546,10 +546,9 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     return True
 
 
-# 列表页会同时打 /stats 和 /projects。两边都重扫工作区时占着 SQLite 读锁再写回，
-# 互相等 busy，同页的 /upload/plans 也被事件循环堵住（并行实测约 5s+）。
-# 短 TTL：生成任务自己会写 gates；这只挡住刷新连打，详情页仍当场重扫。
-# /stats 只读库计数，不扫盘；扫盘只在 /projects 且放到线程池，避免堵事件循环。
+# 运行态/checklist 投影由 runtime_reconcile 后台写库；列表与 /stats 只读。
+# 短 TTL：生成任务自己会写 gates；挡住后台连扫。详情页仍当场重扫。
+# reconcile_lock：后台对账与（若有）其它写投影路径互斥，避免双写打架。
 _CHECKLIST_LIST_TTL_SEC = 20.0
 _checklist_list_at: dict[str, float] = {}
 reconcile_lock = asyncio.Lock()
@@ -565,7 +564,7 @@ async def release_read_transaction(db: AsyncSession) -> None:
 
 
 def sync_checklist_for_list(project: Project) -> bool:
-    """列表：TTL 内不重扫工作区。生成中仍走廉价收敛（只降 zip_ready）。"""
+    """后台投影：TTL 内不重扫工作区。生成中仍走廉价收敛（只降 zip_ready）。"""
     generating = project.status == ProjectStatus.generating.value
     if not generating:
         seen = _checklist_list_at.get(project.id)
@@ -582,7 +581,7 @@ def sync_checklist_for_list(project: Project) -> bool:
 def reconcile_list_items(
     items: list[Project], *, listening: set[int] | None = None
 ) -> bool:
-    """列表页批量收敛 checklist/运行态（供 to_thread，勿在持 SQLite 事务时调用）。"""
+    """批量收敛 checklist/运行态（后台投影；供 to_thread，勿在持读事务时调用）。"""
     dirty = False
     for p in items:
         if sync_checklist_for_list(p):

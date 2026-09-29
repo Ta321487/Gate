@@ -73,7 +73,7 @@ def _workspace_or_400(p: Project) -> Path:
 
 @router.get("/stats", response_model=StatsOut, summary="项目统计")
 async def project_stats(db: AsyncSession = Depends(get_db)):
-    # 不抢 reconcile_lock：只读计数，扫盘只在列表
+    # 只读库计数；运行态/checklist 由后台 runtime_reconcile 投影
     from app.core.database import begin_sql_count, end_sql_count
 
     t0 = time.perf_counter()
@@ -118,118 +118,99 @@ async def list_projects(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    """只读库投影；运行态/checklist 由后台 runtime_reconcile 收敛（启停/详情仍当场写）。"""
     from app.core.database import begin_sql_count, end_sql_count
 
     t0 = time.perf_counter()
     bucket = begin_sql_count()
-    phase: dict[str, float] = {}
     items: list = []
+    select_ms = -1.0
     try:
-        async with project_svc.reconcile_lock:
-            t_sel = time.perf_counter()
-            result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
-            items = list(result.scalars().all())
-            phase["select_ms"] = (time.perf_counter() - t_sel) * 1000.0
-            if q:
-                items = [p for p in items if q in p.title or q in p.id]
-            # 读完即放开 SQLite，再纠正运行态与门禁（避免与其它读请求互相等锁）
-            await project_svc.release_read_transaction(db)
-            listening: set[int] | None = None
-            t_listen = time.perf_counter()
-            if any(p.backend_port or p.frontend_port for p in items):
-                listening = await asyncio.to_thread(rt.listening_tcp_ports)
-            phase["listen_ms"] = (time.perf_counter() - t_listen) * 1000.0
-            # 扫盘/廉价运行态收敛放到线程池，避免堵 /upload/plans 等
-            t_rec = time.perf_counter()
-            dirty = await asyncio.to_thread(
-                project_svc.reconcile_list_items, items, listening=listening
-            )
-            phase["reconcile_ms"] = (time.perf_counter() - t_rec) * 1000.0
-            if filter == "active":
-                # 「运行中」= 预览进程在跑（与列表「运行」列一致）
-                items = [
-                    p
-                    for p in items
-                    if p.status == "running" or p.backend_running or p.frontend_running
-                ]
-            elif filter == "generating":
-                items = [p for p in items if p.status == "generating"]
-            elif filter == "done":
-                # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
-                items = [
-                    p
-                    for p in items
-                    if p.status in ("generated", "running")
-                    and project_svc.is_zip_downloadable(p)
-                ]
-            elif filter == "pending":
-                # 待审 = 质检可下、尚未人工标记（履约 backlog）
-                items = [
-                    p
-                    for p in items
-                    if p.status in ("generated", "running")
-                    and project_svc.is_zip_downloadable(p)
-                    and project_svc.normalize_delivery_mark(
-                        getattr(p, "delivery_mark", None)
-                    )
-                    == "none"
-                ]
-            elif filter == "ready":
-                items = [
-                    p
-                    for p in items
-                    if project_svc.normalize_delivery_mark(
-                        getattr(p, "delivery_mark", None)
-                    )
-                    == "ready"
-                ]
-            elif filter == "delivered":
-                items = [
-                    p
-                    for p in items
-                    if project_svc.normalize_delivery_mark(
-                        getattr(p, "delivery_mark", None)
-                    )
-                    == "delivered"
-                ]
-            elif filter == "fail":
-                # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
-                items = [
-                    p
-                    for p in items
-                    if p.status == "failed"
-                    or (
-                        p.status in ("generated", "running")
-                        and not project_svc.is_zip_downloadable(p)
-                    )
-                ]
-            # 须在 commit 前物化：commit 后 ORM 过期，Pydantic 再读字段会触发 MissingGreenlet
-            summaries = []
-            from app.services.delivery_review import review_status_of
-
-            for p in items:
-                s = ProjectSummary.model_validate(p)
-                s.delivery_mark = project_svc.normalize_delivery_mark(
+        t_sel = time.perf_counter()
+        result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
+        items = list(result.scalars().all())
+        select_ms = (time.perf_counter() - t_sel) * 1000.0
+        if q:
+            items = [p for p in items if q in p.title or q in p.id]
+        if filter == "active":
+            # 「运行中」= 库内投影（与列表「运行」列一致；后台对账收敛）
+            items = [
+                p
+                for p in items
+                if p.status == "running" or p.backend_running or p.frontend_running
+            ]
+        elif filter == "generating":
+            items = [p for p in items if p.status == "generating"]
+        elif filter == "done":
+            # 可下载 = 已生成/运行中且机器质检仍解锁（与人工履约标记分离；与详情同源）
+            items = [
+                p
+                for p in items
+                if p.status in ("generated", "running")
+                and project_svc.is_zip_downloadable(p)
+            ]
+        elif filter == "pending":
+            # 待审 = 质检可下、尚未人工标记（履约 backlog）
+            items = [
+                p
+                for p in items
+                if p.status in ("generated", "running")
+                and project_svc.is_zip_downloadable(p)
+                and project_svc.normalize_delivery_mark(
                     getattr(p, "delivery_mark", None)
                 )
-                s.download_blocked_reason = project_svc.delivery_block_reason(p)
-                s.review_status = review_status_of(p)
-                summaries.append(s)
-            if dirty:
-                await db.commit()
-            return summaries
+                == "none"
+            ]
+        elif filter == "ready":
+            items = [
+                p
+                for p in items
+                if project_svc.normalize_delivery_mark(
+                    getattr(p, "delivery_mark", None)
+                )
+                == "ready"
+            ]
+        elif filter == "delivered":
+            items = [
+                p
+                for p in items
+                if project_svc.normalize_delivery_mark(
+                    getattr(p, "delivery_mark", None)
+                )
+                == "delivered"
+            ]
+        elif filter == "fail":
+            # 质检未过：生成任务失败，或已生成但门禁/ZIP 未解锁
+            items = [
+                p
+                for p in items
+                if p.status == "failed"
+                or (
+                    p.status in ("generated", "running")
+                    and not project_svc.is_zip_downloadable(p)
+                )
+            ]
+        summaries = []
+        from app.services.delivery_review import review_status_of
+
+        for p in items:
+            s = ProjectSummary.model_validate(p)
+            s.delivery_mark = project_svc.normalize_delivery_mark(
+                getattr(p, "delivery_mark", None)
+            )
+            s.download_blocked_reason = project_svc.delivery_block_reason(p)
+            s.review_status = review_status_of(p)
+            summaries.append(s)
+        return summaries
     finally:
         n = end_sql_count(bucket)
         logger.info(
-            "timing route=projects filter=%s ms=%.1f db_queries=%s items=%s "
-            "select_ms=%.1f listen_ms=%.1f reconcile_ms=%.1f",
+            "timing route=projects filter=%s ms=%.1f db_queries=%s items=%s select_ms=%.1f",
             filter,
             (time.perf_counter() - t0) * 1000.0,
             n,
             len(items),
-            phase.get("select_ms", -1),
-            phase.get("listen_ms", -1),
-            phase.get("reconcile_ms", -1),
+            select_ms,
         )
 
 

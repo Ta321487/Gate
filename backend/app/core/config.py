@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     gf_qa_warn_blocks_pack: bool = Field(default=True, alias="GF_QA_WARN_BLOCKS_PACK")
     # SQL 慢查询日志阈值（毫秒）；logger=gf.sql
     gf_sql_slow_ms: float = Field(default=50.0, alias="GF_SQL_SLOW_MS")
+    # 运行态/checklist 后台投影间隔（秒）；<=0 关闭。列表 GET 只读库。
+    gf_runtime_reconcile_sec: float = Field(default=5.0, alias="GF_RUNTIME_RECONCILE_SEC")
 
     @property
     def database_url(self) -> str:

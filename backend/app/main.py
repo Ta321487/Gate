@@ -43,7 +43,13 @@ async def lifespan(_app: FastAPI):
             logging.getLogger("gf.job").warning("marked %s orphaned job(s) failed", n)
     except Exception:  # noqa: BLE001
         pass
-    yield
+    from app.services.runtime_reconcile import start_runtime_reconcile, stop_runtime_reconcile
+
+    start_runtime_reconcile()
+    try:
+        yield
+    finally:
+        await stop_runtime_reconcile()
 
 
 app = FastAPI(
