@@ -13,6 +13,7 @@
             <if test="withQty">, qty</if>
             <if test="withDue">, due_at</if>
             <if test="withPeriod">, period_start, period_end</if>
+            <if test="withLeaveDays">, leave_days</if>
         ) VALUES (
             #{itemId}, #{username}, #{status}, NOW(), #{remark}
             <if test="withFineYuan">, 0</if>
@@ -22,6 +23,7 @@
             <if test="withQty">, #{qty}</if>
             <if test="withDue">, #{dueAt}</if>
             <if test="withPeriod">, #{periodStart}, #{periodEnd}</if>
+            <if test="withLeaveDays">, #{leaveDays}</if>
         )
     </insert>
 
@@ -179,6 +181,7 @@
     <update id="updateComplete" parameterType="map">
         UPDATE `${ticketTable}` SET status='returned', return_at=NOW()
         <if test="withRemindMsg">, remind_msg=#{remindMsg}</if>
+        <if test="withAttachUrl">, attach_url=#{attachUrl}</if>
         WHERE id=#{id}
     </update>
 

@@ -813,6 +813,41 @@ def ensure_book_suggest_sql(sql: str, *, enabled: bool) -> str:
     return sql.rstrip() + "\n" + _BOOK_SUGGEST_DDL + "\n" + _BOOK_SUGGEST_SEED
 
 
+_PARCEL_SHIP_DDL = """
+CREATE TABLE IF NOT EXISTS parcel_ship (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  receiver_name VARCHAR(64) NOT NULL DEFAULT '',
+  receiver_phone VARCHAR(32) NOT NULL DEFAULT '',
+  dest_address VARCHAR(255) NOT NULL DEFAULT '',
+  item_desc VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  tracking_no VARCHAR(64) DEFAULT '',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_ps_user (username, id),
+  KEY idx_ps_status (status, id)
+);
+"""
+
+_PARCEL_SHIP_SEED = """
+INSERT INTO parcel_ship (username, receiver_name, receiver_phone, dest_address, item_desc, status)
+SELECT 'user', '张三', '13800001111', '本市某小区 3 栋', '文件资料', 'pending'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM parcel_ship WHERE username='user' AND item_desc='文件资料');
+"""
+
+
+def ensure_parcel_ship_sql(sql: str, *, enabled: bool) -> str:
+    """寄件登记表+种子；开题挂 parcel_ship 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?parcel_ship`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _PARCEL_SHIP_DDL + "\n" + _PARCEL_SHIP_SEED
+
+
 _AUDIT_LOG_DDL = """
 CREATE TABLE IF NOT EXISTS sys_audit_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -938,24 +973,36 @@ GALLERY_COLUMNS: list[tuple[str, str]] = [
     ("gallery_json", "TEXT NULL"),
 ]
 
-DETAIL_ATTR_COLUMNS: list[tuple[str, str]] = [
-    ("detail_json", "TEXT NULL"),
-]
 
+def ensure_detail_attrs_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    item_table: str | None,
+    attr_fields: list[dict[str, str]] | list[str] | None = None,
+    attr_keys: list[str] | None = None,
+) -> str:
+    """详情属性：开题字段按语义落档案表真列。无字段时不加列。
 
-def ensure_detail_attrs_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """商品详情属性 JSON。开题详情括号里列出的品牌、材质等写入此列。"""
+    工厂侧仍用 detailAttrKeys 列表收集；学生包不再依赖 detail_json 装业务字段。
+    旧包若仍有 detail_json，Store 读路径可回退。
+    """
     if not enabled:
         return sql
     t = (item_table or "").strip()
     if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    from app.bake.features.detail_attrs import detail_attr_sql_columns
+
+    cols = detail_attr_sql_columns(attr_fields if attr_fields is not None else attr_keys)
+    if not cols:
         return sql
 
     def repl(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         if table.lower() != t.lower():
             return m.group(0)
-        body = _inject_missing_columns(body, DETAIL_ATTR_COLUMNS)
+        body = _inject_missing_columns(body, cols)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
@@ -2541,11 +2588,61 @@ CREATE TABLE IF NOT EXISTS grade_apply_attach (
   ticket_id BIGINT NOT NULL,
   file_url VARCHAR(255) DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS grade_score_history (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  score_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL DEFAULT '',
+  course_id BIGINT NULL,
+  term_id BIGINT NULL,
+  old_score DECIMAL(5,2) NULL,
+  new_score DECIMAL(5,2) NULL,
+  action VARCHAR(16) NOT NULL DEFAULT 'update',
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_grade_history_score (score_id)
+);
 INSERT IGNORE INTO grade_term (id, name) VALUES (1, '2025-2026-1');
 INSERT IGNORE INTO grade_score (id, username, course_id, term_id, score) VALUES
 (1, 'user', 1, 1, 86.00),
 (2, 'user', 3, 1, 91.50),
 (3, 'peer', 1, 1, 92.00);
+""",
+    # 资助域旁路岛：审核通过后「公示」→「发放」；挂在申请之后，不扩 ticket 状态机
+    "fund_extra": """
+CREATE TABLE IF NOT EXISTS fund_publicity (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  title VARCHAR(128) NOT NULL DEFAULT '',
+  start_at DATE NULL,
+  end_at DATE NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'publicizing',
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fund_publicity_ticket (ticket_id)
+);
+CREATE TABLE IF NOT EXISTS fund_disburse (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  paid_at DATE NULL,
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fund_disburse_ticket (ticket_id)
+);
+""",
+    # 房源成交台账：带看跟进办结后登记成交，不把房源做成交易系统
+    "listing_deal": """
+CREATE TABLE IF NOT EXISTS listing_deal (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  deal_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+  deal_at DATE NULL,
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_listing_deal_ticket (ticket_id)
+);
 """,
     "procure_extra": """
 CREATE TABLE IF NOT EXISTS procure_vendor (
@@ -2754,9 +2851,11 @@ def ensure_borrow_structural_sql(
     out = sql
     d = domain or ""
 
-    if "loan_renew" in caps and d in ("DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"):
+    # 借用/占用族下限 BORROW_TABLE_MIN=10 是无条件的：续借/罚金是「常见好做默认实现」，
+    # 材料没写也补表（否则窄材料只剩 8 张，与本函数 docstring 和门禁下限自相矛盾）。
+    if d in ("DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"):
         out = _append_ddl_if_missing(out, "renew_log", _STRUCTURAL_DDL["loan_renew_log"])
-    if "deadline" in caps and d in ("DOM-LIBRARY", "DOM-EQUIP"):
+    if d in ("DOM-LIBRARY", "DOM-EQUIP"):
         out = _append_ddl_if_missing(out, "fine_record", _STRUCTURAL_DDL["fine_record"])
     if d == "DOM-DOCLIB":
         out = _append_ddl_if_missing(out, "doc_folder", _STRUCTURAL_DDL["doclib_extra"])
@@ -2779,6 +2878,10 @@ def ensure_borrow_structural_sql(
         out = _append_ddl_if_missing(out, "parcel_shelf", _STRUCTURAL_DDL["parcel_extra"])
     if d == "DOM-GRADE":
         out = _append_ddl_if_missing(out, "grade_term", _STRUCTURAL_DDL["grade_extra"])
+    if d == "DOM-FUND":
+        out = _append_ddl_if_missing(out, "fund_publicity", _STRUCTURAL_DDL["fund_extra"])
+    if d == "DOM-LISTING":
+        out = _append_ddl_if_missing(out, "listing_deal", _STRUCTURAL_DDL["listing_deal"])
     if d == "DOM-PROCURE":
         out = _append_ddl_if_missing(out, "procure_vendor", _STRUCTURAL_DDL["procure_extra"])
     if d == "DOM-CARPOOL":
@@ -2888,6 +2991,9 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("qty", "INT NOT NULL DEFAULT 1"),
     ("period_start", "DATETIME NULL"),
     ("period_end", "DATETIME NULL"),
+    ("leave_days", "INT NULL"),
+    ("week_no", "INT NULL"),
+    ("interview_place", "VARCHAR(128) DEFAULT ''"),
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
@@ -2899,13 +3005,13 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-EQUIP": ["fine_status"],
     "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty"],
     "DOM-CRM": ["contact_channel", "next_follow_at"],
-    "DOM-ATTEND": ["contact_channel", "next_follow_at"],
+    "DOM-ATTEND": ["contact_channel", "next_follow_at", "leave_days"],
     "DOM-FUND": ["contact_channel", "next_follow_at"],
     "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
-    "DOM-RECRUIT": ["contact_channel", "next_follow_at"],
+    "DOM-RECRUIT": ["contact_channel", "next_follow_at", "interview_place"],
     "DOM-DATING": ["contact_channel", "next_follow_at"],
     "DOM-GRADE": ["contact_channel", "next_follow_at"],
-    "DOM-INTERN": ["contact_channel", "next_follow_at"],
+    "DOM-INTERN": ["contact_channel", "next_follow_at", "week_no"],
     "DOM-SEAL": ["contact_channel", "next_follow_at"],
     "DOM-FLEET": ["contact_channel", "next_follow_at"],
     "DOM-CERT": ["contact_channel", "next_follow_at"],

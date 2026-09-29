@@ -5,7 +5,7 @@ import com.thesis.mapper.TicketMapper;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,8 +14,29 @@ final class TicketAsserts {
 
     private TicketAsserts() {}
 
+    /** MyBatis 叠层统一走 Mapper；不得回退 JDBC 直连入口。 */
     private static TicketMapper mapper() {
         return MybatisSupport.mapper(TicketMapper.class);
+    }
+
+    /** 行值可能是 Timestamp / LocalDateTime / 字符串，统一成 LocalDateTime。 */
+    private static LocalDateTime asDateTime(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof LocalDateTime ldt) return ldt;
+        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
+        String s = String.valueOf(raw).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
+        if (s.contains("T")) s = s.replace('T', ' ');
+        return LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), TicketSql.FMT);
+    }
+
+    private static Map<String, Object> ticketQuery(long itemId) {
+        Map<String, Object> q = new HashMap<>();
+        q.put("ticketTable", TicketStore.TICKET);
+        q.put("itemTable", ArchiveStore.itemTable());
+        q.put("itemFk", TicketStore.itemFkColumn());
+        q.put("itemId", itemId);
+        return q;
     }
 
     static String normalizeAttach(String attachUrl) {
@@ -28,7 +49,9 @@ final class TicketAsserts {
     }
 
     static void assertUnderActiveLimit(String username) {
-        int active = mapper().countActiveByUser(TicketStore.TICKET, username, TicketStore.allowMultiTicket);
+        // 多开单（跟帖）：只限制待审数量，已展示的回复不占额度
+        int active = mapper().countActiveByUser(
+                TicketStore.TICKET, username, TicketStore.allowMultiTicket);
         if (active >= TicketStore.maxActive()) {
             int lim = TicketStore.maxActive();
             throw new IllegalStateException(
@@ -47,6 +70,7 @@ final class TicketAsserts {
             if (s.contains("T")) s = s.replace('T', ' ');
             LocalDateTime deadline;
             if (s.length() == 10) {
+                // 纯日期：当日仍可报，过了当天才拦
                 deadline = LocalDateTime.parse(s + "T23:59:59");
             } else {
                 deadline = LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), TicketSql.FMT);
@@ -69,6 +93,7 @@ final class TicketAsserts {
             throw new IllegalStateException("该对象已下架或不可申请");
         }
         // 线路报名等：档案 stage 已关闭时禁止再报（与 status 双保险）
+        // 设备借用：维修中/下架不可借；驿站：异常件不可取
         Object stageObj = item.get("stage");
         if (stageObj != null) {
             String stage = String.valueOf(stageObj).trim();
@@ -77,6 +102,12 @@ final class TicketAsserts {
                         "满员".equals(stage) ? "该线路已满员，不可再报名"
                                 : ("已出团".equals(stage) ? "该线路已出团，不可再报名"
                                 : "该线路已下架，不可再报名"));
+            }
+            if ("维修中".equals(stage)) {
+                throw new IllegalStateException("该设备维修中，暂不可借用");
+            }
+            if ("损坏".equals(stage) || "误领".equals(stage) || "拒收".equals(stage)) {
+                throw new IllegalStateException("该包裹为异常件（" + stage + "），不可办理取件");
             }
         }
         if (!ArchiveStore.hasStartAt() && !ArchiveStore.hasEndAt()) return;
@@ -91,12 +122,8 @@ final class TicketAsserts {
         if (!TicketStore.checkMutex || !ArchiveStore.hasMutexCode()) return;
         String code = TicketSql.str(item.get("mutexCode")).trim();
         if (code.isBlank()) return;
-        Map<String, Object> q = new LinkedHashMap<>();
-        q.put("ticketTable", TicketStore.TICKET);
-        q.put("itemTable", ArchiveStore.itemTable());
-        q.put("itemFk", TicketStore.itemFkColumn());
+        Map<String, Object> q = ticketQuery(itemId);
         q.put("username", username);
-        q.put("itemId", itemId);
         q.put("mutexCode", code);
         List<String> titles = mapper().selectMutexConflictTitles(q);
         if (titles != null && !titles.isEmpty()) {
@@ -121,7 +148,7 @@ final class TicketAsserts {
             }
         }
         if (categoryId <= 0) return;
-        Map<String, Object> q = new LinkedHashMap<>();
+        Map<String, Object> q = new HashMap<>();
         q.put("ticketTable", TicketStore.TICKET);
         q.put("itemTable", ArchiveStore.itemTable());
         q.put("itemFk", TicketStore.itemFkColumn());
@@ -153,46 +180,22 @@ final class TicketAsserts {
         if (!newEnd.isAfter(newStart)) {
             throw new IllegalStateException("时段配置无效：结束时间须晚于开始时间");
         }
-        Map<String, Object> q = new LinkedHashMap<>();
-        q.put("ticketTable", TicketStore.TICKET);
-        q.put("itemTable", ArchiveStore.itemTable());
-        q.put("itemFk", TicketStore.itemFkColumn());
+        Map<String, Object> q = ticketQuery(itemId);
         q.put("username", username);
-        q.put("itemId", itemId);
         List<Map<String, Object>> occupied = mapper().selectTimeConflictOccupied(q);
-        if (occupied == null) return;
-        for (Map<String, Object> row : occupied) {
-            Object startObj = first(row, "start_at", "startAt");
-            Object endObj = first(row, "end_at", "endAt");
-            if (startObj == null || endObj == null) {
-                throw new IllegalStateException("已有单据时段缺失，无法校验冲突");
-            }
-            LocalDateTime oldStart = toLdt(startObj);
-            LocalDateTime oldEnd = toLdt(endObj);
+        for (Map<String, Object> row : (occupied == null ? List.<Map<String, Object>>of() : occupied)) {
+            LocalDateTime oldStart = asDateTime(
+                    row.get("start_at") != null ? row.get("start_at") : row.get("startAt"));
+            LocalDateTime oldEnd = asDateTime(
+                    row.get("end_at") != null ? row.get("end_at") : row.get("endAt"));
+            if (oldStart == null || oldEnd == null) continue;
             if (newStart.isBefore(oldEnd) && oldStart.isBefore(newEnd)) {
                 throw new IllegalStateException(
-                        "时间冲突：与「" + first(row, "title") + "」（"
+                        "时间冲突：与「" + row.get("title") + "」（"
                                 + oldStart.format(TicketSql.FMT) + " ~ " + oldEnd.format(TicketSql.FMT) + "）重叠");
             }
         }
     }
 
-    private static Object first(Map<String, Object> raw, String... keys) {
-        for (String k : keys) {
-            if (raw.containsKey(k) && raw.get(k) != null) return raw.get(k);
-        }
-        return null;
-    }
 
-    private static LocalDateTime toLdt(Object o) {
-        if (o instanceof Timestamp ts) return ts.toLocalDateTime();
-        if (o instanceof LocalDateTime ldt) return ldt;
-        try {
-            String s = String.valueOf(o);
-            if (s.length() >= 19) return LocalDateTime.parse(s.substring(0, 19), TicketSql.FMT);
-            return LocalDateTime.parse(s, TicketSql.FMT);
-        } catch (Exception e) {
-            throw new IllegalStateException("已有单据时段无效，无法校验冲突", e);
-        }
-    }
 }

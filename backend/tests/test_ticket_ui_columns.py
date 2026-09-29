@@ -68,10 +68,11 @@ class TicketUiColumnContractTests(unittest.TestCase):
                 must_hide.append(domain)
         self.assertIn("DOM-ACTIVITY", must_show)
         self.assertIn("DOM-COURSE", must_show)
+        # 考勤请假有起止（pick_date_range），起止列非空 → 归 must_show
+        self.assertIn("DOM-ATTEND", must_show)
         for d in (
             "DOM-EVENT",
             "DOM-CRM",
-            "DOM-ATTEND",
             "DOM-LIBRARY",
             "DOM-ASSET",
             "DOM-LOST",

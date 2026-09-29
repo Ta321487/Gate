@@ -116,6 +116,25 @@ _OVERLAY_API_MARKERS = (
     ("service/UserStore.java", "setPostMuteUntil("),
     ("service/UserStore.java", "setPostMuteDays("),
     ("capability/TicketLookupStore.java", "unitCapacityLabel"),
+    # 房源成交台账：三套必须同源
+    ("service/ListingDealStore.java", "public static String total()"),
+    ("service/ListingDealStore.java", "BigDecimal dealPrice, String dealAt"),
+    # 资助公示/发放旁路岛：三套必须同源
+    ("service/FundPublicityStore.java", "listMine("),
+    ("service/FundPublicityStore.java", "close(long id, String operator)"),
+    ("service/FundDisburseStore.java", "totalOf("),
+    ("service/FundDisburseStore.java", "BigDecimal amount, String paidAt"),
+    # 单据可选列：请假天数（随 period 落库）/ 周报周次（申请时补写）
+    ("capability/TicketStore.java", "\"weekNo\""),
+    # 站内私信店铺客服可见性（买家↔商家），三套必须同源
+    ("service/DmStore.java", "configureShopCustomerService("),
+    ("service/DmStore.java", "shopCustomerService()"),
+    ("service/DmStore.java", "canMessage("),
+    # 教务成绩：改分留痕 / 分布统计 / CSV 导入（三套必须同源）
+    ("service/GradeScoreStore.java", "importRows("),
+    ("service/GradeScoreStore.java", "history(long scoreId)"),
+    ("service/GradeScoreStore.java", "stats(Long courseId, Long termId)"),
+    ("service/GradeScoreStore.java", "String operator)"),
 )
 
 

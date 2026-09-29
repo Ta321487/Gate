@@ -75,3 +75,25 @@ class GradeScoreTests(unittest.TestCase):
         self.assertNotIn("报警|撤离|灭火器", _EXAM_LABSAFE_GATE_SEED)
         self.assertNotIn("自动判分", _EXAM_LABSAFE_GATE_SEED)
         self.assertIn("参考答案供教师阅卷", _EXAM_LABSAFE_GATE_SEED)
+
+    def test_grade_score_history_import_stats(self) -> None:
+        """改分留痕表 + 三套 Store 同源 API + 管理端三个新端点。"""
+        sql = domain_sql("DOM-GRADE", "t_grade", title="教务成绩", proposal_text="成绩录入查询")
+        self.assertIn("grade_score_history", sql)
+        for label, root in (("baseline", BASELINE), ("mybatis", MYBATIS), ("jpa", JPA)):
+            store = (
+                root / "backend/src/main/java/com/thesis/service/GradeScoreStore.java"
+            ).read_text(encoding="utf-8")
+            for api in (
+                " importRows(",
+                " history(long scoreId)",
+                " stats(Long courseId, Long termId)",
+                "BigDecimal score, String operator)",
+            ):
+                self.assertIn(api, store, msg=f"{label} 缺少 {api}")
+        controller = (
+            BASELINE / "backend/src/main/java/com/thesis/controller/GradeScoreController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn('@PostMapping("/admin/import")', controller)
+        self.assertIn('@GetMapping("/admin/history")', controller)
+        self.assertIn('@GetMapping("/admin/stats")', controller)

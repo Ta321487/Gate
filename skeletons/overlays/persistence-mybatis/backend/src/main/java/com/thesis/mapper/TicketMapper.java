@@ -121,6 +121,18 @@ public interface TicketMapper {
             @Param("id") long id,
             @Param("nextFollowAt") Timestamp nextFollowAt);
 
+    @Update("UPDATE `${ticketTable}` SET week_no=#{weekNo} WHERE id=#{id}")
+    int updateWeekNo(
+            @Param("ticketTable") String ticketTable,
+            @Param("id") long id,
+            @Param("weekNo") int weekNo);
+
+    @Update("UPDATE `${ticketTable}` SET interview_place=#{place} WHERE id=#{id}")
+    int updateInterviewPlace(
+            @Param("ticketTable") String ticketTable,
+            @Param("id") long id,
+            @Param("place") String place);
+
     @Update("UPDATE `${ticketTable}` SET fine_yuan=#{fineYuan} WHERE id=#{id}")
     int updateFineYuan(
             @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("fineYuan") double fineYuan);

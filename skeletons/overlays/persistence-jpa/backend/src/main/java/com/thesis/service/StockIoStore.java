@@ -250,6 +250,29 @@ public class StockIoStore {
         return out;
     }
 
+    /** 入出库类型分布（工作台饼图）。 */
+    public static List<Map<String, Object>> typeSeries() {
+        if (!ready()) return List.of();
+        try {
+            return db().query(
+                    "SELECT move_type AS name, COUNT(*) AS value FROM stock_move GROUP BY move_type",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        String mt = rs.getString("name");
+                        String label = mt;
+                        if ("in".equals(mt)) label = "入库";
+                        else if ("out".equals(mt)) label = "出库";
+                        else if ("scrap".equals(mt)) label = "报废";
+                        else if ("count".equals(mt)) label = "盘点";
+                        row.put("name", label);
+                        row.put("value", rs.getLong("value"));
+                        return row;
+                    });
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     public static Map<String, Object> postFromBody(Map<String, Object> body, String operator) {
         Map<String, Object> b = body == null ? Map.of() : body;
         String mt = str(b.get("moveType"));

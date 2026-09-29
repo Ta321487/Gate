@@ -130,6 +130,15 @@ public class GradeScoreStore {
     }
 
     public static Map<String, Object> save(String username, long courseId, long termId, BigDecimal score) {
+        return save(username, courseId, termId, score, "");
+    }
+
+    /**
+     * 录入或更正；UPDATE 分支与删除一样写 grade_score_history（改分留痕）。
+     * operator 为操作人账号（管理端登录账号 / CSV 导入同样是登录账号）。
+     */
+    public static Map<String, Object> save(
+            String username, long courseId, long termId, BigDecimal score, String operator) {
         require();
         String user = clip(username, 64);
         if (user.isEmpty()) throw new IllegalArgumentException("请填写学生账号");
@@ -144,16 +153,26 @@ public class GradeScoreStore {
         Integer term = db().queryForObject(
                 "SELECT COUNT(*) FROM grade_term WHERE id=?", Integer.class, termId);
         if (term == null || term == 0) throw new IllegalArgumentException("学期不存在");
-        List<Long> ids = db().query(
-                "SELECT id FROM grade_score WHERE username=? AND course_id=? AND term_id=?",
-                (rs, i) -> rs.getLong("id"),
+        List<Map<String, Object>> cur = db().query(
+                "SELECT id, score FROM grade_score WHERE username=? AND course_id=? AND term_id=?",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("score", rs.getBigDecimal("score"));
+                    return m;
+                },
                 user, courseId, termId);
-        if (ids.isEmpty()) {
+        if (cur.isEmpty()) {
             db().update(
                     "INSERT INTO grade_score (username, course_id, term_id, score) VALUES (?,?,?,?)",
                     user, courseId, termId, s);
         } else {
-            db().update("UPDATE grade_score SET score=? WHERE id=?", s, ids.get(0));
+            long sid = ((Number) cur.get(0).get("id")).longValue();
+            BigDecimal old = (BigDecimal) cur.get(0).get("score");
+            db().update("UPDATE grade_score SET score=? WHERE id=?", s, sid);
+            if (old == null || old.compareTo(s) != 0) {
+                recordHistory(sid, user, courseId, termId, old, s, "update", operator);
+            }
         }
         List<Map<String, Object>> rows = db().query(
                 RANK_SQL + "WHERE s.username=? AND s.course_id=? AND s.term_id=?",
@@ -164,8 +183,193 @@ public class GradeScoreStore {
     }
 
     public static void delete(long id) {
+        delete(id, "");
+    }
+
+    /** 删除同样留痕：历史快照保留账号/课程/学期，成绩行删后仍可查。 */
+    public static void delete(long id, String operator) {
         require();
-        int n = db().update("DELETE FROM grade_score WHERE id=?", id);
-        if (n == 0) throw new IllegalArgumentException("记录不存在");
+        List<Map<String, Object>> snap = snapshot(id);
+        if (snap.isEmpty()) throw new IllegalArgumentException("记录不存在");
+        db().update("DELETE FROM grade_score WHERE id=?", id);
+        Map<String, Object> r = snap.get(0);
+        recordHistory(
+                id,
+                String.valueOf(r.get("username") == null ? "" : r.get("username")),
+                r.get("courseId") == null ? 0L : ((Number) r.get("courseId")).longValue(),
+                r.get("termId") == null ? 0L : ((Number) r.get("termId")).longValue(),
+                (BigDecimal) r.get("score"),
+                null,
+                "delete",
+                operator);
+    }
+
+    private static List<Map<String, Object>> snapshot(long id) {
+        return db().query(
+                "SELECT id, username, course_id, term_id, score FROM grade_score WHERE id=?",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("username", rs.getString("username"));
+                    m.put("courseId", rs.getLong("course_id"));
+                    m.put("termId", rs.getLong("term_id"));
+                    m.put("score", rs.getBigDecimal("score"));
+                    return m;
+                },
+                id);
+    }
+
+    private static void recordHistory(
+            long scoreId,
+            String username,
+            long courseId,
+            long termId,
+            BigDecimal oldScore,
+            BigDecimal newScore,
+            String action,
+            String operator) {
+        db().update(
+                "INSERT INTO grade_score_history "
+                        + "(score_id, username, course_id, term_id, old_score, new_score, action, operator) "
+                        + "VALUES (?,?,?,?,?,?,?,?)",
+                scoreId, clip(username, 64), courseId, termId, oldScore, newScore, action, clip(operator, 64));
+    }
+
+    /** 单条成绩的改分记录（成绩删除后仍可按 score_id 查）。 */
+    public static List<Map<String, Object>> history(long scoreId) {
+        require();
+        return db().query(
+                "SELECT id, score_id, username, course_id, term_id, old_score, new_score, action, operator, created_at "
+                        + "FROM grade_score_history WHERE score_id=? ORDER BY id DESC LIMIT 200",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("scoreId", rs.getLong("score_id"));
+                    m.put("username", rs.getString("username"));
+                    m.put("courseId", rs.getLong("course_id"));
+                    m.put("termId", rs.getLong("term_id"));
+                    BigDecimal o = rs.getBigDecimal("old_score");
+                    BigDecimal n = rs.getBigDecimal("new_score");
+                    m.put("oldScore", o == null ? null : o.stripTrailingZeros().toPlainString());
+                    m.put("newScore", n == null ? null : n.stripTrailingZeros().toPlainString());
+                    m.put("action", rs.getString("action"));
+                    m.put("operator", rs.getString("operator"));
+                    m.put("createdAt", rs.getString("created_at"));
+                    return m;
+                },
+                scoreId);
+    }
+
+    /** 分布与及格率：按课程/学期筛选；及格线固定 60。 */
+    public static Map<String, Object> stats(Long courseId, Long termId) {
+        require();
+        StringBuilder sql = new StringBuilder("SELECT s.score FROM grade_score s WHERE 1=1 ");
+        List<Object> args = new java.util.ArrayList<>();
+        if (courseId != null && courseId > 0) {
+            sql.append("AND s.course_id=? ");
+            args.add(courseId);
+        }
+        if (termId != null && termId > 0) {
+            sql.append("AND s.term_id=? ");
+            args.add(termId);
+        }
+        List<BigDecimal> scores = db().query(
+                sql.toString(), (rs, i) -> rs.getBigDecimal("score"), args.toArray());
+        return summarize(scores);
+    }
+
+    private static Map<String, Object> summarize(List<BigDecimal> scores) {
+        String[] labels = {"60 分以下", "60-69", "70-79", "80-89", "90-100"};
+        int[] counts = new int[labels.length];
+        int total = 0;
+        int pass = 0;
+        double sum = 0;
+        BigDecimal max = null;
+        BigDecimal min = null;
+        for (BigDecimal sc : scores == null ? List.<BigDecimal>of() : scores) {
+            if (sc == null) continue;
+            total++;
+            double v = sc.doubleValue();
+            sum += v;
+            if (v >= 60) pass++;
+            int idx = v < 60 ? 0 : v < 70 ? 1 : v < 80 ? 2 : v < 90 ? 3 : 4;
+            counts[idx]++;
+            if (max == null || sc.compareTo(max) > 0) max = sc;
+            if (min == null || sc.compareTo(min) < 0) min = sc;
+        }
+        List<Map<String, Object>> bands = new java.util.ArrayList<>();
+        for (int i = 0; i < labels.length; i++) {
+            Map<String, Object> b = new LinkedHashMap<>();
+            b.put("label", labels[i]);
+            b.put("count", counts[i]);
+            b.put("pass", i > 0);
+            bands.add(b);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", total);
+        out.put("passCount", pass);
+        out.put("passRate", total == 0 ? 0.0 : Math.round(pass * 1000.0 / total) / 10.0);
+        out.put("avgScore", total == 0 ? null : Math.round(sum / total * 10.0) / 10.0);
+        out.put("maxScore", max == null ? null : max.stripTrailingZeros().toPlainString());
+        out.put("minScore", min == null ? null : min.stripTrailingZeros().toPlainString());
+        out.put("bands", bands);
+        return out;
+    }
+
+    /** CSV 导入：逐行走既有 save（覆盖即改分并留痕），坏行不影响好行。 */
+    public static Map<String, Object> importRows(List<Map<String, Object>> rows, String operator) {
+        require();
+        int ok = 0;
+        int idx = 0;
+        List<Map<String, Object>> failed = new java.util.ArrayList<>();
+        for (Map<String, Object> r : rows == null ? List.<Map<String, Object>>of() : rows) {
+            idx++;
+            Map<String, Object> row = r == null ? Map.of() : r;
+            Object lineRaw = row.get("line");
+            int line = lineRaw == null ? idx : (int) cellLong(lineRaw);
+            if (line <= 0) line = idx;
+            try {
+                save(
+                        cellStr(row.get("username")),
+                        cellLong(row.get("courseId")),
+                        cellLong(row.get("termId")),
+                        cellDecimal(row.get("score")),
+                        operator);
+                ok++;
+            } catch (Exception e) {
+                Map<String, Object> f = new LinkedHashMap<>();
+                f.put("line", line);
+                f.put("reason", e.getMessage() == null ? "导入失败" : e.getMessage());
+                failed.add(f);
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", ok);
+        out.put("failed", failed);
+        return out;
+    }
+
+    private static String cellStr(Object v) {
+        return v == null ? "" : String.valueOf(v).trim();
+    }
+
+    private static long cellLong(Object v) {
+        String s = cellStr(v);
+        if (s.isEmpty()) return 0L;
+        try {
+            return new BigDecimal(s).longValue();
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
+    }
+
+    private static BigDecimal cellDecimal(Object v) {
+        String s = cellStr(v);
+        if (s.isEmpty()) return null;
+        try {
+            return new BigDecimal(s);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("分数格式不正确：" + s);
+        }
     }
 }

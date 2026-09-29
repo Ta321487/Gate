@@ -78,4 +78,38 @@ public interface GradeScoreMapper {
             @Param("username") String username,
             @Param("courseId") long courseId,
             @Param("termId") long termId);
+
+    @Select("SELECT score FROM grade_score WHERE id=#{id}")
+    BigDecimal findScore(long id);
+
+    @Select("SELECT id, username, course_id AS courseId, term_id AS termId, score "
+            + "FROM grade_score WHERE id=#{id}")
+    Map<String, Object> findSnapshot(long id);
+
+    @Insert("INSERT INTO grade_score_history "
+            + "(score_id, username, course_id, term_id, old_score, new_score, action, operator) "
+            + "VALUES (#{scoreId}, #{username}, #{courseId}, #{termId}, #{oldScore}, #{newScore}, "
+            + "#{action}, #{operator})")
+    int insertHistory(
+            @Param("scoreId") long scoreId,
+            @Param("username") String username,
+            @Param("courseId") long courseId,
+            @Param("termId") long termId,
+            @Param("oldScore") BigDecimal oldScore,
+            @Param("newScore") BigDecimal newScore,
+            @Param("action") String action,
+            @Param("operator") String operator);
+
+    @Select("SELECT id, score_id AS scoreId, username, course_id AS courseId, term_id AS termId, "
+            + "old_score AS oldScore, new_score AS newScore, action, operator, "
+            + "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS createdAt "
+            + "FROM grade_score_history WHERE score_id=#{scoreId} ORDER BY id DESC LIMIT 200")
+    List<Map<String, Object>> listHistory(long scoreId);
+
+    @Select({"<script>",
+            "SELECT s.score FROM grade_score s WHERE 1=1",
+            "<if test='courseId != null and courseId &gt; 0'> AND s.course_id=#{courseId}</if>",
+            "<if test='termId != null and termId &gt; 0'> AND s.term_id=#{termId}</if>",
+            "</script>"})
+    List<BigDecimal> listScores(@Param("courseId") Long courseId, @Param("termId") Long termId);
 }

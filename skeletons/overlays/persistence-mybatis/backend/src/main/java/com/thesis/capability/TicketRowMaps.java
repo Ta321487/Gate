@@ -136,13 +136,39 @@ final class TicketRowMaps {
                 m.put("periodEnd", periodEnd);
                 m.put("startAt", periodStart);
                 m.put("endAt", periodEnd);
+                int leaveDays = 0;
+                Object rawLeaveDays = first(raw, "leaveDays", "leave_days");
+                if (rawLeaveDays instanceof Number num) leaveDays = num.intValue();
+                if (leaveDays <= 0) leaveDays = daysBetweenInclusive(periodStart, periodEnd);
+                if (leaveDays > 0) m.put("leaveDays", leaveDays);
             } else if (item != null) {
                 m.put("startAt", item.get("startAt"));
                 m.put("endAt", item.get("endAt"));
                 m.put("applyDeadlineAt", item.get("applyDeadlineAt"));
             }
         }
+        int weekNo = 0;
+        Object rawWeek = first(raw, "weekNo", "week_no");
+        if (rawWeek instanceof Number num) weekNo = num.intValue();
+        if (weekNo > 0) m.put("weekNo", weekNo);
+        Object rawPlace = first(raw, "interviewPlace", "interview_place");
+        if (rawPlace != null) {
+            String place = String.valueOf(rawPlace).trim();
+            if (!place.isEmpty()) m.put("interviewPlace", place);
+        }
         return m;
+    }
+
+    /** 请假等起止（含首尾）的自然日天数；解析失败返回 0。 */
+    private static int daysBetweenInclusive(String start, String end) {
+        if (start == null || end == null) return 0;
+        try {
+            java.time.LocalDate a = java.time.LocalDate.parse(start.substring(0, 10));
+            java.time.LocalDate b = java.time.LocalDate.parse(end.substring(0, 10));
+            return (int) (java.time.temporal.ChronoUnit.DAYS.between(a, b) + 1);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static Object first(Map<String, Object> raw, String... keys) {

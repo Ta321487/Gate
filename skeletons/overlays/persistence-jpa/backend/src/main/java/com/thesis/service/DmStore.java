@@ -26,9 +26,31 @@ public class DmStore {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int BODY_MAX = 500;
     private static Boolean tableReady;
+    /** true=店铺客服选人；false=全站互聊 */
+    private static boolean shopCustomerService = false;
 
     private static JpaDb db() {
         return JpaSupport.db();
+    }
+
+    public static void configureShopCustomerService(boolean enabled) {
+        shopCustomerService = enabled;
+    }
+
+    public static boolean shopCustomerService() {
+        return shopCustomerService;
+    }
+
+    private static boolean isMerchant(UserStore.Profile p) {
+        if (p == null || p.superAdmin) return false;
+        if (!"admin".equals(p.role)) return false;
+        String post = p.staffPost == null ? "" : p.staffPost.trim();
+        return "shop_merchant".equals(post);
+    }
+
+    private static boolean isBuyer(UserStore.Profile p) {
+        if (p == null || p.superAdmin) return false;
+        return !"admin".equals(p.role);
     }
 
     public static boolean ready() {
@@ -67,6 +89,22 @@ public class DmStore {
         return m;
     }
 
+    /** 双方是否允许互发。 */
+    public static boolean canMessage(String from, String to) {
+        if (from == null || to == null) return false;
+        String f = from.trim();
+        String t = to.trim();
+        if (f.isBlank() || t.isBlank() || f.equals(t)) return false;
+        if (!shopCustomerService) return true;
+        UserStore.Profile a = UserStore.get(f);
+        UserStore.Profile b = UserStore.get(t);
+        if (a == null || b == null || !b.enabled) return false;
+        if (a.superAdmin || b.superAdmin) return true;
+        if (isBuyer(a) && isMerchant(b)) return true;
+        if (isMerchant(a) && isBuyer(b)) return true;
+        return false;
+    }
+
     public static Map<String, Object> get(long id) {
         if (!ready()) return null;
         List<Map<String, Object>> list = db().query(
@@ -74,24 +112,54 @@ public class DmStore {
         return list.isEmpty() ? null : list.get(0);
     }
 
-    /** 可选会话对象：其它启用账号（含管理端），便于演示起聊。 */
+    /** 可选会话对象；店铺客服开启时按买家/商家/总管分别收窄（与 baseline 同规则）。 */
     public static List<Map<String, Object>> peers(String me, int limit) {
         List<Map<String, Object>> out = new ArrayList<>();
         if (!ready() || me == null || me.isBlank()) return out;
         int lim = limit < 1 ? 50 : Math.min(limit, 100);
+        String u = me.trim();
+        UserStore.ensureStaffColumns();
+        if (shopCustomerService) {
+            UserStore.Profile self = UserStore.get(u);
+            if (self == null) return out;
+            String sql;
+            if (self.superAdmin) {
+                sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
+                        + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
+                        + "ORDER BY role DESC, id ASC LIMIT ?";
+                return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
+            }
+            if (isMerchant(self)) {
+                sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
+                        + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
+                        + "AND role<>'admin' "
+                        + "ORDER BY id ASC LIMIT ?";
+                return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
+            }
+            sql = "SELECT username, nickname, role, avatar_url FROM sys_user "
+                    + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
+                    + "AND role='admin' AND IFNULL(super_admin,0)=0 "
+                    + "AND IFNULL(staff_post,'')='shop_merchant' "
+                    + "ORDER BY id ASC LIMIT ?";
+            return db().query(sql, (rs, i) -> mapPeer(rs), u, lim);
+        }
         return db().query(
-                "SELECT username, nickname, role FROM sys_user "
+                "SELECT username, nickname, role, avatar_url FROM sys_user "
                         + "WHERE username<>? AND (enabled IS NULL OR enabled=1) "
                         + "ORDER BY role DESC, id ASC LIMIT ?",
-                (rs, i) -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("username", rs.getString("username"));
-                    m.put("nickname", rs.getString("nickname"));
-                    m.put("role", rs.getString("role"));
-                    return m;
-                },
-                me.trim(),
+                (rs, i) -> mapPeer(rs),
+                u,
                 lim);
+    }
+
+    private static Map<String, Object> mapPeer(ResultSet rs) throws SQLException {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("username", rs.getString("username"));
+        m.put("nickname", rs.getString("nickname"));
+        m.put("role", rs.getString("role"));
+        String av = rs.getString("avatar_url");
+        m.put("avatarUrl", av == null ? "" : av.trim());
+        return m;
     }
 
     public static List<Map<String, Object>> conversations(String me) {
@@ -159,6 +227,7 @@ public class DmStore {
                 "SELECT COUNT(*) FROM sys_user WHERE username=? AND (enabled IS NULL OR enabled=1)",
                 Integer.class, t);
         if (exists == null || exists == 0) return null;
+        if (!canMessage(f, t)) return null;
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(

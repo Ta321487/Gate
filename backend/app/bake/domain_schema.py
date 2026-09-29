@@ -41,6 +41,31 @@ MASTER_MENU_KEYS = frozenset({"archive", "category", "lookup_site", "lookup_type
 REQUIRED_SUPER_MENU_KEYS = frozenset({"users", "content"})
 # 多商家商城：商品/活动对商家开放（builders_slot 显式 superOnly=false），不强制超管
 MARKETPLACE_MERCHANT_MENU_KEYS = frozenset({"archive", "content"})
+# 办理岗显式授予的主数据菜单：staff_posts 的岗位 pack 会把它从 superOnly 放开
+# （现状仅 DOM-EVAL 评教员维护评教课程；见 staff_posts content_ops）
+CLERK_OPEN_MASTER_MENU_KEYS = frozenset({"archive"})
+CLERK_OPEN_MASTER_DOMAINS = frozenset({"DOM-EVAL"})
+
+
+def _clerk_pack_opens_master_menu(schema: dict[str, Any], key: str) -> bool:
+    """岗位 packs 是否显式授予该主数据菜单（与 staff_posts 放行口径一致）。"""
+    roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
+    posts = roles.get("staff_posts")
+    if not isinstance(posts, list) or not posts:
+        return False
+    from app.bake.staff_posts import PACK_ADMIN_MENUS
+
+    pack_menus = schema.get("staffPackMenus") if isinstance(schema.get("staffPackMenus"), dict) else {}
+    for p in posts:
+        if not isinstance(p, dict):
+            continue
+        for pk in p.get("packs") or []:
+            menus = pack_menus.get(pk)
+            if not isinstance(menus, list):
+                menus = list(PACK_ADMIN_MENUS.get(str(pk)) or ())
+            if key in menus:
+                return True
+    return False
 
 
 def build_domain_schema(
@@ -292,8 +317,11 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.staff_roster import apply_staff_roster_to_spec
     from app.bake.features.room_equipment import apply_room_equipment_to_spec
     from app.bake.features.book_hold import apply_book_hold_to_spec
+    from app.bake.features.book_lost import apply_book_lost_to_spec
     from app.bake.features.post_mute import apply_post_mute_to_spec
     from app.bake.features.book_suggest import apply_book_suggest_to_spec
+    from app.bake.features.parcel_shelf import apply_parcel_shelf_to_spec
+    from app.bake.features.parcel_ship import apply_parcel_ship_to_spec
     from app.bake.features.product_spec import apply_product_spec_to_spec
     from app.bake.features.multi_category import apply_multi_category_to_spec
     from app.bake.features.product_tags import apply_product_tags_to_spec
@@ -424,6 +452,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_staff_roster_to_spec(out, body)
     out = apply_room_equipment_to_spec(out, body)
     out = apply_book_hold_to_spec(out, body)
+    out = apply_book_lost_to_spec(out, body)
+    out = apply_parcel_shelf_to_spec(out, body)
+    out = apply_parcel_ship_to_spec(out, body)
     out = apply_post_mute_to_spec(out, body)
     out = apply_book_suggest_to_spec(out, body)
     out = apply_product_spec_to_spec(out, body)
@@ -565,6 +596,15 @@ def validate_schema(schema: dict[str, Any] | None) -> tuple[bool, list[str]]:
             k = m.get("key")
             if k in MASTER_MENU_KEYS or k in REQUIRED_SUPER_MENU_KEYS:
                 if marketplace and k in MARKETPLACE_MERCHANT_MENU_KEYS:
+                    continue
+                if (
+                    k in CLERK_OPEN_MASTER_MENU_KEYS
+                    and str(schema.get("domain") or "").strip().upper()
+                    in CLERK_OPEN_MASTER_DOMAINS
+                    and m.get("superOnly") is False
+                    and _clerk_pack_opens_master_menu(schema, str(k))
+                ):
+                    # 岗位 pack 显式授予（EVAL 评教员维护评教课程）：允许对一线开放
                     continue
                 if m.get("superOnly") is not True:
                     errors.append(f"admin 菜单 {k} 必须 superOnly=true")

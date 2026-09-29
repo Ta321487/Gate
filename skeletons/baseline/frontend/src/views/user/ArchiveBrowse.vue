@@ -150,6 +150,11 @@
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <div class="row">
+            <span
+              v-if="showStageChip"
+              class="stage-chip"
+              :data-stage="stageTone(row.stage)"
+            >{{ row.stage || '—' }}</span>
             <el-tag
               v-if="stockDisplay !== 'hidden'"
               :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
@@ -751,6 +756,19 @@ const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '对象')
 const fields = computed(() => archive.fields || [])
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
+const showStageChip = computed(() => {
+  const fields = archive.fields || []
+  return fields.some((f) => f && f.key === 'stage')
+})
+
+function stageTone(stage) {
+  const s = String(stage || '').trim()
+  if (!s) return 'muted'
+  if (/空闲|在库|待取|开放|可/.test(s)) return 'free'
+  if (/已分配|借出|已取出|已预约/.test(s)) return 'taken'
+  if (/维修|损坏|误领|拒收|下架|逾期/.test(s)) return 'warn'
+  return 'muted'
+}
 const playUrlField = computed(() => archive.playUrlField || '')
 const bodyRich = computed(() => {
   const f = fields.value.find((x) => x.key === 'isbn')
@@ -2110,6 +2128,35 @@ async function openHighlightFromRoute() {
 }
 .excerpt { margin-top: 8px; color: var(--portal-muted, #64748b); }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.stage-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.stage-chip[data-stage='free'] {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.stage-chip[data-stage='taken'] {
+  color: #1e40af;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.stage-chip[data-stage='warn'] {
+  color: #9a3412;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+.stage-chip[data-stage='muted'] {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .sub { margin: 0 0 16px; color: var(--portal-muted, #64748b); font-size: 13px; }

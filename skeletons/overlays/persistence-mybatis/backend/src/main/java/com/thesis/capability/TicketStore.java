@@ -85,6 +85,10 @@ public final class TicketStore {
     static boolean allowWaitlist = false;
     /** 无库存可预约到书（held → hold_ready） */
     static boolean allowBookHold = false;
+    /** 丢失申报 → 赔偿完成（LIBRARY） */
+    static boolean allowBookLost = false;
+    /** 归还完结须上传附件（EQUIP 验图） */
+    static boolean requireReturnAttach = false;
     /** 到书后限时确认借阅小时数 */
     static int holdHours = 48;
     /** C-14：核销审批通过时扣减时长账户 */
@@ -523,6 +527,25 @@ public final class TicketStore {
         }
     }
 
+    public static void configureBookLost(boolean enabled) {
+        allowBookLost = enabled;
+    }
+
+    public static void configureRequireReturnAttach(boolean enabled) {
+        requireReturnAttach = enabled;
+        if (requireReturnAttach) {
+            ensureColumn("attach_url", "VARCHAR(255) DEFAULT ''");
+        }
+    }
+
+    public static boolean isAllowBookLost() {
+        return allowBookLost;
+    }
+
+    public static boolean isRequireReturnAttach() {
+        return requireReturnAttach;
+    }
+
     public static boolean isAllowRenew() {
         return allowRenew;
     }
@@ -680,6 +703,12 @@ public final class TicketStore {
                 ? "held"
                 : (asWaitlist ? "waitlisted" : (autoApprove ? "approved" : "pending"));
         final boolean withApproveAt = !asWaitlist && !asBookHold && autoApprove && hasColumn("approve_at");
+        final boolean withLeaveDays = withPeriod && hasColumn("leave_days");
+        final int leaveDaysFinal = withLeaveDays
+                ? (int) (java.time.temporal.ChronoUnit.DAYS.between(
+                                period[0].toLocalDate(), period[1].toLocalDate())
+                        + 1)
+                : 0;
         Map<String, Object> ins = new LinkedHashMap<>();
         ins.put("ticketTable", TICKET);
         ins.put("itemFk", itemFkColumn());
@@ -700,6 +729,8 @@ public final class TicketStore {
         if (withPeriod) {
             ins.put("periodStart", Timestamp.valueOf(period[0]));
             ins.put("periodEnd", Timestamp.valueOf(period[1]));
+            ins.put("withLeaveDays", withLeaveDays);
+            if (withLeaveDays) ins.put("leaveDays", leaveDaysFinal);
         }
         mapper().insertArchive(ins);
         long id = TicketSql.toLong(ins.get("id"));
@@ -1890,6 +1921,14 @@ public final class TicketStore {
      * @param asSuperOrOwner true=总管或单据申请人（不校验处理人）；false=子管须为 assignee
      */
     public static Map<String, Object> complete(long ticketId, String actorUid, boolean asSuperOrOwner) {
+        return complete(ticketId, actorUid, asSuperOrOwner, null);
+    }
+
+    /**
+     * @param returnAttachUrl 归还附件；requireReturnAttach 时必填
+     */
+    public static Map<String, Object> complete(
+            long ticketId, String actorUid, boolean asSuperOrOwner, String returnAttachUrl) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         if (!asSuperOrOwner && hasColumn("assignee_username")) {
@@ -1907,6 +1946,16 @@ public final class TicketStore {
         if (approveEndsFlow && hasColumn("pickup_at")
                 && ("approved".equals(st) || "overdue".equals(st))) {
             throw new IllegalStateException("已核销办结，不可取消取件");
+        }
+        String retAttach = returnAttachUrl == null ? "" : returnAttachUrl.trim();
+        if (requireReturnAttach) {
+            if (retAttach.isBlank()) {
+                throw new IllegalStateException("归还请上传设备照片后再完结");
+            }
+            if (!hasColumn("attach_url")) {
+                throw new IllegalStateException("系统未配置附件字段，无法保存归还照片");
+            }
+            if (retAttach.length() > 255) retAttach = retAttach.substring(0, 255);
         }
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
@@ -1934,8 +1983,48 @@ public final class TicketStore {
         row.put("id", ticketId);
         row.put("withRemindMsg", hasColumn("remind_msg"));
         row.put("remindMsg", remind);
+        if (requireReturnAttach && hasColumn("attach_url") && !retAttach.isBlank()) {
+            row.put("withAttachUrl", true);
+            row.put("attachUrl", retAttach);
+        }
         mapper().updateComplete(row);
         appendProgress(ticketId, "returned", actorUid, TicketCopy.stateLabel("returned", TicketCopy.verbLabel("return", "已完结")));
+        return get(ticketId);
+    }
+
+    /** 借出中/逾期 → 丢失申报；库存不回补 */
+    public static Map<String, Object> reportLost(long ticketId, String username) {
+        if (!allowBookLost) throw new IllegalStateException("当前未开启丢失申报");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String owner = TicketSql.str(m.get("username"));
+        if (username == null || username.isBlank() || !username.equals(owner)) {
+            throw new IllegalStateException("只能申报本人的单据");
+        }
+        if (useDeadline) TicketStatusOps.refreshOverdue(m);
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue").contains(st)) {
+            throw new IllegalStateException("仅借出中或逾期可申报丢失");
+        }
+        MybatisSupport.db().update("UPDATE " + TICKET + " SET status='lost' WHERE id=?", ticketId);
+        appendProgress(ticketId, "lost", username, TicketCopy.stateLabel("lost", "丢失申报"));
+        return get(ticketId);
+    }
+
+    /** 丢失申报 → 赔偿完成（馆员）；库存仍不回补 */
+    public static Map<String, Object> markCompensated(long ticketId, String operator) {
+        if (!allowBookLost) throw new IllegalStateException("当前未开启丢失赔偿");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!"lost".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅丢失申报状态可登记赔偿完成");
+        }
+        MybatisSupport.db().update("UPDATE " + TICKET + " SET status='compensated' WHERE id=?", ticketId);
+        appendProgress(
+                ticketId,
+                "compensated",
+                operator == null ? "" : operator,
+                TicketCopy.stateLabel("compensated", "赔偿完成"));
         return get(ticketId);
     }
 
@@ -2199,7 +2288,9 @@ public final class TicketStore {
         return "returned".equals(status)
                 || "rejected".equals(status)
                 || "cancelled".equals(status)
-                || "noshow".equals(status);
+                || "noshow".equals(status)
+                || "lost".equals(status)
+                || "compensated".equals(status);
     }
 
     public static boolean isTodoPoolStatus(String status) {
@@ -2245,6 +2336,28 @@ public final class TicketStore {
             String ch = TicketSql.str(body.get("contactChannel")).trim();
             if (ch.length() > 32) ch = ch.substring(0, 32);
             mapper().updateContactChannel(TICKET, ticketId, ch);
+        }
+        if (body.containsKey("weekNo")) {
+            if (!hasColumn("week_no")) {
+                throw new IllegalStateException("系统未配置周次字段");
+            }
+            String rawWeek = TicketSql.str(body.get("weekNo")).trim();
+            int weekNo;
+            try {
+                weekNo = Integer.parseInt(rawWeek);
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("周次须为数字");
+            }
+            if (weekNo < 1 || weekNo > 60) throw new IllegalStateException("周次须在 1 到 60 之间");
+            mapper().updateWeekNo(TICKET, ticketId, weekNo);
+        }
+        if (body.containsKey("interviewPlace")) {
+            if (!hasColumn("interview_place")) {
+                throw new IllegalStateException("系统未配置面试地点字段");
+            }
+            String place = TicketSql.str(body.get("interviewPlace")).trim();
+            if (place.length() > 128) place = place.substring(0, 128);
+            mapper().updateInterviewPlace(TICKET, ticketId, place);
         }
         if (hasColumn("next_follow_at") && body.containsKey("nextFollowAt")) {
             Timestamp ts = null;
@@ -2384,6 +2497,22 @@ public final class TicketStore {
             out.put("statusSeries", status == null ? List.of() : status);
             List<Map<String, Object>> trend = mapper().selectTrendSeries(TICKET);
             out.put("trendSeries", trend == null ? List.of() : trend);
+            // 热借/热办排行：按档案条目聚合（图书借阅量等）
+            if (MODE == Mode.ARCHIVE && hasColumn(itemFkColumn())) {
+                String itemTable = ArchiveStore.itemTable();
+                List<Map<String, Object>> hot = MybatisSupport.db().query(
+                        "SELECT COALESCE(i.title, CONCAT('编号', t." + itemFkColumn() + ")) AS name, COUNT(*) AS value "
+                                + "FROM " + TICKET + " t LEFT JOIN " + itemTable + " i ON t." + itemFkColumn() + "=i.id "
+                                + "WHERE t.status IN ('approved','overdue','returned','lost','compensated') "
+                                + "GROUP BY t." + itemFkColumn() + ", i.title ORDER BY value DESC LIMIT 8",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("hotItemSeries", hot);
+            }
         } catch (Exception ignored) {
             // 表结构差异时不炸工作台
         }

@@ -267,6 +267,43 @@ function withBookSuggestRoutes(baseRoutes) {
   return routes
 }
 
+/** 驿站货架 / 寄件 */
+function withParcelExtraRoutes(baseRoutes) {
+  const needShelf = hasCap('parcel_shelf')
+  const needShip = hasCap('parcel_ship')
+  if (!needShelf && !needShip) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (needShip && kids && !kids.some((c) => c.path === 'parcel-ship')) {
+    const ticketsIdx = kids.findIndex((c) => c.path === 'tickets')
+    const at = ticketsIdx >= 0 ? ticketsIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'parcel-ship',
+      component: () => import('../views/user/ParcelShip.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (needShelf && !adminKids.some((c) => c.path === 'parcel-shelf')) {
+      adminKids.push({
+        path: 'parcel-shelf',
+        component: () => import('../views/admin/ParcelShelfAdmin.vue'),
+      })
+    }
+    if (needShip && !adminKids.some((c) => c.path === 'parcel-ship')) {
+      const ticketsIdx = adminKids.findIndex((c) => c.path === 'tickets')
+      const at = ticketsIdx >= 0 ? ticketsIdx : adminKids.length
+      adminKids.splice(at, 0, {
+        path: 'parcel-ship',
+        component: () => import('../views/admin/ParcelShipAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
 /** 周排班：有 staff_roster 时挂管理端（总管） */
 function withStaffRosterRoutes(baseRoutes) {
   if (!hasCap('staff_roster')) return baseRoutes
@@ -657,6 +694,52 @@ function withGradeScoreRoutes(baseRoutes) {
     adminKids.push({
       path: 'grade/scores',
       component: () => import('../views/admin/GradeScoresAdmin.vue'),
+    })
+  }
+  return routes
+}
+
+/** 资助公示/发放旁路岛：登记、台账、公示查阅。仅 DOM-FUND schema 打开。 */
+function withFundIslandRoutes(baseRoutes) {
+  if (!getSchema().fundIsland) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'fund/publicity')) {
+    kids.push({
+      path: 'fund/publicity',
+      component: () => import('../views/user/FundPublicity.vue'),
+    })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids) {
+    if (!adminKids.some((c) => c.path === 'fund/publicity')) {
+      adminKids.push({
+        path: 'fund/publicity',
+        component: () => import('../views/admin/FundPublicityAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'fund/disburse')) {
+      adminKids.push({
+        path: 'fund/disburse',
+        component: () => import('../views/admin/FundDisburseAdmin.vue'),
+      })
+    }
+  }
+  return routes
+}
+
+/** 房源成交台账：带看跟进办结后登记成交。仅 DOM-LISTING schema 打开。 */
+function withListingDealRoutes(baseRoutes) {
+  if (!getSchema().listingDeal) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'listing/deal')) {
+    adminKids.push({
+      path: 'listing/deal',
+      component: () => import('../views/admin/ListingDealAdmin.vue'),
     })
   }
   return routes
@@ -1082,9 +1165,12 @@ function pickRoutes() {
     withStaffRosterRoutes,
     withRoomEquipmentRoutes,
     withBookSuggestRoutes,
+    withParcelExtraRoutes,
     withContentReportRoutes,
     withAiAssistantRoutes,
     withGradeScoreRoutes,
+    withFundIslandRoutes,
+    withListingDealRoutes,
     withExamRoutes,
     withSurveyRoutes,
     withVoteRoutes,

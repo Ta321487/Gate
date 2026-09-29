@@ -58,6 +58,8 @@ ESSENTIAL_CAP_TABLES: dict[str, frozenset[str]] = {
     "staff_roster": frozenset({"staff_roster"}),
     "message_template": frozenset({"sys_message_template"}),
     "book_suggest": frozenset({"book_suggest"}),
+    "parcel_shelf": frozenset({"parcel_shelf"}),
+    "parcel_ship": frozenset({"parcel_ship"}),
     "audit_log": frozenset({"sys_audit_log"}),
     "browse_history": frozenset({"user_browse_history"}),
     "archive_log": frozenset({"archive_log"}),
@@ -398,7 +400,11 @@ def domain_sql(
         multi_category_axis_seed_sql,
         parse_category_axes,
     )
-    from app.bake.features.detail_attrs import DETAIL_ATTRS_CAP
+    from app.bake.features.detail_attrs import (
+        DETAIL_ATTRS_CAP,
+        detail_attr_fields,
+        parse_detail_labels,
+    )
     from app.bake.features.product_tags import PRODUCT_TAGS_CAP
     from app.bake.features.line_custom import (
         LINE_CUSTOM_CAP,
@@ -476,6 +482,7 @@ def domain_sql(
         ensure_staff_roster_sql,
         ensure_room_equipment_sql,
         ensure_book_suggest_sql,
+        ensure_parcel_ship_sql,
         ensure_gallery_sql,
         ensure_detail_attrs_sql,
         ensure_guestbook_sql,
@@ -915,6 +922,10 @@ def domain_sql(
         text,
         enabled=BOOK_SUGGEST_CAP in caps,
     )
+    text = ensure_parcel_ship_sql(
+        text,
+        enabled="parcel_ship" in caps,
+    )
     text = ensure_browse_history_sql(
         text,
         enabled=BROWSE_HISTORY_CAP in caps,
@@ -928,10 +939,20 @@ def domain_sql(
         enabled=GALLERY_CAP in caps,
         item_table=resolved_item,
     )
+    detail_fields: list[dict[str, str]] = []
+    if DETAIL_ATTRS_CAP in caps:
+        detail_fields = [
+            f
+            for f in detail_attr_fields(
+                parse_detail_labels(f"{title or ''}\n{proposal_text or ''}")
+            )
+            if isinstance(f, dict) and f.get("key")
+        ]
     text = ensure_detail_attrs_sql(
         text,
         enabled=DETAIL_ATTRS_CAP in caps,
         item_table=resolved_item,
+        attr_fields=detail_fields,
     )
     text = ensure_coupon_lifecycle_sql(
         text,

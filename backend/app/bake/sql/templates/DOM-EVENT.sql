@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS event_case (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '待核查',
+  level VARCHAR(16) DEFAULT '低',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

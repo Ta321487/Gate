@@ -9,6 +9,7 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.service.StockIoStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,6 +74,14 @@ public class TicketDashboardController {
             }
             if (oc.get("hotItemSeries") != null) {
                 charts.put("hotItemSeries", oc.get("hotItemSeries"));
+            }
+        }
+        // 借阅/办理热门：TicketStore 已填 hotItemSeries；订单热销优先覆盖
+        if (StockIoStore.enabled()) {
+            try {
+                charts.put("stockIoSeries", StockIoStore.typeSeries());
+            } catch (Exception ignored) {
+                charts.put("stockIoSeries", List.of());
             }
         }
         if (SlotStore.enabled()) {

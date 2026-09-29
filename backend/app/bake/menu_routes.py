@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# 门户：menu key → path（与 PortalLayout / PortalHome 一致）
+# 门户：menu key → path（与 PortalLayout / PortalHome / menuRoutes.js 一致）
 USER_MENU_PATHS: dict[str, str] = {
     "home": "/home",
     "archive": "/archive",
@@ -17,12 +17,15 @@ USER_MENU_PATHS: dict[str, str] = {
     "content": "/notices",
     "guestbook": "/guestbook",
     "book_suggest": "/book-suggest",
+    "parcel_ship": "/parcel-ship",
     "ai_assistant": "/ai-assistant",
     "exam_papers": "/exam/papers",
     "exam_attempts": "/exam/attempts",
     "exam_practice": "/exam/practice",
     "exam_rank": "/exam/rank",
     "exam_wrongbook": "/exam/wrongbook",
+    "grade_scores_mine": "/grade/scores",
+    "fund_publicity_mine": "/fund/publicity",
     "survey_forms": "/survey/forms",
     "survey_mine": "/survey/mine",
     "vote_campaigns": "/vote/campaigns",
@@ -40,15 +43,26 @@ USER_MENU_PATHS: dict[str, str] = {
     "coupons": "/coupons",
     "cart": "/cart",
     "my_orders": "/orders",
+    "my_consigns": "/consigns",
+    "my_loss": "/loss",
+    "my_shots": "/shots",
+    "my_stay": "/stay",
+    "my_buybacks": "/buybacks",
+    "my_lessons": "/lessons",
+    "my_digital": "/digital",
+    "my_permits": "/permits",
     "order_reviews": "/order-reviews",
     "addresses": "/addresses",
     "my_reservations": "/reservations",
     "slots": "/slots",
     "week_calendar": "/week",
+    "balance_mine": "/balance/mine",
+    "balance_ledger_mine": "/balance/ledger",
+    "occupy_mine": "/occupy/mine",
     "messages": "/messages",
 }
 
-# 管理端：menu key → path（与 AdminLayout 一致）
+# 管理端：menu key → path（与 AdminLayout / menuRoutes.js 一致）
 ADMIN_MENU_PATHS: dict[str, str] = {
     "dashboard": "/admin/dashboard",
     "messages": "/admin/messages",
@@ -63,6 +77,8 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "message_templates": "/admin/message-templates",
     "staff_roster": "/admin/staff-roster",
     "book_suggest": "/admin/book-suggest",
+    "parcel_shelf": "/admin/parcel-shelf",
+    "parcel_ship": "/admin/parcel-ship",
     "equipment_dict": "/admin/equipment-dict",
     "ai_knowledge": "/admin/ai-knowledge",
     "exam_questions": "/admin/exam/questions",
@@ -78,7 +94,16 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "tb_ledger_admin": "/admin/tb/ledger",
     "stock_moves": "/admin/stock/moves",
     "stock_ledger": "/admin/stock/ledger",
+    "balance_accounts": "/admin/balance/accounts",
+    "balance_ledger_admin": "/admin/balance/ledger",
+    "occupy_admin": "/admin/occupy",
+    "material_checklist": "/admin/material/checklist",
+    "lost_clues": "/admin/lost/clues",
     "e_sign_admin": "/admin/e-sign",
+    "grade_scores_admin": "/admin/grade/scores",
+    "fund_publicity_admin": "/admin/fund/publicity",
+    "fund_disburse_admin": "/admin/fund/disburse",
+    "listing_deal_admin": "/admin/listing/deal",
     "archive_logs": "/admin/archive-logs",
     "lookup_site": "/admin/sites",
     "lookup_type": "/admin/types",
@@ -86,6 +111,28 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "category": "/admin/categories",
     "deadline": "/admin/overdue",
     "coupons": "/admin/coupons",
+    "delivery_slots": "/admin/delivery/slots",
+    "price_spans": "/admin/delivery/spans",
+    "purchase_permits": "/admin/purchase-permits",
+    "group_campaigns": "/admin/group-buys",
+    "blind_pools": "/admin/blind-boxes",
+    "consigns": "/admin/consigns",
+    "loss_claims": "/admin/loss",
+    "shoot_bundles": "/admin/shoot-bundles",
+    "shoot_files": "/admin/shoot-files",
+    "care_options": "/admin/care-options",
+    "stay_logs": "/admin/stay-logs",
+    "buybacks": "/admin/buybacks",
+    "buyback_slots": "/admin/buyback-slots",
+    "lesson_packs": "/admin/lesson-packs",
+    "lesson_uses": "/admin/lesson-uses",
+    "rental_inspect": "/admin/rental-inspect",
+    "room_board": "/admin/room-board",
+    "front_checkin": "/admin/front-checkin",
+    "front_checkout": "/admin/front-checkout",
+    "clean_tasks": "/admin/clean-tasks",
+    "digital_codes": "/admin/digital-codes",
+    "line_specs": "/admin/line-specs",
     "orders": "/admin/orders",
     "order_reviews": "/admin/order-reviews",
     "reservations": "/admin/reservations",
@@ -255,6 +302,10 @@ def effective_paths(
         paths.add("/admin/staff-roster")
     if "book_suggest" in cap_set:
         paths.update({"/book-suggest", "/admin/book-suggest"})
+    if "parcel_shelf" in cap_set:
+        paths.add("/admin/parcel-shelf")
+    if "parcel_ship" in cap_set:
+        paths.update({"/parcel-ship", "/admin/parcel-ship"})
     if "room_equipment" in cap_set:
         paths.add("/admin/equipment-dict")
     if "ai_assistant" in cap_set:
@@ -269,8 +320,19 @@ def effective_paths(
                 "/exam/wrongbook",
                 "/admin/exam/questions",
                 "/admin/exam/papers",
+                "/admin/exam/mark",
             }
         )
+    if (schema or {}).get("gradeScores"):
+        paths.update({"/grade/scores", "/admin/grade/scores"})
+    # 资助公示/发放旁路岛（DOM-FUND 域默认），与 withFundIslandRoutes 对齐
+    if (schema or {}).get("fundIsland"):
+        paths.update(
+            {"/fund/publicity", "/admin/fund/publicity", "/admin/fund/disburse"}
+        )
+    # 房源成交台账（DOM-LISTING 域默认），与 withListingDealRoutes 对齐
+    if (schema or {}).get("listingDeal"):
+        paths.add("/admin/listing/deal")
     if "survey" in cap_set:
         paths.update(
             {
@@ -311,6 +373,21 @@ def effective_paths(
         paths.update({"/seats/shows", "/seats/map"})
     if "stock_io" in cap_set:
         paths.update({"/admin/stock/moves", "/admin/stock/ledger"})
+    if "balance_ledger" in cap_set:
+        paths.update(
+            {
+                "/balance/mine",
+                "/balance/ledger",
+                "/admin/balance/accounts",
+                "/admin/balance/ledger",
+            }
+        )
+    if "occupy_span" in cap_set:
+        paths.update({"/occupy/mine", "/admin/occupy"})
+    if "material_check" in cap_set:
+        paths.add("/admin/material/checklist")
+    if "lost_clue" in cap_set:
+        paths.add("/admin/lost/clues")
     if "e_sign" in cap_set:
         paths.update({"/e-sign", "/admin/e-sign"})
     if "favorites" in cap_set:
@@ -325,6 +402,39 @@ def effective_paths(
         paths.update({"/order-reviews", "/admin/order-reviews"})
     if "archive_log" in cap_set:
         paths.add("/admin/archive-logs")
+    # 能力岛菜单（与 frontend with*Routes 对齐）
+    if "lesson_pack" in cap_set:
+        paths.update({"/lessons", "/admin/lesson-packs", "/admin/lesson-uses"})
+    if "buyback" in cap_set:
+        paths.update({"/buybacks", "/admin/buybacks", "/admin/buyback-slots"})
+    if "rental_bond" in cap_set:
+        paths.add("/admin/rental-inspect")
+    if "room_board" in cap_set:
+        paths.add("/admin/room-board")
+    if "front_desk" in cap_set:
+        paths.update({"/admin/front-checkin", "/admin/front-checkout"})
+    if "housekeeping" in cap_set or "venue_clean" in cap_set:
+        paths.add("/admin/clean-tasks")
+    if "digital_goods" in cap_set:
+        paths.update({"/digital", "/admin/digital-codes"})
+    if "boarding" in cap_set:
+        paths.update({"/stay", "/admin/care-options", "/admin/stay-logs"})
+    if "shoot" in cap_set:
+        paths.update({"/shots", "/admin/shoot-bundles", "/admin/shoot-files"})
+    if "weigh_sale" in cap_set:
+        paths.update({"/loss", "/admin/loss"})
+    if "consign" in cap_set:
+        paths.update({"/consigns", "/admin/consigns"})
+    if "line_custom" in cap_set:
+        paths.add("/admin/line-specs")
+    if "blind_box" in cap_set:
+        paths.add("/admin/blind-boxes")
+    if "group_buy" in cap_set:
+        paths.add("/admin/group-buys")
+    if "purchase_gate" in cap_set:
+        paths.update({"/permits", "/admin/purchase-permits"})
+    if "delivery_window" in cap_set:
+        paths.update({"/admin/delivery/slots", "/admin/delivery/spans"})
 
     arch = ((schema or {}).get("entities") or {}).get("archive") or {}
     if isinstance(arch, dict) and arch.get("userPublish"):

@@ -1345,6 +1345,111 @@ def merge_post_mute_gate(gate: dict, caps: list[str] | None) -> dict:
     return out
 
 
+def merge_book_lost_gate(gate: dict, caps: list[str] | None) -> dict:
+    """丢失申报/赔偿：断言单据 API 与我的借阅/记录页。"""
+    caps = set(caps or [])
+    if "book_lost" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/TicketStore.java",
+        "backend/src/main/java/com/thesis/controller/TicketController.java",
+        "frontend/src/views/user/MyTickets.vue",
+        "frontend/src/views/admin/TicketRecordsAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    flow = dict(out.get("flow_api") or {})
+    flow["book_lost"] = {
+        "file": "TicketController.java",
+        "label": "丢失申报与赔偿",
+        "need": ["/{id}/report-lost", "/{id}/compensate"],
+    }
+    out["flow_api"] = flow
+    return out
+
+
+def merge_parcel_shelf_gate(gate: dict, caps: list[str] | None) -> dict:
+    """驿站货架：断言 Store/API/管理页。"""
+    caps = set(caps or [])
+    if "parcel_shelf" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/ParcelShelfStore.java",
+        "backend/src/main/java/com/thesis/controller/ParcelShelfController.java",
+        "frontend/src/views/admin/ParcelShelfAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("admin_routes") or [])
+    have = {str(r.get("seg") or "") for r in routes if isinstance(r, dict)}
+    if "parcel-shelf" not in have:
+        routes.append({"seg": "parcel-shelf", "from_feature": "货架管理"})
+    out["admin_routes"] = routes
+    flow = dict(out.get("flow_api") or {})
+    flow["parcel_shelf"] = {
+        "label": "货架管理",
+        "need": ["/api/admin/parcel-shelf"],
+    }
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "parcel_shelf" not in super_menus:
+        super_menus.append("parcel_shelf")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
+def merge_parcel_ship_gate(gate: dict, caps: list[str] | None) -> dict:
+    """寄件登记：断言 Store/API/门户与管理页。"""
+    caps = set(caps or [])
+    if "parcel_ship" not in caps:
+        return gate
+    out = dict(gate or {})
+    files = list(out.get("files") or [])
+    for f in (
+        "backend/src/main/java/com/thesis/capability/ParcelShipStore.java",
+        "backend/src/main/java/com/thesis/controller/ParcelShipController.java",
+        "frontend/src/views/user/ParcelShip.vue",
+        "frontend/src/views/admin/ParcelShipAdmin.vue",
+    ):
+        if f not in files:
+            files.append(f)
+    out["files"] = files
+    routes = list(out.get("admin_routes") or [])
+    have = {str(r.get("seg") or "") for r in routes if isinstance(r, dict)}
+    if "parcel-ship" not in have:
+        routes.append({"seg": "parcel-ship", "from_feature": "寄件登记"})
+    out["admin_routes"] = routes
+    user_routes = list(out.get("user_routes") or [])
+    uhave = {str(r.get("seg") or "") for r in user_routes if isinstance(r, dict)}
+    if "parcel-ship" not in uhave:
+        user_routes.append({"seg": "parcel-ship", "from_feature": "寄件登记"})
+    out["user_routes"] = user_routes
+    flow = dict(out.get("flow_api") or {})
+    flow["parcel_ship"] = {
+        "label": "寄件登记",
+        "need": ["/api/parcel-ship", "/api/admin/parcel-ship"],
+    }
+    out["flow_api"] = flow
+    inv = dict(out.get("admin_invariants") or {})
+    super_menus = list(inv.get("super_menus") or [])
+    if "parcel_ship" not in super_menus:
+        if "ticket_pending" in super_menus:
+            super_menus.insert(super_menus.index("ticket_pending"), "parcel_ship")
+        else:
+            super_menus.append("parcel_ship")
+    inv["super_menus"] = super_menus
+    out["admin_invariants"] = inv
+    return out
+
+
 def merge_book_suggest_gate(gate: dict, caps: list[str] | None) -> dict:
     """E-13：图书荐购挂载时断言 Store/API/门户与管理页。"""
     caps = set(caps or [])

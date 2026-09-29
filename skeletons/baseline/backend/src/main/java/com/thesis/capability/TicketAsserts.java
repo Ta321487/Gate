@@ -68,6 +68,7 @@ final class TicketAsserts {
             throw new IllegalStateException("该对象已下架或不可申请");
         }
         // 线路报名等：档案 stage 已关闭时禁止再报（与 status 双保险）
+        // 设备借用：维修中/下架不可借；驿站：异常件不可取
         Object stageObj = item.get("stage");
         if (stageObj != null) {
             String stage = String.valueOf(stageObj).trim();
@@ -76,6 +77,12 @@ final class TicketAsserts {
                         "满员".equals(stage) ? "该线路已满员，不可再报名"
                                 : ("已出团".equals(stage) ? "该线路已出团，不可再报名"
                                 : "该线路已下架，不可再报名"));
+            }
+            if ("维修中".equals(stage)) {
+                throw new IllegalStateException("该设备维修中，暂不可借用");
+            }
+            if ("损坏".equals(stage) || "误领".equals(stage) || "拒收".equals(stage)) {
+                throw new IllegalStateException("该包裹为异常件（" + stage + "），不可办理取件");
             }
         }
         if (!ArchiveStore.hasStartAt() && !ArchiveStore.hasEndAt()) return;

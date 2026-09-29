@@ -126,12 +126,50 @@ final class TicketRowMaps {
                 m.put("periodEnd", periodEnd);
                 m.put("startAt", periodStart);
                 m.put("endAt", periodEnd);
+                int leaveDays = 0;
+                try {
+                    Object rawLeaveDays = rs.getObject("leave_days");
+                    if (rawLeaveDays instanceof Number num) leaveDays = num.intValue();
+                } catch (Exception ignored) {
+                    // 旧库无 leave_days 列：按起止回算
+                }
+                if (leaveDays <= 0) leaveDays = daysBetweenInclusive(periodStart, periodEnd);
+                if (leaveDays > 0) m.put("leaveDays", leaveDays);
             } else if (item != null) {
                 m.put("startAt", item.get("startAt"));
                 m.put("endAt", item.get("endAt"));
                 m.put("applyDeadlineAt", item.get("applyDeadlineAt"));
             }
         }
+        int weekNo = 0;
+        try {
+            Object rawWeek = rs.getObject("week_no");
+            if (rawWeek instanceof Number num) weekNo = num.intValue();
+        } catch (Exception ignored) {
+            // 旧库无 week_no 列：不展示周次
+        }
+        if (weekNo > 0) m.put("weekNo", weekNo);
+        try {
+            Object rawPlace = rs.getObject("interview_place");
+            if (rawPlace != null) {
+                String place = String.valueOf(rawPlace).trim();
+                if (!place.isEmpty()) m.put("interviewPlace", place);
+            }
+        } catch (Exception ignored) {
+            // 旧库无 interview_place 列：不展示面试地点
+        }
         return m;
+    }
+
+    /** 请假等起止（含首尾）的自然日天数；解析失败返回 0。 */
+    private static int daysBetweenInclusive(String start, String end) {
+        if (start == null || end == null) return 0;
+        try {
+            java.time.LocalDate a = java.time.LocalDate.parse(start.substring(0, 10));
+            java.time.LocalDate b = java.time.LocalDate.parse(end.substring(0, 10));
+            return (int) (java.time.temporal.ChronoUnit.DAYS.between(a, b) + 1);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

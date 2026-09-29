@@ -330,7 +330,10 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/complete")
-    public R<Map<String, Object>> complete(@PathVariable long id, HttpSession session) {
+    public R<Map<String, Object>> complete(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
         String uid = requireLogin(session);
         Map<String, Object> br = TicketStore.get(id);
         if (br == null) throw new BizException(ErrorCode.NOT_FOUND, "单据不存在");
@@ -345,7 +348,8 @@ public class TicketController {
         }
         try {
             boolean asSuperOrOwner = owner || AdminAuth.isSuperAdmin(session);
-            return R.ok(TicketStore.complete(id, uid, asSuperOrOwner));
+            String attach = body == null ? null : str(body.get("attachUrl"));
+            return R.ok(TicketStore.complete(id, uid, asSuperOrOwner, attach));
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -353,8 +357,38 @@ public class TicketController {
 
     /** 兼容借阅「归还」语义 */
     @PostMapping("/{id}/return")
-    public R<Map<String, Object>> returnTicket(@PathVariable long id, HttpSession session) {
-        return complete(id, session);
+    public R<Map<String, Object>> returnTicket(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        return complete(id, body, session);
+    }
+
+    /** 读者：申报丢失 */
+    @PostMapping("/{id}/report-lost")
+    public R<Map<String, Object>> reportLost(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.reportLost(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 管理员：登记赔偿完成 */
+    @PostMapping("/{id}/compensate")
+    public R<Map<String, Object>> compensate(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String op = requireLogin(session);
+        try {
+            return R.ok(TicketStore.markCompensated(id, op));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     /** 管理员：标记逾期 */

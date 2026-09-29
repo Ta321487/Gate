@@ -19,8 +19,12 @@
         <div ref="stockEl" class="chart" />
       </div>
       <div v-if="hotOpt" class="chart-box wide">
-        <div class="chart-title">热销商品</div>
+        <div class="chart-title">{{ hotTitle }}</div>
         <div ref="hotEl" class="chart" />
+      </div>
+      <div v-if="stockIoOpt" class="chart-box">
+        <div class="chart-title">入出库分布</div>
+        <div ref="stockIoEl" class="chart" />
       </div>
     </div>
   </section>
@@ -47,11 +51,13 @@ const trendEl = ref(null)
 const monthEl = ref(null)
 const stockEl = ref(null)
 const hotEl = ref(null)
+const stockIoEl = ref(null)
 let statusChart
 let trendChart
 let monthChart
 let stockChart
 let hotChart
+let stockIoChart
 
 const stateLabels = computed(() => {
   const schema = getSchema() || {}
@@ -87,6 +93,13 @@ const stockTitle = computed(() => {
   const catLab = (cat?.label || '').trim() || '分类'
   if (stockLab.startsWith(catLab)) return stockLab
   return `${catLab}${stockLab}`
+})
+
+const hotTitle = computed(() => {
+  if (props.mode === 'order') return '热销商品'
+  const lab = ticketCopy().label || '办理'
+  if (/借阅|借用/.test(lab) || /图书|设备/.test(archiveCopy()?.label || '')) return '热门排行'
+  return `${lab}排行`
 })
 
 function labelOf(name) {
@@ -276,7 +289,26 @@ const hotOpt = computed(() => {
   }
 })
 
-const hasAny = computed(() => !!(statusOpt.value || trendOpt.value || monthOpt.value || stockOpt.value || hotOpt.value))
+const stockIoOpt = computed(() => {
+  const series = (props.charts?.stockIoSeries || []).filter((x) => x?.name)
+  if (!series.length) return null
+  return {
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0 },
+    series: [
+      {
+        type: 'pie',
+        radius: ['36%', '62%'],
+        data: series.map((x) => ({ name: x.name, value: Number(x.value) || 0 })),
+      },
+    ],
+  }
+})
+
+const hasAny = computed(
+  () =>
+    !!(statusOpt.value || trendOpt.value || monthOpt.value || stockOpt.value || hotOpt.value || stockIoOpt.value),
+)
 
 function render() {
   if (statusOpt.value && statusEl.value) {
@@ -314,6 +346,13 @@ function render() {
     hotChart.dispose()
     hotChart = null
   }
+  if (stockIoOpt.value && stockIoEl.value) {
+    if (!stockIoChart) stockIoChart = echarts.init(stockIoEl.value)
+    stockIoChart.setOption(withPortalChartTheme(stockIoOpt.value), true)
+  } else if (stockIoChart) {
+    stockIoChart.dispose()
+    stockIoChart = null
+  }
 }
 
 function onResize() {
@@ -322,6 +361,7 @@ function onResize() {
   monthChart?.resize()
   stockChart?.resize()
   hotChart?.resize()
+  stockIoChart?.resize()
 }
 
 watch(
@@ -346,6 +386,7 @@ onBeforeUnmount(() => {
   monthChart?.dispose()
   stockChart?.dispose()
   hotChart?.dispose()
+  stockIoChart?.dispose()
 })
 </script>
 

@@ -256,6 +256,9 @@
             <p v-if="Number(preview.pointsOffsetYuan) > 0">
               积分抵扣 −¥{{ Number(preview.pointsOffsetYuan).toFixed(2) }}
             </p>
+            <p v-if="!pointsPayOn && Number(preview.pointsOffsetYuan) > 0" class="tip muted">
+              抵扣部分由积分支付，剩余金额仍扣账户余额。
+            </p>
           </template>
           <p v-if="pointsPayOn" class="payable">
             本单需 {{ Math.ceil(Number(preview.payableYuan || totalYuan)) }} 积分兑换

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.bake.proposal_lexicon import keyword_mentioned
+from app.bake.proposal_lexicon import keyword_mentioned, settlement_mode
 
 # status: implemented = 当前骨架/运行时已能交付；planned = 规格已定未落地
 CAPABILITIES: dict[str, dict[str, Any]] = {
@@ -127,7 +127,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "flash_price": {
         "label": "限时购",
         "status": "implemented",
-        "desc": "档案活动价窗口；窗内下单用活动价快照；开题写限时购/活动价/秒杀/促销信息/节日优惠才挂（E-05）",
+        "desc": "档案活动价窗口；窗内下单用活动价快照；开题写限时购/限时折扣/早鸟票/活动价/秒杀/特价等才挂（E-05）",
     },
     "product_spec": {
         "label": "商品规格说明",
@@ -137,17 +137,17 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "multi_category": {
         "label": "多维分类",
         "status": "implemented",
-        "desc": "分类带维度 + 条目多分类关联；开题写两组分类维度、双维度，或两组「按某维：选项」才挂；仅 DOM-SHOP；开岛后不以 category_id 为分类来源",
+        "desc": "分类带维度 + 条目多分类关联；开题写两组分类维度、双维度、「按A和B分类」，或两组「按某维：选项」才挂；DOM-SHOP/FOOD/CINEMA；开岛后不以 category_id 为分类来源",
     },
     "product_tags": {
         "label": "商品标签",
         "status": "implemented",
-        "desc": "tag + product_tag 多选筛选与详情展示；开题写明「标签」才挂；仅 DOM-SHOP；≠论坛默认标签",
+        "desc": "tag + product_tag 多选筛选与详情展示；开题写明「标签」才挂；DOM-SHOP/FOOD/CINEMA；≠论坛默认标签",
     },
     "detail_attrs": {
         "label": "商品详情属性",
         "status": "implemented",
-        "desc": "详情括号里点名的品牌、材质等独立字段，写入 detail_json；价格简介图片不重复加；仅 DOM-SHOP/DOM-FOOD",
+        "desc": "详情括号或「详情显示…」点名的品牌、材质、导演等独立字段；工厂用 detailAttrKeys 收集，出包落档案表真列；DOM-SHOP/FOOD/CINEMA",
     },
     "line_custom": {
         "label": "订单明细快照",
@@ -274,10 +274,25 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "desc": "无库存可预约；还书后到书通知；限时确认借阅；开题写到才挂（E-11）；≠报名候补",
     },
+    "book_lost": {
+        "label": "丢失赔偿",
+        "status": "implemented",
+        "desc": "借出中/逾期可申报丢失→馆员登记赔偿完成；库存不回补；域默认 LIBRARY",
+    },
     "book_suggest": {
         "label": "图书荐购",
         "status": "implemented",
         "desc": "读者提交荐购→审核通过/驳回记台账；开题写到才挂（E-13）；≠PROCURE期刊遴选",
+    },
+    "parcel_shelf": {
+        "label": "驿站货架",
+        "status": "implemented",
+        "desc": "管理端维护货架/柜格编码；域默认 PARCEL；≠柜机硬件对接",
+    },
+    "parcel_ship": {
+        "label": "寄件登记",
+        "status": "implemented",
+        "desc": "用户寄件登记→店员受理→已寄出；开题写「寄件」才挂；≠取件核销≠电子面单",
     },
     "post_mute": {
         "label": "帖子禁言",
@@ -587,11 +602,32 @@ def _commitment_focus_for_scope(text: str) -> str:
         return ""
 
 
+def proposal_body_scope(text: str) -> str:
+    """正文承诺域：剥掉研究现状 / 文献综述 / 参考文献等段，其余段落保留。
+
+    场景 / 开题口径判定共用同一入口：现状里转述别人做法不是本课题承诺，
+    但不得顺手丢掉背景、研究内容、技术路线里的真实声明。
+    """
+    raw = text or ""
+    if not raw.strip():
+        return ""
+    try:
+        from app.bake.catalog import strip_research_status_sections
+        from app.services.proposal import strip_non_dev_sections
+
+        scoped = strip_research_status_sections(strip_non_dev_sections(raw))
+    except Exception:  # noqa: BLE001
+        return raw
+    return scoped if scoped.strip() else raw
+
+
 def scan_out_of_scope(text: str) -> list[str]:
     """扫描开题里「拟交付」的超范围卖点。
 
     只扫题名 + 功能/实现段（含模块行）；不扫研究现状/全文。
     并忽略否定、对比与文献转述语境（「等引入…[n]」等）。
+    真实第三方支付另走「结算边界」维度：只有材料承诺对外清算（商户/接口/分账）
+    才算；选渠道 + 支付密码 / 系统内余额 / 模拟支付 = 已实现的系统内支付。
     """
     focus = _commitment_focus_for_scope(text)
     if not focus.strip():
@@ -603,6 +639,9 @@ def scan_out_of_scope(text: str) -> list[str]:
     for label in _scan_oa_triple(focus):
         if label not in hits:
             hits.append(label)
+    # 结算边界（维度，非逐词豁免）：不为写「模拟」二字而判，只看渠道附近的语境。
+    if "真实第三方支付" in hits and settlement_mode(focus) != "external":
+        hits = [h for h in hits if h != "真实第三方支付"]
     return hits
 
 
@@ -623,6 +662,34 @@ def _scan_oa_triple(text: str) -> list[str]:
     if seal and fleet and cert:
         return ["OA三联（用章+用车+证明）须裁成单一申请主路径"]
     return []
+
+
+def _default_item_related(item: str, text: str) -> bool:
+    """默认「本期不做」项是否与题面相关：整项 / 斜杠片段 / 词干片段命中即算。
+
+    片段用于同族不同写法：「题面写人脸识别、默认项写人脸考勤」「题面写 GPS」，
+    以及「本期不做 X」这类否定句式（否定也算提及，正是要显式声明不做）。
+    阈值保守：片段须含中日韩字，或本身是 ≥3 字符的 ASCII 词（GPS/ATS）。
+    """
+    parts = [item] + [
+        p.strip() for p in re.split(r"[/、与和\-]", item) if len(p.strip()) >= 2
+    ]
+    if any(p in text for p in parts):
+        return True
+    probes: list[str] = []
+    lead = re.match(r"[A-Za-z]{2,}", item)
+    if lead:
+        probes.append(lead.group(0))
+    probes.extend([item[:2], item[-2:]])
+    for probe in probes:
+        if len(probe) < 2:
+            continue
+        has_cjk = any("\u4e00" <= ch <= "\u9fff" for ch in probe)
+        if not (has_cjk or len(probe) >= 3):
+            continue
+        if probe in text:
+            return True
+    return False
 
 
 def compose_out_of_mvp(
@@ -654,10 +721,7 @@ def compose_out_of_mvp(
         if not substantial:
             _add(item)
             continue
-        parts = [item] + [
-            p.strip() for p in re.split(r"[/、与和]", item) if len(p.strip()) >= 2
-        ]
-        if any(p in text for p in parts):
+        if _default_item_related(item, text):
             _add(item)
 
     for sig in scanned_signals or []:

@@ -4,6 +4,8 @@ import com.thesis.capability.ArchiveLogStore;
 import com.thesis.capability.AuditLogStore;
 import com.thesis.capability.StaffRosterStore;
 import com.thesis.capability.BookSuggestStore;
+import com.thesis.capability.ParcelShelfStore;
+import com.thesis.capability.ParcelShipStore;
 import com.thesis.capability.EquipmentDictStore;
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.BrowseHistoryStore;
@@ -205,6 +207,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-allow-book-hold:false}")
     private boolean ticketAllowBookHold;
 
+    @Value("${thesis.ticket-allow-book-lost:false}")
+    private boolean ticketAllowBookLost;
+
+    @Value("${thesis.ticket-require-return-attach:false}")
+    private boolean ticketRequireReturnAttach;
+
     @Value("${thesis.ticket-hold-hours:48}")
     private int ticketHoldHours;
 
@@ -366,6 +374,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.book-suggest-enabled:false}")
     private boolean bookSuggestEnabled;
+
+    @Value("${thesis.parcel-shelf-enabled:false}")
+    private boolean parcelShelfEnabled;
+
+    @Value("${thesis.parcel-ship-enabled:false}")
+    private boolean parcelShipEnabled;
 
     @Value("${thesis.audit-log-enabled:false}")
     private boolean auditLogEnabled;
@@ -563,6 +577,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureRenew(ticketAllowRenew, ticketMaxRenew, ticketRenewDays);
             TicketStore.configureWaitlist(ticketAllowWaitlist);
             TicketStore.configureBookHold(ticketAllowBookHold, ticketHoldHours);
+            TicketStore.configureBookLost(ticketAllowBookLost);
+            TicketStore.configureRequireReturnAttach(ticketRequireReturnAttach);
             TicketStore.configureNoShow(ticketNoShowAfterEnd, ticketNoShowPenaltyYuan);
             TicketStore.configureTimebankRedeem(timebankEnabled && timebankRedeemOnApprove);
             TicketStore.configureLoanOptions(ticketPickLoanPeriod, ticketAllowQty);
@@ -633,6 +649,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         MessageStore.configureTemplate(messageTemplateEnabled);
         StaffRosterStore.configure(staffRosterEnabled);
         BookSuggestStore.configure(bookSuggestEnabled);
+        ParcelShelfStore.configure(parcelShelfEnabled);
+        ParcelShipStore.configure(parcelShipEnabled);
         EquipmentDictStore.configure(roomEquipmentEnabled);
         ExamStore.configure(
                 examEnabled,

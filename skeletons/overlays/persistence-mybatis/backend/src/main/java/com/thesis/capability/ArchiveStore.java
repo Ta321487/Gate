@@ -41,6 +41,7 @@ public final class ArchiveStore {
     private static boolean galleryEnabled = false;
     private static boolean detailAttrsEnabled = false;
     private static List<String> detailAttrKeys = List.of();
+    private static Map<String, String> detailAttrTypes = Map.of();
     private static Boolean hasDetailJson;
     private static boolean roomEquipmentEnabled = false;
 
@@ -297,8 +298,12 @@ public final class ArchiveStore {
 
     public static void configureDetailAttrs(boolean enabled, String keysCsv) {
         detailAttrsEnabled = enabled;
-        detailAttrKeys = parseDetailKeys(keysCsv);
-        if (detailAttrsEnabled && !detailAttrKeys.isEmpty()) ensureDetailColumn();
+        Map<String, String> types = new LinkedHashMap<>();
+        detailAttrKeys = parseDetailKeys(keysCsv, types);
+        detailAttrTypes = Map.copyOf(types);
+        if (detailAttrsEnabled && !detailAttrKeys.isEmpty()) {
+            ensureDetailAttrColumns();
+        }
     }
 
     public static boolean galleryEnabled() {
@@ -1426,6 +1431,20 @@ public final class ArchiveStore {
         return hasDetailJson;
     }
 
+    /** 开题属性落真列；旧包仍可能只有 detail_json。 */
+    public static void ensureDetailAttrColumns() {
+        for (String key : detailAttrKeys) {
+            String col = detailAttrColumn(key);
+            if (col.isBlank() || hasItemColumn(col)) continue;
+            String ddl = detailAttrSqlDdl(detailAttrTypes.getOrDefault(key, "string"));
+            try {
+                schema().executeDdl("ALTER TABLE `" + ITEM + "` ADD COLUMN `" + col + "` " + ddl);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /** @deprecated 旧包回退；新包用 ensureDetailAttrColumns */
     public static void ensureDetailColumn() {
         if (hasDetailJson()) return;
         try {
@@ -1436,14 +1455,67 @@ public final class ArchiveStore {
         }
     }
 
-    private static List<String> parseDetailKeys(String keysCsv) {
+    private static List<String> parseDetailKeys(String keysCsv, Map<String, String> typesOut) {
         if (keysCsv == null || keysCsv.isBlank()) return List.of();
         List<String> keys = new ArrayList<>();
         for (String part : keysCsv.split(",")) {
-            String key = part == null ? "" : part.trim();
-            if (key.matches("[A-Za-z][A-Za-z0-9]{0,31}") && !keys.contains(key)) keys.add(key);
+            String raw = part == null ? "" : part.trim();
+            if (raw.isBlank()) continue;
+            String key = raw;
+            String type = "string";
+            int colon = raw.indexOf(':');
+            if (colon > 0) {
+                key = raw.substring(0, colon).trim();
+                String t = raw.substring(colon + 1).trim().toLowerCase();
+                if ("number".equals(t) || "date".equals(t) || "string".equals(t)) type = t;
+            }
+            if (!key.matches("[A-Za-z][A-Za-z0-9]{0,31}") || keys.contains(key)) continue;
+            keys.add(key);
+            if (typesOut != null) typesOut.put(key, type);
         }
         return List.copyOf(keys);
+    }
+
+    private static String detailAttrColumn(String key) {
+        if (key == null || key.isBlank()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            if (Character.isUpperCase(c) && i > 0) sb.append('_');
+            sb.append(Character.toLowerCase(c));
+        }
+        String col = sb.toString();
+        return col.matches("[a-z][a-z0-9_]{0,47}") ? col : "";
+    }
+
+    private static String detailAttrSqlDdl(String fieldType) {
+        if ("date".equals(fieldType)) return "DATE NULL";
+        if ("number".equals(fieldType)) return "DECIMAL(10,2) NULL";
+        return "VARCHAR(80) DEFAULT ''";
+    }
+
+    private static Object detailAttrSqlValue(String key, String value) {
+        String type = detailAttrTypes.getOrDefault(key, "string");
+        if ("number".equals(type)) {
+            if (value == null || value.isBlank()) return null;
+            try {
+                return new java.math.BigDecimal(value);
+            } catch (Exception e) {
+                throw new IllegalStateException("详情属性数值格式不正确");
+            }
+        }
+        if ("date".equals(type)) {
+            if (value == null || value.isBlank()) return null;
+            String s = value.trim();
+            if (s.length() >= 10) s = s.substring(0, 10);
+            try {
+                return java.sql.Date.valueOf(s);
+            } catch (Exception e) {
+                throw new IllegalStateException("详情属性日期格式不正确");
+            }
+        }
+        if (value == null) return "";
+        return value.length() > 80 ? value.substring(0, 80) : value;
     }
 
     private static void writeDetailAttrs(long id, Map<String, Object> patch, Map<String, Object> current) {
@@ -1456,17 +1528,38 @@ public final class ArchiveStore {
             }
         }
         if (!hit) return;
-        if (!hasDetailJson()) {
-            throw new IllegalStateException("系统未配置详情属性字段，无法保存");
-        }
+        boolean wroteCol = false;
+        boolean needJsonFallback = false;
         Map<String, String> bag = new LinkedHashMap<>();
         for (String key : detailAttrKeys) {
+            String col = detailAttrColumn(key);
             Object prev = current == null ? null : current.get(key);
             if (prev != null) bag.put(key, String.valueOf(prev));
-            if (!patch.containsKey(key) || patch.get(key) == null) continue;
+            if (!patch.containsKey(key) || patch.get(key) == null) {
+                if (col.isBlank() || !hasItemColumn(col)) needJsonFallback = true;
+                continue;
+            }
             String value = String.valueOf(patch.get(key)).trim();
-            if (value.length() > 80) value = value.substring(0, 80);
             bag.put(key, value);
+            if (!col.isBlank() && hasItemColumn(col)) {
+                try {
+                    mapper().updateItemColumn(ITEM, col, detailAttrSqlValue(key, value), id);
+                    wroteCol = true;
+                } catch (IllegalStateException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new IllegalStateException("详情属性保存失败");
+                }
+            } else {
+                needJsonFallback = true;
+            }
+        }
+        if (wroteCol && !needJsonFallback) return;
+        if (!hasDetailJson()) {
+            if (!wroteCol) {
+                throw new IllegalStateException("系统未配置详情属性字段，无法保存");
+            }
+            return;
         }
         try {
             mapper().updateItemColumn(ITEM, "detail_json", new ObjectMapper().writeValueAsString(bag), id);
@@ -1476,7 +1569,17 @@ public final class ArchiveStore {
     }
 
     private static void putDetailAttrs(Map<String, Object> row, Map<String, Object> raw) {
-        if (!detailAttrsEnabled || detailAttrKeys.isEmpty() || !hasDetailJson() || raw == null) return;
+        if (!detailAttrsEnabled || detailAttrKeys.isEmpty() || raw == null) return;
+        for (String key : detailAttrKeys) {
+            String col = detailAttrColumn(key);
+            if (col.isBlank()) continue;
+            Object cell = rawCol(raw, col);
+            if (cell != null) {
+                String v = String.valueOf(cell);
+                if (!v.isBlank()) row.put(key, v);
+            }
+        }
+        if (!hasDetailJson()) return;
         try {
             Object cell = rawCol(raw, "detail_json");
             if (cell == null) return;
@@ -1484,6 +1587,7 @@ public final class ArchiveStore {
             if (text.isBlank()) return;
             Map<String, Object> bag = new ObjectMapper().readValue(text, new TypeReference<>() {});
             for (String key : detailAttrKeys) {
+                if (row.containsKey(key)) continue;
                 Object value = bag.get(key);
                 if (value != null) row.put(key, String.valueOf(value));
             }
@@ -1782,6 +1886,10 @@ public final class ArchiveStore {
                 mapper().updateItemColumn(ITEM, "stage", "已分配", itemId);
             } else if (delta > 0 && stock > 0 && "已分配".equals(stage)) {
                 mapper().updateItemColumn(ITEM, "stage", "空闲", itemId);
+            } else if (delta < 0 && stock <= 0 && ("在库".equals(stage) || stage.isEmpty())) {
+                mapper().updateItemColumn(ITEM, "stage", "借出", itemId);
+            } else if (delta > 0 && stock > 0 && "借出".equals(stage)) {
+                mapper().updateItemColumn(ITEM, "stage", "在库", itemId);
             } else if (delta < 0 && stock <= 0 && "开放报名".equals(stage)) {
                 mapper().updateItemColumn(ITEM, "stage", "满员", itemId);
             } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {

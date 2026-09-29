@@ -228,7 +228,17 @@ def is_borrow_family_domain(domain: str | None) -> bool:
 # 级联展示见 DOMAIN_GROUPS；出包表数下限见 BORROW_FAMILY_DOMAINS
 DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     # A 借用/占用
-    "DOM-LIBRARY": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend", "loan_renew"],
+    "DOM-LIBRARY": [
+        "archive",
+        "ticket_flow",
+        "quota",
+        "deadline",
+        "content",
+        "org_users",
+        "recommend",
+        "loan_renew",
+        "book_lost",
+    ],
     "DOM-EQUIP": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "recommend", "loan_renew"],
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users", "stock_io"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
@@ -240,7 +250,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-DATING": ["archive", "ticket_flow", "content", "org_users", "dm"],
     "DOM-GRADE": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-INTERN": ["archive", "ticket_flow", "content", "org_users", "e_sign"],
-    "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users"],
+    "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users", "parcel_shelf"],
     "DOM-SEAL": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-FLEET": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
     "DOM-CERT": ["archive", "ticket_flow", "content", "org_users", "material_check"],
@@ -285,11 +295,19 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-DOCLIB": ["archive", "doclib", "content", "org_users"],
     "DOM-CARPOOL": ["archive", "ticket_flow", "quota", "content", "org_users"],
     "DOM-TIMEBANK": ["archive", "ticket_flow", "content", "org_users", "timebank"],
-    "DOM-CINEMA": ["archive", "order_lines", "quota", "content", "org_users", "seat_select"],
-    # B 报修/工单
-    "DOM-DORM": ["ticket_flow", "content", "org_users", "deadline"],
-    "DOM-PROPERTY": ["ticket_flow", "content", "org_users", "deadline"],
-    "DOM-IT": ["ticket_flow", "content", "org_users", "deadline"],
+    "DOM-CINEMA": [
+        "archive",
+        "order_lines",
+        "quota",
+        "content",
+        "org_users",
+        "seat_select",
+        "guestbook",
+    ],
+    # B 报修/工单（deadline 属「扫词才挂」：超时未处理/时效催办见 core_cap_scan.merge_loan_deadline_capabilities）
+    "DOM-DORM": ["ticket_flow", "content", "org_users"],
+    "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
+    "DOM-IT": ["ticket_flow", "content", "org_users"],
     # C 报名/申请
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin", "waitlist"],
     "DOM-LOST": [

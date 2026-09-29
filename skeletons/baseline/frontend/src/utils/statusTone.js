@@ -10,6 +10,8 @@ const TICKET_TONE = {
   waitlisted: 'warn',
   held: 'warn',
   hold_ready: 'ok',
+  lost: 'danger',
+  compensated: 'muted',
   approved: 'ok',
   rejected: 'danger',
   cancelled: 'muted',

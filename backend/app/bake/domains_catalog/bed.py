@@ -24,6 +24,7 @@ DOMAINS: dict = {
             {"name": "个人资料与头像", "status": "baseline"},
             {"name": "管理端工作台", "status": "module"},
             {"name": "床位档案", "status": "domain"},
+            {"name": "状态色块选房图", "status": "domain"},
             {"name": "分类管理", "status": "module"},
             {"name": "用户管理", "status": "module"},
             {"name": "床位申请审核", "status": "flow"},

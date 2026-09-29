@@ -134,7 +134,9 @@ class TestPersistenceBake(unittest.TestCase):
         self.assertTrue(order_stores)
         text = order_stores[0].read_text(encoding="utf-8")
         self.assertIn('"ship".equals(act) && "confirmed".equals(st)', text)
-        self.assertIn('"complete".equals(act) && "shipped".equals(st)', text)
+        # 完成守卫：单店 shipped→completed（现实现用 ok=… 变量，勿锁死单行写法）
+        self.assertIn('"complete".equals(act)', text)
+        self.assertIn('"shipped".equals(st)', text)
         self.assertIn("售后处理中，不可完成订单", text)
         self.assertIn("CouponStore.releaseByOrder", text)
         self.assertIn("LoyaltyStore.clawbackOrderCompleted", text)
