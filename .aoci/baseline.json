@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-09-29T16:09:12Z",
+  "updated_at": "2026-09-29T16:36:46Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -181,9 +181,9 @@
       "normalized_sha256": "48844d5ab52672f13656cf41ca6aa06ad00a10db7ad1665952ecf15dc6b14bf4"
     },
     "aoci.code.txt": {
-      "sha256": "594b52414c9ed4182ae33109499cb521021cd050c5660407504e56913e24021e",
-      "size": 228251,
-      "normalized_sha256": "594b52414c9ed4182ae33109499cb521021cd050c5660407504e56913e24021e"
+      "sha256": "8f12cdcaf8e44e8578d25fee55c25b6a6ae2ec5af28a08cc659e2f7944a5f394",
+      "size": 228692,
+      "normalized_sha256": "8f12cdcaf8e44e8578d25fee55c25b6a6ae2ec5af28a08cc659e2f7944a5f394"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
@@ -418,9 +418,9 @@
       "normalized_sha256": "660b0809ea5777d0955904accb1d5413185c976f945cd5fb6820320732c0d074"
     },
     "backend/app/bake/domains.py": {
-      "sha256": "3dbd9ca56099627d2af8e5a63f054f6303609c2568c2838480d1aa7e1bcaae24",
-      "size": 14307,
-      "normalized_sha256": "3dbd9ca56099627d2af8e5a63f054f6303609c2568c2838480d1aa7e1bcaae24"
+      "sha256": "a48a9d66e2638d7804a76ea25ef9a1285cd96e1cb3115c31129e83331e9e9bb3",
+      "size": 14315,
+      "normalized_sha256": "a48a9d66e2638d7804a76ea25ef9a1285cd96e1cb3115c31129e83331e9e9bb3"
     },
     "backend/app/bake/domains_catalog/__init__.py": {
       "role": "index",
@@ -533,10 +533,9 @@
       "normalized_sha256": "5fdbded25e798aefba8bac8c5ea4efb68d39ff1dafcde51a8c04adaf0227fac3"
     },
     "backend/app/bake/domains_catalog/ticket.py": {
-      "role": "index",
-      "sha256": "276fca1d99d09812758b7c3178e7cd16a6c09d1c2b182227fcea9caebe5e0260",
-      "size": 8050,
-      "normalized_sha256": "276fca1d99d09812758b7c3178e7cd16a6c09d1c2b182227fcea9caebe5e0260"
+      "sha256": "1de0589b4436e5e6b7aa03442f6401b8b7c1386e888b02c9f0bc6552249553cc",
+      "size": 8260,
+      "normalized_sha256": "1de0589b4436e5e6b7aa03442f6401b8b7c1386e888b02c9f0bc6552249553cc"
     },
     "backend/app/bake/domains_catalog/timebank.py": {
       "role": "index",
@@ -661,9 +660,9 @@
       "normalized_sha256": "287d59c406ff93eff0a0b837b1f4556af0eea6a2939ada8a1f38a29c5e37cf51"
     },
     "backend/app/bake/features/core_cap_scan.py": {
-      "sha256": "47ac719b2b0d512acfbe36a133d0d733e797c09cd0c213d877af07e5f1b728fd",
-      "size": 15634,
-      "normalized_sha256": "47ac719b2b0d512acfbe36a133d0d733e797c09cd0c213d877af07e5f1b728fd"
+      "sha256": "c39f26c988b45376c11ca2c5adbdb35db946f4de4f9ebc83d722f34186d74f2e",
+      "size": 16265,
+      "normalized_sha256": "c39f26c988b45376c11ca2c5adbdb35db946f4de4f9ebc83d722f34186d74f2e"
     },
     "backend/app/bake/features/delivery_window.py": {
       "sha256": "95743fe1ba9b79de44a81a7f19db9519a529ac7cddbaf23f08782214d451e495",
@@ -720,10 +719,9 @@
       "normalized_sha256": "f1933dcf0da345547fec246db40fbcf94f7d611f1bb12117ce2e741ab86c1003"
     },
     "backend/app/bake/features/guestbook.py": {
-      "role": "index",
-      "sha256": "fa46969293cb009515e1daa49f2efc258e6f5a3dd494dae5db03b4187e04ec7b",
-      "size": 5150,
-      "normalized_sha256": "fa46969293cb009515e1daa49f2efc258e6f5a3dd494dae5db03b4187e04ec7b"
+      "sha256": "6125e4f972645ee847fb36c4d8bb75455a462422b2a51f4ed2cdca3d47bf3ade",
+      "size": 5220,
+      "normalized_sha256": "6125e4f972645ee847fb36c4d8bb75455a462422b2a51f4ed2cdca3d47bf3ade"
     },
     "backend/app/bake/features/housekeeping_cap.py": {
       "sha256": "8af5c6dcf4106e13508cb9a84fa43889984d2154f5488498f49eabcbba809bfb",
@@ -842,10 +840,9 @@
       "normalized_sha256": "50181edf822fcbfd691b660588fde750086909da9c3c386e09d4c5c0cc6b9213"
     },
     "backend/app/bake/features/staff_roster.py": {
-      "role": "index",
-      "sha256": "c5006f19b60f9953de22da35a2a510f5d9521ea0d050e82b73e13fdb2a6061a0",
-      "size": 2793,
-      "normalized_sha256": "c5006f19b60f9953de22da35a2a510f5d9521ea0d050e82b73e13fdb2a6061a0"
+      "sha256": "0908c13461df01ae0e2afc79f28ac467a59a4520acf1e4bf5e7fa58aa2e9dcda",
+      "size": 2894,
+      "normalized_sha256": "0908c13461df01ae0e2afc79f28ac467a59a4520acf1e4bf5e7fa58aa2e9dcda"
     },
     "backend/app/bake/features/stock_io.py": {
       "role": "index",
@@ -1177,10 +1174,9 @@
       "normalized_sha256": "844e364fda678f2b7807f9c6f896fa2a08830e783f34c2ddf3a56e8c1424a1b2"
     },
     "backend/app/bake/proposal_packs_data/dorm.json": {
-      "role": "index",
-      "sha256": "8ea934ca706caf747584d8ab5354703d56ad095f2ac2173c288c0cc7ac47db4a",
-      "size": 1693,
-      "normalized_sha256": "87ed98ce59e645a086ae2d83d02ff2596b0c768fe2087b33aec6b2a356f953a9"
+      "sha256": "da48dc371f2643ebfb5e9b9d377b3b1e46d8141fdabc5de4fdf7300dfc631ea8",
+      "size": 1852,
+      "normalized_sha256": "a76241bed0805f5dac9f0111ad36a3b809088f2db57a2a6a09b12dadc7ffdb84"
     },
     "backend/app/bake/proposal_packs_data/equip.json": {
       "sha256": "846f7032b5e84e03fd5ad64e3dad18d3543169b59072d1c29ce956942b1275e0",
@@ -1287,10 +1283,9 @@
       "normalized_sha256": "a8302dba4c8697c9e200f09ec751d98ec75053e0d019cfdddd9163562ece9bdd"
     },
     "backend/app/bake/proposal_packs_data/it.json": {
-      "role": "index",
-      "sha256": "e7e8a878cc411bf99038d5fe9a12f57d96410f2cbcd44fa5b4a109d2841f20c6",
-      "size": 1818,
-      "normalized_sha256": "e7e8a878cc411bf99038d5fe9a12f57d96410f2cbcd44fa5b4a109d2841f20c6"
+      "sha256": "579341fb4a1e393510fdc40d44c9049879e8dc3d7507e03f6dddfe77626e85ee",
+      "size": 1996,
+      "normalized_sha256": "579341fb4a1e393510fdc40d44c9049879e8dc3d7507e03f6dddfe77626e85ee"
     },
     "backend/app/bake/proposal_packs_data/labor.json": {
       "sha256": "4b58f953ae7f141127bf8741a1d7ab3ec5216441259a41c74399c6583bafa896",
@@ -1393,10 +1388,9 @@
       "normalized_sha256": "d533e5d5ff7c449f9e122dd7303be8d09c5d14719c0b5d1746a55468d332a983"
     },
     "backend/app/bake/proposal_packs_data/property.json": {
-      "role": "index",
-      "sha256": "612ec992701a7092cfc36d7b571cdced08db883205a0855bcef7d4b7cb124055",
-      "size": 1523,
-      "normalized_sha256": "1717e4246091b27f296d6e308d3a8e08d087acc134b702ee4be79a09a2c64428"
+      "sha256": "bfbc9da13c73b6b2018aa963465e4cba5923344b1e7c337f57bb97d28b1dcbbc",
+      "size": 1704,
+      "normalized_sha256": "51ed0af15ef8a5934ba7e74d43627781d27d9350eeccd14c877f3969508b7380"
     },
     "backend/app/bake/proposal_packs_data/recruit.json": {
       "role": "index",
@@ -1458,14 +1452,14 @@
       "normalized_sha256": "fbcac1d002fd666193d5349e420cfe5e6305d3d03b27570125e0c5c8c450ef2c"
     },
     "backend/app/bake/proposal_pressure.py": {
-      "sha256": "009353212b02118defdedadf973e899bc1c767cf5caf9874b8915cedae5710b0",
-      "size": 12132,
-      "normalized_sha256": "ca2748073570ff5ea9d3c91f2a85528949f189a835711b69226d11d62506ed0a"
+      "sha256": "f973315e56d33ffd24d56fad4f89aa5eb84abd65619fbd8f3013ab183c4563c3",
+      "size": 12345,
+      "normalized_sha256": "08f20ba555616c7fd74087b7137d20d10e4502ff28beb8793d433fd134fbe597"
     },
     "backend/app/bake/proposal_role_modules.py": {
-      "sha256": "6b0f0a63ee975f9cd89cb9819fe666ce068c4fee06912049999fc2ac127d1ca4",
-      "size": 67437,
-      "normalized_sha256": "6b0f0a63ee975f9cd89cb9819fe666ce068c4fee06912049999fc2ac127d1ca4"
+      "sha256": "b7c8167c56fc43bff12f339551f3d50d933b15ad906eb4ed28b3c4a5ebf63b6f",
+      "size": 68844,
+      "normalized_sha256": "b7c8167c56fc43bff12f339551f3d50d933b15ad906eb4ed28b3c4a5ebf63b6f"
     },
     "backend/app/bake/sample_proposal.py": {
       "sha256": "0df1ec950eea02d9af0da8ce787148b202c6584866c3ba901e9195a6962930f7",
@@ -2229,9 +2223,9 @@
       "normalized_sha256": "ed1e1ec478779b283481cf2ed3f1bd7cd8c72ee59acad8b21bf00ed6bc954689"
     },
     "backend/app/bake/staff_posts.py": {
-      "sha256": "f9d85bbc687830bcf08f5ceb3d21e2439b609a7faa1d4fe968ec1cca68027283",
-      "size": 61983,
-      "normalized_sha256": "f9d85bbc687830bcf08f5ceb3d21e2439b609a7faa1d4fe968ec1cca68027283"
+      "sha256": "e944a14ef6875bfb94c83e9dc3778acf2bdd3a28b3b64f0cd7ad1b05505e9052",
+      "size": 62233,
+      "normalized_sha256": "e944a14ef6875bfb94c83e9dc3778acf2bdd3a28b3b64f0cd7ad1b05505e9052"
     },
     "backend/app/bake/stuwork_meta.py": {
       "role": "index",
@@ -2946,9 +2940,9 @@
     },
     "backend/tests/test_core_cap_scan.py": {
       "role": "observe",
-      "sha256": "9f11127cce7ebb23755e3e87c25160bab34f6bb2ce691ac87937e34aac45c1a2",
-      "size": 11275,
-      "normalized_sha256": "9f11127cce7ebb23755e3e87c25160bab34f6bb2ce691ac87937e34aac45c1a2"
+      "sha256": "ed06891fc3fe5a9dee13995c2035526d96238e6baad717b97063e51faaf72e06",
+      "size": 12726,
+      "normalized_sha256": "ed06891fc3fe5a9dee13995c2035526d96238e6baad717b97063e51faaf72e06"
     },
     "backend/tests/test_cross_paths.py": {
       "role": "observe",
@@ -3441,6 +3435,12 @@
       "sha256": "cfc2fd0c5776b6de5ef579ba0bffd853649ca91b99d320f18310e8865bd46393",
       "size": 2676,
       "normalized_sha256": "2d25063f113e0d6abf58d156a858d59275a35f836a0f6c8cd03b0369e1641b74"
+    },
+    "backend/tests/test_repair_ticket_thickness.py": {
+      "role": "observe",
+      "sha256": "9978555a65b2de89688f4850d7b3321ff442e5f8fa81e73ca22fa1be71a35826",
+      "size": 3971,
+      "normalized_sha256": "9978555a65b2de89688f4850d7b3321ff442e5f8fa81e73ca22fa1be71a35826"
     },
     "backend/tests/test_representative_domain_smoke.py": {
       "role": "observe",
@@ -4156,22 +4156,19 @@
       "normalized_sha256": "e3cca22290923ee8cd267454fc3704fa24e8c45b788cea2230644d2f9298bd3f"
     },
     "data/samples/域开题样例近五年/11-DOM-DORM-学生宿舍报修管理系统.txt": {
-      "role": "index",
-      "sha256": "6ae3690fae04d0e974c4cbd809cbfb197da037b49abc512666882e62bc0b5271",
-      "size": 3037,
-      "normalized_sha256": "8b33b5413046d6a9e6fa62df8464625d4230fec68f8343f724f65e2e099bf6af"
+      "sha256": "96e9191cf0c04dc370d8f28da3d298f8faa97858db08c4aa4929e3e899a85123",
+      "size": 3225,
+      "normalized_sha256": "0aab8f8c6d067139ac3b59d9e1b802fb8ba7054e31aef3e45ed0288b3d92b5c9"
     },
     "data/samples/域开题样例近五年/12-DOM-PROPERTY-智慧社区物业报修管理系统.txt": {
-      "role": "index",
-      "sha256": "bc2bde5f4117b7686fe10ee618f76dfaf7d07a5d5c0eaad047358b7793870e51",
-      "size": 3085,
-      "normalized_sha256": "b5d427fa5fe11e7f98b1fd1827bda2b001871d03b919a9d29fea73a5ef1eef9e"
+      "sha256": "f2882b80e08c6ce2bd12558ac6ec1c5a70416b6b4c66615f5d583dc96416c2e0",
+      "size": 3208,
+      "normalized_sha256": "3a9389247789e50126e77550d74dcc4720ff5691f258bfb552a318cf98db4859"
     },
     "data/samples/域开题样例近五年/13-DOM-IT-校园网故障报修与 IT 运维工单系统.txt": {
-      "role": "index",
-      "sha256": "5d18da62bc4fd584ccf6504e1202fba2305d5dacc1d7f6c89f5bc2b22e421d35",
-      "size": 3049,
-      "normalized_sha256": "5a85040e7f912011a92f58e80e3823a39803a6b2b52c8e226bc632289a3472b5"
+      "sha256": "0b6afee2b91ad0ca76e5b6d55a587b559a6512365f513d189b9c03ffcf139874",
+      "size": 3186,
+      "normalized_sha256": "330777210bc41ff1329e5d4f7a9e2ceacedd45f2c3d77c5a3cb80ceb4453ceec"
     },
     "data/samples/域开题样例近五年/14-DOM-ACTIVITY-社团志愿活动报名管理系统.txt": {
       "role": "index",
@@ -5240,9 +5237,9 @@
       "normalized_sha256": "7a884aca344c094f6da56c862c2b5251913a4808477c25a55f943a9fa51cf3b8"
     },
     "docs/capabilities.md": {
-      "sha256": "11612146b64a5c50f524dc6716111c698e4d4f8b50ad58df7c7c499b3085e7e9",
-      "size": 16825,
-      "normalized_sha256": "11612146b64a5c50f524dc6716111c698e4d4f8b50ad58df7c7c499b3085e7e9"
+      "sha256": "107d9aeee627cbb0da3150b55a0ca2b4240aac8eb5cd6e4ceb3344dd34b190b8",
+      "size": 16916,
+      "normalized_sha256": "107d9aeee627cbb0da3150b55a0ca2b4240aac8eb5cd6e4ceb3344dd34b190b8"
     },
     "docs/capability-expansion-batch.md": {
       "role": "index",
@@ -5280,9 +5277,9 @@
       "normalized_sha256": "7a4d20bb4c202876da22cb48230583492f0d91b986d1bc31c41fe4f0be708e79"
     },
     "docs/domains.md": {
-      "sha256": "c60933cb1565ca7014fb5d88d84062a4e7447eeb68ef5c64afc08f6a872b2b55",
+      "sha256": "e67916eb997069235e4497a0a390615166bfbd7db8a46dc213832fd5401f7e4e",
       "size": 20637,
-      "normalized_sha256": "9d1ce1df6f26fd6c9226bf67b7aa09949a30e7c81b9abd232b18b8042119bd25"
+      "normalized_sha256": "7ce135ae4500ab2f5c34bb30f179c01bea2e377fcf1364bdc0bd7d76b26693b4"
     },
     "docs/immersion-corners.md": {
       "role": "index",
@@ -5296,9 +5293,9 @@
       "normalized_sha256": "798a273c3e14b817ab0616fdbd9ec29ff82bb8f7e4be7cc7a856d853b8657a1d"
     },
     "docs/opening-feature-delivery-map.md": {
-      "sha256": "f2e2b479d59eced984d873f7ed048f6e797f7d41f4676cebe178948135705a87",
-      "size": 21283,
-      "normalized_sha256": "f2e2b479d59eced984d873f7ed048f6e797f7d41f4676cebe178948135705a87"
+      "sha256": "30c7c9c443b9733a3bb2251db32063298f275f9f8d31cc67123f129e41a467f6",
+      "size": 21245,
+      "normalized_sha256": "30c7c9c443b9733a3bb2251db32063298f275f9f8d31cc67123f129e41a467f6"
     },
     "docs/preview-capacity-and-batch-ops.md": {
       "sha256": "5c12e26d4414805c65eb413bddf13cc5be332a563e4a768c555cfcad2882861a",

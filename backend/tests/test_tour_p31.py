@@ -105,6 +105,8 @@ class TourP31Tests(unittest.TestCase):
         )
         keys = {f.get("key") for f in schema["entities"]["archive"]["fields"]}
         self.assertIn("applyDeadlineAt", keys)
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        self.assertTrue(ticket.get("allowRating"), "TOUR 出团后单据评价应默认开")
         d = resolve_accept(
             list(DOMAIN_CAPABILITIES["DOM-TOUR"]),
             "线路档案；跟团报名；审核占名额；确认报名。",

@@ -10,13 +10,14 @@
 
 ## 当前主线
 
-1. **能力运行时 + 薄域 A～G + GENERIC** 已可 bake；差的是按需冒烟与文案微调。  
+1. **能力运行时 + 薄域壳 A～G + GENERIC** 已可 bake；差的是按需冒烟、文案微调，以及密功能表里标 **待补** 的岛。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
 4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
-能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。
+能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
+开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。
 
 ---
 
@@ -27,7 +28,7 @@
 | 接 | 不接 |
 |----|------|
 | **专科 / 本科** 毕设、**课设**（Web 管理、演示级） | **硕士研究生 / 博士研究生** 课题与开题 |
-| 薄域单路径；白名单内且 `defense_ready` 的交叉 | **真实业务全流程** / 生产级全链路 / 企业级端到端 |
+| 薄域壳单路径（功能库存见密功能表）；白名单内且 `defense_ready` 的交叉 | **真实业务全流程** / 生产级全链路 / 企业级端到端 |
 | L0～L2 积木内可演示的功能 | L3、HIS/ERP 级发散、未就绪交叉 |
 
 信号：`OUT_OF_SCOPE_SIGNALS`（硕博学位论文、真实业务全流程等）→ `reject`。  

@@ -64,7 +64,7 @@ domain_entities.py[DD7S]: F:统一主实体名词，供菜单、数据表和论�
 domain_registry.py[DB8S]: F:按 domain 注册匹配、schema builder 与 SQL 模板映射 | R:code:backend/app/bake/domains.py | A:- | S:-
 domain_schema.py[DB8L]: F:装配、合并并校验 Domain Schema，再落到模板与 profile_fields | R:code:backend/app/bake/profile_fields.py,code:backend/app/bake/features/book_lost.py,code:backend/app/bake/features/parcel_shelf.py,code:backend/app/bake/features/parcel_ship.py,code:backend/app/bake/features/detail_attrs.py | A:- | S:学生可见 schema 文案须 scrub 工厂腔；book_lost/parcel_shelf/parcel_ship 与 PMS/venue_clean 经各自 apply_*_to_spec 挂载；清洗回退句须避开 FACTORY_UI_FORBIDDEN 禁词
 domain_skin.py[DU7S]: F:把学生端可见文案与皮肤按 DOM 域回写到出包 | R:code:backend/app/bake/domains.py | A:- | S:禁止邻域文案泄漏
-domains.py[DB9M]: F:汇总原型词、域能力与目录，并分开控制台级联分组与出包借用族名单 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py,code:backend/app/bake/menu_routes.py | A:- | S:级联 DOMAIN_GROUPS 只决定怎么找域；表数下限走 BORROW_FAMILY_DOMAINS；LIBRARY 默认挂 book_lost，PARCEL 默认挂 parcel_shelf；把域挪出「借用/占用」展示组不会降低出包表数
+domains.py[DB9M]: F:汇总原型词、域能力与目录，并分开控制台级联分组与出包借用族名单 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py,code:backend/app/bake/menu_routes.py,code:backend/app/bake/features/core_cap_scan.py | A:- | S:级联 DOMAIN_GROUPS 只决定怎么找域；表数下限走 BORROW_FAMILY_DOMAINS；LIBRARY 默认挂 book_lost，PARCEL 默认挂 parcel_shelf；DORM/PROPERTY/IT 域默认挂 deadline（处理时限/催办），勿再当纯扫词
 engine.py[DB8T]: F:再导出 bake_project 与 SQL 岛填充入口供调用方统一引用 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_islands.py | A:- | S:-
 engine_bake.py[DB9L]: F:执行骨架复制、领域叠加与学生工作区确定性 bake，并写 thesis yml 运行时开关 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/persistence.py,code:backend/app/bake/domain_schema.py | A:- | S:ticket-allow-book-lost/ticket-require-return-attach 由 schema.ticket 写入；parcel-shelf/ship-enabled 仅对应 cap 在 caps 时写入；audit-log-login-only 必须在 audit_log 分支内（勿嵌进 message_template）
 engine_islands.py[DB7T]: F:把合并 schema 写入工作区并驱动 LLM 填业务岛 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_bake.py | A:- | S:-
@@ -86,14 +86,14 @@ portal_banners.py[DU6L]: F:为学生门户生成与登录页分套的轮播图�
 profile_fields.py[DB7L]: F:按领域与场景提供注册资料页字段映射 | R:code:backend/app/bake/scene_scan.py | A:- | S:身份须跟开题场景；禁止写死冲突的校内学号教职工
 proposal_lexicon.py[DB8M]: F:提供开题解析共用词表与否定/对比/文献转述语境工具，并给出结算边界维度判定 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/scene_scan.py | A:- | S:唯一词表来源；hints_mentioned 是场景/口径扫描统一入口，勿退回 any(k in text)；右侧否定加时间承接豁免（截止后不可再办不算否定）
 proposal_packs.py[DB7T]: F:装载常见本科选题包 JSON 供样例与覆盖优先匹配 | R:code:backend/app/bake/proposal_packs_data/_order.json | A:- | S:覆盖优先不完全等于 DOMAINS 原文
-proposal_pressure.py[DB7M]: F:按域维护测试开题扫词能力矩阵，并抽样或全量注入角色树 | R:code:backend/app/bake/sample_proposal.py,code:backend/app/bake/proposal_role_modules.py | A:- | S:只收已验证可挂正向词；默认随机不抽 marketplace/rider 结构皮；pressure=True 才写全；勿写会逼降 GENERIC 的抢拱词
-proposal_role_modules.py[DB7M]: F:按锚域装配样例开题多角色模块树 | R:code:backend/app/bake/sample_proposal.py,code:backend/app/bake/proposal_pressure.py | A:- | S:角色树写域默认主路径；扫词可选岛由 pressure 注入「材料命中能力」模块，勿在树里硬编码未开叶子
+proposal_pressure.py[DB7M]: F:按域维护测试开题扫词能力矩阵，并抽样或全量注入角色树 | R:code:backend/app/bake/sample_proposal.py,code:backend/app/bake/proposal_role_modules.py | A:- | S:报修三域压力叶含 staff_roster 与 guestbook；只收已验证可挂正向词；勿写逼降 GENERIC 的抢拱词
+proposal_role_modules.py[DB7M]: F:按锚域装配样例开题多角色模块树 | R:code:backend/app/bake/sample_proposal.py,code:backend/app/bake/proposal_pressure.py | A:- | S:报修树无 caps 时写满可扫词；有 caps 时按 guestbook/staff_roster/deadline/has_worker 裁剪，禁止假宣称
 sample_proposal.py[DB7M]: F:按 TopicPack 生成样例开题，供无材料演示与匹配冒烟 | R:code:backend/app/bake/proposal_packs.py,code:backend/app/bake/proposal_pressure.py,code:backend/app/bake/proposal_role_modules.py | A:- | S:默认与压力档都经 sample_pressure_leaves 注入；pressure_caps 回传抽中键；勿在 render 时绕过叶子直接全开
 scene_scan.py[DB8L]: F:从题名与开题正文扫描校园/企业/社区场景与商城货皮，驱动壳文案、资料字段及单店/多店口径 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/catalog.py | A:- | S:场景轴不得替代 DOM 匹配。scan_shop_marketplace 只认正文域加语境（_shop_marketplace_focus 复用 capabilities.proposal_body_scope）：研究现状里的「多商家入驻」对比句与「不做商家入驻」不计，命中才叠商品归属与商家岗。勿为单店误伤再塞裸「店铺/商家/双端」词
 seed_dates.py[DB4T]: F:提供离线预览用的种子日期整体平移工具 | R:- | A:- | S:正式交付勿在 bake 时写死今天；运行时由 SeedCalendarAligner 平移
 skin_invariants.py[DQ6S]: F:断言已知错皮与怪交互模式，命中则出包拦截 | R:code:backend/tests/test_domain_skin_leak.py | A:- | S:只断言不改扫词；踩坑须同步测试防回潮
 stack_scan.py[CG6M]: F:从开题正文扫描 jdbc/mybatis/jpa 等技术栈偏好 | R:code:backend/app/bake/scene_scan.py | A:- | S:不驱动场景或 ARCH-*
-staff_posts.py[DB7L]: F:按域配置 clerk/worker 岗位菜单与权限包 | R:code:backend/app/bake/menu_routes.py,code:backend/app/bake/features/housekeeping_cap.py,code:backend/app/bake/features/venue_clean.py | A:- | S:DOM-HOTEL 有 housekeeping 时强制清洁岗；SALON/MEETING/PROPERTY 有 venue_clean 时强制 venue_cleaner；裸 schema（无 menus/capabilities）不得剪 clerk 与 subadmin
+staff_posts.py[DB7L]: F:按域配置 clerk/worker 岗位菜单与权限包 | R:code:backend/app/bake/menu_routes.py,code:backend/app/bake/features/housekeeping_cap.py,code:backend/app/bake/features/venue_clean.py | A:- | S:报修维修员/上门运维开题词才挂；提示含派单接单跟进；HOTEL/venue_clean 强制清洁岗；裸 schema 不得剪 clerk
 stuwork_meta.py[FC5T]: F:声明学工预设域 P-12～P-16 元数据 | R:code:backend/app/bake/stuwork_p.py | A:- | S:-
 stuwork_p.py[FC5T]: F:导出学工床位查寝预设开题用例元组 | R:code:backend/app/bake/stuwork_meta.py | A:- | S:-
 tail_meta.py[FC5T]: F:声明长尾预设域 P-18/P-23～P-29 元数据 | R:code:backend/app/bake/tail_p.py | A:- | S:-
@@ -124,7 +124,7 @@ reserve.py[DB6M]: F:定义挂号停车会议沙龙酒店等预约类域目录皮
 stuwork.py[DB6M]: F:定义第二课堂劳动评教德育评奖等学工域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 survey.py[DB6T]: F:定义简易问卷调研域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 tail.py[DB6L]: F:定义车辆通行证挂牌采购社团等长尾域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
-ticket.py[DB6S]: F:定义宿舍物业与 IT 报修工单域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
+ticket.py[DB6S]: F:定义宿舍物业与 IT 报修工单域目录皮与门禁 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:features 列出超时未处理/催办为 module；人脸门禁与远程桌面等仍 out_of_mvp
 timebank.py[DB6T]: F:定义时间银行志愿时长账户域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 tour.py[DB6T]: F:定义旅行社线路报名域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:-
 trade.py[DB6S]: F:定义商城与点餐交易域目录皮 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py | A:- | S:旧书回收与寄卖仍走 DOM-SHOP，勿落图书借阅
@@ -139,13 +139,13 @@ audit_log.py[DO6S]: F:扫描并合并操作审计与登录日志能力 | R:code:
 book_hold.py[DB6S]: F:扫描并合并图书预约到书通知能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅 DOM-LIBRARY 且已有 ticket_flow 与 quota 才挂
 book_suggest.py[DB6S]: F:扫描并合并图书荐购审核能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:通过只记台账不自动建档；勿与期刊遴选 PROCURE 混淆
 code_qr.py[DB6T]: F:扫描并合并通行码取件码二维码出示能力，并给出学生可见面 hint 的单一来源 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/domain_schema.py,code:skeletons/baseline/frontend/src/components/CodeQrBlock.vue | A:- | S:仅前端出示已有码字符串，不对接闸机（划界语只留工厂侧，页面不写硬件否定句）；CODE_QR_HINT_DEFAULT 必须与 CodeQrBlock.vue 兜底、domain_schema._LABEL_FALLBACKS 的 codeQrHint 逐字一致
-core_cap_scan.py[DB7L]: F:扫描开题并把推荐冲突占用逾期等核心积木挂入能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:只增不减；deadline 是借阅逾期催还，非报名截止；slaDeadline 仅在 deadline 能力开启时视为处理时限列
+core_cap_scan.py[DB7L]: F:扫描开题并把推荐冲突占用逾期等核心积木挂入能力 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/domains.py | A:- | S:只增不减；借阅 deadline≠报名截止；报修三域 applicantCompleteOnly 时 deadline 落 slaDeadline；工单 SLA 词含处理时限/催促办理等，三域空开题也写超时未处理 feature
 dm.py[DB6M]: F:扫描并合并一对一私信短轮询能力，解析客服 peer 模式 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/scene_scan.py | A:- | S:默认 DOM-DATING；交易壳写客服挂私信，纯智能客服走 AI 岛；多店商城客服默认店铺 peer，用户互聊除外
 doclib.py[DB6S]: F:扫描并合并简易文库附件与下载台账能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 e_sign.py[DB6S]: F:扫描并合并本地签章图与勾选同意能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:非 CA 电子签章
 exam.py[DB7M]: F:扫描并合并在线考试题库组卷作答与判分能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:opts 与 exam_skin 仅开题写到才开；不新开 DOM
 favorites.py[DB6M]: F:扫描并合并收藏点赞与内容举报处置能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:post_like 与 content_report 同文件扩展禁止旁挂
-guestbook.py[DB6S]: F:扫描并合并门户留言板能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:与公告站内信论坛跟帖分离；论坛域不挂
+guestbook.py[DB6S]: F:扫描并合并门户留言板能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:与公告站内信论坛跟帖分离；论坛域不挂；扫词含意见反馈/用户反馈/在线反馈
 item_comment.py[DB6S]: F:扫描并合并影音曲目文章详情下评论能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:仅 MEDIA/MUSIC/BLOG；与 guestbook 跟帖评价分离
 lostfound.py[DB6S]: F:为失物招领加厚认领凭证核验与路人线索 | R:- | A:- | S:仅 DOM-LOST 默认挂，不扫进邻域
 loyalty.py[DB7M]: F:扫描并合并余额积分满减会员与券码；积分三态与签到过期、会员档语义包 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/engine_bake.py | A:- | S:交易壳默认可 wallet；兑换/抵扣/登录涨分/过期均窄扫；仅写「积分」不开 pay/offset
@@ -157,7 +157,7 @@ product_spec.py[DB6S]: F:扫描并合并商品规格说明文案能力 | R:code:
 proposal_caps.py[DB8S]: F:汇总开题扫词能力并集，供 attach 与 domain_sql 共用 | R:code:backend/app/bake/features/book_lost.py,code:backend/app/bake/features/parcel_shelf.py,code:backend/app/bake/features/parcel_ship.py,code:docs/capabilities.md | A:- | S:user_publish/temporal_field/opening_align 不走本 hub；book_lost/parcel_* 经本 hub 并集；新增例外须同步 docs/capabilities.md
 room_equipment.py[DB6T]: F:扫描并合并会议室设备清单能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:≠ 设备借用 DOM-EQUIP
 seat_select.py[DB6S]: F:扫描并合并影院场次选座购票能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
-staff_roster.py[DB6T]: F:扫描并合并按员日期周排班展示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:不做智能排课与考勤硬件
+staff_roster.py[DB6T]: F:扫描并合并按员日期周排班展示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:开题扫词才挂；词表含维修值班/运维排班/轮班表；不做智能排课与考勤硬件
 stock_io.py[DB6S]: F:扫描并合并浅进销存入库出库与库存流水能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 stock_scrap.py[DB6S]: F:扫描并合并浅报废盘点并复用库存流水 | R:code:backend/app/bake/features/stock_io.py | A:- | S:挂报废时一并挂 stock_io；不做多仓调拨
 survey.py[DB6S]: F:扫描并合并简易问卷配置填写与回收计数能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
@@ -224,7 +224,7 @@ cross-lib-shop.json[FC5T]: F:提供图书与商城交叉选题包样例开题 | 
 cross-shop-reserve.json[FC5T]: F:提供商城与预约交叉选题包样例开题 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 dating.json[FC5T]: F:提供交友互选选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 doclib.json[FC5T]: F:提供文档文库选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
-dorm.json[FC5T]: F:提供宿舍报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+dorm.json[FC5T]: F:提供宿舍报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:features 须含派单催办排班留言等可扫词，保证 bake 命中
 equip.json[FC5T]: F:提供设备借用选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py,code:backend/app/bake/proposal_pressure.py | A:- | S:正文只写域默认主路径；扫词可选岛由 sample_proposal 注入
 ethic.json[FC5T]: F:提供伦理审查选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 eval.json[FC5T]: F:提供网上评教选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
@@ -243,7 +243,7 @@ hospital.json[FC5T]: F:提供医院挂号选题包样例开题与锚点域 | R:c
 hotel.json[FC5T]: F:提供酒店客房预订选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 instrument.json[FC5T]: F:提供仪器预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 intern.json[FC5T]: F:提供实习管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
-it.json[FC5T]: F:提供 IT 报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+it.json[FC5T]: F:提供 IT 报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:features 须含派单催办排班留言与上门运维等可扫词
 labor.json[FC5T]: F:提供劳动时长认定选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:features 行须与域 feature 词表对齐（劳动项目等域词）
 labsafe.json[FC5T]: F:提供实验室安全选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 library.json[FC5T]: F:提供图书借阅选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py,code:backend/app/bake/proposal_role_modules.py | A:- | S:features 已写续借与丢失赔偿；丢失赔偿不回补库存须在 key_consistency 写明
@@ -262,7 +262,7 @@ party.json[FC5T]: F:提供党建党务选题包样例开题与锚点域 | R:code
 procure.json[FC5T]: F:提供采购挂牌选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 proj.json[FC5T]: F:提供项目管理选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:features 行须与域 feature 词表对齐（申报项目档案等域词）
 promo.json[FC5T]: F:提供宣传审批选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
-property.json[FC5T]: F:提供物业报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
+property.json[FC5T]: F:提供物业报修选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:features 须含派单催办排班留言等可扫词
 recruit.json[FC5T]: F:提供招聘报名选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
 salon.json[FC5T]: F:提供美业沙龙预约选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py,code:backend/app/bake/proposal_pressure.py | A:- | S:research_focus 用「时段预订」勿写「时段占用」
 seal.json[FC5T]: F:提供用章申请选题包样例开题与锚点域 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
@@ -548,9 +548,9 @@ X-03-到店预约与套餐商城系统.txt[FC5T]: F:提供匹配与演示用开�
 08-DOM-GRADE-教务成绩查询与补考申请系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 09-DOM-INTERN-顶岗实习岗位与周报审阅系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 10-DOM-PARCEL-校园快递驿站取件管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
-11-DOM-DORM-学生宿舍报修管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
-12-DOM-PROPERTY-智慧社区物业报修管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
-13-DOM-IT-校园网故障报修与 IT 运维工单系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
+11-DOM-DORM-学生宿舍报修管理系统.txt[FC5T]: F:提供宿舍报修匹配与演示用开题样例 | R:- | A:- | S:正文须可扫中催办排班留言与维修员派单
+12-DOM-PROPERTY-智慧社区物业报修管理系统.txt[FC5T]: F:提供物业报修匹配与演示用开题样例 | R:- | A:- | S:正文须可扫中催办排班留言与维修员派单
+13-DOM-IT-校园网故障报修与 IT 运维工单系统.txt[FC5T]: F:提供 IT 报修匹配与演示用开题样例 | R:- | A:- | S:正文须可扫中催办排班留言与上门运维派单
 14-DOM-ACTIVITY-社团志愿活动报名管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 15-DOM-LOST-校园失物招领管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 16-DOM-COURSE-公选课在线选课管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
@@ -743,17 +743,17 @@ P-32-DOM-CARRENT-汽车租赁管理系统.txt[FC5T]: F:提供匹配与演示用�
 README.md[SG6T]: F:维护文档库专题导航，按「一文一事」把每个专题指向唯一文件并标注阅读时机 | R:code:HANDOFF.md,code:README.md | A:- | S:每个专题只承载一种叙事；新专题须同时补本索引与阅读时机；根 README 与 HANDOFF 的分工不在此重述；运行与容量含预览容量与后台对账成本两篇
 ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
 ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
-capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与交付边界 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/features/book_lost.py,code:backend/app/bake/features/parcel_shelf.py | A:- | S:新 cap 须进 proposal_caps、attach_accept 与 engine_sql；book_lost/parcel_shelf 域默认，parcel_ship 开题才挂
+capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与交付边界 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/domains.py | A:- | S:deadline 在报修三域为处理时限域默认；新 cap 须进 proposal_caps 与 engine_sql
 capability-expansion-batch.md[SG6M]: F:记录capability expansion batch相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-backend.md[SG6M]: F:记录defense ppt backend相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说明 | R:- | A:- | S:-
 delivery-audit-rules.md[SG6S]: F:规定怎么审交付：主链路、红灯、老板小卡，并定「载体口径」（页面 / 工厂侧 / 多载体同句） | R:code:docs/capabilities.md,code:docs/domains.md,code:backend/app/bake/domain_vocab.py | A:- | S:审计轮默认只出报告不改代码；缺老板小卡 12 条则报告无效；硬件划界语只写工厂侧，页面不写硬件否定句
 difficulty-tiers.md[SG6S]: F:记录difficulty tiers相关交付约定与说明 | R:- | A:- | S:-
 domain-skin-gap-analysis.md[SG6M]: F:记录domain skin gap analysis相关交付约定与说明 | R:- | A:- | S:-
-domains.md[SG8S]: F:维护各域职责、能力组合与交付口径总表，供匹配与答辩对照 | R:code:backend/app/bake/domains.py | A:- | S:域行口径须与交付图及实包一致；新增域能力（公示发放、成交、事件等级、周次等）须同步此行
+domains.md[SG8S]: F:维护各域职责、能力组合与交付口径总表 | R:code:backend/app/bake/domains.py | A:- | S:报修组能力行须含 deadline；与交付图及实包一致
 immersion-corners.md[SG6M]: F:记录immersion corners相关交付约定与说明 | R:- | A:- | S:-
 invariants.md[SG7T]: F:记录库表预算与岗位四槽位等硬约束 | R:code:backend/app/bake/engine_sql.py,code:docs/staff-posts-cross-domain.md | A:- | S:舒适区 6–15、硬顶 18；超过 15 只警告，计费张数超过 18 打回；借用族下限 10
-opening-feature-delivery-map.md[SG8S]: F:列出各域已实现功能与显式不做项，作为答辩与交付审计对照表 | R:code:backend/app/bake/domains.py | A:- | S:功能词须与实包一致，禁止「材料有、包里无」或反之；改域能力须同步本表
+opening-feature-delivery-map.md[SG8S]: F:列出各域已实现功能与显式不做项 | R:code:backend/app/bake/domains.py | A:- | S:报修催办为域默认；排班留言扫词开；禁止材料有包里无
 soft-fail-scan.md[SG6S]: F:记录soft fail scan相关交付约定与说明 | R:- | A:- | S:-
 tech-stack-delivery.md[SG6T]: F:记录tech stack delivery相关交付约定与说明 | R:- | A:- | S:-
 staff-posts-cross-domain.md[SG6T]: F:梳理跨域同名岗位与界面红黄绿审计表 | R:code:docs/invariants.md,code:backend/app/bake/staff_posts.py | A:- | S:仅梳理不改它域代码；同词可跨域，但禁止用显示名直接开别域能力岛
