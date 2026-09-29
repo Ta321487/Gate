@@ -4,7 +4,8 @@
     "ticket_flow",
     "quota",
     "content",
-    "org_users"
+    "org_users",
+    "parcel_shelf"
   ],
   "entities": {
     "archive": {
@@ -31,7 +32,10 @@
             "待取",
             "已预约",
             "已取出",
-            "逾期"
+            "逾期",
+            "损坏",
+            "误领",
+            "拒收"
           ],
           "type": "select"
         },
@@ -100,7 +104,7 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "校园驿站",
-    "authLead": "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库（≠跑腿代买）。",
+    "authLead": "验证码登录；在「我的取件」查看本人待取件并凭取件码提交，到站由店员核销出库。",
     "authPoints": [
       "验证码登录",
       "本人件",
@@ -114,6 +118,14 @@
     "noticePageTitle": "驿站公告",
     "registerRoleHint": "注册手机号用于匹配本人待取件",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "件型",
+    "entity_label": "包裹",
+    "entity_plural": "包裹",
+    "ticket_label": "取件单",
+    "ticket_noun": "取件",
+    "ticket_plural": "取件"
   },
   "menus": {
     "admin": [
@@ -206,7 +218,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "登录手机号匹配本人待取件；在「我的取件」凭取件码提交，到站出示后由店员核销。包裹查阅页仅展示本人件。智能柜硬件不在本期。",
+    "noticeBody": "登录手机号匹配本人待取件；在「我的取件」凭取件码提交，到站出示后由店员核销。包裹查阅页仅展示本人件。",
     "noticeTitle": "取件须知"
   },
   "title": "测试课题",

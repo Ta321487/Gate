@@ -1,0 +1,137 @@
+{
+  "capabilities": [
+    "archive",
+    "doclib",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "资料标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "发布单位",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "摘要说明",
+          "type": "textarea"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "开放",
+          "type": "number"
+        }
+      ],
+      "key": "doc_item",
+      "label": "资料条目",
+      "labelPlural": "资料条目",
+      "stockDisplay": "toggle"
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "文库资料",
+    "authLead": "验证码登录；浏览资料并按权限下载，查看本人下载台账。",
+    "authPoints": [
+      "验证码登录",
+      "资料下载",
+      "下载台账"
+    ],
+    "messagesPageLead": "文库与系统通知。",
+    "noticePageLead": "资料更新与须知，点击条目阅读全文。",
+    "noticePageTitle": "文库公告",
+    "registerRoleHint": "注册后可浏览并下载开放资料"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "资料条目",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "资料条目"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分类浏览开放资料。",
+      "title": "资料条目"
+    },
+    {
+      "lead": "按登录与管理权限下载。",
+      "title": "按权限下载"
+    },
+    {
+      "lead": "管理端可查下载记录。",
+      "title": "下载台账"
+    },
+    {
+      "lead": "安排与须知见公告栏。",
+      "title": "文库公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "资料主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "资料员"
+    },
+    "user": {
+      "id": "user",
+      "label": "读者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "下载将记入台账；按权限开放附件下载。",
+    "noticeTitle": "文库须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "material_check",
+    "multi_approve"
   ],
   "entities": {
     "archive": {
@@ -116,6 +118,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可办理",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "事项类型",
+    "entity_label": "审核事项",
+    "entity_plural": "审核事项",
+    "ticket_label": "材料审核",
+    "ticket_noun": "材料审核",
+    "ticket_plural": "材料审核"
   },
   "menus": {
     "admin": [

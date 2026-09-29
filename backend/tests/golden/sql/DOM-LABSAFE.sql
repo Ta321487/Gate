@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -106,6 +107,38 @@ CREATE TABLE IF NOT EXISTS `access_apply_progress` (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS material_checklist (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(120) NOT NULL,
+  required TINYINT NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) DEFAULT 'available',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ticket_material (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  checklist_id BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL DEFAULT '',
+  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ticket_material_ticket (ticket_id)
+);
+
+CREATE TABLE IF NOT EXISTS material_template (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(120) NOT NULL,
+  sample_url VARCHAR(255) DEFAULT '',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT IGNORE INTO material_checklist (id, title, required, sort_order, status) VALUES
+(1, '身份证明', 1, 1, 'available'),
+(2, '申请说明附件', 1, 2, 'available');
+INSERT IGNORE INTO material_template (id, title, remark) VALUES
+(1, '材料模板说明', '按清单上传清晰扫描件');
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

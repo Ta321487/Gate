@@ -55,9 +55,10 @@
       "tagFilter": false
     },
     "ticket": {
+      "allowAnonymousRating": false,
       "allowCheckin": false,
       "allowQty": false,
-      "allowRating": false,
+      "allowRating": true,
       "applyFromList": true,
       "approveEndsFlow": false,
       "autoApprove": false,
@@ -80,6 +81,20 @@
       "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
+      "ratingDims": [
+        {
+          "key": "content",
+          "label": "内容完整"
+        },
+        {
+          "key": "quality",
+          "label": "工作质量"
+        },
+        {
+          "key": "ontime",
+          "label": "按时提交"
+        }
+      ],
       "remarkLabel": "本周工作内容",
       "requireAttach": false,
       "requireClaimCode": false,
@@ -105,7 +120,7 @@
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "实习周报",
-    "authLead": "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅（≠投简历找岗、≠同时入职多家）。",
+    "authLead": "验证码登录；在「我的周报」选择已建档实习岗提交周报，辅导员/导师审阅。",
     "authPoints": [
       "验证码登录",
       "本人周报填单",
@@ -117,7 +132,17 @@
     "noticePageLead": "实习节点与周报要求，点击条目阅读全文。",
     "noticePageTitle": "就业办公告",
     "registerRoleHint": "注册后可提交实习周报",
-    "userHomePath": "/tickets"
+    "userHomePath": "/tickets",
+    "weekNoLabel": "周次",
+    "weekNoLead": "按实习第几周填写，从 1 起编"
+  },
+  "lex": {
+    "category_axis": "实习类型",
+    "entity_label": "实习岗位",
+    "entity_plural": "实习岗位",
+    "ticket_label": "周报",
+    "ticket_noun": "周报",
+    "ticket_plural": "周报"
   },
   "menus": {
     "admin": [
@@ -210,7 +235,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请按周填写工作与问题；在「我的周报」选已建档岗提交。「实习中」仅标在关联岗；岗位说明页可查阅开放岗。CA/第三方电子签平台不在本期，本地签章见 e_sign。",
+    "noticeBody": "请按周填写工作与问题；在「我的周报」选已建档岗提交。「实习中」仅标在关联岗；岗位说明页可查阅开放岗。",
     "noticeTitle": "周报须知"
   },
   "title": "测试课题",

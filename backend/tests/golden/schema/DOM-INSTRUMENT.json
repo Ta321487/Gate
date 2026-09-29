@@ -2,11 +2,12 @@
   "capabilities": [
     "archive",
     "ticket_flow",
+    "slot_reserve",
     "quota",
     "deadline",
     "content",
     "org_users",
-    "recommend",
+    "instrument_slot",
     "loan_renew"
   ],
   "entities": {
@@ -14,27 +15,26 @@
       "fields": [
         {
           "key": "title",
-          "label": "设备名称",
+          "label": "仪器名称",
           "type": "string"
         },
         {
           "key": "author",
-          "label": "品牌/型号",
+          "label": "所属实验室",
           "type": "string"
         },
         {
           "key": "isbn",
-          "label": "资产编号",
-          "type": "string"
+          "label": "型号规格",
+          "type": "textarea"
         },
         {
           "key": "stage",
-          "label": "设备状态",
+          "label": "状态",
           "options": [
-            "在库",
-            "借出",
-            "维修中",
-            "下架"
+            "开放",
+            "维护",
+            "停用"
           ],
           "type": "select"
         },
@@ -45,26 +45,35 @@
         },
         {
           "key": "stock",
-          "label": "可借数量",
+          "label": "可预约",
           "type": "number"
-        },
-        {
-          "key": "requiresTraining",
-          "label": "需培训",
-          "type": "boolean"
-        },
-        {
-          "key": "ownerName",
-          "label": "责任人",
-          "type": "string"
         }
       ],
-      "key": "equip",
-      "label": "设备",
-      "labelPlural": "设备",
-      "softDelete": true,
-      "stockDisplay": "count",
+      "key": "instrument",
+      "label": "仪器",
+      "labelPlural": "仪器",
+      "softDelete": false,
+      "stockDisplay": "toggle",
+      "stockUnavailableLabel": "已预约",
       "tagFilter": false
+    },
+    "reservation": {
+      "completeVerb": "办结",
+      "key": "reservation",
+      "label": "机时预约",
+      "labelPlural": "我的预约",
+      "remarkLabel": "备注",
+      "requireConfirm": false,
+      "requireRemark": false,
+      "states": {
+        "cancelled": "已取消",
+        "completed": "已上机",
+        "confirmed": "已预约",
+        "pending": "待确认"
+      },
+      "verbs": {
+        "apply": "预约机时"
+      }
     },
     "ticket": {
       "allowCheckin": false,
@@ -75,57 +84,70 @@
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
+      "contactChannelLabel": "用途",
+      "contactChannelOptions": [
+        "教学",
+        "科研",
+        "测试服务",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "选择用途",
       "dueLabel": "应还日",
       "fineLabel": "罚款",
       "finePaidLabel": "罚款已缴",
       "issuePassCode": false,
-      "key": "loan",
-      "label": "借用单",
-      "labelPlural": "借用",
+      "key": "instrument_loan",
+      "label": "借用申请",
+      "labelPlural": "借用申请",
+      "nextFollowLabel": "计划归还日",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
       "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": true,
-      "remarkLabel": "说明",
+      "remarkLabel": "借用说明",
       "requireAttach": false,
       "requireClaimCode": false,
-      "requireRemark": false,
-      "requireReturnAttach": true,
+      "requireRemark": true,
       "states": {
         "approved": "借用中",
         "overdue": "已逾期",
-        "pending": "待审核",
+        "pending": "待审",
         "rejected": "已驳回",
         "returned": "已归还"
       },
       "twoLevelApprove": false,
       "verbs": {
-        "apply": "申请借用",
+        "apply": "提交借用",
         "approve": "通过",
         "reject": "驳回",
         "remind": "催还",
-        "return": "归还"
+        "return": "归还完结"
       },
       "weekCalendar": false
     }
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "实验室设备",
-    "authLead": "验证码登录；检索实验室设备并申请借用，管理员审核后领用。",
+    "authEyebrow": "仪器机时",
+    "authLead": "验证码登录；浏览仪器约机时，必要时提交借用申请。",
     "authPoints": [
       "验证码登录",
-      "设备检索",
-      "借用申请与归还"
+      "机时预约",
+      "借用申请与审批"
     ],
     "messagesPageLead": "审核结果、催还提醒与系统通知。",
-    "noticePageLead": "借用须知、开放时段与临时通知，点击条目阅读全文。",
-    "noticePageTitle": "实验室公告",
-    "recommendLatestHint": "最新上架",
-    "recommendSectionTitle": "猜你喜欢",
-    "registerRoleHint": "注册后可申请借用实验室设备",
-    "returnAttachHint": "归还时请上传设备外观/配件照片，便于验收。"
+    "noticePageLead": "上机须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "平台公告",
+    "registerRoleHint": "注册后可预约机时"
+  },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "仪器",
+    "entity_plural": "仪器",
+    "ticket_label": "借用申请",
+    "ticket_noun": "借用申请",
+    "ticket_plural": "借用申请"
   },
   "menus": {
     "admin": [
@@ -135,7 +157,7 @@
       },
       {
         "key": "archive",
-        "label": "设备管理",
+        "label": "仪器档案",
         "superOnly": true
       },
       {
@@ -144,13 +166,17 @@
         "superOnly": true
       },
       {
+        "key": "reservations",
+        "label": "预约记录"
+      },
+      {
         "key": "users",
         "label": "用户管理",
         "superOnly": true
       },
       {
         "key": "ticket_pending",
-        "label": "借用审核"
+        "label": "待审借用"
       },
       {
         "key": "ticket_records",
@@ -169,11 +195,15 @@
     "user": [
       {
         "key": "archive",
-        "label": "设备检索"
+        "label": "仪器目录"
       },
       {
         "key": "my_tickets",
         "label": "我的借用"
+      },
+      {
+        "key": "my_reservations",
+        "label": "我的预约"
       },
       {
         "key": "content",
@@ -187,43 +217,43 @@
   },
   "portalBanners": [
     {
-      "lead": "检索设备、查看库存，在线提交借用申请。",
-      "title": "实验室器材"
+      "lead": "浏览可预约仪器。",
+      "title": "仪器目录"
     },
     {
-      "lead": "请按需申请、按时归还；逾期将登记催还。",
-      "title": "借用须知"
+      "lead": "选择时段占机。",
+      "title": "约机时"
     },
     {
-      "lead": "工作日办理领用与归还，详见实验室公告。",
-      "title": "领用时段"
+      "lead": "外带或长时占用可另提单据。",
+      "title": "借用申请"
     },
     {
-      "lead": "登录后查看审核进度与归还期限。",
-      "title": "我的借用"
+      "lead": "须知见公告栏。",
+      "title": "平台公告"
     },
     {
-      "lead": "停用检修与临时安排见公告栏。",
-      "title": "设备公告"
+      "lead": "跟踪进度。",
+      "title": "我的预约/借用"
     }
   ],
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "实验室主管（总管）"
+      "label": "平台主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "器材管理员"
+      "label": "仪器管理员"
     },
     "user": {
       "id": "user",
-      "label": "借用人"
+      "label": "使用人"
     }
   },
   "seeds": {
-    "noticeBody": "请按需申请、按时归还；逾期将登记催还。",
-    "noticeTitle": "设备借用须知"
+    "noticeBody": "请先预约机时再上机；外带仪器须另提借用申请。",
+    "noticeTitle": "仪器机时须知"
   },
   "title": "测试课题",
   "version": 1

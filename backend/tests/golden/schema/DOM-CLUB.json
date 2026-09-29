@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "material_check"
   ],
   "entities": {
     "archive": {
@@ -116,6 +117,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可办理",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "事项类型",
+    "entity_label": "社团事项",
+    "entity_plural": "社团事项",
+    "ticket_label": "注册年审",
+    "ticket_noun": "注册年审",
+    "ticket_plural": "注册年审"
   },
   "menus": {
     "admin": [

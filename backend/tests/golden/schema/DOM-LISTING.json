@@ -29,7 +29,8 @@
           "options": [
             "开放",
             "暂停",
-            "关闭"
+            "关闭",
+            "已成交"
           ],
           "type": "select"
         },
@@ -109,11 +110,22 @@
       "房源",
       "登记意向与审批"
     ],
+    "listingDealLead": "带看跟进办结后登记成交价与成交日；台账只记成交事实，不接管支付。",
+    "listingDealTitle": "成交登记",
     "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "办理须知与临时通知，点击条目阅读全文。",
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可办理"
   },
+  "lex": {
+    "category_axis": "房源类型",
+    "entity_label": "房源",
+    "entity_plural": "房源",
+    "ticket_label": "带看跟进",
+    "ticket_noun": "带看跟进",
+    "ticket_plural": "带看跟进"
+  },
+  "listingDeal": true,
   "menus": {
     "admin": [
       {
@@ -142,6 +154,10 @@
       {
         "key": "ticket_records",
         "label": "带看记录"
+      },
+      {
+        "key": "listing_deal_admin",
+        "label": "成交登记"
       },
       {
         "key": "content",

@@ -1,0 +1,138 @@
+{
+  "capabilities": [
+    "archive",
+    "exam",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "科目名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "开课单位",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "说明",
+          "type": "textarea"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "开放",
+          "type": "number"
+        }
+      ],
+      "key": "exam_subject",
+      "label": "考试科目",
+      "labelPlural": "考试科目",
+      "stockDisplay": "toggle"
+    }
+  },
+  "examSkin": "general",
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "在线考试",
+    "authLead": "验证码登录；浏览考试科目，参加已发布试卷。客观题交卷自动判分，主观题由教师阅卷。",
+    "authPoints": [
+      "验证码登录",
+      "题库与组卷",
+      "在线作答与判分"
+    ],
+    "messagesPageLead": "成绩与系统通知。",
+    "noticePageLead": "考试安排与须知，点击条目阅读全文。",
+    "noticePageTitle": "考试公告",
+    "registerRoleHint": "注册后可参加已发布考试"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "科目管理",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "考试科目"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分类浏览开放科目与说明。",
+      "title": "考试科目"
+    },
+    {
+      "lead": "选择已发布试卷开考；客观题自动判分，主观题待教师阅卷。",
+      "title": "在线作答"
+    },
+    {
+      "lead": "查看本人历史成绩与得分明细。",
+      "title": "成绩查阅"
+    },
+    {
+      "lead": "安排与须知见公告栏。",
+      "title": "考试公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "教务主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "教务员"
+    },
+    "user": {
+      "id": "user",
+      "label": "考生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。",
+    "noticeTitle": "考试须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

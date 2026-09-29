@@ -6,7 +6,9 @@
     "deadline",
     "content",
     "org_users",
-    "recommend"
+    "recommend",
+    "loan_renew",
+    "book_lost"
   ],
   "entities": {
     "archive": {

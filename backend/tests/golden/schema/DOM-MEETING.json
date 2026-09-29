@@ -41,6 +41,7 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "allowRating": false,
       "completeVerb": "完成使用",
       "key": "reservation",
       "label": "预约",

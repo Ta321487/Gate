@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS leave_type (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '开放申请',
+  start_at DATETIME NULL,
+  end_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,6 +53,7 @@ CREATE TABLE IF NOT EXISTS leave_req (
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
   next_follow_at DATETIME NULL,
+  leave_days INT NULL,
   period_start DATETIME NULL,
   period_end DATETIME NULL
 );
@@ -73,6 +76,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -107,6 +111,37 @@ CREATE TABLE IF NOT EXISTS `leave_req_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS resource_occupy (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NULL,
+  ticket_id BIGINT NULL,
+  title VARCHAR(200) DEFAULT '',
+  period_start DATETIME NOT NULL,
+  period_end DATETIME NOT NULL,
+  status VARCHAR(32) DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_occupy_user (username, period_start),
+  KEY idx_occupy_ticket (ticket_id)
+);
+
+CREATE TABLE IF NOT EXISTS occupy_block (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  period_start DATETIME NOT NULL,
+  period_end DATETIME NOT NULL,
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS occupy_day_stat (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  day_key VARCHAR(16) NOT NULL,
+  occupy_count INT NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_occupy_day (day_key)
 );
 
 -- staff posts (clerk / worker)

@@ -58,6 +58,7 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
       "autoApprove": false,
       "categoryLimit": 0,
@@ -70,16 +71,19 @@
         "其他"
       ],
       "contactChannelPlaceholder": "线上/活动/红娘等",
+      "issuePassCode": false,
       "key": "match_apply",
       "label": "牵线单",
       "labelPlural": "牵线",
       "nextFollowLabel": "期望见面日",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "意向说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "已牵线",
@@ -112,6 +116,14 @@
     "noticePageLead": "活动节点与牵线规范，点击条目阅读全文。",
     "noticePageTitle": "交友公告",
     "registerRoleHint": "注册后可浏览资料并发起牵线"
+  },
+  "lex": {
+    "category_axis": "资料类型",
+    "entity_label": "交友资料",
+    "entity_plural": "资料",
+    "ticket_label": "牵线单",
+    "ticket_noun": "牵线",
+    "ticket_plural": "牵线"
   },
   "menus": {
     "admin": [
@@ -204,7 +216,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实填写资料；可通过一对一私信沟通；本期不含视频相亲。",
+    "noticeBody": "请如实填写资料；可通过一对一私信沟通，线下见面自行安排。",
     "noticeTitle": "牵线须知"
   },
   "title": "测试课题",

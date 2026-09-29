@@ -5,7 +5,9 @@
     "quota",
     "content",
     "org_users",
-    "time_conflict"
+    "time_conflict",
+    "checkin",
+    "waitlist"
   ],
   "entities": {
     "archive": {
@@ -74,20 +76,24 @@
       "allowCheckin": true,
       "allowQty": false,
       "allowRating": true,
+      "applyFromList": false,
       "approveEndsFlow": true,
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
       "checkinLabel": "签到",
+      "issuePassCode": false,
       "key": "signup",
       "label": "报名单",
       "labelPlural": "报名",
       "noShowAfterEnd": true,
       "noShowPenaltyYuan": 0.0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": false,
       "states": {
         "approved": "已报名",
@@ -118,7 +124,7 @@
       "报名、冲突检测、口令签到与爽约"
     ],
     "messagesPageLead": "审核结果、活动提醒与系统通知。",
-    "noticePageLead": "报名须知、活动变更与临时通知，点击条目阅读全文。",
+    "noticePageLead": "报名须知、变更与临时通知，点击条目阅读全文。",
     "noticePageTitle": "活动公告",
     "registerRoleHint": "注册后可报名校园活动"
   },

@@ -105,6 +105,7 @@
       "weekCalendar": false
     }
   },
+  "gradeScores": true,
   "labels": {
     "appName": "测试课题",
     "authEyebrow": "教务成绩",
@@ -121,6 +122,14 @@
     "noticePageTitle": "教务公告",
     "registerRoleHint": "注册后可提交成绩相关申请",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "课程类别",
+    "entity_label": "课程",
+    "entity_plural": "课程",
+    "ticket_label": "成绩申请单",
+    "ticket_noun": "成绩申请",
+    "ticket_plural": "成绩申请"
   },
   "menus": {
     "admin": [
@@ -152,6 +161,10 @@
         "label": "成绩申请记录"
       },
       {
+        "key": "grade_scores_admin",
+        "label": "成绩登记"
+      },
+      {
         "key": "content",
         "label": "公告管理",
         "superOnly": true
@@ -165,6 +178,10 @@
       {
         "key": "archive",
         "label": "课程说明"
+      },
+      {
+        "key": "grade_scores_mine",
+        "label": "成绩查询"
       },
       {
         "key": "content",
@@ -195,7 +212,7 @@
     },
     {
       "lead": "必修/选修快速定位。",
-      "title": "分类查阅"
+      "title": "课程类别查阅"
     }
   ],
   "roles": {
@@ -213,7 +230,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请选择本人相关课程（预置课程按学号标注本人课；无匹配时开放课可选）。请在「我的成绩申请」选课提交补考或更正并说明理由；课程说明页仅作查阅。不对接学信网。",
+    "noticeBody": "请选择本人相关课程（预置课程按学号标注本人课；无匹配时开放课可选）。请在「我的成绩申请」选课提交补考或更正并说明理由；课程说明页仅作查阅。",
     "noticeTitle": "成绩须知"
   },
   "title": "测试课题",

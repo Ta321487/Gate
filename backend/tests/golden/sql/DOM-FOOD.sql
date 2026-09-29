@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
+  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points INT NOT NULL DEFAULT 0,
+  member_tier VARCHAR(32) DEFAULT '',
+  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS category (
@@ -34,6 +38,7 @@ CREATE TABLE IF NOT EXISTS dish (
   cover_url VARCHAR(255),
   spicy_level VARCHAR(16) DEFAULT '不辣',
   is_vegetarian TINYINT DEFAULT 0,
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -71,6 +76,10 @@ CREATE TABLE IF NOT EXISTS biz_order (
   taste_note VARCHAR(255) DEFAULT '',
   pickup_code VARCHAR(32) DEFAULT '',
   shipped_at DATETIME NULL,
+  discount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  pay_balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points_earned INT NOT NULL DEFAULT 0,
+  coupon_code VARCHAR(32) DEFAULT '',
   refund_status VARCHAR(16) DEFAULT '',
   refund_reason VARCHAR(255) DEFAULT '',
   refund_at DATETIME NULL,
@@ -104,6 +113,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -136,6 +146,20 @@ INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '红烧肉套餐', 18.00, 1);
 
+CREATE TABLE IF NOT EXISTS user_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  delta DECIMAL(12,2) NOT NULL,
+  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(64) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  operator VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ledger_user (username, id)
+);
+
 CREATE TABLE IF NOT EXISTS sys_guestbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -156,6 +180,19 @@ CREATE TABLE IF NOT EXISTS user_favorite (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_fav_user_item (username, item_id),
   KEY idx_fav_user (username, id)
+);
+
+CREATE TABLE IF NOT EXISTS order_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  rating INT NOT NULL,
+  body VARCHAR(500) DEFAULT '',
+  reply VARCHAR(500) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_review (order_id),
+  KEY idx_review_user (username, id)
 );
 
 -- staff posts (clerk / worker)

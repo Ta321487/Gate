@@ -41,6 +41,7 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "allowRating": false,
       "completeVerb": "登记入场",
       "key": "reservation",
       "label": "预约",
@@ -128,7 +129,7 @@
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "车场管理员"
+      "label": "预约管理员"
     },
     "user": {
       "id": "user",
@@ -136,8 +137,8 @@
     }
   },
   "seeds": {
-    "noticeBody": "请按时入场；入场后由车场登记办结；取消预约将释放时段。请填写车牌号便于核对。",
-    "noticeTitle": "停车须知"
+    "noticeBody": "预约成功后请按时入场；取消后释放车位时段。请填写车牌号便于核对。",
+    "noticeTitle": "车位预约"
   },
   "title": "测试课题",
   "version": 1

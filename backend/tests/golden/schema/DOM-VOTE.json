@@ -1,0 +1,137 @@
+{
+  "capabilities": [
+    "archive",
+    "vote",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "活动标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "主办单位",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "规则说明",
+          "type": "textarea"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "每人限票",
+          "type": "number"
+        }
+      ],
+      "key": "vote_campaign",
+      "label": "评选活动",
+      "labelPlural": "评选活动",
+      "stockDisplay": "number"
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "投票评选",
+    "authLead": "验证码登录；参与开放评选投票，查看本人选票与结果公示。",
+    "authPoints": [
+      "验证码登录",
+      "在线投票",
+      "结果公示"
+    ],
+    "messagesPageLead": "投票与系统通知。",
+    "noticePageLead": "评选安排与须知，点击条目阅读全文。",
+    "noticePageTitle": "评选公告",
+    "registerRoleHint": "注册后可参与开放评选投票"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "评选活动",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "评选活动"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分类浏览开放评选。",
+      "title": "评选活动"
+    },
+    {
+      "lead": "按限票数投给候选人。",
+      "title": "在线投票"
+    },
+    {
+      "lead": "管理端与门户可查看得票。",
+      "title": "结果公示"
+    },
+    {
+      "lead": "安排与须知见公告栏。",
+      "title": "评选公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "评选主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "评选员"
+    },
+    "user": {
+      "id": "user",
+      "label": "投票人"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请公正投票；每人按活动限票数投给不同候选人。",
+    "noticeTitle": "投票须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

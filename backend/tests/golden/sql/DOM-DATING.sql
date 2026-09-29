@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -141,6 +142,23 @@ FROM DUAL
 WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
   AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
   AND (SELECT COUNT(*) FROM sys_dm_message) < 3;
+
+CREATE TABLE IF NOT EXISTS dating_tag (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS dating_pref (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  tag_id BIGINT NOT NULL,
+  UNIQUE KEY uk_dating_pref (username, tag_id)
+);
+CREATE TABLE IF NOT EXISTS dating_match_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  peer VARCHAR(64) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

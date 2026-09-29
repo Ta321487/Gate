@@ -1,0 +1,137 @@
+{
+  "capabilities": [
+    "archive",
+    "survey",
+    "content",
+    "org_users"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "问卷标题",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "发布单位",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "说明",
+          "type": "textarea"
+        },
+        {
+          "key": "category",
+          "label": "分类",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "开放",
+          "type": "number"
+        }
+      ],
+      "key": "survey_form",
+      "label": "问卷项目",
+      "labelPlural": "问卷项目",
+      "stockDisplay": "toggle"
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "问卷调研",
+    "authLead": "验证码登录；填写已发布问卷，查看本人答卷与回收统计。",
+    "authPoints": [
+      "验证码登录",
+      "问卷填写",
+      "回收统计"
+    ],
+    "messagesPageLead": "问卷与系统通知。",
+    "noticePageLead": "调研安排与须知，点击条目阅读全文。",
+    "noticePageTitle": "调研公告",
+    "registerRoleHint": "注册后可填写已发布问卷"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "问卷项目",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "分类管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "问卷项目"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "按分类浏览开放问卷。",
+      "title": "问卷项目"
+    },
+    {
+      "lead": "提交后可在「我的答卷」回看。",
+      "title": "在线填写"
+    },
+    {
+      "lead": "管理端查看选项计数。",
+      "title": "回收统计"
+    },
+    {
+      "lead": "安排与须知见公告栏。",
+      "title": "调研公告"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "调研主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "调研员"
+    },
+    "user": {
+      "id": "user",
+      "label": "受访者"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写；每人每卷限填一次。",
+    "noticeTitle": "问卷须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

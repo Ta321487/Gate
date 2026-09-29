@@ -44,6 +44,16 @@
           "key": "stock",
           "label": "可上报",
           "type": "number"
+        },
+        {
+          "key": "level",
+          "label": "事件等级",
+          "options": [
+            "低",
+            "中",
+            "高"
+          ],
+          "type": "select"
         }
       ],
       "key": "event_case",
@@ -153,6 +163,7 @@
     "archiveLogPageTitle": "监测记录",
     "archiveLogSectionTitle": "打卡与随访",
     "archiveLogSubmitLabel": "提交打卡",
+    "assigneeLabel": "处理人",
     "authEyebrow": "健康随访",
     "authLead": "验证码登录；维护随访对象档案并打卡/上报，异常由随访员处置。",
     "authPoints": [
@@ -161,10 +172,20 @@
       "随访打卡",
       "异常上报"
     ],
+    "deadlineLabel": "处理时限",
+    "levelLabel": "事件等级",
     "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "上报规范与临时通知，点击条目阅读全文。",
     "noticePageTitle": "公卫公告",
     "registerRoleHint": "内部账号登录后可维护档案、打卡并提交上报"
+  },
+  "lex": {
+    "category_axis": "随访分类",
+    "entity_label": "对象",
+    "entity_plural": "对象",
+    "ticket_label": "上报单",
+    "ticket_noun": "上报",
+    "ticket_plural": "上报"
   },
   "menus": {
     "admin": [

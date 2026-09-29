@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -94,7 +95,7 @@ INSERT IGNORE INTO dorm_room (id, title, building_name, room_note, category_id, 
 (4, '集中查寝点', '宿管中心', '临时批次', 3, 30, 'available', 'CK999', DATE_ADD(CURDATE(), INTERVAL 21 HOUR), DATE_ADD(CURDATE(), INTERVAL 23 HOUR));
 UPDATE dorm_room SET checkin_code=CONCAT('CK', LPAD(id, 3, '0')) WHERE checkin_code='' OR checkin_code IS NULL;
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '查寝须知', '请先在个人资料填写本人楼栋与房间，再提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。只能对本寝室场次登记。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
+SELECT '查寝须知', '请先在个人资料填写本人楼栋与房间，再提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。只能对本寝室场次登记。窗口结束后仍未签到记缺勤。', 'admin', '宿管主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='查寝须知');
 
 CREATE TABLE IF NOT EXISTS `checkin_apply_progress` (
@@ -105,6 +106,28 @@ CREATE TABLE IF NOT EXISTS `checkin_apply_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS dorm_building (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS checkin_absence (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  room_id BIGINT NULL,
+  day_key VARCHAR(16) NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_absence_user (username, day_key)
+);
+CREATE TABLE IF NOT EXISTS checkin_code_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  apply_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  code_used VARCHAR(32) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- staff posts (clerk / worker)

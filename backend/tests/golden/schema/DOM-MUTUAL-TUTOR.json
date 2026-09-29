@@ -1,0 +1,228 @@
+{
+  "capabilities": [
+    "archive",
+    "ticket_flow",
+    "quota",
+    "content",
+    "org_users",
+    "mutual_select"
+  ],
+  "entities": {
+    "archive": {
+      "fields": [
+        {
+          "key": "title",
+          "label": "导师名称",
+          "type": "string"
+        },
+        {
+          "key": "author",
+          "label": "所属院系",
+          "type": "string"
+        },
+        {
+          "key": "isbn",
+          "label": "研究方向/说明",
+          "type": "string"
+        },
+        {
+          "key": "category",
+          "label": "类别",
+          "type": "select"
+        },
+        {
+          "key": "stock",
+          "label": "可带名额",
+          "type": "number"
+        },
+        {
+          "key": "ownerUsername",
+          "label": "确认账号",
+          "type": "string"
+        }
+      ],
+      "key": "tutor",
+      "label": "导师",
+      "labelPlural": "导师",
+      "softDelete": false,
+      "stockDisplay": "count",
+      "tagFilter": false
+    },
+    "ticket": {
+      "allowCheckin": false,
+      "allowQty": false,
+      "allowRating": false,
+      "applyFromList": false,
+      "approveEndsFlow": true,
+      "autoApprove": false,
+      "categoryLimit": 0,
+      "checkMutex": false,
+      "contactChannelLabel": "志愿类型",
+      "contactChannelOptions": [
+        "第一志愿",
+        "第二志愿",
+        "调剂志愿",
+        "其他"
+      ],
+      "contactChannelPlaceholder": "第一/第二志愿等",
+      "issuePassCode": false,
+      "key": "tutor_wish",
+      "label": "导师志愿",
+      "labelPlural": "导师志愿",
+      "nextFollowLabel": "期望确认日",
+      "noShowAfterEnd": false,
+      "noShowPenaltyYuan": 0,
+      "peerAccept": true,
+      "pickDateRange": false,
+      "pickLoanPeriod": false,
+      "remarkLabel": "志愿说明",
+      "requireAttach": false,
+      "requireClaimCode": false,
+      "requireRemark": true,
+      "states": {
+        "approved": "已互选",
+        "overdue": "已失效",
+        "pending": "待对方确认",
+        "rejected": "已婉拒",
+        "returned": "已撤销"
+      },
+      "twoLevelApprove": false,
+      "verbs": {
+        "apply": "提交志愿",
+        "approve": "调剂确认",
+        "reject": "调剂驳回",
+        "remind": "催确认",
+        "return": "撤销志愿"
+      },
+      "weekCalendar": false
+    }
+  },
+  "labels": {
+    "appName": "测试课题",
+    "authEyebrow": "导师双选",
+    "authLead": "验证码登录；浏览导师提交志愿，由确认人接受或婉拒；管理端可调剂。",
+    "authPoints": [
+      "验证码登录",
+      "导师目录",
+      "志愿互选确认"
+    ],
+    "messagesPageLead": "志愿确认、调剂结果与系统通知。",
+    "noticePageLead": "双选安排与须知，点击条目阅读全文。",
+    "noticePageTitle": "互选公告",
+    "peerConfirmDialogMessage": "确认接受该志愿？",
+    "peerConfirmDialogTitle": "确认互选",
+    "peerInboxEmpty": "暂无待确认志愿",
+    "peerInboxLead": "他人向你发起的志愿，确认后即互选成功；也可婉拒。管理端可调剂。",
+    "peerInboxTitle": "待我确认",
+    "peerRejectDialogTitle": "婉拒志愿",
+    "registerRoleHint": "注册后可提交志愿"
+  },
+  "lex": {
+    "category_axis": "类别",
+    "entity_label": "导师",
+    "entity_plural": "导师",
+    "ticket_label": "导师志愿",
+    "ticket_noun": "导师志愿",
+    "ticket_plural": "导师志愿"
+  },
+  "menus": {
+    "admin": [
+      {
+        "key": "dashboard",
+        "label": "工作台"
+      },
+      {
+        "key": "archive",
+        "label": "导师档案",
+        "superOnly": true
+      },
+      {
+        "key": "category",
+        "label": "类别管理",
+        "superOnly": true
+      },
+      {
+        "key": "users",
+        "label": "用户管理",
+        "superOnly": true
+      },
+      {
+        "key": "ticket_pending",
+        "label": "调剂确认"
+      },
+      {
+        "key": "ticket_records",
+        "label": "志愿记录"
+      },
+      {
+        "key": "content",
+        "label": "公告管理",
+        "superOnly": true
+      }
+    ],
+    "user": [
+      {
+        "key": "archive",
+        "label": "导师目录"
+      },
+      {
+        "key": "my_tickets",
+        "label": "我的志愿"
+      },
+      {
+        "key": "peer_tickets",
+        "label": "待我确认"
+      },
+      {
+        "key": "content",
+        "label": "公告"
+      },
+      {
+        "key": "profile",
+        "label": "个人资料"
+      }
+    ]
+  },
+  "portalBanners": [
+    {
+      "lead": "浏览可申报对象与名额。",
+      "title": "导师目录"
+    },
+    {
+      "lead": "选择对象提交志愿，等待确认。",
+      "title": "提交志愿"
+    },
+    {
+      "lead": "他人向你发起的志愿在此确认或婉拒。",
+      "title": "待我确认"
+    },
+    {
+      "lead": "节点与须知见公告栏。",
+      "title": "互选公告"
+    },
+    {
+      "lead": "跟踪确认与调剂结果。",
+      "title": "我的志愿"
+    }
+  ],
+  "roles": {
+    "admin": {
+      "id": "admin",
+      "label": "教务主管（总管）"
+    },
+    "subadmin": {
+      "id": "subadmin",
+      "label": "导师秘书"
+    },
+    "user": {
+      "id": "user",
+      "label": "学生"
+    }
+  },
+  "seeds": {
+    "noticeBody": "请如实填写志愿说明；确认后占用名额。",
+    "noticeTitle": "导师双选须知"
+  },
+  "title": "测试课题",
+  "version": 1
+}

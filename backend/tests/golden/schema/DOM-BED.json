@@ -118,6 +118,14 @@
     "noticePageTitle": "宿管公告",
     "registerRoleHint": "注册后可选房或申请调宿"
   },
+  "lex": {
+    "category_axis": "房型/事项",
+    "entity_label": "床位",
+    "entity_plural": "床位",
+    "ticket_label": "床位申请",
+    "ticket_noun": "床位申请",
+    "ticket_plural": "床位申请"
+  },
   "menus": {
     "admin": [
       {

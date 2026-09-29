@@ -122,11 +122,19 @@
     ],
     "messagesPageLead": "审核结果、查寝提醒与系统通知。",
     "myTicketsEmpty": "还没有归寝记录，点击右上角归寝登记。",
-    "myTicketsPageLead": "在此对本寝室提交归寝或晚归登记，并跟踪审核与口令签到；查寝安排页仅作查阅。",
+    "myTicketsPageLead": "在此对本寝室提交归寝或晚归登记，并跟踪审核与口令归寝登记；查寝安排页仅作查阅。",
     "noticePageLead": "查寝安排与须知，点击条目阅读全文。",
     "noticePageTitle": "宿管公告",
     "registerRoleHint": "注册时填写本人楼栋与房间",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "楼区/批次",
+    "entity_label": "寝室",
+    "entity_plural": "寝室",
+    "ticket_label": "归寝签到",
+    "ticket_noun": "归寝登记",
+    "ticket_plural": "归寝签到"
   },
   "menus": {
     "admin": [
@@ -219,7 +227,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请先在个人资料填写本人楼栋与房间，再提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。只能对本寝室场次登记。人脸/GPS 不在本期。窗口结束后仍未签到记缺勤。",
+    "noticeBody": "请先在个人资料填写本人楼栋与房间，再提交归寝登记并等待宿管审核；通过后在查寝窗口内凭签到码完成归寝签到。只能对本寝室场次登记。请在查寝窗口内完成归寝签到。窗口结束后仍未签到记缺勤。",
     "noticeTitle": "查寝须知"
   },
   "title": "测试课题",

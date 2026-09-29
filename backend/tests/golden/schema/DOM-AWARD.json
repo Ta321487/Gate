@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "balance_ledger"
   ],
   "entities": {
     "archive": {
@@ -110,11 +111,19 @@
     ],
     "messagesPageLead": "审核结果与系统通知。",
     "myTicketsEmpty": "还没有记录，点击右上角提交登记。",
-    "myTicketsPageLead": "在「我的申请」选择事项提交并跟踪进度；说明页仅作查阅。",
+    "myTicketsPageLead": "在「我的成果登记」选择事项提交并跟踪进度；说明页仅作查阅。",
     "noticePageLead": "办理须知与临时通知，点击条目阅读全文。",
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交登记",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "成果类型",
+    "entity_plural": "成果类型",
+    "ticket_label": "成果登记",
+    "ticket_noun": "成果登记",
+    "ticket_plural": "成果登记"
   },
   "menus": {
     "admin": [
@@ -139,11 +148,11 @@
       },
       {
         "key": "ticket_pending",
-        "label": "待审申请"
+        "label": "待审成果登记"
       },
       {
         "key": "ticket_records",
-        "label": "申请记录"
+        "label": "成果登记记录"
       },
       {
         "key": "content",
@@ -154,7 +163,7 @@
     "user": [
       {
         "key": "my_tickets",
-        "label": "我的申请"
+        "label": "我的成果登记"
       },
       {
         "key": "archive",

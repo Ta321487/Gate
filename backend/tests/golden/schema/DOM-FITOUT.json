@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "occupy_span",
+    "time_conflict"
   ],
   "entities": {
     "archive": {
@@ -116,6 +118,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交备案",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "工程类型",
+    "entity_label": "施工区域",
+    "entity_plural": "施工区域",
+    "ticket_label": "装修备案",
+    "ticket_noun": "装修备案",
+    "ticket_plural": "装修备案"
   },
   "menus": {
     "admin": [

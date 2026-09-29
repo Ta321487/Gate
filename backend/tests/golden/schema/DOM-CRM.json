@@ -121,6 +121,14 @@
     "noticePageTitle": "销售公告",
     "registerRoleHint": "注册后可登记名下客户并提交跟进"
   },
+  "lex": {
+    "category_axis": "客户分级",
+    "entity_label": "客户",
+    "entity_plural": "客户",
+    "ticket_label": "跟进单",
+    "ticket_noun": "跟进",
+    "ticket_plural": "跟进"
+  },
   "menus": {
     "admin": [
       {
@@ -177,7 +185,7 @@
   },
   "portalBanners": [
     {
-      "lead": "按分级浏览客户，维护联系人与备注。",
+      "lead": "按客户分级浏览客户，维护联系人与备注。",
       "title": "客户档案"
     },
     {

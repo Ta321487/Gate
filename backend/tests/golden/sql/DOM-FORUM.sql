@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -116,37 +117,31 @@ CREATE TABLE IF NOT EXISTS sys_notice (
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '站长', '13800000000', '{}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '版主甲', '13800000001', '{}', 0, 1, 1),
-('user', 'user123', 'user', '用户甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"男","identityType":"学生","studentNo":"S20260001","dept":"计算机学院","preferredGenre":"学习交流"}',
+('user', 'user123', 'user', '居民甲', '13800000002',
+ '{"realName":"王芳","email":"wang@demo.com","gender":"女","identityType":"居民","communityName":"阳光小区","preferredGenre":"邻里互助"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '学习交流'), (2, '校园生活'), (3, '二手信息');
+INSERT IGNORE INTO category (id, name) VALUES (1, '邻里互助'), (2, '二手闲置'), (3, '活动通知');
 INSERT IGNORE INTO board_moderator (id, category_id, username) VALUES
 (1, 1, 'subadmin'), (2, 2, 'subadmin');
-INSERT IGNORE INTO tag (id, name) VALUES (1, '期末'), (2, '资料'), (3, '活动'), (4, '闲置');
+INSERT IGNORE INTO tag (id, name) VALUES (1, '求助'), (2, '闲置'), (3, '活动'), (4, '物业');
 INSERT IGNORE INTO post (id, title, author, body_html, category_id, stock, status) VALUES
-(1, '期末复习资料汇总', '学长甲', '<p>本帖汇总<strong>高等数学</strong>与<em>数据结构</em>复习提纲。</p><ul><li>答疑时间见楼下</li><li>附件可下载</li></ul>', 1, 1, 'available'),
-(2, '实验室开放预约说明', '版主甲', '<p>工作日晚间机房开放，请先<strong>跟帖</strong>再入场。</p>', 1, 1, 'available'),
-(3, '周末校园徒步召集', '用户甲', '<p>周六上午图书馆集合，路线约 5 公里。</p><p>欢迎带相机记录路线。</p>', 2, 1, 'available'),
-(4, '食堂新窗口试吃反馈', '美食观察', '<p>三食堂二楼新增轻食窗口，欢迎跟帖补充评价。</p>', 2, 1, 'available'),
-(5, '出闲置显示器一台', '用户甲', '<p>24 寸 IPS，成色良好，面交优先。</p>', 3, 1, 'available');
-INSERT IGNORE INTO post_tag (post_id, tag_id) VALUES (1, 1), (1, 2), (3, 3), (5, 4);
-INSERT IGNORE INTO post_attach (id, post_id, file_url, file_name, uploaded_by) VALUES
-(1, 1, '/uploads/demo/math-outline.pdf', '高数提纲.pdf', 'admin'),
-(2, 5, '/uploads/demo/monitor.jpg', '显示器实拍.jpg', 'user');
+(1, '周末义诊与健康咨询', '业委会', '<p>本周六会所大厅开展<strong>义诊</strong>，欢迎邻里参加。</p>', 3, 1, 'available'),
+(2, '出闲置折叠桌', '居民甲', '<p>九成新折叠桌，自提优先。</p>', 2, 1, 'available'),
+(3, '寻周末拼车去火车站', '居民乙', '<p>周日上午出发，可拼两人。</p>', 1, 1, 'available'),
+(4, '小区绿化浇水志愿者', '物业值班', '<p>本周志愿浇水时间表见楼下。</p>', 3, 1, 'available'),
+(5, '求推荐靠谱开锁师傅', '居民丙', '<p>门锁偶发失灵，求邻里推荐。</p>', 1, 1, 'available');
 INSERT IGNORE INTO reply (id, post_id, username, status, apply_at, approve_at, remark) VALUES
-(1, 1, 'user', 'approved', NOW(), NOW(), '<p>求一份<strong>离散数学</strong>提纲，谢谢楼主！</p>'),
-(2, 1, 'subadmin', 'approved', NOW(), NOW(), '<p>@用户甲 离散提纲已上传附件，见主帖。</p>'),
-(3, 3, 'user', 'pending', NOW(), NULL, '<p>我报名，带相机记录路线。</p>');
-INSERT IGNORE INTO reply_attach (id, ticket_id, file_url, file_name, uploaded_by) VALUES
-(1, 2, '/uploads/demo/discrete-outline.pdf', '离散提纲.pdf', 'subadmin');
+(1, 1, 'user', 'approved', NOW(), NOW(), '<p>我也想参加义诊，怎么报名？</p>'),
+(2, 3, 'subadmin', 'approved', NOW(), NOW(), '<p>周日上午还可拼一人，私信楼主。</p>'),
+(3, 5, 'user', 'pending', NOW(), NULL, '<p>推荐李师傅，上次换锁很快。</p>');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '社区公约', '请文明讨论；回复经版主审核后展示。主帖由站长维护，回复可 @他人 一层引用形成楼中楼。', 'admin', '站长'
+SELECT '社区公约', '请文明发帖；广告与人身攻击帖将被下架。', 'admin', '站长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='社区公约');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本周精选', '学习交流与校园生活板块已更新主帖，欢迎跟帖讨论。', 'admin', '站长'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本周精选');
+SELECT '版块说明', '邻里互助与二手闲置请如实描述，线下交易注意安全。', 'admin', '站长'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='版块说明');
 
 CREATE TABLE IF NOT EXISTS `reply_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -156,6 +151,21 @@ CREATE TABLE IF NOT EXISTS `reply_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS content_report (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) NOT NULL DEFAULT 'archive',
+  target_id BIGINT NOT NULL,
+  reason VARCHAR(512) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_creport_status (status, id),
+  KEY idx_creport_target (target_type, target_id)
 );
 
 -- staff posts (clerk / worker)

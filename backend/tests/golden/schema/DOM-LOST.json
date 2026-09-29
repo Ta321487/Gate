@@ -4,7 +4,9 @@
     "ticket_flow",
     "quota",
     "content",
-    "org_users"
+    "org_users",
+    "claim_proof",
+    "lost_clue"
   ],
   "entities": {
     "archive": {
@@ -61,23 +63,26 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": true,
+      "applyFromList": false,
       "approveEndsFlow": true,
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
+      "issuePassCode": false,
       "key": "claim",
       "label": "认领单",
       "labelPlural": "认领",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "认领说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "已认领",
-        "overdue": "已失效",
         "pending": "待审核",
         "rejected": "已驳回",
         "returned": "已撤销"

@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS claim (
   remark VARCHAR(255),
   pickup_at DATETIME NULL,
   pickup_place VARCHAR(128) DEFAULT '',
-  attach_url VARCHAR(255) NOT NULL DEFAULT '',
   rating INT NULL,
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
   rated_at DATETIME NULL
@@ -77,6 +76,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -114,6 +114,34 @@ CREATE TABLE IF NOT EXISTS `claim_progress` (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS lost_claim_proof (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  claim_id BIGINT NOT NULL,
+  proof_type VARCHAR(16) NOT NULL,
+  proof_content VARCHAR(500) NOT NULL,
+  verify_status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  verifier_id VARCHAR(64) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_proof_claim (claim_id, id)
+);
+INSERT IGNORE INTO lost_claim_proof (id, claim_id, proof_type, proof_content, verify_status) VALUES
+(1, 1, 'desc', '耳机盒内侧有划痕，与本人描述一致', 'pending');
+UPDATE claim SET status='verifying' WHERE id=1 AND status='pending';
+
+CREATE TABLE IF NOT EXISTS lost_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  lost_item_id BIGINT NOT NULL,
+  user_id VARCHAR(64) NULL,
+  guest_name VARCHAR(64) NULL,
+  guest_contact VARCHAR(64) NULL,
+  content VARCHAR(500) NOT NULL,
+  msg_type VARCHAR(16) NOT NULL DEFAULT 'clue',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_lost_msg_item (lost_item_id, id)
+);
+INSERT IGNORE INTO lost_message (id, lost_item_id, guest_name, content, msg_type) VALUES
+(1, 1, '路过同学', '昨天在一食堂窗口见过类似物品', 'clue');
 
 -- staff posts (clerk / worker)
 UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;

@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "occupy_span",
+    "time_conflict"
   ],
   "entities": {
     "archive": {
@@ -117,6 +119,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交学籍异动申请",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "异动类型",
+    "entity_label": "异动事项",
+    "entity_plural": "异动事项",
+    "ticket_label": "异动申请",
+    "ticket_noun": "异动申请",
+    "ticket_plural": "异动申请"
   },
   "menus": {
     "admin": [

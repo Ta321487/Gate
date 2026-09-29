@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -106,3 +107,21 @@ CREATE TABLE IF NOT EXISTS `follow_up_progress` (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS follow_contact (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  archive_id BIGINT NOT NULL,
+  name VARCHAR(64) NOT NULL,
+  phone VARCHAR(32) DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS follow_org (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(120) NOT NULL,
+  remark VARCHAR(255) DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS follow_stage (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE
+);
+-- dual-role: disable orphan subadmin seed
+UPDATE sys_user SET enabled=0, staff_post='', staff_kind='' WHERE username='subadmin' AND IFNULL(super_admin,0)=0;

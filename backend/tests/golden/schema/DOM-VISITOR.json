@@ -114,11 +114,19 @@
     ],
     "messagesPageLead": "审核结果与系统通知。",
     "myTicketsEmpty": "还没有记录，点击右上角预约到访。",
-    "myTicketsPageLead": "在「我的预约」选择事项提交并跟踪进度；说明页仅作查阅。",
+    "myTicketsPageLead": "在「我的访客申请」选择事项提交并跟踪进度；说明页仅作查阅。",
     "noticePageLead": "到访安排与须知，点击条目阅读全文。",
     "noticePageTitle": "访客公告",
     "registerRoleHint": "注册后可预约到访",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "区域类型",
+    "entity_label": "到访区域",
+    "entity_plural": "到访区域",
+    "ticket_label": "访客申请",
+    "ticket_noun": "访客申请",
+    "ticket_plural": "访客申请"
   },
   "menus": {
     "admin": [
@@ -158,7 +166,7 @@
     "user": [
       {
         "key": "my_tickets",
-        "label": "我的预约"
+        "label": "我的访客申请"
       },
       {
         "key": "archive",
@@ -211,7 +219,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实填写来访事由；通过后出示通行码。真门禁硬件不在本期。",
+    "noticeBody": "请如实填写来访事由；通过后出示通行码。",
     "noticeTitle": "访客须知"
   },
   "title": "测试课题",

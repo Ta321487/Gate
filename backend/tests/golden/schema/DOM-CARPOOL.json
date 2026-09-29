@@ -86,7 +86,6 @@
       "requireRemark": true,
       "states": {
         "approved": "已对接",
-        "overdue": "已逾期",
         "pending": "待对方确认",
         "rejected": "已婉拒",
         "returned": "已完结"
@@ -123,6 +122,14 @@
     "peerInboxTitle": "待我确认",
     "peerRejectDialogTitle": "婉拒意向",
     "registerRoleHint": "注册后可发布行程并提交同行意向"
+  },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "行程",
+    "entity_plural": "行程",
+    "ticket_label": "同行意向",
+    "ticket_noun": "同行意向",
+    "ticket_plural": "同行意向"
   },
   "menus": {
     "admin": [

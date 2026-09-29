@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "occupy_span",
+    "time_conflict"
   ],
   "entities": {
     "archive": {
@@ -116,6 +118,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交出差/加班申请",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "业务分类",
+    "entity_label": "事项类型",
+    "entity_plural": "事项类型",
+    "ticket_label": "出差加班单",
+    "ticket_noun": "出差加班",
+    "ticket_plural": "出差加班单"
   },
   "menus": {
     "admin": [

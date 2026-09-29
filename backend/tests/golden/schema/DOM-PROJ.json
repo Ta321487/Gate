@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "material_check",
+    "multi_approve"
   ],
   "entities": {
     "archive": {
@@ -116,6 +118,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可办理",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "申报类型",
+    "entity_label": "申报项目",
+    "entity_plural": "申报项目",
+    "ticket_label": "申报/检查",
+    "ticket_noun": "申报/检查",
+    "ticket_plural": "申报/检查"
   },
   "menus": {
     "admin": [

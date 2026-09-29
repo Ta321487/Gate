@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "balance_ledger",
+    "multi_approve"
   ],
   "entities": {
     "archive": {
@@ -119,6 +121,14 @@
     "registerRoleHint": "注册后可提交报销",
     "userHomePath": "/tickets"
   },
+  "lex": {
+    "category_axis": "费用类别",
+    "entity_label": "经费项目",
+    "entity_plural": "经费项目",
+    "ticket_label": "报销单",
+    "ticket_noun": "报销",
+    "ticket_plural": "报销单"
+  },
   "menus": {
     "admin": [
       {
@@ -192,7 +202,7 @@
     },
     {
       "lead": "按费用类别筛选。",
-      "title": "分类查阅"
+      "title": "费用类别查阅"
     }
   ],
   "roles": {

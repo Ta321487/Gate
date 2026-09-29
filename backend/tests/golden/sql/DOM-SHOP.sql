@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
+  balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points INT NOT NULL DEFAULT 0,
+  member_tier VARCHAR(32) DEFAULT '',
+  spend_total_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS category (
@@ -33,6 +37,7 @@ CREATE TABLE IF NOT EXISTS product (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   seller_note VARCHAR(255) DEFAULT '',
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -70,6 +75,10 @@ CREATE TABLE IF NOT EXISTS biz_order (
   tracking_no VARCHAR(64) DEFAULT '',
   pickup_code VARCHAR(32) DEFAULT '',
   shipped_at DATETIME NULL,
+  discount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  pay_balance_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points_earned INT NOT NULL DEFAULT 0,
+  coupon_code VARCHAR(32) DEFAULT '',
   refund_status VARCHAR(16) DEFAULT '',
   refund_reason VARCHAR(255) DEFAULT '',
   refund_at DATETIME NULL,
@@ -103,6 +112,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -116,23 +126,37 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '热销'), (2, '日用'), (3, '配件');
 INSERT IGNORE INTO product (id, title, price_yuan, sku, category_id, stock, status) VALUES
-(1, '日用收纳盒', '29.90', 'SKU-A01', 2, 29, 'available'),
-(2, '蓝牙耳机套装', '129.00', 'SKU-B02', 1, 40, 'available'),
-(3, '保温杯 500ml', '59.00', 'SKU-C03', 2, 20, 'available'),
-(4, '手机支架', '19.90', 'SKU-D04', 3, 50, 'available');
+(1, '热销爆款套装', '99.00', 'RT-HOT01', 1, 40, 'available'),
+(2, '日用收纳盒', '29.90', 'RT-DAY02', 2, 80, 'available'),
+(3, '通用配件包', '19.90', 'RT-ACC03', 3, 60, 'available'),
+(4, '家用小工具', '39.00', 'RT-DAY04', 2, 45, 'available');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
 (2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
-(3, 'user', '王先生', '13800000002', '邻里驿站自提点', '自提', 0);
+(3, 'user', '王先生', '13800000002', '快递柜自提', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '商城开业', '欢迎选购；下单请选择收货地址或到店自提。', 'admin', '商城主管'
+SELECT '商城开业', '欢迎下单；支付完成后可在订单页查看进度。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
 INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+(1, 'user', 'pending', 99.00, '工作日送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '日用收纳盒', 29.90, 1);
+(1, 1, 1, '热销爆款套装', 99.00, 1);
+
+CREATE TABLE IF NOT EXISTS user_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  delta DECIMAL(12,2) NOT NULL,
+  balance_after DECIMAL(12,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(64) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  operator VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ledger_user (username, id)
+);
 
 CREATE TABLE IF NOT EXISTS sys_guestbook (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -154,6 +178,19 @@ CREATE TABLE IF NOT EXISTS user_favorite (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_fav_user_item (username, item_id),
   KEY idx_fav_user (username, id)
+);
+
+CREATE TABLE IF NOT EXISTS order_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  rating INT NOT NULL,
+  body VARCHAR(500) DEFAULT '',
+  reply VARCHAR(500) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_review (order_id),
+  KEY idx_review_user (username, id)
 );
 
 -- staff posts (clerk / worker)

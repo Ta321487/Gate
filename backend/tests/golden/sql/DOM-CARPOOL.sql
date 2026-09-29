@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -103,6 +104,25 @@ CREATE TABLE IF NOT EXISTS `carpool_intent_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS trip_stop (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  route_id BIGINT NOT NULL,
+  stop_name VARCHAR(120) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS carpool_member (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  seat_no INT DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS carpool_chat_note (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  body VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- staff posts (clerk / worker)

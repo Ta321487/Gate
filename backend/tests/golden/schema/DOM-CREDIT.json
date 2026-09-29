@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "balance_ledger"
   ],
   "entities": {
     "archive": {
@@ -115,6 +116,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交认定",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "认定项目",
+    "entity_plural": "认定项目",
+    "ticket_label": "学分认定",
+    "ticket_noun": "学分认定",
+    "ticket_plural": "学分认定"
   },
   "menus": {
     "admin": [

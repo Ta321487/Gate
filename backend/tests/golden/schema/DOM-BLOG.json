@@ -67,7 +67,7 @@
     "favoritesPageLead": "收藏喜欢的文章，方便回看。",
     "favoritesPageTitle": "我的收藏",
     "messagesPageLead": "系统通知。",
-    "noticePageLead": "上新与维护通知，点击条目阅读全文。",
+    "noticePageLead": "上新与征稿通知，点击条目阅读全文。",
     "noticePageTitle": "站点公告",
     "recommendLatestHint": "最新上架",
     "recommendSectionTitle": "猜你喜欢",
@@ -129,11 +129,11 @@
       "title": "收藏订阅"
     },
     {
-      "lead": "上新与维护通知见公告栏。",
+      "lead": "上新与征稿通知见公告栏。",
       "title": "站点公告"
     },
     {
-      "lead": "根据阅读偏好推荐文章。",
+      "lead": "根据阅读偏好推荐内容。",
       "title": "猜你喜欢"
     },
     {
@@ -156,7 +156,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "文章仅供学习演示；转载请注明出处。内容由主编维护发布。",
+    "noticeBody": "文章仅供学习使用；转载请注明出处。内容由主编维护发布。",
     "noticeTitle": "阅读须知"
   },
   "title": "测试课题",

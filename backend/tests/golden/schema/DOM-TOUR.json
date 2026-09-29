@@ -2,56 +2,60 @@
   "capabilities": [
     "archive",
     "ticket_flow",
+    "quota",
     "content",
-    "org_users",
-    "material_check"
+    "org_users"
   ],
   "entities": {
     "archive": {
       "fields": [
         {
           "key": "title",
-          "label": "实验室名称",
+          "label": "线路名称",
           "type": "string"
         },
         {
           "key": "author",
-          "label": "楼宇/负责人",
+          "label": "计调/发布人",
           "type": "string"
         },
         {
           "key": "isbn",
-          "label": "安全等级备注",
+          "label": "行程亮点与说明",
           "type": "textarea"
         },
         {
           "key": "stage",
-          "label": "开放状态",
+          "label": "线路状态",
           "options": [
-            "可申请",
-            "审核中",
-            "暂停准入",
-            "已关闭"
+            "开放报名",
+            "满员",
+            "已出团",
+            "下架"
           ],
           "type": "select"
         },
         {
           "key": "category",
-          "label": "实验室类型",
+          "label": "线路类型",
           "type": "select"
         },
         {
           "key": "stock",
-          "label": "可申请准入",
+          "label": "余位",
           "type": "number"
+        },
+        {
+          "key": "applyDeadlineAt",
+          "label": "报名截止",
+          "type": "date"
         }
       ],
-      "key": "lab_room",
-      "label": "实验室",
-      "labelPlural": "实验室",
+      "key": "tour_line",
+      "label": "线路",
+      "labelPlural": "线路",
       "softDelete": false,
-      "stockDisplay": "toggle",
-      "stockUnavailableLabel": "已申请准入",
+      "stockDisplay": "number",
       "tagFilter": false
     },
     "ticket": {
@@ -59,70 +63,70 @@
       "allowQty": false,
       "allowRating": false,
       "applyFromList": false,
-      "approveEndsFlow": false,
+      "approveEndsFlow": true,
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
-      "contactChannelLabel": "申请方式",
+      "contactChannelLabel": "联系方式偏好",
       "contactChannelOptions": [
-        "线上申请",
-        "纸质补录",
+        "手机电话",
+        "微信",
+        "站内留言",
         "其他"
       ],
-      "contactChannelPlaceholder": "线上/纸质等",
+      "contactChannelPlaceholder": "选择联系方式",
       "issuePassCode": false,
-      "key": "access_apply",
-      "label": "准入单",
-      "labelPlural": "准入",
-      "nextFollowLabel": "拟进室日",
+      "key": "tour_signup",
+      "label": "线路报名",
+      "labelPlural": "线路报名",
+      "nextFollowLabel": "期望出行日",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
       "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
-      "remarkLabel": "实验内容摘要",
+      "remarkLabel": "报名说明",
       "requireAttach": false,
       "requireClaimCode": false,
       "requireRemark": true,
       "states": {
-        "approved": "已准入",
-        "overdue": "已失效",
+        "approved": "已确认",
         "pending": "待审核",
         "rejected": "已驳回",
-        "returned": "已办结"
+        "returned": "已取消"
       },
       "twoLevelApprove": false,
       "verbs": {
-        "apply": "申请准入",
-        "approve": "批准",
+        "apply": "提交报名",
+        "approve": "确认报名",
         "reject": "驳回",
         "remind": "催办",
-        "return": "办结"
+        "return": "取消报名"
       },
       "weekCalendar": false
     }
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "安全准入",
-    "authLead": "验证码登录；选择实验室提交准入申请，完成安全培训审核后方可进室。",
+    "authEyebrow": "旅行社线路",
+    "authLead": "验证码登录；浏览线路并提交报名，计调审核确认后占余位；过截止、满员、已出团或下架不可再报。",
     "authPoints": [
       "验证码登录",
-      "实验室档案",
-      "准入申请与审核"
+      "线路浏览",
+      "报名审核"
     ],
     "messagesPageLead": "审核结果与系统通知。",
-    "noticePageLead": "准入规范与安全通知，点击条目阅读全文。",
-    "noticePageTitle": "实验室公告",
-    "registerRoleHint": "注册后可提交准入申请"
+    "noticePageLead": "出团须知与临时通知，点击条目阅读全文。",
+    "noticePageTitle": "旅行社公告",
+    "registerRoleHint": "注册后可提交线路报名"
   },
   "lex": {
-    "category_axis": "实验室类型",
-    "entity_label": "实验室",
-    "entity_plural": "实验室",
-    "ticket_label": "准入单",
-    "ticket_noun": "准入",
-    "ticket_plural": "准入"
+    "category_axis": "线路类型",
+    "entity_label": "线路",
+    "entity_plural": "线路",
+    "ticket_label": "线路报名",
+    "ticket_noun": "线路报名",
+    "ticket_plural": "线路报名"
   },
   "menus": {
     "admin": [
@@ -132,12 +136,12 @@
       },
       {
         "key": "archive",
-        "label": "实验室档案",
+        "label": "线路档案",
         "superOnly": true
       },
       {
         "key": "category",
-        "label": "实验室类型管理",
+        "label": "线路类型管理",
         "superOnly": true
       },
       {
@@ -147,11 +151,11 @@
       },
       {
         "key": "ticket_pending",
-        "label": "准入审批"
+        "label": "待审核报名"
       },
       {
         "key": "ticket_records",
-        "label": "准入记录"
+        "label": "报名记录"
       },
       {
         "key": "content",
@@ -162,11 +166,11 @@
     "user": [
       {
         "key": "archive",
-        "label": "实验室列表"
+        "label": "线路目录"
       },
       {
         "key": "my_tickets",
-        "label": "我的准入"
+        "label": "我的报名"
       },
       {
         "key": "content",
@@ -180,43 +184,43 @@
   },
   "portalBanners": [
     {
-      "lead": "按类型浏览实验室与安全等级。",
-      "title": "实验室目录"
+      "lead": "浏览可报名线路与余位。",
+      "title": "线路目录"
     },
     {
-      "lead": "提交准入单并附培训证明，等待安全员审核。",
-      "title": "准入申请"
+      "lead": "填写人数与说明提交报名。",
+      "title": "提交报名"
     },
     {
-      "lead": "准入节点与安全须知见公告栏。",
-      "title": "实验室公告"
+      "lead": "出团须知见公告栏。",
+      "title": "旅行社公告"
     },
     {
-      "lead": "登录后跟踪审批结果。",
-      "title": "我的准入"
+      "lead": "跟踪审核；通过后可取消报名回补余位。",
+      "title": "我的报名"
     },
     {
-      "lead": "化学/机房/金工等快速定位。",
+      "lead": "按线路类型筛选。",
       "title": "分类检索"
     }
   ],
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "实验室主管（总管）"
+      "label": "计调主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "安全员"
+      "label": "计调员"
     },
     "user": {
       "id": "user",
-      "label": "学生/教师"
+      "label": "游客"
     }
   },
   "seeds": {
-    "noticeBody": "请完成安全培训并上传证明；审核通过后方可进室。",
-    "noticeTitle": "准入须知"
+    "noticeBody": "请如实填写出行人数与联系方式；余位有限，过报名截止将无法提交；取消报名将回补余位；线路「已出团/下架」由计调在档案标注。",
+    "noticeTitle": "报名须知"
   },
   "title": "测试课题",
   "version": 1

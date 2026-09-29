@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "occupy_span",
+    "time_conflict"
   ],
   "entities": {
     "archive": {
@@ -116,6 +118,14 @@
     "noticePageTitle": "办理公告",
     "registerRoleHint": "注册后可提交方案",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "宣传形式",
+    "entity_label": "宣传事项",
+    "entity_plural": "宣传事项",
+    "ticket_label": "宣传审批",
+    "ticket_noun": "宣传审批",
+    "ticket_plural": "宣传审批"
   },
   "menus": {
     "admin": [

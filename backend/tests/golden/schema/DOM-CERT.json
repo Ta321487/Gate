@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "material_check"
   ],
   "entities": {
     "archive": {
@@ -117,6 +118,14 @@
     "registerRoleHint": "注册后可申请开具",
     "userHomePath": "/tickets"
   },
+  "lex": {
+    "category_axis": "证明类别",
+    "entity_label": "证明类型",
+    "entity_plural": "证明类型",
+    "ticket_label": "开具申请",
+    "ticket_noun": "开具申请",
+    "ticket_plural": "开具申请"
+  },
   "menus": {
     "admin": [
       {
@@ -190,7 +199,7 @@
     },
     {
       "lead": "按证明类别筛选。",
-      "title": "分类查阅"
+      "title": "证明类别查阅"
     }
   ],
   "roles": {

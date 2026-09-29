@@ -5,7 +5,8 @@
     "quota",
     "content",
     "org_users",
-    "guestbook"
+    "guestbook",
+    "order_review"
   ],
   "entities": {
     "archive": {
@@ -50,6 +51,7 @@
       "key": "dish",
       "label": "菜品",
       "labelPlural": "菜品",
+      "softDelete": true,
       "stockDisplay": "count"
     },
     "order": {
@@ -62,6 +64,12 @@
         "confirmed": "制作中",
         "pending": "待出餐",
         "shipped": "配送中/待取"
+      },
+      "verbs": {
+        "cancel": "取消",
+        "complete": "完成",
+        "confirm": "接单",
+        "ship": "出餐"
       }
     }
   },
@@ -79,6 +87,8 @@
     "messagesPageLead": "订单进度与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "noticePageTitle": "门店公告",
+    "orderFulfillColumnLabel": "配送",
+    "orderShipFieldLabel": "取餐码",
     "recommendLatestHint": "最新上架",
     "registerRoleHint": "注册后可点餐"
   },

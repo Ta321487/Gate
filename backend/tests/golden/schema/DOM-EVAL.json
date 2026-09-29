@@ -132,6 +132,14 @@
     "registerRoleHint": "注册后可提交评教",
     "userHomePath": "/tickets"
   },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "评教课程",
+    "entity_plural": "评教课程",
+    "ticket_label": "评教卷",
+    "ticket_noun": "评教卷",
+    "ticket_plural": "评教卷"
+  },
   "menus": {
     "admin": [
       {

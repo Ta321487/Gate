@@ -5,79 +5,97 @@
     "quota",
     "content",
     "org_users",
-    "guestbook",
-    "order_review"
+    "seat_select",
+    "guestbook"
   ],
   "entities": {
     "archive": {
       "fields": [
         {
           "key": "title",
-          "label": "商品名",
+          "label": "影片/场次名",
           "type": "string"
         },
         {
           "format": "money",
           "key": "author",
-          "label": "单价(元)",
+          "label": "价格",
           "type": "number"
         },
         {
           "key": "isbn",
-          "label": "货号",
-          "type": "string"
-        },
-        {
-          "key": "sellerNote",
-          "label": "商品说明",
+          "label": "影厅名称",
           "type": "string"
         },
         {
           "key": "category",
-          "label": "分类",
+          "label": "影厅类型",
           "type": "select"
         },
         {
+          "key": "startAt",
+          "label": "开场时间",
+          "type": "datetime"
+        },
+        {
+          "key": "seatRows",
+          "label": "座位排数",
+          "type": "number"
+        },
+        {
+          "key": "seatCols",
+          "label": "每排座位数",
+          "type": "number"
+        },
+        {
           "key": "stock",
-          "label": "库存",
+          "label": "余座",
           "type": "number"
         }
       ],
-      "key": "product",
-      "label": "商品",
-      "labelPlural": "商品",
-      "softDelete": true,
+      "key": "cinema_show",
+      "label": "场次",
+      "labelPlural": "场次",
+      "softDelete": false,
       "stockDisplay": "count"
     },
     "order": {
+      "fulfillMode": "cinema",
       "key": "order",
       "label": "订单",
-      "labelPlural": "我的订单",
+      "labelPlural": "我的影票订单",
       "states": {
         "cancelled": "已取消",
-        "completed": "已完成",
+        "completed": "已观影",
         "confirmed": "已确认",
-        "pending": "待确认",
-        "shipped": "配送中"
+        "pending": "待取票",
+        "shipped": "已出票"
+      },
+      "verbs": {
+        "complete": "确认观影",
+        "ship": "出票"
       }
     }
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "在线商城",
-    "authLead": "验证码登录；浏览商品、加入购物车并提交订单。",
+    "authEyebrow": "影院选座",
+    "authLead": "验证码登录；选择场次进入座位图，确认后生成订单并占座。",
     "authPoints": [
       "验证码登录",
-      "商品浏览",
-      "购物车与订单"
+      "场次选座",
+      "影票订单"
     ],
     "guestbookPageLead": "欢迎留下建议或咨询；管理员可简短回复。",
     "guestbookPageTitle": "留言板",
     "messagesPageLead": "订单进度与系统通知。",
     "noticePageLead": "通知与须知，点击条目阅读全文。",
-    "noticePageTitle": "商城公告",
+    "noticePageTitle": "影院公告",
+    "orderFulfillColumnLabel": "选座备注",
+    "orderFulfillHint": "选座确认后生成订单并占座；柜台出票/确认观影，无物流发货。",
+    "orderShipFieldLabel": "影票凭证",
     "recommendLatestHint": "最新上架",
-    "registerRoleHint": "注册后可购物下单"
+    "registerRoleHint": "注册后可选座购票"
   },
   "menus": {
     "admin": [
@@ -87,12 +105,12 @@
       },
       {
         "key": "archive",
-        "label": "商品管理",
+        "label": "场次管理",
         "superOnly": true
       },
       {
         "key": "category",
-        "label": "分类管理",
+        "label": "影厅类型管理",
         "superOnly": true
       },
       {
@@ -118,7 +136,7 @@
     "user": [
       {
         "key": "archive",
-        "label": "商品浏览"
+        "label": "场次目录"
       },
       {
         "key": "cart",
@@ -126,7 +144,7 @@
       },
       {
         "key": "my_orders",
-        "label": "我的订单"
+        "label": "我的影票订单"
       },
       {
         "key": "addresses",
@@ -146,23 +164,45 @@
       }
     ]
   },
+  "portalBanners": [
+    {
+      "lead": "浏览今日场次与余座。",
+      "title": "热映场次"
+    },
+    {
+      "lead": "点选空闲座位后确认下单。",
+      "title": "座位图选座"
+    },
+    {
+      "lead": "查看影票订单与座位备注。",
+      "title": "我的订单"
+    },
+    {
+      "lead": "排片与维护通知见公告栏。",
+      "title": "影院公告"
+    },
+    {
+      "lead": "选座确认后生成订单；柜台取票观影。",
+      "title": "使用说明"
+    }
+  ],
   "roles": {
     "admin": {
       "id": "admin",
-      "label": "商城主管（总管）"
+      "label": "影院主管（总管）"
     },
     "subadmin": {
       "id": "subadmin",
-      "label": "订单管理员"
+      "label": "售票员"
     },
     "user": {
       "id": "user",
-      "label": "买家"
+      "label": "观影者"
     }
   },
   "seeds": {
-    "noticeBody": "下单后由管理员确认发货或自提。",
-    "noticeTitle": "商城须知"
+    "noticeBody": "场次含影厅类型、开场时间与座位排×列；选座确认后即时占座并生成订单；过开场时间自动下架不可售。",
+    "noticeTitle": "选座购票须知"
   },
   "title": "测试课题",
   "version": 1

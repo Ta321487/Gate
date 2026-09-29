@@ -4,7 +4,9 @@
     "slot_reserve",
     "order_lines",
     "content",
-    "org_users"
+    "org_users",
+    "guestbook",
+    "order_review"
   ],
   "entities": {
     "archive": {
@@ -59,6 +61,7 @@
       }
     },
     "reservation": {
+      "allowRating": true,
       "completeVerb": "取车/还车",
       "guestCountLabel": "用车人数",
       "guestNameLabel": "驾驶人",

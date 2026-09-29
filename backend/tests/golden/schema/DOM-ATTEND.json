@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "occupy_span",
+    "time_conflict"
   ],
   "entities": {
     "archive": {
@@ -110,6 +112,8 @@
       "本人请假填单",
       "审批与销假"
     ],
+    "leaveDaysLabel": "请假天数",
+    "leaveDaysLead": "按起止日期自动计算（含首尾）",
     "messagesPageLead": "审核结果与系统通知。",
     "myTicketsEmpty": "还没有请假记录，点击右上角提交请假。",
     "myTicketsPageLead": "在此选择假种提交本人请假，并跟踪审批与销假。",
@@ -117,6 +121,14 @@
     "noticePageTitle": "人事公告",
     "registerRoleHint": "注册后可提交本人请假申请",
     "userHomePath": "/tickets"
+  },
+  "lex": {
+    "category_axis": "假种分类",
+    "entity_label": "假种",
+    "entity_plural": "假种",
+    "ticket_label": "请假单",
+    "ticket_noun": "请假",
+    "ticket_plural": "请假"
   },
   "menus": {
     "admin": [

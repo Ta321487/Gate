@@ -3,7 +3,8 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "balance_ledger"
   ],
   "entities": {
     "archive": {
@@ -74,27 +75,28 @@
       "key": "job_apply",
       "label": "投递单",
       "labelPlural": "投递",
-      "nextFollowLabel": "期望到岗",
+      "nextFollowLabel": "期望面试时间",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
       "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "简历摘要/说明",
-      "requireAttach": false,
+      "requireAttach": true,
       "requireClaimCode": false,
       "requireRemark": true,
       "states": {
-        "approved": "初筛通过",
+        "approved": "已录用",
         "overdue": "已失效",
         "pending": "待初筛",
-        "rejected": "未通过",
+        "pending_final": "待面试",
+        "rejected": "已淘汰",
         "returned": "已结束"
       },
-      "twoLevelApprove": false,
+      "twoLevelApprove": true,
       "verbs": {
         "apply": "投递简历",
-        "approve": "初筛通过",
+        "approve": "通过",
         "reject": "不合适",
         "remind": "催办",
         "return": "结束流程"
@@ -111,10 +113,20 @@
       "职位浏览",
       "投递与初筛"
     ],
+    "interviewPlaceLabel": "面试地点",
+    "interviewPlaceLead": "线下或到岗面试地点；不做视频面试",
     "messagesPageLead": "审核结果与系统通知。",
     "noticePageLead": "岗位更新与投递规范，点击条目阅读全文。",
     "noticePageTitle": "就业公告",
     "registerRoleHint": "注册后可投递岗位"
+  },
+  "lex": {
+    "category_axis": "岗位类型",
+    "entity_label": "岗位",
+    "entity_plural": "岗位",
+    "ticket_label": "投递单",
+    "ticket_noun": "投递",
+    "ticket_plural": "投递"
   },
   "menus": {
     "admin": [
@@ -207,7 +219,7 @@
     }
   },
   "seeds": {
-    "noticeBody": "请如实填写经历；本期不含视频面试。",
+    "noticeBody": "请如实填写经历；面试安排以 HR 通知为准。",
     "noticeTitle": "投递须知"
   },
   "title": "测试课题",

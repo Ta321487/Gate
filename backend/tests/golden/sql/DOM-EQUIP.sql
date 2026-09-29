@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS equip (
   category_id BIGINT,
   stock INT DEFAULT 0,
   status VARCHAR(32) DEFAULT 'available',
+  stage VARCHAR(32) DEFAULT '在库',
   cover_url VARCHAR(255),
   requires_training TINYINT DEFAULT 0,
   owner_name VARCHAR(64) DEFAULT '',
@@ -77,6 +78,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -92,18 +94,18 @@ ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_
 INSERT IGNORE INTO category (id, name) VALUES
 (1, '测量仪器'), (2, '电子器材'), (3, '机械工具'),
 (4, '校园轻资产'), (5, '演出道具');
-INSERT IGNORE INTO equip (id, title, brand_model, asset_no, category_id, stock, status) VALUES
-(1, '数字万用表', 'Fluke 15B+', 'EQ-DMM-001', 1, 5, 'available'),
-(2, '示波器', 'Rigol DS1054Z', 'EQ-OSC-002', 1, 3, 'available'),
-(3, '电钻套装', 'Bosch', 'EQ-TOOL-003', 3, 2, 'available'),
-(4, '共享雨伞', '学生会物资组', 'UMBRELLA-01', 4, 20, 'available'),
-(5, '共享充电宝', '后勤中心', 'POWERBANK-02', 4, 15, 'available'),
-(6, '演出音响套装', '艺术团', 'PROP-AUDIO-03', 5, 2, 'available');
+INSERT IGNORE INTO equip (id, title, brand_model, asset_no, category_id, stock, status, stage) VALUES
+(1, '数字万用表', 'Fluke 15B+', 'EQ-DMM-001', 1, 5, 'available', '在库'),
+(2, '示波器', 'Rigol DS1054Z', 'EQ-OSC-002', 1, 3, 'available', '在库'),
+(3, '电钻套装', 'Bosch', 'EQ-TOOL-003', 3, 2, 'available', '在库'),
+(4, '共享雨伞', '学生会物资组', 'UMBRELLA-01', 4, 20, 'available', '在库'),
+(5, '共享充电宝', '后勤中心', 'POWERBANK-02', 4, 15, 'available', '在库'),
+(6, '演出音响套装', '艺术团', 'PROP-AUDIO-03', 5, 2, 'available', '维修中');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '设备借用须知', '请按需申请、按时归还；逾期将登记催还。轻资产与演出道具同走借用审核。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='设备借用须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '开放时间', '工作日 8:30–17:30 办理领用与归还。', 'admin', '实验室主管'
+SELECT '开放时间', '工作日 8:30–17:30 办理借用与归还。', 'admin', '实验室主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='开放时间');
 
 CREATE TABLE IF NOT EXISTS `loan_progress` (
@@ -114,6 +116,45 @@ CREATE TABLE IF NOT EXISTS `loan_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS renew_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  old_due_at DATETIME NULL,
+  new_due_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_renew_ticket (ticket_id)
+);
+
+CREATE TABLE IF NOT EXISTS fine_record (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status VARCHAR(32) DEFAULT 'open',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fine_ticket (ticket_id)
+);
+
+CREATE TABLE IF NOT EXISTS biz_org_unit (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(120) NOT NULL,
+  remark VARCHAR(255) DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS biz_staff_ref (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  org_id BIGINT NULL,
+  title VARCHAR(64) DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS biz_apply_attach (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  file_url VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- staff posts (clerk / worker)

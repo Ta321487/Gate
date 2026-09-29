@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -101,6 +102,26 @@ CREATE TABLE IF NOT EXISTS `bed_apply_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS dorm_building (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS dorm_room_ref (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  building_id BIGINT NOT NULL,
+  room_no VARCHAR(32) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_dorm_room_ref (building_id, room_no)
+);
+CREATE TABLE IF NOT EXISTS bed_occupy_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  bed_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  action VARCHAR(32) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- staff posts (clerk / worker)

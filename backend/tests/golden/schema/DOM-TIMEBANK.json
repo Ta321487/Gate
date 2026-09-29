@@ -118,6 +118,14 @@
     "registerRoleHint": "注册后可存入时长并申请核销",
     "userHomePath": "/tickets"
   },
+  "lex": {
+    "category_axis": "分类",
+    "entity_label": "服务事项",
+    "entity_plural": "服务事项",
+    "ticket_label": "核销申请",
+    "ticket_noun": "核销申请",
+    "ticket_plural": "核销申请"
+  },
   "menus": {
     "admin": [
       {

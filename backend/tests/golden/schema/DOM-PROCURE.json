@@ -118,6 +118,14 @@
     "registerRoleHint": "注册后可办理",
     "userHomePath": "/tickets"
   },
+  "lex": {
+    "category_axis": "品目分类",
+    "entity_label": "采购品目",
+    "entity_plural": "采购品目",
+    "ticket_label": "申购单",
+    "ticket_noun": "申购",
+    "ticket_plural": "申购单"
+  },
   "menus": {
     "admin": [
       {

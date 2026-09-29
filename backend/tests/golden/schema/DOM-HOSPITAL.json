@@ -36,10 +36,12 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "allowRating": true,
       "completeVerb": "就诊完成",
       "key": "reservation",
       "label": "挂号",
       "labelPlural": "我的挂号",
+      "patientNameLabel": "就诊人",
       "remarkLabel": "就诊人",
       "requireConfirm": false,
       "requireRemark": true,
@@ -48,7 +50,20 @@
         "completed": "已就诊",
         "confirmed": "已挂号",
         "pending": "待确认"
-      }
+      },
+      "symptomNoteLabel": "症状简述",
+      "visitTypeDefault": "初诊",
+      "visitTypeLabel": "初诊/复诊",
+      "visitTypeOptions": [
+        {
+          "label": "初诊",
+          "value": "初诊"
+        },
+        {
+          "label": "复诊",
+          "value": "复诊"
+        }
+      ]
     }
   },
   "labels": {

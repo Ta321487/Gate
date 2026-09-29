@@ -3,7 +3,9 @@
     "archive",
     "ticket_flow",
     "content",
-    "org_users"
+    "org_users",
+    "content_report",
+    "post_mute"
   ],
   "entities": {
     "archive": {
@@ -48,19 +50,23 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": true,
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
+      "issuePassCode": false,
       "key": "reply",
       "label": "回复",
       "labelPlural": "回复",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": false,
       "richRemark": true,
       "states": {
@@ -83,8 +89,8 @@
   },
   "labels": {
     "appName": "测试课题",
-    "authEyebrow": "校园论坛",
-    "authLead": "验证码登录；发帖与按板块浏览，富文本回复讨论，支持楼中楼引用。",
+    "authEyebrow": "兴趣社区",
+    "authLead": "验证码登录；在邻里版块发帖，跟帖回复经版主审核后展示。",
     "authPoints": [
       "验证码登录",
       "发帖与检索",
@@ -161,7 +167,7 @@
   },
   "portalBanners": [
     {
-      "lead": "学习、生活、二手信息分区浏览主帖。",
+      "lead": "邻里互助、二手闲置、活动通知分类浏览。",
       "title": "热门板块"
     },
     {
@@ -192,11 +198,11 @@
     },
     "user": {
       "id": "user",
-      "label": "师生"
+      "label": "居民"
     }
   },
   "seeds": {
-    "noticeBody": "请文明讨论；用户可发主帖，违规帖由站长下架。回复经版主审核后展示；可 @他人 一层引用。",
+    "noticeBody": "请文明发帖；广告与人身攻击帖将被下架。",
     "noticeTitle": "社区公约"
   },
   "title": "测试课题",

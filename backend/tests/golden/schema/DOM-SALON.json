@@ -41,6 +41,7 @@
       "stockDisplay": "hidden"
     },
     "reservation": {
+      "allowRating": true,
       "completeVerb": "到店完成",
       "key": "reservation",
       "label": "预约",
@@ -53,7 +54,8 @@
         "completed": "已完成",
         "confirmed": "已预约",
         "pending": "待确认"
-      }
+      },
+      "stylistLabel": "偏好技师"
     }
   },
   "labels": {

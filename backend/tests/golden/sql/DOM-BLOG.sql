@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -107,7 +108,5 @@ CREATE TABLE IF NOT EXISTS user_favorite (
   UNIQUE KEY uk_fav_user_item (username, item_id),
   KEY idx_fav_user (username, id)
 );
-
--- staff posts (clerk / worker)
-UPDATE sys_user SET staff_post='', staff_kind='' WHERE super_admin=1;
-INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled, staff_post, staff_kind) VALUES ('subadmin', 'sub123', 'admin', '编辑', '13800000001', '{}', 0, 1, 1, 'editor', 'clerk') ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), staff_post=VALUES(staff_post), staff_kind=VALUES(staff_kind), role='admin', super_admin=0;
+-- dual-role: disable orphan subadmin seed
+UPDATE sys_user SET enabled=0, staff_post='', staff_kind='' WHERE username='subadmin' AND IFNULL(super_admin,0)=0;

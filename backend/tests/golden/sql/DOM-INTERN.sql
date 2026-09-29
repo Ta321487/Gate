@@ -51,7 +51,13 @@ CREATE TABLE IF NOT EXISTS week_report (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL
+  next_follow_at DATETIME NULL,
+  week_no INT NULL,
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL,
+  rating_dims_json VARCHAR(1024) DEFAULT '',
+  rating_anonymous TINYINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -72,6 +78,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -97,11 +104,11 @@ INSERT IGNORE INTO week_report (id, intern_post_id, username, status, remark, co
 (1, 1, 'user', 'pending', '第1周：熟悉项目结构与编码规范，完成环境搭建。', '在线填写');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '周报须知',
-  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。开题要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。',
+  '每周日前提交周报；导师审阅后方可计入实习考勤。岗位列表为示范目录，「实习中」仅标关联岗。系统要求岗位与学生绑定时，请在个人资料填写实习单位与岗位后再交周报。',
   'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意（非 CA）。', 'admin', '就业办主管'
+SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意。', 'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='鉴定提醒');
 
 CREATE TABLE IF NOT EXISTS `week_report_progress` (
@@ -124,6 +131,19 @@ CREATE TABLE IF NOT EXISTS e_sign_record (
   remark VARCHAR(255) DEFAULT '',
   signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_e_sign_user (username, id)
+);
+
+CREATE TABLE IF NOT EXISTS intern_org (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(120) NOT NULL,
+  contact VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS intern_week_attach (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  file_url VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- staff posts (clerk / worker)

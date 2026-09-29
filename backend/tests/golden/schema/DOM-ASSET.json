@@ -4,7 +4,8 @@
     "ticket_flow",
     "quota",
     "content",
-    "org_users"
+    "org_users",
+    "stock_io"
   ],
   "entities": {
     "archive": {
@@ -46,19 +47,23 @@
       "allowCheckin": false,
       "allowQty": true,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": false,
       "autoApprove": false,
       "categoryLimit": 0,
       "checkMutex": false,
+      "issuePassCode": false,
       "key": "requisition",
       "label": "申领单",
       "labelPlural": "申领",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "用途说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": true,
       "states": {
         "approved": "已出库",

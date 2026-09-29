@@ -5,7 +5,8 @@
     "quota",
     "content",
     "org_users",
-    "time_conflict"
+    "time_conflict",
+    "waitlist"
   ],
   "entities": {
     "archive": {
@@ -72,23 +73,26 @@
       "allowCheckin": false,
       "allowQty": false,
       "allowRating": false,
+      "applyFromList": false,
       "approveEndsFlow": true,
       "autoApprove": false,
       "categoryLimit": 1,
       "checkMutex": true,
+      "issuePassCode": false,
       "key": "enrollment",
       "label": "选课单",
       "labelPlural": "选课",
       "noShowAfterEnd": false,
       "noShowPenaltyYuan": 0,
+      "peerAccept": false,
       "pickDateRange": false,
       "pickLoanPeriod": false,
       "remarkLabel": "说明",
       "requireAttach": false,
+      "requireClaimCode": false,
       "requireRemark": false,
       "states": {
         "approved": "已选上",
-        "overdue": "已失效",
         "pending": "待审核",
         "rejected": "已驳回",
         "returned": "已退选"

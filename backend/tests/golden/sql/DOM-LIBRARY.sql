@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -118,6 +119,27 @@ CREATE TABLE IF NOT EXISTS `borrow_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS renew_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  old_due_at DATETIME NULL,
+  new_due_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_renew_ticket (ticket_id)
+);
+
+CREATE TABLE IF NOT EXISTS fine_record (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status VARCHAR(32) DEFAULT 'open',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fine_ticket (ticket_id)
 );
 
 -- staff posts (clerk / worker)

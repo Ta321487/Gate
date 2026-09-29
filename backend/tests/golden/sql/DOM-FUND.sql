@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   content TEXT,
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
+  pinned TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -94,7 +95,7 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '资助须知', '请按通知提交申请材料；审批通过后留意发放进度。', 'admin', '资助主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='资助须知');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '本学期资助', '本学期奖助学金申报已开放，请在截止日前完成材料提交。', 'admin', '资助主管'
+SELECT '本学期资助', '本学期奖助学金申请已开放，请在截止日前完成材料提交。', 'admin', '资助主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='本学期资助');
 
 CREATE TABLE IF NOT EXISTS `fund_apply_progress` (
@@ -105,6 +106,64 @@ CREATE TABLE IF NOT EXISTS `fund_apply_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS balance_subject (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(100) NOT NULL,
+  unit_label VARCHAR(32) DEFAULT '次',
+  status VARCHAR(32) DEFAULT 'available',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS balance_account (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  balance INT NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_balance_user_subject (username, subject_id),
+  KEY idx_balance_account_user (username)
+);
+
+CREATE TABLE IF NOT EXISTS balance_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  delta_qty INT NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_balance_ledger_user (username, id)
+);
+
+INSERT IGNORE INTO balance_subject (id, title, unit_label, status) VALUES
+(1, '资助额度', '元', 'available');
+INSERT IGNORE INTO balance_account (username, subject_id, balance) VALUES
+('student', 1, 2),
+('admin', 1, 100);
+
+CREATE TABLE IF NOT EXISTS fund_publicity (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  title VARCHAR(128) NOT NULL DEFAULT '',
+  start_at DATE NULL,
+  end_at DATE NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'publicizing',
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fund_publicity_ticket (ticket_id)
+);
+CREATE TABLE IF NOT EXISTS fund_disburse (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  paid_at DATE NULL,
+  operator VARCHAR(64) NOT NULL DEFAULT '',
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_fund_disburse_ticket (ticket_id)
 );
 
 -- staff posts (clerk / worker)
