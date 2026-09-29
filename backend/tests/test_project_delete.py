@@ -1,4 +1,4 @@
-"""删除项目：磁盘清理可靠 + 库名避开本机残留。"""
+﻿"""删除项目：磁盘清理可靠 + 库名避开本机残留。"""
 
 from __future__ import annotations
 
@@ -50,8 +50,8 @@ class TestPurgeProjectDisk(unittest.TestCase):
                 zip_path=str(zip1),
             )
             with (
-                patch("app.services.projects.get_settings") as gs,
-                patch("app.services.projects.rt.detach_frontend_deps"),
+                patch("app.services.project_disk.get_settings") as gs,
+                patch("app.services.project_disk.rt.detach_frontend_deps"),
             ):
                 settings = SimpleNamespace(workspace_dir=base, logs_dir=base / "logs")
                 gs.return_value = settings
@@ -98,8 +98,8 @@ class TestPurgeOrphanDisk(unittest.TestCase):
             (logs / "notes.txt").write_text("keep", encoding="utf-8")
 
             with (
-                patch("app.services.projects.get_settings") as gs,
-                patch("app.services.projects.rt.detach_frontend_deps"),
+                patch("app.services.project_disk.get_settings") as gs,
+                patch("app.services.project_disk.rt.detach_frontend_deps"),
             ):
                 gs.return_value = SimpleNamespace(workspace_dir=ws, logs_dir=logs)
                 data = project_svc.purge_orphan_project_disk({"gf-alive"})
@@ -114,6 +114,41 @@ class TestPurgeOrphanDisk(unittest.TestCase):
             self.assertIn("gf-dead", data["removed_workspaces"])
             self.assertIn("gf-dead", data["removed_logs"])
             self.assertEqual(data["errors"], [])
+            self.assertFalse(data.get("truncated"))
+
+    def test_max_dirs_budget_and_sidecar_cleanup(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            ws = base / "workspace"
+            logs = base / "logs"
+            ws.mkdir()
+            logs.mkdir()
+            (ws / "gf-alive").mkdir()
+            (ws / "gf-a").mkdir()
+            (ws / "gf-b").mkdir()
+            (ws / "gf-a-app.zip").write_bytes(b"PK")
+            (ws / "gf-b-app.zip").write_bytes(b"PK")
+            (logs / "gf-a").mkdir()
+            (logs / "gf-b").mkdir()
+
+            with (
+                patch("app.services.project_disk.get_settings") as gs,
+                patch("app.services.project_disk.rt.detach_frontend_deps"),
+            ):
+                gs.return_value = SimpleNamespace(workspace_dir=ws, logs_dir=logs)
+                data = project_svc.purge_orphan_project_disk({"gf-alive"}, max_dirs=1)
+
+            self.assertTrue((ws / "gf-alive").is_dir())
+            self.assertFalse((ws / "gf-a").exists())
+            self.assertTrue((ws / "gf-b").is_dir())
+            self.assertFalse((logs / "gf-a").exists())
+            self.assertTrue((logs / "gf-b").is_dir())
+            self.assertFalse((ws / "gf-a-app.zip").exists())
+            self.assertTrue((ws / "gf-b-app.zip").is_file())
+            self.assertEqual(data["removed_workspaces"], ["gf-a"])
+            self.assertTrue(data.get("truncated"))
 
 
 class TestSourceCleanup(unittest.TestCase):
@@ -125,7 +160,7 @@ class TestSourceCleanup(unittest.TestCase):
             f = uploads / "a_bundle" / "开题.docx"
             f.parent.mkdir()
             f.write_bytes(b"x")
-            with patch("app.services.projects.get_settings") as gs:
+            with patch("app.services.project_disk.get_settings") as gs:
                 gs.return_value = SimpleNamespace(uploads_dir=uploads)
                 project_svc.remove_project_source_if_owned(str(f), shared=True)
             self.assertTrue(f.exists())
@@ -139,7 +174,7 @@ class TestSourceCleanup(unittest.TestCase):
             f = bundle / "开题.docx"
             bundle.mkdir()
             f.write_bytes(b"x")
-            with patch("app.services.projects.get_settings") as gs:
+            with patch("app.services.project_disk.get_settings") as gs:
                 gs.return_value = SimpleNamespace(uploads_dir=uploads)
                 project_svc.remove_project_source_if_owned(str(f), shared=False)
             self.assertFalse(bundle.exists())

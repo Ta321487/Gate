@@ -326,6 +326,19 @@ async function purgeFinished() {
   }
 }
 
+async function waitOrphanDiskDone() {
+  const deadline = Date.now() + 15 * 60 * 1000
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1200))
+    const st = await api.purgeOrphanDiskStatus()
+    const data = st?.data || {}
+    if (data.status === 'done' || data.status === 'error' || data.status === 'idle') {
+      return st
+    }
+  }
+  throw new Error('磁盘清理等待超时')
+}
+
 async function purgeOrphans() {
   const ok = await confirm(
     '将清理：① 项目已不存在的任务记录；② 本机工程目录与日志中、库里已无对应项目的文件夹（及 ZIP）。共享缓存与开题材料不动。',
@@ -340,8 +353,18 @@ async function purgeOrphans() {
   try {
     const jobRes = await api.purgeOrphanJobs()
     const diskRes = await api.purgeOrphanDisk()
-    const parts = [jobRes.message, diskRes.message].filter(Boolean)
-    message.success(parts.join('；') || '已清理失效项目残留')
+    const diskData = diskRes?.data || {}
+    let diskFinal = diskRes
+    if (diskData.status === 'running' || diskData.accepted || diskData.already_running) {
+      diskFinal = await waitOrphanDiskDone()
+    }
+    const parts = [jobRes.message, diskFinal?.message || diskRes.message].filter(Boolean)
+    const finalStatus = diskFinal?.data?.status
+    if (finalStatus === 'error') {
+      message.error(parts.join('；') || '磁盘清理失败')
+    } else {
+      message.success(parts.join('；') || '已清理失效项目残留')
+    }
     await load()
   } finally {
     purging.value = false

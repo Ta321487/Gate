@@ -43,6 +43,19 @@ async def reconcile_projects_projection(db: AsyncSession) -> bool:
         return dirty
 
 
+async def _budgeted_orphan_disk_purge(db: AsyncSession) -> None:
+    """每轮对账后小额清孤儿盘；与全量受理互斥，忙则跳过。"""
+    from app.services import orphan_disk_purge as orphan_purge
+
+    per = int(getattr(get_settings(), "gf_orphan_purge_per_pass", 1) or 0)
+    if per <= 0:
+        return
+    result = await db.execute(select(Project.id))
+    alive = set(result.scalars().all())
+    await project_svc.release_read_transaction(db)
+    await asyncio.to_thread(orphan_purge.try_budgeted_purge, alive)
+
+
 async def _reconcile_loop(interval_sec: float) -> None:
     # 启动先跑一轮，清掉重启后残留的 running / 端口投影
     while True:
@@ -51,6 +64,7 @@ async def _reconcile_loop(interval_sec: float) -> None:
                 dirty = await reconcile_projects_projection(db)
                 if dirty:
                     _log.info("runtime reconcile committed")
+                await _budgeted_orphan_disk_purge(db)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

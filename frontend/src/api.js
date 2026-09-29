@@ -3,6 +3,9 @@ import { message } from './ui'
 
 const http = axios.create({ baseURL: '/api', timeout: 60000 })
 
+/** 扫盘 / 批量进程 / 大上传：禁止裸默认 60s */
+const HEAVY_OPTS = { timeout: 600000 }
+
 http.interceptors.response.use(
   (res) => res.data,
   (err) => {
@@ -34,7 +37,7 @@ export const api = {
     return http.post('/projects/upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,
-      timeout: 300000,
+      ...HEAVY_OPTS,
     })
   },
   /** 多材料分堆预览（不建项目） */
@@ -47,7 +50,7 @@ export const api = {
     return http.post('/projects/upload/plan', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,
-      timeout: 300000,
+      ...HEAVY_OPTS,
     })
   },
   /** 未确认分堆列表（刷新恢复） */
@@ -57,7 +60,7 @@ export const api = {
     http.delete(`/projects/upload/plans/${encodeURIComponent(planId)}`),
   /** 确认分堆并创建项目 */
   uploadConfirm: (body) =>
-    http.post('/projects/upload/confirm', body, { timeout: 600000 }),
+    http.post('/projects/upload/confirm', body, { ...HEAVY_OPTS }),
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
   getFillPlan: (id) => http.get(`/projects/${id}/fill-plan`),
   fillEventsUrl: (id) => `/api/projects/${id}/fill-events`,
@@ -69,7 +72,7 @@ export const api = {
       params: confirmDiff ? { confirm_diff: true } : {},
     }),
   deleteProject: (id, { keepDb = false } = {}) =>
-    http.delete(`/projects/${id}`, { params: { keep_db: keepDb } }),
+    http.delete(`/projects/${id}`, { params: { keep_db: keepDb }, ...HEAVY_OPTS }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
   getEr: (id, { mode = 'total', entity } = {}) =>
@@ -157,7 +160,7 @@ export const api = {
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),
   /** 批量预览启停；action=start 对运行中的项目等价重启（服务端串行错峰，可能较久） */
-  runtimeBatch: (body) => http.post('/projects/runtime/batch', body, { timeout: 600000 }),
+  runtimeBatch: (body) => http.post('/projects/runtime/batch', body, { ...HEAVY_OPTS }),
   logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),
   logsPoll: (id, side) => http.get(`/projects/${id}/logs/${side}`, POLL_OPTS),
   listJobs: (opts) => http.get('/jobs', opts),
@@ -181,7 +184,10 @@ export const api = {
   deliveryHandoffUrl: (id) => `/api/projects/${id}/delivery-review/handoff`,
   purgeOrphanJobs: () => http.post('/jobs/purge-orphans'),
   purgeFinishedJobs: () => http.post('/jobs/purge-finished'),
-  purgeOrphanDisk: () => http.post('/projects/purge-orphan-disk'),
+  /** 受理式清盘：立刻返回，前端轮询 status */
+  purgeOrphanDisk: () => http.post('/projects/purge-orphan-disk', null, HEAVY_OPTS),
+  purgeOrphanDiskStatus: () =>
+    http.get('/projects/purge-orphan-disk', { silent: true, timeout: 8000 }),
   deepseek: () => http.get('/deepseek'),
   saveDeepseek: (body) => http.put('/deepseek', body),
   testDeepseek: () => http.post('/deepseek/test'),

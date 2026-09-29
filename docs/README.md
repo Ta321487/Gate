@@ -38,6 +38,7 @@
 | 文档 | 何时读 |
 |------|--------|
 | [preview-capacity-and-batch-ops.md](./preview-capacity-and-batch-ops.md) | 预览吃多少内存/进程、为什么多开卡死、批量启停的分期与闸门 |
+| [background-reconcile-cost.md](./background-reconcile-cost.md) | 后台对账一轮花在哪、签名跳过与每轮额度怎么调、怎么复测 |
 
 ---
 

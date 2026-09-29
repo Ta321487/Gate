@@ -1,4 +1,4 @@
-"""人工交付标记：与机器质检 zip_ready 分离。"""
+﻿"""人工交付标记：与机器质检 zip_ready 分离。"""
 
 from __future__ import annotations
 
@@ -230,7 +230,7 @@ def test_sync_reapplies_last_qa_to_gates(tmp_path):
         "p0a": {"ok": True, "label": "结构"},
         "checklist": [{"name": "登录", "result": "done"}],
     }
-    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+    with patch("app.services.project_projection.evaluate_domain_gates", return_value=dict(fake_gates)):
         with patch("app.services.delivery_review.is_zip_stale", return_value=False):
             assert project_svc.sync_checklist_from_workspace(p) is True
     assert p.gates.get("p3q", {}).get("ok") is False
@@ -261,7 +261,7 @@ def test_sync_does_not_promote_zip_during_active_review_without_pass(tmp_path):
         "p0a": {"ok": True, "label": "结构"},
         "checklist": [],
     }
-    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+    with patch("app.services.project_projection.evaluate_domain_gates", return_value=dict(fake_gates)):
         with patch("app.services.delivery_review.is_zip_stale", return_value=False):
             project_svc.sync_checklist_from_workspace(p)
     assert p.zip_ready is False
@@ -290,7 +290,7 @@ def test_sync_promotes_zip_when_idle_and_gates_ok(tmp_path):
         "p0a": {"ok": True, "label": "结构"},
         "checklist": [],
     }
-    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+    with patch("app.services.project_projection.evaluate_domain_gates", return_value=dict(fake_gates)):
         with patch("app.services.delivery_review.is_zip_stale", return_value=False):
             assert project_svc.sync_checklist_from_workspace(p) is True
     assert p.zip_ready is True
@@ -358,9 +358,9 @@ def test_reconcile_scans_workspace_once_per_project(tmp_path):
         "p0a": {"ok": True, "label": "结构"},
         "checklist": [{"name": "登录", "result": "done"}],
     }
-    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+    with patch("app.services.project_projection.evaluate_domain_gates", return_value=dict(fake_gates)):
         with patch(
-            "app.services.projects.sync_project_runtime",
+            "app.services.project_projection.sync_project_runtime",
             return_value=("stopped", "stopped", False),
         ):
             with patch(
@@ -398,7 +398,7 @@ def test_sync_promotes_zip_after_active_round_pass(tmp_path):
         "p0a": {"ok": True, "label": "结构"},
         "checklist": [],
     }
-    with patch("app.services.projects.evaluate_domain_gates", return_value=dict(fake_gates)):
+    with patch("app.services.project_projection.evaluate_domain_gates", return_value=dict(fake_gates)):
         with patch("app.services.delivery_review.is_zip_stale", return_value=False):
             assert project_svc.sync_checklist_from_workspace(p) is True
     assert p.zip_ready is True
