@@ -51,6 +51,9 @@ public final class ArchiveStore {
     private static boolean productSpecEnabled = false;
     private static Boolean hasDedicatedSpecNote;
 
+    private static boolean stockWarnNotify = false;
+    private static int stockWarnBelow = 10;
+
     public static void configureFlashPrice(boolean enabled) {
         flashPriceEnabled = enabled;
         hasPromoPrice = null;
@@ -61,6 +64,11 @@ public final class ArchiveStore {
 
     public static boolean flashPriceEnabled() {
         return flashPriceEnabled;
+    }
+
+    public static void configureStockWarn(boolean notify, int below) {
+        stockWarnNotify = notify;
+        stockWarnBelow = Math.max(1, Math.min(999, below <= 0 ? 10 : below));
     }
 
     private static void ensurePromoColumns() {
@@ -754,6 +762,22 @@ public final class ArchiveStore {
             patchOptStr(id, patch, "specNote", "spec_note", 128);
         }
         patchOptStr(id, patch, "itemKind", "item_kind", 16);
+        patchOptStr(id, patch, "holdingLoc", "holding_loc", 128);
+        patchOptStr(id, patch, "campusZone", "campus_zone", 64);
+        patchOptStr(id, patch, "shelfNo", "shelf_no", 64);
+        patchOptStr(id, patch, "batchNo", "batch_no", 64);
+        patchOptStr(id, patch, "expireOn", "expire_on", 32);
+        patchOptStr(id, patch, "supplierContact", "supplier_contact", 64);
+        patchOptStr(id, patch, "allowedGender", "allowed_gender", 16);
+        patchOptStr(id, patch, "allowedGrades", "allowed_grades", 64);
+        patchOptStr(id, patch, "maintainDue", "maintain_due", 32);
+        patchOptStr(id, patch, "loanOrg", "loan_org", 128);
+        patchOptStr(id, patch, "clcCode", "clc_code", 32);
+        patchOptStr(id, patch, "calibCertUrl", "calib_cert_url", 255);
+        patchOptStr(id, patch, "calibDue", "calib_due", 32);
+        patchOptStr(id, patch, "repairTicketNo", "repair_ticket_no", 64);
+        patchOptStr(id, patch, "slotStatus", "slot_status", 16);
+        patchOptStr(id, patch, "buildingZone", "building_zone", 64);
         if (patch.containsKey("foundAt")) {
             if (!hasItemColumn("found_at")) {
                 throw new IllegalStateException("系统未配置该字段");
@@ -1119,6 +1143,22 @@ public final class ArchiveStore {
         putOptStr(m, raw, "summary", "summary");
         putOptStr(m, raw, "harvest_on", "harvestOn");
         putOptStr(m, raw, "item_kind", "itemKind");
+        putOptStr(m, raw, "holding_loc", "holdingLoc");
+        putOptStr(m, raw, "campus_zone", "campusZone");
+        putOptStr(m, raw, "shelf_no", "shelfNo");
+        putOptStr(m, raw, "batch_no", "batchNo");
+        putOptStr(m, raw, "expire_on", "expireOn");
+        putOptStr(m, raw, "supplier_contact", "supplierContact");
+        putOptStr(m, raw, "allowed_gender", "allowedGender");
+        putOptStr(m, raw, "allowed_grades", "allowedGrades");
+        putOptStr(m, raw, "maintain_due", "maintainDue");
+        putOptStr(m, raw, "loan_org", "loanOrg");
+        putOptStr(m, raw, "clc_code", "clcCode");
+        putOptStr(m, raw, "calib_cert_url", "calibCertUrl");
+        putOptStr(m, raw, "calib_due", "calibDue");
+        putOptStr(m, raw, "repair_ticket_no", "repairTicketNo");
+        putOptStr(m, raw, "slot_status", "slotStatus");
+        putOptStr(m, raw, "building_zone", "buildingZone");
         Object foundAt = first(raw, "foundAt", "found_at");
         if (foundAt != null || hasMapKey(raw, "found_at", "foundAt")) {
             m.put("foundAt", fmt(foundAt));
@@ -1868,6 +1908,27 @@ public final class ArchiveStore {
         }
         if (n <= 0) throw new IllegalStateException(stockShortage(0));
         syncOccupyStageWithStock(itemId, delta);
+        if (delta < 0 && stockWarnNotify) {
+            maybeNotifyLowStock(itemId);
+        }
+    }
+
+    /** 扣减后库存低于预警值 → 站内信提醒总管（开题挂 stockWarnNotify）。 */
+    private static void maybeNotifyLowStock(long itemId) {
+        Map<String, Object> book = getItemRaw(itemId);
+        if (book == null) return;
+        int stock = toInt(book.get("stock"));
+        if (stock >= stockWarnBelow) return;
+        String title = str(book.get("title")).trim();
+        if (title.isBlank()) title = "档案#" + itemId;
+        try {
+            com.thesis.service.MessageStore.notifyAdmins(
+                    "库存预警",
+                    "「" + title + "」当前库存 " + stock + "，已低于预警值 " + stockWarnBelow + "，请及时补货。",
+                    "archive",
+                    itemId);
+        } catch (Exception ignored) {
+        }
     }
 
     /**

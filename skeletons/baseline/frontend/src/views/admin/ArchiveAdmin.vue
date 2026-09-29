@@ -305,6 +305,7 @@ import { datePickerProps, dateTimePickerProps } from '../../utils/dateTimeField.
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
+import { isValidIsbn } from '../../utils/isbn.js'
 
 const archive = archiveCopy()
 const softCopyBase = softDeleteCopy()
@@ -616,6 +617,10 @@ async function save() {
   }
   if (hasEndAt.value && !form.endAt) {
     ElMessage.warning(`请填写${fieldLabel('endAt', '结束时间')}`)
+    return
+  }
+  if (getSchema()?.borrowThicken?.isbnValidate && !isValidIsbn(form.isbn)) {
+    ElMessage.warning('ISBN 格式不正确，请核对后重试')
     return
   }
   const payload = { ...form }
