@@ -72,6 +72,18 @@ def attach_stock_scrap_labels(schema: dict[str, Any], caps: list[str]) -> None:
             "stockCountHint",
             "录入实盘数量后过账：库存调整为实盘并记差额流水。",
         )
+    if scrap:
+        # 独立报废单：pending → approved/rejected，通过后才扣库存写 scrap 流水
+        opts = schema.setdefault("stockScrapOpts", {})
+        if isinstance(opts, dict):
+            opts["approveFlow"] = True
+        labels.setdefault(
+            "scrapApproveHint",
+            "报废须先提交申请，审批通过后才扣减库存并记报废流水。",
+        )
+        labels.setdefault("scrapPendingTitle", "待审报废单")
+        labels.setdefault("scrapApproveVerb", "通过报废")
+        labels.setdefault("scrapRejectVerb", "驳回报废")
 
 
 def apply_stock_scrap_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
@@ -101,6 +113,8 @@ def apply_stock_scrap_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
         names = {f.get("name") for f in features if isinstance(f, dict)}
         if STOCK_SCRAP_CAP in caps and "物资报废" not in names:
             features.append({"name": "物资报废", "status": "flow"})
+        if STOCK_SCRAP_CAP in caps and "报废审批单" not in names:
+            features.append({"name": "报废审批单", "status": "flow"})
         if STOCK_COUNT_CAP in caps and "库存盘点" not in names:
             features.append({"name": "库存盘点", "status": "flow"})
         spec["features"] = features

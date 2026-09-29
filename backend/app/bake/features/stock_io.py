@@ -14,9 +14,28 @@ _STOCK_IO_SIGNALS = re.compile(
     r"浅进销存|仓储出入库|物资出入库|入出存"
 )
 
+_STOCK_WARN_NOTIFY_TERMS = (
+    "低库存提醒",
+    "库存预警通知",
+    "库存不足提醒",
+    "低库存站内",
+    "库存预警站内",
+    "低库存通知",
+    "库存预警消息",
+    "自动库存预警",
+)
+
 
 def scan_stock_io(text: str) -> bool:
     return pattern_mentioned(text or "", _STOCK_IO_SIGNALS, ignore_contrast=True)
+
+
+def scan_stock_warn_notify(text: str) -> bool:
+    """低库存站内信提醒总管；工作台图表仍默认有，本开关加深消息。"""
+    from app.bake.proposal_lexicon import keyword_mentioned
+
+    raw = text or ""
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _STOCK_WARN_NOTIFY_TERMS)
 
 
 def stock_io_wanted(
@@ -102,10 +121,22 @@ def apply_stock_io_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dic
         gate = dict(spec.get("gate") or {})
         spec["gate"] = merge_stock_io_gate(gate, caps)
 
+        # 工作台低库存图表默认有；开题写「低库存提醒/库存预警通知」才发站内信
+        if scan_stock_warn_notify(proposal_text or ""):
+            schema["stockWarnNotify"] = True
+            try:
+                below = int(schema.get("stockWarnBelow") or 0)
+            except (TypeError, ValueError):
+                below = 0
+            if below <= 0:
+                schema["stockWarnBelow"] = 10
+
         features = list(spec.get("features") or [])
         names = {f.get("name") for f in features if isinstance(f, dict)}
         if "入出库与库存流水" not in names:
             features.append({"name": "入出库与库存流水", "status": "flow"})
+        if schema.get("stockWarnNotify") and "低库存站内提醒" not in names:
+            features.append({"name": "低库存站内提醒", "status": "flow"})
         spec["features"] = features
 
         ents = list(spec.get("entities") or [])
