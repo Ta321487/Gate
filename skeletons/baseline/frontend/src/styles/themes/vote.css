@@ -1,28 +1,65 @@
+/* vote */
 [data-theme="vote-coral"] {
-  --bg: #fff5f2;
-  --accent: #d96b4c;
-  --soft: #fde4dc;
-  --ink: #2a1814;
-  --surface: #ffffff;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #fff5f2;
+  --portal-bg-glow: rgba(217, 107, 76, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #2a1814;
+  --portal-muted: #7a584f;
+  --portal-line: #f4dcd4;
+  --portal-brand: #d96b4c;
+  --portal-accent: #d96b4c;
+  --portal-accent-soft: #fde4dc;
+  --portal-cover: linear-gradient(160deg, #d96b4c, #2a1814);
+  --portal-shadow-color: rgba(217, 107, 76, 0.1);
+  color-scheme: light;
 }
 [data-theme="vote-sky"] {
-  --bg: #f0f7fb;
-  --accent: #3a7ca5;
-  --soft: #d7ebf5;
-  --ink: #142433;
-  --surface: #ffffff;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f0f7fb;
+  --portal-bg-glow: rgba(58, 124, 165, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #142433;
+  --portal-muted: #526b7d;
+  --portal-line: #d7ebf5;
+  --portal-brand: #3a7ca5;
+  --portal-accent: #3a7ca5;
+  --portal-accent-soft: #e3f2fa;
+  --portal-cover: linear-gradient(160deg, #3a7ca5, #142433);
+  --portal-shadow-color: rgba(58, 124, 165, 0.1);
+  color-scheme: light;
 }
 [data-theme="vote-lime"] {
-  --bg: #f4faf0;
-  --accent: #5a8f3c;
-  --soft: #dff0d0;
-  --ink: #1a2a12;
-  --surface: #ffffff;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f4faf0;
+  --portal-bg-glow: rgba(90, 143, 60, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1a2a12;
+  --portal-muted: #5c6b50;
+  --portal-line: #dff0d0;
+  --portal-brand: #5a8f3c;
+  --portal-accent: #5a8f3c;
+  --portal-accent-soft: #e8f6dd;
+  --portal-cover: linear-gradient(160deg, #5a8f3c, #1a2a12);
+  --portal-shadow-color: rgba(90, 143, 60, 0.1);
+  color-scheme: light;
 }
 [data-theme="vote-night"] {
-  --bg: #14181c;
-  --accent: #d96b4c;
-  --soft: #243038;
-  --ink: #eef2f5;
-  --surface: #1c2228;
+  --portal-scheme: dark;
+  --portal-mix: #000000;
+  --portal-bg: #14181c;
+  --portal-bg-glow: rgba(217, 107, 76, 0.12);
+  --portal-surface: #1c2228;
+  --portal-ink: #eef2f5;
+  --portal-muted: #9fb0bb;
+  --portal-line: #2a333a;
+  --portal-brand: #d96b4c;
+  --portal-accent: #d96b4c;
+  --portal-accent-soft: #2a201d;
+  --portal-cover: linear-gradient(160deg, #d96b4c, #14181c);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

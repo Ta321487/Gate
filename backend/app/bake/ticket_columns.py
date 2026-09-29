@@ -36,6 +36,10 @@ TICKET_ITEM_FK_BY_DOMAIN: dict[str, str] = {
 }
 
 
+# 借阅/领用族：开借阅期即完整借阅壳（due_at + fine_yuan + remind_*）
+_LOAN_SHELL_DOMAINS = ("DOM-LIBRARY", "DOM-EQUIP", "DOM-ASSET")
+
+
 def ticket_loan_shell_wanted(domain: str, ticket_flags: dict | None = None) -> bool:
     """借阅到期/罚金壳，或工单 SLA（due_at 处理时限）需要到期列。"""
     d = (domain or "").strip()
@@ -93,8 +97,16 @@ def apply_ticket_shell_sql(
     fk = ticket_item_fk_for(domain)
     want_loan = ticket_loan_shell_wanted(domain, ticket_flags)
     want_amount = (not want_loan) and ticket_amount_shell_wanted(domain, ticket_flags)
+    # 非借阅族（LIBRARY/EQUIP/ASSET 之外的域）分两种：
+    #   ① 皮/材料明确带罚金语义（fineLabel）→ 完整借阅壳；
+    #   ② 只有 SLA/自选到期（工单处理时限、事件派单）→ 只补 due_at，不带罚金与催还列。
+    want_due_only = (
+        want_loan
+        and domain not in _LOAN_SHELL_DOMAINS
+        and not (ticket_flags or {}).get("fineLabel")
+    )
     if want_loan:
-        loan_allow = _TICKET_LOAN_NAMES
+        loan_allow = {"due_at"} if want_due_only else _TICKET_LOAN_NAMES
     elif want_amount:
         loan_allow = {"fine_yuan"}
     else:
@@ -102,8 +114,10 @@ def apply_ticket_shell_sql(
 
     def transform(body: str) -> str:
         body = prune_columns(body, allow=loan_allow, known=_TICKET_LOAN_NAMES)
-        if want_loan:
+        if want_loan and not want_due_only:
             body = inject_missing_columns(body, list(TICKET_LOAN_SHELL_COLUMNS))
+        elif want_due_only:
+            body = inject_missing_columns(body, [("due_at", "DATETIME NULL")])
         elif want_amount:
             body = inject_missing_columns(
                 body, [("fine_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")]

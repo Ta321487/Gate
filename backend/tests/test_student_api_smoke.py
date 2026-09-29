@@ -248,7 +248,18 @@ def test_gate_fail_detail_uses_data_message(tmp_path: Path):
         out = run_student_api_smoke(
             project_id="p-gate",
             workspace=tmp_path,
-            spec={"domain": "DOM-ATTEND"},
+            # gate 自检只在「单据主链域」跑（见 student_api_smoke._ticket_flow_keys）；
+            # 只给 domain 会让自检整步 skip，测不到 detail 回传
+            spec={
+                "domain": "DOM-ATTEND",
+                "gate": {
+                    "flow_api": {
+                        "apply": {"file": "TicketController.java", "need": ["/apply"]},
+                        "approve": {"file": "TicketController.java", "need": ["approve"]},
+                        "return": {"file": "TicketController.java", "need": ["/return"]},
+                    }
+                },
+            },
             backend_url="http://127.0.0.1:18080",
             frontend_url="http://127.0.0.1:15173",
             backend_status="healthy",

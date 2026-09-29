@@ -48,7 +48,15 @@ class AppointFromUsersTests(unittest.TestCase):
         self.assertFalse(_allow("DOM-PROPERTY", "小区物业报修", "业主在线报修。"))
         self.assertTrue(_allow("DOM-PROPERTY", "校园物业报修", "师生报修工单。"))
         self.assertFalse(_allow("DOM-MEDIA", "影视点播", "用户点播收藏。"))
-        self.assertTrue(_allow("DOM-MEDIA", "校园媒资点播", "师生点播学习资源。"))
+        # 内容域岗位按材料收窄：开题写明运营编辑/权限划分才挂 content_ops（见 staff_posts 域表注释）
+        self.assertFalse(_allow("DOM-MEDIA", "校园媒资点播", "师生点播学习资源。"))
+        self.assertTrue(
+            _allow(
+                "DOM-MEDIA",
+                "校园媒资点播",
+                "师生点播学习资源；管理员与运营编辑维护内容与权限划分。",
+            )
+        )
         self.assertFalse(_allow("DOM-EVENT", "公共卫生随访", "随访对象上报健康。"))
         self.assertFalse(_allow("DOM-EVENT", "养老机构巡访", "家属查看照护。"))
         self.assertTrue(_allow("DOM-EVENT", "校园晨午检", "班主任维护学生档案。"))

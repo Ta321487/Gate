@@ -92,7 +92,10 @@ class CoreCapScanTests(unittest.TestCase):
         labels = (spec.get("schema") or {}).get("labels") or {}
         self.assertEqual(labels.get("deadlineMenuLabel"), "超时未处理")
         admin = ((spec.get("schema") or {}).get("menus") or {}).get("admin") or []
-        self.assertTrue(any(m.get("key") == "deadline" for m in admin if isinstance(m, dict)))
+        # 报修 SLA 只进工单列表/待办，不挂借还壳的 /admin/overdue（ticket 壳无该路由，挂了会 404）
+        self.assertFalse(any(m.get("key") == "deadline" for m in admin if isinstance(m, dict)))
+        feats = {f.get("name") for f in (spec.get("features") or []) if isinstance(f, dict)}
+        self.assertIn("超时未处理", feats)
 
         sql = domain_sql(
             "DOM-IT",

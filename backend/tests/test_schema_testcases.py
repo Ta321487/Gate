@@ -11,8 +11,9 @@ from app.bake.schema.testcases import (
     apply_testcase_label_patch,
     normalize_testcase_fields,
     sanitize_testcase_label_patch,
-    testcase_model,
 )
+# 别名导入：名为 testcase_model 的符号会被 pytest 当测试函数收集（缺参 → setup ERROR）
+from app.bake.schema.testcases import testcase_model as build_testcase_model
 
 
 class TestcaseTests(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestcaseTests(unittest.TestCase):
         self.assertEqual(normalize_testcase_fields(99), DEFAULT_TESTCASE_FIELDS)
 
     def test_hospital_has_login_and_menu_cases(self) -> None:
-        model = testcase_model(self._schema("DOM-HOSPITAL"), fields=6)
+        model = build_testcase_model(self._schema("DOM-HOSPITAL"), fields=6)
         self.assertEqual(model["fields"], 6)
         self.assertGreater(model["count"], 5)
         ids = [r["id"] for r in model["rows"]]
@@ -43,13 +44,13 @@ class TestcaseTests(unittest.TestCase):
     def test_field_templates(self) -> None:
         schema = self._schema("DOM-SHOP")
         for n, expect_n in ((5, 5), (7, 7), (8, 8), (9, 9)):
-            model = testcase_model(schema, fields=n)
+            model = build_testcase_model(schema, fields=n)
             self.assertEqual(len(model["columns"]), expect_n)
             self.assertEqual(len(model["rows"][0]), expect_n)
-        m5 = testcase_model(schema, fields=5)
+        m5 = build_testcase_model(schema, fields=5)
         self.assertEqual(m5["columns"][1]["title"], "测试功能")
         self.assertEqual(m5["columns"][-1]["title"], "测试结果")
-        m9 = testcase_model(schema, fields=9)
+        m9 = build_testcase_model(schema, fields=9)
         self.assertEqual(m9["columns"][1]["title"], "测试模块")
         self.assertIn("前置条件", [c["title"] for c in m9["columns"]])
 
@@ -65,7 +66,7 @@ class TestcaseTests(unittest.TestCase):
             },
             "capabilities": ["org_users"],
         }
-        model = testcase_model(schema, fields=6)
+        model = build_testcase_model(schema, fields=6)
         blob = " ".join(r["item"] for r in model["rows"])
         self.assertIn("个人资料", blob)
         self.assertIn("用户", blob)

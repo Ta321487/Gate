@@ -267,17 +267,19 @@ def rule_cluster(profiles: list[DocProfile]) -> tuple[list[list[int]], list[int]
         for i, cl in enumerate(clusters):
             head = cl[0]
             fa, fb = set(s.fingerprint), set(head.fingerprint)
-            if _fps_conflict(fa, fb):
+            title_ok = _title_similar(s.title_key, head.title_key)
+            # 题名相同 = 同一课题：清单的功能词天然与开题正文不同，不得被指纹冲突否决挂靠
+            if _fps_conflict(fa, fb) and not title_ok:
                 continue
             score = 0.0
-            if _title_similar(s.title_key, head.title_key):
+            if title_ok:
                 score += 0.6
             jac = _jaccard(fa, fb)
             score += jac
             if jac >= 0.2:
                 score += 0.15
             # 题目不像时，要求指纹明显重叠才挂靠（防同域不同实现挂错）
-            if not _title_similar(s.title_key, head.title_key) and jac < 0.4:
+            if not title_ok and jac < 0.4:
                 continue
             if score > best_score:
                 best_score = score

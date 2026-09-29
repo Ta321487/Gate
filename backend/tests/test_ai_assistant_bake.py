@@ -279,7 +279,7 @@ class TestAiAssistantScan(unittest.TestCase):
             "shop_flowers": "花束怎么选购",
             "shop_errand": "代买餐饮怎么下单",
             "shop_points": "积分怎么兑换文创",
-            "library_book": "续借与逾期怎么办",
+            "library_book": "逾期与催还怎么办",
             "library_archive": "学籍档案如何查阅",
             "library_drift": "漂流文学书怎么取阅",
             "dorm": "水电报修怎么提交",

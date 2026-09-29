@@ -1,28 +1,65 @@
+/* doclib */
 [data-theme="doclib-ink"] {
-  --bg: #f2f5f8;
-  --accent: #2f5d8c;
-  --soft: #d9e4f0;
-  --ink: #152033;
-  --surface: #ffffff;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f2f5f8;
+  --portal-bg-glow: rgba(47, 93, 140, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #152033;
+  --portal-muted: #5a6b7d;
+  --portal-line: #d9e4f0;
+  --portal-brand: #2f5d8c;
+  --portal-accent: #2f5d8c;
+  --portal-accent-soft: #e3edf7;
+  --portal-cover: linear-gradient(160deg, #2f5d8c, #152033);
+  --portal-shadow-color: rgba(47, 93, 140, 0.1);
+  color-scheme: light;
 }
 [data-theme="doclib-sand"] {
-  --bg: #f7f3ec;
-  --accent: #a67c3d;
-  --soft: #f0e6d4;
-  --ink: #2a2418;
-  --surface: #fffdf9;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f7f3ec;
+  --portal-bg-glow: rgba(166, 124, 61, 0.1);
+  --portal-surface: #fffdf9;
+  --portal-ink: #2a2418;
+  --portal-muted: #6b5e48;
+  --portal-line: #e0d6c4;
+  --portal-brand: #a67c3d;
+  --portal-accent: #a67c3d;
+  --portal-accent-soft: #f0e6d4;
+  --portal-cover: linear-gradient(160deg, #a67c3d, #2a2418);
+  --portal-shadow-color: rgba(166, 124, 61, 0.1);
+  color-scheme: light;
 }
 [data-theme="doclib-slate"] {
-  --bg: #f0f2f4;
-  --accent: #475569;
-  --soft: #e2e8f0;
-  --ink: #1e293b;
-  --surface: #ffffff;
+  --portal-scheme: light;
+  --portal-mix: #ffffff;
+  --portal-bg: #f0f2f4;
+  --portal-bg-glow: rgba(71, 85, 105, 0.1);
+  --portal-surface: #ffffff;
+  --portal-ink: #1e293b;
+  --portal-muted: #5b6675;
+  --portal-line: #e2e8f0;
+  --portal-brand: #475569;
+  --portal-accent: #475569;
+  --portal-accent-soft: #e8edf3;
+  --portal-cover: linear-gradient(160deg, #475569, #1e293b);
+  --portal-shadow-color: rgba(71, 85, 105, 0.1);
+  color-scheme: light;
 }
 [data-theme="doclib-night"] {
-  --bg: #12161c;
-  --accent: #5b8ab5;
-  --soft: #1e2834;
-  --ink: #e8eef4;
-  --surface: #1a2028;
+  --portal-scheme: dark;
+  --portal-mix: #000000;
+  --portal-bg: #0f1418;
+  --portal-bg-glow: rgba(91, 138, 181, 0.12);
+  --portal-surface: #182028;
+  --portal-ink: #e8eef4;
+  --portal-muted: #9aa8b6;
+  --portal-line: #26313c;
+  --portal-brand: #5b8ab5;
+  --portal-accent: #5b8ab5;
+  --portal-accent-soft: #1c2a36;
+  --portal-cover: linear-gradient(160deg, #5b8ab5, #0f1418);
+  --portal-shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

@@ -3,15 +3,16 @@
   --portal-scheme: dark;
   --portal-mix: #1a1520;
   --portal-bg: #0f0c12;
-  --portal-bg-glow: rgba(212, 148, 72, 0.12);
+  --portal-bg-glow: rgba(168, 123, 60, 0.12);
   --portal-surface: #1a1520;
   --portal-ink: #f3ebe0;
   --portal-muted: #a89888;
   --portal-line: #2e2834;
-  --portal-brand: #d49448;
-  --portal-accent: #d49448;
+  /* 深色皮 accent 过浅会把主按钮洗成惨白块（test_chrome_theme 卡点）：压到 lum≈0.50 */
+  --portal-brand: #a87b3c;
+  --portal-accent: #a87b3c;
   --portal-accent-soft: #2a2218;
-  --portal-cover: linear-gradient(160deg, #d49448, #0f0c12);
+  --portal-cover: linear-gradient(160deg, #a87b3c, #0f0c12);
   --portal-shadow-color: rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }

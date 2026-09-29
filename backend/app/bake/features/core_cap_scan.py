@@ -381,7 +381,12 @@ def merge_occupy_span_capabilities(
     )
     if want and OCCUPY_SPAN_CAP not in out:
         out.append(OCCUPY_SPAN_CAP)
-    if OCCUPY_SPAN_CAP in out and TIME_CONFLICT_CAP not in out:
+    # time_conflict 是单据起止冲突检测（需 archive+ticket_flow）；slot 壳（预约族）不连带挂
+    if (
+        OCCUPY_SPAN_CAP in out
+        and TIME_CONFLICT_CAP not in out
+        and "ticket_flow" in out
+    ):
         out.append(TIME_CONFLICT_CAP)
     return out
 
