@@ -1,6 +1,7 @@
 {
   "capabilities": [
     "ticket_flow",
+    "deadline",
     "content",
     "org_users"
   ],

@@ -66,6 +66,8 @@ def build_tour_followup_presets(
             "remark_label": "报名说明",
             "auto_approve": False,
             "approve_ends_flow": True,
+            # 出团后满意度：与 ACTIVITY/LOST 同走单据评价（非订单评价壳）
+            "allow_rating": True,
             "contact_channel_label": "联系方式偏好",
             "contact_channel_options": ["手机电话", "微信", "站内留言", "其他"],
             "contact_channel_placeholder": "选择联系方式",

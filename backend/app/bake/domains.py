@@ -250,7 +250,8 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-DATING": ["archive", "ticket_flow", "content", "org_users", "dm"],
     "DOM-GRADE": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-INTERN": ["archive", "ticket_flow", "content", "org_users", "e_sign"],
-    "DOM-PARCEL": ["archive", "ticket_flow", "quota", "content", "org_users", "parcel_shelf"],
+    # 催领/滞留时限为域默认（SLA 列；与报修三域同口径）
+    "DOM-PARCEL": ["archive", "ticket_flow", "quota", "deadline", "content", "org_users", "parcel_shelf"],
     "DOM-SEAL": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-FLEET": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
     "DOM-CERT": ["archive", "ticket_flow", "content", "org_users", "material_check"],
@@ -304,10 +305,10 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
         "seat_select",
         "guestbook",
     ],
-    # B 报修/工单（deadline 属「扫词才挂」：超时未处理/时效催办见 core_cap_scan.merge_loan_deadline_capabilities）
-    "DOM-DORM": ["ticket_flow", "content", "org_users"],
-    "DOM-PROPERTY": ["ticket_flow", "content", "org_users"],
-    "DOM-IT": ["ticket_flow", "content", "org_users"],
+    # B 报修/工单：催办/处理时限为域默认（SLA 列；扫词仍可命中其它壳的 deadline）
+    "DOM-DORM": ["ticket_flow", "deadline", "content", "org_users"],
+    "DOM-PROPERTY": ["ticket_flow", "deadline", "content", "org_users"],
+    "DOM-IT": ["ticket_flow", "deadline", "content", "org_users"],
     # C 报名/申请
     "DOM-ACTIVITY": ["archive", "ticket_flow", "quota", "content", "org_users", "time_conflict", "checkin", "waitlist"],
     "DOM-LOST": [

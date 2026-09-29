@@ -319,10 +319,12 @@ def _equip_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         ),
         banners,
     )
-    # 归还验图：域默认强制上传归还照片
+    # 归还验图 + 用途必填：设备借用开题通识
     ticket = (out.get("entities") or {}).get("ticket")
     if isinstance(ticket, dict):
         ticket["requireReturnAttach"] = True
+        ticket["requireRemark"] = True
+        ticket["remarkLabel"] = "用途说明"
         labels = out.setdefault("labels", {})
         labels.setdefault("returnAttachHint", "归还时请上传设备外观/配件照片，便于验收。")
     return out
