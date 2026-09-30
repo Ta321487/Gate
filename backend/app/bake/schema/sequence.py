@@ -67,9 +67,24 @@ _METHOD_PUBLIC_RE = re.compile(
     r'(?:public|protected)\s+(?:static\s+)?[\w.<>,\s\[\]]+\s+(\w+)\s*\([^;{]*\)\s*(?:throws\s+[^{]+)?\{',
 )
 _VUE_BTN_RE = re.compile(
-    r">\s*([^<>{%]{2,24})\s*</(?:el-button|button|n-button|a)\b",
+    r">\s*([^<>{%]{2,24})\s*(?:<span\b[^>]*>.*?</span>\s*)?</(?:el-button|button|n-button|a)\b",
+    re.I | re.S,
+)
+# 按钮文案走 {{ labelVar }} 时：从图侧按 schema.labels / verbs 解析，禁止写死域词进 Vue
+# 后缀放宽到 48：兼容「{{ batchHireLabel }}（{{ selectedIds.length }}）」一类数量徽标
+_VUE_MUSTACHE_BTN_RE = re.compile(
+    r">\s*\{\{\s*([\w.$]+)\s*\}\}([^<]{0,48})</(?:el-button|button|n-button|a)\b",
     re.I,
 )
+# mustache 变量 → (labels键, verbs键, 无配置时的图面兜底；兜底仅扫图用，界面仍跟 labels)
+_VUE_MUSTACHE_BTN_RESOLVE: dict[str, tuple[str, str, str]] = {
+    "batchHireLabel": ("batchHireLabel", "", "批量录用"),
+    "batchRejectLabel": ("batchRejectLabel", "", "批量淘汰"),
+    "renewVerb": ("renewVerb", "renew", "续借"),
+    "fineWaiveLabel": ("fineWaiveLabel", "", "罚款减免"),
+    "lostVerb": ("bookLostVerb", "reportLost", "申报丢失"),
+    "claimHoldVerb": ("bookHoldClaimVerb", "claimHold", "确认借阅"),
+}
 _SKIP_METHODS = {
     "toString",
     "hashCode",
@@ -292,8 +307,74 @@ _VUE_FILE_HINTS: dict[str, tuple[str, ...]] = {
 
 # 仅当所在 Vue 文件已命中本功能时，才允许这些短操作词入选
 _SHORT_ACTION_BTNS = frozenset(
-    {"保存", "提交", "确认", "新增", "编辑", "删除", "查询", "登录", "注册", "发布"}
+    {
+        "保存",
+        "提交",
+        "确认",
+        "新增",
+        "编辑",
+        "删除",
+        "查询",
+        "登录",
+        "注册",
+        "发布",
+        "通过",
+        "驳回",
+        "导出清单",
+        "复制清单",
+        "取消收藏",
+    }
 )
+
+
+def _schema_labels(schema: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(schema, dict):
+        return {}
+    labels = schema.get("labels")
+    return labels if isinstance(labels, dict) else {}
+
+
+def _schema_verbs(schema: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(schema, dict):
+        return {}
+    verbs = schema.get("verbs")
+    if isinstance(verbs, dict):
+        return verbs
+    labels = _schema_labels(schema)
+    nested = labels.get("verbs")
+    return nested if isinstance(nested, dict) else {}
+
+
+def _resolve_mustache_btn(var_name: str, schema: dict[str, Any] | None) -> str:
+    """把 Vue {{ batchHireLabel }} 解成当前域文案（优先 schema，再 verbs，最后图面兜底）。"""
+    key = str(var_name or "").split(".")[-1].strip()
+    spec = _VUE_MUSTACHE_BTN_RESOLVE.get(key)
+    if not spec:
+        return ""
+    lab_key, verb_key, fallback = spec
+    labels = _schema_labels(schema)
+    verbs = _schema_verbs(schema)
+    if lab_key:
+        got = str(labels.get(lab_key) or "").strip()
+        if got:
+            return got
+    if verb_key:
+        got = str(verbs.get(verb_key) or "").strip()
+        if got:
+            return got
+    return fallback
+
+
+def _schema_demo_actions(schema: dict[str, Any] | None) -> dict[str, str]:
+    """当前域演示动作文案（供 prefer_submit，跟 labels 走）。"""
+    return {
+        "batch_hire": _resolve_mustache_btn("batchHireLabel", schema),
+        "batch_reject": _resolve_mustache_btn("batchRejectLabel", schema),
+        "renew": _resolve_mustache_btn("renewVerb", schema),
+        "fine_waive": _resolve_mustache_btn("fineWaiveLabel", schema),
+        "lost": _resolve_mustache_btn("lostVerb", schema),
+        "claim_hold": _resolve_mustache_btn("claimHoldVerb", schema),
+    }
 
 
 def _vue_path_score(path: Path, *, menu_key: str, kind: str, menu_label: str) -> int:
@@ -317,7 +398,14 @@ def _vue_path_score(path: Path, *, menu_key: str, kind: str, menu_label: str) ->
     return score
 
 
-def _btn_fits_feature(lab: str, *, menu_label: str, entity: str, kind: str = "") -> bool:
+def _btn_fits_feature(
+    lab: str,
+    *,
+    menu_label: str,
+    entity: str,
+    kind: str = "",
+    extra_short: frozenset[str] | set[str] | None = None,
+) -> bool:
     """按钮是否属于当前勾选功能：含本菜单/实体名，或为本功能页上的短操作词。
 
     不含菜单/实体的长复合按钮（任意其它能力页上的「提交xxx」）一律不收——
@@ -329,7 +417,10 @@ def _btn_fits_feature(lab: str, *, menu_label: str, entity: str, kind: str = "")
         return False
     menu_label = str(menu_label or "").strip()
     entity = str(entity or "").strip()
-    if lab in _SHORT_ACTION_BTNS:
+    shorts = set(_SHORT_ACTION_BTNS)
+    if extra_short:
+        shorts |= {str(x).strip() for x in extra_short if str(x).strip()}
+    if lab in shorts:
         return True
     if menu_label and menu_label in lab:
         return True
@@ -345,6 +436,7 @@ def _scan_vue_buttons(
     menu_key: str = "",
     kind: str = "",
     entity: str = "",
+    schema: dict[str, Any] | None = None,
 ) -> list[str]:
     """只从文件名已命中本功能的 Vue 页取按钮；扫不到则空列表（退回 schema 文案）。"""
     fe = workspace / "frontend" / "src"
@@ -352,6 +444,8 @@ def _scan_vue_buttons(
         return []
     needle = (menu_label or "").strip()
     entity = (entity or "").strip()
+    demo = _schema_demo_actions(schema)
+    extra_short = {v for v in demo.values() if v}
     ranked: list[tuple[int, Path]] = []
     for path in fe.rglob("*.vue"):
         if "views" not in str(path).replace("\\", "/"):
@@ -373,22 +467,42 @@ def _scan_vue_buttons(
     ranked.sort(key=lambda x: (-x[0], str(x[1])))
     hits: list[str] = []
     seen: set[str] = set()
+
+    def _push(lab: str) -> bool:
+        lab = re.sub(r"\s+", "", str(lab or "").strip())
+        # 截掉数量后缀：xxx（3）→ xxx
+        lab = re.sub(r"[（(]\d+[）)]$", "", lab)
+        if not lab or lab in seen or len(lab) > 20:
+            return False
+        if any(x in lab for x in ("{{", "v-", "el-", "n-", "http")):
+            return False
+        if not _btn_fits_feature(
+            lab,
+            menu_label=needle,
+            entity=entity,
+            kind=kind,
+            extra_short=extra_short,
+        ):
+            return False
+        seen.add(lab)
+        hits.append(lab)
+        return len(hits) >= 6
+
     for _sc, path in ranked[:6]:
         try:
             text = path.read_text(encoding="utf-8")
         except Exception:
             continue
+        # 先收 schema 解析的 mustache（域演示动作），再收字面按钮，避免「通过/提交」占满 6 格
+        for m in _VUE_MUSTACHE_BTN_RE.finditer(text):
+            key = str(m.group(1) or "").strip().split(".")[-1]
+            zh = _resolve_mustache_btn(key, schema)
+            if not zh:
+                continue
+            if _push(zh):
+                return hits
         for m in _VUE_BTN_RE.finditer(text):
-            lab = re.sub(r"\s+", "", m.group(1).strip())
-            if not lab or lab in seen or len(lab) > 20:
-                continue
-            if any(x in lab for x in ("{{", "v-", "el-", "n-", "http")):
-                continue
-            if not _btn_fits_feature(lab, menu_label=needle, entity=entity, kind=kind):
-                continue
-            seen.add(lab)
-            hits.append(lab)
-            if len(hits) >= 6:
+            if _push(m.group(1)):
                 return hits
     return hits
 
@@ -697,11 +811,18 @@ def _pick_vue_btn(
     entity: str,
     kind: str,
     prefer_substrings: tuple[str, ...],
+    extra_short: frozenset[str] | set[str] | None = None,
 ) -> str:
     for b in vue_btns:
-        if not _btn_fits_feature(b, menu_label=menu_label, entity=entity, kind=kind):
+        if not _btn_fits_feature(
+            b,
+            menu_label=menu_label,
+            entity=entity,
+            kind=kind,
+            extra_short=extra_short,
+        ):
             continue
-        if any(x in b for x in prefer_substrings):
+        if any(x in b for x in prefer_substrings if x):
             return b
     return ""
 
@@ -715,20 +836,34 @@ def _build_business_phase(
     ops: list[dict[str, str]],
     vue_btns: list[str],
     kind: str,
+    schema: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     msgs: list[dict[str, Any]] = []
     seq = seq0
     phase = "biz"
     reads, writes = _classify_ops(ops)
+    demo = _schema_demo_actions(schema)
+    extra_short = {v for v in demo.values() if v}
     # 只保留与本菜单/实体对齐的按钮；无关复合文案自然被拒
     vue_btns = [
         b
         for b in (vue_btns or [])
-        if _btn_fits_feature(b, menu_label=menu_label, entity=entity, kind=kind)
+        if _btn_fits_feature(
+            b,
+            menu_label=menu_label,
+            entity=entity,
+            kind=kind,
+            extra_short=extra_short,
+        )
     ]
 
     open_btn = _pick_vue_btn(
-        vue_btns, menu_label=menu_label, entity=entity, kind=kind, prefer_substrings=(menu_label,) if menu_label else ()
+        vue_btns,
+        menu_label=menu_label,
+        entity=entity,
+        kind=kind,
+        prefer_substrings=(menu_label,) if menu_label else (),
+        extra_short=extra_short,
     )
     if not open_btn and menu_label:
         open_btn = next((b for b in vue_btns if menu_label in b), "")
@@ -782,8 +917,12 @@ def _build_business_phase(
         )
     )
 
-    # 写路径（有写操作或非纯浏览 kind）
+    # 写路径（有写操作或非纯浏览 kind；收藏夹有导出/复制清单时也画分享写路径）
     need_write = bool(writes) or kind not in BROWSE_SEQUENCE_KINDS
+    if kind == "favorites" and any(
+        x in vue_btns for x in ("导出清单", "复制清单")
+    ):
+        need_write = True
     if need_write:
         # 自调用优先用本功能菜单/实体措辞，不用跨页按钮
         pick = _pick_vue_btn(
@@ -812,18 +951,41 @@ def _build_business_phase(
             )
         )
 
+        prefer_submit = ("保存", "提交", "确认", "预约", "下单", "发布")
+        if kind == "ticket_pending":
+            prefer_submit = tuple(
+                x
+                for x in (demo.get("batch_hire"), "通过", "保存", "提交", "确认")
+                if x
+            )
+        elif kind == "favorites":
+            prefer_submit = ("导出清单", "复制清单", "取消收藏", "保存", "提交")
+        elif kind == "my_tickets":
+            prefer_submit = tuple(
+                x for x in (demo.get("renew"), "提交", "确认", "保存") if x
+            )
+        elif kind == "ticket_records":
+            prefer_submit = tuple(
+                x for x in (demo.get("fine_waive"), "保存", "提交", "确认") if x
+            )
         submit_btn = _pick_vue_btn(
             vue_btns,
             menu_label=menu_label,
             entity=entity,
             kind=kind,
-            prefer_substrings=("保存", "提交", "确认", "预约", "下单", "发布"),
+            prefer_substrings=prefer_submit,
+            extra_short=extra_short,
         )
-        # 必须是短操作词，或文案里带本菜单/实体；否则退回 schema 措辞
-        if submit_btn and submit_btn not in _SHORT_ACTION_BTNS and not (
+        # 必须是短操作词/域演示动作，或文案里带本菜单/实体；否则退回 schema 措辞
+        allowed_short = set(_SHORT_ACTION_BTNS) | extra_short
+        if submit_btn and submit_btn not in allowed_short and not (
             (entity and entity in submit_btn) or (menu_label and menu_label in submit_btn)
         ):
             submit_btn = ""
+        # 待办审单：schema 开了批量动作且页面有该按钮时优先画（文案跟 labels）
+        batch_lab = str(demo.get("batch_hire") or "").strip()
+        if kind == "ticket_pending" and batch_lab and batch_lab in vue_btns:
+            submit_btn = batch_lab
         self2 = submit_btn or (f"确认{menu_label}" if menu_label else (f"保存{stem}" if stem else "确认提交"))
         seq += 1
         msgs.append(
@@ -900,6 +1062,7 @@ def build_diagram_messages(
             menu_key=str(case.get("menu_key") or ""),
             kind=kind,
             entity=entity,
+            schema=schema,
         )
         if workspace
         else []
@@ -934,6 +1097,7 @@ def build_diagram_messages(
                 ops=biz_ops or auth_ops,
                 vue_btns=vue_btns,
                 kind=kind,
+                schema=schema,
             )
         )
     else:
@@ -950,6 +1114,7 @@ def build_diagram_messages(
                 ops=biz_ops,
                 vue_btns=vue_btns,
                 kind=kind,
+                schema=schema,
             )
         )
     # 重排序号，并折叠叠词（防「登录登录」）
