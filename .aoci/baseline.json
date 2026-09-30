@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-09-30T18:32:57Z",
+  "updated_at": "2026-09-30T19:14:25Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -191,9 +191,9 @@
       "normalized_sha256": "48844d5ab52672f13656cf41ca6aa06ad00a10db7ad1665952ecf15dc6b14bf4"
     },
     "aoci.code.txt": {
-      "sha256": "55ed5713325ee4e789567e475e968cd04b104aacef0b4748917986028d6daac0",
-      "size": 246072,
-      "normalized_sha256": "55ed5713325ee4e789567e475e968cd04b104aacef0b4748917986028d6daac0"
+      "sha256": "528bd06892e2b2b61557adee9ff0d97dbbadbbe019004a2548a64b4fc7c5454a",
+      "size": 256818,
+      "normalized_sha256": "528bd06892e2b2b61557adee9ff0d97dbbadbbe019004a2548a64b4fc7c5454a"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
@@ -653,9 +653,9 @@
       "normalized_sha256": "3b39d7099b7833579c83f93caac4856fef4deee768d34aa162cfdaafc77904b5"
     },
     "backend/app/bake/features/borrow_thicken.py": {
-      "sha256": "ee4f3fa7f5f869e5adabfc18b8ee43a76ccf4bf0bc8c31c863ab07d3bd310ee9",
-      "size": 37999,
-      "normalized_sha256": "ee4f3fa7f5f869e5adabfc18b8ee43a76ccf4bf0bc8c31c863ab07d3bd310ee9"
+      "sha256": "bc7bdd0fb777d8165cafc4a36b1b7be6b4c7c3d5a6c8c5c5df69232b49b2d652",
+      "size": 38244,
+      "normalized_sha256": "bc7bdd0fb777d8165cafc4a36b1b7be6b4c7c3d5a6c8c5c5df69232b49b2d652"
     },
     "backend/app/bake/features/buyback.py": {
       "sha256": "8549f160cc0e99f55c40607a74e58ab50b17228c19305c83f54b78093497be79",
@@ -1639,9 +1639,9 @@
       "normalized_sha256": "e66158984bc193586183489d1fa1b3f448db8d6b03f747ee3e319bc4ca934f0e"
     },
     "backend/app/bake/schema/er_zh.py": {
-      "sha256": "8680092f0fc6d02183fa73915de87acd20b838f443cc35c35a7b753af1031cdc",
+      "sha256": "dbc2227a8ddda1820457a4d44c11a120dcdd1f0abaf9da2b5d9cc746816735a7",
       "size": 14056,
-      "normalized_sha256": "8680092f0fc6d02183fa73915de87acd20b838f443cc35c35a7b753af1031cdc"
+      "normalized_sha256": "dbc2227a8ddda1820457a4d44c11a120dcdd1f0abaf9da2b5d9cc746816735a7"
     },
     "backend/app/bake/schema/followup_presets.py": {
       "sha256": "a71d65ba8c54eb74759c0c2bdbdc721a260f3d85d2710f1055cb0789b5fce4d4",
@@ -2589,9 +2589,9 @@
       "normalized_sha256": "ee2d2512969eec26a301f846a1303b11dd66b9b4cee49c5c2411d3d3d06a71bd"
     },
     "backend/app/services/project_disk.py": {
-      "sha256": "0f4de1554f336d4174867c4935f66b662ed112f0e576cb9f9c65a22127cf9f11",
-      "size": 9907,
-      "normalized_sha256": "f3d3a12cba4d47ad4440f1e72c646c6f7f79ce0166fc9235b261dc3cddcc39f0"
+      "sha256": "615e142b0487695e1092e3ce064c84b21de2f65d95846e9444e8ec6e9ac20a50",
+      "size": 10052,
+      "normalized_sha256": "615e142b0487695e1092e3ce064c84b21de2f65d95846e9444e8ec6e9ac20a50"
     },
     "backend/app/services/project_match.py": {
       "sha256": "fbe196d7cca846b660223187a53806b1bc5b43caba2af4d4daee0e79a92bcfd3",
@@ -6148,9 +6148,9 @@
       "normalized_sha256": "f81a222a2cc50287bbacacbea39ec40bdfaa9631d17f96e4b4f0f70e5b56f3e3"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketRowMaps.java": {
-      "sha256": "a8e662ab0ebe4b15e4ff8efdc9aab175654a31071688ec60428b60799ec37ffc",
-      "size": 16376,
-      "normalized_sha256": "a8e662ab0ebe4b15e4ff8efdc9aab175654a31071688ec60428b60799ec37ffc"
+      "sha256": "42a4f669a7070260671cacc312245126f52ca38733f6a49f56734b807f4aea1e",
+      "size": 16435,
+      "normalized_sha256": "42a4f669a7070260671cacc312245126f52ca38733f6a49f56734b807f4aea1e"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketSql.java": {
       "role": "index",
@@ -6159,14 +6159,14 @@
       "normalized_sha256": "2af6f584f5734491a677b10f09bed5205c49f0008e4c03b785f6ad35898009d7"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStatusOps.java": {
-      "sha256": "3b0784016c73ae17684ea360f2e993c0fcae101986974c2d7364b4b54d121440",
-      "size": 11525,
-      "normalized_sha256": "3b0784016c73ae17684ea360f2e993c0fcae101986974c2d7364b4b54d121440"
+      "sha256": "e63ba5084a0d286b6ab842976a975d34a460b819dcb0aab68ff7e89e5a1f12df",
+      "size": 11822,
+      "normalized_sha256": "e63ba5084a0d286b6ab842976a975d34a460b819dcb0aab68ff7e89e5a1f12df"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "81db4f31b6d1b6359bb87f8c34848b7032f1fd409096bd7b56fb75ce3b3e850b",
-      "size": 195794,
-      "normalized_sha256": "81db4f31b6d1b6359bb87f8c34848b7032f1fd409096bd7b56fb75ce3b3e850b"
+      "sha256": "196d51bb68f34f787db426bb1b2a04129b7379ae933a4c6b3982f50be4e89213",
+      "size": 208541,
+      "normalized_sha256": "196d51bb68f34f787db426bb1b2a04129b7379ae933a4c6b3982f50be4e89213"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "8068e5373c448c8bdff02b4508575bef4cf9817c9de91cfd667726bf08eaad11",
@@ -6220,6 +6220,11 @@
       "size": 994,
       "normalized_sha256": "10a63867d1363acd20d995855746eac1042fd4c668f2817ba87b38f949b9e463"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java": {
+      "sha256": "9ec82d67b075374892051dfb49efcdbf62177dea449260b3b4defc47600549c2",
+      "size": 5286,
+      "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java": {
       "role": "index",
       "sha256": "8a2d14c856523427cb4144d04354570df4d14dab079c7289a8fa38f15d6c3ee7",
@@ -6233,9 +6238,9 @@
       "normalized_sha256": "38f7583677c69462692f1c11de84232894369c80ae35a56e1adbe0ea80ab96d5"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "8cfbc9a50d7a36ba2630b5f88452f8d99614d91e7f4a52ac0cecbb94bc36b066",
-      "size": 38296,
-      "normalized_sha256": "8cfbc9a50d7a36ba2630b5f88452f8d99614d91e7f4a52ac0cecbb94bc36b066"
+      "sha256": "39a7f67c2158ddf1e78a3bead9000e9b2e1d6f5c7331cca125e87f11c2f19ed9",
+      "size": 38619,
+      "normalized_sha256": "545c92fc9b37ad6b663e8d3d39cb5e6dc2f770931ead6cf474f6bd5ad0d8ef2b"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/JdbcSupport.java": {
       "role": "index",
@@ -6248,6 +6253,11 @@
       "sha256": "37d252569e43d4941e5bbe0b316dcb5dc127f42c89632dc8a1b9fe97c0817375",
       "size": 3528,
       "normalized_sha256": "37d252569e43d4941e5bbe0b316dcb5dc127f42c89632dc8a1b9fe97c0817375"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
+      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
+      "size": 11100,
+      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/UploadInlineFilter.java": {
       "role": "index",
@@ -6414,9 +6424,9 @@
       "normalized_sha256": "f71a6674058a480753363c7a099d968162be8502f3556e0d53862910d260b979"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/FundPublicityController.java": {
-      "sha256": "da92c1614b7f8981ad88dcfa443b91b66522d5e21b032277a94456f328175549",
-      "size": 3349,
-      "normalized_sha256": "60195d4acbaca28ed80814e5a0d698575ccca0c9ec2e84313397804ee71c6960"
+      "sha256": "758c9d3bfd9e8e7207c380d0a81234dccfdf60cee8239adad755746c86ead0a7",
+      "size": 4092,
+      "normalized_sha256": "598b4f98e408fff7b86de7a49bce0c9afb15f847a8d8e2df1550b4d1931b7450"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/GateController.java": {
       "role": "index",
@@ -6425,9 +6435,9 @@
       "normalized_sha256": "0808698a53b288e8eaec0c35d097e3e89f1e125ca85592f66b47a222888082d3"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/GradeScoreController.java": {
-      "sha256": "679edcc86b7c72e57df5eb9c86dfe05ff8556d5b83067877ecc7774410c1013b",
-      "size": 8473,
-      "normalized_sha256": "679edcc86b7c72e57df5eb9c86dfe05ff8556d5b83067877ecc7774410c1013b"
+      "sha256": "2f51ec2c016c7900835911c52ea927eefe26ca4519c1fc63f5208b270fad0148",
+      "size": 8866,
+      "normalized_sha256": "2f51ec2c016c7900835911c52ea927eefe26ca4519c1fc63f5208b270fad0148"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/GroupBuyController.java": {
       "sha256": "32bbb6e6cae4aafa43c9bda0b297b54bf23e4f62572f9c11732d63446366a8df",
@@ -6600,9 +6610,9 @@
       "normalized_sha256": "5642c256f33c4c52f0a21bb8081fc0b4df0d5e57619abcc9dd97862f908a6ec7"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java": {
-      "sha256": "992356cf927804d381b31c05021a28e434d3180000f8fbecdf4cae0969002439",
-      "size": 36183,
-      "normalized_sha256": "992356cf927804d381b31c05021a28e434d3180000f8fbecdf4cae0969002439"
+      "sha256": "8fd4b0b534f81d84aa312303cebf95d35b0424d8af716932b2f95fb5e395f0b2",
+      "size": 41166,
+      "normalized_sha256": "8fd4b0b534f81d84aa312303cebf95d35b0424d8af716932b2f95fb5e395f0b2"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketDashboardController.java": {
       "sha256": "30025d6f411e1874db3ebd370fcfc042c778ee0e05f1f67a17d37e0d4be59bca",
@@ -6696,14 +6706,14 @@
       "normalized_sha256": "92abc36ea49179785d1d9d230dfe64cc821c7d317ed2cbc19772340c009e6bd2"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/service/FundPublicityStore.java": {
-      "sha256": "6588e5f23832824ca2085cf6f160d98b0ed8299b7c99954f1f802101927a5e50",
-      "size": 6400,
-      "normalized_sha256": "0d29d7fc8698b17ad3aed9ae5147c6a6931a55ef497e31f0fe53e90a5774bda5"
+      "sha256": "1d33700a1ad7759ed0b156facdffcefe4f09b717396367eceef54fa1a88d673d",
+      "size": 13955,
+      "normalized_sha256": "1db6774c5e019b750c86b6f2981d876ef61548acd4b41bb8a9a75173894512ce"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/service/GradeScoreStore.java": {
-      "sha256": "230f232835087c72f616b47c30a940392aa7c8615366565e18d1097acba224d8",
-      "size": 16165,
-      "normalized_sha256": "87f4c0ab1991527119d57434f46dce828c3f7496f67eca900a85ca474dde19f2"
+      "sha256": "38d89703f868435b474fd131e3845f0090f212355a5ee994e058c37d00b7e86d",
+      "size": 19513,
+      "normalized_sha256": "d2a87a85949a6e649e6ba3870c2a1114f2614f843e76b785a6fc0a5ea86e388b"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/service/GuestbookStore.java": {
       "role": "index",
@@ -6887,9 +6897,9 @@
       "normalized_sha256": "0cf35303a3a1bc2fc447782a62e19d72e8fc802f736099954690d5626cfee32c"
     },
     "skeletons/baseline/frontend/src/components/DashboardCharts.vue": {
-      "sha256": "8366b5e7dfc6e96f357c775dbaca642cc6ad15148cec7f6a34ba7445ca32dfe5",
-      "size": 18718,
-      "normalized_sha256": "8366b5e7dfc6e96f357c775dbaca642cc6ad15148cec7f6a34ba7445ca32dfe5"
+      "sha256": "a73b5b99906cdc79e9b8536d069711b2f699775aab6c989b8d02526c6719cd65",
+      "size": 20432,
+      "normalized_sha256": "a73b5b99906cdc79e9b8536d069711b2f699775aab6c989b8d02526c6719cd65"
     },
     "skeletons/baseline/frontend/src/components/EmptyHint.vue": {
       "role": "index",
@@ -6957,6 +6967,11 @@
       "size": 7585,
       "normalized_sha256": "b9fbe769d5b25a1d4cec4756e6cffb401fef51bece9da12c3c623212f2300d9b"
     },
+    "skeletons/baseline/frontend/src/components/RepairFinishDialog.vue": {
+      "sha256": "9931e4690b409a8694238d1d20284cf47c8fa4eb278dd0254ae70bc4b907908b",
+      "size": 11479,
+      "normalized_sha256": "727c0a655101d20ce2c4c6462be6a17e9a2d2d835f8fc81f986b8bfcad368a24"
+    },
     "skeletons/baseline/frontend/src/components/RichTextEditor.vue": {
       "role": "index",
       "sha256": "a5afc170a3e0141f56e1fb164707a286c63ed14e57f28784434a3cfb9c607cbe",
@@ -6968,6 +6983,11 @@
       "sha256": "7ad353d8d06d1e73304469a78b9aecd379735f9eca364cc453297c1edb09c084",
       "size": 1462,
       "normalized_sha256": "7ad353d8d06d1e73304469a78b9aecd379735f9eca364cc453297c1edb09c084"
+    },
+    "skeletons/baseline/frontend/src/components/SchemaLabelHints.vue": {
+      "sha256": "fec300c6dc727a9ba2ae821f429ed47a8cf719d556f828737730a317ce3b32e4",
+      "size": 805,
+      "normalized_sha256": "fec300c6dc727a9ba2ae821f429ed47a8cf719d556f828737730a317ce3b32e4"
     },
     "skeletons/baseline/frontend/src/components/SpecialMotif.vue": {
       "role": "index",
@@ -6982,16 +7002,14 @@
       "normalized_sha256": "af1b33841bc7d8ea495c7d8f56f85e6cd432b52bc0adc2851ee01389add1127f"
     },
     "skeletons/baseline/frontend/src/components/TicketProgressDialog.vue": {
-      "role": "index",
-      "sha256": "ad285b534a3418233368944e85f888cc84c14c117e82718424a18bff9b938c0d",
-      "size": 2472,
-      "normalized_sha256": "920867ded4f83251d9009077d2851b13ef0da25f838f4010fc362ea425feeb95"
+      "sha256": "5887744221dcd8ec3566cbf6588d8bf98de0df11893eeb5e0cc348d6bcc4e3fe",
+      "size": 2701,
+      "normalized_sha256": "5887744221dcd8ec3566cbf6588d8bf98de0df11893eeb5e0cc348d6bcc4e3fe"
     },
     "skeletons/baseline/frontend/src/components/TicketRateDialog.vue": {
-      "role": "index",
-      "sha256": "966315791fca01e2b8ad08a4bcb5d26f1efe100e4efe8691e9e2e6778ecbc3b3",
-      "size": 3500,
-      "normalized_sha256": "966315791fca01e2b8ad08a4bcb5d26f1efe100e4efe8691e9e2e6778ecbc3b3"
+      "sha256": "8c7a8dba44f1db5f081a1dc6c86d6c7afa03a5a2742806c0d2c5257abb3971b5",
+      "size": 5321,
+      "normalized_sha256": "8c7a8dba44f1db5f081a1dc6c86d6c7afa03a5a2742806c0d2c5257abb3971b5"
     },
     "skeletons/baseline/frontend/src/layouts/AdminLayout.vue": {
       "sha256": "b5588d5609a3ad93dc68afafed69cbbc88f1c79148e77ed7180ed6d7020b6752",
@@ -7531,6 +7549,11 @@
       "size": 1021,
       "normalized_sha256": "ac1bd1f393b92c33eea57eb4aac5d2b18a5a144fd93c8a9f1bf189111fec3481"
     },
+    "skeletons/baseline/frontend/src/utils/labelHintMount.js": {
+      "sha256": "b3ef09a8135e3d4ddca111ec7a6935163890d369dc0693b22ef4cbb1fca31da0",
+      "size": 1799,
+      "normalized_sha256": "b3ef09a8135e3d4ddca111ec7a6935163890d369dc0693b22ef4cbb1fca31da0"
+    },
     "skeletons/baseline/frontend/src/utils/menuRoutes.js": {
       "sha256": "f1fc1cc26c7e5971fd26c1dc32be0c03aced36fab933fdc9d34d1915ab027caa",
       "size": 4955,
@@ -7667,10 +7690,9 @@
       "normalized_sha256": "5cf13e885111af4484c67d3f05794f2f9586d8b744bb84c458de1a327bcd5559"
     },
     "skeletons/baseline/frontend/src/views/GradeScoresMine.vue": {
-      "role": "index",
-      "sha256": "2a5416daf4c2a0cd10c629346b9b6640883ac8a305d010cf91feb1cddba70341",
-      "size": 1125,
-      "normalized_sha256": "5e7a6524cc236aa6c6a7f6127739b68852cdae6e2513f4be77944cb306d459c6"
+      "sha256": "f306995d9ebe63591e0826004c31438473ced4be11ff08ab1af788be2c9fe384",
+      "size": 2799,
+      "normalized_sha256": "f306995d9ebe63591e0826004c31438473ced4be11ff08ab1af788be2c9fe384"
     },
     "skeletons/baseline/frontend/src/views/Guestbook.vue": {
       "sha256": "8f9d5ffc3db2c2a1e861dada7fdc58afac140c24ae01245b753b0ea238118df3",
@@ -7695,9 +7717,9 @@
       "normalized_sha256": "02223705b75e47d924bc91d0aa36808f243ebd549f94f670a2ec982fdd0ee688"
     },
     "skeletons/baseline/frontend/src/views/Notices.vue": {
-      "sha256": "c5dd4b73b5aa3225b07a9a69e687ee82e412c32139094ef2a8026c96b562fb69",
-      "size": 5667,
-      "normalized_sha256": "5e8e158ca3f92028fb98efc7bbb85d9e38641cb5d9d75750d42930a26fe9630f"
+      "sha256": "75301bce60a81221a81627c49d744103658786f46e3eb651b7a2a0fc6be360ad",
+      "size": 5935,
+      "normalized_sha256": "75301bce60a81221a81627c49d744103658786f46e3eb651b7a2a0fc6be360ad"
     },
     "skeletons/baseline/frontend/src/views/OccupyMine.vue": {
       "role": "index",
@@ -7782,9 +7804,9 @@
       "normalized_sha256": "3d6c366b90426eaf9f6eca8a31ab4d4c43925115781eee5d6605d06b02e71c4f"
     },
     "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue": {
-      "sha256": "260b4f8cabfb7577517e30a9c6ca8ee91cebef484334507a5a7ffe935fbceec2",
-      "size": 34205,
-      "normalized_sha256": "260b4f8cabfb7577517e30a9c6ca8ee91cebef484334507a5a7ffe935fbceec2"
+      "sha256": "0d8405180ae300c41a90b5bd5266842dba4903c751dde7e46e3e24c23780530e",
+      "size": 35783,
+      "normalized_sha256": "0d8405180ae300c41a90b5bd5266842dba4903c751dde7e46e3e24c23780530e"
     },
     "skeletons/baseline/frontend/src/views/admin/ArchiveLogsAdmin.vue": {
       "role": "index",
@@ -7931,9 +7953,9 @@
       "normalized_sha256": "0093a570599cc3e6cd0949cff4a0b9e78612db0545083ee42a816c331982399c"
     },
     "skeletons/baseline/frontend/src/views/admin/FundPublicityAdmin.vue": {
-      "sha256": "91cb2bcf57b44210ec6aab49b3bb0cc3d3b194b6cd453e2a359464bbd06d1588",
-      "size": 6116,
-      "normalized_sha256": "a69ca6b91c5a8a5445dee4f44287c5877f7c7efd995b4e6ec2bd243cf76d0725"
+      "sha256": "aac8078a93534cbf708247d43c5e98dde8a7180fcb776ce7093f10fe3a3e980e",
+      "size": 6903,
+      "normalized_sha256": "85ebdbe31dd433b33ab5339902f06485a998f07263e636da7642777cfd1a10f9"
     },
     "skeletons/baseline/frontend/src/views/admin/GradeScoresAdmin.vue": {
       "sha256": "c1f2274b763c1786a8e8e4b64f37b03dc5c6c0b8d4e9c5bb7a07e217a000b69d",
@@ -8121,19 +8143,19 @@
       "normalized_sha256": "828dafeba13894ca63129feaeda8433d042f54aaecfa6a4b5deac9a5aefd089b"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketDashboard.vue": {
-      "sha256": "9edcb4cb7ec059414fc344b24ab9e0863c6d458b691527d02f99409f0dd944ba",
-      "size": 14591,
-      "normalized_sha256": "9edcb4cb7ec059414fc344b24ab9e0863c6d458b691527d02f99409f0dd944ba"
+      "sha256": "c0d2f69985f9cb4303538415337825a1d7ca33d3852bfd5bdd63db6916a41cfe",
+      "size": 15194,
+      "normalized_sha256": "c0d2f69985f9cb4303538415337825a1d7ca33d3852bfd5bdd63db6916a41cfe"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketRecordsAdmin.vue": {
-      "sha256": "f05f4aaf17f7aea6fb78ff128f51dc6433dc2b022ec56d18fd295332f5db769b",
-      "size": 23480,
-      "normalized_sha256": "f05f4aaf17f7aea6fb78ff128f51dc6433dc2b022ec56d18fd295332f5db769b"
+      "sha256": "e3f8c17c0e58414b78b69d34f9a52c81385ebaff988dce75e8a46bf36a8311a6",
+      "size": 29256,
+      "normalized_sha256": "e3f8c17c0e58414b78b69d34f9a52c81385ebaff988dce75e8a46bf36a8311a6"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketsAdmin.vue": {
-      "sha256": "2bb33d01f3145342fbfadaf911eacb4437e4e0dc5cb593f7a26e949ca24a3ec0",
-      "size": 21880,
-      "normalized_sha256": "2bb33d01f3145342fbfadaf911eacb4437e4e0dc5cb593f7a26e949ca24a3ec0"
+      "sha256": "0bdbfce541b4219b3a5bf20b532655b8a621fd1da3af7eb8d663ae8ddf14545e",
+      "size": 37117,
+      "normalized_sha256": "0bdbfce541b4219b3a5bf20b532655b8a621fd1da3af7eb8d663ae8ddf14545e"
     },
     "skeletons/baseline/frontend/src/views/admin/TimebankAccountsAdmin.vue": {
       "role": "index",
@@ -8186,9 +8208,9 @@
       "normalized_sha256": "1ca455035fff59283ad3b24bffd0465648446c92989f7d62f6ba30600f96edd7"
     },
     "skeletons/baseline/frontend/src/views/staff/StaffTickets.vue": {
-      "sha256": "6380be6ee797a35fafaa3440161a5a8cc82476c880e3885ab4042372116543b5",
-      "size": 1149,
-      "normalized_sha256": "6380be6ee797a35fafaa3440161a5a8cc82476c880e3885ab4042372116543b5"
+      "sha256": "f4fbcd08a1bcf68d59e7bb75fd435bc2120aef1d899e0d4af4da0b14b5c11cfa",
+      "size": 1982,
+      "normalized_sha256": "f4fbcd08a1bcf68d59e7bb75fd435bc2120aef1d899e0d4af4da0b14b5c11cfa"
     },
     "skeletons/baseline/frontend/src/views/user/Addresses.vue": {
       "role": "index",
@@ -8197,15 +8219,14 @@
       "normalized_sha256": "75efb129d1cf914e404aeb51bbaf0ccf5aa4c2aa73c7df480148f7e316af4612"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue": {
-      "sha256": "1e86f267605f6500afecabf787c855ad12d38a728c59b826c0a9acf7f446f3c1",
-      "size": 80216,
-      "normalized_sha256": "1e86f267605f6500afecabf787c855ad12d38a728c59b826c0a9acf7f446f3c1"
+      "sha256": "14590a2dc95547e08b7d04e5a7a1273388e29e59cc4c34398342b93a782a3d8e",
+      "size": 82733,
+      "normalized_sha256": "14590a2dc95547e08b7d04e5a7a1273388e29e59cc4c34398342b93a782a3d8e"
     },
     "skeletons/baseline/frontend/src/views/user/BookSuggest.vue": {
-      "role": "index",
-      "sha256": "179ea923ed15aa2b2bb2c01acdc047b33ebda4296bb8b2fb857c12b7e1e6562a",
-      "size": 5269,
-      "normalized_sha256": "60108b4228ebbc3fb5ca5f7e7ce58f022e655e87e75ce0cf156a5d8d200707ad"
+      "sha256": "a258ed9c75d72bc055617a72af868e87fd50179534e9d97b83b04025facdc8c8",
+      "size": 5397,
+      "normalized_sha256": "4c74c6805276dec54518ce40ee31d14ed626235e0be315a8a9f5467fc65bd686"
     },
     "skeletons/baseline/frontend/src/views/user/BrowseHistory.vue": {
       "role": "index",
@@ -8225,9 +8246,9 @@
       "normalized_sha256": "d82e46cbfbc8ef58e66b1fc17dc8060e7e7b88c0a0392f6262d587c40e31ad74"
     },
     "skeletons/baseline/frontend/src/views/user/FundPublicity.vue": {
-      "sha256": "2c2f95ff1fa1c962ccd36221dfcb2241bdabff315a0f91e667a26e0b58a3aa28",
-      "size": 1770,
-      "normalized_sha256": "69c2d8327a343da724fc22465efe6ed39d31e28d71de8b1be53b1c8500b1528f"
+      "sha256": "ede42c7887922665c575104495ac93fa5c50d3e7dafe04769b18abb2133cd3a1",
+      "size": 4549,
+      "normalized_sha256": "59a753bb26a06241274705038c92fe34e4cd328674e905e034704e6cab0a8ff6"
     },
     "skeletons/baseline/frontend/src/views/user/Messages.vue": {
       "sha256": "3b9c1a6473f72565a5741ec1ff32d698687bc461889f0078767f11253efcd70e",
@@ -8309,9 +8330,9 @@
       "normalized_sha256": "44f646ddc9416878a293d060efca7db3a9d4807c50e8ae61233a9ce1710b8c47"
     },
     "skeletons/baseline/frontend/src/views/user/MyTickets.vue": {
-      "sha256": "d1591c2243c906aadbe6daf8e1f63d75ba6809c2721006740864149869ef7a93",
-      "size": 74657,
-      "normalized_sha256": "d1591c2243c906aadbe6daf8e1f63d75ba6809c2721006740864149869ef7a93"
+      "sha256": "1a095f2b4f8cb704fa1b27a3cbc5be5295c8a1b42e9f62c594239831974cfdd8",
+      "size": 92163,
+      "normalized_sha256": "1a095f2b4f8cb704fa1b27a3cbc5be5295c8a1b42e9f62c594239831974cfdd8"
     },
     "skeletons/baseline/frontend/src/views/user/ParcelShip.vue": {
       "sha256": "d060949b3ad024d0a19a45711d22e5916c0c40edea9db29056cf5a98405afc47",
@@ -8412,6 +8433,11 @@
       "size": 9660,
       "normalized_sha256": "39c1475bc0fefc7e2ede0f7676c120b3fc1e84048d42d7e0d690636a32713cbf"
     },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/BorrowCreditStore.java": {
+      "sha256": "480ebeaecfb94b8009496b0b7a4c1d3f7cb48ddc61906ae9c2aebd4d82ea869c",
+      "size": 9595,
+      "normalized_sha256": "480ebeaecfb94b8009496b0b7a4c1d3f7cb48ddc61906ae9c2aebd4d82ea869c"
+    },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/BrowseHistoryStore.java": {
       "role": "index",
       "sha256": "96ad9d6921236d3832db438e752b0bdc5e426cbbaa2a886d4534dd42f45d8a8c",
@@ -8450,10 +8476,9 @@
       "normalized_sha256": "7e6e6d8efdf250de4bf7d62233dd7090add145b95aad252b46ed43502b962fb5"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/FavoriteStore.java": {
-      "role": "index",
-      "sha256": "75f6999b6275dea48790f74c5f877143770fe2c1d53c48c51e5b8edc60f0dca5",
-      "size": 17061,
-      "normalized_sha256": "75f6999b6275dea48790f74c5f877143770fe2c1d53c48c51e5b8edc60f0dca5"
+      "sha256": "2892a8029773d55e71a4239f3c73fe84327e131b25a5173ac424c32d071ea781",
+      "size": 19059,
+      "normalized_sha256": "2892a8029773d55e71a4239f3c73fe84327e131b25a5173ac424c32d071ea781"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/FrontDeskStore.java": {
       "sha256": "77ca090b87596f70b76fa906392874f341e5cf00ec4e3e5989e376ea69ab45cd",
@@ -8549,9 +8574,9 @@
       "normalized_sha256": "590b078f11151a146e9aa938761b99f52cb89c2347087744843c5d4661b3cde9"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "9ecdb43e7045f7299aaf269c8b05423f2219eca2dea3fe1c6fc4ca59f8dc3e2f",
-      "size": 197280,
-      "normalized_sha256": "c6034b2cff2e56c3d02a83dec5d649945e025ed0aabee751a8026709b361f0ea"
+      "sha256": "98b9baf017ed4a18726b9518587d45e06863019a260cd905a06f678814c0afb5",
+      "size": 208511,
+      "normalized_sha256": "98b9baf017ed4a18726b9518587d45e06863019a260cd905a06f678814c0afb5"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "c892e4fb81d60a4c4487a80fe73e5c21a656e226c8a845c37855c66a17cf4794",
@@ -8563,6 +8588,11 @@
       "size": 12142,
       "normalized_sha256": "7adc6e651ff4d760a89c15f5a5ef7036b866ce0f95e29c5cb485c9ec2d7e3320"
     },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/AppPolicy.java": {
+      "sha256": "9ec82d67b075374892051dfb49efcdbf62177dea449260b3b4defc47600549c2",
+      "size": 5286,
+      "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
+    },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java": {
       "role": "index",
       "sha256": "a7e9064854c88fdd1b0b70d3610c2359bb412a5e42ec0e962022c94421c0bc6d",
@@ -8570,9 +8600,9 @@
       "normalized_sha256": "8a2d14c856523427cb4144d04354570df4d14dab079c7289a8fa38f15d6c3ee7"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "8c52ed4553f80d01d0c22d33123ea271d63d519e1233c9e2239d716f8c11cbb3",
-      "size": 39251,
-      "normalized_sha256": "ba6c4e1573467d7fff19ef8e27f7f3a509b270836ce5692e1902fb98b6de89ea"
+      "sha256": "ea32731dbf8fd5b734636beb9f4254935113fda485222d731eb04094d395366e",
+      "size": 38622,
+      "normalized_sha256": "0499ce2d289d5ba2c5f46b03611652c6fac5c03548f3aa6d011df762c882f9b5"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/GeneratedKeyHolder.java": {
       "role": "index",
@@ -8620,6 +8650,11 @@
       "sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea",
       "size": 204,
       "normalized_sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea"
+    },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
+      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
+      "size": 11100,
+      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/entity/NoticeEntity.java": {
       "role": "index",
@@ -8677,14 +8712,14 @@
       "normalized_sha256": "863e11d4f556b9011c2069ec5f214b0bf399f5b65287efb25c157c881171f15a"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/FundPublicityStore.java": {
-      "sha256": "bb33583fe7fd4f1c52861665545cf8ddf4d561ca7be3bf9e54f5a69bff21190e",
-      "size": 6370,
-      "normalized_sha256": "1d665087b0077df5a303d0ff07109020307152b179fcf08a7a4dda26cdc466c6"
+      "sha256": "66e33579ba90ced0574498f5f5332a3b537b7a7fcac5554d1917ae8795396670",
+      "size": 13925,
+      "normalized_sha256": "fb232506b7a0cc96d7d64596701932cbb4ada82242b4cb1d8023eb11be67b8a1"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/GradeScoreStore.java": {
-      "sha256": "172065b679de88f506a918690c1b86b51c17c4bbde63ae76388e19237e29e652",
-      "size": 15776,
-      "normalized_sha256": "172065b679de88f506a918690c1b86b51c17c4bbde63ae76388e19237e29e652"
+      "sha256": "7ccf58de181b8de95de0116383c9baafa74fb5cdb1d8e6af470f7550116a51a7",
+      "size": 19501,
+      "normalized_sha256": "a73c546dc54570d184be2db29ab1dbe7575e3b79d101fc789d3498bde229b4fb"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/GuestbookStore.java": {
       "role": "index",
@@ -8809,6 +8844,11 @@
       "size": 9668,
       "normalized_sha256": "afa6315b09669793d8633c0470d467ec1417741f9073e317cf8f98010b99753a"
     },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/BorrowCreditStore.java": {
+      "sha256": "65feb3e91539a43f7611c0832ee897de9307ed72bd077ffdf6b21da8847b1c21",
+      "size": 8891,
+      "normalized_sha256": "9f959b2c8384ea009c178652d4978fe5aa0156c1bd08f38e663b29e60c49178a"
+    },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/BrowseHistoryStore.java": {
       "role": "index",
       "sha256": "c9ab9b666500cb5f814d5ae0d135d32f81d7b42dfab796f16af35ae17d72bddd",
@@ -8847,10 +8887,9 @@
       "normalized_sha256": "c7eaf23bfe7506313c6cdeb037dfd26dbc631c750036356bae10119459a9ce44"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/FavoriteStore.java": {
-      "role": "index",
-      "sha256": "757f93d0e4474cdc829aef4796fe1543f619614e11c05713e69d2d5e5b0bf6e3",
-      "size": 12815,
-      "normalized_sha256": "757f93d0e4474cdc829aef4796fe1543f619614e11c05713e69d2d5e5b0bf6e3"
+      "sha256": "ba520e67792a05b353c53f646225ee619c5e64825b388af58acb1f08905e8757",
+      "size": 14813,
+      "normalized_sha256": "ba520e67792a05b353c53f646225ee619c5e64825b388af58acb1f08905e8757"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/FrontDeskStore.java": {
       "sha256": "3dbdfb3977bfceadb7bec7251b934dc7f220d6d3c59529898af2840695634c40",
@@ -8951,9 +8990,9 @@
       "normalized_sha256": "27f2c64d6ccab5021ada8050bbe1e6b193ff19710ec1cfe292a76c5da992e187"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketRowMaps.java": {
-      "sha256": "eadc98c7e863837e80b7498bcec75aee02f8d7aa0afa5d000f694d2e70d6dddc",
-      "size": 13125,
-      "normalized_sha256": "eadc98c7e863837e80b7498bcec75aee02f8d7aa0afa5d000f694d2e70d6dddc"
+      "sha256": "c15c2c6613cb1e0f111d5ca6568b98224ef7e3abe741179e39a5d3038c8140c9",
+      "size": 13263,
+      "normalized_sha256": "c15c2c6613cb1e0f111d5ca6568b98224ef7e3abe741179e39a5d3038c8140c9"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketSql.java": {
       "role": "index",
@@ -8962,14 +9001,14 @@
       "normalized_sha256": "59db23cd10553099cb8161dfb160cd471e0b26676b232f510918cb036d03d72e"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketStatusOps.java": {
-      "sha256": "5257f82f7b56bb3207d817bb81a752d7b0a935b9b5a89bde7bb75c257cdfef8f",
-      "size": 11898,
-      "normalized_sha256": "e6a7734804a3b38a9934e232a997a4b77fb97b3dd7cbb008c03c365c96a088d5"
+      "sha256": "1aa3bf52dffad13e49e951c9a46f3ba5250d9971ed17085cf98275a244f285dd",
+      "size": 12241,
+      "normalized_sha256": "b32caf24607ee71b292308999c95c8579c84a806c791ebde1bffb27d246c5113"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "9535e749654ae13522c97ef37c61bbed516f6f9fcb14e71dc3db119986651f41",
-      "size": 180650,
-      "normalized_sha256": "af53167fbecc12435a94812771fc8929528afcb2fbb7ac292ddf91739d9fcd4c"
+      "sha256": "6fed112be200f76e0622e1e3355901109212ccc0c8dbb76c2e723b7f9bfbb595",
+      "size": 192353,
+      "normalized_sha256": "4cb8df0b1b3b5929686a79b838f8d8ed206be8a7e166e6c489bc2a79fc5091b7"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "f6ee23c9182609a1ac195234dcc0c511bc36dd38d140724a2acc434e1c420089",
@@ -8981,10 +9020,15 @@
       "size": 9380,
       "normalized_sha256": "624617c48ac0981d7130f5211300dd95cb10f5749be6b299f47fc7a3e518f3f6"
     },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/AppPolicy.java": {
+      "sha256": "9ec82d67b075374892051dfb49efcdbf62177dea449260b3b4defc47600549c2",
+      "size": 5286,
+      "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
+    },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "fa285a2101d02d8a4d5e7e7299814ff27c3ab949db76e628c66e1025f9daedd2",
-      "size": 39255,
-      "normalized_sha256": "c220c338ae531d0bf2855fe45d74fb2ab042c946417d56a2c3326a4abef59e99"
+      "sha256": "3c9145fbc74f2a75dc93d219756fc34ab1595fec9401005939b274e9913b953c",
+      "size": 38624,
+      "normalized_sha256": "54511ba6943eba3f40dbc01627c6a8066980e663912baef59cdcdcd2ee5355b2"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/GeneratedKeyHolder.java": {
       "sha256": "ffb391c9ec6daa83eef366e3abc1809128868a0df4a1e4b824bba7bcecdb0ccf",
@@ -9026,6 +9070,11 @@
       "sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea",
       "size": 204,
       "normalized_sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
+      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
+      "size": 11100,
+      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/AddressMapper.java": {
       "role": "index",
@@ -9112,9 +9161,9 @@
       "normalized_sha256": "0fa7da0d078fc60ef98eb56259da09482e51f8d0c8bbe6513b3bc05b98290766"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/GradeScoreMapper.java": {
-      "sha256": "7b473cc5e431c2e3b7b04dac7d6b08965df79424eee498d346c252448de152e3",
-      "size": 5055,
-      "normalized_sha256": "7b473cc5e431c2e3b7b04dac7d6b08965df79424eee498d346c252448de152e3"
+      "sha256": "4f739cef94978f09fd00049fb925b5815c54ea263b2843765189ff0c2b870bef",
+      "size": 5439,
+      "normalized_sha256": "ad58d4b00e33e61bf1d339d1efe5cd4b3f8e1cad6f7f670e9c66bffdbb1b5b91"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/GroupBuyMapper.java": {
       "sha256": "458a9eb53d28d44ae9ea8ab6de31624da75a002951b18c9d9f469c2c25ab1389",
@@ -9224,9 +9273,9 @@
       "normalized_sha256": "472e3090cca70b376479822a9b84284b7a30c3cf32356e17e3c9cd36ae396249"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketMapper.java": {
-      "sha256": "826bcf9d1704200c36df79f9cff34488dc1b00815f680d66e8d4ada4d33d5f6e",
-      "size": 14898,
-      "normalized_sha256": "826bcf9d1704200c36df79f9cff34488dc1b00815f680d66e8d4ada4d33d5f6e"
+      "sha256": "e113333884d3bd2829123bd213b3b7753f73ce810fc2afd450a556eecbf582a5",
+      "size": 15503,
+      "normalized_sha256": "e113333884d3bd2829123bd213b3b7753f73ce810fc2afd450a556eecbf582a5"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TimebankMapper.java": {
       "role": "index",
@@ -9296,14 +9345,14 @@
       "normalized_sha256": "912166233de2b822bbe34658f77b9b7f53981bcc49c92c3e7d82b59b197f6e0d"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/FundPublicityStore.java": {
-      "sha256": "12aa94e473b66bc278f07b2bee8f3292b0df5b2f3fae3b2bcb8c83d83288ae11",
-      "size": 6378,
-      "normalized_sha256": "c0694a3fe5878c4722799b713a3ec53bf75b45f92ac9739d95d0f6c7c5ffa25e"
+      "sha256": "162aa13fbe4350237f95bb518c62bd716fbb936691badd478b419b0f7a16e0d4",
+      "size": 13933,
+      "normalized_sha256": "713b56278c925ef0ecde8d584a6e563e7f987991e1b34650e6153a80cde965d2"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/GradeScoreStore.java": {
-      "sha256": "78b06b10f846ffbe415e604a4a91a435facc2a2c43837eb1c47c4d4494403a6a",
-      "size": 10562,
-      "normalized_sha256": "78b06b10f846ffbe415e604a4a91a435facc2a2c43837eb1c47c4d4494403a6a"
+      "sha256": "2d7053f8d8da2d7037e08c01e4f33c16db44424d1141f474d07ac6afc92b8f2f",
+      "size": 13753,
+      "normalized_sha256": "ac72bbbe4aad9664c76cd88c9a92b267fe0426e210216770a94eb1686132e53d"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/GuestbookStore.java": {
       "role": "index",
@@ -9494,9 +9543,9 @@
       "normalized_sha256": "fbd2a0e76a07407eaa74a8e17be4400b47cebbaa1dccc8cd9b0e9bf4fa39defd"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/TicketMapper.xml": {
-      "sha256": "faf933ea31f6d582d432b217803b986ff6ea658429959d4b93afe52e7bb9aa34",
-      "size": 11951,
-      "normalized_sha256": "faf933ea31f6d582d432b217803b986ff6ea658429959d4b93afe52e7bb9aa34"
+      "sha256": "3009f273443dceb753d8f46796f3350bb96b81656e4ee233c2a8b4516441aa52",
+      "size": 12438,
+      "normalized_sha256": "3009f273443dceb753d8f46796f3350bb96b81656e4ee233c2a8b4516441aa52"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/UserMapper.xml": {
       "role": "index",
@@ -9523,9 +9572,9 @@
       "normalized_sha256": "6de7c96390b08cf0d785fe92deebfe03da54377362f3ac8475f39d0976e82f7a"
     },
     "tools/gen_persistence_jpa_overlay.py": {
-      "sha256": "5fe0c0f7e248ad2f055ce63d68f37a6d088a9305058794116574f7ff328febd2",
-      "size": 22685,
-      "normalized_sha256": "5fe0c0f7e248ad2f055ce63d68f37a6d088a9305058794116574f7ff328febd2"
+      "sha256": "fe1d275c64183b3ad4e6c0947ce967b375172b0dcf813466f96345743c3d713e",
+      "size": 23773,
+      "normalized_sha256": "fe1d275c64183b3ad4e6c0947ce967b375172b0dcf813466f96345743c3d713e"
     },
     "tools/gen_stuwork_domains.py": {
       "role": "index",
@@ -9538,6 +9587,16 @@
       "sha256": "4f8ffb35756e29363f929e9e19a7cfa8b70ab0cdc6740737d320415e29dc87bf",
       "size": 24923,
       "normalized_sha256": "4f8ffb35756e29363f929e9e19a7cfa8b70ab0cdc6740737d320415e29dc87bf"
+    },
+    "tools/sync_follow_gaps_overlays.py": {
+      "sha256": "1d786b00597c5d456a420742037bef7ff93ccd6275d6848872dcb2adb4099f1d",
+      "size": 17900,
+      "normalized_sha256": "863af625d541c9a5585e054802b94f6eb007faf5bdec1e1e26b033693cbd8bab"
+    },
+    "tools/sync_objection_event_overlays.py": {
+      "sha256": "9ded7a3bbd021c0f9d9da00caa5b1ebe3dc9e7cd28eb06a735b57c977d5fa2af",
+      "size": 33907,
+      "normalized_sha256": "9ded7a3bbd021c0f9d9da00caa5b1ebe3dc9e7cd28eb06a735b57c977d5fa2af"
     },
     "tools/sync_pass_code_overlays.py": {
       "role": "index",
