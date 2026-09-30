@@ -104,8 +104,8 @@
 
 | 组 | 状态（2026-08-12） |
 |----|-------------------|
-| **借用 / 占用**（级联借用组；清单册含 A 族大段） | **换皮/主路径已收口**。密功能待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.1 |
-| **跟进**（CRM / EVENT / ATTEND …） | 换皮随 A 族收口。密功能待补见密功能表 §1.2 |
+| **借用 / 占用**（级联借用组；清单册含 A 族大段） | **换皮/主路径已收口**；§1.1 **待补已清**（见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)） |
+| **跟进**（CRM / EVENT / ATTEND …） | 换皮随 A 族收口；§1.2 **待补已清**（密功能表同上） |
 | **报修 / 工单**（DORM / PROPERTY / IT） | **换皮/主路径已收口**。待补见密功能表 §1.3 |
 | **报名**（ACTIVITY / LOST / COURSE / TOUR …） | **换皮/主路径已收口**。待补见密功能表 §1.4 |
 | **审批 / 填报**（SEAL / CERT / …） | 换皮随 A 族收口。待补见密功能表 §1.5 |

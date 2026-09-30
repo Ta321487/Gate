@@ -37,6 +37,8 @@
 | `user_publish` | schema 开关 `archive.userPublish`，非独立 cap |
 | `temporal_field` | 日期控件精度（date/datetime），非 cap |
 | `opening_align` | 开题模块对账闸，只 `apply`，不开新 cap |
+| `borrow_thicken` | 借用/占用组加厚（字段/文案/校验 + 续借/预约/罚款等演示链），非独立 cap；落点见交付地图 §1.1 |
+| `follow_thicken` | 跟进组加厚（字段/文案/校验 + 批量录用/周报催交/渠道饼图等演示链），非独立 cap；落点见交付地图 §1.2 |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 
@@ -65,7 +67,7 @@
 | `dm` | ✅ | 站内一对一私信（短轮询；不对接 IM SDK） | **开题写「私信/客服/在线沟通」才挂**；交易写「客服」或「与管理员/用户沟通」即挂；≠ guestbook |
 | `ai_assistant` | ✅ | 业务壳上的客服/导购/助手问答（Spring AI + DeepSeek；无 Key → FAQ） | **开题写「智能客服/导购/大模型问答」才挂**；≠ RAG/CNN 主产品；见 [ai-assistant-delivery.md](./ai-assistant-delivery.md) |
 | `item_comment` | ✅ | 档案详情下发表/列表评论；管理端删除 | **开题写「评论/影评/曲评…」才挂**；仅 MEDIA/MUSIC/BLOG；≠guestbook ≠论坛回帖 ≠订单评价 |
-| `favorites` | ✅ | 收藏夹：收藏/取消；交易域可再加购 | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；**开题写到才挂**：ACTIVITY / COURSE / TOUR / LOST / DATING，以及其它已有 `order_lines` 的壳 |
+| `favorites` | ✅ | 收藏夹：收藏/取消；交易域可再加购；**导出/复制清单**（岗位/房源分享） | **域默认** SHOP/FOOD 与 MEDIA/MUSIC/BLOG；**开题写到才挂**：ACTIVITY / COURSE / TOUR / LOST / DATING / RECRUIT / LISTING，以及其它已有 `order_lines` 的壳 |
 | `post_like` | ✅ | 档案/帖一人一赞开关与计数 | **开题写「点赞」才挂**（E-03）；FORUM/BLOG/MEDIA/MUSIC；无域默认 |
 | `content_report` | ✅ | 用户举报→管理忽略/下架 | **开题写「举报」才挂**（E-03）；FORUM/DATING/BLOG；无域默认 |
 | `audit_log` | ✅ | 管理端关键写/登录记入 sys_audit_log；总管可查 | **开题写「操作/审计/登录日志」才挂**（E-04）；无域默认；仅登录日志则 loginOnly |

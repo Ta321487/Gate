@@ -386,7 +386,7 @@
 | 多册合借一单（册数） | ticket.allowQty + qtyLabel=册数 | **域默认** LIBRARY（检索页填数量） |
 | 逾期罚款减免 | ticket.allowFineWaive → fine_status=waived | **开题扫**（罚款减免） |
 | 续借须无他人预约 | ticket.renewBlockIfHeld | **开题扫** |
-| 调宿双方确认 | ticket.requirePeerConfirm + peer_ack | **开题扫**（双方确认/对向同意） |
+| 调宿双方确认 | ticket.requirePeerConfirm + peer_ack → `peer_tickets` 菜单 + Mapper 收件箱 | **开题扫**（双方确认/对向同意） |
 | 床位互换双方确认链路 | 同上 + peer_tickets 菜单 | **开题扫**（与双方确认同开） |
 | 图书征订目录导入提示 | labels.catalogImportHint（复用档案 CSV） | **域默认** LIBRARY |
 | 荐购进度查询（审核说明） | BookSuggest 用户列表 handleNote | **扫词开** book_suggest（原已闭环） |
@@ -417,94 +417,97 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 下次跟进日到期站内信提醒 | CRM / LISTING | 复用 next_follow；≠短信 |
-| 客户/房源标签多选筛选 | CRM / LISTING | 复用 tag 积木思路；≠论坛帖标 |
-| 跟进记录时间轴（同客户下） | CRM | 列表按时间；≠复杂 CRM 旅程 |
-| 年假/调休余额扣减 | ATTEND | 额度台账；≠打卡硬件 |
-| 请假销假后余额回补 | ATTEND | 与额度联动 |
-| 面试结果（通过/未过/待定）登记 | RECRUIT | 投递单状态扩展 |
-| 录用/淘汰批量操作 | RECRUIT | 管理端多选；通识开题常写 |
-| 周报截止未交提醒 | INTERN | 站内信；按周次 |
-| 实习鉴定表字段套（评语+等级） | INTERN | 办结前必填；≠ CA |
-| 成绩单打印预览页（固定版式） | GRADE | 浏览器打印；≠教务系统对接 |
-| 带看评价（星级，办结后） | LISTING | 对齐 allowRating |
-| 事件结案报告附件必传 | EVENT | requireAttach 变体 |
-| 客户公海替代：长期未跟进标「搁置」 | CRM | 阶段字段；≠公海抢客 |
-| 跟进方式统计饼图（电话/微信/到访） | CRM | 工作台；渠道字段已有可聚合 |
-| 家访/谈话记录模板字段套 | CRM（学工皮） | 备注结构化；≠独立家访系统 |
-| 请假附件（病假条）按假种必传 | ATTEND | requireAttach 条件化 |
-| 销假确认（返岗日期） | ATTEND | 办结字段 |
-| 资助答辩/评议结果登记 | FUND | 审后字段；≠线下会议系统 |
-| 岗位收藏 / 投递进度时间轴 | RECRUIT | favorites 扫词+时间线 |
-| 成绩排名班级/专业切换 | GRADE | 筛选维度；已有名次可加深 |
-| 补考报名入口（成绩不及格可申） | GRADE | 与 grade_apply 联动规则 |
-| 实习周报优秀标记 + 汇总导出 | INTERN | 管理标记+CSV |
-| 房源收藏与对比（两套字段并排） | LISTING | favorites+简易对比页 |
-| 成交漏斗简图（挂牌→带看→成交） | LISTING | 工作台计数 |
-| 客户/线索查重提示（同手机号） | CRM | 录入校验；≠公海 |
-| 考勤月汇总表导出 | ATTEND | CSV；通识高频 |
-| 招聘岗位有效期自动下架 | RECRUIT | 日期+stage |
-| 成绩导入模板行级错误回显 | GRADE | 导入加深 |
-| 事件等级影响处理时限 | EVENT | 对齐 deadline 思路 |
-| 资助名额余量实时展示 | FUND | 名额字段可视化 |
-| 周报退回修改次数限制 | INTERN | 规则 |
-| 房源价格变更留痕 | LISTING | 流水；浅 |
-| 线索来源统计饼图 | CRM | 工作台；通识 |
-| 客户阶段漏斗简图 | CRM | 计数；≠公海 |
-| 面试评价表（维度打分） | RECRUIT | 对齐 rating_dims 思路；浅 |
-| 奖学金公示异议登记窗口 | FUND | 日期+轻单；浅 |
-| 实习单位对实习生评价 | INTERN | 办结字段或反评；浅 |
-| 晨午检未打卡名单导出 | EVENT | CSV；通识食安题 |
-| 请假审批时限超时提醒 | ATTEND | 站内信；浅 |
-| 带看预约时段冲突提示 | LISTING | 对齐 occupy；浅 |
-| 招聘笔试/机试成绩登记 | RECRUIT | 投递单字段；浅 |
-| 绩点换算说明页（只读） | GRADE | 文案；≠教务对接 |
-| 事件上报手填位置描述 | EVENT | 字段；≠真地图钉 |
-| 资助银行卡号脱敏展示 | FUND | 字段+脱敏；通识 |
-| 客户跟进下次行动待办勾选 | CRM | 待办联动；浅 |
-| 家访照片附件槽 | CRM（学工皮） | requireAttach 变体 |
-| 请假跨天拆段展示 | ATTEND | UI；规则已有可加深 |
-| 房源VR外链字段 | LISTING | URL；≠自研 VR |
-| 招聘用人部门筛选 | RECRUIT | 组织树联动；浅 |
-| 成绩异议申请时限 | GRADE | 日期窗口；浅 |
-| 实习周报字数下限 | INTERN | 提交校验；通识 |
-| 客户公海捡回替代：分配负责人 | CRM | 字段改派；≠抢客池 |
-| 事件上报保密标记 | EVENT | 字段；浅 |
-| 请假代理人登记 | ATTEND | 字段；通识偶见 |
-| 带看反馈必填项套 | LISTING | 办结字段套 |
-| 招聘简历解析字段手填套（非 AI） | RECRUIT | 结构化备注；≠简历解析 AI |
-| 成绩加权平均说明 | GRADE | 文案；浅 |
-| 实习考勤与周报联动提示 | INTERN | 文案；浅 |
-| 客户成交金额登记 | CRM | 字段；≠支付 |
-| 事件上报分拨科室 | EVENT | 转派；浅 |
-| 请假 overlapping 跨岗冲突提示 | ATTEND | 加深冲突文案 |
-| 招聘录用通知站内信模板 | RECRUIT | 消息；浅 |
-| 成绩正态分布简易图 | GRADE | ECharts；已有分布可钉 |
-| 客户公海替代池：未跟进 N 天列表 | CRM | 筛选视图；≠抢客 |
-| 资助发放批次号 | FUND | 字段；浅 |
-| 房源意向客户计数 | LISTING | 计数；浅 |
-| 招聘岗位收藏夹分享 | RECRUIT | favorites 叠 |
-| 成绩导出含学号脱敏选项 | GRADE | 导出加深 |
-| 客户跟进语音转写 | — | **不支持**：无 ASR；附件上传顶 |
-| 事件上报一键通知值班表 | EVENT | 站内信群发浅 |
-| 请假假期余额导入 | ATTEND | 导入；浅 |
-| 带看录音外链字段 | LISTING | URL；浅 |
-| 招聘面试间预约叠会议室 | RECRUIT / MEETING | 文案交叉；浅 |
-| 成绩排名隐私开关 | GRADE | schema；通识 |
-| 客户标签颜色 | CRM | UI；浅 |
-| 资助形式（减免/发放）枚举 | FUND | 字典；浅 |
-| 实习单位评价匿名开关 | INTERN | schema；浅 |
-| 招聘入职材料清单 | RECRUIT | material_check；通识 |
-| 成绩补考后覆盖规则说明 | GRADE | 文案；浅 |
-| 客户公海抢客 | — | **不支持**：已组末重申；表内钉 |
-| 事件值班排班叠 staff_roster | EVENT | 扫词叠；浅 |
-| 请假销假二维码确认 | ATTEND | code_qr；浅 |
-| 招聘背调备注字段 | RECRUIT | 字段；浅；≠第三方背调 |
-| 成绩 analytics 看板独立产品 | — | **不支持**：工作台分布顶 |
-| 客户合同回款计划 | CRM | 浅表；≠ERP |
-| 房源意向跟进下次提醒 | LISTING | next_follow 叠 |
+| （本组 §1.2 待补已清） | — | — |
 
-不支持：公海抢客、外呼中心、真视频面试 SDK、银企发奖、教务正方对接。
+#### 本组本轮已齐（从待补迁出）
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 下次跟进日到期站内信提醒 | followThicken.followRemindDays → next_follow_at | **域默认** CRM/LISTING |
+| 客户/房源标签多选筛选 | archive.tags | **域默认** CRM/LISTING |
+| 跟进记录时间轴 | labels.followTimelineHint | **域默认** CRM |
+| 年假/调休余额扣减 | balance_ledger（ATTEND 域默认）+ leave_days 扣减 | **域默认** ATTEND |
+| 请假销假后余额回补 | balanceLedger.creditOnReturn | **域默认** ATTEND |
+| 面试结果登记 | ticket.allowInterviewResult | **域默认** RECRUIT |
+| 录用/淘汰批量操作 | ticket.allowBatchHire → POST `/api/tickets/batch-hire` + 管理端勾选 | **域默认** RECRUIT |
+| 周报截止未交提醒 | ticket.weekReportRemind → `maybeNotifyWeekReports` + MessageStore.existsRef（每周一封） | **域默认** INTERN |
+| 实习鉴定表字段套 | ticket.requireAppraisal | **域默认** INTERN |
+| 成绩单打印预览页 | labels.gradePrintHint | **域默认** GRADE |
+| 带看评价（星级） | ticket.allowRating | **域默认** LISTING |
+| 事件结案报告附件必传 | ticket.requireCloseAttach | **域默认** EVENT |
+| 长期未跟进标「搁置」 | archive.stage 含搁置 | **域默认** CRM |
+| 跟进方式统计饼图 | contact_channel → 工作台 channelSeries 饼图 | **域默认** CRM |
+| 家访/谈话记录模板字段套 | ticket.homeVisitTemplate | **开题扫** |
+| 请假附件按假种必传 | ticket.attachByLeaveType | **域默认** ATTEND |
+| 销假确认（返岗日期） | ticket.requireReturnDate | **域默认** ATTEND |
+| 资助答辩/评议结果登记 | ticket.allowDefenseResult | **域默认** FUND |
+| 岗位收藏 / 投递进度时间轴 | favorites 扫词 + progressTimelineHint | **开题扫** 收藏；时间轴域默认 |
+| 成绩排名班级/专业切换 | labels.rankSwitchHint | **域默认** GRADE |
+| 补考报名入口 | ticket.allowMakeupApply | **域默认** GRADE |
+| 实习周报优秀标记 + 汇总导出 | ticket.allowExcellentMark | **开题扫** |
+| 房源收藏与对比 | favorites + 导出/复制清单（listingCompareHint） | **开题扫** |
+| 成交漏斗简图 | rent_stage/stage → 工作台 listingFunnelSeries | **域默认** LISTING |
+| 客户/线索查重提示 | ticket.phoneDupCheck | **域默认** CRM |
+| 考勤月汇总表导出 | labels.monthExportHint | **域默认** ATTEND |
+| 招聘岗位有效期自动下架 | archive.expireOn → 列表入口 expirePastExpireOn | **域默认** RECRUIT |
+| 成绩导入行级错误回显 | labels.importRowErrorHint | **域默认** GRADE |
+| 事件等级影响处理时限 | ticket.levelAffectsDeadline + deadline | **开题扫** |
+| 资助名额余量实时展示 | labels.quotaRemainHint | **域默认** FUND |
+| 周报退回修改次数限制 | ticket.maxReviseTimes | **域默认** INTERN |
+| 房源价格变更留痕 | archive.priceHistory | **域默认** LISTING |
+| 线索来源统计饼图 | lead_source → 工作台 leadSourceSeries | **开题扫** |
+| 客户阶段漏斗简图 | archive.stage → 工作台 stageSeries | **域默认** CRM |
+| 面试评价表（维度打分） | rating_dims 叠 | **开题扫** |
+| 奖学金公示异议登记窗口 | ticket.allowObjectionWindow | **开题扫** |
+| 实习单位对实习生评价 | ticket.allowCompanyEval | **域默认** INTERN |
+| 晨午检未打卡名单导出 | labels.checkExportHint | **域默认** EVENT |
+| 请假审批时限超时提醒 | deadline 扫词叠 | **开题扫** |
+| 带看预约时段冲突提示 | time_conflict 扫词 | **开题扫** |
+| 招聘笔试/机试成绩登记 | ticket.allowWrittenScore | **开题扫** |
+| 绩点换算说明页 | labels.gpaPageHint | **域默认** GRADE |
+| 事件上报手填位置描述 | archive.locationDesc | **域默认** EVENT |
+| 资助银行卡号脱敏展示 | ticket.maskBankAccount | **域默认** FUND |
+| 客户跟进下次行动待办勾选 | ticket.allowNextAction | **开题扫** |
+| 家访照片附件槽 | requireAttach 扫词 | **开题扫** |
+| 请假跨天拆段展示 | labels.leaveSplitHint | **域默认** ATTEND |
+| 房源VR外链字段 | archive.vrUrl | **域默认** LISTING |
+| 招聘用人部门筛选 | archive.hireDept | **开题扫** |
+| 成绩异议申请时限 | ticket.objectionDays | **开题扫** |
+| 实习周报字数下限 | ticket.minRemarkWords | **域默认** INTERN |
+| 分配负责人 | archive.ownerUsername | **开题扫** |
+| 事件上报保密标记 | ticket.allowConfidential | **开题扫** |
+| 请假代理人登记 | ticket.allowLeaveProxy | **开题扫** |
+| 带看反馈必填项套 | ticket.requireFeedbackSet | **域默认** LISTING |
+| 招聘简历解析字段手填套 | ticket.resumeFieldSet | **开题扫** |
+| 成绩加权平均说明 | labels.weightedAvgHint | **域默认** GRADE |
+| 实习考勤与周报联动提示 | labels.attendLinkHint | **域默认** INTERN |
+| 客户成交金额登记 | ticket.allowDealAmount | **域默认** CRM |
+| 事件上报分拨科室 | ticket.allowAssignDept | **开题扫** |
+| 请假 overlapping 冲突提示 | labels.leaveOverlapHint | **域默认** ATTEND |
+| 招聘录用通知站内信模板 | message_template 扫词叠 | **开题扫** |
+| 成绩正态分布简易图 | labels.distChartHint | **域默认** GRADE |
+| 未跟进 N 天列表 | ticket.staleFollowDays | **开题扫** |
+| 资助发放批次号 | ticket.allowDisburseBatch | **域默认** FUND |
+| 房源意向客户计数 | labels.intentCountHint | **域默认** LISTING |
+| 招聘岗位收藏夹分享 | favorites + 导出清单/复制清单（favShareHint） | **开题扫** |
+| 成绩导出含学号脱敏选项 | labels.stuNoMaskExportHint | **域默认** GRADE |
+| 事件上报一键通知值班表 | ticket.notifyDutyOnReport | **开题扫** |
+| 请假假期余额导入 | labels.leaveBalanceImportHint | **开题扫** |
+| 带看录音外链字段 | ticket.allowRecordUrl | **开题扫** |
+| 招聘面试间预约叠会议室 | labels.interviewRoomHint | **开题扫** |
+| 成绩排名隐私开关 | schema.rankPrivacy | **开题扫** |
+| 客户标签颜色 | labels.tagColorHint | **开题扫** |
+| 资助形式枚举 | archive.fundForm | **域默认** FUND |
+| 实习单位评价匿名开关 | schema.companyEvalAnonymous | **开题扫** |
+| 招聘入职材料清单 | material_check 扫词 | **开题扫** |
+| 成绩补考后覆盖规则说明 | labels.makeupOverlayHint | **域默认** GRADE |
+| 事件值班排班叠 staff_roster | staff_roster 扫词 | **开题扫** |
+| 请假销假二维码确认 | code_qr 扫词 | **开题扫** |
+| 招聘背调备注字段 | ticket.allowBgCheckNote | **开题扫** |
+| 客户合同回款计划 | archive.paymentPlan | **开题扫** |
+| 房源意向跟进下次提醒 | followRemindDays（LISTING） | **域默认** LISTING |
+
+不支持：公海抢客、外呼中心、真视频面试 SDK、银企发奖、教务正方对接；客户跟进语音转写（无 ASR）；成绩 analytics 看板独立产品。
 
 ### 1.3 报修 / 工单
 
@@ -1315,3 +1318,6 @@
 | 2026-09-30 | **冻结声明**：真缺口压力测门冻结。之后只改状态（待补→已实现等）或纠错；不靠拆不支持簇/换皮别名刷新增。边角加深仍往后稍稍 |
 | 2026-09-30 | **借用/占用组加厚**：续借次数上限标已齐；应还日前 N 天站内提前催还域默认；超期限借/低库存站内信开题扫；PARCEL 催领与 EQUIP 用途必填域默认 |
 | 2026-09-30 | **§1.1 收尾**：报废独立审批单 `scrap_request`；ASSET 申购单号确认 + PROCURE 一键入库；本组待补清零 |
+| 2026-09-30 | **§1.2 收尾**：`follow_thicken` 跟进组加厚（CRM/EVENT/ATTEND/FUND/RECRUIT/GRADE/INTERN/LISTING）；ATTEND 假期额度域默认；本组待补清零 |
+| 2026-09-30 | **§1.1/§1.2 硬闭环**：批量录用 API+管理端多选；收藏夹导出/复制清单；渠道饼图/阶段漏斗/成交漏斗进工作台；周报截止扫表催信；岗位 `expire_on` 自动下架；借用续借/预约/罚款与跟进非主链（peer/procure/patch）收进 mybatis Mapper/XML；三线 binder/`thesis.yml` 对齐 |
+| 2026-09-30 | **论文图跟实包**：E-R 补跟进/借用加厚列中文；序列/泳道从 Vue `{{ batchHireLabel }}` 等按 `schema.labels`/`verbs` 解析演示按钮，禁止写死域词进骨架 |
