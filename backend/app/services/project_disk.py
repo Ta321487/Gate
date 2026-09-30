@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 
 #: bake 进行中标记：孤儿清理不得删带此文件的工作区（对账额度清盘会误伤正在出包的目录）
 BAKE_IN_PROGRESS_REL = Path(".factory") / "bake_in_progress"
-#: 刚写完的工作区宽限期（秒）：bake 结束后预览/compile 仍可能占用目录
-ORPHAN_FRESH_GRACE_SEC = 30 * 60
+#: 刚写完的工作区宽限期（秒）：bake 结束后预览/compile 仍可能占用目录。
+#: 默认 0=只认 bake 进行中标记，不按 mtime 兜底；确需缓冲由调用方显式传 fresh_grace_sec。
+ORPHAN_FRESH_GRACE_SEC = 0
 
 
 def resolve_workspace_dir(project: Project) -> Path:
@@ -42,18 +43,21 @@ def clear_bake_in_progress(workspace: Path) -> None:
         pass
 
 
-def orphan_workspace_protected(child: Path) -> bool:
-    """孤儿清理是否应跳过该工作区（bake 中 / 刚出炉）。"""
+def orphan_workspace_protected(
+    child: Path, *, fresh_grace_sec: float | None = None
+) -> bool:
+    """孤儿清理是否应跳过该工作区（bake 中 / 宽限期内的新鲜目录）。"""
     if (child / BAKE_IN_PROGRESS_REL).is_file():
         return True
-    if ORPHAN_FRESH_GRACE_SEC <= 0:
+    grace = ORPHAN_FRESH_GRACE_SEC if fresh_grace_sec is None else fresh_grace_sec
+    if grace <= 0:
         return False
     try:
         age = time.time() - child.stat().st_mtime
     except OSError:
         return False
     # Windows 上新建目录偶发 st_mtime 略超前 → age 为负，仍视为「新鲜」
-    return age < ORPHAN_FRESH_GRACE_SEC
+    return age < grace
 
 
 def remove_tree_reliable(
@@ -109,11 +113,13 @@ def purge_orphan_project_disk(
     alive_ids: set[str] | frozenset[str],
     *,
     max_dirs: int | None = None,
+    fresh_grace_sec: float | None = None,
 ) -> dict:
     """清理库中已不存在的工程目录、日志目录与对应 ZIP；不动 cache / uploads。
 
     max_dirs：本轮最多处理几个孤儿工程目录（按名排序）。每个工程顺带清同名日志与
     对应 ZIP。None 表示一次清光（含仅残留日志/ZIP 的孤儿）。
+    fresh_grace_sec：刚写完工作区的宽限秒数；None 用 ORPHAN_FRESH_GRACE_SEC（默认 0）。
     """
     alive = {str(x) for x in alive_ids if x}
     settings = get_settings()
@@ -158,7 +164,7 @@ def purge_orphan_project_disk(
                 continue
             if child.name in alive:
                 continue
-            if orphan_workspace_protected(child):
+            if orphan_workspace_protected(child, fresh_grace_sec=fresh_grace_sec):
                 continue
             all_orphan_ws.append(child)
 

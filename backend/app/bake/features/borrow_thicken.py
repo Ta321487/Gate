@@ -369,19 +369,23 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             "荐购采纳受本学期预算余额约束，余额不足时可能暂缓或驳回。",
         )
         # 双端：用户提交荐购写库；管理端审核台账（能力+菜单+gate 同挂）
-        caps = list(spec.get("capabilities") or [])
-        if "book_suggest" not in caps:
-            caps.append("book_suggest")
-        spec["capabilities"] = caps
-        schema["capabilities"] = caps
-        from app.bake.features.book_suggest import attach_book_suggest_menus
-        from app.bake.gate_contracts import merge_book_suggest_gate
+        # 荐购无域默认：须开题扫到荐购词才挂 cap，避免绕开 E-13 扫词门禁
+        from app.bake.features.book_suggest import scan_book_suggest
 
-        attach_book_suggest_menus(schema)
-        spec["gate"] = merge_book_suggest_gate(dict(spec.get("gate") or {}), caps)
+        if scan_book_suggest(text):
+            caps = list(spec.get("capabilities") or [])
+            if "book_suggest" not in caps:
+                caps.append("book_suggest")
+            spec["capabilities"] = caps
+            schema["capabilities"] = caps
+            from app.bake.features.book_suggest import attach_book_suggest_menus
+            from app.bake.gate_contracts import merge_book_suggest_gate
+
+            attach_book_suggest_menus(schema)
+            spec["gate"] = merge_book_suggest_gate(dict(spec.get("gate") or {}), caps)
+            _add_feature(spec, "图书荐购")
         thicken["suggestBudget"] = True
         _add_feature(spec, "图书荐购预算余额提示")
-        _add_feature(spec, "图书荐购")
         labels.setdefault(
             "closedStackPrintHint",
             "闭架索书可打印本页清单，持单至书库取书；请先在线提交借阅申请。",

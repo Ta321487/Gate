@@ -127,7 +127,7 @@ _COMMON_COL_ZH: dict[str, str] = {
     "asset_no": "资产编号",
     "building_name": "楼栋",
     "publisher_name": "发布人",
-    "route_note": "路线备注",
+    "route_note": "地点备注",
     "urge_at": "催办时间",
     "urge_count": "催办次数",
     "urge_cancelled": "已撤催",
