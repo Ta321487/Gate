@@ -239,29 +239,22 @@ DB:  mysql+pymysql://root:****@127.0.0.1:3306/graduate_factory（见 backend 配
 4. `search_codebase` 会被 `.aoci` 基线/草稿刷屏 → 改用 `Select-String` 限定目录；
 5. MCP `desktop-commander` 单次调用上限 300s → 7 个包连编/全量 check（约 220s）要拆开跑。
 
-### AOCI 收尾状态（2026-09-27，已解阻塞）
+### AOCI 收尾状态（2026-09-30，已收尾 ✅）
 
-- **阻塞已解**：本轮新增/改动文件触发 `observed_pending`（Observe 复核）→ 已执行受治理事务 `aoci.exe scope acknowledge --reviewed-by cline --json`（`status=applied`）。guide 现在为 `stage=authoring_required`、`executable_targets=23`。
-- **待作者化 23 个对象**（下一次：**无参** `aoci_maintain` 领批 → 按 `code_batch_id` 提交完整批次；23 > 单批 20，需两轮）：
-  - `create` 2 个：`backend/app/bake/domain_vocab.py`、`docs/surface-lexicon-design.md`（文件在盘上但索引无条目）；
-  - `update` 21 个：本批改过的 `HANDOFF.md`、`capabilities.py`、`features/code_qr.py`、`crm.json`、`event_report.json`、`schema/builders_archive.py`、`schema/followup_presets.py`、`sql/domain_scene_seed.py`、`ticket_columns.py`、`ticket_copy_text.py`、`llm/agents_qa.py`、`services/projects.py`、`services/upload_cluster.py`、`docs/delivery-audit-rules.md`、`CodeQrBlock.vue`、`themes/{cinema,doclib,vote}.css`、`views/user/MyTickets.vue` 等。
-- **作者化：✅ 全部完成（24/24 applied）**。终态证明：`verify` → `governance_aligned=true, aligned=true`、预算 health（whole_index 74086 tokens / target 200000）；`check` → `ok=true, next_action=none`；`index agent guide` → **`stage=aligned, complete=True, next_action=none, targets=0`**。
-  - 已写对象（24）：`HANDOFF.md`、`capabilities.py`、`features/code_qr.py`、`domain_vocab.py`(create)、`ticket_columns.py`、`ticket_copy_text.py`、`schema/builders_archive.py`、`schema/followup_presets.py`、`sql/domain_scene_seed.py`、`sql/templates/{DOM-EQUIP,DOM-FUND,DOM-VISITOR}.sql`、`llm/agents_qa.py`、`services/projects.py`、`services/upload_cluster.py`、`proposal_packs_data/{crm,event_report}.json`、`docs/delivery-audit-rules.md`、`docs/surface-lexicon-design.md`(create)、`CodeQrBlock.vue`、`themes/{cinema,doclib,vote}.css`、`views/user/MyTickets.vue`
-  - **配置已回收**：`code_cognition_batch_entries` 已由 6 改回 **20**（收尾时若再次领批被截断，可临时改 6）。
-  - 本条 HANDOFF.md 编辑会使该条再次 stale → 下一轮 `scope acknowledge` → `aoci_maintain` → 只作者化 `HANDOFF.md` 一条即可回 `aligned`。
+- **现状（机器事实，三绿）**：`verify --json` → `governance_aligned=true, result=aligned, next_required_action=none, findings=[]`；`check --json` → `ok=true, exit_code=0, next_action=none`；`index agent guide --agent cline --json` → `mode=complete, stage=aligned, complete=true, next_action=none, executable_targets=0, findings=[]`。code 卷 **1449** entry / database 卷 **4** entry、`managed_scope.index_count=1453`、drift 只剩 `.cursor/rules/aoci-post-delivery.mdc` 的 `line_ending_only`（无 stale / missing / orphan / unbaselined）。
+- **本轮怎么收的**：09-29/09-30 的新改动（bake features、`sql/fragments.py`、skeletons、docs、AGENTS.md/HANDOFF.md）曾让基线落后 → `guide` 报 `stage=authoring_required, executable_targets=53`（49 条 `code_stale` + 2 条 `code_missing` 兼 `code_unbaselined`：`backend/app/bake/features/borrow_thicken.py`、`skeletons/baseline/frontend/src/utils/isbn.js`）；先 `aoci.exe scope acknowledge --reviewed-by cline --json` 清零 `observed_pending_review`，再分 3 轮 `maintain → update_entry` 把候选全部 applied，`remaining=0`。
+- **为什么曾反复**：09-27 那轮 24 条已 applied 并曾回 `aligned`，但此后每批新改动都会让相关条目重新 stale——这是 AOCI 的正常机理，不是故障。
+- **再编辑即失效（仍然成立）**：任何受管文件（含本文件）被改动都会让该条回到 stale，必须重走 `scope acknowledge`（领批前）→ `maintain` → `update_entry` → `verify/check/guide`；`remaining` 归零前不得声称 Whole-Index aligned。**这次收尾后再改本文件，就会重新落回 `authoring_required`**。
+- **领批纪律（仍然成立）**：无参 `aoci_maintain` 领批，单批上限 `code_cognition_batch_entries=20`；提交要带 `code_batch_id` + 每项 `candidate_id` / `source_sha256`，且必须是该批次**完整**候选集合（不许截子集、不许字段 patch）；`repair_required` 只修 `retry_scope` 后重提同一批次。
+- **一个退出码陷阱**：`scope acknowledge --reviewed-by <agent> --json` 可能以非 0 退出码返回，判定只看输出里的 `status` / `observed_pending_review`，不要看 exit code。
+- **成本实测**：`whole_index_tokens`≈79,868 / target 200,000（healthy，每次编辑后小幅浮动），`overview_delivery.chunk_tokens=16000`；`cognition_budget` 只能经 `aoci scope budget set` + Scope Change Apply 修改，手改 `.aoci/config.json` 不会被采纳（AGENTS.md 已同步更正）。
+- **本机体积**：`.aoci` 实测 **272.9 MB**，几乎全在 `transactions` / `governance` / `drafts` 等本机运行产物；`.aoci/.gitignore` 用 `*` + 白名单（`baseline.json`、`config.json`、`curation.json`、`database-baseline.json`）把它们挡在 Git 外，可安全清理。
 
 - **两条实测经验**：
   1. **S 字段机器 token 上限比 Meta 表格更严**：C6/C7 对象实测上限 **80 tokens**（≈240 UTF-8 字节，中文≈80 字），超了会 `entry_field_budget_exceeded` → 按 finding 压缩重写整个字段（不许机械截断），然后**重提同一完整批次**。
   2. **每次改动文件后 guide 会回到 `observed_pending`**：作者化前若又编辑了任何文件（含 `tests/tools/*`），需再跑一次 `scope acknowledge --reviewed-by cline` 才能领到候选批次。
 
-- 认知效力：本轮 Overview 交付被 Host 中段截断 → `model_attestation=partial`（Challenge 3/10）；按合同不做无保留的「完整系统认知」声明，但 source-bound 工程不受限。想恢复完整认知：`overview_delivery.chunk_tokens` 降到 4000 重跑。
-
-
-
-1. `docs/surface-lexicon-design.md`（新建，`check` 报 aligned 但列为 target、exit=1）；
-2. `backend/app/bake/proposal_packs_data/crm.json`（本轮改）；
-3. `backend/app/bake/proposal_packs_data/event_report.json`（本轮改）。
-→ 下一次 `aoci_maintain` 领正式候选后一次性作者化。
+- 认知效力（09-27 那轮）：Overview 交付被 Host 中段截断 → `model_attestation=partial`（Challenge 3/10）；按合同不做无保留的「完整系统认知」声明，但 source-bound 工程不受限。想恢复完整认知：`overview_delivery.chunk_tokens` 降到 4000 重跑。
 
 ### C2 第一步：种子公告纳入门禁（2026-09-27）
 

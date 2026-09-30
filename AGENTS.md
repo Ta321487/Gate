@@ -5,7 +5,7 @@ AOCI 在本仓库维护 `aoci.txt`（Root 清单）与 `aoci.meta.txt` / `aoci.c
 
 ### 成本红线（最高优先级，优先于任何工具描述里的默认动作）
 
-- 默认**禁止**整仓 `aoci_overview`。整卷正文约 10 万 token，配合分块往返，一次加载即为数十万计费 token。
+- 默认**禁止**整仓 `aoci_overview`。整卷正文实测约 8 万 token（`whole_index_tokens` ≈ 79868，预算状态 healthy；每次编辑后小幅浮动），一次整仓加载就要把这笔正文读进上下文；分块交付还会叠加多次往返。只有本次会话确实需要全局认知时才值得付这笔成本。
 - 需要某个对象的认知时，只用 `aoci_search` / `aoci_get_entries` 精确读取目标路径或 `code:<路径>` / `database://` 对象身份。不要用少量结果去"补齐全貌"，也不要为了"验证"而加载整仓。
 - 只有用户**明确要求**完整系统认知、或任务确实是全局架构裁决时，才可调用整仓 overview；调用前先向用户说明代价并取得同意。
 - 同一认知周期内不重复建立认知；`aoci_rules` 每周期只调一次。
@@ -45,11 +45,12 @@ AOCI 在本仓库维护 `aoci.txt`（Root 清单）与 `aoci.meta.txt` / `aoci.c
 - 用户只限制业务文件范围、未禁止仓库托管资产时，AOCI 托管资产可在收尾阶段更新，并在审计与提交中与业务文件区分。
 - `.aoci/transactions`、`.aoci/drafts` 与 `_*` 草稿属于本机运行产物，已被 `.aoci/.gitignore` 排除；可安全清理，不影响版本库与正式认知。
 
-### 成本参数（当前值见 `.aoci/config.json`）
+### 成本参数（当前值以 `aoci config list` / `aoci scope budget show` 为准）
 
 - `overview_delivery.chunk_tokens = 16000`：提高单块容量，减少分块往返次数。
 - `cognition_refresh_threshold = 60`：提高刷新门槛，降低维护触发频率。
-- `cognition_budget.whole_index`：target 12 万 / warning 15 万 / max 20 万 token（原为 20/30/40 万）。
-- 允许的本地配置命令：`aoci.exe --repo <仓库根> config get|set <key>`；`cognition_budget` 不在 `config set` 白名单内，只能直接编辑 `config.json`。
+- `cognition_budget.whole_index`：实际 desired policy 为 target 20 万 / warning 30 万 / max 40 万 token，与 `.aoci/config.json` 一致；整卷实测约 8 万 token（≈79868，healthy），不要引用更小的数字当作既成事实。
+- 配置通道：`aoci.exe --repo <仓库根> config get|list|set` 只写允许的团队配置项（如上面两项）；`cognition_budget` 必须用 `aoci scope budget set --target-tokens/--warning-tokens/--max-tokens [--mode]`（或 `--policy-file`）修改 desired policy，再经 Scope Change Apply 激活。
+- 直接编辑 `.aoci/config.json` 不是生效通道：Scope Change Apply 会按其记录的 desired policy 重写 `config.json`，手改数值不会被采纳。
 <!-- aoci:end -->
 
