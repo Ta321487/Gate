@@ -124,6 +124,9 @@ _OVERLAY_API_MARKERS = (
     ("service/FundPublicityStore.java", "close(long id, String operator)"),
     ("service/FundDisburseStore.java", "totalOf("),
     ("service/FundDisburseStore.java", "BigDecimal amount, String paidAt"),
+    # 举报处置一键禁言：叠层 FavoriteStore 必须与 baseline 同源（举报窗口多 muteDays 形参）
+    ("capability/FavoriteStore.java", "takedown_mute"),
+    ("capability/FavoriteStore.java", "int muteDays)"),
     # 单据可选列：请假天数（随 period 落库）/ 周报周次（申请时补写）
     ("capability/TicketStore.java", "\"weekNo\""),
     # 站内私信店铺客服可见性（买家↔商家），三套必须同源
