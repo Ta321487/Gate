@@ -247,11 +247,16 @@ public class BalanceLedgerStore {
         String u = clip(str(ticket.get("username")), 64);
         if (u.isBlank()) throw new IllegalStateException("单据缺少申请人");
         int need = 1;
-        Object qtyObj = ticket.get("qty");
-        if (qtyObj instanceof Number num && num.intValue() > 0) {
+        Object leaveObj = ticket.get("leaveDays");
+        if (leaveObj instanceof Number num && num.intValue() > 0) {
             need = num.intValue();
-        } else if (qtyObj != null && !String.valueOf(qtyObj).isBlank()) {
-            need = qty(qtyObj);
+        } else {
+            Object qtyObj = ticket.get("qty");
+            if (qtyObj instanceof Number num && num.intValue() > 0) {
+                need = num.intValue();
+            } else if (qtyObj != null && !String.valueOf(qtyObj).isBlank()) {
+                need = qty(qtyObj);
+            }
         }
         long ticketId = 0L;
         Object id = ticket.get("id");
@@ -277,5 +282,41 @@ public class BalanceLedgerStore {
                 "INSERT INTO balance_ledger (username, subject_id, delta_qty, reason, ref_type, ref_id) "
                         + "VALUES (?, 1, ?, '审批扣减', 'debit', ?)",
                 u, -need, ticketId > 0 ? ticketId : null);
+    }
+
+    /** 办结/销假回补额度（与 debitForTicketApprove 对称）。 */
+    public static void creditForTicketReturn(Map<String, Object> ticket) {
+        if (!enabled || !debitOnApprove || !ready() || ticket == null) return;
+        String u = clip(str(ticket.get("username")), 64);
+        if (u.isBlank()) return;
+        int need = 1;
+        Object leaveObj = ticket.get("leaveDays");
+        if (leaveObj instanceof Number num && num.intValue() > 0) {
+            need = num.intValue();
+        } else {
+            Object qtyObj = ticket.get("qty");
+            if (qtyObj instanceof Number num && num.intValue() > 0) {
+                need = num.intValue();
+            } else if (qtyObj != null && !String.valueOf(qtyObj).isBlank()) {
+                need = qty(qtyObj);
+            }
+        }
+        long ticketId = 0L;
+        Object id = ticket.get("id");
+        if (id instanceof Number n) ticketId = n.longValue();
+        else if (id != null && !String.valueOf(id).isBlank()) {
+            try {
+                ticketId = Long.parseLong(String.valueOf(id));
+            } catch (Exception ignored) {
+            }
+        }
+        ensureAccount(u);
+        db().update(
+                "UPDATE balance_account SET balance = balance + ? WHERE username=? AND subject_id=1",
+                need, u);
+        db().update(
+                "INSERT INTO balance_ledger (username, subject_id, delta_qty, reason, ref_type, ref_id) "
+                        + "VALUES (?, 1, ?, '办结回补', 'credit', ?)",
+                u, need, ticketId > 0 ? ticketId : null);
     }
 }

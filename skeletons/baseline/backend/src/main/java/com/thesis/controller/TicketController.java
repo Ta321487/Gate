@@ -196,6 +196,50 @@ public class TicketController {
         }
     }
 
+    /**
+     * 招聘等：批量录用 / 淘汰（多选通过或驳回；开题挂 allowBatchHire 才可用）。
+     * body: { ids:[long], pass:true|false, remark?:string }
+     */
+    @PostMapping("/batch-hire")
+    public R<Map<String, Object>> batchHire(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        if (!TicketStore.isAllowBatchHire()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "未开通批量录用");
+        }
+        boolean pass = body.get("pass") == null || Boolean.parseBoolean(String.valueOf(body.get("pass")));
+        String remark = body.get("remark") == null ? "" : String.valueOf(body.get("remark")).trim();
+        if (!pass && remark.isBlank()) {
+            remark = "批量淘汰";
+        }
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        Object raw = body.get("ids");
+        if (raw instanceof java.util.Collection<?> col) {
+            for (Object o : col) {
+                if (o == null) continue;
+                try {
+                    ids.add(Long.parseLong(String.valueOf(o)));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        try {
+            boolean superAdmin = AdminAuth.isSuperAdmin(session);
+            Map<String, Object> out = TicketStore.batchHire(ids, pass, remark, uid, superAdmin);
+            AuditLogStore.record(
+                    uid,
+                    pass ? "ticket_batch_hire" : "ticket_batch_reject",
+                    "ticket",
+                    String.valueOf(out.get("okCount")),
+                    pass ? "批量录用" : ("批量淘汰：" + remark));
+            return R.ok(out);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @PostMapping("/{id}/rate")
     public R<Map<String, Object>> rate(
             @PathVariable long id,

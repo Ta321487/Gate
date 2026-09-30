@@ -316,6 +316,79 @@
           <el-form-item v-if="interviewPlaceOn" :label="interviewPlaceLabel">
             <el-input v-model="form.interviewPlace" :placeholder="interviewPlaceLead" />
           </el-form-item>
+          <el-form-item v-if="allowInterviewResult" :label="interviewResultLabel">
+            <el-select v-model="form.interviewResult" clearable style="width:100%">
+              <el-option v-for="opt in interviewResultOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowWrittenScore" :label="writtenScoreLabel">
+            <el-input-number v-model="form.writtenScore" :min="0" :max="999" :precision="1" />
+          </el-form-item>
+          <el-form-item v-if="allowBgCheckNote" :label="bgCheckNoteLabel">
+            <el-input v-model="form.bgCheckNote" type="textarea" :rows="2" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="allowDealAmount" :label="dealAmountLabel">
+            <el-input-number v-model="form.dealAmountYuan" :min="0" :max="99999999" :precision="2" />
+          </el-form-item>
+          <el-form-item v-if="allowNextAction" :label="nextActionLabel">
+            <el-input v-model="form.nextAction" maxlength="255" :placeholder="`选填${nextActionLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowNextAction">
+            <el-checkbox v-model="form.nextActionDone">{{ nextActionDoneLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="allowLeaveProxy" :label="leaveProxyLabel">
+            <el-input v-model="form.proxyName" maxlength="64" :placeholder="`选填${leaveProxyLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="requireReturnDate" :label="returnDateLabel">
+            <el-date-picker
+              v-model="form.returnDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="返岗日期"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="allowDefenseResult" :label="defenseResultLabel">
+            <el-select v-model="form.defenseResult" clearable style="width:100%">
+              <el-option v-for="opt in defenseResultOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="maskBankAccount" :label="bankAccountLabel">
+            <el-input v-model="form.bankAccount" maxlength="64" :placeholder="`请填写${bankAccountLabel}`" />
+          </el-form-item>
+          <p v-if="maskBankAccount && bankMaskHint" class="sub">{{ bankMaskHint }}</p>
+          <el-form-item v-if="homeVisitTemplate" :label="homeVisitFamilyLabel">
+            <el-input v-model="form.homeVisitFamily" type="textarea" :rows="2" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="homeVisitTemplate" :label="homeVisitTalkLabel">
+            <el-input v-model="form.homeVisitTalk" type="textarea" :rows="2" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="homeVisitTemplate" :label="homeVisitPlanLabel">
+            <el-input v-model="form.homeVisitPlan" type="textarea" :rows="2" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="requireFeedbackSet" :label="feedbackInterestLabel">
+            <el-input v-model="form.feedbackInterest" maxlength="128" />
+          </el-form-item>
+          <el-form-item v-if="requireFeedbackSet" :label="feedbackConcernLabel">
+            <el-input v-model="form.feedbackConcern" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="requireFeedbackSet" :label="feedbackNextLabel">
+            <el-input v-model="form.feedbackNext" maxlength="255" />
+          </el-form-item>
+          <el-form-item v-if="allowRecordUrl" :label="recordUrlLabel">
+            <el-input v-model="form.recordUrl" maxlength="255" placeholder="外链地址" />
+          </el-form-item>
+          <el-form-item v-if="requireAppraisal" :label="appraisalCommentLabel">
+            <el-input v-model="form.appraisalComment" type="textarea" :rows="3" maxlength="512" />
+          </el-form-item>
+          <el-form-item v-if="requireAppraisal" :label="appraisalGradeLabel">
+            <el-select v-model="form.appraisalGrade" clearable style="width:100%">
+              <el-option v-for="opt in appraisalGradeOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowCompanyEval" :label="companyEvalLabel">
+            <el-input v-model="form.companyEval" type="textarea" :rows="2" maxlength="512" />
+          </el-form-item>
           <el-form-item v-if="showFollowCols" :label="channelLabel">
             <el-select v-model="form.contactChannel" clearable :placeholder="channelPlaceholder" style="width:100%">
               <el-option v-for="opt in channelOptions" :key="opt" :label="opt" :value="opt" />
@@ -553,6 +626,53 @@ const utilityNoteLabel = computed(() => labels.value.utilityNoteLabel || '退宿
 const requirePeerConfirm = computed(() => !!ticket.requirePeerConfirm)
 const peerUsernameLabel = computed(() => labels.value.peerUsernameLabel || '对方学号/用户名')
 const peerConfirmHint = computed(() => labels.value.peerConfirmHint || '')
+const allowInterviewResult = computed(() => !!ticket.allowInterviewResult)
+const interviewResultLabel = computed(() => labels.value.interviewResultLabel || '面试结果')
+const interviewResultOptions = computed(() => {
+  const opts = labels.value.interviewResultOptions
+  return Array.isArray(opts) && opts.length ? opts : ['待定', '通过', '未通过']
+})
+const allowWrittenScore = computed(() => !!ticket.allowWrittenScore)
+const writtenScoreLabel = computed(() => labels.value.writtenScoreLabel || '笔试/机试成绩')
+const allowBgCheckNote = computed(() => !!ticket.allowBgCheckNote)
+const bgCheckNoteLabel = computed(() => labels.value.bgCheckNoteLabel || '背调备注')
+const allowDealAmount = computed(() => !!ticket.allowDealAmount)
+const dealAmountLabel = computed(() => labels.value.dealAmountLabel || '成交金额（元）')
+const allowNextAction = computed(() => !!ticket.allowNextAction)
+const nextActionLabel = computed(() => labels.value.nextActionLabel || '下次行动待办')
+const nextActionDoneLabel = computed(() => labels.value.nextActionDoneLabel || '行动已完成')
+const allowLeaveProxy = computed(() => !!ticket.allowLeaveProxy)
+const leaveProxyLabel = computed(() => labels.value.leaveProxyLabel || '代理人')
+const requireReturnDate = computed(() => !!ticket.requireReturnDate)
+const returnDateLabel = computed(() => labels.value.returnDateLabel || '返岗日期')
+const allowDefenseResult = computed(() => !!ticket.allowDefenseResult)
+const defenseResultLabel = computed(() => labels.value.defenseResultLabel || '答辩/评议结果')
+const defenseResultOptions = computed(() => {
+  const opts = labels.value.defenseResultOptions
+  return Array.isArray(opts) && opts.length ? opts : ['通过', '候补', '未通过', '待定']
+})
+const maskBankAccount = computed(() => !!ticket.maskBankAccount)
+const bankAccountLabel = computed(() => labels.value.bankAccountLabel || '银行卡号')
+const bankMaskHint = computed(() => labels.value.bankMaskHint || '')
+const homeVisitTemplate = computed(() => !!ticket.homeVisitTemplate)
+const homeVisitFamilyLabel = computed(() => labels.value.homeVisitFamilyLabel || '家庭情况')
+const homeVisitTalkLabel = computed(() => labels.value.homeVisitTalkLabel || '谈话要点')
+const homeVisitPlanLabel = computed(() => labels.value.homeVisitPlanLabel || '后续计划')
+const requireFeedbackSet = computed(() => !!ticket.requireFeedbackSet)
+const feedbackInterestLabel = computed(() => labels.value.feedbackInterestLabel || '客户意向')
+const feedbackConcernLabel = computed(() => labels.value.feedbackConcernLabel || '顾虑点')
+const feedbackNextLabel = computed(() => labels.value.feedbackNextLabel || '下一步建议')
+const allowRecordUrl = computed(() => !!ticket.allowRecordUrl)
+const recordUrlLabel = computed(() => labels.value.recordUrlLabel || '带看录音外链')
+const requireAppraisal = computed(() => !!ticket.requireAppraisal)
+const appraisalCommentLabel = computed(() => labels.value.appraisalCommentLabel || '鉴定评语')
+const appraisalGradeLabel = computed(() => labels.value.appraisalGradeLabel || '鉴定等级')
+const appraisalGradeOptions = computed(() => {
+  const opts = labels.value.appraisalGradeOptions
+  return Array.isArray(opts) && opts.length ? opts : ['优秀', '良好', '合格', '不合格']
+})
+const allowCompanyEval = computed(() => !!ticket.allowCompanyEval)
+const companyEvalLabel = computed(() => labels.value.companyEvalLabel || '单位评价')
 const bedConstraint = computed(() => !!ticket.bedConstraint)
 const closedLoanHint = computed(() => labels.value.closedLoanHint || '')
 const offHoursPickupHint = computed(() => labels.value.offHoursPickupHint || '')
@@ -860,6 +980,25 @@ const form = reactive({
   shipFeeYuan: null,
   utilityNote: '',
   peerUsername: '',
+  interviewResult: '',
+  writtenScore: null,
+  bgCheckNote: '',
+  dealAmountYuan: null,
+  nextAction: '',
+  nextActionDone: false,
+  returnDate: '',
+  defenseResult: '',
+  bankAccount: '',
+  homeVisitFamily: '',
+  homeVisitTalk: '',
+  homeVisitPlan: '',
+  feedbackInterest: '',
+  feedbackConcern: '',
+  feedbackNext: '',
+  recordUrl: '',
+  appraisalComment: '',
+  appraisalGrade: '',
+  companyEval: '',
 })
 
 const rateVisible = ref(false)
@@ -1015,6 +1154,25 @@ async function openApply() {
     shipFeeYuan: null,
     utilityNote: '',
     peerUsername: '',
+    interviewResult: '',
+    writtenScore: null,
+    bgCheckNote: '',
+    dealAmountYuan: null,
+    nextAction: '',
+    nextActionDone: false,
+    returnDate: '',
+    defenseResult: '',
+    bankAccount: '',
+    homeVisitFamily: '',
+    homeVisitTalk: '',
+    homeVisitPlan: '',
+    feedbackInterest: '',
+    feedbackConcern: '',
+    feedbackNext: '',
+    recordUrl: '',
+    appraisalComment: '',
+    appraisalGrade: '',
+    companyEval: '',
   })
   claimMatchedLine.value = ''
   units.value = []
@@ -1124,6 +1282,39 @@ async function submit() {
       body.utilityNote = form.utilityNote.trim()
     }
     if (requirePeerConfirm.value) body.peerUsername = (form.peerUsername || '').trim()
+    if (allowInterviewResult.value && form.interviewResult) body.interviewResult = form.interviewResult
+    if (allowWrittenScore.value && form.writtenScore != null) body.writtenScore = form.writtenScore
+    if (allowBgCheckNote.value && (form.bgCheckNote || '').trim()) body.bgCheckNote = form.bgCheckNote.trim()
+    if (allowDealAmount.value && form.dealAmountYuan != null) body.dealAmountYuan = form.dealAmountYuan
+    if (allowNextAction.value) {
+      if ((form.nextAction || '').trim()) body.nextAction = form.nextAction.trim()
+      body.nextActionDone = !!form.nextActionDone
+    }
+    if (allowLeaveProxy.value && (form.proxyName || '').trim()) body.proxyName = form.proxyName.trim()
+    if (requireReturnDate.value && form.returnDate) body.returnDate = form.returnDate
+    if (allowDefenseResult.value && form.defenseResult) body.defenseResult = form.defenseResult
+    if (maskBankAccount.value && (form.bankAccount || '').trim()) body.bankAccount = form.bankAccount.trim()
+    if (homeVisitTemplate.value) {
+      const parts = []
+      if ((form.homeVisitFamily || '').trim()) parts.push(`${homeVisitFamilyLabel.value}：${form.homeVisitFamily.trim()}`)
+      if ((form.homeVisitTalk || '').trim()) parts.push(`${homeVisitTalkLabel.value}：${form.homeVisitTalk.trim()}`)
+      if ((form.homeVisitPlan || '').trim()) parts.push(`${homeVisitPlanLabel.value}：${form.homeVisitPlan.trim()}`)
+      if (parts.length) {
+        const extra = parts.join('\n')
+        body.remark = body.remark ? `${body.remark}\n${extra}` : extra
+      }
+    }
+    if (requireFeedbackSet.value) {
+      if ((form.feedbackInterest || '').trim()) body.feedbackInterest = form.feedbackInterest.trim()
+      if ((form.feedbackConcern || '').trim()) body.feedbackConcern = form.feedbackConcern.trim()
+      if ((form.feedbackNext || '').trim()) body.feedbackNext = form.feedbackNext.trim()
+    }
+    if (allowRecordUrl.value && (form.recordUrl || '').trim()) body.recordUrl = form.recordUrl.trim()
+    if (requireAppraisal.value) {
+      if ((form.appraisalComment || '').trim()) body.appraisalComment = form.appraisalComment.trim()
+      if (form.appraisalGrade) body.appraisalGrade = form.appraisalGrade
+    }
+    if (allowCompanyEval.value && (form.companyEval || '').trim()) body.companyEval = form.companyEval.trim()
     await http.post('/api/tickets/apply', body)
     ElMessage.success('已提交，等待审核')
     visible.value = false

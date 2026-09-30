@@ -154,6 +154,14 @@
         LIMIT #{limit}
     </select>
 
+    <select id="countByItemColumn" resultType="map">
+        SELECT COALESCE(NULLIF(TRIM(`${column}`),''),'未填') AS name, COUNT(*) AS value
+        FROM `${itemTable}`
+        GROUP BY COALESCE(NULLIF(TRIM(`${column}`),''),'未填')
+        ORDER BY value DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectTags" resultType="map">
         SELECT id, name FROM `${tagTable}` ORDER BY id
     </select>

@@ -101,6 +101,22 @@ public class TicketDashboardController {
         } catch (Exception ignored) {
             charts.put("stockSeries", List.of());
         }
+        try {
+            charts.put("stageSeries", ArchiveStore.countByItemColumn("stage", 12));
+            charts.put("leadSourceSeries", ArchiveStore.countByItemColumn("lead_source", 12));
+            charts.put("listingFunnelSeries", ArchiveStore.countByItemColumn("rent_stage", 12));
+            if (isEmptySeries(charts.get("listingFunnelSeries"))) {
+                charts.put("listingFunnelSeries", ArchiveStore.countByItemColumn("stage", 12));
+            }
+        } catch (Exception ignored) {
+            charts.putIfAbsent("stageSeries", List.of());
+            charts.putIfAbsent("leadSourceSeries", List.of());
+            charts.putIfAbsent("listingFunnelSeries", List.of());
+        }
+        try {
+            TicketStore.maybeNotifyWeekReports(null);
+        } catch (Exception ignored) {
+        }
         if (ArchiveLogStore.enabled()) {
             m.put("missingCheckinToday", ArchiveLogStore.countMissingToday("checkin"));
         }

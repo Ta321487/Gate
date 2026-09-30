@@ -285,6 +285,90 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.ticket-allow-proxy-pickup:false}")
     private boolean ticketAllowProxyPickup;
 
+    @Value("${thesis.ticket-phone-dup-check:false}")
+    private boolean ticketPhoneDupCheck;
+
+    @Value("${thesis.ticket-allow-deal-amount:false}")
+    private boolean ticketAllowDealAmount;
+
+    @Value("${thesis.ticket-allow-next-action:false}")
+    private boolean ticketAllowNextAction;
+
+    @Value("${thesis.ticket-require-close-attach:false}")
+    private boolean ticketRequireCloseAttach;
+
+    @Value("${thesis.ticket-require-return-date:false}")
+    private boolean ticketRequireReturnDate;
+
+    @Value("${thesis.ticket-attach-by-leave-type:false}")
+    private boolean ticketAttachByLeaveType;
+
+    @Value("${thesis.ticket-allow-leave-proxy:false}")
+    private boolean ticketAllowLeaveProxy;
+
+    @Value("${thesis.ticket-allow-interview-result:false}")
+    private boolean ticketAllowInterviewResult;
+
+    @Value("${thesis.ticket-allow-batch-hire:false}")
+    private boolean ticketAllowBatchHire;
+
+    @Value("${thesis.ticket-allow-written-score:false}")
+    private boolean ticketAllowWrittenScore;
+
+    @Value("${thesis.ticket-allow-bg-check-note:false}")
+    private boolean ticketAllowBgCheckNote;
+
+    @Value("${thesis.ticket-allow-defense-result:false}")
+    private boolean ticketAllowDefenseResult;
+
+    @Value("${thesis.ticket-mask-bank-account:false}")
+    private boolean ticketMaskBankAccount;
+
+    @Value("${thesis.ticket-allow-disburse-batch:false}")
+    private boolean ticketAllowDisburseBatch;
+
+    @Value("${thesis.ticket-week-report-remind:false}")
+    private boolean ticketWeekReportRemind;
+
+    @Value("${thesis.ticket-require-appraisal:false}")
+    private boolean ticketRequireAppraisal;
+
+    @Value("${thesis.ticket-allow-company-eval:false}")
+    private boolean ticketAllowCompanyEval;
+
+    @Value("${thesis.ticket-allow-excellent-mark:false}")
+    private boolean ticketAllowExcellentMark;
+
+    @Value("${thesis.ticket-require-feedback-set:false}")
+    private boolean ticketRequireFeedbackSet;
+
+    @Value("${thesis.ticket-allow-record-url:false}")
+    private boolean ticketAllowRecordUrl;
+
+    @Value("${thesis.ticket-allow-makeup-apply:false}")
+    private boolean ticketAllowMakeupApply;
+
+    @Value("${thesis.ticket-home-visit-template:false}")
+    private boolean ticketHomeVisitTemplate;
+
+    @Value("${thesis.ticket-allow-confidential:false}")
+    private boolean ticketAllowConfidential;
+
+    @Value("${thesis.ticket-allow-assign-dept:false}")
+    private boolean ticketAllowAssignDept;
+
+    @Value("${thesis.ticket-follow-remind-days:0}")
+    private int ticketFollowRemindDays;
+
+    @Value("${thesis.ticket-min-remark-words:0}")
+    private int ticketMinRemarkWords;
+
+    @Value("${thesis.ticket-max-revise-times:0}")
+    private int ticketMaxReviseTimes;
+
+    @Value("${thesis.ticket-week-report-deadline-day:0}")
+    private int ticketWeekReportDeadlineDay;
+
     @Value("${thesis.ticket-bed-constraint:false}")
     private boolean ticketBedConstraint;
 
@@ -716,6 +800,34 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureRenewBlockIfHeld(ticketRenewBlockIfHeld);
             TicketStore.configurePeerConfirm(ticketRequirePeerConfirm);
             TicketStore.configureAbandonDual(ticketRequireAbandonDual);
+            TicketStore.configureFollowThicken(
+                    ticketFollowRemindDays,
+                    ticketMinRemarkWords,
+                    ticketMaxReviseTimes,
+                    ticketRequireCloseAttach,
+                    ticketRequireReturnDate,
+                    ticketRequireFeedbackSet,
+                    ticketRequireAppraisal,
+                    ticketAllowDealAmount,
+                    ticketAllowNextAction,
+                    ticketAllowInterviewResult,
+                    ticketAllowWrittenScore,
+                    ticketAllowBgCheckNote,
+                    ticketAllowDefenseResult,
+                    ticketMaskBankAccount,
+                    ticketAllowDisburseBatch,
+                    ticketAllowLeaveProxy,
+                    ticketAllowCompanyEval,
+                    ticketAllowExcellentMark,
+                    ticketAllowRecordUrl,
+                    ticketAllowConfidential,
+                    ticketAllowAssignDept,
+                    ticketAllowBatchHire,
+                    ticketWeekReportRemind,
+                    ticketHomeVisitTemplate,
+                    ticketAttachByLeaveType,
+                    ticketAllowMakeupApply,
+                    ticketWeekReportDeadlineDay);
         }
         LoyaltyStore.configure(
                 walletEnabled,

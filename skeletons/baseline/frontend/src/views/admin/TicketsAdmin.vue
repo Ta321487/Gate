@@ -5,9 +5,22 @@
     </div>
     <div class="toolbar">
       <el-button type="primary" @click="load">刷新待办</el-button>
+      <template v-if="allowBatchHire">
+        <el-button
+          type="success"
+          :disabled="!selectedIds.length"
+          @click="batchHire(true)"
+        >{{ batchHireLabel }}（{{ selectedIds.length }}）</el-button>
+        <el-button
+          type="danger"
+          :disabled="!selectedIds.length"
+          @click="batchHire(false)"
+        >{{ batchRejectLabel }}（{{ selectedIds.length }}）</el-button>
+      </template>
     </div>
     <div class="table-scroll">
-    <el-table :data="list" stripe>
+    <el-table :data="list" stripe @selection-change="onSelectionChange">
+      <el-table-column v-if="allowBatchHire" type="selection" width="48" />
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" show-overflow-tooltip />
       <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
@@ -191,7 +204,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
@@ -241,6 +254,52 @@ const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 /** 终审/单级受理时可选派给维修员等子管 */
 const showDispatch = computed(() => applicantCompleteOnly.value || slaDeadline.value)
+const labels = computed(() => getSchema()?.labels || {})
+const allowBatchHire = computed(() => !!ticket.allowBatchHire)
+const batchHireLabel = computed(() => labels.value.batchHireLabel || '批量录用')
+const batchRejectLabel = computed(() => labels.value.batchRejectLabel || '批量淘汰')
+const selectedIds = ref([])
+
+function onSelectionChange(rows) {
+  selectedIds.value = (rows || []).map((r) => r.id).filter((id) => id != null)
+}
+
+async function batchHire(pass) {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先勾选单据')
+    return
+  }
+  const action = pass ? batchHireLabel.value : batchRejectLabel.value
+  let remark = pass ? '' : '批量淘汰'
+  if (!pass) {
+    try {
+      const { value } = await ElMessageBox.prompt('请填写淘汰原因', action, {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPattern: /\S+/,
+        inputErrorMessage: '原因不能为空',
+      })
+      remark = String(value || '').trim()
+    } catch {
+      return
+    }
+  }
+  const res = await http.post('/api/tickets/batch-hire', {
+    ids: selectedIds.value,
+    pass,
+    remark,
+  })
+  const data = res.data || res
+  const ok = data.okCount || 0
+  const fail = data.failCount || 0
+  if (fail > 0) {
+    ElMessage.warning(`${action}完成：成功 ${ok} 条，失败 ${fail} 条`)
+  } else {
+    ElMessage.success(`${action}成功 ${ok} 条`)
+  }
+  selectedIds.value = []
+  load()
+}
 
 function archiveFieldLabel(key, fallback) {
   const f = (archive.fields || []).find((x) => x.key === key)

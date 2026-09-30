@@ -7,6 +7,7 @@ import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.SchemaMapper;
 import com.thesis.mapper.TicketMapper;
 import com.thesis.service.ClaimProofStore;
+import com.thesis.service.BalanceLedgerStore;
 import com.thesis.service.ExamStore;
 import com.thesis.service.MessageStore;
 import com.thesis.service.TimebankStore;
@@ -224,17 +225,13 @@ public final class TicketStore {
 
     public static void markVerifying(long ticketId, String operator) {
         if (ticketId <= 0) return;
-        MybatisSupport.db().update(
-                "UPDATE " + TICKET + " SET status='verifying' WHERE id=? AND status IN ('pending','verifying')",
-                ticketId);
+        mapper().updateMarkVerifying(TICKET, ticketId);
         appendProgress(ticketId, "verifying", operator == null ? "" : operator, "已提交认领凭证，等待核验");
     }
 
     public static void markPendingForProof(long ticketId, String operator) {
         if (ticketId <= 0) return;
-        MybatisSupport.db().update(
-                "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='verifying'",
-                ticketId);
+        mapper().updateMarkPendingForProof(TICKET, ticketId);
         appendProgress(ticketId, "pending", operator == null ? "" : operator, "凭证未通过，请重新提交");
     }
 
@@ -391,6 +388,35 @@ public final class TicketStore {
     /** 弃件须双人确认字段齐全 */
     static boolean requireAbandonDual = false;
 
+    /** 跟进组加厚 */
+    static int followRemindDays = 0;
+    static int minRemarkWords = 0;
+    static int maxReviseTimes = 0;
+    static boolean requireCloseAttach = false;
+    static boolean requireReturnDate = false;
+    static boolean requireFeedbackSet = false;
+    static boolean requireAppraisal = false;
+    static boolean allowDealAmount = false;
+    static boolean allowNextAction = false;
+    static boolean allowInterviewResult = false;
+    static boolean allowWrittenScore = false;
+    static boolean allowBgCheckNote = false;
+    static boolean allowDefenseResult = false;
+    static boolean maskBankAccount = false;
+    static boolean allowDisburseBatch = false;
+    static boolean allowLeaveProxy = false;
+    static boolean allowCompanyEval = false;
+    static boolean allowExcellentMark = false;
+    static boolean allowRecordUrl = false;
+    static boolean allowConfidential = false;
+    static boolean allowAssignDept = false;
+    static boolean allowBatchHire = false;
+    static boolean weekReportRemind = false;
+    static boolean homeVisitTemplate = false;
+    static boolean attachByLeaveType = false;
+    static boolean allowMakeupApply = false;
+    static int weekReportDeadlineDay = 0;
+
     public static void configureProxyPickup(boolean enabled) {
         allowProxyPickup = enabled;
     }
@@ -485,8 +511,105 @@ public final class TicketStore {
         requireAbandonDual = enabled;
     }
 
+    public static void configureFollowThicken(
+            int followRemindDaysIn,
+            int minRemarkWordsIn,
+            int maxReviseTimesIn,
+            boolean requireCloseAttachIn,
+            boolean requireReturnDateIn,
+            boolean requireFeedbackSetIn,
+            boolean requireAppraisalIn,
+            boolean allowDealAmountIn,
+            boolean allowNextActionIn,
+            boolean allowInterviewResultIn,
+            boolean allowWrittenScoreIn,
+            boolean allowBgCheckNoteIn,
+            boolean allowDefenseResultIn,
+            boolean maskBankAccountIn,
+            boolean allowDisburseBatchIn,
+            boolean allowLeaveProxyIn,
+            boolean allowCompanyEvalIn,
+            boolean allowExcellentMarkIn,
+            boolean allowRecordUrlIn,
+            boolean allowConfidentialIn,
+            boolean allowAssignDeptIn,
+            boolean allowBatchHireIn,
+            boolean weekReportRemindIn,
+            boolean homeVisitTemplateIn,
+            boolean attachByLeaveTypeIn,
+            boolean allowMakeupApplyIn,
+            int weekReportDeadlineDayIn) {
+        followRemindDays = Math.max(0, Math.min(14, followRemindDaysIn));
+        minRemarkWords = Math.max(0, Math.min(5000, minRemarkWordsIn));
+        maxReviseTimes = Math.max(0, Math.min(20, maxReviseTimesIn));
+        requireCloseAttach = requireCloseAttachIn;
+        requireReturnDate = requireReturnDateIn;
+        requireFeedbackSet = requireFeedbackSetIn;
+        requireAppraisal = requireAppraisalIn;
+        allowDealAmount = allowDealAmountIn;
+        allowNextAction = allowNextActionIn;
+        allowInterviewResult = allowInterviewResultIn;
+        allowWrittenScore = allowWrittenScoreIn;
+        allowBgCheckNote = allowBgCheckNoteIn;
+        allowDefenseResult = allowDefenseResultIn;
+        maskBankAccount = maskBankAccountIn;
+        allowDisburseBatch = allowDisburseBatchIn;
+        allowLeaveProxy = allowLeaveProxyIn;
+        allowCompanyEval = allowCompanyEvalIn;
+        allowExcellentMark = allowExcellentMarkIn;
+        allowRecordUrl = allowRecordUrlIn;
+        allowConfidential = allowConfidentialIn;
+        allowAssignDept = allowAssignDeptIn;
+        allowBatchHire = allowBatchHireIn;
+        weekReportRemind = weekReportRemindIn;
+        homeVisitTemplate = homeVisitTemplateIn;
+        attachByLeaveType = attachByLeaveTypeIn;
+        allowMakeupApply = allowMakeupApplyIn;
+        weekReportDeadlineDay = Math.max(0, Math.min(28, weekReportDeadlineDayIn));
+    }
+
     public static boolean isAllowFineWaive() {
         return allowFineWaive;
+    }
+
+    public static boolean isAllowBatchHire() {
+        return allowBatchHire;
+    }
+
+    /**
+     * 批量录用/淘汰：逐单走既有 approve；录用时顺便写面试结果=通过，淘汰写未通过。
+     * 单笔失败计入 failed，不中断其余。
+     */
+    public static Map<String, Object> batchHire(
+            java.util.List<Long> ids, boolean pass, String remark, String op, boolean asSuper) {
+        if (!allowBatchHire) throw new IllegalStateException("未开通批量录用");
+        if (ids == null || ids.isEmpty()) throw new IllegalStateException("请先勾选单据");
+        if (ids.size() > 50) throw new IllegalStateException("单次最多处理 50 条");
+        int ok = 0;
+        java.util.List<String> errors = new java.util.ArrayList<>();
+        String note = remark == null ? "" : remark.trim();
+        for (Long id : ids) {
+            if (id == null || id <= 0) continue;
+            try {
+                approve(id, pass, note, op, asSuper, "");
+                if (allowInterviewResult && hasColumn("interview_result")) {
+                    String result = pass ? "通过" : "未通过";
+                    mapper().updateInterviewResult(TICKET, id, result);
+                }
+                ok++;
+            } catch (Exception e) {
+                String msg = e.getMessage() == null ? "失败" : e.getMessage();
+                errors.add("#" + id + "：" + msg);
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("okCount", ok);
+        out.put("failCount", errors.size());
+        out.put("errors", errors);
+        if (ok == 0 && !errors.isEmpty()) {
+            throw new IllegalStateException(errors.get(0));
+        }
+        return out;
     }
 
     public static boolean isRequirePeerConfirm() {
@@ -504,7 +627,7 @@ public final class TicketStore {
         if (ticketId <= 0) return;
         try {
             if (hasColumn("id")) {
-                MybatisSupport.db().update("DELETE FROM " + TICKET + " WHERE id=?", ticketId);
+                mapper().deleteById(TICKET, ticketId);
             }
         } catch (Exception ignored) {
             // 回滚失败不掩盖主错误
@@ -940,6 +1063,12 @@ public final class TicketStore {
         String rawNote = remark == null ? "" : remark.trim();
         if (requireRemark && rawNote.isBlank()) {
             throw new IllegalStateException("请填写说明后再提交");
+        }
+        if (minRemarkWords > 0) {
+            int words = rawNote.replaceAll("\\s+", "").length();
+            if (words < minRemarkWords) {
+                throw new IllegalStateException("正文不少于 " + minRemarkWords + " 字后再提交");
+            }
         }
         final String note = rawNote.length() > 255 ? rawNote.substring(0, 255) : rawNote;
         final boolean withAttach = hasColumn("attach_url");
@@ -1407,10 +1536,9 @@ public final class TicketStore {
         String note = reason == null ? "" : reason.trim();
         if (note.length() > 200) note = note.substring(0, 200);
         if (hasColumn("fine_yuan")) {
-            MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET fine_status='waived', fine_yuan=0 WHERE id=?", ticketId);
+            mapper().updateFineWaived(TICKET, ticketId, true);
         } else {
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET fine_status='waived' WHERE id=?", ticketId);
+            mapper().updateFineWaived(TICKET, ticketId, false);
         }
         appendProgress(ticketId, "fine_waived", operator, note.isBlank() ? "罚款已减免" : ("罚款减免：" + note));
         return get(ticketId);
@@ -1522,11 +1650,13 @@ public final class TicketStore {
                         && ArchiveStore.getItemRaw(itemId) != null) {
                     ArchiveStore.adjustStock(itemId, nQty);
                 }
-                MybatisSupport.db().update(
-                        "UPDATE " + TICKET + " SET status='rejected', remark=?"
-                                + (hasColumn("hold_expire_at") ? ", hold_expire_at=NULL" : "")
-                                + " WHERE id=?",
-                        note, ticketId);
+                Map<String, Object> rej = new LinkedHashMap<>();
+                rej.put("ticketTable", TICKET);
+                rej.put("id", ticketId);
+                rej.put("status", "rejected");
+                rej.put("remark", note);
+                rej.put("clearHoldExpire", hasColumn("hold_expire_at"));
+                mapper().updateCancelOrRejectHold(rej);
                 appendProgress(ticketId, "rejected", op,
                         note.isBlank() ? "驳回待取书预约" : note);
                 notifyTicketResult(m, false, note);
@@ -1950,10 +2080,8 @@ public final class TicketStore {
             throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
         }
         if (maxCancelHolds > 0 && ("held".equals(st) || "hold_ready".equals(st) || "waitlisted".equals(st))) {
-            Integer n = MybatisSupport.db().queryForObject(
-                    "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND status='cancelled'",
-                    Integer.class, username);
-            if (n != null && n >= maxCancelHolds) {
+            int n = mapper().countCancelledByUser(TICKET, username);
+            if (n >= maxCancelHolds) {
                 throw new IllegalStateException("预约/候补取消次数已达上限，暂不可再取消");
             }
         }
@@ -1962,11 +2090,12 @@ public final class TicketStore {
                 && ArchiveStore.getItemRaw(itemId) != null) {
             ArchiveStore.adjustStock(itemId, rowQty(m));
         }
-        MybatisSupport.db().update(
-                "UPDATE " + TICKET + " SET status='cancelled'"
-                        + (hasColumn("hold_expire_at") ? ", hold_expire_at=NULL" : "")
-                        + " WHERE id=?",
-                ticketId);
+        Map<String, Object> cancel = new LinkedHashMap<>();
+        cancel.put("ticketTable", TICKET);
+        cancel.put("id", ticketId);
+        cancel.put("status", "cancelled");
+        cancel.put("clearHoldExpire", hasColumn("hold_expire_at"));
+        mapper().updateCancelOrRejectHold(cancel);
         String progNote = "held".equals(st) ? "用户取消预约"
                 : ("hold_ready".equals(st) ? "用户放弃取书"
                 : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请"));
@@ -1991,11 +2120,7 @@ public final class TicketStore {
         if (stock <= 0) return;
         Long wid = null;
         try {
-            wid = MybatisSupport.db().queryForObject(
-                    "SELECT id FROM " + TICKET
-                            + " WHERE " + itemFkColumn() + "=? AND status='waitlisted'"
-                            + " ORDER BY apply_at ASC, id ASC LIMIT 1",
-                    Long.class, itemId);
+            wid = mapper().selectEarliestWaitlistedId(TICKET, itemFkColumn(), itemId);
         } catch (Exception ignored) {
             return;
         }
@@ -2004,9 +2129,7 @@ public final class TicketStore {
         if (w == null) return;
         int need = rowQty(w);
         if (stock < need) return;
-        int n = MybatisSupport.db().update(
-                "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='waitlisted'",
-                wid);
+        int n = mapper().updatePromoteWaitlist(TICKET, wid);
         if (n <= 0) return;
         appendProgress(wid, "pending", "system", "候补晋升：名额空出，转为待审");
         try {
@@ -2042,11 +2165,7 @@ public final class TicketStore {
         if (stock <= 0) return;
         Long hid = null;
         try {
-            hid = MybatisSupport.db().queryForObject(
-                    "SELECT id FROM " + TICKET
-                            + " WHERE " + itemFkColumn() + "=? AND status='held'"
-                            + " ORDER BY apply_at ASC, id ASC LIMIT 1",
-                    Long.class, itemId);
+            hid = mapper().selectEarliestHeldId(TICKET, itemFkColumn(), itemId);
         } catch (Exception ignored) {
             return;
         }
@@ -2057,9 +2176,7 @@ public final class TicketStore {
         if (stock < need) return;
         ArchiveStore.adjustStock(itemId, -need);
         LocalDateTime expireAt = LocalDateTime.now().plusHours(holdHours);
-        int n = MybatisSupport.db().update(
-                "UPDATE " + TICKET + " SET status='hold_ready', hold_expire_at=? WHERE id=? AND status='held'",
-                Timestamp.valueOf(expireAt), hid);
+        int n = mapper().updatePromoteHoldReady(TICKET, hid, Timestamp.valueOf(expireAt));
         if (n <= 0) {
             ArchiveStore.adjustStock(itemId, need);
             return;
@@ -2088,24 +2205,18 @@ public final class TicketStore {
         if (!allowBookHold || !hasColumn("hold_expire_at")) return;
         List<Long> ids;
         try {
-            ids = MybatisSupport.db().query(
-                    "SELECT id FROM " + TICKET
-                            + " WHERE status='hold_ready' AND hold_expire_at IS NOT NULL"
-                            + " AND hold_expire_at < NOW()",
-                    (rs, i) -> rs.getLong("id"));
+            ids = mapper().selectExpiredHoldReadyIds(TICKET);
         } catch (Exception e) {
             return;
         }
+        if (ids == null || ids.isEmpty()) return;
         java.util.LinkedHashSet<Long> promoteItems = new java.util.LinkedHashSet<>();
         for (Long id : ids) {
             if (id == null || id <= 0) continue;
             Map<String, Object> m = TicketRowMaps.load(id);
             if (m == null || !"hold_ready".equals(String.valueOf(m.get("status")))) continue;
             long itemId = TicketSql.toLong(m.get("bookId"));
-            int n = MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET status='cancelled', hold_expire_at=NULL"
-                            + " WHERE id=? AND status='hold_ready'",
-                    id);
+            int n = mapper().updateCancelExpiredHold(TICKET, id);
             if (n <= 0) continue;
             if (MODE == Mode.ARCHIVE && useQuota && itemId > 0
                     && ArchiveStore.getItemRaw(itemId) != null) {
@@ -2174,31 +2285,19 @@ public final class TicketStore {
         }
         String handler = !dispatchTo.isBlank() ? dispatchTo : op;
         boolean bindHandler = bind && !handler.isBlank() && hasColumn("assignee_username");
-        StringBuilder sql = new StringBuilder(
-                "UPDATE " + TICKET + " SET status='approved', approve_at=?, remark=?");
-        List<Object> args = new ArrayList<>();
-        args.add(Timestamp.valueOf(approveAt));
-        args.add(note == null ? "" : note);
-        if (bindHandler) {
-            sql.append(", assignee_username=?");
-            args.add(handler);
-        }
-        if (useDeadline) {
-            sql.append(", due_at=?");
-            args.add(Timestamp.valueOf(dueAt));
-        }
-        if (hasColumn("fine_yuan")) {
-            sql.append(", fine_yuan=0");
-        }
-        if (hasColumn("remind_msg")) {
-            sql.append(", remind_msg=''");
-        }
-        if (hasColumn("hold_expire_at")) {
-            sql.append(", hold_expire_at=NULL");
-        }
-        sql.append(" WHERE id=? AND status='hold_ready'");
-        args.add(ticketId);
-        int n = MybatisSupport.db().update(sql.toString(), args.toArray());
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("ticketTable", TICKET);
+        row.put("id", ticketId);
+        row.put("approveAt", Timestamp.valueOf(approveAt));
+        row.put("remark", note == null ? "" : note);
+        row.put("bindAssignee", bindHandler);
+        if (bindHandler) row.put("assigneeUsername", handler);
+        row.put("withDue", useDeadline);
+        if (useDeadline) row.put("dueAt", Timestamp.valueOf(dueAt));
+        row.put("withFineYuan", hasColumn("fine_yuan"));
+        row.put("withRemindMsg", hasColumn("remind_msg"));
+        row.put("clearHoldExpire", hasColumn("hold_expire_at"));
+        int n = mapper().updateHoldReadyApprove(row);
         if (n <= 0) throw new IllegalStateException("确认借阅失败，状态已变更");
         String passCode = issuePassCodeIfNeeded(ticketId);
         notifyTicketResult(m, true, note == null ? "" : note, passCode);
@@ -2262,6 +2361,32 @@ public final class TicketStore {
             }
             if (retAttach.length() > 255) retAttach = retAttach.substring(0, 255);
         }
+        if (requireCloseAttach) {
+            String closeUrl = TicketSql.str(m.get("closeAttachUrl")).trim();
+            if (closeUrl.isBlank() && !retAttach.isBlank()) closeUrl = retAttach;
+            if (closeUrl.isBlank()) {
+                throw new IllegalStateException("请上传结案报告附件后再办结");
+            }
+        }
+        if (requireReturnDate) {
+            String rd = TicketSql.str(m.get("returnDate")).trim();
+            if (rd.isBlank()) {
+                throw new IllegalStateException("请填写返岗日期后再销假");
+            }
+        }
+        if (requireFeedbackSet) {
+            if (TicketSql.str(m.get("feedbackInterest")).isBlank()
+                    || TicketSql.str(m.get("feedbackConcern")).isBlank()
+                    || TicketSql.str(m.get("feedbackNext")).isBlank()) {
+                throw new IllegalStateException("请填写带看反馈后再办结");
+            }
+        }
+        if (requireAppraisal) {
+            if (TicketSql.str(m.get("appraisalComment")).isBlank()
+                    || TicketSql.str(m.get("appraisalGrade")).isBlank()) {
+                throw new IllegalStateException("请填写实习鉴定评语与等级后再办结");
+            }
+        }
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
             if (ArchiveStore.getItemRaw(itemId) != null) {
@@ -2293,6 +2418,10 @@ public final class TicketStore {
             row.put("attachUrl", retAttach);
         }
         mapper().updateComplete(row);
+        try {
+            BalanceLedgerStore.creditForTicketReturn(m);
+        } catch (Exception ignored) {
+        }
         appendProgress(ticketId, "returned", actorUid, TicketCopy.stateLabel("returned", TicketCopy.verbLabel("return", "已完结")));
         return get(ticketId);
     }
@@ -2311,7 +2440,7 @@ public final class TicketStore {
         if (!List.of("approved", "overdue").contains(st)) {
             throw new IllegalStateException("仅借出中或逾期可申报丢失");
         }
-        MybatisSupport.db().update("UPDATE " + TICKET + " SET status='lost' WHERE id=?", ticketId);
+        mapper().updateStatus(TICKET, "lost", ticketId);
         appendProgress(ticketId, "lost", username, TicketCopy.stateLabel("lost", "丢失申报"));
         return get(ticketId);
     }
@@ -2324,7 +2453,7 @@ public final class TicketStore {
         if (!"lost".equals(String.valueOf(m.get("status")))) {
             throw new IllegalStateException("仅丢失申报状态可登记赔偿完成");
         }
-        MybatisSupport.db().update("UPDATE " + TICKET + " SET status='compensated' WHERE id=?", ticketId);
+        mapper().updateStatus(TICKET, "compensated", ticketId);
         appendProgress(
                 ticketId,
                 "compensated",
@@ -2384,11 +2513,7 @@ public final class TicketStore {
     static void assertNotOverdueFrozen(String username) {
         if (maxOverdueTimes <= 0 || username == null || username.isBlank()) return;
         if (!hasColumn("ever_overdue")) return;
-        Integer n = MybatisSupport.db().queryForObject(
-                "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND ever_overdue=1",
-                Integer.class,
-                username.trim());
-        int used = n == null ? 0 : n;
+        int used = mapper().countEverOverdueByUser(TICKET, username.trim());
         if (used >= maxOverdueTimes) {
             throw new IllegalStateException(
                     "超期已达 " + maxOverdueTimes + " 次，暂不可再借，请先处理逾期单据");
@@ -2433,12 +2558,9 @@ public final class TicketStore {
         long itemId = TicketSql.toLong(m.get("bookId"));
         if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
         if (renewBlockIfHeld && itemId > 0) {
-            Integer holds = MybatisSupport.db().queryForObject(
-                    "SELECT COUNT(*) FROM " + TICKET
-                            + " WHERE " + itemFkColumn() + "=? AND status IN ('held','hold_ready')"
-                            + " AND username<>?",
-                    Integer.class, itemId, username);
-            if (holds != null && holds > 0) {
+            int holds = mapper().countHoldsByItemExcludingUser(
+                    TICKET, itemFkColumn(), itemId, username);
+            if (holds > 0) {
                 throw new IllegalStateException("该书另有读者预约，暂不可续借");
             }
         }
@@ -2457,20 +2579,14 @@ public final class TicketStore {
         int days = renewDays > 0 ? renewDays : loanDays();
         LocalDateTime newDue = base.plusDays(days);
         int nextCount = used + 1;
-        StringBuilder sql = new StringBuilder(
-                "UPDATE " + TICKET + " SET due_at=?, status='approved', renew_count=?");
-        List<Object> args = new ArrayList<>();
-        args.add(Timestamp.valueOf(newDue));
-        args.add(nextCount);
-        if (hasColumn("fine_yuan")) {
-            sql.append(", fine_yuan=0");
-        }
-        if (hasColumn("remind_msg")) {
-            sql.append(", remind_msg=''");
-        }
-        sql.append(" WHERE id=?");
-        args.add(ticketId);
-        MybatisSupport.db().update(sql.toString(), args.toArray());
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("ticketTable", TICKET);
+        row.put("id", ticketId);
+        row.put("dueAt", Timestamp.valueOf(newDue));
+        row.put("renewCount", nextCount);
+        row.put("withFineYuan", hasColumn("fine_yuan"));
+        row.put("withRemindMsg", hasColumn("remind_msg"));
+        mapper().updateRenew(row);
         appendProgress(
                 ticketId, "approved", username, "续借第" + nextCount + "次，应还日延至 " + TicketSql.fmt(newDue));
         try {
@@ -2515,6 +2631,9 @@ public final class TicketStore {
         expireBookHolds();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
+        if (username != null && !username.isBlank()) {
+            maybeNotifyWeekReports(username);
+        }
         if (useDeadline) {
             List<Map<String, Object>> open = mapper().selectOpenApprovedOverdue(TICKET);
             if (open != null) {
@@ -2584,9 +2703,7 @@ public final class TicketStore {
             return;
         }
         if ("approved".equals(st)) {
-            MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET status='rejected', approve_at=NOW(), remark=? WHERE id=?",
-                    reason, ticketId);
+            mapper().updateHideRejected(TICKET, ticketId, reason);
             appendProgress(ticketId, "rejected", "system", reason);
             return;
         }
@@ -2745,15 +2862,11 @@ public final class TicketStore {
                 String pp = TicketSql.str(body.get("proxyPhone")).trim();
                 if (pn.length() > 64) pn = pn.substring(0, 64);
                 if (pp.length() > 20) pp = pp.substring(0, 20);
-                MybatisSupport.db().update(
-                        "UPDATE " + TICKET + " SET proxy_name=?, proxy_phone=? WHERE id=?", pn, pp, ticketId);
+                mapper().updateProxyPair(TICKET, ticketId, pn, pp);
             }
         }
         if (body.containsKey("noticeAck") && hasColumn("notice_ack")) {
-            MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET notice_ack=? WHERE id=?",
-                    truthy(body.get("noticeAck")) ? 1 : 0,
-                    ticketId);
+            updateTicketColumn(ticketId, "notice_ack", truthy(body.get("noticeAck")) ? 1 : 0);
         }
         if ((allowDeposit || body.containsKey("depositYuan")) && body.containsKey("depositYuan")) {
             if (!hasColumn("deposit_yuan")) {
@@ -2762,61 +2875,56 @@ public final class TicketStore {
             double dep = TicketSql.toDouble(body.get("depositYuan"));
             if (dep < 0) dep = 0;
             if (dep > 999999) dep = 999999;
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET deposit_yuan=? WHERE id=?", dep, ticketId);
+            updateTicketColumn(ticketId, "deposit_yuan", dep);
         }
         if (allowExceptionClose || body.containsKey("exceptionReason") || body.containsKey("damageClaimNote")) {
             if (body.containsKey("exceptionReason") && hasColumn("exception_reason")) {
                 String er = TicketSql.str(body.get("exceptionReason")).trim();
                 if (er.length() > 128) er = er.substring(0, 128);
-                MybatisSupport.db().update(
-                        "UPDATE " + TICKET + " SET exception_reason=? WHERE id=?", er, ticketId);
+                updateTicketColumn(ticketId, "exception_reason", er);
             }
             if (body.containsKey("damageClaimNote") && hasColumn("damage_claim_note")) {
                 String dn = TicketSql.str(body.get("damageClaimNote")).trim();
                 if (dn.length() > 255) dn = dn.substring(0, 255);
-                MybatisSupport.db().update(
-                        "UPDATE " + TICKET + " SET damage_claim_note=? WHERE id=?", dn, ticketId);
+                updateTicketColumn(ticketId, "damage_claim_note", dn);
             }
         }
         if (body.containsKey("insuranceAck") && hasColumn("insurance_ack")) {
-            MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET insurance_ack=? WHERE id=?",
-                    truthy(body.get("insuranceAck")) ? 1 : 0,
-                    ticketId);
+            updateTicketColumn(ticketId, "insurance_ack", truthy(body.get("insuranceAck")) ? 1 : 0);
         }
         if ((allowProjectNo || body.containsKey("projectNo")) && body.containsKey("projectNo") && hasColumn("project_no")) {
             String pn = TicketSql.str(body.get("projectNo")).trim();
             if (pn.length() > 64) pn = pn.substring(0, 64);
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET project_no=? WHERE id=?", pn, ticketId);
+            updateTicketColumn(ticketId, "project_no", pn);
         }
         if ((allowProcureRef || body.containsKey("procureRefNo")) && body.containsKey("procureRefNo")
                 && hasColumn("procure_ref_no")) {
             String pr = TicketSql.str(body.get("procureRefNo")).trim();
             if (pr.length() > 64) pr = pr.substring(0, 64);
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET procure_ref_no=? WHERE id=?", pr, ticketId);
+            updateTicketColumn(ticketId, "procure_ref_no", pr);
         }
         if (allowDualReview || body.containsKey("dualReviewerA") || body.containsKey("dualReviewerB")) {
             if (body.containsKey("dualReviewerA") && hasColumn("dual_reviewer_a")) {
                 String a = TicketSql.str(body.get("dualReviewerA")).trim();
                 if (a.length() > 64) a = a.substring(0, 64);
-                MybatisSupport.db().update("UPDATE " + TICKET + " SET dual_reviewer_a=? WHERE id=?", a, ticketId);
+                updateTicketColumn(ticketId, "dual_reviewer_a", a);
             }
             if (body.containsKey("dualReviewerB") && hasColumn("dual_reviewer_b")) {
                 String b = TicketSql.str(body.get("dualReviewerB")).trim();
                 if (b.length() > 64) b = b.substring(0, 64);
-                MybatisSupport.db().update("UPDATE " + TICKET + " SET dual_reviewer_b=? WHERE id=?", b, ticketId);
+                updateTicketColumn(ticketId, "dual_reviewer_b", b);
             }
         }
         if ((allowShipFee || body.containsKey("shipFeeYuan")) && body.containsKey("shipFeeYuan") && hasColumn("ship_fee_yuan")) {
             double fee = TicketSql.toDouble(body.get("shipFeeYuan"));
             if (fee < 0) fee = 0;
             if (fee > 999999) fee = 999999;
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET ship_fee_yuan=? WHERE id=?", fee, ticketId);
+            updateTicketColumn(ticketId, "ship_fee_yuan", fee);
         }
         if ((allowUtilityNote || body.containsKey("utilityNote")) && body.containsKey("utilityNote") && hasColumn("utility_note")) {
             String un = TicketSql.str(body.get("utilityNote")).trim();
             if (un.length() > 255) un = un.substring(0, 255);
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET utility_note=? WHERE id=?", un, ticketId);
+            updateTicketColumn(ticketId, "utility_note", un);
         }
         if (requirePeerConfirm || body.containsKey("peerUsername")) {
             if (body.containsKey("peerUsername") && hasColumn("peer_username")) {
@@ -2825,8 +2933,7 @@ public final class TicketStore {
                 if (requirePeerConfirm && pu.isBlank()) {
                     throw new IllegalStateException("请填写对方学号或用户名");
                 }
-                MybatisSupport.db().update(
-                        "UPDATE " + TICKET + " SET peer_username=?, peer_ack=0 WHERE id=?", pu, ticketId);
+                mapper().updatePeerUsername(TICKET, ticketId, pu);
             }
         }
         if (requireAbandonDual && allowDualReview) {
@@ -2839,6 +2946,64 @@ public final class TicketStore {
                 throw new IllegalStateException("弃件确认人不能为同一人");
             }
         }
+        patchFollowExtraStr(ticketId, body, "interviewResult", "interview_result", 16, allowInterviewResult);
+        if ((allowWrittenScore || body.containsKey("writtenScore")) && body.containsKey("writtenScore")
+                && hasColumn("written_score")) {
+            double sc = TicketSql.toDouble(body.get("writtenScore"));
+            if (sc < 0) sc = 0;
+            if (sc > 999) sc = 999;
+            updateTicketColumn(ticketId, "written_score", sc);
+        }
+        patchFollowExtraStr(ticketId, body, "bgCheckNote", "bg_check_note", 255, allowBgCheckNote);
+        if ((allowDealAmount || body.containsKey("dealAmountYuan")) && body.containsKey("dealAmountYuan")
+                && hasColumn("deal_amount_yuan")) {
+            double amt = TicketSql.toDouble(body.get("dealAmountYuan"));
+            if (amt < 0) amt = 0;
+            if (amt > 99999999) amt = 99999999;
+            updateTicketColumn(ticketId, "deal_amount_yuan", amt);
+        }
+        patchFollowExtraStr(ticketId, body, "nextAction", "next_action", 255, allowNextAction);
+        if (body.containsKey("nextActionDone") && hasColumn("next_action_done")) {
+            updateTicketColumn(ticketId, "next_action_done", truthy(body.get("nextActionDone")) ? 1 : 0);
+        }
+        if (allowLeaveProxy && body.containsKey("proxyName") && hasColumn("proxy_name")) {
+            String pn = TicketSql.str(body.get("proxyName")).trim();
+            if (pn.length() > 64) pn = pn.substring(0, 64);
+            updateTicketColumn(ticketId, "proxy_name", pn);
+        }
+        patchFollowExtraStr(ticketId, body, "returnDate", "return_date", 32, requireReturnDate);
+        patchFollowExtraStr(ticketId, body, "defenseResult", "defense_result", 32, allowDefenseResult);
+        patchFollowExtraStr(ticketId, body, "bankAccount", "bank_account", 64, maskBankAccount);
+        patchFollowExtraStr(ticketId, body, "closeAttachUrl", "close_attach_url", 255, requireCloseAttach);
+        patchFollowExtraStr(ticketId, body, "assignDept", "assign_dept", 64, allowAssignDept);
+        if (body.containsKey("confidential") && hasColumn("confidential")) {
+            updateTicketColumn(ticketId, "confidential", truthy(body.get("confidential")) ? 1 : 0);
+        }
+        patchFollowExtraStr(ticketId, body, "appraisalComment", "appraisal_comment", 512, requireAppraisal);
+        patchFollowExtraStr(ticketId, body, "appraisalGrade", "appraisal_grade", 16, requireAppraisal);
+        patchFollowExtraStr(ticketId, body, "companyEval", "company_eval", 512, allowCompanyEval);
+        if (body.containsKey("excellentMark") && hasColumn("excellent_mark")) {
+            updateTicketColumn(ticketId, "excellent_mark", truthy(body.get("excellentMark")) ? 1 : 0);
+        }
+        patchFollowExtraStr(ticketId, body, "feedbackInterest", "feedback_interest", 128, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "feedbackConcern", "feedback_concern", 255, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "feedbackNext", "feedback_next", 255, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "recordUrl", "record_url", 255, allowRecordUrl);
+        patchFollowExtraStr(ticketId, body, "disburseBatch", "disburse_batch", 64, allowDisburseBatch);
+    }
+
+    private static void updateTicketColumn(long ticketId, String column, Object value) {
+        String col = column == null ? "" : column.trim().replaceAll("[^a-zA-Z0-9_]", "");
+        if (col.isEmpty()) throw new IllegalStateException("无效字段");
+        mapper().updateColumnById(TICKET, col, value, ticketId);
+    }
+
+    private static void patchFollowExtraStr(
+            long ticketId, Map<String, Object> body, String bodyKey, String col, int maxLen, boolean flagOn) {
+        if (!(flagOn || body.containsKey(bodyKey)) || !body.containsKey(bodyKey) || !hasColumn(col)) return;
+        String v = TicketSql.str(body.get(bodyKey)).trim();
+        if (v.length() > maxLen) v = v.substring(0, maxLen);
+        updateTicketColumn(ticketId, col, v);
     }
 
     /** ASSET：确认领用单已关联申购单号（浅衔接，不跨库）。 */
@@ -2856,14 +3021,9 @@ public final class TicketStore {
 
     private static void tryEnsureProcureLine(long ticketId, Map<String, Object> m) {
         try {
-            Integer n = MybatisSupport.db().queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.tables "
-                            + "WHERE table_schema=DATABASE() AND table_name='procure_line'",
-                    Integer.class);
+            Integer n = schema().countTable("procure_line");
             if (n == null || n <= 0) return;
-            Integer cnt = MybatisSupport.db().queryForObject(
-                    "SELECT COUNT(*) FROM procure_line WHERE ticket_id=?", Integer.class, ticketId);
-            if (cnt != null && cnt > 0) return;
+            if (mapper().countProcureLineByTicket(ticketId) > 0) return;
             String title = TicketSql.str(m.get("itemTitle"));
             if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
             if (title.isBlank()) title = TicketSql.str(m.get("title"));
@@ -2871,9 +3031,7 @@ public final class TicketStore {
             if (title.length() > 200) title = title.substring(0, 200);
             int q = rowQty(m);
             if (q <= 0) q = 1;
-            MybatisSupport.db().update(
-                    "INSERT INTO procure_line (ticket_id, item_title, qty, unit_price) VALUES (?,?,?,0)",
-                    ticketId, title, q);
+            mapper().insertProcureLine(ticketId, title, q);
         } catch (Exception ignored) {
         }
     }
@@ -2918,7 +3076,7 @@ public final class TicketStore {
             throw new IllegalStateException("请填写婉拒原因");
         }
         if (pass) {
-            MybatisSupport.db().update("UPDATE " + TICKET + " SET peer_ack=1 WHERE id=?", ticketId);
+            mapper().updatePeerAck(TICKET, ticketId);
             appendProgress(ticketId, "peer_confirm", uid, note.isBlank() ? "对方已确认" : note);
             try {
                 String owner = TicketSql.str(m.get("username"));
@@ -2933,9 +3091,7 @@ public final class TicketStore {
             } catch (Exception ignored) {
             }
         } else {
-            MybatisSupport.db().update(
-                    "UPDATE " + TICKET + " SET status='rejected', remark=?, peer_ack=0 WHERE id=?",
-                    note, ticketId);
+            mapper().updatePeerReject(TICKET, ticketId, note);
             appendProgress(ticketId, "peer_reject", uid, note);
             try {
                 String owner = TicketSql.str(m.get("username"));
@@ -2965,18 +3121,13 @@ public final class TicketStore {
         }
         if (page < 1) page = 1;
         if (size < 1) size = 20;
-        Integer total = MybatisSupport.db().queryForObject(
-                "SELECT COUNT(*) FROM " + TICKET
-                        + " WHERE peer_username=? AND peer_ack=0 AND status IN ('pending','pending_mid')",
-                Integer.class, username.trim());
-        int t = total == null ? 0 : total;
-        List<Map<String, Object>> rawList = MybatisSupport.db().queryForList(
-                "SELECT * FROM " + TICKET
-                        + " WHERE peer_username=? AND peer_ack=0 AND status IN ('pending','pending_mid')"
-                        + " ORDER BY id DESC LIMIT ? OFFSET ?",
-                username.trim(), size, (page - 1) * size);
+        String uid = username.trim();
+        int t = mapper().countPeerConfirmInbox(TICKET, uid);
+        PageHelper.startPage(page, size);
+        List<Map<String, Object>> rawList = mapper().selectPeerConfirmInbox(TICKET, uid);
+        PageInfo<Map<String, Object>> pi = new PageInfo<>(rawList == null ? List.of() : rawList);
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Map<String, Object> raw : rawList) {
+        for (Map<String, Object> raw : pi.getList()) {
             list.add(TicketStatusOps.enrich(TicketRowMaps.shape(raw)));
         }
         Map<String, Object> out = new LinkedHashMap<>();
@@ -3087,37 +3238,73 @@ public final class TicketStore {
         return m;
     }
 
-    /** 工作台图表：状态分布 + 近 7 日趋势（按 apply_at）。 */
+    /** 工作台图表：状态分布 + 近 7 日趋势（按 apply_at）+ 跟进渠道饼图。 */
     public static Map<String, Object> chartStats() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("channelSeries", List.of());
         if (!enabled) return out;
         try {
             List<Map<String, Object>> status = mapper().selectStatusSeries(TICKET);
             out.put("statusSeries", status == null ? List.of() : status);
             List<Map<String, Object>> trend = mapper().selectTrendSeries(TICKET);
             out.put("trendSeries", trend == null ? List.of() : trend);
+            if (hasColumn("contact_channel")) {
+                List<Map<String, Object>> channel = mapper().selectChannelSeries(TICKET);
+                out.put("channelSeries", channel == null ? List.of() : channel);
+            }
             // 热借/热办排行：按档案条目聚合（图书借阅量等）
             if (MODE == Mode.ARCHIVE && hasColumn(itemFkColumn())) {
                 String itemTable = ArchiveStore.itemTable();
-                List<Map<String, Object>> hot = MybatisSupport.db().query(
-                        "SELECT COALESCE(i.title, CONCAT('编号', t." + itemFkColumn() + ")) AS name, COUNT(*) AS value "
-                                + "FROM " + TICKET + " t LEFT JOIN " + itemTable + " i ON t." + itemFkColumn() + "=i.id "
-                                + "WHERE t.status IN ('approved','overdue','returned','lost','compensated') "
-                                + "GROUP BY t." + itemFkColumn() + ", i.title ORDER BY value DESC LIMIT 8",
-                        (rs, i) -> {
-                            Map<String, Object> row = new LinkedHashMap<>();
-                            row.put("name", rs.getString("name"));
-                            row.put("value", rs.getLong("value"));
-                            return row;
-                        });
-                out.put("hotItemSeries", hot);
+                List<Map<String, Object>> hot = mapper().selectHotItemSeries(TICKET, itemTable, itemFkColumn());
+                out.put("hotItemSeries", hot == null ? List.of() : hot);
             }
         } catch (Exception ignored) {
             // 表结构差异时不炸工作台
         }
         return out;
+    }
+
+    /**
+     * 实习周报：截止日到仍无本周 week_no 时站内催交（每用户每周一封）。
+     */
+    public static void maybeNotifyWeekReports(String forUsername) {
+        if (!enabled || !weekReportRemind || weekReportDeadlineDay <= 0) return;
+        if (!hasColumn("week_no")) return;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        int dow = today.getDayOfWeek().getValue();
+        if (dow < weekReportDeadlineDay) return;
+        java.time.temporal.WeekFields wf = java.time.temporal.WeekFields.ISO;
+        int weekNo = today.get(wf.weekOfWeekBasedYear());
+        long refId = today.get(wf.weekBasedYear()) * 100L + weekNo;
+        java.util.List<String> users = new java.util.ArrayList<>();
+        try {
+            if (forUsername != null && !forUsername.isBlank()) {
+                users.add(forUsername.trim());
+            } else {
+                List<String> got = mapper().selectDistinctUsernames(TICKET);
+                if (got != null) users.addAll(got);
+            }
+        } catch (Exception e) {
+            return;
+        }
+        if (users.isEmpty()) return;
+        for (String u : users) {
+            if (u == null || u.isBlank()) continue;
+            try {
+                if (com.thesis.service.MessageStore.existsRef(u, "week_report", refId)) continue;
+                int cnt = mapper().countByUsernameWeekNo(TICKET, u, weekNo);
+                if (cnt > 0) continue;
+                com.thesis.service.MessageStore.send(
+                        u,
+                        "周报催交",
+                        "本周（第 " + weekNo + " 周）周报尚未提交，请尽快填写提交。",
+                        "week_report",
+                        refId);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public static boolean runMainPathSelfCheck() {

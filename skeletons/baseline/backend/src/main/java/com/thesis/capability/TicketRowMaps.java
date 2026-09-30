@@ -167,6 +167,56 @@ final class TicketRowMaps {
         } catch (Exception ignored) {
             // 旧库无 interview_place 列：不展示面试地点
         }
+        putFollowOptStr(m, rs, "interview_result", "interviewResult");
+        putFollowOptStr(m, rs, "bg_check_note", "bgCheckNote");
+        putFollowOptStr(m, rs, "return_date", "returnDate");
+        putFollowOptStr(m, rs, "defense_result", "defenseResult");
+        putFollowOptStr(m, rs, "bank_account", "bankAccount");
+        putFollowOptStr(m, rs, "disburse_batch", "disburseBatch");
+        putFollowOptStr(m, rs, "close_attach_url", "closeAttachUrl");
+        putFollowOptStr(m, rs, "assign_dept", "assignDept");
+        putFollowOptStr(m, rs, "appraisal_comment", "appraisalComment");
+        putFollowOptStr(m, rs, "appraisal_grade", "appraisalGrade");
+        putFollowOptStr(m, rs, "company_eval", "companyEval");
+        putFollowOptStr(m, rs, "next_action", "nextAction");
+        putFollowOptStr(m, rs, "feedback_interest", "feedbackInterest");
+        putFollowOptStr(m, rs, "feedback_concern", "feedbackConcern");
+        putFollowOptStr(m, rs, "feedback_next", "feedbackNext");
+        putFollowOptStr(m, rs, "record_url", "recordUrl");
+        try {
+            Object ws = rs.getObject("written_score");
+            if (ws instanceof Number n) m.put("writtenScore", n.doubleValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object da = rs.getObject("deal_amount_yuan");
+            if (da instanceof Number n) m.put("dealAmountYuan", n.doubleValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object conf = rs.getObject("confidential");
+            if (conf instanceof Number n) m.put("confidential", n.intValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object nad = rs.getObject("next_action_done");
+            if (nad instanceof Number n) m.put("nextActionDone", n.intValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object em = rs.getObject("excellent_mark");
+            if (em instanceof Number n) m.put("excellentMark", n.intValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object rc = rs.getObject("revise_count");
+            if (rc instanceof Number n) m.put("reviseCount", n.intValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            m.put("followSoonNotifiedAt", TicketSql.fmt(TicketSql.safeTs(rs, "follow_soon_notified_at")));
+        } catch (Exception ignored) {
+        }
         try {
             String pn = TicketSql.safeStr(rs, "proxy_name");
             if (pn != null && !pn.isBlank()) m.put("proxyName", pn);
@@ -218,6 +268,14 @@ final class TicketRowMaps {
         } catch (Exception ignored) {
         }
         return m;
+    }
+
+    private static void putFollowOptStr(Map<String, Object> m, java.sql.ResultSet rs, String col, String key) {
+        try {
+            String v = TicketSql.safeStr(rs, col);
+            if (v != null && !v.isBlank()) m.put(key, v);
+        } catch (Exception ignored) {
+        }
     }
 
     /** 请假等起止（含首尾）的自然日天数；解析失败返回 0。 */

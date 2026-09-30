@@ -45,6 +45,7 @@ final class TicketStatusOps {
             refreshOverdue(m);
             maybeNotifyDueSoon(m);
         }
+        maybeNotifyFollowSoon(m);
         if (TicketStore.noShowAfterEnd) refreshNoShow(m);
     }
 
@@ -94,11 +95,42 @@ final class TicketStatusOps {
         } catch (Exception ignored) {
         }
         Timestamp ts = Timestamp.valueOf(now);
-        MybatisSupport.db().update(
-                "UPDATE " + TicketStore.TICKET + " SET due_soon_notified_at=? WHERE id=?",
-                ts,
-                id);
+        mapper().updateDueSoonNotified(TicketStore.TICKET, id, ts);
         m.put("dueSoonNotifiedAt", TicketSql.fmt(now));
+    }
+
+    /** 下次跟进日前 N 天站内提醒（每单一回；不依赖借还 deadline）。 */
+    static void maybeNotifyFollowSoon(Map<String, Object> m) {
+        if (TicketStore.followRemindDays <= 0) return;
+        if (!TicketStore.hasColumn("follow_soon_notified_at")) return;
+        Object notified = m.get("followSoonNotifiedAt");
+        if (notified != null && !String.valueOf(notified).isBlank()) return;
+        Object next = m.get("nextFollowAt");
+        if (next == null || String.valueOf(next).isBlank()) return;
+        LocalDateTime nextAt;
+        try {
+            nextAt = LocalDateTime.parse(String.valueOf(next), TicketSql.FMT);
+        } catch (Exception e) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(nextAt)) return;
+        long daysLeft = ChronoUnit.DAYS.between(now.toLocalDate(), nextAt.toLocalDate());
+        if (daysLeft > TicketStore.followRemindDays) return;
+        String owner = TicketSql.str(m.get("username"));
+        if (owner.isBlank()) return;
+        long id = TicketSql.toLong(m.get("id"));
+        String title = TicketSql.str(m.get("title"));
+        if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+        if (title.isBlank()) title = "单据#" + id;
+        String body = "「" + title + "」将于 " + TicketSql.fmt(nextAt) + " 到期跟进，请及时处理。";
+        try {
+            com.thesis.service.MessageStore.send(owner, "跟进提醒", body, "ticket", id);
+        } catch (Exception ignored) {
+        }
+        Timestamp ts = Timestamp.valueOf(now);
+        mapper().updateFollowSoonNotified(TicketStore.TICKET, id, ts);
+        m.put("followSoonNotifiedAt", TicketSql.fmt(now));
     }
 
     static void markEverOverdue(Map<String, Object> m) {
@@ -109,7 +141,7 @@ final class TicketStatusOps {
         if ("1".equals(String.valueOf(flag))) return;
         long id = TicketSql.toLong(m.get("id"));
         if (id <= 0) return;
-        MybatisSupport.db().update("UPDATE " + TicketStore.TICKET + " SET ever_overdue=1 WHERE id=?", id);
+        mapper().updateEverOverdue(TicketStore.TICKET, id);
         m.put("everOverdue", 1);
     }
 

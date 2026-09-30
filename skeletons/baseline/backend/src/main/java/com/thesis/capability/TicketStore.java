@@ -386,6 +386,35 @@ public final class TicketStore {
     /** 弃件须双人确认字段齐全 */
     static boolean requireAbandonDual = false;
 
+    /** 跟进组加厚 */
+    static int followRemindDays = 0;
+    static int minRemarkWords = 0;
+    static int maxReviseTimes = 0;
+    static boolean requireCloseAttach = false;
+    static boolean requireReturnDate = false;
+    static boolean requireFeedbackSet = false;
+    static boolean requireAppraisal = false;
+    static boolean allowDealAmount = false;
+    static boolean allowNextAction = false;
+    static boolean allowInterviewResult = false;
+    static boolean allowWrittenScore = false;
+    static boolean allowBgCheckNote = false;
+    static boolean allowDefenseResult = false;
+    static boolean maskBankAccount = false;
+    static boolean allowDisburseBatch = false;
+    static boolean allowLeaveProxy = false;
+    static boolean allowCompanyEval = false;
+    static boolean allowExcellentMark = false;
+    static boolean allowRecordUrl = false;
+    static boolean allowConfidential = false;
+    static boolean allowAssignDept = false;
+    static boolean allowBatchHire = false;
+    static boolean weekReportRemind = false;
+    static boolean homeVisitTemplate = false;
+    static boolean attachByLeaveType = false;
+    static boolean allowMakeupApply = false;
+    static int weekReportDeadlineDay = 0;
+
     public static void configureProxyPickup(boolean enabled) {
         allowProxyPickup = enabled;
     }
@@ -480,8 +509,106 @@ public final class TicketStore {
         requireAbandonDual = enabled;
     }
 
+    public static void configureFollowThicken(
+            int followRemindDaysIn,
+            int minRemarkWordsIn,
+            int maxReviseTimesIn,
+            boolean requireCloseAttachIn,
+            boolean requireReturnDateIn,
+            boolean requireFeedbackSetIn,
+            boolean requireAppraisalIn,
+            boolean allowDealAmountIn,
+            boolean allowNextActionIn,
+            boolean allowInterviewResultIn,
+            boolean allowWrittenScoreIn,
+            boolean allowBgCheckNoteIn,
+            boolean allowDefenseResultIn,
+            boolean maskBankAccountIn,
+            boolean allowDisburseBatchIn,
+            boolean allowLeaveProxyIn,
+            boolean allowCompanyEvalIn,
+            boolean allowExcellentMarkIn,
+            boolean allowRecordUrlIn,
+            boolean allowConfidentialIn,
+            boolean allowAssignDeptIn,
+            boolean allowBatchHireIn,
+            boolean weekReportRemindIn,
+            boolean homeVisitTemplateIn,
+            boolean attachByLeaveTypeIn,
+            boolean allowMakeupApplyIn,
+            int weekReportDeadlineDayIn) {
+        followRemindDays = Math.max(0, Math.min(14, followRemindDaysIn));
+        minRemarkWords = Math.max(0, Math.min(5000, minRemarkWordsIn));
+        maxReviseTimes = Math.max(0, Math.min(20, maxReviseTimesIn));
+        requireCloseAttach = requireCloseAttachIn;
+        requireReturnDate = requireReturnDateIn;
+        requireFeedbackSet = requireFeedbackSetIn;
+        requireAppraisal = requireAppraisalIn;
+        allowDealAmount = allowDealAmountIn;
+        allowNextAction = allowNextActionIn;
+        allowInterviewResult = allowInterviewResultIn;
+        allowWrittenScore = allowWrittenScoreIn;
+        allowBgCheckNote = allowBgCheckNoteIn;
+        allowDefenseResult = allowDefenseResultIn;
+        maskBankAccount = maskBankAccountIn;
+        allowDisburseBatch = allowDisburseBatchIn;
+        allowLeaveProxy = allowLeaveProxyIn;
+        allowCompanyEval = allowCompanyEvalIn;
+        allowExcellentMark = allowExcellentMarkIn;
+        allowRecordUrl = allowRecordUrlIn;
+        allowConfidential = allowConfidentialIn;
+        allowAssignDept = allowAssignDeptIn;
+        allowBatchHire = allowBatchHireIn;
+        weekReportRemind = weekReportRemindIn;
+        homeVisitTemplate = homeVisitTemplateIn;
+        attachByLeaveType = attachByLeaveTypeIn;
+        allowMakeupApply = allowMakeupApplyIn;
+        weekReportDeadlineDay = Math.max(0, Math.min(28, weekReportDeadlineDayIn));
+    }
+
     public static boolean isAllowFineWaive() {
         return allowFineWaive;
+    }
+
+    public static boolean isAllowBatchHire() {
+        return allowBatchHire;
+    }
+
+    /**
+     * 批量录用/淘汰：逐单走既有 approve；录用时顺便写面试结果=通过，淘汰写未通过。
+     * 单笔失败计入 failed，不中断其余。
+     */
+    public static Map<String, Object> batchHire(
+            java.util.List<Long> ids, boolean pass, String remark, String op, boolean asSuper) {
+        if (!allowBatchHire) throw new IllegalStateException("未开通批量录用");
+        if (ids == null || ids.isEmpty()) throw new IllegalStateException("请先勾选单据");
+        if (ids.size() > 50) throw new IllegalStateException("单次最多处理 50 条");
+        int ok = 0;
+        java.util.List<String> errors = new java.util.ArrayList<>();
+        String note = remark == null ? "" : remark.trim();
+        for (Long id : ids) {
+            if (id == null || id <= 0) continue;
+            try {
+                approve(id, pass, note, op, asSuper, "");
+                if (allowInterviewResult && hasColumn("interview_result")) {
+                    String result = pass ? "通过" : "未通过";
+                    TicketSql.db().update(
+                            "UPDATE " + TICKET + " SET interview_result=? WHERE id=?", result, id);
+                }
+                ok++;
+            } catch (Exception e) {
+                String msg = e.getMessage() == null ? "失败" : e.getMessage();
+                errors.add("#" + id + "：" + msg);
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("okCount", ok);
+        out.put("failCount", errors.size());
+        out.put("errors", errors);
+        if (ok == 0 && !errors.isEmpty()) {
+            throw new IllegalStateException(errors.get(0));
+        }
+        return out;
     }
 
     public static boolean isRequirePeerConfirm() {
@@ -949,6 +1076,12 @@ public final class TicketStore {
         String rawNote = remark == null ? "" : remark.trim();
         if (requireRemark && rawNote.isBlank()) {
             throw new IllegalStateException("请填写说明后再提交");
+        }
+        if (minRemarkWords > 0) {
+            int words = rawNote.replaceAll("\\s+", "").length();
+            if (words < minRemarkWords) {
+                throw new IllegalStateException("正文不少于 " + minRemarkWords + " 字后再提交");
+            }
         }
         final String note = rawNote.length() > 255 ? rawNote.substring(0, 255) : rawNote;
         KeyHolder kh = new GeneratedKeyHolder();
@@ -2433,6 +2566,32 @@ public final class TicketStore {
             }
             if (retAttach.length() > 255) retAttach = retAttach.substring(0, 255);
         }
+        if (requireCloseAttach) {
+            String closeUrl = TicketSql.str(m.get("closeAttachUrl")).trim();
+            if (closeUrl.isBlank() && !retAttach.isBlank()) closeUrl = retAttach;
+            if (closeUrl.isBlank()) {
+                throw new IllegalStateException("请上传结案报告附件后再办结");
+            }
+        }
+        if (requireReturnDate) {
+            String rd = TicketSql.str(m.get("returnDate")).trim();
+            if (rd.isBlank()) {
+                throw new IllegalStateException("请填写返岗日期后再销假");
+            }
+        }
+        if (requireFeedbackSet) {
+            if (TicketSql.str(m.get("feedbackInterest")).isBlank()
+                    || TicketSql.str(m.get("feedbackConcern")).isBlank()
+                    || TicketSql.str(m.get("feedbackNext")).isBlank()) {
+                throw new IllegalStateException("请填写带看反馈后再办结");
+            }
+        }
+        if (requireAppraisal) {
+            if (TicketSql.str(m.get("appraisalComment")).isBlank()
+                    || TicketSql.str(m.get("appraisalGrade")).isBlank()) {
+                throw new IllegalStateException("请填写实习鉴定评语与等级后再办结");
+            }
+        }
         if (MODE == Mode.ARCHIVE && useQuota) {
             long itemId = TicketSql.toLong(m.get("bookId"));
             if (ArchiveStore.getItemRaw(itemId) != null) {
@@ -2467,6 +2626,10 @@ public final class TicketStore {
         sql.append(" WHERE id=?");
         args.add(ticketId);
         TicketSql.db().update(sql.toString(), args.toArray());
+        try {
+            BalanceLedgerStore.creditForTicketReturn(m);
+        } catch (Exception ignored) {
+        }
         appendProgress(ticketId, "returned", actorUid, TicketCopy.stateLabel("returned", TicketCopy.verbLabel("return", "已完结")));
         return get(ticketId);
     }
@@ -2688,6 +2851,9 @@ public final class TicketStore {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         expireBookHolds();
+        if (username != null && !username.isBlank()) {
+            maybeNotifyWeekReports(username);
+        }
         if (useDeadline) {
             List<Map<String, Object>> open = TicketSql.db().query(
                     "SELECT * FROM " + TICKET + " WHERE status IN ('approved','overdue')",
@@ -3021,6 +3187,67 @@ public final class TicketStore {
                 throw new IllegalStateException("弃件确认人不能为同一人");
             }
         }
+        patchFollowExtraStr(ticketId, body, "interviewResult", "interview_result", 16, allowInterviewResult);
+        if ((allowWrittenScore || body.containsKey("writtenScore")) && body.containsKey("writtenScore")
+                && hasColumn("written_score")) {
+            double sc = TicketSql.toDouble(body.get("writtenScore"));
+            if (sc < 0) sc = 0;
+            if (sc > 999) sc = 999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET written_score=? WHERE id=?", sc, ticketId);
+        }
+        patchFollowExtraStr(ticketId, body, "bgCheckNote", "bg_check_note", 255, allowBgCheckNote);
+        if ((allowDealAmount || body.containsKey("dealAmountYuan")) && body.containsKey("dealAmountYuan")
+                && hasColumn("deal_amount_yuan")) {
+            double amt = TicketSql.toDouble(body.get("dealAmountYuan"));
+            if (amt < 0) amt = 0;
+            if (amt > 99999999) amt = 99999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET deal_amount_yuan=? WHERE id=?", amt, ticketId);
+        }
+        patchFollowExtraStr(ticketId, body, "nextAction", "next_action", 255, allowNextAction);
+        if (body.containsKey("nextActionDone") && hasColumn("next_action_done")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET next_action_done=? WHERE id=?",
+                    truthy(body.get("nextActionDone")) ? 1 : 0,
+                    ticketId);
+        }
+        if (allowLeaveProxy && body.containsKey("proxyName") && hasColumn("proxy_name")) {
+            String pn = TicketSql.str(body.get("proxyName")).trim();
+            if (pn.length() > 64) pn = pn.substring(0, 64);
+            TicketSql.db().update("UPDATE " + TICKET + " SET proxy_name=? WHERE id=?", pn, ticketId);
+        }
+        patchFollowExtraStr(ticketId, body, "returnDate", "return_date", 32, requireReturnDate);
+        patchFollowExtraStr(ticketId, body, "defenseResult", "defense_result", 32, allowDefenseResult);
+        patchFollowExtraStr(ticketId, body, "bankAccount", "bank_account", 64, maskBankAccount);
+        patchFollowExtraStr(ticketId, body, "closeAttachUrl", "close_attach_url", 255, requireCloseAttach);
+        patchFollowExtraStr(ticketId, body, "assignDept", "assign_dept", 64, allowAssignDept);
+        if (body.containsKey("confidential") && hasColumn("confidential")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET confidential=? WHERE id=?",
+                    truthy(body.get("confidential")) ? 1 : 0,
+                    ticketId);
+        }
+        patchFollowExtraStr(ticketId, body, "appraisalComment", "appraisal_comment", 512, requireAppraisal);
+        patchFollowExtraStr(ticketId, body, "appraisalGrade", "appraisal_grade", 16, requireAppraisal);
+        patchFollowExtraStr(ticketId, body, "companyEval", "company_eval", 512, allowCompanyEval);
+        if (body.containsKey("excellentMark") && hasColumn("excellent_mark")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET excellent_mark=? WHERE id=?",
+                    truthy(body.get("excellentMark")) ? 1 : 0,
+                    ticketId);
+        }
+        patchFollowExtraStr(ticketId, body, "feedbackInterest", "feedback_interest", 128, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "feedbackConcern", "feedback_concern", 255, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "feedbackNext", "feedback_next", 255, requireFeedbackSet);
+        patchFollowExtraStr(ticketId, body, "recordUrl", "record_url", 255, allowRecordUrl);
+        patchFollowExtraStr(ticketId, body, "disburseBatch", "disburse_batch", 64, allowDisburseBatch);
+    }
+
+    private static void patchFollowExtraStr(
+            long ticketId, Map<String, Object> body, String bodyKey, String col, int maxLen, boolean flagOn) {
+        if (!(flagOn || body.containsKey(bodyKey)) || !body.containsKey(bodyKey) || !hasColumn(col)) return;
+        String v = TicketSql.str(body.get(bodyKey)).trim();
+        if (v.length() > maxLen) v = v.substring(0, maxLen);
+        TicketSql.db().update("UPDATE " + TICKET + " SET " + col + "=? WHERE id=?", v, ticketId);
     }
 
     /** 调宿等：对方确认后宿管才可审过 */
@@ -3274,11 +3501,12 @@ public final class TicketStore {
         return m;
     }
 
-    /** 工作台图表：状态分布 + 近 7 日趋势（按 apply_at）。 */
+    /** 工作台图表：状态分布 + 近 7 日趋势（按 apply_at）+ 跟进渠道饼图。 */
     public static Map<String, Object> chartStats() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("statusSeries", List.of());
         out.put("trendSeries", List.of());
+        out.put("channelSeries", List.of());
         if (!enabled) return out;
         try {
             List<Map<String, Object>> status = TicketSql.db().query(
@@ -3301,6 +3529,19 @@ public final class TicketStore {
                         return row;
                     });
             out.put("trendSeries", trend);
+            if (hasColumn("contact_channel")) {
+                List<Map<String, Object>> channel = TicketSql.db().query(
+                        "SELECT COALESCE(NULLIF(TRIM(contact_channel),''),'未填') AS name, COUNT(*) AS value FROM "
+                                + TICKET
+                                + " GROUP BY COALESCE(NULLIF(TRIM(contact_channel),''),'未填') ORDER BY value DESC LIMIT 12",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("channelSeries", channel);
+            }
             // 热借/热办排行：按档案条目聚合（图书借阅量等）
             if (MODE == Mode.ARCHIVE && hasColumn(itemFkColumn())) {
                 String itemTable = ArchiveStore.itemTable();
@@ -3321,6 +3562,54 @@ public final class TicketStore {
             // 表结构差异时不炸工作台
         }
         return out;
+    }
+
+    /**
+     * 实习周报：截止日（weekReportDeadlineDay，周一=1…周日=7）到仍无本周 week_no 时站内催交。
+     * 每用户每周最多一封（sys_message ref=week_report + 年周号）。
+     */
+    public static void maybeNotifyWeekReports(String forUsername) {
+        if (!enabled || !weekReportRemind || weekReportDeadlineDay <= 0) return;
+        if (!hasColumn("week_no")) return;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        int dow = today.getDayOfWeek().getValue();
+        if (dow < weekReportDeadlineDay) return;
+        java.time.temporal.WeekFields wf = java.time.temporal.WeekFields.ISO;
+        int weekNo = today.get(wf.weekOfWeekBasedYear());
+        long refId = today.get(wf.weekBasedYear()) * 100L + weekNo;
+        java.util.List<String> users = new java.util.ArrayList<>();
+        try {
+            if (forUsername != null && !forUsername.isBlank()) {
+                users.add(forUsername.trim());
+            } else {
+                users = TicketSql.db().query(
+                        "SELECT DISTINCT username FROM " + TICKET
+                                + " WHERE username IS NOT NULL AND TRIM(username)<>'' LIMIT 200",
+                        (rs, i) -> rs.getString(1));
+            }
+        } catch (Exception e) {
+            return;
+        }
+        if (users == null || users.isEmpty()) return;
+        for (String u : users) {
+            if (u == null || u.isBlank()) continue;
+            try {
+                if (com.thesis.service.MessageStore.existsRef(u, "week_report", refId)) continue;
+                Integer cnt = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND week_no=?",
+                        Integer.class,
+                        u,
+                        weekNo);
+                if (cnt != null && cnt > 0) continue;
+                com.thesis.service.MessageStore.send(
+                        u,
+                        "周报催交",
+                        "本周（第 " + weekNo + " 周）周报尚未提交，请尽快填写提交。",
+                        "week_report",
+                        refId);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public static boolean runMainPathSelfCheck() {

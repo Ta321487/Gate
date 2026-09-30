@@ -26,6 +26,22 @@
         <div class="chart-title">入出库分布</div>
         <div ref="stockIoEl" class="chart" />
       </div>
+      <div v-if="channelOpt" class="chart-box">
+        <div class="chart-title">{{ channelTitle }}</div>
+        <div ref="channelEl" class="chart" />
+      </div>
+      <div v-if="stageOpt" class="chart-box">
+        <div class="chart-title">{{ stageTitle }}</div>
+        <div ref="stageEl" class="chart" />
+      </div>
+      <div v-if="leadOpt" class="chart-box">
+        <div class="chart-title">{{ leadTitle }}</div>
+        <div ref="leadEl" class="chart" />
+      </div>
+      <div v-if="funnelOpt" class="chart-box">
+        <div class="chart-title">{{ funnelTitle }}</div>
+        <div ref="funnelEl" class="chart" />
+      </div>
     </div>
   </section>
 </template>
@@ -52,12 +68,35 @@ const monthEl = ref(null)
 const stockEl = ref(null)
 const hotEl = ref(null)
 const stockIoEl = ref(null)
+const channelEl = ref(null)
+const stageEl = ref(null)
+const leadEl = ref(null)
+const funnelEl = ref(null)
 let statusChart
 let trendChart
 let monthChart
 let stockChart
 let hotChart
 let stockIoChart
+let channelChart
+let stageChart
+let leadChart
+let funnelChart
+
+const labels = computed(() => getSchema()?.labels || {})
+const channelTitle = computed(() => {
+  const hint = labels.value.channelPieHint || ''
+  return hint ? '跟进方式分布' : '联系渠道'
+})
+const stageTitle = computed(() => {
+  if (labels.value.stageFunnelHint) return '客户阶段漏斗'
+  return '档案阶段分布'
+})
+const leadTitle = computed(() => '线索来源分布')
+const funnelTitle = computed(() => {
+  if (labels.value.listingFunnelHint) return '成交漏斗'
+  return '阶段分布'
+})
 
 const stateLabels = computed(() => {
   const schema = getSchema() || {}
@@ -305,9 +344,82 @@ const stockIoOpt = computed(() => {
   }
 })
 
+function pieFromSeries(series) {
+  const rows = (series || []).filter((x) => x?.name && Number(x.value) > 0)
+  if (!rows.length) return null
+  return {
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0, type: 'scroll' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['36%', '62%'],
+        data: rows.map((x) => ({ name: x.name, value: Number(x.value) || 0 })),
+      },
+    ],
+  }
+}
+
+function barFunnelFromSeries(series) {
+  const rows = (series || []).filter((x) => x?.name)
+  if (!rows.length) return null
+  // 漏斗视觉：柱状按数量降序（后端已 ORDER BY value DESC）
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { left: 48, right: 16, top: 24, bottom: 48 },
+    xAxis: {
+      type: 'category',
+      data: rows.map((x) => x.name),
+      axisLabel: { interval: 0, rotate: rows.length > 4 ? 28 : 0 },
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+      {
+        type: 'bar',
+        data: rows.map((x) => Number(x.value) || 0),
+        barMaxWidth: 36,
+      },
+    ],
+  }
+}
+
+const channelOpt = computed(() => {
+  if (!labels.value.channelPieHint && !(props.charts?.channelSeries || []).length) return null
+  return pieFromSeries(props.charts?.channelSeries)
+})
+
+const stageOpt = computed(() => {
+  // 有阶段漏斗文案，或有 stage 数据时展示
+  if (!labels.value.stageFunnelHint && !(props.charts?.stageSeries || []).length) return null
+  if (labels.value.stageFunnelHint) return barFunnelFromSeries(props.charts?.stageSeries)
+  return pieFromSeries(props.charts?.stageSeries)
+})
+
+const leadOpt = computed(() => {
+  const series = props.charts?.leadSourceSeries || []
+  if (!series.length) return null
+  return pieFromSeries(series)
+})
+
+const funnelOpt = computed(() => {
+  if (!labels.value.listingFunnelHint) return null
+  return barFunnelFromSeries(props.charts?.listingFunnelSeries)
+})
+
 const hasAny = computed(
   () =>
-    !!(statusOpt.value || trendOpt.value || monthOpt.value || stockOpt.value || hotOpt.value || stockIoOpt.value),
+    !!(
+      statusOpt.value
+      || trendOpt.value
+      || monthOpt.value
+      || stockOpt.value
+      || hotOpt.value
+      || stockIoOpt.value
+      || channelOpt.value
+      || stageOpt.value
+      || leadOpt.value
+      || funnelOpt.value
+    ),
 )
 
 function render() {
@@ -353,6 +465,34 @@ function render() {
     stockIoChart.dispose()
     stockIoChart = null
   }
+  if (channelOpt.value && channelEl.value) {
+    if (!channelChart) channelChart = echarts.init(channelEl.value)
+    channelChart.setOption(withPortalChartTheme(channelOpt.value), true)
+  } else if (channelChart) {
+    channelChart.dispose()
+    channelChart = null
+  }
+  if (stageOpt.value && stageEl.value) {
+    if (!stageChart) stageChart = echarts.init(stageEl.value)
+    stageChart.setOption(withPortalChartTheme(stageOpt.value), true)
+  } else if (stageChart) {
+    stageChart.dispose()
+    stageChart = null
+  }
+  if (leadOpt.value && leadEl.value) {
+    if (!leadChart) leadChart = echarts.init(leadEl.value)
+    leadChart.setOption(withPortalChartTheme(leadOpt.value), true)
+  } else if (leadChart) {
+    leadChart.dispose()
+    leadChart = null
+  }
+  if (funnelOpt.value && funnelEl.value) {
+    if (!funnelChart) funnelChart = echarts.init(funnelEl.value)
+    funnelChart.setOption(withPortalChartTheme(funnelOpt.value), true)
+  } else if (funnelChart) {
+    funnelChart.dispose()
+    funnelChart = null
+  }
 }
 
 function onResize() {
@@ -362,6 +502,10 @@ function onResize() {
   stockChart?.resize()
   hotChart?.resize()
   stockIoChart?.resize()
+  channelChart?.resize()
+  stageChart?.resize()
+  leadChart?.resize()
+  funnelChart?.resize()
 }
 
 watch(
@@ -387,6 +531,10 @@ onBeforeUnmount(() => {
   stockChart?.dispose()
   hotChart?.dispose()
   stockIoChart?.dispose()
+  channelChart?.dispose()
+  stageChart?.dispose()
+  leadChart?.dispose()
+  funnelChart?.dispose()
 })
 </script>
 

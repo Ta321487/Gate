@@ -778,6 +778,14 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "repairTicketNo", "repair_ticket_no", 64);
         patchOptStr(id, patch, "slotStatus", "slot_status", 16);
         patchOptStr(id, patch, "buildingZone", "building_zone", 64);
+        patchOptStr(id, patch, "tags", "tags", 255);
+        patchOptStr(id, patch, "leadSource", "lead_source", 64);
+        patchOptStr(id, patch, "paymentPlan", "payment_plan", 255);
+        patchOptStr(id, patch, "locationDesc", "location_desc", 255);
+        patchOptStr(id, patch, "fundForm", "fund_form", 32);
+        patchOptStr(id, patch, "hireDept", "hire_dept", 64);
+        patchOptStr(id, patch, "priceHistory", "price_history", 255);
+        patchOptStr(id, patch, "vrUrl", "vr_url", 255);
         if (patch.containsKey("foundAt")) {
             if (!hasItemColumn("found_at")) {
                 throw new IllegalStateException("系统未配置该字段");
@@ -1159,6 +1167,14 @@ public final class ArchiveStore {
         putOptStr(m, raw, "repair_ticket_no", "repairTicketNo");
         putOptStr(m, raw, "slot_status", "slotStatus");
         putOptStr(m, raw, "building_zone", "buildingZone");
+        putOptStr(m, raw, "tags", "tags");
+        putOptStr(m, raw, "lead_source", "leadSource");
+        putOptStr(m, raw, "payment_plan", "paymentPlan");
+        putOptStr(m, raw, "location_desc", "locationDesc");
+        putOptStr(m, raw, "fund_form", "fundForm");
+        putOptStr(m, raw, "hire_dept", "hireDept");
+        putOptStr(m, raw, "price_history", "priceHistory");
+        putOptStr(m, raw, "vr_url", "vrUrl");
         Object foundAt = first(raw, "foundAt", "found_at");
         if (foundAt != null || hasMapKey(raw, "found_at", "foundAt")) {
             m.put("foundAt", fmt(foundAt));
@@ -1358,18 +1374,29 @@ public final class ArchiveStore {
         return hasStartAt;
     }
 
-    /** 过档期：仅 start→过开始下架；有 end（查寝窗等）→过结束下架。 */
+    /** 过档期：仅 start→过开始下架；有 end（查寝窗等）→过结束下架；另叠 expire_on 日期下架。 */
     public static int expirePastStarts() {
+        int n = 0;
         if (hasEndAt()) {
             try {
-                return mapper().expirePastEnds(ITEM);
-            } catch (Exception e) {
-                return 0;
+                n += mapper().expirePastEnds(ITEM);
+            } catch (Exception ignored) {
+            }
+        } else if (hasStartAt()) {
+            try {
+                n += mapper().expirePastStarts(ITEM);
+            } catch (Exception ignored) {
             }
         }
-        if (!hasStartAt()) return 0;
+        n += expirePastExpireOn();
+        return n;
+    }
+
+    /** 招聘岗位等：expire_on（yyyy-MM-dd）到期自动下架。 */
+    public static int expirePastExpireOn() {
+        if (!hasItemColumn("expire_on")) return 0;
         try {
-            return mapper().expirePastStarts(ITEM);
+            return mapper().expirePastExpireOn(ITEM);
         } catch (Exception e) {
             return 0;
         }
@@ -2032,6 +2059,30 @@ public final class ArchiveStore {
             }
             return out;
         } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** 档案字段分组计数（工作台饼图/漏斗）。 */
+    public static List<Map<String, Object>> countByItemColumn(String column, int limit) {
+        if (column == null || column.isBlank() || !hasItemColumn(column.trim())) {
+            return List.of();
+        }
+        String col = column.trim().replaceAll("[^a-zA-Z0-9_]", "");
+        if (col.isEmpty() || !hasItemColumn(col)) return List.of();
+        int lim = Math.max(1, Math.min(limit, 20));
+        try {
+            List<Map<String, Object>> raw = mapper().countByItemColumn(ITEM, col, lim);
+            List<Map<String, Object>> out = new ArrayList<>();
+            if (raw == null) return out;
+            for (Map<String, Object> r : raw) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("name", r.get("name"));
+                row.put("value", toLong(r.get("value")));
+                out.add(row);
+            }
+            return out;
+        } catch (Exception ignored) {
             return List.of();
         }
     }

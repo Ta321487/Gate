@@ -32,6 +32,12 @@ public interface MessageMapper {
     @Select("SELECT COUNT(*) FROM sys_message WHERE username=#{username} AND read_at IS NULL")
     int countUnread(@Param("username") String username);
 
+    @Select("SELECT COUNT(*) FROM sys_message WHERE username=#{username} AND ref_type=#{refType} AND ref_id=#{refId}")
+    int countByRef(
+            @Param("username") String username,
+            @Param("refType") String refType,
+            @Param("refId") Long refId);
+
     @Select("SELECT COUNT(*) FROM sys_message WHERE id=#{id} AND username=#{username}")
     int countOwned(@Param("id") long id, @Param("username") String username);
 

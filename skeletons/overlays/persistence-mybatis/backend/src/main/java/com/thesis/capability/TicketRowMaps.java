@@ -164,6 +164,35 @@ final class TicketRowMaps {
             String place = String.valueOf(rawPlace).trim();
             if (!place.isEmpty()) m.put("interviewPlace", place);
         }
+        putFollowOptStr(m, raw, "interview_result", "interviewResult");
+        putFollowOptStr(m, raw, "bg_check_note", "bgCheckNote");
+        putFollowOptStr(m, raw, "return_date", "returnDate");
+        putFollowOptStr(m, raw, "defense_result", "defenseResult");
+        putFollowOptStr(m, raw, "bank_account", "bankAccount");
+        putFollowOptStr(m, raw, "disburse_batch", "disburseBatch");
+        putFollowOptStr(m, raw, "close_attach_url", "closeAttachUrl");
+        putFollowOptStr(m, raw, "assign_dept", "assignDept");
+        putFollowOptStr(m, raw, "appraisal_comment", "appraisalComment");
+        putFollowOptStr(m, raw, "appraisal_grade", "appraisalGrade");
+        putFollowOptStr(m, raw, "company_eval", "companyEval");
+        putFollowOptStr(m, raw, "next_action", "nextAction");
+        putFollowOptStr(m, raw, "feedback_interest", "feedbackInterest");
+        putFollowOptStr(m, raw, "feedback_concern", "feedbackConcern");
+        putFollowOptStr(m, raw, "feedback_next", "feedbackNext");
+        putFollowOptStr(m, raw, "record_url", "recordUrl");
+        Object ws = first(raw, "writtenScore", "written_score");
+        if (ws instanceof Number n) m.put("writtenScore", n.doubleValue());
+        Object da = first(raw, "dealAmountYuan", "deal_amount_yuan");
+        if (da instanceof Number n) m.put("dealAmountYuan", n.doubleValue());
+        Object conf = first(raw, "confidential");
+        if (conf instanceof Number n) m.put("confidential", n.intValue());
+        Object nad = first(raw, "nextActionDone", "next_action_done");
+        if (nad instanceof Number n) m.put("nextActionDone", n.intValue());
+        Object em = first(raw, "excellentMark", "excellent_mark");
+        if (em instanceof Number n) m.put("excellentMark", n.intValue());
+        Object rc = first(raw, "reviseCount", "revise_count");
+        if (rc instanceof Number n) m.put("reviseCount", n.intValue());
+        m.put("followSoonNotifiedAt", fmt(first(raw, "followSoonNotifiedAt", "follow_soon_notified_at")));
         String pn = str(first(raw, "proxyName", "proxy_name"));
         if (!pn.isBlank()) m.put("proxyName", pn);
         String pp = str(first(raw, "proxyPhone", "proxy_phone"));
@@ -194,6 +223,11 @@ final class TicketRowMaps {
         String pref = str(first(raw, "procureRefNo", "procure_ref_no"));
         if (!pref.isBlank()) m.put("procureRefNo", pref);
         return m;
+    }
+
+    private static void putFollowOptStr(Map<String, Object> m, Map<String, Object> raw, String col, String key) {
+        String v = str(first(raw, key, col)).trim();
+        if (!v.isBlank()) m.put(key, v);
     }
 
     /** 请假等起止（含首尾）的自然日天数；解析失败返回 0。 */

@@ -3,7 +3,12 @@
     <section class="hero">
       <h1>{{ pageTitle }}</h1>
       <p>{{ pageLead }}</p>
-      <el-button @click="load">刷新</el-button>
+      <div class="hero-actions">
+        <el-button @click="load">刷新</el-button>
+        <el-button v-if="list.length" type="primary" plain @click="exportList">导出清单</el-button>
+        <el-button v-if="list.length" plain @click="copyList">复制清单</el-button>
+      </div>
+      <p v-if="shareHint" class="share-hint">{{ shareHint }}</p>
     </section>
 
     <div class="grid">
@@ -62,11 +67,15 @@ import http from '../../api/http'
 import EmptyHint from '../../components/EmptyHint.vue'
 import { toggleFavorite, upsertCart } from '../../utils/apiCalls.js'
 import { getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
+import { downloadCsv } from '../../utils/csvDownload.js'
 
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.favoritesPageTitle || '我的收藏')
 const pageLead = computed(
   () => labels.value.favoritesPageLead || '收藏感兴趣的内容，便于再次查看。',
+)
+const shareHint = computed(
+  () => labels.value.favShareHint || labels.value.listingCompareHint || '',
 )
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
 const canAddCart = computed(() => (getSchema().capabilities || []).includes('order_lines'))
@@ -90,6 +99,41 @@ async function load() {
   total.value = res.data?.total || 0
 }
 
+function listLines() {
+  return (list.value || [])
+    .map((row, i) => {
+      const title = row.title || '已下架'
+      const shop = shopLabel(row)
+      return shop ? `${i + 1}. ${title}（${shop}）` : `${i + 1}. ${title}`
+    })
+    .join('\n')
+}
+
+function exportList() {
+  const headers = ['标题', '店铺', '收藏时间']
+  const rows = (list.value || []).map((row) => [
+    row.title || '已下架',
+    shopLabel(row) || '',
+    row.createdAt || '',
+  ])
+  downloadCsv(`${pageTitle.value || '收藏清单'}.csv`, headers, rows)
+  ElMessage.success('已导出清单，可发给同学查看')
+}
+
+async function copyList() {
+  const text = listLines()
+  if (!text) {
+    ElMessage.warning('暂无收藏可复制')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('清单已复制，可粘贴分享')
+  } catch {
+    ElMessage.error('复制失败，请改用导出清单')
+  }
+}
+
 async function addCart(row) {
   await upsertCart(row.id || row.itemId, 1)
   ElMessage.success(`已加入${cartLabel.value}`)
@@ -108,6 +152,8 @@ onMounted(load)
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.share-hint { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
 }

@@ -108,6 +108,11 @@ public interface ArchiveMapper {
             + "WHERE status='available' AND end_at IS NOT NULL AND end_at <= NOW()")
     int expirePastEnds(@Param("itemTable") String itemTable);
 
+    @Update("UPDATE `${itemTable}` SET status='unavailable' "
+            + "WHERE status='available' AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
+            + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')")
+    int expirePastExpireOn(@Param("itemTable") String itemTable);
+
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,
             @Param("mineCol") String mineCol,
@@ -148,6 +153,12 @@ public interface ArchiveMapper {
             @Param("itemTable") String itemTable,
             @Param("limit") int limit,
             @Param("ownerUsername") String ownerUsername);
+
+    /** 工作台：按档案列分组计数（stage / lead_source / rent_stage）。列名须调用方已白名单清洗。 */
+    List<Map<String, Object>> countByItemColumn(
+            @Param("itemTable") String itemTable,
+            @Param("column") String column,
+            @Param("limit") int limit);
 
     List<Map<String, Object>> selectTags(@Param("tagTable") String tagTable);
 

@@ -191,6 +191,57 @@
         WHERE id=#{id}
     </update>
 
+    <update id="updateFineWaived">
+        UPDATE `${ticketTable}` SET fine_status='waived'
+        <if test="withFineYuan">, fine_yuan=0</if>
+        WHERE id=#{id}
+    </update>
+
+    <update id="updateCancelOrRejectHold" parameterType="map">
+        UPDATE `${ticketTable}` SET status=#{status}
+        <if test="remark != null">, remark=#{remark}</if>
+        <if test="clearHoldExpire">, hold_expire_at=NULL</if>
+        WHERE id=#{id}
+        <if test="expectStatus != null and expectStatus != ''"> AND status=#{expectStatus}</if>
+    </update>
+
+    <update id="updateHoldReadyApprove" parameterType="map">
+        UPDATE `${ticketTable}` SET status='approved', approve_at=#{approveAt}, remark=#{remark}
+        <if test="bindAssignee">, assignee_username=#{assigneeUsername}</if>
+        <if test="withDue">, due_at=#{dueAt}</if>
+        <if test="withFineYuan">, fine_yuan=0</if>
+        <if test="withRemindMsg">, remind_msg=''</if>
+        <if test="clearHoldExpire">, hold_expire_at=NULL</if>
+        WHERE id=#{id} AND status='hold_ready'
+    </update>
+
+    <update id="updateRenew" parameterType="map">
+        UPDATE `${ticketTable}` SET due_at=#{dueAt}, status='approved', renew_count=#{renewCount}
+        <if test="withFineYuan">, fine_yuan=0</if>
+        <if test="withRemindMsg">, remind_msg=''</if>
+        WHERE id=#{id}
+    </update>
+
+    <update id="updateColumnById">
+        UPDATE `${ticketTable}` SET `${column}`=#{value} WHERE id=#{id}
+    </update>
+
+    <select id="countPeerConfirmInbox" resultType="int">
+        SELECT COUNT(*) FROM `${ticketTable}`
+        WHERE peer_username=#{username} AND peer_ack=0 AND status IN ('pending','pending_mid')
+    </select>
+
+    <select id="selectPeerConfirmInbox" resultType="map">
+        SELECT * FROM `${ticketTable}`
+        WHERE peer_username=#{username} AND peer_ack=0 AND status IN ('pending','pending_mid')
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectExpiredHoldReadyIds" resultType="long">
+        SELECT id FROM `${ticketTable}`
+        WHERE status='hold_ready' AND hold_expire_at IS NOT NULL AND hold_expire_at &lt; NOW()
+    </select>
+
     <select id="selectStatusSeries" resultType="map">
         SELECT status AS name, COUNT(*) AS value FROM `${ticketTable}` GROUP BY status
     </select>
@@ -199,6 +250,24 @@
         SELECT DATE_FORMAT(apply_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM `${ticketTable}`
         WHERE apply_at &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
         GROUP BY DATE_FORMAT(apply_at,'%Y-%m-%d') ORDER BY day
+    </select>
+
+    <select id="selectChannelSeries" resultType="map">
+        SELECT COALESCE(NULLIF(TRIM(contact_channel),''),'未填') AS name, COUNT(*) AS value
+        FROM `${ticketTable}`
+        GROUP BY COALESCE(NULLIF(TRIM(contact_channel),''),'未填')
+        ORDER BY value DESC
+        LIMIT 12
+    </select>
+
+    <select id="selectHotItemSeries" resultType="map">
+        SELECT COALESCE(i.title, CONCAT('编号', t.`${itemFk}`)) AS name, COUNT(*) AS value
+        FROM `${ticketTable}` t
+        LEFT JOIN `${itemTable}` i ON t.`${itemFk}`=i.id
+        WHERE t.status IN ('approved','overdue','returned','lost','compensated')
+        GROUP BY t.`${itemFk}`, i.title
+        ORDER BY value DESC
+        LIMIT 8
     </select>
 
     <select id="selectProgress" resultType="map">

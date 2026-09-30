@@ -69,6 +69,17 @@ public class MessageStore {
         mapper().insert(username.trim(), t, b, rt, refId);
     }
 
+    /** 是否已有同 ref 通知（周报催交等防抖）。 */
+    public static boolean existsRef(String username, String refType, Long refId) {
+        if (!ready() || username == null || username.isBlank() || refId == null) return false;
+        String rt = refType == null ? "" : refType.trim();
+        try {
+            return mapper().countByRef(username.trim(), rt, refId) > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * 通知所有管理端账号（role=admin，含总管与子管）。
      * @param excludeUsername 可空；不发给该账号（如初审人自己）
