@@ -60,6 +60,7 @@
 | 领域组 A–H / Path B 交叉 | [`docs/domains.md`](./docs/domains.md) |
 | L0–L3 / 加价边界 | [`docs/difficulty-tiers.md`](./docs/difficulty-tiers.md) |
 | 库表预算 / 角色不变式 | [`docs/invariants.md`](./docs/invariants.md) |
+| **参数该落哪（yml ≠ 唯一去处）** | 规则 `.cursor/rules/param-placement.mdc` · `.trae/rules/param-placement.md`（口径同 [`docs/capabilities.md`](./docs/capabilities.md)） |
 | 怎么审交付 | [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md) |
 | 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
 | 开题功能对照 | [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md) |

@@ -7,6 +7,8 @@
 > **口径**：全国专本科 **Web 管理类毕设**通识可交付（能注册、走主流程、能答辩）。**不**依赖工厂样例库，**不**绑某一所学校课表；按开题常写模块建库存。禁止用「演示级」打发已实现能力。  
 > **库存原则**：工厂先列全「毕设常见且不超纲」功能；域壳仍可薄配置。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
 > **齐度**：有「待补」=实现未齐，≠库存未列。超纲进「不支持」，不进待补装齐。压力测见下节。
+> **已齐硬口径（老板原话）**：**管理端能管，且用户端可产生数据（写库）**；答辩能讲、论文能写。只读文案 / 纯 Hint / 仅打印导出 / 仅前端字面量真读 → **不算已齐**，进待补。
+> **骨架门禁（代替起包）**：在硬口径之上再钉：① 列/API/SQL；② 管理端有管控件 + 用户端有写入控件；③ `test_opening_map_skeleton_gate.py` 绿。不靠逐题起包。
 
 ## 压力测门（整模块级 · 真缺口）
 
@@ -314,12 +316,24 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| （本组 §1.1 待补已清） | — | — |
+| （无） | — | 分值列已迁出至本组已齐「借用信誉分（分值列 + 台账）」；原判「Store 不读分值列」已过时（`credit_score` 已跨 Store / 逾期扣分 / 再借拦截 / 管理端台账生效） |
 
-#### 本组本轮已齐（从待补迁出）
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
 
 | 功能 | 落点 | 挂载 |
 |------|------|------|
+| 新书/新物资上架通报提示 | labels.shelfAnnounceHint + 用户收藏写库；管理端上架/公告 | **域默认** LIBRARY/ASSET |
+| 图书荐购预算余额提示 | book_suggest 域挂 + 用户提交荐购；管理端审核 | **域默认** LIBRARY |
+| 图书读者信用分规则提示 | maxOverdueTimes + ever_overdue 写库 + 再借拦截；labels.creditRuleHint；bake 另挂 creditOnOverdue 标记（与分值列并存，次数冻结不替代分值） | **域默认** LIBRARY；EQUIP 扫「信誉分」同挂 |
+| 借用信誉分（分值列 / 逾期扣分 / 低于 N 停借） | `credit_score` 列 + `credit_ledger` 台账写库（逾期扣分按 ticket 幂等）；再借拦截 assertCanBorrow；labels.creditScoreLabel；管理端台账 + 人工调整写库；用户端我的分值 | **扫词开** credit-on-overdue（bake creditOnOverdue / creditPoints）；LIBRARY 域默认；EQUIP 扫「信誉分」同挂 |
+| 设备借用合同模板说明 | requireNoticeAck 写 notice_ack；管理维护合同文案 | **域默认** EQUIP |
+| 图书闭架索书单打印提示 | 打印面 + 用户提交借阅申请写库 | **域默认** LIBRARY |
+| 设备保养工单联动说明 | archive.maintainDue/repairTicketNo 管理维护；用户申请可备注 | **域默认** EQUIP |
+| 床位互换意向文案指引 | requirePeerConfirm：用户写 peer_username，对方 peer_ack，管理审核 | **域默认** BED |
+| 图书征订目录导入提示 | 管理端 CSV 导入 + 用户荐购产生需求 | **域默认** LIBRARY |
+| 床位入住登记表打印提示 | 打印 + requireNoticeAck 写库 | **域默认** BED |
+| 设备标签二维码打印说明 | allowAssetCode 用户手输资产编号写库；管理打印标签 | **域默认** EQUIP |
 | 报废审批流深化（独立报废状态机） | scrap_request + stockScrapOpts.approveFlow | **扫词开** stock_scrap 时；pending→approved/rejected 后才扣库存；gate 验 scrap-requests |
 | 物资申购转领用一键动作 | ticket.allowProcureRef / procureToStockIn | **域默认** ASSET 申购单号确认；PROCURE 一键入库（补 stock_io gate） |
 | 续借次数上限 | loan_renew → `maxRenew` | **域默认** 随续借 |
@@ -357,38 +371,27 @@
 | 预约到书站内信通知 | book_hold → hold_ready MessageStore | **扫词开** book_hold（原已闭环） |
 | 设备随借配件勾选清单 | material_check 变体 | **开题扫**（随借配件） |
 | 排队到号站内信 | waitlist 晋升 MessageStore | **扫词开** waitlist（原已闭环） |
-| 新书/新物资上架通报提示 | labels.shelfAnnounceHint | **域默认** LIBRARY/ASSET |
 | 驿站货架格口占用状态 | archive.slotStatus | **域默认** PARCEL |
 | 读者证号/一卡通号字段 | profile.cardNo 文案 | **域默认** LIBRARY |
 | 随书附件（光盘）勾选借出 | material_check 变体 | **开题扫**（随书光盘/附件） |
-| 设备标签二维码打印说明 | labels.equipQrPrintHint | **域默认** EQUIP |
 | 领用双人复核签字栏 | ticket.allowDualReview | **开题扫**（双人复核） |
 | 床位住宿费/预定金演示登记 | ticket.allowDeposit | **开题扫**（住宿费/预定金） |
 | 设备故障转报修单号 | archive.repairTicketNo | **域默认** EQUIP |
-| 超期催还计入信誉分（提示+开关） | ticket.creditOnOverdue + labels | **开题扫**（信誉分） |
 | 图书预约取消次数限制 | ticket.maxCancelHolds | **开题扫** |
 | 设备归还逾期转赔付提示开关 | ticket.overdueAutoCompensate | **开题扫** |
 | 退宿水电清算备注 | ticket.allowUtilityNote | **开题扫** |
-| 图书荐购预算余额提示 | labels.suggestBudgetHint | **域默认** LIBRARY |
 | 设备校准证书到期停借 | archive.calibDue + blockIfCalibExpired | **开题扫**（校准证书） |
 | 包裹逾期弃件标记 | archive.stage 弃件 + 文案 | **开题扫**（弃件） |
 | 物资领用课题号 | ticket.allowProjectNo | **开题扫**（课题号） |
 | 驿站寄件运费登记 | ticket.allowShipFee | **开题扫** |
 | 设备借用保险声明勾选 | ticket.requireInsuranceAck | **开题扫** |
-| 图书读者信用分规则提示 | labels.creditRuleHint | **域默认** LIBRARY |
-| 设备借用合同模板说明 | labels.contractTemplateHint | **域默认** EQUIP |
-| 床位入住登记表打印提示 | labels.bedPrintHint | **域默认** BED |
-| 图书闭架索书单打印提示 | labels.closedStackPrintHint | **域默认** LIBRARY |
-| 设备保养工单联动说明 | labels.maintainWorkOrderHint + repairTicketNo | **域默认** EQUIP |
 | 楼栋床位分区色块字段 | archive.buildingZone + bedPlanHint | **域默认** BED |
-| 床位互换意向文案指引 | labels.bedSwapHint | **域默认** BED |
 | 报废叠二级审 | ticket.twoLevelApprove（挂 stock_scrap 时） | **扫词开** stock_scrap 时叠 |
 | 多册合借一单（册数） | ticket.allowQty + qtyLabel=册数 | **域默认** LIBRARY（检索页填数量） |
 | 逾期罚款减免 | ticket.allowFineWaive → fine_status=waived | **开题扫**（罚款减免） |
 | 续借须无他人预约 | ticket.renewBlockIfHeld | **开题扫** |
 | 调宿双方确认 | ticket.requirePeerConfirm + peer_ack → `peer_tickets` 菜单 + Mapper 收件箱 | **开题扫**（双方确认/对向同意） |
 | 床位互换双方确认链路 | 同上 + peer_tickets 菜单 | **开题扫**（与双方确认同开） |
-| 图书征订目录导入提示 | labels.catalogImportHint（复用档案 CSV） | **域默认** LIBRARY |
 | 荐购进度查询（审核说明） | BookSuggest 用户列表 handleNote | **扫词开** book_suggest（原已闭环） |
 | 物资领用额度（分类上限） | ticket.categoryLimit | **开题扫**（领用额度/按月限额） |
 | 盘点锁定禁出入库 | stockCountOpts.countLock → StockIoStore | **开题扫** |
@@ -417,22 +420,47 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| （本组 §1.2 待补已清） | — | — |
 
-#### 本组本轮已齐（从待补迁出）
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+
 
 | 功能 | 落点 | 挂载 |
 |------|------|------|
+| 跟进记录时间轴 | followTimelineHint + contact_channel/next_follow 写库；进度对话框 | **域默认** CRM |
+| 成绩单打印预览页 | gradePrintHint 打印 + 成绩更正/补考申请写库 | **域默认** GRADE |
+| 客户/房源标签色标 | tagColorHint 色点；管理维护标签，用户/业务关联 | **域默认** CRM/LISTING |
+| 成绩排名班级/专业切换 | rankSwitchHint + ticket.rank_scope 写库；管理端可见 | **域默认** GRADE |
+| 考勤月汇总表导出 | 管理导出 + 用户请假写库/导出本人记录 | **域默认** ATTEND |
+| 成绩导入行级错误回显 | 管理导入错误面 + 学生更正申请写库 | **域默认** GRADE |
+| 资助名额余量实时展示 | quotaRemain 展示 + 学生申请写库占用 | **域默认** FUND |
+| 晨午检未打卡名单导出 | 打卡写库 + 管理导出未打卡名单 | **域默认** EVENT |
+| 绩点换算说明页 | gpaPageHint + requireNoticeAck 写库 | **域默认** GRADE |
+| 请假跨天拆段展示 | leaveSplitHint + 请假起止写库 | **域默认** ATTEND |
+| 成绩加权平均说明 | weightedAvgHint + 申请须知勾选写库 | **域默认** GRADE |
+| 实习考勤与周报联动提示 | attendLinkHint + 周报写库 | **域默认** INTERN |
+| 请假 overlapping 冲突提示 | leaveOverlapHint 拦截 + 合法请假写库 | **域默认** ATTEND |
+| 成绩正态分布简易图 | distChartHint 工作台图；分数管理登记、学生可申请 | **域默认** GRADE |
+| 房源意向客户计数 | favorites 收藏写库 + intentCountHint 计数 | **域默认** LISTING |
+| 成绩导出含学号脱敏选项 | 管理脱敏导出 + 学生导出本人记录 | **域默认** GRADE |
+| 请假假期余额导入 | 管理额度维护 + 员工请假扣减写库 | **域默认** ATTEND |
+| 招聘面试间预约叠会议室 | interviewPlace 用户写库；管理审核投递 | **域默认** RECRUIT |
+| 成绩补考后覆盖规则说明 | makeupOverlayHint + allowMakeupApply 写库 | **域默认** GRADE |
 | 下次跟进日到期站内信提醒 | followThicken.followRemindDays → next_follow_at | **域默认** CRM/LISTING |
+| 客户/线索查重提示 | phoneDupCheck：Store 按 contact_phone 拦重号（applyStandalone 拒重）+ labels.phoneDupHint | **开题扫** CRM |
+| 未跟进 N 天列表 | ticket.staleFollowDays → ticket-stale-follow-days 配置 + 列表 status=stale 筛（无下次跟进或逾期 N 天）+ labels.stalePoolHint | **开题扫** CRM |
+| 周报退回修改次数限制 | returnForRevise/resubmit + revise_count 记库，超 maxReviseTimes 拒绝 + labels.maxReviseHint | **域默认** INTERN |
+| 奖学金公示异议登记窗口 | ticket.allowObjectionWindow → 申请单 objection_due_at/objection_note/objection_at 落库；用户端 POST `/api/fund-publicity/{id}/objection`（超期拒）+ labels.objectionWindowHint | **开题扫** FUND |
+| 成绩异议申请时限 | ticket.objectionDays → 成绩登记时间 + N 天算截止日；用户端入口按时限关（GradeScoresMine）+ 服务端 `GradeScoreStore.assertObjectionOpen` + labels.objectionWindowHint | **开题扫** GRADE |
+| 事件等级影响处理时限 | ticket.levelAffectsDeadline → ticket-level-sla-高/中/低-days 配置 + Store 按 level 取 due_at/response_due_at + labels.levelSlaHint | **开题扫** EVENT |
+| 事件上报一键通知值班表 | ticket.notifyDutyOnReport → StaffRosterStore.onDutyUsernames + MessageStore 群发（响应回显 dutyNotified）+ labels.notifyDutyHint | **开题扫** EVENT |
 | 客户/房源标签多选筛选 | archive.tags | **域默认** CRM/LISTING |
-| 跟进记录时间轴 | labels.followTimelineHint | **域默认** CRM |
 | 年假/调休余额扣减 | balance_ledger（ATTEND 域默认）+ leave_days 扣减 | **域默认** ATTEND |
 | 请假销假后余额回补 | balanceLedger.creditOnReturn | **域默认** ATTEND |
 | 面试结果登记 | ticket.allowInterviewResult | **域默认** RECRUIT |
 | 录用/淘汰批量操作 | ticket.allowBatchHire → POST `/api/tickets/batch-hire` + 管理端勾选 | **域默认** RECRUIT |
 | 周报截止未交提醒 | ticket.weekReportRemind → `maybeNotifyWeekReports` + MessageStore.existsRef（每周一封） | **域默认** INTERN |
 | 实习鉴定表字段套 | ticket.requireAppraisal | **域默认** INTERN |
-| 成绩单打印预览页 | labels.gradePrintHint | **域默认** GRADE |
 | 带看评价（星级） | ticket.allowRating | **域默认** LISTING |
 | 事件结案报告附件必传 | ticket.requireCloseAttach | **域默认** EVENT |
 | 长期未跟进标「搁置」 | archive.stage 含搁置 | **域默认** CRM |
@@ -442,65 +470,41 @@
 | 销假确认（返岗日期） | ticket.requireReturnDate | **域默认** ATTEND |
 | 资助答辩/评议结果登记 | ticket.allowDefenseResult | **域默认** FUND |
 | 岗位收藏 / 投递进度时间轴 | favorites 扫词 + progressTimelineHint | **开题扫** 收藏；时间轴域默认 |
-| 成绩排名班级/专业切换 | labels.rankSwitchHint | **域默认** GRADE |
 | 补考报名入口 | ticket.allowMakeupApply | **域默认** GRADE |
 | 实习周报优秀标记 + 汇总导出 | ticket.allowExcellentMark | **开题扫** |
 | 房源收藏与对比 | favorites + 导出/复制清单（listingCompareHint） | **开题扫** |
 | 成交漏斗简图 | rent_stage/stage → 工作台 listingFunnelSeries | **域默认** LISTING |
-| 客户/线索查重提示 | ticket.phoneDupCheck | **域默认** CRM |
-| 考勤月汇总表导出 | labels.monthExportHint | **域默认** ATTEND |
 | 招聘岗位有效期自动下架 | archive.expireOn → 列表入口 expirePastExpireOn | **域默认** RECRUIT |
-| 成绩导入行级错误回显 | labels.importRowErrorHint | **域默认** GRADE |
-| 事件等级影响处理时限 | ticket.levelAffectsDeadline + deadline | **开题扫** |
-| 资助名额余量实时展示 | labels.quotaRemainHint | **域默认** FUND |
-| 周报退回修改次数限制 | ticket.maxReviseTimes | **域默认** INTERN |
 | 房源价格变更留痕 | archive.priceHistory | **域默认** LISTING |
 | 线索来源统计饼图 | lead_source → 工作台 leadSourceSeries | **开题扫** |
 | 客户阶段漏斗简图 | archive.stage → 工作台 stageSeries | **域默认** CRM |
 | 面试评价表（维度打分） | rating_dims 叠 | **开题扫** |
-| 奖学金公示异议登记窗口 | ticket.allowObjectionWindow | **开题扫** |
 | 实习单位对实习生评价 | ticket.allowCompanyEval | **域默认** INTERN |
-| 晨午检未打卡名单导出 | labels.checkExportHint | **域默认** EVENT |
 | 请假审批时限超时提醒 | deadline 扫词叠 | **开题扫** |
 | 带看预约时段冲突提示 | time_conflict 扫词 | **开题扫** |
 | 招聘笔试/机试成绩登记 | ticket.allowWrittenScore | **开题扫** |
-| 绩点换算说明页 | labels.gpaPageHint | **域默认** GRADE |
 | 事件上报手填位置描述 | archive.locationDesc | **域默认** EVENT |
 | 资助银行卡号脱敏展示 | ticket.maskBankAccount | **域默认** FUND |
 | 客户跟进下次行动待办勾选 | ticket.allowNextAction | **开题扫** |
 | 家访照片附件槽 | requireAttach 扫词 | **开题扫** |
-| 请假跨天拆段展示 | labels.leaveSplitHint | **域默认** ATTEND |
 | 房源VR外链字段 | archive.vrUrl | **域默认** LISTING |
 | 招聘用人部门筛选 | archive.hireDept | **开题扫** |
-| 成绩异议申请时限 | ticket.objectionDays | **开题扫** |
 | 实习周报字数下限 | ticket.minRemarkWords | **域默认** INTERN |
 | 分配负责人 | archive.ownerUsername | **开题扫** |
 | 事件上报保密标记 | ticket.allowConfidential | **开题扫** |
 | 请假代理人登记 | ticket.allowLeaveProxy | **开题扫** |
 | 带看反馈必填项套 | ticket.requireFeedbackSet | **域默认** LISTING |
 | 招聘简历解析字段手填套 | ticket.resumeFieldSet | **开题扫** |
-| 成绩加权平均说明 | labels.weightedAvgHint | **域默认** GRADE |
-| 实习考勤与周报联动提示 | labels.attendLinkHint | **域默认** INTERN |
 | 客户成交金额登记 | ticket.allowDealAmount | **域默认** CRM |
 | 事件上报分拨科室 | ticket.allowAssignDept | **开题扫** |
-| 请假 overlapping 冲突提示 | labels.leaveOverlapHint | **域默认** ATTEND |
 | 招聘录用通知站内信模板 | message_template 扫词叠 | **开题扫** |
-| 成绩正态分布简易图 | labels.distChartHint | **域默认** GRADE |
-| 未跟进 N 天列表 | ticket.staleFollowDays | **开题扫** |
 | 资助发放批次号 | ticket.allowDisburseBatch | **域默认** FUND |
-| 房源意向客户计数 | labels.intentCountHint | **域默认** LISTING |
 | 招聘岗位收藏夹分享 | favorites + 导出清单/复制清单（favShareHint） | **开题扫** |
-| 成绩导出含学号脱敏选项 | labels.stuNoMaskExportHint | **域默认** GRADE |
-| 事件上报一键通知值班表 | ticket.notifyDutyOnReport | **开题扫** |
-| 请假假期余额导入 | labels.leaveBalanceImportHint | **开题扫** |
 | 带看录音外链字段 | ticket.allowRecordUrl | **开题扫** |
-| 招聘面试间预约叠会议室 | labels.interviewRoomHint | **开题扫** |
 | 成绩排名隐私开关 | schema.rankPrivacy | **开题扫** |
-| 客户标签颜色 | labels.tagColorHint | **开题扫** |
 | 资助形式枚举 | archive.fundForm | **域默认** FUND |
 | 实习单位评价匿名开关 | schema.companyEvalAnonymous | **开题扫** |
 | 招聘入职材料清单 | material_check 扫词 | **开题扫** |
-| 成绩补考后覆盖规则说明 | labels.makeupOverlayHint | **域默认** GRADE |
 | 事件值班排班叠 staff_roster | staff_roster 扫词 | **开题扫** |
 | 请假销假二维码确认 | code_qr 扫词 | **开题扫** |
 | 招聘背调备注字段 | ticket.allowBgCheckNote | **开题扫** |
@@ -523,68 +527,69 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 用户端「催办」按钮（未超时也可点，记一笔） | 三域 | ≠短信外呼 |
-| 报修单满意度（单据星级，对齐 `allowRating`） | 三域 | 开题常写评价时 |
-| 常用故障原因字典 + 结单必选 | 三域 | 主数据字典；≠智能诊断 |
-| 紧急程度（一般/紧急）影响列表排序 | 三域 | 字段+排序；≠智能派单 |
-| 维修前后图片对比区（结单可传） | 三域 | 附件槽；通识开题常写 |
-| 转派记录留痕（谁转给谁） | 三域 | 流水；≠工单引擎 |
-| 备件/耗材出库记一笔（关联工单） | PROPERTY / IT | 浅台账；≠完整进销存 ASSET |
-| 重复报修提示（同房间未结同类） | DORM / PROPERTY | 提交校验提示 |
-| 报修进度时间轴（用户可见） | 三域 | 状态变更流水展示 |
-| 预约上门时段（用户期望时间） | 三域 | 字段；≠排班强约束可先弱 |
-| 维修超时自动升紧急 | 三域 | 规则；依赖 deadline |
-| 知识库式「常见问题」只读页 | IT / PROPERTY | content 深皮或静态；≠ RAG |
-| 报修满意度差评必填原因 | 三域 | 评价扩展 |
-| 同楼栋未结工单热力简表 | DORM | 管理端统计；≠大屏 |
-| 资产编号扫码录入（手输码） | IT | 文本码；≠硬件扫码枪强制 |
-| 维修员工作量统计（接单/完结数） | 三域 | 工作台；通识高频 |
-| 用户催办后冷却（防刷催） | 三域 | 规则；浅 |
-| 派单按区域/楼栋过滤维修员 | DORM / PROPERTY | 名单过滤；≠智能派单 |
-| SLA：响应时限与完结时限分列 | 三域 | 两字段；deadline 加深 |
-| 结单必填处理过程摘要 | 三域 | 办结字段 |
-| 用户撤单（未派单前可撤） | 三域 | 状态规则；通识高频 |
-| 维修员拒单原因登记 | 三域 | 回池+原因；浅 |
-| 工单编号规则说明（只读） | 三域 | 文案；流水号已有可钉 |
-| 夜间/节假日报修加急标记 | 三域 | 字段；浅规则 |
-| 评价后锁定单据不可再催 | 三域 | 规则 |
-| 同类知识条目关联推荐（手工挂） | IT | lookup 链接；≠ RAG |
-| 维修报价用户确认 | 三域 | 金额+确认态；通识偶见 |
-| 重复工单合并（主从关联） | 三域 | 浅关联；≠工单中台 |
-| 服务态度/效率分项评价 | 三域 | allowRating 多维浅 |
-| 备件不足时结单警告 | PROPERTY / IT | 对照耗材台账；浅 |
-| 报修语音备注（上传音频文件） | 三域 | 附件类型放宽；浅 |
-| 用户端进度订阅开关 | 三域 | 站内信偏好；浅 |
-| 报修单打印工单页 | 三域 | 浏览器打印；通识 |
-| 维修员当日路线备注（手填） | 三域 | 字段；≠地图调度 |
-| 用户端历史报修复用上次地址 | 三域 | UX；浅 |
-| 结单回访任务（站内待办） | 三域 | 浅待办；通识偶见 |
-| 故障现象词云式高频标签（计数） | 三域 | 字典计数；≠ NLP |
-| 报修单评价邀请延迟（办结后 N 小时） | 三域 | 规则；浅 |
-| 维修员技能标签过滤派单 | 三域 | 标签；≠智能派单 |
-| 用户端撤销催办 | 三域 | 状态；浅 |
-| 物业公共区域报修（无房号） | PROPERTY | 地址类型；浅 |
-| IT 远程协助备注（会议号外链） | IT | URL 字段；浅 |
-| 报修分类图标/色标 | 三域 | 字典扩展；浅 |
-| 结单知识沉淀勾选（写入常见问题） | IT / PROPERTY | 手工沉淀；≠自动知识库 |
-| 多人协作工单（主责+协助） | 三域 | 字段；浅 |
-| 用户端满意度追评（一次） | 三域 | 评价扩展；浅 |
-| 报修材料费用户确认支付（系统内） | 三域 | 金额+demoPay 思路；浅 |
-| 值班表冲突与报修派单提示 | 三域 | 排班叠；浅 |
-| 用户端常见故障自助排查页 | IT / PROPERTY | 静态步骤；≠智能诊断 |
-| 工单挂起/恢复 | 三域 | 状态；通识偶见 |
-| 宿舍公共卫生间报修（公区） | DORM | 对齐物业公区；浅 |
-| 报修单导出含图片链接列 | 三域 | CSV；浅 |
-| 维修超时升级主管站内信 | 三域 | 规则；浅 |
-| 用户端草稿报修 | 三域 | draft；通识偶见 |
-| 备件序列号登记 | PROPERTY / IT | 字段；浅 |
-| 报修服务水平协议说明页 | 三域 | 只读 SLA 文案；浅 |
-| 维修员端今日工单看板 | 三域 | 列表过滤；通识 |
-| 用户端取消已派单（须理由） | 三域 | 规则；通识偶见 |
-| 物业费催缴 | — | **不支持**：缴费另域；勿塞报修壳 |
-| 报修评价标签（态度好/准时） | 三域 | 字典多选；浅 |
-| 维修员拒单次数统计 | 三域 | 计数；浅 |
-| 用户端历史地址簿 | 三域 | 地址复用；浅 |
+| （§1.3 报修主链：用户报修/催办/评价写库 + 管理受理/结单/记录，**达双端口径**；边缘 Hint 另案） | — | — |
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径更正（2026-09-30）：已齐 = **管理能管 + 用户可产生数据**。§1.3 报修主链（申请/催办/评价 ↔ 受理/结单/记录）按此口径齐；骨架门禁钉控件与 Store，**不靠起包**。分类色标/故障频次图/楼栋筛/对比图/今日看板已挂。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 用户端「催办」按钮（未超时也可点） | ticket.allowUserUrge → POST `/api/tickets/{id}/urge` | **域默认** 三域 |
+| 用户催办后冷却 | ticket.urgeCooldownMinutes + urge_at | **域默认** 三域 |
+| 用户端撤销催办 | ticket.allowCancelUrge → POST `/api/tickets/{id}/cancel-urge` | **域默认** 三域 |
+| 评价后锁定单据不可再催 | ticket.lockUrgeAfterRate | **域默认** 三域 |
+| 报修单满意度（单据星级） | ticket.allowRating | **域默认** 三域 |
+| 服务态度/效率分项评价 | ticket.ratingDims | **域默认** 三域 |
+| 报修满意度差评必填原因 | ticket.requireLowRatingRemark | **域默认** 三域 |
+| 报修评价标签 | ticket.allowRatingTags + rating_tags | **域默认** 三域 |
+| 用户端满意度追评 | ticket.allowFollowRate + follow_rated | **域默认** 三域 |
+| 常用故障原因字典 + 结单必选 | ticket.requireFaultReason + fault_reason | **域默认** 三域 |
+| 结单必填处理过程摘要 | ticket.requireCloseSummary + close_summary | **域默认** 三域 |
+| 结单附件必传 + 报修/完工图对比 | requireCloseAttach + attachUrl/closeAttachUrl 并排 | **域默认** 三域 |
+| 紧急程度影响列表排序 | priority 列 + 列表排序 | **域默认** 三域 |
+| 报修进度时间轴 | progress 流水 + labels.progressTimelineHint | **域默认** 三域 |
+| 预约上门时段 | ticket.preferredSlot + preferred_slot | **域默认** 三域 |
+| SLA：响应时限与完结时限分列 | ticket.slaSplit + response_due_at / due_at | **域默认** 三域 |
+| 维修超时自动升紧急 | ticket.escalateOnOverdue | **域默认** 三域 |
+| 维修超时升级主管站内信 | ticket.notifySupervisorOnOverdue | **域默认** 三域 |
+| 用户撤单（未派单前可撤） | status cancelled 规则 | **域默认** 三域 |
+| 用户端取消已派单（须理由） | ticket.allowCancelDispatched | **域默认** 三域 |
+| 维修员拒单原因登记 | POST `/api/tickets/{id}/reject-assignment` | **域默认** 三域 |
+| 工单挂起/恢复 | ticket.allowHoldResume → hold/resume | **域默认** 三域 |
+| 用户端草稿报修 | ticket.allowTicketDraft + draft 态 | **域默认** 三域 |
+| 夜间/节假日报修加急标记 | ticket.nightUrgent + night_urgent | **域默认** 三域 |
+| 工单编号规则说明 | labels.ticketNoHint（列表/申请页可见） | **域默认** 三域 |
+| 报修 SLA 说明文案 | labels.slaPageHint（申请/工作台可见） | **域默认** 三域 |
+| 维修员工作量统计 | chartStats.workerSeries | **域默认** 三域 |
+| 记录页 + 维修员端「今日处理中」 | ticket.todayBoard + todayAssigned；StaffTickets 切换 | **域默认** 三域 |
+| 维修员拒单次数统计 | dashboard.rejectAssignmentCount | **域默认** 三域 |
+| 转派记录留痕 | POST `/api/tickets/{id}/reassign` + progress | **域默认** 三域 |
+| 报修单打印工单页 | ticket.printTicket | **域默认** 三域 |
+| 报修单导出含图片链接列 | ticket.exportAttachUrls | **域默认** 三域 |
+| 用户端进度订阅开关 | ticket.progressSubscribe + subscribe_progress | **域默认** 三域 |
+| 报修语音备注 | ticket.allowAudioRemark + audio_url | **域默认** 三域 |
+| 用户端历史报修复用上次地址 / 地址簿 | ticket.addressReuse | **域默认** 三域 |
+| 结单回访任务 | visit_due_at（结单表单） | **域默认** 三域 |
+| 故障现象高频统计图 | chartStats.faultReasonSeries | **域默认** 三域 |
+| 报修分类色标 | ticket.categoryColorHint（列表色点） | **域默认** 三域 |
+| 多人协作工单 | ticket.allowHelper + helper_username | **域默认** 三域 |
+| 维修员当日路线备注 | route_note（结单表单） | **域默认** 三域 |
+| 报修评价邀请说明 | labels.rateInviteHint | **域默认** 三域 |
+| 重复报修提示 | ticket.dupRoomCheck | **域默认** DORM/PROPERTY |
+| 物业公共区域 / 宿舍公区报修 | ticket.allowPublicArea + address_type | **域默认** DORM/PROPERTY |
+| 同楼栋未结工单热力简表 | chartStats.locationHeatSeries | **域默认** DORM |
+| 派单按地点/楼栋关键词过滤维修员 | dispatchFilterHint + 派单下拉筛 | **域默认** DORM/PROPERTY |
+| 资产编号扫码录入（手输码） | ticket.allowAssetCode | **域默认** IT |
+| 知识库式常见问题 / 自助排查文案 | labels.faqPageHint + content 菜单 | **域默认** IT/PROPERTY；DORM 扫词 |
+| 备件/耗材出库记一笔 + 结单警告 | ticket.allowPartsNote + parts_note | **域默认** PROPERTY/IT；DORM 扫词 |
+| 备件序列号登记 | ticket.allowSerialNo | **域默认** PROPERTY/IT |
+| 维修报价 / 材料费用户确认 | ticket.allowQuote（扫词） | **开题扫** |
+| 结单知识沉淀勾选 | ticket.allowKnowledgeDeposit（扫词） | **开题扫** IT/PROPERTY |
+| IT 远程协助备注 | ticket.allowRemoteUrl | **域默认** IT；亦可扫词 |
+| 重复工单合并 | ticket.allowTicketMerge（扫词） | **开题扫** |
+| 值班表冲突与报修派单提示 | labels.rosterConflictHint（扫词） | **开题扫** |
+| 维修员技能标签过滤派单 | ticket.allowSkillTag + skill_tag | **域默认** 三域 |
 
 不支持：智能派单算法引擎、短信/电话外呼网关、物联网报修采集、物业费收费系统（缴费另域）。
 
@@ -1317,6 +1322,10 @@
 | 2026-09-30 | **压力测门·真缺口第8轮**：新增 **0**（通识整模块探针均有落点或落入已有不支持簇；连续两轮 0 → **库存真缺口门冻结**） |
 | 2026-09-30 | **冻结声明**：真缺口压力测门冻结。之后只改状态（待补→已实现等）或纠错；不靠拆不支持簇/换皮别名刷新增。边角加深仍往后稍稍 |
 | 2026-09-30 | **借用/占用组加厚**：续借次数上限标已齐；应还日前 N 天站内提前催还域默认；超期限借/低库存站内信开题扫；PARCEL 催领与 EQUIP 用途必填域默认 |
+| 2026-09-30 | **§1.1/§1.2 双端闭环**：域默认挂写库（peer 确认/notice_ack/asset_code/荐购/超期限借/面试地点/收藏意向等）；待补清零；对齐 column-contract 露出必落库 |
+| 2026-09-30 | **齐度纠偏**：恢复老板口径「管理能管且用户可产生数据」；§1.1/§1.2 纯 Hint/只读项退回待补；禁止用字面量真读冒充已齐 |
+| 2026-09-30 | **§1.1/§1.2 Hint 闭环**：SchemaLabelHints + 打印/导出/色点/排名切换/分布图/冲突拦截；纯 Hint 迁已齐；骨架门禁绿 |
+| 2026-09-30 | **口径纠错**：撤回空口「待补已清」；改为**骨架门禁**（不靠起包）；§1.1/§1.2 纯 Hint 退回待补；§1.3 五缺口纳入 `test_opening_map_skeleton_gate` |
 | 2026-09-30 | **§1.1 收尾**：报废独立审批单 `scrap_request`；ASSET 申购单号确认 + PROCURE 一键入库；本组待补清零 |
 | 2026-09-30 | **§1.2 收尾**：`follow_thicken` 跟进组加厚（CRM/EVENT/ATTEND/FUND/RECRUIT/GRADE/INTERN/LISTING）；ATTEND 假期额度域默认；本组待补清零 |
 | 2026-09-30 | **§1.1/§1.2 硬闭环**：批量录用 API+管理端多选；收藏夹导出/复制清单；渠道饼图/阶段漏斗/成交漏斗进工作台；周报截止扫表催信；岗位 `expire_on` 自动下架；借用续借/预约/罚款与跟进非主链（peer/procure/patch）收进 mybatis Mapper/XML；三线 binder/`thesis.yml` 对齐 |
