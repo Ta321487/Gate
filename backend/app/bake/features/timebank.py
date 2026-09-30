@@ -150,6 +150,7 @@ LEDGER_DOMAINS: frozenset[str] = frozenset({
     "DOM-LABOR",
     "DOM-MORAL",
     "DOM-AWARD",
+    "DOM-ATTEND",
 })
 
 # 科目名 + 单位。未列入的域（扫词挂上）回落「次」。金额仍是整数元。
@@ -162,6 +163,7 @@ LEDGER_SUBJECT: dict[str, tuple[str, str]] = {
     "DOM-LABOR": ("时长额度", "小时"),
     "DOM-MORAL": ("综测额度", "分"),
     "DOM-AWARD": ("学分额度", "学分"),
+    "DOM-ATTEND": ("假期额度", "天"),
 }
 
 

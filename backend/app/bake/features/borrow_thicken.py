@@ -229,17 +229,25 @@ def _ensure_cap(spec: dict[str, Any], cap: str) -> None:
         schema["capabilities"] = list(caps)
 
 
+def _live_schema(spec: dict[str, Any]) -> dict[str, Any]:
+    """原地取 schema，禁止浅拷贝后再写回（否则会冲掉 _force_* 挂上的顶层键）。"""
+    schema = spec.get("schema")
+    if not isinstance(schema, dict):
+        schema = {}
+        spec["schema"] = schema
+    return schema
+
+
 def _force_material_check(spec: dict[str, Any], *, title: str, lead: str) -> None:
     """扫词挂材料清单岛（行李/配件/光盘等变体）。"""
     from app.bake.features.ticket_flow_opts import MATERIAL_CHECK_CAP, attach_material_check_menus
 
     _ensure_cap(spec, MATERIAL_CHECK_CAP)
-    schema = dict(spec.get("schema") or {})
+    schema = _live_schema(spec)
     attach_material_check_menus(schema)
     labels = schema.setdefault("labels", {})
     labels["materialChecklistTitle"] = title
     labels["materialChecklistLead"] = lead
-    spec["schema"] = schema
     _add_feature(spec, title)
 
 
@@ -247,7 +255,7 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     """按域默认 + 开题扫词加厚借用组 schema（只增不减）。"""
     domain = str(spec.get("domain") or "")
     text = proposal_text or ""
-    schema = dict(spec.get("schema") or {})
+    schema = _live_schema(spec)
     ents = schema.setdefault("entities", {})
     archive = ents.get("archive") if isinstance(ents.get("archive"), dict) else {}
     if not isinstance(archive, dict):
@@ -781,5 +789,5 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     # material_check 可能已改 capabilities / schema
     caps = list(spec.get("capabilities") or schema.get("capabilities") or [])
     schema["capabilities"] = caps
-    spec = {**spec, "schema": schema, "capabilities": caps}
+    spec["capabilities"] = caps
     return spec

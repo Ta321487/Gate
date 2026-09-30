@@ -243,7 +243,7 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-ASSET": ["archive", "ticket_flow", "quota", "content", "org_users", "stock_io"],
     "DOM-CRM": ["archive", "ticket_flow", "content", "org_users"],
     "DOM-EVENT": ["archive", "ticket_flow", "archive_log", "content", "org_users"],
-    "DOM-ATTEND": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict"],
+    "DOM-ATTEND": ["archive", "ticket_flow", "content", "org_users", "occupy_span", "time_conflict", "balance_ledger"],
     "DOM-FUND": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],
     "DOM-LABSAFE": ["archive", "ticket_flow", "content", "org_users", "material_check"],
     "DOM-RECRUIT": ["archive", "ticket_flow", "content", "org_users", "balance_ledger"],

@@ -1002,6 +1002,30 @@ _BORROW_ARCHIVE_DOMAINS = frozenset({
 })
 
 
+FOLLOW_ARCHIVE_COLUMNS: list[tuple[str, str]] = [
+    ("tags", "VARCHAR(255) DEFAULT ''"),
+    ("lead_source", "VARCHAR(64) DEFAULT ''"),
+    ("payment_plan", "VARCHAR(255) DEFAULT ''"),
+    ("location_desc", "VARCHAR(255) DEFAULT ''"),
+    ("fund_form", "VARCHAR(32) DEFAULT ''"),
+    ("expire_on", "VARCHAR(32) DEFAULT ''"),
+    ("hire_dept", "VARCHAR(64) DEFAULT ''"),
+    ("price_history", "VARCHAR(255) DEFAULT ''"),
+    ("vr_url", "VARCHAR(255) DEFAULT ''"),
+]
+
+_FOLLOW_ARCHIVE_DOMAINS = frozenset({
+    "DOM-CRM",
+    "DOM-EVENT",
+    "DOM-ATTEND",
+    "DOM-FUND",
+    "DOM-RECRUIT",
+    "DOM-GRADE",
+    "DOM-INTERN",
+    "DOM-LISTING",
+})
+
+
 def ensure_borrow_archive_columns(
     sql: str,
     *,
@@ -1020,6 +1044,29 @@ def ensure_borrow_archive_columns(
         if table.lower() != t.lower():
             return m.group(0)
         body = _inject_missing_columns(body, BORROW_ARCHIVE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+
+def ensure_follow_archive_columns(
+    sql: str,
+    *,
+    domain: str | None,
+    item_table: str | None,
+) -> str:
+    """跟进组档案浅字段注入（只增不减）。"""
+    if (domain or "") not in _FOLLOW_ARCHIVE_DOMAINS:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, FOLLOW_ARCHIVE_COLUMNS)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
@@ -3090,6 +3137,29 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("insurance_ack", "TINYINT NOT NULL DEFAULT 0"),
     ("peer_username", "VARCHAR(64) DEFAULT ''"),
     ("peer_ack", "TINYINT NOT NULL DEFAULT 0"),
+    ("interview_result", "VARCHAR(16) DEFAULT ''"),
+    ("written_score", "DECIMAL(10,2) NULL"),
+    ("bg_check_note", "VARCHAR(255) DEFAULT ''"),
+    ("deal_amount_yuan", "DECIMAL(12,2) NULL"),
+    ("next_action", "VARCHAR(255) DEFAULT ''"),
+    ("next_action_done", "TINYINT NOT NULL DEFAULT 0"),
+    ("return_date", "VARCHAR(32) DEFAULT ''"),
+    ("defense_result", "VARCHAR(32) DEFAULT ''"),
+    ("bank_account", "VARCHAR(64) DEFAULT ''"),
+    ("disburse_batch", "VARCHAR(64) DEFAULT ''"),
+    ("close_attach_url", "VARCHAR(255) DEFAULT ''"),
+    ("assign_dept", "VARCHAR(64) DEFAULT ''"),
+    ("confidential", "TINYINT NOT NULL DEFAULT 0"),
+    ("appraisal_comment", "VARCHAR(512) DEFAULT ''"),
+    ("appraisal_grade", "VARCHAR(16) DEFAULT ''"),
+    ("company_eval", "VARCHAR(512) DEFAULT ''"),
+    ("excellent_mark", "TINYINT NOT NULL DEFAULT 0"),
+    ("revise_count", "INT NOT NULL DEFAULT 0"),
+    ("feedback_interest", "VARCHAR(128) DEFAULT ''"),
+    ("feedback_concern", "VARCHAR(255) DEFAULT ''"),
+    ("feedback_next", "VARCHAR(255) DEFAULT ''"),
+    ("record_url", "VARCHAR(255) DEFAULT ''"),
+    ("follow_soon_notified_at", "DATETIME NULL"),
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
@@ -3100,14 +3170,17 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-LIBRARY": ["fine_status", "due_soon_notified_at", "ever_overdue"],
     "DOM-EQUIP": ["fine_status", "deposit_yuan", "notice_ack", "due_soon_notified_at", "ever_overdue", "insurance_ack"],
     "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty", "project_no", "procure_ref_no", "dual_reviewer_a", "dual_reviewer_b"],
-    "DOM-CRM": ["contact_channel", "next_follow_at"],
-    "DOM-ATTEND": ["contact_channel", "next_follow_at", "leave_days"],
-    "DOM-FUND": ["contact_channel", "next_follow_at"],
+    "DOM-CRM": ["contact_channel", "next_follow_at", "deal_amount_yuan", "next_action", "next_action_done", "follow_soon_notified_at"],
+    "DOM-ATTEND": ["contact_channel", "next_follow_at", "leave_days", "return_date", "proxy_name"],
+    "DOM-FUND": ["contact_channel", "next_follow_at", "defense_result", "bank_account", "disburse_batch"],
     "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
-    "DOM-RECRUIT": ["contact_channel", "next_follow_at", "interview_place"],
+    "DOM-RECRUIT": ["contact_channel", "next_follow_at", "interview_place", "interview_result", "written_score", "bg_check_note"],
     "DOM-DATING": ["contact_channel", "next_follow_at"],
     "DOM-GRADE": ["contact_channel", "next_follow_at"],
-    "DOM-INTERN": ["contact_channel", "next_follow_at", "week_no"],
+    "DOM-INTERN": [
+        "contact_channel", "next_follow_at", "week_no",
+        "appraisal_comment", "appraisal_grade", "company_eval", "excellent_mark", "revise_count",
+    ],
     "DOM-SEAL": ["contact_channel", "next_follow_at"],
     "DOM-FLEET": ["contact_channel", "next_follow_at"],
     "DOM-CERT": ["contact_channel", "next_follow_at"],
@@ -3139,7 +3212,10 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-MUTUAL-TEAM": ["contact_channel", "next_follow_at"],
     "DOM-VISITOR": ["contact_channel", "next_follow_at"],
     "DOM-CARPASS": ["contact_channel", "next_follow_at"],
-    "DOM-LISTING": ["contact_channel", "next_follow_at"],
+    "DOM-LISTING": [
+        "contact_channel", "next_follow_at", "follow_soon_notified_at",
+        "feedback_interest", "feedback_concern", "feedback_next", "record_url",
+    ],
     "DOM-CARPOOL": ["contact_channel", "next_follow_at"],
     "DOM-TOUR": ["contact_channel", "next_follow_at"],
     "DOM-TIMEBANK": ["contact_channel", "next_follow_at"],
@@ -3150,7 +3226,9 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-PARTY": ["contact_channel", "next_follow_at"],
     "DOM-CONTRACT": ["contact_channel", "next_follow_at"],
     "DOM-INSTRUMENT": ["contact_channel", "next_follow_at", "fine_status"],
-    "DOM-EVENT": ["contact_channel", "next_follow_at"],
+    "DOM-EVENT": [
+        "contact_channel", "next_follow_at", "close_attach_url", "assign_dept", "confidential",
+    ],
     "DOM-DORM": ["priority", "contact_phone"],
     "DOM-PROPERTY": ["priority", "contact_phone"],
     "DOM-IT": ["priority", "contact_phone"],
@@ -3222,6 +3300,46 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("due_soon_notified_at")
     if int(f.get("maxOverdueTimes") or 0) > 0:
         names.append("ever_overdue")
+    if int(f.get("followRemindDays") or 0) > 0:
+        names.append("follow_soon_notified_at")
+    if f.get("allowDealAmount"):
+        names.append("deal_amount_yuan")
+    if f.get("allowNextAction"):
+        names.extend(["next_action", "next_action_done"])
+    if f.get("requireCloseAttach"):
+        names.append("close_attach_url")
+    if f.get("requireReturnDate"):
+        names.append("return_date")
+    if f.get("allowLeaveProxy"):
+        names.append("proxy_name")
+    if f.get("allowInterviewResult"):
+        names.append("interview_result")
+    if f.get("allowWrittenScore"):
+        names.append("written_score")
+    if f.get("allowBgCheckNote"):
+        names.append("bg_check_note")
+    if f.get("allowDefenseResult"):
+        names.append("defense_result")
+    if f.get("maskBankAccount"):
+        names.append("bank_account")
+    if f.get("allowDisburseBatch"):
+        names.append("disburse_batch")
+    if f.get("allowConfidential"):
+        names.append("confidential")
+    if f.get("allowAssignDept"):
+        names.append("assign_dept")
+    if f.get("requireAppraisal"):
+        names.extend(["appraisal_comment", "appraisal_grade"])
+    if f.get("allowCompanyEval"):
+        names.append("company_eval")
+    if f.get("allowExcellentMark"):
+        names.append("excellent_mark")
+    if int(f.get("maxReviseTimes") or 0) > 0:
+        names.append("revise_count")
+    if f.get("requireFeedbackSet"):
+        names.extend(["feedback_interest", "feedback_concern", "feedback_next"])
+    if f.get("allowRecordUrl"):
+        names.append("record_url")
     # 去重保序
     seen: set[str] = set()
     out: list[str] = []

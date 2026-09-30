@@ -22,7 +22,8 @@ CONTENT_REPORT_CAP = "content_report"
 
 _FAVORITES_SIGNALS = re.compile(
     r"收藏夹|我的收藏|商品收藏|加入收藏|收藏功能|wishlist|favorite|"
-    r"收藏活动|收藏线路|收藏课程|活动收藏|线路收藏|课程收藏|收藏启事"
+    r"收藏活动|收藏线路|收藏课程|活动收藏|线路收藏|课程收藏|收藏启事|"
+    r"岗位收藏|职位收藏|房源收藏|收藏岗位|收藏职位|收藏房源"
 )
 
 _LIKE_TERMS = ("点赞", "点个赞", "帖子点赞", "一键点赞", "点赞功能")
@@ -46,6 +47,8 @@ _PROFILE_SCAN_FAVORITE_DOMAINS = frozenset(
         "DOM-COURSE",
         "DOM-TOUR",
         "DOM-LOST",
+        "DOM-RECRUIT",
+        "DOM-LISTING",
     }
 )
 

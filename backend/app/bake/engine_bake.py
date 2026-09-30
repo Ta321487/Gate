@@ -450,12 +450,60 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             ("ticket-renew-block-if-held", bool(ticket_ent.get("renewBlockIfHeld"))),
             ("ticket-require-peer-confirm", bool(ticket_ent.get("requirePeerConfirm"))),
             ("ticket-require-abandon-dual", bool(ticket_ent.get("requireAbandonDual"))),
+            ("ticket-phone-dup-check", bool(ticket_ent.get("phoneDupCheck"))),
+            ("ticket-allow-deal-amount", bool(ticket_ent.get("allowDealAmount"))),
+            ("ticket-allow-next-action", bool(ticket_ent.get("allowNextAction"))),
+            ("ticket-require-close-attach", bool(ticket_ent.get("requireCloseAttach"))),
+            ("ticket-require-return-date", bool(ticket_ent.get("requireReturnDate"))),
+            ("ticket-attach-by-leave-type", bool(ticket_ent.get("attachByLeaveType"))),
+            ("ticket-allow-leave-proxy", bool(ticket_ent.get("allowLeaveProxy"))),
+            ("ticket-allow-interview-result", bool(ticket_ent.get("allowInterviewResult"))),
+            ("ticket-allow-batch-hire", bool(ticket_ent.get("allowBatchHire"))),
+            ("ticket-allow-written-score", bool(ticket_ent.get("allowWrittenScore"))),
+            ("ticket-allow-bg-check-note", bool(ticket_ent.get("allowBgCheckNote"))),
+            ("ticket-allow-defense-result", bool(ticket_ent.get("allowDefenseResult"))),
+            ("ticket-mask-bank-account", bool(ticket_ent.get("maskBankAccount"))),
+            ("ticket-allow-disburse-batch", bool(ticket_ent.get("allowDisburseBatch"))),
+            ("ticket-week-report-remind", bool(ticket_ent.get("weekReportRemind"))),
+            ("ticket-require-appraisal", bool(ticket_ent.get("requireAppraisal"))),
+            ("ticket-allow-company-eval", bool(ticket_ent.get("allowCompanyEval"))),
+            ("ticket-allow-excellent-mark", bool(ticket_ent.get("allowExcellentMark"))),
+            ("ticket-require-feedback-set", bool(ticket_ent.get("requireFeedbackSet"))),
+            ("ticket-allow-record-url", bool(ticket_ent.get("allowRecordUrl"))),
+            ("ticket-allow-makeup-apply", bool(ticket_ent.get("allowMakeupApply"))),
+            ("ticket-home-visit-template", bool(ticket_ent.get("homeVisitTemplate"))),
+            ("ticket-allow-confidential", bool(ticket_ent.get("allowConfidential"))),
+            ("ticket-allow-assign-dept", bool(ticket_ent.get("allowAssignDept"))),
         )
         on_flags = [(k, v) for k, v in flag_map if v]
         if on_flags:
             lines.append("  # 单据扩展能力")
             for k, _ in on_flags:
                 lines.append(f"  {k}: true")
+        try:
+            follow_remind = int(ticket_ent.get("followRemindDays") or 0)
+        except (TypeError, ValueError):
+            follow_remind = 0
+        if follow_remind > 0:
+            lines.append(f"  ticket-follow-remind-days: {max(1, min(14, follow_remind))}")
+        try:
+            min_words = int(ticket_ent.get("minRemarkWords") or 0)
+        except (TypeError, ValueError):
+            min_words = 0
+        if min_words > 0:
+            lines.append(f"  ticket-min-remark-words: {max(1, min(5000, min_words))}")
+        try:
+            max_revise = int(ticket_ent.get("maxReviseTimes") or 0)
+        except (TypeError, ValueError):
+            max_revise = 0
+        if max_revise > 0:
+            lines.append(f"  ticket-max-revise-times: {max(1, min(20, max_revise))}")
+        try:
+            week_dl = int(ticket_ent.get("weekReportDeadlineDay") or 0)
+        except (TypeError, ValueError):
+            week_dl = 0
+        if week_dl > 0:
+            lines.append(f"  ticket-week-report-deadline-day: {max(1, min(28, week_dl))}")
         if ticket_ent.get("matchProfileRoom"):
             for yml_key, ent_key in (
                 ("ticket-match-profile-building-key", "matchProfileBuildingKey"),
