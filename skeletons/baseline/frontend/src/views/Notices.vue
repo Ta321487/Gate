@@ -3,6 +3,15 @@
     <section class="hero">
       <h1>{{ pageTitle }}</h1>
       <p>{{ pageLead }}</p>
+      <el-alert
+        v-if="faqHint"
+        type="info"
+        :closable="false"
+        show-icon
+        :title="faqHint"
+        style="margin-top:12px"
+      />
+      <p v-if="selfHelpHint" class="self-help">{{ selfHelpHint }}</p>
     </section>
 
     <PageSkeleton v-if="loading" variant="list" :rows="4" />
@@ -63,6 +72,8 @@ import { guestTeaserLimit, isGuestBrowseEnabled, isLoggedIn } from '../utils/ses
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.noticePageTitle || '公告')
 const pageLead = computed(() => labels.value.noticePageLead || '通知与须知，点击条目阅读全文。')
+const faqHint = computed(() => labels.value.faqPageHint || '')
+const selfHelpHint = computed(() => labels.value.selfHelpHint || '')
 /** 勿复用「解锁商品目录」类总 CTA：本页是通知/活动 */
 const guestCta = computed(
   () => labels.value.noticeGuestCta || '登录后查看更多通知',
@@ -123,6 +134,12 @@ onMounted(load)
   color: var(--portal-muted, #64748b);
   font-size: 14px;
   line-height: 1.55;
+  max-width: 36em;
+}
+.self-help {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 13px;
   max-width: 36em;
 }
 .list {

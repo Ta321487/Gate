@@ -22,6 +22,8 @@
         <el-button type="warning">导入 CSV</el-button>
       </el-upload>
     </div>
+    <SchemaLabelHints :keys="archiveAdminHintKeys" />
+    <p v-if="lastImportError" class="import-err">{{ lastImportError }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="ID" width="70" />
@@ -53,7 +55,14 @@
         <template #default="{ row }">{{ row.checkinCode || '—' }}</template>
       </el-table-column>
       <el-table-column v-if="tagFilter" label="标签" min-width="120">
-        <template #default="{ row }">{{ (row.tagNames || []).join('、') || '—' }}</template>
+        <template #default="{ row }">
+          <template v-if="tagColorOn && (row.tagNames || []).length">
+            <span v-for="(name, i) in row.tagNames" :key="name + i" class="tag-chip">
+              <span class="tag-dot" :style="{ background: tagColor(name) }" />{{ name }}
+            </span>
+          </template>
+          <template v-else>{{ (row.tagNames || []).join('、') || '—' }}</template>
+        </template>
       </el-table-column>
       <el-table-column v-if="showStock" :label="fieldLabel('stock', '库存')" width="110">
         <template #default="{ row }">
@@ -300,6 +309,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import ArchiveFieldControl from '../../components/ArchiveFieldControl.vue'
+import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
+import { ARCHIVE_ADMIN_HINT_KEYS } from '../../utils/labelHintMount.js'
 import { archiveCopy, formatArchiveScalar, getSchema, hasCap, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
 import { datePickerProps, dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
@@ -328,6 +339,16 @@ const stockWarnBelow = computed(() => {
   const n = Number(getSchema()?.stockWarnBelow)
   return Number.isFinite(n) && n > 0 ? n : 10
 })
+const archiveAdminHintKeys = ARCHIVE_ADMIN_HINT_KEYS
+const adminLabels = computed(() => getSchema()?.labels || {})
+const tagColorOn = computed(() => !!adminLabels.value.tagColorHint)
+const lastImportError = ref('')
+function tagColor(name) {
+  const s = String(name || '')
+  let h = 0
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return `hsl(${h % 360} 55% 48%)`
+}
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
 function isLowStock(row) {
   if (!marketplace.value || !row || stockAsToggle.value) return false
@@ -862,6 +883,7 @@ async function exportCsv() {
 async function onImport(opt) {
   const file = opt.file
   if (!file) return
+  lastImportError.value = ''
   const text = normalizeArchiveImportCsv(await file.text())
   if (!text.trim()) {
     ElMessage.warning('文件为空')
@@ -874,14 +896,18 @@ async function onImport(opt) {
     const fail = r.fail || 0
     if (fail > 0) {
       const sample = (r.errors || []).slice(0, 3).map((e) => `第${e.line}行: ${e.message}`).join('；')
-      ElMessage.warning(`成功 ${ok} 条，失败 ${fail} 条。${sample}`)
+      const hint = adminLabels.value.importRowErrorHint || adminLabels.value.leaveBalanceImportHint || ''
+      lastImportError.value = [hint, `成功 ${ok} 条，失败 ${fail} 条。${sample}`].filter(Boolean).join(' ')
+      ElMessage.warning(lastImportError.value)
     } else {
       ElMessage.success(`成功导入 ${ok} 条`)
     }
     await loadCats()
     await load()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '导入失败')
+    const hint = adminLabels.value.importRowErrorHint || ''
+    lastImportError.value = hint || (e?.response?.data?.message || e?.message || '导入失败')
+    ElMessage.error(lastImportError.value)
   }
 }
 
@@ -895,6 +921,9 @@ onMounted(async () => {
 
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.import-err { margin: 0 0 10px; color: #b45309; font-size: 13px; }
+.tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .stock-warn { color: #b91c1c; font-weight: 700; margin-right: 4px; }
 .warn-tag { margin-left: 2px; }

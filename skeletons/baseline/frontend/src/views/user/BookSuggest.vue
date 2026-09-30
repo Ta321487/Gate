@@ -3,6 +3,7 @@
     <section class="hero">
       <h1>{{ pageTitle }}</h1>
       <p>{{ pageLead }}</p>
+      <SchemaLabelHints :keys="['suggestBudgetHint']" />
     </section>
 
     <section v-if="canPost" class="composer card">
@@ -71,6 +72,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
+import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
 import { getSchema } from '../../utils/domainSchema.js'
 import { suggestStatusTagType } from '../../utils/statusTone.js'
 import { isLoggedIn } from '../../utils/session.js'

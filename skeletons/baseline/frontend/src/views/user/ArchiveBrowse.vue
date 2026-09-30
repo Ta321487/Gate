@@ -6,6 +6,11 @@
         按名称检索{{ playUrlField ? '、在线播放' : '' }}{{ bodyRich ? '、阅读正文' : '' }}，{{ actionHint }}。
         <template v-if="ruleHint"> {{ ruleHint }}</template>
       </p>
+      <SchemaLabelHints :keys="browseHintKeys" />
+      <p v-if="shelfAnnounceHint" class="page-hint">
+        {{ shelfAnnounceHint }}
+        <template v-if="favOn">可将新书/新物资点「收藏」登记意向。</template>
+      </p>
       <div class="search">
         <el-autocomplete
           v-if="searchAssist"
@@ -145,7 +150,24 @@
           <p v-if="cardDetailFields.length > cardPreviewFields.length" class="detail-line muted">
             另有 {{ cardDetailFields.length - cardPreviewFields.length }} 项，见详情
           </p>
-          <p v-if="row.tagNames?.length" class="sched muted">{{ row.tagNames.join(' · ') }}</p>
+          <p v-if="row.tagNames?.length" class="sched muted">
+            <template v-if="tagColorOn">
+              <span
+                v-for="(name, i) in row.tagNames"
+                :key="name + i"
+                class="tag-chip"
+              >
+                <span class="tag-dot" :style="{ background: tagColor(name) }" />{{ name }}
+              </span>
+            </template>
+            <template v-else>{{ row.tagNames.join(' · ') }}</template>
+          </p>
+          <p v-if="intentCountOn && intentCountOf(row) != null" class="sched muted">
+            {{ intentCountHint || '意向' }}：{{ intentCountOf(row) }}
+          </p>
+          <p v-if="quotaRemainOn && quotaRemainOf(row) != null" class="sched muted">
+            {{ quotaRemainHint || '名额余量' }}：{{ quotaRemainOf(row) }}
+          </p>
           <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
@@ -672,6 +694,8 @@ import StatusChip from '../../components/StatusChip.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
 import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
+import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
+import { ARCHIVE_BROWSE_HINT_KEYS } from '../../utils/labelHintMount.js'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
@@ -722,6 +746,32 @@ const nextAtLabel = computed(() => nextFollowLabel())
 const channelPlaceholder = computed(() => followChannelPlaceholder())
 const channelOptions = computed(() => followChannelOptions())
 const caps = computed(() => getSchema().capabilities || [])
+const browseHintKeys = ARCHIVE_BROWSE_HINT_KEYS
+const browseLabels = computed(() => getSchema()?.labels || {})
+const shelfAnnounceHint = computed(() => browseLabels.value.shelfAnnounceHint || '')
+const tagColorOn = computed(() => !!browseLabels.value.tagColorHint)
+const intentCountHint = computed(() => browseLabels.value.intentCountHint || '')
+const intentCountOn = computed(() => !!intentCountHint.value)
+const quotaRemainHint = computed(() => browseLabels.value.quotaRemainHint || '')
+const quotaRemainOn = computed(() => !!quotaRemainHint.value)
+
+function tagColor(name) {
+  const s = String(name || '')
+  let h = 0
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  const hue = h % 360
+  return `hsl(${hue} 55% 48%)`
+}
+function intentCountOf(row) {
+  const v = row?.intentCount ?? row?.intent_count ?? row?.favCount
+  return v == null || v === '' ? null : v
+}
+function quotaRemainOf(row) {
+  const v = row?.quotaRemain ?? row?.quota_remain ?? row?.remainQuota
+  if (v != null && v !== '') return v
+  if (row?.stock != null && row?.stock !== '') return row.stock
+  return null
+}
 const purchaseGateOn = computed(() => caps.value.includes('purchase_gate'))
 const blindBoxOn = computed(() => caps.value.includes('blind_box'))
 const boxIds = ref(new Set())
@@ -2051,6 +2101,7 @@ async function openHighlightFromRoute() {
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
+.page-hint { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.45; }
 .search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-cat { width: min(180px, 100%); min-width: 120px; flex: 0 1 160px; }
 .search :deep(.el-input),
@@ -2110,6 +2161,8 @@ async function openHighlightFromRoute() {
 .detail-line.muted { color: var(--portal-muted, #64748b) !important; }
 .sched { margin-top: 4px !important; color: #0f766e !important; }
 .sched.muted { color: var(--portal-muted, #94a3b8) !important; }
+.tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .equip { margin: 10px 0 4px; }
 .equip-title { margin: 0 0 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
 .equip-tag { margin: 0 6px 6px 0; }
