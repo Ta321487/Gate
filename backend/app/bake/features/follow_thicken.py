@@ -440,10 +440,14 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "下次跟进日到期站内信提醒")
         labels.setdefault(
             "followTimelineHint",
-            "同一客户下的跟进记录按时间倒序排列，便于查阅跟进时间轴。",
+            "同一客户下的跟进记录按时间倒序排列；请登记联系渠道与下次跟进日。",
         )
         thicken["followTimeline"] = True
         _add_feature(spec, "跟进记录时间轴")
+        # 双端：用户/业务员写 contact_channel+next_follow；管理端档案标签
+        labels.setdefault("tagColorHint", "客户标签可选用颜色备注区分优先级。")
+        thicken["tagColor"] = True
+        _add_feature(spec, "客户标签颜色")
         _ensure_archive_field(
             archive,
             {
@@ -522,9 +526,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             thicken["nextAction"] = True
             _add_feature(spec, "客户跟进下次行动待办勾选")
         if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _TAG_COLOR_TERMS):
-            labels.setdefault("tagColorHint", "客户标签可选用颜色备注区分优先级。")
-            thicken["tagColor"] = True
-            _add_feature(spec, "客户标签颜色")
+            pass  # 标签色标已域默认
         if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _SOURCE_PIE_TERMS):
             _ensure_archive_field(
                 archive,
@@ -548,7 +550,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "事件上报手填位置描述")
         labels.setdefault(
             "checkExportHint",
-            "管理端可将当日未打卡名单导出为 CSV，便于晨午检核对。",
+            "师生晨午检打卡写入记录；管理端可导出未打卡名单 CSV。",
         )
         thicken["checkExport"] = True
         _add_feature(spec, "晨午检未打卡名单导出")
@@ -561,6 +563,10 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         if scan_event_level_sla(text):
             _force_deadline(spec, menu_label="处理时限")
             ticket["levelAffectsDeadline"] = True
+            # 等级 → 处理时限天数（高/中/低），受理时按事件等级落 due_at / response_due_at
+            ticket["levelSlaHighDays"] = int(ticket.get("levelSlaHighDays") or 1)
+            ticket["levelSlaMidDays"] = int(ticket.get("levelSlaMidDays") or 3)
+            ticket["levelSlaLowDays"] = int(ticket.get("levelSlaLowDays") or 7)
             labels.setdefault(
                 "levelSlaHint",
                 "高等级事件默认更短处理时限；可在处理时限菜单调整。",
@@ -611,10 +617,16 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "请假跨天拆段展示")
         labels.setdefault(
             "monthExportHint",
-            "管理端可按月导出请假汇总 CSV。",
+            "员工提交请假写库；管理端可按月导出汇总，员工可导出本人办理记录。",
         )
         thicken["monthExport"] = True
         _add_feature(spec, "考勤月汇总表导出")
+        labels.setdefault(
+            "leaveBalanceImportHint",
+            "管理端维护假期额度；员工请假时从额度扣减并产生单据。",
+        )
+        thicken["leaveImport"] = True
+        _add_feature(spec, "请假假期余额导入")
         # 按假种附件 + 返岗日期：域默认
         ticket["attachByLeaveType"] = True
         labels.setdefault(
@@ -641,18 +653,13 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             ticket["issuePassCode"] = True
             thicken["returnQr"] = True
         if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _LEAVE_IMPORT_TERMS):
-            labels.setdefault(
-                "leaveBalanceImportHint",
-                "假期余额可通过额度账户管理端批量调整或 CSV 导入说明见帮助。",
-            )
-            thicken["leaveImport"] = True
-            _add_feature(spec, "请假假期余额导入")
+            pass  # 假期余额导入说明已域默认
 
     # —— FUND ——
     if domain == "DOM-FUND":
         labels.setdefault(
             "quotaRemainHint",
-            "项目档案名额与已通过申请对照，列表展示剩余名额。",
+            "列表展示剩余名额；学生提交资助申请写库，管理端审批占用名额。",
         )
         thicken["quotaRemain"] = True
         _add_feature(spec, "资助名额余量实时展示")
@@ -687,8 +694,14 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "资助发放批次号")
         if scan_fund_objection(text):
             ticket["allowObjectionWindow"] = True
+            # 公示结束日 + N 天为异议登记窗口（超期入口关闭）
+            ticket["objectionDays"] = int(ticket.get("objectionDays") or 5)
             labels.setdefault("objectionWindowLabel", "异议登记截止日")
             labels.setdefault("objectionNoteLabel", "异议说明")
+            labels.setdefault(
+                "objectionWindowHint",
+                "公示结束日 + N 天内可登记异议，逾期关闭入口。",
+            )
             thicken["objectionWindow"] = True
             _add_feature(spec, "奖学金公示异议登记窗口")
 
@@ -723,6 +736,18 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         )
         thicken["jobExpire"] = True
         _add_feature(spec, "招聘岗位有效期自动下架")
+        # 双端：用户/招聘专员写面试地点；管理端审核投递
+        labels.setdefault("interviewPlaceLabel", "面试地点/会议室")
+        labels.setdefault(
+            "interviewPlaceLead",
+            "可填写楼栋会议室号；需要另约会议室时请注明时段。",
+        )
+        labels.setdefault(
+            "interviewRoomHint",
+            "面试地点写入本单；会议室紧张时可叠会议室预约系统另约。",
+        )
+        thicken["meetingHint"] = True
+        _add_feature(spec, "招聘面试间预约叠会议室")
         if scan_interview_dims(text):
             _force_rating_dims(spec)
             thicken["interviewDims"] = True
@@ -761,12 +786,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             thicken["bgCheck"] = True
             _add_feature(spec, "招聘背调备注字段")
         if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _MEETING_HINT_TERMS):
-            labels.setdefault(
-                "interviewRoomHint",
-                "需要会议室时可在会议室预约系统另约时段，本包只登记面试地点。",
-            )
-            thicken["meetingHint"] = True
-            _add_feature(spec, "招聘面试间预约叠会议室")
+            pass  # 面试地点/会议室提示已域默认
         if scan_job_fav(text):
             _force_favorites(
                 spec,
@@ -784,41 +804,54 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     if domain == "DOM-GRADE":
         labels.setdefault(
             "gradePrintHint",
-            "成绩查询页可使用浏览器打印，版式固定为成绩单预览。",
+            "成绩查询页可浏览器打印；如有异议请提交成绩更正申请。",
         )
         thicken["gradePrint"] = True
         _add_feature(spec, "成绩单打印预览页")
         labels.setdefault(
             "rankSwitchHint",
-            "成绩列表可按班级/专业切换名次维度。",
+            "成绩列表可按班级/专业切换名次维度；提交更正申请时一并登记范围。",
         )
         thicken["rankSwitch"] = True
         _add_feature(spec, "成绩排名班级/专业切换")
         labels.setdefault(
             "distChartHint",
-            "工作台展示成绩分布与及格率简易图。",
+            "工作台展示成绩分布与及格率；分数由管理端登记，学生可申请更正。",
         )
         thicken["distChart"] = True
         _add_feature(spec, "成绩正态分布简易图")
         labels.setdefault(
             "gpaPageHint",
-            "绩点换算规则见说明页（只读），不对接教务正方。",
+            "绩点换算规则见说明；提交申请前请勾选已知悉。",
         )
         thicken["gpaPage"] = True
         _add_feature(spec, "绩点换算说明页")
         labels.setdefault(
             "weightedAvgHint",
-            "加权平均按学分×成绩汇总，细则见说明。",
+            "加权平均按学分权重计算；详见成绩须知。",
         )
         thicken["weightedAvg"] = True
         _add_feature(spec, "成绩加权平均说明")
         labels.setdefault(
             "makeupOverlayHint",
-            "补考通过后以补考成绩覆盖原不及格成绩，原成绩留痕可查。",
+            "补考通过后按规则覆盖原成绩；请通过补考报名入口提交。",
         )
         thicken["makeupOverlay"] = True
         _add_feature(spec, "成绩补考后覆盖规则说明")
-        # 补考报名 / 导入行错 / 学号脱敏：域默认
+        labels.setdefault(
+            "importRowErrorHint",
+            "管理端导入成绩若有行错误会回显；学生可对异常成绩提交更正申请。",
+        )
+        thicken["importRowError"] = True
+        _add_feature(spec, "成绩导入行级错误回显")
+        labels.setdefault(
+            "stuNoMaskExportHint",
+            "导出成绩时可勾选学号脱敏；学生本人可导出自己的办理记录。",
+        )
+        thicken["stuNoMask"] = True
+        _add_feature(spec, "成绩导出含学号脱敏选项")
+        ticket["requireNoticeAck"] = True
+        labels.setdefault("noticeAckLabel", "我已阅读绩点与成绩覆盖规则")
         ticket["allowMakeupApply"] = True
         labels.setdefault("makeupApplyLabel", "补考报名")
         labels.setdefault(
@@ -827,18 +860,6 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         )
         thicken["makeupApply"] = True
         _add_feature(spec, "补考报名入口")
-        labels.setdefault(
-            "importRowErrorHint",
-            "成绩 CSV 导入失败时按行回显错误原因，便于改正后重导。",
-        )
-        thicken["importRowError"] = True
-        _add_feature(spec, "成绩导入模板行级错误回显")
-        labels.setdefault(
-            "stuNoMaskExportHint",
-            "导出成绩时可选择学号脱敏（仅保留后四位）。",
-        )
-        thicken["stuNoMask"] = True
-        _add_feature(spec, "成绩导出含学号脱敏选项")
         if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _OBJECTION_WINDOW_TERMS):
             ticket["objectionDays"] = int(ticket.get("objectionDays") or 7)
             labels.setdefault(
@@ -928,10 +949,18 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "成交漏斗简图")
         labels.setdefault(
             "intentCountHint",
-            "房源详情展示意向跟进次数，便于判断热度。",
+            "用户收藏房源产生意向；详情展示意向次数，管理端可跟进。",
         )
         thicken["intentCount"] = True
         _add_feature(spec, "房源意向客户计数")
+        labels.setdefault("tagColorHint", "房源标签以色点区分；管理端维护标签，带看单可关联。")
+        thicken["tagColor"] = True
+        _add_feature(spec, "客户/房源标签色标")
+        _force_favorites(
+            spec,
+            lead="收藏房源产生意向数据，支持对比与再次带看。",
+            feature_name="房源收藏与意向",
+        )
         # 带看评价 / 调价留痕 / VR / 反馈套：域默认
         ticket["allowRating"] = True
         labels.setdefault("ratingLabel", "带看评价")

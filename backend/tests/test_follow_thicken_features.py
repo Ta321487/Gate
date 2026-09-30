@@ -7,6 +7,7 @@ import unittest
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.follow_thicken import (
     scan_home_visit,
@@ -46,7 +47,7 @@ class FollowThickenFeatureTests(unittest.TestCase):
             if isinstance(f, dict)
         }
         self.assertIn("tags", keys)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CRM", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CRM", out) + policy_preview("DOM-CRM", out)
         self.assertIn("ticket-follow-remind-days: 1", yml)
         self.assertIn("ticket-phone-dup-check: true", yml)
 
@@ -73,7 +74,7 @@ class FollowThickenFeatureTests(unittest.TestCase):
         out = _spec("DOM-EVENT", "事件上报管理系统", "")
         ticket = ((out.get("schema") or {}).get("entities") or {}).get("ticket") or {}
         self.assertTrue(ticket.get("requireCloseAttach"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EVENT", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EVENT", out) + policy_preview("DOM-EVENT", out)
         self.assertIn("ticket-require-close-attach: true", yml)
 
     def test_recruit_interview_and_batch(self) -> None:
@@ -116,7 +117,7 @@ class FollowThickenFeatureTests(unittest.TestCase):
         }
         self.assertIn("vrUrl", keys)
         self.assertIn("tags", keys)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LISTING", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LISTING", out) + policy_preview("DOM-LISTING", out)
         self.assertIn("ticket-allow-rating: true", yml)
         self.assertIn("ticket-follow-remind-days: 1", yml)
 
@@ -132,7 +133,7 @@ class FollowThickenFeatureTests(unittest.TestCase):
         self.assertTrue(ticket.get("requireAppraisal"))
         self.assertGreaterEqual(int(ticket.get("minRemarkWords") or 0), 100)
         self.assertGreaterEqual(int(ticket.get("maxReviseTimes") or 0), 1)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-INTERN", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-INTERN", out) + policy_preview("DOM-INTERN", out)
         self.assertIn("ticket-min-remark-words:", yml)
         self.assertIn("ticket-week-report-remind: true", yml)
 

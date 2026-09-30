@@ -9,6 +9,8 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept, build_domain_schema
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.book_lost import BOOK_LOST_CAP, merge_book_lost_capabilities
 from app.bake.features.parcel_shelf import PARCEL_SHELF_CAP, merge_parcel_shelf_capabilities
@@ -51,7 +53,7 @@ class BorrowDefenseP0Tests(unittest.TestCase):
         states = ticket.get("states") or {}
         self.assertEqual(states.get("lost"), "丢失申报")
         self.assertEqual(states.get("compensated"), "赔偿完成")
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", out) + policy_preview("DOM-LIBRARY", out)
         self.assertIn("ticket-allow-book-lost: true", yml)
 
     def test_equip_return_attach_and_repair_stage(self) -> None:
@@ -62,7 +64,7 @@ class BorrowDefenseP0Tests(unittest.TestCase):
         stage = next((f for f in fields if f.get("key") == "stage"), None)
         self.assertIsNotNone(stage)
         self.assertIn("维修中", stage.get("options") or [])
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out) + policy_preview("DOM-EQUIP", out)
         self.assertIn("ticket-require-return-attach: true", yml)
         sql = domain_sql("DOM-EQUIP", "t", title="设备借用", proposal_text="借用")
         self.assertIn("stage", normalize_sql(sql).lower())
@@ -78,7 +80,7 @@ class BorrowDefenseP0Tests(unittest.TestCase):
         self.assertIsNotNone(stage)
         for opt in ("损坏", "误领", "拒收"):
             self.assertIn(opt, stage.get("options") or [])
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PARCEL", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PARCEL", out) + policy_preview("DOM-PARCEL", out) + app_policy_preview("DOM-PARCEL", out)
         self.assertIn("parcel-shelf-enabled: true", yml)
 
     def test_parcel_ship_scan_only(self) -> None:

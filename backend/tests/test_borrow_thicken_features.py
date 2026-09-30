@@ -7,6 +7,8 @@ import unittest
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.borrow_thicken import (
     scan_abandon_dual,
@@ -72,7 +74,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         opts = ticket.get("remarkOptions") or []
         self.assertIn("课程实验", opts)
         self.assertTrue(ticket.get("requireTrainingAck"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out) + policy_preview("DOM-EQUIP", out)
         self.assertIn("ticket-require-remark: true", yml)
         self.assertIn("ticket-require-training-ack: true", yml)
 
@@ -91,7 +93,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertIn("shelfNo", keys)
         self.assertIn("supplierContact", keys)
         self.assertTrue(ticket.get("allowProcureRef"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", out) + policy_preview("DOM-ASSET", out)
         self.assertIn("ticket-allow-procure-ref: true", yml)
 
     def test_procure_to_stock_in_default(self) -> None:
@@ -101,7 +103,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         caps = set(out.get("capabilities") or [])
         self.assertTrue(ticket.get("procureToStockIn"))
         self.assertIn("stock_io", caps)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PROCURE", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PROCURE", out) + policy_preview("DOM-PROCURE", out) + app_policy_preview("DOM-PROCURE", out)
         self.assertIn("ticket-procure-to-stock-in: true", yml)
         self.assertIn("stock-io-enabled: true", yml)
         sql = domain_sql(
@@ -120,7 +122,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertIn("stock_scrap", caps)
         opts = schema.get("stockScrapOpts") or {}
         self.assertTrue(opts.get("approveFlow"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", out) + policy_preview("DOM-ASSET", out)
         self.assertIn("stock-scrap-approve-flow: true", yml)
         sql = domain_sql(
             "DOM-ASSET",
@@ -137,7 +139,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertTrue(ticket.get("allowProxyPickup"))
         self.assertTrue(ticket.get("arrivalNotify"))
         self.assertTrue(ticket.get("allowExceptionClose"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PARCEL", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-PARCEL", out) + policy_preview("DOM-PARCEL", out)
         self.assertIn("ticket-allow-proxy-pickup: true", yml)
         self.assertIn("ticket-arrival-notify: true", yml)
         self.assertIn("ticket-allow-exception-close: true", yml)
@@ -156,7 +158,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         ticket = ((out.get("schema") or {}).get("entities") or {}).get("ticket") or {}
         self.assertTrue(ticket.get("bedConstraint"))
         self.assertTrue(ticket.get("requireNoticeAck"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-BED", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-BED", out) + policy_preview("DOM-BED", out)
         self.assertIn("ticket-bed-constraint: true", yml)
         self.assertIn("ticket-require-notice-ack: true", yml)
         keys = {
@@ -183,7 +185,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         eq = _spec("DOM-EQUIP", "设备借用", "设备押金登记与归还退押。")
         t = ((eq.get("schema") or {}).get("entities") or {}).get("ticket") or {}
         self.assertTrue(t.get("allowDeposit"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", eq)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", eq) + policy_preview("DOM-EQUIP", eq)
         self.assertIn("ticket-allow-deposit: true", yml)
 
         parcel = _spec("DOM-PARCEL", "驿站", "驿站代收协议勾选后方可取件。")
@@ -204,7 +206,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertTrue(te.get("blockIfCalibExpired"))
         self.assertTrue(te.get("requireInsuranceAck"))
         self.assertIn("material_check", eq.get("capabilities") or [])
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", eq)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", eq) + policy_preview("DOM-EQUIP", eq)
         self.assertIn("ticket-block-if-calib-expired: true", yml)
         self.assertIn("ticket-require-insurance-ack: true", yml)
 
@@ -253,7 +255,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertEqual(tl.get("qtyLabel"), "册数")
         self.assertTrue(tl.get("allowFineWaive"))
         self.assertTrue(tl.get("renewBlockIfHeld"))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", lib)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", lib) + policy_preview("DOM-LIBRARY", lib)
         self.assertIn("ticket-allow-fine-waive: true", yml)
         self.assertIn("ticket-renew-block-if-held: true", yml)
 
@@ -275,7 +277,7 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertTrue(opts.get("requireDiffReason"))
         ta = ((asset.get("schema") or {}).get("entities") or {}).get("ticket") or {}
         self.assertGreaterEqual(int(ta.get("categoryLimit") or 0), 1)
-        yml2 = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", asset)
+        yml2 = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", asset) + policy_preview("DOM-ASSET", asset)
         self.assertIn("stock-count-lock: true", yml2)
 
         parcel = _spec("DOM-PARCEL", "驿站", "滞留弃件双人确认。")

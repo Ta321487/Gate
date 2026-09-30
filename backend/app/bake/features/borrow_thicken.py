@@ -40,7 +40,8 @@ _LUGGAGE_TERMS = ("行李清点", "退宿清点", "退宿行李")
 _INSURANCE_TERMS = ("保险声明", "借用保险", "设备保险勾选")
 _DUAL_REVIEW_TERMS = ("双人复核", "双人签字", "领用复核")
 _SHIP_FEE_TERMS = ("寄件运费", "运费登记", "快递运费")
-_CREDIT_TERMS = ("信誉分", "信用分", "催还计入信誉")
+_CREDIT_SOFT_TERMS = ("催还计入信誉", "信誉限制再借", "限制再借")
+_CREDIT_POINTS_TERMS = ("逾期扣分", "扣信誉分", "扣信用分", "信誉分扣", "信用分扣")
 _CANCEL_HOLD_TERMS = ("预约取消次数", "取消预约限制", "预约取消上限")
 _OVERDUE_COMP_TERMS = ("逾期自动转赔付", "超期转赔付", "逾期转赔偿")
 _ABANDON_TERMS = ("弃件", "滞留弃件", "逾期弃件")
@@ -163,8 +164,64 @@ def scan_ship_fee(text: str) -> bool:
 
 
 def scan_credit_score(text: str) -> bool:
+    """软信誉：限制再借/次数冻结（不要求分值列）。"""
     raw = text or ""
-    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _CREDIT_TERMS)
+    return any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _CREDIT_SOFT_TERMS)
+
+
+def scan_credit_points(text: str) -> bool:
+    """分值信誉：信誉分/信用分、逾期扣分、低于 N 停借。"""
+    import re
+
+    raw = text or ""
+    if any(keyword_mentioned(raw, kw, ignore_contrast=True) for kw in _CREDIT_POINTS_TERMS):
+        return True
+    if "信誉分" in raw or "信用分" in raw:
+        return True
+    if re.search(r"低于\s*\d+\s*.{0,8}停借", raw):
+        return True
+    return False
+
+
+def _parse_credit_nums(text: str) -> tuple[int, int, int]:
+    """从开题抽初始分/扣分/停借线；缺省 100 / 5 / 60。"""
+    import re
+
+    raw = text or ""
+    initial, delta, block = 100, 5, 60
+    m = re.search(r"(?:信誉分|信用分)\s*[：:为]?\s*(\d{2,3})", raw)
+    if m:
+        initial = max(1, min(999, int(m.group(1))))
+    m = re.search(r"(?:逾期|超期)?(?:每次)?扣\s*(\d{1,3})\s*分", raw)
+    if m:
+        delta = max(1, min(100, int(m.group(1))))
+    m = re.search(r"低于\s*(\d{1,3})\s*.{0,8}停借", raw)
+    if m:
+        block = max(0, min(999, int(m.group(1))))
+    return initial, delta, block
+
+
+def _enable_credit_points(
+    spec: dict[str, Any],
+    ticket: dict[str, Any],
+    labels: dict[str, Any],
+    thicken: dict[str, Any],
+    text: str,
+) -> None:
+    initial, delta, block = _parse_credit_nums(text)
+    ticket["creditOnOverdue"] = True
+    ticket["creditInitial"] = initial
+    ticket["creditOverdueDelta"] = delta
+    ticket["creditBlockBelow"] = block
+    ticket.setdefault("maxOverdueTimes", 3)
+    labels.setdefault(
+        "creditRuleHint",
+        f"初始信誉分 {initial}；逾期每单扣 {delta} 分；低于 {block} 分暂不可再借。",
+    )
+    labels.setdefault("creditScoreLabel", "信誉分")
+    thicken["creditOnOverdue"] = True
+    thicken["creditPoints"] = True
+    _add_feature(spec, "超期催还计入信誉分")
 
 
 def scan_cancel_hold_limit(text: str) -> bool:
@@ -299,22 +356,52 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "损坏赔偿标准表")
         labels.setdefault(
             "creditRuleHint",
-            "超期催还累计计入读者信誉分；达到上限后可能限制再借，细则见公告。",
+            "超期催还累计计入读者信誉；达到次数上限后可能限制再借，细则见公告。",
         )
         thicken["creditRuleHint"] = True
+        # 双端次数方案：用户借还写库产生 ever_overdue；管理按次数限制再借
+        ticket.setdefault("maxOverdueTimes", 3)
         _add_feature(spec, "读者信用分规则提示")
+        if scan_credit_points(text):
+            _enable_credit_points(spec, ticket, labels, thicken, text)
         labels.setdefault(
             "suggestBudgetHint",
             "荐购采纳受本学期预算余额约束，余额不足时可能暂缓或驳回。",
         )
+        # 双端：用户提交荐购写库；管理端审核台账（能力+菜单+gate 同挂）
+        caps = list(spec.get("capabilities") or [])
+        if "book_suggest" not in caps:
+            caps.append("book_suggest")
+        spec["capabilities"] = caps
+        schema["capabilities"] = caps
+        from app.bake.features.book_suggest import attach_book_suggest_menus
+        from app.bake.gate_contracts import merge_book_suggest_gate
+
+        attach_book_suggest_menus(schema)
+        spec["gate"] = merge_book_suggest_gate(dict(spec.get("gate") or {}), caps)
+        thicken["suggestBudget"] = True
+        _add_feature(spec, "图书荐购预算余额提示")
+        _add_feature(spec, "图书荐购")
         labels.setdefault(
             "closedStackPrintHint",
-            "闭架索书可打印本页清单，持单至书库取书。",
+            "闭架索书可打印本页清单，持单至书库取书；请先在线提交借阅申请。",
         )
+        thicken["closedStackPrint"] = True
+        _add_feature(spec, "图书闭架索书单打印提示")
         labels.setdefault(
             "shelfAnnounceHint",
-            "新书上架后可在公告栏发布通报，读者可在首页查看。",
+            "新书上架后请关注公告；可将新书加入收藏以便再次借阅。",
         )
+        thicken["shelfAnnounce"] = True
+        _add_feature(spec, "新书/新物资上架通报提示")
+        labels.setdefault(
+            "catalogImportHint",
+            "征订目录管理端可导入 CSV；读者亦可提交荐购产生需求数据。",
+        )
+        thicken["catalogImportHint"] = True
+        _add_feature(spec, "图书征订目录导入提示")
+        ticket["requireNoticeAck"] = True
+        labels.setdefault("noticeAckLabel", "我已阅读借阅须知与信用分规则")
         # 漂流/赠阅：并入 stage 选项
         for f in archive.get("fields") or []:
             if isinstance(f, dict) and f.get("key") == "stage" and isinstance(f.get("options"), list):
@@ -344,12 +431,6 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         ticket["qtyLabel"] = "册数"
         thicken["multiCopyLoan"] = True
         _add_feature(spec, "多册合借一单")
-        labels.setdefault(
-            "catalogImportHint",
-            "征订目录可用档案管理「导入 CSV」批量录入，再按分类上架。",
-        )
-        thicken["catalogImportHint"] = True
-        _add_feature(spec, "图书征订目录导入提示")
         if scan_isbn_validate(text):
             thicken["isbnValidate"] = True
             _add_feature(spec, "ISBN校验与查重提示")
@@ -361,9 +442,13 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["bookDiscChecklist"] = True
         if scan_credit_score(text):
-            ticket["creditOnOverdue"] = True
-            thicken["creditOnOverdue"] = True
-            _add_feature(spec, "超期催还计入信誉分")
+            ticket.setdefault("maxOverdueTimes", 3)
+            labels.setdefault(
+                "creditRuleHint",
+                "超期催还累计计入信誉；达到次数上限后可能限制再借。",
+            )
+        if scan_credit_points(text):
+            _enable_credit_points(spec, ticket, labels, thicken, text)
         if scan_cancel_hold_limit(text):
             ticket["maxCancelHolds"] = int(ticket.get("maxCancelHolds") or 3)
             thicken["maxCancelHolds"] = True
@@ -418,22 +503,33 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         _add_feature(spec, "损坏赔偿标准表")
         labels.setdefault(
             "contractTemplateHint",
-            "外借可下载借用合同模板，线下签字后将扫描件作为附件上传。",
+            "外借须确认借用合同要点；同意后勾选提交，合同扫描件可作附件上传。",
         )
+        # 双端：用户勾选 notice_ack 写库；管理端维护合同说明文案
+        ticket["requireNoticeAck"] = True
+        labels.setdefault("noticeAckLabel", "我已阅读并同意设备借用合同要点")
+        thicken["contractAck"] = True
+        _add_feature(spec, "设备借用合同模板说明")
         labels.setdefault(
             "equipQrPrintHint",
-            "档案详情可浏览器打印标签页，粘贴至设备；可叠通行码二维码。",
+            "管理端可打印设备标签；借用时请手输资产编号以便核对。",
         )
+        ticket["allowAssetCode"] = True
+        labels.setdefault("assetCodeLabel", "设备资产编号")
+        thicken["equipQr"] = True
+        _add_feature(spec, "设备标签二维码打印说明")
         labels.setdefault(
             "maintainWorkOrderHint",
-            "保养任务可填写关联报修单号，与报修流程手工衔接。",
+            "保养到期请在档案维护关联报修单号；借用申请可备注保养需求。",
         )
+        _ensure_archive_field(
+            archive, {"key": "maintainDue", "label": "保养到期日", "type": "date"}
+        )
+        thicken["maintainDue"] = True
+        thicken["maintainWorkOrder"] = True
+        _add_feature(spec, "设备保养工单联动说明")
         if scan_maintain_due(text) or scan_calib_due(text):
-            _ensure_archive_field(
-                archive, {"key": "maintainDue", "label": "保养到期日", "type": "date"}
-            )
-            thicken["maintainDue"] = True
-            _add_feature(spec, "设备保养到期提醒")
+            pass  # maintainDue 已域默认
         if scan_calib_due(text):
             _ensure_archive_field(
                 archive, {"key": "calibDue", "label": "校准证书到期日", "type": "date"}
@@ -465,9 +561,13 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["accessoryChecklist"] = True
         if scan_credit_score(text):
-            ticket["creditOnOverdue"] = True
-            thicken["creditOnOverdue"] = True
-            _add_feature(spec, "超期催还计入信誉分")
+            ticket.setdefault("maxOverdueTimes", 3)
+            labels.setdefault(
+                "creditRuleHint",
+                "超期催还累计计入借用信誉；达到次数上限后可能限制再借，细则见公告。",
+            )
+        if scan_credit_points(text):
+            _enable_credit_points(spec, ticket, labels, thicken, text)
         if scan_overdue_compensate(text):
             ticket["overdueAutoCompensate"] = True
             thicken["overdueAutoCompensate"] = True
@@ -709,11 +809,40 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         )
         labels.setdefault(
             "bedSwapHint",
-            "互换意向：双方各自提交调宿申请并注明对方学号，宿管核对后办理。",
+            "互换意向：提交调宿并填写对方学号；对方确认后宿管方可审核。",
         )
         labels.setdefault(
             "bedPrintHint",
-            "入住登记表可使用浏览器打印本页。",
+            "入住登记表可浏览器打印；提交申请须勾选入住须知。",
+        )
+        # 双端：用户写 peer_username；对方 peer_ack；管理审核
+        ticket["requirePeerConfirm"] = True
+        labels.setdefault("peerUsernameLabel", "对方学号/用户名")
+        labels.setdefault(
+            "peerConfirmHint",
+            "提交后须对方先确认，宿管方可审核通过。",
+        )
+        labels.setdefault("peerInboxTitle", "待我确认（调宿）")
+        labels.setdefault(
+            "peerInboxLead",
+            "他人发起的调宿/互换意向，确认后宿管才可审核；也可婉拒。",
+        )
+        thicken["peerConfirm"] = True
+        thicken["bedSwapMatch"] = True
+        _add_feature(spec, "床位互换意向双方确认")
+        from app.bake.schema.menu_utils import ensure_menu
+
+        menus = schema.setdefault("menus", {})
+        user_menu = menus.setdefault("user", [])
+        ensure_menu(
+            user_menu,
+            "peer_tickets",
+            {
+                "key": "peer_tickets",
+                "label": labels.get("peerInboxTitle") or "待我确认（调宿）",
+                "path": "/peer-tickets",
+            },
+            before_key="my_tickets",
         )
         ticket["bedConstraint"] = True
         labels.setdefault(
@@ -755,31 +884,7 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["luggageChecklist"] = True
         if scan_peer_confirm(text):
-            ticket["requirePeerConfirm"] = True
-            labels.setdefault("peerUsernameLabel", "对方学号/用户名")
-            labels.setdefault(
-                "peerConfirmHint",
-                "提交后须对方先确认，宿管方可审核通过。",
-            )
-            labels.setdefault("peerInboxTitle", "待我确认（调宿）")
-            labels.setdefault(
-                "peerInboxLead",
-                "他人发起的调宿/互换意向，确认后宿管才可审核；也可婉拒。",
-            )
-            thicken["peerConfirm"] = True
-            _add_feature(spec, "调宿双方确认")
-            thicken["bedSwapMatch"] = True
-            _add_feature(spec, "床位互换意向双方确认")
-            from app.bake.schema.menu_utils import ensure_menu
-
-            menus = schema.setdefault("menus", {})
-            user_menu = menus.setdefault("user", [])
-            ensure_menu(
-                user_menu,
-                "peer_tickets",
-                {"key": "peer_tickets", "label": "待我确认"},
-                before_key="my_tickets",
-            )
+            pass  # 调宿双方确认已域默认
 
     ents["archive"] = archive
     ents["ticket"] = ticket

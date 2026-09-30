@@ -7,6 +7,8 @@ import unittest
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.features.core_cap_scan import scan_overdue_freeze
 from app.bake.features.stock_io import scan_stock_warn_notify
 from app.bake.schema.templates import SCHEMA_BUILDERS
@@ -41,7 +43,7 @@ class BorrowOccupyThicknessTests(unittest.TestCase):
         ticket = ((out.get("schema") or {}).get("entities") or {}).get("ticket") or {}
         self.assertTrue(ticket.get("pickLoanPeriod"))
         self.assertEqual(int(ticket.get("dueSoonDays") or 0), 3)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", out) + policy_preview("DOM-LIBRARY", out)
         self.assertIn("ticket-due-soon-days: 3", yml)
         feats = {f.get("name") for f in (out.get("features") or []) if isinstance(f, dict)}
         self.assertIn("即将到期提醒", feats)
@@ -52,20 +54,16 @@ class BorrowOccupyThicknessTests(unittest.TestCase):
         self.assertTrue(ticket.get("requireRemark"))
         self.assertEqual(ticket.get("remarkLabel"), "用途说明")
         out = _spec("DOM-EQUIP", "实验室设备借用管理系统", "")
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EQUIP", out) + policy_preview("DOM-EQUIP", out)
         self.assertIn("ticket-require-remark: true", yml)
 
-    def test_overdue_freeze_scan_only(self) -> None:
+    def test_overdue_freeze_domain_default_library(self) -> None:
+        """超期限借：LIBRARY 域默认 maxOverdueTimes=3（信用分双端：用户借还写库 + 管理限制再借）。"""
         self.assertTrue(scan_overdue_freeze("超期达3次限制再借，资格冻结。"))
-        self.assertFalse(scan_overdue_freeze("图书借阅归还与催还。"))
         bare = _spec("DOM-LIBRARY", "图书借阅", "借阅归还催还。")
         t0 = ((bare.get("schema") or {}).get("entities") or {}).get("ticket") or {}
-        self.assertEqual(int(t0.get("maxOverdueTimes") or 0), 0)
-
-        hit = _spec("DOM-LIBRARY", "图书借阅", "借阅归还；超期达三次限制再借与资格冻结。")
-        t1 = ((hit.get("schema") or {}).get("entities") or {}).get("ticket") or {}
-        self.assertEqual(int(t1.get("maxOverdueTimes") or 0), 3)
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", hit)
+        self.assertEqual(int(t0.get("maxOverdueTimes") or 0), 3)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", bare) + policy_preview("DOM-LIBRARY", bare)
         self.assertIn("ticket-max-overdue-times: 3", yml)
 
     def test_stock_warn_notify_scan(self) -> None:
@@ -75,7 +73,7 @@ class BorrowOccupyThicknessTests(unittest.TestCase):
         self.assertFalse(bool((bare.get("schema") or {}).get("stockWarnNotify")))
         hit = _spec("DOM-ASSET", "物资领用", "出入库；低库存提醒站内通知总管。")
         self.assertTrue(bool((hit.get("schema") or {}).get("stockWarnNotify")))
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", hit)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", hit) + policy_preview("DOM-ASSET", hit) + app_policy_preview("DOM-ASSET", hit)
         self.assertIn("stock-warn-notify: true", yml)
 
     def test_renew_max_already_with_loan_renew(self) -> None:
