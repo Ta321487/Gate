@@ -600,7 +600,19 @@ POM = r'''<?xml version="1.0" encoding="UTF-8"?>
   <name>thesis-app</name>
   <properties>
     <java.version>17</java.version>
+    <spring-ai.version>1.0.0</spring-ai.version>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -627,6 +639,11 @@ POM = r'''<?xml version="1.0" encoding="UTF-8"?>
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-crypto</artifactId>
+    </dependency>
+    <!-- 与 baseline 同口径：DeepSeekClient 始终在源码树，无 Key 时不自动装配失败 -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-deepseek</artifactId>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -685,6 +702,16 @@ def main() -> None:
         t = binder.read_text(encoding="utf-8")
         t = t.replace("JdbcSupport", "JpaSupport")
         binder.write_text(t, encoding="utf-8", newline="\n")
+
+    # 策略类真源在 bake；rmtree 叠层后必须写回，避免骨架缺 TicketPolicy/AppPolicy
+    import sys
+
+    sys.path.insert(0, str(ROOT / "backend"))
+    from app.bake.runtime_policy import render as render_app_policy
+    from app.bake.ticket_policy import render as render_ticket_policy
+
+    write(OUT_JAVA / "com/thesis/config/TicketPolicy.java", render_ticket_policy({}))
+    write(OUT_JAVA / "com/thesis/config/AppPolicy.java", render_app_policy({}))
 
     print(f"wrote {OUT}")
     n = len(list(OUT.rglob("*")))

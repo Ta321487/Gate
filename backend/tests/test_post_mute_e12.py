@@ -9,6 +9,7 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.features.post_mute import (
     POST_MUTE_CAP,
     merge_post_mute_capabilities,
@@ -80,10 +81,10 @@ class PostMuteE12Tests(unittest.TestCase):
         self.assertIn(POST_MUTE_CAP, caps)
         labels = (rich.get("schema") or {}).get("labels") or {}
         self.assertEqual(labels.get("postMuteVerb"), "禁言")
-        yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", rich)
+        yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", rich) + app_policy_preview("DOM-FORUM", rich)
         self.assertIn("post-mute-enabled: true", yml)
 
-        plain_yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", plain)
+        plain_yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", plain) + app_policy_preview("DOM-FORUM", plain)
         self.assertIn("post-mute-enabled: true", plain_yml)
 
     def test_baseline_sources_wired(self) -> None:
@@ -129,7 +130,7 @@ class PostMuteE12Tests(unittest.TestCase):
         binder = (
             BASELINE / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
         ).read_text(encoding="utf-8")
-        self.assertIn("post-mute-enabled", binder)
+        self.assertIn("AppPolicy.POST_MUTE_ENABLED", binder)
         self.assertIn("configurePostMute", binder)
 
 

@@ -9,6 +9,7 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.ticket_policy import policy_preview
 from app.bake.features.ticket_flow_opts import (
     MULTI_APPROVE_CAP,
     scan_three_level,
@@ -91,7 +92,7 @@ class MultiApproveC16Tests(unittest.TestCase):
         self.assertIn("三级会签审批", feat_names)
         self.assertNotIn("两级审批", feat_names)
 
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-SEAL", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-SEAL", spec) + policy_preview("DOM-SEAL", spec)
         self.assertIn("ticket-three-level: true", yml)
         self.assertIn("ticket-two-level: true", yml)
 
@@ -104,7 +105,7 @@ class MultiApproveC16Tests(unittest.TestCase):
         for root in (BASELINE, MYBATIS, JPA):
             binder = root / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
             bt = binder.read_text(encoding="utf-8")
-            self.assertIn("ticket-three-level", bt, msg=str(binder))
+            self.assertIn("TicketPolicy.THREE_LEVEL", bt, msg=str(binder))
             self.assertIn("configureThreeLevel", bt, msg=str(binder))
             store = root / "backend/src/main/java/com/thesis/capability/TicketStore.java"
             st = store.read_text(encoding="utf-8")

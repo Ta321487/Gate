@@ -9,6 +9,7 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.detail_attrs import DETAIL_ATTRS_CAP, parse_detail_labels
 from app.bake.features.multi_category import (
@@ -189,7 +190,7 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         self.assertEqual(rt.get("archive_tag_table"), "tag")
         self.assertEqual(rt.get("archive_item_tag_table"), "product_tag")
 
-        yml = _patch_thesis_yml("thesis:\n  domain: DOM-SHOP\n", "DOM-SHOP", rich)
+        yml = _patch_thesis_yml("thesis:\n  domain: DOM-SHOP\n", "DOM-SHOP", rich) + app_policy_preview("DOM-SHOP", rich)
         self.assertIn("archive-tag-table: tag", yml)
         self.assertIn("archive-item-tag-table: product_tag", yml)
 

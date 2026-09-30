@@ -4,6 +4,7 @@ import com.thesis.capability.ArchiveLogStore;
 import com.thesis.capability.AuditLogStore;
 import com.thesis.capability.StaffRosterStore;
 import com.thesis.capability.BookSuggestStore;
+import com.thesis.capability.BorrowCreditStore;
 import com.thesis.capability.ParcelShelfStore;
 import com.thesis.capability.ParcelShipStore;
 import com.thesis.capability.EquipmentDictStore;
@@ -42,6 +43,7 @@ import com.thesis.service.UserStore;
 import com.thesis.service.VoteStore;
 import com.thesis.service.BalanceLedgerStore;
 import com.thesis.service.GradeScoreStore;
+import com.thesis.service.FundPublicityStore;
 import com.thesis.service.DoclibStore;
 import com.thesis.service.ESignStore;
 import com.thesis.service.MaterialCheckStore;
@@ -65,20 +67,15 @@ import org.springframework.stereotype.Component;
 @Order(0)
 public class DomainRuntimeBinder implements ApplicationRunner {
 
-    @Value("${thesis.ticket-mode:archive}")
-    private String ticketMode;
+    private final String ticketMode = TicketPolicy.MODE;
 
-    @Value("${thesis.ticket-table:borrow}")
-    private String ticketTable;
+    private final String ticketTable = TicketPolicy.TABLE;
 
-    @Value("${thesis.enable-ticket:true}")
-    private boolean enableTicket;
+    private final boolean enableTicket = TicketPolicy.ENABLED;
 
-    @Value("${thesis.archive-category-table:category}")
-    private String archiveCategoryTable;
+    private final String archiveCategoryTable = AppPolicy.ARCHIVE_CATEGORY_TABLE;
 
-    @Value("${thesis.archive-item-table:book}")
-    private String archiveItemTable;
+    private final String archiveItemTable = AppPolicy.ARCHIVE_ITEM_TABLE;
 
     @Value("${thesis.register-role:user}")
     private String registerRole;
@@ -86,99 +83,69 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.password-hash:none}")
     private String passwordHash;
 
-    @Value("${thesis.lookup-site-table:}")
-    private String lookupSiteTable;
+    private final String lookupSiteTable = AppPolicy.LOOKUP_SITE_TABLE;
 
-    @Value("${thesis.lookup-unit-table:}")
-    private String lookupUnitTable;
+    private final String lookupUnitTable = AppPolicy.LOOKUP_UNIT_TABLE;
 
-    @Value("${thesis.lookup-type-table:}")
-    private String lookupTypeTable;
+    private final String lookupTypeTable = AppPolicy.LOOKUP_TYPE_TABLE;
 
-    @Value("${thesis.lookup-site-label:楼栋}")
-    private String lookupSiteLabel;
+    private final String lookupSiteLabel = AppPolicy.LOOKUP_SITE_LABEL;
 
-    @Value("${thesis.lookup-unit-label:房间}")
-    private String lookupUnitLabel;
+    private final String lookupUnitLabel = AppPolicy.LOOKUP_UNIT_LABEL;
 
-    @Value("${thesis.lookup-type-label:类型}")
-    private String lookupTypeLabel;
+    private final String lookupTypeLabel = AppPolicy.LOOKUP_TYPE_LABEL;
 
     /** 空串 = 管理端不展示单元容量列 */
-    @Value("${thesis.lookup-unit-capacity-label:容量}")
-    private String lookupUnitCapacityLabel;
+    private final String lookupUnitCapacityLabel = AppPolicy.LOOKUP_UNIT_CAPACITY_LABEL;
 
     @Value("${thesis.use-quota:true}")
     private boolean useQuota;
 
-    @Value("${thesis.use-deadline:true}")
-    private boolean useDeadline;
+    private final boolean useDeadline = TicketPolicy.USE_DEADLINE;
 
-    @Value("${thesis.allow-multi-ticket:false}")
-    private boolean allowMultiTicket;
+    private final boolean allowMultiTicket = TicketPolicy.ALLOW_MULTI;
 
-    @Value("${thesis.check-time-conflict:false}")
-    private boolean checkTimeConflict;
+    private final boolean checkTimeConflict = TicketPolicy.CHECK_TIME_CONFLICT;
 
-    @Value("${thesis.order-cart-table:}")
-    private String orderCartTable;
+    private final String orderCartTable = AppPolicy.ORDER_CART_TABLE;
 
-    @Value("${thesis.order-table:}")
-    private String orderTable;
+    private final String orderTable = AppPolicy.ORDER_TABLE;
 
-    @Value("${thesis.order-line-table:}")
-    private String orderLineTable;
+    private final String orderLineTable = AppPolicy.ORDER_LINE_TABLE;
 
-    @Value("${thesis.slot-table:}")
-    private String slotTable;
+    private final String slotTable = AppPolicy.SLOT_TABLE;
 
-    @Value("${thesis.reservation-table:}")
-    private String reservationTable;
+    private final String reservationTable = AppPolicy.RESERVATION_TABLE;
 
-    @Value("${thesis.ticket-two-level:false}")
-    private boolean ticketTwoLevel;
+    private final boolean ticketTwoLevel = TicketPolicy.TWO_LEVEL;
 
-    @Value("${thesis.ticket-three-level:false}")
-    private boolean ticketThreeLevel;
+    private final boolean ticketThreeLevel = TicketPolicy.THREE_LEVEL;
 
-    @Value("${thesis.ticket-require-attach:false}")
-    private boolean ticketRequireAttach;
+    private final boolean ticketRequireAttach = TicketPolicy.REQUIRE_ATTACH;
 
-    @Value("${thesis.ticket-allow-rating:false}")
-    private boolean ticketAllowRating;
+    private final boolean ticketAllowRating = TicketPolicy.ALLOW_RATING;
 
-    @Value("${thesis.ticket-check-mutex:false}")
-    private boolean ticketCheckMutex;
+    private final boolean ticketCheckMutex = TicketPolicy.CHECK_MUTEX;
 
-    @Value("${thesis.ticket-category-limit:0}")
-    private int ticketCategoryLimit;
+    private final int ticketCategoryLimit = TicketPolicy.CATEGORY_LIMIT;
 
-    @Value("${thesis.ticket-loan-days:0}")
-    private int ticketLoanDays;
+    private final int ticketLoanDays = TicketPolicy.LOAN_DAYS;
 
-    @Value("${thesis.ticket-max-active:0}")
-    private int ticketMaxActive;
+    private final int ticketMaxActive = TicketPolicy.MAX_ACTIVE;
 
-    @Value("${thesis.ticket-fine-per-day:-1}")
-    private double ticketFinePerDay;
+    private final double ticketFinePerDay = TicketPolicy.FINE_PER_DAY;
 
-    @Value("${thesis.ticket-pickup-place:}")
-    private String ticketPickupPlace;
+    private final String ticketPickupPlace = TicketPolicy.PICKUP_PLACE;
 
-    @Value("${thesis.archive-soft-delete:false}")
-    private boolean archiveSoftDelete;
+    private final boolean archiveSoftDelete = AppPolicy.ARCHIVE_SOFT_DELETE;
 
-    @Value("${thesis.archive-user-publish:false}")
-    private boolean archiveUserPublish;
+    private final boolean archiveUserPublish = AppPolicy.ARCHIVE_USER_PUBLISH;
 
-    @Value("${thesis.archive-publish-review:false}")
-    private boolean archivePublishReview;
+    private final boolean archivePublishReview = AppPolicy.ARCHIVE_PUBLISH_REVIEW;
 
-    @Value("${thesis.archive-tag-table:}")
-    private String archiveTagTable;
+    private final String archiveTagTable = AppPolicy.ARCHIVE_TAG_TABLE;
 
-    @Value("${thesis.archive-item-tag-table:}")
-    private String archiveItemTagTable;
+    private final String archiveItemTagTable = AppPolicy.ARCHIVE_ITEM_TAG_TABLE;
 
     @Value("${thesis.multi-category-enabled:false}")
     private boolean multiCategoryEnabled;
@@ -186,254 +153,253 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.archive-item-category-table:}")
     private String archiveItemCategoryTable;
 
-    @Value("${thesis.ticket-week-calendar:false}")
-    private boolean ticketWeekCalendar;
+    private final boolean ticketWeekCalendar = TicketPolicy.WEEK_CALENDAR;
 
-    @Value("${thesis.ticket-allow-checkin:false}")
-    private boolean ticketAllowCheckin;
+    private final boolean ticketAllowCheckin = TicketPolicy.ALLOW_CHECKIN;
 
-    @Value("${thesis.ticket-peer-accept:false}")
-    private boolean ticketPeerAccept;
+    private final boolean ticketPeerAccept = TicketPolicy.PEER_ACCEPT;
 
-    @Value("${thesis.ticket-issue-pass-code:false}")
-    private boolean ticketIssuePassCode;
+    private final boolean ticketIssuePassCode = TicketPolicy.ISSUE_PASS_CODE;
 
-    @Value("${thesis.ticket-allow-renew:false}")
-    private boolean ticketAllowRenew;
+    private final boolean ticketAllowRenew = TicketPolicy.ALLOW_RENEW;
 
-    @Value("${thesis.ticket-allow-waitlist:false}")
-    private boolean ticketAllowWaitlist;
+    private final boolean ticketAllowWaitlist = TicketPolicy.ALLOW_WAITLIST;
 
-    @Value("${thesis.ticket-allow-book-hold:false}")
-    private boolean ticketAllowBookHold;
+    private final boolean ticketAllowBookHold = TicketPolicy.ALLOW_BOOK_HOLD;
 
-    @Value("${thesis.ticket-allow-book-lost:false}")
-    private boolean ticketAllowBookLost;
+    private final boolean ticketAllowBookLost = TicketPolicy.ALLOW_BOOK_LOST;
 
-    @Value("${thesis.ticket-require-return-attach:false}")
-    private boolean ticketRequireReturnAttach;
+    private final boolean ticketRequireReturnAttach = TicketPolicy.REQUIRE_RETURN_ATTACH;
 
-    @Value("${thesis.ticket-hold-hours:48}")
-    private int ticketHoldHours;
+    private final int ticketHoldHours = TicketPolicy.HOLD_HOURS;
 
-    @Value("${thesis.ticket-max-renew:1}")
-    private int ticketMaxRenew;
+    private final int ticketMaxRenew = TicketPolicy.MAX_RENEW;
 
-    @Value("${thesis.ticket-renew-days:0}")
-    private int ticketRenewDays;
+    private final int ticketRenewDays = TicketPolicy.RENEW_DAYS;
 
-    @Value("${thesis.ticket-due-soon-days:0}")
-    private int ticketDueSoonDays;
+    private final int ticketDueSoonDays = TicketPolicy.DUE_SOON_DAYS;
 
-    @Value("${thesis.ticket-max-overdue-times:0}")
-    private int ticketMaxOverdueTimes;
+    private final int ticketMaxOverdueTimes = TicketPolicy.MAX_OVERDUE_TIMES;
 
-    @Value("${thesis.ticket-no-show-after-end:false}")
-    private boolean ticketNoShowAfterEnd;
+    private final boolean ticketCreditOnOverdue = TicketPolicy.CREDIT_ON_OVERDUE;
 
-    @Value("${thesis.ticket-no-show-penalty-yuan:0}")
-    private double ticketNoShowPenaltyYuan;
+    private final int ticketCreditInitial = TicketPolicy.CREDIT_INITIAL;
 
-    @Value("${thesis.ticket-pick-loan-period:false}")
-    private boolean ticketPickLoanPeriod;
+    private final int ticketCreditOverdueDelta = TicketPolicy.CREDIT_OVERDUE_DELTA;
 
-    @Value("${thesis.ticket-allow-qty:false}")
-    private boolean ticketAllowQty;
+    private final int ticketCreditBlockBelow = TicketPolicy.CREDIT_BLOCK_BELOW;
 
-    @Value("${thesis.ticket-require-remark:false}")
-    private boolean ticketRequireRemark;
+    private final boolean ticketNoShowAfterEnd = TicketPolicy.NO_SHOW_AFTER_END;
 
-    @Value("${thesis.ticket-pick-date-range:false}")
-    private boolean ticketPickDateRange;
+    private final double ticketNoShowPenaltyYuan = TicketPolicy.NO_SHOW_PENALTY_YUAN;
 
-    @Value("${thesis.ticket-approve-ends-flow:false}")
-    private boolean ticketApproveEndsFlow;
+    private final boolean ticketPickLoanPeriod = TicketPolicy.PICK_LOAN_PERIOD;
 
-    @Value("${thesis.ticket-auto-approve:false}")
-    private boolean ticketAutoApprove;
+    private final boolean ticketAllowQty = TicketPolicy.ALLOW_QTY;
 
-    @Value("${thesis.ticket-require-claim-code:false}")
-    private boolean ticketRequireClaimCode;
+    private final boolean ticketRequireRemark = TicketPolicy.REQUIRE_REMARK;
 
-    @Value("${thesis.ticket-match-profile-room:false}")
-    private boolean ticketMatchProfileRoom;
+    private final boolean ticketPickDateRange = TicketPolicy.PICK_DATE_RANGE;
 
-    @Value("${thesis.ticket-match-profile-building-key:}")
-    private String ticketMatchProfileBuildingKey;
+    private final boolean ticketApproveEndsFlow = TicketPolicy.APPROVE_ENDS_FLOW;
 
-    @Value("${thesis.ticket-match-profile-room-key:}")
-    private String ticketMatchProfileRoomKey;
+    private final boolean ticketAutoApprove = TicketPolicy.AUTO_APPROVE;
 
-    @Value("${thesis.ticket-match-profile-building-field:}")
-    private String ticketMatchProfileBuildingField;
+    private final boolean ticketRequireClaimCode = TicketPolicy.REQUIRE_CLAIM_CODE;
 
-    @Value("${thesis.ticket-match-profile-room-field:}")
-    private String ticketMatchProfileRoomField;
+    private final boolean ticketMatchProfileRoom = TicketPolicy.MATCH_PROFILE_ROOM;
 
-    @Value("${thesis.ticket-match-profile-loose-building:false}")
-    private boolean ticketMatchProfileLooseBuilding;
+    private final String ticketMatchProfileBuildingKey = TicketPolicy.MATCH_PROFILE_BUILDING_KEY;
 
-    @Value("${thesis.ticket-match-profile-need-message:}")
-    private String ticketMatchProfileNeedMessage;
+    private final String ticketMatchProfileRoomKey = TicketPolicy.MATCH_PROFILE_ROOM_KEY;
 
-    @Value("${thesis.ticket-match-profile-deny-message:}")
-    private String ticketMatchProfileDenyMessage;
+    private final String ticketMatchProfileBuildingField = TicketPolicy.MATCH_PROFILE_BUILDING_FIELD;
 
-    @Value("${thesis.ticket-applicant-complete-only:false}")
-    private boolean ticketApplicantCompleteOnly;
+    private final String ticketMatchProfileRoomField = TicketPolicy.MATCH_PROFILE_ROOM_FIELD;
 
-    @Value("${thesis.ticket-allow-proxy-pickup:false}")
-    private boolean ticketAllowProxyPickup;
+    private final boolean ticketMatchProfileLooseBuilding = TicketPolicy.MATCH_PROFILE_LOOSE_BUILDING;
 
-    @Value("${thesis.ticket-phone-dup-check:false}")
-    private boolean ticketPhoneDupCheck;
+    private final String ticketMatchProfileNeedMessage = TicketPolicy.MATCH_PROFILE_NEED_MESSAGE;
 
-    @Value("${thesis.ticket-allow-deal-amount:false}")
-    private boolean ticketAllowDealAmount;
+    private final String ticketMatchProfileDenyMessage = TicketPolicy.MATCH_PROFILE_DENY_MESSAGE;
 
-    @Value("${thesis.ticket-allow-next-action:false}")
-    private boolean ticketAllowNextAction;
+    private final boolean ticketApplicantCompleteOnly = TicketPolicy.APPLICANT_COMPLETE_ONLY;
 
-    @Value("${thesis.ticket-require-close-attach:false}")
-    private boolean ticketRequireCloseAttach;
+    private final boolean ticketAllowProxyPickup = TicketPolicy.ALLOW_PROXY_PICKUP;
 
-    @Value("${thesis.ticket-require-return-date:false}")
-    private boolean ticketRequireReturnDate;
+    private final boolean ticketPhoneDupCheck = TicketPolicy.PHONE_DUP_CHECK;
 
-    @Value("${thesis.ticket-attach-by-leave-type:false}")
-    private boolean ticketAttachByLeaveType;
+    private final boolean ticketAllowDealAmount = TicketPolicy.ALLOW_DEAL_AMOUNT;
 
-    @Value("${thesis.ticket-allow-leave-proxy:false}")
-    private boolean ticketAllowLeaveProxy;
+    private final boolean ticketAllowNextAction = TicketPolicy.ALLOW_NEXT_ACTION;
 
-    @Value("${thesis.ticket-allow-interview-result:false}")
-    private boolean ticketAllowInterviewResult;
+    private final boolean ticketRequireCloseAttach = TicketPolicy.REQUIRE_CLOSE_ATTACH;
 
-    @Value("${thesis.ticket-allow-batch-hire:false}")
-    private boolean ticketAllowBatchHire;
+    private final boolean ticketRequireReturnDate = TicketPolicy.REQUIRE_RETURN_DATE;
 
-    @Value("${thesis.ticket-allow-written-score:false}")
-    private boolean ticketAllowWrittenScore;
+    private final boolean ticketAttachByLeaveType = TicketPolicy.ATTACH_BY_LEAVE_TYPE;
 
-    @Value("${thesis.ticket-allow-bg-check-note:false}")
-    private boolean ticketAllowBgCheckNote;
+    private final boolean ticketAllowLeaveProxy = TicketPolicy.ALLOW_LEAVE_PROXY;
 
-    @Value("${thesis.ticket-allow-defense-result:false}")
-    private boolean ticketAllowDefenseResult;
+    private final boolean ticketAllowInterviewResult = TicketPolicy.ALLOW_INTERVIEW_RESULT;
 
-    @Value("${thesis.ticket-mask-bank-account:false}")
-    private boolean ticketMaskBankAccount;
+    private final boolean ticketAllowBatchHire = TicketPolicy.ALLOW_BATCH_HIRE;
 
-    @Value("${thesis.ticket-allow-disburse-batch:false}")
-    private boolean ticketAllowDisburseBatch;
+    private final boolean ticketAllowWrittenScore = TicketPolicy.ALLOW_WRITTEN_SCORE;
 
-    @Value("${thesis.ticket-week-report-remind:false}")
-    private boolean ticketWeekReportRemind;
+    private final boolean ticketAllowBgCheckNote = TicketPolicy.ALLOW_BG_CHECK_NOTE;
 
-    @Value("${thesis.ticket-require-appraisal:false}")
-    private boolean ticketRequireAppraisal;
+    private final boolean ticketAllowDefenseResult = TicketPolicy.ALLOW_DEFENSE_RESULT;
 
-    @Value("${thesis.ticket-allow-company-eval:false}")
-    private boolean ticketAllowCompanyEval;
+    private final boolean ticketMaskBankAccount = TicketPolicy.MASK_BANK_ACCOUNT;
 
-    @Value("${thesis.ticket-allow-excellent-mark:false}")
-    private boolean ticketAllowExcellentMark;
+    private final boolean ticketAllowDisburseBatch = TicketPolicy.ALLOW_DISBURSE_BATCH;
 
-    @Value("${thesis.ticket-require-feedback-set:false}")
-    private boolean ticketRequireFeedbackSet;
+    private final boolean ticketWeekReportRemind = TicketPolicy.WEEK_REPORT_REMIND;
 
-    @Value("${thesis.ticket-allow-record-url:false}")
-    private boolean ticketAllowRecordUrl;
+    private final boolean ticketRequireAppraisal = TicketPolicy.REQUIRE_APPRAISAL;
 
-    @Value("${thesis.ticket-allow-makeup-apply:false}")
-    private boolean ticketAllowMakeupApply;
+    private final boolean ticketAllowCompanyEval = TicketPolicy.ALLOW_COMPANY_EVAL;
 
-    @Value("${thesis.ticket-home-visit-template:false}")
-    private boolean ticketHomeVisitTemplate;
+    private final boolean ticketAllowExcellentMark = TicketPolicy.ALLOW_EXCELLENT_MARK;
 
-    @Value("${thesis.ticket-allow-confidential:false}")
-    private boolean ticketAllowConfidential;
+    private final boolean ticketRequireFeedbackSet = TicketPolicy.REQUIRE_FEEDBACK_SET;
 
-    @Value("${thesis.ticket-allow-assign-dept:false}")
-    private boolean ticketAllowAssignDept;
+    private final boolean ticketAllowRecordUrl = TicketPolicy.ALLOW_RECORD_URL;
 
-    @Value("${thesis.ticket-follow-remind-days:0}")
-    private int ticketFollowRemindDays;
+    private final boolean ticketAllowMakeupApply = TicketPolicy.ALLOW_MAKEUP_APPLY;
 
-    @Value("${thesis.ticket-min-remark-words:0}")
-    private int ticketMinRemarkWords;
+    private final boolean ticketHomeVisitTemplate = TicketPolicy.HOME_VISIT_TEMPLATE;
 
-    @Value("${thesis.ticket-max-revise-times:0}")
-    private int ticketMaxReviseTimes;
+    private final boolean ticketAllowConfidential = TicketPolicy.ALLOW_CONFIDENTIAL;
 
-    @Value("${thesis.ticket-week-report-deadline-day:0}")
-    private int ticketWeekReportDeadlineDay;
+    private final boolean ticketAllowAssignDept = TicketPolicy.ALLOW_ASSIGN_DEPT;
 
-    @Value("${thesis.ticket-bed-constraint:false}")
-    private boolean ticketBedConstraint;
+    private final int ticketFollowRemindDays = TicketPolicy.FOLLOW_REMIND_DAYS;
 
-    @Value("${thesis.ticket-bed-constraint-need-message:}")
-    private String ticketBedConstraintNeedMessage;
+    private final int ticketMinRemarkWords = TicketPolicy.MIN_REMARK_WORDS;
 
-    @Value("${thesis.ticket-bed-constraint-deny-message:}")
-    private String ticketBedConstraintDenyMessage;
+    private final int ticketMaxReviseTimes = TicketPolicy.MAX_REVISE_TIMES;
 
-    @Value("${thesis.ticket-arrival-notify:false}")
-    private boolean ticketArrivalNotify;
+    private final int ticketStaleFollowDays = TicketPolicy.STALE_FOLLOW_DAYS;
 
-    @Value("${thesis.ticket-require-notice-ack:false}")
-    private boolean ticketRequireNoticeAck;
+    private final boolean ticketLevelAffectsDeadline = TicketPolicy.LEVEL_AFFECTS_DEADLINE;
 
-    @Value("${thesis.ticket-allow-deposit:false}")
-    private boolean ticketAllowDeposit;
+    private final int ticketLevelSlaHighDays = TicketPolicy.LEVEL_SLA_HIGH_DAYS;
 
-    @Value("${thesis.ticket-allow-exception-close:false}")
-    private boolean ticketAllowExceptionClose;
+    private final int ticketLevelSlaMidDays = TicketPolicy.LEVEL_SLA_MID_DAYS;
 
-    @Value("${thesis.ticket-require-training-ack:false}")
-    private boolean ticketRequireTrainingAck;
+    private final int ticketLevelSlaLowDays = TicketPolicy.LEVEL_SLA_LOW_DAYS;
 
-    @Value("${thesis.ticket-require-insurance-ack:false}")
-    private boolean ticketRequireInsuranceAck;
+    private final boolean ticketNotifyDutyOnReport = TicketPolicy.NOTIFY_DUTY_ON_REPORT;
 
-    @Value("${thesis.ticket-block-if-calib-expired:false}")
-    private boolean ticketBlockIfCalibExpired;
+    private final boolean ticketAllowObjectionWindow = TicketPolicy.ALLOW_OBJECTION_WINDOW;
 
-    @Value("${thesis.ticket-allow-project-no:false}")
-    private boolean ticketAllowProjectNo;
+    private final int ticketObjectionDays = TicketPolicy.OBJECTION_DAYS;
 
-    @Value("${thesis.ticket-allow-procure-ref:false}")
-    private boolean ticketAllowProcureRef;
+    private final int ticketWeekReportDeadlineDay = TicketPolicy.WEEK_REPORT_DEADLINE_DAY;
 
-    @Value("${thesis.ticket-procure-to-stock-in:false}")
-    private boolean ticketProcureToStockIn;
+    private final boolean ticketBedConstraint = TicketPolicy.BED_CONSTRAINT;
 
-    @Value("${thesis.ticket-allow-dual-review:false}")
-    private boolean ticketAllowDualReview;
+    private final String ticketBedConstraintNeedMessage = TicketPolicy.BED_CONSTRAINT_NEED_MESSAGE;
 
-    @Value("${thesis.ticket-allow-ship-fee:false}")
-    private boolean ticketAllowShipFee;
+    private final String ticketBedConstraintDenyMessage = TicketPolicy.BED_CONSTRAINT_DENY_MESSAGE;
 
-    @Value("${thesis.ticket-allow-utility-note:false}")
-    private boolean ticketAllowUtilityNote;
+    private final boolean ticketArrivalNotify = TicketPolicy.ARRIVAL_NOTIFY;
 
-    @Value("${thesis.ticket-max-cancel-holds:0}")
-    private int ticketMaxCancelHolds;
+    private final boolean ticketRequireNoticeAck = TicketPolicy.REQUIRE_NOTICE_ACK;
 
-    @Value("${thesis.ticket-overdue-auto-compensate:false}")
-    private boolean ticketOverdueAutoCompensate;
+    private final boolean ticketAllowDeposit = TicketPolicy.ALLOW_DEPOSIT;
 
-    @Value("${thesis.ticket-allow-fine-waive:false}")
-    private boolean ticketAllowFineWaive;
+    private final boolean ticketAllowExceptionClose = TicketPolicy.ALLOW_EXCEPTION_CLOSE;
 
-    @Value("${thesis.ticket-renew-block-if-held:false}")
-    private boolean ticketRenewBlockIfHeld;
+    private final boolean ticketRequireTrainingAck = TicketPolicy.REQUIRE_TRAINING_ACK;
 
-    @Value("${thesis.ticket-require-peer-confirm:false}")
-    private boolean ticketRequirePeerConfirm;
+    private final boolean ticketRequireInsuranceAck = TicketPolicy.REQUIRE_INSURANCE_ACK;
 
-    @Value("${thesis.ticket-require-abandon-dual:false}")
-    private boolean ticketRequireAbandonDual;
+    private final boolean ticketBlockIfCalibExpired = TicketPolicy.BLOCK_IF_CALIB_EXPIRED;
+
+    private final boolean ticketAllowProjectNo = TicketPolicy.ALLOW_PROJECT_NO;
+
+    private final boolean ticketAllowProcureRef = TicketPolicy.ALLOW_PROCURE_REF;
+
+    private final boolean ticketProcureToStockIn = TicketPolicy.PROCURE_TO_STOCK_IN;
+
+    private final boolean ticketAllowDualReview = TicketPolicy.ALLOW_DUAL_REVIEW;
+
+    private final boolean ticketAllowShipFee = TicketPolicy.ALLOW_SHIP_FEE;
+
+    private final boolean ticketAllowUtilityNote = TicketPolicy.ALLOW_UTILITY_NOTE;
+
+    private final int ticketMaxCancelHolds = TicketPolicy.MAX_CANCEL_HOLDS;
+
+    private final boolean ticketOverdueAutoCompensate = TicketPolicy.OVERDUE_AUTO_COMPENSATE;
+
+    private final boolean ticketAllowFineWaive = TicketPolicy.ALLOW_FINE_WAIVE;
+
+    private final boolean ticketRenewBlockIfHeld = TicketPolicy.RENEW_BLOCK_IF_HELD;
+
+    private final boolean ticketRequirePeerConfirm = TicketPolicy.REQUIRE_PEER_CONFIRM;
+
+    private final boolean ticketRequireAbandonDual = TicketPolicy.REQUIRE_ABANDON_DUAL;
+
+    private final boolean ticketRepairThicken = TicketPolicy.REPAIR_THICKEN;
+
+    private final boolean ticketAllowUserUrge = TicketPolicy.ALLOW_USER_URGE;
+
+    private final int ticketUrgeCooldownMinutes = TicketPolicy.URGE_COOLDOWN_MINUTES;
+
+    private final boolean ticketLockUrgeAfterRate = TicketPolicy.LOCK_URGE_AFTER_RATE;
+
+    private final boolean ticketAllowCancelUrge = TicketPolicy.ALLOW_CANCEL_URGE;
+
+    private final boolean ticketRequireFaultReason = TicketPolicy.REQUIRE_FAULT_REASON;
+
+    private final boolean ticketRequireCloseSummary = TicketPolicy.REQUIRE_CLOSE_SUMMARY;
+
+    private final boolean ticketRequireLowRatingRemark = TicketPolicy.REQUIRE_LOW_RATING_REMARK;
+
+    private final boolean ticketSlaSplit = TicketPolicy.SLA_SPLIT;
+
+    private final boolean ticketEscalateOnOverdue = TicketPolicy.ESCALATE_ON_OVERDUE;
+
+    private final boolean ticketNotifySupervisorOnOverdue = TicketPolicy.NOTIFY_SUPERVISOR_ON_OVERDUE;
+
+    private final boolean ticketAllowHoldResume = TicketPolicy.ALLOW_HOLD_RESUME;
+
+    private final boolean ticketAllowCancelDispatched = TicketPolicy.ALLOW_CANCEL_DISPATCHED;
+
+    private final boolean ticketAllowTicketDraft = TicketPolicy.ALLOW_TICKET_DRAFT;
+
+    private final boolean ticketAllowFollowRate = TicketPolicy.ALLOW_FOLLOW_RATE;
+
+    private final boolean ticketPreferredSlot = TicketPolicy.PREFERRED_SLOT;
+
+    private final boolean ticketProgressSubscribe = TicketPolicy.PROGRESS_SUBSCRIBE;
+
+    private final boolean ticketNightUrgent = TicketPolicy.NIGHT_URGENT;
+
+    private final boolean ticketAllowPartsNote = TicketPolicy.ALLOW_PARTS_NOTE;
+
+    private final boolean ticketAllowQuote = TicketPolicy.ALLOW_QUOTE;
+
+    private final boolean ticketAllowPublicArea = TicketPolicy.ALLOW_PUBLIC_AREA;
+
+    private final boolean ticketDupRoomCheck = TicketPolicy.DUP_ROOM_CHECK;
+
+    private final boolean ticketAllowAssetCode = TicketPolicy.ALLOW_ASSET_CODE;
+
+    private final boolean ticketAllowRemoteUrl = TicketPolicy.ALLOW_REMOTE_URL;
+
+    private final boolean ticketAllowSerialNo = TicketPolicy.ALLOW_SERIAL_NO;
+
+    private final boolean ticketAllowHelper = TicketPolicy.ALLOW_HELPER;
+
+    private final boolean ticketAllowRatingTags = TicketPolicy.ALLOW_RATING_TAGS;
+
+    private final boolean ticketTodayBoard = TicketPolicy.TODAY_BOARD;
+
+    private final boolean ticketPrintTicket = TicketPolicy.PRINT_TICKET;
 
     @Value("${thesis.slot-require-remark:false}")
     private boolean slotRequireRemark;
@@ -444,11 +410,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.slot-allow-rating:false}")
     private boolean slotAllowRating;
 
-    @Value("${thesis.wallet-enabled:false}")
-    private boolean walletEnabled;
+    private final boolean walletEnabled = AppPolicy.WALLET_ENABLED;
 
-    @Value("${thesis.points-enabled:false}")
-    private boolean pointsEnabled;
+    private final boolean pointsEnabled = AppPolicy.POINTS_ENABLED;
 
     @Value("${thesis.spend-discount-enabled:false}")
     private boolean spendDiscountEnabled;
@@ -459,8 +423,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.coupon-enabled:false}")
     private boolean couponEnabled;
 
-    @Value("${thesis.order-review-enabled:false}")
-    private boolean orderReviewEnabled;
+    private final boolean orderReviewEnabled = AppPolicy.ORDER_REVIEW_ENABLED;
 
     @Value("${thesis.line-custom-enabled:false}")
     private boolean lineCustomEnabled;
@@ -519,23 +482,19 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.no-casual-refund:false}")
     private boolean noCasualRefund;
 
-    @Value("${thesis.favorites-enabled:false}")
-    private boolean favoritesEnabled;
+    private final boolean favoritesEnabled = AppPolicy.FAVORITES_ENABLED;
 
     @Value("${thesis.post-like-enabled:false}")
     private boolean postLikeEnabled;
 
-    @Value("${thesis.content-report-enabled:false}")
-    private boolean contentReportEnabled;
+    private final boolean contentReportEnabled = AppPolicy.CONTENT_REPORT_ENABLED;
 
-    @Value("${thesis.post-mute-enabled:false}")
-    private boolean postMuteEnabled;
+    private final boolean postMuteEnabled = AppPolicy.POST_MUTE_ENABLED;
 
     @Value("${thesis.book-suggest-enabled:false}")
     private boolean bookSuggestEnabled;
 
-    @Value("${thesis.parcel-shelf-enabled:false}")
-    private boolean parcelShelfEnabled;
+    private final boolean parcelShelfEnabled = AppPolicy.PARCEL_SHELF_ENABLED;
 
     @Value("${thesis.parcel-ship-enabled:false}")
     private boolean parcelShipEnabled;
@@ -558,11 +517,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.browse-history-enabled:false}")
     private boolean browseHistoryEnabled;
 
-    @Value("${thesis.archive-log-enabled:false}")
-    private boolean archiveLogEnabled;
+    private final boolean archiveLogEnabled = AppPolicy.ARCHIVE_LOG_ENABLED;
 
-    @Value("${thesis.exam-enabled:false}")
-    private boolean examEnabled;
+    private final boolean examEnabled = AppPolicy.EXAM_ENABLED;
 
     @Value("${thesis.exam-practice-enabled:false}")
     private boolean examPracticeEnabled;
@@ -585,28 +542,21 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.exam-require-before-ticket:false}")
     private boolean examRequireBeforeTicket;
 
-    @Value("${thesis.survey-enabled:false}")
-    private boolean surveyEnabled;
+    private final boolean surveyEnabled = AppPolicy.SURVEY_ENABLED;
 
-    @Value("${thesis.vote-enabled:false}")
-    private boolean voteEnabled;
+    private final boolean voteEnabled = AppPolicy.VOTE_ENABLED;
 
-    @Value("${thesis.doclib-enabled:false}")
-    private boolean doclibEnabled;
+    private final boolean doclibEnabled = AppPolicy.DOCLIB_ENABLED;
 
-    @Value("${thesis.timebank-enabled:false}")
-    private boolean timebankEnabled;
+    private final boolean timebankEnabled = AppPolicy.TIMEBANK_ENABLED;
 
-    @Value("${thesis.timebank-redeem-on-approve:false}")
-    private boolean timebankRedeemOnApprove;
+    private final boolean timebankRedeemOnApprove = AppPolicy.TIMEBANK_REDEEM_ON_APPROVE;
 
     /** C-15 影院选座 */
-    @Value("${thesis.seat-select-enabled:false}")
-    private boolean seatSelectEnabled;
+    private final boolean seatSelectEnabled = AppPolicy.SEAT_SELECT_ENABLED;
 
     /** C-17 浅进销存 */
-    @Value("${thesis.stock-io-enabled:false}")
-    private boolean stockIoEnabled;
+    private final boolean stockIoEnabled = AppPolicy.STOCK_IO_ENABLED;
 
     /** E-08 报废 */
     @Value("${thesis.stock-scrap-enabled:false}")
@@ -629,38 +579,28 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private boolean stockScrapApproveFlow;
 
     /** C-18 本地签章 */
-    @Value("${thesis.e-sign-enabled:false}")
-    private boolean eSignEnabled;
+    private final boolean eSignEnabled = AppPolicy.E_SIGN_ENABLED;
 
-    @Value("${thesis.balance-ledger-enabled:false}")
-    private boolean balanceLedgerEnabled;
+    private final boolean balanceLedgerEnabled = AppPolicy.BALANCE_LEDGER_ENABLED;
 
-    @Value("${thesis.balance-ledger-debit-on-approve:false}")
-    private boolean balanceLedgerDebitOnApprove;
+    private final boolean balanceLedgerDebitOnApprove = AppPolicy.BALANCE_LEDGER_DEBIT_ON_APPROVE;
 
-    @Value("${thesis.grade-scores-enabled:false}")
-    private boolean gradeScoresEnabled;
+    private final boolean gradeScoresEnabled = AppPolicy.GRADE_SCORES_ENABLED;
 
-    @Value("${thesis.occupy-span-enabled:false}")
-    private boolean occupySpanEnabled;
+    private final boolean occupySpanEnabled = AppPolicy.OCCUPY_SPAN_ENABLED;
 
-    @Value("${thesis.material-check-enabled:false}")
-    private boolean materialCheckEnabled;
+    private final boolean materialCheckEnabled = AppPolicy.MATERIAL_CHECK_ENABLED;
 
-    @Value("${thesis.claim-proof-enabled:false}")
-    private boolean claimProofEnabled;
+    private final boolean claimProofEnabled = AppPolicy.CLAIM_PROOF_ENABLED;
 
-    @Value("${thesis.lost-clue-enabled:false}")
-    private boolean lostClueEnabled;
+    private final boolean lostClueEnabled = AppPolicy.LOST_CLUE_ENABLED;
 
     @Value("${thesis.gallery-enabled:false}")
     private boolean galleryEnabled;
 
-    @Value("${thesis.stock-warn-notify:false}")
-    private boolean stockWarnNotify;
+    private final boolean stockWarnNotify = AppPolicy.STOCK_WARN_NOTIFY;
 
-    @Value("${thesis.stock-warn-below:10}")
-    private int stockWarnBelow;
+    private final int stockWarnBelow = AppPolicy.STOCK_WARN_BELOW;
 
     @Value("${thesis.detail-attrs-enabled:false}")
     private boolean detailAttrsEnabled;
@@ -674,18 +614,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.product-spec-enabled:false}")
     private boolean productSpecEnabled;
 
-    @Value("${thesis.shop-marketplace:false}")
-    private boolean shopMarketplace;
+    private final boolean shopMarketplace = AppPolicy.SHOP_MARKETPLACE;
 
     /** 店铺客服选人 */
-    @Value("${thesis.dm-shop-cs:false}")
-    private boolean dmShopCs;
+    private final boolean dmShopCs = AppPolicy.DM_SHOP_CS;
 
-    @Value("${thesis.points-earn-per-yuan:1}")
-    private int pointsEarnPerYuan;
+    private final int pointsEarnPerYuan = AppPolicy.POINTS_EARN_PER_YUAN;
 
-    @Value("${thesis.points-pay-enabled:false}")
-    private boolean pointsPayEnabled;
+    private final boolean pointsPayEnabled = AppPolicy.POINTS_PAY_ENABLED;
 
     @Value("${thesis.points-offset-enabled:false}")
     private boolean pointsOffsetEnabled;
@@ -755,6 +691,11 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             TicketStore.configureRenew(ticketAllowRenew, ticketMaxRenew, ticketRenewDays);
             TicketStore.configureDueSoon(ticketDueSoonDays);
             TicketStore.configureMaxOverdueTimes(ticketMaxOverdueTimes);
+            BorrowCreditStore.configure(
+                    ticketCreditOnOverdue,
+                    ticketCreditInitial,
+                    ticketCreditOverdueDelta,
+                    ticketCreditBlockBelow);
             TicketStore.configureWaitlist(ticketAllowWaitlist);
             TicketStore.configureBookHold(ticketAllowBookHold, ticketHoldHours);
             TicketStore.configureBookLost(ticketAllowBookLost);
@@ -828,6 +769,45 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                     ticketAttachByLeaveType,
                     ticketAllowMakeupApply,
                     ticketWeekReportDeadlineDay);
+            TicketStore.configureFollowOps(ticketStaleFollowDays, ticketPhoneDupCheck);
+            TicketStore.configureEventOps(
+                    ticketLevelAffectsDeadline,
+                    Math.max(1, ticketLevelSlaHighDays),
+                    Math.max(1, ticketLevelSlaMidDays),
+                    Math.max(1, ticketLevelSlaLowDays),
+                    ticketNotifyDutyOnReport);
+            FundPublicityStore.configureObjection(ticketAllowObjectionWindow, ticketObjectionDays);
+            GradeScoreStore.configureObjectionDays(ticketObjectionDays);
+            TicketStore.configureRepairThicken(
+                    ticketRepairThicken,
+                    ticketAllowUserUrge,
+                    ticketUrgeCooldownMinutes,
+                    ticketLockUrgeAfterRate,
+                    ticketAllowCancelUrge,
+                    ticketRequireFaultReason,
+                    ticketRequireCloseSummary,
+                    ticketRequireLowRatingRemark,
+                    ticketSlaSplit,
+                    ticketEscalateOnOverdue,
+                    ticketNotifySupervisorOnOverdue,
+                    ticketAllowHoldResume,
+                    ticketAllowCancelDispatched,
+                    ticketAllowTicketDraft,
+                    ticketAllowFollowRate,
+                    ticketPreferredSlot,
+                    ticketProgressSubscribe,
+                    ticketNightUrgent,
+                    ticketAllowPartsNote,
+                    ticketAllowQuote,
+                    ticketAllowPublicArea,
+                    ticketDupRoomCheck,
+                    ticketAllowAssetCode,
+                    ticketAllowRemoteUrl,
+                    ticketAllowSerialNo,
+                    ticketAllowHelper,
+                    ticketAllowRatingTags,
+                    ticketTodayBoard,
+                    ticketPrintTicket);
         }
         LoyaltyStore.configure(
                 walletEnabled,

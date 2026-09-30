@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.vote import VOTE_CAP, scan_vote_signup_composite
 
@@ -82,7 +84,7 @@ class VoteSignupC11Tests(unittest.TestCase):
             },
             body,
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ACTIVITY", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ACTIVITY", spec) + policy_preview("DOM-ACTIVITY", spec) + app_policy_preview("DOM-ACTIVITY", spec)
         self.assertIn("vote-enabled: true", yml)
         self.assertIn("enable-ticket: true", yml)
 

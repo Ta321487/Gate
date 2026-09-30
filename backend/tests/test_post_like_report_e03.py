@@ -9,6 +9,7 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.favorites import (
     CONTENT_REPORT_CAP,
@@ -104,7 +105,7 @@ class PostLikeReportE03Tests(unittest.TestCase):
         menus = (rich.get("schema") or {}).get("menus", {}).get("admin") or []
         self.assertTrue(any(m.get("key") == "content_reports" for m in menus))
 
-        yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", rich)
+        yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", rich) + app_policy_preview("DOM-FORUM", rich)
         self.assertIn("post-like-enabled: true", yml)
         self.assertIn("content-report-enabled: true", yml)
 

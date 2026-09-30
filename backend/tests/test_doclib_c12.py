@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.doclib import DOCLIB_CAP
 from app.bake.menu_routes import shell_kind
@@ -88,7 +90,7 @@ class DoclibC12Tests(unittest.TestCase):
             },
             "文库下载",
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-DOCLIB", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-DOCLIB", spec) + policy_preview("DOM-DOCLIB", spec) + app_policy_preview("DOM-DOCLIB", spec)
         self.assertIn("doclib-enabled: true", yml)
         self.assertIn("enable-ticket: false", yml)
         d = resolve_accept(

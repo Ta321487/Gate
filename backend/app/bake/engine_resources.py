@@ -205,6 +205,7 @@ def _write_factory_delivered(
         "schema": schema,
     }
     delivered = dest / "frontend" / "src" / "appDelivered.js"
+    delivered.parent.mkdir(parents=True, exist_ok=True)
     # 兼容旧文件名（若存在则删掉，避免双份）
     legacy = dest / "frontend" / "src" / "factoryDelivered.js"
     if legacy.exists():

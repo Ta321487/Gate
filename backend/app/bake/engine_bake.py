@@ -64,8 +64,30 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
         remove_tree_reliable(dest)
     if not src.exists():
         raise FileNotFoundError(f"骨架不存在: {src}")
-    shutil.copytree(src, dest)
+    # 骨架若残留 node_modules / target / dist，禁止整树拷进工作区：
+    # Windows 上大目录 copytree 曾出现 backend 被拷成空壳，导致后续写 yml / AppPolicy 全灭。
+    # 前端依赖由 prepare_frontend_deps 挂共享缓存；Maven target 由编译再生。
+    def _bake_copy_ignore(directory: str, names: list[str]) -> set[str]:
+        skip = {"node_modules", "target", "dist", ".vite"}
+        return {n for n in names if n in skip}
 
+    shutil.copytree(src, dest, ignore=_bake_copy_ignore)
+
+    # 对账孤儿清盘每轮会扫 workspace/：bake 中必须挂牌，否则半截目录被掏空
+    from app.services.project_disk import clear_bake_in_progress, mark_bake_in_progress
+
+    mark_bake_in_progress(dest)
+    try:
+        return _bake_project_body(project_id, spec, db_name, dest)
+    finally:
+        clear_bake_in_progress(dest)
+
+
+def _bake_project_body(
+    project_id: str, spec: dict[str, Any], db_name: str, dest: Path
+) -> Path:
+    """bake_project 主体（已 copytree + 挂牌）。"""
+    settings = get_settings()
     domain = spec.get("domain", "DOM-GENERIC")
     overlay = settings.skeletons_dir / "domains" / domain
     if overlay.exists():
@@ -211,6 +233,13 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
 
             ensure_jpa_application_yml(dest)
 
+    # 策略下沉：生成 TicketPolicy / AppPolicy（须在 java 包名 remap 之前，包名仍为 com.thesis）
+    from app.bake.runtime_policy import write_policy as write_app_policy
+    from app.bake.ticket_policy import write_policy as write_ticket_policy
+
+    write_ticket_policy(dest, domain, spec)
+    write_app_policy(dest, domain, spec)
+
     from app.bake.api_style import apply_api_style_to_workspace, normalize_api_style
 
     apply_api_style_to_workspace(dest, normalize_api_style(spec.get("api_style")))
@@ -329,26 +358,16 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         runtime = dict((DOMAINS.get(domain) or {}).get("runtime") or {})
     roles = spec.get("roles") or (DOMAINS.get(domain) or {}).get("roles") or ["user", "admin"]
     register_role = runtime.get("register_role") or (roles[0] if roles else "user")
-    ticket_mode = runtime.get("ticket_mode") or "archive"
-    ticket_table = runtime.get("ticket_table") or "borrow"
     caps = set(spec.get("capabilities") or DOMAIN_CAPABILITIES.get(domain) or [])
+    # 单据参数/开关已下沉到生成的 TicketPolicy.java；yml 仅保留与订单共用的 use-quota
     use_quota = runtime.get("use_quota")
     if use_quota is None:
         use_quota = "quota" in caps
-    use_deadline = runtime.get("use_deadline")
-    if use_deadline is None:
-        use_deadline = "deadline" in caps
-    allow_multi = bool(runtime.get("allow_multi_ticket") or False)
-    check_conflict = runtime.get("check_time_conflict")
-    if check_conflict is None:
-        check_conflict = "time_conflict" in caps
     enable_ticket = runtime.get("enable_ticket")
     if enable_ticket is None:
         enable_ticket = "ticket_flow" in caps
 
-    ticket_ent = ((spec.get("schema") or {}).get("entities") or {}).get("ticket") or {}
     resv_ent = ((spec.get("schema") or {}).get("entities") or {}).get("reservation") or {}
-    archive_ent = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
     guest_on = portal_guest_browse_enabled(domain, DOMAINS.get(domain) or {})
     ph = str(spec.get("password_hash") or "none")
 
@@ -394,310 +413,20 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     lines.append("  # 是否允许从门户用户里任命岗位账号")
     lines.append(f"  allow-appoint-from-users: {'true' if appoint_ok else 'false'}")
 
+    # 单据参数 → TicketPolicy；档案/订单/预约表位与非单据开关 → AppPolicy
+    # yml 只保留启动期 / 门户 / 门禁 / 与订单共用的 use-quota（守卫勿放宽，防重复发键）
     if enable_ticket:
-        lines.append("  # 单据主流程")
-        lines.append("  enable-ticket: true")
-        lines.append(f"  ticket-mode: {ticket_mode}")
-        lines.append(f"  ticket-table: {ticket_table}")
         lines.append(f"  use-quota: {'true' if use_quota else 'false'}")
-        lines.append(f"  use-deadline: {'true' if use_deadline else 'false'}")
-        if allow_multi:
-            lines.append("  allow-multi-ticket: true")
-        if check_conflict:
-            lines.append("  check-time-conflict: true")
-        # 仅写出开启的单据能力，避免一排 false
-        flag_map = (
-            ("ticket-two-level", bool(ticket_ent.get("twoLevelApprove") or ticket_ent.get("threeLevelApprove"))),
-            ("ticket-three-level", bool(ticket_ent.get("threeLevelApprove"))),
-            ("ticket-require-attach", bool(ticket_ent.get("requireAttach"))),
-            ("ticket-allow-rating", bool(ticket_ent.get("allowRating"))),
-            ("ticket-check-mutex", bool(ticket_ent.get("checkMutex"))),
-            ("ticket-week-calendar", bool(ticket_ent.get("weekCalendar"))),
-            ("ticket-allow-checkin", bool(ticket_ent.get("allowCheckin"))),
-            ("ticket-peer-accept", bool(ticket_ent.get("peerAccept"))),
-            ("ticket-issue-pass-code", bool(ticket_ent.get("issuePassCode"))),
-            ("ticket-allow-renew", bool(ticket_ent.get("allowRenew"))),
-            ("ticket-allow-waitlist", bool(ticket_ent.get("allowWaitlist"))),
-            ("ticket-allow-book-hold", bool(ticket_ent.get("allowBookHold"))),
-            ("ticket-allow-book-lost", bool(ticket_ent.get("allowBookLost"))),
-            ("ticket-require-return-attach", bool(ticket_ent.get("requireReturnAttach"))),
-            ("ticket-pick-loan-period", bool(ticket_ent.get("pickLoanPeriod"))),
-            ("ticket-allow-qty", bool(ticket_ent.get("allowQty"))),
-            ("ticket-require-remark", bool(ticket_ent.get("requireRemark"))),
-            ("ticket-pick-date-range", bool(ticket_ent.get("pickDateRange"))),
-            ("ticket-approve-ends-flow", bool(ticket_ent.get("approveEndsFlow"))),
-            ("ticket-auto-approve", bool(ticket_ent.get("autoApprove"))),
-            ("ticket-require-claim-code", bool(ticket_ent.get("requireClaimCode"))),
-            ("ticket-match-profile-room", bool(ticket_ent.get("matchProfileRoom"))),
-            ("ticket-applicant-complete-only", bool(ticket_ent.get("applicantCompleteOnly"))),
-            ("ticket-allow-proxy-pickup", bool(ticket_ent.get("allowProxyPickup"))),
-            ("ticket-bed-constraint", bool(ticket_ent.get("bedConstraint"))),
-            ("ticket-arrival-notify", bool(ticket_ent.get("arrivalNotify"))),
-            ("ticket-require-notice-ack", bool(ticket_ent.get("requireNoticeAck"))),
-            ("ticket-allow-deposit", bool(ticket_ent.get("allowDeposit"))),
-            ("ticket-allow-exception-close", bool(ticket_ent.get("allowExceptionClose"))),
-            ("ticket-require-training-ack", bool(ticket_ent.get("requireTrainingAck"))),
-            ("ticket-require-insurance-ack", bool(ticket_ent.get("requireInsuranceAck"))),
-            ("ticket-block-if-calib-expired", bool(ticket_ent.get("blockIfCalibExpired"))),
-            ("ticket-allow-project-no", bool(ticket_ent.get("allowProjectNo"))),
-            ("ticket-allow-procure-ref", bool(ticket_ent.get("allowProcureRef"))),
-            ("ticket-procure-to-stock-in", bool(ticket_ent.get("procureToStockIn"))),
-            ("ticket-allow-dual-review", bool(ticket_ent.get("allowDualReview"))),
-            ("ticket-allow-ship-fee", bool(ticket_ent.get("allowShipFee"))),
-            ("ticket-allow-utility-note", bool(ticket_ent.get("allowUtilityNote"))),
-            ("ticket-overdue-auto-compensate", bool(ticket_ent.get("overdueAutoCompensate"))),
-            ("ticket-allow-fine-waive", bool(ticket_ent.get("allowFineWaive"))),
-            ("ticket-renew-block-if-held", bool(ticket_ent.get("renewBlockIfHeld"))),
-            ("ticket-require-peer-confirm", bool(ticket_ent.get("requirePeerConfirm"))),
-            ("ticket-require-abandon-dual", bool(ticket_ent.get("requireAbandonDual"))),
-            ("ticket-phone-dup-check", bool(ticket_ent.get("phoneDupCheck"))),
-            ("ticket-allow-deal-amount", bool(ticket_ent.get("allowDealAmount"))),
-            ("ticket-allow-next-action", bool(ticket_ent.get("allowNextAction"))),
-            ("ticket-require-close-attach", bool(ticket_ent.get("requireCloseAttach"))),
-            ("ticket-require-return-date", bool(ticket_ent.get("requireReturnDate"))),
-            ("ticket-attach-by-leave-type", bool(ticket_ent.get("attachByLeaveType"))),
-            ("ticket-allow-leave-proxy", bool(ticket_ent.get("allowLeaveProxy"))),
-            ("ticket-allow-interview-result", bool(ticket_ent.get("allowInterviewResult"))),
-            ("ticket-allow-batch-hire", bool(ticket_ent.get("allowBatchHire"))),
-            ("ticket-allow-written-score", bool(ticket_ent.get("allowWrittenScore"))),
-            ("ticket-allow-bg-check-note", bool(ticket_ent.get("allowBgCheckNote"))),
-            ("ticket-allow-defense-result", bool(ticket_ent.get("allowDefenseResult"))),
-            ("ticket-mask-bank-account", bool(ticket_ent.get("maskBankAccount"))),
-            ("ticket-allow-disburse-batch", bool(ticket_ent.get("allowDisburseBatch"))),
-            ("ticket-week-report-remind", bool(ticket_ent.get("weekReportRemind"))),
-            ("ticket-require-appraisal", bool(ticket_ent.get("requireAppraisal"))),
-            ("ticket-allow-company-eval", bool(ticket_ent.get("allowCompanyEval"))),
-            ("ticket-allow-excellent-mark", bool(ticket_ent.get("allowExcellentMark"))),
-            ("ticket-require-feedback-set", bool(ticket_ent.get("requireFeedbackSet"))),
-            ("ticket-allow-record-url", bool(ticket_ent.get("allowRecordUrl"))),
-            ("ticket-allow-makeup-apply", bool(ticket_ent.get("allowMakeupApply"))),
-            ("ticket-home-visit-template", bool(ticket_ent.get("homeVisitTemplate"))),
-            ("ticket-allow-confidential", bool(ticket_ent.get("allowConfidential"))),
-            ("ticket-allow-assign-dept", bool(ticket_ent.get("allowAssignDept"))),
-        )
-        on_flags = [(k, v) for k, v in flag_map if v]
-        if on_flags:
-            lines.append("  # 单据扩展能力")
-            for k, _ in on_flags:
-                lines.append(f"  {k}: true")
-        try:
-            follow_remind = int(ticket_ent.get("followRemindDays") or 0)
-        except (TypeError, ValueError):
-            follow_remind = 0
-        if follow_remind > 0:
-            lines.append(f"  ticket-follow-remind-days: {max(1, min(14, follow_remind))}")
-        try:
-            min_words = int(ticket_ent.get("minRemarkWords") or 0)
-        except (TypeError, ValueError):
-            min_words = 0
-        if min_words > 0:
-            lines.append(f"  ticket-min-remark-words: {max(1, min(5000, min_words))}")
-        try:
-            max_revise = int(ticket_ent.get("maxReviseTimes") or 0)
-        except (TypeError, ValueError):
-            max_revise = 0
-        if max_revise > 0:
-            lines.append(f"  ticket-max-revise-times: {max(1, min(20, max_revise))}")
-        try:
-            week_dl = int(ticket_ent.get("weekReportDeadlineDay") or 0)
-        except (TypeError, ValueError):
-            week_dl = 0
-        if week_dl > 0:
-            lines.append(f"  ticket-week-report-deadline-day: {max(1, min(28, week_dl))}")
-        if ticket_ent.get("matchProfileRoom"):
-            for yml_key, ent_key in (
-                ("ticket-match-profile-building-key", "matchProfileBuildingKey"),
-                ("ticket-match-profile-room-key", "matchProfileRoomKey"),
-                ("ticket-match-profile-building-field", "matchProfileBuildingField"),
-                ("ticket-match-profile-room-field", "matchProfileRoomField"),
-                ("ticket-match-profile-need-message", "matchProfileNeedMessage"),
-                ("ticket-match-profile-deny-message", "matchProfileDenyMessage"),
-            ):
-                val = str(ticket_ent.get(ent_key) or "").strip()
-                if val:
-                    # YAML 简单标量；文案含冒号时加引号
-                    if ":" in val or "#" in val or val.startswith(("*", "&", "!", "[", "{")):
-                        safe = val.replace("\\", "\\\\").replace('"', '\\"')
-                        lines.append(f'  {yml_key}: "{safe}"')
-                    else:
-                        lines.append(f"  {yml_key}: {val}")
-            if ticket_ent.get("matchProfileLooseBuilding"):
-                lines.append("  ticket-match-profile-loose-building: true")
-        if ticket_ent.get("bedConstraint"):
-            labels = (spec.get("schema") or {}).get("labels") or {}
-            for yml_key, lab_key in (
-                ("ticket-bed-constraint-need-message", "bedConstraintNeedMessage"),
-                ("ticket-bed-constraint-deny-message", "bedConstraintDenyMessage"),
-            ):
-                val = str(labels.get(lab_key) or "").strip()
-                if val:
-                    if ":" in val or "#" in val or val.startswith(("*", "&", "!", "[", "{")):
-                        safe = val.replace("\\", "\\\\").replace('"', '\\"')
-                        lines.append(f'  {yml_key}: "{safe}"')
-                    else:
-                        lines.append(f"  {yml_key}: {val}")
-        try:
-            cat_limit_n = int(ticket_ent.get("categoryLimit") or 0)
-        except (TypeError, ValueError):
-            cat_limit_n = 0
-        if cat_limit_n > 0:
-            lines.append(f"  ticket-category-limit: {cat_limit_n}")
-        if ticket_ent.get("allowRenew"):
-            try:
-                max_renew = int(ticket_ent.get("maxRenew") or 1)
-            except (TypeError, ValueError):
-                max_renew = 1
-            max_renew = max(1, min(5, max_renew))
-            lines.append(f"  ticket-max-renew: {max_renew}")
-            try:
-                renew_days = int(ticket_ent.get("renewDays") or 0)
-            except (TypeError, ValueError):
-                renew_days = 0
-            if renew_days > 0:
-                lines.append(f"  ticket-renew-days: {renew_days}")
-        try:
-            due_soon = int(ticket_ent.get("dueSoonDays") or 0)
-        except (TypeError, ValueError):
-            due_soon = 0
-        if due_soon > 0 and not ticket_ent.get("slaDeadline") and not ticket_ent.get("applicantCompleteOnly"):
-            lines.append(f"  ticket-due-soon-days: {max(1, min(14, due_soon))}")
-        try:
-            max_od = int(ticket_ent.get("maxOverdueTimes") or 0)
-        except (TypeError, ValueError):
-            max_od = 0
-        if max_od > 0:
-            lines.append(f"  ticket-max-overdue-times: {max(1, min(20, max_od))}")
-        try:
-            max_cancel = int(ticket_ent.get("maxCancelHolds") or 0)
-        except (TypeError, ValueError):
-            max_cancel = 0
-        if max_cancel > 0:
-            lines.append(f"  ticket-max-cancel-holds: {max(1, min(20, max_cancel))}")
-        if ticket_ent.get("allowBookHold"):
-            try:
-                hold_hours = int(ticket_ent.get("holdHours") or 48)
-            except (TypeError, ValueError):
-                hold_hours = 48
-            hold_hours = max(1, min(168, hold_hours))
-            lines.append(f"  ticket-hold-hours: {hold_hours}")
-        from app.bake.ticket_rules import rules_for
 
-        rules = rules_for(
-            domain,
-            title=str(spec.get("title") or ""),
-            proposal_text=str(spec.get("proposal_text") or ""),
-        )
-        rule_lines: list[str] = []
-        try:
-            loan_n = int(rules.get("loan_days") or 0)
-        except (TypeError, ValueError):
-            loan_n = 0
-        if loan_n > 0:
-            rule_lines.append(f"  ticket-loan-days: {loan_n}")
-        try:
-            max_n = int(rules.get("max_active") or 0)
-        except (TypeError, ValueError):
-            max_n = 0
-        if max_n > 0:
-            rule_lines.append(f"  ticket-max-active: {max_n}")
-        if "fine_per_day" in rules:
-            try:
-                fine_n = float(rules.get("fine_per_day"))
-            except (TypeError, ValueError):
-                fine_n = -1.0
-            if fine_n >= 0:
-                rule_lines.append(f"  ticket-fine-per-day: {fine_n:g}")
-        place = str(rules.get("pickup_place") or "").strip()
-        if place:
-            # yml 简单值；地点文案无冒号
-            rule_lines.append(f"  ticket-pickup-place: {place}")
-        if rule_lines:
-            lines.append("  # 借阅/罚金等业务参数（无独立配置表时写在这里）")
-            lines.extend(rule_lines)
-        if ticket_ent.get("noShowAfterEnd") and ticket_ent.get("allowCheckin"):
-            lines.append("  ticket-no-show-after-end: true")
-            try:
-                pen = float(ticket_ent.get("noShowPenaltyYuan") or 0)
-            except (TypeError, ValueError):
-                pen = 0.0
-            if pen > 0:
-                lines.append(f"  ticket-no-show-penalty-yuan: {pen:g}")
-    else:
-        # Java 默认 enable-ticket=true，关闭时必须显式写出
-        lines.append("  enable-ticket: false")
-
-    if "archive" in caps:
-        cat = str(runtime.get("archive_category_table") or "category")
-        item = str(runtime.get("archive_item_table") or "book")
-        lines.append("  # 档案主数据表")
-        lines.append(f"  archive-category-table: {cat}")
-        lines.append(f"  archive-item-table: {item}")
-        if archive_ent.get("softDelete"):
-            lines.append("  archive-soft-delete: true")
-        if archive_ent.get("userPublish"):
-            lines.append("  archive-user-publish: true")
-        if archive_ent.get("publishReview"):
-            lines.append("  archive-publish-review: true")
-        if (spec.get("schema") or {}).get("shopMarketplace"):
-            lines.append("  shop-marketplace: true")
-        schema_root = spec.get("schema") or {}
-        if schema_root.get("stockWarnNotify"):
-            lines.append("  stock-warn-notify: true")
-            try:
-                warn_below = int(schema_root.get("stockWarnBelow") or 10)
-            except (TypeError, ValueError):
-                warn_below = 10
-            lines.append(f"  stock-warn-below: {max(1, min(999, warn_below))}")
-        tag = runtime.get("archive_tag_table")
-        item_tag = runtime.get("archive_item_tag_table")
-        if tag and item_tag:
-            lines.append(f"  archive-tag-table: {tag}")
-            lines.append(f"  archive-item-tag-table: {item_tag}")
-
-    site = runtime.get("lookup_site_table")
-    unit = runtime.get("lookup_unit_table")
-    typ = runtime.get("lookup_type_table")
-    if site or unit or typ:
-        lines.append("  # 下拉主数据（楼栋 / 房间 / 类型等）")
-        if site:
-            lines.append(f"  lookup-site-table: {site}")
-            lines.append(f"  lookup-site-label: {runtime.get('lookup_site_label') or '楼栋'}")
-        if unit:
-            lines.append(f"  lookup-unit-table: {unit}")
-            lines.append(f"  lookup-unit-label: {runtime.get('lookup_unit_label') or '房间'}")
-            # None 缺省「容量」；显式 "" 表示隐藏（物业/IT）；宿舍写「床位数」
-            if "lookup_unit_capacity_label" in runtime:
-                cap = runtime.get("lookup_unit_capacity_label")
-                lines.append(f"  lookup-unit-capacity-label: \"{cap if cap is not None else ''}\"")
-        if typ:
-            lines.append(f"  lookup-type-table: {typ}")
-            lines.append(f"  lookup-type-label: {runtime.get('lookup_type_label') or '类型'}")
-
+    # archive / lookup / order 表位与多数能力开关已下沉到 AppPolicy（见 runtime_policy.py）
     if "order_lines" in caps:
-        cart = runtime.get("order_cart_table") or "cart_line"
-        ot = runtime.get("order_table") or "biz_order"
-        ol = runtime.get("order_line_table") or "order_line"
-        lines.append("  # 购物车 / 订单")
-        lines.append(f"  order-cart-table: {cart}")
-        lines.append(f"  order-table: {ot}")
-        lines.append(f"  order-line-table: {ol}")
         if use_quota and not enable_ticket:
             lines.append(f"  use-quota: {'true' if use_quota else 'false'}")
 
     loyalty = (spec.get("schema") or {}).get("loyalty") or {}
-    if "wallet" in caps:
-        lines.append("  wallet-enabled: true")
     if "points" in caps:
-        lines.append("  points-enabled: true")
         pts = loyalty.get("points") if isinstance(loyalty.get("points"), dict) else {}
-        try:
-            epy = int(pts.get("earnPerYuan") or 1)
-        except (TypeError, ValueError):
-            epy = 1
-        if epy > 0:
-            lines.append(f"  points-earn-per-yuan: {epy}")
-        if pts.get("payEnabled"):
-            lines.append("  points-pay-enabled: true")
+        # points-enabled / earn-per-yuan / pay-enabled → AppPolicy；其余积分子开关仍写 yml
         if pts.get("offsetEnabled"):
             lines.append("  points-offset-enabled: true")
         if pts.get("checkInEnabled"):
@@ -728,8 +457,6 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append(f"  member-tier-basis: {basis}")
     if "coupon" in caps:
         lines.append("  coupon-enabled: true")
-    if "order_review" in caps:
-        lines.append("  order-review-enabled: true")
     if "flash_price" in caps:
         lines.append("  flash-price-enabled: true")
     if "product_spec" in caps:
@@ -783,28 +510,11 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         timeout = 0
     if timeout > 0:
         lines.append(f"  order-timeout-minutes: {timeout}")
-    if "favorites" in caps:
-        lines.append("  favorites-enabled: true")
-    if "dm" in caps:
-        sch = spec.get("schema") or {}
-        shop_cs = bool(sch.get("dmShopCs"))
-        if not shop_cs and str(sch.get("dmPeerMode") or "").strip().lower() == "merchant":
-            shop_cs = True
-        if shop_cs:
-            lines.append("  # 店铺客服：买家只能选入驻商家，商家端回复买家")
-        else:
-            lines.append("  # 私信：任意启用账号之间可发起会话")
-        lines.append(f"  dm-shop-cs: {'true' if shop_cs else 'false'}")
+    # favorites / dm-shop-cs / content-report / post-mute / parcel-shelf → AppPolicy
     if "post_like" in caps:
         lines.append("  post-like-enabled: true")
-    if "content_report" in caps:
-        lines.append("  content-report-enabled: true")
-    if "post_mute" in caps:
-        lines.append("  post-mute-enabled: true")
     if "book_suggest" in caps:
         lines.append("  book-suggest-enabled: true")
-    if "parcel_shelf" in caps:
-        lines.append("  parcel-shelf-enabled: true")
     if "parcel_ship" in caps:
         lines.append("  parcel-ship-enabled: true")
     if "book_lost" in caps:
@@ -823,8 +533,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         lines.append("  room-equipment-enabled: true")
     if "browse_history" in caps:
         lines.append("  browse-history-enabled: true")
-    if "archive_log" in caps:
-        lines.append("  archive-log-enabled: true")
+    # archive-log-enabled → AppPolicy
     if "gallery" in caps:
         lines.append("  gallery-enabled: true")
     if "detail_attrs" in caps:
@@ -855,7 +564,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if "search_assist" in caps:
         lines.append("  search-assist-enabled: true")
     if "exam" in caps:
-        lines.append("  exam-enabled: true")
+        # exam-enabled → AppPolicy；子开关与门禁仍写 yml
         exam_opts = (spec.get("schema") or {}).get("examOpts") or {}
         if not isinstance(exam_opts, dict):
             exam_opts = {}
@@ -890,19 +599,9 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             gate_on = bool(isinstance(t_ent, dict) and t_ent.get("requireExamPass"))
         if gate_on:
             lines.append("  exam-require-before-ticket: true")
-    if "survey" in caps:
-        lines.append("  survey-enabled: true")
-    if "vote" in caps:
-        lines.append("  vote-enabled: true")
-    if "doclib" in caps:
-        lines.append("  doclib-enabled: true")
-    if "timebank" in caps:
-        lines.append("  timebank-enabled: true")
-        lines.append("  timebank-redeem-on-approve: true")
-    if "seat_select" in caps:
-        lines.append("  seat-select-enabled: true")
-    if "stock_io" in caps:
-        lines.append("  stock-io-enabled: true")
+    # survey / vote / doclib / timebank / seat-select / stock-io / e-sign /
+    # balance-ledger / grade-scores / occupy-span / material-check / claim-proof /
+    # lost-clue → AppPolicy
     if "stock_scrap" in caps:
         lines.append("  stock-scrap-enabled: true")
         scrap_opts = (spec.get("schema") or {}).get("stockScrapOpts") or {}
@@ -918,28 +617,9 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
                 lines.append("  stock-blind-count: true")
             if opts.get("requireDiffReason"):
                 lines.append("  stock-require-diff-reason: true")
-    if "e_sign" in caps:
-        lines.append("  e-sign-enabled: true")
-    if "balance_ledger" in caps:
-        lines.append("  balance-ledger-enabled: true")
-        lines.append("  balance-ledger-debit-on-approve: true")
-    if domain == "DOM-GRADE":
-        lines.append("  grade-scores-enabled: true")
-    if "occupy_span" in caps:
-        lines.append("  occupy-span-enabled: true")
-    if "material_check" in caps:
-        lines.append("  material-check-enabled: true")
-    if "claim_proof" in caps:
-        lines.append("  claim-proof-enabled: true")
-    if "lost_clue" in caps:
-        lines.append("  lost-clue-enabled: true")
 
     if "slot_reserve" in caps:
-        st = runtime.get("slot_table") or "resource_slot"
-        rt = runtime.get("reservation_table") or "reservation"
-        lines.append("  # 时段预约")
-        lines.append(f"  slot-table: {st}")
-        lines.append(f"  reservation-table: {rt}")
+        # slot-table / reservation-table → AppPolicy；预约侧开关仍写 yml
         if resv_ent.get("requireRemark"):
             lines.append("  slot-require-remark: true")
         if resv_ent.get("requireConfirm"):

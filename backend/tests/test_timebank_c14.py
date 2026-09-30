@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.timebank import TIMEBANK_CAP
 from app.bake.menu_routes import shell_kind
@@ -100,7 +102,7 @@ class TimebankC14Tests(unittest.TestCase):
             },
             "时间银行",
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-TIMEBANK", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-TIMEBANK", spec) + policy_preview("DOM-TIMEBANK", spec) + app_policy_preview("DOM-TIMEBANK", spec)
         self.assertIn("timebank-enabled: true", yml)
         self.assertIn("timebank-redeem-on-approve: true", yml)
         self.assertIn("enable-ticket: true", yml)

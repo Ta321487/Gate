@@ -9,6 +9,7 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.exam import EXAM_CAP, scan_exam_gate_ticket
 
@@ -67,7 +68,7 @@ class LabsafeExamGateC02Tests(unittest.TestCase):
             },
             body,
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LABSAFE", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LABSAFE", spec) + app_policy_preview("DOM-LABSAFE", spec)
         self.assertIn("exam-enabled: true", yml)
         self.assertIn("exam-require-before-ticket: true", yml)
 

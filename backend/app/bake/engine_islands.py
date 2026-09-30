@@ -75,6 +75,12 @@ def sync_workspace_thesis_yml(workspace: Path, spec: dict[str, Any]) -> None:
     domain = str(spec.get("domain") or "DOM-GENERIC")
     text = app_yml.read_text(encoding="utf-8")
     app_yml.write_text(_patch_thesis_yml(text, domain, spec), encoding="utf-8")
+    # 单据策略同步重生成（与 yml 同源），避免只改 schema 后 Java 侧仍是旧口径
+    from app.bake.runtime_policy import write_policy as write_app_policy
+    from app.bake.ticket_policy import write_policy as write_ticket_policy
+
+    write_ticket_policy(workspace, domain, spec)
+    write_app_policy(workspace, domain, spec)
     if (spec.get("persistence") or "jdbc") == "mybatis":
         from app.bake.persistence import ensure_mybatis_application_yml
 

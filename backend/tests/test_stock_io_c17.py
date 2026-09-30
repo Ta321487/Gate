@@ -10,6 +10,7 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.stock_io import STOCK_IO_CAP, scan_stock_io
 from app.bake.menu_routes import shell_kind
@@ -78,7 +79,7 @@ class StockIoC17Tests(unittest.TestCase):
         self.assertIn(STOCK_IO_CAP, spec.get("capabilities") or [])
         self.assertEqual(spec.get("accept"), "full", spec.get("accept_reason"))
 
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ASSET", spec) + app_policy_preview("DOM-ASSET", spec)
         self.assertIn("stock-io-enabled: true", yml)
 
         sql = domain_sql(
@@ -112,7 +113,7 @@ class StockIoC17Tests(unittest.TestCase):
         for root in (BASELINE, MYBATIS, JPA):
             binder = root / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
             bt = binder.read_text(encoding="utf-8")
-            self.assertIn("stock-io-enabled", bt, msg=str(binder))
+            self.assertIn("AppPolicy.STOCK_IO_ENABLED", bt, msg=str(binder))
             self.assertIn("StockIoStore.configure", bt, msg=str(binder))
             store = root / "backend/src/main/java/com/thesis/service/StockIoStore.java"
             self.assertTrue(store.is_file(), msg=str(store))

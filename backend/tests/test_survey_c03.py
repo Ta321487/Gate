@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.survey import SURVEY_CAP
 from app.bake.menu_routes import shell_kind
@@ -88,7 +90,7 @@ class SurveyC03Tests(unittest.TestCase):
             },
             "问卷调研",
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-SURVEY", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-SURVEY", spec) + policy_preview("DOM-SURVEY", spec) + app_policy_preview("DOM-SURVEY", spec)
         self.assertIn("survey-enabled: true", yml)
         self.assertIn("enable-ticket: false", yml)
         d = resolve_accept(

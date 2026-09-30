@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.vote import VOTE_CAP
 from app.bake.menu_routes import shell_kind
@@ -88,7 +90,7 @@ class VoteC04Tests(unittest.TestCase):
             },
             "投票评选",
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-VOTE", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-VOTE", spec) + policy_preview("DOM-VOTE", spec) + app_policy_preview("DOM-VOTE", spec)
         self.assertIn("vote-enabled: true", yml)
         self.assertIn("enable-ticket: false", yml)
         d = resolve_accept(

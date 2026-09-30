@@ -8,6 +8,7 @@ from pathlib import Path
 from app.bake.domain_schema import build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,7 +32,7 @@ class GradeScoreTests(unittest.TestCase):
             "capabilities": list(DOMAIN_CAPABILITIES["DOM-GRADE"]),
             "schema": schema,
         }
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-GRADE", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-GRADE", spec) + app_policy_preview("DOM-GRADE", spec)
         self.assertIn("grade-scores-enabled: true", yml)
 
     def test_sql_seed_has_scores(self) -> None:
@@ -50,7 +51,7 @@ class GradeScoreTests(unittest.TestCase):
             binder = (root / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java").read_text(
                 encoding="utf-8"
             )
-            self.assertIn("grade-scores-enabled", binder, msg=str(root))
+            self.assertIn("AppPolicy.GRADE_SCORES_ENABLED", binder, msg=str(root))
             self.assertIn("GradeScoreStore.configure", binder, msg=str(root))
             store = (root / "backend/src/main/java/com/thesis/service/GradeScoreStore.java").read_text(
                 encoding="utf-8"

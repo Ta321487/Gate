@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.bake.domain_schema import attach_accept
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.features.loyalty import (
     checkin_points,
     enrich_member_tiers,
@@ -69,7 +70,7 @@ def test_pay_mode_yml_and_runtime_hooks() -> None:
     assert pts.get("checkInEnabled") is True
     assert pts.get("expireEnabled") is True
 
-    yml = _patch_thesis_yml("thesis:\n  domain: DOM-SHOP\n", "DOM-SHOP", spec)
+    yml = _patch_thesis_yml("thesis:\n  domain: DOM-SHOP\n", "DOM-SHOP", spec) + app_policy_preview("DOM-SHOP", spec)
     assert "points-enabled: true" in yml
     assert "points-pay-enabled: true" in yml
     assert "points-checkin-enabled: true" in yml

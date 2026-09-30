@@ -16,7 +16,10 @@
 | **开题写到才挂** | 材料里找到对应描述才写入 caps；**没有就保持原样**（如联想 / 足迹 / 多图 / 限时购） |
 | **壳附带** | 有订单壳或预约壳即有，不单独占 cap（售后、物流轨迹、改约、办结） |
 | **扫词写配置** | 开题写到 → 写 yml/开关，仍无独立 cap（如超时关单分钟数） |
+| **扫词写代码常量** | 单据类参数与开关 → bake 生成交付包 `config/TicketPolicy.java`（不再写 `thesis.ticket-*`；见 `backend/app/bake/ticket_policy.py`） |
 | **schema 开关** | 二级审批 / 互斥 / 签到 / 软删 / 周历等 → 见 [difficulty-tiers.md](./difficulty-tiers.md) L1，不另开 cap |
+
+> **动手前必读**：改 bake / 骨架参数落点前先看规则 `param-placement`（`.cursor/rules/param-placement.mdc` · `.trae/rules/param-placement.md`）：参数落点三分法、两条写盘路径、共键守卫与验收三件套。
 
 ### 开岛三处挂载契约
 
@@ -39,6 +42,7 @@
 | `opening_align` | 开题模块对账闸，只 `apply`，不开新 cap |
 | `borrow_thicken` | 借用/占用组加厚（字段/文案/校验 + 续借/预约/罚款等演示链），非独立 cap；落点见交付地图 §1.1 |
 | `follow_thicken` | 跟进组加厚（字段/文案/校验 + 批量录用/周报催交/渠道饼图等演示链），非独立 cap；落点见交付地图 §1.2 |
+| `repair_thicken` | 报修/工单组加厚（用户催办链、结单原因/摘要、SLA 分列、浅台账），非独立 cap；落点见交付地图 §1.3 |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 
@@ -139,7 +143,8 @@
 依赖未实现能力 → `accept=reject`；上表均已落地。
 
 **壳附带（无独立 cap）**：有 `order_lines` → 地址簿、售后、物流轨迹；有 `slot_reserve` → 办结 `complete`、改约 `reschedule`。  
-**扫词写配置（无独立 cap）**：开题写「超时取消/支付超时」→ `thesis.order-timeout-minutes=30` + `@Scheduled`。
+**扫词写配置（无独立 cap）**：开题写「超时取消/支付超时」→ `thesis.order-timeout-minutes=30` + `@Scheduled`。  
+**单据参数/开关写代码（无独立 cap）**：借期/上限/罚金/SLA/异议窗口/续借/信用/匹配文案与单据能力开关 → bake 生成交付包 `config/TicketPolicy.java`（学生可读可改；`thesis.ticket-*` 已不再出现在 `application.yml`）。改动口径、保留键与验收见规则 `param-placement`（`.cursor/rules/param-placement.mdc` · `.trae/rules/param-placement.md`）。
 
 源码对照：`backend/app/bake/capabilities.py` 的 `CAPABILITIES` 键集 = 上表全部 id；增删能力须同步改本表与 `BASELINE_RUNTIME_CAPS`。
 

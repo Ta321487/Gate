@@ -9,6 +9,7 @@ from app.bake.capabilities import CAPABILITIES
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.book_hold import (
     BOOK_HOLD_CAP,
@@ -85,7 +86,7 @@ class BookHoldE11Tests(unittest.TestCase):
         self.assertNotIn("演示", str(labels.get("bookHoldOkMessage") or ""))
         self.assertIn("book_hold", (rich.get("gate") or {}).get("flow_api") or {})
 
-        yml = _patch_thesis_yml("thesis:\n  domain: DOM-LIBRARY\n", "DOM-LIBRARY", rich)
+        yml = _patch_thesis_yml("thesis:\n  domain: DOM-LIBRARY\n", "DOM-LIBRARY", rich) + policy_preview("DOM-LIBRARY", rich)
         self.assertIn("ticket-allow-book-hold: true", yml)
         self.assertIn("ticket-hold-hours:", yml)
 

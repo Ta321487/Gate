@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-"""工厂向学生包灌入的单据业务参数（bake → thesis.ticket-*）。
+"""工厂向学生包灌入的单据业务参数（bake → config/TicketPolicy.java）。
 
-学生交付物无 sys_config 表；本表是工厂侧写参的唯一来源（原 SQL 种子值上提）。
+学生交付物无 sys_config 表；本表是工厂侧写参的来源（原 SQL 种子值上提）。
+2026-09 起单据参数与能力开关不再写 application.yml 的 thesis.ticket-*，
+改由 app/bake/ticket_policy.py 渲染成可读可改的 Java 策略类。
 """
 
 from __future__ import annotations

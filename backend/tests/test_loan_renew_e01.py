@@ -10,6 +10,7 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.core_cap_scan import (
     LOAN_RENEW_CAP,
@@ -85,7 +86,7 @@ class LoanRenewE01Tests(unittest.TestCase):
         labels = (with_renew.get("schema") or {}).get("labels") or {}
         self.assertIn("续借", str(labels.get("renewVerb") or "续借"))
 
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", with_renew)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-LIBRARY", with_renew) + policy_preview("DOM-LIBRARY", with_renew)
         self.assertIn("ticket-allow-renew: true", yml)
 
         sql = domain_sql(

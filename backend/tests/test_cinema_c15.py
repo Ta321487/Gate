@@ -10,6 +10,7 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.seat_select import SEAT_SELECT_CAP
 from app.bake.menu_routes import shell_kind
@@ -140,7 +141,7 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertEqual(fields["isbn"].get("label"), "影厅名称")
         self.assertEqual(fields["category"].get("label"), "影厅类型")
         self.assertEqual(fields["startAt"].get("label"), "开场时间")
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CINEMA", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CINEMA", spec) + app_policy_preview("DOM-CINEMA", spec)
         self.assertIn("seat-select-enabled: true", yml)
         self.assertIn("order-cart-table:", yml)
         d = resolve_accept(

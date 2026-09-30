@@ -10,6 +10,8 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept, build_domain_schema, validate_schema
 from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
+from app.bake.ticket_policy import policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.exam import EXAM_CAP, scan_exam_opts, scan_exam_skin
 from app.bake.menu_routes import shell_kind
@@ -125,7 +127,7 @@ class ExamC01Tests(unittest.TestCase):
             },
             "在线考试与刷题练习、成绩排行榜。",
         )
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EXAM", spec)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-EXAM", spec) + policy_preview("DOM-EXAM", spec) + app_policy_preview("DOM-EXAM", spec)
         self.assertIn("exam-enabled: true", yml)
         self.assertIn("exam-practice-enabled: true", yml)
         self.assertIn("exam-rank-enabled: true", yml)

@@ -10,6 +10,7 @@ from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.ticket_policy import policy_preview
 from app.bake.features.ticket_flow_opts import (
     WAITLIST_CAP,
     merge_waitlist_capabilities,
@@ -97,7 +98,7 @@ class WaitlistE02Tests(unittest.TestCase):
         labels = (with_wl.get("schema") or {}).get("labels") or {}
         self.assertIn("候补", str(labels.get("waitlistVerb") or "候补"))
 
-        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ACTIVITY", with_wl)
+        yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-ACTIVITY", with_wl) + policy_preview("DOM-ACTIVITY", with_wl)
         self.assertIn("ticket-allow-waitlist: true", yml)
 
         feats = with_wl.get("features") or []

@@ -7,6 +7,7 @@ import unittest
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
+from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.user_publish import scan_publish_review, scan_user_publish
 from app.bake.schema.builders_content import _blog_schema, _media_schema, _music_schema
@@ -100,7 +101,7 @@ class UserPublishContentTests(unittest.TestCase):
         self.assertEqual(labels.get("publishSubmitLabel"), "提交审核")
         self.assertIn("待审核", labels.get("publishTip") or "")
 
-        yml = _patch_thesis_yml("thesis:\n  domain: DOM-BLOG\n", "DOM-BLOG", reviewed)
+        yml = _patch_thesis_yml("thesis:\n  domain: DOM-BLOG\n", "DOM-BLOG", reviewed) + app_policy_preview("DOM-BLOG", reviewed)
         self.assertIn("archive-user-publish: true", yml)
         self.assertIn("archive-publish-review: true", yml)
 
