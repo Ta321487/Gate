@@ -5,6 +5,7 @@ import com.thesis.config.JpaSupport;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +17,74 @@ public class GradeScoreStore {
 
     private static boolean enabled;
     private static Boolean tableReady;
+    /** 成绩异议申请时限（开题扫 GRADE）：成绩登记后 N 天内可提交更正/异议申请 */
+    private static int objectionDays = 0;
 
     private GradeScoreStore() {}
+
+    /** 异议窗口：以本人该课程最近一次成绩登记时间为发布基准。 */
+    public static Map<String, Object> objectionWindow(String username, long courseId) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("days", objectionDays);
+        out.put("open", false);
+        out.put("dueAt", "");
+        out.put("publishedAt", "");
+        if (objectionDays <= 0 || !ready()) return out;
+        String user = clip(username, 64);
+        if (user.isEmpty() || courseId <= 0) return out;
+        try {
+            List<String> rows = db().query(
+                    "SELECT MAX(created_at) AS published_at FROM grade_score "
+                            + "WHERE username=? AND course_id=?",
+                    (rs, i) -> {
+                        Object v = rs.getObject("published_at");
+                        return v == null ? "" : String.valueOf(v);
+                    },
+                    user,
+                    courseId);
+            String published = rows.isEmpty() ? "" : rows.get(0);
+            LocalDate base = parseDay(published);
+            if (base == null) return out;
+            LocalDate due = base.plusDays(objectionDays);
+            out.put("publishedAt", base.toString());
+            out.put("dueAt", due.toString());
+            out.put("open", !LocalDate.now().isAfter(due));
+        } catch (Exception ignored) {
+            // 成绩表不可用按未开处理
+        }
+        return out;
+    }
+
+
+    /** 异议时限开关：days<=0 视为未开。 */
+    public static void configureObjectionDays(int days) {
+        objectionDays = Math.max(0, Math.min(60, days));
+    }
+
+    public static int objectionDays() {
+        return objectionDays;
+    }
+
+    /** 服务端闸：已发布成绩超期后拒绝成绩更正/异议申请（入口按时限关）。 */
+    public static void assertObjectionOpen(String username, long courseId) {
+        if (objectionDays <= 0 || !ready()) return;
+        Map<String, Object> w = objectionWindow(username, courseId);
+        String due = String.valueOf(w.getOrDefault("dueAt", ""));
+        if (!due.isBlank() && !Boolean.TRUE.equals(w.get("open"))) {
+            throw new IllegalStateException("成绩异议申请已于 " + due + " 截止，入口已关闭");
+        }
+    }
+
+    private static LocalDate parseDay(String raw) {
+        String s = raw == null ? "" : raw.trim();
+        if (s.isEmpty()) return null;
+        if (s.length() > 10) s = s.substring(0, 10);
+        try {
+            return LocalDate.parse(s);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     public static void configure(boolean on) {
         enabled = on;
@@ -78,6 +145,7 @@ public class GradeScoreStore {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("terms", terms);
         out.put("courses", courses);
+        out.put("objectionDays", objectionDays);
         return out;
     }
 
@@ -123,10 +191,18 @@ public class GradeScoreStore {
 
     public static List<Map<String, Object>> listMine(String username) {
         require();
-        return db().query(
+        List<Map<String, Object>> rows = db().query(
                 RANK_SQL + "WHERE s.username=? ORDER BY s.term_id, s.course_id",
                 (rs, i) -> mapRow(rs),
                 username);
+        if (objectionDays <= 0) return rows;
+        for (Map<String, Object> row : rows) {
+            long courseId = row.get("courseId") instanceof Number n ? n.longValue() : 0L;
+            Map<String, Object> w = objectionWindow(username, courseId);
+            row.put("objectionDueAt", w.get("dueAt"));
+            row.put("objectionOpen", w.get("open"));
+        }
+        return rows;
     }
 
     public static Map<String, Object> save(String username, long courseId, long termId, BigDecimal score) {

@@ -24,6 +24,12 @@
         </template>
       </el-table-column>
       <el-table-column prop="operator" label="经办人" width="120" />
+      <el-table-column prop="objectionDueAt" :label="objectionWindowLabel" min-width="130">
+        <template #default="{ row }">{{ row.objectionDueAt || '—' }}</template>
+      </el-table-column>
+      <el-table-column prop="objectionNote" :label="objectionNoteLabel" min-width="180">
+        <template #default="{ row }">{{ row.objectionNote || '—' }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="150">
         <template #default="{ row }">
           <el-button link type="primary" :disabled="row.status === 'closed'" @click="closeRow(row)">
@@ -72,6 +78,7 @@
       </el-form-item>
     </el-form>
     <p class="hint">只有审核通过的申请才能登记公示；公示与发放都挂在申请之后，不改申请单状态。</p>
+    <p v-if="objectionHint" class="hint">{{ objectionHint }}</p>
   </div>
 </template>
 
@@ -84,6 +91,10 @@ import { getSchema } from '../../utils/domainSchema.js'
 const labels = getSchema()?.labels || {}
 const title = labels.fundPublicityTitle || '公示登记'
 const lead = labels.fundPublicityLead || '申请通过后登记公示期；公示结束可标记结束。'
+// 异议登记窗口（bake: ticket.allowObjectionWindow → 公示结束日 + N 天，写回申请单）
+const objectionWindowLabel = labels.objectionWindowLabel || '异议登记截止日'
+const objectionNoteLabel = labels.objectionNoteLabel || '异议说明'
+const objectionHint = labels.objectionWindowHint || ''
 
 const list = ref([])
 const tickets = ref([])

@@ -72,6 +72,22 @@ public class FundPublicityController {
         }
     }
 
+    /** 用户端：对本人公示登记异议（窗口内可写，超期/未开拒绝）。 */
+    @PostMapping("/{id}/objection")
+    public R<Map<String, Object>> objection(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        requireOn();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> in = body == null ? Map.of() : body;
+        try {
+            return R.ok(FundPublicityStore.submitObjection(id, uid, asStr(in.get("note"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     /** 结束公示。 */
     @PostMapping("/admin/{id}/close")
     public R<Void> close(@PathVariable long id, HttpSession session) {

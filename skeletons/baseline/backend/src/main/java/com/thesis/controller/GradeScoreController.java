@@ -36,6 +36,15 @@ public class GradeScoreController {
         return R.ok(GradeScoreStore.listMine(uid));
     }
 
+    /** 用户端：成绩异议申请时限（入口按时限关的前端依据）。 */
+    @GetMapping("/objection-window")
+    public R<Map<String, Object>> objectionWindow(
+            @RequestParam long courseId, HttpSession session) {
+        requireOn();
+        String uid = AdminAuth.requireLogin(session);
+        return R.ok(GradeScoreStore.objectionWindow(uid, courseId));
+    }
+
     @GetMapping("/admin")
     public R<List<Map<String, Object>>> admin(
             @RequestParam(required = false) Long courseId,

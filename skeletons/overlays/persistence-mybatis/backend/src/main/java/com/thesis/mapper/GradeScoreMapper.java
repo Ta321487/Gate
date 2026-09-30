@@ -47,6 +47,11 @@ public interface GradeScoreMapper {
     @Select(RANK + "WHERE s.username=#{username} ORDER BY s.term_id, s.course_id")
     List<Map<String, Object>> listMine(String username);
 
+    @Select("SELECT DATE_FORMAT(MAX(created_at), '%Y-%m-%d') FROM grade_score "
+            + "WHERE username=#{username} AND course_id=#{courseId}")
+    String selectPublishedAt(
+            @Param("username") String username, @Param("courseId") long courseId);
+
     @Select("SELECT COUNT(*) FROM course_item WHERE id=#{id}")
     Integer countCourse(long id);
 
