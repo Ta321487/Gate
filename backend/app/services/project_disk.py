@@ -13,11 +13,48 @@ from app.services import runtime as rt
 
 logger = logging.getLogger(__name__)
 
+#: bake 进行中标记：孤儿清理不得删带此文件的工作区（对账额度清盘会误伤正在出包的目录）
+BAKE_IN_PROGRESS_REL = Path(".factory") / "bake_in_progress"
+#: 刚写完的工作区宽限期（秒）：bake 结束后预览/compile 仍可能占用目录
+ORPHAN_FRESH_GRACE_SEC = 30 * 60
+
+
 def resolve_workspace_dir(project: Project) -> Path:
     """优先 workspace_path；否则 data/workspace/{id}。"""
     if project.workspace_path:
         return Path(project.workspace_path)
     return get_settings().workspace_dir / project.id
+
+
+def mark_bake_in_progress(workspace: Path) -> Path:
+    """写入 bake 进行中标记，供孤儿清理跳过。"""
+    lock = workspace / BAKE_IN_PROGRESS_REL
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text("baking\n", encoding="utf-8")
+    return lock
+
+
+def clear_bake_in_progress(workspace: Path) -> None:
+    lock = workspace / BAKE_IN_PROGRESS_REL
+    try:
+        lock.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def orphan_workspace_protected(child: Path) -> bool:
+    """孤儿清理是否应跳过该工作区（bake 中 / 刚出炉）。"""
+    if (child / BAKE_IN_PROGRESS_REL).is_file():
+        return True
+    if ORPHAN_FRESH_GRACE_SEC <= 0:
+        return False
+    try:
+        age = time.time() - child.stat().st_mtime
+    except OSError:
+        return False
+    # Windows 上新建目录偶发 st_mtime 略超前 → age 为负，仍视为「新鲜」
+    return age < ORPHAN_FRESH_GRACE_SEC
+
 
 def remove_tree_reliable(
     path: Path, *, retries: int = 8, delay: float = 0.25
@@ -120,6 +157,8 @@ def purge_orphan_project_disk(
             if not child.is_dir() or child.name.startswith("."):
                 continue
             if child.name in alive:
+                continue
+            if orphan_workspace_protected(child):
                 continue
             all_orphan_ws.append(child)
 

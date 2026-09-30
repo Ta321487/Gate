@@ -43,6 +43,7 @@ class TestOrphanDiskPurgeService(unittest.IsolatedAsyncioTestCase):
             with (
                 patch("app.services.project_disk.get_settings") as gs,
                 patch("app.services.project_disk.rt.detach_frontend_deps"),
+                patch("app.services.project_disk.ORPHAN_FRESH_GRACE_SEC", 0),
             ):
                 gs.return_value = SimpleNamespace(workspace_dir=ws, logs_dir=logs)
                 snap = await odp.enqueue_full(set())
@@ -98,6 +99,34 @@ class TestOrphanDiskPurgeService(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(odp.try_budgeted_purge(set()))
         finally:
             odp._run_lock.release()
+
+    def test_purge_skips_bake_in_progress_workspace(self) -> None:
+        from app.services.project_disk import BAKE_IN_PROGRESS_REL, purge_orphan_project_disk
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            ws = base / "workspace"
+            logs = base / "logs"
+            ws.mkdir()
+            logs.mkdir()
+            baking = ws / "gf-baking"
+            baking.mkdir()
+            lock = baking / BAKE_IN_PROGRESS_REL
+            lock.parent.mkdir(parents=True)
+            lock.write_text("baking\n", encoding="utf-8")
+            dead = ws / "gf-dead"
+            dead.mkdir()
+            with (
+                patch("app.services.project_disk.get_settings") as gs,
+                patch("app.services.project_disk.rt.detach_frontend_deps"),
+                patch("app.services.project_disk.ORPHAN_FRESH_GRACE_SEC", 0),
+            ):
+                gs.return_value = SimpleNamespace(workspace_dir=ws, logs_dir=logs)
+                result = purge_orphan_project_disk(set())
+            self.assertTrue(baking.exists(), "bake 中工作区不得被清")
+            self.assertFalse(dead.exists(), "无标记孤儿应被清")
+            self.assertIn("gf-dead", result.get("removed_workspaces") or [])
+            self.assertNotIn("gf-baking", result.get("removed_workspaces") or [])
 
 
 if __name__ == "__main__":
