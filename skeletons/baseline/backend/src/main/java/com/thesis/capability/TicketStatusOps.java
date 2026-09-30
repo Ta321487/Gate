@@ -55,10 +55,38 @@ final class TicketStatusOps {
             applyFineAndRemind(m, false);
             persistFine(m);
             markEverOverdue(m);
+            maybeEscalateRepairOverdue(m);
         }
     }
 
-    /** 应还日前 N 天站内提前催还（每单一回）。 */
+    /** 报修超时：升紧急 + 可选通知主管（站内信）。 */
+    static void maybeEscalateRepairOverdue(Map<String, Object> m) {
+        if (!TicketStore.escalateOnOverdue && !TicketStore.notifySupervisorOnOverdue) return;
+        long id = TicketSql.toLong(m.get("id"));
+        if (id <= 0) return;
+        if (TicketStore.escalateOnOverdue && TicketStore.hasColumn("priority")) {
+            String p = TicketSql.str(m.get("priority"));
+            if (!"紧急".equals(p) && !"高".equals(p)) {
+                TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET priority='紧急' WHERE id=?", id);
+                m.put("priority", "紧急");
+                TicketStore.appendProgress(id, "overdue", "system", "超时自动升为紧急");
+            }
+        }
+        if (TicketStore.notifySupervisorOnOverdue) {
+            String title = TicketSql.str(m.get("title"));
+            if (title.isBlank()) title = "单据#" + id;
+            try {
+                com.thesis.service.MessageStore.notifyAdmins(
+                        "维修超时",
+                        "「" + title + "」已超时，请主管关注跟进。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     static void maybeNotifyDueSoon(Map<String, Object> m) {
         if (TicketStore.dueSoonDays <= 0) return;
         if (!"approved".equals(String.valueOf(m.get("status")))) return;
@@ -134,15 +162,21 @@ final class TicketStatusOps {
     }
 
     static void markEverOverdue(Map<String, Object> m) {
-        if (TicketStore.maxOverdueTimes <= 0) return;
-        if (!TicketStore.hasColumn("ever_overdue")) return;
+        boolean timesOn = TicketStore.maxOverdueTimes > 0 && TicketStore.hasColumn("ever_overdue");
+        boolean creditOn = BorrowCreditStore.enabled();
+        if (!timesOn && !creditOn) return;
         Object flag = m.get("everOverdue");
-        if (flag instanceof Number n && n.intValue() == 1) return;
-        if ("1".equals(String.valueOf(flag))) return;
+        boolean already = (flag instanceof Number n && n.intValue() == 1) || "1".equals(String.valueOf(flag));
         long id = TicketSql.toLong(m.get("id"));
         if (id <= 0) return;
-        TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET ever_overdue=1 WHERE id=?", id);
-        m.put("everOverdue", 1);
+        if (timesOn && !already) {
+            TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET ever_overdue=1 WHERE id=?", id);
+            m.put("everOverdue", 1);
+        }
+        String owner = TicketSql.str(m.get("username"));
+        if (!owner.isBlank() && creditOn) {
+            BorrowCreditStore.penalizeOverdue(owner, id);
+        }
     }
 
     /**

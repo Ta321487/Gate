@@ -3,6 +3,8 @@
     <div class="toolbar">
       <el-alert type="info" :closable="false" show-icon :title="todoHint" />
     </div>
+    <p v-if="levelSlaText" class="sub">{{ levelSlaHint }}（{{ levelSlaText }}）</p>
+    <p v-if="dutyNotifyOn" class="sub">{{ notifyDutyHint }}</p>
     <div class="toolbar">
       <el-button type="primary" @click="load">刷新待办</el-button>
       <template v-if="allowBatchHire">
@@ -18,12 +20,39 @@
         >{{ batchRejectLabel }}（{{ selectedIds.length }}）</el-button>
       </template>
     </div>
+    <div v-if="creditOn" class="toolbar" style="display:block;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <strong style="font-size:13px">{{ creditScoreLabel }}台账</strong>
+        <el-button link type="primary" @click="loadCredit">刷新</el-button>
+        <el-button link type="primary" @click="openCredit">人工调整</el-button>
+      </div>
+      <el-table :data="creditRows" size="small" stripe max-height="240">
+        <el-table-column prop="username" :label="userLabel" width="120" />
+        <el-table-column prop="delta" label="变动" width="80">
+          <template #default="{ row }">
+            <span :style="{ color: row.delta < 0 ? '#f56c6c' : '#67c23a', fontWeight: 600 }">
+              {{ row.delta > 0 ? '+' + row.delta : row.delta }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="scoreAfter" :label="creditScoreLabel" width="90" />
+        <el-table-column prop="reason" label="事由" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="operator" label="操作人" width="110" />
+        <el-table-column prop="createdAt" label="时间" width="170" />
+        <template #empty>暂无信誉分变动</template>
+      </el-table>
+    </div>
     <div class="table-scroll">
     <el-table :data="list" stripe @selection-change="onSelectionChange">
       <el-table-column v-if="allowBatchHire" type="selection" width="48" />
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" show-overflow-tooltip />
-      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="categoryColorOn" class="type-dot" :style="{ background: typeColor(row.typeName || row.typeId) }" />
+          {{ row.typeName || '—' }}
+        </template>
+      </el-table-column>
       <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
       <el-table-column v-if="showPriorityCols" prop="contactPhone" label="联系电话" width="120" show-overflow-tooltip />
@@ -82,6 +111,18 @@
             @click="openAudit(row, true)"
           >{{ passLabel(row) }}</el-button>
           <el-button link type="danger" @click="openAudit(row, false)">{{ verbs.reject || '驳回' }}</el-button>
+          <el-button
+            v-if="['pending','pending_mid','pending_final'].includes(row.status)"
+            link
+            type="warning"
+            @click="returnRevise(row)"
+          >退回修改</el-button>
+          <el-button
+            v-if="canReassign(row)"
+            link
+            type="primary"
+            @click="openReassign(row)"
+          >转派</el-button>
           </div>
         </template>
       </el-table-column>
@@ -112,6 +153,7 @@
         {{ audit.pass ? `确认${passLabel(audit.row)}该${ticketNoun}？` : `确认${verbs.reject || '驳回'}该${ticketNoun}？` }}
         <template v-if="audit.row">「{{ audit.row.title || ('编号 ' + audit.row.id) }}」</template>
       </p>
+      <p v-if="interviewRoomHint" class="audit-meta hint-line">{{ interviewRoomHint }}</p>
       <div v-if="audit.row?.attachUrl" class="audit-body">
         <div class="lab">附件</div>
         <a :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">查看附件</a>
@@ -148,6 +190,33 @@
       </label>
       <label v-if="audit.pass && showDispatch && isFinalPass(audit.row)" class="audit-field" style="margin-top: 12px">
         <span class="lab">派给（选填）</span>
+        <el-alert
+          v-if="dispatchHint"
+          type="info"
+          :closable="false"
+          show-icon
+          :title="dispatchHint"
+          style="margin-bottom:8px"
+        />
+        <el-select
+          v-if="allowSkillTag"
+          v-model="audit.skillFilter"
+          clearable
+          filterable
+          allow-create
+          default-first-option
+          :placeholder="skillFilterHint"
+          style="width: 100%; margin-bottom: 8px"
+        >
+          <el-option v-for="s in skillOptions" :key="s" :label="s" :value="s" />
+        </el-select>
+        <el-input
+          v-if="locationFilterOn"
+          v-model="audit.locationFilter"
+          clearable
+          :placeholder="locationFilterHint"
+          style="width: 100%; margin-bottom: 8px"
+        />
         <el-select
           v-model="audit.assigneeUsername"
           clearable
@@ -156,12 +225,50 @@
           style="width: 100%"
         >
           <el-option
-            v-for="t in dispatchTargets"
+            v-for="t in filteredDispatchTargets"
             :key="t.username"
             :label="dispatchLabel(t)"
             :value="t.username"
           />
         </el-select>
+      </label>
+      <label v-if="audit.pass && allowHelper" class="audit-field" style="margin-top: 12px">
+        <span class="lab">协助人（选填）</span>
+        <el-select v-model="audit.helperUsername" clearable filterable placeholder="可选" style="width:100%">
+          <el-option
+            v-for="t in dispatchTargets"
+            :key="'h-' + t.username"
+            :label="dispatchLabel(t)"
+            :value="t.username"
+          />
+        </el-select>
+      </label>
+      <label v-if="audit.pass && allowQuote" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ quoteLabel }}</span>
+        <el-input-number v-model="audit.quoteYuan" :min="0" :max="999999" :precision="2" />
+      </label>
+      <label v-if="audit.pass && allowQuote" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ materialFeeLabel }}</span>
+        <el-input-number v-model="audit.materialFeeYuan" :min="0" :max="999999" :precision="2" />
+      </label>
+      <label v-if="audit.pass && allowDisburseBatch" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ disburseBatchLabel }}</span>
+        <el-input v-model="audit.disburseBatch" maxlength="64" :placeholder="`选填${disburseBatchLabel}`" />
+      </label>
+      <label v-if="audit.pass && allowExcellentMark" class="audit-field" style="margin-top: 12px">
+        <el-checkbox v-model="audit.excellentMark">{{ excellentMarkLabel }}</el-checkbox>
+      </label>
+      <label v-if="audit.pass && allowAssignDept" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ assignDeptLabel }}</span>
+        <el-input v-model="audit.assignDept" maxlength="64" :placeholder="`选填${assignDeptLabel}`" />
+      </label>
+      <label v-if="audit.pass && allowExceptionClose" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ exceptionReasonLabel }}</span>
+        <el-input v-model="audit.exceptionReason" maxlength="128" :placeholder="`异常件原因（选填）`" />
+      </label>
+      <label v-if="audit.pass && allowExceptionClose" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ damageClaimLabel }}</span>
+        <el-input v-model="audit.damageClaimNote" type="textarea" :rows="2" maxlength="255" />
       </label>
       <template #footer>
         <el-button @click="audit.visible = false">取消</el-button>
@@ -199,6 +306,83 @@
     </el-dialog>
 
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
+
+    <el-dialog v-model="reassign.visible" title="转派处理人" width="420px" destroy-on-close>
+      <p class="audit-tip" v-if="reassign.row">
+        将「{{ reassign.row.title || ('编号 ' + reassign.row.id) }}」转给其他处理人
+      </p>
+      <el-alert
+        v-if="dispatchHint"
+        type="info"
+        :closable="false"
+        show-icon
+        :title="dispatchHint"
+        style="margin-bottom:8px"
+      />
+      <el-select
+        v-if="allowSkillTag"
+        v-model="reassign.skillFilter"
+        clearable
+        filterable
+        allow-create
+        default-first-option
+        :placeholder="skillFilterHint"
+        style="width:100%;margin-bottom:8px"
+      >
+        <el-option v-for="s in skillOptions" :key="s" :label="s" :value="s" />
+      </el-select>
+      <el-input
+        v-if="locationFilterOn"
+        v-model="reassign.locationFilter"
+        clearable
+        :placeholder="locationFilterHint"
+        style="width:100%;margin-bottom:8px"
+      />
+      <el-select
+        v-model="reassign.to"
+        filterable
+        placeholder="选择处理人"
+        style="width:100%"
+      >
+        <el-option
+          v-for="t in filteredReassignTargets"
+          :key="t.username"
+          :label="dispatchLabel(t)"
+          :value="t.username"
+        />
+      </el-select>
+      <el-input
+        v-model="reassign.remark"
+        type="textarea"
+        :rows="2"
+        maxlength="200"
+        placeholder="转派说明（选填）"
+        style="margin-top:12px"
+      />
+      <template #footer>
+        <el-button @click="reassign.visible = false">取消</el-button>
+        <el-button type="primary" :loading="reassign.loading" @click="submitReassign">确认转派</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="credit.visible" :title="`人工调整${creditScoreLabel}`" width="440px" destroy-on-close>
+      <label class="audit-field">
+        <span class="lab">用户名</span>
+        <el-input v-model="credit.username" maxlength="64" placeholder="填写用户登录名" />
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">调整分值（正数加分 / 负数扣分）</span>
+        <el-input-number v-model="credit.delta" :min="-100" :max="100" :step="1" />
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">事由（选填）</span>
+        <el-input v-model="credit.reason" maxlength="128" placeholder="如：逾期归还扣分 / 申诉恢复" />
+      </label>
+      <template #footer>
+        <el-button @click="credit.visible = false">取消</el-button>
+        <el-button type="primary" :loading="credit.loading" @click="submitCredit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -251,10 +435,102 @@ const nextAtLabel = computed(() => nextFollowLabel())
 const showTypeCol = computed(() => ticketShowsTypeCol(archive))
 const showLocationCol = computed(() => ticketShowsLocationCol(archive))
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
+const labels = computed(() => getSchema()?.labels || {})
+// 事件等级 → 处理时限（bake: ticket-level-sla-*-days 由 /api/tickets 回显）
+const levelSlaDays = ref('')
+const dutyNotifyOn = ref(false)
+const levelSlaHint = computed(() => labels.value.levelSlaHint || '')
+const notifyDutyHint = computed(() => labels.value.notifyDutyHint || '')
+const levelSlaText = computed(() => {
+  const parts = String(levelSlaDays.value || '').split(',').map((s) => String(s || '').trim())
+  if (parts.length < 3 || !parts[0]) return ''
+  return `高 ${parts[0]} 天 / 中 ${parts[1]} 天 / 低 ${parts[2]} 天`
+})
+const creditOn = computed(() => !!ticket.creditOnOverdue || !!ticket.creditPoints)
+const creditScoreLabel = computed(() => labels.value.creditScoreLabel || '信誉分')
+const creditRows = ref([])
+const credit = reactive({
+  visible: false,
+  username: '',
+  delta: -5,
+  reason: '',
+  loading: false,
+})
+
+/** 管理端信誉分台账：credit-on-overdue 未开时不开面。 */
+async function loadCredit() {
+  if (!creditOn.value) return
+  const res = await http.get('/api/tickets/credit/ledger')
+  creditRows.value = res.data?.rows || []
+}
+
+function openCredit() {
+  Object.assign(credit, { visible: true, username: '', delta: -5, reason: '' })
+}
+
+/** 人工调整：正数加分 / 负数扣分，落 credit_ledger 留痕。 */
+async function submitCredit() {
+  const username = credit.username.trim()
+  if (!username) {
+    ElMessage.warning('请填写用户名')
+    return
+  }
+  if (!credit.delta) {
+    ElMessage.warning('调整分值不能为 0')
+    return
+  }
+  credit.loading = true
+  try {
+    await http.post('/api/tickets/credit/adjust', {
+      username,
+      delta: credit.delta,
+      reason: credit.reason.trim(),
+    })
+    ElMessage.success(`${creditScoreLabel.value}已调整`)
+    credit.visible = false
+    loadCredit()
+  } finally {
+    credit.loading = false
+  }
+}
+const repairThickenOn = computed(() => !!ticket.repairThicken || !!ticket.allowUserUrge)
+const allowSkillTag = computed(() => !!ticket.allowSkillTag || !!ticket.repairThicken)
+const allowHelper = computed(() => !!ticket.allowHelper)
+const allowQuote = computed(() => !!ticket.allowQuote)
+const allowDisburseBatch = computed(() => !!ticket.allowDisburseBatch)
+const disburseBatchLabel = computed(() => labels.value.disburseBatchLabel || '发放批次号')
+const allowExcellentMark = computed(() => !!ticket.allowExcellentMark)
+const excellentMarkLabel = computed(() => labels.value.excellentMarkLabel || '优秀周报')
+const allowAssignDept = computed(() => !!ticket.allowAssignDept)
+const assignDeptLabel = computed(() => labels.value.assignDeptLabel || '分拨科室')
+const allowExceptionClose = computed(() => !!ticket.allowExceptionClose)
+const exceptionReasonLabel = computed(() => labels.value.exceptionReasonLabel || '异常件原因')
+const damageClaimLabel = computed(() => labels.value.damageClaimLabel || '破损理赔说明')
+const categoryColorOn = computed(() => !!ticket.categoryColorHint || !!ticket.repairThicken)
+const locationFilterOn = computed(() => !!(labels.value.dispatchFilterHint || ticket.repairThicken))
+const skillFilterHint = computed(() => labels.value.skillFilterHint || '按技能标签筛选处理人')
+const locationFilterHint = computed(() => labels.value.dispatchFilterHint || '可按地点/楼栋关键词筛选处理人')
+const interviewRoomHint = computed(() => labels.value.interviewRoomHint || '')
+const dispatchHint = computed(
+  () => labels.value.dispatchFilterHint || labels.value.rosterConflictHint || '',
+)
+const quoteLabel = computed(() => labels.value.quoteLabel || '维修报价（元）')
+const materialFeeLabel = computed(() => labels.value.materialFeeLabel || '材料费（元）')
+const skillOptions = computed(() => {
+  const list = ticket.skillTags || ticket.faultReasons
+  return Array.isArray(list) && list.length
+    ? list.slice(0, 12)
+    : ['水电', '门锁', '网络', '照明', '综合']
+})
+function typeColor(key) {
+  const s = String(key || '')
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return `hsl(${h % 360} 55% 48%)`
+}
 const superAdmin = localStorage.getItem('superAdmin') === 'true'
 /** 终审/单级受理时可选派给维修员等子管 */
 const showDispatch = computed(() => applicantCompleteOnly.value || slaDeadline.value)
-const labels = computed(() => getSchema()?.labels || {})
 const allowBatchHire = computed(() => !!ticket.allowBatchHire)
 const batchHireLabel = computed(() => labels.value.batchHireLabel || '批量录用')
 const batchRejectLabel = computed(() => labels.value.batchRejectLabel || '批量淘汰')
@@ -337,7 +613,6 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
-const dispatchTargets = ref([])
 
 const audit = reactive({
   visible: false,
@@ -345,12 +620,63 @@ const audit = reactive({
   pass: true,
   remark: '',
   assigneeUsername: '',
+  helperUsername: '',
+  skillFilter: '',
+  locationFilter: '',
+  quoteYuan: null,
+  materialFeeYuan: null,
+  disburseBatch: '',
+  excellentMark: false,
+  assignDept: '',
+  exceptionReason: '',
+  damageClaimNote: '',
   row: null,
+})
+const reassign = reactive({
+  visible: false,
+  loading: false,
+  row: null,
+  to: '',
+  remark: '',
+  skillFilter: '',
+  locationFilter: '',
 })
 
 const progressVisible = ref(false)
 const progressId = ref(null)
 const proofDlg = reactive({ visible: false, list: [], claimId: 0 })
+const dispatchTargets = ref([])
+
+const filteredDispatchTargets = computed(() =>
+  filterTargets(dispatchTargets.value, audit.skillFilter, audit.locationFilter || audit.row?.location),
+)
+const filteredReassignTargets = computed(() =>
+  filterTargets(dispatchTargets.value, reassign.skillFilter, reassign.locationFilter || reassign.row?.location),
+)
+
+function filterTargets(list, skill, locationKey) {
+  let out = list || []
+  const s = String(skill || '').trim()
+  if (s) {
+    out = out.filter((t) => {
+      const blob = `${t.username || ''} ${t.nickname || ''} ${t.staffPost || ''} ${t.staffKind || ''}`
+      return blob.includes(s)
+    })
+  }
+  const loc = String(locationKey || '').trim()
+  if (loc) {
+    // 取地点前缀（楼栋/小区）做关键词；与处理人昵称/岗位匹配
+    const token = loc.split(/[\s\-_/|，,]/)[0] || loc
+    if (token.length >= 2) {
+      const keyed = out.filter((t) => {
+        const blob = `${t.username || ''} ${t.nickname || ''} ${t.staffPost || ''} ${t.staffKind || ''}`
+        return blob.includes(token)
+      })
+      if (keyed.length) out = keyed
+    }
+  }
+  return out
+}
 
 function statusText(s) {
   return (
@@ -413,6 +739,24 @@ async function load() {
   })
   list.value = res.data.list
   total.value = res.data.total
+  levelSlaDays.value = res.data.levelSlaDays || ''
+  dutyNotifyOn.value = !!res.data.dutyNotify
+}
+
+async function returnRevise(row) {
+  try {
+    const { value } = await ElMessageBox.prompt('请填写退回修改说明', '退回修改', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPlaceholder: '如：附件缺失，请补充后重交',
+    })
+    await http.post(`/api/tickets/${row.id}/return-revise`, { note: value || '' })
+    ElMessage.success('已退回修改')
+    await load()
+  } catch (e) {
+    if (e === 'cancel' || e === 'close') return
+    ElMessage.error(e?.response?.data?.message || e?.message || '退回修改失败')
+  }
 }
 
 function openAudit(row, pass) {
@@ -428,9 +772,58 @@ function openAudit(row, pass) {
   audit.pass = pass
   audit.remark = ''
   audit.assigneeUsername = ''
+  audit.helperUsername = ''
+  audit.skillFilter = ''
+  audit.locationFilter = row?.location || ''
+  audit.quoteYuan = row?.quoteYuan != null ? Number(row.quoteYuan) : null
+  audit.materialFeeYuan = row?.materialFeeYuan != null ? Number(row.materialFeeYuan) : null
+  audit.disburseBatch = row?.disburseBatch || ''
+  audit.excellentMark = !!row?.excellentMark
+  audit.assignDept = row?.assignDept || ''
+  audit.exceptionReason = row?.exceptionReason || ''
+  audit.damageClaimNote = row?.damageClaimNote || ''
   audit.visible = true
   if (pass && showDispatch.value && isFinalPass(row)) {
     loadDispatchTargets()
+  }
+}
+
+function canReassign(row) {
+  if (!repairThickenOn.value || !row) return false
+  return ['pending', 'pending_mid', 'pending_final', 'approved', 'overdue', 'paused'].includes(row.status)
+}
+
+async function openReassign(row) {
+  reassign.row = row
+  reassign.to = ''
+  reassign.remark = ''
+  reassign.skillFilter = row.skillTag || ''
+  reassign.locationFilter = row.location || ''
+  reassign.visible = true
+  await loadDispatchTargets()
+}
+
+async function submitReassign() {
+  if (!reassign.row) return
+  if (!reassign.to) {
+    ElMessage.warning('请选择转派对象')
+    return
+  }
+  reassign.loading = true
+  try {
+    const body = {
+      assigneeUsername: reassign.to,
+      remark: reassign.remark,
+    }
+    if (allowSkillTag.value && reassign.skillFilter) {
+      body.skillTag = reassign.skillFilter
+    }
+    await http.post(`/api/tickets/${reassign.row.id}/reassign`, body)
+    ElMessage.success('已转派')
+    reassign.visible = false
+    load()
+  } finally {
+    reassign.loading = false
   }
 }
 
@@ -453,6 +846,16 @@ function resetAudit() {
   audit.row = null
   audit.remark = ''
   audit.assigneeUsername = ''
+  audit.helperUsername = ''
+  audit.skillFilter = ''
+  audit.locationFilter = ''
+  audit.quoteYuan = null
+  audit.materialFeeYuan = null
+  audit.disburseBatch = ''
+  audit.excellentMark = false
+  audit.assignDept = ''
+  audit.exceptionReason = ''
+  audit.damageClaimNote = ''
   audit.loading = false
 }
 
@@ -471,6 +874,29 @@ async function submitAudit() {
     }
     if (audit.pass && showDispatch.value && isFinalPass(audit.row) && audit.assigneeUsername) {
       body.assigneeUsername = audit.assigneeUsername
+    }
+    if (audit.pass && allowHelper.value && audit.helperUsername) {
+      body.helperUsername = audit.helperUsername
+    }
+    if (audit.pass && allowSkillTag.value && audit.skillFilter) {
+      body.skillTag = audit.skillFilter
+    }
+    if (audit.pass && allowQuote.value) {
+      if (audit.quoteYuan != null) body.quoteYuan = audit.quoteYuan
+      if (audit.materialFeeYuan != null) body.materialFeeYuan = audit.materialFeeYuan
+    }
+    if (audit.pass && allowDisburseBatch.value && (audit.disburseBatch || '').trim()) {
+      body.disburseBatch = audit.disburseBatch.trim()
+    }
+    if (audit.pass && allowExcellentMark.value) {
+      body.excellentMark = !!audit.excellentMark
+    }
+    if (audit.pass && allowAssignDept.value && (audit.assignDept || '').trim()) {
+      body.assignDept = audit.assignDept.trim()
+    }
+    if (audit.pass && allowExceptionClose.value) {
+      if ((audit.exceptionReason || '').trim()) body.exceptionReason = audit.exceptionReason.trim()
+      if ((audit.damageClaimNote || '').trim()) body.damageClaimNote = audit.damageClaimNote.trim()
     }
     const res = await http.post(`/api/tickets/${audit.row.id}/approve`, body)
     const n = Number(res?.data?.autoRejectedCount) || 0
@@ -491,11 +917,15 @@ function openProgress(row) {
   progressVisible.value = true
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadCredit()
+})
 </script>
 
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sub { margin: 0 0 8px; font-size: 13px; color: var(--el-text-color-secondary); }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .audit-tip {
   margin: 0 0 14px;
@@ -536,4 +966,12 @@ onMounted(load)
   font-weight: 600;
 }
 .muted { color: var(--portal-muted, #94a3b8); }
+.type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
 </style>

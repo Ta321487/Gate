@@ -42,6 +42,22 @@
         <div class="chart-title">{{ funnelTitle }}</div>
         <div ref="funnelEl" class="chart" />
       </div>
+      <div v-if="workerOpt" class="chart-box">
+        <div class="chart-title">{{ workerTitle }}</div>
+        <div ref="workerEl" class="chart" />
+      </div>
+      <div v-if="heatOpt" class="chart-box">
+        <div class="chart-title">{{ heatTitle }}</div>
+        <div ref="heatEl" class="chart" />
+      </div>
+      <div v-if="faultOpt" class="chart-box">
+        <div class="chart-title">故障原因频次</div>
+        <div ref="faultEl" class="chart" />
+      </div>
+      <div v-if="distOpt" class="chart-box">
+        <div class="chart-title">{{ distTitle }}</div>
+        <div ref="distEl" class="chart" />
+      </div>
     </div>
   </section>
 </template>
@@ -72,6 +88,10 @@ const channelEl = ref(null)
 const stageEl = ref(null)
 const leadEl = ref(null)
 const funnelEl = ref(null)
+const workerEl = ref(null)
+const heatEl = ref(null)
+const faultEl = ref(null)
+const distEl = ref(null)
 let statusChart
 let trendChart
 let monthChart
@@ -82,6 +102,10 @@ let channelChart
 let stageChart
 let leadChart
 let funnelChart
+let workerChart
+let heatChart
+let faultChart
+let distChart
 
 const labels = computed(() => getSchema()?.labels || {})
 const channelTitle = computed(() => {
@@ -97,6 +121,9 @@ const funnelTitle = computed(() => {
   if (labels.value.listingFunnelHint) return '成交漏斗'
   return '阶段分布'
 })
+const workerTitle = computed(() => (labels.value.workloadHint ? '维修员工作量' : '处理人完结数'))
+const heatTitle = computed(() => (labels.value.heatHint ? '未结工单地点' : '地点分布'))
+const distTitle = computed(() => labels.value.distChartHint || '成绩分布')
 
 const stateLabels = computed(() => {
   const schema = getSchema() || {}
@@ -406,6 +433,38 @@ const funnelOpt = computed(() => {
   return barFunnelFromSeries(props.charts?.listingFunnelSeries)
 })
 
+const workerOpt = computed(() => {
+  if (!labels.value.workloadHint && !(props.charts?.workerSeries || []).length) return null
+  return barFunnelFromSeries(props.charts?.workerSeries)
+})
+
+const heatOpt = computed(() => {
+  if (!labels.value.heatHint && !(props.charts?.locationHeatSeries || []).length) return null
+  return barFunnelFromSeries(props.charts?.locationHeatSeries)
+})
+
+const faultOpt = computed(() => {
+  const series = props.charts?.faultReasonSeries || []
+  if (!series.length) return null
+  return barFunnelFromSeries(series)
+})
+
+const distOpt = computed(() => {
+  if (!labels.value.distChartHint) return null
+  const series =
+    props.charts?.gradeDistSeries
+    || props.charts?.scoreDistSeries
+    || props.charts?.distSeries
+    || []
+  if (series.length) return barFunnelFromSeries(series)
+  return barFunnelFromSeries([
+    { name: '优秀', value: 0 },
+    { name: '良好', value: 0 },
+    { name: '及格', value: 0 },
+    { name: '不及格', value: 0 },
+  ])
+})
+
 const hasAny = computed(
   () =>
     !!(
@@ -419,6 +478,10 @@ const hasAny = computed(
       || stageOpt.value
       || leadOpt.value
       || funnelOpt.value
+      || workerOpt.value
+      || heatOpt.value
+      || faultOpt.value
+      || distOpt.value
     ),
 )
 
@@ -493,6 +556,34 @@ function render() {
     funnelChart.dispose()
     funnelChart = null
   }
+  if (workerOpt.value && workerEl.value) {
+    if (!workerChart) workerChart = echarts.init(workerEl.value)
+    workerChart.setOption(withPortalChartTheme(workerOpt.value), true)
+  } else if (workerChart) {
+    workerChart.dispose()
+    workerChart = null
+  }
+  if (heatOpt.value && heatEl.value) {
+    if (!heatChart) heatChart = echarts.init(heatEl.value)
+    heatChart.setOption(withPortalChartTheme(heatOpt.value), true)
+  } else if (heatChart) {
+    heatChart.dispose()
+    heatChart = null
+  }
+  if (faultOpt.value && faultEl.value) {
+    if (!faultChart) faultChart = echarts.init(faultEl.value)
+    faultChart.setOption(withPortalChartTheme(faultOpt.value), true)
+  } else if (faultChart) {
+    faultChart.dispose()
+    faultChart = null
+  }
+  if (distOpt.value && distEl.value) {
+    if (!distChart) distChart = echarts.init(distEl.value)
+    distChart.setOption(withPortalChartTheme(distOpt.value), true)
+  } else if (distChart) {
+    distChart.dispose()
+    distChart = null
+  }
 }
 
 function onResize() {
@@ -506,6 +597,10 @@ function onResize() {
   stageChart?.resize()
   leadChart?.resize()
   funnelChart?.resize()
+  workerChart?.resize()
+  heatChart?.resize()
+  faultChart?.resize()
+  distChart?.resize()
 }
 
 watch(
@@ -535,6 +630,10 @@ onBeforeUnmount(() => {
   stageChart?.dispose()
   leadChart?.dispose()
   funnelChart?.dispose()
+  workerChart?.dispose()
+  heatChart?.dispose()
+  faultChart?.dispose()
+  distChart?.dispose()
 })
 </script>
 

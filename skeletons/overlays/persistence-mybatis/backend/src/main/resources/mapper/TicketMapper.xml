@@ -79,11 +79,20 @@
             <if test="statusTodo">
                 AND status IN ('pending','pending_mid','pending_final','hold_ready','verifying')
             </if>
+            <if test="statusStale">
+                AND status IN ('pending','pending_mid','pending_final','approved','overdue','paused')
+                AND (next_follow_at IS NULL OR next_follow_at &lt;= #{staleBefore})
+            </if>
             <if test="statusExact != null and statusExact != ''">
                 AND status=#{statusExact}
             </if>
             <if test="ratedOnly">
                 AND rating IS NOT NULL AND rating &gt; 0
+            </if>
+            <if test="todayAssigned">
+                AND assignee_username=#{todayAssignee}
+                AND status IN ('approved','overdue','paused')
+                AND approve_at IS NOT NULL AND DATE(approve_at)=CURDATE()
             </if>
         </where>
         ORDER BY id DESC

@@ -502,6 +502,7 @@ def domain_sql(
         ensure_material_check_sql,
         ensure_borrow_structural_sql,
         ensure_ticket_extra_sql,
+        ensure_borrow_credit_sql,
         ensure_ticket_progress_sql,
         resolve_ticket_flags,
     )
@@ -594,6 +595,15 @@ def domain_sql(
         domain=domain or "",
         ticket_table=resolved_ticket,
         ticket_flags=flags,
+    )
+    try:
+        ci = int(flags.get("creditInitial") or 100)
+    except (TypeError, ValueError):
+        ci = 100
+    text = ensure_borrow_credit_sql(
+        text,
+        enabled=bool(flags.get("creditOnOverdue")),
+        initial=ci,
     )
     text = apply_ticket_shell_sql(
         text,

@@ -69,6 +69,15 @@
             @click="go(nav('/admin/ticket-records?status=rejected'))"
           >看记录</el-button>
         </div>
+        <div v-if="Number(data.rejectAssignmentCount) > 0" class="todo-row">
+          <span>拒单回池 {{ data.rejectAssignmentCount || 0 }} {{ ticketUnit }}</span>
+          <el-button
+            v-if="nav('/admin/ticket-records')"
+            link
+            @click="go(nav('/admin/ticket-records'))"
+          >看记录</el-button>
+        </div>
+        <div v-if="slaPageHint" class="todo-row hint">{{ slaPageHint }}</div>
         <template v-else-if="approveEndsFlow">
           <div class="todo-row">
             <span>已通过 {{ data.approvedTickets || 0 }} · {{ rejectedLabel }} {{ data.rejectedTickets || 0 }}</span>
@@ -161,6 +170,7 @@ const approveEndsFlow = computed(
   () => !!(ticket.value.approveEndsFlow || data.value.approveEndsFlow),
 )
 const rejectedLabel = computed(() => ticketStatusLabel('rejected', '已驳回'))
+const slaPageHint = computed(() => getSchema()?.labels?.slaPageHint || '')
 const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
 const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
 const orderPendingLabel = computed(() => orderStatusLabel('pending', `待确认${orderLabel.value}`))
@@ -355,6 +365,12 @@ onMounted(load)
 .todo-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 0; border-top: 1px solid var(--portal-line, #f0f3f6); font-size: 14px;
+}
+.todo-row.hint {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  border-top: none;
 }
 .todo-row:first-of-type { border-top: none; }
 @media (max-width: 900px) {

@@ -6,6 +6,14 @@
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <el-alert
+      v-if="timelineHint"
+      type="info"
+      :closable="false"
+      show-icon
+      :title="timelineHint"
+      style="margin-bottom:12px"
+    />
     <el-timeline v-if="list.length">
       <el-timeline-item
         v-for="p in list"
@@ -23,9 +31,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import http from '../api/http'
-import { ticketCopy, ticketProgressStatusLabel } from '../utils/domainSchema.js'
+import { schemaLabels, ticketCopy, ticketProgressStatusLabel } from '../utils/domainSchema.js'
 import { progressNodeMark } from '../utils/statusTone.js'
 
 const props = defineProps({
@@ -37,6 +45,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const list = ref([])
+const timelineHint = computed(
+  () => schemaLabels().followTimelineHint || schemaLabels().progressTimelineHint || '',
+)
 
 function progressStatusLabel(status) {
   return ticketProgressStatusLabel(status)

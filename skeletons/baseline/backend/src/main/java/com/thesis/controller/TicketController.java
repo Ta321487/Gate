@@ -7,6 +7,7 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.service.GradeScoreStore;
 import com.thesis.service.MaterialCheckStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,10 +66,26 @@ public class TicketController {
                 String priority = str(body.get("priority"));
                 String contactPhone = str(body.get("contactPhone"));
                 if (contactPhone.isBlank()) contactPhone = str(body.get("phone"));
-                return R.ok(TicketStore.applyStandalone(
-                        uid, title, location, remark, typeId, roomId, attachUrl, priority, contactPhone));
+                Map<String, Object> created = TicketStore.applyStandalone(
+                        uid, title, location, remark, typeId, roomId, attachUrl, priority, contactPhone);
+                long tid = created.get("id") instanceof Number n ? n.longValue() : 0L;
+                if (tid > 0) {
+                    TicketStore.patchTicketExtras(tid, body);
+                    if (Boolean.TRUE.equals(body.get("asDraft"))
+                            || "true".equalsIgnoreCase(str(body.get("asDraft")))
+                            || "draft".equalsIgnoreCase(str(body.get("status")))) {
+                        created = TicketStore.saveDraft(tid, uid);
+                    } else {
+                        created = TicketStore.get(tid);
+                    }
+                    String dup = TicketStore.checkDupRepairHint(tid);
+                    if (dup != null && !dup.isBlank()) created.put("dupRepairHint", dup);
+                }
+                return R.ok(created);
             }
             long itemId = Long.parseLong(String.valueOf(body.get("itemId") != null ? body.get("itemId") : body.get("bookId")));
+            // 开题扫 GRADE：成绩异议/更正申请入口按时限关（未开时为 no-op）
+            GradeScoreStore.assertObjectionOpen(uid, itemId);
             String remark = str(body.get("remark"));
             if (remark.isBlank()) remark = str(body.get("content"));
             String attachUrl = str(body.get("attachUrl"));
@@ -182,6 +199,10 @@ public class TicketController {
                     : String.valueOf(body.get("assigneeUsername")).trim();
             if ("null".equalsIgnoreCase(assignee)) assignee = "";
             Map<String, Object> approved = TicketStore.approve(id, pass, remark, uid, superAdmin, assignee);
+            if (pass) {
+                TicketStore.patchTicketExtras(id, body);
+                approved = TicketStore.get(id);
+            }
             AuditLogStore.record(
                     uid,
                     pass ? "ticket_approve" : "ticket_reject",
@@ -273,7 +294,16 @@ public class TicketController {
             }
         }
         try {
-            return R.ok(TicketStore.rate(id, uid, rating, note, dims, anonymous));
+            Map<String, Object> out = TicketStore.rate(id, uid, rating, note, dims, anonymous);
+            if (body.containsKey("ratingTags") || body.containsKey("tags")) {
+                Map<String, Object> extras = new LinkedHashMap<>();
+                Object tags = body.get("ratingTags");
+                if (tags == null) tags = body.get("tags");
+                extras.put("ratingTags", tags == null ? "" : String.valueOf(tags));
+                TicketStore.patchTicketExtras(id, extras);
+                out = TicketStore.get(id);
+            }
+            return R.ok(out);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
@@ -470,7 +500,13 @@ public class TicketController {
         }
         try {
             boolean asSuperOrOwner = owner || AdminAuth.isSuperAdmin(session);
+            if (body != null && !body.isEmpty()) {
+                TicketStore.patchTicketExtras(id, body);
+            }
             String attach = body == null ? null : str(body.get("attachUrl"));
+            if (attach == null || attach.isBlank()) {
+                attach = body == null ? null : str(body.get("closeAttachUrl"));
+            }
             return R.ok(TicketStore.complete(id, uid, asSuperOrOwner, attach));
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
@@ -539,6 +575,161 @@ public class TicketController {
         }
     }
 
+    /** 用户催办（站内提醒，≠短信） */
+    @PostMapping("/{id}/urge")
+    public R<Map<String, Object>> urge(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.userUrge(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/cancel-urge")
+    public R<Map<String, Object>> cancelUrge(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.cancelUrge(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/hold")
+    public R<Map<String, Object>> hold(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String uid = requireLogin(session);
+        String reason = body == null ? "" : str(body.get("reason"));
+        if (reason.isBlank() && body != null) reason = str(body.get("holdReason"));
+        try {
+            return R.ok(TicketStore.holdTicket(id, uid, reason));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/resume")
+    public R<Map<String, Object>> resume(@PathVariable long id, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.resumeTicket(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/reassign")
+    public R<Map<String, Object>> reassign(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String uid = requireLogin(session);
+        String to = body == null ? "" : str(body.get("assigneeUsername"));
+        if (to.isBlank() && body != null) to = str(body.get("to"));
+        String remark = body == null ? "" : str(body.get("remark"));
+        try {
+            Map<String, Object> out = TicketStore.reassign(id, to, uid, remark);
+            if (body != null) {
+                TicketStore.patchTicketExtras(id, body);
+                out = TicketStore.get(id);
+            }
+            return R.ok(out);
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 退回修改：次数记库并按上限拦截（maxReviseTimes=0 表示不限次）。 */
+    @PostMapping("/{id}/return-revise")
+    public R<Map<String, Object>> returnRevise(
+            @PathVariable long id, @RequestBody(required = false) Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String uid = requireLogin(session);
+        String note = body == null ? "" : str(body.get("note"));
+        if (note.isBlank() && body != null) note = str(body.get("remark"));
+        try {
+            return R.ok(TicketStore.returnForRevise(id, uid, note));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 用户重新提交被退回的单据（受 maxReviseTimes 约束）。 */
+    @PostMapping("/{id}/resubmit")
+    public R<Map<String, Object>> resubmit(
+            @PathVariable long id, @RequestBody(required = false) Map<String, Object> body, HttpSession session) {
+        String uid = requireLogin(session);
+        requireUser(session);
+        String note = body == null ? "" : str(body.get("remark"));
+        try {
+            return R.ok(TicketStore.resubmit(id, uid, note));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/reject-assignment")
+    public R<Map<String, Object>> rejectAssignment(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String uid = requireLogin(session);
+        String reason = body == null ? "" : str(body.get("reason"));
+        if (reason.isBlank() && body != null) reason = str(body.get("remark"));
+        try {
+            return R.ok(TicketStore.rejectAssignment(id, uid, reason));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/cancel-dispatched")
+    public R<Map<String, Object>> cancelDispatched(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        String uid = requireLogin(session);
+        String reason = body == null ? "" : str(body.get("reason"));
+        if (reason.isBlank() && body != null) reason = str(body.get("remark"));
+        try {
+            return R.ok(TicketStore.cancelDispatched(id, uid, reason));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/confirm-quote")
+    public R<Map<String, Object>> confirmQuote(
+            @PathVariable long id, @RequestBody(required = false) Map<String, Object> body, HttpSession session) {
+        String uid = requireLogin(session);
+        boolean pay = body != null && (Boolean.TRUE.equals(body.get("payMaterial"))
+                || "true".equalsIgnoreCase(str(body.get("payMaterial"))));
+        try {
+            return R.ok(TicketStore.confirmQuote(id, uid, pay));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     /** 申请人续借（须启用 loan_renew） */
     @PostMapping("/{id}/renew")
     public R<Map<String, Object>> renew(@PathVariable long id, HttpSession session) {
@@ -571,14 +762,15 @@ public class TicketController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean rated,
+            @RequestParam(required = false) Boolean todayAssigned,
             HttpSession session) {
         String uid = requireLogin(session);
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         if (!admin) {
-            return R.ok(TicketStore.page(uid, status, page, size));
+            return R.ok(TicketStore.page(uid, status, page, size, uid, false, rated, todayAssigned));
         }
         boolean superAdmin = AdminAuth.isSuperAdmin(session);
-        return R.ok(TicketStore.page(null, status, page, size, uid, superAdmin, rated));
+        return R.ok(TicketStore.page(null, status, page, size, uid, superAdmin, rated, todayAssigned));
     }
 
     /** 档案下已通过单据（论坛楼层等）；无需登录 */
@@ -612,6 +804,53 @@ public class TicketController {
             }
         }
         return R.ok(br);
+    }
+
+    /** 借用信誉分（分值列）：我的分值 + 我的变动台账；credit-on-overdue 未开时 enabled=false 且 rows 为空。 */
+    @GetMapping("/credit/mine")
+    public R<Map<String, Object>> creditMine(
+            @RequestParam(defaultValue = "20") int size,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        Map<String, Object> out = new LinkedHashMap<>(
+                com.thesis.capability.BorrowCreditStore.snapshot(uid));
+        out.put("rows", com.thesis.capability.BorrowCreditStore.listLedger(uid, size));
+        return R.ok(out);
+    }
+
+    /** 管理端信誉分台账：全站最近变动（逾期扣分 / 人工调整）。 */
+    @GetMapping("/credit/ledger")
+    public R<Map<String, Object>> creditLedger(
+            @RequestParam(defaultValue = "50") int size,
+            HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", com.thesis.capability.BorrowCreditStore.enabled());
+        out.put("rows", com.thesis.capability.BorrowCreditStore.listAllRecent(size));
+        return R.ok(out);
+    }
+
+    /** 管理端人工调整信誉分：正数加分 / 负数扣分，写 credit_ledger 留痕。 */
+    @PostMapping("/credit/adjust")
+    public R<Map<String, Object>> creditAdjust(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        AdminAuth.requireAdmin(session);
+        String operator = requireLogin(session);
+        String username = str(body.get("username"));
+        Integer delta = toIntOrNull(body.get("delta"));
+        if (username.isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请填写要调整的用户名");
+        }
+        if (delta == null || delta == 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "调整分值不能为 0");
+        }
+        try {
+            return R.ok(com.thesis.capability.BorrowCreditStore.adjust(
+                    username, delta, str(body.get("reason")), operator));
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     private static String str(Object o) {

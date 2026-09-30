@@ -90,10 +90,10 @@ final class TicketRowMaps {
             m.put("bookTitle", str(first(raw, "title")));
             m.put("bookId", 0L);
             m.put("itemId", 0L);
-            m.put("dueAt", null);
-            m.put("fineYuan", 0.0);
-            m.put("remindedAt", null);
-            m.put("remindMsg", "");
+            m.put("dueAt", fmt(first(raw, "dueAt", "due_at")));
+            m.put("fineYuan", toDouble(first(raw, "fineYuan", "fine_yuan")));
+            m.put("remindedAt", fmt(first(raw, "remindedAt", "reminded_at")));
+            m.put("remindMsg", str(first(raw, "remindMsg", "remind_msg")));
         } else {
             Object fk = raw.get(TicketStore.itemFkColumn());
             if (fk == null) fk = first(raw, "bookId", "itemId", "book_id", "item_id");
@@ -190,8 +190,8 @@ final class TicketRowMaps {
         if (nad instanceof Number n) m.put("nextActionDone", n.intValue());
         Object em = first(raw, "excellentMark", "excellent_mark");
         if (em instanceof Number n) m.put("excellentMark", n.intValue());
-        Object rc = first(raw, "reviseCount", "revise_count");
-        if (rc instanceof Number n) m.put("reviseCount", n.intValue());
+        Object rev = first(raw, "reviseCount", "revise_count");
+        if (rev instanceof Number n) m.put("reviseCount", n.intValue());
         m.put("followSoonNotifiedAt", fmt(first(raw, "followSoonNotifiedAt", "follow_soon_notified_at")));
         String pn = str(first(raw, "proxyName", "proxy_name"));
         if (!pn.isBlank()) m.put("proxyName", pn);
@@ -218,6 +218,8 @@ final class TicketRowMaps {
             String a = String.valueOf(peerAckObj);
             m.put("peerAck", "1".equals(a) || "true".equalsIgnoreCase(a));
         }
+        String rankScope = str(first(raw, "rankScope", "rank_scope"));
+        if (!rankScope.isBlank()) m.put("rankScope", rankScope);
         String pno = str(first(raw, "projectNo", "project_no"));
         if (!pno.isBlank()) m.put("projectNo", pno);
         String pref = str(first(raw, "procureRefNo", "procure_ref_no"));

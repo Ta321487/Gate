@@ -3160,6 +3160,38 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("feedback_next", "VARCHAR(255) DEFAULT ''"),
     ("record_url", "VARCHAR(255) DEFAULT ''"),
     ("follow_soon_notified_at", "DATETIME NULL"),
+    ("urge_at", "DATETIME NULL"),
+    ("urge_count", "INT NOT NULL DEFAULT 0"),
+    ("urge_cancelled", "TINYINT NOT NULL DEFAULT 0"),
+    ("fault_reason", "VARCHAR(64) DEFAULT ''"),
+    ("close_summary", "VARCHAR(512) DEFAULT ''"),
+    ("preferred_slot", "VARCHAR(64) DEFAULT ''"),
+    ("response_due_at", "DATETIME NULL"),
+    ("night_urgent", "TINYINT NOT NULL DEFAULT 0"),
+    ("address_type", "VARCHAR(16) DEFAULT ''"),
+    ("helper_username", "VARCHAR(64) DEFAULT ''"),
+    ("quote_yuan", "DECIMAL(10,2) NULL"),
+    ("quote_confirmed", "TINYINT NOT NULL DEFAULT 0"),
+    ("material_fee_yuan", "DECIMAL(10,2) NULL"),
+    ("material_paid", "TINYINT NOT NULL DEFAULT 0"),
+    ("hold_reason", "VARCHAR(255) DEFAULT ''"),
+    ("asset_code", "VARCHAR(64) DEFAULT ''"),
+    ("remote_url", "VARCHAR(255) DEFAULT ''"),
+    ("skill_tag", "VARCHAR(64) DEFAULT ''"),
+    ("route_note", "VARCHAR(255) DEFAULT ''"),
+    ("parent_ticket_id", "BIGINT NULL"),
+    ("subscribe_progress", "TINYINT NOT NULL DEFAULT 0"),
+    ("audio_url", "VARCHAR(255) DEFAULT ''"),
+    ("rating_tags", "VARCHAR(255) DEFAULT ''"),
+    ("follow_rated", "TINYINT NOT NULL DEFAULT 0"),
+    ("parts_note", "VARCHAR(255) DEFAULT ''"),
+    ("serial_no", "VARCHAR(64) DEFAULT ''"),
+    ("visit_due_at", "DATETIME NULL"),
+    ("knowledge_deposit", "TINYINT NOT NULL DEFAULT 0"),
+    ("rank_scope", "VARCHAR(16) DEFAULT ''"),
+    ("objection_due_at", "DATETIME NULL"),
+    ("objection_note", "VARCHAR(255) DEFAULT ''"),
+    ("objection_at", "DATETIME NULL"),
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
@@ -3167,8 +3199,8 @@ _TICKET_COL_DDL = {n.lower(): ddl for n, ddl in TICKET_OPTIONAL_COLUMNS}
 
 # 域固有业务列（不含 attach/rating 等能力开关列）
 TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
-    "DOM-LIBRARY": ["fine_status", "due_soon_notified_at", "ever_overdue"],
-    "DOM-EQUIP": ["fine_status", "deposit_yuan", "notice_ack", "due_soon_notified_at", "ever_overdue", "insurance_ack"],
+    "DOM-LIBRARY": ["fine_status", "due_soon_notified_at", "ever_overdue", "notice_ack"],
+    "DOM-EQUIP": ["fine_status", "deposit_yuan", "notice_ack", "due_soon_notified_at", "ever_overdue", "insurance_ack", "asset_code"],
     "DOM-ASSET": ["pickup_at", "pickup_place", "actual_qty", "project_no", "procure_ref_no", "dual_reviewer_a", "dual_reviewer_b"],
     "DOM-CRM": ["contact_channel", "next_follow_at", "deal_amount_yuan", "next_action", "next_action_done", "follow_soon_notified_at"],
     "DOM-ATTEND": ["contact_channel", "next_follow_at", "leave_days", "return_date", "proxy_name"],
@@ -3176,7 +3208,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
     "DOM-RECRUIT": ["contact_channel", "next_follow_at", "interview_place", "interview_result", "written_score", "bg_check_note"],
     "DOM-DATING": ["contact_channel", "next_follow_at"],
-    "DOM-GRADE": ["contact_channel", "next_follow_at"],
+    "DOM-GRADE": ["contact_channel", "next_follow_at", "notice_ack", "rank_scope"],
     "DOM-INTERN": [
         "contact_channel", "next_follow_at", "week_no",
         "appraisal_comment", "appraisal_grade", "company_eval", "excellent_mark", "revise_count",
@@ -3229,9 +3261,33 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-EVENT": [
         "contact_channel", "next_follow_at", "close_attach_url", "assign_dept", "confidential",
     ],
-    "DOM-DORM": ["priority", "contact_phone"],
-    "DOM-PROPERTY": ["priority", "contact_phone"],
-    "DOM-IT": ["priority", "contact_phone"],
+    "DOM-DORM": [
+        "priority", "contact_phone",
+        "urge_at", "urge_count", "urge_cancelled",
+        "fault_reason", "close_summary", "preferred_slot", "response_due_at",
+        "night_urgent", "address_type", "helper_username",
+        "hold_reason", "subscribe_progress", "audio_url", "rating_tags",
+        "follow_rated", "route_note", "skill_tag", "visit_due_at",
+        "close_attach_url",
+    ],
+    "DOM-PROPERTY": [
+        "priority", "contact_phone",
+        "urge_at", "urge_count", "urge_cancelled",
+        "fault_reason", "close_summary", "preferred_slot", "response_due_at",
+        "night_urgent", "address_type", "helper_username",
+        "hold_reason", "subscribe_progress", "audio_url", "rating_tags",
+        "follow_rated", "route_note", "skill_tag", "visit_due_at",
+        "parts_note", "serial_no", "close_attach_url",
+    ],
+    "DOM-IT": [
+        "priority", "contact_phone",
+        "urge_at", "urge_count", "urge_cancelled",
+        "fault_reason", "close_summary", "preferred_slot", "response_due_at",
+        "night_urgent", "helper_username",
+        "hold_reason", "subscribe_progress", "audio_url", "rating_tags",
+        "follow_rated", "route_note", "skill_tag", "visit_due_at",
+        "parts_note", "serial_no", "asset_code", "remote_url", "close_attach_url",
+    ],
     "DOM-LOST": ["fine_status", "pickup_at", "pickup_place"],
     "DOM-PARCEL": [
         "fine_status",
@@ -3336,10 +3392,49 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("excellent_mark")
     if int(f.get("maxReviseTimes") or 0) > 0:
         names.append("revise_count")
+    if f.get("allowObjectionWindow") or int(f.get("objectionDays") or 0) > 0:
+        names.extend(["objection_due_at", "objection_note", "objection_at"])
     if f.get("requireFeedbackSet"):
         names.extend(["feedback_interest", "feedback_concern", "feedback_next"])
     if f.get("allowRecordUrl"):
         names.append("record_url")
+    if f.get("repairThicken") or f.get("allowUserUrge"):
+        names.extend(
+            [
+                "urge_at",
+                "urge_count",
+                "urge_cancelled",
+                "fault_reason",
+                "close_summary",
+                "preferred_slot",
+                "response_due_at",
+                "night_urgent",
+                "address_type",
+                "helper_username",
+                "hold_reason",
+                "subscribe_progress",
+                "audio_url",
+                "rating_tags",
+                "follow_rated",
+                "route_note",
+                "skill_tag",
+                "visit_due_at",
+            ]
+        )
+    if f.get("allowPartsNote"):
+        names.append("parts_note")
+    if f.get("allowSerialNo"):
+        names.append("serial_no")
+    if f.get("allowQuote"):
+        names.extend(["quote_yuan", "quote_confirmed", "material_fee_yuan", "material_paid"])
+    if f.get("allowAssetCode"):
+        names.append("asset_code")
+    if f.get("allowRemoteUrl"):
+        names.append("remote_url")
+    if f.get("allowTicketMerge"):
+        names.append("parent_ticket_id")
+    if f.get("allowKnowledgeDeposit"):
+        names.append("knowledge_deposit")
     # 去重保序
     seen: set[str] = set()
     out: list[str] = []
@@ -3436,6 +3531,61 @@ def ensure_ticket_extra_sql(
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
+
+
+_CREDIT_LEDGER_DDL = """
+CREATE TABLE IF NOT EXISTS credit_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  delta INT NOT NULL,
+  score_after INT NOT NULL DEFAULT 0,
+  reason VARCHAR(128) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  operator VARCHAR(64) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_credit_user (username, id)
+);
+"""
+
+SYS_USER_CREDIT_COLUMNS: list[tuple[str, str]] = [
+    ("credit_score", "INT NOT NULL DEFAULT 100"),
+]
+
+
+def ensure_borrow_credit_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    initial: int = 100,
+) -> str:
+    """信誉分物理列：sys_user.credit_score + credit_ledger 流水。"""
+    init = max(1, min(999, int(initial or 100)))
+    cols = [("credit_score", f"INT NOT NULL DEFAULT {init}")]
+    out = sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "sys_user":
+            return m.group(0)
+        if not enabled:
+            body = _prune_columns(body, allow=set(), known={"credit_score"})
+        else:
+            body = _inject_missing_columns(body, cols)
+        body = _strip_trailing_comma(body)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, out)
+    if not enabled:
+        out = re.sub(
+            r"CREATE TABLE IF NOT EXISTS\s+`?credit_ledger`?\s*\((?:.|\n)*?\);\s*",
+            "",
+            out,
+            flags=re.IGNORECASE,
+        )
+    elif "credit_ledger" not in out.lower():
+        out = out.rstrip() + "\n" + _CREDIT_LEDGER_DDL
+    return out
 
 
 def ensure_ticket_progress_sql(sql: str, ticket_table: str | None) -> str:

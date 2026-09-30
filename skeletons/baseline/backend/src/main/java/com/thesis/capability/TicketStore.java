@@ -14,6 +14,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -31,7 +32,7 @@ public final class TicketStore {
     public static final double FINE_PER_DAY = 0.5;
     public static final int MAX_ACTIVE = 5;
 
-    /** 借期等：thesis.ticket-*；无独立配置表时写在 yml */
+    /** 借期等业务参数：见 config/TicketPolicy（bake 按开题生成，可直接修改） */
     private static int bizLoanDays = LOAN_DAYS;
     private static int bizMaxActive = MAX_ACTIVE;
     private static double bizFinePerDay = FINE_PER_DAY;
@@ -390,6 +391,10 @@ public final class TicketStore {
     static int followRemindDays = 0;
     static int minRemarkWords = 0;
     static int maxReviseTimes = 0;
+    /** 未跟进 N 天列表筛（0=关） */
+    static int staleFollowDays = 0;
+    /** 同联系电话拦重号（开题扫 CRM 查重提示） */
+    static boolean phoneDupCheck = false;
     static boolean requireCloseAttach = false;
     static boolean requireReturnDate = false;
     static boolean requireFeedbackSet = false;
@@ -414,6 +419,37 @@ public final class TicketStore {
     static boolean attachByLeaveType = false;
     static boolean allowMakeupApply = false;
     static int weekReportDeadlineDay = 0;
+
+    /** 报修组加厚 */
+    static boolean repairThicken = false;
+    static boolean allowUserUrge = false;
+    static int urgeCooldownMinutes = 0;
+    static boolean lockUrgeAfterRate = false;
+    static boolean allowCancelUrge = false;
+    static boolean requireFaultReason = false;
+    static boolean requireCloseSummary = false;
+    static boolean requireLowRatingRemark = false;
+    static boolean slaSplit = false;
+    static boolean escalateOnOverdue = false;
+    static boolean notifySupervisorOnOverdue = false;
+    static boolean allowHoldResume = false;
+    static boolean allowCancelDispatched = false;
+    static boolean allowTicketDraft = false;
+    static boolean allowFollowRate = false;
+    static boolean preferredSlot = false;
+    static boolean progressSubscribe = false;
+    static boolean nightUrgent = false;
+    static boolean allowPartsNote = false;
+    static boolean allowQuote = false;
+    static boolean allowPublicArea = false;
+    static boolean dupRoomCheck = false;
+    static boolean allowAssetCode = false;
+    static boolean allowRemoteUrl = false;
+    static boolean allowSerialNo = false;
+    static boolean allowHelper = false;
+    static boolean allowRatingTags = false;
+    static boolean todayBoard = false;
+    static boolean printTicket = false;
 
     public static void configureProxyPickup(boolean enabled) {
         allowProxyPickup = enabled;
@@ -566,8 +602,289 @@ public final class TicketStore {
         weekReportDeadlineDay = Math.max(0, Math.min(28, weekReportDeadlineDayIn));
     }
 
+    /** 开题扫：事件等级 → 处理时限天数（高/中/低） */
+    static boolean levelSla = false;
+    static int levelSlaHighDays = 1;
+    static int levelSlaMidDays = 3;
+    static int levelSlaLowDays = 7;
+    /** 开题扫：事件上报后一键通知当日值班（站内信浅群发） */
+    static boolean dutyNotify = false;
+
+    /** 跟进组列表闸：未跟进 N 天筛 + 同联系电话拦重号。 */
+    public static void configureFollowOps(int staleFollowDaysIn, boolean phoneDupCheckIn) {
+        staleFollowDays = Math.max(0, Math.min(90, staleFollowDaysIn));
+        phoneDupCheck = phoneDupCheckIn;
+    }
+
+    /** 事件组闸：等级影响处理时限 + 上报群发值班。 */
+    public static void configureEventOps(
+            boolean levelSlaIn, int highDaysIn, int midDaysIn, int lowDaysIn, boolean dutyNotifyIn) {
+        levelSla = levelSlaIn;
+        levelSlaHighDays = Math.max(1, Math.min(60, highDaysIn));
+        levelSlaMidDays = Math.max(1, Math.min(60, midDaysIn));
+        levelSlaLowDays = Math.max(1, Math.min(60, lowDaysIn));
+        dutyNotify = dutyNotifyIn;
+    }
+
+    /** 等级 → 处理时限天数；levelSla 关时原样返回 fallback。 */
+    static int levelSlaDays(Map<String, Object> m, int fallback) {
+        if (!levelSla) return fallback;
+        String lv = levelTextOf(m);
+        if (lv.isBlank()) return fallback;
+        if (lv.contains("高") || lv.contains("严重") || lv.contains("重大")
+                || lv.contains("紧急") || lv.contains("一级") || lv.contains("红")) {
+            return levelSlaHighDays;
+        }
+        if (lv.contains("中") || lv.contains("较重") || lv.contains("二级")
+                || lv.contains("橙") || lv.contains("黄")) {
+            return levelSlaMidDays;
+        }
+        if (lv.contains("低") || lv.contains("轻微") || lv.contains("一般")
+                || lv.contains("三级") || lv.contains("蓝")) {
+            return levelSlaLowDays;
+        }
+        return fallback;
+    }
+
+    /** 等级文本：单据行 level 优先，其次关联档案（event_case.level）。 */
+    static String levelTextOf(Map<String, Object> m) {
+        if (m == null) return "";
+        String own = TicketSql.str(m.get("level"));
+        if (!own.isBlank()) return own;
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) return "";
+        try {
+            Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+            return item == null ? "" : TicketSql.str(item.get("level"));
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    /** 高,中,低 时限天数（未开时为空串），供前端展示。 */
+    static String levelSlaCsv() {
+        return levelSla ? (levelSlaHighDays + "," + levelSlaMidDays + "," + levelSlaLowDays) : "";
+    }
+
+    /** 事件上报群发当日值班；返回实际通知人数。 */
+    static int notifyDutyOnNewReport(long ticketId, String applicant, String subject) {
+        if (!dutyNotify || ticketId <= 0) return 0;
+        try {
+            Set<String> onDuty = StaffRosterStore.onDutyUsernames(LocalDate.now().toString());
+            if (onDuty.isEmpty()) return 0;
+            String sub = subject == null || subject.isBlank() ? ("单据#" + ticketId) : subject;
+            String who = UserStore.displayName(applicant);
+            int sent = 0;
+            for (String un : onDuty) {
+                if (un == null || un.isBlank() || un.equals(applicant)) continue;
+                MessageStore.send(un, "新事件上报", who + " 上报了「" + sub + "」，请当日值班关注。", "ticket", ticketId);
+                sent++;
+            }
+            return sent;
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    public static void configureRepairThicken(
+            boolean repairThickenIn,
+            boolean allowUserUrgeIn,
+            int urgeCooldownMinutesIn,
+            boolean lockUrgeAfterRateIn,
+            boolean allowCancelUrgeIn,
+            boolean requireFaultReasonIn,
+            boolean requireCloseSummaryIn,
+            boolean requireLowRatingRemarkIn,
+            boolean slaSplitIn,
+            boolean escalateOnOverdueIn,
+            boolean notifySupervisorOnOverdueIn,
+            boolean allowHoldResumeIn,
+            boolean allowCancelDispatchedIn,
+            boolean allowTicketDraftIn,
+            boolean allowFollowRateIn,
+            boolean preferredSlotIn,
+            boolean progressSubscribeIn,
+            boolean nightUrgentIn,
+            boolean allowPartsNoteIn,
+            boolean allowQuoteIn,
+            boolean allowPublicAreaIn,
+            boolean dupRoomCheckIn,
+            boolean allowAssetCodeIn,
+            boolean allowRemoteUrlIn,
+            boolean allowSerialNoIn,
+            boolean allowHelperIn,
+            boolean allowRatingTagsIn,
+            boolean todayBoardIn,
+            boolean printTicketIn) {
+        repairThicken = repairThickenIn;
+        allowUserUrge = allowUserUrgeIn;
+        urgeCooldownMinutes = Math.max(0, Math.min(1440, urgeCooldownMinutesIn));
+        lockUrgeAfterRate = lockUrgeAfterRateIn;
+        allowCancelUrge = allowCancelUrgeIn;
+        requireFaultReason = requireFaultReasonIn;
+        requireCloseSummary = requireCloseSummaryIn;
+        requireLowRatingRemark = requireLowRatingRemarkIn;
+        slaSplit = slaSplitIn;
+        escalateOnOverdue = escalateOnOverdueIn;
+        notifySupervisorOnOverdue = notifySupervisorOnOverdueIn;
+        allowHoldResume = allowHoldResumeIn;
+        allowCancelDispatched = allowCancelDispatchedIn;
+        allowTicketDraft = allowTicketDraftIn;
+        allowFollowRate = allowFollowRateIn;
+        preferredSlot = preferredSlotIn;
+        progressSubscribe = progressSubscribeIn;
+        nightUrgent = nightUrgentIn;
+        allowPartsNote = allowPartsNoteIn;
+        allowQuote = allowQuoteIn;
+        allowPublicArea = allowPublicAreaIn;
+        dupRoomCheck = dupRoomCheckIn;
+        allowAssetCode = allowAssetCodeIn;
+        allowRemoteUrl = allowRemoteUrlIn;
+        allowSerialNo = allowSerialNoIn;
+        allowHelper = allowHelperIn;
+        allowRatingTags = allowRatingTagsIn;
+        todayBoard = todayBoardIn;
+        printTicket = printTicketIn;
+    }
+
     public static boolean isAllowFineWaive() {
         return allowFineWaive;
+    }
+
+    public static boolean isAllowTicketDraft() {
+        return allowTicketDraft;
+    }
+
+    public static boolean isAllowUserUrge() {
+        return allowUserUrge;
+    }
+
+    public static boolean isAllowHoldResume() {
+        return allowHoldResume;
+    }
+
+    public static boolean isAllowCancelDispatched() {
+        return allowCancelDispatched;
+    }
+
+    public static boolean isAllowCancelUrge() {
+        return allowCancelUrge;
+    }
+
+    public static boolean isAllowQuote() {
+        return allowQuote;
+    }
+
+    /** 草稿：把刚提交的 pending 改为 draft（仅本人）。 */
+    public static Map<String, Object> saveDraft(long ticketId, String username) {
+        if (!allowTicketDraft) throw new IllegalStateException("当前未开启草稿报修");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!TicketSql.str(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能保存自己的草稿");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!"pending".equals(st) && !"draft".equals(st)) {
+            throw new IllegalStateException("仅新建单据可存为草稿");
+        }
+        TicketSql.db().update("UPDATE " + TICKET + " SET status='draft' WHERE id=?", ticketId);
+        appendProgress(ticketId, "draft", username, "保存草稿");
+        return get(ticketId);
+    }
+
+    /**
+     * 管理端退回修改：revise_count 记库；maxReviseTimes&gt;0 时超上限拒绝。
+     */
+    public static Map<String, Object> returnForRevise(long ticketId, String op, String note) {
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!"pending".equals(st) && !"pending_mid".equals(st) && !"pending_final".equals(st)) {
+            throw new IllegalStateException("仅待审单据可退回修改");
+        }
+        int used = reviseCountOf(m);
+        if (maxReviseTimes > 0 && used >= maxReviseTimes) {
+            throw new IllegalStateException(
+                    "退回修改次数已达上限（" + maxReviseTimes + " 次），请直接驳回或联系管理员。");
+        }
+        int next = used + 1;
+        String reason = note == null || note.isBlank() ? ("退回修改第 " + next + " 次") : note.trim();
+        if (hasColumn("revise_count")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET status='returned', revise_count=? WHERE id=?",
+                    next, ticketId);
+        } else {
+            TicketSql.db().update("UPDATE " + TICKET + " SET status='returned' WHERE id=?", ticketId);
+        }
+        appendProgress(ticketId, "returned", op == null ? "" : op, reason);
+        return get(ticketId);
+    }
+
+    /** 用户重新提交被退回的单据；修改次数未超上限才放行。 */
+    public static Map<String, Object> resubmit(long ticketId, String username, String remark) {
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!String.valueOf(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能重新提交自己的单据");
+        }
+        if (!"returned".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅被退回的单据可重新提交");
+        }
+        if (maxReviseTimes > 0 && reviseCountOf(m) >= maxReviseTimes) {
+            throw new IllegalStateException("修改次数已达上限（" + maxReviseTimes + " 次），请联系管理员。");
+        }
+        TicketSql.db().update("UPDATE " + TICKET + " SET status='pending' WHERE id=?", ticketId);
+        appendProgress(ticketId, "pending", username,
+                remark == null || remark.isBlank() ? "重新提交" : remark.trim());
+        return get(ticketId);
+    }
+
+    private static int reviseCountOf(Map<String, Object> m) {
+        return m.get("reviseCount") instanceof Number n ? n.intValue() : 0;
+    }
+
+    /** 同联系电话是否已有未办结单；返回单据号（0=未开或未命中）。 */
+    static long dupPhoneOpenId(String phone) {
+        if (!phoneDupCheck || !hasColumn("contact_phone")) return 0L;
+        String p = phone == null ? "" : phone.trim();
+        if (p.isBlank()) return 0L;
+        try {
+            Long hit = TicketSql.db().queryForObject(
+                    "SELECT id FROM " + TICKET
+                            + " WHERE contact_phone=? AND status IN"
+                            + " ('pending','pending_final','pending_mid','approved','overdue','paused')"
+                            + " ORDER BY id DESC LIMIT 1",
+                    Long.class, p);
+            return hit == null ? 0L : hit;
+        } catch (Exception ignored) {
+            return 0L;
+        }
+    }
+
+    /** 同房间未结同类提示（浅：返回文案，不阻断提交）。 */
+    public static String checkDupRepairHint(long ticketId) {
+        if (!dupRoomCheck || MODE != Mode.STANDALONE) return null;
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) return null;
+        long roomId = TicketSql.toLong(m.get("roomId"));
+        long typeId = TicketSql.toLong(m.get("typeId"));
+        if (roomId <= 0) return null;
+        try {
+            Integer n = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET
+                            + " WHERE id<>? AND room_id=?"
+                            + (typeId > 0 ? " AND type_id=?" : "")
+                            + " AND status IN ('pending','pending_final','pending_mid','approved','overdue','paused')",
+                    Integer.class,
+                    typeId > 0
+                            ? new Object[]{ticketId, roomId, typeId}
+                            : new Object[]{ticketId, roomId});
+            if (n != null && n > 0) {
+                return "同地点尚有 " + n + " 单未办结报修，请确认是否重复提交。";
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     public static boolean isAllowBatchHire() {
@@ -1195,7 +1512,12 @@ public final class TicketStore {
         if (period != null && OccupySpanStore.enabled()) {
             OccupySpanStore.record(username, itemId, id, subjectOf(get(id)), period[0], period[1]);
         }
-        return get(id);
+        Map<String, Object> applied = get(id);
+        if (applied != null) {
+            int dutyNotified = notifyDutyOnNewReport(id, username, subjectOf(applied));
+            if (dutyNotified > 0) applied.put("dutyNotified", dutyNotified);
+        }
+        return applied;
     }
 
     private static LocalDateTime[] resolvePeriod(String periodStart, String periodEnd) {
@@ -1289,6 +1611,11 @@ public final class TicketStore {
         }
         String t = title == null ? "" : title.trim();
         if (t.isBlank()) throw new IllegalArgumentException("请填写标题");
+        long dupPhoneId = dupPhoneOpenId(contactPhone);
+        if (dupPhoneId > 0) {
+            throw new IllegalStateException(
+                    "该联系电话已有未办结单据#" + dupPhoneId + "，请确认是否重复提交。");
+        }
         TicketAsserts.assertUnderActiveLimit(username);
         String attach = TicketAsserts.normalizeAttach(attachUrl);
         if (requireAttach && !hasColumn("attach_url")) {
@@ -1359,7 +1686,12 @@ public final class TicketStore {
         patchStandaloneExtras(id, priority, contactPhone);
         appendProgress(id, "pending", username, "用户提交");
         notifyAdminsNewTicket(id, username, t);
-        return get(id);
+        Map<String, Object> createdStd = get(id);
+        if (createdStd != null) {
+            int dutyNotified = notifyDutyOnNewReport(id, username, t);
+            if (dutyNotified > 0) createdStd.put("dutyNotified", dutyNotified);
+        }
+        return createdStd;
     }
 
     /** 兼容旧调用：仅标题/地点/说明 */
@@ -1833,7 +2165,7 @@ public final class TicketStore {
         }
         if (MODE == Mode.ARCHIVE && useDeadline) {
             LocalDateTime approveAt = LocalDateTime.now();
-            LocalDateTime dueAt = approveAt.plusDays(loanDays());
+            LocalDateTime dueAt = approveAt.plusDays(levelSlaDays(m, loanDays()));
             Object requested = m.get("dueAt");
             if (requested != null && !String.valueOf(requested).isBlank()) {
                 try {
@@ -1883,9 +2215,9 @@ public final class TicketStore {
                 TicketSql.db().update(sql.toString(), args.toArray());
             }
         } else if (useDeadline) {
-            // 独立工单 SLA：受理进入处理中时起算处理时限
+            // 独立工单 SLA：受理进入处理中时起算处理时限（等级影响时限时按等级取天数）
             LocalDateTime approveAt = LocalDateTime.now();
-            LocalDateTime dueAt = approveAt.plusDays(loanDays());
+            LocalDateTime dueAt = approveAt.plusDays(levelSlaDays(m, loanDays()));
             String handler = !dispatchTo.isBlank() ? dispatchTo : op;
             boolean bindHandler = !handler.isBlank() && hasColumn("assignee_username");
             if (bindHandler) {
@@ -1910,6 +2242,13 @@ public final class TicketStore {
                         Timestamp.valueOf(approveAt),
                         note,
                         Timestamp.valueOf(dueAt),
+                        ticketId);
+            }
+            if (slaSplit && hasColumn("response_due_at")) {
+                LocalDateTime respDue = approveAt.plusDays(levelSlaDays(m, 1));
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET response_due_at=? WHERE id=?",
+                        Timestamp.valueOf(respDue),
                         ticketId);
             }
         } else if (bind) {
@@ -2081,8 +2420,21 @@ public final class TicketStore {
                             : "仅「" + TicketCopy.stateLabel("returned", "已完结") + "」单据可评分");
         }
         Object prev = m.get("rating");
-        if (prev != null && !"0".equals(String.valueOf(prev)) && !"".equals(String.valueOf(prev))) {
-            throw new IllegalStateException("已评价过，不可重复提交");
+        boolean alreadyRated = prev != null && !"0".equals(String.valueOf(prev)) && !"".equals(String.valueOf(prev));
+        boolean followPass = false;
+        if (alreadyRated) {
+            if (!allowFollowRate) {
+                throw new IllegalStateException("已评价过，不可重复提交");
+            }
+            Object fr = m.get("followRated");
+            boolean followed = fr != null && (
+                    Boolean.TRUE.equals(fr)
+                            || "1".equals(String.valueOf(fr))
+                            || "true".equalsIgnoreCase(String.valueOf(fr)));
+            if (followed) {
+                throw new IllegalStateException("已追评过，不可重复提交");
+            }
+            followPass = true;
         }
 
         List<Map<String, String>> dimDefs = TicketCopy.RATING_DIMS;
@@ -2114,6 +2466,9 @@ public final class TicketStore {
 
         String note = ratingRemark == null ? "" : ratingRemark.trim();
         if (note.length() > 255) note = note.substring(0, 255);
+        if (requireLowRatingRemark && overall <= 2 && note.isBlank()) {
+            throw new IllegalArgumentException("评分较低时请填写原因");
+        }
         boolean anon = anonymous && TicketCopy.ALLOW_ANONYMOUS_RATING;
         if (dimDefs != null && !dimDefs.isEmpty() && !hasColumn("rating_dims_json")) {
             throw new IllegalStateException("系统未配置多维评分字段，无法提交评分");
@@ -2128,11 +2483,14 @@ public final class TicketStore {
                     "UPDATE " + TICKET + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
                     overall, note, ticketId);
         }
-        String tip = overall + " 分";
+        if (followPass && hasColumn("follow_rated")) {
+            TicketSql.db().update("UPDATE " + TICKET + " SET follow_rated=1 WHERE id=?", ticketId);
+        }
+        String tip = (followPass ? "追评 " : "") + overall + " 分";
         if (!dimsJson.isBlank()) tip = tip + "（多维）";
         if (anon) tip = tip + " · 匿名";
         if (!note.isBlank()) tip = tip + " · " + note;
-        appendProgress(ticketId, "rated", username, tip);
+        appendProgress(ticketId, followPass ? "follow_rated" : "rated", username, tip);
         return get(ticketId);
     }
 
@@ -2573,6 +2931,25 @@ public final class TicketStore {
                 throw new IllegalStateException("请上传结案报告附件后再办结");
             }
         }
+        if (requireFaultReason) {
+            String fr = TicketSql.str(m.get("faultReason")).trim();
+            if (fr.isBlank()) {
+                throw new IllegalStateException("请选择故障原因后再办结");
+            }
+        }
+        if (requireCloseSummary) {
+            String cs = TicketSql.str(m.get("closeSummary")).trim();
+            if (cs.isBlank()) {
+                throw new IllegalStateException("请填写处理过程摘要后再办结");
+            }
+        }
+        if (allowPartsNote && hasColumn("parts_note")) {
+            String pn = TicketSql.str(m.get("partsNote")).trim();
+            if (pn.isBlank()) {
+                // 浅警告：记入进度但不阻断（答辩可讲「提醒核对耗材」）
+                appendProgress(ticketId, st, actorUid == null ? "" : actorUid, "结单提示：未登记备件/耗材出库");
+            }
+        }
         if (requireReturnDate) {
             String rd = TicketSql.str(m.get("returnDate")).trim();
             if (rd.isBlank()) {
@@ -2670,6 +3047,224 @@ public final class TicketStore {
         return get(ticketId);
     }
 
+    /**
+     * 用户催办：处理中/逾期可催；未超时也可记一笔。冷却防刷；评后可锁催。
+     * 站内信通知处理人/管理员，≠短信外呼。
+     */
+    public static Map<String, Object> userUrge(long ticketId, String username) {
+        if (!allowUserUrge) throw new IllegalStateException("当前未开启用户催办");
+        if (!hasColumn("urge_at") && !hasColumn("urge_count")) {
+            throw new IllegalStateException("系统未配置催办字段");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!TicketSql.str(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能催办自己的单据");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue", "paused").contains(st)) {
+            throw new IllegalStateException("仅处理中/逾期/挂起单据可催办");
+        }
+        if (lockUrgeAfterRate) {
+            Object rating = m.get("rating");
+            if (rating != null && !"0".equals(String.valueOf(rating)) && !"".equals(String.valueOf(rating))) {
+                throw new IllegalStateException("已评价单据不可再催办");
+            }
+        }
+        if (urgeCooldownMinutes > 0 && hasColumn("urge_at")) {
+            Object last = m.get("urgeAt");
+            if (last != null && !String.valueOf(last).isBlank()) {
+                try {
+                    LocalDateTime at = LocalDateTime.parse(String.valueOf(last), TicketSql.FMT);
+                    if (at.plusMinutes(urgeCooldownMinutes).isAfter(LocalDateTime.now())) {
+                        throw new IllegalStateException("催办过于频繁，请稍后再试");
+                    }
+                } catch (IllegalStateException e) {
+                    throw e;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        int count = 0;
+        Object uc = m.get("urgeCount");
+        if (uc instanceof Number n) count = n.intValue();
+        count++;
+        StringBuilder sql = new StringBuilder("UPDATE " + TICKET + " SET ");
+        List<Object> args = new ArrayList<>();
+        boolean first = true;
+        if (hasColumn("urge_at")) {
+            sql.append("urge_at=NOW()");
+            first = false;
+        }
+        if (hasColumn("urge_count")) {
+            if (!first) sql.append(", ");
+            sql.append("urge_count=?");
+            args.add(count);
+            first = false;
+        }
+        if (hasColumn("urge_cancelled")) {
+            if (!first) sql.append(", ");
+            sql.append("urge_cancelled=0");
+        }
+        sql.append(" WHERE id=?");
+        args.add(ticketId);
+        TicketSql.db().update(sql.toString(), args.toArray());
+        appendProgress(ticketId, "urged", username, "用户催办（第 " + count + " 次）");
+        try {
+            String title = subjectOf(m);
+            String body = "【催办】用户对「" + title + "」发起催办，请尽快处理。";
+            String asg = TicketSql.str(m.get("assigneeUsername"));
+            if (!asg.isBlank()) {
+                MessageStore.send(asg, "报修催办", body, "ticket", ticketId);
+            } else {
+                MessageStore.notifyAdmins("报修催办", body, "ticket", ticketId);
+            }
+        } catch (Exception ignored) {
+        }
+        return get(ticketId);
+    }
+
+    /** 用户撤销催办（浅：标记撤催并记流水）。 */
+    public static Map<String, Object> cancelUrge(long ticketId, String username) {
+        if (!allowCancelUrge) throw new IllegalStateException("当前未开启撤销催办");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!TicketSql.str(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能操作自己的单据");
+        }
+        Object uc = m.get("urgeCount");
+        int count = uc instanceof Number n ? n.intValue() : 0;
+        if (count <= 0) throw new IllegalStateException("当前没有催办记录");
+        if (hasColumn("urge_cancelled")) {
+            TicketSql.db().update("UPDATE " + TICKET + " SET urge_cancelled=1 WHERE id=?", ticketId);
+        }
+        appendProgress(ticketId, "urge_cancelled", username, "用户撤销催办");
+        return get(ticketId);
+    }
+
+    /** 挂起工单（处理中 → paused）。 */
+    public static Map<String, Object> holdTicket(long ticketId, String operator, String reason) {
+        if (!allowHoldResume) throw new IllegalStateException("当前未开启挂起");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st) && !"overdue".equals(st)) {
+            throw new IllegalStateException("仅处理中/逾期可挂起");
+        }
+        String note = reason == null ? "" : reason.trim();
+        if (note.isBlank()) throw new IllegalArgumentException("请填写挂起原因");
+        if (note.length() > 255) note = note.substring(0, 255);
+        if (hasColumn("hold_reason")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET status='paused', hold_reason=? WHERE id=?", note, ticketId);
+        } else {
+            TicketSql.db().update("UPDATE " + TICKET + " SET status='paused' WHERE id=?", ticketId);
+        }
+        appendProgress(ticketId, "paused", operator == null ? "" : operator, "挂起：" + note);
+        return get(ticketId);
+    }
+
+    /** 恢复挂起（paused → approved）。 */
+    public static Map<String, Object> resumeTicket(long ticketId, String operator) {
+        if (!allowHoldResume) throw new IllegalStateException("当前未开启挂起恢复");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!"paused".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅挂起单据可恢复");
+        }
+        TicketSql.db().update("UPDATE " + TICKET + " SET status='approved' WHERE id=?", ticketId);
+        appendProgress(ticketId, "approved", operator == null ? "" : operator, "恢复处理");
+        return get(ticketId);
+    }
+
+    /** 转派：改处理人并写进度流水。 */
+    public static Map<String, Object> reassign(
+            long ticketId, String newAssignee, String operator, String remark) {
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!hasColumn("assignee_username")) {
+            throw new IllegalStateException("系统未配置处理人字段");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!List.of("approved", "overdue", "paused", "pending", "pending_final", "pending_mid")
+                .contains(st)) {
+            throw new IllegalStateException("当前状态不可转派");
+        }
+        String to = newAssignee == null ? "" : newAssignee.trim();
+        if (to.isBlank()) throw new IllegalArgumentException("请选择转派对象");
+        String from = TicketSql.str(m.get("assigneeUsername"));
+        TicketSql.db().update("UPDATE " + TICKET + " SET assignee_username=? WHERE id=?", to, ticketId);
+        String note = remark == null || remark.isBlank()
+                ? ("转派：" + (from.isBlank() ? "未派" : from) + " → " + to)
+                : remark.trim();
+        appendProgress(ticketId, "reassigned", operator == null ? "" : operator, note);
+        try {
+            MessageStore.send(to, "工单转派", "「" + subjectOf(m) + "」已转派给你，请尽快处理。", "ticket", ticketId);
+        } catch (Exception ignored) {
+        }
+        return get(ticketId);
+    }
+
+    /** 已派单后用户取消（须理由）。 */
+    public static Map<String, Object> cancelDispatched(long ticketId, String username, String reason) {
+        if (!allowCancelDispatched) throw new IllegalStateException("当前未开启取消已派单");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!TicketSql.str(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能取消自己的单据");
+        }
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st) && !"overdue".equals(st) && !"paused".equals(st)) {
+            throw new IllegalStateException("仅处理中单据可取消，未派单请用撤销");
+        }
+        String note = reason == null ? "" : reason.trim();
+        if (note.isBlank()) throw new IllegalArgumentException("请填写取消原因");
+        if (note.length() > 255) note = note.substring(0, 255);
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET status='cancelled', remark=? WHERE id=?", note, ticketId);
+        appendProgress(ticketId, "cancelled", username, "用户取消已派单：" + note);
+        return get(ticketId);
+    }
+
+    /** 维修员拒单：回池待受理 + 原因。 */
+    public static Map<String, Object> rejectAssignment(long ticketId, String operator, String reason) {
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String st = String.valueOf(m.get("status"));
+        if (!"approved".equals(st) && !"overdue".equals(st) && !"paused".equals(st)) {
+            throw new IllegalStateException("仅处理中单据可拒单");
+        }
+        String note = reason == null ? "" : reason.trim();
+        if (note.isBlank()) throw new IllegalArgumentException("请填写拒单原因");
+        if (note.length() > 255) note = note.substring(0, 255);
+        StringBuilder sql = new StringBuilder("UPDATE " + TICKET + " SET status='pending'");
+        if (hasColumn("assignee_username")) sql.append(", assignee_username=''");
+        if (hasColumn("due_at")) sql.append(", due_at=NULL");
+        if (hasColumn("response_due_at")) sql.append(", response_due_at=NULL");
+        sql.append(", remark=? WHERE id=?");
+        TicketSql.db().update(sql.toString(), note, ticketId);
+        appendProgress(ticketId, "pending", operator == null ? "" : operator, "拒单回池：" + note);
+        return get(ticketId);
+    }
+
+    /** 报价确认（用户）。 */
+    public static Map<String, Object> confirmQuote(long ticketId, String username, boolean payMaterial) {
+        if (!allowQuote) throw new IllegalStateException("当前未开启维修报价");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!TicketSql.str(m.get("username")).equals(username)) {
+            throw new IllegalStateException("只能确认自己的单据报价");
+        }
+        if (!hasColumn("quote_confirmed")) throw new IllegalStateException("系统未配置报价字段");
+        StringBuilder sql = new StringBuilder("UPDATE " + TICKET + " SET quote_confirmed=1");
+        if (payMaterial && hasColumn("material_paid")) sql.append(", material_paid=1");
+        sql.append(" WHERE id=?");
+        TicketSql.db().update(sql.toString(), ticketId);
+        appendProgress(ticketId, "quote_confirmed", username,
+                payMaterial ? "用户确认报价并登记材料费" : "用户确认报价");
+        return get(ticketId);
+    }
+
     public static Map<String, Object> markOverdue(long ticketId) {
         if (!useDeadline) throw new IllegalStateException("当前不支持到期催办");
         Map<String, Object> m = TicketRowMaps.load(ticketId);
@@ -2719,6 +3314,7 @@ public final class TicketStore {
 
     /** 超期达上限则拒绝新申请（开题挂 maxOverdueTimes 时）。 */
     static void assertNotOverdueFrozen(String username) {
+        BorrowCreditStore.assertCanBorrow(username);
         if (maxOverdueTimes <= 0 || username == null || username.isBlank()) return;
         if (!hasColumn("ever_overdue")) return;
         Integer n = TicketSql.db().queryForObject(
@@ -2826,20 +3422,14 @@ public final class TicketStore {
     }
 
     public static Map<String, Object> page(String username, String status, int page, int size) {
-        return page(username, status, page, size, null, true, null);
+        return page(username, status, page, size, null, true, null, null);
     }
 
     public static Map<String, Object> page(
             String username, String status, int page, int size, String adminUid, boolean superAdmin) {
-        return page(username, status, page, size, adminUid, superAdmin, null);
+        return page(username, status, page, size, adminUid, superAdmin, null, null);
     }
 
-    /**
-     * @param username 业务用户视角：只看自己的单；管理员传 null
-     * @param adminUid 子管用户名；总管配合 superAdmin=true 看全部
-     * @param superAdmin 总管看全部；子管：待办池 + 自己绑定的进行中 + 全体终态（取消/驳回等）
-     * @param ratedOnly true 时仅返回已评分单据（管理端查看评价）
-     */
     public static Map<String, Object> page(
             String username,
             String status,
@@ -2848,6 +3438,25 @@ public final class TicketStore {
             String adminUid,
             boolean superAdmin,
             Boolean ratedOnly) {
+        return page(username, status, page, size, adminUid, superAdmin, ratedOnly, null);
+    }
+
+    /**
+     * @param username 业务用户视角：只看自己的单；管理员传 null
+     * @param adminUid 子管用户名；总管配合 superAdmin=true 看全部
+     * @param superAdmin 总管看全部；子管：待办池 + 自己绑定的进行中 + 全体终态（取消/驳回等）
+     * @param ratedOnly true 时仅返回已评分单据（管理端查看评价）
+     * @param todayAssigned true 且 todayBoard 开：仅本人当日受理/处理中的单
+     */
+    public static Map<String, Object> page(
+            String username,
+            String status,
+            int page,
+            int size,
+            String adminUid,
+            boolean superAdmin,
+            Boolean ratedOnly,
+            Boolean todayAssigned) {
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         expireBookHolds();
@@ -2894,6 +3503,11 @@ public final class TicketStore {
         if (status != null && !status.isBlank()) {
             if ("todo".equals(status)) {
                 where.append(" AND status IN ('pending','pending_mid','pending_final','hold_ready','verifying')");
+            } else if ("stale".equals(status) && staleFollowDays > 0 && hasColumn("next_follow_at")) {
+                // 未跟进 N 天：无下次跟进或已过期 N 天以上的未结单
+                where.append(" AND status IN ('pending','pending_mid','pending_final','approved','overdue','paused')")
+                        .append(" AND (next_follow_at IS NULL OR next_follow_at <= ?)");
+                args.add(Timestamp.valueOf(LocalDateTime.now().minusDays(staleFollowDays)));
             } else {
                 where.append(" AND status=?");
                 args.add(status);
@@ -2902,18 +3516,35 @@ public final class TicketStore {
         if (Boolean.TRUE.equals(ratedOnly) && hasColumn("rating")) {
             where.append(" AND rating IS NOT NULL AND rating > 0");
         }
+        if (Boolean.TRUE.equals(todayAssigned) && todayBoard && hasColumn("assignee_username")) {
+            String who = adminUid != null && !adminUid.isBlank() ? adminUid : username;
+            if (who != null && !who.isBlank()) {
+                where.append(" AND assignee_username=? AND status IN ('approved','overdue','paused')");
+                args.add(who);
+                if (hasColumn("approve_at")) {
+                    where.append(" AND approve_at IS NOT NULL AND DATE(approve_at)=CURDATE()");
+                }
+            }
+        }
         Integer total = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TICKET + where, Integer.class, args.toArray());
         int t = total == null ? 0 : total;
         args.add(size);
         args.add((page - 1) * size);
         List<Map<String, Object>> list = TicketSql.db().query(
-                "SELECT * FROM " + TICKET + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM " + TICKET + where + " ORDER BY "
+                        + (hasColumn("priority")
+                        ? "CASE WHEN priority IN ('紧急','高') THEN 0 ELSE 1 END, id DESC"
+                        : "id DESC")
+                        + " LIMIT ? OFFSET ?",
                 (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", t);
         out.put("page", page);
         out.put("size", size);
+        out.put("staleFollowDays", staleFollowDays);
+        out.put("levelSlaDays", levelSlaCsv());
+        out.put("dutyNotify", dutyNotify);
         return out;
     }
 
@@ -3240,6 +3871,74 @@ public final class TicketStore {
         patchFollowExtraStr(ticketId, body, "feedbackNext", "feedback_next", 255, requireFeedbackSet);
         patchFollowExtraStr(ticketId, body, "recordUrl", "record_url", 255, allowRecordUrl);
         patchFollowExtraStr(ticketId, body, "disburseBatch", "disburse_batch", 64, allowDisburseBatch);
+        patchFollowExtraStr(ticketId, body, "faultReason", "fault_reason", 64, requireFaultReason || repairThicken);
+        patchFollowExtraStr(ticketId, body, "closeSummary", "close_summary", 512, requireCloseSummary || repairThicken);
+        patchFollowExtraStr(ticketId, body, "preferredSlot", "preferred_slot", 64, preferredSlot);
+        patchFollowExtraStr(ticketId, body, "holdReason", "hold_reason", 255, allowHoldResume);
+        patchFollowExtraStr(ticketId, body, "assetCode", "asset_code", 64, allowAssetCode);
+        patchFollowExtraStr(ticketId, body, "remoteUrl", "remote_url", 255, allowRemoteUrl);
+        patchFollowExtraStr(ticketId, body, "skillTag", "skill_tag", 64, repairThicken);
+        patchFollowExtraStr(ticketId, body, "routeNote", "route_note", 255, repairThicken);
+        patchFollowExtraStr(ticketId, body, "partsNote", "parts_note", 255, allowPartsNote);
+        patchFollowExtraStr(ticketId, body, "serialNo", "serial_no", 64, allowSerialNo);
+        patchFollowExtraStr(ticketId, body, "helperUsername", "helper_username", 64, allowHelper);
+        patchFollowExtraStr(ticketId, body, "audioUrl", "audio_url", 255, repairThicken);
+        patchFollowExtraStr(ticketId, body, "ratingTags", "rating_tags", 255, allowRatingTags);
+        patchFollowExtraStr(ticketId, body, "addressType", "address_type", 16, allowPublicArea);
+        patchFollowExtraStr(ticketId, body, "rankScope", "rank_scope", 16, true);
+        if (body.containsKey("nightUrgent") && hasColumn("night_urgent")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET night_urgent=? WHERE id=?",
+                    truthy(body.get("nightUrgent")) ? 1 : 0,
+                    ticketId);
+        }
+        if (body.containsKey("subscribeProgress") && hasColumn("subscribe_progress")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET subscribe_progress=? WHERE id=?",
+                    truthy(body.get("subscribeProgress")) ? 1 : 0,
+                    ticketId);
+        }
+        if (body.containsKey("knowledgeDeposit") && hasColumn("knowledge_deposit")) {
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET knowledge_deposit=? WHERE id=?",
+                    truthy(body.get("knowledgeDeposit")) ? 1 : 0,
+                    ticketId);
+        }
+        if ((allowQuote || body.containsKey("quoteYuan")) && body.containsKey("quoteYuan") && hasColumn("quote_yuan")) {
+            double q = TicketSql.toDouble(body.get("quoteYuan"));
+            if (q < 0) q = 0;
+            if (q > 999999) q = 999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET quote_yuan=? WHERE id=?", q, ticketId);
+        }
+        if ((allowQuote || body.containsKey("materialFeeYuan")) && body.containsKey("materialFeeYuan")
+                && hasColumn("material_fee_yuan")) {
+            double fee = TicketSql.toDouble(body.get("materialFeeYuan"));
+            if (fee < 0) fee = 0;
+            if (fee > 999999) fee = 999999;
+            TicketSql.db().update("UPDATE " + TICKET + " SET material_fee_yuan=? WHERE id=?", fee, ticketId);
+        }
+        if (body.containsKey("parentTicketId") && hasColumn("parent_ticket_id")) {
+            long pid = TicketSql.toLong(body.get("parentTicketId"));
+            if (pid > 0) {
+                TicketSql.db().update("UPDATE " + TICKET + " SET parent_ticket_id=? WHERE id=?", pid, ticketId);
+            }
+        }
+        if (body.containsKey("visitDueAt") && hasColumn("visit_due_at") && repairThicken) {
+            String raw = TicketSql.str(body.get("visitDueAt")).trim();
+            if (raw.isBlank()) {
+                TicketSql.db().update("UPDATE " + TICKET + " SET visit_due_at=NULL WHERE id=?", ticketId);
+            } else {
+                try {
+                    LocalDateTime due = LocalDateTime.parse(raw.replace(' ', 'T'));
+                    TicketSql.db().update(
+                            "UPDATE " + TICKET + " SET visit_due_at=? WHERE id=?",
+                            Timestamp.valueOf(due),
+                            ticketId);
+                } catch (Exception ignored) {
+                    // 格式不对则跳过，避免假成功写坏列
+                }
+            }
+        }
     }
 
     private static void patchFollowExtraStr(
@@ -3498,6 +4197,16 @@ public final class TicketStore {
             m.put("avgRating", avg == null ? 0 : Math.round(avg * 10.0) / 10.0);
             m.put("ratedCount", ratedCnt == null ? 0 : ratedCnt);
         }
+        if (repairThicken && hasColumn("assignee_username")) {
+            try {
+                Long rejectCnt = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TICKET + " WHERE remark LIKE '拒单%' OR remark LIKE '%拒单回池%'",
+                        Long.class);
+                m.put("rejectAssignmentCount", rejectCnt == null ? 0 : rejectCnt);
+            } catch (Exception ignored) {
+                m.put("rejectAssignmentCount", 0);
+            }
+        }
         return m;
     }
 
@@ -3557,6 +4266,52 @@ public final class TicketStore {
                             return row;
                         });
                 out.put("hotItemSeries", hot);
+            }
+            if (repairThicken && hasColumn("assignee_username")) {
+                List<Map<String, Object>> workers = TicketSql.db().query(
+                        "SELECT COALESCE(NULLIF(TRIM(assignee_username),''),'未派') AS name,"
+                                + " SUM(CASE WHEN status IN ('approved','overdue','paused') THEN 1 ELSE 0 END) AS active,"
+                                + " SUM(CASE WHEN status='returned' THEN 1 ELSE 0 END) AS done"
+                                + " FROM " + TICKET
+                                + " GROUP BY COALESCE(NULLIF(TRIM(assignee_username),''),'未派')"
+                                + " ORDER BY done DESC, active DESC LIMIT 12",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("active", rs.getLong("active"));
+                            row.put("done", rs.getLong("done"));
+                            row.put("value", rs.getLong("done"));
+                            return row;
+                        });
+                out.put("workerSeries", workers);
+            }
+            if (repairThicken && MODE == Mode.STANDALONE && hasColumn("location")) {
+                List<Map<String, Object>> heat = TicketSql.db().query(
+                        "SELECT COALESCE(NULLIF(TRIM(location),''),'未填地点') AS name, COUNT(*) AS value FROM "
+                                + TICKET
+                                + " WHERE status IN ('pending','pending_final','pending_mid','approved','overdue','paused')"
+                                + " GROUP BY COALESCE(NULLIF(TRIM(location),''),'未填地点') ORDER BY value DESC LIMIT 12",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("locationHeatSeries", heat);
+            }
+            if (repairThicken && hasColumn("fault_reason")) {
+                List<Map<String, Object>> faults = TicketSql.db().query(
+                        "SELECT COALESCE(NULLIF(TRIM(fault_reason),''),'未填') AS name, COUNT(*) AS value FROM "
+                                + TICKET
+                                + " WHERE fault_reason IS NOT NULL AND TRIM(fault_reason)<>''"
+                                + " GROUP BY COALESCE(NULLIF(TRIM(fault_reason),''),'未填') ORDER BY value DESC LIMIT 12",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("faultReasonSeries", faults);
             }
         } catch (Exception ignored) {
             // 表结构差异时不炸工作台

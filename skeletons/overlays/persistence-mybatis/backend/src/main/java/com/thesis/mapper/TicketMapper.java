@@ -110,6 +110,19 @@ public interface TicketMapper {
 
     int updateComplete(Map<String, Object> row);
 
+    @Select("SELECT id FROM `${ticketTable}` WHERE contact_phone=#{phone} "
+            + "AND status IN ('pending','pending_final','pending_mid','approved','overdue','paused') "
+            + "ORDER BY id DESC LIMIT 1")
+    Long selectOpenIdByPhone(
+            @Param("ticketTable") String ticketTable,
+            @Param("phone") String phone);
+
+    @Update("UPDATE `${ticketTable}` SET status='returned', revise_count=#{count} WHERE id=#{id}")
+    int updateReturnRevise(
+            @Param("ticketTable") String ticketTable,
+            @Param("id") long id,
+            @Param("count") int count);
+
     @Update("UPDATE `${ticketTable}` SET status=#{status} WHERE id=#{id}")
     int updateStatus(
             @Param("ticketTable") String ticketTable,

@@ -10,14 +10,32 @@
         style="margin-left:4px"
         @change="onFilter"
       >仅已评分</el-checkbox>
+      <el-checkbox
+        v-if="todayBoardOn"
+        v-model="todayOnly"
+        style="margin-left:4px"
+        @change="onFilter"
+      >今日处理中</el-checkbox>
       <el-button type="primary" @click="load">查询</el-button>
-      <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
+      <el-button :disabled="!list.length" @click="exportCsv">{{ exportBtnLabel }}</el-button>
+      <el-checkbox
+        v-if="stuNoMaskOn"
+        v-model="maskStuNo"
+        style="margin-left:4px"
+      >{{ stuNoMaskHint || '学号脱敏导出' }}</el-checkbox>
     </div>
+    <SchemaLabelHints :keys="recordsHintKeys" />
+    <p v-if="todayBoardOn && todayBoardHint" class="board-hint">{{ todayBoardHint }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="140" show-overflow-tooltip />
-      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip />
+      <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="categoryColorOn" class="type-dot" :style="{ background: typeColor(row.typeName || row.typeId) }" />
+          {{ row.typeName || '—' }}
+        </template>
+      </el-table-column>
       <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
       <el-table-column v-if="showPriorityCols" prop="contactPhone" label="联系电话" width="120" show-overflow-tooltip />
@@ -133,11 +151,34 @@
             @click="finish(row)"
           >{{ verbs.return || '完成' }}</el-button>
           <el-button
+            v-if="printTicketOn"
+            link
+            @click="printTicket(row)"
+          >{{ printTicketLabel }}</el-button>
+          <el-button
             v-if="canCompensate(row)"
             link
             type="warning"
             @click="doCompensate(row)"
           >{{ compensateVerb }}</el-button>
+          <el-button
+            v-if="canHold(row)"
+            link
+            type="warning"
+            @click="doHold(row)"
+          >挂起</el-button>
+          <el-button
+            v-if="canResume(row)"
+            link
+            type="success"
+            @click="doResume(row)"
+          >恢复</el-button>
+          <el-button
+            v-if="canRejectAssign(row)"
+            link
+            type="danger"
+            @click="doRejectAssign(row)"
+          >拒单回池</el-button>
           </div>
         </template>
       </el-table-column>
@@ -157,6 +198,11 @@
     </div>
 
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
+    <RepairFinishDialog
+      v-model="finishVisible"
+      :row="finishRow"
+      @done="load"
+    />
   </div>
 </template>
 
@@ -166,6 +212,9 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
+import RepairFinishDialog from '../../components/RepairFinishDialog.vue'
+import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
+import { RECORDS_HINT_KEYS } from '../../utils/labelHintMount.js'
 import {
   archiveCopy,
   followChannelLabel,
@@ -188,6 +237,10 @@ import {
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
+const props = defineProps({
+  defaultToday: { type: Boolean, default: false },
+})
+
 const route = useRoute()
 const ticket = ticketCopy()
 const archive = archiveCopy()
@@ -200,6 +253,39 @@ function statusLabel(row) {
 }
 const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
+const todayBoardOn = computed(() => !!ticket.todayBoard)
+const todayBoardHint = computed(() => labels.value.todayBoardHint || '')
+const printTicketOn = computed(
+  () =>
+    !!ticket.printTicket
+    || !!(labels.value.gradePrintHint || labels.value.bedPrintHint
+      || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint),
+)
+const printTicketLabel = computed(() => labels.value.printTicketLabel || '打印工单')
+const exportAttachUrls = computed(() => !!ticket.exportAttachUrls)
+const recordsHintKeys = RECORDS_HINT_KEYS
+const monthExportHint = computed(() => labels.value.monthExportHint || '')
+const checkExportHint = computed(() => labels.value.checkExportHint || '')
+const stuNoMaskHint = computed(() => labels.value.stuNoMaskExportHint || '')
+const stuNoMaskOn = computed(() => !!stuNoMaskHint.value)
+const maskStuNo = ref(false)
+const exportBtnLabel = computed(
+  () => monthExportHint.value || checkExportHint.value || '导出 CSV',
+)
+const categoryColorOn = computed(() => !!ticket.categoryColorHint || !!ticket.repairThicken)
+const repairFinishNeeded = computed(() => !!(
+  ticket.repairThicken
+  || ticket.requireFaultReason
+  || ticket.requireCloseSummary
+  || ticket.requireCloseAttach
+  || ticket.allowPartsNote
+  || ticket.allowSerialNo
+  || ticket.allowRemoteUrl
+  || ticket.allowHelper
+  || ticket.allowQuote
+  || ticket.allowKnowledgeDeposit
+  || ticket.allowTicketMerge
+))
 const hasRatingDims = computed(
   () => Array.isArray(ticket.ratingDims) && ticket.ratingDims.length > 0,
 )
@@ -380,8 +466,19 @@ const page = ref(1)
 const size = ref(10)
 const status = ref(null)
 const ratedOnly = ref(false)
+const todayOnly = ref(!!props.defaultToday)
 const progressVisible = ref(false)
 const progressId = ref(null)
+const finishVisible = ref(false)
+const finishRow = ref(null)
+
+function typeColor(key) {
+  const s = String(key || '')
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  const hue = h % 360
+  return `hsl(${hue} 55% 48%)`
+}
 
 function listParams(extra = {}) {
   const params = {
@@ -391,6 +488,7 @@ function listParams(extra = {}) {
     ...extra,
   }
   if (allowRating.value && ratedOnly.value) params.rated = true
+  if (todayBoardOn.value && todayOnly.value) params.todayAssigned = true
   return params
 }
 
@@ -406,9 +504,116 @@ async function load() {
 }
 
 async function finish(row) {
-  await ElMessageBox.confirm(`确认标记「${row.title}」为已完成？`, '完成')
-  await http.post(`/api/tickets/${row.id}/complete`)
+  if (repairFinishNeeded.value) {
+    finishRow.value = row
+    finishVisible.value = true
+    return
+  }
+  const body = {}
+  if (ticket.allowExceptionClose) {
+    const { value: er } = await ElMessageBox.prompt(
+      '异常件可填写原因；正常办结可留空',
+      labels.value.exceptionReasonLabel || '异常件原因',
+      {
+        confirmButtonText: '继续',
+        cancelButtonText: '取消',
+        inputPlaceholder: '选填',
+      },
+    ).catch(() => ({ value: null }))
+    if (er === null) return
+    if (String(er || '').trim()) body.exceptionReason = String(er).trim()
+    const { value: dn } = await ElMessageBox.prompt(
+      '如有破损理赔说明可填写',
+      labels.value.damageClaimLabel || '破损理赔说明',
+      {
+        confirmButtonText: '办结',
+        cancelButtonText: '取消',
+        inputPlaceholder: '选填',
+        inputType: 'textarea',
+      },
+    ).catch(() => ({ value: null }))
+    if (dn === null) return
+    if (String(dn || '').trim()) body.damageClaimNote = String(dn).trim()
+  } else {
+    await ElMessageBox.confirm(`确认标记「${row.title}」为已完成？`, '完成')
+  }
+  await http.post(`/api/tickets/${row.id}/complete`, body)
   ElMessage.success('已完成')
+  load()
+}
+
+function printTicket(row) {
+  const w = window.open('', '_blank')
+  if (!w) {
+    ElMessage.warning('请允许弹出窗口以打印工单')
+    return
+  }
+  const noun = ticket.label || '工单'
+  const hint = labels.value.gradePrintHint || labels.value.bedPrintHint
+    || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint || ''
+  w.document.write(`<!doctype html><html><head><title>${noun} ${row.id}</title>
+<style>body{font-family:sans-serif;padding:24px;color:#111}h1{font-size:18px}p{margin:6px 0}.hint{color:#64748b;font-size:12px}</style>
+</head><body>
+<h1>${noun} #${row.id}</h1>
+${hint ? `<p class="hint">${hint}</p>` : ''}
+<p>标题：${row.title || '—'}</p>
+<p>地点：${row.location || '—'}</p>
+<p>状态：${statusLabel(row)}</p>
+<p>申请人：${personLabel(row, '')}</p>
+<p>处理人：${row.assigneeUsername || '—'}</p>
+<p>期望上门：${row.preferredSlot || '—'}</p>
+<p>响应时限：${row.responseDueAt || '—'}</p>
+<p>完结时限：${row.dueAt || '—'}</p>
+<p>说明：${remarkText(row.remark)}</p>
+<script>window.onload=()=>{window.print()}<\/script>
+</body></html>`)
+  w.document.close()
+}
+
+const repairThickenOn = computed(() => !!ticket.repairThicken || !!ticket.allowHoldResume)
+
+function canHold(row) {
+  if (!repairThickenOn.value || !ticket.allowHoldResume || !row) return false
+  return row.status === 'approved' || row.status === 'overdue'
+}
+
+function canResume(row) {
+  return !!(repairThickenOn.value && ticket.allowHoldResume && row && row.status === 'paused')
+}
+
+function canRejectAssign(row) {
+  if (!repairThickenOn.value || !row) return false
+  return row.status === 'approved' || row.status === 'overdue' || row.status === 'paused'
+}
+
+async function doHold(row) {
+  const { value } = await ElMessageBox.prompt('请填写挂起原因', '挂起工单', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '请填写原因',
+  })
+  await http.post(`/api/tickets/${row.id}/hold`, { reason: value })
+  ElMessage.success('已挂起')
+  load()
+}
+
+async function doResume(row) {
+  await ElMessageBox.confirm(`确认恢复「${row.title || row.id}」继续处理？`, '恢复')
+  await http.post(`/api/tickets/${row.id}/resume`)
+  ElMessage.success('已恢复')
+  load()
+}
+
+async function doRejectAssign(row) {
+  const { value } = await ElMessageBox.prompt('请填写拒单原因（将回池待受理）', '拒单回池', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '请填写原因',
+  })
+  await http.post(`/api/tickets/${row.id}/reject-assignment`, { reason: value })
+  ElMessage.success('已回池')
   load()
 }
 
@@ -506,6 +711,7 @@ async function exportCsv() {
   }
   if (showScheduleCols.value) headers.push('开始', '结束')
   headers.push('说明', '附件')
+  if (exportAttachUrls.value) headers.push('结单附件')
   if (showFollowCols.value) headers.push(channelLabel.value, nextAtLabel.value)
   headers.push('申请时间', '受理时间')
   if (allowCheckin.value) headers.push('签到时间')
@@ -513,12 +719,16 @@ async function exportCsv() {
   if (allowRating.value) headers.push('评分', '短评', '评价时间')
 
   const data = rows.map((row) => {
+    let person = personLabel(row, '')
+    if (maskStuNo.value && person) {
+      person = String(person).replace(/\d{4,}/g, (m) => `${m.slice(0, 2)}****${m.slice(-2)}`)
+    }
     const line = [row.id, row.title]
     if (showTypeCol.value) line.push(row.typeName)
     if (showLocationCol.value) line.push(row.location)
     if (showPriorityCols.value) line.push(row.priority || '', row.contactPhone || '')
     line.push(
-      personLabel(row, ''),
+      person,
       row.assigneeUsername || '',
       statusLabel(row),
     )
@@ -533,6 +743,7 @@ async function exportCsv() {
     }
     if (showScheduleCols.value) line.push(row.startAt, row.endAt)
     line.push(remarkText(row.remark), row.attachUrl || '')
+    if (exportAttachUrls.value) line.push(row.closeAttachUrl || '')
     if (showFollowCols.value) {
       line.push(row.contactChannel || '', row.nextFollowAt || '')
     }
@@ -563,7 +774,16 @@ onMounted(() => {
 
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.board-hint { margin: 0 0 10px; color: #64748b; font-size: 13px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .rating { color: #b45309; font-weight: 600; }
 .muted { color: var(--portal-muted, #94a3b8); }
+.type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
 </style>

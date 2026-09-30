@@ -81,10 +81,10 @@ final class TicketRowMaps {
             m.put("bookTitle", TicketSql.safeStr(rs, "title"));
             m.put("bookId", 0L);
             m.put("itemId", 0L);
-            m.put("dueAt", null);
-            m.put("fineYuan", 0.0);
-            m.put("remindedAt", null);
-            m.put("remindMsg", "");
+            m.put("dueAt", TicketSql.fmt(TicketSql.safeTs(rs, "due_at")));
+            m.put("fineYuan", TicketSql.safeDouble(rs, "fine_yuan"));
+            m.put("remindedAt", TicketSql.fmt(TicketSql.safeTs(rs, "reminded_at")));
+            m.put("remindMsg", TicketSql.safeStr(rs, "remind_msg"));
         } else {
             long bookId = rs.getLong(TicketStore.itemFkColumn());
             m.put("bookId", bookId);
@@ -183,6 +183,78 @@ final class TicketRowMaps {
         putFollowOptStr(m, rs, "feedback_concern", "feedbackConcern");
         putFollowOptStr(m, rs, "feedback_next", "feedbackNext");
         putFollowOptStr(m, rs, "record_url", "recordUrl");
+        putFollowOptStr(m, rs, "fault_reason", "faultReason");
+        putFollowOptStr(m, rs, "close_summary", "closeSummary");
+        putFollowOptStr(m, rs, "preferred_slot", "preferredSlot");
+        putFollowOptStr(m, rs, "hold_reason", "holdReason");
+        putFollowOptStr(m, rs, "asset_code", "assetCode");
+        putFollowOptStr(m, rs, "remote_url", "remoteUrl");
+        putFollowOptStr(m, rs, "skill_tag", "skillTag");
+        putFollowOptStr(m, rs, "route_note", "routeNote");
+        putFollowOptStr(m, rs, "parts_note", "partsNote");
+        putFollowOptStr(m, rs, "serial_no", "serialNo");
+        putFollowOptStr(m, rs, "helper_username", "helperUsername");
+        putFollowOptStr(m, rs, "audio_url", "audioUrl");
+        putFollowOptStr(m, rs, "rating_tags", "ratingTags");
+        putFollowOptStr(m, rs, "address_type", "addressType");
+        putFollowOptStr(m, rs, "rank_scope", "rankScope");
+        try {
+            m.put("urgeAt", TicketSql.fmt(TicketSql.safeTs(rs, "urge_at")));
+        } catch (Exception ignored) {
+        }
+        try {
+            m.put("responseDueAt", TicketSql.fmt(TicketSql.safeTs(rs, "response_due_at")));
+        } catch (Exception ignored) {
+        }
+        try {
+            m.put("visitDueAt", TicketSql.fmt(TicketSql.safeTs(rs, "visit_due_at")));
+        } catch (Exception ignored) {
+        }
+        try {
+            int uc = rs.getInt("urge_count");
+            if (!rs.wasNull()) m.put("urgeCount", uc);
+        } catch (Exception ignored) {
+        }
+        try {
+            int ucx = rs.getInt("urge_cancelled");
+            if (!rs.wasNull()) m.put("urgeCancelled", ucx == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int nu = rs.getInt("night_urgent");
+            if (!rs.wasNull()) m.put("nightUrgent", nu == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int sp = rs.getInt("subscribe_progress");
+            if (!rs.wasNull()) m.put("subscribeProgress", sp == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int kd = rs.getInt("knowledge_deposit");
+            if (!rs.wasNull()) m.put("knowledgeDeposit", kd == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int qc = rs.getInt("quote_confirmed");
+            if (!rs.wasNull()) m.put("quoteConfirmed", qc == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            Object qy = rs.getObject("quote_yuan");
+            if (qy instanceof Number n) m.put("quoteYuan", n.doubleValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object mf = rs.getObject("material_fee_yuan");
+            if (mf instanceof Number n) m.put("materialFeeYuan", n.doubleValue());
+        } catch (Exception ignored) {
+        }
+        try {
+            Object pid = rs.getObject("parent_ticket_id");
+            if (pid instanceof Number n && n.longValue() > 0) m.put("parentTicketId", n.longValue());
+        } catch (Exception ignored) {
+        }
         try {
             Object ws = rs.getObject("written_score");
             if (ws instanceof Number n) m.put("writtenScore", n.doubleValue());

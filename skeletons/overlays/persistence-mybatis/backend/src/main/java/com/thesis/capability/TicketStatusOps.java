@@ -1,5 +1,6 @@
 package com.thesis.capability;
 
+import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.TicketMapper;
 import com.thesis.service.UserStore;
@@ -17,6 +18,11 @@ final class TicketStatusOps {
 
     private static TicketMapper mapper() {
         return MybatisSupport.mapper(TicketMapper.class);
+    }
+
+    /** 尚未 Mapper 化的原生 SQL 片段（与 MyBatis 共用库）。 */
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     static Map<String, Object> enrich(Map<String, Object> b) {
@@ -61,10 +67,39 @@ final class TicketStatusOps {
             applyFineAndRemind(m, false);
             persistFine(m);
             markEverOverdue(m);
+            maybeEscalateRepairOverdue(m);
         }
     }
 
-    /** 应还日前 N 天站内提前催还（每单一回）。 */
+/** 报修超时：升紧急 + 可选通知主管（站内信）。 */
+    static void maybeEscalateRepairOverdue(Map<String, Object> m) {
+        if (!TicketStore.escalateOnOverdue && !TicketStore.notifySupervisorOnOverdue) return;
+        long id = TicketSql.toLong(m.get("id"));
+        if (id <= 0) return;
+        if (TicketStore.escalateOnOverdue && TicketStore.hasColumn("priority")) {
+            String p = TicketSql.str(m.get("priority"));
+            if (!"紧急".equals(p) && !"高".equals(p)) {
+                db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET priority='紧急' WHERE id=?", id);
+                m.put("priority", "紧急");
+                TicketStore.appendProgress(id, "overdue", "system", "超时自动升为紧急");
+            }
+        }
+        if (TicketStore.notifySupervisorOnOverdue) {
+            String title = TicketSql.str(m.get("title"));
+            if (title.isBlank()) title = "单据#" + id;
+            try {
+                com.thesis.service.MessageStore.notifyAdmins(
+                        "维修超时",
+                        "「" + title + "」已超时，请主管关注跟进。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+        /** 应还日前 N 天站内提前催还（每单一回）。 */
     static void maybeNotifyDueSoon(Map<String, Object> m) {
         if (TicketStore.dueSoonDays <= 0) return;
         if (!"approved".equals(String.valueOf(m.get("status")))) return;
@@ -143,6 +178,10 @@ final class TicketStatusOps {
         if (id <= 0) return;
         mapper().updateEverOverdue(TicketStore.TICKET, id);
         m.put("everOverdue", 1);
+        String owner = TicketSql.str(m.get("username"));
+        if (!owner.isBlank()) {
+            BorrowCreditStore.penalizeOverdue(owner, id);
+        }
     }
 
     /**

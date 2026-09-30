@@ -13,6 +13,7 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "opening_align",  # 开题对账闸，只 apply，不开新 cap
         "borrow_thicken",  # 借用组浅加厚（字段/文案/校验），非独立 cap
         "follow_thicken",  # 跟进组浅加厚（字段/文案/校验），非独立 cap
+        "repair_thicken",  # 报修组浅加厚（催办/结单/SLA），非独立 cap
     }
 )
 
