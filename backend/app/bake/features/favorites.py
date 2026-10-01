@@ -279,3 +279,89 @@ def apply_favorites_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_FAVORITE_DDL = """
+CREATE TABLE IF NOT EXISTS user_favorite (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_fav_user_item (username, item_id),
+  KEY idx_fav_user (username, id)
+);
+"""
+
+_POST_LIKE_DDL = """
+CREATE TABLE IF NOT EXISTS user_post_like (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_like_user_item (username, item_id),
+  KEY idx_like_item (item_id)
+);
+"""
+
+_CONTENT_REPORT_DDL = """
+CREATE TABLE IF NOT EXISTS content_report (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) NOT NULL DEFAULT 'archive',
+  target_id BIGINT NOT NULL,
+  reason VARCHAR(512) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_creport_status (status, id),
+  KEY idx_creport_target (target_type, target_id)
+);
+"""
+
+def ensure_favorites_sql(sql: str, *, enabled: bool) -> str:
+    """交易收藏表；未开启不注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_favorite`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _FAVORITE_DDL
+
+def ensure_post_like_sql(sql: str, *, enabled: bool, item_table: str | None = None) -> str:
+    """点赞表；开题挂 post_like 才注入。like_count 列由 FavoriteStore 运行时 ensure。"""
+    del item_table  # 列由运行时补，避免各 MySQL 版本 ALTER 方言差异
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_post_like`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _POST_LIKE_DDL
+
+def ensure_content_report_sql(sql: str, *, enabled: bool) -> str:
+    """内容举报表；开题挂 content_report 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?content_report`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _CONTENT_REPORT_DDL
+
+_BROWSE_HISTORY_DDL = """
+CREATE TABLE IF NOT EXISTS user_browse_history (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NOT NULL,
+  viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_browse_user_item (username, item_id),
+  KEY idx_browse_user_time (username, viewed_at)
+);
+"""
+
+def ensure_browse_history_sql(sql: str, *, enabled: bool) -> str:
+    """浏览足迹表；仅开题挂 browse_history 时注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_browse_history`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _BROWSE_HISTORY_DDL

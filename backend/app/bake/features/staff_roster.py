@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -97,3 +99,40 @@ def apply_staff_roster_to_spec(
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_STAFF_ROSTER_DDL = """
+CREATE TABLE IF NOT EXISTS staff_roster (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  work_date DATE NOT NULL,
+  shift_label VARCHAR(64) NOT NULL DEFAULT '全天',
+  note VARCHAR(256) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_roster_user_day (username, work_date),
+  KEY idx_roster_date (work_date)
+);
+"""
+
+_STAFF_ROSTER_SEED = """
+INSERT INTO staff_roster (username, work_date, shift_label, note)
+SELECT 'subadmin', CURDATE(), '全天', '当日值班'
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=CURDATE()
+);
+INSERT INTO staff_roster (username, work_date, shift_label, note)
+SELECT 'subadmin', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '全天', '次日值班'
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+);
+"""
+
+def ensure_staff_roster_sql(sql: str, *, enabled: bool) -> str:
+    """周排班表+种子；开题挂 staff_roster 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?staff_roster`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _STAFF_ROSTER_DDL + "\n" + _STAFF_ROSTER_SEED

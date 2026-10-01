@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -87,3 +94,59 @@ def apply_shoot_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[s
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_SHOOT_DDL = """
+CREATE TABLE IF NOT EXISTS service_bundle (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  price_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  detail VARCHAR(255) NOT NULL DEFAULT '',
+  enabled TINYINT NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS deliverable (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reservation_id BIGINT NOT NULL,
+  file_url VARCHAR(255) NOT NULL DEFAULT '',
+  delivered TINYINT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_shoot_sql(sql: str, *, enabled: bool) -> str:
+    """套餐与交片。未开不加。摄影师占用仍用 resource_slot。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "reservation":
+            return m.group(0)
+        body = _inject_missing_columns(
+            body,
+            [
+                ("bundle_id", "BIGINT NULL"),
+                ("bundle_yuan", "DECIMAL(10,2) NULL"),
+            ],
+        )
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?service_bundle`?\b", out):
+        return out
+    seed = """INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
+SELECT 1, '证件照', 199.00, '含精修 2 张', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=1);
+INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
+SELECT 2, '写真', 599.00, '含精修 8 张', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=2);
+INSERT INTO deliverable (id, reservation_id, file_url, delivered)
+SELECT 1, 1, '/files/photo-1.jpg', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=1);
+INSERT INTO deliverable (id, reservation_id, file_url, delivered)
+SELECT 2, 2, '/files/photo-2.jpg', 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=2);
+"""
+    return out.rstrip() + "\n" + _SHOOT_DDL + "\n" + seed

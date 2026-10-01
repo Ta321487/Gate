@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -94,3 +96,37 @@ def apply_product_tags_to_spec(
     spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+def ensure_product_tags_sql(sql: str, *, enabled: bool) -> str:
+    """商城标签表 + 商品-标签关联。未开不加。论坛自有 tag/post_tag，勿对本岛调用。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?tag`?\b", out):
+        out = out.rstrip() + """
+CREATE TABLE IF NOT EXISTS tag (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL UNIQUE
+);
+"""
+    if not re.search(
+        r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?product_tag`?\b", out
+    ):
+        out = out.rstrip() + """
+CREATE TABLE IF NOT EXISTS product_tag (
+  item_id BIGINT NOT NULL,
+  tag_id BIGINT NOT NULL,
+  PRIMARY KEY (item_id, tag_id)
+);
+"""
+    seed = """
+INSERT IGNORE INTO tag (id, name) VALUES
+(1, '热门'), (2, '新品'), (3, '包邮'), (4, '自营');
+INSERT IGNORE INTO product_tag (item_id, tag_id) VALUES
+(1, 1), (1, 3), (2, 2), (2, 4), (3, 1);
+"""
+    out = out.rstrip() + "\n" + seed
+    return out

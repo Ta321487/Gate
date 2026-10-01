@@ -149,3 +149,29 @@ def apply_stock_io_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dic
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_STOCK_IO_DDL = """
+CREATE TABLE IF NOT EXISTS stock_move (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  move_type VARCHAR(16) NOT NULL,
+  item_id BIGINT NOT NULL,
+  item_title VARCHAR(200) DEFAULT '',
+  qty INT NOT NULL,
+  remark VARCHAR(255) DEFAULT '',
+  operator VARCHAR(64) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_stock_move_item (item_id, id),
+  KEY idx_stock_move_type (move_type, id)
+);
+"""
+
+def ensure_stock_io_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补入出库流水表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stock_move`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _STOCK_IO_DDL

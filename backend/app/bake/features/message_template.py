@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -86,3 +88,35 @@ def apply_message_template_to_spec(
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_MESSAGE_TEMPLATE_DDL = """
+CREATE TABLE IF NOT EXISTS sys_message_template (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  code VARCHAR(64) NOT NULL,
+  title VARCHAR(128) NOT NULL,
+  body VARCHAR(512) NOT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_msg_tpl_code (code)
+);
+"""
+
+_MESSAGE_TEMPLATE_SEED = """
+INSERT INTO sys_message_template (code, title, body, enabled)
+SELECT 'ticket_approved', '审核已通过', '「{{subject}}」已通过{{note_suffix}}', 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_approved');
+INSERT INTO sys_message_template (code, title, body, enabled)
+SELECT 'ticket_rejected', '审核未通过', '「{{subject}}」已驳回{{note_suffix}}', 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_rejected');
+"""
+
+def ensure_message_template_sql(sql: str, *, enabled: bool) -> str:
+    """消息模板表+种子；开题挂 message_template 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_message_template`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _MESSAGE_TEMPLATE_DDL + "\n" + _MESSAGE_TEMPLATE_SEED

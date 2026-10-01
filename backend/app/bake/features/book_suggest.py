@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -100,3 +102,38 @@ def apply_book_suggest_to_spec(
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_BOOK_SUGGEST_DDL = """
+CREATE TABLE IF NOT EXISTS book_suggest (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  isbn VARCHAR(32) DEFAULT '',
+  author VARCHAR(100) DEFAULT '',
+  reason VARCHAR(512) DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_bs_user (username, id),
+  KEY idx_bs_status (status, id)
+);
+"""
+
+_BOOK_SUGGEST_SEED = """
+INSERT INTO book_suggest (username, title, isbn, author, reason, status)
+SELECT 'user', '数据结构与算法分析', '9787111213826', 'Weiss', '课程参考书', 'pending'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM book_suggest WHERE username='user' AND title='数据结构与算法分析');
+"""
+
+def ensure_book_suggest_sql(sql: str, *, enabled: bool) -> str:
+    """图书荐购表+种子；开题挂 book_suggest 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?book_suggest`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _BOOK_SUGGEST_DDL + "\n" + _BOOK_SUGGEST_SEED

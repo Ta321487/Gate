@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 import re
 from typing import Any
 
@@ -151,3 +157,75 @@ def apply_vote_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[st
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_VOTE_CORE_DDL = """
+CREATE TABLE IF NOT EXISTS vote_campaign (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  author VARCHAR(100),
+  isbn VARCHAR(256),
+  category_id BIGINT,
+  stock INT DEFAULT 1,
+  status VARCHAR(32) DEFAULT 'available',
+  cover_url VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS vote_candidate (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  name VARCHAR(128) NOT NULL,
+  intro VARCHAR(1000) DEFAULT '',
+  sort_no INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) DEFAULT 'available',
+  avatar_url VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_vote_cand_camp (campaign_id)
+);
+
+CREATE TABLE IF NOT EXISTS vote_ballot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  candidate_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_vote_user_cand (campaign_id, username, candidate_id),
+  KEY idx_vote_ball_user (campaign_id, username)
+);
+"""
+
+_VOTE_ACTIVITY_SEED = """
+INSERT IGNORE INTO vote_campaign (id, title, author, isbn, category_id, stock, status) VALUES
+(1, '活动优秀个人评选', '主办方', '每人限投 1 票；与活动报名并行', 1, 1, 'available');
+INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status) VALUES
+(1, 1, '候选人甲', '活动积极分子', 1, 'available'),
+(2, 1, '候选人乙', '志愿服务突出', 2, 'available'),
+(3, 1, '候选人丙', '组织协调得力', 3, 'available');
+"""
+
+VOTE_CANDIDATE_COLUMNS: list[tuple[str, str]] = [
+    ("avatar_url", "VARCHAR(255) DEFAULT ''"),
+]
+
+def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
+    """vote 能力开启时幂等补评选表；表已存在时仍补 avatar_url（DOM-VOTE 模板曾漏列）。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
+        out = out.rstrip() + "\n" + _VOTE_CORE_DDL
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_candidate":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_CANDIDATE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, out)
+    if seed_activity and "活动优秀个人评选" not in out:
+        out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
+    return out

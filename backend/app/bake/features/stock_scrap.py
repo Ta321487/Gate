@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -121,3 +123,32 @@ def apply_stock_scrap_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_SCRAP_REQUEST_DDL = """
+CREATE TABLE IF NOT EXISTS scrap_request (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  item_title VARCHAR(200) DEFAULT '',
+  qty INT NOT NULL,
+  reason VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  applicant VARCHAR(64) NOT NULL DEFAULT '',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_scrap_req_status (status, id),
+  KEY idx_scrap_req_item (item_id, id)
+);
+"""
+
+def ensure_scrap_request_sql(sql: str, *, enabled: bool) -> str:
+    """报废审批单表：开 stock_scrap 且走审批流时注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?scrap_request`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _SCRAP_REQUEST_DDL

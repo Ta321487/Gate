@@ -6,6 +6,12 @@
 
 from __future__ import annotations
 
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 import re
 from typing import Any
 
@@ -241,3 +247,65 @@ def apply_multi_category_to_spec(
     spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+CATEGORY_DIMENSION_COLUMNS: list[tuple[str, str]] = [
+    ("dimension", "VARCHAR(64) NOT NULL DEFAULT ''"),
+]
+
+def ensure_multi_category_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    item_table: str | None = "product",
+    junction_table: str = "product_category",
+    axis_seed_sql: str = "",
+) -> str:
+    """多维分类：category.dimension + 条目-分类关联表。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "product").strip()
+    junc = (junction_table or "product_category").strip()
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", junc):
+        junc = "product_category"
+
+    def cat_repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "category":
+            return m.group(0)
+        body = _inject_missing_columns(body, CATEGORY_DIMENSION_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(cat_repl, sql)
+    if not re.search(
+        rf"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?{re.escape(junc)}`?\b", out
+    ):
+        ddl = f"""
+CREATE TABLE IF NOT EXISTS {junc} (
+  item_id BIGINT NOT NULL,
+  category_id BIGINT NOT NULL,
+  PRIMARY KEY (item_id, category_id),
+  KEY idx_{junc}_cat (category_id)
+);
+"""
+        out = out.rstrip() + "\n" + ddl
+    # 种子：开题解析出维度取值时换掉默认分类名；否则补通用维度演示行
+    if (axis_seed_sql or "").strip():
+        seed = axis_seed_sql if axis_seed_sql.endswith("\n") else axis_seed_sql + "\n"
+    else:
+        seed = """
+UPDATE category SET dimension='品类' WHERE (dimension IS NULL OR dimension='') AND id IN (1,2,3);
+INSERT IGNORE INTO category (id, name, dimension) VALUES
+(10, '自用', '用途'), (11, '练手', '用途'),
+(12, '入门', '目标'), (13, '进阶', '目标');
+"""
+        if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+            seed += f"""
+INSERT IGNORE INTO {junc} (item_id, category_id)
+SELECT id, category_id FROM {t} WHERE category_id IS NOT NULL AND category_id > 0;
+INSERT IGNORE INTO {junc} (item_id, category_id) VALUES (1, 10), (1, 12), (2, 11), (2, 13);
+"""
+    out = out.rstrip() + "\n" + seed
+    return out

@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -115,3 +122,55 @@ def apply_purchase_gate_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+PRODUCT_GATE_COLUMNS: list[tuple[str, str]] = [
+    ("need_permit", "TINYINT NOT NULL DEFAULT 0"),
+    ("month_limit", "INT NOT NULL DEFAULT 0"),
+]
+
+_PURCHASE_GATE_DDL = """\
+CREATE TABLE IF NOT EXISTS purchase_permit (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  item_id BIGINT NULL,
+  category_id BIGINT NULL,
+  image_url VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  reviewer VARCHAR(64) DEFAULT '',
+  reject_reason VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME NULL,
+  KEY idx_permit_user_item (username, item_id),
+  KEY idx_permit_user_cat (username, category_id)
+);
+"""
+
+def ensure_purchase_gate_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """购买审核表与商品上的开关、月限。未开不加列。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, PRODUCT_GATE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?purchase_permit`?\b", out):
+        return out
+    seed = (
+        f"UPDATE {t} SET need_permit=1, month_limit=2 WHERE id=1;\n"
+        f"UPDATE {t} SET need_permit=0, month_limit=0 WHERE id=2;\n"
+        "INSERT INTO purchase_permit (username, item_id, image_url, status)\n"
+        "SELECT 'user', 1, '/uploads/seed-permit.png', 'pending' FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM purchase_permit WHERE username='user' AND item_id=1 AND status='pending');\n"
+    )
+    return out.rstrip() + "\n" + _PURCHASE_GATE_DDL + "\n" + seed

@@ -323,3 +323,56 @@ def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str,
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_DM_DDL = """
+CREATE TABLE IF NOT EXISTS sys_dm_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  from_username VARCHAR(64) NOT NULL,
+  to_username VARCHAR(64) NOT NULL,
+  body VARCHAR(500) NOT NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_dm_from (from_username, id),
+  KEY idx_dm_to (to_username, id),
+  KEY idx_dm_pair (from_username, to_username, id),
+  KEY idx_dm_unread (to_username, read_at, id)
+);
+"""
+
+_DM_SEED = """
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled)
+SELECT 'user2', 'user123', 'user', '用户乙', '13800000003', '{}', 0, 1, 1
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username='user2');
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '你好，方便私信问下帖子细节吗？', DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND NOT EXISTS (SELECT 1 FROM sys_dm_message LIMIT 1);
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user2', 'user', '可以，你说。', DATE_SUB(NOW(), INTERVAL 8 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 2;
+INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
+SELECT 'user', 'user2', '谢谢，本期用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+FROM DUAL
+WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
+  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
+  AND (SELECT COUNT(*) FROM sys_dm_message) < 3;
+"""
+
+def ensure_dm_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补私信表与演示种子；未开启不注入。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_dm_message`?\b", out):
+        out = out.rstrip() + "\n" + _DM_DDL
+    if "sys_dm_message" in out and "用户乙" not in out:
+        out = out.rstrip() + "\n" + _DM_SEED
+    return out

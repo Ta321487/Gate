@@ -119,3 +119,28 @@ def apply_e_sign_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_E_SIGN_DDL = """
+CREATE TABLE IF NOT EXISTS e_sign_record (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  ticket_id BIGINT NULL,
+  sign_image_url VARCHAR(255) NOT NULL DEFAULT '',
+  agreed TINYINT NOT NULL DEFAULT 0,
+  remark VARCHAR(255) DEFAULT '',
+  signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_e_sign_user (username, id)
+);
+"""
+
+def ensure_e_sign_sql(sql: str, *, enabled: bool) -> str:
+    """能力开启时幂等补签署留痕表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?e_sign_record`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _E_SIGN_DDL

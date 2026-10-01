@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -146,3 +153,45 @@ def apply_line_custom_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
         schema["labels"] = labels
 
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+ORDER_LINE_CUSTOM_COLUMNS: list[tuple[str, str]] = [
+    ("custom_text", "VARCHAR(200) DEFAULT ''"),
+    ("spec_choice", "VARCHAR(120) DEFAULT ''"),
+    ("attach_url", "VARCHAR(255) DEFAULT ''"),
+]
+
+def ensure_order_line_custom_columns(sql: str, *, enabled: bool, with_spec: bool = False) -> str:
+    """订单明细快照列。未开则不加。有规格时再加选项表，刻字仍是手填。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "order_line":
+            return m.group(0)
+        body = _inject_missing_columns(body, ORDER_LINE_CUSTOM_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if not with_spec:
+        return out
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?line_spec_option`?\b", out):
+        return out
+    ddl = """\
+CREATE TABLE IF NOT EXISTS line_spec_option (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  label VARCHAR(64) NOT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  sort_no INT NOT NULL DEFAULT 0
+);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 1, '宋体', 1, 10 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=1);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 2, '红色', 1, 20 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=2);
+INSERT INTO line_spec_option (id, label, enabled, sort_no)
+SELECT 3, '大号', 1, 30 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=3);
+"""
+    return out.rstrip() + "\n" + ddl

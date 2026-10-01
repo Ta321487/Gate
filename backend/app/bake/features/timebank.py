@@ -301,3 +301,58 @@ def apply_balance_ledger_to_spec(spec: dict[str, Any], proposal_text: str = "") 
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_BALANCE_LEDGER_DDL = """
+CREATE TABLE IF NOT EXISTS balance_subject (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(100) NOT NULL,
+  unit_label VARCHAR(32) DEFAULT '次',
+  status VARCHAR(32) DEFAULT 'available',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS balance_account (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  balance INT NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_balance_user_subject (username, subject_id),
+  KEY idx_balance_account_user (username)
+);
+
+CREATE TABLE IF NOT EXISTS balance_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  delta_qty INT NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_balance_ledger_user (username, id)
+);
+
+INSERT IGNORE INTO balance_subject (id, title, unit_label, status) VALUES
+(1, '默认额度', '次', 'available');
+INSERT IGNORE INTO balance_account (username, subject_id, balance) VALUES
+('student', 1, 2),
+('admin', 1, 100);
+"""
+
+def ensure_balance_ledger_sql(sql: str, *, enabled: bool, domain: str = "") -> str:
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?balance_account`?\b", sql):
+        return sql
+    title, unit = ledger_subject(domain)
+    title = title.replace("'", "")
+    unit = unit.replace("'", "")
+    ddl = _BALANCE_LEDGER_DDL.replace(
+        "(1, '默认额度', '次', 'available')",
+        f"(1, '{title}', '{unit}', 'available')",
+    )
+    return sql.rstrip() + "\n" + ddl

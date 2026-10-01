@@ -361,3 +361,120 @@ def apply_exam_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[st
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_EXAM_WRONGBOOK_DDL = """
+CREATE TABLE IF NOT EXISTS exam_wrongbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  question_id BIGINT NOT NULL,
+  last_answer VARCHAR(2000) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_wb_user_q (username, question_id),
+  KEY idx_wb_user (username, id)
+);
+"""
+
+_EXAM_CORE_DDL = """
+CREATE TABLE IF NOT EXISTS exam_question (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  subject_id BIGINT NULL,
+  type VARCHAR(16) NOT NULL,
+  stem VARCHAR(2000) NOT NULL,
+  options_json VARCHAR(2000) DEFAULT '',
+  answer_key VARCHAR(500) NOT NULL,
+  score INT NOT NULL DEFAULT 5,
+  explain_text VARCHAR(2000) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_paper (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  duration_min INT NOT NULL DEFAULT 0,
+  status VARCHAR(16) NOT NULL DEFAULT 'draft',
+  subject_id BIGINT NULL,
+  max_attempts INT NOT NULL DEFAULT 0,
+  gate_ticket TINYINT NOT NULL DEFAULT 0,
+  pass_score INT NOT NULL DEFAULT 60,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_paper_question (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  paper_id BIGINT NOT NULL,
+  question_id BIGINT NOT NULL,
+  sort_no INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_paper_q (paper_id, question_id)
+);
+
+CREATE TABLE IF NOT EXISTS exam_attempt (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  paper_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  mode VARCHAR(16) NOT NULL DEFAULT 'exam',
+  status VARCHAR(16) NOT NULL DEFAULT 'in_progress',
+  score INT NOT NULL DEFAULT 0,
+  total_score INT NOT NULL DEFAULT 0,
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  submitted_at DATETIME NULL,
+  timed_out TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exam_answer (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  attempt_id BIGINT NOT NULL,
+  question_id BIGINT NOT NULL,
+  answer_text VARCHAR(2000) DEFAULT '',
+  is_correct TINYINT NOT NULL DEFAULT 0,
+  score INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_attempt_q (attempt_id, question_id)
+);
+"""
+
+_EXAM_LABSAFE_GATE_SEED = """
+INSERT IGNORE INTO exam_question (id, subject_id, type, stem, options_json, answer_key, score, explain_text) VALUES
+(9001, NULL, 'single', '进入实验室前应首先确认什么？',
+ '["实验目的","安全须知与防护用品","午餐菜单","课程成绩"]', 'B', 20, '须先完成安全培训与防护准备。'),
+(9002, NULL, 'judge', '未通过安全准入考试也可直接申请入室。',
+ '["正确","错误"]', '错误', 20, '须先考试通过再申请准入。'),
+(9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
+ '["穿实验服","戴护目镜","禁止饮食","随意倾倒废液"]', 'A,B,C', 30, '废液须按规定回收。'),
+(9004, NULL, 'subjective', '简述发现火情时的正确做法。',
+ '', '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教师阅卷，不自动匹配。');
+
+INSERT IGNORE INTO exam_paper (id, title, duration_min, status, subject_id, max_attempts, gate_ticket, pass_score) VALUES
+(9001, '实验室安全准入考试卷', 30, 'published', NULL, 0, 1, 60);
+
+INSERT IGNORE INTO exam_paper_question (id, paper_id, question_id, sort_no) VALUES
+(9001, 9001, 9001, 1), (9002, 9001, 9002, 2), (9003, 9001, 9003, 3), (9004, 9001, 9004, 4);
+"""
+
+def ensure_exam_wrongbook_sql(sql: str, *, enabled: bool) -> str:
+    """开题写到错题本时幂等补表；未开启不注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_wrongbook`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _EXAM_WRONGBOOK_DDL
+
+def ensure_exam_core_sql(sql: str, *, enabled: bool, gate_ticket: bool = False) -> str:
+    """exam 能力开启时幂等补考试核心表；LABSAFE 闸门再补准入卷种子。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_question`?\b", out):
+        out = out.rstrip() + "\n" + _EXAM_CORE_DDL
+    elif "gate_ticket" not in out:
+        out = out.replace(
+            "max_attempts INT NOT NULL DEFAULT 0,\n  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
+            "max_attempts INT NOT NULL DEFAULT 0,\n"
+            "  gate_ticket TINYINT NOT NULL DEFAULT 0,\n"
+            "  pass_score INT NOT NULL DEFAULT 60,\n"
+            "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
+        )
+    if gate_ticket and "实验室安全准入考试卷" not in out:
+        out = out.rstrip() + "\n" + _EXAM_LABSAFE_GATE_SEED
+    return out

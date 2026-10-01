@@ -6,6 +6,12 @@
 
 from __future__ import annotations
 
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 import re
 from typing import Any
 
@@ -158,3 +164,49 @@ def apply_guestbook_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_GUESTBOOK_DDL = """
+CREATE TABLE IF NOT EXISTS sys_guestbook (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  nickname VARCHAR(64) DEFAULT '',
+  body VARCHAR(500) NOT NULL,
+  reply VARCHAR(500) DEFAULT '',
+  reply_username VARCHAR(64) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_gb_created (id),
+  KEY idx_gb_user (username)
+);
+"""
+
+GUESTBOOK_CHANNEL_COLUMNS: list[tuple[str, str]] = [
+    ("channel", "VARCHAR(16) DEFAULT 'user'"),
+]
+
+def ensure_guestbook_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    with_channel: bool = False,
+) -> str:
+    """能力开启时幂等补留言表；多店再补 channel 列（走 inject，勿平行 regex）。"""
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", out):
+        out = out.rstrip() + "\n" + _GUESTBOOK_DDL
+    if not with_channel:
+        return out
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "sys_guestbook":
+            return m.group(0)
+        body = _inject_missing_columns(body, GUESTBOOK_CHANNEL_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, out)

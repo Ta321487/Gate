@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from decimal import Decimal
 from typing import Any
 
@@ -112,3 +119,53 @@ def apply_boarding_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dic
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_BOARDING_DDL = """
+CREATE TABLE IF NOT EXISTS stay_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reservation_id BIGINT NULL,
+  option_name VARCHAR(64) DEFAULT '',
+  enabled TINYINT DEFAULT 1,
+  day_key DATE NULL,
+  note VARCHAR(255) DEFAULT '',
+  photo_url VARCHAR(255) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_boarding_sql(sql: str, *, enabled: bool) -> str:
+    """寄养日期与日志。未开不加。特殊要求与每日记录共用 stay_log。"""
+    if not enabled:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "reservation":
+            return m.group(0)
+        body = _inject_missing_columns(
+            body,
+            [
+                ("stay_from", "DATE NULL"),
+                ("stay_to", "DATE NULL"),
+                ("care_ids", "VARCHAR(128) NULL"),
+            ],
+        )
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stay_log`?\b", out):
+        return out
+    seed = """INSERT INTO stay_log (id, option_name, enabled)
+SELECT 1, '喂药', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=1);
+INSERT INTO stay_log (id, option_name, enabled)
+SELECT 2, '遛弯', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=2);
+INSERT INTO stay_log (id, reservation_id, day_key, note, photo_url)
+SELECT 3, 1, '2026-09-21', '已喂食，精神好', '/files/pet-1.jpg' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=3);
+"""
+    return out.rstrip() + "\n" + _BOARDING_DDL + "\n" + seed

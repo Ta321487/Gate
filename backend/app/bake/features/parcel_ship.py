@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -107,3 +109,39 @@ def apply_parcel_ship_to_spec(
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_PARCEL_SHIP_DDL = """
+CREATE TABLE IF NOT EXISTS parcel_ship (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  receiver_name VARCHAR(64) NOT NULL DEFAULT '',
+  receiver_phone VARCHAR(32) NOT NULL DEFAULT '',
+  dest_address VARCHAR(255) NOT NULL DEFAULT '',
+  item_desc VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  tracking_no VARCHAR(64) DEFAULT '',
+  handler VARCHAR(64) DEFAULT '',
+  handle_note VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handled_at DATETIME NULL,
+  KEY idx_ps_user (username, id),
+  KEY idx_ps_status (status, id)
+);
+"""
+
+_PARCEL_SHIP_SEED = """
+INSERT INTO parcel_ship (username, receiver_name, receiver_phone, dest_address, item_desc, status)
+SELECT 'user', '张三', '13800001111', '本市某小区 3 栋', '文件资料', 'pending'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM parcel_ship WHERE username='user' AND item_desc='文件资料');
+"""
+
+def ensure_parcel_ship_sql(sql: str, *, enabled: bool) -> str:
+    """寄件登记表+种子；开题挂 parcel_ship 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?parcel_ship`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _PARCEL_SHIP_DDL + "\n" + _PARCEL_SHIP_SEED

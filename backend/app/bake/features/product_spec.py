@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -123,3 +130,27 @@ def apply_product_spec_to_spec(
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+PRODUCT_SPEC_COLUMNS: list[tuple[str, str]] = [
+    ("spec_note", "VARCHAR(128) DEFAULT ''"),
+]
+
+def ensure_product_spec_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """商品规格说明列；挂 product_spec 时注入（FOOD 语义列已是 spec_note 则跳过）。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, PRODUCT_SPEC_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)

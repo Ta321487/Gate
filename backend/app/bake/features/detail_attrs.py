@@ -9,6 +9,12 @@
 
 from __future__ import annotations
 
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 import re
 from typing import Any
 
@@ -261,3 +267,58 @@ def apply_detail_attrs_to_spec(
     spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+GALLERY_COLUMNS: list[tuple[str, str]] = [
+    ("gallery_json", "TEXT NULL"),
+]
+
+def ensure_detail_attrs_sql(
+    sql: str,
+    *,
+    enabled: bool,
+    item_table: str | None,
+    attr_fields: list[dict[str, str]] | list[str] | None = None,
+    attr_keys: list[str] | None = None,
+) -> str:
+    """详情属性：开题字段按语义落档案表真列。无字段时不加列。
+
+    工厂侧仍用 detailAttrKeys 列表收集；学生包不再依赖 detail_json 装业务字段。
+    旧包若仍有 detail_json，Store 读路径可回退。
+    """
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    cols = detail_attr_sql_columns(attr_fields if attr_fields is not None else attr_keys)
+    if not cols:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, cols)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+def ensure_gallery_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """档案主表补 gallery_json；仅 gallery 能力开启时注入。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, GALLERY_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)

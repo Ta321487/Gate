@@ -14,6 +14,7 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "borrow_thicken",  # 借用组浅加厚（字段/文案/校验），非独立 cap
         "follow_thicken",  # 跟进组浅加厚（字段/文案/校验），非独立 cap
         "repair_thicken",  # 报修组浅加厚（催办/结单/SLA），非独立 cap
+        "apply_thicken",  # 报名/申请组浅加厚（须知/驳回/站内信/浅字段），非独立 cap
     }
 )
 

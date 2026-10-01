@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -104,3 +106,28 @@ def apply_audit_log_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
 
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_AUDIT_LOG_DDL = """
+CREATE TABLE IF NOT EXISTS sys_audit_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) DEFAULT '',
+  target_id VARCHAR(64) DEFAULT '',
+  detail VARCHAR(512) DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_audit_created (created_at, id),
+  KEY idx_audit_user (username)
+);
+"""
+
+def ensure_audit_log_sql(sql: str, *, enabled: bool) -> str:
+    """操作审计表；开题挂 audit_log 才注入。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_audit_log`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _AUDIT_LOG_DDL

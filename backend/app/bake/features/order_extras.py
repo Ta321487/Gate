@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 import re
 from typing import Any
 
@@ -212,3 +218,107 @@ def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") ->
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+FLASH_PRICE_COLUMNS: list[tuple[str, str]] = [
+    ("promo_price", "DECIMAL(10,2) NULL"),
+    ("promo_start", "DATETIME NULL"),
+    ("promo_end", "DATETIME NULL"),
+]
+
+def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """限时购列；开题挂 flash_price 才注入档案表。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, FLASH_PRICE_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)
+
+_PROMO_COUPON_DDL = """
+CREATE TABLE IF NOT EXISTS promo_coupon (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  code VARCHAR(32) NOT NULL,
+  label VARCHAR(64) DEFAULT '',
+  min_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  off_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_quota INT NOT NULL DEFAULT 0,
+  claimed INT NOT NULL DEFAULT 0,
+  expire_at DATETIME NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_promo_code (code)
+);
+"""
+
+_USER_COUPON_DDL = """
+CREATE TABLE IF NOT EXISTS user_coupon (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  coupon_id BIGINT NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'unused',
+  claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  used_at DATETIME NULL,
+  order_id BIGINT NULL,
+  UNIQUE KEY uk_user_coupon (username, coupon_id),
+  KEY idx_user_coupon_user (username, status, id)
+);
+"""
+
+_ORDER_REVIEW_DDL = """
+CREATE TABLE IF NOT EXISTS order_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  rating INT NOT NULL,
+  body VARCHAR(500) DEFAULT '',
+  reply VARCHAR(500) DEFAULT '',
+  replied_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_review (order_id),
+  KEY idx_review_user (username, id)
+);
+"""
+
+
+def _ensure_create_table_ddl(sql: str, *, table: str, ddl: str) -> str:
+    """幂等补 CREATE TABLE；种子若已 INSERT/UPDATE 该表，则插到首条引用之前。"""
+    if re.search(
+        rf"(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?{re.escape(table)}`?\b",
+        sql,
+    ):
+        return sql
+    block = ddl if ddl.endswith("\n") else ddl + "\n"
+    m = re.search(
+        rf"(?i)(?:INSERT\s+(?:IGNORE\s+)?INTO|UPDATE|ALTER\s+TABLE|DELETE\s+FROM)\s+`?{re.escape(table)}`?\b",
+        sql,
+    )
+    if m:
+        return sql[: m.start()] + block + sql[m.start() :]
+    return sql.rstrip() + "\n" + block
+
+
+def ensure_coupon_lifecycle_sql(sql: str, *, enabled: bool) -> str:
+    if not enabled:
+        return sql
+    out = sql
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?promo_coupon`?\b", out):
+        out = out.rstrip() + "\n" + _PROMO_COUPON_DDL
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_coupon`?\b", out):
+        out = out.rstrip() + "\n" + _USER_COUPON_DDL
+    return out
+
+def ensure_order_review_sql(sql: str, *, enabled: bool) -> str:
+    if not enabled:
+        return sql
+    return _ensure_create_table_ddl(sql, table="order_review", ddl=_ORDER_REVIEW_DDL)

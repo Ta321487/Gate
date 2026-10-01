@@ -5,6 +5,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
@@ -124,3 +131,67 @@ def apply_weigh_sale_to_spec(spec: dict[str, Any], proposal_text: str = "") -> d
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+PRODUCT_WEIGH_COLUMNS: list[tuple[str, str]] = [
+    ("sell_by_weight", "TINYINT NOT NULL DEFAULT 0"),
+    ("weight_unit", "VARCHAR(8) NOT NULL DEFAULT ''"),
+]
+
+ORDER_LINE_WEIGHT_COLUMNS: list[tuple[str, str]] = [
+    ("weight_qty", "DECIMAL(10,3) NULL"),
+]
+
+_WEIGH_SALE_DDL = """
+CREATE TABLE IF NOT EXISTS loss_policy (
+  id BIGINT PRIMARY KEY,
+  enabled TINYINT NOT NULL DEFAULT 0,
+  cap_yuan DECIMAL(10,2) NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS loss_claim (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  order_id BIGINT NOT NULL,
+  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  reason VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  paid_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_weigh_sale_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """重量列、次日达时段、损耗赔付。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        low = table.lower()
+        if low == t.lower():
+            body = _inject_missing_columns(body, PRODUCT_WEIGH_COLUMNS)
+        elif low == "order_line":
+            body = _inject_missing_columns(body, ORDER_LINE_WEIGHT_COLUMNS)
+        elif low == "sys_user":
+            body = _inject_missing_columns(body, [("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")])
+        else:
+            return m.group(0)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?loss_policy`?\b", out):
+        return out
+    seed = f"""UPDATE {t} SET sell_by_weight=1, weight_unit='斤' WHERE id=1;
+INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
+SELECT 3, '次日达', '09:00', '18:00', 20, 'next_day', '', 1, 30 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=3);
+INSERT INTO loss_policy (id, enabled, cap_yuan)
+SELECT 1, 1, 20.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM loss_policy WHERE id=1);
+"""
+    return out.rstrip() + "\n" + _WEIGH_SALE_DDL + "\n" + seed

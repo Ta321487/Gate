@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -86,3 +88,47 @@ def apply_lesson_pack_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_LESSON_PACK_DDL = """
+CREATE TABLE IF NOT EXISTS lesson_pack (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  sessions INT NOT NULL,
+  price_yuan DECIMAL(10,2) NOT NULL,
+  valid_days INT NOT NULL,
+  enabled TINYINT DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS lesson_wallet (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  total_sessions INT DEFAULT 0,
+  remain_sessions INT DEFAULT 0,
+  expire_at DATE NULL,
+  reservation_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_lesson_pack_sql(sql: str, *, enabled: bool) -> str:
+    """课时包与剩余节数。未开不加。约课仍用 reservation。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?lesson_pack`?\b", sql):
+        return sql
+    seed = """INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
+SELECT 1, '体验包', 4, 199.00, 30, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=1);
+INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
+SELECT 2, '季度包', 12, 499.00, 90, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=2);
+INSERT INTO lesson_wallet (id, username, total_sessions, remain_sessions, expire_at)
+SELECT 1, 'user', 4, 3, '2026-12-31' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=1);
+INSERT INTO lesson_wallet (id, username, reservation_id, total_sessions, remain_sessions)
+SELECT 2, 'user', 1, 0, 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=2);
+"""
+    return sql.rstrip() + "\n" + _LESSON_PACK_DDL + "\n" + seed

@@ -6,6 +6,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -94,3 +101,71 @@ def apply_blind_box_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     menus["admin"] = admin
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+PRODUCT_PITY_COLUMNS: list[tuple[str, str]] = [
+    ("pity_n", "INT NOT NULL DEFAULT 0"),
+]
+
+ORDER_LINE_DRAW_COLUMNS: list[tuple[str, str]] = [
+    ("draw_title", "VARCHAR(500) NOT NULL DEFAULT ''"),
+    ("draw_hidden", "TINYINT NOT NULL DEFAULT 0"),
+]
+
+_BLIND_BOX_DDL = """\
+CREATE TABLE IF NOT EXISTS blind_pool (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  box_id BIGINT NOT NULL,
+  prize_id BIGINT NOT NULL,
+  weight INT NOT NULL,
+  hidden TINYINT NOT NULL DEFAULT 0,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  UNIQUE KEY uk_box_prize (box_id, prize_id)
+);
+CREATE TABLE IF NOT EXISTS blind_pity (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  box_id BIGINT NOT NULL,
+  draws INT NOT NULL DEFAULT 0,
+  hidden_got TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_user_box (username, box_id)
+);
+"""
+
+def ensure_blind_box_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """盲盒奖池、保底计数、盒子上的保底次数。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        low = table.lower()
+        if low == t.lower():
+            body = _inject_missing_columns(body, PRODUCT_PITY_COLUMNS)
+        elif low == "order_line":
+            body = _inject_missing_columns(body, ORDER_LINE_DRAW_COLUMNS)
+        else:
+            return m.group(0)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl, sql)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?blind_pool`?\b", out):
+        return out
+    seed = (
+        f"UPDATE {t} SET pity_n=3 WHERE id=1;\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 2, 70, 0, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=2);\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 3, 25, 0, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=3);\n"
+        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
+        "SELECT 1, 4, 5, 1, 1 FROM DUAL\n"
+        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=4);\n"
+    )
+    return out.rstrip() + "\n" + _BLIND_BOX_DDL + "\n" + seed

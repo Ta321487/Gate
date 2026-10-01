@@ -5,6 +5,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -147,3 +154,53 @@ def apply_rental_bond_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
     menus["admin"] = admin
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+ORDER_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
+    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("rent_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("late_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("deposit_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+    ("damage_note", "VARCHAR(255) DEFAULT ''"),
+    ("damage_deduct_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+]
+
+VEHICLE_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
+    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    ("rent_stage", "VARCHAR(16) NOT NULL DEFAULT 'available'"),
+]
+
+def ensure_rental_bond_sql(sql: str, *, enabled: bool, item_table: str | None = "vehicle") -> str:
+    """订单三笔钱 + 验损列；档案押金与可租/已租/维修。未开不加。"""
+    if not enabled:
+        return sql
+
+    def order_repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "biz_order":
+            return m.group(0)
+        body = _inject_missing_columns(body, ORDER_RENTAL_BOND_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(order_repl, sql)
+    t = (item_table or "vehicle").strip()
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def item_repl(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _inject_missing_columns(body, VEHICLE_RENTAL_BOND_COLUMNS)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(item_repl, out)
+        seed = (
+            f"UPDATE {t} SET deposit_yuan=500.00, rent_stage='available' WHERE id=1 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
+            f"UPDATE {t} SET deposit_yuan=800.00, rent_stage='available' WHERE id=2 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
+            "UPDATE biz_order SET deposit_yuan=500.00, rent_yuan=total_yuan, deposit_status='held' "
+            "WHERE id=1 AND (deposit_status IS NULL OR deposit_status='');\n"
+        )
+        out = out.rstrip() + "\n" + seed
+    return out

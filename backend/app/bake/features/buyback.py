@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -89,3 +91,51 @@ def apply_buyback_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_BUYBACK_DDL = """
+CREATE TABLE IF NOT EXISTS buyback_slot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  enabled TINYINT DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS buyback_order (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  book_title VARCHAR(200) NOT NULL,
+  condition_note VARCHAR(255) DEFAULT '',
+  slot_id BIGINT NULL,
+  quote_yuan DECIMAL(10,2) NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  product_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_buyback_sql(sql: str, *, enabled: bool) -> str:
+    """回收单与上门时段。未开不加。上架仍用商品表。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?buyback_order`?\b", sql):
+        return sql
+    grade_col = ", condition_grade" if re.search(r"\bcondition_grade\b", sql, re.I) else ""
+    grade_val = ", '八成新'" if grade_col else ""
+    seed = f"""INSERT INTO buyback_slot (id, name, enabled)
+SELECT 1, '上午上门', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=1);
+INSERT INTO buyback_slot (id, name, enabled)
+SELECT 2, '下午上门', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=2);
+INSERT INTO product (id, title, author, isbn, category_id, stock, status{grade_col})
+SELECT 9, '操作系统', '28.00', 'BOOK-OS', 1, 1, 'available'{grade_val} FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM product WHERE id=9);
+INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, status)
+SELECT 1, 'user', '线性代数', '有笔记', 1, 'pending' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=1);
+INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, quote_yuan, status, product_id)
+SELECT 2, 'user', '操作系统', '书页干净', 2, 28.00, 'listed', 9 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=2);
+"""
+    return sql.rstrip() + "\n" + _BUYBACK_DDL + "\n" + seed

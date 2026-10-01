@@ -5,6 +5,8 @@ cap id 为 front_desk（域默认 checkin 是口令签到，勿撞名）。表�
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.features.room_board import (
@@ -129,3 +131,55 @@ def apply_front_desk_to_spec(spec: dict[str, Any], proposal_text: str = "") -> d
     menus["admin"] = admin
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_FRONT_DESK_DDL = """
+CREATE TABLE IF NOT EXISTS checkin (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NULL,
+  reservation_id BIGINT NULL,
+  room_id BIGINT NULL,
+  guest_name VARCHAR(64) DEFAULT '',
+  id_no VARCHAR(64) DEFAULT '',
+  deposit_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status VARCHAR(16) NOT NULL DEFAULT 'checked_in',
+  checked_in_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS checkout (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  checkin_id BIGINT NOT NULL,
+  order_id BIGINT NULL,
+  room_id BIGINT NULL,
+  settle_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  deposit_back_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) DEFAULT '',
+  checked_out_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS consumption (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  checkin_id BIGINT NOT NULL,
+  order_id BIGINT NULL,
+  title VARCHAR(128) NOT NULL DEFAULT '',
+  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+def ensure_front_desk_sql(sql: str, *, enabled: bool) -> str:
+    """入住登记 / 退房结算 / 消费挂账。未开不加。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?checkin`?\b", sql):
+        return sql
+    seed = """INSERT INTO checkin (id, order_id, room_id, guest_name, id_no, deposit_yuan, status, checked_in_at)
+SELECT 1, 1, 1, '张三', '110101199001011234', 200.00, 'checked_in', '2026-09-20 14:00:00' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM checkin WHERE id=1);
+INSERT INTO consumption (id, checkin_id, order_id, title, amount_yuan)
+SELECT 1, 1, 1, '迷你吧', 36.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM consumption WHERE id=1);
+"""
+    return sql.rstrip() + "\n" + _FRONT_DESK_DDL + "\n" + seed

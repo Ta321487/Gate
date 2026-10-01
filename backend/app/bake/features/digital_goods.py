@@ -5,6 +5,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -129,3 +136,62 @@ def apply_digital_goods_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     menus["user"] = user
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_DIGITAL_GOODS_DDL = """
+CREATE TABLE IF NOT EXISTS digital_code (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NULL,
+  code_value VARCHAR(128) NOT NULL DEFAULT '',
+  link_url VARCHAR(255) NOT NULL DEFAULT '',
+  kind VARCHAR(16) NOT NULL DEFAULT 'code',
+  used_order_id BIGINT NULL,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS digital_delivery (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  item_id BIGINT NULL,
+  kind VARCHAR(16) NOT NULL DEFAULT 'code',
+  code_value VARCHAR(128) NOT NULL DEFAULT '',
+  link_url VARCHAR(255) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_digital_order (order_id)
+);
+"""
+
+PRODUCT_DIGITAL_COLUMNS: list[tuple[str, str]] = [
+    ("digital_kind", "VARCHAR(16) NOT NULL DEFAULT 'code'"),
+]
+
+def ensure_digital_goods_sql(sql: str, *, enabled: bool, item_table: str | None = "product") -> str:
+    """数字码池与订单交付快照。未开不加。"""
+    if not enabled:
+        return sql
+    t = (item_table or "product").strip()
+    out = sql
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def repl(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _inject_missing_columns(body, PRODUCT_DIGITAL_COLUMNS)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(repl, out)
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?digital_delivery`?\b", out):
+        return out
+    seed = f"""UPDATE {t} SET digital_kind='code' WHERE id=1;
+UPDATE {t} SET digital_kind='link' WHERE id=2;
+INSERT INTO digital_code (id, item_id, code_value, kind, enabled)
+SELECT 1, 1, 'DEMO-ACTIVATE-1001', 'code', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=1);
+INSERT INTO digital_code (id, item_id, code_value, link_url, kind, enabled)
+SELECT 2, 2, '', '/files/ebook-demo.pdf', 'link', 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=2);
+"""
+    return out.rstrip() + "\n" + _DIGITAL_GOODS_DDL + "\n" + seed

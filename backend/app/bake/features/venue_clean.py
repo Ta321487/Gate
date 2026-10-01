@@ -5,6 +5,13 @@
 
 from __future__ import annotations
 
+import re
+from app.bake.sql.ddl_edit import (
+    CREATE_TABLE_RE as _CREATE_TABLE_RE,
+    inject_missing_columns as _inject_missing_columns,
+    prune_columns as _prune_columns,
+)
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -92,3 +99,27 @@ def apply_venue_clean_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
     menus["admin"] = admin
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_VENUE_CLEAN_COLUMNS = (
+    ("clean_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
+)
+
+def ensure_venue_clean_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """档案/场地表补 clean_status。未开不加列；不新建表。"""
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != t.lower():
+            return m.group(0)
+        body = _inject_missing_columns(body, _VENUE_CLEAN_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    return _CREATE_TABLE_RE.sub(repl, sql)

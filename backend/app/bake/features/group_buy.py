@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -86,3 +88,48 @@ def apply_group_buy_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
     menus["admin"] = admin
     schema["menus"] = menus
     return {**spec, "schema": schema}
+
+
+# --- SQL ensure (moved from fragments.py) ---
+
+_GROUP_BUY_DDL = """\
+CREATE TABLE IF NOT EXISTS group_campaign (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  target_size INT NOT NULL,
+  deadline DATETIME NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'open',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_group_item (item_id, status)
+);
+CREATE TABLE IF NOT EXISTS group_member (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  campaign_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  UNIQUE KEY uk_group_user (campaign_id, username),
+  KEY idx_group_order (order_id)
+);
+"""
+
+_GROUP_BUY_SEED = """\
+INSERT INTO group_campaign (item_id, target_size, deadline, status)
+SELECT 1, 3, DATE_ADD(NOW(), INTERVAL 2 DAY), 'open' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE item_id=1 AND status='open');
+INSERT INTO group_member (campaign_id, order_id, username)
+SELECT c.id, 1, 'demo_joiner' FROM group_campaign c
+WHERE c.item_id=1 AND c.status='open'
+AND NOT EXISTS (SELECT 1 FROM group_member m WHERE m.campaign_id=c.id AND m.username='demo_joiner')
+LIMIT 1;
+INSERT INTO group_campaign (item_id, target_size, deadline, status)
+SELECT 2, 3, DATE_SUB(NOW(), INTERVAL 1 DAY), 'failed' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE status='failed');
+"""
+
+def ensure_group_buy_sql(sql: str, *, enabled: bool) -> str:
+    """拼团两张表。未开不加，活动报名和拼车也不会走到这里。"""
+    if not enabled:
+        return sql
+    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?group_campaign`?\b", sql):
+        return sql
+    return sql.rstrip() + "\n" + _GROUP_BUY_DDL + "\n" + _GROUP_BUY_SEED
