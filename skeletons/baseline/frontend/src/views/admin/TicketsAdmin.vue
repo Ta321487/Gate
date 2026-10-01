@@ -185,7 +185,7 @@
           :rows="3"
           maxlength="200"
           show-word-limit
-          :placeholder="audit.pass ? '可填写受理说明，留空则保留申请说明' : '请说明驳回原因，申请人可见'"
+          :placeholder="audit.pass ? '可填写受理说明，留空则保留申请说明' : rejectReasonRequired"
         />
       </label>
       <label v-if="audit.pass && showDispatch && isFinalPass(audit.row)" class="audit-field" style="margin-top: 12px">
@@ -257,6 +257,9 @@
       </label>
       <label v-if="audit.pass && allowExcellentMark" class="audit-field" style="margin-top: 12px">
         <el-checkbox v-model="audit.excellentMark">{{ excellentMarkLabel }}</el-checkbox>
+      </label>
+      <label v-if="audit.pass && requireMeetingAck" class="audit-field" style="margin-top: 12px">
+        <el-checkbox v-model="audit.ownerMeetingAck">{{ ownerMeetingAckLabel }}</el-checkbox>
       </label>
       <label v-if="audit.pass && allowAssignDept" class="audit-field" style="margin-top: 12px">
         <span class="lab">{{ assignDeptLabel }}</span>
@@ -436,6 +439,9 @@ const showTypeCol = computed(() => ticketShowsTypeCol(archive))
 const showLocationCol = computed(() => ticketShowsLocationCol(archive))
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
 const labels = computed(() => getSchema()?.labels || {})
+const rejectReasonRequired = computed(
+  () => labels.value.rejectReasonRequired || '请填写驳回原因，申请人可见',
+)
 // 事件等级 → 处理时限（bake: ticket-level-sla-*-days 由 /api/tickets 回显）
 const levelSlaDays = ref('')
 const dutyNotifyOn = ref(false)
@@ -501,6 +507,10 @@ const allowDisburseBatch = computed(() => !!ticket.allowDisburseBatch)
 const disburseBatchLabel = computed(() => labels.value.disburseBatchLabel || '发放批次号')
 const allowExcellentMark = computed(() => !!ticket.allowExcellentMark)
 const excellentMarkLabel = computed(() => labels.value.excellentMarkLabel || '优秀周报')
+const requireMeetingAck = computed(() => !!ticket.requireMeetingAck)
+const ownerMeetingAckLabel = computed(
+  () => labels.value.ownerMeetingAckLabel || '启事方确认面交安排',
+)
 const allowAssignDept = computed(() => !!ticket.allowAssignDept)
 const assignDeptLabel = computed(() => labels.value.assignDeptLabel || '分拨科室')
 const allowExceptionClose = computed(() => !!ticket.allowExceptionClose)
@@ -627,6 +637,7 @@ const audit = reactive({
   materialFeeYuan: null,
   disburseBatch: '',
   excellentMark: false,
+  ownerMeetingAck: false,
   assignDept: '',
   exceptionReason: '',
   damageClaimNote: '',
@@ -853,6 +864,7 @@ function resetAudit() {
   audit.materialFeeYuan = null
   audit.disburseBatch = ''
   audit.excellentMark = false
+  audit.ownerMeetingAck = false
   audit.assignDept = ''
   audit.exceptionReason = ''
   audit.damageClaimNote = ''
@@ -863,7 +875,11 @@ async function submitAudit() {
   if (!audit.row) return
   const remark = audit.remark.trim()
   if (!audit.pass && !remark) {
-    ElMessage.warning('请填写驳回原因')
+    ElMessage.warning(rejectReasonRequired.value)
+    return
+  }
+  if (audit.pass && requireMeetingAck.value && !audit.ownerMeetingAck) {
+    ElMessage.warning(ownerMeetingAckLabel.value || '请勾选启事方确认面交安排')
     return
   }
   audit.loading = true
@@ -890,6 +906,9 @@ async function submitAudit() {
     }
     if (audit.pass && allowExcellentMark.value) {
       body.excellentMark = !!audit.excellentMark
+    }
+    if (audit.pass && requireMeetingAck.value) {
+      body.ownerMeetingAck = !!audit.ownerMeetingAck
     }
     if (audit.pass && allowAssignDept.value && (audit.assignDept || '').trim()) {
       body.assignDept = audit.assignDept.trim()

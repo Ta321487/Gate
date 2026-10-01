@@ -1,5 +1,6 @@
 package com.thesis.controller;
 
+import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.AuditLogStore;
 import com.thesis.capability.StaffRosterStore;
 import com.thesis.capability.TicketStore;
@@ -99,10 +100,17 @@ public class TicketController {
             String claimCode = str(body.get("pickupCode"));
             if (claimCode.isBlank()) claimCode = str(body.get("claimCode"));
             TicketStore.assertClaimCodeIfRequired(itemId, claimCode.isBlank() ? remark : claimCode);
+            TicketStore.assertApplyInviteIfRequired(itemId, str(body.get("inviteCode")));
             TicketStore.assertMatchProfileRoomIfRequired(uid, itemId);
             TicketStore.assertBedConstraintIfRequired(uid, itemId);
+            TicketStore.assertAgeConstraintIfRequired(uid, itemId);
             TicketStore.assertCalibDueIfRequired(itemId);
             TicketStore.assertAckFlagsIfRequired(body);
+            Map<String, Object> itemForAck = ArchiveStore.getItem(itemId);
+            TicketStore.assertPriceNoteAckIfRequired(itemForAck, body);
+            TicketStore.assertSponsorAckIfRequired(itemForAck, body);
+            TicketStore.assertPlanAckIfRequired(itemForAck, body);
+            TicketStore.assertPrereqAckIfRequired(itemForAck, body);
             MaterialCheckStore.assertSubmitted(body.get("materials"));
             Map<String, Object> created = TicketStore.apply(
                     uid,
@@ -198,6 +206,7 @@ public class TicketController {
                     ? ""
                     : String.valueOf(body.get("assigneeUsername")).trim();
             if ("null".equalsIgnoreCase(assignee)) assignee = "";
+            TicketStore.assertOwnerMeetingAckIfRequired(pass, body);
             Map<String, Object> approved = TicketStore.approve(id, pass, remark, uid, superAdmin, assignee);
             if (pass) {
                 TicketStore.patchTicketExtras(id, body);
@@ -427,8 +436,16 @@ public class TicketController {
             HttpSession session) {
         String uid = requireLogin(session);
         String code = body.get("code") == null ? "" : String.valueOf(body.get("code")).trim();
+        Integer lateMinutes = null;
+        if (body.get("lateMinutes") != null && !String.valueOf(body.get("lateMinutes")).isBlank()) {
+            try {
+                lateMinutes = (int) Double.parseDouble(String.valueOf(body.get("lateMinutes")));
+            } catch (Exception ignored) {
+                lateMinutes = null;
+            }
+        }
         try {
-            return R.ok(TicketStore.checkin(id, uid, code));
+            return R.ok(TicketStore.checkin(id, uid, code, lateMinutes));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

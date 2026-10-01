@@ -316,6 +316,16 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private final boolean ticketRequireTrainingAck = TicketPolicy.REQUIRE_TRAINING_ACK;
 
     private final boolean ticketRequireInsuranceAck = TicketPolicy.REQUIRE_INSURANCE_ACK;
+    private final boolean ticketRequireMeetingAck = TicketPolicy.REQUIRE_MEETING_ACK;
+    private final boolean ticketRequireApplyInvite = TicketPolicy.REQUIRE_APPLY_INVITE;
+    private final boolean ticketRequirePriceNoteAck = TicketPolicy.REQUIRE_PRICE_NOTE_ACK;
+    private final boolean ticketRequireSponsorAck = TicketPolicy.REQUIRE_SPONSOR_ACK;
+    private final boolean ticketRequirePlanAck = TicketPolicy.REQUIRE_PLAN_ACK;
+    private final boolean ticketRequirePrereqAck = TicketPolicy.REQUIRE_PREREQ_ACK;
+    private final boolean ticketAgeConstraint = TicketPolicy.AGE_CONSTRAINT;
+    private final String ticketAgeConstraintNeedMessage = TicketPolicy.AGE_CONSTRAINT_NEED_MESSAGE;
+    private final String ticketAgeConstraintDenyMessage = TicketPolicy.AGE_CONSTRAINT_DENY_MESSAGE;
+    private final boolean ticketAllowLateMinutes = TicketPolicy.ALLOW_LATE_MINUTES;
 
     private final boolean ticketBlockIfCalibExpired = TicketPolicy.BLOCK_IF_CALIB_EXPIRED;
 
@@ -344,6 +354,24 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private final boolean ticketRequireAbandonDual = TicketPolicy.REQUIRE_ABANDON_DUAL;
 
     private final boolean ticketRepairThicken = TicketPolicy.REPAIR_THICKEN;
+
+    private final boolean ticketApplyThicken = TicketPolicy.APPLY_THICKEN;
+
+    private final boolean ticketNotifyOnApplySuccess = TicketPolicy.NOTIFY_ON_APPLY_SUCCESS;
+
+    private final boolean ticketAllowMeetingPlace = TicketPolicy.ALLOW_MEETING_PLACE;
+
+    private final boolean ticketAllowEmergencyContact = TicketPolicy.ALLOW_EMERGENCY_CONTACT;
+
+    private final int ticketCancelBeforeHours = TicketPolicy.CANCEL_BEFORE_HOURS;
+
+    private final int ticketClaimCooldownHours = TicketPolicy.CLAIM_COOLDOWN_HOURS;
+
+    private final int ticketMaxDropTimes = TicketPolicy.MAX_DROP_TIMES;
+
+    private final int ticketSemesterCreditCap = TicketPolicy.SEMESTER_CREDIT_CAP;
+
+    private final int ticketCreditWarnRemaining = TicketPolicy.CREDIT_WARN_REMAINING;
 
     private final boolean ticketAllowUserUrge = TicketPolicy.ALLOW_USER_URGE;
 
@@ -724,10 +752,31 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                     ticketBedConstraintDenyMessage);
             TicketStore.configureArrivalNotify(ticketArrivalNotify);
             TicketStore.configureNoticeAck(ticketRequireNoticeAck);
+            TicketStore.configureApplyThicken(
+                    ticketApplyThicken,
+                    ticketNotifyOnApplySuccess,
+                    ticketAllowMeetingPlace,
+                    ticketAllowEmergencyContact,
+                    ticketCancelBeforeHours,
+                    ticketClaimCooldownHours,
+                    ticketMaxDropTimes,
+                    ticketSemesterCreditCap,
+                    ticketCreditWarnRemaining);
             TicketStore.configureDeposit(ticketAllowDeposit);
             TicketStore.configureExceptionClose(ticketAllowExceptionClose);
             TicketStore.configureTrainingAck(ticketRequireTrainingAck);
             TicketStore.configureInsuranceAck(ticketRequireInsuranceAck);
+            TicketStore.configureMeetingAck(ticketRequireMeetingAck);
+            TicketStore.configureApplyInvite(ticketRequireApplyInvite);
+            TicketStore.configurePriceNoteAck(ticketRequirePriceNoteAck);
+            TicketStore.configureSponsorAck(ticketRequireSponsorAck);
+            TicketStore.configurePlanAck(ticketRequirePlanAck);
+            TicketStore.configurePrereqAck(ticketRequirePrereqAck);
+            TicketStore.configureAgeConstraint(
+                    ticketAgeConstraint,
+                    ticketAgeConstraintNeedMessage,
+                    ticketAgeConstraintDenyMessage);
+            TicketStore.configureLateMinutes(ticketAllowLateMinutes);
             TicketStore.configureCalibBlock(ticketBlockIfCalibExpired);
             TicketStore.configureProjectNo(ticketAllowProjectNo);
             TicketStore.configureProcureRef(ticketAllowProcureRef);

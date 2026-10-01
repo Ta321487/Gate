@@ -186,6 +186,8 @@ final class TicketRowMaps {
         putFollowOptStr(m, rs, "fault_reason", "faultReason");
         putFollowOptStr(m, rs, "close_summary", "closeSummary");
         putFollowOptStr(m, rs, "preferred_slot", "preferredSlot");
+        putFollowOptStr(m, rs, "emergency_contact", "emergencyContact");
+        putFollowOptStr(m, rs, "emergency_phone", "emergencyPhone");
         putFollowOptStr(m, rs, "hold_reason", "holdReason");
         putFollowOptStr(m, rs, "asset_code", "assetCode");
         putFollowOptStr(m, rs, "remote_url", "remoteUrl");
@@ -317,6 +319,46 @@ final class TicketRowMaps {
         try {
             int ack = rs.getInt("notice_ack");
             if (!rs.wasNull()) m.put("noticeAck", ack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int mack = rs.getInt("meeting_ack");
+            if (!rs.wasNull()) m.put("meetingAck", mack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int omack = rs.getInt("owner_meeting_ack");
+            if (!rs.wasNull()) m.put("ownerMeetingAck", omack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int pnack = rs.getInt("price_note_ack");
+            if (!rs.wasNull()) m.put("priceNoteAck", pnack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int sack = rs.getInt("sponsor_ack");
+            if (!rs.wasNull()) m.put("sponsorAck", sack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int packPlan = rs.getInt("plan_ack");
+            if (!rs.wasNull()) m.put("planAck", packPlan == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int preq = rs.getInt("prereq_ack");
+            if (!rs.wasNull()) m.put("prereqAck", preq == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int late = rs.getInt("late_minutes");
+            if (!rs.wasNull() && late >= 0) m.put("lateMinutes", late);
+        } catch (Exception ignored) {
+        }
+        try {
+            int iack = rs.getInt("insurance_ack");
+            if (!rs.wasNull()) m.put("insuranceAck", iack == 1);
         } catch (Exception ignored) {
         }
         try {

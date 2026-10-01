@@ -77,6 +77,20 @@
         >
           <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
+        <el-select
+          v-if="collegeFilterOn"
+          v-model="collegeFilter"
+          clearable
+          filterable
+          allow-create
+          default-first-option
+          :placeholder="fieldLabel('college', '开课学院')"
+          size="large"
+          class="search-cat"
+          @change="load"
+        >
+          <el-option v-for="c in collegeOptions" :key="c" :label="c" :value="c" />
+        </el-select>
         <el-button type="primary" size="large" @click="load">搜索</el-button>
         <el-button
           v-if="userPublish && !isGuest"
@@ -186,6 +200,42 @@
             >
               {{ stockText(row) }}
             </el-tag>
+            <span
+              v-if="stockTightHint && stockTight(row) && stockOk(row)"
+              class="sched muted"
+            >{{ stockTightHint }}</span>
+            <span
+              v-if="minGroupHintOf(row)"
+              class="sched muted"
+            >{{ minGroupHintOf(row) }}</span>
+            <span
+              v-if="row.courseKind"
+              class="sched muted"
+            >{{ row.courseKind }}</span>
+            <span
+              v-if="row.sessionGroup"
+              class="sched muted"
+            >场次 {{ row.sessionGroup }}</span>
+            <span
+              v-if="row.college"
+              class="sched muted"
+            >{{ row.college }}</span>
+            <span
+              v-if="row.lostCategory"
+              class="sched muted"
+            >{{ row.lostCategory }}</span>
+            <span
+              v-if="Number(row.viewCount) > 0"
+              class="sched muted"
+            >浏览 {{ row.viewCount }}</span>
+            <a
+              v-if="row.planUrl"
+              class="sched"
+              :href="row.planUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              @click.stop
+            >培养方案</a>
             <el-button
               v-if="playUrlOf(row)"
               size="small"
@@ -696,6 +746,7 @@ import RichTextView from '../../components/RichTextView.vue'
 import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
 import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
 import { ARCHIVE_BROWSE_HINT_KEYS } from '../../utils/labelHintMount.js'
+import { formatTicketApplySuccess } from '../../utils/ticketApplyShared.js'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
@@ -1203,9 +1254,41 @@ function stockOk(row) {
   return true
 }
 
+const stockTightBelow = computed(() => {
+  const sch = getSchema() || {}
+  const n = Number(sch.stockTightBelow)
+  return Number.isFinite(n) && n > 0 ? n : 3
+})
+const stockTightHint = computed(() => {
+  const sch = getSchema() || {}
+  return (sch.labels && sch.labels.stockTightHint) || ''
+})
+const minGroupHint = computed(() => {
+  const sch = getSchema() || {}
+  return (sch.labels && sch.labels.minGroupHint) || ''
+})
+const collegeFilterOn = computed(() => fields.value.some((f) => f?.key === 'college'))
+const collegeFilter = ref('')
+const collegeOptions = computed(() => {
+  const set = new Set()
+  for (const r of list.value || []) {
+    const c = String(r?.college || '').trim()
+    if (c) set.add(c)
+  }
+  if (collegeFilter.value && !set.has(collegeFilter.value)) set.add(collegeFilter.value)
+  return [...set].sort()
+})
+function minGroupHintOf(row) {
+  const n = Number(row?.minGroupSize)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  const base = minGroupHint.value || '成团最低人数提示'
+  return `${base}（最低 ${n} 人）`
+}
+
 function stockTight(row) {
   const n = Number(row?.stock)
-  return Number.isFinite(n) && n > 0 && n <= 3
+  const below = stockTightBelow.value
+  return Number.isFinite(n) && n > 0 && n <= below
 }
 
 const allowWaitlist = computed(() => !!(ticket.allowWaitlist || hasCap('waitlist')))
@@ -1619,8 +1702,16 @@ async function load() {
   if (blindBoxOn.value && prizeIds.value.size) {
     rows = rows.filter((r) => !prizeIds.value.has(Number(r.id)))
   }
+  if (collegeFilterOn.value && (collegeFilter.value || '').trim()) {
+    const want = collegeFilter.value.trim()
+    rows = rows.filter((r) => String(r?.college || '').trim() === want)
+  }
   list.value = rows
-  total.value = filterByOwnerToken.value && !isGuest.value ? rows.length : res.data.total
+  total.value = (
+    (filterByOwnerToken.value && !isGuest.value) || (collegeFilterOn.value && (collegeFilter.value || '').trim())
+  )
+    ? rows.length
+    : res.data.total
 }
 
 async function loadFavIds() {
@@ -2026,21 +2117,14 @@ async function submitApply() {
       if (allowAnonymousRating.value) body.anonymous = !!applyAnonymous.value
     }
     const { data } = await http.post('/api/tickets/apply', body)
-    const st = data?.status || data?.data?.status
-    let okMsg
-    if (st === 'held') {
-      okMsg = (getSchema()?.labels?.bookHoldOkMessage) || '暂无库存，已加入预约队列'
-    } else if (st === 'waitlisted') {
-      const rank = data?.waitlistRank || data?.waitlistPos || data?.queueNo
-      okMsg = rank
-        ? `名额已满，已加入候补（约第 ${rank} 位）`
-        : ((getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列')
-    } else if (checkinOnApply.value) {
-      okMsg = '已签到'
-    } else {
-      okMsg = autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核'
-    }
-    ElMessage.success(okMsg)
+    ElMessage.success(
+      formatTicketApplySuccess(data, {
+        autoApprove: autoApprove.value,
+        checkinOnApply: checkinOnApply.value,
+        applyVerb: verbs.value.apply || '提交',
+        getSchema,
+      }),
+    )
     applyVisible.value = false
     if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
       await loadThread(applyRow.value.id)

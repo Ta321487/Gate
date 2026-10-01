@@ -211,6 +211,49 @@ final class TicketRowMaps {
             String a = String.valueOf(ackObj);
             m.put("noticeAck", "1".equals(a) || "true".equalsIgnoreCase(a));
         }
+        Object meetingAckObj = first(raw, "meetingAck", "meeting_ack");
+        if (meetingAckObj != null) {
+            String a = String.valueOf(meetingAckObj);
+            m.put("meetingAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object ownerMeetingAckObj = first(raw, "ownerMeetingAck", "owner_meeting_ack");
+        if (ownerMeetingAckObj != null) {
+            String a = String.valueOf(ownerMeetingAckObj);
+            m.put("ownerMeetingAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object priceNoteAckObj = first(raw, "priceNoteAck", "price_note_ack");
+        if (priceNoteAckObj != null) {
+            String a = String.valueOf(priceNoteAckObj);
+            m.put("priceNoteAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object sponsorAckObj = first(raw, "sponsorAck", "sponsor_ack");
+        if (sponsorAckObj != null) {
+            String a = String.valueOf(sponsorAckObj);
+            m.put("sponsorAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object planAckObj = first(raw, "planAck", "plan_ack");
+        if (planAckObj != null) {
+            String a = String.valueOf(planAckObj);
+            m.put("planAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object prereqAckObj = first(raw, "prereqAck", "prereq_ack");
+        if (prereqAckObj != null) {
+            String a = String.valueOf(prereqAckObj);
+            m.put("prereqAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object lateObj = first(raw, "lateMinutes", "late_minutes");
+        if (lateObj != null) {
+            try {
+                int late = (int) Double.parseDouble(String.valueOf(lateObj));
+                if (late >= 0) m.put("lateMinutes", late);
+            } catch (Exception ignored) {
+            }
+        }
+        Object insuranceAckObj = first(raw, "insuranceAck", "insurance_ack");
+        if (insuranceAckObj != null) {
+            String a = String.valueOf(insuranceAckObj);
+            m.put("insuranceAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
         String peer = str(first(raw, "peerUsername", "peer_username"));
         if (!peer.isBlank()) m.put("peerUsername", peer);
         Object peerAckObj = first(raw, "peerAck", "peer_ack");
@@ -224,6 +267,9 @@ final class TicketRowMaps {
         if (!pno.isBlank()) m.put("projectNo", pno);
         String pref = str(first(raw, "procureRefNo", "procure_ref_no"));
         if (!pref.isBlank()) m.put("procureRefNo", pref);
+        putFollowOptStr(m, raw, "preferred_slot", "preferredSlot");
+        putFollowOptStr(m, raw, "emergency_contact", "emergencyContact");
+        putFollowOptStr(m, raw, "emergency_phone", "emergencyPhone");
         return m;
     }
 

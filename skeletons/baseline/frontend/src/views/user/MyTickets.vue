@@ -374,6 +374,9 @@
           <el-form-item v-if="allowDeposit" :label="depositLabel">
             <el-input-number v-model="form.depositYuan" :min="0" :max="999999" :precision="2" />
           </el-form-item>
+          <el-form-item v-if="requireApplyInvite" :label="applyInviteLabel" required>
+            <el-input v-model="form.inviteCode" maxlength="64" :placeholder="applyInviteHint || `请填写${applyInviteLabel}`" />
+          </el-form-item>
           <el-form-item v-if="requireNoticeAck">
             <el-checkbox v-model="form.noticeAck">{{ noticeAckLabel }}</el-checkbox>
           </el-form-item>
@@ -382,6 +385,29 @@
           </el-form-item>
           <el-form-item v-if="requireInsuranceAck">
             <el-checkbox v-model="form.insuranceAck">{{ insuranceAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="requireMeetingAck">
+            <el-checkbox v-model="form.meetingAck">{{ meetingAckLabel }}</el-checkbox>
+          </el-form-item>
+          <div v-if="applyItemNotes.sponsor || applyItemNotes.price || applyItemNotes.room || applyItemNotes.planUrl" class="sub">
+            <p v-if="applyItemNotes.sponsor">赞助：{{ applyItemNotes.sponsor }}</p>
+            <p v-if="applyItemNotes.price">票价说明：{{ applyItemNotes.price }}</p>
+            <p v-if="applyItemNotes.room">单房差：{{ applyItemNotes.room }}</p>
+            <p v-if="applyItemNotes.planUrl">
+              <a :href="applyItemNotes.planUrl" target="_blank" rel="noopener noreferrer">打开培养方案</a>
+            </p>
+          </div>
+          <el-form-item v-if="needPriceNoteAck">
+            <el-checkbox v-model="form.priceNoteAck">{{ priceNoteAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="needSponsorAck">
+            <el-checkbox v-model="form.sponsorAck">{{ sponsorAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="needPlanAck">
+            <el-checkbox v-model="form.planAck">{{ planAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="needPrereqAck">
+            <el-checkbox v-model="form.prereqAck">{{ prereqAckLabel }}</el-checkbox>
           </el-form-item>
           <el-form-item v-if="allowProjectNo" :label="projectNoLabel">
             <el-input v-model="form.projectNo" maxlength="64" :placeholder="`选填${projectNoLabel}`" />
@@ -409,6 +435,25 @@
           <p v-if="closedLoanHint" class="sub">{{ closedLoanHint }}</p>
           <p v-if="offHoursPickupHint" class="sub">{{ offHoursPickupHint }}</p>
           <p v-if="bedReleaseHint" class="sub">{{ bedReleaseHint }}</p>
+          <p v-if="claimAutoOffHint" class="sub">{{ claimAutoOffHint }}</p>
+          <p v-if="expireOffHint" class="sub">{{ expireOffHint }}</p>
+          <p v-if="stockTightHint" class="sub">{{ stockTightHint }}</p>
+          <p v-if="cancelBeforeHint" class="sub">{{ cancelBeforeHint }}</p>
+          <p v-if="claimCooldownHint" class="sub">{{ claimCooldownHint }}</p>
+          <p v-if="creditCapHint" class="sub">{{ creditCapHint }}</p>
+          <p v-if="creditWarnHint" class="sub">{{ creditWarnHint }}</p>
+          <p v-if="maxDropHint" class="sub">{{ maxDropHint }}</p>
+          <p v-if="prereqHint" class="sub">{{ prereqHint }}</p>
+          <p v-if="courseKindHint" class="sub">{{ courseKindHint }}</p>
+          <p v-if="minGroupHint" class="sub">{{ minGroupHint }}</p>
+          <p v-if="waitlistPromoteHint" class="sub">{{ waitlistPromoteHint }}</p>
+          <p v-if="sessionGroupHint" class="sub">{{ sessionGroupHint }}</p>
+          <p v-if="collegeFilterHint" class="sub">{{ collegeFilterHint }}</p>
+          <p v-if="planUrlHint" class="sub">{{ planUrlHint }}</p>
+          <p v-if="applyInviteHint && requireApplyInvite" class="sub">{{ applyInviteHint }}</p>
+          <p v-if="applySuccessInboxTitle && applySuccessInboxBody" class="sub">
+            {{ applySuccessInboxTitle }}：提交后将收到站内信提醒。
+          </p>
           <el-form-item v-if="pickDateRange" label="起止日期" required>
             <el-date-picker
               v-model="form.period"
@@ -610,6 +655,15 @@
           <el-form-item v-if="preferredSlotOn" :label="preferredSlotLabel">
             <el-input v-model="form.preferredSlot" maxlength="64" placeholder="如：工作日 14:00-16:00" />
           </el-form-item>
+          <el-form-item v-if="allowMeetingPlace" :label="meetingPlaceLabel">
+            <el-input v-model="form.pickupPlace" maxlength="128" :placeholder="`请填写${meetingPlaceLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowEmergencyContact" :label="emergencyContactLabel" required>
+            <el-input v-model="form.emergencyContact" maxlength="64" :placeholder="`请填写${emergencyContactLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowEmergencyContact" :label="emergencyPhoneLabel" required>
+            <el-input v-model="form.emergencyPhone" maxlength="20" :placeholder="`请填写${emergencyPhoneLabel}`" />
+          </el-form-item>
           <el-form-item v-if="allowPublicArea" :label="publicAreaLabel">
             <el-select v-model="form.addressType" clearable style="width:100%">
               <el-option label="室内" value="室内" />
@@ -666,7 +720,15 @@
 
     <el-dialog v-model="checkinVisible" :title="checkinLabel" width="400px" destroy-on-close>
       <p class="rate-tip" v-if="checkinRow">对「{{ checkinRow.title || ('编号 ' + checkinRow.id) }}」输入签到码</p>
-      <el-input v-model="checkinCode" maxlength="16" placeholder="请输入签到码" @keyup.enter="submitCheckin" />
+      <el-form label-width="100px">
+        <el-form-item label="签到码" required>
+          <el-input v-model="checkinCode" maxlength="16" placeholder="请输入签到码" @keyup.enter="submitCheckin" />
+        </el-form-item>
+        <el-form-item v-if="allowLateMinutes" :label="lateMinutesLabel">
+          <el-input-number v-model="checkinLateMinutes" :min="0" :max="999" />
+        </el-form-item>
+      </el-form>
+      <p v-if="allowLateMinutes && lateMinutesHint" class="sub">{{ lateMinutesHint }}</p>
       <template #footer>
         <el-button @click="checkinVisible = false">取消</el-button>
         <el-button type="primary" :loading="checkinLoading" @click="submitCheckin">签到</el-button>
@@ -714,7 +776,7 @@
 import CodeQrBlock from '../../components/CodeQrBlock.vue'
 import ImmSteps from '../../components/ImmSteps.vue'
 import StatusChip from '../../components/StatusChip.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
@@ -757,6 +819,7 @@ import {
 } from '../../utils/useCountdown.js'
 import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/statusTone.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
+import { createEmptyTicketApplyForm } from '../../utils/ticketApplyShared.js'
 
 const { nowMs } = useNowTick()
 const ticket = ticketCopy()
@@ -889,6 +952,25 @@ const noticeAckLabel = computed(
 const requireTrainingAck = computed(() => !!ticket.requireTrainingAck)
 const requireInsuranceAck = computed(() => !!ticket.requireInsuranceAck)
 const insuranceAckLabel = computed(() => labels.value.insuranceAckLabel || '我已阅读设备借用保险声明')
+const requireMeetingAck = computed(() => !!ticket.requireMeetingAck)
+const meetingAckLabel = computed(() => labels.value.meetingAckLabel || '我已与对方约定面交时间与地点')
+const requireApplyInvite = computed(() => !!ticket.requireApplyInvite)
+const applyInviteLabel = computed(() => labels.value.applyInviteLabel || '报名口令')
+const applyInviteHint = computed(() => labels.value.applyInviteHint || '')
+const sessionGroupHint = computed(() => labels.value.sessionGroupHint || '')
+const collegeFilterHint = computed(() => labels.value.collegeFilterHint || '')
+const planUrlHint = computed(() => labels.value.planUrlHint || '')
+const requirePriceNoteAck = computed(() => !!ticket.requirePriceNoteAck)
+const requireSponsorAck = computed(() => !!ticket.requireSponsorAck)
+const requirePlanAck = computed(() => !!ticket.requirePlanAck)
+const requirePrereqAck = computed(() => !!ticket.requirePrereqAck)
+const allowLateMinutes = computed(() => !!ticket.allowLateMinutes)
+const priceNoteAckLabel = computed(() => labels.value.priceNoteAckLabel || '我已阅读团体票价说明')
+const sponsorAckLabel = computed(() => labels.value.sponsorAckLabel || '我已知晓本场赞助说明')
+const planAckLabel = computed(() => labels.value.planAckLabel || '我已查阅培养方案外链')
+const prereqAckLabel = computed(() => labels.value.prereqAckLabel || '我确认已具备先修基础')
+const lateMinutesLabel = computed(() => labels.value.lateMinutesLabel || '迟到分钟数')
+const lateMinutesHint = computed(() => labels.value.lateMinutesHint || '')
 const allowProjectNo = computed(() => !!ticket.allowProjectNo)
 const projectNoLabel = computed(() => labels.value.projectNoLabel || '课题号')
 const allowProcureRef = computed(() => !!ticket.allowProcureRef)
@@ -1169,6 +1251,26 @@ const rateFollowMode = ref(false)
 const faultReasonLabel = computed(() => labels.value.faultReasonLabel || '故障原因')
 const closeSummaryLabel = computed(() => labels.value.closeSummaryLabel || '处理过程摘要')
 const preferredSlotLabel = computed(() => labels.value.preferredSlotLabel || '期望上门时段')
+const allowMeetingPlace = computed(() => !!ticket.allowMeetingPlace)
+const meetingPlaceLabel = computed(() => labels.value.meetingPlaceLabel || '约定面交地点')
+const allowEmergencyContact = computed(() => !!ticket.allowEmergencyContact)
+const emergencyContactLabel = computed(() => labels.value.emergencyContactLabel || '紧急联系人')
+const emergencyPhoneLabel = computed(() => labels.value.emergencyPhoneLabel || '紧急联系电话')
+const claimAutoOffHint = computed(() => labels.value.claimAutoOffHint || '')
+const expireOffHint = computed(() => labels.value.expireOffHint || '')
+const stockTightHint = computed(() => labels.value.stockTightHint || '')
+const cancelBeforeHint = computed(() => labels.value.cancelBeforeHint || '')
+const claimCooldownHint = computed(() => labels.value.claimCooldownHint || '')
+const creditCapHint = computed(() => labels.value.creditCapHint || '')
+const creditWarnHint = computed(() => labels.value.creditWarnHint || '')
+const maxDropHint = computed(() => labels.value.maxDropHint || '')
+const prereqHint = computed(() => labels.value.prereqHint || '')
+const courseKindHint = computed(() => labels.value.courseKindHint || '')
+const minGroupHint = computed(() => labels.value.minGroupHint || '')
+const waitlistPromoteHint = computed(() => labels.value.waitlistPromoteHint || '')
+const applySuccessInboxTitle = computed(() => labels.value.applySuccessInboxTitle || '')
+const applySuccessInboxBody = computed(() => labels.value.applySuccessInboxBody || '')
+const rejectReasonRequired = computed(() => labels.value.rejectReasonRequired || '请填写驳回原因')
 const publicAreaLabel = computed(() => labels.value.publicAreaLabel || '公共区域')
 const assetCodeLabel = computed(() => labels.value.assetCodeLabel || '资产编号')
 const partsNoteLabel = computed(() => labels.value.partsNoteLabel || '备件/耗材出库')
@@ -1483,66 +1585,49 @@ const sites = ref([])
 const units = ref([])
 const types = ref([])
 const archiveItems = ref([])
-const form = reactive({
-  title: '',
-  location: '',
-  remark: '',
-  attachUrl: '',
-  typeId: null,
-  siteId: null,
-  roomId: null,
-  itemId: null,
-  period: null,
-  contactChannel: '',
-  nextFollowAt: '',
-  weekNo: null,
-  interviewPlace: '',
-  priority: '普通',
-  contactPhone: '',
-  proxyName: '',
-  proxyPhone: '',
-  depositYuan: null,
-  noticeAck: false,
-  trainingAck: false,
-  insuranceAck: false,
-  projectNo: '',
-  procureRefNo: '',
-  dualReviewerA: '',
-  dualReviewerB: '',
-  shipFeeYuan: null,
-  utilityNote: '',
-  peerUsername: '',
-  interviewResult: '',
-  writtenScore: null,
-  bgCheckNote: '',
-  dealAmountYuan: null,
-  nextAction: '',
-  nextActionDone: false,
-  returnDate: '',
-  defenseResult: '',
-  bankAccount: '',
-  homeVisitFamily: '',
-  homeVisitTalk: '',
-  homeVisitPlan: '',
-  feedbackInterest: '',
-  feedbackConcern: '',
-  feedbackNext: '',
-  recordUrl: '',
-  appraisalComment: '',
-  appraisalGrade: '',
-  companyEval: '',
-  preferredSlot: '',
-  addressType: '',
-  nightUrgent: false,
-  assetCode: '',
-  subscribeProgress: false,
-  audioUrl: '',
-  confidential: false,
-  assignDept: '',
-  resumeEdu: '',
-  resumeExp: '',
-  resumeSkill: '',
+const form = reactive(createEmptyTicketApplyForm())
+
+const selectedApplyItem = computed(() => {
+  const id = form.itemId
+  if (!id) return null
+  return (archiveItems.value || []).find((it) => Number(it.id) === Number(id)) || null
 })
+const applyItemNotes = computed(() => {
+  const it = selectedApplyItem.value || {}
+  return {
+    sponsor: String(it.sponsorNote || '').trim(),
+    price: String(it.groupPriceNote || '').trim(),
+    room: String(it.singleRoomNote || '').trim(),
+    planUrl: String(it.planUrl || '').trim(),
+    prereqCode: String(it.prereqCode || '').trim(),
+    feeYuan: it.feeYuan,
+  }
+})
+const needPriceNoteAck = computed(
+  () => requirePriceNoteAck.value && !!(applyItemNotes.value.price || applyItemNotes.value.room),
+)
+const needSponsorAck = computed(
+  () => requireSponsorAck.value && !!applyItemNotes.value.sponsor,
+)
+const needPlanAck = computed(
+  () => requirePlanAck.value && !!applyItemNotes.value.planUrl,
+)
+const needPrereqAck = computed(
+  () => requirePrereqAck.value && !!applyItemNotes.value.prereqCode,
+)
+watch(
+  () => form.itemId,
+  () => {
+    form.priceNoteAck = false
+    form.sponsorAck = false
+    form.planAck = false
+    form.prereqAck = false
+    const fee = Number(applyItemNotes.value.feeYuan)
+    if (allowDeposit.value && Number.isFinite(fee) && fee > 0) {
+      form.depositYuan = fee
+    }
+  },
+)
 
 const rateVisible = ref(false)
 const rateRow = ref(null)
@@ -1550,6 +1635,7 @@ const checkinVisible = ref(false)
 const checkinLoading = ref(false)
 const checkinRow = ref(null)
 const checkinCode = ref('')
+const checkinLateMinutes = ref(0)
 const progressVisible = ref(false)
 const progressId = ref(null)
 
@@ -1701,9 +1787,18 @@ async function openApply(opts = {}) {
     proxyName: '',
     proxyPhone: '',
     depositYuan: null,
+    pickupPlace: '',
+    emergencyContact: '',
+    emergencyPhone: '',
     noticeAck: false,
     trainingAck: false,
     insuranceAck: false,
+    meetingAck: false,
+    inviteCode: '',
+    priceNoteAck: false,
+    sponsorAck: false,
+    planAck: false,
+    prereqAck: false,
     projectNo: '',
     procureRefNo: '',
     dualReviewerA: '',
@@ -1804,9 +1899,43 @@ async function submit(asDraft = false) {
       ElMessage.warning(insuranceAckLabel.value || '请先勾选保险声明')
       return
     }
+    if (requireMeetingAck.value && !form.meetingAck) {
+      ElMessage.warning(meetingAckLabel.value || '请确认已约定面交')
+      return
+    }
+    if (requireApplyInvite.value && !(form.inviteCode || '').trim()) {
+      ElMessage.warning(applyInviteHint.value || `请填写${applyInviteLabel.value}`)
+      return
+    }
+    if (needPriceNoteAck.value && !form.priceNoteAck) {
+      ElMessage.warning(priceNoteAckLabel.value || '请确认已阅读票价说明')
+      return
+    }
+    if (needSponsorAck.value && !form.sponsorAck) {
+      ElMessage.warning(sponsorAckLabel.value || '请确认已知晓赞助说明')
+      return
+    }
+    if (needPlanAck.value && !form.planAck) {
+      ElMessage.warning(planAckLabel.value || '请确认已查阅培养方案')
+      return
+    }
+    if (needPrereqAck.value && !form.prereqAck) {
+      ElMessage.warning(prereqAckLabel.value || '请确认已具备先修基础')
+      return
+    }
     if (requirePeerConfirm.value && !(form.peerUsername || '').trim()) {
       ElMessage.warning(`请填写${peerUsernameLabel.value}`)
       return
+    }
+    if (allowEmergencyContact.value) {
+      if (!(form.emergencyContact || '').trim()) {
+        ElMessage.warning(`请填写${emergencyContactLabel.value}`)
+        return
+      }
+      if (!(form.emergencyPhone || '').trim()) {
+        ElMessage.warning(`请填写${emergencyPhoneLabel.value}`)
+        return
+      }
     }
     if (requireAttach.value && !form.attachUrl) {
       ElMessage.warning('请上传附件')
@@ -1848,12 +1977,30 @@ async function submit(asDraft = false) {
     if (allowDeposit.value && form.depositYuan != null && form.depositYuan !== '') {
       body.depositYuan = form.depositYuan
     }
+    if (preferredSlotOn.value && (form.preferredSlot || '').trim()) {
+      body.preferredSlot = form.preferredSlot.trim()
+    }
+    if (allowMeetingPlace.value && (form.pickupPlace || '').trim()) {
+      body.pickupPlace = form.pickupPlace.trim()
+    }
+    if (allowEmergencyContact.value) {
+      body.emergencyContact = (form.emergencyContact || '').trim()
+      body.emergencyPhone = (form.emergencyPhone || '').trim()
+    }
     if (requireNoticeAck.value) body.noticeAck = !!form.noticeAck
     if (rankSwitchOn.value && (rankScope.value || '').trim()) {
       body.rankScope = String(rankScope.value).trim()
     }
     if (requireTrainingAck.value) body.trainingAck = !!form.trainingAck
     if (requireInsuranceAck.value) body.insuranceAck = !!form.insuranceAck
+    if (requireMeetingAck.value) body.meetingAck = !!form.meetingAck
+    if (requireApplyInvite.value && (form.inviteCode || '').trim()) {
+      body.inviteCode = form.inviteCode.trim()
+    }
+    if (needPriceNoteAck.value) body.priceNoteAck = !!form.priceNoteAck
+    if (needSponsorAck.value) body.sponsorAck = !!form.sponsorAck
+    if (needPlanAck.value) body.planAck = !!form.planAck
+    if (needPrereqAck.value) body.prereqAck = !!form.prereqAck
     if (allowProjectNo.value && (form.projectNo || '').trim()) body.projectNo = form.projectNo.trim()
     if (allowProcureRef.value && (form.procureRefNo || '').trim()) {
       body.procureRefNo = form.procureRefNo.trim()
@@ -1973,6 +2120,8 @@ async function submit(asDraft = false) {
   const res = await http.post('/api/tickets/apply', body)
   const data = res.data?.data || res.data || {}
   if (data.dupRepairHint) ElMessage.warning(data.dupRepairHint)
+  if (data.creditWarnHint) ElMessage.warning(data.creditWarnHint)
+  if (data.prereqHint) ElMessage.warning(data.prereqHint)
   if (data.dutyNotified) ElMessage.success(`已群发当日值班 ${data.dutyNotified} 人`)
   ElMessage.success(asDraft ? '草稿已保存' : '已提交')
   visible.value = false
@@ -2081,6 +2230,7 @@ async function claimHold(row) {
 function openCheckin(row) {
   checkinRow.value = row
   checkinCode.value = ''
+  checkinLateMinutes.value = 0
   checkinVisible.value = true
 }
 
@@ -2092,7 +2242,9 @@ async function submitCheckin() {
   }
   checkinLoading.value = true
   try {
-    await http.post(`/api/tickets/${checkinRow.value.id}/checkin`, { code: checkinCode.value.trim() })
+    const body = { code: checkinCode.value.trim() }
+    if (allowLateMinutes.value) body.lateMinutes = Number(checkinLateMinutes.value) || 0
+    await http.post(`/api/tickets/${checkinRow.value.id}/checkin`, body)
     ElMessage.success({ message: '签到成功 ✓', duration: 2000 })
     checkinVisible.value = false
     load()

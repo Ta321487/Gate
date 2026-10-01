@@ -62,6 +62,10 @@ public final class TicketPolicy {
     public static final int WEEK_REPORT_DEADLINE_DAY = 0;
     /** 用户催办的冷却分钟数 */
     public static final int URGE_COOLDOWN_MINUTES = 0;
+    /** 活动开始前可取消报名的最少提前小时数；0 表示不限制 */
+    public static final int CANCEL_BEFORE_HOURS = 0;
+    /** 失物启事发布后可认领的冷却小时数；0 表示不限制 */
+    public static final int CLAIM_COOLDOWN_HOURS = 0;
 
     // ---------- 续借 / 修改 / 信用 ----------
     /** 单次借出最多续借次数 */
@@ -74,6 +78,12 @@ public final class TicketPolicy {
     public static final int MIN_REMARK_WORDS = 0;
     /** 被驳回后可修改重提的次数 */
     public static final int MAX_REVISE_TIMES = 0;
+    /** 本学期退选次数上限；0 表示不限制 */
+    public static final int MAX_DROP_TIMES = 0;
+    /** 学期已选学分上限；0 表示不限制 */
+    public static final int SEMESTER_CREDIT_CAP = 0;
+    /** 剩余学分低于该值时提示接近上限；0 表示不提示 */
+    public static final int CREDIT_WARN_REMAINING = 0;
     /** 初始信用分 */
     public static final int CREDIT_INITIAL = 100;
     /** 每次逾期扣减的信用分 */
@@ -98,6 +108,10 @@ public final class TicketPolicy {
     public static final String BED_CONSTRAINT_NEED_MESSAGE = "";
     /** 床位冲突拒绝文案 */
     public static final String BED_CONSTRAINT_DENY_MESSAGE = "";
+    /** 年龄限制缺资料提示 */
+    public static final String AGE_CONSTRAINT_NEED_MESSAGE = "";
+    /** 年龄不符合拒绝文案 */
+    public static final String AGE_CONSTRAINT_DENY_MESSAGE = "";
 
     // ---------- 扩展能力开关（按开题启用） ----------
     public static final boolean TWO_LEVEL = false;
@@ -136,6 +150,17 @@ public final class TicketPolicy {
     public static final boolean ALLOW_EXCEPTION_CLOSE = false;
     public static final boolean REQUIRE_TRAINING_ACK = false;
     public static final boolean REQUIRE_INSURANCE_ACK = false;
+    public static final boolean REQUIRE_MEETING_ACK = false;
+    public static final boolean REQUIRE_APPLY_INVITE = false;
+    public static final boolean REQUIRE_PRICE_NOTE_ACK = false;
+    public static final boolean REQUIRE_SPONSOR_ACK = false;
+    public static final boolean REQUIRE_PLAN_ACK = false;
+    /** 有先修提示码时须勾选确认 */
+    public static final boolean REQUIRE_PREREQ_ACK = false;
+    /** 线路年龄上下限对照资料 */
+    public static final boolean AGE_CONSTRAINT = false;
+    /** 签到可登记迟到分钟数 */
+    public static final boolean ALLOW_LATE_MINUTES = false;
     public static final boolean BLOCK_IF_CALIB_EXPIRED = false;
     public static final boolean ALLOW_PROJECT_NO = false;
     public static final boolean ALLOW_PROCURE_REF = false;
@@ -204,4 +229,8 @@ public final class TicketPolicy {
     public static final boolean TODAY_BOARD = false;
     public static final boolean PRINT_TICKET = false;
     public static final boolean REPAIR_THICKEN = false;
+    public static final boolean APPLY_THICKEN = false;
+    public static final boolean NOTIFY_ON_APPLY_SUCCESS = false;
+    public static final boolean ALLOW_MEETING_PLACE = false;
+    public static final boolean ALLOW_EMERGENCY_CONTACT = false;
 }

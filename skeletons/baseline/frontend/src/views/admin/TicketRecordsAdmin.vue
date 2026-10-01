@@ -39,6 +39,28 @@
       <el-table-column v-if="showLocationCol" prop="location" :label="locationColLabel" min-width="140" show-overflow-tooltip />
       <el-table-column v-if="showPriorityCols" prop="priority" label="优先级" width="90" />
       <el-table-column v-if="showPriorityCols" prop="contactPhone" label="联系电话" width="120" show-overflow-tooltip />
+      <el-table-column
+        v-if="allowEmergencyContact"
+        prop="emergencyContact"
+        :label="emergencyContactLabel"
+        width="120"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        v-if="allowEmergencyContact"
+        prop="emergencyPhone"
+        :label="emergencyPhoneLabel"
+        width="120"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        v-if="requireInsuranceAck"
+        prop="insuranceAck"
+        label="保险声明"
+        width="100"
+      >
+        <template #default="{ row }">{{ row.insuranceAck ? '已勾选' : '—' }}</template>
+      </el-table-column>
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -334,6 +356,11 @@ const showScheduleCols = computed(() => ticketShowsScheduleCols(ticket, archive)
 const showTypeCol = computed(() => ticketShowsTypeCol(archive))
 const showLocationCol = computed(() => ticketShowsLocationCol(archive))
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
+const allowEmergencyContact = computed(() => !!ticket.allowEmergencyContact)
+const requireInsuranceAck = computed(() => !!ticket.requireInsuranceAck)
+const emergencyContactLabel = computed(() => labels.value.emergencyContactLabel || '紧急联系人')
+const emergencyPhoneLabel = computed(() => labels.value.emergencyPhoneLabel || '紧急联系电话')
+const insuranceAckColLabel = computed(() => labels.value.insuranceAckLabel || '保险声明')
 const showFine = computed(
   () => hasTrait('loanFine') || !!ticket.fineLabel || Number(ticket.noShowPenaltyYuan) > 0,
 )
@@ -701,6 +728,8 @@ async function exportCsv() {
   if (showTypeCol.value) headers.push(typeColLabel.value)
   if (showLocationCol.value) headers.push(locationColLabel.value)
   if (showPriorityCols.value) headers.push('优先级', '联系电话')
+  if (allowEmergencyContact.value) headers.push(emergencyContactLabel.value, emergencyPhoneLabel.value)
+  if (requireInsuranceAck.value) headers.push(insuranceAckColLabel.value)
   headers.push(userLabel.value, '处理人', '状态')
   if (allowQty.value) headers.push('数量')
   if (pickLoanPeriod.value) headers.push(dueLabel.value)
@@ -727,6 +756,12 @@ async function exportCsv() {
     if (showTypeCol.value) line.push(row.typeName)
     if (showLocationCol.value) line.push(row.location)
     if (showPriorityCols.value) line.push(row.priority || '', row.contactPhone || '')
+    if (allowEmergencyContact.value) {
+      line.push(row.emergencyContact || '', row.emergencyPhone || '')
+    }
+    if (requireInsuranceAck.value) {
+      line.push(row.insuranceAck ? '已勾选' : '')
+    }
     line.push(
       person,
       row.assigneeUsername || '',
