@@ -6,8 +6,6 @@ import { softThemeSwatch } from '../../softThemeSwatches.js'
 import { useDefensePpt } from '../../ppt/useDefensePpt.js'
 import {
   CHECKLIST_RESULT,
-  JOB_STEP_LABELS,
-  LOG_SIDES,
   defaultTabForStatus,
   detailCrumb,
   getCatalog,
@@ -21,6 +19,37 @@ import {
   stepStatusMark,
   domainCascaderOptions as buildDomainCascaderOptions,
 } from '../../opsShared'
+import {
+  FILL_UNIT_KIND_ZH,
+  FILL_UNIT_STATUS_ZH,
+  PORTAL_HOME_FALLBACK,
+  MALL_PORTAL_HOME_DOMAINS,
+  passwordHashOptions,
+  persistenceOptions,
+  securityOptions,
+  aiAssistantOptions,
+  llmOptions,
+  planSteps,
+  persistenceLabel,
+  securityLabel,
+  securityOn,
+  aiAssistantLabel,
+  aiAssistantOn,
+  warningText,
+  labelLooksLatin,
+} from './pdLabels'
+import {
+  formatSize,
+  runtimeCanStop,
+  runtimeLogView,
+  runtimeStatusLabel,
+  runtimeStatusPill,
+  runtimeTransient,
+  _tailLines,
+} from './pdRuntimeFmt'
+import { usePdFillLive } from './usePdFillLive'
+import { usePdLogs } from './usePdLogs'
+import { usePdRuntime } from './usePdRuntime'
 
 export function useProjectDetail() {
 const route = useRoute()
@@ -60,272 +89,76 @@ const ack = ref(false)
 const ackMainPath = ref(false)
 const unlocked = ref(false)
 const currentJob = ref(null)
-const rt = reactive({
-  backend_status: 'stopped',
-  frontend_status: 'stopped',
-  preview_url: null,
-  backend_url: null,
-  public_host: '127.0.0.1',
-  backend_log_tail: '',
-  frontend_log_tail: '',
-})
-const rtBusyBe = ref(false)
-const rtBusyFe = ref(false)
-const rtPendingAll = ref('')
-const rtAnyBusy = computed(() => rtBusyBe.value || rtBusyFe.value)
-const rtAllBusy = computed(() => rtBusyBe.value && rtBusyFe.value)
-/** IDE 式：已在跑就不能再启动；全停就不能关/重启；生成中禁止启动/重启 */
-const rtGenerating = computed(() => p.value?.status === 'generating')
-const rtBeLive = computed(() => runtimeCanStop(rt.backend_status))
-const rtFeLive = computed(() => runtimeCanStop(rt.frontend_status))
-const rtAnyLive = computed(() => rtBeLive.value || rtFeLive.value)
-const rtBothLive = computed(() => rtBeLive.value && rtFeLive.value)
-const rtCanStartAll = computed(
-  () =>
-    Boolean(p.value?.workspace_path) &&
-    !rtGenerating.value &&
-    !rtAnyBusy.value &&
-    !rtBothLive.value,
-)
-const rtCanStopAll = computed(
-  () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && rtAnyLive.value,
-)
-const rtCanRestartAll = computed(() => rtCanStopAll.value && !rtGenerating.value)
-const backendAddr = computed(() => {
-  if (rt.backend_url) return rt.backend_url
-  const host = rt.public_host || '127.0.0.1'
-  const port = p.value?.backend_port
-  return port ? `http://${host}:${port}` : ''
-})
-const frontendAddr = computed(() => {
-  if (rt.preview_url) return rt.preview_url
-  const host = rt.public_host || '127.0.0.1'
-  const port = p.value?.frontend_port
-  return port ? `http://${host}:${port}` : ''
-})
-const logSide = ref('job')
-const logText = ref('')
-const logFilter = ref('')
-const logLoading = ref(false)
-const logSides = LOG_SIDES
+const pdCtx = {
+  load: async () => {},
+  viewActive: () => false,
+  getViewEpoch: () => viewEpoch,
+}
+function viewActive(projectId, epoch) {
+  return epoch === viewEpoch && route.params.id === projectId
+}
+pdCtx.viewActive = viewActive
+
+const pdRuntime = usePdRuntime({ p, tab, route, ctx: pdCtx })
+const {
+  rt,
+  rtBusyBe,
+  rtBusyFe,
+  rtPendingAll,
+  rtAnyBusy,
+  rtAllBusy,
+  rtGenerating,
+  rtBeLive,
+  rtFeLive,
+  rtAnyLive,
+  rtBothLive,
+  rtCanStartAll,
+  rtCanStopAll,
+  rtCanRestartAll,
+  backendAddr,
+  frontendAddr,
+  rtStartBlockedReason,
+  refreshRuntime,
+  rtAction,
+  openPreview,
+  _runtimeSettled,
+} = pdRuntime
+
+const pdLogs = usePdLogs({ p })
+const {
+  logSide,
+  logText,
+  logFilter,
+  logLoading,
+  logSides,
+  logReqSeq,
+  loadLog,
+  filteredLog,
+} = pdLogs
+
+const pdFill = usePdFillLive({ p })
+const {
+  showFillPlan,
+  fillPlanLoading,
+  fillPlanRows,
+  fillPlanCols,
+  fillLiveSnap,
+  fillLiveCols,
+  fillLiveRows,
+  fillLiveVisible,
+  fillLiveSummary,
+  fillPlanHint,
+  fillEventSource,
+  applyFillSnapshot,
+  startFillEvents,
+  stopFillEvents,
+  openFillPlan,
+} = pdFill
+
 const showSpec = ref(false)
 const showPreGenerate = ref(false)
 const proposalDiff = ref(null)
 const preGenBusy = ref(false)
-const showFillPlan = ref(false)
-const fillPlanLoading = ref(false)
-const fillPlanRows = ref([])
-const FILL_UNIT_KIND_ZH = {
-  island_labels: 'Island 文案',
-  island_seeds: '公告种子',
-  island_entities: '实体称呼',
-  island_roles: '岗位称呼',
-  er_labels: 'E-R 中文',
-  module_labels: '模块图',
-  testcase_labels: '测试用例',
-}
-const fillPlanCols = [
-  { title: 'Unit ID', key: 'id', width: 160, ellipsis: { tooltip: true } },
-  { title: '类型', key: 'kind', width: 120 },
-  { title: '状态', key: 'status', width: 88 },
-  { title: '预算字符', key: 'budget_chars', width: 88 },
-  { title: '来源', key: 'source_refs', ellipsis: { tooltip: true } },
-]
-const FILL_UNIT_STATUS_ZH = {
-  pending: '待执行',
-  running: '进行中',
-  done: '完成',
-  failed: '失败',
-  skipped: '跳过',
-}
-const fillLiveSnap = ref(null)
-const fillLiveCols = [
-  { title: 'Unit', key: 'id', width: 150, ellipsis: { tooltip: true } },
-  { title: '类型', key: 'kind', width: 110 },
-  {
-    title: '状态',
-    key: 'status',
-    width: 88,
-    render: (r) => statusPillNode(
-      FILL_UNIT_STATUS_ZH[r.status] || r.status,
-      r.status === 'done'
-        ? 'pill-green'
-        : r.status === 'failed'
-          ? 'pill-red'
-          : r.status === 'running'
-            ? 'pill-teal'
-            : r.status === 'skipped'
-              ? 'pill-neutral'
-              : 'pill-neutral',
-    ),
-  },
-]
-const fillLiveRows = computed(() => {
-  const units = fillLiveSnap.value?.units
-  if (!units || typeof units !== 'object') return []
-  return Object.values(units).map((u) => ({
-    id: u.id,
-    kind: FILL_UNIT_KIND_ZH[u.kind] || u.kind,
-    status: u.status || 'pending',
-  }))
-})
-const fillLiveVisible = computed(() => fillLiveRows.value.length > 0)
-const fillLiveSummary = computed(() => {
-  const s = fillLiveSnap.value
-  if (!s?.total) return ''
-  const parts = [`填岛 ${s.done || 0}/${s.total}`]
-  if (s.running) parts.push(`进行中 ${s.running}`)
-  if (s.failed) parts.push(`失败 ${s.failed}`)
-  if (s.phase === 'done') parts.push('已合并')
-  if (s.phase === 'failed') parts.push('填岛中断')
-  return parts.join(' · ')
-})
-const fillPlanHint = computed(() => {
-  if (!p.value?.workspace_path) return '生成工作区后可预览'
-  if (fillPlanRows.value.length) return `共 ${fillPlanRows.value.length} 个 Unit`
-  return '点击预览拆解粒度'
-})
-const showEr = ref(false)
-const showModules = ref(false)
-const showUsecases = ref(false)
-const showTestcases = ref(false)
-const showUsecaseDescriptions = ref(false)
-const erLoading = ref(false)
-const modLoading = ref(false)
-const ucLoading = ref(false)
-const tcLoading = ref(false)
-const ucdLoading = ref(false)
-const matchBusy = ref(false)
-const softSaving = ref(false)
-const jobActing = ref('')
-const artifactLoading = ref(false)
-const showDelete = ref(false)
-const keepDb = ref(false)
-const deleting = ref(false)
-const schema = ref(null)
-const erLabelSaving = ref(false)
-const apis = ref(null)
-const apiSmokeBusy = ref(false)
-const apiSmokeResult = ref(null)
-const apiSmokeFactoryHint = ref('')
-const artifactView = ref('db')
-const apiQuery = ref('')
-const apiSurface = ref('all')
-const collapsedApis = ref({})
-const erSvgSource = ref('')
-const erLayoutKey = ref(0)
-const erMode = ref('total')
-const erEntity = ref('')
-const modSvgSource = ref('')
-const modLayoutKey = ref(0)
-const modulesLayout = ref('identity')
-const modulesExpandDetails = ref(false)
-const modulesMeta = ref(null)
-const showArchitecture = ref(false)
-const archLoading = ref(false)
-const showClasses = ref(false)
-const classLoading = ref(false)
-const showSequences = ref(false)
-const seqLoading = ref(false)
-const seqSvgSource = ref('')
-const seqMeta = ref(null)
-const seqLayoutKey = ref(0)
-const seqIndex = ref(0)
-const seqSelectedIds = ref([])
-const showActivities = ref(false)
-const actLoading = ref(false)
-const actSvgSource = ref('')
-const actMeta = ref(null)
-const actLayoutKey = ref(0)
-const actIndex = ref(0)
-const actSelectedIds = ref([])
-const classSvgSource = ref('')
-const classMeta = ref(null)
-const classLayoutKey = ref(0)
-const classDisplayMode = ref('sample')
-const classDisplayModes = computed(() => classMeta.value?.display_modes || [
-  { id: 'sample', label: '论文示例（精简方法）' },
-  { id: 'full', label: '代码全量' },
-])
-const archSvgSource = ref('')
-const archLayoutKey = ref(0)
-const archMeta = ref(null)
-const ucSvgSource = ref('')
-const ucLayoutKey = ref(0)
-const usecaseActor = ref('user')
-const usecaseMeta = ref(null)
-const tcFields = ref(6)
-const tcColumns = ref([])
-const tcRows = ref([])
-const tcMarkdown = ref('')
-const tcCount = ref(0)
-const ucdIntro = ref('')
-const ucdSourceNote = ref('')
-const ucdCases = ref([])
-const ucdMarkdown = ref('')
-const ucdCount = ref(0)
-let pollTimer = null
-let fillEventSource = null
-
-function applyFillSnapshot(event) {
-  if (!event || event.type === 'heartbeat') return
-  if (event.type === 'snapshot') {
-    fillLiveSnap.value = {
-      phase: event.phase || 'idle',
-      units: event.units || {},
-      total: event.total || 0,
-      done: event.done || 0,
-      failed: event.failed || 0,
-      running: event.running || 0,
-      error: event.error || '',
-    }
-    if (showFillPlan.value && fillLiveRows.value.length) {
-      fillPlanRows.value = fillLiveRows.value.map((r) => ({
-        ...r,
-        status: FILL_UNIT_STATUS_ZH[r.status] || r.status,
-        budget_chars: fillLiveSnap.value?.units?.[r.id]?.budget_chars,
-        source_refs: (fillLiveSnap.value?.units?.[r.id]?.source_refs || []).join(' · ') || '—',
-      }))
-    }
-    if (['done', 'failed'].includes(event.phase)) {
-      stopFillEvents()
-    }
-  }
-}
-
-function stopFillEvents() {
-  if (fillEventSource) {
-    fillEventSource.close()
-    fillEventSource = null
-  }
-}
-
-function startFillEvents() {
-  if (!p.value?.id || fillEventSource) return
-  const url = api.fillEventsUrl(p.value.id)
-  const es = new EventSource(url)
-  fillEventSource = es
-  es.onmessage = (ev) => {
-    try {
-      applyFillSnapshot(JSON.parse(ev.data))
-    } catch {
-      /* ignore malformed frame */
-    }
-  }
-  es.onerror = () => {
-    /* EventSource 自动重连；轮询仍作兜底 */
-  }
-}
-
-const planSteps = [
-  { t: JOB_STEP_LABELS.parse_merge, m: '匹配与 Spec' },
-  { t: JOB_STEP_LABELS.copy_bake, m: '确定性生成' },
-  { t: JOB_STEP_LABELS.island_fill, m: '拆解 Unit 并发填岛' },
-  { t: JOB_STEP_LABELS.build_verify, m: '编译检查' },
-  { t: JOB_STEP_LABELS.gate_e2e, m: '关键路径' },
-  { t: JOB_STEP_LABELS.pack, m: '检查通过后打包' },
-]
-
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
 const domCascaderOptions = computed(() => buildDomainCascaderOptions(catalog.value))
 const themeOptions = computed(() => {
@@ -631,15 +464,6 @@ const failedBannerTitle = computed(() => {
   if (err.includes('已取消')) return '任务已取消'
   return '生成失败 · 暂不可下载'
 })
-const rtStartBlockedReason = computed(() => {
-  const base = p.value?.preview_blocked_reason || ''
-  if (base) return base
-  if (!rtCanStartAll.value) {
-    if (rtBothLive.value) return '前后端已在运行'
-    if (rtAnyBusy.value) return '启停进行中 · 请稍候'
-  }
-  return ''
-})
 
 const deleteBlocked = computed(() => {
   if (!p.value) return true
@@ -655,54 +479,6 @@ const deleteBlocked = computed(() => {
 const deleteBlockedReason = computed(() =>
   deleteBlocked.value ? '项目运行中或正在生成，请先停止后再删除' : '',
 )
-
-function runtimeStatusLabel(st) {
-  return ({
-    stopped: '已停止',
-    starting: '启动中',
-    stopping: '停止中',
-    healthy: '正常',
-    error: '异常',
-  })[st] || st || '已停止'
-}
-function runtimeStatusPill(st) {
-  return ({
-    stopped: 'pill-neutral',
-    starting: 'pill-amber',
-    stopping: 'pill-amber',
-    healthy: 'pill-green',
-    error: 'pill-red',
-  })[st] || 'pill-neutral'
-}
-function runtimeCanStop(st) {
-  return st === 'healthy' || st === 'starting' || st === 'stopping'
-}
-function runtimeTransient(st) {
-  return st === 'starting' || st === 'stopping'
-}
-/** 状态只在 pill；这里只展示真实日志，占位文案一律收成 — */
-function runtimeLogView(st, tail) {
-  if (st === 'stopping') return '—'
-  // 编译/启动失败后进程常已退出；若仍当 stopped 藏日志，工作台只剩「—」
-  if (st === 'stopped') {
-    if (tail && _runtimeLogLooksFailed(tail)) return _tailLines(tail, 24)
-    return '—'
-  }
-  if (!tail || /^(后端|前端)?(启动|停止)中/.test(String(tail).trim())) return '—'
-  return _tailLines(tail, st === 'error' ? 24 : 8)
-}
-function _runtimeLogLooksFailed(tail) {
-  const t = String(tail)
-  return (
-    /BUILD FAILURE|COMPILATION ERROR|Failed to execute goal|ERROR (?:start|ensure)|APPLICATION FAILED TO START|npm ERR!|npm install FAILED|Could not resolve/.test(
-      t,
-    )
-  )
-}
-function _tailLines(tail, keep) {
-  const lines = String(tail).split(/\r?\n/).filter((l) => l.trim())
-  return lines.slice(-keep).join('\n') || '—'
-}
 
 const statusLabel = computed(() =>
   projectStatusLabel(p.value?.status, {
@@ -900,11 +676,6 @@ const roleSpecText = computed(() => {
     })
     .join('、')
 })
-const filteredLog = computed(() => {
-  const q = logFilter.value.trim().toLowerCase()
-  if (!q) return logText.value || '（无日志）'
-  return logText.value.split('\n').filter((l) => l.toLowerCase().includes(q)).join('\n') || '（无匹配）'
-})
 
 const gateCols = [
   { title: '级别', key: 'level', width: 80, render: (r) => statusPillNode(r.level, 'pill-neutral') },
@@ -1055,16 +826,7 @@ function toggleTable(name) {
   }
 }
 
-function formatSize(n) {
-  if (!n) return '—'
-  if (n < 1024) return n + ' B'
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
-  return (n / 1024 / 1024).toFixed(1) + ' MB'
-}
 
-function viewActive(projectId, epoch) {
-  return epoch === viewEpoch && route.params.id === projectId
-}
 
 async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
   const id = idOpt || route.params.id
@@ -1142,6 +904,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     loadError.value = (typeof detail === 'string' ? detail : '') || e?.message || '加载失败'
   }
 }
+pdCtx.load = load
 
 async function reload() {
   stopPoll()
@@ -1541,27 +1304,6 @@ async function fetchModSvg() {
   return svgFromPack(modulesMeta.value)
 }
 
-async function openFillPlan() {
-  if (!p.value?.workspace_path || fillPlanLoading.value) return
-  fillPlanLoading.value = true
-  try {
-    const res = await api.getFillPlan(p.value.id)
-    const plan = res?.data?.plan || res?.plan
-    const units = plan?.units || []
-    fillPlanRows.value = units.map((u) => ({
-      id: u.id,
-      kind: FILL_UNIT_KIND_ZH[u.kind] || u.kind,
-      status: FILL_UNIT_STATUS_ZH[u.status] || u.status || '—',
-      budget_chars: u.budget_chars,
-      source_refs: (u.source_refs || []).join(' · ') || '—',
-    }))
-    showFillPlan.value = true
-  } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '无法加载填岛计划')
-  } finally {
-    fillPlanLoading.value = false
-  }
-}
 
 async function openModules() {
   if (!p.value || modLoading.value || artifactsFrozen.value) return
@@ -2076,56 +1818,6 @@ async function refreshJob({ silent = false } = {}) {
   }
 }
 
-async function refreshRuntime(projectId) {
-  const id = projectId || route.params.id
-  if (!id || id === 'undefined' || id === 'null') return
-  let data
-  try {
-    data = await api.runtime(id)
-  } catch {
-    return
-  }
-  if (route.params.id !== id) return
-  rt.preview_url = data.preview_url || null
-  rt.backend_url = data.backend_url || null
-  rt.public_host = data.public_host || '127.0.0.1'
-  if (p.value && p.value.id === id) {
-    p.value.backend_port = data.backend_port || 0
-    p.value.frontend_port = data.frontend_port || 0
-    if (data.project_status) {
-      p.value.status = data.project_status
-      p.value.backend_running = ['starting', 'healthy'].includes(data.backend_status)
-      p.value.frontend_running = ['starting', 'healthy'].includes(data.frontend_status)
-    }
-  }
-  rt.backend_log_tail = data.backend_log_tail || ''
-  rt.frontend_log_tail = data.frontend_log_tail || ''
-  const be = data.backend_status || 'stopped'
-  const fe = data.frontend_status || 'stopped'
-  // 仅忙碌的那一侧保留中间态，另一侧照常刷新
-  if (rtBusyBe.value) {
-    if (rt.backend_status === 'stopping') {
-      rt.backend_status = be === 'stopped' ? 'stopped' : 'stopping'
-    } else if (rt.backend_status === 'starting') {
-      rt.backend_status = be === 'stopped' ? 'starting' : be
-    } else {
-      rt.backend_status = be
-    }
-  } else {
-    rt.backend_status = be
-  }
-  if (rtBusyFe.value) {
-    if (rt.frontend_status === 'stopping') {
-      rt.frontend_status = fe === 'stopped' ? 'stopped' : 'stopping'
-    } else if (rt.frontend_status === 'starting') {
-      rt.frontend_status = fe === 'stopped' ? 'starting' : fe
-    } else {
-      rt.frontend_status = fe
-    }
-  } else {
-    rt.frontend_status = fe
-  }
-}
 
 async function toggleUnlock() {
   if (matchBusy.value) return
@@ -2457,93 +2149,7 @@ async function confirmDelete() {
   }
 }
 
-async function rtAction(side, action) {
-  const projectId = p.value?.id
-  if (!projectId) return
-  if (action === 'start' || action === 'restart') {
-    const blocked = p.value?.preview_blocked_reason
-    if (blocked) {
-      message.warning(blocked)
-      return
-    }
-  }
-  const epoch = viewEpoch
-  const touchBe = side === 'all' || side === 'backend'
-  const touchFe = side === 'all' || side === 'frontend'
-  if ((touchBe && rtBusyBe.value) || (touchFe && rtBusyFe.value)) return
-  if (touchBe) rtBusyBe.value = true
-  if (touchFe) rtBusyFe.value = true
-  if (side === 'all') rtPendingAll.value = action
 
-  if (action === 'start' || action === 'restart') {
-    if (touchBe) rt.backend_status = 'starting'
-    if (touchFe) rt.frontend_status = 'starting'
-  } else if (action === 'stop') {
-    if (touchBe) rt.backend_status = 'stopping'
-    if (touchFe) rt.frontend_status = 'stopping'
-  }
-  try {
-    await api.runtimeAction(projectId, side, action)
-    if (!viewActive(projectId, epoch)) return
-    await load({ id: projectId })
-    if (!viewActive(projectId, epoch)) return
-    const deadline = Date.now() + (action === 'stop' ? 8000 : 90000)
-    while (Date.now() < deadline && viewActive(projectId, epoch) && tab.value === 'runtime') {
-      await refreshRuntime(projectId)
-      if (_runtimeSettled(side, action)) break
-      await new Promise((r) => setTimeout(r, 700))
-    }
-  } finally {
-    if (touchBe) rtBusyBe.value = false
-    if (touchFe) rtBusyFe.value = false
-    if (side === 'all') rtPendingAll.value = ''
-    if (viewActive(projectId, epoch) && tab.value === 'runtime') {
-      await refreshRuntime(projectId)
-    }
-  }
-}
-
-function _runtimeSettled(side, action) {
-  const be = rt.backend_status
-  const fe = rt.frontend_status
-  const beDone = be !== 'starting' && be !== 'stopping'
-  const feDone = fe !== 'starting' && fe !== 'stopping'
-  if (side === 'backend') return beDone
-  if (side === 'frontend') return feDone
-  if (action === 'stop') return be === 'stopped' && fe === 'stopped'
-  return beDone && feDone
-}
-
-function openPreview() {
-  if (rt.frontend_status !== 'healthy') {
-    message.warning('前端未就绪，请先启动并等待可访问')
-    return
-  }
-  const url = rt.preview_url || frontendAddr.value
-  if (url) {
-    window.open(url, '_blank')
-    return
-  }
-  message.warning('前端未就绪，请先启动并等待可访问')
-}
-
-let logReqSeq = 0
-async function loadLog(side, { silent = false } = {}) {
-  logSide.value = side
-  const seq = ++logReqSeq
-  if (!silent) logLoading.value = true
-  try {
-    const res = silent
-      ? await api.logsPoll(p.value.id, side)
-      : await api.logs(p.value.id, side)
-    if (seq !== logReqSeq || logSide.value !== side) return
-    logText.value = res.content || ''
-  } catch {
-    /* 轮询静默；手动打开日志页时仍走默认 toast */
-  } finally {
-    if (!silent && seq === logReqSeq) logLoading.value = false
-  }
-}
 
 let pollInFlight = false
 const pollSyncHint = ref('')
