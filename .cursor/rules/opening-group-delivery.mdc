@@ -1,0 +1,85 @@
+---
+description: 清待补交付：一轮一组 · 一条四件套 · 三骨架同绑 · 八张材料可见 · 门禁三绿才迁行
+globs: docs/opening-feature-delivery-map.md, backend/app/bake/**, backend/tests/**, skeletons/**
+alwaysApply: false
+---
+
+# 清待补交付（开题密功能地图）
+
+地图：`docs/opening-feature-delivery-map.md`。**一轮只清一组，一组一包**。
+
+## 一轮 = 一组
+
+- 组 = 地图 `### 1.x`（§1.1~§1.10）；一组一个 `backend/app/bake/features/<组>_thicken.py`。
+  现有范本：`backend/app/bake/features/borrow_thicken.py` · `follow_thicken.py` · `repair_thicken.py`。
+- 新组模块**必须**在 `backend/app/bake/domain_schema.py` 注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`（同文件 521-529 行三组即范本）。**漏注册 = 死代码 = 未交付。**
+- 一组清完：同节「#### 本组待补」清空，行迁到「#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）」，列保持 `功能 / 落点 / 挂载`。
+
+## 一条待补 = 四件套（缺一不算已齐）
+
+| 件 | 真源 |
+|----|------|
+| ① 表 / 列 | `skeletons/baseline/sql/schema.sql` |
+| ② Store 写方法 | `skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java`（或同目录 `*Store.java`、`service/*Store.java`） |
+| ③ API | `skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java`（或对应 `*Controller.java`） |
+| ④ 前端控件 | `skeletons/baseline/frontend/src/views/`（`user/`、`admin/`、`staff/`、`special/`）或 `frontend/src/components/` |
+
+硬口径：**管理端能管 + 用户端能产生数据（真写库）**。
+纯 Hint / 只读展示 / 打印页 / 前端零读取的字面量 → 只能留在「待补」。
+
+## 三骨架同一批（禁止只改一套）
+
+| 骨架 | 绑定处 |
+|------|--------|
+| baseline | `skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java` |
+| persistence-mybatis | `skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java` |
+| persistence-jpa | `skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java` |
+
+新列 / 新写方法 / 新开关：三份骨架同改、三处 `DomainRuntimeBinder` 同绑，overlay 的 `capability/TicketStore.java` 也各有自己一份。
+**少一套 = 该栈静默关功能**；三套齐才进「已齐」。
+
+## 八张材料可见性（一组同看）
+
+| 材料 | bake 真源（`backend/app/bake/schema/`） | 卡片 id（`frontend/src/views/projectDetail/ArtifactsTab.vue`） | 测试（`backend/tests/`） |
+|------|------|------|------|
+| 功能模块图 | `modules.py` | `modules` | `test_schema_modules.py` |
+| 系统逻辑架构图 | `architecture.py` | `architecture` | `test_schema_architecture.py` |
+| 系统类图 | `classes.py` | `classes` | `test_schema_classes.py` |
+| 系统序列图 | `sequence.py` | `sequences` | `test_schema_sequence.py` |
+| 系统活动图 | `activity.py` | `activities` | `test_schema_activity.py` |
+| 用例图 | `usecases.py` | `usecases` | `test_schema_usecases.py` |
+| 用例描述表 | `usecase_descriptions.py` | `usecase-desc` | `test_schema_usecase_descriptions.py` |
+| 软件测试用例 | `testcases.py` | `testcases` | `test_schema_testcases.py` |
+
+材料只能从**交付菜单 / 角色 / 实体**推导（`testcases.py` 原话）；菜单外功能不许进图。
+本轮动的功能，八张里受影响的要一起看，不受影响在汇报里写「无」。
+
+## 两组归并（别一组一个文件）
+
+- **域默认必开**：该组所有域都该有的底（如 CRM 跟进时间轴）→ 挂 `DOMAIN_CAPABILITIES`（`backend/app/bake/domains.py`），地图「挂载」列写 `**域默认**`。
+- **开题扫词才开**：命中开题正文才挂（评价 / 售后 / 多商家入驻等）→ 落 `backend/app/bake/features/opening_align.py` 规则表；地图「挂载」列写「扫词开」。
+- 超纲项不进待补：进「不支持」并写原因（如 CRM 公海池 / 外呼中心、ATTEND 人脸 GPS 打卡）。
+
+## 收尾：三绿才准迁行
+
+1. `python -m pytest backend/tests/test_opening_map_skeleton_gate.py -q`（地图 ↔ 骨架：已齐 `labels.*` 必须被 baseline 前端真读、§1.3 报修硬点控件存在）
+2. 本组特征：`backend/tests/test_<组>_thicken_features.py`（现有 `test_borrow_thicken_features.py` · `test_follow_thicken_features.py` · `test_repair_thicken_features.py`）
+3. 受影响材料的 `backend/tests/test_schema_*.py`
+
+任一红 → 行留在「本组待补」，**不许先迁行**，不许靠改地图文字变绿。
+
+## DON'T
+
+- 一轮清多组 / 一次起多个包；只改地图不改骨架。
+- 只改 baseline 或只改一套 Store（另两套漏绑 = 静默关功能）。
+- 把只读页 / Hint / 打印当已齐（门禁会红）。
+- 起包发给学生 —— **起包由人执行**，本规则只管交付齐度。
+
+## 汇报（一组一段）
+
+- 组：§1.x 名称；本轮清了 N 条，迁行 N。
+- 四件套：①表/列 ②Store ③API ④前端控件 各自的真实文件路径。
+- 三骨架：baseline / mybatis / jpa 各改了哪些文件（含 `DomainRuntimeBinder.java` 与 `TicketStore.java`）。
+- 材料：八张里哪几张受影响，未受影响写「无」。
+- 门禁：上面三条命令与结果。
+

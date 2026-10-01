@@ -55,12 +55,17 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
     ("ticket-objection-days", "OBJECTION_DAYS", "int", "0", "ticketObjectionDays", "sla"),
     ("ticket-week-report-deadline-day", "WEEK_REPORT_DEADLINE_DAY", "int", "0", "ticketWeekReportDeadlineDay", "sla"),
     ("ticket-urge-cooldown-minutes", "URGE_COOLDOWN_MINUTES", "int", "0", "ticketUrgeCooldownMinutes", "sla"),
+    ("ticket-cancel-before-hours", "CANCEL_BEFORE_HOURS", "int", "0", "ticketCancelBeforeHours", "sla"),
+    ("ticket-claim-cooldown-hours", "CLAIM_COOLDOWN_HOURS", "int", "0", "ticketClaimCooldownHours", "sla"),
     # ---------- 续借 / 修改 / 信用 ----------
     ("ticket-max-renew", "MAX_RENEW", "int", "1", "ticketMaxRenew", "rule"),
     ("ticket-renew-days", "RENEW_DAYS", "int", "0", "ticketRenewDays", "rule"),
     ("ticket-category-limit", "CATEGORY_LIMIT", "int", "0", "ticketCategoryLimit", "rule"),
     ("ticket-min-remark-words", "MIN_REMARK_WORDS", "int", "0", "ticketMinRemarkWords", "rule"),
     ("ticket-max-revise-times", "MAX_REVISE_TIMES", "int", "0", "ticketMaxReviseTimes", "rule"),
+    ("ticket-max-drop-times", "MAX_DROP_TIMES", "int", "0", "ticketMaxDropTimes", "rule"),
+    ("ticket-semester-credit-cap", "SEMESTER_CREDIT_CAP", "int", "0", "ticketSemesterCreditCap", "rule"),
+    ("ticket-credit-warn-remaining", "CREDIT_WARN_REMAINING", "int", "0", "ticketCreditWarnRemaining", "rule"),
     ("ticket-credit-initial", "CREDIT_INITIAL", "int", "100", "ticketCreditInitial", "rule"),
     ("ticket-credit-overdue-delta", "CREDIT_OVERDUE_DELTA", "int", "5", "ticketCreditOverdueDelta", "rule"),
     ("ticket-credit-block-below", "CREDIT_BLOCK_BELOW", "int", "60", "ticketCreditBlockBelow", "rule"),
@@ -73,6 +78,8 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
     ("ticket-match-profile-deny-message", "MATCH_PROFILE_DENY_MESSAGE", "String", '""', "ticketMatchProfileDenyMessage", "message"),
     ("ticket-bed-constraint-need-message", "BED_CONSTRAINT_NEED_MESSAGE", "String", '""', "ticketBedConstraintNeedMessage", "message"),
     ("ticket-bed-constraint-deny-message", "BED_CONSTRAINT_DENY_MESSAGE", "String", '""', "ticketBedConstraintDenyMessage", "message"),
+    ("ticket-age-constraint-need-message", "AGE_CONSTRAINT_NEED_MESSAGE", "String", '""', "ticketAgeConstraintNeedMessage", "message"),
+    ("ticket-age-constraint-deny-message", "AGE_CONSTRAINT_DENY_MESSAGE", "String", '""', "ticketAgeConstraintDenyMessage", "message"),
 )
 
 #: 扩展能力开关：(yml 键, Java 常量)。类型固定 boolean、默认 false；
@@ -111,6 +118,14 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("ticket-allow-exception-close", "ALLOW_EXCEPTION_CLOSE"),
     ("ticket-require-training-ack", "REQUIRE_TRAINING_ACK"),
     ("ticket-require-insurance-ack", "REQUIRE_INSURANCE_ACK"),
+    ("ticket-require-meeting-ack", "REQUIRE_MEETING_ACK"),
+    ("ticket-require-apply-invite", "REQUIRE_APPLY_INVITE"),
+    ("ticket-require-price-note-ack", "REQUIRE_PRICE_NOTE_ACK"),
+    ("ticket-require-sponsor-ack", "REQUIRE_SPONSOR_ACK"),
+    ("ticket-require-plan-ack", "REQUIRE_PLAN_ACK"),
+    ("ticket-require-prereq-ack", "REQUIRE_PREREQ_ACK"),
+    ("ticket-age-constraint", "AGE_CONSTRAINT"),
+    ("ticket-allow-late-minutes", "ALLOW_LATE_MINUTES"),
     ("ticket-block-if-calib-expired", "BLOCK_IF_CALIB_EXPIRED"),
     ("ticket-allow-project-no", "ALLOW_PROJECT_NO"),
     ("ticket-allow-procure-ref", "ALLOW_PROCURE_REF"),
@@ -182,6 +197,10 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     # category-color-hint 这 9 个键历史上会写进 yml 但交付链路无人读取
     # （对应前端开关由接口载荷的 ticket.* 携带），属无效写参，故不随本轮下沉。
     ("ticket-repair-thicken", "REPAIR_THICKEN"),
+    ("ticket-apply-thicken", "APPLY_THICKEN"),
+    ("ticket-notify-on-apply-success", "NOTIFY_ON_APPLY_SUCCESS"),
+    ("ticket-allow-meeting-place", "ALLOW_MEETING_PLACE"),
+    ("ticket-allow-emergency-contact", "ALLOW_EMERGENCY_CONTACT"),
 )
 
 
@@ -346,6 +365,12 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     max_od = _pos(ent.get("maxOverdueTimes"))
     if max_od is not None:
         out["MAX_OVERDUE_TIMES"] = _clamp(max_od, 1, 20)
+    cancel_before = _pos(ent.get("cancelBeforeHours"))
+    if cancel_before is not None:
+        out["CANCEL_BEFORE_HOURS"] = _clamp(cancel_before, 1, 720)
+    claim_cd = _pos(ent.get("claimCooldownHours"))
+    if claim_cd is not None:
+        out["CLAIM_COOLDOWN_HOURS"] = _clamp(claim_cd, 1, 168)
 
     # ---- 续借 / 修改 / 信用 ----
     if ent.get("allowRenew"):
@@ -362,6 +387,15 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     max_revise = _pos(ent.get("maxReviseTimes"))
     if max_revise is not None:
         out["MAX_REVISE_TIMES"] = _clamp(max_revise, 1, 20)
+    max_drop = _pos(ent.get("maxDropTimes"))
+    if max_drop is not None:
+        out["MAX_DROP_TIMES"] = _clamp(max_drop, 1, 30)
+    credit_cap = _pos(ent.get("semesterCreditCap"))
+    if credit_cap is not None:
+        out["SEMESTER_CREDIT_CAP"] = _clamp(credit_cap, 1, 200)
+    credit_warn = _pos(ent.get("creditWarnRemaining"))
+    if credit_warn is not None:
+        out["CREDIT_WARN_REMAINING"] = _clamp(credit_warn, 1, 50)
     if ent.get("creditOnOverdue"):
         out["CREDIT_INITIAL"] = _clamp(_int_or(ent.get("creditInitial"), 100), 1, 999)
         out["CREDIT_OVERDUE_DELTA"] = _clamp(_int_or(ent.get("creditOverdueDelta"), 5), 1, 100)
@@ -385,6 +419,15 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
         for key, lab_key in (
             ("ticket-bed-constraint-need-message", "bedConstraintNeedMessage"),
             ("ticket-bed-constraint-deny-message", "bedConstraintDenyMessage"),
+        ):
+            val = str(labels.get(lab_key) or "").strip()
+            if val:
+                out[CONST_BY_KEY[key]] = val
+    if ent.get("ageConstraint"):
+        labels = (spec.get("schema") or {}).get("labels") or {}
+        for key, lab_key in (
+            ("ticket-age-constraint-need-message", "ageConstraintNeedMessage"),
+            ("ticket-age-constraint-deny-message", "ageConstraintDenyMessage"),
         ):
             val = str(labels.get(lab_key) or "").strip()
             if val:
@@ -420,6 +463,11 @@ COMMENTS: dict[str, str] = {
     "OBJECTION_DAYS": "结果公示后的异议登记窗口天数",
     "WEEK_REPORT_DEADLINE_DAY": "每周汇报的提交截止日（周内第几天）",
     "URGE_COOLDOWN_MINUTES": "用户催办的冷却分钟数",
+    "CANCEL_BEFORE_HOURS": "活动开始前可取消报名的最少提前小时数；0 表示不限制",
+    "CLAIM_COOLDOWN_HOURS": "失物启事发布后可认领的冷却小时数；0 表示不限制",
+    "MAX_DROP_TIMES": "本学期退选次数上限；0 表示不限制",
+    "SEMESTER_CREDIT_CAP": "学期已选学分上限；0 表示不限制",
+    "CREDIT_WARN_REMAINING": "剩余学分低于该值时提示接近上限；0 表示不提示",
     "MAX_RENEW": "单次借出最多续借次数",
     "RENEW_DAYS": "每次续借延长的天数；0 表示跟默认天数",
     "CATEGORY_LIMIT": "同一分类下进行中单据上限；0 表示不限",
@@ -439,6 +487,11 @@ COMMENTS: dict[str, str] = {
     "MATCH_PROFILE_DENY_MESSAGE": "匹配不通过的提示文案",
     "BED_CONSTRAINT_NEED_MESSAGE": "床位约束提示文案",
     "BED_CONSTRAINT_DENY_MESSAGE": "床位冲突拒绝文案",
+    "AGE_CONSTRAINT": "线路年龄上下限对照资料",
+    "AGE_CONSTRAINT_NEED_MESSAGE": "年龄限制缺资料提示",
+    "AGE_CONSTRAINT_DENY_MESSAGE": "年龄不符合拒绝文案",
+    "REQUIRE_PREREQ_ACK": "有先修提示码时须勾选确认",
+    "ALLOW_LATE_MINUTES": "签到可登记迟到分钟数",
 }
 
 GROUP_TITLES: dict[str, str] = {

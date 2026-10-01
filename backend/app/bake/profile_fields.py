@@ -665,6 +665,8 @@ _pf("gradeYear", "年级", on_register=True, max_length=16),
     "DOM-TOUR": [
         _pf("memberNo", "会员号", required=True, on_register=True, max_length=32),
         _pf("orgName", "单位/来源", on_register=True, max_length=64),
+        _pf("ageYears", "年龄", required=True, on_register=True, field_type="number",
+            placeholder="周岁"),
         _pf("idTypeHint", "证件类型", on_register=True, field_type="select",
             options=["身份证", "护照", "其他"]),
         _pf("emergencyPhone", "紧急联系电话", max_length=20),

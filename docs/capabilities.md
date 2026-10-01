@@ -43,6 +43,7 @@
 | `borrow_thicken` | 借用/占用组加厚（字段/文案/校验 + 续借/预约/罚款等演示链），非独立 cap；落点见交付地图 §1.1 |
 | `follow_thicken` | 跟进组加厚（字段/文案/校验 + 批量录用/周报催交/渠道饼图等演示链），非独立 cap；落点见交付地图 §1.2 |
 | `repair_thicken` | 报修/工单组加厚（用户催办链、结单原因/摘要、SLA 分列、浅台账），非独立 cap；落点见交付地图 §1.3 |
+| `apply_thicken` | 报名/申请组加厚（须知/驳回/站内信、批量审、候补、口令/费用/资格、面交确认、浏览计数、学院筛选等浅字段与规则），非独立 cap；落点见交付地图 §1.4 |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 

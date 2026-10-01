@@ -486,6 +486,7 @@ def domain_sql(
         ensure_gallery_sql,
         ensure_borrow_archive_columns,
         ensure_follow_archive_columns,
+        ensure_apply_archive_columns,
         ensure_detail_attrs_sql,
         ensure_guestbook_sql,
         ensure_item_comment_sql,
@@ -959,6 +960,11 @@ def domain_sql(
         item_table=resolved_item,
     )
     text = ensure_follow_archive_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+    )
+    text = ensure_apply_archive_columns(
         text,
         domain=domain or "",
         item_table=resolved_item,

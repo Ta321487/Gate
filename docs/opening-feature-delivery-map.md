@@ -608,83 +608,90 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 学分上限（已选合计 ≤ 学期上限） | COURSE | 纯校验；≠评教 |
-| 先修课提示（同码/同系列提示，非强制引擎） | COURSE | 文案+弱校验即可 |
 | 集体报名 / 代填同行人（一单多人占额） | ACTIVITY / TOUR | ≠拼团商城 |
-| 报名须知「已阅读」勾选后才可提交 | 四域 | schema 开关 |
-| 年级/身份资格限制 | ACTIVITY / COURSE | 对照资料字段 |
 | 黑名单禁止报名（管理维护名单） | ACTIVITY / TOUR | 轻名单表；≠风控引擎 |
-| 认领成功自动下架启事 | LOST | stock→0+状态 |
-| 失物招领到期自动下架提醒 | LOST | 日期字段+任务或提交时校验 |
 | 活动办结「报名证明」PDF（固定模板） | ACTIVITY | ≠ CA 证书平台 |
-| 出团名单打印/导出（含联系方式列） | TOUR | CSV 已有可加深列配置 |
-| 活动取消规则（开始前 N 小时可退） | ACTIVITY | schema+校验 |
 | 活动海报/封面多图 | ACTIVITY | gallery 扫词即可先顶；表内钉口径 |
 | 签到成功率 / 缺勤名单导出 | ACTIVITY / CHECKIN | 统计+CSV |
 | 活动问卷联动（结束后填满意度卷） | ACTIVITY | 扫词挂 survey；表内钉联动口径 |
 | 选课结果公示页（已满/开放） | COURSE | 档案 stage 展示加深 |
-| 退选次数上限 | COURSE | 规则；通识教务题常写 |
-| 培养方案学分结构提示（选修/必修标签） | COURSE | 分类标签；≠完整培养方案引擎 |
-| 失物「悬赏」备注字段（非支付） | LOST | 文案字段；≠真打赏 |
 | 认领双方评价 | LOST | allowRating 双向或单次 |
-| 线路行程日明细（D1/D2 文本） | TOUR | 富文本或多行；≠地图轨迹 |
-| 出团前资料清单勾选（护照复印等） | TOUR | material_check 变体 |
-| 保险声明勾选（非保单系统） | TOUR | 须知勾选变体 |
-| 报名审核批量通过/驳回 | 四域 | 管理端多选；通识高频 |
-| 候补自动递补占额 | ACTIVITY / COURSE | 取消后队列顶上；规则 |
 | 签到二维码页（口令可视化） | ACTIVITY / CHECKIN | code_qr 可叠；表内钉 |
 | 课表冲突可视化高亮 | COURSE | UI；规则已有可加深 |
-| 认领冷却期（发布后 N 小时可认） | LOST | 防秒认；浅规则 |
-| 活动名额紧张提示（余量阈值） | ACTIVITY | 文案；浅 |
-| 线路成团最低人数提示 | TOUR | 字段+列表提示；≠强制关团引擎 |
-| 活动分场次/分组报名 | ACTIVITY | 子档案或场次字段；通识 |
 | 抽签录取（随机抽满额） | ACTIVITY | 浅随机；≠公平抽签平台 |
 | 选课志愿序（第一/第二志愿） | COURSE | 字段+录取规则浅；≠完整志愿引擎 |
-| 报名费演示登记（非商户支付） | ACTIVITY / TOUR | 金额备注；系统内或线下勾选 |
-| 失物面交地点/时间约定字段 | LOST | 认领单扩展 |
 | 活动志愿者岗位报名分流 | ACTIVITY | 分类名额；浅 |
 | 出团天气/须知附件包 | TOUR | 附件；浅 |
-| 报名邀请码/口令报名 | ACTIVITY | 字符串码；通识 |
-| 安全责任书勾选（研学/献血皮） | ACTIVITY / TOUR | 须知变体 |
-| 失物分类（卡证/数码/衣物）字典 | LOST | 分类加深 |
 | 选课抽签录取（名额紧张时） | COURSE | 浅随机；对齐活动抽签 |
 | 活动座位分区（区域名额） | ACTIVITY | 浅分区；≠影院选座主路径 |
-| 团员保险名单导出列 | TOUR | CSV 列配置 |
-| 认领面交双方确认勾选 | LOST | 轻双确认；浅 |
 | 活动签到补签（管理端） | ACTIVITY / CHECKIN | 管理补录；通识 |
-| 报名成功站内信 | 四域 | 消息模板；通识高频 |
-| 选课学分预警（接近上限） | COURSE | 提示；浅 |
 | 失物启事加急置顶（付积分演示） | LOST | 字段+积分可选；浅 |
-| 线路余位紧张候补开关 | TOUR | waitlist 钉口径 |
 | 活动相册（办结后上传） | ACTIVITY | gallery；浅 |
-| 活动候补转正站内信 | ACTIVITY / COURSE | 递补齐后加深 |
-| 选课教材信息字段 | COURSE | 档案扩展；浅 |
-| 失物认领所需证件类型勾选 | LOST | material_check 变体 |
-| 线路报名年龄限制 | TOUR | 对照资料；浅 |
 | 活动学分认定回写提示（非自动） | ACTIVITY / CREDIT | 文案交叉；浅 |
-| 团体票价说明（文案） | ACTIVITY / TOUR | 只读；浅 |
-| 活动签到地点字段 | ACTIVITY | 字段；≠ GPS 打卡 |
-| 选课开课学院筛选 | COURSE | 组织筛选；浅 |
-| 失物启事浏览计数 | LOST | 计数；浅 |
-| 出团领队联系方式字段 | TOUR | 档案；通识 |
-| 报名审核驳回理由必填 | 四域 | 通识高频 |
-| 活动签到迟到分钟数登记 | ACTIVITY | 字段；浅 |
 | 选课教师调课通知站内信 | COURSE | 消息；浅 |
 | 失物启事评论区开关 | LOST | item_comment 叠；浅 |
-| 线路报名紧急联系人 | TOUR | 字段；通识 |
 | 活动容量超售保护（乐观锁说明） | ACTIVITY | 文案+校验；浅 |
-| 活动赞助商展示位 | ACTIVITY | 档案字段；浅 |
-| 选课先修课硬拦截开关 | COURSE | 弱提示升级可选；浅 |
-| 失物认领需要押金演示 | LOST | 金额；浅 |
-| 线路单房差说明 | TOUR | 文案；浅 |
-| 活动电子票夹（我的票） | ACTIVITY | 列表+码；通识 |
-| 选课培养方案外链 | COURSE | URL；≠方案引擎 |
 | 失物招领诚信分 | LOST | 浅分；通识偶见 |
-| 出团集合点字段 | TOUR | 字段；通识 |
+| 活动电子票夹（我的票） | ACTIVITY | 列表+码；通识 |
 | 活动门票转让（站内改签人） | ACTIVITY | 浅改名额占用；偶见 |
 | 选课抽签结果公示 | COURSE | 公示页；浅 |
-| 失物启事过期自动关闭 | LOST | 规则；对齐到期下架 |
 | 线路签证材料清单 | TOUR | material_check；出国皮 |
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径：已齐 = **管理能管 + 用户可产生数据**。本轮经 `apply_thicken` 加厚；骨架门禁钉 labels 与 Store，**不靠起包**。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 报名须知「已阅读」勾选后才可提交 | ticket.requireNoticeAck + notice_ack；MyTickets 勾选写库 | **域默认** 四域 |
+| 报名审核驳回理由必填 | TicketStore.approve 驳回非空 + labels.rejectReasonRequired | **域默认** 四域 |
+| 报名成功站内信 | ticket.notifyOnApplySuccess → MessageStore.send | **域默认** 四域 |
+| 活动名额紧张提示（余量阈值） | schema.stockTightBelow + labels.stockTightHint；ArchiveBrowse | **域默认** 四域 |
+| 认领成功自动下架启事 | adjustStock→unavailable + stage「已认领」 | **域默认** LOST |
+| 失物招领到期自动下架提醒 | expire_on + DemoScheduleJobs.expirePastExpireOn | **域默认** LOST |
+| 失物启事过期自动关闭 | 同上 expire_on→status/stage 已下架 | **域默认** LOST |
+| 失物「悬赏」备注字段（非支付） | archive.bountyNote + bounty_note 列 | **域默认** LOST |
+| 失物面交地点/时间约定字段 | allowMeetingPlace + preferredSlot；pickup_place / preferred_slot | **域默认** LOST |
+| 活动签到地点字段 | archive.checkinPlace + checkin_place | **域默认** ACTIVITY |
+| 选课教材信息字段 | archive.textbook + textbook 列 | **域默认** COURSE |
+| 线路行程日明细（D1/D2 文本） | archive.dayItinerary + day_itinerary | **域默认** TOUR |
+| 出团领队联系方式字段 | archive.leaderContact + leader_contact | **域默认** TOUR |
+| 出团集合点字段 | archive.meetingPoint + meeting_point | **域默认** TOUR |
+| 线路报名紧急联系人 | ticket.allowEmergencyContact + emergency_contact/phone | **域默认** TOUR |
+| 报名审核批量通过/驳回 | ticket.allowBatchHire + labels.batchHireLabel / batchRejectLabel；TicketsAdmin 多选 | **域默认** 四域 |
+| 候补自动递补占额 | TicketStore.tryPromoteWaitlist FIFO→pending；labels.waitlistPromoteHint | **域默认** ACTIVITY/COURSE（四域有候补则同） |
+| 活动候补转正站内信 | tryPromoteWaitlist → MessageStore.send「候补已晋升」 | **域默认** 四域（候补开时） |
+| 活动取消规则（开始前 N 小时可退） | ticket.cancelBeforeHours + labels.cancelBeforeHint；complete 申请人校验 | **域默认** ACTIVITY |
+| 安全责任书勾选（研学/献血皮） | ticket.requireInsuranceAck + labels.insuranceAckLabel（ACTIVITY 安全责任书文案） | **域默认** ACTIVITY |
+| 保险声明勾选（非保单系统） | ticket.requireInsuranceAck + labels.insuranceAckLabel；MyTickets 勾选 | **域默认** TOUR |
+| 认领冷却期（发布后 N 小时可认） | ticket.claimCooldownHours + labels.claimCooldownHint；apply 校验 | **域默认** LOST |
+| 学分上限（已选合计 ≤ 学期上限） | ticket.semesterCreditCap + labels.creditCapHint；apply 合计校验 | **域默认** COURSE |
+| 选课学分预警（接近上限） | ticket.creditWarnRemaining + labels.creditWarnHint；apply 回写 creditWarnHint | **域默认** COURSE |
+| 退选次数上限 | ticket.maxDropTimes + labels.maxDropHint；退选 complete 累计 returned | **域默认** COURSE |
+| 先修课提示（同码/同系列提示，非强制引擎） | archive.prereqCode + labels.prereqHint；弱提示不拦截 | **域默认** COURSE |
+| 培养方案学分结构提示（选修/必修标签） | archive.courseKind + labels.courseKindHint；列表展示 | **域默认** COURSE |
+| 线路成团最低人数提示 | archive.minGroupSize + labels.minGroupHint；ArchiveBrowse 提示 | **域默认** TOUR |
+| 报名邀请码/口令报名 | ticket.requireApplyInvite + archive.applyInviteCode；labels.applyInviteLabel/Hint | **域默认** ACTIVITY |
+| 报名费演示登记（非商户支付） | ticket.allowDeposit；archive.feeYuan 预填 depositYuan 写库；labels.depositLabel | **域默认** ACTIVITY/TOUR |
+| 年级/身份资格限制 | ticket.bedConstraint + allowedGrades/Gender；对照资料 | **域默认** ACTIVITY/COURSE |
+| 活动分场次/分组报名 | archive.sessionGroup + labels.sessionGroupHint | **域默认** ACTIVITY |
+| 活动赞助商展示位 | archive.sponsorNote + ticket.requireSponsorAck→sponsor_ack；labels.sponsorAckLabel | **域默认** ACTIVITY |
+| 团体票价说明（文案） | archive.groupPriceNote + ticket.requirePriceNoteAck→price_note_ack；labels.priceNoteAckLabel | **域默认** ACTIVITY/TOUR |
+| 失物分类（卡证/数码/衣物）字典 | archive.lostCategory 选项 | **域默认** LOST |
+| 失物启事浏览计数 | archive.viewCount + ArchiveStore.bumpViewCount | **域默认** LOST |
+| 认领面交双方确认勾选 | ticket.requireMeetingAck；meeting_ack + owner_meeting_ack；labels.meetingAckLabel/ownerMeetingAckLabel | **域默认** LOST |
+| 选课开课学院筛选 | archive.college + ArchiveBrowse collegeFilter；labels.collegeFilterHint | **域默认** COURSE |
+| 选课培养方案外链 | archive.planUrl + ticket.requirePlanAck→plan_ack；labels.planAckLabel/planUrlHint | **域默认** COURSE |
+| 线路余位紧张候补开关 | ticket.allowWaitlist 域默认 TOUR；labels.waitlistPromoteHint | **域默认** TOUR |
+| 线路单房差说明 | archive.singleRoomNote + requirePriceNoteAck 同勾选写库 | **域默认** TOUR |
+| 出团名单打印/导出（含联系方式列） | TicketRecordsAdmin 紧急联系人列+CSV | **域默认** TOUR |
+| 活动签到迟到分钟数登记 | ticket.allowLateMinutes→late_minutes；labels.lateMinutesLabel；签到写库 | **域默认** ACTIVITY |
+| 失物认领押金演示 | ticket.allowDeposit；archive.feeYuan 预填 depositYuan | **域默认** LOST |
+| 失物认领证件材料清单 | material_check 域强制 + requireMaterialChecklist；材料项写库 | **域默认** LOST |
+| 选课先修课硬确认 | ticket.requirePrereqAck→prereq_ack（有 prereqCode 时）；labels.prereqAckLabel | **域默认** COURSE |
+| 线路报名年龄限制 | ticket.ageConstraint；archive.minAge/maxAge vs 资料 ageYears | **域默认** TOUR |
+| 出团前资料清单 | material_check 域强制；团员按清单上传写库 | **域默认** TOUR |
+| 团员保险名单导出列 | insurance_ack 列+TicketRecordsAdmin 表/CSV | **域默认** TOUR |
 
 不支持：真支付售票、闸机、地图导航、OTA 渠道、短信验证码通道（登录验证码除外）。
 
@@ -1330,3 +1337,6 @@
 | 2026-09-30 | **§1.2 收尾**：`follow_thicken` 跟进组加厚（CRM/EVENT/ATTEND/FUND/RECRUIT/GRADE/INTERN/LISTING）；ATTEND 假期额度域默认；本组待补清零 |
 | 2026-09-30 | **§1.1/§1.2 硬闭环**：批量录用 API+管理端多选；收藏夹导出/复制清单；渠道饼图/阶段漏斗/成交漏斗进工作台；周报截止扫表催信；岗位 `expire_on` 自动下架；借用续借/预约/罚款与跟进非主链（peer/procure/patch）收进 mybatis Mapper/XML；三线 binder/`thesis.yml` 对齐 |
 | 2026-09-30 | **论文图跟实包**：E-R 补跟进/借用加厚列中文；序列/泳道从 Vue `{{ batchHireLabel }}` 等按 `schema.labels`/`verbs` 解析演示按钮，禁止写死域词进骨架 |
+| 2026-10-01 | **§1.4 第二批已齐**：批量审/候补递补与转正信、取消时限、安全责任书与保险勾选、认领冷却、学分上限与预警、退选上限、先修弱提示、课程属性、成团最低人数；`apply_thicken`+三套 Store/门禁 |
+| 2026-10-01 | **§1.4 第三批已齐**：口令报名、报名费演示、年级资格、分场次、赞助商/团体票价、失物分类与浏览计数、面交双方确认、开课学院筛选、培养方案外链、TOUR 候补默认、单房差、出团名单紧急联系人导出 |
+| 2026-10-01 | **§1.4 第四批已齐**：签到迟到分钟、认领押金、LOST/TOUR 材料清单、先修硬确认、线路年龄限制、保险导出列 |
