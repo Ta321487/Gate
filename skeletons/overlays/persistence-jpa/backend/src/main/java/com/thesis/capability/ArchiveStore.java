@@ -35,10 +35,10 @@ public final class ArchiveStore {
     private static Boolean hasOwnerUsername;
     private static Boolean hasGalleryJson;
     private static Boolean hasEquipmentJson;
-    private static boolean softDeleteEnabled = false;
-    private static boolean userPublishEnabled = false;
+    static boolean softDeleteEnabled = false;
+    static boolean userPublishEnabled = false;
     /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
-    private static boolean publishReviewEnabled = false;
+    static boolean publishReviewEnabled = false;
     private static boolean galleryEnabled = false;
     private static boolean detailAttrsEnabled = false;
     private static List<String> detailAttrKeys = List.of();
@@ -46,14 +46,14 @@ public final class ArchiveStore {
     private static Boolean hasDetailJson;
     private static boolean roomEquipmentEnabled = false;
 
-    private static boolean flashPriceEnabled = false;
+    static boolean flashPriceEnabled = false;
     private static Boolean hasPromoPrice;
 
-    private static boolean productSpecEnabled = false;
+    static boolean productSpecEnabled = false;
     private static Boolean hasDedicatedSpecNote;
 
-    private static boolean stockWarnNotify = false;
-    private static int stockWarnBelow = 10;
+    static boolean stockWarnNotify = false;
+    static int stockWarnBelow = 10;
 
     public static void configureFlashPrice(boolean enabled) {
         flashPriceEnabled = enabled;
@@ -68,8 +68,7 @@ public final class ArchiveStore {
     }
 
     public static void configureStockWarn(boolean notify, int below) {
-        stockWarnNotify = notify;
-        stockWarnBelow = Math.max(1, Math.min(999, below <= 0 ? 10 : below));
+        ArchiveCfgOps.configureStockWarn(notify, below);
     }
 
     private static void ensurePromoColumns() {
@@ -113,7 +112,7 @@ public final class ArchiveStore {
         hasDedicatedSpecNote = hasItemColumn("spec_note");
     }
 
-    private static boolean usesDedicatedSpecNote() {
+    static boolean usesDedicatedSpecNote() {
         if (!productSpecEnabled) return false;
         if ("spec_note".equalsIgnoreCase(isbnColumn())) return false;
         if (hasDedicatedSpecNote == null) hasDedicatedSpecNote = hasItemColumn("spec_note");
@@ -122,149 +121,77 @@ public final class ArchiveStore {
 
     /** 规格文案：专用列或 isbn（FOOD/农产规格）。 */
     public static String productSpecText(Map<String, Object> item) {
-        if (!productSpecEnabled || item == null) return "";
-        if (usesDedicatedSpecNote()) {
-            return str(item.get("specNote")).trim();
-        }
-        return str(item.get("isbn")).trim();
+        return ArchivePriceOps.productSpecText(item);
     }
 
     /** 下单明细标题快照：有规格则追加「（规格）」。 */
     public static String lineTitleWithSpec(Map<String, Object> item) {
-        String title = item == null ? "" : str(item.get("title")).trim();
-        if (title.isBlank()) title = "";
-        String spec = productSpecText(item);
-        if (spec.isBlank()) return title;
-        if (title.contains(spec)) return title;
-        String combined = title.isBlank() ? spec : (title + "（" + spec + "）");
-        if (combined.length() > 200) combined = combined.substring(0, 200);
-        return combined;
+        return ArchivePriceOps.lineTitleWithSpec(item);
     }
 
 
     /** null=非空但无法解析；0=空/缺省。 */
-    private static Double tryParseMoney(Object raw) {
-        if (raw == null) return 0.0;
-        String s = String.valueOf(raw).replace("¥", "").replace("￥", "").trim();
-        if (s.isBlank()) return 0.0;
-        try {
-            return Double.parseDouble(s);
-        } catch (Exception e) {
-            return null;
-        }
-    }
+    
 
     /** 写库/成交：非空且不可解析则硬失败；空或显式 0 允许。 */
-    private static double parseMoney(Object raw) {
-        Double v = tryParseMoney(raw);
-        if (v == null) {
-            throw new IllegalArgumentException("价格无效，请填写数字金额");
-        }
-        return v;
-    }
+    
 
     /** 列表展示：脏价格当 0，不抛错。 */
-    private static double parseMoneySoft(Object raw) {
-        Double v = tryParseMoney(raw);
-        return v == null ? 0 : v;
-    }
+    
 
     /** 列表价（原价）：author / priceYuan。浏览用软解析（author 可能是书名作者）。 */
     public static double listUnitPrice(Map<String, Object> item) {
-        return listUnitPrice(item, false);
+        return ArchivePriceOps.listUnitPrice(item, false);
     }
 
     private static double listUnitPrice(Map<String, Object> item, boolean strict) {
-        if (item == null) return 0;
-        Double v = tryParseMoney(item.get("author"));
-        if (v == null) {
-            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
-            v = 0.0;
-        }
-        if (v > 0) return v;
-        Double list = tryParseMoney(item.get("listPriceYuan"));
-        if (list == null) {
-            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
-            return 0;
-        }
-        return list;
+        return ArchivePriceOps.listUnitPrice(item, strict);
     }
 
     /** 窗内活动价，否则原价。未挂 flash_price 时等同 listUnitPrice。下单路径严格校验。 */
     public static double effectiveUnitPrice(Map<String, Object> item) {
-        double list = listUnitPrice(item, true);
-        if (!flashPriceEnabled || item == null) return list;
-        if (!isPromoActive(item)) return list;
-        double promo = parseMoney(item.get("promoPrice"));
-        return promo > 0 ? promo : list;
+        return ArchivePriceOps.effectiveUnitPrice(item);
     }
 
     public static boolean isPromoActive(Map<String, Object> item) {
-        if (!flashPriceEnabled || item == null) return false;
-        double promo = parseMoneySoft(item.get("promoPrice"));
-        if (promo <= 0) return false;
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime start = parseLocalDateTime(item.get("promoStart"));
-        LocalDateTime end = parseLocalDateTime(item.get("promoEnd"));
-        if (start != null && now.isBefore(start)) return false;
-        if (end != null && now.isAfter(end)) return false;
-        // 有活动价但未填窗口：视为长期活动价
-        return true;
+        return ArchivePriceOps.isPromoActive(item);
     }
 
-    private static LocalDateTime parseLocalDateTime(Object raw) {
-        if (raw == null) return null;
-        if (raw instanceof LocalDateTime ldt) return ldt;
-        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
-        String s = String.valueOf(raw).trim();
-        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
-        try {
-            if (s.length() == 10) return LocalDateTime.parse(s + "T00:00:00");
-            return LocalDateTime.parse(s.replace(" ", "T"));
-        } catch (Exception e) {
-            try {
-                return Timestamp.valueOf(s.length() == 16 ? s + ":00" : s).toLocalDateTime();
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
-    }
+    
 
 
-    private static boolean shopMarketplaceEnabled = false;
+    static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String ITEM_CAT = "";
-    private static boolean multiCategoryEnabled = false;
-    private static Boolean hasDimensionCol = null;
+    static boolean multiCategoryEnabled = false;
+    static Boolean hasDimensionCol = null;
     private static String itemTagFk = "post_id";
     /** bake 注入：库存/名额等列名，供不足提示复用 */
-    private static String STOCK_LABEL = "库存";
+    static String STOCK_LABEL = "库存";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private ArchiveStore() {}
 
     public static void configureStockLabel(String label) {
-        if (label != null && !label.isBlank()) STOCK_LABEL = label.trim();
+        ArchiveCfgOps.configureStockLabel(label);
     }
 
     public static String stockLabel() {
-        return STOCK_LABEL == null || STOCK_LABEL.isBlank() ? "库存" : STOCK_LABEL;
+        return ArchivePriceOps.stockLabel();
     }
 
     public static String stockShortage(int remain) {
-        return stockLabel() + "不足（剩余 " + remain + "）";
+        return ArchivePriceOps.stockShortage(remain);
     }
 
     public static String stockShortageNeed(int need) {
-        return stockLabel() + "不足，无法通过（需要 " + need + "）";
+        return ArchivePriceOps.stockShortageNeed(need);
     }
 
     public static String stockShortageTitled(String title, int remain) {
-        String t = title == null ? "" : title.trim();
-        if (t.isBlank()) return stockShortage(remain);
-        return stockLabel() + "不足：「" + t + "」仅剩 " + remain;
+        return ArchivePriceOps.stockShortageTitled(title, remain);
     }
 
     /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
@@ -341,8 +268,7 @@ public final class ArchiveStore {
     }
 
     public static void configureSoftDelete(boolean enabled) {
-        softDeleteEnabled = enabled;
-        if (enabled) ensureSoftDeleteColumn();
+        ArchiveCfgOps.configureSoftDelete(enabled);
     }
 
     public static boolean softDeleteEnabled() {
@@ -350,7 +276,7 @@ public final class ArchiveStore {
     }
 
     public static void configureUserPublish(boolean enabled) {
-        userPublishEnabled = enabled;
+        ArchiveCfgOps.configureUserPublish(enabled);
     }
 
     public static boolean userPublishEnabled() {
@@ -358,7 +284,7 @@ public final class ArchiveStore {
     }
 
     public static void configurePublishReview(boolean enabled) {
-        publishReviewEnabled = enabled;
+        ArchiveCfgOps.configurePublishReview(enabled);
     }
 
     public static boolean publishReviewEnabled() {
@@ -366,7 +292,7 @@ public final class ArchiveStore {
     }
 
     public static void configureShopMarketplace(boolean enabled) {
-        shopMarketplaceEnabled = enabled;
+        ArchiveCfgOps.configureShopMarketplace(enabled);
     }
 
     public static boolean shopMarketplaceEnabled() {
@@ -392,7 +318,7 @@ public final class ArchiveStore {
     }
 
     public static void configureMultiCategory(boolean enabled) {
-        multiCategoryEnabled = enabled;
+        ArchiveCfgOps.configureMultiCategory(enabled);
     }
 
     public static boolean multiCategoryEnabled() {
@@ -791,7 +717,7 @@ public final class ArchiveStore {
                 if (pr == null || String.valueOf(pr).isBlank()) {
                     db().update("UPDATE " + ITEM + " SET promo_price=NULL WHERE id=?", id);
                 } else {
-                    db().update("UPDATE " + ITEM + " SET promo_price=? WHERE id=?", parseMoney(pr), id);
+                    db().update("UPDATE " + ITEM + " SET promo_price=? WHERE id=?", ArchivePriceOps.parseMoney(pr), id);
                 }
             }
             if (patch.containsKey("promoStart")) {
@@ -821,6 +747,27 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "repairTicketNo", "repair_ticket_no", 64);
         patchOptStr(id, patch, "slotStatus", "slot_status", 16);
         patchOptStr(id, patch, "buildingZone", "building_zone", 64);
+        patchOptStr(id, patch, "bountyNote", "bounty_note", 128);
+        patchOptStr(id, patch, "textbook", "textbook", 255);
+        patchOptStr(id, patch, "dayItinerary", "day_itinerary", 2000);
+        patchOptStr(id, patch, "leaderContact", "leader_contact", 128);
+        patchOptStr(id, patch, "meetingPoint", "meeting_point", 128);
+        patchOptStr(id, patch, "checkinPlace", "checkin_place", 128);
+        patchOptStr(id, patch, "courseKind", "course_kind", 16);
+        patchOptStr(id, patch, "prereqCode", "prereq_code", 64);
+        patchOptInt(id, patch, "minGroupSize", "min_group_size");
+        patchOptStr(id, patch, "sessionGroup", "session_group", 64);
+        patchOptStr(id, patch, "applyInviteCode", "apply_invite_code", 64);
+        patchOptStr(id, patch, "sponsorNote", "sponsor_note", 255);
+        patchOptStr(id, patch, "groupPriceNote", "group_price_note", 2000);
+        patchOptNum(id, patch, "feeYuan", "fee_yuan");
+        patchOptNum(id, patch, "minAge", "min_age");
+        patchOptNum(id, patch, "maxAge", "max_age");
+        patchOptStr(id, patch, "lostCategory", "lost_category", 32);
+        patchOptInt(id, patch, "viewCount", "view_count");
+        patchOptStr(id, patch, "college", "college", 64);
+        patchOptStr(id, patch, "planUrl", "plan_url", 255);
+        patchOptStr(id, patch, "singleRoomNote", "single_room_note", 2000);
         patchOptStr(id, patch, "tags", "tags", 255);
         patchOptStr(id, patch, "leadSource", "lead_source", 64);
         patchOptStr(id, patch, "paymentPlan", "payment_plan", 255);
@@ -997,6 +944,15 @@ public final class ArchiveStore {
         return m == null ? null : enrichItem(m);
     }
 
+    /** 启事浏览计数 +1（无 view_count 列时 no-op）。 */
+    public static void bumpViewCount(long id) {
+        if (id <= 0 || !hasItemColumn("view_count")) return;
+        try {
+            db().update("UPDATE " + ITEM + " SET view_count=IFNULL(view_count,0)+1 WHERE id=?", id);
+        } catch (Exception ignored) {
+        }
+    }
+
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
         return pageItems(keyword, categoryId, null, null, false, page, size, false, null);
     }
@@ -1146,12 +1102,12 @@ public final class ArchiveStore {
                 m.put("promoEnd", fmt(rs.getTimestamp("promo_end")));
             } catch (Exception ignored) {
             }
-            double list = parseMoneySoft(m.get("author"));
+            double list = ArchivePriceOps.parseMoneySoft(m.get("author"));
             m.put("listPriceYuan", list);
             boolean active = isPromoActive(m);
             m.put("promoActive", active);
             if (active) {
-                double promo = parseMoneySoft(m.get("promoPrice"));
+                double promo = ArchivePriceOps.parseMoneySoft(m.get("promoPrice"));
                 m.put("priceYuan", promo > 0 ? promo : list);
             } else {
                 m.put("priceYuan", list);
@@ -1258,6 +1214,27 @@ public final class ArchiveStore {
         putOptStr(m, rs, "repair_ticket_no", "repairTicketNo");
         putOptStr(m, rs, "slot_status", "slotStatus");
         putOptStr(m, rs, "building_zone", "buildingZone");
+        putOptStr(m, rs, "bounty_note", "bountyNote");
+        putOptStr(m, rs, "textbook", "textbook");
+        putOptStr(m, rs, "day_itinerary", "dayItinerary");
+        putOptStr(m, rs, "leader_contact", "leaderContact");
+        putOptStr(m, rs, "meeting_point", "meetingPoint");
+        putOptStr(m, rs, "checkin_place", "checkinPlace");
+        putOptStr(m, rs, "course_kind", "courseKind");
+        putOptStr(m, rs, "prereq_code", "prereqCode");
+        putOptInt(m, rs, "min_group_size", "minGroupSize");
+        putOptStr(m, rs, "session_group", "sessionGroup");
+        putOptStr(m, rs, "apply_invite_code", "applyInviteCode");
+        putOptStr(m, rs, "sponsor_note", "sponsorNote");
+        putOptStr(m, rs, "group_price_note", "groupPriceNote");
+        putOptNum(m, rs, "fee_yuan", "feeYuan");
+        putOptNum(m, rs, "min_age", "minAge");
+        putOptNum(m, rs, "max_age", "maxAge");
+        putOptStr(m, rs, "lost_category", "lostCategory");
+        putOptInt(m, rs, "view_count", "viewCount");
+        putOptStr(m, rs, "college", "college");
+        putOptStr(m, rs, "plan_url", "planUrl");
+        putOptStr(m, rs, "single_room_note", "singleRoomNote");
         putOptStr(m, rs, "tags", "tags");
         putOptStr(m, rs, "lead_source", "leadSource");
         putOptStr(m, rs, "payment_plan", "paymentPlan");
@@ -1458,6 +1435,13 @@ public final class ArchiveStore {
     public static int expirePastExpireOn() {
         if (!hasItemColumn("expire_on")) return 0;
         try {
+            if (hasItemColumn("stage")) {
+                db().update(
+                        "UPDATE " + ITEM + " SET stage='已下架' "
+                                + "WHERE status='available' AND stage IN ('招领中','招领','') "
+                                + "AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
+                                + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')");
+            }
             return db().update(
                     "UPDATE " + ITEM + " SET status='unavailable' "
                             + "WHERE status='available' AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
@@ -2059,6 +2043,11 @@ public final class ArchiveStore {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "满员", itemId);
             } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "开放报名", itemId);
+            } else if (delta < 0 && stock <= 0
+                    && ("招领中".equals(stage) || "招领".equals(stage) || stage.isEmpty())) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已认领", itemId);
+            } else if (delta > 0 && stock > 0 && "已认领".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "招领中", itemId);
             }
         } catch (RuntimeException e) {
             throw e;
@@ -2299,7 +2288,7 @@ public final class ArchiveStore {
         }
     }
 
-    private static String str(Object o) {
+    static String str(Object o) {
         return o == null ? "" : String.valueOf(o);
     }
 

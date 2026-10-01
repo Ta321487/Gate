@@ -71,6 +71,9 @@ public interface ArchiveMapper {
             @Param("val") Object val,
             @Param("id") long id);
 
+    @Update("UPDATE `${itemTable}` SET view_count=IFNULL(view_count,0)+1 WHERE id=#{id}")
+    int bumpViewCount(@Param("itemTable") String itemTable, @Param("id") long id);
+
     @Update("UPDATE `${itemTable}` SET deleted_at=NOW() WHERE id=#{id} AND deleted_at IS NULL")
     int softDeleteItem(@Param("itemTable") String itemTable, @Param("id") long id);
 
@@ -112,6 +115,12 @@ public interface ArchiveMapper {
             + "WHERE status='available' AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
             + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')")
     int expirePastExpireOn(@Param("itemTable") String itemTable);
+
+    @Update("UPDATE `${itemTable}` SET stage='已下架' "
+            + "WHERE status='available' AND stage IN ('招领中','招领','') "
+            + "AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
+            + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')")
+    int expirePastExpireOnStage(@Param("itemTable") String itemTable);
 
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,

@@ -139,7 +139,18 @@ public class ArchiveController {
                 throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
             }
         }
-        if (!admin) ArchiveStore.redactSensitiveForPublic(item);
+        if (!admin) {
+            ArchiveStore.bumpViewCount(id);
+            ArchiveStore.redactSensitiveForPublic(item);
+            // 回读最新浏览计数（失败不影响详情）
+            try {
+                Map<String, Object> refreshed = ArchiveStore.getItem(id);
+                if (refreshed != null && refreshed.get("viewCount") != null) {
+                    item.put("viewCount", refreshed.get("viewCount"));
+                }
+            } catch (Exception ignored) {
+            }
+        }
         return R.ok(item);
     }
 

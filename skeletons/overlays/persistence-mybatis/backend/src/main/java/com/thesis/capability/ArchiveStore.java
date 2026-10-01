@@ -34,10 +34,10 @@ public final class ArchiveStore {
     private static Boolean hasOwnerUsername;
     private static Boolean hasGalleryJson;
     private static Boolean hasEquipmentJson;
-    private static boolean softDeleteEnabled = false;
-    private static boolean userPublishEnabled = false;
+    static boolean softDeleteEnabled = false;
+    static boolean userPublishEnabled = false;
     /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
-    private static boolean publishReviewEnabled = false;
+    static boolean publishReviewEnabled = false;
     private static boolean galleryEnabled = false;
     private static boolean detailAttrsEnabled = false;
     private static List<String> detailAttrKeys = List.of();
@@ -45,14 +45,14 @@ public final class ArchiveStore {
     private static Boolean hasDetailJson;
     private static boolean roomEquipmentEnabled = false;
 
-    private static boolean flashPriceEnabled = false;
+    static boolean flashPriceEnabled = false;
     private static Boolean hasPromoPrice;
 
-    private static boolean productSpecEnabled = false;
+    static boolean productSpecEnabled = false;
     private static Boolean hasDedicatedSpecNote;
 
-    private static boolean stockWarnNotify = false;
-    private static int stockWarnBelow = 10;
+    static boolean stockWarnNotify = false;
+    static int stockWarnBelow = 10;
 
     public static void configureFlashPrice(boolean enabled) {
         flashPriceEnabled = enabled;
@@ -67,8 +67,7 @@ public final class ArchiveStore {
     }
 
     public static void configureStockWarn(boolean notify, int below) {
-        stockWarnNotify = notify;
-        stockWarnBelow = Math.max(1, Math.min(999, below <= 0 ? 10 : below));
+        ArchiveCfgOps.configureStockWarn(notify, below);
     }
 
     private static void ensurePromoColumns() {
@@ -97,7 +96,7 @@ public final class ArchiveStore {
         return productSpecEnabled;
     }
 
-    private static boolean usesDedicatedSpecNote() {
+    static boolean usesDedicatedSpecNote() {
         if (!productSpecEnabled) return false;
         if ("spec_note".equalsIgnoreCase(isbnColumn())) return false;
         if (hasDedicatedSpecNote == null) hasDedicatedSpecNote = hasItemColumn("spec_note");
@@ -105,90 +104,37 @@ public final class ArchiveStore {
     }
 
     public static String productSpecText(Map<String, Object> item) {
-        if (!productSpecEnabled || item == null) return "";
-        if (usesDedicatedSpecNote()) {
-            return str(item.get("specNote")).trim();
-        }
-        return str(item.get("isbn")).trim();
+        return ArchivePriceOps.productSpecText(item);
     }
 
     public static String lineTitleWithSpec(Map<String, Object> item) {
-        String title = item == null ? "" : str(item.get("title")).trim();
-        if (title.isBlank()) title = "";
-        String spec = productSpecText(item);
-        if (spec.isBlank()) return title;
-        if (title.contains(spec)) return title;
-        String combined = title.isBlank() ? spec : (title + "（" + spec + "）");
-        if (combined.length() > 200) combined = combined.substring(0, 200);
-        return combined;
+        return ArchivePriceOps.lineTitleWithSpec(item);
     }
 
 
     /** null=非空但无法解析；0=空/缺省。 */
-    private static Double tryParseMoney(Object raw) {
-        if (raw == null) return 0.0;
-        String s = String.valueOf(raw).replace("¥", "").replace("￥", "").trim();
-        if (s.isBlank()) return 0.0;
-        try {
-            return Double.parseDouble(s);
-        } catch (Exception e) {
-            return null;
-        }
-    }
+    
 
     /** 写库/成交：非空且不可解析则硬失败；空或显式 0 允许。 */
-    private static double parseMoney(Object raw) {
-        Double v = tryParseMoney(raw);
-        if (v == null) {
-            throw new IllegalArgumentException("价格无效，请填写数字金额");
-        }
-        return v;
-    }
+    
 
     /** 列表展示：脏价格当 0，不抛错。 */
-    private static double parseMoneySoft(Object raw) {
-        Double v = tryParseMoney(raw);
-        return v == null ? 0 : v;
-    }
+    
 
     public static double listUnitPrice(Map<String, Object> item) {
-        return listUnitPrice(item, false);
+        return ArchivePriceOps.listUnitPrice(item, false);
     }
 
     private static double listUnitPrice(Map<String, Object> item, boolean strict) {
-        if (item == null) return 0;
-        Double v = tryParseMoney(item.get("author"));
-        if (v == null) {
-            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
-            v = 0.0;
-        }
-        if (v > 0) return v;
-        Double list = tryParseMoney(item.get("listPriceYuan"));
-        if (list == null) {
-            if (strict) throw new IllegalArgumentException("价格无效，请填写数字金额");
-            return 0;
-        }
-        return list;
+        return ArchivePriceOps.listUnitPrice(item, strict);
     }
 
     public static double effectiveUnitPrice(Map<String, Object> item) {
-        double list = listUnitPrice(item, true);
-        if (!flashPriceEnabled || item == null) return list;
-        if (!isPromoActive(item)) return list;
-        double promo = parseMoney(item.get("promoPrice"));
-        return promo > 0 ? promo : list;
+        return ArchivePriceOps.effectiveUnitPrice(item);
     }
 
     public static boolean isPromoActive(Map<String, Object> item) {
-        if (!flashPriceEnabled || item == null) return false;
-        double promo = parseMoneySoft(item.get("promoPrice"));
-        if (promo <= 0) return false;
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime start = parseLocalDt(item.get("promoStart"));
-        LocalDateTime end = parseLocalDt(item.get("promoEnd"));
-        if (start != null && now.isBefore(start)) return false;
-        if (end != null && now.isAfter(end)) return false;
-        return true;
+        return ArchivePriceOps.isPromoActive(item);
     }
 
     private static LocalDateTime parseLocalDt(Object raw) {
@@ -210,15 +156,15 @@ public final class ArchiveStore {
     }
 
 
-    private static boolean shopMarketplaceEnabled = false;
+    static boolean shopMarketplaceEnabled = false;
     private static String TAG = "";
     private static String ITEM_TAG = "";
     private static String ITEM_CAT = "";
-    private static boolean multiCategoryEnabled = false;
-    private static Boolean hasDimensionCol = null;
+    static boolean multiCategoryEnabled = false;
+    static Boolean hasDimensionCol = null;
     private static String itemTagFk = "post_id";
     /** bake 注入：库存/名额等列名，供不足提示复用 */
-    private static String STOCK_LABEL = "库存";
+    static String STOCK_LABEL = "库存";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -233,25 +179,23 @@ public final class ArchiveStore {
     }
 
     public static void configureStockLabel(String label) {
-        if (label != null && !label.isBlank()) STOCK_LABEL = label.trim();
+        ArchiveCfgOps.configureStockLabel(label);
     }
 
     public static String stockLabel() {
-        return STOCK_LABEL == null || STOCK_LABEL.isBlank() ? "库存" : STOCK_LABEL;
+        return ArchivePriceOps.stockLabel();
     }
 
     public static String stockShortage(int remain) {
-        return stockLabel() + "不足（剩余 " + remain + "）";
+        return ArchivePriceOps.stockShortage(remain);
     }
 
     public static String stockShortageNeed(int need) {
-        return stockLabel() + "不足，无法通过（需要 " + need + "）";
+        return ArchivePriceOps.stockShortageNeed(need);
     }
 
     public static String stockShortageTitled(String title, int remain) {
-        String t = title == null ? "" : title.trim();
-        if (t.isBlank()) return stockShortage(remain);
-        return stockLabel() + "不足：「" + t + "」仅剩 " + remain;
+        return ArchivePriceOps.stockShortageTitled(title, remain);
     }
 
     /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
@@ -328,8 +272,7 @@ public final class ArchiveStore {
     }
 
     public static void configureSoftDelete(boolean enabled) {
-        softDeleteEnabled = enabled;
-        if (enabled) ensureSoftDeleteColumn();
+        ArchiveCfgOps.configureSoftDelete(enabled);
     }
 
     public static boolean softDeleteEnabled() {
@@ -337,7 +280,7 @@ public final class ArchiveStore {
     }
 
     public static void configureUserPublish(boolean enabled) {
-        userPublishEnabled = enabled;
+        ArchiveCfgOps.configureUserPublish(enabled);
     }
 
     public static boolean userPublishEnabled() {
@@ -345,7 +288,7 @@ public final class ArchiveStore {
     }
 
     public static void configurePublishReview(boolean enabled) {
-        publishReviewEnabled = enabled;
+        ArchiveCfgOps.configurePublishReview(enabled);
     }
 
     public static boolean publishReviewEnabled() {
@@ -353,7 +296,7 @@ public final class ArchiveStore {
     }
 
     public static void configureShopMarketplace(boolean enabled) {
-        shopMarketplaceEnabled = enabled;
+        ArchiveCfgOps.configureShopMarketplace(enabled);
     }
 
     public static boolean shopMarketplaceEnabled() {
@@ -379,7 +322,7 @@ public final class ArchiveStore {
     }
 
     public static void configureMultiCategory(boolean enabled) {
-        multiCategoryEnabled = enabled;
+        ArchiveCfgOps.configureMultiCategory(enabled);
     }
 
     public static boolean multiCategoryEnabled() {
@@ -748,7 +691,7 @@ public final class ArchiveStore {
                 if (pr == null || String.valueOf(pr).isBlank()) {
                     mapper().updateItemColumn(ITEM, "promo_price", null, id);
                 } else {
-                    mapper().updateItemColumn(ITEM, "promo_price", parseMoney(pr), id);
+                    mapper().updateItemColumn(ITEM, "promo_price", ArchivePriceOps.parseMoney(pr), id);
                 }
             }
             if (patch.containsKey("promoStart")) {
@@ -778,6 +721,27 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "repairTicketNo", "repair_ticket_no", 64);
         patchOptStr(id, patch, "slotStatus", "slot_status", 16);
         patchOptStr(id, patch, "buildingZone", "building_zone", 64);
+        patchOptStr(id, patch, "bountyNote", "bounty_note", 128);
+        patchOptStr(id, patch, "textbook", "textbook", 255);
+        patchOptStr(id, patch, "dayItinerary", "day_itinerary", 2000);
+        patchOptStr(id, patch, "leaderContact", "leader_contact", 128);
+        patchOptStr(id, patch, "meetingPoint", "meeting_point", 128);
+        patchOptStr(id, patch, "checkinPlace", "checkin_place", 128);
+        patchOptStr(id, patch, "courseKind", "course_kind", 16);
+        patchOptStr(id, patch, "prereqCode", "prereq_code", 64);
+        patchOptInt(id, patch, "minGroupSize", "min_group_size");
+        patchOptStr(id, patch, "sessionGroup", "session_group", 64);
+        patchOptStr(id, patch, "applyInviteCode", "apply_invite_code", 64);
+        patchOptStr(id, patch, "sponsorNote", "sponsor_note", 255);
+        patchOptStr(id, patch, "groupPriceNote", "group_price_note", 2000);
+        patchOptNum(id, patch, "feeYuan", "fee_yuan");
+        patchOptNum(id, patch, "minAge", "min_age");
+        patchOptNum(id, patch, "maxAge", "max_age");
+        patchOptStr(id, patch, "lostCategory", "lost_category", 32);
+        patchOptInt(id, patch, "viewCount", "view_count");
+        patchOptStr(id, patch, "college", "college", 64);
+        patchOptStr(id, patch, "planUrl", "plan_url", 255);
+        patchOptStr(id, patch, "singleRoomNote", "single_room_note", 2000);
         patchOptStr(id, patch, "tags", "tags", 255);
         patchOptStr(id, patch, "leadSource", "lead_source", 64);
         patchOptStr(id, patch, "paymentPlan", "payment_plan", 255);
@@ -949,6 +913,15 @@ public final class ArchiveStore {
         return m == null ? null : enrichItem(m);
     }
 
+    /** 启事浏览计数 +1（无 view_count 列时 no-op）。 */
+    public static void bumpViewCount(long id) {
+        if (id <= 0 || !hasItemColumn("view_count")) return;
+        try {
+            mapper().bumpViewCount(ITEM, id);
+        } catch (Exception ignored) {
+        }
+    }
+
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
         return pageItems(keyword, categoryId, null, null, false, page, size, false, null);
     }
@@ -1080,15 +1053,15 @@ public final class ArchiveStore {
         m.put("status", raw.get("status"));
         if (flashPriceEnabled && hasPromoPrice()) {
             Object pp = first(raw, "promoPrice", "promo_price");
-            if (pp != null) m.put("promoPrice", parseMoneySoft(pp));
+            if (pp != null) m.put("promoPrice", ArchivePriceOps.parseMoneySoft(pp));
             m.put("promoStart", fmt(first(raw, "promoStart", "promo_start")));
             m.put("promoEnd", fmt(first(raw, "promoEnd", "promo_end")));
-            double list = parseMoneySoft(m.get("author"));
+            double list = ArchivePriceOps.parseMoneySoft(m.get("author"));
             m.put("listPriceYuan", list);
             boolean active = isPromoActive(m);
             m.put("promoActive", active);
             if (active) {
-                double promo = parseMoneySoft(m.get("promoPrice"));
+                double promo = ArchivePriceOps.parseMoneySoft(m.get("promoPrice"));
                 m.put("priceYuan", promo > 0 ? promo : list);
             } else {
                 m.put("priceYuan", list);
@@ -1167,6 +1140,27 @@ public final class ArchiveStore {
         putOptStr(m, raw, "repair_ticket_no", "repairTicketNo");
         putOptStr(m, raw, "slot_status", "slotStatus");
         putOptStr(m, raw, "building_zone", "buildingZone");
+        putOptStr(m, raw, "bounty_note", "bountyNote");
+        putOptStr(m, raw, "textbook", "textbook");
+        putOptStr(m, raw, "day_itinerary", "dayItinerary");
+        putOptStr(m, raw, "leader_contact", "leaderContact");
+        putOptStr(m, raw, "meeting_point", "meetingPoint");
+        putOptStr(m, raw, "checkin_place", "checkinPlace");
+        putOptStr(m, raw, "course_kind", "courseKind");
+        putOptStr(m, raw, "prereq_code", "prereqCode");
+        putOptInt(m, raw, "min_group_size", "minGroupSize");
+        putOptStr(m, raw, "session_group", "sessionGroup");
+        putOptStr(m, raw, "apply_invite_code", "applyInviteCode");
+        putOptStr(m, raw, "sponsor_note", "sponsorNote");
+        putOptStr(m, raw, "group_price_note", "groupPriceNote");
+        putOptNum(m, raw, "fee_yuan", "feeYuan");
+        putOptNum(m, raw, "min_age", "minAge");
+        putOptNum(m, raw, "max_age", "maxAge");
+        putOptStr(m, raw, "lost_category", "lostCategory");
+        putOptInt(m, raw, "view_count", "viewCount");
+        putOptStr(m, raw, "college", "college");
+        putOptStr(m, raw, "plan_url", "planUrl");
+        putOptStr(m, raw, "single_room_note", "singleRoomNote");
         putOptStr(m, raw, "tags", "tags");
         putOptStr(m, raw, "lead_source", "leadSource");
         putOptStr(m, raw, "payment_plan", "paymentPlan");
@@ -1396,6 +1390,9 @@ public final class ArchiveStore {
     public static int expirePastExpireOn() {
         if (!hasItemColumn("expire_on")) return 0;
         try {
+            if (hasItemColumn("stage")) {
+                mapper().expirePastExpireOnStage(ITEM);
+            }
             return mapper().expirePastExpireOn(ITEM);
         } catch (Exception e) {
             return 0;
@@ -1982,6 +1979,11 @@ public final class ArchiveStore {
                 mapper().updateItemColumn(ITEM, "stage", "满员", itemId);
             } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {
                 mapper().updateItemColumn(ITEM, "stage", "开放报名", itemId);
+            } else if (delta < 0 && stock <= 0
+                    && ("招领中".equals(stage) || "招领".equals(stage) || stage.isEmpty())) {
+                mapper().updateItemColumn(ITEM, "stage", "已认领", itemId);
+            } else if (delta > 0 && stock > 0 && "已认领".equals(stage)) {
+                mapper().updateItemColumn(ITEM, "stage", "招领中", itemId);
             }
         } catch (RuntimeException e) {
             throw e;
@@ -2181,7 +2183,7 @@ public final class ArchiveStore {
         }
     }
 
-    private static String str(Object o) {
+    static String str(Object o) {
         return o == null ? "" : String.valueOf(o);
     }
 }
