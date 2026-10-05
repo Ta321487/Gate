@@ -41,8 +41,15 @@ class RatingDimsC06Tests(unittest.TestCase):
                 "ratingDims": [{"key": "a", "label": "A"}],
             }
         )
-        self.assertIn("rating_dims_json", names)
+        self.assertNotIn("rating_dims_json", names)
         self.assertIn("rating_anonymous", names)
+
+    def test_eval_sql_has_rating_dim_table(self) -> None:
+        from app.bake.engine_sql import domain_sql
+
+        sql = domain_sql("DOM-EVAL", "t_eval", title="高校学生网上评教管理系统")
+        self.assertIn("ticket_rating_dim", sql)
+        self.assertNotIn("rating_dims_json", sql)
 
     def test_ticket_copy_resource_writes_dims(self) -> None:
         schema = build_domain_schema("高校学生网上评教管理系统", "DOM-EVAL")

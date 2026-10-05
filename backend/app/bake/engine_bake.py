@@ -140,6 +140,9 @@ def _bake_project_body(
                 "reservation"
             ),
         )
+        from app.bake.gates.schema_nf import assert_schema_nf
+
+        assert_schema_nf(sql)
         assert_table_budget(sql, domain, caps=list(spec.get("capabilities") or []))
 
         from app.bake.archive_seed_guard import assert_archive_demo_seed

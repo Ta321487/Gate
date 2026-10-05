@@ -79,7 +79,7 @@ class SurveyC03Tests(unittest.TestCase):
             title="高校学生满意度问卷调查系统",
             proposal_text="问卷配置填写回收统计",
         )
-        for t in ("survey_form", "survey_question", "survey_response", "survey_answer"):
+        for t in ("survey_form", "survey_question", "survey_response", "survey_answer", "survey_option"):
             self.assertIn(t, sql)
         spec = attach_accept(
             {

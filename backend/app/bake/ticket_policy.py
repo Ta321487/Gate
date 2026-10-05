@@ -62,10 +62,15 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
     ("ticket-renew-days", "RENEW_DAYS", "int", "0", "ticketRenewDays", "rule"),
     ("ticket-category-limit", "CATEGORY_LIMIT", "int", "0", "ticketCategoryLimit", "rule"),
     ("ticket-min-remark-words", "MIN_REMARK_WORDS", "int", "0", "ticketMinRemarkWords", "rule"),
+    ("ticket-min-approve-remark-words", "MIN_APPROVE_REMARK_WORDS", "int", "0", "ticketMinApproveRemarkWords", "rule"),
+    ("ticket-approve-auto-pass-hours", "APPROVE_AUTO_PASS_HOURS", "int", "0", "ticketApproveAutoPassHours", "rule"),
     ("ticket-max-revise-times", "MAX_REVISE_TIMES", "int", "0", "ticketMaxReviseTimes", "rule"),
     ("ticket-max-drop-times", "MAX_DROP_TIMES", "int", "0", "ticketMaxDropTimes", "rule"),
     ("ticket-semester-credit-cap", "SEMESTER_CREDIT_CAP", "int", "0", "ticketSemesterCreditCap", "rule"),
     ("ticket-credit-warn-remaining", "CREDIT_WARN_REMAINING", "int", "0", "ticketCreditWarnRemaining", "rule"),
+    ("ticket-min-vendor-quotes", "MIN_VENDOR_QUOTES", "int", "0", "ticketMinVendorQuotes", "rule"),
+    ("ticket-notify-archive-expire-days", "NOTIFY_ARCHIVE_EXPIRE_DAYS", "int", "0", "ticketNotifyArchiveExpireDays", "rule"),
+    ("ticket-pass-expire-days", "PASS_EXPIRE_DAYS", "int", "0", "ticketPassExpireDays", "rule"),
     ("ticket-credit-initial", "CREDIT_INITIAL", "int", "100", "ticketCreditInitial", "rule"),
     ("ticket-credit-overdue-delta", "CREDIT_OVERDUE_DELTA", "int", "5", "ticketCreditOverdueDelta", "rule"),
     ("ticket-credit-block-below", "CREDIT_BLOCK_BELOW", "int", "60", "ticketCreditBlockBelow", "rule"),
@@ -80,6 +85,9 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
     ("ticket-bed-constraint-deny-message", "BED_CONSTRAINT_DENY_MESSAGE", "String", '""', "ticketBedConstraintDenyMessage", "message"),
     ("ticket-age-constraint-need-message", "AGE_CONSTRAINT_NEED_MESSAGE", "String", '""', "ticketAgeConstraintNeedMessage", "message"),
     ("ticket-age-constraint-deny-message", "AGE_CONSTRAINT_DENY_MESSAGE", "String", '""', "ticketAgeConstraintDenyMessage", "message"),
+    ("ticket-one-per-archive-deny-message", "ONE_PER_ARCHIVE_DENY_MESSAGE", "String", '""', "ticketOnePerArchiveDenyMessage", "message"),
+    ("ticket-apply-blacklist-deny-message", "APPLY_BLACKLIST_DENY_MESSAGE", "String", '""', "ticketApplyBlacklistDenyMessage", "message"),
+    ("ticket-eval-open-window-deny-message", "EVAL_OPEN_WINDOW_DENY_MESSAGE", "String", '""', "ticketEvalOpenWindowDenyMessage", "message"),
 )
 
 #: 扩展能力开关：(yml 键, Java 常量)。类型固定 boolean、默认 false；
@@ -126,6 +134,19 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("ticket-require-prereq-ack", "REQUIRE_PREREQ_ACK"),
     ("ticket-age-constraint", "AGE_CONSTRAINT"),
     ("ticket-allow-late-minutes", "ALLOW_LATE_MINUTES"),
+    ("ticket-allow-wish-order", "ALLOW_WISH_ORDER"),
+    ("ticket-allow-volunteer-role", "ALLOW_VOLUNTEER_ROLE"),
+    ("ticket-allow-admin-checkin", "ALLOW_ADMIN_CHECKIN"),
+    ("ticket-require-tour-notice-ack", "REQUIRE_TOUR_NOTICE_ACK"),
+    ("ticket-allow-companions", "ALLOW_COMPANIONS"),
+    ("ticket-allow-lottery", "ALLOW_LOTTERY"),
+    ("ticket-allow-seat-zone", "ALLOW_SEAT_ZONE"),
+    ("ticket-allow-ticket-transfer", "ALLOW_TICKET_TRANSFER"),
+    ("ticket-allow-ticket-wallet", "ALLOW_TICKET_WALLET"),
+    ("ticket-allow-apply-blacklist", "ALLOW_APPLY_BLACKLIST"),
+    ("ticket-schedule-change-notify", "SCHEDULE_CHANGE_NOTIFY"),
+    ("ticket-allow-post-gallery", "ALLOW_POST_GALLERY"),
+    ("ticket-require-credit-writeback-ack", "REQUIRE_CREDIT_WRITEBACK_ACK"),
     ("ticket-block-if-calib-expired", "BLOCK_IF_CALIB_EXPIRED"),
     ("ticket-allow-project-no", "ALLOW_PROJECT_NO"),
     ("ticket-allow-procure-ref", "ALLOW_PROCURE_REF"),
@@ -198,6 +219,94 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     # （对应前端开关由接口载荷的 ticket.* 携带），属无效写参，故不随本轮下沉。
     ("ticket-repair-thicken", "REPAIR_THICKEN"),
     ("ticket-apply-thicken", "APPLY_THICKEN"),
+    ("ticket-approve-thicken", "APPROVE_THICKEN"),
+    ("ticket-allow-approve-cc", "ALLOW_APPROVE_CC"),
+    ("ticket-allow-approve-transfer", "ALLOW_APPROVE_TRANSFER"),
+    ("ticket-allow-approve-delegate", "ALLOW_APPROVE_DELEGATE"),
+    ("ticket-allow-approve-remark-attach", "ALLOW_APPROVE_REMARK_ATTACH"),
+    ("ticket-allow-approve-cc-comment", "ALLOW_APPROVE_CC_COMMENT"),
+    ("ticket-allow-approve-auto-pass", "ALLOW_APPROVE_AUTO_PASS"),
+    ("ticket-allow-cert-pickup", "ALLOW_CERT_PICKUP"),
+    ("ticket-allow-cert-urgent", "ALLOW_CERT_URGENT"),
+    ("ticket-allow-seal-copies", "ALLOW_SEAL_COPIES"),
+    ("ticket-allow-fleet-mileage", "ALLOW_FLEET_MILEAGE"),
+    ("ticket-allow-expense-invoice", "ALLOW_EXPENSE_INVOICE"),
+    ("ticket-allow-visitor-count", "ALLOW_VISITOR_COUNT"),
+    ("ticket-allow-award-cert-no", "ALLOW_AWARD_CERT_NO"),
+    ("ticket-allow-vendor-quotes", "ALLOW_VENDOR_QUOTES"),
+    ("ticket-force-one-per-archive", "FORCE_ONE_PER_ARCHIVE"),
+    ("ticket-allow-eval-open-window", "ALLOW_EVAL_OPEN_WINDOW"),
+    ("ticket-allow-comp-hours", "ALLOW_COMP_HOURS"),
+    ("ticket-allow-fleet-crew", "ALLOW_FLEET_CREW"),
+    ("ticket-allow-ethic-batch", "ALLOW_ETHIC_BATCH"),
+    ("ticket-allow-pass-expire", "ALLOW_PASS_EXPIRE"),
+    ("ticket-allow-return-fuel", "ALLOW_RETURN_FUEL"),
+    ("ticket-allow-labor-place", "ALLOW_LABOR_PLACE"),
+    ("ticket-allow-promo-place", "ALLOW_PROMO_PLACE"),
+    ("ticket-allow-ethic-meeting", "ALLOW_ETHIC_MEETING"),
+    ("ticket-allow-effective-on", "ALLOW_EFFECTIVE_ON"),
+    ("ticket-allow-cert-issue-no", "ALLOW_CERT_ISSUE_NO"),
+    ("ticket-allow-promo-feedback", "ALLOW_PROMO_FEEDBACK"),
+    ("ticket-allow-doc-rev", "ALLOW_DOC_REV"),
+    ("ticket-allow-fitout-quiet", "ALLOW_FITOUT_QUIET"),
+    ("ticket-allow-seal-close-photo", "ALLOW_SEAL_CLOSE_PHOTO"),
+    ("ticket-allow-issue-copies", "ALLOW_ISSUE_COPIES"),
+    ("ticket-allow-sign-parties", "ALLOW_SIGN_PARTIES"),
+    ("ticket-allow-train-hours", "ALLOW_TRAIN_HOURS"),
+    ("ticket-allow-inspect-expire", "ALLOW_INSPECT_EXPIRE"),
+    ("ticket-allow-member-change", "ALLOW_MEMBER_CHANGE"),
+    ("ticket-allow-procure-budget", "ALLOW_PROCURE_BUDGET"),
+    ("ticket-allow-checkin-exception", "ALLOW_CHECKIN_EXCEPTION"),
+    ("ticket-allow-visit-purpose", "ALLOW_VISIT_PURPOSE"),
+    ("ticket-allow-fleet-violation", "ALLOW_FLEET_VIOLATION"),
+    ("ticket-allow-fitout-rectify", "ALLOW_FITOUT_RECTIFY"),
+    ("ticket-allow-proj-node-remind", "ALLOW_PROJ_NODE_REMIND"),
+    ("ticket-allow-club-copy-last", "ALLOW_CLUB_COPY_LAST"),
+    ("ticket-allow-procure-return", "ALLOW_PROCURE_RETURN"),
+    ("ticket-allow-moral-objection", "ALLOW_MORAL_OBJECTION"),
+    ("ticket-allow-proj-fund-use", "ALLOW_PROJ_FUND_USE"),
+    ("ticket-allow-eval-dim-weight", "ALLOW_EVAL_DIM_WEIGHT"),
+    ("ticket-allow-visit-slot-remain", "ALLOW_VISIT_SLOT_REMAIN"),
+    ("ticket-allow-plagiarism-url", "ALLOW_PLAGIARISM_URL"),
+    ("ticket-allow-absent-streak", "ALLOW_ABSENT_STREAK"),
+    ("ticket-allow-party-stage", "ALLOW_PARTY_STAGE"),
+    ("ticket-allow-eval-observe", "ALLOW_EVAL_OBSERVE"),
+    ("ticket-allow-schedule-impact", "ALLOW_SCHEDULE_IMPACT"),
+    ("ticket-allow-contract-amount", "ALLOW_CONTRACT_AMOUNT"),
+    ("ticket-allow-expense-lines", "ALLOW_EXPENSE_LINES"),
+    ("ticket-allow-trip-legs", "ALLOW_TRIP_LEGS"),
+    ("ticket-allow-hide-eval-result", "ALLOW_HIDE_EVAL_RESULT"),
+    ("ticket-allow-sign-remark-visible", "ALLOW_SIGN_REMARK_VISIBLE"),
+    ("ticket-allow-proj-change-log", "ALLOW_PROJ_CHANGE_LOG"),
+    ("ticket-allow-cert-verify", "ALLOW_CERT_VERIFY"),
+    ("ticket-allow-visit-walk-in", "ALLOW_VISIT_WALK_IN"),
+    ("ticket-allow-checkin-proxy", "ALLOW_CHECKIN_PROXY"),
+    ("ticket-allow-club-roster", "ALLOW_CLUB_ROSTER"),
+    ("ticket-allow-carpass-parking-mutex", "ALLOW_CARPASS_PARKING_MUTEX"),
+    ("ticket-allow-eval-urge", "ALLOW_EVAL_URGE"),
+    ("ticket-allow-contract-renew", "ALLOW_CONTRACT_RENEW"),
+    ("ticket-allow-contract-expire-remind", "ALLOW_CONTRACT_EXPIRE_REMIND"),
+    ("ticket-allow-cert-pickup-redeem", "ALLOW_CERT_PICKUP_REDEEM"),
+    ("ticket-allow-exam-pass-min", "ALLOW_EXAM_PASS_MIN"),
+    ("ticket-allow-checkin-spot", "ALLOW_CHECKIN_SPOT"),
+    ("ticket-allow-eval-before-grade", "ALLOW_EVAL_BEFORE_GRADE"),
+    ("ticket-allow-approve-duration-stats", "ALLOW_APPROVE_DURATION_STATS"),
+    ("ticket-allow-attach-keep-old", "ALLOW_ATTACH_KEEP_OLD"),
+    ("ticket-allow-cert-pickup-qr", "ALLOW_CERT_PICKUP_QR"),
+    ("ticket-allow-cert-verify-page", "ALLOW_CERT_VERIFY_PAGE"),
+    ("ticket-allow-visitor-pass-print", "ALLOW_VISITOR_PASS_PRINT"),
+    ("ticket-allow-checkin-daily-report", "ALLOW_CHECKIN_DAILY_REPORT"),
+    ("ticket-allow-eval-college-export", "ALLOW_EVAL_COLLEGE_EXPORT"),
+    ("ticket-allow-seal-ledger-export", "ALLOW_SEAL_LEDGER_EXPORT"),
+    ("ticket-allow-moral-material-check", "ALLOW_MORAL_MATERIAL_CHECK"),
+    ("ticket-allow-party-material-template", "ALLOW_PARTY_MATERIAL_TEMPLATE"),
+    ("ticket-allow-party-thought-attach", "ALLOW_PARTY_THOUGHT_ATTACH"),
+    ("ticket-allow-cert-form-print", "ALLOW_CERT_FORM_PRINT"),
+    ("ticket-allow-seal-form-print", "ALLOW_SEAL_FORM_PRINT"),
+    ("ticket-allow-proj-mid-form-print", "ALLOW_PROJ_MID_FORM_PRINT"),
+    ("ticket-allow-ethic-opinion-print", "ALLOW_ETHIC_OPINION_PRINT"),
+    ("ticket-allow-expense-attach-count", "ALLOW_EXPENSE_ATTACH_COUNT"),
+    ("ticket-allow-fleet-driver-cert", "ALLOW_FLEET_DRIVER_CERT"),
     ("ticket-notify-on-apply-success", "NOTIFY_ON_APPLY_SUCCESS"),
     ("ticket-allow-meeting-place", "ALLOW_MEETING_PLACE"),
     ("ticket-allow-emergency-contact", "ALLOW_EMERGENCY_CONTACT"),
@@ -295,6 +404,8 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     out["ENABLED"] = bool(enable_ticket)
     out["USE_DEADLINE"] = bool(use_deadline)
     out["ALLOW_MULTI"] = bool(runtime.get("allow_multi_ticket") or False)
+    if ent.get("forceOnePerArchive") or ent.get("allowMultiTicket") is False:
+        out["ALLOW_MULTI"] = False
     out["CHECK_TIME_CONFLICT"] = bool(check_conflict)
     out["MODE"] = str(runtime.get("ticket_mode") or "archive")
     out["TABLE"] = str(runtime.get("ticket_table") or "borrow")
@@ -360,7 +471,11 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     if urge_cd is not None and ent.get("allowUserUrge"):
         out["URGE_COOLDOWN_MINUTES"] = _clamp(urge_cd, 1, 1440)
     due_soon = _pos(ent.get("dueSoonDays"))
-    if due_soon is not None and not ent.get("slaDeadline") and not ent.get("applicantCompleteOnly"):
+    # 借还壳默认发 dueSoon；报修 slaDeadline 不发。审批加厚（approveThicken）例外：仍发催办天数。
+    if due_soon is not None and (
+        (not ent.get("slaDeadline") and not ent.get("applicantCompleteOnly"))
+        or ent.get("approveThicken")
+    ):
         out["DUE_SOON_DAYS"] = _clamp(due_soon, 1, 14)
     max_od = _pos(ent.get("maxOverdueTimes"))
     if max_od is not None:
@@ -384,6 +499,12 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     min_words = _pos(ent.get("minRemarkWords"))
     if min_words is not None:
         out["MIN_REMARK_WORDS"] = _clamp(min_words, 1, 5000)
+    min_approve_words = _pos(ent.get("minApproveRemarkWords"))
+    if min_approve_words is not None:
+        out["MIN_APPROVE_REMARK_WORDS"] = _clamp(min_approve_words, 1, 500)
+    auto_pass_h = _pos(ent.get("approveAutoPassHours"))
+    if auto_pass_h is not None and ent.get("allowApproveAutoPass"):
+        out["APPROVE_AUTO_PASS_HOURS"] = _clamp(auto_pass_h, 1, 720)
     max_revise = _pos(ent.get("maxReviseTimes"))
     if max_revise is not None:
         out["MAX_REVISE_TIMES"] = _clamp(max_revise, 1, 20)
@@ -396,6 +517,15 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     credit_warn = _pos(ent.get("creditWarnRemaining"))
     if credit_warn is not None:
         out["CREDIT_WARN_REMAINING"] = _clamp(credit_warn, 1, 50)
+    min_vendors = _pos(ent.get("minVendorQuotes"))
+    if min_vendors is not None:
+        out["MIN_VENDOR_QUOTES"] = _clamp(min_vendors, 1, 20)
+    expire_notify = _pos(ent.get("notifyArchiveExpireDays"))
+    if expire_notify is not None:
+        out["NOTIFY_ARCHIVE_EXPIRE_DAYS"] = _clamp(expire_notify, 1, 90)
+    pass_expire = _pos(ent.get("passExpireDays"))
+    if pass_expire is not None and ent.get("allowPassExpire"):
+        out["PASS_EXPIRE_DAYS"] = _clamp(pass_expire, 1, 30)
     if ent.get("creditOnOverdue"):
         out["CREDIT_INITIAL"] = _clamp(_int_or(ent.get("creditInitial"), 100), 1, 999)
         out["CREDIT_OVERDUE_DELTA"] = _clamp(_int_or(ent.get("creditOverdueDelta"), 5), 1, 100)
@@ -432,6 +562,16 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
             val = str(labels.get(lab_key) or "").strip()
             if val:
                 out[CONST_BY_KEY[key]] = val
+    labels = (spec.get("schema") or {}).get("labels") or {}
+    one_deny = str(labels.get("onePerArchiveDenyMessage") or ent.get("onePerArchiveDenyMessage") or "").strip()
+    if one_deny:
+        out["ONE_PER_ARCHIVE_DENY_MESSAGE"] = one_deny
+    bl_deny = str(labels.get("applyBlacklistDenyMessage") or "").strip()
+    if bl_deny:
+        out["APPLY_BLACKLIST_DENY_MESSAGE"] = bl_deny
+    eval_deny = str(labels.get("evalOpenWindowDenyMessage") or ent.get("evalOpenWindowDenyMessage") or "").strip()
+    if eval_deny:
+        out["EVAL_OPEN_WINDOW_DENY_MESSAGE"] = eval_deny
 
     return out
 
@@ -472,7 +612,103 @@ COMMENTS: dict[str, str] = {
     "RENEW_DAYS": "每次续借延长的天数；0 表示跟默认天数",
     "CATEGORY_LIMIT": "同一分类下进行中单据上限；0 表示不限",
     "MIN_REMARK_WORDS": "申请说明的最少字数",
+    "MIN_APPROVE_REMARK_WORDS": "审核意见的最少字数（通过/驳回）",
+    "APPROVE_AUTO_PASS_HOURS": "待审超过 N 小时自动通过；0 表示关闭",
     "MAX_REVISE_TIMES": "被驳回后可修改重提的次数",
+    "APPROVE_THICKEN": "审批/填报组加厚（意见短语/抄送/审意见字数等）",
+    "ALLOW_APPROVE_CC": "审核时可抄送知会（站内信）",
+    "ALLOW_APPROVE_TRANSFER": "审批转审（一跳改处理人）",
+    "ALLOW_APPROVE_DELEGATE": "请假期间代审",
+    "ALLOW_APPROVE_REMARK_ATTACH": "审核时可上传意见附件",
+    "ALLOW_APPROVE_CC_COMMENT": "抄送人可追加知会评论",
+    "ALLOW_APPROVE_AUTO_PASS": "限时自动通过（危险开关）",
+    "ALLOW_CERT_PICKUP": "证明领取方式（自取/邮寄）",
+    "ALLOW_CERT_URGENT": "证明加急件标记",
+    "ALLOW_SEAL_COPIES": "用印份数与装订说明",
+    "ALLOW_FLEET_MILEAGE": "用车里程与油耗回填",
+    "ALLOW_EXPENSE_INVOICE": "报销发票张数与金额校验",
+    "ALLOW_VISITOR_COUNT": "访客随行人数",
+    "ALLOW_AWARD_CERT_NO": "获奖证书编号查重",
+    "ALLOW_VENDOR_QUOTES": "采购比价供应商列表",
+    "FORCE_ONE_PER_ARCHIVE": "同一档案仅一张进行中单据（评教一人一课）",
+    "ALLOW_EVAL_OPEN_WINDOW": "评教开放窗口起止日校验",
+    "ALLOW_COMP_HOURS": "加班调休核定小时（办结必填）",
+    "ALLOW_FLEET_CREW": "用车驾驶员与随车人",
+    "ALLOW_ETHIC_BATCH": "伦理批件编号与有效期（档案）",
+    "ALLOW_PASS_EXPIRE": "通行码到期自动失效",
+    "ALLOW_RETURN_FUEL": "用车回场油量（办结必填）",
+    "ALLOW_LABOR_PLACE": "劳动地点（申请必填）",
+    "ALLOW_PROMO_PLACE": "宣传品尺寸与悬挂位置（档案）",
+    "ALLOW_ETHIC_MEETING": "伦理会议日期与决议摘要（档案）",
+    "ALLOW_EFFECTIVE_ON": "学籍异动生效日期",
+    "ALLOW_CERT_ISSUE_NO": "证明开具流水号（审过签发）",
+    "ALLOW_PROMO_FEEDBACK": "宣传品投放反馈照片（办结必附）",
+    "ALLOW_DOC_REV": "合同正文版本号（申请必填）",
+    "ALLOW_FITOUT_QUIET": "装修施工时段对照禁噪窗",
+    "ALLOW_SEAL_CLOSE_PHOTO": "用印现场照片（办结必附）",
+    "ALLOW_ISSUE_COPIES": "证明开具份数上限",
+    "ALLOW_SIGN_PARTIES": "合同签署方多方勾选",
+    "ALLOW_TRAIN_HOURS": "准入培训学时累计",
+    "ALLOW_INSPECT_EXPIRE": "车辆通行证年检到期提醒",
+    "ALLOW_MEMBER_CHANGE": "大创项目成员变更说明",
+    "ALLOW_PROCURE_BUDGET": "采购申购金额对照预算余额",
+    "ALLOW_CHECKIN_EXCEPTION": "查寝异常类型",
+    "ALLOW_VISIT_PURPOSE": "访客来访目的",
+    "ALLOW_FLEET_VIOLATION": "用车违章责任人（办结必填）",
+    "ALLOW_FITOUT_RECTIFY": "装修验收整改说明",
+    "ALLOW_PROJ_NODE_REMIND": "大创中期/结题材料节点提醒",
+    "ALLOW_CLUB_COPY_LAST": "社团年审材料复制上年",
+    "ALLOW_PROCURE_RETURN": "采购验收不合格退货说明",
+    "ALLOW_MORAL_OBJECTION": "综测公示期异议登记",
+    "ALLOW_PROJ_FUND_USE": "大创经费使用登记",
+    "ALLOW_EVAL_DIM_WEIGHT": "评教课程维度权重",
+    "ALLOW_VISIT_SLOT_REMAIN": "访客预约时段余量",
+    "ALLOW_PLAGIARISM_URL": "大创结题查重报告外链",
+    "ALLOW_ABSENT_STREAK": "查寝连续未归预警",
+    "ALLOW_PARTY_STAGE": "党员发展阶段登记",
+    "ALLOW_EVAL_OBSERVE": "评教督导听课记录",
+    "ALLOW_SCHEDULE_IMPACT": "学籍异动对课表影响说明",
+    "ALLOW_CONTRACT_AMOUNT": "合同金额及大写展示",
+    "ALLOW_EXPENSE_LINES": "报销单明细多行",
+    "ALLOW_TRIP_LEGS": "出差行程多段",
+    "ALLOW_HIDE_EVAL_RESULT": "评教结果对学生不可见",
+    "ALLOW_SIGN_REMARK_VISIBLE": "合同审批意见对签署方可见",
+    "ALLOW_PROJ_CHANGE_LOG": "大创项目变更日志",
+    "ALLOW_CERT_VERIFY": "证明真伪查询码",
+    "ALLOW_VISIT_WALK_IN": "访客现场补录",
+    "ALLOW_CHECKIN_PROXY": "查寝楼栋长代登记",
+    "ALLOW_CLUB_ROSTER": "社团成员名册",
+    "ALLOW_CARPASS_PARKING_MUTEX": "车辆通行证车位同日互斥",
+    "ALLOW_EVAL_URGE": "评教未评催评",
+    "ALLOW_CONTRACT_RENEW": "合同续签日期与说明",
+    "ALLOW_CONTRACT_EXPIRE_REMIND": "合同到期续签提醒",
+    "ALLOW_CERT_PICKUP_REDEEM": "证明领取核销码",
+    "ALLOW_EXAM_PASS_MIN": "实验室准入考试成绩门槛",
+    "ALLOW_CHECKIN_SPOT": "查寝抽查任务",
+    "ALLOW_EVAL_BEFORE_GRADE": "评教先评后查分",
+    "ALLOW_APPROVE_DURATION_STATS": "审批人均办理耗时",
+    "ALLOW_ATTACH_KEEP_OLD": "申请附件覆盖留旧",
+    "ALLOW_CERT_PICKUP_QR": "证明领取核销码二维码",
+    "ALLOW_CERT_VERIFY_PAGE": "证明真伪查询页加深",
+    "ALLOW_VISITOR_PASS_PRINT": "访客通行证打印",
+    "ALLOW_CHECKIN_DAILY_REPORT": "查寝楼长日报",
+    "ALLOW_EVAL_COLLEGE_EXPORT": "评教院系汇总导出",
+    "ALLOW_SEAL_LEDGER_EXPORT": "用印台账导出",
+    "ALLOW_MORAL_MATERIAL_CHECK": "综测加减分证据材料清单",
+    "ALLOW_PARTY_MATERIAL_TEMPLATE": "党员发展阶段材料清单模板",
+    "ALLOW_PARTY_THOUGHT_ATTACH": "思想汇报/心得附件节点",
+    "ALLOW_CERT_FORM_PRINT": "证明开具套打页",
+    "ALLOW_SEAL_FORM_PRINT": "用印审批单套打",
+    "ALLOW_PROJ_MID_FORM_PRINT": "大创中期检查表套打",
+    "ALLOW_ETHIC_OPINION_PRINT": "伦理审查意见书套打",
+    "ALLOW_EXPENSE_ATTACH_COUNT": "报销票据影像张数提示",
+    "ALLOW_FLEET_DRIVER_CERT": "用车驾驶员资质材料清单",
+    "PASS_EXPIRE_DAYS": "通行码自审过之日起有效天数；0 关闭",
+    "MIN_VENDOR_QUOTES": "采购比价最少供应商家数；0 不校验",
+    "NOTIFY_ARCHIVE_EXPIRE_DAYS": "合同/许可/年检到期前 N 天站内信提醒；0 关闭",
+    "ONE_PER_ARCHIVE_DENY_MESSAGE": "一人一档重复提交拒绝文案",
+    "EVAL_OPEN_WINDOW_DENY_MESSAGE": "评教开放窗口外拒绝文案",
+    "APPLY_BLACKLIST_DENY_MESSAGE": "黑名单拒绝文案",
     "CREDIT_INITIAL": "初始信用分",
     "CREDIT_OVERDUE_DELTA": "每次逾期扣减的信用分",
     "CREDIT_BLOCK_BELOW": "信用分低于该值限制再借",
@@ -492,6 +728,19 @@ COMMENTS: dict[str, str] = {
     "AGE_CONSTRAINT_DENY_MESSAGE": "年龄不符合拒绝文案",
     "REQUIRE_PREREQ_ACK": "有先修提示码时须勾选确认",
     "ALLOW_LATE_MINUTES": "签到可登记迟到分钟数",
+    "ALLOW_WISH_ORDER": "选课志愿序（第一/第二）",
+    "ALLOW_VOLUNTEER_ROLE": "活动志愿者岗位意向",
+    "ALLOW_ADMIN_CHECKIN": "管理端可为报名补签",
+    "REQUIRE_TOUR_NOTICE_ACK": "出团天气须知须勾选",
+    "ALLOW_COMPANIONS": "集体报名可填同行人姓名",
+    "ALLOW_LOTTERY": "名额紧张时随机抽签录取",
+    "ALLOW_SEAT_ZONE": "活动座位分区报名",
+    "ALLOW_TICKET_TRANSFER": "已通过报名可站内转让",
+    "ALLOW_TICKET_WALLET": "电子票夹出示通行码",
+    "ALLOW_APPLY_BLACKLIST": "黑名单用户禁止报名",
+    "SCHEDULE_CHANGE_NOTIFY": "调课变更站内信通知已选学生",
+    "ALLOW_POST_GALLERY": "活动办结后用户可上传相册",
+    "REQUIRE_CREDIT_WRITEBACK_ACK": "活动学分认定非自动回写须勾选确认",
 }
 
 GROUP_TITLES: dict[str, str] = {

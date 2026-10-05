@@ -87,6 +87,17 @@ class PostMuteE12Tests(unittest.TestCase):
         plain_yml = _patch_thesis_yml("thesis:\n  domain: DOM-FORUM\n", "DOM-FORUM", plain) + app_policy_preview("DOM-FORUM", plain)
         self.assertIn("post-mute-enabled: true", plain_yml)
 
+    def test_sql_column_not_profile_json(self) -> None:
+        from app.bake.engine_sql import domain_sql
+
+        sql = domain_sql(
+            "DOM-FORUM",
+            "t_forum",
+            title="校园论坛",
+            capabilities=["archive", "forum", "post_mute"],
+        )
+        self.assertIn("post_mute_until", sql)
+
     def test_baseline_sources_wired(self) -> None:
         user_store = (BASELINE / "backend/src/main/java/com/thesis/service/UserStore.java").read_text(
             encoding="utf-8"
@@ -106,7 +117,7 @@ class PostMuteE12Tests(unittest.TestCase):
         self.assertIn("assertNotPostMuted", archive)
 
         ticket = (
-            BASELINE / "backend/src/main/java/com/thesis/capability/TicketStore.java"
+            BASELINE / "backend/src/main/java/com/thesis/capability/TicketApplyOps.java"
         ).read_text(encoding="utf-8")
         self.assertIn("assertNotPostMuted", ticket)
 

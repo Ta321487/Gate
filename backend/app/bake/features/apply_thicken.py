@@ -5,14 +5,21 @@
 - 不新造厚 DOM；复用 ticket_flow / quota / ArchiveStore / MessageStore / DemoScheduleJobs / allowBatchHire。
 - 须知勾选 ≠ 合同平台；悬赏备注 ≠ 真打赏；行程日明细 ≠ 地图轨迹；紧急联系人 ≠ 外呼。
 - 学分上限 / 退选上限 / 取消时限 / 认领冷却 = 浅规则，≠ 完整教务引擎 / 公平抽签平台。
+- 活动问卷联动 = 扫词挂 survey + 档案绑卷，≠ 独立问卷域；办结相册 ≠ 管理端海报图集。
+- 学分认定回写提示 = 勾选写库提示，≠ 自动回写第二课堂学分。
 - 域默认：四域通识必开；域皮字段与规则按 ACTIVITY / LOST / COURSE / TOUR 分流。
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 APPLY_DOMAINS = frozenset({"DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE", "DOM-TOUR"})
+
+_ACTIVITY_SURVEY_LINK = re.compile(
+    r"活动问卷|满意度卷|活动满意度|问卷联动|结束后.{0,12}(?:问卷|满意度)|办结.{0,8}问卷"
+)
 
 _NOTICE_ACK_BY_DOMAIN: dict[str, str] = {
     "DOM-ACTIVITY": "我已阅读报名须知并确认可按时参加",
@@ -80,10 +87,149 @@ def _force_material_check(
     spec["gate"] = merge_material_check_gate(gate, caps)
 
 
+def _force_item_comment(spec: dict[str, Any], schema: dict[str, Any]) -> None:
+    """失物启事条下评论：用户可发评论写库。"""
+    from app.bake.features.item_comment import (
+        ITEM_COMMENT_CAP,
+        attach_item_comment_menus,
+        merge_item_comment_capabilities,
+    )
+    from app.bake.gate_contracts import merge_item_comment_gate
+
+    caps = merge_item_comment_capabilities(
+        list(spec.get("capabilities") or []),
+        force=True,
+        domain=str(spec.get("domain") or ""),
+    )
+    if ITEM_COMMENT_CAP not in caps:
+        caps = list(caps)
+        caps.append(ITEM_COMMENT_CAP)
+    spec["capabilities"] = caps
+    schema["capabilities"] = caps
+    attach_item_comment_menus(schema)
+    gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+    spec["gate"] = merge_item_comment_gate(gate, caps)
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("itemCommentSectionTitle", "启事评论")
+    labels.setdefault("itemCommentSubmitLabel", "发表评论")
+    labels.setdefault("itemCommentEmpty", "暂无评论")
+
+
+def _force_gallery(spec: dict[str, Any], schema: dict[str, Any]) -> None:
+    """活动海报/图集：管理端维护 galleryImages，浏览页展示。"""
+    from app.bake.features.ux_scan import GALLERY_CAP, attach_ux_schema
+
+    caps = list(spec.get("capabilities") or [])
+    if GALLERY_CAP not in caps:
+        caps.append(GALLERY_CAP)
+    spec["capabilities"] = caps
+    schema["capabilities"] = caps
+    attach_ux_schema(schema, caps)
+
+
+def _activity_survey_wanted(proposal_text: str) -> bool:
+    """活动满意度卷 / 问卷联动：复用 survey 扫词，并补活动侧别名。"""
+    from app.bake.features.survey import scan_survey
+
+    text = proposal_text or ""
+    if scan_survey(text):
+        return True
+    return bool(_ACTIVITY_SURVEY_LINK.search(text))
+
+
+def _force_survey(spec: dict[str, Any], schema: dict[str, Any]) -> None:
+    """扫词挂问卷岛：管理端配卷，用户填写写库。"""
+    from app.bake.features.survey import (
+        SURVEY_CAP,
+        attach_survey_menus,
+        merge_survey_capabilities,
+    )
+    from app.bake.gate_contracts import merge_survey_gate
+
+    caps = merge_survey_capabilities(
+        list(spec.get("capabilities") or []),
+        force=True,
+        domain=str(spec.get("domain") or ""),
+    )
+    if SURVEY_CAP not in caps:
+        caps = list(caps)
+        caps.append(SURVEY_CAP)
+    spec["capabilities"] = caps
+    schema["capabilities"] = caps
+    attach_survey_menus(schema)
+    gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+    spec["gate"] = merge_survey_gate(gate, caps)
+
+
+def _force_code_qr(spec: dict[str, Any], schema: dict[str, Any]) -> None:
+    """活动签到口令可视化二维码：管理端维护 checkinCode，浏览/出示页扫码核对。"""
+    from app.bake.features.code_qr import CODE_QR_CAP, CODE_QR_HINT_DEFAULT
+    from app.bake.gate_contracts import merge_code_qr_gate
+
+    caps = list(spec.get("capabilities") or [])
+    if CODE_QR_CAP not in caps:
+        caps.append(CODE_QR_CAP)
+    spec["capabilities"] = caps
+    schema["capabilities"] = caps
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("codeQrShowVerb", "出示签到码")
+    labels.setdefault("codeQrPrintVerb", "打印")
+    labels.setdefault("codeQrHint", CODE_QR_HINT_DEFAULT)
+    gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+    spec["gate"] = merge_code_qr_gate(gate, caps)
+
+
+def _attach_apply_blacklist_menus(schema: dict[str, Any]) -> None:
+    """报名黑名单管理入口（轻名单表，≠风控引擎）。"""
+    from app.bake.schema.menu_utils import ensure_menu
+
+    admin = schema.setdefault("menus", {}).setdefault("admin", [])
+    labels = schema.setdefault("labels", {})
+    ensure_menu(
+        admin,
+        "apply_blacklist",
+        {
+            "key": "apply_blacklist",
+            "label": labels.get("applyBlacklistMenuLabel") or "报名黑名单",
+            "superOnly": True,
+        },
+        before_key="content",
+    )
+
+
+def _enable_apply_blacklist(spec: dict[str, Any], schema: dict[str, Any]) -> None:
+    schema["applyBlacklist"] = True
+    ticket = schema.setdefault("entities", {}).setdefault("ticket", {})
+    if isinstance(ticket, dict):
+        ticket["allowApplyBlacklist"] = True
+    labels = schema.setdefault("labels", {})
+    labels.setdefault("applyBlacklistMenuLabel", "报名黑名单")
+    labels.setdefault("applyBlacklistTitle", "报名黑名单")
+    labels.setdefault(
+        "applyBlacklistLead",
+        "维护禁止报名的账号；名单内用户提交报名时将被拒绝。",
+    )
+    labels.setdefault("applyBlacklistDenyMessage", "当前账号暂不可报名，请联系管理员。")
+    _attach_apply_blacklist_menus(schema)
+
+
 def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
     """按域默认加厚报名/申请组 schema（只增不减）。"""
-    _ = proposal_text
     domain = str(spec.get("domain") or "")
+    # CREDIT 交叉浅文案：提示活动侧不会自动回写学分
+    if domain == "DOM-CREDIT":
+        schema = _live_schema(spec)
+        labels = schema.setdefault("labels", {})
+        labels.setdefault(
+            "creditFromActivityHint",
+            "活动报名办结后不会自动回写学分；请在本系统另行提交认定申请。",
+        )
+        thicken = schema.setdefault("applyThicken", {})
+        if not isinstance(thicken, dict):
+            thicken = {}
+            schema["applyThicken"] = thicken
+        thicken["creditFromActivityHint"] = True
+        return spec
     if domain not in APPLY_DOMAINS:
         return spec
 
@@ -234,6 +380,138 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
             "签到时可登记相对集合时间的迟到分钟数（演示登记）。",
         )
         thicken["lateMinutes"] = True
+        _force_gallery(spec, schema)
+        thicken["gallery"] = True
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "volunteerRole",
+                "label": "志愿者岗位",
+                "type": "select",
+                "options": ["不限", "引导员", "签到协助", "物资发放", "其它"],
+            },
+        )
+        ticket["allowVolunteerRole"] = True
+        labels.setdefault("volunteerRoleLabel", "报名岗位")
+        labels.setdefault(
+            "volunteerRoleHint",
+            "本场若设志愿者岗位，请选择意向岗位后再提交。",
+        )
+        thicken["volunteerRole"] = True
+        ticket["allowAdminCheckin"] = True
+        labels.setdefault("adminCheckinLabel", "补签")
+        labels.setdefault(
+            "adminCheckinHint",
+            "管理端可为已通过且未签到的报名登记补签。",
+        )
+        thicken["adminCheckin"] = True
+        labels.setdefault(
+            "oversellGuardHint",
+            "名额将按余量扣减；余量不足时无法报名成功。",
+        )
+        thicken["oversellGuard"] = True
+        _force_code_qr(spec, schema)
+        thicken["checkinQr"] = True
+        ticket["printTicket"] = True
+        labels.setdefault("printTicketLabel", "报名证明")
+        labels.setdefault(
+            "activityProofHint",
+            "审核通过后可打印报名证明，现场核验时出示。",
+        )
+        thicken["applyProof"] = True
+        ticket["allowCompanions"] = True
+        ticket["allowQty"] = True
+        labels.setdefault("companionNamesLabel", "同行人姓名")
+        labels.setdefault(
+            "companionNamesHint",
+            "集体报名可填写同行人姓名（逗号分隔）；数量按同行人数占额。",
+        )
+        thicken["companions"] = True
+        labels.setdefault("absentExportLabel", "缺勤名单")
+        labels.setdefault(
+            "absentExportHint",
+            "可筛选未签到报名并导出缺勤名单，核对签到完成率。",
+        )
+        thicken["absentExport"] = True
+        _enable_apply_blacklist(spec, schema)
+        thicken["applyBlacklist"] = True
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "admitMode",
+                "label": "录取方式",
+                "type": "select",
+                "options": ["先到先得", "抽签录取"],
+            },
+        )
+        ticket["allowLottery"] = True
+        labels.setdefault("lotteryDrawLabel", "抽签录取")
+        labels.setdefault(
+            "lotteryDrawHint",
+            "本场为抽签录取时，报名先进入待抽签；管理员可随机抽满名额。",
+        )
+        labels.setdefault("lotteryStatusLabel", "待抽签")
+        thicken["lottery"] = True
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "seatZones",
+                "label": "座位分区（逗号分隔）",
+                "type": "string",
+            },
+        )
+        ticket["allowSeatZone"] = True
+        labels.setdefault("seatZoneLabel", "座位分区")
+        labels.setdefault(
+            "seatZoneHint",
+            "本场若划分座位分区，请选择意向分区后再提交。",
+        )
+        thicken["seatZones"] = True
+        ticket["allowTicketTransfer"] = True
+        labels.setdefault("ticketTransferLabel", "转让名额")
+        labels.setdefault(
+            "ticketTransferHint",
+            "审核通过后可将名额转让给站内其他账号（对方占用本场名额）。",
+        )
+        thicken["ticketTransfer"] = True
+        ticket["allowTicketWallet"] = True
+        labels.setdefault("ticketWalletLabel", "我的电子票")
+        labels.setdefault(
+            "ticketWalletHint",
+            "已通过的报名可在此出示电子票与通行码，现场核验。",
+        )
+        thicken["ticketWallet"] = True
+        ticket["allowPostGallery"] = True
+        labels.setdefault("postGalleryLabel", "活动相册")
+        labels.setdefault(
+            "postGalleryHint",
+            "活动办结后可上传现场照片；管理员可在报名记录中查看。",
+        )
+        thicken["postGallery"] = True
+        ticket["requireCreditWritebackAck"] = True
+        labels.setdefault("creditWritebackAckLabel", "我已知晓学分认定需另行申请（非自动回写）")
+        labels.setdefault(
+            "creditWritebackHint",
+            "本活动不自动回写第二课堂学分；办结后请按学校认定流程另行申报。",
+        )
+        thicken["creditWriteback"] = True
+        if _activity_survey_wanted(proposal_text):
+            _force_survey(spec, schema)
+            _ensure_archive_field(
+                archive,
+                {
+                    "key": "surveyFormId",
+                    "label": "联动满意度问卷编号",
+                    "type": "number",
+                },
+            )
+            labels.setdefault("activitySurveyLinkLabel", "填写满意度问卷")
+            labels.setdefault(
+                "activitySurveyLinkHint",
+                "活动结束后请填写本场联动的满意度问卷；每人每卷限填一次。",
+            )
+            thicken["surveyLink"] = True
+            _add_feature(spec, "活动问卷联动")
         _add_feature(spec, "活动签到地点字段")
         _add_feature(spec, "活动取消开始前时限")
         _add_feature(spec, "安全责任书勾选")
@@ -244,6 +522,21 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "活动赞助商展示位")
         _add_feature(spec, "团体票价说明")
         _add_feature(spec, "活动签到迟到分钟数登记")
+        _add_feature(spec, "活动海报图集")
+        _add_feature(spec, "活动志愿者岗位报名")
+        _add_feature(spec, "活动签到补签")
+        _add_feature(spec, "活动容量超售保护")
+        _add_feature(spec, "活动签到二维码")
+        _add_feature(spec, "活动报名证明打印")
+        _add_feature(spec, "集体报名同行人")
+        _add_feature(spec, "签到缺勤名单导出")
+        _add_feature(spec, "报名黑名单禁止报名")
+        _add_feature(spec, "活动抽签录取")
+        _add_feature(spec, "活动座位分区")
+        _add_feature(spec, "活动门票转让")
+        _add_feature(spec, "活动电子票夹")
+        _add_feature(spec, "活动相册办结后上传")
+        _add_feature(spec, "活动学分认定回写提示")
 
     # —— LOST ——
     if domain == "DOM-LOST":
@@ -325,6 +618,26 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["meetingAck"] = True
         thicken["claimDeposit"] = True
         thicken["claimMaterial"] = True
+        _force_item_comment(spec, schema)
+        thicken["itemComment"] = True
+        ticket["allowRating"] = True
+        thicken["claimRating"] = True
+        ticket["creditOnOverdue"] = True
+        labels.setdefault("creditScoreLabel", "诚信分")
+        labels.setdefault(
+            "lostCreditHint",
+            "认领爽约或违规将扣减诚信分；分值过低时可能限制继续认领。",
+        )
+        thicken["lostCredit"] = True
+        _ensure_archive_field(
+            archive,
+            {"key": "pinTop", "label": "加急置顶", "type": "boolean"},
+        )
+        labels.setdefault(
+            "pinTopHint",
+            "加急启事将优先展示在列表靠前位置（演示置顶，非付费通道）。",
+        )
+        thicken["pinTop"] = True
         _add_feature(spec, "认领成功自动下架启事")
         _add_feature(spec, "失物启事过期自动关闭")
         _add_feature(spec, "失物悬赏备注字段")
@@ -335,6 +648,10 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "认领面交双方确认勾选")
         _add_feature(spec, "失物认领押金演示")
         _add_feature(spec, "失物认领证件材料清单")
+        _add_feature(spec, "失物启事评论区")
+        _add_feature(spec, "认领双方评价")
+        _add_feature(spec, "失物招领诚信分")
+        _add_feature(spec, "失物启事加急置顶")
 
     # —— COURSE ——
     if domain == "DOM-COURSE":
@@ -431,6 +748,64 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["gradeLimit"] = True
         thicken["planAck"] = True
         thicken["prereqHard"] = True
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "stage",
+                "label": "选课状态",
+                "type": "select",
+                "options": ["开放", "已满", "停开"],
+            },
+        )
+        thicken["courseStage"] = True
+        ticket["allowWishOrder"] = True
+        labels.setdefault("wishOrderLabel", "志愿序")
+        labels.setdefault(
+            "wishOrderHint",
+            "请选择第一志愿或第二志愿；录取时优先第一志愿。",
+        )
+        thicken["wishOrder"] = True
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "admitMode",
+                "label": "录取方式",
+                "type": "select",
+                "options": ["先到先得", "抽签录取"],
+            },
+        )
+        ticket["allowLottery"] = True
+        labels.setdefault("lotteryDrawLabel", "抽签录取")
+        labels.setdefault(
+            "lotteryDrawHint",
+            "本课为抽签录取时，选课先进入待抽签；管理员可随机抽满名额。",
+        )
+        labels.setdefault("lotteryStatusLabel", "待抽签")
+        labels.setdefault("lotteryResultTitle", "抽签结果公示")
+        labels.setdefault(
+            "lotteryResultHint",
+            "抽签结束后在此查看本课录取名单（仅公示已录取）。",
+        )
+        thicken["lottery"] = True
+        thicken["lotteryResult"] = True
+        ticket["scheduleChangeNotify"] = True
+        labels.setdefault("scheduleChangeInboxTitle", "调课通知")
+        labels.setdefault(
+            "scheduleChangeInboxBody",
+            "「{subject}」上课时间或地点已调整，请查看最新安排。",
+        )
+        labels.setdefault(
+            "scheduleChangeHint",
+            "管理员调整上课起止或课号/教室后，已选课同学将收到站内信。",
+        )
+        thicken["scheduleChangeNotify"] = True
+        ticket["conflictHighlight"] = True
+        labels.setdefault("conflictHighlightLabel", "课表冲突")
+        labels.setdefault(
+            "conflictHighlightHint",
+            "与已选课程时段重叠的格子会高亮标出，请改选其他课程。",
+        )
+        thicken["conflictHighlight"] = True
         _add_feature(spec, "选课教材信息字段")
         _add_feature(spec, "选课学分上限")
         _add_feature(spec, "选课学分预警")
@@ -441,6 +816,12 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "选课培养方案外链")
         _add_feature(spec, "年级身份资格限制")
         _add_feature(spec, "选课先修课硬确认")
+        _add_feature(spec, "选课结果公示状态")
+        _add_feature(spec, "选课志愿序")
+        _add_feature(spec, "选课抽签录取")
+        _add_feature(spec, "选课抽签结果公示")
+        _add_feature(spec, "选课教师调课通知站内信")
+        _add_feature(spec, "课表冲突可视化高亮")
 
     # —— TOUR ——
     if domain == "DOM-TOUR":
@@ -514,8 +895,8 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _force_material_check(
             spec,
             schema,
-            title="出团前资料清单",
-            lead="维护护照复印件等出团资料项；团员按清单上传，缺件不可提交。",
+            title="出团/签证资料清单",
+            lead="维护护照复印件、签证页等出团资料项；团员按清单上传，缺件不可提交。",
         )
         thicken["dayItinerary"] = True
         thicken["leaderContact"] = True
@@ -532,6 +913,28 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["ageLimit"] = True
         thicken["tourMaterial"] = True
         thicken["insuranceExport"] = True
+        thicken["visaMaterial"] = True
+        labels.setdefault(
+            "visaMaterialHint",
+            "出国线路请按资料清单上传护照与签证相关材料。",
+        )
+        _ensure_archive_field(
+            archive,
+            {"key": "weatherNote", "label": "出团天气/须知", "type": "textarea"},
+        )
+        ticket["requireTourNoticeAck"] = True
+        labels.setdefault("tourNoticeAckLabel", "我已阅读出团天气与须知")
+        thicken["tourNotice"] = True
+        ticket["allowCompanions"] = True
+        ticket["allowQty"] = True
+        labels.setdefault("companionNamesLabel", "同行人姓名")
+        labels.setdefault(
+            "companionNamesHint",
+            "可代填同行人姓名（逗号分隔）；数量按同行人数占额。",
+        )
+        thicken["companions"] = True
+        _enable_apply_blacklist(spec, schema)
+        thicken["applyBlacklist"] = True
         _add_feature(spec, "线路行程日明细")
         _add_feature(spec, "出团领队联系方式字段")
         _add_feature(spec, "出团集合点字段")
@@ -546,5 +949,9 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "线路报名年龄限制")
         _add_feature(spec, "出团前资料清单")
         _add_feature(spec, "团员保险名单导出列")
+        _add_feature(spec, "出团天气须知确认")
+        _add_feature(spec, "线路签证材料清单")
+        _add_feature(spec, "集体报名同行人")
+        _add_feature(spec, "报名黑名单禁止报名")
 
     return spec

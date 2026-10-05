@@ -383,7 +383,6 @@ CREATE TABLE IF NOT EXISTS exam_question (
   subject_id BIGINT NULL,
   type VARCHAR(16) NOT NULL,
   stem VARCHAR(2000) NOT NULL,
-  options_json VARCHAR(2000) DEFAULT '',
   answer_key VARCHAR(500) NOT NULL,
   score INT NOT NULL DEFAULT 5,
   explain_text VARCHAR(2000) NULL,
@@ -432,18 +431,40 @@ CREATE TABLE IF NOT EXISTS exam_answer (
   score INT NOT NULL DEFAULT 0,
   UNIQUE KEY uk_attempt_q (attempt_id, question_id)
 );
+
+CREATE TABLE IF NOT EXISTS exam_option (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  question_id BIGINT NOT NULL,
+  sort_no INT NOT NULL,
+  label VARCHAR(8) NOT NULL,
+  content VARCHAR(500) NOT NULL,
+  UNIQUE KEY uk_exam_option (question_id, sort_no),
+  KEY idx_exam_option_q (question_id)
+);
 """
 
 _EXAM_LABSAFE_GATE_SEED = """
-INSERT IGNORE INTO exam_question (id, subject_id, type, stem, options_json, answer_key, score, explain_text) VALUES
+INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score, explain_text) VALUES
 (9001, NULL, 'single', '进入实验室前应首先确认什么？',
- '["实验目的","安全须知与防护用品","午餐菜单","课程成绩"]', 'B', 20, '须先完成安全培训与防护准备。'),
+ 'B', 20, '须先完成安全培训与防护准备。'),
 (9002, NULL, 'judge', '未通过安全准入考试也可直接申请入室。',
- '["正确","错误"]', '错误', 20, '须先考试通过再申请准入。'),
+ '错误', 20, '须先考试通过再申请准入。'),
 (9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
- '["穿实验服","戴护目镜","禁止饮食","随意倾倒废液"]', 'A,B,C', 30, '废液须按规定回收。'),
+ 'A,B,C', 30, '废液须按规定回收。'),
 (9004, NULL, 'subjective', '简述发现火情时的正确做法。',
- '', '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教师阅卷，不自动匹配。');
+ '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教师阅卷，不自动匹配。');
+
+INSERT IGNORE INTO exam_option (question_id, sort_no, label, content) VALUES
+(9001, 1, 'A', '实验目的'),
+(9001, 2, 'B', '安全须知与防护用品'),
+(9001, 3, 'C', '午餐菜单'),
+(9001, 4, 'D', '课程成绩'),
+(9002, 1, 'A', '正确'),
+(9002, 2, 'B', '错误'),
+(9003, 1, 'A', '穿实验服'),
+(9003, 2, 'B', '戴护目镜'),
+(9003, 3, 'C', '禁止饮食'),
+(9003, 4, 'D', '随意倾倒废液');
 
 INSERT IGNORE INTO exam_paper (id, title, duration_min, status, subject_id, max_attempts, gate_ticket, pass_score) VALUES
 (9001, '实验室安全准入考试卷', 30, 'published', NULL, 0, 1, 60);
@@ -474,6 +495,18 @@ def ensure_exam_core_sql(sql: str, *, enabled: bool, gate_ticket: bool = False) 
             "  gate_ticket TINYINT NOT NULL DEFAULT 0,\n"
             "  pass_score INT NOT NULL DEFAULT 60,\n"
             "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
+        )
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_option`?\b", out):
+        out = out.rstrip() + "\n" + (
+            "CREATE TABLE IF NOT EXISTS exam_option (\n"
+            "  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
+            "  question_id BIGINT NOT NULL,\n"
+            "  sort_no INT NOT NULL,\n"
+            "  label VARCHAR(8) NOT NULL,\n"
+            "  content VARCHAR(500) NOT NULL,\n"
+            "  UNIQUE KEY uk_exam_option (question_id, sort_no),\n"
+            "  KEY idx_exam_option_q (question_id)\n"
+            ");\n"
         )
     if gate_ticket and "实验室安全准入考试卷" not in out:
         out = out.rstrip() + "\n" + _EXAM_LABSAFE_GATE_SEED

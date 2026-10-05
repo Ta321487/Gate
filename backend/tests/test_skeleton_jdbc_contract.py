@@ -127,8 +127,8 @@ _OVERLAY_API_MARKERS = (
     # 举报处置一键禁言：叠层 FavoriteStore 必须与 baseline 同源（举报窗口多 muteDays 形参）
     ("capability/FavoriteStore.java", "takedown_mute"),
     ("capability/FavoriteStore.java", "int muteDays)"),
-    # 单据可选列：请假天数（随 period 落库）/ 周报周次（申请时补写）
-    ("capability/TicketStore.java", "\"weekNo\""),
+    # 单据可选列：周报周次（申请/补丁写库；胖工作流已抽到 TicketPatchOps）
+    ("capability/TicketPatchOps.java", "\"weekNo\""),
     # 站内私信店铺客服可见性（买家↔商家），三套必须同源
     ("service/DmStore.java", "configureShopCustomerService("),
     ("service/DmStore.java", "shopCustomerService()"),
@@ -139,6 +139,46 @@ _OVERLAY_API_MARKERS = (
     ("service/GradeScoreStore.java", "stats(Long courseId, Long termId)"),
     ("service/GradeScoreStore.java", "String operator)"),
 )
+
+
+def test_ticket_ops_no_false_ticketstore_prefix() -> None:
+    """Ticket*Ops 拆分后禁止把局部变量/字面量误写成 TicketStore.xxx（会导致 javac 失败）。"""
+    import re
+
+    # 声明局部变量写成「类型 TicketStore.字段」
+    decl = re.compile(r"\b(?:String|Long|Integer|int|boolean|double|float|var)\s+TicketStore\.[A-Za-z_]\w*")
+    # SQL/Map/JSON 字面量里误带 TicketStore. 前缀（合法字段访问不含引号）
+    quoted = re.compile(r"""['"]TicketStore\.[A-Za-z_][\w.]*['"]""")
+    bad: list[str] = []
+    for root in (BASE_JAVA, JPA_JAVA, MB_JAVA):
+        for path in root.rglob("Ticket*Ops.java"):
+            text = path.read_text(encoding="utf-8")
+            for i, line in enumerate(text.splitlines(), 1):
+                s = line.strip()
+                if s.startswith("//") or s.startswith("*"):
+                    continue
+                if decl.search(line) or quoted.search(line):
+                    bad.append(f"{path.relative_to(ROOT)}:{i}: {s}")
+    assert not bad, "Ticket*Ops 误带 TicketStore. 前缀:\n" + "\n".join(bad)
+
+
+def test_ticket_store_delegates_fat_workflows_to_ops() -> None:
+    """三栈 TicketStore 胖工作流须委托 *Ops，禁止再内联完整 complete/dashboard 正文。"""
+    markers = (
+        ("complete(", "TicketCompleteOps.complete("),
+        ("dashboard(", "TicketDashOps.dashboard("),
+        ("chartStats(", "TicketDashOps.chartStats("),
+    )
+    missing: list[str] = []
+    for root, label in ((BASE_JAVA, "baseline"), (JPA_JAVA, "jpa"), (MB_JAVA, "mybatis")):
+        path = root / "com/thesis/capability/TicketStore.java"
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for _meth, needle in markers:
+            if needle not in text:
+                missing.append(f"{label}: missing {needle}")
+    assert not missing, "TicketStore 未委托 Ops:\n" + "\n".join(missing)
 
 
 def test_overlay_stores_share_baseline_capability_apis() -> None:

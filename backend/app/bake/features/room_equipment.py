@@ -1,6 +1,6 @@
 """会议室设备清单 room_equipment：开题扫词才挂；无域默认。
 
-档案 equipment_json 存设备名列表；总管维护 sys_equipment_dict；
+档案 equipment 走 item_equipment 关联表；总管维护 sys_equipment_dict；
 详情/预约页展示。≠ 设备借用（DOM-EQUIP）。
 """
 
@@ -104,10 +104,6 @@ def apply_room_equipment_to_spec(
 
 # --- SQL ensure (moved from fragments.py) ---
 
-ROOM_EQUIPMENT_COLUMNS: list[tuple[str, str]] = [
-    ("equipment_json", "TEXT NULL"),
-]
-
 _EQUIPMENT_DICT_DDL = """
 CREATE TABLE IF NOT EXISTS sys_equipment_dict (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -116,6 +112,16 @@ CREATE TABLE IF NOT EXISTS sys_equipment_dict (
   enabled TINYINT NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_equip_name (name)
+);
+"""
+
+_ITEM_EQUIPMENT_DDL = """
+CREATE TABLE IF NOT EXISTS item_equipment (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  item_id BIGINT NOT NULL,
+  equipment_id BIGINT NOT NULL,
+  UNIQUE KEY uk_item_equipment (item_id, equipment_id),
+  KEY idx_item_equipment_item (item_id)
 );
 """
 
@@ -132,30 +138,23 @@ INSERT INTO sys_equipment_dict (name, sort_order, enabled)
 SELECT '投屏线', 50, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_equipment_dict WHERE name='投屏线');
 """
 
+
 def ensure_room_equipment_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """档案主表补 equipment_json + 设备字典；仅 room_equipment 开启时注入。"""
+    """设备字典 + 档案-设备关联表；不用 equipment_json。"""
     if not enabled:
         return sql
-    t = (item_table or "").strip()
     out = sql
-    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-
-        def repl(m: re.Match[str]) -> str:
-            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-            if table.lower() != t.lower():
-                return m.group(0)
-            body = _inject_missing_columns(body, ROOM_EQUIPMENT_COLUMNS)
-            return f"{head}{body}{tail}"
-
-        out = _CREATE_TABLE_RE.sub(repl, out)
     if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_equipment_dict`?\b", out):
         out = out.rstrip() + "\n" + _EQUIPMENT_DICT_DDL + "\n" + _EQUIPMENT_DICT_SEED
+    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?item_equipment`?\b", out):
+        out = out.rstrip() + "\n" + _ITEM_EQUIPMENT_DDL
+    t = (item_table or "").strip()
     if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        seed_upd = (
-            f"\nUPDATE `{t}` SET equipment_json="
-            f"""'["投影仪","音响","白板"]' """
-            f"WHERE id=1 AND (equipment_json IS NULL OR equipment_json='' OR equipment_json='[]');\n"
+        seed = (
+            "\nINSERT IGNORE INTO item_equipment (item_id, equipment_id)\n"
+            "SELECT 1, d.id FROM sys_equipment_dict d "
+            "WHERE d.name IN ('投影仪','音响','白板');\n"
         )
-        if f"UPDATE `{t}` SET equipment_json=" not in out:
-            out = out.rstrip() + seed_upd
+        if "INSERT IGNORE INTO item_equipment" not in out:
+            out = out.rstrip() + seed
     return out

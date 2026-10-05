@@ -98,6 +98,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "balance_ledger_admin": "/admin/balance/ledger",
     "occupy_admin": "/admin/occupy",
     "material_checklist": "/admin/material/checklist",
+    "apply_blacklist": "/admin/apply/blacklist",
     "lost_clues": "/admin/lost/clues",
     "e_sign_admin": "/admin/e-sign",
     "grade_scores_admin": "/admin/grade/scores",
@@ -386,6 +387,8 @@ def effective_paths(
         paths.update({"/occupy/mine", "/admin/occupy"})
     if "material_check" in cap_set:
         paths.add("/admin/material/checklist")
+    if isinstance(schema, dict) and schema.get("applyBlacklist"):
+        paths.add("/admin/apply/blacklist")
     if "lost_clue" in cap_set:
         paths.add("/admin/lost/clues")
     if "e_sign" in cap_set:

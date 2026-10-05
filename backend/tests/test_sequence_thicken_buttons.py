@@ -68,6 +68,19 @@ class SequenceThickenButtonTests(unittest.TestCase):
             "college",
             "plan_url",
             "meeting_ack",
+            "wish_order",
+            "volunteer_role",
+            "tour_notice_ack",
+            "weather_note",
+            "late_minutes",
+            "companion_names",
+            "seat_zone",
+            "admit_mode",
+            "seat_zones",
+            "pin_top",
+            "survey_form_id",
+            "post_gallery_json",
+            "credit_writeback_ack",
         ):
             self.assertIn(col, _COMMON_COL_ZH)
             self.assertTrue(_COMMON_COL_ZH[col])

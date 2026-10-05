@@ -606,36 +606,7 @@
 
 #### 本组待补
 
-| 功能 | 建议落域 | 说明 |
-|------|----------|------|
-| 集体报名 / 代填同行人（一单多人占额） | ACTIVITY / TOUR | ≠拼团商城 |
-| 黑名单禁止报名（管理维护名单） | ACTIVITY / TOUR | 轻名单表；≠风控引擎 |
-| 活动办结「报名证明」PDF（固定模板） | ACTIVITY | ≠ CA 证书平台 |
-| 活动海报/封面多图 | ACTIVITY | gallery 扫词即可先顶；表内钉口径 |
-| 签到成功率 / 缺勤名单导出 | ACTIVITY / CHECKIN | 统计+CSV |
-| 活动问卷联动（结束后填满意度卷） | ACTIVITY | 扫词挂 survey；表内钉联动口径 |
-| 选课结果公示页（已满/开放） | COURSE | 档案 stage 展示加深 |
-| 认领双方评价 | LOST | allowRating 双向或单次 |
-| 签到二维码页（口令可视化） | ACTIVITY / CHECKIN | code_qr 可叠；表内钉 |
-| 课表冲突可视化高亮 | COURSE | UI；规则已有可加深 |
-| 抽签录取（随机抽满额） | ACTIVITY | 浅随机；≠公平抽签平台 |
-| 选课志愿序（第一/第二志愿） | COURSE | 字段+录取规则浅；≠完整志愿引擎 |
-| 活动志愿者岗位报名分流 | ACTIVITY | 分类名额；浅 |
-| 出团天气/须知附件包 | TOUR | 附件；浅 |
-| 选课抽签录取（名额紧张时） | COURSE | 浅随机；对齐活动抽签 |
-| 活动座位分区（区域名额） | ACTIVITY | 浅分区；≠影院选座主路径 |
-| 活动签到补签（管理端） | ACTIVITY / CHECKIN | 管理补录；通识 |
-| 失物启事加急置顶（付积分演示） | LOST | 字段+积分可选；浅 |
-| 活动相册（办结后上传） | ACTIVITY | gallery；浅 |
-| 活动学分认定回写提示（非自动） | ACTIVITY / CREDIT | 文案交叉；浅 |
-| 选课教师调课通知站内信 | COURSE | 消息；浅 |
-| 失物启事评论区开关 | LOST | item_comment 叠；浅 |
-| 活动容量超售保护（乐观锁说明） | ACTIVITY | 文案+校验；浅 |
-| 失物招领诚信分 | LOST | 浅分；通识偶见 |
-| 活动电子票夹（我的票） | ACTIVITY | 列表+码；通识 |
-| 活动门票转让（站内改签人） | ACTIVITY | 浅改名额占用；偶见 |
-| 选课抽签结果公示 | COURSE | 公示页；浅 |
-| 线路签证材料清单 | TOUR | material_check；出国皮 |
+（本组待补已清。）
 
 #### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
 
@@ -643,6 +614,10 @@
 
 | 功能 | 落点 | 挂载 |
 |------|------|------|
+| 活动问卷联动（结束后填满意度卷） | survey + archive.surveyFormId + labels.activitySurveyLinkLabel / activitySurveyLinkHint；办结后填卷写库 | **扫词开** ACTIVITY |
+| 课表冲突可视化高亮 | ticket.conflictHighlight + labels.conflictHighlightLabel / conflictHighlightHint；WeekCalendar/ArchiveBrowse 高亮 | **域默认** COURSE |
+| 活动相册（办结后上传） | ticket.allowPostGallery + post_gallery_json + labels.postGalleryLabel / postGalleryHint；办结后上传写库 | **域默认** ACTIVITY |
+| 活动学分认定回写提示（非自动） | ticket.requireCreditWritebackAck + credit_writeback_ack + labels.creditWritebackHint / creditWritebackAckLabel；CREDIT labels.creditFromActivityHint | **域默认** ACTIVITY；CREDIT 交叉文案 |
 | 报名须知「已阅读」勾选后才可提交 | ticket.requireNoticeAck + notice_ack；MyTickets 勾选写库 | **域默认** 四域 |
 | 报名审核驳回理由必填 | TicketStore.approve 驳回非空 + labels.rejectReasonRequired | **域默认** 四域 |
 | 报名成功站内信 | ticket.notifyOnApplySuccess → MessageStore.send | **域默认** 四域 |
@@ -692,6 +667,29 @@
 | 线路报名年龄限制 | ticket.ageConstraint；archive.minAge/maxAge vs 资料 ageYears | **域默认** TOUR |
 | 出团前资料清单 | material_check 域强制；团员按清单上传写库 | **域默认** TOUR |
 | 团员保险名单导出列 | insurance_ack 列+TicketRecordsAdmin 表/CSV | **域默认** TOUR |
+| 活动海报/封面多图 | gallery 域强制；ArchiveBrowse 图集 | **域默认** ACTIVITY |
+| 选课结果公示状态（开放/已满） | archive.stage 选项+stock 同步开放↔已满；ArchiveBrowse stage 色标 | **域默认** COURSE |
+| 选课志愿序（第一/第二志愿） | ticket.allowWishOrder→wish_order；labels.wishOrderLabel/wishOrderHint；MyTickets 写库 | **域默认** COURSE |
+| 活动志愿者岗位报名 | ticket.allowVolunteerRole→volunteer_role；labels.volunteerRoleLabel/volunteerRoleHint；TicketRecordsAdmin 列 | **域默认** ACTIVITY |
+| 出团天气/须知确认 | archive.weatherNote + ticket.requireTourNoticeAck→tour_notice_ack；labels.tourNoticeAckLabel | **域默认** TOUR |
+| 活动签到补签（管理端） | ticket.allowAdminCheckin；POST admin-checkin；labels.adminCheckinLabel/adminCheckinHint；TicketRecordsAdmin | **域默认** ACTIVITY |
+| 失物启事评论区 | item_comment 域强制；ArchiveBrowse 评论写库 | **域默认** LOST |
+| 活动容量超售保护提示 | labels.oversellGuardHint + stock 扣减同步；MyTickets 提示 | **域默认** ACTIVITY |
+| 签到二维码页（口令可视化） | code_qr 域强制；ArchiveBrowse CodeQrBlock(checkinCode)；labels.codeQrHint | **域默认** ACTIVITY |
+| 活动办结「报名证明」打印 | ticket.printTicket；labels.printTicketLabel/activityProofHint；TicketRecordsAdmin 打印 | **域默认** ACTIVITY |
+| 集体报名 / 代填同行人 | ticket.allowCompanions→`ticket_companion` 子表 + allowQty；labels.companionNamesLabel/Hint | **域默认** ACTIVITY/TOUR |
+| 签到缺勤名单导出 | status=absent/checked_in 筛选+CSV；labels.absentExportLabel/Hint | **域默认** ACTIVITY |
+| 认领双方评价 | ticket.allowRating；MyTickets 评价写库 | **域默认** LOST |
+| 失物招领诚信分 | ticket.creditOnOverdue；labels.creditScoreLabel/lostCreditHint | **域默认** LOST |
+| 失物启事加急置顶 | archive.pinTop→pin_top；列表置顶排序；labels.pinTopHint | **域默认** LOST |
+| 线路签证材料清单 | material_check 标题「出团/签证资料清单」；labels.visaMaterialHint | **域默认** TOUR |
+| 黑名单禁止报名 | schema.applyBlacklist + apply_blacklist 表；ApplyBlacklistStore；labels.applyBlacklist* | **域默认** ACTIVITY/TOUR |
+| 活动/选课抽签录取 | ticket.allowLottery + archive.admitMode；status=lottery；lottery-draw | **域默认** ACTIVITY/COURSE |
+| 选课抽签结果公示 | GET lottery-result；ArchiveBrowse 公示；labels.lotteryResult* | **域默认** COURSE |
+| 活动座位分区 | archive.seatZones + ticket.seat_zone；labels.seatZone* | **域默认** ACTIVITY |
+| 活动电子票夹 | ticket.allowTicketWallet；MyTickets 出示通行码；labels.ticketWallet* | **域默认** ACTIVITY |
+| 活动门票转让 | ticket.allowTicketTransfer；POST transfer；labels.ticketTransfer* | **域默认** ACTIVITY |
+| 选课教师调课通知 | ticket.scheduleChangeNotify；ArchiveStore 改 startAt/endAt/isbn 站内信 | **域默认** COURSE |
 
 不支持：真支付售票、闸机、地图导航、OTA 渠道、短信验证码通道（登录验证码除外）。
 
@@ -729,107 +727,117 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 证明/用印「套打 PDF」下载（固定模板） | CERT / SEAL | 本地模板；≠电子签章平台 |
-| 合同/许可到期站内信提醒 | CONTRACT / LABSAFE | 按日期扫；≠短信 |
-| 报销发票张数/金额校验规则 | EXPENSE | 提交校验；≠税控 |
-| 报销单明细多行（差旅交通住宿分行） | EXPENSE | 子表或 JSON 行；通识高频 |
-| 访客通行码到期自动失效展示 | VISITOR / CARPASS | 码字符串上加有效期展示 |
-| 用车里程回填与油耗备注 | FLEET | 办结字段 |
-| 评教未评名单导出催评 | EVAL | CSV；≠强制弹窗阻断登录（可另议） |
-| 党员发展阶段时间轴展示 | PARTY | 只读时间线；≠智慧党建平台 |
-| 大创中期/结题材料节点提醒 | PROJ | 站内信；按日期 |
-| 采购比价至少 N 家供应商校验 | PROCURE | 提交规则；浅 |
-| 查寝缺勤连续 N 次预警名单 | CHECKIN | 列表筛选；≠人脸 |
-| 用印份数/份号回填 | SEAL | 办结字段 |
-| 证明领取方式（自取/邮寄地址） | CERT | 申请字段 |
-| 宣传品尺寸/悬挂位置字段 | PROMO | 档案字段加深 |
-| 装修噪音时段约束提示 | FITOUT | 文案+弱校验 |
-| 学籍异动影响课表提示（只读说明） | ACAD | 公告式提示；≠自动改课表 |
-| 出差行程多段（出发/途经/返回） | TRIP | 多行明细 |
-| 加班调休核定小时数 | TRIP | 办结字段 |
-| 第二课堂学分上限校验 | CREDIT | 对齐选课学分上限思路 |
-| 劳动时长证明附件 | LABOR | requireAttach |
-| 评教开放窗口（起止日期） | EVAL | 与问卷截止同思路 |
-| 综测加减分证据材料清单 | MORAL | material_check |
-| 获奖证书编号查重 | AWARD | 录入校验 |
-| 伦理批件编号与有效期 | ETHIC | 档案字段 |
-| 合同正文附件版本号 | CONTRACT | 附件+版本备注 |
-| 访客黑名单（禁止预约） | VISITOR | 轻名单；对齐活动黑名单 |
-| 车辆通行证与车位预约互斥提示 | CARPASS | 文案；≠道闸 |
-| 准入培训学时累计 | LABSAFE | 字段累计；考试另挂 exam |
-| 申请人撤回未审单据 | 本组通用 | 状态规则；通识高频 |
-| 审批常用意见短语 | 本组通用 | 下拉短语；浅 |
-| 审批抄送知会（只读通知） | 本组通用 | 站内信；≠会签引擎 |
-| 用车驾驶员/随车人登记 | FLEET | 办结或申请字段 |
-| 查寝楼栋长代登记 | CHECKIN | 岗权限；通识宿舍题 |
-| 报销票据影像必传张数 | EXPENSE | requireAttach 条件 |
-| 合同签署方多方勾选 | CONTRACT | 字段；≠法大大 |
-| 社团年审材料一键复制上年 | CLUB | 浅复制；通识 |
-| 审批时限超时催办站内信 | 本组通用 | 对齐 deadline；通识 |
-| 证明开具流水号规则 | CERT | 编号生成；浅 |
-| 用印监印人确认勾选 | SEAL | 办结字段 |
-| 大创项目成员变更申请 | PROJ | 轻单；通识 |
-| 评教一人一课防重复提交 | EVAL | 规则；高频 |
-| 访客邀约码（被访人生成） | VISITOR | 字符串码；浅 |
-| 采购到货入库一键转台账 | PROCURE | 浅联动 ASSET 思路；表内钉 |
-| 伦理会议日期与决议摘要 | ETHIC | 字段；浅 |
-| 加签/转审（仅一跳，非任意 BPM） | 本组通用 | 浅转审；完整流程图引擎仍不支持 |
-| 审批意见最少字数 | 本组通用 | 提交校验；通识 |
-| 证明真伪查询码（公开页） | CERT | 字符串码查询；浅 |
-| 用车加油票/过路费附件 | FLEET | requireAttach |
-| 查寝照片必传 | CHECKIN | requireAttach；通识宿舍题 |
-| 合同续签提醒（到期前） | CONTRACT | 对齐到期提醒加深 |
-| 思想汇报/心得附件节点 | PARTY | material_check 节点 |
-| 评教结果对学生不可见开关 | EVAL | schema；通识 |
-| 访客到访登记（现场补录） | VISITOR | 管理端补单；浅 |
-| 劳动时长地点字段 | LABOR | 申请字段 |
-| 审批委托（请假期间代审） | 本组通用 | 浅委托；≠完整授权中心 |
-| 用印文件份数与装订说明 | SEAL | 申请字段加深 |
-| 证明开具领取二维码 | CERT | code_qr 叠 |
-| 大创中期检查表套打 | PROJ | PDF 模板；浅 |
-| 访客预约时段余量 | VISITOR | slot 思路；浅 |
-| 车辆通行证年检到期提醒 | CARPASS | 日期提醒；浅 |
-| 采购预算余额校验 | PROCURE | 额度台账；浅 |
-| 综测公示期异议入口 | MORAL | 轻单；对齐资助异议 |
-| 审批退回修改后再提 | 本组通用 | 状态回退；通识高频 |
-| 用车回场油量登记 | FLEET | 办结字段 |
-| 证明邮寄快递单号回填 | CERT | 字段；浅 |
-| 大创经费使用登记浅表 | PROJ | 台账；≠银企 |
-| 评教课程维度权重可配 | EVAL | schema；浅 |
-| 访客随行人数字段 | VISITOR | 申请字段 |
-| 查寝异常类型字典 | CHECKIN | 字典；通识 |
-| 合同审批意见对签署方可见开关 | CONTRACT | schema；浅 |
-| 审批限时自动通过（可选危险开关） | 本组通用 | schema；通识偶见；默认关 |
-| 实验室准入考试成绩门槛 | LABSAFE | 叠 exam；规则 |
-| 宣传品投放反馈照片 | PROMO | 办结附件 |
-| 装修验收不合格整改单 | FITOUT | 轻单；浅 |
-| 学籍异动生效日期 | ACAD | 字段；通识 |
-| 党员发展阶段材料清單模板 | PARTY | material_check 模板 |
-| 审批附件版本覆盖留旧 | 本组通用 | 附件历史；浅 |
-| 用印登记拍摄回传 | SEAL | 办结附件 |
-| 证明开具份数上限 | CERT | 规则；浅 |
-| 大创结题查重说明（外链） | PROJ | URL；≠查重引擎 |
-| 评教督导听课记录 | EVAL | 管理端浅表；偶见 |
-| 访客通行证打印 | VISITOR | 浏览器打印；浅 |
-| 伦理审查意见书模板下载 | ETHIC | PDF；浅 |
-| 社团成员名册导入 | CLUB | 导入；通识 |
-| 审批抄送人可追加评论 | 本组通用 | 浅；知会加深 |
-| 用车违章责任人登记 | FLEET | 字段；浅 |
-| 证明加急件标记 | CERT | 字段；浅 |
-| 采购验收不合格退货登记 | PROCURE | 浅单；浅 |
-| 查寝抽查任务生成 | CHECKIN | 名单抽样浅；≠算法 |
-| 合同金额大写展示 | CONTRACT | UI；通识 |
-| 审批统计（人均耗时）简表 | 本组通用 | 工作台；浅 |
-| 用印台账导出 | SEAL | CSV；通识 |
-| 证明真伪公开查询页已齐钉口径 | CERT | 查伪码齐后加深公开页 |
-| 大创项目变更日志 | PROJ | 流水；浅 |
-| 评教结果院系汇总导出 | EVAL | CSV；通识 |
-| 访客来访目的字典 | VISITOR | 字典；浅 |
-| 审批意见附件（审时上传） | 本组通用 | 附件；浅 |
-| 用车驾驶员资质附件 | FLEET | requireAttach |
-| 证明领取核销码 | CERT | code_qr；浅 |
-| 评教强制顺序（先评后查分） | EVAL / GRADE | 文案交叉；偶见 |
-| 查寝楼长日报汇总 | CHECKIN | 导出；通识 |
+| （本组待补已清） | — | §1.5 审批/填报清尾完成 |
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径：已齐 = **管理能管 + 用户可产生数据**。本轮经 `approve_thicken` 加厚；骨架门禁钉 labels 与 Store，**不靠起包**。复用 withdraw / return-revise / dueSoon 不改共享语义。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 申请人撤回未审单据 | POST `/api/tickets/{id}/withdraw` + labels.withdrawHint（MyTickets 撤销） | **域默认** 审批 23 域 |
+| 审批退回修改后再提 | return-revise / resubmit + maxReviseTimes / revise_count；labels.maxReviseHint | **域默认** 审批 23 域 |
+| 审批常用意见短语 | ticket.approvePhrases + labels.approvePhraseLabel / approvePhraseHint；TicketsAdmin 下拉灌入 | **域默认** 审批 23 域 |
+| 审批意见最少字数 | ticket.minApproveRemarkWords + labels.minApproveRemarkHint；ApproveOps 校验（≠申请正文 minRemarkWords） | **域默认** 审批 23 域 |
+| 审批时限超时催办站内信 | deadline + dueSoonDays + labels.approveDueSoonHint；approveThicken 时站内「请及时办理」 | **域默认** 审批 23 域 |
+| 审批抄送知会（只读通知） | ticket.allowApproveCc + cc_usernames + labels.approveCcLabel / approveCcHint；审后 MessageStore | **域默认** 审批 23 域 |
+| 加签/转审（仅一跳） | ticket.allowApproveTransfer + labels.approveTransferLabel / approveTransferHint；复用 reassign，FE 与报修 thicken 隔离 | **域默认** 审批 23 域 |
+| 审批委托（请假期间代审） | approve_delegate 表 + `/api/tickets/approve-delegate`；labels.approveDelegateLabel / approveDelegateHint | **域默认** 审批 23 域 |
+| 审批意见附件（审时上传） | approve_attach_url + labels.approveRemarkAttachLabel / approveRemarkAttachHint；审框上传 | **域默认** 审批 23 域 |
+| 审批抄送人可追加评论 | allowApproveCcComment + `/api/tickets/{id}/cc-comment`；labels.approveCcCommentLabel / approveCcCommentHint | **域默认** 审批 23 域 |
+| 审批限时自动通过（默认关） | allowApproveAutoPass + approveAutoPassHours；labels.approveAutoPassHint；DemoScheduleJobs 扫待审（扫词才开） | **扫词** 审批域 |
+| 证明领取方式（自取/邮寄地址） | allowCertPickup + pickup_method/mail_address；邮寄办结前必填 express_no；labels.certPickupLabel / mailAddressLabel / expressNoLabel；MyTickets + 办结框 + 记录表 | **域默认** CERT |
+| 证明加急件标记 | allowCertUrgent + cert_urgent；列表 `cert_urgent DESC` 优先；可写 priority=紧急；labels.certUrgentLabel / certUrgentHint | **域默认** CERT |
+| 用印文件份数与装订说明 | allowSealCopies + seal_copies/bind_note；办结必填 seal_copy_nos + seal_witness_ack；labels.sealCopiesLabel / sealCopyNosLabel / sealWitnessAckLabel | **域默认** SEAL |
+| 用车里程回填与油耗备注 | allowFleetMileage；办结闸：mileage_km>0 且 fuel_note 必填；labels.mileageLabel / fuelNoteLabel / fleetMileageHint | **域默认** FLEET |
+| 报销发票张数/金额校验规则 | allowExpenseInvoice + invoice_count + fineYuan>0 + **requireAttach**；labels.invoiceCountLabel / expenseAmountLabel / expenseInvoiceHint | **域默认** EXPENSE |
+| 访客随行人数字段 | allowVisitorCount；人数>0 必填 `ticket_companion` 子表；labels.visitorCountLabel / companionNamesLabel | **域默认** VISITOR |
+| 证明邮寄快递单号回填 | express_no；邮寄件办结闸；labels.expressNoLabel / expressNoHint | **域默认** CERT（并入领取方式补厚） |
+| 用印份数/份号回填 | seal_copy_nos；办结闸；labels.sealCopyNosLabel | **域默认** SEAL（并入份数装订补厚） |
+| 用印监印人确认勾选 | seal_witness_ack；办结闸；labels.sealWitnessAckLabel / sealWitnessHint | **域默认** SEAL（并入份数装订补厚） |
+| 访客黑名单（禁止预约） | schema.applyBlacklist + ApplyBlacklistStore；labels.applyBlacklistTitle / applyBlacklistLead；VISITOR 复用黑名单表 | **域默认** VISITOR |
+| 第二课堂学分上限校验 | semesterCreditCap + creditWarnRemaining + GuardOps；labels.creditCapHint；档案 credit 列 | **域默认** CREDIT |
+| 评教一人一课防重复提交 | forceOnePerArchive + allowMultiTicket=false；labels.evalOnePerCourseHint；ApplyOps 拒重提 | **域默认** EVAL |
+| 获奖证书编号查重 | allowAwardCertNo + award_cert_no 唯一校验；labels.awardCertNoLabel / awardCertNoHint；MyTickets 必填 | **域默认** AWARD |
+| 采购比价至少 N 家供应商校验 | minVendorQuotes + vendor_quotes；labels.vendorQuotesLabel / minVendorQuotesHint；提交行数闸 | **域默认** PROCURE |
+| 合同/许可到期站内信提醒 | notifyArchiveExpireDays + expire_on + expire_soon_notified_at；ArchiveStore.maybeNotifyExpireSoon；labels.archiveExpireNotifyHint | **域默认** CONTRACT / LABSAFE |
+| 评教开放窗口（起止日期） | allowEvalOpenWindow + 档案 eval_open_on/eval_close_on；Asserts 对齐 applyDeadline；labels.evalOpenWindowHint / evalOpenWindowDenyMessage | **域默认** EVAL |
+| 加班调休核定小时数 | allowCompHours + comp_hours；办结闸 >0；labels.compHoursLabel / compHoursHint；MyTickets/RepairFinishDialog | **域默认** TRIP |
+| 用车驾驶员/随车人登记 | allowFleetCrew + driver_name/passenger_names；申请必填驾驶员；labels.driverNameLabel / passengerNamesLabel / fleetCrewHint | **域默认** FLEET |
+| 劳动时长证明附件 | requireAttach + attach_url；labels.laborAttachLabel / laborAttachHint | **域默认** LABOR |
+| 伦理批件编号与有效期 | allowEthicBatch + 档案 batch_no/expire_on；labels.batchNoLabel / expireOnLabel / ethicBatchHint | **域默认** ETHIC |
+| 查寝照片必传 | requireAttach + attach_url；labels.checkinPhotoLabel / checkinPhotoHint | **域默认** CHECKIN |
+| 访客通行码到期自动失效展示 | allowPassExpire + pass_expire_at（审过 +passExpireDays）；过期软闸签到/出示；labels.passExpireAtLabel / passExpiredLabel / passExpireHint | **域默认** VISITOR / CARPASS |
+| 用车回场油量登记 | allowReturnFuel + return_fuel；办结闸 0–100；labels.returnFuelLabel / returnFuelHint | **域默认** FLEET |
+| 劳动时长地点字段 | allowLaborPlace + labor_place 申请必填；labels.laborPlaceLabel / laborPlaceHint | **域默认** LABOR |
+| 宣传品尺寸/悬挂位置字段 | allowPromoPlace + 档案 promo_size/hang_place；labels.promoSizeLabel / hangPlaceLabel / promoPlaceHint | **域默认** PROMO |
+| 伦理会议日期与决议摘要 | allowEthicMeeting + 档案 meeting_on/resolution_note；labels.meetingOnLabel / resolutionNoteLabel / ethicMeetingHint | **域默认** ETHIC |
+| 学籍异动生效日期 | allowEffectiveOn + effective_on 日期必填；labels.effectiveOnLabel / effectiveOnHint | **域默认** ACAD |
+| 证明开具流水号规则 | allowCertIssueNo + cert_issue_no（审过签发 CERT+8 位，≠serial_no/award_cert_no）；labels.certIssueNoLabel / certIssueNoHint | **域默认** CERT |
+| 用车加油票/过路费附件 | requireAttach + attach_url；labels.fleetTollAttachLabel / fleetTollAttachHint；不改油量/驾乘 | **域默认** FLEET |
+| 宣传品投放反馈照片 | requireCloseAttach + allowPromoFeedback + close_attach_url；labels.promoFeedbackLabel / promoFeedbackHint | **域默认** PROMO |
+| 合同正文附件版本号 | allowDocRev + doc_rev 申请必填；labels.docRevLabel / docRevHint | **域默认** CONTRACT |
+| 装修噪音时段约束 | allowFitoutQuiet + work_start/work_end 对照档案 quiet_start/quiet_end；重叠拒写；labels.fitoutWindowLabel / fitoutQuietHint | **域默认** FITOUT |
+| 访客邀约码（被访人生成） | requireApplyInvite + 档案 apply_invite_code；labels.visitorInviteLabel / visitorInviteHint；不进 APPLY_DOMAINS | **域默认** VISITOR |
+| 用印登记拍摄回传 | requireCloseAttach + allowSealClosePhoto + close_attach_url；labels.sealPhotoLabel / sealPhotoHint；不改份数/监印 | **域默认** SEAL |
+| 证明开具份数上限 | allowIssueCopies + issue_copies；档案 max_issue_copies；超上限拒写；labels.issueCopiesLabel / issueCopiesHint | **域默认** CERT |
+| 合同签署方多方勾选 | allowSignParties + sign_parties 申请必填；labels.signPartiesLabel / signPartiesHint；≠CA | **域默认** CONTRACT |
+| 准入培训学时累计 | allowTrainHours + train_hours；审过累加档案 train_hours_total；labels.trainHoursLabel / trainHoursHint | **域默认** LABSAFE |
+| 车辆通行证年检到期提醒 | allowInspectExpire + 档案 inspect_expire_on + notifyArchiveExpireDays；labels.inspectExpireOnLabel / inspectExpireHint；不改通行码软闸 | **域默认** CARPASS |
+| 大创项目成员变更申请 | allowMemberChange + member_change_note 申请必填；labels.memberChangeNoteLabel / memberChangeNoteHint | **域默认** PROJ |
+| 采购预算余额校验 | allowProcureBudget + procure_amount；档案 budget_total；超余额拒写；labels.procureAmountLabel / procureBudgetHint | **域默认** PROCURE |
+| 查寝异常类型字典 | allowCheckinException + exception_type；ticket.exceptionTypeOptions；labels.exceptionTypeLabel / exceptionTypeHint | **域默认** CHECKIN |
+| 访客来访目的字典 | allowVisitPurpose + visit_purpose；ticket.visitPurposeOptions；labels.visitPurposeLabel / visitPurposeHint | **域默认** VISITOR |
+| 用车违章责任人登记 | allowFleetViolation + violation_person 办结必填；labels.violationPersonLabel / violationPersonHint；不改附件/油量/驾乘 | **域默认** FLEET |
+| 装修验收不合格整改单 | allowFitoutRectify + rectify_note 申请必填；labels.rectifyNoteLabel / rectifyNoteHint；不改禁噪窗 | **域默认** FITOUT |
+| 大创中期/结题材料节点提醒 | allowProjNodeRemind + 档案 mid_due_on/final_due_on + notifyArchiveExpireDays；labels.midDueOnLabel / finalDueOnLabel / projNodeRemindHint；不改成员变更 | **域默认** PROJ |
+| 社团年审材料复制上年 | allowClubCopyLast + GET `/api/tickets/last-approved-mine` 回填说明/附件；labels.clubCopyLastLabel / clubCopyLastHint | **域默认** CLUB |
+| 采购验收不合格退货登记 | allowProcureReturn + return_fail/return_note 办结写库；labels.procureReturnFailLabel / returnNoteLabel / procureReturnHint；不改预算闸 | **域默认** PROCURE |
+| 综测公示期异议入口 | allowMoralObjection + objection_note 用户 POST `/api/tickets/{id}/objection`；labels.moralObjectionLabel / moralObjectionHint；不挂资助公示、不写 allowObjectionWindow | **域默认** MORAL |
+| 大创经费使用登记 | allowProjFundUse + fund_use_yuan/fund_use_note 申请必填；labels.fundUseYuanLabel / fundUseNoteLabel / fundUseHint；不改节点/成员 | **域默认** PROJ |
+| 评教课程维度权重 | allowEvalDimWeight + ratingDims.weight + 档案权重列；综合分按权；labels.evalDimWeightHint | **域默认** EVAL |
+| 访客预约时段余量 | allowVisitSlotRemain + visit_on + 档案 visit_slot_cap；满额拒写；labels.visitOnLabel / visitSlotRemainHint；不复用 occupy_span | **域默认** VISITOR |
+| 大创结题查重说明（外链） | allowPlagiarismUrl + plagiarism_url 申请必填 http(s)；labels.plagiarismUrlLabel / plagiarismUrlHint；不改经费/成员/节点 | **域默认** PROJ |
+| 查寝缺勤连续 N 次预警名单 | allowAbsentStreak + 档案 absent_warn_n；未归连续达阈拒写；labels.absentWarnNLabel / absentStreakHint；不叠必附 | **域默认** CHECKIN |
+| 党员发展阶段时间轴展示 | allowPartyStage + party_stage/stage_on 申请必填；labels.partyStageLabel / stageOnLabel / partyStageHint；不上 material_check | **域默认** PARTY |
+| 评教督导听课记录 | allowEvalObserve + observe_on/observe_note 申请必填；labels.observeOnLabel / observeNoteLabel / evalObserveHint；不改维度权重 | **域默认** EVAL |
+| 学籍异动影响课表提示（只读说明） | allowScheduleImpact + schedule_impact_note 申请必填；labels.scheduleImpactNoteLabel / scheduleImpactHint；不自动改课表、不影响生效日 | **域默认** ACAD |
+| 合同金额大写展示 | allowContractAmount + contract_amount 申请必填；前端金额大写；labels.contractAmountLabel / contractAmountCnLabel / contractAmountHint；不改签署方/版本号 | **域默认** CONTRACT |
+| 报销单明细多行（差旅交通住宿分行） | allowExpenseLines + 子表 ticket_expense_line（ticket_id 外键，一行一类费用）；申请必填行；labels.expenseLinesLabel / expenseLineCategoryLabel / expenseLineAmountLabel / expenseLineNoteLabel / expenseLinesHint；不改发票张数/必附；不用 JSON 列 | **域默认** EXPENSE |
+| 出差行程多段（出发/途经/返回） | allowTripLegs + 子表 ticket_trip_leg（ticket_id 外键，一段一行）；申请必填段；labels.tripLegsLabel / tripLegFromLabel / tripLegViaLabel / tripLegToLabel / tripLegOnLabel / tripLegsHint；不改加班小时；不用 JSON 列 | **域默认** TRIP |
+| 评教结果对学生不可见开关 | allowHideEvalResult + 档案 hide_eval_result；学生端掩评分；labels.hideEvalResultLabel / hideEvalResultHint；不改权重/听课 | **域默认** EVAL |
+| 合同审批意见对签署方可见开关 | allowSignRemarkVisible + 档案 sign_remark_visible；关则学生端不展示审批意见；labels.signRemarkVisibleLabel / signApproveRemarkLabel / signRemarkVisibleHint；不改金额/签署方 | **域默认** CONTRACT |
+| 大创项目变更日志 | allowProjChangeLog + change_log_note 申请必填；labels.changeLogNoteLabel / projChangeLogHint；不改成员/经费/查重 | **域默认** PROJ |
+| 证明真伪查询码（公开页） | allowCertVerify + verify_code 审过签发；GET `/api/tickets/verify` + `/cert-verify`；labels.certVerifyCodeLabel / certVerifyHint / certVerifyPageTitle / certVerifyPageLead / certVerifyOkText / certVerifyMissText；≠流水号/code_qr | **域默认** CERT |
+| 访客到访登记（现场补录） | allowVisitWalkIn + POST `/api/tickets/walk-in`（管理代被访人写库，walk_in+visit_on）；labels.visitWalkInLabel / visitWalkInForLabel / visitWalkInHint；不改黑名单/邀约/日余量 | **域默认** VISITOR |
+| 查寝楼栋长代登记 | allowCheckinProxy + POST `/api/tickets/checkin-proxy`（写学生名下，checkin_proxy_by）；labels.checkinProxyLabel / checkinProxyForLabel / checkinProxyByLabel / checkinProxyHint；不叠必附/连续未归 | **域默认** CHECKIN |
+| 社团成员名册导入 | allowClubRoster + 子表 ticket_club_member（ticket_id 外键，一人一行）；申请必填行+可粘贴表格；labels.clubRosterLabel / clubMemberNameLabel / clubMemberNoLabel / clubRosterHint；不改复制上年；不用 JSON 列 | **域默认** CLUB |
+| 车辆通行证与车位预约互斥 | allowCarpassParkingMutex + 档案 parking_mutex + 申请 parking_on；同车位同日拒写；labels.parkingOnLabel / parkingMutexLabel / carpassParkingMutexHint；不改通行码/年检 | **域默认** CARPASS |
+| 评教未评催评 | allowEvalUrge + POST `/api/tickets/eval-urge` 站内信；用户仍写评教；labels.evalUrgeLabel / evalUrgeHint；不改权重/听课/隐藏结果 | **域默认** EVAL |
+| 合同续签（拟续签日期与说明） | allowContractRenew + renew_on/renew_note 申请必填；labels.renewOnLabel / renewNoteLabel / contractRenewHint；不改到期提醒/金额/签署方/意见可见 | **域默认** CONTRACT |
+| 合同续签提醒（到期前） | allowContractExpireRemind + notifyArchiveExpireDays（默认 7）加深 expire_on 站内信；申请人 approved/returned 同步提醒；标题 labels.contractExpireRemindTitle；labels.contractExpireRemindHint；不改 renew_on | **域默认** CONTRACT |
+| 证明领取核销码 | allowCertPickupRedeem + pickup_redeem_code（PK+10 位）审过签发 + pickup_redeemed；POST `/api/tickets/{id}/redeem-pickup`；labels.pickupRedeemCodeLabel / pickupRedeemedLabel / pickupRedeemHint；≠ verify_code / 流水号 / PDF | **域默认** CERT |
+| 实验室准入考试成绩门槛 | allowExamPassMin + 档案 exam_pass_min；申请对照 ExamStore 已交卷；labels.examPassMinLabel / examPassMinHint；不改学时累计 | **域默认** LABSAFE |
+| 查寝抽查任务生成 | allowCheckinSpot + 子表 checkin_spot_task / checkin_spot_member；POST/GET `/api/tickets/spot-check` 随机抽 N 人；用户仍走查寝登记；labels.checkinSpotLabel / checkinSpotSampleLabel / checkinSpotOnLabel / checkinSpotHint；不叠代登记/连续未归 | **域默认** CHECKIN |
+| 评教强制顺序（先评后查分） | allowEvalBeforeGrade；GET `/api/grade-scores/mine` 未评齐拒读；labels.evalBeforeGradeHint；不改 GRADE 写库 | **域默认** EVAL |
+| 审批统计（人均耗时）简表 | allowApproveDurationStats + GET `/api/tickets/approve-duration-stats` AVG(apply_at→approve_at) 按办理人；labels.approveDurationStatsLabel / approveDurationStatsHint；只读 | **域默认** 审批 23 域 |
+| 审批附件版本覆盖留旧 | allowAttachKeepOld + 子表 ticket_attach_rev；覆盖 attach_url 前写入旧址；GET `/api/tickets/{id}/attach-revs`；labels.attachKeepOldLabel / attachKeepOldHint；不改办结附件槽 | **域默认** 审批 23 域 |
+| 证明开具领取二维码 | allowCertPickupQr + CodeQrBlock 出示 pickup_redeem_code；labels.pickupQrLabel / pickupQrHint；≠套打 PDF / verify_code | **域默认** CERT |
+| 证明真伪公开查询页已齐钉口径 | allowCertVerifyPage 加深 `/cert-verify` 展示状态/流水号；labels.certVerifyStatusLabel / certVerifyAtLabel / certVerifyIssueNoLabel / certVerifyPageDeepenHint；不改签发 | **域默认** CERT |
+| 访客通行证打印 | allowVisitorPassPrint + 浏览器打印通行码；labels.visitorPassPrintLabel / visitorPassPrintHint；≠道闸 | **域默认** VISITOR |
+| 查寝楼长日报汇总 | allowCheckinDailyReport + GET `/api/tickets/checkin-daily` 按日汇总导出；labels.checkinDailyLabel / checkinDailyOnLabel / checkinDailyHint；不叠抽查/代登记 | **域默认** CHECKIN |
+| 评教结果院系汇总导出 | allowEvalCollegeExport + GET `/api/tickets/eval-college-stats` 按档案 college 汇总；labels.evalCollegeExportLabel / evalCollegeLabel / evalCollegeExportHint；不改先评后查分 | **域默认** EVAL |
+| 用印台账导出 | allowSealLedgerExport + TicketRecordsAdmin CSV 加深份号/监印列；labels.sealLedgerExportLabel / sealLedgerExportHint；不改份数/监印/现场照/套打 PDF | **域默认** SEAL |
+| 综测加减分证据材料清单 | allowMoralMaterialCheck + 复用 material_check 种子（加分/减分/佐证）；labels.moralMaterialHint / materialChecklistTitle / materialChecklistLead；不挂资助公示、不新开附件槽 | **域默认** MORAL |
+| 党员发展阶段材料清单模板 | allowPartyMaterialTemplate + material_check 按阶段种子 + material_template；labels.partyMaterialHint / materialChecklistTitle / materialChecklistLead；不改 party_stage/stage_on | **域默认** PARTY |
+| 思想汇报/心得附件节点 | allowPartyThoughtAttach + 清单必传「思想汇报」「心得体会」；labels.partyThoughtHint；不另开附件槽、不改阶段时间轴 | **域默认** PARTY |
+| 证明开具套打页 | allowCertFormPrint + printTicket；共用 `ticketFormPrint.js` 证明书版式；labels.printTicketLabel / certFormPrintHint；≠ CA | **域默认** CERT |
+| 用印审批单套打 | allowSealFormPrint + printTicket；共用打印壳用印登记表版式；labels.printTicketLabel / sealFormPrintHint；≠ 真章机 | **域默认** SEAL |
+| 大创中期检查表套打 | allowProjMidFormPrint + printTicket；中期检查表版式；labels.printTicketLabel / projMidFormPrintHint | **域默认** PROJ |
+| 伦理审查意见书模板下载 | allowEthicOpinionPrint + printTicket；意见书版式；labels.printTicketLabel / ethicOpinionPrintHint；≠ CA | **域默认** ETHIC |
+| 报销票据影像必传张数 | allowExpenseAttachCount + requireAttach；labels.expenseAttachCountHint；浅提示影像张数对齐发票张数，不新开多文件槽 | **域默认** EXPENSE |
+| 用车驾驶员资质附件 | allowFleetDriverCert + 复用 material_check 种子（驾驶证/从业资格证）；labels.fleetDriverCertHint / materialChecklistTitle；不叠过路费 requireAttach | **域默认** FLEET |
+| 采购到货入库一键转台账 | 复用 §1.1 / `borrow_thicken`：`procureToStockIn` + stock_io；本组不重写 | **域默认** PROCURE（借还组已齐） |
 
 不支持：银企直连、法定 CA、道闸/人脸门禁硬件、完整 BPM 任意流程图引擎（三级审已有 cap）、党建学习强国对接。
 
@@ -1340,3 +1348,26 @@
 | 2026-10-01 | **§1.4 第二批已齐**：批量审/候补递补与转正信、取消时限、安全责任书与保险勾选、认领冷却、学分上限与预警、退选上限、先修弱提示、课程属性、成团最低人数；`apply_thicken`+三套 Store/门禁 |
 | 2026-10-01 | **§1.4 第三批已齐**：口令报名、报名费演示、年级资格、分场次、赞助商/团体票价、失物分类与浏览计数、面交双方确认、开课学院筛选、培养方案外链、TOUR 候补默认、单房差、出团名单紧急联系人导出 |
 | 2026-10-01 | **§1.4 第四批已齐**：签到迟到分钟、认领押金、LOST/TOUR 材料清单、先修硬确认、线路年龄限制、保险导出列 |
+| 2026-10-01 | **§1.4 第五批已齐**：图集/评论强制、选课 stage 开放↔已满、志愿序、志愿者岗位、出团须知确认、管理补签、超售提示 |
+| 2026-10-01 | **§1.4 第六批已齐**：签到二维码、报名证明打印、同行人占额、缺勤导出、认领评价、诚信分、启事置顶、签证资料口径 |
+| 2026-10-02 | **§1.4 第七批已齐**：报名黑名单、抽签录取与公示、座位分区、电子票夹、门票转让、调课站内信 |
+| 2026-10-02 | **§1.4 第八批已齐**：活动问卷联动、课表冲突可视化高亮、活动办结相册、学分认定回写提示 |
+| 2026-10-02 | **§1.5 第一批已齐**：撤回未审、退回再提、意见短语、审意见字数、时限催办、抄送知会；`approve_thicken`+三套 Store/门禁；复用不改共享语义 |
+| 2026-10-02 | **§1.5 第二批已齐**：转审一跳、请假代审、审意见附件、抄送评论、限时自动通过（默认关/扫词）；`approve_thicken` 加深 + Controller/定时任务/双端控件 |
+| 2026-10-02 | **§1.5 第三批已齐**：证明领取/加急、用印份数装订、用车里程油耗、报销发票张数金额、访客随行人数；域皮只挂本域 + 三套 Store/门禁 |
+| 2026-10-02 | **§1.5 第三批补厚**：邮寄快递单号办结闸、加急列表优先、用印份号+监印确认、里程油耗双必填、报销必附、随行必填姓名；并迁快递单号/份号/监印三行 |
+| 2026-10-03 | **§1.5 第四批已齐**：访客黑名单、第二课堂学分上限、评教一人一课、获奖证书编号查重、采购比价 N 家、合同/许可到期站内信；`approve_thicken`+三套 Store/门禁 |
+| 2026-10-03 | **§1.5 第五批已齐**：评教开放窗口、加班核定小时、用车驾乘人、劳动/查寝必附、伦理批件编号有效期；`approve_thicken`+三套 Store/门禁；LABOR/CHECKIN 只复用 requireAttach |
+| 2026-10-03 | **§1.5 第六批已齐**：通行码到期失效、回场油量、劳动地点、宣传尺寸悬挂、伦理会议决议、学籍生效日；`approve_thicken`+三套 Store/门禁；软闸≠道闸 |
+| 2026-10-03 | **§1.5 第七批已齐**：证明流水号、用车过路附件、宣传反馈照、合同版本号、装修禁噪窗、访客邀约码；`approve_thicken`+三套 Store/门禁；VISITOR 不进 APPLY_DOMAINS |
+| 2026-10-04 | **§1.5 第八批已齐**：用印现场照、证明份数上限、合同签署方、准入学时累计、车辆年检到期、大创成员变更；`approve_thicken`+三套 Store/门禁；年检不改通行码软闸 |
+| 2026-10-05 | **§1.5 第九批已齐**：采购预算闸、查寝异常类型、访客来访目的、用车违章责任人、装修整改说明、大创材料节点提醒；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
+| 2026-10-05 | **§1.5 第十批已齐**：社团复制上年、采购退货、综测异议、大创经费使用、评教维度权重、访客时段余量；`approve_thicken`+三套 Store/门禁；MORAL 不挂资助公示 |
+| 2026-10-05 | **§1.5 第十一批已齐**：大创查重外链、查寝连续未归预警、党员阶段登记、督导听课、学籍课表影响说明、合同金额大写；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
+| 2026-10-05 | **§1.5 第十二批已齐**：报销明细多行、出差行程多段、评教结果对学生不可见、合同意见对签署方可见、大创变更日志、证明真伪查询码；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
+| 2026-10-05 | **第十二批库表**：报销/行程改为 `ticket_expense_line` / `ticket_trip_leg` 子表（外键），去掉 JSON 列，便于讲三范式 |
+| 2026-10-05 | **§1.5 第十三批已齐**：访客现场补录、查寝代登记、社团名册子表、车位同日互斥、评教催评站内信、合同拟续签日期；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
+| 2026-10-05 | **§1.5 第十四批已齐**：合同到期续签提醒加深、证明领取核销码、准入考试及格门槛、查寝抽查子表、先评后查分、人均办理耗时；`approve_thicken`+三套 Store/门禁；抽查为浅抽样 |
+| 2026-10-05 | **§1.5 第十五批已齐**：申请附件覆盖留旧子表、证明领取二维码、真伪页加深、访客通行证打印、查寝楼长日报、评教院系汇总导出；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
+| 2026-10-05 | **§1.5 第十六批已齐**：用印台账 CSV、综测证据材料清单、党员阶段材料清单模板、思想汇报/心得清单项；复用 material_check；不新开附件槽 |
+| 2026-10-05 | **§1.5 第十七批已齐**：四套公文套打（共用 print 壳）、报销影像张数提示、用车资质清单；PROCURE 入库迁地图（borrow_thicken 已有）；§1.5 待补清零 |

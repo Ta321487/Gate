@@ -1,7 +1,7 @@
 """帖子禁言 post_mute：论坛行业默认；博客仍开题扫词。
 
 管理端设禁言截止时间；期内不可发帖/回复（≠ enabled=0 整号停用）。
-举报处置可一键禁言。禁言截止写入 sys_user.profile_json.postMuteUntil。
+举报处置可一键禁言。禁言截止写入 sys_user.post_mute_until。
 """
 
 from __future__ import annotations
@@ -71,3 +71,27 @@ def apply_post_mute_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+POST_MUTE_COLUMNS: list[tuple[str, str]] = [
+    ("post_mute_until", "DATETIME NULL"),
+]
+
+
+def ensure_post_mute_sql(sql: str, *, enabled: bool) -> str:
+    """禁言截止落 sys_user.post_mute_until，不写 profile_json。"""
+    if not enabled:
+        return sql
+    import re
+
+    from app.bake.sql.ddl_edit import CREATE_TABLE_RE, inject_missing_columns, strip_trailing_comma_before_close
+
+    def repl(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "sys_user":
+            return m.group(0)
+        body = inject_missing_columns(body, POST_MUTE_COLUMNS)
+        body = strip_trailing_comma_before_close(body)
+        return f"{head}{body}{tail}"
+
+    return CREATE_TABLE_RE.sub(repl, sql)

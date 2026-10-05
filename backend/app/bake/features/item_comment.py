@@ -40,7 +40,7 @@ _COMMENT_TERMS = (
     "互动点评",
 )
 
-_ALLOW_DOMAINS = frozenset({"DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG"})
+_ALLOW_DOMAINS = frozenset({"DOM-MEDIA", "DOM-MUSIC", "DOM-BLOG", "DOM-LOST"})
 
 
 def scan_item_comment(text: str) -> bool:

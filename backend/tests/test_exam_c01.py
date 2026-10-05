@@ -113,6 +113,7 @@ class ExamC01Tests(unittest.TestCase):
             "exam_attempt",
             "exam_answer",
             "exam_wrongbook",
+            "exam_option",
         ):
             self.assertIn(t, sql)
         self.assertNotIn("CREATE TABLE IF NOT EXISTS borrow", sql)

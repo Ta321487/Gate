@@ -467,6 +467,26 @@ class SceneScanContractTests(unittest.TestCase):
             activity_product_kind("献血与开放日报名管理系统", ""),
             "blood",
         )
+        # 社团活动题名：正文对比「商业票务平台」/功能「票务管理」不得洗成 ticket
+        club_body = (
+            "商业活动票务平台通常包含在线支付售票。"
+            "活动管理员：证书与票务管理、候补处理。"
+        )
+        self.assertEqual(
+            activity_product_kind(
+                "基于 Spring Boot 与 Vue 的高校社团活动报名系统的设计与实现",
+                club_body,
+            ),
+            "default",
+        )
+        self.assertEqual(
+            activity_product_kind("景区演出票务报名管理系统", "领票审核占票额"),
+            "ticket",
+        )
+        self.assertEqual(
+            activity_product_kind("歌剧院票务报名管理系统", "歌剧院演出领票"),
+            "ticket",
+        )
         self.assertEqual(
             scene_tour_parts("学生旅游线路报名系统", "周边跟团游"),
             "enterprise",

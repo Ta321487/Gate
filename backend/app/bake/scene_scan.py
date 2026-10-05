@@ -889,16 +889,51 @@ def scene_lost_parts(title: str, body: str = "") -> Scene:
 
 
 # 活动报名深皮：default | cert | ticket | blood | camp
+# ticket 勿用裸「票务」：开题对比「商业活动票务平台」、功能「证书与票务管理」会误洗社团/志愿 default 皮
 ACTIVITY_KIND_RULES: list[tuple[tuple[str, ...], str]] = [
     (("证书报考", "培训班", "四六级", "考证报名", "证书培训", "防暴恐", "反恐培训", "安全培训"), "cert"),
-    (("票务", "领票", "演出票", "景区票", "门票报名", "演出票务", "歌剧院", "歌剧", "剧场票"), "ticket"),
+    (
+        (
+            "领票",
+            "演出票",
+            "景区票",
+            "门票报名",
+            "演出票务",
+            "票务报名",
+            "景区演出",
+            "歌剧院",
+            "歌剧",
+            "剧场票",
+        ),
+        "ticket",
+    ),
     (("献血", "献血开放日", "无偿献血", "献血管理"), "blood"),
     (("研学报名", "夏令营", "赛事报名", "大赛报名", "研学夏令营"), "camp"),
 ]
 
+# 题名已是校园社团/志愿活动主叙事时，正文票务对比句不得洗皮（对齐 food_product_kind）
+ACTIVITY_DEFAULT_TITLE_HINTS = (
+    "社团",
+    "志愿",
+    "讲座",
+    "第二课堂",
+    "校园活动",
+    "高校活动",
+    "活动报名",
+)
+
 
 def activity_product_kind(title: str, body: str = "") -> str:
-    """活动域产品皮；题名优先。"""
+    """活动域产品皮；题名优先。
+
+    题名已写社团/志愿/讲座等且无专皮题名词时，正文「票务平台/票务管理」对比句不得洗成 ticket。
+    """
+    t = (title or "").strip()
+    if scan_has(t, ACTIVITY_DEFAULT_TITLE_HINTS):
+        title_hit = title_then_body_hit(t, "", ACTIVITY_KIND_RULES)
+        if title_hit:
+            return str(title_hit)
+        return "default"
     picked = title_then_body_hit(title, body, ACTIVITY_KIND_RULES)
     return str(picked) if picked else "default"
 

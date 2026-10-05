@@ -28,6 +28,25 @@ class ApplyGroupSkinTests(unittest.TestCase):
                 title_f = next(f for f in fields if f.get("key") == "title")
                 self.assertEqual(title_f.get("label"), field_lab)
 
+    def test_club_opening_body_ticket_contrast_stays_default(self) -> None:
+        """高校社团开题正文含票务对比/票务管理时，仍走 default 皮，不出歌剧景区 banner。"""
+        title = "基于 Spring Boot 与 Vue 的高校社团活动报名系统的设计与实现"
+        body = (
+            "建设活动报名信息系统。"
+            "商业活动票务平台通常包含在线支付售票、电子票与闸机核验。"
+            "活动管理员功能：证书与票务管理、候补处理。"
+        )
+        self.assertEqual(activity_product_kind(title, body), "default")
+        schema = SCHEMA_BUILDERS["DOM-ACTIVITY"](title, proposal_text=body)
+        self.assertEqual(schema["entities"]["archive"]["label"], "活动")
+        self.assertIn(schema["entities"]["ticket"]["label"], ("报名", "报名单"))
+        banners = schema.get("portalBanners") or []
+        leads = " ".join(str(b.get("lead") or "") for b in banners if isinstance(b, dict))
+        self.assertIn("社团", leads)
+        self.assertNotIn("歌剧", leads)
+        self.assertNotIn("景区", leads)
+        self.assertNotIn("领票", leads)
+
     def test_lost_donate_scene(self) -> None:
         self.assertEqual(
             scene_lost_parts("捐赠物资认领管理系统", "捐赠物资名录认领申请审核"),

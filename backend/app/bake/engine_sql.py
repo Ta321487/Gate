@@ -49,8 +49,9 @@ ESSENTIAL_CAP_TABLES: dict[str, frozenset[str]] = {
     "ai_assistant": frozenset({"sys_ai_knowledge", "sys_ai_message", "sys_ai_feedback"}),
     "exam": frozenset({
         "exam_question", "exam_paper", "exam_paper_question",
-        "exam_attempt", "exam_answer", "exam_wrongbook",
+        "exam_attempt", "exam_answer", "exam_wrongbook", "exam_option",
     }),
+    "survey": frozenset({"survey_option"}),
     "vote": frozenset({"vote_campaign", "vote_candidate", "vote_ballot"}),
     "favorites": frozenset({"user_favorite"}),
     "post_like": frozenset({"user_post_like"}),
@@ -63,7 +64,7 @@ ESSENTIAL_CAP_TABLES: dict[str, frozenset[str]] = {
     "audit_log": frozenset({"sys_audit_log"}),
     "browse_history": frozenset({"user_browse_history"}),
     "archive_log": frozenset({"archive_log"}),
-    "room_equipment": frozenset({"sys_equipment_dict"}),
+    "room_equipment": frozenset({"sys_equipment_dict", "item_equipment"}),
     "line_custom": frozenset({"line_spec_option"}),
     "delivery_window": frozenset({"delivery_slot", "price_span"}),
     "purchase_gate": frozenset({"purchase_permit"}),
@@ -133,7 +134,16 @@ def essential_scanned_tables(
     """开题扫入（非域默认）能力对应、且 SQL 里确实存在的表名。"""
     present = set(list_create_table_names(sql))
     defaults = _domain_default_caps(domain)
-    out: set[str] = set()
+    out: set[str] = {
+        t for t in (
+            "ticket_rating_dim",
+            "ticket_companion",
+            "exam_option",
+            "survey_option",
+            "item_equipment",
+        )
+        if t in present
+    }
     for cap in caps or []:
         c = str(cap)
         if c in defaults:
@@ -501,6 +511,7 @@ def domain_sql(
         ensure_balance_ledger_sql,
         ensure_occupy_span_sql,
         ensure_material_check_sql,
+        ensure_apply_blacklist_sql,
         ensure_borrow_structural_sql,
         ensure_ticket_extra_sql,
         ensure_borrow_credit_sql,
@@ -596,6 +607,62 @@ def domain_sql(
         domain=domain or "",
         ticket_table=resolved_ticket,
         ticket_flags=flags,
+    )
+    from app.bake.features.approve_thicken import (
+        ensure_approve_archive_columns,
+        ensure_approve_delegate_sql,
+        ensure_approve_material_seed_sql,
+        ensure_ticket_expense_line_sql,
+        ensure_ticket_trip_leg_sql,
+        ensure_ticket_rating_dim_sql,
+        ensure_ticket_companion_sql,
+        ensure_ticket_club_member_sql,
+        ensure_checkin_spot_sql,
+        ensure_ticket_attach_rev_sql,
+    )
+
+    text = ensure_approve_delegate_sql(
+        text,
+        enabled=bool(flags.get("allowApproveDelegate")),
+    )
+    text = ensure_ticket_expense_line_sql(
+        text,
+        enabled=bool(flags.get("allowExpenseLines")),
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_ticket_trip_leg_sql(
+        text,
+        enabled=bool(flags.get("allowTripLegs")),
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_ticket_rating_dim_sql(
+        text,
+        enabled=bool(flags.get("ratingDims")) or (domain or "") == "DOM-EVAL",
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_ticket_companion_sql(
+        text,
+        enabled=bool(flags.get("allowCompanions") or flags.get("allowVisitorCount")),
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_ticket_club_member_sql(
+        text,
+        enabled=bool(flags.get("allowClubRoster")),
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_checkin_spot_sql(
+        text,
+        enabled=bool(flags.get("allowCheckinSpot")),
+    )
+    text = ensure_ticket_attach_rev_sql(
+        text,
+        enabled=bool(flags.get("allowAttachKeepOld")),
+        ticket_table=resolved_ticket,
+    )
+    text = ensure_approve_archive_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
     )
     try:
         ci = int(flags.get("creditInitial") or 100)
@@ -933,6 +1000,9 @@ def domain_sql(
         enabled=ROOM_EQUIPMENT_CAP in caps,
         item_table=resolved_item,
     )
+    from app.bake.features.post_mute import POST_MUTE_CAP, ensure_post_mute_sql
+
+    text = ensure_post_mute_sql(text, enabled=POST_MUTE_CAP in caps)
     text = ensure_book_suggest_sql(
         text,
         enabled=BOOK_SUGGEST_CAP in caps,
@@ -1016,6 +1086,18 @@ def domain_sql(
     text = ensure_material_check_sql(
         text,
         enabled=MATERIAL_CHECK_CAP in caps,
+    )
+    text = ensure_approve_material_seed_sql(
+        text,
+        allow_moral=bool(flags.get("allowMoralMaterialCheck")),
+        allow_party_template=bool(flags.get("allowPartyMaterialTemplate")),
+        allow_party_thought=bool(flags.get("allowPartyThoughtAttach")),
+        allow_fleet_driver=bool(flags.get("allowFleetDriverCert")),
+    )
+    text = ensure_apply_blacklist_sql(
+        text,
+        enabled=bool(flags.get("allowApplyBlacklist"))
+        or (domain or "") in ("DOM-ACTIVITY", "DOM-TOUR"),
     )
     text = ensure_lostfound_sql(
         text,

@@ -89,7 +89,8 @@ class RoomEquipmentE10Tests(unittest.TestCase):
         )
         n = normalize_sql(sql)
         self.assertIn("sys_equipment_dict", n)
-        self.assertIn("equipment_json", n)
+        self.assertIn("item_equipment", n)
+        self.assertNotIn("equipment_json", n)
 
     def test_unmounted_no_equip_sql(self) -> None:
         plain = attach_accept(
@@ -130,7 +131,8 @@ class RoomEquipmentE10Tests(unittest.TestCase):
             / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
         ).read_text(encoding="utf-8")
         self.assertIn("configureRoomEquipment", archive)
-        self.assertIn("equipment_json", archive)
+        self.assertIn("item_equipment", archive)
+        self.assertNotIn("ADD COLUMN `equipment_json`", archive)
         fe_browse = (
             BASELINE / "frontend/src/views/user/ArchiveBrowse.vue"
         ).read_text(encoding="utf-8")
