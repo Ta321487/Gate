@@ -246,6 +246,19 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private final String ticketAgeConstraintNeedMessage = TicketPolicy.AGE_CONSTRAINT_NEED_MESSAGE;
     private final String ticketAgeConstraintDenyMessage = TicketPolicy.AGE_CONSTRAINT_DENY_MESSAGE;
     private final boolean ticketAllowLateMinutes = TicketPolicy.ALLOW_LATE_MINUTES;
+    private final boolean ticketAllowWishOrder = TicketPolicy.ALLOW_WISH_ORDER;
+    private final boolean ticketAllowVolunteerRole = TicketPolicy.ALLOW_VOLUNTEER_ROLE;
+    private final boolean ticketAllowAdminCheckin = TicketPolicy.ALLOW_ADMIN_CHECKIN;
+    private final boolean ticketRequireTourNoticeAck = TicketPolicy.REQUIRE_TOUR_NOTICE_ACK;
+    private final boolean ticketAllowCompanions = TicketPolicy.ALLOW_COMPANIONS;
+    private final boolean ticketAllowLottery = TicketPolicy.ALLOW_LOTTERY;
+    private final boolean ticketAllowSeatZone = TicketPolicy.ALLOW_SEAT_ZONE;
+    private final boolean ticketAllowTicketTransfer = TicketPolicy.ALLOW_TICKET_TRANSFER;
+    private final boolean ticketAllowTicketWallet = TicketPolicy.ALLOW_TICKET_WALLET;
+    private final boolean ticketAllowApplyBlacklist = TicketPolicy.ALLOW_APPLY_BLACKLIST;
+    private final boolean ticketScheduleChangeNotify = TicketPolicy.SCHEDULE_CHANGE_NOTIFY;
+    private final boolean ticketAllowPostGallery = TicketPolicy.ALLOW_POST_GALLERY;
+    private final boolean ticketRequireCreditWritebackAck = TicketPolicy.REQUIRE_CREDIT_WRITEBACK_ACK;
 
     private final boolean ticketBlockIfCalibExpired = TicketPolicy.BLOCK_IF_CALIB_EXPIRED;
 
@@ -357,6 +370,200 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private final boolean ticketRepairThicken = TicketPolicy.REPAIR_THICKEN;
 
     private final boolean ticketApplyThicken = TicketPolicy.APPLY_THICKEN;
+
+    private final boolean ticketApproveThicken = TicketPolicy.APPROVE_THICKEN;
+
+    private final boolean ticketAllowApproveCc = TicketPolicy.ALLOW_APPROVE_CC;
+
+    private final int ticketMinApproveRemarkWords = TicketPolicy.MIN_APPROVE_REMARK_WORDS;
+
+    private final boolean ticketAllowApproveTransfer = TicketPolicy.ALLOW_APPROVE_TRANSFER;
+
+    private final boolean ticketAllowApproveDelegate = TicketPolicy.ALLOW_APPROVE_DELEGATE;
+
+    private final boolean ticketAllowApproveRemarkAttach = TicketPolicy.ALLOW_APPROVE_REMARK_ATTACH;
+
+    private final boolean ticketAllowApproveCcComment = TicketPolicy.ALLOW_APPROVE_CC_COMMENT;
+
+    private final boolean ticketAllowApproveAutoPass = TicketPolicy.ALLOW_APPROVE_AUTO_PASS;
+
+    private final int ticketApproveAutoPassHours = TicketPolicy.APPROVE_AUTO_PASS_HOURS;
+
+    private final boolean ticketAllowCertPickup = TicketPolicy.ALLOW_CERT_PICKUP;
+
+    private final boolean ticketAllowCertUrgent = TicketPolicy.ALLOW_CERT_URGENT;
+
+    private final boolean ticketAllowSealCopies = TicketPolicy.ALLOW_SEAL_COPIES;
+
+    private final boolean ticketAllowFleetMileage = TicketPolicy.ALLOW_FLEET_MILEAGE;
+
+    private final boolean ticketAllowExpenseInvoice = TicketPolicy.ALLOW_EXPENSE_INVOICE;
+
+    private final boolean ticketAllowVisitorCount = TicketPolicy.ALLOW_VISITOR_COUNT;
+
+    private final boolean ticketAllowAwardCertNo = TicketPolicy.ALLOW_AWARD_CERT_NO;
+
+    private final boolean ticketAllowVendorQuotes = TicketPolicy.ALLOW_VENDOR_QUOTES;
+
+    private final boolean ticketForceOnePerArchive = TicketPolicy.FORCE_ONE_PER_ARCHIVE;
+
+    private final int ticketMinVendorQuotes = TicketPolicy.MIN_VENDOR_QUOTES;
+
+    private final int ticketNotifyArchiveExpireDays = TicketPolicy.NOTIFY_ARCHIVE_EXPIRE_DAYS;
+
+    private final String ticketOnePerArchiveDenyMessage = TicketPolicy.ONE_PER_ARCHIVE_DENY_MESSAGE;
+
+    private final boolean ticketAllowEvalOpenWindow = TicketPolicy.ALLOW_EVAL_OPEN_WINDOW;
+
+    private final boolean ticketAllowCompHours = TicketPolicy.ALLOW_COMP_HOURS;
+
+    private final boolean ticketAllowFleetCrew = TicketPolicy.ALLOW_FLEET_CREW;
+
+    private final boolean ticketAllowEthicBatch = TicketPolicy.ALLOW_ETHIC_BATCH;
+
+    private final String ticketEvalOpenWindowDenyMessage = TicketPolicy.EVAL_OPEN_WINDOW_DENY_MESSAGE;
+
+    private final boolean ticketAllowPassExpire = TicketPolicy.ALLOW_PASS_EXPIRE;
+
+    private final boolean ticketAllowReturnFuel = TicketPolicy.ALLOW_RETURN_FUEL;
+
+    private final boolean ticketAllowLaborPlace = TicketPolicy.ALLOW_LABOR_PLACE;
+
+    private final boolean ticketAllowPromoPlace = TicketPolicy.ALLOW_PROMO_PLACE;
+
+    private final boolean ticketAllowEthicMeeting = TicketPolicy.ALLOW_ETHIC_MEETING;
+
+    private final boolean ticketAllowEffectiveOn = TicketPolicy.ALLOW_EFFECTIVE_ON;
+
+    private final boolean ticketAllowCertIssueNo = TicketPolicy.ALLOW_CERT_ISSUE_NO;
+
+    private final boolean ticketAllowPromoFeedback = TicketPolicy.ALLOW_PROMO_FEEDBACK;
+
+    private final boolean ticketAllowDocRev = TicketPolicy.ALLOW_DOC_REV;
+
+    private final boolean ticketAllowFitoutQuiet = TicketPolicy.ALLOW_FITOUT_QUIET;
+
+    private final boolean ticketAllowSealClosePhoto = TicketPolicy.ALLOW_SEAL_CLOSE_PHOTO;
+
+    private final boolean ticketAllowIssueCopies = TicketPolicy.ALLOW_ISSUE_COPIES;
+
+    private final boolean ticketAllowSignParties = TicketPolicy.ALLOW_SIGN_PARTIES;
+
+    private final boolean ticketAllowTrainHours = TicketPolicy.ALLOW_TRAIN_HOURS;
+
+    private final boolean ticketAllowInspectExpire = TicketPolicy.ALLOW_INSPECT_EXPIRE;
+
+    private final boolean ticketAllowMemberChange = TicketPolicy.ALLOW_MEMBER_CHANGE;
+
+    private final boolean ticketAllowProcureBudget = TicketPolicy.ALLOW_PROCURE_BUDGET;
+
+    private final boolean ticketAllowCheckinException = TicketPolicy.ALLOW_CHECKIN_EXCEPTION;
+
+    private final boolean ticketAllowVisitPurpose = TicketPolicy.ALLOW_VISIT_PURPOSE;
+
+    private final boolean ticketAllowFleetViolation = TicketPolicy.ALLOW_FLEET_VIOLATION;
+
+    private final boolean ticketAllowFitoutRectify = TicketPolicy.ALLOW_FITOUT_RECTIFY;
+
+    private final boolean ticketAllowProjNodeRemind = TicketPolicy.ALLOW_PROJ_NODE_REMIND;
+
+    private final boolean ticketAllowClubCopyLast = TicketPolicy.ALLOW_CLUB_COPY_LAST;
+
+    private final boolean ticketAllowProcureReturn = TicketPolicy.ALLOW_PROCURE_RETURN;
+
+    private final boolean ticketAllowMoralObjection = TicketPolicy.ALLOW_MORAL_OBJECTION;
+
+    private final boolean ticketAllowProjFundUse = TicketPolicy.ALLOW_PROJ_FUND_USE;
+
+    private final boolean ticketAllowEvalDimWeight = TicketPolicy.ALLOW_EVAL_DIM_WEIGHT;
+
+    private final boolean ticketAllowVisitSlotRemain = TicketPolicy.ALLOW_VISIT_SLOT_REMAIN;
+
+    private final boolean ticketAllowPlagiarismUrl = TicketPolicy.ALLOW_PLAGIARISM_URL;
+
+    private final boolean ticketAllowAbsentStreak = TicketPolicy.ALLOW_ABSENT_STREAK;
+
+    private final boolean ticketAllowPartyStage = TicketPolicy.ALLOW_PARTY_STAGE;
+
+    private final boolean ticketAllowEvalObserve = TicketPolicy.ALLOW_EVAL_OBSERVE;
+
+    private final boolean ticketAllowScheduleImpact = TicketPolicy.ALLOW_SCHEDULE_IMPACT;
+
+    private final boolean ticketAllowContractAmount = TicketPolicy.ALLOW_CONTRACT_AMOUNT;
+
+    private final boolean ticketAllowExpenseLines = TicketPolicy.ALLOW_EXPENSE_LINES;
+
+    private final boolean ticketAllowTripLegs = TicketPolicy.ALLOW_TRIP_LEGS;
+
+    private final boolean ticketAllowHideEvalResult = TicketPolicy.ALLOW_HIDE_EVAL_RESULT;
+
+    private final boolean ticketAllowSignRemarkVisible = TicketPolicy.ALLOW_SIGN_REMARK_VISIBLE;
+
+    private final boolean ticketAllowProjChangeLog = TicketPolicy.ALLOW_PROJ_CHANGE_LOG;
+
+    private final boolean ticketAllowCertVerify = TicketPolicy.ALLOW_CERT_VERIFY;
+
+    private final boolean ticketAllowVisitWalkIn = TicketPolicy.ALLOW_VISIT_WALK_IN;
+
+    private final boolean ticketAllowCheckinProxy = TicketPolicy.ALLOW_CHECKIN_PROXY;
+
+    private final boolean ticketAllowClubRoster = TicketPolicy.ALLOW_CLUB_ROSTER;
+
+    private final boolean ticketAllowCarpassParkingMutex = TicketPolicy.ALLOW_CARPASS_PARKING_MUTEX;
+
+    private final boolean ticketAllowEvalUrge = TicketPolicy.ALLOW_EVAL_URGE;
+
+    private final boolean ticketAllowContractRenew = TicketPolicy.ALLOW_CONTRACT_RENEW;
+
+    private final boolean ticketAllowContractExpireRemind = TicketPolicy.ALLOW_CONTRACT_EXPIRE_REMIND;
+
+    private final boolean ticketAllowCertPickupRedeem = TicketPolicy.ALLOW_CERT_PICKUP_REDEEM;
+
+    private final boolean ticketAllowExamPassMin = TicketPolicy.ALLOW_EXAM_PASS_MIN;
+
+    private final boolean ticketAllowCheckinSpot = TicketPolicy.ALLOW_CHECKIN_SPOT;
+
+    private final boolean ticketAllowEvalBeforeGrade = TicketPolicy.ALLOW_EVAL_BEFORE_GRADE;
+
+    private final boolean ticketAllowApproveDurationStats = TicketPolicy.ALLOW_APPROVE_DURATION_STATS;
+
+    private final boolean ticketAllowAttachKeepOld = TicketPolicy.ALLOW_ATTACH_KEEP_OLD;
+
+    private final boolean ticketAllowCertPickupQr = TicketPolicy.ALLOW_CERT_PICKUP_QR;
+
+    private final boolean ticketAllowCertVerifyPage = TicketPolicy.ALLOW_CERT_VERIFY_PAGE;
+
+    private final boolean ticketAllowVisitorPassPrint = TicketPolicy.ALLOW_VISITOR_PASS_PRINT;
+
+    private final boolean ticketAllowCheckinDailyReport = TicketPolicy.ALLOW_CHECKIN_DAILY_REPORT;
+
+    private final boolean ticketAllowEvalCollegeExport = TicketPolicy.ALLOW_EVAL_COLLEGE_EXPORT;
+
+    private final boolean ticketAllowSealLedgerExport = TicketPolicy.ALLOW_SEAL_LEDGER_EXPORT;
+
+    private final boolean ticketAllowMoralMaterialCheck = TicketPolicy.ALLOW_MORAL_MATERIAL_CHECK;
+
+    private final boolean ticketAllowPartyMaterialTemplate = TicketPolicy.ALLOW_PARTY_MATERIAL_TEMPLATE;
+
+    private final boolean ticketAllowPartyThoughtAttach = TicketPolicy.ALLOW_PARTY_THOUGHT_ATTACH;
+
+    private final boolean ticketAllowCertFormPrint = TicketPolicy.ALLOW_CERT_FORM_PRINT;
+
+    private final boolean ticketAllowSealFormPrint = TicketPolicy.ALLOW_SEAL_FORM_PRINT;
+
+    private final boolean ticketAllowProjMidFormPrint = TicketPolicy.ALLOW_PROJ_MID_FORM_PRINT;
+
+    private final boolean ticketAllowEthicOpinionPrint = TicketPolicy.ALLOW_ETHIC_OPINION_PRINT;
+
+    private final boolean ticketAllowExpenseAttachCount = TicketPolicy.ALLOW_EXPENSE_ATTACH_COUNT;
+
+    private final boolean ticketAllowFleetDriverCert = TicketPolicy.ALLOW_FLEET_DRIVER_CERT;
+
+    private final int ticketPassExpireDays = TicketPolicy.PASS_EXPIRE_DAYS;
+
+
+
+    private final String ticketApplyBlacklistDenyMessage = TicketPolicy.APPLY_BLACKLIST_DENY_MESSAGE;
 
     private final boolean ticketNotifyOnApplySuccess = TicketPolicy.NOTIFY_ON_APPLY_SUCCESS;
 
@@ -753,6 +960,24 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                     ticketBedConstraintDenyMessage);
             TicketStore.configureArrivalNotify(ticketArrivalNotify);
             TicketStore.configureNoticeAck(ticketRequireNoticeAck);
+            
+            TicketStore.configureApproveThicken(
+                    ticketApproveThicken,
+                    ticketAllowApproveCc,
+                    ticketMinApproveRemarkWords,
+                    ticketAllowApproveTransfer,
+                    ticketAllowApproveDelegate,
+                    ticketAllowApproveRemarkAttach,
+                    ticketAllowApproveCcComment,
+                    ticketAllowApproveAutoPass,
+                    ticketApproveAutoPassHours);
+            TicketStore.configureApproveSkin(
+                    ticketAllowCertPickup,
+                    ticketAllowCertUrgent,
+                    ticketAllowSealCopies,
+                    ticketAllowFleetMileage,
+                    ticketAllowExpenseInvoice,
+                    ticketAllowVisitorCount);
             TicketStore.configureApplyThicken(
                     ticketApplyThicken,
                     ticketNotifyOnApplySuccess,
@@ -778,6 +1003,119 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                     ticketAgeConstraintNeedMessage,
                     ticketAgeConstraintDenyMessage);
             TicketStore.configureLateMinutes(ticketAllowLateMinutes);
+            TicketStore.configureWishOrder(ticketAllowWishOrder);
+            TicketStore.configureVolunteerRole(ticketAllowVolunteerRole);
+            TicketStore.configureAdminCheckin(ticketAllowAdminCheckin);
+            TicketStore.configureTourNoticeAck(ticketRequireTourNoticeAck);
+            TicketStore.configureCompanions(ticketAllowCompanions);
+            TicketStore.configureLottery(ticketAllowLottery);
+            TicketStore.configureSeatZone(ticketAllowSeatZone);
+            TicketStore.configureTicketTransfer(ticketAllowTicketTransfer);
+            TicketStore.configureTicketWallet(ticketAllowTicketWallet);
+            TicketStore.configureApplyBlacklist(ticketAllowApplyBlacklist);
+            TicketStore.configureScheduleChangeNotify(ticketScheduleChangeNotify);
+            TicketStore.configurePostGallery(ticketAllowPostGallery);
+            TicketStore.configureCreditWritebackAck(ticketRequireCreditWritebackAck);
+            TicketStore.configureApproveBatch4(
+                    ticketAllowAwardCertNo,
+                    ticketAllowVendorQuotes,
+                    ticketForceOnePerArchive,
+                    ticketMinVendorQuotes,
+                    ticketNotifyArchiveExpireDays,
+                    ticketOnePerArchiveDenyMessage);
+
+            TicketStore.configureApproveBatch5(
+                    ticketAllowEvalOpenWindow,
+                    ticketAllowCompHours,
+                    ticketAllowFleetCrew,
+                    ticketAllowEthicBatch,
+                    ticketEvalOpenWindowDenyMessage);
+
+            TicketStore.configureApproveBatch6(
+                    ticketAllowPassExpire,
+                    ticketAllowReturnFuel,
+                    ticketAllowLaborPlace,
+                    ticketAllowPromoPlace,
+                    ticketAllowEthicMeeting,
+                    ticketAllowEffectiveOn,
+                    ticketPassExpireDays);
+            TicketStore.configureApproveBatch7(
+                    ticketAllowCertIssueNo,
+                    ticketAllowPromoFeedback,
+                    ticketAllowDocRev,
+                    ticketAllowFitoutQuiet);
+            TicketStore.configureApproveBatch8(
+                    ticketAllowSealClosePhoto,
+                    ticketAllowIssueCopies,
+                    ticketAllowSignParties,
+                    ticketAllowTrainHours,
+                    ticketAllowInspectExpire,
+                    ticketAllowMemberChange);
+            TicketStore.configureApproveBatch9(
+                    ticketAllowProcureBudget,
+                    ticketAllowCheckinException,
+                    ticketAllowVisitPurpose,
+                    ticketAllowFleetViolation,
+                    ticketAllowFitoutRectify,
+                    ticketAllowProjNodeRemind);
+            TicketStore.configureApproveBatch10(
+                    ticketAllowClubCopyLast,
+                    ticketAllowProcureReturn,
+                    ticketAllowMoralObjection,
+                    ticketAllowProjFundUse,
+                    ticketAllowEvalDimWeight,
+                    ticketAllowVisitSlotRemain);
+            TicketStore.configureApproveBatch11(
+                    ticketAllowPlagiarismUrl,
+                    ticketAllowAbsentStreak,
+                    ticketAllowPartyStage,
+                    ticketAllowEvalObserve,
+                    ticketAllowScheduleImpact,
+                    ticketAllowContractAmount);
+            TicketStore.configureApproveBatch12(
+                    ticketAllowExpenseLines,
+                    ticketAllowTripLegs,
+                    ticketAllowHideEvalResult,
+                    ticketAllowSignRemarkVisible,
+                    ticketAllowProjChangeLog,
+                    ticketAllowCertVerify);
+            TicketStore.configureApproveBatch13(
+                    ticketAllowVisitWalkIn,
+                    ticketAllowCheckinProxy,
+                    ticketAllowClubRoster,
+                    ticketAllowCarpassParkingMutex,
+                    ticketAllowEvalUrge,
+                    ticketAllowContractRenew);
+            TicketStore.configureApproveBatch14(
+                    ticketAllowContractExpireRemind,
+                    ticketAllowCertPickupRedeem,
+                    ticketAllowExamPassMin,
+                    ticketAllowCheckinSpot,
+                    ticketAllowEvalBeforeGrade,
+                    ticketAllowApproveDurationStats);
+            TicketStore.configureApproveBatch15(
+                    ticketAllowAttachKeepOld,
+                    ticketAllowCertPickupQr,
+                    ticketAllowCertVerifyPage,
+                    ticketAllowVisitorPassPrint,
+                    ticketAllowCheckinDailyReport,
+                    ticketAllowEvalCollegeExport);
+            TicketStore.configureApproveBatch16(
+                    ticketAllowSealLedgerExport,
+                    ticketAllowMoralMaterialCheck,
+                    ticketAllowPartyMaterialTemplate,
+                    ticketAllowPartyThoughtAttach);
+            TicketStore.configureApproveBatch17(
+                    ticketAllowCertFormPrint,
+                    ticketAllowSealFormPrint,
+                    ticketAllowProjMidFormPrint,
+                    ticketAllowEthicOpinionPrint,
+                    ticketAllowExpenseAttachCount,
+                    ticketAllowFleetDriverCert);
+            String blDeny = (ticketApplyBlacklistDenyMessage == null || ticketApplyBlacklistDenyMessage.isBlank())
+                    ? "当前账号暂不可报名，请联系管理员。"
+                    : ticketApplyBlacklistDenyMessage;
+            com.thesis.service.ApplyBlacklistStore.configure(ticketAllowApplyBlacklist, blDeny);
             TicketStore.configureCalibBlock(ticketBlockIfCalibExpired);
             TicketStore.configureProjectNo(ticketAllowProjectNo);
             TicketStore.configureProcureRef(ticketAllowProcureRef);

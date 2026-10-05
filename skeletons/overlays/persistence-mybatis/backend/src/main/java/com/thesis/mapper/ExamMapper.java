@@ -26,8 +26,8 @@ public interface ExamMapper {
             @Param("offset") int offset);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO exam_question (subject_id,type,stem,options_json,answer_key,score,explain_text) "
-            + "VALUES (#{subjectId},#{type},#{stem},#{optionsJson},#{answerKey},#{score},#{explainText})")
+    @Insert("INSERT INTO exam_question (subject_id,type,stem,answer_key,score,explain_text) "
+            + "VALUES (#{subjectId},#{type},#{stem},#{answerKey},#{score},#{explainText})")
     int insertQuestion(Map<String, Object> row);
 
     int updateQuestion(Map<String, Object> row);

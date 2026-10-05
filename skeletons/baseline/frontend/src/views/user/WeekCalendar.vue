@@ -5,6 +5,7 @@
         <div>
           <h1>{{ title }}</h1>
           <p>只读周视图；点击格子查看{{ ticketNoun }}详情。不支持拖拽改期。</p>
+          <p v-if="conflictHighlightOn && conflictHighlightHint" class="conflict-hint">{{ conflictHighlightHint }}</p>
         </div>
         <div class="tools">
           <el-button @click="shiftWeek(-1)">上一周</el-button>
@@ -32,9 +33,12 @@
             :key="ev.id"
             type="button"
             class="ev week-ev"
-            :class="`tone-${ticketTone(ev.status)}`"
+            :class="[
+              `tone-${ticketTone(ev.status)}`,
+              { 'ev-conflict': conflictHighlightOn && isConflict(ev) },
+            ]"
             @click="open(ev)"
-          >{{ ev.title }}</button>
+          >{{ ev.title }}<span v-if="conflictHighlightOn && isConflict(ev)" class="conflict-tag">{{ conflictHighlightLabel }}</span></button>
         </div>
       </div>
     </div>
@@ -46,6 +50,7 @@
         <p class="sub">状态：{{ statusText(detail.status) }}</p>
         <p class="sub">时段：{{ detail.startAt || '—' }} ~ {{ detail.endAt || '—' }}</p>
         <p class="sub" v-if="detail.typeName">类型：{{ detail.typeName }}</p>
+        <p class="sub conflict-hint" v-if="conflictHighlightOn && isConflict(detail)">{{ conflictHighlightHint }}</p>
       </template>
     </el-dialog>
   </div>
@@ -54,13 +59,17 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
-import { ticketCopy } from '../../utils/domainSchema.js'
+import { getSchema, ticketCopy } from '../../utils/domainSchema.js'
 import { ticketTone } from '../../utils/statusTone.js'
 
 const ticket = ticketCopy()
+const labels = computed(() => getSchema()?.labels || {})
 const title = computed(() => ticket.weekCalendarLabel || '我的日程')
 const ticketNoun = computed(() => ticket.label || ticket.labelPlural || '记录')
 const states = computed(() => ticket.states || {})
+const conflictHighlightOn = computed(() => !!ticket.conflictHighlight)
+const conflictHighlightLabel = computed(() => labels.value.conflictHighlightLabel || '课表冲突')
+const conflictHighlightHint = computed(() => labels.value.conflictHighlightHint || '')
 
 const loading = ref(false)
 const events = ref([])
@@ -127,6 +136,26 @@ function parseHour(s) {
   return Number(m[1])
 }
 
+function toMs(s) {
+  if (!s) return null
+  const t = Date.parse(String(s).replace(' ', 'T'))
+  return Number.isNaN(t) ? null : t
+}
+
+function overlaps(a, b) {
+  const a0 = toMs(a.startAt)
+  const a1 = toMs(a.endAt)
+  const b0 = toMs(b.startAt)
+  const b1 = toMs(b.endAt)
+  if (a0 == null || a1 == null || b0 == null || b1 == null) return false
+  return a0 < b1 && b0 < a1
+}
+
+function isConflict(ev) {
+  if (!ev || !ev.startAt || !ev.endAt) return false
+  return events.value.some((other) => other.id !== ev.id && overlaps(ev, other))
+}
+
 function eventsAt(dayKey, slotLabel) {
   const hour = Number(slotLabel.slice(0, 2))
   return events.value.filter((ev) => {
@@ -161,6 +190,7 @@ onMounted(load)
 .hero-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0; color: var(--portal-muted, #64748b); font-size: 13px; }
+.conflict-hint { margin-top: 8px !important; color: #b45309 !important; }
 .range { margin: 10px 0 0; font-size: 13px; color: var(--portal-accent, #0f766e); }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid {
@@ -205,6 +235,17 @@ onMounted(load)
 }
 .ev:hover {
   background: color-mix(in srgb, var(--portal-accent, #0b6e75) 28%, var(--portal-surface, #fff));
+}
+.ev-conflict {
+  background: color-mix(in srgb, #f59e0b 28%, var(--portal-surface, #fff));
+  color: #92400e;
+  outline: 1px solid #f59e0b;
+}
+.conflict-tag {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  color: #b45309;
 }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 28px 0; }
 .sub { margin: 0 0 8px; color: var(--portal-muted, #475569); font-size: 14px; }

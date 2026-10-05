@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.thesis.config.MybatisSupport;
+import com.thesis.mapper.TicketMapper;
 import com.thesis.service.MessageStore;
 import com.thesis.service.UserStore;
 import com.thesis.service.ExamStore;
@@ -21,6 +23,10 @@ final class TicketApplyOps {
 
     private TicketApplyOps() {}
 
+    private static TicketMapper mapper() {
+        return MybatisSupport.mapper(TicketMapper.class);
+    }
+
     static Map<String, Object> apply(
             String username,
             long itemId,
@@ -35,6 +41,9 @@ final class TicketApplyOps {
         }
         UserStore.assertNotPostMuted(username);
         ExamStore.assertTicketGatePassed(username);
+        if (TicketStore.allowApplyBlacklist) {
+            com.thesis.service.ApplyBlacklistStore.assertNotBlocked(username);
+        }
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         TicketGuardOps.assertClaimCooldownIfRequired(item);
@@ -43,8 +52,12 @@ final class TicketApplyOps {
         int nQty = TicketDeriveOps.resolveQty(qty, stock);
         boolean asWaitlist = false;
         boolean asBookHold = false;
+        boolean lotteryMode = TicketStore.allowLottery
+                && TicketSql.str(item.get("admitMode")).contains("抽签");
         if (TicketStore.useQuota && stock < nQty) {
-            if (TicketStore.allowBookHold) {
+            if (lotteryMode) {
+                // 抽签场：先收集报名，满额由管理抽签占额，此处不拦
+            } else if (TicketStore.allowBookHold) {
                 if (!TicketStore.hasColumn("hold_expire_at")) {
                     throw new IllegalStateException("系统未配置到书过期字段，无法预约到书");
                 }
@@ -57,6 +70,7 @@ final class TicketApplyOps {
         }
         TicketAsserts.assertItemOpen(item);
         TicketAsserts.assertApplyDeadline(item);
+        TicketAsserts.assertEvalOpenWindow(item);
         if (!asWaitlist && !asBookHold) {
             TicketAsserts.assertNoTimeConflict(username, itemId, item);
             TicketAsserts.assertNoMutexConflict(username, itemId, item);
@@ -84,7 +98,11 @@ final class TicketApplyOps {
         TicketStore.assertNotOverdueFrozen(username);
         if (!TicketStore.allowMultiTicket) {
             int dup = mapper().countActiveDup(TicketStore.TICKET, TicketStore.itemFkColumn(), username, itemId);
-            if (dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
+            if (dup > 0) {
+                String deny = TicketStore.onePerArchiveDenyMessage;
+                throw new IllegalStateException(
+                        deny == null || deny.isBlank() ? "该对象已有进行中的单据" : deny);
+            }
         }
 
         String rawNote = remark == null ? "" : remark.trim();
@@ -102,10 +120,15 @@ final class TicketApplyOps {
         final boolean withQty = TicketStore.hasColumn("qty");
         final boolean withDue = due != null;
         final boolean withPeriod = period != null;
+        final boolean asLottery = !asWaitlist && !asBookHold && TicketStore.allowLottery
+                && TicketSql.str(item.get("admitMode")).contains("抽签");
         final String initialStatus = asBookHold
                 ? "held"
-                : (asWaitlist ? "waitlisted" : (TicketStore.autoApprove ? "approved" : "pending"));
-        final boolean withApproveAt = !asWaitlist && !asBookHold && TicketStore.autoApprove && TicketStore.hasColumn("approve_at");
+                : (asWaitlist ? "waitlisted"
+                        : (asLottery ? "lottery"
+                                : (TicketStore.autoApprove ? "approved" : "pending")));
+        final boolean withApproveAt = !asWaitlist && !asBookHold && !asLottery
+                && TicketStore.autoApprove && TicketStore.hasColumn("approve_at");
         final boolean withLeaveDays = withPeriod && TicketStore.hasColumn("leave_days");
         final int leaveDaysFinal = withLeaveDays
                 ? (int) (java.time.temporal.ChronoUnit.DAYS.between(
@@ -149,12 +172,23 @@ final class TicketApplyOps {
             } catch (Exception ignored) {
             }
         } else if (asWaitlist) {
-            TicketDeriveOps.appendProgress(id, "waitlisted", username, "用户候补排队");
+            TicketDeriveOps.appendProgress(id, "waitlisted", username, "名额已满，加入候补");
             try {
                 MessageStore.send(
                         username,
-                        "已加入候补",
-                        "「" + TicketNotifyOps.subjectOf(TicketDeriveOps.get(id)) + "」名额已满，已为您排队候补。",
+                        "候补排队",
+                        "「" + TicketNotifyOps.subjectOf(TicketDeriveOps.get(id)) + "」名额已满，已进入候补队列，有名额时将按顺序转为待审。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+            }
+        } else if (asLottery) {
+            TicketDeriveOps.appendProgress(id, "lottery", username, "进入待抽签");
+            try {
+                MessageStore.send(
+                        username,
+                        "待抽签",
+                        "「" + TicketNotifyOps.subjectOf(TicketDeriveOps.get(id)) + "」已提交，等待抽签录取。",
                         "ticket",
                         id);
             } catch (Exception ignored) {
@@ -167,7 +201,7 @@ final class TicketApplyOps {
             TicketNotifyOps.notifyAdminsNewTicket(id, username, subj);
             TicketNotifyOps.notifyPeerOwnerNewTicket(id, itemId, username, subj);
         }
-        TicketNotifyOps.notifyApplySuccessInbox(id, username, asWaitlist || asBookHold);
+        TicketNotifyOps.notifyApplySuccessInbox(id, username, asWaitlist || asBookHold || asLottery);
         Map<String, Object> applied = TicketDeriveOps.get(id);
         if (applied != null) {
             int dutyNotified = TicketNotifyOps.notifyDutyOnNewReport(id, username, TicketNotifyOps.subjectOf(applied));

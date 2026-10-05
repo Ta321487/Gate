@@ -31,6 +31,13 @@
     style="width:100%"
     @update:model-value="emit('update:modelValue', $event)"
   />
+  <el-time-picker
+    v-else-if="widget === 'time'"
+    :model-value="modelValue"
+    v-bind="timePickerProps(field)"
+    style="width:100%"
+    @update:model-value="emit('update:modelValue', $event)"
+  />
   <el-input-number
     v-else-if="widget === 'money'"
     :model-value="numValue"
@@ -83,7 +90,7 @@
 <script setup>
 import { computed } from 'vue'
 import RichTextEditor from './RichTextEditor.vue'
-import { datePickerProps, dateTimePickerProps } from '../utils/dateTimeField.js'
+import { datePickerProps, dateTimePickerProps, timePickerProps } from '../utils/dateTimeField.js'
 import {
   archiveFieldWidget,
   archiveSwitchOn,

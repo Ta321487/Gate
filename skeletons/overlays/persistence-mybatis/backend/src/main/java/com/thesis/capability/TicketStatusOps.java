@@ -34,7 +34,7 @@ final class TicketStatusOps {
             m.put("finePerDay", TicketStore.finePerDay());
         }
         if (TicketStore.noShowAfterEnd && TicketStore.noShowPenaltyYuan > 0) {
-            m.put("TicketStore.noShowPenaltyYuan", TicketStore.noShowPenaltyYuan);
+            m.put("noShowPenaltyYuan", TicketStore.noShowPenaltyYuan);
         }
         m.put("mode", TicketStore.MODE.name().toLowerCase());
         Object u = m.get("username");
@@ -124,7 +124,12 @@ final class TicketStatusOps {
         String title = TicketSql.str(m.get("title"));
         if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
         if (title.isBlank()) title = "单据#" + id;
-        String body = "「" + title + "」将于 " + TicketSql.fmt(dueAt) + " 到期，请按时归还。";
+        String body;
+        if (TicketStore.approveThicken) {
+            body = "「" + title + "」将于 " + TicketSql.fmt(dueAt) + " 到期，请及时办理。";
+        } else {
+            body = "「" + title + "」将于 " + TicketSql.fmt(dueAt) + " 到期，请按时归还。";
+        }
         try {
             com.thesis.service.MessageStore.send(owner, "即将到期提醒", body, "ticket", id);
         } catch (Exception ignored) {

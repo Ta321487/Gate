@@ -62,6 +62,10 @@ final class TicketCopy {
                 Map<String, String> row = new LinkedHashMap<>();
                 row.put("key", key);
                 row.put("label", lab);
+                Object w = m.get("weight");
+                if (w != null && !String.valueOf(w).isBlank()) {
+                    row.put("weight", String.valueOf(w).trim());
+                }
                 dims.add(row);
             }
             RATING_DIMS = dims;

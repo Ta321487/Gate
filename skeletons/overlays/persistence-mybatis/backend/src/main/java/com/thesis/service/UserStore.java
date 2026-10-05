@@ -45,28 +45,22 @@ public class UserStore {
     public static String postMuteUntilOf(String username) {
         if (username == null || username.isBlank()) return "";
         Profile p = get(username.trim());
-        if (p == null || p.extras == null) return "";
-        String v = p.extras.get("postMuteUntil");
-        return v == null ? "" : v.trim();
+        if (p == null) return "";
+        return p.postMuteUntil == null ? "" : p.postMuteUntil.trim();
     }
 
     /**
-     * 设禁言截止；until 空白则解除。写入 profile_json，不经 ProfileFields 过滤。
+     * 设禁言截止；until 空白则解除。写入 sys_user.post_mute_until。
      * @return 更新后的档案 map（含 postMuteUntil）
      */
     public static Map<String, Object> setPostMuteUntil(String username, String untilRaw) {
         if (!postMuteEnabled) {
             throw new IllegalStateException("禁言功能暂不可用");
         }
-        if (!hasProfileJson()) {
-            throw new IllegalStateException("当前库不支持禁言扩展字段");
-        }
-        Profile p = requireManaged(username);
-        Map<String, String> merged = new LinkedHashMap<>(p.extras == null ? Map.of() : p.extras);
+        requireManaged(username);
         String raw = untilRaw == null ? "" : untilRaw.trim();
-        if (raw.isBlank() || "null".equalsIgnoreCase(raw)) {
-            merged.remove("postMuteUntil");
-        } else {
+        String sqlVal = null;
+        if (!(raw.isBlank() || "null".equalsIgnoreCase(raw))) {
             LocalDateTime end = parseMuteUntil(raw);
             if (end == null) {
                 throw new IllegalArgumentException("禁言截止时间格式无效，请使用 yyyy-MM-dd HH:mm:ss");
@@ -74,16 +68,9 @@ public class UserStore {
             if (!end.isAfter(LocalDateTime.now())) {
                 throw new IllegalArgumentException("禁言截止须晚于当前时间");
             }
-            merged.put("postMuteUntil", end.format(MUTE_FMT));
+            sqlVal = end.format(MUTE_FMT);
         }
-        p.extras = merged;
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("username", username.trim());
-        row.put("nickname", p.nickname);
-        row.put("phone", p.phone);
-        row.put("enabled", p.enabled ? 1 : 0);
-        row.put("profileJson", writeExtras(merged));
-        mapper().updateAdminWithProfile(row);
+        mapper().updatePostMuteUntil(username.trim(), sqlVal);
         Profile updated = get(username.trim());
         return updated == null ? Map.of() : updated.toMap();
     }
@@ -127,6 +114,7 @@ public class UserStore {
         public boolean enabled = true;
         public String staffPost = "";
         public String staffKind = "";
+        public String postMuteUntil = "";
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -141,11 +129,7 @@ public class UserStore {
             m.put("enabled", enabled);
             m.put("staffPost", staffPost == null ? "" : staffPost);
             m.put("staffKind", staffKind == null ? "" : staffKind);
-            String muteUntil = "";
-            if (extras != null && extras.get("postMuteUntil") != null) {
-                muteUntil = extras.get("postMuteUntil");
-            }
-            m.put("postMuteUntil", muteUntil == null ? "" : muteUntil);
+            m.put("postMuteUntil", postMuteUntil == null ? "" : postMuteUntil);
             if (extras != null) {
                 for (Map.Entry<String, String> e : extras.entrySet()) {
                     m.putIfAbsent(e.getKey(), e.getValue());
@@ -178,6 +162,7 @@ public class UserStore {
         Object en = col(raw, "enabled");
         p.enabled = en == null || flag(en);
         p.extras = readExtras(col(raw, "profileJson", "profile_json"));
+        p.postMuteUntil = str(col(raw, "postMuteUntil", "post_mute_until")).trim();
         if (hasStaffColumns()) {
             p.staffPost = str(col(raw, "staffPost", "staff_post")).trim();
             p.staffKind = str(col(raw, "staffKind", "staff_kind")).trim();

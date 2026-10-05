@@ -103,6 +103,7 @@ export const ADMIN_MENU_PATHS = {
   balance_ledger_admin: '/admin/balance/ledger',
   occupy_admin: '/admin/occupy',
   material_checklist: '/admin/material/checklist',
+  apply_blacklist: '/admin/apply/blacklist',
   lost_clues: '/admin/lost/clues',
   e_sign_admin: '/admin/e-sign',
   grade_scores_admin: '/admin/grade/scores',

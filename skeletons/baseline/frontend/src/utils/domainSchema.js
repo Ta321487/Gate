@@ -171,6 +171,7 @@ export function superOnlyAdminPaths() {
     balance_ledger_admin: '/admin/balance/ledger',
     occupy_admin: '/admin/occupy',
     material_checklist: '/admin/material/checklist',
+    apply_blacklist: '/admin/apply/blacklist',
     e_sign_admin: '/admin/e-sign',
     tb_ledger_admin: '/admin/tb/ledger',
     lookup_site: '/admin/sites',
@@ -309,6 +310,8 @@ export function ticketProgressStatusLabel(status) {
   if (key === 'fine_paid') return ticketFinePaidLabel('费用已结清')
   if (key === 'pickup') return '领取登记'
   if (key === 'rated') return '评价'
+  if (key === 'cc_comment') return schemaLabels().approveCcCommentLabel || '知会评论'
+  if (key === 'reassigned') return schemaLabels().approveTransferLabel || '转审'
   return mapped || key
 }
 

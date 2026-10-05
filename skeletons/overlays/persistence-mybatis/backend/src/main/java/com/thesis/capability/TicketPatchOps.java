@@ -269,7 +269,7 @@ final class TicketPatchOps {
         patchFollowExtraStr(ticketId, body, "disburseBatch", "disburse_batch", 64, TicketStore.allowDisburseBatch);
         patchFollowExtraStr(ticketId, body, "faultReason", "fault_reason", 64, TicketStore.requireFaultReason || TicketStore.repairThicken);
         patchFollowExtraStr(ticketId, body, "closeSummary", "close_summary", 512, TicketStore.requireCloseSummary || TicketStore.repairThicken);
-        patchFollowExtraStr(ticketId, body, "TicketStore.preferredSlot", "preferred_slot", 64, TicketStore.preferredSlot);
+        patchFollowExtraStr(ticketId, body, "preferredSlot", "preferred_slot", 64, TicketStore.preferredSlot);
         patchFollowExtraStr(ticketId, body, "holdReason", "hold_reason", 255, TicketStore.allowHoldResume);
         patchFollowExtraStr(ticketId, body, "assetCode", "asset_code", 64, TicketStore.allowAssetCode);
         patchFollowExtraStr(ticketId, body, "remoteUrl", "remote_url", 255, TicketStore.allowRemoteUrl);
@@ -282,10 +282,528 @@ final class TicketPatchOps {
         patchFollowExtraStr(ticketId, body, "ratingTags", "rating_tags", 255, TicketStore.allowRatingTags);
         patchFollowExtraStr(ticketId, body, "addressType", "address_type", 16, TicketStore.allowPublicArea);
         patchFollowExtraStr(ticketId, body, "rankScope", "rank_scope", 16, true);
-        if (body.containsKey("TicketStore.nightUrgent") && TicketStore.hasColumn("night_urgent")) {
+        patchFollowExtraStr(ticketId, body, "pickupMethod", "pickup_method", 16, TicketStore.allowCertPickup);
+        patchFollowExtraStr(ticketId, body, "mailAddress", "mail_address", 255, TicketStore.allowCertPickup);
+        if (TicketStore.allowCertPickup && body.containsKey("pickupMethod")) {
+            String pm = TicketSql.str(body.get("pickupMethod")).trim();
+            if (pm.isBlank()) throw new IllegalStateException("请选择领取方式");
+            if ("邮寄".equals(pm)) {
+                String addr = TicketSql.str(body.get("mailAddress")).trim();
+                if (addr.isBlank()) throw new IllegalStateException("邮寄请填写收件地址");
+            }
+        }
+        if ((TicketStore.allowCertUrgent || body.containsKey("certUrgent"))
+                && body.containsKey("certUrgent")
+                && TicketStore.hasColumn("cert_urgent")) {
+            boolean urgent = TicketNotifyOps.truthy(body.get("certUrgent"));
+            TicketStore.updateTicketColumn(ticketId, "cert_urgent", urgent ? 1 : 0);
+            if (urgent && TicketStore.hasColumn("priority")) {
+                TicketStore.updateTicketColumn(ticketId, "priority", "紧急");
+            }
+        }
+        patchFollowExtraStr(ticketId, body, "expressNo", "express_no", 64, TicketStore.allowCertPickup);
+        if ((TicketStore.allowSealCopies || body.containsKey("sealCopies"))
+                && body.containsKey("sealCopies")
+                && TicketStore.hasColumn("seal_copies")) {
+            int copies = (int) Math.round(TicketSql.toDouble(body.get("sealCopies")));
+            if (TicketStore.allowSealCopies && copies < 1) {
+                throw new IllegalStateException("用印份数至少 1 份");
+            }
+            if (copies < 0) copies = 0;
+            if (copies > 999) copies = 999;
+            TicketStore.updateTicketColumn(ticketId, "seal_copies", copies);
+        }
+        patchFollowExtraStr(ticketId, body, "bindNote", "bind_note", 255, TicketStore.allowSealCopies);
+        patchFollowExtraStr(ticketId, body, "sealCopyNos", "seal_copy_nos", 255, TicketStore.allowSealCopies);
+        if ((TicketStore.allowSealCopies || body.containsKey("sealWitnessAck"))
+                && body.containsKey("sealWitnessAck")
+                && TicketStore.hasColumn("seal_witness_ack")) {
+            TicketStore.updateTicketColumn(
+                    ticketId, "seal_witness_ack", TicketNotifyOps.truthy(body.get("sealWitnessAck")) ? 1 : 0);
+        }
+        if ((TicketStore.allowFleetMileage || body.containsKey("mileageKm"))
+                && body.containsKey("mileageKm")
+                && TicketStore.hasColumn("mileage_km")) {
+            double km = TicketSql.toDouble(body.get("mileageKm"));
+            if (TicketStore.allowFleetMileage && !(km > 0)) {
+                throw new IllegalStateException("行驶里程须大于 0");
+            }
+            if (km < 0) throw new IllegalStateException("行驶里程不能为负数");
+            if (km > 999999) km = 999999;
+            TicketStore.updateTicketColumn(ticketId, "mileage_km", km);
+        }
+        patchFollowExtraStr(ticketId, body, "fuelNote", "fuel_note", 255, TicketStore.allowFleetMileage);
+        if (TicketStore.allowFleetMileage
+                && body.containsKey("fuelNote")
+                && TicketSql.str(body.get("fuelNote")).trim().isBlank()) {
+            throw new IllegalStateException("请填写油耗备注");
+        }
+        if ((TicketStore.allowExpenseInvoice || body.containsKey("invoiceCount"))
+                && body.containsKey("invoiceCount")
+                && TicketStore.hasColumn("invoice_count")) {
+            int n = (int) Math.round(TicketSql.toDouble(body.get("invoiceCount")));
+            if (TicketStore.allowExpenseInvoice && n < 1) {
+                throw new IllegalStateException("发票张数至少 1 张");
+            }
+            if (n < 0) n = 0;
+            if (n > 999) n = 999;
+            TicketStore.updateTicketColumn(ticketId, "invoice_count", n);
+        }
+        if (TicketStore.allowExpenseInvoice && (body.containsKey("fineYuan") || body.containsKey("amountYuan"))) {
+            Object raw = body.containsKey("fineYuan") ? body.get("fineYuan") : body.get("amountYuan");
+            if (TicketSql.toDouble(raw) <= 0) {
+                throw new IllegalStateException("报销金额须大于 0");
+            }
+        }
+        if ((TicketStore.allowVisitorCount || body.containsKey("visitorCount"))
+                && body.containsKey("visitorCount")
+                && TicketStore.hasColumn("visitor_count")) {
+            int n = (int) Math.round(TicketSql.toDouble(body.get("visitorCount")));
+            if (n < 0) n = 0;
+            if (n > 99) n = 99;
+            TicketStore.updateTicketColumn(ticketId, "visitor_count", n);
+            if (TicketStore.allowVisitorCount && n > 0) {
+                String cn = TicketSql.str(body.get("companionNames")).trim();
+                Map<String, Object> cur = TicketRowMaps.load(ticketId);
+                String existing = cur == null ? "" : TicketSql.str(cur.get("companionNames")).trim();
+                if (existing.isBlank() && !body.containsKey("companionNames")) {
+                    throw new IllegalStateException("有随行请填写随行人姓名");
+                }
+                if (body.containsKey("companionNames") && cn.isBlank()) {
+                    throw new IllegalStateException("有随行请填写随行人姓名");
+                }
+            }
+        }
+        if (TicketStore.allowVisitorCount || TicketStore.allowCompanions) {
+            if (body.containsKey("companionNames")) {
+                TicketLineOps.replaceCompanions(ticketId, body.get("companionNames"));
+            }
+        }
+        if (TicketStore.allowAwardCertNo && body.containsKey("awardCertNo")) {
+            if (!TicketStore.hasColumn("award_cert_no")) {
+                throw new IllegalStateException("系统未配置证书编号字段");
+            }
+            String certNo = TicketSql.str(body.get("awardCertNo")).trim();
+            if (certNo.isBlank()) {
+                throw new IllegalStateException("请填写证书编号");
+            }
+            if (certNo.length() > 64) certNo = certNo.substring(0, 64);
+            Integer dup = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET
+                            + " WHERE award_cert_no=? AND id<>?",
+                    Integer.class, certNo, ticketId);
+            if (dup != null && dup > 0) {
+                throw new IllegalStateException("证书编号已存在，请核对后重填");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET award_cert_no=? WHERE id=?",
+                    certNo, ticketId);
+        }
+        if (TicketStore.allowFleetCrew && body.containsKey("driverName")) {
+            if (!TicketStore.hasColumn("driver_name")) {
+                throw new IllegalStateException("系统未配置驾驶员字段");
+            }
+            String dn = TicketSql.str(body.get("driverName")).trim();
+            if (dn.isBlank()) {
+                throw new IllegalStateException("请填写驾驶员");
+            }
+            if (dn.length() > 64) dn = dn.substring(0, 64);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET driver_name=? WHERE id=?", dn, ticketId);
+        }
+        if (TicketStore.allowFleetCrew && body.containsKey("passengerNames")) {
+            if (!TicketStore.hasColumn("passenger_names")) {
+                throw new IllegalStateException("系统未配置随车人字段");
+            }
+            String pn = TicketSql.str(body.get("passengerNames")).trim();
+            if (pn.length() > 255) pn = pn.substring(0, 255);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET passenger_names=? WHERE id=?", pn, ticketId);
+        }
+        if ((TicketStore.allowCompHours || body.containsKey("compHours"))
+                && body.containsKey("compHours")
+                && TicketStore.hasColumn("comp_hours")) {
+            double h = TicketSql.toDouble(body.get("compHours"));
+            if (h < 0) h = 0;
+            if (h > 9999) h = 9999;
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET comp_hours=? WHERE id=?", h, ticketId);
+        }
+        if ((TicketStore.allowReturnFuel || body.containsKey("returnFuel"))
+                && body.containsKey("returnFuel")
+                && TicketStore.hasColumn("return_fuel")) {
+            double fuel = TicketSql.toDouble(body.get("returnFuel"));
+            if (fuel < 0) fuel = 0;
+            if (fuel > 100) fuel = 100;
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET return_fuel=? WHERE id=?", fuel, ticketId);
+        }
+        if (TicketStore.allowLaborPlace && body.containsKey("laborPlace")) {
+            if (!TicketStore.hasColumn("labor_place")) {
+                throw new IllegalStateException("系统未配置劳动地点字段");
+            }
+            String lp = TicketSql.str(body.get("laborPlace")).trim();
+            if (lp.isBlank()) {
+                throw new IllegalStateException("请填写劳动地点");
+            }
+            if (lp.length() > 128) lp = lp.substring(0, 128);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET labor_place=? WHERE id=?", lp, ticketId);
+        }
+        if (TicketStore.allowEffectiveOn && body.containsKey("effectiveOn")) {
+            if (!TicketStore.hasColumn("effective_on")) {
+                throw new IllegalStateException("系统未配置生效日期字段");
+            }
+            String eo = TicketSql.str(body.get("effectiveOn")).trim();
+            if (eo.isBlank()) {
+                throw new IllegalStateException("请选择生效日期");
+            }
+            if (eo.length() > 32) eo = eo.substring(0, 32);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET effective_on=? WHERE id=?", eo, ticketId);
+        }
+        if (TicketStore.allowDocRev) {
+            if (!TicketStore.hasColumn("doc_rev")) {
+                throw new IllegalStateException("系统未配置正文版本号字段");
+            }
+            String rev = TicketSql.str(body.get("docRev")).trim();
+            if (rev.isBlank()) {
+                throw new IllegalStateException("请填写正文版本号");
+            }
+            if (rev.length() > 32) rev = rev.substring(0, 32);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET doc_rev=? WHERE id=?", rev, ticketId);
+        }
+        if (TicketStore.allowFitoutQuiet) {
+            if (!TicketStore.hasColumn("work_start") || !TicketStore.hasColumn("work_end")) {
+                throw new IllegalStateException("系统未配置施工时段字段");
+            }
+            String ws = TicketSql.str(body.get("workStart")).trim();
+            String we = TicketSql.str(body.get("workEnd")).trim();
+            if (ws.length() > 8) ws = ws.substring(0, 8);
+            if (we.length() > 8) we = we.substring(0, 8);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET work_start=?, work_end=? WHERE id=?",
+                    ws, we, ticketId);
+        }
+        if (TicketStore.allowIssueCopies) {
+            if (!TicketStore.hasColumn("issue_copies")) {
+                throw new IllegalStateException("系统未配置开具份数字段");
+            }
+            int n = (int) Math.round(TicketSql.toDouble(body.get("issueCopies")));
+            if (n < 1) {
+                throw new IllegalStateException("请填写开具份数（至少 1 份）");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET issue_copies=? WHERE id=?", n, ticketId);
+        }
+        if (TicketStore.allowSignParties) {
+            if (!TicketStore.hasColumn("sign_parties")) {
+                throw new IllegalStateException("系统未配置签署方字段");
+            }
+            String sp = TicketSql.str(body.get("signParties")).trim();
+            if (sp.isBlank()) {
+                throw new IllegalStateException("请勾选签署方");
+            }
+            if (sp.length() > 255) sp = sp.substring(0, 255);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET sign_parties=? WHERE id=?", sp, ticketId);
+        }
+        if (TicketStore.allowTrainHours) {
+            if (!TicketStore.hasColumn("train_hours")) {
+                throw new IllegalStateException("系统未配置培训学时字段");
+            }
+            double hours = TicketSql.toDouble(body.get("trainHours"));
+            if (!(hours > 0)) {
+                throw new IllegalStateException("请填写大于 0 的培训学时");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET train_hours=? WHERE id=?", hours, ticketId);
+        }
+        if (TicketStore.allowMemberChange) {
+            if (!TicketStore.hasColumn("member_change_note")) {
+                throw new IllegalStateException("系统未配置成员变更说明字段");
+            }
+            String note = TicketSql.str(body.get("memberChangeNote")).trim();
+            if (note.isBlank()) {
+                throw new IllegalStateException("请填写成员变更说明");
+            }
+            if (note.length() > 512) note = note.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET member_change_note=? WHERE id=?", note, ticketId);
+        }
+        if (TicketStore.allowProcureBudget) {
+            if (!TicketStore.hasColumn("procure_amount")) {
+                throw new IllegalStateException("系统未配置申购金额字段");
+            }
+            double amt = TicketSql.toDouble(body.get("procureAmount"));
+            if (!(amt > 0)) {
+                throw new IllegalStateException("请填写大于 0 的申购金额");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET procure_amount=? WHERE id=?", amt, ticketId);
+        }
+        if (TicketStore.allowCheckinException) {
+            if (!TicketStore.hasColumn("exception_type")) {
+                throw new IllegalStateException("系统未配置异常类型字段");
+            }
+            String et = TicketSql.str(body.get("exceptionType")).trim();
+            if (et.isBlank()) {
+                throw new IllegalStateException("请选择异常类型");
+            }
+            if (et.length() > 32) et = et.substring(0, 32);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET exception_type=? WHERE id=?", et, ticketId);
+        }
+        if (TicketStore.allowVisitPurpose) {
+            if (!TicketStore.hasColumn("visit_purpose")) {
+                throw new IllegalStateException("系统未配置来访目的字段");
+            }
+            String vp = TicketSql.str(body.get("visitPurpose")).trim();
+            if (vp.isBlank()) {
+                throw new IllegalStateException("请选择来访目的");
+            }
+            if (vp.length() > 32) vp = vp.substring(0, 32);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET visit_purpose=? WHERE id=?", vp, ticketId);
+        }
+        if (TicketStore.allowFitoutRectify) {
+            if (!TicketStore.hasColumn("rectify_note")) {
+                throw new IllegalStateException("系统未配置整改说明字段");
+            }
+            String rn = TicketSql.str(body.get("rectifyNote")).trim();
+            if (rn.isBlank()) {
+                throw new IllegalStateException("请填写整改说明");
+            }
+            if (rn.length() > 512) rn = rn.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET rectify_note=? WHERE id=?", rn, ticketId);
+        }
+        if (TicketStore.allowProjFundUse) {
+            if (!TicketStore.hasColumn("fund_use_yuan") || !TicketStore.hasColumn("fund_use_note")) {
+                throw new IllegalStateException("系统未配置经费使用字段");
+            }
+            double yuan = TicketSql.toDouble(body.get("fundUseYuan"));
+            if (!(yuan > 0)) {
+                throw new IllegalStateException("请填写大于 0 的使用经费");
+            }
+            String fn = TicketSql.str(body.get("fundUseNote")).trim();
+            if (fn.isBlank()) {
+                throw new IllegalStateException("请填写经费使用说明");
+            }
+            if (fn.length() > 512) fn = fn.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET fund_use_yuan=?, fund_use_note=? WHERE id=?",
+                    yuan, fn, ticketId);
+        }
+        if (TicketStore.allowVisitSlotRemain) {
+            if (!TicketStore.hasColumn("visit_on")) {
+                throw new IllegalStateException("系统未配置来访日期字段");
+            }
+            String vo = TicketSql.str(body.get("visitOn")).trim();
+            if (vo.length() >= 10) vo = vo.substring(0, 10);
+            if (vo.isBlank()) {
+                throw new IllegalStateException("请选择来访日期");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET visit_on=? WHERE id=?", vo, ticketId);
+        }
+        if (TicketStore.allowPlagiarismUrl) {
+            if (!TicketStore.hasColumn("plagiarism_url")) {
+                throw new IllegalStateException("系统未配置查重链接字段");
+            }
+            String url = TicketSql.str(body.get("plagiarismUrl")).trim();
+            if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
+                throw new IllegalStateException("请填写以 http:// 或 https:// 开头的查重报告链接");
+            }
+            if (url.length() > 512) url = url.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET plagiarism_url=? WHERE id=?", url, ticketId);
+        }
+        if (TicketStore.allowPartyStage) {
+            if (!TicketStore.hasColumn("party_stage") || !TicketStore.hasColumn("stage_on")) {
+                throw new IllegalStateException("系统未配置发展阶段字段");
+            }
+            String ps = TicketSql.str(body.get("partyStage")).trim();
+            String so = TicketSql.str(body.get("stageOn")).trim();
+            if (so.length() >= 10) so = so.substring(0, 10);
+            if (ps.isBlank() || so.isBlank()) {
+                throw new IllegalStateException("请选择发展阶段并填写进入日期");
+            }
+            if (ps.length() > 32) ps = ps.substring(0, 32);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET party_stage=?, stage_on=? WHERE id=?",
+                    ps, so, ticketId);
+        }
+        if (TicketStore.allowEvalObserve) {
+            if (!TicketStore.hasColumn("observe_on") || !TicketStore.hasColumn("observe_note")) {
+                throw new IllegalStateException("系统未配置听课记录字段");
+            }
+            String oo = TicketSql.str(body.get("observeOn")).trim();
+            if (oo.length() >= 10) oo = oo.substring(0, 10);
+            String on = TicketSql.str(body.get("observeNote")).trim();
+            if (oo.isBlank() || on.isBlank()) {
+                throw new IllegalStateException("请填写听课日期和记录");
+            }
+            if (on.length() > 512) on = on.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET observe_on=?, observe_note=? WHERE id=?",
+                    oo, on, ticketId);
+        }
+        if (TicketStore.allowScheduleImpact) {
+            if (!TicketStore.hasColumn("schedule_impact_note")) {
+                throw new IllegalStateException("系统未配置课表影响说明字段");
+            }
+            String si = TicketSql.str(body.get("scheduleImpactNote")).trim();
+            if (si.isBlank()) {
+                throw new IllegalStateException("请填写对课表的影响");
+            }
+            if (si.length() > 512) si = si.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET schedule_impact_note=? WHERE id=?", si, ticketId);
+        }
+        if (TicketStore.allowContractAmount) {
+            if (!TicketStore.hasColumn("contract_amount")) {
+                throw new IllegalStateException("系统未配置合同金额字段");
+            }
+            double amt = TicketSql.toDouble(body.get("contractAmount"));
+            if (!(amt > 0)) {
+                throw new IllegalStateException("请填写大于 0 的合同金额");
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET contract_amount=? WHERE id=?", amt, ticketId);
+        }
+        if (TicketStore.allowExpenseLines) {
+            TicketLineOps.replaceExpenseLines(ticketId, body.get("expenseLines"));
+        }
+        if (TicketStore.allowTripLegs) {
+            TicketLineOps.replaceTripLegs(ticketId, body.get("tripLegs"));
+        }
+        if (TicketStore.allowClubRoster) {
+            TicketLineOps.replaceClubRoster(ticketId, body.get("clubMembers"));
+        }
+        if (TicketStore.allowCarpassParkingMutex) {
+            if (!TicketStore.hasColumn("parking_on")) {
+                throw new IllegalStateException("系统未配置占用车位日期字段");
+            }
+            String po = TicketSql.str(body.get("parkingOn")).trim();
+            if (po.length() >= 10) po = po.substring(0, 10);
+            if (po.isBlank()) {
+                throw new IllegalStateException("请选择占用车位日期");
+            }
+            long itemId = 0;
+            try {
+                Long iid = TicketSql.db().queryForObject(
+                        "SELECT " + TicketStore.itemFkColumn() + " FROM " + TicketStore.TICKET + " WHERE id=?",
+                        Long.class,
+                        ticketId);
+                itemId = iid == null ? 0 : iid;
+            } catch (Exception ignored) {
+            }
+            TicketGuardOps.assertParkingMutexIfRequired(itemId, po, ticketId);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET parking_on=? WHERE id=?", po, ticketId);
+        }
+        if (TicketStore.allowContractRenew) {
+            if (!TicketStore.hasColumn("renew_on") || !TicketStore.hasColumn("renew_note")) {
+                throw new IllegalStateException("系统未配置续签字段");
+            }
+            String ro = TicketSql.str(body.get("renewOn")).trim();
+            if (ro.length() >= 10) ro = ro.substring(0, 10);
+            String rn = TicketSql.str(body.get("renewNote")).trim();
+            if (ro.isBlank() || rn.isBlank()) {
+                throw new IllegalStateException("请填写续签日期和说明");
+            }
+            if (rn.length() > 512) rn = rn.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET renew_on=?, renew_note=? WHERE id=?",
+                    ro, rn, ticketId);
+        }
+        if (TicketStore.allowVisitWalkIn && body.containsKey("walkIn") && TicketStore.hasColumn("walk_in")) {
+            boolean wi = TicketNotifyOps.truthy(body.get("walkIn"));
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET walk_in=? WHERE id=?", wi ? 1 : 0, ticketId);
+            if (wi && TicketStore.hasColumn("visit_on")) {
+                String vo = TicketSql.str(body.get("visitOn")).trim();
+                if (vo.length() >= 10) vo = vo.substring(0, 10);
+                if (!vo.isBlank()) {
+                    TicketSql.db().update(
+                            "UPDATE " + TicketStore.TICKET + " SET visit_on=? WHERE id=?", vo, ticketId);
+                }
+            }
+        }
+        if (TicketStore.allowCheckinProxy && body.containsKey("checkinProxyBy")
+                && TicketStore.hasColumn("checkin_proxy_by")) {
+            String by = TicketSql.str(body.get("checkinProxyBy")).trim();
+            if (by.length() > 64) by = by.substring(0, 64);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET checkin_proxy_by=? WHERE id=?", by, ticketId);
+        }
+        if (TicketStore.allowProjChangeLog) {
+            if (!TicketStore.hasColumn("change_log_note")) {
+                throw new IllegalStateException("系统未配置变更摘要字段");
+            }
+            String note = TicketSql.str(body.get("changeLogNote")).trim();
+            if (note.isBlank()) {
+                throw new IllegalStateException("请填写变更摘要");
+            }
+            if (note.length() > 512) note = note.substring(0, 512);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET change_log_note=? WHERE id=?", note, ticketId);
+        }
+        if (TicketStore.allowProcureReturn
+                && body.containsKey("returnFail")
+                && TicketStore.hasColumn("return_fail")) {
+            boolean fail = TicketNotifyOps.truthy(body.get("returnFail"));
+            String rn2 = TicketSql.str(body.get("returnNote")).trim();
+            if (fail && rn2.isBlank()) {
+                throw new IllegalStateException("验收不合格时请填写退货说明");
+            }
+            if (rn2.length() > 512) rn2 = rn2.substring(0, 512);
+            if (TicketStore.hasColumn("return_note")) {
+                TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET return_fail=?, return_note=? WHERE id=?",
+                        fail ? 1 : 0, rn2, ticketId);
+            } else {
+                TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET return_fail=? WHERE id=?",
+                        fail ? 1 : 0, ticketId);
+            }
+        }
+        if (TicketStore.allowFleetViolation
+                && body.containsKey("violationPerson")
+                && TicketStore.hasColumn("violation_person")) {
+            String vp = TicketSql.str(body.get("violationPerson")).trim();
+            if (vp.isBlank()) {
+                throw new IllegalStateException("请填写违章责任人");
+            }
+            if (vp.length() > 64) vp = vp.substring(0, 64);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET violation_person=? WHERE id=?", vp, ticketId);
+        }
+        if ((TicketStore.allowVendorQuotes || TicketStore.minVendorQuotes > 0)
+                && body.containsKey("vendorQuotes")) {
+            if (!TicketStore.hasColumn("vendor_quotes")) {
+                throw new IllegalStateException("系统未配置比价供应商字段");
+            }
+            String raw = TicketSql.str(body.get("vendorQuotes"));
+            int need = TicketStore.minVendorQuotes;
+            int n = 0;
+            for (String line : raw.replace('\r', '\n').split("\n")) {
+                if (!line.trim().isBlank()) n++;
+            }
+            if (need > 0 && n < need) {
+                throw new IllegalStateException("比价供应商至少 " + need + " 家，请每行填写一家");
+            }
+            String v = raw.trim();
+            if (v.length() > 2000) v = v.substring(0, 2000);
+            TicketStore.updateTicketColumn(ticketId, "vendor_quotes", v);
+        }
+
+        if (body.containsKey("nightUrgent") && TicketStore.hasColumn("night_urgent")) {
             TicketStore.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET night_urgent=? WHERE id=?",
-                    TicketNotifyOps.truthy(body.get("TicketStore.nightUrgent")) ? 1 : 0,
+                    TicketNotifyOps.truthy(body.get("nightUrgent")) ? 1 : 0,
                     ticketId);
         }
         if (body.containsKey("subscribeProgress") && TicketStore.hasColumn("subscribe_progress")) {

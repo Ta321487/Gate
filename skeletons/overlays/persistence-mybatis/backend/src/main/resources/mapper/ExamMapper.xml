@@ -23,7 +23,6 @@
         <set>
             <if test="type != null">type=#{type},</if>
             <if test="stem != null">stem=#{stem},</if>
-            <if test="optionsJson != null">options_json=#{optionsJson},</if>
             <if test="answerKey != null">answer_key=#{answerKey},</if>
             <if test="score != null">score=#{score},</if>
             <if test="subjectId != null or clearSubject">subject_id=#{subjectId},</if>

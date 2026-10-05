@@ -14,7 +14,7 @@
         <el-form-item
           v-for="d in dims"
           :key="d.key"
-          :label="d.label"
+          :label="dimWeightLabel(d)"
           required
         >
           <el-rate v-model="dimScores[d.key]" :max="5" />
@@ -94,10 +94,26 @@ const loading = ref(false)
 
 const overallScore = computed(() => {
   if (!dims.value.length) return Number(rating.value) || 0
-  const vals = dims.value.map((d) => Number(dimScores[d.key]) || 0).filter((n) => n > 0)
-  if (!vals.length) return 0
+  const scored = dims.value.filter((d) => Number(dimScores[d.key]) > 0)
+  if (!scored.length) return 0
+  if (ticket.value.allowEvalDimWeight) {
+    let vsum = 0
+    let wsum = 0
+    for (const d of scored) {
+      const w = Number(d.weight) > 0 ? Number(d.weight) : 1
+      vsum += Number(dimScores[d.key]) * w
+      wsum += w
+    }
+    return Math.round(wsum > 0 ? vsum / wsum : 0)
+  }
+  const vals = scored.map((d) => Number(dimScores[d.key]))
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
 })
+function dimWeightLabel(d) {
+  const w = Number(d?.weight)
+  if (ticket.value.allowEvalDimWeight && w > 0) return `${d.label}（权重${w}）`
+  return d.label
+}
 const needLowRemark = computed(() => requireLow.value && overallScore.value > 0 && overallScore.value <= 2)
 
 function resetForm() {

@@ -38,6 +38,9 @@ final class TicketApplyOps {
         }
         com.thesis.service.UserStore.assertNotPostMuted(username);
         ExamStore.assertTicketGatePassed(username);
+        if (TicketStore.allowApplyBlacklist) {
+            com.thesis.service.ApplyBlacklistStore.assertNotBlocked(username);
+        }
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
         TicketGuardOps.assertClaimCooldownIfRequired(item);
@@ -46,8 +49,12 @@ final class TicketApplyOps {
         int nQty = TicketDeriveOps.resolveQty(qty, stock);
         boolean asWaitlist = false;
         boolean asBookHold = false;
+        boolean lotteryMode = TicketStore.allowLottery
+                && TicketSql.str(item.get("admitMode")).contains("抽签");
         if (TicketStore.useQuota && stock < nQty) {
-            if (TicketStore.allowBookHold) {
+            if (lotteryMode) {
+                // 抽签场：先收集报名，满额由管理抽签占额，此处不拦
+            } else if (TicketStore.allowBookHold) {
                 if (!TicketStore.hasColumn("hold_expire_at")) {
                     throw new IllegalStateException("系统未配置到书过期字段，无法预约到书");
                 }
@@ -60,6 +67,7 @@ final class TicketApplyOps {
         }
         TicketAsserts.assertItemOpen(item);
         TicketAsserts.assertApplyDeadline(item);
+        TicketAsserts.assertEvalOpenWindow(item);
         if (!asWaitlist && !asBookHold) {
             TicketAsserts.assertNoTimeConflict(username, itemId, item);
             TicketAsserts.assertNoMutexConflict(username, itemId, item);
@@ -92,9 +100,13 @@ final class TicketApplyOps {
             Integer dup = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TicketStore.TICKET
                             + " WHERE username=? AND " + TicketStore.itemFkColumn()
-                            + "=? AND status IN ('pending','pending_mid','pending_final','approved','overdue','waitlisted','held','hold_ready')",
+                            + "=? AND status IN ('pending','pending_mid','pending_final','approved','overdue','waitlisted','held','hold_ready','lottery')",
                     Integer.class, username, itemId);
-            if (dup != null && dup > 0) throw new IllegalStateException("该对象已有进行中的单据");
+            if (dup != null && dup > 0) {
+                String deny = TicketStore.onePerArchiveDenyMessage;
+                throw new IllegalStateException(
+                        deny == null || deny.isBlank() ? "该对象已有进行中的单据" : deny);
+            }
         }
 
         String rawNote = remark == null ? "" : remark.trim();
@@ -124,10 +136,15 @@ final class TicketApplyOps {
                                 period[0].toLocalDate(), period[1].toLocalDate())
                         + 1)
                 : 0;
+        final boolean asLottery = !asWaitlist && !asBookHold && TicketStore.allowLottery
+                && TicketSql.str(item.get("admitMode")).contains("抽签");
         final String initialStatus = asBookHold
                 ? "held"
-                : (asWaitlist ? "waitlisted" : (TicketStore.autoApprove ? "approved" : "pending"));
-        final boolean withApproveAt = !asWaitlist && !asBookHold && TicketStore.autoApprove && TicketStore.hasColumn("approve_at");
+                : (asWaitlist ? "waitlisted"
+                        : (asLottery ? "lottery"
+                                : (TicketStore.autoApprove ? "approved" : "pending")));
+        final boolean withApproveAt = !asWaitlist && !asBookHold && !asLottery
+                && TicketStore.autoApprove && TicketStore.hasColumn("approve_at");
         TicketSql.db().update(con -> {
             StringBuilder cols = new StringBuilder(
                     TicketStore.itemFkColumn() + ",username,status,apply_at,remark");
@@ -208,6 +225,18 @@ final class TicketApplyOps {
             } catch (Exception ignored) {
                 // 站内信失败不影响候补单
             }
+        } else if (asLottery) {
+            TicketDeriveOps.appendProgress(id, "lottery", username, "进入待抽签");
+            try {
+                MessageStore.send(
+                        username,
+                        "待抽签",
+                        "「" + TicketNotifyOps.subjectOf(TicketDeriveOps.get(id)) + "」已提交，等待抽签录取。",
+                        "ticket",
+                        id);
+            } catch (Exception ignored) {
+                // 站内信失败不影响待抽签单
+            }
         } else if (TicketStore.autoApprove) {
             TicketDeriveOps.appendProgress(id, "approved", username, "用户提交（即时生效）");
         } else {
@@ -216,7 +245,7 @@ final class TicketApplyOps {
             TicketNotifyOps.notifyAdminsNewTicket(id, username, subj);
             TicketNotifyOps.notifyPeerOwnerNewTicket(id, itemId, username, subj);
         }
-        TicketNotifyOps.notifyApplySuccessInbox(id, username, asWaitlist || asBookHold);
+        TicketNotifyOps.notifyApplySuccessInbox(id, username, asWaitlist || asBookHold || asLottery);
         if (period != null && OccupySpanStore.enabled()) {
             OccupySpanStore.record(username, itemId, id, TicketNotifyOps.subjectOf(TicketDeriveOps.get(id)), period[0], period[1]);
         }

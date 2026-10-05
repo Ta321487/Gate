@@ -76,6 +76,10 @@ public final class TicketPolicy {
     public static final int CATEGORY_LIMIT = 0;
     /** 申请说明的最少字数 */
     public static final int MIN_REMARK_WORDS = 0;
+    /** 审核意见的最少字数（通过/驳回） */
+    public static final int MIN_APPROVE_REMARK_WORDS = 0;
+    /** 待审超过 N 小时自动通过；0 表示关闭 */
+    public static final int APPROVE_AUTO_PASS_HOURS = 0;
     /** 被驳回后可修改重提的次数 */
     public static final int MAX_REVISE_TIMES = 0;
     /** 本学期退选次数上限；0 表示不限制 */
@@ -84,6 +88,12 @@ public final class TicketPolicy {
     public static final int SEMESTER_CREDIT_CAP = 0;
     /** 剩余学分低于该值时提示接近上限；0 表示不提示 */
     public static final int CREDIT_WARN_REMAINING = 0;
+    /** 采购比价最少供应商家数；0 不校验 */
+    public static final int MIN_VENDOR_QUOTES = 0;
+    /** 合同/许可/年检到期前 N 天站内信提醒；0 关闭 */
+    public static final int NOTIFY_ARCHIVE_EXPIRE_DAYS = 0;
+    /** 通行码自审过之日起有效天数；0 关闭 */
+    public static final int PASS_EXPIRE_DAYS = 0;
     /** 初始信用分 */
     public static final int CREDIT_INITIAL = 100;
     /** 每次逾期扣减的信用分 */
@@ -112,6 +122,12 @@ public final class TicketPolicy {
     public static final String AGE_CONSTRAINT_NEED_MESSAGE = "";
     /** 年龄不符合拒绝文案 */
     public static final String AGE_CONSTRAINT_DENY_MESSAGE = "";
+    /** 一人一档重复提交拒绝文案 */
+    public static final String ONE_PER_ARCHIVE_DENY_MESSAGE = "";
+    /** 黑名单拒绝文案 */
+    public static final String APPLY_BLACKLIST_DENY_MESSAGE = "";
+    /** 评教开放窗口外拒绝文案 */
+    public static final String EVAL_OPEN_WINDOW_DENY_MESSAGE = "";
 
     // ---------- 扩展能力开关（按开题启用） ----------
     public static final boolean TWO_LEVEL = false;
@@ -161,6 +177,32 @@ public final class TicketPolicy {
     public static final boolean AGE_CONSTRAINT = false;
     /** 签到可登记迟到分钟数 */
     public static final boolean ALLOW_LATE_MINUTES = false;
+    /** 选课志愿序（第一/第二） */
+    public static final boolean ALLOW_WISH_ORDER = false;
+    /** 活动志愿者岗位意向 */
+    public static final boolean ALLOW_VOLUNTEER_ROLE = false;
+    /** 管理端可为报名补签 */
+    public static final boolean ALLOW_ADMIN_CHECKIN = false;
+    /** 出团天气须知须勾选 */
+    public static final boolean REQUIRE_TOUR_NOTICE_ACK = false;
+    /** 集体报名可填同行人姓名 */
+    public static final boolean ALLOW_COMPANIONS = false;
+    /** 名额紧张时随机抽签录取 */
+    public static final boolean ALLOW_LOTTERY = false;
+    /** 活动座位分区报名 */
+    public static final boolean ALLOW_SEAT_ZONE = false;
+    /** 已通过报名可站内转让 */
+    public static final boolean ALLOW_TICKET_TRANSFER = false;
+    /** 电子票夹出示通行码 */
+    public static final boolean ALLOW_TICKET_WALLET = false;
+    /** 黑名单用户禁止报名 */
+    public static final boolean ALLOW_APPLY_BLACKLIST = false;
+    /** 调课变更站内信通知已选学生 */
+    public static final boolean SCHEDULE_CHANGE_NOTIFY = false;
+    /** 活动办结后用户可上传相册 */
+    public static final boolean ALLOW_POST_GALLERY = false;
+    /** 活动学分认定非自动回写须勾选确认 */
+    public static final boolean REQUIRE_CREDIT_WRITEBACK_ACK = false;
     public static final boolean BLOCK_IF_CALIB_EXPIRED = false;
     public static final boolean ALLOW_PROJECT_NO = false;
     public static final boolean ALLOW_PROCURE_REF = false;
@@ -230,6 +272,182 @@ public final class TicketPolicy {
     public static final boolean PRINT_TICKET = false;
     public static final boolean REPAIR_THICKEN = false;
     public static final boolean APPLY_THICKEN = false;
+    /** 审批/填报组加厚（意见短语/抄送/审意见字数等） */
+    public static final boolean APPROVE_THICKEN = false;
+    /** 审核时可抄送知会（站内信） */
+    public static final boolean ALLOW_APPROVE_CC = false;
+    /** 审批转审（一跳改处理人） */
+    public static final boolean ALLOW_APPROVE_TRANSFER = false;
+    /** 请假期间代审 */
+    public static final boolean ALLOW_APPROVE_DELEGATE = false;
+    /** 审核时可上传意见附件 */
+    public static final boolean ALLOW_APPROVE_REMARK_ATTACH = false;
+    /** 抄送人可追加知会评论 */
+    public static final boolean ALLOW_APPROVE_CC_COMMENT = false;
+    /** 限时自动通过（危险开关） */
+    public static final boolean ALLOW_APPROVE_AUTO_PASS = false;
+    /** 证明领取方式（自取/邮寄） */
+    public static final boolean ALLOW_CERT_PICKUP = false;
+    /** 证明加急件标记 */
+    public static final boolean ALLOW_CERT_URGENT = false;
+    /** 用印份数与装订说明 */
+    public static final boolean ALLOW_SEAL_COPIES = false;
+    /** 用车里程与油耗回填 */
+    public static final boolean ALLOW_FLEET_MILEAGE = false;
+    /** 报销发票张数与金额校验 */
+    public static final boolean ALLOW_EXPENSE_INVOICE = false;
+    /** 访客随行人数 */
+    public static final boolean ALLOW_VISITOR_COUNT = false;
+    /** 获奖证书编号查重 */
+    public static final boolean ALLOW_AWARD_CERT_NO = false;
+    /** 采购比价供应商列表 */
+    public static final boolean ALLOW_VENDOR_QUOTES = false;
+    /** 同一档案仅一张进行中单据（评教一人一课） */
+    public static final boolean FORCE_ONE_PER_ARCHIVE = false;
+    /** 评教开放窗口起止日校验 */
+    public static final boolean ALLOW_EVAL_OPEN_WINDOW = false;
+    /** 加班调休核定小时（办结必填） */
+    public static final boolean ALLOW_COMP_HOURS = false;
+    /** 用车驾驶员与随车人 */
+    public static final boolean ALLOW_FLEET_CREW = false;
+    /** 伦理批件编号与有效期（档案） */
+    public static final boolean ALLOW_ETHIC_BATCH = false;
+    /** 通行码到期自动失效 */
+    public static final boolean ALLOW_PASS_EXPIRE = false;
+    /** 用车回场油量（办结必填） */
+    public static final boolean ALLOW_RETURN_FUEL = false;
+    /** 劳动地点（申请必填） */
+    public static final boolean ALLOW_LABOR_PLACE = false;
+    /** 宣传品尺寸与悬挂位置（档案） */
+    public static final boolean ALLOW_PROMO_PLACE = false;
+    /** 伦理会议日期与决议摘要（档案） */
+    public static final boolean ALLOW_ETHIC_MEETING = false;
+    /** 学籍异动生效日期 */
+    public static final boolean ALLOW_EFFECTIVE_ON = false;
+    /** 证明开具流水号（审过签发） */
+    public static final boolean ALLOW_CERT_ISSUE_NO = false;
+    /** 宣传品投放反馈照片（办结必附） */
+    public static final boolean ALLOW_PROMO_FEEDBACK = false;
+    /** 合同正文版本号（申请必填） */
+    public static final boolean ALLOW_DOC_REV = false;
+    /** 装修施工时段对照禁噪窗 */
+    public static final boolean ALLOW_FITOUT_QUIET = false;
+    /** 用印现场照片（办结必附） */
+    public static final boolean ALLOW_SEAL_CLOSE_PHOTO = false;
+    /** 证明开具份数上限 */
+    public static final boolean ALLOW_ISSUE_COPIES = false;
+    /** 合同签署方多方勾选 */
+    public static final boolean ALLOW_SIGN_PARTIES = false;
+    /** 准入培训学时累计 */
+    public static final boolean ALLOW_TRAIN_HOURS = false;
+    /** 车辆通行证年检到期提醒 */
+    public static final boolean ALLOW_INSPECT_EXPIRE = false;
+    /** 大创项目成员变更说明 */
+    public static final boolean ALLOW_MEMBER_CHANGE = false;
+    /** 采购申购金额对照预算余额 */
+    public static final boolean ALLOW_PROCURE_BUDGET = false;
+    /** 查寝异常类型 */
+    public static final boolean ALLOW_CHECKIN_EXCEPTION = false;
+    /** 访客来访目的 */
+    public static final boolean ALLOW_VISIT_PURPOSE = false;
+    /** 用车违章责任人（办结必填） */
+    public static final boolean ALLOW_FLEET_VIOLATION = false;
+    /** 装修验收整改说明 */
+    public static final boolean ALLOW_FITOUT_RECTIFY = false;
+    /** 大创中期/结题材料节点提醒 */
+    public static final boolean ALLOW_PROJ_NODE_REMIND = false;
+    /** 社团年审材料复制上年 */
+    public static final boolean ALLOW_CLUB_COPY_LAST = false;
+    /** 采购验收不合格退货说明 */
+    public static final boolean ALLOW_PROCURE_RETURN = false;
+    /** 综测公示期异议登记 */
+    public static final boolean ALLOW_MORAL_OBJECTION = false;
+    /** 大创经费使用登记 */
+    public static final boolean ALLOW_PROJ_FUND_USE = false;
+    /** 评教课程维度权重 */
+    public static final boolean ALLOW_EVAL_DIM_WEIGHT = false;
+    /** 访客预约时段余量 */
+    public static final boolean ALLOW_VISIT_SLOT_REMAIN = false;
+    /** 大创结题查重报告外链 */
+    public static final boolean ALLOW_PLAGIARISM_URL = false;
+    /** 查寝连续未归预警 */
+    public static final boolean ALLOW_ABSENT_STREAK = false;
+    /** 党员发展阶段登记 */
+    public static final boolean ALLOW_PARTY_STAGE = false;
+    /** 评教督导听课记录 */
+    public static final boolean ALLOW_EVAL_OBSERVE = false;
+    /** 学籍异动对课表影响说明 */
+    public static final boolean ALLOW_SCHEDULE_IMPACT = false;
+    /** 合同金额及大写展示 */
+    public static final boolean ALLOW_CONTRACT_AMOUNT = false;
+    /** 报销单明细多行 */
+    public static final boolean ALLOW_EXPENSE_LINES = false;
+    /** 出差行程多段 */
+    public static final boolean ALLOW_TRIP_LEGS = false;
+    /** 评教结果对学生不可见 */
+    public static final boolean ALLOW_HIDE_EVAL_RESULT = false;
+    /** 合同审批意见对签署方可见 */
+    public static final boolean ALLOW_SIGN_REMARK_VISIBLE = false;
+    /** 大创项目变更日志 */
+    public static final boolean ALLOW_PROJ_CHANGE_LOG = false;
+    /** 证明真伪查询码 */
+    public static final boolean ALLOW_CERT_VERIFY = false;
+    /** 访客现场补录 */
+    public static final boolean ALLOW_VISIT_WALK_IN = false;
+    /** 查寝楼栋长代登记 */
+    public static final boolean ALLOW_CHECKIN_PROXY = false;
+    /** 社团成员名册 */
+    public static final boolean ALLOW_CLUB_ROSTER = false;
+    /** 车辆通行证车位同日互斥 */
+    public static final boolean ALLOW_CARPASS_PARKING_MUTEX = false;
+    /** 评教未评催评 */
+    public static final boolean ALLOW_EVAL_URGE = false;
+    /** 合同续签日期与说明 */
+    public static final boolean ALLOW_CONTRACT_RENEW = false;
+    /** 合同到期续签提醒 */
+    public static final boolean ALLOW_CONTRACT_EXPIRE_REMIND = false;
+    /** 证明领取核销码 */
+    public static final boolean ALLOW_CERT_PICKUP_REDEEM = false;
+    /** 实验室准入考试成绩门槛 */
+    public static final boolean ALLOW_EXAM_PASS_MIN = false;
+    /** 查寝抽查任务 */
+    public static final boolean ALLOW_CHECKIN_SPOT = false;
+    /** 评教先评后查分 */
+    public static final boolean ALLOW_EVAL_BEFORE_GRADE = false;
+    /** 审批人均办理耗时 */
+    public static final boolean ALLOW_APPROVE_DURATION_STATS = false;
+    /** 申请附件覆盖留旧 */
+    public static final boolean ALLOW_ATTACH_KEEP_OLD = false;
+    /** 证明领取核销码二维码 */
+    public static final boolean ALLOW_CERT_PICKUP_QR = false;
+    /** 证明真伪查询页加深 */
+    public static final boolean ALLOW_CERT_VERIFY_PAGE = false;
+    /** 访客通行证打印 */
+    public static final boolean ALLOW_VISITOR_PASS_PRINT = false;
+    /** 查寝楼长日报 */
+    public static final boolean ALLOW_CHECKIN_DAILY_REPORT = false;
+    /** 评教院系汇总导出 */
+    public static final boolean ALLOW_EVAL_COLLEGE_EXPORT = false;
+    /** 用印台账导出 */
+    public static final boolean ALLOW_SEAL_LEDGER_EXPORT = false;
+    /** 综测加减分证据材料清单 */
+    public static final boolean ALLOW_MORAL_MATERIAL_CHECK = false;
+    /** 党员发展阶段材料清单模板 */
+    public static final boolean ALLOW_PARTY_MATERIAL_TEMPLATE = false;
+    /** 思想汇报/心得附件节点 */
+    public static final boolean ALLOW_PARTY_THOUGHT_ATTACH = false;
+    /** 证明开具套打页 */
+    public static final boolean ALLOW_CERT_FORM_PRINT = false;
+    /** 用印审批单套打 */
+    public static final boolean ALLOW_SEAL_FORM_PRINT = false;
+    /** 大创中期检查表套打 */
+    public static final boolean ALLOW_PROJ_MID_FORM_PRINT = false;
+    /** 伦理审查意见书套打 */
+    public static final boolean ALLOW_ETHIC_OPINION_PRINT = false;
+    /** 报销票据影像张数提示 */
+    public static final boolean ALLOW_EXPENSE_ATTACH_COUNT = false;
+    /** 用车驾驶员资质材料清单 */
+    public static final boolean ALLOW_FLEET_DRIVER_CERT = false;
     public static final boolean NOTIFY_ON_APPLY_SUCCESS = false;
     public static final boolean ALLOW_MEETING_PLACE = false;
     public static final boolean ALLOW_EMERGENCY_CONTACT = false;

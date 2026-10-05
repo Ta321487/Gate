@@ -95,6 +95,252 @@ final class TicketCfgOps {
     }
 
 
+    
+    public static void configureApproveThicken(
+            boolean approveThickenIn,
+            boolean allowApproveCcIn,
+            int minApproveRemarkWordsIn,
+            boolean allowApproveTransferIn,
+            boolean allowApproveDelegateIn,
+            boolean allowApproveRemarkAttachIn,
+            boolean allowApproveCcCommentIn,
+            boolean allowApproveAutoPassIn,
+            int approveAutoPassHoursIn) {
+        TicketStore.approveThicken = approveThickenIn;
+        TicketStore.allowApproveCc = allowApproveCcIn;
+        TicketStore.minApproveRemarkWords = Math.max(0, Math.min(500, minApproveRemarkWordsIn));
+        TicketStore.allowApproveTransfer = allowApproveTransferIn;
+        TicketStore.allowApproveDelegate = allowApproveDelegateIn;
+        TicketStore.allowApproveRemarkAttach = allowApproveRemarkAttachIn;
+        TicketStore.allowApproveCcComment = allowApproveCcCommentIn;
+        TicketStore.allowApproveAutoPass = allowApproveAutoPassIn;
+        TicketStore.approveAutoPassHours = Math.max(0, Math.min(720, approveAutoPassHoursIn));
+    }
+
+    public static void configureApproveSkin(
+            boolean allowCertPickupIn,
+            boolean allowCertUrgentIn,
+            boolean allowSealCopiesIn,
+            boolean allowFleetMileageIn,
+            boolean allowExpenseInvoiceIn,
+            boolean allowVisitorCountIn) {
+        TicketStore.allowCertPickup = allowCertPickupIn;
+        TicketStore.allowCertUrgent = allowCertUrgentIn;
+        TicketStore.allowSealCopies = allowSealCopiesIn;
+        TicketStore.allowFleetMileage = allowFleetMileageIn;
+        TicketStore.allowExpenseInvoice = allowExpenseInvoiceIn;
+        TicketStore.allowVisitorCount = allowVisitorCountIn;
+    }
+
+
+    public static void configureApproveBatch4(
+            boolean allowAwardCertNoIn,
+            boolean allowVendorQuotesIn,
+            boolean forceOnePerArchiveIn,
+            int minVendorQuotesIn,
+            int notifyArchiveExpireDaysIn,
+            String onePerArchiveDenyMessageIn) {
+        TicketStore.allowAwardCertNo = allowAwardCertNoIn;
+        TicketStore.allowVendorQuotes = allowVendorQuotesIn;
+        TicketStore.forceOnePerArchive = forceOnePerArchiveIn;
+        TicketStore.minVendorQuotes = Math.max(0, Math.min(20, minVendorQuotesIn));
+        TicketStore.notifyArchiveExpireDays = Math.max(0, Math.min(90, notifyArchiveExpireDaysIn));
+        TicketStore.onePerArchiveDenyMessage =
+                onePerArchiveDenyMessageIn == null ? "" : onePerArchiveDenyMessageIn.trim();
+        if (TicketStore.forceOnePerArchive) {
+            TicketStore.allowMultiTicket = false;
+        }
+    }
+
+    public static void configureApproveBatch5(
+            boolean allowEvalOpenWindowIn,
+            boolean allowCompHoursIn,
+            boolean allowFleetCrewIn,
+            boolean allowEthicBatchIn,
+            String evalOpenWindowDenyMessageIn) {
+        TicketStore.allowEvalOpenWindow = allowEvalOpenWindowIn;
+        TicketStore.allowCompHours = allowCompHoursIn;
+        TicketStore.allowFleetCrew = allowFleetCrewIn;
+        TicketStore.allowEthicBatch = allowEthicBatchIn;
+        TicketStore.evalOpenWindowDenyMessage =
+                evalOpenWindowDenyMessageIn == null ? "" : evalOpenWindowDenyMessageIn.trim();
+    }
+
+    public static void configureApproveBatch6(
+            boolean allowPassExpireIn,
+            boolean allowReturnFuelIn,
+            boolean allowLaborPlaceIn,
+            boolean allowPromoPlaceIn,
+            boolean allowEthicMeetingIn,
+            boolean allowEffectiveOnIn,
+            int passExpireDaysIn) {
+        TicketStore.allowPassExpire = allowPassExpireIn;
+        TicketStore.allowReturnFuel = allowReturnFuelIn;
+        TicketStore.allowLaborPlace = allowLaborPlaceIn;
+        TicketStore.allowPromoPlace = allowPromoPlaceIn;
+        TicketStore.allowEthicMeeting = allowEthicMeetingIn;
+        TicketStore.allowEffectiveOn = allowEffectiveOnIn;
+        TicketStore.passExpireDays = Math.max(0, Math.min(30, passExpireDaysIn));
+    }
+
+    public static void configureApproveBatch7(
+            boolean allowCertIssueNoIn,
+            boolean allowPromoFeedbackIn,
+            boolean allowDocRevIn,
+            boolean allowFitoutQuietIn) {
+        TicketStore.allowCertIssueNo = allowCertIssueNoIn;
+        TicketStore.allowPromoFeedback = allowPromoFeedbackIn;
+        TicketStore.allowDocRev = allowDocRevIn;
+        TicketStore.allowFitoutQuiet = allowFitoutQuietIn;
+    }
+
+    public static void configureApproveBatch8(
+            boolean allowSealClosePhotoIn,
+            boolean allowIssueCopiesIn,
+            boolean allowSignPartiesIn,
+            boolean allowTrainHoursIn,
+            boolean allowInspectExpireIn,
+            boolean allowMemberChangeIn) {
+        TicketStore.allowSealClosePhoto = allowSealClosePhotoIn;
+        TicketStore.allowIssueCopies = allowIssueCopiesIn;
+        TicketStore.allowSignParties = allowSignPartiesIn;
+        TicketStore.allowTrainHours = allowTrainHoursIn;
+        TicketStore.allowInspectExpire = allowInspectExpireIn;
+        TicketStore.allowMemberChange = allowMemberChangeIn;
+    }
+
+    public static void configureApproveBatch9(
+            boolean allowProcureBudgetIn,
+            boolean allowCheckinExceptionIn,
+            boolean allowVisitPurposeIn,
+            boolean allowFleetViolationIn,
+            boolean allowFitoutRectifyIn,
+            boolean allowProjNodeRemindIn) {
+        TicketStore.allowProcureBudget = allowProcureBudgetIn;
+        TicketStore.allowCheckinException = allowCheckinExceptionIn;
+        TicketStore.allowVisitPurpose = allowVisitPurposeIn;
+        TicketStore.allowFleetViolation = allowFleetViolationIn;
+        TicketStore.allowFitoutRectify = allowFitoutRectifyIn;
+        TicketStore.allowProjNodeRemind = allowProjNodeRemindIn;
+    }
+
+    public static void configureApproveBatch10(
+            boolean allowClubCopyLastIn,
+            boolean allowProcureReturnIn,
+            boolean allowMoralObjectionIn,
+            boolean allowProjFundUseIn,
+            boolean allowEvalDimWeightIn,
+            boolean allowVisitSlotRemainIn) {
+        TicketStore.allowClubCopyLast = allowClubCopyLastIn;
+        TicketStore.allowProcureReturn = allowProcureReturnIn;
+        TicketStore.allowMoralObjection = allowMoralObjectionIn;
+        TicketStore.allowProjFundUse = allowProjFundUseIn;
+        TicketStore.allowEvalDimWeight = allowEvalDimWeightIn;
+        TicketStore.allowVisitSlotRemain = allowVisitSlotRemainIn;
+    }
+
+    public static void configureApproveBatch11(
+            boolean allowPlagiarismUrlIn,
+            boolean allowAbsentStreakIn,
+            boolean allowPartyStageIn,
+            boolean allowEvalObserveIn,
+            boolean allowScheduleImpactIn,
+            boolean allowContractAmountIn) {
+        TicketStore.allowPlagiarismUrl = allowPlagiarismUrlIn;
+        TicketStore.allowAbsentStreak = allowAbsentStreakIn;
+        TicketStore.allowPartyStage = allowPartyStageIn;
+        TicketStore.allowEvalObserve = allowEvalObserveIn;
+        TicketStore.allowScheduleImpact = allowScheduleImpactIn;
+        TicketStore.allowContractAmount = allowContractAmountIn;
+    }
+
+    public static void configureApproveBatch12(
+            boolean allowExpenseLinesIn,
+            boolean allowTripLegsIn,
+            boolean allowHideEvalResultIn,
+            boolean allowSignRemarkVisibleIn,
+            boolean allowProjChangeLogIn,
+            boolean allowCertVerifyIn) {
+        TicketStore.allowExpenseLines = allowExpenseLinesIn;
+        TicketStore.allowTripLegs = allowTripLegsIn;
+        TicketStore.allowHideEvalResult = allowHideEvalResultIn;
+        TicketStore.allowSignRemarkVisible = allowSignRemarkVisibleIn;
+        TicketStore.allowProjChangeLog = allowProjChangeLogIn;
+        TicketStore.allowCertVerify = allowCertVerifyIn;
+    }
+
+    public static void configureApproveBatch13(
+            boolean allowVisitWalkInIn,
+            boolean allowCheckinProxyIn,
+            boolean allowClubRosterIn,
+            boolean allowCarpassParkingMutexIn,
+            boolean allowEvalUrgeIn,
+            boolean allowContractRenewIn) {
+        TicketStore.allowVisitWalkIn = allowVisitWalkInIn;
+        TicketStore.allowCheckinProxy = allowCheckinProxyIn;
+        TicketStore.allowClubRoster = allowClubRosterIn;
+        TicketStore.allowCarpassParkingMutex = allowCarpassParkingMutexIn;
+        TicketStore.allowEvalUrge = allowEvalUrgeIn;
+        TicketStore.allowContractRenew = allowContractRenewIn;
+    }
+
+    public static void configureApproveBatch14(
+            boolean allowContractExpireRemindIn,
+            boolean allowCertPickupRedeemIn,
+            boolean allowExamPassMinIn,
+            boolean allowCheckinSpotIn,
+            boolean allowEvalBeforeGradeIn,
+            boolean allowApproveDurationStatsIn) {
+        TicketStore.allowContractExpireRemind = allowContractExpireRemindIn;
+        TicketStore.allowCertPickupRedeem = allowCertPickupRedeemIn;
+        TicketStore.allowExamPassMin = allowExamPassMinIn;
+        TicketStore.allowCheckinSpot = allowCheckinSpotIn;
+        TicketStore.allowEvalBeforeGrade = allowEvalBeforeGradeIn;
+        TicketStore.allowApproveDurationStats = allowApproveDurationStatsIn;
+    }
+
+    public static void configureApproveBatch15(
+            boolean allowAttachKeepOldIn,
+            boolean allowCertPickupQrIn,
+            boolean allowCertVerifyPageIn,
+            boolean allowVisitorPassPrintIn,
+            boolean allowCheckinDailyReportIn,
+            boolean allowEvalCollegeExportIn) {
+        TicketStore.allowAttachKeepOld = allowAttachKeepOldIn;
+        TicketStore.allowCertPickupQr = allowCertPickupQrIn;
+        TicketStore.allowCertVerifyPage = allowCertVerifyPageIn;
+        TicketStore.allowVisitorPassPrint = allowVisitorPassPrintIn;
+        TicketStore.allowCheckinDailyReport = allowCheckinDailyReportIn;
+        TicketStore.allowEvalCollegeExport = allowEvalCollegeExportIn;
+    }
+
+    public static void configureApproveBatch16(
+            boolean allowSealLedgerExportIn,
+            boolean allowMoralMaterialCheckIn,
+            boolean allowPartyMaterialTemplateIn,
+            boolean allowPartyThoughtAttachIn) {
+        TicketStore.allowSealLedgerExport = allowSealLedgerExportIn;
+        TicketStore.allowMoralMaterialCheck = allowMoralMaterialCheckIn;
+        TicketStore.allowPartyMaterialTemplate = allowPartyMaterialTemplateIn;
+        TicketStore.allowPartyThoughtAttach = allowPartyThoughtAttachIn;
+    }
+
+    public static void configureApproveBatch17(
+            boolean allowCertFormPrintIn,
+            boolean allowSealFormPrintIn,
+            boolean allowProjMidFormPrintIn,
+            boolean allowEthicOpinionPrintIn,
+            boolean allowExpenseAttachCountIn,
+            boolean allowFleetDriverCertIn) {
+        TicketStore.allowCertFormPrint = allowCertFormPrintIn;
+        TicketStore.allowSealFormPrint = allowSealFormPrintIn;
+        TicketStore.allowProjMidFormPrint = allowProjMidFormPrintIn;
+        TicketStore.allowEthicOpinionPrint = allowEthicOpinionPrintIn;
+        TicketStore.allowExpenseAttachCount = allowExpenseAttachCountIn;
+        TicketStore.allowFleetDriverCert = allowFleetDriverCertIn;
+    }
+
+
     public static void configureApplyThicken(
             boolean applyThickenIn,
             boolean notifyOnApplySuccessIn,
@@ -403,6 +649,58 @@ final class TicketCfgOps {
 
     public static void configureLateMinutes(boolean enabled) {
         TicketStore.allowLateMinutes = enabled;
+    }
+
+    public static void configureWishOrder(boolean enabled) {
+        TicketStore.allowWishOrder = enabled;
+    }
+
+    public static void configureVolunteerRole(boolean enabled) {
+        TicketStore.allowVolunteerRole = enabled;
+    }
+
+    public static void configureAdminCheckin(boolean enabled) {
+        TicketStore.allowAdminCheckin = enabled;
+    }
+
+    public static void configureTourNoticeAck(boolean enabled) {
+        TicketStore.requireTourNoticeAck = enabled;
+    }
+
+    public static void configureCompanions(boolean enabled) {
+        TicketStore.allowCompanions = enabled;
+    }
+
+    public static void configureLottery(boolean enabled) {
+        TicketStore.allowLottery = enabled;
+    }
+
+    public static void configureSeatZone(boolean enabled) {
+        TicketStore.allowSeatZone = enabled;
+    }
+
+    public static void configureTicketTransfer(boolean enabled) {
+        TicketStore.allowTicketTransfer = enabled;
+    }
+
+    public static void configureTicketWallet(boolean enabled) {
+        TicketStore.allowTicketWallet = enabled;
+    }
+
+    public static void configureApplyBlacklist(boolean enabled) {
+        TicketStore.allowApplyBlacklist = enabled;
+    }
+
+    public static void configureScheduleChangeNotify(boolean enabled) {
+        TicketStore.scheduleChangeNotify = enabled;
+    }
+
+    public static void configurePostGallery(boolean enabled) {
+        TicketStore.allowPostGallery = enabled;
+    }
+
+    public static void configureCreditWritebackAck(boolean enabled) {
+        TicketStore.requireCreditWritebackAck = enabled;
     }
 
     public static void configureCalibBlock(boolean enabled) {

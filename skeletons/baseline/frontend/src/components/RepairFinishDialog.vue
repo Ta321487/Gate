@@ -7,7 +7,7 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <p v-if="row" class="tip">办结「{{ row.title || ('编号 ' + row.id) }}」前请核对下列信息</p>
-    <div v-if="row && (row.attachUrl || form.closeAttachUrl)" class="compare">
+    <div v-if="showRepairPhotoCompare && row && (row.attachUrl || form.closeAttachUrl)" class="compare">
       <div class="cmp">
         <div class="cmp-lab">报修图</div>
         <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">
@@ -32,15 +32,56 @@
       <el-form-item v-if="requireCloseSummary" :label="closeSummaryLabel" required>
         <el-input v-model="form.closeSummary" type="textarea" :rows="3" maxlength="512" show-word-limit />
       </el-form-item>
-      <el-form-item v-if="requireCloseAttach" label="结案附件" required>
+      <el-form-item v-if="requireCloseAttach" :label="closeAttachLabel" required>
         <el-upload :show-file-list="false" :http-request="onUpload">
           <el-button type="primary" plain>上传</el-button>
         </el-upload>
         <a v-if="form.closeAttachUrl" :href="form.closeAttachUrl" target="_blank" rel="noopener noreferrer" class="link">已上传</a>
       </el-form-item>
+      <p v-if="requireCloseAttach && closeAttachHint" class="tip">{{ closeAttachHint }}</p>
       <el-form-item v-if="allowPartsNote" :label="partsNoteLabel">
         <el-input v-model="form.partsNote" maxlength="255" :placeholder="partsWarnHint" />
       </el-form-item>
+      <el-form-item v-if="allowFleetMileage" :label="mileageLabel" required>
+        <el-input-number v-model="form.mileageKm" :min="0.1" :max="999999" :precision="1" />
+      </el-form-item>
+      <el-form-item v-if="allowFleetMileage" :label="fuelNoteLabel" required>
+        <el-input v-model="form.fuelNote" maxlength="255" :placeholder="fleetMileageHint || `请填写${fuelNoteLabel}`" />
+      </el-form-item>
+      <el-form-item v-if="allowCompHours" :label="compHoursLabel" required>
+        <el-input-number v-model="form.compHours" :min="0.1" :max="9999" :precision="1" />
+      </el-form-item>
+      <el-form-item v-if="allowReturnFuel" :label="returnFuelLabel" required>
+        <el-input-number v-model="form.returnFuel" :min="0" :max="100" :precision="1" />
+      </el-form-item>
+      <el-form-item v-if="allowFleetViolation" :label="violationPersonLabel" required>
+        <el-input v-model="form.violationPerson" maxlength="64" :placeholder="violationPersonHint || `请填写${violationPersonLabel}`" />
+      </el-form-item>
+      <p v-if="allowFleetViolation && violationPersonHint" class="sub">{{ violationPersonHint }}</p>
+      <el-form-item v-if="allowProcureReturn" :label="procureReturnFailLabel">
+        <el-switch v-model="form.returnFail" />
+      </el-form-item>
+      <el-form-item v-if="allowProcureReturn && form.returnFail" :label="returnNoteLabel" required>
+        <el-input
+          v-model="form.returnNote"
+          type="textarea"
+          :rows="3"
+          maxlength="512"
+          show-word-limit
+          :placeholder="procureReturnHint || `请填写${returnNoteLabel}`"
+        />
+      </el-form-item>
+      <p v-if="allowProcureReturn && procureReturnHint" class="sub">{{ procureReturnHint }}</p>
+      <el-form-item v-if="allowCertPickup && isMailPickup" :label="expressNoLabel" required>
+        <el-input v-model="form.expressNo" maxlength="64" :placeholder="expressNoHint || `请填写${expressNoLabel}`" />
+      </el-form-item>
+      <el-form-item v-if="allowSealCopies" :label="sealCopyNosLabel" required>
+        <el-input v-model="form.sealCopyNos" maxlength="255" :placeholder="sealWitnessHint || `请填写${sealCopyNosLabel}`" />
+      </el-form-item>
+      <el-form-item v-if="allowSealCopies" :label="sealWitnessAckLabel" required>
+        <el-switch v-model="form.sealWitnessAck" />
+      </el-form-item>
+      <p v-if="allowSealCopies && sealWitnessHint" class="sub">{{ sealWitnessHint }}</p>
       <el-form-item v-if="allowSerialNo" :label="serialNoLabel">
         <el-input v-model="form.serialNo" maxlength="64" />
       </el-form-item>
@@ -109,7 +150,49 @@ const titleText = computed(() => verbs.value.return || '完成')
 const requireFaultReason = computed(() => !!ticket.value.requireFaultReason)
 const requireCloseSummary = computed(() => !!ticket.value.requireCloseSummary)
 const requireCloseAttach = computed(() => !!ticket.value.requireCloseAttach)
+const showRepairPhotoCompare = computed(() => !!ticket.value.repairThicken)
+const promoFeedbackLabel = computed(() => labels.value.promoFeedbackLabel || '投放反馈照片')
+const promoFeedbackHint = computed(() => labels.value.promoFeedbackHint || '')
+const sealPhotoLabel = computed(() => labels.value.sealPhotoLabel || '用印现场照片')
+const sealPhotoHint = computed(() => labels.value.sealPhotoHint || '')
+const closeAttachLabel = computed(() =>
+  ticket.value.allowSealClosePhoto
+    ? sealPhotoLabel.value
+    : ticket.value.allowPromoFeedback
+      ? promoFeedbackLabel.value
+      : (labels.value.closeAttachLabel || '结案附件'),
+)
+const closeAttachHint = computed(() =>
+  ticket.value.allowSealClosePhoto
+    ? sealPhotoHint.value
+    : ticket.value.allowPromoFeedback
+      ? promoFeedbackHint.value
+      : (labels.value.closeAttachHint || ''),
+)
 const allowPartsNote = computed(() => !!ticket.value.allowPartsNote)
+const allowFleetMileage = computed(() => !!ticket.value.allowFleetMileage)
+const allowCompHours = computed(() => !!ticket.value.allowCompHours)
+const allowReturnFuel = computed(() => !!ticket.value.allowReturnFuel)
+const allowFleetViolation = computed(() => !!ticket.value.allowFleetViolation)
+const allowProcureReturn = computed(() => !!ticket.value.allowProcureReturn)
+const procureReturnFailLabel = computed(() => labels.value.procureReturnFailLabel || '验收不合格')
+const returnNoteLabel = computed(() => labels.value.returnNoteLabel || '退货说明')
+const procureReturnHint = computed(() => labels.value.procureReturnHint || '')
+const violationPersonLabel = computed(() => labels.value.violationPersonLabel || '违章责任人')
+const violationPersonHint = computed(() => labels.value.violationPersonHint || '')
+const returnFuelLabel = computed(() => labels.value.returnFuelLabel || '回场油量')
+const allowCertPickup = computed(() => !!ticket.value.allowCertPickup)
+const allowSealCopies = computed(() => !!ticket.value.allowSealCopies)
+const isMailPickup = computed(() => String(props.row?.pickupMethod || '') === '邮寄')
+const mileageLabel = computed(() => labels.value.mileageLabel || '行驶里程（公里）')
+const fuelNoteLabel = computed(() => labels.value.fuelNoteLabel || '油耗备注')
+const fleetMileageHint = computed(() => labels.value.fleetMileageHint || '')
+const compHoursLabel = computed(() => labels.value.compHoursLabel || '核定调休小时')
+const expressNoLabel = computed(() => labels.value.expressNoLabel || '快递单号')
+const expressNoHint = computed(() => labels.value.expressNoHint || '')
+const sealCopyNosLabel = computed(() => labels.value.sealCopyNosLabel || '用印份号')
+const sealWitnessAckLabel = computed(() => labels.value.sealWitnessAckLabel || '监印人已确认')
+const sealWitnessHint = computed(() => labels.value.sealWitnessHint || '')
 const allowSerialNo = computed(() => !!ticket.value.allowSerialNo)
 const allowRemoteUrl = computed(() => !!ticket.value.allowRemoteUrl)
 const allowRouteNote = computed(() => !!ticket.value.allowRouteNote || !!ticket.value.repairThicken)
@@ -141,6 +224,16 @@ const form = reactive({
   closeSummary: '',
   closeAttachUrl: '',
   partsNote: '',
+  mileageKm: null,
+  fuelNote: '',
+  compHours: null,
+  returnFuel: null,
+  violationPerson: '',
+  returnFail: false,
+  returnNote: '',
+  expressNo: '',
+  sealCopyNos: '',
+  sealWitnessAck: false,
   serialNo: '',
   remoteUrl: '',
   routeNote: '',
@@ -177,6 +270,16 @@ function resetFromRow() {
   form.closeSummary = row.closeSummary || ''
   form.closeAttachUrl = row.closeAttachUrl || ''
   form.partsNote = row.partsNote || ''
+  form.mileageKm = row.mileageKm != null ? Number(row.mileageKm) : null
+  form.fuelNote = row.fuelNote || ''
+  form.compHours = row.compHours != null ? Number(row.compHours) : null
+  form.returnFuel = row.returnFuel != null ? Number(row.returnFuel) : null
+  form.violationPerson = row.violationPerson || ''
+  form.returnFail = !!row.returnFail
+  form.returnNote = row.returnNote || ''
+  form.expressNo = row.expressNo || ''
+  form.sealCopyNos = row.sealCopyNos || ''
+  form.sealWitnessAck = !!row.sealWitnessAck
   form.serialNo = row.serialNo || ''
   form.remoteUrl = row.remoteUrl || ''
   form.routeNote = row.routeNote || ''
@@ -219,6 +322,45 @@ async function submit() {
     ElMessage.warning('请上传结案附件')
     return
   }
+  if (allowFleetMileage.value && !(Number(form.mileageKm) > 0)) {
+    ElMessage.warning(`请填写大于 0 的${mileageLabel.value}`)
+    return
+  }
+  if (allowFleetMileage.value && !(form.fuelNote || '').trim()) {
+    ElMessage.warning(`请填写${fuelNoteLabel.value}`)
+    return
+  }
+  if (allowCompHours.value && !(Number(form.compHours) > 0)) {
+    ElMessage.warning(`请填写大于 0 的${compHoursLabel.value}`)
+    return
+  }
+  if (allowReturnFuel.value) {
+    const fuel = Number(form.returnFuel)
+    if (!(fuel >= 0 && fuel <= 100)) {
+      ElMessage.warning(`请填写 0–100 的${returnFuelLabel.value}`)
+      return
+    }
+  }
+  if (allowFleetViolation.value && !(form.violationPerson || '').trim()) {
+    ElMessage.warning(violationPersonHint.value || `请填写${violationPersonLabel.value}`)
+    return
+  }
+  if (allowProcureReturn.value && form.returnFail && !(form.returnNote || '').trim()) {
+    ElMessage.warning(procureReturnHint.value || `请填写${returnNoteLabel.value}`)
+    return
+  }
+  if (allowCertPickup.value && isMailPickup.value && !(form.expressNo || '').trim()) {
+    ElMessage.warning(`请填写${expressNoLabel.value}`)
+    return
+  }
+  if (allowSealCopies.value && !(form.sealCopyNos || '').trim()) {
+    ElMessage.warning(`请填写${sealCopyNosLabel.value}`)
+    return
+  }
+  if (allowSealCopies.value && !form.sealWitnessAck) {
+    ElMessage.warning(`请勾选${sealWitnessAckLabel.value}`)
+    return
+  }
   loading.value = true
   try {
     const extras = {
@@ -233,6 +375,16 @@ async function submit() {
       helperUsername: form.helperUsername || undefined,
       visitDueAt: form.visitDueAt || undefined,
       knowledgeDeposit: allowKnowledgeDeposit.value ? !!form.knowledgeDeposit : undefined,
+      mileageKm: allowFleetMileage.value ? form.mileageKm : undefined,
+      fuelNote: allowFleetMileage.value ? (form.fuelNote || undefined) : undefined,
+      compHours: allowCompHours.value ? form.compHours : undefined,
+      returnFuel: allowReturnFuel.value ? form.returnFuel : undefined,
+      violationPerson: allowFleetViolation.value ? (form.violationPerson || undefined) : undefined,
+      returnFail: allowProcureReturn.value ? !!form.returnFail : undefined,
+      returnNote: allowProcureReturn.value ? (form.returnNote || undefined) : undefined,
+      expressNo: allowCertPickup.value && isMailPickup.value ? (form.expressNo || undefined) : undefined,
+      sealCopyNos: allowSealCopies.value ? (form.sealCopyNos || undefined) : undefined,
+      sealWitnessAck: allowSealCopies.value ? !!form.sealWitnessAck : undefined,
     }
     if (allowQuote.value) {
       if (form.quoteYuan != null) extras.quoteYuan = form.quoteYuan

@@ -184,6 +184,7 @@
           </p>
           <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
+          <p v-if="conflictHighlightOn && wouldConflict(row)" class="sched conflict-row">{{ conflictHighlightLabel }}：{{ conflictHighlightHint }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <div class="row">
             <span
@@ -191,6 +192,12 @@
               class="stage-chip"
               :data-stage="stageTone(row.stage)"
             >{{ row.stage || '—' }}</span>
+            <el-tag
+              v-if="Number(row.pinTop) === 1"
+              size="small"
+              type="warning"
+              effect="plain"
+            >置顶</el-tag>
             <el-tag
               v-if="stockDisplay !== 'hidden'"
               :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
@@ -332,6 +339,20 @@
               || '未分类'
           }}
         </p>
+        <el-tag v-if="Number(detail.pinTop) === 1" size="small" type="warning" effect="plain" style="margin-bottom:8px">加急置顶</el-tag>
+        <p v-if="pinTopHint && Number(detail.pinTop) === 1" class="detail-line muted">{{ pinTopHint }}</p>
+        <CodeQrBlock
+          v-if="codeQrOn && detail.checkinCode"
+          :code="detail.checkinCode"
+          :label="checkinCodeLabel"
+        />
+        <div v-if="lotteryResultOn && lotteryRows.length" class="lottery-box">
+          <h4>{{ lotteryResultTitle }}</h4>
+          <p v-if="lotteryResultHint" class="muted">{{ lotteryResultHint }}</p>
+          <ul>
+            <li v-for="r in lotteryRows" :key="r.id">{{ r.username }} · {{ r.status }}</li>
+          </ul>
+        </div>
         <p v-if="tagFilter && detail.tagNames?.length" class="detail-line">
           标签：{{ detail.tagNames.join(' · ') }}
         </p>
@@ -558,6 +579,7 @@
     >
       <p class="apply-tip">对「{{ applyRow?.title }}」{{ verbs.apply || '提交申请' }}</p>
       <p v-if="scheduleText(applyRow)" class="apply-tip muted">{{ scheduleText(applyRow) }}</p>
+      <p v-if="conflictHighlightOn && applyRow && wouldConflict(applyRow)" class="apply-tip conflict-tip">{{ conflictHighlightHint }}</p>
       <p v-if="conflictTip" class="apply-tip conflict-tip">{{ conflictTip }}</p>
       <el-form label-position="top">
         <el-form-item v-if="allowQty" :label="qtyLabel" required>
@@ -660,6 +682,7 @@
             <a v-if="applyAttachUrl" :href="applyAttachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
           </div>
         </el-form-item>
+        <p v-if="requireMaterial && materialApplyHint" class="field-hint">{{ materialApplyHint }}</p>
         <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
       </el-form>
       <p v-if="!needApplyDialog" class="apply-tip muted">
@@ -745,8 +768,8 @@ import RichTextEditor from '../../components/RichTextEditor.vue'
 import RichTextView from '../../components/RichTextView.vue'
 import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
 import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
+import CodeQrBlock from '../../components/CodeQrBlock.vue'
 import { ARCHIVE_BROWSE_HINT_KEYS } from '../../utils/labelHintMount.js'
-import { formatTicketApplySuccess } from '../../utils/ticketApplyShared.js'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
 import {
   archiveCopy,
@@ -865,9 +888,9 @@ const showStageChip = computed(() => {
 function stageTone(stage) {
   const s = String(stage || '').trim()
   if (!s) return 'muted'
-  if (/空闲|在库|待取|开放|可/.test(s)) return 'free'
-  if (/已分配|借出|已取出|已预约/.test(s)) return 'taken'
-  if (/维修|损坏|误领|拒收|下架|逾期/.test(s)) return 'warn'
+  if (/空闲|在库|待取|开放报名|^开放$|可/.test(s)) return 'free'
+  if (/已分配|借出|已取出|已预约|满员|已满|已认领/.test(s)) return 'taken'
+  if (/维修|损坏|误领|拒收|下架|逾期|停开/.test(s)) return 'warn'
   return 'muted'
 }
 const playUrlField = computed(() => archive.playUrlField || '')
@@ -1248,6 +1271,48 @@ function scheduleText(row) {
   return row.startAt || row.endAt || ''
 }
 
+const conflictHighlightOn = computed(() => !!ticket.conflictHighlight)
+const conflictHighlightLabel = computed(
+  () => browseLabels.value.conflictHighlightLabel || '课表冲突',
+)
+const conflictHighlightHint = computed(() => browseLabels.value.conflictHighlightHint || '')
+const mySchedule = ref([])
+
+function toMs(s) {
+  if (!s) return null
+  const t = Date.parse(String(s).replace(' ', 'T'))
+  return Number.isNaN(t) ? null : t
+}
+
+function rangeOverlap(aStart, aEnd, bStart, bEnd) {
+  const a0 = toMs(aStart)
+  const a1 = toMs(aEnd)
+  const b0 = toMs(bStart)
+  const b1 = toMs(bEnd)
+  if (a0 == null || a1 == null || b0 == null || b1 == null) return false
+  return a0 < b1 && b0 < a1
+}
+
+function wouldConflict(row) {
+  if (!conflictHighlightOn.value || !row?.startAt || !row?.endAt) return false
+  return mySchedule.value.some((t) => rangeOverlap(row.startAt, row.endAt, t.startAt, t.endAt))
+}
+
+async function loadMySchedule() {
+  if (!conflictHighlightOn.value) {
+    mySchedule.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/tickets', { params: { page: 1, size: 200 } })
+    mySchedule.value = (res.data?.list || []).filter(
+      (x) => x.startAt && x.endAt && ['pending', 'approved', 'returned'].includes(String(x.status || '')),
+    )
+  } catch {
+    mySchedule.value = []
+  }
+}
+
 function stockOk(row) {
   if (Number(row.stock) <= 0) return false
   if (row.status === 'unavailable') return false
@@ -1391,6 +1456,33 @@ const detail = ref(null)
 const itemReviews = ref([])
 const reviewOn = computed(() => hasCap('order_review'))
 const itemCommentOn = computed(() => hasCap('item_comment'))
+const codeQrOn = computed(() => hasCap('code_qr'))
+const checkinCodeLabel = computed(() => browseLabels.value.codeQrShowVerb || ticketCheckinLabel() || '签到码')
+const pinTopHint = computed(() => browseLabels.value.pinTopHint || '')
+const visaMaterialHint = computed(() => browseLabels.value.visaMaterialHint || '')
+const materialApplyHint = computed(
+  () =>
+    browseLabels.value.moralMaterialHint
+    || browseLabels.value.partyMaterialHint
+    || browseLabels.value.partyThoughtHint
+    || browseLabels.value.fleetDriverCertHint
+    || visaMaterialHint.value
+    || '',
+)
+const lotteryResultOn = computed(() => !!ticket.allowLottery)
+const lotteryResultTitle = computed(() => browseLabels.value.lotteryResultTitle || '抽签结果公示')
+const lotteryResultHint = computed(() => browseLabels.value.lotteryResultHint || '')
+const lotteryRows = ref([])
+async function loadLotteryResult(itemId) {
+  lotteryRows.value = []
+  if (!lotteryResultOn.value || !itemId) return
+  try {
+    const res = await http.get('/api/tickets/lottery-result', { params: { itemId } })
+    lotteryRows.value = res.data || []
+  } catch (e) {
+    lotteryRows.value = []
+  }
+}
 const lostClueOn = computed(() => hasCap('lost_clue'))
 const clueList = ref([])
 const clueLoading = ref(false)
@@ -1519,6 +1611,7 @@ async function openDetail(row) {
     const res = await http.get(`/api/archive/${row.id}`)
     if (res.data) detail.value = { ...row, ...res.data }
   } catch { /* keep list row */ }
+  await loadLotteryResult(row.id)
   await loadThread(row.id)
   if (logOn.value && isLoggedIn()) await loadLogs(row.id)
   if (browseOn.value && isLoggedIn()) {
@@ -2117,14 +2210,21 @@ async function submitApply() {
       if (allowAnonymousRating.value) body.anonymous = !!applyAnonymous.value
     }
     const { data } = await http.post('/api/tickets/apply', body)
-    ElMessage.success(
-      formatTicketApplySuccess(data, {
-        autoApprove: autoApprove.value,
-        checkinOnApply: checkinOnApply.value,
-        applyVerb: verbs.value.apply || '提交',
-        getSchema,
-      }),
-    )
+    const st = data?.status || data?.data?.status
+    let okMsg
+    if (st === 'held') {
+      okMsg = (getSchema()?.labels?.bookHoldOkMessage) || '暂无库存，已加入预约队列'
+    } else if (st === 'waitlisted') {
+      const rank = data?.waitlistRank || data?.waitlistPos || data?.queueNo
+      okMsg = rank
+        ? `名额已满，已加入候补（约第 ${rank} 位）`
+        : ((getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列')
+    } else if (checkinOnApply.value) {
+      okMsg = '已签到'
+    } else {
+      okMsg = autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核'
+    }
+    ElMessage.success(okMsg)
     applyVisible.value = false
     if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
       await loadThread(applyRow.value.id)
@@ -2152,6 +2252,7 @@ onMounted(async () => {
   await loadCats()
   await loadTags()
   await load()
+  await loadMySchedule()
   await loadFavIds()
   await loadLikeIds()
   await openHighlightFromRoute()
@@ -2244,6 +2345,7 @@ async function openHighlightFromRoute() {
 .detail-line { margin-top: 4px !important; line-height: 1.4; }
 .detail-line.muted { color: var(--portal-muted, #64748b) !important; }
 .sched { margin-top: 4px !important; color: #0f766e !important; }
+.sched.conflict-row { color: #b45309 !important; }
 .sched.muted { color: var(--portal-muted, #94a3b8) !important; }
 .tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }

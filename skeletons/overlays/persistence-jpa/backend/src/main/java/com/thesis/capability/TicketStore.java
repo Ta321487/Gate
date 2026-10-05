@@ -329,6 +329,24 @@ public final class TicketStore {
     static String ageConstraintDenyMessage = "当前年龄不符合本线路限制，请改选其他线路。";
     /** 签到可登记迟到分钟数 */
     static boolean allowLateMinutes = false;
+    /** 选课志愿序 1/2 */
+    static boolean allowWishOrder = false;
+    /** 活动志愿者岗位意向 */
+    static boolean allowVolunteerRole = false;
+    /** 管理端可为已通过单据补签 */
+    static boolean allowAdminCheckin = false;
+    /** 出团天气/须知有内容时须勾选 */
+    static boolean requireTourNoticeAck = false;
+    /** 集体报名同行人姓名 */
+    static boolean allowCompanions = false;
+    static boolean allowLottery = false;
+    static boolean allowSeatZone = false;
+    static boolean allowTicketTransfer = false;
+    static boolean allowTicketWallet = false;
+    static boolean allowApplyBlacklist = false;
+    static boolean scheduleChangeNotify = false;
+    static boolean allowPostGallery = false;
+    static boolean requireCreditWritebackAck = false;
     /** 校准证书过期禁止借用 */
     static boolean blockIfCalibExpired = false;
     /** 课题号 / 双人复核 / 运费 / 水电备注 */
@@ -356,6 +374,7 @@ public final class TicketStore {
     /** 跟进组加厚 */
     static int followRemindDays = 0;
     static int minRemarkWords = 0;
+    static int minApproveRemarkWords = 0;
     static int maxReviseTimes = 0;
     /** 未跟进 N 天列表筛（0=关） */
     static int staleFollowDays = 0;
@@ -418,6 +437,102 @@ public final class TicketStore {
     static boolean printTicket = false;
     /** 报名组加厚：提交成功站内信 / 面交约定 / 紧急联系人 */
     static boolean applyThicken = false;
+    static boolean approveThicken = false;
+    static boolean allowApproveCc = false;
+    static boolean allowApproveTransfer = false;
+    static boolean allowApproveDelegate = false;
+    static boolean allowApproveRemarkAttach = false;
+    static boolean allowApproveCcComment = false;
+    static boolean allowApproveAutoPass = false;
+    static int approveAutoPassHours = 0;
+    static boolean allowCertPickup = false;
+    static boolean allowCertUrgent = false;
+    static boolean allowSealCopies = false;
+    static boolean allowFleetMileage = false;
+    static boolean allowExpenseInvoice = false;
+    static boolean allowVisitorCount = false;
+    static boolean allowAwardCertNo = false;
+    static boolean allowVendorQuotes = false;
+    static boolean forceOnePerArchive = false;
+    static int minVendorQuotes = 0;
+    static int notifyArchiveExpireDays = 0;
+    static String onePerArchiveDenyMessage = "";
+
+    static boolean allowEvalOpenWindow = false;
+    static boolean allowCompHours = false;
+    static boolean allowFleetCrew = false;
+    static boolean allowEthicBatch = false;
+    static String evalOpenWindowDenyMessage = "";
+
+    static boolean allowPassExpire = false;
+    static boolean allowReturnFuel = false;
+    static boolean allowLaborPlace = false;
+    static boolean allowPromoPlace = false;
+    static boolean allowEthicMeeting = false;
+    static boolean allowEffectiveOn = false;
+    static boolean allowCertIssueNo = false;
+    static boolean allowPromoFeedback = false;
+    static boolean allowDocRev = false;
+    static boolean allowFitoutQuiet = false;
+    static boolean allowSealClosePhoto = false;
+    static boolean allowIssueCopies = false;
+    static boolean allowSignParties = false;
+    static boolean allowTrainHours = false;
+    static boolean allowInspectExpire = false;
+    static boolean allowMemberChange = false;
+    static boolean allowProcureBudget = false;
+    static boolean allowCheckinException = false;
+    static boolean allowVisitPurpose = false;
+    static boolean allowFleetViolation = false;
+    static boolean allowFitoutRectify = false;
+    static boolean allowProjNodeRemind = false;
+    static boolean allowClubCopyLast = false;
+    static boolean allowProcureReturn = false;
+    static boolean allowMoralObjection = false;
+    static boolean allowProjFundUse = false;
+    static boolean allowEvalDimWeight = false;
+    static boolean allowVisitSlotRemain = false;
+    static boolean allowPlagiarismUrl = false;
+    static boolean allowAbsentStreak = false;
+    static boolean allowPartyStage = false;
+    static boolean allowEvalObserve = false;
+    static boolean allowScheduleImpact = false;
+    static boolean allowContractAmount = false;
+    static boolean allowExpenseLines = false;
+    static boolean allowTripLegs = false;
+    static boolean allowHideEvalResult = false;
+    static boolean allowSignRemarkVisible = false;
+    static boolean allowProjChangeLog = false;
+    static boolean allowCertVerify = false;
+    static boolean allowVisitWalkIn = false;
+    static boolean allowCheckinProxy = false;
+    static boolean allowClubRoster = false;
+    static boolean allowCarpassParkingMutex = false;
+    static boolean allowEvalUrge = false;
+    static boolean allowContractRenew = false;
+    static boolean allowContractExpireRemind = false;
+    static boolean allowCertPickupRedeem = false;
+    static boolean allowExamPassMin = false;
+    static boolean allowCheckinSpot = false;
+    static boolean allowEvalBeforeGrade = false;
+    static boolean allowApproveDurationStats = false;
+    static boolean allowAttachKeepOld = false;
+    static boolean allowCertPickupQr = false;
+    static boolean allowCertVerifyPage = false;
+    static boolean allowVisitorPassPrint = false;
+    static boolean allowCheckinDailyReport = false;
+    static boolean allowEvalCollegeExport = false;
+    static boolean allowSealLedgerExport = false;
+    static boolean allowMoralMaterialCheck = false;
+    static boolean allowPartyMaterialTemplate = false;
+    static boolean allowPartyThoughtAttach = false;
+    static boolean allowCertFormPrint = false;
+    static boolean allowSealFormPrint = false;
+    static boolean allowProjMidFormPrint = false;
+    static boolean allowEthicOpinionPrint = false;
+    static boolean allowExpenseAttachCount = false;
+    static boolean allowFleetDriverCert = false;
+    static int passExpireDays = 0;
     static boolean notifyOnApplySuccess = false;
     static boolean allowMeetingPlace = false;
     static boolean allowEmergencyContact = false;
@@ -441,6 +556,475 @@ public final class TicketStore {
 
     public static void configureNoticeAck(boolean enabled) {
         TicketCfgOps.configureNoticeAck(enabled);
+    }
+
+    
+    public static void configureApproveThicken(
+            boolean approveThickenIn,
+            boolean allowApproveCcIn,
+            int minApproveRemarkWordsIn,
+            boolean allowApproveTransferIn,
+            boolean allowApproveDelegateIn,
+            boolean allowApproveRemarkAttachIn,
+            boolean allowApproveCcCommentIn,
+            boolean allowApproveAutoPassIn,
+            int approveAutoPassHoursIn) {
+        TicketCfgOps.configureApproveThicken(
+                approveThickenIn,
+                allowApproveCcIn,
+                minApproveRemarkWordsIn,
+                allowApproveTransferIn,
+                allowApproveDelegateIn,
+                allowApproveRemarkAttachIn,
+                allowApproveCcCommentIn,
+                allowApproveAutoPassIn,
+                approveAutoPassHoursIn);
+    }
+
+    /** 审批抄送：写 cc_usernames 并向抄送人发站内知会（只读通知；未开 allowApproveCc 则忽略）。 */
+
+    public static void configureApproveSkin(
+            boolean allowCertPickupIn,
+            boolean allowCertUrgentIn,
+            boolean allowSealCopiesIn,
+            boolean allowFleetMileageIn,
+            boolean allowExpenseInvoiceIn,
+            boolean allowVisitorCountIn) {
+        TicketCfgOps.configureApproveSkin(
+                allowCertPickupIn,
+                allowCertUrgentIn,
+                allowSealCopiesIn,
+                allowFleetMileageIn,
+                allowExpenseInvoiceIn,
+                allowVisitorCountIn);
+    }
+
+    public static void saveApproveCcAndNotify(
+            long ticketId, boolean pass, String remark, String ccUsernamesRaw) {
+        if (!allowApproveCc || ticketId <= 0) return;
+        String raw = ccUsernamesRaw == null ? "" : ccUsernamesRaw.trim();
+        if (raw.isBlank()) return;
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (String part : raw.split("[,;\\s]+")) {
+            String u = part == null ? "" : part.trim();
+            if (!u.isBlank()) names.add(u);
+        }
+        if (names.isEmpty()) return;
+        String joined = String.join(",", names);
+        if (hasColumn("cc_usernames")) {
+            try {
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET cc_usernames=? WHERE id=?",
+                        joined.length() > 512 ? joined.substring(0, 512) : joined,
+                        ticketId);
+            } catch (Exception ignored) {
+            }
+        }
+        Map<String, Object> m = TicketDeriveOps.get(ticketId);
+        if (m == null) m = new java.util.LinkedHashMap<>();
+        String title = TicketSql.str(m.get("title"));
+        if (title.isBlank()) title = TicketSql.str(m.get("bookTitle"));
+        if (title.isBlank()) title = "单据#" + ticketId;
+        String verb = pass ? TicketCopy.verbLabel("approve", "通过") : TicketCopy.verbLabel("reject", "驳回");
+        String note = remark == null ? "" : remark.trim();
+        String body = "「" + title + "」已" + verb
+                + (note.isBlank() ? "。" : "：" + note);
+        String msgTitle = "审批知会·已" + verb;
+        for (String u : names) {
+            try {
+                com.thesis.service.MessageStore.send(u, msgTitle, body, "ticket", ticketId);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+
+
+
+    public static boolean isAllowApproveTransfer() {
+        return allowApproveTransfer;
+    }
+
+    public static boolean isAllowApproveDelegate() {
+        return allowApproveDelegate;
+    }
+
+    public static boolean isAllowApproveRemarkAttach() {
+        return allowApproveRemarkAttach;
+    }
+
+    public static boolean isAllowApproveCcComment() {
+        return allowApproveCcComment;
+    }
+
+    public static int approveAutoPassHours() {
+        return approveAutoPassHours;
+    }
+
+    /** 请假代审：写入 approve_delegate；untilAt 须为未来时间。 */
+    public static Map<String, Object> setApproveDelegate(String username, String delegateTo, String untilAt) {
+        if (!allowApproveDelegate) throw new IllegalStateException("当前未开启请假代审");
+        String u = username == null ? "" : username.trim();
+        String d = delegateTo == null ? "" : delegateTo.trim();
+        if (u.isBlank() || d.isBlank()) throw new IllegalArgumentException("请填写代审人");
+        if (u.equalsIgnoreCase(d)) throw new IllegalArgumentException("代审人不能是本人");
+        String until = untilAt == null ? "" : untilAt.trim();
+        if (until.isBlank()) throw new IllegalArgumentException("请填写代审截止日期");
+        java.time.LocalDateTime untilDt;
+        try {
+            untilDt = TicketSql.parseDateTimeFlexible(until);
+        } catch (Exception e) {
+            throw new IllegalStateException("代审截止日期无效");
+        }
+        if (!untilDt.isAfter(java.time.LocalDateTime.now())) {
+            throw new IllegalStateException("代审截止日期须晚于当前时间");
+        }
+        TicketSql.db().update(
+                "INSERT INTO approve_delegate (username, delegate_username, until_at) VALUES (?,?,?) "
+                        + "ON DUPLICATE KEY UPDATE delegate_username=VALUES(delegate_username), until_at=VALUES(until_at)",
+                u,
+                d,
+                java.sql.Timestamp.valueOf(untilDt));
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("username", u);
+        out.put("delegateUsername", d);
+        out.put("untilAt", TicketSql.fmt(untilDt));
+        return out;
+    }
+
+    public static Map<String, Object> getApproveDelegate(String username) {
+        if (!allowApproveDelegate) return java.util.Map.of();
+        String u = username == null ? "" : username.trim();
+        if (u.isBlank()) return java.util.Map.of();
+        try {
+            return TicketSql.db().query(
+                    "SELECT username, delegate_username, until_at FROM approve_delegate WHERE username=?",
+                    rs -> {
+                        if (!rs.next()) return java.util.Map.of();
+                        Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("username", rs.getString("username"));
+                        m.put("delegateUsername", rs.getString("delegate_username"));
+                        java.sql.Timestamp ts = rs.getTimestamp("until_at");
+                        m.put("untilAt", ts == null ? "" : TicketSql.fmt(ts.toLocalDateTime()));
+                        m.put("active", ts != null && ts.toLocalDateTime().isAfter(java.time.LocalDateTime.now()));
+                        return m;
+                    },
+                    u);
+        } catch (Exception e) {
+            return java.util.Map.of();
+        }
+    }
+
+    public static void clearApproveDelegate(String username) {
+        if (!allowApproveDelegate) return;
+        String u = username == null ? "" : username.trim();
+        if (u.isBlank()) return;
+        try {
+            TicketSql.db().update("DELETE FROM approve_delegate WHERE username=?", u);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 当前用户是否为某人的有效代审人；返回被代审的用户名，无则空串。 */
+    public static String activeDelegateFor(String operator) {
+        if (!allowApproveDelegate) return "";
+        String op = operator == null ? "" : operator.trim();
+        if (op.isBlank()) return "";
+        try {
+            return TicketSql.db().query(
+                    "SELECT username FROM approve_delegate WHERE delegate_username=? AND until_at > NOW() LIMIT 1",
+                    rs -> rs.next() ? TicketSql.str(rs.getString("username")) : "",
+                    op);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** 抄送人追加知会评论（写进度流水，不改状态）。 */
+    public static Map<String, Object> addApproveCcComment(long ticketId, String username, String comment) {
+        if (!allowApproveCcComment) throw new IllegalStateException("当前未开启知会评论");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        String u = username == null ? "" : username.trim();
+        String note = comment == null ? "" : comment.trim();
+        if (u.isBlank() || note.isBlank()) throw new IllegalArgumentException("请填写评论");
+        String cc = TicketSql.str(m.get("ccUsernames"));
+        boolean allowed = false;
+        for (String part : cc.split("[,;\\s]+")) {
+            if (u.equalsIgnoreCase(part == null ? "" : part.trim())) {
+                allowed = true;
+                break;
+            }
+        }
+        if (!allowed) throw new IllegalStateException("仅被抄送人可追加知会评论");
+        if (note.length() > 200) note = note.substring(0, 200);
+        TicketDeriveOps.appendProgress(ticketId, "cc_comment", u, note);
+        return TicketDeriveOps.get(ticketId);
+    }
+
+    /** 审意见附件写库（开关开且有列时）。 */
+    public static void saveApproveRemarkAttach(long ticketId, String url) {
+        if (!allowApproveRemarkAttach || ticketId <= 0) return;
+        if (!hasColumn("approve_attach_url")) return;
+        String u = url == null ? "" : url.trim();
+        if (u.isBlank()) return;
+        if (u.length() > 255) u = u.substring(0, 255);
+        try {
+            TicketSql.db().update("UPDATE " + TICKET + " SET approve_attach_url=? WHERE id=?", u, ticketId);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 限时自动通过：待审超过 N 小时自动通过。返回处理条数。
+     * 不改 autoApprove（提交即生效）语义。
+     */
+    public static int autoPassStalePending() {
+        if (!allowApproveAutoPass || approveAutoPassHours <= 0) return 0;
+        if (!enabled) return 0;
+        java.util.List<Long> ids;
+        try {
+            ids = TicketSql.db().query(
+                    "SELECT id FROM " + TICKET
+                            + " WHERE status IN ('pending','pending_mid','pending_final')"
+                            + " AND created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR) LIMIT 50",
+                    rs -> {
+                        java.util.List<Long> list = new java.util.ArrayList<>();
+                        while (rs.next()) list.add(rs.getLong("id"));
+                        return list;
+                    },
+                    approveAutoPassHours);
+        } catch (Exception e) {
+            return 0;
+        }
+        int n = 0;
+        for (Long id : ids) {
+            if (id == null || id <= 0) continue;
+            try {
+                approve(id, true, "限时自动通过", "system", true, null);
+                n++;
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+
+
+    public static void configureApproveBatch4(
+            boolean allowAwardCertNoIn,
+            boolean allowVendorQuotesIn,
+            boolean forceOnePerArchiveIn,
+            int minVendorQuotesIn,
+            int notifyArchiveExpireDaysIn,
+            String onePerArchiveDenyMessageIn) {
+        TicketCfgOps.configureApproveBatch4(
+                allowAwardCertNoIn,
+                allowVendorQuotesIn,
+                forceOnePerArchiveIn,
+                minVendorQuotesIn,
+                notifyArchiveExpireDaysIn,
+                onePerArchiveDenyMessageIn);
+    }
+
+    public static void configureApproveBatch5(
+            boolean allowEvalOpenWindowIn,
+            boolean allowCompHoursIn,
+            boolean allowFleetCrewIn,
+            boolean allowEthicBatchIn,
+            String evalOpenWindowDenyMessageIn) {
+        TicketCfgOps.configureApproveBatch5(
+                allowEvalOpenWindowIn,
+                allowCompHoursIn,
+                allowFleetCrewIn,
+                allowEthicBatchIn,
+                evalOpenWindowDenyMessageIn);
+    }
+
+    public static void configureApproveBatch6(
+            boolean allowPassExpireIn,
+            boolean allowReturnFuelIn,
+            boolean allowLaborPlaceIn,
+            boolean allowPromoPlaceIn,
+            boolean allowEthicMeetingIn,
+            boolean allowEffectiveOnIn,
+            int passExpireDaysIn) {
+        TicketCfgOps.configureApproveBatch6(
+                allowPassExpireIn,
+                allowReturnFuelIn,
+                allowLaborPlaceIn,
+                allowPromoPlaceIn,
+                allowEthicMeetingIn,
+                allowEffectiveOnIn,
+                passExpireDaysIn);
+    }
+
+    public static void configureApproveBatch7(
+            boolean allowCertIssueNoIn,
+            boolean allowPromoFeedbackIn,
+            boolean allowDocRevIn,
+            boolean allowFitoutQuietIn) {
+        TicketCfgOps.configureApproveBatch7(
+                allowCertIssueNoIn,
+                allowPromoFeedbackIn,
+                allowDocRevIn,
+                allowFitoutQuietIn);
+    }
+
+    public static void configureApproveBatch8(
+            boolean allowSealClosePhotoIn,
+            boolean allowIssueCopiesIn,
+            boolean allowSignPartiesIn,
+            boolean allowTrainHoursIn,
+            boolean allowInspectExpireIn,
+            boolean allowMemberChangeIn) {
+        TicketCfgOps.configureApproveBatch8(
+                allowSealClosePhotoIn,
+                allowIssueCopiesIn,
+                allowSignPartiesIn,
+                allowTrainHoursIn,
+                allowInspectExpireIn,
+                allowMemberChangeIn);
+    }
+
+    public static void configureApproveBatch9(
+            boolean allowProcureBudgetIn,
+            boolean allowCheckinExceptionIn,
+            boolean allowVisitPurposeIn,
+            boolean allowFleetViolationIn,
+            boolean allowFitoutRectifyIn,
+            boolean allowProjNodeRemindIn) {
+        TicketCfgOps.configureApproveBatch9(
+                allowProcureBudgetIn,
+                allowCheckinExceptionIn,
+                allowVisitPurposeIn,
+                allowFleetViolationIn,
+                allowFitoutRectifyIn,
+                allowProjNodeRemindIn);
+    }
+
+    public static void configureApproveBatch10(
+            boolean allowClubCopyLastIn,
+            boolean allowProcureReturnIn,
+            boolean allowMoralObjectionIn,
+            boolean allowProjFundUseIn,
+            boolean allowEvalDimWeightIn,
+            boolean allowVisitSlotRemainIn) {
+        TicketCfgOps.configureApproveBatch10(
+                allowClubCopyLastIn,
+                allowProcureReturnIn,
+                allowMoralObjectionIn,
+                allowProjFundUseIn,
+                allowEvalDimWeightIn,
+                allowVisitSlotRemainIn);
+    }
+
+    public static void configureApproveBatch11(
+            boolean allowPlagiarismUrlIn,
+            boolean allowAbsentStreakIn,
+            boolean allowPartyStageIn,
+            boolean allowEvalObserveIn,
+            boolean allowScheduleImpactIn,
+            boolean allowContractAmountIn) {
+        TicketCfgOps.configureApproveBatch11(
+                allowPlagiarismUrlIn,
+                allowAbsentStreakIn,
+                allowPartyStageIn,
+                allowEvalObserveIn,
+                allowScheduleImpactIn,
+                allowContractAmountIn);
+    }
+
+    public static void configureApproveBatch12(
+            boolean allowExpenseLinesIn,
+            boolean allowTripLegsIn,
+            boolean allowHideEvalResultIn,
+            boolean allowSignRemarkVisibleIn,
+            boolean allowProjChangeLogIn,
+            boolean allowCertVerifyIn) {
+        TicketCfgOps.configureApproveBatch12(
+                allowExpenseLinesIn,
+                allowTripLegsIn,
+                allowHideEvalResultIn,
+                allowSignRemarkVisibleIn,
+                allowProjChangeLogIn,
+                allowCertVerifyIn);
+    }
+
+    public static void configureApproveBatch13(
+            boolean allowVisitWalkInIn,
+            boolean allowCheckinProxyIn,
+            boolean allowClubRosterIn,
+            boolean allowCarpassParkingMutexIn,
+            boolean allowEvalUrgeIn,
+            boolean allowContractRenewIn) {
+        TicketCfgOps.configureApproveBatch13(
+                allowVisitWalkInIn,
+                allowCheckinProxyIn,
+                allowClubRosterIn,
+                allowCarpassParkingMutexIn,
+                allowEvalUrgeIn,
+                allowContractRenewIn);
+    }
+
+    public static void configureApproveBatch14(
+            boolean allowContractExpireRemindIn,
+            boolean allowCertPickupRedeemIn,
+            boolean allowExamPassMinIn,
+            boolean allowCheckinSpotIn,
+            boolean allowEvalBeforeGradeIn,
+            boolean allowApproveDurationStatsIn) {
+        TicketCfgOps.configureApproveBatch14(
+                allowContractExpireRemindIn,
+                allowCertPickupRedeemIn,
+                allowExamPassMinIn,
+                allowCheckinSpotIn,
+                allowEvalBeforeGradeIn,
+                allowApproveDurationStatsIn);
+    }
+
+    public static void configureApproveBatch15(
+            boolean allowAttachKeepOldIn,
+            boolean allowCertPickupQrIn,
+            boolean allowCertVerifyPageIn,
+            boolean allowVisitorPassPrintIn,
+            boolean allowCheckinDailyReportIn,
+            boolean allowEvalCollegeExportIn) {
+        TicketCfgOps.configureApproveBatch15(
+                allowAttachKeepOldIn,
+                allowCertPickupQrIn,
+                allowCertVerifyPageIn,
+                allowVisitorPassPrintIn,
+                allowCheckinDailyReportIn,
+                allowEvalCollegeExportIn);
+    }
+
+    public static void configureApproveBatch16(
+            boolean allowSealLedgerExportIn,
+            boolean allowMoralMaterialCheckIn,
+            boolean allowPartyMaterialTemplateIn,
+            boolean allowPartyThoughtAttachIn) {
+        TicketCfgOps.configureApproveBatch16(
+                allowSealLedgerExportIn,
+                allowMoralMaterialCheckIn,
+                allowPartyMaterialTemplateIn,
+                allowPartyThoughtAttachIn);
+    }
+
+    public static void configureApproveBatch17(
+            boolean allowCertFormPrintIn,
+            boolean allowSealFormPrintIn,
+            boolean allowProjMidFormPrintIn,
+            boolean allowEthicOpinionPrintIn,
+            boolean allowExpenseAttachCountIn,
+            boolean allowFleetDriverCertIn) {
+        TicketCfgOps.configureApproveBatch17(
+                allowCertFormPrintIn,
+                allowSealFormPrintIn,
+                allowProjMidFormPrintIn,
+                allowEthicOpinionPrintIn,
+                allowExpenseAttachCountIn,
+                allowFleetDriverCertIn);
     }
 
     public static void configureApplyThicken(
@@ -502,6 +1086,58 @@ public final class TicketStore {
 
     public static void configureLateMinutes(boolean enabled) {
         TicketCfgOps.configureLateMinutes(enabled);
+    }
+
+    public static void configureWishOrder(boolean enabled) {
+        TicketCfgOps.configureWishOrder(enabled);
+    }
+
+    public static void configureVolunteerRole(boolean enabled) {
+        TicketCfgOps.configureVolunteerRole(enabled);
+    }
+
+    public static void configureAdminCheckin(boolean enabled) {
+        TicketCfgOps.configureAdminCheckin(enabled);
+    }
+
+    public static void configureTourNoticeAck(boolean enabled) {
+        TicketCfgOps.configureTourNoticeAck(enabled);
+    }
+
+    public static void configureCompanions(boolean enabled) {
+        TicketCfgOps.configureCompanions(enabled);
+    }
+
+    public static void configureLottery(boolean enabled) {
+        TicketCfgOps.configureLottery(enabled);
+    }
+
+    public static void configureSeatZone(boolean enabled) {
+        TicketCfgOps.configureSeatZone(enabled);
+    }
+
+    public static void configureTicketTransfer(boolean enabled) {
+        TicketCfgOps.configureTicketTransfer(enabled);
+    }
+
+    public static void configureTicketWallet(boolean enabled) {
+        TicketCfgOps.configureTicketWallet(enabled);
+    }
+
+    public static void configureApplyBlacklist(boolean enabled) {
+        TicketCfgOps.configureApplyBlacklist(enabled);
+    }
+
+    public static void configureScheduleChangeNotify(boolean enabled) {
+        TicketCfgOps.configureScheduleChangeNotify(enabled);
+    }
+
+    public static void configurePostGallery(boolean enabled) {
+        TicketCfgOps.configurePostGallery(enabled);
+    }
+
+    public static void configureCreditWritebackAck(boolean enabled) {
+        TicketCfgOps.configureCreditWritebackAck(enabled);
     }
 
     public static void configureCalibBlock(boolean enabled) {
@@ -705,7 +1341,11 @@ public final class TicketStore {
 
     /** 用户重新提交被退回的单据；修改次数未超上限才放行。 */
     public static Map<String, Object> resubmit(long ticketId, String username, String remark) {
-        return TicketReviseOps.resubmit(ticketId, username, remark);
+        return TicketReviseOps.resubmit(ticketId, username, remark, null);
+    }
+
+    public static Map<String, Object> resubmit(long ticketId, String username, String remark, String attachUrl) {
+        return TicketReviseOps.resubmit(ticketId, username, remark, attachUrl);
     }
 
     
@@ -855,6 +1495,10 @@ public final class TicketStore {
         TicketGuardOps.assertPrereqAckIfRequired(item, body);
     }
 
+    public static void assertTourNoticeAckIfRequired(Map<String, Object> item, Map<String, Object> body) {
+        TicketGuardOps.assertTourNoticeAckIfRequired(item, body);
+    }
+
     public static void assertAgeConstraintIfRequired(String username, long itemId) {
         TicketGuardOps.assertAgeConstraintIfRequired(username, itemId);
     }
@@ -862,6 +1506,122 @@ public final class TicketStore {
     /** 报名口令：与档案 applyInviteCode 比对（档案为空则不拦）。 */
     public static void assertApplyInviteIfRequired(long itemId, String code) {
         TicketGuardOps.assertApplyInviteIfRequired(itemId, code);
+    }
+
+    /** 装修施工时段对照档案禁噪窗（档案空窗不拦）。 */
+    public static void assertFitoutQuietIfRequired(long itemId, String workStart, String workEnd) {
+        TicketGuardOps.assertFitoutQuietIfRequired(itemId, workStart, workEnd);
+    }
+
+    public static void assertIssueCopiesIfRequired(long itemId, Object issueCopies) {
+        TicketGuardOps.assertIssueCopiesIfRequired(itemId, issueCopies);
+    }
+
+    public static void assertProcureBudgetIfRequired(long itemId, Object amount) {
+        TicketGuardOps.assertProcureBudgetIfRequired(itemId, amount);
+    }
+
+    public static void assertVisitSlotIfRequired(long itemId, String visitOn) {
+        TicketGuardOps.assertVisitSlotIfRequired(itemId, visitOn);
+    }
+
+    public static void assertParkingMutexIfRequired(long itemId, String parkingOn, long excludeTicketId) {
+        TicketGuardOps.assertParkingMutexIfRequired(itemId, parkingOn, excludeTicketId);
+    }
+
+    public static Map<String, Object> applyWalkIn(String operator, Map<String, Object> body) {
+        return TicketGuardOps.applyWalkIn(operator, body);
+    }
+
+    public static Map<String, Object> applyCheckinProxy(String operator, Map<String, Object> body) {
+        return TicketGuardOps.applyCheckinProxy(operator, body);
+    }
+
+    public static Map<String, Object> urgeEvalUnrated(long itemId) {
+        return TicketGuardOps.urgeEvalUnrated(itemId);
+    }
+
+    public static void assertExamPassMinIfRequired(String username, long itemId) {
+        TicketGuardOps.assertExamPassMinIfRequired(username, itemId);
+    }
+
+    public static void assertEvalBeforeGradeIfRequired(String username) {
+        TicketGuardOps.assertEvalBeforeGradeIfRequired(username);
+    }
+
+    public static Map<String, Object> generateCheckinSpot(String operator, Map<String, Object> body) {
+        return TicketGuardOps.generateCheckinSpot(operator, body);
+    }
+
+    public static List<Map<String, Object>> listCheckinSpot(long itemId) {
+        return TicketGuardOps.listCheckinSpot(itemId);
+    }
+
+    public static List<Map<String, Object>> approveDurationStats() {
+        return TicketGuardOps.approveDurationStats();
+    }
+
+    public static Map<String, Object> redeemPickup(long ticketId, String operator, String code) {
+        return TicketGuardOps.redeemPickup(ticketId, operator, code);
+    }
+
+    public static boolean isSpotCheckedToday(String username) {
+        return TicketGuardOps.isSpotCheckedToday(username);
+    }
+
+    public static void keepAttachHistory(long ticketId, String oldUrl, String newUrl) {
+        TicketGuardOps.keepAttachHistory(ticketId, oldUrl, newUrl);
+    }
+
+    public static List<Map<String, Object>> listAttachRevs(long ticketId) {
+        return TicketGuardOps.listAttachRevs(ticketId);
+    }
+
+    public static Map<String, Object> checkinDailyReport(String onDate) {
+        return TicketGuardOps.checkinDailyReport(onDate);
+    }
+
+    public static List<Map<String, Object>> evalCollegeExport() {
+        return TicketGuardOps.evalCollegeExport();
+    }
+
+    public static void assertAbsentStreakIfRequired(long itemId, String username, String exceptionType) {
+        TicketGuardOps.assertAbsentStreakIfRequired(itemId, username, exceptionType);
+    }
+
+    public static Map<String, Object> verifyByCode(String code) {
+        return TicketGuardOps.verifyByCode(code);
+    }
+
+    public static void maskBatch12ForUser(Map<String, Object> page) {
+        TicketGuardOps.maskBatch12ForUser(page);
+    }
+
+    public static Map<String, Object> lastApprovedMine(String username) {
+        return TicketGuardOps.lastApprovedMine(username);
+    }
+
+    public static Map<String, Object> fileMoralObjection(long ticketId, String username, String note) {
+        return TicketGuardOps.fileMoralObjection(ticketId, username, note);
+    }
+
+    static double sumProcureAmount(long itemId) {
+        if (itemId <= 0 || !hasColumn("procure_amount")) return 0;
+        try {
+            List<Map<String, Object>> rows = TicketSql.db().query(
+                    "SELECT IFNULL(SUM(procure_amount),0) AS s FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status IN ('approved','pending','pending_mid','pending_final','waitlisted')",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("s", rs.getDouble("s"));
+                        return m;
+                    },
+                    itemId);
+            if (rows == null || rows.isEmpty()) return 0;
+            return TicketSql.toDouble(rows.get(0).get("s"));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     /** 审核通过时：启事方确认面交安排。 */
@@ -1416,7 +2176,7 @@ public final class TicketStore {
         return TicketDeriveOps.get(ticketId);
     }
 
-    static void appendProgress(long ticketId, String status, String operator, String remark) {
+    public static void appendProgress(long ticketId, String status, String operator, String remark) {
         TicketDeriveOps.appendProgress(ticketId, status, operator, remark);
     }
 
@@ -1531,8 +2291,12 @@ public final class TicketStore {
                 throw new IllegalArgumentException("请完成各维度评分");
             }
             StringBuilder json = new StringBuilder("{");
-            int sum = 0;
+            double wsum = 0;
+            double vsum = 0;
             int n = 0;
+            long itemId = TicketSql.toLong(m.get("itemId"));
+            if (itemId <= 0) itemId = TicketSql.toLong(m.get("bookId"));
+            Map<String, Object> item = itemId > 0 ? ArchiveStore.getItem(itemId) : null;
             for (Map<String, String> def : dimDefs) {
                 String key = def.get("key");
                 Integer v = dims.get(key);
@@ -1540,12 +2304,14 @@ public final class TicketStore {
                 if (v < 1 || v > 5) throw new IllegalArgumentException("「" + def.get("label") + "」须为 1～5 分");
                 if (n > 0) json.append(",");
                 json.append("\"").append(key.replace("\"", "")).append("\":").append(v);
-                sum += v;
+                double w = TicketGuardOps.dimWeight(def, item);
+                vsum += v * w;
+                wsum += w;
                 n++;
             }
             json.append("}");
             dimsJson = json.toString();
-            overall = Math.max(1, Math.min(5, (int) Math.round(sum / (double) n)));
+            overall = Math.max(1, Math.min(5, (int) Math.round(wsum > 0 ? (vsum / wsum) : (vsum / Math.max(1, n)))));
         } else if (rating < 1 || rating > 5) {
             throw new IllegalArgumentException("评分须为 1～5 分");
         }
@@ -1556,18 +2322,28 @@ public final class TicketStore {
             throw new IllegalArgumentException("评分较低时请填写原因");
         }
         boolean anon = anonymous && TicketCopy.ALLOW_ANONYMOUS_RATING;
-        if (dimDefs != null && !dimDefs.isEmpty() && !hasColumn("rating_dims_json")) {
-            throw new IllegalStateException("系统未配置多维评分字段，无法提交评分");
+        Map<String, Integer> dimScores = new LinkedHashMap<>();
+        if (dimDefs != null && !dimDefs.isEmpty()) {
+            if (!TicketLineOps.ratingDimTableReady()) {
+                throw new IllegalStateException("系统未配置多维评分表，无法提交评分");
+            }
+            for (Map<String, String> def : dimDefs) {
+                String key = def.get("key");
+                dimScores.put(key, dims.get(key));
+            }
         }
-        if (hasColumn("rating_dims_json")) {
+        if (hasColumn("rating_anonymous")) {
             TicketSql.db().update(
                     "UPDATE " + TICKET
-                            + " SET rating=?, rating_remark=?, rated_at=NOW(), rating_dims_json=?, rating_anonymous=? WHERE id=?",
-                    overall, note, dimsJson, anon ? 1 : 0, ticketId);
+                            + " SET rating=?, rating_remark=?, rated_at=NOW(), rating_anonymous=? WHERE id=?",
+                    overall, note, anon ? 1 : 0, ticketId);
         } else {
             TicketSql.db().update(
                     "UPDATE " + TICKET + " SET rating=?, rating_remark=?, rated_at=NOW() WHERE id=?",
                     overall, note, ticketId);
+        }
+        if (!dimScores.isEmpty()) {
+            TicketLineOps.replaceRatingDims(ticketId, dimScores);
         }
         if (followPass && hasColumn("follow_rated")) {
             TicketSql.db().update("UPDATE " + TICKET + " SET follow_rated=1 WHERE id=?", ticketId);
@@ -1598,6 +2374,7 @@ public final class TicketStore {
         if (!"approved".equals(String.valueOf(m.get("status")))) {
             throw new IllegalStateException("仅已通过且未爽约的单据可签到");
         }
+        TicketAsserts.assertPassNotExpired(m);
         Object prev = m.get("checkedInAt");
         if (prev != null && !String.valueOf(prev).isBlank()) {
             throw new IllegalStateException("已签到，不可重复");
@@ -1628,6 +2405,222 @@ public final class TicketStore {
         }
         TicketDeriveOps.appendProgress(ticketId, "checkin", username, tip);
         return TicketDeriveOps.get(ticketId);
+    }
+
+    /** 管理端补签：已通过且未签到，不校验口令。 */
+    public static Map<String, Object> adminCheckin(long ticketId, String operator, Integer lateMinutes, String note) {
+        if (!allowAdminCheckin) throw new IllegalStateException("当前未开启补签");
+        if (!allowCheckin) throw new IllegalStateException("当前未开启签到");
+        if (!hasColumn("checked_in_at")) throw new IllegalStateException("当前不支持签到");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        TicketStatusOps.touchTicketStatus(m);
+        if (!"approved".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅已通过且未爽约的单据可补签");
+        }
+        Object prev = m.get("checkedInAt");
+        if (prev != null && !String.valueOf(prev).isBlank()) {
+            throw new IllegalStateException("已签到，不可重复补签");
+        }
+        TicketSql.db().update(
+                "UPDATE " + TICKET + " SET checked_in_at=NOW(), status='returned' WHERE id=?",
+                ticketId);
+        if (allowLateMinutes && lateMinutes != null && hasColumn("late_minutes")) {
+            int late = Math.max(0, lateMinutes);
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET late_minutes=? WHERE id=?",
+                    late,
+                    ticketId);
+        }
+        String tip = "补签";
+        if (note != null && !note.isBlank()) {
+            tip = tip + " · " + note.trim();
+            if (tip.length() > 200) tip = tip.substring(0, 200);
+        }
+        if (allowLateMinutes && lateMinutes != null && lateMinutes > 0) {
+            tip = tip + " · 迟到" + lateMinutes + "分钟";
+        }
+        String op = operator == null ? "" : operator.trim();
+        TicketDeriveOps.appendProgress(ticketId, "admin_checkin", op.isBlank() ? "admin" : op, tip);
+        return TicketDeriveOps.get(ticketId);
+    }
+
+    /** 抽签录取：从待抽签池随机抽满当前余量，转为待审并占额。 */
+    public static Map<String, Object> lotteryDraw(long itemId, String operator) {
+        if (!allowLottery) throw new IllegalStateException("当前未开启抽签录取");
+        if (MODE != Mode.ARCHIVE) throw new IllegalStateException("仅档案关联模式支持抽签");
+        Map<String, Object> item = ArchiveStore.getItem(itemId);
+        if (item == null) throw new IllegalArgumentException("对象不存在");
+        if (!TicketSql.str(item.get("admitMode")).contains("抽签")) {
+            throw new IllegalStateException("本场未设为抽签录取");
+        }
+        int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
+        if (stock <= 0) throw new IllegalStateException("当前无名额可抽");
+        List<Long> pool = TicketSql.db().query(
+                "SELECT id FROM " + TICKET + " WHERE " + itemFkColumn()
+                        + "=? AND status='lottery' ORDER BY id",
+                (rs, i) -> rs.getLong("id"),
+                itemId);
+        if (pool == null || pool.isEmpty()) {
+            throw new IllegalStateException("暂无待抽签报名");
+        }
+        java.util.Collections.shuffle(pool);
+        int take = Math.min(stock, pool.size());
+        String op = operator == null || operator.isBlank() ? "admin" : operator.trim();
+        int drawn = 0;
+        for (int i = 0; i < take; i++) {
+            long tid = pool.get(i);
+            Map<String, Object> row = TicketRowMaps.load(tid);
+            if (row == null) continue;
+            int need = TicketDeriveOps.rowQty(row);
+            if (need <= 0) need = 1;
+            Map<String, Object> cur = ArchiveStore.getItem(itemId);
+            int remain = cur != null && cur.get("stock") instanceof Number sn ? sn.intValue() : 0;
+            if (remain < need) break;
+            ArchiveStore.adjustStock(itemId, -need);
+            TicketSql.db().update(
+                    "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='lottery'",
+                    tid);
+            TicketDeriveOps.appendProgress(tid, "lottery_drawn", op, "抽签录取，转入待审");
+            try {
+                String user = TicketSql.str(row.get("username"));
+                if (!user.isBlank()) {
+                    MessageStore.send(
+                            user,
+                            "抽签已录取",
+                            "「" + TicketNotifyOps.subjectOf(row) + "」已抽中，请等待审核确认。",
+                            "ticket",
+                            tid);
+                }
+            } catch (Exception ignored) {
+            }
+            drawn++;
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("itemId", itemId);
+        out.put("drawn", drawn);
+        out.put("poolSize", pool.size());
+        return out;
+    }
+
+    public static Map<String, Object> transferTicket(long ticketId, String fromUser, String toUsername) {
+        if (!allowTicketTransfer) throw new IllegalStateException("当前未开启名额转让");
+        String from = fromUser == null ? "" : fromUser.trim();
+        String to = toUsername == null ? "" : toUsername.trim();
+        if (from.isBlank() || to.isBlank()) throw new IllegalArgumentException("请指定接收账号");
+        if (from.equals(to)) throw new IllegalStateException("不可转让给自己");
+        if (to.length() > 64) to = to.substring(0, 64);
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!from.equals(TicketSql.str(m.get("username")))) {
+            throw new IllegalStateException("仅本人可转让");
+        }
+        if (!"approved".equals(TicketSql.str(m.get("status")))) {
+            throw new IllegalStateException("仅已通过的报名可转让");
+        }
+        if (com.thesis.service.UserStore.get(to) == null) {
+            throw new IllegalArgumentException("接收账号不存在");
+        }
+        if (allowApplyBlacklist) {
+            com.thesis.service.ApplyBlacklistStore.assertNotBlocked(to);
+        }
+        TicketSql.db().update("UPDATE " + TICKET + " SET username=? WHERE id=?", to, ticketId);
+        TicketDeriveOps.appendProgress(ticketId, "transfer", from, "名额转让给 " + to);
+        try {
+            MessageStore.send(
+                    to,
+                    "收到转让名额",
+                    "「" + TicketNotifyOps.subjectOf(m) + "」已转让给你，请按时参加。",
+                    "ticket",
+                    ticketId);
+        } catch (Exception ignored) {
+        }
+        return TicketDeriveOps.get(ticketId);
+    }
+
+    public static Map<String, Object> savePostGallery(long ticketId, String username, Object imagesRaw) {
+        if (!allowPostGallery) throw new IllegalStateException("当前未开启活动相册");
+        String user = username == null ? "" : username.trim();
+        if (user.isBlank()) throw new IllegalArgumentException("请先登录");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!user.equals(TicketSql.str(m.get("username")))) {
+            throw new IllegalStateException("仅本人可上传活动相册");
+        }
+        String st = TicketSql.str(m.get("status"));
+        if (!"returned".equals(st) && !"completed".equals(st)) {
+            throw new IllegalStateException("活动办结后方可上传相册");
+        }
+        if (!hasColumn("post_gallery_json")) {
+            throw new IllegalStateException("系统未配置活动相册字段");
+        }
+        String json = toPostGalleryJson(imagesRaw);
+        TicketSql.db().update("UPDATE " + TICKET + " SET post_gallery_json=? WHERE id=?", json, ticketId);
+        TicketDeriveOps.appendProgress(ticketId, "post_gallery", user, "上传活动相册");
+        return TicketDeriveOps.get(ticketId);
+    }
+
+    public static Map<String, Object> ackCreditWriteback(long ticketId, String username) {
+        if (!requireCreditWritebackAck) throw new IllegalStateException("当前未开启学分认定提示");
+        String user = username == null ? "" : username.trim();
+        if (user.isBlank()) throw new IllegalArgumentException("请先登录");
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!user.equals(TicketSql.str(m.get("username")))) {
+            throw new IllegalStateException("仅本人可确认");
+        }
+        if (!hasColumn("credit_writeback_ack")) {
+            throw new IllegalStateException("系统未配置学分认定提示字段");
+        }
+        TicketSql.db().update("UPDATE " + TICKET + " SET credit_writeback_ack=1 WHERE id=?", ticketId);
+        return TicketDeriveOps.get(ticketId);
+    }
+
+    private static String toPostGalleryJson(Object raw) {
+        List<String> urls = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o == null) continue;
+                String s = String.valueOf(o).trim();
+                if (!s.isBlank()) urls.add(s.length() > 255 ? s.substring(0, 255) : s);
+                if (urls.size() >= 9) break;
+            }
+        } else if (raw != null) {
+            String s = String.valueOf(raw).trim();
+            if (s.startsWith("[")) {
+                if (s.length() > 4000) s = s.substring(0, 4000);
+                return s;
+            }
+            if (!s.isBlank()) urls.add(s.length() > 255 ? s.substring(0, 255) : s);
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < urls.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append('"').append(urls.get(i).replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    public static List<Map<String, Object>> lotteryResult(long itemId) {
+        if (!allowLottery) return List.of();
+        return TicketSql.db().query(
+                "SELECT id, username, status, apply_at FROM " + TICKET
+                        + " WHERE " + itemFkColumn()
+                        + "=? AND status IN ('pending','approved','returned') ORDER BY id",
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    String u = rs.getString("username");
+                    if (u != null && u.length() > 2) {
+                        u = u.substring(0, 1) + "**";
+                    }
+                    row.put("username", u == null ? "" : u);
+                    row.put("status", rs.getString("status"));
+                    row.put("applyAt", rs.getTimestamp("apply_at"));
+                    return row;
+                },
+                itemId);
     }
 
     
@@ -2241,10 +3234,9 @@ public final class TicketStore {
 
     /** CRM 等：申请后补写可选列 */
     public static void patchTicketExtras(long ticketId, Map<String, Object> body) {
-        TicketPatchOps.patchTicketExtras(ticketId, Map<String, body);
+        TicketPatchOps.patchTicketExtras(ticketId, body);
     }
 
-        /** 调宿等：对方确认后宿管才可审过 */
     /** ASSET：确认领用单已关联申购单号（浅衔接，不跨库）。 */
     public static Map<String, Object> confirmProcureTransfer(long ticketId, String operator) {
         return TicketDeriveOps.confirmProcureTransfer(ticketId, operator);

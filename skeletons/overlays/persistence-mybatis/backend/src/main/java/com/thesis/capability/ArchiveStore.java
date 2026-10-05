@@ -8,6 +8,7 @@ import com.thesis.config.DomainResourceJson;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.ArchiveMapper;
 import com.thesis.mapper.SchemaMapper;
+import com.thesis.service.UserStore;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -103,56 +104,36 @@ public final class ArchiveStore {
         return Boolean.TRUE.equals(hasDedicatedSpecNote);
     }
 
+    /** 规格文案：专用列或 isbn（FOOD/农产规格）。 */
     public static String productSpecText(Map<String, Object> item) {
         return ArchivePriceOps.productSpecText(item);
     }
 
+    /** 下单明细标题快照：有规格则追加「（规格）」。 */
     public static String lineTitleWithSpec(Map<String, Object> item) {
         return ArchivePriceOps.lineTitleWithSpec(item);
     }
 
+    private static double parseMoney(Object raw) {
+        return ArchivePriceOps.parseMoney(raw);
+    }
 
-    /** null=非空但无法解析；0=空/缺省。 */
-    
+    private static double parseMoneySoft(Object raw) {
+        return ArchivePriceOps.parseMoneySoft(raw);
+    }
 
-    /** 写库/成交：非空且不可解析则硬失败；空或显式 0 允许。 */
-    
-
-    /** 列表展示：脏价格当 0，不抛错。 */
-    
-
+    /** 列表价（原价）：author / priceYuan。浏览用软解析（author 可能是书名作者）。 */
     public static double listUnitPrice(Map<String, Object> item) {
         return ArchivePriceOps.listUnitPrice(item, false);
     }
 
-    private static double listUnitPrice(Map<String, Object> item, boolean strict) {
-        return ArchivePriceOps.listUnitPrice(item, strict);
-    }
-
+    /** 窗内活动价，否则原价。未挂 flash_price 时等同 listUnitPrice。下单路径严格校验。 */
     public static double effectiveUnitPrice(Map<String, Object> item) {
         return ArchivePriceOps.effectiveUnitPrice(item);
     }
 
     public static boolean isPromoActive(Map<String, Object> item) {
         return ArchivePriceOps.isPromoActive(item);
-    }
-
-    private static LocalDateTime parseLocalDt(Object raw) {
-        if (raw == null) return null;
-        if (raw instanceof LocalDateTime ldt) return ldt;
-        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
-        String s = String.valueOf(raw).trim();
-        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
-        try {
-            if (s.length() == 10) return LocalDateTime.parse(s + "T00:00:00");
-            return LocalDateTime.parse(s.replace(" ", "T"));
-        } catch (Exception e) {
-            try {
-                return Timestamp.valueOf(s.length() == 16 ? s + ":00" : s).toLocalDateTime();
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
     }
 
 
@@ -273,6 +254,7 @@ public final class ArchiveStore {
 
     public static void configureSoftDelete(boolean enabled) {
         ArchiveCfgOps.configureSoftDelete(enabled);
+        if (enabled) ensureSoftDeleteColumn();
     }
 
     public static boolean softDeleteEnabled() {
@@ -363,7 +345,11 @@ public final class ArchiveStore {
     private static int toInt(Object o) {
         if (o == null) return 0;
         if (o instanceof Number n) return n.intValue();
-        return Integer.parseInt(String.valueOf(o));
+        if (o instanceof Boolean b) return b ? 1 : 0;
+        String s = String.valueOf(o).trim();
+        if ("true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s)) return 1;
+        if ("false".equalsIgnoreCase(s) || "no".equalsIgnoreCase(s) || "off".equalsIgnoreCase(s) || s.isBlank()) return 0;
+        return Integer.parseInt(s);
     }
 
     public static long addCategory(String name) {
@@ -514,6 +500,7 @@ public final class ArchiveStore {
         }
         String uid = username == null ? "" : username.trim();
         if (uid.isBlank()) throw new IllegalArgumentException("未登录");
+        com.thesis.service.UserStore.assertNotPostMuted(uid);
         String t = title == null ? "" : title.trim();
         if (t.isBlank()) throw new IllegalArgumentException("标题不能为空");
         long cat = categoryId > 0 ? categoryId : 1L;
@@ -641,10 +628,7 @@ public final class ArchiveStore {
         }
         writeDetailAttrs(id, patch, m);
         if (roomEquipmentEnabled && patch.containsKey("equipmentNames")) {
-            if (!hasEquipmentJson()) {
-                throw new IllegalStateException("系统未配置配套设施字段，无法保存");
-            }
-            mapper().updateItemColumn(ITEM, "equipment_json", toEquipmentJson(patch.get("equipmentNames")), id);
+            replaceItemEquipment(id, patch.get("equipmentNames"));
         }
         patchOptStr(id, patch, "publisher", "publisher", 100);
         patchOptStr(id, patch, "callNo", "call_no", 64);
@@ -691,7 +675,7 @@ public final class ArchiveStore {
                 if (pr == null || String.valueOf(pr).isBlank()) {
                     mapper().updateItemColumn(ITEM, "promo_price", null, id);
                 } else {
-                    mapper().updateItemColumn(ITEM, "promo_price", ArchivePriceOps.parseMoney(pr), id);
+                    mapper().updateItemColumn(ITEM, "promo_price", parseMoney(pr), id);
                 }
             }
             if (patch.containsKey("promoStart")) {
@@ -710,6 +694,29 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "shelfNo", "shelf_no", 64);
         patchOptStr(id, patch, "batchNo", "batch_no", 64);
         patchOptStr(id, patch, "expireOn", "expire_on", 32);
+        patchOptStr(id, patch, "evalOpenOn", "eval_open_on", 32);
+        patchOptStr(id, patch, "evalCloseOn", "eval_close_on", 32);
+        patchOptStr(id, patch, "promoSize", "promo_size", 64);
+        patchOptStr(id, patch, "hangPlace", "hang_place", 128);
+        patchOptStr(id, patch, "quietStart", "quiet_start", 8);
+        patchOptStr(id, patch, "quietEnd", "quiet_end", 8);
+        patchOptNum(id, patch, "maxIssueCopies", "max_issue_copies");
+        patchOptNum(id, patch, "trainHoursTotal", "train_hours_total");
+        patchOptStr(id, patch, "inspectExpireOn", "inspect_expire_on", 32);
+        patchOptNum(id, patch, "budgetTotal", "budget_total");
+        patchOptInt(id, patch, "visitSlotCap", "visit_slot_cap");
+        patchOptInt(id, patch, "absentWarnN", "absent_warn_n");
+        patchOptInt(id, patch, "hideEvalResult", "hide_eval_result");
+        patchOptInt(id, patch, "signRemarkVisible", "sign_remark_visible");
+        patchOptInt(id, patch, "parkingMutex", "parking_mutex");
+        patchOptInt(id, patch, "examPassMin", "exam_pass_min");
+        patchOptNum(id, patch, "teachingWeight", "teaching_weight");
+        patchOptNum(id, patch, "attitudeWeight", "attitude_weight");
+        patchOptNum(id, patch, "contentWeight", "content_weight");
+        patchOptStr(id, patch, "midDueOn", "mid_due_on", 32);
+        patchOptStr(id, patch, "finalDueOn", "final_due_on", 32);
+        patchOptStr(id, patch, "meetingOn", "meeting_on", 32);
+        patchOptStr(id, patch, "resolutionNote", "resolution_note", 512);
         patchOptStr(id, patch, "supplierContact", "supplier_contact", 64);
         patchOptStr(id, patch, "allowedGender", "allowed_gender", 16);
         patchOptStr(id, patch, "allowedGrades", "allowed_grades", 64);
@@ -739,8 +746,12 @@ public final class ArchiveStore {
         patchOptNum(id, patch, "maxAge", "max_age");
         patchOptStr(id, patch, "lostCategory", "lost_category", 32);
         patchOptInt(id, patch, "viewCount", "view_count");
+        patchOptInt(id, patch, "pinTop", "pin_top");
         patchOptStr(id, patch, "college", "college", 64);
         patchOptStr(id, patch, "planUrl", "plan_url", 255);
+        patchOptStr(id, patch, "volunteerRole", "volunteer_role", 64);
+        patchOptInt(id, patch, "surveyFormId", "survey_form_id");
+        patchOptStr(id, patch, "weatherNote", "weather_note", 2000);
         patchOptStr(id, patch, "singleRoomNote", "single_room_note", 2000);
         patchOptStr(id, patch, "tags", "tags", 255);
         patchOptStr(id, patch, "leadSource", "lead_source", 64);
@@ -1053,15 +1064,15 @@ public final class ArchiveStore {
         m.put("status", raw.get("status"));
         if (flashPriceEnabled && hasPromoPrice()) {
             Object pp = first(raw, "promoPrice", "promo_price");
-            if (pp != null) m.put("promoPrice", ArchivePriceOps.parseMoneySoft(pp));
+            if (pp != null) m.put("promoPrice", parseMoneySoft(pp));
             m.put("promoStart", fmt(first(raw, "promoStart", "promo_start")));
             m.put("promoEnd", fmt(first(raw, "promoEnd", "promo_end")));
-            double list = ArchivePriceOps.parseMoneySoft(m.get("author"));
+            double list = parseMoneySoft(m.get("author"));
             m.put("listPriceYuan", list);
             boolean active = isPromoActive(m);
             m.put("promoActive", active);
             if (active) {
-                double promo = ArchivePriceOps.parseMoneySoft(m.get("promoPrice"));
+                double promo = parseMoneySoft(m.get("promoPrice"));
                 m.put("priceYuan", promo > 0 ? promo : list);
             } else {
                 m.put("priceYuan", list);
@@ -1078,9 +1089,14 @@ public final class ArchiveStore {
             m.put("galleryImages", parseGallery(g == null ? null : String.valueOf(g)));
         }
         putDetailAttrs(m, raw);
-        if (roomEquipmentEnabled && hasEquipmentJson()) {
-            Object e = rawCol(raw, "equipment_json");
-            m.put("equipmentNames", parseEquipment(e == null ? null : String.valueOf(e)));
+        if (roomEquipmentEnabled) {
+            Object idObj = first(raw, "id");
+            long iid = 0;
+            try {
+                iid = idObj == null ? 0 : Long.parseLong(String.valueOf(idObj));
+            } catch (Exception ignored) {
+            }
+            m.put("equipmentNames", iid > 0 ? listItemEquipmentNames(iid) : List.of());
         }
         if (hasStartAt()) m.put("startAt", fmt(first(raw, "startAt", "start_at")));
         if (hasEndAt()) m.put("endAt", fmt(first(raw, "endAt", "end_at")));
@@ -1129,6 +1145,12 @@ public final class ArchiveStore {
         putOptStr(m, raw, "shelf_no", "shelfNo");
         putOptStr(m, raw, "batch_no", "batchNo");
         putOptStr(m, raw, "expire_on", "expireOn");
+        putOptStr(m, raw, "eval_open_on", "evalOpenOn");
+        putOptStr(m, raw, "eval_close_on", "evalCloseOn");
+        putOptStr(m, raw, "promo_size", "promoSize");
+        putOptStr(m, raw, "hang_place", "hangPlace");
+        putOptStr(m, raw, "meeting_on", "meetingOn");
+        putOptStr(m, raw, "resolution_note", "resolutionNote");
         putOptStr(m, raw, "supplier_contact", "supplierContact");
         putOptStr(m, raw, "allowed_gender", "allowedGender");
         putOptStr(m, raw, "allowed_grades", "allowedGrades");
@@ -1151,6 +1173,23 @@ public final class ArchiveStore {
         putOptInt(m, raw, "min_group_size", "minGroupSize");
         putOptStr(m, raw, "session_group", "sessionGroup");
         putOptStr(m, raw, "apply_invite_code", "applyInviteCode");
+        putOptStr(m, raw, "quiet_start", "quietStart");
+        putOptStr(m, raw, "quiet_end", "quietEnd");
+        putOptNum(m, raw, "max_issue_copies", "maxIssueCopies");
+        putOptNum(m, raw, "train_hours_total", "trainHoursTotal");
+        putOptStr(m, raw, "inspect_expire_on", "inspectExpireOn");
+        putOptNum(m, raw, "budget_total", "budgetTotal");
+        putOptInt(m, raw, "visit_slot_cap", "visitSlotCap");
+        putOptInt(m, raw, "absent_warn_n", "absentWarnN");
+        putOptInt(m, raw, "hide_eval_result", "hideEvalResult");
+        putOptInt(m, raw, "sign_remark_visible", "signRemarkVisible");
+        putOptInt(m, raw, "parking_mutex", "parkingMutex");
+        putOptInt(m, raw, "exam_pass_min", "examPassMin");
+        putOptNum(m, raw, "teaching_weight", "teachingWeight");
+        putOptNum(m, raw, "attitude_weight", "attitudeWeight");
+        putOptNum(m, raw, "content_weight", "contentWeight");
+        putOptStr(m, raw, "mid_due_on", "midDueOn");
+        putOptStr(m, raw, "final_due_on", "finalDueOn");
         putOptStr(m, raw, "sponsor_note", "sponsorNote");
         putOptStr(m, raw, "group_price_note", "groupPriceNote");
         putOptNum(m, raw, "fee_yuan", "feeYuan");
@@ -1158,8 +1197,12 @@ public final class ArchiveStore {
         putOptNum(m, raw, "max_age", "maxAge");
         putOptStr(m, raw, "lost_category", "lostCategory");
         putOptInt(m, raw, "view_count", "viewCount");
+        putOptInt(m, raw, "pin_top", "pinTop");
         putOptStr(m, raw, "college", "college");
         putOptStr(m, raw, "plan_url", "planUrl");
+        putOptStr(m, raw, "volunteer_role", "volunteerRole");
+        putOptInt(m, raw, "survey_form_id", "surveyFormId");
+        putOptStr(m, raw, "weather_note", "weatherNote");
         putOptStr(m, raw, "single_room_note", "singleRoomNote");
         putOptStr(m, raw, "tags", "tags");
         putOptStr(m, raw, "lead_source", "leadSource");
@@ -1399,6 +1442,125 @@ public final class ArchiveStore {
         }
     }
 
+    /**
+     * 合同/许可/年检：日期列临近到期前 N 天站内信提醒管理端（每档一次）。
+     */
+    public static void addTrainHours(long id, double hours) {
+        if (id <= 0 || !(hours > 0)) return;
+        if (!hasItemColumn("train_hours_total")) {
+            throw new IllegalStateException("系统未配置累计培训学时字段");
+        }
+        try {
+            int n = mapper().addTrainHours(ITEM, id, hours);
+            if (n <= 0) {
+                throw new IllegalStateException("累计培训学时写入失败");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("累计培训学时写入失败", e);
+        }
+    }
+
+    public static int maybeNotifyExpireSoon() {
+        int days = TicketStore.notifyArchiveExpireDays;
+        if (days <= 0) return 0;
+        if (!hasItemColumn("expire_soon_notified_at")) return 0;
+        int notified = 0;
+        try {
+            if (hasItemColumn("expire_on")) {
+                notified += notifyExpireSoonRows(mapper().listExpireSoon(ITEM, days), "expire");
+            }
+            if (hasItemColumn("inspect_expire_on")) {
+                notified += notifyExpireSoonRows(mapper().listInspectExpireSoon(ITEM, days), "inspect");
+            }
+            if (hasItemColumn("mid_due_on")) {
+                notified += notifyExpireSoonRows(mapper().listMidDueSoon(ITEM, days), "mid");
+            }
+            if (hasItemColumn("final_due_on")) {
+                notified += notifyExpireSoonRows(mapper().listFinalDueSoon(ITEM, days), "final");
+            }
+        } catch (Exception e) {
+            return notified;
+        }
+        return notified;
+    }
+
+    private static int notifyExpireSoonRows(List<Map<String, Object>> rows, String kind) {
+        if (rows == null || rows.isEmpty()) return 0;
+        List<Map<String, Object>> admins;
+        try {
+            admins = UserStore.listManaged("admin", "subadmins", null);
+        } catch (Exception e) {
+            admins = List.of();
+        }
+        if (admins == null || admins.isEmpty()) return 0;
+        int notified = 0;
+        for (Map<String, Object> row : rows) {
+            long id = 0L;
+            Object idObj = row.get("id");
+            if (idObj instanceof Number n) id = n.longValue();
+            else {
+                try { id = Long.parseLong(String.valueOf(idObj)); } catch (Exception ignored) {}
+            }
+            if (id <= 0) continue;
+            String title = row.get("title") == null ? "" : String.valueOf(row.get("title")).trim();
+            if (title.isBlank()) title = "档案#" + id;
+            Object expireRaw = row.get("expire_on");
+            if (expireRaw == null) expireRaw = row.get("expireOn");
+            String expireOn = expireRaw == null ? "" : String.valueOf(expireRaw).trim();
+            if (expireOn.length() > 10) expireOn = expireOn.substring(0, 10);
+            String body = "inspect".equals(kind)
+                    ? "「" + title + "」年检将于 " + expireOn + " 到期，请及时办理。"
+                    : "mid".equals(kind)
+                    ? "「" + title + "」中期材料节点为 " + expireOn + "，请及时提交。"
+                    : "final".equals(kind)
+                    ? "「" + title + "」结题材料节点为 " + expireOn + "，请及时提交。"
+                    : "「" + title + "」将于 " + expireOn + " 到期，请及时办理续签或延期。";
+            String msgTitle = TicketStore.allowContractExpireRemind && "expire".equals(kind)
+                    ? "合同续签提醒"
+                    : "即将到期提醒";
+            int sent = 0;
+            for (Map<String, Object> admin : admins) {
+                String un = admin.get("username") == null ? "" : String.valueOf(admin.get("username")).trim();
+                if (un.isBlank()) continue;
+                try {
+                    com.thesis.service.MessageStore.send(un, msgTitle, body, "archive", id);
+                    sent++;
+                } catch (Exception ignored) {
+                }
+            }
+            if (TicketStore.allowContractExpireRemind && "expire".equals(kind)) {
+                try {
+                    List<String> owners = TicketSql.db().query(
+                            "SELECT DISTINCT username FROM " + TicketStore.TICKET
+                                    + " WHERE " + TicketStore.itemFkColumn()
+                                    + "=? AND status IN ('approved','returned')",
+                            (rs, i) -> TicketSql.str(rs.getString("username")),
+                            id);
+                    if (owners != null) {
+                        for (String un : owners) {
+                            if (un == null || un.isBlank()) continue;
+                            try {
+                                com.thesis.service.MessageStore.send(un.trim(), msgTitle, body, "archive", id);
+                                sent++;
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            if (sent <= 0) continue;
+            try {
+                mapper().markExpireSoonNotified(ITEM, id);
+                notified++;
+            } catch (Exception ignored) {
+            }
+        }
+        return notified;
+    }
+
     /** 档期已关闭：有结束时间看 end；否则看 start（出发/开场）。 */
     static boolean isScheduleClosed(Map<String, Object> item) {
         if (item == null) return false;
@@ -1508,15 +1670,9 @@ public final class ArchiveStore {
         }
     }
 
-    /** @deprecated 旧包回退；新包用 ensureDetailAttrColumns */
+    /** @deprecated 旧包回退探测；新 bake 禁止补 detail_json 列 */
     public static void ensureDetailColumn() {
-        if (hasDetailJson()) return;
-        try {
-            schema().executeDdl("ALTER TABLE `" + ITEM + "` ADD COLUMN `detail_json` TEXT NULL");
-            hasDetailJson = true;
-        } catch (Exception ignored) {
-            hasDetailJson = hasItemColumn("detail_json");
-        }
+        hasDetailJson = hasItemColumn("detail_json");
     }
 
     private static List<String> parseDetailKeys(String keysCsv, Map<String, String> typesOut) {
@@ -1660,18 +1816,62 @@ public final class ArchiveStore {
     }
 
     public static boolean hasEquipmentJson() {
-        if (hasEquipmentJson == null) hasEquipmentJson = hasItemColumn("equipment_json");
-        return hasEquipmentJson;
+        return hasItemEquipmentTable();
     }
 
     public static void ensureEquipmentColumn() {
-        if (hasEquipmentJson()) return;
+        /* 关联表由 bake 注入，禁止 ALTER 补 equipment_json */
+    }
+
+    private static boolean hasItemEquipmentTable() {
         try {
-            schema().executeDdl("ALTER TABLE `" + ITEM + "` ADD COLUMN `equipment_json` TEXT NULL");
-            hasEquipmentJson = true;
-        } catch (Exception ignored) {
-            hasEquipmentJson = hasItemColumn("equipment_json");
+            Integer n = schema().countTable("item_equipment");
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
         }
+    }
+
+    private static void replaceItemEquipment(long itemId, Object raw) {
+        if (!hasItemEquipmentTable()) {
+            throw new IllegalStateException("系统未配置配套设施表，无法保存");
+        }
+        List<String> names = equipmentNamesOf(raw);
+        mapper().deleteItemEquipment(itemId);
+        for (String name : names) {
+            Long eid = mapper().selectEquipmentIdByName(name);
+            if (eid != null) {
+                mapper().insertItemEquipment(itemId, eid);
+            }
+        }
+    }
+
+    private static List<String> listItemEquipmentNames(long itemId) {
+        if (!hasItemEquipmentTable()) return List.of();
+        try {
+            List<String> names = mapper().listItemEquipmentNames(itemId);
+            return names == null ? List.of() : names;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static List<String> equipmentNamesOf(Object raw) {
+        List<String> names = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o == null) continue;
+                String u = String.valueOf(o).trim();
+                if (!u.isBlank()) names.add(u);
+                if (names.size() >= 20) break;
+            }
+            return names;
+        }
+        if (raw != null) {
+            String s = String.valueOf(raw).trim();
+            if (s.startsWith("[")) names.addAll(parseEquipment(s));
+        }
+        return names;
     }
 
     /** 标题前缀联想（搜索辅助）。 */
@@ -1736,28 +1936,6 @@ public final class ArchiveStore {
             return out;
         } catch (Exception e) {
             return List.of();
-        }
-    }
-
-    private static String toEquipmentJson(Object raw) {
-        List<String> names = new ArrayList<>();
-        if (raw instanceof List<?> list) {
-            for (Object o : list) {
-                if (o == null) continue;
-                String u = String.valueOf(o).trim();
-                if (!u.isBlank()) names.add(u);
-                if (names.size() >= 20) break;
-            }
-        } else if (raw != null) {
-            String s = String.valueOf(raw).trim();
-            if (!s.isBlank()) {
-                names.addAll(parseEquipment(s.startsWith("[") ? s : "[]"));
-            }
-        }
-        try {
-            return new ObjectMapper().writeValueAsString(names);
-        } catch (Exception e) {
-            return "[]";
         }
     }
 
@@ -1979,6 +2157,10 @@ public final class ArchiveStore {
                 mapper().updateItemColumn(ITEM, "stage", "满员", itemId);
             } else if (delta > 0 && stock > 0 && "满员".equals(stage)) {
                 mapper().updateItemColumn(ITEM, "stage", "开放报名", itemId);
+            } else if (delta < 0 && stock <= 0 && "开放".equals(stage)) {
+                mapper().updateItemColumn(ITEM, "stage", "已满", itemId);
+            } else if (delta > 0 && stock > 0 && "已满".equals(stage)) {
+                mapper().updateItemColumn(ITEM, "stage", "开放", itemId);
             } else if (delta < 0 && stock <= 0
                     && ("招领中".equals(stage) || "招领".equals(stage) || stage.isEmpty())) {
                 mapper().updateItemColumn(ITEM, "stage", "已认领", itemId);

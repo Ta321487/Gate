@@ -31,9 +31,9 @@ final class TicketDashOps {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("pendingTickets", 0);
             empty.put("activeTickets", 0);
-            empty.put("TicketStore.completedTickets", 0);
+            empty.put("completedTickets", 0);
             empty.put("rejectedTickets", 0);
-            empty.put("TicketStore.approveEndsFlow", TicketStore.approveEndsFlow);
+            empty.put("approveEndsFlow", TicketStore.approveEndsFlow);
             empty.put("userTotal", UserStore.countByRole(
                     readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole));
             empty.put("bookTotal", ArchiveStore.countItems());
@@ -43,7 +43,7 @@ final class TicketDashOps {
         }
         String role = readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole;
         if (TicketStore.useDeadline) {
-            TicketSql.db().query("SELECT * FROM " + TicketStore.TICKET + " WHERE status IN ('TicketStore.approved','overdue')",
+            TicketSql.db().query("SELECT * FROM " + TicketStore.TICKET + " WHERE status IN ('approved','overdue')",
                     (rs, i) -> {
                         Map<String, Object> b = TicketRowMaps.mapRow(rs);
                         TicketStatusOps.refreshOverdue(b);
@@ -52,40 +52,40 @@ final class TicketDashOps {
         }
         Long pending = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status IN ('pending','pending_mid','pending_final')", Long.class);
-        Long TicketStore.approved = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='TicketStore.approved'", Long.class);
+        Long approved = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved'", Long.class);
         Long overdue = TicketStore.useDeadline || TicketStore.noShowAfterEnd
                 ? TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue'", Long.class)
                 : 0L;
         Long returned = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='returned'", Long.class);
         Long rejected = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='rejected'", Long.class);
-        Long TicketStore.completed;
+        Long completed;
         Long active;
         if (TicketStore.approveEndsFlow) {
-            long a = TicketStore.approved == null ? 0 : TicketStore.approved;
+            long a = approved == null ? 0 : approved;
             long r = returned == null ? 0 : returned;
             long j = rejected == null ? 0 : rejected;
             long o = overdue == null ? 0 : overdue;
-            // 通过 / 驳回 / 取消 / 爽约 均视为已处理；处理中不再含 TicketStore.approved
-            TicketStore.completed = a + r + j + o;
+            // 通过 / 驳回 / 取消 / 爽约 均视为已处理；处理中不再含 approved
+            completed = a + r + j + o;
             active = 0L;
         } else {
-            TicketStore.completed = returned == null ? 0L : returned;
-            active = TicketStore.approved == null ? 0L : TicketStore.approved;
+            completed = returned == null ? 0L : returned;
+            active = approved == null ? 0L : approved;
         }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("pendingTickets", pending == null ? 0 : pending);
         m.put("activeTickets", active);
-        m.put("TicketStore.completedTickets", TicketStore.completed);
+        m.put("completedTickets", completed);
         m.put("rejectedTickets", rejected == null ? 0 : rejected);
-        m.put("TicketStore.approveEndsFlow", TicketStore.approveEndsFlow);
+        m.put("approveEndsFlow", TicketStore.approveEndsFlow);
         m.put("userTotal", UserStore.countByRole(role));
         m.put("pendingBorrow", pending == null ? 0 : pending);
-        m.put("onLoan", TicketStore.approveEndsFlow ? 0 : (TicketStore.approved == null ? 0 : TicketStore.approved));
+        m.put("onLoan", TicketStore.approveEndsFlow ? 0 : (approved == null ? 0 : approved));
         m.put("overdueBorrow", overdue == null ? 0 : overdue);
         m.put("returnedBorrow", returned == null ? 0 : returned);
         if (TicketStore.approveEndsFlow) {
-            m.put("TicketStore.approvedTickets", TicketStore.approved == null ? 0 : TicketStore.approved);
+            m.put("approvedTickets", approved == null ? 0 : approved);
         }
         m.put("readerTotal", UserStore.countByRole(role));
         if (TicketStore.MODE == TicketStore.Mode.ARCHIVE) {
@@ -105,30 +105,30 @@ final class TicketDashOps {
             m.put("categoryTotal", 0);
             m.put("openFineYuan", 0);
         }
-        m.put("TicketStore.mode", TicketStore.MODE.name().toLowerCase());
-        m.put("TicketStore.maxActive", TicketStore.maxActive());
+        m.put("mode", TicketStore.MODE.name().toLowerCase());
+        m.put("maxActive", TicketStore.maxActive());
         if (TicketStore.useDeadline) {
-            m.put("TicketStore.loanDays", TicketStore.loanDays());
-            m.put("TicketStore.finePerDay", TicketStore.finePerDay());
+            m.put("loanDays", TicketStore.loanDays());
+            m.put("finePerDay", TicketStore.finePerDay());
         }
         if (TicketStore.allowRating && TicketStore.hasColumn("rating")) {
             Double avg = TicketSql.db().queryForObject(
                     "SELECT AVG(rating) FROM " + TicketStore.TICKET + " WHERE rating IS NOT NULL AND rating > 0",
                     Double.class);
-            Long TicketStore.ratedCnt = TicketSql.db().queryForObject(
+            Long ratedCnt = TicketSql.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE rating IS NOT NULL AND rating > 0",
                     Long.class);
             m.put("avgRating", avg == null ? 0 : Math.round(avg * 10.0) / 10.0);
-            m.put("TicketStore.ratedCount", TicketStore.ratedCnt == null ? 0 : TicketStore.ratedCnt);
+            m.put("ratedCount", ratedCnt == null ? 0 : ratedCnt);
         }
         if (TicketStore.repairThicken && TicketStore.hasColumn("assignee_username")) {
             try {
                 Long rejectCnt = TicketSql.db().queryForObject(
                         "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE remark LIKE '拒单%' OR remark LIKE '%拒单回池%'",
                         Long.class);
-                m.put("TicketStore.rejectAssignmentCount", rejectCnt == null ? 0 : rejectCnt);
+                m.put("rejectAssignmentCount", rejectCnt == null ? 0 : rejectCnt);
             } catch (Exception ignored) {
-                m.put("TicketStore.rejectAssignmentCount", 0);
+                m.put("rejectAssignmentCount", 0);
             }
         }
         return m;
@@ -151,9 +151,9 @@ final class TicketDashOps {
                     });
             out.put("statusSeries", status);
             List<Map<String, Object>> trend = TicketSql.db().query(
-                    "SELECT DATE_FORMAT(TicketStore.apply_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + TicketStore.TICKET
-                            + " WHERE TicketStore.apply_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
-                            + " GROUP BY DATE_FORMAT(TicketStore.apply_at,'%Y-%m-%d') ORDER BY day",
+                    "SELECT DATE_FORMAT(apply_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + TicketStore.TICKET
+                            + " WHERE apply_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
+                            + " GROUP BY DATE_FORMAT(apply_at,'%Y-%m-%d') ORDER BY day",
                     (rs, i) -> {
                         Map<String, Object> row = new LinkedHashMap<>();
                         row.put("day", rs.getString("day"));
@@ -180,7 +180,7 @@ final class TicketDashOps {
                 List<Map<String, Object>> hot = TicketSql.db().query(
                         "SELECT COALESCE(i.title, CONCAT('编号', t." + TicketStore.itemFkColumn() + ")) AS name, COUNT(*) AS value "
                                 + "FROM " + TicketStore.TICKET + " t LEFT JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
-                                + "WHERE t.status IN ('TicketStore.approved','overdue','returned','lost','compensated') "
+                                + "WHERE t.status IN ('approved','overdue','returned','lost','compensated') "
                                 + "GROUP BY t." + TicketStore.itemFkColumn() + ", i.title ORDER BY value DESC LIMIT 8",
                         (rs, i) -> {
                             Map<String, Object> row = new LinkedHashMap<>();
@@ -193,7 +193,7 @@ final class TicketDashOps {
             if (TicketStore.repairThicken && TicketStore.hasColumn("assignee_username")) {
                 List<Map<String, Object>> workers = TicketSql.db().query(
                         "SELECT COALESCE(NULLIF(TRIM(assignee_username),''),'未派') AS name,"
-                                + " SUM(CASE WHEN status IN ('TicketStore.approved','overdue','paused') THEN 1 ELSE 0 END) AS active,"
+                                + " SUM(CASE WHEN status IN ('approved','overdue','paused') THEN 1 ELSE 0 END) AS active,"
                                 + " SUM(CASE WHEN status='returned' THEN 1 ELSE 0 END) AS done"
                                 + " FROM " + TicketStore.TICKET
                                 + " GROUP BY COALESCE(NULLIF(TRIM(assignee_username),''),'未派')"
@@ -212,7 +212,7 @@ final class TicketDashOps {
                 List<Map<String, Object>> heat = TicketSql.db().query(
                         "SELECT COALESCE(NULLIF(TRIM(location),''),'未填地点') AS name, COUNT(*) AS value FROM "
                                 + TicketStore.TICKET
-                                + " WHERE status IN ('pending','pending_final','pending_mid','TicketStore.approved','overdue','paused')"
+                                + " WHERE status IN ('pending','pending_final','pending_mid','approved','overdue','paused')"
                                 + " GROUP BY COALESCE(NULLIF(TRIM(location),''),'未填地点') ORDER BY value DESC LIMIT 12",
                         (rs, i) -> {
                             Map<String, Object> row = new LinkedHashMap<>();

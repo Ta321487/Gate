@@ -52,6 +52,10 @@ final class TicketReviseOps {
     }
 
     static Map<String, Object> resubmit(long ticketId, String username, String remark) {
+        return resubmit(ticketId, username, remark, null);
+    }
+
+    static Map<String, Object> resubmit(long ticketId, String username, String remark, String attachUrl) {
         Map<String, Object> m = TicketRowMaps.load(ticketId);
         if (m == null) throw new IllegalArgumentException("单据不存在");
         if (!String.valueOf(m.get("username")).equals(username)) {
@@ -63,7 +67,15 @@ final class TicketReviseOps {
         if (TicketStore.maxReviseTimes > 0 && reviseCountOf(m) >= TicketStore.maxReviseTimes) {
             throw new IllegalStateException("修改次数已达上限（" + TicketStore.maxReviseTimes + " 次），请联系管理员。");
         }
-        TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET status='pending' WHERE id=?", ticketId);
+        String attach = attachUrl == null ? "" : attachUrl.trim();
+        if (TicketStore.allowAttachKeepOld && TicketStore.hasColumn("attach_url") && !attach.isBlank()) {
+            TicketGuardOps.keepAttachHistory(ticketId, TicketSql.str(m.get("attachUrl")), attach);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET status='pending', attach_url=? WHERE id=?",
+                    attach.length() > 255 ? attach.substring(0, 255) : attach, ticketId);
+        } else {
+            TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET status='pending' WHERE id=?", ticketId);
+        }
         TicketDeriveOps.appendProgress(ticketId, "pending", username,
                 remark == null || remark.isBlank() ? "重新提交" : remark.trim());
         return TicketDeriveOps.get(ticketId);

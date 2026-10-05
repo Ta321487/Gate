@@ -160,7 +160,8 @@ public class ExamStore {
         m.put("subjectId", col(raw, "subject_id", "subjectId"));
         m.put("type", str(col(raw, "type")));
         m.put("stem", str(col(raw, "stem")));
-        m.put("optionsJson", str(col(raw, "options_json", "optionsJson")));
+        Long qid = toLong(col(raw, "id"));
+        m.put("optionsJson", qid == null ? "[]" : ChoiceOptionMb.loadExam(qid));
         m.put("score", toInt(col(raw, "score"), 0));
         m.put("createdAt", fmt(col(raw, "created_at", "createdAt")));
         if (admin) {
@@ -231,7 +232,6 @@ public class ExamStore {
         row.put("stem", stem);
         String optionsJson = str(body.get("optionsJson"));
         if (optionsJson.isBlank()) optionsJson = str(body.get("options_json"));
-        row.put("optionsJson", optionsJson);
         String answerKey = clip(str(body.get("answerKey")), 500);
         if (answerKey.isBlank()) answerKey = clip(str(body.get("answer_key")), 500);
         row.put("answerKey", answerKey);
@@ -243,7 +243,9 @@ public class ExamStore {
         if (explain.isBlank()) explain = clip(str(body.get("explain_text")), 2000);
         row.put("explainText", explain.isBlank() ? null : explain);
         mapper().insertQuestion(row);
-        return getQuestion(toLong(row.get("id")) == null ? 0L : toLong(row.get("id")));
+        long qid = toLong(row.get("id")) == null ? 0L : toLong(row.get("id"));
+        ChoiceOptionMb.replaceExam(qid, optionsJson);
+        return getQuestion(qid);
     }
 
     public static Map<String, Object> updateQuestion(long id, Map<String, Object> body) {
@@ -255,7 +257,7 @@ public class ExamStore {
         if (body.containsKey("stem")) row.put("stem", clip(str(body.get("stem")), 2000));
         if (body.containsKey("optionsJson") || body.containsKey("options_json")) {
             String v = body.containsKey("optionsJson") ? str(body.get("optionsJson")) : str(body.get("options_json"));
-            row.put("optionsJson", v);
+            ChoiceOptionMb.replaceExam(id, v);
         }
         if (body.containsKey("answerKey") || body.containsKey("answer_key")) {
             String v = body.containsKey("answerKey")
@@ -283,6 +285,7 @@ public class ExamStore {
         require();
         Integer n = mapper().countPaperRefs(id);
         if (n != null && n > 0) throw new IllegalStateException("题目已被试卷引用，无法删除");
+        ChoiceOptionMb.replaceExam(id, "[]");
         return mapper().deleteQuestion(id) > 0;
     }
 

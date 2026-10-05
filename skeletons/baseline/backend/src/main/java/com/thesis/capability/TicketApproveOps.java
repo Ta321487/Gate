@@ -3,7 +3,10 @@ package com.thesis.capability;
 import java.util.*;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import com.thesis.service.BalanceLedgerStore;
+import com.thesis.service.ClaimProofStore;
 import com.thesis.service.MessageStore;
+import com.thesis.service.TimebankStore;
 
 /**
  * TicketApproveOps：审核状态机（含 SQL）。
@@ -73,7 +76,17 @@ static Map<String, Object> approve(
         if (!pass && note.isBlank()) {
             throw new IllegalStateException("请填写驳回原因");
         }
-        if (pass && note.isBlank()) {
+        if (TicketStore.minApproveRemarkWords > 0) {
+            // 开启审意见字数时：通过不得回填原申请说明凑字数
+            if (pass && note.isBlank()) {
+                throw new IllegalStateException("请填写审核意见");
+            }
+            int words = note.replaceAll("\\s+", "").length();
+            if (words < TicketStore.minApproveRemarkWords) {
+                throw new IllegalStateException(
+                        "审核意见不少于 " + TicketStore.minApproveRemarkWords + " 字后再提交");
+            }
+        } else if (pass && note.isBlank()) {
             Object prev = m.get("remark");
             note = prev == null ? "" : String.valueOf(prev);
         }
@@ -261,6 +274,11 @@ static Map<String, Object> approve(
                     note, ticketId);
         }
         String passCode = issuePassCodeIfNeeded(ticketId);
+        issueCertIssueNoIfNeeded(ticketId);
+        issueVerifyCodeIfNeeded(ticketId);
+        issuePickupRedeemIfNeeded(ticketId);
+        addTrainHoursIfNeeded(ticketId);
+        TicketGuardOps.setMoralObjectionDueIfNeeded(ticketId);
         TicketNotifyOps.notifyTicketResult(m, true, note, passCode);
         TicketNotifyOps.notifyArrivalIfNeeded(m);
         TicketDeriveOps.appendProgress(ticketId, "approved", op, note.isBlank()
@@ -322,7 +340,18 @@ static String issuePassCodeIfNeeded(long ticketId) {
         }
         String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
         try {
-            int n = TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
+            int n;
+            if (TicketStore.allowPassExpire && TicketStore.passExpireDays > 0
+                    && TicketStore.hasColumn("pass_expire_at")) {
+                java.sql.Timestamp exp = java.sql.Timestamp.valueOf(
+                        java.time.LocalDateTime.now().plusDays(TicketStore.passExpireDays));
+                n = TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET pass_code=?, pass_expire_at=? WHERE id=?",
+                        code, exp, ticketId);
+            } else {
+                n = TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET pass_code=? WHERE id=?", code, ticketId);
+            }
             if (n <= 0) {
                 throw new IllegalStateException("通行码签发失败，请重试");
             }
@@ -333,6 +362,96 @@ static String issuePassCodeIfNeeded(long ticketId) {
         }
         TicketDeriveOps.appendProgress(ticketId, "pass_code", "system", "通行码 " + code);
         return code;
+    }
+
+static String issueCertIssueNoIfNeeded(long ticketId) {
+        if (!TicketStore.allowCertIssueNo || ticketId <= 0) return "";
+        if (!TicketStore.hasColumn("cert_issue_no")) {
+            throw new IllegalStateException("系统未配置开具流水号字段，无法签发");
+        }
+        Map<String, Object> cur = TicketDeriveOps.get(ticketId);
+        if (cur != null) {
+            String prev = TicketSql.str(cur.get("certIssueNo"));
+            if (!prev.isBlank()) return prev;
+        }
+        String code = "CERT" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        try {
+            int n = TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET cert_issue_no=? WHERE id=?", code, ticketId);
+            if (n <= 0) {
+                throw new IllegalStateException("开具流水号签发失败，请重试");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("开具流水号签发失败，请重试", e);
+        }
+        TicketDeriveOps.appendProgress(ticketId, "cert_issue_no", "system", "开具流水号 " + code);
+        return code;
+    }
+
+static String issueVerifyCodeIfNeeded(long ticketId) {
+        if (!TicketStore.allowCertVerify || ticketId <= 0) return "";
+        if (!TicketStore.hasColumn("verify_code")) {
+            throw new IllegalStateException("系统未配置真伪查询码字段，无法签发");
+        }
+        Map<String, Object> cur = TicketDeriveOps.get(ticketId);
+        if (cur != null) {
+            String prev = TicketSql.str(cur.get("verifyCode"));
+            if (!prev.isBlank()) return prev;
+        }
+        String code = "VF" + String.format("%010d", Math.floorMod(System.nanoTime(), 10_000_000_000L));
+        try {
+            int n = TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET verify_code=? WHERE id=?", code, ticketId);
+            if (n <= 0) {
+                throw new IllegalStateException("真伪查询码签发失败，请重试");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("真伪查询码签发失败，请重试", e);
+        }
+        TicketDeriveOps.appendProgress(ticketId, "verify_code", "system", "真伪查询码 " + code);
+        return code;
+    }
+
+static String issuePickupRedeemIfNeeded(long ticketId) {
+        if (!TicketStore.allowCertPickupRedeem || ticketId <= 0) return "";
+        if (!TicketStore.hasColumn("pickup_redeem_code")) {
+            throw new IllegalStateException("系统未配置领取核销码字段，无法签发");
+        }
+        Map<String, Object> cur = TicketDeriveOps.get(ticketId);
+        if (cur != null) {
+            String prev = TicketSql.str(cur.get("pickupRedeemCode"));
+            if (!prev.isBlank()) return prev;
+        }
+        String code = "PK" + String.format("%010d", Math.floorMod(System.nanoTime() + 17, 10_000_000_000L));
+        try {
+            int n = TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET pickup_redeem_code=? WHERE id=?", code, ticketId);
+            if (n <= 0) {
+                throw new IllegalStateException("领取核销码签发失败，请重试");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("领取核销码签发失败，请重试", e);
+        }
+        TicketDeriveOps.appendProgress(ticketId, "pickup_redeem_code", "system", "领取核销码 " + code);
+        return code;
+    }
+
+static void addTrainHoursIfNeeded(long ticketId) {
+        if (!TicketStore.allowTrainHours || ticketId <= 0) return;
+        Map<String, Object> cur = TicketDeriveOps.get(ticketId);
+        if (cur == null) return;
+        double hours = TicketSql.toDouble(cur.get("trainHours"));
+        if (!(hours > 0)) return;
+        long itemId = TicketSql.toLong(cur.get("itemId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(cur.get("bookId"));
+        if (itemId <= 0) return;
+        ArchiveStore.addTrainHours(itemId, hours);
     }
 
 static int rejectSiblingsWhenStockGone(long itemId, long approvedTicketId) {

@@ -39,7 +39,7 @@ public interface TicketMapper {
             @Param("itemId") long itemId);
 
     @Select("SELECT COUNT(*) FROM `${ticketTable}` WHERE username=#{username} AND `${itemFk}`=#{itemId} "
-            + "AND status IN ('pending','pending_mid','pending_final','approved','overdue','waitlisted','held','hold_ready')")
+            + "AND status IN ('pending','pending_mid','pending_final','approved','overdue','waitlisted','held','hold_ready','lottery')")
     int countActiveDup(
             @Param("ticketTable") String ticketTable,
             @Param("itemFk") String itemFk,
@@ -89,13 +89,12 @@ public interface TicketMapper {
             @Param("remark") String remark);
 
     @Update("UPDATE `${ticketTable}` SET rating=#{rating}, rating_remark=#{ratingRemark}, rated_at=NOW(), "
-            + "rating_dims_json=#{ratingDimsJson}, rating_anonymous=#{ratingAnonymous} WHERE id=#{id}")
+            + "rating_anonymous=#{ratingAnonymous} WHERE id=#{id}")
     int updateRating(
             @Param("ticketTable") String ticketTable,
             @Param("id") long id,
             @Param("rating") int rating,
             @Param("ratingRemark") String ratingRemark,
-            @Param("ratingDimsJson") String ratingDimsJson,
             @Param("ratingAnonymous") int ratingAnonymous);
 
     @Update("UPDATE `${ticketTable}` SET rating=#{rating}, rating_remark=#{ratingRemark}, rated_at=NOW() WHERE id=#{id}")

@@ -199,7 +199,7 @@ public class ExamStore {
         m.put("subjectId", rs.getObject("subject_id"));
         m.put("type", rs.getString("type"));
         m.put("stem", rs.getString("stem"));
-        m.put("optionsJson", rs.getString("options_json"));
+        m.put("optionsJson", ChoiceOptionOps.loadJson(db(), "exam_option", rs.getLong("id")));
         m.put("score", rs.getInt("score"));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         if (admin) {
@@ -257,21 +257,22 @@ public class ExamStore {
         String finalExplain = explain;
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO exam_question (subject_id,type,stem,options_json,answer_key,score,explain_text) "
-                            + "VALUES (?,?,?,?,?,?,?)",
+                    "INSERT INTO exam_question (subject_id,type,stem,answer_key,score,explain_text) "
+                            + "VALUES (?,?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS);
             if (finalSubjectId == null) ps.setNull(1, java.sql.Types.BIGINT);
             else ps.setLong(1, finalSubjectId);
             ps.setString(2, type);
             ps.setString(3, stem);
-            ps.setString(4, finalOptionsJson);
-            ps.setString(5, finalAnswerKey);
-            ps.setInt(6, score);
-            ps.setString(7, finalExplain.isBlank() ? null : finalExplain);
+            ps.setString(4, finalAnswerKey);
+            ps.setInt(5, score);
+            ps.setString(6, finalExplain.isBlank() ? null : finalExplain);
             return ps;
         }, kh);
         Number key = kh.getKey();
-        return getQuestion(key == null ? 0L : key.longValue());
+        long qid = key == null ? 0L : key.longValue();
+        ChoiceOptionOps.replace(db(), "exam_option", qid, finalOptionsJson);
+        return getQuestion(qid);
     }
 
     public static Map<String, Object> updateQuestion(long id, Map<String, Object> body) {
@@ -302,10 +303,6 @@ public class ExamStore {
             sets.add("stem=?");
             args.add(stem);
         }
-        if (optionsJson != null) {
-            sets.add("options_json=?");
-            args.add(optionsJson);
-        }
         if (answerKey != null) {
             sets.add("answer_key=?");
             args.add(answerKey);
@@ -322,11 +319,16 @@ public class ExamStore {
             sets.add("explain_text=?");
             args.add(explain.isBlank() ? null : explain);
         }
-        if (sets.isEmpty()) return getQuestion(id);
-        args.add(id);
-        db().update(
-                "UPDATE exam_question SET " + String.join(",", sets) + " WHERE id=?",
-                args.toArray());
+        if (sets.isEmpty() && optionsJson == null) return getQuestion(id);
+        if (!sets.isEmpty()) {
+            args.add(id);
+            db().update(
+                    "UPDATE exam_question SET " + String.join(",", sets) + " WHERE id=?",
+                    args.toArray());
+        }
+        if (optionsJson != null) {
+            ChoiceOptionOps.replace(db(), "exam_option", id, optionsJson);
+        }
         return getQuestion(id);
     }
 
@@ -335,6 +337,7 @@ public class ExamStore {
         Integer n = db().queryForObject(
                 "SELECT COUNT(*) FROM exam_paper_question WHERE question_id=?", Integer.class, id);
         if (n != null && n > 0) throw new IllegalStateException("题目已被试卷引用，无法删除");
+        db().update("DELETE FROM exam_option WHERE question_id=?", id);
         return db().update("DELETE FROM exam_question WHERE id=?", id) > 0;
     }
 
@@ -634,7 +637,7 @@ public class ExamStore {
         if (!closed && !afterSubmit) {
             // take: no answer key / explain
             return db().query(
-                    "SELECT q.id, q.subject_id, q.type, q.stem, q.options_json, q.score, pq.sort_no "
+                    "SELECT q.id, q.subject_id, q.type, q.stem, q.score, pq.sort_no "
                             + "FROM exam_paper_question pq "
                             + "JOIN exam_question q ON q.id=pq.question_id "
                             + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
@@ -645,7 +648,7 @@ public class ExamStore {
                         m.put("subjectId", rs.getObject("subject_id"));
                         m.put("type", rs.getString("type"));
                         m.put("stem", rs.getString("stem"));
-                        m.put("optionsJson", rs.getString("options_json"));
+                        m.put("optionsJson", ChoiceOptionOps.loadJson(db(), "exam_option", rs.getLong("id")));
                         m.put("score", rs.getInt("score"));
                         m.put("sortNo", rs.getInt("sort_no"));
                         return m;

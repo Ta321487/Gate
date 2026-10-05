@@ -45,6 +45,15 @@ export function dateTimePickerProps(field = {}) {
   }
 }
 
+/** 纯时刻字段（HH:mm），如禁噪开始 */
+export function timePickerProps(field = {}) {
+  const label = String(field?.label || field?.key || '时刻')
+  return {
+    format: 'HH:mm',
+    valueFormat: 'HH:mm',
+    placeholder: `选择${label}`,
+  }
+}
 /** 纯日期字段（YYYY-MM-DD），如采摘日 */
 export function datePickerProps(field = {}) {
   const label = String(field?.label || field?.key || '日期')

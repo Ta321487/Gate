@@ -120,7 +120,7 @@ public class SurveyStore {
         m.put("formId", rs.getLong("form_id"));
         m.put("type", rs.getString("type"));
         m.put("stem", rs.getString("stem"));
-        m.put("optionsJson", rs.getString("options_json"));
+        m.put("optionsJson", ChoiceOptionOps.loadJson(db(), "survey_option", rs.getLong("id")));
         m.put("sortNo", rs.getInt("sort_no"));
         m.put("required", rs.getInt("required") == 1);
         return m;
@@ -178,18 +178,18 @@ public class SurveyStore {
         String finalOptions = options;
         db().update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO survey_question (form_id,type,stem,options_json,sort_no,required) VALUES (?,?,?,?,?,?)",
+                    "INSERT INTO survey_question (form_id,type,stem,sort_no,required) VALUES (?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, formId);
             ps.setString(2, type);
             ps.setString(3, stem);
-            ps.setString(4, finalOptions);
-            ps.setInt(5, sortNo);
-            ps.setInt(6, required ? 1 : 0);
+            ps.setInt(4, sortNo);
+            ps.setInt(5, required ? 1 : 0);
             return ps;
         }, kh);
         Number key = kh.getKey();
         long id = key == null ? 0L : key.longValue();
+        ChoiceOptionOps.replace(db(), "survey_option", id, finalOptions);
         List<Map<String, Object>> one = db().query(
                 "SELECT * FROM survey_question WHERE id=?", (rs, i) -> mapQuestion(rs), id);
         return one.isEmpty() ? Map.of() : one.get(0);
@@ -197,6 +197,7 @@ public class SurveyStore {
 
     public static boolean deleteQuestion(long id) {
         require();
+        db().update("DELETE FROM survey_option WHERE question_id=?", id);
         return db().update("DELETE FROM survey_question WHERE id=?", id) > 0;
     }
 

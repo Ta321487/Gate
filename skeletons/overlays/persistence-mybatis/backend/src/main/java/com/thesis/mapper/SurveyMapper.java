@@ -25,7 +25,7 @@ public interface SurveyMapper {
     List<Map<String, Object>> pageQuestions(@Param("formId") long formId, @Param("limit") int limit, @Param("offset") int offset);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO survey_question (form_id,type,stem,options_json,sort_no,required) VALUES (#{formId},#{type},#{stem},#{optionsJson},#{sortNo},#{required})")
+    @Insert("INSERT INTO survey_question (form_id,type,stem,sort_no,required) VALUES (#{formId},#{type},#{stem},#{sortNo},#{required})")
     int insertQuestion(Map<String, Object> row);
 
     @Select("SELECT * FROM survey_question WHERE id=#{id}")

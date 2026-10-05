@@ -79,6 +79,12 @@
             <if test="statusTodo">
                 AND status IN ('pending','pending_mid','pending_final','hold_ready','verifying')
             </if>
+            <if test="statusAbsent">
+                AND status='approved' AND (checked_in_at IS NULL)
+            </if>
+            <if test="statusCheckedIn">
+                AND checked_in_at IS NOT NULL
+            </if>
             <if test="statusStale">
                 AND status IN ('pending','pending_mid','pending_final','approved','overdue','paused')
                 AND (next_follow_at IS NULL OR next_follow_at &lt;= #{staleBefore})
@@ -95,10 +101,12 @@
                 AND approve_at IS NOT NULL AND DATE(approve_at)=CURDATE()
             </if>
         </where>
-        ORDER BY id DESC
+        ORDER BY
+        <choose>
+            <when test="hasCertUrgent == true">cert_urgent DESC, id DESC</when>
+            <otherwise>id DESC</otherwise>
+        </choose>
     </select>
-
-    <select id="selectPublicByItem" resultType="map">
         SELECT * FROM `${ticketTable}`
         WHERE `${itemFk}`=#{itemId} AND status='approved'
         ORDER BY id ASC

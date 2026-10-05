@@ -51,5 +51,17 @@ public class DemoScheduleJobs {
         } catch (Exception e) {
             log.debug("archive start expire: {}", e.getMessage());
         }
+        try {
+            int n = com.thesis.capability.TicketStore.autoPassStalePending();
+            if (n > 0) log.info("auto-passed {} stale pending tickets", n);
+        } catch (Exception e) {
+            log.debug("approve auto-pass: {}", e.getMessage());
+        }
+        try {
+            int n = ArchiveStore.maybeNotifyExpireSoon();
+            if (n > 0) log.info("archive expire-soon notified {} items", n);
+        } catch (Exception e) {
+            log.debug("archive expire-soon notify: {}", e.getMessage());
+        }
     }
 }

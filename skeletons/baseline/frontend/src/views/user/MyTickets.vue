@@ -6,7 +6,10 @@
           <h1>{{ plural }}</h1>
           <p>{{ pageLead }}</p>
           <p v-if="ticketNoHint" class="page-hint">{{ ticketNoHint }}</p>
+          <p v-if="allowCheckinSpot && spotCheckToday" class="page-hint">{{ checkinSpotHint }}</p>
           <p v-if="slaPageHint" class="page-hint">{{ slaPageHint }}</p>
+          <p v-if="creditFromActivityHint" class="page-hint">{{ creditFromActivityHint }}</p>
+          <p v-if="creditWritebackHint && requireCreditWritebackAck" class="page-hint">{{ creditWritebackHint }}</p>
           <SchemaLabelHints :keys="myTicketHintKeys" />
           <p v-if="creditOn" class="page-hint">
             {{ creditScoreLabel }} {{ credit.score }} 分
@@ -79,8 +82,9 @@
           <p v-if="showPriorityCols && row.contactPhone" class="sub">电话 {{ row.contactPhone }}</p>
           <p v-if="row.interviewPlace" class="sub">{{ interviewPlaceLabel }}：{{ row.interviewPlace }}</p>
           <p v-if="row.rankScope" class="sub">排名范围：{{ row.rankScope === 'major' ? '专业' : '班级' }}</p>
-          <div v-if="row.remark" class="tip">
-            <template v-if="row.status === 'rejected'">驳回原因：</template>
+          <div v-if="row.remark && showRemarkForRow(row)" class="tip">
+            <template v-if="allowSignRemarkVisible && isApproveResultStatus(row.status)">{{ signApproveRemarkLabel }}：</template>
+            <template v-else-if="row.status === 'rejected'">驳回原因：</template>
             <template v-else-if="richRemark">内容：</template>
             <template v-else-if="row.status === 'approved' || row.status === 'returned' || row.status === 'overdue'">说明：</template>
             <RichTextView v-if="richRemark" :html="row.remark" compact />
@@ -113,8 +117,16 @@
               type="danger"
               size="small"
               plain
+              :title="withdrawHint"
               @click="withdraw(row)"
             >撤销</el-button>
+            <el-button
+              v-if="canMoralObjection(row)"
+              type="warning"
+              size="small"
+              plain
+              @click="openMoralObjection(row)"
+            >{{ moralObjectionLabel }}</el-button>
             <el-button
               v-if="canSubmitProof(row)"
               type="warning"
@@ -169,10 +181,11 @@
               plain
               @click="openRate(row, true)"
             >追评</el-button>
-            <span v-else-if="row.rating" class="rated">
+            <span v-else-if="row.rating && !row.hideEvalResult" class="rated">
               已评 {{ row.rating }} 分
               <template v-if="row.followRated"> · 已追评</template>
             </span>
+            <span v-else-if="row.hideEvalResult" class="rated">评分已提交</span>
             <p v-if="canRate(row) && rateInviteHint" class="sub">{{ rateInviteHint }}</p>
             <el-button
               v-if="canUrge(row)"
@@ -207,7 +220,40 @@
               plain
               @click="printTicket(row)"
             >{{ printTicketLabel }}</el-button>
+            <span v-if="printTicketOn && formPrintHint" class="sub" style="margin-left:4px">{{ formPrintHint }}</span>
+            <el-button
+              v-if="canShowWallet(row)"
+              size="small"
+              plain
+              @click="openWallet(row)"
+            >{{ ticketWalletLabel }}</el-button>
+            <el-button
+              v-if="canTransfer(row)"
+              size="small"
+              plain
+              @click="openTransfer(row)"
+            >{{ ticketTransferLabel }}</el-button>
+            <el-button
+              v-if="canShowPostGallery(row)"
+              size="small"
+              plain
+              @click="openPostGallery(row)"
+            >{{ postGalleryLabel }}</el-button>
+            <el-button
+              v-if="canAckCreditWriteback(row)"
+              size="small"
+              plain
+              @click="ackCreditWriteback(row)"
+            >{{ creditWritebackAckLabel }}</el-button>
+            <el-button
+              v-if="canOpenActivitySurvey(row)"
+              size="small"
+              plain
+              @click="openActivitySurvey(row)"
+            >{{ activitySurveyLinkLabel }}</el-button>
           </div>
+          <p v-if="row.creditWritebackAck && creditWritebackHint" class="sub">{{ creditWritebackHint }}</p>
+          <p v-if="postGalleryUrls(row).length" class="sub">相册 {{ postGalleryUrls(row).length }} 张</p>
           <p v-if="row.preferredSlot" class="sub">期望上门 {{ row.preferredSlot }}</p>
           <p v-if="row.responseDueAt" class="sub">响应时限 {{ row.responseDueAt }}</p>
           <p v-if="row.urgeCount" class="sub">
@@ -237,13 +283,187 @@
           </p>
           <p v-if="row.passCode" class="sub pass-code">
             {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
-            <el-button link type="primary" size="small" @click="copyPass(row.passCode)">复制</el-button>
-            <span class="muted">到访时出示即可</span>
-            <CodeQrBlock v-if="codeQrOn" :code="row.passCode" :label="passCodeLabel" />
+            <template v-if="allowPassExpire && row.passExpireAt"> · {{ passExpireAtLabel }} {{ row.passExpireAt }}</template>
+            <span v-if="allowPassExpire && isPassExpired(row)" class="muted"> {{ passExpiredLabel }}</span>
+            <el-button v-if="!isPassExpired(row)" link type="primary" size="small" @click="copyPass(row.passCode)">复制</el-button>
+            <span v-if="!isPassExpired(row)" class="muted">到访时出示即可</span>
+            <CodeQrBlock v-if="codeQrOn && !isPassExpired(row)" :code="row.passCode" :label="passCodeLabel" />
+            <el-button
+              v-if="allowVisitorPassPrint && row.passCode && !isPassExpired(row)"
+              link
+              type="primary"
+              size="small"
+              @click="printVisitorPass(row)"
+            >{{ visitorPassPrintLabel }}</el-button>
           </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
           </p>
+          <p v-if="row.approveAttachUrl" class="sub">
+            {{ approveRemarkAttachLabel }}
+            <a :href="row.approveAttachUrl" target="_blank" rel="noopener noreferrer">查看</a>
+          </p>
+          <p v-if="allowCertPickup && row.pickupMethod" class="sub">
+            {{ certPickupLabel }} {{ row.pickupMethod }}
+            <template v-if="row.mailAddress"> · {{ row.mailAddress }}</template>
+            <template v-if="row.expressNo"> · {{ expressNoLabel }} {{ row.expressNo }}</template>
+            <template v-if="row.certUrgent"> · {{ certUrgentLabel }}</template>
+          </p>
+          <p v-if="allowSealCopies && row.sealCopies != null" class="sub">
+            {{ sealCopiesLabel }} {{ row.sealCopies }}
+            <template v-if="row.bindNote"> · {{ row.bindNote }}</template>
+            <template v-if="row.sealCopyNos"> · {{ sealCopyNosLabel }} {{ row.sealCopyNos }}</template>
+            <template v-if="row.sealWitnessAck"> · {{ sealWitnessAckLabel }}</template>
+          </p>
+          <p v-if="allowExpenseInvoice && (row.invoiceCount != null || row.fineYuan > 0)" class="sub">
+            <template v-if="row.invoiceCount != null">{{ invoiceCountLabel }} {{ row.invoiceCount }}</template>
+            <template v-if="row.fineYuan > 0"> · {{ expenseAmountLabel }} ¥{{ row.fineYuan }}</template>
+          </p>
+          <p v-if="allowVisitorCount && row.visitorCount != null" class="sub">
+            {{ visitorCountLabel }} {{ row.visitorCount }}
+            <template v-if="row.companionNames"> · {{ companionNamesLabel }} {{ row.companionNames }}</template>
+          </p>
+          <p v-if="allowAwardCertNo && row.awardCertNo" class="sub">
+            {{ awardCertNoLabel }} {{ row.awardCertNo }}
+          </p>
+          <p v-if="allowVendorQuotes && row.vendorQuotes" class="sub">
+            {{ vendorQuotesLabel }} {{ row.vendorQuotes }}
+          </p>
+          <p v-if="allowFleetMileage && row.mileageKm != null" class="sub">
+            {{ mileageLabel }} {{ row.mileageKm }}
+            <template v-if="row.fuelNote"> · {{ row.fuelNote }}</template>
+          </p>
+          <p v-if="allowFleetCrew && (row.driverName || row.passengerNames)" class="sub">
+            <template v-if="row.driverName">{{ driverNameLabel }} {{ row.driverName }}</template>
+            <template v-if="row.passengerNames"> · {{ passengerNamesLabel }} {{ row.passengerNames }}</template>
+          </p>
+          <p v-if="allowCompHours && row.compHours != null" class="sub">
+            {{ compHoursLabel }} {{ row.compHours }}
+          </p>
+          <p v-if="allowReturnFuel && row.returnFuel != null" class="sub">
+            {{ returnFuelLabel }} {{ row.returnFuel }}
+          </p>
+          <p v-if="allowLaborPlace && row.laborPlace" class="sub">
+            {{ laborPlaceLabel }} {{ row.laborPlace }}
+          </p>
+          <p v-if="allowEffectiveOn && row.effectiveOn" class="sub">
+            {{ effectiveOnLabel }} {{ row.effectiveOn }}
+          </p>
+          <p v-if="allowCertIssueNo && row.certIssueNo" class="sub">
+            {{ certIssueNoLabel }} {{ row.certIssueNo }}
+            <span v-if="certIssueNoHint" class="muted"> · {{ certIssueNoHint }}</span>
+          </p>
+          <p v-if="allowDocRev && row.docRev" class="sub">
+            {{ docRevLabel }} {{ row.docRev }}
+          </p>
+          <p v-if="allowFitoutQuiet && (row.workStart || row.workEnd)" class="sub">
+            {{ fitoutWindowLabel }} {{ row.workStart || '—' }}–{{ row.workEnd || '—' }}
+          </p>
+          <p v-if="allowIssueCopies && row.issueCopies != null" class="sub">
+            {{ issueCopiesLabel }} {{ row.issueCopies }}
+          </p>
+          <p v-if="allowSignParties && row.signParties" class="sub">
+            {{ signPartiesLabel }} {{ row.signParties }}
+          </p>
+          <p v-if="allowTrainHours && row.trainHours != null" class="sub">
+            {{ trainHoursLabel }} {{ row.trainHours }}
+          </p>
+          <p v-if="allowMemberChange && row.memberChangeNote" class="sub">
+            {{ memberChangeNoteLabel }} {{ row.memberChangeNote }}
+          </p>
+          <p v-if="allowProcureBudget && row.procureAmount != null" class="sub">
+            {{ procureAmountLabel }} {{ row.procureAmount }}
+          </p>
+          <p v-if="allowCheckinException && row.exceptionType" class="sub">
+            {{ exceptionTypeLabel }} {{ row.exceptionType }}
+          </p>
+          <p v-if="allowVisitPurpose && row.visitPurpose" class="sub">
+            {{ visitPurposeLabel }} {{ row.visitPurpose }}
+          </p>
+          <p v-if="allowFitoutRectify && row.rectifyNote" class="sub">{{ rectifyNoteLabel }} {{ row.rectifyNote }}</p>
+          <p v-if="allowProjFundUse && (row.fundUseYuan != null || row.fundUseNote)" class="sub">
+            <template v-if="row.fundUseYuan != null">{{ fundUseYuanLabel }} {{ row.fundUseYuan }}</template>
+            <template v-if="row.fundUseNote"> · {{ row.fundUseNote }}</template>
+          </p>
+          <p v-if="allowVisitSlotRemain && row.visitOn" class="sub">{{ visitOnLabel }} {{ row.visitOn }}</p>
+          <p v-if="allowPlagiarismUrl && row.plagiarismUrl" class="sub">
+            {{ plagiarismUrlLabel }}
+            <a :href="row.plagiarismUrl" target="_blank" rel="noopener">{{ row.plagiarismUrl }}</a>
+          </p>
+          <p v-if="allowPartyStage && (row.partyStage || row.stageOn)" class="sub">
+            <template v-if="row.partyStage">{{ partyStageLabel }} {{ row.partyStage }}</template>
+            <template v-if="row.stageOn"> · {{ stageOnLabel }} {{ row.stageOn }}</template>
+          </p>
+          <p v-if="allowEvalObserve && (row.observeOn || row.observeNote)" class="sub">
+            <template v-if="row.observeOn">{{ observeOnLabel }} {{ row.observeOn }}</template>
+            <template v-if="row.observeNote"> · {{ row.observeNote }}</template>
+          </p>
+          <p v-if="allowScheduleImpact && row.scheduleImpactNote" class="sub">
+            {{ scheduleImpactNoteLabel }} {{ row.scheduleImpactNote }}
+          </p>
+          <p v-if="allowContractAmount && row.contractAmount != null" class="sub">
+            {{ contractAmountLabel }} {{ row.contractAmount }}
+            <template v-if="amountToChinese(row.contractAmount)">
+              · {{ contractAmountCnLabel }} {{ amountToChinese(row.contractAmount) }}
+            </template>
+          </p>
+          <p v-if="allowExpenseLines && row.expenseLines && row.expenseLines.length" class="sub">
+            {{ expenseLinesLabel }} {{ formatExpenseLines(row.expenseLines) }}
+          </p>
+          <p v-if="allowTripLegs && row.tripLegs && row.tripLegs.length" class="sub">
+            {{ tripLegsLabel }} {{ formatTripLegs(row.tripLegs) }}
+          </p>
+          <p v-if="allowProjChangeLog && row.changeLogNote" class="sub">
+            {{ changeLogNoteLabel }} {{ row.changeLogNote }}
+          </p>
+          <p v-if="allowCertVerify && row.verifyCode" class="sub">
+            {{ certVerifyCodeLabel }} {{ row.verifyCode }}
+            · <router-link to="/cert-verify">真伪查询</router-link>
+          </p>
+          <p v-if="allowVisitWalkIn && row.walkIn" class="sub">{{ visitWalkInLabel }}</p>
+          <p v-if="allowCheckinProxy && row.checkinProxyBy" class="sub">
+            {{ checkinProxyByLabel }} {{ row.checkinProxyBy }}
+          </p>
+          <p v-if="allowClubRoster && row.clubMembers && row.clubMembers.length" class="sub">
+            {{ clubRosterLabel }} {{ formatClubMembers(row.clubMembers) }}
+          </p>
+          <p v-if="allowCarpassParkingMutex && row.parkingOn" class="sub">
+            {{ parkingOnLabel }} {{ row.parkingOn }}
+          </p>
+          <p v-if="allowContractRenew && (row.renewOn || row.renewNote)" class="sub">
+            {{ renewOnLabel }} {{ row.renewOn || '—' }}
+            <template v-if="row.renewNote"> · {{ renewNoteLabel }} {{ row.renewNote }}</template>
+          </p>
+          <p v-if="allowCertPickupRedeem && row.pickupRedeemCode" class="sub">
+            {{ pickupRedeemCodeLabel }} {{ row.pickupRedeemCode }}
+            <template v-if="row.pickupRedeemed"> · {{ pickupRedeemedLabel }}</template>
+            <CodeQrBlock
+              v-if="allowCertPickupQr && !row.pickupRedeemed"
+              :code="row.pickupRedeemCode"
+              :label="pickupQrLabel"
+            />
+          </p>
+          <p v-if="allowAttachKeepOld && attachKeepOldHint" class="sub">{{ attachKeepOldHint }}</p>
+          <el-button
+            v-if="allowAttachKeepOld && row.attachUrl"
+            size="small"
+            plain
+            @click="openAttachRevs(row)"
+          >{{ attachKeepOldLabel }}</el-button>
+          <p v-if="allowProcureReturn && (row.returnFail || row.returnNote)" class="sub">
+            {{ procureReturnFailLabel }} {{ row.returnFail ? '是' : '否' }}
+            <template v-if="row.returnNote"> · {{ returnNoteLabel }} {{ row.returnNote }}</template>
+          </p>
+          <p v-if="allowMoralObjection && row.objectionNote" class="sub">{{ moralObjectionLabel }} {{ row.objectionNote }}</p>
+          <p v-if="allowFleetViolation && row.violationPerson" class="sub">
+            {{ violationPersonLabel }} {{ row.violationPerson }}
+          </p>
+          <el-button
+            v-if="canCcComment(row)"
+            size="small"
+            plain
+            @click="openCcComment(row)"
+          >{{ approveCcCommentLabel }}</el-button>
         </div>
       </article>
     </div>
@@ -283,7 +503,40 @@
         <el-form-item v-if="allowPartsNote" :label="partsNoteLabel">
           <el-input v-model="returnDlg.partsNote" maxlength="255" :placeholder="partsWarnHint" />
         </el-form-item>
-        <el-form-item v-if="requireReturnAttach || requireCloseAttach" label="结单附件" :required="requireReturnAttach || requireCloseAttach">
+        <el-form-item v-if="allowFleetMileage" :label="mileageLabel" required>
+          <el-input-number v-model="returnDlg.mileageKm" :min="0.1" :max="999999" :precision="1" />
+        </el-form-item>
+        <el-form-item v-if="allowFleetMileage" :label="fuelNoteLabel" required>
+          <el-input v-model="returnDlg.fuelNote" maxlength="255" :placeholder="fleetMileageHint || `请填写${fuelNoteLabel}`" />
+        </el-form-item>
+        <el-form-item v-if="allowCompHours" :label="compHoursLabel" required>
+          <el-input-number v-model="returnDlg.compHours" :min="0.1" :max="9999" :precision="1" />
+        </el-form-item>
+        <p v-if="allowCompHours && compHoursHint" class="sub">{{ compHoursHint }}</p>
+        <el-form-item v-if="allowReturnFuel" :label="returnFuelLabel" required>
+          <el-input-number v-model="returnDlg.returnFuel" :min="0" :max="100" :precision="1" />
+        </el-form-item>
+        <p v-if="allowReturnFuel && returnFuelHint" class="sub">{{ returnFuelHint }}</p>
+        <el-form-item v-if="allowFleetViolation" :label="violationPersonLabel" required>
+          <el-input v-model="returnDlg.violationPerson" maxlength="64" :placeholder="violationPersonHint || `请填写${violationPersonLabel}`" />
+        </el-form-item>
+        <p v-if="allowFleetViolation && violationPersonHint" class="sub">{{ violationPersonHint }}</p>
+        <el-form-item v-if="allowProcureReturn" :label="procureReturnFailLabel">
+          <el-switch v-model="returnDlg.returnFail" />
+        </el-form-item>
+        <el-form-item v-if="allowProcureReturn && returnDlg.returnFail" :label="returnNoteLabel" required>
+          <el-input
+            v-model="returnDlg.returnNote"
+            type="textarea"
+            :rows="3"
+            maxlength="512"
+            show-word-limit
+            :placeholder="procureReturnHint || `请填写${returnNoteLabel}`"
+          />
+        </el-form-item>
+        <p v-if="allowProcureReturn && procureReturnHint" class="sub">{{ procureReturnHint }}</p>
+        <p v-if="requireCloseAttach && closeAttachHint" class="sub">{{ closeAttachHint }}</p>
+        <el-form-item v-if="requireReturnAttach || requireCloseAttach" :label="finishAttachFieldLabel" :required="requireReturnAttach || requireCloseAttach">
           <div class="attach-row">
             <el-upload :show-file-list="false" accept="image/*" :http-request="onReturnUpload">
               <el-button size="small">{{ returnDlg.attachUrl ? '重新上传' : '上传照片' }}</el-button>
@@ -295,6 +548,21 @@
       <template #footer>
         <el-button @click="returnDlg.visible = false">取消</el-button>
         <el-button type="primary" :loading="returnDlg.loading" @click="confirmReturn">确认</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="objectionDlg.visible" :title="moralObjectionLabel" width="420px">
+      <p v-if="moralObjectionHint" class="sub">{{ moralObjectionHint }}</p>
+      <el-input
+        v-model="objectionDlg.note"
+        type="textarea"
+        :rows="4"
+        maxlength="512"
+        show-word-limit
+        :placeholder="`请填写${moralObjectionLabel}`"
+      />
+      <template #footer>
+        <el-button @click="objectionDlg.visible = false">取消</el-button>
+        <el-button type="primary" :loading="objectionDlg.loading" @click="submitMoralObjection">提交</el-button>
       </template>
     </el-dialog>
 
@@ -389,13 +657,17 @@
           <el-form-item v-if="requireMeetingAck">
             <el-checkbox v-model="form.meetingAck">{{ meetingAckLabel }}</el-checkbox>
           </el-form-item>
-          <div v-if="applyItemNotes.sponsor || applyItemNotes.price || applyItemNotes.room || applyItemNotes.planUrl" class="sub">
+          <div
+            v-if="applyItemNotes.sponsor || applyItemNotes.price || applyItemNotes.room || applyItemNotes.planUrl || applyItemNotes.weather"
+            class="sub"
+          >
             <p v-if="applyItemNotes.sponsor">赞助：{{ applyItemNotes.sponsor }}</p>
             <p v-if="applyItemNotes.price">票价说明：{{ applyItemNotes.price }}</p>
             <p v-if="applyItemNotes.room">单房差：{{ applyItemNotes.room }}</p>
             <p v-if="applyItemNotes.planUrl">
               <a :href="applyItemNotes.planUrl" target="_blank" rel="noopener noreferrer">打开培养方案</a>
             </p>
+            <p v-if="applyItemNotes.weather">出团须知：{{ applyItemNotes.weather }}</p>
           </div>
           <el-form-item v-if="needPriceNoteAck">
             <el-checkbox v-model="form.priceNoteAck">{{ priceNoteAckLabel }}</el-checkbox>
@@ -409,6 +681,392 @@
           <el-form-item v-if="needPrereqAck">
             <el-checkbox v-model="form.prereqAck">{{ prereqAckLabel }}</el-checkbox>
           </el-form-item>
+          <el-form-item v-if="needTourNoticeAck">
+            <el-checkbox v-model="form.tourNoticeAck">{{ tourNoticeAckLabel }}</el-checkbox>
+          </el-form-item>
+          <el-form-item v-if="allowWishOrder" :label="wishOrderLabel" required>
+            <el-select v-model="form.wishOrder" style="width:100%" :placeholder="wishOrderHint || '请选择志愿序'">
+              <el-option :value="1" label="第一志愿" />
+              <el-option :value="2" label="第二志愿" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowVolunteerRole" :label="volunteerRoleLabel">
+            <el-select v-model="form.volunteerRole" clearable style="width:100%" :placeholder="volunteerRoleHint || '选填岗位'">
+              <el-option v-for="opt in volunteerRoleOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowCompanions || showVisitorCompanions" :label="companionNamesLabel" :required="showVisitorCompanions">
+            <el-input
+              v-model="form.companionNames"
+              type="textarea"
+              :rows="2"
+              maxlength="255"
+              :placeholder="companionNamesHint || (showVisitorCompanions ? '有随行须填写姓名，逗号分隔' : '选填同行人，逗号分隔')"
+            />
+          </el-form-item>
+          <p v-if="(allowCompanions || showVisitorCompanions) && companionNamesHint" class="sub">{{ companionNamesHint }}</p>
+          <el-form-item v-if="allowCertPickup" :label="certPickupLabel" required>
+            <el-select v-model="form.pickupMethod" style="width:100%" :placeholder="certPickupHint || '请选择领取方式'">
+              <el-option label="自取" value="自取" />
+              <el-option label="邮寄" value="邮寄" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowCertPickup && form.pickupMethod === '邮寄'" :label="mailAddressLabel" required>
+            <el-input v-model="form.mailAddress" maxlength="255" :placeholder="`请填写${mailAddressLabel}`" />
+          </el-form-item>
+          <p v-if="allowCertPickup && certPickupHint" class="sub">{{ certPickupHint }}</p>
+          <el-form-item v-if="allowCertUrgent">
+            <el-switch v-model="form.certUrgent" :active-text="certUrgentLabel" />
+          </el-form-item>
+          <p v-if="allowCertUrgent && certUrgentHint" class="sub">{{ certUrgentHint }}</p>
+          <el-form-item v-if="allowSealCopies" :label="sealCopiesLabel" required>
+            <el-input-number v-model="form.sealCopies" :min="1" :max="999" />
+          </el-form-item>
+          <el-form-item v-if="allowSealCopies" :label="bindNoteLabel">
+            <el-input v-model="form.bindNote" maxlength="255" :placeholder="sealCopiesHint || `选填${bindNoteLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowExpenseInvoice" :label="invoiceCountLabel" required>
+            <el-input-number v-model="form.invoiceCount" :min="1" :max="999" />
+          </el-form-item>
+          <el-form-item v-if="allowExpenseInvoice" :label="expenseAmountLabel" required>
+            <el-input-number v-model="form.fineYuan" :min="0.01" :max="99999999" :precision="2" />
+          </el-form-item>
+          <p v-if="allowExpenseInvoice && expenseInvoiceHint" class="sub">{{ expenseInvoiceHint }}</p>
+          <p v-if="allowExpenseAttachCount && expenseAttachCountHint" class="sub">{{ expenseAttachCountHint }}</p>
+          <template v-if="allowExpenseLines">
+            <el-form-item :label="expenseLinesLabel" required>
+              <div v-for="(line, idx) in form.expenseLines" :key="idx" class="line-row">
+                <el-select v-model="line.category" :placeholder="expenseLineCategoryLabel" style="width:120px">
+                  <el-option v-for="opt in expenseLineCategoryOptions" :key="opt" :label="opt" :value="opt" />
+                </el-select>
+                <el-input-number v-model="line.amount" :min="0.01" :max="99999999" :precision="2" :step="10" :placeholder="expenseLineAmountLabel" />
+                <el-input v-model="line.note" maxlength="128" :placeholder="expenseLineNoteLabel" style="flex:1" />
+                <el-button v-if="form.expenseLines.length > 1" link type="danger" @click="form.expenseLines.splice(idx, 1)">删</el-button>
+              </div>
+              <el-button type="primary" plain size="small" @click="form.expenseLines.push({ category: '', amount: null, note: '' })">加一行</el-button>
+            </el-form-item>
+            <p v-if="expenseLinesHint" class="sub">{{ expenseLinesHint }}</p>
+          </template>
+          <template v-if="allowTripLegs">
+            <el-form-item :label="tripLegsLabel" required>
+              <div v-for="(leg, idx) in form.tripLegs" :key="idx" class="line-row">
+                <el-input v-model="leg.from" maxlength="64" :placeholder="tripLegFromLabel" style="width:110px" />
+                <el-input v-model="leg.via" maxlength="64" :placeholder="tripLegViaLabel" style="width:110px" />
+                <el-input v-model="leg.to" maxlength="64" :placeholder="tripLegToLabel" style="width:110px" />
+                <el-date-picker v-model="leg.on" type="date" value-format="YYYY-MM-DD" :placeholder="tripLegOnLabel" style="width:140px" />
+                <el-button v-if="form.tripLegs.length > 1" link type="danger" @click="form.tripLegs.splice(idx, 1)">删</el-button>
+              </div>
+              <el-button type="primary" plain size="small" @click="form.tripLegs.push({ from: '', via: '', to: '', on: '' })">加一段</el-button>
+            </el-form-item>
+            <p v-if="tripLegsHint" class="sub">{{ tripLegsHint }}</p>
+          </template>
+          <template v-if="allowClubRoster">
+            <el-form-item :label="clubRosterLabel" required>
+              <div v-for="(mem, idx) in form.clubMembers" :key="idx" class="line-row">
+                <el-input v-model="mem.name" maxlength="64" :placeholder="clubMemberNameLabel" style="width:140px" />
+                <el-input v-model="mem.studentNo" maxlength="32" :placeholder="clubMemberNoLabel" style="flex:1" />
+                <el-button v-if="form.clubMembers.length > 1" link type="danger" @click="form.clubMembers.splice(idx, 1)">删</el-button>
+              </div>
+              <el-button type="primary" plain size="small" @click="form.clubMembers.push({ name: '', studentNo: '' })">加一行</el-button>
+              <el-input
+                v-model="form.clubRosterCsv"
+                type="textarea"
+                :rows="2"
+                maxlength="4000"
+                :placeholder="'也可粘贴表格：每行「姓名,学号」'"
+                style="margin-top:8px"
+                @change="importClubRosterCsv"
+              />
+            </el-form-item>
+            <p v-if="clubRosterHint" class="sub">{{ clubRosterHint }}</p>
+          </template>
+          <el-form-item v-if="allowCarpassParkingMutex" :label="parkingOnLabel" required>
+            <el-date-picker
+              v-model="form.parkingOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择"
+              style="width:100%"
+            />
+          </el-form-item>
+          <p v-if="allowCarpassParkingMutex && carpassParkingMutexHint" class="sub">
+            {{ parkingMutexLabel }}：{{ carpassParkingMutexHint }}
+          </p>
+          <el-form-item v-if="allowContractRenew" :label="renewOnLabel" required>
+            <el-date-picker
+              v-model="form.renewOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="allowContractRenew" :label="renewNoteLabel" required>
+            <el-input
+              v-model="form.renewNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="contractRenewHint || `请填写${renewNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowContractRenew && contractRenewHint" class="sub">{{ contractRenewHint }}</p>
+          <p v-if="allowContractExpireRemind && contractExpireRemindHint" class="sub">
+            {{ contractExpireRemindTitle }}：{{ contractExpireRemindHint }}
+          </p>
+          <p v-if="allowExamPassMin && examPassMinHint" class="sub">
+            {{ examPassMinLabel }}：{{ examPassMinHint }}
+          </p>
+          <p v-if="allowEvalBeforeGrade && evalBeforeGradeHint" class="sub">{{ evalBeforeGradeHint }}</p>
+          <p v-if="allowCheckinSpot && checkinSpotHint" class="sub">{{ checkinSpotHint }}</p>
+          <p v-if="allowCertPickupRedeem && pickupRedeemHint" class="sub">{{ pickupRedeemHint }}</p>
+          <p v-if="allowCertPickupQr && pickupQrHint" class="sub">{{ pickupQrHint }}</p>
+          <p v-if="allowVisitorPassPrint && visitorPassPrintHint" class="sub">{{ visitorPassPrintHint }}</p>
+          <p v-if="allowCheckinDailyReport && checkinDailyHint" class="sub">{{ checkinDailyHint }}</p>
+          <p v-if="allowEvalCollegeExport && evalCollegeExportHint" class="sub">{{ evalCollegeExportHint }}</p>
+          <p v-if="allowAttachKeepOld && attachKeepOldHint" class="sub">{{ attachKeepOldHint }}</p>
+          <p v-if="allowEvalUrge && evalUrgeHint" class="sub">{{ evalUrgeHint }}</p>
+          <el-form-item v-if="allowProjChangeLog" :label="changeLogNoteLabel" required>
+            <el-input
+              v-model="form.changeLogNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="projChangeLogHint || `请填写${changeLogNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowProjChangeLog && projChangeLogHint" class="sub">{{ projChangeLogHint }}</p>
+          <p v-if="allowHideEvalResult && hideEvalResultHint" class="sub">{{ hideEvalResultLabel }}：{{ hideEvalResultHint }}</p>
+          <p v-if="allowSignRemarkVisible && signRemarkVisibleHint" class="sub">{{ signRemarkVisibleLabel }}：{{ signRemarkVisibleHint }}</p>
+          <p v-if="allowCertVerify && certVerifyHint" class="sub">{{ certVerifyHint }}</p>
+          <el-form-item v-if="allowVisitorCount" :label="visitorCountLabel">
+            <el-input-number v-model="form.visitorCount" :min="0" :max="99" />
+          </el-form-item>
+          <p v-if="allowVisitorCount && visitorCountHint" class="sub">{{ visitorCountHint }}</p>
+          <el-form-item v-if="allowAwardCertNo" :label="awardCertNoLabel" required>
+            <el-input v-model="form.awardCertNo" maxlength="64" :placeholder="awardCertNoHint || `请填写${awardCertNoLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowVendorQuotes" :label="vendorQuotesLabel" required>
+            <el-input
+              v-model="form.vendorQuotes"
+              type="textarea"
+              :rows="Math.max(3, minVendorQuotes || 3)"
+              maxlength="2000"
+              :placeholder="vendorQuotesHint || '每行一家供应商名称'"
+            />
+          </el-form-item>
+          <p v-if="allowVendorQuotes && minVendorQuotesHint" class="sub">{{ minVendorQuotesHint }}</p>
+          <p v-if="forceOnePerArchive && evalOnePerCourseHint" class="sub">{{ evalOnePerCourseHint }}</p>
+          <p v-if="allowEvalOpenWindow && evalOpenWindowHint" class="sub">{{ evalOpenWindowHint }}</p>
+          <p v-if="allowEthicBatch && (ethicBatchHint || batchNoLabel)" class="sub">
+            <template v-if="ethicBatchHint">{{ ethicBatchHint }}</template>
+            <template v-else>{{ batchNoLabel }} / {{ expireOnLabel }}</template>
+          </p>
+          <p v-if="allowPassExpire && passExpireHint" class="sub">{{ passExpireHint }}</p>
+          <p v-if="allowPromoPlace && (promoPlaceHint || promoSizeLabel)" class="sub">
+            {{ promoPlaceHint || (`${promoSizeLabel} / ${hangPlaceLabel}`) }}
+          </p>
+          <p v-if="allowEthicMeeting && (ethicMeetingHint || meetingOnLabel)" class="sub">
+            {{ ethicMeetingHint || (`${meetingOnLabel} / ${resolutionNoteLabel}`) }}
+          </p>
+          <el-form-item v-if="allowLaborPlace" :label="laborPlaceLabel" required>
+            <el-input v-model="form.laborPlace" maxlength="128" :placeholder="laborPlaceHint || `请填写${laborPlaceLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowEffectiveOn" :label="effectiveOnLabel" required>
+            <el-date-picker
+              v-model="form.effectiveOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              style="width:100%"
+              :placeholder="effectiveOnHint || `请选择${effectiveOnLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowEffectiveOn && effectiveOnHint" class="sub">{{ effectiveOnHint }}</p>
+          <el-form-item v-if="allowDocRev" :label="docRevLabel" required>
+            <el-input v-model="form.docRev" maxlength="32" :placeholder="docRevHint || `请填写${docRevLabel}`" />
+          </el-form-item>
+          <p v-if="allowDocRev && docRevHint" class="sub">{{ docRevHint }}</p>
+          <el-form-item v-if="allowFitoutQuiet" :label="fitoutWindowLabel" required>
+            <div class="attach-row">
+              <el-time-picker
+                v-model="form.workStart"
+                format="HH:mm"
+                value-format="HH:mm"
+                placeholder="开始"
+                style="width:48%"
+              />
+              <el-time-picker
+                v-model="form.workEnd"
+                format="HH:mm"
+                value-format="HH:mm"
+                placeholder="结束"
+                style="width:48%"
+              />
+            </div>
+          </el-form-item>
+          <p v-if="allowFitoutQuiet && fitoutQuietHint" class="sub">{{ fitoutQuietHint }}</p>
+          <el-form-item v-if="allowIssueCopies" :label="issueCopiesLabel" required>
+            <el-input-number v-model="form.issueCopies" :min="1" :max="99" :precision="0" />
+          </el-form-item>
+          <p v-if="allowIssueCopies && issueCopiesHint" class="sub">{{ issueCopiesHint }}</p>
+          <el-form-item v-if="allowSignParties" :label="signPartiesLabel" required>
+            <el-checkbox-group v-model="form.signParties">
+              <el-checkbox label="甲方">甲方</el-checkbox>
+              <el-checkbox label="乙方">乙方</el-checkbox>
+              <el-checkbox label="丙方">丙方</el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+          <p v-if="allowSignParties && signPartiesHint" class="sub">{{ signPartiesHint }}</p>
+          <el-form-item v-if="allowTrainHours" :label="trainHoursLabel" required>
+            <el-input-number v-model="form.trainHours" :min="0.5" :max="999" :precision="1" :step="0.5" />
+          </el-form-item>
+          <p v-if="allowTrainHours && trainHoursHint" class="sub">{{ trainHoursHint }}</p>
+          <el-form-item v-if="allowMemberChange" :label="memberChangeNoteLabel" required>
+            <el-input
+              v-model="form.memberChangeNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="memberChangeNoteHint || `请填写${memberChangeNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowMemberChange && memberChangeNoteHint" class="sub">{{ memberChangeNoteHint }}</p>
+          <el-form-item v-if="allowProcureBudget" :label="procureAmountLabel" required>
+            <el-input-number v-model="form.procureAmount" :min="0.01" :max="99999999" :precision="2" :step="100" />
+          </el-form-item>
+          <p v-if="allowProcureBudget && procureBudgetHint" class="sub">{{ procureBudgetHint }}</p>
+          <el-form-item v-if="allowCheckinException" :label="exceptionTypeLabel" required>
+            <el-select v-model="form.exceptionType" placeholder="请选择" style="width:100%">
+              <el-option v-for="opt in exceptionTypeOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <p v-if="allowCheckinException && exceptionTypeHint" class="sub">{{ exceptionTypeHint }}</p>
+          <el-form-item v-if="allowVisitPurpose" :label="visitPurposeLabel" required>
+            <el-select v-model="form.visitPurpose" placeholder="请选择" style="width:100%">
+              <el-option v-for="opt in visitPurposeOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <p v-if="allowVisitPurpose && visitPurposeHint" class="sub">{{ visitPurposeHint }}</p>
+          <el-form-item v-if="allowClubCopyLast">
+            <el-button type="primary" plain @click="copyLastYear">{{ clubCopyLastLabel }}</el-button>
+            <p v-if="clubCopyLastHint" class="sub">{{ clubCopyLastHint }}</p>
+          </el-form-item>
+          <el-form-item v-if="allowProjFundUse" :label="fundUseYuanLabel" required>
+            <el-input-number v-model="form.fundUseYuan" :min="0.01" :max="99999999" :precision="2" :step="100" />
+          </el-form-item>
+          <el-form-item v-if="allowProjFundUse" :label="fundUseNoteLabel" required>
+            <el-input
+              v-model="form.fundUseNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="fundUseHint || `请填写${fundUseNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowProjFundUse && fundUseHint" class="sub">{{ fundUseHint }}</p>
+          <el-form-item v-if="allowVisitSlotRemain" :label="visitOnLabel" required>
+            <el-date-picker
+              v-model="form.visitOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择"
+              style="width:100%"
+            />
+          </el-form-item>
+          <p v-if="allowVisitSlotRemain && visitSlotRemainHint" class="sub">{{ visitSlotRemainHint }}</p>
+          <p v-if="allowEvalDimWeight && evalDimWeightHint" class="sub">{{ evalDimWeightHint }}</p>
+          <el-form-item v-if="allowPlagiarismUrl" :label="plagiarismUrlLabel" required>
+            <el-input
+              v-model="form.plagiarismUrl"
+              maxlength="512"
+              :placeholder="plagiarismUrlHint || `请填写${plagiarismUrlLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowPlagiarismUrl && plagiarismUrlHint" class="sub">{{ plagiarismUrlHint }}</p>
+          <p v-if="allowAbsentStreak && absentStreakHint" class="sub">{{ absentWarnNLabel }}：{{ absentStreakHint }}</p>
+          <el-form-item v-if="allowPartyStage" :label="partyStageLabel" required>
+            <el-select v-model="form.partyStage" placeholder="请选择" style="width:100%">
+              <el-option v-for="opt in partyStageOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="allowPartyStage" :label="stageOnLabel" required>
+            <el-date-picker
+              v-model="form.stageOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择"
+              style="width:100%"
+            />
+          </el-form-item>
+          <p v-if="allowPartyStage && partyStageHint" class="sub">{{ partyStageHint }}</p>
+          <el-form-item v-if="allowEvalObserve" :label="observeOnLabel" required>
+            <el-date-picker
+              v-model="form.observeOn"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="allowEvalObserve" :label="observeNoteLabel" required>
+            <el-input
+              v-model="form.observeNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="evalObserveHint || `请填写${observeNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowEvalObserve && evalObserveHint" class="sub">{{ evalObserveHint }}</p>
+          <el-form-item v-if="allowScheduleImpact" :label="scheduleImpactNoteLabel" required>
+            <el-input
+              v-model="form.scheduleImpactNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="scheduleImpactHint || `请填写${scheduleImpactNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowScheduleImpact && scheduleImpactHint" class="sub">{{ scheduleImpactHint }}</p>
+          <el-form-item v-if="allowContractAmount" :label="contractAmountLabel" required>
+            <el-input-number v-model="form.contractAmount" :min="0.01" :max="99999999" :precision="2" :step="100" />
+          </el-form-item>
+          <p v-if="allowContractAmount && form.contractAmount != null" class="sub">
+            {{ contractAmountCnLabel }} {{ amountToChinese(form.contractAmount) || '—' }}
+          </p>
+          <p v-if="allowContractAmount && contractAmountHint" class="sub">{{ contractAmountHint }}</p>
+          <el-form-item v-if="allowFitoutRectify" :label="rectifyNoteLabel" required>
+            <el-input
+              v-model="form.rectifyNote"
+              type="textarea"
+              :rows="3"
+              maxlength="512"
+              show-word-limit
+              :placeholder="rectifyNoteHint || `请填写${rectifyNoteLabel}`"
+            />
+          </el-form-item>
+          <p v-if="allowFitoutRectify && rectifyNoteHint" class="sub">{{ rectifyNoteHint }}</p>
+          <p v-if="allowProjNodeRemind && projNodeRemindHint" class="sub">{{ midDueOnLabel }} / {{ finalDueOnLabel }}：{{ projNodeRemindHint }}</p>
+          <el-form-item v-if="allowFleetCrew" :label="driverNameLabel" required>
+            <el-input v-model="form.driverName" maxlength="64" :placeholder="fleetCrewHint || `请填写${driverNameLabel}`" />
+          </el-form-item>
+          <el-form-item v-if="allowFleetCrew" :label="passengerNamesLabel">
+            <el-input v-model="form.passengerNames" maxlength="255" :placeholder="'有随车人时填写，逗号分隔'" />
+          </el-form-item>
+          <p v-if="allowFleetCrew && fleetCrewHint" class="sub">{{ fleetCrewHint }}</p>
+          <p v-if="archiveExpireNotifyHint" class="sub">{{ archiveExpireNotifyHint }}</p>
+          <el-form-item v-if="allowSeatZone" :label="seatZoneLabel">
+            <el-select v-model="form.seatZone" clearable style="width:100%" :placeholder="seatZoneHint || '请选择分区'">
+              <el-option v-for="opt in seatZoneOptions" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </el-form-item>
+          <p v-if="allowSeatZone && seatZoneHint" class="sub">{{ seatZoneHint }}</p>
           <el-form-item v-if="allowProjectNo" :label="projectNoLabel">
             <el-input v-model="form.projectNo" maxlength="64" :placeholder="`选填${projectNoLabel}`" />
           </el-form-item>
@@ -438,6 +1096,7 @@
           <p v-if="claimAutoOffHint" class="sub">{{ claimAutoOffHint }}</p>
           <p v-if="expireOffHint" class="sub">{{ expireOffHint }}</p>
           <p v-if="stockTightHint" class="sub">{{ stockTightHint }}</p>
+          <p v-if="oversellGuardHint" class="sub">{{ oversellGuardHint }}</p>
           <p v-if="cancelBeforeHint" class="sub">{{ cancelBeforeHint }}</p>
           <p v-if="claimCooldownHint" class="sub">{{ claimCooldownHint }}</p>
           <p v-if="creditCapHint" class="sub">{{ creditCapHint }}</p>
@@ -574,7 +1233,7 @@
               style="width:100%"
             />
           </el-form-item>
-          <el-form-item v-if="requireAttach" label="附件" required>
+          <el-form-item v-if="requireAttach" :label="attachFieldLabel" required>
             <div class="attach-row">
               <el-upload
                 :show-file-list="false"
@@ -585,7 +1244,9 @@
               </el-upload>
               <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
             </div>
+            <p v-if="attachFieldHint" class="sub">{{ attachFieldHint }}</p>
           </el-form-item>
+          <p v-if="requireMaterial && materialApplyHint" class="sub">{{ materialApplyHint }}</p>
           <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
         </template>
         <template v-else>
@@ -688,7 +1349,7 @@
           <el-form-item label="说明">
             <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="400" />
           </el-form-item>
-          <el-form-item v-if="requireAttach" label="附件" required>
+          <el-form-item v-if="requireAttach" :label="attachFieldLabel" required>
             <div class="attach-row">
               <el-upload
                 :show-file-list="false"
@@ -699,7 +1360,9 @@
               </el-upload>
               <a v-if="form.attachUrl" :href="form.attachUrl" target="_blank" rel="noopener noreferrer">已上传</a>
             </div>
+            <p v-if="attachFieldHint" class="sub">{{ attachFieldHint }}</p>
           </el-form-item>
+          <p v-if="requireMaterial && materialApplyHint" class="sub">{{ materialApplyHint }}</p>
           <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
         </template>
       </el-form>
@@ -744,6 +1407,49 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="wallet.visible" :title="ticketWalletLabel" width="420px" destroy-on-close>
+      <p class="rate-tip" v-if="wallet.row">「{{ wallet.row.title || ('编号 ' + wallet.row.id) }}」</p>
+      <p v-if="ticketWalletHint" class="sub">{{ ticketWalletHint }}</p>
+      <p class="sub">通行码：{{ wallet.row?.passCode || wallet.row?.checkinCode || '—' }}</p>
+      <template #footer>
+        <el-button @click="wallet.visible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="transfer.visible" :title="ticketTransferLabel" width="420px" destroy-on-close>
+      <p class="rate-tip" v-if="transfer.row">将「{{ transfer.row.title || ('编号 ' + transfer.row.id) }}」转让给站内账号</p>
+      <p v-if="ticketTransferHint" class="sub">{{ ticketTransferHint }}</p>
+      <el-form label-width="100px">
+        <el-form-item label="接收账号" required>
+          <el-input v-model="transfer.toUsername" maxlength="64" placeholder="对方用户名" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="transfer.visible = false">取消</el-button>
+        <el-button type="primary" :loading="transfer.loading" @click="submitTransfer">确认转让</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="postGallery.visible" :title="postGalleryLabel" width="480px" destroy-on-close>
+      <p class="rate-tip" v-if="postGallery.row">「{{ postGallery.row.title || ('编号 ' + postGallery.row.id) }}」</p>
+      <p v-if="postGalleryHint" class="sub">{{ postGalleryHint }}</p>
+      <div class="gallery-edit">
+        <el-upload :show-file-list="false" accept="image/*" :http-request="onPostGalleryUpload">
+          <el-button size="small" :disabled="postGallery.images.length >= 9">添加图片</el-button>
+        </el-upload>
+        <div class="gallery-list">
+          <div v-for="(u, i) in postGallery.images" :key="i" class="gallery-item">
+            <img :src="u" alt="" />
+            <el-button link type="danger" size="small" @click="postGallery.images.splice(i, 1)">移除</el-button>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="postGallery.visible = false">取消</el-button>
+        <el-button type="primary" :loading="postGallery.loading" @click="submitPostGallery">保存相册</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="credit.visible" :title="`我的${creditScoreLabel}`" width="520px" destroy-on-close>
       <p class="rate-tip">
         当前 {{ credit.score }} 分，初始 {{ credit.initial }} 分
@@ -769,6 +1475,22 @@
     </el-dialog>
 
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
+
+    <el-dialog v-model="ccComment.visible" :title="approveCcCommentLabel" width="420px" destroy-on-close>
+      <p v-if="approveCcCommentHint" class="sub">{{ approveCcCommentHint }}</p>
+      <el-input
+        v-model="ccComment.text"
+        type="textarea"
+        :rows="3"
+        maxlength="200"
+        show-word-limit
+        placeholder="填写知会评论"
+      />
+      <template #footer>
+        <el-button @click="ccComment.visible = false">取消</el-button>
+        <el-button type="primary" :loading="ccComment.loading" @click="submitCcComment">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -819,7 +1541,7 @@ import {
 } from '../../utils/useCountdown.js'
 import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/statusTone.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
-import { createEmptyTicketApplyForm } from '../../utils/ticketApplyShared.js'
+import { printTicketDocument } from '../../utils/ticketFormPrint.js'
 
 const { nowMs } = useNowTick()
 const ticket = ticketCopy()
@@ -854,6 +1576,13 @@ const stalePoolLabel = computed(() => {
 })
 const phoneDupHint = computed(() => labels.value.phoneDupHint || '')
 const maxReviseHint = computed(() => labels.value.maxReviseHint || '')
+const withdrawHint = computed(() => labels.value.withdrawHint || '')
+const approveDueSoonHint = computed(() => labels.value.approveDueSoonHint || '')
+const approveRemarkAttachLabel = computed(() => labels.value.approveRemarkAttachLabel || '审核意见附件')
+const allowApproveCcComment = computed(() => !!ticket.allowApproveCcComment)
+const approveCcCommentLabel = computed(() => labels.value.approveCcCommentLabel || '知会评论')
+const approveCcCommentHint = computed(() => labels.value.approveCcCommentHint || '')
+const approveAutoPassHint = computed(() => labels.value.approveAutoPassHint || '')
 // 事件等级影响处理时限（bake: ticket.levelAffectsDeadline → ticket-level-sla-*-days）
 const levelSlaDays = ref('')
 const levelSlaHint = computed(() => labels.value.levelSlaHint || '')
@@ -878,6 +1607,9 @@ const credit = reactive({
   rows: [],
   visible: false,
 })
+const wallet = reactive({ visible: false, row: null })
+const transfer = reactive({ visible: false, row: null, toUsername: '', loading: false })
+const postGallery = reactive({ visible: false, row: null, images: [], loading: false })
 const creditBlocked = computed(
   () => creditOn.value && credit.blockBelow > 0 && credit.score < credit.blockBelow,
 )
@@ -955,8 +1687,12 @@ const insuranceAckLabel = computed(() => labels.value.insuranceAckLabel || '我�
 const requireMeetingAck = computed(() => !!ticket.requireMeetingAck)
 const meetingAckLabel = computed(() => labels.value.meetingAckLabel || '我已与对方约定面交时间与地点')
 const requireApplyInvite = computed(() => !!ticket.requireApplyInvite)
-const applyInviteLabel = computed(() => labels.value.applyInviteLabel || '报名口令')
-const applyInviteHint = computed(() => labels.value.applyInviteHint || '')
+const applyInviteLabel = computed(
+  () => labels.value.visitorInviteLabel || labels.value.applyInviteLabel || '报名口令',
+)
+const applyInviteHint = computed(
+  () => labels.value.visitorInviteHint || labels.value.applyInviteHint || '',
+)
 const sessionGroupHint = computed(() => labels.value.sessionGroupHint || '')
 const collegeFilterHint = computed(() => labels.value.collegeFilterHint || '')
 const planUrlHint = computed(() => labels.value.planUrlHint || '')
@@ -964,13 +1700,462 @@ const requirePriceNoteAck = computed(() => !!ticket.requirePriceNoteAck)
 const requireSponsorAck = computed(() => !!ticket.requireSponsorAck)
 const requirePlanAck = computed(() => !!ticket.requirePlanAck)
 const requirePrereqAck = computed(() => !!ticket.requirePrereqAck)
+const requireTourNoticeAck = computed(() => !!ticket.requireTourNoticeAck)
 const allowLateMinutes = computed(() => !!ticket.allowLateMinutes)
+const allowWishOrder = computed(() => !!ticket.allowWishOrder)
+const allowVolunteerRole = computed(() => !!ticket.allowVolunteerRole)
+const allowCompanions = computed(() => !!ticket.allowCompanions)
+const companionNamesLabel = computed(() => labels.value.companionNamesLabel || '同行人姓名')
+const companionNamesHint = computed(() => labels.value.companionNamesHint || '')
+const allowCertPickup = computed(() => !!ticket.allowCertPickup)
+const certPickupLabel = computed(() => labels.value.certPickupLabel || '领取方式')
+const certPickupHint = computed(() => labels.value.certPickupHint || '')
+const mailAddressLabel = computed(() => labels.value.mailAddressLabel || '邮寄地址')
+const expressNoLabel = computed(() => labels.value.expressNoLabel || '快递单号')
+const allowCertUrgent = computed(() => !!ticket.allowCertUrgent)
+const certUrgentLabel = computed(() => labels.value.certUrgentLabel || '加急件')
+const certUrgentHint = computed(() => labels.value.certUrgentHint || '')
+const allowSealCopies = computed(() => !!ticket.allowSealCopies)
+const sealCopiesLabel = computed(() => labels.value.sealCopiesLabel || '用印份数')
+const bindNoteLabel = computed(() => labels.value.bindNoteLabel || '装订说明')
+const sealCopiesHint = computed(() => labels.value.sealCopiesHint || '')
+const sealCopyNosLabel = computed(() => labels.value.sealCopyNosLabel || '用印份号')
+const sealWitnessAckLabel = computed(() => labels.value.sealWitnessAckLabel || '监印人已确认')
+const allowExpenseInvoice = computed(() => !!ticket.allowExpenseInvoice)
+const invoiceCountLabel = computed(() => labels.value.invoiceCountLabel || '发票张数')
+const expenseAmountLabel = computed(() => labels.value.expenseAmountLabel || '报销金额（元）')
+const expenseInvoiceHint = computed(() => labels.value.expenseInvoiceHint || '')
+const allowExpenseAttachCount = computed(() => !!ticket.allowExpenseAttachCount)
+const expenseAttachCountHint = computed(() => labels.value.expenseAttachCountHint || '')
+const fleetDriverCertHint = computed(() => labels.value.fleetDriverCertHint || '')
+const allowVisitorCount = computed(() => !!ticket.allowVisitorCount)
+const visitorCountLabel = computed(() => labels.value.visitorCountLabel || '随行人数')
+const visitorCountHint = computed(() => labels.value.visitorCountHint || '')
+const showVisitorCompanions = computed(
+  () => allowVisitorCount.value && Number(form.visitorCount) > 0,
+)
+const allowAwardCertNo = computed(() => !!ticket.allowAwardCertNo)
+const awardCertNoLabel = computed(() => labels.value.awardCertNoLabel || '证书编号')
+const awardCertNoHint = computed(() => labels.value.awardCertNoHint || '')
+const allowVendorQuotes = computed(
+  () => !!ticket.allowVendorQuotes || Number(ticket.minVendorQuotes || 0) > 0,
+)
+const vendorQuotesLabel = computed(() => labels.value.vendorQuotesLabel || '比价供应商')
+const vendorQuotesHint = computed(() => labels.value.vendorQuotesHint || '')
+const minVendorQuotes = computed(() => Number(ticket.minVendorQuotes || 0))
+const minVendorQuotesHint = computed(() => labels.value.minVendorQuotesHint || '')
+const forceOnePerArchive = computed(() => !!ticket.forceOnePerArchive)
+const evalOnePerCourseHint = computed(() => labels.value.evalOnePerCourseHint || '')
+const archiveExpireNotifyHint = computed(() => {
+  if (!(Number(ticket.notifyArchiveExpireDays || 0) > 0)) return ''
+  return labels.value.archiveExpireNotifyHint || ''
+})
+const allowFleetMileage = computed(() => !!ticket.allowFleetMileage)
+const mileageLabel = computed(() => labels.value.mileageLabel || '行驶里程（公里）')
+const fuelNoteLabel = computed(() => labels.value.fuelNoteLabel || '油耗备注')
+const fleetMileageHint = computed(() => labels.value.fleetMileageHint || '')
+const allowEvalOpenWindow = computed(() => !!ticket.allowEvalOpenWindow)
+const evalOpenWindowHint = computed(() => labels.value.evalOpenWindowHint || '')
+const allowCompHours = computed(() => !!ticket.allowCompHours)
+const compHoursLabel = computed(() => labels.value.compHoursLabel || '核定调休小时')
+const compHoursHint = computed(() => labels.value.compHoursHint || '')
+const allowFleetCrew = computed(() => !!ticket.allowFleetCrew)
+const driverNameLabel = computed(() => labels.value.driverNameLabel || '驾驶员')
+const passengerNamesLabel = computed(() => labels.value.passengerNamesLabel || '随车人')
+const fleetCrewHint = computed(() => labels.value.fleetCrewHint || '')
+const allowEthicBatch = computed(() => !!ticket.allowEthicBatch)
+const ethicBatchHint = computed(() => labels.value.ethicBatchHint || '')
+const batchNoLabel = computed(() => labels.value.batchNoLabel || '批件编号')
+const expireOnLabel = computed(() => labels.value.expireOnLabel || '批件有效期')
+const laborAttachLabel = computed(() => (labels.value.laborAttachLabel || '').trim())
+const laborAttachHint = computed(() => (labels.value.laborAttachHint || '').trim())
+const checkinPhotoLabel = computed(() => (labels.value.checkinPhotoLabel || '').trim())
+const checkinPhotoHint = computed(() => (labels.value.checkinPhotoHint || '').trim())
+const allowPassExpire = computed(() => !!ticket.allowPassExpire)
+const passExpireAtLabel = computed(() => labels.value.passExpireAtLabel || '通行码有效至')
+const passExpiredLabel = computed(() => labels.value.passExpiredLabel || '已失效')
+const passExpireHint = computed(() => labels.value.passExpireHint || '')
+const allowReturnFuel = computed(() => !!ticket.allowReturnFuel)
+const returnFuelLabel = computed(() => labels.value.returnFuelLabel || '回场油量')
+const returnFuelHint = computed(() => labels.value.returnFuelHint || '')
+const allowLaborPlace = computed(() => !!ticket.allowLaborPlace)
+const laborPlaceLabel = computed(() => labels.value.laborPlaceLabel || '劳动地点')
+const laborPlaceHint = computed(() => labels.value.laborPlaceHint || '')
+const allowPromoPlace = computed(() => !!ticket.allowPromoPlace)
+const promoPlaceHint = computed(() => labels.value.promoPlaceHint || '')
+const promoSizeLabel = computed(() => labels.value.promoSizeLabel || '尺寸')
+const hangPlaceLabel = computed(() => labels.value.hangPlaceLabel || '悬挂位置')
+const allowEthicMeeting = computed(() => !!ticket.allowEthicMeeting)
+const ethicMeetingHint = computed(() => labels.value.ethicMeetingHint || '')
+const meetingOnLabel = computed(() => labels.value.meetingOnLabel || '会议日期')
+const resolutionNoteLabel = computed(() => labels.value.resolutionNoteLabel || '决议摘要')
+const allowEffectiveOn = computed(() => !!ticket.allowEffectiveOn)
+const effectiveOnLabel = computed(() => labels.value.effectiveOnLabel || '生效日期')
+const effectiveOnHint = computed(() => labels.value.effectiveOnHint || '')
+const allowCertIssueNo = computed(() => !!ticket.allowCertIssueNo)
+const certIssueNoLabel = computed(() => labels.value.certIssueNoLabel || '开具流水号')
+const certIssueNoHint = computed(() => labels.value.certIssueNoHint || '')
+const allowDocRev = computed(() => !!ticket.allowDocRev)
+const docRevLabel = computed(() => labels.value.docRevLabel || '正文版本号')
+const docRevHint = computed(() => labels.value.docRevHint || '')
+const allowFitoutQuiet = computed(() => !!ticket.allowFitoutQuiet)
+const fitoutWindowLabel = computed(() => labels.value.fitoutWindowLabel || '施工时段')
+const fitoutQuietHint = computed(() => labels.value.fitoutQuietHint || '')
+const allowIssueCopies = computed(() => !!ticket.allowIssueCopies)
+const issueCopiesLabel = computed(() => labels.value.issueCopiesLabel || '开具份数')
+const issueCopiesHint = computed(() => labels.value.issueCopiesHint || '')
+const allowSignParties = computed(() => !!ticket.allowSignParties)
+const signPartiesLabel = computed(() => labels.value.signPartiesLabel || '签署方')
+const signPartiesHint = computed(() => labels.value.signPartiesHint || '')
+const allowTrainHours = computed(() => !!ticket.allowTrainHours)
+const trainHoursLabel = computed(() => labels.value.trainHoursLabel || '本次培训学时')
+const trainHoursHint = computed(() => labels.value.trainHoursHint || '')
+const allowInspectExpire = computed(() => !!ticket.allowInspectExpire)
+const inspectExpireOnLabel = computed(() => labels.value.inspectExpireOnLabel || '年检到期日')
+const inspectExpireHint = computed(() => labels.value.inspectExpireHint || '')
+const allowMemberChange = computed(() => !!ticket.allowMemberChange)
+const memberChangeNoteLabel = computed(() => labels.value.memberChangeNoteLabel || '成员变更说明')
+const memberChangeNoteHint = computed(() => labels.value.memberChangeNoteHint || '')
+const allowProcureBudget = computed(() => !!ticket.allowProcureBudget)
+const procureAmountLabel = computed(() => labels.value.procureAmountLabel || '本次申购金额（元）')
+const procureBudgetHint = computed(() => labels.value.procureBudgetHint || '')
+const allowCheckinException = computed(() => !!ticket.allowCheckinException)
+const exceptionTypeLabel = computed(() => labels.value.exceptionTypeLabel || '异常类型')
+const exceptionTypeHint = computed(() => labels.value.exceptionTypeHint || '')
+const exceptionTypeOptions = computed(() => {
+  const opts = ticket.exceptionTypeOptions
+  return Array.isArray(opts) ? opts.filter((x) => x && String(x).trim()) : []
+})
+const allowVisitPurpose = computed(() => !!ticket.allowVisitPurpose)
+const visitPurposeLabel = computed(() => labels.value.visitPurposeLabel || '来访目的')
+const visitPurposeHint = computed(() => labels.value.visitPurposeHint || '')
+const visitPurposeOptions = computed(() => {
+  const opts = ticket.visitPurposeOptions
+  return Array.isArray(opts) ? opts.filter((x) => x && String(x).trim()) : []
+})
+const allowFitoutRectify = computed(() => !!ticket.allowFitoutRectify)
+const rectifyNoteLabel = computed(() => labels.value.rectifyNoteLabel || '整改说明')
+const rectifyNoteHint = computed(() => labels.value.rectifyNoteHint || '')
+const allowFleetViolation = computed(() => !!ticket.allowFleetViolation)
+const violationPersonLabel = computed(() => labels.value.violationPersonLabel || '违章责任人')
+const violationPersonHint = computed(() => labels.value.violationPersonHint || '')
+const allowProjNodeRemind = computed(() => !!ticket.allowProjNodeRemind)
+const midDueOnLabel = computed(() => labels.value.midDueOnLabel || '中期材料节点')
+const finalDueOnLabel = computed(() => labels.value.finalDueOnLabel || '结题材料节点')
+const projNodeRemindHint = computed(() => labels.value.projNodeRemindHint || '')
+const allowClubCopyLast = computed(() => !!ticket.allowClubCopyLast)
+const clubCopyLastLabel = computed(() => labels.value.clubCopyLastLabel || '复制上年材料')
+const clubCopyLastHint = computed(() => labels.value.clubCopyLastHint || '')
+const allowProcureReturn = computed(() => !!ticket.allowProcureReturn)
+const procureReturnFailLabel = computed(() => labels.value.procureReturnFailLabel || '验收不合格')
+const returnNoteLabel = computed(() => labels.value.returnNoteLabel || '退货说明')
+const procureReturnHint = computed(() => labels.value.procureReturnHint || '')
+const allowMoralObjection = computed(() => !!ticket.allowMoralObjection)
+const moralObjectionLabel = computed(() => labels.value.moralObjectionLabel || '异议说明')
+const moralObjectionHint = computed(() => labels.value.moralObjectionHint || '')
+const allowProjFundUse = computed(() => !!ticket.allowProjFundUse)
+const fundUseYuanLabel = computed(() => labels.value.fundUseYuanLabel || '本次使用经费（元）')
+const fundUseNoteLabel = computed(() => labels.value.fundUseNoteLabel || '经费使用说明')
+const fundUseHint = computed(() => labels.value.fundUseHint || '')
+const allowEvalDimWeight = computed(() => !!ticket.allowEvalDimWeight)
+const evalDimWeightHint = computed(() => labels.value.evalDimWeightHint || '')
+const allowVisitSlotRemain = computed(() => !!ticket.allowVisitSlotRemain)
+const visitOnLabel = computed(() => labels.value.visitOnLabel || '来访日期')
+const visitSlotRemainHint = computed(() => labels.value.visitSlotRemainHint || '')
+const allowPlagiarismUrl = computed(() => !!ticket.allowPlagiarismUrl)
+const plagiarismUrlLabel = computed(() => labels.value.plagiarismUrlLabel || '查重报告链接')
+const plagiarismUrlHint = computed(() => labels.value.plagiarismUrlHint || '')
+const allowAbsentStreak = computed(() => !!ticket.allowAbsentStreak)
+const absentWarnNLabel = computed(() => labels.value.absentWarnNLabel || '连续未归预警次数')
+const absentStreakHint = computed(() => labels.value.absentStreakHint || '')
+const allowPartyStage = computed(() => !!ticket.allowPartyStage)
+const partyStageLabel = computed(() => labels.value.partyStageLabel || '当前发展阶段')
+const stageOnLabel = computed(() => labels.value.stageOnLabel || '进入该阶段日期')
+const partyStageHint = computed(() => labels.value.partyStageHint || '')
+const partyStageOptions = computed(() => {
+  const opts = ticket.partyStageOptions
+  return Array.isArray(opts) ? opts.filter((x) => x && String(x).trim()) : []
+})
+const allowEvalObserve = computed(() => !!ticket.allowEvalObserve)
+const observeOnLabel = computed(() => labels.value.observeOnLabel || '听课日期')
+const observeNoteLabel = computed(() => labels.value.observeNoteLabel || '听课记录')
+const evalObserveHint = computed(() => labels.value.evalObserveHint || '')
+const allowScheduleImpact = computed(() => !!ticket.allowScheduleImpact)
+const scheduleImpactNoteLabel = computed(() => labels.value.scheduleImpactNoteLabel || '对课表的影响')
+const scheduleImpactHint = computed(() => labels.value.scheduleImpactHint || '')
+const allowContractAmount = computed(() => !!ticket.allowContractAmount)
+const contractAmountLabel = computed(() => labels.value.contractAmountLabel || '合同金额（元）')
+const contractAmountCnLabel = computed(() => labels.value.contractAmountCnLabel || '金额大写')
+const contractAmountHint = computed(() => labels.value.contractAmountHint || '')
+const allowExpenseLines = computed(() => !!ticket.allowExpenseLines)
+const expenseLinesLabel = computed(() => labels.value.expenseLinesLabel || '报销明细')
+const expenseLineCategoryLabel = computed(() => labels.value.expenseLineCategoryLabel || '费用类别')
+const expenseLineAmountLabel = computed(() => labels.value.expenseLineAmountLabel || '金额（元）')
+const expenseLineNoteLabel = computed(() => labels.value.expenseLineNoteLabel || '说明')
+const expenseLinesHint = computed(() => labels.value.expenseLinesHint || '')
+const expenseLineCategoryOptions = computed(() => {
+  const opts = ticket.expenseLineCategoryOptions
+  return Array.isArray(opts) && opts.length ? opts.filter((x) => x && String(x).trim()) : ['交通', '住宿', '餐饮', '办公', '其他']
+})
+const allowTripLegs = computed(() => !!ticket.allowTripLegs)
+const tripLegsLabel = computed(() => labels.value.tripLegsLabel || '出差行程')
+const tripLegFromLabel = computed(() => labels.value.tripLegFromLabel || '出发地')
+const tripLegViaLabel = computed(() => labels.value.tripLegViaLabel || '途经')
+const tripLegToLabel = computed(() => labels.value.tripLegToLabel || '到达地')
+const tripLegOnLabel = computed(() => labels.value.tripLegOnLabel || '行程日期')
+const tripLegsHint = computed(() => labels.value.tripLegsHint || '')
+const allowHideEvalResult = computed(() => !!ticket.allowHideEvalResult)
+const hideEvalResultLabel = computed(() => labels.value.hideEvalResultLabel || '结果对学生不可见')
+const hideEvalResultHint = computed(() => labels.value.hideEvalResultHint || '')
+const allowSignRemarkVisible = computed(() => !!ticket.allowSignRemarkVisible)
+const signRemarkVisibleLabel = computed(() => labels.value.signRemarkVisibleLabel || '审批意见对签署方可见')
+const signApproveRemarkLabel = computed(() => labels.value.signApproveRemarkLabel || '审批意见')
+const signRemarkVisibleHint = computed(() => labels.value.signRemarkVisibleHint || '')
+const allowProjChangeLog = computed(() => !!ticket.allowProjChangeLog)
+const changeLogNoteLabel = computed(() => labels.value.changeLogNoteLabel || '变更摘要')
+const projChangeLogHint = computed(() => labels.value.projChangeLogHint || '')
+const allowCertVerify = computed(() => !!ticket.allowCertVerify)
+const certVerifyCodeLabel = computed(() => labels.value.certVerifyCodeLabel || '真伪查询码')
+const certVerifyHint = computed(() => labels.value.certVerifyHint || '')
+const allowVisitWalkIn = computed(() => !!ticket.allowVisitWalkIn)
+const visitWalkInLabel = computed(() => labels.value.visitWalkInLabel || '现场补录')
+const visitWalkInHint = computed(() => labels.value.visitWalkInHint || '')
+const allowCheckinProxy = computed(() => !!ticket.allowCheckinProxy)
+const checkinProxyByLabel = computed(() => labels.value.checkinProxyByLabel || '代登人')
+const checkinProxyHint = computed(() => labels.value.checkinProxyHint || '')
+const allowClubRoster = computed(() => !!ticket.allowClubRoster)
+const clubRosterLabel = computed(() => labels.value.clubRosterLabel || '成员名册')
+const clubMemberNameLabel = computed(() => labels.value.clubMemberNameLabel || '姓名')
+const clubMemberNoLabel = computed(() => labels.value.clubMemberNoLabel || '学号')
+const clubRosterHint = computed(() => labels.value.clubRosterHint || '')
+const allowCarpassParkingMutex = computed(() => !!ticket.allowCarpassParkingMutex)
+const parkingOnLabel = computed(() => labels.value.parkingOnLabel || '占用车位日期')
+const parkingMutexLabel = computed(() => labels.value.parkingMutexLabel || '同车位同日互斥')
+const carpassParkingMutexHint = computed(() => labels.value.carpassParkingMutexHint || '')
+const allowEvalUrge = computed(() => !!ticket.allowEvalUrge)
+const evalUrgeHint = computed(() => labels.value.evalUrgeHint || '')
+const allowContractRenew = computed(() => !!ticket.allowContractRenew)
+const renewOnLabel = computed(() => labels.value.renewOnLabel || '续签日期')
+const renewNoteLabel = computed(() => labels.value.renewNoteLabel || '续签说明')
+const contractRenewHint = computed(() => labels.value.contractRenewHint || '')
+const allowContractExpireRemind = computed(() => !!ticket.allowContractExpireRemind)
+const contractExpireRemindHint = computed(() => labels.value.contractExpireRemindHint || '')
+const contractExpireRemindTitle = computed(() => labels.value.contractExpireRemindTitle || '合同续签提醒')
+const allowCertPickupRedeem = computed(() => !!ticket.allowCertPickupRedeem)
+const pickupRedeemCodeLabel = computed(() => labels.value.pickupRedeemCodeLabel || '领取核销码')
+const pickupRedeemedLabel = computed(() => labels.value.pickupRedeemedLabel || '已核销')
+const pickupRedeemHint = computed(() => labels.value.pickupRedeemHint || '')
+const allowCertPickupQr = computed(() => !!ticket.allowCertPickupQr)
+const pickupQrLabel = computed(() => labels.value.pickupQrLabel || '领取二维码')
+const pickupQrHint = computed(() => labels.value.pickupQrHint || '')
+const allowVisitorPassPrint = computed(() => !!ticket.allowVisitorPassPrint)
+const visitorPassPrintLabel = computed(() => labels.value.visitorPassPrintLabel || '打印通行证')
+const visitorPassPrintHint = computed(() => labels.value.visitorPassPrintHint || '')
+const allowAttachKeepOld = computed(() => !!ticket.allowAttachKeepOld)
+const attachKeepOldLabel = computed(() => labels.value.attachKeepOldLabel || '历史附件')
+const attachKeepOldHint = computed(() => labels.value.attachKeepOldHint || '')
+const allowCheckinDailyReport = computed(() => !!ticket.allowCheckinDailyReport)
+const checkinDailyHint = computed(() => labels.value.checkinDailyHint || '')
+const allowEvalCollegeExport = computed(() => !!ticket.allowEvalCollegeExport)
+const evalCollegeExportHint = computed(() => labels.value.evalCollegeExportHint || '')
+const allowExamPassMin = computed(() => !!ticket.allowExamPassMin)
+const examPassMinLabel = computed(() => labels.value.examPassMinLabel || '准入考试及格分')
+const examPassMinHint = computed(() => labels.value.examPassMinHint || '')
+const allowCheckinSpot = computed(() => !!ticket.allowCheckinSpot)
+const checkinSpotHint = computed(() => labels.value.checkinSpotHint || '')
+const allowEvalBeforeGrade = computed(() => !!ticket.allowEvalBeforeGrade)
+const evalBeforeGradeHint = computed(() => labels.value.evalBeforeGradeHint || '')
+const spotCheckToday = ref(false)
+function formatClubMembers(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || ''
+    return arr.map((x) => `${x.name || ''}${x.studentNo ? `（${x.studentNo}）` : ''}`).join('，')
+  } catch {
+    return raw || ''
+  }
+}
+function importClubRosterCsv() {
+  const text = (form.clubRosterCsv || '').trim()
+  if (!text) return
+  const rows = text.split(/\r?\n/).map((line) => {
+    const parts = line.split(/[,，\t;；]/).map((s) => s.trim())
+    return { name: parts[0] || '', studentNo: parts[1] || '' }
+  }).filter((x) => x.name)
+  if (rows.length) form.clubMembers = rows
+}
+function isApproveResultStatus(st) {
+  return st === 'approved' || st === 'rejected' || st === 'returned'
+}
+function showRemarkForRow(row) {
+  if (!row?.remark) return false
+  if (allowSignRemarkVisible.value && isApproveResultStatus(row.status) && row.signRemarkVisible === false) {
+    return false
+  }
+  return true
+}
+function formatExpenseLines(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || ''
+    return arr.map((x) => `${x.category || ''} ${x.amount ?? ''}${x.note ? `（${x.note}）` : ''}`).join('；')
+  } catch {
+    return raw || ''
+  }
+}
+function formatTripLegs(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || ''
+    return arr.map((x) => `${x.on || ''} ${x.from || ''}→${x.via ? `${x.via}→` : ''}${x.to || ''}`).join('；')
+  } catch {
+    return raw || ''
+  }
+}
+function amountToChinese(n) {
+  const num = Number(n)
+  if (!Number.isFinite(num) || num < 0) return ''
+  const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+  const units = ['', '拾', '佰', '仟']
+  const big = ['', '万', '亿']
+  const yuan = Math.floor(num + 1e-9)
+  const fen = Math.round((num - yuan) * 100)
+  if (yuan === 0 && fen === 0) return '零元整'
+  let intPart = ''
+  if (yuan === 0) {
+    intPart = '零'
+  } else {
+    const s = String(yuan)
+    const groups = []
+    for (let i = s.length; i > 0; i -= 4) groups.unshift(s.slice(Math.max(0, i - 4), i))
+    groups.forEach((g, gi) => {
+      let chunk = ''
+      let zero = false
+      for (let i = 0; i < g.length; i++) {
+        const d = Number(g[i])
+        const u = units[g.length - 1 - i]
+        if (d === 0) {
+          zero = true
+        } else {
+          if (zero) chunk += '零'
+          chunk += digits[d] + u
+          zero = false
+        }
+      }
+      if (chunk) intPart += chunk + big[groups.length - 1 - gi]
+    })
+  }
+  let out = `${intPart}元`
+  if (fen === 0) return `${out}整`
+  const jiao = Math.floor(fen / 10)
+  const cent = fen % 10
+  if (jiao) out += `${digits[jiao]}角`
+  if (cent) out += `${digits[cent]}分`
+  return out
+}
+const fleetTollAttachLabel = computed(() => (labels.value.fleetTollAttachLabel || '').trim())
+const fleetTollAttachHint = computed(() => (labels.value.fleetTollAttachHint || '').trim())
+const promoFeedbackLabel = computed(() => labels.value.promoFeedbackLabel || '投放反馈照片')
+const promoFeedbackHint = computed(() => labels.value.promoFeedbackHint || '')
+const sealPhotoLabel = computed(() => labels.value.sealPhotoLabel || '用印现场照片')
+const sealPhotoHint = computed(() => labels.value.sealPhotoHint || '')
+const closeAttachFieldLabel = computed(() =>
+  ticket.allowSealClosePhoto
+    ? sealPhotoLabel.value
+    : ticket.allowPromoFeedback
+      ? promoFeedbackLabel.value
+      : (labels.value.closeAttachLabel || '结单附件'),
+)
+const closeAttachHint = computed(() =>
+  ticket.allowSealClosePhoto
+    ? sealPhotoHint.value
+    : ticket.allowPromoFeedback
+      ? promoFeedbackHint.value
+      : (labels.value.closeAttachHint || ''),
+)
+const finishAttachFieldLabel = computed(() => {
+  if (ticket.requireCloseAttach) return closeAttachFieldLabel.value
+  if (ticket.requireReturnAttach) {
+    return (labels.value.returnAttachLabel || '').trim() || '归还照片'
+  }
+  return closeAttachFieldLabel.value
+})
+const attachFieldLabel = computed(() =>
+  fleetTollAttachLabel.value
+    || laborAttachLabel.value
+    || checkinPhotoLabel.value
+    || (labels.value.attachLabel || '').trim()
+    || '附件',
+)
+const attachFieldHint = computed(() =>
+  expenseAttachCountHint.value
+    || fleetTollAttachHint.value
+    || laborAttachHint.value
+    || checkinPhotoHint.value
+    || (labels.value.homePhotoAttachHint || '').trim()
+    || (labels.value.attachHint || '').trim()
+    || '',
+)
+function isPassExpired(row) {
+  if (!allowPassExpire.value || !row || !row.passExpireAt) return false
+  const t = Date.parse(String(row.passExpireAt).replace('T', ' '))
+  return Number.isFinite(t) && Date.now() > t
+}
+const allowSeatZone = computed(() => !!ticket.allowSeatZone)
+const seatZoneLabel = computed(() => labels.value.seatZoneLabel || '座位分区')
+const seatZoneHint = computed(() => labels.value.seatZoneHint || '')
+const seatZoneOptions = computed(() => {
+  const raw = (selectedApplyItem.value && selectedApplyItem.value.seatZones) || ''
+  return String(raw)
+    .split(/[,，、]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+})
+const allowTicketTransfer = computed(() => !!ticket.allowTicketTransfer)
+const ticketTransferLabel = computed(() => labels.value.ticketTransferLabel || '转让名额')
+const ticketTransferHint = computed(() => labels.value.ticketTransferHint || '')
+const allowTicketWallet = computed(() => !!ticket.allowTicketWallet)
+const ticketWalletLabel = computed(() => labels.value.ticketWalletLabel || '我的电子票')
+const ticketWalletHint = computed(() => labels.value.ticketWalletHint || '')
+const allowPostGallery = computed(() => !!ticket.allowPostGallery)
+const postGalleryLabel = computed(() => labels.value.postGalleryLabel || '活动相册')
+const postGalleryHint = computed(() => labels.value.postGalleryHint || '')
+const requireCreditWritebackAck = computed(() => !!ticket.requireCreditWritebackAck)
+const creditWritebackAckLabel = computed(
+  () => labels.value.creditWritebackAckLabel || '我已知晓学分认定需另行申请（非自动回写）',
+)
+const creditWritebackHint = computed(() => labels.value.creditWritebackHint || '')
+const creditFromActivityHint = computed(() => labels.value.creditFromActivityHint || '')
+const activitySurveyLinkLabel = computed(() => labels.value.activitySurveyLinkLabel || '填写满意度问卷')
+const activitySurveyLinkHint = computed(() => labels.value.activitySurveyLinkHint || '')
+const visaMaterialHint = computed(() => labels.value.visaMaterialHint || '')
+const materialApplyHint = computed(
+  () =>
+    labels.value.moralMaterialHint
+    || labels.value.partyMaterialHint
+    || labels.value.partyThoughtHint
+    || labels.value.fleetDriverCertHint
+    || visaMaterialHint.value
+    || '',
+)
 const priceNoteAckLabel = computed(() => labels.value.priceNoteAckLabel || '我已阅读团体票价说明')
 const sponsorAckLabel = computed(() => labels.value.sponsorAckLabel || '我已知晓本场赞助说明')
 const planAckLabel = computed(() => labels.value.planAckLabel || '我已查阅培养方案外链')
 const prereqAckLabel = computed(() => labels.value.prereqAckLabel || '我确认已具备先修基础')
+const tourNoticeAckLabel = computed(() => labels.value.tourNoticeAckLabel || '我已阅读出团天气与须知')
+const wishOrderLabel = computed(() => labels.value.wishOrderLabel || '志愿序')
+const wishOrderHint = computed(() => labels.value.wishOrderHint || '')
+const volunteerRoleLabel = computed(() => labels.value.volunteerRoleLabel || '报名岗位')
+const volunteerRoleHint = computed(() => labels.value.volunteerRoleHint || '')
 const lateMinutesLabel = computed(() => labels.value.lateMinutesLabel || '迟到分钟数')
 const lateMinutesHint = computed(() => labels.value.lateMinutesHint || '')
+const volunteerRoleOptions = computed(() => {
+  const af = getSchema()?.entities?.archive?.fields || []
+  const f = af.find((x) => x && x.key === 'volunteerRole')
+  const opts = f && Array.isArray(f.options) ? f.options : ['不限', '引导员', '签到协助', '物资发放', '其它']
+  return opts.filter((x) => x && x !== '不限')
+})
+const oversellGuardHint = computed(() => labels.value.oversellGuardHint || '')
 const allowProjectNo = computed(() => !!ticket.allowProjectNo)
 const projectNoLabel = computed(() => labels.value.projectNoLabel || '课题号')
 const allowProcureRef = computed(() => !!ticket.allowProcureRef)
@@ -1178,7 +2363,15 @@ const returnDlg = reactive({
   faultReason: '',
   closeSummary: '',
   partsNote: '',
+  mileageKm: null,
+  fuelNote: '',
+  compHours: null,
+  returnFuel: null,
+  violationPerson: '',
+  returnFail: false,
+  returnNote: '',
 })
+const objectionDlg = reactive({ visible: false, row: null, note: '', loading: false })
 const allowRating = computed(() => !!ticket.allowRating)
 const allowUserUrge = computed(() => !!ticket.allowUserUrge)
 const allowCancelUrge = computed(() => !!ticket.allowCancelUrge)
@@ -1203,12 +2396,28 @@ const requireCloseAttach = computed(() => !!ticket.requireCloseAttach)
 const printTicketOn = computed(
   () =>
     !!ticket.printTicket
+    || !!ticket.allowCertFormPrint
+    || !!ticket.allowSealFormPrint
+    || !!ticket.allowProjMidFormPrint
+    || !!ticket.allowEthicOpinionPrint
     || !!(labels.value.gradePrintHint || labels.value.bedPrintHint
       || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint),
 )
 const urgeLabel = computed(() => labels.value.urgeLabel || '催办')
 const cancelUrgeLabel = computed(() => labels.value.cancelUrgeLabel || '撤销催办')
 const printTicketLabel = computed(() => labels.value.printTicketLabel || '打印工单')
+const certFormPrintHint = computed(() => labels.value.certFormPrintHint || '')
+const sealFormPrintHint = computed(() => labels.value.sealFormPrintHint || '')
+const projMidFormPrintHint = computed(() => labels.value.projMidFormPrintHint || '')
+const ethicOpinionPrintHint = computed(() => labels.value.ethicOpinionPrintHint || '')
+const formPrintHint = computed(
+  () =>
+    certFormPrintHint.value
+    || sealFormPrintHint.value
+    || projMidFormPrintHint.value
+    || ethicOpinionPrintHint.value
+    || '',
+)
 const ticketNoHint = computed(() => labels.value.ticketNoHint || '')
 const slaPageHint = computed(() => labels.value.slaPageHint || '')
 const selfHelpHint = computed(() => labels.value.selfHelpHint || '')
@@ -1381,27 +2590,107 @@ async function doConfirmQuote(row) {
 }
 
 function printTicket(row) {
-  const w = window.open('', '_blank')
-  if (!w) {
-    ElMessage.warning('请允许弹窗后重试')
+  const ok = printTicketDocument(row, {
+    ticket,
+    labels: labels.value,
+    statusText,
+    personLabel: (r) => r?.applicantName || r?.nickname || r?.username || '',
+    remarkText: (r) => String(r || '').replace(/<[^>]+>/g, ''),
+  })
+  if (!ok) ElMessage.warning('请允许弹窗后重试')
+}
+
+function canShowWallet(row) {
+  return allowTicketWallet.value && row && ['approved', 'returned'].includes(String(row.status || ''))
+}
+function openWallet(row) {
+  wallet.row = row
+  wallet.visible = true
+}
+function canTransfer(row) {
+  return allowTicketTransfer.value && row && String(row.status || '') === 'approved'
+}
+function openTransfer(row) {
+  transfer.row = row
+  transfer.toUsername = ''
+  transfer.visible = true
+}
+function postGalleryUrls(row) {
+  const g = row && row.postGalleryImages
+  return Array.isArray(g) ? g.filter(Boolean) : []
+}
+function canShowPostGallery(row) {
+  return allowPostGallery.value && row && ['returned', 'completed'].includes(String(row.status || ''))
+}
+function openPostGallery(row) {
+  postGallery.row = row
+  postGallery.images = [...postGalleryUrls(row)]
+  postGallery.visible = true
+}
+async function onPostGalleryUpload(option) {
+  if (postGallery.images.length >= 9) {
+    ElMessage.warning('最多上传 9 张')
     return
   }
-  const extraHint = labels.value.gradePrintHint || labels.value.bedPrintHint
-    || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint || ''
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>工单 ${row.id}</title>
-<style>body{font-family:sans-serif;padding:24px}h1{font-size:18px}p{margin:6px 0;color:#333}.hint{color:#64748b;font-size:12px}</style></head><body>
-<h1>${row.title || '单据'} #${row.id}</h1>
-${extraHint ? `<p class="hint">${extraHint}</p>` : ''}
-<p>状态：${statusText(row)}</p>
-<p>地点：${row.location || '—'}</p>
-<p>类型：${row.typeName || '—'}</p>
-<p>优先级：${row.priority || '—'}</p>
-<p>期望上门：${row.preferredSlot || '—'}</p>
-<p>说明：${row.remark || '—'}</p>
-<p>申请时间：${row.applyAt || '—'}</p>
-<script>window.print()<\/script></body></html>`
-  w.document.write(html)
-  w.document.close()
+  const fd = new FormData()
+  fd.append('file', option.file)
+  const res = await http.post('/api/upload', fd)
+  const url = res.data?.url
+  if (url) postGallery.images.push(url)
+}
+async function submitPostGallery() {
+  if (!postGallery.row) return
+  postGallery.loading = true
+  try {
+    await http.post(`/api/tickets/${postGallery.row.id}/post-gallery`, {
+      images: postGallery.images,
+    })
+    ElMessage.success('相册已保存')
+    postGallery.visible = false
+    load()
+  } finally {
+    postGallery.loading = false
+  }
+}
+function canAckCreditWriteback(row) {
+  return (
+    requireCreditWritebackAck.value
+    && row
+    && !row.creditWritebackAck
+    && ['returned', 'completed', 'approved'].includes(String(row.status || ''))
+  )
+}
+async function ackCreditWriteback(row) {
+  await http.post(`/api/tickets/${row.id}/credit-writeback-ack`)
+  ElMessage.success('已确认')
+  load()
+}
+function canOpenActivitySurvey(row) {
+  const sid = Number(row?.surveyFormId || 0)
+  return sid > 0 && row && ['returned', 'completed'].includes(String(row.status || ''))
+}
+function openActivitySurvey(row) {
+  const sid = Number(row?.surveyFormId || 0)
+  if (!sid) return
+  if (activitySurveyLinkHint.value) ElMessage.info(activitySurveyLinkHint.value)
+  window.location.hash = `#/survey/fill/${sid}`
+}
+async function submitTransfer() {
+  if (!transfer.row) return
+  const to = (transfer.toUsername || '').trim()
+  if (!to) {
+    ElMessage.warning('请填写接收账号')
+    return
+  }
+  transfer.loading = true
+  try {
+    await http.post(`/api/tickets/${transfer.row.id}/transfer`, { toUsername: to })
+    ElMessage.success('已转让')
+    transfer.visible = false
+    load()
+  } finally {
+    transfer.loading = false
+  }
 }
 
 function leaveSplitText(row) {
@@ -1420,6 +2709,58 @@ function canWithdraw(row) {
     || row.status === 'pending_final' || row.status === 'waitlisted'
     || row.status === 'verifying') return true
   return !!(allowBookHold.value && (row.status === 'held' || row.status === 'hold_ready'))
+}
+
+function canMoralObjection(row) {
+  if (!allowMoralObjection.value || !row) return false
+  if (row.status !== 'approved') return false
+  if (row.objectionAt || (row.objectionNote || '').trim()) return false
+  const due = String(row.objectionDueAt || '').trim()
+  if (due.length >= 10) {
+    const today = new Date()
+    const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    if (ymd > due.slice(0, 10)) return false
+  }
+  return true
+}
+
+function openMoralObjection(row) {
+  objectionDlg.row = row
+  objectionDlg.note = ''
+  objectionDlg.visible = true
+}
+
+async function submitMoralObjection() {
+  if (!objectionDlg.row) return
+  if (!(objectionDlg.note || '').trim()) {
+    ElMessage.warning(`请填写${moralObjectionLabel.value}`)
+    return
+  }
+  objectionDlg.loading = true
+  try {
+    await http.post(`/api/tickets/${objectionDlg.row.id}/objection`, { note: objectionDlg.note.trim() })
+    ElMessage.success('已提交')
+    objectionDlg.visible = false
+    load()
+  } finally {
+    objectionDlg.loading = false
+  }
+}
+
+async function copyLastYear() {
+  try {
+    const res = await http.get('/api/tickets/last-approved-mine')
+    const d = res.data?.data || res.data || {}
+    if (!(d.remark || d.attachUrl)) {
+      ElMessage.warning('没有找到上年已通过的材料，请直接填写')
+      return
+    }
+    if (d.remark) form.remark = d.remark
+    if (d.attachUrl) form.attachUrl = d.attachUrl
+    ElMessage.success('已带入上年材料，请核对后提交')
+  } catch (e) {
+    ElMessage.warning('没有找到上年已通过的材料，请直接填写')
+  }
 }
 
 function canSubmitProof(row) {
@@ -1585,7 +2926,123 @@ const sites = ref([])
 const units = ref([])
 const types = ref([])
 const archiveItems = ref([])
-const form = reactive(createEmptyTicketApplyForm())
+const form = reactive({
+  title: '',
+  location: '',
+  remark: '',
+  attachUrl: '',
+  typeId: null,
+  siteId: null,
+  roomId: null,
+  itemId: null,
+  period: null,
+  contactChannel: '',
+  nextFollowAt: '',
+  weekNo: null,
+  interviewPlace: '',
+  priority: '普通',
+  contactPhone: '',
+  proxyName: '',
+  proxyPhone: '',
+  depositYuan: null,
+  pickupPlace: '',
+  emergencyContact: '',
+  emergencyPhone: '',
+  noticeAck: false,
+  trainingAck: false,
+  insuranceAck: false,
+  meetingAck: false,
+  inviteCode: '',
+  priceNoteAck: false,
+  sponsorAck: false,
+  planAck: false,
+  prereqAck: false,
+  tourNoticeAck: false,
+  wishOrder: 1,
+  volunteerRole: '',
+  companionNames: '',
+  pickupMethod: '',
+  mailAddress: '',
+  certUrgent: false,
+  sealCopies: 1,
+  bindNote: '',
+  invoiceCount: 1,
+  fineYuan: null,
+  visitorCount: 0,
+  awardCertNo: '',
+  vendorQuotes: '',
+  driverName: '',
+  passengerNames: '',
+  laborPlace: '',
+  effectiveOn: '',
+  docRev: '',
+  workStart: '',
+  workEnd: '',
+  issueCopies: 1,
+  signParties: [],
+  trainHours: null,
+  memberChangeNote: '',
+  procureAmount: null,
+  exceptionType: '',
+  visitPurpose: '',
+  rectifyNote: '',
+  fundUseYuan: null,
+  fundUseNote: '',
+  visitOn: '',
+  plagiarismUrl: '',
+  partyStage: '',
+  stageOn: '',
+  observeOn: '',
+  observeNote: '',
+  scheduleImpactNote: '',
+  contractAmount: null,
+  expenseLines: [{ category: '', amount: null, note: '' }],
+  tripLegs: [{ from: '', via: '', to: '', on: '' }],
+  clubMembers: [{ name: '', studentNo: '' }],
+  clubRosterCsv: '',
+  parkingOn: '',
+  renewOn: '',
+  renewNote: '',
+  changeLogNote: '',
+  seatZone: '',
+  projectNo: '',
+  procureRefNo: '',
+  dualReviewerA: '',
+  dualReviewerB: '',
+  shipFeeYuan: null,
+  utilityNote: '',
+  peerUsername: '',
+  interviewResult: '',
+  writtenScore: null,
+  bgCheckNote: '',
+  dealAmountYuan: null,
+  nextAction: '',
+  nextActionDone: false,
+  returnDate: '',
+  defenseResult: '',
+  bankAccount: '',
+  homeVisitFamily: '',
+  homeVisitTalk: '',
+  homeVisitPlan: '',
+  feedbackInterest: '',
+  feedbackConcern: '',
+  feedbackNext: '',
+  recordUrl: '',
+  appraisalComment: '',
+  appraisalGrade: '',
+  companyEval: '',
+  preferredSlot: '',
+  addressType: '',
+  nightUrgent: false,
+  assetCode: '',
+  subscribeProgress: false,
+  audioUrl: '',
+  confidential: false,
+  assignDept: '',
+  resumeEdu: '',
+  resumeExp: '',
+  resumeSkill: '',
+})
 
 const selectedApplyItem = computed(() => {
   const id = form.itemId
@@ -1600,6 +3057,7 @@ const applyItemNotes = computed(() => {
     room: String(it.singleRoomNote || '').trim(),
     planUrl: String(it.planUrl || '').trim(),
     prereqCode: String(it.prereqCode || '').trim(),
+    weather: String(it.weatherNote || '').trim(),
     feeYuan: it.feeYuan,
   }
 })
@@ -1615,6 +3073,9 @@ const needPlanAck = computed(
 const needPrereqAck = computed(
   () => requirePrereqAck.value && !!applyItemNotes.value.prereqCode,
 )
+const needTourNoticeAck = computed(
+  () => requireTourNoticeAck.value && !!applyItemNotes.value.weather,
+)
 watch(
   () => form.itemId,
   () => {
@@ -1622,6 +3083,9 @@ watch(
     form.sponsorAck = false
     form.planAck = false
     form.prereqAck = false
+    form.tourNoticeAck = false
+    form.wishOrder = 1
+    form.volunteerRole = ''
     const fee = Number(applyItemNotes.value.feeYuan)
     if (allowDeposit.value && Number.isFinite(fee) && fee > 0) {
       form.depositYuan = fee
@@ -1638,6 +3102,44 @@ const checkinCode = ref('')
 const checkinLateMinutes = ref(0)
 const progressVisible = ref(false)
 const progressId = ref(null)
+const ccComment = reactive({
+  visible: false,
+  loading: false,
+  row: null,
+  text: '',
+})
+
+function canCcComment(row) {
+  if (!allowApproveCcComment.value || !row) return false
+  const me = (localStorage.getItem('username') || '').trim().toLowerCase()
+  if (!me) return false
+  const raw = String(row.ccUsernames || '')
+  return raw.split(/[,;\s]+/).some((p) => p.trim().toLowerCase() === me)
+}
+
+function openCcComment(row) {
+  ccComment.row = row
+  ccComment.text = ''
+  ccComment.visible = true
+}
+
+async function submitCcComment() {
+  if (!ccComment.row) return
+  const text = (ccComment.text || '').trim()
+  if (!text) {
+    ElMessage.warning('请填写评论')
+    return
+  }
+  ccComment.loading = true
+  try {
+    await http.post(`/api/tickets/${ccComment.row.id}/cc-comment`, { comment: text })
+    ElMessage.success('已提交')
+    ccComment.visible = false
+    load()
+  } finally {
+    ccComment.loading = false
+  }
+}
 
 async function loadLookup() {
   try {
@@ -1749,12 +3251,73 @@ async function onAttach(opt) {
 
 async function resubmitTicket(row) {
   try {
-    await http.post(`/api/tickets/${row.id}/resubmit`, { remark: '' })
+    let attachUrl = ''
+    if (allowAttachKeepOld.value) {
+      try {
+        const { value } = await ElMessageBox.prompt(
+          attachKeepOldHint.value || '如需更换附件可粘贴新地址，留空则沿用原附件',
+          attachKeepOldLabel.value,
+          {
+            confirmButtonText: '重新提交',
+            cancelButtonText: '取消',
+            inputPlaceholder: '附件地址（可选）',
+            inputValue: row.attachUrl || '',
+          },
+        )
+        attachUrl = String(value || '').trim()
+      } catch {
+        return
+      }
+    }
+    await http.post(`/api/tickets/${row.id}/resubmit`, {
+      remark: '',
+      attachUrl: attachUrl || undefined,
+    })
     ElMessage.success('已重新提交，等待受理')
     await load()
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || e?.message || '重新提交失败')
   }
+}
+
+async function openAttachRevs(row) {
+  try {
+    const res = await http.get(`/api/tickets/${row.id}/attach-revs`)
+    const list = res.data?.data || res.data || []
+    if (!list.length) {
+      ElMessage.info('还没有历史附件')
+      return
+    }
+    const lines = list
+      .map((x, i) => `${i + 1}. ${x.createdAt || ''} ${x.attachUrl || ''}`)
+      .join('\n')
+    await ElMessageBox.alert(lines, attachKeepOldLabel.value, { confirmButtonText: '关闭' })
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '加载失败')
+  }
+}
+
+function printVisitorPass(row) {
+  if (!row?.passCode) return
+  const w = window.open('', '_blank', 'width=420,height=560')
+  if (!w) {
+    ElMessage.warning('请允许弹窗后重试')
+    return
+  }
+  const hint = visitorPassPrintHint.value || ''
+  w.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${visitorPassPrintLabel.value}</title>` +
+      '<style>body{font-family:sans-serif;text-align:center;padding:24px}h1{font-size:18px}' +
+      '.code{font-size:22px;font-weight:700;letter-spacing:.08em;margin:16px 0}' +
+      '.hint{color:#64748b;font-size:12px}</style></head><body>' +
+      `<h1>${visitorPassPrintLabel.value}</h1>` +
+      `<p>${row.title || ''}</p>` +
+      `<p class="code">${row.passCode}</p>` +
+      (row.passExpireAt ? `<p>有效至 ${row.passExpireAt}</p>` : '') +
+      (hint ? `<p class="hint">${hint}</p>` : '') +
+      '<script>window.onload=()=>{window.print()}<\/script></body></html>',
+  )
+  w.document.close()
 }
 
 async function load() {
@@ -1765,6 +3328,7 @@ async function load() {
   total.value = res.data.total
   staleFollowDays.value = Number(res.data.staleFollowDays || 0)
   levelSlaDays.value = res.data.levelSlaDays || ''
+  spotCheckToday.value = !!res.data.spotCheckToday
   loadCredit()
 }
 
@@ -1799,6 +3363,54 @@ async function openApply(opts = {}) {
     sponsorAck: false,
     planAck: false,
     prereqAck: false,
+    tourNoticeAck: false,
+    wishOrder: 1,
+    volunteerRole: '',
+    companionNames: '',
+    pickupMethod: '',
+    mailAddress: '',
+    certUrgent: false,
+    sealCopies: 1,
+    bindNote: '',
+    invoiceCount: 1,
+    fineYuan: null,
+    visitorCount: 0,
+    awardCertNo: '',
+    vendorQuotes: '',
+    driverName: '',
+    passengerNames: '',
+    laborPlace: '',
+    effectiveOn: '',
+    docRev: '',
+    workStart: '',
+    workEnd: '',
+    issueCopies: 1,
+    signParties: [],
+    trainHours: null,
+    memberChangeNote: '',
+    procureAmount: null,
+    exceptionType: '',
+    visitPurpose: '',
+    rectifyNote: '',
+    fundUseYuan: null,
+    fundUseNote: '',
+    visitOn: '',
+    plagiarismUrl: '',
+    partyStage: '',
+    stageOn: '',
+    observeOn: '',
+    observeNote: '',
+    scheduleImpactNote: '',
+    contractAmount: null,
+    expenseLines: [{ category: '', amount: null, note: '' }],
+    tripLegs: [{ from: '', via: '', to: '', on: '' }],
+    clubMembers: [{ name: '', studentNo: '' }],
+    clubRosterCsv: '',
+    parkingOn: '',
+    renewOn: '',
+    renewNote: '',
+    changeLogNote: '',
+    seatZone: '',
     projectNo: '',
     procureRefNo: '',
     dualReviewerA: '',
@@ -1923,6 +3535,14 @@ async function submit(asDraft = false) {
       ElMessage.warning(prereqAckLabel.value || '请确认已具备先修基础')
       return
     }
+    if (needTourNoticeAck.value && !form.tourNoticeAck) {
+      ElMessage.warning(tourNoticeAckLabel.value || '请确认已阅读出团须知')
+      return
+    }
+    if (allowWishOrder.value && !(form.wishOrder === 1 || form.wishOrder === 2)) {
+      ElMessage.warning(wishOrderHint.value || '请选择志愿序')
+      return
+    }
     if (requirePeerConfirm.value && !(form.peerUsername || '').trim()) {
       ElMessage.warning(`请填写${peerUsernameLabel.value}`)
       return
@@ -2001,6 +3621,301 @@ async function submit(asDraft = false) {
     if (needSponsorAck.value) body.sponsorAck = !!form.sponsorAck
     if (needPlanAck.value) body.planAck = !!form.planAck
     if (needPrereqAck.value) body.prereqAck = !!form.prereqAck
+    if (needTourNoticeAck.value) body.tourNoticeAck = !!form.tourNoticeAck
+    if (allowWishOrder.value) body.wishOrder = form.wishOrder === 2 ? 2 : 1
+    if (allowVolunteerRole.value && (form.volunteerRole || '').trim()) {
+      body.volunteerRole = form.volunteerRole.trim()
+    }
+    if (allowCompanions.value && (form.companionNames || '').trim()) {
+      body.companionNames = form.companionNames.trim()
+    }
+    if (allowVisitorCount.value && Number(form.visitorCount) > 0) {
+      if (!(form.companionNames || '').trim()) {
+        ElMessage.warning(`有随行请填写${companionNamesLabel.value}`)
+        return
+      }
+      body.companionNames = form.companionNames.trim()
+    }
+    if (allowCertPickup.value) {
+      if (!(form.pickupMethod || '').trim()) {
+        ElMessage.warning(certPickupHint.value || '请选择领取方式')
+        return
+      }
+      body.pickupMethod = form.pickupMethod.trim()
+      if (form.pickupMethod === '邮寄') {
+        if (!(form.mailAddress || '').trim()) {
+          ElMessage.warning(`请填写${mailAddressLabel.value}`)
+          return
+        }
+        body.mailAddress = form.mailAddress.trim()
+      }
+    }
+    if (allowCertUrgent.value) body.certUrgent = !!form.certUrgent
+    if (allowSealCopies.value) {
+      if (!(form.sealCopies >= 1)) {
+        ElMessage.warning(`请填写${sealCopiesLabel.value}`)
+        return
+      }
+      body.sealCopies = form.sealCopies
+      if ((form.bindNote || '').trim()) body.bindNote = form.bindNote.trim()
+    }
+    if (allowExpenseInvoice.value) {
+      if (!(form.invoiceCount >= 1)) {
+        ElMessage.warning(`请填写${invoiceCountLabel.value}`)
+        return
+      }
+      if (!(Number(form.fineYuan) > 0)) {
+        ElMessage.warning(`请填写${expenseAmountLabel.value}`)
+        return
+      }
+      body.invoiceCount = form.invoiceCount
+      body.fineYuan = form.fineYuan
+    }
+    if (allowVisitorCount.value && form.visitorCount != null && form.visitorCount !== '') {
+      body.visitorCount = form.visitorCount
+    }
+    if (allowAwardCertNo.value) {
+      if (!(form.awardCertNo || '').trim()) {
+        ElMessage.warning(awardCertNoHint.value || `请填写${awardCertNoLabel.value}`)
+        return
+      }
+      body.awardCertNo = form.awardCertNo.trim()
+    }
+    if (allowVendorQuotes.value) {
+      const raw = (form.vendorQuotes || '').trim()
+      if (!raw) {
+        ElMessage.warning(vendorQuotesHint.value || `请填写${vendorQuotesLabel.value}`)
+        return
+      }
+      const n = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).length
+      if (minVendorQuotes.value > 0 && n < minVendorQuotes.value) {
+        ElMessage.warning(minVendorQuotesHint.value || `比价供应商至少 ${minVendorQuotes.value} 家`)
+        return
+      }
+      body.vendorQuotes = raw
+    }
+    if (allowFleetCrew.value) {
+      if (!(form.driverName || '').trim()) {
+        ElMessage.warning(fleetCrewHint.value || `请填写${driverNameLabel.value}`)
+        return
+      }
+      body.driverName = form.driverName.trim()
+      if ((form.passengerNames || '').trim()) {
+        body.passengerNames = form.passengerNames.trim()
+      }
+    }
+    if (allowLaborPlace.value) {
+      if (!(form.laborPlace || '').trim()) {
+        ElMessage.warning(laborPlaceHint.value || `请填写${laborPlaceLabel.value}`)
+        return
+      }
+      body.laborPlace = form.laborPlace.trim()
+    }
+    if (allowEffectiveOn.value) {
+      if (!(form.effectiveOn || '').trim()) {
+        ElMessage.warning(effectiveOnHint.value || `请选择${effectiveOnLabel.value}`)
+        return
+      }
+      body.effectiveOn = form.effectiveOn.trim()
+    }
+    if (allowDocRev.value) {
+      if (!(form.docRev || '').trim()) {
+        ElMessage.warning(docRevHint.value || `请填写${docRevLabel.value}`)
+        return
+      }
+      body.docRev = form.docRev.trim()
+    }
+    if (allowFitoutQuiet.value) {
+      if (!(form.workStart || '').trim() || !(form.workEnd || '').trim()) {
+        ElMessage.warning(fitoutQuietHint.value || `请选择${fitoutWindowLabel.value}`)
+        return
+      }
+      body.workStart = form.workStart.trim()
+      body.workEnd = form.workEnd.trim()
+    }
+    if (allowIssueCopies.value) {
+      const n = Number(form.issueCopies)
+      if (!Number.isFinite(n) || n < 1) {
+        ElMessage.warning(issueCopiesHint.value || `请填写${issueCopiesLabel.value}`)
+        return
+      }
+      body.issueCopies = n
+    }
+    if (allowSignParties.value) {
+      const parts = Array.isArray(form.signParties) ? form.signParties.filter(Boolean) : []
+      if (!parts.length) {
+        ElMessage.warning(signPartiesHint.value || `请勾选${signPartiesLabel.value}`)
+        return
+      }
+      body.signParties = parts.join('、')
+    }
+    if (allowTrainHours.value) {
+      const h = Number(form.trainHours)
+      if (!Number.isFinite(h) || h <= 0) {
+        ElMessage.warning(trainHoursHint.value || `请填写${trainHoursLabel.value}`)
+        return
+      }
+      body.trainHours = h
+    }
+    if (allowMemberChange.value) {
+      if (!(form.memberChangeNote || '').trim()) {
+        ElMessage.warning(memberChangeNoteHint.value || `请填写${memberChangeNoteLabel.value}`)
+        return
+      }
+      body.memberChangeNote = form.memberChangeNote.trim()
+    }
+    if (allowProcureBudget.value) {
+      const n = Number(form.procureAmount)
+      if (!Number.isFinite(n) || n <= 0) {
+        ElMessage.warning(procureBudgetHint.value || `请填写${procureAmountLabel.value}`)
+        return
+      }
+      body.procureAmount = n
+    }
+    if (allowCheckinException.value) {
+      if (!(form.exceptionType || '').trim()) {
+        ElMessage.warning(exceptionTypeHint.value || `请选择${exceptionTypeLabel.value}`)
+        return
+      }
+      body.exceptionType = form.exceptionType.trim()
+    }
+    if (allowVisitPurpose.value) {
+      if (!(form.visitPurpose || '').trim()) {
+        ElMessage.warning(visitPurposeHint.value || `请选择${visitPurposeLabel.value}`)
+        return
+      }
+      body.visitPurpose = form.visitPurpose.trim()
+    }
+    if (allowFitoutRectify.value) {
+      if (!(form.rectifyNote || '').trim()) {
+        ElMessage.warning(rectifyNoteHint.value || `请填写${rectifyNoteLabel.value}`)
+        return
+      }
+      body.rectifyNote = form.rectifyNote.trim()
+    }
+    if (allowProjFundUse.value) {
+      const n = Number(form.fundUseYuan)
+      if (!Number.isFinite(n) || n <= 0) {
+        ElMessage.warning(fundUseHint.value || `请填写${fundUseYuanLabel.value}`)
+        return
+      }
+      if (!(form.fundUseNote || '').trim()) {
+        ElMessage.warning(fundUseHint.value || `请填写${fundUseNoteLabel.value}`)
+        return
+      }
+      body.fundUseYuan = n
+      body.fundUseNote = form.fundUseNote.trim()
+    }
+    if (allowVisitSlotRemain.value) {
+      if (!(form.visitOn || '').trim()) {
+        ElMessage.warning(visitSlotRemainHint.value || `请选择${visitOnLabel.value}`)
+        return
+      }
+      body.visitOn = String(form.visitOn).trim().slice(0, 10)
+    }
+    if (allowPlagiarismUrl.value) {
+      const url = (form.plagiarismUrl || '').trim()
+      if (!url || !(url.startsWith('http://') || url.startsWith('https://'))) {
+        ElMessage.warning(plagiarismUrlHint.value || `请填写以 http:// 或 https:// 开头的${plagiarismUrlLabel.value}`)
+        return
+      }
+      body.plagiarismUrl = url
+    }
+    if (allowPartyStage.value) {
+      if (!(form.partyStage || '').trim() || !(form.stageOn || '').trim()) {
+        ElMessage.warning(partyStageHint.value || `请选择${partyStageLabel.value}并填写${stageOnLabel.value}`)
+        return
+      }
+      body.partyStage = form.partyStage.trim()
+      body.stageOn = String(form.stageOn).trim().slice(0, 10)
+    }
+    if (allowEvalObserve.value) {
+      if (!(form.observeOn || '').trim() || !(form.observeNote || '').trim()) {
+        ElMessage.warning(evalObserveHint.value || `请填写${observeOnLabel.value}和${observeNoteLabel.value}`)
+        return
+      }
+      body.observeOn = String(form.observeOn).trim().slice(0, 10)
+      body.observeNote = form.observeNote.trim()
+    }
+    if (allowScheduleImpact.value) {
+      if (!(form.scheduleImpactNote || '').trim()) {
+        ElMessage.warning(scheduleImpactHint.value || `请填写${scheduleImpactNoteLabel.value}`)
+        return
+      }
+      body.scheduleImpactNote = form.scheduleImpactNote.trim()
+    }
+    if (allowContractAmount.value) {
+      const n = Number(form.contractAmount)
+      if (!Number.isFinite(n) || n <= 0) {
+        ElMessage.warning(contractAmountHint.value || `请填写${contractAmountLabel.value}`)
+        return
+      }
+      body.contractAmount = n
+    }
+    if (allowExpenseLines.value) {
+      const lines = (form.expenseLines || [])
+        .map((x) => ({
+          category: (x.category || '').trim(),
+          amount: Number(x.amount),
+          note: (x.note || '').trim(),
+        }))
+        .filter((x) => x.category || x.amount || x.note)
+      if (!lines.length || lines.some((x) => !x.category || !(x.amount > 0))) {
+        ElMessage.warning(expenseLinesHint.value || `请完整填写${expenseLinesLabel.value}`)
+        return
+      }
+      body.expenseLines = lines
+    }
+    if (allowTripLegs.value) {
+      const legs = (form.tripLegs || [])
+        .map((x) => ({
+          from: (x.from || '').trim(),
+          via: (x.via || '').trim(),
+          to: (x.to || '').trim(),
+          on: String(x.on || '').trim().slice(0, 10),
+        }))
+        .filter((x) => x.from || x.to || x.on || x.via)
+      if (!legs.length || legs.some((x) => !x.from || !x.to || !x.on)) {
+        ElMessage.warning(tripLegsHint.value || `请完整填写${tripLegsLabel.value}`)
+        return
+      }
+      body.tripLegs = legs
+    }
+    if (allowClubRoster.value) {
+      const members = (form.clubMembers || [])
+        .map((x) => ({ name: (x.name || '').trim(), studentNo: (x.studentNo || '').trim() }))
+        .filter((x) => x.name || x.studentNo)
+      if (!members.length || members.some((x) => !x.name)) {
+        ElMessage.warning(clubRosterHint.value || `请完整填写${clubRosterLabel.value}`)
+        return
+      }
+      body.clubMembers = members
+    }
+    if (allowCarpassParkingMutex.value) {
+      if (!(form.parkingOn || '').trim()) {
+        ElMessage.warning(carpassParkingMutexHint.value || `请选择${parkingOnLabel.value}`)
+        return
+      }
+      body.parkingOn = String(form.parkingOn).trim().slice(0, 10)
+    }
+    if (allowContractRenew.value) {
+      if (!(form.renewOn || '').trim() || !(form.renewNote || '').trim()) {
+        ElMessage.warning(contractRenewHint.value || `请填写${renewOnLabel.value}和${renewNoteLabel.value}`)
+        return
+      }
+      body.renewOn = String(form.renewOn).trim().slice(0, 10)
+      body.renewNote = form.renewNote.trim()
+    }
+    if (allowProjChangeLog.value) {
+      if (!(form.changeLogNote || '').trim()) {
+        ElMessage.warning(projChangeLogHint.value || `请填写${changeLogNoteLabel.value}`)
+        return
+      }
+      body.changeLogNote = form.changeLogNote.trim()
+    }
+    if (allowSeatZone.value && (form.seatZone || '').trim()) {
+      body.seatZone = form.seatZone.trim()
+    }
     if (allowProjectNo.value && (form.projectNo || '').trim()) body.projectNo = form.projectNo.trim()
     if (allowProcureRef.value && (form.procureRefNo || '').trim()) {
       body.procureRefNo = form.procureRefNo.trim()
@@ -2136,12 +4051,19 @@ async function withdraw(row) {
 }
 
 async function finish(row) {
-  if (requireReturnAttach.value || requireFaultReason.value || requireCloseSummary.value || requireCloseAttach.value) {
+  if (requireReturnAttach.value || requireFaultReason.value || requireCloseSummary.value || requireCloseAttach.value || allowFleetMileage.value || allowCompHours.value || allowReturnFuel.value || allowFleetViolation.value || allowProcureReturn.value) {
     returnDlg.row = row
     returnDlg.attachUrl = ''
     returnDlg.faultReason = row.faultReason || ''
     returnDlg.closeSummary = row.closeSummary || ''
     returnDlg.partsNote = row.partsNote || ''
+    returnDlg.mileageKm = row.mileageKm != null ? Number(row.mileageKm) : null
+    returnDlg.fuelNote = row.fuelNote || ''
+    returnDlg.compHours = row.compHours != null ? Number(row.compHours) : null
+    returnDlg.returnFuel = row.returnFuel != null ? Number(row.returnFuel) : null
+    returnDlg.violationPerson = row.violationPerson || ''
+    returnDlg.returnFail = !!row.returnFail
+    returnDlg.returnNote = row.returnNote || ''
     returnDlg.visible = true
     return
   }
@@ -2173,6 +4095,33 @@ async function confirmReturn() {
     ElMessage.warning('请先上传结单附件')
     return
   }
+  if (allowFleetMileage.value && !(Number(returnDlg.mileageKm) > 0)) {
+    ElMessage.warning(`请填写大于 0 的${mileageLabel.value}`)
+    return
+  }
+  if (allowFleetMileage.value && !(returnDlg.fuelNote || '').trim()) {
+    ElMessage.warning(`请填写${fuelNoteLabel.value}`)
+    return
+  }
+  if (allowCompHours.value && !(Number(returnDlg.compHours) > 0)) {
+    ElMessage.warning(`请填写大于 0 的${compHoursLabel.value}`)
+    return
+  }
+  if (allowReturnFuel.value) {
+    const fuel = Number(returnDlg.returnFuel)
+    if (!(fuel >= 0 && fuel <= 100)) {
+      ElMessage.warning(`请填写 0–100 的${returnFuelLabel.value}`)
+      return
+    }
+  }
+  if (allowFleetViolation.value && !(returnDlg.violationPerson || '').trim()) {
+    ElMessage.warning(violationPersonHint.value || `请填写${violationPersonLabel.value}`)
+    return
+  }
+  if (allowProcureReturn.value && returnDlg.returnFail && !(returnDlg.returnNote || '').trim()) {
+    ElMessage.warning(procureReturnHint.value || `请填写${returnNoteLabel.value}`)
+    return
+  }
   returnDlg.loading = true
   try {
     await http.post(`/api/tickets/${returnDlg.row.id}/complete`, {
@@ -2181,6 +4130,13 @@ async function confirmReturn() {
       faultReason: returnDlg.faultReason || undefined,
       closeSummary: returnDlg.closeSummary || undefined,
       partsNote: returnDlg.partsNote || undefined,
+      mileageKm: allowFleetMileage.value ? returnDlg.mileageKm : undefined,
+      fuelNote: allowFleetMileage.value ? (returnDlg.fuelNote || undefined) : undefined,
+      compHours: allowCompHours.value ? returnDlg.compHours : undefined,
+      returnFuel: allowReturnFuel.value ? returnDlg.returnFuel : undefined,
+      violationPerson: allowFleetViolation.value ? (returnDlg.violationPerson || undefined) : undefined,
+      returnFail: allowProcureReturn.value ? !!returnDlg.returnFail : undefined,
+      returnNote: allowProcureReturn.value ? (returnDlg.returnNote || undefined) : undefined,
     })
     ElMessage.success('已更新')
     returnDlg.visible = false
@@ -2276,6 +4232,7 @@ onMounted(async () => {
 .field-hint { margin: 6px 0 0; color: #64748b; font-size: 12px; }
 .loc-row { display: flex; gap: 8px; width: 100%; }
 .loc-row .el-input { flex: 1; }
+.line-row { display: flex; gap: 8px; width: 100%; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
 .hint-inline { margin: -4px 0 12px; color: var(--portal-muted, #64748b); font-size: 12px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
@@ -2300,6 +4257,12 @@ onMounted(async () => {
 .sub a { color: #0369a1; }
 .tip { margin: 6px 0 0; color: var(--portal-muted, #475569); font-size: 13px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.gallery-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery-item {
+  width: 96px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+}
+.gallery-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
 .rated { font-size: 12px; color: #b45309; }
 .attach-row { display: flex; gap: 12px; align-items: center; }
 .attach-row a { font-size: 13px; color: #0369a1; }

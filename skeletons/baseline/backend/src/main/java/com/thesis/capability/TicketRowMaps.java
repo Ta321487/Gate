@@ -2,6 +2,7 @@ package com.thesis.capability;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ final class TicketRowMaps {
         m.put("rating", rating);
         m.put("ratingRemark", TicketSql.safeStr(rs, "rating_remark"));
         m.put("ratedAt", TicketSql.fmt(TicketSql.safeTs(rs, "rated_at")));
-        m.put("ratingDimsJson", TicketSql.safeStr(rs, "rating_dims_json"));
+        m.put("ratingDimsJson", "");
         try {
             int anon = rs.getInt("rating_anonymous");
             m.put("ratingAnonymous", !rs.wasNull() && anon == 1);
@@ -49,6 +50,10 @@ final class TicketRowMaps {
         }
         m.put("checkedInAt", TicketSql.fmt(TicketSql.safeTs(rs, "checked_in_at")));
         m.put("passCode", TicketSql.safeStr(rs, "pass_code"));
+        try {
+            m.put("passExpireAt", TicketSql.fmt(TicketSql.safeTs(rs, "pass_expire_at")));
+        } catch (Exception ignored) {
+        }
         int renewCount = 0;
         try {
             renewCount = rs.getInt("renew_count");
@@ -149,6 +154,12 @@ final class TicketRowMaps {
                 m.put("endAt", item.get("endAt"));
                 m.put("applyDeadlineAt", item.get("applyDeadlineAt"));
             }
+            if (item != null && item.get("surveyFormId") != null) {
+                Object sf = item.get("surveyFormId");
+                if (sf instanceof Number n && n.longValue() > 0) {
+                    m.put("surveyFormId", n.longValue());
+                }
+            }
         }
         int weekNo = 0;
         try {
@@ -196,6 +207,183 @@ final class TicketRowMaps {
         putFollowOptStr(m, rs, "parts_note", "partsNote");
         putFollowOptStr(m, rs, "serial_no", "serialNo");
         putFollowOptStr(m, rs, "helper_username", "helperUsername");
+            putFollowOptStr(m, rs, "cc_usernames", "ccUsernames");
+            putFollowOptStr(m, rs, "approve_attach_url", "approveAttachUrl");
+            putFollowOptStr(m, rs, "pickup_method", "pickupMethod");
+            putFollowOptStr(m, rs, "mail_address", "mailAddress");
+            putFollowOptStr(m, rs, "express_no", "expressNo");
+            putFollowOptStr(m, rs, "bind_note", "bindNote");
+            putFollowOptStr(m, rs, "seal_copy_nos", "sealCopyNos");
+            putFollowOptStr(m, rs, "fuel_note", "fuelNote");
+            try {
+                if (TicketStore.hasColumn("seal_witness_ack")) {
+                    int sw = rs.getInt("seal_witness_ack");
+                    if (!rs.wasNull()) m.put("sealWitnessAck", sw != 0);
+                }
+            } catch (Exception ignored) {}
+            try {
+                int cu = rs.getInt("cert_urgent");
+                if (!rs.wasNull()) m.put("certUrgent", cu == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                int sc = rs.getInt("seal_copies");
+                if (!rs.wasNull()) m.put("sealCopies", sc);
+            } catch (Exception ignored) {
+            }
+            try {
+                Object mk = rs.getObject("mileage_km");
+                if (mk instanceof Number n) m.put("mileageKm", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                int ic = rs.getInt("invoice_count");
+                if (!rs.wasNull()) m.put("invoiceCount", ic);
+            } catch (Exception ignored) {
+            }
+            try {
+                int vc = rs.getInt("visitor_count");
+                if (!rs.wasNull()) m.put("visitorCount", vc);
+            } catch (Exception ignored) {
+            }
+            putFollowOptStr(m, rs, "award_cert_no", "awardCertNo");
+            putFollowOptStr(m, rs, "vendor_quotes", "vendorQuotes");
+
+            putFollowOptStr(m, rs, "driver_name", "driverName");
+            putFollowOptStr(m, rs, "passenger_names", "passengerNames");
+            try {
+                Object ch = rs.getObject("comp_hours");
+                if (ch instanceof Number n) m.put("compHours", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                Object rf = rs.getObject("return_fuel");
+                if (rf instanceof Number n) m.put("returnFuel", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            putFollowOptStr(m, rs, "labor_place", "laborPlace");
+            putFollowOptStr(m, rs, "effective_on", "effectiveOn");
+            putFollowOptStr(m, rs, "cert_issue_no", "certIssueNo");
+            putFollowOptStr(m, rs, "doc_rev", "docRev");
+            putFollowOptStr(m, rs, "work_start", "workStart");
+            putFollowOptStr(m, rs, "work_end", "workEnd");
+            putFollowOptStr(m, rs, "sign_parties", "signParties");
+            putFollowOptStr(m, rs, "member_change_note", "memberChangeNote");
+            putFollowOptStr(m, rs, "exception_type", "exceptionType");
+            putFollowOptStr(m, rs, "visit_purpose", "visitPurpose");
+            putFollowOptStr(m, rs, "violation_person", "violationPerson");
+            putFollowOptStr(m, rs, "rectify_note", "rectifyNote");
+            putFollowOptStr(m, rs, "return_note", "returnNote");
+            putFollowOptStr(m, rs, "fund_use_note", "fundUseNote");
+            putFollowOptStr(m, rs, "visit_on", "visitOn");
+            putFollowOptStr(m, rs, "plagiarism_url", "plagiarismUrl");
+            putFollowOptStr(m, rs, "party_stage", "partyStage");
+            putFollowOptStr(m, rs, "stage_on", "stageOn");
+            putFollowOptStr(m, rs, "observe_on", "observeOn");
+            putFollowOptStr(m, rs, "observe_note", "observeNote");
+            putFollowOptStr(m, rs, "schedule_impact_note", "scheduleImpactNote");
+            putFollowOptStr(m, rs, "change_log_note", "changeLogNote");
+            putFollowOptStr(m, rs, "verify_code", "verifyCode");
+            putFollowOptStr(m, rs, "checkin_proxy_by", "checkinProxyBy");
+            putFollowOptStr(m, rs, "parking_on", "parkingOn");
+            putFollowOptStr(m, rs, "renew_on", "renewOn");
+            putFollowOptStr(m, rs, "renew_note", "renewNote");
+            putFollowOptStr(m, rs, "pickup_redeem_code", "pickupRedeemCode");
+            putFollowOptStr(m, rs, "objection_note", "objectionNote");
+            try {
+                m.put("objectionDueAt", TicketSql.fmt(TicketSql.safeTs(rs, "objection_due_at")));
+            } catch (Exception ignored) {
+            }
+            try {
+                m.put("objectionAt", TicketSql.fmt(TicketSql.safeTs(rs, "objection_at")));
+            } catch (Exception ignored) {
+            }
+            try {
+                int rf = rs.getInt("return_fail");
+                if (!rs.wasNull()) m.put("returnFail", rf == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                int wi = rs.getInt("walk_in");
+                if (!rs.wasNull()) m.put("walkIn", wi == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                int pr = rs.getInt("pickup_redeemed");
+                if (!rs.wasNull()) m.put("pickupRedeemed", pr == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                Object fu = rs.getObject("fund_use_yuan");
+                if (fu instanceof Number n) m.put("fundUseYuan", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            putFollowOptStr(m, rs, "return_note", "returnNote");
+            putFollowOptStr(m, rs, "fund_use_note", "fundUseNote");
+            putFollowOptStr(m, rs, "visit_on", "visitOn");
+            putFollowOptStr(m, rs, "plagiarism_url", "plagiarismUrl");
+            putFollowOptStr(m, rs, "party_stage", "partyStage");
+            putFollowOptStr(m, rs, "stage_on", "stageOn");
+            putFollowOptStr(m, rs, "observe_on", "observeOn");
+            putFollowOptStr(m, rs, "observe_note", "observeNote");
+            putFollowOptStr(m, rs, "schedule_impact_note", "scheduleImpactNote");
+            putFollowOptStr(m, rs, "change_log_note", "changeLogNote");
+            putFollowOptStr(m, rs, "verify_code", "verifyCode");
+            putFollowOptStr(m, rs, "checkin_proxy_by", "checkinProxyBy");
+            putFollowOptStr(m, rs, "parking_on", "parkingOn");
+            putFollowOptStr(m, rs, "renew_on", "renewOn");
+            putFollowOptStr(m, rs, "renew_note", "renewNote");
+            putFollowOptStr(m, rs, "pickup_redeem_code", "pickupRedeemCode");
+            putFollowOptStr(m, rs, "objection_note", "objectionNote");
+            try {
+                m.put("objectionDueAt", TicketSql.fmt(TicketSql.safeTs(rs, "objection_due_at")));
+            } catch (Exception ignored) {
+            }
+            try {
+                m.put("objectionAt", TicketSql.fmt(TicketSql.safeTs(rs, "objection_at")));
+            } catch (Exception ignored) {
+            }
+            try {
+                int rf = rs.getInt("return_fail");
+                if (!rs.wasNull()) m.put("returnFail", rf == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                int wi = rs.getInt("walk_in");
+                if (!rs.wasNull()) m.put("walkIn", wi == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                int pr = rs.getInt("pickup_redeemed");
+                if (!rs.wasNull()) m.put("pickupRedeemed", pr == 1);
+            } catch (Exception ignored) {
+            }
+            try {
+                Object fu = rs.getObject("fund_use_yuan");
+                if (fu instanceof Number n) m.put("fundUseYuan", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                Object ca = rs.getObject("contract_amount");
+                if (ca instanceof Number n) m.put("contractAmount", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                Object ic = rs.getObject("issue_copies");
+                if (ic instanceof Number n) m.put("issueCopies", n.intValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                Object th = rs.getObject("train_hours");
+                if (th instanceof Number n) m.put("trainHours", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+            try {
+                Object pa = rs.getObject("procure_amount");
+                if (pa instanceof Number n) m.put("procureAmount", n.doubleValue());
+            } catch (Exception ignored) {
+            }
+
         putFollowOptStr(m, rs, "audio_url", "audioUrl");
         putFollowOptStr(m, rs, "rating_tags", "ratingTags");
         putFollowOptStr(m, rs, "address_type", "addressType");
@@ -362,6 +550,38 @@ final class TicketRowMaps {
         } catch (Exception ignored) {
         }
         try {
+            int tnack = rs.getInt("tour_notice_ack");
+            if (!rs.wasNull()) m.put("tourNoticeAck", tnack == 1);
+        } catch (Exception ignored) {
+        }
+        try {
+            int wo = rs.getInt("wish_order");
+            if (!rs.wasNull() && wo > 0) m.put("wishOrder", wo);
+        } catch (Exception ignored) {
+        }
+        try {
+            String vr = TicketSql.safeStr(rs, "volunteer_role");
+            if (vr != null && !vr.isBlank()) m.put("volunteerRole", vr);
+        } catch (Exception ignored) {
+        }
+        try {
+            String sz = TicketSql.safeStr(rs, "seat_zone");
+            if (sz != null && !sz.isBlank()) m.put("seatZone", sz);
+        } catch (Exception ignored) {
+        }
+        try {
+            String pg = TicketSql.safeStr(rs, "post_gallery_json");
+            if (pg != null && !pg.isBlank()) {
+                m.put("postGalleryImages", parsePostGallery(pg));
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            int cwa = rs.getInt("credit_writeback_ack");
+            if (!rs.wasNull()) m.put("creditWritebackAck", cwa == 1);
+        } catch (Exception ignored) {
+        }
+        try {
             String peer = TicketSql.safeStr(rs, "peer_username");
             if (peer != null && !peer.isBlank()) m.put("peerUsername", peer);
         } catch (Exception ignored) {
@@ -381,6 +601,7 @@ final class TicketRowMaps {
             if (pref != null && !pref.isBlank()) m.put("procureRefNo", pref);
         } catch (Exception ignored) {
         }
+        TicketLineOps.attach(m);
         return m;
     }
 
@@ -402,5 +623,28 @@ final class TicketRowMaps {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private static List<String> parsePostGallery(String raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return out;
+        String s = raw.trim();
+        if (!s.startsWith("[")) {
+            out.add(s);
+            return out;
+        }
+        // 轻量解析：按引号切片，避免再引 Jackson
+        int i = 0;
+        while (i < s.length()) {
+            int a = s.indexOf('"', i);
+            if (a < 0) break;
+            int b = s.indexOf('"', a + 1);
+            if (b < 0) break;
+            String u = s.substring(a + 1, b).replace("\\\"", "\"").replace("\\\\", "\\").trim();
+            if (!u.isBlank()) out.add(u);
+            i = b + 1;
+            if (out.size() >= 9) break;
+        }
+        return out;
     }
 }

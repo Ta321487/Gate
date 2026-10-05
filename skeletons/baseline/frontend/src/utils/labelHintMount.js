@@ -55,6 +55,12 @@ export const MY_TICKETS_HINT_KEYS = [
   'leaveSplitHint',
   'leaveOverlapHint',
   'rankSwitchHint',
+  'certFormPrintHint',
+  'sealFormPrintHint',
+  'projMidFormPrintHint',
+  'ethicOpinionPrintHint',
+  'expenseAttachCountHint',
+  'fleetDriverCertHint',
 ]
 
 export const RECORDS_HINT_KEYS = [
@@ -65,6 +71,11 @@ export const RECORDS_HINT_KEYS = [
   'closedStackPrintHint',
   'gradePrintHint',
   'equipQrPrintHint',
+  'sealLedgerExportHint',
+  'certFormPrintHint',
+  'sealFormPrintHint',
+  'projMidFormPrintHint',
+  'ethicOpinionPrintHint',
 ]
 
 export const ARCHIVE_ADMIN_HINT_KEYS = [

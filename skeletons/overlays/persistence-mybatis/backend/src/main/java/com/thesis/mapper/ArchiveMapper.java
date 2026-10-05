@@ -122,6 +122,53 @@ public interface ArchiveMapper {
             + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')")
     int expirePastExpireOnStage(@Param("itemTable") String itemTable);
 
+    @Select("SELECT id, title, expire_on FROM `${itemTable}` "
+            + "WHERE status='available' "
+            + "AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
+            + "AND LEFT(TRIM(expire_on),10) > DATE_FORMAT(CURDATE(),'%Y-%m-%d') "
+            + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL #{days} DAY),'%Y-%m-%d') "
+            + "AND expire_soon_notified_at IS NULL "
+            + "LIMIT 50")
+    List<Map<String, Object>> listExpireSoon(
+            @Param("itemTable") String itemTable, @Param("days") int days);
+
+    @Select("SELECT id, title, inspect_expire_on AS expire_on FROM `${itemTable}` "
+            + "WHERE status='available' "
+            + "AND inspect_expire_on IS NOT NULL AND TRIM(inspect_expire_on)<>'' "
+            + "AND LEFT(TRIM(inspect_expire_on),10) > DATE_FORMAT(CURDATE(),'%Y-%m-%d') "
+            + "AND LEFT(TRIM(inspect_expire_on),10) <= DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL #{days} DAY),'%Y-%m-%d') "
+            + "AND expire_soon_notified_at IS NULL "
+            + "LIMIT 50")
+    List<Map<String, Object>> listInspectExpireSoon(
+            @Param("itemTable") String itemTable, @Param("days") int days);
+
+    @Select("SELECT id, title, mid_due_on AS expire_on FROM `${itemTable}` "
+            + "WHERE status='available' "
+            + "AND mid_due_on IS NOT NULL AND TRIM(mid_due_on)<>'' "
+            + "AND LEFT(TRIM(mid_due_on),10) > DATE_FORMAT(CURDATE(),'%Y-%m-%d') "
+            + "AND LEFT(TRIM(mid_due_on),10) <= DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL #{days} DAY),'%Y-%m-%d') "
+            + "AND expire_soon_notified_at IS NULL "
+            + "LIMIT 50")
+    List<Map<String, Object>> listMidDueSoon(
+            @Param("itemTable") String itemTable, @Param("days") int days);
+
+    @Select("SELECT id, title, final_due_on AS expire_on FROM `${itemTable}` "
+            + "WHERE status='available' "
+            + "AND final_due_on IS NOT NULL AND TRIM(final_due_on)<>'' "
+            + "AND LEFT(TRIM(final_due_on),10) > DATE_FORMAT(CURDATE(),'%Y-%m-%d') "
+            + "AND LEFT(TRIM(final_due_on),10) <= DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL #{days} DAY),'%Y-%m-%d') "
+            + "AND expire_soon_notified_at IS NULL "
+            + "LIMIT 50")
+    List<Map<String, Object>> listFinalDueSoon(
+            @Param("itemTable") String itemTable, @Param("days") int days);
+
+    @Update("UPDATE `${itemTable}` SET train_hours_total=IFNULL(train_hours_total,0)+#{hours} WHERE id=#{id}")
+    int addTrainHours(
+            @Param("itemTable") String itemTable, @Param("id") long id, @Param("hours") double hours);
+
+    @Update("UPDATE `${itemTable}` SET expire_soon_notified_at=NOW() WHERE id=#{id}")
+    int markExpireSoonNotified(@Param("itemTable") String itemTable, @Param("id") long id);
+
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,
             @Param("mineCol") String mineCol,
@@ -207,6 +254,19 @@ public interface ArchiveMapper {
 
     @Select("SELECT id FROM `${tagTable}` WHERE name=#{name} LIMIT 1")
     Long selectTagIdByName(@Param("tagTable") String tagTable, @Param("name") String name);
+
+    @Delete("DELETE FROM item_equipment WHERE item_id=#{itemId}")
+    int deleteItemEquipment(@Param("itemId") long itemId);
+
+    @Insert("INSERT IGNORE INTO item_equipment (item_id, equipment_id) VALUES (#{itemId}, #{equipmentId})")
+    int insertItemEquipment(@Param("itemId") long itemId, @Param("equipmentId") long equipmentId);
+
+    @Select("SELECT id FROM sys_equipment_dict WHERE name=#{name} AND enabled=1 LIMIT 1")
+    Long selectEquipmentIdByName(@Param("name") String name);
+
+    @Select("SELECT d.name FROM item_equipment ie JOIN sys_equipment_dict d ON d.id=ie.equipment_id "
+            + "WHERE ie.item_id=#{itemId} ORDER BY d.sort_order, d.id")
+    List<String> listItemEquipmentNames(@Param("itemId") long itemId);
 
     int countLowStock(
             @Param("itemTable") String itemTable,

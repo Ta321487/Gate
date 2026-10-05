@@ -3,7 +3,9 @@ package com.thesis.capability;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.TicketMapper;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 final class TicketRowMaps {
@@ -43,7 +45,7 @@ final class TicketRowMaps {
         m.put("rating", rating);
         m.put("ratingRemark", str(first(raw, "ratingRemark", "rating_remark")));
         m.put("ratedAt", fmt(first(raw, "ratedAt", "rated_at")));
-        m.put("ratingDimsJson", str(first(raw, "ratingDimsJson", "rating_dims_json")));
+        m.put("ratingDimsJson", "");
         Object anonObj = first(raw, "ratingAnonymous", "rating_anonymous");
         boolean anon = false;
         if (anonObj != null) {
@@ -55,6 +57,7 @@ final class TicketRowMaps {
             m.put("displayUsername", "匿名同学");
         }
         m.put("checkedInAt", fmt(first(raw, "checkedInAt", "checked_in_at")));
+        try { m.put("passExpireAt", fmt(first(raw, "passExpireAt", "pass_expire_at"))); } catch (Exception ignored) {}
         m.put("passCode", str(first(raw, "passCode", "pass_code")));
         int renewCount = 0;
         Object rc = first(raw, "renewCount", "renew_count");
@@ -153,6 +156,12 @@ final class TicketRowMaps {
                 m.put("startAt", item.get("startAt"));
                 m.put("endAt", item.get("endAt"));
                 m.put("applyDeadlineAt", item.get("applyDeadlineAt"));
+            }
+            if (item != null && item.get("surveyFormId") != null) {
+                Object sf = item.get("surveyFormId");
+                if (sf instanceof Number n && n.longValue() > 0) {
+                    m.put("surveyFormId", n.longValue());
+                }
             }
         }
         int weekNo = 0;
@@ -254,6 +263,41 @@ final class TicketRowMaps {
             String a = String.valueOf(insuranceAckObj);
             m.put("insuranceAck", "1".equals(a) || "true".equalsIgnoreCase(a));
         }
+        Object tourNoticeAckObj = first(raw, "tourNoticeAck", "tour_notice_ack");
+        if (tourNoticeAckObj != null) {
+            String a = String.valueOf(tourNoticeAckObj);
+            m.put("tourNoticeAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object wishOrderObj = first(raw, "wishOrder", "wish_order");
+        if (wishOrderObj != null) {
+            try {
+                int wo = (int) Double.parseDouble(String.valueOf(wishOrderObj));
+                if (wo > 0) m.put("wishOrder", wo);
+            } catch (Exception ignored) {}
+        }
+        String volunteerRole = str(first(raw, "volunteerRole", "volunteer_role"));
+        if (!volunteerRole.isBlank()) m.put("volunteerRole", volunteerRole);
+        String seatZone = str(first(raw, "seatZone", "seat_zone"));
+        if (!seatZone.isBlank()) m.put("seatZone", seatZone);
+        Object postGallery = first(raw, "postGalleryImages", "post_gallery_json");
+        if (postGallery != null) {
+            String pg = String.valueOf(postGallery).trim();
+            if (!pg.isBlank()) m.put("postGalleryImages", parsePostGallery(pg));
+        }
+        Object cwaObj = first(raw, "creditWritebackAck", "credit_writeback_ack");
+        if (cwaObj != null) {
+            String a = String.valueOf(cwaObj);
+            m.put("creditWritebackAck", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object surveyFormIdObj = first(raw, "surveyFormId", "survey_form_id");
+        if (surveyFormIdObj instanceof Number n && n.longValue() > 0) {
+            m.put("surveyFormId", n.longValue());
+        } else if (surveyFormIdObj != null) {
+            try {
+                long sid = Long.parseLong(String.valueOf(surveyFormIdObj).trim());
+                if (sid > 0) m.put("surveyFormId", sid);
+            } catch (Exception ignored) {}
+        }
         String peer = str(first(raw, "peerUsername", "peer_username"));
         if (!peer.isBlank()) m.put("peerUsername", peer);
         Object peerAckObj = first(raw, "peerAck", "peer_ack");
@@ -270,6 +314,113 @@ final class TicketRowMaps {
         putFollowOptStr(m, raw, "preferred_slot", "preferredSlot");
         putFollowOptStr(m, raw, "emergency_contact", "emergencyContact");
         putFollowOptStr(m, raw, "emergency_phone", "emergencyPhone");
+        putFollowOptStr(m, raw, "cc_usernames", "ccUsernames");
+        putFollowOptStr(m, raw, "approve_attach_url", "approveAttachUrl");
+        putFollowOptStr(m, raw, "pickup_method", "pickupMethod");
+        putFollowOptStr(m, raw, "mail_address", "mailAddress");
+        putFollowOptStr(m, raw, "express_no", "expressNo");
+        putFollowOptStr(m, raw, "bind_note", "bindNote");
+        putFollowOptStr(m, raw, "seal_copy_nos", "sealCopyNos");
+        putFollowOptStr(m, raw, "fuel_note", "fuelNote");
+        Object sealWitnessObj = first(raw, "sealWitnessAck", "seal_witness_ack");
+        if (sealWitnessObj != null) m.put("sealWitnessAck", truthy(sealWitnessObj));
+        Object certUrgentObj = first(raw, "certUrgent", "cert_urgent");
+        if (certUrgentObj != null) {
+            String a = String.valueOf(certUrgentObj);
+            m.put("certUrgent", "1".equals(a) || "true".equalsIgnoreCase(a));
+        }
+        Object sealCopiesObj = first(raw, "sealCopies", "seal_copies");
+        if (sealCopiesObj != null) {
+            try { m.put("sealCopies", (int) Double.parseDouble(String.valueOf(sealCopiesObj))); } catch (Exception ignored) {}
+        }
+        Object mileageObj = first(raw, "mileageKm", "mileage_km");
+        if (mileageObj != null) {
+            try { m.put("mileageKm", Double.parseDouble(String.valueOf(mileageObj))); } catch (Exception ignored) {}
+        }
+        Object invoiceObj = first(raw, "invoiceCount", "invoice_count");
+        if (invoiceObj != null) {
+            try { m.put("invoiceCount", (int) Double.parseDouble(String.valueOf(invoiceObj))); } catch (Exception ignored) {}
+        }
+        Object visitorObj = first(raw, "visitorCount", "visitor_count");
+        if (visitorObj != null) {
+            try { m.put("visitorCount", (int) Double.parseDouble(String.valueOf(visitorObj))); } catch (Exception ignored) {}
+        }
+        putFollowOptStr(m, raw, "award_cert_no", "awardCertNo");
+        putFollowOptStr(m, raw, "vendor_quotes", "vendorQuotes");
+
+        putFollowOptStr(m, raw, "driver_name", "driverName");
+        putFollowOptStr(m, raw, "passenger_names", "passengerNames");
+        try {
+            Object ch = raw.get("comp_hours");
+            if (ch == null) ch = raw.get("compHours");
+            if (ch instanceof Number n) m.put("compHours", n.doubleValue());
+            else if (ch != null && !String.valueOf(ch).isBlank()) {
+                m.put("compHours", Double.parseDouble(String.valueOf(ch).trim()));
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            Object rf = raw.get("return_fuel");
+            if (rf == null) rf = raw.get("returnFuel");
+            if (rf instanceof Number n) m.put("returnFuel", n.doubleValue());
+            else if (rf != null && !String.valueOf(rf).isBlank()) {
+                m.put("returnFuel", Double.parseDouble(String.valueOf(rf).trim()));
+            }
+        } catch (Exception ignored) {
+        }
+        putFollowOptStr(m, raw, "labor_place", "laborPlace");
+        putFollowOptStr(m, raw, "effective_on", "effectiveOn");
+        putFollowOptStr(m, raw, "cert_issue_no", "certIssueNo");
+        putFollowOptStr(m, raw, "doc_rev", "docRev");
+        putFollowOptStr(m, raw, "work_start", "workStart");
+        putFollowOptStr(m, raw, "work_end", "workEnd");
+        putFollowOptStr(m, raw, "sign_parties", "signParties");
+        putFollowOptStr(m, raw, "member_change_note", "memberChangeNote");
+        putFollowOptStr(m, raw, "exception_type", "exceptionType");
+        putFollowOptStr(m, raw, "visit_purpose", "visitPurpose");
+        putFollowOptStr(m, raw, "violation_person", "violationPerson");
+        putFollowOptStr(m, raw, "rectify_note", "rectifyNote");
+        putFollowOptStr(m, raw, "return_note", "returnNote");
+        putFollowOptStr(m, raw, "fund_use_note", "fundUseNote");
+        putFollowOptStr(m, raw, "visit_on", "visitOn");
+        putFollowOptStr(m, raw, "plagiarism_url", "plagiarismUrl");
+        putFollowOptStr(m, raw, "party_stage", "partyStage");
+        putFollowOptStr(m, raw, "stage_on", "stageOn");
+        putFollowOptStr(m, raw, "observe_on", "observeOn");
+        putFollowOptStr(m, raw, "observe_note", "observeNote");
+        putFollowOptStr(m, raw, "schedule_impact_note", "scheduleImpactNote");
+        putFollowOptStr(m, raw, "change_log_note", "changeLogNote");
+        putFollowOptStr(m, raw, "verify_code", "verifyCode");
+        putFollowOptStr(m, raw, "checkin_proxy_by", "checkinProxyBy");
+        putFollowOptStr(m, raw, "parking_on", "parkingOn");
+        putFollowOptStr(m, raw, "renew_on", "renewOn");
+        putFollowOptStr(m, raw, "renew_note", "renewNote");
+        putFollowOptStr(m, raw, "pickup_redeem_code", "pickupRedeemCode");
+        putFollowOptStr(m, raw, "objection_note", "objectionNote");
+        String od = fmt(first(raw, "objectionDueAt", "objection_due_at"));
+        if (!od.isBlank()) m.put("objectionDueAt", od);
+        String oa = fmt(first(raw, "objectionAt", "objection_at"));
+        if (!oa.isBlank()) m.put("objectionAt", oa);
+        Object rfail = first(raw, "returnFail", "return_fail");
+        if (rfail instanceof Number nrf) m.put("returnFail", nrf.intValue() == 1);
+        else if (rfail != null) m.put("returnFail", "1".equals(String.valueOf(rfail).trim()) || "true".equalsIgnoreCase(String.valueOf(rfail)));
+        Object wIn = first(raw, "walkIn", "walk_in");
+        if (wIn instanceof Number nwi) m.put("walkIn", nwi.intValue() == 1);
+        else if (wIn != null) m.put("walkIn", "1".equals(String.valueOf(wIn).trim()) || "true".equalsIgnoreCase(String.valueOf(wIn)));
+        Object prd = first(raw, "pickupRedeemed", "pickup_redeemed");
+        if (prd instanceof Number npr) m.put("pickupRedeemed", npr.intValue() == 1);
+        else if (prd != null) m.put("pickupRedeemed", "1".equals(String.valueOf(prd).trim()) || "true".equalsIgnoreCase(String.valueOf(prd)));
+        Object fu = first(raw, "fundUseYuan", "fund_use_yuan");
+        if (fu instanceof Number nfu) m.put("fundUseYuan", nfu.doubleValue());
+        Object ca = first(raw, "contractAmount", "contract_amount");
+        if (ca instanceof Number nca) m.put("contractAmount", nca.doubleValue());
+        Object ic = first(raw, "issueCopies", "issue_copies");
+        if (ic instanceof Number n) m.put("issueCopies", n.intValue());
+        Object th = first(raw, "trainHours", "train_hours");
+        if (th instanceof Number n2) m.put("trainHours", n2.doubleValue());
+        Object pa = first(raw, "procureAmount", "procure_amount");
+        if (pa instanceof Number n3) m.put("procureAmount", n3.doubleValue());
+        TicketLineOps.attach(m);
         return m;
     }
 
@@ -311,5 +462,27 @@ final class TicketRowMaps {
 
     private static double toDouble(Object o) {
         return TicketSql.toDouble(o);
+    }
+
+    private static List<String> parsePostGallery(String raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return out;
+        String s = raw.trim();
+        if (!s.startsWith("[")) {
+            out.add(s);
+            return out;
+        }
+        int i = 0;
+        while (i < s.length()) {
+            int a = s.indexOf('"', i);
+            if (a < 0) break;
+            int b = s.indexOf('"', a + 1);
+            if (b < 0) break;
+            String u = s.substring(a + 1, b).replace("\\\"", "\"").replace("\\\\", "\\").trim();
+            if (!u.isBlank()) out.add(u);
+            i = b + 1;
+            if (out.size() >= 9) break;
+        }
+        return out;
     }
 }

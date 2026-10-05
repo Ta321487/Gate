@@ -582,7 +582,8 @@ function withBorrowThickenRoutes(baseRoutes) {
   const needOccupy = hasCap('occupy_span')
   const needMaterial = hasCap('material_check')
   const needLostClue = hasCap('lost_clue')
-  if (!needLedger && !needOccupy && !needMaterial && !needLostClue) return baseRoutes
+  const needBlacklist = !!getSchema().applyBlacklist
+  if (!needLedger && !needOccupy && !needMaterial && !needLostClue && !needBlacklist) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
@@ -609,6 +610,9 @@ function withBorrowThickenRoutes(baseRoutes) {
     if (needOccupy) addAdmin('occupy', () => import('../views/admin/OccupyAdmin.vue'))
     if (needMaterial) addAdmin('material/checklist', () => import('../views/admin/MaterialChecklistAdmin.vue'))
     if (hasCap('lost_clue')) addAdmin('lost/clues', () => import('../views/admin/LostCluesAdmin.vue'))
+    if (getSchema().applyBlacklist) {
+      addAdmin('apply/blacklist', () => import('../views/admin/ApplyBlacklistAdmin.vue'))
+    }
   }
   return routes
 }
@@ -1381,6 +1385,10 @@ function withDeliveryWindowRoutes(baseRoutes) {
 
 const specialRoutes = [
   {
+    path: '/cert-verify',
+    component: () => import('../views/CertVerify.vue'),
+  },
+  {
     path: '/error',
     component: () => import('../views/special/SpecialPage.vue'),
     props: { kind: '500' },
@@ -1413,6 +1421,7 @@ const publicPaths = new Set([
   '/admin/login',
   '/staff/login',
   '/register',
+  '/cert-verify',
   '/error',
   '/loading',
 ])

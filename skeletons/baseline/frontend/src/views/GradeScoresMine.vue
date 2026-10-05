@@ -4,6 +4,8 @@
       <h1>成绩查询</h1>
       <p>已登记的课程分数与课内名次。并列时分数相同则名次相同。</p>
       <p v-if="objectionHint" class="sub">{{ objectionHint }}</p>
+      <p v-if="evalBeforeGradeHint" class="sub">{{ evalBeforeGradeHint }}</p>
+      <p v-if="blockedHint" class="sub">{{ blockedHint }}</p>
     </section>
     <el-table :data="list" stripe>
       <el-table-column prop="termName" label="学期" />
@@ -42,12 +44,20 @@ const objectionWindowLabel = labels.objectionWindowLabel || '异议登记截止�
 
 const list = ref([])
 const objectionDays = ref(0)
+const blockedHint = ref('')
+const evalBeforeGradeHint = computed(() => labels.evalBeforeGradeHint || '')
 // 入口按时限关：由 /api/grade-scores/mine 回显的 objectionOpen / objectionDueAt 决定
 const objectionOn = computed(() => objectionDays.value > 0 || list.value.some((r) => r.objectionDueAt))
 
 async function load() {
-  const res = await http.get('/api/grade-scores/mine')
-  list.value = res.data?.data || res.data || []
+  blockedHint.value = ''
+  try {
+    const res = await http.get('/api/grade-scores/mine')
+    list.value = res.data?.data || res.data || []
+  } catch (e) {
+    list.value = []
+    blockedHint.value = e?.response?.data?.message || e?.message || '请先完成评教后再查看成绩'
+  }
   try {
     const meta = await http.get('/api/grade-scores/meta')
     objectionDays.value = Number((meta.data?.data || meta.data || {}).objectionDays || 0)

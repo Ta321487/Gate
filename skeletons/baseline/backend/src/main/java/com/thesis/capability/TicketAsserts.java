@@ -60,6 +60,62 @@ final class TicketAsserts {
         }
     }
 
+    /** 评教开放窗口：仅在档案 evalOpenOn～evalCloseOn 内可提交。 */
+    static void assertEvalOpenWindow(Map<String, Object> item) {
+        if (!TicketStore.allowEvalOpenWindow || item == null) return;
+        String openRaw = TicketSql.str(item.get("evalOpenOn")).trim();
+        String closeRaw = TicketSql.str(item.get("evalCloseOn")).trim();
+        if (openRaw.isBlank() && closeRaw.isBlank()) return;
+        try {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            if (!openRaw.isBlank()) {
+                String s = openRaw.length() >= 10 ? openRaw.substring(0, 10) : openRaw;
+                java.time.LocalDate open = java.time.LocalDate.parse(s);
+                if (today.isBefore(open)) {
+                    String deny = TicketStore.evalOpenWindowDenyMessage;
+                    throw new IllegalStateException(
+                            deny == null || deny.isBlank() ? "当前不在评教开放时间内，暂不可提交。" : deny);
+                }
+            }
+            if (!closeRaw.isBlank()) {
+                String s = closeRaw.length() >= 10 ? closeRaw.substring(0, 10) : closeRaw;
+                java.time.LocalDate close = java.time.LocalDate.parse(s);
+                if (today.isAfter(close)) {
+                    String deny = TicketStore.evalOpenWindowDenyMessage;
+                    throw new IllegalStateException(
+                            deny == null || deny.isBlank() ? "当前不在评教开放时间内，暂不可提交。" : deny);
+                }
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("评教开放日/截止日无效", e);
+        }
+    }
+
+    /** 通行码过期后不可再出示或签到（软闸，不改审批状态）。 */
+    static void assertPassNotExpired(Map<String, Object> ticket) {
+        if (!TicketStore.allowPassExpire || ticket == null) return;
+        Object raw = ticket.get("passExpireAt");
+        if (raw == null || String.valueOf(raw).isBlank()) return;
+        try {
+            String s = String.valueOf(raw).trim().replace('T', ' ');
+            LocalDateTime expire;
+            if (s.length() == 10) {
+                expire = LocalDateTime.parse(s + "T23:59:59");
+            } else {
+                expire = LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), TicketSql.FMT);
+            }
+            if (LocalDateTime.now().isAfter(expire)) {
+                throw new IllegalStateException("通行码已失效，不可再出示或签到");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("通行码有效期无效", e);
+        }
+    }
+
     /** 已下架或已过开始时间不可再申请（拼车出发、活动开场等）。 */
     static void assertItemOpen(Map<String, Object> item) {
         if (item == null) return;

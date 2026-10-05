@@ -4,6 +4,7 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.capability.TicketStore;
 import com.thesis.service.GradeScoreStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,11 @@ public class GradeScoreController {
     public R<List<Map<String, Object>>> mine(HttpSession session) {
         requireOn();
         String uid = AdminAuth.requireLogin(session);
+        try {
+            TicketStore.assertEvalBeforeGradeIfRequired(uid);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
         return R.ok(GradeScoreStore.listMine(uid));
     }
 

@@ -5,8 +5,10 @@
     </div>
     <p v-if="levelSlaText" class="sub">{{ levelSlaHint }}（{{ levelSlaText }}）</p>
     <p v-if="dutyNotifyOn" class="sub">{{ notifyDutyHint }}</p>
+    <p v-if="ticket.allowApproveAutoPass && approveAutoPassHint" class="sub">{{ approveAutoPassHint }}</p>
     <div class="toolbar">
       <el-button type="primary" @click="load">刷新待办</el-button>
+      <el-button v-if="allowApproveDelegate" @click="openDelegate">{{ approveDelegateLabel }}</el-button>
       <template v-if="allowBatchHire">
         <el-button
           type="success"
@@ -19,6 +21,25 @@
           @click="batchHire(false)"
         >{{ batchRejectLabel }}（{{ selectedIds.length }}）</el-button>
       </template>
+      <el-button v-if="allowVisitWalkIn" @click="openWalkIn">{{ visitWalkInLabel }}</el-button>
+      <el-button v-if="allowCheckinProxy" @click="openCheckinProxy">{{ checkinProxyLabel }}</el-button>
+      <el-button v-if="allowEvalUrge" @click="openEvalUrge">{{ evalUrgeLabel }}</el-button>
+      <el-button v-if="allowCheckinSpot" @click="openSpotCheck">{{ checkinSpotLabel }}</el-button>
+      <el-button v-if="allowCheckinDailyReport" @click="openCheckinDaily">{{ checkinDailyLabel }}</el-button>
+      <el-button v-if="allowEvalCollegeExport" @click="openEvalCollege">{{ evalCollegeExportLabel }}</el-button>
+    </div>
+    <div v-if="allowApproveDurationStats" class="toolbar" style="display:block;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <strong style="font-size:13px">{{ approveDurationStatsLabel }}</strong>
+        <el-button link type="primary" @click="loadDurationStats">刷新</el-button>
+      </div>
+      <p v-if="approveDurationStatsHint" class="sub">{{ approveDurationStatsHint }}</p>
+      <el-table :data="durationRows" size="small" stripe max-height="240">
+        <el-table-column prop="handler" label="办理人" width="140" />
+        <el-table-column prop="count" label="办结数" width="90" />
+        <el-table-column prop="avgMinutes" label="平均分钟" width="110" />
+        <template #empty>暂无已办结单据</template>
+      </el-table>
     </div>
     <div v-if="creditOn" class="toolbar" style="display:block;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
@@ -74,10 +95,17 @@
       <el-table-column v-if="showFollowCols" :label="nextAtLabel" width="170">
         <template #default="{ row }">{{ row.nextFollowAt || '—' }}</template>
       </el-table-column>
-      <el-table-column label="附件" width="90">
+      <el-table-column label="附件" width="110">
         <template #default="{ row }">
-          <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
-          <span v-else class="muted">—</span>
+          <a v-if="row.attachUrl" :href="row.attachUrl" target="_blank" rel="noopener noreferrer">申请</a>
+          <a
+            v-if="row.approveAttachUrl"
+            :href="row.approveAttachUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="margin-left:4px"
+          >审核</a>
+          <span v-if="!row.attachUrl && !row.approveAttachUrl" class="muted">—</span>
         </template>
       </el-table-column>
       <el-table-column v-if="allowQty" prop="qty" label="数量" width="70" />
@@ -122,7 +150,13 @@
             link
             type="primary"
             @click="openReassign(row)"
-          >转派</el-button>
+          >{{ reassignActionLabel }}</el-button>
+          <el-button
+            v-if="canCcComment(row)"
+            link
+            type="primary"
+            @click="openCcComment(row)"
+          >{{ approveCcCommentLabel }}</el-button>
           </div>
         </template>
       </el-table-column>
@@ -154,9 +188,16 @@
         <template v-if="audit.row">「{{ audit.row.title || ('编号 ' + audit.row.id) }}」</template>
       </p>
       <p v-if="interviewRoomHint" class="audit-meta hint-line">{{ interviewRoomHint }}</p>
-      <div v-if="audit.row?.attachUrl" class="audit-body">
+      <div v-if="audit.row?.attachUrl || audit.row?.approveAttachUrl" class="audit-body">
         <div class="lab">附件</div>
-        <a :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">查看附件</a>
+        <a v-if="audit.row.attachUrl" :href="audit.row.attachUrl" target="_blank" rel="noopener noreferrer">申请附件</a>
+        <a
+          v-if="audit.row.approveAttachUrl"
+          :href="audit.row.approveAttachUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="margin-left:8px"
+        >审核附件</a>
       </div>
       <div v-if="audit.row?.typeName || audit.row?.location" class="audit-body">
         <div class="lab">{{ archive.label || '档案' }}信息</div>
@@ -176,17 +217,64 @@
       <label class="audit-field">
         <span class="lab">
           {{ audit.pass ? '审核备注' : '驳回原因' }}
-          <i v-if="!audit.pass" class="req" aria-hidden="true">*</i>
+          <i v-if="!audit.pass || minApproveRemarkWords > 0" class="req" aria-hidden="true">*</i>
           <template v-else>（选填）</template>
         </span>
+        <el-select
+          v-if="approvePhrases.length"
+          v-model="audit.phrasePick"
+          clearable
+          filterable
+          :placeholder="approvePhraseLabel"
+          style="width: 100%; margin-bottom: 8px"
+          @change="applyApprovePhrase"
+        >
+          <el-option v-for="p in approvePhrases" :key="p" :label="p" :value="p" />
+        </el-select>
+        <p v-if="approvePhraseHint && approvePhrases.length" class="audit-meta hint-line">{{ approvePhraseHint }}</p>
         <el-input
           v-model="audit.remark"
           type="textarea"
           :rows="3"
           maxlength="200"
           show-word-limit
-          :placeholder="audit.pass ? '可填写受理说明，留空则保留申请说明' : rejectReasonRequired"
+          :placeholder="approveRemarkPlaceholder"
         />
+        <p v-if="minApproveRemarkHint && minApproveRemarkWords > 0" class="audit-meta hint-line">{{ minApproveRemarkHint }}</p>
+      </label>
+      <label v-if="allowApproveRemarkAttach" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ approveRemarkAttachLabel }}（选填）</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <el-upload :show-file-list="false" :http-request="uploadApproveAttach" accept="image/*,.pdf,.doc,.docx">
+            <el-button size="small">{{ audit.approveAttachUrl ? '重新上传' : '上传附件' }}</el-button>
+          </el-upload>
+          <a
+            v-if="audit.approveAttachUrl"
+            :href="audit.approveAttachUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >已上传</a>
+        </div>
+        <p v-if="approveRemarkAttachHint" class="audit-meta hint-line">{{ approveRemarkAttachHint }}</p>
+      </label>
+      <label v-if="allowApproveCc" class="audit-field" style="margin-top: 12px">
+        <span class="lab">{{ approveCcLabel }}</span>
+        <el-select
+          v-model="audit.ccUsernames"
+          multiple
+          filterable
+          clearable
+          :placeholder="approveCcHint || '选填，抄送人仅收站内通知'"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="t in dispatchTargets"
+            :key="'cc-' + t.username"
+            :label="dispatchLabel(t)"
+            :value="t.username"
+          />
+        </el-select>
+        <p v-if="approveDueSoonHint" class="audit-meta hint-line" style="margin-top:8px">{{ approveDueSoonHint }}</p>
       </label>
       <label v-if="audit.pass && showDispatch && isFinalPass(audit.row)" class="audit-field" style="margin-top: 12px">
         <span class="lab">派给（选填）</span>
@@ -310,10 +398,11 @@
 
     <TicketProgressDialog v-model="progressVisible" :ticket-id="progressId" />
 
-    <el-dialog v-model="reassign.visible" title="转派处理人" width="420px" destroy-on-close>
+    <el-dialog v-model="reassign.visible" :title="reassignDialogTitle" width="420px" destroy-on-close>
       <p class="audit-tip" v-if="reassign.row">
-        将「{{ reassign.row.title || ('编号 ' + reassign.row.id) }}」转给其他处理人
+        将「{{ reassign.row.title || ('编号 ' + reassign.row.id) }}」{{ allowApproveTransfer ? '转给其他审核人' : '转给其他处理人' }}
       </p>
+      <p v-if="allowApproveTransfer && approveTransferHint" class="audit-meta hint-line">{{ approveTransferHint }}</p>
       <el-alert
         v-if="dispatchHint"
         type="info"
@@ -386,6 +475,195 @@
         <el-button type="primary" :loading="credit.loading" @click="submitCredit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="delegate.visible" :title="approveDelegateLabel" width="420px" destroy-on-close>
+      <p v-if="approveDelegateHint" class="audit-tip">{{ approveDelegateHint }}</p>
+      <p v-if="delegate.current?.delegateUsername" class="audit-meta hint-line" style="margin-bottom:12px">
+        当前代审：{{ delegate.current.delegateUsername }}
+        <template v-if="delegate.current.untilAt"> · 至 {{ delegate.current.untilAt }}</template>
+        <template v-if="delegate.current.active"> · 生效中</template>
+      </p>
+      <label class="audit-field">
+        <span class="lab">代审人</span>
+        <el-select
+          v-model="delegate.to"
+          filterable
+          clearable
+          placeholder="选择代审人"
+          style="width:100%"
+        >
+          <el-option
+            v-for="t in dispatchTargets"
+            :key="'dlg-' + t.username"
+            :label="dispatchLabel(t)"
+            :value="t.username"
+          />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">截止日期</span>
+        <el-date-picker
+          v-model="delegate.untilAt"
+          type="datetime"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          placeholder="选择截止日期"
+          style="width:100%"
+        />
+      </label>
+      <template #footer>
+        <el-button v-if="delegate.current?.delegateUsername" @click="clearDelegate">取消代审</el-button>
+        <el-button @click="delegate.visible = false">关闭</el-button>
+        <el-button type="primary" :loading="delegate.loading" @click="submitDelegate">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="ccComment.visible" :title="approveCcCommentLabel" width="420px" destroy-on-close>
+      <p v-if="approveCcCommentHint" class="audit-tip">{{ approveCcCommentHint }}</p>
+      <p class="audit-tip" v-if="ccComment.row">
+        「{{ ccComment.row.title || ('编号 ' + ccComment.row.id) }}」
+      </p>
+      <el-input
+        v-model="ccComment.text"
+        type="textarea"
+        :rows="3"
+        maxlength="200"
+        show-word-limit
+        placeholder="填写知会评论"
+      />
+      <template #footer>
+        <el-button @click="ccComment.visible = false">取消</el-button>
+        <el-button type="primary" :loading="ccComment.loading" @click="submitCcComment">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="walkIn.visible" :title="visitWalkInLabel" width="440px" destroy-on-close>
+      <p v-if="visitWalkInHint" class="audit-tip">{{ visitWalkInHint }}</p>
+      <label class="audit-field">
+        <span class="lab">来访对象</span>
+        <el-select v-model="walkIn.itemId" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="it in archiveItems" :key="it.id" :label="it.title || ('编号 ' + it.id)" :value="it.id" />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">{{ visitWalkInForLabel }}</span>
+        <el-select v-model="walkIn.forUsername" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="u in userOptions" :key="u.username" :label="u.nickname ? `${u.nickname}（${u.username}）` : u.username" :value="u.username" />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">来访日期</span>
+        <el-date-picker v-model="walkIn.visitOn" type="date" value-format="YYYY-MM-DD" placeholder="请选择" style="width:100%" />
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">说明</span>
+        <el-input v-model="walkIn.remark" maxlength="200" />
+      </label>
+      <template #footer>
+        <el-button @click="walkIn.visible = false">取消</el-button>
+        <el-button type="primary" :loading="walkIn.loading" @click="submitWalkIn">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="checkinProxy.visible" :title="checkinProxyLabel" width="440px" destroy-on-close>
+      <p v-if="checkinProxyHint" class="audit-tip">{{ checkinProxyHint }}</p>
+      <label class="audit-field">
+        <span class="lab">查寝对象</span>
+        <el-select v-model="checkinProxy.itemId" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="it in archiveItems" :key="'c' + it.id" :label="it.title || ('编号 ' + it.id)" :value="it.id" />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">{{ checkinProxyForLabel }}</span>
+        <el-select v-model="checkinProxy.forUsername" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="u in userOptions" :key="'c' + u.username" :label="u.nickname ? `${u.nickname}（${u.username}）` : u.username" :value="u.username" />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">说明</span>
+        <el-input v-model="checkinProxy.remark" maxlength="200" />
+      </label>
+      <template #footer>
+        <el-button @click="checkinProxy.visible = false">取消</el-button>
+        <el-button type="primary" :loading="checkinProxy.loading" @click="submitCheckinProxy">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="evalUrge.visible" :title="evalUrgeLabel" width="440px" destroy-on-close>
+      <p v-if="evalUrgeHint" class="audit-tip">{{ evalUrgeHint }}</p>
+      <label class="audit-field">
+        <span class="lab">课程</span>
+        <el-select v-model="evalUrge.itemId" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="it in archiveItems" :key="'e' + it.id" :label="it.title || ('编号 ' + it.id)" :value="it.id" />
+        </el-select>
+      </label>
+      <template #footer>
+        <el-button @click="evalUrge.visible = false">取消</el-button>
+        <el-button type="primary" :loading="evalUrge.loading" @click="submitEvalUrge">发送催评</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="spotCheck.visible" :title="checkinSpotLabel" width="520px" destroy-on-close>
+      <p v-if="checkinSpotHint" class="audit-tip">{{ checkinSpotHint }}</p>
+      <label class="audit-field">
+        <span class="lab">查寝对象</span>
+        <el-select v-model="spotCheck.itemId" filterable placeholder="请选择" style="width:100%">
+          <el-option v-for="it in archiveItems" :key="'s' + it.id" :label="it.title || ('编号 ' + it.id)" :value="it.id" />
+        </el-select>
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">{{ checkinSpotOnLabel }}</span>
+        <el-date-picker v-model="spotCheck.onDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择" style="width:100%" />
+      </label>
+      <label class="audit-field" style="margin-top:12px">
+        <span class="lab">{{ checkinSpotSampleLabel }}</span>
+        <el-input-number v-model="spotCheck.sampleN" :min="1" :max="200" :step="1" />
+      </label>
+      <template #footer>
+        <el-button @click="spotCheck.visible = false">取消</el-button>
+        <el-button type="primary" :loading="spotCheck.loading" @click="submitSpotCheck">生成名单</el-button>
+      </template>
+      <el-table :data="spotCheck.list" size="small" stripe style="margin-top:16px" max-height="240">
+        <el-table-column prop="onDate" :label="checkinSpotOnLabel" width="120" />
+        <el-table-column prop="sampleN" :label="checkinSpotSampleLabel" width="90" />
+        <el-table-column label="名单" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatSpotMembers(row.members) }}</template>
+        </el-table-column>
+        <template #empty>还没有抽查任务</template>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="checkinDaily.visible" :title="checkinDailyLabel" width="560px" destroy-on-close>
+      <p v-if="checkinDailyHint" class="audit-tip">{{ checkinDailyHint }}</p>
+      <label class="audit-field">
+        <span class="lab">{{ checkinDailyOnLabel }}</span>
+        <el-date-picker v-model="checkinDaily.onDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择" style="width:100%" />
+      </label>
+      <p class="sub" style="margin-top:12px">当日共 {{ checkinDaily.total }} 条 · 待审 {{ checkinDaily.pending }} · 已登记 {{ checkinDaily.approved }} · 未归 {{ checkinDaily.absent }}</p>
+      <el-table :data="checkinDaily.list" size="small" stripe max-height="280" style="margin-top:8px">
+        <el-table-column prop="username" label="账号" width="120" />
+        <el-table-column prop="title" label="说明" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="100" />
+        <template #empty>这一天还没有查寝登记</template>
+      </el-table>
+      <template #footer>
+        <el-button @click="checkinDaily.visible = false">关闭</el-button>
+        <el-button type="primary" :loading="checkinDaily.loading" @click="loadCheckinDaily">刷新</el-button>
+        <el-button :disabled="!checkinDaily.list.length" @click="exportCheckinDaily">导出</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="evalCollege.visible" :title="evalCollegeExportLabel" width="480px" destroy-on-close>
+      <p v-if="evalCollegeExportHint" class="audit-tip">{{ evalCollegeExportHint }}</p>
+      <el-table :data="evalCollege.list" size="small" stripe max-height="320">
+        <el-table-column prop="college" :label="evalCollegeLabel" min-width="160" />
+        <el-table-column prop="count" label="已评份数" width="110" />
+        <template #empty>还没有评教记录</template>
+      </el-table>
+      <template #footer>
+        <el-button @click="evalCollege.visible = false">关闭</el-button>
+        <el-button :disabled="!evalCollege.list.length" @click="exportEvalCollege">导出</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -442,6 +720,51 @@ const labels = computed(() => getSchema()?.labels || {})
 const rejectReasonRequired = computed(
   () => labels.value.rejectReasonRequired || '请填写驳回原因，申请人可见',
 )
+const approvePhrases = computed(() => {
+  const raw = ticket.approvePhrases
+  if (Array.isArray(raw)) return raw.map((x) => String(x || '').trim()).filter(Boolean)
+  return []
+})
+const approvePhraseLabel = computed(() => labels.value.approvePhraseLabel || '常用意见')
+const approvePhraseHint = computed(() => labels.value.approvePhraseHint || '')
+const minApproveRemarkWords = computed(() => Math.max(0, Number(ticket.minApproveRemarkWords) || 0))
+const minApproveRemarkHint = computed(() => labels.value.minApproveRemarkHint || '')
+const allowApproveCc = computed(() => !!ticket.allowApproveCc)
+const approveCcLabel = computed(() => labels.value.approveCcLabel || '抄送知会')
+const approveCcHint = computed(() => labels.value.approveCcHint || '')
+const approveDueSoonHint = computed(() => labels.value.approveDueSoonHint || '')
+const allowApproveTransfer = computed(() => !!ticket.allowApproveTransfer)
+const approveTransferLabel = computed(() => labels.value.approveTransferLabel || '转审')
+const approveTransferHint = computed(() => labels.value.approveTransferHint || '')
+const allowApproveDelegate = computed(() => !!ticket.allowApproveDelegate)
+const approveDelegateLabel = computed(() => labels.value.approveDelegateLabel || '请假代审')
+const approveDelegateHint = computed(() => labels.value.approveDelegateHint || '')
+const allowApproveRemarkAttach = computed(() => !!ticket.allowApproveRemarkAttach)
+const approveRemarkAttachLabel = computed(() => labels.value.approveRemarkAttachLabel || '审核意见附件')
+const approveRemarkAttachHint = computed(() => labels.value.approveRemarkAttachHint || '')
+const allowApproveCcComment = computed(() => !!ticket.allowApproveCcComment)
+const approveCcCommentLabel = computed(() => labels.value.approveCcCommentLabel || '知会评论')
+const approveCcCommentHint = computed(() => labels.value.approveCcCommentHint || '')
+const approveAutoPassHint = computed(() => labels.value.approveAutoPassHint || '')
+const reassignActionLabel = computed(() =>
+  allowApproveTransfer.value && !repairThickenOn.value
+    ? approveTransferLabel.value
+    : (allowApproveTransfer.value ? approveTransferLabel.value : '转派'),
+)
+const reassignDialogTitle = computed(() =>
+  allowApproveTransfer.value ? approveTransferLabel.value : '转派处理人',
+)
+const approveRemarkPlaceholder = computed(() => {
+  if (!audit.pass) return rejectReasonRequired.value
+  if (minApproveRemarkWords.value > 0) return minApproveRemarkHint.value || '请填写审核意见'
+  return '可填写受理说明，留空则保留申请说明'
+})
+function applyApprovePhrase(v) {
+  const text = String(v || '').trim()
+  if (!text) return
+  audit.remark = text
+  audit.phrasePick = ''
+}
 // 事件等级 → 处理时限（bake: ticket-level-sla-*-days 由 /api/tickets 回显）
 const levelSlaDays = ref('')
 const dutyNotifyOn = ref(false)
@@ -542,6 +865,42 @@ const superAdmin = localStorage.getItem('superAdmin') === 'true'
 /** 终审/单级受理时可选派给维修员等子管 */
 const showDispatch = computed(() => applicantCompleteOnly.value || slaDeadline.value)
 const allowBatchHire = computed(() => !!ticket.allowBatchHire)
+const allowVisitWalkIn = computed(() => !!ticket.allowVisitWalkIn)
+const visitWalkInLabel = computed(() => labels.value.visitWalkInLabel || '现场补录')
+const visitWalkInForLabel = computed(() => labels.value.visitWalkInForLabel || '被访人账号')
+const visitWalkInHint = computed(() => labels.value.visitWalkInHint || '')
+const allowCheckinProxy = computed(() => !!ticket.allowCheckinProxy)
+const checkinProxyLabel = computed(() => labels.value.checkinProxyLabel || '楼栋长代登记')
+const checkinProxyForLabel = computed(() => labels.value.checkinProxyForLabel || '学生账号')
+const checkinProxyHint = computed(() => labels.value.checkinProxyHint || '')
+const allowEvalUrge = computed(() => !!ticket.allowEvalUrge)
+const evalUrgeLabel = computed(() => labels.value.evalUrgeLabel || '催评')
+const evalUrgeHint = computed(() => labels.value.evalUrgeHint || '')
+const allowCheckinSpot = computed(() => !!ticket.allowCheckinSpot)
+const checkinSpotLabel = computed(() => labels.value.checkinSpotLabel || '抽查任务')
+const checkinSpotSampleLabel = computed(() => labels.value.checkinSpotSampleLabel || '抽查人数')
+const checkinSpotOnLabel = computed(() => labels.value.checkinSpotOnLabel || '抽查日期')
+const checkinSpotHint = computed(() => labels.value.checkinSpotHint || '')
+const allowApproveDurationStats = computed(() => !!ticket.allowApproveDurationStats)
+const approveDurationStatsLabel = computed(() => labels.value.approveDurationStatsLabel || '人均办理耗时')
+const approveDurationStatsHint = computed(() => labels.value.approveDurationStatsHint || '')
+const allowCheckinDailyReport = computed(() => !!ticket.allowCheckinDailyReport)
+const checkinDailyLabel = computed(() => labels.value.checkinDailyLabel || '楼长日报')
+const checkinDailyOnLabel = computed(() => labels.value.checkinDailyOnLabel || '汇总日期')
+const checkinDailyHint = computed(() => labels.value.checkinDailyHint || '')
+const allowEvalCollegeExport = computed(() => !!ticket.allowEvalCollegeExport)
+const evalCollegeExportLabel = computed(() => labels.value.evalCollegeExportLabel || '院系汇总导出')
+const evalCollegeLabel = computed(() => labels.value.evalCollegeLabel || '开课学院')
+const evalCollegeExportHint = computed(() => labels.value.evalCollegeExportHint || '')
+const archiveItems = ref([])
+const userOptions = ref([])
+const walkIn = reactive({ visible: false, loading: false, itemId: null, forUsername: '', visitOn: '', remark: '' })
+const checkinProxy = reactive({ visible: false, loading: false, itemId: null, forUsername: '', remark: '' })
+const evalUrge = reactive({ visible: false, loading: false, itemId: null })
+const spotCheck = reactive({ visible: false, loading: false, itemId: null, onDate: '', sampleN: 3, list: [] })
+const durationRows = ref([])
+const checkinDaily = reactive({ visible: false, loading: false, onDate: '', total: 0, pending: 0, approved: 0, absent: 0, list: [] })
+const evalCollege = reactive({ visible: false, list: [] })
 const batchHireLabel = computed(() => labels.value.batchHireLabel || '批量录用')
 const batchRejectLabel = computed(() => labels.value.batchRejectLabel || '批量淘汰')
 const selectedIds = ref([])
@@ -629,6 +988,9 @@ const audit = reactive({
   loading: false,
   pass: true,
   remark: '',
+  phrasePick: '',
+  ccUsernames: [],
+  approveAttachUrl: '',
   assigneeUsername: '',
   helperUsername: '',
   skillFilter: '',
@@ -642,6 +1004,19 @@ const audit = reactive({
   exceptionReason: '',
   damageClaimNote: '',
   row: null,
+})
+const delegate = reactive({
+  visible: false,
+  loading: false,
+  to: '',
+  untilAt: '',
+  current: null,
+})
+const ccComment = reactive({
+  visible: false,
+  loading: false,
+  row: null,
+  text: '',
 })
 const reassign = reactive({
   visible: false,
@@ -782,6 +1157,9 @@ function openAudit(row, pass) {
   audit.row = row
   audit.pass = pass
   audit.remark = ''
+  audit.phrasePick = ''
+  audit.ccUsernames = []
+  audit.approveAttachUrl = ''
   audit.assigneeUsername = ''
   audit.helperUsername = ''
   audit.skillFilter = ''
@@ -794,14 +1172,334 @@ function openAudit(row, pass) {
   audit.exceptionReason = row?.exceptionReason || ''
   audit.damageClaimNote = row?.damageClaimNote || ''
   audit.visible = true
-  if (pass && showDispatch.value && isFinalPass(row)) {
+  if ((pass && showDispatch.value && isFinalPass(row)) || allowApproveCc.value || allowApproveDelegate.value) {
     loadDispatchTargets()
   }
 }
 
 function canReassign(row) {
-  if (!repairThickenOn.value || !row) return false
+  if (!row) return false
+  if (!(repairThickenOn.value || allowApproveTransfer.value)) return false
   return ['pending', 'pending_mid', 'pending_final', 'approved', 'overdue', 'paused'].includes(row.status)
+}
+
+function canCcComment(row) {
+  if (!allowApproveCcComment.value || !row) return false
+  const me = (localStorage.getItem('username') || '').trim().toLowerCase()
+  if (!me) return false
+  const raw = String(row.ccUsernames || '')
+  return raw.split(/[,;\s]+/).some((p) => p.trim().toLowerCase() === me)
+}
+
+async function loadPickLists() {
+  try {
+    const [a, u] = await Promise.all([
+      http.get('/api/archive', { params: { page: 1, size: 200 } }),
+      http.get('/api/tickets/apply-targets'),
+    ])
+    archiveItems.value = a.data?.list || []
+    userOptions.value = Array.isArray(u.data) ? u.data : (u.data?.list || [])
+  } catch {
+    archiveItems.value = []
+    userOptions.value = []
+  }
+}
+
+async function openWalkIn() {
+  walkIn.itemId = null
+  walkIn.forUsername = ''
+  walkIn.visitOn = ''
+  walkIn.remark = ''
+  walkIn.visible = true
+  await loadPickLists()
+}
+
+async function submitWalkIn() {
+  if (!walkIn.itemId) {
+    ElMessage.warning('请选择来访对象')
+    return
+  }
+  if (!walkIn.forUsername) {
+    ElMessage.warning(`请选择${visitWalkInForLabel.value}`)
+    return
+  }
+  if (!walkIn.visitOn) {
+    ElMessage.warning('请选择来访日期')
+    return
+  }
+  walkIn.loading = true
+  try {
+    await http.post('/api/tickets/walk-in', {
+      itemId: walkIn.itemId,
+      forUsername: walkIn.forUsername,
+      visitOn: walkIn.visitOn,
+      remark: walkIn.remark,
+      walkIn: true,
+    })
+    ElMessage.success('已补录')
+    walkIn.visible = false
+    load()
+  } finally {
+    walkIn.loading = false
+  }
+}
+
+async function openCheckinProxy() {
+  checkinProxy.itemId = null
+  checkinProxy.forUsername = ''
+  checkinProxy.remark = ''
+  checkinProxy.visible = true
+  await loadPickLists()
+}
+
+async function submitCheckinProxy() {
+  if (!checkinProxy.itemId) {
+    ElMessage.warning('请选择查寝对象')
+    return
+  }
+  if (!checkinProxy.forUsername) {
+    ElMessage.warning(`请选择${checkinProxyForLabel.value}`)
+    return
+  }
+  checkinProxy.loading = true
+  try {
+    await http.post('/api/tickets/checkin-proxy', {
+      itemId: checkinProxy.itemId,
+      forUsername: checkinProxy.forUsername,
+      remark: checkinProxy.remark,
+    })
+    ElMessage.success('已代登记')
+    checkinProxy.visible = false
+    load()
+  } finally {
+    checkinProxy.loading = false
+  }
+}
+
+async function openEvalUrge() {
+  evalUrge.itemId = null
+  evalUrge.visible = true
+  await loadPickLists()
+}
+
+async function submitEvalUrge() {
+  if (!evalUrge.itemId) {
+    ElMessage.warning('请选择课程')
+    return
+  }
+  evalUrge.loading = true
+  try {
+    const res = await http.post('/api/tickets/eval-urge', { itemId: evalUrge.itemId })
+    const n = res.data?.sent
+    ElMessage.success(n != null ? `已向 ${n} 位同学发送催评` : '已发送催评')
+    evalUrge.visible = false
+  } finally {
+    evalUrge.loading = false
+  }
+}
+
+function formatSpotMembers(raw) {
+  if (!Array.isArray(raw)) return ''
+  return raw.map((x) => x.username || '').filter(Boolean).join('，')
+}
+
+async function loadDurationStats() {
+  if (!allowApproveDurationStats.value) {
+    durationRows.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/tickets/approve-duration-stats')
+    durationRows.value = res.data?.data || res.data || []
+  } catch {
+    durationRows.value = []
+  }
+}
+
+function downloadCsv(filename, headers, rows) {
+  const lines = [headers.join(','), ...rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))]
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+async function openCheckinDaily() {
+  checkinDaily.onDate = ''
+  checkinDaily.visible = true
+  await loadCheckinDaily()
+}
+
+async function loadCheckinDaily() {
+  checkinDaily.loading = true
+  try {
+    const res = await http.get('/api/tickets/checkin-daily', {
+      params: { onDate: checkinDaily.onDate || undefined },
+    })
+    const data = res.data?.data || res.data || {}
+    checkinDaily.onDate = data.onDate || checkinDaily.onDate
+    checkinDaily.total = Number(data.total || 0)
+    checkinDaily.pending = Number(data.pending || 0)
+    checkinDaily.approved = Number(data.approved || 0)
+    checkinDaily.absent = Number(data.absent || 0)
+    checkinDaily.list = data.list || []
+  } finally {
+    checkinDaily.loading = false
+  }
+}
+
+function exportCheckinDaily() {
+  downloadCsv(
+    `checkin-daily-${checkinDaily.onDate || 'export'}.csv`,
+    ['账号', '说明', '状态'],
+    (checkinDaily.list || []).map((r) => [r.username, r.title, r.status]),
+  )
+}
+
+async function openEvalCollege() {
+  evalCollege.visible = true
+  try {
+    const res = await http.get('/api/tickets/eval-college-stats')
+    evalCollege.list = res.data?.data || res.data || []
+  } catch {
+    evalCollege.list = []
+  }
+}
+
+function exportEvalCollege() {
+  downloadCsv(
+    'eval-college.csv',
+    [evalCollegeLabel.value, '已评份数'],
+    (evalCollege.list || []).map((r) => [r.college, r.count]),
+  )
+}
+
+async function openSpotCheck() {
+  spotCheck.itemId = null
+  spotCheck.onDate = ''
+  spotCheck.sampleN = 3
+  spotCheck.visible = true
+  await loadPickLists()
+  await loadSpotList()
+}
+
+async function loadSpotList() {
+  try {
+    const res = await http.get('/api/tickets/spot-check', {
+      params: { itemId: spotCheck.itemId || undefined },
+    })
+    spotCheck.list = res.data?.data || res.data || []
+  } catch {
+    spotCheck.list = []
+  }
+}
+
+async function submitSpotCheck() {
+  if (!spotCheck.itemId) {
+    ElMessage.warning('请选择查寝对象')
+    return
+  }
+  if (!spotCheck.onDate) {
+    ElMessage.warning(`请选择${checkinSpotOnLabel.value}`)
+    return
+  }
+  spotCheck.loading = true
+  try {
+    await http.post('/api/tickets/spot-check', {
+      itemId: spotCheck.itemId,
+      onDate: spotCheck.onDate,
+      sampleN: spotCheck.sampleN,
+    })
+    ElMessage.success('已生成抽查名单')
+    await loadSpotList()
+  } finally {
+    spotCheck.loading = false
+  }
+}
+
+async function openDelegate() {
+  delegate.to = ''
+  delegate.untilAt = ''
+  delegate.current = null
+  delegate.visible = true
+  await loadDispatchTargets()
+  try {
+    const res = await http.get('/api/tickets/approve-delegate')
+    delegate.current = res.data || null
+    if (delegate.current?.delegateUsername) {
+      delegate.to = delegate.current.delegateUsername
+      delegate.untilAt = delegate.current.untilAt || ''
+    }
+  } catch {
+    delegate.current = null
+  }
+}
+
+async function submitDelegate() {
+  if (!delegate.to) {
+    ElMessage.warning('请选择代审人')
+    return
+  }
+  if (!delegate.untilAt) {
+    ElMessage.warning('请选择截止日期')
+    return
+  }
+  delegate.loading = true
+  try {
+    await http.post('/api/tickets/approve-delegate', {
+      delegateUsername: delegate.to,
+      untilAt: delegate.untilAt,
+    })
+    ElMessage.success('已保存代审')
+    delegate.visible = false
+  } finally {
+    delegate.loading = false
+  }
+}
+
+async function clearDelegate() {
+  delegate.loading = true
+  try {
+    await http.post('/api/tickets/approve-delegate/clear')
+    ElMessage.success('已取消代审')
+    delegate.visible = false
+  } finally {
+    delegate.loading = false
+  }
+}
+
+function openCcComment(row) {
+  ccComment.row = row
+  ccComment.text = ''
+  ccComment.visible = true
+}
+
+async function submitCcComment() {
+  if (!ccComment.row) return
+  const text = (ccComment.text || '').trim()
+  if (!text) {
+    ElMessage.warning('请填写评论')
+    return
+  }
+  ccComment.loading = true
+  try {
+    await http.post(`/api/tickets/${ccComment.row.id}/cc-comment`, { comment: text })
+    ElMessage.success('已提交')
+    ccComment.visible = false
+    load()
+  } finally {
+    ccComment.loading = false
+  }
+}
+
+async function uploadApproveAttach(opt) {
+  const fd = new FormData()
+  fd.append('file', opt.file)
+  const res = await http.post('/api/upload', fd)
+  audit.approveAttachUrl = res.data?.url || res.data?.data?.url || ''
+  if (!audit.approveAttachUrl) ElMessage.warning('上传失败')
 }
 
 async function openReassign(row) {
@@ -856,6 +1554,9 @@ async function verifyProof(row, pass) {
 function resetAudit() {
   audit.row = null
   audit.remark = ''
+  audit.phrasePick = ''
+  audit.ccUsernames = []
+  audit.approveAttachUrl = ''
   audit.assigneeUsername = ''
   audit.helperUsername = ''
   audit.skillFilter = ''
@@ -878,6 +1579,13 @@ async function submitAudit() {
     ElMessage.warning(rejectReasonRequired.value)
     return
   }
+  if (minApproveRemarkWords.value > 0) {
+    const words = remark.replace(/\s+/g, '').length
+    if (words < minApproveRemarkWords.value) {
+      ElMessage.warning(minApproveRemarkHint.value || `审核意见不少于 ${minApproveRemarkWords.value} 字`)
+      return
+    }
+  }
   if (audit.pass && requireMeetingAck.value && !audit.ownerMeetingAck) {
     ElMessage.warning(ownerMeetingAckLabel.value || '请勾选启事方确认面交安排')
     return
@@ -887,6 +1595,12 @@ async function submitAudit() {
     const body = {
       pass: audit.pass,
       remark,
+    }
+    if (allowApproveCc.value && Array.isArray(audit.ccUsernames) && audit.ccUsernames.length) {
+      body.ccUsernames = audit.ccUsernames
+    }
+    if (allowApproveRemarkAttach.value && audit.approveAttachUrl) {
+      body.approveAttachUrl = audit.approveAttachUrl
     }
     if (audit.pass && showDispatch.value && isFinalPass(audit.row) && audit.assigneeUsername) {
       body.assigneeUsername = audit.assigneeUsername
@@ -939,6 +1653,7 @@ function openProgress(row) {
 onMounted(() => {
   load()
   loadCredit()
+  loadDurationStats()
 })
 </script>
 

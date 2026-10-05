@@ -78,7 +78,8 @@ public class SurveyStore {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", toLong(col(raw, "id"))); m.put("formId", toLong(col(raw, "form_id", "formId")));
         m.put("type", str(col(raw, "type"))); m.put("stem", str(col(raw, "stem")));
-        m.put("optionsJson", str(col(raw, "options_json", "optionsJson")));
+        Long qid = toLong(col(raw, "id"));
+        m.put("optionsJson", qid == null ? "[]" : ChoiceOptionMb.loadSurvey(qid));
         m.put("sortNo", toInt(col(raw, "sort_no", "sortNo"), 0));
         m.put("required", toInt(col(raw, "required"), 1) == 1);
         return m;
@@ -119,16 +120,20 @@ public class SurveyStore {
         if (stem.isBlank()) throw new IllegalArgumentException("题干不能为空");
         row.put("stem", stem);
         String options = str(body.get("optionsJson")); if (options.isBlank()) options = str(body.get("options_json"));
-        row.put("optionsJson", options);
         row.put("sortNo", toInt(body.get("sortNo"), toInt(body.get("sort_no"), 0)));
         boolean required = !"0".equals(str(body.get("required"))) && !"false".equalsIgnoreCase(str(body.get("required")));
         row.put("required", required ? 1 : 0);
         mapper().insertQuestion(row);
         long id = toLong(row.get("id")) == null ? 0L : toLong(row.get("id"));
+        ChoiceOptionMb.replaceSurvey(id, options);
         List<Map<String, Object>> one = mapper().getQuestion(id);
         return one.isEmpty() ? Map.of() : mapQuestion(one.get(0));
     }
-    public static boolean deleteQuestion(long id) { require(); return mapper().deleteQuestion(id) > 0; }
+    public static boolean deleteQuestion(long id) {
+        require();
+        ChoiceOptionMb.replaceSurvey(id, "[]");
+        return mapper().deleteQuestion(id) > 0;
+    }
 
     public static Map<String, Object> submit(String username, long formId, List<Map<String, Object>> answers) {
         require();

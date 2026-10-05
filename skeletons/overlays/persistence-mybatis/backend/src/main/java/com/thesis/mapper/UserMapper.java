@@ -18,6 +18,9 @@ public interface UserMapper {
     @Update("UPDATE sys_user SET password=#{password} WHERE username=#{username}")
     int updatePassword(@Param("username") String username, @Param("password") String password);
 
+    @Update("UPDATE sys_user SET post_mute_until=#{until} WHERE username=#{username}")
+    int updatePostMuteUntil(@Param("username") String username, @Param("until") String until);
+
     @Insert("INSERT INTO sys_user (username,password,role,nickname,phone,avatar_url,profile_json,super_admin,profile_editable,enabled) "
             + "VALUES (#{username},#{password},#{role},#{nickname},#{phone},#{avatarUrl},#{profileJson},0,1,1)")
     int insertWithProfile(Map<String, Object> row);
@@ -38,6 +41,9 @@ public interface UserMapper {
             + "VALUES (#{username},#{password},'admin',#{nickname},#{phone},#{avatarUrl},"
             + "0,1,0,'shop_merchant','clerk')")
     int insertMerchantPlain(Map<String, Object> row);
+
+    @Update("UPDATE sys_user SET post_mute_until=#{until} WHERE username=#{username}")
+    int updatePostMuteUntil(@Param("username") String username, @Param("until") String until);
 
     @Update("UPDATE sys_user SET nickname=#{nickname}, phone=#{phone}, enabled=#{enabled}, profile_json=#{profileJson} WHERE username=#{username}")
     int updateAdminWithProfile(Map<String, Object> row);

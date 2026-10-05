@@ -112,7 +112,7 @@
                 </foreach>
             </if>
         </where>
-        ORDER BY id
+        ORDER BY pin_top DESC, id DESC
     </select>
 
     <select id="selectMine" resultType="map">

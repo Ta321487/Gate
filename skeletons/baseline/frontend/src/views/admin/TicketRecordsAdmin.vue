@@ -3,6 +3,8 @@
     <div class="toolbar">
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="onFilter">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
+        <el-option v-if="allowCheckin" label="未签到（缺勤）" value="absent" />
+        <el-option v-if="allowCheckin" label="已签到" value="checked_in" />
       </el-select>
       <el-checkbox
         v-if="allowRating"
@@ -26,6 +28,21 @@
     </div>
     <SchemaLabelHints :keys="recordsHintKeys" />
     <p v-if="todayBoardOn && todayBoardHint" class="board-hint">{{ todayBoardHint }}</p>
+    <p v-if="allowCheckin && absentExportHint" class="board-hint">{{ absentExportHint }}</p>
+    <p v-if="allowSealLedgerExport && sealLedgerExportHint" class="board-hint">{{ sealLedgerExportHint }}</p>
+    <p v-if="printTicketOn && activityProofHint" class="board-hint">{{ activityProofHint }}</p>
+    <p v-if="allowLottery && lotteryDrawHint" class="board-hint">{{ lotteryDrawHint }}</p>
+    <p v-if="allowPostGallery && postGalleryHint" class="board-hint">{{ postGalleryHint }}</p>
+    <p v-if="requireCreditWritebackAck && creditWritebackHint" class="board-hint">{{ creditWritebackHint }}</p>
+    <p v-if="allowProjNodeRemind && projNodeRemindHint" class="board-hint">{{ projNodeRemindHint }}</p>
+    <el-button
+      v-if="allowLottery"
+      type="warning"
+      plain
+      style="margin-bottom:12px"
+      :loading="lotteryLoading"
+      @click="runLotteryDraw"
+    >{{ lotteryDrawLabel }}</el-button>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
@@ -60,6 +77,22 @@
         width="100"
       >
         <template #default="{ row }">{{ row.insuranceAck ? '已勾选' : '—' }}</template>
+      </el-table-column>
+      <el-table-column
+        v-if="requireCreditWritebackAck"
+        prop="creditWritebackAck"
+        label="学分认定提示"
+        width="110"
+      >
+        <template #default="{ row }">{{ row.creditWritebackAck ? '已确认' : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowPostGallery" :label="postGalleryLabel" width="100">
+        <template #default="{ row }">
+          <span v-if="Array.isArray(row.postGalleryImages) && row.postGalleryImages.length">
+            {{ row.postGalleryImages.length }} 张
+          </span>
+          <span v-else class="muted">—</span>
+        </template>
       </el-table-column>
       <el-table-column :label="userLabel" width="110">
         <template #default="{ row }">{{ personLabel(row) }}</template>
@@ -107,11 +140,195 @@
       </el-table-column>
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column prop="approveAt" label="受理时间" width="170" />
+      <el-table-column v-if="allowWishOrder" :label="wishOrderLabel" width="90">
+        <template #default="{ row }">
+          <span v-if="row.wishOrder === 1">第一志愿</span>
+          <span v-else-if="row.wishOrder === 2">第二志愿</span>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowVolunteerRole" :label="volunteerRoleLabel" width="110" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.volunteerRole || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCompanions" :label="companionNamesLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.companionNames || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCertPickup" :label="certPickupLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.pickupMethod || '—' }}
+          <template v-if="row.mailAddress"> · {{ row.mailAddress }}</template>
+          <template v-if="row.expressNo"> · {{ expressNoLabel }} {{ row.expressNo }}</template>
+          <template v-if="allowCertUrgent && row.certUrgent"> · {{ certUrgentLabel }}</template>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowSealCopies" :label="sealCopiesLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.sealCopies != null ? row.sealCopies : '—' }}
+          <template v-if="row.bindNote"> · {{ row.bindNote }}</template>
+          <template v-if="row.sealCopyNos"> · {{ row.sealCopyNos }}</template>
+          <template v-if="row.sealWitnessAck"> · 已监印</template>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowExpenseInvoice" :label="invoiceCountLabel" width="120">
+        <template #default="{ row }">
+          <template v-if="row.invoiceCount != null">{{ row.invoiceCount }} 张</template>
+          <template v-else>—</template>
+          <template v-if="row.fineYuan > 0"> · {{ row.fineYuan }} 元</template>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowVisitorCount" :label="visitorCountLabel" width="100">
+        <template #default="{ row }">{{ row.visitorCount != null ? row.visitorCount : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowAwardCertNo" :label="awardCertNoLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.awardCertNo || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowVendorQuotes" :label="vendorQuotesLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.vendorQuotes || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowFleetMileage" :label="mileageLabel" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.mileageKm != null ? row.mileageKm : '—' }}
+          <template v-if="row.fuelNote"> · {{ row.fuelNote }}</template>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="allowFleetCrew" :label="driverNameLabel" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.driverName || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowFleetCrew" :label="passengerNamesLabel" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.passengerNames || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCompHours" :label="compHoursLabel" width="120">
+        <template #default="{ row }">{{ row.compHours != null ? row.compHours : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowReturnFuel" :label="returnFuelLabel" width="110">
+        <template #default="{ row }">{{ row.returnFuel != null ? row.returnFuel : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowLaborPlace" :label="laborPlaceLabel" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.laborPlace || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowEffectiveOn" :label="effectiveOnLabel" width="120">
+        <template #default="{ row }">{{ row.effectiveOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCertIssueNo" :label="certIssueNoLabel" width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.certIssueNo || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowDocRev" :label="docRevLabel" width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.docRev || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowFitoutQuiet" :label="fitoutWindowLabel" width="140">
+        <template #default="{ row }">{{ row.workStart || '—' }}–{{ row.workEnd || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowIssueCopies" :label="issueCopiesLabel" width="100">
+        <template #default="{ row }">{{ row.issueCopies != null ? row.issueCopies : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowSignParties" :label="signPartiesLabel" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.signParties || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowTrainHours" :label="trainHoursLabel" width="120">
+        <template #default="{ row }">{{ row.trainHours != null ? row.trainHours : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowMemberChange" :label="memberChangeNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.memberChangeNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProcureBudget" :label="procureAmountLabel" width="120">
+        <template #default="{ row }">{{ row.procureAmount != null ? row.procureAmount : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCheckinException" :label="exceptionTypeLabel" width="120">
+        <template #default="{ row }">{{ row.exceptionType || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowVisitPurpose" :label="visitPurposeLabel" width="120">
+        <template #default="{ row }">{{ row.visitPurpose || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowFitoutRectify" :label="rectifyNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.rectifyNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowFleetViolation" :label="violationPersonLabel" width="120">
+        <template #default="{ row }">{{ row.violationPerson || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProjFundUse" :label="fundUseYuanLabel" width="120">
+        <template #default="{ row }">{{ row.fundUseYuan != null ? row.fundUseYuan : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProjFundUse" :label="fundUseNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.fundUseNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowVisitSlotRemain" :label="visitOnLabel" width="120">
+        <template #default="{ row }">{{ row.visitOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowPlagiarismUrl" :label="plagiarismUrlLabel" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.plagiarismUrl || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowPartyStage" :label="partyStageLabel" width="130">
+        <template #default="{ row }">{{ row.partyStage || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowPartyStage" :label="stageOnLabel" width="120">
+        <template #default="{ row }">{{ row.stageOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowEvalObserve" :label="observeOnLabel" width="120">
+        <template #default="{ row }">{{ row.observeOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowEvalObserve" :label="observeNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.observeNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowScheduleImpact" :label="scheduleImpactNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.scheduleImpactNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowContractAmount" :label="contractAmountLabel" width="120">
+        <template #default="{ row }">{{ row.contractAmount != null ? row.contractAmount : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowExpenseLines" :label="expenseLinesLabel" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">{{ formatExpenseLines(row.expenseLines) }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowTripLegs" :label="tripLegsLabel" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">{{ formatTripLegs(row.tripLegs) }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProjChangeLog" :label="changeLogNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.changeLogNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCertVerify" :label="certVerifyCodeLabel" width="140">
+        <template #default="{ row }">{{ row.verifyCode || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowVisitWalkIn" :label="visitWalkInLabel" width="100">
+        <template #default="{ row }">{{ row.walkIn ? '是' : '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCheckinProxy" :label="checkinProxyByLabel" width="120">
+        <template #default="{ row }">{{ row.checkinProxyBy || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowClubRoster" :label="clubRosterLabel" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">{{ formatClubMembers(row.clubMembers) }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCarpassParkingMutex" :label="parkingOnLabel" width="130">
+        <template #default="{ row }">{{ row.parkingOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowContractRenew" :label="renewOnLabel" width="120">
+        <template #default="{ row }">{{ row.renewOn || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowContractRenew" :label="renewNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.renewNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCertPickupRedeem" :label="pickupRedeemCodeLabel" width="150">
+        <template #default="{ row }">{{ row.pickupRedeemCode || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowCertPickupRedeem" :label="pickupRedeemedLabel" width="90">
+        <template #default="{ row }">{{ row.pickupRedeemed ? '是' : '否' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProcureReturn" :label="procureReturnFailLabel" width="110">
+        <template #default="{ row }">{{ row.returnFail ? '是' : '否' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowProcureReturn" :label="returnNoteLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.returnNote || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="allowMoralObjection" :label="moralObjectionLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.objectionNote || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="allowCheckin" label="签到" width="170">
         <template #default="{ row }">{{ row.checkedInAt || '—' }}</template>
       </el-table-column>
       <el-table-column v-if="issuePassCode" :label="passCodeLabel" width="140">
-        <template #default="{ row }">{{ row.passCode || '—' }}</template>
+        <template #default="{ row }">
+          {{ row.passCode || '—' }}
+          <template v-if="allowPassExpire && row.passExpireAt"> · {{ row.passExpireAt }}</template>
+          <template v-if="allowPassExpire && isPassExpired(row)"> · {{ passExpiredLabel }}</template>
+        </template>
       </el-table-column>
       <el-table-column prop="returnAt" label="完成时间" width="170" />
       <el-table-column v-if="allowRating" label="评分" width="110">
@@ -137,11 +354,23 @@
           <div class="table-ops">
           <el-button link type="info" @click="openProgress(row)">进度</el-button>
           <el-button
+            v-if="canAdminCheckin(row)"
+            link
+            type="success"
+            @click="openAdminCheckin(row)"
+          >{{ adminCheckinLabel }}</el-button>
+          <el-button
             v-if="canPickup(row)"
             link
             type="success"
             @click="doPickup(row)"
           >领取登记</el-button>
+          <el-button
+            v-if="canRedeemPickup(row)"
+            link
+            type="success"
+            @click="doRedeemPickup(row)"
+          >{{ pickupRedeemedLabel }}</el-button>
           <el-button
             v-if="canFinePaid(row)"
             link
@@ -225,11 +454,29 @@
       :row="finishRow"
       @done="load"
     />
+    <el-dialog v-model="adminCheckin.visible" :title="adminCheckinLabel" width="420px" destroy-on-close>
+      <p class="muted" v-if="adminCheckin.row">
+        为「{{ adminCheckin.row.title || ('编号 ' + adminCheckin.row.id) }}」登记补签
+      </p>
+      <p v-if="adminCheckinHint" class="muted" style="margin-bottom:8px">{{ adminCheckinHint }}</p>
+      <label v-if="allowLateMinutes" class="audit-field" style="display:block;margin-bottom:12px">
+        <span class="lab">{{ lateMinutesLabel }}</span>
+        <el-input-number v-model="adminCheckin.lateMinutes" :min="0" :max="999" />
+      </label>
+      <label class="audit-field" style="display:block">
+        <span class="lab">备注</span>
+        <el-input v-model="adminCheckin.note" maxlength="200" type="textarea" :rows="2" placeholder="选填" />
+      </label>
+      <template #footer>
+        <el-button @click="adminCheckin.visible = false">取消</el-button>
+        <el-button type="primary" :loading="adminCheckin.loading" @click="submitAdminCheckin">确认补签</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
@@ -258,6 +505,7 @@ import {
 } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
+import { printTicketDocument } from '../../utils/ticketFormPrint.js'
 
 const props = defineProps({
   defaultToday: { type: Boolean, default: false },
@@ -280,6 +528,10 @@ const todayBoardHint = computed(() => labels.value.todayBoardHint || '')
 const printTicketOn = computed(
   () =>
     !!ticket.printTicket
+    || !!ticket.allowCertFormPrint
+    || !!ticket.allowSealFormPrint
+    || !!ticket.allowProjMidFormPrint
+    || !!ticket.allowEthicOpinionPrint
     || !!(labels.value.gradePrintHint || labels.value.bedPrintHint
       || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint),
 )
@@ -291,9 +543,6 @@ const checkExportHint = computed(() => labels.value.checkExportHint || '')
 const stuNoMaskHint = computed(() => labels.value.stuNoMaskExportHint || '')
 const stuNoMaskOn = computed(() => !!stuNoMaskHint.value)
 const maskStuNo = ref(false)
-const exportBtnLabel = computed(
-  () => monthExportHint.value || checkExportHint.value || '导出 CSV',
-)
 const categoryColorOn = computed(() => !!ticket.categoryColorHint || !!ticket.repairThicken)
 const repairFinishNeeded = computed(() => !!(
   ticket.repairThicken
@@ -307,6 +556,15 @@ const repairFinishNeeded = computed(() => !!(
   || ticket.allowQuote
   || ticket.allowKnowledgeDeposit
   || ticket.allowTicketMerge
+  || ticket.allowFleetMileage
+          || ticket.allowCompHours
+          || ticket.allowReturnFuel
+  || ticket.allowFleetViolation
+  || ticket.allowProcureReturn
+  || ticket.allowCertPickup
+  || ticket.allowSealCopies
+  || ticket.allowAwardCertNo
+  || ticket.allowVendorQuotes
 ))
 const hasRatingDims = computed(
   () => Array.isArray(ticket.ratingDims) && ticket.ratingDims.length > 0,
@@ -331,6 +589,196 @@ function formatDims(json) {
   }
 }
 const allowCheckin = computed(() => !!ticket.allowCheckin)
+const allowAdminCheckin = computed(() => !!ticket.allowAdminCheckin)
+const allowLateMinutes = computed(() => !!ticket.allowLateMinutes)
+const allowWishOrder = computed(() => !!ticket.allowWishOrder)
+const allowVolunteerRole = computed(() => !!ticket.allowVolunteerRole)
+const allowCompanions = computed(() => !!ticket.allowCompanions)
+const allowCertPickup = computed(() => !!ticket.allowCertPickup)
+const allowCertUrgent = computed(() => !!ticket.allowCertUrgent)
+const allowSealCopies = computed(() => !!ticket.allowSealCopies)
+const allowSealLedgerExport = computed(() => !!ticket.allowSealLedgerExport)
+const sealLedgerExportHint = computed(() => labels.value.sealLedgerExportHint || '')
+const sealLedgerExportLabel = computed(() => labels.value.sealLedgerExportLabel || '导出用印台账')
+const sealCopyNosLabel = computed(() => labels.value.sealCopyNosLabel || '用印份号')
+const sealWitnessAckLabel = computed(() => labels.value.sealWitnessAckLabel || '监印人已确认')
+const allowExpenseInvoice = computed(() => !!ticket.allowExpenseInvoice)
+const allowVisitorCount = computed(() => !!ticket.allowVisitorCount)
+const allowAwardCertNo = computed(() => !!ticket.allowAwardCertNo)
+const allowVendorQuotes = computed(
+  () => !!ticket.allowVendorQuotes || Number(ticket.minVendorQuotes || 0) > 0,
+)
+const allowFleetMileage = computed(() => !!ticket.allowFleetMileage)
+const allowFleetCrew = computed(() => !!ticket.allowFleetCrew)
+const allowCompHours = computed(() => !!ticket.allowCompHours)
+const allowReturnFuel = computed(() => !!ticket.allowReturnFuel)
+const allowLaborPlace = computed(() => !!ticket.allowLaborPlace)
+const allowEffectiveOn = computed(() => !!ticket.allowEffectiveOn)
+const allowCertIssueNo = computed(() => !!ticket.allowCertIssueNo)
+const allowDocRev = computed(() => !!ticket.allowDocRev)
+const allowFitoutQuiet = computed(() => !!ticket.allowFitoutQuiet)
+const allowIssueCopies = computed(() => !!ticket.allowIssueCopies)
+const allowSignParties = computed(() => !!ticket.allowSignParties)
+const allowTrainHours = computed(() => !!ticket.allowTrainHours)
+const allowMemberChange = computed(() => !!ticket.allowMemberChange)
+const allowProcureBudget = computed(() => !!ticket.allowProcureBudget)
+const allowCheckinException = computed(() => !!ticket.allowCheckinException)
+const allowVisitPurpose = computed(() => !!ticket.allowVisitPurpose)
+const allowFitoutRectify = computed(() => !!ticket.allowFitoutRectify)
+const allowFleetViolation = computed(() => !!ticket.allowFleetViolation)
+const allowProjNodeRemind = computed(() => !!ticket.allowProjNodeRemind)
+const allowClubCopyLast = computed(() => !!ticket.allowClubCopyLast)
+const allowProcureReturn = computed(() => !!ticket.allowProcureReturn)
+const allowMoralObjection = computed(() => !!ticket.allowMoralObjection)
+const allowProjFundUse = computed(() => !!ticket.allowProjFundUse)
+const allowEvalDimWeight = computed(() => !!ticket.allowEvalDimWeight)
+const allowVisitSlotRemain = computed(() => !!ticket.allowVisitSlotRemain)
+const allowPlagiarismUrl = computed(() => !!ticket.allowPlagiarismUrl)
+const allowPartyStage = computed(() => !!ticket.allowPartyStage)
+const allowEvalObserve = computed(() => !!ticket.allowEvalObserve)
+const allowScheduleImpact = computed(() => !!ticket.allowScheduleImpact)
+const allowContractAmount = computed(() => !!ticket.allowContractAmount)
+const allowExpenseLines = computed(() => !!ticket.allowExpenseLines)
+const allowTripLegs = computed(() => !!ticket.allowTripLegs)
+const allowProjChangeLog = computed(() => !!ticket.allowProjChangeLog)
+const allowCertVerify = computed(() => !!ticket.allowCertVerify)
+const allowVisitWalkIn = computed(() => !!ticket.allowVisitWalkIn)
+const allowCheckinProxy = computed(() => !!ticket.allowCheckinProxy)
+const allowClubRoster = computed(() => !!ticket.allowClubRoster)
+const allowCarpassParkingMutex = computed(() => !!ticket.allowCarpassParkingMutex)
+const allowContractRenew = computed(() => !!ticket.allowContractRenew)
+const allowCertPickupRedeem = computed(() => !!ticket.allowCertPickupRedeem)
+const expenseLinesLabel = computed(() => labels.value.expenseLinesLabel || '报销明细')
+const tripLegsLabel = computed(() => labels.value.tripLegsLabel || '出差行程')
+const changeLogNoteLabel = computed(() => labels.value.changeLogNoteLabel || '变更摘要')
+const certVerifyCodeLabel = computed(() => labels.value.certVerifyCodeLabel || '真伪查询码')
+const visitWalkInLabel = computed(() => labels.value.visitWalkInLabel || '现场补录')
+const checkinProxyByLabel = computed(() => labels.value.checkinProxyByLabel || '代登人')
+const clubRosterLabel = computed(() => labels.value.clubRosterLabel || '成员名册')
+const parkingOnLabel = computed(() => labels.value.parkingOnLabel || '占用车位日期')
+const renewOnLabel = computed(() => labels.value.renewOnLabel || '续签日期')
+const renewNoteLabel = computed(() => labels.value.renewNoteLabel || '续签说明')
+const pickupRedeemCodeLabel = computed(() => labels.value.pickupRedeemCodeLabel || '领取核销码')
+const pickupRedeemedLabel = computed(() => labels.value.pickupRedeemedLabel || '已核销')
+const pickupRedeemHint = computed(() => labels.value.pickupRedeemHint || '')
+function formatClubMembers(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || '—'
+    return arr.map((x) => `${x.name || ''}${x.studentNo ? `（${x.studentNo}）` : ''}`).join('，') || '—'
+  } catch {
+    return raw || '—'
+  }
+}
+function formatExpenseLines(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || '—'
+    return arr.map((x) => `${x.category || ''} ${x.amount ?? ''}${x.note ? `（${x.note}）` : ''}`).join('；') || '—'
+  } catch {
+    return raw || '—'
+  }
+}
+function formatTripLegs(raw) {
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(arr)) return raw || '—'
+    return arr.map((x) => `${x.on || ''} ${x.from || ''}→${x.via ? `${x.via}→` : ''}${x.to || ''}`).join('；') || '—'
+  } catch {
+    return raw || '—'
+  }
+}
+const fundUseYuanLabel = computed(() => labels.value.fundUseYuanLabel || '本次使用经费（元）')
+const fundUseNoteLabel = computed(() => labels.value.fundUseNoteLabel || '经费使用说明')
+const visitOnLabel = computed(() => labels.value.visitOnLabel || '来访日期')
+const plagiarismUrlLabel = computed(() => labels.value.plagiarismUrlLabel || '查重报告链接')
+const partyStageLabel = computed(() => labels.value.partyStageLabel || '当前发展阶段')
+const stageOnLabel = computed(() => labels.value.stageOnLabel || '进入该阶段日期')
+const observeOnLabel = computed(() => labels.value.observeOnLabel || '听课日期')
+const observeNoteLabel = computed(() => labels.value.observeNoteLabel || '听课记录')
+const scheduleImpactNoteLabel = computed(() => labels.value.scheduleImpactNoteLabel || '对课表的影响')
+const contractAmountLabel = computed(() => labels.value.contractAmountLabel || '合同金额（元）')
+const procureReturnFailLabel = computed(() => labels.value.procureReturnFailLabel || '验收不合格')
+const returnNoteLabel = computed(() => labels.value.returnNoteLabel || '退货说明')
+const moralObjectionLabel = computed(() => labels.value.moralObjectionLabel || '异议说明')
+const allowPassExpire = computed(() => !!ticket.allowPassExpire)
+const returnFuelLabel = computed(() => labels.value.returnFuelLabel || '回场油量')
+const laborPlaceLabel = computed(() => labels.value.laborPlaceLabel || '劳动地点')
+const effectiveOnLabel = computed(() => labels.value.effectiveOnLabel || '生效日期')
+const certIssueNoLabel = computed(() => labels.value.certIssueNoLabel || '开具流水号')
+const docRevLabel = computed(() => labels.value.docRevLabel || '正文版本号')
+const fitoutWindowLabel = computed(() => labels.value.fitoutWindowLabel || '施工时段')
+const issueCopiesLabel = computed(() => labels.value.issueCopiesLabel || '开具份数')
+const signPartiesLabel = computed(() => labels.value.signPartiesLabel || '签署方')
+const trainHoursLabel = computed(() => labels.value.trainHoursLabel || '本次培训学时')
+const memberChangeNoteLabel = computed(() => labels.value.memberChangeNoteLabel || '成员变更说明')
+const procureAmountLabel = computed(() => labels.value.procureAmountLabel || '本次申购金额（元）')
+const exceptionTypeLabel = computed(() => labels.value.exceptionTypeLabel || '异常类型')
+const visitPurposeLabel = computed(() => labels.value.visitPurposeLabel || '来访目的')
+const rectifyNoteLabel = computed(() => labels.value.rectifyNoteLabel || '整改说明')
+const violationPersonLabel = computed(() => labels.value.violationPersonLabel || '违章责任人')
+const projNodeRemindHint = computed(() => labels.value.projNodeRemindHint || '')
+const passExpireAtLabel = computed(() => labels.value.passExpireAtLabel || '通行码有效至')
+const passExpiredLabel = computed(() => labels.value.passExpiredLabel || '已失效')
+function isPassExpired(row) {
+  if (!allowPassExpire.value || !row || !row.passExpireAt) return false
+  const t = Date.parse(String(row.passExpireAt).replace('T', ' '))
+  return Number.isFinite(t) && Date.now() > t
+}
+const adminCheckinLabel = computed(() => labels.value.adminCheckinLabel || '补签')
+const adminCheckinHint = computed(() => labels.value.adminCheckinHint || '')
+const lateMinutesLabel = computed(() => labels.value.lateMinutesLabel || '迟到分钟数')
+const wishOrderLabel = computed(() => labels.value.wishOrderLabel || '志愿序')
+const volunteerRoleLabel = computed(() => labels.value.volunteerRoleLabel || '报名岗位')
+const companionNamesLabel = computed(() => labels.value.companionNamesLabel || '同行人姓名')
+const certPickupLabel = computed(() => labels.value.certPickupLabel || '领取方式')
+const expressNoLabel = computed(() => labels.value.expressNoLabel || '快递单号')
+const certUrgentLabel = computed(() => labels.value.certUrgentLabel || '加急件')
+const sealCopiesLabel = computed(() => labels.value.sealCopiesLabel || '用印份数')
+const invoiceCountLabel = computed(() => labels.value.invoiceCountLabel || '发票张数')
+const visitorCountLabel = computed(() => labels.value.visitorCountLabel || '随行人数')
+const awardCertNoLabel = computed(() => labels.value.awardCertNoLabel || '证书编号')
+const driverNameLabel = computed(() => labels.value.driverNameLabel || '驾驶员')
+const passengerNamesLabel = computed(() => labels.value.passengerNamesLabel || '随车人')
+const compHoursLabel = computed(() => labels.value.compHoursLabel || '核定调休小时')
+const vendorQuotesLabel = computed(() => labels.value.vendorQuotesLabel || '比价供应商')
+const mileageLabel = computed(() => labels.value.mileageLabel || '行驶里程')
+const absentExportHint = computed(() => labels.value.absentExportHint || '')
+const activityProofHint = computed(() => labels.value.activityProofHint || '')
+const allowLottery = computed(() => !!ticket.allowLottery)
+const lotteryDrawLabel = computed(() => labels.value.lotteryDrawLabel || '抽签录取')
+const lotteryDrawHint = computed(() => labels.value.lotteryDrawHint || '')
+const allowPostGallery = computed(() => !!ticket.allowPostGallery)
+const postGalleryLabel = computed(() => labels.value.postGalleryLabel || '活动相册')
+const postGalleryHint = computed(() => labels.value.postGalleryHint || '')
+const requireCreditWritebackAck = computed(() => !!ticket.requireCreditWritebackAck)
+const creditWritebackHint = computed(() => labels.value.creditWritebackHint || '')
+const lotteryLoading = ref(false)
+async function runLotteryDraw() {
+  const itemId = list.value?.[0]?.itemId || list.value?.[0]?.archiveId
+  if (!itemId) {
+    ElMessage.warning('请先查询到含档案编号的记录再抽签')
+    return
+  }
+  lotteryLoading.value = true
+  try {
+    const res = await http.post('/api/tickets/lottery-draw', { itemId })
+    const d = res.data || {}
+    ElMessage.success(`已抽取 ${d.drawn || 0} 人（池 ${d.poolSize || 0}）`)
+    load()
+  } finally {
+    lotteryLoading.value = false
+  }
+}
+const exportBtnLabel = computed(() => {
+  if (status.value === 'absent' && (labels.value.absentExportLabel || '')) {
+    return labels.value.absentExportLabel
+  }
+  if (allowSealLedgerExport.value && sealLedgerExportLabel.value) {
+    return sealLedgerExportLabel.value
+  }
+  return monthExportHint.value || checkExportHint.value || '导出 CSV'
+})
 const issuePassCode = computed(() => !!ticket.issuePassCode)
 const passCodeLabel = computed(() => ticket.passCodeLabel || '通行码')
 const allowQty = computed(() => !!ticket.allowQty)
@@ -398,6 +846,47 @@ async function doCompensate(row) {
   await http.post(`/api/tickets/${row.id}/compensate`)
   ElMessage.success(labels.value.bookCompensateOkMessage || '赔偿已登记完成')
   load()
+}
+
+const adminCheckin = reactive({
+  visible: false,
+  loading: false,
+  row: null,
+  lateMinutes: 0,
+  note: '',
+})
+
+function canAdminCheckin(row) {
+  if (!allowAdminCheckin.value || !allowCheckin.value || !row) return false
+  if (row.status !== 'approved') return false
+  return !row.checkedInAt
+}
+
+function openAdminCheckin(row) {
+  Object.assign(adminCheckin, {
+    visible: true,
+    loading: false,
+    row,
+    lateMinutes: 0,
+    note: '',
+  })
+}
+
+async function submitAdminCheckin() {
+  if (!adminCheckin.row) return
+  adminCheckin.loading = true
+  try {
+    const body = { note: (adminCheckin.note || '').trim() }
+    if (allowLateMinutes.value) body.lateMinutes = Number(adminCheckin.lateMinutes) || 0
+    await http.post(`/api/tickets/${adminCheckin.row.id}/admin-checkin`, body)
+    ElMessage.success('补签已登记')
+    adminCheckin.visible = false
+    load()
+  } catch {
+    // http 拦截器已提示
+  } finally {
+    adminCheckin.loading = false
+  }
 }
 
 function canConfirmProcure(row) {
@@ -471,6 +960,12 @@ function canPickup(row) {
   if (row.pickupAt) return false
   // 与后端一致：退库后不可再登记，避免库存回补错乱
   return row.status === 'approved' || row.status === 'overdue'
+}
+
+function canRedeemPickup(row) {
+  if (!allowCertPickupRedeem.value || !row) return false
+  if (!row.pickupRedeemCode || row.pickupRedeemed) return false
+  return row.status === 'approved' || row.status === 'returned'
 }
 
 function canFinePaid(row) {
@@ -570,31 +1065,14 @@ async function finish(row) {
 }
 
 function printTicket(row) {
-  const w = window.open('', '_blank')
-  if (!w) {
-    ElMessage.warning('请允许弹出窗口以打印工单')
-    return
-  }
-  const noun = ticket.label || '工单'
-  const hint = labels.value.gradePrintHint || labels.value.bedPrintHint
-    || labels.value.closedStackPrintHint || labels.value.equipQrPrintHint || ''
-  w.document.write(`<!doctype html><html><head><title>${noun} ${row.id}</title>
-<style>body{font-family:sans-serif;padding:24px;color:#111}h1{font-size:18px}p{margin:6px 0}.hint{color:#64748b;font-size:12px}</style>
-</head><body>
-<h1>${noun} #${row.id}</h1>
-${hint ? `<p class="hint">${hint}</p>` : ''}
-<p>标题：${row.title || '—'}</p>
-<p>地点：${row.location || '—'}</p>
-<p>状态：${statusLabel(row)}</p>
-<p>申请人：${personLabel(row, '')}</p>
-<p>处理人：${row.assigneeUsername || '—'}</p>
-<p>期望上门：${row.preferredSlot || '—'}</p>
-<p>响应时限：${row.responseDueAt || '—'}</p>
-<p>完结时限：${row.dueAt || '—'}</p>
-<p>说明：${remarkText(row.remark)}</p>
-<script>window.onload=()=>{window.print()}<\/script>
-</body></html>`)
-  w.document.close()
+  const ok = printTicketDocument(row, {
+    ticket,
+    labels: labels.value,
+    statusText: statusLabel,
+    personLabel,
+    remarkText: (r) => plainFromHtml(r || ''),
+  })
+  if (!ok) ElMessage.warning('请允许弹出窗口以打印')
 }
 
 const repairThickenOn = computed(() => !!ticket.repairThicken || !!ticket.allowHoldResume)
@@ -696,6 +1174,30 @@ async function doPickup(row) {
   }
 }
 
+async function doRedeemPickup(row) {
+  const { value } = await ElMessageBox.prompt(
+    pickupRedeemHint.value || `请填写${pickupRedeemCodeLabel.value}`,
+    pickupRedeemedLabel.value,
+    {
+      confirmButtonText: '核销',
+      cancelButtonText: '取消',
+      inputPlaceholder: pickupRedeemCodeLabel.value,
+      inputValidator: (v) => {
+        if (!String(v || '').trim()) return `请填写${pickupRedeemCodeLabel.value}`
+        return true
+      },
+    },
+  ).catch(() => ({ value: null }))
+  if (value === null) return
+  try {
+    await http.post(`/api/tickets/${row.id}/redeem-pickup`, { code: String(value || '').trim() })
+    ElMessage.success('已核销领取')
+    load()
+  } catch {
+    // http 拦截器已提示业务错误
+  }
+}
+
 async function doFinePaid(row) {
   await ElMessageBox.confirm(`确认「${row.title || row.id}」${finePaidLabel.value}？`, finePaidLabel.value)
   await http.post(`/api/tickets/${row.id}/fine-paid`)
@@ -730,6 +1232,56 @@ async function exportCsv() {
   if (showPriorityCols.value) headers.push('优先级', '联系电话')
   if (allowEmergencyContact.value) headers.push(emergencyContactLabel.value, emergencyPhoneLabel.value)
   if (requireInsuranceAck.value) headers.push(insuranceAckColLabel.value)
+  if (allowWishOrder.value) headers.push(wishOrderLabel.value)
+  if (allowVolunteerRole.value) headers.push(volunteerRoleLabel.value)
+  if (allowCompanions.value) headers.push(companionNamesLabel.value)
+  if (allowCertPickup.value) headers.push(certPickupLabel.value, '邮寄地址')
+  if (allowSealCopies.value) headers.push(sealCopiesLabel.value, '装订说明')
+  if (allowSealLedgerExport.value) {
+    headers.push(sealCopyNosLabel.value, sealWitnessAckLabel.value)
+  }
+  if (allowExpenseInvoice.value) headers.push(invoiceCountLabel.value, '报销金额')
+  if (allowVisitorCount.value) headers.push(visitorCountLabel.value)
+  if (allowAwardCertNo.value) headers.push(awardCertNoLabel.value)
+  if (allowVendorQuotes.value) headers.push(vendorQuotesLabel.value)
+  if (allowFleetMileage.value) headers.push(mileageLabel.value, '油耗备注')
+  if (allowFleetCrew.value) headers.push(driverNameLabel.value, passengerNamesLabel.value)
+  if (allowCompHours.value) headers.push(compHoursLabel.value)
+  if (allowReturnFuel.value) headers.push(returnFuelLabel.value)
+  if (allowLaborPlace.value) headers.push(laborPlaceLabel.value)
+  if (allowEffectiveOn.value) headers.push(effectiveOnLabel.value)
+  if (allowCertIssueNo.value) headers.push(certIssueNoLabel.value)
+  if (allowDocRev.value) headers.push(docRevLabel.value)
+  if (allowFitoutQuiet.value) headers.push(fitoutWindowLabel.value)
+  if (allowIssueCopies.value) headers.push(issueCopiesLabel.value)
+  if (allowSignParties.value) headers.push(signPartiesLabel.value)
+  if (allowTrainHours.value) headers.push(trainHoursLabel.value)
+  if (allowMemberChange.value) headers.push(memberChangeNoteLabel.value)
+  if (allowProcureBudget.value) headers.push(procureAmountLabel.value)
+  if (allowCheckinException.value) headers.push(exceptionTypeLabel.value)
+  if (allowVisitPurpose.value) headers.push(visitPurposeLabel.value)
+  if (allowFitoutRectify.value) headers.push(rectifyNoteLabel.value)
+  if (allowFleetViolation.value) headers.push(violationPersonLabel.value)
+  if (allowProjFundUse.value) headers.push(fundUseYuanLabel.value, fundUseNoteLabel.value)
+  if (allowVisitSlotRemain.value) headers.push(visitOnLabel.value)
+  if (allowPlagiarismUrl.value) headers.push(plagiarismUrlLabel.value)
+  if (allowPartyStage.value) headers.push(partyStageLabel.value, stageOnLabel.value)
+  if (allowEvalObserve.value) headers.push(observeOnLabel.value, observeNoteLabel.value)
+  if (allowScheduleImpact.value) headers.push(scheduleImpactNoteLabel.value)
+  if (allowContractAmount.value) headers.push(contractAmountLabel.value)
+  if (allowExpenseLines.value) headers.push(expenseLinesLabel.value)
+  if (allowTripLegs.value) headers.push(tripLegsLabel.value)
+  if (allowProjChangeLog.value) headers.push(changeLogNoteLabel.value)
+  if (allowCertVerify.value) headers.push(certVerifyCodeLabel.value)
+  if (allowVisitWalkIn.value) headers.push(visitWalkInLabel.value)
+  if (allowCheckinProxy.value) headers.push(checkinProxyByLabel.value)
+  if (allowClubRoster.value) headers.push(clubRosterLabel.value)
+  if (allowCarpassParkingMutex.value) headers.push(parkingOnLabel.value)
+  if (allowContractRenew.value) headers.push(renewOnLabel.value, renewNoteLabel.value)
+  if (allowCertPickupRedeem.value) headers.push(pickupRedeemCodeLabel.value, pickupRedeemedLabel.value)
+  if (allowProcureReturn.value) headers.push(procureReturnFailLabel.value, returnNoteLabel.value)
+  if (allowMoralObjection.value) headers.push(moralObjectionLabel.value)
+  if (issuePassCode.value && allowPassExpire.value) headers.push(passExpireAtLabel.value)
   headers.push(userLabel.value, '处理人', '状态')
   if (allowQty.value) headers.push('数量')
   if (pickLoanPeriod.value) headers.push(dueLabel.value)
@@ -761,6 +1313,150 @@ async function exportCsv() {
     }
     if (requireInsuranceAck.value) {
       line.push(row.insuranceAck ? '已勾选' : '')
+    }
+    if (allowWishOrder.value) {
+      line.push(row.wishOrder === 1 ? '第一志愿' : row.wishOrder === 2 ? '第二志愿' : '')
+    }
+    if (allowVolunteerRole.value) {
+      line.push(row.volunteerRole || '')
+    }
+    if (allowCompanions.value) {
+      line.push(row.companionNames || '')
+    }
+    if (allowCertPickup.value) {
+      line.push(row.pickupMethod || '', row.mailAddress || '')
+    }
+    if (allowSealCopies.value) {
+      line.push(row.sealCopies != null ? row.sealCopies : '', row.bindNote || '')
+    }
+    if (allowSealLedgerExport.value) {
+      line.push(row.sealCopyNos || '', row.sealWitnessAck ? '已监印' : '')
+    }
+    if (allowExpenseInvoice.value) {
+      line.push(row.invoiceCount != null ? row.invoiceCount : '', row.fineYuan > 0 ? row.fineYuan : '')
+    }
+    if (allowVisitorCount.value) {
+      line.push(row.visitorCount != null ? row.visitorCount : '')
+    }
+    if (allowAwardCertNo.value) {
+      line.push(row.awardCertNo || '')
+    }
+    if (allowVendorQuotes.value) {
+      line.push(row.vendorQuotes || '')
+    }
+    if (allowFleetMileage.value) {
+      line.push(row.mileageKm != null ? row.mileageKm : '', row.fuelNote || '')
+    }
+    if (allowFleetCrew.value) {
+      line.push(row.driverName || '', row.passengerNames || '')
+    }
+    if (allowCompHours.value) {
+      line.push(row.compHours != null ? row.compHours : '')
+    }
+    if (allowReturnFuel.value) {
+      line.push(row.returnFuel != null ? row.returnFuel : '')
+    }
+    if (allowLaborPlace.value) {
+      line.push(row.laborPlace || '')
+    }
+    if (allowEffectiveOn.value) {
+      line.push(row.effectiveOn || '')
+    }
+    if (allowCertIssueNo.value) {
+      line.push(row.certIssueNo || '')
+    }
+    if (allowDocRev.value) {
+      line.push(row.docRev || '')
+    }
+    if (allowFitoutQuiet.value) {
+      line.push([row.workStart, row.workEnd].filter(Boolean).join('-'))
+    }
+    if (allowIssueCopies.value) {
+      line.push(row.issueCopies ?? '')
+    }
+    if (allowSignParties.value) {
+      line.push(row.signParties || '')
+    }
+    if (allowTrainHours.value) {
+      line.push(row.trainHours ?? '')
+    }
+    if (allowMemberChange.value) {
+      line.push(row.memberChangeNote || '')
+    }
+    if (allowProcureBudget.value) {
+      line.push(row.procureAmount ?? '')
+    }
+    if (allowCheckinException.value) {
+      line.push(row.exceptionType || '')
+    }
+    if (allowVisitPurpose.value) {
+      line.push(row.visitPurpose || '')
+    }
+    if (allowFitoutRectify.value) {
+      line.push(row.rectifyNote || '')
+    }
+    if (allowFleetViolation.value) {
+      line.push(row.violationPerson || '')
+    }
+    if (allowProjFundUse.value) {
+      line.push(row.fundUseYuan ?? '', row.fundUseNote || '')
+    }
+    if (allowVisitSlotRemain.value) {
+      line.push(row.visitOn || '')
+    }
+    if (allowPlagiarismUrl.value) {
+      line.push(row.plagiarismUrl || '')
+    }
+    if (allowPartyStage.value) {
+      line.push(row.partyStage || '', row.stageOn || '')
+    }
+    if (allowEvalObserve.value) {
+      line.push(row.observeOn || '', row.observeNote || '')
+    }
+    if (allowScheduleImpact.value) {
+      line.push(row.scheduleImpactNote || '')
+    }
+    if (allowContractAmount.value) {
+      line.push(row.contractAmount ?? '')
+    }
+    if (allowExpenseLines.value) {
+      line.push(formatExpenseLines(row.expenseLines))
+    }
+    if (allowTripLegs.value) {
+      line.push(formatTripLegs(row.tripLegs))
+    }
+    if (allowProjChangeLog.value) {
+      line.push(row.changeLogNote || '')
+    }
+    if (allowCertVerify.value) {
+      line.push(row.verifyCode || '')
+    }
+    if (allowVisitWalkIn.value) {
+      line.push(row.walkIn ? '是' : '')
+    }
+    if (allowCheckinProxy.value) {
+      line.push(row.checkinProxyBy || '')
+    }
+    if (allowClubRoster.value) {
+      line.push(formatClubMembers(row.clubMembers))
+    }
+    if (allowCarpassParkingMutex.value) {
+      line.push(row.parkingOn || '')
+    }
+    if (allowContractRenew.value) {
+      line.push(row.renewOn || '', row.renewNote || '')
+    }
+    if (allowCertPickupRedeem.value) {
+      line.push(row.pickupRedeemCode || '', row.pickupRedeemed ? '是' : '否')
+    }
+    if (allowProcureReturn.value) {
+      line.push(row.returnFail ? '是' : '否', row.returnNote || '')
+    }
+    if (allowMoralObjection.value) {
+      line.push(row.objectionNote || '')
+    }
+    if (issuePassCode.value && allowPassExpire.value) {
+      line.push(row.passExpireAt || '')
     }
     line.push(
       person,
