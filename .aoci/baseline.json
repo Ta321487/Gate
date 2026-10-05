@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-09-30T19:14:25Z",
+  "updated_at": "2026-10-05T11:51:18Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -52,6 +52,11 @@
       "size": 876,
       "normalized_sha256": "f90b99678a9d65ad8fc35ffd3105f1cae2409a76be0eb52f54c97b16d6bc9b67"
     },
+    ".cursor/rules/opening-group-delivery.mdc": {
+      "sha256": "a36ce3367de8756d172489745ba95257860530695e992b59759c53ff5f9fec14",
+      "size": 5561,
+      "normalized_sha256": "b025ec2e9fe20a683fcbaa0c9a7bab0fcfc80169c4bdcfcccb1746d0c598c5b6"
+    },
     ".cursor/rules/opening-scene.mdc": {
       "sha256": "78de6716f2128491c7f20239a3c76b5331cc23cf388659b4680b545bacbc0731",
       "size": 734,
@@ -72,6 +77,11 @@
       "sha256": "5beda6fb5069a75f476ce9c8ea3649a40e285db6e9adc3e83ad0f44f16224def",
       "size": 711,
       "normalized_sha256": "5beda6fb5069a75f476ce9c8ea3649a40e285db6e9adc3e83ad0f44f16224def"
+    },
+    ".cursor/rules/ticket-store-ops.mdc": {
+      "sha256": "076e338de53502aa7f2bcba72bf5e75219097859a573199d79d804c7eb608db0",
+      "size": 2571,
+      "normalized_sha256": "076e338de53502aa7f2bcba72bf5e75219097859a573199d79d804c7eb608db0"
     },
     ".cursor/skills/student-pack-browser-review/SKILL.md": {
       "sha256": "aa3081b4bf2601211a76aa810f7158b7babee6cd7caa5aefd76fb508d24be717",
@@ -191,9 +201,9 @@
       "normalized_sha256": "48844d5ab52672f13656cf41ca6aa06ad00a10db7ad1665952ecf15dc6b14bf4"
     },
     "aoci.code.txt": {
-      "sha256": "528bd06892e2b2b61557adee9ff0d97dbbadbbe019004a2548a64b4fc7c5454a",
-      "size": 256818,
-      "normalized_sha256": "528bd06892e2b2b61557adee9ff0d97dbbadbbe019004a2548a64b4fc7c5454a"
+      "sha256": "33a1c811f50b65fcac828594354af44633265e9a1fccbbf4a9b036f6296f3145",
+      "size": 274672,
+      "normalized_sha256": "33a1c811f50b65fcac828594354af44633265e9a1fccbbf4a9b036f6296f3145"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
@@ -412,9 +422,9 @@
       "normalized_sha256": "2e89a4c8f543e03e484361bf6f784a92ccbc09a4f267f7d1e63fba260aff7818"
     },
     "backend/app/bake/domain_schema.py": {
-      "sha256": "a31ad951c3b7194aff7c81a891c7e72c94c5fad3f0121554b2c2314eec7c88d0",
-      "size": 57381,
-      "normalized_sha256": "a31ad951c3b7194aff7c81a891c7e72c94c5fad3f0121554b2c2314eec7c88d0"
+      "sha256": "abf36419a25f1b725999e827563b44be6d6023e9d999e7bded042c79ce2896b5",
+      "size": 57639,
+      "normalized_sha256": "abf36419a25f1b725999e827563b44be6d6023e9d999e7bded042c79ce2896b5"
     },
     "backend/app/bake/domain_skin.py": {
       "role": "index",
@@ -597,9 +607,9 @@
       "normalized_sha256": "24180738be16ee0e55d8876b40db7e7322bd5531b2cdcd0f66eb25d2bb8482a8"
     },
     "backend/app/bake/engine_sql.py": {
-      "sha256": "e454500d3883360603c75769af770b76d087d282d45f3c6524868d96dc2da5b4",
-      "size": 35438,
-      "normalized_sha256": "e454500d3883360603c75769af770b76d087d282d45f3c6524868d96dc2da5b4"
+      "sha256": "eb91735ab1e486dbe044d0dc7cd8d1370c7d3bc75e0eab4f893a6999bad2ec6e",
+      "size": 36566,
+      "normalized_sha256": "eb91735ab1e486dbe044d0dc7cd8d1370c7d3bc75e0eab4f893a6999bad2ec6e"
     },
     "backend/app/bake/features/__init__.py": {
       "role": "index",
@@ -608,32 +618,39 @@
       "normalized_sha256": "d67cbc4f0c935481ea2b02b2c530d2e84acc6f289dd065da394a798b526b98ff"
     },
     "backend/app/bake/features/ai_assistant.py": {
-      "role": "index",
-      "sha256": "ceb2cb6b42e3d7119f65d4d51a154adcf000bc9c58476c7ac10499271e20f804",
-      "size": 78902,
-      "normalized_sha256": "ceb2cb6b42e3d7119f65d4d51a154adcf000bc9c58476c7ac10499271e20f804"
+      "sha256": "ed12715ac79a580a64aebd8d1faedfd143ed48a479d76c7bdff662bc4176b5a5",
+      "size": 80876,
+      "normalized_sha256": "ed12715ac79a580a64aebd8d1faedfd143ed48a479d76c7bdff662bc4176b5a5"
+    },
+    "backend/app/bake/features/apply_thicken.py": {
+      "sha256": "0f8a1d83bb61a8b6f31179e42ee2e756cbdcbbf7a6ef2e97d763d7009d7635c9",
+      "size": 39429,
+      "normalized_sha256": "56782563efaf5de953805ff86bc16b9805ad76c862acdcc06e0237df9e66b464"
+    },
+    "backend/app/bake/features/approve_thicken.py": {
+      "sha256": "0f7dbc8666c20242ceb61d5668e7ffdf3bc32e12f3c721d3bf716eda88c6cc22",
+      "size": 56284,
+      "normalized_sha256": "0f7dbc8666c20242ceb61d5668e7ffdf3bc32e12f3c721d3bf716eda88c6cc22"
     },
     "backend/app/bake/features/archive_log.py": {
-      "role": "index",
-      "sha256": "356fb242a3edb7fa562e9c4a1fc20a80546c6302abc4958b9bf8d112a6324f26",
-      "size": 4445,
-      "normalized_sha256": "356fb242a3edb7fa562e9c4a1fc20a80546c6302abc4958b9bf8d112a6324f26"
+      "sha256": "b15afe2332bb4f74c6beb894501344cf13351f915626755f02479eb5a5850a0c",
+      "size": 5346,
+      "normalized_sha256": "b15afe2332bb4f74c6beb894501344cf13351f915626755f02479eb5a5850a0c"
     },
     "backend/app/bake/features/audit_log.py": {
-      "role": "index",
-      "sha256": "f642c4ec0e7cf393188fd79d62ad9d088268dad3ecdc74fe8889d44f7d1f4f9d",
-      "size": 3557,
-      "normalized_sha256": "3020af3a0ea8c8e1fd11105b2af0f2323385ec33a7ed43973e197b73613836e2"
+      "sha256": "a29529259ba810929acfa054acf78981423f48dccbe2fbc6eac233179c39e9af",
+      "size": 4235,
+      "normalized_sha256": "a29529259ba810929acfa054acf78981423f48dccbe2fbc6eac233179c39e9af"
     },
     "backend/app/bake/features/blind_box.py": {
-      "sha256": "935939ee2f54ff5fa1d20b77f576b7eb438508d522b1b81b09dd6531aebc7886",
-      "size": 2969,
-      "normalized_sha256": "935939ee2f54ff5fa1d20b77f576b7eb438508d522b1b81b09dd6531aebc7886"
+      "sha256": "90f3ec6e1087e4e9fe9b51469d267abdb3e0772762a915bd7207092c87e42433",
+      "size": 5688,
+      "normalized_sha256": "90f3ec6e1087e4e9fe9b51469d267abdb3e0772762a915bd7207092c87e42433"
     },
     "backend/app/bake/features/boarding.py": {
-      "sha256": "7ffa779c85b15695cfbeecdf8192e6aad7b43f72f7bf34c6cc7dc3fae0a1f556",
-      "size": 3651,
-      "normalized_sha256": "7ffa779c85b15695cfbeecdf8192e6aad7b43f72f7bf34c6cc7dc3fae0a1f556"
+      "sha256": "20a1619e6e726c795a1a0c7bad4f688d917a7dc2eb8b33f5eeb408b5b0cc93fe",
+      "size": 5578,
+      "normalized_sha256": "20a1619e6e726c795a1a0c7bad4f688d917a7dc2eb8b33f5eeb408b5b0cc93fe"
     },
     "backend/app/bake/features/book_hold.py": {
       "role": "index",
@@ -647,10 +664,14 @@
       "normalized_sha256": "c14ef461782046d95ffc4bd66f23e270c2730eca26b357a38b244d1f842553e8"
     },
     "backend/app/bake/features/book_suggest.py": {
-      "role": "index",
-      "sha256": "c76a939b5b781265b06d30990e9030871c37272920965d5cb3e57a75b2026870",
-      "size": 3511,
-      "normalized_sha256": "3b39d7099b7833579c83f93caac4856fef4deee768d34aa162cfdaafc77904b5"
+      "sha256": "658efd7d738f83a209f7de6120952d0a08d37494acb664702fe10aa3dd88af04",
+      "size": 4695,
+      "normalized_sha256": "658efd7d738f83a209f7de6120952d0a08d37494acb664702fe10aa3dd88af04"
+    },
+    "backend/app/bake/features/borrow_structural.py": {
+      "sha256": "7c35983b167d9f568ff60f86a9b53fcf85ae5b6817d23f384517b5760d2d6031",
+      "size": 20496,
+      "normalized_sha256": "7c35983b167d9f568ff60f86a9b53fcf85ae5b6817d23f384517b5760d2d6031"
     },
     "backend/app/bake/features/borrow_thicken.py": {
       "sha256": "bc7bdd0fb777d8165cafc4a36b1b7be6b4c7c3d5a6c8c5c5df69232b49b2d652",
@@ -658,9 +679,9 @@
       "normalized_sha256": "bc7bdd0fb777d8165cafc4a36b1b7be6b4c7c3d5a6c8c5c5df69232b49b2d652"
     },
     "backend/app/bake/features/buyback.py": {
-      "sha256": "8549f160cc0e99f55c40607a74e58ab50b17228c19305c83f54b78093497be79",
-      "size": 2904,
-      "normalized_sha256": "8549f160cc0e99f55c40607a74e58ab50b17228c19305c83f54b78093497be79"
+      "sha256": "3579da9446a9f287176b0d64f65f907c9c628836160b07d6c680d437c6ab4cad",
+      "size": 4984,
+      "normalized_sha256": "3579da9446a9f287176b0d64f65f907c9c628836160b07d6c680d437c6ab4cad"
     },
     "backend/app/bake/features/code_qr.py": {
       "sha256": "45dd2a84d9f3039790f20e3253608d732bd5d94c64e5271953680a49dae5f555",
@@ -668,9 +689,9 @@
       "normalized_sha256": "9cce2e100cb2cfc73136b62d78e794edcd207d579ca8aee168ec64061e5591d3"
     },
     "backend/app/bake/features/consign.py": {
-      "sha256": "287d59c406ff93eff0a0b837b1f4556af0eea6a2939ada8a1f38a29c5e37cf51",
-      "size": 2771,
-      "normalized_sha256": "287d59c406ff93eff0a0b837b1f4556af0eea6a2939ada8a1f38a29c5e37cf51"
+      "sha256": "117794085ba8fddf441467f8285c8fe2285bfdc1fae28dd3fe3c77a376ec0d01",
+      "size": 6118,
+      "normalized_sha256": "117794085ba8fddf441467f8285c8fe2285bfdc1fae28dd3fe3c77a376ec0d01"
     },
     "backend/app/bake/features/core_cap_scan.py": {
       "sha256": "f15dc53e331e95a396385ed88ea8384a809d6017df13271ad77e5d56e7520af8",
@@ -678,24 +699,24 @@
       "normalized_sha256": "f15dc53e331e95a396385ed88ea8384a809d6017df13271ad77e5d56e7520af8"
     },
     "backend/app/bake/features/delivery_window.py": {
-      "sha256": "95743fe1ba9b79de44a81a7f19db9519a529ac7cddbaf23f08782214d451e495",
-      "size": 2998,
-      "normalized_sha256": "95743fe1ba9b79de44a81a7f19db9519a529ac7cddbaf23f08782214d451e495"
+      "sha256": "c0fe99373f5bd29c7dd26bc5bdf593a27d0579ddeaa3ad09d1fae40038d51677",
+      "size": 5892,
+      "normalized_sha256": "c0fe99373f5bd29c7dd26bc5bdf593a27d0579ddeaa3ad09d1fae40038d51677"
     },
     "backend/app/bake/features/detail_attrs.py": {
-      "sha256": "d2aac7a86b26d294e8ac5fa24960542d3e02e8e6939b647f4a0df51e483a1918",
-      "size": 8917,
-      "normalized_sha256": "074fd60a92be0fe83c10b05ec13557ff22b2e64f4190bb470553aee8efd4c4bc"
+      "sha256": "08ba13abd61ba77c07ad58a4b2d69da7e733ff46a2cf358ca051664a865a2987",
+      "size": 10685,
+      "normalized_sha256": "08ba13abd61ba77c07ad58a4b2d69da7e733ff46a2cf358ca051664a865a2987"
     },
     "backend/app/bake/features/digital_goods.py": {
-      "sha256": "df33189b79cbde7a2565ba168d6276cb739eeead1586311e6284fdddec2bd847",
-      "size": 4213,
-      "normalized_sha256": "28951a5b55e398f50e572334ed5a6c5443a6f3d6278467ad5a5a00be6d07058c"
+      "sha256": "a1b82e6808a3145b122b08f2c2672c4e7cf058677a1bcaad7e1a8faeedfa890d",
+      "size": 6523,
+      "normalized_sha256": "a1b82e6808a3145b122b08f2c2672c4e7cf058677a1bcaad7e1a8faeedfa890d"
     },
     "backend/app/bake/features/dm.py": {
-      "sha256": "df1d95da0af336ea3149c61beb800e9aa3e6e201f0d7685b32e3e8f7378ba2dd",
-      "size": 12450,
-      "normalized_sha256": "df1d95da0af336ea3149c61beb800e9aa3e6e201f0d7685b32e3e8f7378ba2dd"
+      "sha256": "f018cd35c7e24623e15d2eed4b29512ae572e44e10530742df8cdc66a35c6bde",
+      "size": 14772,
+      "normalized_sha256": "f018cd35c7e24623e15d2eed4b29512ae572e44e10530742df8cdc66a35c6bde"
     },
     "backend/app/bake/features/doclib.py": {
       "role": "index",
@@ -704,21 +725,19 @@
       "normalized_sha256": "d4965f08bc4d805449c5ae6f53ebec43a1689136f32e3b0e5591315ee2dcab44"
     },
     "backend/app/bake/features/e_sign.py": {
-      "role": "index",
-      "sha256": "f99017e58be1316f8352edf7614ec86172fc23f751c4d0a8865106d5d46683ab",
-      "size": 3489,
-      "normalized_sha256": "f99017e58be1316f8352edf7614ec86172fc23f751c4d0a8865106d5d46683ab"
+      "sha256": "e015efb328384bd68d602d534257f5436d48149d7133b201d12324da78ab100b",
+      "size": 4246,
+      "normalized_sha256": "e015efb328384bd68d602d534257f5436d48149d7133b201d12324da78ab100b"
     },
     "backend/app/bake/features/exam.py": {
-      "role": "index",
-      "sha256": "5a6736bccada678cc4989ea471ec13e175d61152c9d8de829a58c5251afd1038",
-      "size": 13753,
-      "normalized_sha256": "5a6736bccada678cc4989ea471ec13e175d61152c9d8de829a58c5251afd1038"
+      "sha256": "52ba52c4cd508226424ddfcb1ad271afd3e7404738634de154c670b24b4b54d2",
+      "size": 18572,
+      "normalized_sha256": "52ba52c4cd508226424ddfcb1ad271afd3e7404738634de154c670b24b4b54d2"
     },
     "backend/app/bake/features/favorites.py": {
-      "sha256": "408f8c723ea284be545f49b8d9bad5230bf1e0a8f70a968cf7599c459e4e6c7f",
-      "size": 9428,
-      "normalized_sha256": "408f8c723ea284be545f49b8d9bad5230bf1e0a8f70a968cf7599c459e4e6c7f"
+      "sha256": "889651de082a59e0dce7d1b6a2752bf2ed39b4bf42e95224c9adb6dd9c8dcbed",
+      "size": 12432,
+      "normalized_sha256": "889651de082a59e0dce7d1b6a2752bf2ed39b4bf42e95224c9adb6dd9c8dcbed"
     },
     "backend/app/bake/features/follow_thicken.py": {
       "sha256": "9a5912a6a8b1ffa23ac63f7b0e60e697b86b357b2aa2efe4abcc49f861e1b9d5",
@@ -726,19 +745,19 @@
       "normalized_sha256": "c9ec47221697344e1bf060e0d271d992b8ca912f7eed623c75f65a6cc8817804"
     },
     "backend/app/bake/features/front_desk.py": {
-      "sha256": "8c81e5384d6a49e9d310bfb0946817e78a94499c4169cf7ca5ab35f97ac70f47",
-      "size": 4308,
-      "normalized_sha256": "f514c23ccb03d122c1faa5642d25eb3fe4a10739f38234ee381980215205da7b"
+      "sha256": "38b0ca7427bbe839d3c8ce10e173fb95b5cb699cec96d3b63679daec6ddd03ed",
+      "size": 6101,
+      "normalized_sha256": "38b0ca7427bbe839d3c8ce10e173fb95b5cb699cec96d3b63679daec6ddd03ed"
     },
     "backend/app/bake/features/group_buy.py": {
-      "sha256": "f1933dcf0da345547fec246db40fbcf94f7d611f1bb12117ce2e741ab86c1003",
-      "size": 2738,
-      "normalized_sha256": "f1933dcf0da345547fec246db40fbcf94f7d611f1bb12117ce2e741ab86c1003"
+      "sha256": "3a300a62b5063590b7028bcc8c6313cb7b955b7f23d7476c5264b41efdd34986",
+      "size": 4468,
+      "normalized_sha256": "3a300a62b5063590b7028bcc8c6313cb7b955b7f23d7476c5264b41efdd34986"
     },
     "backend/app/bake/features/guestbook.py": {
-      "sha256": "6125e4f972645ee847fb36c4d8bb75455a462422b2a51f4ed2cdca3d47bf3ade",
-      "size": 5220,
-      "normalized_sha256": "6125e4f972645ee847fb36c4d8bb75455a462422b2a51f4ed2cdca3d47bf3ade"
+      "sha256": "ef2c9bb9b8dbbaeb3f75ad9814c50c04c60ad68289eac9d1e985c9a557d2000a",
+      "size": 6767,
+      "normalized_sha256": "ef2c9bb9b8dbbaeb3f75ad9814c50c04c60ad68289eac9d1e985c9a557d2000a"
     },
     "backend/app/bake/features/housekeeping_cap.py": {
       "sha256": "8af5c6dcf4106e13508cb9a84fa43889984d2154f5488498f49eabcbba809bfb",
@@ -746,20 +765,19 @@
       "normalized_sha256": "a39beed13f5e6ddb58ba8b66ebfc7213c3aff44e67b647227cbc124d2246c0e4"
     },
     "backend/app/bake/features/item_comment.py": {
-      "role": "index",
-      "sha256": "bfd7c2db4bdbcc01c20260ee8238e76ca7bb2220ccea8781145c44ae7264714b",
-      "size": 4020,
-      "normalized_sha256": "bfd7c2db4bdbcc01c20260ee8238e76ca7bb2220ccea8781145c44ae7264714b"
+      "sha256": "ad095a9aacc2f1e9c9b8ae64d552c01b2a0e3524c9161251db91af496a6ef325",
+      "size": 4785,
+      "normalized_sha256": "ad095a9aacc2f1e9c9b8ae64d552c01b2a0e3524c9161251db91af496a6ef325"
     },
     "backend/app/bake/features/lesson_pack.py": {
-      "sha256": "7c362ee2b3db0db99c75b958e66d40017af44deb8e88231e0aac226a1a50d1c5",
-      "size": 2824,
-      "normalized_sha256": "7c362ee2b3db0db99c75b958e66d40017af44deb8e88231e0aac226a1a50d1c5"
+      "sha256": "554263c78b00009a8082951d860e7a47e81af1f4cae6b795123f2364b6a6b3a9",
+      "size": 4544,
+      "normalized_sha256": "554263c78b00009a8082951d860e7a47e81af1f4cae6b795123f2364b6a6b3a9"
     },
     "backend/app/bake/features/line_custom.py": {
-      "sha256": "e7b445ea091627c34813943e163689fb773cb0f9dcd7c21e68aa87afe98c0df2",
-      "size": 4834,
-      "normalized_sha256": "e7b445ea091627c34813943e163689fb773cb0f9dcd7c21e68aa87afe98c0df2"
+      "sha256": "db47567eda7d8cb21c84516589948b4b8124e7d7c2c283cdd6e009b2ac492569",
+      "size": 6719,
+      "normalized_sha256": "db47567eda7d8cb21c84516589948b4b8124e7d7c2c283cdd6e009b2ac492569"
     },
     "backend/app/bake/features/lostfound.py": {
       "sha256": "175f3d4ff9f2e8e714e4bac0d396e1999210c9c69c7a9d6b2e4d3f6a421fcba6",
@@ -772,15 +790,14 @@
       "normalized_sha256": "25f75d9dc0c358d8f9f5230eda6f2ed97a4e8492660c40c9deb222e454d244a1"
     },
     "backend/app/bake/features/message_template.py": {
-      "role": "index",
-      "sha256": "7c765b78a088188e38f633d366f4f1717b67dc55df6ab09114ea4f298b763401",
-      "size": 3104,
-      "normalized_sha256": "efc6879c55b2a13ed6915acd011ed3379ba139941b8a2f3ec7c4a36007c4fc6e"
+      "sha256": "4bfb3b54f189d72f714b25f52b1b72ebf3bfa7fb13907aa34900956aaaa3d88d",
+      "size": 4357,
+      "normalized_sha256": "4bfb3b54f189d72f714b25f52b1b72ebf3bfa7fb13907aa34900956aaaa3d88d"
     },
     "backend/app/bake/features/multi_category.py": {
-      "sha256": "278ea26d99349a82d85196b441807f542f6e289dd6410b1d4ec31d51610b20d5",
-      "size": 8033,
-      "normalized_sha256": "278ea26d99349a82d85196b441807f542f6e289dd6410b1d4ec31d51610b20d5"
+      "sha256": "8fd1d6bde65c5e342bf1de1526ee0dcb81e321f2a277a82555b3e81c7483be6f",
+      "size": 10457,
+      "normalized_sha256": "8fd1d6bde65c5e342bf1de1526ee0dcb81e321f2a277a82555b3e81c7483be6f"
     },
     "backend/app/bake/features/opening_align.py": {
       "sha256": "63b93fbb967d64146f2327c271c18d96178521cf920d04eea84f97c4d58e507a",
@@ -788,9 +805,9 @@
       "normalized_sha256": "63b93fbb967d64146f2327c271c18d96178521cf920d04eea84f97c4d58e507a"
     },
     "backend/app/bake/features/order_extras.py": {
-      "sha256": "19811c7c2c5faaa491cc4822d1883945f8d5811e8e5750942f1a3ad3d2fba1dd",
-      "size": 7945,
-      "normalized_sha256": "19811c7c2c5faaa491cc4822d1883945f8d5811e8e5750942f1a3ad3d2fba1dd"
+      "sha256": "ebed74cf65e41a61f494c2a313d0e1f752d4e8d15f618e4e9c3d52e213b90b6d",
+      "size": 11564,
+      "normalized_sha256": "ebed74cf65e41a61f494c2a313d0e1f752d4e8d15f618e4e9c3d52e213b90b6d"
     },
     "backend/app/bake/features/parcel_shelf.py": {
       "sha256": "a206864f38afcf2da8ab52ce1cce2bddc978c5a49b619edc050f72b458ffed84",
@@ -798,9 +815,9 @@
       "normalized_sha256": "a206864f38afcf2da8ab52ce1cce2bddc978c5a49b619edc050f72b458ffed84"
     },
     "backend/app/bake/features/parcel_ship.py": {
-      "sha256": "78cd89db0d0c6ae1ce14cdabe07e887c1d23b4eaed3ab28e3061b8fb6defad2a",
-      "size": 3337,
-      "normalized_sha256": "78cd89db0d0c6ae1ce14cdabe07e887c1d23b4eaed3ab28e3061b8fb6defad2a"
+      "sha256": "1f073a67aa4036318967c3ff6f81fff8076bdddcd6f17ee49c678673bb98cb5e",
+      "size": 4721,
+      "normalized_sha256": "1f073a67aa4036318967c3ff6f81fff8076bdddcd6f17ee49c678673bb98cb5e"
     },
     "backend/app/bake/features/post_mute.py": {
       "role": "index",
@@ -809,30 +826,29 @@
       "normalized_sha256": "a7390efda45025f15a64b1dcd9b746b4a6d5afadc96faed166776816984184c8"
     },
     "backend/app/bake/features/product_spec.py": {
-      "role": "index",
-      "sha256": "62c91c852c2830c657db53029849149b10ec482150b8eb46c73b301e04291cf1",
-      "size": 4490,
-      "normalized_sha256": "13a7321bd8e8d2a27978ed953f4a5f8f8f62d315f3f721c843629e65567a30b6"
+      "sha256": "7b290ec32e2eef1e8addd8fab7ba97ade8557c75739785a02e6e0fefdcf41a6f",
+      "size": 5389,
+      "normalized_sha256": "7b290ec32e2eef1e8addd8fab7ba97ade8557c75739785a02e6e0fefdcf41a6f"
     },
     "backend/app/bake/features/product_tags.py": {
-      "sha256": "9d5fd6009c31faf157cfba7c66fdce3b716718e8b50226c07f9422ec4702ecf8",
-      "size": 2976,
-      "normalized_sha256": "9d5fd6009c31faf157cfba7c66fdce3b716718e8b50226c07f9422ec4702ecf8"
+      "sha256": "a8a869e16569d11f4f9c8aed43c5c66752af448df72b4cb0b9523f4f760b5a1f",
+      "size": 4037,
+      "normalized_sha256": "a8a869e16569d11f4f9c8aed43c5c66752af448df72b4cb0b9523f4f760b5a1f"
     },
     "backend/app/bake/features/proposal_caps.py": {
-      "sha256": "ef0edb53070b27966c85644539ea57ee9777bc7ccddc6cbd26e53711a213ea6c",
-      "size": 10303,
-      "normalized_sha256": "ef0edb53070b27966c85644539ea57ee9777bc7ccddc6cbd26e53711a213ea6c"
+      "sha256": "0f6b332761bb780d599df6ad5f086db9add5c12ce424e1979333c5569794f197",
+      "size": 10412,
+      "normalized_sha256": "0f6b332761bb780d599df6ad5f086db9add5c12ce424e1979333c5569794f197"
     },
     "backend/app/bake/features/purchase_gate.py": {
-      "sha256": "1e8fe378c82e1bb18c6114391d1dbd85064665266e92fbf5e32e2bf00110d035",
-      "size": 3848,
-      "normalized_sha256": "1e8fe378c82e1bb18c6114391d1dbd85064665266e92fbf5e32e2bf00110d035"
+      "sha256": "fb3e73a3610ee871bcccb42e5230ef4fa0cfa8e9db3fc71ca54b41a8b05babe4",
+      "size": 6044,
+      "normalized_sha256": "fb3e73a3610ee871bcccb42e5230ef4fa0cfa8e9db3fc71ca54b41a8b05babe4"
     },
     "backend/app/bake/features/rental_bond.py": {
-      "sha256": "efc7d9c27cdf421a26b65fb885ead2005ee4c70ad68a50d99125187217e7f511",
-      "size": 5261,
-      "normalized_sha256": "fff864f458e3f2669952fd3d5c22d3253e9a4cde3426def869c8e317ed54b22a"
+      "sha256": "36cbcdcd638234b5aa33342818d9dbd1b0379ab6bfd6eda86f52aef8b4c0a044",
+      "size": 7518,
+      "normalized_sha256": "36cbcdcd638234b5aa33342818d9dbd1b0379ab6bfd6eda86f52aef8b4c0a044"
     },
     "backend/app/bake/features/repair_thicken.py": {
       "sha256": "fbfb6b4b35cfeb0e08f0c0fe0d74b6ddf4909c15e6c2223e96400fee8ebc8a73",
@@ -840,15 +856,14 @@
       "normalized_sha256": "d985acc517ffbc840ef282e92c45abb36173c6e97d1b60ab47d4fac2a72357ac"
     },
     "backend/app/bake/features/room_board.py": {
-      "sha256": "6d24645b5d0313599437ec5ea61d3f9836664c6e4ce96b398e929d0758fce12b",
-      "size": 3695,
-      "normalized_sha256": "8d5c23730052b0b2ff3e42108a6537c2566b8c4b11b0a352ac6111b04d59cea6"
+      "sha256": "d1fec3ca69ee65ef2bb6bd06f181589e28f60f11b201b2b2c3c2be1be3028f63",
+      "size": 5409,
+      "normalized_sha256": "d1fec3ca69ee65ef2bb6bd06f181589e28f60f11b201b2b2c3c2be1be3028f63"
     },
     "backend/app/bake/features/room_equipment.py": {
-      "role": "index",
-      "sha256": "10141715f9c0bc2441c5c1a6de457292d273b859992ba213c9f91f088328281b",
-      "size": 3264,
-      "normalized_sha256": "24dc5629aa5aaf127f8366c52eb3c8ab9e8cd3577a4879a2d71c85e6c1ea9263"
+      "sha256": "642a6ab1646934985aa6d67f0742daaea5c07a79190204f7cfc4e97e79c4ef5c",
+      "size": 5980,
+      "normalized_sha256": "642a6ab1646934985aa6d67f0742daaea5c07a79190204f7cfc4e97e79c4ef5c"
     },
     "backend/app/bake/features/seat_select.py": {
       "role": "index",
@@ -857,24 +872,24 @@
       "normalized_sha256": "4bfe484259b50dae279a484bfb99f9b973f7bdbe612930fbca9eff5107b21ff8"
     },
     "backend/app/bake/features/shoot.py": {
-      "sha256": "50181edf822fcbfd691b660588fde750086909da9c3c386e09d4c5c0cc6b9213",
-      "size": 2921,
-      "normalized_sha256": "50181edf822fcbfd691b660588fde750086909da9c3c386e09d4c5c0cc6b9213"
+      "sha256": "87bc4300b895414bed38762cee545c07b76aa9e2cd2416f196cc6726edf62dfd",
+      "size": 5218,
+      "normalized_sha256": "87bc4300b895414bed38762cee545c07b76aa9e2cd2416f196cc6726edf62dfd"
     },
     "backend/app/bake/features/staff_roster.py": {
-      "sha256": "0908c13461df01ae0e2afc79f28ac467a59a4520acf1e4bf5e7fa58aa2e9dcda",
-      "size": 2894,
-      "normalized_sha256": "0908c13461df01ae0e2afc79f28ac467a59a4520acf1e4bf5e7fa58aa2e9dcda"
+      "sha256": "3f6257f682077947ec1a3271e4597500dd6e9a0f24555da159d3140f4acb9d37",
+      "size": 4254,
+      "normalized_sha256": "3f6257f682077947ec1a3271e4597500dd6e9a0f24555da159d3140f4acb9d37"
     },
     "backend/app/bake/features/stock_io.py": {
-      "sha256": "1b891e109bfeea8c7867e6adbb6042a7b3851fc1d4148bef31a3cbbff39f4c41",
-      "size": 4769,
-      "normalized_sha256": "1b891e109bfeea8c7867e6adbb6042a7b3851fc1d4148bef31a3cbbff39f4c41"
+      "sha256": "44ef19dc56b58643a00f95ec2e7bb6629f35fc6a4fafff9954c2117a8e3627a1",
+      "size": 5551,
+      "normalized_sha256": "44ef19dc56b58643a00f95ec2e7bb6629f35fc6a4fafff9954c2117a8e3627a1"
     },
     "backend/app/bake/features/stock_scrap.py": {
-      "sha256": "53d9a5ccc6683e00076d94a750ae3bc5fe6e7d92ddea2fd8f86f998066afdfcd",
-      "size": 4457,
-      "normalized_sha256": "53d9a5ccc6683e00076d94a750ae3bc5fe6e7d92ddea2fd8f86f998066afdfcd"
+      "sha256": "a1129f9b058a7bfcf479a3c82f650319684baf3bf90063eeb230dfef64b57755",
+      "size": 5424,
+      "normalized_sha256": "a1129f9b058a7bfcf479a3c82f650319684baf3bf90063eeb230dfef64b57755"
     },
     "backend/app/bake/features/survey.py": {
       "role": "index",
@@ -889,15 +904,14 @@
       "normalized_sha256": "edd9acbd0ebfe1a7a5ed57b80563257cdec37f09ff88965840dc870be28d5893"
     },
     "backend/app/bake/features/ticket_flow_opts.py": {
-      "role": "index",
-      "sha256": "bfa5a339df77794370c59168fee544321d8caa05e7103a894d7fefecbab60f1f",
-      "size": 15862,
-      "normalized_sha256": "bfa5a339df77794370c59168fee544321d8caa05e7103a894d7fefecbab60f1f"
+      "sha256": "ddf431dbbd931617ab1837a2b54632166a90dcf25d021472d1bf4f3602fbd98c",
+      "size": 15874,
+      "normalized_sha256": "ddf431dbbd931617ab1837a2b54632166a90dcf25d021472d1bf4f3602fbd98c"
     },
     "backend/app/bake/features/timebank.py": {
-      "sha256": "7f9de1f4c553de8867430f31572703d9fbc44bb2afef7fb1360f8bb9bc0b03a2",
-      "size": 9459,
-      "normalized_sha256": "7f9de1f4c553de8867430f31572703d9fbc44bb2afef7fb1360f8bb9bc0b03a2"
+      "sha256": "4115e435a833f35f81c26bfcc21c2fb5fedb485fc8cb48968c2c6e0628b5735d",
+      "size": 11289,
+      "normalized_sha256": "4115e435a833f35f81c26bfcc21c2fb5fedb485fc8cb48968c2c6e0628b5735d"
     },
     "backend/app/bake/features/user_publish.py": {
       "role": "index",
@@ -912,20 +926,19 @@
       "normalized_sha256": "1271e83569c34ad54c996afeb8957a932876ef1fd361d8080ae68ca63ffd9e7e"
     },
     "backend/app/bake/features/venue_clean.py": {
-      "sha256": "74405c803411ced9b104f957cda4a7fdc4073f2329493be7294ddb1c47784f7d",
-      "size": 2780,
-      "normalized_sha256": "74405c803411ced9b104f957cda4a7fdc4073f2329493be7294ddb1c47784f7d"
+      "sha256": "40362135e08b09563c6159ebbcc97397641af31fdc48b7d9e6cf18301d997a73",
+      "size": 3756,
+      "normalized_sha256": "40362135e08b09563c6159ebbcc97397641af31fdc48b7d9e6cf18301d997a73"
     },
     "backend/app/bake/features/vote.py": {
-      "role": "index",
-      "sha256": "b41ac2615116b6878628fe6091917d9f7de3ea3f431455e5ae1049a8e35abc16",
-      "size": 4824,
-      "normalized_sha256": "5d9f15f5fcaa2f77f32666dded6edf4087de05936ee9d2170903d2ea46eb0ed1"
+      "sha256": "9a7eb3fb68f63e96e3c4ff5d3f902d0340abe3f51be014094fc19324c4833d6b",
+      "size": 7463,
+      "normalized_sha256": "9a7eb3fb68f63e96e3c4ff5d3f902d0340abe3f51be014094fc19324c4833d6b"
     },
     "backend/app/bake/features/weigh_sale.py": {
-      "sha256": "4d3c7bd905579616c6e706815946fdf8ba3c628913648cab34ab9ea814cedc02",
-      "size": 4131,
-      "normalized_sha256": "4d3c7bd905579616c6e706815946fdf8ba3c628913648cab34ab9ea814cedc02"
+      "sha256": "44eea7285188443b600f1df2fc33bc5fbaf117e9975b5588e982b5573eabd064",
+      "size": 6740,
+      "normalized_sha256": "44eea7285188443b600f1df2fc33bc5fbaf117e9975b5588e982b5573eabd064"
     },
     "backend/app/bake/gate_contracts.py": {
       "sha256": "8216b2b0012e2fcea1cdf148e0f44c3875bbc420008c0fd60d054e03b242a412",
@@ -991,9 +1004,9 @@
       "normalized_sha256": "f55712bafdf082e1caa9d4eaf748a5e8dc0230d803df56b0dcdea8a46ab4a2fd"
     },
     "backend/app/bake/menu_routes.py": {
-      "sha256": "0bf567cdbb964a29f23862647d9c08eafe93e8ed0e73d2aeb9d87a6ef9fff2a7",
-      "size": 18078,
-      "normalized_sha256": "0bf567cdbb964a29f23862647d9c08eafe93e8ed0e73d2aeb9d87a6ef9fff2a7"
+      "sha256": "32c9ab5162b8a47cfd716c828162d85eac7ed57f29544c92c7febf8ea3bd74a3",
+      "size": 18237,
+      "normalized_sha256": "32c9ab5162b8a47cfd716c828162d85eac7ed57f29544c92c7febf8ea3bd74a3"
     },
     "backend/app/bake/mutual_meta.py": {
       "role": "index",
@@ -1031,9 +1044,9 @@
       "normalized_sha256": "3e5ef877173c5b5d7761fb7868b754041b25299dd7420304b545cd52d4ac30ab"
     },
     "backend/app/bake/profile_fields.py": {
-      "sha256": "1f67938eeac67afafda03ce90a3fcbfb081d3cb0479fa41f5d50e9d58c8ffa66",
-      "size": 73855,
-      "normalized_sha256": "1f67938eeac67afafda03ce90a3fcbfb081d3cb0479fa41f5d50e9d58c8ffa66"
+      "sha256": "264d5cd61f5ed14f5d8e62a737c5c86ab1e06525842bd5d7e58a63b1ce7ef8ff",
+      "size": 73978,
+      "normalized_sha256": "264d5cd61f5ed14f5d8e62a737c5c86ab1e06525842bd5d7e58a63b1ce7ef8ff"
     },
     "backend/app/bake/proposal_lexicon.py": {
       "sha256": "0a9a00b23b02139847c2564439f7974a89081074ed6587031a0a35170f131eb9",
@@ -1489,9 +1502,9 @@
       "normalized_sha256": "0df1ec950eea02d9af0da8ce787148b202c6584866c3ba901e9195a6962930f7"
     },
     "backend/app/bake/scene_scan.py": {
-      "sha256": "bab0ff008d02b05b12f2d388e837a5cb06f833526ceacda855bac406fbb83436",
-      "size": 60296,
-      "normalized_sha256": "bab0ff008d02b05b12f2d388e837a5cb06f833526ceacda855bac406fbb83436"
+      "sha256": "e97d85080866302caa09246b9fc09b9acfe30b88b3a143a22b65fdd470a4d4ae",
+      "size": 61264,
+      "normalized_sha256": "e97d85080866302caa09246b9fc09b9acfe30b88b3a143a22b65fdd470a4d4ae"
     },
     "backend/app/bake/schema/__init__.py": {
       "role": "index",
@@ -1639,9 +1652,9 @@
       "normalized_sha256": "e66158984bc193586183489d1fa1b3f448db8d6b03f747ee3e319bc4ca934f0e"
     },
     "backend/app/bake/schema/er_zh.py": {
-      "sha256": "dbc2227a8ddda1820457a4d44c11a120dcdd1f0abaf9da2b5d9cc746816735a7",
-      "size": 14056,
-      "normalized_sha256": "dbc2227a8ddda1820457a4d44c11a120dcdd1f0abaf9da2b5d9cc746816735a7"
+      "sha256": "928056259645a47059086530cdd3203aa2bcc724470e01910f1bedddd0fea020",
+      "size": 19020,
+      "normalized_sha256": "928056259645a47059086530cdd3203aa2bcc724470e01910f1bedddd0fea020"
     },
     "backend/app/bake/schema/followup_presets.py": {
       "sha256": "a71d65ba8c54eb74759c0c2bdbdc721a260f3d85d2710f1055cb0789b5fce4d4",
@@ -1836,15 +1849,20 @@
       "normalized_sha256": "20ab5f8cbcdacb2c65ad3079c0ff4f4d9b319c64a768d35aded92cceca93940a"
     },
     "backend/app/bake/sql/fragments.py": {
-      "sha256": "112add451da719f0d77b242d7b4ad7658067665dbbcd22e9a7805374c5dd5cb8",
-      "size": 131469,
-      "normalized_sha256": "112add451da719f0d77b242d7b4ad7658067665dbbcd22e9a7805374c5dd5cb8"
+      "sha256": "7a1092f0f810e6affd45ff6e641aed74a7c495fb2d4e33494c12ad82e93e9a7c",
+      "size": 142760,
+      "normalized_sha256": "7a1092f0f810e6affd45ff6e641aed74a7c495fb2d4e33494c12ad82e93e9a7c"
     },
     "backend/app/bake/sql/reserve_scene_overlays.py": {
       "role": "index",
       "sha256": "20d837cce68dba9ccd3f595668707e8f8893a33d575394221e5c5d3d48268daa",
       "size": 18043,
       "normalized_sha256": "20d837cce68dba9ccd3f595668707e8f8893a33d575394221e5c5d3d48268daa"
+    },
+    "backend/app/bake/sql/shared_columns.py": {
+      "sha256": "9fbd058b5eecacab848a03c15339e95a360b743e0229f7cb221c5921dfa7ffe0",
+      "size": 8506,
+      "normalized_sha256": "9fbd058b5eecacab848a03c15339e95a360b743e0229f7cb221c5921dfa7ffe0"
     },
     "backend/app/bake/sql/templates/DOM-ACAD.sql": {
       "role": "index",
@@ -2236,6 +2254,11 @@
       "size": 4163,
       "normalized_sha256": "719378445098f0dc177bb8e62c3ff665fc5da1c41a1938c8e767d70071b4cca9"
     },
+    "backend/app/bake/sql/ticket_optional_columns.py": {
+      "sha256": "d83dc4f901a5755b0644110154bf0f0160f3625a2614de68f07d333c86005dd0",
+      "size": 27659,
+      "normalized_sha256": "d83dc4f901a5755b0644110154bf0f0160f3625a2614de68f07d333c86005dd0"
+    },
     "backend/app/bake/stack_scan.py": {
       "role": "index",
       "sha256": "ed1e1ec478779b283481cf2ed3f1bd7cd8c72ee59acad8b21bf00ed6bc954689",
@@ -2288,14 +2311,14 @@
       "normalized_sha256": "f565dc2ee0f0750a94fbd78ee944151c1d686779b60eb89de8f016d40968323c"
     },
     "backend/app/bake/ticket_policy.py": {
-      "sha256": "8564b57347f7632bd7cd04ad63632890ec4b4bf17e1839cfba5c597ae29d3021",
-      "size": 27528,
-      "normalized_sha256": "fcc46abd1f54d94419b67c51c9f25eb5842b1f52679abcf014525abcaffcb180"
+      "sha256": "9a0b33f44341e96e6cce976997c8e883702b2bc9cb675ee451f7e90e8631a3ff",
+      "size": 42655,
+      "normalized_sha256": "9a0b33f44341e96e6cce976997c8e883702b2bc9cb675ee451f7e90e8631a3ff"
     },
     "backend/app/bake/ticket_rules.py": {
-      "sha256": "8d0c00b52b70d0f67729e6011a477e6c6fa2b056aa5b132fe6b5dc4550017e42",
-      "size": 3261,
-      "normalized_sha256": "8d0c00b52b70d0f67729e6011a477e6c6fa2b056aa5b132fe6b5dc4550017e42"
+      "sha256": "f4e7f425031efabedd9e187a9bb2f278831e5862f9dbc7e945b25b80b93becb5",
+      "size": 3629,
+      "normalized_sha256": "f4e7f425031efabedd9e187a9bb2f278831e5862f9dbc7e945b25b80b93becb5"
     },
     "backend/app/core/__init__.py": {
       "role": "index",
@@ -2337,10 +2360,9 @@
       "normalized_sha256": "d5d456b4db8c9d8a0bbb4d92412c66cb686165f561ca0e08f10f74af042fbf7a"
     },
     "backend/app/llm/agents_fix.py": {
-      "role": "index",
-      "sha256": "006e9c9f6255dea8c6f3e30ae11a5eca16b57d046b1d792f529a27d79589b95f",
-      "size": 5988,
-      "normalized_sha256": "4b11624b2407487c337bc0f58640f4d9c25316fadb0248c278126090a70576db"
+      "sha256": "96cace7e705bdf1ed37ae8a4ee617746db833ea484d78efeeb908abb99f403ee",
+      "size": 5931,
+      "normalized_sha256": "a4150ba47d7627a743eb08b199a95dd5f1d6f35c17903c553e579306a68d17d5"
     },
     "backend/app/llm/agents_island.py": {
       "role": "index",
@@ -2746,6 +2768,12 @@
       "size": 491,
       "normalized_sha256": "25f9310ccaa07cf1387900dd004647620938c6f998a842f1c62443b866ee755b"
     },
+    "backend/tests/test_agents_fix_compile_gate.py": {
+      "role": "observe",
+      "sha256": "0b50f0d7ea1c077aefca924713567418e9a08aed726fc9367d0db98858e583c0",
+      "size": 3823,
+      "normalized_sha256": "0b50f0d7ea1c077aefca924713567418e9a08aed726fc9367d0db98858e583c0"
+    },
     "backend/tests/test_ai_assistant_bake.py": {
       "role": "observe",
       "sha256": "264bce903d7324eb59620803d04ca335911ab495b2a940c00aab43914d2c3005",
@@ -2766,15 +2794,27 @@
     },
     "backend/tests/test_apply_group_skin.py": {
       "role": "observe",
-      "sha256": "a853c0585eebcc0fc4b9f8ad8238982668478732ab69ce40fdf4b556eb9a56a0",
-      "size": 5925,
-      "normalized_sha256": "6a0c3cb208c44d06389d9c0093a284847d81dc75571601e6f4957cb0975c3fe9"
+      "sha256": "5930065644d92d4d5b4e100457ebb0d87b81f0a22982fb45cf980e75a38a9d79",
+      "size": 7109,
+      "normalized_sha256": "a8b3eec9d2122fd34388051d8b2acfa7e244df7f2f25467fdf3aa5b9bbdd8bd1"
+    },
+    "backend/tests/test_apply_thicken_features.py": {
+      "role": "observe",
+      "sha256": "45d3b6bcd8c36833df617357dbd29f5b3aa5feab6e23950e447c5803505ae5d5",
+      "size": 24263,
+      "normalized_sha256": "9175030c74f8e9f20832dd17e070e2aba739b476034983d7bb43d3ece470235c"
     },
     "backend/tests/test_appoint_from_users.py": {
       "role": "observe",
       "sha256": "26271094c0cb0192eda952d9f46a26044509904ab731723cdeb41d4920455540",
       "size": 5802,
       "normalized_sha256": "26271094c0cb0192eda952d9f46a26044509904ab731723cdeb41d4920455540"
+    },
+    "backend/tests/test_approve_thicken_features.py": {
+      "role": "observe",
+      "sha256": "03e30f06bcb48d54061ecd739f9c61e48b97977a4f3d4ff2c6ba9950dbcacced",
+      "size": 58322,
+      "normalized_sha256": "03e30f06bcb48d54061ecd739f9c61e48b97977a4f3d4ff2c6ba9950dbcacced"
     },
     "backend/tests/test_archive_log_match.py": {
       "role": "observe",
@@ -3132,9 +3172,9 @@
     },
     "backend/tests/test_exam_c01.py": {
       "role": "observe",
-      "sha256": "b39f25891d0c0d9c185fe08781627b953cca34a6ba23fc02ce18aa9b5e6811cb",
-      "size": 8589,
-      "normalized_sha256": "f514d9564b9cddec707543f5eacc0fee4150eeaa8ef387970adc826c5bba03be"
+      "sha256": "9001d0a10f5e0eacaf629157658ebb09d6eed9e3f13bae6e162a658db0ffb5c7",
+      "size": 8617,
+      "normalized_sha256": "9420829c45e12473139f533681337fb249eaf4a64fa84d8a4f50d53cf66f62f9"
     },
     "backend/tests/test_favorites.py": {
       "role": "observe",
@@ -3342,9 +3382,9 @@
     },
     "backend/tests/test_opening_map_skeleton_gate.py": {
       "role": "observe",
-      "sha256": "d5f08e758627f3fadfdef575971fcbf64640b09a239f3f786e41dfbf1df23fbb",
-      "size": 5296,
-      "normalized_sha256": "d5f08e758627f3fadfdef575971fcbf64640b09a239f3f786e41dfbf1df23fbb"
+      "sha256": "1dfd0ce912ac57447281132602832279642a50e000b159d8806b925290440b9c",
+      "size": 15568,
+      "normalized_sha256": "1dfd0ce912ac57447281132602832279642a50e000b159d8806b925290440b9c"
     },
     "backend/tests/test_optional_staff_workers.py": {
       "role": "observe",
@@ -3402,9 +3442,9 @@
     },
     "backend/tests/test_post_mute_e12.py": {
       "role": "observe",
-      "sha256": "56cf440d102c969a0ed503f7c0a88fb6b7e22f1ae9eae70c4cc541454fc5c3c4",
-      "size": 5678,
-      "normalized_sha256": "7b16dcd398c9e66774bc07cb2e4930c04160d5a0b89eb26bde54aa95028f7096"
+      "sha256": "564bc5ee10fef157aa144e25f2cbce99bc289d09b213fe5c5c0380b1caa7df0d",
+      "size": 6025,
+      "normalized_sha256": "e00d37d078263df165ff541fe7ccab6f3c2bc61843235df69da7b4093d7a7221"
     },
     "backend/tests/test_pressure_group_bake_smoke.py": {
       "role": "observe",
@@ -3462,9 +3502,9 @@
     },
     "backend/tests/test_rating_dims_c06.py": {
       "role": "observe",
-      "sha256": "da7f9ae21299f160f4f6364ed2c9f869ccf7a066636902daa4b3d8e18fe6c0de",
-      "size": 2745,
-      "normalized_sha256": "9dcdc542ab6284dd96c3ece66bdb53b3b4bdc1899f79efbc6f6f89dd8b4d6357"
+      "sha256": "43c2d352ff655b3865df0c570c40d7bba844926b70bab7455c02ad781b319758",
+      "size": 3057,
+      "normalized_sha256": "873a2f242b3e9a978e4efba5689d937282a65f1420c87c7784f98be2a4d886bd"
     },
     "backend/tests/test_readme_demo_accounts.py": {
       "role": "observe",
@@ -3516,9 +3556,9 @@
     },
     "backend/tests/test_room_equipment_e10.py": {
       "role": "observe",
-      "sha256": "99834eeae0e7d943587d6aa7e9b041623dabc8386b526624f6665dee4e8d2def",
-      "size": 6353,
-      "normalized_sha256": "a1908402476a7115948138d570df7b0f6de84de3d1222a12f914b8e695023ca7"
+      "sha256": "ab00daa05c62c90948b2c3f738d7bf15e95c26800b3ec057edae6cb9a10482d3",
+      "size": 6466,
+      "normalized_sha256": "f491e9941a0228dfe7e7dc68b98ee8e1dc5bef4dc955f0cdfc46c952fea19e6d"
     },
     "backend/tests/test_runtime_be_fatal.py": {
       "role": "observe",
@@ -3558,9 +3598,9 @@
     },
     "backend/tests/test_scene_scan.py": {
       "role": "observe",
-      "sha256": "b02d8206a9de01f5dcf00ffd7b108b4d9f4a9671e7fbeab0aacc738ec0130150",
-      "size": 37034,
-      "normalized_sha256": "b02d8206a9de01f5dcf00ffd7b108b4d9f4a9671e7fbeab0aacc738ec0130150"
+      "sha256": "bba6026bfedaadd9d1cb9a66e68b6b44b70bac9e2b5f328c146910cd78b29dfd",
+      "size": 37869,
+      "normalized_sha256": "bba6026bfedaadd9d1cb9a66e68b6b44b70bac9e2b5f328c146910cd78b29dfd"
     },
     "backend/tests/test_scene_seed_no_leak.py": {
       "role": "observe",
@@ -3600,9 +3640,9 @@
     },
     "backend/tests/test_schema_er_concept.py": {
       "role": "observe",
-      "sha256": "90aa43c68269abb9135d08dfc397c90ed291188541b93ac8078af35b2b9c7b03",
-      "size": 6771,
-      "normalized_sha256": "90aa43c68269abb9135d08dfc397c90ed291188541b93ac8078af35b2b9c7b03"
+      "sha256": "e54ad9ef17732cb853fd1c07c8a723c98850cb838f6116afc3852347de3e92a4",
+      "size": 8489,
+      "normalized_sha256": "e54ad9ef17732cb853fd1c07c8a723c98850cb838f6116afc3852347de3e92a4"
     },
     "backend/tests/test_schema_er_labels.py": {
       "role": "observe",
@@ -3621,6 +3661,12 @@
       "sha256": "0763ca66fd03a259acf57a768d74e1b5bcbcdd7dd38461e6751ee6eb82deec58",
       "size": 19152,
       "normalized_sha256": "0763ca66fd03a259acf57a768d74e1b5bcbcdd7dd38461e6751ee6eb82deec58"
+    },
+    "backend/tests/test_schema_nf_gate.py": {
+      "role": "observe",
+      "sha256": "b166420c5dc2fffd830f40f39a4b004c5902c53405774a78b42bc249bff2d625",
+      "size": 2783,
+      "normalized_sha256": "741eed5382b962ff2530ee310ff9fa980d7368db15a5295d93a6e41f3a9313d6"
     },
     "backend/tests/test_schema_sequence.py": {
       "role": "observe",
@@ -3666,9 +3712,9 @@
     },
     "backend/tests/test_sequence_thicken_buttons.py": {
       "role": "observe",
-      "sha256": "31d05bcb4224bfbd87f52602f41b0302fbc6d5fc3b7559fe663e685c0d97c388",
-      "size": 4750,
-      "normalized_sha256": "31d05bcb4224bfbd87f52602f41b0302fbc6d5fc3b7559fe663e685c0d97c388"
+      "sha256": "5c7e876c2a8a2187ce0f30d6df50ac25ccb43567e5eb8b3ef8cd5996f8217cef",
+      "size": 5565,
+      "normalized_sha256": "5c7e876c2a8a2187ce0f30d6df50ac25ccb43567e5eb8b3ef8cd5996f8217cef"
     },
     "backend/tests/test_shells_archive_lead.py": {
       "role": "observe",
@@ -3696,9 +3742,9 @@
     },
     "backend/tests/test_skeleton_jdbc_contract.py": {
       "role": "observe",
-      "sha256": "623f0db49e3fe6f8a28901f2489f2d0f379b695bd96fc60c4f23f6639ddcf9af",
-      "size": 7593,
-      "normalized_sha256": "57de645cc0e53a5f4cce7d3313ddeb0ae05f41297b833ad541ccfeb25605c317"
+      "sha256": "d797aaa37a2f8d7674bc1717c23ba19126cfaf5b5defdbe05b40cfc0ccd075e1",
+      "size": 9586,
+      "normalized_sha256": "0c816e35c355ca03f991476c3b197a44f3ac6a092144ffe43b3587d7a0cf5a02"
     },
     "backend/tests/test_skeleton_lambda_effectively_final.py": {
       "role": "observe",
@@ -3786,9 +3832,9 @@
     },
     "backend/tests/test_survey_c03.py": {
       "role": "observe",
-      "sha256": "e431863608d3608adef5d76f83b6c3300bb7ca07da9016b727cf36710c4a3931",
-      "size": 6616,
-      "normalized_sha256": "7d1e26b277ca14c41ef33c58cec453a28123dd320c60dea4f4ae17ce88355019"
+      "sha256": "d5b40732465a9e939dece0690a373f55612871596342a33bc6a50cedddf2a984",
+      "size": 6633,
+      "normalized_sha256": "50569a665ab3040f2a9410af9176126df96ac1c76bdbe4353dadf2539306004d"
     },
     "backend/tests/test_table_budget.py": {
       "role": "observe",
@@ -5315,9 +5361,9 @@
       "normalized_sha256": "7a884aca344c094f6da56c862c2b5251913a4808477c25a55f943a9fa51cf3b8"
     },
     "docs/capabilities.md": {
-      "sha256": "450647671acf2b282ed6a49f079fd7531feaec2f82b1a25624a0af0897cbb7cb",
-      "size": 18753,
-      "normalized_sha256": "450647671acf2b282ed6a49f079fd7531feaec2f82b1a25624a0af0897cbb7cb"
+      "sha256": "dab0f8f4ab09da1709382c7e4e7c2e282639d569dff63ee680b020fcc8e49860",
+      "size": 18983,
+      "normalized_sha256": "dab0f8f4ab09da1709382c7e4e7c2e282639d569dff63ee680b020fcc8e49860"
     },
     "docs/capability-expansion-batch.md": {
       "role": "index",
@@ -5369,9 +5415,9 @@
       "normalized_sha256": "798a273c3e14b817ab0616fdbd9ec29ff82bb8f7e4be7cc7a856d853b8657a1d"
     },
     "docs/opening-feature-delivery-map.md": {
-      "sha256": "0f9e58eb6a5a6a6bcd421ccd5fb445fbc52cf855c874fecc22b0d7080478c198",
-      "size": 112177,
-      "normalized_sha256": "5a3b28d69d6a166d6cfd4d35dd8274f85dac0b27a8b4d837c73f74fcb0fc741a"
+      "sha256": "afb9d2d5b7dd760465cdafb8cd3e48088d1e8b5ffd608969a1793d84a3fac26d",
+      "size": 128902,
+      "normalized_sha256": "afb9d2d5b7dd760465cdafb8cd3e48088d1e8b5ffd608969a1793d84a3fac26d"
     },
     "docs/preview-capacity-and-batch-ops.md": {
       "sha256": "5c12e26d4414805c65eb413bddf13cc5be332a563e4a768c555cfcad2882861a",
@@ -5776,10 +5822,35 @@
       "size": 90,
       "normalized_sha256": "1c1a3114130e987898f510a7a05b27716dba284e20ff96a52f7582062f8f5d61"
     },
+    "frontend/src/views/projectDetail/pdLabels.js": {
+      "sha256": "07c10f65771ae7cddd55607a37001535255163a4ebf9fd2254dcbb96bed69ede",
+      "size": 3217,
+      "normalized_sha256": "07c10f65771ae7cddd55607a37001535255163a4ebf9fd2254dcbb96bed69ede"
+    },
+    "frontend/src/views/projectDetail/pdRuntimeFmt.js": {
+      "sha256": "6c6bbbdce1d2785f72b49770f37e6b7def1467ee05ae7d74ceb3e06ffb2317b5",
+      "size": 1841,
+      "normalized_sha256": "6c6bbbdce1d2785f72b49770f37e6b7def1467ee05ae7d74ceb3e06ffb2317b5"
+    },
+    "frontend/src/views/projectDetail/usePdFillLive.js": {
+      "sha256": "812dde89ccde6f86220ebdbda6d3f96e898bf26d2b52e8db4eaf78c127927ecf",
+      "size": 5073,
+      "normalized_sha256": "812dde89ccde6f86220ebdbda6d3f96e898bf26d2b52e8db4eaf78c127927ecf"
+    },
+    "frontend/src/views/projectDetail/usePdLogs.js": {
+      "sha256": "5ad8478c15e5f5e10332bd6b0c931c45a6ccaf9f1c69a735e2ab84d8fd18d936",
+      "size": 1410,
+      "normalized_sha256": "5ad8478c15e5f5e10332bd6b0c931c45a6ccaf9f1c69a735e2ab84d8fd18d936"
+    },
+    "frontend/src/views/projectDetail/usePdRuntime.js": {
+      "sha256": "af50163734133621e8e625e2fe3d2f45bb59dc80e7b2fb8a61ea9c530b7501df",
+      "size": 7357,
+      "normalized_sha256": "af50163734133621e8e625e2fe3d2f45bb59dc80e7b2fb8a61ea9c530b7501df"
+    },
     "frontend/src/views/projectDetail/useProjectDetail.js": {
-      "sha256": "e47768a64df41973a9d011b5cc961651fbbdc80a088a1961c180eff9de3c0ee8",
-      "size": 92105,
-      "normalized_sha256": "e47768a64df41973a9d011b5cc961651fbbdc80a088a1961c180eff9de3c0ee8"
+      "sha256": "e3d1a194bb84e7315aad7392359c7edd19a359068bd0c85f8031a77b4def1110",
+      "size": 80675,
+      "normalized_sha256": "d4a84c8b634397ec31654bb3bbae06ec343f986578d0bff2b7d319733c5ca360"
     },
     "frontend/vite.config.js": {
       "role": "index",
@@ -5959,16 +6030,26 @@
       "size": 6806,
       "normalized_sha256": "79d411270182388cb16bda371605c1efbfac7ec3bf6dc12bb79de4a85e2f1423"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveCfgOps.java": {
+      "sha256": "93a4d7eacd08f8a062e6bcc76ca926231344dd1e4dba6bcb44642e719b57579e",
+      "size": 1272,
+      "normalized_sha256": "6640a70febe5e1cc59f6df54dbf6280fce0545e532e79a8c1a561ff8b3e1c00e"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveLogStore.java": {
       "role": "index",
       "sha256": "b870051ccc6827dcbbf4e4fe9f89694b0ca67a4c27eec3ff185e1b49fd781bb9",
       "size": 10833,
       "normalized_sha256": "49b1f837f871f1f2cf2863ab9775dea44fad09eeb8b502ac7082c058c3f4e4ac"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchivePriceOps.java": {
+      "sha256": "fa85d8a295267731afe0c58c0d1209e90eb3557ff51c92b9ec5af635decc1c11",
+      "size": 5195,
+      "normalized_sha256": "cdfa22b2dfc4b63a46231081674a6d6b6276afc041cff36e3117e1626eb893ec"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java": {
-      "sha256": "63806c827b91ea73b82e23e1fcaeee2c82519beb475873ebfdcf7424a73adc38",
-      "size": 99118,
-      "normalized_sha256": "63806c827b91ea73b82e23e1fcaeee2c82519beb475873ebfdcf7424a73adc38"
+      "sha256": "c9842354c558e41dd0503252055fbe90ad714288399ca3eb8490b58cec07b35d",
+      "size": 110410,
+      "normalized_sha256": "c9842354c558e41dd0503252055fbe90ad714288399ca3eb8490b58cec07b35d"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/AuditLogStore.java": {
       "role": "index",
@@ -6124,16 +6205,55 @@
       "size": 9441,
       "normalized_sha256": "44ac3cbaed1654e1238f3288cb3f1b61b06499897f39dad09a4f32cfa695de1e"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApplyOps.java": {
+      "sha256": "10a8ecdc11b8bebba94e18ed0e1dd3a88925b330f7b4ccbdb920df49b5235e44",
+      "size": 19820,
+      "normalized_sha256": "5dc544ca9ba1bc57858216798ad5ada3e261240ba5e71a6f1dcdbd4920ce277d"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApproveOps.java": {
+      "sha256": "828a071464f82114396df2c12eb7578683c58cb60030794c7540642a6f3c6b96",
+      "size": 23390,
+      "normalized_sha256": "828a071464f82114396df2c12eb7578683c58cb60030794c7540642a6f3c6b96"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketAsserts.java": {
-      "sha256": "20d295829439fb7753d5c592f05dfa898f8d9ba7de85c6e79c52f603768f294e",
-      "size": 9885,
-      "normalized_sha256": "20d295829439fb7753d5c592f05dfa898f8d9ba7de85c6e79c52f603768f294e"
+      "sha256": "cf798324c52c21eb1f668ae6d8af51e43319b0c8cdc8bd8c016bd8a7c83fd4d0",
+      "size": 12947,
+      "normalized_sha256": "90f379ccf55b8f711c3cc73b436946380e7ab99a5ecee63169755f73ae507148"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCfgOps.java": {
+      "sha256": "4e55963f833495caabffbf1d9db231a646fdd48063e654e930a3fc467a9eded0",
+      "size": 28684,
+      "normalized_sha256": "4e55963f833495caabffbf1d9db231a646fdd48063e654e930a3fc467a9eded0"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCompleteOps.java": {
+      "sha256": "518d1f8e396736c41e7172cc582db0ebc6b5b8f099e162a927957eb4039b0ae2",
+      "size": 11317,
+      "normalized_sha256": "518d1f8e396736c41e7172cc582db0ebc6b5b8f099e162a927957eb4039b0ae2"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCopy.java": {
-      "role": "index",
-      "sha256": "9fe22f6cfbf22c14af62a7e5e225da22a412ad432306b4e479c8894e9cdf0f0c",
-      "size": 5083,
-      "normalized_sha256": "9fe22f6cfbf22c14af62a7e5e225da22a412ad432306b4e479c8894e9cdf0f0c"
+      "sha256": "bb579ef24697b31181ff3e94024cab35adc078040718bd15259a1f0b1d9a67f3",
+      "size": 5275,
+      "normalized_sha256": "bb579ef24697b31181ff3e94024cab35adc078040718bd15259a1f0b1d9a67f3"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketDashOps.java": {
+      "sha256": "4a6ccc327b33377f82dad551a0e31728786aee76a7ecc7ef2775919fa3bbbbd2",
+      "size": 13690,
+      "normalized_sha256": "4a6ccc327b33377f82dad551a0e31728786aee76a7ecc7ef2775919fa3bbbbd2"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketDeriveOps.java": {
+      "sha256": "1dcfbdf217b03c81835adc808ea3d91cf667bb8d7db410e75dc50180202411fe",
+      "size": 15255,
+      "normalized_sha256": "1dcfbdf217b03c81835adc808ea3d91cf667bb8d7db410e75dc50180202411fe"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketGuardOps.java": {
+      "sha256": "757ce245db1a62335f8b5ee4fe476fca0e04f2a6849fbc3a89e133e8f228e913",
+      "size": 31376,
+      "normalized_sha256": "757ce245db1a62335f8b5ee4fe476fca0e04f2a6849fbc3a89e133e8f228e913"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketLineOps.java": {
+      "sha256": "38651bac66362ae106f9dfdfffc031450905edd959af2d1c6172cda88ce86b89",
+      "size": 7044,
+      "normalized_sha256": "38651bac66362ae106f9dfdfffc031450905edd959af2d1c6172cda88ce86b89"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketLookupStore.java": {
       "role": "index",
@@ -6141,16 +6261,41 @@
       "size": 15212,
       "normalized_sha256": "9b3b4fce82c43b3cdac9e158c080918b4a58018d0b97d154530f723641e0946d"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketNotifyOps.java": {
+      "sha256": "ac446975d995c593b502feb7750b49487aa262be625abcef53d790e87f34424f",
+      "size": 9311,
+      "normalized_sha256": "ac446975d995c593b502feb7750b49487aa262be625abcef53d790e87f34424f"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java": {
+      "sha256": "a678bd49c93677f3e8601d9a815eb072e8a6d00bc4961d8b7eb647a6da3f5da4",
+      "size": 50117,
+      "normalized_sha256": "a678bd49c93677f3e8601d9a815eb072e8a6d00bc4961d8b7eb647a6da3f5da4"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketProgressOps.java": {
       "role": "index",
       "sha256": "2d0cfd34f412bccde7ce51e59f82999568fdc08bdbbfe6d8cf3455bdf3c9c43f",
       "size": 7451,
       "normalized_sha256": "f81a222a2cc50287bbacacbea39ec40bdfaa9631d17f96e4b4f0f70e5b56f3e3"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketQueryOps.java": {
+      "sha256": "f86c2c5f3aed738b618a38e59c0fe3ad266464c2e9e11e1f278cc4f04f1c9db1",
+      "size": 6513,
+      "normalized_sha256": "f86c2c5f3aed738b618a38e59c0fe3ad266464c2e9e11e1f278cc4f04f1c9db1"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketQueueOps.java": {
+      "sha256": "9c5cc2ba2a1f4de46d06309d93c398b4d3c2525662f3ccd73636b7ca6f2598b3",
+      "size": 10069,
+      "normalized_sha256": "9c5cc2ba2a1f4de46d06309d93c398b4d3c2525662f3ccd73636b7ca6f2598b3"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketReviseOps.java": {
+      "sha256": "1025e88443633415042e5e39538be816fd500ea0ea45b31d4024e17155d20bc9",
+      "size": 3870,
+      "normalized_sha256": "1025e88443633415042e5e39538be816fd500ea0ea45b31d4024e17155d20bc9"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketRowMaps.java": {
-      "sha256": "42a4f669a7070260671cacc312245126f52ca38733f6a49f56734b807f4aea1e",
-      "size": 16435,
-      "normalized_sha256": "42a4f669a7070260671cacc312245126f52ca38733f6a49f56734b807f4aea1e"
+      "sha256": "efeaa988deadb8588a5a1a186699f00d8b864b955bf583c45b5772c686c776f0",
+      "size": 27858,
+      "normalized_sha256": "efeaa988deadb8588a5a1a186699f00d8b864b955bf583c45b5772c686c776f0"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketSql.java": {
       "role": "index",
@@ -6159,14 +6304,14 @@
       "normalized_sha256": "2af6f584f5734491a677b10f09bed5205c49f0008e4c03b785f6ad35898009d7"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStatusOps.java": {
-      "sha256": "e63ba5084a0d286b6ab842976a975d34a460b819dcb0aab68ff7e89e5a1f12df",
-      "size": 11822,
-      "normalized_sha256": "e63ba5084a0d286b6ab842976a975d34a460b819dcb0aab68ff7e89e5a1f12df"
+      "sha256": "8327752ea963fac6981744d6dc0b931e660e767063bf1aa14a08806af32cc185",
+      "size": 12270,
+      "normalized_sha256": "00b8b96ab84278caa4f5748ee96519c34a0b1466c61a15400dc545d3f8181278"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "196d51bb68f34f787db426bb1b2a04129b7379ae933a4c6b3982f50be4e89213",
-      "size": 208541,
-      "normalized_sha256": "196d51bb68f34f787db426bb1b2a04129b7379ae933a4c6b3982f50be4e89213"
+      "sha256": "10fd8d14f591ea4e6d8690bfdb23d55989a34fb1d562dd9aa3e9b06a7e817b55",
+      "size": 157851,
+      "normalized_sha256": "10fd8d14f591ea4e6d8690bfdb23d55989a34fb1d562dd9aa3e9b06a7e817b55"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "8068e5373c448c8bdff02b4508575bef4cf9817c9de91cfd667726bf08eaad11",
@@ -6226,10 +6371,9 @@
       "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java": {
-      "role": "index",
-      "sha256": "8a2d14c856523427cb4144d04354570df4d14dab079c7289a8fa38f15d6c3ee7",
-      "size": 2059,
-      "normalized_sha256": "8a2d14c856523427cb4144d04354570df4d14dab079c7289a8fa38f15d6c3ee7"
+      "sha256": "fdd25d507bad3d5b27c860a09d9dbaeb2a2fb7a62004bd0445d5048e98d35fb5",
+      "size": 2597,
+      "normalized_sha256": "fdd25d507bad3d5b27c860a09d9dbaeb2a2fb7a62004bd0445d5048e98d35fb5"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/DomainResourceJson.java": {
       "role": "index",
@@ -6238,9 +6382,9 @@
       "normalized_sha256": "38f7583677c69462692f1c11de84232894369c80ae35a56e1adbe0ea80ab96d5"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "39a7f67c2158ddf1e78a3bead9000e9b2e1d6f5c7331cca125e87f11c2f19ed9",
-      "size": 38619,
-      "normalized_sha256": "545c92fc9b37ad6b663e8d3d39cb5e6dc2f770931ead6cf474f6bd5ad0d8ef2b"
+      "sha256": "0a5d81601ce1ff21f6296b09d22918e22890353c19cb187bf868032d48a2b67d",
+      "size": 52487,
+      "normalized_sha256": "0a5d81601ce1ff21f6296b09d22918e22890353c19cb187bf868032d48a2b67d"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/JdbcSupport.java": {
       "role": "index",
@@ -6255,9 +6399,9 @@
       "normalized_sha256": "37d252569e43d4941e5bbe0b316dcb5dc127f42c89632dc8a1b9fe97c0817375"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
-      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
-      "size": 11100,
-      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
+      "sha256": "b452b81c4084a13c0597a9859d2d18b5891937956d6ba83a09dcd5265d299c4d",
+      "size": 21518,
+      "normalized_sha256": "67b975c65d0796a913caafc1c29f618ab15c61576d977e5d032c0b515f562716"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/config/UploadInlineFilter.java": {
       "role": "index",
@@ -6289,10 +6433,15 @@
       "size": 7530,
       "normalized_sha256": "d273a8a59fe6463f98caa0ac0d941ddcc0bc0d6a1fa1ad27cc47166a9e681023"
     },
+    "skeletons/baseline/backend/src/main/java/com/thesis/controller/ApplyBlacklistController.java": {
+      "sha256": "66879208edb49879e39051fd6b5729a608db954ac0020eb5d4767aa271b59328",
+      "size": 1863,
+      "normalized_sha256": "66879208edb49879e39051fd6b5729a608db954ac0020eb5d4767aa271b59328"
+    },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java": {
-      "sha256": "677769a8fcfa2ef720b7f4d0c246a129b4a68fcea2c833a35903f7814b64e01f",
-      "size": 16880,
-      "normalized_sha256": "677769a8fcfa2ef720b7f4d0c246a129b4a68fcea2c833a35903f7814b64e01f"
+      "sha256": "e532f1323b8c0b7b50ce739461b47fa2052695a5012b5a2067eb00e72e77eca1",
+      "size": 17331,
+      "normalized_sha256": "e532f1323b8c0b7b50ce739461b47fa2052695a5012b5a2067eb00e72e77eca1"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveLogController.java": {
       "role": "index",
@@ -6610,9 +6759,9 @@
       "normalized_sha256": "5642c256f33c4c52f0a21bb8081fc0b4df0d5e57619abcc9dd97862f908a6ec7"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java": {
-      "sha256": "8fd4b0b534f81d84aa312303cebf95d35b0424d8af716932b2f95fb5e395f0b2",
-      "size": 41166,
-      "normalized_sha256": "8fd4b0b534f81d84aa312303cebf95d35b0424d8af716932b2f95fb5e395f0b2"
+      "sha256": "6d2959fff520524a51279b7a21629aa2be7d68d7b651b7b47da1bb3cb44a84b3",
+      "size": 51744,
+      "normalized_sha256": "6d2959fff520524a51279b7a21629aa2be7d68d7b651b7b47da1bb3cb44a84b3"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketDashboardController.java": {
       "sha256": "30025d6f411e1874db3ebd370fcfc042c778ee0e05f1f67a17d37e0d4be59bca",
@@ -6658,6 +6807,11 @@
       "sha256": "c0e5b922705b0a71a7cb495c67b5140284a905059c3d0159cc5a3e4002031e6b",
       "size": 23246,
       "normalized_sha256": "fa1accc09c36426ccdb6151d997fca041600cfd43f86bbc04c40bc3e076661de"
+    },
+    "skeletons/baseline/backend/src/main/java/com/thesis/service/ApplyBlacklistStore.java": {
+      "sha256": "ef6d99852e0f17330a5a268e82a5e5843d25f88ebf146014e828c05c8ad4f965",
+      "size": 4161,
+      "normalized_sha256": "ef6d99852e0f17330a5a268e82a5e5843d25f88ebf146014e828c05c8ad4f965"
     },
     "skeletons/baseline/backend/src/main/java/com/thesis/service/BalanceLedgerStore.java": {
       "sha256": "39c43e178874eb6e8b30937b28e7fc1f0af17c3b24795871fbe657503cc3e5b3",
@@ -6868,10 +7022,9 @@
       "normalized_sha256": "bca2d1a0743de4ca16a212777082841556592727a2ce25830da9120443d0e06a"
     },
     "skeletons/baseline/frontend/src/components/ArchiveFieldControl.vue": {
-      "role": "index",
-      "sha256": "a09d33b085df16237e228966246bd378dd7291503fec6870077a28c754f934bc",
-      "size": 3940,
-      "normalized_sha256": "473637d0a715255f79d1c7bc2d6b8c32889fc217d20c9c3d27a6da1319fc5022"
+      "sha256": "2e0c1280c4c107ee72b4ff0b5fc54e9e18d9c7d6b4704a33bc81c2febd342968",
+      "size": 4170,
+      "normalized_sha256": "2b3e8eddc06414fe1a0b427d672794dfa43b86191db3f23d13dd772cd44f3dbb"
     },
     "skeletons/baseline/frontend/src/components/AuthShell.vue": {
       "role": "index",
@@ -6968,9 +7121,9 @@
       "normalized_sha256": "b9fbe769d5b25a1d4cec4756e6cffb401fef51bece9da12c3c623212f2300d9b"
     },
     "skeletons/baseline/frontend/src/components/RepairFinishDialog.vue": {
-      "sha256": "9931e4690b409a8694238d1d20284cf47c8fa4eb278dd0254ae70bc4b907908b",
-      "size": 11479,
-      "normalized_sha256": "727c0a655101d20ce2c4c6462be6a17e9a2d2d835f8fc81f986b8bfcad368a24"
+      "sha256": "f82a2bf1d769f058dad0fe8fb438c93cb053ecfa53178a140260d7fafd00a88d",
+      "size": 16574,
+      "normalized_sha256": "f82a2bf1d769f058dad0fe8fb438c93cb053ecfa53178a140260d7fafd00a88d"
     },
     "skeletons/baseline/frontend/src/components/RichTextEditor.vue": {
       "role": "index",
@@ -7033,9 +7186,9 @@
       "normalized_sha256": "ed425b77c962a04220b4c82283509136165fe7212cf599266f871060dc06e9f9"
     },
     "skeletons/baseline/frontend/src/router/index.js": {
-      "sha256": "14bafc662d43502c40bf830c31ebc87c94560631f4ddb86cad6a1be04f0d9b13",
-      "size": 54287,
-      "normalized_sha256": "14bafc662d43502c40bf830c31ebc87c94560631f4ddb86cad6a1be04f0d9b13"
+      "sha256": "5b06d7bbc3434aa66593e092d89bb4b7b7bbbf2e1aa4c1d710bbb614c47a26e1",
+      "size": 54492,
+      "normalized_sha256": "5b06d7bbc3434aa66593e092d89bb4b7b7bbbf2e1aa4c1d710bbb614c47a26e1"
     },
     "skeletons/baseline/frontend/src/styles/chrome.css": {
       "role": "index",
@@ -7485,10 +7638,9 @@
       "normalized_sha256": "bcd8cbf0868d66eee1561bfe3726c6846fdf5ec1288fee61c9132aa26e338e8d"
     },
     "skeletons/baseline/frontend/src/utils/archiveFieldWidget.js": {
-      "role": "index",
-      "sha256": "963395ea3ff848bfc8870e26baf136a139cd6b53637f15ca4854dbf334281b75",
-      "size": 2004,
-      "normalized_sha256": "48c538ca862cb15a20d955d88c376bbd875c5aa1701f130a5b057210d4d66648"
+      "sha256": "2e919460a119c036227742290761400cc757c9a1f4a7a7eaabcb0d01ac1b0964",
+      "size": 2049,
+      "normalized_sha256": "54e128e59c2323680cc76c5364e8da814c629ba9f5f72bc4c85571ecc99dd9b6"
     },
     "skeletons/baseline/frontend/src/utils/authEntry.js": {
       "role": "index",
@@ -7515,10 +7667,9 @@
       "normalized_sha256": "9e6538e433e8d4a43040f6f5bbb0500af0504569388e9d1fd7ebc72952800c0f"
     },
     "skeletons/baseline/frontend/src/utils/dateTimeField.js": {
-      "role": "index",
-      "sha256": "d759a245df757d8b2ba71162af2366dbfb9e68bc7ab15842be08a7b6e760b5a8",
-      "size": 1830,
-      "normalized_sha256": "b4118d935632cce6f12fbe9055a2c5ef4cb0bdda8fbc89103dd2f0cfec2f0d65"
+      "sha256": "83f9231e33453d24e060d8d7ec3674056b2a12c4a8ef5e194bc5be501d50a045",
+      "size": 2099,
+      "normalized_sha256": "f4c135839fc96270bb9e89034db146b15e6e022c32e871bda1d43808ca2ba232"
     },
     "skeletons/baseline/frontend/src/utils/dates.js": {
       "role": "index",
@@ -7533,10 +7684,9 @@
       "normalized_sha256": "172d60678e17683c1766d91ade315f8356fb65438e90c22f0e9ccd469af37b9d"
     },
     "skeletons/baseline/frontend/src/utils/domainSchema.js": {
-      "role": "index",
-      "sha256": "639ddea26e92ba6a5be86784ab3e8300e1f5570356d776307dafc681139e8bbb",
-      "size": 18626,
-      "normalized_sha256": "639ddea26e92ba6a5be86784ab3e8300e1f5570356d776307dafc681139e8bbb"
+      "sha256": "66011ae6538eec51cec209891458a2d4ef002182b73b8186600b0ce17dcdeefe",
+      "size": 18846,
+      "normalized_sha256": "66011ae6538eec51cec209891458a2d4ef002182b73b8186600b0ce17dcdeefe"
     },
     "skeletons/baseline/frontend/src/utils/equipmentMark.js": {
       "role": "index",
@@ -7555,9 +7705,9 @@
       "normalized_sha256": "b3ef09a8135e3d4ddca111ec7a6935163890d369dc0693b22ef4cbb1fca31da0"
     },
     "skeletons/baseline/frontend/src/utils/menuRoutes.js": {
-      "sha256": "f1fc1cc26c7e5971fd26c1dc32be0c03aced36fab933fdc9d34d1915ab027caa",
-      "size": 4955,
-      "normalized_sha256": "f1fc1cc26c7e5971fd26c1dc32be0c03aced36fab933fdc9d34d1915ab027caa"
+      "sha256": "371a8276a11d9875effefbb453e5e21e54d0f99a14995c6ab5e3a9520c183234",
+      "size": 5000,
+      "normalized_sha256": "371a8276a11d9875effefbb453e5e21e54d0f99a14995c6ab5e3a9520c183234"
     },
     "skeletons/baseline/frontend/src/utils/messages.js": {
       "role": "index",
@@ -7611,11 +7761,26 @@
       "size": 313,
       "normalized_sha256": "30a48f05bf397d0692f11e3ecf45c73678ca96ef0b752c36aa443218c0d6a136"
     },
+    "skeletons/baseline/frontend/src/utils/ticketApplyShared.js": {
+      "sha256": "e87441fd857376caee609db3084e8ca25b4640214f9cd562c33fc6a45b717e9d",
+      "size": 2907,
+      "normalized_sha256": "4fa3d9a2d4899e5da26b699bc906f1afeaded474a78d7d83bf07cb22596917cb"
+    },
     "skeletons/baseline/frontend/src/utils/useCountdown.js": {
       "role": "index",
       "sha256": "380d91f411b2d577d4704581b63aefe6399e783bab9b775be746127c38e241cb",
       "size": 1548,
       "normalized_sha256": "298b46fd662ec5235d4f929f5fd4ec469aeb85ca84ad4ce165e7de42980a4bf0"
+    },
+    "skeletons/baseline/frontend/src/utils/useTicketApplyForm.js": {
+      "sha256": "0b4c410b98536b59933972396c262b53c66fe59c68489b86a54139a5b0e7f9db",
+      "size": 1441,
+      "normalized_sha256": "732c318746ef2ecdf83325ae4655fe42674db573567e56f4243442c02656fdd2"
+    },
+    "skeletons/baseline/frontend/src/utils/useTicketSchemaFlags.js": {
+      "sha256": "d5be4382536998621ac9f60a921d76563a7ed128b1a86a13c6d6ebc72cfe0026",
+      "size": 4573,
+      "normalized_sha256": "8b9a34220bf75adf764abafcf74baa1e8378b7a939a9859f14d76607b938e3a2"
     },
     "skeletons/baseline/frontend/src/views/AiAssistant.vue": {
       "role": "index",
@@ -7802,6 +7967,11 @@
       "sha256": "a89aa9b5c191c71f84540b517d31add16d6639d50333462bbfe71474968795e2",
       "size": 6276,
       "normalized_sha256": "3d6c366b90426eaf9f6eca8a31ab4d4c43925115781eee5d6605d06b02e71c4f"
+    },
+    "skeletons/baseline/frontend/src/views/admin/ApplyBlacklistAdmin.vue": {
+      "sha256": "236b9738dd35b381fa6e650f9f2de7debaef9f3637d93581a045aa6ce7fc319d",
+      "size": 2137,
+      "normalized_sha256": "236b9738dd35b381fa6e650f9f2de7debaef9f3637d93581a045aa6ce7fc319d"
     },
     "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue": {
       "sha256": "0d8405180ae300c41a90b5bd5266842dba4903c751dde7e46e3e24c23780530e",
@@ -8148,14 +8318,14 @@
       "normalized_sha256": "c0d2f69985f9cb4303538415337825a1d7ca33d3852bfd5bdd63db6916a41cfe"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketRecordsAdmin.vue": {
-      "sha256": "e3f8c17c0e58414b78b69d34f9a52c81385ebaff988dce75e8a46bf36a8311a6",
-      "size": 29256,
-      "normalized_sha256": "e3f8c17c0e58414b78b69d34f9a52c81385ebaff988dce75e8a46bf36a8311a6"
+      "sha256": "ef0e91d90273e2f607ec692dd271c9b44cf28c2e2fdcb678db2b3c5fad54c5c6",
+      "size": 49473,
+      "normalized_sha256": "ef0e91d90273e2f607ec692dd271c9b44cf28c2e2fdcb678db2b3c5fad54c5c6"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketsAdmin.vue": {
-      "sha256": "0bdbfce541b4219b3a5bf20b532655b8a621fd1da3af7eb8d663ae8ddf14545e",
-      "size": 37117,
-      "normalized_sha256": "0bdbfce541b4219b3a5bf20b532655b8a621fd1da3af7eb8d663ae8ddf14545e"
+      "sha256": "e6bbd81696e4f6a694b99cda1cf1421a64f3e1abfc35ae75489a91ea68f1ce96",
+      "size": 49805,
+      "normalized_sha256": "e6bbd81696e4f6a694b99cda1cf1421a64f3e1abfc35ae75489a91ea68f1ce96"
     },
     "skeletons/baseline/frontend/src/views/admin/TimebankAccountsAdmin.vue": {
       "role": "index",
@@ -8219,9 +8389,9 @@
       "normalized_sha256": "75efb129d1cf914e404aeb51bbaf0ccf5aa4c2aa73c7df480148f7e316af4612"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue": {
-      "sha256": "14590a2dc95547e08b7d04e5a7a1273388e29e59cc4c34398342b93a782a3d8e",
-      "size": 82733,
-      "normalized_sha256": "14590a2dc95547e08b7d04e5a7a1273388e29e59cc4c34398342b93a782a3d8e"
+      "sha256": "bcece31c50ba48f9062a5e78f2b9c668e53b6b20af21610f311afaab5e41ac00",
+      "size": 89486,
+      "normalized_sha256": "bcece31c50ba48f9062a5e78f2b9c668e53b6b20af21610f311afaab5e41ac00"
     },
     "skeletons/baseline/frontend/src/views/user/BookSuggest.vue": {
       "sha256": "a258ed9c75d72bc055617a72af868e87fd50179534e9d97b83b04025facdc8c8",
@@ -8330,9 +8500,9 @@
       "normalized_sha256": "44f646ddc9416878a293d060efca7db3a9d4807c50e8ae61233a9ce1710b8c47"
     },
     "skeletons/baseline/frontend/src/views/user/MyTickets.vue": {
-      "sha256": "1a095f2b4f8cb704fa1b27a3cbc5be5295c8a1b42e9f62c594239831974cfdd8",
-      "size": 92163,
-      "normalized_sha256": "1a095f2b4f8cb704fa1b27a3cbc5be5295c8a1b42e9f62c594239831974cfdd8"
+      "sha256": "a32c527fd374d38f565a73be9fe14d7f24fb724e2ee5ccfe1d8518f73786c069",
+      "size": 145001,
+      "normalized_sha256": "a32c527fd374d38f565a73be9fe14d7f24fb724e2ee5ccfe1d8518f73786c069"
     },
     "skeletons/baseline/frontend/src/views/user/ParcelShip.vue": {
       "sha256": "d060949b3ad024d0a19a45711d22e5916c0c40edea9db29056cf5a98405afc47",
@@ -8356,10 +8526,9 @@
       "normalized_sha256": "592cee185a1ec1ea4588349556d2962ae0220b200eccf8c55f6defa02b90d551"
     },
     "skeletons/baseline/frontend/src/views/user/WeekCalendar.vue": {
-      "role": "index",
-      "sha256": "a7dd5690d2aea3db8cb62ea3a99d894c05dbf21baf102faaa0237bb5850b28cf",
-      "size": 6496,
-      "normalized_sha256": "a7dd5690d2aea3db8cb62ea3a99d894c05dbf21baf102faaa0237bb5850b28cf"
+      "sha256": "fcc8b646f45bbb72f7e8dba583d70934b681ef6e001700ba66b51f88ff55a5b3",
+      "size": 8121,
+      "normalized_sha256": "fcc8b646f45bbb72f7e8dba583d70934b681ef6e001700ba66b51f88ff55a5b3"
     },
     "skeletons/baseline/frontend/vite.config.js": {
       "sha256": "84b339b2e141ba460727dc1d29ced1a6d36b8b8e16a5b5c4e6cad290d19b62c0",
@@ -8409,9 +8578,9 @@
       "normalized_sha256": "03ec862c3d4d8c55c44c47933377980804a29a8d76016a3b436fb30d9cc4a138"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/ArchiveStore.java": {
-      "sha256": "902bf5962900a1cc1426f450ed33dd664d8f763eb5c2e6b1a257b3ce15013e69",
-      "size": 98293,
-      "normalized_sha256": "902bf5962900a1cc1426f450ed33dd664d8f763eb5c2e6b1a257b3ce15013e69"
+      "sha256": "dd946b06bb691c54a01a68ee9c1019c13489254974c9d5b203ec2cef4540adff",
+      "size": 105967,
+      "normalized_sha256": "b61f1c6d6725dd9abc00b806f599c59eda83843dc0eeb86aa0066ee6fd0ad0e2"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/AuditLogStore.java": {
       "sha256": "9c0e12432fbf32e387e8acc2669a3b6324a17e7603ff53636663a32c32095e94",
@@ -8562,10 +8731,20 @@
       "size": 9194,
       "normalized_sha256": "d5eb517008c3e165f45e5edb7ea22945df1babe2b7674017e9f390c631f9b172"
     },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketCompleteOps.java": {
+      "sha256": "1dc982607e009d51bfa381231dc443bbe8a10f65cbeffa243beb75e3d2bad9cd",
+      "size": 10425,
+      "normalized_sha256": "465b72ae5982a2606e9f445652c2fe8f28a2bd4cd862efb44b8e57841d534824"
+    },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketLookupStore.java": {
       "sha256": "6c496a1c5d8d8108abec26220ff813068dd27f1d37e2d7f92f90a94e4ea42bc9",
       "size": 15173,
       "normalized_sha256": "6c496a1c5d8d8108abec26220ff813068dd27f1d37e2d7f92f90a94e4ea42bc9"
+    },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketPatchOps.java": {
+      "sha256": "cda3d96e5e7c62b8e9d43efd6e26c80fa126cc0df057792685a11a32feb60587",
+      "size": 40654,
+      "normalized_sha256": "59c8a48ca4e6fee53f6bb4474253150ed4476a4a7475ef32c2ee49bbfc71ff25"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketSql.java": {
       "role": "index",
@@ -8574,9 +8753,9 @@
       "normalized_sha256": "590b078f11151a146e9aa938761b99f52cb89c2347087744843c5d4661b3cde9"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "98b9baf017ed4a18726b9518587d45e06863019a260cd905a06f678814c0afb5",
-      "size": 208511,
-      "normalized_sha256": "98b9baf017ed4a18726b9518587d45e06863019a260cd905a06f678814c0afb5"
+      "sha256": "82e74345a76ba3acfb084fe427e6c265e534d92e4070b6c8c8a8378c3ef09a60",
+      "size": 140378,
+      "normalized_sha256": "0a31abd66a50fb0cf4cd0410a437381ce21cc76066046f1ec2cd011cb4296f00"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "c892e4fb81d60a4c4487a80fe73e5c21a656e226c8a845c37855c66a17cf4794",
@@ -8594,15 +8773,14 @@
       "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java": {
-      "role": "index",
-      "sha256": "a7e9064854c88fdd1b0b70d3610c2359bb412a5e42ec0e962022c94421c0bc6d",
-      "size": 2114,
-      "normalized_sha256": "8a2d14c856523427cb4144d04354570df4d14dab079c7289a8fa38f15d6c3ee7"
+      "sha256": "fdd25d507bad3d5b27c860a09d9dbaeb2a2fb7a62004bd0445d5048e98d35fb5",
+      "size": 2597,
+      "normalized_sha256": "fdd25d507bad3d5b27c860a09d9dbaeb2a2fb7a62004bd0445d5048e98d35fb5"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "ea32731dbf8fd5b734636beb9f4254935113fda485222d731eb04094d395366e",
-      "size": 38622,
-      "normalized_sha256": "0499ce2d289d5ba2c5f46b03611652c6fac5c03548f3aa6d011df762c882f9b5"
+      "sha256": "346ebb641c2dd7231391b5a22ca32a121910f4e74651dfcfb3d3abb4da390260",
+      "size": 49334,
+      "normalized_sha256": "19cd90dd4424b97d37999df7e13ef44f55a2495839e786efb9fa830c144c64a1"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/GeneratedKeyHolder.java": {
       "role": "index",
@@ -8652,9 +8830,9 @@
       "normalized_sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
-      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
-      "size": 11100,
-      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
+      "sha256": "ad96cccf506545dba36d1fd7d738490f40a003d0e3e14a737e675092779942cd",
+      "size": 18413,
+      "normalized_sha256": "a8f883e97bffed9fca4ad855f2a552f60f2626d6bad7ffb58f77c594cf54bf3e"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/entity/NoticeEntity.java": {
       "role": "index",
@@ -8672,6 +8850,11 @@
       "sha256": "ffb92482e9324e0396d9a019f78abbc1aca9e438917262be8aee697c3ce85b26",
       "size": 22071,
       "normalized_sha256": "ffb92482e9324e0396d9a019f78abbc1aca9e438917262be8aee697c3ce85b26"
+    },
+    "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/ApplyBlacklistStore.java": {
+      "sha256": "7c2ff5958c7903079540fceabe45fdcd9bb2981fe768a02fd362fcd82a3ff6c6",
+      "size": 4011,
+      "normalized_sha256": "7c2ff5958c7903079540fceabe45fdcd9bb2981fe768a02fd362fcd82a3ff6c6"
     },
     "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/BalanceLedgerStore.java": {
       "sha256": "fd2e3b59915373a1f6b31bfac85f73078e1f05a789c2dd8b7f5b5037efbe23ff",
@@ -8820,9 +9003,9 @@
       "normalized_sha256": "dda8f5864940cae0105303e2fe4378c87717751aae2ccc0bf8766811c57bd3cf"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/ArchiveStore.java": {
-      "sha256": "5a5efe068b3c1cbea3bc78ac1c371eca0b72b3f84dde2285c2a4928dce30645a",
-      "size": 90172,
-      "normalized_sha256": "5a5efe068b3c1cbea3bc78ac1c371eca0b72b3f84dde2285c2a4928dce30645a"
+      "sha256": "96f27c6b97bbdc95f40f9567fe578c81cb530da3097cd28fa26e173ed3314471",
+      "size": 96939,
+      "normalized_sha256": "16572dd24123ba75a50376eff5b963d189a93fb6fe94f2762f82fd410f2e93be"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/AuditLogStore.java": {
       "sha256": "7df7126c20182a8dd9fff6826e6be4b322f9b566b8ea1f9baf7de557c526a30a",
@@ -8973,15 +9156,40 @@
       "size": 9202,
       "normalized_sha256": "35973dda56825831eb5ee8c7166add9ab75d24cb353ffbb95be840e8ad7ad902"
     },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketApplyOps.java": {
+      "sha256": "d88c61e5c1e848f8e734485f0da639f5af9fd7161c2fca06580c48591cd1c7c4",
+      "size": 15843,
+      "normalized_sha256": "09a30c5ece82630d7201355f2c7a9f5c49dd05e510af2be95ee9e7798bd78da9"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketApproveOps.java": {
+      "sha256": "90cca50b44b2dbc02a12d997cde98c59c1c1509a7c89058de83e4657986033db",
+      "size": 17200,
+      "normalized_sha256": "86db5126d605e3e8cd2de4b16930296cc8b3d3bb46182933ea0e785b1d137a85"
+    },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketAsserts.java": {
-      "sha256": "6de3a2c9d14187aff8ef9a447e7708835979b421a918d51654b112a95973b919",
-      "size": 9594,
-      "normalized_sha256": "6de3a2c9d14187aff8ef9a447e7708835979b421a918d51654b112a95973b919"
+      "sha256": "06ac87d2acd1ef8f432329c018552519ebaf5d6a6885f4c9675dd74f2d2a68e2",
+      "size": 12667,
+      "normalized_sha256": "231cdc249117b2aa2a6f52d4c379c1bf76425a4322afdd9cb32b2befef0a5ef7"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketCompleteOps.java": {
+      "sha256": "e920c78505f8bc3adb092e7d845d1b3c5ba50c3db890c75b94cbcac7e6ceaeb5",
+      "size": 10110,
+      "normalized_sha256": "e62237d7f84ed3aefb3a6411bcc8133763cfc88de02184a1fe281f47601c6c48"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketDashOps.java": {
+      "sha256": "f4cfe9869a69ef2f97f5a027c65de943962c1b5108a7ffe129edf7afb204f2f5",
+      "size": 10735,
+      "normalized_sha256": "f4cfe9869a69ef2f97f5a027c65de943962c1b5108a7ffe129edf7afb204f2f5"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketLookupStore.java": {
       "sha256": "ac562424e05ab7b5ffaf711fa32f6afe6eb485e20b49eff9e8c1a9643e2579d3",
       "size": 12702,
       "normalized_sha256": "ac562424e05ab7b5ffaf711fa32f6afe6eb485e20b49eff9e8c1a9643e2579d3"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketPatchOps.java": {
+      "sha256": "dca1f53b491b0fc0db5e090be1f4ace9838205c53924ec3a5934adc43429fa85",
+      "size": 34970,
+      "normalized_sha256": "787114a988042f6a204f522e1a378f4b15289f74eaa6d27119b0858c4d5632a2"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketProgressOps.java": {
       "role": "index",
@@ -8989,10 +9197,15 @@
       "size": 7051,
       "normalized_sha256": "27f2c64d6ccab5021ada8050bbe1e6b193ff19710ec1cfe292a76c5da992e187"
     },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketQueryOps.java": {
+      "sha256": "104475a62f5289f40c22cd89c8f69f5fe9035e3eeaef6ead2065bd4eadc269c2",
+      "size": 4937,
+      "normalized_sha256": "104475a62f5289f40c22cd89c8f69f5fe9035e3eeaef6ead2065bd4eadc269c2"
+    },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketRowMaps.java": {
-      "sha256": "c15c2c6613cb1e0f111d5ca6568b98224ef7e3abe741179e39a5d3038c8140c9",
-      "size": 13263,
-      "normalized_sha256": "c15c2c6613cb1e0f111d5ca6568b98224ef7e3abe741179e39a5d3038c8140c9"
+      "sha256": "d5f6ceeb99b0ab767410d6a4d189ea0cca1c23a87edf16db1df36ffe03e30e29",
+      "size": 22541,
+      "normalized_sha256": "0d072495d5cbe3781b7e7c126af9ee69878bb02719b660b85d6cf6d0200beb4f"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketSql.java": {
       "role": "index",
@@ -9001,14 +9214,14 @@
       "normalized_sha256": "59db23cd10553099cb8161dfb160cd471e0b26676b232f510918cb036d03d72e"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketStatusOps.java": {
-      "sha256": "1aa3bf52dffad13e49e951c9a46f3ba5250d9971ed17085cf98275a244f285dd",
-      "size": 12241,
-      "normalized_sha256": "b32caf24607ee71b292308999c95c8579c84a806c791ebde1bffb27d246c5113"
+      "sha256": "7a0cf29e6d2dc3d2329ffaa9fbd22fef3fa54f4b6297d01d9b46c6c472b7174a",
+      "size": 12426,
+      "normalized_sha256": "0d34ba33d6323f80e4a345890d81bb179a774ddb616ebba774bbbdf0f6b9f853"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/TicketStore.java": {
-      "sha256": "6fed112be200f76e0622e1e3355901109212ccc0c8dbb76c2e723b7f9bfbb595",
-      "size": 192353,
-      "normalized_sha256": "4cb8df0b1b3b5929686a79b838f8d8ed206be8a7e166e6c489bc2a79fc5091b7"
+      "sha256": "841ddaeac991b0847bb6ea75d82dccf4d039b4c6537015f2141efd429e369bae",
+      "size": 147546,
+      "normalized_sha256": "1ac2c5aa0938705b7c936d4af2a2ac6454efd710371de31bdb17f0f3c992f2ed"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/VenueCleanStore.java": {
       "sha256": "f6ee23c9182609a1ac195234dcc0c511bc36dd38d140724a2acc434e1c420089",
@@ -9026,9 +9239,9 @@
       "normalized_sha256": "a9619cfec0ddb2024f65a2b31e3724327c622fb160e0aa0a95dc6c3622255177"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java": {
-      "sha256": "3c9145fbc74f2a75dc93d219756fc34ab1595fec9401005939b274e9913b953c",
-      "size": 38624,
-      "normalized_sha256": "54511ba6943eba3f40dbc01627c6a8066980e663912baef59cdcdcd2ee5355b2"
+      "sha256": "5eea0bb526f34d684bd4655efd4586c72ad7d741d718453cb0d7c93c1ec81342",
+      "size": 49336,
+      "normalized_sha256": "224d47e06c5909b30ced228fd04369b6d229b7e20ec711719f6589edbd85a908"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/GeneratedKeyHolder.java": {
       "sha256": "ffb391c9ec6daa83eef366e3abc1809128868a0df4a1e4b824bba7bcecdb0ccf",
@@ -9072,9 +9285,9 @@
       "normalized_sha256": "54eb68e5538db2604a9eea513865480c92e6e8d5da7ab8fff983d759b89a64ea"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/TicketPolicy.java": {
-      "sha256": "05d37b2a3e76530a262521e8aa20fab22545c0249ce489d07496452524cabf98",
-      "size": 11100,
-      "normalized_sha256": "d033cd55dc047b7ba009675fccf85910815e06ec818d297e2c37fe6904cc90b5"
+      "sha256": "ad96cccf506545dba36d1fd7d738490f40a003d0e3e14a737e675092779942cd",
+      "size": 18413,
+      "normalized_sha256": "a8f883e97bffed9fca4ad855f2a552f60f2626d6bad7ffb58f77c594cf54bf3e"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/AddressMapper.java": {
       "role": "index",
@@ -9089,9 +9302,9 @@
       "normalized_sha256": "1da532de0388985924068fbc83b5038535452bab96108fee771d3c701415d77c"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/ArchiveMapper.java": {
-      "sha256": "641fa2d36234d5f6c630bf0b1489725129ff5d8404dbeaad13b50cfbd7d7a558",
-      "size": 9240,
-      "normalized_sha256": "641fa2d36234d5f6c630bf0b1489725129ff5d8404dbeaad13b50cfbd7d7a558"
+      "sha256": "fac4b0180187777b82394a0e5d2d8e82b01b40ae05df598bd445aca9253e080e",
+      "size": 10526,
+      "normalized_sha256": "fac4b0180187777b82394a0e5d2d8e82b01b40ae05df598bd445aca9253e080e"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/BlindBoxMapper.java": {
       "sha256": "7ce713f26735d9ab5b7b2facc8070fec339eb46bf4e1c120f1e4dbb0f0c028f9",
@@ -9273,9 +9486,9 @@
       "normalized_sha256": "472e3090cca70b376479822a9b84284b7a30c3cf32356e17e3c9cd36ae396249"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketMapper.java": {
-      "sha256": "e113333884d3bd2829123bd213b3b7753f73ce810fc2afd450a556eecbf582a5",
-      "size": 15503,
-      "normalized_sha256": "e113333884d3bd2829123bd213b3b7753f73ce810fc2afd450a556eecbf582a5"
+      "sha256": "f8b9bf7d354c407ca0de690413c6cfaea3a1d36f1f95efe40f134ecaf4c634b5",
+      "size": 15513,
+      "normalized_sha256": "f8b9bf7d354c407ca0de690413c6cfaea3a1d36f1f95efe40f134ecaf4c634b5"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TimebankMapper.java": {
       "role": "index",
@@ -9304,6 +9517,11 @@
       "sha256": "c754fc37441897e1e164bbad409f9fdef5fad596af2dd94d6c86fe71e9ba9ad9",
       "size": 22079,
       "normalized_sha256": "c754fc37441897e1e164bbad409f9fdef5fad596af2dd94d6c86fe71e9ba9ad9"
+    },
+    "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/ApplyBlacklistStore.java": {
+      "sha256": "d5aac1d0e371b697c85c2d937ddc64354490c262cb00ff95bb0954d3c892a796",
+      "size": 4019,
+      "normalized_sha256": "d5aac1d0e371b697c85c2d937ddc64354490c262cb00ff95bb0954d3c892a796"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/BalanceLedgerStore.java": {
       "sha256": "5718a6d2a2e2142f70c1c7f81e7379da907db8f357a369369fdfd64bf3585063",
@@ -9443,9 +9661,9 @@
       "normalized_sha256": "123c2e9436daaa548c2d768d2048f618c8b20939469143d8b80dee4015497535"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/ArchiveMapper.xml": {
-      "sha256": "a5f6b41269948c18803f151c2e06e403870ef49add5a8d9fd8f3fe40a041c6c0",
-      "size": 7593,
-      "normalized_sha256": "a5f6b41269948c18803f151c2e06e403870ef49add5a8d9fd8f3fe40a041c6c0"
+      "sha256": "bc3e6ced7d20af8de77639ebe117e16c59a125c0e53281a6218fe2954f78fd53",
+      "size": 7612,
+      "normalized_sha256": "bc3e6ced7d20af8de77639ebe117e16c59a125c0e53281a6218fe2954f78fd53"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/BrowseHistoryMapper.xml": {
       "role": "index",
@@ -9543,9 +9761,9 @@
       "normalized_sha256": "fbd2a0e76a07407eaa74a8e17be4400b47cebbaa1dccc8cd9b0e9bf4fa39defd"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/TicketMapper.xml": {
-      "sha256": "3009f273443dceb753d8f46796f3350bb96b81656e4ee233c2a8b4516441aa52",
-      "size": 12438,
-      "normalized_sha256": "3009f273443dceb753d8f46796f3350bb96b81656e4ee233c2a8b4516441aa52"
+      "sha256": "6b80cdaa99aa9cc45f17115198c073a8784e51f0aac3eba37bbdeae5eaa95d74",
+      "size": 12758,
+      "normalized_sha256": "6b80cdaa99aa9cc45f17115198c073a8784e51f0aac3eba37bbdeae5eaa95d74"
     },
     "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/UserMapper.xml": {
       "role": "index",

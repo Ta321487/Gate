@@ -93,7 +93,9 @@ async def run_fix_agent(
     spec: dict[str, Any],
 ) -> tuple[bool, str]:
     """
-    结构校验后尝试 mvn compile；失败则 LLM 诊断 + 重放确定性/LLM 填岛（不改业务源码）。
+    结构校验后尝试 mvn compile；编译失败硬拦交付（ok=False）。
+    开了 auto_fix 时：LLM 诊断 + 重放确定性/LLM 填岛（不改业务源码）后重编；仍失败则 ok=False。
+    本机未装 mvn 时跳过编译（无法验），不挡交付。
     返回 (ok, meta)。
     """
     ok_be = (workspace / "backend").exists()
@@ -102,12 +104,11 @@ async def run_fix_agent(
         return False, "骨架不完整"
 
     # mvn compile 可长达数分钟，必须进线程，否则工厂 API 整体假死
-    # 未开自动修复时仍预编译暖 target（失败不挡交付，与原先跳过同口径）
     compile_ok, log = await asyncio.to_thread(_mvn_compile, workspace)
     if not (rt.stage_on("auto_fix") and rt.configured):
         if compile_ok:
             return True, "结构校验通过 · 已预编译" if "skip" not in log else "结构校验通过 · " + log
-        return True, "结构校验通过 · 未开自动修复"
+        return False, f"编译失败 · {(log or '')[:500]}"
 
     if compile_ok:
         await record_call(
@@ -171,6 +172,5 @@ async def run_fix_agent(
         ok=False,
         detail=(last or "编译失败")[:500],
     )
-    # 编译失败不阻断交付（本机缺 JDK/依赖常见）；记警告继续门禁
-    return True, f"编译未过已记录 · 继续门禁 · {(last or '')[:120]}"
+    return False, f"编译失败 · {(last or '')[:500]}"
 

@@ -159,6 +159,85 @@ const showSpec = ref(false)
 const showPreGenerate = ref(false)
 const proposalDiff = ref(null)
 const preGenBusy = ref(false)
+const showEr = ref(false)
+const showModules = ref(false)
+const showUsecases = ref(false)
+const showTestcases = ref(false)
+const showUsecaseDescriptions = ref(false)
+const erLoading = ref(false)
+const modLoading = ref(false)
+const ucLoading = ref(false)
+const tcLoading = ref(false)
+const ucdLoading = ref(false)
+const matchBusy = ref(false)
+const softSaving = ref(false)
+const jobActing = ref('')
+const artifactLoading = ref(false)
+const showDelete = ref(false)
+const keepDb = ref(false)
+const deleting = ref(false)
+const schema = ref(null)
+const erLabelSaving = ref(false)
+const apis = ref(null)
+const apiSmokeBusy = ref(false)
+const apiSmokeResult = ref(null)
+const apiSmokeFactoryHint = ref('')
+const artifactView = ref('db')
+const apiQuery = ref('')
+const apiSurface = ref('all')
+const collapsedApis = ref({})
+const erSvgSource = ref('')
+const erLayoutKey = ref(0)
+const erMode = ref('total')
+const erEntity = ref('')
+const modSvgSource = ref('')
+const modLayoutKey = ref(0)
+const modulesLayout = ref('identity')
+const modulesExpandDetails = ref(false)
+const modulesMeta = ref(null)
+const showArchitecture = ref(false)
+const archLoading = ref(false)
+const showClasses = ref(false)
+const classLoading = ref(false)
+const showSequences = ref(false)
+const seqLoading = ref(false)
+const seqSvgSource = ref('')
+const seqMeta = ref(null)
+const seqLayoutKey = ref(0)
+const seqIndex = ref(0)
+const seqSelectedIds = ref([])
+const showActivities = ref(false)
+const actLoading = ref(false)
+const actSvgSource = ref('')
+const actMeta = ref(null)
+const actLayoutKey = ref(0)
+const actIndex = ref(0)
+const actSelectedIds = ref([])
+const classSvgSource = ref('')
+const classMeta = ref(null)
+const classLayoutKey = ref(0)
+const classDisplayMode = ref('sample')
+const classDisplayModes = computed(() => classMeta.value?.display_modes || [
+  { id: 'sample', label: '论文示例（精简方法）' },
+  { id: 'full', label: '代码全量' },
+])
+const archSvgSource = ref('')
+const archLayoutKey = ref(0)
+const archMeta = ref(null)
+const ucSvgSource = ref('')
+const ucLayoutKey = ref(0)
+const usecaseActor = ref('user')
+const usecaseMeta = ref(null)
+const tcFields = ref(6)
+const tcColumns = ref([])
+const tcRows = ref([])
+const tcMarkdown = ref('')
+const tcCount = ref(0)
+const ucdIntro = ref('')
+const ucdSourceNote = ref('')
+const ucdCases = ref([])
+const ucdMarkdown = ref('')
+const ucdCount = ref(0)
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
 const domCascaderOptions = computed(() => buildDomainCascaderOptions(catalog.value))
 const themeOptions = computed(() => {
@@ -188,12 +267,6 @@ const typefaceOptions = computed(() => {
   const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
-const PORTAL_HOME_FALLBACK = [
-  { label: '功能卡片首页', value: 'cards' },
-  { label: '资讯侧栏首页', value: 'editorial' },
-  { label: '商城货架首页', value: 'mall' },
-]
-const MALL_PORTAL_HOME_DOMAINS = new Set(['DOM-SHOP', 'DOM-FOOD'])
 const portalHomeOptions = computed(() => {
   const list = catalog.value.portal_home_styles || []
   const mapped = list
@@ -204,49 +277,6 @@ const portalHomeOptions = computed(() => {
   if (MALL_PORTAL_HOME_DOMAINS.has(dom)) return base
   return base.filter((x) => x.value !== 'mall')
 })
-const passwordHashOptions = [
-  { label: '明文', value: 'none' },
-  { label: 'BCrypt', value: 'bcrypt' },
-  { label: 'MD5', value: 'md5' },
-  { label: 'SHA-256', value: 'sha256' },
-]
-const persistenceOptions = [
-  { label: 'Spring JDBC（JdbcTemplate）', value: 'jdbc' },
-  { label: 'MyBatis + PageHelper', value: 'mybatis' },
-  { label: 'Spring Data JPA（Hibernate）', value: 'jpa' },
-]
-const securityOptions = [
-  { label: '关 · 仅 Session + AdminAuth（默认）', value: 'off' },
-  { label: '开 · Spring Security 过滤器链', value: 'on' },
-]
-const aiAssistantOptions = [
-  { label: '关 · 不出 AI 助手岛（默认）', value: 'off' },
-  { label: '开 · Spring AI + DeepSeek + 知识库 FAQ', value: 'on' },
-]
-function persistenceLabel(v) {
-  if (v === 'mybatis') return 'MyBatis + PageHelper'
-  if (v === 'jpa') return 'Spring Data JPA'
-  return 'JdbcTemplate'
-}
-function securityLabel(v) {
-  const on = v === true || v === 'on' || v === 1
-  return on ? 'Spring Security' : 'Session（无过滤器链）'
-}
-function securityOn(v) {
-  return v === true || v === 'on' || v === 1
-}
-function aiAssistantLabel(v) {
-  const on = v === true || v === 'on' || v === 1
-  return on ? 'AI 助手（Spring AI + DeepSeek）' : '未启用'
-}
-function aiAssistantOn(v) {
-  return v === true || v === 'on' || v === 1
-}
-const llmOptions = [
-  { label: '开启 · 填充业务文案与种子数据', value: 'on' },
-  { label: '关闭 · 仅使用基线生成', value: 'off' },
-]
-
 const persistenceDeviant = computed(() => {
   if (!p.value) return false
   return (form.persistence || 'jdbc') !== (p.value.recommended_persistence || 'jdbc')
@@ -522,14 +552,6 @@ const showJobSteps = computed(() => {
 const artifactsFrozen = computed(() => genState.value === 'running')
 const artifactsFrozenReason = '工程正在重新生成，完成后可再打开'
 const schemaErGapCount = computed(() => Number(schema.value?.er_gap_count || 0))
-
-/** 展示名仍含拉丁字母（与后端 looks_latin 对齐；允许 AI/FAQ 等缩写混中文） */
-const _ALLOWED_TECH_ACRONYM_RE =
-  /(?<![A-Za-z])(?:AI|FAQ|API|ID|URL|OCR|TTS|SMS|QR|JWT|SQL|PPT|LLM|SSE)(?![A-Za-z])/gi
-function labelLooksLatin(text) {
-  const stripped = String(text || '').replace(_ALLOWED_TECH_ACRONYM_RE, '')
-  return /[A-Za-z]/.test(stripped)
-}
 
 async function putErLabelPatch(body) {
   if (!p.value?.id || artifactsFrozen.value || erLabelSaving.value) return null
@@ -2151,6 +2173,7 @@ async function confirmDelete() {
 
 
 
+let pollTimer = null
 let pollInFlight = false
 const pollSyncHint = ref('')
 const pollFailStreak = ref(0)
