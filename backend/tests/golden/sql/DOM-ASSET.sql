@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS asset (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   deleted_at DATETIME NULL,
+  holding_loc VARCHAR(128) DEFAULT '',
+  campus_zone VARCHAR(64) DEFAULT '',
+  shelf_no VARCHAR(64) DEFAULT '',
+  batch_no VARCHAR(64) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  supplier_contact VARCHAR(64) DEFAULT '',
+  allowed_gender VARCHAR(16) DEFAULT '',
+  allowed_grades VARCHAR(64) DEFAULT '',
+  maintain_due VARCHAR(32) DEFAULT '',
+  loan_org VARCHAR(128) DEFAULT '',
+  clc_code VARCHAR(32) DEFAULT '',
+  calib_cert_url VARCHAR(255) DEFAULT '',
+  calib_due VARCHAR(32) DEFAULT '',
+  repair_ticket_no VARCHAR(64) DEFAULT '',
+  slot_status VARCHAR(16) DEFAULT '',
+  building_zone VARCHAR(64) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -52,7 +68,11 @@ CREATE TABLE IF NOT EXISTS requisition (
   remark VARCHAR(255),
   pickup_at DATETIME NULL,
   pickup_place VARCHAR(128) DEFAULT '',
-  actual_qty INT NULL
+  actual_qty INT NULL,
+  project_no VARCHAR(64) DEFAULT '',
+  procure_ref_no VARCHAR(64) DEFAULT '',
+  dual_reviewer_a VARCHAR(64) DEFAULT '',
+  dual_reviewer_b VARCHAR(64) DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

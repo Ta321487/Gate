@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS dorm_room (
   checkin_code VARCHAR(16) NOT NULL DEFAULT '',
   start_at DATETIME NULL,
   end_at DATETIME NULL,
+  absent_warn_n INT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -39,11 +39,20 @@ CREATE TABLE IF NOT EXISTS exam_question (
   subject_id BIGINT NULL,
   type VARCHAR(16) NOT NULL,
   stem VARCHAR(2000) NOT NULL,
-  options_json VARCHAR(2000) DEFAULT '',
   answer_key VARCHAR(500) NOT NULL,
   score INT NOT NULL DEFAULT 5,
   explain_text VARCHAR(2000) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_option (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  question_id BIGINT NOT NULL,
+  sort_no INT NOT NULL,
+  label VARCHAR(8) NOT NULL,
+  content VARCHAR(500) NOT NULL,
+  UNIQUE KEY uk_exam_option (question_id, sort_no),
+  KEY idx_exam_option_q (question_id)
 );
 
 CREATE TABLE IF NOT EXISTS exam_paper (
@@ -125,17 +134,33 @@ INSERT IGNORE INTO exam_subject (id, title, author, isbn, category_id, stock, st
 (2, '大学英语', '外语学院', '阅读与词汇', 1, 1, 'available'),
 (3, '专业综合', '计算机学院', '程序设计基础', 2, 1, 'available');
 
-INSERT IGNORE INTO exam_question (id, subject_id, type, stem, options_json, answer_key, score, explain_text) VALUES
+INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score, explain_text) VALUES
 (1, 1, 'single', '线性代数基础中，矩阵乘法是否满足交换律？',
- '["满足","不满足","仅方阵满足","仅对角阵满足"]', 'B', 5, '一般矩阵乘法不满足交换律。'),
+ 'B', 5, '一般矩阵乘法不满足交换律。'),
 (2, 1, 'judge', '单位矩阵与任意同阶矩阵相乘结果仍为原矩阵。',
- '["正确","错误"]', '正确', 5, '单位矩阵是乘法单位元。'),
+ '正确', 5, '单位矩阵是乘法单位元。'),
 (3, 2, 'multi', '英语阅读理解常见题型包括哪些？',
- '["主旨大意","细节理解","词义猜测","代码调试"]', 'A,B,C', 10, '代码调试不属于英语阅读题型。'),
+ 'A,B,C', 10, '代码调试不属于英语阅读题型。'),
 (4, 2, 'subjective', '请简述提高英语阅读速度的一种方法。',
- '', '参考：略读或扫读，先看题再定位段落。', 10, '参考答案供教师阅卷，不自动匹配。'),
+ '参考：略读或扫读，先看题再定位段落。', 10, '参考答案供教师阅卷，不自动匹配。'),
 (5, 3, 'single', '下列哪一项是常见的程序控制结构？',
- '["顺序","随机跳转","无条件死循环","仅递归"]', 'A', 5, '顺序、分支、循环是基本控制结构。');
+ 'A', 5, '顺序、分支、循环是基本控制结构。');
+
+INSERT IGNORE INTO exam_option (question_id, sort_no, label, content) VALUES
+(1, 1, 'A', '满足'),
+(1, 2, 'B', '不满足'),
+(1, 3, 'C', '仅方阵满足'),
+(1, 4, 'D', '仅对角阵满足'),
+(2, 1, 'A', '正确'),
+(2, 2, 'B', '错误'),
+(3, 1, 'A', '主旨大意'),
+(3, 2, 'B', '细节理解'),
+(3, 3, 'C', '词义猜测'),
+(3, 4, 'D', '代码调试'),
+(5, 1, 'A', '顺序'),
+(5, 2, 'B', '随机跳转'),
+(5, 3, 'C', '无条件死循环'),
+(5, 4, 'D', '仅递归');
 
 INSERT IGNORE INTO exam_paper (id, title, duration_min, status, subject_id, max_attempts) VALUES
 (1, '期中测验卷', 60, 'published', 1, 0),

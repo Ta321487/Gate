@@ -54,7 +54,6 @@ CREATE TABLE IF NOT EXISTS eval_sheet (
   rating INT NULL,
   rating_remark VARCHAR(255) DEFAULT '',
   rated_at DATETIME NULL,
-  rating_dims_json VARCHAR(1024) DEFAULT '',
   rating_anonymous TINYINT NOT NULL DEFAULT 0
 );
 

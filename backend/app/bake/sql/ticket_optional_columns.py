@@ -29,7 +29,6 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("rating", "INT NULL"),
     ("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''"),
     ("rated_at", "DATETIME NULL"),
-    ("rating_dims_json", "VARCHAR(1024) DEFAULT ''"),
     ("rating_anonymous", "TINYINT NOT NULL DEFAULT 0"),
     ("priority", "VARCHAR(16) DEFAULT '普通'"),
     ("contact_phone", "VARCHAR(20) DEFAULT ''"),
@@ -130,6 +129,63 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("objection_due_at", "DATETIME NULL"),
     ("objection_note", "VARCHAR(255) DEFAULT ''"),
     ("objection_at", "DATETIME NULL"),
+    ("cc_usernames", "VARCHAR(512) DEFAULT ''"),
+    ("approve_attach_url", "VARCHAR(255) DEFAULT ''"),
+    ("pickup_method", "VARCHAR(16) DEFAULT ''"),
+    ("mail_address", "VARCHAR(255) DEFAULT ''"),
+    ("express_no", "VARCHAR(64) DEFAULT ''"),
+    ("cert_urgent", "TINYINT NOT NULL DEFAULT 0"),
+    ("seal_copies", "INT NULL"),
+    ("bind_note", "VARCHAR(255) DEFAULT ''"),
+    ("seal_copy_nos", "VARCHAR(255) DEFAULT ''"),
+    ("seal_witness_ack", "TINYINT NOT NULL DEFAULT 0"),
+    ("mileage_km", "DECIMAL(10,1) NULL"),
+    ("fuel_note", "VARCHAR(255) DEFAULT ''"),
+    ("invoice_count", "INT NULL"),
+    ("visitor_count", "INT NULL"),
+    ("award_cert_no", "VARCHAR(64) DEFAULT ''"),
+    ("vendor_quotes", "TEXT NULL"),
+    ("comp_hours", "DECIMAL(10,1) NULL"),
+    ("driver_name", "VARCHAR(64) DEFAULT ''"),
+    ("passenger_names", "VARCHAR(255) DEFAULT ''"),
+    ("pass_expire_at", "DATETIME NULL"),
+    ("return_fuel", "DECIMAL(10,1) NULL"),
+    ("labor_place", "VARCHAR(128) DEFAULT ''"),
+    ("effective_on", "VARCHAR(32) DEFAULT ''"),
+    ("cert_issue_no", "VARCHAR(64) DEFAULT ''"),
+    ("doc_rev", "VARCHAR(32) DEFAULT ''"),
+    ("work_start", "VARCHAR(8) DEFAULT ''"),
+    ("work_end", "VARCHAR(8) DEFAULT ''"),
+    ("issue_copies", "INT NULL"),
+    ("sign_parties", "VARCHAR(255) DEFAULT ''"),
+    ("train_hours", "DECIMAL(10,1) NULL"),
+    ("member_change_note", "VARCHAR(512) DEFAULT ''"),
+    ("procure_amount", "DECIMAL(12,2) NULL"),
+    ("exception_type", "VARCHAR(32) DEFAULT ''"),
+    ("visit_purpose", "VARCHAR(32) DEFAULT ''"),
+    ("violation_person", "VARCHAR(64) DEFAULT ''"),
+    ("rectify_note", "VARCHAR(512) DEFAULT ''"),
+    ("return_fail", "TINYINT NOT NULL DEFAULT 0"),
+    ("return_note", "VARCHAR(512) DEFAULT ''"),
+    ("fund_use_yuan", "DECIMAL(12,2) NULL"),
+    ("fund_use_note", "VARCHAR(512) DEFAULT ''"),
+    ("visit_on", "VARCHAR(32) DEFAULT ''"),
+    ("plagiarism_url", "VARCHAR(512) DEFAULT ''"),
+    ("party_stage", "VARCHAR(32) DEFAULT ''"),
+    ("stage_on", "VARCHAR(32) DEFAULT ''"),
+    ("observe_on", "VARCHAR(32) DEFAULT ''"),
+    ("observe_note", "VARCHAR(512) DEFAULT ''"),
+    ("schedule_impact_note", "VARCHAR(512) DEFAULT ''"),
+    ("contract_amount", "DECIMAL(12,2) NULL"),
+    ("change_log_note", "VARCHAR(512) DEFAULT ''"),
+    ("verify_code", "VARCHAR(32) DEFAULT ''"),
+    ("walk_in", "TINYINT NOT NULL DEFAULT 0"),
+    ("checkin_proxy_by", "VARCHAR(64) DEFAULT ''"),
+    ("parking_on", "VARCHAR(32) DEFAULT ''"),
+    ("renew_on", "VARCHAR(32) DEFAULT ''"),
+    ("renew_note", "VARCHAR(512) DEFAULT ''"),
+    ("pickup_redeem_code", "VARCHAR(32) DEFAULT ''"),
+    ("pickup_redeemed", "TINYINT NOT NULL DEFAULT 0"),
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
@@ -163,7 +219,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-LABOR": ["contact_channel", "next_follow_at"],
     "DOM-EVAL": [
         "contact_channel", "next_follow_at",
-        "rating", "rating_remark", "rated_at", "rating_dims_json", "rating_anonymous",
+        "rating", "rating_remark", "rated_at", "rating_anonymous",
     ],
     "DOM-MORAL": ["contact_channel", "next_follow_at"],
     "DOM-AWARD": ["contact_channel", "next_follow_at"],
@@ -258,7 +314,7 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
     if f.get("allowRating"):
         names.extend(["rating", "rating_remark", "rated_at"])
         if f.get("ratingDims"):
-            names.extend(["rating_dims_json", "rating_anonymous"])
+            names.append("rating_anonymous")
     if f.get("allowQty"):
         names.append("qty")
     if f.get("pickDateRange"):
@@ -267,6 +323,10 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("checked_in_at")
     if f.get("issuePassCode"):
         names.append("pass_code")
+    if f.get("allowPassExpire"):
+        names.append("pass_expire_at")
+        if "pass_code" not in names:
+            names.append("pass_code")
     if f.get("allowRenew"):
         names.append("renew_count")
     if f.get("allowBookHold"):
@@ -351,6 +411,92 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("excellent_mark")
     if int(f.get("maxReviseTimes") or 0) > 0:
         names.append("revise_count")
+    if f.get("allowApproveCc") or f.get("approveThicken"):
+        names.append("cc_usernames")
+    if f.get("allowApproveRemarkAttach"):
+        names.append("approve_attach_url")
+    if f.get("allowCertPickup"):
+        names.extend(["pickup_method", "mail_address", "express_no"])
+    if f.get("allowCertUrgent"):
+        names.append("cert_urgent")
+    if f.get("allowSealCopies"):
+        names.extend(["seal_copies", "bind_note", "seal_copy_nos", "seal_witness_ack"])
+    if f.get("allowFleetMileage"):
+        names.extend(["mileage_km", "fuel_note"])
+    if f.get("allowExpenseInvoice"):
+        names.append("invoice_count")
+    if f.get("allowVisitorCount"):
+        names.extend(["visitor_count"])
+    if f.get("allowAwardCertNo"):
+        names.append("award_cert_no")
+    if f.get("allowVendorQuotes") or int(f.get("minVendorQuotes") or 0) > 0:
+        names.append("vendor_quotes")
+    if f.get("allowCompHours"):
+        names.append("comp_hours")
+    if f.get("allowFleetCrew"):
+        names.extend(["driver_name", "passenger_names"])
+    if f.get("allowReturnFuel"):
+        names.append("return_fuel")
+    if f.get("allowLaborPlace"):
+        names.append("labor_place")
+    if f.get("allowEffectiveOn"):
+        names.append("effective_on")
+    if f.get("allowCertIssueNo"):
+        names.append("cert_issue_no")
+    if f.get("allowDocRev"):
+        names.append("doc_rev")
+    if f.get("allowFitoutQuiet"):
+        names.extend(["work_start", "work_end"])
+    if f.get("allowIssueCopies"):
+        names.append("issue_copies")
+    if f.get("allowSignParties"):
+        names.append("sign_parties")
+    if f.get("allowTrainHours"):
+        names.append("train_hours")
+    if f.get("allowMemberChange"):
+        names.append("member_change_note")
+    if f.get("allowProcureBudget"):
+        names.append("procure_amount")
+    if f.get("allowCheckinException"):
+        names.append("exception_type")
+    if f.get("allowVisitPurpose"):
+        names.append("visit_purpose")
+    if f.get("allowFleetViolation"):
+        names.append("violation_person")
+    if f.get("allowFitoutRectify"):
+        names.append("rectify_note")
+    if f.get("allowProcureReturn"):
+        names.extend(["return_fail", "return_note"])
+    if f.get("allowMoralObjection"):
+        names.extend(["objection_due_at", "objection_note", "objection_at"])
+    if f.get("allowProjFundUse"):
+        names.extend(["fund_use_yuan", "fund_use_note"])
+    if f.get("allowVisitSlotRemain"):
+        names.append("visit_on")
+    if f.get("allowPlagiarismUrl"):
+        names.append("plagiarism_url")
+    if f.get("allowPartyStage"):
+        names.extend(["party_stage", "stage_on"])
+    if f.get("allowEvalObserve"):
+        names.extend(["observe_on", "observe_note"])
+    if f.get("allowScheduleImpact"):
+        names.append("schedule_impact_note")
+    if f.get("allowContractAmount"):
+        names.append("contract_amount")
+    if f.get("allowProjChangeLog"):
+        names.append("change_log_note")
+    if f.get("allowCertVerify"):
+        names.append("verify_code")
+    if f.get("allowVisitWalkIn"):
+        names.extend(["walk_in", "visit_on"])
+    if f.get("allowCheckinProxy"):
+        names.append("checkin_proxy_by")
+    if f.get("allowCarpassParkingMutex"):
+        names.append("parking_on")
+    if f.get("allowContractRenew"):
+        names.extend(["renew_on", "renew_note"])
+    if f.get("allowCertPickupRedeem"):
+        names.extend(["pickup_redeem_code", "pickup_redeemed"])
     if f.get("allowObjectionWindow") or int(f.get("objectionDays") or 0) > 0:
         names.extend(["objection_due_at", "objection_note", "objection_at"])
     if f.get("requireFeedbackSet"):

@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS bed (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '空闲',
+  holding_loc VARCHAR(128) DEFAULT '',
+  campus_zone VARCHAR(64) DEFAULT '',
+  shelf_no VARCHAR(64) DEFAULT '',
+  batch_no VARCHAR(64) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  supplier_contact VARCHAR(64) DEFAULT '',
+  allowed_gender VARCHAR(16) DEFAULT '',
+  allowed_grades VARCHAR(64) DEFAULT '',
+  maintain_due VARCHAR(32) DEFAULT '',
+  loan_org VARCHAR(128) DEFAULT '',
+  clc_code VARCHAR(32) DEFAULT '',
+  calib_cert_url VARCHAR(255) DEFAULT '',
+  calib_due VARCHAR(32) DEFAULT '',
+  repair_ticket_no VARCHAR(64) DEFAULT '',
+  slot_status VARCHAR(16) DEFAULT '',
+  building_zone VARCHAR(64) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -49,7 +65,12 @@ CREATE TABLE IF NOT EXISTS bed_apply (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL
+  next_follow_at DATETIME NULL,
+  notice_ack TINYINT NOT NULL DEFAULT 0,
+  deposit_yuan DECIMAL(10,2) NULL,
+  utility_note VARCHAR(255) DEFAULT '',
+  peer_username VARCHAR(64) DEFAULT '',
+  peer_ack TINYINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

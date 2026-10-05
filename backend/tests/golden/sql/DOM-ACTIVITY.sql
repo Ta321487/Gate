@@ -39,6 +39,19 @@ CREATE TABLE IF NOT EXISTS activity (
   end_at DATETIME NULL,
   apply_deadline_at DATETIME NULL,
   service_hours DECIMAL(4,1) DEFAULT 0,
+  checkin_place VARCHAR(128) DEFAULT '',
+  session_group VARCHAR(64) DEFAULT '',
+  apply_invite_code VARCHAR(64) DEFAULT '',
+  sponsor_note VARCHAR(255) DEFAULT '',
+  group_price_note TEXT NULL,
+  fee_yuan DECIMAL(10,2) NULL,
+  allowed_gender VARCHAR(16) DEFAULT '',
+  allowed_grades VARCHAR(64) DEFAULT '',
+  volunteer_role VARCHAR(64) DEFAULT '',
+  admit_mode VARCHAR(32) DEFAULT '先到先得',
+  seat_zones VARCHAR(255) DEFAULT '',
+  pin_top TINYINT NOT NULL DEFAULT 0,
+  survey_form_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,6 +66,7 @@ CREATE TABLE IF NOT EXISTS signup (
   approve_at DATETIME NULL,
   return_at DATETIME NULL,
   remark VARCHAR(255),
+  notice_ack TINYINT NOT NULL DEFAULT 0,
   rating INT NULL,
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
   rated_at DATETIME NULL,
@@ -121,6 +135,15 @@ CREATE TABLE IF NOT EXISTS `signup_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS apply_blacklist (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  status VARCHAR(32) NOT NULL DEFAULT 'blocked',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_apply_blacklist_user (username)
 );
 
 -- staff posts (clerk / worker)

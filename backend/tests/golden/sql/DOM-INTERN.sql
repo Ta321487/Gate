@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS intern_post (
   cover_url VARCHAR(255),
   -- 默认待上岗：禁止目录项一律「实习中」造成多单位入职误读（M-01 / §18）
   stage VARCHAR(32) DEFAULT '待上岗',
+  tags VARCHAR(255) DEFAULT '',
+  lead_source VARCHAR(64) DEFAULT '',
+  payment_plan VARCHAR(255) DEFAULT '',
+  location_desc VARCHAR(255) DEFAULT '',
+  fund_form VARCHAR(32) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  hire_dept VARCHAR(64) DEFAULT '',
+  price_history VARCHAR(255) DEFAULT '',
+  vr_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,10 +62,14 @@ CREATE TABLE IF NOT EXISTS week_report (
   contact_channel VARCHAR(32) DEFAULT '',
   next_follow_at DATETIME NULL,
   week_no INT NULL,
+  appraisal_comment VARCHAR(512) DEFAULT '',
+  appraisal_grade VARCHAR(16) DEFAULT '',
+  company_eval VARCHAR(512) DEFAULT '',
+  excellent_mark TINYINT NOT NULL DEFAULT 0,
+  revise_count INT NOT NULL DEFAULT 0,
   rating INT NULL,
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
   rated_at DATETIME NULL,
-  rating_dims_json VARCHAR(1024) DEFAULT '',
   rating_anonymous TINYINT NOT NULL DEFAULT 0
 );
 
@@ -110,6 +123,16 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='周报须知')
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '鉴定提醒', '实习结束前完成鉴定材料；可在「鉴定签署」上传签章图并勾选同意。', 'admin', '就业办主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='鉴定提醒');
+
+CREATE TABLE IF NOT EXISTS ticket_rating_dim (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  dim_key VARCHAR(64) NOT NULL,
+  score INT NOT NULL,
+  UNIQUE KEY uk_ticket_rating_dim (ticket_id, dim_key),
+  KEY idx_ticket_rating_dim_ticket (ticket_id),
+  CONSTRAINT fk_ticket_rating_dim_ticket FOREIGN KEY (ticket_id) REFERENCES `week_report` (id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS `week_report_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

@@ -36,6 +36,17 @@ CREATE TABLE IF NOT EXISTS tour_line (
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '开放报名',
   apply_deadline_at DATETIME NULL,
+  day_itinerary TEXT NULL,
+  leader_contact VARCHAR(128) DEFAULT '',
+  meeting_point VARCHAR(128) DEFAULT '',
+  min_group_size INT NULL,
+  single_room_note TEXT NULL,
+  group_price_note TEXT NULL,
+  fee_yuan DECIMAL(10,2) NULL,
+  min_age INT NULL,
+  max_age INT NULL,
+  weather_note TEXT NULL,
+  pin_top TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,7 +62,13 @@ CREATE TABLE IF NOT EXISTS tour_signup (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL
+  next_follow_at DATETIME NULL,
+  notice_ack TINYINT NOT NULL DEFAULT 0,
+  emergency_contact VARCHAR(64) DEFAULT '',
+  emergency_phone VARCHAR(20) DEFAULT '',
+  rating INT NULL,
+  rating_remark VARCHAR(255) NOT NULL DEFAULT '',
+  rated_at DATETIME NULL
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
@@ -111,6 +128,15 @@ CREATE TABLE IF NOT EXISTS `tour_signup_progress` (
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS apply_blacklist (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  status VARCHAR(32) NOT NULL DEFAULT 'blocked',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_apply_blacklist_user (username)
 );
 
 -- staff posts (clerk / worker)

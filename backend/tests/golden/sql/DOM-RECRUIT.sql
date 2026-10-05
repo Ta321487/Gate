@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS job_post (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '招聘中',
+  tags VARCHAR(255) DEFAULT '',
+  lead_source VARCHAR(64) DEFAULT '',
+  payment_plan VARCHAR(255) DEFAULT '',
+  location_desc VARCHAR(255) DEFAULT '',
+  fund_form VARCHAR(32) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  price_history VARCHAR(255) DEFAULT '',
+  vr_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -52,6 +60,9 @@ CREATE TABLE IF NOT EXISTS job_apply (
   contact_channel VARCHAR(32) DEFAULT '',
   next_follow_at DATETIME NULL,
   interview_place VARCHAR(128) DEFAULT '',
+  interview_result VARCHAR(16) DEFAULT '',
+  written_score DECIMAL(10,2) NULL,
+  bg_check_note VARCHAR(255) DEFAULT '',
   attach_url VARCHAR(255) NOT NULL DEFAULT ''
 );
 

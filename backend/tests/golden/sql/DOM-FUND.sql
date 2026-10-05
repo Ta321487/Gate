@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS fund_program (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '开放申请',
+  tags VARCHAR(255) DEFAULT '',
+  lead_source VARCHAR(64) DEFAULT '',
+  payment_plan VARCHAR(255) DEFAULT '',
+  location_desc VARCHAR(255) DEFAULT '',
+  fund_form VARCHAR(32) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  hire_dept VARCHAR(64) DEFAULT '',
+  price_history VARCHAR(255) DEFAULT '',
+  vr_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -50,7 +59,10 @@ CREATE TABLE IF NOT EXISTS fund_apply (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL
+  next_follow_at DATETIME NULL,
+  defense_result VARCHAR(32) DEFAULT '',
+  bank_account VARCHAR(64) DEFAULT '',
+  disburse_batch VARCHAR(64) DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

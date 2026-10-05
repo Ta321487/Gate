@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS eval_course (
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '开放',
+  eval_open_on VARCHAR(32) DEFAULT '',
+  eval_close_on VARCHAR(32) DEFAULT '',
+  teaching_weight DECIMAL(10,1) NULL,
+  attitude_weight DECIMAL(10,1) NULL,
+  content_weight DECIMAL(10,1) NULL,
+  hide_eval_result TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -52,7 +58,6 @@ CREATE TABLE IF NOT EXISTS eval_sheet (
   rating INT NULL,
   rating_remark VARCHAR(255) DEFAULT '',
   rated_at DATETIME NULL,
-  rating_dims_json VARCHAR(1024) DEFAULT '',
   rating_anonymous TINYINT NOT NULL DEFAULT 0
 );
 
@@ -96,6 +101,16 @@ INSERT IGNORE INTO eval_course (id, title, lecturer_name, course_note, category_
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '评教卷须知', '请如实按维度评分并填写评语；提交后即时入档。', 'admin', '教务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='评教卷须知');
+
+CREATE TABLE IF NOT EXISTS ticket_rating_dim (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  dim_key VARCHAR(64) NOT NULL,
+  score INT NOT NULL,
+  UNIQUE KEY uk_ticket_rating_dim (ticket_id, dim_key),
+  KEY idx_ticket_rating_dim_ticket (ticket_id),
+  CONSTRAINT fk_ticket_rating_dim_ticket FOREIGN KEY (ticket_id) REFERENCES `eval_sheet` (id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS `eval_sheet_progress` (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

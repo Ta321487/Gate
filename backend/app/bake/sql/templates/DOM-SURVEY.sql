@@ -39,10 +39,19 @@ CREATE TABLE IF NOT EXISTS survey_question (
   form_id BIGINT NOT NULL,
   type VARCHAR(16) NOT NULL,
   stem VARCHAR(2000) NOT NULL,
-  options_json VARCHAR(2000) DEFAULT '',
   sort_no INT NOT NULL DEFAULT 0,
   required TINYINT NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS survey_option (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  question_id BIGINT NOT NULL,
+  sort_no INT NOT NULL,
+  label VARCHAR(8) NOT NULL,
+  content VARCHAR(500) NOT NULL,
+  UNIQUE KEY uk_survey_option (question_id, sort_no),
+  KEY idx_survey_option_q (question_id)
 );
 
 CREATE TABLE IF NOT EXISTS survey_response (
@@ -96,12 +105,25 @@ INSERT IGNORE INTO survey_form (id, title, author, isbn, category_id, stock, sta
 (1, '食堂满意度调查', '后勤处', '关于食堂服务的简易问卷', 1, 1, 'available'),
 (2, '图书馆服务反馈', '图书馆', '阅览与借阅体验', 3, 1, 'available');
 
-INSERT IGNORE INTO survey_question (id, form_id, type, stem, options_json, sort_no, required) VALUES
-(1, 1, 'single', '您对食堂整体满意度？', '["非常满意","满意","一般","不满意"]', 1, 1),
-(2, 1, 'multi', '您关注哪些改进点？', '["口味","价格","卫生","排队"]', 2, 1),
-(3, 1, 'text', '其他建议（选填）', '', 3, 0),
-(4, 2, 'single', '您是否常去图书馆？', '["经常","偶尔","很少"]', 1, 1),
-(5, 2, 'text', '最希望增加的服务？', '', 2, 1);
+INSERT IGNORE INTO survey_question (id, form_id, type, stem, sort_no, required) VALUES
+(1, 1, 'single', '您对食堂整体满意度？', 1, 1),
+(2, 1, 'multi', '您关注哪些改进点？', 2, 1),
+(3, 1, 'text', '其他建议（选填）', 3, 0),
+(4, 2, 'single', '您是否常去图书馆？', 1, 1),
+(5, 2, 'text', '最希望增加的服务？', 2, 1);
+
+INSERT IGNORE INTO survey_option (question_id, sort_no, label, content) VALUES
+(1, 1, 'A', '非常满意'),
+(1, 2, 'B', '满意'),
+(1, 3, 'C', '一般'),
+(1, 4, 'D', '不满意'),
+(2, 1, 'A', '口味'),
+(2, 2, 'B', '价格'),
+(2, 3, 'C', '卫生'),
+(2, 4, 'D', '排队'),
+(4, 1, 'A', '经常'),
+(4, 2, 'B', '偶尔'),
+(4, 3, 'C', '很少');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '问卷须知', '请如实填写；每人每卷限填一次。', 'admin', '平台主管'

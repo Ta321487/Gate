@@ -39,6 +39,16 @@ CREATE TABLE IF NOT EXISTS course (
   end_at DATETIME NULL,
   apply_deadline_at DATETIME NULL,
   credit DECIMAL(3,1) DEFAULT 0,
+  textbook VARCHAR(255) DEFAULT '',
+  course_kind VARCHAR(16) DEFAULT '',
+  prereq_code VARCHAR(64) DEFAULT '',
+  college VARCHAR(64) DEFAULT '',
+  plan_url VARCHAR(255) DEFAULT '',
+  allowed_gender VARCHAR(16) DEFAULT '',
+  allowed_grades VARCHAR(64) DEFAULT '',
+  stage VARCHAR(32) DEFAULT '开放',
+  admit_mode VARCHAR(32) DEFAULT '先到先得',
+  pin_top TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -52,7 +62,8 @@ CREATE TABLE IF NOT EXISTS enrollment (
   apply_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approve_at DATETIME NULL,
   return_at DATETIME NULL,
-  remark VARCHAR(255)
+  remark VARCHAR(255),
+  notice_ack TINYINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

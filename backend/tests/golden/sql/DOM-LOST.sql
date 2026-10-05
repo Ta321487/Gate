@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS lost_item (
   cover_url VARCHAR(255),
   item_kind VARCHAR(16) DEFAULT '招领',
   found_at DATETIME NULL,
+  expire_on VARCHAR(32) DEFAULT '',
+  bounty_note VARCHAR(128) DEFAULT '',
+  stage VARCHAR(32) DEFAULT '招领中',
+  lost_category VARCHAR(32) DEFAULT '',
+  view_count INT NOT NULL DEFAULT 0,
+  fee_yuan DECIMAL(10,2) NULL,
+  pin_top TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,6 +60,8 @@ CREATE TABLE IF NOT EXISTS claim (
   remark VARCHAR(255),
   pickup_at DATETIME NULL,
   pickup_place VARCHAR(128) DEFAULT '',
+  preferred_slot VARCHAR(64) DEFAULT '',
+  notice_ack TINYINT NOT NULL DEFAULT 0,
   rating INT NULL,
   rating_remark VARCHAR(255) NOT NULL DEFAULT '',
   rated_at DATETIME NULL

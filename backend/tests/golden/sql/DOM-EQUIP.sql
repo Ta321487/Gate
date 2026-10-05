@@ -38,6 +38,22 @@ CREATE TABLE IF NOT EXISTS equip (
   requires_training TINYINT DEFAULT 0,
   owner_name VARCHAR(64) DEFAULT '',
   deleted_at DATETIME NULL,
+  holding_loc VARCHAR(128) DEFAULT '',
+  campus_zone VARCHAR(64) DEFAULT '',
+  shelf_no VARCHAR(64) DEFAULT '',
+  batch_no VARCHAR(64) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  supplier_contact VARCHAR(64) DEFAULT '',
+  allowed_gender VARCHAR(16) DEFAULT '',
+  allowed_grades VARCHAR(64) DEFAULT '',
+  maintain_due VARCHAR(32) DEFAULT '',
+  loan_org VARCHAR(128) DEFAULT '',
+  clc_code VARCHAR(32) DEFAULT '',
+  calib_cert_url VARCHAR(255) DEFAULT '',
+  calib_due VARCHAR(32) DEFAULT '',
+  repair_ticket_no VARCHAR(64) DEFAULT '',
+  slot_status VARCHAR(16) DEFAULT '',
+  building_zone VARCHAR(64) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,7 +73,13 @@ CREATE TABLE IF NOT EXISTS loan (
   fine_status VARCHAR(16) DEFAULT 'none',
   reminded_at DATETIME NULL,
   remind_msg VARCHAR(255) DEFAULT '',
-  remark VARCHAR(255)
+  remark VARCHAR(255),
+  deposit_yuan DECIMAL(10,2) NULL,
+  notice_ack TINYINT NOT NULL DEFAULT 0,
+  due_soon_notified_at DATETIME NULL,
+  ever_overdue TINYINT NOT NULL DEFAULT 0,
+  insurance_ack TINYINT NOT NULL DEFAULT 0,
+  asset_code VARCHAR(64) DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

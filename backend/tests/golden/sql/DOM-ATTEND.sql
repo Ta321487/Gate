@@ -37,6 +37,15 @@ CREATE TABLE IF NOT EXISTS leave_type (
   stage VARCHAR(32) DEFAULT '开放申请',
   start_at DATETIME NULL,
   end_at DATETIME NULL,
+  tags VARCHAR(255) DEFAULT '',
+  lead_source VARCHAR(64) DEFAULT '',
+  payment_plan VARCHAR(255) DEFAULT '',
+  location_desc VARCHAR(255) DEFAULT '',
+  fund_form VARCHAR(32) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  hire_dept VARCHAR(64) DEFAULT '',
+  price_history VARCHAR(255) DEFAULT '',
+  vr_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -54,6 +63,8 @@ CREATE TABLE IF NOT EXISTS leave_req (
   contact_channel VARCHAR(32) DEFAULT '',
   next_follow_at DATETIME NULL,
   leave_days INT NULL,
+  return_date VARCHAR(32) DEFAULT '',
+  proxy_name VARCHAR(64) DEFAULT '',
   period_start DATETIME NULL,
   period_end DATETIME NULL
 );
@@ -112,6 +123,42 @@ CREATE TABLE IF NOT EXISTS `leave_req_progress` (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_progress_ticket (ticket_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS balance_subject (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(100) NOT NULL,
+  unit_label VARCHAR(32) DEFAULT '次',
+  status VARCHAR(32) DEFAULT 'available',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS balance_account (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  balance INT NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_balance_user_subject (username, subject_id),
+  KEY idx_balance_account_user (username)
+);
+
+CREATE TABLE IF NOT EXISTS balance_ledger (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  subject_id BIGINT NOT NULL DEFAULT 1,
+  delta_qty INT NOT NULL,
+  reason VARCHAR(255) DEFAULT '',
+  ref_type VARCHAR(32) DEFAULT '',
+  ref_id BIGINT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_balance_ledger_user (username, id)
+);
+
+INSERT IGNORE INTO balance_subject (id, title, unit_label, status) VALUES
+(1, '假期额度', '天', 'available');
+INSERT IGNORE INTO balance_account (username, subject_id, balance) VALUES
+('student', 1, 2),
+('admin', 1, 100);
 
 CREATE TABLE IF NOT EXISTS resource_occupy (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

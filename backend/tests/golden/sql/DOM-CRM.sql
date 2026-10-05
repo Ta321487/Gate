@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS customer (
   cover_url VARCHAR(255),
   stage VARCHAR(32) DEFAULT '线索',
   owner_username VARCHAR(64) NOT NULL DEFAULT '',
+  tags VARCHAR(255) DEFAULT '',
+  lead_source VARCHAR(64) DEFAULT '',
+  payment_plan VARCHAR(255) DEFAULT '',
+  location_desc VARCHAR(255) DEFAULT '',
+  fund_form VARCHAR(32) DEFAULT '',
+  expire_on VARCHAR(32) DEFAULT '',
+  hire_dept VARCHAR(64) DEFAULT '',
+  price_history VARCHAR(255) DEFAULT '',
+  vr_url VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,7 +60,11 @@ CREATE TABLE IF NOT EXISTS follow_up (
   return_at DATETIME NULL,
   remark VARCHAR(512),
   contact_channel VARCHAR(32) DEFAULT '',
-  next_follow_at DATETIME NULL
+  next_follow_at DATETIME NULL,
+  deal_amount_yuan DECIMAL(12,2) NULL,
+  next_action VARCHAR(255) DEFAULT '',
+  next_action_done TINYINT NOT NULL DEFAULT 0,
+  follow_soon_notified_at DATETIME NULL
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (
