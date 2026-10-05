@@ -481,8 +481,18 @@ def _rel_zh_from_via(via: str, right: str = "", left: str = "") -> str:
             return role
     if right.endswith("_attach") or (via == "ticket_id" and right.endswith("_attach")):
         return "附件"
-    if via == "ticket_id" or right.endswith("_progress"):
+    if right.endswith("_progress") or (via == "ticket_id" and right.endswith("_progress")):
         return "进度"
+    if via == "ticket_id" and right == "ticket_expense_line":
+        return "明细"
+    if via == "ticket_id" and right == "ticket_trip_leg":
+        return "分段"
+    if via == "ticket_id" and right == "ticket_club_member":
+        return "名册"
+    if via == "ticket_id" and right == "ticket_attach_rev":
+        return "历史"
+    if via == "task_id" and right == "checkin_spot_member":
+        return "名册"
     if via == "category_id" or via == "type_id":
         return "属于"
     # 时段：档案→名额是排班；名额→预约单才是预约

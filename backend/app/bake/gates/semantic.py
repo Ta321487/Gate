@@ -97,10 +97,13 @@ def _scene_profile_mismatch(workspace: Path, spec: dict[str, Any]) -> list[str]:
 
 def evaluate_semantic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]:
     """返回 p3s 语义门禁子项。"""
+    from app.bake.gates.schema_nf import evaluate_workspace_schema_nf
+
     demo_hits = _scan_demo_wording(workspace)
     profile_issues = _scene_profile_mismatch(workspace, spec)
     demo_ok = not demo_hits
     profile_ok = not profile_issues
+    nf = evaluate_workspace_schema_nf(workspace)
 
     desc_parts: list[str] = []
     if not demo_ok:
@@ -108,7 +111,7 @@ def evaluate_semantic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
     if not profile_ok:
         desc_parts.append("；".join(profile_issues[:3]))
 
-    return {
+    out = {
         "p3s": {
             "ok": demo_ok and profile_ok,
             "label": "交付语义 · 可见面与场景",
@@ -117,14 +120,23 @@ def evaluate_semantic_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, 
                 "demo_hits": demo_hits[:8],
                 "profile_issues": profile_issues,
             },
-        }
+        },
+        "p3n": {
+            "ok": bool(nf.get("ok")),
+            "label": nf.get("label") or "库表 3NF · JSON",
+            "desc": nf.get("desc") or "",
+            "detail": {"issues": nf.get("issues") or []},
+        },
     }
+    return out
 
 
 def merge_semantic_into_gates(gates: dict[str, Any], workspace: Path, spec: dict[str, Any]) -> None:
     """就地合并 p3s，并同步 overall / zip_allowed。"""
-    sem = evaluate_semantic_gates(workspace, spec).get("p3s") or {}
-    gates["p3s"] = sem
+    sem_all = evaluate_semantic_gates(workspace, spec)
+    gates["p3s"] = sem_all.get("p3s") or {}
+    if isinstance(sem_all.get("p3n"), dict):
+        gates["p3n"] = sem_all["p3n"]
     from app.bake.gates.keys import GATE_CORE_KEYS
 
     core_keys = [k for k in GATE_CORE_KEYS if isinstance(gates.get(k), dict)]

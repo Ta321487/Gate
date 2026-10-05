@@ -825,8 +825,18 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         results = evaluate_generic_gates(workspace, spec)
 
     from app.bake.gates.semantic import merge_semantic_into_gates
+    from app.bake.gates.schema_nf import evaluate_workspace_schema_nf
 
     merge_semantic_into_gates(results, workspace, spec)
+    nf = evaluate_workspace_schema_nf(workspace)
+    results["p3n"] = {
+        "ok": bool(nf.get("ok")),
+        "label": nf.get("label") or "库表 3NF · JSON",
+        "desc": nf.get("desc") or "",
+    }
+    if not nf.get("ok"):
+        results["zip_allowed"] = False
+        results["overall"] = False
 
     sg = _schema_gate(workspace, spec)
     results["p3c"] = {

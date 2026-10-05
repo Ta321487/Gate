@@ -202,6 +202,45 @@ class ErConceptTests(unittest.TestCase):
         ]
         self.assertFalse(is_assoc_link(t, others))
 
+    def test_composite_unique_fk_stays_one_to_n(self) -> None:
+        sql = """
+CREATE TABLE expense_apply (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT
+);
+CREATE TABLE ticket_expense_line (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ticket_id BIGINT NOT NULL,
+  line_no INT NOT NULL,
+  category VARCHAR(32) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  UNIQUE KEY uk_ticket_expense_line (ticket_id, line_no),
+  CONSTRAINT fk_ticket_expense_line_ticket FOREIGN KEY (ticket_id) REFERENCES expense_apply (id)
+);
+"""
+        m = schema_model(sql)
+        names = {t["name"] for t in m["tables"]}
+        self.assertIn("ticket_expense_line", names)
+        self.assertNotIn("ticket_expense_line", set(m.get("link_tables") or []))
+        found = False
+        for r in m.get("relations") or []:
+            if r.get("right") == "ticket_expense_line" and r.get("via") == "ticket_id":
+                self.assertEqual(r.get("left"), "expense_apply")
+                self.assertEqual(r.get("card_left"), "1")
+                self.assertEqual(r.get("card_right"), "n")
+                found = True
+        self.assertTrue(found, "申请单应对明细 1:n，不能把联合 UNIQUE 画成 1:1")
+        labels = {t["name"]: t["label"] for t in m["tables"]}
+        self.assertEqual(labels.get("ticket_expense_line"), "报销明细")
+        rel_lab = next(
+            r.get("label")
+            for r in (m.get("relations") or [])
+            if r.get("right") == "ticket_expense_line" and r.get("via") == "ticket_id"
+        )
+        self.assertEqual(rel_lab, "明细")
+        self.assertNotEqual(rel_lab, "进度")
+        svg = render_er_svg(m, mode="total")
+        self.assertIn('data-id="entity:ticket_expense_line"', svg)
+
 
 if __name__ == "__main__":
     unittest.main()

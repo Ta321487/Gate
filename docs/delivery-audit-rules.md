@@ -131,6 +131,7 @@
 | H12 | 禁止 degraded 装全文；未挂能力不得宣称 |
 | H13/H14 | theme/chrome/layout/typeface 生效；登录图 ≠ 门户 banner |
 | H24 | **话术层单一口径**：分类轴 / 单据名词只从一处解析（bake 期 `schema["lex"]`，见 [`surface-lexicon-design.md`](./surface-lexicon-design.md)）；同一 slot 在实体、分类菜单、门户轮播、空状态必须逐字一致；其它域招牌词不得进本域可见文案；域外字段（数量/到期/罚金/在借保留）渲染必须落在 `allow*` 开关分支内。三条均为 `error` 级，由 `delivery_review` 的「交付质量摘要」拦包（`app/bake/domain_vocab.py`） |
+| H25 | **库表 3NF**：学生 ZIP 的 `sql/schema.sql` 禁止用 JSON 列/逗号串承载业务规则或 1:N 集合（`p3n` / `assert_schema_nf`）；一对多须子表外键。白名单仅资料 `profile_json`、日志 `payload_json`、图集 URL 袋 |
 
 落得准（抽检即可）：新题正句→新域；旧题仍旧域；主路径匹配→bake→可点；「我的」与列表范围一致。
 

@@ -123,8 +123,10 @@ def parse_schema_sql(
                 continue
             um = UNIQUE_PAREN_RE.search(line)
             if um:
-                for c in re.findall(r"`?(\w+)`?", um.group(1)):
-                    unique_cols.add(c)
+                # 联合 UNIQUE 只保证组合不重复，不能把单列当成 1:1
+                names = [c for c in re.findall(r"`?(\w+)`?", um.group(1)) if c]
+                if len(names) == 1:
+                    unique_cols.add(names[0])
                 continue
             if upper.startswith("KEY") or upper.startswith("INDEX") or upper.startswith(
                 "CONSTRAINT"
@@ -203,12 +205,18 @@ def _infer_fk_by_name(
                     candidates.append("consign_item")
                 if c.name == "bundle_id" and "service_bundle" in names:
                     candidates.append("service_bundle")
-                # 单据进度 / 上传附件：ticket_id → 父单据表
-                if c.name == "ticket_id" and len(t.name) > 8:
-                    if t.name.endswith("_progress"):
+                # 单据进度 / 上传附件 / 报销明细 / 出差行程：ticket_id → 父单据表
+                if c.name == "ticket_id":
+                    if t.name.endswith("_progress") and len(t.name) > 8:
                         candidates.append(t.name[: -len("_progress")])
-                    elif t.name.endswith("_attach"):
+                    elif t.name.endswith("_attach") and len(t.name) > 8:
                         candidates.append(t.name[: -len("_attach")])
+                    elif t.name in ("ticket_expense_line", "ticket_trip_leg", "ticket_club_member", "ticket_attach_rev"):
+                        for n in names:
+                            if n.endswith("_apply"):
+                                candidates.append(n)
+                if c.name == "task_id" and t.name == "checkin_spot_member":
+                    candidates.append("checkin_spot_task")
                 candidates.extend([base, f"sys_{base}", f"{base}s"])
                 if base == "order" and "biz_order" in names:
                     candidates.append("biz_order")
