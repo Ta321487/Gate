@@ -83,6 +83,10 @@
         </template>
         <span>还没有账号？</span>
         <router-link to="/register">立即注册</router-link>
+        <template v-if="orderShareOn">
+          <span class="sep">·</span>
+          <button type="button" class="share-lookup" @click="lookupShare">凭口令查单</button>
+        </template>
         <template v-if="entryMode === 'split_entry'">
           <span class="sep">·</span>
           <router-link to="/admin/login">管理端入口</router-link>
@@ -100,7 +104,7 @@
 /** 登录页：入口模式与身份控件读应用交付配置 */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../api/http'
 import AuthShell from '../components/AuthShell.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
@@ -128,6 +132,9 @@ const entryMode = pickAuthEntryMode()
 const roleWidget = pickAuthRoleWidget()
 const labels = schemaLabels()
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+const orderShareOn = computed(() => !!getSchema()?.tradeThicken?.orderShare)
+const orderShareLabel = computed(() => labels.orderShareLabel || '分享口令')
+const orderShareHint = computed(() => labels.orderShareHint || '')
 const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const showStaffLink = computed(() => showStaffLoginLink())
@@ -271,6 +278,32 @@ async function loadCaptcha() {
     captchaImg.value = res.data.image
   } finally {
     setTimeout(() => { captchaSpin.value = false }, 280)
+  }
+}
+
+async function lookupShare() {
+  const { value } = await ElMessageBox.prompt(
+    orderShareHint.value || '请输入订单分享口令',
+    orderShareLabel.value,
+    { inputPlaceholder: orderShareLabel.value },
+  ).catch(() => ({ value: null }))
+  if (value == null) return
+  const token = String(value).trim()
+  if (!token) {
+    ElMessage.warning('请输入分享口令')
+    return
+  }
+  try {
+    const res = await http.get(`/api/order-share/${encodeURIComponent(token)}`)
+    const d = res.data || {}
+    const lines = Array.isArray(d.lines) ? d.lines.map((x) => x.title).filter(Boolean).join('、') : ''
+    ElMessage.success(
+      `订单 #${d.id || ''} ${d.status || ''} ¥${Number(d.totalYuan || 0).toFixed(2)}`
+        + (d.trackingNo ? ` 运单 ${d.trackingNo}` : '')
+        + (lines ? ` ${lines}` : ''),
+    )
+  } catch {
+    /* http 拦截器已提示 */
   }
 }
 
@@ -440,4 +473,12 @@ onMounted(async () => {
   border-color: var(--portal-accent, #0b6e75) !important;
 }
 .sep { margin: 0 6px; color: var(--portal-muted, #8a9aa6); }
+.share-lookup {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--portal-accent, #0b6e75);
+  cursor: pointer;
+  font: inherit;
+}
 </style>

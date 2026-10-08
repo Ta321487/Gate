@@ -617,16 +617,18 @@ final class TicketGuardOps {
         String by = operator == null ? "" : operator.trim();
         if (by.length() > 64) by = by.substring(0, 64);
         org.springframework.jdbc.support.KeyHolder kh = new org.springframework.jdbc.support.GeneratedKeyHolder();
+        final long spotItemId = itemId;
         final int sampleN = n;
         final String onDate = on;
+        final String createdBy = by;
         TicketSql.db().update(con -> {
             var ps = con.prepareStatement(
                     "INSERT INTO checkin_spot_task (item_id,on_date,sample_n,created_by) VALUES (?,?,?,?)",
                     java.sql.Statement.RETURN_GENERATED_KEYS);
-            ps.setLong(1, itemId);
+            ps.setLong(1, spotItemId);
             ps.setString(2, onDate);
             ps.setInt(3, sampleN);
-            ps.setString(4, by);
+            ps.setString(4, createdBy);
             return ps;
         }, kh);
         Number key = kh.getKey();

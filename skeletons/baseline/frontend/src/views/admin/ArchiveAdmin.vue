@@ -12,6 +12,7 @@
       />
       <el-button type="primary" @click="load">查询</el-button>
       <el-button type="success" @click="openEdit()">新增{{ label }}</el-button>
+      <el-button v-if="cinemaSnackOn && hasSeatLayout" @click="openSnackAdmin">{{ cinemaSnackLabel }}</el-button>
       <el-button @click="exportCsv">导出 CSV</el-button>
       <el-button @click="downloadTemplate">导入模板</el-button>
       <el-upload
@@ -23,6 +24,7 @@
       </el-upload>
     </div>
     <SchemaLabelHints :keys="archiveAdminHintKeys" />
+    <p v-if="stallScoreSortOn && stallScoreHint" class="tip muted">{{ stallScoreLabel }}：{{ stallScoreHint }}</p>
     <p v-if="lastImportError" class="import-err">{{ lastImportError }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
@@ -104,6 +106,18 @@
         <template #default="{ row }">
           <div class="table-ops">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button
+            v-if="hospitalStopOn && canStopNotify(row)"
+            link
+            type="warning"
+            @click="stopNotify(row)"
+          >停诊退号</el-button>
+          <el-button
+            v-if="seatAttrsOn && hasSeatLayout"
+            link
+            type="primary"
+            @click="openSeatAttrs(row)"
+          >{{ seatAttrEditLabel }}</el-button>
           <el-button
             v-if="canReviewPublish && isSuper && isPendingReview(row)"
             link
@@ -214,9 +228,10 @@
         <el-form-item v-if="hasMutex" :label="fieldLabel('mutexCode', '互斥码')">
           <el-input v-model="form.mutexCode" maxlength="32" :placeholder="`相同互斥码的${label}不可同选，可留空`" />
         </el-form-item>
-        <el-form-item v-if="hasCheckin" :label="fieldLabel('checkinCode', '签到码')">
+        <el-form-item v-if="hasCheckin" :label="fieldLabel('checkinCode', checkinCodeLabel)">
+          <p v-if="checkinCodeAdminHint" class="form-hint">{{ checkinCodeAdminHint }}</p>
           <div class="attach-row">
-            <el-input v-model="form.checkinCode" maxlength="16" placeholder="到场口令" style="flex:1" />
+            <el-input v-model="form.checkinCode" maxlength="16" :placeholder="checkinCodeLabel" style="flex:1" />
             <el-button size="small" @click="genCheckin">生成</el-button>
           </div>
         </el-form-item>
@@ -269,7 +284,7 @@
             <span v-else class="muted">未上传</span>
           </div>
         </el-form-item>
-        <el-form-item v-if="galleryOn" label="图集">
+        <el-form-item v-if="galleryOn" :label="galleryLabel">
           <div class="gallery-edit">
             <el-upload :show-file-list="false" accept="image/*" :http-request="onGalleryAdd">
               <el-button size="small" :disabled="form.galleryImages.length >= 9">添加图片</el-button>
@@ -299,6 +314,67 @@
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog
+      v-model="seatAttrVisible"
+      :title="seatAttrEditLabel"
+      width="640px"
+      destroy-on-close
+    >
+      <p class="ops-hint">
+        点击座位循环设置：普通 → {{ seatAttrCoupleLabel }} → {{ seatAttrAccessibleLabel }} → 普通
+      </p>
+      <div class="seat-attr-grid" :style="{ gridTemplateColumns: `repeat(${seatAttrCols}, 2.2rem)` }">
+        <button
+          v-for="seat in seatAttrSeats"
+          :key="seat.seatCode"
+          type="button"
+          class="seat-attr-cell"
+          :class="seat.seatAttr || 'plain'"
+          @click="cycleSeatAttr(seat)"
+        >
+          {{ seat.seatCode }}
+        </button>
+      </div>
+      <template #footer>
+        <el-button @click="seatAttrVisible = false">取消</el-button>
+        <el-button type="primary" :loading="seatAttrSaving" @click="saveSeatAttrs">保存</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="snackVisible" :title="cinemaSnackLabel" width="720px" destroy-on-close>
+      <p v-if="cinemaSnackHint" class="ops-hint">{{ cinemaSnackHint }}</p>
+      <el-table :data="snackRows" stripe size="small">
+        <el-table-column prop="id" label="ID" width="60" />
+        <el-table-column label="名称" min-width="140">
+          <template #default="{ row }">
+            <el-input v-model="row.title" maxlength="80" />
+          </template>
+        </el-table-column>
+        <el-table-column label="售价" width="120">
+          <template #default="{ row }">
+            <el-input-number v-model="row.priceYuan" :min="0" :step="0.5" :precision="2" controls-position="right" />
+          </template>
+        </el-table-column>
+        <el-table-column label="库存" width="110">
+          <template #default="{ row }">
+            <el-input-number v-model="row.stock" :min="0" :step="1" controls-position="right" />
+          </template>
+        </el-table-column>
+        <el-table-column label="在售" width="90">
+          <template #default="{ row }">
+            <el-switch v-model="row.onSale" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="90">
+          <template #default="{ row }">
+            <el-button link type="primary" :loading="row._saving" @click="saveSnackRow(row)">{{ cinemaSnackSaveLabel }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="addSnackRow">新增卖品</el-button>
+        <el-button type="primary" @click="snackVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -341,6 +417,25 @@ const stockWarnBelow = computed(() => {
 })
 const archiveAdminHintKeys = ARCHIVE_ADMIN_HINT_KEYS
 const adminLabels = computed(() => getSchema()?.labels || {})
+const thicken = computed(() => getSchema()?.tradeThicken || {})
+const seatAttrsOn = computed(() => !!thicken.value.seatAttrs)
+const seatAttrEditLabel = computed(() => adminLabels.value.seatAttrEditLabel || '座位属性')
+const seatAttrCoupleLabel = computed(() => adminLabels.value.seatAttrCoupleLabel || '情侣座')
+const seatAttrAccessibleLabel = computed(() => adminLabels.value.seatAttrAccessibleLabel || '无障碍座')
+const cinemaSnackOn = computed(() => !!thicken.value.cinemaSnack)
+const cinemaSnackLabel = computed(() => adminLabels.value.cinemaSnackLabel || '卖品加购')
+const cinemaSnackHint = computed(() => adminLabels.value.cinemaSnackHint || '')
+const cinemaSnackSaveLabel = computed(() => adminLabels.value.cinemaSnackSaveLabel || '保存卖品')
+const stallScoreSortOn = computed(() => !!thicken.value.stallScoreSort)
+const stallScoreLabel = computed(() => adminLabels.value.stallScoreLabel || '档口评分')
+const stallScoreHint = computed(() => adminLabels.value.stallScoreHint || '')
+const seatAttrVisible = ref(false)
+const seatAttrSaving = ref(false)
+const seatAttrShowId = ref(0)
+const seatAttrCols = ref(8)
+const seatAttrSeats = ref([])
+const snackVisible = ref(false)
+const snackRows = ref([])
 const tagColorOn = computed(() => !!adminLabels.value.tagColorHint)
 const lastImportError = ref('')
 function tagColor(name) {
@@ -361,6 +456,7 @@ function shelfLabel(row) {
   const st = String(row?.status || '')
   if (st === 'pending_review') return '待审核'
   if (st === 'rejected') return '已驳回'
+  if (st === 'sold_out') return adminLabels.value.showSoldOutLabel || '已售罄'
   if (st === 'unavailable' || row?.deleted) return '已下架'
   return '已上架'
 }
@@ -372,6 +468,7 @@ function shelfTagType(row) {
   return 'success'
 }
 const galleryOn = computed(() => isGalleryEnabled())
+const galleryLabel = computed(() => getSchema()?.labels?.galleryLabel || '图集')
 const roomEquipOn = computed(() => hasCap('room_equipment'))
 const equipSectionTitle = computed(
   () => getSchema()?.labels?.roomEquipmentSectionTitle || '配套设备',
@@ -379,6 +476,45 @@ const equipSectionTitle = computed(
 const equipOptions = ref([])
 const label = computed(() => archive.label || '对象')
 const fields = computed(() => archive.fields || [])
+/** 内部备注标签（用户端不可见，管理端维护） */
+const adminNoteLabel = computed(() => getSchema()?.labels?.adminNoteLabel || '内部备注')
+const adminNoteHint = computed(() => getSchema()?.labels?.adminNoteHint || '')
+void adminNoteLabel
+void adminNoteHint
+const checkinCodeLabel = computed(() => getSchema()?.labels?.checkinCodeLabel || '报到口令')
+const checkinCodeAdminHint = computed(() => getSchema()?.labels?.checkinCodeAdminHint || '')
+const hospitalStopOn = computed(
+  () => !!(getSchema()?.reserveThicken?.hospitalStopNotify || getSchema()?.labels?.hospitalStopNotifyTitle),
+)
+const hospitalStopNotifyTitle = computed(() => getSchema()?.labels?.hospitalStopNotifyTitle || '科室停诊通知')
+const hospitalStopNotifyBody = computed(() => getSchema()?.labels?.hospitalStopNotifyBody || '')
+void hospitalStopNotifyBody
+const hospitalStopCalendarHint = computed(() => getSchema()?.labels?.hospitalStopCalendarHint || '')
+void hospitalStopCalendarHint
+const deptIntroLabel = computed(() => getSchema()?.labels?.deptIntroLabel || '科室介绍')
+const deptIntroHint = computed(() => getSchema()?.labels?.deptIntroHint || '')
+void deptIntroLabel
+void deptIntroHint
+const queueEstimateLabel = computed(() => getSchema()?.labels?.queueEstimateLabel || '排队预估')
+void queueEstimateLabel
+const slotKindLabel = computed(() => getSchema()?.labels?.slotKindLabel || '号源类型')
+const slotKindClinic = computed(() => getSchema()?.labels?.slotKindClinic || '门诊')
+const slotKindLab = computed(() => getSchema()?.labels?.slotKindLab || '检验检查')
+const slotKindHint = computed(() => getSchema()?.labels?.slotKindHint || '')
+void slotKindLabel
+void slotKindClinic
+void slotKindLab
+void slotKindHint
+const patientProfileMenuLabel = computed(() => getSchema()?.labels?.patientProfileMenuLabel || '就诊人')
+void patientProfileMenuLabel
+const passHintLabel = computed(() => getSchema()?.labels?.passHintLabel || '通行证提示')
+const passHintAdminHint = computed(() => getSchema()?.labels?.passHintAdminHint || '')
+const parkingCarpassHint = computed(() => getSchema()?.labels?.parkingCarpassHint || '')
+void passHintLabel
+void passHintAdminHint
+void parkingCarpassHint
+const parkingPassMenuLabel = computed(() => getSchema()?.labels?.parkingPassMenuLabel || '停车次卡')
+void parkingPassMenuLabel
 const CORE_FIELD_KEYS = new Set([
   'title', 'author', 'isbn', 'category', 'stock',
   'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
@@ -406,6 +542,7 @@ const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt' 
 const hasStartAt = computed(() => fields.value.some((x) => x.key === 'startAt'))
 const hasEndAt = computed(() => fields.value.some((x) => x.key === 'endAt'))
 const hasDeadline = computed(() => fields.value.some((x) => x.key === 'applyDeadlineAt'))
+const hasSeatLayout = computed(() => fields.value.some((x) => x.key === 'seatRows' || x.key === 'seatCols'))
 const scheduleNeedsClock = computed(() =>
   ['startAt', 'endAt', 'applyDeadlineAt'].some(
     (key) => fieldType(key) === 'datetime' && fields.value.some((x) => x.key === key),
@@ -670,6 +807,24 @@ async function save() {
   load()
 }
 
+function canStopNotify(row) {
+  if (!row || !row.id) return false
+  const from = String(row.maintainFrom || row.maintain_from || '').trim()
+  const to = String(row.maintainTo || row.maintain_to || '').trim()
+  return !!(from || to)
+}
+
+async function stopNotify(row) {
+  await ElMessageBox.confirm(
+    `${hospitalStopNotifyTitle.value}：将取消维护期内预约并站内信通知用户。继续？`,
+    '停诊退号',
+    { type: 'warning' },
+  )
+  const res = await http.post(`/api/slots/items/${row.id}/stop-notify`)
+  const n = res.data?.cancelled ?? res?.cancelled ?? 0
+  ElMessage.success(`已退号 ${n} 笔`)
+}
+
 async function remove(row) {
   const verb = softDelete.value ? softCopy.value.verb : '删除'
   await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
@@ -862,6 +1017,97 @@ function csvEscapeCell(v) {
   return s
 }
 
+async function openSeatAttrs(row) {
+  if (!row?.id) return
+  seatAttrShowId.value = row.id
+  seatAttrSaving.value = false
+  try {
+    const res = await http.get(`/api/seats/shows/${row.id}/map`)
+    const data = res.data?.data || res.data || {}
+    seatAttrCols.value = data.cols || row.seatCols || 8
+    seatAttrSeats.value = (data.seats || []).map((s) => ({
+      seatCode: s.seatCode,
+      seatAttr: String(s.seatAttr || ''),
+    }))
+    seatAttrVisible.value = true
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '无法加载座位图')
+  }
+}
+
+function cycleSeatAttr(seat) {
+  const cur = String(seat.seatAttr || '')
+  if (cur === 'couple') seat.seatAttr = 'accessible'
+  else if (cur === 'accessible') seat.seatAttr = ''
+  else seat.seatAttr = 'couple'
+}
+
+async function saveSeatAttrs() {
+  const attrs = {}
+  for (const s of seatAttrSeats.value) {
+    attrs[s.seatCode] = String(s.seatAttr || '')
+  }
+  seatAttrSaving.value = true
+  try {
+    await http.put(`/api/seats/shows/${seatAttrShowId.value}/attrs`, { attrs })
+    ElMessage.success('座位属性已保存')
+    seatAttrVisible.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '保存失败')
+  } finally {
+    seatAttrSaving.value = false
+  }
+}
+
+async function openSnackAdmin() {
+  try {
+    const res = await http.get('/api/seats/snacks/all')
+    const list = res.data?.data || res.data || []
+    snackRows.value = (Array.isArray(list) ? list : []).map((s) => ({
+      id: s.id,
+      title: s.title || '',
+      priceYuan: Number(s.priceYuan || 0),
+      stock: Number(s.stock || 0),
+      onSale: String(s.status || 'on') === 'on',
+      _saving: false,
+    }))
+    snackVisible.value = true
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '无法加载卖品')
+  }
+}
+
+function addSnackRow() {
+  snackRows.value = [
+    ...snackRows.value,
+    { id: 0, title: '', priceYuan: 0, stock: 0, onSale: true, _saving: false },
+  ]
+}
+
+async function saveSnackRow(row) {
+  if (!String(row.title || '').trim()) {
+    ElMessage.warning('请填写卖品名称')
+    return
+  }
+  row._saving = true
+  try {
+    const res = await http.put('/api/seats/snacks', {
+      id: row.id || undefined,
+      title: String(row.title).trim(),
+      priceYuan: Number(row.priceYuan || 0),
+      stock: Number(row.stock || 0),
+      status: row.onSale ? 'on' : 'off',
+    })
+    const saved = res.data?.data || res.data || {}
+    if (saved.id) row.id = saved.id
+    ElMessage.success('已保存')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '保存失败')
+  } finally {
+    row._saving = false
+  }
+}
+
 async function exportCsv() {
   const res = await http.get('/api/archive', {
     params: { page: 1, size: 5000, keyword: keyword.value || undefined },
@@ -921,6 +1167,25 @@ onMounted(async () => {
 
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.ops-hint { margin: 0 0 10px; color: var(--el-text-color-secondary); font-size: 13px; }
+.seat-attr-grid {
+  display: grid;
+  gap: 0.35rem;
+  justify-content: center;
+  margin: 0.5rem 0 0;
+}
+.seat-attr-cell {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  cursor: pointer;
+  background: #fff;
+  padding: 0;
+}
+.seat-attr-cell.couple { box-shadow: inset 0 0 0 2px #e6a23c; }
+.seat-attr-cell.accessible { box-shadow: inset 0 0 0 2px #67c23a; }
 .import-err { margin: 0 0 10px; color: #b45309; font-size: 13px; }
 .tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }

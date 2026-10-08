@@ -49,4 +49,10 @@ public interface LessonMapper {
 
     @Select("SELECT id, username, reservation_id, created_at FROM lesson_wallet WHERE reservation_id IS NOT NULL ORDER BY id DESC")
     List<Map<String, Object>> uses();
+
+    @Select("SELECT username, remain_sessions, expire_at FROM lesson_wallet "
+            + "WHERE reservation_id IS NULL AND remain_sessions>0 "
+            + "AND expire_at IS NOT NULL AND expire_at>=#{from} AND expire_at<=#{to}")
+    List<Map<String, Object>> expireSoon(
+            @Param("from") java.sql.Date from, @Param("to") java.sql.Date to);
 }

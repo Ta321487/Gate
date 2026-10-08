@@ -88,7 +88,10 @@
           <el-input :model-value="form.workDate" disabled />
         </el-form-item>
         <el-form-item label="班次" required>
-          <el-input v-model="form.shiftLabel" maxlength="64" placeholder="如：全天 / 上午 / 晚班" />
+          <el-input v-model="form.shiftLabel" maxlength="64" placeholder="如：全天 / 上午 / 请假 / 休息" />
+          <p class="hint" style="margin:6px 0 0;font-size:12px;color:var(--el-text-color-secondary)">
+            班次填「请假」或「休息」时，预约页当日不可约该员工。
+          </p>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.note" maxlength="256" type="textarea" :rows="2" />

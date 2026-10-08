@@ -26,12 +26,16 @@ public class GuestbookController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String channel,
+            @RequestParam(required = false) Long itemId,
             HttpSession session) {
         if (!GuestbookStore.ready()) {
             throw new BizException(ErrorCode.NOT_FOUND, "未开通留言功能");
         }
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
+        if (itemId != null && itemId > 0 && GuestbookStore.hasItemId()) {
+            return R.ok(GuestbookStore.pageByItem(itemId, p, s));
+        }
         boolean mp = ArchiveStore.shopMarketplaceEnabled() && GuestbookStore.hasChannel();
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         boolean superAdmin = AdminAuth.isSuperAdmin(session);
@@ -54,15 +58,15 @@ public class GuestbookController {
     }
 
     @PostMapping
-    public R<Map<String, Object>> create(@RequestBody Map<String, String> body, HttpSession session) {
+    public R<Map<String, Object>> create(@RequestBody Map<String, Object> body, HttpSession session) {
         if (!GuestbookStore.ready()) {
             throw new BizException(ErrorCode.NOT_FOUND, "未开通留言功能");
         }
         String uid = AdminAuth.requireLogin(session);
         UserStore.Profile p = UserStore.get(uid);
         if (p == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户不存在");
-        String text = body == null ? "" : body.getOrDefault("body", "");
-        if (text == null || text.isBlank()) {
+        String text = body == null || body.get("body") == null ? "" : String.valueOf(body.get("body"));
+        if (text.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "留言内容不能为空");
         }
         String channel = "user";
@@ -76,7 +80,14 @@ public class GuestbookController {
                 throw new BizException(ErrorCode.BAD_REQUEST, "平台管理员请在后台回复留言，勿自助发表");
             }
         }
-        Map<String, Object> row = GuestbookStore.add(p.username, p.nickname, text, channel);
+        Long itemId = null;
+        if (body != null && body.get("itemId") != null && !String.valueOf(body.get("itemId")).isBlank()) {
+            try {
+                itemId = Long.parseLong(String.valueOf(body.get("itemId")));
+            } catch (Exception ignored) {
+            }
+        }
+        Map<String, Object> row = GuestbookStore.add(p.username, p.nickname, text, channel, itemId);
         if (row == null) throw new BizException(ErrorCode.BAD_REQUEST, "留言失败");
         return R.ok(row);
     }

@@ -129,6 +129,28 @@
     </section>
 
     <DashboardCharts :charts="data.charts || {}" :mode="chartMode" />
+
+    <section v-if="salesDailyOn" class="card sales-daily">
+      <h3>{{ salesDailyLabel }}</h3>
+      <p v-if="salesDailyHint" class="cfg-hint">{{ salesDailyHint }}</p>
+      <el-button size="small" :disabled="!salesDailyRows.length" @click="exportSalesDaily">导出 CSV</el-button>
+      <el-table :data="salesDailyRows" stripe empty-text="暂无成交数据" style="margin-top:8px">
+        <el-table-column prop="day" label="日期" min-width="120" />
+        <el-table-column prop="orderCount" label="订单数" width="100" />
+        <el-table-column label="成交金额" min-width="120">
+          <template #default="{ row }">¥{{ Number(row.amountYuan || 0).toFixed(2) }}</template>
+        </el-table-column>
+      </el-table>
+    </section>
+
+    <section v-if="refundReasonOn" class="card sales-daily">
+      <h3>{{ refundReasonLabel }}</h3>
+      <p v-if="refundReasonHint" class="cfg-hint">{{ refundReasonHint }}</p>
+      <el-table :data="refundReasonRows" stripe empty-text="暂无售后申请" style="margin-top:8px">
+        <el-table-column prop="name" label="原因" min-width="160" />
+        <el-table-column prop="value" label="件数" width="100" />
+      </el-table>
+    </section>
   </div>
 </template>
 
@@ -139,6 +161,7 @@ import http from '../../api/http'
 import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy, orderStatusLabel, reservationStatusLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
 import { adminNavPath, currentStaffPost, staffPostLabel } from '../../utils/staffPosts.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
+import { downloadCsv } from '../../utils/csvDownload.js'
 
 const router = useRouter()
 const data = ref({})
@@ -202,6 +225,24 @@ const chartMode = computed(() => {
   if (caps.value.includes('slot_reserve') && !caps.value.includes('ticket_flow')) return 'reservation'
   return 'ticket'
 })
+const salesDailyOn = computed(() => !!getSchema()?.tradeThicken?.salesDaily)
+const salesDailyLabel = computed(() => getSchema()?.labels?.salesDailyLabel || '销售日报')
+const salesDailyHint = computed(() => getSchema()?.labels?.salesDailyHint || '')
+const salesDailyRows = computed(() => data.value.charts?.salesDailySeries || [])
+const refundReasonOn = computed(() => !!getSchema()?.tradeThicken?.refundReasonCategories)
+const refundReasonLabel = computed(() => getSchema()?.labels?.refundReasonChartLabel || '售后原因分布')
+const refundReasonHint = computed(() => getSchema()?.labels?.refundReasonChartHint || '')
+const refundReasonRows = computed(() => data.value.charts?.refundReasonSeries || [])
+
+function exportSalesDaily() {
+  const rows = salesDailyRows.value
+  if (!rows.length) return
+  downloadCsv(
+    'sales-daily.csv',
+    ['日期', '订单数', '成交金额'],
+    rows.map((r) => [r.day, r.orderCount, Number(r.amountYuan || 0).toFixed(2)]),
+  )
+}
 
 /** 借期/限额等业务参数，工作台只读展示 */
 const configHint = computed(() => {

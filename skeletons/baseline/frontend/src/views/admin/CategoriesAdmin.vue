@@ -8,6 +8,9 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" :label="`${catLabel}名`" min-width="160" />
       <el-table-column v-if="multiCategory" prop="dimension" label="维度" width="120" />
+      <el-table-column v-if="requiredCategoryOn" :label="requiredCategoryLabel" width="110">
+        <template #default="{ row }">{{ row.requiredPick ? '必选' : '—' }}</template>
+      </el-table-column>
       <el-table-column prop="itemCount" :label="`${label}数`" width="100" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -27,6 +30,10 @@
             <el-option v-for="d in dimensionOptions" :key="d" :label="d" :value="d" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="requiredCategoryOn" :label="requiredCategoryLabel">
+          <el-switch v-model="form.requiredPick" />
+          <p v-if="requiredCategoryHint" class="tip muted">{{ requiredCategoryHint }}</p>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -40,11 +47,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { archiveCopy, hasCap } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, hasCap } from '../../utils/domainSchema.js'
 
 const archive = archiveCopy()
 const label = computed(() => archive.label || '对象')
 const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_category'))
+const requiredCategoryOn = computed(() => !!getSchema()?.tradeThicken?.requiredCategory)
+const requiredCategoryLabel = computed(() => getSchema()?.labels?.requiredCategoryLabel || '必选品类')
+const requiredCategoryHint = computed(() => getSchema()?.labels?.requiredCategoryHint || '')
 const catLabel = computed(() => {
   const f = (archive.fields || []).find((x) => x && (x.key === 'category' || x.key === 'categoryIds'))
   return f?.label || '分类'
@@ -52,7 +62,7 @@ const catLabel = computed(() => {
 
 const list = ref([])
 const visible = ref(false)
-const form = reactive({ id: null, name: '', dimension: '' })
+const form = reactive({ id: null, name: '', dimension: '', requiredPick: false })
 const dimensionOptions = computed(() => {
   const set = new Set()
   for (const row of list.value || []) {
@@ -69,8 +79,21 @@ async function load() {
 }
 
 function openEdit(row) {
-  if (row) Object.assign(form, { id: row.id, name: row.name, dimension: row.dimension || '' })
-  else Object.assign(form, { id: null, name: '', dimension: dimensionOptions.value[0] || '品类' })
+  if (row) {
+    Object.assign(form, {
+      id: row.id,
+      name: row.name,
+      dimension: row.dimension || '',
+      requiredPick: !!row.requiredPick,
+    })
+  } else {
+    Object.assign(form, {
+      id: null,
+      name: '',
+      dimension: dimensionOptions.value[0] || '品类',
+      requiredPick: false,
+    })
+  }
   visible.value = true
 }
 
@@ -85,6 +108,7 @@ async function save() {
   }
   const body = { name: form.name }
   if (multiCategory.value) body.dimension = form.dimension
+  if (requiredCategoryOn.value) body.requiredPick = !!form.requiredPick
   if (form.id) await http.put(`/api/categories/${form.id}`, body)
   else await http.post('/api/categories', body)
   ElMessage.success('已保存')
@@ -109,4 +133,6 @@ onMounted(load)
 
 <style scoped>
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+.tip { margin: 4px 0 0; font-size: 12px; }
+.muted { color: var(--el-text-color-secondary); }
 </style>

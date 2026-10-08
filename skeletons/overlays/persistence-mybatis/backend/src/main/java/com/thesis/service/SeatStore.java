@@ -23,6 +23,11 @@ public class SeatStore {
     private static final int MAX_COLS = 16;
     private static boolean enabled;
     private static Boolean tableReady;
+    private static Boolean holdColReady;
+    private static Boolean seatAttrColReady;
+    private static Boolean snackTableReady;
+    private static int holdTimeoutMinutes = 10;
+    private static int ticketRefundCutoffMinutes = 30;
 
     private SeatStore() {}
 
@@ -33,6 +38,17 @@ public class SeatStore {
     public static void configure(boolean on) {
         enabled = on;
         tableReady = null;
+        holdColReady = null;
+        seatAttrColReady = null;
+        snackTableReady = null;
+    }
+
+    public static void configureHoldTimeoutMinutes(int minutes) {
+        holdTimeoutMinutes = Math.max(0, minutes);
+    }
+
+    public static void configureTicketRefundCutoffMinutes(int minutes) {
+        ticketRefundCutoffMinutes = Math.max(0, minutes);
     }
 
     public static boolean enabled() {
@@ -98,6 +114,27 @@ public class SeatStore {
         return s.isBlank() ? null : s;
     }
 
+    private static void enrichShowCategory(Map<String, Object> show) {
+        if (show == null) return;
+        Object cid = show.get("categoryId");
+        if (!(cid instanceof Number n) || n.longValue() <= 0) {
+            show.putIfAbsent("categoryName", "");
+            return;
+        }
+        try {
+            String name = mapper().getCategoryName(n.longValue());
+            show.put("categoryName", name == null ? "" : name);
+        } catch (Exception e) {
+            show.putIfAbsent("categoryName", "");
+        }
+    }
+
+    private static String normalizeSeatAttr(String raw) {
+        String a = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        if ("couple".equals(a) || "accessible".equals(a)) return a;
+        return "";
+    }
+
     private static String seatCode(int row, int col) {
         return String.valueOf((char) ('A' + row)) + (col + 1);
     }
@@ -120,7 +157,7 @@ public class SeatStore {
             mapper().insertSeat(showId, code);
         }
         mapper().deleteFreeOutside(showId, expected);
-        Integer sold = mapper().countSold(showId);
+        Integer sold = mapper().countBusy(showId);
         if (sold != null && sold == 0) {
             int capacity = rows * cols;
             mapper().updateShowStock(showId, capacity);
@@ -141,6 +178,7 @@ public class SeatStore {
                 throw new IllegalStateException("场次不存在，无法同步选座布局");
             }
             ensureSeatMap(showId, show);
+            syncShowSaleStatus(showId);
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -148,7 +186,6 @@ public class SeatStore {
         }
     }
 
-    /** 过开场时间：可售场次自动标为不可用。 */
     public static int expirePastShows() {
         if (!enabled) return 0;
         if (!ready()) return 0;
@@ -156,6 +193,119 @@ public class SeatStore {
             return mapper().expirePastShows();
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    private static boolean holdColReady() {
+        if (!ready()) return false;
+        if (holdColReady != null) return holdColReady;
+        try {
+            Integer n = mapper().countHoldColumn();
+            holdColReady = n != null && n > 0;
+        } catch (Exception e) {
+            holdColReady = false;
+        }
+        return holdColReady;
+    }
+
+    private static boolean seatAttrColReady() {
+        if (!ready()) return false;
+        if (seatAttrColReady != null) return seatAttrColReady;
+        try {
+            Integer n = mapper().countSeatAttrColumn();
+            seatAttrColReady = n != null && n > 0;
+        } catch (Exception e) {
+            seatAttrColReady = false;
+        }
+        return seatAttrColReady;
+    }
+
+    public static void updateSeatAttrs(long showId, Map<String, String> attrs) {
+        require();
+        if (!seatAttrColReady()) {
+            throw new IllegalStateException("系统未配置座位属性");
+        }
+        if (showId <= 0) throw new IllegalArgumentException("场次无效");
+        Map<String, Object> show = getShow(showId);
+        if (show == null) throw new IllegalArgumentException("场次不存在");
+        ensureSeatMap(showId, show);
+        if (attrs == null || attrs.isEmpty()) return;
+        for (Map.Entry<String, String> e : attrs.entrySet()) {
+            String code = clip(e.getKey(), 16);
+            if (code.isBlank()) continue;
+            String attr = normalizeSeatAttr(e.getValue());
+            mapper().updateSeatAttr(showId, code, attr);
+        }
+    }
+
+    public static int releaseExpiredHolds() {
+        if (!enabled || !ready() || !holdColReady()) return 0;
+        try {
+            return mapper().releaseExpiredHolds();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public static int syncSoldOutShows() {
+        if (!enabled || !ready()) return 0;
+        int n = 0;
+        try {
+            n += mapper().markSoldOut();
+            n += mapper().reopenSoldOut();
+        } catch (Exception e) {
+            return n;
+        }
+        return n;
+    }
+
+    public static void syncShowSaleStatus(long showId) {
+        if (!enabled || !ready() || showId <= 0) return;
+        try {
+            mapper().markSoldOutOne(showId);
+            mapper().reopenSoldOutOne(showId);
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static void assertOrderRefundOpen(long orderId) {
+        if (!enabled || ticketRefundCutoffMinutes <= 0 || orderId <= 0) return;
+        if (!OrderStore.enabled()) return;
+        Map<String, Object> order = OrderStore.getOrder(orderId);
+        if (order == null) return;
+        Object linesObj = order.get("lines");
+        if (!(linesObj instanceof List<?> lines) || lines.isEmpty()) return;
+        for (Object raw : lines) {
+            if (!(raw instanceof Map<?, ?> line)) continue;
+            Object iid = line.get("itemId");
+            if (!(iid instanceof Number n)) continue;
+            Map<String, Object> show = getShow(n.longValue());
+            if (show == null) continue;
+            if (isPastRefundCutoff(show)) {
+                throw new IllegalStateException(
+                        "开场前 " + ticketRefundCutoffMinutes + " 分钟内不可退票");
+            }
+        }
+    }
+
+    private static boolean isPastRefundCutoff(Map<String, Object> show) {
+        if (ticketRefundCutoffMinutes <= 0) return false;
+        LocalDateTime start = parseStart(str(show.get("startAt")));
+        if (start == null) return false;
+        return !LocalDateTime.now().isBefore(start.minusMinutes(ticketRefundCutoffMinutes));
+    }
+
+    private static LocalDateTime parseStart(String sa) {
+        if (sa == null || sa.isBlank()) return null;
+        try {
+            String norm = sa.length() >= 19 ? sa.substring(0, 19) : sa;
+            return LocalDateTime.parse(norm.replace(' ', 'T'));
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(sa, FMT);
+            } catch (Exception ignored) {
+                return null;
+            }
         }
     }
 
@@ -171,7 +321,6 @@ public class SeatStore {
                 LocalDateTime t = LocalDateTime.parse(sa, FMT);
                 return !t.isAfter(LocalDateTime.now());
             } catch (Exception ignored) {
-                // 脏 start_at：视为已过，禁止选座
                 return true;
             }
         }
@@ -180,20 +329,36 @@ public class SeatStore {
     public static List<Map<String, Object>> listOpenShows() {
         require();
         expirePastShows();
-        return mapper().listOpenShows();
+        releaseExpiredHolds();
+        syncSoldOutShows();
+        List<Map<String, Object>> list = mapper().listOpenShows();
+        for (Map<String, Object> show : list) enrichShowCategory(show);
+        return list;
     }
 
     public static Map<String, Object> getShow(long id) {
         require();
-        return mapper().getShow(id);
+        Map<String, Object> show = mapper().getShow(id);
+        if (show != null) enrichShowCategory(show);
+        return show;
     }
 
     public static Map<String, Object> getMap(long showId) {
+        return getMap(showId, null);
+    }
+
+    public static Map<String, Object> getMap(long showId, String username) {
         require();
         expirePastShows();
+        releaseExpiredHolds();
+        syncSoldOutShows();
         Map<String, Object> show = getShow(showId);
         if (show == null) throw new IllegalArgumentException("场次不存在");
-        if (!"available".equals(str(show.get("status"))) || isPastStart(show)) {
+        String st = str(show.get("status"));
+        if ("sold_out".equals(st) || toInt(show.get("stock"), 0) <= 0) {
+            throw new IllegalStateException("本场次已售罄");
+        }
+        if (!"available".equals(st) || isPastStart(show)) {
             throw new IllegalStateException("场次已开场或已下架，不可选座");
         }
         ensureSeatMap(showId, show);
@@ -203,15 +368,96 @@ public class SeatStore {
         List<Map<String, Object>> seats = mapper().listSeats(showId);
         for (Map<String, Object> s : seats) {
             if (s.containsKey("soldAt")) s.put("soldAt", fmt(s.get("soldAt")));
+            if (s.containsKey("holdUntil")) s.put("holdUntil", fmt(s.get("holdUntil")));
+            Object attr = s.get("seatAttr");
+            s.put("seatAttr", attr == null ? "" : String.valueOf(attr).trim());
         }
+        return decorateMap(show, rows, cols, seats, username);
+    }
+
+    private static Map<String, Object> decorateMap(
+            Map<String, Object> show,
+            int rows,
+            int cols,
+            List<Map<String, Object>> seats,
+            String username) {
+        String uid = clip(username, 64);
+        List<String> adjacent = new ArrayList<>();
+        Set<String> open = new HashSet<>();
+        String holdUntil = null;
+        for (Map<String, Object> s : seats) {
+            String code = str(s.get("seatCode"));
+            String st = str(s.get("status"));
+            boolean mine = "held".equals(st) && !uid.isBlank() && uid.equals(str(s.get("username")));
+            s.put("mine", mine);
+            if ("free".equals(st) || mine) open.add(code);
+            if (mine) {
+                String hu = str(s.get("holdUntil"));
+                if (!hu.isBlank() && (holdUntil == null || hu.compareTo(holdUntil) < 0)) holdUntil = hu;
+            }
+        }
+        for (String code : open) {
+            String next = nextSeatCode(code);
+            if (next != null && open.contains(next) && code.compareTo(next) < 0) {
+                adjacent.add(code + "-" + next);
+            }
+        }
+        Collections.sort(adjacent);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("show", show);
         out.put("rows", rows);
         out.put("cols", cols);
         out.put("seats", seats);
-        long free = seats.stream().filter(s -> "free".equals(str(s.get("status")))).count();
-        out.put("freeCount", free);
+        out.put("freeCount", open.size());
+        out.put("adjacentPairs", adjacent);
+        out.put("adjacentHint", adjacent.isEmpty() ? "" : ("建议连坐：" + String.join("、",
+                adjacent.subList(0, Math.min(6, adjacent.size())))));
+        out.put("holdUntil", holdUntil);
+        out.put("holdTimeoutMinutes", holdTimeoutMinutes);
         return out;
+    }
+
+    private static String nextSeatCode(String code) {
+        if (code == null || code.length() < 2) return null;
+        char row = code.charAt(0);
+        try {
+            int col = Integer.parseInt(code.substring(1));
+            return row + String.valueOf(col + 1);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static Map<String, Object> holdSeats(String username, long showId, List<String> seatCodes) {
+        require();
+        String u = clip(username, 64);
+        if (u.isBlank()) throw new IllegalArgumentException("未登录");
+        releaseExpiredHolds();
+        Map<String, Object> show = getShow(showId);
+        if (show == null || !"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            throw new IllegalStateException("场次已开场或已下架，不可选座");
+        }
+        ensureSeatMap(showId, show);
+        List<String> codes = seatCodes == null ? List.of() : seatCodes.stream()
+                .map(s -> clip(s, 16).toUpperCase(Locale.ROOT))
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        if (codes.size() > 6) throw new IllegalArgumentException("单次最多选 6 个座位");
+        if (!holdColReady() || holdTimeoutMinutes <= 0) {
+            return getMap(showId, u);
+        }
+        Timestamp until = Timestamp.valueOf(LocalDateTime.now().plusMinutes(holdTimeoutMinutes));
+        if (codes.isEmpty()) {
+            mapper().releaseMineHolds(showId, u);
+            return getMap(showId, u);
+        }
+        mapper().releaseMineHoldsExcept(showId, u, codes);
+        for (String code : codes) {
+            int n = mapper().holdSeat(showId, code, u, until);
+            if (n == 0) throw new IllegalStateException("座位 " + code + " 不可选");
+        }
+        return getMap(showId, u);
     }
 
     private static double priceOf(Map<String, Object> show) {
@@ -226,10 +472,104 @@ public class SeatStore {
         }
     }
 
-    public static Map<String, Object> purchase(String username, long showId, List<String> seatCodes) {
+    public static boolean snackReady() {
+        if (!enabled) return false;
+        if (snackTableReady != null) return snackTableReady;
+        try {
+            Integer n = mapper().countSnackTable();
+            snackTableReady = n != null && n > 0;
+        } catch (Exception e) {
+            snackTableReady = false;
+        }
+        return snackTableReady;
+    }
+
+    public static List<Map<String, Object>> listOpenSnacks() {
+        if (!snackReady()) return List.of();
+        List<Map<String, Object>> list = mapper().listOpenSnacks();
+        return list == null ? List.of() : list;
+    }
+
+    public static List<Map<String, Object>> listAllSnacks() {
+        if (!snackReady()) return List.of();
+        List<Map<String, Object>> list = mapper().listAllSnacks();
+        return list == null ? List.of() : list;
+    }
+
+    public static Map<String, Object> getSnack(long id) {
+        if (!snackReady() || id <= 0) return null;
+        return mapper().getSnack(id);
+    }
+
+    public static Map<String, Object> saveSnack(Map<String, Object> body) {
+        require();
+        if (!snackReady()) throw new IllegalStateException("卖品功能暂不可用");
+        long id = 0;
+        Object rawId = body == null ? null : body.get("id");
+        if (rawId instanceof Number n) id = n.longValue();
+        else if (rawId != null && !String.valueOf(rawId).isBlank()) {
+            id = Long.parseLong(String.valueOf(rawId).trim());
+        }
+        String title = clip(body == null ? null : String.valueOf(body.getOrDefault("title", "")), 80);
+        if (title.isBlank()) throw new IllegalArgumentException("请填写卖品名称");
+        double price = 0;
+        Object pr = body == null ? null : body.get("priceYuan");
+        if (pr == null && body != null) pr = body.get("price");
+        if (pr instanceof Number n) price = n.doubleValue();
+        else if (pr != null && !String.valueOf(pr).isBlank()) {
+            price = Double.parseDouble(String.valueOf(pr).trim());
+        }
+        if (price < 0) throw new IllegalArgumentException("售价不能为负");
+        int stock = 0;
+        Object st = body == null ? null : body.get("stock");
+        if (st instanceof Number n) stock = n.intValue();
+        else if (st != null && !String.valueOf(st).isBlank()) {
+            stock = Integer.parseInt(String.valueOf(st).trim());
+        }
+        if (stock < 0) throw new IllegalArgumentException("库存不能为负");
+        String status = clip(body == null ? null : String.valueOf(body.getOrDefault("status", "on")), 16);
+        if (!"on".equals(status) && !"off".equals(status)) status = "on";
+        if (id > 0) {
+            int n = mapper().updateSnack(id, title, price, stock, status);
+            if (n == 0) throw new IllegalArgumentException("卖品不存在");
+            return getSnack(id);
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("title", title);
+        row.put("priceYuan", price);
+        row.put("stock", stock);
+        row.put("status", status);
+        mapper().insertSnack(row);
+        Object nid = row.get("id");
+        long newId = nid instanceof Number n ? n.longValue() : 0L;
+        return getSnack(newId);
+    }
+
+    public static void adjustSnackStock(long snackId, int delta) {
+        if (!snackReady() || snackId <= 0 || delta == 0) return;
+        if (delta < 0) {
+            int n = mapper().adjustSnackStockDown(snackId, delta, -delta);
+            if (n == 0) throw new IllegalStateException("卖品暂时无货");
+        } else {
+            mapper().adjustSnackStockUp(snackId, delta);
+        }
+    }
+
+    public static Map<String, Object> purchase(
+            String username, long showId, List<String> seatCodes, boolean noticeAgreed) {
+        return purchase(username, showId, seatCodes, noticeAgreed, null);
+    }
+
+    public static Map<String, Object> purchase(
+            String username,
+            long showId,
+            List<String> seatCodes,
+            boolean noticeAgreed,
+            List<Map<String, Object>> snacks) {
         require();
         String u = clip(username, 64);
         if (u.isBlank()) throw new IllegalArgumentException("未登录");
+        if (!noticeAgreed) throw new IllegalArgumentException("请先确认已阅读观影须知");
         if (seatCodes == null || seatCodes.isEmpty()) {
             throw new IllegalArgumentException("请至少选择一个座位");
         }
@@ -241,15 +581,19 @@ public class SeatStore {
         if (codes.isEmpty()) throw new IllegalArgumentException("请至少选择一个座位");
         if (codes.size() > 6) throw new IllegalArgumentException("单次最多选 6 个座位");
 
+        releaseExpiredHolds();
         Map<String, Object> show = getShow(showId);
-        if (show == null || !"available".equals(str(show.get("status"))) || isPastStart(show)) {
+        if (show == null || "sold_out".equals(str(show.get("status"))) || toInt(show.get("stock"), 0) <= 0) {
+            throw new IllegalStateException("本场次已售罄");
+        }
+        if (!"available".equals(str(show.get("status"))) || isPastStart(show)) {
             expirePastShows();
             throw new IllegalStateException("场次已开场或已下架，不可购票");
         }
         ensureSeatMap(showId, show);
         for (String code : codes) {
-            Integer free = mapper().countFreeSeat(showId, code);
-            if (free == null || free == 0) {
+            Integer ok = mapper().countClaimableSeat(showId, code, u);
+            if (ok == null || ok == 0) {
                 throw new IllegalStateException("座位 " + code + " 不可选");
             }
         }
@@ -260,8 +604,13 @@ public class SeatStore {
                 u, showId, str(show.get("title")), unit, codes.size(), seatRemark);
         if (order == null) throw new IllegalStateException("下单失败");
         long orderId = order.get("id") instanceof Number n ? n.longValue() : 0L;
+        OrderStore.ensurePickupCode(orderId);
+        OrderStore.markNoticeAgreed(orderId);
         boolean stockAdjusted = false;
         try {
+            if (snacks != null && !snacks.isEmpty()) {
+                OrderStore.attachCinemaSnacks(orderId, snacks);
+            }
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
             for (String code : codes) {
                 int n = mapper().sellSeat(showId, code, u, orderId, now);
@@ -269,14 +618,17 @@ public class SeatStore {
             }
             ArchiveStore.adjustStock(showId, -codes.size());
             stockAdjusted = true;
+            syncShowSaleStatus(showId);
         } catch (RuntimeException ex) {
             rollbackFailedPurchase(orderId, showId, codes.size(), stockAdjusted);
             throw ex;
         }
+        order = OrderStore.getOrder(orderId);
+        if (order == null) throw new IllegalStateException("下单失败");
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("order", order);
         out.put("seats", codes);
-        out.put("totalYuan", BigDecimal.valueOf(unit * codes.size()).setScale(2, RoundingMode.HALF_UP));
+        out.put("totalYuan", order.get("totalYuan"));
         return out;
     }
 

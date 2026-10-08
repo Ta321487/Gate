@@ -1,9 +1,9 @@
 package com.thesis.service;
 
-import com.thesis.config.GeneratedKeyHolder;
-import com.thesis.config.JpaDb;
-import com.thesis.config.JpaSupport;
-import com.thesis.config.KeyHolder;
+import com.thesis.config.JdbcSupport;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,10 +13,13 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 门户留言板（sys_guestbook）：用户发表；管理端删除/简短回复。
@@ -28,9 +31,10 @@ public class GuestbookStore {
     private static final int BODY_MAX = 500;
     private static Boolean tableReady;
     private static Boolean hasChannel;
+    private static Boolean hasItemId;
 
-    private static JpaDb db() {
-        return JpaSupport.db();
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     public static boolean ready() {
@@ -60,6 +64,21 @@ public class GuestbookStore {
             }
         }
         return hasChannel;
+    }
+
+    public static boolean hasItemId() {
+        if (hasItemId == null) {
+            try {
+                Integer n = db().queryForObject(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()"
+                                + " AND TABLE_NAME='sys_guestbook' AND COLUMN_NAME='item_id'",
+                        Integer.class);
+                hasItemId = n != null && n > 0;
+            } catch (Exception e) {
+                hasItemId = false;
+            }
+        }
+        return hasItemId;
     }
 
     private static String fmt(Object o) {
@@ -102,6 +121,14 @@ public class GuestbookStore {
         } else {
             m.put("channel", "user");
         }
+        if (hasItemId()) {
+            try {
+                long iid = rs.getLong("item_id");
+                m.put("itemId", rs.wasNull() ? null : iid);
+            } catch (Exception ignored) {
+                m.put("itemId", null);
+            }
+        }
         return m;
     }
 
@@ -113,10 +140,15 @@ public class GuestbookStore {
     }
 
     public static Map<String, Object> add(String username, String nickname, String body) {
-        return add(username, nickname, body, "user");
+        return add(username, nickname, body, "user", null);
     }
 
     public static Map<String, Object> add(String username, String nickname, String body, String channel) {
+        return add(username, nickname, body, channel, null);
+    }
+
+    public static Map<String, Object> add(
+            String username, String nickname, String body, String channel, Long itemId) {
         if (!ready()) return null;
         String b = clip(body, BODY_MAX);
         if (b.isBlank()) return null;
@@ -125,10 +157,25 @@ public class GuestbookStore {
         if ("merchant".equals(ch) && !hasChannel()) {
             throw new IllegalStateException("系统未配置留言通道字段，无法保存");
         }
+        Long iid = itemId != null && itemId > 0 ? itemId : null;
+        if (iid != null && !hasItemId()) {
+            throw new IllegalStateException("系统未配置商品问答字段，无法保存");
+        }
         KeyHolder kh = new GeneratedKeyHolder();
         db().update(con -> {
             PreparedStatement ps;
-            if (hasChannel()) {
+            boolean chOn = hasChannel();
+            boolean itemOn = hasItemId() && iid != null;
+            if (chOn && itemOn) {
+                ps = con.prepareStatement(
+                        "INSERT INTO sys_guestbook (username,nickname,body,channel,item_id) VALUES (?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, username == null ? "" : username);
+                ps.setString(2, nick);
+                ps.setString(3, b);
+                ps.setString(4, ch);
+                ps.setLong(5, iid);
+            } else if (chOn) {
                 ps = con.prepareStatement(
                         "INSERT INTO sys_guestbook (username,nickname,body,channel) VALUES (?,?,?,?)",
                         Statement.RETURN_GENERATED_KEYS);
@@ -136,6 +183,14 @@ public class GuestbookStore {
                 ps.setString(2, nick);
                 ps.setString(3, b);
                 ps.setString(4, ch);
+            } else if (itemOn) {
+                ps = con.prepareStatement(
+                        "INSERT INTO sys_guestbook (username,nickname,body,item_id) VALUES (?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, username == null ? "" : username);
+                ps.setString(2, nick);
+                ps.setString(3, b);
+                ps.setLong(4, iid);
             } else {
                 ps = con.prepareStatement(
                         "INSERT INTO sys_guestbook (username,nickname,body) VALUES (?,?,?)",
@@ -148,6 +203,30 @@ public class GuestbookStore {
         }, kh);
         Number key = kh.getKey();
         return get(key == null ? 0L : key.longValue());
+    }
+
+    /** T-09：商品详情问答（挂 item_id）。 */
+    public static Map<String, Object> pageByItem(long itemId, int page, int size) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", List.of());
+        out.put("total", 0);
+        out.put("page", page < 1 ? 1 : page);
+        out.put("size", size < 1 ? 10 : size);
+        if (!ready() || !hasItemId() || itemId <= 0) return out;
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM sys_guestbook WHERE item_id=?", Integer.class, itemId);
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM sys_guestbook WHERE item_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> row(rs),
+                itemId, size, (page - 1) * size);
+        attachAvatars(list);
+        out.put("list", list == null ? List.of() : list);
+        out.put("total", total == null ? 0 : total);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
     }
 
     public static Map<String, Object> reply(long id, String reply, String replyUsername) {
@@ -206,10 +285,52 @@ public class GuestbookStore {
                 "SELECT * FROM sys_guestbook" + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> row(rs),
                 listArgs.toArray());
+        attachAvatars(list);
         out.put("list", list);
         out.put("total", t);
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 留言人头像：按 username 批量挂 avatarUrl（与私信表面一致，不改表） */
+    private static void attachAvatars(List<Map<String, Object>> list) {
+        if (list == null || list.isEmpty()) return;
+        Set<String> names = new HashSet<>();
+        for (Map<String, Object> m : list) {
+            Object u = m.get("username");
+            if (u != null) {
+                String s = String.valueOf(u).trim();
+                if (!s.isEmpty()) names.add(s);
+            }
+        }
+        if (names.isEmpty()) {
+            for (Map<String, Object> m : list) m.put("avatarUrl", "");
+            return;
+        }
+        Map<String, String> avatars = new HashMap<>();
+        try {
+            StringBuilder in = new StringBuilder();
+            List<Object> args = new ArrayList<>();
+            for (String n : names) {
+                if (in.length() > 0) in.append(',');
+                in.append('?');
+                args.add(n);
+            }
+            db().query(
+                    "SELECT username, avatar_url FROM sys_user WHERE username IN (" + in + ")",
+                    (rs, i) -> {
+                        String av = rs.getString("avatar_url");
+                        avatars.put(rs.getString("username"), av == null ? "" : av.trim());
+                        return null;
+                    },
+                    args.toArray());
+        } catch (Exception ignored) {
+            /* 表缺列时静默 */
+        }
+        for (Map<String, Object> m : list) {
+            String u = m.get("username") == null ? "" : String.valueOf(m.get("username")).trim();
+            m.put("avatarUrl", avatars.getOrDefault(u, ""));
+        }
     }
 }

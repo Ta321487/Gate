@@ -372,11 +372,16 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> createCategory(String name) {
-        return createCategory(name, null);
+        return createCategory(name, null, null);
     }
 
     public static Map<String, Object> createCategory(String name, String dimension) {
+        return createCategory(name, dimension, null);
+    }
+
+    public static Map<String, Object> createCategory(String name, String dimension, Boolean requiredPick) {
         long id = addCategory(name, dimension);
+        applyRequiredPick(id, requiredPick);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", name.trim());
@@ -386,14 +391,21 @@ public final class ArchiveStore {
         if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
             m.put("dimension", dim);
         }
+        if (hasRequiredPickCategories()) {
+            m.put("requiredPick", Boolean.TRUE.equals(requiredPick));
+        }
         return m;
     }
 
     public static Map<String, Object> updateCategory(long id, String name) {
-        return updateCategory(id, name, null);
+        return updateCategory(id, name, null, null);
     }
 
     public static Map<String, Object> updateCategory(long id, String name, String dimension) {
+        return updateCategory(id, name, dimension, null);
+    }
+
+    public static Map<String, Object> updateCategory(long id, String name, String dimension, Boolean requiredPick) {
         if (mapper().countCategoryById(CAT, id) == 0) throw new IllegalArgumentException("分类不存在");
         String n = name == null ? "" : name.trim();
         if (n.isBlank()) throw new IllegalArgumentException("分类名不能为空");
@@ -404,11 +416,15 @@ public final class ArchiveStore {
         } else {
             mapper().updateCategory(CAT, id, n);
         }
+        applyRequiredPick(id, requiredPick);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", n);
         if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
             m.put("dimension", dim);
+        }
+        if (hasRequiredPickCategories() && requiredPick != null) {
+            m.put("requiredPick", requiredPick);
         }
         return m;
     }
@@ -428,11 +444,31 @@ public final class ArchiveStore {
         mapper().deleteCategory(CAT, id);
     }
 
+    public static boolean hasRequiredPickCategories() {
+        return hasCategoryColumn("required_pick");
+    }
+
+    public static List<Long> listRequiredCategoryIds() {
+        if (!hasRequiredPickCategories()) return List.of();
+        try {
+            List<Long> ids = mapper().listRequiredCategoryIds(CAT);
+            return ids == null ? List.of() : ids;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static void applyRequiredPick(long id, Boolean requiredPick) {
+        if (requiredPick == null || !hasRequiredPickCategories() || id <= 0) return;
+        mapper().updateCategoryRequiredPick(CAT, id, requiredPick ? 1 : 0);
+    }
+
     public static List<Map<String, Object>> listCategories() {
         boolean excludeDeleted = softDeleteEnabled && hasDeletedAt();
         boolean multi = multiCategoryActive();
         List<Map<String, Object>> raw = mapper().selectCategories(
-                CAT, ITEM, excludeDeleted, multi, multi ? ITEM_CAT : null, multi && hasDimensionColumn());
+                CAT, ITEM, excludeDeleted, multi, multi ? ITEM_CAT : null, multi && hasDimensionColumn(),
+                hasCategoryColumn("required_pick"));
         List<Map<String, Object>> out = new ArrayList<>();
         if (raw == null) return out;
         for (Map<String, Object> r : raw) {
@@ -446,6 +482,10 @@ public final class ArchiveStore {
             long cnt = toLong(first(r, "itemCount", "item_count"));
             row.put("bookCount", cnt);
             row.put("itemCount", cnt);
+            if (hasCategoryColumn("required_pick")) {
+                Object rp = first(r, "requiredPick", "required_pick");
+                row.put("requiredPick", toInt(rp) > 0 || Boolean.TRUE.equals(rp));
+            }
             out.add(row);
         }
         return out;
@@ -579,6 +619,7 @@ public final class ArchiveStore {
                 }
             }
         }
+        int prevStock = toInt(m.get("stock"));
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("itemTable", ITEM);
         row.put("authorCol", authorColumn());
@@ -592,6 +633,12 @@ public final class ArchiveStore {
         row.put("status", status);
         row.put("coverUrl", cover);
         mapper().updateItemCore(row);
+        if (stock > prevStock && prevStock <= 0) {
+            try {
+                StockNotifyStore.notifyRestock(id);
+            } catch (Exception ignored) {
+            }
+        }
         if (hasStartAt()) {
             Timestamp ts = parseTs(startRaw);
             mapper().updateItemColumn(ITEM, "start_at", ts, id);
@@ -734,6 +781,20 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "leaderContact", "leader_contact", 128);
         patchOptStr(id, patch, "meetingPoint", "meeting_point", 128);
         patchOptStr(id, patch, "checkinPlace", "checkin_place", 128);
+        patchOptStr(id, patch, "maintainFrom", "maintain_from", 32);
+        patchOptStr(id, patch, "maintainTo", "maintain_to", 32);
+        patchOptStr(id, patch, "adminNote", "admin_note", 255);
+        patchOptStr(id, patch, "deptIntro", "dept_intro", 512);
+        patchOptStr(id, patch, "slotKind", "slot_kind", 16);
+        patchOptStr(id, patch, "queueEstimateHint", "queue_estimate_hint", 255);
+        patchOptStr(id, patch, "passHint", "pass_hint", 255);
+        patchOptInt(id, patch, "minDurationMinutes", "min_duration_minutes");
+        patchOptInt(id, patch, "serviceMinutes", "service_minutes");
+        patchOptStr(id, patch, "tabooNote", "taboo_note", 255);
+        patchOptStr(id, patch, "roomKind", "room_kind", 16);
+        patchOptStr(id, patch, "pickupNavUrl", "pickup_nav_url", 255);
+        patchOptStr(id, patch, "returnNavUrl", "return_nav_url", 255);
+
         patchOptStr(id, patch, "courseKind", "course_kind", 16);
         patchOptStr(id, patch, "prereqCode", "prereq_code", 64);
         patchOptInt(id, patch, "minGroupSize", "min_group_size");
@@ -742,6 +803,16 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "sponsorNote", "sponsor_note", 255);
         patchOptStr(id, patch, "groupPriceNote", "group_price_note", 2000);
         patchOptNum(id, patch, "feeYuan", "fee_yuan");
+        patchOptNum(id, patch, "freeShipYuan", "free_ship_yuan");
+        patchOptStr(id, patch, "openHours", "open_hours", 32);
+        patchOptStr(id, patch, "presaleNote", "presale_note", 255);
+        if (patch.containsKey("shelfOn") && hasItemColumn("shelf_on")) {
+            mapper().updateItemColumn(ITEM, "shelf_on", parseTs(patch.get("shelfOn")), id);
+        }
+        if (patch.containsKey("shelfOff") && hasItemColumn("shelf_off")) {
+            mapper().updateItemColumn(ITEM, "shelf_off", parseTs(patch.get("shelfOff")), id);
+        }
+        patchOptNum(id, patch, "stallScore", "stall_score");
         patchOptNum(id, patch, "minAge", "min_age");
         patchOptNum(id, patch, "maxAge", "max_age");
         patchOptStr(id, patch, "lostCategory", "lost_category", 32);
@@ -915,7 +986,13 @@ public final class ArchiveStore {
             String st = str(m.get("status")).trim();
             if ("pending_review".equals(st) || "rejected".equals(st)) return null;
         }
-        return enrichItem(m);
+        Map<String, Object> out = enrichItem(m);
+        try {
+            List<Map<String, Object>> sibs = listSiblingSpecStock(id);
+            if (sibs != null && !sibs.isEmpty()) out.put("siblingSpecStock", sibs);
+        } catch (Exception ignored) {
+        }
+        return out;
     }
 
     /** 管理侧：含已下架 */
@@ -1034,7 +1111,8 @@ public final class ArchiveStore {
                 requireAvailable,
                 scheduleFilter,
                 hasEndAt(),
-                owner);
+                owner,
+                hasItemColumn("stall_score"));
         PageInfo<Map<String, Object>> pi = new PageInfo<>(raw == null ? List.of() : raw);
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> r : pi.getList()) {
@@ -1051,6 +1129,36 @@ public final class ArchiveStore {
     public static Map<String, Object> pageItemsForMerchant(
             String ownerUsername, String keyword, Long categoryId, int page, int size) {
         return pageItems(keyword, categoryId, null, null, false, page, size, false, ownerUsername);
+    }
+
+    /** 同名在售商品（换规格：有则列出，无则空列表）。 */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> listAvailableByTitle(String title, long exceptId) {
+        String t = title == null ? "" : title.trim();
+        if (t.isBlank()) return List.of();
+        Map<String, Object> page = pageItems(t, null, 1, 40);
+        Object raw = page.get("list");
+        if (!(raw instanceof List<?> rows)) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (!(o instanceof Map<?, ?> mm)) continue;
+            Map<String, Object> item = (Map<String, Object>) mm;
+            long id = item.get("id") instanceof Number n ? n.longValue() : 0L;
+            if (id <= 0 || id == exceptId) continue;
+            if (!t.equals(String.valueOf(item.getOrDefault("title", "")).trim())) continue;
+            if (!"available".equals(String.valueOf(item.getOrDefault("status", "")).trim())) continue;
+            int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
+            if (stock <= 0) continue;
+            Map<String, Object> alt = new LinkedHashMap<>();
+            alt.put("itemId", id);
+            String spec = String.valueOf(item.getOrDefault("specNote", "")).trim();
+            if (spec.isBlank()) spec = String.valueOf(item.getOrDefault("isbn", "")).trim();
+            alt.put("specLabel", spec.isBlank() ? ("商品 #" + id) : spec);
+            alt.put("priceYuan", item.get("priceYuan") != null ? item.get("priceYuan") : item.get("author"));
+            alt.put("stock", stock);
+            out.add(alt);
+        }
+        return out;
     }
 
     private static Map<String, Object> shapeItem(Map<String, Object> raw) {
@@ -1168,6 +1276,19 @@ public final class ArchiveStore {
         putOptStr(m, raw, "leader_contact", "leaderContact");
         putOptStr(m, raw, "meeting_point", "meetingPoint");
         putOptStr(m, raw, "checkin_place", "checkinPlace");
+        putOptStr(m, raw, "maintain_from", "maintainFrom");
+        putOptStr(m, raw, "maintain_to", "maintainTo");
+        putOptStr(m, raw, "admin_note", "adminNote");
+        putOptStr(m, raw, "dept_intro", "deptIntro");
+        putOptStr(m, raw, "slot_kind", "slotKind");
+        putOptStr(m, raw, "queue_estimate_hint", "queueEstimateHint");
+        putOptStr(m, raw, "pass_hint", "passHint");
+        putOptInt(m, raw, "min_duration_minutes", "minDurationMinutes");
+        putOptInt(m, raw, "service_minutes", "serviceMinutes");
+        putOptStr(m, raw, "taboo_note", "tabooNote");
+        putOptStr(m, raw, "room_kind", "roomKind");
+        putOptStr(m, raw, "pickup_nav_url", "pickupNavUrl");
+        putOptStr(m, raw, "return_nav_url", "returnNavUrl");
         putOptStr(m, raw, "course_kind", "courseKind");
         putOptStr(m, raw, "prereq_code", "prereqCode");
         putOptInt(m, raw, "min_group_size", "minGroupSize");
@@ -1193,6 +1314,12 @@ public final class ArchiveStore {
         putOptStr(m, raw, "sponsor_note", "sponsorNote");
         putOptStr(m, raw, "group_price_note", "groupPriceNote");
         putOptNum(m, raw, "fee_yuan", "feeYuan");
+        putOptNum(m, raw, "free_ship_yuan", "freeShipYuan");
+        putOptStr(m, raw, "open_hours", "openHours");
+        putOptStr(m, raw, "presale_note", "presaleNote");
+        putOptTs(m, raw, "shelf_on", "shelfOn");
+        putOptTs(m, raw, "shelf_off", "shelfOff");
+        putOptNum(m, raw, "stall_score", "stallScore");
         putOptNum(m, raw, "min_age", "minAge");
         putOptNum(m, raw, "max_age", "maxAge");
         putOptStr(m, raw, "lost_category", "lostCategory");
@@ -1378,6 +1505,7 @@ public final class ArchiveStore {
     public static void redactSensitiveForPublic(Map<String, Object> item) {
         if (item == null) return;
         item.remove("checkinCode");
+        item.remove("adminNote");
     }
 
     @SuppressWarnings("unchecked")
@@ -1426,7 +1554,51 @@ public final class ArchiveStore {
             }
         }
         n += expirePastExpireOn();
+        n += applyShelfSchedule();
         return n;
+    }
+
+    /** T-09：到点上架 / 下架（shelf_on / shelf_off）。 */
+    public static int applyShelfSchedule() {
+        int n = 0;
+        if (hasItemColumn("shelf_off")) {
+            try {
+                n += mapper().applyShelfOff(ITEM);
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("shelf_on")) {
+            try {
+                n += mapper().applyShelfOn(ITEM);
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+    /** T-09 浅规格库存：同名在售兄弟行库存一览。 */
+    public static List<Map<String, Object>> listSiblingSpecStock(long itemId) {
+        Map<String, Object> self = getItemRaw(itemId);
+        if (self == null) return List.of();
+        String title = str(self.get("title")).trim();
+        if (title.isBlank()) return List.of();
+        try {
+            List<Map<String, Object>> rows = mapper().listSiblingSpecStock(ITEM, title, itemId);
+            if (rows == null) return List.of();
+            List<Map<String, Object>> out = new ArrayList<>();
+            for (Map<String, Object> raw : rows) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", toLong(raw.get("id")));
+                m.put("title", str(raw.get("title")));
+                m.put("stock", toInt(raw.get("stock")));
+                m.put("status", str(raw.get("status")));
+                m.put("specNote", str(raw.get("spec_note")));
+                out.add(m);
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     /** 招聘岗位等：expire_on（yyyy-MM-dd）到期自动下架。 */
@@ -2110,8 +2282,18 @@ public final class ArchiveStore {
         }
         if (n <= 0) throw new IllegalStateException(stockShortage(0));
         syncOccupyStageWithStock(itemId, delta);
+        try {
+            com.thesis.service.SeatStore.syncShowSaleStatus(itemId);
+        } catch (Exception ignored) {
+        }
         if (delta < 0 && stockWarnNotify) {
             maybeNotifyLowStock(itemId);
+        }
+        if (delta > 0) {
+            try {
+                StockNotifyStore.notifyRestock(itemId);
+            } catch (Exception ignored) {
+            }
         }
     }
 

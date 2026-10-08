@@ -43,7 +43,12 @@
               </el-avatar>
               <strong>{{ peerLabel }}</strong>
             </div>
-            <span class="muted">约每 4 秒刷新</span>
+            <div class="chat-hd-actions">
+              <span class="muted">约每 4 秒刷新</span>
+              <el-button link type="danger" size="small" :loading="deleting" @click="removeConversation">
+                删除会话
+              </el-button>
+            </div>
           </div>
           <div ref="scroller" class="chat-body">
             <div
@@ -128,7 +133,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { formatRelative } from '../../utils/dates.js'
 import { schemaLabels } from '../../utils/domainSchema.js'
@@ -189,6 +194,7 @@ const sending = ref(false)
 const newOpen = ref(false)
 const newPeer = ref('')
 const peerOptions = ref([])
+const deleting = ref(false)
 const scroller = ref(null)
 const draftInput = ref(null)
 let pollTimer = null
@@ -281,6 +287,32 @@ async function send() {
   }
 }
 
+async function removeConversation() {
+  if (!peer.value || deleting.value) return
+  try {
+    await ElMessageBox.confirm(
+      `删除后将清空与「${peerLabel.value}」的聊天记录，双方都看不到这些消息。确定删除吗？`,
+      '删除会话',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  deleting.value = true
+  try {
+    await http.delete('/api/dm/conversations', { params: { peer: peer.value } })
+    peer.value = ''
+    messages.value = []
+    lastId = 0
+    await loadConversations()
+    ElMessage.success('会话已删除')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '删除失败')
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function openNew() {
   await loadPeers()
   newPeer.value = ''
@@ -363,6 +395,12 @@ onUnmounted(stopPoll)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.chat-hd-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 .muted { color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .conv-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }

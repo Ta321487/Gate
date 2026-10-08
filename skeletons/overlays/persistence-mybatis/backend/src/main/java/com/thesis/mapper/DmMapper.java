@@ -49,4 +49,9 @@ public interface DmMapper {
 
     @Select("SELECT IFNULL(avatar_url,'') FROM sys_user WHERE username=#{username}")
     String avatarUrlOf(@Param("username") String username);
+
+    @Delete("DELETE FROM sys_dm_message WHERE "
+            + "(from_username=#{me} AND to_username=#{peer}) "
+            + "OR (from_username=#{peer} AND to_username=#{me})")
+    int deleteConversation(@Param("me") String me, @Param("peer") String peer);
 }

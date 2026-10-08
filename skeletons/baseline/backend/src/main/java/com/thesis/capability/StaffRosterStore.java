@@ -142,7 +142,14 @@ public final class StaffRosterStore {
         return rows == null || rows.isEmpty() ? null : rows.get(0);
     }
 
-    /** 某日当班列表（预约页弱展示）。 */
+    /** 班次是否表示请假/休息（不可约）。 */
+    public static boolean isLeaveShift(String shiftLabel) {
+        String s = shiftLabel == null ? "" : shiftLabel.trim();
+        if (s.isBlank()) return false;
+        return s.contains("请假") || s.contains("休假") || "休息".equals(s) || "调休".equals(s);
+    }
+
+    /** 某日当班列表（预约页弱展示；不含请假/休息）。 */
     public static List<Map<String, Object>> onDuty(String workDate) {
         if (!enabled) return List.of();
         LocalDate day = parseDay(workDate);
@@ -151,7 +158,14 @@ public final class StaffRosterStore {
                 "SELECT * FROM " + TABLE + " WHERE work_date=? ORDER BY id ASC",
                 (rs, i) -> mapRow(rs),
                 Date.valueOf(day));
-        return rows == null ? List.of() : rows;
+        if (rows == null || rows.isEmpty()) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            if (!isLeaveShift(String.valueOf(row.getOrDefault("shiftLabel", "")))) {
+                out.add(row);
+            }
+        }
+        return out;
     }
 
     public static Set<String> onDutyUsernames(String workDate) {
@@ -165,12 +179,35 @@ public final class StaffRosterStore {
         if (!enabled) return false;
         String user = username == null ? "" : username.trim();
         if (user.isBlank()) return false;
+        for (Map<String, Object> row : onDuty(workDate)) {
+            if (user.equals(String.valueOf(row.getOrDefault("username", "")))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 指定技师/员工该日若排了请假班次则拒绝预约。 */
+    public static void assertNotOnLeave(String staffKey, String workDate) {
+        if (!enabled) return;
+        String key = staffKey == null ? "" : staffKey.trim();
+        if (key.isBlank()) return;
         LocalDate day = parseDay(workDate);
         if (day == null) day = LocalDate.now();
-        Integer n = db().queryForObject(
-                "SELECT COUNT(*) FROM " + TABLE + " WHERE username=? AND work_date=?",
-                Integer.class, user, Date.valueOf(day));
-        return n != null && n > 0;
+        List<Map<String, Object>> rows = db().query(
+                "SELECT * FROM " + TABLE + " WHERE work_date=? ORDER BY id ASC",
+                (rs, i) -> mapRow(rs),
+                Date.valueOf(day));
+        if (rows == null) return;
+        for (Map<String, Object> row : rows) {
+            String user = String.valueOf(row.getOrDefault("username", ""));
+            if (!key.equals(user) && !key.equals(String.valueOf(row.getOrDefault("note", "")))) {
+                continue;
+            }
+            if (isLeaveShift(String.valueOf(row.getOrDefault("shiftLabel", "")))) {
+                throw new IllegalStateException("该技师当日请假，请改选其他技师或日期");
+            }
+        }
     }
 
     private static Map<String, Object> mapRow(java.sql.ResultSet rs) throws java.sql.SQLException {

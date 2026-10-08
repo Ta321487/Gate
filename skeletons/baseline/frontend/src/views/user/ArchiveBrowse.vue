@@ -511,9 +511,31 @@
             v-if="reportOn && !isGuest"
             @click="openReport(detail)"
           >{{ reportVerb }}</el-button>
+          <el-button
+            v-if="stockNotifyOn && !isGuest && detail.id && !stockOk(detail)"
+            type="warning"
+            :loading="stockNotifyLoading"
+            @click="subscribeStockNotify(detail)"
+          >{{ stockNotifySubscribed
+            ? (browseLabels.stockNotifyAgainLabel || browseLabels.stockNotifyDoneLabel || '再次订阅到货')
+            : (browseLabels.stockNotifyLabel || '到货通知我') }}</el-button>
         </div>
+        <p v-if="presaleNoteOn && detail.presaleNote" class="detail-line">{{ browseLabels.presaleNoteLabel || '预售说明' }}：{{ detail.presaleNote }}</p>
+        <section v-if="specStockOn && siblingSpecs.length" class="item-spec-stock">
+          <h4>{{ browseLabels.specStockLabel || '规格库存' }}</h4>
+          <p v-if="browseLabels.specStockHint" class="muted">{{ browseLabels.specStockHint }}</p>
+          <ul>
+            <li v-for="s in siblingSpecs" :key="s.id">
+              {{ s.specNote || s.title }} · 库存 {{ s.stock }}
+            </li>
+          </ul>
+        </section>
         <section v-if="reviewOn && detail.id" class="item-reviews">
           <h4>用户评价</h4>
+          <p v-if="goodRateOn" class="good-rate">
+            <template v-if="itemGoodRate != null">{{ browseLabels.goodRateLabel || '好评率' }} {{ itemGoodRate }}%</template>
+            <template v-else>{{ browseLabels.goodRateEmpty || '暂无评价' }}</template>
+          </p>
           <div v-if="!itemReviews.length" class="muted">暂无评价</div>
           <article v-for="rv in itemReviews" :key="rv.id" class="rv">
             <div class="rv-hd">
@@ -521,7 +543,39 @@
               <span class="muted">{{ rv.displayName || rv.username || '用户' }} · {{ rv.createdAt }}</span>
             </div>
             <p>{{ rv.body || '（无文字）' }}</p>
+            <el-image
+              v-if="rv.imageUrl"
+              :src="rv.imageUrl"
+              fit="cover"
+              style="width:72px;height:72px;border-radius:6px;margin-top:6px"
+              :preview-src-list="[rv.imageUrl]"
+            />
+            <p v-if="rv.followBody" class="rv-follow">追评：{{ rv.followBody }}</p>
             <p v-if="rv.reply" class="rv-reply">商家回复：{{ rv.reply }}</p>
+          </article>
+        </section>
+        <section v-if="itemQaOn && detail.id" class="item-qa">
+          <h4>{{ browseLabels.itemQaLabel || '商品问答' }}</h4>
+          <p v-if="browseLabels.itemQaHint" class="muted">{{ browseLabels.itemQaHint }}</p>
+          <div v-if="!isGuest" class="ic-compose">
+            <el-input
+              v-model="itemQaDraft"
+              type="textarea"
+              :rows="2"
+              maxlength="500"
+              show-word-limit
+              placeholder="对这件商品提问…"
+            />
+            <el-button type="primary" size="small" :loading="itemQaSubmitting" @click="submitItemQa">
+              {{ browseLabels.itemQaSubmitLabel || '提问' }}
+            </el-button>
+          </div>
+          <div v-else class="muted">登录后可提问</div>
+          <div v-if="!itemQaList.length" class="muted">{{ browseLabels.itemQaEmpty || '还没有人提问' }}</div>
+          <article v-for="q in itemQaList" :key="q.id" class="ic">
+            <p class="ic-meta"><span>{{ q.nickname || q.username || '用户' }} · {{ q.createdAt }}</span></p>
+            <p>{{ q.body || '（无文字）' }}</p>
+            <p v-if="q.reply" class="rv-reply">回复：{{ q.reply }}</p>
           </article>
         </section>
         <section v-if="itemCommentOn && detail.id" class="item-comments">
@@ -878,7 +932,11 @@ async function loadBlindBoxes() {
 }
 const verbs = computed(() => ticket.verbs || {})
 const plural = computed(() => archive.labelPlural || archive.label || '对象')
-const fields = computed(() => archive.fields || [])
+const fields = computed(() =>
+  (archive.fields || []).filter(
+    (f) => f && f.key !== 'adminNote' && !f.adminOnly,
+  ),
+)
 const stockDisplay = computed(() => archive.stockDisplay || 'count')
 const showStageChip = computed(() => {
   const fields = archive.fields || []
@@ -1097,6 +1155,12 @@ const flashOn = computed(() => hasCap('flash_price'))
 const productSpecOn = computed(() => hasCap('product_spec'))
 const productSpecLabel = computed(() => getSchema()?.labels?.productSpecLabel || '规格')
 const flashBadge = computed(() => getSchema()?.labels?.flashPriceBadge || '活动价')
+const flashCountdownLabel = computed(
+  () => getSchema()?.labels?.flashCountdownLabel || '距结束',
+)
+const flashCountdownEnded = computed(
+  () => getSchema()?.labels?.flashCountdownEnded || '已结束',
+)
 const { nowMs } = useNowTick()
 
 function flashSecondsLeft(row) {
@@ -1107,8 +1171,8 @@ function flashSecondsLeft(row) {
 function flashCountdownText(row) {
   const sec = flashSecondsLeft(row)
   if (sec == null) return ''
-  if (sec <= 0) return '已结束'
-  return `剩 ${formatCountdownClock(sec)}`
+  if (sec <= 0) return flashCountdownEnded.value
+  return `${flashCountdownLabel.value} ${formatCountdownClock(sec)}`
 }
 const reportOn = computed(() => hasCap('content_report'))
 const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
@@ -1454,6 +1518,22 @@ const recRef = ref(null)
 const detailVisible = ref(false)
 const detail = ref(null)
 const itemReviews = ref([])
+const itemGoodRate = ref(null)
+const itemQaList = ref([])
+const itemQaDraft = ref('')
+const itemQaSubmitting = ref(false)
+const stockNotifySubscribed = ref(false)
+const stockNotifyLoading = ref(false)
+const thicken = computed(() => getSchema()?.tradeThicken || {})
+const stockNotifyOn = computed(() => !!thicken.value.stockNotify)
+const goodRateOn = computed(() => !!thicken.value.goodRate)
+const itemQaOn = computed(() => !!thicken.value.itemQa)
+const specStockOn = computed(() => !!thicken.value.specStock)
+const presaleNoteOn = computed(() => !!thicken.value.presaleNote)
+const siblingSpecs = computed(() => {
+  const list = detail.value?.siblingSpecStock
+  return Array.isArray(list) ? list : []
+})
 const reviewOn = computed(() => hasCap('order_review'))
 const itemCommentOn = computed(() => hasCap('item_comment'))
 const codeQrOn = computed(() => hasCap('code_qr'))
@@ -1598,6 +1678,10 @@ async function openDetail(row) {
   threadList.value = []
   logList.value = []
   itemReviews.value = []
+  itemGoodRate.value = null
+  itemQaList.value = []
+  itemQaDraft.value = ''
+  stockNotifySubscribed.value = false
   itemComments.value = []
   itemCommentDraft.value = ''
   clueList.value = []
@@ -1623,15 +1707,71 @@ async function openDetail(row) {
     try {
       const rr = await http.get(`/api/order-reviews/by-item/${row.id}`, { params: { page: 1, size: 20 } })
       itemReviews.value = rr.data?.list || []
+      itemGoodRate.value = rr.data?.goodRate ?? null
     } catch {
       itemReviews.value = []
+      itemGoodRate.value = null
     }
+  }
+  if (itemQaOn.value) {
+    await loadItemQa(row.id)
+  }
+  if (stockNotifyOn.value && isLoggedIn() && !stockOk(detail.value || row)) {
+    try {
+      const sr = await http.get('/api/stock-notify/status', { params: { itemId: row.id } })
+      stockNotifySubscribed.value = !!sr.data?.subscribed
+    } catch { /* ignore */ }
   }
   if (itemCommentOn.value) {
     await loadItemComments(row.id)
   }
   if (lostClueOn.value) {
     await loadClues(row.id)
+  }
+}
+
+async function loadItemQa(itemId) {
+  if (!itemQaOn.value || !itemId) {
+    itemQaList.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/guestbook', { params: { itemId, page: 1, size: 20 } })
+    itemQaList.value = res.data?.list || []
+  } catch {
+    itemQaList.value = []
+  }
+}
+
+async function submitItemQa() {
+  if (!detail.value?.id) return
+  if (!requireLogin(router)) return
+  const body = (itemQaDraft.value || '').trim()
+  if (!body) {
+    ElMessage.warning('请填写问题')
+    return
+  }
+  itemQaSubmitting.value = true
+  try {
+    await http.post('/api/guestbook', { body, itemId: detail.value.id })
+    ElMessage.success('已提交')
+    itemQaDraft.value = ''
+    await loadItemQa(detail.value.id)
+  } finally {
+    itemQaSubmitting.value = false
+  }
+}
+
+async function subscribeStockNotify(row) {
+  if (!row?.id) return
+  if (!requireLogin(router)) return
+  stockNotifyLoading.value = true
+  try {
+    await http.post('/api/stock-notify', { itemId: row.id })
+    stockNotifySubscribed.value = true
+    ElMessage.success(browseLabels.value.stockNotifyDoneLabel || '已登记到货提醒')
+  } finally {
+    stockNotifyLoading.value = false
   }
 }
 
@@ -2407,10 +2547,20 @@ async function openHighlightFromRoute() {
 .drawer-acts { margin-top: 24px; }
 .item-reviews { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .item-reviews h4 { margin: 0 0 10px; font-size: 15px; }
+.item-reviews .good-rate { margin: 0 0 10px; font-size: 13px; color: var(--portal-accent, #0b6e75); }
 .item-reviews .rv { margin-bottom: 12px; }
 .item-reviews .rv-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
 .item-reviews .rv p { margin: 0; line-height: 1.5; }
-.item-reviews .rv-reply { margin-top: 6px !important; color: var(--portal-muted, #64748b); font-size: 13px; }
+.item-reviews .rv-reply,
+.item-reviews .rv-follow { margin-top: 6px !important; color: var(--portal-muted, #64748b); font-size: 13px; }
+.item-qa,
+.item-spec-stock { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
+.item-qa h4,
+.item-spec-stock h4 { margin: 0 0 10px; font-size: 15px; }
+.item-spec-stock ul { margin: 0; padding-left: 18px; }
+.item-qa .ic { margin-bottom: 12px; }
+.item-qa .ic-meta { margin: 0 0 4px; font-size: 12px; color: var(--portal-muted, #64748b); }
+.item-qa .rv-reply { margin-top: 6px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .item-comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
 .item-comments h4 { margin: 0 0 10px; font-size: 15px; }
 .item-comments .ic-compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }

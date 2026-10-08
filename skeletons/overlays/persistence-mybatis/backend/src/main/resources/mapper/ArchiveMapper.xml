@@ -16,7 +16,7 @@
     </insert>
 
     <select id="selectCategories" resultType="map">
-        SELECT c.id, c.name<if test="includeDimension">, c.dimension</if>,
+        SELECT c.id, c.name<if test="includeDimension">, c.dimension</if><if test="includeRequiredPick">, c.required_pick</if>,
         <choose>
             <when test="multiCategory">
                 <choose>
@@ -112,7 +112,10 @@
                 </foreach>
             </if>
         </where>
-        ORDER BY pin_top DESC, id DESC
+        <choose>
+            <when test="orderStallScore">ORDER BY stall_score DESC, id DESC</when>
+            <otherwise>ORDER BY pin_top DESC, id DESC</otherwise>
+        </choose>
     </select>
 
     <select id="selectMine" resultType="map">

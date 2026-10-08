@@ -85,7 +85,7 @@ def attach_seat_select_menus(schema: dict[str, Any]) -> None:
     labels.setdefault("seatShowsTitle", "场次选座")
     labels.setdefault(
         "seatShowsLead",
-        "选择场次后进入座位图；可设影厅类型、开场时间与排×列；过开场自动下架；确认后占座生成订单（无真锁座）。",
+        "选择场次后进入座位图，确认购票后出票。开场后该场次不再售票。",
     )
     labels.setdefault("seatMapTitle", "选座购票")
     labels.setdefault("seatSelectCta", "选座")

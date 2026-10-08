@@ -75,6 +75,12 @@ public class TicketDashboardController {
             if (oc.get("hotItemSeries") != null) {
                 charts.put("hotItemSeries", oc.get("hotItemSeries"));
             }
+            if (oc.get("salesDailySeries") != null) {
+                charts.put("salesDailySeries", oc.get("salesDailySeries"));
+            }
+            if (oc.get("refundReasonSeries") != null) {
+                charts.put("refundReasonSeries", oc.get("refundReasonSeries"));
+            }
         }
         // 借阅/办理热门：TicketStore 已填 hotItemSeries；订单热销优先覆盖
         if (StockIoStore.enabled()) {

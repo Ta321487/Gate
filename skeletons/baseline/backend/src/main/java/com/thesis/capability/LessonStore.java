@@ -219,6 +219,43 @@ public final class LessonStore {
         return LocalDate.parse(day).isBefore(LocalDate.now());
     }
 
+    /** 课时即将到期站内信（演示：到期前 3 天内提醒一次语义）。 */
+    public static int expireSoonNotify() {
+        if (!enabled) return 0;
+        LocalDate today = LocalDate.now();
+        LocalDate until = today.plusDays(3);
+        int n = 0;
+        try {
+            List<Map<String, Object>> rows = db().query(
+                    "SELECT username, remain_sessions, expire_at FROM lesson_wallet "
+                            + "WHERE reservation_id IS NULL AND remain_sessions>0 "
+                            + "AND expire_at IS NOT NULL AND expire_at>=? AND expire_at<=?",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("username", rs.getString("username"));
+                        m.put("remainSessions", rs.getInt("remain_sessions"));
+                        Date d = rs.getDate("expire_at");
+                        m.put("expireAt", d == null ? "" : d.toLocalDate().toString());
+                        return m;
+                    },
+                    Date.valueOf(today),
+                    Date.valueOf(until));
+            if (rows == null) return 0;
+            for (Map<String, Object> row : rows) {
+                String user = str(row.get("username"));
+                if (user.isBlank()) continue;
+                String exp = str(row.get("expireAt"));
+                String body = "您的课时包将于 " + exp + " 到期，剩余 "
+                        + row.get("remainSessions") + " 节，请尽快预约使用。";
+                com.thesis.service.MessageStore.send(user, "课时即将到期", body, "lesson", 0L);
+                n++;
+            }
+        } catch (Exception ignored) {
+            return n;
+        }
+        return n;
+    }
+
     private static Map<String, Object> packRow(java.sql.ResultSet rs, boolean withEnabled) throws java.sql.SQLException {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", rs.getLong("id"));

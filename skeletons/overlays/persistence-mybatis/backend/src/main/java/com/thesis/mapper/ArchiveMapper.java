@@ -40,7 +40,15 @@ public interface ArchiveMapper {
             @Param("excludeDeleted") boolean excludeDeleted,
             @Param("multiCategory") boolean multiCategory,
             @Param("itemCatTable") String itemCatTable,
-            @Param("includeDimension") boolean includeDimension);
+            @Param("includeDimension") boolean includeDimension,
+            @Param("includeRequiredPick") boolean includeRequiredPick);
+
+    @Update("UPDATE `${catTable}` SET required_pick=#{pick} WHERE id=#{id}")
+    int updateCategoryRequiredPick(
+            @Param("catTable") String catTable, @Param("id") long id, @Param("pick") int pick);
+
+    @Select("SELECT id FROM `${catTable}` WHERE required_pick=1")
+    List<Long> listRequiredCategoryIds(@Param("catTable") String catTable);
 
     @Select("SELECT name FROM `${catTable}` WHERE id=#{id}")
     String selectCategoryName(@Param("catTable") String catTable, @Param("id") long id);
@@ -101,7 +109,8 @@ public interface ArchiveMapper {
             @Param("requireAvailable") boolean requireAvailable,
             @Param("scheduleFilter") boolean scheduleFilter,
             @Param("filterByEnd") boolean filterByEnd,
-            @Param("ownerUsername") String ownerUsername);
+            @Param("ownerUsername") String ownerUsername,
+            @Param("orderStallScore") boolean orderStallScore);
 
     @Update("UPDATE `${itemTable}` SET status='unavailable' "
             + "WHERE status='available' AND start_at IS NOT NULL AND start_at <= NOW()")
@@ -121,6 +130,24 @@ public interface ArchiveMapper {
             + "AND expire_on IS NOT NULL AND TRIM(expire_on)<>'' "
             + "AND LEFT(TRIM(expire_on),10) <= DATE_FORMAT(CURDATE(),'%Y-%m-%d')")
     int expirePastExpireOnStage(@Param("itemTable") String itemTable);
+
+    @Update("UPDATE `${itemTable}` SET status='unavailable' "
+            + "WHERE status='available' AND shelf_off IS NOT NULL AND shelf_off <= NOW()")
+    int applyShelfOff(@Param("itemTable") String itemTable);
+
+    @Update("UPDATE `${itemTable}` SET status='available' "
+            + "WHERE status='unavailable' AND shelf_on IS NOT NULL AND shelf_on <= NOW() "
+            + "AND (shelf_off IS NULL OR shelf_off > NOW()) AND IFNULL(stock,0)>0")
+    int applyShelfOn(@Param("itemTable") String itemTable);
+
+    @Select("SELECT id, title, stock, status, IFNULL(spec_note,'') AS spec_note FROM `${itemTable}` "
+            + "WHERE title=#{title} AND id<>#{itemId} "
+            + "AND status<>'pending_review' AND status<>'rejected' "
+            + "ORDER BY id ASC LIMIT 20")
+    List<Map<String, Object>> listSiblingSpecStock(
+            @Param("itemTable") String itemTable,
+            @Param("title") String title,
+            @Param("itemId") long itemId);
 
     @Select("SELECT id, title, expire_on FROM `${itemTable}` "
             + "WHERE status='available' "

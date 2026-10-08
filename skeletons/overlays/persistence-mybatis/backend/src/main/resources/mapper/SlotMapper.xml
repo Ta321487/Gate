@@ -59,4 +59,20 @@
         WHERE created_at &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
         GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day
     </select>
+
+    <select id="selectRemindDue" resultType="map">
+        SELECT r.id, r.username, s.start_at, s.end_at, s.item_id FROM `${resvTable}` r
+        JOIN `${slotTable}` s ON r.slot_id=s.id
+        WHERE r.status IN ('pending','confirmed') AND r.remind_sent=0
+          AND s.start_at &gt; NOW()
+          AND s.start_at &lt;= DATE_ADD(NOW(), INTERVAL #{aheadMinutes} MINUTE)
+    </select>
+
+    <select id="selectDayFill" resultType="map">
+        SELECT DATE_FORMAT(start_at,'%Y-%m-%d') AS day,
+               SUM(capacity) AS capacity, SUM(booked) AS booked
+        FROM `${slotTable}`
+        WHERE item_id=#{itemId} AND start_at LIKE #{monthLike}
+        GROUP BY DATE_FORMAT(start_at,'%Y-%m-%d') ORDER BY day
+    </select>
 </mapper>

@@ -290,4 +290,16 @@ public class DmStore {
                 Integer.class, me.trim());
         return n == null ? 0 : n;
     }
+
+    /** 删除双方之间的全部消息（会话从列表消失；可再新建联系）。 */
+    public static int deleteConversation(String me, String peer) {
+        if (!ready() || me == null || peer == null) return 0;
+        String u = me.trim();
+        String p = peer.trim();
+        if (u.isBlank() || p.isBlank() || u.equals(p)) return 0;
+        return db().update(
+                "DELETE FROM sys_dm_message WHERE "
+                        + "(from_username=? AND to_username=?) OR (from_username=? AND to_username=?)",
+                u, p, p, u);
+    }
 }

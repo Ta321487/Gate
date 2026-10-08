@@ -14,6 +14,16 @@
         <div class="chart-title">近 6 个月销量</div>
         <div ref="monthEl" class="chart" />
       </div>
+      <div v-if="salesDailyOpt" class="chart-box wide">
+        <div class="chart-title">{{ salesDailyTitle }}</div>
+        <p v-if="salesDailyHint" class="chart-hint">{{ salesDailyHint }}</p>
+        <div ref="salesDailyEl" class="chart" />
+      </div>
+      <div v-if="refundReasonOpt" class="chart-box">
+        <div class="chart-title">{{ refundReasonTitle }}</div>
+        <p v-if="refundReasonHint" class="chart-hint">{{ refundReasonHint }}</p>
+        <div ref="refundReasonEl" class="chart" />
+      </div>
       <div v-if="stockOpt" class="chart-box wide">
         <div class="chart-title">{{ stockTitle }}</div>
         <div ref="stockEl" class="chart" />
@@ -81,6 +91,8 @@ const props = defineProps({
 const statusEl = ref(null)
 const trendEl = ref(null)
 const monthEl = ref(null)
+const salesDailyEl = ref(null)
+const refundReasonEl = ref(null)
 const stockEl = ref(null)
 const hotEl = ref(null)
 const stockIoEl = ref(null)
@@ -95,6 +107,8 @@ const distEl = ref(null)
 let statusChart
 let trendChart
 let monthChart
+let salesDailyChart
+let refundReasonChart
 let stockChart
 let hotChart
 let stockIoChart
@@ -124,6 +138,10 @@ const funnelTitle = computed(() => {
 const workerTitle = computed(() => (labels.value.workloadHint ? '维修员工作量' : '处理人完结数'))
 const heatTitle = computed(() => (labels.value.heatHint ? '未结工单地点' : '地点分布'))
 const distTitle = computed(() => labels.value.distChartHint || '成绩分布')
+const salesDailyTitle = computed(() => labels.value.salesDailyLabel || '销售日报')
+const salesDailyHint = computed(() => labels.value.salesDailyHint || '')
+const refundReasonTitle = computed(() => labels.value.refundReasonChartLabel || '售后原因分布')
+const refundReasonHint = computed(() => labels.value.refundReasonChartHint || '')
 
 const stateLabels = computed(() => {
   const schema = getSchema() || {}
@@ -311,6 +329,45 @@ const monthOpt = computed(() => {
   }
 })
 
+const salesDailyOpt = computed(() => {
+  if (!getSchema()?.tradeThicken?.salesDaily) return null
+  const series = props.charts?.salesDailySeries || []
+  if (!series.length) return null
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: 48, right: 16, top: 24, bottom: 36 },
+    xAxis: {
+      type: 'category',
+      data: series.map((x) => String(x.day || '').slice(5)),
+    },
+    yAxis: [
+      { type: 'value', minInterval: 1, name: '单数' },
+      { type: 'value', name: '金额' },
+    ],
+    series: [
+      {
+        name: '订单数',
+        type: 'bar',
+        data: series.map((x) => Number(x.orderCount ?? x.value) || 0),
+        barMaxWidth: 22,
+      },
+      {
+        name: '成交额',
+        type: 'line',
+        yAxisIndex: 1,
+        data: series.map((x) => Number(x.amountYuan) || 0),
+      },
+    ],
+  }
+})
+
+const refundReasonOpt = computed(() => {
+  if (!getSchema()?.tradeThicken?.refundReasonCategories) return null
+  const series = (props.charts?.refundReasonSeries || []).filter((x) => x?.name)
+  return pieFromSeries(series)
+})
+
 const stockOpt = computed(() => {
   const series = (props.charts?.stockSeries || []).filter((x) => x?.name)
   if (!series.length) return null
@@ -471,6 +528,8 @@ const hasAny = computed(
       statusOpt.value
       || trendOpt.value
       || monthOpt.value
+      || salesDailyOpt.value
+      || refundReasonOpt.value
       || stockOpt.value
       || hotOpt.value
       || stockIoOpt.value
@@ -506,6 +565,20 @@ function render() {
   } else if (monthChart) {
     monthChart.dispose()
     monthChart = null
+  }
+  if (salesDailyOpt.value && salesDailyEl.value) {
+    if (!salesDailyChart) salesDailyChart = echarts.init(salesDailyEl.value)
+    salesDailyChart.setOption(withPortalChartTheme(salesDailyOpt.value), true)
+  } else if (salesDailyChart) {
+    salesDailyChart.dispose()
+    salesDailyChart = null
+  }
+  if (refundReasonOpt.value && refundReasonEl.value) {
+    if (!refundReasonChart) refundReasonChart = echarts.init(refundReasonEl.value)
+    refundReasonChart.setOption(withPortalChartTheme(refundReasonOpt.value), true)
+  } else if (refundReasonChart) {
+    refundReasonChart.dispose()
+    refundReasonChart = null
   }
   if (stockOpt.value && stockEl.value) {
     if (!stockChart) stockChart = echarts.init(stockEl.value)
@@ -590,6 +663,8 @@ function onResize() {
   statusChart?.resize()
   trendChart?.resize()
   monthChart?.resize()
+  salesDailyChart?.resize()
+  refundReasonChart?.resize()
   stockChart?.resize()
   hotChart?.resize()
   stockIoChart?.resize()
@@ -623,6 +698,8 @@ onBeforeUnmount(() => {
   statusChart?.dispose()
   trendChart?.dispose()
   monthChart?.dispose()
+  salesDailyChart?.dispose()
+  refundReasonChart?.dispose()
   stockChart?.dispose()
   hotChart?.dispose()
   stockIoChart?.dispose()
@@ -660,6 +737,7 @@ onBeforeUnmount(() => {
 }
 .chart-box.wide { grid-column: 1 / -1; }
 .chart-title { font-size: 13px; color: var(--portal-muted, #8a9aa6); margin: 0 4px 4px; }
+.chart-hint { font-size: 12px; color: var(--portal-muted, #8a9aa6); margin: 0 4px 6px; }
 .chart { width: 100%; height: 240px; }
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }

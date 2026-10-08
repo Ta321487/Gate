@@ -298,6 +298,45 @@ class DmCapabilityTests(unittest.TestCase):
         )
         self.assertEqual(d["accept"], "full")
 
+    def test_skeleton_dm_has_delete_conversation(self) -> None:
+        """合理补齐：三套 Store + Controller + 页面都能删会话。"""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        baseline_store = (
+            root
+            / "skeletons/baseline/backend/src/main/java/com/thesis/service/DmStore.java"
+        ).read_text(encoding="utf-8")
+        mybatis_store = (
+            root
+            / "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/DmStore.java"
+        ).read_text(encoding="utf-8")
+        jpa_store = (
+            root
+            / "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/DmStore.java"
+        ).read_text(encoding="utf-8")
+        ctrl = (
+            root
+            / "skeletons/baseline/backend/src/main/java/com/thesis/controller/DmController.java"
+        ).read_text(encoding="utf-8")
+        vue = (
+            root / "skeletons/baseline/frontend/src/views/user/Dm.vue"
+        ).read_text(encoding="utf-8")
+        mapper = (
+            root
+            / "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/DmMapper.java"
+        ).read_text(encoding="utf-8")
+        for text, tag in (
+            (baseline_store, "jdbc"),
+            (mybatis_store, "mybatis"),
+            (jpa_store, "jpa"),
+        ):
+            self.assertIn("deleteConversation", text, tag)
+        self.assertIn('DeleteMapping("/conversations")', ctrl)
+        self.assertIn("deleteConversation", mapper)
+        self.assertIn("删除会话", vue)
+        self.assertIn("/api/dm/conversations", vue)
+
 
 if __name__ == "__main__":
     unittest.main()

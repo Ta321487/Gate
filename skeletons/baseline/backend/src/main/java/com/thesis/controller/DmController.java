@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 一对一私信：会话列表 / 消息拉取 / 发送 / 已读；登录用户仅读写自己相关消息。
+ * 一对一私信：会话列表 / 消息拉取 / 发送 / 已读 / 删除会话；登录用户仅读写自己相关消息。
  */
 @RestController
 @RequestMapping("/api/dm")
@@ -93,6 +93,21 @@ public class DmController {
         String uid = AdminAuth.requireLogin(session);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("count", DmStore.unreadCount(uid));
+        return R.ok(m);
+    }
+
+    @DeleteMapping("/conversations")
+    public R<Map<String, Object>> deleteConversation(
+            @RequestParam String peer,
+            HttpSession session) {
+        requireReady();
+        String uid = AdminAuth.requireLogin(session);
+        if (peer == null || peer.isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请指定要删除的会话");
+        }
+        int n = DmStore.deleteConversation(uid, peer);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("deleted", n);
         return R.ok(m);
     }
 }

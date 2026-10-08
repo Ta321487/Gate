@@ -391,11 +391,16 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> createCategory(String name) {
-        return createCategory(name, null);
+        return createCategory(name, null, null);
     }
 
     public static Map<String, Object> createCategory(String name, String dimension) {
+        return createCategory(name, dimension, null);
+    }
+
+    public static Map<String, Object> createCategory(String name, String dimension, Boolean requiredPick) {
         long id = addCategory(name, dimension);
+        applyRequiredPick(id, requiredPick);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", name.trim());
@@ -405,14 +410,21 @@ public final class ArchiveStore {
         if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
             m.put("dimension", dim);
         }
+        if (hasRequiredPickCategories()) {
+            m.put("requiredPick", Boolean.TRUE.equals(requiredPick));
+        }
         return m;
     }
 
     public static Map<String, Object> updateCategory(long id, String name) {
-        return updateCategory(id, name, null);
+        return updateCategory(id, name, null, null);
     }
 
     public static Map<String, Object> updateCategory(long id, String name, String dimension) {
+        return updateCategory(id, name, dimension, null);
+    }
+
+    public static Map<String, Object> updateCategory(long id, String name, String dimension, Boolean requiredPick) {
         Integer exists = db().queryForObject("SELECT COUNT(*) FROM " + CAT + " WHERE id=?", Integer.class, id);
         if (exists == null || exists == 0) throw new IllegalArgumentException("分类不存在");
         String n = name == null ? "" : name.trim();
@@ -426,11 +438,15 @@ public final class ArchiveStore {
         } else {
             db().update("UPDATE " + CAT + " SET name=? WHERE id=?", n, id);
         }
+        applyRequiredPick(id, requiredPick);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", n);
         if (multiCategoryActive() && hasDimensionColumn() && !dim.isBlank()) {
             m.put("dimension", dim);
+        }
+        if (hasRequiredPickCategories() && requiredPick != null) {
+            m.put("requiredPick", requiredPick);
         }
         return m;
     }
@@ -455,6 +471,24 @@ public final class ArchiveStore {
         db().update("DELETE FROM " + CAT + " WHERE id=?", id);
     }
 
+    public static boolean hasRequiredPickCategories() {
+        return hasCategoryColumn("required_pick");
+    }
+
+    public static List<Long> listRequiredCategoryIds() {
+        if (!hasRequiredPickCategories()) return List.of();
+        try {
+            return db().query("SELECT id FROM " + CAT + " WHERE required_pick=1", (rs, i) -> rs.getLong("id"));
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static void applyRequiredPick(long id, Boolean requiredPick) {
+        if (requiredPick == null || !hasRequiredPickCategories() || id <= 0) return;
+        db().update("UPDATE " + CAT + " SET required_pick=? WHERE id=?", requiredPick ? 1 : 0, id);
+    }
+
     public static List<Map<String, Object>> listCategories() {
         String cntSql;
         if (multiCategoryActive()) {
@@ -469,8 +503,9 @@ public final class ArchiveStore {
                     : "(SELECT COUNT(*) FROM " + ITEM + " b WHERE b.category_id=c.id)";
         }
         String dimSel = multiCategoryActive() && hasDimensionColumn() ? ", c.dimension" : "";
+        String pickSel = hasRequiredPickCategories() ? ", c.required_pick" : "";
         return db().query(
-                "SELECT c.id, c.name" + dimSel + ", " + cntSql + " AS item_count "
+                "SELECT c.id, c.name" + dimSel + pickSel + ", " + cntSql + " AS item_count "
                         + "FROM " + CAT + " c ORDER BY c.id",
                 (rs, i) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
@@ -479,6 +514,12 @@ public final class ArchiveStore {
                     if (multiCategoryActive() && hasDimensionColumn()) {
                         try {
                             row.put("dimension", rs.getString("dimension"));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (hasRequiredPickCategories()) {
+                        try {
+                            row.put("requiredPick", rs.getInt("required_pick") > 0);
                         } catch (Exception ignored) {
                         }
                     }
@@ -622,10 +663,17 @@ public final class ArchiveStore {
                 }
             }
         }
+        int prevStock = toInt(m.get("stock"));
         db().update(
                 "UPDATE " + ITEM + " SET title=?, " + authorColumn() + "=?, " + isbnColumn()
                         + "=?, category_id=?, stock=?, status=?, cover_url=? WHERE id=?",
                 title, author, isbn, categoryId, stock, status, cover, id);
+        if (stock > prevStock && prevStock <= 0) {
+            try {
+                StockNotifyStore.notifyRestock(id);
+            } catch (Exception ignored) {
+            }
+        }
         if (hasStartAt()) {
             Timestamp ts = parseTs(startRaw);
             db().update("UPDATE " + ITEM + " SET start_at=? WHERE id=?", ts, id);
@@ -770,6 +818,19 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "leaderContact", "leader_contact", 128);
         patchOptStr(id, patch, "meetingPoint", "meeting_point", 128);
         patchOptStr(id, patch, "checkinPlace", "checkin_place", 128);
+        patchOptStr(id, patch, "maintainFrom", "maintain_from", 32);
+        patchOptStr(id, patch, "maintainTo", "maintain_to", 32);
+        patchOptStr(id, patch, "adminNote", "admin_note", 255);
+        patchOptStr(id, patch, "deptIntro", "dept_intro", 512);
+        patchOptStr(id, patch, "slotKind", "slot_kind", 16);
+        patchOptStr(id, patch, "queueEstimateHint", "queue_estimate_hint", 255);
+        patchOptStr(id, patch, "passHint", "pass_hint", 255);
+        patchOptInt(id, patch, "minDurationMinutes", "min_duration_minutes");
+        patchOptInt(id, patch, "serviceMinutes", "service_minutes");
+        patchOptStr(id, patch, "tabooNote", "taboo_note", 255);
+        patchOptStr(id, patch, "roomKind", "room_kind", 16);
+        patchOptStr(id, patch, "pickupNavUrl", "pickup_nav_url", 255);
+        patchOptStr(id, patch, "returnNavUrl", "return_nav_url", 255);
         patchOptStr(id, patch, "courseKind", "course_kind", 16);
         patchOptStr(id, patch, "prereqCode", "prereq_code", 64);
         patchOptInt(id, patch, "minGroupSize", "min_group_size");
@@ -778,6 +839,16 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "sponsorNote", "sponsor_note", 255);
         patchOptStr(id, patch, "groupPriceNote", "group_price_note", 2000);
         patchOptNum(id, patch, "feeYuan", "fee_yuan");
+        patchOptNum(id, patch, "freeShipYuan", "free_ship_yuan");
+        patchOptStr(id, patch, "openHours", "open_hours", 32);
+        patchOptStr(id, patch, "presaleNote", "presale_note", 255);
+        if (patch.containsKey("shelfOn") && hasItemColumn("shelf_on")) {
+            db().update("UPDATE " + ITEM + " SET shelf_on=? WHERE id=?", parseTs(patch.get("shelfOn")), id);
+        }
+        if (patch.containsKey("shelfOff") && hasItemColumn("shelf_off")) {
+            db().update("UPDATE " + ITEM + " SET shelf_off=? WHERE id=?", parseTs(patch.get("shelfOff")), id);
+        }
+        patchOptNum(id, patch, "stallScore", "stall_score");
         patchOptNum(id, patch, "minAge", "min_age");
         patchOptNum(id, patch, "maxAge", "max_age");
         patchOptStr(id, patch, "lostCategory", "lost_category", 32);
@@ -956,7 +1027,13 @@ public final class ArchiveStore {
             String st = str(m.get("status")).trim();
             if ("pending_review".equals(st) || "rejected".equals(st)) return null;
         }
-        return enrichItem(m);
+        Map<String, Object> out = enrichItem(m);
+        try {
+            List<Map<String, Object>> sibs = listSiblingSpecStock(id);
+            if (sibs != null && !sibs.isEmpty()) out.put("siblingSpecStock", sibs);
+        } catch (Exception ignored) {
+        }
+        return out;
     }
 
     /** 管理侧：含已下架 */
@@ -1089,7 +1166,9 @@ public final class ArchiveStore {
         args.add((page - 1) * size);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + where
-                        + (hasItemColumn("pin_top") ? " ORDER BY pin_top DESC, id DESC" : " ORDER BY id")
+                        + (hasItemColumn("stall_score")
+                                ? " ORDER BY stall_score DESC, id DESC"
+                                : (hasItemColumn("pin_top") ? " ORDER BY pin_top DESC, id DESC" : " ORDER BY id"))
                         + " LIMIT ? OFFSET ?",
                 (rs, i) -> enrichItem(mapItemRow(rs)), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
@@ -1104,6 +1183,36 @@ public final class ArchiveStore {
     public static Map<String, Object> pageItemsForMerchant(
             String ownerUsername, String keyword, Long categoryId, int page, int size) {
         return pageItems(keyword, categoryId, null, null, false, page, size, false, ownerUsername);
+    }
+
+    /** 同名在售商品（换规格：有则列出，无则空列表）。 */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> listAvailableByTitle(String title, long exceptId) {
+        String t = title == null ? "" : title.trim();
+        if (t.isBlank()) return List.of();
+        Map<String, Object> page = pageItems(t, null, 1, 40);
+        Object raw = page.get("list");
+        if (!(raw instanceof List<?> rows)) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (!(o instanceof Map<?, ?> mm)) continue;
+            Map<String, Object> item = (Map<String, Object>) mm;
+            long id = item.get("id") instanceof Number n ? n.longValue() : 0L;
+            if (id <= 0 || id == exceptId) continue;
+            if (!t.equals(String.valueOf(item.getOrDefault("title", "")).trim())) continue;
+            if (!"available".equals(String.valueOf(item.getOrDefault("status", "")).trim())) continue;
+            int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
+            if (stock <= 0) continue;
+            Map<String, Object> alt = new LinkedHashMap<>();
+            alt.put("itemId", id);
+            String spec = String.valueOf(item.getOrDefault("specNote", "")).trim();
+            if (spec.isBlank()) spec = String.valueOf(item.getOrDefault("isbn", "")).trim();
+            alt.put("specLabel", spec.isBlank() ? ("商品 #" + id) : spec);
+            alt.put("priceYuan", item.get("priceYuan") != null ? item.get("priceYuan") : item.get("author"));
+            alt.put("stock", stock);
+            out.add(alt);
+        }
+        return out;
     }
 
     private static Map<String, Object> mapItemRow(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -1145,6 +1254,44 @@ public final class ArchiveStore {
                 m.put("specNote", safeStr(rs, "spec_note"));
             } catch (Exception ignored) {
                 m.put("specNote", "");
+            }
+        }
+        if (hasItemColumn("free_ship_yuan")) {
+            try {
+                double v = rs.getDouble("free_ship_yuan");
+                if (!rs.wasNull()) m.put("freeShipYuan", v);
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("open_hours")) {
+            try {
+                m.put("openHours", safeStr(rs, "open_hours"));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("presale_note")) {
+            try {
+                m.put("presaleNote", safeStr(rs, "presale_note"));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("shelf_on")) {
+            try {
+                m.put("shelfOn", fmt(rs.getTimestamp("shelf_on")));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("shelf_off")) {
+            try {
+                m.put("shelfOff", fmt(rs.getTimestamp("shelf_off")));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("stall_score")) {
+            try {
+                double v = rs.getDouble("stall_score");
+                if (!rs.wasNull()) m.put("stallScore", v);
+            } catch (Exception ignored) {
             }
         }
         m.put("coverUrl", rs.getString("cover_url"));
@@ -1248,6 +1395,20 @@ public final class ArchiveStore {
         putOptStr(m, rs, "leader_contact", "leaderContact");
         putOptStr(m, rs, "meeting_point", "meetingPoint");
         putOptStr(m, rs, "checkin_place", "checkinPlace");
+        putOptStr(m, rs, "maintain_from", "maintainFrom");
+        putOptStr(m, rs, "maintain_to", "maintainTo");
+        putOptStr(m, rs, "admin_note", "adminNote");
+        putOptStr(m, rs, "dept_intro", "deptIntro");
+        putOptStr(m, rs, "slot_kind", "slotKind");
+        putOptStr(m, rs, "queue_estimate_hint", "queueEstimateHint");
+        putOptStr(m, rs, "pass_hint", "passHint");
+        putOptInt(m, rs, "min_duration_minutes", "minDurationMinutes");
+        putOptInt(m, rs, "service_minutes", "serviceMinutes");
+        putOptStr(m, rs, "taboo_note", "tabooNote");
+        putOptStr(m, rs, "room_kind", "roomKind");
+        putOptStr(m, rs, "pickup_nav_url", "pickupNavUrl");
+        putOptStr(m, rs, "return_nav_url", "returnNavUrl");
+
         putOptStr(m, rs, "course_kind", "courseKind");
         putOptStr(m, rs, "prereq_code", "prereqCode");
         putOptInt(m, rs, "min_group_size", "minGroupSize");
@@ -1423,6 +1584,7 @@ public final class ArchiveStore {
     public static void redactSensitiveForPublic(Map<String, Object> item) {
         if (item == null) return;
         item.remove("checkinCode");
+        item.remove("adminNote");
     }
 
     @SuppressWarnings("unchecked")
@@ -1475,7 +1637,59 @@ public final class ArchiveStore {
             }
         }
         n += expirePastExpireOn();
+        n += applyShelfSchedule();
         return n;
+    }
+
+    /** T-09：到点上架 / 下架（shelf_on / shelf_off）。 */
+    public static int applyShelfSchedule() {
+        int n = 0;
+        if (hasItemColumn("shelf_off")) {
+            try {
+                n += db().update(
+                        "UPDATE " + ITEM + " SET status='unavailable' "
+                                + "WHERE status='available' AND shelf_off IS NOT NULL AND shelf_off <= NOW()");
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("shelf_on")) {
+            try {
+                String stockOk = hasItemColumn("stock") ? " AND IFNULL(stock,0)>0" : "";
+                n += db().update(
+                        "UPDATE " + ITEM + " SET status='available' "
+                                + "WHERE status='unavailable' AND shelf_on IS NOT NULL AND shelf_on <= NOW()"
+                                + " AND (shelf_off IS NULL OR shelf_off > NOW())" + stockOk);
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+    /** T-09 浅规格库存：同名在售兄弟行库存一览。 */
+    public static List<Map<String, Object>> listSiblingSpecStock(long itemId) {
+        Map<String, Object> self = getItemRaw(itemId);
+        if (self == null) return List.of();
+        String title = str(self.get("title")).trim();
+        if (title.isBlank()) return List.of();
+        String specExpr = hasItemColumn("spec_note") ? "IFNULL(spec_note,'')" : "''";
+        try {
+            return db().query(
+                    "SELECT id, title, stock, status, " + specExpr + " AS spec_note FROM " + ITEM
+                            + " WHERE title=? AND id<>? AND status<>'pending_review' AND status<>'rejected'"
+                            + " ORDER BY id ASC LIMIT 20",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("title", rs.getString("title"));
+                        m.put("stock", rs.getInt("stock"));
+                        m.put("status", rs.getString("status"));
+                        m.put("specNote", rs.getString("spec_note") == null ? "" : rs.getString("spec_note"));
+                        return m;
+                    },
+                    title, itemId);
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     /**
@@ -2196,8 +2410,18 @@ public final class ArchiveStore {
         }
         if (n <= 0) throw new IllegalStateException(stockShortage(0));
         syncOccupyStageWithStock(itemId, delta);
+        try {
+            com.thesis.service.SeatStore.syncShowSaleStatus(itemId);
+        } catch (Exception ignored) {
+        }
         if (delta < 0 && stockWarnNotify) {
             maybeNotifyLowStock(itemId);
+        }
+        if (delta > 0) {
+            try {
+                StockNotifyStore.notifyRestock(itemId);
+            } catch (Exception ignored) {
+            }
         }
     }
 
